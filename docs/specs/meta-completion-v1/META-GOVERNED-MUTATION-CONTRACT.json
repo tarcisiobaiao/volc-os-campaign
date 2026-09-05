@@ -1,0 +1,521 @@
+{
+  "acts": [
+    {
+      "act_id": "ACT-COMPILE",
+      "as_is_difference": "HTTP compilar resolves provider assets; proposed pure compile must be separate from read-refresh.",
+      "gate_ids": [
+        "G01",
+        "G02"
+      ],
+      "input": "plan draft plus previously verified immutable references",
+      "output": "plan_ref/hash/omission decisions/coverage requirements",
+      "remote_side_effect": "NONE"
+    },
+    {
+      "act_id": "ACT-LOCAL-VALIDATE",
+      "gate_ids": [
+        "G01",
+        "G02"
+      ],
+      "input": "sealed compiled plan",
+      "output": "local errors and field authorities",
+      "remote_side_effect": "NONE"
+    },
+    {
+      "act_id": "ACT-REMOTE-VALIDATE",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G03"
+      ],
+      "input": "frozen allowed payload with validate_only",
+      "limits": "Campaign/Creative roots before parents; AdSet/Ad only once real parents exist; never label partial coverage complete.",
+      "output": "exact per-node coverage",
+      "remote_side_effect": "NO_AD_OBJECT_CREATION"
+    },
+    {
+      "act_id": "ACT-VALIDATION-RECEIPT",
+      "gate_ids": [
+        "G01",
+        "G04",
+        "G13"
+      ],
+      "input": "server-observed provider validation",
+      "output": "durable receipt_ref; closed creation flag allowed",
+      "remote_side_effect": "DATABASE_ONLY_AUTHORIZED"
+    },
+    {
+      "act_id": "ACT-APPROVE",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G04",
+        "G13"
+      ],
+      "input": "plan_ref/expected_hash/validation_receipt_ref/explicit operator confirmations",
+      "output": "single-execution approval_ref with expiry",
+      "remote_side_effect": "DATABASE_ONLY_AUTHORIZED"
+    },
+    {
+      "act_id": "ACT-CREATE-PAUSED",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G13"
+      ],
+      "input": "approval_ref,expected_plan_hash only",
+      "output": "execution_ref plus per-step durable outcome",
+      "remote_side_effect": "BOUNDED_PROVIDER_CREATION"
+    },
+    {
+      "act_id": "ACT-READBACK",
+      "gate_ids": [
+        "G01",
+        "G08",
+        "G09"
+      ],
+      "input": "durable exact provider references resolved backend",
+      "output": "requested/observed/diff/presence receipt",
+      "remote_side_effect": "PROVIDER_READ_PLUS_AUTHORIZED_LEDGER"
+    },
+    {
+      "act_id": "ACT-RECONCILE",
+      "gate_ids": [
+        "G01",
+        "G09"
+      ],
+      "input": "execution_ref or step_ref",
+      "output": "verified identity, unresolved ambiguity or durable divergence; no POST create",
+      "remote_side_effect": "PROVIDER_READ_PLUS_AUTHORIZED_LEDGER"
+    },
+    {
+      "act_id": "ACT-EDIT",
+      "gate_ids": [
+        "G01",
+        "G03",
+        "G05",
+        "G07",
+        "G10",
+        "G13"
+      ],
+      "input": "change_plan_ref/hash/new approval",
+      "output": "before/after receipt; enabled P1 fields only",
+      "remote_side_effect": "EXPLICIT_PROVIDER_UPDATE"
+    },
+    {
+      "act_id": "ACT-PAUSE",
+      "gate_ids": [
+        "G01",
+        "G05",
+        "G07",
+        "G10",
+        "G13"
+      ],
+      "input": "pause intent and operation-specific approval",
+      "output": "configuredPAUSED readback",
+      "remote_side_effect": "EXPLICIT_PROVIDER_UPDATE"
+    },
+    {
+      "act_id": "ACT-ACTIVATE-FUTURE",
+      "gate_ids": [
+        "G01",
+        "G05",
+        "G07",
+        "G10",
+        "G11",
+        "G13"
+      ],
+      "input": "not accepted P0",
+      "output": "no endpoint",
+      "remote_side_effect": "FORBIDDEN_THIS_RELEASE"
+    },
+    {
+      "act_id": "ACT-CUSTOM-CONVERSION-FUTURE",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G03",
+        "G05",
+        "G07",
+        "G12",
+        "G13"
+      ],
+      "input": "separate measurement plan/hash/approval",
+      "output": "custom conversion readback, no campaign side effect",
+      "remote_side_effect": "EXPLICIT_ADMINISTRATIVE_CREATION"
+    },
+    {
+      "act_id": "ACT-CAPI-SEND-FUTURE",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G12",
+        "G13"
+      ],
+      "input": "approved consent-bound occurrence outbox",
+      "output": "accepted/rejected/ambiguous event receipt; not attribution proof",
+      "remote_side_effect": "EXPLICIT_EVENT_TRANSMISSION"
+    }
+  ],
+  "artifact_id": "META-GOVERNED-MUTATION-CONTRACT",
+  "contract_id": "CONTRACT-GOVERNED",
+  "current_conflict_ids": [
+    "C01",
+    "C02",
+    "C03",
+    "C04",
+    "C05",
+    "C06",
+    "C07",
+    "C13",
+    "C16"
+  ],
+  "gates": [
+    {
+      "applies_to": "all",
+      "gate_id": "G01",
+      "must_precede_secret_resolution": true,
+      "name": "Local authorization",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Authenticated actor with explicit project/account capability; no secret resolution"
+    },
+    {
+      "applies_to": "plan",
+      "gate_id": "G02",
+      "must_precede_secret_resolution": true,
+      "name": "Sealed contract",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Strict schema, unknown keys refused; all semantic decisions present; refs scoped; source/recipe current; no active input"
+    },
+    {
+      "applies_to": "validate/create",
+      "gate_id": "G03",
+      "must_precede_secret_resolution": false,
+      "name": "Eligibility",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Account active/BRL, Page tasks, selected identity, immutable image+destination, special category decision and verified recipe"
+    },
+    {
+      "applies_to": "approve",
+      "gate_id": "G04",
+      "must_precede_secret_resolution": true,
+      "name": "Durable validation",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Server receipt, exact hash/API/account/actor/steps/coverage/zeroobjects/timestamps; explicit success only"
+    },
+    {
+      "applies_to": "create",
+      "gate_id": "G05",
+      "must_precede_secret_resolution": true,
+      "name": "Operator approval",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Unexpired one-execution approval over plan/hash/budget/currency/manifest/actor/limits and partial-validation disclosure"
+    },
+    {
+      "applies_to": "create",
+      "gate_id": "G06",
+      "must_precede_secret_resolution": true,
+      "name": "Dispatch flags",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Creation flag and ledger flag independently required; validation flag grants no create authority"
+    },
+    {
+      "applies_to": "create/edit/pause",
+      "gate_id": "G07",
+      "must_precede_secret_resolution": false,
+      "name": "Dispatch journal",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Durable intent/step attempt owner before dispatch; CAS single sender; known/ambiguous steps never resend",
+      "timing": "Durably before each CREATE/UPDATE POST; read/validate may resolve token after their own local gates. No provider write without dispatch ownership."
+    },
+    {
+      "applies_to": "close",
+      "gate_id": "G08",
+      "must_precede_secret_resolution": false,
+      "name": "Read-back",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Known identity, parents, configuredPAUSED, critical payload semantics and presence; persist requested/observed diffs"
+    },
+    {
+      "applies_to": "reconcile",
+      "gate_id": "G09",
+      "must_precede_secret_resolution": false,
+      "name": "Recovery authority",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Read/ledger recovery capability independent of create; frozen identities and snapshot; never recompile to decide new creation"
+    },
+    {
+      "applies_to": "edit/pause",
+      "gate_id": "G10",
+      "must_precede_secret_resolution": true,
+      "name": "Mutation diff",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Fresh before-image and allowed field diff, operation-specific approval, bounded budget, optimistic precondition"
+    },
+    {
+      "applies_to": "activate",
+      "gate_id": "G11",
+      "must_precede_secret_resolution": false,
+      "name": "Future activation",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Independent release/capability/approval over verified paused hierarchy; no route exists in P0"
+    },
+    {
+      "applies_to": "measurement",
+      "gate_id": "G12",
+      "must_precede_secret_resolution": true,
+      "name": "Privacy",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Policy/consent/purpose/retention and account binding; no PII/secrets in browser/receipts"
+    },
+    {
+      "applies_to": "durable operations",
+      "gate_id": "G13",
+      "must_precede_secret_resolution": true,
+      "name": "Official schema",
+      "on_failure": "FAIL_CLOSED",
+      "predicate": "Independently approved candidate; checkpoint; authorized migration; RPC/RLS/grants and role tests"
+    }
+  ],
+  "hash_contract": {
+    "algorithm": "SHA-256",
+    "canonicalization": "Versioned canonical JSON, UTF8, lexicographic object keys, preserve ordered operation/variation arrays; no float money; reject duplicate keys/NaN; timestamps canonicalUTC. Byte-level serialization cross-language golden fixtures required.",
+    "domain_separator": "VOLC_META_PLAN_V1",
+    "excluded": [
+      "secret",
+      "secret_locator",
+      "volatile_download_url",
+      "provider_trace_id",
+      "UI_sort_order",
+      "request_received_at",
+      "approval_signature"
+    ],
+    "included": [
+      "schema_version",
+      "recipe_id",
+      "recipe_version",
+      "provider_api_version",
+      "compiler_version",
+      "source_registry_digest",
+      "project_ref",
+      "account_ref",
+      "account_identity_digest",
+      "account_currency",
+      "account_timezone",
+      "page_ref",
+      "identity_policy",
+      "instagram_ref_if_selected",
+      "destination_ref",
+      "exact_destination_url",
+      "asset_demand_digest",
+      "asset_supply_digest",
+      "content_sha256",
+      "policy_receipt_ref",
+      "policy_receipt_digest",
+      "generation_receipt_ref",
+      "asset_expires_at",
+      "copy_and_cta",
+      "budget_minor",
+      "budget_owner",
+      "spend_ceiling",
+      "schedule",
+      "objective",
+      "optimization_goal",
+      "promoted_object_bindings",
+      "attribution_decision",
+      "targeting_and_automation_decisions",
+      "placement_decision",
+      "creative_enhancement_decisions",
+      "omission_manifest",
+      "special_categories_and_confirmation",
+      "operation_order",
+      "operation_payload_template",
+      "dependency_slots",
+      "cardinality",
+      "reuse_policy",
+      "side_effect_disclosures"
+    ],
+    "postcompile_binding": "Approval separately seals actor, hash, expiry, validation_receipt and execution_ref. Dependency substitution only predefined slots; hash instantiated payload per step before dispatch.",
+    "url_policy": "Exact approved URL after a versioned explicit normalization at draft time; reject userinfo, private/loopback/link-local/multicast destinations, unsafe redirects and PII query before approval. No automatic correction at dispatch."
+  },
+  "idempotency": {
+    "approval_uniqueness": "validation receipt binds at most one approval; approval binds at most one execution; same key/hash retrieves same state",
+    "concurrent_request": "Return existing execution/in_progress; never turn a live owner into failed/absent or dispatch again.",
+    "crash_policy": {
+      "after_id_before_readback": "CREATED_UNVERIFIED; recover by known ID.",
+      "after_journal_before_send": "Treat orphan as potentially dispatched unless transport proof establishes otherwise; no automatic retry.",
+      "after_partial_tree": "Keep existing parentsPAUSED; no new children without explicit resume of same approved execution and current authorization.",
+      "after_send_before_id": "AMBIGUOUS; read-only recovery/manual adjudication.",
+      "before_journal": "No dispatch authorized."
+    },
+    "creative_reuse": "Provider may return existing Creative; classify REUSED_PROVIDER and verify full content/identity; local auto-adoption across distinct approvals forbidden.",
+    "dispatch_fence": "Persist owner/attempt/fence before external call; ensure only one owned dispatch. Lease expiry alone never permits another POST. A late worker cannot prove no external side effect by losing its lease.",
+    "key": "execution_ref + operation_key",
+    "payload_mismatch": "409 no secret",
+    "provider_idempotency": "No undocumented Meta idempotency header/key assumed; client exactly-once external delivery cannot be guaranteed."
+  },
+  "invariants": [
+    "Approving does not create; creating executes frozen decisions; reconciling does not resend.",
+    "Remote validation uses explicit execution_options validate_only and never becomes creation through an omitted option.",
+    "Local validation and server authorization precede secret resolution; expired approval never touches token.",
+    "One approval grants one execution identity, not one HTTP attempt; repeated calls return that execution state.",
+    "Unknown boolean/null/missing list is not false/zero/empty. No semantically active omission without operator decision and source.",
+    "Account/project/actor/Page/identity/asset/destination/hash/budget/currency/manifest stay bound.",
+    "Persist dispatch intent before create POST; persist returned ID before read-back; do not depend on browser memory.",
+    "A timeout after possible dispatch is ambiguous, unlike a proved provider refusal; no automatic retry of ambiguous creation.",
+    "Absence by name/time/empty edge does not establish never-created;120seconds is not a causal proof.",
+    "Reconciliation can attach known/proven identity but cannot change approved intent, adopt arbitrary twin or create missing child.",
+    "No Campaign/AdSet/Ad request status ACTIVE or ENABLED; AdCreative has separate non-delivery library status.",
+    "Critical read-back divergence/unknown is durable and prevents green receipt and continuation.",
+    "Close create flag on any terminal/error outcome; recovery reading remains available under its own gate.",
+    "Provider normalization permitted only by field-specific equivalence, never arbitrary URL slash stripping.",
+    "Approval cannot survive content/identity/destination/recipe/budget or behavior-policy change."
+  ],
+  "readback_matrix": [
+    {
+      "equals": [
+        "frozen identity and payload",
+        "PAUSED"
+      ],
+      "object_type": "Campaign",
+      "required": [
+        "id",
+        "account_id",
+        "name",
+        "objective",
+        "buying_type",
+        "configured_status_or_status",
+        "special_ad_categories",
+        "is_adset_budget_sharing_enabled"
+      ],
+      "source_ids": [
+        "META-CAMPAIGN"
+      ]
+    },
+    {
+      "conditional_required": [
+        "destination_type according to adjudicated Traffic recipe",
+        "promoted_object if recipe selects",
+        "attribution_spec if selected"
+      ],
+      "equals": [
+        "frozen payload",
+        "configuredPAUSED",
+        "verified parent"
+      ],
+      "object_type": "AdSet",
+      "required": [
+        "id",
+        "account_id",
+        "campaign_id",
+        "name",
+        "configured_status_or_status",
+        "effective_status",
+        "daily_budget",
+        "billing_event",
+        "optimization_goal",
+        "bid_strategy",
+        "start_time",
+        "targeting"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-AUDIENCE"
+      ],
+      "unknown_fields_block": true
+    },
+    {
+      "conditional_required": [
+        "degrees_of_freedom_spec behavior if applicable",
+        "destination_spec once official read mask adjudicated",
+        "name only if provider-created new rather than documented reuse"
+      ],
+      "forbidden_assumptions": [
+        "statusPAUSED",
+        "created_time exists",
+        "effective_status readable",
+        "same name proves ownership"
+      ],
+      "object_type": "AdCreative",
+      "required": [
+        "id",
+        "account_id",
+        "object_story_spec",
+        "status"
+      ],
+      "source_ids": [
+        "META-CREATIVE",
+        "META-SHOP"
+      ]
+    },
+    {
+      "equals": [
+        "frozen parent and creative identity",
+        "configuredPAUSED"
+      ],
+      "object_type": "Ad",
+      "required": [
+        "id",
+        "account_id",
+        "adset_id",
+        "creative",
+        "configured_status_or_status",
+        "effective_status"
+      ],
+      "source_ids": [
+        "META-AD"
+      ]
+    }
+  ],
+  "receipt_contract": {
+    "approval_ttl_seconds": 900,
+    "limits_authority": "VOLC policy retained from current candidate, not Meta requirement",
+    "privacy_conflict_ids": [
+      "C11",
+      "C12"
+    ],
+    "required": [
+      "schema_version",
+      "receipt_ref",
+      "execution_ref",
+      "actor_ref",
+      "project_ref",
+      "account_ref",
+      "plan_hash",
+      "api_version",
+      "recipe_version",
+      "coverage",
+      "step_results",
+      "observed_at",
+      "expires_at",
+      "objects_created_count",
+      "provider_response_digest",
+      "classification"
+    ],
+    "sensitive_storage": "Full payload/copy/destination are strategic confidential data, not secrets; encrypt access-controlled immutable envelope and store digest/minimal projection in ledger. No token/headers/PII/credential locators.",
+    "validation_coverage": [
+      "LOCAL_ONLY",
+      "INDEPENDENT_ROOTS_ONLY",
+      "DEPENDENT_STEP_ONLY",
+      "ALL_PLAN_OPERATIONS"
+    ],
+    "validation_max_age_seconds": 1800,
+    "zero_objects_rule": "Required integer exactly0 for validation, missing invalid; root proof never changes child status."
+  },
+  "retry_policy": {
+    "ambiguous_create": "Never automatic retry; read-only reconciliation.",
+    "ambiguous_update": "Read current state first; optimistic conditions and renewed authority before reapplying.",
+    "ledger_failure": "Stop dispatch, retain recoverable IDs where durably known; no green receipt.",
+    "local_validation": "Retry after corrected draft invalidates old hash/approval.",
+    "proved_refusal": "Record code/subcode/status and no-ID refusal; no blind same-intent retry; corrected plan/new approval or explicitly authorized resume.",
+    "provider_read": "Bounded exponential backoff with jitter and usage/Retry-After when supplied; max5attempts within operator deadline; preserve partiality.",
+    "remote_validate": "May retry exact validation request under gate; no ad objects created; record each result."
+  },
+  "schema_version": "1.0.0",
+  "status": "PROPOSED_NOT_IMPLEMENTED"
+}

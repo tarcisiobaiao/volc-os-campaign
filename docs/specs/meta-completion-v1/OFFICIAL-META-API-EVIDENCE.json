@@ -1,0 +1,689 @@
+{
+  "access_limitations": [
+    "Browser search/open intermittently429; unauthenticated public curl retrieved references.",
+    "No raw page snapshot file persisted; URL/date/concept registries enable refresh, not immutable provider publication attestation.",
+    "Provider field availability does not establish combined payload acceptance."
+  ],
+  "artifact_id": "OFFICIAL-META-API-EVIDENCE",
+  "failed_probes": [
+    {
+      "authority": false,
+      "result": "404",
+      "url": "https://developers.facebook.com/docs/marketing-api/insights/parameters/"
+    },
+    {
+      "authority": false,
+      "result": "404",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ads-insights/"
+    },
+    {
+      "authority": false,
+      "result": "404",
+      "url": "https://developers.facebook.com/docs/marketing-api/targeting-specs/placement-targeting/"
+    }
+  ],
+  "field_authority_policy": "Field-family reference is not blanket request-mask authority. META-COMPLETION-SPEC field_decisions marks every registered field non-dispatchable in this mission; unresolved per-object masks remain RESEARCH_REQUIRED.",
+  "non_meta_sources": [
+    {
+      "api_version": "deployment_specific_unobserved",
+      "concept": "Grants and RLS both required; service role server-only.",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "provider": "Supabase",
+      "refresh_due": "2026-09-12",
+      "source_id": "SUPA-RLS",
+      "url": "https://supabase.com/docs/guides/database/postgres/row-level-security"
+    },
+    {
+      "api_version": "deployment_specific_unobserved",
+      "concept": "Current changelog inspected; hosted changes not silently applied to self-hosted candidate.",
+      "confidence": "CONTEXT_ONLY",
+      "consulted_at": "2026-09-05",
+      "provider": "Supabase",
+      "refresh_due": "2026-09-12",
+      "source_id": "SUPA-CHANGELOG",
+      "url": "https://supabase.com/changelog.md"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "version",
+        "destination_spec.destination_type",
+        "placements"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-V26",
+      "supported_concept": "v26 released29/07/2026; shop destination default; placement and special-category changes; Graph v21 expiry21/01/2027.",
+      "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "CONFLICTING_TABLE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "api_version"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-VERSIONS",
+      "supported_concept": "Graph table v26; Marketing table still v25. Specific dated v26 release prevails; effective runtime response unverified.",
+      "url": "https://developers.facebook.com/docs/graph-api/changelog/versions/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELD_MEDIUM_RECIPE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "campaigns",
+        "name",
+        "objective",
+        "buying_type",
+        "status",
+        "special_ad_categories",
+        "bid_strategy",
+        "is_adset_budget_sharing_enabled"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-CAMPAIGN",
+      "supported_concept": "Campaign fields, explicit special categories, PAUSED, bid ownership, validate_only, sharing boolean. Sharing may move up to20% among sets; not authorized for P0.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELD_MEDIUM_RECIPE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "adsets",
+        "campaign_id",
+        "daily_budget",
+        "start_time",
+        "targeting",
+        "optimization_goal",
+        "billing_event",
+        "bid_strategy",
+        "attribution_spec",
+        "effective_status"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-ADSET",
+      "supported_concept": "AdSet objective/location/optimization table and field/validation/status definitions. A combination of individually listed enums is not proven eligible.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "adcreatives",
+        "name",
+        "status",
+        "object_story_spec",
+        "asset_feed_spec",
+        "degrees_of_freedom_spec"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-CREATIVE",
+      "supported_concept": "Creative status lacks PAUSED; name max100; library can return existing creative for nonunique input; object_story_spec can generate unpublished post.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELD_MEDIUM_RECIPE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "ads",
+        "adset_id",
+        "creative",
+        "status",
+        "effective_status"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-AD",
+      "supported_concept": "Ad references an AdSet and Creative; status PAUSED explicit; configured/effective statuses are distinct.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/adgroup/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "AMBIGUOUS_APPLICABILITY",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "adset.destination_type"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-DESTINATION",
+      "supported_concept": "Traffic table does not enumerate WEBSITE, unlike Leads/Sales. Internal WEBSITE must not be blindly sent as provider enum.",
+      "url": "https://developers.facebook.com/docs/marketing-api/adset/destination_type/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "targeting.targeting_automation.advantage_audience"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-AUDIENCE",
+      "supported_concept": "advantage_audience1 opts in and0 opts out where eligible; omitted defaults1 fromv23. Constraints differ from suggestions.",
+      "url": "https://developers.facebook.com/docs/marketing-api/audiences/reference/targeting-expansion/advantage-audience/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELD_MEDIUM_RECIPE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "targeting.geo_locations",
+        "age_min",
+        "age_max",
+        "genders",
+        "custom_audiences",
+        "excluded_custom_audiences",
+        "targeting_automation"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-TARGETING",
+      "supported_concept": "Geo, age, gender, interests/custom audiences/exclusions and eligible automation controls; IDs require account-scoped discovery.",
+      "url": "https://developers.facebook.com/docs/marketing-api/targeting-specs/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "targeting.publisher_platforms",
+        "device_platforms",
+        "facebook_positions",
+        "instagram_positions",
+        "threads_positions",
+        "messenger_positions",
+        "audience_network_positions"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-PLACEMENT",
+      "supported_concept": "Omitted placement fields expand to provider defaults, including future positions/platforms; explicit choice needed. Not all placements support every objective/format.",
+      "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/audiences/reference/placement-targeting"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "RESEARCH_REQUIRED",
+      "consulted_at": "2026-09-05",
+      "impact": "P0_BLOCKING",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "creative.destination_spec"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-SHOP",
+      "supported_concept": "Reference describes destination optimization but fetched field table is empty; exact writable/readable shop opt-out placement not established here.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-destination-spec/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELD_MEDIUM_RECIPE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "object_story_spec.link_data",
+        "image_hash",
+        "link",
+        "message",
+        "name",
+        "description",
+        "call_to_action"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-LINK",
+      "supported_concept": "Link data and CTA URL binding; omitted CTA can change Instagram behavior. Image and copy fields are not universal placement eligibility proof.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-link-data/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "authorization",
+        "permissions"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-AUTH",
+      "supported_concept": "ads_read/read, ads_management/manage; own versus third-party accounts affect standard/advanced access; tier is separate from permission.",
+      "url": "https://developers.facebook.com/docs/marketing-api/get-started/authorization/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "account_status",
+        "currency",
+        "timezone_name",
+        "business",
+        "minimum_budgets"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-ACCOUNT",
+      "supported_concept": "Account status1 ACTIVE, currency, timezone_name; advertised Pages is an edge, not ownership proof.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_EDGE_CONDITIONAL_PERMISSION",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "promote_pages",
+        "Page identity"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-PAGES",
+      "supported_concept": "Lists promoted Pages; reference names pages_show_list and pages_manage_ads for app-user context. Exact system-user tasks must be verified separately.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/promote_pages/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_EDGE_ONLY",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "instagram_accounts"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-INSTAGRAM",
+      "supported_concept": "Account-associated Instagram edge. Discovery alone does not attest Page association or identity permitted for chosen placements.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/instagram_accounts/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "adimages",
+        "hash",
+        "width",
+        "height"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-IMAGES",
+      "supported_concept": "Existing account images identified by provider hash and dimensions; Meta hash is not AssetSupply content_sha256.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/adimages/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "insights"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-INSIGHTS",
+      "supported_concept": "Insights available at account/campaign/adset/ad levels with ads_read; fields, breakdowns and query parameters specify report meaning.",
+      "url": "https://developers.facebook.com/docs/marketing-api/insights/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELDS_CONFLICTING_DEFAULT",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "insights",
+        "time_increment",
+        "time_range",
+        "action_report_time",
+        "action_attribution_windows",
+        "use_account_attribution_setting",
+        "use_unified_attribution_setting",
+        "account_currency",
+        "actions",
+        "action_values"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-INSIGHTS-EDGE",
+      "supported_concept": "Daily requires time_increment1. Actions and action_values separate. Explicit report time/windows; query modes differ. GET/POST sections invert default attribution tuple: never use default.",
+      "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/reference/ad-account/insights"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "breakdowns",
+        "action_breakdowns"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-BREAKDOWNS",
+      "supported_concept": "Breakdown combinations restricted; dimensions and metrics can be estimated or unavailable. Preserve returned dimension values and unknowns.",
+      "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights/breakdowns"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "insights",
+        "report_run_id",
+        "async_status",
+        "async_percent_completion"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-INSIGHTS-ASYNC",
+      "supported_concept": "Async report_run_id, poll completed plus100%, then paginate results; report reference expires, not durable storage. Reach may be omitted under throttling.",
+      "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/insights/best-practices"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELD_MEDIUM_RECIPE",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "customconversions",
+        "rule",
+        "custom_event_type",
+        "is_archived",
+        "is_unavailable"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-CUSTOM",
+      "supported_concept": "Custom conversion is separate governed object; restricted/sensitive rules may become unavailable; availability is not optimization eligibility.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/custom-conversion/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_FIELDS_LEGACY_UPDATE_CAVEAT",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "promoted_object",
+        "pixel_id",
+        "custom_event_type",
+        "custom_conversion_id",
+        "page_id"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-PROMOTED",
+      "supported_concept": "Promoted references require access; pixel_id requires custom_event_type; custom_conversion_id exists; custom_event_str described for app events, not arbitrary web event shortcut. Mutation limitations contain legacy objectives.",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-promoted-object/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "user_data",
+        "em",
+        "ph",
+        "fn",
+        "ln",
+        "ge",
+        "db",
+        "ct",
+        "st",
+        "zp",
+        "country",
+        "external_id",
+        "client_ip_address",
+        "client_user_agent",
+        "fbc",
+        "fbp"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-CAPI",
+      "supported_concept": "Hash rules per user-data field; IP/UA/fbc/fbp unhashed; external_id hashing recommended. Website requires URL and UA.",
+      "url": "https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "event_name",
+        "event_time",
+        "event_id",
+        "action_source",
+        "event_source_url",
+        "user_data"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-CAPI-EVENT",
+      "supported_concept": "event_time occurrence UTC seconds within7days; old event can reject batch. Web URL/action_source/user_data required. event_id provider-optional but VOLC mandatory for replay/dedup.",
+      "url": "https://developers.facebook.com/documentation/ads-commerce/conversions-api/parameters/server-event"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "event_name",
+        "event_id",
+        "Pixel eventID"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-DEDUP",
+      "supported_concept": "Pixel/server dedup uses matching event name and ID for same Pixel within48h. Not a blanket exactly-once guarantee.",
+      "url": "https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH_CONCEPT",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "asyncadrequestsets"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-BATCH",
+      "supported_concept": "Asynchronous Ad request sets have independent outcomes; not atomic tree creation; P3 only.",
+      "url": "https://developers.facebook.com/docs/marketing-api/asyncrequests/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "error.code",
+        "error_subcode",
+        "is_transient"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-ERRORS",
+      "supported_concept": "Error code/subcode/transience distinguish invalid params, permissions, expired token and limits; retry policy additionally depends on dispatch ambiguity.",
+      "url": "https://developers.facebook.com/docs/marketing-api/error-reference/"
+    },
+    {
+      "access_method": "public_documentation_only_no_auth",
+      "api": "Marketing API / Graph API",
+      "api_version": "v26.0 unless explicitly Graph CAPI v21 lifecycle",
+      "confidence": "HIGH",
+      "consulted_at": "2026-09-05",
+      "impact": "recipe_and_field_authority",
+      "provider": "Meta",
+      "refresh_before": "any first provider validation or mutation, version change or contradictory response",
+      "refresh_due": "2026-09-12",
+      "related_fields_or_endpoints": [
+        "rate_limits",
+        "usage_headers"
+      ],
+      "remote_behavior_proven": false,
+      "source_id": "META-RATE",
+      "supported_concept": "Rate limits vary by use case and app/account; consume usage headers, back off, never impose timeless universal call budget.",
+      "url": "https://developers.facebook.com/docs/graph-api/overview/rate-limiting/"
+    }
+  ],
+  "version_verdict": {
+    "as_of": "2026-09-05",
+    "documented_available": true,
+    "effective_runtime_version": "NOT_OBSERVED_THIS_RUN",
+    "limitations": [
+      "Marketing version summary table still showsv25; specific dated changelog establishesv26.",
+      "Unversioned reference pages includev25/v11 samples and legacy objectives; do not copy samples wholesale.",
+      "Graph CAPI v21 lifecycle must not be confused with Marketing API version expiry."
+    ],
+    "pinned": "v26.0",
+    "released": "2026-07-29",
+    "source_ids": [
+      "META-V26",
+      "META-VERSIONS"
+    ]
+  }
+}

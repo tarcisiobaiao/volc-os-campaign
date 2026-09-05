@@ -1,0 +1,1537 @@
+{
+  "artifact_id": "EXECUTION-WORKBREAKDOWN",
+  "execution_mode": "executor_tasks_not_shell_program",
+  "first_five_task_ids": [
+    "P0-01",
+    "P0-02",
+    "P0-03",
+    "P0-04",
+    "P0-05"
+  ],
+  "first_research_and_local_preparation_queue": [
+    "P0-01",
+    "P0-02",
+    "P0-03",
+    "P0-04",
+    "P0-05"
+  ],
+  "note": "Research and local implementation are future executor acts; this mission authorizes none. Tasks blocked by unresolved contracts must not choose a provider payload by inference.",
+  "p0_excludes": [
+    "video",
+    "flexible",
+    "catalog",
+    "Leads",
+    "Sales",
+    "full_CAPI",
+    "activation",
+    "advanced_dashboard"
+  ],
+  "queue_semantics": "Order candidates only; dependency/contract closures required. This documentary request does not authorize future runtime changes or external actions.",
+  "schema_change_policy": "Listed existing SQL files are candidate authorities, not permission to edit applied migrations. If already applied by execution date, generate a new forward migration with project tooling, record its exact path in executor plan, and reapprove; do not invent timestamp now.",
+  "schema_version": "1.0.0",
+  "tasks": [
+    {
+      "acceptance_criteria": [
+        "Shop behavior/opt-out exact mapping established or proven ineligible; no guessed field.",
+        "Explicit Page/Instagram/placement identity policy; no inferred actor.",
+        "ABO, sharingfalse, audiencefalse, categories[], CTA and destination choices mandatory; Creative name<=100."
+      ],
+      "blocked_by": [
+        "C01",
+        "C02",
+        "C07"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/ativos.py"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Current compiler plus official field registry",
+      "minimum_tests": [
+        "Reject missing booleans, extra fields, wrong account/Page and private destination.",
+        "Golden payload, omission manifest and source coverage per leaf."
+      ],
+      "mutation_authority_required": "research_only_then_separate_provider_read_validate_authority",
+      "objective": "Adjudicar receita estática v26 e decisões de identidade/destino/automação",
+      "output_contract": "Versioned eligible static recipe with every omission explained",
+      "owner_domain": "Provider recipes",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "Authorized root validate then dependent validate in canary; identity reads before approval",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-01"
+    },
+    {
+      "acceptance_criteria": [
+        "Fable schema adjudicated or explicit versioned static adapter accepted.",
+        "Hash covers bytes, copy, URL, Page, account/project, budget, source versions, expiry and omission decisions.",
+        "Any drift invalidates approval; no engine image/video changes."
+      ],
+      "blocked_by": [
+        "C03"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-01"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "src/components/trafego/meta/rascunho.ts"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "AssetDemandManifest/AssetSupplyManifest proposed boundary",
+      "minimum_tests": [
+        "Change each hash input and assert invalidation.",
+        "No raw IDs/locators/provider URLs in DTO; altered asset after approval refuses."
+      ],
+      "mutation_authority_required": "separate_asset_read_authority",
+      "objective": "Selar plano e adapter de ativo estático existente",
+      "output_contract": "Immutable plan_ref/manifest digests and backend resolved identity",
+      "owner_domain": "Creative interface",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "Existing image scoped read + content identity proof; not image generation",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-02"
+    },
+    {
+      "acceptance_criteria": [
+        "Validate+ledger flags can record receipt while create remains closed.",
+        "Approval and expired/invalid create requests never resolve token before local/DB checks.",
+        "Receipt uniquely bound/consumed into execution; coverage roots remains explicit; independent receipt/reconcile access."
+      ],
+      "blocked_by": [
+        "C06"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-02"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 4,
+        "optimistic": 2,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "backend/app/trafego/meta_execucao/registro.py"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Sealed plan and local validation",
+      "minimum_tests": [
+        "Every flag combination; forged/stale receipt; actor mismatch.",
+        "Approval replay, extra payload, expiration and token resolver spy."
+      ],
+      "mutation_authority_required": "database_candidate_change_only_until_authorized_migration",
+      "objective": "Desacoplar validação durável, aprovação e flags de despacho",
+      "output_contract": "Durable exact-coverage receipt and single-execution approval",
+      "owner_domain": "Approval API",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "Fresh roots validation receipt on approved backend/schema",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-03"
+    },
+    {
+      "acceptance_criteria": [
+        "CAS owner/attempt persisted before send; only one dispatch for step.",
+        "No automatic crossapproval adoption; no automatic name/time absence close.",
+        "Recovery uses durable known IDs and frozen material, including Creative without created_time.",
+        "Late worker or abandoned IN_FLIGHT cannot enable fresh POST; unresolved remains quarantined."
+      ],
+      "blocked_by": [
+        "C04"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-03"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Approval bound to execution plus ordered operations",
+      "minimum_tests": [
+        "Concurrent requests using actual isolated PostgreSQL not mock only.",
+        "Crash before send/after send/before ID persist/after partial create.",
+        "Slow original request >120s; empty edge; duplicate names; missing Creative time."
+      ],
+      "mutation_authority_required": "candidate_schema_change_then_explicit_official_migration",
+      "objective": "Fechar concorrência e recuperação sem duplicação",
+      "output_contract": "Durable dispatch ownership, no-repost ambiguity and explicit identity binding",
+      "owner_domain": "Ledger",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "Fault-injection locally; real read-based recovery only under scoped future authority",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-04"
+    },
+    {
+      "acceptance_criteria": [
+        "Missing critical field is UNKNOWN, never false/empty/success.",
+        "Accept provider-valid inherited paused states only with configuredPAUSED and verified parent chain.",
+        "Creative has library status, no PAUSED request; distinguish reused/new and unpublished-post side effects.",
+        "CREATED_UNVERIFIED/READBACK_DIVERGENT recover via reads even when create flags shut."
+      ],
+      "blocked_by": [
+        "C05",
+        "C16"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-01",
+        "P0-04"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "backend/app/routers/trafego_meta_criacao.py",
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Known remote IDs and frozen expected payload",
+      "minimum_tests": [
+        "Missing advantage/categories/identity; unexpected shop/enhancements.",
+        "Readback write failure stays unverified; slash-distinct URL differs.",
+        "Creative reused ID/name behavior; parent mismatch and effective status variants."
+      ],
+      "mutation_authority_required": "provider_read_and_ledger_authority_no_recreate",
+      "objective": "Persistir read-back crítico e reconciliar estados reais",
+      "output_contract": "Durable per-field comparisons and verified/no-delivery aggregate",
+      "owner_domain": "Provider read-back",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "Read-back Campaign/AdSet/Creative/Ad in first canary",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-05"
+    },
+    {
+      "acceptance_criteria": [
+        "No decision defaults; risks/dependent validation disclosed before approval.",
+        "Reload loads server receipt; UI only states actual phases.",
+        "Unknown/ambiguous/divergent shows blocker and next read-only act; no activation."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-03",
+        "P0-05"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 4,
+        "optimistic": 2,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "src/lib/pautadorApi.ts",
+        "src/components/trafego/meta/rascunho.ts"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Server capability DTO, plan and receipt",
+      "minimum_tests": [
+        "Keyboard/screenreader/mobile focused tests.",
+        "Doubleclick/two tabs/reload during send; DTO strict typing.",
+        "Browser secret/ID/path absence and real image preview."
+      ],
+      "mutation_authority_required": "local_frontend_change_only_then_authorized_publication",
+      "objective": "Concluir UX de validação/aprovação/recibo recuperável",
+      "output_contract": "Explicit review and recoverable creation screen",
+      "owner_domain": "Operator UX",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "One future operator visual evidence run on authorized environment",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-06"
+    },
+    {
+      "acceptance_criteria": [
+        "RLS/grants/privateRPC scope checked against actual isolated database roles.",
+        "Upgrade/checkpoint/readback audit survives rollback strategy; no DROP after operational evidence.",
+        "Only exact candidate SHA enters independent review; historical failures classified, not hidden.",
+        "Minimal scoped canary readback/receipt projection acknowledged without uncorrected broad snapshot/custody writes; full Insights remainsP1."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-04",
+        "P0-05",
+        "P0-06"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/tests/test_meta_criacao_pausada_rotas.py",
+        "backend/tests/test_meta_paused_birth.py",
+        "backend/tests/test_meta_contrato_endurecido.py",
+        "src/pages/trafego/__tests__/meta-criacao-nascimento.test.tsx",
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+        "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql",
+        "backend/app/trafego/meta/read_model.py"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Corrected implementation commit",
+      "minimum_tests": [
+        "Hermetic Meta suite plus PostgreSQL concurrency/crash tests.",
+        "Secret scan, DTO leakage, no activation route and compiler payload audit."
+      ],
+      "mutation_authority_required": "local_test_runtime_authority_future_not_this_spec_run",
+      "objective": "Provar candidato corrigido em ambiente isolado",
+      "output_contract": "Independent-review packet, SQL/RPC/RLS/concurrency proof",
+      "owner_domain": "Quality and database",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "No remote proof required for this task; explicitly cannot promote remote status",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-07"
+    },
+    {
+      "acceptance_criteria": [
+        "Independent Bia adjudication precedes publication; backup and exact migration approval.",
+        "One Campaign/AdSet/Creative submission/Ad, budget ceiling and deadline sealed.",
+        "All three deliverable statusesPAUSED, zero activation POST; ambiguous state stops.",
+        "Close dispatch flags regardless of outcome; preserve recovery reads and evidence."
+      ],
+      "blocked_by": [
+        "C13"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-07"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 3,
+        "optimistic": 1,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "docs/closure/meta-governed-create-paused-path-v1/HANDOFF.md",
+        "docs/specs/meta-completion-v1/FIRST-PAUSED-CANARY-RUNBOOK.json"
+      ],
+      "feature_flags": [
+        "META_CREATE_PAUSED_ENABLED=0 until canary",
+        "META_CREATE_LEDGER_WRITE_ENABLED=0 until authorized schema ready",
+        "META_VALIDATE_ONLY_ENABLED=0 unless scoped validation authorized"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Independently approved corrected SHA and signed canary authorization",
+      "minimum_tests": [
+        "Runbook dry review and abort/retry tabletop.",
+        "Actual canary evidence under separate explicit authorization only."
+      ],
+      "mutation_authority_required": "publication_backup_official_migration_and_exact_provider_create_paused_authorizations",
+      "objective": "Adjudicar/publicar/aplicar e executar primeiro canário PAUSED",
+      "output_contract": "Sanitized four-node readback/receipt, flags closed, final classification",
+      "owner_domain": "Release operator",
+      "priority": "P0",
+      "proposed_new_files": [],
+      "provider_proof_required": "First PROVEN_REMOTE_CREATE_PAUSED proof with all node checks; not obtained in spec",
+      "release": "P0",
+      "risk": "HIGH: external creation or authority boundary",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P0-08"
+    },
+    {
+      "acceptance_criteria": [
+        "Do not mark custody verified from discovery.",
+        "Strict recursive allowlist; token never in new browser onboarding.",
+        "All list/detail/receipt queries authorize project/account membership before DB/provider."
+      ],
+      "blocked_by": [
+        "C12"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/credenciais.py",
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/routers/meta_local.py",
+        "src/components/trafego/meta/MetaConfiguracaoLocal.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Existing cofre opaque references and human account-project binding",
+      "minimum_tests": [
+        "Crossproject IDOR and service-role/anon/auth denial tests.",
+        "object_story_id nested/provider error redaction; no local-storage credential."
+      ],
+      "mutation_authority_required": "credential_broker_and_database_changes_require_separate_authority",
+      "objective": "Reusar cofre e aplicar DTO/escopo por conta e projeto",
+      "output_contract": "Backend-only broker contract plus scoped DTO reads",
+      "owner_domain": "Security and account scope",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Future scoped credential readiness/read proof without exporting secret",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-01"
+    },
+    {
+      "acceptance_criteria": [
+        "No ViewContent as LPV; daily time_increment1; actual dimension values.",
+        "Observation time excluded from business key; latest-complete revision atomic.",
+        "Explicit windows and action_report_time; no default or mixed attribution sums."
+      ],
+      "blocked_by": [
+        "C08",
+        "C14"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/trafego/meta/persistencia.py",
+        "supabase/migrations/v15_02_meta_ads_insights.sql"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Explicit report query contract",
+      "minimum_tests": [
+        "Repeated pulls/order shuffled actions/missing metrics/overlapwindows.",
+        "Daily vs all_days, partial pages, account mismatch and decimals."
+      ],
+      "mutation_authority_required": "future_read_and_candidate_schema_authority",
+      "objective": "Corrigir granularidade/atribuição/actions e revisões",
+      "output_contract": "Daily slice + revisions, actions and action_values independent",
+      "owner_domain": "Insights ingestion",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Positive-value report comparison using same dates/windows/timezone as provider",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-02"
+    },
+    {
+      "acceptance_criteria": [
+        "Cursor loop detection across all seen cursors; bounded page budget.",
+        "Checkpoint only after complete durable upsert; no absent tombstones on partial run.",
+        "Explicit RPC acknowledgement; last receipt scoped; account joins all child reads.",
+        "Sliding restatement window and hierarchy full rescan policy distinct."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-01",
+        "P1-02"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/trafego/meta/sincronizador.py",
+        "backend/app/routers/meta_local.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Scoped read request and checkpoint",
+      "minimum_tests": [
+        "Rate limits500/429, cursorcycles, dropped page, lostack, changed permissions.",
+        "Production RPC flow matches hermetic sync contract."
+      ],
+      "mutation_authority_required": "read_model_write_and_provider_read_authority",
+      "objective": "Implementar paginação e sync incremental comprováveis",
+      "output_contract": "Complete/partial/stale scoped sync receipt",
+      "owner_domain": "Synchronization",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Read+persist candidate official after approved migration",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-03"
+    },
+    {
+      "acceptance_criteria": [
+        "Demo never fallback for real data; Creative relation many-to-many explicit.",
+        "All routes show account/project, configured/effective/policy/delivery independently.",
+        "Attention derived server-side from real blockers, no fake0."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-03"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "src/components/trafego/meta/MetaInventarioDemo.tsx",
+        "src/pages/trafego/MetaObjetoPage.tsx",
+        "src/pages/settings/MetaCampaignsSettingsDemo.tsx",
+        "src/pages/settings/CampaignsSettings.tsx",
+        "src/pages/MetaCampaignInsightPage.tsx",
+        "src/components/trafego/meta/MetaReadPreview.tsx",
+        "src/lib/pautadorApi.ts"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Scoped DTOs with provenance/freshness/completeness",
+      "minimum_tests": [
+        "Empty/unknown/stale/partial fixtures visibly distinct.",
+        "Route refresh/back/mobile/keyboard/screenreader; no rawID."
+      ],
+      "mutation_authority_required": "local_ui_then_authorized_publication",
+      "objective": "Ligar inventário/detalhes/settings/dashboard ao read model real",
+      "output_contract": "Real Meta operational surfaces with demo isolated",
+      "owner_domain": "Operational UI",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Visual evidence plus real scoped read binding",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-04"
+    },
+    {
+      "acceptance_criteria": [
+        "No Google behavior regression; add Meta-specific adapter, not silent global formula replacement.",
+        "ROAS x separate excess%; zero denominatorNULL.",
+        "No unapproved FX or GAM revenue as Meta attributed sales."
+      ],
+      "blocked_by": [
+        "C09"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-02"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 4,
+        "optimistic": 2,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "src/utils/roasCalculations.ts",
+        "src/utils/currencyUtils.ts",
+        "src/services/currencyConversionService.ts",
+        "src/pages/MetaCampaignInsightPage.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Typed amounts and revenue attribution definitions",
+      "minimum_tests": [
+        "Currency mismatch, missingrate, zero denominator and returned/spend corrections.",
+        "Windows mismatch rejects aggregation."
+      ],
+      "mutation_authority_required": "read_only_financial_data_authority_future",
+      "objective": "Separar ROAS/receita/moeda sem fallback",
+      "output_contract": "Meta ROAS ratio plus labeled VOLC reconciliation",
+      "owner_domain": "Economics",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Like-for-like provider financial report comparison",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-05"
+    },
+    {
+      "acceptance_criteria": [
+        "Capability per field/object/version; immutable fields blocked not cloned.",
+        "No objective/promoted-object replacement without new approved plan.",
+        "Pause is explicit operation; no deletion/archive in MVP; no activation."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P0-08",
+        "P1-04"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "src/pages/trafego/MetaObjetoPage.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Fresh snapshot, allowed diff and separate operation approval",
+      "minimum_tests": [
+        "Stale precondition, budget ceiling, differentcurrency/actor, replay/timeout.",
+        "Provider-normalized value divergence durable."
+      ],
+      "mutation_authority_required": "separate_edit_or_pause_authorization_not_inherited_from_create",
+      "objective": "Editar nome/orçamento elegível e pausar com novo hash",
+      "output_contract": "Mutation receipt with before/after readback",
+      "owner_domain": "Governed operations",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Each enabled edit/pause proven on specifically authorized object",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-06"
+    },
+    {
+      "acceptance_criteria": [
+        "Alerts cover staleness, auth expiry, drift, rate limits, paused hierarchy and ambiguity.",
+        "No alert auto-mutates; dedup per object/reason/version.",
+        "Retention/redaction policies deployed before storing full strategic payload."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-03",
+        "P1-06"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 4,
+        "optimistic": 2,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "src/pages/trafego/MetaObjetoPage.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Scoped receipts/revisions/provider status",
+      "minimum_tests": [
+        "Repeated alert dedup, role boundaries, historical replay, payload redaction."
+      ],
+      "mutation_authority_required": "database_read_and_audit_storage_authority",
+      "objective": "Alertas/histórico e recuperação operacional",
+      "output_contract": "Auditable attention feed and history",
+      "owner_domain": "Observability",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Read-based alert comparison, not delivery guarantee",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-07"
+    },
+    {
+      "acceptance_criteria": [
+        "Poll until complete100%, then page results; expired report IDs not durable keys.",
+        "Allowlisted breakdown combinations; missing reach never0.",
+        "Backoff bounded by deadline/provider usage, retry only report job not ad creation."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-02",
+        "P1-03"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/persistencia.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Versioned report spec",
+      "minimum_tests": [
+        "Jobfailed/expired/completedbutpartial, polling timeout, incompatiblebreakdowns."
+      ],
+      "mutation_authority_required": "provider_report_job_authority_not_ad_mutation",
+      "objective": "Relatórios async e breakdowns homologados",
+      "output_contract": "Async job registry and complete report slices",
+      "owner_domain": "Reporting scale",
+      "priority": "P1",
+      "proposed_new_files": [],
+      "provider_proof_required": "Authorized async Insights job on target account",
+      "release": "P1",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P1-08"
+    },
+    {
+      "acceptance_criteria": [
+        "No dataset/pixel alias without documented mapping.",
+        "Missing archive/unavailable remainsUNKNOWN; lastfire absent not zero.",
+        "No generic event-list endpoint invented; unsupported discovery markedmanual-evidence-required."
+      ],
+      "blocked_by": [
+        "C10"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-03"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/trafego/meta/persistencia.py",
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Scoped Pixel/Dataset/custom conversion reads",
+      "minimum_tests": [
+        "Crossaccount sources, unavailable/archived/neverfired/unknown, permissionloss.",
+        "Future schema RPC/RLS tests."
+      ],
+      "mutation_authority_required": "provider_read_and_schema_authority",
+      "objective": "Persistir fontes e eventos/conversões sem invenção",
+      "output_contract": "Event source registry, availability and eligibility observations",
+      "owner_domain": "Measurement discovery",
+      "priority": "P2",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "provider_proof_required": "Actual scoped source/event/custom-conversion discovery",
+      "release": "P2",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P2-01"
+    },
+    {
+      "acceptance_criteria": [
+        "Purchase->PURCHASE and Lead->LEAD mappings explicitly sourced.",
+        "Custom conversion opaque reference resolved only backend.",
+        "No arbitrary web custom_event_str or inferred conversion ID; unproven combinations blocked."
+      ],
+      "blocked_by": [
+        "C10"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-01",
+        "P0-08"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/promoted_object.py",
+        "backend/app/trafego/meta/compatibilidade.py",
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Adjudicated measurement recipe",
+      "minimum_tests": [
+        "Objective/event/location mismatch, missingpixel, archivedconversion.",
+        "ABO/CBO/bid/attribution compatibility matrix golden tests."
+      ],
+      "mutation_authority_required": "new_recipe_specific_provider_authority",
+      "objective": "Compilar Leads/Sales com promoted_object versionado",
+      "output_contract": "Lead/Sales plans with objective distinct from optimization event",
+      "owner_domain": "Objectives",
+      "priority": "P2",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/promoted_object.py",
+        "backend/app/trafego/meta/compatibilidade.py"
+      ],
+      "provider_proof_required": "Per recipe validate roots+children then independently approved PAUSED canary",
+      "release": "P2",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P2-02"
+    },
+    {
+      "acceptance_criteria": [
+        "Exact official ruleDSL/fields verified before exposing UI.",
+        "No campaign side-effect creation; availability and optimization remain separate.",
+        "Timeout no repost; disable local use instead of destructive provider rollback."
+      ],
+      "blocked_by": [
+        "C10",
+        "C11"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-01"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/mensuracao.py",
+        "backend/app/trafego/meta/compatibilidade.py",
+        "backend/app/routers/trafego_meta_criacao.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Governed rule draft, source_ref, business purpose and policy receipt",
+      "minimum_tests": [
+        "Sensitive rule rejected, duplicate intent, missing source, invalidrule.",
+        "Create/readback identity and eligibility drift."
+      ],
+      "mutation_authority_required": "administrative_measurement_mutation_authority",
+      "objective": "Criar conversão personalizada em ato separado",
+      "output_contract": "Approved custom conversion creation and readback receipt",
+      "owner_domain": "Custom conversions",
+      "priority": "P2",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/mensuracao.py",
+        "backend/app/trafego/meta/compatibilidade.py"
+      ],
+      "provider_proof_required": "Dedicated authorized custom conversion canary and readback",
+      "release": "P2",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P2-03"
+    },
+    {
+      "acceptance_criteria": [
+        "Legal basis/purpose/retention approved; no blanket LGPD claim.",
+        "Unknown event refused, event_time original, event_id stable required.",
+        "Hash/normalization per field; no raw user data in ads UI/logs; URL PII scrub."
+      ],
+      "blocked_by": [
+        "C11"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-01"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "supabase/functions/capi-router/index.ts",
+        "src/hooks/useMetaCapiSites.ts",
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Occurrence envelope and approved privacy policy",
+      "minimum_tests": [
+        "Missingconsent, future/old time, phone/emailnormalization, unhashed forbiddenfields.",
+        "Do nothashIP/UA/fbc/fbp; retry stableid; mixedbatch oldevent isolation."
+      ],
+      "mutation_authority_required": "privacy_approval_and_event_send_authority",
+      "objective": "Especificar e implementar catálogo/consentimento/normalização",
+      "output_contract": "Validated consent-bound server event, minimized hashed user_data",
+      "owner_domain": "CAPI governance",
+      "priority": "P2",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "provider_proof_required": "Test Events diagnostic proof under separate test authority",
+      "release": "P2",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P2-04"
+    },
+    {
+      "acceptance_criteria": [
+        "Single event occurrence id shared Pixel/server; no random ID on retry.",
+        "Version upgrade justified by Graph lifecycle; no dualsend duplicate migration.",
+        "HTTPaccepted != matchquality != attributable != optimized; schema diagnostics missing ->UNKNOWN."
+      ],
+      "blocked_by": [
+        "C11"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-04"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "supabase/functions/capi-router/index.ts",
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Immutable validated occurrence",
+      "minimum_tests": [
+        "Pixel/server duplicate, replay, partialerror, throttling, disable queue.",
+        "No token in URL/log; deadletter and retentional purge."
+      ],
+      "mutation_authority_required": "CAPI_test_then_production_event_authorization",
+      "objective": "Deduplicação/outbox/diagnóstico e migração v21",
+      "output_contract": "Durable delivery state and distinct match/attribution diagnostics",
+      "owner_domain": "CAPI transport",
+      "priority": "P2",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "provider_proof_required": "Controlled test event received/dedup diagnostic, then production event authorization",
+      "release": "P2",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P2-05"
+    },
+    {
+      "acceptance_criteria": [
+        "No deterministic claim that aggregate Meta attribution matches order-level revenue.",
+        "Order refunds/currency/timezone/window explicit; dedup not attribution.",
+        "Source-defined metrics selectable only with definition and freshness."
+      ],
+      "blocked_by": [],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-02",
+        "P2-05",
+        "P1-05"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/mensuracao.py",
+        "backend/app/trafego/meta/persistencia.py",
+        "src/pages/MetaCampaignInsightPage.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "VOLC business occurrence plus Meta attributed actionvalues",
+      "minimum_tests": [
+        "Refunds, repeatedorders, crosscurrency, attributionrestatement, missingeventlinks."
+      ],
+      "mutation_authority_required": "read_only_business_revenue_authority",
+      "objective": "Ligar eventos à receita VOLC sem somas indevidas",
+      "output_contract": "Separate ledgers and comparison gaps with comparable basis",
+      "owner_domain": "Revenue reconciliation",
+      "priority": "P2",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/mensuracao.py"
+      ],
+      "provider_proof_required": "Controlled event/business receipt comparison and dated provider report",
+      "release": "P2",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P2-06"
+    },
+    {
+      "acceptance_criteria": [
+        "No omitted optin; hard constraints vs suggestions explained.",
+        "Special categories/region restrictions;v26 removed positions filtered.",
+        "Future automatic placement expansion disclosed in approval; unknown identity blocks."
+      ],
+      "blocked_by": [
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-02"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/compatibilidade.py",
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Versioned capabilities and source registry",
+      "minimum_tests": [
+        "All control combinations pairwise reject unsupported; default changes invalidate hash."
+      ],
+      "mutation_authority_required": "separate_advanced_recipe_authority",
+      "objective": "Homologar audiência/placements/controles por receita",
+      "output_contract": "Explicit requested-vs-observed controls",
+      "owner_domain": "Advantage control plane",
+      "priority": "P3",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/compatibilidade.py"
+      ],
+      "provider_proof_required": "Recipe/region/format-specific validation/readback",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-01"
+    },
+    {
+      "acceptance_criteria": [
+        "No Campaign strategy fabricated to appease sharing flag.",
+        "Daily/lifetime exclusive; source-backed minimums and account timezone.",
+        "Learning phase observations, no universal scaling percentage or outcome promise."
+      ],
+      "blocked_by": [
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P3-01"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/compatibilidade.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/contrato.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Budget decision, ceiling and change proposal",
+      "minimum_tests": [
+        "Dualbudget, invalidcap, future/endtime, spendceiling, concurrent scaling."
+      ],
+      "mutation_authority_required": "budget_change_authorization_with_ceiling",
+      "objective": "CBO/ABO/sharing/schedule/pacing governados",
+      "output_contract": "Single budget owner and governed scaling receipts",
+      "owner_domain": "Budget and scaling",
+      "priority": "P3",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/compatibilidade.py"
+      ],
+      "provider_proof_required": "Separate provider validation/editreadback for eachbudget recipe",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-02"
+    },
+    {
+      "acceptance_criteria": [
+        "Existing staticbatch max10 not proof of arbitrary multiAdSet.",
+        "Batch non-atomic, eachsubrequest distinct dispatch ledger and readback.",
+        "No partial success aggregate green; Creative reuse explicit."
+      ],
+      "blocked_by": [
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P3-02",
+        "P0-04"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/registro.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Explicit cardinality and ordered dependency graph",
+      "minimum_tests": [
+        "Partialbatchtimeout, namecollision, sharedcreative, maxcardinality and parent failures."
+      ],
+      "mutation_authority_required": "exact_cardinality_batch_authorization",
+      "objective": "Múltiplos conjuntos/anúncios e batch com saga",
+      "output_contract": "Per-object outcomes, budget totals and partial recovery",
+      "owner_domain": "Hierarchy scale",
+      "priority": "P3",
+      "proposed_new_files": [],
+      "provider_proof_required": "Authorized bounded batch/multi PAUSED canary",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-03"
+    },
+    {
+      "acceptance_criteria": [
+        "No image/video engine changes; backend upload only separately approved.",
+        "Video processing/thumbnail readiness verified; flexible enhancements explicit.",
+        "Perplacement dimensions/duration/MIME official constraints versioned."
+      ],
+      "blocked_by": [
+        "C03",
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P3-01",
+        "P0-02"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 7,
+        "optimistic": 5,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Fable AssetSupplyManifest eligible video/flexible variations",
+      "minimum_tests": [
+        "Expiredasset, changedbytes, unsupportedformat, failedprocessing, nullthumbnail.",
+        "Video accessible preview and flexible constituent hash."
+      ],
+      "mutation_authority_required": "media_upload_and_format_canary_authority",
+      "objective": "Vídeo/flexível sem redesenhar fábrica",
+      "output_contract": "Provider-native payload and real preview/processing receipt",
+      "owner_domain": "Creative adapter",
+      "priority": "P3",
+      "proposed_new_files": [],
+      "provider_proof_required": "Separate format-specific validate/createPAUSED/readback",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-04"
+    },
+    {
+      "acceptance_criteria": [
+        "No catalog or product creation implicit; source ownership and eligibility verified.",
+        "All unknown catalog fields blocked pending official authority."
+      ],
+      "blocked_by": [
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P2-02",
+        "P3-01"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 6,
+        "optimistic": 4,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/promoted_object.py",
+        "backend/app/trafego/meta/compatibilidade.py",
+        "backend/app/trafego/meta_execucao/compilador.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Authorized catalog/productset references and supply",
+      "minimum_tests": [
+        "Wrongcatalog/account, missingproductset, changedcatalog/version."
+      ],
+      "mutation_authority_required": "catalog_read_and_separate_ad_creation_authority",
+      "objective": "Catálogo/product sets elegíveis",
+      "output_contract": "Catalog recipe with matching destination and event sources",
+      "owner_domain": "Catalog",
+      "priority": "P3",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/promoted_object.py",
+        "backend/app/trafego/meta/compatibilidade.py"
+      ],
+      "provider_proof_required": "Catalog-specific pausedcanary",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-05"
+    },
+    {
+      "acceptance_criteria": [
+        "Research exact official endpoints/fields first; unconfirmed remainRESEARCH_REQUIRED.",
+        "No performance hacks; stoploss does not imply permission to activate/delete.",
+        "Statistical learning/causality claims require adequate experimental design."
+      ],
+      "blocked_by": [
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P3-02",
+        "P3-03"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 7,
+        "optimistic": 5,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta/compatibilidade.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/registro.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Bounded experiment/rule proposal and measurement design",
+      "minimum_tests": [
+        "Ruleloop, overlappingrules, staleinsights, exhaustedceiling, revocation."
+      ],
+      "mutation_authority_required": "automation_specific_authorization",
+      "objective": "Experimentos/rules/learning e scaling aprovados",
+      "output_contract": "Auditable bounded automation with kill switch",
+      "owner_domain": "Automation",
+      "priority": "P3",
+      "proposed_new_files": [
+        "backend/app/trafego/meta/compatibilidade.py"
+      ],
+      "provider_proof_required": "Rule/experiment sandbox or separately approved controlled proof",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-06"
+    },
+    {
+      "acceptance_criteria": [
+        "No activation endpoint in P0/P1 deliverable; separate release/securityreview.",
+        "Approval tied to spendcap/schedule/assets/measurement/policy, not reusable createapproval.",
+        "Return topaused requires preauthorized operation; no destructive rollback."
+      ],
+      "blocked_by": [
+        "C15"
+      ],
+      "definition_of_done": [
+        "All acceptance_criteria and minimum_tests have dated evidence on exact implementation SHA.",
+        "Required source/contract conflicts adjudicated; exact future authority recorded before side effects.",
+        "Provider proof attached only when actually performed; otherwise status remains IMPLEMENTED_UNPROVEN."
+      ],
+      "dependencies": [
+        "P1-06",
+        "P2-06"
+      ],
+      "estimatee": {
+        "authority": "planning_estimate_not_commitment",
+        "includes_provider_wait": false,
+        "likely": 5,
+        "optimistic": 3,
+        "unit": "engineer_days"
+      },
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/routers/trafego_meta_criacao.py"
+      ],
+      "feature_flags": [
+        "proposed capability flag default closed; exact registry in META-COMPLETION-SPEC"
+      ],
+      "implementation_authorized_by_this_spec": false,
+      "input_contract": "Fresh verified paused hierarchy and independent activation approval",
+      "minimum_tests": [
+        "Createapproval cannot activate; missingfreshread denies; hierarchyactive race."
+      ],
+      "mutation_authority_required": "activation_and_emergency_pause_specific_authority",
+      "objective": "Projetar ato futuro separado de ativação",
+      "output_contract": "Future activation-only receipt and emergency pause authority",
+      "owner_domain": "Activation governance",
+      "priority": "P3",
+      "proposed_new_files": [],
+      "provider_proof_required": "Explicit activation authorization and future proof; not requested now",
+      "release": "P3",
+      "risk": "HIGH: metric meaning, privacy or scoped mutation",
+      "rollback_or_reconciliation": "Stop new dispatch; keep durable identities/receipts and recovery reads; no destructive provider compensation or schema DROP after evidence. Uncertainty remains unresolved, never auto-repost.",
+      "task_id": "P3-07"
+    }
+  ]
+}

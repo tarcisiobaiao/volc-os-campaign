@@ -1,0 +1,4379 @@
+{
+  "artifact_id": "META-COMPLETION-SPEC",
+  "artifact_refs": [
+    "AS-IS-INVENTORY",
+    "OFFICIAL-META-API-EVIDENCE",
+    "META-CAPABILITY-MATRIX",
+    "OBJECTIVE-MEASUREMENT-MATRIX",
+    "META-STATE-MACHINE",
+    "META-GOVERNED-MUTATION-CONTRACT",
+    "META-INSIGHTS-DATA-MODEL",
+    "UX-OPERATOR-CONTRACT",
+    "FIRST-PAUSED-CANARY-RUNBOOK",
+    "EXECUTION-WORKBREAKDOWN",
+    "OPEN-CONTRACT-CONFLICTS"
+  ],
+  "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+  "control_plane": [
+    {
+      "control_id": "CTRL-SHARING",
+      "operator_meaning": "Permitir deslocamento de verba entre conjuntos muda a distribuição aprovada.",
+      "p0": "Requiredfalse",
+      "p3": "Explicit eligible optin; up to20% documented, not authorized in P0.",
+      "provider_fields": [
+        "is_adset_budget_sharing_enabled"
+      ],
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "unknown": "BLOCK"
+    },
+    {
+      "control_id": "CTRL-BUDGET",
+      "operator_meaning": "ABO controla cada conjunto; CBO distribui verba da campanha.",
+      "p0": "DailyABO, BRLminorinteger, operatorceiling",
+      "p3": "Singlebudgetowner; Campaign/AdSet strategy perrecipe, no inventedcap.",
+      "provider_fields": [
+        "daily_budget",
+        "lifetime_budget",
+        "bid_strategy"
+      ],
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET"
+      ],
+      "unknown": "BLOCK"
+    },
+    {
+      "control_id": "CTRL-AUDIENCE",
+      "operator_meaning": "Sugestões podem ser expandidas; limites oficiais precisam ser distinguidos.",
+      "p0": "Explicit0 wheneligible",
+      "p3": "Geo/minage/language/exclusions and suggestions pergoal/region.",
+      "provider_fields": [
+        "targeting.targeting_automation.advantage_audience"
+      ],
+      "source_ids": [
+        "META-AUDIENCE",
+        "META-TARGETING"
+      ],
+      "unknown": "BLOCK"
+    },
+    {
+      "control_id": "CTRL-TARGETING",
+      "operator_meaning": "Geo/idade/gênero/interesses/públicos/exclusões só aparecem se suportados.",
+      "p0": "ExplicitBR/18..65/broad",
+      "p3": "CurrentIDs, specialcategoryrestrictions, no workaround for unsupportedexclusions.",
+      "provider_fields": [
+        "targeting"
+      ],
+      "source_ids": [
+        "META-TARGETING",
+        "META-V26"
+      ],
+      "unknown": "BLOCK"
+    },
+    {
+      "control_id": "CTRL-PLACEMENTS",
+      "operator_meaning": "Automático inclui defaults atuais e futuros; manual limita posições elegíveis.",
+      "p0": "ExplicitAUTO policy+identityproof or newly researchedmanualrecipe",
+      "p3": "Matrixformat/objective/identity; removedExploreFeed/Messengerstory not copied.",
+      "provider_fields": [
+        "targeting.publisher_platforms",
+        "targeting.device_platforms",
+        "targeting.facebook_positions",
+        "targeting.instagram_positions"
+      ],
+      "source_ids": [
+        "META-PLACEMENT",
+        "META-V26"
+      ],
+      "unknown": "BLOCK"
+    },
+    {
+      "control_id": "CTRL-CREATIVE",
+      "operator_meaning": "Transformações e destino alternativo podem mudar a peça ou levar à loja.",
+      "p0": "Unknownenhancement/shop blocks",
+      "p3": "Eachbehaviorversion explicitlyapprovedandreadback.",
+      "provider_fields": [
+        "degrees_of_freedom_spec",
+        "destination_spec"
+      ],
+      "source_ids": [
+        "META-CREATIVE",
+        "META-V26",
+        "META-SHOP"
+      ],
+      "unknown": "BLOCK"
+    },
+    {
+      "control_id": "CTRL-SCHEDULE",
+      "operator_meaning": "Orçamento diário não é teto vitalício; horários usam timezone da conta.",
+      "p0": "Futurestart+deadline/noactivation",
+      "p3": "Pacing exactfields researchrequired; learningobservations, no universal scalingpercent.",
+      "provider_fields": [
+        "start_time",
+        "end_time",
+        "daily_budget",
+        "lifetime_budget"
+      ],
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "unknown": "BLOCK"
+    }
+  ],
+  "creative_boundary": {
+    "authority": "USER_SHARED_FIELDS; proposed types pending Fable reconciliation",
+    "backend_only": [
+      "raw account/Page/Instagram/asset/provider IDs",
+      "provider image_hash/video_id",
+      "signed asset URL",
+      "token/credential locator",
+      "raw provider errors",
+      "sensitive policy metadata"
+    ],
+    "browser_allowed": [
+      "opaque refs",
+      "sanitized copy",
+      "dimensions/type/language",
+      "approved proxiedpreview",
+      "readiness/blockedreasons",
+      "approved planhash/receiptrefs"
+    ],
+    "conflict_ids": [
+      "C03"
+    ],
+    "consumer": "Meta consumes manifests; never redesigns image/video engines.",
+    "contract_id": "CONTRACT-CREATIVE",
+    "demand": "Exact eligible asset/placement/objective/Page/destination/language/country/copy requirement; no providerIDs/tokens.",
+    "existing_static_adapter": "P0 existing image may use provenanceEXISTING_PROVIDER_ASSET and generationreceiptNULL explained. Verify actual bytes/authoritative content identity; image_hash never substituted for content_sha256.",
+    "fable_adjudication_required": [
+      "field names and types (including CTA object and provenance)",
+      "nullability of unresolved Demand facts vs verified Supply",
+      "staticexistingasset generationreceiptNULL semantics",
+      "placement/objective/provider_constraints authority",
+      "contentbytehash and approvalexpiry ownership",
+      "schema version and canonical hashing"
+    ],
+    "hash_binding": "All semantic shared fields plus contentSHA and demand/supply digests; changes to bytes/copy/CTA/destination/Page/eligibility/policy/version/expiry invalidateapproval.",
+    "p0_acceptance": [
+      "IMAGE",
+      "APPROVED",
+      "no criticalunknowns/blockedreasons",
+      "verifiedSHA",
+      "unexpiredpolicy/supply",
+      "MetaTraffic chosenplacements eligible",
+      "Page/destinationbindings exact"
+    ],
+    "schema_limits": "Candidate schemas structural only; executor must enforce formats and semantics. P0demandcardinality1. Fable types may diverge: no silent coercion. Null does not clear unknown eligibility. Demand contains all shared fields; unresolved asset_ref/content_sha/mime/dimensions may be explicitnull with namedunknowns, never a fulfilledSupply. P0oneDemand/oneSupply/onevariation; supplyvalidation plus semanticguards mandatory beforecompile.",
+    "schemas": {
+      "AssetDemandManifest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "account_ref": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "approval_state": {
+            "const": "DRAFT"
+          },
+          "aspect_ratio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asset_ref": {
+            "anyOf": [
+              {
+                "maxLength": 180,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "asset_type": {
+            "const": "IMAGE"
+          },
+          "blocked_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "call_to_action": {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "channel_eligibility": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "content_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "copy_policy": {
+            "enum": [
+              "SUPPLIED_APPROVED",
+              "REQUEST_DRAFT_FOR_APPROVAL"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deadline": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "demand_id": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "destination_ref": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "duration_ms": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "generation_receipt_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "height": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "objective_eligibility": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "page_ref": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "placement_eligibility": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "policy_receipt_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "origin": {
+                "enum": [
+                  "EXISTING_PROVIDER_ASSET",
+                  "CREATIVE_FACTORY"
+                ]
+              },
+              "producer_version": {
+                "type": "string"
+              },
+              "receipt_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "origin",
+              "producer_version",
+              "receipt_ref"
+            ],
+            "type": "object"
+          },
+          "provider_constraints": {
+            "additionalProperties": false,
+            "properties": {
+              "api_version": {
+                "const": "v26.0"
+              },
+              "constraints_digest": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "evidence_refs": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "uniqueItems": true
+              },
+              "recipe_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "api_version",
+              "recipe_id",
+              "evidence_refs",
+              "constraints_digest"
+            ],
+            "type": "object"
+          },
+          "recipe_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "1.0.0"
+          },
+          "unknowns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "variation_key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "width": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "demand_id",
+          "asset_ref",
+          "variation_key",
+          "asset_type",
+          "mime_type",
+          "width",
+          "height",
+          "duration_ms",
+          "aspect_ratio",
+          "placement_eligibility",
+          "channel_eligibility",
+          "objective_eligibility",
+          "page_ref",
+          "destination_ref",
+          "message",
+          "headline",
+          "description",
+          "call_to_action",
+          "language",
+          "country",
+          "provenance",
+          "generation_receipt_ref",
+          "policy_receipt_ref",
+          "content_sha256",
+          "approval_state",
+          "provider_constraints",
+          "expires_at",
+          "blocked_reasons",
+          "unknowns",
+          "account_ref",
+          "recipe_id",
+          "deadline",
+          "copy_policy"
+        ],
+        "title": "Proposed AssetDemandManifest P0 — all shared fields explicit",
+        "type": "object"
+      },
+      "AssetSupplyManifest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "asset_type": {
+                  "const": "IMAGE"
+                }
+              },
+              "required": [
+                "asset_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "duration_ms": {
+                  "type": "null"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "approval_state": {
+            "enum": [
+              "DRAFT",
+              "APPROVED",
+              "REJECTED",
+              "EXPIRED"
+            ]
+          },
+          "aspect_ratio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asset_ref": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "asset_type": {
+            "enum": [
+              "IMAGE",
+              "VIDEO",
+              "FLEXIBLE_COMPONENT"
+            ]
+          },
+          "blocked_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "call_to_action": {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "channel_eligibility": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "content_sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "demand_id": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "destination_ref": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "duration_ms": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "generation_receipt_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "headline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "height": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mime_type": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "objective_eligibility": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "page_ref": {
+            "maxLength": 180,
+            "minLength": 8,
+            "type": "string"
+          },
+          "placement_eligibility": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "policy_receipt_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "origin": {
+                "enum": [
+                  "EXISTING_PROVIDER_ASSET",
+                  "CREATIVE_FACTORY"
+                ]
+              },
+              "producer_version": {
+                "type": "string"
+              },
+              "receipt_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "origin",
+              "producer_version",
+              "receipt_ref"
+            ],
+            "type": "object"
+          },
+          "provider_constraints": {
+            "additionalProperties": false,
+            "properties": {
+              "api_version": {
+                "const": "v26.0"
+              },
+              "constraints_digest": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "evidence_refs": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "uniqueItems": true
+              },
+              "recipe_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "api_version",
+              "recipe_id",
+              "evidence_refs",
+              "constraints_digest"
+            ],
+            "type": "object"
+          },
+          "schema_version": {
+            "const": "1.0.0"
+          },
+          "unknowns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "variation_key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "width": {
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "demand_id",
+          "asset_ref",
+          "variation_key",
+          "asset_type",
+          "mime_type",
+          "width",
+          "height",
+          "duration_ms",
+          "aspect_ratio",
+          "placement_eligibility",
+          "channel_eligibility",
+          "objective_eligibility",
+          "page_ref",
+          "destination_ref",
+          "message",
+          "headline",
+          "description",
+          "call_to_action",
+          "language",
+          "country",
+          "provenance",
+          "generation_receipt_ref",
+          "policy_receipt_ref",
+          "content_sha256",
+          "approval_state",
+          "provider_constraints",
+          "expires_at",
+          "blocked_reasons",
+          "unknowns"
+        ],
+        "title": "Proposed AssetSupplyManifest Meta boundary",
+        "type": "object"
+      }
+    },
+    "shared_minimum_fields": [
+      "schema_version",
+      "demand_id",
+      "asset_ref",
+      "variation_key",
+      "asset_type",
+      "mime_type",
+      "width",
+      "height",
+      "duration_ms",
+      "aspect_ratio",
+      "placement_eligibility",
+      "channel_eligibility",
+      "objective_eligibility",
+      "page_ref",
+      "destination_ref",
+      "message",
+      "headline",
+      "description",
+      "call_to_action",
+      "language",
+      "country",
+      "provenance",
+      "generation_receipt_ref",
+      "policy_receipt_ref",
+      "content_sha256",
+      "approval_state",
+      "provider_constraints",
+      "expires_at",
+      "blocked_reasons",
+      "unknowns"
+    ],
+    "supply": "Immutable bytes/provenance/receipts/eligibility/expiry and blockedreasons; backend verifies claims before compile."
+  },
+  "decision_authority": "Provider eligibility not UI/graph/thirdparty decision; VOLC guard may be stricter thanprovider.",
+  "dispatch_authorized": false,
+  "field_decisions": [
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "name",
+      "field_id": "PF001",
+      "remote_recipe_proven": false,
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "objective",
+      "field_id": "PF002",
+      "remote_recipe_proven": false,
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "buying_type",
+      "field_id": "PF003",
+      "remote_recipe_proven": false,
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "status",
+      "field_id": "PF004",
+      "remote_recipe_proven": false,
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "special_ad_categories",
+      "field_id": "PF005",
+      "remote_recipe_proven": false,
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "is_adset_budget_sharing_enabled",
+      "field_id": "PF006",
+      "remote_recipe_proven": false,
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "daily_budget",
+      "field_id": "PF007",
+      "remote_recipe_proven": false,
+      "rule": "ABO omits Campaign budget/strategy by explicit ownership; CBO single budget/strategy.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "lifetime_budget",
+      "field_id": "PF008",
+      "remote_recipe_proven": false,
+      "rule": "ABO omits Campaign budget/strategy by explicit ownership; CBO single budget/strategy.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "Campaign",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "bid_strategy",
+      "field_id": "PF009",
+      "remote_recipe_proven": false,
+      "rule": "ABO omits Campaign budget/strategy by explicit ownership; CBO single budget/strategy.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "name",
+      "field_id": "PF010",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "campaign_id",
+      "field_id": "PF011",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "billing_event",
+      "field_id": "PF012",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "optimization_goal",
+      "field_id": "PF013",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "bid_strategy",
+      "field_id": "PF014",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "daily_budget",
+      "field_id": "PF015",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "start_time",
+      "field_id": "PF016",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "status",
+      "field_id": "PF017",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "targeting",
+      "field_id": "PF018",
+      "remote_recipe_proven": false,
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_FUTURE",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "lifetime_budget",
+      "field_id": "PF019",
+      "remote_recipe_proven": false,
+      "rule": "Exclusive budgets; attribution/promoted only eligible recipe.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_FUTURE",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "end_time",
+      "field_id": "PF020",
+      "remote_recipe_proven": false,
+      "rule": "Exclusive budgets; attribution/promoted only eligible recipe.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_FUTURE",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "attribution_spec",
+      "field_id": "PF021",
+      "remote_recipe_proven": false,
+      "rule": "Exclusive budgets; attribution/promoted only eligible recipe.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_FUTURE",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "promoted_object",
+      "field_id": "PF022",
+      "remote_recipe_proven": false,
+      "rule": "Exclusive budgets; attribution/promoted only eligible recipe.",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "RESEARCH_REQUIRED",
+      "context": "AdSet",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "destination_type",
+      "field_id": "PF023",
+      "remote_recipe_proven": false,
+      "rule": "WEBSITE internal not blindly serialized; adjudicate omission/inference/readback C02.",
+      "source_ids": [
+        "META-DESTINATION"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "geo_locations.countries",
+      "field_id": "PF024",
+      "remote_recipe_proven": false,
+      "rule": "BR/18..65 explicitly approved.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "age_min",
+      "field_id": "PF025",
+      "remote_recipe_proven": false,
+      "rule": "BR/18..65 explicitly approved.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "age_max",
+      "field_id": "PF026",
+      "remote_recipe_proven": false,
+      "rule": "BR/18..65 explicitly approved.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "targeting_automation.advantage_audience",
+      "field_id": "PF027",
+      "remote_recipe_proven": false,
+      "rule": "0 explicit if eligible; missing responseUNKNOWN.",
+      "source_ids": [
+        "META-AUDIENCE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "publisher_platforms",
+      "field_id": "PF028",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "device_platforms",
+      "field_id": "PF029",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "facebook_positions",
+      "field_id": "PF030",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "instagram_positions",
+      "field_id": "PF031",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "threads_positions",
+      "field_id": "PF032",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "messenger_positions",
+      "field_id": "PF033",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P0_DECISION_P3_GENERALIZATION",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "audience_network_positions",
+      "field_id": "PF034",
+      "remote_recipe_proven": false,
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "genders",
+      "field_id": "PF035",
+      "remote_recipe_proven": false,
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "interests",
+      "field_id": "PF036",
+      "remote_recipe_proven": false,
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "custom_audiences",
+      "field_id": "PF037",
+      "remote_recipe_proven": false,
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "excluded_custom_audiences",
+      "field_id": "PF038",
+      "remote_recipe_proven": false,
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "locales",
+      "field_id": "PF039",
+      "remote_recipe_proven": false,
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P3_ONLY",
+      "context": "AdSet.targeting",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L07"
+      ],
+      "field": "targeting_automation.individual_setting",
+      "field_id": "PF040",
+      "remote_recipe_proven": false,
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "name",
+      "field_id": "PF041",
+      "remote_recipe_proven": false,
+      "rule": "Name<=100; unpublishedpost sideeffect disclosed; noPAUSED.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "object_story_spec",
+      "field_id": "PF042",
+      "remote_recipe_proven": false,
+      "rule": "Name<=100; unpublishedpost sideeffect disclosed; noPAUSED.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_WRITE",
+      "context": "AdCreative.object_story_spec",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "page_id",
+      "field_id": "PF043",
+      "remote_recipe_proven": false,
+      "rule": "Page required; Instagram field/identity eligibility actualv26 reverified.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_WRITE",
+      "context": "AdCreative.object_story_spec",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "instagram_actor_id",
+      "field_id": "PF044",
+      "remote_recipe_proven": false,
+      "rule": "Page required; Instagram field/identity eligibility actualv26 reverified.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "CONDITIONAL_WRITE",
+      "context": "AdCreative.object_story_spec",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "link_data",
+      "field_id": "PF045",
+      "remote_recipe_proven": false,
+      "rule": "Page required; Instagram field/identity eligibility actualv26 reverified.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "image_hash",
+      "field_id": "PF046",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "link",
+      "field_id": "PF047",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "message",
+      "field_id": "PF048",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "name",
+      "field_id": "PF049",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "description",
+      "field_id": "PF050",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "call_to_action.type",
+      "field_id": "PF051",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "AdCreative.object_story_spec.link_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "call_to_action.value.link",
+      "field_id": "PF052",
+      "remote_recipe_proven": false,
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "RESEARCH_REQUIRED",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "asset_feed_spec",
+      "field_id": "PF053",
+      "remote_recipe_proven": false,
+      "rule": "Enhancement optout nesting and eligibility not guessed.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "RESEARCH_REQUIRED",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "degrees_of_freedom_spec",
+      "field_id": "PF054",
+      "remote_recipe_proven": false,
+      "rule": "Enhancement optout nesting and eligibility not guessed.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "RESEARCH_REQUIRED",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "destination_spec.destination_type",
+      "field_id": "PF055",
+      "remote_recipe_proven": false,
+      "rule": "Changelog names WEBSITE_AND_SHOP and WEBSITE_AND_SHOP_OPT_OUT; write/read mapping insufficient C01.",
+      "source_ids": [
+        "META-V26"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "name",
+      "field_id": "PF056",
+      "remote_recipe_proven": false,
+      "rule": "PAUSED; only durable verified parent refs.",
+      "source_ids": [
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "adset_id",
+      "field_id": "PF057",
+      "remote_recipe_proven": false,
+      "rule": "PAUSED; only durable verified parent refs.",
+      "source_ids": [
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "creative.creative_id",
+      "field_id": "PF058",
+      "remote_recipe_proven": false,
+      "rule": "PAUSED; only durable verified parent refs.",
+      "source_ids": [
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "WRITE_P0",
+      "context": "Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L09"
+      ],
+      "field": "status",
+      "field_id": "PF059",
+      "remote_recipe_proven": false,
+      "rule": "PAUSED; only durable verified parent refs.",
+      "source_ids": [
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "REMOTE_VALIDATE_ONLY",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L15"
+      ],
+      "field": "execution_options",
+      "field_id": "PF060",
+      "remote_recipe_proven": false,
+      "rule": "Explicitvalidate_only, endpoint-specific verification.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "HISTORICAL_REMOTE_VALIDATE",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L06"
+      ],
+      "field": "execution_options",
+      "field_id": "PF061",
+      "remote_recipe_proven": false,
+      "rule": "Historical roots proof only; fetched Creative table did not establish universal enum.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Account",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L05"
+      ],
+      "field": "id",
+      "field_id": "PF062",
+      "remote_recipe_proven": false,
+      "rule": "Status1active; discovery not custody.",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Account",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L05"
+      ],
+      "field": "name",
+      "field_id": "PF063",
+      "remote_recipe_proven": false,
+      "rule": "Status1active; discovery not custody.",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Account",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L05"
+      ],
+      "field": "account_status",
+      "field_id": "PF064",
+      "remote_recipe_proven": false,
+      "rule": "Status1active; discovery not custody.",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Account",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L05"
+      ],
+      "field": "currency",
+      "field_id": "PF065",
+      "remote_recipe_proven": false,
+      "rule": "Status1active; discovery not custody.",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Account",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L05"
+      ],
+      "field": "timezone_name",
+      "field_id": "PF066",
+      "remote_recipe_proven": false,
+      "rule": "Status1active; discovery not custody.",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Account",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L05"
+      ],
+      "field": "business",
+      "field_id": "PF067",
+      "remote_recipe_proven": false,
+      "rule": "Status1active; discovery not custody.",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Page",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "id",
+      "field_id": "PF068",
+      "remote_recipe_proven": false,
+      "rule": "Membership not authorizationproof.",
+      "source_ids": [
+        "META-PAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Page",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "name",
+      "field_id": "PF069",
+      "remote_recipe_proven": false,
+      "rule": "Membership not authorizationproof.",
+      "source_ids": [
+        "META-PAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_BACKEND",
+      "context": "AdImage",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "hash",
+      "field_id": "PF070",
+      "remote_recipe_proven": false,
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_BACKEND",
+      "context": "AdImage",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "name",
+      "field_id": "PF071",
+      "remote_recipe_proven": false,
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_BACKEND",
+      "context": "AdImage",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "width",
+      "field_id": "PF072",
+      "remote_recipe_proven": false,
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_BACKEND",
+      "context": "AdImage",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "height",
+      "field_id": "PF073",
+      "remote_recipe_proven": false,
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_BACKEND",
+      "context": "AdImage",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "url_128",
+      "field_id": "PF074",
+      "remote_recipe_proven": false,
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_BACKEND",
+      "context": "AdImage",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L51"
+      ],
+      "field": "url",
+      "field_id": "PF075",
+      "remote_recipe_proven": false,
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L16"
+      ],
+      "field": "id",
+      "field_id": "PF076",
+      "remote_recipe_proven": false,
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L16"
+      ],
+      "field": "account_id",
+      "field_id": "PF077",
+      "remote_recipe_proven": false,
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L16"
+      ],
+      "field": "configured_status",
+      "field_id": "PF078",
+      "remote_recipe_proven": false,
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L16"
+      ],
+      "field": "status",
+      "field_id": "PF079",
+      "remote_recipe_proven": false,
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L16"
+      ],
+      "field": "effective_status",
+      "field_id": "PF080",
+      "remote_recipe_proven": false,
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ",
+      "context": "Campaign,AdSet,Ad",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L16"
+      ],
+      "field": "created_time",
+      "field_id": "PF081",
+      "remote_recipe_proven": false,
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "id",
+      "field_id": "PF082",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "account_id",
+      "field_id": "PF083",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "name",
+      "field_id": "PF084",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "status",
+      "field_id": "PF085",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "object_story_spec",
+      "field_id": "PF086",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "asset_feed_spec",
+      "field_id": "PF087",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_CONDITIONAL",
+      "context": "AdCreative",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L17"
+      ],
+      "field": "degrees_of_freedom_spec",
+      "field_id": "PF088",
+      "remote_recipe_proven": false,
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_P3_ONLY",
+      "context": "AdSet.promoted_object",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L49"
+      ],
+      "field": "pixel_id",
+      "field_id": "PF089",
+      "remote_recipe_proven": false,
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_P3_ONLY",
+      "context": "AdSet.promoted_object",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L49"
+      ],
+      "field": "custom_event_type",
+      "field_id": "PF090",
+      "remote_recipe_proven": false,
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_P3_ONLY",
+      "context": "AdSet.promoted_object",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L49"
+      ],
+      "field": "custom_conversion_id",
+      "field_id": "PF091",
+      "remote_recipe_proven": false,
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_P3_ONLY",
+      "context": "AdSet.promoted_object",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L49"
+      ],
+      "field": "page_id",
+      "field_id": "PF092",
+      "remote_recipe_proven": false,
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_P3_ONLY",
+      "context": "AdSet.promoted_object",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L49"
+      ],
+      "field": "product_catalog_id",
+      "field_id": "PF093",
+      "remote_recipe_proven": false,
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_P3_ONLY",
+      "context": "AdSet.promoted_object",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L49"
+      ],
+      "field": "product_set_id",
+      "field_id": "PF094",
+      "remote_recipe_proven": false,
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "id",
+      "field_id": "PF095",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "name",
+      "field_id": "PF096",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "rule",
+      "field_id": "PF097",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "custom_event_type",
+      "field_id": "PF098",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "event_source_type",
+      "field_id": "PF099",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "event_source_id",
+      "field_id": "PF100",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "is_archived",
+      "field_id": "PF101",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "is_unavailable",
+      "field_id": "PF102",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "first_fired_time",
+      "field_id": "PF103",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_OR_RESEARCH",
+      "context": "CustomConversion",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L24"
+      ],
+      "field": "last_fired_time",
+      "field_id": "PF104",
+      "remote_recipe_proven": false,
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "level",
+      "field_id": "PF105",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "time_range",
+      "field_id": "PF106",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "time_increment",
+      "field_id": "PF107",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "fields",
+      "field_id": "PF108",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "action_attribution_windows",
+      "field_id": "PF109",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "action_report_time",
+      "field_id": "PF110",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "use_account_attribution_setting",
+      "field_id": "PF111",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "use_unified_attribution_setting",
+      "field_id": "PF112",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "breakdowns",
+      "field_id": "PF113",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.query",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "action_breakdowns",
+      "field_id": "PF114",
+      "remote_recipe_proven": false,
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "account_id",
+      "field_id": "PF115",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "account_currency",
+      "field_id": "PF116",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "campaign_id",
+      "field_id": "PF117",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "adset_id",
+      "field_id": "PF118",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "ad_id",
+      "field_id": "PF119",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "date_start",
+      "field_id": "PF120",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "date_stop",
+      "field_id": "PF121",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "spend",
+      "field_id": "PF122",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "impressions",
+      "field_id": "PF123",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "reach",
+      "field_id": "PF124",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "frequency",
+      "field_id": "PF125",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "clicks",
+      "field_id": "PF126",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "inline_link_clicks",
+      "field_id": "PF127",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "cpc",
+      "field_id": "PF128",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "cpm",
+      "field_id": "PF129",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "ctr",
+      "field_id": "PF130",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "actions",
+      "field_id": "PF131",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_READ",
+      "context": "Insights.result",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "action_values",
+      "field_id": "PF132",
+      "remote_recipe_proven": false,
+      "rule": "Nullable/presence; actionsindependent.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_PRESERVE",
+      "context": "AdsActionStats",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "action_type",
+      "field_id": "PF133",
+      "remote_recipe_proven": false,
+      "rule": "Attribution keys returned preserved; catalog verified before newwindows.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_PRESERVE",
+      "context": "AdsActionStats",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "value",
+      "field_id": "PF134",
+      "remote_recipe_proven": false,
+      "rule": "Attribution keys returned preserved; catalog verified before newwindows.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.event",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "event_name",
+      "field_id": "PF135",
+      "remote_recipe_proven": false,
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.event",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "event_time",
+      "field_id": "PF136",
+      "remote_recipe_proven": false,
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.event",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "event_id",
+      "field_id": "PF137",
+      "remote_recipe_proven": false,
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.event",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "action_source",
+      "field_id": "PF138",
+      "remote_recipe_proven": false,
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.event",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "event_source_url",
+      "field_id": "PF139",
+      "remote_recipe_proven": false,
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.event",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "user_data",
+      "field_id": "PF140",
+      "remote_recipe_proven": false,
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "em",
+      "field_id": "PF141",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "ph",
+      "field_id": "PF142",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "fn",
+      "field_id": "PF143",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "ln",
+      "field_id": "PF144",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "ge",
+      "field_id": "PF145",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "db",
+      "field_id": "PF146",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "ct",
+      "field_id": "PF147",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "st",
+      "field_id": "PF148",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "zp",
+      "field_id": "PF149",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "country",
+      "field_id": "PF150",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "external_id",
+      "field_id": "PF151",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "client_ip_address",
+      "field_id": "PF152",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "client_user_agent",
+      "field_id": "PF153",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "fbc",
+      "field_id": "PF154",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P2_ONLY",
+      "context": "CAPI.user_data",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L44"
+      ],
+      "field": "fbp",
+      "field_id": "PF155",
+      "remote_recipe_proven": false,
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_REPORT_JOB",
+      "context": "Insights.async",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "report_run_id",
+      "field_id": "PF156",
+      "remote_recipe_proven": false,
+      "rule": "Reportjob authority, not adcreation.",
+      "source_ids": [
+        "META-INSIGHTS-ASYNC"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_REPORT_JOB",
+      "context": "Insights.async",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "async_status",
+      "field_id": "PF157",
+      "remote_recipe_proven": false,
+      "rule": "Reportjob authority, not adcreation.",
+      "source_ids": [
+        "META-INSIGHTS-ASYNC"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "P1_REPORT_JOB",
+      "context": "Insights.async",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L25"
+      ],
+      "field": "async_percent_completion",
+      "field_id": "PF158",
+      "remote_recipe_proven": false,
+      "rule": "Reportjob authority, not adcreation.",
+      "source_ids": [
+        "META-INSIGHTS-ASYNC"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_SANITIZED",
+      "context": "Provider.error",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L15"
+      ],
+      "field": "code",
+      "field_id": "PF159",
+      "remote_recipe_proven": false,
+      "rule": "Message not rawlogged; dispatch ambiguity separate.",
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_SANITIZED",
+      "context": "Provider.error",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L15"
+      ],
+      "field": "error_subcode",
+      "field_id": "PF160",
+      "remote_recipe_proven": false,
+      "rule": "Message not rawlogged; dispatch ambiguity separate.",
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_SANITIZED",
+      "context": "Provider.error",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L15"
+      ],
+      "field": "is_transient",
+      "field_id": "PF161",
+      "remote_recipe_proven": false,
+      "rule": "Message not rawlogged; dispatch ambiguity separate.",
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    },
+    {
+      "authority_assertion": "Source supports field/type family; not combined payload or universally readable mask. Exact per-object/version request mask must be adjudicated.",
+      "authority_scope": "READ_SANITIZED",
+      "context": "Provider.error",
+      "dispatch_allowed_by_this_spec": false,
+      "evidence_ids": [
+        "L15"
+      ],
+      "field": "message",
+      "field_id": "PF162",
+      "remote_recipe_proven": false,
+      "rule": "Message not rawlogged; dispatch ambiguity separate.",
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "when_uncertain": "RESEARCH_REQUIRED; cannot send field or silently omit semantic control"
+    }
+  ],
+  "field_registry": [
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-CAMPAIGN",
+      "fields": [
+        "name",
+        "objective",
+        "buying_type",
+        "status",
+        "special_ad_categories",
+        "is_adset_budget_sharing_enabled"
+      ],
+      "object": "Campaign",
+      "rule": "Traffic/AUCTION/PAUSED/categories[]/sharingfalse, explicit operator decisions.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-CAMPAIGN-BUDGET",
+      "fields": [
+        "daily_budget",
+        "lifetime_budget",
+        "bid_strategy"
+      ],
+      "object": "Campaign",
+      "rule": "ABO omits Campaign budget/strategy by explicit ownership; CBO single budget/strategy.",
+      "scope": "P3_ONLY",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-ADSET",
+      "fields": [
+        "name",
+        "campaign_id",
+        "billing_event",
+        "optimization_goal",
+        "bid_strategy",
+        "daily_budget",
+        "start_time",
+        "status",
+        "targeting"
+      ],
+      "object": "AdSet",
+      "rule": "Scoped parents; dailyminorBRL, aware schedule, PAUSED.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L07"
+      ],
+      "field_group_id": "FIELD-ADSET-FUTURE",
+      "fields": [
+        "lifetime_budget",
+        "end_time",
+        "attribution_spec",
+        "promoted_object"
+      ],
+      "object": "AdSet",
+      "rule": "Exclusive budgets; attribution/promoted only eligible recipe.",
+      "scope": "CONDITIONAL_FUTURE",
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-DESTINATION",
+      "fields": [
+        "destination_type"
+      ],
+      "object": "AdSet",
+      "rule": "WEBSITE internal not blindly serialized; adjudicate omission/inference/readback C02.",
+      "scope": "RESEARCH_REQUIRED",
+      "source_ids": [
+        "META-DESTINATION"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-TARGETING",
+      "fields": [
+        "geo_locations.countries",
+        "age_min",
+        "age_max"
+      ],
+      "object": "AdSet.targeting",
+      "rule": "BR/18..65 explicitly approved.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-AUDIENCE",
+      "fields": [
+        "targeting_automation.advantage_audience"
+      ],
+      "object": "AdSet.targeting",
+      "rule": "0 explicit if eligible; missing responseUNKNOWN.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-AUDIENCE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L07"
+      ],
+      "field_group_id": "FIELD-PLACEMENT",
+      "fields": [
+        "publisher_platforms",
+        "device_platforms",
+        "facebook_positions",
+        "instagram_positions",
+        "threads_positions",
+        "messenger_positions",
+        "audience_network_positions"
+      ],
+      "object": "AdSet.targeting",
+      "rule": "Approved automatic expansion or exactmanualrecipe; currentautomaticonly.",
+      "scope": "P0_DECISION_P3_GENERALIZATION",
+      "source_ids": [
+        "META-PLACEMENT"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L07"
+      ],
+      "field_group_id": "FIELD-TARGETING-FUTURE",
+      "fields": [
+        "genders",
+        "interests",
+        "custom_audiences",
+        "excluded_custom_audiences",
+        "locales",
+        "targeting_automation.individual_setting"
+      ],
+      "object": "AdSet.targeting",
+      "rule": "Exact nesting/eligibility; no arbitraryflatinterestIDs or deprecated exclusion workarounds.",
+      "scope": "P3_ONLY",
+      "source_ids": [
+        "META-TARGETING"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-CREATIVE",
+      "fields": [
+        "name",
+        "object_story_spec"
+      ],
+      "object": "AdCreative",
+      "rule": "Name<=100; unpublishedpost sideeffect disclosed; noPAUSED.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-STORY",
+      "fields": [
+        "page_id",
+        "instagram_actor_id",
+        "link_data"
+      ],
+      "object": "AdCreative.object_story_spec",
+      "rule": "Page required; Instagram field/identity eligibility actualv26 reverified.",
+      "scope": "CONDITIONAL_WRITE",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-LINK",
+      "fields": [
+        "image_hash",
+        "link",
+        "message",
+        "name",
+        "description",
+        "call_to_action.type",
+        "call_to_action.value.link"
+      ],
+      "object": "AdCreative.object_story_spec.link_data",
+      "rule": "Hashbackendonly; CTAURL exactdestination; explicitcopy.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-LINK"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L17"
+      ],
+      "field_group_id": "FIELD-CREATIVE-FUTURE",
+      "fields": [
+        "asset_feed_spec",
+        "degrees_of_freedom_spec"
+      ],
+      "object": "AdCreative",
+      "rule": "Enhancement optout nesting and eligibility not guessed.",
+      "scope": "RESEARCH_REQUIRED",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L17"
+      ],
+      "field_group_id": "FIELD-SHOP",
+      "fields": [
+        "destination_spec.destination_type"
+      ],
+      "object": "AdCreative",
+      "rule": "Changelog names WEBSITE_AND_SHOP and WEBSITE_AND_SHOP_OPT_OUT; write/read mapping insufficient C01.",
+      "scope": "RESEARCH_REQUIRED",
+      "source_ids": [
+        "META-V26"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L09"
+      ],
+      "field_group_id": "FIELD-AD",
+      "fields": [
+        "name",
+        "adset_id",
+        "creative.creative_id",
+        "status"
+      ],
+      "object": "Ad",
+      "rule": "PAUSED; only durable verified parent refs.",
+      "scope": "WRITE_P0",
+      "source_ids": [
+        "META-AD"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L15"
+      ],
+      "field_group_id": "FIELD-VALIDATE",
+      "fields": [
+        "execution_options"
+      ],
+      "object": "Campaign,AdSet,Ad",
+      "rule": "Explicitvalidate_only, endpoint-specific verification.",
+      "scope": "REMOTE_VALIDATE_ONLY",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L06"
+      ],
+      "field_group_id": "FIELD-VALIDATE-CREATIVE",
+      "fields": [
+        "execution_options"
+      ],
+      "object": "AdCreative",
+      "rule": "Historical roots proof only; fetched Creative table did not establish universal enum.",
+      "scope": "HISTORICAL_REMOTE_VALIDATE",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L05"
+      ],
+      "field_group_id": "FIELD-ACCOUNT",
+      "fields": [
+        "id",
+        "name",
+        "account_status",
+        "currency",
+        "timezone_name",
+        "business"
+      ],
+      "object": "Account",
+      "rule": "Status1active; discovery not custody.",
+      "scope": "READ",
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L51"
+      ],
+      "field_group_id": "FIELD-PAGE",
+      "fields": [
+        "id",
+        "name"
+      ],
+      "object": "Page",
+      "rule": "Membership not authorizationproof.",
+      "scope": "READ",
+      "source_ids": [
+        "META-PAGES"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L51"
+      ],
+      "field_group_id": "FIELD-IMAGE",
+      "fields": [
+        "hash",
+        "name",
+        "width",
+        "height",
+        "url_128",
+        "url"
+      ],
+      "object": "AdImage",
+      "rule": "Providerhash/URL backendonly; proxiedpreview; dimensions notSHA.",
+      "scope": "READ_BACKEND",
+      "source_ids": [
+        "META-IMAGES"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L16"
+      ],
+      "field_group_id": "FIELD-STATE",
+      "fields": [
+        "id",
+        "account_id",
+        "configured_status",
+        "status",
+        "effective_status",
+        "created_time"
+      ],
+      "object": "Campaign,AdSet,Ad",
+      "rule": "Mask perobject; not allfields assumed on alltypes.",
+      "scope": "READ",
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L17"
+      ],
+      "field_group_id": "FIELD-CREATIVE-READ",
+      "fields": [
+        "id",
+        "account_id",
+        "name",
+        "status",
+        "object_story_spec",
+        "asset_feed_spec",
+        "degrees_of_freedom_spec"
+      ],
+      "object": "AdCreative",
+      "rule": "effective_status unverified; created_time not assumed; criticalbehavior compare orUNKNOWN.",
+      "scope": "READ_CONDITIONAL",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L49"
+      ],
+      "field_group_id": "FIELD-PROMOTED",
+      "fields": [
+        "pixel_id",
+        "custom_event_type",
+        "custom_conversion_id",
+        "page_id",
+        "product_catalog_id",
+        "product_set_id"
+      ],
+      "object": "AdSet.promoted_object",
+      "rule": "Scoped refs; pixel/customconversion compatibility not guessed.",
+      "scope": "P2_P3_ONLY",
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L24"
+      ],
+      "field_group_id": "FIELD-CUSTOM",
+      "fields": [
+        "id",
+        "name",
+        "rule",
+        "custom_event_type",
+        "event_source_type",
+        "event_source_id",
+        "is_archived",
+        "is_unavailable",
+        "first_fired_time",
+        "last_fired_time"
+      ],
+      "object": "CustomConversion",
+      "rule": "Mask perversion; create DSL separate; missingavailabilityUNKNOWN.",
+      "scope": "READ_OR_RESEARCH",
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L25"
+      ],
+      "field_group_id": "FIELD-INSIGHTS-QUERY",
+      "fields": [
+        "level",
+        "time_range",
+        "time_increment",
+        "fields",
+        "action_attribution_windows",
+        "action_report_time",
+        "use_account_attribution_setting",
+        "use_unified_attribution_setting",
+        "breakdowns",
+        "action_breakdowns"
+      ],
+      "object": "Insights.query",
+      "rule": "Explicitquery, reject conflictingdefault.",
+      "scope": "P1_READ",
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L25"
+      ],
+      "field_group_id": "FIELD-INSIGHTS-RESULT",
+      "fields": [
+        "account_id",
+        "account_currency",
+        "campaign_id",
+        "adset_id",
+        "ad_id",
+        "date_start",
+        "date_stop",
+        "spend",
+        "impressions",
+        "reach",
+        "frequency",
+        "clicks",
+        "inline_link_clicks",
+        "cpc",
+        "cpm",
+        "ctr",
+        "actions",
+        "action_values"
+      ],
+      "object": "Insights.result",
+      "rule": "Nullable/presence; actionsindependent.",
+      "scope": "P1_READ",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L25"
+      ],
+      "field_group_id": "FIELD-ACTION",
+      "fields": [
+        "action_type",
+        "value"
+      ],
+      "object": "AdsActionStats",
+      "rule": "Attribution keys returned preserved; catalog verified before newwindows.",
+      "scope": "READ_PRESERVE",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L44"
+      ],
+      "field_group_id": "FIELD-CAPI",
+      "fields": [
+        "event_name",
+        "event_time",
+        "event_id",
+        "action_source",
+        "event_source_url",
+        "user_data"
+      ],
+      "object": "CAPI.event",
+      "rule": "Providerrequired vs VOLCrequired; event_id VOLCmandatory.",
+      "scope": "P2_ONLY",
+      "source_ids": [
+        "META-CAPI-EVENT"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L44"
+      ],
+      "field_group_id": "FIELD-CAPI-USER",
+      "fields": [
+        "em",
+        "ph",
+        "fn",
+        "ln",
+        "ge",
+        "db",
+        "ct",
+        "st",
+        "zp",
+        "country",
+        "external_id",
+        "client_ip_address",
+        "client_user_agent",
+        "fbc",
+        "fbp"
+      ],
+      "object": "CAPI.user_data",
+      "rule": "Fieldhash/privacy; no rawPII in adsledger.",
+      "scope": "P2_ONLY",
+      "source_ids": [
+        "META-CAPI"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L25"
+      ],
+      "field_group_id": "FIELD-ASYNC",
+      "fields": [
+        "report_run_id",
+        "async_status",
+        "async_percent_completion"
+      ],
+      "object": "Insights.async",
+      "rule": "Reportjob authority, not adcreation.",
+      "scope": "P1_REPORT_JOB",
+      "source_ids": [
+        "META-INSIGHTS-ASYNC"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    },
+    {
+      "authority_kind": "OFFICIAL_META_PLUS_EXPLICIT_VOLC_RESTRICTIONS",
+      "evidence_ids": [
+        "L15"
+      ],
+      "field_group_id": "FIELD-ERROR",
+      "fields": [
+        "code",
+        "error_subcode",
+        "is_transient",
+        "message"
+      ],
+      "object": "Provider.error",
+      "rule": "Message not rawlogged; dispatch ambiguity separate.",
+      "scope": "READ_SANITIZED",
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "unknown_field_policy": "reject_outbound"
+    }
+  ],
+  "field_registry_limitations": [
+    "Grouped masks must not be copied as one request to every object.",
+    "FIELD-SHOP and Creative effective_status are not proven writable/readable; failclosed.",
+    "AdImage preview fields and CustomConversion event_source_id require exact per-object field-mask refresh; historicalread only proves historical accepted mask.",
+    "FIELDS under targeting future controls are concept catalog; exact nested payload perrecipe must be proven before exposing controls.",
+    "No arbitrary field from AssetSupply provider_constraints is passed through."
+  ],
+  "flag_registry": [
+    {
+      "allows": "Explicitvalidateonly",
+      "default": "0",
+      "exists": true,
+      "name": "META_VALIDATE_ONLY_ENABLED"
+    },
+    {
+      "allows": "Dispatchonlywithledgerapprovalallgates",
+      "default": "0",
+      "exists": true,
+      "name": "META_CREATE_PAUSED_ENABLED"
+    },
+    {
+      "allows": "Ledger; mustnotopencreate",
+      "default": "0",
+      "exists": true,
+      "name": "META_CREATE_LEDGER_WRITE_ENABLED"
+    },
+    {
+      "allows": "Authorized readmodel persistence only; no provider create.",
+      "default": "0",
+      "evidence_ids": [
+        "L29"
+      ],
+      "exists": true,
+      "name": "META_READ_MODEL_WRITE_ENABLED"
+    },
+    {
+      "allows": "Proposedrecoveryreadsandledgernocreate",
+      "default": "0",
+      "exists": false,
+      "name": "META_RECONCILIATION_ENABLED"
+    },
+    {
+      "allows": "ProposedP1governeddiff",
+      "default": "0",
+      "exists": false,
+      "name": "META_EDIT_ENABLED"
+    },
+    {
+      "allows": "ProposedP1pause",
+      "default": "0",
+      "exists": false,
+      "name": "META_PAUSE_ENABLED"
+    },
+    {
+      "allows": "ProposedP2administrativemeasurement",
+      "default": "0",
+      "exists": false,
+      "name": "META_MEASUREMENT_WRITE_ENABLED"
+    },
+    {
+      "allows": "ProposedP2consentedevent",
+      "default": "0",
+      "exists": false,
+      "name": "META_CAPI_DELIVERY_ENABLED"
+    },
+    {
+      "allows": "ProposedP3boundedrules",
+      "default": "0",
+      "exists": false,
+      "name": "META_AUTOMATION_ENABLED"
+    },
+    {
+      "allows": "Futureseparaterelease;noP0endpoint",
+      "default": "0",
+      "exists": false,
+      "name": "META_ACTIVATION_ENABLED"
+    }
+  ],
+  "p0_conflict_ids": [
+    "C01",
+    "C02",
+    "C03",
+    "C04",
+    "C05",
+    "C06",
+    "C07",
+    "C13",
+    "C16"
+  ],
+  "p0_ready": false,
+  "principles": [
+    "SOURCE_GROUNDED",
+    "NO_INVENTED_FIELDS",
+    "FAIL_CLOSED",
+    "SECURE_BY_CONSTRUCTION",
+    "OPERATOR_APPROVED",
+    "PROVIDER_REALITY_AWARE"
+  ],
+  "proof_promotion_policy": "Only exact scoped dated evidence promotes status; code/hermetic tests not remoteproof;4node readback required.",
+  "schema_version": "1.0.0",
+  "scope": {
+    "P0": "One activeBRL account/Page/existingstaticimage; TrafficLPV/dailyABO;1Campaign/1AdSet/1Creative submission/1Ad; deliverable nodesPAUSED; noactivation.",
+    "P1": "Reliable scoped persistence/read/metrics/history/edits/pause/alerts/basicdashboards.",
+    "P2": "PixelDataset/customconversions/CAPI/Leads/Sales/attribution/revenue.",
+    "P3": "Advantage/budget/targeting/multi/video/flexible/catalog/batch/rules/experiments/scaling; activation separatefuture."
+  },
+  "spec_id": "SPEC-META-COMPLETION-V1",
+  "verdict": "META_COMPLETION_SPEC_PARTIAL",
+  "volc_fields_authority": {
+    "authority_kind": "USER_REQUIRED_OR_PROPOSED_LOCAL_NOT_META_FIELDS",
+    "namespaces": [
+      "schema_version",
+      "opaque_refs",
+      "hashes",
+      "digests",
+      "internal_artifact_ids",
+      "approval_state",
+      "blocked_reasons",
+      "unknowns",
+      "coverage",
+      "freshness",
+      "completeness",
+      "gate_ids",
+      "source_ids",
+      "evidence_ids",
+      "receipts",
+      "execution",
+      "AssetDemandManifest",
+      "AssetSupplyManifest"
+    ],
+    "rule": "No local field serialized to provider without explicit mapped authority; constraints never arbitrary provider payload."
+  }
+}

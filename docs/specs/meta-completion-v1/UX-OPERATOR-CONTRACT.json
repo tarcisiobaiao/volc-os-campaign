@@ -1,0 +1,310 @@
+{
+  "accessibility": {
+    "proof": "Future visual+keyboard+screenreader+mobile tests, not executed in spec.",
+    "requirements": [
+      "Keyboard ordering and focus restored after modal/network outcome.",
+      "Errors linked to fields and announced via accessible live region.",
+      "No state by color alone; busy labels reflect real requests.",
+      "Mobile narrowviewport reflow with touch targets; tables have accessible alternatives/headers.",
+      "No auto-playing video or motion required to understand state; reduced motion respected."
+    ]
+  },
+  "action_rules": [
+    {
+      "act_id": "ACT-REMOTE-VALIDATE",
+      "label": "Validar na Meta",
+      "never": "creates ad objects",
+      "requires": "explicit validation permission/flag, frozen plan"
+    },
+    {
+      "act_id": "ACT-APPROVE",
+      "label": "Aprovar plano",
+      "never": "creates or opens flags",
+      "requires": "durable exactcoverage receipt and readable consequences"
+    },
+    {
+      "act_id": "ACT-CREATE-PAUSED",
+      "label": "Criar pausada",
+      "never": "edits plan or activates",
+      "requires": "currentapproval+servergate"
+    },
+    {
+      "act_id": "ACT-RECONCILE",
+      "label": "Conferir resultado",
+      "never": "resends POST",
+      "requires": "server recoverycapability"
+    },
+    {
+      "act_id": "ACT-EDIT",
+      "label": "Editar",
+      "never": "arbitrary payload",
+      "requires": "P1 field capability and new approveddiff"
+    },
+    {
+      "act_id": "ACT-PAUSE",
+      "label": "Pausar",
+      "never": "delete/archive",
+      "requires": "P1 separatepauseauthority"
+    }
+  ],
+  "api_contract_changes": [
+    "Typed nested capabilities/bloqueios DTO, not Record<string,string|boolean>.",
+    "Scoped list/detail pagination cursors and freshness metadata.",
+    "Creation receipt retrieval binding survives browserreload while createflagclosed.",
+    "HTTP details sanitized and additionalPropertiesfalse for requests."
+  ],
+  "artifact_id": "UX-OPERATOR-CONTRACT",
+  "conflict_ids": [
+    "C03",
+    "C05",
+    "C06",
+    "C08",
+    "C09",
+    "C12"
+  ],
+  "contract_id": "CONTRACT-UX",
+  "creation_flow": [
+    "Choose scoped account and verified Page/identity.",
+    "Select existing approved image via real backend proxy preview.",
+    "Set exact destination/copy/CTA and explicit behavior decisions.",
+    "Explain Traffic goal vs LPV optimization vs impression billing; no custom conversion demanded for P0.",
+    "Review sealed plan/hash/budget/cardinality/partial validation risk and unpublishedpost/creative reuse.",
+    "Local validation; explicit remotevalidate with exact root coverage.",
+    "Durable receipt then explicit approval (doesnotcreate).",
+    "Separate createPAUSED action only if serverallows.",
+    "Show actual step journal and readback; reload recovers by executionref.",
+    "Stop on unknown/ambiguous/divergent; offer read-only recovery, no create retry."
+  ],
+  "design_rule": "Reuse current VOLC Layout/Card/Button/Badge/table/chart tokens and Google/Meta operational language. Differences only provider-required hierarchy, objective/event, identity and eligibility; no Google API interaction or redesign.",
+  "mutation_safety": "UI protection against duplicateclick is UX only; DB dispatch owner enforces concurrency across tabs/actors. UI cannot choose eligibility, approve itself or treat stale input as safe.",
+  "not_in_mvp": [
+    "activationbutton",
+    "delete",
+    "archive",
+    "rawIDcopy",
+    "tokenviewer",
+    "rawproviderpayloadeditor",
+    "fakephaseanimation"
+  ],
+  "presence_rendering": {
+    "ambiguous": "Resultado incerto — não reenviar criação",
+    "divergent": "Criado com divergência — revisar leitura",
+    "literal_zero": "0 only returned verified literalzero",
+    "missing": "Não informado pela Meta",
+    "not_measured": "Não medido",
+    "not_requested": "Não consultado",
+    "partial": "Leitura parcial — não concluir ausência",
+    "permission_denied": "Sem acesso para consultar",
+    "stale": "Desatualizado — consultar antes de decidir"
+  },
+  "preview": {
+    "images": "Actual asset thumbnail/fullimage from authenticated allowlisted proxy; meaningful alt text and immutable contentidentity.",
+    "unknown": "No syntheticpreview presented as provider rendering; display previeworigin and limitations.",
+    "video": "P3 real playablevideo controls, captions/transcript when applicable, processing status; thumbnail alone is not video proof."
+  },
+  "progressive_disclosure": "Primary: account/status/freshness/budget/nextact/blockers. Secondary: eligibility/attribution/Advantage details. Auditdrawer: sanitized evidence and diffs; not rawIDs/paths.",
+  "projection_required": [
+    "data_origin",
+    "observed_at",
+    "last_success_at",
+    "freshness",
+    "completeness",
+    "account_ref_and_safe_label",
+    "project_ref_and_safe_label",
+    "parent_refs",
+    "configured_status",
+    "effective_status",
+    "delivery_observation",
+    "policy_observation",
+    "budget_amount_currency_owner",
+    "targeting_requested_observed",
+    "objective",
+    "optimization_event_or_not_applicable",
+    "advantage_components_requested_observed",
+    "asset_preview_ref",
+    "approval_state_expiry",
+    "validation_coverage",
+    "receipt_ref",
+    "readback_differences",
+    "blocked_reasons",
+    "next_allowed_act"
+  ],
+  "schema_version": "1.0.0",
+  "surfaces": [
+    {
+      "as_is": "MetaInventarioDemo today; switch to scoped real DTO, demo only explicit mode",
+      "evidence_ids": [
+        "L35",
+        "L34"
+      ],
+      "release": "P1",
+      "route": "/trafego?rede=meta",
+      "sections": [
+        "Campaign",
+        "AdSet",
+        "Ad",
+        "Creative",
+        "Attention"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-HUB"
+    },
+    {
+      "as_is": "Real compile/validate/create bindings exist; missing decisions/recovery need correction",
+      "evidence_ids": [
+        "L33",
+        "L39"
+      ],
+      "release": "P0",
+      "route": "/trafego/meta/nova",
+      "sections": [
+        "Account",
+        "Identity",
+        "Asset",
+        "Destination",
+        "Objective",
+        "Budget",
+        "Targeting",
+        "Advantage",
+        "Review",
+        "Validation",
+        "Approval",
+        "Receipt"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-CREATE"
+    },
+    {
+      "as_is": "Meta settingsdemo not authority",
+      "evidence_ids": [
+        "L38"
+      ],
+      "release": "P1",
+      "route": "/settings/campaigns?rede=meta",
+      "sections": [
+        "AccountProjectBinding",
+        "Campaign",
+        "Attention"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-SETTINGS"
+    },
+    {
+      "as_is": "Canonical route exists, data demo; no GAM/FX fallback",
+      "evidence_ids": [
+        "L37",
+        "L41",
+        "L42"
+      ],
+      "release": "P1",
+      "route": "/dashboard/campaign/{campaign_ref}?rede=meta",
+      "sections": [
+        "MetricDefinition",
+        "Attribution",
+        "Date",
+        "Currency",
+        "Freshness",
+        "Completeness",
+        "RevenueReconciliation"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-DASHBOARD"
+    },
+    {
+      "as_is": "Route pattern mounted, detail demo; parameter nomenclature mapped to existing router",
+      "evidence_ids": [
+        "L36"
+      ],
+      "release": "P1",
+      "route": "/trafego/meta/campanhas/{campaign_ref}",
+      "sections": [
+        "Identity",
+        "Status",
+        "Budget",
+        "Objective",
+        "AdSets",
+        "History",
+        "Receipts"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-CAMPAIGN"
+    },
+    {
+      "as_is": "Demo -> realbinding",
+      "evidence_ids": [
+        "L36"
+      ],
+      "release": "P1",
+      "route": "/trafego/meta/conjuntos/{adset_ref}",
+      "sections": [
+        "Parent",
+        "Budget",
+        "Targeting",
+        "OptimizationEvent",
+        "Advantage",
+        "Attribution",
+        "Ads",
+        "Receipts"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-ADSET"
+    },
+    {
+      "as_is": "Demo -> realbinding",
+      "evidence_ids": [
+        "L36"
+      ],
+      "release": "P1",
+      "route": "/trafego/meta/anuncios/{ad_ref}",
+      "sections": [
+        "Parent",
+        "Creative",
+        "ConfiguredStatus",
+        "EffectiveStatus",
+        "Delivery",
+        "Policy",
+        "Metrics",
+        "Receipts"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-AD"
+    },
+    {
+      "as_is": "Creative relationships not treeownership",
+      "evidence_ids": [
+        "L36"
+      ],
+      "release": "P1",
+      "route": "/trafego/meta/criativos/{creative_ref}",
+      "sections": [
+        "LibraryStatus",
+        "Preview",
+        "ContentProvenance",
+        "Page",
+        "Destination",
+        "AdAssociations",
+        "Constraints"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-CREATIVE"
+    },
+    {
+      "as_is": "Local browser token input exists; backend-only reference flow target",
+      "evidence_ids": [
+        "L40",
+        "L03"
+      ],
+      "release": "P1",
+      "route": "discreet Meta configuration panel within traffic/settings",
+      "sections": [
+        "Readiness",
+        "Permissions",
+        "AccountScope",
+        "LastCheck",
+        "SafeNextAct"
+      ],
+      "source_authority": "server scoped capability/readmodel/receipt, never fixture fallback",
+      "surface_id": "UX-CONFIG"
+    }
+  ]
+}

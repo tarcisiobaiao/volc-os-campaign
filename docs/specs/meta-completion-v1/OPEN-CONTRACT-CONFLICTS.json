@@ -1,0 +1,345 @@
+{
+  "artifact_id": "OPEN-CONTRACT-CONFLICTS",
+  "automatic_resolution_allowed": false,
+  "conflicts": [
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C01",
+      "contradiction": "v26 can redirect eligible creative to shop by default; current compiler/read-back omit destination_spec.",
+      "evidence_ids": [
+        "L09",
+        "L17"
+      ],
+      "owner_domain": "Provider",
+      "release": "P0",
+      "resolution_required": "Confirm exact input and read mask plus eligibility; implement explicit opt-out recipe or prove noneligibility; otherwise block.",
+      "source_ids": [
+        "META-V26",
+        "META-SHOP"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-01"
+      ],
+      "title": "Shop opt-out/website-only"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C02",
+      "contradiction": "Internal WEBSITE differs from current Traffic provider enum table; omission may infer behavior.",
+      "evidence_ids": [
+        "L07",
+        "L09"
+      ],
+      "owner_domain": "Provider",
+      "release": "P0",
+      "resolution_required": "Versioned omission decision with exact inferred read-back and dependent AdSet validate; do not inject WEBSITE speculatively.",
+      "source_ids": [
+        "META-DESTINATION",
+        "META-ADSET"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-01"
+      ],
+      "title": "Traffic destination_type"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C03",
+      "contradiction": "Fable output absent; content hash, identity, eligibility, provenance and expiry not sealed by current plan.",
+      "evidence_ids": [
+        "L10",
+        "L51"
+      ],
+      "owner_domain": "Creative boundary",
+      "release": "P0",
+      "resolution_required": "Agree shared schema or explicit P0 adapter for existing asset; no creative engine changes.",
+      "source_ids": [
+        "META-IMAGES",
+        "META-LINK"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-02"
+      ],
+      "title": "AssetSupplyManifest unadjudicated"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C04",
+      "contradiction": "120s and name/time cannot prove absence or prevent late dispatch; crossapproval auto-adoption changes intent.",
+      "evidence_ids": [
+        "L18",
+        "L21",
+        "L22"
+      ],
+      "owner_domain": "Ledger",
+      "release": "P0",
+      "resolution_required": "Use persistent dispatch ownership/fencing; never automatic absence closure/repost. Retain unresolved ambiguity for manual evidence binding.",
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-04"
+      ],
+      "title": "No causal absence proof"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C05",
+      "contradiction": "Inherited paused statuses refused; optional Advantage accepted absent; Creative read mask questionable; errors best-effort.",
+      "evidence_ids": [
+        "L16",
+        "L17"
+      ],
+      "owner_domain": "Read-back",
+      "release": "P0",
+      "resolution_required": "Adjudicate field masks and required presence; durable readback states; no success before all critical facts verified.",
+      "source_ids": [
+        "META-ADSET",
+        "META-AD",
+        "META-CREATIVE",
+        "META-AUDIENCE"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-05"
+      ],
+      "title": "Incomplete semantic/status mask"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C06",
+      "contradiction": "Code uses both creation flags to persist validation and access reconciliation/receipt.",
+      "evidence_ids": [
+        "L11",
+        "L12",
+        "L19"
+      ],
+      "owner_domain": "Gates",
+      "release": "P0",
+      "resolution_required": "Split storage/read/reconcile capability from dispatch; opening validation must not enable create.",
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-03"
+      ],
+      "title": "Validation durable receipt opens creation"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C07",
+      "contradiction": "Promoted Pages/readable identity do not attest current advertising rights or selected Instagram identity.",
+      "evidence_ids": [
+        "L51"
+      ],
+      "owner_domain": "Identity",
+      "release": "P0",
+      "resolution_required": "Account/Page task proof and selected placement identity policy; restrict explicit eligible placements if no Instagram identity; new recipe proof required.",
+      "source_ids": [
+        "META-PAGES",
+        "META-INSTAGRAM",
+        "META-PLACEMENT"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-01"
+      ],
+      "title": "Page/Instagram authority"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C08",
+      "contradiction": "Current ingestion loses actual dimensions, attribution meaning and action value identity.",
+      "evidence_ids": [
+        "L25",
+        "L26",
+        "L27"
+      ],
+      "owner_domain": "Metrics",
+      "release": "P1",
+      "resolution_required": "Independent event facts and stable report slice/revision; migrate without sum-over-revisions.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P1-02"
+      ],
+      "title": "LPV conflates ViewContent; observations duplicate"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C09",
+      "contradiction": "Legacy Meta demo reuses noncanonical revenue/FX semantics.",
+      "evidence_ids": [
+        "L37",
+        "L41",
+        "L42",
+        "L43"
+      ],
+      "owner_domain": "Finance",
+      "release": "P1",
+      "resolution_required": "Separate provider-attributed revenue, VOLC realized revenue, ROAS x and excess%; no fallback exchange rate.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P1-05"
+      ],
+      "title": "ROAS ratio vs excess percentage"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C10",
+      "contradiction": "Read counts do not supply event registry or prove dataset/pixel interchangeable; no custom web event shortcut.",
+      "evidence_ids": [
+        "L24",
+        "L49"
+      ],
+      "owner_domain": "Measurement",
+      "release": "P2",
+      "resolution_required": "Discover scoped sources and stable event catalogs with provenance; unavailable unknowns block optimization.",
+      "source_ids": [
+        "META-CUSTOM",
+        "META-PROMOTED"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P2-01"
+      ],
+      "title": "Pixel/Dataset/events discovery contract"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C11",
+      "contradiction": "Legacy event defaults/random IDs/query credential; no demonstrated governed consent and attribution binding.",
+      "evidence_ids": [
+        "L44"
+      ],
+      "owner_domain": "CAPI privacy",
+      "release": "P2",
+      "resolution_required": "Approved legal basis/retention policy required, event lineage preserved; no legal compliance certification in this spec.",
+      "source_ids": [
+        "META-CAPI",
+        "META-CAPI-EVENT",
+        "META-DEDUP"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P2-04"
+      ],
+      "title": "Consent/legal retention not adjudicated"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C12",
+      "contradiction": "Local onboarding uses React token input; blacklist read model retains object_story_id.",
+      "evidence_ids": [
+        "L28",
+        "L40",
+        "L54"
+      ],
+      "owner_domain": "Security",
+      "release": "P1",
+      "resolution_required": "Backend-only reference registration and strict recursive DTO allowlists; migrate onboarding under separate authorized change.",
+      "source_ids": [
+        "META-AUTH"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P1-01"
+      ],
+      "title": "Browser token and raw identifier exposure"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C13",
+      "contradiction": "No official migration/canary proof; flags environment unknown in this mission.",
+      "evidence_ids": [
+        "L45",
+        "L46",
+        "L48"
+      ],
+      "owner_domain": "Governance",
+      "release": "P0",
+      "resolution_required": "Independent code adjudication and exact future authorizations; runbook locked until all gates.",
+      "source_ids": [
+        "META-V26"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-08"
+      ],
+      "title": "Candidate not adjudicated or deployed"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C14",
+      "contradiction": "GET/POST reference sections invert default attribution windows.",
+      "evidence_ids": [
+        "L25"
+      ],
+      "owner_domain": "Provider",
+      "release": "P1",
+      "resolution_required": "Explicit windows/report mode in request+hash; reject default; provider comparison per exact query.",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P1-02"
+      ],
+      "title": "Insights default contradiction"
+    },
+    {
+      "blocks_first_canary": false,
+      "conflict_id": "C15",
+      "contradiction": "Field lists do not establish all Advantage/budget/placement/video/flexible/catalog/rule eligibility.",
+      "evidence_ids": [
+        "L07",
+        "L49"
+      ],
+      "owner_domain": "Provider",
+      "release": "P3",
+      "resolution_required": "Research each recipe with minimum authorized validate/read-back; no combinatorial enum UI.",
+      "source_ids": [
+        "META-ADSET",
+        "META-CREATIVE",
+        "META-PLACEMENT"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P3-01"
+      ],
+      "title": "Advanced recipe combinatorics"
+    },
+    {
+      "blocks_first_canary": true,
+      "conflict_id": "C16",
+      "contradiction": "Creative state ACTIVE is not delivery activation; duplicate creative may reuse existing ID and unpublished post may be created.",
+      "evidence_ids": [
+        "L09",
+        "L16"
+      ],
+      "owner_domain": "Creative semantics",
+      "release": "P0",
+      "resolution_required": "Approve three deliverable nodes PAUSED, Creative library semantics/reuse/post side effects explicitly; no statusPAUSED field on Creative.",
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "status": "OPEN",
+      "task_ids": [
+        "P0-05"
+      ],
+      "title": "Creative PAUSED impossible / provider reuse"
+    }
+  ],
+  "legacy_key_alias": "OPEN_CONTRACICTS",
+  "schema_version": "1.0.0"
+}

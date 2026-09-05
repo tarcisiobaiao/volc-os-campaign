@@ -1,0 +1,845 @@
+{
+  "artifact_id": "OBJECTIVE-MEASUREMENT-MATRIX",
+  "combination_rule": "Only listed complete and adjudicated recipes can compile; do not form Cartesian product of enums. null in recipe is unresolved, never provider omission permission.",
+  "conflict_ids": [
+    "C10",
+    "C11",
+    "C14"
+  ],
+  "event_mapping": [
+    {
+      "eligibility": "actual existing source plus recipe",
+      "event_name": "Lead",
+      "optimization_enum": "LEAD",
+      "source_ids": [
+        "META-PROMOTED"
+      ]
+    },
+    {
+      "eligibility": "actual existing source plus recipe",
+      "event_name": "Purchase",
+      "optimization_enum": "PURCHASE",
+      "source_ids": [
+        "META-PROMOTED"
+      ]
+    },
+    {
+      "event_name": "arbitrary custom website event",
+      "optimization_enum": null,
+      "rule": "Never auto-map to OTHER/custom_event_str or fabricate custom conversion.",
+      "source_ids": [
+        "META-PROMOTED",
+        "META-CUSTOM"
+      ],
+      "status": "RESEARCH_REQUIRED"
+    }
+  ],
+  "measurement_contract": {
+    "authority": "VOLC proposed contract; Meta fields individually sourced",
+    "capi": {
+      "action_source": "Use actual approved origin; P0CAPI none, first web contract literalwebsite; other enum recipes research first.",
+      "dedup": {
+        "event_id": "Generated once by business occurrence owner, persisted and reused through retries; not random on each ingestion.",
+        "identity": "Same event_name + event_id + Pixel/source for same occurrence, across Pixel and server",
+        "source_ids": [
+          "META-DEDUP"
+        ],
+        "window": "Official browser/server rule48h; do not generalize to all ingestion paths or guaranteed exactly-once"
+      },
+      "diagnostics": {
+        "fields": "events_received/messages/trace if officially available; event match quality and dedup diagnostics require separately verified API/UI evidence source",
+        "minimum_proof": "One consented test occurrence with provider Test Events receipt, matching browser/server identity and diagnostics, no campaign activation.",
+        "status": "RESEARCH_REQUIRED for diagnostic endpoint details"
+      },
+      "entry": "Proposed backend event ingestion -> durable minimized outbox -> provider transport; existing CAPI legacy remains isolated until authorized migration",
+      "event_name": "Versioned case-sensitive catalog; reject unknown, never default ViewContent.",
+      "event_source_url": "Website required; authorized verified domain and exact public URL; strip secrets/PII only through approved source normalization before event generation.",
+      "event_time": "UTC integerseconds from occurrence; source META-CAPI-EVENT allows<=7days; future time beyond validated clock allowance quarantined; do not rewrite occurrence to send time.",
+      "privacy": {
+        "audit": "Only refs/hashes/classification/times and minimized provider errors; no user_data or token in advertising ledger/browser.",
+        "consent": "Timestamped policy version/state; revoked or absent blocks collection/dispatch as applicable.",
+        "data_minimization": "Do not send sensitive categories or URL/query PII. Hashing is pseudonymization, not anonymization.",
+        "disable": "Per source capability off stops new delivery; quarantine pending; retain legally required minimal audit; purge governed separately.",
+        "legal_basis": "Explicit controller-approved basis/purpose and processing contract; LGPD adjudication by responsible privacy owner, not inferred consent from token or checkbox.",
+        "retention": "Proposed raw data memory only; encrypted outbox <=7days then minimized receipt; final numeric audit retention requires policy approval before enabling."
+      },
+      "required_envelope": [
+        "schema_version",
+        "occurrence_ref",
+        "project_ref",
+        "event_source_ref",
+        "event_name",
+        "occurred_at",
+        "event_id",
+        "action_source",
+        "event_source_url_if_web",
+        "user_data",
+        "consent_receipt_ref",
+        "purpose_ref",
+        "producer_version",
+        "environment"
+      ],
+      "test_event": "Use provider-supported test_event_code only after field/endpoint verification; test vs production separate credentials capability/source/environment/outbox. It is a backend-only parameter, never campaign optimizer input.",
+      "transport": "Persist occurrence before send; classify acceptance/refusal/ambiguous; safe retry preserves event identity. Batch old/invalid events quarantined individually before sending, not reset event_time.",
+      "user_data": {
+        "missing": "Do not invent match identifiers; do not fingerprint to fill gaps.",
+        "never_hash": [
+          "client_ip_address",
+          "client_user_agent",
+          "fbc",
+          "fbp"
+        ],
+        "normalization": "Field-specific official normalization before SHA256; no generic stringify/hash; exact normalization fixtures required before enabling.",
+        "sha256_required_fields": [
+          "em",
+          "ph",
+          "fn",
+          "ln",
+          "ge",
+          "db",
+          "ct",
+          "st",
+          "zp",
+          "country"
+        ],
+        "sha256_volc_required_provider_recommended": [
+          "external_id"
+        ],
+        "source_ids": [
+          "META-CAPI",
+          "META-CAPI-EVENT"
+        ]
+      },
+      "version": "Current v21 implementation not automatically unsupported; upgrade/test per Graph lifecycle, not Marketing table. No dualsend migration without stable event identity."
+    },
+    "contract_id": "CONTRACT-MEASUREMENT",
+    "custom_conversion_create": {
+      "approval": "Separate administrative act; no campaign creation implicit; no same-name dedup alone",
+      "disable": "Local selection eligibility off, stop CAPI delivery only if separately authorized; no automatic delete/archive",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G03",
+        "G05",
+        "G07",
+        "G12",
+        "G13"
+      ],
+      "provider_fields": "Resolve only fields verified in META-CUSTOM; exact rule DSL and create edge recipe remain blocked by C10.",
+      "readback": "Scoped identity/rule/source/availability; received object may be unavailable/never fired",
+      "required_local_fields": [
+        "source_ref",
+        "account_ref",
+        "project_ref",
+        "rule_ref",
+        "rule_digest",
+        "name",
+        "business_purpose",
+        "policy_receipt_ref",
+        "expected_hash"
+      ]
+    },
+    "discovery": {
+      "event_catalog": "No generic list-all-events endpoint assumed. Resolve verified official discovery capability or backend registry + human provider diagnostic evidence. No invented event if unavailable.",
+      "missing_booleans": "UNKNOWN; never AVAILABLE",
+      "source_edges": {
+        "adspixels": {
+          "as_is": "read in preflight",
+          "identity": "retain provider object kind; Dataset alias only with evidence"
+        },
+        "customconversions": {
+          "as_is": "historical read and count",
+          "desired": "persist scoped source/rule availability and observation"
+        },
+        "datasets": {
+          "as_is": "not established as replacement edge",
+          "status": "RESEARCH_REQUIRED"
+        }
+      },
+      "states": [
+        "OBSERVED_AVAILABLE",
+        "OBSERVED_ARCHIVED",
+        "OBSERVED_UNAVAILABLE",
+        "AVAILABLE_NEVER_FIRED",
+        "STALE",
+        "UNKNOWN",
+        "PERMISSION_DENIED"
+      ]
+    },
+    "optimization": "Compiler receives existing source/event/custom-conversion refs, never creates measurement resources as helper.",
+    "release": "P2",
+    "revenue": "Keep internal order ledger and provider attribution facts separate; reconcile comparable windows/timezone/currency and lineage where legally permitted; mark unmatched and modelled, do not force equality.",
+    "separate_facts": [
+      {
+        "does_not_prove": [
+          "attribution",
+          "dedup",
+          "match quality",
+          "optimization"
+        ],
+        "fact": "EVENT_RECEIVED",
+        "proof": "provider events_received/acceptance for exact batch"
+      },
+      {
+        "does_not_prove": [
+          "same as internal order revenue"
+        ],
+        "fact": "EVENT_ATTRIBUTABLE",
+        "proof": "source/window/domain/consent and provider-attributed report"
+      },
+      {
+        "does_not_prove": [
+          "selectable for all objectives"
+        ],
+        "fact": "CUSTOM_CONVERSION_AVAILABLE",
+        "proof": "scoped nonarchived/nonunavailable observed object"
+      },
+      {
+        "does_not_prove": [
+          "conversion optimization enabled"
+        ],
+        "fact": "OBJECTIVE_SELECTABLE",
+        "proof": "campaign recipe eligibility"
+      },
+      {
+        "does_not_prove": [
+          "attributed sale occurred"
+        ],
+        "fact": "CONVERSION_USED_FOR_OPTIMIZATION",
+        "proof": "AdSet promoted object + goal readback"
+      },
+      {
+        "does_not_prove": [
+          "realized VOLC revenue",
+          "incremental causal lift"
+        ],
+        "fact": "REVENUE_ATTRIBUTED",
+        "proof": "specific action_values definition, window/currency/report basis"
+      }
+    ]
+  },
+  "recipes": [
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+      "billing_event": "IMPRESSIONS",
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "C07"
+      ],
+      "conversion_location": "WEBSITE_INTERNAL",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "NONE",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_TRAFFIC",
+      "official_support": "Supported objective/location/goal individually documented; full exact recipe not remotely validated.",
+      "optimization_goal": "LANDING_PAGE_VIEWS",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "NONE",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-P0-TRAFFIC-LPV",
+      "release": "P0",
+      "required_fields": [
+        "Campaign objective/buying_type/status/categories/sharing",
+        "AdSet campaign/budget/start/targeting/billing/optimization/bid/status",
+        "Creative Page/image/link/copy/CTA",
+        "Ad AdSet/Creative/status"
+      ],
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-DESTINATION",
+        "META-CREATIVE"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "BLOCKED_BY_CONTRACT",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    },
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+      "billing_event": "IMPRESSIONS",
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C02",
+        "C07"
+      ],
+      "conversion_location": "WEBSITE_INTERNAL",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "NONE",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_TRAFFIC",
+      "official_support": "Traffic Website LINK_CLICKS listed; billing/bid exact recipe remains candidate.",
+      "optimization_goal": "LINK_CLICKS",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "NONE",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-TRAFFIC-CLICKS",
+      "release": "P2",
+      "required_fields": [
+        "Same static recipe with explicit optimization change/new approval"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-DESTINATION"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "NOT_IMPLEMENTED",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    },
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+      "billing_event": "IMPRESSIONS",
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C10"
+      ],
+      "conversion_location": "WEBSITE",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "EXISTING_PIXEL",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_LEADS",
+      "official_support": "Leads Website/OFFSITE listed; scoped pixel event eligibility needs provider proof.",
+      "optimization_goal": "OFFSITE_CONVERSIONS",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "PIXEL_STANDARD_LEAD",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-LEADS-WEB",
+      "release": "P2",
+      "required_fields": [
+        "promoted_object.pixel_id",
+        "promoted_object.custom_event_type=LEAD",
+        "verified existing Lead event",
+        "website identity and destination"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-PROMOTED"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "NOT_IMPLEMENTED",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    },
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": null,
+      "billing_event": null,
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C10",
+        "C15"
+      ],
+      "conversion_location": "INSTANT_FORM_INTERNAL",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "EXISTING_FORM",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_LEADS",
+      "official_support": "Instant form/LEAD_GENERATION listed; exact billing/bid/form CTA payload not researched enough to dispatch.",
+      "optimization_goal": "LEAD_GENERATION",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "PAGE_FORM_RECIPE_UNADJUDICATED",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-LEADS-FORM",
+      "release": "P2",
+      "required_fields": [
+        "Page/form access",
+        "lead-form privacy/policy",
+        "exact promoted/creative fields pending official recipe"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-CREATIVE"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "RESEARCH_REQUIRED",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    },
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
+      "billing_event": "IMPRESSIONS",
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C10"
+      ],
+      "conversion_location": "WEBSITE",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "EXISTING_PIXEL",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_SALES",
+      "official_support": "Sales Website/OFFSITE listed; eligible Purchase source, domain and account need proof.",
+      "optimization_goal": "OFFSITE_CONVERSIONS",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "PIXEL_STANDARD_PURCHASE",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-SALES-PURCHASE",
+      "release": "P2",
+      "required_fields": [
+        "promoted_object.pixel_id",
+        "promoted_object.custom_event_type=PURCHASE",
+        "verified existing Purchase event",
+        "value/currency lineage for reporting"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-PROMOTED"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "NOT_IMPLEMENTED",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    },
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": null,
+      "billing_event": "IMPRESSIONS",
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C10",
+        "C15"
+      ],
+      "conversion_location": "WEBSITE",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "EXISTING_PIXEL",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_SALES",
+      "official_support": "VALUE listed, not evidence of account eligibility or required value/bid thresholds.",
+      "optimization_goal": "VALUE",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "PIXEL_VALUE_RECIPE_UNADJUDICATED",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-SALES-VALUE",
+      "release": "P2",
+      "required_fields": [
+        "value optimization eligibility",
+        "event value/currency",
+        "exact supported bid strategy and attribution"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-PROMOTED"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "RESEARCH_REQUIRED",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    },
+    {
+      "advantage": {
+        "audience": "Explicit false for P0 if eligible; advanced must be chosen and verified",
+        "creative": "No unadjudicated transformations or shop redirection",
+        "placements": "Explicit AUTO_ACCEPT_PROVIDER_DEFAULTS decision or researched manual allowlist; not silently omitted"
+      },
+      "attribution": {
+        "optimization": "Explicit recipe decision, AdSet attribution_spec only when official and applicable; not inferred from reporting windows.",
+        "reporting": "Named query contract; explicit windows/report_time; no default; P0 does not require conversion optimization."
+      },
+      "bid_strategy": null,
+      "billing_event": null,
+      "budget_mode": "ABO_DAILY",
+      "conflict_ids": [
+        "C10"
+      ],
+      "conversion_location": "WEBSITE",
+      "creative_requirements": [
+        "AssetSupplyManifest or adjudicated static adapter",
+        "Existing image for P0",
+        "Page and destination consistent",
+        "CTA and text explicit",
+        "Policy receipt current"
+      ],
+      "dangerous_defaults": [
+        "omitted advantage_audience",
+        "omitted placement fields expand to future defaults",
+        "implicit CTA",
+        "shop routing if eligible",
+        "default attribution",
+        "missing sharing/category decision"
+      ],
+      "dispatch_enabled": false,
+      "eligibility": [
+        "active accessible account",
+        "recipe-specific Page/event/asset rights",
+        "current version/region rules",
+        "no unknown semantic defaults"
+      ],
+      "event_source": "EXISTING_SCOPED_SOURCE",
+      "incompatible_fields": [
+        "simultaneous authoritative Campaign and AdSet budgets",
+        "unproven bid strategy/optimization/location combination",
+        "invented promoted object or missing conversion identity",
+        "unapproved enhancements/destination changes"
+      ],
+      "local_validations": [
+        "Strict exact recipe and required fields",
+        "Account/project/Page/source bindings",
+        "Budget integerminor and currency",
+        "Manifest/content/expiry/hash",
+        "Unknown recipe fields refuse before token"
+      ],
+      "objective": "OUTCOME_SALES",
+      "official_support": "custom_conversion_id exists; exact combination with pixel/custom_event_type must be adjudicated, not assumed exclusive.",
+      "optimization_goal": "OFFSITE_CONVERSIONS",
+      "placement": "Selected format and actor eligibility required; null unknown is blocked",
+      "promoted_object": "EXISTING_CUSTOM_CONVERSION",
+      "provider_proof_required": [
+        "Fresh roots validate if supported",
+        "Dependent AdSet/Ad validate with real parents",
+        "Readback actual status/identity/behavior"
+      ],
+      "recipe_id": "RECIPE-SALES-CUSTOM",
+      "release": "P2",
+      "required_fields": [
+        "promoted_object.custom_conversion_id from opaque reference",
+        "source availability/permissions",
+        "approved rule lineage and exact payload recipe"
+      ],
+      "source_ids": [
+        "META-CUSTOM",
+        "META-PROMOTED",
+        "META-ADSET"
+      ],
+      "special_category": {
+        "others": "Separate regional recipe eligibility; not inherited from P0",
+        "p0": []
+      },
+      "status": "RESEARCH_REQUIRED",
+      "ui_required": [
+        "Objective business meaning distinct from optimization event",
+        "Eligibility and blockedreason",
+        "Requested versus observed Advantage",
+        "Attribution and budget consequences"
+      ]
+    }
+  ],
+  "schema_version": "1.0.0",
+  "source_ids": [
+    "META-CUSTOM",
+    "META-PROMOTED",
+    "META-CAPI",
+    "META-CAPI-EVENT",
+    "META-DEDUP",
+    "META-INSIGHTS-EDGE"
+  ]
+}

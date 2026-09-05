@@ -1,0 +1,541 @@
+{
+  "artifact_id": "ADVERSARIAL-REVIEW",
+  "checklist": [
+    {
+      "finding_ref": "AR06",
+      "result": "BLOCKED_UNVERIFIED_FIELDS",
+      "target": "InventedMetaField"
+    },
+    {
+      "finding_ref": "AR01",
+      "result": "CORRECTED_PATH_AND_PROVENANCE",
+      "target": "NonexistentSource"
+    },
+    {
+      "finding_ref": "AR07",
+      "result": "PRODUCT_BLOCKED",
+      "target": "SemanticDefault"
+    },
+    {
+      "finding_ref": "AR10",
+      "result": "PRODUCT_BLOCKED",
+      "target": "MissingAsZeroFalse"
+    },
+    {
+      "finding_ref": "AR17",
+      "result": "REJECTED_FALSE_PROMOTION",
+      "target": "PartialValidateAsComplete"
+    },
+    {
+      "finding_ref": "AR04",
+      "result": "ONE_EXECUTION_CONTRACT_REQUIRED",
+      "target": "ReusableApproval"
+    },
+    {
+      "finding_ref": "AR08",
+      "result": "PRODUCT_BLOCKED",
+      "target": "IncompleteHash"
+    },
+    {
+      "finding_ref": "AR09",
+      "result": "PRODUCT_BLOCKED",
+      "target": "DuplicateRetry"
+    },
+    {
+      "finding_ref": "AR10",
+      "result": "PRODUCT_BLOCKED",
+      "target": "ReadbackAcceptsDivergence"
+    },
+    {
+      "finding_ref": "AR16",
+      "result": "ORDER_PRESERVED",
+      "target": "CreateBeforeLedger"
+    },
+    {
+      "finding_ref": "AR02",
+      "result": "CONTRACT_CORRECTED",
+      "target": "TokenBeforeLocalValidation"
+    },
+    {
+      "finding_ref": "AR15",
+      "result": "NO_P0_ACTIVATION",
+      "target": "AccidentalActivationRoute"
+    },
+    {
+      "finding_ref": "AR08",
+      "result": "HASH_SCOPE_GATES_REQUIRED",
+      "target": "AccountPageAssetMismatch"
+    },
+    {
+      "finding_ref": "AR14",
+      "result": "PRODUCT_BLOCKED",
+      "target": "InventedConversionEvent"
+    },
+    {
+      "finding_ref": "AR19",
+      "result": "EXPLICIT_QUERY_REQUIRED",
+      "target": "IncompatibleAttribution"
+    },
+    {
+      "finding_ref": "AR12",
+      "result": "PRODUCT_BLOCKED",
+      "target": "FlattenedActions"
+    },
+    {
+      "finding_ref": "AR13",
+      "result": "SERVER_AUTHORITY_REQUIRED",
+      "target": "UIAsEligibilityAuthority"
+    },
+    {
+      "finding_ref": "AR05",
+      "result": "BOUNDARY_ONLY",
+      "target": "CreativeEngineReimplemented"
+    },
+    {
+      "finding_ref": "AR13",
+      "result": "SCANNER_PASS_PRODUCT_BOUNDARY_OPEN",
+      "target": "SensitiveBrowserOrJSON"
+    },
+    {
+      "finding_ref": "AR20",
+      "result": "NO_DESTRUCTIVE_COMPENSATION",
+      "target": "UnsafeRollback"
+    },
+    {
+      "finding_ref": "AR09",
+      "result": "PRESERVE_PAUSED_PARENT_AND_AMBIGUITY",
+      "target": "CrashAfterPartialCreation"
+    },
+    {
+      "finding_ref": "AR09",
+      "result": "NO_NAME_TIME_IDENTITY_PROOF",
+      "target": "CreativeWithoutCreatedTime"
+    },
+    {
+      "finding_ref": "AR03",
+      "result": "SIGNED_INPUT_REQUIRED",
+      "target": "OperatorBudgetCeiling"
+    },
+    {
+      "finding_ref": "AR01",
+      "result": "ISOLATED_DOCUMENTARY_TREE",
+      "target": "ContaminatedMainWorktree"
+    },
+    {
+      "finding_ref": "AR17",
+      "result": "DISTINCT_SCOPE_RETAINED",
+      "target": "OfficialVsHermeticProof"
+    }
+  ],
+  "conclusion": "Documentary corrections address internal inconsistencies only. Provider/implementation blockers remain explicit; no new remote proof, runtime or mutation. Structural rechecks after correction are gates, not additional review loops.",
+  "corrective_rounds": 1,
+  "findings": [
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "AS-IS-INVENTORY",
+        "EXECUTION-WORKBREAKDOWN",
+        "RUN-MANIFEST"
+      ],
+      "conclusion": "FIELD source capacities file is capacidades.py, not capacidade.py. UPDATE_STATUS is source-worktree ignored metadata, absent from committedbase.",
+      "decision": "Fix file path; mark graph evidence observed local metadata, no base-commit claim.",
+      "evidence_ids": [
+        "L11"
+      ],
+      "finding_id": "AR01",
+      "severity": "HIGH",
+      "title": "Wrong source path and ignored graph provenance"
+    },
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "G07 marked before any token conflicts with dependent remote validation; journal must precede CREATE POST, not necessarily read/validate secret use.",
+      "decision": "G07 applies immediately before create dispatch; local auth/approval/flags remain before any create-secret resolution.",
+      "evidence_ids": [
+        "L15"
+      ],
+      "finding_id": "AR02",
+      "severity": "MEDIUM",
+      "title": "Secret-order gate overconstraint"
+    },
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "FIRST-PAUSED-CANARY-RUNBOOK"
+      ],
+      "conclusion": "Runbook mentions unpublished post/reuse but authorization template lacks explicit acceptance fields.",
+      "decision": "Add required nullable signed decisions for unpublished post and provider Creative reuse; absent blocks.",
+      "evidence_ids": [
+        "L09"
+      ],
+      "finding_id": "AR03",
+      "severity": "HIGH",
+      "title": "Creative side-effect authorization incomplete"
+    },
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "EXECUTION-WORKBREAKDOWN"
+      ],
+      "conclusion": "First-five tasks have unresolved contracts/dependencies; ready_to_implement_without_external_authority could imply immediate executable payload.",
+      "decision": "Rename to first research/local preparation queue; respect dependencies and authority.",
+      "evidence_ids": [
+        "L46"
+      ],
+      "finding_id": "AR04",
+      "severity": "MEDIUM",
+      "title": "WBS readiness overstatement"
+    },
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "META-COMPLETION-SPEC"
+      ],
+      "conclusion": "Supply includes30 requiredsharedfields but demand only reduced requirements; boundary could be falsely called compatible with Fable.",
+      "decision": "Require shared fields in proposed demand too, with explicit nullable unresolved supply facts; block compile until Supply resolves. Keep C03 open.",
+      "evidence_ids": [
+        "L10"
+      ],
+      "finding_id": "AR05",
+      "severity": "HIGH",
+      "title": "Creative Demand shared fields incomplete"
+    },
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "META-COMPLETION-SPEC",
+        "OFFICIAL-META-API-EVIDENCE"
+      ],
+      "conclusion": "Per-object masks and special fields such as Creative effective_status/event_source_id require narrower proof; grouping cannot imply universal availability.",
+      "decision": "Label registry structural source authority not field-by-field remote proof; perfield decision/blocker rows; no unverified write enabled.",
+      "evidence_ids": [
+        "L17"
+      ],
+      "finding_id": "AR06",
+      "severity": "HIGH",
+      "title": "Grouped field source not exact request-mask proof"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "OPEN-CONTRACT-CONFLICTS"
+      ],
+      "conclusion": "Missing request boolean becomesfalse; automaticplacements and v26shop risk not fully approved/readback.",
+      "decision": "Retain C01/C02/C05/C07; P0-01 and P0-05 must close beforecanary.",
+      "evidence_ids": [
+        "L08"
+      ],
+      "finding_id": "AR07",
+      "severity": "HIGH",
+      "title": "Semantically active defaults"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "No Supply/Demand digest/contentSHA/policyexpiry in currenthash.",
+      "decision": "P0-02 seals allsemanticfields; C03 remainsopen.",
+      "evidence_ids": [
+        "L10"
+      ],
+      "finding_id": "AR08",
+      "severity": "HIGH",
+      "title": "Incomplete plan hash"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "Name/time and120s not causal proof; lateprovidercommit remainspossible; adoptingtwins changesintent.",
+      "decision": "P0-04; no automatic absenceclosure/repost/adoption.",
+      "evidence_ids": [
+        "L18"
+      ],
+      "finding_id": "AR09",
+      "severity": "HIGH",
+      "title": "Duplicate risk in absence/crossapproval recovery"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "Critical missingadvantage/categories accepted; inheritedpausedstatus refused; divergencewritebest-effort.",
+      "decision": "Persist separateverifiedstate; P0-05, preserve returnedID first.",
+      "evidence_ids": [
+        "L16"
+      ],
+      "finding_id": "AR10",
+      "severity": "HIGH",
+      "title": "Readback absence/divergence handling"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "Reconcile/receipt flags and liveassetrecompile can block durable recovery.",
+      "decision": "P0-03/P0-04/P0-05 independentrecoverycapability/frozenrefs.",
+      "evidence_ids": [
+        "L19"
+      ],
+      "finding_id": "AR11",
+      "severity": "HIGH",
+      "title": "Recovery inaccessible with createflag closed"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "META-INSIGHTS-DATA-MODEL"
+      ],
+      "conclusion": "Missing query params, dimensionvalues, LPV conflation, ordinalidentity, observationduplicates and demo finance distortreports.",
+      "decision": "P1-02/P1-05; no positive metricsproof assumed.",
+      "evidence_ids": [
+        "L25"
+      ],
+      "finding_id": "AR12",
+      "severity": "HIGH",
+      "title": "Actions/attribution/ROAS integrity"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "UX-OPERATOR-CONTRACT",
+        "OBJECTIVE-MEASUREMENT-MATRIX"
+      ],
+      "conclusion": "Tokeninput in React exists; readDTO blacklist can expose rawIDs; CAPIlegacy no governedconsent.",
+      "decision": "P1-01/P2-04; actualspec doesnotaccess token or claim currentbrowserboundary perfect.",
+      "evidence_ids": [
+        "L40"
+      ],
+      "finding_id": "AR13",
+      "severity": "HIGH",
+      "title": "Credential/browser/privacy boundary"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "OBJECTIVE-MEASUREMENT-MATRIX"
+      ],
+      "conclusion": "ViewContent/randomID defaults violate occurrence lineage; test acceptance != attribution.",
+      "decision": "P2-04/P2-05 with consent/eventcatalog/immutableid; no campaign customconversion sideeffect.",
+      "evidence_ids": [
+        "L44"
+      ],
+      "finding_id": "AR14",
+      "severity": "HIGH",
+      "title": "CAPI event invention and dedup"
+    },
+    {
+      "adjudication": "REJECTED_WITH_EVIDENCE",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "OfficialCreative enum has libraryACTIVE/IN_PROCESS/WITH_ISSUES/DELETED, noPAUSED.",
+      "decision": "DeliverableCampaign/AdSet/Ad PAUSED only; C16 implementation/disclosure remains open.",
+      "evidence_ids": [
+        "L09"
+      ],
+      "finding_id": "AR15",
+      "severity": "MEDIUM",
+      "title": "Require Creative statusPAUSED"
+    },
+    {
+      "adjudication": "REJECTED_WITH_EVIDENCE",
+      "artifact_refs": [
+        "META-GOVERNED-MUTATION-CONTRACT"
+      ],
+      "conclusion": "Crash after remote POST before ID persistence would lose knownidentity.",
+      "decision": "Keep IDbefore readback and add separate durable verification.",
+      "evidence_ids": [
+        "L15"
+      ],
+      "finding_id": "AR16",
+      "severity": "MEDIUM",
+      "title": "Persist ID only after readback"
+    },
+    {
+      "adjudication": "REJECTED_WITH_EVIDENCE",
+      "artifact_refs": [
+        "META-CAPABILITY-MATRIX"
+      ],
+      "conclusion": "Coverage expressly INDEPENDENT_ROOTS_ONLY; AdSet/Ad never validatedremotely in recordedproof.",
+      "decision": "No statuspromotion ofdependentnodes.",
+      "evidence_ids": [
+        "L06"
+      ],
+      "finding_id": "AR17",
+      "severity": "MEDIUM",
+      "title": "Historical rootvalidate means fulltree valid"
+    },
+    {
+      "adjudication": "REJECTED_WITH_EVIDENCE",
+      "artifact_refs": [
+        "OFFICIAL-META-API-EVIDENCE"
+      ],
+      "conclusion": "Current Graphv26changelog gives Graphv21 futureexpiry; Marketing lifecycle distinct.",
+      "decision": "Keep versionmigration research separate; no unverifiedproductionclaim.",
+      "evidence_ids": [
+        "L44"
+      ],
+      "finding_id": "AR18",
+      "severity": "MEDIUM",
+      "title": "Any CAPI v21 is alreadyunsupported"
+    },
+    {
+      "adjudication": "ACCEPTED_RESEARCH_BLOCKER",
+      "artifact_refs": [
+        "OFFICIAL-META-API-EVIDENCE"
+      ],
+      "conclusion": "Marketing versions summary lag; destination optout mapping incomplete; attributiondefaults inverted betweenreference sections.",
+      "decision": "Use datedv26changelog and explicitquerychoices; no invented shop/destinationpayload; C01/C02/C14.",
+      "evidence_ids": [
+        "L09"
+      ],
+      "finding_id": "AR19",
+      "severity": "HIGH",
+      "title": "Official documentation contradictions"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "FIRST-PAUSED-CANARY-RUNBOOK"
+      ],
+      "conclusion": "DROP rollback destroys receipts aftercanary; guard error suggestingrollback must not become automatedrunbookstep.",
+      "decision": "Freeze dispatch, preserve evidence and use authorized forwardfix; no drop/delete compensation.",
+      "evidence_ids": [
+        "L23"
+      ],
+      "finding_id": "AR20",
+      "severity": "HIGH",
+      "title": "Unsafe destructive rollback"
+    },
+    {
+      "adjudication": "ACCEPTED_PRODUCT_BLOCKER",
+      "artifact_refs": [
+        "EXECUTION-WORKBREAKDOWN",
+        "FIRST-PAUSED-CANARY-RUNBOOK"
+      ],
+      "conclusion": "Existing broad snapshotRPC marks custodyverified; using it forcanary would introduce unrelated authoritywrite.",
+      "decision": "P0-07 requires minimal scoped receiptprojection without broadcofrewrites; fullsyncP1.",
+      "evidence_ids": [
+        "L31"
+      ],
+      "finding_id": "AR21",
+      "severity": "MEDIUM",
+      "title": "P0 minimal synchronization scope"
+    },
+    {
+      "adjudication": "ACCEPTED_DOCUMENTARY_CORRECTION",
+      "artifact_refs": [
+        "OFFICIAL-META-API-EVIDENCE"
+      ],
+      "conclusion": "No immutable externaldoc snapshots retained; URL/date/concept does not establish future unchanged page.",
+      "decision": "Refresh-before-providerproof required, limited source field confidence explicit; not READY.",
+      "evidence_ids": [
+        "L50"
+      ],
+      "finding_id": "AR22",
+      "severity": "MEDIUM",
+      "title": "Source evidence archive limitation"
+    }
+  ],
+  "freeze_scope": "16 substantive inputs before one review; review result itself excluded from selfhash",
+  "frozen_first_draft": [
+    {
+      "bytes": 8378,
+      "file": "docs/specs/meta-completion-v1/AS-IS-ARCHITECTURE.md",
+      "sha256": "1f1547fe46e470388f402db4575952b97ceba80c7c320e76cb1a9f5d20be231e"
+    },
+    {
+      "bytes": 23838,
+      "file": "docs/specs/meta-completion-v1/AS-IS-INVENTORY.json",
+      "sha256": "657ee6e46165692b76150518cb9bbd0921e7f0b33297a63ac37ad1edb8229388"
+    },
+    {
+      "bytes": 2235,
+      "file": "docs/specs/meta-completion-v1/CURATION-HANDOFF.json",
+      "sha256": "639fac9e2b198e677c3f6b044084e8758ece49c4481a989f55876267961801cb"
+    },
+    {
+      "bytes": 73355,
+      "file": "docs/specs/meta-completion-v1/EXECUTION-WORKBREAKDOWN.json",
+      "sha256": "9fe5aefe05366fecea1d847f4f78125484f7578c070487cc7f2f31cc83ec9df7"
+    },
+    {
+      "bytes": 12575,
+      "file": "docs/specs/meta-completion-v1/FIRST-PAUSED-CANARY-RUNBOOK.json",
+      "sha256": "4319ea96654ee2023594746dda09be31ca94204234e7d014a1923e778308b101"
+    },
+    {
+      "bytes": 4214,
+      "file": "docs/specs/meta-completion-v1/HANDOFF.md",
+      "sha256": "36e8b729652411360b0b4ff15bd80f68513641356beb74eb9c60f9a852ecc6ac"
+    },
+    {
+      "bytes": 20929,
+      "file": "docs/specs/meta-completion-v1/META-CAPABILITY-MATRIX.json",
+      "sha256": "5938e04e21ec4ffb98f68aaa8cda0dd8fcafd1dc2d87a631024b710118318389"
+    },
+    {
+      "bytes": 38185,
+      "file": "docs/specs/meta-completion-v1/META-COMPLETION-SPEC.json",
+      "sha256": "ea0bfb67892b8c753de7dcfcbf61f19ed8953eb9a7724d24c3e4bbc5580c4d70"
+    },
+    {
+      "bytes": 18427,
+      "file": "docs/specs/meta-completion-v1/META-GOVERNED-MUTATION-CONTRACT.json",
+      "sha256": "1b11a0fabf4fe470e3ae1588e8e30b2762341460b7833aaf051ccd8129c91c88"
+    },
+    {
+      "bytes": 21489,
+      "file": "docs/specs/meta-completion-v1/META-INSIGHTS-DATA-MODEL.json",
+      "sha256": "01d638a123d6f0a6ab5a857b2b4d7c0b752e4b0e5ffdd474b500fa81835e491f"
+    },
+    {
+      "bytes": 5628,
+      "file": "docs/specs/meta-completion-v1/META-STATE-MACHINE.json",
+      "sha256": "9bdcecf533e9f92c35a499ac1e83161ac44e09612750c51eb41c116a11ad909d"
+    },
+    {
+      "bytes": 34088,
+      "file": "docs/specs/meta-completion-v1/OBJECTIVE-MEASUREMENT-MATRIX.json",
+      "sha256": "0df6ead0ff78fdfe834303465ed1abe002e62d16ca8a0f284ca146825682c960"
+    },
+    {
+      "bytes": 30648,
+      "file": "docs/specs/meta-completion-v1/OFFICIAL-META-API-EVIDENCE.json",
+      "sha256": "205e28f1fba6ca9f6f182d06a540749903b7d0064785a24b7c24263e8714bbc3"
+    },
+    {
+      "bytes": 10822,
+      "file": "docs/specs/meta-completion-v1/OPEN-CONTRACT-CONFLICTS.json",
+      "sha256": "7847bca852cc3e8e1900459452bb53c1679cdc9881e906fa49202822c59d28a7"
+    },
+    {
+      "bytes": 2755,
+      "file": "docs/specs/meta-completion-v1/RUN-MANIFEST.json",
+      "sha256": "bf26f8917a29bdab8d649d276398a436fc3201887acdd4ea2b776fd54eb76b01"
+    },
+    {
+      "bytes": 10068,
+      "file": "docs/specs/meta-completion-v1/UX-OPERATOR-CONTRACT.json",
+      "sha256": "c13dd17435215eec3437f62dd7612d707da8277627f15da4baf69dcd9d0d6ab0"
+    }
+  ],
+  "review_count": 1,
+  "review_id": "REVIEW-ONCE",
+  "reviewer": {
+    "independent_second_model": false,
+    "limitation": "No claim of independent cross-model assurance; no opposing-model CLI spawned.",
+    "mode": "single_agent_documentary_adversarial_review",
+    "model": "gpt-6-astra"
+  },
+  "schema_version": "1.0.0",
+  "status": "COMPLETED_ONE_REVIEW_ONE_CORRECTIVE_ROUND",
+  "verdict": "META_COMPLETION_SPEC_PARTIAL"
+}

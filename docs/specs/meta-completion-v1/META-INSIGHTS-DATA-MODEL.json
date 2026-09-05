@@ -1,0 +1,576 @@
+{
+  "aggregation_guards": [
+    "Same level or explicitly selected single aggregation path; never sum Campaign+AdSet+Ad.",
+    "Same timezone/currency/query-definition/attribution/window and disjoint dates.",
+    "Only latest COMPLETE revision per slice; absent partial slice not zero.",
+    "Reach and frequency nonadditive; estimated flags retained.",
+    "No sum of overlapping attribution windows, actions aliases or parent/child conversions."
+  ],
+  "artifact_id": "META-INSIGHTS-DATA-MODEL",
+  "conflict_ids": [
+    "C08",
+    "C09",
+    "C10",
+    "C11",
+    "C12",
+    "C14"
+  ],
+  "contract_id": "CONTRACT-DATA",
+  "entities": [
+    {
+      "entity_id": "DM-ACCOUNT",
+      "fields": {
+        "account_ref": "opaque public UUID/handle",
+        "account_status": "provider enum value + observed_at",
+        "currency": "ISO4217 provider text, required",
+        "custody_status": "human-authorized state; discovery never verifies custody",
+        "external_account_id": "backend-only text",
+        "project_binding": "explicit separate many-to-many authorized binding",
+        "timezone": "provider IANA timezone, required"
+      },
+      "grain": "one provider account",
+      "notes": "No account mutation in scope; raw provider identity private, not primary public handle.",
+      "primary_or_unique_key": [
+        "provider",
+        "external_account_id"
+      ],
+      "source_ids": [
+        "META-ACCOUNT"
+      ]
+    },
+    {
+      "entity_id": "DM-CAMPAIGN",
+      "fields": {
+        "advantage_observation": "nullable structured observed state",
+        "budget": "optional typed amount and owner",
+        "buying_type": "provider enum",
+        "campaign_ref": "opaque",
+        "configured_status": "nullable text with presence",
+        "effective_status": "nullable text with presence",
+        "is_adset_budget_sharing_enabled": "nullable bool plus presence",
+        "name": "text",
+        "objective": "provider enum",
+        "observed_at": "UTC",
+        "special_ad_categories": "nullable list plus presence",
+        "sync_run_ref": "opaque"
+      },
+      "grain": "one account Campaign current mirror",
+      "notes": "History stores revisions; current mirror never overwrites provenance.",
+      "primary_or_unique_key": [
+        "account_ref",
+        "external_campaign_id"
+      ],
+      "source_ids": [
+        "META-CAMPAIGN"
+      ]
+    },
+    {
+      "entity_id": "DM-ADSET",
+      "fields": {
+        "adset_ref": "opaque",
+        "attribution_spec": "nullable provider definition",
+        "bid_strategy": "nullable enum",
+        "billing_event": "nullable enum",
+        "campaign_ref": "scoped foreign key",
+        "configured_status": "nullable provider status",
+        "daily_budget": "nullable amount_minor",
+        "destination_type": "nullable raw provider enum",
+        "effective_status": "nullable provider status",
+        "end_time": "nullable UTC instant + account timezone",
+        "lifetime_budget": "nullable amount_minor",
+        "name": "text",
+        "observed_at": "UTC",
+        "optimization_goal": "nullable enum",
+        "promoted_object": "backend-only provider mapping and safe projected refs",
+        "start_time": "nullable UTC instant + account timezone",
+        "targeting": "versioned requested/observed structured values"
+      },
+      "grain": "one Campaign child",
+      "notes": "Missing automation remainsUNKNOWN; no inferred destination or event.",
+      "primary_or_unique_key": [
+        "account_ref",
+        "external_adset_id"
+      ],
+      "source_ids": [
+        "META-ADSET",
+        "META-TARGETING"
+      ]
+    },
+    {
+      "entity_id": "DM-AD",
+      "fields": {
+        "ad_ref": "opaque",
+        "adset_ref": "scoped FK",
+        "campaign_ref": "scoped consistency FK",
+        "configured_status": "nullable",
+        "creative_ref": "scoped relationship",
+        "delivery_status": "nullable observation, not inferred solely from status",
+        "effective_status": "nullable",
+        "name": "text",
+        "observed_at": "UTC",
+        "policy_status": "nullable observed reason/source"
+      },
+      "grain": "one AdSet child",
+      "notes": "Ad-Creative association may change through governed edit; retain binding history.",
+      "primary_or_unique_key": [
+        "account_ref",
+        "external_ad_id"
+      ],
+      "source_ids": [
+        "META-AD"
+      ]
+    },
+    {
+      "entity_id": "DM-CREATIVE",
+      "fields": {
+        "asset_refs": "opaque[]",
+        "content_digest": "nullable verified SHA256",
+        "copy": "confidential authorized DTO only",
+        "creative_ref": "opaque",
+        "destination_ref": "opaque",
+        "name": "nullable text",
+        "observed_at": "UTC",
+        "page_ref": "opaque",
+        "provenance": "creation/reuse/source receipt",
+        "provider_behavior": "observed enhancement/destination fields with presence",
+        "status": "library status nullable",
+        "story_identity": "backend-only"
+      },
+      "grain": "one account library object",
+      "notes": "Creative is not necessarily owned by a single Ad; created_time not assumed. Rendering stateACTIVE is not activated delivery.",
+      "primary_or_unique_key": [
+        "account_ref",
+        "external_creative_id"
+      ],
+      "source_ids": [
+        "META-CREATIVE",
+        "META-LINK"
+      ]
+    },
+    {
+      "entity_id": "DM-INSIGHT-SLICE",
+      "fields": {
+        "completeness": "complete|partial|unknown",
+        "date_start": "account-local YYYY-MM-DD",
+        "date_stop": "same date for daily time_increment1",
+        "dimension_values": "sorted actual returned dimension name/value pairs, not requested names",
+        "estimated": "metric-specific bool/unknown",
+        "freshness": "fresh|stale|unknown",
+        "latest_complete_revision_ref": "nullable FK",
+        "level": "account|campaign|adset|ad",
+        "report_definition_hash": "SHA256 of version/fields/windows/report_time/breakdown definitions/attributionmode",
+        "slice_ref": "stable opaque"
+      },
+      "grain": "one provider object and report date slice with exact query/dimensions",
+      "notes": "observed_at must not enter slice identity; overlapping windows/levels are separate not additive.",
+      "primary_or_unique_key": [
+        "provider",
+        "account_ref",
+        "level",
+        "object_ref",
+        "date_start",
+        "date_stop",
+        "account_timezone",
+        "currency",
+        "report_definition_hash",
+        "dimension_values_hash"
+      ],
+      "source_ids": [
+        "META-INSIGHTS-EDGE",
+        "META-BREAKDOWNS"
+      ]
+    },
+    {
+      "entity_id": "DM-INSIGHT-REVISION",
+      "fields": {
+        "clicks": "integer nullable all clicks",
+        "cpc": "decimal nullable observed",
+        "cpm": "decimal nullable observed",
+        "ctr": "decimal nullable observed",
+        "field_presence": "map returned|missing|not_requested|restricted",
+        "frequency": "decimal nullable; nonadditive",
+        "impressions": "nonnegative integer nullable",
+        "inline_link_clicks": "integer nullable distinct provider definition",
+        "observed_at": "UTC",
+        "reach": "nonnegative integer nullable; nonadditive",
+        "response_digest": "sanitized exact normalized response hash",
+        "revision_ref": "opaque",
+        "revision_seq": "monotonic per slice",
+        "spend": "decimal string nullable",
+        "sync_run_ref": "FK"
+      },
+      "grain": "one observation of exact report slice",
+      "notes": "Re-fetch same payload idempotent; changed report restates revision. Promote only after full query completeness, not by maximum timestamp across partial pulls.",
+      "primary_or_unique_key": [
+        "slice_ref",
+        "normalized_response_digest"
+      ],
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "entity_id": "DM-ACTION",
+      "fields": {
+        "action_dimension_values": "actual returned action dimensions",
+        "action_type": "exact provider string; unknown strings retained as unclassified",
+        "attribution_window_key": "returned key or explicitly total_of_query, never guessed requested fallback",
+        "raw_ordinal": "optional diagnostic only, never identity",
+        "source_definition_ref": "nullable approved semantic mapping",
+        "value": "decimal nullable"
+      },
+      "grain": "one action type and attribution dimension per revision",
+      "notes": "Do not sum distinct actions such as landing_page_view and ViewContent or total and child action families.",
+      "primary_or_unique_key": [
+        "revision_ref",
+        "action_type",
+        "attribution_window_key",
+        "action_dimension_values_hash"
+      ],
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "entity_id": "DM-ACTION-VALUE",
+      "fields": {
+        "currency": "provider account currency unless documented alternative",
+        "source_definition_ref": "required before labeling revenue",
+        "value": "decimal nullable",
+        "value_semantics": "provider action_values plus mapped event definition"
+      },
+      "grain": "one attributed monetary/action value per revision and type/window",
+      "notes": "Do not join multiple windows or action families then sum as revenue; remain separate from count.",
+      "primary_or_unique_key": [
+        "revision_ref",
+        "action_type",
+        "attribution_window_key",
+        "action_dimension_values_hash",
+        "currency"
+      ],
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "entity_id": "DM-SYNC-RUN",
+      "fields": {
+        "account_ref": "required",
+        "api_version": "required",
+        "completed_at": "nullableUTC",
+        "coverage": "entities/pages/fields/periods",
+        "cursor_checkpoint": "backend-only opaque cursor",
+        "errors": "sanitized code/subcode/retryclassification",
+        "last_successful_sync_ref": "nullable scopedFK",
+        "page_count": "actual nonnegative int not default0",
+        "project_ref": "required authorization scope",
+        "query_hash": "required",
+        "requested_range": "dates",
+        "started_at": "UTC",
+        "status": "RUNNING|COMPLETE|PARTIAL|FAILED|ABORTED"
+      },
+      "grain": "one scoped read/report operation",
+      "notes": "No COMPLETE until provider pagination done and database acknowledged. Empty complete != unknown partial.",
+      "primary_or_unique_key": [
+        "run_ref"
+      ],
+      "source_ids": [
+        "META-INSIGHTS",
+        "META-RATE"
+      ]
+    },
+    {
+      "entity_id": "DM-MEASUREMENT",
+      "fields": {
+        "availability": "observed separate from optimization eligibility",
+        "eligibility_receipt_ref": "nullable",
+        "event_name": "nullable exact catalog name",
+        "first_fired_time": "nullable",
+        "is_archived": "nullable boolean",
+        "is_unavailable": "nullable boolean",
+        "kind": "pixel|dataset|custom_conversion exact observed kind",
+        "last_fired_time": "nullable",
+        "measurement_ref": "opaque",
+        "name": "nullable",
+        "rule_digest": "nullable",
+        "source_ref": "opaque scoped"
+      },
+      "grain": "one source/custom-conversion observation",
+      "notes": "Do not persist counts only; provider rules confidential/minimized and RLS-protected.",
+      "primary_or_unique_key": [
+        "account_ref",
+        "provider_object_kind",
+        "external_id",
+        "observed_at"
+      ],
+      "source_ids": [
+        "META-CUSTOM",
+        "META-PROMOTED"
+      ]
+    },
+    {
+      "entity_id": "DM-EXECUTION",
+      "fields": {
+        "account_ref": "required",
+        "actor_ref": "required",
+        "approval_ref": "unique FK",
+        "created_at": "UTC",
+        "encrypted_plan_envelope_ref": "backend-only opaque",
+        "plan_hash": "required",
+        "project_ref": "required",
+        "readback_refs": "append-only",
+        "state": "state machine enum",
+        "step_refs": "ordered",
+        "validation_receipt_ref": "FK"
+      },
+      "grain": "one governed execution and its child receipts",
+      "notes": "Exact proposed mutation contract governs step identity and recovery; never merge this ledger with aggregated insights.",
+      "primary_or_unique_key": [
+        "execution_ref"
+      ],
+      "source_ids": [
+        "SUPA-RLS"
+      ]
+    }
+  ],
+  "metric_contract": [
+    {
+      "aggregation": "sum only disjoint slices samecurrency/basis/level/latestrevision",
+      "kind": "provider_decimal",
+      "name": "spend",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "sum disjoint slices",
+      "kind": "provider_integer",
+      "name": "impressions",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "not additive across dates or objects; request provider aggregate",
+      "kind": "provider_estimated",
+      "name": "reach",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "not average of rows; provider comparable aggregate or impressions/reach only samepopulation",
+      "kind": "provider_ratio",
+      "name": "frequency",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "never relabel linkclicks",
+      "kind": "all_clicks",
+      "name": "clicks",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "inline_link_clicks or action link_click separately labeled; not interchangeable",
+      "kind": "explicit_definition",
+      "name": "link_clicks",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "only action_type landing_page_view under homologated definition; no ViewContent",
+      "evidence_ids": [
+        "L26"
+      ],
+      "kind": "action_mapping",
+      "name": "landing_page_views",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "requires event/action mapping and exact attribution; no all-actions total",
+      "kind": "selected_action_definition",
+      "name": "conversions",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "aggregation": "requires approved event/value semantics; provider attribution distinct VOLC realized revenue",
+      "kind": "selected_action_values_definition",
+      "name": "revenue",
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ]
+    },
+    {
+      "authority": "VOLC declared metric using samebasis amounts",
+      "formula": "comparable attributed revenue / spend",
+      "kind": "derived_VOLC",
+      "name": "ROAS",
+      "unit": "x",
+      "zero_denominator": null
+    },
+    {
+      "authority": "VOLC legacy metric, never labeled plain ROAS",
+      "formula": "(comparable revenue / spend - 1) * 100",
+      "kind": "derived_VOLC",
+      "name": "excess_return_pct",
+      "unit": "%",
+      "zero_denominator": null
+    },
+    {
+      "authority": "VOLC derived label must distinguish allclick CPC from linkclick CPC",
+      "formula": "spend / named_click_denominator",
+      "kind": "derived_VOLC_or_observed",
+      "name": "CPC",
+      "unit": "account currency/click",
+      "zero_denominator": null
+    },
+    {
+      "authority": "VOLC explicit derived metric",
+      "formula": "spend * 1000 / impressions",
+      "kind": "derived_VOLC_or_observed",
+      "name": "CPM",
+      "unit": "account currency/1000",
+      "zero_denominator": null
+    },
+    {
+      "authority": "VOLC explicit denominator",
+      "formula": "named_click_denominator * 100 / impressions",
+      "kind": "derived_VOLC_or_observed",
+      "name": "CTR",
+      "unit": "%",
+      "zero_denominator": null
+    },
+    {
+      "authority": "VOLC explicit event definition",
+      "formula": "spend / selected conversion action count",
+      "kind": "derived_VOLC",
+      "name": "CPA",
+      "unit": "account currency/selected event",
+      "zero_denominator": null
+    }
+  ],
+  "migration_reprocessing": "Rebuild canonical insight slices from authoritative provider rereads where stored attribution/dimensions lost; cannot repair lost semantics by rename. Freeze old rows legacy_untrusted, reconcile totals without adding old/new. Forward migration + checkpoint, no DROP of ledger.",
+  "null_policy": "Preserve missing/withheld/notrequested as NULL with reason; provider literal zero is0; empty complete response does not supply unreturned metric values. Ratios undefined ->NULL. Numeric strings parse Decimal, no binary float money.",
+  "report_query": {
+    "async": {
+      "completion": "async_status Job Completed AND async_percent_completion100 then fully paginated results and durable acknowledgement",
+      "job_identity": "query_hash + run_ref; provider report_run_id backend-only temporary",
+      "release": "P1",
+      "source_ids": [
+        "META-INSIGHTS-ASYNC"
+      ],
+      "timeouts": "keep pending/failed, no fabricated empty result"
+    },
+    "attribution_modes": [
+      "EXPLICIT_REPORT_WINDOWS",
+      "ACCOUNT_SETTINGS_SNAPSHOT",
+      "ADSET_UNIFIED_SETTINGS_SNAPSHOT"
+    ],
+    "daily": "time_increment=1; time_ranges forbidden for daily contract because it overrides increment; date_start=date_stop expected per row.",
+    "initial_p1_recipe": {
+      "action_attribution_windows": [
+        "7d_click",
+        "1d_view"
+      ],
+      "action_breakdowns": [
+        "action_type"
+      ],
+      "action_report_time": "impression",
+      "attribution_mode": "EXPLICIT_REPORT_WINDOWS",
+      "breakdowns": [],
+      "fields": [
+        "account_id",
+        "account_currency",
+        "campaign_id",
+        "adset_id",
+        "ad_id",
+        "date_start",
+        "date_stop",
+        "spend",
+        "impressions",
+        "reach",
+        "frequency",
+        "clicks",
+        "inline_link_clicks",
+        "cpc",
+        "cpm",
+        "ctr",
+        "actions",
+        "action_values"
+      ],
+      "level": "ad",
+      "time_increment": 1,
+      "use_account_attribution_setting": false,
+      "use_unified_attribution_setting": false
+    },
+    "initial_recipe_authority": "VOLC explicit reporting choice using documented params; not provider default and not AdSet attribution approval; validate exact query availability before deployment.",
+    "mode_exclusivity": "Only one mode; snapshot setting at query time, hash into report definition; unified may ignore account flag, never send contradictory semantics.",
+    "required": [
+      "account_ref",
+      "project_ref",
+      "api_version",
+      "level",
+      "date_start",
+      "date_stop",
+      "fields",
+      "time_increment",
+      "attribution_mode",
+      "action_report_time",
+      "action_attribution_windows",
+      "breakdowns",
+      "action_breakdowns"
+    ],
+    "source_ids": [
+      "META-INSIGHTS-EDGE",
+      "META-BREAKDOWNS"
+    ]
+  },
+  "retention": {
+    "authority": "Proposed VOLC policy; privacy/security owner must approve before storage production",
+    "capi_raw": "memory_only",
+    "deletion": "Authorized scoped purge after hold/retention checks; preserve nonidentifying audit hashes as legally approved; no automatic provider deletion.",
+    "insight_revisions_days": 400,
+    "operational_receipts_days": 400,
+    "policy_conflict_id": "C11",
+    "secret_retention": "none",
+    "strategic_plan_payload_days": 30
+  },
+  "schema_authority": {
+    "evidence_ids": [
+      "L20",
+      "L27",
+      "L30",
+      "L31"
+    ],
+    "existing": [
+      "supabase/migrations/v15_01_meta_ads_read_model.sql",
+      "supabase/migrations/v15_02_meta_ads_insights.sql",
+      "supabase/migrations/20260904183418_meta_create_paused_executor.sql"
+    ],
+    "new_entities": "Logical contract identifiers, not claims that tables/columns already exist. Executor maps to existing meta tables and authorized forward migration without parallel cofre."
+  },
+  "schema_version": "1.0.0",
+  "security": {
+    "browser": "Allowlisted projected refs/names/metrics/status/presence/freshness; no providerIDs, rawtargetingIDs, signedURLs, headers, user_data, token, rawproviderpayload.",
+    "rls": "FORCE RLS where appropriate plus explicit grants; service role backend only and still enforce account/project scope in application; anon/auth no ledger direct reads/writes.",
+    "rpc": "Least-privilege backend RPCs, fixed search_path, verified actor/account binding, no user_metadata authority; exposed security-definer functions require migration security adjudication.",
+    "views": "Security-invoker or backend-only views; never assume view obeys RLS automatically."
+  },
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "sync_policy": {
+    "checkpoints": "Commit scoped cursor/reportprogress with acknowledged stage; all-page manifest before current promotion.",
+    "deletions": "Tombstone only from authorized explicit remote status or complete scope with adjudicated absence meaning; loss of permission != deleted.",
+    "freshness_slo": "VOLC proposal: operational inventory<=15min during active work; insights daily<=26h; freshness never provider guarantee.",
+    "hierarchy": "Incremental field update where official edge supports; otherwise bounded fullscan, not fabricated updated_since parameter.",
+    "insights": "Daily pull and restatement horizon = max selected attribution window + approved provider-lag buffer; initial30day lookback is VOLC policy, scheduled full-range correction as needed."
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "allowed_output_prefix": "docs/specs/meta-completion-v1/",
+  "api_version_documented": "v26.0",
+  "artifact_id": "RUN-MANIFEST",
+  "artifacts": [
+    "ADVERSARIAL-REVIEW.json",
+    "AS-IS-ARCHITECTURE.md",
+    "AS-IS-INVENTORY.json",
+    "CURATION-HANDOFF.json",
+    "EXECUTION-WORKBREAKDOWN.json",
+    "FIRST-PAUSED-CANARY-RUNBOOK.json",
+    "HANDOFF.md",
+    "META-CAPABILITY-MATRIX.json",
+    "META-COMPLETION-SPEC.json",
+    "META-GOVERNED-MUTATION-CONTRACT.json",
+    "META-INSIGHTS-DATA-MODEL.json",
+    "META-STATE-MACHINE.json",
+    "OBJECTIVE-MEASUREMENT-MATRIX.json",
+    "OFFICIAL-META-API-EVIDENCE.json",
+    "OPEN-CONTRACT-CONFLICTS.json",
+    "RUN-MANIFEST.json",
+    "UX-OPERATOR-CONTRACT.json"
+  ],
+  "artifacts_expected": 17,
+  "authority_order": [
+    "live_code_and_schemas",
+    "human_curation",
+    "roadmap",
+    "existing_real_receipts",
+    "current_official_meta_documentation",
+    "closure_artifacts",
+    "third_party_context_only",
+    "labeled_inference"
+  ],
+  "base_adjudicated_by_bia": false,
+  "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+  "branch": "spec/gpt6-meta-completion-v1",
+  "documentary_commit_identity": "Resolve git HEAD on documentary branch after local commit; self SHA intentionally not embedded.",
+  "documentary_gates": {
+    "administrative_gate_record_update_only": true,
+    "capability_evidence_or_block": "PASS_36_CAPABILITIES",
+    "corrective_rounds": 1,
+    "cross_references": "PASS",
+    "evidence_files_and_lines": "PASS_53_BASE_FILES_PLUS_1_EXPLICIT_SOURCE_METADATA_REFERENCE",
+    "field_authority_tracking": "PASS_162_REGISTERED_FIELDS_WITH_EXPLICIT_UNPROVEN_OR_RESEARCH_BLOCKS_NOT_PROVIDER_CERTIFICATION",
+    "git_diff_check": "PASS_STAGED",
+    "json_parse": "PASS_15_JSON",
+    "mutation_gates": "PASS_ALL_ACTS_GATED",
+    "p0_activation": "FORBIDDEN",
+    "post_commit_gate": "Final terminal must verify one commit, exact parent, documentary scope and clean tree; reported with SHA in final response.",
+    "product_tests": "NOT_RUN_ZERO_PRODUCT_RUNTIME",
+    "schema_versions": "PASS_1.0.0",
+    "scope": "PASS_ONLY_DOCUMENTARY_PREFIX_17_FILES",
+    "secret_scan": "PASS_READ_ONLY_SCANNER_NO_STRONG_PATTERNS",
+    "shared_authorities": "UNTOUCHED",
+    "single_review_count": 1,
+    "source_worktree": "CLEAN_UNTOUCHED",
+    "task_acceptance_and_tests": "PASS_29_TASKS",
+    "task_dependency_dag": "PASS",
+    "unique_ids": "PASS"
+  },
+  "execution_date": "2026-09-05",
+  "external_calls": {
+    "credential_access": 0,
+    "external_mutations": 0,
+    "meta_graph_or_marketing_api": 0,
+    "official_supabase": 0,
+    "product_runtime": 0,
+    "public_official_documentation": true,
+    "push": 0
+  },
+  "graph": {
+    "authority": "navigation_only_until_source_adjudication",
+    "built_at_commit": "1ad7b8a888adeae8d3b1d36d6b3a58d16360ca95",
+    "matches_base": false,
+    "metadata_scope": "source_worktree_ignored_local_file_not_base_tracked",
+    "wiki_index_present": false
+  },
+  "instruction_resolution": [
+    "User output directory overrides ads skill default run directory.",
+    "User forbids graph updates and shared curation writes; emit CURATION-HANDOFF instead.",
+    "User requires GPT-6/Astra; adversarial review is a single local documentary review with no cross-model CLI.",
+    "User already supplied detailed output structure/audience/scope and authorized proceeding; documentary skill outline gate considered satisfied.",
+    "User spec-only restriction overrides Supabase skill implementation/test-query workflow; no database call."
+  ],
+  "main_tree_dirty_at_start": true,
+  "mode": "SPEC_ONLY",
+  "model": {
+    "identifier": "gpt-6-astra",
+    "identity_authority": "user_confirmation",
+    "reasoning_effort": "medium",
+    "runtime_metadata_independently_available": false
+  },
+  "naming_resolution": {
+    "META-INSIGHTS-DATA-son": "META-INSIGHTS-DATA-MODEL.json",
+    "OPEN_CONTRACICTS": "OPEN-CONTRACT-CONFLICTS.json"
+  },
+  "prohibited": [
+    "product_runtime",
+    "secret_access",
+    "provider_api_calls",
+    "official_database_access",
+    "external_mutation",
+    "push",
+    "shared_authority_edits"
+  ],
+  "run_id": "meta-completion-v1-884393b-20260905",
+  "schema_version": "1.0.0",
+  "skills_used": [
+    "ads",
+    "documentation",
+    "documentation-writer",
+    "supabase",
+    "supabase-postgres-best-practices"
+  ],
+  "source_tree_clean_at_start": true,
+  "status": "DOCUMENTATION_COMPLETE_SPEC_PARTIAL",
+  "validation_tools": [
+    "Node standard-library JSON/ID/reference/path/DAG/schema-required-field checks",
+    "python3 scripts/verificar_segredos.py without --redact",
+    "git diff --cached --check",
+    "git status and scoped git diff"
+  ],
+  "verdict": "META_COMPLETION_SPEC_PARTIAL"
+}
