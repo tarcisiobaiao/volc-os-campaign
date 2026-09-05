@@ -36,6 +36,7 @@ from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.seguranca.identidade import Identidade, exigir_admin
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
+from app.trafego.meta_execucao import capacidades as capacidades_meta
 from app.trafego.meta_execucao.capacidades import (
     criacao_liberada,
     ledger_liberado,
@@ -43,6 +44,8 @@ from app.trafego.meta_execucao.capacidades import (
 )
 from app.trafego.meta_execucao.compilador import PlanoCompiladoMeta, compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
+    DESTINO_SHOP_NAO_PROVADO,
     AutorizacaoMeta,
     DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
@@ -201,6 +204,14 @@ async def _compilar(
             asset_refs=asset_refs,
             segredo=segredo,
             declaracoes=declaracoes,
+            # ⚠️ A prova vem da AUTORIZAÇÃO DO SERVIDOR, nunca do corpo do
+            # pedido. Aceitá-la do navegador deixaria o mesmo interessado em
+            # subir a campanha assinar a prova de que ela pode subir.
+            prova_de_destino=(
+                DESTINO_SHOP_CONTA_NAO_ELEGIVEL
+                if capacidades_meta.destino_website_liberado()
+                else DESTINO_SHOP_NAO_PROVADO
+            ),
         )
     return compilar_plano_pausado(plano, referencias)
 

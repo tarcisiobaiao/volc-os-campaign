@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -11,6 +12,7 @@ import pytest
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.compilador import compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
     ManifestoSupplyMeta,
@@ -90,6 +92,7 @@ def referencias() -> ReferenciasMetaResolvidas:
         image_hash="imagemHash_123456",
         page_permission_proven=True,
         placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        shop_redirect_proof=DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
         asset_supply_manifests={"metaasset_exemplo": manifesto},
     )
 
@@ -160,7 +163,6 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
         comum.update({
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
-            "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
             "object_story_spec": {
                 "page_id": "2222222222",
                 "link_data": {
@@ -222,8 +224,11 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
     assert conjunto.payload["targeting"]["publisher_platforms"] == ["facebook"]
     assert "promoted_object" not in conjunto.payload
     assert "status" not in criativo.payload
-    assert criativo.payload["destination_spec"] == {
-        "destination_type": "WEBSITE_AND_SHOP_OPT_OUT"}
+    # ⚠️ NENHUM `destination_spec` no payload: a legibilidade e a escrita do
+    # campo estão `RESEARCH_REQUIRED` na evidência oficial desta lane, e C01
+    # manda não enviar o que não foi provado. A garantia de destino é o
+    # portão `shop_redirect_proof`, cobrado antes do despacho.
+    assert "destination_spec" not in criativo.payload
     assert anuncio.payload["status"] == "PAUSED"
     assert saida.plano_sha256 == compilado().plano_sha256
     publico = json.dumps(saida.publico(), ensure_ascii=False)
@@ -422,3 +427,120 @@ def test_executor_recusa_host_e_versao_nao_fixados() -> None:
         ExecutorMetaPausado(cliente, base_url="https://example.com")
     with pytest.raises(ValueError):
         ExecutorMetaPausado(cliente, api_version="v25.0")
+
+
+# ---------------------------------------------------------------------------
+# C01 — destino website-only e redirecionamento para Shop
+#
+# O contrato mestre adjudicou: nenhum campo não provado é enviado, e a
+# incapacidade de provar que o clique não é desviado para uma Shop BLOQUEIA
+# `create_paused`. As provas abaixo cobrem as duas metades.
+# ---------------------------------------------------------------------------
+
+def test_nenhum_criativo_carrega_campo_de_destino_nao_provado() -> None:
+    """CONTRAPROVA C01-a: nada de `destination_spec`/`destination_type` sai daqui.
+
+    A evidência oficial desta lane marca `creative.destination_spec` como
+    `RESEARCH_REQUIRED` e `remote_behavior_proven: false`. Enviar o campo seria
+    apostar em qual leitura está certa e descobrir no lote — depois de a
+    campanha já ter nascido.
+    """
+    saida = compilado()
+    for operacao in saida.operacoes:
+        assert "destination_spec" not in operacao.payload
+        assert "destination_type" not in operacao.payload
+
+
+def test_sem_prova_de_destino_a_saga_recusa_antes_de_qualquer_post() -> None:
+    """CONTRAPROVA C01-b: a recusa acontece ANTES do primeiro despacho."""
+    referencias_sem_prova = ReferenciasMetaResolvidas(
+        account_id="1234567890",
+        page_id="2222222222",
+        image_hash="imagemHash_123456",
+        page_permission_proven=True,
+        placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        asset_supply_manifests=referencias().asset_supply_manifests,
+    )
+    assert referencias_sem_prova.shop_redirect_proof == "UNPROVEN"
+    compilado_sem_prova = compilar_plano_pausado(plano(), referencias_sem_prova)
+    assert compilado_sem_prova.destino_website_provado is False
+
+    class _NuncaChamado:
+        async def post(self, *a, **k):  # pragma: no cover - a prova é não chegar aqui
+            raise AssertionError("a Meta foi chamada com o destino por provar")
+
+        async def get(self, *a, **k):  # pragma: no cover
+            raise AssertionError("a Meta foi chamada com o destino por provar")
+
+    registro = RegistroEmMemoria()
+    executor = ExecutorMetaPausado(_NuncaChamado(), registro=registro)
+    permissao = AutorizacaoMeta(
+        plano_sha256=compilado_sem_prova.plano_sha256, ator="operador@example.com",
+        approval_id="approval_meta_01",
+        permitir_validate_only=True, permitir_criar_pausada=True)
+    with pytest.raises(ErroDeNascimentoMeta) as erro:
+        asyncio.run(executor.criar_pausada(
+            compilado_sem_prova, SegredoEfemero(TOKEN), permissao))
+    assert erro.value.codigo == "META_SHOP_REDIRECT_UNPROVEN"
+    # Nem o ledger foi tocado: a recusa é anterior ao recibo do primeiro passo.
+    assert registro.eventos == []
+
+
+def test_a_prova_de_destino_participa_do_selo_do_plano() -> None:
+    """CONTRAPROVA C01-c: o selo cobre o destino, então mudar a prova muda o hash.
+
+    Sem isto, uma aprovação obtida com a prova em mãos seria reutilizável por um
+    plano recompilado sem ela — e o selo deixaria de descrever o que foi
+    aprovado.
+    """
+    com_prova = compilar_plano_pausado(plano(), referencias())
+    sem_prova = compilar_plano_pausado(
+        plano(),
+        ReferenciasMetaResolvidas(
+            account_id="1234567890", page_id="2222222222",
+            image_hash="imagemHash_123456", page_permission_proven=True,
+            placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+            asset_supply_manifests=referencias().asset_supply_manifests,
+        ),
+    )
+    assert com_prova.plano_sha256 != sem_prova.plano_sha256
+
+
+def test_leitura_que_revela_desvio_para_shop_e_divergencia() -> None:
+    """CONTRAPROVA C01-d: a v26 pode desviar sozinha, e a leitura precisa pegar.
+
+    Não enviamos o campo — mas a Meta pode devolvê-lo. Um destino de Shop no
+    read-back significa que o clique aprovado não é o clique que vai acontecer.
+    """
+    with pytest.raises(ErroRemotoMeta) as erro:
+        ExecutorMetaPausado._validar_read_back(
+            "creative",
+            {
+                "id": "555", "account_id": "1234567890", "name": "Criativo X",
+                "status": "ACTIVE", "effective_status": "ACTIVE",
+                "destination_spec": {"destination_type": "WEBSITE_AND_SHOP"},
+                "object_story_spec": {"page_id": "2222222222"},
+            },
+            payload={"name": "Criativo X", "object_story_spec": {"page_id": "2222222222"}},
+            identificador="555",
+            ids={},
+            conta_externa="1234567890",
+        )
+    assert erro.value.codigo == "META_READBACK_DIVERGENT"
+    assert "destination_spec.destination_type" in str(erro.value)
+
+
+def test_leitura_sem_o_campo_de_destino_nao_e_divergencia() -> None:
+    """A ausência do campo é o caso NORMAL: não pedimos, a Meta não devolve."""
+    ExecutorMetaPausado._validar_read_back(
+        "creative",
+        {
+            "id": "555", "account_id": "1234567890", "name": "Criativo X",
+            "status": "ACTIVE", "effective_status": "ACTIVE",
+            "object_story_spec": {"page_id": "2222222222"},
+        },
+        payload={"name": "Criativo X", "object_story_spec": {"page_id": "2222222222"}},
+        identificador="555",
+        ids={},
+        conta_externa="1234567890",
+    )

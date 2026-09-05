@@ -34,9 +34,30 @@ FLAG_CRIACAO = "META_CREATE_PAUSED_ENABLED"
 #: chamada — e criar sem recibo é criar sem poder reconciliar depois.
 FLAG_LEDGER = "META_CREATE_LEDGER_WRITE_ENABLED"
 
+#: Declara que a leitura externa de elegibilidade a Shop já foi feita para as
+#: contas deste servidor, e deu não-elegível.
+#:
+#: ## Por que isto é uma autorização de servidor, e não um campo do pedido
+#:
+#: A v26 redireciona o clique de anunciantes elegíveis a Shop. A evidência
+#: oficial recolhida nesta lane NÃO estabelece o campo de opt-out nem a
+#: máscara de leitura (`OFFICIAL-META-API-EVIDENCE.json`, fonte `META-SHOP`:
+#: `RESEARCH_REQUIRED`, `remote_behavior_proven: false`), e o contrato mestre
+#: (C01) proíbe enviar campo não provado e manda bloquear `create_paused`
+#: enquanto a ausência de redirecionamento não for provada.
+#:
+#: Pedir essa confirmação ao OPERADOR seria linhagem autoatestável: a mesma
+#: parte interessada em subir a campanha assinaria a prova. Por isso ela mora
+#: aqui, junto das outras autorizações do servidor — um administrador a abre
+#: DEPOIS de fazer a leitura documentada no runbook, e ela nunca é inferida.
+#:
+#: ⚠️ Ela NÃO é uma quarta permissão de criar. Sozinha não abre nada: a criação
+#: continua exigindo `FLAG_CRIACAO` e `FLAG_LEDGER`.
+FLAG_DESTINO_SHOP = "META_SHOP_REDIRECT_CLEARED"
+
 #: Ordem estável: a lista de bloqueios que a tela mostra não pode dançar entre
 #: dois carregamentos da mesma página.
-FLAGS_DE_CRIACAO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER)
+FLAGS_DE_CRIACAO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER, FLAG_DESTINO_SHOP)
 
 #: A causa de cada bloqueio em linguagem de operador. O NOME DA VARIÁVEL nunca
 #: viaja para o navegador: quem lê a tela precisa saber que autorização falta,
@@ -49,6 +70,12 @@ MOTIVO_DA_FLAG: Mapping[str, str] = {
     FLAG_LEDGER: (
         "O registro durável da criação está fechado neste servidor. Sem ele não há "
         "recibo antes da chamada, e criar sem recibo é criar sem poder reconciliar."
+    ),
+    FLAG_DESTINO_SHOP: (
+        "Ninguém provou que o clique desta conta não pode ser redirecionado para uma "
+        "Shop. Desde a v26 esse desvio é o padrão de contas elegíveis, e o primeiro "
+        "canário só aceita destino website. Um administrador precisa conferir a "
+        "elegibilidade da conta antes de qualquer nascimento."
     ),
 }
 
@@ -70,6 +97,11 @@ def criacao_liberada() -> bool:
 def ledger_liberado() -> bool:
     """Autoriza recibos/aprovação/reconciliação, mas nunca o despacho Meta."""
     return os.environ.get(FLAG_LEDGER) == "1"
+
+
+def destino_website_liberado() -> bool:
+    """Se a leitura de elegibilidade a Shop já foi feita e deu não-elegível."""
+    return os.environ.get(FLAG_DESTINO_SHOP) == "1"
 
 
 def motivos_do_ledger_ausente() -> list[str]:

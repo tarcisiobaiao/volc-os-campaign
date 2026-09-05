@@ -15,7 +15,11 @@ from app.trafego.meta import dominio as meta_dom
 from app.trafego.meta.credenciais import SegredoEfemero
 
 from .compilador import PlanoCompiladoMeta, OperacaoMeta, resolver_dependencias
-from .contrato import AutorizacaoMeta, ErroDeNascimentoMeta
+from .contrato import (
+    MOTIVO_DESTINO_SHOP_NAO_PROVADO,
+    AutorizacaoMeta,
+    ErroDeNascimentoMeta,
+)
 from .registro import RegistroSagaMeta
 
 
@@ -181,7 +185,14 @@ def _mesmo_instante(lido: Any, enviado: Any) -> bool:
 CAMPOS_DE_LEITURA: Mapping[str, str] = {
     "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info,created_time",
     "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec,created_time",
-    "creative": "id,account_id,name,status,effective_status,object_story_spec,destination_spec,asset_feed_spec,degrees_of_freedom_spec",
+    # ⚠️ `destination_spec` SAIU da máscara, e a razão é a mesma que o tirou
+    # do payload: sua legibilidade não está estabelecida
+    # (`OFFICIAL-META-API-EVIDENCE.json`, fonte META-SHOP,
+    # `RESEARCH_REQUIRED`). Um campo inexistente no `fields` faz a Graph
+    # recusar a leitura INTEIRA — e o read-back de todo criativo passaria
+    # a falhar por um campo que ninguém provou que existe. A garantia de
+    # destino é dada antes do despacho, por `shop_redirect_proof`.
+    "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
     "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,created_time",
 }
 
@@ -283,6 +294,15 @@ class ExecutorMetaPausado:
                 "META_DURABLE_RECEIPT_UNAVAILABLE",
                 "criacao Meta exige registro duravel antes de qualquer POST",
             )
+        # ⚠️ O PORTÃO DO DESTINO, ANTES DO PRIMEIRO POST.
+        #
+        # C01 do contrato mestre: "any inability to prove no unauthorized Shop
+        # redirection blocks create_paused". O plano compilado carrega a prova
+        # justamente para que a recusa aconteça aqui — no único ponto por onde
+        # todo despacho passa — e não numa rota que alguém possa contornar.
+        if not plano.destino_website_provado:
+            raise ErroDeNascimentoMeta(
+                "META_SHOP_REDIRECT_UNPROVEN", MOTIVO_DESTINO_SHOP_NAO_PROVADO)
         ids: dict[str, str] = {}
         read_back: dict[str, Mapping[str, Any]] = {}
         tipos: dict[str, str] = {}
@@ -677,13 +697,19 @@ class ExecutorMetaPausado:
             # criado não é o criativo estático que foi aprovado.
             if "asset_feed_spec" not in payload and dados.get("asset_feed_spec"):
                 divergiu("asset_feed_spec")
-            destino_enviado = payload.get("destination_spec")
+            # ⚠️ NADA de `destination_spec` é comparado, porque nada dele é
+            # enviado. Comparar um campo ausente dos dois lados só produziria a
+            # ilusão de conferência.
+            #
+            # O que a leitura AINDA precisa recusar é a redireção que a v26
+            # aplicaria sozinha. Se a Meta devolver o campo — e ela pode, mesmo
+            # sem ele ter sido pedido —, qualquer destino que não seja website
+            # puro para o objeto que o operador aprovou é divergência.
             destino_lido = dados.get("destination_spec")
-            if not isinstance(destino_enviado, Mapping) or not isinstance(destino_lido, Mapping):
-                divergiu("destination_spec")
-                return
-            if destino_lido.get("destination_type") != destino_enviado.get("destination_type"):
-                divergiu("destination_spec.destination_type")
+            if isinstance(destino_lido, Mapping):
+                tipo_lido = str(destino_lido.get("destination_type") or "").upper()
+                if tipo_lido and "SHOP" in tipo_lido:
+                    divergiu("destination_spec.destination_type")
             historia_lida = dados.get("object_story_spec")
             historia_enviada = payload.get("object_story_spec")
             if isinstance(historia_enviada, Mapping):

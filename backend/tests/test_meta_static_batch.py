@@ -13,6 +13,7 @@ from app.trafego.meta import dominio as meta_dom
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
 from app.trafego.meta_execucao.compilador import compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     AutorizacaoMeta,
     DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
@@ -87,6 +88,7 @@ def _refs(quantidade: int = 0) -> ReferenciasMetaResolvidas:
         image_hashes_by_ref=hashes,
         page_permission_proven=True,
         placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        shop_redirect_proof=DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
         asset_supply_manifests=manifestos,
     )
 
@@ -293,7 +295,6 @@ async def test_executor_lote_resolve_cada_criativo_e_readback_por_tipo() -> None
         elif edge == "adcreatives":
             base.update({
                 "status": "ACTIVE", "effective_status": "ACTIVE",
-                "destination_spec": json.loads(dados["destination_spec"]),
                 # A leitura devolve a história inteira, como a Meta devolve.
                 "object_story_spec": json.loads(dados["object_story_spec"]),
             })

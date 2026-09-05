@@ -26,6 +26,7 @@ from app.trafego.meta_execucao.compilador import (
     resolver_dependencias,
 )
 from app.trafego.meta_execucao.contrato import (
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
     ManifestoSupplyMeta,
@@ -78,6 +79,7 @@ def _refs() -> ReferenciasMetaResolvidas:
     return ReferenciasMetaResolvidas(
         account_id="1234567890", page_id="2222222222", image_hash="imagemHash_123456",
         page_permission_proven=True, placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        shop_redirect_proof=DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
         asset_supply_manifests={"metaasset_exemplo": manifesto})
 
 
@@ -264,6 +266,7 @@ def test_recibo_de_politica_expirado_nao_compila() -> None:
         account_id="1234567890", page_id="2222222222",
         image_hash="imagemHash_123456", page_permission_proven=True,
         placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+        shop_redirect_proof=DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
         asset_supply_manifests={"metaasset_exemplo": manifesto},
     )
     with pytest.raises(ErroDeNascimentoMeta) as erro:

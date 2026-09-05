@@ -16,6 +16,39 @@ class ErroDeNascimentoMeta(ValueError):
 
 _CTA = {"LEARN_MORE", "APPLY_NOW", "SIGN_UP", "GET_QUOTE", "CONTACT_US"}
 
+#: As duas únicas respostas honestas sobre redirecionamento para Shop.
+#:
+#: ## Por que isto não é um campo do pedido
+#:
+#: A v26 passou a redirecionar o clique de anunciantes elegíveis a Shop, e a
+#: tentação é declarar o contrário no payload. A evidência oficial recolhida
+#: para esta lane recusa esse caminho: em
+#: `docs/specs/meta-completion-v1/OFFICIAL-META-API-EVIDENCE.json` a fonte
+#: `META-SHOP`, sobre `creative.destination_spec`, está marcada
+#: `confidence: RESEARCH_REQUIRED`, `impact: P0_BLOCKING` e
+#: `remote_behavior_proven: false` — "exact writable/readable shop opt-out
+#: placement not established here". O contrato mestre adjudicado diz o mesmo em
+#: C01: "no unproven destination_spec field is sent, and any inability to prove
+#: no unauthorized Shop redirection blocks create_paused".
+#:
+#: Então a ausência de prova NÃO vira um campo inventado no pedido. Ela vira um
+#: bloqueio nomeado do ato de CRIAR — e só dele. Compilar e validar continuam
+#: abertos, porque `validate_only` não cria nada e é por ele que a prova
+#: externa será obtida.
+DESTINO_SHOP_NAO_PROVADO = "UNPROVEN"
+DESTINO_SHOP_CONTA_NAO_ELEGIVEL = "ACCOUNT_NOT_SHOP_ELIGIBLE_PROVEN"
+
+PROVAS_DE_DESTINO_WEBSITE: frozenset[str] = frozenset({
+    DESTINO_SHOP_NAO_PROVADO,
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
+})
+
+MOTIVO_DESTINO_SHOP_NAO_PROVADO = (
+    "ninguém provou que o clique desta conta não pode ser redirecionado para uma "
+    "Shop. Enquanto a prova não existir, criar é recusado — validar continua "
+    "liberado, e é por ele que a prova será obtida."
+)
+
 # Gramática dos marcadores que o compilador resolve para IDs reais entre os
 # passos da saga. Texto do operador nunca pode assumir essa forma: o payload
 # aprovado e hasheado ficaria diferente do payload efetivamente enviado.
@@ -353,6 +386,7 @@ class ReferenciasMetaResolvidas:
     image_hashes_by_ref: Mapping[str, str] = field(default_factory=dict)
     page_permission_proven: bool = False
     placement_identity_mode: str = "UNPROVEN"
+    shop_redirect_proof: str = DESTINO_SHOP_NAO_PROVADO
     asset_supply_manifests: Mapping[str, ManifestoSupplyMeta] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -388,6 +422,13 @@ class ReferenciasMetaResolvidas:
             raise ErroDeNascimentoMeta(
                 "META_PLACEMENT_IDENTITY_UNPROVEN",
                 "os posicionamentos não estão restritos à identidade de Página provada")
+        # ⚠️ Valor fora do vocabulário é recusado AQUI. Uma string inventada que
+        # passasse adiante seria lida como prova por qualquer comparação
+        # `!= UNPROVEN` escrita depois.
+        if self.shop_redirect_proof not in PROVAS_DE_DESTINO_WEBSITE:
+            raise ErroDeNascimentoMeta(
+                "META_SHOP_REDIRECT_PROOF_INVALID",
+                "a prova de destino website-only não pertence ao vocabulário fechado")
         manifestos = dict(self.asset_supply_manifests)
         for referencia, manifesto in manifestos.items():
             ref = _referencia(str(referencia), "asset_ref")

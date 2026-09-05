@@ -230,7 +230,6 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
         variacao = PLANO["variations"][0]
         return {**comum, "name": variacao["creative_name"], "status": "ACTIVE",
                 "effective_status": "ACTIVE",
-                "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
                 "object_story_spec": {
                     "page_id": PAGINA_EXTERNA,
                     "link_data": {
@@ -513,12 +512,17 @@ class _CredencialFalsa:
     token = TOKEN
 
 
-def _abrir(monkeypatch, ledger: _LedgerEmMemoria, *, criacao=True, ledger_flag=True):
+def _abrir(monkeypatch, ledger: _LedgerEmMemoria, *, criacao=True, ledger_flag=True,
+           destino_flag=True):
     """Liga o ambiente hermético inteiro: macOS, flags, Keychain, rede, ledger."""
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     for nome, ligada in (
         ("META_CREATE_PAUSED_ENABLED", criacao),
         ("META_CREATE_LEDGER_WRITE_ENABLED", ledger_flag),
+        # A leitura externa de elegibilidade a Shop, declarada feita. É a
+        # terceira autorização do servidor, e o ambiente hermético a liga junto
+        # das outras para poder exercitar a saga inteira.
+        ("META_SHOP_REDIRECT_CLEARED", destino_flag),
         ("META_VALIDATE_ONLY_ENABLED", True),
     ):
         if ligada:
@@ -534,7 +538,8 @@ def _abrir(monkeypatch, ledger: _LedgerEmMemoria, *, criacao=True, ledger_flag=T
 def _fechar_tudo(monkeypatch):
     """Servidor sem autorização nenhuma, com armadilhas no lugar dos recursos."""
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
-    for nome in ("META_CREATE_PAUSED_ENABLED", "META_CREATE_LEDGER_WRITE_ENABLED"):
+    for nome in ("META_CREATE_PAUSED_ENABLED", "META_CREATE_LEDGER_WRITE_ENABLED",
+                 "META_SHOP_REDIRECT_CLEARED"):
         monkeypatch.delenv(nome, raising=False)
     for modulo in (trafego_meta_criacao, trafego_meta_validacao):
         monkeypatch.setattr(
@@ -572,7 +577,7 @@ async def _aprovar(cliente: TestClient, ledger: _LedgerEmMemoria, plano: dict[st
     ("rota", "codigo", "quantidade"),
     [
         ("aprovar", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
-        ("criar-pausada", "META_CREATE_PAUSED_BLOCKED", 2),
+        ("criar-pausada", "META_CREATE_PAUSED_BLOCKED", 3),
         ("reconciliar", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
         ("recibo", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
     ],
@@ -603,14 +608,20 @@ def test_flags_fechadas_recusam_antes_de_keychain_banco_ou_rede(
 
 
 def test_uma_flag_aberta_nao_basta_para_criar(monkeypatch) -> None:
-    """A criação exige as DUAS autorizações; nenhuma delas sozinha serve."""
+    """A criação exige as TRÊS autorizações; nenhuma delas sozinha serve.
+
+    ⚠️ A terceira — a prova de que o clique não pode ser desviado para uma Shop
+    — entrou junto com C01. Ela não é uma permissão de criar a mais: é a
+    precondição de destino que a v26 tornou obrigatória, e um servidor que
+    abrisse só as duas primeiras nasceria com o destino por provar.
+    """
     _fechar_tudo(monkeypatch)
     monkeypatch.setenv("META_CREATE_PAUSED_ENABLED", "1")
     resposta = _cliente().post("/api/trafego/meta/local/criacao/criar-pausada", json={
         "approval_id": "approval-0001", "plano_sha256_esperado": "a" * 64})
     assert resposta.status_code == 409
     assert resposta.json()["detail"]["codigo"] == "META_CREATE_PAUSED_BLOCKED"
-    assert len(resposta.json()["detail"]["autorizacoes_ausentes"]) == 1
+    assert len(resposta.json()["detail"]["autorizacoes_ausentes"]) == 2
 
 
 def test_validate_only_ligado_nao_abre_a_criacao(monkeypatch) -> None:
@@ -641,6 +652,7 @@ def test_capacidades_declaram_a_criacao_liberada_quando_as_duas_flags_abrem(monk
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     monkeypatch.setenv("META_CREATE_PAUSED_ENABLED", "1")
     monkeypatch.setenv("META_CREATE_LEDGER_WRITE_ENABLED", "1")
+    monkeypatch.setenv("META_SHOP_REDIRECT_CLEARED", "1")
     corpo = _cliente().get("/api/trafego/meta/local/criacao/capacidades").json()
     assert corpo["create_paused"] == "ENABLED"
     # Liberar a criação NUNCA libera a ativação.

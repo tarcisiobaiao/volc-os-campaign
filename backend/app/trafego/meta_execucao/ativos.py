@@ -15,6 +15,8 @@ from app.trafego.meta.adaptador import AdaptadorMetaSomenteLeitura, ErroDeLeitur
 from app.trafego.meta.credenciais import SegredoEfemero
 
 from .contrato import (
+    DESTINO_SHOP_NAO_PROVADO,
+    PROVAS_DE_DESTINO_WEBSITE,
     DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
     ManifestoSupplyMeta,
@@ -249,12 +251,14 @@ class ResolvedorAtivosMeta:
         page_ref: str,
         asset_ref: str,
         segredo: SegredoEfemero,
+        prova_de_destino: str = DESTINO_SHOP_NAO_PROVADO,
     ) -> ReferenciasMetaResolvidas:
         return await self.resolver_lote(
             account_ref=account_ref,
             page_ref=page_ref,
             asset_refs=(asset_ref,),
             segredo=segredo,
+            prova_de_destino=prova_de_destino,
         )
 
     async def resolver_lote(
@@ -265,7 +269,28 @@ class ResolvedorAtivosMeta:
         asset_refs: Sequence[str],
         segredo: SegredoEfemero,
         declaracoes: Mapping[str, DeclaracaoPoliticaAtivoMeta] | None = None,
+        prova_de_destino: str = DESTINO_SHOP_NAO_PROVADO,
     ) -> ReferenciasMetaResolvidas:
+        """Resolve conta, Página e peças. NÃO inventa a prova de destino.
+
+        ⚠️ `prova_de_destino` nasce `UNPROVEN` e o resolvedor NUNCA a promove
+        sozinho. Não existe, na evidência oficial desta lane, uma leitura
+        estabelecida que prove que o clique da conta não pode ser redirecionado
+        para uma Shop: `OFFICIAL-META-API-EVIDENCE.json` marca a fonte
+        `META-SHOP` como `RESEARCH_REQUIRED` e `remote_behavior_proven: false`.
+
+        Ler uma aresta inventada e chamar o silêncio dela de prova seria a
+        mesma falha que o resto deste módulo evita em `videos_indisponiveis`:
+        confundir "não consegui ler" com "não existe". Enquanto a leitura
+        oficial não for estabelecida, quem chama fica com `UNPROVEN`, a
+        compilação e o `validate_only` continuam abertos e apenas o DESPACHO é
+        recusado — que é exatamente o que C01 manda.
+        """
+        if prova_de_destino not in PROVAS_DE_DESTINO_WEBSITE:
+            raise ErroDeNascimentoMeta(
+                "META_SHOP_REDIRECT_PROOF_INVALID",
+                "a prova de destino website-only não pertence ao vocabulário fechado",
+            )
         referencias = tuple(dict.fromkeys(str(item or "").strip() for item in asset_refs))
         if not referencias or len(referencias) > 10 or any(not item for item in referencias):
             raise ErroDeNascimentoMeta(
@@ -305,6 +330,7 @@ class ResolvedorAtivosMeta:
             },
             page_permission_proven=True,
             placement_identity_mode="FACEBOOK_ONLY_PAGE_PROVEN",
+            shop_redirect_proof=prova_de_destino,
             asset_supply_manifests=manifestos,
         )
 

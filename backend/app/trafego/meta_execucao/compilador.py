@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from .contrato import (
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
+    DESTINO_SHOP_NAO_PROVADO,
     PLACEHOLDER_DE_DEPENDENCIA,
     ErroDeNascimentoMeta,
     ManifestoSupplyMeta,
@@ -51,6 +53,9 @@ class PlanoCompiladoMeta:
     asset_supply_manifests: tuple[ManifestoSupplyMeta, ...] = ()
     estado_ao_nascer: str = "PAUSED"
     api_version: str = "v26.0"
+    #: Viaja com o plano porque o executor só recebe o plano compilado, e é ele
+    #: quem precisa recusar o despacho. Entra no hash: o selo cobre o destino.
+    shop_redirect_proof: str = DESTINO_SHOP_NAO_PROVADO
 
     @property
     def conta_externa(self) -> str:
@@ -68,6 +73,11 @@ class PlanoCompiladoMeta:
         """
         return tuple(op.chave for op in self.operacoes)
 
+    @property
+    def destino_website_provado(self) -> bool:
+        """Se o despacho pode acontecer sem redirecionamento não autorizado."""
+        return self.shop_redirect_proof == DESTINO_SHOP_CONTA_NAO_ELEGIVEL
+
     def publico(self) -> Mapping[str, Any]:
         return {
             "account_ref": self.account_ref,
@@ -75,6 +85,8 @@ class PlanoCompiladoMeta:
             "api_version": self.api_version,
             "plano_sha256": self.plano_sha256,
             "estado_ao_nascer": self.estado_ao_nascer,
+            "shop_redirect_proof": self.shop_redirect_proof,
+            "destino_website_provado": self.destino_website_provado,
             "asset_supply": [item.prova_publica() for item in self.asset_supply_manifests],
             "operacoes": [
                 {
@@ -179,9 +191,25 @@ def compilar_plano_pausado(
         creative = {
             "name": variacao.creative_name,
             "object_story_spec": story,
-            # v26: contas elegíveis com Shop passam a WEBSITE_AND_SHOP por
-            # padrão. O opt-out oficial mantém todo clique no website aprovado.
-            "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
+            # ⚠️ NENHUM `destination_spec` É ENVIADO, e a ausência é a decisão.
+            #
+            # A v26 redireciona o clique de anunciantes elegíveis a Shop, e a
+            # correção óbvia seria declarar o opt-out aqui. A evidência oficial
+            # desta lane não sustenta esse campo: `META-SHOP` em
+            # `OFFICIAL-META-API-EVIDENCE.json` está `RESEARCH_REQUIRED` /
+            # `P0_BLOCKING` / `remote_behavior_proven: false` — "exact
+            # writable/readable shop opt-out placement not established here" — e
+            # a política de autoridade do mesmo arquivo declara todo campo
+            # registrado NÃO despachável nesta missão.
+            #
+            # Enviar um campo que a Meta talvez não aceite faria o payload
+            # aprovado divergir do payload aceito, e um enum inventado seria
+            # recusado no lote — depois do despacho da campanha. O contrato
+            # mestre (C01) fecha a questão: nada não provado é enviado, e a
+            # incapacidade de provar bloqueia CRIAR, não compilar.
+            #
+            # O bloqueio mora em `shop_redirect_proof`, que viaja no plano e é
+            # cobrado pelo executor antes do primeiro POST.
         }
         ad = {
             "name": variacao.ad_name,
@@ -214,6 +242,9 @@ def compilar_plano_pausado(
         "api_version": "v26.0",
         "account_ref": plano.account_ref,
         "destination_url": plano.destination_url,
+        # O selo cobre o DESTINO, e a prova de destino é parte dele: um plano
+        # aprovado com a prova em mãos não pode ser recriado sem ela.
+        "shop_redirect_proof": referencias.shop_redirect_proof,
         "asset_supply": [item.prova_publica() for item in manifestos],
         "operations": [
             {
@@ -230,6 +261,7 @@ def compilar_plano_pausado(
         destination_url=plano.destination_url,
         operacoes=operacoes,
         asset_supply_manifests=manifestos,
+        shop_redirect_proof=referencias.shop_redirect_proof,
         plano_sha256=hashlib.sha256(_canonico(materia).encode("utf-8")).hexdigest(),
     )
 

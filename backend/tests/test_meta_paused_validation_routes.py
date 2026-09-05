@@ -13,7 +13,10 @@ from app.routers import meta_local, trafego_meta_validacao
 from app.seguranca.identidade import Identidade, exigir_admin
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
-from app.trafego.meta_execucao.contrato import ErroDeNascimentoMeta
+from app.trafego.meta_execucao.contrato import (
+    DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
+    ErroDeNascimentoMeta,
+)
 from app.trafego.meta_execucao.registro import RegistroSagaMetaSupabase
 from app.trafego.meta.read_model import RepositorioMetaReadModelSupabase
 
@@ -500,6 +503,7 @@ def _campanha_compilada() -> dict[str, Any]:
         account_id='123456789', page_id='99887766',
         image_hash='hashImagem_123456', instagram_actor_id=None,
         page_permission_proven=True, placement_identity_mode='FACEBOOK_ONLY_PAGE_PROVEN',
+        shop_redirect_proof=DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
         asset_supply_manifests={pedido.asset_ref: manifesto},
     )
     compilado = compilar_plano_pausado(trafego_meta_validacao._plano(pedido), referencias)
