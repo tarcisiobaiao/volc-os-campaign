@@ -1,0 +1,36 @@
+{
+  "schema": "VolcCreativeStudioApprovalProvenance.v1",
+  "artefato": "APPROVAL-AND-PROVENANCE-CONTRACT.json",
+  "versao": "1.0.0",
+  "base_factual": {"rota": "backend/app/routers/criativos.py:719-841", "schema": "criativo_aprovacao (v11_01:559-591), gatilhos criativo_aprovacao_peca_pronta_tg e criativo_aprovacao_subject_existe_tg", "ui": "src/components/criativos/aprovacoes/*"},
+  "decisao": {
+    "valores": ["aprovado", "ajuste_solicitado", "rejeitado"],
+    "motivo": "obrigatorio em ajuste_solicitado e rejeitado (backend 400 ESTUDIO.motivo_obrigatorio; CHECK criativo_aprovacao_negativa_tem_motivo); opcional em aprovado",
+    "escopo": {"subject": "master (pacote existe no schema, sem runtime)", "versao": "criativo_master.versao (fixa em 1 hoje)", "finalidade": "slug de criativo_finalidade escolhido na UI (P0 substitui texto livre); backend continua resolvendo finalidade_id por slug e gravando o texto", "bytes": "content_hash exibido na decisao e gravado por referencia ao master (imutavel por gatilho); a UI mostra 'voce esta aprovando o arquivo <hash curto>, WxH, bytes'"},
+    "validade": "sem expiracao no schema; a UI mostra 'vale para esta versao e finalidade'; expiracao por autorizacao de terceiro e P1 (supply chain POLICY-03)",
+    "plataforma_e_copy": "nao fazem parte da aprovacao do master hoje; aprovacao de pacote (asset + copy + destino) e P1 sobre criativo_pacote (subject_tipo=pacote ja permitido)",
+    "identidade": "campo 'identidade de terceiro' aparece como fato: 'gate nao executado' (bloqueia midia_paga) ate P1",
+    "impacto_em_renditions": "a aprovacao e do master; renditions apontam para o master (rendition.master_id). Uma rendition reaproveitada de outro job (peca_reaproveitada) herda a aprovacao do master porque e o mesmo arquivo; um novo master (bytes diferentes) nao herda nada",
+    "ator_e_instante": "gravados pelo servidor (identidade.sub, agora()); nunca enviados pelo cliente",
+    "revogacao": {"rota": "POST /assets/{id}/aprovacoes/{aprovacao_id}/revogar (admin)", "ui": "acao no historico com confirmacao de escopo e motivo (motivo nao e persistido pela rota atual: UI_GAP aceitavel em P0, campo `ressalvas` jsonb pode receber em P1)", "efeito": "vigente volta a aguardando; linha permanece com revogada_em/revogada_por"},
+    "lote": {"P0": "N decisoes individuais em sequencia com barra de resultado por item (falha parcial explicita)", "P1": "endpoint de lote opcional (API_GAP) se a latencia justificar"}
+  },
+  "procedencia_exibida": {
+    "campos": [
+      {"campo": "motor + versao", "fonte": "criativo_master.motor/motor_versao", "exibicao": "nome legivel do motor (parque.motores por slug) + versao do adaptador"},
+      {"campo": "execucao", "fonte": "criativo_job.procedencia_execucao", "valores": "Produzido aqui | Observado (fabrica externa) | Nao apurada"},
+      {"campo": "hash do conteudo", "fonte": "content_hash", "exibicao": "12 chars + titulo completo + copiar"},
+      {"campo": "hash do insumo", "fonte": "insumo_hash", "exibicao": "12 chars; rotulado 'hash do insumo, nao o texto'"},
+      {"campo": "prompt sanitizado", "fonte": "criativo_master.insumo_sanitizado (coluna existe; nao sai no DTO)", "exibicao": "NAO exibido (decisao de contrato existente: prompt nao atravessa a fronteira); P2 pode expor para admin com allowlist explicita — CONTRACT_CONFLICT registrado"},
+      {"campo": "brand pack", "fonte": "brand_pack_id + brand_pack_versao", "exibicao": "nome + versao (nunca id)"},
+      {"campo": "custo", "fonte": "rendition.custo_usd (sempre null no Gemini) e job.custo_estimado_usd", "exibicao": "'estimado 0,04 USD (referencia do provider); medido: nao apurado'"},
+      {"campo": "licenca / credito / disclosure / sintetico", "fonte": "criativo_master", "exibicao": "valores ou 'nao declarado'; sintetico=true por default → 'Gerado por modelo'"},
+      {"campo": "direitos por insumo", "fonte": "criativo_master_direito (sem escritor)", "exibicao": "'nenhum insumo de terceiro registrado' com aviso 'registro nao apurado' ate P2"},
+      {"campo": "gates", "fonte": "criativo_master_gate (sem escritor) / recibo da bancada", "exibicao": "'nenhum gate executado sobre este master' (Estudio) ou lista PASS/WARN/FAIL (bancada, ensaio)"},
+      {"campo": "politica de identidade", "fonte": "inexistente", "exibicao": "'Gate de identidade de terceiro: nao executado. Bloqueia midia paga.'"},
+      {"campo": "origem externa", "fonte": "job.origem_externa (observado)", "exibicao": "fabrica, identificador do build, hash do artefato, congelado em, observado em"}
+    ],
+    "proibicoes": ["nunca inferir autoria quando procedencia_execucao e null", "nunca mostrar caminho/bucket", "nunca colapsar 'nao declarado' em 'sem restricao'"]
+  },
+  "policy_receipt_futuro": {"fonte": "docs/specs/creative-supply-chain-v1/POLICY-AND-PROVENANCE-CONTRACT.json (POLICY-01..08, cpr_)", "posicao_desta_spec": "adotar integralmente quando implementado (P1, WBS-P01); a UI deste spec ja reserva a regiao 'Politica e direitos' com os cinco valores de decisao e bbox sobre o preview + lista textual equivalente", "release": "P1"}
+}

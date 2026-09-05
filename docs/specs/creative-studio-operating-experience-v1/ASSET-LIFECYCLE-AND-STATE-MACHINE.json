@@ -1,0 +1,39 @@
+{
+  "schema": "VolcCreativeStudioAssetLifecycle.v1",
+  "artefato": "ASSET-LIFECYCLE-AND-STATE-MACHINE.json",
+  "versao": "1.0.0",
+  "principio": "Quatro maquinas reais (job, rendition, revisao, conexao) e um eixo derivado (destino). Nenhuma maquina nova e criada no frontend; o lifecycle exibido e projecao das colunas existentes. Reserva/consumo (eixo do supply chain CSC-DEC-11) fica declarado como P2 e nao aparece como estado ate existir.",
+  "maquinas": [
+    {"id": "SM-JOB", "fonte": "criativo_job.estado + dominio.estado_do_lote (dominio.py:245-274)", "estados": ["draft", "queued", "running", "partial", "succeeded", "failed", "cancelled"], "transicoes": [
+      {"de": "(criacao)", "para": "queued", "gatilho": "POST /jobs 201", "evento": "aceito"},
+      {"de": "queued", "para": "running", "gatilho": "despacho local (execucao.py:403-421)", "evento": "iniciando"},
+      {"de": "queued", "para": "failed", "gatilho": "despacho indisponivel (execucao.py:318)", "evento": "fim", "falha": "obrigatoria (CHECK criativo_job_falha_coerente)"},
+      {"de": "running", "para": "succeeded|partial|failed|cancelled", "gatilho": "_fechar por estado_do_lote", "evento": "fim"},
+      {"de": "partial|failed|cancelled|queued", "para": "queued", "gatilho": "POST /jobs/{id}/retry (admin; pode_retentar)", "evento": "retry", "regra_ui": "so oferecido se houver peca faltando nao permanente (job/pecas.ts:68-100)"},
+      {"de": "queued|running", "para": "(cancelado_pedido_em)", "gatilho": "POST /jobs/{id}/cancel (admin)", "evento": "cancelando", "regra_ui": "estado derivado 'cancelando' ate cancelado_em"},
+      {"de": "running", "para": "cancelled|partial|failed", "gatilho": "_confirmar_cancelamento entre pecas", "evento": "fim"}
+    ], "terminais": ["partial", "succeeded", "failed", "cancelled"], "proibido": ["terminal → terminal sem retry", "succeeded → retry (TransicaoInvalida 409)"]},
+    {"id": "SM-RENDITION", "fonte": "criativo_rendition.estado", "estados": ["pendente", "gerando", "pronta", "falhou", "cancelada"], "transicoes": [
+      {"de": "pendente", "para": "gerando", "evento": "gerando(slot)"},
+      {"de": "gerando", "para": "pronta", "evento": "peca_pronta(slot) | peca_reaproveitada(slot)", "invariante": "storage_chave, content_hash, master_id, concluida_em nao nulos (CHECK criativo_rendition_pronta_tem_arquivo)"},
+      {"de": "gerando", "para": "falhou", "evento": "peca_falhou(slot)", "invariante": "erro_codigo, erro_em, erro_permanente nao nulos"},
+      {"de": "pendente|gerando", "para": "cancelada", "evento": "fim (cancelado)"},
+      {"de": "falhou|cancelada", "para": "gerando", "evento": "retry → gerando(slot)"}
+    ], "ui": "tile por slot: skeleton (pendente/gerando) → imagem (pronta) → erro (falhou) → riscado (cancelada); mudanca de estado = crossfade 200 ms"},
+    {"id": "SM-REVISAO", "fonte": "criativo_aprovacao vigente por (subject_id, versao, finalidade)", "estados": ["aguardando", "aprovado", "ajuste_solicitado", "rejeitado"], "transicoes": [
+      {"de": "aguardando", "para": "aprovado|ajuste_solicitado|rejeitado", "gatilho": "POST /assets/{id}/aprovacoes (admin)", "invariante": "peca pronta (gatilho criativo_aprovacao_peca_pronta_tg); motivo nas negativas"},
+      {"de": "qualquer decisao", "para": "aguardando", "gatilho": "POST .../revogar (admin) — mantem historico", "ui": "nova acao P0"},
+      {"de": "decisao vigente", "para": "409 decisao_duplicada", "gatilho": "segunda decisao sem revogar", "ui": "oferece Revogar em vez de 'recarregue'"}
+    ], "escopo": "por finalidade: um master pode estar aprovado para interno e aguardando para google_display"},
+    {"id": "SM-CONEXAO", "fonte": "useCriativosEventos (cliente)", "estados": ["abrindo", "aberta", "reconectando", "encerrada_por_termino", "encerrada_por_ociosidade", "parada_apos_falhas"], "regras": ["quadro fim com estado terminal → encerrada_por_termino", "quadro fim com estado nao terminal (ociosidade 600 s) → reabre do cursor sem contar tentativa", "quadro fim com estado desconhecido → conta tentativa; apos 5 → parada_apos_falhas com acao 'Reler o trabalho'"]},
+    {"id": "SM-STORAGE", "fonte": "bancada/armazenamento_verificado.py:78 e gatilho da v11_03 (nao aplicada)", "estados": ["LOCAL", "UPLOADED_UNVERIFIED", "VERIFIED_OK", "VERIFIED_MISMATCH"], "ui": "so no Laboratorio/recibo da bancada; o caminho do Estudio (storage local) nao expõe este eixo ate o bucket existir (P1)"}
+  ],
+  "eixo_derivado_destino": {
+    "fonte": "calculado no SERVIDOR (novo endpoint P0: GET /assets/{id}/destinos) a partir de: fatos medidos do master (largura, altura, bytes, mime, duracao), regua do canal (criativo_exigencia_de_canal + tetos), finalidade aprovada vigente, natureza (volc_os|observado), estado do consumidor (manifesto estatico por release) e vinculos existentes (criativo_pacote/criativo_entrega)",
+    "valores": ["compativel", "incompativel", "adaptacao_necessaria", "bloqueado", "disponivel", "ja_utilizado", "reservado", "vinculo_pendente"],
+    "regras_em_ordem": ["natureza != producao → bloqueado:natureza", "consumidor sem runtime → bloqueado:consumidor_indisponivel (com release)", "finalidade midia_paga sem gate de politica → bloqueado:gate_nao_executado", "sem aprovacao vigente para a finalidade → compativel|incompativel (regua) mas nao disponivel", "aprovado + regua ok → disponivel", "pacote rascunho existente → vinculo_pendente", "entrega sucesso → ja_utilizado", "reserva ativa (P2) → reservado"],
+    "classificacao_de_gap": "API_GAP (endpoint novo), sem migration: le tabelas existentes"
+  },
+  "lifecycle_do_asset_para_o_operador": ["produzido (master criado; rendition pronta)", "aguardando revisao", "aprovado para <finalidade> | ajuste pedido | rejeitado", "disponivel para <destino> | bloqueado (motivo)", "vinculado (pacote) | utilizado (entrega) — P0 Display, demais por release", "arquivado (criativo_master.arquivado_em; sem rota hoje: P1 API_GAP)"],
+  "mapeamento_para_supply_chain": {"REQUESTED": "rendition pendente", "GENERATING": "gerando", "GENERATED_UNVERIFIED": "pronta sem gate (hoje todas)", "TECHNICALLY_INVALID": "fora_da_dimensao|nao_normalizada (derivado)", "POLICY_BLOCKED": "gate_nao_executado (declarado)", "AWAITING_HUMAN_REVIEW": "aguardando", "APPROVED": "aprovado", "AVAILABLE": "disponivel", "RESERVED": "P2", "CONSUMED": "ja_utilizado", "PROVIDER_REJECTED": "entrega falhou", "STALE": "P2", "REVOKED": "aprovacao revogada → aguardando", "ARCHIVED": "arquivado", "UNKNOWN": "leitura falhou"}
+}

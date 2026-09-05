@@ -1,0 +1,623 @@
+{
+  "schema": "VolcCreativeStudioAsIsInventory.v1",
+  "artefato": "AS-IS-INVENTORY.json",
+  "versao": "1.0.0",
+  "base_factual": {
+    "commit": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c",
+    "branch_origem": "origin/execution/volc-os-operacao-80-20",
+    "escrito_em": "2026-09-05"
+  },
+  "classificacoes_permitidas": [
+    "PROVEN_RUNTIME",
+    "IMPLEMENTED_UNPROVEN",
+    "PARTIAL",
+    "UI_ONLY",
+    "BACKEND_ONLY",
+    "MOCK",
+    "STUB",
+    "LEGACY",
+    "DUPLICATE_AUTHORITY",
+    "NOT_IMPLEMENTED",
+    "BLOCKED_EXTERNAL"
+  ],
+  "regra_de_leitura": "PROVEN_RUNTIME exige codigo + teste + configuracao + persistencia + consumidor no SHA; IMPLEMENTED_UNPROVEN e codigo com teste hermetico sem prova ponta a ponta no ambiente alvo. Ausencia de evidencia nao e ausencia de capacidade: cada linha diz o que faltou ver.",
+  "itens": [
+    {
+      "id": "INV-01",
+      "capacidade": "Motor de imagem full_llm (Gemini)",
+      "categoria": "motor_imagem",
+      "classificacao": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "services/creative_engine/motores/gemini_imagem.py:140-303",
+        "backend/tests/test_criativo_execucao.py (18 testes com motor dublê)",
+        "supabase/migrations/v11_02_parque_criativo.sql:764-768 (prova: job real de 28/08/2026, tres formatos, execucao local)"
+      ],
+      "o_que_falta_para_proven": "job real registrado no Supabase oficial a partir do ambiente de producao; hoje a producao tinha zero jobs (docs/design/RECONCILIACAO-ESTUDIO-2026-08-28.md §3) e o despacho e recusado em serverless (backend/app/criativo/bancada/despacho.py:245-268)",
+      "consumidor": "backend/app/routers/criativos.py:323-406"
+    },
+    {
+      "id": "INV-02",
+      "capacidade": "Motor tipografico local (bancada)",
+      "categoria": "motor_imagem",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "local/hermetico; natureza `local`, nao publicavel",
+      "evidencia": [
+        "backend/app/criativo/bancada/adaptadores/tipografico.py:180-300",
+        "backend/tests/test_criativo_bancada.py (100 testes)",
+        "backend/tests/test_criativo_golden_imagem.py (23 testes, golden versionado)"
+      ],
+      "consumidor": "backend/app/routers/criativos_execucao.py:239-286; src/components/criativos/laboratorio/Producao.tsx"
+    },
+    {
+      "id": "INV-03",
+      "capacidade": "Motor PNG local sem dependencias (bancada)",
+      "categoria": "motor_imagem",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "local/hermetico; natureza `local`",
+      "evidencia": [
+        "backend/app/criativo/bancada/adaptadores/png_local.py:57-120",
+        "backend/tests/test_criativo_bancada.py"
+      ],
+      "consumidor": "mesmo de INV-02"
+    },
+    {
+      "id": "INV-04",
+      "capacidade": "Motor de video Remotion hermetico (bancada)",
+      "categoria": "motor_video",
+      "classificacao": "IMPLEMENTED_UNPROVEN",
+      "escopo_da_prova": "golden de video roda apenas com node e sandbox-exec presentes (backend/tests/test_criativo_golden_video.py:82 skipif); natureza `local`",
+      "evidencia": [
+        "backend/app/criativo/bancada/adaptadores/remotion.py:93-140, 310-420",
+        "backend/tests/test_criativo_runtime_remotion.py (13 testes)",
+        "deploy/creative-worker/remotion-runtime (referenciado em remotion.py:139)"
+      ],
+      "consumidor": "bancada; nenhuma rota do Estudio cria job de video (src/pages/criativos/BriefingDeVideoPage.tsx:4-14)"
+    },
+    {
+      "id": "INV-05",
+      "capacidade": "Leitura de build de video observado (fabrica externa)",
+      "categoria": "motor_video",
+      "classificacao": "BLOCKED_EXTERNAL",
+      "detalhe": "codigo e testes existem; depende de VOLC_FACTORY_RAIZ acessivel ao servidor (backend/app/criativo/video_observado.py:84,316-330); testes com fabrica sao skipif (test_criativo_video_observado.py:64)",
+      "evidencia": [
+        "backend/app/criativo/video_observado.py",
+        "backend/app/criativo/video_ponte.py:113-200",
+        "backend/app/routers/criativos.py:850-883"
+      ],
+      "consumidor": "src/pages/criativos/{BriefingDeVideoPage,LeituraDeVideoPage,JobPage}.tsx"
+    },
+    {
+      "id": "INV-06",
+      "capacidade": "PRENSA (typography_only, deterministic_graphics, prensa_hybrid)",
+      "categoria": "motor_imagem",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "catalogada como `executado_externo` (v11_02:769-782); nenhum adaptador no repositorio; copia integral proibida (gemini_imagem.py:15-19)",
+      "evidencia": [
+        "supabase/migrations/v11_02_parque_criativo.sql:740-745",
+        "docs/creative-engines/motores-de-imagem.json (integration_state.prensa_adapter_implemented=false)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-07",
+      "capacidade": "photo_preserved e full_llm_then_prensa",
+      "categoria": "modo",
+      "classificacao": "NOT_IMPLEMENTED",
+      "evidencia": [
+        "supabase/migrations/v11_02_parque_criativo.sql:783-792 (componentes_observados / planejado)",
+        "src/components/criativos/briefing/contrato.ts:96-129 (desabilitados com motivo)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-08",
+      "capacidade": "Adaptador FunnelForge de imagem (gpt-image via gerador injetado)",
+      "categoria": "adaptador",
+      "classificacao": "BACKEND_ONLY",
+      "detalhe": "sem consumidor no Estudio; proporcoes nao batem com Display (comentario do proprio arquivo)",
+      "evidencia": [
+        "volc_ads/criativo/adaptadores/funnelforge_imagem.py:1-30"
+      ],
+      "consumidor": "nenhum no Estudio"
+    },
+    {
+      "id": "INV-09",
+      "capacidade": "Adaptador falso de motor",
+      "categoria": "adaptador",
+      "classificacao": "MOCK",
+      "evidencia": [
+        "volc_ads/criativo/adaptadores/falso.py"
+      ],
+      "consumidor": "testes"
+    },
+    {
+      "id": "INV-10",
+      "capacidade": "Parametros aceitos pelo briefing de imagem",
+      "categoria": "parametros",
+      "classificacao": "PROVEN_RUNTIME",
+      "detalhe": "projetoTitulo(1-200), objetivo(0-2000), mensagem(1-2000), audiencia(0-500|null), brandPackId(uuid|null), modo(full_llm apenas), slots(1-6 dentre 4), destinosPretendidos(0-12, texto livre nao validado contra catalogo)",
+      "evidencia": [
+        "backend/app/routers/criativos.py:183-191",
+        "backend/app/criativo/execucao.py:107-242",
+        "backend/tests/test_criativo_estudio.py"
+      ],
+      "consumidor": "src/components/criativos/briefing/contrato.ts:240-252"
+    },
+    {
+      "id": "INV-11",
+      "capacidade": "Catalogo de formatos executaveis",
+      "categoria": "formatos",
+      "classificacao": "DUPLICATE_AUTHORITY",
+      "detalhe": "4 slots no executor (dominio.py:82-123) e no frontend (criativos.ts:576-613); 7 no banco (v11_02:805-840); 6 envelopes em destinos.py:172-237. GET /parque expoe `executavelAgora` e `divergencias` (parque.py:138-214)",
+      "evidencia": [
+        "backend/app/criativo/dominio.py:82-123",
+        "src/types/criativos.ts:576-613",
+        "supabase/migrations/v11_02_parque_criativo.sql:805-840",
+        "volc_ads/criativo/destinos.py:172-237"
+      ],
+      "consumidor": "briefing (4), laboratorio (7 com marca)"
+    },
+    {
+      "id": "INV-12",
+      "capacidade": "Proporcoes e limites por canal (Display, Demand Gen, PMax, Video, Search)",
+      "categoria": "requisitos",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "validacao local; Display e Demand Gen com validate_only remoto em 01/09/2026 (spec Google multichannel)",
+      "evidencia": [
+        "volc_ads/criativo/requisitos.yaml:64-329",
+        "volc_ads/criativo/validacao.py:65-338",
+        "supabase/migrations/v11_02_parque_criativo.sql (criativo_exigencia_de_canal, 18 linhas)"
+      ],
+      "consumidor": "volc_ads/criativo_ponte.py; laboratorio compatibilidade (receita.ts:227)"
+    },
+    {
+      "id": "INV-13",
+      "capacidade": "Custo por peca",
+      "categoria": "custo",
+      "classificacao": "PARTIAL",
+      "detalhe": "somente estimativa de referencia (0,039 USD/imagem) em custo_estimado_usd; custo_real_usd sempre NULL por desenho (execucao.py:206-208; gemini_imagem.py:65-76); bancada: motores locais declaram `sem_custo_de_provider`",
+      "evidencia": [
+        "backend/app/criativo/execucao.py:840-845",
+        "src/components/criativos/comum/formato.ts:51-80 (custoDoJobLegivel separa estimado de apurado)"
+      ],
+      "consumidor": "Home, JobPage, AtivoPage"
+    },
+    {
+      "id": "INV-14",
+      "capacidade": "Job duravel com idempotencia por conteudo",
+      "categoria": "jobs",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "hermetico (repositorio dublê) + schema provado em cluster descartavel (scripts/provar-ciclo-v11.sh)",
+      "evidencia": [
+        "backend/app/criativo/dominio.py:159-212",
+        "backend/app/criativo/persistencia.py:290-316",
+        "backend/tests/test_criativo_estudio.py::test_a_mesma_submissao_produz_a_mesma_chave"
+      ],
+      "consumidor": "criarJobDeImagem (criativosApi.ts:374-388, header X-Criativo-Idempotente)"
+    },
+    {
+      "id": "INV-15",
+      "capacidade": "Eventos do job e stream SSE com cursor",
+      "categoria": "eventos",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "hermetico; vocabulario de fases: aceito, iniciando, gerando, peca_pronta, peca_falhou, peca_reaproveitada, retry, cancelando, fim; percentual sempre null",
+      "evidencia": [
+        "backend/app/criativo/execucao.py:239,421,457,571,627,662,718,744,770,789,814",
+        "backend/app/routers/criativos.py:496-570",
+        "src/hooks/useCriativosEventos.ts:50-62 (5 tentativas, escada 1-15s)",
+        "src/components/criativos/__tests__/fluxo-de-eventos.test.ts"
+      ],
+      "consumidor": "JobPage/PainelDeFase",
+      "lacuna": "FASE_LEGIVEL (job/progresso.ts:23-45) nao conhece iniciando, peca_pronta, peca_falhou, peca_reaproveitada, retry, cancelando, fim: caem no fallback humanizado"
+    },
+    {
+      "id": "INV-16",
+      "capacidade": "Progresso real (sem percentual inventado)",
+      "categoria": "progresso",
+      "classificacao": "PROVEN_RUNTIME",
+      "evidencia": [
+        "src/components/criativos/job/progresso.ts:78-100",
+        "backend/tests/test_criativo_execucao.py::test_nenhum_evento_carrega_percentual_inventado"
+      ],
+      "consumidor": "PainelDeFase"
+    },
+    {
+      "id": "INV-17",
+      "capacidade": "Cancelamento (pedido vs confirmacao)",
+      "categoria": "cancelamento",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "hermetico; a confirmacao so acontece entre pecas do laco sincrono (execucao.py:434-440)",
+      "evidencia": [
+        "backend/app/criativo/execucao.py:780-814",
+        "src/components/criativos/job/pecas.ts:129-186"
+      ],
+      "consumidor": "JobPage"
+    },
+    {
+      "id": "INV-18",
+      "capacidade": "Retomada / retry preservando pecas prontas",
+      "categoria": "retomada",
+      "classificacao": "PROVEN_RUNTIME",
+      "evidencia": [
+        "backend/app/criativo/dominio.py:277-298",
+        "backend/app/criativo/execucao.py:748-778",
+        "backend/tests/test_criativo_execucao.py::test_retry_so_toca_a_peca_que_faltou"
+      ],
+      "consumidor": "JobPage (ofertaDeRetry)"
+    },
+    {
+      "id": "INV-19",
+      "capacidade": "Renditions (uma por slot por job)",
+      "categoria": "renditions",
+      "classificacao": "PROVEN_RUNTIME",
+      "detalhe": "unique(job_id, slot) impede variacoes multiplas do mesmo slot (v11_01:504); enquadramento registrado (nativo|resize|cover_crop|recomposto|nao_normalizado)",
+      "evidencia": [
+        "supabase/migrations/v11_01_estudio_criativo.sql:460-542",
+        "backend/app/criativo/apresentacao.py:58-94"
+      ],
+      "consumidor": "PecaDoJob"
+    },
+    {
+      "id": "INV-20",
+      "capacidade": "Armazenamento de bytes",
+      "categoria": "armazenamento",
+      "classificacao": "PARTIAL",
+      "detalhe": "local em disco por padrao (armazenamento.py:238-320); Supabase Storage implementado e desarmado por bucket ausente (armazenamento.py:385-402); maquina de conferencia UPLOADED_UNVERIFIED→VERIFIED_OK|MISMATCH provada em Python e no gatilho da v11_03 nao aplicada",
+      "evidencia": [
+        "backend/app/criativo/armazenamento.py",
+        "backend/app/criativo/bancada/armazenamento_verificado.py:78-160",
+        "backend/tests/test_criativo_storage_verificado.py (52 testes)"
+      ],
+      "consumidor": "Executor; bancada"
+    },
+    {
+      "id": "INV-21",
+      "capacidade": "Preview por link assinado curto",
+      "categoria": "preview",
+      "classificacao": "PROVEN_RUNTIME",
+      "detalhe": "TTL de minutos; UI renova uma vez em onError (Preview.tsx:38-73); video da fabrica com Range (criativos.py:933-991)",
+      "evidencia": [
+        "backend/app/criativo/armazenamento.py:20-60",
+        "backend/app/routers/criativos.py:891-931",
+        "src/components/criativos/comum/Preview.tsx"
+      ],
+      "consumidor": "Grade, PecaDoJob, AtivoPage, Aprovacoes"
+    },
+    {
+      "id": "INV-22",
+      "capacidade": "Aprovacao humana por (master, versao, finalidade)",
+      "categoria": "aprovacao",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "hermetico + gatilhos provados em cluster descartavel",
+      "detalhe": "decisao aprovado|ajuste_solicitado|rejeitado; motivo obrigatorio nas negativas; indice de vigencia; revogacao por rota (criativos.py:804-841) SEM cliente no frontend; finalidade e texto livre na UI (Decisao.tsx:42-48) e resolvida por slug no backend",
+      "evidencia": [
+        "backend/app/routers/criativos.py:719-841",
+        "supabase/migrations/v11_01_estudio_criativo.sql:559-591, 713-779",
+        "src/components/criativos/aprovacoes/*"
+      ],
+      "consumidor": "AprovacoesPage, AtivoPage"
+    },
+    {
+      "id": "INV-23",
+      "capacidade": "Brand Packs",
+      "categoria": "brand_pack",
+      "classificacao": "PARTIAL",
+      "detalhe": "tabela e leitura existem; nenhuma rota de criacao/edicao; tokens nao sao lidos pelo motor Gemini (insumo = objetivo+mensagem+audiencia, execucao.py:829-839); UI e somente leitura",
+      "evidencia": [
+        "backend/app/criativo/persistencia.py:722-727",
+        "backend/app/routers/criativos.py:247-252",
+        "src/pages/criativos/BrandPacksPage.tsx:1-16"
+      ],
+      "consumidor": "briefing (id apenas)"
+    },
+    {
+      "id": "INV-24",
+      "capacidade": "Receitas/templates (Laboratorio)",
+      "categoria": "templates",
+      "classificacao": "PARTIAL",
+      "detalhe": "compilacao e validacao de receita no cliente contra o parque (receita.ts:139-464); producao de teste via bancada local; sem persistencia de receita (tabelas de template nao existem; PLANO-v11_03 mudou de assunto)",
+      "evidencia": [
+        "src/components/criativos/laboratorio/*",
+        "supabase/migrations/PLANO-v11_03.md:10-30"
+      ],
+      "consumidor": "LaboratorioPage (fora do Layout)"
+    },
+    {
+      "id": "INV-25",
+      "capacidade": "Biblioteca de ativos (listar, filtrar, paginar, detalhe)",
+      "categoria": "biblioteca",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "hermetico com isolamento por dono",
+      "detalhe": "filtro `destino` recusado (criativos.py:634-643); filtro `estado` aplicado apos leitura com limite x4 (criativos.py:611-634); sem selecao multipla, sem inspetor, sem comparacao, sem ordenacao",
+      "evidencia": [
+        "backend/app/routers/criativos.py:581-717",
+        "src/pages/criativos/BibliotecaPage.tsx",
+        "src/components/criativos/biblioteca/*"
+      ],
+      "consumidor": "BibliotecaPage"
+    },
+    {
+      "id": "INV-26",
+      "capacidade": "Procedencia por master (motor, versao, hash do insumo, brand pack, custo, licenca, credito, disclosure, sintetico)",
+      "categoria": "procedencia",
+      "classificacao": "PROVEN_RUNTIME",
+      "detalhe": "licenca/credito/disclosure nunca sao preenchidos pelo executor de imagem (execucao.py nao grava); `procedenciaExecucao` null = nao apurada",
+      "evidencia": [
+        "backend/app/criativo/apresentacao.py:164-227",
+        "src/pages/criativos/AtivoPage.tsx:153-209"
+      ],
+      "consumidor": "AtivoPage"
+    },
+    {
+      "id": "INV-27",
+      "capacidade": "Hashes (content_hash sha256:, insumo_hash, idempotency_key)",
+      "categoria": "hashes",
+      "classificacao": "PROVEN_RUNTIME",
+      "evidencia": [
+        "backend/app/criativo/dominio.py:219-237",
+        "supabase/migrations/v11_01_estudio_criativo.sql:416-417"
+      ],
+      "consumidor": "AtivoPage, PecaDoJob"
+    },
+    {
+      "id": "INV-28",
+      "capacidade": "Gate de identidade/politica sobre a imagem final (terceiros, OCR, logos)",
+      "categoria": "identidade",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "especificado em docs/specs/creative-supply-chain-v1/POLICY-AND-PROVENANCE-CONTRACT.json (branch 5d2cbd0); no SHA base existe apenas declaracao do operador no Meta (trafego_meta_validacao.py:208-225)",
+      "evidencia": [
+        "grep de `lexico_identidade` e `policy_receipt` no SHA base: sem ocorrencia em backend/app/criativo"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-29",
+      "capacidade": "Gates por master (criativo_master_gate) e direitos por master (criativo_master_direito)",
+      "categoria": "gates_direitos",
+      "classificacao": "BACKEND_ONLY",
+      "detalhe": "tabelas existem; nenhum escritor nem leitor no runtime de imagem; bancada grava validacoes no recibo proprio (bancada/operario.py:610-770) e video observado le o ledger da fabrica sem persistir",
+      "evidencia": [
+        "supabase/migrations/v11_02_parque_criativo.sql:387-448",
+        "backend/app/criativo/persistencia.py (sem metodo para as duas tabelas)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-30",
+      "capacidade": "Pacote de destino e entrega (criativo_pacote, criativo_entrega)",
+      "categoria": "destinos",
+      "classificacao": "BACKEND_ONLY",
+      "detalhe": "schema com gatilho `criativo_entrega_autorizada`; zero runtime; `montar_pacotes` de volc_ads/criativo/destinos.py:743 so roda em golden (docs/closure/creative-factory-production-go-live-v1/CAPABILITY-MATRIX.json leitura_transversal)",
+      "evidencia": [
+        "supabase/migrations/v11_01_estudio_criativo.sql:602-660",
+        "volc_ads/criativo/destinos.py:658-800"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-31",
+      "capacidade": "Usos conhecidos do asset",
+      "categoria": "usos",
+      "classificacao": "STUB",
+      "detalhe": "`usos: []` e `usoApurado: false` sao constantes no DTO (apresentacao.py:218-222); a tela apresenta corretamente como nao apurado",
+      "evidencia": [
+        "backend/app/criativo/apresentacao.py:218-222",
+        "src/pages/criativos/AtivoPage.tsx:212-237"
+      ],
+      "consumidor": "AtivoPage"
+    },
+    {
+      "id": "INV-32",
+      "capacidade": "Handoff Estudio → Trafego Google (Display/Demand Gen/PMax)",
+      "categoria": "destinos",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "Trafego aceita apenas upload de arquivo pelo navegador (ControlesMulticanal.tsx:127-208 → base64 → trafego.py:1954-2030); nao existe selecao por id de master; link `/criativos/novo?destino=trafego&canal=` nao e lido pela Home",
+      "evidencia": [
+        "src/components/trafego/bancada/paradas/ControlesMulticanal.tsx:238-244",
+        "src/pages/criativos/EstudioHomePage.tsx (sem useSearchParams)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-33",
+      "capacidade": "Handoff Estudio → Meta",
+      "categoria": "destinos",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "Meta compila apenas com imagem ja na biblioteca da conta (meta_execucao/ativos.py:171-232); upload adimages nao autorizado; video bloqueado",
+      "evidencia": [
+        "src/pages/trafego/MetaCriacaoPage.tsx:335-352, 805-860",
+        "backend/app/routers/trafego_meta_validacao.py:236-245"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-34",
+      "capacidade": "Handoff Estudio → Search (imagem)",
+      "categoria": "destinos",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "Search e texto; AD_IMAGE sem builder e sem regua (requisitos.yaml:40-41; capability matrix do supply chain GOOGLE_SEARCH_ASSETS)",
+      "evidencia": [
+        "volc_ads/criativo/requisitos.yaml:40-41"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-35",
+      "capacidade": "Handoff Estudio → WordPress / FunnelForge (hero da LP)",
+      "categoria": "destinos",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "hero gerada pelo pipeline do FunnelForge fora da cadeia; sem gate e sem recibo (ASIS-26 do supply chain)",
+      "evidencia": [
+        "volc_ads/criativo/adaptadores/funnelforge_imagem.py:1-30",
+        "backend/app/routers/publicacao.py (sem referencia a criativo_master)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-36",
+      "capacidade": "Handoff Estudio → Postiz / organico",
+      "categoria": "destinos",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "publicacao_organica envia texto; `upload_de_midia` declarado nao exercitado; `imagens` da SolicitacaoExterna sao URLs (portas.py:125-138, 170-185); `peca_id` refere outra autoridade de peca",
+      "evidencia": [
+        "backend/app/publicacao_organica/portas.py:125-185",
+        "backend/app/publicacao_organica/adaptadores/postiz.py:231-260"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-37",
+      "capacidade": "Isolamento por dono (tenant = usuario)",
+      "categoria": "seguranca",
+      "classificacao": "PROVEN_RUNTIME",
+      "escopo_da_prova": "hermetico (contraprova de leitura cruzada)",
+      "detalhe": "sem conceito de conta acima do usuario (criativos_execucao.py:182-191)",
+      "evidencia": [
+        "backend/app/routers/criativos.py:255-316, 410-453, 667-717",
+        "backend/tests/test_criativo_autenticacao_confinada.py"
+      ],
+      "consumidor": "todas as rotas"
+    },
+    {
+      "id": "INV-38",
+      "capacidade": "Papeis: gerar/retry/cancelar/aprovar exigem admin",
+      "categoria": "seguranca",
+      "classificacao": "PROVEN_RUNTIME",
+      "evidencia": [
+        "backend/app/routers/criativos.py:327-338, 455-463, 473-485, 720-728"
+      ],
+      "consumidor": "UI nao le papel: botoes aparecem para nao-admin e falham com 403"
+    },
+    {
+      "id": "INV-39",
+      "capacidade": "Query params de origem/destino/retorno no Estudio",
+      "categoria": "navegacao",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "SPEC §12 previa `?origem=&destino=&retorno=`; nenhuma pagina do Estudio le search params",
+      "evidencia": [
+        "docs/design/SPEC-ESTUDIO-CRIATIVO-VOLC.md §12",
+        "src/pages/criativos/*.tsx (sem useSearchParams)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-40",
+      "capacidade": "Comparacao de variacoes/formatos",
+      "categoria": "comparacao",
+      "classificacao": "NOT_IMPLEMENTED",
+      "evidencia": [
+        "src/components/criativos/** (sem componente de comparacao)",
+        "docs/design/SPEC-TEMPLATE-LAB.md §7 (comparacao A/B sem divisor arrastavel, prevista)"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-41",
+      "capacidade": "Variacoes multiplas por formato (N pecas do mesmo slot)",
+      "categoria": "variacoes",
+      "classificacao": "NOT_IMPLEMENTED",
+      "detalhe": "unique(job_id, slot) em criativo_rendition; motor Gemini gera uma imagem por chamada sem seed",
+      "evidencia": [
+        "supabase/migrations/v11_01_estudio_criativo.sql:504",
+        "services/creative_engine/motores/gemini_imagem.py:237-303"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-42",
+      "capacidade": "Adaptacao/derivacao de rendition (crop aprovado, uncrop, recomposicao)",
+      "categoria": "adaptacao",
+      "classificacao": "PARTIAL",
+      "detalhe": "cover-crop automatico de uma imagem no executor (enquadramento.py:199-320); classificacao identico|recomposicao|crop_resize em destinos.py:303-600 so em golden; nenhuma derivacao persistida como master DERIVADO",
+      "evidencia": [
+        "services/creative_engine/enquadramento.py",
+        "volc_ads/criativo/destinos.py:507-600"
+      ],
+      "consumidor": "Executor (crop); golden"
+    },
+    {
+      "id": "INV-43",
+      "capacidade": "Lista completa de jobs",
+      "categoria": "jobs",
+      "classificacao": "BACKEND_ONLY",
+      "detalhe": "GET /jobs com estado e limite ate 100 existe; nenhuma rota de UI lista alem dos 8 da Home",
+      "evidencia": [
+        "backend/app/routers/criativos.py:409-431",
+        "src/lib/criativosApi.ts:390-392",
+        "src/pages/criativos/EstudioHomePage.tsx:121-215"
+      ],
+      "consumidor": "nenhum"
+    },
+    {
+      "id": "INV-44",
+      "capacidade": "Testes de contrato de UI do Estudio",
+      "categoria": "testes",
+      "classificacao": "PROVEN_RUNTIME",
+      "evidencia": [
+        "src/components/criativos/__tests__/*.test.ts(x) (14 arquivos)",
+        "src/components/criativos/__tests__/sem-rede-externa.test.ts:119 (proibe aurora no Estudio)"
+      ],
+      "consumidor": "gate de build"
+    },
+    {
+      "id": "INV-45",
+      "capacidade": "Legado: catalogo em memoria e ponte Google por pasta",
+      "categoria": "legado",
+      "classificacao": "LEGACY",
+      "detalhe": "`volc_ads/criativo/catalogo.py` e `criativo_ponte.lote_de_pasta` (criativo_ponte.py:800) alimentam campanha a partir de arquivos, nao do patrimonio",
+      "evidencia": [
+        "volc_ads/criativo/catalogo.py:138",
+        "volc_ads/criativo_ponte.py:800-970"
+      ],
+      "consumidor": "CLI e testes"
+    },
+    {
+      "id": "INV-46",
+      "capacidade": "Autoridades duplicadas de procedencia, aprovacao e estado",
+      "categoria": "duplicacao",
+      "classificacao": "DUPLICATE_AUTHORITY",
+      "detalhe": "procedencia em 3 formas (volc_ads/criativo/contrato.py:144, bancada/contrato.py:356, criativo_master); aprovacao em 3 modelos (criativo_aprovacao, bancada Aprovacao contrato.py:433, declaracao Meta); estados: job (7) x trabalho (7) x armazenamento (4)",
+      "evidencia": [
+        "docs/specs/creative-supply-chain-v1/AS-IS-INVENTORY.json (ASIS-01, ASIS-04, ASIS-05 em 5d2cbd0)"
+      ],
+      "consumidor": "varios"
+    },
+    {
+      "id": "INV-47",
+      "capacidade": "Postgres para bancada (v11_03) e worker de vida longa",
+      "categoria": "execucao",
+      "classificacao": "IMPLEMENTED_UNPROVEN",
+      "detalhe": "adaptador e worker com testes; migration nao aplicada; psycopg nao instalado no venv do backend (go-live CAPABILITY-MATRIX leitura_transversal)",
+      "evidencia": [
+        "backend/app/criativo/bancada/deposito_postgres.py",
+        "backend/app/criativo/bancada/worker.py",
+        "backend/tests/test_criativo_worker.py"
+      ],
+      "consumidor": "nenhum em producao"
+    },
+    {
+      "id": "INV-48",
+      "capacidade": "Contagem e resumo da Home por dono",
+      "categoria": "home",
+      "classificacao": "PROVEN_RUNTIME",
+      "evidencia": [
+        "backend/app/routers/criativos.py:255-316",
+        "src/hooks/useCriativosResumo.ts"
+      ],
+      "consumidor": "EstudioHomePage"
+    }
+  ],
+  "resumo_por_classificacao": {
+    "PROVEN_RUNTIME": 19,
+    "IMPLEMENTED_UNPROVEN": 3,
+    "PARTIAL": 5,
+    "UI_ONLY": 0,
+    "BACKEND_ONLY": 4,
+    "MOCK": 1,
+    "STUB": 1,
+    "LEGACY": 1,
+    "DUPLICATE_AUTHORITY": 2,
+    "NOT_IMPLEMENTED": 11,
+    "BLOCKED_EXTERNAL": 1
+  }
+}

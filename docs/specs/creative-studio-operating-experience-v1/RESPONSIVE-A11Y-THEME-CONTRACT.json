@@ -1,0 +1,26 @@
+{
+  "schema": "VolcCreativeStudioResponsiveA11yTheme.v1",
+  "artefato": "RESPONSIVE-A11Y-THEME-CONTRACT.json",
+  "versao": "1.0.0",
+  "breakpoints": {"mobile": "390 (<640)", "tablet": "768 (md)", "desktop": "1440 (xl); lg=1024 e o ponto onde 3 zonas viram abas (existente em LeituraDeVideo)"},
+  "responsividade": [
+    {"superficie": "Home", "1440": "grid 2fr/1fr (listas | capacidades+reutilizaveis)", "768": "1 coluna; capacidades em tabela colapsavel acima das listas", "390": "1 coluna; sub-navegacao rolavel; CTA Criar no cabecalho"},
+    {"superficie": "Briefing", "1440": "260px trilho | 1fr secoes; barra de acao fixa ao fim da coluna", "768": "trilho vira segmented no topo; secoes empilhadas", "390": "idem + barra de acao fixa inferior 56px com scroll-margin-bottom 72px nos alvos focaveis (WCAG 2.4.11)"},
+    {"superficie": "Job", "1440": "cabecalho + trilho horizontal + faixa de tiles (scroll-x) + tabela de fatos", "768": "trilho horizontal rolavel; tiles 2 por linha", "390": "trilho vertical compacto; tiles 1 por linha (altura 160); tabela de fatos vira lista de pares"},
+    {"superficie": "Biblioteca", "1440": "tabela + inspetor lateral 400px (ou grade 4-5 col)", "768": "tabela com colunas essenciais (thumb, projeto, formato, aprovacao); inspetor em folha", "390": "grade 2 col ou lista; inspetor em folha inferior de tela cheia; barra de acoes fixa inferior; nenhuma acao de gasto sem confirmacao dupla"},
+    {"superficie": "Ficha do ativo", "1440": "2 colunas (preview | fatos) + secoes", "768": "1 coluna", "390": "1 coluna; preview com zoom por botao (sem pinch obrigatorio)"},
+    {"superficie": "Aprovacoes", "1440": "fila | inspetor", "768": "fila; decisao inline", "390": "fila; decisao em folha"},
+    {"superficie": "Comparar", "1440": "2-4 colunas", "768": "2 colunas", "390": "1 coluna com segmented A|B|C (sem swipe obrigatorio)"}
+  ],
+  "acessibilidade": {
+    "wcag": "2.2 AA",
+    "regras": ["estado = glifo + palavra + descricao (Selo)", "foco visivel (ring-2 ring-ring offset-2) em todo interativo; nunca outline:none sem substituto", "alvos >= 40x40 (44 em mobile); espacamento >= 8px", "roving tabindex em SeletorDeFormato, TabelaDeAtivos e faixa de tiles; setas navegam; Enter abre; Espaco seleciona", "inspetor lateral: role=complementary com aria-labelledby; Esc fecha e devolve foco; folha mobile: role=dialog com foco preso", "aria-live=polite exclusivo para mudancas de fase/decisao/selecao (uma regiao por tela)", "imagens com alt derivado (tipo, projeto, formato, dimensoes); poster de video com alt", "video com controles nativos, sem autoplay, preload=none", "tabelas com <th scope>, aria-sort na ordenacao, caption oculta com contagem 'N de M'", "erros de formulario: aria-invalid + aria-describedby; foco vai ao primeiro erro ao tentar gerar", "nenhuma acao depende de hover ou arrasto (comparar por botoes; selecao por checkbox)", "safe zones e bbox de politica (P1) tem lista textual equivalente", "atalhos de teclado documentados (?, A/J/R somente com admin e com anuncio) e nunca sobrepoem atalhos do sistema", "skip link do shell mantido", "movimento respeita prefers-reduced-motion"],
+    "contraste": "tokens semanticos ja recalibrados por medicao (docs/design/AUTORIDADE-VISUAL-RECONCILIADA.md §2): texto >= 4.5:1; componentes >= 3:1; verificar em light e dark com conteudo real (thumbs escuras sobre bg-card)"
+  },
+  "tema": {
+    "light_padrao": "canvas #F3F5F7, surface #FAFBFC, ink #1A1C1E (tokens existentes)",
+    "dark_equivalente": "canvas #0C111B, surface #111827, ink #F3F6FA; mesmos componentes; sem cor absoluta no Estudio (excecao: fundo do player bg-black/90)",
+    "regras": ["previews sobre bg-muted/40 com borda; em dark, borda border-border para separar imagens escuras", "safe zones e molduras usam border-border + overlay bg-foreground/10 (nao aurora)", "skeleton bg-muted/50 nos dois temas", "aurora-rule e o unico uso de aurora no Estudio (assinatura), nunca em estado"],
+    "teste": "cada wireframe tem checklist light/dark; capturas obrigatorias nos dois temas no gate visual de cada tarefa"
+  }
+}

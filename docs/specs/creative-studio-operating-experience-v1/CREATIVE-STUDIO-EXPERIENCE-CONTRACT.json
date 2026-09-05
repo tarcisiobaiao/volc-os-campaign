@@ -1,0 +1,34 @@
+{
+  "schema": "VolcCreativeStudioExperienceContract.v1",
+  "artefato": "CREATIVE-STUDIO-EXPERIENCE-CONTRACT.json",
+  "versao": "1.0.0",
+  "base_factual": {"commit": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c"},
+  "autoridades": ["AGENTS.md", "codigo/migrations/testes do SHA", "PRODUCT.md", "design.md (raiz)", "docs/specs/creative-supply-chain-v1 @5d2cbd0", "docs/specs/meta-creative-p0-reconciliation-v1 @a875f1f", "docs/specs/google-multichannel-completion-v1 @8b067f6"],
+  "invariantes": [
+    {"id": "EXP-INV-01", "regra": "Toda capacidade mostrada tem fonte de dado no servidor (GET /formatos, /parque, /bancada/motores, /resumo, /videos). Nenhuma lista de motor, modo, formato ou destino e constante do bundle, exceto FORMATOS_DE_IMAGEM como fallback rotulado 'lista local' quando /formatos falha (comportamento existente em useCriativosCatalogo)."},
+    {"id": "EXP-INV-02", "regra": "Ausencia e null e aparece como 'nao medido / nao apurado / nao lido'. Zero e medida. Nenhum `?? 0` em contagem, custo, dimensao ou total."},
+    {"id": "EXP-INV-03", "regra": "Progresso e o ultimo evento real (fase, mensagem, slot, em). Barra so com `percentual` numerico no evento. Nenhuma animacao de fase sem evento correspondente."},
+    {"id": "EXP-INV-04", "regra": "Gerar, aprovar, subir, vincular, publicar e ativar sao verbos distintos com superficies distintas. O Estudio executa gerar e aprovar; entrega ids/hashes/recibos aos demais."},
+    {"id": "EXP-INV-05", "regra": "Acoes que gastam (Gerar, Preencher pecas) ou autorizam (Aprovar, Revogar) nomeiam escopo e consequencia antes de habilitar e exigem papel admin; a UI le o papel e desabilita com motivo em vez de deixar o 403 acontecer."},
+    {"id": "EXP-INV-06", "regra": "Aprovacao e vinculada a (master id, versao, content_hash exibido, finalidade do catalogo). Mudanca de bytes gera outro master; a aprovacao nao migra."},
+    {"id": "EXP-INV-07", "regra": "Nenhum id cru, caminho, bucket, prompt ou token chega ao navegador: nomes resolvidos (pack, motor, finalidade), hashes curtos com titulo completo, URLs assinadas curtas."},
+    {"id": "EXP-INV-08", "regra": "Todo estado e glifo + palavra + descricao (Selo). Cor nunca e o unico portador. Aurora nunca e estado."},
+    {"id": "EXP-INV-09", "regra": "Cada superficie tem um botao primario; secundarios sao outline/ghost; destrutivos isolados e confirmados com escopo."},
+    {"id": "EXP-INV-10", "regra": "Preview e protagonista onde a decisao e visual (job, inspetor, compare, aprovacao): tamanho real por formato, zoom 1:1, moldura do destino com safe zones quando a regua do canal e conhecida."},
+    {"id": "EXP-INV-11", "regra": "Gate de identidade de terceiro NAO existe no runtime. Enquanto nao existir, finalidades midia_paga mostram 'gate nao executado' como bloqueio declarado; a aprovacao humana e registrada, mas o destino pago exibe o bloqueio ate o recibo de politica existir (P1)."},
+    {"id": "EXP-INV-12", "regra": "Pecas da bancada (natureza local) nunca entram na Biblioteca do Estudio nem em destino de producao; o Laboratorio e rotulado Ensaio em todas as superficies."},
+    {"id": "EXP-INV-13", "regra": "Light e o padrao; dark e equivalente por tokens; movimento 150-220 ms, transform/opacity, interruptivel, reduced-motion respeitado; alvos >= 40x40; teclado completo."}
+  ],
+  "vocabulario_de_estados_da_ui": {
+    "job": {"fonte": "criativo_job.estado", "valores": ["draft", "queued", "running", "partial", "succeeded", "failed", "cancelled"], "derivados_na_ui": ["cancelando (running + cancelado_pedido_em sem cancelado_em)", "estado_desconhecido (valor fora da lista)"]},
+    "rendition": {"fonte": "criativo_rendition.estado", "valores": ["pendente", "gerando", "pronta", "falhou", "cancelada"], "derivados": ["fora_da_dimensao (largura/altura medidas != pedidas)", "nao_normalizada (enquadramento = nao_normalizado)"]},
+    "revisao": {"fonte": "aprovacao vigente por (master, versao, finalidade)", "valores": ["aguardando", "aprovado", "ajuste_solicitado", "rejeitado"], "regra": "aguardando e ausencia, nao decisao"},
+    "execucao": {"fonte": "job.procedencia_execucao ou null", "valores": ["volc_os", "observado", "nao_apurada"]},
+    "politica": {"fonte": "inexistente no SHA", "valores_ui": ["gate_nao_executado (unico valor possivel hoje)", "CLEAR | THIRD_PARTY_IDENTITY_UNVERIFIED | THIRD_PARTY_IDENTITY_AUTHORIZED | BLOCKED_BY_POLICY | GATE_UNAVAILABLE (P1, do supply chain)"]},
+    "destino_por_asset": {"fonte": "regua do canal (parque.exigenciasDeCanal) x fatos medidos + finalidade aprovada + estado do consumidor", "valores": ["compativel", "incompativel (motivo: proporcao|dimensao|peso|mime|duracao)", "adaptacao_necessaria (P2)", "bloqueado (motivo: gate_nao_executado|natureza_local|consumidor_indisponivel)", "disponivel (aprovado para a finalidade e compativel)", "ja_utilizado (pacote/entrega existente)", "reservado (P2)", "vinculo_pendente (pacote rascunho)"]},
+    "conexao_do_fluxo": {"valores": ["abrindo", "aberta", "reconectando (n de 5)", "encerrada_por_termino", "encerrada_por_ociosidade", "parada_apos_falhas"]}
+  },
+  "fontes_de_frescor": {"regra": "todo numero e lista mostra 'lido em HH:MM' a partir do instante da resposta; catalogos mostram parque.lidoEm; contagens da Home mostram staleTime 15 s e botao 'reler'"},
+  "papeis": {"leitura": "qualquer sessao valida (exigir_usuario)", "gasto_e_decisao": "admin (exigir_admin)", "ui": "papel lido de app_auth (mesma fonte do ProtectedRoute); botoes de admin aparecem desabilitados com motivo para nao-admin"},
+  "copy_rules": ["verbo + resultado nos botoes ('Gerar 3 pecas', 'Registrar decisao', 'Usar no Trafego')", "sentenca completa em erros com o que fazer", "sem exclamacao, sem 'oops', sem termos internos (PostgREST, SQL, bucket, tabela)", "portugues do Brasil, sentence case"]
+}

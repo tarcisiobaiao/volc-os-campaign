@@ -1,0 +1,16 @@
+{
+  "schema": "VolcCurationHandoff.v1",
+  "artefato": "CURATION-HANDOFF.json",
+  "versao": "1.0.0",
+  "regra": "Este worker nao edita ROADMAP-VIVO.json, curadoria-operacional.json nem o grafo (AGENTS.md: paralelos emitem delta; o integrador unico aplica apos integracao). Nenhum item abaixo foi aplicado.",
+  "base": {"commit": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c", "branch_documental": "spec/fable-creative-studio-operating-experience-v1", "grafo": "graphify-out ausente na worktree; copia principal construida em a539dbd7 (defasada); nao reconstruido"},
+  "delta_proposto": [
+    {"tipo": "roadmap", "acao": "criar tarefa", "id_sugerido": "ESTUDIO-OX-P0", "titulo": "Estudio Criativo: experiencia operacional unica (P0 T01-T08)", "estado": "todo", "evidencia": "docs/specs/creative-studio-operating-experience-v1/EXECUTION-WORKBREAKDOWN.json", "criterio_de_aceite": "T08 pronto_quando: master aprovado selecionado no Trafego por id, /provar aprovado, pacote gravado, ficha mostra vinculo"},
+    {"tipo": "roadmap", "acao": "criar tarefa", "id_sugerido": "ESTUDIO-OX-P1", "titulo": "Estudio Criativo P1: video real, compare, brand packs, lote, organico (T09-T13)", "estado": "todo"},
+    {"tipo": "curadoria", "acao": "atualizar no", "no": "concept:creative-studio (ou equivalente)", "estado_honesto": "partial", "resumo": "runtime de imagem implementado e provado localmente; producao sem jobs; sem handoff ao Trafego por id; duas fabricas (jobs/bancada); gate de politica inexistente", "evidencia": "AS-IS-INVENTORY.json INV-01, INV-32..36, INV-28"},
+    {"tipo": "curadoria", "acao": "registrar relacao", "de": "estudio-criativo", "para": "trafego-google-display", "relacao": "handoff por asset_id (P0 proposto)", "evidencia": "CAMPAIGN-HANDOFF-CONTRACT.json CH-DISPLAY"},
+    {"tipo": "design.md", "acao": "propor correcao textual", "detalhe": "§Components 'Selected pill: bg-background' → bg-card (ja apontado em AUTORIDADE-VISUAL-RECONCILIADA); anotar que Secao do Estudio usa shadow-card", "evidencia": "OPEN-CONTRACT-CONFLICTS OCF-13"},
+    {"tipo": "grafo", "acao": "novos nos apos integracao", "nos": ["docs/specs/creative-studio-operating-experience-v1/*", "backend/app/criativo/destinos_do_asset.py (T06)", "backend/app/criativo/pacotes.py (T08)", "src/components/criativos/inspetor/* (T05/T06)"], "quando": "somente apos merge das tarefas; nao agora"}
+  ],
+  "nao_fazer": ["nao marcar nada como done", "nao rodar scripts/atualizar_grafo_volc_os.py nesta branch", "nao tocar curadoria-operacional.json"]
+}
