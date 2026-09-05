@@ -82,12 +82,19 @@ def _erro(exc: Exception) -> HTTPException:
     if isinstance(exc, ErroDeNascimentoMeta):
         return HTTPException(status_code=409, detail={"codigo": exc.codigo, "mensagem": str(exc)})
     if isinstance(exc, ErroRemotoMeta):
-        return HTTPException(status_code=422, detail={
-            "codigo": exc.codigo,
-            "mensagem": str(exc),
-            "retry_permitido": exc.retryable,
-            "provedor": exc.detalhe_provedor,
-        })
+        # 422 é "a Meta olhou e recusou". Um timeout não é isso: ninguém do
+        # outro lado disse nada. Misturar os dois no mesmo status ensina o
+        # operador a ler silêncio como reprovação do plano. 504 separa os dois
+        # casos no protocolo, antes de qualquer texto de tela.
+        return HTTPException(
+            status_code=504 if exc.codigo == "META_VALIDATE_TIMEOUT" else 422,
+            detail={
+                "codigo": exc.codigo,
+                "mensagem": str(exc),
+                "retry_permitido": exc.retryable,
+                "provedor": exc.detalhe_provedor,
+            },
+        )
     return HTTPException(status_code=500, detail="Falha interna no controle Meta.")
 
 

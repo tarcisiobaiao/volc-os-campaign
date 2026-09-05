@@ -221,3 +221,53 @@ describe('Bancada de criação Meta — correções adversariais', () => {
     await waitFor(() => expect(alerta.textContent).toContain('a Meta recusou o plano'));
   });
 });
+
+// ---------------------------------------------------------------------------
+// TIMEOUT DO validate_only — a tela precisa separar silêncio de reprovação
+// ---------------------------------------------------------------------------
+describe('Bancada de criação Meta — timeout não é recusa', () => {
+  async function abrirComValidacaoLiberada() {
+    api.capacidadesCriacaoMeta.mockResolvedValue({
+      ok: true, api_version: 'v26.0', validate_only: 'ENABLED',
+      single_static: 'AVAILABLE', static_batch: 'AVAILABLE_UP_TO_10',
+      video_creative: 'BLOCKED_UNTIL_VIDEO_CONTRACT_PROVEN',
+      flexible_creative: 'BLOCKED_UNTIL_ASSET_FEED_SPEC_PROVEN',
+    });
+    abrir('revisao');
+    await esperarAtivos();
+    await compilarPelaRevisao();
+  }
+
+  it('explica que a Meta não respondeu e que nada foi criado, em vez de "sem detalhes"', async () => {
+    const { PautadorApiError } = await import('@/lib/pautadorApi');
+    api.validarPlanoMeta.mockRejectedValueOnce(new PautadorApiError(
+      'a Meta nao respondeu a validacao de campaign a tempo; nada foi criado',
+      504,
+      { codigo: 'META_VALIDATE_TIMEOUT', retry_permitido: true },
+    ));
+    await abrirComValidacaoLiberada();
+    fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
+
+    const alerta = await screen.findByRole('alert');
+    await waitFor(() => expect(alerta.textContent).toContain('META_VALIDATE_TIMEOUT'));
+    // O ponto do conserto: o operador não pode ler silêncio como reprovação.
+    expect(alerta.textContent).toContain('não é uma recusa');
+    expect(alerta.textContent).toContain('nada foi criado');
+    expect(alerta.textContent).not.toContain('Nenhum detalhe adicional');
+    expect(alerta.textContent).not.toContain('A Meta recusou com o código');
+  });
+
+  it('continua nomeando a recusa real da Meta com código e subcódigo', async () => {
+    const { PautadorApiError } = await import('@/lib/pautadorApi');
+    api.validarPlanoMeta.mockRejectedValueOnce(new PautadorApiError(
+      'a Meta recusou o plano', 422,
+      { codigo: 'META_REMOTE_REJECTED', provedor: { code: 100, error_subcode: 1487079 } },
+    ));
+    await abrirComValidacaoLiberada();
+    fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
+
+    const alerta = await screen.findByRole('alert');
+    await waitFor(() => expect(alerta.textContent).toContain('100/1487079'));
+    expect(alerta.textContent).not.toContain('não é uma recusa');
+  });
+});

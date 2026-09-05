@@ -257,3 +257,117 @@ def test_read_model_sem_migration_e_estado_nomeado_em_vez_de_500() -> None:
         assert recibo['motivo'] == 'meta_schema_not_applied'
 
     asyncio.run(cenario())
+
+
+# ---------------------------------------------------------------------------
+# TIMEOUT DO validate_only — silêncio da rede não é recusa da Meta
+# ---------------------------------------------------------------------------
+# `_post` repassa `httpx.TimeoutException` crua de propósito: dentro de
+# `criar_pausada` o silêncio é AMBIGUO e exige reconciliação. Na rota de
+# validação o mesmo silêncio é seguro (o pedido levava validate_only, então não
+# há objeto para ter nascido) e precisa chegar ao operador com nome, status
+# próprio e permissão de retentar. Antes deste conserto ele escapava como 500
+# nu, sem `codigo` e sem `retry_permitido`.
+
+class _GraphQueSilencia:
+    """Cliente Graph que estoura timeout no POST e conta as chamadas."""
+
+    def __init__(self) -> None:
+        self.posts = 0
+
+    async def post(self, url: str, *, data=None, headers=None):
+        del url, data, headers
+        self.posts += 1
+        raise httpx.ReadTimeout('tempo esgotado')
+
+
+def _plano_de_uma_raiz() -> Any:
+    from app.trafego.meta_execucao.compilador import OperacaoMeta, PlanoCompiladoMeta
+    return PlanoCompiladoMeta(
+        account_ref='metaacct_exemplo',
+        destination_url='https://example.com/',
+        operacoes=(
+            OperacaoMeta(
+                'campaign', '/act_123456789/campaigns',
+                {'name': 'Campanha', 'status': 'PAUSED'},
+                validavel_sem_criar_pai=True, tipo='campaign',
+            ),
+        ),
+        plano_sha256='c' * 64,
+    )
+
+
+def test_timeout_do_validate_only_vira_erro_nomeado_retentavel_e_sanitizado() -> None:
+    from app.trafego.meta_execucao.contrato import AutorizacaoMeta
+    from app.trafego.meta_execucao.executor import ErroRemotoMeta, ExecutorMetaPausado
+
+    async def cenario() -> None:
+        graph = _GraphQueSilencia()
+        executor = ExecutorMetaPausado(graph)  # type: ignore[arg-type]
+        autorizacao = AutorizacaoMeta(
+            plano_sha256='c' * 64, ator='operador-meta',
+            approval_id='validation_exemplo', permitir_validate_only=True)
+        with pytest.raises(ErroRemotoMeta) as erro:
+            await executor.validar_raizes(
+                _plano_de_uma_raiz(),
+                SegredoEfemero('token-meta-falso-seguro'),
+                autorizacao,
+            )
+        assert erro.value.codigo == 'META_VALIDATE_TIMEOUT'
+        # Retentar é seguro AQUI e só aqui: nada nasceu.
+        assert erro.value.retryable is True
+        assert erro.value.objetos_criados == ()
+        assert erro.value.criacao_descartada is False
+        texto = f'{erro.value} {erro.value.detalhe_provedor}'
+        # Nem token, nem id bruto da conta, nem texto do operador.
+        assert 'token-meta-falso-seguro' not in texto
+        assert '123456789' not in texto
+        assert 'Campanha' not in texto
+        # O vocabulário fechado do tipo de objeto pode aparecer.
+        assert 'campaign' in texto
+        assert graph.posts == 1
+
+    asyncio.run(cenario())
+
+
+def test_timeout_do_validate_only_responde_504_e_nao_422_de_recusa() -> None:
+    from app.trafego.meta_execucao.executor import ErroRemotoMeta
+
+    timeout = trafego_meta_validacao._erro(ErroRemotoMeta(
+        'META_VALIDATE_TIMEOUT', 'a Meta nao respondeu a validacao a tempo',
+        retryable=True))
+    # 504 diz "ninguém respondeu". 422 diria "a Meta olhou e reprovou".
+    assert timeout.status_code == 504
+    assert timeout.detail['codigo'] == 'META_VALIDATE_TIMEOUT'
+    assert timeout.detail['retry_permitido'] is True
+
+    recusa = trafego_meta_validacao._erro(ErroRemotoMeta(
+        'META_REMOTE_REJECTED', 'a Meta recusou o plano',
+        detalhe_provedor={'code': 100}))
+    assert recusa.status_code == 422
+    assert recusa.detail['retry_permitido'] is False
+
+
+def test_timeout_na_criacao_continua_cru_para_a_saga_marcar_ambiguo() -> None:
+    """O conserto da rota de validação não pode surdear a saga de criação.
+
+    Se `_post` passasse a traduzir timeout em erro nomeado, `criar_pausada`
+    deixaria de ver `httpx.TimeoutException` e um objeto criado durante o
+    silêncio viraria FALHO em vez de AMBIGUO — exatamente a confusão que
+    autoriza um reenvio duplicado.
+    """
+    from app.trafego.meta_execucao.compilador import OperacaoMeta
+    from app.trafego.meta_execucao.executor import ExecutorMetaPausado
+
+    async def cenario() -> None:
+        graph = _GraphQueSilencia()
+        executor = ExecutorMetaPausado(graph)  # type: ignore[arg-type]
+        operacao = OperacaoMeta(
+            'campaign', '/act_123456789/campaigns', {'name': 'Campanha'},
+            validavel_sem_criar_pai=True, tipo='campaign')
+        with pytest.raises(httpx.TimeoutException):
+            await executor._post(
+                operacao, {'name': 'Campanha'},
+                SegredoEfemero('token-meta-falso-seguro'), exige_id=True)
+
+    asyncio.run(cenario())

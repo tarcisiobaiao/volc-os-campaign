@@ -189,13 +189,21 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
     provedor?: { code?: string; error_subcode?: string; messages?: string[] };
   };
   const provedor = corpo.provedor;
+  // Timeout não é recusa. Sem este ramo o operador lê "Nenhum detalhe
+  // adicional foi devolvido" e conclui que a Meta reprovou o plano — quando na
+  // verdade ninguém do outro lado respondeu, e o plano segue intacto.
+  const detalhe = corpo.codigo === 'META_VALIDATE_TIMEOUT'
+    ? 'A Meta não respondeu a tempo. Isto não é uma recusa: o plano não foi '
+      + 'julgado e nada foi criado, porque o pedido levava validate_only. '
+      + 'Pode clicar em validar de novo.'
+    : provedor?.code
+      ? `A Meta recusou com o código ${provedor.code}${provedor.error_subcode ? `/${provedor.error_subcode}` : ''}.`
+      : 'Nenhum detalhe adicional foi devolvido.';
   const avisos: AvisoDoCockpit[] = [{
     codigo: corpo.codigo || `HTTP_${exc.status}`,
     severidade: 'alta',
     titulo: exc.message,
-    detalhe: provedor?.code
-      ? `A Meta recusou com o código ${provedor.code}${provedor.error_subcode ? `/${provedor.error_subcode}` : ''}.`
-      : 'Nenhum detalhe adicional foi devolvido.',
+    detalhe,
   }];
   for (const mensagem of provedor?.messages ?? []) {
     if (mensagem && mensagem !== exc.message) {

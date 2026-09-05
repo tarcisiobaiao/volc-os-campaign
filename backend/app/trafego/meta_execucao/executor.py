@@ -200,7 +200,28 @@ class ExecutorMetaPausado:
                 continue
             payload = dict(operacao.payload)
             payload["execution_options"] = ["validate_only"]
-            resposta = await self._post(operacao, payload, segredo, exige_id=False)
+            try:
+                resposta = await self._post(operacao, payload, segredo, exige_id=False)
+            except httpx.TimeoutException:
+                # Silêncio da rede numa chamada `validate_only` NÃO é recusa da
+                # Meta, e também não é o silêncio ambíguo de `criar_pausada`:
+                # o pedido levava `execution_options=["validate_only"]`, então
+                # não existe objeto para ter nascido enquanto ninguém olhava.
+                # Por isso este é o único ponto do executor onde um timeout vira
+                # erro nomeado e retentável. `_post` continua repassando a
+                # exceção crua (o `except httpx.TimeoutException: raise` dele)
+                # para a saga de criação, onde o mesmo silêncio precisa virar
+                # AMBIGUO e exigir reconciliação.
+                #
+                # A mensagem cita só `tipo_objeto` — vocabulário fechado
+                # (campaign/adset/creative/ad). Nada de texto do operador, id da
+                # Meta ou detalhe do provedor entra aqui.
+                raise ErroRemotoMeta(
+                    "META_VALIDATE_TIMEOUT",
+                    "a Meta nao respondeu a validacao de "
+                    f"{operacao.tipo_objeto} a tempo; nada foi criado",
+                    retryable=True,
+                ) from None
             if resposta.get("success") is not True:
                 raise ErroRemotoMeta(
                     "META_REMOTE_RESULT_AMBIGUOUS",
