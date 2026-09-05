@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_id": "MASTER-P0-EXECUTION-PLAN",
+  "runtime_tasks_before_canary": [
+    {
+      "id": "P0-RT-01",
+      "objetivo": "Close website-only/Shop and destination_type guards for the selected Traffic/LPV canary without inventing fields.",
+      "arquivos_esperados": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/tests/test_meta_*"
+      ],
+      "dependencias": [
+        "C01",
+        "C02"
+      ],
+      "contraprovas_minimas": [
+        "compile refuses when website-only/Shop proof is missing",
+        "no unproven destination_spec/destination_type is emitted",
+        "AdSet provider refusal stops saga without retry"
+      ],
+      "definicao_de_pronto": "Canary gate has either official website-only field/read-back proof or selected-account non-Shop-eligible proof, and omission/refusal behavior is tested."
+    },
+    {
+      "id": "P0-RT-02",
+      "objetivo": "Require the minimal Fable AssetSupplyManifest/policy receipt for the selected static image before compile and approval.",
+      "arquivos_esperados": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "backend/app/asset_vault/* or creative supply chain adapter",
+        "backend/tests/test_meta_*"
+      ],
+      "dependencias": [
+        "C03",
+        "OCC-01"
+      ],
+      "contraprovas_minimas": [
+        "missing content_sha256 blocks",
+        "expired/blocked policy receipt blocks",
+        "image_hash mismatching approved bytes blocks",
+        "third-party identity/logo unverified blocks"
+      ],
+      "definicao_de_pronto": "Every asset_ref in the plan is bound to content_sha256+supply_sha256+policy_receipt_ref CLEAR/AUTHORIZED and exact Meta image_hash."
+    },
+    {
+      "id": "P0-RT-03",
+      "objetivo": "Harden P0 reconciliation so post-dispatch absence/doubt does not automatically release a new create.",
+      "arquivos_esperados": [
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+        "backend/tests/test_meta_criacao_pausada_rotas.py"
+      ],
+      "dependencias": [
+        "C04"
+      ],
+      "contraprovas_minimas": [
+        "FOUND+CONGRUENT can close as CREATED",
+        "ABSENT remains AMBIGUOUS/manual for P0",
+        "FAILED-from-ambiguous does not permit automatic new approval",
+        "retry after dispatch is blocked"
+      ],
+      "definicao_de_pronto": "Ambiguous dispatched steps require manual closure and cannot silently unlock duplicate creation."
+    },
+    {
+      "id": "P0-RT-04",
+      "objetivo": "Separate validate receipt/reconcile/read flags from dispatch/create flag while keeping create requiring both create+ledger.",
+      "arquivos_esperados": [
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/tests/test_meta_*",
+        "src/pages/trafego/*"
+      ],
+      "dependencias": [
+        "C06"
+      ],
+      "contraprovas_minimas": [
+        "validate receipt can be written with ledger open and create closed",
+        "reconciliation/receipt read do not require dispatch flag",
+        "create refuses unless META_CREATE_PAUSED_ENABLED and META_CREATE_LEDGER_WRITE_ENABLED are both 1",
+        "META_VALIDATE_ONLY_ENABLED alone never creates"
+      ],
+      "definicao_de_pronto": "Flags express four acts: validate, ledger receipt, dispatch create, read-only reconciliation; no flag opens a broader act than its name."
+    },
+    {
+      "id": "P0-RT-05",
+      "objetivo": "Prove Page/Instagram/placements identity for the selected canary or restrict placements safely.",
+      "arquivos_esperados": [
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/tests/test_meta_*"
+      ],
+      "dependencias": [
+        "C07"
+      ],
+      "contraprovas_minimas": [
+        "missing Page permission blocks",
+        "missing Instagram proof either blocks or emits official Facebook-only placement subset",
+        "no silent Instagram fallback",
+        "read-back compares page and IG actor when present"
+      ],
+      "definicao_de_pronto": "The selected canary has explicit identity/placement receipt and cannot serve through an unapproved Page/Instagram actor."
+    }
+  ],
+  "after_runtime_tasks": [
+    "Run local focused tests and document gates.",
+    "Request separate authorization for official migration only after tasks pass.",
+    "Run validate_only only as a separate authorized act.",
+    "Run create_paused only as a later separate authorized act.",
+    "Activation remains out of scope."
+  ],
+  "max_runtime_tasks_before_canary": 5
+}

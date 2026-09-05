@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_id": "MASTER-P0-CONFLICT-MAP",
+  "conflicts": [
+    {
+      "id": "C01",
+      "title": "website-only / Shop / destino externo",
+      "classification": "CANARY_PRECONDITION",
+      "decision": "P0 must not assume a Shop opt-out field or default. The canary is blocked until the executor proves either (a) the exact official v26 field/read mask that forces website-only/no Shop redirection for this Traffic/LPV recipe, or (b) the selected account/creative is not eligible for Shop redirection. Until then the safe contract is: HTTPS external destination URL is operator-declared, no unproven destination_spec field is sent, and any inability to prove no unauthorized Shop redirection blocks create_paused.",
+      "runtime_effect": "Local compile/approve/create must refuse the canary when the website-only/Shop control receipt is missing or stale.",
+      "evidence": [
+        "Astra C01: docs/specs/meta-completion-v1/OPEN-CONTRACT-CONFLICTS.json conflict_id=C01 blocks_first_canary",
+        "Astra field registry: docs/specs/meta-completion-v1/META-COMPLETION-SPEC.json PF055 says exact mapping insufficient",
+        "Operational code omits destination_type/destination_spec for this P0: backend/app/trafego/meta_execucao/contrato.py:119-123; backend/app/trafego/meta_execucao/compilador.py:125-130"
+      ]
+    },
+    {
+      "id": "C02",
+      "title": "destination_type em Traffic/LPV",
+      "classification": "PROVABLE_ONLY_DURING_CANARY",
+      "decision": "For this P0 the payload keeps destination_type omitted on AdSet because the operational code documents that official Traffic destination_type enum does not prove WEBSITE for OUTCOME_TRAFFIC. The canary must treat the first real AdSet create/read-back as the proof point. If Meta refuses the AdSet because destination_type is required or incompatible, the saga records provider refusal, stops the lot, and does not retry with an invented field.",
+      "runtime_effect": "No destination_type default may be injected before an official field is proven. Provider refusal at AdSet is a safe stop, not a reason to synthesize a field.",
+      "evidence": [
+        "Operational contract comment: backend/app/trafego/meta_execucao/contrato.py:119-123",
+        "Compiler omission comment: backend/app/trafego/meta_execucao/compilador.py:125-130",
+        "Read-back only checks destination_type if it was actually sent: backend/app/trafego/meta_execucao/executor.py:623-629"
+      ]
+    },
+    {
+      "id": "C03",
+      "title": "Fable asset supply manifests",
+      "classification": "CANARY_PRECONDITION",
+      "decision": "P0 requires a minimal AssetSupplyManifest subset for every selected static image before compile/approval: asset_ref, slot_key, variation_key, media_type=image, source_kind=PROVIDER_LIBRARY or INTERNAL_ASSET, content_sha256, item_sha256, supply_sha256, width/height when known, mime_type when known, policy_receipt_ref, policy_state in CLEAR or AUTHORIZED, expires_at, lifecycle_state, provider_registration with Meta image_hash/account_ref, and blocked_reasons/unknowns. Nullability follows Fable: unknowns are explicit; width/height >=1 when present; channel_eligibility must include Meta with non-UNKNOWN for P0.",
+      "runtime_effect": "The Meta engine must refuse any asset_ref whose bytes/hash/policy/supply identity receipt is absent, expired, blocked, or not linked exactly to the image_hash that will be sent to Meta.",
+      "evidence": [
+        "Fable OCC-01: docs/specs/creative-supply-chain-v1/OPEN-CONTRACT-CONFLICTS.json id=OCC-01",
+        "Fable schema hash contract: docs/specs/creative-supply-chain-v1/ASSET-SUPPLY-MANIFEST.schema.json x-volc-contract.hash",
+        "Meta image hash is provider identity, not content_sha256: docs/specs/creative-supply-chain-v1/OFFICIAL-API-EVIDENCE.json EV-META-06/EV-META-07"
+      ]
+    },
+    {
+      "id": "C04",
+      "title": "concorrência e ausência",
+      "classification": "FIX_BEFORE_MIGRATION",
+      "decision": "For P0, FOUND+CONGRUENT may close an ambiguous step as created. Absence, incomplete listing, provider unavailability, homonym, missing created_time, or temporal doubt must remain AMBIGUOUS and require manual operator adjudication. resolve-absent must not automatically release a new create/approval after dispatch ambiguity for the first canary.",
+      "runtime_effect": "Before migration/canary, adjust or operationally disable the path that converts AMBIGUOUS to FAILED/absence and the release rule that permits a fresh approval because a prior step is FAILED after ambiguous dispatch.",
+      "evidence": [
+        "Existing code supports ambiguity/no blind retry: backend/app/trafego/meta_execucao/executor.py:402-423; supabase/migrations/20260904183418_meta_create_paused_executor.sql:582-590",
+        "Existing resolve_absent exists: backend/app/trafego/meta_execucao/registro.py:191-210; supabase/migrations/20260904183418_meta_create_paused_executor.sql:749-797",
+        "Existing approval live rule excludes FAILED steps: supabase/migrations/20260904183418_meta_create_paused_executor.sql:473-492"
+      ]
+    },
+    {
+      "id": "C05",
+      "title": "read-back crítico",
+      "classification": "RESOLVED_BY_EXISTING_EVIDENCE",
+      "decision": "Minimum P0 read-back mask: Campaign id/account_id/name/configured_status/status/effective_status/objective/buying_type/special_ad_categories/is_adset_budget_sharing_enabled; AdSet id/account_id/campaign_id/name/configured_status/status/effective_status/daily_budget/billing_event/optimization_goal/bid_strategy/start_time/targeting/promoted_object/created_time; AdCreative id/account_id/name/status/effective_status/object_story_spec/image_hash/page_id/instagram_actor_id/effective_object_story_id; Ad id/account_id/adset_id/name/configured_status/status/effective_status/creative/created_time. Results are one of CONGRUENT, DIVERGENT, ABSENT, UNKNOWN; raw IDs stay backend-private and receipts expose only opaque refs/has_external_id.",
+      "runtime_effect": "Divergence records readback_error and stops; absence/unknown after dispatch do not trigger retry; Campaign/AdSet/Ad must be PAUSED; Creative is non-veiculable and may be ACTIVE without being described as PAUSED.",
+      "evidence": [
+        "Read-back PAUSED and comparisons: backend/app/trafego/meta_execucao/executor.py:584-670",
+        "Creative non-veiculable semantics: backend/app/trafego/meta_execucao/executor.py:435-440,599-606",
+        "Receipt sanitization: supabase/migrations/20260904183418_meta_create_paused_executor.sql:923-962"
+      ]
+    },
+    {
+      "id": "C06",
+      "title": "separação de flags",
+      "classification": "FIX_BEFORE_MIGRATION",
+      "decision": "Separate flag scopes: META_VALIDATE_ONLY_ENABLED authorizes only remote validate_only; META_CREATE_LEDGER_WRITE_ENABLED authorizes durable validation/approval/step receipts; META_CREATE_PAUSED_ENABLED authorizes dispatch/create only when ledger is also open; reconciliation/read-only lookup must not depend on META_CREATE_PAUSED_ENABLED. Validation receipt must not be gated by the create dispatch flag.",
+      "runtime_effect": "Before migration/canary, ensure durable validate receipt and reconciliation can operate under ledger/read authority without opening dispatch. create_paused still requires META_CREATE_PAUSED_ENABLED and META_CREATE_LEDGER_WRITE_ENABLED simultaneously.",
+      "evidence": [
+        "Current capabilities separate creation flags: backend/app/trafego/meta_execucao/capacidades.py:30-39",
+        "Current validation receipt is gated by criacao_liberada(): backend/app/routers/trafego_meta_validacao.py:397-415",
+        "Current create routes require creation capability before approve/create/reconcile/receipt: backend/app/routers/trafego_meta_criacao.py:377,450,534,643"
+      ]
+    },
+    {
+      "id": "C07",
+      "title": "Page, Instagram e placements",
+      "classification": "CANARY_PRECONDITION",
+      "decision": "P0 must prove Page ownership/permission and the identity used in object_story_spec. If Instagram identity is not proved, the canary must either use a proven Facebook-only placement subset or block; it must not invent an Instagram actor, allow silent fallback, or rely on automatic placements that can deliver through an unproven identity.",
+      "runtime_effect": "Canary gate requires a fresh opaque Page receipt and either a proven IG actor receipt or a restricted placements receipt. Read-back must compare page and instagram_actor_id when present.",
+      "evidence": [
+        "Operational P0 currently fixes placements_mode AUTOMATIC and blocks manual placements: backend/app/trafego/meta_execucao/contrato.py:125,162-164",
+        "Read-back comments compare Instagram actor if provider returns it: backend/app/trafego/meta_execucao/executor.py:726-727",
+        "Fable policy requires third-party identity gate before paid media: docs/specs/creative-supply-chain-v1/POLICY-AND-PROVENANCE-CONTRACT.json POLICY-01/POLICY-02/POLICY-03"
+      ]
+    },
+    {
+      "id": "C13",
+      "title": "estado do SHA operacional",
+      "classification": "RESOLVED_BY_EXISTING_EVIDENCE",
+      "decision": "Update fact: SHA 884393b0e99b5ee403a6f38e1e4225012705f942 is published on execution/volc-os-operacao-80-20 and was independently approved for canary preparation of the governed create_paused path. Migration official and real canary remain not executed.",
+      "runtime_effect": "This master contract starts from 884393b and must not claim migration/canary completion.",
+      "evidence": [
+        "Remote read-back performed for this package: origin/execution/volc-os-operacao-80-20 = 884393b0e99b5ee403a6f38e1e4225012705f942",
+        "Prior verdict: META_GOVERNED_CREATE_PAUSED_APPROVED_FOR_CANARY_PREP"
+      ]
+    },
+    {
+      "id": "C16",
+      "title": "AdCreative semântica real",
+      "classification": "RESOLVED_BY_EXISTING_EVIDENCE",
+      "decision": "AdCreative is creatable but not veiculable and has no PAUSED state. The P0 canary authorization must explicitly say it may create a new AdCreative and possibly an unpublished story/creative side-effect, while Campaign, AdSet and Ad are the veiculable objects that must be PAUSED. P0 uses a selected existing static image hash after OCC-01 gate; reuse of an existing AdCreative is not assumed unless the ledger/read-back proves congruent reuse.",
+      "runtime_effect": "Receipts must never say “all objects PAUSED”; they say “all veiculable objects PAUSED” and report Creative as non-veiculable.",
+      "evidence": [
+        "Executor reports creative as non-veiculable: backend/app/trafego/meta_execucao/executor.py:435-440",
+        "Creative read-back does not require PAUSED: backend/app/trafego/meta_execucao/executor.py:599-606",
+        "Astra runbook cardinality caveat: docs/specs/meta-completion-v1/FIRST-PAUSED-CANARY-RUNBOOK.json cardinality_caveat"
+      ]
+    },
+    {
+      "id": "OCC-01",
+      "title": "peça selecionada / creative supply chain",
+      "classification": "CANARY_PRECONDITION",
+      "decision": "The canary cannot advance until the selected image has a server-read bytes receipt, content_sha256, technical gate, third-party identity/policy gate, CLEAR or AUTHORIZED policy receipt, and exact correspondence between approved bytes, AssetSupplyManifest, supply_sha256 and Meta image_hash. Any unverified third-party logo/identity blocks.",
+      "runtime_effect": "Compile and approve must require policy_receipt_ref/supply_sha256 for every asset_ref. Meta image_hash alone is insufficient.",
+      "evidence": [
+        "Fable OCC-01 blocks static canary: docs/specs/creative-supply-chain-v1/OPEN-CONTRACT-CONFLICTS.json id=OCC-01",
+        "Fable policy gate: docs/specs/creative-supply-chain-v1/POLICY-AND-PROVENANCE-CONTRACT.json POLICY-01/POLICY-02/POLICY-03",
+        "Supply manifest hash: docs/specs/creative-supply-chain-v1/ASSET-SUPPLY-MANIFEST.schema.json x-volc-contract.hash"
+      ]
+    }
+  ]
+}

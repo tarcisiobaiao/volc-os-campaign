@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_id": "MASTER-P0-CONTRACT",
+  "scope": "minimum executable master contract for first static Meta Traffic/LPV PAUSED canary",
+  "canary_recipe": {
+    "objective": "OUTCOME_TRAFFIC",
+    "optimization_goal": "LANDING_PAGE_VIEWS",
+    "creative_media": "existing static image after AssetSupply gate",
+    "cardinality": {
+      "campaigns": 1,
+      "adsets": 1,
+      "adcreatives": 1,
+      "ads": 1
+    },
+    "budget": {
+      "scope": "ADSET",
+      "currency": "BRL",
+      "daily_budget_minor_max_recommended": 1000
+    },
+    "states": {
+      "campaign": "PAUSED",
+      "adset": "PAUSED",
+      "adcreative": "NON_VEICULABLE_NO_PAUSED_STATE",
+      "ad": "PAUSED"
+    },
+    "objects_meta_may_create": [
+      "Campaign",
+      "AdSet",
+      "AdCreative",
+      "Ad"
+    ],
+    "activation": "OUT_OF_SCOPE_NO_ROUTE"
+  },
+  "separated_acts": {
+    "implementacao_local": "runtime tasks P0-RT-01..P0-RT-05 only",
+    "migration_oficial": "separate authorization after local gates",
+    "validate_only": "separate Meta read/validate act; roots only accepted receipt already exists",
+    "create_paused": "separate authorization; requires approval+ledger+flags+fresh receipts",
+    "read_back": "mandatory after each created veiculable step before advancing",
+    "ativacao": "forbidden/out of scope"
+  },
+  "flags": {
+    "META_VALIDATE_ONLY_ENABLED": "authorizes only remote validate_only, not durable receipt and not create",
+    "META_CREATE_LEDGER_WRITE_ENABLED": "authorizes durable validation/approval/step receipts; not dispatch by itself",
+    "META_CREATE_PAUSED_ENABLED": "authorizes dispatch/create only when ledger flag is also open",
+    "reconciliation_read": "must not depend on META_CREATE_PAUSED_ENABLED; may require ledger/read authority and Meta read credential"
+  },
+  "approval_contract": [
+    "actor",
+    "opaque account_ref",
+    "plan_sha256",
+    "ordered manifest",
+    "daily_budget_minor",
+    "currency",
+    "cardinality",
+    "expires_at",
+    "literal CRIAR PAUSADA confirmation",
+    "validation receipt id",
+    "AssetSupply receipt ids/supply_sha256 for each selected asset",
+    "website-only/Shop/placement identity receipts"
+  ],
+  "idempotency": "identity is account_ref + step_name + resolved payload_sha256; plan hash alone is not enough",
+  "ambiguity_policy": "after dispatch, timeout or unknown result becomes AMBIGUOUS; no automatic retry; absence/doubt remains manual for P0",
+  "readback_policy": {
+    "congruent": "record CREATED and continue",
+    "divergent": "record readback_error and stop",
+    "absent": "remain AMBIGUOUS/manual for P0",
+    "unknown": "remain AMBIGUOUS/manual for P0"
+  },
+  "evidence": {
+    "operational": {
+      "branch": "execution/volc-os-operacao-80-20",
+      "sha": "884393b0e99b5ee403a6f38e1e4225012705f942"
+    },
+    "astra": {
+      "branch": "spec/gpt6-meta-completion-v1",
+      "sha": "2766e49aed7055f24cd97932e9995406a409826b"
+    },
+    "fable": {
+      "branch": "spec/fable-creative-supply-chain-v1",
+      "sha": "5d2cbd0006b7d794e685ebf67d3d79e6a879e12c"
+    },
+    "real_validate_receipt": {
+      "classification": "ROOTS_VALIDATE_ONLY_ACCEPTED",
+      "coverage": "INDEPENDENT_ROOTS_ONLY",
+      "plan_sha256": "10e5b56aaf0d1d4c4b87bc309532c148463f40ab721ac44de6b60cfcb061d767",
+      "validated": [
+        "campaign",
+        "creative:variation-001"
+      ],
+      "pending": [
+        "adset",
+        "ad:variation-001"
+      ],
+      "objects_created": 0,
+      "reference": "docs/closure/meta-creation-engine-operator-experience-v1/PROVA-VALIDATE-ONLY-REAL.md:70-76; docs/closure/meta-creation-engine-operator-experience-v1/CURATION-HANDOFF.json:11,55-61"
+    }
+  }
+}
