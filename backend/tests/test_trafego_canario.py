@@ -1,6 +1,7 @@
 """Guardas do único alvo autorizado para o primeiro mutate Search."""
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 import asyncio
@@ -62,7 +63,108 @@ def test_a_politica_nomeia_a_conta_laboratorio_e_nao_inclui_ativacao():
         "inclui_ativacao": False,
         "orcamento_diario_maximo_brl": "20.00",
         "cpc_maximo_brl": "1.00",
+        # Search é o único canal com rede a declarar. Ver `politica_do_canal`.
+        "exige_rede": True,
     }
+
+
+def test_cada_canal_tem_a_propria_janela_e_search_nao_vaza_para_os_outros():
+    """CONTRAPROVA T01: teto por canal, e CPC/rede exclusivos de Search.
+
+    `cpc_inicial` e `rede` não são campos universais: Display fixa
+    `network_settings` no builder, Demand Gen escolhe canais por
+    `channel_controls`, e PMax não tem controle de rede nenhum. Cobrar "declare
+    a rede" de quem não tem rede a declarar produz uma recusa que o operador
+    não tem como satisfazer.
+    """
+    search = canario.politica_do_canal("SEARCH")
+    assert search is canario.POLITICA
+    assert search.cpc_maximo_brl == "1.00"
+    assert search.exige_rede is True
+
+    for canal in ("DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"):
+        politica = canario.politica_do_canal(canal)
+        assert politica.canal == canal
+        # ⚠️ TER JANELA NÃO É TER AUTORIZAÇÃO. Teto e vocabulário existem;
+        # criar não. Se isto virasse True sem o canário do canal, esta tarefa
+        # teria aberto a escrita de Display de passagem.
+        assert politica.cria_pausada is False
+        # Ativação continua fora, para todos os quatro.
+        assert politica.inclui_ativacao is False
+        # ⚠️ `None`, não `"0.00"`: ausência de CPC não é teto zero, que
+        # recusaria qualquer lance.
+        assert politica.cpc_maximo_brl is None
+        assert politica.exige_rede is False
+        # O teto existe para todo canal — o freio de verba nunca some.
+        assert Decimal(politica.orcamento_diario_maximo_brl) > 0
+
+
+def test_canal_sem_janela_levanta_em_vez_de_herdar_a_de_search():
+    """Herdar a política de Search por omissão daria a recusa o nome errado."""
+    with pytest.raises(canario.CanarioRecusado, match="não tem política"):
+        canario.politica_do_canal("VIDEO")
+    with pytest.raises(canario.CanarioRecusado, match="não tem política"):
+        canario.politica_do_canal("")
+
+
+def _pedido_de_canal(canal: str, **troca):
+    base = dict(
+        customer_id=canario.CONTA,
+        login_customer_id=canario.MCC,
+        canal=canal,
+        budget_diario="15.00",
+        cpc_inicial=None,
+        chave_intencao="a" * 64,
+        carimbo_nome="20260905_120000",
+        confirmar_criacao_pausada=True,
+        rede=None,
+    )
+    base.update(troca)
+    return base
+
+
+def test_criar_em_canal_sem_canario_e_recusado_pelo_motivo_certo():
+    """CONTRAPROVA T01: a recusa é de AUTORIZAÇÃO, não de rede nem de CPC.
+
+    O canal sem rede a declarar não pode ser recusado por não declarar rede —
+    seria uma regra que o operador não teria como satisfazer. O que o recusa é
+    o canário do canal, que ainda não aconteceu.
+    """
+    for canal in ("DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"):
+        with pytest.raises(canario.CanarioRecusado) as erro:
+            canario.exigir(**_pedido_de_canal(canal))
+        mensagem = str(erro.value)
+        assert "ainda não autoriza CRIAR" in mensagem
+        assert canal in mensagem
+        # NÃO pode ser a recusa de rede nem a de CPC.
+        assert "rede declarada" not in mensagem
+        assert "CPC inicial" not in mensagem
+
+
+def test_o_teto_de_verba_e_julgado_antes_da_autorizacao_do_canal():
+    """A verba acima do teto é um defeito do PLANO, e o operador pode consertá-lo.
+
+    Dizer primeiro "o canal não está autorizado" esconderia o único dos dois
+    problemas que está nas mãos de quem preencheu o formulário.
+    """
+    with pytest.raises(canario.CanarioRecusado, match="supera o teto"):
+        canario.exigir(**_pedido_de_canal("PERFORMANCE_MAX", budget_diario="20.01"))
+
+
+def test_search_continua_atravessando_a_janela_inteira():
+    """REGRESSÃO T01: o único canal com canário aceito continua passando."""
+    marca = canario.exigir(
+        customer_id=canario.CONTA,
+        login_customer_id=canario.MCC,
+        canal="SEARCH",
+        budget_diario="10.00",
+        cpc_inicial="0.20",
+        chave_intencao="a" * 64,
+        carimbo_nome="20260905_120000",
+        confirmar_criacao_pausada=True,
+        rede=REDE_DO_CANARIO,
+    )
+    assert marca.startswith("VOLC-CANARY-")
 
 
 @pytest.mark.parametrize(
@@ -70,7 +172,8 @@ def test_a_politica_nomeia_a_conta_laboratorio_e_nao_inclui_ativacao():
     [
         ({"customer_id": "8017851692"}, "547-809-6539"),
         ({"login_customer_id": "999"}, "547-809-6539"),
-        ({"canal": "DISPLAY"}, "apenas SEARCH"),
+        # DISPLAY ganhou janela própria em T01; o canal sem janela é outro.
+        ({"canal": "VIDEO"}, "não tem política"),
         ({"budget_diario": "20.01"}, "supera o teto"),
         ({"cpc_inicial": "1.01"}, "supera o teto"),
         ({"confirmar_criacao_pausada": False}, "confirmação explícita"),

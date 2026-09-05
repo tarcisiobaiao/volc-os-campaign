@@ -33,6 +33,52 @@ CANAL = "SEARCH"
 ORCAMENTO_DIARIO_MAXIMO_BRL = Decimal("20.00")
 CPC_MAXIMO_BRL = Decimal("1.00")
 
+#: Tetos de verba diária por canal, em BRL.
+#:
+#: ⚠️ NÃO é o mesmo número repetido quatro vezes, e a diferença é medida, não
+#: estética. Search entrega por clique num leilão que o CPC máximo já limita;
+#: Display, Demand Gen e PMax entregam por impressão em inventário muito maior,
+#: onde o teto de verba é o ÚNICO freio — não existe CPC para segurá-los. Um
+#: canário desses gasta o dia inteiro de orçamento em minutos se o teto for o
+#: de Search por descuido.
+TETO_DIARIO_POR_CANAL: dict[str, Decimal] = {
+    "SEARCH": ORCAMENTO_DIARIO_MAXIMO_BRL,
+    "DISPLAY": Decimal("20.00"),
+    "DEMAND_GEN": Decimal("20.00"),
+    "PERFORMANCE_MAX": Decimal("20.00"),
+}
+
+#: Os canais cujo pedido carrega CPC e rede — quer dizer: Search, e só ele.
+#:
+#: ⚠️ Esta é a metade que mais importa desta tarefa. `cpc_inicial` e `rede`
+#: NÃO são campos universais: `network_settings` de Display é fixo no builder,
+#: Demand Gen escolhe canais por `channel_controls`, e PMax não tem controle
+#: de rede nenhum (matriz §13). Cobrar "declare a rede" de um canal que não
+#: tem rede a declarar produziria uma recusa que o operador não teria como
+#: satisfazer — o mesmo defeito que a docstring de `elegivel` registra.
+CANAIS_COM_CPC_E_REDE: frozenset[str] = frozenset({"SEARCH"})
+
+#: Os canais que esta janela CONHECE. Conhecer não é autorizar: ver
+#: `CANAIS_COM_CRIACAO_AUTORIZADA` logo abaixo.
+CANAIS_DO_CANARIO: tuple[str, ...] = (
+    "SEARCH", "DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX")
+
+#: Os canais cujo canário JÁ FOI autorizado — quer dizer: Search, e só ele.
+#:
+#: ⚠️ ESTE É O CONJUNTO QUE MANTÉM A CRIAÇÃO FECHADA, e separá-lo de
+#: `CANAIS_DO_CANARIO` é o ponto inteiro da tarefa. Ter janela é ter teto,
+#: capacidade e vocabulário; ter AUTORIZAÇÃO é outra coisa, e vem de um ato
+#: humano separado por canal (o canário Display, o Demand Gen, o PMax — cada um
+#: com seu runbook, nenhum executado aqui).
+#:
+#: Antes desta tarefa, `exigir` recusava todo canal != SEARCH com "apenas
+#: SEARCH". Dar janela aos outros três sem separar estes dois conjuntos teria
+#: ABERTO a escrita de Display em `/subir` — a política teria deixado de
+#: recusar, e a única coisa entre o operador e uma campanha Display real seria
+#: um gate que ninguém tinha auditado para esse fim. Uma tarefa cujo objetivo
+#: é dar tetos por canal não pode, de passagem, autorizar canal nenhum.
+CANAIS_COM_CRIACAO_AUTORIZADA: frozenset[str] = frozenset({"SEARCH"})
+
 _IMPRESSAO = re.compile(r"^[0-9a-f]{64}$")
 _CARIMBO_NOME = re.compile(r"^[0-9]{8}_[0-9]{6}$")
 
@@ -43,6 +89,14 @@ class CanarioRecusado(ValueError):
 
 @dataclass(frozen=True)
 class Politica:
+    """A janela do canário para UM canal.
+
+    ⚠️ `canal` continua com default `SEARCH` e `POLITICA` continua sendo a
+    política de Search. Quem já lia `canario.POLITICA` — a tela, o contrato de
+    canais, os testes — continua lendo exatamente o que lia antes; o que mudou
+    é que agora existe `politica_do_canal()` para os outros três.
+    """
+
     customer_id: str = CONTA
     customer_label: str = NOME_DA_CONTA
     login_customer_id: str = MCC
@@ -50,7 +104,11 @@ class Politica:
     cria_pausada: bool = True
     inclui_ativacao: bool = False
     orcamento_diario_maximo_brl: str = str(ORCAMENTO_DIARIO_MAXIMO_BRL)
-    cpc_maximo_brl: str = str(CPC_MAXIMO_BRL)
+    #: `None` quando o canal não tem CPC a declarar. ⚠️ Ausência NÃO é zero:
+    #: zero significaria "o teto é R$ 0,00" e recusaria qualquer lance.
+    cpc_maximo_brl: str | None = str(CPC_MAXIMO_BRL)
+    #: Se este canal exige `rede` declarada. Só Search tem rede a declarar.
+    exige_rede: bool = True
 
     def para_json(self) -> dict[str, Any]:
         return {
@@ -63,10 +121,36 @@ class Politica:
             "inclui_ativacao": self.inclui_ativacao,
             "orcamento_diario_maximo_brl": self.orcamento_diario_maximo_brl,
             "cpc_maximo_brl": self.cpc_maximo_brl,
+            "exige_rede": self.exige_rede,
         }
 
 
 POLITICA = Politica()
+
+
+def politica_do_canal(canal: Any) -> Politica:
+    """A janela do canário para o canal pedido.
+
+    Um canal fora da lista não devolve uma política frouxa: levanta. Devolver
+    a de Search por omissão faria um pedido PMax herdar teto de CPC e exigência
+    de rede que PMax não tem — e a recusa apareceria com o nome errado.
+    """
+    nome = str(canal or "").strip().upper()
+    if nome not in CANAIS_DO_CANARIO:
+        raise CanarioRecusado(
+            f"o canário não tem política para o canal {canal!r}; "
+            f"os canais com janela são {', '.join(CANAIS_DO_CANARIO)}."
+        )
+    if nome == CANAL:
+        return POLITICA
+    com_cpc = nome in CANAIS_COM_CPC_E_REDE
+    return Politica(
+        canal=nome,
+        orcamento_diario_maximo_brl=str(TETO_DIARIO_POR_CANAL[nome]),
+        cpc_maximo_brl=str(CPC_MAXIMO_BRL) if com_cpc else None,
+        exige_rede=com_cpc,
+        cria_pausada=nome in CANAIS_COM_CRIACAO_AUTORIZADA,
+    )
 
 
 def carimbo_do_nome(valor: Any = None) -> str:
@@ -140,10 +224,7 @@ def exigir(
             f"({NOME_DA_CONTA}), sob o MCC da VOLC. A conta recebida foi "
             f"{customer_id or '(ausente)'}."
         )
-    if str(canal or "").upper() != CANAL:
-        raise CanarioRecusado(
-            f"o primeiro canário opera apenas {CANAL}; recebido {canal!r}."
-        )
+    politica = politica_do_canal(canal)
     if not confirmar_criacao_pausada:
         raise CanarioRecusado(
             "faltou a confirmação explícita de criar uma campanha PAUSADA. "
@@ -151,16 +232,41 @@ def exigir(
         )
     carimbo_do_nome(carimbo_nome)
     budget = _decimal(budget_diario, "orçamento diário")
-    if budget > ORCAMENTO_DIARIO_MAXIMO_BRL:
+    teto = Decimal(politica.orcamento_diario_maximo_brl)
+    if budget > teto:
         raise CanarioRecusado(
             f"orçamento diário de R$ {budget} supera o teto do canário "
-            f"(R$ {ORCAMENTO_DIARIO_MAXIMO_BRL})."
+            f"(R$ {teto})."
         )
+    # ⚠️ TER JANELA NÃO É TER AUTORIZAÇÃO, e esta guarda vem DEPOIS das que
+    # julgam o PLANO. Um pedido Display com verba acima do teto está errado
+    # independentemente de autorização, e dizer primeiro "o canal não está
+    # autorizado" esconderia o defeito que o operador consegue consertar.
+    #
+    # O canal ganhou teto, vocabulário e capacidades próprias; criar de verdade
+    # continua dependendo do canário DAQUELE canal — ato humano separado, com
+    # runbook próprio, ainda não executado.
+    if not politica.cria_pausada:
+        raise CanarioRecusado(
+            f"o canário ainda não autoriza CRIAR em {politica.canal}: apenas "
+            f"{', '.join(sorted(CANAIS_COM_CRIACAO_AUTORIZADA))} tem canário "
+            f"aceito. Provar continua liberado; criar exige o canário do canal."
+        )
+
+    # ── CPC e rede: exclusivos de Search, e a exclusividade é o ponto ───────
+    #
+    # Display fixa `network_settings` no builder, Demand Gen escolhe canais por
+    # `channel_controls` e PMax não tem controle de rede nenhum. Cobrar CPC ou
+    # rede desses canais produziria uma recusa que o operador não teria como
+    # satisfazer — e um teto de Search vazando para outro canal seria uma
+    # política que ninguém mediu para o inventário dele.
+    if politica.cpc_maximo_brl is None:
+        return prefixo_da_marca(chave_intencao)
     cpc = _decimal(cpc_inicial, "CPC inicial")
-    if cpc > CPC_MAXIMO_BRL:
+    if cpc > Decimal(politica.cpc_maximo_brl):
         raise CanarioRecusado(
             f"CPC inicial de R$ {cpc} supera o teto do canário "
-            f"(R$ {CPC_MAXIMO_BRL})."
+            f"(R$ {politica.cpc_maximo_brl})."
         )
     if rede is None:
         raise CanarioRecusado(

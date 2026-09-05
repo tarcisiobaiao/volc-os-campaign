@@ -247,6 +247,20 @@ def _ponte():
 
 # ── as contas ───────────────────────────────────────────────────────────────
 
+def _politica_do_canario(canal: Any) -> "canario.Politica":
+    """A janela do canário do canal pedido, sem derrubar a rota por isso.
+
+    ⚠️ Um canal desconhecido NÃO pode virar 500 aqui: esta função só alimenta a
+    projeção que a tela lê, e a recusa de verdade acontece em `elegivel`/
+    `exigir`, com a frase certa. Cair na política de Search preserva
+    exatamente o que a rota mostrava antes de existirem outras janelas.
+    """
+    try:
+        return canario.politica_do_canal(canal)
+    except canario.CanarioRecusado:
+        return canario.POLITICA
+
+
 def _no_escopo(customer_id: Any, login_customer_id: Any) -> tuple[str, str]:
     """O portão da casa, traduzido para HTTP. Não faz rede.
 
@@ -3546,7 +3560,12 @@ async def provar(
             "elegivel": (elegivel and preparo.selo is not None
                          and destino.elegivel),
             "motivo_elegibilidade": motivo_elegibilidade,
-            "politica": canario.POLITICA.para_json(),
+            # ⚠️ A política DO CANAL PEDIDO, não a de Search. Mostrar o teto de
+            # Search numa prova Display faria a tela prometer um limite que o
+            # servidor não aplica — e o operador aprenderia a não acreditar na
+            # tela. Canal sem janela cai na de Search, que é a que a rota já
+            # mostrava antes de existirem outras.
+            "politica": _politica_do_canario(body.canal).para_json(),
             "budget_diario": body.budget_diario,
             "cpc_inicial": body.cpc_inicial,
             "ativacao_incluida": False,
@@ -5898,7 +5917,15 @@ async def contrato_dos_canais(
     )
     return {
         "operador": c.json(),
+        # Mantida para quem já lia este campo: continua sendo a de Search.
         "politica_canario": canario.POLITICA.para_json(),
+        # ⚠️ E o mapa por canal ao lado, porque teto, CPC e rede deixaram de
+        # ser um número só. `cria_pausada` aqui é a diferença entre "tem
+        # janela" e "tem autorização": só Search tem canário aceito.
+        "politica_canario_por_canal": {
+            canal: canario.politica_do_canal(canal).para_json()
+            for canal in canario.CANAIS_DO_CANARIO
+        },
         "canais": [x.json() for x in canais],
         # ⚠️ De onde cada camada veio, para a tela poder dizer "não sei" com
         # precisão em vez de mostrar um vazio mudo. `espelho_lido=False` é a
@@ -5936,7 +5963,7 @@ async def contrato_de_um_canal(
     )
     return {
         "operador": c.json(),
-        "politica_canario": canario.POLITICA.para_json(),
+        "politica_canario": _politica_do_canario(alvo.canal).para_json(),
         "canal": final.json(),
         "fontes": {
             "espelho_lido": espelho is not None,
