@@ -188,16 +188,49 @@ class RegistroSagaMetaSupabase:
         return await self._rpc(
             "trafego_meta_create_approval_manifest", {"p_approval_id": approval_id})
 
-    async def resolver_ausente(self, *, passo_ref: str, codigo: str) -> None:
+    async def resolver_ausente(
+        self, *, passo_ref: str, codigo: str, idade_minima_s: int = 120,
+    ) -> None:
         """Fecha um passo AMBÍGUO cuja ausência foi PROVADA por leitura.
 
         ⚠️ O único caminho de AMBIGUOUS para FALHO. `falhar_passo` recusa este
         estado de propósito: uma recusa escrita da Meta prova que nada nasceu,
         um silêncio não prova nada, e só a leitura da conta pode desempatar.
+
+        `idade_minima_s` é um piso temporal, não um enfeite: um passo vira
+        ambíguo assim que uma segunda chamada reentra nele, e isso pode
+        acontecer com a primeira ainda dentro do `await` do POST. Fechar como
+        ausente nesse instante gravaria "não existe" sobre um objeto que está
+        prestes a nascer. A RPC recusa abaixo de 60 s.
         """
         await self._rpc("trafego_meta_create_resolve_absent", {
+            "p_step_ref": passo_ref,
+            "p_error_code": codigo,
+            "p_idade_minima_s": int(idade_minima_s),
+        })
+
+    async def marcar_readback_divergente(self, *, passo_ref: str, codigo: str) -> None:
+        """Grava, no passo já CRIADO, que o read-back não confirmou o objeto.
+
+        O recibo fecha antes do read-back de propósito — o id precisa estar
+        gravado antes de qualquer outra coisa. O preço é que uma divergência
+        posterior deixaria o livro dizendo apenas CREATED. Esta marca é o
+        conserto desse preço, sem inverter a ordem que protege o id.
+        """
+        await self._rpc("trafego_meta_create_flag_readback", {
             "p_step_ref": passo_ref, "p_error_code": codigo,
         })
+
+    async def consultar_validacao(self, validation_id: str) -> Mapping[str, Any]:
+        """Lê o recibo de validação ANTES de o Keychain ser aberto.
+
+        A autoridade continua sendo `trafego_meta_create_approve`, que
+        reconfere tudo. Esta leitura existe para que um `validation_id`
+        inventado, de outra pessoa ou velho pare o pedido sem que o token seja
+        lido e sem que a Meta receba uma única requisição.
+        """
+        return await self._rpc(
+            "trafego_meta_create_validation_lookup", {"p_validation_id": validation_id})
 
     async def preparar_passo(
         self,

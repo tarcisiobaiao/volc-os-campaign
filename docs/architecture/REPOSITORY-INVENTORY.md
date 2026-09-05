@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-05T10:19:27-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-05T11:46:27-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 652 arquivos: 478 Markdown e 174 SQL;
-- 651 versionados e 1 ainda não versionados;
+- 657 arquivos: 483 Markdown e 174 SQL;
+- 656 versionados e 1 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 113 SQL com palavras de mutação de alto risco.
 
@@ -16,8 +16,8 @@ Gerado em `2026-09-05T10:19:27-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 23 |
-| `documentation` | 330 |
+| `audit` | 24 |
+| `documentation` | 334 |
 | `generated` | 2 |
 | `module-guide` | 36 |
 | `product-document` | 23 |
@@ -113,7 +113,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/volc-sync/03_display_roi.sql` | `sql-migration-line` | 4 | 11 |
 | `src/sql/volc-sync/04_monthly_exchange_rate.BLOQUEADO.sql` | `sql-migration-line` | 6 | 10 |
 | `src/sql/volc-sync/APLICAR_NO_STUDIO.sql` | `sql-migration-line` | 14 | 49 |
-| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | 9 | 19 |
+| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | 16 | 36 |
 | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
@@ -180,6 +180,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/motor-pautas/REVISAO-EXTERNA.md` | `audit` | — | 0 | 0 |
 | `docs/closure/asset-vault-onepassword-production-v1/REVISAO-ADVERSARIAL.md` | `audit` | — | 0 | 0 |
 | `docs/closure/hermes-p10-t16-n8n-ledger-v12-v1/REVISAO-FOCAL.md` | `audit` | — | 0 | 0 |
+| `docs/closure/meta-governed-create-paused-path-v1/REVISAO-ADVERSARIAL-CODEX.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | high | 6 | 12 |
@@ -245,7 +246,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/timezone-trigger.sql` | `sql-needs-lineage` | high | 6 | 18 |
 | `src/sql/update_sync_gam_function.sql` | `sql-needs-lineage` | medium | 2 | 2 |
 | `src/sql/update_user_roles_remove_viewer.sql` | `sql-needs-lineage` | high | 1 | 0 |
-| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | high | 9 | 19 |
+| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | high | 16 | 36 |
 | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | high | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
@@ -278,7 +279,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | high | 5 | 13 |
 | `supabase/migrations/v15_98_meta_ads_insights_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v15_99_meta_ads_read_model_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | high | 12 | 34 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

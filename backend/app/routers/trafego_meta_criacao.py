@@ -181,10 +181,21 @@ def _erro(exc: Exception) -> HTTPException:
         return HTTPException(status_code=409, detail={
             "codigo": exc.codigo, "mensagem": str(exc)})
     if isinstance(exc, ErroRemotoMeta):
-        ambiguo = exc.codigo in {
-            "META_REMOTE_RESULT_AMBIGUOUS",
-            "META_RECONCILIATION_REQUIRED",
-            "META_TRANSPORT_ERROR",
+        # ⚠️ QUEM DECIDE É A SAGA, NÃO ESTA LISTA.
+        #
+        # A versão anterior classificava por uma lista de códigos aqui, e a
+        # lista errava: um 500 da Meta depois do POST levanta
+        # `META_REMOTE_CREATE_FAILED` com `criacao_descartada=False`, o
+        # executor marca o passo AMBIGUOUS no banco — e a resposta dizia 422
+        # com `reconciliacao_necessaria=false`. O ledger e o protocolo
+        # contavam histórias diferentes sobre o mesmo despacho.
+        #
+        # `exige_reconciliacao` é setada no ponto exato em que a saga deixa um
+        # passo ambíguo. Um read-back que falha DEPOIS de o recibo fechar não
+        # deixa passo ambíguo nenhum — o objeto existe e está registrado — e
+        # por isso os códigos de read-back continuam listados: eles são
+        # incerteza sobre o ESTADO do objeto, não sobre a existência dele.
+        ambiguo = exc.exige_reconciliacao or exc.codigo in {
             "META_READBACK_FAILED",
             "META_READBACK_DIVERGENT",
         }
@@ -295,6 +306,48 @@ def _orcamento_do_plano(compilado: PlanoCompiladoMeta) -> int:
         "META_BUDGET_NOT_IN_PLAN", "o plano compilado não declara orçamento no conjunto")
 
 
+def _exigir_validacao_utilizavel(
+    recibo: Mapping[str, Any], *, ator: str, plano_sha256: str,
+) -> None:
+    """Recusa um recibo de validação inutilizável — antes de qualquer segredo.
+
+    Cada recusa tem nome próprio porque cada uma significa uma coisa diferente
+    para quem está na tela: validou outro plano, validou como outra pessoa,
+    validou faz tempo demais, ou já usou este recibo. "Aprovação inválida" não
+    diria nenhuma delas.
+
+    ⚠️ Isto NÃO é a autoridade. `trafego_meta_create_approve` refaz todas estas
+    verificações dentro da transação, junto das que dependem do plano
+    recompilado. Duas checagens do mesmo fato são deliberadas: esta existe pela
+    ORDEM (recusar antes do Keychain), aquela existe pela CORREÇÃO.
+    """
+    if _texto(recibo.get("plan_sha256")) != plano_sha256:
+        raise ErroDeNascimentoMeta(
+            "META_VALIDATION_PLAN_DIVERGED",
+            "este recibo de validação descreve outro plano")
+    if _texto(recibo.get("actor_id")) != ator:
+        raise ErroDeNascimentoMeta(
+            "META_VALIDATION_ACTOR_DIVERGED",
+            "este recibo de validação é de outra pessoa")
+    if _texto(recibo.get("coverage")) != "INDEPENDENT_ROOTS_ONLY" \
+            or recibo.get("accepted") is not True:
+        raise ErroDeNascimentoMeta(
+            "META_VALIDATION_NOT_ACCEPTED",
+            "este recibo não registra uma validação aceita")
+    if int(recibo.get("objects_created") or 0) != 0:
+        raise ErroDeNascimentoMeta(
+            "META_VALIDATION_NOT_CLEAN",
+            "este recibo registra objetos criados; não é um recibo de validação")
+    if recibo.get("ja_consumido") is True:
+        raise ErroDeNascimentoMeta(
+            "META_VALIDATION_RECEIPT_ALREADY_USED",
+            "este recibo já autorizou uma aprovação; valide de novo")
+    if int(recibo.get("idade_s") or 0) > JANELA_DA_VALIDACAO_S:
+        raise ErroDeNascimentoMeta(
+            "META_VALIDATION_RECEIPT_STALE",
+            "esta validação é antiga demais; valide de novo antes de aprovar")
+
+
 @router.post("/aprovar")
 async def aprovar(
     payload: PedidoAprovarCriacaoMeta,
@@ -322,7 +375,20 @@ async def aprovar(
             "mensagem": "confirme que os objetos nascem em estado PAUSED",
         })
     _exigir_capacidade_de_criacao()
+    registro = _registro_saga()
     try:
+        # ⚠️ O RECIBO DE VALIDAÇÃO É CONFERIDO ANTES DO KEYCHAIN.
+        #
+        # A autoridade continua sendo `trafego_meta_create_approve`, que
+        # reconfere tudo dentro da transação. Esta leitura existe só para a
+        # ORDEM: um `validation_id` inventado, de outra pessoa, já consumido ou
+        # velho precisa parar o pedido sem que o token seja lido e sem que a
+        # Meta receba uma única requisição de leitura de ativos.
+        _exigir_validacao_utilizavel(
+            await registro.consultar_validacao(payload.validation_id),
+            ator=quem.sub,
+            plano_sha256=payload.plano_sha256_esperado,
+        )
         # O contrato do plano é puro e julga primeiro: uma receita recusável
         # para aqui sem que o Keychain seja aberto.
         pedido = _plano(payload.plano)
@@ -336,7 +402,7 @@ async def aprovar(
             raise ErroDeNascimentoMeta(
                 "META_NOT_PAUSED", "este plano não nasce pausado")
         expira_em = datetime.now(timezone.utc) + JANELA_DA_APROVACAO
-        aprovacao = await _registro_saga().aprovar(
+        aprovacao = await registro.aprovar(
             plano_sha256=compilado.plano_sha256,
             account_ref=compilado.account_ref,
             ator=quem.sub,
@@ -480,6 +546,13 @@ async def reconciliar(
             for item in passos
             if isinstance(item, Mapping) and _texto(item.get("state")) == "AMBIGUOUS"
         }
+        # O instante em que cada passo foi preparado. É o que separa "este
+        # objeto nasceu do nosso despacho" de "a conta já tinha um homônimo".
+        preparados = {
+            _texto(item.get("name")): _texto(item.get("prepared_at"))
+            for item in passos
+            if isinstance(item, Mapping)
+        }
         if not ambiguos:
             return {
                 "ok": True,
@@ -504,7 +577,8 @@ async def reconciliar(
 
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             conclusoes = await ReconciliadorMetaSomenteLeitura(cliente).conciliar(
-                compilado, segredo, passos_ambiguos=tuple(ambiguos))
+                compilado, segredo,
+                passos_ambiguos=tuple(ambiguos), preparados_em=preparados)
 
         publicadas: list[dict[str, Any]] = []
         for conclusao in conclusoes:

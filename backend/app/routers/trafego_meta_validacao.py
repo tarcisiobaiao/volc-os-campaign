@@ -394,6 +394,25 @@ async def _gravar_prova_da_validacao(
     """
     if not resultado.aceito:
         return {"registrada": False, "motivo": "a Meta não aceitou este plano"}
+    # ⚠️ O recibo de validação pertence à cadeia de autoridade da CRIAÇÃO, e por
+    # isso ele só é gravado quando a criação está aberta neste servidor. Gravar
+    # com a criação fechada produziria linhas que ninguém pode usar — elas
+    # ficariam velhas em 30 minutos — e faria a lane de criação escrever no
+    # Supabase sem as duas autorizações que ela exige.
+    #
+    # A validação em si NÃO depende disso: ela já aconteceu, a Meta respondeu, e
+    # a resposta continua verdadeira. O que muda é a resposta declarar, com
+    # todas as letras, que não há prova durável — e é a aprovação que falha
+    # fechada depois, por não encontrar recibo nenhum.
+    if not criacao_liberada():
+        return {
+            "registrada": False,
+            "motivo": (
+                "a criação PAUSED está fechada neste servidor, então a prova durável "
+                "desta validação não foi gravada"
+            ),
+            "codigo": "META_CREATE_PAUSED_BLOCKED",
+        }
     try:
         gravado = await _registro_saga().registrar_validacao(
             plano_sha256=resultado.plano_sha256,

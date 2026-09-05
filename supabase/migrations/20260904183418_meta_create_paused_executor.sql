@@ -186,6 +186,19 @@ CREATE TABLE public.trafego_meta_create_step (
   prepared_at          timestamptz NOT NULL DEFAULT clock_timestamp(),
   closed_at            timestamptz,
   updated_at           timestamptz NOT NULL DEFAULT clock_timestamp(),
+  -- ⚠️ O OBJETO EXISTE, MAS NAO E O QUE FOI APROVADO.
+  --
+  -- O recibo fecha ANTES do read-back de proposito: o id que a Meta acabou de
+  -- devolver precisa estar gravado antes de qualquer outra coisa, senao uma
+  -- queda entre o POST e o INSERT perde para sempre a unica prova de que o
+  -- objeto nasceu. Inverter essa ordem trocaria um problema pequeno (um
+  -- CREATED com read-back divergente) por um grande (um objeto orfao sem
+  -- registro nenhum).
+  --
+  -- O preco dessa ordem e que um read-back divergente deixava o recibo
+  -- dizendo apenas CREATED, e quem lesse o recibo depois concluiria que
+  -- estava tudo certo. Esta coluna e o registro duravel dessa divergencia.
+  readback_error       text,
   CONSTRAINT trafego_meta_create_step_name CHECK (
     step_name ~ '^(campaign|adset|creative(?::[a-z0-9][a-z0-9_-]{0,31})?|ad(?::[a-z0-9][a-z0-9_-]{0,31})?)$'
   ),
@@ -196,6 +209,10 @@ CREATE TABLE public.trafego_meta_create_step (
     external_object_id IS NULL OR external_object_id ~ '^[0-9]{1,40}$'),
   CONSTRAINT trafego_meta_create_step_error CHECK (
     error_code IS NULL OR error_code ~ '^[A-Z0-9_]{3,100}$'),
+  -- Divergencia de leitura so faz sentido sobre um objeto que existe.
+  CONSTRAINT trafego_meta_create_step_readback CHECK (
+    readback_error IS NULL
+    OR (state = 'CREATED' AND readback_error ~ '^[A-Z0-9_]{3,100}$')),
   CONSTRAINT trafego_meta_create_step_shape CHECK (
     (state = 'IN_FLIGHT' AND external_object_id IS NULL AND error_code IS NULL AND closed_at IS NULL)
     OR (state = 'CREATED' AND external_object_id IS NOT NULL AND error_code IS NULL AND closed_at IS NOT NULL)
@@ -207,6 +224,20 @@ CREATE TABLE public.trafego_meta_create_step (
 );
 CREATE INDEX trafego_meta_create_step_state_ix
   ON public.trafego_meta_create_step (state, updated_at DESC);
+-- ⚠️ A IDENTIDADE DO OBJETO NA CONTA, e nao dentro da aprovacao.
+--
+-- `UNIQUE (approval_id, step_name)` protege UMA saga contra si mesma. Ele nao
+-- protege a conta contra DUAS sagas: o `plan_sha256` cobre o plano inteiro,
+-- entao mudar a headline de um anuncio produz outro hash — e o payload da
+-- Campaign continua byte a byte o mesmo. Sem este indice, a segunda aprovacao
+-- comeca de novo em `campaign`, recebe DESPACHAR e cria a MESMA campanha pela
+-- segunda vez na conta.
+--
+-- `trafego_meta_create_prepare_step` consulta por aqui antes de despachar. Nao
+-- e UNIQUE: quando um passo identico ja existe CRIADO, a nova saga grava a
+-- propria linha CRIADA com o mesmo id externo e segue sem POST.
+CREATE INDEX trafego_meta_create_step_identidade_ix
+  ON public.trafego_meta_create_step (step_name, payload_sha256, state);
 
 ALTER TABLE public.trafego_meta_validation_receipt ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trafego_meta_validation_receipt FORCE ROW LEVEL SECURITY;
@@ -499,6 +530,7 @@ AS $$
 DECLARE
   v_approval public.trafego_meta_create_approval%ROWTYPE;
   v_step public.trafego_meta_create_step%ROWTYPE;
+  v_gemeo public.trafego_meta_create_step%ROWTYPE;
   v_ordinal smallint;
 BEGIN
   PERFORM public.trafego_meta_exigir_service_role();
@@ -565,6 +597,63 @@ BEGIN
      WHERE approval_id = p_approval_id AND ordinal = v_ordinal - 1 AND state = 'CREATED'
   ) THEN
     RAISE EXCEPTION 'META_STEP_OUT_OF_ORDER';
+  END IF;
+
+  -- ⚠️ A MESMA CAMPANHA NAO PODE NASCER POR DUAS APROVACOES.
+  --
+  -- `UNIQUE (approval_id, step_name)` protege UMA saga contra si mesma, e a
+  -- aprovacao unica por `plan_sha256` protege UM plano contra si mesmo. Nenhum
+  -- dos dois protege a CONTA, e o buraco entre eles e concreto:
+  --
+  --   1. o operador aprova P1 e a campanha nasce;
+  --   2. o AdSet falha, o que LIBERA o plano para nova aprovacao;
+  --   3. o operador corrige a headline de um anuncio;
+  --   4. mudar um filho muda o `plan_sha256` do plano INTEIRO, mas o payload da
+  --      Campaign continua byte a byte o mesmo;
+  --   5. P2 e aprovado, o ledger novo comeca em `campaign` e responde
+  --      DESPACHAR — e a mesma campanha nasce pela segunda vez.
+  --
+  -- A identidade que importa aqui nao e a do plano: e a do OBJETO na conta, ou
+  -- seja, (conta, tipo de passo, payload resolvido). Um passo identico ja
+  -- CRIADO e retomado sem POST; um identico em voo ou ambiguo obriga a
+  -- reconciliar antes de qualquer coisa.
+  --
+  -- O lock consultivo cobre a janela entre a sonda e o INSERT: sem ele, duas
+  -- aprovacoes simultaneas leem "nao existe" ao mesmo tempo e ambas despacham.
+  -- Salt 1603, separado do 1601 (aprovacao) e do 1602 (plano).
+  PERFORM pg_advisory_xact_lock(hashtextextended(
+    v_approval.account_ref || ':' || p_step_name || ':' || p_payload_sha256, 1603));
+  SELECT passo.* INTO v_gemeo
+    FROM public.trafego_meta_create_step AS passo
+    JOIN public.trafego_meta_create_approval AS dono
+      ON dono.approval_id = passo.approval_id
+   WHERE dono.account_ref = v_approval.account_ref
+     AND passo.step_name = p_step_name
+     AND passo.payload_sha256 = p_payload_sha256
+     AND passo.approval_id <> p_approval_id
+     AND passo.state IN ('CREATED', 'IN_FLIGHT', 'AMBIGUOUS')
+   ORDER BY CASE passo.state WHEN 'CREATED' THEN 0 ELSE 1 END, passo.prepared_at
+   LIMIT 1;
+  IF FOUND THEN
+    IF v_gemeo.state <> 'CREATED' THEN
+      -- Pode existir objeto do outro lado. Despachar aqui e a duplicacao.
+      RAISE EXCEPTION 'META_STEP_DUPLICATE_IN_FLIGHT';
+    END IF;
+    -- O objeto ja existe e e exatamente este. A saga nova o adota, com o mesmo
+    -- id externo, e segue sem um unico POST.
+    INSERT INTO public.trafego_meta_create_step (
+      approval_id, step_name, ordinal, payload_sha256,
+      state, external_object_id, closed_at
+    ) VALUES (
+      p_approval_id, p_step_name, v_ordinal, p_payload_sha256,
+      'CREATED', v_gemeo.external_object_id, clock_timestamp()
+    ) RETURNING * INTO v_step;
+    RETURN jsonb_build_object(
+      'step_ref', v_step.step_id::text,
+      'state', 'CRIADO',
+      'external_object_id', v_step.external_object_id,
+      'adotado_de_aprovacao_anterior', true
+    );
   END IF;
 
   INSERT INTO public.trafego_meta_create_step (
@@ -658,6 +747,63 @@ $$;
 -- `trafego_meta_create_close_step` ja aceita AMBIGUOUS -> CREATED com o id
 -- lido, e ja recusa um id diferente do gravado.
 CREATE FUNCTION public.trafego_meta_create_resolve_absent(
+  p_step_ref uuid, p_error_code text, p_idade_minima_s integer DEFAULT 120
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_step public.trafego_meta_create_step%ROWTYPE;
+BEGIN
+  PERFORM public.trafego_meta_exigir_service_role();
+  IF p_error_code !~ '^[A-Z0-9_]{3,100}$' THEN
+    RAISE EXCEPTION 'META_STEP_ERROR_CODE_INVALID';
+  END IF;
+  IF p_idade_minima_s IS NULL OR p_idade_minima_s < 60 OR p_idade_minima_s > 3600 THEN
+    RAISE EXCEPTION 'META_RECONCILE_WINDOW_INVALID';
+  END IF;
+
+  SELECT * INTO v_step FROM public.trafego_meta_create_step
+   WHERE step_id = p_step_ref FOR UPDATE;
+  IF NOT FOUND OR v_step.state <> 'AMBIGUOUS' THEN
+    RAISE EXCEPTION 'META_STEP_NOT_AMBIGUOUS';
+  END IF;
+
+  -- ⚠️ AUSENCIA NAO PODE SER PROVADA ENQUANTO ALGUEM AINDA PODE DESPACHAR.
+  --
+  -- O passo vira AMBIGUOUS assim que uma segunda chamada reentra nele — e isso
+  -- pode acontecer com a PRIMEIRA ainda dentro do `await` do POST, antes de a
+  -- Meta receber qualquer coisa. Uma reconciliacao imediata listaria a conta,
+  -- nao acharia nada, fecharia FALHO, e o POST original criaria o objeto
+  -- depois, com o livro ja dizendo que ele nao existe. O resultado seria
+  -- exatamente o que esta lane existe para impedir: uma nova aprovacao
+  -- liberada sobre um objeto vivo.
+  --
+  -- O cliente HTTP da criacao tem timeout de 20 s. Dois minutos e folga
+  -- suficiente para que nenhum despachante ainda tenha autoridade para enviar.
+  -- Nao e um lease — e um piso temporal, e o risco residual (uma requisicao
+  -- patologicamente lenta) esta declarado em REMAINING-RISKS.
+  IF greatest(v_step.prepared_at, v_step.updated_at)
+     > clock_timestamp() - make_interval(secs => p_idade_minima_s) THEN
+    RAISE EXCEPTION 'META_RECONCILE_TOO_SOON';
+  END IF;
+
+  UPDATE public.trafego_meta_create_step
+     SET state = 'FAILED', error_code = p_error_code,
+         closed_at = clock_timestamp(), updated_at = clock_timestamp()
+   WHERE step_id = p_step_ref;
+  RETURN jsonb_build_object('ok', true, 'state', 'FAILED');
+END
+$$;
+
+-- ⚠️ Registro duravel de um read-back que divergiu DEPOIS de o recibo fechar.
+--
+-- O objeto existe — a Meta devolveu id e o ledger o gravou — mas ele nao e o
+-- que foi aprovado. Sem esta marca o recibo diria apenas CREATED, e quem o
+-- lesse depois concluiria que estava tudo certo. A resposta HTTP ja diz 502; o
+-- livro precisa dizer o mesmo.
+CREATE FUNCTION public.trafego_meta_create_flag_readback(
   p_step_ref uuid, p_error_code text
 )
 RETURNS jsonb
@@ -671,11 +817,48 @@ BEGIN
     RAISE EXCEPTION 'META_STEP_ERROR_CODE_INVALID';
   END IF;
   UPDATE public.trafego_meta_create_step
-     SET state = 'FAILED', error_code = p_error_code,
-         closed_at = clock_timestamp(), updated_at = clock_timestamp()
-   WHERE step_id = p_step_ref AND state = 'AMBIGUOUS';
-  IF NOT FOUND THEN RAISE EXCEPTION 'META_STEP_NOT_AMBIGUOUS'; END IF;
-  RETURN jsonb_build_object('ok', true, 'state', 'FAILED');
+     SET readback_error = p_error_code, updated_at = clock_timestamp()
+   WHERE step_id = p_step_ref AND state = 'CREATED';
+  IF NOT FOUND THEN RAISE EXCEPTION 'META_STEP_NOT_CREATED'; END IF;
+  RETURN jsonb_build_object('ok', true, 'readback_error', p_error_code);
+END
+$$;
+
+-- Leitura do recibo de validacao, para a rota poder recusar ANTES do Keychain.
+--
+-- A autoridade continua sendo `trafego_meta_create_approve`, que reconfere
+-- tudo. Esta funcao existe só para que um `validation_id` inventado, de outra
+-- pessoa ou velho pare o pedido sem que o token seja lido e sem que a Meta
+-- receba uma unica requisicao de leitura.
+CREATE FUNCTION public.trafego_meta_create_validation_lookup(p_validation_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v public.trafego_meta_validation_receipt%ROWTYPE;
+BEGIN
+  PERFORM public.trafego_meta_exigir_service_role();
+  SELECT * INTO v FROM public.trafego_meta_validation_receipt
+   WHERE validation_id = p_validation_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'META_VALIDATION_RECEIPT_NOT_FOUND'; END IF;
+  RETURN jsonb_build_object(
+    'validation_id', v.validation_id::text,
+    'plan_sha256', v.plan_sha256,
+    'account_ref', v.account_ref,
+    'actor_id', v.actor_id,
+    'coverage', v.coverage,
+    'objects_created', v.objects_created,
+    'accepted', v.accepted,
+    'operations_total', v.operations_total,
+    'validated_at', v.validated_at,
+    'idade_s', floor(extract(epoch FROM clock_timestamp() - v.validated_at))::bigint,
+    -- Ja usado por alguma aprovacao? Um recibo autoriza uma e so uma.
+    'ja_consumido', EXISTS (
+      SELECT 1 FROM public.trafego_meta_create_approval a
+       WHERE a.validation_id = v.validation_id)
+  );
 END
 $$;
 
@@ -721,7 +904,12 @@ BEGIN
         'ordinal', s.ordinal,
         'state', s.state,
         'has_external_id', s.external_object_id IS NOT NULL,
-        'error_code', s.error_code
+        'error_code', s.error_code,
+        'readback_error', s.readback_error,
+        -- A reconciliacao usa este carimbo para recusar um objeto que ja
+        -- existia ANTES de o passo ser preparado: nome igual nao prova
+        -- nascimento, mas nascer depois do recibo, sim.
+        'prepared_at', s.prepared_at
       ) ORDER BY s.ordinal)
       FROM public.trafego_meta_create_step s WHERE s.approval_id = a.approval_id
     ), '[]'::jsonb)
@@ -762,7 +950,8 @@ BEGIN
         'prepared_at', s.prepared_at,
         'closed_at', s.closed_at,
         'has_external_id', s.external_object_id IS NOT NULL,
-        'error_code', s.error_code
+        'error_code', s.error_code,
+        'readback_error', s.readback_error
       ) ORDER BY s.ordinal)
       FROM public.trafego_meta_create_step s WHERE s.approval_id = a.approval_id
     ), '[]'::jsonb)
@@ -780,7 +969,9 @@ REVOKE ALL ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,te
 REVOKE ALL ON FUNCTION public.trafego_meta_create_close_step(uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text,integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_flag_readback(uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_validation_lookup(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_approval_manifest(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_receipt(uuid) FROM PUBLIC, anon, authenticated;
 
@@ -790,7 +981,9 @@ GRANT EXECUTE ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_close_step(uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text,integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_flag_readback(uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_validation_lookup(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approval_manifest(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_receipt(uuid) TO service_role;
 

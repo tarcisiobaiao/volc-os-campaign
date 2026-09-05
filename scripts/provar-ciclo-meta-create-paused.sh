@@ -130,8 +130,8 @@ BEGIN
   SELECT count(*) INTO n FROM information_schema.role_routine_grants
    WHERE routine_schema='public' AND routine_name LIKE 'trafego_meta_create_%'
      AND grantee='service_role' AND privilege_type='EXECUTE';
-  IF n <> 9 THEN
-    RAISE EXCEPTION 'esperava 9 RPCs executaveis pelo service_role; encontrou %', n;
+  IF n <> 11 THEN
+    RAISE EXCEPTION 'esperava 11 RPCs executaveis pelo service_role; encontrou %', n;
   END IF;
 END
 $prova$;
@@ -385,6 +385,24 @@ BEGIN
     p_plan_request => '{"account_ref":"metaacct_prova_local"}'::jsonb);
 END
 $ajuda$;
+
+-- ⚠️ Fixture, e SECURITY DEFINER de proposito: `service_role` NAO tem UPDATE
+-- nesta tabela — so as RPCs escrevem, e a prova de grants acima depende disso.
+-- Envelhecer um passo e a unica forma de exercitar o piso temporal da
+-- reconciliacao sem fazer o script dormir dois minutos.
+CREATE FUNCTION public.prova_envelhecer_passo(p_step_ref uuid, p_idade interval)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $velho$
+BEGIN
+  UPDATE public.trafego_meta_create_step
+     SET prepared_at = clock_timestamp() - p_idade,
+         updated_at = clock_timestamp() - p_idade
+   WHERE step_id = p_step_ref;
+END
+$velho$;
 SQL
 
 echo "▶ o recibo de validacao e a condicao da aprovacao, campo a campo"
@@ -521,7 +539,17 @@ DECLARE
   v_falho text := repeat('f', 64);
   v_ambiguo text := repeat('0', 64);
   v_outro text := repeat('1', 64);
-  v_payload text := repeat('b', 64);
+  -- ⚠️ UM PAYLOAD POR CENARIO, e nao um payload compartilhado.
+  --
+  -- Desde que `prepare_step` passou a sondar por (conta, passo, payload), dois
+  -- cenarios com o MESMO payload de campanha na MESMA conta descrevem o MESMO
+  -- objeto — e o segundo passa a adotar o primeiro em vez de despachar, que e
+  -- exatamente a protecao contra duplicacao. Reusar `repeat('b',64)` aqui fazia
+  -- o cenario da falha herdar a campanha ja criada do bloco anterior e
+  -- `fail_step` recusar com META_STEP_CANNOT_FAIL.
+  v_payload_falho text := repeat('d', 64);
+  v_payload_ambiguo text := repeat('2', 64);
+  v_payload_presenca text := repeat('6', 64);
 BEGIN
   -- 1. DUAS APROVACOES VIVAS DO MESMO PLANO: a segunda tem de ser recusada.
   --    Cada uma traz o SEU recibo de validacao, senao o que barraria a segunda
@@ -552,7 +580,7 @@ BEGIN
   v_id := (v_ap->>'approval_id')::uuid;
   v_passo := public.trafego_meta_create_prepare_step(
     p_plan_sha256 => v_falho, p_approval_id => v_id, p_actor_id => 'operador-local',
-    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+    p_step_name => 'campaign', p_payload_sha256 => v_payload_falho);
   PERFORM public.trafego_meta_create_fail_step(
     p_step_ref => (v_passo->>'step_ref')::uuid, p_error_code => 'META_REMOTE_CREATE_FAILED');
   PERFORM public.prova_aprovar(v_falho, 'operador-local');
@@ -563,10 +591,10 @@ BEGIN
   v_id := (v_ap->>'approval_id')::uuid;
   PERFORM public.trafego_meta_create_prepare_step(
     p_plan_sha256 => v_ambiguo, p_approval_id => v_id, p_actor_id => 'operador-local',
-    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+    p_step_name => 'campaign', p_payload_sha256 => v_payload_ambiguo);
   v_passo := public.trafego_meta_create_prepare_step(
     p_plan_sha256 => v_ambiguo, p_approval_id => v_id, p_actor_id => 'operador-local',
-    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+    p_step_name => 'campaign', p_payload_sha256 => v_payload_ambiguo);
   IF v_passo->>'state' <> 'AMBIGUO' THEN
     RAISE EXCEPTION 'o passo deveria estar ambiguo para esta prova';
   END IF;
@@ -588,6 +616,10 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'META_STEP_CANNOT_FAIL' THEN RAISE; END IF;
   END;
+  -- ⚠️ O passo precisa ENVELHECER antes de a ausencia poder ser fechada: quem
+  -- o despachou pode estar dentro do `await` do POST neste instante. O piso
+  -- temporal em si e provado no bloco seguinte; aqui ele so e satisfeito.
+  PERFORM public.prova_envelhecer_passo(v_ref, interval '10 minutes');
   IF (public.trafego_meta_create_resolve_absent(
         p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT'))->>'state' <> 'FAILED' THEN
     RAISE EXCEPTION 'a reconciliacao por ausencia nao fechou o passo';
@@ -606,10 +638,10 @@ BEGIN
   v_id := (v_ap->>'approval_id')::uuid;
   PERFORM public.trafego_meta_create_prepare_step(
     p_plan_sha256 => repeat('2', 64), p_approval_id => v_id, p_actor_id => 'operador-local',
-    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+    p_step_name => 'campaign', p_payload_sha256 => v_payload_presenca);
   v_passo := public.trafego_meta_create_prepare_step(
     p_plan_sha256 => repeat('2', 64), p_approval_id => v_id, p_actor_id => 'operador-local',
-    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+    p_step_name => 'campaign', p_payload_sha256 => v_payload_presenca);
   v_ref := (v_passo->>'step_ref')::uuid;
   PERFORM public.trafego_meta_create_close_step(
     p_step_ref => v_ref, p_external_object_id => '7777');
@@ -629,6 +661,167 @@ BEGIN
   END;
 END
 $unica$;
+RESET ROLE;
+SQL
+
+echo "▶ a mesma campanha nao nasce por duas aprovacoes"
+executar <<'SQL'
+SET ROLE service_role;
+DO $duplicacao$
+DECLARE
+  v_ap jsonb; v_id1 uuid; v_id2 uuid; v_passo jsonb; v_ref uuid;
+  v_p1 text := repeat('3', 64);
+  v_p2 text := repeat('4', 64);
+  -- O MESMO payload de campanha nos dois planos. E' o caso real: mudar a
+  -- headline de um anuncio muda o plan_sha256 do plano inteiro e deixa o
+  -- payload da Campaign byte a byte identico.
+  v_campanha text := repeat('9', 64);
+  v_outro text := repeat('8', 64);
+BEGIN
+  -- Plano 1: a campanha nasce, o conjunto FALHA (o que libera o plano).
+  v_ap := public.prova_aprovar(v_p1, 'operador-local');
+  v_id1 := (v_ap->>'approval_id')::uuid;
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_p1, p_approval_id => v_id1, p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => v_campanha);
+  IF v_passo->>'state' <> 'DESPACHAR' THEN
+    RAISE EXCEPTION 'a primeira campanha deveria despachar';
+  END IF;
+  PERFORM public.trafego_meta_create_close_step(
+    p_step_ref => (v_passo->>'step_ref')::uuid, p_external_object_id => '5001');
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_p1, p_approval_id => v_id1, p_actor_id => 'operador-local',
+    p_step_name => 'adset', p_payload_sha256 => v_outro);
+  PERFORM public.trafego_meta_create_fail_step(
+    p_step_ref => (v_passo->>'step_ref')::uuid, p_error_code => 'META_REMOTE_CREATE_FAILED');
+
+  -- Plano 2: o operador corrigiu um filho. Hash novo, campanha identica.
+  v_ap := public.prova_aprovar(v_p2, 'operador-local');
+  v_id2 := (v_ap->>'approval_id')::uuid;
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_p2, p_approval_id => v_id2, p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => v_campanha);
+
+  -- ⚠️ AQUI ESTAVA O DEFEITO. Sem a sonda por identidade de objeto, este passo
+  -- respondia DESPACHAR e a MESMA campanha nascia pela segunda vez na conta.
+  IF v_passo->>'state' <> 'CRIADO' THEN
+    RAISE EXCEPTION 'a segunda aprovacao despacharia a mesma campanha de novo; veio %',
+      v_passo->>'state';
+  END IF;
+  IF v_passo->>'external_object_id' <> '5001' THEN
+    RAISE EXCEPTION 'a adocao nao devolveu o id do objeto que ja existe';
+  END IF;
+  IF (v_passo->>'adotado_de_aprovacao_anterior')::boolean IS NOT TRUE THEN
+    RAISE EXCEPTION 'a adocao nao se declarou';
+  END IF;
+
+  -- Um passo identico EM VOO ou AMBIGUO nao pode ser adotado nem despachado:
+  -- pode existir objeto do outro lado, e so a reconciliacao desempata.
+  --
+  -- ⚠️ A sonda casa por (conta, NOME DO PASSO, payload). O cenario tem que usar
+  -- o mesmo nome de passo nos dois lados: uma primeira versao desta prova
+  -- deixava um `adset` ambiguo e tentava preparar um `campaign` com o mesmo
+  -- payload — nomes diferentes, objetos diferentes, e a sonda ignorava com
+  -- razao.
+  v_ap := public.prova_aprovar(repeat('5', 64), 'operador-local');
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => repeat('5', 64), p_approval_id => (v_ap->>'approval_id')::uuid,
+    p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => repeat('7', 64));
+  PERFORM public.trafego_meta_create_mark_ambiguous(
+    p_step_ref => (v_passo->>'step_ref')::uuid);
+  v_ap := public.prova_aprovar(repeat('ab', 32), 'operador-local');
+  BEGIN
+    PERFORM public.trafego_meta_create_prepare_step(
+      p_plan_sha256 => repeat('ab', 32),
+      p_approval_id => (v_ap->>'approval_id')::uuid,
+      p_actor_id => 'operador-local',
+      p_step_name => 'campaign', p_payload_sha256 => repeat('7', 64));
+    RAISE EXCEPTION 'passo identico ambiguo foi aceito noutra aprovacao';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_STEP_DUPLICATE_IN_FLIGHT' THEN RAISE; END IF;
+  END;
+END
+$duplicacao$;
+RESET ROLE;
+SQL
+
+echo "▶ reconciliacao: idade minima, e a marca do read-back divergente"
+executar <<'SQL'
+SET ROLE service_role;
+DO $tempo$
+DECLARE
+  v_ap jsonb; v_id uuid; v_passo jsonb; v_ref uuid;
+  v_plano text := repeat('6', 64);
+BEGIN
+  v_ap := public.prova_aprovar(v_plano, 'operador-local');
+  v_id := (v_ap->>'approval_id')::uuid;
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_plano, p_approval_id => v_id, p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => repeat('a', 64));
+  v_ref := (v_passo->>'step_ref')::uuid;
+  PERFORM public.trafego_meta_create_mark_ambiguous(p_step_ref => v_ref);
+
+  -- ⚠️ O passo acabou de virar ambiguo. Quem o despachou pode estar dentro do
+  -- `await` do POST agora mesmo; fechar como ausente gravaria "nao existe"
+  -- sobre um objeto prestes a nascer.
+  BEGIN
+    PERFORM public.trafego_meta_create_resolve_absent(
+      p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT',
+      p_idade_minima_s => 120);
+    RAISE EXCEPTION 'ausencia foi fechada com o despacho possivelmente em voo';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_RECONCILE_TOO_SOON' THEN RAISE; END IF;
+  END;
+
+  -- Uma janela abaixo do piso nao e negociavel por parametro.
+  BEGIN
+    PERFORM public.trafego_meta_create_resolve_absent(
+      p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT',
+      p_idade_minima_s => 1);
+    RAISE EXCEPTION 'janela de 1 segundo foi aceita';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_RECONCILE_WINDOW_INVALID' THEN RAISE; END IF;
+  END;
+
+  -- Envelhecido o bastante, a ausencia provada fecha.
+  PERFORM public.prova_envelhecer_passo(v_ref, interval '10 minutes');
+  IF (public.trafego_meta_create_resolve_absent(
+        p_step_ref => v_ref, p_error_code => 'META_RECONCILED_ABSENT',
+        p_idade_minima_s => 120))->>'state' <> 'FAILED' THEN
+    RAISE EXCEPTION 'a ausencia provada nao fechou o passo';
+  END IF;
+
+  -- A marca do read-back divergente so pousa em passo CRIADO.
+  v_ap := public.prova_aprovar(repeat('b', 64), 'operador-local');
+  v_id := (v_ap->>'approval_id')::uuid;
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => repeat('b', 64), p_approval_id => v_id,
+    p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => repeat('c', 64));
+  v_ref := (v_passo->>'step_ref')::uuid;
+  BEGIN
+    PERFORM public.trafego_meta_create_flag_readback(
+      p_step_ref => v_ref, p_error_code => 'META_READBACK_DIVERGENT');
+    RAISE EXCEPTION 'marcou read-back num passo que nao esta criado';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_STEP_NOT_CREATED' THEN RAISE; END IF;
+  END;
+  PERFORM public.trafego_meta_create_close_step(
+    p_step_ref => v_ref, p_external_object_id => '6001');
+  PERFORM public.trafego_meta_create_flag_readback(
+    p_step_ref => v_ref, p_error_code => 'META_READBACK_DIVERGENT');
+  IF (SELECT readback_error FROM public.trafego_meta_create_step WHERE step_id = v_ref)
+     <> 'META_READBACK_DIVERGENT' THEN
+    RAISE EXCEPTION 'a divergencia de leitura nao ficou gravada';
+  END IF;
+  -- E ela viaja no recibo: quem le o livro precisa ver a ressalva.
+  IF (public.trafego_meta_create_receipt(p_approval_id => v_id))::text
+       NOT LIKE '%META_READBACK_DIVERGENT%' THEN
+    RAISE EXCEPTION 'o recibo escondeu a divergencia de leitura';
+  END IF;
+END
+$tempo$;
 RESET ROLE;
 SQL
 
@@ -707,7 +900,8 @@ SQL
 echo "▶ reverter"
 # A fixture do script sai antes: ela nao pertence a migration, e deixa-la viva
 # faria a prova de limpeza do rollback julgar um objeto que nao e dela.
-executar -c 'DROP FUNCTION IF EXISTS public.prova_aprovar(text,text,interval,text[]);'
+executar -c 'DROP FUNCTION IF EXISTS public.prova_aprovar(text,text,interval,text[]);
+             DROP FUNCTION IF EXISTS public.prova_envelhecer_passo(uuid,interval);'
 aplicar "$ROLLBACK"
 executar <<'SQL'
 DO $limpo$

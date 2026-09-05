@@ -25,7 +25,9 @@ $guarda$;
 
 DROP FUNCTION IF EXISTS public.trafego_meta_create_receipt(uuid);
 DROP FUNCTION IF EXISTS public.trafego_meta_create_approval_manifest(uuid);
-DROP FUNCTION IF EXISTS public.trafego_meta_create_resolve_absent(uuid,text);
+DROP FUNCTION IF EXISTS public.trafego_meta_create_validation_lookup(uuid);
+DROP FUNCTION IF EXISTS public.trafego_meta_create_flag_readback(uuid,text);
+DROP FUNCTION IF EXISTS public.trafego_meta_create_resolve_absent(uuid,text,integer);
 DROP FUNCTION IF EXISTS public.trafego_meta_create_fail_step(uuid,text);
 DROP FUNCTION IF EXISTS public.trafego_meta_create_mark_ambiguous(uuid);
 DROP FUNCTION IF EXISTS public.trafego_meta_create_close_step(uuid,text);

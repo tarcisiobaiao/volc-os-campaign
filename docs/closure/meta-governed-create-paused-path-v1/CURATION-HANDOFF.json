@@ -1,0 +1,112 @@
+{
+  "do_not_apply_here": true,
+  "verdict": "META_GOVERNED_CREATE_PAUSED_PATH_IMPLEMENTED_LOCALLY_UNUSED",
+  "lane": "meta-governed-create-paused-path-v1",
+  "worktree": "/private/tmp/volc-os-operacao-80-20",
+  "branch": "execution/volc-os-operacao-80-20",
+  "base_head": "37258f1c1d08c895600429a0b6540690f8d78ed4",
+  "roadmap_tasks": [
+    {
+      "id": "P11-T05",
+      "suggested_state": "partial",
+      "evidence": "Caminho governado create_paused implementado e provado LOCALMENTE, sem uma unica chamada real a Meta e sem escrita no Supabase oficial. Tres rotas distintas em modulo proprio (backend/app/routers/trafego_meta_criacao.py): aprovar decide e nao cria; criar-pausada cria e nao decide; reconciliar le e nao reenvia. Nenhuma rota de ativacao existe, provado por varredura do app inteiro e nao de um router — o tripwire anterior olhava so trafego_meta_validacao e teria seguido verde apos esta mudanca. Recibo duravel do validate_only (tabela trafego_meta_validation_receipt) fecha o buraco em que a prova de validacao existia so no navegador: agora quem grava e o servidor, e a aprovacao referencia uma linha real com UNIQUE, entao um recibo autoriza uma aprovacao e so uma. Aprovacao vinculada a ator, account_ref opaca, plan_sha256, manifesto ordenado, orcamento em minor units, moeda BRL, contagem de operacoes, expiracao de 15 min com teto de 1h no CHECK, timestamp do servidor e confirmacao humana de nascimento PAUSED recusada pelo proprio CHECK. Criacao recebe apenas approval_id e o hash esperado: o servidor rele o pedido do operador gravado, revalida pelo contrato, recompila e confere tres hashes. A aprovacao e lida ANTES do Keychain. Reconciliacao read-only fecha o risco 3 da lane anterior: encontrado e conferido fecha CRIADO, ausencia provada por listagem completa fecha FALHO, e listagem incompleta, homonimo ou read-back divergente PERMANECE AMBIGUO. Orcamento aprovado passou a ser confrontado com o payload do conjunto, fechando o risco 6. Fechado por META_CREATE_PAUSED_ENABLED e META_CREATE_LEDGER_WRITE_ENABLED, as duas; META_VALIDATE_ONLY_ENABLED nao autoriza criacao e ha teste para isso. Gates: 215 testes Meta no backend (+32), 34 de UI Meta (+13, 1 corrigido por copy que deixou de ser verdadeira), ciclo aplicar->usar->reverter->reaplicar em PostgreSQL 15 descartavel com as RPCs novas e concorrencia real entre duas conexoes. CONTINUA PARTIAL: a migration segue candidata e nao aplicada em lugar nenhum, e o primeiro canario Meta PAUSED real nao foi executado nem autorizado. AdSet e Ad seguem sem validacao remota, por construcao. Uma rodada corretiva fechou sete dos oito achados de uma revisao adversarial Codex read-only, entre eles DOIS caminhos concretos de duplicacao: o plan_sha256 cobre o plano inteiro, entao mudar a headline de um anuncio produz outro hash com o payload da Campaign identico, e como a falha libera o plano a mesma campanha nascia duas vezes — a identidade passou a ser (conta, passo, payload) com lock proprio; e a reconciliacao podia provar ausencia com o despachante original ainda dentro do await do POST, entao resolve_absent ganhou piso temporal de 120 s. Tambem: divergencia de read-back agora fica gravada em readback_error (a ordem fecha-antes-de-ler NAO mudou, porque inverte-la perderia o id numa queda), objeto anterior ao despacho deixou de ser adotado por correlacao de created_time (e AdCreative, que nao expoe created_time, nunca e fechado por leitura), 5xx apos despacho deixou de responder 422 porque a classificacao passou a vir da saga em vez de uma lista de codigos na rota, o recibo de validacao so e gravado com a criacao aberta, e um validation_id inutilizavel para antes do Keychain. O oitavo achado foi rejeitado com razao registrada."
+    }
+  ],
+  "graph_nodes": [
+    "cap_meta_ads",
+    "concept:meta_direct_traffic"
+  ],
+  "proofs": [
+    "docs/closure/meta-governed-create-paused-path-v1/HANDOFF.md",
+    "docs/closure/meta-governed-create-paused-path-v1/REVISAO-ADVERSARIAL-CODEX.md",
+    "docs/closure/meta-governed-create-paused-path-v1/CONTRATOS.md",
+    "docs/closure/meta-governed-create-paused-path-v1/GATES.md",
+    "docs/closure/meta-governed-create-paused-path-v1/REMAINING-RISKS.md",
+    "docs/closure/meta-creation-engine-operator-experience-v1/RUNBOOK-MIGRATION-META-CREATE-PAUSED.md",
+    "backend/tests/test_meta_criacao_pausada_rotas.py",
+    "src/pages/trafego/__tests__/meta-criacao-nascimento.test.tsx",
+    "scripts/provar-ciclo-meta-create-paused.sh"
+  ],
+  "new_surface": {
+    "routes": [
+      "POST /api/trafego/meta/local/criacao/aprovar",
+      "POST /api/trafego/meta/local/criacao/criar-pausada",
+      "POST /api/trafego/meta/local/criacao/reconciliar",
+      "POST /api/trafego/meta/local/criacao/recibo"
+    ],
+    "tables": [
+      "public.trafego_meta_validation_receipt"
+    ],
+    "rpcs": [
+      "public.trafego_meta_create_record_validation",
+      "public.trafego_meta_create_approval_manifest",
+      "public.trafego_meta_create_resolve_absent",
+      "public.trafego_meta_create_flag_readback",
+      "public.trafego_meta_create_validation_lookup"
+    ],
+    "changed_rpc_signature": [
+      {
+        "name": "public.trafego_meta_create_approve",
+        "before": "(text,text,text,bigint,timestamptz,text[])",
+        "after": "(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb)"
+      },
+      {
+        "name": "public.trafego_meta_create_resolve_absent",
+        "before": "(uuid,text)",
+        "after": "(uuid,text,integer)"
+      }
+    ],
+    "flags": [
+      "META_CREATE_PAUSED_ENABLED",
+      "META_CREATE_LEDGER_WRITE_ENABLED"
+    ]
+  },
+  "migration_identity": {
+    "apply": {
+      "path": "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+      "sha256": "c5336b271ed7b2281fc959546d07cf6e83e32bdea9507af86ffbee498254f010",
+      "lines": 990,
+      "applied_anywhere": false
+    },
+    "rollback": {
+      "path": "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql",
+      "sha256": "f920257effcb4f525b2ff110ae95e3a14da87ba609988df7a834feac76c49c48",
+      "lines": 42
+    }
+  },
+  "prohibitions_preserved": [
+    "no real Meta call",
+    "no Meta mutate",
+    "no Meta create",
+    "no Meta activation",
+    "no official Supabase write",
+    "no official migration apply",
+    "no deploy",
+    "no push",
+    "no merge",
+    "no rebase",
+    "no amend",
+    "no n8n",
+    "no WordPress",
+    "no new branch",
+    "no new worktree",
+    "no main or volc-os-v2 change"
+  ],
+  "real_meta_calls": [],
+  "still_blocked": [
+    "official migration 20260904183418 never applied anywhere",
+    "first Meta PAUSED canary not executed and not authorized",
+    "AdSet and Ad field contracts still never validated remotely",
+    "no browser visual inspection: Chrome extension was not connected"
+  ],
+  "adversarial_review": {
+    "reviewer": "codex-cli 0.151.0, model_reasoning_effort=high, sandbox=read-only",
+    "verdict": "REPROVADO",
+    "findings": 8,
+    "real_and_fixed": 7,
+    "rejected": 1,
+    "rejected_reason": "AdCreative nasce ACTIVE: contradiz a receita aprovada, que declara literalmente 'Creative nao e veiculavel'. Nao existe payload que faca a Meta pausa-lo.",
+    "remedy_rejected": "Fechar o recibo depois do read-back perderia o id numa queda entre o POST e o INSERT. A ordem ficou; entrou readback_error como registro duravel da divergencia.",
+    "corrective_round": 1
+  }
+}

@@ -47,6 +47,7 @@ class ErroRemotoMeta(RuntimeError):
         objetos_criados: tuple[str, ...] = (),
         detalhe_provedor: Mapping[str, Any] | None = None,
         criacao_descartada: bool = False,
+        exige_reconciliacao: bool = False,
     ) -> None:
         super().__init__(mensagem)
         self.codigo = codigo
@@ -58,6 +59,16 @@ class ErroRemotoMeta(RuntimeError):
         # provado que nada foi criado. Transporte, corpo inválido ou resposta
         # sem id deixam o passo AMBÍGUO, nunca FALHO.
         self.criacao_descartada = criacao_descartada
+        # ⚠️ Marcado pela SAGA, no ponto exato em que ela deixa um passo
+        # AMBÍGUO no ledger. É a única fonte da verdade sobre "precisa
+        # reconciliar", e ela precisa viajar com a exceção.
+        #
+        # A rota tinha uma lista de códigos para adivinhar isso, e a lista
+        # errava: `META_REMOTE_CREATE_FAILED` com um 500 da Meta deixa o passo
+        # AMBIGUOUS no banco, e a resposta HTTP dizia 422 com
+        # `reconciliacao_necessaria=false`. O ledger e o protocolo contavam
+        # histórias diferentes sobre o mesmo despacho.
+        self.exige_reconciliacao = exige_reconciliacao
 
 
 def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
@@ -160,11 +171,18 @@ def _mesmo_instante(lido: Any, enviado: Any) -> bool:
 #: quanto na reconciliação por leitura. Uma máscara só: se a reconciliação
 #: lesse menos campos que o read-back, ela poderia "confirmar" um objeto que a
 #: saga teria recusado — e fechar um recibo verde sobre uma divergência.
+#:
+#: ⚠️ `created_time` entra em campaign, adset e ad porque é o único campo que
+#: correlaciona um objeto ao DESPACHO que o criou. Nome igual não prova
+#: nascimento: a conta pode já ter uma campanha homônima com a mesma receita, e
+#: a reconciliação a adotaria. `AdCreative` não expõe `created_time` na
+#: Marketing API, e a consequência está codificada em `reconciliacao.py`: um
+#: criativo nunca é fechado por leitura.
 CAMPOS_DE_LEITURA: Mapping[str, str] = {
-    "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info",
-    "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec",
+    "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info,created_time",
+    "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec,created_time",
     "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
-    "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative",
+    "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,created_time",
 }
 
 
@@ -299,6 +317,7 @@ class ExecutorMetaPausado:
                     raise ErroRemotoMeta(
                         "META_RECONCILIATION_REQUIRED",
                         f"o passo {operacao.chave} esta ambiguo; reconciliar antes de continuar",
+                        exige_reconciliacao=True,
                     )
                 if passo.estado == "CRIADO":
                     ids[operacao.chave] = str(passo.id_externo)
@@ -325,6 +344,9 @@ class ExecutorMetaPausado:
                                     passo_ref=passo.passo_ref)
                             except Exception:
                                 pass
+                            # O passo ficou AMBIGUO no ledger; a exceção precisa
+                            # dizer isso, senão a resposta HTTP afirma o oposto.
+                            exc.exige_reconciliacao = True
                         raise
                     ids[operacao.chave] = str(resposta["id"])
                     try:
@@ -340,19 +362,41 @@ class ExecutorMetaPausado:
                         raise ErroRemotoMeta(
                             "META_REMOTE_RESULT_AMBIGUOUS",
                             "a Meta criou o objeto, mas o recibo nao fechou; reconciliar por leitura",
+                            exige_reconciliacao=True,
                         ) from exc
                 # Confirm each durable step before allowing the next dependent
                 # object to be created. A mismatch stops the saga immediately.
-                dados = await self._read_one(
-                    operacao.tipo_objeto, ids[operacao.chave], segredo)
-                self._validar_read_back(
-                    operacao.tipo_objeto,
-                    dados,
-                    payload=payload,
-                    identificador=ids[operacao.chave],
-                    ids=ids,
-                    conta_externa=plano.conta_externa,
-                )
+                #
+                # ⚠️ O recibo JÁ FECHOU aqui, e essa ordem é deliberada: o id que
+                # a Meta acabou de devolver precisa estar gravado antes de
+                # qualquer outra coisa, senão uma queda entre o POST e o INSERT
+                # perde para sempre a única prova de que o objeto nasceu.
+                #
+                # O preço é que uma divergência de leitura deixaria o livro
+                # dizendo apenas CREATED. Por isso ela é MARCADA no passo antes
+                # de a exceção subir: a resposta HTTP diz 502, e o recibo passa
+                # a dizer o mesmo.
+                try:
+                    dados = await self._read_one(
+                        operacao.tipo_objeto, ids[operacao.chave], segredo)
+                    self._validar_read_back(
+                        operacao.tipo_objeto,
+                        dados,
+                        payload=payload,
+                        identificador=ids[operacao.chave],
+                        ids=ids,
+                        conta_externa=plano.conta_externa,
+                    )
+                except ErroRemotoMeta as exc:
+                    marcar = getattr(self._registro, "marcar_readback_divergente", None)
+                    if marcar is not None:
+                        try:
+                            await marcar(passo_ref=passo.passo_ref, codigo=exc.codigo)
+                        except Exception:
+                            # Falhar ao anotar não pode apagar a divergência que
+                            # a exceção carrega: ela continua subindo.
+                            pass
+                    raise
                 read_back[operacao.chave] = dados
                 tipos[operacao.chave] = operacao.tipo_objeto
         except httpx.TimeoutException as exc:
@@ -361,6 +405,7 @@ class ExecutorMetaPausado:
                 "a Meta nao respondeu; nao reenviar antes de reconciliar por leitura",
                 retryable=False,
                 objetos_criados=tuple(ids),
+                exige_reconciliacao=True,
             ) from exc
         except ErroRemotoMeta as exc:
             if not ids or exc.objetos_criados:
@@ -370,6 +415,11 @@ class ExecutorMetaPausado:
                 f"{exc}; a saga parou com objetos PAUSED ja criados: {', '.join(ids)}",
                 retryable=False,
                 objetos_criados=tuple(ids),
+                detalhe_provedor=exc.detalhe_provedor,
+                criacao_descartada=exc.criacao_descartada,
+                # ⚠️ A bandeira SOBREVIVE ao reempacotamento. Perdê-la aqui
+                # devolveria 422 sobre um passo que ficou AMBIGUO no banco.
+                exige_reconciliacao=exc.exige_reconciliacao,
             ) from exc
         opacas = {
             chave: meta_dom.referencia_opaca_objeto(

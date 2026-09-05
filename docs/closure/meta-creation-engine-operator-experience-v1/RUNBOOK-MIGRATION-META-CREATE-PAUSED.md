@@ -15,22 +15,65 @@ Escrito na missão de validação real Meta, com a árvore em
 
 | Papel | Arquivo | sha256 | Linhas (`wc -l`) |
 |---|---|---|---|
-| Apply | `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `26cb41d649dbe3e9b1ea95227dcf792025fc344444d742accbd03b18aefeec65` | 451 |
-| Rollback | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `30ccfb4fe72883b7b5dde986c0731aca7a5de5b1dca048dc2bb863da72501ecc` | 23 |
+| Apply | `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `c5336b271ed7b2281fc959546d07cf6e83e32bdea9507af86ffbee498254f010` | 990 |
+| Rollback | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `f920257effcb4f525b2ff110ae95e3a14da87ba609988df7a834feac76c49c48` | 42 |
 
-Blob git do apply nesta árvore: `bba23b8d5288cbd2a32c4c2dab299d202d3e9255`.
+Blob git do apply nesta árvore: ver `git rev-parse HEAD:supabase/migrations/20260904183418_meta_create_paused_executor.sql`.
 
-⚠️ **O sha256 do apply mudou nesta missão.** O valor anterior era
-`92495e90d70185a4b971450ed56bd96fc8358f7bef240e3bed0ededdbf538a99`.
-A diferença é o portão de aprovação única (`META_APPROVAL_ALREADY_LIVE`) descrito
-na secção 7. Como a migration nunca foi aplicada, não existe banco algum cujo
-estado corresponda ao hash antigo — não há reconciliação pendente. Se alguém
-tiver anotado o hash antigo em outro lugar, o valor correto é o desta tabela.
+⚠️ **Os dois sha256 mudaram na missão do caminho governado `create_paused`.**
+Valores anteriores, para quem tiver anotado:
 
-O rollback **não** mudou: o portão novo vive dentro do corpo de
-`trafego_meta_create_approve`, sem alterar a assinatura
-`(text,text,text,bigint,timestamptz,text[])` que o `DROP FUNCTION` do rollback
-cita. Verificado.
+| Papel | sha256 anterior | Missão |
+|---|---|---|
+| Apply | `26cb41d649dbe3e9b1ea95227dcf792025fc344444d742accbd03b18aefeec65` | validação real |
+| Apply | `92495e90d70185a4b971450ed56bd96fc8358f7bef240e3bed0ededdbf538a99` | operator experience |
+| Apply | `202399f9825ec701dc534fd5890adea8e369c717b442227cc8f65a35d7bc0891` | caminho governado, antes da rodada corretiva |
+| Rollback | `30ccfb4fe72883b7b5dde986c0731aca7a5de5b1dca048dc2bb863da72501ecc` | validação real |
+| Rollback | `c5e284dbd9a3ee6b9eb5504f4af631ccb4cc7f4c0de78d50d7dcda104d63dc26` | caminho governado, antes da rodada corretiva |
+
+**A migration continua nunca aplicada em lugar nenhum**, então não existe banco
+cujo estado corresponda a um hash antigo e não há reconciliação pendente. O
+valor correto é sempre o da primeira tabela.
+
+O que mudou, e por quê:
+
+1. **`trafego_meta_validation_receipt` (tabela nova).** Antes, a prova de que a
+   Meta aceitou o plano sob `validate_only` existia só no corpo da resposta HTTP
+   — quer dizer, só no navegador. Uma aprovação que aceitasse essa palavra
+   estaria confiando no cliente para dizer "eu fui validado". Agora quem grava é
+   o servidor, e a aprovação referencia uma linha real.
+2. **`trafego_meta_create_approve` mudou de assinatura**, de
+   `(text,text,text,bigint,timestamptz,text[])` para
+   `(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb)`.
+   Ganhou moeda explícita, o `validation_id`, a janela de frescor da validação,
+   a confirmação humana de nascimento PAUSED e o pedido do operador. **O
+   rollback mudou junto**, porque o `DROP FUNCTION` cita a assinatura completa.
+3. **Três colunas novas na aprovação** (`operations_expected`, `validation_id`
+   com `UNIQUE`, `paused_birth_confirmed`, `plan_request`) e um teto de uma hora
+   na expiração, no próprio `CHECK`.
+4. **Quatro RPCs novas**: `trafego_meta_create_approval_manifest` (o manifesto
+   do lado do servidor, com `step_ref`, `prepared_at` e o pedido do operador),
+   `trafego_meta_create_resolve_absent` (o único caminho de `AMBIGUOUS` para
+   `FAILED`, e só depois de a ausência ser provada por leitura),
+   `trafego_meta_create_flag_readback` e
+   `trafego_meta_create_validation_lookup`.
+5. **A rodada corretiva da revisão adversarial** acrescentou, sobre o item
+   anterior:
+   - `trafego_meta_create_step_identidade_ix` e a sonda por **(conta, passo,
+     payload)** dentro de `trafego_meta_create_prepare_step`. Sem ela, mudar a
+     headline de um anúncio produzia outro `plan_sha256` com o payload da
+     Campaign idêntico, e a mesma campanha nascia duas vezes na conta.
+   - `readback_error` em `trafego_meta_create_step`, mais
+     `trafego_meta_create_flag_readback`: o recibo fecha antes do read-back de
+     propósito (o id precisa ser gravado antes de tudo), e agora uma
+     divergência de leitura fica registrada em vez de sumir atrás de um
+     `CREATED` limpo.
+   - `p_idade_minima_s` em `trafego_meta_create_resolve_absent`: um passo vira
+     ambíguo assim que alguém reentra nele, e isso pode acontecer com o
+     despachante original ainda dentro do `await` do POST. Fechar como ausente
+     nesse instante gravaria "não existe" sobre um objeto prestes a nascer.
+   - `trafego_meta_create_validation_lookup`, para a rota recusar um recibo
+     inutilizável **antes** de abrir o Keychain.
 
 ---
 
@@ -45,16 +88,16 @@ antes de qualquer DDL, dentro da mesma transação:
    `v15_01_meta_ads_read_model.sql` já está aplicado. A migration **depende** de
    v15_01 mas não escreve nele: criação e observação são autoridades diferentes.
 4. Os papéis `anon`, `authenticated` e `service_role` existem.
-5. Nenhuma das duas tabelas já existe. Se `trafego_meta_create_approval` ou
-   `trafego_meta_create_step` estiverem lá, a migration aborta pedindo o rollback
-   correspondente — ela **não** é idempotente, e isso é deliberado: não há um só
-   `IF NOT EXISTS` no arquivo.
+5. Nenhuma das **três** tabelas já existe. Se `trafego_meta_create_approval`,
+   `trafego_meta_create_step` ou `trafego_meta_validation_receipt` estiverem lá,
+   a migration aborta pedindo o rollback correspondente — ela **não** é
+   idempotente, e isso é deliberado: não há um só `IF NOT EXISTS` no arquivo.
 
 Pré-condições que a migration **não** consegue verificar sozinha e que o
 proprietário precisa confirmar antes:
 
 6. Que o `postgres` do Supabase alvo atravessa RLS (`rolsuper` ou `rolbypassrls`).
-   As duas tabelas nascem com `FORCE ROW LEVEL SECURITY` e **zero policies**; quem
+   As três tabelas nascem com `FORCE ROW LEVEL SECURITY` e **zero policies**; quem
    não atravessa RLS não lê nem escreve nelas, e as funções `SECURITY DEFINER`
    rodam como o dono da migration. A migration restringe o dono pelo **nome**
    (`postgres`/`supabase_admin`), não pelo atributo. O ciclo descartável não
@@ -96,32 +139,36 @@ Antes de rodar, conferir que o arquivo em disco é o desta tabela:
 
 ```bash
 shasum -a 256 supabase/migrations/20260904183418_meta_create_paused_executor.sql
-# esperado: 26cb41d649dbe3e9b1ea95227dcf792025fc344444d742accbd03b18aefeec65
+# esperado: c5336b271ed7b2281fc959546d07cf6e83e32bdea9507af86ffbee498254f010
 ```
 
 ---
 
 ## 5. Probes — consultas de verificação pós-apply
 
-**5.1 Forma: as duas tabelas existem, com RLS forçada e zero policies**
+**5.1 Forma: as três tabelas existem, com RLS forçada e zero policies**
 
 ```sql
 SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
        (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policies
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = 'public'
-   AND c.relname IN ('trafego_meta_create_approval','trafego_meta_create_step');
--- esperado: 2 linhas, relrowsecurity=t, relforcerowsecurity=t, policies=0
+   AND c.relname IN ('trafego_meta_create_approval','trafego_meta_create_step',
+                     'trafego_meta_validation_receipt');
+-- esperado: 3 linhas, relrowsecurity=t, relforcerowsecurity=t, policies=0
 ```
 
-**5.2 As sete funções existem, todas SECURITY DEFINER com search_path fixo**
+**5.2 As doze funções existem, todas SECURITY DEFINER com search_path fixo**
 
 ```sql
 SELECT p.proname, p.prosecdef, p.proconfig
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
  WHERE n.nspname = 'public' AND p.proname LIKE 'trafego_meta_%'
  ORDER BY p.proname;
--- esperado: 7 linhas, prosecdef=t, proconfig={search_path=pg_catalog, public}
+-- esperado: 12 linhas, prosecdef=t, proconfig={search_path=pg_catalog, public}
+-- (exigir_service_role, record_validation, approve, prepare_step, close_step,
+--  mark_ambiguous, fail_step, resolve_absent, flag_readback,
+--  validation_lookup, approval_manifest, receipt)
 ```
 
 **5.3 Nenhum grant sobrou para anon/authenticated**
@@ -130,7 +177,8 @@ SELECT p.proname, p.prosecdef, p.proconfig
 SELECT grantee, table_name, privilege_type
   FROM information_schema.role_table_grants
  WHERE table_schema = 'public'
-   AND table_name IN ('trafego_meta_create_approval','trafego_meta_create_step')
+   AND table_name IN ('trafego_meta_create_approval','trafego_meta_create_step',
+                      'trafego_meta_validation_receipt')
    AND grantee IN ('anon','authenticated','PUBLIC');
 -- esperado: zero linhas
 ```
@@ -141,7 +189,8 @@ SELECT grantee, table_name, privilege_type
 SELECT table_name, privilege_type
   FROM information_schema.role_table_grants
  WHERE table_schema='public' AND grantee='service_role'
-   AND table_name IN ('trafego_meta_create_approval','trafego_meta_create_step');
+   AND table_name IN ('trafego_meta_create_approval','trafego_meta_create_step',
+                      'trafego_meta_validation_receipt');
 -- esperado: apenas SELECT em cada uma. INSERT/UPDATE/DELETE NÃO devem aparecer:
 -- a única porta de escrita são as RPCs SECURITY DEFINER.
 ```
@@ -151,9 +200,15 @@ SELECT table_name, privilege_type
 ```sql
 SET ROLE authenticated;
 SELECT public.trafego_meta_create_approve(
-  repeat('d',64), 'metaacct_probe', 'probe', 1000,
-  clock_timestamp() + interval '1 hour', ARRAY['campaign']);
+  repeat('d',64), 'metaacct_probe', 'probe', 1000, 'BRL',
+  clock_timestamp() + interval '15 minutes', ARRAY['campaign'],
+  gen_random_uuid(), 1800, true, '{}'::jsonb);
 -- esperado: ERRO 42501 "operacao Meta exige service_role"
+-- Gravar recibo de validação também é privilégio de serviço:
+SELECT public.trafego_meta_create_record_validation(
+  repeat('d',64), 'metaacct_probe', 'probe', 'INDEPENDENT_ROOTS_ONLY',
+  ARRAY['campaign'], ARRAY['adset'], 2, 0);
+-- esperado: ERRO 42501
 RESET ROLE;
 ```
 
@@ -161,8 +216,9 @@ RESET ROLE;
 
 ```sql
 SELECT (SELECT count(*) FROM public.trafego_meta_create_approval) AS aprovacoes,
-       (SELECT count(*) FROM public.trafego_meta_create_step) AS passos;
--- esperado: 0, 0
+       (SELECT count(*) FROM public.trafego_meta_create_step) AS passos,
+       (SELECT count(*) FROM public.trafego_meta_validation_receipt) AS validacoes;
+-- esperado: 0, 0, 0
 ```
 
 ---
@@ -175,9 +231,14 @@ psql "$URL_DO_SUPABASE_OFICIAL" \
   -f supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql
 ```
 
-Derruba exatamente as 7 funções (por assinatura completa) e as 2 tabelas, na
-ordem segura de FK (`step` antes de `approval`). Índices e constraints vão junto
-com as tabelas. Não toca em mais nada.
+Derruba exatamente as 12 funções (por assinatura completa) e as 3 tabelas, na
+ordem segura de FK (`step` antes de `approval`, `approval` antes de
+`validation_receipt`). Índices e constraints vão junto com as tabelas. Não toca
+em mais nada.
+
+⚠️ A assinatura de `trafego_meta_create_approve` no `DROP FUNCTION` **precisa**
+ser a nova, de 11 argumentos. A antiga, de 6, não existe mais, e um `DROP` por
+nome só esconderia o dia em que houvesse duas sobrecargas.
 
 ⚠️ **O rollback é seguro apenas ANTES do primeiro uso real.** Ele é um
 `DROP TABLE` sem guarda de tabela não-vazia. `trafego_meta_create_step.external_object_id`

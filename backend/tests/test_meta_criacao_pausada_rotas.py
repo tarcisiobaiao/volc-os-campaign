@@ -50,6 +50,13 @@ IMAGEM_EXTERNA = "hashImagemDeProva_0001"
 #: Ids que o `_GraphFalso` devolve, na ordem de criação da saga.
 IDS_CRIADOS = {"campaign": "1001", "adset": "1002", "creative": "1003", "ad": "1004"}
 
+#: Instante em que o dublê "prepara" um passo, e o `created_time` que os objetos
+#: falsos declaram. O segundo é POSTERIOR ao primeiro de propósito: é essa ordem
+#: que prova que o objeto nasceu deste despacho, e invertê-la é o que o teste do
+#: objeto antigo faz.
+PREPARADO_EM = "2026-09-05T12:00:00+00:00"
+NASCIDO_EM = "2026-09-05T12:00:30+0000"
+
 
 # ---------------------------------------------------------------------------
 # TRANSPORTE FALSO — um único cliente serve a leitura de ativos E a saga
@@ -191,7 +198,8 @@ def _tipo_do_endpoint(url: str) -> str:
 
 def _objeto_lido(tipo: str) -> dict[str, Any]:
     """O que a Meta devolveria para cada objeto recém-criado da receita P0."""
-    comum = {"id": IDS_CRIADOS[tipo], "account_id": CONTA_EXTERNA}
+    comum = {"id": IDS_CRIADOS[tipo], "account_id": CONTA_EXTERNA,
+             "created_time": NASCIDO_EM}
     if tipo == "campaign":
         return {**comum, "name": PLANO["campaign_name"], "objective": "OUTCOME_TRAFFIC",
                 "buying_type": "AUCTION", "configured_status": "PAUSED",
@@ -261,6 +269,26 @@ class _LedgerEmMemoria:
         return {"ok": True, "validation_id": identificador,
                 "validated_at": "2026-09-05T12:00:00+00:00"}
 
+    async def consultar_validacao(self, validation_id: str) -> dict[str, Any]:
+        validacao = self.validacoes.get(validation_id)
+        if validacao is None:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_VALIDATION_RECEIPT_NOT_FOUND")
+        return {
+            "validation_id": validation_id,
+            "plan_sha256": validacao["plano_sha256"],
+            "account_ref": validacao["account_ref"],
+            "actor_id": validacao["ator"],
+            "coverage": validacao["cobertura"],
+            "objects_created": validacao["objetos_criados"],
+            "accepted": True,
+            "operations_total": validacao["operacoes_totais"],
+            "idade_s": 0,
+            "ja_consumido": any(
+                aprovacao["validation_id"] == validation_id
+                for aprovacao in self.aprovacoes.values()),
+        }
+
     # -- aprovação ----------------------------------------------------------
     async def aprovar(self, **kwargs: Any) -> dict[str, Any]:
         validacao = self.validacoes.get(kwargs["validation_id"])
@@ -312,7 +340,8 @@ class _LedgerEmMemoria:
             "steps": [
                 {"step_ref": ref, "name": passo["nome"], "ordinal": passo["ordinal"],
                  "state": passo["state"], "has_external_id": passo["id_externo"] is not None,
-                 "error_code": passo["codigo"]}
+                 "error_code": passo["codigo"], "readback_error": passo["readback"],
+                 "prepared_at": passo["prepared_at"]}
                 for ref, passo in sorted(
                     self.passos.items(), key=lambda item: item[1]["ordinal"])
                 if passo["approval_id"] == approval_id
@@ -343,6 +372,7 @@ class _LedgerEmMemoria:
             "approval_id": approval_id, "nome": nome,
             "ordinal": manifesto.index(nome) + 1,
             "state": "IN_FLIGHT", "id_externo": None, "codigo": None,
+            "readback": None, "prepared_at": PREPARADO_EM,
         }
         return PassoPreparadoMeta(ref, "DESPACHAR")
 
@@ -358,12 +388,29 @@ class _LedgerEmMemoria:
         self.eventos.append(("falhar", passo_ref))
         self.passos[passo_ref].update(state="FAILED", codigo=codigo)
 
-    async def resolver_ausente(self, *, passo_ref: str, codigo: str) -> None:
+    async def resolver_ausente(
+        self, *, passo_ref: str, codigo: str, idade_minima_s: int = 120,
+    ) -> None:
         if self.passos[passo_ref]["state"] != "AMBIGUOUS":
             raise ErroDeNascimentoMeta(
                 "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_AMBIGUOUS")
+        # ⚠️ A RPC real recusa fechar um passo jovem demais: ele pode estar
+        # ambíguo porque uma segunda chamada reentrou nele enquanto a PRIMEIRA
+        # ainda está dentro do `await` do POST. O dublê reproduz a recusa para
+        # que o teste da ordem exista.
+        assert idade_minima_s >= 60
+        if self.passos[passo_ref].get("jovem"):
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_RECONCILE_TOO_SOON")
         self.eventos.append(("ausente", passo_ref))
         self.passos[passo_ref].update(state="FAILED", codigo=codigo)
+
+    async def marcar_readback_divergente(self, *, passo_ref: str, codigo: str) -> None:
+        if self.passos[passo_ref]["state"] != "CREATED":
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_CREATED")
+        self.eventos.append(("readback", passo_ref))
+        self.passos[passo_ref].update(readback=codigo)
 
     async def recibo(self, approval_id: str) -> dict[str, Any]:
         manifesto = await self.manifesto(approval_id)
@@ -679,24 +726,47 @@ def test_aprovacao_sem_recibo_duravel_falha_fechado(monkeypatch) -> None:
     assert ledger.aprovacoes == {}
 
 
-def test_validate_only_sem_ledger_declara_que_a_prova_nao_foi_gravada(monkeypatch) -> None:
-    """A validação continua verdadeira; o que ela NÃO faz é fingir durabilidade."""
+def test_validate_only_com_criacao_fechada_nao_grava_prova_e_diz_isso(monkeypatch) -> None:
+    """A validação continua verdadeira; o que ela NÃO faz é fingir durabilidade.
+
+    ⚠️ O recibo de validação pertence à cadeia de autoridade da CRIAÇÃO. Gravá-lo
+    com a criação fechada produziria linhas que ninguém pode usar — elas ficam
+    velhas em 30 minutos — e faria a lane de criação escrever no Supabase sem as
+    duas autorizações que ela exige. Achado 7 da revisão adversarial.
+    """
     ledger = _LedgerEmMemoria()
     _abrir(monkeypatch, ledger, ledger_flag=False)
+    monkeypatch.setattr(
+        ledger, "registrar_validacao",
+        lambda **_: pytest.fail("gravou recibo com a criação fechada"))
+    corpo = _cliente().post("/api/trafego/meta/local/criacao/validar", json={
+        "confirmar_validate_only": True, "plano": _plano_para_envio()}).json()
+    # A Meta respondeu e nada foi criado: isso continua sendo dito.
+    assert corpo["ok"] is True
+    assert corpo["objetos_criados"] == 0
+    assert corpo["cobertura"] == "INDEPENDENT_ROOTS_ONLY"
+    # E a ausência de prova durável é declarada, não escondida.
+    assert corpo["prova_duravel"]["registrada"] is False
+    assert corpo["prova_duravel"]["codigo"] == "META_CREATE_PAUSED_BLOCKED"
+    assert ledger.validacoes == {}
 
-    class _LedgerFechado(_LedgerEmMemoria):
-        async def registrar_validacao(self, **kwargs: Any) -> dict[str, Any]:
-            raise ErroDeNascimentoMeta(
-                "META_CREATE_LEDGER_WRITE_BLOCKED",
-                "o ledger de criacao Meta permanece fechado neste servidor")
 
-    monkeypatch.setattr(trafego_meta_validacao, "_registro_saga", _LedgerFechado)
+def test_validate_only_com_ledger_indisponivel_declara_a_falha(monkeypatch) -> None:
+    """Criação aberta, mas a autoridade persistente recusa: falha declarada."""
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+
+    async def _recusa(**_: Any) -> dict[str, Any]:
+        raise ErroDeNascimentoMeta(
+            "META_CREATE_LEDGER_UNAVAILABLE",
+            "o Supabase operacional nao esta configurado neste backend")
+
+    monkeypatch.setattr(ledger, "registrar_validacao", _recusa)
     corpo = _cliente().post("/api/trafego/meta/local/criacao/validar", json={
         "confirmar_validate_only": True, "plano": _plano_para_envio()}).json()
     assert corpo["ok"] is True
-    assert corpo["objetos_criados"] == 0
     assert corpo["prova_duravel"]["registrada"] is False
-    assert corpo["prova_duravel"]["codigo"] == "META_CREATE_LEDGER_WRITE_BLOCKED"
+    assert corpo["prova_duravel"]["codigo"] == "META_CREATE_LEDGER_UNAVAILABLE"
 
 
 def test_duas_aprovacoes_vivas_do_mesmo_plano_sao_recusadas(monkeypatch) -> None:
@@ -1192,3 +1262,243 @@ def test_recibo_devolvido_ao_navegador_afirma_o_id_sem_entrega_lo(monkeypatch) -
         assert all(passo["has_external_id"] for passo in resposta.json()["recibo"]["steps"])
 
     asyncio.run(cenario())
+
+
+# ---------------------------------------------------------------------------
+# 8. OS ACHADOS DA REVISÃO ADVERSARIAL
+# ---------------------------------------------------------------------------
+# Cada teste abaixo nasceu de um achado verificado no código. Eles não provam
+# "o conserto existe": provam o CENÁRIO que o conserto impede, e por isso
+# continuam vermelhos se alguém reverter a correção.
+
+def test_ambiguidade_por_erro_5xx_nao_e_apresentada_como_recusa_provada(
+    monkeypatch,
+) -> None:
+    """ACHADO 5 — o ledger e o protocolo contavam histórias diferentes.
+
+    Um 500 da Meta com objeto `error` NÃO prova que nada nasceu: `_post` não
+    marca `criacao_descartada` e a saga deixa o passo AMBIGUOUS. A resposta,
+    porém, era 422 com `reconciliacao_necessaria=false` — porque a rota
+    classificava por uma lista de códigos em vez de perguntar à saga.
+    """
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    cliente = _cliente()
+    plano = _plano_para_envio()
+
+    class _CincoCentos(_GraphFalso):
+        async def post(self, url: str, *, data: Any = None, headers: Any = None):
+            corpo = dict(data or {})
+            if "execution_options" not in corpo and _tipo_do_endpoint(url) == "adset":
+                CENARIO.posts.append((url, corpo))
+                return _Resposta({"error": {
+                    "code": 2, "message": "Service temporarily unavailable"}}, status=500)
+            return await super().post(url, data=data, headers=headers)
+
+    async def cenario() -> None:
+        aprovacao = (await _aprovar(cliente, ledger, plano)).json()["aprovacao"]
+        monkeypatch.setattr(trafego_meta_validacao.httpx, "AsyncClient", _CincoCentos)
+        resposta = cliente.post("/api/trafego/meta/local/criacao/criar-pausada", json={
+            "approval_id": aprovacao["approval_id"],
+            "plano_sha256_esperado": aprovacao["plano_sha256"],
+        })
+        detalhe = resposta.json()["detail"]
+        # O passo ficou AMBÍGUO no livro...
+        assert ledger.passos["passo-adset"]["state"] == "AMBIGUOUS"
+        # ...e o protocolo precisa dizer a mesma coisa.
+        assert resposta.status_code == 502
+        assert detalhe["reconciliacao_necessaria"] is True
+        assert detalhe["retry_permitido"] is False
+
+    asyncio.run(cenario())
+
+
+def test_readback_divergente_fica_gravado_no_recibo(monkeypatch) -> None:
+    """ACHADO 3 — o recibo dizia só CREATED sobre um objeto que divergiu.
+
+    A ordem fecha-antes-de-ler é DELIBERADA: o id precisa estar gravado antes de
+    qualquer outra coisa, senão uma queda entre o POST e o INSERT o perde para
+    sempre. O conserto não inverte a ordem — ele anota a divergência.
+    """
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    cliente = _cliente()
+    plano = _plano_para_envio()
+
+    async def cenario() -> None:
+        aprovacao = (await _aprovar(cliente, ledger, plano)).json()["aprovacao"]
+        CENARIO.divergir_em = "campaign"
+        resposta = cliente.post("/api/trafego/meta/local/criacao/criar-pausada", json={
+            "approval_id": aprovacao["approval_id"],
+            "plano_sha256_esperado": aprovacao["plano_sha256"],
+        })
+        assert resposta.status_code == 502
+        passo = ledger.passos["passo-campaign"]
+        # O objeto EXISTE — a Meta devolveu id — e o livro o registra.
+        assert passo["state"] == "CREATED"
+        assert passo["id_externo"] == IDS_CRIADOS["campaign"]
+        # E o livro também registra que a leitura não confirmou o objeto.
+        assert passo["readback"] == "META_READBACK_DIVERGENT"
+        assert ("readback", "passo-campaign") in ledger.eventos
+
+    asyncio.run(cenario())
+
+
+def test_reconciliacao_recusa_objeto_que_ja_existia_antes_do_despacho(
+    monkeypatch,
+) -> None:
+    """ACHADO 4 — nome igual não prova nascimento.
+
+    A conta já tem uma campanha homônima, com a mesma receita, criada semana
+    passada. Fechá-la como o objeto do nosso despacho penduraria o AdSet novo
+    numa campanha antiga. O `created_time` é o que desempata.
+    """
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    cliente = _cliente()
+    plano = _plano_para_envio()
+
+    async def cenario() -> None:
+        aprovacao = await _ambiguar(cliente, ledger, plano)
+        CENARIO.silenciar_em = None
+        antigo = {**_objeto_lido("adset"), "created_time": "2026-08-29T09:00:00+0000"}
+        CENARIO.listagens = {
+            "campaigns": [_objeto_lido("campaign")],
+            "adsets": [antigo],
+            "adcreatives": [], "ads": [],
+        }
+        resposta = cliente.post("/api/trafego/meta/local/criacao/reconciliar", json={
+            "approval_id": aprovacao["approval_id"]})
+        conclusao = resposta.json()["conclusoes"][0]
+        assert conclusao["conclusao"] == "PERMANECE_AMBIGUO"
+        assert "já existia antes deste despacho" in conclusao["explicacao"]
+        assert ledger.passos["passo-adset"]["state"] == "AMBIGUOUS"
+
+    asyncio.run(cenario())
+
+
+def test_criativo_nunca_e_fechado_por_leitura(monkeypatch) -> None:
+    """ACHADO 4, corolário — AdCreative não expõe `created_time`.
+
+    Sem carimbo de nascimento não existe prova de que o criativo encontrado
+    nasceu deste despacho. Um criativo antigo e homônimo seria adotado em
+    silêncio, então a leitura nunca o fecha.
+    """
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    cliente = _cliente()
+    plano = _plano_para_envio()
+
+    async def cenario() -> None:
+        aprovacao = (await _aprovar(cliente, ledger, plano)).json()["aprovacao"]
+        CENARIO.silenciar_em = "creative"
+        cliente.post("/api/trafego/meta/local/criacao/criar-pausada", json={
+            "approval_id": aprovacao["approval_id"],
+            "plano_sha256_esperado": aprovacao["plano_sha256"],
+        })
+        assert ledger.passos["passo-creative:variation-001"]["state"] == "AMBIGUOUS"
+        CENARIO.silenciar_em = None
+        sem_carimbo = {k: v for k, v in _objeto_lido("creative").items()
+                       if k != "created_time"}
+        CENARIO.listagens = {
+            "campaigns": [_objeto_lido("campaign")],
+            "adsets": [_objeto_lido("adset")],
+            "adcreatives": [sem_carimbo],
+            "ads": [],
+        }
+        resposta = cliente.post("/api/trafego/meta/local/criacao/reconciliar", json={
+            "approval_id": aprovacao["approval_id"]})
+        conclusao = resposta.json()["conclusoes"][0]
+        assert conclusao["conclusao"] == "PERMANECE_AMBIGUO"
+        assert "instante de criação" in conclusao["explicacao"]
+        assert ledger.passos["passo-creative:variation-001"]["state"] == "AMBIGUOUS"
+
+    asyncio.run(cenario())
+
+
+def test_ausencia_nao_pode_ser_fechada_enquanto_alguem_ainda_pode_despachar(
+    monkeypatch,
+) -> None:
+    """ACHADO 2 — o passo vira ambíguo antes de o POST original sair.
+
+    Uma segunda chamada reentra no passo e o SQL o marca AMBIGUOUS enquanto a
+    primeira ainda está dentro do `await` do POST. Fechar como ausente nesse
+    instante gravaria "não existe" sobre um objeto prestes a nascer, e liberaria
+    uma nova aprovação sobre ele.
+    """
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    cliente = _cliente()
+    plano = _plano_para_envio()
+
+    async def cenario() -> None:
+        aprovacao = await _ambiguar(cliente, ledger, plano)
+        # O passo é jovem: alguém ainda pode ter autoridade para despachar.
+        ledger.passos["passo-adset"]["jovem"] = True
+        CENARIO.silenciar_em = None
+        CENARIO.listagens = {
+            "campaigns": [_objeto_lido("campaign")],
+            "adsets": [], "adcreatives": [], "ads": [],
+        }
+        resposta = cliente.post("/api/trafego/meta/local/criacao/reconciliar", json={
+            "approval_id": aprovacao["approval_id"]})
+        # A leitura concluiu AUSENTE, mas o ledger recusou fechar.
+        assert resposta.status_code == 409
+        assert "META_RECONCILE_TOO_SOON" in resposta.json()["detail"]["mensagem"]
+        assert ledger.passos["passo-adset"]["state"] == "AMBIGUOUS"
+
+    asyncio.run(cenario())
+
+
+def test_recibo_de_validacao_inventado_para_antes_do_keychain(monkeypatch) -> None:
+    """ACHADO 8 — a ordem prometida é ledger antes do segredo.
+
+    A autoridade continua sendo a RPC de aprovação, que reconfere tudo. O que
+    este teste fixa é a ORDEM: um `validation_id` que o banco não conhece não
+    pode custar uma leitura do Keychain nem uma requisição à Meta.
+    """
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    monkeypatch.setattr(
+        trafego_meta_criacao, "_credencial_salva",
+        lambda *_: pytest.fail("o Keychain foi aberto por um recibo inexistente"))
+    monkeypatch.setattr(
+        trafego_meta_validacao.httpx, "AsyncClient",
+        lambda *a, **k: pytest.fail("saiu HTTP por um recibo inexistente"))
+    resposta = _cliente().post("/api/trafego/meta/local/criacao/aprovar", json={
+        "plano": _plano_para_envio(),
+        "plano_sha256_esperado": "a" * 64,
+        "validation_id": "validation-que-nao-existe",
+        "confirmar_nascimento_pausado": True,
+        "confirmacao_digitada": "CRIAR PAUSADA",
+    })
+    assert resposta.status_code == 409
+    assert "META_VALIDATION_RECEIPT_NOT_FOUND" in resposta.json()["detail"]["mensagem"]
+
+
+def test_recibo_de_outro_ator_para_antes_do_keychain(monkeypatch) -> None:
+    """ACHADO 8 — validar como uma pessoa e aprovar como outra."""
+    ledger = _LedgerEmMemoria()
+    _abrir(monkeypatch, ledger)
+    cliente = _cliente()
+    plano = _plano_para_envio()
+    validacao = cliente.post("/api/trafego/meta/local/criacao/validar", json={
+        "confirmar_validate_only": True, "plano": plano}).json()
+
+    monkeypatch.setattr(
+        trafego_meta_criacao, "_credencial_salva",
+        lambda *_: pytest.fail("o Keychain foi aberto para um recibo de outra pessoa"))
+    outro = FastAPI()
+    outro.include_router(trafego_meta_criacao.router)
+    outro.dependency_overrides[exigir_admin] = lambda: Identidade(
+        sub="outro-operador", email="outro@volc", papel="ADMIN", origem="sessao")
+    resposta = TestClient(outro, headers={"host": "localhost"}).post(
+        "/api/trafego/meta/local/criacao/aprovar", json={
+            "plano": plano,
+            "plano_sha256_esperado": validacao["plano_sha256"],
+            "validation_id": validacao["prova_duravel"]["validation_id"],
+            "confirmar_nascimento_pausado": True,
+            "confirmacao_digitada": "CRIAR PAUSADA",
+        })
+    assert resposta.status_code == 409
+    assert resposta.json()["detail"]["codigo"] == "META_VALIDATION_ACTOR_DIVERGED"

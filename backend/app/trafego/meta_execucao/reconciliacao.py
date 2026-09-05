@@ -39,17 +39,36 @@ ordem, achar cada objeto pelo nome aprovado, e usar o id encontrado como pai do
 passo seguinte. É mais leitura, e é a única forma de o read-back da
 reconciliação ser tão exigente quanto o read-back da criação.
 
-## Identidade: por que o nome basta aqui
+## Identidade: por que o nome NÃO basta
 
-O nome do objeto entra no `plano_sha256` (ele é parte do payload compilado), é
-único dentro do lote por contrato (`META_STATIC_BATCH_DUPLICATE_NAME`) e é o
-único traço do plano que a Meta devolve numa listagem. Encontrar **exatamente
-um** objeto com aquele nome na conta certa é uma pista, não a conclusão: a
-conclusão vem do `_validar_read_back` completo, o mesmo que a saga usa.
+O nome é o único traço do plano que a Meta devolve numa listagem, então a busca
+começa por ele. Mas ele é uma pista fraca, e tratá-lo como conclusão foi um
+defeito real desta lane, apontado na revisão adversarial:
+
+> a conta já contém uma campanha PAUSED chamada "Campanha X" com a mesma
+> receita; o POST novo falha antes de criar qualquer coisa; a reconciliação
+> encontra exatamente a campanha antiga, valida todos os campos dela e fecha o
+> passo com o id errado. O AdSet novo passa a nascer sob a campanha da semana
+> passada.
+
+A unicidade de nome que o contrato garante vale **dentro do lote**, nunca dentro
+da conta. Então a identidade aqui tem três camadas, e as três precisam passar:
+
+1. **nome** — encontra exatamente um candidato na aresta certa da conta certa;
+2. **`_validar_read_back` completo** — o mesmo do executor, sem afrouxar nada;
+3. **correlação temporal** — o `created_time` do objeto tem de ser posterior ao
+   `prepared_at` do recibo. Um objeto que já existia antes de o passo ser
+   preparado não pode ter nascido deste despacho.
+
+`AdCreative` não expõe `created_time` na Marketing API. A consequência está
+codificada e é deliberada: **um criativo nunca é fechado por leitura**. Ele
+permanece ambíguo, porque a leitura não consegue prová-lo — e inventar a prova
+seria pior do que não tê-la.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
@@ -74,6 +93,17 @@ TAMANHO_DA_PAGINA = 200
 CRIADO = "CRIADO"
 AUSENTE = "AUSENTE"
 INDETERMINADO = "INDETERMINADO"
+
+#: Folga de relógio entre o nosso `prepared_at` e o `created_time` da Meta. Os
+#: dois carimbos vêm de máquinas diferentes; exigir precisão absoluta recusaria
+#: objetos legítimos por causa de alguns segundos de deriva.
+FOLGA_DE_RELOGIO = timedelta(minutes=5)
+
+#: Tipos cujo `created_time` a Marketing API devolve. `AdCreative` não está
+#: aqui e a ausência é o ponto: sem carimbo de nascimento não há como provar
+#: que o criativo encontrado nasceu deste despacho, e um criativo antigo com o
+#: mesmo nome seria adotado em silêncio.
+TIPOS_COM_NASCIMENTO = frozenset({"campaign", "adset", "ad"})
 
 
 @dataclass(frozen=True)
@@ -115,6 +145,7 @@ class ReconciliadorMetaSomenteLeitura:
         segredo: SegredoEfemero,
         *,
         passos_ambiguos: Sequence[str],
+        preparados_em: Mapping[str, str] | None = None,
     ) -> tuple[ConclusaoDoPasso, ...]:
         """Conclui, por leitura, o que existe na conta para cada passo do plano.
 
@@ -122,8 +153,14 @@ class ReconciliadorMetaSomenteLeitura:
         anteriores são o que prova o pertencimento dos seguintes. Só os passos
         em `passos_ambiguos` viram conclusão acionável; os demais servem para
         montar o encadeamento e são devolvidos como contexto.
+
+        `preparados_em` traz o `prepared_at` de cada passo do ledger. É ele que
+        separa "este objeto nasceu do nosso despacho" de "a conta já tinha um
+        objeto com este nome" — e sem essa separação a reconciliação adota um
+        objeto antigo e a saga passa a pendurar filhos nele.
         """
         ambiguos = set(passos_ambiguos)
+        carimbos = dict(preparados_em or {})
         ids: dict[str, str] = {}
         conclusoes: list[ConclusaoDoPasso] = []
         for operacao in plano.operacoes:
@@ -164,6 +201,21 @@ class ReconciliadorMetaSomenteLeitura:
                 continue
             dados = encontrados[0]
             identificador = str(dados.get("id") or "")
+            # ⚠️ NOME IGUAL NÃO PROVA NASCIMENTO.
+            #
+            # A unicidade de nome é garantida dentro do LOTE, pelo contrato —
+            # nunca dentro da conta. Uma campanha antiga, homônima e com a mesma
+            # receita passaria por todo o read-back, e fechar o passo com o id
+            # dela penduraria o AdSet novo numa campanha de outra semana.
+            #
+            # O que desempata é o instante: um objeto que já existia antes de o
+            # recibo ser preparado não pode ter nascido deste despacho.
+            recusa = self._sem_correlacao_temporal(
+                operacao.tipo_objeto, dados, carimbos.get(operacao.chave))
+            if recusa is not None:
+                conclusoes.append(ConclusaoDoPasso(
+                    operacao.chave, operacao.tipo_objeto, INDETERMINADO, motivo=recusa))
+                continue
             try:
                 ExecutorMetaPausado._validar_read_back(
                     operacao.tipo_objeto,
@@ -186,6 +238,27 @@ class ReconciliadorMetaSomenteLeitura:
                 operacao.chave, operacao.tipo_objeto, CRIADO, id_externo=identificador))
         del ambiguos  # o filtro é da rota; aqui devolvemos o quadro inteiro
         return tuple(conclusoes)
+
+    @staticmethod
+    def _sem_correlacao_temporal(
+        tipo: str, dados: Mapping[str, Any], preparado_em: str | None,
+    ) -> str | None:
+        """Devolve o motivo da recusa, ou `None` quando a correlação se sustenta."""
+        if tipo not in TIPOS_COM_NASCIMENTO:
+            # AdCreative não expõe `created_time`. Sem carimbo não há prova, e
+            # sem prova o passo permanece ambíguo — nunca é fechado por leitura.
+            return ("a Meta não informa o instante de criação deste tipo de objeto, "
+                    "então a leitura não prova que ele nasceu deste despacho")
+        nascimento = _instante(dados.get("created_time"))
+        if nascimento is None:
+            return "o objeto encontrado não trouxe instante de criação"
+        preparo = _instante(preparado_em)
+        if preparo is None:
+            return "o recibo não registrou quando o passo foi preparado"
+        if nascimento < preparo - FOLGA_DE_RELOGIO:
+            return ("o objeto encontrado já existia antes deste despacho; "
+                    "é outro objeto com o mesmo nome")
+        return None
 
     async def _listar_por_nome(
         self,
@@ -249,6 +322,26 @@ class _LeituraIncompleta(RuntimeError):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+def _instante(valor: Any) -> datetime | None:
+    """Converte um carimbo ISO-8601 num instante com fuso, ou devolve `None`.
+
+    A Meta usa `+0000` sem dois-pontos; o Postgres devolve `+00:00`. Os dois
+    precisam virar o mesmo instante, senão a comparação recusaria objetos
+    legítimos por causa do formato.
+    """
+    texto = str(valor or "").strip()
+    if not texto:
+        return None
+    texto = texto.replace("Z", "+00:00")
+    if len(texto) >= 5 and texto[-5] in "+-" and texto[-3] != ":":
+        texto = f"{texto[:-2]}:{texto[-2:]}"
+    try:
+        instante = datetime.fromisoformat(texto)
+    except ValueError:
+        return None
+    return instante if instante.tzinfo is not None else instante.replace(tzinfo=timezone.utc)
 
 
 def _proxima_pagina(corpo: Mapping[str, Any]) -> str | None:
