@@ -92,7 +92,8 @@
       "estimated_complexity": "S",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "testes verdes; nenhum import de httpx/supabase no modulo; OpenAPI inalterado"
+      "definition_of_done": "testes verdes; nenhum import de httpx/supabase no modulo; OpenAPI inalterado",
+      "release": "P0"
     },
     {
       "task_id": "WBS-C02",
@@ -126,7 +127,8 @@
       "estimated_complexity": "S",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "dominio.FORMATOS e destinos.ENVELOPES marcados como derivados (sem duplicar numeros) — refactor em lote separado"
+      "definition_of_done": "dominio.FORMATOS e destinos.ENVELOPES marcados como derivados (sem duplicar numeros) — refactor em lote separado",
+      "release": "P0"
     },
     {
       "task_id": "WBS-S01",
@@ -164,7 +166,8 @@
       "estimated_complexity": "M",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "rota + componente + testes; a11y (alt derivado, foco)"
+      "definition_of_done": "rota + componente + testes; a11y (alt derivado, foco)",
+      "release": "P0"
     },
     {
       "task_id": "WBS-P01",
@@ -186,7 +189,8 @@
         "detector indisponivel => GATE_UNAVAILABLE (bloqueio)",
         "fixture sintetica com texto pequeno de banco em envelope e detectada no tile 2x",
         "identidade propria (identity_ref) nunca e terceiro",
-        "authorization_ref cobre so os termos listados"
+        "authorization_ref cobre so os termos listados",
+        "modo minimo: avaliar uma unica peca por (account_ref, image_hash lido no backend) sem catalogo nem storage remoto"
       ],
       "minimum_tests": [
         "10 fixtures sinteticas (positivas/negativas)",
@@ -203,7 +207,8 @@
       "estimated_complexity": "L",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "gate roda antes de AWAITING_HUMAN_REVIEW em todo item; taxa de bloqueio observavel"
+      "definition_of_done": "gate roda antes de AWAITING_HUMAN_REVIEW em todo item; taxa de bloqueio observavel",
+      "release": "P0"
     },
     {
       "task_id": "WBS-S02",
@@ -239,7 +244,8 @@
       "blocked_by": [
         "autorizacao para criar bucket"
       ],
-      "definition_of_done": "canario sobe/relê um objeto no bucket privado com recibo"
+      "definition_of_done": "canario sobe/relê um objeto no bucket privado com recibo",
+      "release": "P1"
     },
     {
       "task_id": "WBS-B01",
@@ -279,12 +285,13 @@
       "estimated_complexity": "L",
       "parallelizable": false,
       "blocked_by": [],
-      "definition_of_done": "ciclo aplicar->operar->reverter em Postgres descartavel"
+      "definition_of_done": "ciclo aplicar->operar->reverter em Postgres descartavel",
+      "release": "P1"
     },
     {
       "task_id": "WBS-M01",
       "priority": "P1",
-      "objective": "Demanda Meta: engine emite AssetDemandManifest a partir do plano P0 e consome supply (asset_ref+copy_ref) — integracao com o primeiro canario PAUSED sem esperar video/flexivel",
+      "objective": "Demanda Meta: engine emite AssetDemandManifest a partir do plano P0 e consome supply (asset_ref+copy_ref); gate minimo sobre a peca selecionada; integracao com o primeiro canario PAUSED sem esperar lote/catalogo (P1), video ou flexivel (P2)",
       "owner_domain": "meta_engine (decisao conjunta OCC-01/04/05/06)",
       "exact_files": [
         "backend/app/trafego/meta_execucao/demanda.py (novo)",
@@ -293,19 +300,22 @@
       ],
       "dependencies": [
         "WBS-C01",
-        "WBS-B01",
+        "WBS-C02",
+        "WBS-S01",
         "WBS-P01"
       ],
       "input_contract": "PedidoPlanoMetaPausado",
       "output_contract": "AssetDemandManifest; plano com supply_sha256",
       "acceptance_criteria": [
         "supply_sha256 entra na materia do plano_sha256 (OCC-04)",
-        "biblioteca da conta so via item gateado (OCC-01)",
+        "biblioteca da conta so com peca gateada: bytes lidos no backend, content_sha256, gate tecnico e de politica, policy_receipt CLEAR/AUTHORIZED, correspondencia exata com o image_hash do plano (OCC-01)",
+        "peca sem policy_receipt valido => 409 antes do Keychain",
         "zero payload Meta no navegador"
       ],
       "minimum_tests": [
         "plano diverge quando copy muda",
-        "reserva falha => 409 antes do Keychain"
+        "peca sem policy_receipt => 409 antes do Keychain",
+        "peca com bytes divergentes do image_hash => 409"
       ],
       "provider_proof_required": true,
       "mutation_authority_required": "validate_only real (flag META_VALIDATE_ONLY_ENABLED) — nenhuma criacao",
@@ -321,7 +331,8 @@
         "OCC-04",
         "OCC-06"
       ],
-      "definition_of_done": "validate_only real aceita plano com item AVAILABLE gateado; canario PAUSED segue as flags do spec Meta"
+      "definition_of_done": "validate_only real aceita plano com item AVAILABLE gateado; canario PAUSED segue as flags do spec Meta",
+      "release": "P0"
     },
     {
       "task_id": "WBS-M02",
@@ -359,7 +370,8 @@
         "OCC-02",
         "OCC-08"
       ],
-      "definition_of_done": "leitura AdImage por hash confirma width/height iguais aos medidos"
+      "definition_of_done": "leitura AdImage por hash confirma width/height iguais aos medidos",
+      "release": "P1"
     },
     {
       "task_id": "WBS-M03",
@@ -398,7 +410,8 @@
       "blocked_by": [
         "WBS-M02"
       ],
-      "definition_of_done": "CAP-META-VID-01 sai de BLOCKED_BY_PROVIDER"
+      "definition_of_done": "CAP-META-VID-01 sai de BLOCKED_BY_PROVIDER",
+      "release": "P2"
     },
     {
       "task_id": "WBS-M04",
@@ -432,7 +445,8 @@
       "blocked_by": [
         "OCC-09"
       ],
-      "definition_of_done": "CAP-META-FLEX-01 muda de status com evidencia"
+      "definition_of_done": "CAP-META-FLEX-01 muda de status com evidencia",
+      "release": "P2"
     },
     {
       "task_id": "WBS-G01",
@@ -470,7 +484,8 @@
       "blocked_by": [
         "OCC-10"
       ],
-      "definition_of_done": "Display canario PAUSED com asset vindo da cadeia"
+      "definition_of_done": "Display canario PAUSED com asset vindo da cadeia",
+      "release": "P1"
     },
     {
       "task_id": "WBS-G02",
@@ -505,7 +520,8 @@
       "estimated_complexity": "M",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "CAP-GSEARCH-IMG-01 sai de NOT_IMPLEMENTED"
+      "definition_of_done": "CAP-GSEARCH-IMG-01 sai de NOT_IMPLEMENTED",
+      "release": "P2"
     },
     {
       "task_id": "WBS-P03",
@@ -540,7 +556,8 @@
       "estimated_complexity": "M",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "ASIS-26 fechado"
+      "definition_of_done": "ASIS-26 fechado",
+      "release": "P1"
     },
     {
       "task_id": "WBS-U01",
@@ -577,7 +594,8 @@
       "estimated_complexity": "L",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "vitest + build verdes; TS ratchet sem erro novo"
+      "definition_of_done": "vitest + build verdes; TS ratchet sem erro novo",
+      "release": "P1"
     },
     {
       "task_id": "WBS-D01",
@@ -609,7 +627,8 @@
       "estimated_complexity": "M",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "CSC-DEC-23"
+      "definition_of_done": "CSC-DEC-23",
+      "release": "P3"
     },
     {
       "task_id": "WBS-A01",
@@ -643,7 +662,15 @@
       "estimated_complexity": "M",
       "parallelizable": true,
       "blocked_by": [],
-      "definition_of_done": "CSC-DEC-08/22 operacionais"
+      "definition_of_done": "CSC-DEC-08/22 operacionais",
+      "release": "P3"
     }
-  ]
+  ],
+  "releases": {
+    "P0": "contrato/fronteira minima, preview seguro do canario, gate minimo da peca do canario, integracao do ativo estatico ao plano Meta",
+    "P1": "lote estatico, catalogo, reserva/consumo, storage operacional, operacao minima repetivel",
+    "P2": "video, flexivel e integracoes multicanal avancadas",
+    "P3": "aprendizado por desempenho e automacao avancada"
+  },
+  "regra_de_release": "nenhuma tarefa depende de tarefa de release posterior (verificado no gate)"
 }

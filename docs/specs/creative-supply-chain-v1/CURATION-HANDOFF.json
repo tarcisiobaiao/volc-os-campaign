@@ -54,7 +54,7 @@
       "id": "P11-T05",
       "current_status": "partial",
       "proposed_status": "partial",
-      "why": "canario estatico nao depende de video/flexivel; a spec acrescenta gate de politica antes de qualquer imagem da biblioteca da conta virar anuncio (OCC-01)",
+      "why": "canario estatico nao depende de video/flexivel, mas depende do gate minimo sobre a peca selecionada (OCC-01 bloqueia ate la); a prova remota cobre so Campaign + Creatives (CAP-META-LOTE-01); criacao PAUSED do lote completo continua sem prova (CAP-META-LOTE-02)",
       "evidence": [
         "CREATIVE-SUPPLY-CHAIN-SPEC.json CSC-DEC-13/14",
         "OPEN-CONTRACT-CONFLICTS.json"

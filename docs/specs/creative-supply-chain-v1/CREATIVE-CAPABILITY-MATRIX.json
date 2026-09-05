@@ -2,454 +2,2056 @@
   "schema": "VolcCreativeCapabilityMatrix.v1",
   "artefato": "CREATIVE-CAPABILITY-MATRIX.json",
   "versao": "1.0.0",
-  "base_factual": {"commit": "884393b0e99b5ee403a6f38e1e4225012705f942", "lido_em": "2026-09-05"},
+  "base_factual": {
+    "commit": "884393b0e99b5ee403a6f38e1e4225012705f942",
+    "lido_em": "2026-09-05"
+  },
   "_leia_primeiro": [
     "Uma celula por (canal, modalidade). Nao existe simetria entre canais e esta matriz nao a fabrica.",
     "status e um dos oito valores permitidos pela missao; nunca 'supported: true/false'.",
     "Toda celula cita evidencia (EV-*, ASIS-*, arquivo:linha) ou um bloqueio nomeado.",
     "validacao_deterministica = o que a cadeia confere localmente a partir dos bytes; validacao_so_provider = o que so a API pode julgar.",
-    "Numeros oficiais sao copiados das evidencias; onde a fonte oficial nao publica o numero, o campo e null e a celula diz isso."
+    "Numeros oficiais sao copiados das evidencias; onde a fonte oficial nao publica o numero, o campo e null e a celula diz isso.",
+    "CAP-META-LOTE-01 e CAP-META-LOTE-02 separam a prova remota das raizes (Campaign + Creatives, objects_created=0) da criacao PAUSED do lote completo, que continua sem prova real."
   ],
-  "status_permitidos": ["PROVEN_LOCAL", "PROVEN_REMOTE_READ", "PROVEN_REMOTE_VALIDATE", "IMPLEMENTED_UNPROVEN", "BLOCKED_BY_PROVIDER", "RESEARCH_REQUIRED", "NOT_IMPLEMENTED", "NOT_APPLICABLE"],
-  "canais": ["META_ADS", "GOOGLE_DISPLAY", "GOOGLE_DEMAND_GEN", "GOOGLE_PERFORMANCE_MAX", "GOOGLE_SEARCH_ASSETS"],
-  "modalidades": ["IMAGEM_ESTATICA", "VIDEO", "LOTE", "FLEXIVEL_DINAMICO", "LOGO", "TEXTO", "THUMBNAIL", "VARIACAO_POR_PLACEMENT", "OPCIONAIS_E_OBRIGATORIOS"],
+  "status_permitidos": [
+    "PROVEN_LOCAL",
+    "PROVEN_REMOTE_READ",
+    "PROVEN_REMOTE_VALIDATE",
+    "IMPLEMENTED_UNPROVEN",
+    "BLOCKED_BY_PROVIDER",
+    "RESEARCH_REQUIRED",
+    "NOT_IMPLEMENTED",
+    "NOT_APPLICABLE"
+  ],
+  "canais": [
+    "META_ADS",
+    "GOOGLE_DISPLAY",
+    "GOOGLE_DEMAND_GEN",
+    "GOOGLE_PERFORMANCE_MAX",
+    "GOOGLE_SEARCH_ASSETS"
+  ],
+  "modalidades": [
+    "IMAGEM_ESTATICA",
+    "VIDEO",
+    "LOTE",
+    "FLEXIVEL_DINAMICO",
+    "LOGO",
+    "TEXTO",
+    "THUMBNAIL",
+    "VARIACAO_POR_PLACEMENT",
+    "OPCIONAIS_E_OBRIGATORIOS"
+  ],
   "celulas": [
     {
-      "capability_id": "CAP-META-IMG-01", "canal": "META_ADS", "modalidade": "IMAGEM_ESTATICA", "provider_api_version": "META v26.0",
-      "formatos": ["image/jpeg", "image/png"], "proporcoes": {"feed_recomendada": "4:5", "aceitas_observadas_no_runtime": ["1:1", "1.91:1", "4:5"], "stories_reels": "9:16"},
-      "dimensoes": {"feed_recomendada": "1440x1800", "feed_largura_minima": 600, "stories_recomendada": "1440x2560", "stories_largura_minima": 500}, "tamanho_maximo_bytes": 31457280, "duracao": null,
-      "quantidade": {"min": 1, "max": 1, "nota": "1 imagem por criativo estatico (link_data.image_hash)"},
-      "placements": {"declaraveis": ["FACEBOOK_FEED", "INSTAGRAM_FEED", "INSTAGRAM_STORIES", "FACEBOOK_REELS", "INSTAGRAM_REELS", "AUDIENCE_NETWORK"], "no_runtime": "AUTOMATIC (placements_mode fixo em AUTOMATIC, contrato.py:125,162-164)"},
-      "requisitos_de_identidade": {"page_ref": "obrigatorio (EV-META-15)", "instagram_actor_ref": "opcional", "conta": "BRL ativa (ativos.py:62-67)"},
-      "campos_da_api": ["adcreatives.object_story_spec.page_id", "link_data.image_hash", "link_data.link", "link_data.message", "link_data.name", "link_data.description", "link_data.call_to_action{type,value.link}", "name (<=100)"],
+      "capability_id": "CAP-META-IMG-01",
+      "canal": "META_ADS",
+      "modalidade": "IMAGEM_ESTATICA",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": {
+        "feed_recomendada": "4:5",
+        "aceitas_observadas_no_runtime": [
+          "1:1",
+          "1.91:1",
+          "4:5"
+        ],
+        "stories_reels": "9:16"
+      },
+      "dimensoes": {
+        "feed_recomendada": "1440x1800",
+        "feed_largura_minima": 600,
+        "stories_recomendada": "1440x2560",
+        "stories_largura_minima": 500
+      },
+      "tamanho_maximo_bytes": 31457280,
+      "duracao": null,
+      "quantidade": {
+        "min": 1,
+        "max": 1,
+        "nota": "1 imagem por criativo estatico (link_data.image_hash)"
+      },
+      "placements": {
+        "declaraveis": [
+          "FACEBOOK_FEED",
+          "INSTAGRAM_FEED",
+          "INSTAGRAM_STORIES",
+          "FACEBOOK_REELS",
+          "INSTAGRAM_REELS",
+          "AUDIENCE_NETWORK"
+        ],
+        "no_runtime": "AUTOMATIC (placements_mode fixo em AUTOMATIC, contrato.py:125,162-164)"
+      },
+      "requisitos_de_identidade": {
+        "page_ref": "obrigatorio (EV-META-15)",
+        "instagram_actor_ref": "opcional",
+        "conta": "BRL ativa (ativos.py:62-67)"
+      },
+      "campos_da_api": [
+        "adcreatives.object_story_spec.page_id",
+        "link_data.image_hash",
+        "link_data.link",
+        "link_data.message",
+        "link_data.name",
+        "link_data.description",
+        "link_data.call_to_action{type,value.link}",
+        "name (<=100)"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["backend/app/trafego/meta_execucao/compilador.py:156-195", "backend/app/trafego/meta_execucao/executor.py:218-267", "backend/app/trafego/meta_execucao/contrato.py:185-207 (validate_only real 05/09/2026)", "EV-META-03", "EV-META-04", "EV-META-19", "EV-META-20"],
+      "evidencia": [
+        "backend/app/trafego/meta_execucao/compilador.py:156-195",
+        "backend/app/trafego/meta_execucao/executor.py:218-267",
+        "backend/app/trafego/meta_execucao/contrato.py:185-207 (validate_only real 05/09/2026)",
+        "EV-META-03",
+        "EV-META-04",
+        "EV-META-19",
+        "EV-META-20"
+      ],
       "bloqueio": "so com imagem JA na biblioteca da conta (ASIS-11); asset do Estudio nao chega (ASIS-12)",
       "fallback_permitido": "nenhum: sem imagem na conta nao ha criativo",
       "ui_necessaria": "seletor de peca por asset_ref com preview real, ratio e dimensoes; elegibilidade por placement por ratio enviado",
-      "validacao_deterministica": ["mime por magic bytes", "largura/altura medidas", "ratio com tolerancia 3% (feed) / 1% (stories)", "bytes <= 30 MB", "content_sha256", "gate de identidade de terceiro"],
-      "validacao_so_provider": ["aceitacao do image_hash na conta", "politica de anuncio (review)", "crop automatico por placement quando o ratio nao e nativo"]
+      "validacao_deterministica": [
+        "mime por magic bytes",
+        "largura/altura medidas",
+        "ratio com tolerancia 3% (feed) / 1% (stories)",
+        "bytes <= 30 MB",
+        "content_sha256",
+        "gate de identidade de terceiro"
+      ],
+      "validacao_so_provider": [
+        "aceitacao do image_hash na conta",
+        "politica de anuncio (review)",
+        "crop automatico por placement quando o ratio nao e nativo"
+      ]
     },
     {
-      "capability_id": "CAP-META-VID-01", "canal": "META_ADS", "modalidade": "VIDEO", "provider_api_version": "META v26.0",
-      "formatos": ["video/mp4", "video/quicktime", "image/gif"], "proporcoes": {"feed_recomendada": "4:5", "stories_reels": "9:16"}, "dimensoes": {"feed_recomendada": "1440x1800", "minima": "120x120"}, "tamanho_maximo_bytes": 4294967296, "duracao": {"min_s": 1, "max_s": 14460},
-      "quantidade": {"min": 1, "max": 1},
-      "placements": {"declaraveis": ["FACEBOOK_FEED", "INSTAGRAM_FEED", "INSTAGRAM_STORIES", "FACEBOOK_REELS", "INSTAGRAM_REELS"]},
-      "requisitos_de_identidade": {"page_ref": "obrigatorio", "thumbnail": "image_hash de imagem da conta OU URL propria permanente (EV-META-05)"},
-      "campos_da_api": ["object_story_spec.video_data.video_id", "video_data.image_hash | image_url", "video_data.title", "video_data.message", "video_data.call_to_action", "advideos (upload resumable: start/transfer/finish)"],
+      "capability_id": "CAP-META-VID-01",
+      "canal": "META_ADS",
+      "modalidade": "VIDEO",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "video/mp4",
+        "video/quicktime",
+        "image/gif"
+      ],
+      "proporcoes": {
+        "feed_recomendada": "4:5",
+        "stories_reels": "9:16"
+      },
+      "dimensoes": {
+        "feed_recomendada": "1440x1800",
+        "minima": "120x120"
+      },
+      "tamanho_maximo_bytes": 4294967296,
+      "duracao": {
+        "min_s": 1,
+        "max_s": 14460
+      },
+      "quantidade": {
+        "min": 1,
+        "max": 1
+      },
+      "placements": {
+        "declaraveis": [
+          "FACEBOOK_FEED",
+          "INSTAGRAM_FEED",
+          "INSTAGRAM_STORIES",
+          "FACEBOOK_REELS",
+          "INSTAGRAM_REELS"
+        ]
+      },
+      "requisitos_de_identidade": {
+        "page_ref": "obrigatorio",
+        "thumbnail": "image_hash de imagem da conta OU URL propria permanente (EV-META-05)"
+      },
+      "campos_da_api": [
+        "object_story_spec.video_data.video_id",
+        "video_data.image_hash | image_url",
+        "video_data.title",
+        "video_data.message",
+        "video_data.call_to_action",
+        "advideos (upload resumable: start/transfer/finish)"
+      ],
       "status_volc": "BLOCKED_BY_PROVIDER",
-      "evidencia": ["backend/app/routers/trafego_meta_validacao.py:215,230-235", "backend/app/trafego/meta_execucao/ativos.py:147-154 (leitura de advideos sem status)", "EV-META-05", "EV-META-08", "EV-META-09", "EV-META-21"],
+      "evidencia": [
+        "backend/app/routers/trafego_meta_validacao.py:215,230-235",
+        "backend/app/trafego/meta_execucao/ativos.py:147-154 (leitura de advideos sem status)",
+        "EV-META-05",
+        "EV-META-08",
+        "EV-META-09",
+        "EV-META-21"
+      ],
       "bloqueio": "miniatura: a doc proibe URL do CDN da Meta; URL propria do VOLC e assinada e expira; image_hash exige upload de imagem (META_UPLOAD_ASSET nao autorizado). Prontidao de processamento do video nao e legivel (EV-META-09).",
       "fallback_permitido": "nenhum automatico; a cadeia gera poster deterministico e o registra como imagem (WBS-M03) quando o upload for autorizado",
       "ui_necessaria": "player com poster, controles, duracao e codec medidos; estado 'thumbnail pendente de registro'",
-      "validacao_deterministica": ["ffprobe: codec h264, fps constante, audio aac, duracao >= 1 s, largura/altura", "sha256", "poster extraido de frame fixo com hash proprio", "gate de identidade sobre frames amostrados + poster"],
-      "validacao_so_provider": ["transcodificacao/processing do video", "aceitacao de video_id + image_hash no validate_only do AdCreative"]
+      "validacao_deterministica": [
+        "ffprobe: codec h264, fps constante, audio aac, duracao >= 1 s, largura/altura",
+        "sha256",
+        "poster extraido de frame fixo com hash proprio",
+        "gate de identidade sobre frames amostrados + poster"
+      ],
+      "validacao_so_provider": [
+        "transcodificacao/processing do video",
+        "aceitacao de video_id + image_hash no validate_only do AdCreative"
+      ]
     },
     {
-      "capability_id": "CAP-META-LOTE-01", "canal": "META_ADS", "modalidade": "LOTE", "provider_api_version": "META v26.0",
-      "formatos": ["image/jpeg", "image/png"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"min": 1, "max": 10, "nota": "1 Campaign + 1 AdSet + N pares Creative+Ad; teto 10 (contrato.py:221-226)"},
-      "placements": {"declaraveis": ["AUTOMATIC"]},
-      "requisitos_de_identidade": {"page_ref": "obrigatorio, um por lote", "variation_key": "unica por lote (contrato.py:70-76, 232-235)"},
-      "campos_da_api": ["N x adcreatives", "N x ads{adset_id, creative.creative_id, status=PAUSED}"],
+      "capability_id": "CAP-META-LOTE-01",
+      "canal": "META_ADS",
+      "modalidade": "LOTE",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "min": 1,
+        "max": 10,
+        "nota": "1 Campaign + 1 AdSet + N pares Creative+Ad; teto 10 (contrato.py:221-226)"
+      },
+      "placements": {
+        "declaraveis": [
+          "AUTOMATIC"
+        ]
+      },
+      "requisitos_de_identidade": {
+        "page_ref": "obrigatorio, um por lote",
+        "variation_key": "unica por lote (contrato.py:70-76, 232-235)"
+      },
+      "campos_da_api": [
+        "N x adcreatives",
+        "N x ads{adset_id, creative.creative_id, status=PAUSED}"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["backend/app/trafego/meta_execucao/compilador.py:138-196", "backend/tests/test_meta_static_batch.py (16 testes)", "backend/app/trafego/meta_execucao/executor.py:218-267 (valida campaign + todos os creatives sem criar)"],
-      "bloqueio": "falha parcial em criacao real = saga com passos AMBIGUO (CONTRATOS.md secao 3-4); nunca reenvio automatico",
+      "evidencia": [
+        "backend/app/trafego/meta_execucao/executor.py:218-267 (validar_raizes: so validavel_sem_criar_pai)",
+        "backend/app/trafego/meta_execucao/compilador.py:132-195 (campaign e creatives marcados validavel_sem_criar_pai=True)",
+        "backend/tests/test_meta_static_batch.py::test_validate_only_do_lote_valida_campaign_e_todos_criativos_sem_create",
+        "backend/app/trafego/meta_execucao/contrato.py:185-207 (validate_only real 05/09/2026)",
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql:76,80 (CHECK coverage=INDEPENDENT_ROOTS_ONLY, objects_created=0)"
+      ],
+      "bloqueio": "a prova remota nao cobre AdSet nem Ads: dependem de ids reais do pai (executor.py:276-279)",
+      "fallback_permitido": "nenhum; lote parcial fica registrado passo a passo",
+      "ui_necessaria": "a tela diz 'raizes validadas; conjunto e anuncios pendentes' (ja faz: trafego_meta_validacao.py:365-369)",
+      "validacao_deterministica": [
+        "unicidade de variation_key, creative_name, ad_name",
+        "cada asset_ref resolvido antes de compilar",
+        "hash do plano cobre todas as variacoes"
+      ],
+      "validacao_so_provider": [
+        "aceitacao por creative",
+        "read-back por passo"
+      ],
+      "capacidade": "META_ROOTS_BATCH_VALIDATE",
+      "escopo": "Campaign + N AdCreatives sob execution_options=validate_only; objects_created=0; AdSet e Ads NAO validados (cobertura INDEPENDENT_ROOTS_ONLY)"
+    },
+    {
+      "capability_id": "CAP-META-LOTE-02",
+      "canal": "META_ADS",
+      "modalidade": "LOTE",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "min": 1,
+        "max": 10,
+        "nota": "1 Campaign + 1 AdSet + N pares Creative+Ad; teto 10 (contrato.py:221-226)"
+      },
+      "placements": {
+        "declaraveis": [
+          "AUTOMATIC"
+        ]
+      },
+      "requisitos_de_identidade": {
+        "page_ref": "obrigatorio, um por lote",
+        "variation_key": "unica por lote (contrato.py:70-76, 232-235)"
+      },
+      "campos_da_api": [
+        "N x adcreatives",
+        "N x ads{adset_id, creative.creative_id, status=PAUSED}"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "backend/app/trafego/meta_execucao/executor.py:269-450 (saga criar_pausada)",
+        "backend/app/routers/trafego_meta_criacao.py:438-514",
+        "backend/tests/test_meta_static_batch.py::test_executor_lote_resolve_cada_criativo_e_readback_por_tipo (transporte hermetico)"
+      ],
+      "bloqueio": "prova faltante: primeiro create_paused real com read-back (nenhum objeto Meta foi criado ate 05/09/2026; flags META_CREATE_PAUSED_ENABLED e META_CREATE_LEDGER_WRITE_ENABLED fechadas; migration 20260904183418 nao aplicada)",
       "fallback_permitido": "nenhum; lote parcial fica registrado passo a passo",
       "ui_necessaria": "grade de variacoes com peca x copy; erros por variacao (detalhe_provedor.objeto = variation_key)",
-      "validacao_deterministica": ["unicidade de variation_key, creative_name, ad_name", "cada asset_ref resolvido antes de compilar", "hash do plano cobre todas as variacoes"],
-      "validacao_so_provider": ["aceitacao por creative", "read-back por passo"]
+      "validacao_deterministica": [
+        "unicidade de variation_key, creative_name, ad_name",
+        "cada asset_ref resolvido antes de compilar",
+        "hash do plano cobre todas as variacoes"
+      ],
+      "validacao_so_provider": [
+        "aceitacao do AdSet e dos Ads",
+        "read-back por passo",
+        "comportamento em falha parcial real (AMBIGUOUS)"
+      ],
+      "capacidade": "META_FULL_STATIC_BATCH_CREATE_PAUSED",
+      "escopo": "Campaign + AdSet + N Creatives + N Ads, todos PAUSED, via saga com recibo por passo e read-back"
     },
     {
-      "capability_id": "CAP-META-FLEX-01", "canal": "META_ADS", "modalidade": "FLEXIVEL_DINAMICO", "provider_api_version": "META v26.0",
-      "formatos": ["image/jpeg", "image/png", "video/mp4"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"imagens_max": 10, "videos_max": 10, "bodies_max": 5, "titles_max": 5, "descriptions_max": 5, "ctas_max": 5, "links_max": 5, "total_max": 30},
-      "placements": {"declaraveis": ["por asset_customization_rules — RESEARCH_REQUIRED (EV-META-13)"]},
-      "requisitos_de_identidade": {"page_ref": "obrigatorio; transporte junto de asset_feed_spec NAO exemplificado (EV-META-11)", "adset": "is_dynamic_creative=true para Dynamic Creative"},
-      "campos_da_api": ["asset_feed_spec.ad_formats", "asset_feed_spec.images[].hash", "asset_feed_spec.videos[].video_id+thumbnail_url", "bodies", "titles", "descriptions", "link_urls[].website_url", "call_to_action_types", "adsets.is_dynamic_creative"],
+      "capability_id": "CAP-META-FLEX-01",
+      "canal": "META_ADS",
+      "modalidade": "FLEXIVEL_DINAMICO",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "image/jpeg",
+        "image/png",
+        "video/mp4"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "imagens_max": 10,
+        "videos_max": 10,
+        "bodies_max": 5,
+        "titles_max": 5,
+        "descriptions_max": 5,
+        "ctas_max": 5,
+        "links_max": 5,
+        "total_max": 30
+      },
+      "placements": {
+        "declaraveis": [
+          "por asset_customization_rules — RESEARCH_REQUIRED (EV-META-13)"
+        ]
+      },
+      "requisitos_de_identidade": {
+        "page_ref": "obrigatorio; transporte junto de asset_feed_spec NAO exemplificado (EV-META-11)",
+        "adset": "is_dynamic_creative=true para Dynamic Creative"
+      },
+      "campos_da_api": [
+        "asset_feed_spec.ad_formats",
+        "asset_feed_spec.images[].hash",
+        "asset_feed_spec.videos[].video_id+thumbnail_url",
+        "bodies",
+        "titles",
+        "descriptions",
+        "link_urls[].website_url",
+        "call_to_action_types",
+        "adsets.is_dynamic_creative"
+      ],
       "status_volc": "RESEARCH_REQUIRED",
-      "evidencia": ["backend/app/routers/trafego_meta_validacao.py:217,236-242", "src/pages/trafego/MetaCriacaoPage.tsx:750-770 (modo inspecionavel, nao emite)", "EV-META-10", "EV-META-11", "EV-META-12", "EV-META-13"],
+      "evidencia": [
+        "backend/app/routers/trafego_meta_validacao.py:217,236-242",
+        "src/pages/trafego/MetaCriacaoPage.tsx:750-770 (modo inspecionavel, nao emite)",
+        "EV-META-10",
+        "EV-META-11",
+        "EV-META-12",
+        "EV-META-13"
+      ],
       "bloqueio": "um unico fato: como object_story_spec.page_id viaja com asset_feed_spec. Prova barata proposta: validate_only de um AdCreative minimo (nao cria objeto).",
       "fallback_permitido": "lote estatico (CAP-META-LOTE-01) cobre variacoes independentes sem Dynamic Creative",
       "ui_necessaria": "modo 'inspecao do contrato' (ja existe) com limites reais e bloqueio nomeado",
-      "validacao_deterministica": ["contagem por familia <= limites", "total <= 30", "bodies <= 1024 chars, titles/descriptions <= 255"],
-      "validacao_so_provider": ["aceitacao do asset_feed_spec com page_id", "regras por placement"]
+      "validacao_deterministica": [
+        "contagem por familia <= limites",
+        "total <= 30",
+        "bodies <= 1024 chars, titles/descriptions <= 255"
+      ],
+      "validacao_so_provider": [
+        "aceitacao do asset_feed_spec com page_id",
+        "regras por placement"
+      ]
     },
     {
-      "capability_id": "CAP-META-LOGO-01", "canal": "META_ADS", "modalidade": "LOGO", "provider_api_version": "META v26.0",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null,
-      "placements": null, "requisitos_de_identidade": {"identidade": "a Pagina (page_id) e a identidade visual do anuncio; nao ha slot de logo no criativo estatico"},
-      "campos_da_api": [], "status_volc": "NOT_APPLICABLE",
-      "evidencia": ["EV-META-04 (link_data nao tem campo de logo)"],
-      "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "mostrar a Pagina como identidade do anuncio",
-      "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-META-LOGO-01",
+      "canal": "META_ADS",
+      "modalidade": "LOGO",
+      "provider_api_version": "META v26.0",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": {
+        "identidade": "a Pagina (page_id) e a identidade visual do anuncio; nao ha slot de logo no criativo estatico"
+      },
+      "campos_da_api": [],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-META-04 (link_data nao tem campo de logo)"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "mostrar a Pagina como identidade do anuncio",
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-META-TXT-01", "canal": "META_ADS", "modalidade": "TEXTO", "provider_api_version": "META v26.0",
-      "formatos": ["text/plain"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"message": {"max_chars_runtime": 2200, "recomendado_ads_guide": "50-150"}, "headline": {"max_chars_runtime": 255, "recomendado_ads_guide": 27}, "description": {"max_chars_runtime": 255}, "cta": {"allowlist_runtime": ["LEARN_MORE", "APPLY_NOW", "SIGN_UP", "GET_QUOTE", "CONTACT_US"]}},
-      "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["link_data.message", "link_data.name", "link_data.description", "link_data.call_to_action.type"],
+      "capability_id": "CAP-META-TXT-01",
+      "canal": "META_ADS",
+      "modalidade": "TEXTO",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "text/plain"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "message": {
+          "max_chars_runtime": 2200,
+          "recomendado_ads_guide": "50-150"
+        },
+        "headline": {
+          "max_chars_runtime": 255,
+          "recomendado_ads_guide": 27
+        },
+        "description": {
+          "max_chars_runtime": 255
+        },
+        "cta": {
+          "allowlist_runtime": [
+            "LEARN_MORE",
+            "APPLY_NOW",
+            "SIGN_UP",
+            "GET_QUOTE",
+            "CONTACT_US"
+          ]
+        }
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "link_data.message",
+        "link_data.name",
+        "link_data.description",
+        "link_data.call_to_action.type"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["backend/app/trafego/meta_execucao/contrato.py:17,77-84,140-145", "EV-META-04", "EV-META-19"],
+      "evidencia": [
+        "backend/app/trafego/meta_execucao/contrato.py:17,77-84,140-145",
+        "EV-META-04",
+        "EV-META-19"
+      ],
       "bloqueio": "tetos 2200/255 sao do runtime VOLC (nao ha teto oficial lido para link_data); ads-guide so recomenda",
-      "fallback_permitido": null, "ui_necessaria": "variantes de copy independentes da peca (copy_ref), contadores com recomendado vs maximo",
-      "validacao_deterministica": ["tamanho", "sem marcador de dependencia (contrato.py:22-35)", "CTA na allowlist", "lexico de identidade de terceiro no texto"],
-      "validacao_so_provider": ["politica de texto"]
+      "fallback_permitido": null,
+      "ui_necessaria": "variantes de copy independentes da peca (copy_ref), contadores com recomendado vs maximo",
+      "validacao_deterministica": [
+        "tamanho",
+        "sem marcador de dependencia (contrato.py:22-35)",
+        "CTA na allowlist",
+        "lexico de identidade de terceiro no texto"
+      ],
+      "validacao_so_provider": [
+        "politica de texto"
+      ]
     },
     {
-      "capability_id": "CAP-META-THUMB-01", "canal": "META_ADS", "modalidade": "THUMBNAIL", "provider_api_version": "META v26.0",
-      "formatos": ["image/jpeg", "image/png"], "proporcoes": {"recomendada": "igual ao video"}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": {"min": 1, "max": 1},
-      "placements": null, "requisitos_de_identidade": {"origem": "image_hash da biblioteca da conta (EV-META-05)"},
-      "campos_da_api": ["video_data.image_hash", "video_data.image_url (URL propria; proibido CDN da Meta)"],
+      "capability_id": "CAP-META-THUMB-01",
+      "canal": "META_ADS",
+      "modalidade": "THUMBNAIL",
+      "provider_api_version": "META v26.0",
+      "formatos": [
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": {
+        "recomendada": "igual ao video"
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "min": 1,
+        "max": 1
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "origem": "image_hash da biblioteca da conta (EV-META-05)"
+      },
+      "campos_da_api": [
+        "video_data.image_hash",
+        "video_data.image_url (URL propria; proibido CDN da Meta)"
+      ],
       "status_volc": "BLOCKED_BY_PROVIDER",
-      "evidencia": ["EV-META-05", "backend/app/routers/trafego_meta_validacao.py:230-235"],
+      "evidencia": [
+        "EV-META-05",
+        "backend/app/routers/trafego_meta_validacao.py:230-235"
+      ],
       "bloqueio": "depende de META_UPLOAD_ASSET (adimages) — nao autorizado; URL assinada VOLC expira (apresentacao.py:28)",
       "fallback_permitido": "nenhum. `Video.picture` (CDN) e explicitamente proibido pela doc.",
       "ui_necessaria": "poster mostrado como 'gerado localmente, ainda nao registrado na conta'",
-      "validacao_deterministica": ["poster = frame fixo (t=0 ou t=1s) extraido com ffmpeg, hash proprio, gate de identidade"],
-      "validacao_so_provider": ["aceitacao do image_hash como thumbnail"]
+      "validacao_deterministica": [
+        "poster = frame fixo (t=0 ou t=1s) extraido com ffmpeg, hash proprio, gate de identidade"
+      ],
+      "validacao_so_provider": [
+        "aceitacao do image_hash como thumbnail"
+      ]
     },
     {
-      "capability_id": "CAP-META-PLC-01", "canal": "META_ADS", "modalidade": "VARIACAO_POR_PLACEMENT", "provider_api_version": "META v26.0",
-      "formatos": null, "proporcoes": {"feed": "4:5 rec.", "stories_reels": "9:16"}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null,
-      "placements": {"mecanismo_oficial": "asset_feed_spec.asset_customization_rules (EV-META-12) — semantica nao lida (EV-META-13)"},
+      "capability_id": "CAP-META-PLC-01",
+      "canal": "META_ADS",
+      "modalidade": "VARIACAO_POR_PLACEMENT",
+      "provider_api_version": "META v26.0",
+      "formatos": null,
+      "proporcoes": {
+        "feed": "4:5 rec.",
+        "stories_reels": "9:16"
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": {
+        "mecanismo_oficial": "asset_feed_spec.asset_customization_rules (EV-META-12) — semantica nao lida (EV-META-13)"
+      },
       "requisitos_de_identidade": null,
-      "campos_da_api": ["asset_feed_spec.asset_customization_rules", "image_crops (EV-META-14: chaves nao lidas)"],
+      "campos_da_api": [
+        "asset_feed_spec.asset_customization_rules",
+        "image_crops (EV-META-14: chaves nao lidas)"
+      ],
       "status_volc": "RESEARCH_REQUIRED",
-      "evidencia": ["EV-META-12", "EV-META-13", "EV-META-14", "backend/app/trafego/meta_execucao/contrato.py:125 (placements AUTOMATIC)"],
+      "evidencia": [
+        "EV-META-12",
+        "EV-META-13",
+        "EV-META-14",
+        "backend/app/trafego/meta_execucao/contrato.py:125 (placements AUTOMATIC)"
+      ],
       "bloqueio": "sem doc legivel de customizacao por placement nem de image_crops",
       "fallback_permitido": "um criativo por ratio, cada um em anuncio proprio (lote estatico); elegibilidade de placement declarada so para o ratio enviado; crop automatico do provedor registrado como UNKNOWN",
       "ui_necessaria": "preview por placement com rotulo 'simulado' quando nao vier de generatepreviews",
-      "validacao_deterministica": ["ratio do asset vs ratio recomendado do placement -> ELIGIBLE_NATIVE / ELIGIBLE_WITH_PROVIDER_CROP(UNKNOWN) / INELIGIBLE"],
-      "validacao_so_provider": ["crop e entrega efetiva por placement"]
+      "validacao_deterministica": [
+        "ratio do asset vs ratio recomendado do placement -> ELIGIBLE_NATIVE / ELIGIBLE_WITH_PROVIDER_CROP(UNKNOWN) / INELIGIBLE"
+      ],
+      "validacao_so_provider": [
+        "crop e entrega efetiva por placement"
+      ]
     },
     {
-      "capability_id": "CAP-META-REQ-01", "canal": "META_ADS", "modalidade": "OPCIONAIS_E_OBRIGATORIOS", "provider_api_version": "META v26.0",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"obrigatorios": ["page_id", "link_data.image_hash (estatico)", "link", "message", "name"], "opcionais": ["description", "call_to_action", "instagram_actor_id", "image_crops", "degrees_of_freedom_spec.creative_features_spec"]},
-      "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["ver CAP-META-IMG-01"],
+      "capability_id": "CAP-META-REQ-01",
+      "canal": "META_ADS",
+      "modalidade": "OPCIONAIS_E_OBRIGATORIOS",
+      "provider_api_version": "META v26.0",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "obrigatorios": [
+          "page_id",
+          "link_data.image_hash (estatico)",
+          "link",
+          "message",
+          "name"
+        ],
+        "opcionais": [
+          "description",
+          "call_to_action",
+          "instagram_actor_id",
+          "image_crops",
+          "degrees_of_freedom_spec.creative_features_spec"
+        ]
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "ver CAP-META-IMG-01"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["EV-META-04", "EV-META-15", "EV-META-16", "EV-META-17"],
+      "evidencia": [
+        "EV-META-04",
+        "EV-META-15",
+        "EV-META-16",
+        "EV-META-17"
+      ],
       "bloqueio": "default de creative_features_spec quando omitido NAO documentado (EV-META-17): Advantage+ creative pode alterar pixels aprovados",
-      "fallback_permitido": null, "ui_necessaria": "mostrar que enhancements automaticos estao em estado 'nao declarado' ate decisao conjunta (OCC-03)",
-      "validacao_deterministica": ["presenca dos obrigatorios"], "validacao_so_provider": ["comportamento dos enhancements"]
+      "fallback_permitido": null,
+      "ui_necessaria": "mostrar que enhancements automaticos estao em estado 'nao declarado' ate decisao conjunta (OCC-03)",
+      "validacao_deterministica": [
+        "presenca dos obrigatorios"
+      ],
+      "validacao_so_provider": [
+        "comportamento dos enhancements"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-IMG-01", "canal": "GOOGLE_DISPLAY", "modalidade": "IMAGEM_ESTATICA", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/gif", "image/jpeg", "image/png"], "proporcoes": {"marketing": "1.91:1 (+-1%)", "square_marketing": "1:1 (+-1%)"}, "dimensoes": {"marketing_min": "600x314", "square_min": "300x300", "recomendada": null}, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"marketing_min": 1, "square_min": 1, "marketing_total_max": 15},
-      "placements": {"nota": "Display nao tem placements declarativos por asset; formato NATIVE/NON_NATIVE via format_setting"},
-      "requisitos_de_identidade": {"business_name": "obrigatorio (<=25)", "logo": "opcional (ver CAP-GDISP-LOGO-01)"},
-      "campos_da_api": ["asset_operation.create.image_asset.data (mutate-only)", "responsive_display_ad.marketing_images[].asset", "square_marketing_images[].asset"],
+      "capability_id": "CAP-GDISP-IMG-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "IMAGEM_ESTATICA",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/gif",
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": {
+        "marketing": "1.91:1 (+-1%)",
+        "square_marketing": "1:1 (+-1%)"
+      },
+      "dimensoes": {
+        "marketing_min": "600x314",
+        "square_min": "300x300",
+        "recomendada": null
+      },
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "marketing_min": 1,
+        "square_min": 1,
+        "marketing_total_max": 15
+      },
+      "placements": {
+        "nota": "Display nao tem placements declarativos por asset; formato NATIVE/NON_NATIVE via format_setting"
+      },
+      "requisitos_de_identidade": {
+        "business_name": "obrigatorio (<=25)",
+        "logo": "opcional (ver CAP-GDISP-LOGO-01)"
+      },
+      "campos_da_api": [
+        "asset_operation.create.image_asset.data (mutate-only)",
+        "responsive_display_ad.marketing_images[].asset",
+        "square_marketing_images[].asset"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["volc_ads/campanha/display.py:360-557", "volc_ads/campanha/display.py:389-413 (validate_only real 01/09/2026)", "volc_ads/criativo/requisitos.yaml:69-103", "EV-GADS-03", "EV-GADS-04", "EV-GADS-12"],
+      "evidencia": [
+        "volc_ads/campanha/display.py:360-557",
+        "volc_ads/campanha/display.py:389-413 (validate_only real 01/09/2026)",
+        "volc_ads/criativo/requisitos.yaml:69-103",
+        "EV-GADS-03",
+        "EV-GADS-04",
+        "EV-GADS-12"
+      ],
       "bloqueio": "peso maximo NAO publicado para RDA (EV-GADS-12): so o provedor julga",
-      "fallback_permitido": "nenhum", "ui_necessaria": "grade por papel (marketing/quadrada/logo/logo_quadrado) com contagem contra tetos combinados",
-      "validacao_deterministica": ["mime", "dimensao minima", "ratio +-1%", "contagem por papel e teto combinado 15", "dedup por content_sha256 dentro do mutate (EV-GADS-13)", "sha256 reconferido (ponte.py:596-604)"],
-      "validacao_so_provider": ["peso", "politica do asset (policy_summary)"]
+      "fallback_permitido": "nenhum",
+      "ui_necessaria": "grade por papel (marketing/quadrada/logo/logo_quadrado) com contagem contra tetos combinados",
+      "validacao_deterministica": [
+        "mime",
+        "dimensao minima",
+        "ratio +-1%",
+        "contagem por papel e teto combinado 15",
+        "dedup por content_sha256 dentro do mutate (EV-GADS-13)",
+        "sha256 reconferido (ponte.py:596-604)"
+      ],
+      "validacao_so_provider": [
+        "peso",
+        "politica do asset (policy_summary)"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-VID-01", "canal": "GOOGLE_DISPLAY", "modalidade": "VIDEO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["youtube_video_id (11 chars)"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"min": 0, "max": 5},
-      "placements": null, "requisitos_de_identidade": {"origem": "video ja publicado no YouTube; sem upload de bytes pela API (EV-GADS-04)"},
-      "campos_da_api": ["responsive_display_ad.youtube_videos[].asset (resource name de YoutubeVideoAsset)"],
+      "capability_id": "CAP-GDISP-VID-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "VIDEO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "youtube_video_id (11 chars)"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "min": 0,
+        "max": 5
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "origem": "video ja publicado no YouTube; sem upload de bytes pela API (EV-GADS-04)"
+      },
+      "campos_da_api": [
+        "responsive_display_ad.youtube_videos[].asset (resource name de YoutubeVideoAsset)"
+      ],
       "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/display.py:560-576", "volc_ads/criativo/requisitos.yaml:104-112 (duracao/proporcao NAO CONFIRMADO)", "EV-GADS-04"],
+      "evidencia": [
+        "volc_ads/campanha/display.py:560-576",
+        "volc_ads/criativo/requisitos.yaml:104-112 (duracao/proporcao NAO CONFIRMADO)",
+        "EV-GADS-04"
+      ],
       "bloqueio": "duracao/proporcao/resolucao de video em RDA nao publicadas; nenhum validate_only com video foi executado",
-      "fallback_permitido": "omitir video (opcional)", "ui_necessaria": "campo de referencia YouTube com leitura de titulo; nunca upload",
-      "validacao_deterministica": ["forma do resource name / id de 11 chars"], "validacao_so_provider": ["existencia e elegibilidade do video"]
+      "fallback_permitido": "omitir video (opcional)",
+      "ui_necessaria": "campo de referencia YouTube com leitura de titulo; nunca upload",
+      "validacao_deterministica": [
+        "forma do resource name / id de 11 chars"
+      ],
+      "validacao_so_provider": [
+        "existencia e elegibilidade do video"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-LOTE-01", "canal": "GOOGLE_DISPLAY", "modalidade": "LOTE", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"imagens_novas_max_por_mutate": "faixa de ids temporarios T_IMAGEM_MAX (display.py:508-513)"},
-      "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["MutateOperation[] com asset_operation + campaign/ad_group/ad num unico mutate atomico"],
+      "capability_id": "CAP-GDISP-LOTE-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "LOTE",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "imagens_novas_max_por_mutate": "faixa de ids temporarios T_IMAGEM_MAX (display.py:508-513)"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "MutateOperation[] com asset_operation + campaign/ad_group/ad num unico mutate atomico"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["volc_ads/campanha/display.py:134-286", "EV-GADS-06 (partial_failure default false)", "EV-GADS-11 (partial_failure incompativel com ids temporarios)"],
+      "evidencia": [
+        "volc_ads/campanha/display.py:134-286",
+        "EV-GADS-06 (partial_failure default false)",
+        "EV-GADS-11 (partial_failure incompativel com ids temporarios)"
+      ],
       "bloqueio": "lote e atomico: nao existe falha parcial no Google; a API recusa o mutate inteiro",
-      "fallback_permitido": null, "ui_necessaria": "erro do mutate aponta para o asset pelo indice; a tela traduz indice -> asset_ref",
-      "validacao_deterministica": ["mapa indice_da_operacao -> asset_ref antes do envio"], "validacao_so_provider": ["aceitacao atomica"]
+      "fallback_permitido": null,
+      "ui_necessaria": "erro do mutate aponta para o asset pelo indice; a tela traduz indice -> asset_ref",
+      "validacao_deterministica": [
+        "mapa indice_da_operacao -> asset_ref antes do envio"
+      ],
+      "validacao_so_provider": [
+        "aceitacao atomica"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-FLEX-01", "canal": "GOOGLE_DISPLAY", "modalidade": "FLEXIVEL_DINAMICO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["responsive_display_ad e por natureza multi-asset; dynamic remarketing exige feed (matriz-api/display.md secao 5)"],
+      "capability_id": "CAP-GDISP-FLEX-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "FLEXIVEL_DINAMICO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "responsive_display_ad e por natureza multi-asset; dynamic remarketing exige feed (matriz-api/display.md secao 5)"
+      ],
       "status_volc": "NOT_APPLICABLE",
-      "evidencia": ["EV-GADS-03", "docs/growth-engine/matriz-api/display.md secao 5 (SNAPSHOT_LOCAL)"],
-      "bloqueio": "o RDA ja e o formato responsivo; 'dinamico' no sentido Meta nao existe em Display", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": [], "validacao_so_provider": []
+      "evidencia": [
+        "EV-GADS-03",
+        "docs/growth-engine/matriz-api/display.md secao 5 (SNAPSHOT_LOCAL)"
+      ],
+      "bloqueio": "o RDA ja e o formato responsivo; 'dinamico' no sentido Meta nao existe em Display",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GDISP-LOGO-01", "canal": "GOOGLE_DISPLAY", "modalidade": "LOGO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/gif", "image/jpeg", "image/png"], "proporcoes": {"logo": "4:1 (+-1%)", "square_logo": "1:1 (+-1%)"}, "dimensoes": {"logo_min": "512x128", "square_logo_min": "128x128"}, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"min": 0, "recomendada": 1, "logo_total_max": 5},
-      "placements": null, "requisitos_de_identidade": {"identidade": "logo e da marca do anunciante (identity_ref); logo de terceiro bloqueado pelo gate"},
-      "campos_da_api": ["logo_images[].asset", "square_logo_images[].asset"],
+      "capability_id": "CAP-GDISP-LOGO-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "LOGO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/gif",
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": {
+        "logo": "4:1 (+-1%)",
+        "square_logo": "1:1 (+-1%)"
+      },
+      "dimensoes": {
+        "logo_min": "512x128",
+        "square_logo_min": "128x128"
+      },
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "min": 0,
+        "recomendada": 1,
+        "logo_total_max": 5
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "identidade": "logo e da marca do anunciante (identity_ref); logo de terceiro bloqueado pelo gate"
+      },
+      "campos_da_api": [
+        "logo_images[].asset",
+        "square_logo_images[].asset"
+      ],
       "status_volc": "PROVEN_LOCAL",
-      "evidencia": ["volc_ads/criativo/requisitos.yaml:87-103", "volc_ads/criativo_ponte.py:111-116", "EV-GADS-03"],
-      "bloqueio": "nenhum motor da fabrica gera 4:1 (go-live CAPABILITY-MATRIX.json)", "fallback_permitido": "omitir logo (aviso, nao erro; display.py:547-555)",
+      "evidencia": [
+        "volc_ads/criativo/requisitos.yaml:87-103",
+        "volc_ads/criativo_ponte.py:111-116",
+        "EV-GADS-03"
+      ],
+      "bloqueio": "nenhum motor da fabrica gera 4:1 (go-live CAPABILITY-MATRIX.json)",
+      "fallback_permitido": "omitir logo (aviso, nao erro; display.py:547-555)",
       "ui_necessaria": "aviso 'sem logo o anuncio perde formatos nativos'",
-      "validacao_deterministica": ["ratio", "dimensao minima", "teto combinado 5"], "validacao_so_provider": ["politica"]
+      "validacao_deterministica": [
+        "ratio",
+        "dimensao minima",
+        "teto combinado 5"
+      ],
+      "validacao_so_provider": [
+        "politica"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-TXT-01", "canal": "GOOGLE_DISPLAY", "modalidade": "TEXTO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["text/plain"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"headlines": "1-5 x 30", "long_headline": "1 x 90 (obrigatorio)", "descriptions": "1-5 x 90", "business_name": "1 x 25", "call_to_action_text": "0-1 x 30"},
-      "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["headlines", "long_headline", "descriptions", "business_name", "call_to_action_text"],
+      "capability_id": "CAP-GDISP-TXT-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "TEXTO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "text/plain"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "headlines": "1-5 x 30",
+        "long_headline": "1 x 90 (obrigatorio)",
+        "descriptions": "1-5 x 90",
+        "business_name": "1 x 25",
+        "call_to_action_text": "0-1 x 30"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "headlines",
+        "long_headline",
+        "descriptions",
+        "business_name",
+        "call_to_action_text"
+      ],
       "status_volc": "PROVEN_REMOTE_VALIDATE",
-      "evidencia": ["volc_ads/campanha/limites.yaml:33-35", "EV-GADS-03"],
-      "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "copy por canal (30/90/25) separada da copy Meta",
-      "validacao_deterministica": ["comprimento", "contagens", "lexico de identidade de terceiro"], "validacao_so_provider": ["politica de texto"]
+      "evidencia": [
+        "volc_ads/campanha/limites.yaml:33-35",
+        "EV-GADS-03"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "copy por canal (30/90/25) separada da copy Meta",
+      "validacao_deterministica": [
+        "comprimento",
+        "contagens",
+        "lexico de identidade de terceiro"
+      ],
+      "validacao_so_provider": [
+        "politica de texto"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-THUMB-01", "canal": "GOOGLE_DISPLAY", "modalidade": "THUMBNAIL", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": [], "status_volc": "NOT_APPLICABLE", "evidencia": ["EV-GADS-04 (video e referencia YouTube; thumbnail e do YouTube)"],
-      "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GDISP-THUMB-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "THUMBNAIL",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-GADS-04 (video e referencia YouTube; thumbnail e do YouTube)"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GDISP-PLC-01", "canal": "GOOGLE_DISPLAY", "modalidade": "VARIACAO_POR_PLACEMENT", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": {"por_papel": ["1.91:1", "1:1", "4:1", "1:1 logo"]}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null,
-      "placements": {"nota": "variacao e por PAPEL de asset, nao por placement; o Google monta o anuncio responsivo"},
-      "requisitos_de_identidade": null, "campos_da_api": ["papeis do RDA"],
+      "capability_id": "CAP-GDISP-PLC-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "VARIACAO_POR_PLACEMENT",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": {
+        "por_papel": [
+          "1.91:1",
+          "1:1",
+          "4:1",
+          "1:1 logo"
+        ]
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": {
+        "nota": "variacao e por PAPEL de asset, nao por placement; o Google monta o anuncio responsivo"
+      },
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "papeis do RDA"
+      ],
       "status_volc": "PROVEN_LOCAL",
-      "evidencia": ["volc_ads/criativo_ponte.py:111-116", "volc_ads/campanha/brief.py:787-876"],
-      "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "preview simulado por papel; nao existe API de preview para Display",
-      "validacao_deterministica": ["papel declarado pelo asset_type, nunca adivinhado pelo ratio (ponte.py:783-786)"], "validacao_so_provider": ["renderizacao responsiva"]
+      "evidencia": [
+        "volc_ads/criativo_ponte.py:111-116",
+        "volc_ads/campanha/brief.py:787-876"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "preview simulado por papel; nao existe API de preview para Display",
+      "validacao_deterministica": [
+        "papel declarado pelo asset_type, nunca adivinhado pelo ratio (ponte.py:783-786)"
+      ],
+      "validacao_so_provider": [
+        "renderizacao responsiva"
+      ]
     },
     {
-      "capability_id": "CAP-GDISP-REQ-01", "canal": "GOOGLE_DISPLAY", "modalidade": "OPCIONAIS_E_OBRIGATORIOS", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"obrigatorios": ["marketing_images>=1", "square_marketing_images>=1", "headlines>=1", "long_headline", "descriptions>=1", "business_name"], "opcionais": ["logo_images", "square_logo_images", "youtube_videos", "call_to_action_text", "main_color/accent_color (par)"]},
-      "placements": null, "requisitos_de_identidade": null, "campos_da_api": ["ver CAP-GDISP-IMG-01"],
-      "status_volc": "PROVEN_LOCAL", "evidencia": ["EV-GADS-03", "volc_ads/criativo/requisitos.yaml:69-131"],
-      "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "checklist de obrigatorios por canal derivado da regua, nao escrito a mao",
-      "validacao_deterministica": ["Q1.faltam / Q4.teto_combinado (validacao.py:267-333)"], "validacao_so_provider": []
+      "capability_id": "CAP-GDISP-REQ-01",
+      "canal": "GOOGLE_DISPLAY",
+      "modalidade": "OPCIONAIS_E_OBRIGATORIOS",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "obrigatorios": [
+          "marketing_images>=1",
+          "square_marketing_images>=1",
+          "headlines>=1",
+          "long_headline",
+          "descriptions>=1",
+          "business_name"
+        ],
+        "opcionais": [
+          "logo_images",
+          "square_logo_images",
+          "youtube_videos",
+          "call_to_action_text",
+          "main_color/accent_color (par)"
+        ]
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "ver CAP-GDISP-IMG-01"
+      ],
+      "status_volc": "PROVEN_LOCAL",
+      "evidencia": [
+        "EV-GADS-03",
+        "volc_ads/criativo/requisitos.yaml:69-131"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "checklist de obrigatorios por canal derivado da regua, nao escrito a mao",
+      "validacao_deterministica": [
+        "Q1.faltam / Q4.teto_combinado (validacao.py:267-333)"
+      ],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GDG-IMG-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "IMAGEM_ESTATICA", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/jpeg", "image/png", "image/gif (proto)"], "proporcoes": {"marketing": "1.91:1", "square": "1:1", "portrait": "4:5", "tall_portrait": "9:16"},
-      "dimensoes": {"1.91:1": "600x314 min / 1200x628 rec", "1:1": "300x300 / 1200x1200", "4:5": "480x600 / 960x1200", "9:16": "600x1067 / 1080x1920"}, "tamanho_maximo_bytes": 5242880, "duracao": null,
-      "quantidade": {"par_base_min": 1, "marketing_total_max": 20},
-      "placements": {"channel_controls": ["youtube_in_stream", "youtube_in_feed", "youtube_shorts", "discover", "gmail", "display", "maps"], "nota": "controle e por canal Demand Gen, nao por asset"},
-      "requisitos_de_identidade": {"business_name": "obrigatorio", "logo_quadrado": "1-5 obrigatorio"},
-      "campos_da_api": ["demand_gen_multi_asset_ad.marketing_images/square_marketing_images/portrait_marketing_images/tall_portrait_marketing_images", "asset_operation.create.image_asset.data"],
+      "capability_id": "CAP-GDG-IMG-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "IMAGEM_ESTATICA",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/jpeg",
+        "image/png",
+        "image/gif (proto)"
+      ],
+      "proporcoes": {
+        "marketing": "1.91:1",
+        "square": "1:1",
+        "portrait": "4:5",
+        "tall_portrait": "9:16"
+      },
+      "dimensoes": {
+        "1.91:1": "600x314 min / 1200x628 rec",
+        "1:1": "300x300 / 1200x1200",
+        "4:5": "480x600 / 960x1200",
+        "9:16": "600x1067 / 1080x1920"
+      },
+      "tamanho_maximo_bytes": 5242880,
+      "duracao": null,
+      "quantidade": {
+        "par_base_min": 1,
+        "marketing_total_max": 20
+      },
+      "placements": {
+        "channel_controls": [
+          "youtube_in_stream",
+          "youtube_in_feed",
+          "youtube_shorts",
+          "discover",
+          "gmail",
+          "display",
+          "maps"
+        ],
+        "nota": "controle e por canal Demand Gen, nao por asset"
+      },
+      "requisitos_de_identidade": {
+        "business_name": "obrigatorio",
+        "logo_quadrado": "1-5 obrigatorio"
+      },
+      "campos_da_api": [
+        "demand_gen_multi_asset_ad.marketing_images/square_marketing_images/portrait_marketing_images/tall_portrait_marketing_images",
+        "asset_operation.create.image_asset.data"
+      ],
       "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/demand_gen.py:576-694, 793-845", "volc_ads/criativo/requisitos.yaml:134-212", "docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md", "EV-GADS-03", "EV-GADS-09"],
+      "evidencia": [
+        "volc_ads/campanha/demand_gen.py:576-694, 793-845",
+        "volc_ads/criativo/requisitos.yaml:134-212",
+        "docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md",
+        "EV-GADS-03",
+        "EV-GADS-09"
+      ],
       "bloqueio": "nenhum validate_only real executado; rota /subir recusa Demand Gen (403) por decisao",
-      "fallback_permitido": null, "ui_necessaria": "grade por 5 papeis; recusa total quando ha descarte (ponte.py:441-454)",
-      "validacao_deterministica": ["mime", "dimensao", "ratio", "peso <= 5 MB", "logo <= 150 KB e >= 144x144", "par base", "teto 20", "recibo tipado reconferido (brief.py:553-708)"],
-      "validacao_so_provider": ["orcamento minimo por moeda", "politica"]
+      "fallback_permitido": null,
+      "ui_necessaria": "grade por 5 papeis; recusa total quando ha descarte (ponte.py:441-454)",
+      "validacao_deterministica": [
+        "mime",
+        "dimensao",
+        "ratio",
+        "peso <= 5 MB",
+        "logo <= 150 KB e >= 144x144",
+        "par base",
+        "teto 20",
+        "recibo tipado reconferido (brief.py:553-708)"
+      ],
+      "validacao_so_provider": [
+        "orcamento minimo por moeda",
+        "politica"
+      ]
     },
     {
-      "capability_id": "CAP-GDG-VID-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "VIDEO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["youtube_video_id"], "proporcoes": {"aceitas": ["1:1", "16:9", "4:5", "9:16"]}, "dimensoes": {"rec": ["1080x1080", "1920x1080", "1080x1350", "1080x1920"]}, "tamanho_maximo_bytes": null, "duracao": {"min_s": 5, "nota": "< 10 s inelegivel para In-stream"},
-      "quantidade": {"min": 1, "max": null, "nota": "DemandGenVideoResponsiveAdInfo exige videos>=1, logo>=1, business_name; headlines/descriptions minimos divergem entre guia (3/2) e proto (nao declara)"},
-      "placements": null, "requisitos_de_identidade": {"origem": "YouTube; sem upload pela API"},
-      "campos_da_api": ["demand_gen_video_responsive_ad.videos[].asset"],
+      "capability_id": "CAP-GDG-VID-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "VIDEO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "youtube_video_id"
+      ],
+      "proporcoes": {
+        "aceitas": [
+          "1:1",
+          "16:9",
+          "4:5",
+          "9:16"
+        ]
+      },
+      "dimensoes": {
+        "rec": [
+          "1080x1080",
+          "1920x1080",
+          "1080x1350",
+          "1080x1920"
+        ]
+      },
+      "tamanho_maximo_bytes": null,
+      "duracao": {
+        "min_s": 5,
+        "nota": "< 10 s inelegivel para In-stream"
+      },
+      "quantidade": {
+        "min": 1,
+        "max": null,
+        "nota": "DemandGenVideoResponsiveAdInfo exige videos>=1, logo>=1, business_name; headlines/descriptions minimos divergem entre guia (3/2) e proto (nao declara)"
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "origem": "YouTube; sem upload pela API"
+      },
+      "campos_da_api": [
+        "demand_gen_video_responsive_ad.videos[].asset"
+      ],
       "status_volc": "NOT_IMPLEMENTED",
-      "evidencia": ["docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md ('Carrossel, video responsivo e anuncio de produto ... permanecem nao suportados')", "EV-GADS-09", "EV-GADS-10"],
-      "bloqueio": "sem builder; contrato proprio necessario", "fallback_permitido": "multi-asset com imagens", "ui_necessaria": null,
-      "validacao_deterministica": ["id YouTube de 11 chars"], "validacao_so_provider": ["duracao/ratio do video no YouTube"]
+      "evidencia": [
+        "docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md ('Carrossel, video responsivo e anuncio de produto ... permanecem nao suportados')",
+        "EV-GADS-09",
+        "EV-GADS-10"
+      ],
+      "bloqueio": "sem builder; contrato proprio necessario",
+      "fallback_permitido": "multi-asset com imagens",
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "id YouTube de 11 chars"
+      ],
+      "validacao_so_provider": [
+        "duracao/ratio do video no YouTube"
+      ]
     },
     {
-      "capability_id": "CAP-GDG-LOTE-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "LOTE", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": {"nota": "mutate unico atomico; ver CAP-GDISP-LOTE-01"}, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["MutateOperation[] unico"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/demand_gen.py:294-375", "EV-GADS-11"], "bloqueio": "sem validate_only real", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["dedup por conteudo por papel (demand_gen.py:616-693)"], "validacao_so_provider": ["aceitacao atomica"]
-    },
-    {
-      "capability_id": "CAP-GDG-FLEX-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "FLEXIVEL_DINAMICO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": {"carousel_cards": "2-10 (DemandGenCarouselAdInfo)"}, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["demand_gen_carousel_ad", "demand_gen_product_ad"], "status_volc": "NOT_IMPLEMENTED",
-      "evidencia": ["docs/growth-engine/matriz-api/demand-gen.md secao 3 (SNAPSHOT_LOCAL)", "EV-GADS-10"], "bloqueio": "sem builder", "fallback_permitido": "multi-asset", "ui_necessaria": null,
-      "validacao_deterministica": [], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GDG-LOGO-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "LOGO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/jpeg", "image/png"], "proporcoes": {"logo": "1:1 (+-1%)"}, "dimensoes": {"min": "144x144 (Help Center) / 128x128 (proto)", "rec": "1200x1200"}, "tamanho_maximo_bytes": 153600, "duracao": null,
-      "quantidade": {"min": 1, "max": 5}, "placements": null, "requisitos_de_identidade": {"identidade": "logo do anunciante (identity_ref)"},
-      "campos_da_api": ["logo_images[].asset"], "status_volc": "PROVEN_LOCAL",
-      "evidencia": ["volc_ads/criativo/requisitos.yaml:177-188", "EV-GADS-03", "EV-GADS-09"],
-      "bloqueio": "divergencia oficial 128 vs 144: piso 144", "fallback_permitido": "nenhum (obrigatorio)", "ui_necessaria": "bloqueio explicito 'lote sem logo nao existe em Demand Gen'",
-      "validacao_deterministica": ["ratio", ">= 144x144", "<= 150 KB"], "validacao_so_provider": ["politica"]
-    },
-    {
-      "capability_id": "CAP-GDG-TXT-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "TEXTO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["text/plain"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"headlines": "1-5 x largura 30", "descriptions": "1-5 x 90", "business_name": "1 x 25", "long_headlines": "so no video responsivo"},
-      "placements": null, "requisitos_de_identidade": null, "campos_da_api": ["headlines", "descriptions", "business_name", "call_to_action_text"],
-      "status_volc": "PROVEN_LOCAL", "evidencia": ["volc_ads/campanha/limites.yaml:17-20", "EV-GADS-03"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["largura de exibicao (comprimento_efetivo)", "contagens"], "validacao_so_provider": ["politica"]
-    },
-    {
-      "capability_id": "CAP-GDG-THUMB-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "THUMBNAIL", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": [], "status_volc": "NOT_APPLICABLE", "evidencia": ["EV-GADS-04 (thumbnail e do YouTube)"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GDG-PLC-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "VARIACAO_POR_PLACEMENT", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": {"papeis": ["1.91:1", "1:1", "4:5", "9:16", "logo 1:1"]}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null,
-      "placements": {"nota": "9:16 (tall_portrait) e o papel para Shorts; channel controls escolhem canais, nao assets"}, "requisitos_de_identidade": null,
-      "campos_da_api": ["tall_portrait_marketing_images", "demand_gen_campaign_settings.channel_controls"], "status_volc": "PROVEN_LOCAL",
-      "evidencia": ["volc_ads/criativo_ponte.py:118-124", "volc_ads/campanha/brief.py:878-946"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "preview simulado por papel",
-      "validacao_deterministica": ["papel declarado"], "validacao_so_provider": ["distribuicao por canal"]
-    },
-    {
-      "capability_id": "CAP-GDG-REQ-01", "canal": "GOOGLE_DEMAND_GEN", "modalidade": "OPCIONAIS_E_OBRIGATORIOS", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"obrigatorios": ["marketing OU square (par)", "logo_images 1-5", "headlines>=1", "descriptions>=1", "business_name"], "opcionais": ["portrait", "tall_portrait", "classic_display_images<=20", "call_to_action_text"]},
-      "placements": null, "requisitos_de_identidade": null, "campos_da_api": ["ver CAP-GDG-IMG-01"], "status_volc": "PROVEN_LOCAL",
-      "evidencia": ["volc_ads/criativo/requisitos.yaml:134-212, 315-329", "EV-GADS-03"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["Q5.teto_combinado_falta para o par base"], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GPMAX-IMG-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "IMAGEM_ESTATICA", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/jpeg", "image/png", "image/gif"], "proporcoes": {"MARKETING_IMAGE": "1.91:1", "SQUARE_MARKETING_IMAGE": "1:1", "PORTRAIT_MARKETING_IMAGE": "4:5"},
-      "dimensoes": {"1.91:1": "600x314 / 1200x628", "1:1": "300x300 / 1200x1200", "4:5": "480x600 / 960x1200"}, "tamanho_maximo_bytes": 5242880, "duracao": null,
-      "quantidade": {"MARKETING_IMAGE": "1-20", "SQUARE_MARKETING_IMAGE": "1-20", "PORTRAIT_MARKETING_IMAGE": "0-20"},
-      "placements": {"nota": "asset group; sem placement declarativo"}, "requisitos_de_identidade": {"BUSINESS_NAME": "1", "LOGO": "1-5 quando brand guidelines desligado; CampaignAsset quando ligado"},
-      "campos_da_api": ["asset_group_asset.field_type", "campaign_asset (brand)", "asset_operation.create.image_asset.data"],
+      "capability_id": "CAP-GDG-LOTE-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "LOTE",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "nota": "mutate unico atomico; ver CAP-GDISP-LOTE-01"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "MutateOperation[] unico"
+      ],
       "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/pmax.py:685-916", "volc_ads/criativo/requisitos.yaml:216-273", "docs/closure/traffic-creative-operational-closure-v1/DECISAO-PMAX-FORA-DO-EXECUTOR.md", "EV-GADS-02", "EV-GADS-07"],
-      "bloqueio": "PMax planeja offline; 422 no executor por decisao; sem validate_only real; mensuracao inadequada bloqueia criacao (pmax.py:570-660)",
-      "fallback_permitido": null, "ui_necessaria": "cobertura por AssetFieldType (evaluate_asset_group_coverage) visivel",
-      "validacao_deterministica": ["peso <= 5120 KB (pmax.py:727-733)", "recibo tipado por canal (brief.py:553-708)", "ratio/dimensao pela regua", "descricao curta <= 60"],
-      "validacao_so_provider": ["MediaUploadError.*", "AssetGroupError.NOT_ENOUGH_*"]
+      "evidencia": [
+        "volc_ads/campanha/demand_gen.py:294-375",
+        "EV-GADS-11"
+      ],
+      "bloqueio": "sem validate_only real",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "dedup por conteudo por papel (demand_gen.py:616-693)"
+      ],
+      "validacao_so_provider": [
+        "aceitacao atomica"
+      ]
     },
     {
-      "capability_id": "CAP-GPMAX-VID-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "VIDEO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["youtube_video_id"], "proporcoes": {"aceitas": ["16:9", "1:1", "9:16"]}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": {"min_s": 10},
-      "quantidade": {"min": 0, "max": 15}, "placements": null, "requisitos_de_identidade": {"origem": "YouTube"},
-      "campos_da_api": ["asset_group_asset YOUTUBE_VIDEO"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/pmax.py:743-754, 899-900", "EV-GADS-02"], "bloqueio": "so resource name de asset ja na conta; sem validate_only real",
-      "fallback_permitido": "omitir (opcional; Google pode gerar video automaticamente — comportamento do provedor)", "ui_necessaria": null,
-      "validacao_deterministica": ["resource name na conta"], "validacao_so_provider": ["duracao/ratio"]
-    },
-    {
-      "capability_id": "CAP-GPMAX-LOTE-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "LOTE", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": {"asset_groups": "1-100 por campanha"}, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["assets -> asset_group -> asset_group_asset (ordem obrigatoria; pmax.py:834-838)"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/pmax.py:820-916", "EV-GADS-11 (partial_failure nao suportado em PMax)"], "bloqueio": "atomico; sem prova real", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["ordem das operacoes"], "validacao_so_provider": ["aceitacao atomica"]
-    },
-    {
-      "capability_id": "CAP-GPMAX-FLEX-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "FLEXIVEL_DINAMICO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["asset automation (text/image generation) — matriz-api/performance-max.md secao 9"], "status_volc": "NOT_APPLICABLE",
-      "evidencia": ["EV-GADS-02", "docs/growth-engine/matriz-api/performance-max.md secao 9 (SNAPSHOT_LOCAL)"],
-      "bloqueio": "PMax e multi-asset por construcao; automacao de assets pelo Google e comportamento do provedor e deve nascer OPTED_OUT onde a API permitir (decisao do engine)", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": [], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GPMAX-LOGO-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "LOGO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/jpeg", "image/png", "image/gif"], "proporcoes": {"LOGO": "1:1", "LANDSCAPE_LOGO": "4:1"}, "dimensoes": {"LOGO": "128x128 / 1200x1200", "LANDSCAPE_LOGO": "512x128 / 1200x300"}, "tamanho_maximo_bytes": 5242880, "duracao": null,
-      "quantidade": {"LOGO": "1-5", "LANDSCAPE_LOGO": "0-20"}, "placements": null, "requisitos_de_identidade": {"nivel": "CampaignAsset com brand guidelines ligado (EV-GADS-02)"},
-      "campos_da_api": ["LOGO", "LANDSCAPE_LOGO"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/pmax.py:863-908", "EV-GADS-02"], "bloqueio": "sem validate_only real", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["ratio", "dimensao", "peso"], "validacao_so_provider": ["BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL"]
-    },
-    {
-      "capability_id": "CAP-GPMAX-TXT-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "TEXTO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["text/plain"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"HEADLINE": "3-15 x 30", "LONG_HEADLINE": "1-5 x 90", "DESCRIPTION": "2-5 x 90 (uma <= 60)", "BUSINESS_NAME": "1 x 25"},
-      "placements": null, "requisitos_de_identidade": null, "campos_da_api": ["text_asset por AssetFieldType"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/campanha/limites.yaml:46-48", "volc_ads/criativo/validacao.py:297-315", "EV-GADS-02"], "bloqueio": "sem validate_only real", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["contagens", "X3.falta_a_curta"], "validacao_so_provider": ["politica"]
-    },
-    {
-      "capability_id": "CAP-GPMAX-THUMB-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "THUMBNAIL", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": [], "status_volc": "NOT_APPLICABLE", "evidencia": ["EV-GADS-04"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GPMAX-PLC-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "VARIACAO_POR_PLACEMENT", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": {"papeis": ["1.91:1", "1:1", "4:5", "logo 1:1", "logo 4:1"]}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null,
-      "placements": {"nota": "por AssetFieldType; sem placement declarativo"}, "requisitos_de_identidade": null, "campos_da_api": ["AssetFieldType"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["volc_ads/criativo_ponte.py:126-132", "EV-GADS-07"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "preview simulado", "validacao_deterministica": ["papel declarado"], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GPMAX-REQ-01", "canal": "GOOGLE_PERFORMANCE_MAX", "modalidade": "OPCIONAIS_E_OBRIGATORIOS", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"obrigatorios": ["HEADLINE>=3", "LONG_HEADLINE>=1", "DESCRIPTION>=2 (uma<=60)", "MARKETING_IMAGE>=1", "SQUARE_MARKETING_IMAGE>=1", "BUSINESS_NAME", "LOGO>=1 (nivel conforme brand guidelines)"], "opcionais": ["PORTRAIT_MARKETING_IMAGE", "LANDSCAPE_LOGO", "YOUTUBE_VIDEO<=15", "CALL_TO_ACTION_SELECTION", "MEDIA_BUNDLE<150KB"]},
-      "placements": null, "requisitos_de_identidade": null, "campos_da_api": ["ver CAP-GPMAX-IMG-01"], "status_volc": "PROVEN_LOCAL",
-      "evidencia": ["EV-GADS-02", "volc_ads/observabilidade_pmax/coverage.py (PMAX_FIELD_REQUIREMENTS, referenciado em limites.yaml:159-169)"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": "cobertura por campo", "validacao_deterministica": ["evaluate_asset_group_coverage"], "validacao_so_provider": []
-    },
-    {
-      "capability_id": "CAP-GSEARCH-IMG-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "IMAGEM_ESTATICA", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/png", "image/jpeg"], "proporcoes": {"obrigatoria": "1:1", "opcional": "1.91:1"}, "dimensoes": {"1:1": "300x300 / 1200x1200", "1.91:1": "600x314 / 1200x628"}, "tamanho_maximo_bytes": 5242880, "duracao": null,
-      "quantidade": {"min_recomendado": 4, "max": 20}, "placements": null, "requisitos_de_identidade": {"politica": "sem texto, logo ou overlay digital adicionado (EV-GADS-08); conteudo no centro 80%"},
-      "campos_da_api": ["campaign_asset/ad_group_asset field_type=AD_IMAGE", "asset_operation.create.image_asset.data"],
+      "capability_id": "CAP-GDG-FLEX-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "FLEXIVEL_DINAMICO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "carousel_cards": "2-10 (DemandGenCarouselAdInfo)"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "demand_gen_carousel_ad",
+        "demand_gen_product_ad"
+      ],
       "status_volc": "NOT_IMPLEMENTED",
-      "evidencia": ["volc_ads/campanha/search.py:267-322 (so text/sitelink/callout/snippet assets)", "volc_ads/campanha/perfil.py:232 (recursos_criativos Search: texto, sitelink, callout, structured_snippet)", "volc_ads/criativo/requisitos.yaml:40-41 (SEARCH sem exigencia binaria)", "EV-GADS-07", "EV-GADS-08"],
-      "bloqueio": "nenhum builder liga AD_IMAGE; a regua Search nao existe em requisitos.yaml", "fallback_permitido": "campanha Search sem asset visual (comportamento atual)",
+      "evidencia": [
+        "docs/growth-engine/matriz-api/demand-gen.md secao 3 (SNAPSHOT_LOCAL)",
+        "EV-GADS-10"
+      ],
+      "bloqueio": "sem builder",
+      "fallback_permitido": "multi-asset",
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GDG-LOGO-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "LOGO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/jpeg",
+        "image/png"
+      ],
+      "proporcoes": {
+        "logo": "1:1 (+-1%)"
+      },
+      "dimensoes": {
+        "min": "144x144 (Help Center) / 128x128 (proto)",
+        "rec": "1200x1200"
+      },
+      "tamanho_maximo_bytes": 153600,
+      "duracao": null,
+      "quantidade": {
+        "min": 1,
+        "max": 5
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "identidade": "logo do anunciante (identity_ref)"
+      },
+      "campos_da_api": [
+        "logo_images[].asset"
+      ],
+      "status_volc": "PROVEN_LOCAL",
+      "evidencia": [
+        "volc_ads/criativo/requisitos.yaml:177-188",
+        "EV-GADS-03",
+        "EV-GADS-09"
+      ],
+      "bloqueio": "divergencia oficial 128 vs 144: piso 144",
+      "fallback_permitido": "nenhum (obrigatorio)",
+      "ui_necessaria": "bloqueio explicito 'lote sem logo nao existe em Demand Gen'",
+      "validacao_deterministica": [
+        "ratio",
+        ">= 144x144",
+        "<= 150 KB"
+      ],
+      "validacao_so_provider": [
+        "politica"
+      ]
+    },
+    {
+      "capability_id": "CAP-GDG-TXT-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "TEXTO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "text/plain"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "headlines": "1-5 x largura 30",
+        "descriptions": "1-5 x 90",
+        "business_name": "1 x 25",
+        "long_headlines": "so no video responsivo"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "headlines",
+        "descriptions",
+        "business_name",
+        "call_to_action_text"
+      ],
+      "status_volc": "PROVEN_LOCAL",
+      "evidencia": [
+        "volc_ads/campanha/limites.yaml:17-20",
+        "EV-GADS-03"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "largura de exibicao (comprimento_efetivo)",
+        "contagens"
+      ],
+      "validacao_so_provider": [
+        "politica"
+      ]
+    },
+    {
+      "capability_id": "CAP-GDG-THUMB-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "THUMBNAIL",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-GADS-04 (thumbnail e do YouTube)"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GDG-PLC-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "VARIACAO_POR_PLACEMENT",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": {
+        "papeis": [
+          "1.91:1",
+          "1:1",
+          "4:5",
+          "9:16",
+          "logo 1:1"
+        ]
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": {
+        "nota": "9:16 (tall_portrait) e o papel para Shorts; channel controls escolhem canais, nao assets"
+      },
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "tall_portrait_marketing_images",
+        "demand_gen_campaign_settings.channel_controls"
+      ],
+      "status_volc": "PROVEN_LOCAL",
+      "evidencia": [
+        "volc_ads/criativo_ponte.py:118-124",
+        "volc_ads/campanha/brief.py:878-946"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "preview simulado por papel",
+      "validacao_deterministica": [
+        "papel declarado"
+      ],
+      "validacao_so_provider": [
+        "distribuicao por canal"
+      ]
+    },
+    {
+      "capability_id": "CAP-GDG-REQ-01",
+      "canal": "GOOGLE_DEMAND_GEN",
+      "modalidade": "OPCIONAIS_E_OBRIGATORIOS",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "obrigatorios": [
+          "marketing OU square (par)",
+          "logo_images 1-5",
+          "headlines>=1",
+          "descriptions>=1",
+          "business_name"
+        ],
+        "opcionais": [
+          "portrait",
+          "tall_portrait",
+          "classic_display_images<=20",
+          "call_to_action_text"
+        ]
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "ver CAP-GDG-IMG-01"
+      ],
+      "status_volc": "PROVEN_LOCAL",
+      "evidencia": [
+        "volc_ads/criativo/requisitos.yaml:134-212, 315-329",
+        "EV-GADS-03"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "Q5.teto_combinado_falta para o par base"
+      ],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GPMAX-IMG-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "IMAGEM_ESTATICA",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/jpeg",
+        "image/png",
+        "image/gif"
+      ],
+      "proporcoes": {
+        "MARKETING_IMAGE": "1.91:1",
+        "SQUARE_MARKETING_IMAGE": "1:1",
+        "PORTRAIT_MARKETING_IMAGE": "4:5"
+      },
+      "dimensoes": {
+        "1.91:1": "600x314 / 1200x628",
+        "1:1": "300x300 / 1200x1200",
+        "4:5": "480x600 / 960x1200"
+      },
+      "tamanho_maximo_bytes": 5242880,
+      "duracao": null,
+      "quantidade": {
+        "MARKETING_IMAGE": "1-20",
+        "SQUARE_MARKETING_IMAGE": "1-20",
+        "PORTRAIT_MARKETING_IMAGE": "0-20"
+      },
+      "placements": {
+        "nota": "asset group; sem placement declarativo"
+      },
+      "requisitos_de_identidade": {
+        "BUSINESS_NAME": "1",
+        "LOGO": "1-5 quando brand guidelines desligado; CampaignAsset quando ligado"
+      },
+      "campos_da_api": [
+        "asset_group_asset.field_type",
+        "campaign_asset (brand)",
+        "asset_operation.create.image_asset.data"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "volc_ads/campanha/pmax.py:685-916",
+        "volc_ads/criativo/requisitos.yaml:216-273",
+        "docs/closure/traffic-creative-operational-closure-v1/DECISAO-PMAX-FORA-DO-EXECUTOR.md",
+        "EV-GADS-02",
+        "EV-GADS-07"
+      ],
+      "bloqueio": "PMax planeja offline; 422 no executor por decisao; sem validate_only real; mensuracao inadequada bloqueia criacao (pmax.py:570-660)",
+      "fallback_permitido": null,
+      "ui_necessaria": "cobertura por AssetFieldType (evaluate_asset_group_coverage) visivel",
+      "validacao_deterministica": [
+        "peso <= 5120 KB (pmax.py:727-733)",
+        "recibo tipado por canal (brief.py:553-708)",
+        "ratio/dimensao pela regua",
+        "descricao curta <= 60"
+      ],
+      "validacao_so_provider": [
+        "MediaUploadError.*",
+        "AssetGroupError.NOT_ENOUGH_*"
+      ]
+    },
+    {
+      "capability_id": "CAP-GPMAX-VID-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "VIDEO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "youtube_video_id"
+      ],
+      "proporcoes": {
+        "aceitas": [
+          "16:9",
+          "1:1",
+          "9:16"
+        ]
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": {
+        "min_s": 10
+      },
+      "quantidade": {
+        "min": 0,
+        "max": 15
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "origem": "YouTube"
+      },
+      "campos_da_api": [
+        "asset_group_asset YOUTUBE_VIDEO"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "volc_ads/campanha/pmax.py:743-754, 899-900",
+        "EV-GADS-02"
+      ],
+      "bloqueio": "so resource name de asset ja na conta; sem validate_only real",
+      "fallback_permitido": "omitir (opcional; Google pode gerar video automaticamente — comportamento do provedor)",
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "resource name na conta"
+      ],
+      "validacao_so_provider": [
+        "duracao/ratio"
+      ]
+    },
+    {
+      "capability_id": "CAP-GPMAX-LOTE-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "LOTE",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "asset_groups": "1-100 por campanha"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "assets -> asset_group -> asset_group_asset (ordem obrigatoria; pmax.py:834-838)"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "volc_ads/campanha/pmax.py:820-916",
+        "EV-GADS-11 (partial_failure nao suportado em PMax)"
+      ],
+      "bloqueio": "atomico; sem prova real",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "ordem das operacoes"
+      ],
+      "validacao_so_provider": [
+        "aceitacao atomica"
+      ]
+    },
+    {
+      "capability_id": "CAP-GPMAX-FLEX-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "FLEXIVEL_DINAMICO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "asset automation (text/image generation) — matriz-api/performance-max.md secao 9"
+      ],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-GADS-02",
+        "docs/growth-engine/matriz-api/performance-max.md secao 9 (SNAPSHOT_LOCAL)"
+      ],
+      "bloqueio": "PMax e multi-asset por construcao; automacao de assets pelo Google e comportamento do provedor e deve nascer OPTED_OUT onde a API permitir (decisao do engine)",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GPMAX-LOGO-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "LOGO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/jpeg",
+        "image/png",
+        "image/gif"
+      ],
+      "proporcoes": {
+        "LOGO": "1:1",
+        "LANDSCAPE_LOGO": "4:1"
+      },
+      "dimensoes": {
+        "LOGO": "128x128 / 1200x1200",
+        "LANDSCAPE_LOGO": "512x128 / 1200x300"
+      },
+      "tamanho_maximo_bytes": 5242880,
+      "duracao": null,
+      "quantidade": {
+        "LOGO": "1-5",
+        "LANDSCAPE_LOGO": "0-20"
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "nivel": "CampaignAsset com brand guidelines ligado (EV-GADS-02)"
+      },
+      "campos_da_api": [
+        "LOGO",
+        "LANDSCAPE_LOGO"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "volc_ads/campanha/pmax.py:863-908",
+        "EV-GADS-02"
+      ],
+      "bloqueio": "sem validate_only real",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "ratio",
+        "dimensao",
+        "peso"
+      ],
+      "validacao_so_provider": [
+        "BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL"
+      ]
+    },
+    {
+      "capability_id": "CAP-GPMAX-TXT-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "TEXTO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "text/plain"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "HEADLINE": "3-15 x 30",
+        "LONG_HEADLINE": "1-5 x 90",
+        "DESCRIPTION": "2-5 x 90 (uma <= 60)",
+        "BUSINESS_NAME": "1 x 25"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "text_asset por AssetFieldType"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "volc_ads/campanha/limites.yaml:46-48",
+        "volc_ads/criativo/validacao.py:297-315",
+        "EV-GADS-02"
+      ],
+      "bloqueio": "sem validate_only real",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "contagens",
+        "X3.falta_a_curta"
+      ],
+      "validacao_so_provider": [
+        "politica"
+      ]
+    },
+    {
+      "capability_id": "CAP-GPMAX-THUMB-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "THUMBNAIL",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-GADS-04"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GPMAX-PLC-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "VARIACAO_POR_PLACEMENT",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": {
+        "papeis": [
+          "1.91:1",
+          "1:1",
+          "4:5",
+          "logo 1:1",
+          "logo 4:1"
+        ]
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": {
+        "nota": "por AssetFieldType; sem placement declarativo"
+      },
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "AssetFieldType"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "volc_ads/criativo_ponte.py:126-132",
+        "EV-GADS-07"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "preview simulado",
+      "validacao_deterministica": [
+        "papel declarado"
+      ],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GPMAX-REQ-01",
+      "canal": "GOOGLE_PERFORMANCE_MAX",
+      "modalidade": "OPCIONAIS_E_OBRIGATORIOS",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "obrigatorios": [
+          "HEADLINE>=3",
+          "LONG_HEADLINE>=1",
+          "DESCRIPTION>=2 (uma<=60)",
+          "MARKETING_IMAGE>=1",
+          "SQUARE_MARKETING_IMAGE>=1",
+          "BUSINESS_NAME",
+          "LOGO>=1 (nivel conforme brand guidelines)"
+        ],
+        "opcionais": [
+          "PORTRAIT_MARKETING_IMAGE",
+          "LANDSCAPE_LOGO",
+          "YOUTUBE_VIDEO<=15",
+          "CALL_TO_ACTION_SELECTION",
+          "MEDIA_BUNDLE<150KB"
+        ]
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "ver CAP-GPMAX-IMG-01"
+      ],
+      "status_volc": "PROVEN_LOCAL",
+      "evidencia": [
+        "EV-GADS-02",
+        "volc_ads/observabilidade_pmax/coverage.py (PMAX_FIELD_REQUIREMENTS, referenciado em limites.yaml:159-169)"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": "cobertura por campo",
+      "validacao_deterministica": [
+        "evaluate_asset_group_coverage"
+      ],
+      "validacao_so_provider": []
+    },
+    {
+      "capability_id": "CAP-GSEARCH-IMG-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "IMAGEM_ESTATICA",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/png",
+        "image/jpeg"
+      ],
+      "proporcoes": {
+        "obrigatoria": "1:1",
+        "opcional": "1.91:1"
+      },
+      "dimensoes": {
+        "1:1": "300x300 / 1200x1200",
+        "1.91:1": "600x314 / 1200x628"
+      },
+      "tamanho_maximo_bytes": 5242880,
+      "duracao": null,
+      "quantidade": {
+        "min_recomendado": 4,
+        "max": 20
+      },
+      "placements": null,
+      "requisitos_de_identidade": {
+        "politica": "sem texto, logo ou overlay digital adicionado (EV-GADS-08); conteudo no centro 80%"
+      },
+      "campos_da_api": [
+        "campaign_asset/ad_group_asset field_type=AD_IMAGE",
+        "asset_operation.create.image_asset.data"
+      ],
+      "status_volc": "NOT_IMPLEMENTED",
+      "evidencia": [
+        "volc_ads/campanha/search.py:267-322 (so text/sitelink/callout/snippet assets)",
+        "volc_ads/campanha/perfil.py:232 (recursos_criativos Search: texto, sitelink, callout, structured_snippet)",
+        "volc_ads/criativo/requisitos.yaml:40-41 (SEARCH sem exigencia binaria)",
+        "EV-GADS-07",
+        "EV-GADS-08"
+      ],
+      "bloqueio": "nenhum builder liga AD_IMAGE; a regua Search nao existe em requisitos.yaml",
+      "fallback_permitido": "campanha Search sem asset visual (comportamento atual)",
       "ui_necessaria": "slot 'imagem de Search' com aviso de politica (sem texto/logo)",
-      "validacao_deterministica": ["ratio 1:1/1.91:1", "dimensao", "peso <= 5120 KB", "OCR: qualquer texto detectado -> INELEGIVEL (regra oficial)", "asset tipografico -> INELEGIVEL por construcao"],
-      "validacao_so_provider": ["revisao de politica de imagem"]
+      "validacao_deterministica": [
+        "ratio 1:1/1.91:1",
+        "dimensao",
+        "peso <= 5120 KB",
+        "OCR: qualquer texto detectado -> INELEGIVEL (regra oficial)",
+        "asset tipografico -> INELEGIVEL por construcao"
+      ],
+      "validacao_so_provider": [
+        "revisao de politica de imagem"
+      ]
     },
     {
-      "capability_id": "CAP-GSEARCH-VID-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "VIDEO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": [], "status_volc": "NOT_APPLICABLE", "evidencia": ["EV-GADS-07 (nao ha field type de video para Search)"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-VID-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "VIDEO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-GADS-07 (nao ha field type de video para Search)"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GSEARCH-LOTE-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "LOTE", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": {"max": 20}, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["MutateOperation[] com asset_operation + campaign_asset"], "status_volc": "NOT_IMPLEMENTED", "evidencia": ["CAP-GSEARCH-IMG-01"], "bloqueio": "sem builder", "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-LOTE-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "LOTE",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "max": 20
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "MutateOperation[] com asset_operation + campaign_asset"
+      ],
+      "status_volc": "NOT_IMPLEMENTED",
+      "evidencia": [
+        "CAP-GSEARCH-IMG-01"
+      ],
+      "bloqueio": "sem builder",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GSEARCH-FLEX-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "FLEXIVEL_DINAMICO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["Recommendation.DynamicImageExtensionOptInRecommendation (imagens automaticas da LP)"], "status_volc": "NOT_APPLICABLE",
-      "evidencia": ["volc_ads/google_ads_api/api_reference_v25.md:2060"], "bloqueio": "imagem dinamica e escolha do Google a partir da LP: fora da cadeia; deve nascer opt-out ate decisao", "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-FLEX-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "FLEXIVEL_DINAMICO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "Recommendation.DynamicImageExtensionOptInRecommendation (imagens automaticas da LP)"
+      ],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "volc_ads/google_ads_api/api_reference_v25.md:2060"
+      ],
+      "bloqueio": "imagem dinamica e escolha do Google a partir da LP: fora da cadeia; deve nascer opt-out ate decisao",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GSEARCH-LOGO-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "LOGO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["image/png", "image/jpeg"], "proporcoes": {"BUSINESS_LOGO": "1:1"}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": {"nivel": "BUSINESS_LOGO como CustomerAsset/CampaignAsset (EV-GADS-07)"},
-      "campos_da_api": ["field_type=BUSINESS_LOGO"], "status_volc": "RESEARCH_REQUIRED",
-      "evidencia": ["EV-GADS-07"], "bloqueio": "requisitos de dimensao/peso do BUSINESS_LOGO nao lidos nesta missao", "fallback_permitido": "omitir", "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-LOGO-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "LOGO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "image/png",
+        "image/jpeg"
+      ],
+      "proporcoes": {
+        "BUSINESS_LOGO": "1:1"
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": {
+        "nivel": "BUSINESS_LOGO como CustomerAsset/CampaignAsset (EV-GADS-07)"
+      },
+      "campos_da_api": [
+        "field_type=BUSINESS_LOGO"
+      ],
+      "status_volc": "RESEARCH_REQUIRED",
+      "evidencia": [
+        "EV-GADS-07"
+      ],
+      "bloqueio": "requisitos de dimensao/peso do BUSINESS_LOGO nao lidos nesta missao",
+      "fallback_permitido": "omitir",
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GSEARCH-TXT-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "TEXTO", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": ["text/plain"], "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"headline_rsa": "3-15 x 30", "description_rsa": "2-4 x 90", "sitelink": "2-20 x 25", "callout": "2-20 x 25"}, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["responsive_search_ad", "sitelink_asset", "callout_asset", "structured_snippet_asset"], "status_volc": "PROVEN_REMOTE_READ",
-      "evidencia": ["volc_ads/campanha/limites.yaml:5-6, 49-52", "volc_ads/campanha/search.py:267-322", "docs/volc-os-graph/curadoria-operacional.json concept:search_paused_canary (canario real 28/08/2026)"],
-      "bloqueio": "fora do escopo desta cadeia (texto e do engine Search); listado para completar a matriz", "fallback_permitido": null, "ui_necessaria": null,
-      "validacao_deterministica": ["limites.yaml"], "validacao_so_provider": ["politica"]
+      "capability_id": "CAP-GSEARCH-TXT-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "TEXTO",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": [
+        "text/plain"
+      ],
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "headline_rsa": "3-15 x 30",
+        "description_rsa": "2-4 x 90",
+        "sitelink": "2-20 x 25",
+        "callout": "2-20 x 25"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "responsive_search_ad",
+        "sitelink_asset",
+        "callout_asset",
+        "structured_snippet_asset"
+      ],
+      "status_volc": "PROVEN_REMOTE_READ",
+      "evidencia": [
+        "volc_ads/campanha/limites.yaml:5-6, 49-52",
+        "volc_ads/campanha/search.py:267-322",
+        "docs/volc-os-graph/curadoria-operacional.json concept:search_paused_canary (canario real 28/08/2026)"
+      ],
+      "bloqueio": "fora do escopo desta cadeia (texto e do engine Search); listado para completar a matriz",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [
+        "limites.yaml"
+      ],
+      "validacao_so_provider": [
+        "politica"
+      ]
     },
     {
-      "capability_id": "CAP-GSEARCH-THUMB-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "THUMBNAIL", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": [], "status_volc": "NOT_APPLICABLE", "evidencia": ["EV-GADS-07"], "bloqueio": null, "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-THUMB-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "THUMBNAIL",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [],
+      "status_volc": "NOT_APPLICABLE",
+      "evidencia": [
+        "EV-GADS-07"
+      ],
+      "bloqueio": null,
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GSEARCH-PLC-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "VARIACAO_POR_PLACEMENT", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": {"papeis": ["1:1", "1.91:1"]}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": null, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["AD_IMAGE (a proporcao e escolhida pelo Google na entrega)"], "status_volc": "NOT_IMPLEMENTED", "evidencia": ["EV-GADS-08"], "bloqueio": "sem builder", "fallback_permitido": null, "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-PLC-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "VARIACAO_POR_PLACEMENT",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": {
+        "papeis": [
+          "1:1",
+          "1.91:1"
+        ]
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": null,
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "AD_IMAGE (a proporcao e escolhida pelo Google na entrega)"
+      ],
+      "status_volc": "NOT_IMPLEMENTED",
+      "evidencia": [
+        "EV-GADS-08"
+      ],
+      "bloqueio": "sem builder",
+      "fallback_permitido": null,
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-GSEARCH-REQ-01", "canal": "GOOGLE_SEARCH_ASSETS", "modalidade": "OPCIONAIS_E_OBRIGATORIOS", "provider_api_version": "GOOGLE_ADS v25",
-      "formatos": null, "proporcoes": null, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null,
-      "quantidade": {"obrigatorios_para_o_asset": ["1:1"], "opcionais": ["1.91:1"], "nota": "o asset visual e inteiramente opcional na campanha Search"}, "placements": null, "requisitos_de_identidade": null,
-      "campos_da_api": ["AD_IMAGE"], "status_volc": "NOT_IMPLEMENTED", "evidencia": ["EV-GADS-08"], "bloqueio": "sem builder", "fallback_permitido": "campanha sem imagem", "ui_necessaria": null, "validacao_deterministica": [], "validacao_so_provider": []
+      "capability_id": "CAP-GSEARCH-REQ-01",
+      "canal": "GOOGLE_SEARCH_ASSETS",
+      "modalidade": "OPCIONAIS_E_OBRIGATORIOS",
+      "provider_api_version": "GOOGLE_ADS v25",
+      "formatos": null,
+      "proporcoes": null,
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "obrigatorios_para_o_asset": [
+          "1:1"
+        ],
+        "opcionais": [
+          "1.91:1"
+        ],
+        "nota": "o asset visual e inteiramente opcional na campanha Search"
+      },
+      "placements": null,
+      "requisitos_de_identidade": null,
+      "campos_da_api": [
+        "AD_IMAGE"
+      ],
+      "status_volc": "NOT_IMPLEMENTED",
+      "evidencia": [
+        "EV-GADS-08"
+      ],
+      "bloqueio": "sem builder",
+      "fallback_permitido": "campanha sem imagem",
+      "ui_necessaria": null,
+      "validacao_deterministica": [],
+      "validacao_so_provider": []
     },
     {
-      "capability_id": "CAP-X-LP-HERO-01", "canal": "REDATOR_FUNNELFORGE", "modalidade": "IMAGEM_ESTATICA", "provider_api_version": "WordPress media (sem API de anuncio)",
-      "formatos": ["image/webp"], "proporcoes": {"lp_hero": "9:16 (image_size_lp)"}, "dimensoes": null, "tamanho_maximo_bytes": null, "duracao": null, "quantidade": {"min": 0, "max": 1},
-      "placements": {"superficie": "hero da LP publicada"}, "requisitos_de_identidade": {"politica": "a LP e destino pago: a imagem esta sujeita a Misrepresentation (EV-POL-GADS-01) e ao portao de destino"},
-      "campos_da_api": ["WordPress media upload (publisher.upload_media)"], "status_volc": "IMPLEMENTED_UNPROVEN",
-      "evidencia": ["funnelforge-migracao/engine/src/funnelforge/pipeline/steps.py:1585-1660, 2685-2721", "ASIS-26"],
+      "capability_id": "CAP-X-LP-HERO-01",
+      "canal": "REDATOR_FUNNELFORGE",
+      "modalidade": "IMAGEM_ESTATICA",
+      "provider_api_version": "WordPress media (sem API de anuncio)",
+      "formatos": [
+        "image/webp"
+      ],
+      "proporcoes": {
+        "lp_hero": "9:16 (image_size_lp)"
+      },
+      "dimensoes": null,
+      "tamanho_maximo_bytes": null,
+      "duracao": null,
+      "quantidade": {
+        "min": 0,
+        "max": 1
+      },
+      "placements": {
+        "superficie": "hero da LP publicada"
+      },
+      "requisitos_de_identidade": {
+        "politica": "a LP e destino pago: a imagem esta sujeita a Misrepresentation (EV-POL-GADS-01) e ao portao de destino"
+      },
+      "campos_da_api": [
+        "WordPress media upload (publisher.upload_media)"
+      ],
+      "status_volc": "IMPLEMENTED_UNPROVEN",
+      "evidencia": [
+        "funnelforge-migracao/engine/src/funnelforge/pipeline/steps.py:1585-1660, 2685-2721",
+        "ASIS-26"
+      ],
       "bloqueio": "sem gate de identidade de terceiro em pixel; upload best-effort sem recibo; fora da cadeia",
-      "fallback_permitido": "LP sem hero (run.hero_image=false)", "ui_necessaria": "hero aparece na fila de demandas como item LP_HERO com policy receipt",
-      "validacao_deterministica": ["gate de identidade sobre a imagem final", "hash gravado no recibo da publicacao"], "validacao_so_provider": ["revisao do destino pelo Google"]
+      "fallback_permitido": "LP sem hero (run.hero_image=false)",
+      "ui_necessaria": "hero aparece na fila de demandas como item LP_HERO com policy receipt",
+      "validacao_deterministica": [
+        "gate de identidade sobre a imagem final",
+        "hash gravado no recibo da publicacao"
+      ],
+      "validacao_so_provider": [
+        "revisao do destino pelo Google"
+      ]
     }
   ],
-  "resumo_por_status": {"nota": "calculado no gate documental (scripts de validacao); ver HANDOFF.md"}
+  "resumo_por_status": {
+    "nota": "calculado no gate documental (scripts de validacao); ver HANDOFF.md"
+  }
 }

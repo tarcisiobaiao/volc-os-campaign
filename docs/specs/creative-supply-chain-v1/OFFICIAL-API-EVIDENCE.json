@@ -460,13 +460,25 @@
       "trecho": "validate_only real recusou campanha com codigo 100 / subcodigo 4005 ao pedir compartilhamento de orcamento sem estrategia de lance no Campaign.",
       "confianca": "COMPROVADO",
       "refresh_by": "2026-12-04",
-      "impacto_no_contrato": "Nenhum no contrato de criativos; registrado como prova de que o executor Meta ja conversa com a conta real sob validate_only (PROVEN_REMOTE_VALIDATE para a receita estatica)."
+      "impacto_no_contrato": "Nenhum no contrato de criativos; registrado como prova de que o executor Meta ja conversa com a conta real sob validate_only para as raizes independentes (Campaign + AdCreatives, objects_created=0). AdSet, Ads e criacao PAUSED continuam sem prova remota (CAP-META-LOTE-02)."
     }
   ],
   "nao_lidas_nesta_missao": [
-    {"url": "https://developers.google.com/google-ads/api/reference/rpc/v25/ImageAsset", "motivo": "pagina renderizada por JavaScript; substituida pelo proto oficial EV-GADS-04"},
-    {"url": "https://developers.google.com/google-ads/api/docs/sunset-dates", "motivo": "pagina renderizada por JavaScript; sunset v25 = 2027-08 via SNAPSHOT_LOCAL fontes.json"},
-    {"url": "https://developers.facebook.com/docs/marketing-api/creative/advantage-plus-creative/", "motivo": "HTTP 404; substituida por EV-META-17"},
-    {"url": "https://www.facebook.com/business/help/103816146375741", "motivo": "corpo nao renderizado (titulo: boas praticas de proporcao por posicionamento)"}
+    {
+      "url": "https://developers.google.com/google-ads/api/reference/rpc/v25/ImageAsset",
+      "motivo": "pagina renderizada por JavaScript; substituida pelo proto oficial EV-GADS-04"
+    },
+    {
+      "url": "https://developers.google.com/google-ads/api/docs/sunset-dates",
+      "motivo": "pagina renderizada por JavaScript; sunset v25 = 2027-08 via SNAPSHOT_LOCAL fontes.json"
+    },
+    {
+      "url": "https://developers.facebook.com/docs/marketing-api/creative/advantage-plus-creative/",
+      "motivo": "HTTP 404; substituida por EV-META-17"
+    },
+    {
+      "url": "https://www.facebook.com/business/help/103816146375741",
+      "motivo": "corpo nao renderizado (titulo: boas praticas de proporcao por posicionamento)"
+    }
   ]
 }
