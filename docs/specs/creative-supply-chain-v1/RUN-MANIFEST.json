@@ -1,0 +1,97 @@
+{
+  "schema": "VolcRunManifest.v1",
+  "artefato": "RUN-MANIFEST.json",
+  "versao": "1.0.0",
+  "missao": "CREATIVE SUPPLY CHAIN MASTER SPEC V1",
+  "modo": "SPEC-ONLY · SOURCE-GROUNDED · READ-ONLY RUNTIME · ZERO MUTACAO EXTERNA",
+  "executado_em": "2026-09-05",
+  "modelo": "claude-fable-5-1",
+  "worktrees": {
+    "operacional_origem": {
+      "path": "/private/tmp/volc-os-operacao-80-20",
+      "branch": "execution/volc-os-operacao-80-20",
+      "head": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "arvore": "limpa (0 entradas em git status --porcelain no inicio)",
+      "alterada": false
+    },
+    "documental": {
+      "path": "/private/tmp/volc-spec-creative-supply-chain-v1",
+      "branch": "spec/fable-creative-supply-chain-v1",
+      "base": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "nota": "nome da branch reconstruido a partir do prefixo truncado 'spec/fable-creative-su' na missao — assumido 'spec/fable-creative-supply-chain-v1'"
+    },
+    "principal": {
+      "path": "<worktree principal do repositorio, fora de /private/tmp — caminho privado omitido>",
+      "status": "suja (878 entradas) — nao usada"
+    }
+  },
+  "agents_md_lidos": [
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "grafo": {
+    "consultado": true,
+    "comandos": [
+      "graphify query x4",
+      "graphify explain x2",
+      "graphify affected x1"
+    ],
+    "UPDATE_STATUS_built_at_commit": "1ad7b8a888adeae8d3b1d36d6b3a58d16360ca95",
+    "working_tree_dirty_at_build": true,
+    "limitacao_declarada": "commit do grafo != HEAD; usado so para navegacao",
+    "graphify_update_executado": false
+  },
+  "leituras_externas": {
+    "tipo": "HTTP GET de documentacao oficial via WebFetch",
+    "hosts": [
+      "developers.facebook.com",
+      "transparency.meta.com",
+      "www.facebook.com/business",
+      "developers.google.com",
+      "support.google.com",
+      "raw.githubusercontent.com/googleapis"
+    ],
+    "credenciais_usadas": false,
+    "provedores_chamados_com_credencial": false
+  },
+  "proibicoes_respeitadas": {
+    "runtime_editado": false,
+    "frontend_editado": false,
+    "migrations_editadas": false,
+    "testes_de_produto_editados": false,
+    "meta_google_com_credenciais": false,
+    "tokens_lidos": false,
+    "supabase_oficial": false,
+    "onepassword_keychain_adspower": false,
+    "n8n_wordpress": false,
+    "criativos_reais_gerados": false,
+    "campanhas_criadas": false,
+    "deploy": false,
+    "push": false,
+    "merge_rebase_amend_tag_force": false,
+    "main_ou_volc_os_v2_editados": false,
+    "grafo_gerado_editado": false,
+    "roadmap_curadoria_editados": false
+  },
+  "artefatos": [
+    "RUN-MANIFEST.json",
+    "AS-IS-ARCHITECTURE.md",
+    "AS-IS-INVENTORY.json",
+    "OFFICIAL-API-EVIDENCE.json",
+    "CREATIVE-CAPABILITY-MATRIX.json",
+    "ASSET-DEMAND-MANIFEST.schema.json",
+    "ASSET-SUPPLY-MANIFEST.schema.json",
+    "CREATIVE-SUPPLY-CHAIN-SPEC.json",
+    "UX-OPERATOR-CONTRACT.json",
+    "POLICY-AND-PROVENANCE-CONTRACT.json",
+    "ADVERSARIAL-REVIEW.json",
+    "EXECUTION-WORKBREAKDOWN.json",
+    "OPEN-CONTRACT-CONFLICTS.json",
+    "CURATION-HANDOFF.json",
+    "HANDOFF.md"
+  ],
+  "limitacoes": [
+    "paginas oficiais nao legiveis registradas em OFFICIAL-API-EVIDENCE.nao_lidas_nesta_missao",
+    "contexto de execucao proximo do limite na fase final: artefatos finais escritos em forma compacta"
+  ]
+}

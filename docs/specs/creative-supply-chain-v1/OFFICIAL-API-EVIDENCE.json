@@ -1,0 +1,472 @@
+{
+  "schema": "VolcOfficialApiEvidence.v1",
+  "artefato": "OFFICIAL-API-EVIDENCE.json",
+  "versao": "1.0.0",
+  "spec": "docs/specs/creative-supply-chain-v1",
+  "_leia_primeiro": [
+    "Somente fontes oficiais do provedor entram aqui: developers.facebook.com, transparency.meta.com, facebook.com/business (ads-guide e help), developers.google.com, support.google.com, e o repositorio oficial googleapis (protos v25).",
+    "Cada entrada registra provider, versao, URL, data de consulta, trecho/conceito suportado, confianca, validade (refresh_by) e impacto no contrato.",
+    "Entradas com confianca RESEARCH_REQUIRED registram uma pagina oficial que NAO pode ser lida nesta missao (HTTP 404 ou pagina renderizada por JavaScript). Nenhuma capacidade foi habilitada com base nelas.",
+    "Snapshots locais do repositorio (matriz-api 26/08/2026 e META-V26-FIELD-EVIDENCE 04/09/2026) sao citados como fonte secundaria com a data original; onde a leitura de 05/09/2026 confirmou o mesmo trecho, a confianca sobe para CONFIRMADO_2X."
+  ],
+  "legenda_confianca": {
+    "COMPROVADO": "pagina oficial lida em 05/09/2026 e trecho citado literalmente",
+    "CONFIRMADO_2X": "trecho identico lido em duas datas (snapshot local + 05/09/2026)",
+    "SNAPSHOT_LOCAL": "so o snapshot versionado no repositorio; nao relido em 05/09/2026",
+    "INFERIDO": "composicao de duas fontes oficiais que nao se declaram mutuamente",
+    "RESEARCH_REQUIRED": "fonte oficial nao acessivel nesta missao; nenhuma regra deterministica derivada"
+  },
+  "politica_de_refresh": "refresh_by = data de consulta + 90 dias para paginas de referencia de campo; + 30 dias para paginas de versao/changelog. Uma capacidade cuja evidencia passou de refresh_by rebaixa para RESEARCH_REQUIRED na matriz ate ser relida.",
+  "versoes_correntes": {
+    "meta_marketing_api": {
+      "versao_corrente_publicada": "v26.0",
+      "lancada_em": "2026-07-29",
+      "fonte": "EV-META-01",
+      "versao_fixada_no_runtime_volc": "v26.0 (backend/app/trafego/meta_execucao/executor.py:211)",
+      "observacao": "As paginas de referencia de ad-creative, adimages, advideos e asset-feed-spec/options renderizam exemplos em v25.0 mesmo com v26.0 vigente; o conteudo dos campos citados nao muda entre as duas versoes segundo o changelog v26.0 (EV-META-02)."
+    },
+    "google_ads_api": {
+      "versao_corrente_publicada": "v25 (minor v25.1 em 2026-08-19)",
+      "fonte": "EV-GADS-01",
+      "sdk_local": "google-ads 31.3.0 (nao cobre v25.1) — docs/growth-engine/matriz-api/fontes.json",
+      "sunset_v25": "2027-08 (SNAPSHOT_LOCAL fontes.json; pagina de sunset nao renderizou em 05/09/2026)"
+    }
+  },
+  "entradas": [
+    {
+      "id": "EV-META-01",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/graph-api/changelog/",
+      "consultado_em": "2026-09-05",
+      "trecho": "v26.0 — release 29/07/2026 (Marketing API e Graph API); v25.0 — 18/02/2026; v24.0 — 08/10/2025, Marketing API v24.0 disponivel ate 06/10/2026.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-10-05",
+      "impacto_no_contrato": "api_version fixada em v26.0 no runtime Meta e nos provider_constraints Meta desta spec."
+    },
+    {
+      "id": "EV-META-02",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/graph-api/changelog/version26.0/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Carousel ads support up to 10 cards. Poll components are no longer supported. Instagram Explore Feed placement is no longer available. Developers creating an HEC-F ad set with relaxable targeting must explicitly set targeting_automation.advantage_audience to 1 or 0. The story value in messenger_positions is silently removed for versioned v26.0 or later calls.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-10-05",
+      "impacto_no_contrato": "Placements Instagram Explore e Messenger Stories nao entram na matriz de placements; carrossel (quando vier) limita 10 cartoes."
+    },
+    {
+      "id": "EV-META-03",
+      "provider": "META",
+      "versao": "v25.0/v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/",
+      "consultado_em": "2026-09-05",
+      "trecho": "object_story_spec: 'The Page ID and the content to create a new unpublished page post.' asset_feed_spec: 'Used for Dynamic Creative to automatically experiment and deliver different variations of an ad's creative.' image_hash: 'Image hash for ad creative. If provided, do not add image_url.' thumbnail_url: 'URL for a thumbnail image for this ad creative.' degrees_of_freedom_spec: 'Specifies the types of transformations that are enabled for the given creative'. image_crops: 'A JSON object defining crop dimensions for the image specified.' name: limit of 100 characters. status: WITH_ISSUES and IN_PROCESS available. created_time: NOT PRESENT. effective_status: NOT PRESENT.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "AdCreative nao expoe created_time (reconciliacao por leitura nunca fecha criativo — confirma backend/app/trafego/meta_execucao/reconciliacao.py:63-66). image_hash e image_url sao mutuamente exclusivos. creative name <= 100 chars entra em provider_constraints."
+    },
+    {
+      "id": "EV-META-04",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-link-data/",
+      "consultado_em": "2026-09-05",
+      "trecho": "link: 'Link url. This url is required to be the same as the CTA link url.' message: 'The main body of the post.' name: 'Name of the link.' image_hash: 'Hash of an image in your ad account's image library.' picture: 'URL of a picture to use in the post' — 'Provide a value for this field or picture but not both'. child_attachments: 'A 2-5 element array of link objects required for carousel ads'. image_crops: 'How to the image should be cropped'.",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Receita estatica P0 (image_hash + link + message + name + description + call_to_action) confirmada; link do CTA deve ser identico ao link_data.link (compilador ja faz: compilador.py:161-168)."
+    },
+    {
+      "id": "EV-META-05",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-video-data/",
+      "consultado_em": "2026-09-05",
+      "trecho": "video_id: 'ID of video that user has permission to or a video in ad account video library'. image_hash: 'Hash of an image in your image library with Facebook to use as thumbnail'. image_url: 'URL of image to use as thumbnail. You should not use image URLs returned from the FB CDN but instead have the image hosted on your own servers.'",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Thumbnail de video Meta so por image_hash de imagem da biblioteca da conta ou URL propria permanente. URL assinada de 300 s (backend/app/criativo/apresentacao.py:28) NAO serve; a unica rota segura e subir a miniatura como imagem (adimages) e usar image_hash — exige META_UPLOAD_ASSET."
+    },
+    {
+      "id": "EV-META-06",
+      "provider": "META",
+      "versao": "v25.0 (exemplos)",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/adimages/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Parametros de criacao documentados: bytes ('Base64 UTF-8 string') e copy_from (source_account_id + hash). Retorno: hash, url, url_128, url_256, url_256_height, url_256_width, height, width, name. Limites de tamanho/formato e comportamento de re-upload do mesmo arquivo NAO documentados nesta pagina.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Upload de imagem para conta Meta = POST /act_{id}/adimages com bytes base64 -> hash. Dedup por conteudo no provedor NAO e afirmada pela doc: a cadeia dedupa localmente por content_sha256 por conta (provider_registrations) e trata hash divergente para bytes iguais como evento a reconciliar."
+    },
+    {
+      "id": "EV-META-07",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-image/",
+      "consultado_em": "2026-09-05",
+      "trecho": "hash: 'The hash which uniquely identifies the image.' url: 'A temporary URL which the image can be retrieved at. Do not use this URL in ad creative creation.' url_128: temporary URL resized to fit within 128x128. permalink_url: 'A permanent URL of the image to use in story creatives.' status: ACTIVE, INTERNAL, DELETED. original_width/original_height, created_time, updated_time, is_associated_creatives_in_adgroups, name (<= 100). 'You can only delete ad images not currently being used in an ad creative.'",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "url/url_128 sao temporarias: o proxy de preview (trafego_meta_validacao.py:275-313) deve continuar server-side e nunca persistir a URL. AdImage TEM created_time (diferente de AdCreative). Exclusao de imagem em uso e recusada pelo provedor: REVOKED na cadeia nao apaga no provedor, apenas bloqueia novo uso."
+    },
+    {
+      "id": "EV-META-08",
+      "provider": "META",
+      "versao": "v25.0 (exemplos)",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/advideos/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Upload resumable com upload_phase start/transfer/finish/cancel; parametros source, file_url, upload_session_id, video_file_chunk, title, description. Retorno: video_id, success, upload_session_id. Erro 382: 'The video file you tried to upload is too small.' Limites de bytes nao detalhados.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Upload de video Meta e multi-fase e portanto NAO atomico: a cadeia precisa de estado UPLOAD_IN_PROGRESS por sessao de upload, retomada por upload_session_id e finalizacao como passo idempotente."
+    },
+    {
+      "id": "EV-META-09",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/video/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Campos legiveis: id, name ('The video title or caption'), description, picture ('The URL for the thumbnail picture of the video'), created_time ('The time the video was initially published'), updated_time, source ('A URL to the raw, playable video file'). Nao ha campo status/video_status na tabela de campos.",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Prontidao de processamento de um video da biblioteca NAO e legivel por esta referencia: provider_state de video existente fica UNKNOWN ate um validate_only de AdCreative com video_data provar aceitacao."
+    },
+    {
+      "id": "EV-META-10",
+      "provider": "META",
+      "versao": "v25.0 (exemplos)",
+      "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options",
+      "consultado_em": "2026-09-05",
+      "trecho": "ad_formats obrigatorio: SINGLE_IMAGE, CAROUSEL, SINGLE_VIDEO, AUTOMATIC_FORMAT. link_urls: 'Required. Array of link URLs.' call_to_action_types: 'Required for all objectives, except OUTCOME_AWARENESS.' images: 'Required for SINGLE_IMAGE and CAROUSEL_IMAGE format' (chave hash ou url). videos: 'Required for SINGLE_VIDEO format' (video_id e thumbnail_url). Maximo de 30 assets no total; images <= 10; videos <= 10; bodies <= 5 (1024 chars); titles <= 5 (255); descriptions <= 5 (255); call_to_actions <= 5; links <= 5.",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Limites do criativo flexivel/dinamico entram em provider_constraints; a cadeia pode VALIDAR localmente um lote para asset_feed_spec, mas NAO emite payload ate EV-META-11 ser fechada."
+    },
+    {
+      "id": "EV-META-11",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/dynamic-creative/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Ad set: is_dynamic_creative=true. 'Provide your creative through the asset_feed_spec field, also known as Asset Feed.' 'Note you may also need to set page_id and instagram_user_id' — sem exemplo de requisicao de criativo mostrando object_story_spec junto de asset_feed_spec.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Permanece o bloqueio unico do criativo flexivel/dinamico: a forma exata de transportar page_id junto de asset_feed_spec nao esta exemplificada. Caminho de prova sem custo: validate_only de um AdCreative com asset_feed_spec + object_story_spec{page_id} (execution_options=validate_only nao cria objeto)."
+    },
+    {
+      "id": "EV-META-12",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-asset-feed-spec/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Campos: ad_formats, asset_customization_rules ('Target rules spec in asset feed spec'), bodies, call_to_action_types, captions, descriptions, images, videos, link_urls, titles, optimization_type, groups, additional_data, app_product_page_id, promotional_metadata.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "asset_customization_rules existe como campo; a semantica por placement (labels, prioridades) continua RESEARCH_REQUIRED (EV-META-13)."
+    },
+    {
+      "id": "EV-META-13",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/placement-asset-customization/",
+      "consultado_em": "2026-09-05",
+      "trecho": "HTTP 404 em 05/09/2026 (duas variantes de URL e /docs/marketing-api/creative/asset-customization/). Nenhum trecho lido.",
+      "confianca": "RESEARCH_REQUIRED",
+      "refresh_by": "2026-10-05",
+      "impacto_no_contrato": "Customizacao de asset por placement (ratio diferente por Feed/Stories no mesmo criativo) NAO e habilitada. Ate la, eligibilidade de placement de um criativo estatico Meta e declarada apenas para o ratio efetivamente enviado."
+    },
+    {
+      "id": "EV-META-14",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/adcreative/image-crops/",
+      "consultado_em": "2026-09-05",
+      "trecho": "HTTP 404 em 05/09/2026 (tambem /reference/ad-creative-link-data-image-crops/). A existencia do campo image_crops esta comprovada em EV-META-03/EV-META-04; as chaves de crop nao foram lidas.",
+      "confianca": "RESEARCH_REQUIRED",
+      "refresh_by": "2026-10-05",
+      "impacto_no_contrato": "Crop aprovado NAO usa image_crops do provedor: a cadeia entrega asset derivado com bytes exatos por ratio (novo content_sha256), e o crop automatico do provedor fica registrado como 'crop_do_provedor: desconhecido' na elegibilidade de placement."
+    },
+    {
+      "id": "EV-META-15",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-object-story-spec/",
+      "consultado_em": "2026-09-05",
+      "trecho": "page_id (required): 'ID of a Facebook page. An unpublished page post will be created on this page.' instagram_user_id: 'The Instagram user account that the ad will be posted to'. link_data, video_data, photo_data, template_data.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "page_ref e obrigatorio em todo item de suprimento destinado a Meta; instagram_actor_ref opcional. O runtime usa instagram_actor_id (compilador.py:171-172): manter alinhado com a doc v26 (instagram_user_id) e um item para o spec Meta (OPEN-CONTRACT-CONFLICTS OCC-07)."
+    },
+    {
+      "id": "EV-META-16",
+      "provider": "META",
+      "versao": "v25.0 (exemplos)",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/adcreatives/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Parametros de criacao: name, object_story_spec, object_story_id, image_hash/image_url/image_file, image_crops, video_id, thumbnail_url, body, call_to_action, url_tags, asset_feed_spec, degrees_of_freedom_spec, creative_features_spec. 'if the object_story_id being used is already in use by an existing creative, then the API will return the value of the existing creative_id instead of creating a new one.'",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "creative_features_spec e degrees_of_freedom_spec existem como parametros de criacao; a receita estatica nao os envia (default do provedor NAO documentado -> ver EV-META-17)."
+    },
+    {
+      "id": "EV-META-17",
+      "provider": "META",
+      "versao": "v26.0",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-features-spec/",
+      "consultado_em": "2026-09-05",
+      "trecho": "AdCreativeFeaturesSpec lista, entre outros: adapt_to_placement, add_text_overlay, image_animation, image_background_gen, image_templates, image_touchups, media_type_automation, multi_photo_to_video, standard_enhancements, text_optimizations, text_overlay_translation, video_highlights, video_to_image, image_uncrop nao encontrado. enroll_status: OPT_IN, OPT_OUT. Default quando omitido: NAO documentado nesta pagina.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Advantage+ creative pode alterar pixels aprovados (image_touchups, image_background_gen, adapt_to_placement, add_text_overlay). O contrato de suprimento exige que o compilador Meta emita degrees_of_freedom_spec.creative_features_spec com OPT_OUT explicito para toda feature que altera midia, ate prova em validate_only — decisao conjunta (OCC-03)."
+    },
+    {
+      "id": "EV-META-18",
+      "provider": "META",
+      "versao": "v25.0 (exemplos)",
+      "url": "https://developers.facebook.com/docs/marketing-api/generatepreview/",
+      "consultado_em": "2026-09-05",
+      "trecho": "GET /{ad_id}/previews para anuncio existente; GET /act_{ad_account_id}/generatepreviews com creative spec. ad_format enum inclui DESKTOP_FEED_STANDARD, MOBILE_FEED_STANDARD, INSTAGRAM_EXPLORE_GRID_HOME, INSTAGRAM_SEARCH_CHAIN (lista completa nao renderizada). Resposta: body com iframe. 'provide a user access token, not a Page access'.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Preview fiel por placement Meta e possivel via generatepreviews SEM criar objetos; deve ser proxied pelo backend (iframe body sanitizado) e nunca chamado pelo navegador. Lista completa de ad_format: RESEARCH_REQUIRED."
+    },
+    {
+      "id": "EV-META-19",
+      "provider": "META",
+      "versao": "ads-guide (sem versao de API)",
+      "url": "https://www.facebook.com/business/ads-guide/update/image/facebook-feed/traffic",
+      "consultado_em": "2026-09-05",
+      "trecho": "Facebook Feed, imagem, objetivo Trafego: JPG ou PNG; proporcao 4:5; resolucao 1.440 x 1.800; texto principal 50 a 150 caracteres; titulo 27 caracteres; tamanho maximo 30 MB; largura minima 600 px; tolerancia de proporcao 3%.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Envelope meta-feed-4x5 (1080x1350 em volc_ads/criativo/destinos.py:181-190) esta abaixo da resolucao recomendada 1440x1800: valido (>= minimo), com aviso 'abaixo do recomendado'. Peso maximo 30 MB e tolerancia 3% entram em provider_constraints META/FEED."
+    },
+    {
+      "id": "EV-META-20",
+      "provider": "META",
+      "versao": "ads-guide (sem versao de API)",
+      "url": "https://www.facebook.com/business/ads-guide/update/image/instagram-story/traffic",
+      "consultado_em": "2026-09-05",
+      "trecho": "Instagram Stories, imagem, Trafego: JPG ou PNG; 9:16; 1.440 x 2.560; texto 125 caracteres; zona segura ~14% topo, 35% base, 6% laterais; 30 MB; largura minima 500 px; tolerancia 1%.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Envelope 9:16 1080x1920 valido para Stories (>= minimo), abaixo do recomendado. A zona segura entra como regra deterministica de preview e como aviso de validacao (texto/logo fora da zona segura)."
+    },
+    {
+      "id": "EV-META-21",
+      "provider": "META",
+      "versao": "ads-guide (sem versao de API)",
+      "url": "https://www.facebook.com/business/ads-guide/update/video/facebook-feed/traffic",
+      "consultado_em": "2026-09-05",
+      "trecho": "Facebook Feed, video, Trafego: MP4, MOV ou GIF; 4:5; H.264, pixels quadrados, taxa de quadros fixa, varredura progressiva, AAC estereo >= 128 kbps; 1.440 x 1.800; duracao 1 segundo a 241 minutos; 4 GB; largura/altura minimas 120 px; legendas e som opcionais mas recomendados; texto principal 50-150; titulo 27.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Validacao tecnica de video Meta Feed: codec, fps constante, audio AAC, duracao >= 1 s. A miniatura continua exigindo image_hash (EV-META-05)."
+    },
+    {
+      "id": "EV-META-22",
+      "provider": "META",
+      "versao": "snapshot 2026-09-04",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/",
+      "consultado_em": "2026-09-04",
+      "trecho": "Ver docs/closure/meta-creation-engine-operator-experience-v1/META-V26-FIELD-EVIDENCE.json: is_adset_budget_sharing_enabled, special_ad_categories (Required), status (so ACTIVE/PAUSED na criacao).",
+      "confianca": "SNAPSHOT_LOCAL",
+      "refresh_by": "2026-12-03",
+      "impacto_no_contrato": "Nenhum (campos de campanha sao autoridade do spec Meta). Citado para completude da cadeia de aprovacao."
+    },
+    {
+      "id": "EV-POL-META-01",
+      "provider": "META",
+      "versao": "Ad Standards (sem versao)",
+      "url": "https://transparency.meta.com/policies/ad-standards/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Unacceptable Business Practices: 'Ads must not promote products, services, schemes or offers using identified deceptive or misleading practices'. Third-Party Intellectual Property Infringement: 'Ads may not contain content that violates the intellectual property rights of any third party, including... trademark'.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Base de politica para o estado THIRD_PARTY_IDENTITY_UNVERIFIED em Meta."
+    },
+    {
+      "id": "EV-POL-META-02",
+      "provider": "META",
+      "versao": "Ad Standards (sem versao)",
+      "url": "https://transparency.meta.com/policies/ad-standards/fraud-scams/unacceptable-business-practices/",
+      "consultado_em": "2026-09-05",
+      "trecho": "Proibe anuncios que 'Promise financial benefits by misrepresenting an entity, industry association or news outlet to mislead people or ask them to share sensitive information' e que 'Use the image of a famous person and misleading tactics in order to bait people into engaging with an ad'.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Elementos visuais que sugiram entidade (banco, orgao, imprensa) sem autorizacao bloqueiam entrega paga em Meta."
+    },
+    {
+      "id": "EV-POL-GADS-01",
+      "provider": "GOOGLE",
+      "versao": "Advertising Policies (sem versao)",
+      "url": "https://support.google.com/adspolicy/answer/6020955",
+      "consultado_em": "2026-09-05",
+      "trecho": "Misrepresentation — Unacceptable business practices: 'Make it seem like you're supported by another brand, organization or government entity when you're not.' Violacoes tratadas como egregias: suspensao imediata sem aviso.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Base de politica para THIRD_PARTY_IDENTITY_UNVERIFIED em Google; coincide com a causa-raiz do incidente docs/closure/hermes-redator-google-ads-policy-incident-v1/ROOT-CAUSE-ANALYSIS.md."
+    },
+    {
+      "id": "EV-GADS-01",
+      "provider": "GOOGLE",
+      "versao": "v25 / v25.1",
+      "url": "https://developers.google.com/google-ads/api/docs/release-notes",
+      "consultado_em": "2026-09-05",
+      "trecho": "v25.1 (2026-08-19), v25 (2026-07-22), v24.2 (2026-06-24), v24.1 (2026-05-13), v24 (2026-04-22). Versao mais nova: v25.1.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-10-05",
+      "impacto_no_contrato": "provider_constraints Google fixam v25; o SDK local 31.3.0 nao cobre v25.1 (TEXT_DISCLAIMER ausente) — sem impacto nos assets desta spec."
+    },
+    {
+      "id": "EV-GADS-02",
+      "provider": "GOOGLE",
+      "versao": "v25",
+      "url": "https://developers.google.com/google-ads/api/docs/performance-max/asset-requirements",
+      "consultado_em": "2026-09-05",
+      "trecho": "HEADLINE 3-15 (30 chars); LONG_HEADLINE 1-5 (90); DESCRIPTION 2-5 (90); MARKETING_IMAGE 1-20, 1.91:1, 1200x628 rec., 600x314 min, 5120 KB; SQUARE_MARKETING_IMAGE 1-20, 1:1, 1200x1200 rec., 300x300 min, 5120 KB; BUSINESS_NAME 1 (25); LOGO 1-5, 1:1, 1200x1200 rec., 128x128 min, 5120 KB; PORTRAIT_MARKETING_IMAGE <=20, 4:5, 960x1200 rec., 480x600 min; LANDSCAPE_LOGO <=20, 4:1, 1200x300 rec., 512x128 min; YOUTUBE_VIDEO <=15, 16:9/1:1/9:16, >=10 s; CALL_TO_ACTION_SELECTION 1; MEDIA_BUNDLE <150 KB. 'When brand guidelines are enabled, BUSINESS_NAME and LOGO must use CampaignAsset instead of AssetGroupAsset.'",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Tabela PMax e a regua de volc_ads/criativo/requisitos.yaml:216-273; confirmada identica em 05/09/2026."
+    },
+    {
+      "id": "EV-GADS-03",
+      "provider": "GOOGLE",
+      "versao": "v25 (proto oficial googleapis)",
+      "url": "https://raw.githubusercontent.com/googleapis/googleapis/master/google/ads/googleads/v25/common/ad_type_infos.proto",
+      "consultado_em": "2026-09-05",
+      "trecho": "ResponsiveDisplayAdInfo: marketing_images 'minimum size is 600x314 and the aspect ratio must be 1.91:1 (+-1%). At least one marketing_image is required. Combined with square_marketing_images, the maximum is 15.' square_marketing_images 300x300, 1:1, 'At least one square marketing_image is required.' logo_images 512x128, 4:1, 'Combined with square_logo_images, the maximum is 5.' square_logo_images 128x128, 1:1. headlines <=30 chars, 1-5. long_headline required, <=90. descriptions <=90, 1-5. youtube_videos 'Optional... maximum of 5'. business_name display width 25. call_to_action_text width 30. DemandGenMultiAssetAdInfo: marketing_images 600x314 1.91:1 'Required if square_marketing_images is not present', combinado maximo 20 com square/portrait/tall_portrait; square 300x300 1:1; portrait 480x600 4:5; tall_portrait 600x1067 9:16; logo_images 128x128 1:1 'At least 1 and max 5'; classic_display_images <=20; headlines width 30, 1-5; descriptions width 90, 1-5; business_name width 25 Required.",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Confirma requisitos.yaml DISPLAY e DEMAND_GEN linha a linha (volc_ads/criativo/requisitos.yaml:69-212). Peso maximo de arquivo em Display continua NAO declarado pelo proto."
+    },
+    {
+      "id": "EV-GADS-04",
+      "provider": "GOOGLE",
+      "versao": "v25 (proto oficial googleapis)",
+      "url": "https://raw.githubusercontent.com/googleapis/googleapis/master/google/ads/googleads/v25/common/asset_types.proto",
+      "consultado_em": "2026-09-05",
+      "trecho": "ImageAsset.data: 'The raw bytes data of an image. This field is mutate only.' file_size, mime_type, full_size (ImageDimension: height_pixels, width_pixels, url 'A URL that returns the image with this height and width'). YoutubeVideoAsset.youtube_video_id: 'YouTube video id. This is the 11 character string value used in the YouTube video URL.'",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Bytes de imagem sobem no proprio mutate (mutate-only) e nunca voltam por leitura: read-back de imagem Google e por full_size (dimensao + URL do Google), nunca por bytes. Video Google e exclusivamente referencia a YouTube: a cadeia nao faz upload de video para Google Ads."
+    },
+    {
+      "id": "EV-GADS-05",
+      "provider": "GOOGLE",
+      "versao": "v25 (proto oficial googleapis)",
+      "url": "https://raw.githubusercontent.com/googleapis/googleapis/master/google/ads/googleads/v25/resources/asset.proto",
+      "consultado_em": "2026-09-05",
+      "trecho": "'Assets are immutable and cannot be removed. To stop an asset from serving, remove the asset from the entity that is using it.' name: 'Optional name of the asset.' image_asset: 'Output only. An image asset.' policy_summary e field_type_policy_summaries: Output only.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "REVOKED/ARCHIVED na cadeia nunca apaga o Asset no Google: a acao de revogacao e desvincular (AssetGroupAsset/AdGroupAd). policy_summary e a fonte do provider_state POLICY_* apos criacao."
+    },
+    {
+      "id": "EV-GADS-06",
+      "provider": "GOOGLE",
+      "versao": "v25 (proto oficial googleapis)",
+      "url": "https://raw.githubusercontent.com/googleapis/googleapis/master/google/ads/googleads/v25/services/asset_service.proto",
+      "consultado_em": "2026-09-05",
+      "trecho": "MutateAssets: 'Creates assets. Operation statuses are returned.' validate_only: 'If true, the request is validated but not executed. Only errors are returned, not results.' partial_failure: default false; AssetOperation tem create e update (resource_name customers/{customer_id}/assets/{asset_id}).",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "validate_only existe para assets; partial_failure e incompativel com ids temporarios (docs/growth-engine/matriz-api/comum.md, SNAPSHOT_LOCAL), logo o lote Google e atomico por requisicao."
+    },
+    {
+      "id": "EV-GADS-07",
+      "provider": "GOOGLE",
+      "versao": "v25 (proto oficial googleapis)",
+      "url": "https://raw.githubusercontent.com/googleapis/googleapis/master/google/ads/googleads/v25/enums/asset_field_type.proto",
+      "consultado_em": "2026-09-05",
+      "trecho": "AssetFieldType inclui HEADLINE, DESCRIPTION, MARKETING_IMAGE, MEDIA_BUNDLE, YOUTUBE_VIDEO, LONG_HEADLINE, BUSINESS_NAME, SQUARE_MARKETING_IMAGE, PORTRAIT_MARKETING_IMAGE, LOGO, LANDSCAPE_LOGO, CALL_TO_ACTION_SELECTION, AD_IMAGE ('The asset is linked for use to select an ad image'), BUSINESS_LOGO, DEMAND_GEN_CAROUSEL_CARD, TALL_PORTRAIT_MARKETING_IMAGE, CLASSIC_DISPLAY_IMAGE, TEXT_DISCLAIMER.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "AD_IMAGE e o field type do asset visual de Search (CampaignAsset/AdGroupAsset); vocabulario canonico de placement/papel Google desta spec."
+    },
+    {
+      "id": "EV-GADS-08",
+      "provider": "GOOGLE",
+      "versao": "Help Center (sem versao de API)",
+      "url": "https://support.google.com/google-ads/answer/9566341",
+      "consultado_em": "2026-09-05",
+      "trecho": "Image assets em Search: obrigatorio 'Square (1x1)' (300x300 min, 1200x1200 rec.); opcional 'Landscape (1.91x1)' (600x314 min, 1200x628 rec.); 'Maximum file size: 5120 KB'; PNG, JPG; ate 20 imagens; recomendado 4 imagens unicas; 'there are absolutely no digitally added text, logos, or graphic overlays, as these will be immediately disapproved'; manter conteudo no centro 80%.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Search assets visuais: regua propria (sem texto/logo/overlay digital). Um asset tipografico (typography_only) e INELEGIVEL para AD_IMAGE por construcao."
+    },
+    {
+      "id": "EV-GADS-09",
+      "provider": "GOOGLE",
+      "versao": "Help Center (sem versao de API)",
+      "url": "https://support.google.com/google-ads/answer/13704860",
+      "consultado_em": "2026-09-05",
+      "trecho": "Demand Gen: quadrada 1:1 300x300 min / 1200x1200 rec.; horizontal 1.91:1 600x314 / 1200x628; vertical 4:5 480x600 / 960x1200; vertical 9:16 600x1067 / 1080x1920; imagens .jpg/.png, 'Max. file size: 5 MB'; logo 1:1 'Min. size: 144x144, Recommended: 1200x1200', 'Max. file size: 150 KB'; video 1:1 1080x1080, 16:9 1920x1080, 4:5 1080x1350, 9:16 1080x1920, 'Min. video duration: 5 seconds', MPG (MPEG-2 ou MPEG-4), 256 GB.",
+      "confianca": "CONFIRMADO_2X",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Confirma requisitos.yaml DEMAND_GEN (5 MB, logo 144x144/150 KB, video >= 5 s). Divergencia oficial logo 128 (proto) vs 144 (Help Center) mantida: piso 144."
+    },
+    {
+      "id": "EV-GADS-10",
+      "provider": "GOOGLE",
+      "versao": "v25",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/create-campaign",
+      "consultado_em": "2026-09-05",
+      "trecho": "Tres tipos: DemandGenMultiAssetAdInfo, DemandGenCarouselAdInfo, DemandGenVideoResponsiveAdInfo (+ DemandGenProductAdInfo em feeds). Exemplo de Video Responsive: business name, videos (>=1), long headlines, headlines (3 no exemplo), descriptions (2 no exemplo), logo images (1). Imagens criadas via AssetService/ImageAsset com data.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "So DemandGenMultiAssetAdInfo esta no runtime; carrossel, video responsivo e produto ficam NOT_IMPLEMENTED com contrato proprio."
+    },
+    {
+      "id": "EV-GADS-11",
+      "provider": "GOOGLE",
+      "versao": "v25 (snapshot 2026-08-26)",
+      "url": "docs/growth-engine/matriz-api/comum.md",
+      "consultado_em": "2026-08-26",
+      "trecho": "partial_failure e ids temporarios sao mutuamente excludentes; a API nao oferece idempotencia (problema da aplicacao); AdGroupAd.ad e imutavel; assets imutaveis.",
+      "confianca": "SNAPSHOT_LOCAL",
+      "refresh_by": "2026-11-24",
+      "impacto_no_contrato": "Idempotencia e retry seguros sao inteiramente da cadeia (chaves por conteudo); lote Google atomico."
+    },
+    {
+      "id": "EV-GADS-12",
+      "provider": "GOOGLE",
+      "versao": "v25 (snapshot 2026-08-26)",
+      "url": "docs/growth-engine/matriz-api/display.md",
+      "consultado_em": "2026-08-26",
+      "trecho": "Secao 3: proto RDA (confirmado por EV-GADS-03). Peso maximo de arquivo e dimensao recomendada do RDA: [NAO CONFIRMADO] — 'Nao reutilize os 5120 KB de PMax'. Video em RDA: so contagem (<= 5), duracao/proporcao [NAO CONFIRMADO].",
+      "confianca": "SNAPSHOT_LOCAL",
+      "refresh_by": "2026-11-24",
+      "impacto_no_contrato": "Display: bytes_maximos = null (nao validado localmente); so o provedor julga peso."
+    },
+    {
+      "id": "EV-GADS-13",
+      "provider": "GOOGLE",
+      "versao": "medido em conta real 2026-09-01",
+      "url": "volc_ads/campanha/display.py:389-413",
+      "consultado_em": "2026-09-01",
+      "trecho": "validate_only real recusou o mutate inteiro com asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE quando dois asset_operation.create carregavam os MESMOS BYTES com nomes diferentes.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Google identifica asset por conteudo: a cadeia recusa o mesmo content_sha256 em dois papeis do mesmo mutate e recomenda reuso por resource_name."
+    },
+    {
+      "id": "EV-META-23",
+      "provider": "META",
+      "versao": "medido em conta real 2026-09-05",
+      "url": "backend/app/trafego/meta_execucao/contrato.py:185-207",
+      "consultado_em": "2026-09-05",
+      "trecho": "validate_only real recusou campanha com codigo 100 / subcodigo 4005 ao pedir compartilhamento de orcamento sem estrategia de lance no Campaign.",
+      "confianca": "COMPROVADO",
+      "refresh_by": "2026-12-04",
+      "impacto_no_contrato": "Nenhum no contrato de criativos; registrado como prova de que o executor Meta ja conversa com a conta real sob validate_only (PROVEN_REMOTE_VALIDATE para a receita estatica)."
+    }
+  ],
+  "nao_lidas_nesta_missao": [
+    {"url": "https://developers.google.com/google-ads/api/reference/rpc/v25/ImageAsset", "motivo": "pagina renderizada por JavaScript; substituida pelo proto oficial EV-GADS-04"},
+    {"url": "https://developers.google.com/google-ads/api/docs/sunset-dates", "motivo": "pagina renderizada por JavaScript; sunset v25 = 2027-08 via SNAPSHOT_LOCAL fontes.json"},
+    {"url": "https://developers.facebook.com/docs/marketing-api/creative/advantage-plus-creative/", "motivo": "HTTP 404; substituida por EV-META-17"},
+    {"url": "https://www.facebook.com/business/help/103816146375741", "motivo": "corpo nao renderizado (titulo: boas praticas de proporcao por posicionamento)"}
+  ]
+}

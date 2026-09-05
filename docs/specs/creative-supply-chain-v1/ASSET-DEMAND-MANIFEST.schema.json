@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://volc-os.local/specs/creative-supply-chain-v1/asset-demand-manifest.schema.json",
+  "title": "AssetDemandManifest",
+  "description": "Produzido pelo engine de campanha (Meta, Google Display/Demand Gen/PMax/Search assets, Redator). Declara o que a campanha precisa, sem gerar, escolher nem transportar bytes. Nunca contem ids brutos de provedor, tokens, prompts, caminhos ou URLs assinadas.",
+  "x-volc-contract": {
+    "versao_do_contrato": "1.0.0",
+    "quem_escreve": ["META_ENGINE (backend/app/trafego/meta_execucao)", "GOOGLE_ENGINE (backend/app/trafego + volc_ads/campanha)", "REDATOR (FunnelForge, para LP_HERO)"],
+    "quem_le": ["CREATIVE_SUPPLY_CHAIN (fila de demandas, geracao, importacao, validacao, policy, aprovacao)"],
+    "regras_de_versionamento": "schema_version = MAJOR.MINOR. MINOR so adiciona campos opcionais. MAJOR muda semantica ou obrigatoriedade. A cadeia recusa MAJOR desconhecido e aceita MINOR maior que o seu registrando unknowns=['schema_minor_ahead'].",
+    "hash": "demand_sha256 = sha256(JSON canonico: sort_keys, separators (',',':'), ensure_ascii=false) sobre todos os campos exceto demand_sha256, issued_at e unknowns. Muda o hash => e outra demanda; a cadeia nao reusa reservas de outra demanda.",
+    "ausencia": "Campo desconhecido = null + nome do campo em unknowns. Nunca 0, '' ou []. Lista vazia so e valida quando o schema diz 'vazio confirmado' (ex.: blocked_reasons quando nada bloqueia).",
+    "fronteira": "O engine nao escreve nenhum campo de suprimento (approval_state, provenance, content_sha256, provider_registrations). A cadeia nao escreve nenhum campo desta demanda: ela responde com AssetSupplyManifest referenciando demand_id + demand_sha256.",
+    "reconciliacao": "Se o engine reemitir a demanda com outro demand_sha256, o suprimento anterior fica STALE em relacao a ela (nao REVOKED): as pecas continuam aprovadas por si, mas a reserva precisa ser refeita contra a nova demanda."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "demand_id", "issued_by", "issued_at", "tenant_ref", "campaign_intent_ref", "channel", "objective", "identity_ref", "page_ref", "destination_ref", "language", "country", "provider_constraints", "slots", "copy_slots", "requested_variations", "reuse_policy", "unknowns", "demand_sha256"],
+  "properties": {
+    "schema_version": {"type": "string", "pattern": "^1\\.[0-9]+$", "x-volc": {"autoridade": "spec", "mutabilidade": "imutavel", "no_hash": true}},
+    "demand_id": {"type": "string", "pattern": "^dem_[a-f0-9]{24}$", "description": "Identidade opaca da demanda, emitida pelo engine. Nunca um id de campanha do provedor.", "x-volc": {"autoridade": "engine", "mutabilidade": "imutavel", "no_hash": true, "cardinalidade": "1"}},
+    "issued_by": {"type": "string", "enum": ["META_ENGINE", "GOOGLE_ENGINE", "REDATOR"], "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "issued_at": {"type": "string", "format": "date-time", "x-volc": {"autoridade": "engine", "no_hash": false, "nota": "fora do hash: reemitir a mesma demanda nao muda a identidade"}},
+    "tenant_ref": {"type": "string", "pattern": "^[A-Za-z0-9:_-]{3,120}$", "x-volc": {"autoridade": "engine (identidade do operador)", "no_hash": true, "nota": "entra em toda chave de idempotencia da cadeia"}},
+    "campaign_intent_ref": {"type": "string", "pattern": "^[A-Za-z0-9:_-]{8,180}$", "description": "Referencia opaca da intencao/plano de campanha do engine (ex.: plano_sha256 Meta prefixado, intencao Google). Nunca id externo.", "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "channel": {"type": "string", "enum": ["META_ADS", "GOOGLE_DISPLAY", "GOOGLE_DEMAND_GEN", "GOOGLE_PERFORMANCE_MAX", "GOOGLE_SEARCH_ASSETS", "LANDING_PAGE"], "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "objective": {"type": "string", "description": "Objetivo no vocabulario do PROVEDOR do canal (ex.: OUTCOME_TRAFFIC em Meta; MAXIMIZE_CONVERSIONS em Google). Nao unificado de proposito.", "minLength": 3, "maxLength": 64, "x-volc": {"autoridade": "engine", "no_hash": true, "nota": "a cadeia so usa para objective_eligibility; nunca reinterpreta"}},
+    "identity_ref": {"type": "string", "pattern": "^[A-Za-z0-9:_-]{8,180}$", "description": "Referencia opaca do Cofre para a identidade/marca do projeto ou site (dono do logo, cores, nome). Obrigatoria: sem identidade nao ha como julgar 'marca de terceiro'.", "x-volc": {"autoridade": "engine (le do Cofre)", "no_hash": true}},
+    "page_ref": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9:_-]{8,180}$", "description": "Referencia opaca da Pagina Meta. Obrigatoria (nao nula) quando channel = META_ADS; null nos demais e o campo entra em unknowns SOMENTE se o canal a exige.", "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "destination_ref": {"type": "string", "pattern": "^[A-Za-z0-9:_-]{8,180}$", "description": "Referencia opaca do destino pago (URL final registrada com recibo paid_destination_ready). A URL literal nao viaja aqui.", "x-volc": {"autoridade": "engine + portao de destino", "no_hash": true}},
+    "language": {"type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$", "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "country": {"type": "string", "pattern": "^[A-Z]{2}$", "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "provider_constraints": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider", "api_version", "requirement_table_ref"],
+      "properties": {
+        "provider": {"type": "string", "enum": ["META", "GOOGLE_ADS", "WORDPRESS"]},
+        "api_version": {"type": "string", "minLength": 2, "maxLength": 16, "description": "v26.0 (Meta) | v25 (Google Ads)"},
+        "requirement_table_ref": {"type": "string", "pattern": "^(EV|REQ)-[A-Z0-9-]+(@[0-9]{4}-[0-9]{2}-[0-9]{2})?$", "description": "Id da tabela de requisitos oficial que a cadeia deve aplicar (OFFICIAL-API-EVIDENCE.json), com data de consulta."}
+      },
+      "x-volc": {"autoridade": "engine declara; cadeia valida contra a mesma tabela", "no_hash": true}
+    },
+    "slots": {
+      "type": "array", "minItems": 1, "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["slot_key", "asset_type", "placement", "required", "count", "constraints"],
+        "properties": {
+          "slot_key": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,31}$", "description": "Chave estavel do slot no vocabulario do canal (ex.: marketing, marketing_quadrada, logo_quadrado, link_image, video, video_thumbnail, lp_hero)."},
+          "asset_type": {"type": "string", "enum": ["IMAGE", "VIDEO", "LOGO", "TEXT", "THUMBNAIL"]},
+          "placement": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[A-Z0-9_]{3,48}$"}, "description": "Placements no vocabulario do provedor (META: FACEBOOK_FEED, INSTAGRAM_STORIES...; GOOGLE: papel/AssetFieldType: MARKETING_IMAGE...). Nao unificado."},
+          "required": {"type": "boolean"},
+          "count": {"type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": {"min": {"type": "integer", "minimum": 0}, "max": {"type": ["integer", "null"], "minimum": 1}}},
+          "constraints": {
+            "type": "object", "additionalProperties": false,
+            "required": ["aspect_ratio", "min_width", "min_height", "max_bytes", "min_duration_ms", "max_duration_ms", "mime_allowlist", "tolerance_ratio"],
+            "properties": {
+              "aspect_ratio": {"type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]+)?:[0-9]+$"},
+              "min_width": {"type": ["integer", "null"], "minimum": 1},
+              "min_height": {"type": ["integer", "null"], "minimum": 1},
+              "max_bytes": {"type": ["integer", "null"], "minimum": 1, "description": "null = o provedor nao publica; a cadeia NAO inventa"},
+              "min_duration_ms": {"type": ["integer", "null"], "minimum": 1},
+              "max_duration_ms": {"type": ["integer", "null"], "minimum": 1},
+              "mime_allowlist": {"type": "array", "items": {"type": "string", "pattern": "^(image|video)/[a-z0-9.+-]+$"}},
+              "tolerance_ratio": {"type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 0.1, "description": "0.01 Google; 0.03 Meta Feed; 0.01 Meta Stories (EV-META-19/20)"}
+            }
+          },
+          "variation_policy": {"type": "string", "enum": ["ONE_PER_VARIATION", "SHARED_ACROSS_VARIATIONS"], "default": "ONE_PER_VARIATION"}
+        }
+      },
+      "x-volc": {"autoridade": "engine (derivado da regua oficial do canal)", "no_hash": true}
+    },
+    "copy_slots": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["copy_key", "fields"],
+        "properties": {
+          "copy_key": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,31}$"},
+          "fields": {
+            "type": "object", "additionalProperties": false,
+            "properties": {
+              "message": {"$ref": "#/$defs/text_constraint"},
+              "headline": {"$ref": "#/$defs/text_constraint"},
+              "description": {"$ref": "#/$defs/text_constraint"},
+              "call_to_action": {"type": "object", "additionalProperties": false, "required": ["allowlist"], "properties": {"allowlist": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[A-Z_]{3,40}$"}}}}
+            }
+          }
+        }
+      },
+      "x-volc": {"autoridade": "engine", "no_hash": true, "nota": "vazio confirmado permitido (canal sem copy na cadeia, ex.: LANDING_PAGE)"}
+    },
+    "requested_variations": {"type": "integer", "minimum": 1, "maximum": 10, "x-volc": {"autoridade": "engine", "no_hash": true, "nota": "teto 10 = lote Meta (contrato.py:221-226); Google e por papel, nao por variacao"}},
+    "reuse_policy": {"type": "string", "enum": ["ALLOW_EXISTING_APPROVED", "REQUIRE_NEW", "ALLOW_PROVIDER_LIBRARY_IF_GATED"], "x-volc": {"autoridade": "engine", "no_hash": true, "nota": "ALLOW_PROVIDER_LIBRARY_IF_GATED nunca dispensa o gate de identidade"}},
+    "deadline": {"type": ["string", "null"], "format": "date-time", "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "brief_ref": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9:_-]{8,180}$", "description": "Referencia opaca do briefing. O texto do briefing NUNCA viaja.", "x-volc": {"autoridade": "engine", "no_hash": true}},
+    "unknowns": {"type": "array", "items": {"type": "string", "pattern": "^[a-z_.]{3,64}$"}, "x-volc": {"autoridade": "engine", "no_hash": false}},
+    "demand_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$", "x-volc": {"autoridade": "engine (calculado)", "no_hash": false}}
+  },
+  "$defs": {
+    "text_constraint": {"type": "object", "additionalProperties": false, "required": ["max_chars"], "properties": {"max_chars": {"type": "integer", "minimum": 1}, "recommended_max_chars": {"type": ["integer", "null"], "minimum": 1}, "count": {"type": "object", "additionalProperties": false, "properties": {"min": {"type": "integer", "minimum": 0}, "max": {"type": ["integer", "null"], "minimum": 1}}}}}
+  },
+  "allOf": [
+    {"if": {"properties": {"channel": {"const": "META_ADS"}}}, "then": {"properties": {"page_ref": {"type": "string"}}}},
+    {"if": {"properties": {"issued_by": {"const": "META_ENGINE"}}}, "then": {"properties": {"provider_constraints": {"properties": {"provider": {"const": "META"}}}}}}
+  ],
+  "x-volc-invariants": [
+    "DEM-INV-01: nenhum valor de string pode casar ^(EAA|act_[0-9]|customers/[0-9]|sha256:|/Users/|/home/|https?://) — o validador da cadeia recusa a demanda inteira.",
+    "DEM-INV-02: count.min > 0 implica required=true.",
+    "DEM-INV-03: slot com asset_type VIDEO em channel META_ADS obriga um slot irmao asset_type THUMBNAIL (EV-META-05).",
+    "DEM-INV-04: channel GOOGLE_SEARCH_ASSETS so admite slots IMAGE com placement AD_IMAGE (EV-GADS-07/08).",
+    "DEM-INV-05: demanda com channel LANDING_PAGE e issued_by REDATOR admite um unico slot lp_hero."
+  ],
+  "x-volc-example_sanitizado": {
+    "schema_version": "1.0", "demand_id": "dem_0123456789abcdef01234567", "issued_by": "META_ENGINE", "issued_at": "2026-09-05T12:00:00Z",
+    "tenant_ref": "tenant:exemplo", "campaign_intent_ref": "metaplan:0000000000000000000000000000000000000000000000000000000000000000",
+    "channel": "META_ADS", "objective": "OUTCOME_TRAFFIC", "identity_ref": "cofre:identidade:exemplo-site", "page_ref": "metaobj_000000000000000000000000",
+    "destination_ref": "destino:exemplo-lp-aprovada", "language": "pt-BR", "country": "BR",
+    "provider_constraints": {"provider": "META", "api_version": "v26.0", "requirement_table_ref": "EV-META-19@2026-09-05"},
+    "slots": [{"slot_key": "link_image", "asset_type": "IMAGE", "placement": ["FACEBOOK_FEED", "INSTAGRAM_FEED"], "required": true, "count": {"min": 1, "max": 1}, "constraints": {"aspect_ratio": "4:5", "min_width": 600, "min_height": 750, "max_bytes": 31457280, "min_duration_ms": null, "max_duration_ms": null, "mime_allowlist": ["image/jpeg", "image/png"], "tolerance_ratio": 0.03}, "variation_policy": "ONE_PER_VARIATION"}],
+    "copy_slots": [{"copy_key": "principal", "fields": {"message": {"max_chars": 2200, "recommended_max_chars": 150}, "headline": {"max_chars": 255, "recommended_max_chars": 27}, "description": {"max_chars": 255}, "call_to_action": {"allowlist": ["LEARN_MORE", "SIGN_UP"]}}}],
+    "requested_variations": 3, "reuse_policy": "ALLOW_EXISTING_APPROVED", "deadline": null, "brief_ref": null, "unknowns": [],
+    "demand_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

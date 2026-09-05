@@ -1,0 +1,122 @@
+{
+  "schema": "VolcAdversarialReview.v1",
+  "artefato": "ADVERSARIAL-REVIEW.json",
+  "versao": "1.0.0",
+  "modo": "revisao unica, integral, apos congelar os artefatos; uma rodada corretiva documental; sem loop",
+  "congelado_em": "2026-09-05",
+  "achados": [
+    {
+      "id": "ADV-01",
+      "lente": "campos inventados",
+      "conclusao": "PROCEDE (corrigido)",
+      "evidencia": "ASSET-SUPPLY-MANIFEST.schema.json reason pattern recusava 'RATIO_NOT_IN_CHANNEL:4:5' usado no exemplo",
+      "premissa": "todo exemplo deve validar contra o schema",
+      "decisao": "pattern do alvo passou a aceitar ':'; exemplo revalidado sem erros"
+    },
+    {
+      "id": "ADV-02",
+      "lente": "capacidades sem evidencia",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "todas as 46 celulas citam EV-*/ASIS-*/arquivo:linha ou bloqueio; gate estrutural verifica evidencia ou bloqueio",
+      "premissa": "status != NOT_APPLICABLE exige evidencia",
+      "decisao": "mantido; EV-META-13/14 e CAP-GSEARCH-LOGO-01 ficam RESEARCH_REQUIRED em vez de inventar numeros"
+    },
+    {
+      "id": "ADV-03",
+      "lente": "ausencia convertida em zero",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "schemas exigem minimum 1 em width/height/duration_ms; unknowns obrigatorio; channel_eligibility UNKNOWN com reasons",
+      "premissa": "SUP-INV-03/04",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-04",
+      "lente": "hash que nao cobre conteudo",
+      "conclusao": "PROCEDE PARCIALMENTE (documentado)",
+      "evidencia": "asset_ref deriva de content_sha256; mas PROVIDER_LIBRARY/YOUTUBE_REFERENCE tem content_sha256 null",
+      "premissa": "sem bytes nao ha hash",
+      "decisao": "SUP-INV-08 define derivacao alternativa e SUP-INV-01 impede AVAILABLE sem content_sha256; conflito OCC-01 registra a decisao pendente com o engine Meta"
+    },
+    {
+      "id": "ADV-05",
+      "lente": "aprovacao reutilizavel apos mudanca",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "human_approval.bound_to (content_sha256, policy_receipt_ref, copy_sha256, finalidade) + APPROVAL_BINDING_DIVERGED",
+      "premissa": "CSC-DEC-09",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-06",
+      "lente": "vazamento de token/ID/path/URL",
+      "conclusao": "PROCEDE (corrigido)",
+      "evidencia": "POLICY-AND-PROVENANCE-CONTRACT.policy_receipt.saida_publica continha uma pergunta retorica; UX wireframes usavam caracteres de caixa que poderiam esconder texto",
+      "premissa": "artefato executavel nao pode ter ambiguidade",
+      "decisao": "saida_publica reescrita de forma declarativa; wireframes reescritos em ASCII simples. Scanner de segredos (gate) sem achados"
+    },
+    {
+      "id": "ADV-07",
+      "lente": "retry que duplica",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "CSC-DEC-16: chave antes do despacho, AMBIGUOUS por timeout, fechamento so por leitura (padrao da saga Meta)",
+      "premissa": "EV-META-08 (upload multi-fase)",
+      "decisao": "mantido; WBS-M02/M03 testam duplo POST"
+    },
+    {
+      "id": "ADV-08",
+      "lente": "batch/crop diferente do preview",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "CSC-DEC-08: crop aprovado = DERIVED com novo hash; provider crop => ELIGIBLE_WITH_PROVIDER_CROP e aviso na UI",
+      "premissa": "EV-META-13/14 nao lidas",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-09",
+      "lente": "marca de terceiro nao detectada",
+      "conclusao": "PROCEDE PARCIALMENTE (risco declarado)",
+      "evidencia": "POLICY-02 depende de OCR/classificador; um logo sem texto e fora das classes do classificador pode passar",
+      "premissa": "detector nao deterministico so adiciona",
+      "decisao": "risco registrado; mitigacao: aprovacao humana continua obrigatoria e a UI destaca achados 'baixos'; lexico e classes versionados para evoluir"
+    },
+    {
+      "id": "ADV-10",
+      "lente": "Page/identity incorretas",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "DEM-INV (page_ref obrigatorio em META_ADS), SUP-INV-07 (copia e conferencia por igualdade), identity_ref obrigatorio",
+      "premissa": "EV-META-15",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-11",
+      "lente": "asset incompativel com placement",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "CSC-DEC-07 + WBS-C02 com tolerancias por provedor",
+      "premissa": "EV-META-19/20, EV-GADS-03",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-12",
+      "lente": "UI afirmando mais que o backend",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "UX e projecao dos eixos; modo flexivel continua 'inspecao'; DEMO rotulado",
+      "premissa": "CSC-DEC-21",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-13",
+      "lente": "contrato comum que destroi diferencas Meta/Google",
+      "conclusao": "NAO PROCEDE",
+      "evidencia": "placement/objective/provider_constraints no vocabulario do provedor; sem enum universal; video Google = referencia YouTube, Meta = upload",
+      "premissa": "CSC-DEC-01",
+      "decisao": "mantido"
+    },
+    {
+      "id": "ADV-14",
+      "lente": "caminhos duplicados",
+      "conclusao": "PROCEDE (documentado)",
+      "evidencia": "lifecycle rule 6 combinava human REJECTED com TECHNICALLY_INVALID por falta de estado proprio na lista da missao",
+      "premissa": "lista de 14 estados e fechada",
+      "decisao": "mantido com blocked_reasons HUMAN_REJECTED explicito; anotado como decisao"
+    }
+  ],
+  "rodada_corretiva": "aplicada uma vez (ADV-01, ADV-06); nenhuma segunda rodada"
+}
