@@ -371,3 +371,123 @@ def test_timeout_na_criacao_continua_cru_para_a_saga_marcar_ambiguo() -> None:
                 SegredoEfemero('token-meta-falso-seguro'), exige_id=True)
 
     asyncio.run(cenario())
+
+
+# ---------------------------------------------------------------------------
+# RECUSA REAL DA META — 100/4005, compartilhamento de verba exige lance
+# ---------------------------------------------------------------------------
+# Medido em 05/09/2026 na validação real: a Meta recusou a campanha com
+# "Não é possível usar o compartilhamento do orçamento do conjunto de anúncios
+# sem uma estratégia de lance." A receita P0 tem UM conjunto, com bid_strategy
+# no conjunto e nenhuma estratégia no Campaign. Corrigir movendo a estratégia
+# para o Campaign mudaria a receita aprovada, então a receita fixa o
+# compartilhamento em False — e recusa `true` localmente, sem converter.
+
+def _plano_base(**extra: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        'account_ref': 'metaacct_exemplo', 'page_ref': 'metapage_exemplo',
+        'asset_ref': 'metaasset_exemplo', 'campaign_name': 'Campanha',
+        'adset_name': 'Conjunto', 'creative_name': 'Criativo', 'ad_name': 'Anuncio',
+        'destination_url': 'https://example.com/', 'message': 'Mensagem',
+        'headline': 'Titulo', 'description': 'Descricao', 'daily_budget_minor': 1000,
+        'start_time': '2027-01-01T12:00:00Z', 'special_ad_categories': [],
+        'special_categories_confirmed': True, 'call_to_action_type': 'LEARN_MORE',
+    }
+    base.update(extra)
+    return base
+
+
+def test_omissao_do_compartilhamento_continua_virando_false_explicito() -> None:
+    """CONTRAPROVA 1: aba antiga que omite o campo recebe o default seguro."""
+    pedido = trafego_meta_validacao.PedidoPlanoMetaPausado.model_validate(_plano_base())
+    plano = trafego_meta_validacao._plano(pedido)
+    assert plano.is_adset_budget_sharing_enabled is False
+
+
+def test_compartilhamento_ligado_e_recusado_localmente_sem_tocar_a_meta(monkeypatch) -> None:
+    """CONTRAPROVAS 3 e 4: `true` para antes da Meta, e o cliente HTTP nem nasce."""
+    monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
+    monkeypatch.setenv('META_VALIDATE_ONLY_ENABLED', '1')
+    monkeypatch.setattr(
+        trafego_meta_validacao, '_credencial_salva',
+        lambda *_: pytest.fail('nao deveria ler token para um plano recusado localmente'))
+
+    def _sem_rede(*_a: Any, **_k: Any):
+        pytest.fail('nenhuma chamada HTTP pode sair numa recusa local')
+
+    monkeypatch.setattr(trafego_meta_validacao.httpx, 'AsyncClient', _sem_rede)
+    resposta = _cliente().post('/api/trafego/meta/local/criacao/validar', json={
+        'confirmar_validate_only': True,
+        'plano': _plano_base(is_adset_budget_sharing_enabled=True),
+    })
+    assert resposta.status_code == 409
+    assert resposta.json()['detail']['codigo'] == (
+        'META_BUDGET_SHARING_REQUIRES_MULTI_ADSET_RECIPE')
+
+
+def test_contrato_recusa_true_em_vez_de_converter_para_false() -> None:
+    """CONTRAPROVA 3: recusa explícita, nunca conversão silenciosa.
+
+    Converter `true` em `false` faria o payload divergir da intenção aprovada e
+    o hash do plano deixaria de descrever o que o operador pediu.
+    """
+    pedido = trafego_meta_validacao.PedidoPlanoMetaPausado.model_validate(
+        _plano_base(is_adset_budget_sharing_enabled=True))
+    with pytest.raises(ErroDeNascimentoMeta) as erro:
+        trafego_meta_validacao._plano(pedido)
+    assert erro.value.codigo == 'META_BUDGET_SHARING_REQUIRES_MULTI_ADSET_RECIPE'
+    assert '4005' in str(erro.value) or 'lance' in str(erro.value)
+
+
+def _campanha_compilada() -> dict[str, Any]:
+    from app.trafego.meta_execucao.ativos import ReferenciasMetaResolvidas
+    from app.trafego.meta_execucao.compilador import compilar_plano_pausado
+    pedido = trafego_meta_validacao.PedidoPlanoMetaPausado.model_validate(_plano_base())
+    referencias = ReferenciasMetaResolvidas(
+        account_id='123456789', page_id='99887766',
+        image_hash='hashImagem_123456', instagram_actor_id=None,
+    )
+    compilado = compilar_plano_pausado(trafego_meta_validacao._plano(pedido), referencias)
+    campanha = next(op for op in compilado.operacoes if op.chave == 'campaign')
+    return dict(campanha.payload)
+
+
+def test_campanha_compilada_carrega_o_booleano_explicito_e_nenhum_lance() -> None:
+    """CONTRAPROVAS 5 e 6: o campo viaja explícito; o Campaign não ganha lance."""
+    campanha = _campanha_compilada()
+    # Explícito, nunca omitido: a ausência não é neutra do lado da Meta.
+    assert 'is_adset_budget_sharing_enabled' in campanha
+    assert campanha['is_adset_budget_sharing_enabled'] is False
+    # ⚠️ Corrigir a recusa 100/4005 movendo a estratégia de lance para o
+    # Campaign mudaria a semântica da receita aprovada. Não fizemos isso.
+    assert 'bid_strategy' not in campanha
+    assert 'daily_budget' not in campanha
+    assert 'lifetime_budget' not in campanha
+
+
+def test_form_urlencoded_manda_false_minusculo_como_a_graph_exige() -> None:
+    """CONTRAPROVA 2: `False` do Python vira `false`, não `False`."""
+    from app.trafego.meta_execucao.executor import _form
+    corpo = _form(_campanha_compilada())
+    assert corpo['is_adset_budget_sharing_enabled'] == 'false'
+    # `str(False)` daria 'False', que a Graph não lê como booleano.
+    assert corpo['is_adset_budget_sharing_enabled'] != 'False'
+    assert 'bid_strategy' not in corpo
+
+
+def test_recusa_da_meta_nao_vaza_token_nem_id_bruto() -> None:
+    """CONTRAPROVA 7: código, subcódigo e texto sobrevivem; segredo e id, não."""
+    from app.trafego.meta_execucao.executor import _texto_seguro_do_provedor
+    sujo = (
+        'Cannot use ad set budget sharing without a bid strategy. '
+        'account act_123456789 token Bearer EAAabcdefgh12345678 '
+        'campo is_adset_budget_sharing_enabled'
+    )
+    limpo = _texto_seguro_do_provedor(sujo)
+    assert 'EAAabcdefgh12345678' not in limpo
+    assert '123456789' not in limpo
+    assert 'act_••••6789' in limpo
+    # ⚠️ O nome do campo tem 31 caracteres e NÃO pode ser mascarado: é
+    # exatamente o que o operador precisa ler para consertar.
+    assert 'is_adset_budget_sharing_enabled' in limpo
+    assert 'bid strategy' in limpo

@@ -271,3 +271,82 @@ describe('Bancada de criação Meta — timeout não é recusa', () => {
     expect(alerta.textContent).not.toContain('não é uma recusa');
   });
 });
+
+// ---------------------------------------------------------------------------
+// RECUSA REAL 100/4005 — verba compartilhada travada e UM impedimento
+// ---------------------------------------------------------------------------
+describe('Bancada de criação Meta — recusa real 100/4005', () => {
+  it('mostra o compartilhamento como fato travado, sem toggle interativo', async () => {
+    abrir('orcamento');
+    await esperarAtivos();
+
+    // O interruptor deixou de existir nesta receita.
+    expect(screen.queryByRole('checkbox', {
+      name: /compartilhe verba entre conjuntos/i,
+    })).toBeNull();
+
+    // E o fato aparece travado, com a razão em linguagem de operador.
+    expect(screen.getByText(/Compartilhamento entre conjuntos: desativado/i)).toBeTruthy();
+    expect(screen.getByText(/único conjunto/i)).toBeTruthy();
+    expect(screen.getByText(/receita multiconjunto com estratégia de lance compatível/i))
+      .toBeTruthy();
+  });
+
+  it('continua enviando o booleano explícito como false, nunca omitindo', async () => {
+    abrir('orcamento');
+    await esperarAtivos();
+    await compilarPelaRevisao();
+    const enviado = api.compilarPlanoMeta.mock.calls[0][0];
+    expect('is_adset_budget_sharing_enabled' in enviado).toBe(true);
+    expect(enviado.is_adset_budget_sharing_enabled).toBe(false);
+  });
+
+  it('consolida uma recusa da Meta com três mensagens em UM impedimento', async () => {
+    const { PautadorApiError } = await import('@/lib/pautadorApi');
+    api.capacidadesCriacaoMeta.mockResolvedValue({
+      ok: true, api_version: 'v26.0', validate_only: 'ENABLED',
+      single_static: 'AVAILABLE', static_batch: 'AVAILABLE_UP_TO_10',
+      video_creative: 'BLOCKED_UNTIL_VIDEO_CONTRACT_PROVEN',
+      flexible_creative: 'BLOCKED_UNTIL_ASSET_FEED_SPEC_PROVEN',
+      adset_budget_sharing: 'BLOCKED_IN_SINGLE_ADSET_RECIPE',
+    });
+    // A recusa literal de 05/09/2026: título, mensagem de usuário e message.
+    api.validarPlanoMeta.mockRejectedValueOnce(new PautadorApiError(
+      'a Meta recusou campaign (código 100/4005): Estratégia de lance ausente '
+      + '— Não é possível usar o compartilhamento do orçamento do conjunto de '
+      + 'anúncios sem uma estratégia de lance.',
+      422,
+      {
+        codigo: 'META_REMOTE_VALIDATION_FAILED',
+        provedor: {
+          objeto: 'campaign', code: 100, error_subcode: 4005, type: 'OAuthException',
+          messages: [
+            'Estratégia de lance ausente',
+            'Não é possível usar o compartilhamento do orçamento do conjunto de anúncios sem uma estratégia de lance.',
+            'Invalid parameter',
+          ],
+        },
+      },
+    ));
+    abrir('revisao');
+    await esperarAtivos();
+    await compilarPelaRevisao();
+    fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
+
+    const alerta = await screen.findByRole('alert');
+    // ⚠️ O ponto do conserto: três explicações são UM incidente.
+    await waitFor(() => expect(alerta.textContent).toContain('1 impedimento'));
+    expect(alerta.textContent).not.toContain('impedimentos');
+    expect(alerta.querySelectorAll('li').length).toBe(1);
+
+    // Título carrega objeto, código e subcódigo.
+    expect(alerta.textContent).toContain('campaign');
+    expect(alerta.textContent).toContain('100/4005');
+    // Nenhuma explicação se perde.
+    expect(alerta.textContent).toContain('Estratégia de lance ausente');
+    expect(alerta.textContent).toContain('sem uma estratégia de lance');
+    expect(alerta.textContent).toContain('Invalid parameter');
+    // E o código que o operador copia continua lá.
+    expect(alerta.textContent).toContain('META_REMOTE_VALIDATION_FAILED');
+  });
+});

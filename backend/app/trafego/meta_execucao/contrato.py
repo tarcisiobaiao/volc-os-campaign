@@ -182,6 +182,29 @@ class PlanoMetaPausado:
                 "META_BUDGET_SHARING_INVALID",
                 "is_adset_budget_sharing_enabled precisa ser True ou False",
             )
+        # ⚠️ MEDIDO NA META, não inferido. Em 05/09/2026 o validate_only real
+        # recusou a campanha com código 100 / subcódigo 4005: "Não é possível
+        # usar o compartilhamento do orçamento do conjunto de anúncios sem uma
+        # estratégia de lance."
+        #
+        # A receita P0 tem UM conjunto, com orçamento e `bid_strategy` no
+        # AdSet e nenhuma estratégia no Campaign. Com um único conjunto,
+        # compartilhar orçamento não produz benefício operacional — e a
+        # correção que a Meta aceitaria (mover uma estratégia de lance para o
+        # Campaign) mudaria a semântica da receita aprovada. Então a receita
+        # fixa o compartilhamento em False, e o pedido de True é recusado AQUI,
+        # antes de qualquer chamada à Meta.
+        #
+        # A recusa é explícita de propósito: converter True em False em
+        # silêncio faria o payload divergir da intenção que o operador
+        # aprovou, e o hash do plano deixaria de descrever o que ele pediu.
+        if self.is_adset_budget_sharing_enabled:
+            raise ErroDeNascimentoMeta(
+                "META_BUDGET_SHARING_REQUIRES_MULTI_ADSET_RECIPE",
+                "esta receita tem um unico conjunto: a Meta exige estrategia de lance "
+                "no Campaign para compartilhar orcamento (codigo 100/4005), e adiciona-la "
+                "mudaria a receita aprovada",
+            )
         if not self.special_categories_confirmed:
             raise ErroDeNascimentoMeta(
                 "META_SPECIAL_CATEGORY_NOT_CONFIRMED",

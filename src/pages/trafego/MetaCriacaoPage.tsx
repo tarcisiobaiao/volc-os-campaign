@@ -186,34 +186,59 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
   }
   const corpo = (exc.corpo ?? {}) as {
     codigo?: string;
-    provedor?: { code?: string; error_subcode?: string; messages?: string[] };
+    provedor?: {
+      objeto?: string; code?: string; error_subcode?: string; messages?: string[];
+    };
   };
   const provedor = corpo.provedor;
+
   // Timeout não é recusa. Sem este ramo o operador lê "Nenhum detalhe
   // adicional foi devolvido" e conclui que a Meta reprovou o plano — quando na
   // verdade ninguém do outro lado respondeu, e o plano segue intacto.
-  const detalhe = corpo.codigo === 'META_VALIDATE_TIMEOUT'
-    ? 'A Meta não respondeu a tempo. Isto não é uma recusa: o plano não foi '
-      + 'julgado e nada foi criado, porque o pedido levava validate_only. '
-      + 'Pode clicar em validar de novo.'
-    : provedor?.code
-      ? `A Meta recusou com o código ${provedor.code}${provedor.error_subcode ? `/${provedor.error_subcode}` : ''}.`
-      : 'Nenhum detalhe adicional foi devolvido.';
-  const avisos: AvisoDoCockpit[] = [{
+  if (corpo.codigo === 'META_VALIDATE_TIMEOUT') {
+    return [{
+      codigo: corpo.codigo,
+      severidade: 'alta',
+      titulo: exc.message,
+      detalhe: 'A Meta não respondeu a tempo. Isto não é uma recusa: o plano não foi '
+        + 'julgado e nada foi criado, porque o pedido levava validate_only. '
+        + 'Pode clicar em validar de novo.',
+    }];
+  }
+
+  // ⚠️ UMA recusa da Meta é UM impedimento.
+  //
+  // Antes, cada linha de explicação virava um aviso próprio: a recusa 100/4005
+  // de 05/09/2026 chegou como `error_user_title`, `error_user_msg` e `message`,
+  // e o painel anunciou "4 impedimentos" para um único incidente. Contar
+  // explicações como impedimentos ensina o operador a achar que quatro coisas
+  // quebraram — e a procurar três consertos que não existem.
+  //
+  // Nenhum texto se perde: título carrega objeto, código e subcódigo; as
+  // explicações da Meta ficam agrupadas no detalhe, na ordem em que o backend
+  // as sanitizou.
+  if (provedor?.code) {
+    const explicacoes = (provedor.messages ?? [])
+      .map((m) => String(m ?? '').trim())
+      .filter(Boolean);
+    const objeto = provedor.objeto ? `${provedor.objeto} · ` : '';
+    const subcodigo = provedor.error_subcode ? `/${provedor.error_subcode}` : '';
+    return [{
+      codigo: corpo.codigo || `HTTP_${exc.status}`,
+      severidade: 'alta',
+      titulo: `A Meta recusou ${objeto}código ${provedor.code}${subcodigo}`,
+      detalhe: explicacoes.length
+        ? explicacoes.join(' · ')
+        : 'A Meta não devolveu explicação adicional.',
+    }];
+  }
+
+  return [{
     codigo: corpo.codigo || `HTTP_${exc.status}`,
     severidade: 'alta',
     titulo: exc.message,
-    detalhe,
+    detalhe: 'Nenhum detalhe adicional foi devolvido.',
   }];
-  for (const mensagem of provedor?.messages ?? []) {
-    if (mensagem && mensagem !== exc.message) {
-      avisos.push({
-        codigo: `META_${provedor?.code ?? 'MSG'}`, severidade: 'alta',
-        titulo: 'Explicação da Meta', detalhe: mensagem,
-      });
-    }
-  }
-  return avisos;
 }
 
 const MetaCriacaoPage: React.FC = () => {
@@ -259,6 +284,7 @@ const MetaCriacaoPage: React.FC = () => {
           videoMotivo: bloqueios.video_creative ?? null,
           flexivel: cap.flexible_creative === 'AVAILABLE',
           flexivelMotivo: bloqueios.flexible_creative ?? null,
+          budgetSharingMotivo: bloqueios.adset_budget_sharing ?? null,
         });
         if (inventario.contas.length === 1) {
           setDraft((atual) => ({ ...atual, accountRef: inventario.contas[0].referencia_opaca }));
@@ -442,7 +468,7 @@ const MetaCriacaoPage: React.FC = () => {
     { rotulo: 'Campanha', valor: draft.campaignName || null, fonte: 'você, agora' },
     { rotulo: 'Objetivo', valor: 'Tráfego para site', fonte: 'a receita provada' },
     { rotulo: 'Orçamento diário', valor: reaisParaMinor(draft.budgetBrl) > 0 ? `${formatarBrl(reaisParaMinor(draft.budgetBrl))} · no conjunto` : null, fonte: 'você, agora' },
-    { rotulo: 'Compartilhar verba entre conjuntos', valor: draft.budgetSharing ? 'Sim · até 20%' : 'Não', fonte: 'você, agora' },
+    { rotulo: 'Compartilhar verba entre conjuntos', valor: 'Não · receita de conjunto único', fonte: 'a Meta, na validação real' },
     { rotulo: 'Advantage+ público', valor: draft.advantageAudience ? 'Aceito' : 'Recusado', fonte: 'você, agora' },
     { rotulo: 'Estrutura', valor: `1 campanha · 1 conjunto · ${emitidas.length} criativo${emitidas.length === 1 ? '' : 's'} · ${emitidas.length} anúncio${emitidas.length === 1 ? '' : 's'}`, fonte: 'o compilador' },
     { rotulo: 'Estado ao nascer', valor: 'Pausada em todos os níveis veiculáveis', fonte: 'a receita provada' },
@@ -531,16 +557,29 @@ const MetaCriacaoPage: React.FC = () => {
               <Input id="meta-start" type="datetime-local" value={draft.startTime}
                 onChange={(e) => mudar('startTime', e.target.value)} />
             </Campo>
-            <Escolha marcado={draft.budgetSharing} onChange={(v) => mudar('budgetSharing', v)}
-              titulo="Permitir que a Meta compartilhe verba entre conjuntos desta campanha">
-              Desativado, cada conjunto preserva integralmente a própria verba. Ativado, a Meta pode
-              mover até 20% do orçamento para outro conjunto elegível da mesma campanha. Esta escolha
-              é obrigatória quando a verba fica no conjunto, e não é o mesmo que orçamento
-              inteligente de campanha — que esta receita não usa.
-            </Escolha>
+            {/* ⚠️ Não é mais uma escolha. Em 05/09/2026 a validação real na Meta
+                recusou o compartilhamento ligado com o código 100/4005 — ele
+                exige estratégia de lance no Campaign, e esta receita mantém a
+                estratégia no conjunto. Com um único conjunto o compartilhamento
+                também não produziria benefício. O campo continua viajando
+                explícito como `false`; ver `contrato.py`, que RECUSA `true` em
+                vez de convertê-lo em silêncio. */}
+            <div className="rounded-lg border border-border bg-muted/20 p-3 md:col-span-2">
+              <strong className="block text-sm text-foreground">
+                Compartilhamento entre conjuntos: desativado
+              </strong>
+              <p className="mt-1 max-w-[72ch] text-sm leading-relaxed text-pretty text-muted-foreground">
+                Esta campanha possui um único conjunto. O compartilhamento ficará disponível em uma
+                receita multiconjunto com estratégia de lance compatível.
+                {capacidades.budgetSharingMotivo
+                  ? ` ${capacidades.budgetSharingMotivo}`
+                  : ''}
+              </p>
+            </div>
           </div>
           <BlocoDeEvidencia titulo="Como a verba é aplicada" tom="info">
             <LinhaDeFato rotulo="Onde a verba mora" valor="No conjunto de anúncios" fonte="a receita provada" />
+            <LinhaDeFato rotulo="Compartilhamento entre conjuntos" valor="Desativado" fonte="a Meta, na validação real" />
             <LinhaDeFato rotulo="Lance" valor="Maior volume dentro da verba, sem teto de lance" fonte="a receita provada" />
             <LinhaDeFato rotulo="Valor enviado" valor={reaisParaMinor(draft.budgetBrl) > 0 ? `${reaisParaMinor(draft.budgetBrl)} centavos` : null} fonte="o compilador" ausencia="ainda não informado" />
           </BlocoDeEvidencia>

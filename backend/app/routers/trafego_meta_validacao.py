@@ -136,8 +136,16 @@ def _plano(payload: PedidoPlanoMetaPausado) -> PlanoMetaPausado:
 
 async def _compilar(
     payload: PedidoPlanoMetaPausado,
+    plano: PlanoMetaPausado,
     segredo: SegredoEfemero,
 ) -> PlanoCompiladoMeta:
+    """Resolve os ativos da conta e compila o plano JÁ validado.
+
+    ⚠️ Recebe o plano pronto em vez de construí-lo. O contrato de
+    `PlanoMetaPausado` é puro e não precisa de segredo nenhum; validá-lo antes
+    de abrir o Keychain faz um plano recusável — `true` no compartilhamento de
+    verba, por exemplo — parar sem que o token seja sequer lido.
+    """
     async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
         asset_refs = [item.asset_ref for item in payload.variations] or [payload.asset_ref]
         referencias = await ResolvedorAtivosMeta(cliente).resolver_lote(
@@ -146,7 +154,7 @@ async def _compilar(
             asset_refs=asset_refs,
             segredo=segredo,
         )
-    return compilar_plano_pausado(_plano(payload), referencias)
+    return compilar_plano_pausado(plano, referencias)
 
 
 @router.get("/capacidades")
@@ -163,6 +171,9 @@ async def capacidades(
         "read_assets": "AVAILABLE_WITH_LOCAL_KEYCHAIN",
         "single_static": "AVAILABLE",
         "static_batch": "AVAILABLE_UP_TO_10",
+        # Capacidade preservada como planejada, fechada NESTA receita. Não é
+        # "não existe": é "não pertence a uma receita de conjunto único".
+        "adset_budget_sharing": "BLOCKED_IN_SINGLE_ADSET_RECIPE",
         "video_creative": "BLOCKED_UNTIL_VIDEO_THUMBNAIL_CONTRACT_PROVEN",
         "video_inventory": "AVAILABLE_READ_ONLY",
         "flexible_creative": "BLOCKED_UNTIL_ASSET_FEED_SPEC_PROVEN",
@@ -187,6 +198,14 @@ async def capacidades(
                 "is_dynamic_creative vive no conjunto. Falta prova oficial de como a Página "
                 "viaja junto do asset_feed_spec: nenhum exemplo da Meta mostra "
                 "object_story_spec e asset_feed_spec no mesmo criativo."
+            ),
+            "adset_budget_sharing": (
+                "Esta campanha possui um único conjunto. Em 05/09/2026 a validação real "
+                "recusou o compartilhamento com o código 100/4005: a Meta exige uma "
+                "estratégia de lance no Campaign para compartilhar orçamento entre "
+                "conjuntos, e esta receita mantém a estratégia no conjunto. O "
+                "compartilhamento ficará disponível em uma receita multiconjunto com "
+                "estratégia de lance compatível."
             ),
             "validate_only": (
                 "A validação remota está fechada neste servidor. Um administrador precisa "
@@ -264,7 +283,9 @@ async def compilar(
 ) -> dict[str, Any]:
     _exigir_host_local(request)
     try:
-        compilado = await _compilar(payload, SegredoEfemero(_credencial_salva(quem).token))
+        plano = _plano(payload)
+        compilado = await _compilar(
+            payload, plano, SegredoEfemero(_credencial_salva(quem).token))
         return {"ok": True, "plano": compilado.publico(), "efeito_externo": "NENHUM"}
     except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
         raise _erro(exc) from None
@@ -287,9 +308,12 @@ async def validar(
             "codigo": "META_VALIDATE_ONLY_BLOCKED",
             "mensagem": "validate_only Meta permanece fechado neste servidor",
         })
-    segredo = SegredoEfemero(_credencial_salva(quem).token)
     try:
-        plano = await _compilar(payload.plano, segredo)
+        # O contrato do plano é puro. Ele julga primeiro, e só um plano que
+        # passa chega perto do Keychain ou da rede.
+        pedido = _plano(payload.plano)
+        segredo = SegredoEfemero(_credencial_salva(quem).token)
+        plano = await _compilar(payload.plano, pedido, segredo)
         autorizacao = AutorizacaoMeta(
             plano_sha256=plano.plano_sha256,
             ator=quem.sub,

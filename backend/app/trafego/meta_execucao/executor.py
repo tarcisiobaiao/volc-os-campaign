@@ -439,6 +439,12 @@ class ExecutorMetaPausado:
                 criacao_descartada=(
                     recusa_da_meta and 400 <= resposta.status_code < 500),
                 detalhe_provedor={
+                    # A tela monta o título com objeto + código + subcódigo. Sem
+                    # este campo ela teria que extrair o objeto por regex da
+                    # frase traduzida — quebraria no dia em que a frase mudasse.
+                    # `chave` já viaja na mensagem e é vocabulário fechado mais,
+                    # no lote, a `variation_key` validada pelo contrato.
+                    "objeto": operacao.chave,
                     "code": codigo,
                     "error_subcode": subcodigo,
                     "type": _texto_seguro_do_provedor(

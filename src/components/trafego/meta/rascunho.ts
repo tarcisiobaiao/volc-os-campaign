@@ -57,6 +57,11 @@ export interface CapacidadesDaBancada {
   videoMotivo: string | null;
   flexivel: boolean;
   flexivelMotivo: string | null;
+  /** Causa declarada pelo servidor para o compartilhamento de verba entre
+   *  conjuntos estar fechado NESTA receita. A capacidade segue planejada; o
+   *  que não existe é a escolha do operador dentro de uma receita de conjunto
+   *  único — a Meta recusou 100/4005 na validação real de 05/09/2026. */
+  budgetSharingMotivo: string | null;
 }
 
 export const CAPACIDADES_FECHADAS: CapacidadesDaBancada = {
@@ -66,6 +71,7 @@ export const CAPACIDADES_FECHADAS: CapacidadesDaBancada = {
   videoMotivo: null,
   flexivel: false,
   flexivelMotivo: null,
+  budgetSharingMotivo: null,
 };
 
 /** Converte a digitação do operador em centavos, sem inventar cem vezes a verba.
