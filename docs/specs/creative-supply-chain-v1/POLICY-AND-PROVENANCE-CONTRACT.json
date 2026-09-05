@@ -1,0 +1,49 @@
+{
+  "schema": "VolcCreativePolicyContract.v1",
+  "artefato": "POLICY-AND-PROVENANCE-CONTRACT.json",
+  "versao": "1.0.0",
+  "base_factual": {"commit": "884393b0e99b5ee403a6f38e1e4225012705f942", "escrito_em": "2026-09-05"},
+  "motivacao": "Incidente anterior: imagem de LP com a marca CAIXA num envelope chegou ao ar; o portao de destino audita texto e links (backend/app/landing_policy/varredura.py) e nenhum contexto inspeciona pixels (ASIS-25, ASIS-26). Politicas oficiais: EV-POL-GADS-01 ('Make it seem like you're supported by another brand, organization or government entity when you're not' — suspensao imediata), EV-POL-META-01/02.",
+  "principios": [
+    "O gate roda sobre a IMAGEM FINAL (bytes relidos do storage) e sobre a copy; o prompt e insumo, nunca prova.",
+    "A decisao e uma funcao deterministica sobre achados gravados. Detectores nao deterministicos (classificador visual) so ADICIONAM achados; nunca limpam.",
+    "Ausencia de detector, erro ou timeout = GATE_UNAVAILABLE = bloqueio (fail-closed).",
+    "Autorizacao de marca de terceiro so por referencia do Cofre (authorization_ref); texto livre e recusado.",
+    "Nenhum exemplo exportado contem nome de cliente, id ou dado sensivel."
+  ],
+  "regras": [
+    {"id": "POLICY-01", "nome": "Lexico de identidade de terceiro (deterministico, versionado)", "entrada": "prompt/insumo (quando existir), copy (message/headline/description), texto extraido por OCR da imagem final, nome de arquivo", "mecanismo": "arquivo versionado backend/app/criativo/politica/lexico_identidade.v1.json com classes: BANCOS (nomes de bancos e siglas), ORGAOS_PUBLICOS (governo, gov.br, INSS, Receita Federal, Caixa Economica, FGTS-como-orgao), PLATAFORMAS (redes sociais, marketplaces, apps de pagamento), EMPRESAS_CONHECIDAS (lista curada), TERMOS_DE_AFILIACAO ('oficial', 'liberado pelo governo', 'parceiro', 'autorizado por'). Match por normalizacao NFKD + casefold + fronteiras de palavra; sigla so com maiusculas. Reaproveita listas de backend/app/landing_policy/varredura.py:1403-1463 e volc_ads/campanha/limites.yaml:103-123 por importacao, nao copia.", "saida": "achados {classe, termo_normalizado, origem: prompt|copy|ocr|filename, posicao}", "efeito": "qualquer achado => THIRD_PARTY_IDENTITY_UNVERIFIED, salvo authorization_ref valido para AQUELA classe/termo (POLICY-03). Identidade PROPRIA (identity_ref do Cofre) e allowlist: o proprio nome/logo do site nunca e terceiro."},
+    {"id": "POLICY-02", "nome": "Inspecao ampliada da imagem final", "entrada": "bytes com content_sha256 VERIFIED_OK", "mecanismo": "(a) OCR deterministico (ferramenta e versao gravadas) sobre a imagem inteira E sobre uma grade de tiles 3x3 com ampliacao 2x (o texto do envelope do incidente era pequeno); (b) deteccao de logos/marcas por classificador visual com saida estruturada {rotulo, confianca, bbox} e limiar versionado; (c) deteccao de classes visuais sensiveis: uniforme, documento/carteira, tela de app, envelope/carta timbrada, fachada com letreiro, cartao bancario, selo/brasao — mesma saida estruturada; (d) para video: poster + frames amostrados a cada 1000 ms (teto 60 frames) + faixa de audio transcrita quando houver (transcricao e detector nao deterministico: so adiciona).", "saida": "achados com detector, versao, confianca, bbox, tile; hash dos bytes inspecionados == content_sha256 (senao recibo invalido)", "efeito": "achado de logo/marca/orgao ou classe sensivel com confianca >= limiar => THIRD_PARTY_IDENTITY_UNVERIFIED; abaixo do limiar => achado 'baixo' registrado e exibido, sem bloquear; texto OCR passa por POLICY-01."},
+    {"id": "POLICY-03", "nome": "Autorizacao por referencia", "entrada": "provenance.rights.authorization_ref", "mecanismo": "referencia cofre:autorizacao:* resolvida no Cofre (v13): registro com dono, marca/entidade autorizada (classe + termo canonico), escopo (canais), validade, evidencia (documento no Cofre por referencia). A autorizacao cobre APENAS os termos/marcas listados nela.", "saida": "authorization_match por achado", "efeito": "achados cobertos => THIRD_PARTY_IDENTITY_AUTHORIZED; qualquer achado nao coberto => permanece UNVERIFIED. Expiracao da autorizacao => expires_at do item e STALE depois."},
+    {"id": "POLICY-04", "nome": "Direitos e proveniencia insuficientes", "entrada": "provenance.kind, rights.kind, generation_receipt_ref, nature", "mecanismo": "tabela: GENERATED com recibo => OWN_GENERATION ok; HUMAN_UPLOAD sem license_ref/authorization_ref => rights UNKNOWN; STOCK exige license_ref; PROVIDER_LIBRARY sem bytes => nao avaliavel; OBSERVED_EXTERNAL => nao avaliavel ate importacao; nature != producao => nunca midia paga.", "saida": "policy_state BLOCKED_BY_POLICY:RIGHTS_UNKNOWN | :NATURE_NOT_PRODUCTION | :NOT_INSPECTABLE", "efeito": "bloqueio de midia paga; organico segue regra propria (fase posterior)."},
+    {"id": "POLICY-05", "nome": "Estado THIRD_PARTY_IDENTITY_UNVERIFIED e publicacao paga", "entrada": "policy_state", "mecanismo": "SUP-INV-02: lifecycle POLICY_BLOCKED; reserva recusada com POLICY_BLOCKED:<codigo>; o engine nao consegue compilar com um item bloqueado porque a reserva falha ANTES do plano; a UI mostra o achado com bbox/tile e a acao 'registrar autorizacao no Cofre' ou 'gerar outra peca'. Aprovacao humana NAO limpa o estado; so um novo policy_receipt (reavaliacao apos authorization_ref ou nova peca).", "saida": "bloqueio verificavel", "efeito": "o sistema nao depende de o operador perceber a marca."},
+    {"id": "POLICY-06", "nome": "Prompt que pede semelhanca com marca protegida", "entrada": "insumo de geracao antes de chamar o motor", "mecanismo": "POLICY-01 sobre o prompt + padroes 'parecido com|igual ao|no estilo do|inspirado em' seguido de termo do lexico ou de nome proprio capitalizado", "saida": "recusa pre-geracao com codigo PROMPT_THIRD_PARTY_LIKENESS", "efeito": "nao gasta provider; o item nasce REQUESTED com blocked_reasons; o operador reescreve. A inspecao pos-geracao (POLICY-02) continua obrigatoria mesmo quando o prompt passa."},
+    {"id": "POLICY-07", "nome": "Search assets: overlay e texto", "entrada": "OCR e deteccao de overlay/logo", "mecanismo": "qualquer texto ou logo detectado torna o item INELIGIBLE para GOOGLE_SEARCH_ASSETS (EV-GADS-08); nao e bloqueio de politica de terceiro, e elegibilidade de canal", "saida": "channel_eligibility.GOOGLE_SEARCH_ASSETS = INELIGIBLE:TEXT_OVERLAY_DETECTED", "efeito": "sem impacto nos demais canais"},
+    {"id": "POLICY-08", "nome": "Hero image de LP", "entrada": "imagem gerada por FunnelForge antes de _upload_hero_and_rewrite", "mecanismo": "a hero entra como item LP_HERO da cadeia (demanda emitida pelo Redator); a publicacao da LP exige policy_receipt_ref CLEAR|AUTHORIZED; o portao de destino pago inclui o hash da hero no fingerprint do recibo paid_destination_ready", "saida": "publicacao bloqueada sem recibo", "efeito": "fecha o caminho do incidente (ASIS-26); ver WBS-P03"}
+  ],
+  "policy_receipt": {
+    "id_formato": "cpr_<24 hex>",
+    "campos": ["policy_receipt_ref", "asset_ref", "content_sha256_inspecionado", "copy_sha256 (ou null)", "identity_ref", "lexico_versao", "detectores[] {nome, versao, deterministico: bool, resultado: PASS|FINDINGS|ERROR}", "achados[] {classe, termo|rotulo, origem, confianca|null, bbox|null, tile|null, coberto_por_autorizacao: bool}", "authorization_refs_consultadas[]", "decisao: CLEAR|THIRD_PARTY_IDENTITY_UNVERIFIED|THIRD_PARTY_IDENTITY_AUTHORIZED|BLOCKED_BY_POLICY|GATE_UNAVAILABLE", "motivos[] (codigos fechados)", "avaliado_em", "avaliador: sistema", "assinatura_hmac", "fn_decisao_versao"],
+    "imutabilidade": "append-only; reavaliacao gera novo recibo e o anterior fica superseded_by; um item referencia sempre o recibo mais recente",
+    "invalidacao": "qualquer mudanca em content_sha256, copy_sha256, identity_ref, lexico_versao (quando a mudanca do lexico afeta a classe) ou expiracao da autorizacao exige novo recibo; a aprovacao humana esta vinculada ao recibo (CSC-DEC-09)",
+    "saida_publica": "todos os campos acima exceto o texto OCR completo (so termos casados) e o prompt; bbox e publico porque o operador precisa ver onde esta a marca"
+  },
+  "exemplo_sanitizado": {
+    "policy_receipt_ref": "cpr_000000000000000000000002",
+    "asset_ref": "csa_000000000000000000000002",
+    "content_sha256_inspecionado": "6666666666666666666666666666666666666666666666666666666666666666",
+    "copy_sha256": null,
+    "identity_ref": "cofre:identidade:exemplo-site",
+    "lexico_versao": "v1",
+    "detectores": [{"nome": "ocr-tiles", "versao": "1.0", "deterministico": true, "resultado": "FINDINGS"}, {"nome": "logo-classifier", "versao": "m-2026-09", "deterministico": false, "resultado": "FINDINGS"}],
+    "achados": [{"classe": "BANCOS", "termo": "<nome-de-banco-publico>", "origem": "ocr", "confianca": null, "bbox": [812, 1290, 1004, 1338], "tile": "2x1@2x", "coberto_por_autorizacao": false}, {"classe": "OBJETO_SENSIVEL", "rotulo": "envelope_timbrado", "origem": "classifier", "confianca": 0.91, "bbox": [700, 1200, 1080, 1400], "tile": null, "coberto_por_autorizacao": false}],
+    "authorization_refs_consultadas": [],
+    "decisao": "THIRD_PARTY_IDENTITY_UNVERIFIED",
+    "motivos": ["THIRD_PARTY_MARK:BANCOS", "SENSITIVE_OBJECT:envelope_timbrado"],
+    "avaliado_em": "2026-09-05T12:15:00Z",
+    "avaliador": "sistema",
+    "assinatura_hmac": "<hmac>",
+    "fn_decisao_versao": "1"
+  },
+  "fora_de_escopo_declarado": ["moderacao de conteudo sensivel alem de identidade de terceiro (saude, financas) — continua em limites.yaml/politica e no portao de destino", "verificacao de veracidade de alegacoes na copy"]
+}

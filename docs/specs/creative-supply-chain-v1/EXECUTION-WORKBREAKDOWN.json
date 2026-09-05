@@ -1,0 +1,649 @@
+{
+  "schema": "VolcExecutionWorkbreakdown.v1",
+  "artefato": "EXECUTION-WORKBREAKDOWN.json",
+  "versao": "1.0.0",
+  "principio": "80/20 em lotes pequenos; o primeiro canario estatico (WBS-M01) nao espera video (WBS-M03) nem flexivel (WBS-M04).",
+  "ordem_recomendada_validada": [
+    "WBS-C01",
+    "WBS-C02",
+    "WBS-S01",
+    "WBS-P01",
+    "WBS-B01",
+    "WBS-M01",
+    "WBS-S02",
+    "WBS-P03",
+    "WBS-G01",
+    "WBS-M02",
+    "WBS-U01",
+    "WBS-M03",
+    "WBS-G02",
+    "WBS-M04",
+    "WBS-D01",
+    "WBS-A01"
+  ],
+  "primeiros_cinco_lotes": [
+    {
+      "lote": 1,
+      "tasks": [
+        "WBS-C01",
+        "WBS-C02"
+      ]
+    },
+    {
+      "lote": 2,
+      "tasks": [
+        "WBS-S01",
+        "WBS-P01"
+      ]
+    },
+    {
+      "lote": 3,
+      "tasks": [
+        "WBS-B01"
+      ]
+    },
+    {
+      "lote": 4,
+      "tasks": [
+        "WBS-M01",
+        "WBS-P03"
+      ]
+    },
+    {
+      "lote": 5,
+      "tasks": [
+        "WBS-S02",
+        "WBS-G01",
+        "WBS-M02"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "WBS-C01",
+      "priority": "P0",
+      "objective": "Contrato compartilhado: schemas, validadores, invariantes, hashes e referencias opacas",
+      "owner_domain": "creative_supply_chain",
+      "exact_files": [
+        "backend/app/criativo/suprimento/contrato.py (novo)",
+        "backend/app/criativo/suprimento/hashes.py (novo)",
+        "backend/tests/test_suprimento_contrato.py (novo)",
+        "docs/specs/creative-supply-chain-v1/ASSET-*.schema.json (fonte)"
+      ],
+      "dependencies": [],
+      "input_contract": "AssetDemandManifest JSON",
+      "output_contract": "AssetSupplyManifest JSON + erros com codigos fechados",
+      "acceptance_criteria": [
+        "schemas draft 2020-12 validam os exemplos sanitizados",
+        "DEM-INV-01..05 e SUP-INV-01..10 implementados como funcoes puras",
+        "asset_ref/copy_sha256/item_sha256/supply_sha256 reproduziveis byte a byte",
+        "string com id bruto/caminho/URL e recusada"
+      ],
+      "minimum_tests": [
+        "golden dos dois exemplos",
+        "tabela de invariantes (cada INV com caso positivo e negativo)",
+        "hash estavel entre reordenacoes de chaves"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [],
+      "rollback_or_reconciliation": "n/a (modulo puro)",
+      "risk": "baixo",
+      "estimated_complexity": "S",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "testes verdes; nenhum import de httpx/supabase no modulo; OpenAPI inalterado"
+    },
+    {
+      "task_id": "WBS-C02",
+      "priority": "P0",
+      "objective": "Registro unico de envelopes por provider_constraints (Google via requisitos.yaml; Meta via EV-META-19/20/21) e elegibilidade por canal/placement",
+      "owner_domain": "creative_supply_chain",
+      "exact_files": [
+        "backend/app/criativo/suprimento/envelopes.py (novo)",
+        "backend/app/criativo/suprimento/envelopes_meta.v1.yaml (novo, dados)",
+        "backend/tests/test_suprimento_envelopes.py (novo)"
+      ],
+      "dependencies": [
+        "WBS-C01"
+      ],
+      "input_contract": "item medido (mime,w,h,duration) + canal + placement",
+      "output_contract": "channel_eligibility + placement[] + technical_state",
+      "acceptance_criteria": [
+        "cada numero cita requirement_table_ref",
+        "UNKNOWN quando a tabela nao cobre; nunca INELIGIBLE por ausencia",
+        "ratio com tolerancia por provedor (0.01 Google; 0.03 Meta Feed; 0.01 Stories)"
+      ],
+      "minimum_tests": [
+        "tabela de casos por (canal, ratio, dimensao) incluindo bordas +-1%/3%",
+        "teste que compara envelopes Google com requisitos.yaml (sem segunda verdade)"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [],
+      "rollback_or_reconciliation": "n/a",
+      "risk": "baixo",
+      "estimated_complexity": "S",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "dominio.FORMATOS e destinos.ENVELOPES marcados como derivados (sem duplicar numeros) — refactor em lote separado"
+    },
+    {
+      "task_id": "WBS-S01",
+      "priority": "P0",
+      "objective": "Preview seguro de imagem por preview_ref e URL assinada curta; preview simulado por placement com safe zones",
+      "owner_domain": "creative_supply_chain",
+      "exact_files": [
+        "backend/app/routers/criativos_suprimento.py (novo: GET /api/criativos/suprimento/preview/{preview_ref})",
+        "backend/app/criativo/suprimento/preview.py (novo)",
+        "src/components/criativos/comum/PreviewPorPlacement.tsx (novo)",
+        "backend/tests/test_suprimento_preview.py (novo)"
+      ],
+      "dependencies": [
+        "WBS-C01",
+        "WBS-C02"
+      ],
+      "input_contract": "preview_ref",
+      "output_contract": "URL assinada TTL 300 s + molduras",
+      "acceptance_criteria": [
+        "URL nunca persistida nem devolvida em listagens",
+        "rota exige exigir_usuario + tenant",
+        "moldura Stories aplica safe zone EV-META-20",
+        "rotulo 'simulado' obrigatorio"
+      ],
+      "minimum_tests": [
+        "expiracao",
+        "tenant cruzado 404",
+        "nenhum caminho na resposta (padrao test_nenhum_caminho_de_disco_vaza_para_a_tela)"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [],
+      "rollback_or_reconciliation": "n/a",
+      "risk": "baixo",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "rota + componente + testes; a11y (alt derivado, foco)"
+    },
+    {
+      "task_id": "WBS-P01",
+      "priority": "P0",
+      "objective": "Gate de politica: lexico versionado + OCR em tiles + classificador (so adiciona) + policy_receipt assinado; estado THIRD_PARTY_IDENTITY_UNVERIFIED",
+      "owner_domain": "creative_policy_gate",
+      "exact_files": [
+        "backend/app/criativo/politica/{lexico_identidade.v1.json,lexico.py,inspecao.py,recibo.py,gate.py} (novos)",
+        "backend/tests/test_criativo_politica_gate.py (novo)",
+        "backend/tests/fixtures/politica/*.png (sanitizadas, sinteticas)"
+      ],
+      "dependencies": [
+        "WBS-C01"
+      ],
+      "input_contract": "bytes VERIFIED_OK + copy + identity_ref + authorization_refs",
+      "output_contract": "policy_receipt (cpr_) + policy_state",
+      "acceptance_criteria": [
+        "decisao deterministica sobre achados gravados",
+        "detector indisponivel => GATE_UNAVAILABLE (bloqueio)",
+        "fixture sintetica com texto pequeno de banco em envelope e detectada no tile 2x",
+        "identidade propria (identity_ref) nunca e terceiro",
+        "authorization_ref cobre so os termos listados"
+      ],
+      "minimum_tests": [
+        "10 fixtures sinteticas (positivas/negativas)",
+        "recibo HMAC forjado recusado",
+        "reavaliacao gera novo recibo e supersede"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [
+        "CRIATIVO_POLICY_GATE_STRICT=1 (default 1; 0 so em teste)"
+      ],
+      "rollback_or_reconciliation": "recibos append-only; sem rollback de decisao",
+      "risk": "medio (falsos positivos bloqueiam)",
+      "estimated_complexity": "L",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "gate roda antes de AWAITING_HUMAN_REVIEW em todo item; taxa de bloqueio observavel"
+    },
+    {
+      "task_id": "WBS-S02",
+      "priority": "P1",
+      "objective": "Storage remoto privado (bucket criativos) escolhido por configuracao + adapter Supabase armado com preflight",
+      "owner_domain": "creative_workbench",
+      "exact_files": [
+        "backend/app/criativo/armazenamento.py:681-690 (armazenamento_padrao por config)",
+        "backend/app/config.py (CRIATIVO_STORAGE=local|supabase)",
+        "backend/tests/test_criativo_storage_verificado.py (extensao)"
+      ],
+      "dependencies": [],
+      "input_contract": "bytes",
+      "output_contract": "chave canonica + VERIFIED_OK por releitura",
+      "acceptance_criteria": [
+        "bucket ausente = recusa fechada",
+        "escolha por config sem fallback silencioso",
+        "releitura confere bytes e sha256"
+      ],
+      "minimum_tests": [
+        "preflight 404 bucket",
+        "mismatch terminal"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "criacao do bucket no Supabase oficial (infra) — autorizacao externa",
+      "feature_flags": [
+        "CRIATIVO_STORAGE"
+      ],
+      "rollback_or_reconciliation": "desarmar por config; objetos remotos ficam orfaos mas rastreados por chave",
+      "risk": "medio",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [
+        "autorizacao para criar bucket"
+      ],
+      "definition_of_done": "canario sobe/relê um objeto no bucket privado com recibo"
+    },
+    {
+      "task_id": "WBS-B01",
+      "priority": "P1",
+      "objective": "Lote estatico: N itens independentes com falha parcial explicita; dedup por conteudo/intencao; ledger de reserva/consumo",
+      "owner_domain": "creative_supply_chain",
+      "exact_files": [
+        "backend/app/criativo/suprimento/{lote,reserva}.py (novos)",
+        "supabase/migrations/v16_01_suprimento_criativo.sql (novo: criativo_supply_item, criativo_reserva, criativo_consumo, criativo_provider_registration, criativo_evento_eixo)",
+        "backend/tests/test_suprimento_lote_reserva.py (novo)"
+      ],
+      "dependencies": [
+        "WBS-C01",
+        "WBS-P01"
+      ],
+      "input_contract": "demanda + itens",
+      "output_contract": "supply manifest + reservas",
+      "acceptance_criteria": [
+        "item falho permanece com blocked_reasons",
+        "reserva idempotente (demand_id,slot_key,variation_key,asset_ref) expira em 60 min",
+        "consumo nunca devolve id bruto",
+        "lifecycle derivado por funcao pura versionada"
+      ],
+      "minimum_tests": [
+        "tabela de derivacao (14 estados)",
+        "reserva duplicada converge",
+        "expiracao",
+        "RLS/grants como v11_03"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "migration em cluster descartavel; aplicacao no oficial e ato separado",
+      "feature_flags": [
+        "CRIATIVO_SUPRIMENTO_ENABLED"
+      ],
+      "rollback_or_reconciliation": "rollback SQL versionado; reservas expiram sozinhas",
+      "risk": "medio",
+      "estimated_complexity": "L",
+      "parallelizable": false,
+      "blocked_by": [],
+      "definition_of_done": "ciclo aplicar->operar->reverter em Postgres descartavel"
+    },
+    {
+      "task_id": "WBS-M01",
+      "priority": "P1",
+      "objective": "Demanda Meta: engine emite AssetDemandManifest a partir do plano P0 e consome supply (asset_ref+copy_ref) — integracao com o primeiro canario PAUSED sem esperar video/flexivel",
+      "owner_domain": "meta_engine (decisao conjunta OCC-01/04/05/06)",
+      "exact_files": [
+        "backend/app/trafego/meta_execucao/demanda.py (novo)",
+        "backend/app/routers/trafego_meta_validacao.py (compilar aceita asset_ref csa_ via reserva)",
+        "backend/tests/test_meta_static_batch.py (extensao)"
+      ],
+      "dependencies": [
+        "WBS-C01",
+        "WBS-B01",
+        "WBS-P01"
+      ],
+      "input_contract": "PedidoPlanoMetaPausado",
+      "output_contract": "AssetDemandManifest; plano com supply_sha256",
+      "acceptance_criteria": [
+        "supply_sha256 entra na materia do plano_sha256 (OCC-04)",
+        "biblioteca da conta so via item gateado (OCC-01)",
+        "zero payload Meta no navegador"
+      ],
+      "minimum_tests": [
+        "plano diverge quando copy muda",
+        "reserva falha => 409 antes do Keychain"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "validate_only real (flag META_VALIDATE_ONLY_ENABLED) — nenhuma criacao",
+      "feature_flags": [
+        "META_VALIDATE_ONLY_ENABLED"
+      ],
+      "rollback_or_reconciliation": "nenhum objeto criado; reserva expira",
+      "risk": "medio",
+      "estimated_complexity": "M",
+      "parallelizable": false,
+      "blocked_by": [
+        "OCC-01",
+        "OCC-04",
+        "OCC-06"
+      ],
+      "definition_of_done": "validate_only real aceita plano com item AVAILABLE gateado; canario PAUSED segue as flags do spec Meta"
+    },
+    {
+      "task_id": "WBS-M02",
+      "priority": "P2",
+      "objective": "Adapter Meta de registro de asset (adimages bytes base64 -> image_hash privado) com idempotencia e AMBIGUOUS",
+      "owner_domain": "creative_supply_chain.adapters",
+      "exact_files": [
+        "backend/app/criativo/suprimento/adapters/meta_assets.py (novo)",
+        "backend/tests/test_suprimento_meta_assets.py (novo, transporte hermetico)"
+      ],
+      "dependencies": [
+        "WBS-B01"
+      ],
+      "input_contract": "item AVAILABLE + account_ref",
+      "output_contract": "provider_registration REGISTERED_VERIFIED apos leitura por hash",
+      "acceptance_criteria": [
+        "image_hash nunca sai do processo",
+        "idempotencia (tenant,provider,account_ref,content_sha256)",
+        "timeout => AMBIGUOUS; leitura fecha"
+      ],
+      "minimum_tests": [
+        "duplo POST converge",
+        "timeout nao repete"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "upload real em conta de teste (ato autorizado)",
+      "feature_flags": [
+        "META_UPLOAD_ASSET_ENABLED"
+      ],
+      "rollback_or_reconciliation": "imagem em uso nao e apagavel (EV-META-07): reconciliacao por leitura",
+      "risk": "medio",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [
+        "OCC-02",
+        "OCC-08"
+      ],
+      "definition_of_done": "leitura AdImage por hash confirma width/height iguais aos medidos"
+    },
+    {
+      "task_id": "WBS-M03",
+      "priority": "P2",
+      "objective": "Video Meta: ffprobe + poster deterministico + gate sobre frames + advideos resumable + thumbnail por image_hash",
+      "owner_domain": "creative_supply_chain.adapters",
+      "exact_files": [
+        "backend/app/criativo/suprimento/video.py (novo)",
+        "backend/app/criativo/suprimento/adapters/meta_assets.py (advideos)",
+        "backend/tests/test_suprimento_video.py"
+      ],
+      "dependencies": [
+        "WBS-M02",
+        "WBS-P01"
+      ],
+      "input_contract": "video VERIFIED_OK",
+      "output_contract": "item VIDEO + item THUMBNAIL derivado + registrations",
+      "acceptance_criteria": [
+        "poster em t=1000ms ou t=0",
+        "UPLOAD_IN_PROGRESS retomavel por sessao privada",
+        "validate_only de AdCreative com video_data prova aceitacao"
+      ],
+      "minimum_tests": [
+        "poster reproduzivel por hash",
+        "sessao perdida => AMBIGUOUS"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "validate_only + upload em conta de teste",
+      "feature_flags": [
+        "META_UPLOAD_ASSET_ENABLED"
+      ],
+      "rollback_or_reconciliation": "video sem status legivel (EV-META-09): estado UNKNOWN ate validate_only",
+      "risk": "alto",
+      "estimated_complexity": "L",
+      "parallelizable": false,
+      "blocked_by": [
+        "WBS-M02"
+      ],
+      "definition_of_done": "CAP-META-VID-01 sai de BLOCKED_BY_PROVIDER"
+    },
+    {
+      "task_id": "WBS-M04",
+      "priority": "P3",
+      "objective": "Flexivel/dinamico: prova barata validate_only de AdCreative com asset_feed_spec + object_story_spec.page_id; so entao contrato de emissao",
+      "owner_domain": "meta_engine",
+      "exact_files": [
+        "docs/specs/creative-supply-chain-v1/OFFICIAL-API-EVIDENCE.json (EV-META-11 atualizada)",
+        "backend/app/trafego/meta_execucao/compilador.py (so apos prova)"
+      ],
+      "dependencies": [
+        "WBS-M01"
+      ],
+      "input_contract": "lote ate 10 imagens/5 copies validados",
+      "output_contract": "evidencia + (se aceito) receita flexivel",
+      "acceptance_criteria": [
+        "nenhum payload emitido antes do recibo da prova"
+      ],
+      "minimum_tests": [
+        "hermetico do payload minimo"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "validate_only real",
+      "feature_flags": [
+        "META_VALIDATE_ONLY_ENABLED"
+      ],
+      "rollback_or_reconciliation": "n/a",
+      "risk": "medio",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [
+        "OCC-09"
+      ],
+      "definition_of_done": "CAP-META-FLEX-01 muda de status com evidencia"
+    },
+    {
+      "task_id": "WBS-G01",
+      "priority": "P2",
+      "objective": "Google: engine emite demanda por canal (Display/Demand Gen/PMax) e ponte le bytes por asset_ref; Preparo grava supply_sha256; AssetRemotoAprovado em Display",
+      "owner_domain": "google_engine + creative_supply_chain",
+      "exact_files": [
+        "backend/app/routers/trafego.py:1940-2032, 2547, 2685 (entrada por asset_ref)",
+        "volc_ads/criativo_ponte.py:576-586 (reuso remoto com linhagem)",
+        "backend/tests/test_trafego_display_imagens.py (extensao)"
+      ],
+      "dependencies": [
+        "WBS-B01"
+      ],
+      "input_contract": "demanda + itens AVAILABLE",
+      "output_contract": "ImagensDisplay/DemandGen/PMax com recibo tipado",
+      "acceptance_criteria": [
+        "ponte reconfere sha256 dos bytes lidos do storage",
+        "dedup por conteudo dentro do mutate (EV-GADS-13)",
+        "validate_only real Display continua aceito"
+      ],
+      "minimum_tests": [
+        "golden com asset_ref",
+        "recusa de item nao AVAILABLE"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "validate_only real Display (ja autorizado historicamente)",
+      "feature_flags": [
+        "existentes do engine Google"
+      ],
+      "rollback_or_reconciliation": "mutate atomico; nada parcial",
+      "risk": "baixo",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [
+        "OCC-10"
+      ],
+      "definition_of_done": "Display canario PAUSED com asset vindo da cadeia"
+    },
+    {
+      "task_id": "WBS-G02",
+      "priority": "P3",
+      "objective": "Search assets (AD_IMAGE): regua propria em requisitos.yaml + OCR inelegibilidade + builder CampaignAsset",
+      "owner_domain": "google_engine",
+      "exact_files": [
+        "volc_ads/criativo/requisitos.yaml (secao SEARCH_ASSETS)",
+        "volc_ads/campanha/search.py (asset_operation image + campaign_asset AD_IMAGE)",
+        "volc_ads/campanha/testes_search.py"
+      ],
+      "dependencies": [
+        "WBS-C02",
+        "WBS-P01"
+      ],
+      "input_contract": "item 1:1/1.91:1 sem texto/logo",
+      "output_contract": "campaign_asset AD_IMAGE",
+      "acceptance_criteria": [
+        "texto/logo detectado => INELIGIBLE (EV-GADS-08)",
+        "5120 KB, PNG/JPG"
+      ],
+      "minimum_tests": [
+        "validate_only hermetico com protos v25"
+      ],
+      "provider_proof_required": true,
+      "mutation_authority_required": "validate_only real",
+      "feature_flags": [
+        "existentes"
+      ],
+      "rollback_or_reconciliation": "n/a",
+      "risk": "baixo",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "CAP-GSEARCH-IMG-01 sai de NOT_IMPLEMENTED"
+    },
+    {
+      "task_id": "WBS-P03",
+      "priority": "P1",
+      "objective": "Hero image do Redator entra na cadeia (demanda LP_HERO) e a publicacao exige policy_receipt; fingerprint do destino inclui hash da hero",
+      "owner_domain": "redator + landing_policy",
+      "exact_files": [
+        "funnelforge-migracao/engine/src/funnelforge/pipeline/steps.py:1585-1660, 2685-2721",
+        "backend/app/landing_policy/recibo.py (fingerprint com hero hash)",
+        "backend/tests/test_landing_policy_hero.py (novo)"
+      ],
+      "dependencies": [
+        "WBS-P01"
+      ],
+      "input_contract": "imagem gerada",
+      "output_contract": "item LP_HERO gateado; publicacao bloqueada sem recibo",
+      "acceptance_criteria": [
+        "upload de hero deixa de ser best-effort silencioso: sem recibo, LP publica SEM hero e registra motivo",
+        "fixture do incidente (envelope com marca) bloqueia"
+      ],
+      "minimum_tests": [
+        "publicacao sem recibo recusada",
+        "fingerprint muda com hero"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma (WordPress so em ambiente de teste)",
+      "feature_flags": [
+        "FUNNELFORGE_HERO_GATE=1"
+      ],
+      "rollback_or_reconciliation": "LP sem hero",
+      "risk": "medio",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "ASIS-26 fechado"
+    },
+    {
+      "task_id": "WBS-U01",
+      "priority": "P2",
+      "objective": "UI: fila de demandas, grade, detalhe com elegibilidade/proveniencia/achados, aprovacao vinculada, etapa criativo por asset_ref",
+      "owner_domain": "frontend",
+      "exact_files": [
+        "src/pages/criativos/{DemandasPage,DemandaPage,PecaPage}.tsx (novos)",
+        "src/types/suprimento.ts (novo, espelho dos schemas)",
+        "src/pages/trafego/MetaCriacaoPage.tsx:783-900 (seletor por asset_ref)",
+        "src/components/criativos/__tests__/suprimento-*.test.tsx"
+      ],
+      "dependencies": [
+        "WBS-S01",
+        "WBS-B01"
+      ],
+      "input_contract": "AssetSupplyManifest",
+      "output_contract": "telas UX-01..UX-07",
+      "acceptance_criteria": [
+        "nenhum caminho/URL persistida/id bruto no bundle",
+        "ausencia = desconhecido",
+        "a11y: teclado, foco, chips com texto, aria-live"
+      ],
+      "minimum_tests": [
+        "ausencia-nao-e-zero",
+        "contrato TS == schema (teste de espelho)",
+        "a11y axe basico"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [],
+      "rollback_or_reconciliation": "n/a",
+      "risk": "baixo",
+      "estimated_complexity": "L",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "vitest + build verdes; TS ratchet sem erro novo"
+    },
+    {
+      "task_id": "WBS-D01",
+      "priority": "P4",
+      "objective": "Aprendizado por desempenho: projecao de insights por asset_ref/copy_ref (leitura), sem alterar aprovacao",
+      "owner_domain": "creative_supply_chain + observabilidade",
+      "exact_files": [
+        "backend/app/criativo/suprimento/desempenho.py (novo)",
+        "supabase/migrations/v16_02_suprimento_desempenho_view.sql (view)"
+      ],
+      "dependencies": [
+        "WBS-B01",
+        "WBS-M01"
+      ],
+      "input_contract": "consumos + insights existentes",
+      "output_contract": "tabela por asset_ref",
+      "acceptance_criteria": [
+        "nunca muda approval_state",
+        "ausencia = null"
+      ],
+      "minimum_tests": [
+        "view sem escrita"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [],
+      "rollback_or_reconciliation": "n/a",
+      "risk": "baixo",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "CSC-DEC-23"
+    },
+    {
+      "task_id": "WBS-A01",
+      "priority": "P4",
+      "objective": "Automacao avancada: geracao de variacoes por placement (DERIVED com transform_receipt), reavaliacao periodica de STALE, purga com recibo",
+      "owner_domain": "creative_supply_chain",
+      "exact_files": [
+        "backend/app/criativo/suprimento/{derivacao,manutencao}.py (novos)"
+      ],
+      "dependencies": [
+        "WBS-B01",
+        "WBS-C02",
+        "WBS-P01"
+      ],
+      "input_contract": "item AVAILABLE",
+      "output_contract": "itens DERIVED + eventos",
+      "acceptance_criteria": [
+        "crop aprovado = novo asset_ref com transform_receipt",
+        "purga so apos retencao CSC-DEC-22 e com recibo"
+      ],
+      "minimum_tests": [
+        "classificar_adaptacao distingue recorte de recomposicao"
+      ],
+      "provider_proof_required": false,
+      "mutation_authority_required": "nenhuma",
+      "feature_flags": [
+        "CRIATIVO_MANUTENCAO_ENABLED"
+      ],
+      "rollback_or_reconciliation": "eventos append-only",
+      "risk": "baixo",
+      "estimated_complexity": "M",
+      "parallelizable": true,
+      "blocked_by": [],
+      "definition_of_done": "CSC-DEC-08/22 operacionais"
+    }
+  ]
+}
