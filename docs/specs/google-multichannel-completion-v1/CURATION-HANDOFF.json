@@ -1,0 +1,31 @@
+{
+  "schema": "VolcCurationHandoff.v1",
+  "mission": "Google Multichannel Completion Spec v1 — SOMENTE DOCUMENTACAO em docs/specs/google-multichannel-completion-v1/",
+  "branch": "spec/fable-google-multichannel-completion-v1",
+  "base_commit": "884393b0e99b5ee403a6f38e1e4225012705f942",
+  "_protocol": {"regra": "esta lane NAO aplica nada; o integrador unico executa os cinco passos de AGENTS.md apos integracao", "nao_editado": ["volc-os-workbook/ROADMAP-VIVO.json", "docs/volc-os-graph/curadoria-operacional.json", "docs/volc-os-graph/volc-os-graph.json", "graphify-out/**"], "nenhuma_promocao_para_done": "spec nao prova criterio de aceite de implementacao"},
+  "external_mutation": {"google_ads_api": false, "validate_only": false, "mutate": false, "supabase_write": false, "supabase_read": false, "n8n": false, "wordpress": false, "deploy": false, "push": false, "gets_publicos": "developers.google.com e raw.githubusercontent.com/googleapis (OFFICIAL-API-EVIDENCE.json)"},
+  "existing_tasks_affected": [
+    {"id": "P04-T04", "current_status": "done", "proposed_status": "done", "why": "validate_only real de Display e Demand Gen ja provado (EV-16); a spec nao altera", "evidence": ["GOOGLE-MULTICHANNEL-CAPABILITY-MATRIX.json CAP-DSP-01, CAP-DGN-01"], "decision_needed": null, "confidence": "high"},
+    {"id": "P04-T05", "current_status": "partial", "proposed_status": "partial", "why": "contrato de assets por canal reconciliado com creative-supply-chain (CREATIVE-ASSET-REQUIREMENTS); recibo obrigatorio em Display e gate minimo de politica sao T03/T12", "evidence": ["CREATIVE-ASSET-REQUIREMENTS.json", "OPEN-CONTRACT-CONFLICTS OCC-G16/G17"], "decision_needed": "aceitar policy_receipt CLEAR/AUTHORIZED como precondicao dos tres canarios", "confidence": "high"},
+    {"id": "P04-T07", "current_status": "partial", "proposed_status": "partial", "why": "observabilidade PMax continua condicionada a v12_03 no oficial (T10); trava de URL exclusiva especificada (T09)", "evidence": ["VALIDATE-CREATE-READBACK-CONTRACT.json PERFORMANCE_MAX", "OCC-G20"], "decision_needed": "autorizar aplicacao de v12_03 no Supabase oficial", "confidence": "high"},
+    {"id": "P04-T09", "current_status": "partial", "proposed_status": "partial", "why": "abertura da mutacao Demand Gen especificada (T06) com minimo de orcamento e automacoes OPTED_OUT; criacao real continua nao executada", "evidence": ["EXECUTION-WORKBREAKDOWN T06/T07", "OCC-G05/G13"], "decision_needed": "teto de orcamento DG do canario >= minimo da API", "confidence": "high"},
+    {"id": "P05-T11", "current_status": "done", "proposed_status": "done", "why": "Search e referencia; nao reaberto", "evidence": ["EV-17"], "decision_needed": null, "confidence": "high"},
+    {"id": "P05-T12", "current_status": "partial", "proposed_status": "partial", "why": "o portao de lance bloqueia os tres canais (todos Smart Bidding) enquanto a conta-laboratorio nao mede (OCC-G04); precondicao T04", "evidence": ["OCC-G04", "OCC-G15"], "decision_needed": "acao de conversao valida na conta-laboratorio OU outra conta com medicao provada", "confidence": "high"},
+    {"id": "P09-T14", "current_status": "partial", "proposed_status": "partial", "why": "espelho so ENABLED e leitura de ad-level por canal ficam em T14", "evidence": ["CAP-DSP-12", "CAP-DGN-15"], "decision_needed": null, "confidence": "medium"}
+  ],
+  "proposed_new_tasks": [
+    {"id_sugerido": "P04-T10", "title": "Janela do canario por canal e paridade /provar x /subir para Display (T01-T02)", "initiative": "P04", "status": "todo", "evidence": ["EXECUTION-WORKBREAKDOWN.json"]},
+    {"id_sugerido": "P04-T11", "title": "Primeiro canario Display PAUSED com read-back (T03-T05)", "initiative": "P04", "status": "todo", "evidence": ["CANARY-SEQUENCE.json CAN-DSP-01"]},
+    {"id_sugerido": "P04-T12", "title": "Demand Gen: mutacao governada e primeiro canario (T06-T07)", "initiative": "P04", "status": "todo", "evidence": ["CANARY-SEQUENCE.json CAN-DGN-01"]},
+    {"id_sugerido": "P04-T13", "title": "Performance Max: executor, trava de URL exclusiva, ledger oficial e primeiro canario (T08-T11)", "initiative": "P04", "status": "todo", "evidence": ["CANARY-SEQUENCE.json CAN-PMX-01"]}
+  ],
+  "curadoria_delta": [
+    {"node": "cap_google_multichannel", "evidence_append": "05/09/2026: spec google-multichannel-completion-v1 adjudicou o candidato 21fbc3b como SUPERSEDED (17 arquivos byte-identicos em 884393b) e fixou a ordem Display -> Demand Gen -> PMax com 15 tarefas e 23 conflitos classificados."},
+    {"node": "channel:DISPLAY", "evidence_append": "05/09/2026: criacao PAUSED pela rota esta BLOQUEADA por janela SEARCH-only, caminho Search em /subir e filhos ENABLED (OCC-G01/G02/G03); validate_only remoto de 01/09 continua a unica prova remota."},
+    {"node": "channel:DEMAND_GEN", "evidence_append": "05/09/2026: estado real e PROVEN_REMOTE_VALIDATE com mutacao fechada por decisao; abrir exige T06 (minimo por moeda + automacoes OPTED_OUT)."},
+    {"node": "channel:PERFORMANCE_MAX", "evidence_append": "05/09/2026: a evidencia 'NAO EXISTE: comum.py levanta ValueError' esta DESATUALIZADA — pmax.py monta e serializa 27 operacoes offline com FINAL_URL_EXPANSION OPTED_OUT; permanece fora do executor e sem prova remota."},
+    {"node": "concept:pmax_observability", "evidence_append": "05/09/2026: criavel_pausada de PMax exige releitura do ledger v12_03 no oficial (OCC-G20)."}
+  ],
+  "graph_freshness": {"UPDATE_STATUS_built_at_commit": "1ad7b8a888adeae8d3b1d36d6b3a58d16360ca95", "head_factual": "884393b0e99b5ee403a6f38e1e4225012705f942", "current": false, "nota": "grafo defasado; nao reconstruido (lane paralela)"}
+}

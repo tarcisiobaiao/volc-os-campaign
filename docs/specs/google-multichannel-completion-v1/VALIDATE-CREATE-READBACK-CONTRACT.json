@@ -1,0 +1,86 @@
+{
+  "schema": "VolcValidateCreateReadbackContract.v1",
+  "artefato": "VALIDATE-CREATE-READBACK-CONTRACT.json",
+  "versao": "1.0.0",
+  "invariantes": [
+    "VCR-01 UMA requisicao GoogleAdsService.Mutate por nascimento, validate_only=False, partial_failure=False, ids temporarios no mesmo request (EV-06, EV-09, EV-12); nunca duas fases.",
+    "VCR-02 Nenhum objeto nasce ENABLED: Campaign, AdGroup, AdGroupAd, AssetGroup recebem PAUSED explicito (EV-02: default e ENABLED). AssetGroupAsset/CampaignAsset/critérios nao tem status de veiculacao proprio no create.",
+    "VCR-03 Selo = sha256 dos tipos+bytes de cada operacao (subir.Selo); /subir remonta, reprova por validate_only e compara com plano_impressao; qualquer diferenca = 409 antes da rede.",
+    "VCR-04 Ledger antes da rede: abrir (chave de idempotencia derivada do plano canonico) -> despachar (recibo em_voo) -> mutate -> fechar sucesso|erro|sem_resposta; leitura de idempotencia remota (marca + destino) ANTES de abrir.",
+    "VCR-05 Uma tentativa (PoliticaRetry tentativas=1). Sem resposta = INDETERMINADO = item indeterminado; reenvio proibido ate reconciliar por leitura (marca VOLC-CANARY-<12hex> ou id).",
+    "VCR-06 A API nao oferece idempotencia (EV-12): identidade = idempotency_key do ledger + marca no nome + destino; read-back por resource_name.",
+    "VCR-07 Read-back e GAQL SELECT-only; espelho continuo le so ENABLED — o registro de criacao e a memoria do canario PAUSED (contrato_canais BLOQUEIO_ESPELHO_SO_ENABLED)."
+  ],
+  "por_canal": {
+    "DISPLAY": {
+      "ordem_das_operacoes": ["campaign_budget_operation(-1)", "campaign_operation(-2, DISPLAY, PAUSED, maximize_conversions, network_settings content only, contains_eu_political_advertising, final_url_suffix)", "campaign_criterion_operation location", "campaign_criterion_operation language", "ad_group_operation(-3, DISPLAY_STANDARD, PAUSED)", "asset_operation(-200..) image_asset.data por papel (ordem ImagensDisplay.PAPEIS)", "ad_group_ad_operation(PAUSED, responsive_display_ad, final_urls=[LP], control_spec explicito)"],
+      "validavel_remotamente_sem_objeto_real": ["todo o grafo (validate_only aceito em 01/09/2026 com 9 ops, EV-16)"],
+      "validavel_somente_na_criacao": ["policy_summary do anuncio (so existe em recurso persistido)"],
+      "requer_resource_existente": ["youtube_videos (Asset YOUTUBE_VIDEO da mesma conta)", "AssetRemotoAprovado (asset da mesma conta com recibo)"],
+      "temporary_resource_names": "-1 budget, -2 campanha, -3 ad group, -200.. imagens (comum.py)",
+      "validate_only": "suportado (MutateGoogleAdsRequest.validate_only) — devolve so erros; nao devolve resource names",
+      "resposta_parcial": "proibida (partial_failure=False; ids temporarios)",
+      "idempotency": "ledger v10 (plano canonico sem carimbo_nome) + marca no nome + destino (ad_group_ad.ad.final_urls)",
+      "retry": "proibido apos despacho; permitido so apos fechar erro (RECUSADO)",
+      "timeout_pre_despacho": "TIMEOUT_PROVA_S=120 em /provar (nada criado)",
+      "timeout_pos_despacho": "sem resposta => fechar_sem_resposta + 504 reenvio_permitido=false",
+      "estado_esperado_ao_nascer": {"campaign.status": "PAUSED", "ad_group.status": "PAUSED", "ad_group_ad.status": "PAUSED", "campaign.primary_status": "PAUSED", "ad_group_ad.policy_summary.review_status": "REVIEW_IN_PROGRESS ou REVIEWED"},
+      "read_back_gaql": [
+        "SELECT campaign.id, campaign.name, campaign.status, campaign.serving_status, campaign.primary_status, campaign.primary_status_reasons, campaign.advertising_channel_type, campaign.bidding_strategy_type, campaign.network_settings.target_content_network, campaign.final_url_suffix, campaign_budget.amount_micros, campaign_budget.explicitly_shared FROM campaign WHERE campaign.id = <id>",
+        "SELECT ad_group.id, ad_group.status, ad_group.type FROM ad_group WHERE campaign.id = <id>",
+        "SELECT ad_group_ad.ad.id, ad_group_ad.status, ad_group_ad.ad.final_urls, ad_group_ad.ad.responsive_display_ad.headlines, ad_group_ad.ad.responsive_display_ad.long_headline, ad_group_ad.ad.responsive_display_ad.descriptions, ad_group_ad.ad.responsive_display_ad.business_name, ad_group_ad.ad.responsive_display_ad.marketing_images, ad_group_ad.ad.responsive_display_ad.square_marketing_images, ad_group_ad.ad.responsive_display_ad.logo_images, ad_group_ad.ad.responsive_display_ad.square_logo_images, ad_group_ad.policy_summary.approval_status, ad_group_ad.policy_summary.review_status FROM ad_group_ad WHERE campaign.id = <id>",
+        "SELECT asset.resource_name, asset.type, asset.image_asset.full_size.width_pixels, asset.image_asset.full_size.height_pixels, asset.image_asset.file_size, asset.policy_summary.approval_status FROM asset WHERE asset.resource_name IN (<resource names criados>)",
+        "SELECT campaign_criterion.criterion_id, campaign_criterion.type, campaign_criterion.negative FROM campaign_criterion WHERE campaign.id = <id>"
+      ],
+      "divergencia": "qualquer status != PAUSED, final_url != LP aprovada, contagem de assets != plano, asset.resource_name de outra conta => recibo com divergencia e item bloqueado para ativacao",
+      "prova_de_ausencia": "campaign.name LIKE '<marca>%' e destino em ad_group_ad.ad.final_urls: zero linhas antes do mutate; leitura falha => nao cria"
+    },
+    "DEMAND_GEN": {
+      "ordem_das_operacoes": ["campaign_budget_operation(-1)", "campaign_operation(-2, DEMAND_GEN, PAUSED, maximize_conversions vazio, demand_gen_campaign_settings.upgraded_targeting, asset_automation_settings OPTED_OUT 10/12/13)", "campaign_criterion geo+idioma SE upgraded_targeting=False", "ad_group_operation(-3, sem type_, PAUSED, demand_gen_ad_group_settings.channel_controls)", "ad_group_criterion geo+idioma SE upgraded_targeting=True", "ad_group_criterion audience (0..n)", "asset_operation(-200..) por papel", "ad_group_ad_operation(PAUSED, demand_gen_multi_asset_ad, final_urls=[LP])"],
+      "validavel_remotamente_sem_objeto_real": ["todo o grafo (9 ops aceitas em 01/09/2026 com budget >= minimo)"],
+      "validavel_somente_na_criacao": ["policy_summary", "channel_config (output only)"],
+      "requer_resource_existente": ["Audience (customers/<cid>/audiences/<id>) quando declarada"],
+      "temporary_resource_names": "iguais a Display",
+      "validate_only": "suportado; minimo de orcamento por dia e devolvido com details.budget_per_day_minimum_error_details (EV-16)",
+      "resposta_parcial": "proibida",
+      "idempotency": "ledger v10 + marca + destino (ad_group_ad.ad.final_urls)",
+      "retry": "igual a Display",
+      "timeout_pre_despacho": "120 s", "timeout_pos_despacho": "igual a Display",
+      "estado_esperado_ao_nascer": {"campaign.status": "PAUSED", "ad_group.status": "PAUSED", "ad_group_ad.status": "PAUSED", "campaign.demand_gen_campaign_settings.upgraded_targeting": "conforme pedido"},
+      "read_back_gaql": [
+        "SELECT campaign.id, campaign.status, campaign.primary_status, campaign.advertising_channel_type, campaign.bidding_strategy_type, campaign.demand_gen_campaign_settings.upgraded_targeting, campaign.asset_automation_settings, campaign_budget.amount_micros FROM campaign WHERE campaign.id = <id>",
+        "SELECT ad_group.id, ad_group.status, ad_group.type, ad_group.demand_gen_ad_group_settings.channel_controls.channel_config FROM ad_group WHERE campaign.id = <id>",
+        "SELECT ad_group_ad.status, ad_group_ad.ad.final_urls, ad_group_ad.ad.demand_gen_multi_asset_ad.headlines, ad_group_ad.ad.demand_gen_multi_asset_ad.descriptions, ad_group_ad.ad.demand_gen_multi_asset_ad.business_name, ad_group_ad.ad.demand_gen_multi_asset_ad.marketing_images, ad_group_ad.ad.demand_gen_multi_asset_ad.square_marketing_images, ad_group_ad.ad.demand_gen_multi_asset_ad.logo_images, ad_group_ad.policy_summary.approval_status, ad_group_ad.policy_summary.review_status FROM ad_group_ad WHERE campaign.id = <id>",
+        "SELECT ad_group_criterion.type, ad_group_criterion.audience.audience, ad_group_criterion.location.geo_target_constant, ad_group_criterion.language.language_constant FROM ad_group_criterion WHERE campaign.id = <id>"
+      ],
+      "divergencia": "channel_config diferente do pedido, status != PAUSED, automacao OPTED_IN onde o plano pediu OPTED_OUT => divergencia registrada",
+      "prova_de_ausencia": "igual a Display"
+    },
+    "PERFORMANCE_MAX": {
+      "ordem_das_operacoes": ["campaign_budget_operation(-1, DAILY, explicitly_shared=false)", "campaign_operation(-2, PERFORMANCE_MAX, PAUSED, brand_guidelines_enabled explicito, maximize_conversions|maximize_conversion_value, contains_eu_political_advertising, final_url_suffix, asset_automation_settings OPTED_OUT em 11,2,7,6, excluded_parent_asset_set_types=[PAGE_FEED], SEM network_settings, SEM shopping_setting)", "campaign_criterion location", "campaign_criterion language", "campaign_criterion keyword negativa (0..n)", "asset_operation texto (-100..) HEADLINE/LONG_HEADLINE/DESCRIPTION/BUSINESS_NAME", "asset_operation imagem (-200..) por papel", "campaign_asset_operation BUSINESS_NAME+LOGO SE brand_guidelines_enabled", "asset_group_operation(-300, PAUSED, final_urls=[LP] exatamente uma, final_mobile_urls vazio, sem path1/path2)", "asset_group_asset_operation por (asset, field_type) incluindo BUSINESS_NAME/LOGO SE brand_guidelines_enabled=false", "asset_group_signal_operation (0..n)"],
+      "validavel_remotamente_sem_objeto_real": ["todo o grafo — NUNCA exercitado (BLOCKED por OCC-G06/G07); o proto v25 serializa (PROVEN_LOCAL)"],
+      "validavel_somente_na_criacao": ["asset_group.primary_status, ad_strength, asset_coverage", "asset_group_asset.policy_summary", "final_url_expansion_asset_view (deve permanecer vazio)"],
+      "requer_resource_existente": ["Audience para AssetGroupSignal.audience", "Asset YOUTUBE_VIDEO"],
+      "temporary_resource_names": "-1 budget, -2 campanha, -100.. texto, -200.. imagem, -300 asset group (comum.py)",
+      "validate_only": "suportado no GoogleAdsService.Mutate; AssetGroup + minimos no MESMO request obrigatorio (EV-06)",
+      "resposta_parcial": "explicitamente nao suportada (EV-06)",
+      "idempotency": "ledger v10 + marca + destino em asset_group.final_urls (OCC-G08)",
+      "retry": "igual", "timeout_pre_despacho": "120 s", "timeout_pos_despacho": "igual",
+      "estado_esperado_ao_nascer": {"campaign.status": "PAUSED", "asset_group.status": "PAUSED (OCC-G18)", "campaign.asset_automation_settings": "FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION=OPTED_OUT, TEXT_ASSET_AUTOMATION=OPTED_OUT, GENERATE_IMAGE_ENHANCEMENT=OPTED_OUT, GENERATE_ENHANCED_YOUTUBE_VIDEOS=OPTED_OUT", "asset_group.final_urls": "[LP aprovada]", "campaign_asset_set PAGE_FEED": "0 linhas", "final_url_expansion_asset_view": "0 linhas"},
+      "read_back_gaql": [
+        "SELECT campaign.id, campaign.status, campaign.primary_status, campaign.primary_status_reasons, campaign.advertising_channel_type, campaign.bidding_strategy_type, campaign.brand_guidelines_enabled, campaign.asset_automation_settings, campaign.excluded_parent_asset_set_types, campaign_budget.amount_micros, campaign_budget.period, campaign_budget.explicitly_shared FROM campaign WHERE campaign.id = <id>",
+        "SELECT asset_group.id, asset_group.name, asset_group.status, asset_group.primary_status, asset_group.final_urls, asset_group.final_mobile_urls, asset_group.path1, asset_group.path2, asset_group.ad_strength FROM asset_group WHERE campaign.id = <id>",
+        "SELECT asset_group_asset.asset, asset_group_asset.field_type, asset_group_asset.status, asset_group_asset.source, asset_group_asset.policy_summary.approval_status FROM asset_group_asset WHERE campaign.id = <id>",
+        "SELECT campaign_asset.asset, campaign_asset.field_type, campaign_asset.status FROM campaign_asset WHERE campaign.id = <id>",
+        "SELECT asset_group_signal.asset_group, asset_group_signal.audience.audience, asset_group_signal.search_theme.text FROM asset_group_signal WHERE campaign.id = <id>",
+        "SELECT campaign_asset_set.asset_set, asset_set.type FROM campaign_asset_set WHERE campaign.id = <id> AND asset_set.type = 'PAGE_FEED'",
+        "SELECT final_url_expansion_asset_view.resource_name FROM final_url_expansion_asset_view WHERE campaign.id = <id>",
+        "SELECT campaign_criterion.type, campaign_criterion.negative, campaign_criterion.keyword.text FROM campaign_criterion WHERE campaign.id = <id>"
+      ],
+      "divergencia": "qualquer OPTED_IN onde o plano pediu OPTED_OUT; final_urls != [LP]; final_mobile_urls nao vazio; path1/path2 preenchidos; campaign_asset_set PAGE_FEED > 0; final_url_expansion_asset_view > 0; asset_group_asset.source != ADVERTISER para assets planejados => DIVERGENCIA_URL_EXCLUSIVA (bloqueia ativacao; rollback = campaign.status REMOVED por ato autorizado)",
+      "prova_de_ausencia": "campaign.name LIKE '<marca>%' e asset_group.final_urls contendo a LP: zero linhas"
+    }
+  },
+  "ambiguidade": {"regra": "ausencia incerta (achou=None) registra verificacao e nao move o item; nunca autoriza repeticao; duas campanhas encontradas = duplicidade consumada = decisao humana", "fonte": "trafego.py:reconciliar_lancamento; ledger.reconciliar"},
+  "flags_e_travas": {"escrita": "FORGE_PERMITIR_ESCRITA=1 + modo.destravar(motivo) dentro de subir()", "demand_gen_prova": "VOLC_DEMAND_GEN_VALIDATE_ONLY=on + SDK v25 sondado", "papel": "exigir_admin em /subir; capacidades.google_mutate", "canario": "politica por canal (T01) com confirmar_criacao_pausada=true"}
+}
