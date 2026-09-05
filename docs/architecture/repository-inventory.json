@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T09:52:46-03:00",
+  "generated_at": "2026-09-05T10:11:01-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 650,
-    "markdown": 476,
+    "files": 651,
+    "markdown": 477,
     "sql": 174,
-    "tracked": 650,
+    "tracked": 651,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 23,
-      "documentation": 328,
+      "documentation": 329,
       "generated": 2,
       "module-guide": 36,
       "product-document": 23,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 20855,
       "lines": 285,
-      "sha256": "e6668249813445096e2a4756fbb02f45c819616c8abc3793009e826f33b21061",
+      "sha256": "4b1faa1de756152fc81204de4465c43a84f22263428537e8efa46e433217526e",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3238,6 +3238,18 @@
       "bytes": 2009,
       "lines": 30,
       "sha256": "93425d8ce43ede31395db54a73584ef3b4c103a0202e507ad24fccc6ce4e9e42",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-creation-engine-operator-experience-v1/RUNBOOK-MIGRATION-META-CREATE-PAUSED.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 13045,
+      "lines": 304,
+      "sha256": "a4e47e95aa26695283c5aa805222d6f4e15bcafc45d0da6030283f60d5ce5345",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
