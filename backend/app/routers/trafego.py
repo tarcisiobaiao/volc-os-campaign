@@ -36,13 +36,16 @@ from __future__ import annotations
 import asyncio
 import dataclasses as _dataclasses
 import dataclasses
+import hashlib as _hashlib
+import json as _json
 import logging
 import pathlib
 import re
 import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional, Sequence
+from urllib.parse import urlparse as _urlparse
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import (BaseModel, ConfigDict, Field, field_validator,
@@ -1951,6 +1954,110 @@ def _avisos_da_ponte(entrega) -> tuple:
     )
 
 
+# ── o portão de política sobre a peça, antes de qualquer rede ──────────────
+#
+# ⚠️ O RECIBO É EMITIDO PELO SERVIDOR, e não recebido do navegador. Aceitá-lo
+# do pedido faria a mesma parte interessada em subir a campanha assinar a prova
+# de que a campanha pode subir — o defeito de linhagem autoatestável que a
+# revisão de Demand Gen já tinha apontado em outro campo.
+#
+# Os bytes já estão aqui: a rota os decodifica para medir a imagem. Inspecioná-
+# los no mesmo ponto custa nada e fecha o caminho pelo qual uma peça com marca
+# de terceiro chegava ao `validate_only`.
+
+
+def _identidade_propria_do_pedido(body: Any, *, nicho: str) -> tuple[str, ...]:
+    """Os termos que pertencem a QUEM ANUNCIA, e por isso nunca são terceiros.
+
+    Um portão que acusa o anunciante do próprio nome é um portão que alguém
+    desliga. O nicho e o host do destino são o que a rota sabe com certeza
+    sobre a identidade de quem está pedindo.
+    """
+    termos: list[str] = []
+    if nicho and nicho != "sem nicho declarado":
+        termos.append(nicho)
+    alvo = str(getattr(body, "url_final", "") or "").strip()
+    if alvo:
+        try:
+            host = _urlparse(alvo).hostname or ""
+        except ValueError:
+            host = ""
+        if host:
+            termos.append(host)
+            # "portalmundomais.com.br" → "portalmundomais": é o nome que
+            # aparece na peça, não o domínio inteiro.
+            termos.append(host.split(".", 1)[0])
+    return tuple(dict.fromkeys(t for t in termos if t))
+
+
+def _recibos_de_politica_das_pecas(
+    pecas: Sequence[tuple[str, bytes, str, str]],
+    *,
+    body: Any,
+    nicho: str,
+    canal: str,
+) -> tuple[Any, ...]:
+    """Um recibo por peça. Levanta `PoliticaCriativaRecusou` na primeira recusa.
+
+    ⚠️ Recusa na PRIMEIRA e não coleciona: um lote parcialmente bloqueado não
+    tem desfecho parcial — a campanha não sobe com três das quatro peças.
+    """
+    from app.criativo import politica as pol
+
+    copy = _copy_do_corpo(getattr(body, "texto_do_anuncio", None))
+    como_dicionario = (
+        {k: v for k, v in vars(copy).items() if isinstance(v, str)}
+        if copy is not None else None
+    )
+    propria = _identidade_propria_do_pedido(body, nicho=nicho)
+    recibos = []
+    for asset_ref, dados, nome, mime in pecas:
+        conteudo_sha = _hashlib.sha256(dados).hexdigest()
+        recibo_da_peca = pol.avaliar(
+            asset_ref=asset_ref,
+            content_sha256=conteudo_sha,
+            bytes_da_peca=dados,
+            mime=mime,
+            copy=como_dicionario,
+            nome_do_arquivo=nome,
+            prompt=None,
+            identity_ref=f"volc:conta:{escopo.so_digitos(body.customer_id)}",
+            identidade_propria=propria,
+            procedencia="GENERATED",
+            canal=canal,
+        )
+        pol.exigir_liberacao(
+            recibo_da_peca, asset_ref=asset_ref, content_sha256=conteudo_sha,
+            copy=como_dicionario,
+        )
+        recibos.append(recibo_da_peca)
+    return tuple(recibos)
+
+
+def supply_sha256_dos_recibos(recibos: Sequence[Any]) -> str | None:
+    """A identidade do SUPRIMENTO aprovado, para entrar no selo do plano.
+
+    Cobre, por peça e em ordem estável: a referência, os bytes inspecionados e
+    o recibo que os liberou. Trocar qualquer um dos três muda o hash — e um
+    plano cujo suprimento mudou não é o plano que foi aprovado.
+    """
+    if not recibos:
+        return None
+    itens = [
+        {
+            "asset_ref": r.asset_ref,
+            "content_sha256": r.content_sha256_inspecionado,
+            "policy_receipt_ref": r.policy_receipt_ref,
+        }
+        for r in recibos
+    ]
+    itens.sort(key=lambda item: (item["asset_ref"], item["content_sha256"]))
+    material = {"versao": "volc.creative_supply.v1", "itens": itens}
+    return _hashlib.sha256(_json.dumps(
+        material, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")).hexdigest()
+
+
 def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
     """Traduz `assets_display` em `ImagensDisplay`, ou recusa com causa.
 
@@ -1994,6 +2101,7 @@ def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
 
     assets = []
     conteudo_por_identidade: Dict[str, bytes] = {}
+    pecas_para_o_portao: List[tuple] = []
     for item, dados in _assets_decodificados_display(itens):
         try:
             quando = datetime.fromisoformat(
@@ -2026,6 +2134,20 @@ def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
         )
         assets.append(asset)
         conteudo_por_identidade[asset.identidade] = dados
+        pecas_para_o_portao.append(
+            (asset.identidade, dados, item.nome, medida.mime))
+
+    # ⚠️ O PORTÃO DE POLÍTICA, ANTES DA PONTE E ANTES DE QUALQUER REDE.
+    #
+    # A ponte do Estúdio julga PAPEL, geometria, peso e duplicidade — o que a
+    # peça É. Ela não julga o que a peça DIZ, e foi por aí que um envelope com
+    # marca de banco chegou a mídia paga: geometria perfeita, papel correto,
+    # afirmação de vínculo que não existia.
+    #
+    # Aqui, e não depois da ponte, porque uma recusa de política não deve
+    # depender de a peça ter passado antes numa régua que não é sobre isso.
+    recibos_de_politica = _recibos_de_politica_das_pecas(
+        pecas_para_o_portao, body=body, nicho=nicho, canal="DISPLAY")
 
     lote = LoteDeAssets(
         canal="DISPLAY",
@@ -2043,7 +2165,7 @@ def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
     # ganha em troca é exatamente isto: cada asset sem procedência declarada sai
     # nomeado em `Entrega.avisos`. Descartá-los aqui desfazia a troca — o asset
     # entrava no plano sem sinal nenhum, e a dívida ficava sem contrapartida.
-    return entrega.imagens, _avisos_da_ponte(entrega)
+    return entrega.imagens, _avisos_da_ponte(entrega), recibos_de_politica
 
 
 def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
@@ -2153,7 +2275,10 @@ def _micros(valor: Any, campo: str) -> int:
     return int(round(float(numero) * 1_000_000))
 
 
-def plano_do_ledger(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any]:
+def plano_do_ledger(
+    body: ProvarEntrada, *, cid: str, mid: str,
+    supply_sha256: str | None = None,
+) -> Dict[str, Any]:
     """O plano aprovado na forma que a chave de idempotência aceita.
 
     ⚠️ Este é o conserto do defeito que deixou `/subir` inoperante. O plano que
@@ -2186,6 +2311,14 @@ def plano_do_ledger(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any
         plano.pop("tcpa", None)
     else:
         plano["tcpa_micros"] = _micros(plano.pop("tcpa"), "tcpa")
+    # ⚠️ O SUPRIMENTO ENTRA NA CHAVE DE IDEMPOTÊNCIA, e é isto que amarra o
+    # manifesto ao plano. Os BYTES já viajam dentro das operações seladas por
+    # `preparo.selo`; o que faltava era o RECIBO. Sem ele, trocar a decisão de
+    # política de uma peça — reavaliar e bloquear — deixaria a chave igual, e o
+    # ledger reconheceria como "o mesmo lançamento" um plano cuja peça deixou
+    # de estar liberada.
+    if supply_sha256:
+        plano["supply_sha256"] = supply_sha256
     grupos = []
     for i, grupo in enumerate(plano.get("grupos") or []):
         canonico = dict(grupo)
@@ -2365,7 +2498,7 @@ def _montar_plano_display(
     if not url.startswith("https://"):
         raise ValueError(f"destino Display {url!r} não é https")
 
-    imagens, avisos_da_ponte = _imagens_de_display(
+    imagens, avisos_da_ponte, recibos_de_politica = _imagens_de_display(
         body, nicho=origem.nicho or "sem nicho declarado"
     )
     brief = Brief(
@@ -2408,7 +2541,7 @@ def _montar_plano_display(
         brief=brief,
         grupos=(),
         avisos=avisos + tuple(avisos_da_ponte),
-    )
+    ), supply_sha256_dos_recibos(recibos_de_politica)
 
 
 def _montar_plano_demand_gen(
@@ -3333,6 +3466,13 @@ async def provar(
         raise HTTPException(
             status_code=422, detail=_recusa_de_canal(body.canal, exc)) from exc
 
+    # ⚠️ Uma lista, e não uma variável: `_preparar` roda numa thread e o
+    # fechamento sobre uma lista é a forma de o valor sair de lá sem `global`.
+    # Vazia = este canal não carrega peça sob o portão de política. Vazia NÃO é
+    # "o portão passou": Search não tem asset, e dizer que ele foi aprovado
+    # seria inventar uma prova que ninguém fez.
+    suprimento: list = []
+
     def _preparar():
         # ⚠️ As `Linhas` ficam AQUI em vez de serem descartadas dentro da
         # composição. É nelas que mora `run.paginas_publicadas`, e é lá dentro
@@ -3428,7 +3568,9 @@ async def provar(
                 pp, cockpit, escolha, copy, body
             )
         elif canal_resolvido == "DISPLAY":
-            plano = _montar_plano_display(pp, cockpit, escolha, copy, body)
+            plano, supply = _montar_plano_display(
+                pp, cockpit, escolha, copy, body)
+            suprimento.append(supply)
         else:
             plano = pp.montar_brief(cockpit, escolha, copy=copy)
         # A PÓS-CONDIÇÃO, sobre o artefato que de fato vai ao Google.
@@ -3579,6 +3721,10 @@ async def provar(
             # tela. Canal sem janela cai na de Search, que é a que a rota já
             # mostrava antes de existirem outras.
             "politica": _politica_do_canario(body.canal).para_json(),
+            # A identidade do SUPRIMENTO aprovado: peça, bytes inspecionados e
+            # recibo que os liberou. `null` = este canal não carrega peça —
+            # NÃO "o portão passou".
+            "supply_sha256": (suprimento[0] if suprimento else None),
             "budget_diario": body.budget_diario,
             "cpc_inicial": body.cpc_inicial,
             "ativacao_incluida": False,
@@ -3939,6 +4085,9 @@ async def subir(
         conjunto = None
         criterios_do_conjunto: tuple = ()
         selecao_aprovada: dict = {}
+        # Uma lista e não uma variável: `_provar_de_novo` roda numa thread, e o
+        # fechamento sobre uma lista é a forma de o valor sair dela sem `global`.
+        suprimento: list = []
         if canal_resolvido == "SEARCH":
             conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
                 getattr(linhas, "cluster", None)
@@ -4005,7 +4154,8 @@ async def subir(
         if canal_resolvido == "DEMAND_GEN":
             plano = _montar_plano_demand_gen(pp, cockpit, escolha, copy, body)
         elif canal_resolvido == "DISPLAY":
-            plano = _montar_plano_display(pp, cockpit, escolha, copy, body)
+            plano, supply = _montar_plano_display(pp, cockpit, escolha, copy, body)
+            suprimento.append(supply)
         else:
             plano = pp.montar_brief(cockpit, escolha, copy=copy)
         # A MESMA pós-condição de `/provar`, sobre o brief que vai ser ESCRITO.
@@ -4019,10 +4169,11 @@ async def subir(
             cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
             ai_max=body.ai_max,
         )
-        return plano, preparo, linhas
+        return plano, preparo, linhas, (suprimento[0] if suprimento else None)
 
     try:
-        plano, preparo, linhas = await asyncio.to_thread(_provar_de_novo)
+        plano, preparo, linhas, supply_sha256 = await asyncio.to_thread(
+            _provar_de_novo)
     except portao_pago.PortaoDoConjuntoPago as exc:
         # A recusa do portão é HERDADA por `/subir`: sem esta cláusula ela
         # cairia no genérico e viraria 500, e um 500 é indistinguível de uma
@@ -4302,7 +4453,8 @@ async def subir(
     # do try escapa como 500 nu — que foi exatamente o defeito original, só que
     # com outro nome. Recusa de derivação é 409 com motivo, sem recibo aberto.
     try:
-        plano_canonico = plano_do_ledger(body, cid=cid, mid=mid)
+        plano_canonico = plano_do_ledger(
+            body, cid=cid, mid=mid, supply_sha256=supply_sha256)
     except PlanoIrrepresentavel as exc:
         raise HTTPException(
             status_code=409,

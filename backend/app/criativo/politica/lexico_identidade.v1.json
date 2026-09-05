@@ -1,0 +1,37 @@
+{
+  "versao": "v1",
+  "descricao": "Léxico determinístico de identidade de terceiro para mídia paga. Um achado NÃO é uma acusação: é a exigência de uma autorização registrada no Cofre antes de a peça ir ao ar.",
+  "regras_de_casamento": {
+    "normalizacao": "NFKD + casefold + remoção de diacríticos",
+    "fronteira": "palavra inteira (\\b), nunca substring",
+    "siglas": "só casam em MAIÚSCULAS no texto original, para não transformar 'inss' dentro de outra palavra num achado"
+  },
+  "classes": {
+    "BANCOS": {
+      "peso": "alto",
+      "termos": ["caixa economica federal", "banco do brasil", "bradesco", "itau", "santander", "nubank", "banco inter", "banrisul", "sicoob", "sicredi", "banco pan", "c6 bank", "picpay", "mercado pago"],
+      "siglas": ["CEF", "BB"]
+    },
+    "ORGAOS_PUBLICOS": {
+      "peso": "alto",
+      "termos": ["receita federal", "ministerio do trabalho", "ministerio da fazenda", "governo federal", "previdencia social", "detran", "tribunal de justica", "defensoria publica", "procon", "banco central"],
+      "siglas": ["INSS", "FGTS", "CNH", "SUS", "PIS", "PASEP", "DPVAT", "CPF"]
+    },
+    "PLATAFORMAS": {
+      "peso": "alto",
+      "termos": ["whatsapp", "instagram", "facebook", "google", "youtube", "tiktok", "telegram", "gov.br", "meu inss", "carteira de trabalho digital"],
+      "siglas": []
+    },
+    "EMPRESAS_CONHECIDAS": {
+      "peso": "medio",
+      "termos": ["magazine luiza", "mercado livre", "amazon", "americanas", "vivo", "claro", "tim", "netflix", "ifood"],
+      "siglas": []
+    },
+    "TERMOS_DE_AFILIACAO": {
+      "peso": "alto",
+      "descricao": "Não nomeiam terceiro; AFIRMAM vínculo com um. Sozinhos já pedem autorização, porque é a afirmação de vínculo que engana.",
+      "termos": ["oficial", "site oficial", "canal oficial", "liberado pelo governo", "autorizado por", "autorizado pelo governo", "parceiro oficial", "credenciado", "em parceria com", "representante autorizado", "aprovado pelo governo"],
+      "siglas": []
+    }
+  }
+}

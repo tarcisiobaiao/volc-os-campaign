@@ -19,8 +19,36 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
+from app.criativo.politica import inspecao as _inspecao_de_politica
 from app.routers import trafego
 from volc_ads import pautador_ponte
+
+
+class _OcrHermetico:
+    """Um detector de pixel determinístico, no lugar do motor real.
+
+    ⚠️ Ele existe porque, SEM detector nenhum, o portão de política declara a
+    inspeção de imagem indisponível e bloqueia — e bloquear é a decisão certa:
+    "não consegui olhar" não é "olhei e não tem nada". Estes testes são sobre a
+    ponte do Estúdio, não sobre a lacuna de OCR, então eles registram um motor
+    que enxerga uma peça limpa e seguem provando o que vieram provar.
+
+    A lacuna em si é provada em `test_criativo_politica_gate.py`.
+    """
+
+    nome = "ocr_hermetico"
+    versao = "teste-1"
+
+    def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
+        return _inspecao_de_politica.LeituraDePixel()
+
+
+@pytest.fixture(autouse=True)
+def _com_inspecao_de_pixel():
+    _inspecao_de_politica.limpar_detectores_de_pixel()
+    _inspecao_de_politica.registrar_detector_de_pixel(_OcrHermetico())
+    yield
+    _inspecao_de_politica.limpar_detectores_de_pixel()
 
 
 def _png(largura: int, altura: int, nome: str) -> bytes:
@@ -144,7 +172,11 @@ def test_lote_valido_vira_imagens_display_com_papel():
     # Os avisos existem porque a ponte aceita `NAO_DECLARADA` em destino de
     # produção como dívida consciente, e a contrapartida dessa dívida é o asset
     # sem procedência sair NOMEADO. Descartá-los aqui desfaria a troca.
-    imagens, avisos = trafego._imagens_de_display(body, nicho="fixture")
+    # ⚠️ Três valores desde T12: a função passou a devolver também os recibos
+    # de política das peças, porque é ela que tem os bytes na mão.
+    imagens, avisos, recibos = trafego._imagens_de_display(body, nicho="fixture")
+    assert len(recibos) == len(body.assets_display)
+    assert all(r.libera_midia_paga() for r in recibos)
     assert imagens is not None
     # A fixture não declara natureza, então a ponte tem o que avisar — e o
     # aviso precisa chegar com código, não como frase solta.
@@ -183,7 +215,7 @@ def test_plano_display_nao_exige_keyword_do_search():
         vertical="informativo",
     )
 
-    plano = trafego._montar_plano_display(
+    plano, supply_sha256 = trafego._montar_plano_display(
         pautador_ponte, cockpit, escolha,
         trafego._copy_do_corpo(body.texto_do_anuncio), body,
     )
@@ -192,6 +224,11 @@ def test_plano_display_nao_exige_keyword_do_search():
     assert plano.brief.sub_intencoes == []
     assert plano.brief.criterios == []
     assert plano.brief.imagens_display is not None
+    # ⚠️ A identidade do suprimento sai daqui e entra na chave de idempotência
+    # do ledger: peça, bytes inspecionados e recibo que os liberou. Sem ela,
+    # reavaliar uma peça e bloqueá-la deixaria a chave igual, e o ledger leria
+    # como "o mesmo lançamento" um plano cuja peça deixou de estar liberada.
+    assert isinstance(supply_sha256, str) and len(supply_sha256) == 64
 
 
 @pytest.mark.parametrize(
@@ -350,3 +387,77 @@ def test_a_lista_de_campos_tardios_e_declarada_e_pequena():
     campo que não existia quando uma chave já emitida foi calculada."""
     assert trafego.CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM == (
         "assets_display",)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# T12 — o portão de política sobre a peça, ANTES do validate_only
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class _OcrComMarcaDeBanco:
+    """O incidente, reproduzido: envelope com marca de banco na peça FINAL.
+
+    O prompt era limpo e a copy era limpa. A marca estava na IMAGEM — e era
+    exatamente por isso que ninguém reparava.
+    """
+
+    nome = "ocr_hermetico"
+    versao = "teste-1"
+
+    def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
+        return _inspecao_de_politica.LeituraDePixel(
+            texto="CAIXA ECONOMICA FEDERAL — correspondencia oficial")
+
+
+def test_peca_com_marca_de_terceiro_e_recusada_antes_de_qualquer_rede(monkeypatch):
+    """CONTRAPROVA T12: a recusa acontece no backend, com o próximo ato.
+
+    Nenhuma chamada ao Google acontece: a recusa é anterior à ponte do Estúdio
+    e, portanto, anterior ao `validate_only`.
+    """
+    from app.criativo import politica as pol
+
+    _inspecao_de_politica.limpar_detectores_de_pixel()
+    _inspecao_de_politica.registrar_detector_de_pixel(_OcrComMarcaDeBanco())
+
+    body = trafego.ProvarEntrada.model_validate(_corpo(assets_display=[
+        _asset("imagem_marketing", "banner", 600, 314),
+        _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+    ]))
+    with pytest.raises(pol.PoliticaCriativaRecusou) as erro:
+        trafego._imagens_de_display(body, nicho="fixture")
+
+    assert erro.value.codigo == f"POLICY_{pol.THIRD_PARTY_IDENTITY_UNVERIFIED}"
+    mensagem = str(erro.value)
+    assert "BANCOS:caixa economica federal" in mensagem
+    # O próximo ato, e a recusa explícita do atalho.
+    assert "Cofre" in mensagem
+
+
+def test_sem_detector_de_pixel_a_peca_de_display_nao_passa(monkeypatch):
+    """⚠️ Não conseguir olhar a imagem NÃO é a imagem estar limpa.
+
+    Com o registro vazio — que é o estado deste servidor hoje — a peça é
+    bloqueada com `GATE_UNAVAILABLE` em vez de ser aprovada por omissão.
+    """
+    from app.criativo import politica as pol
+
+    _inspecao_de_politica.limpar_detectores_de_pixel()
+
+    body = trafego.ProvarEntrada.model_validate(_corpo(assets_display=[
+        _asset("imagem_marketing", "banner", 600, 314),
+        _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+    ]))
+    with pytest.raises(pol.PoliticaCriativaRecusou) as erro:
+        trafego._imagens_de_display(body, nicho="fixture")
+    assert erro.value.codigo == f"POLICY_{pol.GATE_UNAVAILABLE}"
+
+
+def test_o_nicho_e_o_host_do_destino_nunca_sao_terceiros():
+    """Um portão que acusa o anunciante do próprio nome é desligado."""
+    body = trafego.ProvarEntrada.model_validate(_corpo(assets_display=[
+        _asset("imagem_marketing", "banner", 600, 314),
+        _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+    ]))
+    propria = trafego._identidade_propria_do_pedido(body, nicho="Portal Mundo Mais")
+    assert "Portal Mundo Mais" in propria
