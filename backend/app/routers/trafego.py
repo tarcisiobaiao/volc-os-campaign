@@ -2173,6 +2173,19 @@ def plano_do_ledger(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, Any
     for campo in ("budget_diario", "cpc_inicial"):
         if campo in plano:
             plano[f"{campo}_micros"] = _micros(plano.pop(campo), campo)
+    # ⚠️ `tcpa` TAMBÉM É DINHEIRO, e ficava de fora. Ele é `Optional[float]` em
+    # `ProvarEntrada`, então um pedido Display com meta de CPA levava um float
+    # até `lote._sem_float` — a guarda recusava (com razão) e a recusa chegava
+    # ao operador como "plano sem representação canônica", falando de um
+    # problema que não era o dele. Search raramente o preenche; Display o usa
+    # dentro do MaxConv, e foi por Display que o defeito apareceria.
+    #
+    # `None` continua saindo do plano em vez de virar zero: ausência de meta é
+    # ausência, e `target_cpa_micros = 0` diria que alguém escolheu zero.
+    if plano.get("tcpa") is None:
+        plano.pop("tcpa", None)
+    else:
+        plano["tcpa_micros"] = _micros(plano.pop("tcpa"), "tcpa")
     grupos = []
     for i, grupo in enumerate(plano.get("grupos") or []):
         canonico = dict(grupo)
@@ -3916,10 +3929,21 @@ async def subir(
         # a `Escolha` pelo caminho antigo ela ultrapassaria, por reconstrução,
         # uma recusa que `/provar` já tinha dado. A recusa precisa ser herdada
         # estruturalmente — não por disciplina de quem chama na ordem certa.
-        conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
-            getattr(linhas, "cluster", None)
-        )
+        # ⚠️ O PORTÃO DO CONJUNTO PAGO É DE SEARCH, E SÓ DELE — como em
+        # `/provar`. Ele nasce das keywords aprovadas pelo motor de
+        # elegibilidade paga, e Display, Demand Gen e PMax não têm keyword
+        # nenhuma. Cobrá-lo de todo canal fazia `/subir` recusar, com
+        # `PonteIncompleta`, exatamente o pedido Display que `/provar` tinha
+        # acabado de aprovar — a divergência que T02 existe para fechar.
         cockpit = pp.montar_cockpit(linhas)
+        conjunto = None
+        criterios_do_conjunto: tuple = ()
+        selecao_aprovada: dict = {}
+        if canal_resolvido == "SEARCH":
+            conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
+                getattr(linhas, "cluster", None)
+            )
+            selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
         # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
         # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
         # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -3928,7 +3952,6 @@ async def subir(
         # Medido contra a conta real: duas keywords escolhidas viraram oito no
         # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
         # com DKI na primeira headline isso vira texto de anúncio.
-        selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
         escolha = pp.Escolha(
             grupos=tuple(selecao_aprovada.keys()),
             keywords_por_grupo=selecao_aprovada,
@@ -3936,8 +3959,10 @@ async def subir(
             rede=_rede_do_corpo(body),
             # Recusa fechada: depois da impressão emitida, retirar keyword
             # mudaria o conjunto sem mudar o selo.
-            keywords_fora=portao_pago.recusar_keywords_fora(
-                body.keywords_fora, conjunto),
+            keywords_fora=(
+                portao_pago.recusar_keywords_fora(body.keywords_fora, conjunto)
+                if canal_resolvido == "SEARCH" else ()
+            ),
             budget_diario=body.budget_diario,
             cpc_inicial=body.cpc_inicial,
             cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
@@ -3949,8 +3974,12 @@ async def subir(
             # POSITIVAS: só do conjunto aprovado. Do corpo, só NEGATIVAS —
             # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
             # uma quarta positiva entrava e trocava o match type aprovado.
-            criterios=tuple(criterios_do_conjunto) + tuple(
-                portao_pago.somente_negativas_do_corpo(_criterios_do_corpo(body, pp))),
+            criterios=(
+                tuple(criterios_do_conjunto) + tuple(
+                    portao_pago.somente_negativas_do_corpo(
+                        _criterios_do_corpo(body, pp)))
+                if canal_resolvido == "SEARCH" else ()
+            ),
             negativas_campanha=(),
             negativas_adgroup=(),
             vertical=body.vertical,
@@ -3965,23 +3994,27 @@ async def subir(
             # A sub-intenção continua servindo à triagem no cockpit.
             conjunto_unico=True,
         )
-        plano = pp.montar_brief(cockpit, escolha, copy=_copy_do_corpo(body.texto_do_anuncio))
-        if canal_resolvido == "DISPLAY":
-            origem = getattr(cockpit, "origem", None)
-            imagens, avisos_da_ponte = _imagens_de_display(
-                body,
-                nicho=getattr(origem, "nicho", None) or "sem nicho declarado",
-            )
-            plano.brief.imagens_display = imagens
-            if avisos_da_ponte:
-                plano = _dataclasses.replace(
-                    plano, avisos=plano.avisos + avisos_da_ponte
-                )
+        # ⚠️ AS MESMAS FUNÇÕES DE `/provar`, e não uma segunda montagem que
+        # "faz quase o mesmo". `_montar_plano_display` aplica país de origem,
+        # idioma, vertical, filtro de bloqueadores do cockpit e a recusa dos
+        # campos que Display não opera; remontar por `montar_brief` e depois
+        # remendar `imagens_display` reproduzia parte disso e perdia o resto —
+        # então o plano que `/subir` selava não era o plano que `/provar`
+        # aprovou, e a divergência só apareceria na conta.
+        copy = _copy_do_corpo(body.texto_do_anuncio)
+        if canal_resolvido == "DEMAND_GEN":
+            plano = _montar_plano_demand_gen(pp, cockpit, escolha, copy, body)
+        elif canal_resolvido == "DISPLAY":
+            plano = _montar_plano_display(pp, cockpit, escolha, copy, body)
+        else:
+            plano = pp.montar_brief(cockpit, escolha, copy=copy)
         # A MESMA pós-condição de `/provar`, sobre o brief que vai ser ESCRITO.
         # `/subir` remonta o plano, então precisa reconferir o que remontou —
-        # herdar a recusa da entrada não prova nada sobre a saída.
-        portao_pago.conferir_positivas_do_brief(
-            plano.brief, criterios_do_conjunto, grupo_colapsado=True)
+        # herdar a recusa da entrada não prova nada sobre a saída. Só Search
+        # tem positivas a conferir.
+        if canal_resolvido == "SEARCH":
+            portao_pago.conferir_positivas_do_brief(
+                plano.brief, criterios_do_conjunto, grupo_colapsado=True)
         preparo = sb.preparar(
             cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
             ai_max=body.ai_max,
@@ -4294,6 +4327,16 @@ async def subir(
             blueprint_titulo=f"{preparo.canal} — canário pausado",
             blueprint_corpo={"canal": preparo.canal, "cria_pausada": True},
             destino_url=plano.brief.url_final,
+            # ⚠️ O TETO E A MOEDA, que viajavam NULL em todo lançamento real.
+            # O schema v10_01 declara as duas colunas justamente para o ledger
+            # poder responder "qual era o limite de gasto aprovado" a partir da
+            # própria linha — sem elas, a resposta dependeria de alguém
+            # reconstruir a política do dia. O teto é o do CANAL (T01), não um
+            # número repetido aqui.
+            verba_diaria_teto_micros=int(
+                Decimal(_politica_do_canario(preparo.canal)
+                        .orcamento_diario_maximo_brl) * UM_MILHAO),
+            moeda="BRL",
             evidencia={"chave_intencao": chave_intencao,
                        "marca_remota": marca,
                        "run_id": body.run_id},

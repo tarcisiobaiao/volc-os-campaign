@@ -878,3 +878,138 @@ def test_o_manifesto_de_display_nao_promete_o_que_a_fatia_nao_monta():
     assert not [c for c in m.campos_do_pedido
                 if "segment" in c or "publico" in c or "posicionamento" in c]
     assert "keywords" not in m.campos_do_pedido
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# T02 — paridade /provar × /subir: o portão do conjunto pago é de Search
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _deixar_subir_chegar_a_montagem(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Abre o caminho até `_provar_de_novo` sem abrir NENHUMA escrita.
+
+    ⚠️ As duas travas abertas aqui são de PORTA, não de escrita: o escopo da
+    conta e o carregamento da oportunidade. `motor.subir` continua sendo um
+    tripwire — se a rota chegasse a escrever, o teste reprova.
+    """
+    monkeypatch.setattr(
+        trafego.escopo, "conta_da_casa", lambda *_: {"customer_id": "5478096539"})
+    monkeypatch.setattr(
+        _PonteFalsa, "carregar",
+        staticmethod(lambda *_a, **_k: SimpleNamespace(cluster=None)))
+    monkeypatch.setattr(
+        motor, "subir",
+        lambda *_a, **_k: pytest.fail("o caminho de escrita foi alcançado"))
+
+
+def test_subir_display_nao_consulta_o_portao_do_conjunto_pago(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CONTRAPROVA T02: `/subir` DISPLAY não pode morrer no portão de Search.
+
+    O portão do conjunto pago nasce das keywords aprovadas pelo motor de
+    elegibilidade paga. Display não tem keyword nenhuma — e até esta tarefa
+    `_provar_de_novo` o consultava para TODO canal. O efeito era uma divergência
+    de rota, não um erro de configuração: `/provar` aceitava o pedido Display e
+    `/subir` recusava o MESMO pedido com `PonteIncompleta`, falando de um
+    cluster que Display nunca teve.
+
+    ⚠️ A autorização do canário é aberta AQUI, e só para Display, porque sem
+    isso a rota pararia em T01 antes de chegar à montagem — e o teste passaria
+    sem provar nada. Abrir a janela não abre a escrita: `motor.subir` continua
+    sendo um tripwire.
+    """
+    _isolar(monkeypatch)
+    _deixar_subir_chegar_a_montagem(monkeypatch)
+    monkeypatch.setattr(
+        trafego.canario, "CANAIS_COM_CRIACAO_AUTORIZADA",
+        frozenset({"SEARCH", "DISPLAY"}))
+
+    visitou_o_portao: list[str] = []
+
+    def portao_proibido(*_a, **_k):
+        visitou_o_portao.append("portao")
+        raise AssertionError("portão de Search consultado num canal sem keyword")
+
+    for nome in ("criterios_do_cluster", "keywords_por_grupo",
+                 "conferir_positivas_do_brief", "recusar_keywords_fora"):
+        monkeypatch.setattr(trafego.portao_pago, nome, portao_proibido)
+
+    chegou_na_montagem: list[str] = []
+
+    def montar_display(*_a, **_k):
+        chegou_na_montagem.append("display")
+        raise RuntimeError("parada deliberada depois da montagem Display")
+
+    monkeypatch.setattr(trafego, "_montar_plano_display", montar_display)
+
+    try:
+        asyncio.run(trafego.subir(
+            trafego.SubirEntrada(
+                opportunity_id=1,
+                customer_id="5478096539",
+                login_customer_id="6016739364",
+                canal="DISPLAY",
+                motivo="prova hermética da paridade de canal",
+                confirmar_criacao_pausada=True,
+                carimbo_nome="20260828_120000",
+                plano_impressao="a" * 64,
+            ),
+            identidade=Identidade(
+                sub="u1", email="op@volc", papel="ADMIN", origem="teste"),
+        ))
+    except Exception:  # noqa: BLE001 — o desfecho não é o que se mede aqui
+        pass
+
+    assert visitou_o_portao == [], (
+        "/subir consultou o portão do conjunto pago num canal sem keyword"
+    )
+    # E a prova de que o teste NÃO passou por parar cedo demais: a rota chegou
+    # à montagem Display, que é a MESMA função que `/provar` usa.
+    assert chegou_na_montagem == ["display"]
+
+
+def test_subir_search_continua_passando_pelo_portao_do_conjunto_pago(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REGRESSÃO T02: tirar o portão de Display NÃO pode tirá-lo de Search.
+
+    É o portão que garante que a keyword positiva do plano nasce do conjunto
+    aprovado, e não da fila bruta da mineração. Um `if` de canal escrito errado
+    o desligaria para todo mundo, e o sintoma apareceria só na conta.
+    """
+    _isolar(monkeypatch)
+    _deixar_subir_chegar_a_montagem(monkeypatch)
+    visitas: list[str] = []
+
+    def registrar(*_a, **_k):
+        visitas.append("criterios_do_cluster")
+        raise _PonteFalsa.PonteIncompleta("conjunto pago ausente")
+
+    monkeypatch.setattr(trafego.portao_pago, "criterios_do_cluster", registrar)
+
+    try:
+        asyncio.run(trafego.subir(
+            trafego.SubirEntrada(
+                opportunity_id=1,
+                customer_id="5478096539",
+                login_customer_id="6016739364",
+                canal="SEARCH",
+                motivo="prova hermética da regressão de Search",
+                confirmar_criacao_pausada=True,
+                carimbo_nome="20260828_120000",
+                plano_impressao="a" * 64,
+                budget_diario=10.0,
+                cpc_inicial=0.20,
+                rede={"google_search": True, "search_partners": False,
+                      "display_expansion": False},
+            ),
+            identidade=Identidade(
+                sub="u1", email="op@volc", papel="ADMIN", origem="teste"),
+        ))
+    except Exception:  # noqa: BLE001
+        pass
+
+    assert visitas == ["criterios_do_cluster"], (
+        "Search precisa continuar passando pelo portão do conjunto pago"
+    )

@@ -552,3 +552,51 @@ def test_achou_nulo_nao_e_podado_do_corpo_da_reconciliacao():
         "leitura teria virado ausência de verificação")
     assert enviados["corpo"]["p_achou"] is None
     assert "p_volc_campaign_id" not in enviados["corpo"]
+
+
+# ── T02 · dinheiro no ledger: tcpa em micros, teto e moeda gravados ─────────
+
+
+def test_tcpa_atravessa_o_plano_do_ledger_em_micros_inteiros():
+    """CONTRAPROVA T02 (OCC-G23): `tcpa` é dinheiro e não pode viajar float.
+
+    `ProvarEntrada.tcpa` é `Optional[float]`. Sem esta conversão o valor chegava
+    cru a `lote._sem_float`, que recusava — com razão — e a recusa aparecia
+    para o operador como "plano sem representação canônica", falando de um
+    problema que não era o dele. Search raramente preenche o campo; Display o
+    usa dentro do MaxConv, e é por Display que o defeito apareceria.
+    """
+    from app.routers import trafego as rt
+
+    corpo = rt.ProvarEntrada(
+        opportunity_id=1, customer_id="5478096539",
+        login_customer_id="6016739364", canal="DISPLAY",
+        budget_diario=10.0, cpc_inicial=0.20, tcpa=3.5,
+    )
+    plano = rt.plano_do_ledger(corpo, cid="5478096539", mid="6016739364")
+
+    assert "tcpa" not in plano
+    assert plano["tcpa_micros"] == 3_500_000
+    assert isinstance(plano["tcpa_micros"], int)
+    # E a travessia real não pode recusar o plano por causa dele.
+    from app.trafego import lote as dom
+
+    dom.chave_de_idempotencia(
+        intencao_id="i" * 32, plataforma="GOOGLE_ADS",
+        conta_externa="5478096539", canal="DISPLAY", ordem=0, plano=plano,
+    )
+
+
+def test_ausencia_de_tcpa_continua_ausencia_e_nao_vira_zero():
+    """⚠️ `tcpa_micros = 0` diria que alguém escolheu zero. Ausência é ausência."""
+    from app.routers import trafego as rt
+
+    corpo = rt.ProvarEntrada(
+        opportunity_id=1, customer_id="5478096539",
+        login_customer_id="6016739364", canal="SEARCH",
+        budget_diario=10.0, cpc_inicial=0.20,
+    )
+    plano = rt.plano_do_ledger(corpo, cid="5478096539", mid="6016739364")
+
+    assert "tcpa" not in plano
+    assert "tcpa_micros" not in plano
