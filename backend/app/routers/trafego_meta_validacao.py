@@ -1,8 +1,24 @@
 """Safe control plane for compiling and remotely validating the Meta P0 plan.
 
-This router has no create, approval or persistence endpoint. It can only read
+This router has no create, approval or activation endpoint — those live in
+``trafego_meta_criacao``, behind their own flags. Here we only read
 account-scoped assets, compile a deterministic plan and, behind an independent
 flag plus an explicit click, call Meta with ``execution_options=validate_only``.
+
+## A única escrita desta rota, e por que ela existe
+
+Depois de a Meta ACEITAR a validação, o resultado é gravado como recibo durável
+(``trafego_meta_create_record_validation``). Sem essa gravação a prova de que o
+plano foi validado existiria apenas no corpo da resposta HTTP — quer dizer,
+apenas no navegador — e a aprovação teria que acreditar no cliente quando ele
+diz "eu fui validado". Um recibo verde inventado pelo browser é exatamente o
+que separa uma autoridade de um enfeite.
+
+A gravação **não** é condição para responder. Ela depende de
+``META_CREATE_LEDGER_WRITE_ENABLED``, que pode estar fechada; nesse caso a
+validação continua valendo e a resposta declara, com todas as letras, que a
+prova não foi persistida — e a aprovação vai recusar mais tarde, por falta de
+recibo, em vez de aceitar uma afirmação sem lastro.
 """
 from __future__ import annotations
 
@@ -20,6 +36,10 @@ from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.seguranca.identidade import Identidade, exigir_admin
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
+from app.trafego.meta_execucao.capacidades import (
+    criacao_liberada,
+    motivo_da_criacao_fechada,
+)
 from app.trafego.meta_execucao.compilador import PlanoCompiladoMeta, compilar_plano_pausado
 from app.trafego.meta_execucao.contrato import (
     AutorizacaoMeta,
@@ -27,11 +47,29 @@ from app.trafego.meta_execucao.contrato import (
     PlanoMetaPausado,
     VariacaoEstaticaMeta,
 )
-from app.trafego.meta_execucao.executor import ErroRemotoMeta, ExecutorMetaPausado
+from app.trafego.meta_execucao.executor import (
+    ErroRemotoMeta,
+    ExecutorMetaPausado,
+    ResultadoValidacaoMeta,
+)
+from app.trafego.meta_execucao.registro import RegistroSagaMetaSupabase
+from app.services.supabase_service import SupabaseService
+from app.config import get_settings
 
 
 router = APIRouter(prefix="/api/trafego/meta/local/criacao", tags=["meta-validate-paused"])
 TIMEOUT_META = 20.0
+
+
+def _registro_saga() -> RegistroSagaMetaSupabase:
+    """Seam do ledger para ESTA rota.
+
+    ⚠️ `trafego_meta_criacao` tem uma fábrica própria com o mesmo corpo, e a
+    duplicação de uma linha é deliberada: cada módulo precisa de um ponto de
+    substituição independente nos testes. Compartilhar a função faria uma
+    troca na rota de validação silenciosamente reconfigurar a rota de criação.
+    """
+    return RegistroSagaMetaSupabase(SupabaseService(get_settings()))
 
 
 class PedidoVariacaoEstaticaMeta(BaseModel):
@@ -181,7 +219,10 @@ async def capacidades(
             "ENABLED" if os.environ.get("META_VALIDATE_ONLY_ENABLED") == "1"
             else "BLOCKED_BY_SERVER_FLAG"
         ),
-        "create_paused": "NOT_MOUNTED",
+        # A rota existe (`trafego_meta_criacao`), então "NOT_MOUNTED" deixou de
+        # ser verdade. O que decide agora é a autorização do servidor, e as duas
+        # flags são reportadas juntas para a tela poder dizer o que falta.
+        "create_paused": "ENABLED" if criacao_liberada() else "BLOCKED_BY_SERVER_FLAG",
         "activation": "NOT_IMPLEMENTED",
         # Causa verificável de cada bloqueio, em linguagem de operador. A tela
         # mostra isto no lugar do nome de qualquer variável de ambiente.
@@ -211,10 +252,7 @@ async def capacidades(
                 "A validação remota está fechada neste servidor. Um administrador precisa "
                 "liberá-la antes de qualquer chamada à Meta."
             ),
-            "create_paused": (
-                "A criação real não tem rota montada: ela depende de autorização separada "
-                "para o registro durável e para a escrita na Meta."
-            ),
+            "create_paused": motivo_da_criacao_fechada(),
         },
     }
 
@@ -323,6 +361,7 @@ async def validar(
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             resultado = await ExecutorMetaPausado(cliente).validar_raizes(
                 plano, segredo, autorizacao)
+        prova = await _gravar_prova_da_validacao(resultado, plano, ator=quem.sub)
         return {
             "ok": resultado.aceito,
             "cobertura": resultado.cobertura,
@@ -330,6 +369,46 @@ async def validar(
             "operacoes_dependentes_pendentes": list(resultado.operacoes_dependentes_pendentes),
             "plano_sha256": resultado.plano_sha256,
             "objetos_criados": 0,
+            # A aprovação só aceita esta referência opaca. Sem ela a validação
+            # continua verdadeira e a aprovação continua impossível — que é o
+            # comportamento certo quando a autoridade durável está fechada.
+            "prova_duravel": prova,
         }
     except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
         raise _erro(exc) from None
+
+
+async def _gravar_prova_da_validacao(
+    resultado: ResultadoValidacaoMeta,
+    plano: PlanoCompiladoMeta,
+    *,
+    ator: str,
+) -> dict[str, Any]:
+    """Persiste o recibo da validação e diz honestamente se conseguiu.
+
+    ⚠️ Uma falha aqui NÃO derruba a resposta. A Meta já respondeu, nada foi
+    criado, e apagar esse fato porque o ledger está fechado seria mentir na
+    direção oposta. O que a resposta faz é declarar `registrada: false` e o
+    motivo — e é a APROVAÇÃO que falha fechada depois, por não encontrar
+    recibo nenhum para o hash.
+    """
+    if not resultado.aceito:
+        return {"registrada": False, "motivo": "a Meta não aceitou este plano"}
+    try:
+        gravado = await _registro_saga().registrar_validacao(
+            plano_sha256=resultado.plano_sha256,
+            account_ref=plano.account_ref,
+            ator=ator,
+            cobertura=resultado.cobertura,
+            passos_validados=resultado.operacoes_validadas,
+            passos_pendentes=resultado.operacoes_dependentes_pendentes,
+            operacoes_totais=len(plano.operacoes),
+            objetos_criados=0,
+        )
+    except ErroDeNascimentoMeta as exc:
+        return {"registrada": False, "motivo": str(exc), "codigo": exc.codigo}
+    return {
+        "registrada": True,
+        "validation_id": str(gravado.get("validation_id") or ""),
+        "validated_at": gravado.get("validated_at"),
+    }

@@ -62,6 +62,14 @@ export interface CapacidadesDaBancada {
    *  que não existe é a escolha do operador dentro de uma receita de conjunto
    *  único — a Meta recusou 100/4005 na validação real de 05/09/2026. */
   budgetSharingMotivo: string | null;
+  /** O servidor autoriza criar objetos reais em estado PAUSED?
+   *
+   * ⚠️ Fechado por padrão, e o padrão é o que importa: um erro de leitura da
+   * resposta precisa deixar a criação FECHADA, nunca aberta. */
+  criarPausada: boolean;
+  /** Qual autorização falta, em linguagem de operador. Nunca o nome de uma
+   *  variável de ambiente — a tela explica a causa, não a configuração. */
+  criarPausadaMotivo: string | null;
 }
 
 export const CAPACIDADES_FECHADAS: CapacidadesDaBancada = {
@@ -72,7 +80,20 @@ export const CAPACIDADES_FECHADAS: CapacidadesDaBancada = {
   flexivel: false,
   flexivelMotivo: null,
   budgetSharingMotivo: null,
+  criarPausada: false,
+  criarPausadaMotivo: null,
 };
+
+/** A frase que o operador digita para liberar a criação.
+ *
+ * Comparada exatamente, aqui e no servidor. Aceitar "criar pausada" ou "sim"
+ * transformaria um gesto deliberado num reflexo — e o ponto do gesto é
+ * justamente exigir que a pessoa pare para escrevê-lo. */
+export const CONFIRMACAO_DE_CRIACAO = 'CRIAR PAUSADA';
+
+export function confirmacaoDeCriacaoValida(digitado: string): boolean {
+  return String(digitado ?? '').trim() === CONFIRMACAO_DE_CRIACAO;
+}
 
 /** Converte a digitação do operador em centavos, sem inventar cem vezes a verba.
  *

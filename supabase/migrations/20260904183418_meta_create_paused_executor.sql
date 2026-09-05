@@ -28,11 +28,71 @@ BEGIN
     RAISE EXCEPTION 'meta_create_paused_executor exige papeis Supabase; ausentes: %', faltando;
   END IF;
   IF to_regclass('public.trafego_meta_create_approval') IS NOT NULL
-     OR to_regclass('public.trafego_meta_create_step') IS NOT NULL THEN
+     OR to_regclass('public.trafego_meta_create_step') IS NOT NULL
+     OR to_regclass('public.trafego_meta_validation_receipt') IS NOT NULL THEN
     RAISE EXCEPTION 'meta_create_paused_executor ja parece aplicado; rode o rollback correspondente';
   END IF;
 END
 $guarda$;
+
+-- =============================================================================
+-- RECIBO DURAVEL DO validate_only
+-- =============================================================================
+-- Antes desta tabela a prova de que a Meta aceitou o plano existia SO no corpo
+-- da resposta HTTP, ou seja, so no navegador. Uma aprovacao que aceitasse essa
+-- afirmacao estaria confiando no cliente para dizer "eu fui validado" — e um
+-- recibo verde inventado pelo browser e exatamente o que separa uma autoridade
+-- de um enfeite.
+--
+-- Quem escreve aqui e o servidor, DEPOIS de a Meta ter respondido `success` a
+-- uma chamada com `execution_options=["validate_only"]`. O browser nunca
+-- alcanca esta tabela: `anon` e `authenticated` nao tem grant nenhum, e nem
+-- `service_role` tem INSERT — so a RPC escreve.
+CREATE TABLE public.trafego_meta_validation_receipt (
+  validation_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider             text NOT NULL DEFAULT 'META_ADS',
+  capability           text NOT NULL DEFAULT 'META_VALIDATE_ONLY',
+  plan_sha256          text NOT NULL,
+  account_ref          text NOT NULL,
+  actor_id             text NOT NULL,
+  api_version          text NOT NULL DEFAULT 'v26.0',
+  coverage             text NOT NULL,
+  steps_validated      text[] NOT NULL,
+  steps_pending        text[] NOT NULL,
+  operations_total     smallint NOT NULL,
+  objects_created      smallint NOT NULL,
+  accepted             boolean NOT NULL,
+  validated_at         timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CONSTRAINT trafego_meta_validation_receipt_provider CHECK (provider = 'META_ADS'),
+  CONSTRAINT trafego_meta_validation_receipt_capability CHECK (capability = 'META_VALIDATE_ONLY'),
+  CONSTRAINT trafego_meta_validation_receipt_hash CHECK (plan_sha256 ~ '^[a-f0-9]{64}$'),
+  CONSTRAINT trafego_meta_validation_receipt_account_ref CHECK (account_ref ~ '^[A-Za-z0-9:_-]{8,180}$'),
+  CONSTRAINT trafego_meta_validation_receipt_actor CHECK (length(btrim(actor_id)) BETWEEN 1 AND 200),
+  CONSTRAINT trafego_meta_validation_receipt_api CHECK (api_version = 'v26.0'),
+  -- A cobertura e literal de proposito. `INDEPENDENT_ROOTS_ONLY` e a UNICA
+  -- cobertura que o `validar_raizes` sabe produzir; gravar qualquer outra
+  -- palavra deixaria uma aprovacao futura acreditar numa validacao mais ampla
+  -- do que a que aconteceu.
+  CONSTRAINT trafego_meta_validation_receipt_coverage CHECK (coverage = 'INDEPENDENT_ROOTS_ONLY'),
+  -- ⚠️ Um recibo de validacao com objeto criado nao e um recibo de validacao.
+  -- A coluna existe para que a afirmacao "zero objetos" seja GRAVADA, e nao
+  -- apenas subentendida pelo nome da tabela.
+  CONSTRAINT trafego_meta_validation_receipt_clean CHECK (objects_created = 0),
+  CONSTRAINT trafego_meta_validation_receipt_accepted CHECK (accepted),
+  -- ⚠️ `cardinality`, nunca `array_length`: `array_length(ARRAY[], 1)` devolve
+  -- NULL e um CHECK com NULL passa. `steps_pending` PODE ser vazio (uma receita
+  -- sem operacoes dependentes), `steps_validated` nao — um recibo que nao
+  -- validou nada nao prova nada.
+  CONSTRAINT trafego_meta_validation_receipt_manifesto CHECK (
+    cardinality(steps_validated) BETWEEN 1 AND 22
+    AND array_position(steps_validated, NULL) IS NULL
+    AND array_position(steps_pending, NULL) IS NULL
+    AND operations_total = cardinality(steps_validated) + cardinality(steps_pending)
+    AND operations_total BETWEEN 1 AND 22
+  )
+);
+CREATE INDEX trafego_meta_validation_receipt_plan_ix
+  ON public.trafego_meta_validation_receipt (plan_sha256, validated_at DESC);
 
 CREATE TABLE public.trafego_meta_create_approval (
   approval_id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,6 +107,27 @@ CREATE TABLE public.trafego_meta_create_approval (
   -- ordem. Sem ele, um approval_id valido para quatro operacoes aceitaria
   -- preparar um "creative:extra" que o operador nunca viu.
   steps_expected       text[] NOT NULL,
+  -- Quantidade de operacoes que o operador CONFERIU na tela. Redundante com
+  -- cardinality(steps_expected) de proposito: o numero que a interface mostrou
+  -- fica gravado como numero, e o CHECK abaixo prova que os dois concordam.
+  operations_expected  smallint NOT NULL,
+  -- ⚠️ O recibo duravel do validate_only que sustenta esta aprovacao. NOT NULL
+  -- e a regra inteira: nao existe aprovacao sem uma validacao remota gravada
+  -- pelo servidor para o MESMO hash. UNIQUE porque um recibo autoriza uma
+  -- aprovacao e so uma — reaprovar depois de expirar exige validar de novo,
+  -- e e isso que impede o replay de uma prova velha.
+  validation_id        uuid NOT NULL UNIQUE
+                       REFERENCES public.trafego_meta_validation_receipt (validation_id)
+                       ON DELETE RESTRICT,
+  -- A confirmacao humana de que o que vai nascer nasce PAUSADO. Nao e um campo
+  -- informativo: o CHECK recusa `false`, entao uma aprovacao sem essa frase
+  -- nao existe no banco.
+  paused_birth_confirmed boolean NOT NULL,
+  -- O pedido do operador — referencias OPACAS e texto dele, nunca id bruto da
+  -- Meta, image_hash ou token. E o que permite a rota de criacao receber so o
+  -- `approval_id` e recompilar o plano no servidor, em vez de aceitar um
+  -- payload Meta vindo do navegador.
+  plan_request         jsonb NOT NULL,
   state                text NOT NULL DEFAULT 'APPROVED',
   expires_at           timestamptz NOT NULL,
   approved_at          timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -72,7 +153,18 @@ CREATE TABLE public.trafego_meta_create_approval (
     AND array_lower(steps_expected, 1) = 1
     AND array_position(steps_expected, NULL) IS NULL
   ),
-  CONSTRAINT trafego_meta_create_approval_expiry CHECK (expires_at > approved_at),
+  CONSTRAINT trafego_meta_create_approval_operacoes CHECK (
+    operations_expected = cardinality(steps_expected)),
+  -- A frase e um portao, nao um rotulo. `false` nao vira linha.
+  CONSTRAINT trafego_meta_create_approval_paused CHECK (paused_birth_confirmed),
+  CONSTRAINT trafego_meta_create_approval_pedido CHECK (
+    jsonb_typeof(plan_request) = 'object' AND length(plan_request::text) <= 60000),
+  -- ⚠️ EXPIRACAO CURTA, com teto no proprio banco. `expires_at > approved_at`
+  -- sozinho aceitaria uma aprovacao valida por um ano — uma autorizacao de
+  -- gasto esquecida numa aba. Uma hora e o teto absoluto; a rota escolhe uma
+  -- janela bem menor e o banco garante que ninguem a alargue por fora.
+  CONSTRAINT trafego_meta_create_approval_expiry CHECK (
+    expires_at > approved_at AND expires_at <= approved_at + interval '1 hour'),
   CONSTRAINT trafego_meta_create_approval_revocation CHECK (
     (state = 'APPROVED' AND revoked_at IS NULL AND revoke_reason IS NULL)
     OR (state = 'REVOKED' AND revoked_at IS NOT NULL
@@ -116,6 +208,8 @@ CREATE TABLE public.trafego_meta_create_step (
 CREATE INDEX trafego_meta_create_step_state_ix
   ON public.trafego_meta_create_step (state, updated_at DESC);
 
+ALTER TABLE public.trafego_meta_validation_receipt ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.trafego_meta_validation_receipt FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.trafego_meta_create_approval ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trafego_meta_create_approval FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.trafego_meta_create_step ENABLE ROW LEVEL SECURITY;
@@ -125,8 +219,10 @@ ALTER TABLE public.trafego_meta_create_step FORCE ROW LEVEL SECURITY;
 -- ALL em public, e sem esta linha o backend poderia gravar recibo direto na
 -- tabela, contornando as RPCs transacionais que sao a unica autoridade da
 -- saga. Ler o recibo continua permitido; escrever, so pela funcao.
+REVOKE ALL ON public.trafego_meta_validation_receipt FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON public.trafego_meta_create_approval FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON public.trafego_meta_create_step FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON public.trafego_meta_validation_receipt TO service_role;
 GRANT SELECT ON public.trafego_meta_create_approval TO service_role;
 GRANT SELECT ON public.trafego_meta_create_step TO service_role;
 
@@ -145,13 +241,90 @@ BEGIN
 END
 $$;
 
+-- Grava a prova de que a Meta aceitou este plano exato sob `validate_only`.
+--
+-- Chamada pelo servidor DEPOIS da resposta da Meta, nunca antes. O navegador
+-- nao tem caminho ate aqui: ele recebe apenas o `validation_id` opaco, e um
+-- `validation_id` inventado nao existe na tabela — a aprovacao para em
+-- META_VALIDATION_RECEIPT_NOT_FOUND.
+CREATE FUNCTION public.trafego_meta_create_record_validation(
+  p_plan_sha256 text,
+  p_account_ref text,
+  p_actor_id text,
+  p_coverage text,
+  p_steps_validated text[],
+  p_steps_pending text[],
+  p_operations_total integer,
+  p_objects_created integer
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_id uuid;
+  v_validado_at timestamptz;
+  v_todos text[];
+BEGIN
+  PERFORM public.trafego_meta_exigir_service_role();
+  IF p_plan_sha256 !~ '^[a-f0-9]{64}$' THEN
+    RAISE EXCEPTION 'META_VALIDATION_PLAN_HASH_INVALID';
+  END IF;
+  IF p_coverage IS DISTINCT FROM 'INDEPENDENT_ROOTS_ONLY' THEN
+    RAISE EXCEPTION 'META_VALIDATION_COVERAGE_UNKNOWN';
+  END IF;
+  IF p_objects_created IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'META_VALIDATION_NOT_CLEAN';
+  END IF;
+  IF p_steps_validated IS NULL OR cardinality(p_steps_validated) = 0 THEN
+    RAISE EXCEPTION 'META_VALIDATION_MANIFEST_EMPTY';
+  END IF;
+  v_todos := p_steps_validated || coalesce(p_steps_pending, ARRAY[]::text[]);
+  IF (SELECT count(DISTINCT passo) FROM unnest(v_todos) AS passo) <> cardinality(v_todos) THEN
+    RAISE EXCEPTION 'META_VALIDATION_MANIFEST_DUPLICATE';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM unnest(v_todos) AS passo
+     WHERE passo !~ '^(campaign|adset|creative(?::[a-z0-9][a-z0-9_-]{0,31})?|ad(?::[a-z0-9][a-z0-9_-]{0,31})?)$'
+  ) THEN
+    RAISE EXCEPTION 'META_VALIDATION_MANIFEST_INVALID';
+  END IF;
+  IF p_operations_total IS DISTINCT FROM cardinality(v_todos) THEN
+    RAISE EXCEPTION 'META_VALIDATION_MANIFEST_DIVERGED';
+  END IF;
+
+  INSERT INTO public.trafego_meta_validation_receipt (
+    plan_sha256, account_ref, actor_id, coverage,
+    steps_validated, steps_pending, operations_total, objects_created, accepted
+  ) VALUES (
+    p_plan_sha256, p_account_ref, p_actor_id, p_coverage,
+    p_steps_validated, coalesce(p_steps_pending, ARRAY[]::text[]),
+    p_operations_total::smallint, p_objects_created::smallint, true
+  ) RETURNING validation_id, validated_at INTO v_id, v_validado_at;
+  RETURN jsonb_build_object(
+    'ok', true,
+    'validation_id', v_id::text,
+    'plan_sha256', p_plan_sha256,
+    'coverage', p_coverage,
+    'objects_created', 0,
+    'validated_at', v_validado_at
+  );
+END
+$$;
+
 CREATE FUNCTION public.trafego_meta_create_approve(
   p_plan_sha256 text,
   p_account_ref text,
   p_actor_id text,
   p_daily_budget_minor bigint,
+  p_currency text,
   p_expires_at timestamptz,
-  p_steps_expected text[]
+  p_steps_expected text[],
+  p_validation_id uuid,
+  p_validation_max_age_seconds integer,
+  p_paused_birth_confirmed boolean,
+  p_plan_request jsonb
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -161,6 +334,7 @@ AS $$
 DECLARE
   v_id uuid;
   v_distintos integer;
+  v_validacao public.trafego_meta_validation_receipt%ROWTYPE;
 BEGIN
   PERFORM public.trafego_meta_exigir_service_role();
   IF p_steps_expected IS NULL OR cardinality(p_steps_expected) = 0 THEN
@@ -198,6 +372,72 @@ BEGIN
   IF p_plan_sha256 !~ '^[a-f0-9]{64}$' THEN
     RAISE EXCEPTION 'META_APPROVAL_PLAN_HASH_INVALID';
   END IF;
+
+  -- ⚠️ A CONFIRMACAO HUMANA E UM PARAMETRO, NAO UM PRESSUPOSTO.
+  -- Se a rota esquecesse de exigir a frase digitada, o banco ainda recusaria.
+  IF p_paused_birth_confirmed IS NOT TRUE THEN
+    RAISE EXCEPTION 'META_PAUSED_BIRTH_NOT_CONFIRMED';
+  END IF;
+  IF p_currency IS DISTINCT FROM 'BRL' THEN
+    RAISE EXCEPTION 'META_CURRENCY_UNSUPPORTED';
+  END IF;
+  IF p_plan_request IS NULL OR jsonb_typeof(p_plan_request) <> 'object' THEN
+    RAISE EXCEPTION 'META_APPROVAL_PLAN_REQUEST_INVALID';
+  END IF;
+  IF p_expires_at IS NULL OR p_expires_at <= clock_timestamp() THEN
+    RAISE EXCEPTION 'META_APPROVAL_EXPIRY_INVALID';
+  END IF;
+  IF p_expires_at > clock_timestamp() + interval '1 hour' THEN
+    RAISE EXCEPTION 'META_APPROVAL_EXPIRY_TOO_LONG';
+  END IF;
+
+  -- ⚠️ A APROVACAO SO EXISTE SOBRE UMA VALIDACAO GRAVADA PELO SERVIDOR.
+  --
+  -- Cada campo abaixo e uma forma diferente de o recibo nao descrever ESTE
+  -- ato: outro plano, outra conta, outra pessoa, cobertura menor, objeto
+  -- criado, prova velha, manifesto diferente. Recusar cada uma pelo nome faz o
+  -- operador ler a causa em vez de "aprovacao invalida".
+  SELECT * INTO v_validacao
+    FROM public.trafego_meta_validation_receipt
+   WHERE validation_id = p_validation_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'META_VALIDATION_RECEIPT_NOT_FOUND';
+  END IF;
+  IF v_validacao.plan_sha256 <> p_plan_sha256 THEN
+    RAISE EXCEPTION 'META_VALIDATION_PLAN_DIVERGED';
+  END IF;
+  IF v_validacao.account_ref <> p_account_ref THEN
+    RAISE EXCEPTION 'META_VALIDATION_ACCOUNT_DIVERGED';
+  END IF;
+  IF v_validacao.actor_id <> p_actor_id THEN
+    RAISE EXCEPTION 'META_VALIDATION_ACTOR_DIVERGED';
+  END IF;
+  IF v_validacao.coverage <> 'INDEPENDENT_ROOTS_ONLY' OR v_validacao.accepted IS NOT TRUE THEN
+    RAISE EXCEPTION 'META_VALIDATION_NOT_ACCEPTED';
+  END IF;
+  IF v_validacao.objects_created <> 0 THEN
+    RAISE EXCEPTION 'META_VALIDATION_NOT_CLEAN';
+  END IF;
+  IF v_validacao.operations_total <> cardinality(p_steps_expected) THEN
+    RAISE EXCEPTION 'META_VALIDATION_MANIFEST_DIVERGED';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM unnest(v_validacao.steps_validated || v_validacao.steps_pending) AS passo
+     WHERE passo <> ALL (p_steps_expected)
+  ) THEN
+    RAISE EXCEPTION 'META_VALIDATION_MANIFEST_DIVERGED';
+  END IF;
+  -- A janela e curta de proposito: uma prova de ontem nao descreve a conta de
+  -- hoje. `clock_timestamp()` anda dentro da transacao, entao a idade e real.
+  IF p_validation_max_age_seconds IS NULL OR p_validation_max_age_seconds <= 0
+     OR p_validation_max_age_seconds > 3600 THEN
+    RAISE EXCEPTION 'META_VALIDATION_WINDOW_INVALID';
+  END IF;
+  IF v_validacao.validated_at
+     < clock_timestamp() - make_interval(secs => p_validation_max_age_seconds) THEN
+    RAISE EXCEPTION 'META_VALIDATION_RECEIPT_STALE';
+  END IF;
+
   PERFORM pg_advisory_xact_lock(hashtextextended(p_plan_sha256, 1602));
   IF EXISTS (
     SELECT 1
@@ -221,10 +461,12 @@ BEGIN
   END IF;
 
   INSERT INTO public.trafego_meta_create_approval (
-    plan_sha256, account_ref, actor_id, daily_budget_minor, expires_at, steps_expected
+    plan_sha256, account_ref, actor_id, daily_budget_minor, currency, expires_at,
+    steps_expected, operations_expected, validation_id, paused_birth_confirmed, plan_request
   ) VALUES (
-    p_plan_sha256, p_account_ref, p_actor_id, p_daily_budget_minor, p_expires_at,
-    p_steps_expected
+    p_plan_sha256, p_account_ref, p_actor_id, p_daily_budget_minor, p_currency, p_expires_at,
+    p_steps_expected, cardinality(p_steps_expected)::smallint, p_validation_id,
+    p_paused_birth_confirmed, p_plan_request
   ) RETURNING approval_id INTO v_id;
   RETURN jsonb_build_object(
     'ok', true,
@@ -232,7 +474,12 @@ BEGIN
     'plan_sha256', p_plan_sha256,
     'capability', 'META_CREATE_PAUSED',
     'expires_at', p_expires_at,
-    'steps_expected', to_jsonb(p_steps_expected)
+    'steps_expected', to_jsonb(p_steps_expected),
+    'operations_expected', cardinality(p_steps_expected),
+    'daily_budget_minor', p_daily_budget_minor,
+    'currency', p_currency,
+    'validation_id', p_validation_id::text,
+    'paused_birth_confirmed', true
   );
 END
 $$;
@@ -399,6 +646,92 @@ BEGIN
 END
 $$;
 
+-- ⚠️ RECONCILIACAO: o unico caminho de AMBIGUOUS para FAILED.
+--
+-- `trafego_meta_create_fail_step` so aceita IN_FLIGHT, e isso e correto: um
+-- passo em voo que a Meta recusou por escrito e uma falha provada. AMBIGUOUS e
+-- outra coisa — pode existir objeto do outro lado — e so pode ser encerrado
+-- depois de alguem PROVAR a ausencia por leitura. Esta funcao e o registro
+-- dessa prova, e o unico caminho de volta.
+--
+-- O caminho oposto — provar que o objeto EXISTE — nao precisa de funcao nova:
+-- `trafego_meta_create_close_step` ja aceita AMBIGUOUS -> CREATED com o id
+-- lido, e ja recusa um id diferente do gravado.
+CREATE FUNCTION public.trafego_meta_create_resolve_absent(
+  p_step_ref uuid, p_error_code text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  PERFORM public.trafego_meta_exigir_service_role();
+  IF p_error_code !~ '^[A-Z0-9_]{3,100}$' THEN
+    RAISE EXCEPTION 'META_STEP_ERROR_CODE_INVALID';
+  END IF;
+  UPDATE public.trafego_meta_create_step
+     SET state = 'FAILED', error_code = p_error_code,
+         closed_at = clock_timestamp(), updated_at = clock_timestamp()
+   WHERE step_id = p_step_ref AND state = 'AMBIGUOUS';
+  IF NOT FOUND THEN RAISE EXCEPTION 'META_STEP_NOT_AMBIGUOUS'; END IF;
+  RETURN jsonb_build_object('ok', true, 'state', 'FAILED');
+END
+$$;
+
+-- O manifesto do lado do SERVIDOR. Diferente de `trafego_meta_create_receipt`,
+-- que e a projecao sanitizada para o navegador, esta funcao devolve o que o
+-- backend precisa para recompilar o plano sozinho: o pedido do operador, o
+-- orcamento aprovado, a moeda, o manifesto e o `step_ref` de cada passo — a
+-- chave que a reconciliacao usa para fechar um passo ambiguo.
+--
+-- Continua sem devolver `external_object_id`: nem o servidor precisa dele para
+-- decidir, e nao devolve-lo mantem o id da Meta fora de todo corpo JSON que
+-- possa acabar num log.
+CREATE FUNCTION public.trafego_meta_create_approval_manifest(p_approval_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+DECLARE v_result jsonb;
+BEGIN
+  PERFORM public.trafego_meta_exigir_service_role();
+  SELECT jsonb_build_object(
+    'approval_id', a.approval_id::text,
+    'plan_sha256', a.plan_sha256,
+    'account_ref', a.account_ref,
+    'actor_id', a.actor_id,
+    'capability', a.capability,
+    'daily_budget_minor', a.daily_budget_minor,
+    'currency', a.currency,
+    'steps_expected', to_jsonb(a.steps_expected),
+    'operations_expected', a.operations_expected,
+    'paused_birth_confirmed', a.paused_birth_confirmed,
+    'plan_request', a.plan_request,
+    'validation_id', a.validation_id::text,
+    'state', CASE WHEN a.expires_at <= clock_timestamp() THEN 'EXPIRED' ELSE a.state END,
+    'expires_at', a.expires_at,
+    'approved_at', a.approved_at,
+    'steps', coalesce((
+      SELECT jsonb_agg(jsonb_build_object(
+        'step_ref', s.step_id::text,
+        'name', s.step_name,
+        'ordinal', s.ordinal,
+        'state', s.state,
+        'has_external_id', s.external_object_id IS NOT NULL,
+        'error_code', s.error_code
+      ) ORDER BY s.ordinal)
+      FROM public.trafego_meta_create_step s WHERE s.approval_id = a.approval_id
+    ), '[]'::jsonb)
+  ) INTO v_result
+  FROM public.trafego_meta_create_approval a WHERE a.approval_id = p_approval_id;
+  IF v_result IS NULL THEN RAISE EXCEPTION 'META_APPROVAL_NOT_FOUND'; END IF;
+  RETURN v_result;
+END
+$$;
+
 CREATE FUNCTION public.trafego_meta_create_receipt(p_approval_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -413,6 +746,13 @@ BEGIN
     'approval_id', a.approval_id::text,
     'plan_sha256', a.plan_sha256,
     'capability', a.capability,
+    -- O que o operador aprovou, para o recibo poder ser conferido contra o que
+    -- ele leu na tela. Sem id externo, sem payload, sem referencia resolvida.
+    'daily_budget_minor', a.daily_budget_minor,
+    'currency', a.currency,
+    'operations_expected', a.operations_expected,
+    'paused_birth_confirmed', a.paused_birth_confirmed,
+    'approved_at', a.approved_at,
     'state', CASE WHEN a.expires_at <= clock_timestamp() THEN 'EXPIRED' ELSE a.state END,
     'expires_at', a.expires_at,
     'steps', coalesce((
@@ -434,18 +774,24 @@ END
 $$;
 
 REVOKE ALL ON FUNCTION public.trafego_meta_exigir_service_role() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,timestamptz,text[]) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_record_validation(text,text,text,text,text[],text[],integer,integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_close_step(uuid,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.trafego_meta_create_approval_manifest(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_receipt(uuid) FROM PUBLIC, anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,timestamptz,text[]) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_record_validation(text,text,text,text,text[],text[],integer,integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_close_step(uuid,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_mark_ambiguous(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_fail_step(uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_resolve_absent(uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.trafego_meta_create_approval_manifest(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.trafego_meta_create_receipt(uuid) TO service_role;
 
 COMMIT;

@@ -21,6 +21,7 @@ from app.routers import (
     entities,
     pautador,
     meta_local,
+    trafego_meta_criacao,
     trafego_meta_validacao,
     trafego,
     trafego_diagnostico,
@@ -188,6 +189,12 @@ app.include_router(meta_local.router)
 # Compilacao e validate_only do primeiro plano Meta PAUSED. Este router nao
 # possui endpoint de create, aprovacao persistente ou ativacao.
 app.include_router(trafego_meta_validacao.router)
+# Caminho governado do nascimento PAUSED: aprovar, criar e reconciliar. Router
+# SEPARADO de proposito — a autoridade de criacao nao pode viajar junto das
+# rotas que so olham. Fechado por META_CREATE_PAUSED_ENABLED e
+# META_CREATE_LEDGER_WRITE_ENABLED; sem as duas, recusa antes do Keychain.
+# Nao existe rota de ativacao aqui nem em lugar nenhum.
+app.include_router(trafego_meta_criacao.router)
 # Inventário operacional (Fase 1B). `registrar()` inclui DOIS routers com o
 # mesmo prefixo: o de sessão (`exigir_usuario`) e o de serviço
 # (`exigir_servico`), que o agendador usa. Separados porque a origem da

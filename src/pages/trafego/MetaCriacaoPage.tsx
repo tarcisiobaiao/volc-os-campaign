@@ -36,8 +36,9 @@ import {
 } from '@/components/trafego/bancada';
 import { MetaConfiguracaoLocal } from '@/components/trafego/meta/MetaConfiguracaoLocal';
 import {
-  CAPACIDADES_FECHADAS, Draft, EstadoDaEtapa, EtapaId, LIMITE_VARIACOES, MidiaDaVariacao,
-  VariacaoDraft, dominioDoDestino, formatarBrl, inicioEmIso, nomeUnico, paraPlano,
+  CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, Draft, EstadoDaEtapa, EtapaId,
+  LIMITE_VARIACOES, MidiaDaVariacao, VariacaoDraft, confirmacaoDeCriacaoValida,
+  dominioDoDestino, formatarBrl, inicioEmIso, nomeUnico, paraPlano,
   prontidaoDasEtapas, prontoParaCompilar, proximaChave, reaisParaMinor, variacaoCompleta,
   variacaoInicial, variacoesEmitidas, type CapacidadesDaBancada,
 } from '@/components/trafego/meta/rascunho';
@@ -46,8 +47,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  AtivoCriacaoMeta, ContaMetaLocal, PautadorApiError, pautadorApi,
-  ResultadoCompilacaoMeta, ResultadoValidacaoPlanoMeta,
+  AprovacaoCriacaoMeta, AtivoCriacaoMeta, ContaMetaLocal, PautadorApiError, pautadorApi,
+  ResultadoCompilacaoMeta, ResultadoCriacaoPausadaMeta, ResultadoReconciliacaoMeta,
+  ResultadoValidacaoPlanoMeta,
 } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
@@ -254,10 +256,28 @@ const MetaCriacaoPage: React.FC = () => {
   const [videos, setVideos] = useState<AtivoCriacaoMeta[]>([]);
   const [capacidades, setCapacidades] = useState<CapacidadesDaBancada>(CAPACIDADES_FECHADAS);
   const [carregando, setCarregando] = useState(true);
-  const [ocupado, setOcupado] = useState<'ativos' | 'compilar' | 'validar' | null>(null);
+  const [ocupado, setOcupado] = useState<
+    'ativos' | 'compilar' | 'validar' | 'aprovar' | 'criar' | 'reconciliar' | null>(null);
   const [avisos, setAvisos] = useState<AvisoDoCockpit[]>([]);
   const [compilacao, setCompilacao] = useState<ResultadoCompilacaoMeta | null>(null);
   const [validacao, setValidacao] = useState<ResultadoValidacaoPlanoMeta | null>(null);
+  const [aprovacao, setAprovacao] = useState<AprovacaoCriacaoMeta | null>(null);
+  const [nascimento, setNascimento] = useState<ResultadoCriacaoPausadaMeta | null>(null);
+  const [reconciliacao, setReconciliacao] = useState<ResultadoReconciliacaoMeta | null>(null);
+  const [confirmacaoMarcada, setConfirmacaoMarcada] = useState(false);
+  const [confirmacaoDigitada, setConfirmacaoDigitada] = useState('');
+
+  /** ⚠️ TRAVA SÍNCRONA de duplo clique.
+   *
+   * `ocupado` é `useState`: ele só chega ao DOM no render seguinte, e entre o
+   * primeiro clique e esse render cabe um segundo clique inteiro. Para
+   * "Validar" isso custaria uma chamada repetida que não cria nada; para
+   * "Criar campanha PAUSED" custaria uma segunda campanha na conta real.
+   *
+   * O `ref` fecha essa janela no mesmo tique do evento. Ele NÃO substitui a
+   * defesa durável — o ledger recusa reentrar num passo em voo — mas é a
+   * camada que impede o pedido de sair duas vezes do navegador. */
+  const emVoo = useRef(false);
 
   // ⚠️ Toda resposta assíncrona carrega o selo do rascunho que a pediu. Sem
   // isso, o operador troca a URL enquanto a Meta responde e a resposta antiga
@@ -267,6 +287,16 @@ const MetaCriacaoPage: React.FC = () => {
     selo.current += 1;
     setCompilacao(null);
     setValidacao(null);
+    // ⚠️ Editar o rascunho derruba a APROVAÇÃO junto. Uma aprovação viva
+    // descreve um hash; manter o botão "Criar" habilitado depois de o operador
+    // mudar o orçamento deixaria a tela oferecendo a criação de um plano que
+    // ninguém aprovou. O servidor recusaria pelo hash — e a tela não pode
+    // depender disso para não mentir.
+    setAprovacao(null);
+    setNascimento(null);
+    setReconciliacao(null);
+    setConfirmacaoMarcada(false);
+    setConfirmacaoDigitada('');
     setAvisos([]);
   }, []);
 
@@ -285,6 +315,10 @@ const MetaCriacaoPage: React.FC = () => {
           flexivel: cap.flexible_creative === 'AVAILABLE',
           flexivelMotivo: bloqueios.flexible_creative ?? null,
           budgetSharingMotivo: bloqueios.adset_budget_sharing ?? null,
+          // Fechado por padrão: qualquer valor que não seja exatamente
+          // 'ENABLED' deixa a criação indisponível na tela.
+          criarPausada: cap.create_paused === 'ENABLED',
+          criarPausadaMotivo: bloqueios.create_paused ?? null,
         });
         if (inventario.contas.length === 1) {
           setDraft((atual) => ({ ...atual, accountRef: inventario.contas[0].referencia_opaca }));
@@ -462,6 +496,58 @@ const MetaCriacaoPage: React.FC = () => {
     }
   };
 
+  /** Envolve um ato que não pode sair duas vezes do navegador.
+   *
+   * A trava é o `ref`, lido e escrito no mesmo tique do clique. `ocupado` só
+   * desabilita o botão no render seguinte, e essa diferença é a janela por
+   * onde um duplo clique passa.
+   */
+  const umaVezSo = async (
+    rotulo: 'aprovar' | 'criar' | 'reconciliar',
+    ato: () => Promise<void>,
+  ) => {
+    if (emVoo.current) return;
+    emVoo.current = true;
+    setOcupado(rotulo);
+    setAvisos([]);
+    try {
+      await ato();
+    } catch (exc) {
+      setAvisos(avisosDoErro(exc));
+    } finally {
+      emVoo.current = false;
+      setOcupado(null);
+    }
+  };
+
+  const aprovar = () => umaVezSo('aprovar', async () => {
+    const prova = validacao?.prova_duravel;
+    if (!validacao?.ok || !prova?.registrada || !prova.validation_id) {
+      throw new PautadorApiError(
+        'A validação desta versão não foi gravada como prova durável. Valide de novo '
+        + 'antes de aprovar.', 409);
+    }
+    const resultado = await pautadorApi.aprovarCriacaoMeta({
+      plano: paraPlano(draft),
+      planoSha256: validacao.plano_sha256,
+      validationId: prova.validation_id,
+      confirmacaoDigitada,
+    });
+    setAprovacao(resultado.aprovacao);
+  });
+
+  const criar = () => umaVezSo('criar', async () => {
+    if (!aprovacao) return;
+    const resultado = await pautadorApi.criarCampanhaPausadaMeta(
+      aprovacao.approval_id, aprovacao.plano_sha256);
+    setNascimento(resultado);
+  });
+
+  const reconciliar = () => umaVezSo('reconciliar', async () => {
+    if (!aprovacao) return;
+    setReconciliacao(await pautadorApi.reconciliarCriacaoMeta(aprovacao.approval_id));
+  });
+
   const linhasDoPedido: LinhaDoPedido[] = [
     { rotulo: 'Conta', valor: conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null, fonte: 'a Meta, agora' },
     { rotulo: 'Página', valor: pagina?.nome ?? null, fonte: 'a Meta, agora' },
@@ -476,11 +562,17 @@ const MetaCriacaoPage: React.FC = () => {
     { rotulo: 'Validação na Meta', valor: validacao?.ok ? `Aceita · ${validacao.operacoes_validadas.length} de ${validacao.operacoes_validadas.length + validacao.operacoes_dependentes_pendentes.length} operações` : null, fonte: 'a Meta' },
   ];
 
-  const proximoAto = validacao?.ok
-    ? 'Nada mais nesta bancada: criar de fato é um ato separado, ainda não montado.'
-    : compilacao
-      ? 'Validar na Meta, sem criar nenhum objeto.'
-      : faltas.length > 0 ? null : 'Conferir o plano no backend.';
+  const proximoAto = nascimento
+    ? 'Nada mais nesta bancada: ativar é um ato separado e não existe aqui.'
+    : aprovacao
+      ? 'Criar a campanha PAUSED. Os objetos passam a existir, e nenhum veicula.'
+      : validacao?.ok
+        ? capacidades.criarPausada
+          ? 'Confirmar e aprovar o plano. Aprovar ainda não cria nada.'
+          : 'Nada mais nesta bancada: a criação PAUSED está fechada neste servidor.'
+        : compilacao
+          ? 'Validar na Meta, sem criar nenhum objeto.'
+          : faltas.length > 0 ? null : 'Conferir o plano no backend.';
 
   const conteudo = (() => {
     switch (etapa) {
@@ -902,12 +994,190 @@ const MetaCriacaoPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
-            <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-foreground">
-              <strong>Criar de verdade é outro ato, e ele não existe nesta rota.</strong> O compilador
-              e o executor pausado já estão prontos e provados, mas o transporte final espera uma
-              autorização separada. Nada nesta tela cria, altera ou ativa uma campanha.
+          {!capacidades.criarPausada && (
+            <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+              <div className="max-w-[74ch] space-y-2 text-sm leading-relaxed text-pretty text-foreground">
+                <p><strong>Criação PAUSED ainda fechada neste servidor.</strong></p>
+                <p className="text-muted-foreground">
+                  {capacidades.criarPausadaMotivo
+                    ?? 'Um administrador precisa liberar a criação antes de qualquer nascimento.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {capacidades.criarPausada && (
+            <div className="space-y-4 rounded-lg border border-border/70 p-4">
+              <BlocoDeEvidencia titulo="O que será criado agora, de verdade" tom="atencao">
+                <LinhaDeFato rotulo="Conta" valor={conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null} fonte="a Meta" ausencia="não escolhida" />
+                <LinhaDeFato rotulo="Orçamento diário" valor={reaisParaMinor(draft.budgetBrl) > 0 ? `${formatarBrl(reaisParaMinor(draft.budgetBrl))} · no conjunto` : null} fonte="você" ausencia="não informado" />
+                <LinhaDeFato rotulo="Campanha" valor={draft.campaignName || null} fonte="você" ausencia="sem nome" />
+                <LinhaDeFato rotulo="Conjunto" valor={draft.adsetName || null} fonte="você" ausencia="sem nome" />
+                <LinhaDeFato rotulo="Criativos e anúncios" valor={`${emitidas.length} criativo${emitidas.length === 1 ? '' : 's'} · ${emitidas.length} anúncio${emitidas.length === 1 ? '' : 's'}`} fonte="o compilador" />
+                <LinhaDeFato rotulo="Estado ao nascer" valor="Pausado em todos os níveis veiculáveis" fonte="a receita provada" />
+                <LinhaDeFato rotulo="Identidade do plano" valor={compilacao?.plano.plano_sha256 ?? null} fonte="o backend" ausencia="plano ainda não compilado" />
+                <LinhaDeFato rotulo="Validação remota" valor={validacao?.ok ? `Aceita · ${validacao.operacoes_validadas.join(', ')}` : null} fonte="a Meta" ausencia="ainda não validado" />
+                <LinhaDeFato rotulo="Prova durável da validação" valor={validacao?.prova_duravel?.registrada ? 'Gravada no servidor' : null} fonte="o backend" ausencia="não gravada" />
+                <LinhaDeFato rotulo="Ainda sem validação remota" valor={validacao?.operacoes_dependentes_pendentes.join(', ') || null} fonte="a Meta" ausencia="nenhuma" />
+              </BlocoDeEvidencia>
+
+              {/* ⚠️ A cobertura parcial fica JUNTO do botão que cria, não numa
+                  nota de rodapé: conjunto e anúncio nunca foram validados
+                  remotamente, e é exatamente neles que a primeira criação real
+                  pode falhar. */}
+              <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
+                A validação remota cobre apenas as operações que não dependem de um objeto
+                real. O conjunto e os anúncios só serão exercitados contra a Meta agora,
+                durante a criação — e cada passo é conferido por leitura antes do seguinte.
+              </p>
+
+              <Escolha
+                marcado={confirmacaoMarcada}
+                onChange={setConfirmacaoMarcada}
+                titulo="Confirmo a criação real destes objetos em estado PAUSED"
+              >
+                Os objetos passam a existir na conta de anúncios. Nada veicula: tudo nasce
+                pausado, e nenhuma rota desta bancada ativa.
+              </Escolha>
+
+              <Campo
+                id="meta-confirmacao"
+                rotulo={`Digite ${CONFIRMACAO_DE_CRIACAO} para liberar a aprovação`}
+                ajuda="A frase é comparada exatamente, aqui e no servidor."
+                largo
+              >
+                <Input
+                  id="meta-confirmacao"
+                  value={confirmacaoDigitada}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setConfirmacaoDigitada(e.target.value)}
+                />
+              </Campo>
+
+              {/* Dois atos separados, e a separação é o desenho: aprovar
+                  decide, criar executa. Um botão só faria a decisão e a
+                  execução caberem no mesmo clique. */}
+              <div className="space-y-4">
+                <AcaoDominante
+                  pode={
+                    Boolean(validacao?.ok && validacao.prova_duravel?.registrada)
+                    && !aprovacao && confirmacaoMarcada
+                    && confirmacaoDeCriacaoValida(confirmacaoDigitada)
+                    && ocupado === null
+                  }
+                  enviando={ocupado === 'aprovar'}
+                  faltas={[
+                    ...(validacao?.ok ? [] : ['Valide o plano na Meta antes de aprovar.']),
+                    ...(validacao?.ok && !validacao.prova_duravel?.registrada
+                      ? ['A prova da validação não foi gravada no servidor; valide de novo.'] : []),
+                    ...(confirmacaoMarcada ? [] : ['Marque a confirmação de criação real.']),
+                    ...(confirmacaoDeCriacaoValida(confirmacaoDigitada)
+                      ? [] : [`Digite ${CONFIRMACAO_DE_CRIACAO} exatamente como está escrito.`]),
+                    ...(aprovacao ? ['Este plano já está aprovado.'] : []),
+                  ]}
+                  onClick={aprovar}
+                >
+                  Aprovar plano
+                </AcaoDominante>
+
+                <div className="border-t border-border pt-4">
+                  <AcaoDominante
+                    pode={Boolean(aprovacao) && !nascimento && ocupado === null}
+                    enviando={ocupado === 'criar'}
+                    faltas={[
+                      ...(aprovacao ? [] : ['Aprove o plano antes de criar.']),
+                      ...(nascimento ? ['Esta aprovação já criou os objetos.'] : []),
+                    ]}
+                    onClick={criar}
+                  >
+                    Criar campanha PAUSED
+                  </AcaoDominante>
+                </div>
+              </div>
+
+              {aprovacao && !nascimento && (
+                <BlocoDeEvidencia titulo="Aprovação registrada" tom="verificado">
+                  <LinhaDeFato rotulo="Operações autorizadas" valor={String(aprovacao.operacoes)} fonte="o backend" />
+                  <LinhaDeFato rotulo="Passos aprovados" valor={aprovacao.manifesto.join(' → ')} fonte="o backend" />
+                  <LinhaDeFato rotulo="Orçamento aprovado" valor={`${formatarBrl(aprovacao.orcamento_diario_minor)} · ${aprovacao.moeda}`} fonte="o backend" />
+                  <LinhaDeFato rotulo="Válida até" valor={aprovacao.expires_at} fonte="o backend" />
+                </BlocoDeEvidencia>
+              )}
+
+              {nascimento && (
+                <>
+                  <BlocoDeEvidencia titulo="Recibo do nascimento" tom="verificado">
+                    <LinhaDeFato rotulo="Desfecho" valor="Criada pausada" fonte="o backend" />
+                    <LinhaDeFato rotulo="Identidade do plano" valor={nascimento.plano_sha256} fonte="o backend" />
+                    <LinhaDeFato rotulo="Passos fechados" valor={`${nascimento.recibo.steps.filter((p) => p.state === 'CREATED').length} de ${nascimento.recibo.steps.length}`} fonte="o recibo durável" />
+                  </BlocoDeEvidencia>
+                  <div className="overflow-x-auto rounded-lg border border-border/70">
+                    <table className="w-full min-w-[520px] text-sm">
+                      <caption className="sr-only">Leitura de volta de cada objeto criado</caption>
+                      <thead className="bg-muted/40 text-left text-muted-foreground">
+                        <tr>
+                          <th scope="col" className="px-3 py-2 font-medium">Objeto</th>
+                          <th scope="col" className="px-3 py-2 font-medium">Estado lido</th>
+                          <th scope="col" className="px-3 py-2 font-medium">Veicula</th>
+                          <th scope="col" className="px-3 py-2 font-medium">Recibo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {nascimento.recibo.steps.map((passo) => (
+                          <tr key={passo.name}>
+                            <th scope="row" className="px-3 py-2 text-left font-medium text-foreground">{passo.name}</th>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {nascimento.read_back[passo.name]?.status ?? 'não veiculável'}
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {nascimento.read_back[passo.name]?.veiculavel ? 'Sim · pausado' : 'Não'}
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {passo.state === 'CREATED' ? 'Fechado' : passo.state}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {aprovacao && (
+                <div className="border-t border-border pt-4">
+                  {/* Reconciliar LÊ. Ela existe porque um passo ambíguo sem
+                      caminho de saída deixa o recibo aberto para sempre — e
+                      nunca porque reenviar seria uma opção. */}
+                  <AcaoDominante
+                    pode={ocupado === null}
+                    enviando={ocupado === 'reconciliar'}
+                    faltas={[]}
+                    onClick={reconciliar}
+                  >
+                    Reconciliar por leitura
+                  </AcaoDominante>
+                  {reconciliacao && (
+                    <BlocoDeEvidencia titulo="Reconciliação por leitura" tom={reconciliacao.passos_ambiguos > 0 ? 'atencao' : 'verificado'}>
+                      <LinhaDeFato rotulo="Passos ambíguos" valor={String(reconciliacao.passos_ambiguos)} fonte="o recibo durável" />
+                      <LinhaDeFato rotulo="Efeito externo" valor="Nenhum · apenas leitura" fonte="o backend" />
+                      {reconciliacao.conclusoes.map((item) => (
+                        <LinhaDeFato key={item.passo} rotulo={item.passo} valor={item.explicacao} fonte="a leitura da conta" />
+                      ))}
+                    </BlocoDeEvidencia>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
+              <strong className="text-foreground">Ativar continua sendo outro ato, e ele não existe.</strong>{' '}
+              Nenhuma rota desta bancada leva um objeto a ENABLE. Tudo que veicula nasce
+              pausado e só uma pessoa, fora daqui, pode ligar.
             </p>
           </div>
         </>

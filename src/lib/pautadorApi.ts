@@ -315,6 +315,95 @@ export interface ResultadoValidacaoPlanoMeta {
   operacoes_dependentes_pendentes: string[];
   plano_sha256: string;
   objetos_criados: 0;
+  /** O recibo durável da validação, gravado pelo SERVIDOR.
+   *
+   * Sem `validation_id` não existe aprovação: a rota de aprovação recusa uma
+   * referência que o banco não conhece. Isso é o que impede o navegador de
+   * inventar o próprio recibo verde — e é por isso que `registrada: false`
+   * precisa aparecer na tela, e não ser engolido. */
+  prova_duravel: {
+    registrada: boolean;
+    validation_id?: string;
+    validated_at?: string;
+    motivo?: string;
+    codigo?: string;
+  };
+}
+
+/** O que a tela precisa mostrar antes de existir qualquer objeto na conta. */
+export interface AprovacaoCriacaoMeta {
+  approval_id: string;
+  plano_sha256: string;
+  expires_at: string;
+  operacoes: number;
+  manifesto: string[];
+  orcamento_diario_minor: number;
+  moeda: 'BRL';
+  nascimento_pausado_confirmado: true;
+}
+
+export interface ResultadoAprovacaoCriacaoMeta {
+  ok: true;
+  efeito_externo: 'NENHUM';
+  aprovacao: AprovacaoCriacaoMeta;
+}
+
+/** Um passo do recibo durável. NUNCA carrega o id da Meta — só a afirmação
+ *  de que ele existe. */
+export interface PassoDoReciboMeta {
+  name: string;
+  state: 'IN_FLIGHT' | 'CREATED' | 'AMBIGUOUS' | 'FAILED';
+  has_external_id: boolean;
+  error_code: string | null;
+}
+
+export interface ReciboCriacaoMeta {
+  approval_id: string;
+  plan_sha256: string;
+  capability: 'META_CREATE_PAUSED';
+  state: string;
+  expires_at: string;
+  operations_expected?: number;
+  daily_budget_minor?: number;
+  currency?: string;
+  paused_birth_confirmed?: boolean;
+  steps: PassoDoReciboMeta[];
+}
+
+/** O read-back sanitizado de um objeto recém-criado. Sem id, sem payload. */
+export interface LeituraDeVoltaMeta {
+  veiculavel: boolean;
+  status: string | null;
+  effective_status: string | null;
+  objective?: string | null;
+  optimization_goal?: string | null;
+  advantage_audience_lido?: number | null;
+}
+
+export interface ResultadoCriacaoPausadaMeta {
+  ok: true;
+  desfecho: 'CREATED_PAUSED';
+  plano_sha256: string;
+  /** Referências opacas `metaobj_…`, jamais o identificador da Meta. */
+  referencias_opacas: Record<string, string>;
+  read_back: Record<string, LeituraDeVoltaMeta>;
+  recibo: ReciboCriacaoMeta;
+  retry_permitido: false;
+}
+
+export interface ConclusaoDaReconciliacaoMeta {
+  passo: string;
+  tipo: string;
+  conclusao: 'FECHADO_COMO_CRIADO' | 'FECHADO_COMO_NAO_ENCONTRADO' | 'PERMANECE_AMBIGUO';
+  explicacao: string;
+}
+
+export interface ResultadoReconciliacaoMeta {
+  ok: true;
+  efeito_externo: 'NENHUM';
+  passos_ambiguos: number;
+  conclusoes: ConclusaoDaReconciliacaoMeta[];
+  recibo: ReciboCriacaoMeta;
 }
 
 function url(path: string): string {
@@ -490,6 +579,50 @@ export const pautadorApi = {
     return request('/api/trafego/meta/local/criacao/validar', {
       method: 'POST',
       body: JSON.stringify({ plano, confirmar_validate_only: true }),
+    });
+  },
+
+  /** Aprova o plano. NÃO cria nada: o efeito externo declarado é NENHUM.
+   *
+   * A frase digitada viaja porque o servidor a compara — literalmente, sem
+   * `toLowerCase` e sem sinônimo. Uma tela que só exibisse o campo e mandasse
+   * `true` teria trocado um portão por uma decoração. */
+  aprovarCriacaoMeta(entrada: {
+    plano: PlanoMetaPausadoInput;
+    planoSha256: string;
+    validationId: string;
+    confirmacaoDigitada: string;
+  }): Promise<ResultadoAprovacaoCriacaoMeta> {
+    return request('/api/trafego/meta/local/criacao/aprovar', {
+      method: 'POST',
+      body: JSON.stringify({
+        plano: entrada.plano,
+        plano_sha256_esperado: entrada.planoSha256,
+        validation_id: entrada.validationId,
+        confirmar_nascimento_pausado: true,
+        confirmacao_digitada: entrada.confirmacaoDigitada,
+      }),
+    });
+  },
+
+  /** Cria os objetos PAUSED. Manda DUAS referências e nenhum payload Meta:
+   *  o servidor relê o plano aprovado e recompila sozinho. */
+  criarCampanhaPausadaMeta(
+    approvalId: string, planoSha256: string,
+  ): Promise<ResultadoCriacaoPausadaMeta> {
+    return request('/api/trafego/meta/local/criacao/criar-pausada', {
+      method: 'POST',
+      body: JSON.stringify({
+        approval_id: approvalId, plano_sha256_esperado: planoSha256,
+      }),
+    });
+  },
+
+  /** Decide um recibo ambíguo POR LEITURA. Nunca reenvia nada. */
+  reconciliarCriacaoMeta(approvalId: string): Promise<ResultadoReconciliacaoMeta> {
+    return request('/api/trafego/meta/local/criacao/reconciliar', {
+      method: 'POST',
+      body: JSON.stringify({ approval_id: approvalId }),
     });
   },
 

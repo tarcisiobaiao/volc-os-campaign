@@ -63,7 +63,21 @@ def _cliente() -> TestClient:
     return TestClient(app, headers={'host': 'localhost'})
 
 
-def test_router_nao_monta_create_approve_ou_enable(monkeypatch) -> None:
+def test_plano_de_controle_seguro_continua_sem_autoridade_de_criacao(monkeypatch) -> None:
+    """Este router compila e valida. Quem cria mora noutro módulo.
+
+    ⚠️ A versão anterior desta prova se chamava
+    `test_router_nao_monta_create_approve_ou_enable` e afirmava, olhando SÓ
+    este router, que `aprovar` e `criar-pausada` não existiam em lugar nenhum.
+    Quando a criação nasceu em `trafego_meta_criacao`, a asserção continuaria
+    verde enquanto a afirmação virava falsa — um tripwire que sobrevive
+    justamente à mudança que deveria detectar.
+
+    O que ela prova agora é mais estreito e verdadeiro: a autoridade de criação
+    não vazou para o plano de controle seguro. A ausência de rota de ativação
+    no APP inteiro é provada em
+    `test_meta_criacao_pausada_rotas.py::test_nenhuma_rota_de_ativacao_existe_no_app_inteiro`.
+    """
     monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
     paths = {route.path for route in trafego_meta_validacao.router.routes}
     assert '/api/trafego/meta/local/criacao/compilar' in paths
@@ -73,13 +87,18 @@ def test_router_nao_monta_create_approve_ou_enable(monkeypatch) -> None:
     assert all('ativar' not in path for path in paths)
 
 
-def test_capacidades_declaram_create_nao_montado(monkeypatch) -> None:
+def test_capacidades_declaram_a_criacao_fechada_por_flag(monkeypatch) -> None:
     monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
     monkeypatch.delenv('META_VALIDATE_ONLY_ENABLED', raising=False)
+    monkeypatch.delenv('META_CREATE_PAUSED_ENABLED', raising=False)
+    monkeypatch.delenv('META_CREATE_LEDGER_WRITE_ENABLED', raising=False)
     resposta = _cliente().get('/api/trafego/meta/local/criacao/capacidades')
     assert resposta.status_code == 200
     assert resposta.json()['validate_only'] == 'BLOCKED_BY_SERVER_FLAG'
-    assert resposta.json()['create_paused'] == 'NOT_MOUNTED'
+    # ⚠️ Deixou de ser 'NOT_MOUNTED': a rota EXISTE agora. O que a fecha é a
+    # autorização do servidor, e dizer 'não montada' sobre uma rota montada
+    # seria a tela mentir sobre a superfície que o backend expõe.
+    assert resposta.json()['create_paused'] == 'BLOCKED_BY_SERVER_FLAG'
     assert resposta.json()['activation'] == 'NOT_IMPLEMENTED'
 
 

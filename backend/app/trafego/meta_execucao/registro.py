@@ -92,6 +92,38 @@ class RegistroSagaMetaSupabase:
             )
         return resposta
 
+    async def registrar_validacao(
+        self,
+        *,
+        plano_sha256: str,
+        account_ref: str,
+        ator: str,
+        cobertura: str,
+        passos_validados: Sequence[str],
+        passos_pendentes: Sequence[str],
+        operacoes_totais: int,
+        objetos_criados: int,
+    ) -> Mapping[str, Any]:
+        """Grava a prova de que a Meta aceitou ESTE plano sob validate_only.
+
+        ⚠️ Sem esta gravação, a única evidência de que a validação aconteceu
+        seria o corpo da resposta HTTP — quer dizer, o navegador. Uma aprovação
+        que aceitasse essa palavra estaria deixando o cliente inventar o próprio
+        recibo verde. O `validation_id` devolvido é opaco e só faz sentido
+        dentro do banco: inventar um leva a rota de aprovação a
+        META_VALIDATION_RECEIPT_NOT_FOUND.
+        """
+        return await self._rpc("trafego_meta_create_record_validation", {
+            "p_plan_sha256": plano_sha256,
+            "p_account_ref": account_ref,
+            "p_actor_id": ator,
+            "p_coverage": cobertura,
+            "p_steps_validated": [str(passo) for passo in passos_validados],
+            "p_steps_pending": [str(passo) for passo in passos_pendentes],
+            "p_operations_total": int(operacoes_totais),
+            "p_objects_created": int(objetos_criados),
+        })
+
     async def aprovar(
         self,
         *,
@@ -99,14 +131,26 @@ class RegistroSagaMetaSupabase:
         account_ref: str,
         ator: str,
         daily_budget_minor: int,
+        moeda: str,
         expires_at: datetime,
         passos_esperados: Sequence[str],
+        validation_id: str,
+        janela_da_validacao_s: int,
+        nascimento_pausado_confirmado: bool,
+        pedido_do_operador: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         """Registra a aprovação junto do manifesto imutável de passos.
 
         O manifesto é a lista ordenada de operações do plano compilado. Sem
         ele, uma aprovação válida para quatro operações aceitaria preparar uma
         quinta que o operador nunca viu.
+
+        A aprovação também fixa o recibo durável do `validate_only`, a moeda, a
+        contagem de operações, a confirmação humana de nascimento PAUSED e o
+        pedido do operador — este último para que a criação possa recompilar o
+        plano no servidor em vez de aceitar payload Meta do navegador. Todas as
+        verificações são refeitas dentro da RPC: esta camada não é a autoridade,
+        é o transporte dela.
         """
         manifesto = [str(passo) for passo in passos_esperados]
         if not manifesto or len(set(manifesto)) != len(manifesto):
@@ -114,13 +158,45 @@ class RegistroSagaMetaSupabase:
                 "META_APPROVAL_MANIFEST_INVALID",
                 "o manifesto de passos precisa ser não vazio e sem repetição",
             )
+        if not nascimento_pausado_confirmado:
+            raise ErroDeNascimentoMeta(
+                "META_PAUSED_BIRTH_NOT_CONFIRMED",
+                "o operador precisa confirmar explicitamente o nascimento PAUSED",
+            )
         return await self._rpc("trafego_meta_create_approve", {
             "p_plan_sha256": plano_sha256,
             "p_account_ref": account_ref,
             "p_actor_id": ator,
             "p_daily_budget_minor": daily_budget_minor,
+            "p_currency": moeda,
             "p_expires_at": expires_at.isoformat(),
             "p_steps_expected": manifesto,
+            "p_validation_id": validation_id,
+            "p_validation_max_age_seconds": int(janela_da_validacao_s),
+            "p_paused_birth_confirmed": True,
+            "p_plan_request": dict(pedido_do_operador),
+        })
+
+    async def manifesto(self, approval_id: str) -> Mapping[str, Any]:
+        """A aprovação inteira, do lado do servidor.
+
+        Diferente de `recibo`, que é a projeção sanitizada para o navegador,
+        este manifesto carrega o pedido do operador e o `step_ref` de cada
+        passo. É o que permite a rota de criação receber apenas o
+        `approval_id` e reconstruir o plano sem confiar no cliente.
+        """
+        return await self._rpc(
+            "trafego_meta_create_approval_manifest", {"p_approval_id": approval_id})
+
+    async def resolver_ausente(self, *, passo_ref: str, codigo: str) -> None:
+        """Fecha um passo AMBÍGUO cuja ausência foi PROVADA por leitura.
+
+        ⚠️ O único caminho de AMBIGUOUS para FALHO. `falhar_passo` recusa este
+        estado de propósito: uma recusa escrita da Meta prova que nada nasceu,
+        um silêncio não prova nada, e só a leitura da conta pode desempatar.
+        """
+        await self._rpc("trafego_meta_create_resolve_absent", {
+            "p_step_ref": passo_ref, "p_error_code": codigo,
         })
 
     async def preparar_passo(

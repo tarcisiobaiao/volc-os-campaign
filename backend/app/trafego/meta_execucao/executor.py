@@ -156,6 +156,18 @@ def _mesmo_instante(lido: Any, enviado: Any) -> bool:
     return a == b
 
 
+#: Máscara de campos por tipo de objeto, usada tanto no read-back da saga
+#: quanto na reconciliação por leitura. Uma máscara só: se a reconciliação
+#: lesse menos campos que o read-back, ela poderia "confirmar" um objeto que a
+#: saga teria recusado — e fechar um recibo verde sobre uma divergência.
+CAMPOS_DE_LEITURA: Mapping[str, str] = {
+    "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info",
+    "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec",
+    "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
+    "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative",
+}
+
+
 def _form(payload: Mapping[str, Any]) -> dict[str, str]:
     saida: dict[str, str] = {}
     for chave, valor in payload.items():
@@ -466,12 +478,7 @@ class ExecutorMetaPausado:
     async def _read_one(
         self, nome: str, identificador: str, segredo: SegredoEfemero,
     ) -> Mapping[str, Any]:
-        campos = {
-            "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info",
-            "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec",
-            "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
-            "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative",
-        }
+        campos = CAMPOS_DE_LEITURA
         if nome not in campos:
             raise ErroRemotoMeta("META_READBACK_FAILED", "tipo de objeto Meta desconhecido")
         try:

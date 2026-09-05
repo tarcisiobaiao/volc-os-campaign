@@ -41,10 +41,18 @@ describe('Meta demonstrativa navegável', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
     expect(screen.getByText('O que será enviado à Meta')).toBeTruthy();
-    // Não existe botão de criar: um primário desabilitado sugeriria que o ato
-    // existe e está apenas indisponível. Ele não existe nesta rota.
+    // Sem servidor que responda `capacidades`, a bancada fica com as
+    // capacidades FECHADAS — e é o padrão fechado que esta linha prova.
+    //
+    // ⚠️ A frase antiga era "criar de verdade é outro ato, e ele não existe
+    // nesta rota". Ela deixou de ser verdade quando a rota de criação nasceu:
+    // o que fecha o ato agora é a autorização do servidor, não a ausência de
+    // rota. Manter a copy velha faria a tela afirmar sobre o backend uma coisa
+    // que o backend não diz mais.
     expect(screen.queryByRole('button', { name: /criar campanha/i })).toBeNull();
-    expect(screen.getByText(/criar de verdade é outro ato/i)).toBeTruthy();
+    expect(screen.getByText(/criação paused ainda fechada neste servidor/i)).toBeTruthy();
+    // Ativar continua não existindo, e isso não mudou.
+    expect(screen.getByText(/ativar continua sendo outro ato/i)).toBeTruthy();
   });
 
   it('expõe lote estático explícito e não finge criativo flexível', () => {
