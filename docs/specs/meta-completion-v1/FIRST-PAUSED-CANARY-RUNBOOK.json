@@ -1,0 +1,323 @@
+{
+  "abort_conditions": [
+    "Any identity/currency/hash/manifest/sourceversion drift.",
+    "Expiredapproval/deadline or receipt notdurable.",
+    "Localvalidation/remotevalidation refusal.",
+    "AmbiguousPOST or ledgerack failure.",
+    "Criticalreadback missing/different, unexpected ACTIVE deliverable.",
+    "Page/asset changed or shop/enhancement eligibility unknown.",
+    "Concurrency ownership unresolved.",
+    "Migration mismatch or authority not exact."
+  ],
+  "artifact_id": "FIRST-PAUSED-CANARY-RUNBOOK",
+  "authorization_template": {
+    "account_ref": null,
+    "activation_authorized": false,
+    "allow_provider_creative_reuse": null,
+    "allow_unpublished_page_post_creation": null,
+    "allowed_provider_actions": [
+      "READ_SCOPED",
+      "VALIDATE_ONLY_SCOPED",
+      "CREATE_PAUSED_EXACT_PLAN"
+    ],
+    "approval_authority_ref": null,
+    "approved_implementation_sha": null,
+    "approved_public_https_url": null,
+    "approved_schema_digest": null,
+    "archive_authorized": false,
+    "asset_ref": null,
+    "cardinality": {
+      "Ad": 1,
+      "AdCreativeSubmission": 1,
+      "AdSet": 1,
+      "Campaign": 1
+    },
+    "content_sha256": null,
+    "currency": "BRL",
+    "daily_budget_minor": null,
+    "deadline_utc": null,
+    "delete_authorized": false,
+    "destination_ref": null,
+    "instagram_identity_policy_ref": null,
+    "manifest_digest": null,
+    "maximum_daily_budget_minor": null,
+    "maximum_total_spend_authorized_minor": 0,
+    "not_before_utc": null,
+    "operator_ref": null,
+    "page_ref": null,
+    "plan_hash": null,
+    "project_ref": null,
+    "schema_version": "1.0.0",
+    "validation_receipt_ref": null
+  },
+  "authorization_validation": "All null inputs must be filled and signed in private authorized execution workflow, never committed here. Daily budget>0<=explicit ceiling. No spend authorized because delivery staysPAUSED; dailybudget not itself globalspendcap. Oneaccount/onePage/oneasset/exacthash and deadline required. Signed decisions for unpublished Page post side effect and provider Creative reuse are mandatory for this recipe; false requires alternate separately adjudicated recipe, null blocks.",
+  "cardinality_caveat": "Creative provider may reuse existingID and object_story_spec may create unpublished Pagepost; disclose and separately approve these normal payload sideeffects. Four primary operations is not proof of exactlyfour newlyallocated provider artifacts.",
+  "conflict_ids": [
+    "C01",
+    "C02",
+    "C03",
+    "C04",
+    "C05",
+    "C06",
+    "C07",
+    "C13",
+    "C16"
+  ],
+  "execute_now": false,
+  "final_classifications": [
+    "PROVEN_REMOTE_CREATE_PAUSED",
+    "PARTIAL_PAUSED_TREE",
+    "READBACK_DIVERGENT",
+    "AMBIGUOUS_UNRESOLVED",
+    "PROVIDER_REFUSED",
+    "ABORTED_BEFORE_DISPATCH"
+  ],
+  "gate_ids": [
+    "G01",
+    "G02",
+    "G03",
+    "G04",
+    "G05",
+    "G06",
+    "G07",
+    "G08",
+    "G09",
+    "G13"
+  ],
+  "minimum_sync": "P0 minimal receipt/readback projection only, not P1 fullinsights/dashboard. Executor must implement safe scope in P0-07; no broad custody RPC fallback.",
+  "preconditions": [
+    "P0-01 throughP0-07 complete on independently adjudicatedSHA.",
+    "C01/C02/C03/C04/C05/C06/C07/C13/C16 closed with evidence.",
+    "Account activeBRL and Page/identity rights fresh; existingstaticimage content/provenance sealed.",
+    "No outstanding ambiguous execution with same authorized intent.",
+    "Official schema checkpoint/migration/RLS approved; no assumption from localSQL.",
+    "FullMeta/noactivation/payload/token-order tests independently reviewed."
+  ],
+  "retry_policy": "No ambiguous create retry; read/validate bounded by deadline; same execution request returns priorstate. Proven refusal does not grant new attempt; correctedintent requires newhash/approval.",
+  "rollback": "Close dispatch and preserve all existingPAUSED objects. No delete/archive/activation; do not DROP ledger/tables after evidence. If unexpectedACTIVE observed, stop and request explicit emergency-pause authority unless exact authorization already included it; do not infer it from canarycreate approval.",
+  "runbook_id": "RUNBOOK-P0",
+  "schema_version": "1.0.0",
+  "status": "BLOCKED_UNTIL_P0_CONTRACTS_AND_AUTHORIZATIONS",
+  "steps": [
+    {
+      "dependencies": [
+        "P0-07"
+      ],
+      "evidence": "Signedreview_ref; no inheritedapproval.",
+      "execute_now": false,
+      "instruction": "Approve corrected implementationSHA; base884393b remains unadjudicated until explicit review.",
+      "owner": "Bia/independent reviewer",
+      "step_id": "RB01",
+      "title": "Independent candidate review"
+    },
+    {
+      "dependencies": [
+        "RB01"
+      ],
+      "evidence": "Deploymentreceipt; no push/deploy by this spec.",
+      "execute_now": false,
+      "instruction": "Separate authorization for publication/deploy; verify running buildhash before proceeding.",
+      "owner": "release operator",
+      "step_id": "RB02",
+      "title": "Publish only approved SHA"
+    },
+    {
+      "dependencies": [
+        "RB02"
+      ],
+      "evidence": "Checkpointref and exact migration filehashes.",
+      "execute_now": false,
+      "instruction": "Approved official target identity/schema inventory; recoverable backup and restoration plan; no secret export.",
+      "owner": "database owner",
+      "step_id": "RB03",
+      "title": "Backup/checkpoint"
+    },
+    {
+      "dependencies": [
+        "RB03"
+      ],
+      "evidence": "Migrationreceipt; stop on alreadyapplied guard, never autoDROP.",
+      "execute_now": false,
+      "instruction": "Apply only approved exact migrations in dependency order: existing cofre authority -> required v15_01 -> corrected ledger. v15_02 only if separately approved need; no blind allmigrations.",
+      "owner": "database owner",
+      "step_id": "RB04",
+      "title": "Authorized migration window"
+    },
+    {
+      "dependencies": [
+        "RB04"
+      ],
+      "evidence": "Role-specific verification receipt.",
+      "execute_now": false,
+      "instruction": "Verify roles/grants/RPC signatures/search_path/row scope and durable write acknowledgements against approvedschema.",
+      "owner": "database owner",
+      "step_id": "RB05",
+      "title": "Schema/RPC/RLS verification"
+    },
+    {
+      "dependencies": [
+        "RB05"
+      ],
+      "evidence": "Sanitizedcapabilitysnapshot/deadline; no env secret dumps.",
+      "execute_now": false,
+      "instruction": "Createflag stays0; allow validation and durable receipt under separated fixed gates. Recovery readcapability available.",
+      "owner": "operator",
+      "step_id": "RB06",
+      "title": "Open validation/ledger capabilities temporarily"
+    },
+    {
+      "dependencies": [
+        "RB06"
+      ],
+      "evidence": "Rootvalidation providerreceiptdigests, exact planhash/version/actor.",
+      "execute_now": false,
+      "instruction": "Resolve authorized oneaccount/Page/asset; compile sealed currentrecipe; roots validate only with explicit zeroobjectcondition. Record dependents pending.",
+      "owner": "operator",
+      "step_id": "RB07",
+      "title": "Fresh validate_only"
+    },
+    {
+      "dependencies": [
+        "RB07"
+      ],
+      "evidence": "validation_ref with objects_created0.",
+      "execute_now": false,
+      "instruction": "Durable acknowledged rootsreceipt and remainingdependentcoverage; no inbrowser proof accepted.",
+      "owner": "backend",
+      "step_id": "RB08",
+      "title": "Persist validation receipt"
+    },
+    {
+      "dependencies": [
+        "RB08"
+      ],
+      "evidence": "approval_ref, expiry, signedauthorizationdigest.",
+      "execute_now": false,
+      "instruction": "Approve exact budget/currency/Page/destination/assets/manifest/cardinality/timewindow and dependentvalidationrisk; single execution. Then scoped creationflag may open until deadline.",
+      "owner": "named operator",
+      "step_id": "RB09",
+      "title": "Approve hash"
+    },
+    {
+      "dependencies": [
+        "RB09"
+      ],
+      "evidence": "Perstep validation/journal/response identity and comparisonreceipts. Maxone createPOST perstep; stop on any uncertainty.",
+      "execute_now": false,
+      "instruction": "Within remainingdeadline: CampaignPAUSED -> readback; childvalidate -> AdSetPAUSED -> readback; Creative create/reuse -> readback; childvalidate -> AdPAUSED -> readback. Each create journaled before POST, each returned ID durable before readback.",
+      "owner": "backend single execution owner",
+      "step_id": "RB10",
+      "title": "Create one static paused hierarchy"
+    },
+    {
+      "dependencies": [
+        "RB10"
+      ],
+      "evidence": "Campaign comparison no criticalunknown.",
+      "execute_now": false,
+      "instruction": "Evidence may have been captured inline; reread if needed by knownID; account/name/objective/status/categories/sharing/budgetownership exact.",
+      "owner": "backend",
+      "step_id": "RB11",
+      "title": "Verify Campaign read-back"
+    },
+    {
+      "dependencies": [
+        "RB11"
+      ],
+      "evidence": "AdSet comparison and dependentvalidationreceipt.",
+      "execute_now": false,
+      "instruction": "Own configuredPAUSED, parent identity/status, budgetcurrency, goal/billing/bid/schedule/targeting/automation/destination exact.",
+      "owner": "backend",
+      "step_id": "RB12",
+      "title": "Verify AdSet read-back"
+    },
+    {
+      "dependencies": [
+        "RB12"
+      ],
+      "evidence": "Creative comparison; no requirement nonexistentPAUSED.",
+      "execute_now": false,
+      "instruction": "Library state not delivery; Page/image/copy/CTA/URL/identity/destination/transformations per adjudicatedmask; newvsreused and unpublishedpost disclosed.",
+      "owner": "backend",
+      "step_id": "RB13",
+      "title": "Verify Creative read-back"
+    },
+    {
+      "dependencies": [
+        "RB13"
+      ],
+      "evidence": "Ad comparison and dependentvalidationreceipt.",
+      "execute_now": false,
+      "instruction": "Own configuredPAUSED and exact AdSet/Creative chain; effective status interpreted perprovider.",
+      "owner": "backend",
+      "step_id": "RB14",
+      "title": "Verify Ad read-back"
+    },
+    {
+      "dependencies": [
+        "RB14"
+      ],
+      "evidence": "Noactivationreceipt scoped to thisexecution.",
+      "execute_now": false,
+      "instruction": "All3deliverable nodes configuredPAUSED; no activation/updateACTIVE request in dispatch audit; no claim about unrelated accountobjects.",
+      "owner": "independent operator",
+      "step_id": "RB15",
+      "title": "Confirm zero activation"
+    },
+    {
+      "dependencies": [
+        "RB15"
+      ],
+      "evidence": "Finalreceipt and evidenceindex.",
+      "execute_now": false,
+      "instruction": "Green only if all criticalreadbacks durable and match. Else classifypartial/divergent/ambiguous; never erase partialparents.",
+      "owner": "backend",
+      "step_id": "RB16",
+      "title": "Close execution receipt"
+    },
+    {
+      "dependencies": [
+        "RB16"
+      ],
+      "evidence": "Scoped visible receipt/object projection acknowledgement.",
+      "execute_now": false,
+      "instruction": "Project knownIDs/readback receipts into approved minimal scoped readmodel/projection; no uncorrected broad snapshotRPC/custodyverification or Insights aggregation. P1 fullsync separate.",
+      "owner": "backend",
+      "step_id": "RB17",
+      "title": "Synchronize minimal canary projection"
+    },
+    {
+      "dependencies": [
+        "RB17"
+      ],
+      "evidence": "Flagclosure receipt without sensitiveenvvalues.",
+      "execute_now": false,
+      "instruction": "Close creation flag in finally on any earlierfailure as well; close temporary validation/write access except explicit recovery capability. Never leave creation open for reconciliation.",
+      "owner": "operator",
+      "step_id": "RB18",
+      "title": "Close dispatch/validation flags"
+    },
+    {
+      "dependencies": [
+        "RB18"
+      ],
+      "evidence": "Unresolvedincidentref and nextmanualauthority; no retrycreation.",
+      "execute_now": false,
+      "instruction": "If unresolved: preserve journal, keep newdispatchclosed, authorized read-only recovery by knownIDs. Emptyedge/name/120s do not clear it.",
+      "owner": "operator",
+      "step_id": "RB19",
+      "title": "Stop/escalate ambiguity"
+    },
+    {
+      "dependencies": [
+        "RB19"
+      ],
+      "evidence": "PROVEN_REMOTE_CREATE_PAUSED only if allrequired evidence; otherwise exactpartialstatus.",
+      "execute_now": false,
+      "instruction": "Report exactSHA/schema/approval/limits/cardinality/createdvsreused/paused/readback/evidence/flags and finalclassification.",
+      "owner": "independent operator",
+      "step_id": "RB20",
+      "title": "Final report"
+    }
+  ]
+}

@@ -1,0 +1,633 @@
+{
+  "adjudication": "SOURCE_RECONCILED_WITH_EXPLICIT_LIMITATIONS",
+  "artifact_id": "AS-IS-INVENTORY",
+  "evidence": [
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L01",
+      "file": "backend/app/main.py",
+      "finding": "Routers Meta local, validação e criação montados; ativação não montada.",
+      "line": 188,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L02",
+      "file": "backend/app/routers/meta_local.py",
+      "finding": "Admin e loopback/macOS; configuração local, descoberta/preflight, snapshots e read model.",
+      "line": 58,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L03",
+      "file": "backend/app/trafego/meta/credenciais.py",
+      "finding": "Resolvedor de produção não configurado; referência opaca não é segredo nem autorização.",
+      "line": 62,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L04",
+      "file": "backend/app/trafego/meta/configuracao_local.py",
+      "finding": "Armazenamento local protegido implementado; conteúdo e estado atual deliberadamente não inspecionados.",
+      "line": 37,
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L05",
+      "file": "docs/closure/meta-real-read-integration-v1/REAL-READ-PROOF.json",
+      "finding": "Recibo histórico: quatro contas, quatro preflights sem erro, hierarquia e mensuração lidas; Insights do dia retornaram zero linhas.",
+      "line": 1,
+      "status": "PROVEN_REMOTE_READ"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L06",
+      "file": "docs/closure/meta-creation-engine-operator-experience-v1/PROVA-VALIDATE-ONLY-REAL.md",
+      "finding": "Transcrição sanitizada histórica: Campaign e Creative aceitos; INDEPENDENT_ROOTS_ONLY, AdSet/Ad pendentes, zero objetos. Não é recibo durável novo no SHA base.",
+      "line": 66,
+      "status": "PROVEN_REMOTE_VALIDATE"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L07",
+      "file": "backend/app/trafego/meta_execucao/contrato.py",
+      "finding": "Receita estreita Traffic/LPV/ABO/BRL, não aceita outras otimizações, orçamento compartilhado true ou special categories.",
+      "line": 153,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L08",
+      "file": "backend/app/routers/trafego_meta_validacao.py",
+      "finding": "Pedido aceita booleans omitidos como false e CTA default; nomes até400. Ato compilar resolve ativos remotamente.",
+      "line": 86,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L09",
+      "file": "backend/app/trafego/meta_execucao/compilador.py",
+      "finding": "Campaign/AdSet/Ad explicitamente PAUSED; Creative sem PAUSED; destination_type interno não enviado; dependências resolvidas depois.",
+      "line": 98,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L10",
+      "file": "backend/app/trafego/meta_execucao/compilador.py",
+      "finding": "Hash canônico de versão/conta/destino/operações; não sela AssetSupplyManifest nem content_sha256.",
+      "line": 197,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L11",
+      "file": "backend/app/trafego/meta_execucao/capacidades.py",
+      "finding": "Flags de criação próprias, ambas ==1; default fechado. Estado dos processos não inspecionado.",
+      "line": 31,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L12",
+      "file": "backend/app/routers/trafego_meta_validacao.py",
+      "finding": "Persistência de validação exige criacao_liberada(), acoplando recibo à abertura de criação.",
+      "line": 381,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L13",
+      "file": "backend/app/routers/trafego_meta_criacao.py",
+      "finding": "Aprovar requer recibo durável com ator/hash/cobertura/frescor; expiração antes de resolver segredo no ato criar.",
+      "line": 309,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L14",
+      "file": "backend/app/routers/trafego_meta_criacao.py",
+      "finding": "Criar recebe approval_id/hash, não payload arbitrário; recompila referências vivas e compara orçamento.",
+      "line": 438,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L15",
+      "file": "backend/app/trafego/meta_execucao/executor.py",
+      "finding": "Valida passo, prepara ledger antes de POST de criação, fecha ID antes de read-back; timeout ambíguo.",
+      "line": 269,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L16",
+      "file": "backend/app/trafego/meta_execucao/executor.py",
+      "finding": "Read-back compara conta/pais/payload; ausência de advantage pode passar, special categories ausentes viram []; effective status herdado não aceito.",
+      "line": 557,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L17",
+      "file": "backend/app/trafego/meta_execucao/executor.py",
+      "finding": "Máscara Creative inclui effective_status sem fonte verificada; degrees_of_freedom lido mas não comparado; destination_spec ausente.",
+      "line": 181,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L18",
+      "file": "backend/app/trafego/meta_execucao/reconciliacao.py",
+      "finding": "Busca por nome; limite25x200; janela inferior5min para nós temporais; Creative encontrado é inconclusivo; vazio pode ser AUSENTE.",
+      "line": 166,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L19",
+      "file": "backend/app/routers/trafego_meta_criacao.py",
+      "finding": "Reconciliação exige flags de criação, só passos AMBIGUOUS e recompila inventário vivo; não resolve todo CREATED divergente/orfandade.",
+      "line": 517,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L20",
+      "file": "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+      "finding": "Schema candidato de validation_receipt, approval e step com FORCE RLS, RPCs, hashes, atores, expiração e uniqueness.",
+      "line": 51,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L21",
+      "file": "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+      "finding": "Locks transacionais; segundo IN_FLIGHT vira AMBIGUOUS; crossapproval pode adotar CREATED; anterior exige CREATED, não read-back confirmado.",
+      "line": 518,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L22",
+      "file": "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+      "finding": "resolve_absent usa piso120s, não lease/fencing/prova de quiescência.",
+      "line": 749,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L23",
+      "file": "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql",
+      "finding": "Rollback DROP remove evidências; não é compensação segura após primeira operação.",
+      "line": 1,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L24",
+      "file": "backend/app/trafego/meta/adaptador.py",
+      "finding": "Custom conversion flags bool(get) convertem ausência em false; inventário é resumido no snapshot.",
+      "line": 201,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L25",
+      "file": "backend/app/trafego/meta/adaptador.py",
+      "finding": "Insights sem time_increment diário, sem parâmetros reais da atribuição recebida, sem action_values; breakdown solicitado usado no lugar do valor retornado.",
+      "line": 280,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L26",
+      "file": "backend/app/trafego/meta/adaptador.py",
+      "finding": "LPV soma landing_page_view e ViewContent; colapsa definições distintas.",
+      "line": 506,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L27",
+      "file": "backend/app/trafego/meta/persistencia.py",
+      "finding": "Identidade de insight inclui observado_em; ações indexadas por ordinal.",
+      "line": 163,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L28",
+      "file": "backend/app/trafego/meta/read_model.py",
+      "finding": "Sanitização por blacklist superficial deixa object_story_id; leitura não tem escopo uniforme de conta em todas entidades.",
+      "line": 36,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L29",
+      "file": "backend/app/trafego/meta/read_model.py",
+      "finding": "Persistência pode afirmar sucesso com resposta RPC não-mapping; recibo último global e listagens limitadas500.",
+      "line": 173,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L30",
+      "file": "supabase/migrations/v15_01_meta_ads_read_model.sql",
+      "finding": "Business/account/project binding, Campaign/AdSet/Ad/Creative, ligação Ad-Creative, sync run; schema candidato não aplicado nesta missão.",
+      "line": 1,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L31",
+      "file": "supabase/migrations/v15_02_meta_ads_insights.sql",
+      "finding": "Snapshot RPC upsert; custódia cofre marcada verificada por leitura; ausência não marcada como no sincronizador hermético.",
+      "line": 127,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L32",
+      "file": "backend/app/trafego/meta/sincronizador.py",
+      "finding": "Sincronizador injetável não é o mesmo fluxo produtivo do snapshot RPC; testes não provam equivalência.",
+      "line": 61,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L33",
+      "file": "src/pages/trafego/MetaCriacaoPage.tsx",
+      "finding": "Bindings reais para aprovar/criar/reconciliar; proteção useRef local não substitui concorrência no banco.",
+      "line": 523,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L34",
+      "file": "src/components/trafego/meta/MetaReadPreview.tsx",
+      "finding": "Preview real de contas/preflight/snapshot; não substitui inventários canônicos Meta.",
+      "line": 168,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L35",
+      "file": "src/components/trafego/meta/MetaInventarioDemo.tsx",
+      "finding": "Inventários de operação demonstrativos, identificados como demo.",
+      "line": 50,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L36",
+      "file": "src/pages/trafego/MetaObjetoPage.tsx",
+      "finding": "Detalhes exclusivamente demo; Creative apresentado como descendência, embora possa ser compartilhado.",
+      "line": 42,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L37",
+      "file": "src/pages/MetaCampaignInsightPage.tsx",
+      "finding": "Dashboard Meta canônico roteado, dados/economia demonstrativos.",
+      "line": 50,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L38",
+      "file": "src/pages/settings/MetaCampaignsSettingsDemo.tsx",
+      "finding": "Settings Meta usa demo, não modelo persistido operacional.",
+      "line": 87,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L39",
+      "file": "src/lib/pautadorApi.ts",
+      "finding": "Cliente de criação existe; falta binding da consulta de recibo de criação para recuperação pós-reload.",
+      "line": 590,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L40",
+      "file": "src/components/trafego/meta/MetaConfiguracaoLocal.tsx",
+      "finding": "Token de onboarding transita em estado React antes do POST local. Não equivale a token nunca presente no browser.",
+      "line": 36,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L41",
+      "file": "src/utils/roasCalculations.ts",
+      "finding": "ROAS legado é retorno excedente percentual, com fallback100 sem gasto; não é razão Meta.",
+      "line": 14,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L42",
+      "file": "src/utils/currencyUtils.ts",
+      "finding": "Fallback cambial5.50; não pode fundamentar ROAS Meta canônico.",
+      "line": 27,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L43",
+      "file": "src/services/currencyConversionService.ts",
+      "finding": "Conversão pode preservar valor original com formatação de destino; exigir moeda e taxa explícitas.",
+      "line": 47,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L44",
+      "file": "supabase/functions/capi-router/index.ts",
+      "finding": "CAPI legado Graph v21; ausência de evento pode virar ViewContent e event_id aleatório; externo não hasheado; segredo em query no código.",
+      "line": 32,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L45",
+      "file": "docs/closure/meta-governed-create-paused-path-v1/GATES.md",
+      "finding": "Gates históricos herméticos/PG descartável; sem execução nesta missão nem prova de canário oficial.",
+      "line": 1,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L46",
+      "file": "docs/closure/meta-governed-create-paused-path-v1/REMAINING-RISKS.md",
+      "finding": "Confirma candidato sem migration/canário oficial, riscos120s/Creative/crossapproval/dados estratégicos.",
+      "line": 1,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L47",
+      "file": "docs/volc-os-graph/curadoria-operacional.json",
+      "finding": "cap_meta_ads partial; trechos antigos sem rota convivem com acréscimos atuais.",
+      "line": 270,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L48",
+      "file": "volc-os-workbook/ROADMAP-VIVO.json",
+      "finding": "P11-T03/P11-T05/P11-T06 permanecem partial; não alterar nesta lane.",
+      "line": 1504,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L49",
+      "file": "docs/specs/meta-measurement-advantage-v1/MASTER-SPEC.md",
+      "finding": "Spec anterior parcial; ausência de executor/validate está superada pelo código; cautelas de mensuração continuam válidas.",
+      "line": 1,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": null,
+      "committed_in_base": false,
+      "evidence_id": "L50",
+      "file": "graphify-out/UPDATE_STATUS.json",
+      "finding": "UPDATE_STATUS.json ignorado na worktree de origem registra built_at_commit anterior; não existe como arquivo versionado na base documental.",
+      "line": 1,
+      "observation_scope": "SOURCE_WORKTREE_IGNORED_LOCAL_METADATA",
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L51",
+      "file": "backend/app/trafego/meta_execucao/ativos.py",
+      "finding": "Resolve conta ativa BRL, Pages e image hashes; vídeo acessório, sem garantia de Instagram identity ou content bytes.",
+      "line": 129,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L52",
+      "file": "backend/tests/test_meta_criacao_pausada_rotas.py",
+      "finding": "Testes de ledger antes de POST, hashes, ambiguidade, recibos e segredo tardio; inspecionados, não executados.",
+      "line": 793,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L53",
+      "file": "backend/tests/test_meta_contrato_endurecido.py",
+      "finding": "Testes locais de hash Advantage e normalização URL; não provam equivalência remota.",
+      "line": 128,
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "base_sha": "884393b0e99b5ee403a6f38e1e4225012705f942",
+      "evidence_id": "L54",
+      "file": "docs/closure/hermes-meta-v26-ground-truth-v1/META-SECURE-ONBOARDING-CONTRACT.json",
+      "finding": "Cofre referência é autoridade reaproveitável; proposta antiga de broker não implementada, nunca consultar vault nesta missão.",
+      "line": 1,
+      "status": "PROVEN_LOCAL"
+    }
+  ],
+  "factual_preconditions": [
+    {
+      "claim": "system user/token configurado fora do repo",
+      "evidence_ids": [
+        "L03",
+        "L04",
+        "L05"
+      ],
+      "result": "Histórico comprova leitura com credencial; código comprova mecanismo. Estado atual do segredo não inspecionado."
+    },
+    {
+      "claim": "quatro contas reais",
+      "evidence_ids": [
+        "L05"
+      ],
+      "result": "PROVEN_REMOTE_READ histórico, não nova descoberta."
+    },
+    {
+      "claim": "validate_only completo",
+      "evidence_ids": [
+        "L06"
+      ],
+      "result": "FALSO: apenas raízes independentes; nenhuma prova AdSet/Ad."
+    },
+    {
+      "claim": "flags fechadas",
+      "evidence_ids": [
+        "L11",
+        "L46"
+      ],
+      "result": "Default de código fechado e histórico declarativo; ambiente runtime não consultado."
+    },
+    {
+      "claim": "migration/canário oficiais inexistentes",
+      "evidence_ids": [
+        "L45",
+        "L46"
+      ],
+      "result": "Ausência declarada nos recibos; sem consulta oficial para atualizar o fato."
+    },
+    {
+      "claim": "sem ativação",
+      "evidence_ids": [
+        "L01"
+      ],
+      "result": "Nenhuma rota Meta de ativação montada nesta base; não inferir estado remoto de objetos externos."
+    }
+  ],
+  "graph_query": {
+    "concepts": [
+      "Meta Ads",
+      "system user",
+      "contas",
+      "Page",
+      "Instagram identity",
+      "read model",
+      "insights",
+      "custom conversions",
+      "CAPI",
+      "Campaign",
+      "AdSet",
+      "AdCreative",
+      "Ad",
+      "validate_only",
+      "approval",
+      "ledger",
+      "create_paused",
+      "reconciliation",
+      "activation",
+      "dashboards",
+      "P11-T03",
+      "P11-T05",
+      "P11-T06"
+    ],
+    "graph": "graphify-out/graph.json",
+    "limitations": [
+      "Hybrid graph absent in documentary tree; queried existing ignored source graph without copying.",
+      "Ambiguous matches were navigation only; no-match task IDs inspected directly in roadmap.",
+      "No graph update or authority write."
+    ],
+    "read_location": "source_worktree_read_only",
+    "tool": ".venv-graphify/bin/graphify explain"
+  },
+  "nonexecuted_checks": [
+    "environment_flags",
+    "secret_presence",
+    "official_schema_state",
+    "remote_objects",
+    "runtime_tests",
+    "visual_browser"
+  ],
+  "requested_path_resolution": [
+    {
+      "actual": "src/pages/trafego/MetaCriacaoPage.tsx",
+      "exists_requested": false,
+      "requested": "src/pages/trafego/MetaCrPage.tsx"
+    }
+  ],
+  "rollback_files": [
+    "supabase/migrations/v15_98_meta_ads_insights_rollback.sql",
+    "supabase/migrations/v15_99_meta_ads_read_model_rollback.sql",
+    "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql"
+  ],
+  "routes": [
+    {
+      "evidence_ids": [
+        "L01",
+        "L02"
+      ],
+      "methods": {
+        "DELETE": [
+          "/configuracao"
+        ],
+        "GET": [
+          "/configuracao",
+          "/contas",
+          "/recibo/ultimo",
+          "/read-model/contas",
+          "/read-model/{entidade}",
+          "/read-model/{entidade}/{opaque_id}"
+        ],
+        "POST": [
+          "/configuracao",
+          "/testar",
+          "/preflight",
+          "/sincronizacao/preparar",
+          "/sincronizacao/persistir"
+        ]
+      },
+      "mounted": true,
+      "prefix": "/api/trafego/meta/local"
+    },
+    {
+      "evidence_ids": [
+        "L01",
+        "L08",
+        "L13",
+        "L14",
+        "L19"
+      ],
+      "methods": {
+        "GET": [
+          "/capacidades",
+          "/ativos",
+          "/ativos/preview"
+        ],
+        "POST": [
+          "/compilar",
+          "/validar",
+          "/aprovar",
+          "/criar-pausada",
+          "/reconciliar",
+          "/recibo"
+        ]
+      },
+      "mounted": true,
+      "prefix": "/api/trafego/meta/local/criacao"
+    },
+    {
+      "evidence_ids": [
+        "L49"
+      ],
+      "methods": {
+        "PROPOSED": [
+          "/accounts/{account_ref}/event-sources",
+          "/accounts/{account_ref}/custom-conversions",
+          "/custom-conversions/plan",
+          "/custom-conversions/create"
+        ]
+      },
+      "mounted": false,
+      "prefix": "/api/trafego/meta"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "test_inventory": {
+    "executed": false,
+    "files": [
+      "backend/tests/test_meta_criacao_pausada_rotas.py",
+      "backend/tests/test_meta_paused_birth.py",
+      "backend/tests/test_meta_static_batch.py",
+      "backend/tests/test_meta_contrato_endurecido.py",
+      "backend/tests/test_meta_paused_validation_routes.py",
+      "backend/tests/test_meta_real_read_model.py",
+      "backend/tests/test_meta_sync_operacional.py",
+      "backend/tests/test_trafego_meta_adaptador.py",
+      "backend/tests/test_trafego_meta_dominio.py",
+      "backend/tests/test_trafego_meta_persistencia.py",
+      "backend/tests/test_trafego_meta_sincronizador.py",
+      "backend/tests/test_meta_configuracao_local.py"
+    ],
+    "historical_gate_authority": "L45"
+  }
+}

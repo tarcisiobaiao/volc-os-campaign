@@ -1,0 +1,76 @@
+{
+  "applied": false,
+  "artifact_id": "CURATION-HANDOFF",
+  "artifact_refs": [
+    "META-COMPLETION-SPEC",
+    "AS-IS-INVENTORY",
+    "OPEN-CONTRACT-CONFLICTS",
+    "EXECUTION-WORKBREAKDOWN"
+  ],
+  "graph_refresh_request": "Integrator may refresh only after separate authority; graph metadata currently older thanbase. This lane never modifies graphify-out or sharedJSON.",
+  "integration_owner": "human integrator after independent review",
+  "proposed_updates": [
+    {
+      "add": "Governed routes mounted in884393b; no official createPAUSED proof. Documentation now identifies explicit P0 blockers.",
+      "evidence_ids": [
+        "L01",
+        "L14",
+        "L46"
+      ],
+      "retain_status": "partial",
+      "target_id": "cap_meta_ads"
+    },
+    {
+      "add": "Traffic recipe local, Campaign/Creative historicalvalidate only, dependentsunproven.",
+      "evidence_ids": [
+        "L06",
+        "L07"
+      ],
+      "retain_status": "partial",
+      "target_id": "concept:meta_direct_traffic"
+    },
+    {
+      "evidence_ids": [
+        "L44"
+      ],
+      "status_caveat": "implemented label means legacy function existence, not governed/attributable/optimization-ready measurement.",
+      "target_id": "cap_capi"
+    },
+    {
+      "evidence_ids": [
+        "L48"
+      ],
+      "retain_status": "partial",
+      "target_id": "P11-T03"
+    },
+    {
+      "evidence_ids": [
+        "L48",
+        "L46"
+      ],
+      "retain_status": "partial",
+      "target_id": "P11-T05"
+    },
+    {
+      "evidence_ids": [
+        "L48",
+        "L37"
+      ],
+      "retain_status": "partial",
+      "target_id": "P11-T06"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "superseded_statements": [
+    "No Meta create router: superseded by mounted code, not by remote proof.",
+    "No validate_only integration: superseded for historical independent roots only.",
+    "AdCreative must bePAUSED: not supported provider state.",
+    "Generic ROAS label for excess percentage: must separate metricdefinitions."
+  ],
+  "target_authorities": [
+    "volc-os-workbook/ROADMAP-VIVO.json",
+    "docs/volc-os-graph/curadoria-operacional.json",
+    "docs/volc-os-graph/volc-os-graph.json"
+  ],
+  "verdict": "META_COMPLETION_SPEC_PARTIAL"
+}

@@ -1,0 +1,229 @@
+{
+  "activation": {
+    "act_id": "ACT-ACTIVATE-FUTURE",
+    "gate_ids": [
+      "G11"
+    ],
+    "p0_endpoint": false,
+    "release": "future_separate"
+  },
+  "artifact_id": "META-STATE-MACHINE",
+  "dependency_rules": [
+    "AdSet needs verified Campaign ID.",
+    "Creative independent; can be validated before any creation.",
+    "Ad needs verified AdSet and Creative.",
+    "Validate child with real parents immediately before preparing its create attempt; persist validation result before dispatch.",
+    "Resume never repeats CREATED/AMBIGUOUS step; verified known identity advances only under current authorized execution."
+  ],
+  "existing_state_mapping": {
+    "AMBIGUOUS": "uncertain external outcome",
+    "APPROVED": "SQL approval with computed expiry; no consumed execution state",
+    "CREATED": "ID durable but readback verified not guaranteed",
+    "FAILED": "provider refusal or temporal absence closure; latter unsafe",
+    "IN_FLIGHT": "prepared/dispatch uncertain conflated",
+    "readback_error_code": "separate nullable field, not complete persisted equivalence model"
+  },
+  "forbidden_transitions": [
+    "AMBIGUOUS -> new POST without adjudicated no-dispatch proof and new authority",
+    "ROOTS_VALIDATED -> fully_remote_validated",
+    "APPROVED -> ACTIVE",
+    "RECONCILE -> CREATE",
+    "READBACK_DIVERGENT -> success without new read evidence"
+  ],
+  "global_transitions": [
+    {
+      "condition": "draft/hash/input/manifest change",
+      "effect": "invalidate approval and validation; never modify running execution",
+      "to": "S-DRAFT"
+    },
+    {
+      "condition": "unconsumed approval expiry",
+      "effect": "no dispatch and no token; recovery separate",
+      "to": "S-EXPIRED"
+    },
+    {
+      "condition": "operator revocation",
+      "effect": "stop future dispatch; existing nodes retainedPAUSED; in-flight stays potentially ambiguous",
+      "to": "S-REVOKED"
+    },
+    {
+      "condition": "explicit provider refusal",
+      "effect": "preserve partial parents and exact error, do not call it timeout",
+      "to": "S-REFUSED"
+    }
+  ],
+  "model": "proposed; does not falsely map every state to existing SQL",
+  "no_delivery_rule": "Campaign, AdSet and Ad configured statusPAUSED individually; Creative library state not delivery status.",
+  "schema_version": "1.0.0",
+  "states": [
+    "S-DRAFT",
+    "S-COMPILED",
+    "S-LOCAL-VALID",
+    "S-ROOTS-VALIDATED",
+    "S-VALIDATION-DURABLE",
+    "S-APPROVED",
+    "S-EXPIRED",
+    "S-REVOKED",
+    "S-EXECUTING",
+    "S-CREATED-UNVERIFIED",
+    "S-AMBIGUOUS",
+    "S-DIVERGENT",
+    "S-REFUSED",
+    "S-VERIFIED-PAUSED",
+    "S-SYNCED-PAUSED"
+  ],
+  "step_order": [
+    "Campaign",
+    "AdSet",
+    "AdCreative",
+    "Ad"
+  ],
+  "step_states": [
+    "PLANNED",
+    "VALIDATED_DEPENDENT",
+    "PREPARED",
+    "DISPATCHING",
+    "AMBIGUOUS",
+    "CREATED_UNVERIFIED",
+    "READBACK_DIVERGENT",
+    "VERIFIED_PAUSED",
+    "VERIFIED_LIBRARY",
+    "REFUSED"
+  ],
+  "transitions": [
+    {
+      "act_id": "ACT-COMPILE",
+      "from": "S-DRAFT",
+      "gate_ids": [
+        "G01",
+        "G02"
+      ],
+      "to": "S-COMPILED",
+      "transition_id": "TR01"
+    },
+    {
+      "act_id": "ACT-LOCAL-VALIDATE",
+      "from": "S-COMPILED",
+      "gate_ids": [
+        "G01",
+        "G02"
+      ],
+      "to": "S-LOCAL-VALID",
+      "transition_id": "TR02"
+    },
+    {
+      "act_id": "ACT-REMOTE-VALIDATE",
+      "from": "S-LOCAL-VALID",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G03"
+      ],
+      "to": "S-ROOTS-VALIDATED",
+      "transition_id": "TR03"
+    },
+    {
+      "act_id": "ACT-VALIDATION-RECEIPT",
+      "from": "S-ROOTS-VALIDATED",
+      "gate_ids": [
+        "G04",
+        "G13"
+      ],
+      "to": "S-VALIDATION-DURABLE",
+      "transition_id": "TR04"
+    },
+    {
+      "act_id": "ACT-APPROVE",
+      "from": "S-VALIDATION-DURABLE",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G04",
+        "G13"
+      ],
+      "to": "S-APPROVED",
+      "transition_id": "TR05"
+    },
+    {
+      "act_id": "ACT-CREATE-PAUSED",
+      "from": "S-APPROVED",
+      "gate_ids": [
+        "G01",
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "G13"
+      ],
+      "to": "S-EXECUTING",
+      "transition_id": "TR06"
+    },
+    {
+      "act_id": "ACT-CREATE-PAUSED",
+      "from": "S-EXECUTING",
+      "gate_ids": [
+        "G07"
+      ],
+      "to": "S-CREATED-UNVERIFIED",
+      "transition_id": "TR07"
+    },
+    {
+      "act_id": "ACT-CREATE-PAUSED",
+      "from": "S-EXECUTING",
+      "gate_ids": [
+        "G07"
+      ],
+      "to": "S-AMBIGUOUS",
+      "transition_id": "TR08"
+    },
+    {
+      "act_id": "ACT-READBACK",
+      "from": "S-CREATED-UNVERIFIED",
+      "gate_ids": [
+        "G08",
+        "G09"
+      ],
+      "to": "S-VERIFIED-PAUSED",
+      "transition_id": "TR09"
+    },
+    {
+      "act_id": "ACT-READBACK",
+      "from": "S-CREATED-UNVERIFIED",
+      "gate_ids": [
+        "G08",
+        "G09"
+      ],
+      "to": "S-DIVERGENT",
+      "transition_id": "TR10"
+    },
+    {
+      "act_id": "ACT-RECONCILE",
+      "from": "S-AMBIGUOUS",
+      "gate_ids": [
+        "G09"
+      ],
+      "to": "S-CREATED-UNVERIFIED",
+      "transition_id": "TR11"
+    },
+    {
+      "act_id": "ACT-RECONCILE",
+      "from": "S-DIVERGENT",
+      "gate_ids": [
+        "G09"
+      ],
+      "to": "S-CREATED-UNVERIFIED",
+      "transition_id": "TR12"
+    },
+    {
+      "act_id": "ACT-RECONCILE",
+      "from": "S-VERIFIED-PAUSED",
+      "gate_ids": [
+        "G09"
+      ],
+      "to": "S-SYNCED-PAUSED",
+      "transition_id": "TR13"
+    }
+  ]
+}

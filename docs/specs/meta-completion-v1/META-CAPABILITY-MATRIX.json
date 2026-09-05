@@ -1,0 +1,747 @@
+{
+  "allowed_statuses": [
+    "PROVEN_LOCAL",
+    "PROVEN_REMOTE_READ",
+    "PROVEN_REMOTE_VALIDATE",
+    "PROVEN_REMOTE_CREATE_PAUSED",
+    "IMPLEMENTED_UNPROVEN",
+    "BLOCKED_BY_CONTRACT",
+    "BLOCKED_BY_PROVIDER",
+    "RESEARCH_REQUIRED",
+    "NOT_IMPLEMENTED",
+    "NOT_APPLICABLE"
+  ],
+  "artifact_id": "META-CAPABILITY-MATRIX",
+  "capabilities": [
+    {
+      "capability_id": "CAP-CONFIG",
+      "conflict_ids": [
+        "C12"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L02",
+        "L03",
+        "L04",
+        "L40"
+      ],
+      "objective": "Configuração local protegida",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-AUTH"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-ACCOUNT",
+      "conflict_ids": [],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L05",
+        "L51"
+      ],
+      "objective": "Descoberta de quatro contas",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "status": "PROVEN_REMOTE_READ"
+    },
+    {
+      "capability_id": "CAP-IDENTITY",
+      "conflict_ids": [
+        "C07"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L51"
+      ],
+      "objective": "Page e Instagram elegíveis",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-PAGES",
+        "META-INSTAGRAM"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-HIERARCHY",
+      "conflict_ids": [],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L05"
+      ],
+      "objective": "Leitura de Campaign/AdSet/Ad/Creative",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P1",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD",
+        "META-CREATIVE"
+      ],
+      "status": "PROVEN_REMOTE_READ"
+    },
+    {
+      "capability_id": "CAP-ASSET",
+      "conflict_ids": [
+        "C03"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L51",
+        "L10"
+      ],
+      "objective": "Imagem estática existente e selada",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-IMAGES",
+        "META-LINK"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-PREFLIGHT",
+      "conflict_ids": [],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L05",
+        "L02"
+      ],
+      "objective": "Preflight local e real histórico",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ACCOUNT"
+      ],
+      "status": "PROVEN_REMOTE_READ"
+    },
+    {
+      "capability_id": "CAP-COMPILE",
+      "conflict_ids": [
+        "C01",
+        "C02"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07",
+        "L09",
+        "L10"
+      ],
+      "objective": "Compilador Traffic estático",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-CREATIVE"
+      ],
+      "status": "PROVEN_LOCAL"
+    },
+    {
+      "capability_id": "CAP-VALIDATE-ROOTS",
+      "conflict_ids": [
+        "C06"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L06",
+        "L12"
+      ],
+      "objective": "validate_only Campaign e Creative",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-CREATIVE"
+      ],
+      "status": "PROVEN_REMOTE_VALIDATE"
+    },
+    {
+      "capability_id": "CAP-VALIDATE-CHILDREN",
+      "conflict_ids": [
+        "C02",
+        "C05"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L15",
+        "L06"
+      ],
+      "objective": "validate_only AdSet e Ad",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ADSET",
+        "META-AD"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-APPROVE",
+      "conflict_ids": [
+        "C03",
+        "C06"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L13",
+        "L20"
+      ],
+      "objective": "Aprovação vinculada ao hash",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-CREATE",
+      "conflict_ids": [
+        "C01",
+        "C04",
+        "C05",
+        "C13"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L14",
+        "L15",
+        "L20"
+      ],
+      "objective": "Criação governada PAUSED",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-READBACK",
+      "conflict_ids": [
+        "C05",
+        "C16"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L16",
+        "L17"
+      ],
+      "objective": "Read-back quatro nós",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD",
+        "META-CREATIVE"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-RECONCILE",
+      "conflict_ids": [
+        "C04",
+        "C05",
+        "C06"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L18",
+        "L19",
+        "L22"
+      ],
+      "objective": "Reconciliação sem reenvio",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ERRORS"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-LEDGER",
+      "conflict_ids": [
+        "C13"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L20",
+        "L21",
+        "L45"
+      ],
+      "objective": "Ledger/RPC/RLS candidato",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "SUPA-RLS"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-PERSIST",
+      "conflict_ids": [
+        "C08",
+        "C12"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L27",
+        "L29",
+        "L30",
+        "L31"
+      ],
+      "objective": "Read model durável",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P1",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "SUPA-RLS"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-SYNC",
+      "conflict_ids": [
+        "C08"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L25",
+        "L29",
+        "L32"
+      ],
+      "objective": "Sync incremental/completude",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P1",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-INSIGHTS",
+        "META-RATE"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-INSIGHTS",
+      "conflict_ids": [
+        "C08",
+        "C14"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L05",
+        "L25",
+        "L26"
+      ],
+      "objective": "Insights com valores e actions confiáveis",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P1",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-INSIGHTS-EDGE"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-UX-CREATE",
+      "conflict_ids": [
+        "C05",
+        "C06"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L33",
+        "L39"
+      ],
+      "objective": "UI real de criação governada",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P0",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-UX-OPERATE",
+      "conflict_ids": [
+        "C08",
+        "C09",
+        "C12"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L35",
+        "L36",
+        "L37",
+        "L38"
+      ],
+      "objective": "Inventários/detalhes/settings/dashboard reais",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P1",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-INSIGHTS"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-EDIT",
+      "conflict_ids": [],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L01"
+      ],
+      "objective": "Edição governada e pausa",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P1",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-ACTIVATE",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L01"
+      ],
+      "objective": "Ativação futura separada",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET",
+        "META-AD"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-EVENT-SOURCES",
+      "conflict_ids": [
+        "C10"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L05",
+        "L24"
+      ],
+      "objective": "Pixel/Dataset com catálogo de eventos",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P2",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CUSTOM",
+        "META-PROMOTED"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-CUSTOM-READ",
+      "conflict_ids": [
+        "C10"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L05",
+        "L24"
+      ],
+      "objective": "Leitura custom conversions",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P2",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "status": "PROVEN_REMOTE_READ"
+    },
+    {
+      "capability_id": "CAP-CUSTOM-CREATE",
+      "conflict_ids": [
+        "C10",
+        "C11"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L49"
+      ],
+      "objective": "Criação custom conversion independente",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P2",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CUSTOM"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-CAPI",
+      "conflict_ids": [
+        "C11"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L44"
+      ],
+      "objective": "CAPI governada",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P2",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAPI",
+        "META-CAPI-EVENT",
+        "META-DEDUP"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-LEADS",
+      "conflict_ids": [
+        "C10"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07",
+        "L49"
+      ],
+      "objective": "Leads web/form",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P2",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ADSET",
+        "META-PROMOTED"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-SALES",
+      "conflict_ids": [
+        "C10"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07",
+        "L49"
+      ],
+      "objective": "Sales web/value",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P2",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ADSET",
+        "META-PROMOTED"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-AUDIENCE",
+      "conflict_ids": [
+        "C05",
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L08",
+        "L16"
+      ],
+      "objective": "Advantage Audience control plane",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-AUDIENCE",
+        "META-TARGETING"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-PLACEMENTS",
+      "conflict_ids": [
+        "C07",
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07",
+        "L09"
+      ],
+      "objective": "Placements explícitos elegíveis",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-PLACEMENT",
+        "META-V26"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-BUDGET",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07",
+        "L09"
+      ],
+      "objective": "ABO/CBO/sharing/pacing",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CAMPAIGN",
+        "META-ADSET"
+      ],
+      "status": "BLOCKED_BY_CONTRACT"
+    },
+    {
+      "capability_id": "CAP-MULTI",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07",
+        "L09"
+      ],
+      "objective": "Múltiplos Ads/AdSets",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ADSET",
+        "META-AD"
+      ],
+      "status": "IMPLEMENTED_UNPROVEN"
+    },
+    {
+      "capability_id": "CAP-VIDEO",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L51"
+      ],
+      "objective": "Vídeo na criação/preview",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-FLEXIBLE",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L17",
+        "L07"
+      ],
+      "objective": "Criativo flexível",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-CREATIVE"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-CATALOG",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L07"
+      ],
+      "objective": "Catálogo",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-PROMOTED"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-BATCH",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L15"
+      ],
+      "objective": "Batch governado",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-BATCH"
+      ],
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "capability_id": "CAP-AUTOMATION",
+      "conflict_ids": [
+        "C15"
+      ],
+      "eligibility_authority": "backend recipe and scoped provider proof, never UI",
+      "evidence_ids": [
+        "L01"
+      ],
+      "objective": "Rules/scaling/experimentos/learning",
+      "promotion_rule": "Only promote the exact scope proven by a durable sanitized receipt.",
+      "release": "P3",
+      "remote_creation_proven": false,
+      "source_ids": [
+        "META-ADSET"
+      ],
+      "status": "RESEARCH_REQUIRED"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "summary": {
+    "any_remote_create_paused_proof": false,
+    "p11_t03": "partial",
+    "p11_t05": "partial",
+    "p11_t06": "partial"
+  }
+}
