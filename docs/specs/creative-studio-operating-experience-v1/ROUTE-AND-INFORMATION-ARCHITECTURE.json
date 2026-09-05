@@ -1,0 +1,43 @@
+{
+  "schema": "VolcCreativeStudioRouteIA.v1",
+  "artefato": "ROUTE-AND-INFORMATION-ARCHITECTURE.json",
+  "versao": "1.0.0",
+  "principio": "Uma experiencia unica: toda rota do Estudio compartilha o mesmo shell (Layout), o mesmo cabecalho de identidade, o mesmo inspetor de peca e o mesmo vocabulario de estados. Rotas novas so existem quando ha dado real por tras. Nenhuma rota e criada para uma capacidade sem runtime; ela aparece como regiao desabilitada com motivo dentro da rota existente.",
+  "hierarquia": "contexto (Estudio) → tarefa (criar | acompanhar | decidir | guardar | distribuir) → filtros → workspace → detalhe profundo (inspetor)",
+  "navegacao_global": {"item": "Criativos (src/components/layout/Navigation.tsx:85-91)", "descricao_proposta": "Estudio: criar, aprovar e entregar pecas", "sub_navegacao": "segmented control no topo do Corpo em todas as rotas do Estudio: Inicio · Criar · Trabalhos · Biblioteca · Aprovacoes · Identidade (brand packs) · Ensaio (laboratorio)", "regra": "segmented no poço muted, pilula ativa bg-card shadow-card; nunca underline; contagens como metadado quieto"},
+  "rotas": [
+    {"id": "R-HOME", "path": "/criativos", "pagina": "EstudioHomePage (REFACTORED)", "tarefa": "orientar e retomar", "responde": ["o que posso criar (capacidades reais)", "o que esta em producao", "o que aguarda decisao", "o que ficou pronto", "o que pode ser reutilizado", "qual e o proximo ato"], "fontes": ["GET /resumo", "GET /formatos", "GET /parque", "GET /bancada/motores", "GET /videos"], "acao_primaria": "Criar", "estados": ["carregando", "sem_credencial", "erro", "primeira_visita", "operando"], "release": "P0"},
+    {"id": "R-NOVO", "path": "/criativos/novo", "pagina": "BriefingPage (REPLACED: unifica BriefingDeImagemPage + BriefingDeVideoPage)", "tarefa": "pedir uma peca", "query_params": {"tipo": "imagem|video (default imagem)", "origem": "trafego|conteudo|standalone", "destino": "slug de criativo_finalidade", "canal": "DISPLAY|DEMAND_GEN|PERFORMANCE_MAX|META|ORGANICO (pre-seleciona formatos elegiveis)", "retorno": "path interno para onde voltar apos aprovar (validado: comeca com /)", "de": "id de job para 'repetir com ajuste'"}, "fontes": ["GET /formatos", "GET /parque", "GET /brand-packs", "GET /jobs/{de}"], "acao_primaria": "Gerar N pecas", "release": "P0 (imagem) / P1 (video)"},
+    {"id": "R-NOVO-IMG", "path": "/criativos/imagens/novo", "pagina": "alias → /criativos/novo?tipo=imagem", "release": "P0"},
+    {"id": "R-NOVO-VID", "path": "/criativos/videos/novo", "pagina": "alias → /criativos/novo?tipo=video (mostra limitacaoDeclarada e builds observados enquanto nao houver motor de video de producao)", "release": "P0 (alias) / P1 (briefing real)"},
+    {"id": "R-TRABALHOS", "path": "/criativos/trabalhos", "pagina": "TrabalhosPage (NEW)", "tarefa": "acompanhar e triar todos os jobs", "query_params": {"estado": "lista separada por virgula", "limite": "ate 100"}, "fontes": ["GET /jobs?estado=&limite="], "acao_primaria": "nenhuma (lista); acoes por linha", "release": "P0"},
+    {"id": "R-JOB", "path": "/criativos/jobs/:creativeJobId", "pagina": "JobPage (REFACTORED)", "tarefa": "ver a producao acontecer e decidir sobre o lote", "fontes": ["GET /jobs/{id}", "GET /jobs/{id}/eventos (SSE)", "GET /video/{slug} quando observado"], "acao_primaria": "contextual: Interromper (em execucao) | Preencher as pecas que faltaram (partial/failed) | Abrir na fila de aprovacao (succeeded)", "release": "P0"},
+    {"id": "R-COMPARAR", "path": "/criativos/comparar", "pagina": "CompararPage (NEW)", "tarefa": "comparar 2-4 pecas", "query_params": {"itens": "ids de master separados por virgula (2-4)", "modo": "lado|formato|destino"}, "fontes": ["GET /assets/{id} × n"], "acao_primaria": "Aprovar selecionadas (admin) — abre decisao em lote", "release": "P1"},
+    {"id": "R-BIBLIOTECA", "path": "/criativos/biblioteca", "pagina": "BibliotecaPage (REFACTORED)", "tarefa": "encontrar, comparar, selecionar e agir sobre patrimonio", "query_params": {"visao": "tabela|grade", "busca": "", "kind": "", "estado": "aguardando|aprovado|ajuste_solicitado|rejeitado", "brandPack": "", "slot": "", "desde": "", "ate": "", "pagina": "", "sel": "ids selecionados (ate 50)", "inspetor": "id aberto no painel lateral"}, "fontes": ["GET /assets", "GET /brand-packs", "GET /formatos"], "acao_primaria": "contextual por selecao", "release": "P0 (tabela/grade/inspetor) / P1 (lote)"},
+    {"id": "R-ASSET", "path": "/criativos/assets/:assetId", "pagina": "AtivoPage (REFACTORED)", "tarefa": "inspecionar, decidir e encaminhar", "fontes": ["GET /assets/{id}", "GET /parque (exigencias, finalidades)", "GET /brand-packs"], "acao_primaria": "contextual: Registrar decisao | Usar no Trafego | Exportar", "release": "P0"},
+    {"id": "R-APROVACOES", "path": "/criativos/aprovacoes", "pagina": "AprovacoesPage (REFACTORED)", "tarefa": "decidir com evidencias", "fontes": ["GET /assets?estado=aguardando", "GET /parque.finalidades"], "acao_primaria": "Registrar decisao", "release": "P0 (individual) / P1 (lote)"},
+    {"id": "R-BRAND", "path": "/criativos/brand-packs", "pagina": "BrandPacksPage (PRESERVED em P0; REFACTORED em P1 com criacao)", "tarefa": "identidade", "release": "P0 leitura / P1 edicao"},
+    {"id": "R-LAB", "path": "/criativos/laboratorio", "pagina": "LaboratorioPage (REFACTORED: entra no Layout; kicker 'Ensaio')", "tarefa": "ensaiar receita e produzir peca de teste local", "fontes": ["GET /parque", "GET /bancada/*"], "regra": "faixa fixa 'Ensaio local: nao entra na Biblioteca nem vai a producao'", "release": "P0 (shell) / P1 (persistir receita — depende de decisao de schema)"},
+    {"id": "R-VIDEO", "path": "/criativos/videos/:buildSlug", "pagina": "LeituraDeVideoPage (PRESERVED)", "release": "P0"},
+    {"id": "R-TEMPLATES", "path": "/criativos/templates", "pagina": "redirect → /criativos/laboratorio (PRESERVED)", "release": "P0"}
+  ],
+  "transicoes_para_destinos": [
+    {"de": "/trafego (bancada multicanal, SeletorDeAsset)", "para": "/criativos/biblioteca?visao=grade&slot=<slots do papel>&estado=aprovado&sel=&retorno=/trafego/...", "mecanismo": "botao 'Escolher da Biblioteca' abre a Biblioteca em modo selecao com filtro por formatos elegiveis ao papel; 'Usar selecionadas' devolve ids ao Trafego via query `retorno` + estado de rota; o Trafego envia `asset_id` em assets_display/demand_gen/pmax e o backend le os bytes (API_GAP P0)", "estado": "P0"},
+    {"de": "/trafego IrParaEstudio", "para": "/criativos/novo?origem=trafego&canal=DISPLAY&destino=google_display&retorno=...", "mecanismo": "briefing pre-seleciona formatos elegiveis ao canal e finalidade; ao aprovar, o CTA 'Voltar ao Trafego com a peca' usa `retorno`", "estado": "P0"},
+    {"de": "/criativos/assets/:id (Destinos)", "para": "/trafego/... com asset pre-selecionado", "mecanismo": "acao 'Usar no Trafego' so aparece quando finalidade aprovada e midia_paga e canal compativel; leva a bancada do canal com `asset_id` na query", "estado": "P0 (Display) / P1 (DG) / P2 (PMax)"},
+    {"de": "/criativos/assets/:id (Destinos)", "para": "Meta (/trafego/meta/criar)", "mecanismo": "bloqueado com motivo ate registro do asset na conta Meta (adimages) e policy receipt", "estado": "P1"},
+    {"de": "/criativos/assets/:id (Destinos)", "para": "Organico (Postiz)", "mecanismo": "bloqueado com motivo ate upload de midia; ver ORGANIC-DISTRIBUTION-HANDOFF", "estado": "P1"},
+    {"de": "/criativos/assets/:id (Destinos)", "para": "WordPress/FunnelForge (hero)", "mecanismo": "bloqueado com motivo (demanda LP_HERO fora do escopo)", "estado": "P2"},
+    {"de": "/criativos/assets/:id (Destinos)", "para": "Search", "mecanismo": "indisponivel com motivo (sem regua/builder)", "estado": "P3"},
+    {"de": "/criativos/assets/:id (Destinos)", "para": "Exportacao manual", "mecanismo": "download por link assinado (existe)", "estado": "P0"}
+  ],
+  "arquitetura_da_informacao_por_rota": {
+    "cabecalho": "kicker + chip 20x20, H1 Space Grotesk, aurora-rule w-16, proposito, um botao primario, situacao (selos + frescor)",
+    "sub_navegacao": "segmented Estudio (7 itens) imediatamente sob o cabecalho, dentro do orcamento de 280px",
+    "workspace": "uma superficie de trabalho por tarefa (shadow-card); regioes internas com hairline; inspetor lateral de 360-420px em desktop, folha inferior em mobile",
+    "detalhe_profundo": "inspetor (peca) e ficha (rota) compartilham o mesmo componente InspetorDePeca em dois modos"
+  },
+  "breadcrumb": "Estudio › Tarefa › Item; sempre com 'voltar' para a rota anterior real (retorno validado) e nunca para '/' generico",
+  "rotas_removidas": [],
+  "rotas_preservadas_por_compatibilidade": ["/criativos/imagens/novo", "/criativos/videos/novo", "/criativos/templates"]
+}

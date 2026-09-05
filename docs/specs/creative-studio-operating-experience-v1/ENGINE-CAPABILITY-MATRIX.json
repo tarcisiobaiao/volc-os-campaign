@@ -1,0 +1,105 @@
+{
+  "schema": "VolcCreativeStudioEngineCapabilityMatrix.v1",
+  "artefato": "ENGINE-CAPABILITY-MATRIX.json",
+  "versao": "1.0.0",
+  "base_factual": {"commit": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c", "escrito_em": "2026-09-05"},
+  "regra": "Cada motor lista apenas o que o codigo aceita. Campo nao suportado aparece como `nao_suportado`, nunca omitido. O operador ve somente a intersecao entre motor escolhido e destino escolhido (secao `cruzamento_motor_x_destino`).",
+  "motores": [
+    {
+      "id": "ENG-GEMINI", "slug": "gemini-imagem", "nome_operador": "Composicao por modelo (Gemini)", "caminho": "estudio_jobs", "midia": ["imagem"], "modos": ["full_llm"],
+      "provider": "google", "modelo": "gemini-3.1-flash-image", "versao_adaptador": "1.0.0", "credencial": "GEMINI_API_KEY no ambiente do servidor (ou settings.gemini_api_key); nunca no navegador", "natureza": "producao",
+      "entrada": {"insumo_texto": "objetivo + mensagem + audiencia (execucao.py:829-839)", "imagem_referencia": "nao_suportado", "imagem_inicial": "nao_suportado", "seed": "nao_suportado", "negativo": "nao_suportado", "brand_pack_tokens": "nao_lido_pelo_motor (so id na procedencia)", "texto_na_imagem": "proibido pela instrucao (gemini_imagem.py:340)"},
+      "saida": {"formatos": ["1x1 1080x1080", "4x5 1080x1350", "9x16 1080x1920", "1.91x1 1200x628"], "mime": "o que o provider devolver (png/jpeg), normalizado por Pillow quando presente", "variacoes_por_slot": 1, "max_slots_por_job": 6, "enquadramento": ["nativo", "resize", "cover_crop", "nao_normalizado"], "medidas_registradas": ["largura", "altura", "bytes", "sha256", "nativo_largura", "nativo_altura", "transformacoes", "tokens"]},
+      "custo": {"estimado": "0,039 USD por imagem (referencia volc-factory mapa.json)", "medido": "nunca (provider reporta tokens)", "campo": "criativo_job.custo_estimado_usd; custo_real_usd NULL"},
+      "tempo": {"timeout_por_peca_s": 240, "execucao": "sincrona no request (POST responde apos estado terminal)"},
+      "retry": {"transitorio": "429, 5xx, rede, credencial (permanente=false)", "permanente": "400/404/422, recusa por politica, sem imagem (permanente=true)", "regra_ui": "job/pecas.ts:68-100"},
+      "observabilidade": {"eventos": ["aceito", "iniciando", "gerando(slot)", "peca_pronta(slot)", "peca_falhou(slot)", "peca_reaproveitada(slot)", "retry", "cancelando", "fim"], "percentual": "nunca", "fases_nao_observadas": ["QA", "medicao", "persistencia (ocorrem dentro de gerando→peca_pronta)"]},
+      "limitacoes": ["sem imagem de referencia", "sem variacoes", "uma imagem por chamada", "sem texto/logo na peca", "storage local por padrao", "despacho recusado em serverless (fail-closed)"],
+      "disponibilidade_ui": "GET /formatos.motorConfigurado e GET /resumo.motorConfigurado",
+      "status_real": "IMPLEMENTED_UNPROVEN em producao; provado localmente com credencial (job real 28/08/2026)", "evidencia": ["services/creative_engine/motores/gemini_imagem.py", "backend/app/criativo/execucao.py", "supabase/migrations/v11_02_parque_criativo.sql:734-739"]
+    },
+    {
+      "id": "ENG-TIPO", "slug": "tipografico-local", "nome_operador": "Tipografia local (ensaio)", "caminho": "bancada", "midia": ["imagem"], "modos": ["typography_only (ensaio)"],
+      "provider": null, "modelo": null, "versao_adaptador": "1.0.0", "credencial": "nenhuma", "natureza": "local (nao publicavel em producao)",
+      "entrada": {"titulo": "1-280", "apoio": "0-280", "seed": "obrigatorio 0..2^31-1", "fonte": "Inter-Variable.ttf vendorizada (sha256 no recibo)", "brand_pack": "nao_suportado"},
+      "saida": {"formatos": ["qualquer slot de dominio.FORMATOS pedido via slots[1..12]"], "mime": "image/png", "deterministico": true, "gates": ["contraste medido", "dimensao", "hash_confere", "mime_declarado_confere"]},
+      "custo": {"estimado": "sem_custo_de_provider", "medido": "nao_aplicavel"},
+      "tempo": {"execucao": "sincrona local ou worker com lease 60s"},
+      "retry": {"regra": "retomar cria trabalho NOVO com linhagem (criativos_execucao.py:347-382)"},
+      "observabilidade": {"estados": ["queued", "claimed", "running", "validating", "rendered", "failed", "cancelled"], "vivo": "derivado do lease (batimento)", "polling_ui": "1s→15s (useTrabalhoDaBancada)"},
+      "limitacoes": ["ensaio; a ponte recusa para destino PRODUCAO (criativo_ponte NATUREZAS_ACEITAS)", "Pillow necessario"],
+      "status_real": "PROVEN_RUNTIME (local, golden)", "evidencia": ["backend/app/criativo/bancada/adaptadores/tipografico.py", "backend/tests/test_criativo_golden_imagem.py"]
+    },
+    {
+      "id": "ENG-PNG", "slug": "png-local", "nome_operador": "PNG minimo (piso da bancada)", "caminho": "bancada", "midia": ["imagem"], "modos": ["deterministic_graphics (ensaio)"], "provider": null, "credencial": "nenhuma", "natureza": "local",
+      "entrada": {"titulo": "1-280", "apoio": "0-280", "seed": "obrigatorio"}, "saida": {"formatos": ["slots pedidos"], "mime": "image/png", "deterministico": true},
+      "custo": {"estimado": "sem_custo_de_provider"}, "limitacoes": ["desenho minimo; serve para provar fila→operario→gate→recibo"],
+      "status_real": "PROVEN_RUNTIME (local)", "evidencia": ["backend/app/criativo/bancada/adaptadores/png_local.py"]
+    },
+    {
+      "id": "ENG-REMOTION", "slug": "remotion-local", "nome_operador": "Video Remotion hermetico (ensaio)", "caminho": "bancada", "midia": ["video"], "modos": ["observado? nao; render proprio de composicao unica"], "provider": null, "credencial": "nenhuma", "natureza": "local",
+      "entrada": {"titulo/apoio": "sanitizados (bancada/sanitizacao.py)", "seed": "obrigatorio", "slot": "video-9x16 1080x1920 (composicao propria)"},
+      "saida": {"formatos": ["video-9x16"], "mime": "video/mp4", "medidas": ["largura", "altura", "duracao_s", "fps", "codec", "audio LUFS/true peak quando medido"], "gates": ["render_sem_rede PASS|FAIL (kernel)", "dimensao (ffprobe)", "mime_declarado_confere"]},
+      "custo": {"estimado": "sem_custo_de_provider"}, "tempo": {"execucao": "worker (processo longo) ou sincrono local"},
+      "limitacoes": ["requer node + runtime versionado em deploy/creative-worker/remotion-runtime", "macOS sandbox-exec para prova de hermetismo", "nenhuma rota do Estudio dispara video hoje"],
+      "status_real": "IMPLEMENTED_UNPROVEN (golden skipif sem node/sandbox)", "evidencia": ["backend/app/criativo/bancada/adaptadores/remotion.py", "backend/tests/test_criativo_golden_video.py:82", "backend/tests/test_criativo_runtime_remotion.py"]
+    },
+    {
+      "id": "ENG-FACTORY", "slug": "volc-factory", "nome_operador": "Build de video observado (fabrica externa)", "caminho": "video_observado", "midia": ["video", "audio"], "modos": ["observado"], "provider": "nao_gravado_pela_fabrica", "credencial": "nenhuma (leitura de disco via VOLC_FACTORY_RAIZ)", "natureza": "observado (procedencia_execucao=observado)",
+      "entrada": {"slug_do_build": "GET /videos lista; GET /video/{slug} le"}, "saida": {"contrato": "tema, nicho, skin, titulo, badge, duracao, fps, largura, altura, hook, voz, beats, elementos, cta, fatos", "ledger": "insumos com licenca/credito/sintetico", "qa": "gates tecnicos e visuais com veredito", "arquivo": "mp4 + poster por link assinado com Range"},
+      "custo": {"medido": "nao (observado_sem_custo_proprio, v11_01:296-297)"},
+      "limitacoes": ["nao renderiza; limitacao vem do servidor (limitacaoDeclarada)", "motorVersaoConhecida sempre null", "fabrica precisa estar montada no servidor"],
+      "status_real": "BLOCKED_EXTERNAL (codigo pronto; depende da raiz da fabrica)", "evidencia": ["backend/app/criativo/video_observado.py:82-90, 316-330", "backend/app/criativo/video_ponte.py"]
+    },
+    {
+      "id": "ENG-PRENSA", "slug": "prensa", "nome_operador": "PRENSA (composicao deterministica)", "caminho": "nenhum", "midia": ["imagem"], "modos": ["typography_only", "deterministic_graphics", "prensa_hybrid", "full_llm_then_prensa"], "natureza": "producao (fora do repositorio)",
+      "status_real": "NOT_IMPLEMENTED no VOLC O.S. (catalogado como executado_externo)", "limitacoes": ["exige Chrome real + fontes vendorizadas; copia integral proibida"], "evidencia": ["supabase/migrations/v11_02_parque_criativo.sql:740-745, 769-782", "docs/creative-engines/motores-de-imagem.json"]
+    },
+    {
+      "id": "ENG-FUNNELFORGE", "slug": "funnelforge-imagem", "nome_operador": "Gerador de imagem do FunnelForge (gpt-image)", "caminho": "volc_ads adaptador sem consumidor", "midia": ["imagem"], "provider": "openai (chave do engine do FunnelForge, nao do backend)", "natureza": "producao",
+      "saida": {"tamanhos": ["1024x1024", "1536x1024", "1024x1536"], "proporcoes": ["1:1", "1.5:1", "0.67:1"]}, "limitacoes": ["nao bate 1.91:1 nem 4:5 sem recorte", "OPENAI_API_KEY vazia no ambiente do backend (gemini_imagem.py:11-13)"],
+      "status_real": "BACKEND_ONLY", "evidencia": ["volc_ads/criativo/adaptadores/funnelforge_imagem.py"]
+    }
+  ],
+  "modos_de_producao_reais": [
+    {"slug": "full_llm", "estado_de_prova": "implementado_no_volc", "motor": "gemini-imagem", "oferecer_na_ui": true},
+    {"slug": "observado", "estado_de_prova": "implementado_no_volc", "motor": "volc-factory", "oferecer_na_ui": "somente como leitura"},
+    {"slug": "typography_only", "estado_de_prova": "executado_externo", "motor": "prensa (fora) / tipografico-local (ensaio)", "oferecer_na_ui": "desabilitado com motivo; ensaio so no Laboratorio"},
+    {"slug": "deterministic_graphics", "estado_de_prova": "executado_externo", "oferecer_na_ui": "desabilitado com motivo"},
+    {"slug": "prensa_hybrid", "estado_de_prova": "executado_externo", "oferecer_na_ui": "desabilitado com motivo"},
+    {"slug": "photo_preserved", "estado_de_prova": "componentes_observados", "oferecer_na_ui": "desabilitado com motivo (P2 depende de insumo proprio)"},
+    {"slug": "full_llm_then_prensa", "estado_de_prova": "planejado", "oferecer_na_ui": "desabilitado com motivo"}
+  ],
+  "destinos": [
+    {"id": "DST-GDISPLAY", "slug": "google_display", "classe": "midia_paga", "requisitos": {"papeis": ["imagem_marketing 1.91:1 min 600x314 (1-15)", "imagem_marketing_quadrada 1:1 min 300x300 (1-15)", "logo_quadrado 1:1 min 128 (0-5)", "logo_paisagem 4:1 min 512x128 (0-5)", "video youtube ref (0-5)"], "peso_max": "nao publicado (null)", "mimes": ["image/png", "image/jpeg", "image/gif"], "fonte": "volc_ads/criativo/requisitos.yaml:69-131; spec Google CREATIVE-ASSET-REQUIREMENTS"}, "estado_do_consumidor": "validate_only remoto aprovado 01/09/2026; /subir monta Display pelo caminho Search (OCC-G02/G03); asset chega por upload manual", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-GDGEN", "slug": "google_demand_gen", "classe": "midia_paga", "requisitos": {"papeis": ["1.91:1 min 600x314 rec 1200x628 5MB", "1:1 min 300x300 rec 1200x1200 5MB", "4:5 min 480x600 rec 960x1200 5MB", "9:16 min 600x1067 rec 1080x1920 5MB", "logo 1:1 min 144 150KB (1-5)", "video >=5s youtube"], "fonte": "requisitos.yaml:134-212"}, "estado_do_consumidor": "validate_only remoto 01/09/2026; /subir recusa DG (403) por decisao", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-GPMAX", "slug": "google_performance_max", "classe": "midia_paga", "requisitos": {"papeis": ["1.91:1 (1-20) 5MB", "1:1 (1-20) 5MB", "4:5 (0-20)", "logo 1:1 (1-5)", "logo 4:1 (0-20)", "video youtube >=10s (0-15)"], "fonte": "requisitos.yaml:216-273"}, "estado_do_consumidor": "planejamento offline (27 operacoes); sem validate_only real; v12_03 nao aplicada", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-GSEARCH", "slug": "google_search_assets", "classe": "midia_paga", "requisitos": {"papeis": ["AD_IMAGE sem regua no repositorio; texto/logo na imagem torna inelegivel (POLICY-07 do supply chain)"]}, "estado_do_consumidor": "sem builder", "ligacao_com_estudio": "NOT_IMPLEMENTED (futuro)"},
+    {"id": "DST-META-FEED", "slug": "meta_feed", "classe": "midia_paga", "requisitos": {"papeis": ["imagem estatica 1:1 ou 4:5 (envelopes meta-feed-1x1, meta-feed-4x5 em destinos.py:172-190)", "copy inline message/headline/description (tetos 2200/255 do runtime VOLC)"]}, "estado_do_consumidor": "single_static AVAILABLE; static_batch ate 10; imagem so da biblioteca da conta; canario bloqueado por OCC-01/C03", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-META-REELS", "slug": "meta_stories_reels", "classe": "midia_paga", "requisitos": {"papeis": ["9:16"]}, "estado_do_consumidor": "video_creative BLOCKED_UNTIL_VIDEO_THUMBNAIL_CONTRACT_PROVEN", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-IG-ORG", "slug": "instagram_organic", "classe": "organica", "requisitos": {"papeis": ["1:1, 4:5, 9:16 (envelope organico-reels-9x16)"]}, "estado_do_consumidor": "publicacao_organica v1 envia texto; upload de midia nao exercitado", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-YT-SHORTS", "slug": "youtube_shorts", "classe": "organica", "requisitos": {"papeis": ["video 9:16 1080x1920"]}, "estado_do_consumidor": "nenhum adaptador", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-WORDPRESS", "slug": "wordpress_lp", "classe": "organica", "requisitos": {"papeis": ["hero da LP (1024x1536 pelo FunnelForge)", "og_image"]}, "estado_do_consumidor": "Redator publica LP; hero fora da cadeia", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-POSTIZ", "slug": "postiz_organic", "classe": "organica", "requisitos": {"papeis": ["imagens por URL (POST /upload ou upload-from-url nao exercitados)"]}, "estado_do_consumidor": "texto apenas", "ligacao_com_estudio": "NOT_IMPLEMENTED"},
+    {"id": "DST-FUNNELFORGE", "slug": "funnelforge_hero", "classe": "organica", "estado_do_consumidor": "pipeline proprio", "ligacao_com_estudio": "NOT_IMPLEMENTED (WBS-P03 do supply chain)"},
+    {"id": "DST-MANUAL", "slug": "manual_export", "classe": "exportacao", "requisitos": {"papeis": ["download do arquivo assinado"]}, "estado_do_consumidor": "download por link assinado existe (AtivoPage, PecaDoJob)", "ligacao_com_estudio": "PROVEN_RUNTIME"},
+    {"id": "DST-INTERNO", "slug": "interno", "classe": "interna", "estado_do_consumidor": "aprovacao interna existe", "ligacao_com_estudio": "PROVEN_RUNTIME"}
+  ],
+  "cruzamento_motor_x_destino": {
+    "regra_de_exibicao": "A UI mostra ao operador apenas as celulas VIAVEL_AGORA e VIAVEL_COM_ADAPTACAO; as demais aparecem como indisponiveis com o motivo e a release em que passam a existir. Nenhuma celula e calculada no navegador a partir de suposicao: a fonte e GET /parque (formatos.executavelAgora, exigenciasDeCanal, tetosCombinados) mais os manifestos de capacidade de cada destino.",
+    "celulas": [
+      {"motor": "gemini-imagem", "destino": "google_display", "formatos_viaveis": ["1.91x1", "1x1"], "formatos_inviaveis": ["4x5 (Display nao aceita)", "9x16 (Display nao aceita)"], "logo": "nao gerado por este motor (texto/logo proibidos)", "estado": "VIAVEL_COM_ADAPTACAO", "adaptacao": "peso maximo desconhecido; gate de identidade ausente bloqueia midia paga ate P1 (POLICY)", "release": "P0 gera; P0 seleciona no Trafego por id; P1 gate"},
+      {"motor": "gemini-imagem", "destino": "google_demand_gen", "formatos_viaveis": ["1.91x1", "1x1", "4x5", "9x16"], "logo": "obrigatorio 1:1 144x144 (nao gerado)", "estado": "VIAVEL_COM_ADAPTACAO", "adaptacao": "logo proprio deve vir do Brand Pack (P1); 5MB teto", "release": "P1"},
+      {"motor": "gemini-imagem", "destino": "google_performance_max", "formatos_viaveis": ["1.91x1", "1x1", "4x5"], "estado": "VIAVEL_COM_ADAPTACAO", "adaptacao": "logo 1:1 obrigatorio; v12_03 nao aplicada", "release": "P2"},
+      {"motor": "gemini-imagem", "destino": "meta_feed", "formatos_viaveis": ["1x1", "4x5"], "estado": "BLOQUEADO", "motivo": "peca do Estudio nao chega a conta Meta (sem adimages); gate de politica exigido pelo contrato P0 da Meta", "release": "P1 (WBS-M02 do supply chain) "},
+      {"motor": "gemini-imagem", "destino": "meta_stories_reels", "formatos_viaveis": ["9x16"], "estado": "BLOQUEADO", "motivo": "idem meta_feed; video bloqueado", "release": "P1/P2"},
+      {"motor": "gemini-imagem", "destino": "instagram_organic", "formatos_viaveis": ["1x1", "4x5", "9x16"], "estado": "BLOQUEADO", "motivo": "upload de midia do Postiz nao exercitado", "release": "P1 (ORGANIC-DISTRIBUTION-HANDOFF)"},
+      {"motor": "gemini-imagem", "destino": "manual_export", "formatos_viaveis": ["todos"], "estado": "VIAVEL_AGORA", "release": "P0"},
+      {"motor": "gemini-imagem", "destino": "interno", "formatos_viaveis": ["todos"], "estado": "VIAVEL_AGORA", "release": "P0"},
+      {"motor": "tipografico-local|png-local", "destino": "qualquer midia_paga ou organica", "estado": "INVIAVEL", "motivo": "natureza local: a ponte recusa para PRODUCAO (criativo_ponte.NATUREZAS_ACEITAS)", "release": "nunca (ensaio)"},
+      {"motor": "remotion-local", "destino": "youtube_shorts|meta_stories_reels|instagram_organic", "estado": "INVIAVEL", "motivo": "natureza local; e ensaio da bancada", "release": "nunca como esta; P1 exige motor de video de producao"},
+      {"motor": "volc-factory (observado)", "destino": "youtube_shorts|instagram_organic|meta_stories_reels", "formatos_viaveis": ["video-9x16"], "estado": "BLOQUEADO", "motivo": "OBSERVED_EXTERNAL: nao aprovavel para midia paga sem importacao (CSC-DEC-14); organico depende de upload de midia", "release": "P1 organico; P2 pago"},
+      {"motor": "qualquer", "destino": "google_search_assets|wordpress_lp|funnelforge_hero|postiz_organic", "estado": "INVIAVEL", "motivo": "sem consumidor ligado ao patrimonio", "release": "P2/P3"}
+    ]
+  }
+}

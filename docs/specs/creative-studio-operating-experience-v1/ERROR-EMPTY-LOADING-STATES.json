@@ -1,0 +1,40 @@
+{
+  "schema": "VolcCreativeStudioStates.v1",
+  "artefato": "ERROR-EMPTY-LOADING-STATES.json",
+  "versao": "1.0.0",
+  "regras": ["carregando preserva layout (skeleton com a altura da regiao, aria-busy)", "erro de leitura nao apaga o ultimo dado bom: mostra 'lido as HH:MM' + alerta + tentar de novo", "vazio confirmado != vazio apos filtro != nao lido (comum/leitura.ts existente)", "codigos ESTUDIO.* viram frase + proximo passo (mapa de dicas); nunca texto cru", "ausencia de capacidade e Indisponivel com motivo do servidor, nunca botao morto"],
+  "mapa_de_codigos": {
+    "ESTUDIO.sem_configuracao": {"frase": "O Estudio esta indisponivel: o servidor esta sem configuracao.", "proximo_passo": "Avise um administrador. Nada foi perdido."},
+    "ESTUDIO.indisponivel": {"frase": "Nao foi possivel ler os dados agora.", "proximo_passo": "Tentar de novo. O ultimo dado lido continua na tela com a hora."},
+    "ESTUDIO.motor_sem_credencial": {"frase": "O motor de imagem nao esta configurado neste servidor.", "proximo_passo": "Seu briefing continua salvo. Peca a um administrador para configurar a credencial do provedor."},
+    "ESTUDIO.modo_indisponivel": {"frase": "Este modo ainda nao produz neste ambiente.", "proximo_passo": "Escolha 'Composicao por modelo'."},
+    "ESTUDIO.formato_invalido": {"frase": "O executor nao conhece este formato.", "proximo_passo": "Escolha um formato marcado como executavel."},
+    "ESTUDIO.referencia_invalida": {"frase": "Um item citado no pedido nao existe mais.", "proximo_passo": "Recarregue os catalogos e confira o brand pack."},
+    "ESTUDIO.pedido_invalido": {"frase": "O pedido nao passou na validacao do servidor.", "proximo_passo": "Volte a secao apontada."},
+    "ESTUDIO.job_inexistente / asset_inexistente / aprovacao_inexistente": {"frase": "Este item nao existe (ou nao pertence a voce).", "proximo_passo": "Voltar a lista."},
+    "ESTUDIO.transicao_invalida": {"frase": "Esta acao nao vale no estado atual do trabalho.", "proximo_passo": "A tela foi relida; veja as acoes disponiveis."},
+    "ESTUDIO.filtro_invalido": {"frase": "Estado de revisao nao reconhecido.", "proximo_passo": "Limpar filtros."},
+    "ESTUDIO.filtro_indisponivel": {"frase": "Este recorte ainda nao existe.", "proximo_passo": "(nao deve ocorrer: filtro removido da UI em P0)"},
+    "ESTUDIO.decisao_invalida / motivo_obrigatorio": {"frase": "Falta o motivo (ou a decisao nao e reconhecida).", "proximo_passo": "Escreva o motivo: quem recebe a peca precisa saber o que corrigir."},
+    "ESTUDIO.decisao_duplicada": {"frase": "Ja existe uma decisao vigente para esta versao e finalidade.", "proximo_passo": "Revogar a decisao atual (admin) e registrar outra."},
+    "ESTUDIO.ativo_nao_aprovavel": {"frase": "Esta peca nao ficou pronta; nao ha arquivo para autorizar.", "proximo_passo": "Preencher as pecas que faltaram no trabalho."},
+    "ESTUDIO.aprovacao_ja_revogada": {"frase": "Esta decisao ja foi revogada.", "proximo_passo": "Registrar uma nova decisao."},
+    "ESTUDIO.video_indisponivel / video_inexistente": {"frase": "A leitura de video nao esta disponivel (ou o build nao existe).", "proximo_passo": "Nao e erro seu; a fabrica externa nao esta acessivel a este servidor."},
+    "ESTUDIO.arquivo_ausente / link_invalido": {"frase": "O arquivo nao esta disponivel nesta leitura.", "proximo_passo": "Recarregar para pedir um link novo (feito uma vez automaticamente)."},
+    "ESTUDIO.despacho_indisponivel": {"frase": "Este ambiente nao executa producao.", "proximo_passo": "O pedido nao foi aceito. Produza a partir de um ambiente com processo de vida longa."},
+    "ESTUDIO.trabalho_nao_encontrado / nao_cancelavel / nao_retomavel": {"frase": "(bancada) trabalho inexistente ou ja terminado.", "proximo_passo": "Reler o Laboratorio."},
+    "sessao_ausente / sessao_expirada": {"frase": "Sua sessao expirou.", "proximo_passo": "Entrar novamente; o rascunho do briefing e restaurado."},
+    "sem_resposta / fluxo_interrompido / resposta_ilegivel": {"frase": "Nao foi possivel falar com o Estudio agora.", "proximo_passo": "Tentar de novo; nada foi alterado."},
+    "403 (nao admin)": {"frase": "Esta acao exige papel de administrador.", "proximo_passo": "Botao aparece desabilitado com este motivo antes do clique."}
+  },
+  "por_superficie": [
+    {"superficie": "Home", "carregando": "skeleton de 2 linhas por lista + capacidades com 5 linhas", "vazio": "primeira visita: 'Comece por aqui' (briefing embutido); apos uso: vazios por lista com frase do que aparecera", "erro": "ErroDeLeitura no topo com 'nada abaixo foi lido' + ultimo dado bom se houver", "indisponivel": "motor sem credencial: faixa Indisponivel com o que continua possivel (ler, revisar, aprovar)"},
+    {"superficie": "Briefing", "carregando": "catalogos em skeleton por secao; Gerar desabilitado ate formatos e finalidades lerem", "vazio": "sem brand packs: opcao 'Nenhum' e frase 'nenhum pack cadastrado'", "erro": "catalogo falhou: secao mostra fallback rotulado ('lista local de formatos') ou bloqueia (finalidades sem fallback: Gerar desabilitado com motivo)", "rascunho": "aviso de restauracao com Descartar"},
+    {"superficie": "Job", "carregando": "cabecalho com titulo skeleton + tiles em skeleton com os slots (quando o job ja chegou)", "vazio": "sem renditions: 'nenhuma peca registrada ainda' (estado real de queued sem pecas → oferta de retry pelo backend)", "erro": "job nao lido: cabecalho 'Trabalho nao lido' + tentar de novo; fluxo caido: estado de conexao + 'Reler o trabalho'", "parcial": "pecas prontas + falhas lado a lado; acao 'Preencher' so se houver falha transitoria"},
+    {"superficie": "Biblioteca", "carregando": "tabela com 8 linhas skeleton", "vazio": "biblioteca vazia vs vazio apos filtro (limpar filtros) vs total nao informado", "erro": "alerta + ultima pagina boa com hora", "selecao_maxima": "barra diz '50 selecionados (maximo)'"},
+    {"superficie": "Ficha/Inspetor", "carregando": "preview skeleton proporcional (usa larguraPedida/alturaPedida quando conhecidas)", "vazio": "sem versoes / sem decisoes / sem usos apurados / destinos nao avaliados (parque nao lido)", "erro": "'ativo nao lido' sem afirmar inexistencia"},
+    {"superficie": "Aprovacoes", "carregando": "3 linhas skeleton + contagem 'lendo a fila'", "vazio": "'nada aguardando decisao'", "erro": "'a contagem nao chegou; nenhuma decisao foi perdida'"},
+    {"superficie": "Comparar", "carregando": "colunas skeleton com proporcao", "vazio": "menos de 2 itens: instrucao para selecionar", "erro": "coluna individual em erro nao derruba as outras"},
+    {"superficie": "Trafego: Escolher da Biblioteca", "carregando": "lista skeleton", "vazio": "'nenhuma peca aprovada para <finalidade> nos formatos deste papel' + link Criar no Estudio com query", "erro": "alerta; upload manual continua disponivel"}
+  ]
+}

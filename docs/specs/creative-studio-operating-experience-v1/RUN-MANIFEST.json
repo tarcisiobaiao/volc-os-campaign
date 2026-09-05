@@ -1,0 +1,221 @@
+{
+  "schema": "VolcRunManifest.v1",
+  "artefato": "RUN-MANIFEST.json",
+  "missao": "CREATIVE STUDIO OPERATING EXPERIENCE V1 (documental)",
+  "veredito": "CREATIVE_STUDIO_OPERATING_EXPERIENCE_SPEC_READY",
+  "executado_em": "2026-09-05",
+  "modelo": "claude-fable-5-1",
+  "base_factual": {
+    "commit": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c",
+    "branch_origem": "origin/execution/volc-os-operacao-80-20",
+    "branch_documental": "spec/fable-creative-studio-operating-experience-v1",
+    "worktree": "/private/tmp/volc-spec-creative-studio-operating-experience-v1",
+    "arvore_limpa_no_inicio": true
+  },
+  "fontes_consultadas": {
+    "specs_por_git_show": {
+      "creative-supply-chain-v1": "5d2cbd0006b7d794e685ebf67d3d79e6a879e12c",
+      "meta-creative-p0-reconciliation-v1": "a875f1f02437f98e317d20bcd5c050cbaf281d57",
+      "google-multichannel-completion-v1": "8b067f6d7a63997c8a43c9cbbf4933fda68bd0ef"
+    },
+    "design": [
+      "design.md",
+      "docs/DESIGN.md",
+      "docs/design/*",
+      "PRODUCT.md",
+      ".impeccable/design.json",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "skills": [
+      "redesign-existing-projects",
+      "design-taste-frontend (nao aplicavel a product UI; §11 lido)",
+      "ui-ux-pro-max",
+      "impeccable (product.md)",
+      "accessibility"
+    ],
+    "skill_ausente": "make-interfaces-feel-better nao existe nesta maquina",
+    "grafo": "graphify-out ausente na worktree; copia principal built_at a539dbd7 (defasada) — nao usada como fato"
+  },
+  "referencia_externa_read_only": {
+    "projeto": "positivo-ad-studio",
+    "antes": {
+      "head": "9d0035d1f0d059a1a535c80d3a3d008d914967fe",
+      "branch": "main",
+      "status_entries": 2
+    },
+    "depois": {
+      "head": "9d0035d1f0d059a1a535c80d3a3d008d914967fe",
+      "branch": "main",
+      "status_entries": 2,
+      "status": [
+        "preexistente: 2 arquivos marcados apagados no working tree, identicos antes e depois"
+      ]
+    },
+    "inalterado": true,
+    "copiado": "nada (codigo, tokens, imagens, textos, marca)"
+  },
+  "branch_operacional": {
+    "origin_antes": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c",
+    "origin_depois": "5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c",
+    "local_antes": "89d568450b2b3ba65e99ea06223b0a803f27a3ae",
+    "local_depois": "88661b0c04d83b28f419077eccce128d5b3e9dc8",
+    "nota": "a branch local e a worktree /private/tmp/volc-os-operacao-80-20 avancaram por acao do OUTRO executor durante esta sessao; esta missao executou apenas git rev-parse/status (leitura) sobre elas e nunca checkout, commit, stash ou escrita",
+    "tocada_por_esta_missao": false
+  },
+  "gates": {
+    "json_validos": 24,
+    "ids_unicos_por_artefato": true,
+    "dependencias_aciclicas": true,
+    "nenhuma_tarefa_depende_de_release_posterior": true,
+    "scanner_de_segredos": "limpo (AIza|sk-|eyJ|Bearer|supabase.co|caminho pessoal|uuid bruto)",
+    "dados_do_cliente_positivo": "nenhum",
+    "git_diff_check": "limpo",
+    "arquivos_fora_da_pasta": 0,
+    "testes_executados": "nenhum (missao documental; sem node_modules/venv na worktree)"
+  },
+  "limitacoes": [
+    "sem capturas de tela (localhost:8080 e de outro executor e roda outra branch)",
+    "classificacao PROVEN baseada em testes lidos, nao re-executados",
+    "item 9 da lista de entregaveis truncado na missao; entregue como OPERATOR-JOURNEY.json"
+  ],
+  "proibicoes_respeitadas": [
+    "sem push",
+    "sem amend/merge/rebase/cherry-pick/tag",
+    "sem Roadmap/grafo/curadoria",
+    "sem Meta/Google autenticado",
+    "sem Supabase oficial",
+    "sem migration",
+    "sem n8n/WordPress/Postiz/deploy",
+    "sem imagem ou video real",
+    "sem credenciais lidas"
+  ],
+  "arquivos": [
+    {
+      "nome": "ADVERSARIAL-REVIEW.json",
+      "sha256": "42dcafc7f52615e7947958c298b2ad22fa0d097580715ed3aec453cb83805570",
+      "bytes": 6508
+    },
+    {
+      "nome": "APPROVAL-AND-PROVENANCE-CONTRACT.json",
+      "sha256": "b707637242a591fde8a4a7420b90b274cedebeda53ccb1d884f2361b82fec1bb",
+      "bytes": 5114
+    },
+    {
+      "nome": "AS-IS-ARCHITECTURE.md",
+      "sha256": "26ee907e25e43c3b0c84cbc69093c61bc4381d8fe95a7508d869833daaaea0f3",
+      "bytes": 10998
+    },
+    {
+      "nome": "AS-IS-INVENTORY.json",
+      "sha256": "9cb54c7caf49fde32e9236205c6f68fdc8916ce440b0e5e85f22152df0980d90",
+      "bytes": 27684
+    },
+    {
+      "nome": "ASSET-LIFECYCLE-AND-STATE-MACHINE.json",
+      "sha256": "0e7cb9bfb6202d0ec114648838906eb5cce23b8af5917c9e71c9553314b7ed5f",
+      "bytes": 6530
+    },
+    {
+      "nome": "CAMPAIGN-HANDOFF-CONTRACT.json",
+      "sha256": "407047dde7c5601ec4a229c187e53d77566de84165d71c23462e200cac4a5614",
+      "bytes": 5999
+    },
+    {
+      "nome": "COMPONENT-ARCHITECTURE.json",
+      "sha256": "3d142aa747e34d8767ae7bd4027e0bc3e69e19cb1cc8323c94a93fa04b065121",
+      "bytes": 9612
+    },
+    {
+      "nome": "CREATIVE-STUDIO-EXPERIENCE-CONTRACT.json",
+      "sha256": "12eb693396f57a0faff1a0870bcddc5a529f14d18748983a5334f14b2b0a990f",
+      "bytes": 5822
+    },
+    {
+      "nome": "CURATION-HANDOFF.json",
+      "sha256": "ec3a9a7b9c3f0871cc988a482001eb0538873c87342c09f4c66441fbfd9d4cb9",
+      "bytes": 2528
+    },
+    {
+      "nome": "CURRENT-UX-ADVERSARIAL-AUDIT.json",
+      "sha256": "15557a25a90af8fbc4a32d1b8b03658a6ffa50803e71916ef683838096aaf733",
+      "bytes": 21029
+    },
+    {
+      "nome": "DATA-CONTRACT-MATRIX.json",
+      "sha256": "0d9a52c08b5c2a63277a3892732b56fb74ecc4a77fb11b7ecddf40e11730742c",
+      "bytes": 17864
+    },
+    {
+      "nome": "DATABASE-AND-PERSISTENCE-GAPS.json",
+      "sha256": "2fb58fde56961e84bf67a0abdba3a0afd96d145dfcec6fbb4e652ae3efb19668",
+      "bytes": 7261
+    },
+    {
+      "nome": "ENGINE-CAPABILITY-MATRIX.json",
+      "sha256": "64e9079b72ae63c39386b47a1dc6329cf7cc6ff74463d67e6d46328d6643e8a5",
+      "bytes": 17600
+    },
+    {
+      "nome": "ERROR-EMPTY-LOADING-STATES.json",
+      "sha256": "994508b73cc83bdbb8f22cf0dc97b74fe037cb4d32ebb704f1c3b2bd1e49b456",
+      "bytes": 6821
+    },
+    {
+      "nome": "EXECUTION-WORKBREAKDOWN.json",
+      "sha256": "9ed625862d0c1b06827cb1dd3c3eeb5ecdfdf8c33dc2eec6d8094820747bdfd6",
+      "bytes": 18739
+    },
+    {
+      "nome": "HANDOFF.md",
+      "sha256": "5011ba9a126f2d2b0fd1f1be2a9d7beb75c8d02031adc6417a63215624ac5120",
+      "bytes": 7514
+    },
+    {
+      "nome": "MOTION-AND-FEEDBACK-CONTRACT.json",
+      "sha256": "d6e15a9f94013eabe538b0696e747c3cf0a41d1b8880df88f3d407ecaa0388ca",
+      "bytes": 5813
+    },
+    {
+      "nome": "OPEN-CONTRACT-CONFLICTS.json",
+      "sha256": "a06cf1290ba14143f983e7cd57b2f41a6977646bb418354311fee30fafbee17b",
+      "bytes": 6526
+    },
+    {
+      "nome": "OPERATOR-JOURNEY.json",
+      "sha256": "305ac67b045ac605960cbf85f1e1ada1d8b8b61856b580d58ddd8c713203389d",
+      "bytes": 10287
+    },
+    {
+      "nome": "ORGANIC-DISTRIBUTION-HANDOFF.json",
+      "sha256": "58e97a17d3fb8cebe33c038340deb28920930014ed43ba096f5301776bd68ccc",
+      "bytes": 3424
+    },
+    {
+      "nome": "POSITIVO-REFERENCE-EXTRACTION.json",
+      "sha256": "f8201af0c406c2e37ef1f6f911097884dccaaef567263ef676857a08c85504eb",
+      "bytes": 10441
+    },
+    {
+      "nome": "RESPONSIVE-A11Y-THEME-CONTRACT.json",
+      "sha256": "40522ea081d9de143e37333de49d5996adbf3145b202bbb291ff308b81dd0a97",
+      "bytes": 4090
+    },
+    {
+      "nome": "ROUTE-AND-INFORMATION-ARCHITECTURE.json",
+      "sha256": "331539173df40abd0ee82284c30f60a1b3b15cbf1a59d26eb9a9af25b6d5a27b",
+      "bytes": 8762
+    },
+    {
+      "nome": "UI-SURFACE-SPEC.json",
+      "sha256": "829c2f8f638a03b3693d164336663db80d0facc6fd4375aab515e5a395e950e7",
+      "bytes": 8917
+    },
+    {
+      "nome": "WIREFRAMES.md",
+      "sha256": "130ce00dd9695cbb56164ec6fe3e4addf1aa3781fd37ec8f49363ca034aee378",
+      "bytes": 28115
+    }
+  ],
+  "commit": "unico commit documental; SHA reportado no relatorio final (nao pode constar dentro do proprio commit)"
+}
