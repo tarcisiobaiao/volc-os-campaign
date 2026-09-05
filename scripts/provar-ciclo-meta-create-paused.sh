@@ -284,6 +284,170 @@ $uso$;
 RESET ROLE;
 SQL
 
+echo "▶ uma aprovacao viva por plano: expiracao e falha liberam, ambiguidade prende"
+executar <<'SQL'
+SET ROLE service_role;
+DO $unica$
+DECLARE
+  v_ap jsonb; v_id uuid; v_passo jsonb; v_ref uuid;
+  v_curto text := repeat('e', 64);
+  v_falho text := repeat('f', 64);
+  v_ambiguo text := repeat('0', 64);
+  v_outro text := repeat('1', 64);
+  v_payload text := repeat('b', 64);
+  v_manifesto text[] := ARRAY['campaign','adset'];
+BEGIN
+  -- 1. DUAS APROVACOES VIVAS DO MESMO PLANO: a segunda tem de ser recusada.
+  v_ap := public.trafego_meta_create_approve(
+    p_plan_sha256 => v_curto, p_account_ref => 'metaacct_prova_local',
+    p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+    p_expires_at => clock_timestamp() + interval '1 second',
+    p_steps_expected => v_manifesto);
+  BEGIN
+    PERFORM public.trafego_meta_create_approve(
+      p_plan_sha256 => v_curto, p_account_ref => 'metaacct_prova_local',
+      p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+      p_expires_at => clock_timestamp() + interval '1 hour',
+      p_steps_expected => v_manifesto);
+    RAISE EXCEPTION 'duas aprovacoes vivas do mesmo plano foram aceitas';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_APPROVAL_ALREADY_LIVE' THEN RAISE; END IF;
+  END;
+
+  -- 2. Outro plano nunca e barrado pelo vizinho.
+  PERFORM public.trafego_meta_create_approve(
+    p_plan_sha256 => v_outro, p_account_ref => 'metaacct_prova_local',
+    p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+    p_expires_at => clock_timestamp() + interval '1 hour',
+    p_steps_expected => v_manifesto);
+
+  -- 3. EXPIRACAO LIBERA. `clock_timestamp()` anda dentro da transacao, entao a
+  --    aprovacao de 1 segundo morre de verdade aqui — nao e simulacao por UPDATE.
+  PERFORM pg_sleep(1.2);
+  PERFORM public.trafego_meta_create_approve(
+    p_plan_sha256 => v_curto, p_account_ref => 'metaacct_prova_local',
+    p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+    p_expires_at => clock_timestamp() + interval '1 hour',
+    p_steps_expected => v_manifesto);
+  IF (SELECT count(*) FROM public.trafego_meta_create_approval
+       WHERE plan_sha256 = v_curto) <> 2 THEN
+    RAISE EXCEPTION 'reaprovacao apos expiracao deveria criar a segunda linha';
+  END IF;
+
+  -- 4. FALHA LIBERA: um passo FALHO nunca volta a despachar, entao segurar o
+  --    plano refem dele ate a expiracao prenderia o operador a um livro morto.
+  v_ap := public.trafego_meta_create_approve(
+    p_plan_sha256 => v_falho, p_account_ref => 'metaacct_prova_local',
+    p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+    p_expires_at => clock_timestamp() + interval '1 hour',
+    p_steps_expected => v_manifesto);
+  v_id := (v_ap->>'approval_id')::uuid;
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_falho, p_approval_id => v_id, p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+  PERFORM public.trafego_meta_create_fail_step(
+    p_step_ref => (v_passo->>'step_ref')::uuid, p_error_code => 'META_REMOTE_REJECTED');
+  PERFORM public.trafego_meta_create_approve(
+    p_plan_sha256 => v_falho, p_account_ref => 'metaacct_prova_local',
+    p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+    p_expires_at => clock_timestamp() + interval '1 hour',
+    p_steps_expected => v_manifesto);
+
+  -- 5. AMBIGUIDADE PRENDE: pode ter nascido objeto. Reaprovar antes de
+  --    reconciliar e exatamente a duplicacao que o portao existe para impedir.
+  v_ap := public.trafego_meta_create_approve(
+    p_plan_sha256 => v_ambiguo, p_account_ref => 'metaacct_prova_local',
+    p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+    p_expires_at => clock_timestamp() + interval '1 hour',
+    p_steps_expected => v_manifesto);
+  v_id := (v_ap->>'approval_id')::uuid;
+  PERFORM public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_ambiguo, p_approval_id => v_id, p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+  v_passo := public.trafego_meta_create_prepare_step(
+    p_plan_sha256 => v_ambiguo, p_approval_id => v_id, p_actor_id => 'operador-local',
+    p_step_name => 'campaign', p_payload_sha256 => v_payload);
+  IF v_passo->>'state' <> 'AMBIGUO' THEN
+    RAISE EXCEPTION 'o passo deveria estar ambiguo para esta prova';
+  END IF;
+  BEGIN
+    PERFORM public.trafego_meta_create_approve(
+      p_plan_sha256 => v_ambiguo, p_account_ref => 'metaacct_prova_local',
+      p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+      p_expires_at => clock_timestamp() + interval '1 hour',
+      p_steps_expected => v_manifesto);
+    RAISE EXCEPTION 'reaprovou um plano com passo ambiguo, sem reconciliar';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_APPROVAL_ALREADY_LIVE' THEN RAISE; END IF;
+  END;
+
+  -- 6. Hash fora de forma nao chega a virar chave de lock.
+  BEGIN
+    PERFORM public.trafego_meta_create_approve(
+      p_plan_sha256 => 'nao-e-hash', p_account_ref => 'metaacct_prova_local',
+      p_actor_id => 'operador-local', p_daily_budget_minor => 1000,
+      p_expires_at => clock_timestamp() + interval '1 hour',
+      p_steps_expected => v_manifesto);
+    RAISE EXCEPTION 'hash invalido foi aceito';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'META_APPROVAL_PLAN_HASH_INVALID' THEN RAISE; END IF;
+  END;
+END
+$unica$;
+RESET ROLE;
+SQL
+
+echo "▶ concorrencia real: duas sessoes disputando o mesmo plano"
+# ⚠️ Sem lock, as duas sessoes leem "nao existe" ao mesmo tempo — em READ
+# COMMITTED a linha nao commitada da outra e invisivel — e AMBAS inserem. O
+# EXISTS sozinho nao fecha essa janela; e por isso que a prova precisa de duas
+# conexoes de verdade, nao de um DO block.
+PLANO_DISPUTADO="$(printf 'c%.0s' $(seq 1 64))"
+executar > "${BASE}/sessao-a.log" 2>&1 <<SQL &
+BEGIN;
+SET ROLE service_role;
+SELECT public.trafego_meta_create_approve(
+  p_plan_sha256 => '${PLANO_DISPUTADO}', p_account_ref => 'metaacct_prova_local',
+  p_actor_id => 'sessao-a', p_daily_budget_minor => 1000,
+  p_expires_at => clock_timestamp() + interval '1 hour',
+  p_steps_expected => ARRAY['campaign','adset']);
+SELECT pg_sleep(2);
+COMMIT;
+SQL
+PID_A=$!
+sleep 0.7
+executar > "${BASE}/sessao-b.log" 2>&1 <<SQL &
+BEGIN;
+SET ROLE service_role;
+SELECT public.trafego_meta_create_approve(
+  p_plan_sha256 => '${PLANO_DISPUTADO}', p_account_ref => 'metaacct_prova_local',
+  p_actor_id => 'sessao-b', p_daily_budget_minor => 1000,
+  p_expires_at => clock_timestamp() + interval '1 hour',
+  p_steps_expected => ARRAY['campaign','adset']);
+COMMIT;
+SQL
+PID_B=$!
+CODIGO_A=0; CODIGO_B=0
+wait "$PID_A" || CODIGO_A=$?
+wait "$PID_B" || CODIGO_B=$?
+[[ $CODIGO_A -eq 0 ]] || { echo "a sessao A deveria ter aprovado" >&2; cat "${BASE}/sessao-a.log" >&2; exit 1; }
+[[ $CODIGO_B -ne 0 ]] || { echo "a sessao B aprovou o mesmo plano em paralelo" >&2; exit 1; }
+grep -q 'META_APPROVAL_ALREADY_LIVE' "${BASE}/sessao-b.log" || {
+  echo "a sessao B falhou por outro motivo:" >&2; cat "${BASE}/sessao-b.log" >&2; exit 1; }
+executar -v ON_ERROR_STOP=1 <<SQL
+DO \$disputa\$
+BEGIN
+  IF (SELECT count(*) FROM public.trafego_meta_create_approval
+       WHERE plan_sha256 = '${PLANO_DISPUTADO}') <> 1 THEN
+    RAISE EXCEPTION 'a disputa deixou % linhas para o mesmo plano',
+      (SELECT count(*) FROM public.trafego_meta_create_approval
+        WHERE plan_sha256 = '${PLANO_DISPUTADO}');
+  END IF;
+END
+\$disputa\$;
+SQL
+echo "  ✓ so a sessao A aprovou; a B esperou o lock e foi recusada"
+
 echo "▶ autorizacao: sem service_role nada executa"
 executar <<'SQL'
 SET ROLE authenticated;

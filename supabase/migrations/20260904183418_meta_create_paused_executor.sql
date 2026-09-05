@@ -176,6 +176,50 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'META_APPROVAL_MANIFEST_INVALID';
   END IF;
+
+  -- ⚠️ UMA APROVAÇÃO VIVA POR PLANO — o portão que impede nascer duas vezes.
+  --
+  -- A idempotência dos passos é por approval_id (UNIQUE (approval_id,
+  -- step_name)), então duas aprovações do MESMO plano produzem dois livros de
+  -- passos independentes, cada um passando por todas as verificações, e a mesma
+  -- campanha nasce duas vezes na conta. `plan_sha256` é a identidade canônica
+  -- do plano: o hash é calculado sobre a matéria compilada, que já inclui
+  -- account_ref e todos os payloads (compilador.py:197-215).
+  --
+  -- NÃO é um UNIQUE permanente. Um UNIQUE em plan_sha256 barraria para sempre;
+  -- um UNIQUE parcial `WHERE state = 'APPROVED'` barraria depois da expiração,
+  -- porque uma aprovação expirada continua APPROVED. Ambos transformariam uma
+  -- reaprovação legítima em trabalho de DBA.
+  --
+  -- O lock consultivo é transacional e cobre exatamente a janela entre o
+  -- SELECT e o INSERT: sem ele, duas chamadas simultâneas para o mesmo plano
+  -- leem "não existe" ao mesmo tempo e ambas inserem. Salt 1602 mantém este
+  -- espaço de chaves separado do 1601 de prepare_step.
+  IF p_plan_sha256 !~ '^[a-f0-9]{64}$' THEN
+    RAISE EXCEPTION 'META_APPROVAL_PLAN_HASH_INVALID';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_plan_sha256, 1602));
+  IF EXISTS (
+    SELECT 1
+      FROM public.trafego_meta_create_approval AS viva
+     WHERE viva.plan_sha256 = p_plan_sha256
+       AND viva.state = 'APPROVED'
+       AND viva.expires_at > clock_timestamp()
+       -- Uma saga que já falhou está gasta: o passo FALHO nunca volta a
+       -- DESPACHAR (META_STEP_PREVIOUSLY_FAILED), então segurar o plano refém
+       -- dela até a expiração seria prender o operador a um livro morto.
+       -- AMBIGUOUS NÃO entra aqui de propósito: ambíguo significa que pode ter
+       -- nascido objeto, e reaprovar antes de reconciliar é exatamente a
+       -- duplicação que este portão existe para impedir.
+       AND NOT EXISTS (
+         SELECT 1 FROM public.trafego_meta_create_step AS passo
+          WHERE passo.approval_id = viva.approval_id
+            AND passo.state = 'FAILED'
+       )
+  ) THEN
+    RAISE EXCEPTION 'META_APPROVAL_ALREADY_LIVE';
+  END IF;
+
   INSERT INTO public.trafego_meta_create_approval (
     plan_sha256, account_ref, actor_id, daily_budget_minor, expires_at, steps_expected
   ) VALUES (
