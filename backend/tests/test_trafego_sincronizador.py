@@ -983,26 +983,161 @@ def test_vocabulario_canonico_de_canal():
 
 @pytest.mark.anyio
 async def test_canal_sem_adaptador_entra_no_inventario_e_declara_o_que_faltou():
-    """Nem some, nem ganha tela vazia (ADR-19): entra com as colunas comuns."""
+    """Nem some, nem ganha tela vazia (ADR-19): entra com as colunas comuns.
+
+    ⚠️ O canal do exemplo mudou em 06/09/2026. Display, Demand Gen e PMax
+    ganharam adaptador; quem continua sem perfil é VIDEO — que o Hub lê e o
+    engine não monta. A regra é a mesma; só o exemplo verdadeiro é outro.
+    """
     repo = RepoFalso()
     r = await sinc.sincronizar_conta(
         CONTA, repo,
-        buscar=BuscaFalsa(campanhas=[linha_de_campanha("900", canal="DISPLAY")],
+        buscar=BuscaFalsa(campanhas=[linha_de_campanha("900", canal="VIDEO")],
                           metricas=[linha_de_metrica("900", 10, 1, 5000)]),
         agora=AGORA)
 
     assert r.resultado == "parcial"
-    assert any("DISPLAY" in f["escopo"] for f in r.faltou)
+    assert any("VIDEO" in f["escopo"] for f in r.faltou)
     linha = repo.linha("8017851692", "900")
-    assert linha["canal"] == "DISPLAY"
+    assert linha["canal"] == "VIDEO"
     assert linha["lance_micros"] is None      # ausência, não zero
     assert linha["impressoes"] == 10          # a camada comum veio inteira
 
 
-def test_o_resolvedor_de_perfil_e_o_unico_lugar_que_conhece_search():
+@pytest.mark.asyncio
+async def test_leitura_truncada_nao_marca_ninguem_como_ausente():
+    """CONTRAPROVA: leitura truncada NÃO prova ausência. Nem no espelho.
+
+    ## O defeito reproduzido
+
+    `_paginas` cortava no teto com `log.warning` + `break` e devolvia a lista
+    parcial como se fosse completa. `sincronizar_conta` seguia para
+    `marcar_ausentes` com o que tinha lido e setava `vazio_confirmado` quando a
+    lista vinha vazia — ou seja, uma conta com mais páginas que o teto teria as
+    campanhas NÃO LIDAS marcadas como `nao_encontrada` no espelho, em silêncio.
+
+    Agora o corte levanta `LeituraTruncada`, a rodada vira `parcial`, o motivo
+    entra em `faltou` e — o ponto todo — `marcar_ausentes` NÃO roda.
+    """
+    repo = RepoFalso()
+    # ── rodada 1: leitura COMPLETA, a campanha entra no espelho ─────────────
+    completa = await sinc.sincronizar_conta(
+        CONTA, repo,
+        buscar=BuscaFalsa(campanhas=[linha_de_campanha("777")],
+                          metricas=[linha_de_metrica("777", 10, 1, 5000)]),
+        agora=AGORA)
+    assert completa.resultado == "ok"
+    # ⚠️ `presenca` OMITIDA é presente: o espelho só grava o campo quando ele
+    # muda, e `dom.presenca_projetada(None, ...)` devolve PRESENTE.
+    assert repo.linha("8017851692", "777")["presenca"] is None
+
+    # ── rodada 2: a mesma conta, agora com a leitura truncada ───────────────
+    class BuscaQueTrunca:
+        def __init__(self) -> None:
+            self.consultas: list = []
+
+        def __call__(self, gaql: str):
+            self.consultas.append(sinc._exigir_leitura(gaql))
+            raise sinc.LeituraTruncada(sinc.TETO_DE_PAGINAS)
+
+    from datetime import timedelta
+
+    r = await sinc.sincronizar_conta(CONTA, repo, buscar=BuscaQueTrunca(),
+                                     agora=AGORA + timedelta(hours=1))
+
+    assert r.resultado == "parcial"
+    assert any("truncada" in f["escopo"] for f in r.faltou), r.faltou
+    # ⚠️ A CONTRAPROVA: lista vazia + truncamento NÃO é vazio confirmado.
+    assert r.vazio_confirmado is False
+    linha = repo.linha("8017851692", "777")
+    assert linha["presenca"] != inv.NAO_ENCONTRADA, (
+        "uma leitura que não terminou marcou uma campanha como ausente")
+    assert dom.presenca_projetada(linha["presenca"], conta_falhou=False) == (
+        inv.PRESENTE)
+
+
+def test_o_teto_de_paginas_e_o_de_linhas_sao_tetos_DIFERENTES():
+    """⚠️ Nomenclatura × evidência: um conta páginas, o outro conta linhas.
+
+    `sincronizador.TETO_DE_PAGINAS` percorre `.pages` do pager e é contado em
+    PÁGINAS. `canario.TETO_DE_LINHAS_DE_DESTINO` conta registros devolvidos por
+    `servico.search(...)`, que é um iterador de LINHAS — o tamanho da página é
+    decidido pelo servidor do Google (`page_size` foi removido da requisição na
+    v21). Até 06/09/2026 os dois se chamavam "teto de páginas", e a evidência de
+    um descrevia o outro.
+    """
+    from app.trafego import canario
+
+    assert sinc.TETO_DE_PAGINAS == 200
+    assert canario.TETO_DE_LINHAS_DE_DESTINO == 50_000
+    # O nome antigo continua resolvendo por um ciclo, e resolve para o valor em
+    # PÁGINAS que ele sempre pretendeu descrever.
+    assert canario.MAXIMO_DE_PAGINAS_DE_DESTINO == 50
+
+
+def test_resolver_perfil_conhece_os_quatro_canais():
+    """⚠️ O FATO MUDOU: `resolver_perfil("DISPLAY")` devolvia `None`.
+
+    A consequência não era neutra: canal sem perfil vira `faltou` + `parcial`,
+    então toda campanha Display, Demand Gen e PMax da conta chegava ao espelho
+    sem lance, sem URL e sem o fato próprio do canal — e a regra de
+    reconciliação mais forte do SPEC (URL final igual à `lp_url` de um funil)
+    nunca tinha do que casar nesses três.
+
+    O resolvedor continua sendo o ÚNICO ponto do núcleo em que o nome de um
+    canal decide algo, e o import continua morando dentro dele.
+    """
+    from app.trafego import adaptador_demand_gen as dgn
+    from app.trafego import adaptador_display as dsp
+    from app.trafego import adaptador_pmax as pmx
+
     assert sinc.resolver_perfil("SEARCH") is ads.PERFIL
-    assert sinc.resolver_perfil("DISPLAY") is None
+    assert sinc.resolver_perfil("DISPLAY") is dsp.PERFIL
+    assert sinc.resolver_perfil("DEMAND_GEN") is dgn.PERFIL
+    assert sinc.resolver_perfil("PERFORMANCE_MAX") is pmx.PERFIL
     assert sinc.resolver_perfil(None) is None
+    # Canal que o engine não monta continua sem perfil — e é isso que faz o
+    # inventário declarar `parcial` em vez de inventar colunas.
+    assert sinc.resolver_perfil("VIDEO") is None
+    assert set(sinc._PERFIS) == set(sinc.CANAIS_COM_PERFIL)
+
+
+def test_pmax_le_o_asset_group_e_nunca_o_ad_group():
+    """CONTRAPROVA: em PMax, perguntar em `ad_group_ad` devolve vazio SEMPRE.
+
+    E vazio lido como "não há" é o defeito que a autoridade de URL já corrigiu
+    do lado do canário. O adaptador de varredura exercita a MESMA tabela.
+    """
+    from app.trafego import adaptador_pmax as pmx
+
+    busca = BuscaFalsa()
+    pmx.PERFIL.ler_filhas(busca, ["241"])
+    consulta = " ".join(busca.consultas)
+    assert "FROM asset_group" in consulta
+    assert "asset_group.final_urls" in consulta
+    assert "ad_group_ad" not in consulta
+    assert "cpc_bid_micros" not in consulta
+    # UMA entidade filha, não duas: PMax não tem grupo nem anúncio.
+    assert len(pmx.PERFIL.entidades_filhas()) == 1
+
+
+def test_demand_gen_le_a_superficie_aplicada_e_nao_o_campo_de_escrita():
+    """`channel_config` é output only; `channel_controls` é o que se manda.
+
+    Ler o campo de escrita de volta produziria um read-back que sempre concorda
+    consigo mesmo — e o read-back existe justamente para discordar.
+    """
+    from app.trafego import adaptador_demand_gen as dgn
+
+    busca = BuscaFalsa()
+    saida = dgn.PERFIL.ler_filhas(busca, ["241"])
+    consulta = " ".join(busca.consultas)
+    assert "channel_config" in consulta
+    assert "cpc_bid_micros" not in consulta, (
+        "Demand Gen não tem lance: consultar CPC faria uma característica do "
+        "canal parecer falha de leitura")
+    # Ausência DECLARADA, e não descoberta.
+    assert saida["241"]["lance_micros"] is None
 
 
 # ── o adaptador de Search ───────────────────────────────────────────────────

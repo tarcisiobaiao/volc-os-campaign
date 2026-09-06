@@ -148,12 +148,15 @@ describe('as quatro abas', () => {
     expect(screen.queryByText('quadro de oportunidades')).toBeNull();
   });
 
-  it('tem exatamente três tarefas primárias, na ordem do fluxo de trabalho', () => {
+  it('tem quatro tarefas primárias, na ordem do fluxo de trabalho', () => {
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    // "Criar" era uma antessala técnica de capacidades, não uma tarefa. O ato
-    // começa em Preparar e segue para a bancada da campanha.
-    expect(abas).toEqual(['campanhas7', 'preparar', 'atenção2']);
+    // "Criar" era uma antessala técnica de capacidades, não uma tarefa, e por
+    // isso saiu — ela DERIVAVA capacidade no cliente e nunca consultava a
+    // janela do canário. "Multicanal" entrou em 06/09/2026 e é outra coisa: ela
+    // lê o veredito PRONTO do servidor para Display, Demand Gen e PMax, que
+    // eram os três canais sem superfície nenhuma.
+    expect(abas).toEqual(['campanhas7', 'preparar', 'multicanal', 'atenção2']);
   });
 
   it('o contador vive no rótulo da aba — não numa faixa de números no topo', () => {
@@ -170,7 +173,7 @@ describe('as quatro abas', () => {
     contadorDeAtencao = null;
     montar();
     const abas = screen.getAllByRole('tab').map((t) => t.textContent);
-    expect(abas).toEqual(['campanhas', 'preparar', 'atenção']);
+    expect(abas).toEqual(['campanhas', 'preparar', 'multicanal', 'atenção']);
   });
 
   it('troca de aba pelo ponteiro e preserva o quadro de oportunidades', () => {

@@ -84,6 +84,23 @@ function contrato(portoes: PortaoDeCanal[]): ContratoDeCanal {
       contagem_truncada: false,
     },
     operacional: {},
+    economia: {
+      teto_diario_brl: '20.00',
+      cpc_maximo_brl: '1.00',
+      lances_permitidos: ['MANUAL_CPC', 'MAXIMIZE_CONVERSIONS'],
+      minimo_diario_medido: null,
+      causa: null,
+    },
+    destino: {
+      tabela: 'ad_group_ad',
+      campo: 'ad_group_ad.ad.final_urls',
+      url_exclusiva: false,
+      travas: [],
+    },
+    automacoes_travadas: [],
+    prova: { estado: 'PERMITIDO', flag: null, causa: null },
+    conta: { customer_id: '5478096539', rotulo: 'Portal Mundo Mais' },
+    proximo_ato: 'nada pendente nesta fixture.',
   };
 }
 

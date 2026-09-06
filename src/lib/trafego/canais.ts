@@ -394,6 +394,60 @@ export interface OperacionalDoCanal {
   assets_exigidos?: AssetsExigidosDePMax;
 }
 
+/**
+ * Uma automação de criativo que o payload deste canal desliga.
+ *
+ * ⚠️ `estado` viaja mesmo sendo sempre `OPTED_OUT`. Uma automação cujo estado a
+ * tela SUPÕE é uma automação que ninguém percebe quando muda — e todas elas
+ * nascem LIGADAS quando o payload não fala.
+ */
+export interface AutomacaoTravada {
+  nome: string;
+  estado: string;
+  /** O campo do proto em que ela viaja. DG e PMax travam em lugares diferentes. */
+  campo: string;
+  /** O que ela faria se ficasse ligada. Sem isto, o chip vira ruído de tela. */
+  por_que: string;
+}
+
+/** Verba e lance — os dois números que decidem quanto isto pode custar. */
+export interface EconomiaDoCanal {
+  teto_diario_brl: string | null;
+  /** ⚠️ `null` = este canal não tem CPC a declarar. NÃO é teto zero. */
+  cpc_maximo_brl: string | null;
+  lances_permitidos: string[];
+  /**
+   * O piso diário que a API já devolveu. ⚠️ `null` é o normal: esta casa não
+   * inventa piso — ele depende da moeda e da conta, e chega no erro
+   * `BUDGET_BELOW_PER_DAY_MINIMUM` de um validate_only real.
+   */
+  minimo_diario_medido: string | null;
+  causa: string | null;
+}
+
+/** Onde o clique deste canal vai parar, e onde essa URL é lida de volta. */
+export interface DestinoDoCanal {
+  /** ⚠️ NÃO é a mesma para os quatro: PMax lê no asset group. */
+  tabela: string;
+  campo: string;
+  url_exclusiva: boolean;
+  travas: string[];
+}
+
+/** Cobertura de validate_only — o caminho existe, e está aberto? */
+export interface ProvaDoCanal {
+  estado: EstadoDePortao;
+  flag: string | null;
+  causa: string | null;
+}
+
+export interface ContaDoCanal {
+  customer_id?: string;
+  customer_id_formatado?: string;
+  rotulo?: string;
+  login_customer_id?: string;
+}
+
 export interface ContratoDeCanal {
   plataforma: string;
   canal: string;
@@ -405,6 +459,19 @@ export interface ContratoDeCanal {
   mensuracao: MensuracaoDoCanal;
   observabilidade: ObservabilidadeDoCanal;
   operacional: OperacionalDoCanal;
+  /** Os eixos que a tela multicanal mostra e NÃO pode derivar. */
+  economia: EconomiaDoCanal;
+  /** `null` = este canal não declara onde guarda a URL final. */
+  destino: DestinoDoCanal | null;
+  automacoes_travadas: AutomacaoTravada[];
+  prova: ProvaDoCanal;
+  conta: ContaDoCanal;
+  /**
+   * A ÚNICA próxima ação segura. ⚠️ Uma, e não uma lista: uma lista de próximos
+   * atos é o mesmo que nenhum — o operador escolhe o mais fácil em vez do
+   * primeiro.
+   */
+  proximo_ato: string | null;
 }
 
 export interface CapacidadesProjetadas {
@@ -414,6 +481,8 @@ export interface CapacidadesProjetadas {
   google_validate_only: boolean;
   google_mutate: boolean;
   google_demand_gen_validate_only: boolean;
+  /** A irmã de PMax. ⚠️ SEPARADA: abrir Demand Gen não abre Performance Max. */
+  google_pmax_validate_only: boolean;
   porque_sem_mutacao: string | null;
 }
 

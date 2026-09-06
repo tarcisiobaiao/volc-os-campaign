@@ -891,11 +891,28 @@ export interface PoliticaDoCanario {
   customer_id_formatado: string;
   customer_label: string;
   login_customer_id: string;
-  canal: 'SEARCH';
+  /**
+   * ⚠️ Deixou de ser `'SEARCH'` literal em 06/09/2026: existe uma política por
+   * canal (`politica_canario_por_canal`), com teto próprio. `POLITICA` continua
+   * sendo a de Search, e por isso o campo continua chegando preenchido.
+   */
+  canal: string;
+  /**
+   * COMO a campanha nasceria: sempre pausada, nos quatro canais.
+   *
+   * ⚠️ Ele já carregou DOIS fatos ao mesmo tempo, e o colapso punha
+   * `cria_pausada: false` em Display, Demand Gen e PMax — que se lê como "então
+   * nasce ATIVA", a leitura mais perigosa possível. SE a campanha nasce é outra
+   * pergunta, e ela mora em `criacao_autorizada`.
+   */
   cria_pausada: true;
+  /** SE este canal já teve o canário aceito. Só Search, hoje. */
+  criacao_autorizada: boolean;
   inclui_ativacao: false;
   orcamento_diario_maximo_brl: string;
-  cpc_maximo_brl: string;
+  /** ⚠️ `null` quando o canal não tem CPC a declarar. Ausência não é zero. */
+  cpc_maximo_brl: string | null;
+  exige_rede?: boolean;
 }
 
 export interface AutorizacaoDoCanario {

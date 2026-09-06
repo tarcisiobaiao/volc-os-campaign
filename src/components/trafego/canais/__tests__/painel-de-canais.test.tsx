@@ -111,6 +111,24 @@ function canal(over: Partial<ContratoDeCanal> = {}): ContratoDeCanal {
       contagem_truncada: false,
     },
     operacional: {},
+    // ── os eixos multicanal (T13). Declarados, e não derivados pela tela.
+    economia: {
+      teto_diario_brl: '20.00',
+      cpc_maximo_brl: null,
+      lances_permitidos: ['MAXIMIZE_CONVERSIONS'],
+      minimo_diario_medido: null,
+      causa: null,
+    },
+    destino: {
+      tabela: 'ad_group_ad',
+      campo: 'ad_group_ad.ad.final_urls',
+      url_exclusiva: false,
+      travas: [],
+    },
+    automacoes_travadas: [],
+    prova: { estado: 'PERMITIDO', flag: null, causa: null },
+    conta: { customer_id: '5478096539', rotulo: 'Portal Mundo Mais' },
+    proximo_ato: 'nada pendente nesta fixture.',
     ...over,
   };
 }
@@ -121,6 +139,7 @@ function resposta(canais: ContratoDeCanal[]): RespostaDosCanais {
       is_admin: true, lab_mode: false, google_read: true,
       google_validate_only: true, google_mutate: false,
       google_demand_gen_validate_only: false,
+      google_pmax_validate_only: false,
       porque_sem_mutacao: 'a permissão está fechada neste servidor.',
     },
     politica_canario: {},

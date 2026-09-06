@@ -412,9 +412,29 @@ _AUTORIDADE_DE_URL: dict[str, dict[str, str]] = {
     },
 }
 
-#: Teto de páginas da leitura de duplicidade. Bater no teto NÃO é "não
+#: Teto de LINHAS da leitura de duplicidade. Bater no teto NÃO é "não
 #: encontrei": é leitura incompleta, e leitura incompleta bloqueia.
-MAXIMO_DE_PAGINAS_DE_DESTINO = 50
+#:
+#: ⚠️ ELE CONTA LINHAS, E O NOME DIZIA PÁGINAS (corrigido em 06/09/2026).
+#:
+#: A constante se chamava `MAXIMO_DE_PAGINAS_DE_DESTINO = 50` e era usada como
+#: `lidas > MAXIMO_DE_PAGINAS_DE_DESTINO * 1000`, onde `lidas` conta o que
+#: `servico.search(...)` devolve — que é um iterador de LINHAS, não de páginas.
+#: O `* 1000` era um tamanho de página assumido, e o tamanho de página é decidido
+#: pelo servidor do Google (`page_size` foi removido da requisição na v21).
+#:
+#: Ou seja: o número era um teto de 50 000 registros usando o vocabulário de
+#: páginas e a evidência de uma paginação que ninguém controla. O teto de
+#: PÁGINAS de verdade existe, e é outro: `sincronizador.TETO_DE_PAGINAS`, que
+#: percorre `.pages` do pager. Chamar os dois de "páginas" fazia a evidência de
+#: um descrever o outro — e é exatamente por isso que o número não muda aqui: o
+#: comportamento estava certo, o nome e a evidência é que estavam trocados.
+TETO_DE_LINHAS_DE_DESTINO = 50_000
+
+#: Nome anterior, mantido por um ciclo para não quebrar leitor externo.
+#: ⚠️ DEPRECIADO: ele descrevia páginas e media linhas. Use
+#: `TETO_DE_LINHAS_DE_DESTINO`.
+MAXIMO_DE_PAGINAS_DE_DESTINO = TETO_DE_LINHAS_DE_DESTINO // 1000
 
 
 class LeituraDeDestinoIncompleta(CanarioRecusado):
@@ -434,10 +454,14 @@ def campanhas_com_destino(
     era lido como "não há campanha com este destino". A prova de duplicidade de
     PMax não provava nada, e provar nada em silêncio é pior que não provar.
 
-    ⚠️ E leitura incompleta NÃO é ausência. O pager para no teto, e bater no
-    teto levanta `LeituraDeDestinoIncompleta` em vez de devolver a lista
-    parcial: uma lista parcial seria indistinguível de "conta limpa" para quem
-    chama, e é justamente essa confusão que libera a segunda campanha.
+    ⚠️ E leitura incompleta NÃO é ausência. A leitura para no teto de LINHAS, e
+    bater no teto levanta `LeituraDeDestinoIncompleta` em vez de devolver a
+    lista parcial: uma lista parcial seria indistinguível de "conta limpa" para
+    quem chama, e é justamente essa confusão que libera a segunda campanha.
+
+    ⚠️ LINHAS, e não páginas: `servico.search(...)` devolve um iterador de
+    registros, e o tamanho da página é decidido pelo servidor do Google. O teto
+    de PÁGINAS de verdade é outro e mora em `sincronizador.TETO_DE_PAGINAS`.
     """
     alvo = str(url_final or "").strip().rstrip("/")
     if not alvo.startswith("https://"):
@@ -465,11 +489,12 @@ def campanhas_com_destino(
     lidas = 0
     for linha in servico.search(customer_id=str(customer_id), query=consulta):
         lidas += 1
-        if lidas > MAXIMO_DE_PAGINAS_DE_DESTINO * 1000:
+        if lidas > TETO_DE_LINHAS_DE_DESTINO:
             raise LeituraDeDestinoIncompleta(
-                "a leitura de duplicidade por destino passou do teto seguro sem "
-                "terminar. Isto NÃO prova que não existe campanha com o mesmo "
-                "destino — a parte não lida da conta pode conter uma."
+                f"a leitura de duplicidade por destino passou de "
+                f"{TETO_DE_LINHAS_DE_DESTINO} LINHAS sem terminar. Isto NÃO "
+                "prova que não existe campanha com o mesmo destino — a parte "
+                "não lida da conta pode conter uma."
             )
         alvo_lido: Any = linha
         for pedaco in caminho:

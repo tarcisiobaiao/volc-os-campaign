@@ -72,6 +72,8 @@ from app.publisher_quality import fetch as pqf
 from app.trafego import (canario, capacidades as cap,
                          contrato_canais as ccan, escopo,
                          plataforma as plat,
+                         releitura_por_canal as rel,
+                         veredito_de_releitura as vrel,
                          inteligencia_lab, ledger as led,
                          pmax_cockpit, projecao,
                          # ⚠️ No topo, e não dentro da função: desde 02/09/2026
@@ -5373,6 +5375,14 @@ class ReconciliarEntrada(BaseModel):
     #: plano com certeza. O fallback pela marca é candidato, não identidade: são
     #: 12 hex, e duas chaves com o mesmo prefixo são ambiguidade, não escolha.
     chave_intencao: Optional[str] = None
+    #: O canal do item, para o read-back saber QUE OBJETOS reler.
+    #:
+    #: ⚠️ Opcional, e a ausência é resposta: sem canal declarado, o veredito
+    #: tipado sai `NAO_SUPORTADO` com a causa dita, em vez de assumir Search e
+    #: perguntar por `ad_group_ad` numa campanha PMax — onde a consulta voltaria
+    #: vazia SEMPRE, e o vazio viraria "não existe anúncio", que é falso: o que
+    #: não existe é a entidade.
+    canal: Optional[str] = None
 
     @model_validator(mode="after")
     def _exige_um_criterio(self):
@@ -5697,6 +5707,61 @@ async def reconciliar_lancamento(
         )
 
     primeira = encontradas[0] if encontradas else {}
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # O READ-BACK TIPADO — sete estados, e `achou` nunca soube dizer quatro
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ `achou` é `Optional[bool]`, e `achou is True` significa apenas "existe
+    # uma campanha que casou o critério". Ele NÃO diz se ela é a campanha que o
+    # plano descrevia: uma campanha `ENABLED` onde o contrato exige `PAUSED`
+    # devolvia `achou=True`, o item era carimbado, e a divergência — que é o
+    # fato caro — não existia em lugar nenhum da resposta.
+    #
+    # O veredito tipado roda AO LADO, sem trocar o contrato de `achou` que o
+    # ledger e a tela já consomem. Ele lê os objetos PRÓPRIOS do canal (PMax não
+    # tem anúncio; perguntar por um devolveria vazio e o vazio viraria ausência)
+    # e distingue divergente, ausência provada, leitura parcial, falha, não
+    # suportado e ambíguo.
+    #
+    # ⚠️ E ele NÃO reenvia nada, em nenhum desfecho — `reenvio_por_readback` sai
+    # `False` literal no corpo, e é a propriedade que esta rota existe para
+    # preservar.
+    releitura: Dict[str, Any] = {
+        "estado": rel.EstadoDaReleitura.NAO_SUPORTADO.value,
+        "bloqueia": False,
+        "proximo_ato": ("o canal deste item não foi declarado no pedido, então "
+                        "não há como saber que objetos reler nele."),
+        "reenvio_por_readback": False,
+        "objetos": [],
+    }
+    canal_do_item = str(getattr(body, "canal", "") or "").strip().upper()
+    if canal_do_item and rel.objetos_de(canal_do_item):
+        def _buscar_para_releitura(gaql: str):
+            from volc_ads.gads.client import cliente  # noqa: PLC0415
+
+            servico = cliente(mid).get_service("GoogleAdsService")
+            return servico.search(customer_id=escopo.so_digitos(cid),
+                                  query=gaql)
+
+        try:
+            vereditos = await asyncio.to_thread(
+                rel.reler_na_conta,
+                canal=canal_do_item, buscar=_buscar_para_releitura,
+                campaign_id=body.campaign_id, marca=body.marca,
+                esperado={"status": rel.NASCE_PAUSADO, "canal": canal_do_item})
+            releitura = vrel.resumo(vereditos)
+        except Exception as exc:  # noqa: BLE001
+            # ⚠️ A falha do read-back NÃO derruba a reconciliação: o recibo
+            # precisa fechar de qualquer jeito. Ela vira um veredito de FALHA,
+            # que é diferente de ausência e diferente de sucesso.
+            releitura = vrel.resumo((vrel.VereditoDaReleitura(
+                canal=canal_do_item, objeto=vrel.CAMPANHA,
+                estado=vrel.EstadoDaReleitura.FALHA,
+                causa=(f"o read-back tipado falhou ({type(exc).__name__}: "
+                       f"{str(exc)[:200]}). Isto NÃO é uma afirmação sobre a "
+                       "conta.")),))
+
     if achou is None:
         motivo = body.motivo or f"não consegui ler a conta: {indisponivel}"
     elif achou:
@@ -5771,6 +5836,14 @@ async def reconciliar_lancamento(
             "campanhas": list(encontradas),
             "indisponivel": indisponivel or None,
         },
+        # ⚠️ O VEREDITO TIPADO, ao lado de `achou` e nunca no lugar dele.
+        #
+        # `leitura.achou is True` continua dizendo "existe algo que casou o
+        # critério". `releitura.estado` diz O QUE existe: congruente, divergente,
+        # ausência provada, leitura parcial, falha, não suportado ou ambíguo.
+        # `releitura.bloqueia` é a resposta que a tela usa para NÃO oferecer
+        # ativação — e ele é `True` em divergência.
+        "releitura": releitura,
         # Dito com todas as letras porque é a propriedade que esta rota existe
         # para preservar, e a que uma mudança futura poderia quebrar sem notar.
         "reenvio_executado": False,

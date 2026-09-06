@@ -41,7 +41,17 @@ export type RedeDoHub = 'google' | 'meta';
  * O veredito do servidor continua sendo autoridade na bancada. Os aliases
  * `?aba=canais` e `?aba=criar` desembocam em Preparar para preservar links.
  */
-export type AbaDoHub = 'campanhas' | 'preparar' | 'atencao';
+/**
+ * ⚠️ `multicanal` ENTROU em 06/09/2026, e ela NÃO é a volta de `canais`.
+ *
+ * A aba antiga derivava capacidade no cliente (`canal/jornada.ts`) sobre seis
+ * canais e nunca consultava a janela do canário — foi por isso que ela saiu.
+ * Esta lê o veredito PRONTO de `GET /api/trafego/canais`, não deriva nada, e
+ * cobre os TRÊS canais que ainda não tinham superfície própria. Search fica de
+ * fora porque já tem cockpit completo; repeti-lo criaria duas telas para o
+ * mesmo canal, e a primeira divergiria da segunda no primeiro ajuste.
+ */
+export type AbaDoHub = 'campanhas' | 'preparar' | 'multicanal' | 'atencao';
 
 /**
  * ⚠️ A ORDEM é a do trabalho, não a do alfabeto: o que já gasta dinheiro, o que
@@ -50,7 +60,7 @@ export type AbaDoHub = 'campanhas' | 'preparar' | 'atencao';
  * sobreviver ao recarregamento sem tocar no parser.
  */
 export const ABAS_DO_HUB: readonly AbaDoHub[] = [
-  'campanhas', 'preparar', 'atencao',
+  'campanhas', 'preparar', 'multicanal', 'atencao',
 ];
 
 /** Nível da árvore Meta. Nunca traduzir conjunto (ad set) para ad group. */

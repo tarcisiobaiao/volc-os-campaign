@@ -95,6 +95,32 @@ class EscritaNoSincronizador(RuntimeError):
     """Alguém tentou passar algo que não é leitura pela varredura."""
 
 
+class LeituraTruncada(RuntimeError):
+    """A resposta bateu no teto de páginas. ⚠️ Isto NÃO prova ausência.
+
+    ## O defeito que esta exceção fecha
+
+    `_paginas` cortava no teto com um `log.warning` e um `break`, devolvendo a
+    lista parcial como se fosse completa. `sincronizar_conta` então chamava
+    `marcar_ausentes` com o que tinha lido e setava `vazio_confirmado` quando a
+    lista vinha vazia — ou seja: **uma leitura truncada PROVAVA ausência**, e a
+    prova era silenciosa. Uma conta com mais de 200 páginas de campanhas teria
+    as campanhas não lidas marcadas como `nao_encontrada` no espelho.
+
+    É o mesmo defeito que `canario.LeituraDeDestinoIncompleta` já corrige do
+    outro lado, e pela mesma razão: uma lista parcial é indistinguível de "conta
+    limpa" para quem chama.
+    """
+
+    def __init__(self, paginas: int) -> None:
+        super().__init__(
+            f"a resposta passou de {paginas} páginas e a leitura foi encerrada "
+            "antes do fim. A parte não lida da conta pode conter campanhas — "
+            "isto NÃO prova que elas não existem, e nada aqui pode ser marcado "
+            "como ausente com base nesta leitura.")
+        self.paginas = paginas
+
+
 class LimiteExcedido(RuntimeError):
     """Conta varrida recentemente demais. Traz quando ela libera."""
 
@@ -131,13 +157,31 @@ SELECT campaign.id, metrics.impressions, metrics.clicks, metrics.cost_micros
 FROM campaign WHERE segments.date DURING {janela}
 """
 
-#: Linhas por página do `search`. O SDK encadeia as páginas sozinho quando o
-#: pager é iterado; o tamanho existe para o consumo de memória ser previsível.
+#: ⚠️ CAMPO MORTO, MANTIDO COM O AVISO — e não removido, porque um teste o lê.
+#:
+#: Ele documentava "linhas por página do `search`". `SearchGoogleAdsRequest`
+#: tinha `page_size` até a v20 e o campo foi REMOVIDO na v21 (google-ads 31.x,
+#: que é o SDK instalado): `buscar` não o passa, e passá-lo levanta `TypeError`
+#: antes de qualquer requisição sair. Quem decide o tamanho da página é o
+#: servidor do Google.
+#:
+#: Ou seja: este número não descreve nada do comportamento real. Ele fica como
+#: constante de teste (`test_trafego_sincronizador.py` o usa como limite de um
+#: `range`) e com o aviso escrito, porque um número sem efeito e sem aviso é
+#: exatamente o tipo de coisa que alguém volta a usar como evidência.
 PAGINA_GAQL = 1000
 
-#: Teto de páginas por consulta. Uma conta que devolvesse páginas
-#: indefinidamente prenderia o worker; o teto transforma isso em resultado
-#: parcial declarado, que é o modo de falhar deste sistema.
+#: Teto de PÁGINAS por consulta — e ele conta páginas de verdade.
+#:
+#: ⚠️ NÃO CONFUNDIR com `canario.TETO_DE_LINHAS_DE_DESTINO`, que conta LINHAS.
+#: São cortes diferentes e a distinção é operacional: aqui o pager do SDK expõe
+#: `.pages` e o corte é contado em páginas; lá o iterador devolve linha a linha
+#: e o corte é contado em registros. Até 06/09/2026 os dois se chamavam "teto de
+#: páginas", e a evidência de um descrevia o outro.
+#:
+#: Uma conta que devolvesse páginas indefinidamente prenderia o worker; bater no
+#: teto levanta `LeituraTruncada` — NÃO devolve lista parcial, porque lista
+#: parcial vira prova de ausência mais adiante.
 TETO_DE_PAGINAS = 200
 
 
@@ -361,15 +405,32 @@ def registrar_perfil(perfil: PerfilDeCanal) -> None:
     _PERFIS[str(perfil.canal)] = perfil
 
 
+#: Os canais que têm perfil de varredura. Declarado aqui e cobrado por
+#: `test_trafego_sincronizador.py::test_resolver_perfil_conhece_os_quatro_canais`:
+#: esquecer um adaptador novo falha na hora, e não na tela do operador.
+CANAIS_COM_PERFIL: Tuple[str, ...] = (
+    "SEARCH", "DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX")
+
+
 def resolver_perfil(canal: Optional[str]) -> Optional[PerfilDeCanal]:
     """O ÚNICO ponto do núcleo em que o nome de um canal decide algo.
 
-    O import de `adaptador_search` mora aqui dentro, e não no topo do arquivo,
-    para a dependência apontar sempre canal → núcleo: `adaptador_search` importa
-    este módulo, e este módulo não pode importá-lo de volta em tempo de carga.
+    Os imports moram aqui dentro, e não no topo do arquivo, para a dependência
+    apontar sempre canal → núcleo: cada adaptador importa este módulo, e este
+    módulo não pode importá-los de volta em tempo de carga.
+
+    ⚠️ Até 06/09/2026 só Search tinha perfil, e `resolver_perfil("DISPLAY")`
+    devolvia `None`. A consequência não era neutra: o núcleo tratava canal sem
+    perfil como `faltou` + `resultado="parcial"`, então TODA campanha Display,
+    Demand Gen e PMax da conta chegava ao espelho sem lance, sem URL e sem o
+    fato próprio do canal — e a regra de reconciliação mais forte do SPEC (URL
+    final igual à `lp_url` de um funil) nunca tinha do que casar nesses três.
     """
     if not _PERFIS:
         from app.trafego import adaptador_search  # noqa: F401,PLC0415
+        from app.trafego import adaptador_display  # noqa: F401,PLC0415
+        from app.trafego import adaptador_demand_gen  # noqa: F401,PLC0415
+        from app.trafego import adaptador_pmax  # noqa: F401,PLC0415
     return _PERFIS.get(str(canal or ""))
 
 
@@ -566,9 +627,13 @@ def _paginas(resposta: Any) -> Iterator[Any]:
         vistas += 1
         yield from (getattr(pagina, "results", pagina) or ())
         if vistas >= TETO_DE_PAGINAS:
-            log.warning("teto de %d páginas atingido; resultado é parcial",
+            # ⚠️ LEVANTA, e não `break`. O `break` devolvia a lista parcial ao
+            # chamador, que não tinha como distingui-la de uma leitura completa
+            # — e `sincronizar_conta` seguia para `marcar_ausentes`, marcando
+            # como não encontradas campanhas que ninguém leu.
+            log.warning("teto de %d páginas atingido; a leitura NÃO concluiu",
                         TETO_DE_PAGINAS)
-            break
+            raise LeituraTruncada(TETO_DE_PAGINAS)
 
 
 def leitor_google_ads(customer_id: str, *, login_customer_id: str,
@@ -814,9 +879,24 @@ async def sincronizar_conta(
         limite.exigir(cid, origem)
 
     inicio = time.monotonic()
+    truncou = False
     try:
         linhas = await asyncio.to_thread(ler_camada_comum, buscar)
         res.consultas += 1
+    except LeituraTruncada as exc:
+        # ⚠️ O TERCEIRO CAMINHO, e ele não existia. Truncamento não é falha (a
+        # conta respondeu, e o que veio é verdadeiro) nem sucesso (o que não
+        # veio pode conter campanhas). É PARCIAL — e a consequência prática é
+        # uma só: NADA pode ser marcado como ausente com base nesta leitura.
+        truncou = True
+        linhas = []
+        res.consultas += 1
+        res.resultado = "parcial"
+        res.faltou.append({
+            "escopo": "campanhas (leitura truncada)",
+            "motivo": str(exc)[:300],
+        })
+        log.warning("varredura da conta %s truncou no teto de páginas", cid)
     except Exception as exc:  # noqa: BLE001 — a conta degrada, a rodada segue
         res.resultado = "falhou"
         res.falhas = 1
@@ -1005,12 +1085,25 @@ async def sincronizar_conta(
     for evento in transicoes:
         await repo.registrar_evento(evento)
 
-    # `nao_encontrada` só depois de uma leitura BOA da camada comum. Numa
-    # varredura que falhou, ninguém pode afirmar ausência.
-    ausentes = await repo.marcar_ausentes(cid, vistos, agora)
+    # `nao_encontrada` só depois de uma leitura BOA e COMPLETA da camada comum.
+    #
+    # ⚠️ Numa varredura que falhou, ninguém pode afirmar ausência — isso já
+    # valia. O que faltava era o caso TRUNCADO: a leitura respondeu, o que veio
+    # é verdadeiro, e a parte que não veio pode conter exatamente a campanha que
+    # está prestes a ser marcada como `nao_encontrada`. Marcar ali seria provar
+    # ausência com uma leitura que não terminou.
+    if truncou:
+        ausentes = 0
+        log.info("conta %s: leitura truncada, nenhuma campanha marcada como "
+                 "ausente", cid)
+    else:
+        ausentes = await repo.marcar_ausentes(cid, vistos, agora)
 
     res.lidas = len(linhas)
-    res.vazio_confirmado = not linhas
+    # ⚠️ `vazio_confirmado` exige leitura COMPLETA. Uma lista vazia vinda de uma
+    # leitura truncada é "não cheguei a ver nada", não "não há nada" — e as duas
+    # levam a atos opostos.
+    res.vazio_confirmado = (not linhas) and not truncou
     res.duracao_ms = int((time.monotonic() - inicio) * 1000)
 
     # ── 3. CARIMBO ─────────────────────────────────────────────────────────

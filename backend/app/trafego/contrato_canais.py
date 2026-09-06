@@ -402,6 +402,110 @@ class Observabilidade:
         }
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# OS EIXOS QUE FALTAVAM PARA A TELA MULTICANAL (T13)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ Cada um destes tipos existe porque a TELA precisava do fato e não podia
+# derivá-lo. A regra do painel de canais é literal: "não calcula autorização; o
+# veredito e o motivo chegam prontos do servidor". Um eixo que a tela precisa
+# mostrar e o contrato não carrega vira um `if` no navegador — e um `if` no
+# navegador é a segunda verdade que este arquivo inteiro existe para não ter.
+
+
+@dataclass(frozen=True)
+class AutomacaoTravada:
+    """Uma automação de criativo que o payload deste canal desliga.
+
+    ⚠️ `estado` é sempre `OPTED_OUT` — e ele viaja mesmo assim, em vez de a tela
+    assumir. Uma automação cujo estado a tela SUPÕE é uma automação que ninguém
+    percebe quando muda.
+    """
+
+    nome: str
+    estado: str
+    #: O campo do proto onde ela viaja. Demand Gen e PMax travam a mesma coisa
+    #: em lugares diferentes da árvore, e o operador precisa ver isso.
+    campo: str
+    #: O que ela faria se ficasse ligada. Um chip "DESLIGADA" sem consequência
+    #: ensina o operador a tratar a trava como ruído de tela.
+    por_que: str
+
+    def json(self) -> Dict[str, Any]:
+        return {"nome": self.nome, "estado": self.estado,
+                "campo": self.campo, "por_que": self.por_que}
+
+
+@dataclass(frozen=True)
+class Economia:
+    """Verba e lance — os dois números que decidem quanto isto pode custar.
+
+    ⚠️ `teto_diario_brl` é do CANÁRIO, e não da conta: é o freio que esta casa
+    aplica, não um limite do Google. `lances_permitidos` vem do módulo do canal.
+    """
+
+    teto_diario_brl: Optional[str] = None
+    #: `None` quando o canal não tem CPC a declarar. ⚠️ Ausência não é zero:
+    #: zero significaria "o teto é R$ 0,00", que recusaria qualquer lance.
+    cpc_maximo_brl: Optional[str] = None
+    lances_permitidos: Tuple[str, ...] = ()
+    #: O piso diário que a API já devolveu para este canal, quando alguém o
+    #: mediu. ⚠️ `None` é o normal: esta casa NÃO inventa piso — ele depende da
+    #: moeda e da conta, e só a API o conhece.
+    minimo_diario_medido: Optional[str] = None
+    causa: Optional[str] = None
+
+    def json(self) -> Dict[str, Any]:
+        return {
+            "teto_diario_brl": self.teto_diario_brl,
+            "cpc_maximo_brl": self.cpc_maximo_brl,
+            "lances_permitidos": list(self.lances_permitidos),
+            "minimo_diario_medido": self.minimo_diario_medido,
+            "causa": self.causa,
+        }
+
+
+@dataclass(frozen=True)
+class Destino:
+    """Onde o clique deste canal vai parar, e onde essa URL é LIDA de volta.
+
+    ⚠️ O par `tabela`/`campo` é a autoridade de URL por canal, e ele não é o
+    mesmo para os quatro: PMax guarda a URL no asset group, os outros três no
+    anúncio. Consultar a tabela errada devolvia VAZIO — sempre — e vazio lido
+    como "não há duplicidade" fez a prova de destino de PMax não provar nada.
+    """
+
+    tabela: str
+    campo: str
+    #: Este canal exige URL exclusiva (uma, e só uma)? PMax sim, por contrato.
+    url_exclusiva: bool = False
+    #: As travas que mantêm o clique na página aprovada.
+    travas: Tuple[str, ...] = ()
+
+    def json(self) -> Dict[str, Any]:
+        return {"tabela": self.tabela, "campo": self.campo,
+                "url_exclusiva": self.url_exclusiva,
+                "travas": list(self.travas)}
+
+
+@dataclass(frozen=True)
+class Prova:
+    """Cobertura de `validate_only` — o que já foi exercitado contra a conta.
+
+    ⚠️ Os três estados NÃO são graus do mesmo: `exercitado` é uma leitura real
+    que aconteceu; `disponivel` é "o caminho existe e ninguém rodou"; `fechado`
+    é "a porta está desligada neste servidor". Só o primeiro é evidência.
+    """
+
+    estado: str
+    #: A flag de servidor que abre a prova deste canal, quando existe uma.
+    flag: Optional[str] = None
+    causa: Optional[str] = None
+
+    def json(self) -> Dict[str, Any]:
+        return {"estado": self.estado, "flag": self.flag, "causa": self.causa}
+
+
 @dataclass(frozen=True)
 class ContratoDeCanal:
     """Tudo o que a tela precisa saber sobre um canal, decidido no servidor."""
@@ -418,6 +522,18 @@ class ContratoDeCanal:
     #: Fatos operacionais deste canal que não cabem nos portões. Hoje: o
     #: canário, em Search.
     operacional: Mapping[str, Any] = field(default_factory=dict)
+    #: Os eixos que a tela multicanal mostra e não pode derivar.
+    economia: Economia = field(default_factory=Economia)
+    destino: Optional[Destino] = None
+    automacoes_travadas: Tuple[AutomacaoTravada, ...] = ()
+    prova: Prova = field(default_factory=lambda: Prova(estado=INDETERMINADO,
+                                                       causa="não avaliada"))
+    #: A conta em que este canal opera hoje. `None` = nenhuma vinculada.
+    conta: Mapping[str, Any] = field(default_factory=dict)
+    #: A ÚNICA próxima ação segura, em uma frase. ⚠️ Uma, e não uma lista: a
+    #: regra da casa é uma CTA dominante por região, e uma lista de próximos
+    #: atos é o mesmo que nenhum.
+    proximo_ato: str = ""
 
     def __post_init__(self) -> None:
         vistos = tuple(p.nome for p in self.portoes)
@@ -441,6 +557,12 @@ class ContratoDeCanal:
             "mensuracao": self.mensuracao.json(),
             "observabilidade": self.observabilidade.json(),
             "operacional": dict(self.operacional),
+            "economia": self.economia.json(),
+            "destino": None if self.destino is None else self.destino.json(),
+            "automacoes_travadas": [a.json() for a in self.automacoes_travadas],
+            "prova": self.prova.json(),
+            "conta": dict(self.conta),
+            "proximo_ato": self.proximo_ato or None,
         }
 
 
@@ -569,12 +691,22 @@ def planeja_offline(canal: str) -> Optional[bool]:
 #: 422 da rota e este contrato dizerem a mesma coisa com a mesma palavra.
 CODIGO_PMAX_FORA_DO_EXECUTOR = "PMAX_FORA_DO_EXECUTOR"
 
+#: ⚠️ A CAUSA MUDOU EM 06/09/2026, E O CÓDIGO NÃO.
+#:
+#: Ela dizia "não está habilitado nesta versão para ser CONFERIDO nem criado".
+#: A metade "conferido" deixou de ser verdade quando a ponte tipada de `/provar`
+#: passou a existir — e uma causa que descreve um mundo antigo manda o operador
+#: procurar uma porta que já abriu.
+#:
+#: O que continua verdadeiro é a outra metade, e ela é a razão de o código
+#: permanecer: PMax está FORA do executor (`subir.CONSTRUTORES_POR_CANAL`).
 _CAUSA_PMAX_FORA_DO_EXECUTOR = (
-    "Performance Max monta o plano inteiro aqui, sem falar com o Google — e "
-    "não está habilitado nesta versão para ser conferido nem criado. Isso não "
-    "é falha, não é ausência e não é zero: é uma decisão registrada, e ela "
-    "existe porque habilitar o canal no executor derrubaria a criação dos "
-    "outros três.")
+    "Performance Max monta o plano inteiro aqui e, com a porta experimental "
+    "aberta, também o confere por validate_only — que é leitura. O que ele não "
+    "faz é CRIAR: o canal está fora do executor "
+    "(`subir.CONSTRUTORES_POR_CANAL`) e o canário dele ainda não foi aceito. "
+    "Isso não é falha, não é ausência e não é zero: é uma decisão registrada, "
+    "e são duas travas independentes — abrir uma não abre a outra.")
 
 
 def bloqueio_pmax_fora_do_executor() -> Bloqueador:
@@ -584,6 +716,132 @@ def bloqueio_pmax_fora_do_executor() -> Bloqueador:
         origem=ORIGEM_PRODUTO,
         observado_em="2026-09-01",
     )
+
+
+#: A autoridade de URL por canal — o par (tabela, campo) em que a URL final é
+#: LIDA de volta. ⚠️ Projeção de `canario._AUTORIDADE_DE_URL`, e não uma segunda
+#: declaração: `test_trafego_contrato_canais.py` compara os dois.
+_TRAVAS_DE_DESTINO: Mapping[str, Tuple[str, ...]] = {
+    "PERFORMANCE_MAX": (
+        "asset_group.final_urls com exatamente uma URL (a LP aprovada)",
+        "final_mobile_urls vazio",
+        "sem path1/path2",
+        "excluded_parent_asset_set_types = [PAGE_FEED]",
+    ),
+    "DISPLAY": (
+        "control_spec.enable_asset_enhancements = false",
+        "control_spec.enable_autogen_video = false",
+    ),
+}
+
+
+def destino_do_canal(canal: str) -> Optional[Destino]:
+    """Onde este canal guarda a URL final, e o que a mantém no lugar.
+
+    ⚠️ Lê `canario._AUTORIDADE_DE_URL`, que já é a autoridade — e não repete o
+    mapa. Repetir faria PMax voltar a ser consultado em `ad_group_ad` do lado da
+    tela, que é exatamente o defeito corrigido do lado da prova de duplicidade.
+    """
+    alvo = str(canal or "").strip().upper()
+    autoridade = getattr(can, "_AUTORIDADE_DE_URL", {}).get(alvo)
+    if autoridade is None:
+        return None
+    return Destino(
+        tabela=str(autoridade.get("de") or ""),
+        campo=str(autoridade.get("campo") or ""),
+        url_exclusiva=(alvo == "PERFORMANCE_MAX"),
+        travas=_TRAVAS_DE_DESTINO.get(alvo, ()),
+    )
+
+
+def automacoes_travadas_do_canal(canal: str) -> Tuple[AutomacaoTravada, ...]:
+    """As automações de criativo que o payload deste canal desliga.
+
+    ⚠️ Lidas de `volc_ads/automacoes.py`, que é stdlib pura — o backend NÃO pode
+    importar `volc_ads.campanha.*` aqui (arrasta o SDK do Google). Uma lista
+    escrita à mão deste lado divergiria no primeiro nome que só uma ganhasse, e
+    a tela mostraria quatro chips onde o payload manda cinco.
+    """
+    alvo = str(canal or "").strip().upper()
+    try:
+        import sys
+        import pathlib
+
+        raiz = pathlib.Path(__file__).resolve().parents[3]
+        if str(raiz) not in sys.path:
+            sys.path.insert(0, str(raiz))
+        from volc_ads import automacoes as aut
+    except Exception:  # noqa: BLE001 — ausência do engine é estado, não erro
+        return ()
+    return tuple(
+        AutomacaoTravada(
+            nome=nome,
+            estado=aut.OPTED_OUT,
+            campo=aut.CAMPO_DA_AUTOMACAO.get(alvo, ""),
+            por_que=aut.POR_QUE_RECUSADA.get(nome, ""),
+        )
+        for nome in aut.recusadas(alvo)
+    )
+
+
+def economia_do_canal(canal: str, politica: can.Politica) -> Economia:
+    """Verba e lance — os dois números que decidem quanto isto pode custar."""
+    alvo = str(canal or "").strip().upper()
+    try:
+        import sys
+        import pathlib
+
+        raiz = pathlib.Path(__file__).resolve().parents[3]
+        if str(raiz) not in sys.path:
+            sys.path.insert(0, str(raiz))
+        from volc_ads.campanha import perfil as engine_perfil
+
+        p = engine_perfil.PERFIS.get(engine_perfil.canonizar(alvo))
+        lances = tuple(getattr(p, "lances_permitidos", ()) or ()) if p else ()
+        causa = None
+    except Exception as exc:  # noqa: BLE001
+        lances = ()
+        causa = ("não foi possível consultar o construtor para saber quais "
+                 f"estratégias de lance este canal aceita ({type(exc).__name__}).")
+    return Economia(
+        teto_diario_brl=politica.orcamento_diario_maximo_brl,
+        cpc_maximo_brl=politica.cpc_maximo_brl,
+        lances_permitidos=lances,
+        # ⚠️ `None` SEMPRE, e não um número. O piso diário depende da moeda e da
+        # conta, e só a API o conhece — ele chega no erro
+        # `BUDGET_BELOW_PER_DAY_MINIMUM` de um `validate_only` real. Escrever um
+        # valor aqui seria inventar um piso com a autoridade de um contrato.
+        minimo_diario_medido=None,
+        causa=causa,
+    )
+
+
+def prova_do_canal(canal: str, c: cap.Capacidades) -> Prova:
+    """A cobertura de `validate_only` deste canal, neste servidor."""
+    alvo = str(canal or "").strip().upper()
+    if alvo == "DEMAND_GEN":
+        aberta = c.google_demand_gen_validate_only
+        flag = "porta experimental de Demand Gen"
+    elif alvo == "PERFORMANCE_MAX":
+        aberta = c.google_pmax_validate_only
+        flag = "porta experimental de Performance Max"
+    else:
+        aberta = c.google_validate_only
+        flag = None
+    if not aberta:
+        return Prova(
+            estado=BLOQUEADO, flag=flag,
+            causa=("a conferência por validate_only deste canal está fechada "
+                   "neste servidor ou para esta sessão. Nenhum payload foi "
+                   "enviado ao Google."))
+    return Prova(
+        estado=PERMITIDO, flag=flag,
+        # ⚠️ `PERMITIDO` é "o caminho existe e está aberto", e NÃO "já foi
+        # exercitado". Cobertura real é uma leitura que aconteceu, e ela vive no
+        # recibo do canário — não neste contrato, que descreve capacidade.
+        causa=("o caminho existe e está aberto. Isto NÃO afirma que alguma "
+               "prova já foi feita nesta conta: cobertura exercitada é fato do "
+               "recibo, não deste contrato."))
 
 
 def assets_do_canal(canal: str) -> Assets:
@@ -706,6 +964,15 @@ _PORTAO_ANTERIOR = (
     "a escada é montar → conferir → criar, e o degrau anterior está fechado. "
     "Criar sem conferir é pular exatamente a etapa que separa 'montei um "
     "pedido' de 'tenho o direito de gastar'.")
+
+#: ⚠️ Escrito para o OPERADOR, e não para quem administra o servidor: ele não
+#: cita variável de ambiente. Uma instrução que a pessoa não tem como executar
+#: faz ela concluir que o sistema está quebrado.
+_PMAX_DESLIGADO = (
+    "a conferência de Performance Max é uma superfície experimental e está "
+    "desligada neste servidor. Ela nasce desligada, e ligá-la é uma decisão de "
+    "quem administra o sistema. Planejar continua liberado; criar segue "
+    "fechado por outras duas travas, independentes desta.")
 
 
 def _causa_do_canal(m: plat.ManifestoDeCanal, prefixo: str,
@@ -867,6 +1134,22 @@ def _portao_validavel(m: plat.ManifestoDeCanal,
                 causa=_DEMAND_GEN_DESLIGADO,
                 origem=ORIGEM_SERVIDOR,
             ))
+        # ⚠️ A MESMA PORTA, PARA PMAX — e SEPARADA da de Demand Gen.
+        #
+        # Ela existe desde 06/09/2026, junto com a ponte tipada de `/provar`.
+        # Uma flag compartilhada faria um servidor configurado para Demand Gen
+        # abrir Performance Max de passagem, sem ninguém ter medido o segundo.
+        #
+        # ⚠️ E a tela precisa dela: a rota devolve 403 quando a flag está
+        # desligada, e um portão `PERMITIDO` aqui prometeria uma prova que o
+        # executor recusa no clique — o defeito que `PainelDeCanais` nomeia como
+        # "promessa de frontend sem portão".
+        if m.canal == "PERFORMANCE_MAX" and not c.google_pmax_validate_only:
+            bloqueios.append(Bloqueador(
+                codigo="pmax_experimental_desligado",
+                causa=_PMAX_DESLIGADO,
+                origem=ORIGEM_SERVIDOR,
+            ))
     return Portao(
         nome=VALIDAVEL,
         estado=BLOQUEADO if bloqueios else PERMITIDO,
@@ -910,12 +1193,23 @@ def _portao_criavel_pausada(m: plat.ManifestoDeCanal, c: cap.Capacidades,
                 origem=ORIGEM_CONSTRUTOR,
             ))
     elif not m.permite_mutacao_real:
-        bloqueios.append(Bloqueador(
-            codigo="mutacao_real_recusada",
-            causa=_causa_do_canal(m, "a criação real ainda não foi liberada em",
-                                  _PISTAS_CRIACAO),
-            origem=ORIGEM_MANIFESTO,
-        ))
+        # ⚠️ PMax mantém o CÓDIGO PRÓPRIO aqui, e não o genérico.
+        #
+        # Ele passou a ter construtor em 06/09/2026, então caiu deste ramo — e
+        # o genérico `mutacao_real_recusada` perderia a distinção que o código
+        # próprio existe para preservar: "o canal planeja, confere e a porta de
+        # CRIAÇÃO ainda não abriu" convida a pedir a porta; "a criação real
+        # ainda não foi liberada" soa como um item de backlog.
+        if m.canal == "PERFORMANCE_MAX":
+            bloqueios.append(bloqueio_pmax_fora_do_executor())
+        else:
+            bloqueios.append(Bloqueador(
+                codigo="mutacao_real_recusada",
+                causa=_causa_do_canal(
+                    m, "a criação real ainda não foi liberada em",
+                    _PISTAS_CRIACAO),
+                origem=ORIGEM_MANIFESTO,
+            ))
     else:
         if not validavel.aberto:
             bloqueios.append(Bloqueador(
@@ -1626,7 +1920,47 @@ def contrato(canal: str, *, capacidades: cap.Capacidades,
         mensuracao=medicao,
         observabilidade=observacao,
         operacional=dict(operacional or {}),
+        economia=economia_do_canal(m.canal, pol),
+        destino=destino_do_canal(m.canal),
+        automacoes_travadas=automacoes_travadas_do_canal(m.canal),
+        prova=prova_do_canal(m.canal, capacidades),
+        conta={
+            "customer_id": pol.customer_id,
+            "customer_id_formatado": can.CONTA_FORMATADA,
+            "rotulo": pol.customer_label,
+            "login_customer_id": pol.login_customer_id,
+        },
+        proximo_ato=_proximo_ato(
+            (planejavel, validavel, criavel, ativavel)),
     )
+
+
+def _proximo_ato(portoes: Tuple[Portao, ...]) -> str:
+    """A ÚNICA próxima ação segura, em uma frase.
+
+    ⚠️ UMA, e não uma lista. A regra da casa é uma CTA dominante por região, e
+    uma lista de próximos atos é o mesmo que nenhum: o operador escolhe o mais
+    fácil em vez do primeiro.
+
+    A escada é ordenada: o primeiro portão FECHADO decide o ato, porque fechar
+    um portão posterior não adianta nada enquanto o anterior recusa.
+    """
+    for portao in portoes:
+        if portao.aberto:
+            continue
+        primeiro = portao.bloqueadores[0] if portao.bloqueadores else None
+        alvo = {
+            PLANEJAVEL: "montar o plano",
+            VALIDAVEL: "conferir o plano com o Google",
+            CRIAVEL_PAUSADA: "criar a campanha pausada",
+            ATIVAVEL: "ativar a campanha",
+        }[portao.nome]
+        if primeiro is None:
+            return f"{alvo} está fechado, e o motivo não foi registrado."
+        return (f"para {alvo}, resolva primeiro: {primeiro.causa} "
+                f"(origem: {primeiro.origem}).")
+    return ("os quatro portões estão abertos. O próximo ato é uma decisão "
+            "humana, não uma pendência do sistema.")
 
 
 def contrato_dos_canais(

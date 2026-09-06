@@ -22,6 +22,7 @@ import re
 from dataclasses import dataclass, replace
 from importlib import import_module
 
+from .. import automacoes
 from ..gads.client import cliente, validar_mutacoes
 from . import comum, conteudo, plano, taxonomia, validacao
 from .brief import (
@@ -37,15 +38,14 @@ CANAL = "DEMAND_GEN"
 
 #: As automações de criativo que a receita Demand Gen recusa, em ordem estável.
 #:
+#: ⚠️ REFERÊNCIA, e não declaração (06/09/2026). A lista mora em
+#: `volc_ads/automacoes.py`, stdlib pura, porque a tela do Hub precisa mostrar
+#: cada uma como fato travado e o backend não pode importar este módulo no boot.
+#:
 #: Ordem estável porque o selo do plano cobre a lista: duas provas
 #: semanticamente iguais não podem gerar protobufs diferentes.
-#:
-#: Todas conferidas em `AssetAutomationTypeEnum` do proto v25 instalado.
 AUTOMACOES_DEMAND_GEN_RECUSADAS: tuple[str, ...] = (
-    "GENERATE_DESIGN_VERSIONS_FOR_IMAGES",
-    "GENERATE_VIDEOS_FROM_OTHER_ASSETS",
-    "GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS",
-)
+    automacoes.AUTOMACOES_DEMAND_GEN_RECUSADAS)
 TIPO_DE_ANUNCIO = "DEMAND_GEN_MULTI_ASSET_AD"
 LANCES_PERMITIDOS: tuple[str, ...] = ("MAXIMIZE_CONVERSIONS",)
 OPCOES: frozenset[str] = frozenset()

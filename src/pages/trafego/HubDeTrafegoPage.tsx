@@ -54,6 +54,7 @@ import { useLeiturasDoHub } from '@/hooks/useLeiturasDoHub';
 import { useNotificacoes } from '@/hooks/useNotificacoes';
 import TrafegoPage from '@/pages/trafego/TrafegoPage';
 import FilaDeAtencao from '@/components/trafego/inventario/FilaDeAtencao';
+import { VisaoMulticanal } from '@/components/trafego/multicanal/VisaoMulticanal';
 import { InventarioDeCampanhas } from '@/components/trafego/inventario/InventarioDeCampanhas';
 import { Chip, type Tom } from '@/components/trafego/inventario/Selos';
 import { useContadorDeAtencao } from '@/components/trafego/atencao/useAtencao';
@@ -82,7 +83,7 @@ import {
 } from '@/components/trafego/inventario/formato';
 
 /** @deprecated use AbaDoHub. Mantido para testes que importam ABAS. */
-export const ABAS = ['campanhas', 'preparar', 'atencao'] as const;
+export const ABAS = ['campanhas', 'preparar', 'multicanal', 'atencao'] as const;
 export type Aba = AbaDoHub;
 
 export interface PropsDoHub {
@@ -633,6 +634,9 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
             <TabsTrigger value="preparar" className={gatilho}>
               <RotuloDaAba texto="preparar" contador={contadorDeOportunidades} />
             </TabsTrigger>
+            <TabsTrigger value="multicanal" className={gatilho}>
+              <RotuloDaAba texto="multicanal" contador={null} />
+            </TabsTrigger>
             <TabsTrigger value="atencao" className={gatilho}>
               <RotuloDaAba
                 texto="atenção"
@@ -693,6 +697,13 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
               defende. */}
           <TabsContent value="preparar" className="mt-6 [&>div]:p-0">
             {google ? (oportunidades ?? <TrafegoPage />) : <MetaNaoConfigurada nivel={estado.nivel} secao="preparar" />}
+          </TabsContent>
+
+          {/* ⚠️ Os três canais aparecem MESMO bloqueados, com a razão. A conta
+              tem campanhas de Performance Max gastando dinheiro; esconder o
+              canal faria a tela mentir por omissão. */}
+          <TabsContent value="multicanal" className="mt-6">
+            {google ? <VisaoMulticanal /> : <MetaNaoConfigurada nivel={estado.nivel} secao="campanhas" />}
           </TabsContent>
 
           <TabsContent value="atencao" className="mt-6">

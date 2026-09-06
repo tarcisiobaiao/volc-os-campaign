@@ -914,20 +914,23 @@ def test_flag_do_perfil_sozinha_nao_abre_a_criacao(
     """
     import dataclasses
 
-    from app.trafego import canario  # noqa: PLC0415
+    from volc_ads import autorizacao_de_canal as aut
 
     aberto = dataclasses.replace(perfil.PERFORMANCE_MAX,
                                  permite_mutacao_real=True)
     assert aberto.sabe_criar is True, "a primeira trava de fato abriu"
 
-    assert "PERFORMANCE_MAX" not in canario.CANAIS_COM_CRIACAO_AUTORIZADA
-    with pytest.raises(canario.CanarioRecusado, match="não autoriza CRIAR"):
-        canario.exigir(
-            customer_id=canario.CONTA, login_customer_id=canario.MCC,
-            canal="PERFORMANCE_MAX", budget_diario="10.00", cpc_inicial=None,
-            chave_intencao="a" * 64, carimbo_nome="20260906_120000",
-            confirmar_criacao_pausada=True, rede=None,
-        )
+    # ⚠️ E a SEGUNDA continua fechada, no lado que o EXECUTOR alcança. Até
+    # 06/09/2026 esta trava só existia em `app.trafego.canario`, que
+    # `volc_ads.subir` não importa — e um script in-process com a trava de
+    # escrita aberta criaria sem passar por ela.
+    assert "PERFORMANCE_MAX" not in aut.CANAIS_COM_CRIACAO_AUTORIZADA
+    assert aut.canais_autorizados() == ("SEARCH",)
+    with pytest.raises(aut.CriacaoNaoAutorizada, match="não autoriza CRIAR"):
+        aut.exigir("PERFORMANCE_MAX")
+    # E o executor cobra a mesma trava, pelo mesmo objeto.
+    with pytest.raises(motor.CanalSemMutacaoReal, match="não autoriza CRIAR"):
+        motor._recusar_canal_sem_mutacao("DISPLAY")
 
 
 def test_pmax_planeja_e_prova_pelo_perfil() -> None:

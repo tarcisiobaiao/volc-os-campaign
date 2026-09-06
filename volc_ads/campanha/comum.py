@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from .. import automacoes
 from . import marcacao
 from .brief import REDE_LEGADA_SEARCH, Brief
 
@@ -195,28 +196,17 @@ def _selecionar_ramo_vazio(mensagem, rotulo: str) -> None:
     selecionar()
 
 
-#: As automações de criativo/destino que a receita PMax recusa, na ordem em que
-#: viajam no payload. Ordem estável: o selo do plano cobre a lista, e duas
-#: provas semanticamente iguais não podem gerar protobufs diferentes.
+#: As automações de criativo/destino que a receita PMax recusa.
 #:
-#: Todas conferidas no enum `AssetAutomationTypeEnum` do proto v25 instalado.
-AUTOMACOES_PMAX_RECUSADAS: tuple[str, ...] = (
-    "FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",
-    "TEXT_ASSET_AUTOMATION",
-    "GENERATE_IMAGE_ENHANCEMENT",
-    "GENERATE_ENHANCED_YOUTUBE_VIDEOS",
-    # ⚠️ A QUINTA, e ela NÃO estava no work breakdown — veio da revisão de
-    # contrato de API (achado B5) e sobreviveu à conferência local no proto v25
-    # instalado, onde `GENERATE_IMAGE_EXTRACTION` existe.
-    #
-    # Ela raspa imagens DA LANDING PAGE para o pool visual da campanha. As
-    # outras quatro protegem o destino e a copy; esta protege a PEÇA — sem ela,
-    # o anúncio pode veicular uma imagem que nunca passou pelo portão de
-    # política, nunca teve `content_sha256` e não está no `supply_sha256` do
-    # plano aprovado. Fechar quatro portas e deixar essa aberta seria selar o
-    # suprimento e deixar o provedor acrescentar peça depois do selo.
-    "GENERATE_IMAGE_EXTRACTION",
-)
+#: ⚠️ REFERÊNCIA, e não declaração (06/09/2026). A lista mora em
+#: `volc_ads/automacoes.py`, que é stdlib pura, porque a TELA precisa mostrar
+#: cada automação como um fato travado — e o backend não pode importar este
+#: módulo no boot (ele arrasta `google.ads.googleads`). Uma segunda lista escrita
+#: à mão do lado do Hub divergiria no primeiro nome que só uma ganhasse.
+#:
+#: São CINCO. O comentário abaixo dizia "as QUATRO automações" mesmo depois de a
+#: quinta entrar — corrigido junto com a extração.
+AUTOMACOES_PMAX_RECUSADAS: tuple[str, ...] = automacoes.AUTOMACOES_PMAX_RECUSADAS
 
 
 def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: bool = False):
@@ -349,13 +339,17 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
                 # zero, e o oneof precisa apenas ser selecionado.
                 _selecionar_ramo_vazio(alvo, "MaximizeConversions")
 
-        # ── destino exclusivo: as QUATRO automações, todas OPTED_OUT ────────
+        # ── destino e peça: as CINCO automações, todas OPTED_OUT ───────────
         #
         # PMax só é elegível para esta receita enquanto o clique permanecer na
         # LP aprovada e a peça veiculada for a peça aprovada. As quatro
         # automações abaixo quebram uma dessas duas coisas, e todas nascem
         # LIGADAS quando ninguém fala — omitir não é neutro:
         #
+        #   GENERATE_IMAGE_EXTRACTION                  raspa imagem DA LANDING
+        #       PAGE para o pool visual — peça sem portão, sem hash e fora do
+        #       `supply_sha256`. É a quinta, e ela protege a PEÇA; as outras
+        #       quatro protegem destino e copy.
         #   FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION  manda o clique para outra
         #       página do site, escolhida pelo Google. O destino aprovado deixa
         #       de ser o destino servido.

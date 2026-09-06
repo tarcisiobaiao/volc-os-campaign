@@ -526,3 +526,227 @@ def test_subir_em_smart_bidding_com_sinal_provado_chama_o_google(monkeypatch):
     _, atos = _subir(monkeypatch, estrategia="MAXIMIZE_CONVERSIONS",
                      plano=_plano(medindo=True))
     assert "MUTATE" in atos
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONTRAPROVAS DA MISSÃO MULTICANAL (06/09/2026)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_nenhuma_rota_de_ativacao_existe_no_APP_INTEIRO():
+    """CONTRAPROVA 13: não existe rota que ative, despause ou publique campanha.
+
+    ⚠️ O teste anterior com este nome montava DOIS routers de Meta e dizia "app
+    inteiro". Este monta `app.main:app`, que é o app de verdade, e varre TODAS
+    as rotas — as que existiam, as que entraram nesta missão e as que alguém
+    acrescentar depois.
+
+    A varredura é por CAMINHO e por NOME DE FUNÇÃO, porque as duas formas de
+    introduzir uma ativação são diferentes: um `POST /ativar` novo, ou um
+    `POST /estado` que aceita `ENABLED` no corpo. A segunda não aparece na URL,
+    e por isso o teste também cobra que nenhuma rota nomeie ativação.
+    """
+    from app.main import app
+
+    proibidos = ("ativar", "activate", "enable", "despausar", "unpause",
+                 "resume", "retomar", "publicar-campanha")
+
+    #: As DUAS exceções, nomeadas uma a uma e com o motivo. ⚠️ Uma lista de
+    #: exceções que crescesse por prefixo (`/api/criativos/*`) seria a porta
+    #: pela qual a próxima ativação entraria sem ninguém decidir. Cada entrada
+    #: aqui é um caminho literal, e acrescentar uma exige escrever por quê.
+    FORA_DO_ESCOPO = {
+        # Retoma um TRABALHO da bancada criativa (uma fila local de renderização
+        # de peça). Não fala com Google nem com Meta, e não tem campanha.
+        "/api/criativos/bancada/trabalhos/{trabalho_id}/retomar",
+        # Reativa um ATIVO no cofre (um arquivo arquivado). Também não é
+        # campanha, e também não sai desta casa.
+        "/api/cofre/ativos/{ativo_id}/reativacao",
+    }
+
+    achadas = []
+    for rota in app.routes:
+        caminho = str(getattr(rota, "path", ""))
+        if caminho in FORA_DO_ESCOPO:
+            continue
+        nome = str(getattr(rota, "name", "")).lower()
+        for palavra in proibidos:
+            if palavra in caminho.lower() or palavra in nome:
+                achadas.append((caminho, nome, palavra))
+    assert not achadas, (
+        "existe rota que pode ativar campanha: "
+        + "; ".join(f"{c} ({n}) casou {p}" for c, n, p in achadas))
+
+    # ⚠️ E a varredura precisa ter visto o app INTEIRO, não um router solto: um
+    # `app` vazio passaria neste teste com folga.
+    assert len(app.routes) > 100, (
+        f"o app montou só {len(app.routes)} rotas — a varredura não cobriu o "
+        "sistema, e um verde aqui não provaria nada")
+
+
+def test_smart_bidding_sem_medicao_bloqueia_em_TODO_canal():
+    """CONTRAPROVA 7: a recusa é da autoridade, e ela vale para os quatro canais.
+
+    ⚠️ O portão vivia só no caminho de Search. A autoridade única
+    (`volc_ads.mensuracao`) é consultada por canal, e um canal que não declara
+    a estratégia pedida recusa ANTES de a conta ser consultada.
+    """
+    from volc_ads import mensuracao as mens
+
+    for canal in mens.CANAIS:
+        v = mens.avaliar(customer_id="5478096539", canal=canal,
+                         estrategia_lance="MAXIMIZE_CONVERSIONS")
+        assert v.autoriza is False, canal
+        assert v.estado == mens.INDETERMINADA, canal
+        assert mens.SEM_LEITURA in v.codigos, canal
+
+    # E MANUAL_CPC continua nascendo nos canais que o aceitam — o portão é
+    # sobre APRENDER, não sobre nascer.
+    livre = mens.avaliar(customer_id="5478096539", canal="SEARCH",
+                         estrategia_lance="MANUAL_CPC")
+    assert livre.autoriza is True
+    assert livre.estado == mens.NAO_APLICAVEL
+
+
+def test_estrategia_fora_do_canal_recusa_antes_de_consultar_a_conta():
+    """PMax não tem MANUAL_CPC, e Demand Gen só tem MAXIMIZE_CONVERSIONS."""
+    from volc_ads import mensuracao as mens
+
+    v = mens.avaliar(customer_id="5478096539", canal="DEMAND_GEN",
+                     estrategia_lance="TARGET_ROAS",
+                     lances_do_canal=("MAXIMIZE_CONVERSIONS",))
+    assert v.estado == mens.NAO_PRONTA
+    assert mens.ESTRATEGIA_FORA_DO_CANAL in v.codigos
+    # ⚠️ NÃO houve leitura: a recusa é do PEDIDO, e ela vem antes do mundo.
+    assert v.leitura.estado == mens.NAO_COLETADO
+
+
+def test_a_autoridade_de_mensuracao_nao_cria_conversion_action():
+    """A missão proíbe criar ou alterar conversion action. Prova por árvore."""
+    import ast
+    import inspect
+
+    from volc_ads import mensuracao as mens
+
+    arvore = ast.parse(inspect.getsource(mens))
+    chamadas = {
+        no.func.attr if isinstance(no.func, ast.Attribute)
+        else getattr(no.func, "id", "")
+        for no in ast.walk(arvore) if isinstance(no, ast.Call)
+    }
+    for proibida in ("mutar", "mutate", "criar_acao", "propor_acao_nova",
+                     "validar_mutacoes", "destravar"):
+        assert proibida not in chamadas, f"a autoridade chama {proibida}"
+
+
+def test_a_janela_de_recencia_e_a_mesma_dos_dois_lados():
+    """Um número declarado duas vezes com a razão escrita — e cobrado."""
+    from volc_ads import mensuracao as mens
+
+    assert mens.JANELA_DE_RECENCIA_DIAS == pm.JANELA_DE_RECENCIA_DIAS
+
+
+def test_as_listas_de_estrategia_sao_projecao_da_autoridade():
+    """Elas deixaram de decidir; ficaram como projeção derivada em import."""
+    from volc_ads import mensuracao as mens
+
+    assert set(pr.ESTRATEGIAS_CONHECIDAS) == set(mens.OBJETIVO_POR_ESTRATEGIA)
+    assert pr.ESTRATEGIAS_CONHECIDAS is mens.ESTRATEGIAS_CONHECIDAS
+    for e in pr.ESTRATEGIAS_SEM_APRENDIZADO:
+        assert mens.OBJETIVO_POR_ESTRATEGIA[e] == mens.OBJETIVO_CLIQUE
+    for e in pr.ESTRATEGIAS_QUE_EXIGEM_VALOR:
+        assert mens.OBJETIVO_POR_ESTRATEGIA[e] == mens.OBJETIVO_VALOR
+
+
+def test_o_campo_deprecado_recusa_com_NOME_PROPRIO_e_nunca_em_silencio():
+    """CONTRAPROVA T04: `include_in_conversions_metric` não decide calado.
+
+    Ele está DEPRECIADO e continua tirando a ação da métrica que o lance
+    otimiza — então a recusa é real. O que muda é que ela deixa de aparecer
+    como "nenhuma ação válida" e passa a dizer que veio de um campo depreciado.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from volc_ads import mensuracao as mens
+
+    agora = datetime(2026, 9, 6, tzinfo=timezone.utc)
+    leitura = mens.Leitura(
+        estado=mens.COM_DADOS, procedencia="teste",
+        lido_em=(agora - timedelta(hours=1)).isoformat(), meta_biddable=True,
+        acoes=(mens.AcaoLida(id="9", status="ENABLED", primaria=True,
+                             incluida_em_metricas=False,
+                             conversoes_na_janela=5.0, dias_desde_a_ultima=1),))
+    v = mens.avaliar(customer_id="1", canal="DISPLAY",
+                     estrategia_lance="MAXIMIZE_CONVERSIONS",
+                     leitura=leitura, agora=agora)
+    assert v.estado == mens.NAO_PRONTA
+    assert mens.FORA_DA_METRICA_DE_CONVERSOES in v.codigos
+    (b,) = [x for x in v.bloqueios
+            if x.codigo == mens.FORA_DA_METRICA_DE_CONVERSOES]
+    assert "DEPRECIADO" in b.causa
+
+    # ⚠️ E `None` (campo não lido) NÃO recusa: não lido nunca foi um `False`.
+    lido_parcial = mens.Leitura(
+        estado=mens.COM_DADOS, procedencia="teste",
+        lido_em=(agora - timedelta(hours=1)).isoformat(), meta_biddable=True,
+        acoes=(mens.AcaoLida(id="9", status="ENABLED", primaria=True,
+                             incluida_em_metricas=None,
+                             conversoes_na_janela=5.0, dias_desde_a_ultima=1),))
+    assert mens.avaliar(customer_id="1", canal="DISPLAY",
+                        estrategia_lance="MAXIMIZE_CONVERSIONS",
+                        leitura=lido_parcial, agora=agora).estado == mens.PRONTA
+
+
+def test_primary_for_goal_ausente_vale_TRUE_e_nao_inverte_o_veredito():
+    """O default documentado, aplicado — e o bug que ele desfaz.
+
+    `pmax.ler_mensuracao` lia `bool(ca.primary_for_goal)`, que devolve `False`
+    para uma ação em que o campo NÃO VEIO. A autoridade aplica o default oficial
+    ("ausente vale true") e diz que está aplicando.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from volc_ads import mensuracao as mens
+
+    agora = datetime(2026, 9, 6, tzinfo=timezone.utc)
+    acao = mens.AcaoLida(id="9", status="ENABLED", primaria=None,
+                         conversoes_na_janela=5.0, dias_desde_a_ultima=1)
+    assert acao.primaria_efetiva is True
+    v = mens.avaliar(
+        customer_id="1", canal="DISPLAY",
+        estrategia_lance="MAXIMIZE_CONVERSIONS",
+        leitura=mens.Leitura(
+            estado=mens.COM_DADOS, procedencia="teste",
+            lido_em=(agora - timedelta(hours=1)).isoformat(),
+            meta_biddable=True, acoes=(acao,)),
+        agora=agora)
+    assert v.estado == mens.PRONTA
+
+
+def test_ausencia_de_medicao_e_zero_medido_sao_bloqueios_DIFERENTES():
+    """CONTRAPROVA T04: ausência distinta de zero, na frase que o operador lê."""
+    from datetime import datetime, timedelta, timezone
+
+    from volc_ads import mensuracao as mens
+
+    agora = datetime(2026, 9, 6, tzinfo=timezone.utc)
+    quando = (agora - timedelta(hours=1)).isoformat()
+
+    def _v(contagem):
+        return mens.avaliar(
+            customer_id="1", canal="DISPLAY",
+            estrategia_lance="MAXIMIZE_CONVERSIONS",
+            leitura=mens.Leitura(
+                estado=mens.COM_DADOS, procedencia="teste", lido_em=quando,
+                meta_biddable=True,
+                acoes=(mens.AcaoLida(id="9", status="ENABLED", primaria=True,
+                                     conversoes_na_janela=contagem,
+                                     dias_desde_a_ultima=1),)),
+            agora=agora)
+
+    nao_medido = _v(None).resumo()
+    medido_zero = _v(0.0).resumo()
+    assert "ninguém mediu o volume" in nao_medido
+    assert "volume medido é zero" in medido_zero
+    assert "ninguém mediu o volume" not in medido_zero, (
+        "zero medido virou 'ninguém mediu' — os dois estados colapsaram")

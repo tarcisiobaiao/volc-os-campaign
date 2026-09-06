@@ -145,16 +145,34 @@ def test_pmax_recusa_por_decisao_registrada_e_nao_por_ausencia():
     convida a desistir; "o canal planeja e a porta ainda não abriu" convida a
     pedir a porta."""
     pmax = _por_canal(ADMIN_COM_ESCRITA)["PERFORMANCE_MAX"].por_nome
-    for nome in (cc.VALIDAVEL, cc.CRIAVEL_PAUSADA):
-        codigos = {b.codigo for b in pmax[nome].bloqueadores}
-        assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR in codigos, nome
-        assert "sem_construtor" not in codigos, nome
-        (bloq,) = [b for b in pmax[nome].bloqueadores
-                   if b.codigo == cc.CODIGO_PMAX_FORA_DO_EXECUTOR]
-        # `produto` e não `construtor`: quem abre esta porta é o dono, não quem
-        # escreve o engine. Errar a origem manda a pessoa para a porta errada.
-        assert bloq.origem == cc.ORIGEM_PRODUTO, nome
-        assert "não é falha" in bloq.causa
+
+    # ⚠️ O portão de CRIAÇÃO continua carregando o código próprio — e ele mudou
+    # de ramo em 06/09/2026: antes vinha de "não tem construtor", agora vem de
+    # `permite_mutacao_real=False`. O fato que ele nomeia é o mesmo: PMax está
+    # fora de `subir.CONSTRUTORES_POR_CANAL`.
+    codigos = {b.codigo for b in pmax[cc.CRIAVEL_PAUSADA].bloqueadores}
+    assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR in codigos
+    assert "sem_construtor" not in codigos
+    assert "mutacao_real_recusada" not in codigos, (
+        "o genérico perderia a distinção que o código próprio preserva")
+    (bloq,) = [b for b in pmax[cc.CRIAVEL_PAUSADA].bloqueadores
+               if b.codigo == cc.CODIGO_PMAX_FORA_DO_EXECUTOR]
+    # `produto` e não `construtor`: quem abre esta porta é o dono, não quem
+    # escreve o engine. Errar a origem manda a pessoa para a porta errada.
+    assert bloq.origem == cc.ORIGEM_PRODUTO
+    assert "não é falha" in bloq.causa
+    assert "duas travas independentes" in bloq.causa
+
+    # ⚠️ E o portão de PROVA deixou de carregá-lo, porque a metade "conferido"
+    # da causa deixou de ser verdade. O que fecha a prova hoje é a porta
+    # EXPERIMENTAL do servidor — outro código, outra origem, outra pessoa a
+    # quem pedir.
+    codigos_prova = {b.codigo for b in pmax[cc.VALIDAVEL].bloqueadores}
+    assert cc.CODIGO_PMAX_FORA_DO_EXECUTOR not in codigos_prova
+    assert "pmax_experimental_desligado" in codigos_prova
+    (experimental,) = [b for b in pmax[cc.VALIDAVEL].bloqueadores
+                       if b.codigo == "pmax_experimental_desligado"]
+    assert experimental.origem == cc.ORIGEM_SERVIDOR
 
 
 def test_o_codigo_de_pmax_e_o_mesmo_do_engine():

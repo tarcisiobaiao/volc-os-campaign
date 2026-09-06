@@ -857,7 +857,7 @@ def test_leitura_truncada_bloqueia_em_vez_de_devolver_lista_parcial():
     url = "https://exemplo.com.br/oferta/"
     demais = [
         _linha(str(i), ("https://outro.com.br/",), onde="asset_group")
-        for i in range(canario.MAXIMO_DE_PAGINAS_DE_DESTINO * 1000 + 2)
+        for i in range(canario.TETO_DE_LINHAS_DE_DESTINO + 2)
     ]
     servico = _ServicoDeBusca(demais)
     with pytest.raises(canario.LeituraDeDestinoIncompleta, match="NÃO prova"):
