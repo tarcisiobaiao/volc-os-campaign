@@ -124,7 +124,18 @@ class Politica:
     #: Este canal já teve o canário ACEITO? Ato humano separado, por canal, com
     #: runbook próprio. `False` não diz nada sobre como a campanha nasceria: diz
     #: que ela não nasce.
-    criacao_autorizada: bool = True
+    #:
+    #: ⚠️ O DEFAULT É `False`, e ele mudou de `True` em 06/09/2026 depois da
+    #: revisão adversarial. Com `True`, a `POLITICA` de Search — que é construída
+    #: pelo default e devolvida por curto-circuito em `politica_do_canal` —
+    #: nunca derivava do conjunto: esvaziar `CANAIS_COM_CRIACAO_AUTORIZADA` para
+    #: fechar a criação num incidente deixava `canario.exigir` de Search
+    #: passando, e a recusa só chegava lá no fim, em `subir.subir()`, depois de
+    #: `conta_da_casa` (~1,6 s) e do `validate_only` REAL contra a conta.
+    #:
+    #: Fail-closed: quem constrói uma `Politica` à mão precisa dizer que aquele
+    #: canal está autorizado, e `POLITICA` deriva do conjunto logo abaixo.
+    criacao_autorizada: bool = False
     inclui_ativacao: bool = False
     orcamento_diario_maximo_brl: str = str(ORCAMENTO_DIARIO_MAXIMO_BRL)
     #: `None` quando o canal não tem CPC a declarar. ⚠️ Ausência NÃO é zero:
@@ -149,7 +160,11 @@ class Politica:
         }
 
 
-POLITICA = Politica()
+#: A política de Search. ⚠️ `criacao_autorizada` DERIVA do conjunto — ela não é
+#: um literal. Era `True` por default, e por isso revogar a autorização não
+#: fechava Search em lugar nenhum da leitura.
+POLITICA = Politica(
+    criacao_autorizada=CANAL in CANAIS_COM_CRIACAO_AUTORIZADA)
 
 
 def politica_do_canal(canal: Any) -> Politica:
@@ -159,7 +174,13 @@ def politica_do_canal(canal: Any) -> Politica:
     a de Search por omissão faria um pedido PMax herdar teto de CPC e exigência
     de rede que PMax não tem — e a recusa apareceria com o nome errado.
     """
-    nome = str(canal or "").strip().upper()
+    # ⚠️ O APELIDO É TRADUZIDO AQUI. `PMAX` é o que aparece em link antigo e em
+    # rótulo de painel, e `/provar` o aceita explicitamente — mas
+    # `CANAIS_DO_CANARIO` só conhece o nome de contrato. Sem esta linha,
+    # `politica_do_canal("PMAX")` levantava, `_politica_do_canario` engolia e a
+    # resposta devolvia a política de SEARCH numa prova PMax: CPC de R$ 1,00 e
+    # `exige_rede=True` para um canal que não tem nem um nem outro.
+    nome = aut.canonizar(canal)
     if nome not in CANAIS_DO_CANARIO:
         raise CanarioRecusado(
             f"o canário não tem política para o canal {canal!r}; "

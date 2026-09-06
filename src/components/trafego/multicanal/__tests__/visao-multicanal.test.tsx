@@ -230,8 +230,12 @@ describe('a visão multicanal', () => {
       .filter((b) => (b.textContent ?? '').trim().length > 0);
     // UMA CTA dominante por cartão (`design.md`: one primary action per region).
     expect(acoes).toHaveLength(1);
-    expect(acoes[0].textContent).toContain('Abrir a bancada');
+    // ⚠️ O rótulo diz o que o clique FAZ: filtrar o inventário. Ele dizia
+    // "Abrir a bancada" e navegava para o filtro de canal — um ato que a rota
+    // não faz, e que ensinaria o operador a não acreditar no rótulo.
+    expect(acoes[0].textContent).toContain('Ver as campanhas');
     expect((acoes[0].textContent ?? '').toLowerCase()).not.toContain('criar');
+    expect((acoes[0].textContent ?? '').toLowerCase()).not.toContain('bancada');
   });
 
   it('distingue ausência, nulo e desconhecido — e nunca usa um traço para os três', () => {

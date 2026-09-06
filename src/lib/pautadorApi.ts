@@ -1296,6 +1296,16 @@ export const pautadorApi = {
     customer_id: string;
     campaign_id?: string | null;
     marca?: string | null;
+    /**
+     * O canal do item — e sem ele o read-back tipado NÃO RODA.
+     *
+     * ⚠️ O servidor precisa dele para saber QUE OBJETOS reler: PMax tem asset
+     * group e não tem anúncio, e perguntar por um devolveria vazio — que
+     * viraria "não existe anúncio", quando o fato é que não existe a entidade.
+     * Sem o campo, a rota responde `NAO_SUPORTADO` com a causa dita, e o
+     * veredito de sete estados fica desligado em 100% das reconciliações reais.
+     */
+    canal?: string | null;
   }): Promise<Record<string, unknown>> {
     return request('/api/trafego/reconciliar', {
       method: 'POST', body: JSON.stringify(pedido),

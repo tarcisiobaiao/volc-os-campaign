@@ -1115,17 +1115,34 @@ async def sincronizar_conta(
     motivo = (res.faltou[0]["motivo"] if res.faltou else None)
     if res.resultado == "parcial" and res.faltou:
         motivo = f"{res.faltou[0]['escopo']}: {res.faltou[0]['motivo']}"
-    await repo.gravar_snapshot_de_conta({
+    carimbo = {
         "customer_id": cid,
         "nome": conta.get("nome"),
         "tentativa_em": agora.isoformat(),
         "tentativa_resultado": "ok",
         "tentativa_motivo": motivo,
         "tentativa_duracao_ms": res.duracao_ms,
-        "leitura_boa_em": agora.isoformat(),
-        "leitura_boa_campanhas": res.lidas,
-        "leitura_boa_duracao_ms": res.duracao_ms,
-    })
+    }
+    # ⚠️ UMA LEITURA TRUNCADA NÃO É UMA LEITURA BOA — e o carimbo dizia que era.
+    #
+    # Achado da revisão adversarial de 06/09/2026, reproduzido com os dublês da
+    # própria suíte: uma conta com 1 campanha lida bem às 12h e truncada às 13h
+    # terminava com `leitura_boa_em=13:00` e `leitura_boa_campanhas=0`. O gatilho
+    # `trafego_snapshot_preserva_ultima_boa` só preserva o valor anterior quando
+    # o novo é MAIS ANTIGO, então o carimbo novo — mais recente e com uma
+    # contagem que nenhuma leitura observou — sobrescrevia a última leitura boa
+    # de verdade. `inventario.py` mapeia `leitura_boa_campanhas` para `lidas`,
+    # então o zero falso chegava à tela.
+    #
+    # Omitir as três chaves é o que preserva: o upsert monta o SET a partir do
+    # que foi enviado, e o mesmo raciocínio já vale para o ramo `falhou`.
+    if not truncou:
+        carimbo.update({
+            "leitura_boa_em": agora.isoformat(),
+            "leitura_boa_campanhas": res.lidas,
+            "leitura_boa_duracao_ms": res.duracao_ms,
+        })
+    await repo.gravar_snapshot_de_conta(carimbo)
 
     if chave_idempotencia:
         await repo.registrar_evento(_evento_de_rodada(

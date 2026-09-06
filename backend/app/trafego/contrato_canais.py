@@ -70,6 +70,8 @@ já leu — e o que não chegou sai `INDETERMINADO`.
 """
 from __future__ import annotations
 
+import logging
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -77,6 +79,8 @@ from app.trafego import canario as can
 from app.trafego import capacidades as cap
 from app.trafego import plataforma as plat
 from app.trafego import prontidao as pr
+
+log = logging.getLogger("volc.trafego.contrato_canais")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # VOCABULÁRIO
@@ -771,8 +775,16 @@ def automacoes_travadas_do_canal(canal: str) -> Tuple[AutomacaoTravada, ...]:
         if str(raiz) not in sys.path:
             sys.path.insert(0, str(raiz))
         from volc_ads import automacoes as aut
-    except Exception:  # noqa: BLE001 — ausência do engine é estado, não erro
-        return ()
+    except Exception as exc:  # noqa: BLE001 — ausência do engine é estado
+        # ⚠️ NÃO devolve `()`. Uma tupla vazia é lida pela tela como "este canal
+        # não trava nada" — a afirmação exata OPOSTA ao fato, num canal cujo
+        # payload desliga cinco automações. `assets_do_canal` já resolvia isso
+        # com `INDETERMINADO` + causa; este eixo não tinha onde dizer "não li".
+        return (AutomacaoTravada(
+            nome="", estado=INDETERMINADO, campo="",
+            por_que=("não foi possível consultar o motor para saber quais "
+                     "automações este canal desliga. Isto NÃO afirma que ele "
+                     "não desliga nenhuma.")),)
     return tuple(
         AutomacaoTravada(
             nome=nome,
@@ -801,8 +813,12 @@ def economia_do_canal(canal: str, politica: can.Politica) -> Economia:
         causa = None
     except Exception as exc:  # noqa: BLE001
         lances = ()
-        causa = ("não foi possível consultar o construtor para saber quais "
-                 f"estratégias de lance este canal aceita ({type(exc).__name__}).")
+        # ⚠️ SEM `type(exc).__name__`. O operador de mídia lia
+        # "ModuleNotFoundError" num cartão de campanha, sem nenhuma ação
+        # derivável da frase. O nome técnico vai para o log, onde ele serve.
+        log.warning("não consegui ler os lances de %s: %s", alvo, exc)
+        causa = ("não foi possível consultar o motor para saber quais "
+                 "estratégias de lance este canal aceita neste servidor.")
     return Economia(
         teto_diario_brl=politica.orcamento_diario_maximo_brl,
         cpc_maximo_brl=politica.cpc_maximo_brl,
@@ -879,8 +895,8 @@ def assets_do_canal(canal: str) -> Assets:
     except Exception as exc:  # noqa: BLE001 — ausência do engine é estado
         return Assets(
             estado=INDETERMINADO,
-            causa=("não foi possível consultar o construtor de campanhas para "
-                   f"saber quais recursos criativos este canal monta ({type(exc).__name__})."),
+            causa=("não foi possível consultar o motor para saber quais "
+                   "recursos criativos este canal monta neste servidor."),
         )
     if p is None:
         return Assets(
@@ -1233,7 +1249,15 @@ def _portao_criavel_pausada(m: plat.ManifestoDeCanal, c: cap.Capacidades,
                 # porta errada.
                 origem=ORIGEM_SERVIDOR if c.is_admin else ORIGEM_OPERADOR,
             ))
-        if m.canal != politica.canal:
+        # ⚠️ `criacao_autorizada`, e NÃO `m.canal != politica.canal`.
+    #
+    # A comparação por nome só funcionava porque `politica` chegava sempre como
+    # a de Search. Com a política POR CANAL, ela passaria a dizer que todo canal
+    # está na própria janela — e com a autoridade única declarada em
+    # `volc_ads/autorizacao_de_canal.py`, ela nunca era lida do lado da leitura:
+    # acrescentar um canal ao conjunto depois do canário aceito abria `subir` e
+    # continuava escondendo o botão no Hub.
+    if not politica.criacao_autorizada:
             bloqueios.append(Bloqueador(
                 codigo="fora_da_janela_do_canario",
                 causa=(
@@ -1887,7 +1911,25 @@ def contrato(canal: str, *, capacidades: cap.Capacidades,
     `campanhas_no_espelho`, `operacional` — são opcionais e ausentes por padrão.
     Ausência produz `INDETERMINADO` com causa, nunca um veredito.
     """
-    pol = politica or can.POLITICA
+    # ⚠️ A POLÍTICA É DO CANAL PEDIDO, e não a de Search para todos.
+    #
+    # Era `politica or can.POLITICA`, e nenhum chamador passa `politica` — então
+    # `economia_do_canal` copiava `cpc_maximo_brl="1.00"` de Search para Display,
+    # Demand Gen e PMax, canais que `CANAIS_COM_CPC_E_REDE` exclui. A MESMA
+    # resposta HTTP trazia `politica_canario_por_canal[canal].cpc_maximo_brl:
+    # null` ao lado: dois campos do mesmo payload respondendo coisas opostas
+    # sobre o mesmo canal, e o operador lendo um teto de lance que a casa não
+    # aplica. Achado da revisão adversarial de 06/09/2026, reproduzido.
+    #
+    # Canal sem janela cai na de Search — que é o comportamento anterior — mas
+    # agora por ausência DECLARADA, e não por omissão do chamador.
+    if politica is not None:
+        pol = politica
+    else:
+        try:
+            pol = can.politica_do_canal(canal)
+        except can.CanarioRecusado:
+            pol = can.POLITICA
     m = plat.manifesto(plat.GOOGLE_ADS, canal)
     if m is None:
         raise ValueError(

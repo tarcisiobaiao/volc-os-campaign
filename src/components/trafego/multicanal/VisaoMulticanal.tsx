@@ -365,14 +365,25 @@ function Assets({ c }: { c: ContratoDeCanal }) {
 }
 
 function Automacoes({ c }: { c: ContratoDeCanal }) {
-  const travadas = c.automacoes_travadas ?? [];
+  const brutas = c.automacoes_travadas ?? [];
+  // ⚠️ "não li" NÃO é "não trava nada". O servidor devolve uma entrada com
+  // `estado: INDETERMINADO` e nome vazio quando não conseguiu consultar o
+  // motor; desenhar isso como lista vazia faria a tela AFIRMAR que um canal
+  // cujo payload desliga cinco automações não desliga nenhuma.
+  const naoLido = brutas.some((a) => a.estado === 'INDETERMINADO');
+  const travadas = naoLido ? [] : brutas;
   return (
     <div className={POCO}>
       <p className={TITULO_DO_POCO}>
         <Lock className="h-3.5 w-3.5" aria-hidden />
-        Automações travadas — {travadas.length}
+        Automações travadas — {naoLido ? 'não lido' : travadas.length}
       </p>
-      {travadas.length === 0 ? (
+      {naoLido ? (
+        <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
+          {brutas[0]?.por_que ??
+            'não foi possível consultar quais automações este canal desliga.'}
+        </p>
+      ) : travadas.length === 0 ? (
         <p className="mt-1 text-sm leading-6 text-muted-foreground text-pretty">
           Este canal não declara <code>asset_automation_settings</code> nesta
           receita. Isso não afirma que ele não tem automação nenhuma: Display
@@ -536,18 +547,28 @@ function CartaoDoCanal({ c }: { c: ContratoDeCanal }) {
             'o servidor não declarou um próximo ato para este canal nesta leitura.'}
         </p>
         <div className="mt-3">
+          {/* ⚠️ A CTA FILTRA O INVENTÁRIO — ela NÃO abre bancada.
+              A versão anterior dizia "Abrir a bancada de X" e navegava para
+              `/trafego?canal=X`, que é o filtro de canal da aba Campanhas: o
+              operador saía desta aba, aterrissava numa listagem e não achava
+              pedido nenhum para montar. A única bancada Google é
+              `/trafego/nova/:opportunityId`, que exige uma oportunidade — e
+              nenhum dos três canais desta tela tem uma escolhida aqui.
+              Um botão que promete um ato que a rota não faz é pior que um botão
+              ausente: ele ensina o operador a não acreditar no rótulo. */}
           <AcaoDominante
             pode={podeMontar}
             faltas={podeMontar ? [] : faltasDaCta}
-            onClick={() => navegar(`/trafego?canal=${c.canal}`)}
+            onClick={() => navegar(`/trafego?aba=campanhas&canal=${c.canal}`)}
           >
-            Abrir a bancada de {c.rotulo}
+            Ver as campanhas de {c.rotulo}
           </AcaoDominante>
         </div>
         <p className="mt-2 max-w-[70ch] text-sm leading-6 text-muted-foreground text-pretty">
-          Esta tela não cria nem ativa nada. Abrir a bancada monta o pedido; a
-          conferência e a criação continuam sendo atos separados, com portões
-          próprios.
+          Esta tela não monta pedido, não cria e não ativa nada — ela mostra o
+          que cada canal pode fazer. O pedido nasce na bancada de uma
+          oportunidade, e a conferência e a criação continuam sendo atos
+          separados, com portões próprios.
         </p>
       </div>
     </section>

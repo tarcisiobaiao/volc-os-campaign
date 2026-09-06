@@ -1593,6 +1593,15 @@ class ProvarEntrada(BaseModel):
     #: convidaria o cliente a declarar a própria medição — que é o autoatestado
     #: que este desenho existe para impedir.
     pmax: Optional[ConfiguracaoPMaxEntrada] = None
+    #: O alvo de ROAS, quando a estratégia é por VALOR.
+    #:
+    #: ⚠️ Ele NÃO existia neste envelope, e `_montar_plano_pmax` o lia com
+    #: `getattr(body, "target_roas", None)` — que era sempre `None`. Um pedido
+    #: com `target_roas: 4.0` era ACEITO e o alvo DESAPARECIA: o operador via o
+    #: plano com tROAS 4,0 em `/planejar-pmax` (que exige o campo) e `/provar`
+    #: conferia um payload diferente do que ele aprovou. Achado da revisão
+    #: adversarial de 06/09/2026.
+    target_roas: Optional[float] = None
     assets_pmax: Optional[List[AssetDemandGenEntrada]] = Field(
         default=None, max_length=TETO_QUANTIDADE_ASSETS_PMAX)
 
@@ -1675,6 +1684,19 @@ class ProvarEntrada(BaseModel):
                     f"contrato vertical: {', '.join(ausentes_pmax)}. "
                     "`null` é ausência."
                 )
+            # ⚠️ A MESMA COERÊNCIA DE `PlanejarPMaxEntrada`. Sem ela, `/provar`
+            # aceitava `tcpa` numa estratégia por VALOR e `target_roas` numa por
+            # contagem — os dois ignorados pelo builder, em silêncio, enquanto
+            # `/planejar-pmax` recusava os dois. Duas rotas discordando sobre o
+            # mesmo pedido é a divergência que T02 existe para fechar.
+            if (estrategia_pmax == "MAXIMIZE_CONVERSIONS"
+                    and dados.get("target_roas") is not None):
+                raise ValueError(
+                    "target_roas não pertence a MAXIMIZE_CONVERSIONS")
+            if (estrategia_pmax == "MAXIMIZE_CONVERSION_VALUE"
+                    and dados.get("tcpa") is not None):
+                raise ValueError(
+                    "tcpa não pertence a MAXIMIZE_CONVERSION_VALUE")
             campos_search_pmax = [
                 campo for campo in ("cpc_inicial", "match_type", "rede",
                                     "keywords_fora")
@@ -5749,7 +5771,13 @@ async def reconciliar_lancamento(
                 rel.reler_na_conta,
                 canal=canal_do_item, buscar=_buscar_para_releitura,
                 campaign_id=body.campaign_id, marca=body.marca,
-                esperado={"status": rel.NASCE_PAUSADO, "canal": canal_do_item})
+                # ⚠️ CANONIZADO. `rel.objetos_de` canoniza (`PMAX` →
+                # `PERFORMANCE_MAX`) e o `esperado` ia CRU: a conta responde
+                # `PERFORMANCE_MAX` e a comparação acusava divergência de canal
+                # numa campanha perfeita. As duas metades da mesma decisão
+                # usavam vocabulários diferentes.
+                esperado={"status": rel.NASCE_PAUSADO,
+                          "canal": rel.canonizar(canal_do_item)})
             releitura = vrel.resumo(vereditos)
         except Exception as exc:  # noqa: BLE001
             # ⚠️ A falha do read-back NÃO derruba a reconciliação: o recibo
@@ -5768,6 +5796,45 @@ async def reconciliar_lancamento(
         motivo = body.motivo or "campanha encontrada na leitura da conta"
     else:
         motivo = body.motivo or "conferi a conta e a campanha não está lá"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ⚠️ DIVERGÊNCIA NÃO VIRA SUCESSO — e virava.
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # O veredito tipado era CALCULADO e não decidia nada: `ledger.reconciliar`
+    # rodava logo abaixo, incondicional, gravando `achou=True` e
+    # `motivo="campanha encontrada na leitura da conta"` para uma campanha
+    # `ENABLED` onde o contrato exige `PAUSED`. O item era carimbado como
+    # reconciliado com sucesso e a divergência saía no JSON sem ninguém agir
+    # sobre ela — exatamente a frase que este módulo diz ter corrigido.
+    #
+    # Agora ela REGISTRA a verificação (com a divergência inteira) e NÃO carimba:
+    # `achou=None` é o que o banco já usa para "verifiquei e não posso concluir",
+    # e é o único valor honesto quando o que está lá não é o que o plano
+    # descrevia. A decisão volta a ser humana.
+    if releitura.get("estado") == vrel.EstadoDaReleitura.DIVERGENTE.value:
+        await ledger.reconciliar(
+            item_id=body.item_id, metodo="listagem_da_conta", achou=None,
+            verificado_por=identidade.email or identidade.sub,
+            plataforma="GOOGLE_ADS", conta_externa=cid,
+            motivo=("a releitura encontrou a campanha e ela DIVERGE do plano; "
+                    "carimbar como sucesso esconderia a divergência"),
+            divergencia={"releitura": releitura},
+        )
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "estado": "releitura_divergente",
+                "mensagem": (
+                    "A campanha existe na conta e NÃO é a que o plano "
+                    "descrevia. A verificação ficou registrada e o item NÃO foi "
+                    "carimbado: divergência não é sucesso. Abra a campanha, "
+                    "compare os campos divergentes e decida."),
+                "item_id": body.item_id,
+                "releitura": releitura,
+                "reenvio_permitido": False,
+            },
+        )
 
     try:
         reconciliado = await ledger.reconciliar(
