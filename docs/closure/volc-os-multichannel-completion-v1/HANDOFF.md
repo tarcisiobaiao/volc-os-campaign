@@ -8,17 +8,41 @@ Vereditos por faixa, cada um com a evidência que o sustenta:
 |---|---|---|
 | `META_P0_LOCAL_CONTRACT_ACCEPTED` | **não** | C01 continua aberto. O canário Meta está bloqueado por `shop_redirect_proof`, e o bloqueio é a decisão certa — não a conclusão da tarefa. |
 | `CREATIVE_SUPPLY_CHAIN_P0_LOCAL_ACCEPTED` | **parcial** | O núcleo existe e está ligado em Display. Demand Gen e PMax usam o mesmo seam e não foram ligados; falta o detector de pixel. |
-| `GOOGLE_DISPLAY_LOCAL_READY_FOR_REMOTE_VALIDATION` | **sim, com ressalva** | Payload pronto e provado localmente. A ressalva: sem detector de pixel registrado, toda peça é bloqueada com `GATE_UNAVAILABLE`. |
+| `GOOGLE_DISPLAY_LOCAL_READY_FOR_REMOTE_VALIDATION` | **não** | ⚠️ **Correção do texto anterior.** Dizer "sim, com ressalva" estava errado: com o portão estrito e sem detector de pixel registrado, NENHUMA peça Display chega ao `validate_only`. Um canal cujo ato seguinte é impossível não está pronto para ele. O payload está provado localmente; a capacidade, não. |
 | `GOOGLE_DEMAND_GEN_LOCAL_READY_FOR_REMOTE_VALIDATION` | **não** | T06 não implementado. Só as automações foram fechadas. |
 | `GOOGLE_PMAX_LOCAL_READY_FOR_REMOTE_VALIDATION` | **não** | T08 não implementado; PMax segue fora da rota tipada. T09 está inteiro. |
 | `MULTICHANNEL_OPERATOR_UI_LOCAL_ACCEPTED` | **não** | A UI não foi tocada. T13 permanece aberto. |
 
-## Base e HEAD
+## Base, HEAD e as fontes congeladas
 
-- Base: `5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c`
-- HEAD: `316d2116f0eafe8ec7e0b9a6a115775b242187af`
+⚠️ **Correção do texto anterior**, que confundia dois SHAs diferentes:
+
+| | SHA | O que é |
+|---|---|---|
+| Base | `5cb654fbf1dbc226a995b0c60a37310c2aa4eb4c` | ponto de partida da missão |
+| **HEAD de runtime** | `dbedab27980237ae6ff93478c3ae67d88dd566bd` | último commit que mudou **código**; é o SHA em que o grafo foi construído e em que as suítes foram medidas |
+| **HEAD documental** | `88bf5f1956b6f6ffb8bfe7e6c2a6d2f10bdf5a72` | commit final da rodada, só documentação |
+
+A versão anterior deste arquivo citava apenas `316d211` como "HEAD", que era o
+commit de memória — nem o runtime medido, nem o final. Os três são distintos e
+cada número responde a uma pergunta diferente.
+
 - Branch: `execution/volc-os-operacao-80-20` · árvore limpa · **zero push**
-- `origin` permanece em `5cb654f`
+- `origin/execution/volc-os-operacao-80-20` permanece em `5cb654f`
+- ⚠️ O upstream configurado da branch local é `origin/volc-os-v2`, **não** a
+  branch operacional. Nenhum push ou pull foi executado.
+
+### Os quatro SHAs dos specs de origem
+
+Faltavam no handoff anterior. São eles que dizem contra o que este trabalho foi
+adjudicado:
+
+| Pacote | SHA | Path |
+|---|---|---|
+| Hermes — Meta + Creative P0 (autoridade adjudicadora) | `a875f1f02437f98e317d20bcd5c050cbaf281d57` | `docs/specs/meta-creative-p0-reconciliation-v1/` |
+| Astra — Meta Completion | `2766e49aed7055f24cd97932e9995406a409826b` | `docs/specs/meta-completion-v1/` |
+| Fable — Creative Supply Chain | `5d2cbd0006b7d794e685ebf67d3d79e6a879e12c` | `docs/specs/creative-supply-chain-v1/` |
+| Fable — Google Multichannel | `8b067f6d7a63997c8a43c9cbbf4933fda68bd0ef` | `docs/specs/google-multichannel-completion-v1/` |
 
 ## O que foi feito, por tarefa
 
@@ -74,3 +98,52 @@ canários Display/Demand Gen/PMax, migration v12_03, e o detector de pixel.
 
 zero push · zero deploy · zero Meta/Google real · zero Supabase oficial ·
 zero migration oficial · zero n8n · zero WordPress · zero ativação.
+
+---
+
+# Rodada 2 — fechamento local (06/09/2026)
+
+Base da rodada: `88bf5f1` · commits: `c7ade55` (runtime) + este.
+
+## O que fechou
+
+| Item | Estado | Evidência |
+|---|---|---|
+| T12 nos três canais | **fechado** | portão em Display, Demand Gen e PMax, antes da ponte e da rede; canal declarado em cada caminho |
+| Duplicidade por destino PMax | **fechado** | `_AUTORIDADE_DE_URL` por canal; PMax lê `asset_group.final_urls`; truncamento levanta em vez de virar ausência |
+| Detector de pixel | **inventariado e recusado** | não existe motor no servidor; adaptador escrito e não registrado; portão segue `GATE_UNAVAILABLE` |
+
+## O que NÃO fechou, e por quê
+
+Estas quatro não couberam nesta rodada. Não estão começadas pela metade —
+estão intocadas, e o mapa de cada uma existe:
+
+| Tarefa | Estado | Bloqueador factual |
+|---|---|---|
+| T04 mensuração para Smart Bidding | **não feito** | a autoridade existe em `plano_mensuracao.py` + `prontidao.py` (servidor) e uma segunda, só de PMax, em `volc_ads/campanha/pmax.py::_checar_mensuracao`. Falta unificá-las numa precondição por conta E objetivo válida para Display/DG/PMax. |
+| T06 Demand Gen tipado | **não feito** | falta `permite_mutacao_real`, entrada em `subir.CONSTRUTORES_POR_CANAL`, e a tradução de `BUDGET_BELOW_PER_DAY_MINIMUM`. O portão criativo já está ligado. |
+| T08 PMax tipado | **não feito** | falta `construtor`/`validador` no perfil e `/provar` aceitar `canal=PERFORMANCE_MAX`. `ConfiguracaoPMaxEntrada` e `assets_pmax` já existem no modelo HTTP (`PlanejarPMaxEntrada`). |
+| T13 UI multicanal | **não feito** | `src/` permanece intocado nas duas rodadas. |
+| T14 read-back por canal | **não feito** | o contrato existe: Protocol `PerfilDeCanal` em `sincronizador.py` (`canal`, `entidades_filhas()`, `ler_filhas(buscar, campaign_ids)`); faltam `adaptador_display.py` e `adaptador_demand_gen.py`, irmãos de `adaptador_search.py`. |
+
+## Detector de pixel — o inventário, para não ser refeito
+
+Medido, não suposto. **Não existe motor utilizável neste servidor.**
+
+- venv: só `pillow`. Sem `pytesseract`, `easyocr`, `opencv`, `rapidocr`,
+  `paddleocr`, `torch`, `transformers`, `ultralytics`.
+- `app/llm/` (Gemini, OpenAI) é **text-only**: `complete(system, user) -> str`,
+  payload só `parts[{text}]`, sem `inline_data`.
+- `visual_proof` valida URL, host e metadados de captura — não lê pixel.
+- `landing_policy` e `publisher_quality` são léxico e HTTP.
+- o Pillow existente MEDE dimensão e DESENHA texto; nunca lê.
+
+O adaptador está escrito em `criativo/politica/detectores/ocr_tesseract.py`,
+com assinatura conferida contra o Protocol e registro que só ocorre se o motor
+existir. Para ligá-lo: instalar `pytesseract` + binário `tesseract` no host e
+chamar `registrar_detectores_disponiveis()` no startup.
+
+⚠️ E OCR fecha só metade: ele lê texto, não pontua logotipo desenhado. O
+incidente que originou a lane era um envelope com marca — parte texto, parte
+desenho. A metade visual exige classificador com escore calibrado e uma decisão
+de política sobre enviar bytes de criativo a terceiro (RB-08).
