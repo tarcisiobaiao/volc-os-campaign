@@ -53,11 +53,38 @@ FLAG_LEDGER = "META_CREATE_LEDGER_WRITE_ENABLED"
 #:
 #: ⚠️ Ela NÃO é uma quarta permissão de criar. Sozinha não abre nada: a criação
 #: continua exigindo `FLAG_CRIACAO` e `FLAG_LEDGER`.
+#:
+#: ⚠️ E ela é POR CONTA, não por processo. A primeira versão aceitava `"1"`, e
+#: a revisão adversarial reproduziu o preço: conferir a elegibilidade da conta
+#: A e exportar a variável autorizava destino website para a conta B, C e
+#: qualquer outra que a credencial alcançasse. Uma evidência sobre uma conta
+#: não é evidência sobre as outras.
+#:
+#: O valor é a lista de referências opacas de conta que foram conferidas,
+#: separadas por vírgula: `META_SHOP_REDIRECT_CLEARED=metaacct_abc,metaacct_def`.
 FLAG_DESTINO_SHOP = "META_SHOP_REDIRECT_CLEARED"
+
+#: As autorizações que valem para o PROCESSO inteiro, independentes de conta.
+#: São elas que a porta da rota cobra, antes de saber qual conta o pedido
+#: escolheu.
+FLAGS_DE_PROCESSO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER)
 
 #: Ordem estável: a lista de bloqueios que a tela mostra não pode dançar entre
 #: dois carregamentos da mesma página.
+#:
+#: ⚠️ Inclui a prova de destino, que é POR CONTA. Por isso toda função que a
+#: consulta recebe `account_ref`: o painel de capacidades de uma conta não pode
+#: dizer "liberado" por causa da conferência de outra.
 FLAGS_DE_CRIACAO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER, FLAG_DESTINO_SHOP)
+
+
+def autorizacoes_de_processo_ausentes() -> list[str]:
+    """As travas que não dependem de conta, para a porta da rota."""
+    return [n for n in FLAGS_DE_PROCESSO if os.environ.get(n) != "1"]
+
+
+def motivos_de_processo_ausentes() -> list[str]:
+    return [MOTIVO_DA_FLAG[n] for n in autorizacoes_de_processo_ausentes()]
 
 #: A causa de cada bloqueio em linguagem de operador. O NOME DA VARIÁVEL nunca
 #: viaja para o navegador: quem lê a tela precisa saber que autorização falta,
@@ -80,18 +107,29 @@ MOTIVO_DA_FLAG: Mapping[str, str] = {
 }
 
 
-def autorizacoes_ausentes() -> list[str]:
-    """As flags fechadas, em ordem estável."""
-    return [nome for nome in FLAGS_DE_CRIACAO if os.environ.get(nome) != "1"]
+def autorizacoes_ausentes(account_ref: str | None = None) -> list[str]:
+    """As flags fechadas, em ordem estável.
+
+    `FLAG_DESTINO_SHOP` é julgada por conta; sem `account_ref` ela conta como
+    ausente, que é o lado seguro para o painel de capacidades.
+    """
+    faltando: list[str] = []
+    for nome in FLAGS_DE_CRIACAO:
+        if nome == FLAG_DESTINO_SHOP:
+            if not destino_website_liberado(account_ref):
+                faltando.append(nome)
+        elif os.environ.get(nome) != "1":
+            faltando.append(nome)
+    return faltando
 
 
-def motivos_ausentes() -> list[str]:
+def motivos_ausentes(account_ref: str | None = None) -> list[str]:
     """As causas dos bloqueios, prontas para a tela."""
-    return [MOTIVO_DA_FLAG[nome] for nome in autorizacoes_ausentes()]
+    return [MOTIVO_DA_FLAG[nome] for nome in autorizacoes_ausentes(account_ref)]
 
 
-def criacao_liberada() -> bool:
-    return not autorizacoes_ausentes()
+def criacao_liberada(account_ref: str | None = None) -> bool:
+    return not autorizacoes_ausentes(account_ref)
 
 
 def ledger_liberado() -> bool:
@@ -99,18 +137,35 @@ def ledger_liberado() -> bool:
     return os.environ.get(FLAG_LEDGER) == "1"
 
 
-def destino_website_liberado() -> bool:
-    """Se a leitura de elegibilidade a Shop já foi feita e deu não-elegível."""
-    return os.environ.get(FLAG_DESTINO_SHOP) == "1"
+def contas_com_destino_liberado() -> frozenset[str]:
+    """As contas cuja elegibilidade a Shop já foi conferida, e deu não-elegível."""
+    bruto = str(os.environ.get(FLAG_DESTINO_SHOP) or "").strip()
+    if not bruto:
+        return frozenset()
+    return frozenset(
+        parte.strip() for parte in bruto.split(",") if parte.strip())
+
+
+def destino_website_liberado(account_ref: str | None = None) -> bool:
+    """Se ESTA conta teve a elegibilidade a Shop conferida.
+
+    ⚠️ `account_ref=None` devolve False mesmo com a variável preenchida. Quem
+    não sabe de qual conta está falando não pode receber a prova de nenhuma —
+    e um default permissivo aqui reabriria exatamente o buraco que a lista por
+    conta veio fechar.
+    """
+    if not account_ref:
+        return False
+    return account_ref in contas_com_destino_liberado()
 
 
 def motivos_do_ledger_ausente() -> list[str]:
     return [] if ledger_liberado() else [MOTIVO_DA_FLAG[FLAG_LEDGER]]
 
 
-def motivo_da_criacao_fechada() -> str:
+def motivo_da_criacao_fechada(account_ref: str | None = None) -> str:
     """Uma frase só, para o painel de bloqueios das capacidades."""
-    faltando = motivos_ausentes()
+    faltando = motivos_ausentes(account_ref)
     if not faltando:
         return (
             "A criação PAUSED está liberada neste servidor. Ela ainda exige aprovação "

@@ -701,10 +701,17 @@ class ExecutorMetaPausado:
             # enviado. Comparar um campo ausente dos dois lados só produziria a
             # ilusão de conferência.
             #
-            # O que a leitura AINDA precisa recusar é a redireção que a v26
-            # aplicaria sozinha. Se a Meta devolver o campo — e ela pode, mesmo
-            # sem ele ter sido pedido —, qualquer destino que não seja website
-            # puro para o objeto que o operador aprovou é divergência.
+            # ⚠️ E ESTA VERIFICAÇÃO NÃO É UMA GARANTIA — a revisão adversarial
+            # cobrou a distinção e ela é justa. O campo não está na máscara de
+            # leitura (sua legibilidade é `RESEARCH_REQUIRED`), então a Meta
+            # normalmente NÃO o devolve, e a ausência não é recusada. Quem
+            # garante o destino é o portão ANTES do despacho
+            # (`shop_redirect_proof`), não esta linha.
+            #
+            # Ela existe porque é barata e fecha um caso real: se a Meta
+            # devolver o campo por conta própria, um destino de Shop no objeto
+            # que o operador aprovou é divergência e para a saga. Ganho quando
+            # aparece; nunca uma prova de que não apareceu.
             destino_lido = dados.get("destination_spec")
             if isinstance(destino_lido, Mapping):
                 tipo_lido = str(destino_lido.get("destination_type") or "").upper()

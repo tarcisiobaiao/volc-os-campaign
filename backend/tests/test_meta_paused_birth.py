@@ -531,7 +531,13 @@ def test_leitura_que_revela_desvio_para_shop_e_divergencia() -> None:
 
 
 def test_leitura_sem_o_campo_de_destino_nao_e_divergencia() -> None:
-    """A ausência do campo é o caso NORMAL: não pedimos, a Meta não devolve."""
+    """A ausência do campo é o caso NORMAL: não pedimos, a Meta não devolve.
+
+    ⚠️ E por isso o read-back NÃO É a garantia de destino — ele não pede o
+    campo e aceita a ausência. Quem garante é `shop_redirect_proof`, cobrado
+    antes do primeiro POST. A verificação acima é ganho quando a Meta devolve o
+    campo por conta própria, nunca prova de que não há desvio.
+    """
     ExecutorMetaPausado._validar_read_back(
         "creative",
         {
@@ -544,3 +550,43 @@ def test_leitura_sem_o_campo_de_destino_nao_e_divergencia() -> None:
         ids={},
         conta_externa="1234567890",
     )
+
+
+def test_a_prova_de_destino_de_uma_conta_nao_vale_para_outra(monkeypatch) -> None:
+    """CONTRAPROVA C01-e: conferir a conta A não autoriza a conta B.
+
+    A revisão adversarial reproduziu o defeito da primeira versão: a variável
+    valia `"1"` e o servidor inteiro passava a afirmar não-elegibilidade a Shop
+    para QUALQUER conta que a credencial alcançasse. Uma evidência sobre uma
+    conta não é evidência sobre as outras.
+    """
+    from app.trafego.meta_execucao import capacidades as cap
+
+    monkeypatch.setenv(cap.FLAG_DESTINO_SHOP, "metaacct_conferida")
+    assert cap.destino_website_liberado("metaacct_conferida") is True
+    assert cap.destino_website_liberado("metaacct_outra") is False
+    # ⚠️ Sem conta declarada, ninguém recebe a prova de ninguém.
+    assert cap.destino_website_liberado(None) is False
+    assert cap.destino_website_liberado("") is False
+
+
+def test_a_lista_aceita_varias_contas_conferidas(monkeypatch) -> None:
+    from app.trafego.meta_execucao import capacidades as cap
+
+    monkeypatch.setenv(cap.FLAG_DESTINO_SHOP, "metaacct_a, metaacct_b")
+    assert cap.contas_com_destino_liberado() == {"metaacct_a", "metaacct_b"}
+    assert cap.destino_website_liberado("metaacct_b") is True
+    assert cap.destino_website_liberado("metaacct_c") is False
+
+
+def test_o_valor_antigo_um_nao_libera_conta_nenhuma(monkeypatch) -> None:
+    """⚠️ `"1"` era o valor da primeira versão. Ele NÃO pode continuar valendo.
+
+    Um servidor que ainda exporte `META_SHOP_REDIRECT_CLEARED=1` depois deste
+    conserto precisa ficar FECHADO, não aberto para todas as contas — senão o
+    conserto não conserta nada em quem já tinha a variável.
+    """
+    from app.trafego.meta_execucao import capacidades as cap
+
+    monkeypatch.setenv(cap.FLAG_DESTINO_SHOP, "1")
+    assert cap.destino_website_liberado("metaacct_qualquer") is False

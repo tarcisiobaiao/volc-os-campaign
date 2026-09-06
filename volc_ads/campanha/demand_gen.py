@@ -34,6 +34,18 @@ from .brief import (
 )
 
 CANAL = "DEMAND_GEN"
+
+#: As automações de criativo que a receita Demand Gen recusa, em ordem estável.
+#:
+#: Ordem estável porque o selo do plano cobre a lista: duas provas
+#: semanticamente iguais não podem gerar protobufs diferentes.
+#:
+#: Todas conferidas em `AssetAutomationTypeEnum` do proto v25 instalado.
+AUTOMACOES_DEMAND_GEN_RECUSADAS: tuple[str, ...] = (
+    "GENERATE_DESIGN_VERSIONS_FOR_IMAGES",
+    "GENERATE_VIDEOS_FROM_OTHER_ASSETS",
+    "GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS",
+)
 TIPO_DE_ANUNCIO = "DEMAND_GEN_MULTI_ASSET_AD"
 LANCES_PERMITIDOS: tuple[str, ...] = ("MAXIMIZE_CONVERSIONS",)
 OPCOES: frozenset[str] = frozenset()
@@ -805,6 +817,29 @@ def _op_anuncio(
     ada.ad_group = comum.temp_adgroup(cid, 0)
     ada.status = c.enums.AdGroupAdStatusEnum.PAUSED
     ada.ad.final_urls.append(comum.url_destino(brief))
+
+    # ── as três automações de criativo, explicitamente DESLIGADAS ───────────
+    #
+    # ⚠️ Elas nascem LIGADAS para `DemandGenMultiAssetAd`, e vivem no
+    # AD GROUP AD — não na campanha, como as de PMax. Omiti-las deixa o Google
+    # gerar peça nova a partir dos assets aprovados: versões de design da
+    # imagem, vídeo montado a partir de outros assets e imagem animada.
+    #
+    # O que veicula deixaria de ser o que passou pelo portão de política e
+    # entrou no `supply_sha256` do plano. Fechar o nascimento em PAUSED e
+    # deixar estas três abertas seria selar o suprimento e autorizar o provedor
+    # a acrescentar peça depois do selo.
+    #
+    # Campo e enums conferidos no proto v25 instalado:
+    # `AdGroupAd.ad_group_ad_asset_automation_settings`, com
+    # `asset_automation_type` e `asset_automation_status`.
+    for automacao in AUTOMACOES_DEMAND_GEN_RECUSADAS:
+        ada.ad_group_ad_asset_automation_settings.append({
+            "asset_automation_type": getattr(
+                c.enums.AssetAutomationTypeEnum, automacao),
+            "asset_automation_status": c.enums.AssetAutomationStatusEnum.OPTED_OUT,
+        })
+
     info = ada.ad.demand_gen_multi_asset_ad
 
     for texto in headlines:

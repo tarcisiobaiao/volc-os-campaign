@@ -38,6 +38,7 @@ for _chave in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY")
 
 from app.routers import meta_local, trafego_meta_criacao, trafego_meta_validacao
 from app.seguranca.identidade import Identidade, exigir_admin
+from app.trafego.meta.dominio import referencia_opaca_conta
 from app.trafego.meta_execucao.contrato import ErroDeNascimentoMeta
 from app.trafego.meta_execucao.registro import PassoPreparadoMeta
 
@@ -474,7 +475,7 @@ def _plano_para_envio() -> dict[str, Any]:
     """O plano com as referências opacas que o `_GraphFalso` sabe resolver."""
     import hashlib
 
-    from app.trafego.meta.dominio import referencia_opaca_conta, referencia_opaca_objeto
+    from app.trafego.meta.dominio import referencia_opaca_objeto
 
     conta = referencia_opaca_conta(CONTA_EXTERNA)
     pagina = referencia_opaca_objeto(CONTA_EXTERNA, "page", PAGINA_EXTERNA)
@@ -519,16 +520,18 @@ def _abrir(monkeypatch, ledger: _LedgerEmMemoria, *, criacao=True, ledger_flag=T
     for nome, ligada in (
         ("META_CREATE_PAUSED_ENABLED", criacao),
         ("META_CREATE_LEDGER_WRITE_ENABLED", ledger_flag),
-        # A leitura externa de elegibilidade a Shop, declarada feita. É a
-        # terceira autorização do servidor, e o ambiente hermético a liga junto
-        # das outras para poder exercitar a saga inteira.
+        # A leitura externa de elegibilidade a Shop, declarada feita PARA ESTA
+        # CONTA. ⚠️ O valor é a referência opaca da conta, não `"1"`: conferir
+        # uma conta não pode autorizar as outras que a credencial alcança.
         ("META_SHOP_REDIRECT_CLEARED", destino_flag),
         ("META_VALIDATE_ONLY_ENABLED", True),
     ):
-        if ligada:
-            monkeypatch.setenv(nome, "1")
-        else:
+        if not ligada:
             monkeypatch.delenv(nome, raising=False)
+        elif nome == "META_SHOP_REDIRECT_CLEARED":
+            monkeypatch.setenv(nome, referencia_opaca_conta(CONTA_EXTERNA))
+        else:
+            monkeypatch.setenv(nome, "1")
     for modulo in (trafego_meta_criacao, trafego_meta_validacao):
         monkeypatch.setattr(modulo, "_credencial_salva", lambda *_: _CredencialFalsa())
         monkeypatch.setattr(modulo, "_registro_saga", lambda: ledger)
@@ -577,7 +580,7 @@ async def _aprovar(cliente: TestClient, ledger: _LedgerEmMemoria, plano: dict[st
     ("rota", "codigo", "quantidade"),
     [
         ("aprovar", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
-        ("criar-pausada", "META_CREATE_PAUSED_BLOCKED", 3),
+        ("criar-pausada", "META_CREATE_PAUSED_BLOCKED", 2),
         ("reconciliar", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
         ("recibo", "META_CREATE_LEDGER_WRITE_BLOCKED", 1),
     ],
@@ -608,12 +611,12 @@ def test_flags_fechadas_recusam_antes_de_keychain_banco_ou_rede(
 
 
 def test_uma_flag_aberta_nao_basta_para_criar(monkeypatch) -> None:
-    """A criação exige as TRÊS autorizações; nenhuma delas sozinha serve.
+    """A porta da rota exige as DUAS travas de processo; uma sozinha não serve.
 
-    ⚠️ A terceira — a prova de que o clique não pode ser desviado para uma Shop
-    — entrou junto com C01. Ela não é uma permissão de criar a mais: é a
-    precondição de destino que a v26 tornou obrigatória, e um servidor que
-    abrisse só as duas primeiras nasceria com o destino por provar.
+    ⚠️ A prova de destino NÃO é cobrada aqui, e a diferença é de escopo, não de
+    rigor: ela é POR CONTA, e esta porta roda antes de o pedido ser lido — ela
+    não sabe de qual conta se trata. Cobrá-la aqui recusaria também a conta que
+    foi conferida. Quem a cobra é o executor, com o `account_ref` resolvido.
     """
     _fechar_tudo(monkeypatch)
     monkeypatch.setenv("META_CREATE_PAUSED_ENABLED", "1")
@@ -621,7 +624,7 @@ def test_uma_flag_aberta_nao_basta_para_criar(monkeypatch) -> None:
         "approval_id": "approval-0001", "plano_sha256_esperado": "a" * 64})
     assert resposta.status_code == 409
     assert resposta.json()["detail"]["codigo"] == "META_CREATE_PAUSED_BLOCKED"
-    assert len(resposta.json()["detail"]["autorizacoes_ausentes"]) == 2
+    assert len(resposta.json()["detail"]["autorizacoes_ausentes"]) == 1
 
 
 def test_validate_only_ligado_nao_abre_a_criacao(monkeypatch) -> None:
@@ -652,7 +655,8 @@ def test_capacidades_declaram_a_criacao_liberada_quando_as_duas_flags_abrem(monk
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     monkeypatch.setenv("META_CREATE_PAUSED_ENABLED", "1")
     monkeypatch.setenv("META_CREATE_LEDGER_WRITE_ENABLED", "1")
-    monkeypatch.setenv("META_SHOP_REDIRECT_CLEARED", "1")
+    monkeypatch.setenv(
+        "META_SHOP_REDIRECT_CLEARED", referencia_opaca_conta(CONTA_EXTERNA))
     corpo = _cliente().get("/api/trafego/meta/local/criacao/capacidades").json()
     assert corpo["create_paused"] == "ENABLED"
     # Liberar a criação NUNCA libera a ativação.

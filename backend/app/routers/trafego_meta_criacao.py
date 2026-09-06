@@ -75,6 +75,8 @@ from app.seguranca.identidade import Identidade, exigir_admin
 from app.services.supabase_service import SupabaseService
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.capacidades import (
+    autorizacoes_de_processo_ausentes,
+    motivos_de_processo_ausentes,
     FLAG_CRIACAO,
     FLAG_LEDGER,
     autorizacoes_ausentes,
@@ -159,12 +161,18 @@ def _exigir_capacidade_de_criacao() -> None:
     que autorização falta; quem lê o código precisa saber qual chave abre. Os
     dois públicos são atendidos sem que o nome da variável vaze para o browser.
     """
-    if not autorizacoes_ausentes():
+    # ⚠️ Só as travas DE PROCESSO aqui. A prova de destino é POR CONTA, e esta
+    # porta roda antes de o pedido ser lido — ela não sabe de qual conta se
+    # trata. Cobrá-la aqui recusaria toda criação, inclusive a da conta que foi
+    # conferida. Quem a cobra é o executor, no único ponto por onde todo
+    # despacho passa, com o `account_ref` já resolvido
+    # (`META_SHOP_REDIRECT_UNPROVEN`).
+    if not autorizacoes_de_processo_ausentes():
         return
     raise HTTPException(status_code=409, detail={
         "codigo": "META_CREATE_PAUSED_BLOCKED",
         "mensagem": "a criação PAUSED permanece fechada neste servidor",
-        "autorizacoes_ausentes": motivos_ausentes(),
+        "autorizacoes_ausentes": motivos_de_processo_ausentes(),
     })
 
 

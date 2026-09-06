@@ -44,7 +44,7 @@ import re
 import sys
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from typing import Annotated, Any, Dict, List, Optional, Sequence
+from typing import Annotated, Any, Dict, List, Mapping, Optional, Sequence
 from urllib.parse import urlparse as _urlparse
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -58,6 +58,8 @@ from app.config import get_settings
 # tardio num caminho de escrita viraria 500 depois de o recibo já existir. Os
 # dois pacotes são domínio puro — `landing_policy` lê HTML que já está na mão e
 # `publisher_quality.fetch` só é CHAMADO dentro do portão, nunca no import.
+from app.criativo import politica as pol_criativa
+from app.criativo.politica import PoliticaCriativaRecusou
 from app.landing_policy import (
     JANELA_DE_FRESCOR_PADRAO_S,
     POLICY_CONTRACT_VERSION,
@@ -1990,8 +1992,64 @@ def _identidade_propria_do_pedido(body: Any, *, nicho: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(t for t in termos if t))
 
 
+def _copy_para_o_portao(copy: Any) -> "dict[str, str] | None":
+    """A copy INTEIRA, achatada em texto, para inspeção e para o hash.
+
+    ⚠️ A primeira versão desta função filtrava `isinstance(v, str)` — e todos
+    os campos que importam são LISTAS. `headlines`, `descriptions`,
+    `long_headlines`, `sitelinks` e `callouts` sumiam, e sobrava
+    `business_name`. Uma headline dizendo "Banco do Brasil Oficial" passava
+    CLEAR, e o `copy_sha256` assinava uma copy que não era a copy.
+
+    Achatar em vez de recusar a lista: o léxico procura marca em TEXTO, e a
+    fronteira de palavra já garante que juntar itens com quebra de linha não
+    cria casamento entre o fim de um e o começo do outro.
+    """
+    if copy is None:
+        return None
+
+    def _texto(valor: Any) -> str:
+        if isinstance(valor, str):
+            return valor
+        if isinstance(valor, (list, tuple)):
+            return "\n".join(_texto(item) for item in valor)
+        if isinstance(valor, Mapping):
+            return "\n".join(_texto(item) for _, item in sorted(valor.items()))
+        return "" if valor is None else str(valor)
+
+    partes: dict[str, str] = {}
+    for chave, valor in sorted(vars(copy).items()):
+        achatado = _texto(valor).strip()
+        if achatado:
+            partes[str(chave)] = achatado
+    return partes or None
+
+
+def _procedencia_da_politica(origem: Any) -> str:
+    """Traduz a `Origem` do pedido para a procedência FECHADA da política.
+
+    ⚠️ A primeira versão passava `"GENERATED"` para toda peça. O pedido carrega
+    `origem`, e ela foi descartada antes do portão — então uma peça de upload
+    humano ou de banco de imagens, sem licença nenhuma, recebia o tratamento
+    permissivo de asset gerado pela casa e saía com recibo liberatório.
+
+    Origem desconhecida NÃO cai em `GENERATED`: cai no caso que exige licença.
+    Um mapeamento que erra para o lado permissivo é pior que não existir.
+    """
+    nome = str(getattr(origem, "value", origem) or "").strip().lower()
+    return {
+        "gerado": "GENERATED",
+        "gerada": "GENERATED",
+        "humano": "HUMAN_UPLOAD",
+        "upload": "HUMAN_UPLOAD",
+        "estoque": "STOCK",
+        "observado": "OBSERVED_EXTERNAL",
+        "externo": "OBSERVED_EXTERNAL",
+    }.get(nome, "HUMAN_UPLOAD")
+
+
 def _recibos_de_politica_das_pecas(
-    pecas: Sequence[tuple[str, bytes, str, str]],
+    pecas: Sequence[tuple[str, bytes, str, str, Any]],
     *,
     body: Any,
     nicho: str,
@@ -2005,13 +2063,10 @@ def _recibos_de_politica_das_pecas(
     from app.criativo import politica as pol
 
     copy = _copy_do_corpo(getattr(body, "texto_do_anuncio", None))
-    como_dicionario = (
-        {k: v for k, v in vars(copy).items() if isinstance(v, str)}
-        if copy is not None else None
-    )
+    como_dicionario = _copy_para_o_portao(copy)
     propria = _identidade_propria_do_pedido(body, nicho=nicho)
     recibos = []
-    for asset_ref, dados, nome, mime in pecas:
+    for asset_ref, dados, nome, mime, origem in pecas:
         conteudo_sha = _hashlib.sha256(dados).hexdigest()
         recibo_da_peca = pol.avaliar(
             asset_ref=asset_ref,
@@ -2023,7 +2078,7 @@ def _recibos_de_politica_das_pecas(
             prompt=None,
             identity_ref=f"volc:conta:{escopo.so_digitos(body.customer_id)}",
             identidade_propria=propria,
-            procedencia="GENERATED",
+            procedencia=_procedencia_da_politica(origem),
             canal=canal,
         )
         pol.exigir_liberacao(
@@ -2035,11 +2090,29 @@ def _recibos_de_politica_das_pecas(
 
 
 def supply_sha256_dos_recibos(recibos: Sequence[Any]) -> str | None:
-    """A identidade do SUPRIMENTO aprovado, para entrar no selo do plano.
+    """A identidade do SUPRIMENTO aprovado, para entrar no selo e na chave.
 
-    Cobre, por peça e em ordem estável: a referência, os bytes inspecionados e
-    o recibo que os liberou. Trocar qualquer um dos três muda o hash — e um
-    plano cujo suprimento mudou não é o plano que foi aprovado.
+    Cobre, por peça e em ordem estável: a referência, os bytes inspecionados, a
+    copy assinada, a DECISÃO e as versões que a produziram.
+
+    ⚠️ NÃO cobre `policy_receipt_ref`, `assinatura_hmac` nem `avaliado_em`, e a
+    ausência dos três é o conserto de um defeito que a revisão adversarial
+    reproduziu. Os três dependem do INSTANTE da avaliação:
+
+    1. `/provar` avalia a peça e emite o recibo R1;
+    2. `/subir` remonta o plano e avalia de novo, emitindo R2;
+    3. R1 e R2 descrevem exatamente a mesma peça, a mesma copy e a mesma
+       decisão — e tinham refs, assinaturas e digests DIFERENTES.
+
+    Com o instante dentro do hash, o suprimento mudava entre a prova e a
+    escrita, a chave de idempotência do ledger mudava junto, e uma segunda
+    tentativa do MESMO lançamento nasceria como intenção nova. Um digest que
+    muda sozinho não identifica coisa nenhuma.
+
+    A `decisao` entra porque era o que faltava do outro lado: dois recibos com
+    a mesma peça e o mesmo instante — um `CLEAR`, outro `BLOCKED_BY_POLICY` —
+    produziam o MESMO suprimento. O hash precisa dizer que a peça foi liberada,
+    não apenas que ela existe.
     """
     if not recibos:
         return None
@@ -2047,12 +2120,15 @@ def supply_sha256_dos_recibos(recibos: Sequence[Any]) -> str | None:
         {
             "asset_ref": r.asset_ref,
             "content_sha256": r.content_sha256_inspecionado,
-            "policy_receipt_ref": r.policy_receipt_ref,
+            "copy_sha256": r.copy_sha256,
+            "decisao": r.decisao,
+            "lexico_versao": r.lexico_versao,
+            "fn_decisao_versao": r.fn_decisao_versao,
         }
         for r in recibos
     ]
     itens.sort(key=lambda item: (item["asset_ref"], item["content_sha256"]))
-    material = {"versao": "volc.creative_supply.v1", "itens": itens}
+    material = {"versao": "volc.creative_supply.v2", "itens": itens}
     return _hashlib.sha256(_json.dumps(
         material, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     ).encode("utf-8")).hexdigest()
@@ -2135,7 +2211,7 @@ def _imagens_de_display(body: ProvarEntrada, *, nicho: str):
         assets.append(asset)
         conteudo_por_identidade[asset.identidade] = dados
         pecas_para_o_portao.append(
-            (asset.identidade, dados, item.nome, medida.mime))
+            (asset.identidade, dados, item.nome, medida.mime, origem_asset))
 
     # ⚠️ O PORTÃO DE POLÍTICA, ANTES DA PONTE E ANTES DE QUALQUER REDE.
     #
@@ -2302,14 +2378,19 @@ def plano_do_ledger(
     # `ProvarEntrada`, então um pedido Display com meta de CPA levava um float
     # até `lote._sem_float` — a guarda recusava (com razão) e a recusa chegava
     # ao operador como "plano sem representação canônica", falando de um
-    # problema que não era o dele. Search raramente o preenche; Display o usa
-    # dentro do MaxConv, e foi por Display que o defeito apareceria.
+    # problema que não era o dele.
     #
-    # `None` continua saindo do plano em vez de virar zero: ausência de meta é
-    # ausência, e `target_cpa_micros = 0` diria que alguém escolheu zero.
-    if plano.get("tcpa") is None:
-        plano.pop("tcpa", None)
-    else:
+    # ⚠️ E `tcpa: null` FICA NO PLANO quando não há meta. A primeira versão o
+    # removia, e a revisão adversarial mediu o preço: a chave de idempotência
+    # de TODO plano Search legado sem tCPA mudava
+    # (`volc-gads-0000-fb39ce748225bc4c` → `…-abcbd90c587d0b33`). Um lançamento
+    # registrado antes do deploy deixaria de ser reconhecido depois, e o ledger
+    # abriria intenção nova para o mesmo plano — que é exatamente a duplicidade
+    # que a chave existe para impedir.
+    #
+    # Ausência continua sendo ausência: `null` no plano, nada em micros, e
+    # nenhum `tcpa_micros = 0` dizendo que alguém escolheu zero.
+    if plano.get("tcpa") is not None:
         plano["tcpa_micros"] = _micros(plano.pop("tcpa"), "tcpa")
     # ⚠️ O SUPRIMENTO ENTRA NA CHAVE DE IDEMPOTÊNCIA, e é isto que amarra o
     # manifesto ao plano. Os BYTES já viajam dentro das operações seladas por
@@ -3617,6 +3698,29 @@ async def provar(
         ) from exc
     except pp.PonteIncompleta as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except PoliticaCriativaRecusou as exc:
+        # ⚠️ ANTES do `except ValueError`, e a ordem carrega a distinção que a
+        # revisão adversarial cobrou: `PoliticaCriativaRecusou` É um
+        # `ValueError`, então sem esta cláusula toda recusa de política virava
+        # 422 com o texto solto — e a tela marcava `recusada`.
+        #
+        # Só que 422 quer dizer "a peça foi julgada e reprovou". Quando o
+        # motivo é `GATE_UNAVAILABLE`, ninguém julgou nada: falta detector no
+        # servidor. Colapsar os dois faz o operador tratar falha de
+        # infraestrutura como defeito criativo — ele reescreve a copy e troca a
+        # imagem para consertar algo que não está na peça.
+        indisponivel = exc.codigo == f"POLICY_{pol_criativa.GATE_UNAVAILABLE}"
+        raise HTTPException(
+            status_code=503 if indisponivel else 422,
+            detail={
+                "codigo": exc.codigo,
+                "mensagem": str(exc),
+                "portao": "politica_criativa",
+                "nada_foi_criado": True,
+                "chamada_google": "nenhuma — a recusa acontece antes da rede",
+                "e_indisponibilidade": indisponivel,
+            },
+        ) from exc
     except HTTPException:
         # ⚠️ TEM DE VIR ANTES do `except Exception`. `_criterios_do_corpo` roda
         # dentro da thread e levanta `HTTPException(422)` para data ISO

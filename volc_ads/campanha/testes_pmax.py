@@ -953,8 +953,8 @@ def test_o_plano_declara_as_ausencias_em_vez_de_escondê_las() -> None:
 # coisas, e as quatro nascem LIGADAS quando ninguém fala.
 
 
-def test_as_quatro_automacoes_de_pmax_viajam_desligadas():
-    """CONTRAPROVA T09: as 4, todas OPTED_OUT, na ordem estável do payload."""
+def test_as_automacoes_de_pmax_viajam_todas_desligadas():
+    """CONTRAPROVA T09 + achado B5: as 5, todas OPTED_OUT, em ordem estável."""
     ops, r = pmax.construir(CID, _brief(), login_customer_id=MCC)
     camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
 
@@ -967,6 +967,10 @@ def test_as_quatro_automacoes_de_pmax_viajam_desligadas():
         ("TEXT_ASSET_AUTOMATION", "OPTED_OUT"),
         ("GENERATE_IMAGE_ENHANCEMENT", "OPTED_OUT"),
         ("GENERATE_ENHANCED_YOUTUBE_VIDEOS", "OPTED_OUT"),
+        # A quinta veio da revisão de contrato de API: ela raspa imagens da
+        # landing page para o pool visual, e uma peça que entra por aí não
+        # passou pelo portão de política nem está no `supply_sha256` do plano.
+        ("GENERATE_IMAGE_EXTRACTION", "OPTED_OUT"),
     ]
     # Nenhuma delas pode viajar LIGADA, nem por acidente de ordem.
     assert all(estado == "OPTED_OUT" for _, estado in lidas)

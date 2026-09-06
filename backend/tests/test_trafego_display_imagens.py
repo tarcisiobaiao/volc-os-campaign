@@ -461,3 +461,47 @@ def test_o_nicho_e_o_host_do_destino_nunca_sao_terceiros():
     ]))
     propria = trafego._identidade_propria_do_pedido(body, nicho="Portal Mundo Mais")
     assert "Portal Mundo Mais" in propria
+
+
+def test_marca_de_terceiro_numa_HEADLINE_bloqueia(monkeypatch):
+    """CONTRAPROVA da revisão adversarial: a copy é LISTA, e as listas sumiam.
+
+    A primeira versão do portão filtrava `isinstance(v, str)` sobre os campos
+    da copy — e `headlines`, `descriptions`, `long_headlines`, `sitelinks` e
+    `callouts` são todos LISTAS. Sobrava `business_name`. Uma headline dizendo
+    "Banco do Brasil Oficial" passava CLEAR, com peça limpa e nome de arquivo
+    limpo, e o `copy_sha256` assinava uma copy que não era a copy.
+    """
+    from app.criativo import politica as pol
+
+    _inspecao_de_politica.limpar_detectores_de_pixel()
+    _inspecao_de_politica.registrar_detector_de_pixel(_OcrHermetico())
+
+    body = trafego.ProvarEntrada.model_validate(_corpo(
+        assets_display=[
+            _asset("imagem_marketing", "banner", 600, 314),
+            _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+        ],
+        copy={
+            "headlines": ["Banco do Brasil Oficial"],
+            "descriptions": ["Confira as regras atualizadas"],
+            "business_name": "Portal",
+        },
+    ))
+    with pytest.raises(pol.PoliticaCriativaRecusou) as erro:
+        trafego._imagens_de_display(body, nicho="fixture")
+    assert erro.value.codigo == f"POLICY_{pol.THIRD_PARTY_IDENTITY_UNVERIFIED}"
+    assert "BANCOS:banco do brasil" in str(erro.value)
+
+
+def test_a_copy_inteira_entra_no_portao_e_no_hash():
+    """Toda string da copy, incluindo as que vivem dentro de listas."""
+    from app.routers.trafego import _copy_do_corpo, _copy_para_o_portao
+
+    copy = _copy_do_corpo(trafego.CopyEntrada(
+        headlines=["Uma", "Duas"], descriptions=["Tres"], business_name="VOLC"))
+    partes = _copy_para_o_portao(copy)
+    assert partes is not None
+    junto = " ".join(partes.values())
+    for pedaco in ("Uma", "Duas", "Tres", "VOLC"):
+        assert pedaco in junto

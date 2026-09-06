@@ -588,7 +588,12 @@ def test_tcpa_atravessa_o_plano_do_ledger_em_micros_inteiros():
 
 
 def test_ausencia_de_tcpa_continua_ausencia_e_nao_vira_zero():
-    """⚠️ `tcpa_micros = 0` diria que alguém escolheu zero. Ausência é ausência."""
+    """⚠️ `tcpa_micros = 0` diria que alguém escolheu zero. Ausência é ausência.
+
+    E `tcpa: null` PERMANECE no plano: removê-lo mudava a chave de idempotência
+    de todo plano Search legado sem tCPA — ver
+    `test_search_sem_peca_nao_ganha_suprimento_nem_perde_a_chave_antiga`.
+    """
     from app.routers import trafego as rt
 
     corpo = rt.ProvarEntrada(
@@ -598,5 +603,98 @@ def test_ausencia_de_tcpa_continua_ausencia_e_nao_vira_zero():
     )
     plano = rt.plano_do_ledger(corpo, cid="5478096539", mid="6016739364")
 
-    assert "tcpa" not in plano
+    assert plano["tcpa"] is None
     assert "tcpa_micros" not in plano
+
+
+# ── supply_sha256: estável entre prova e escrita, e sensível à decisão ──────
+
+
+def _recibo(decisao: str, *, quando=None, copy_sha="c" * 64):
+    from datetime import datetime, timezone
+
+    from app.criativo.politica import recibo as rec
+
+    return rec.emitir(
+        asset_ref="csa_" + "a" * 24, content_sha256="b" * 64,
+        copy_sha256=copy_sha, identity_ref="volc:conta:1", lexico_versao="v1",
+        decisao=decisao, detectores=(), achados=(), motivos=(),
+        avaliado_em=quando or datetime.now(timezone.utc),
+    )
+
+
+def test_supply_sha256_nao_muda_entre_a_prova_e_a_escrita():
+    """CONTRAPROVA da revisão adversarial: o digest não pode depender do instante.
+
+    `/provar` avalia a peça e emite R1; `/subir` remonta o plano e avalia de
+    novo, emitindo R2. R1 e R2 descrevem a MESMA peça, a mesma copy e a mesma
+    decisão. Na primeira versão o digest incluía `policy_receipt_ref`, que
+    deriva do carimbo de avaliação — então o suprimento mudava sozinho entre a
+    prova e a escrita, a chave de idempotência do ledger mudava junto, e a
+    segunda tentativa do MESMO lançamento nasceria como intenção nova.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.routers.trafego import supply_sha256_dos_recibos
+
+    agora = datetime.now(timezone.utc)
+    r1 = _recibo("CLEAR", quando=agora)
+    r2 = _recibo("CLEAR", quando=agora + timedelta(minutes=7))
+
+    assert r1.policy_receipt_ref != r2.policy_receipt_ref, (
+        "o pré-requisito do teste: os recibos são de instantes diferentes"
+    )
+    assert supply_sha256_dos_recibos([r1]) == supply_sha256_dos_recibos([r2])
+
+
+def test_supply_sha256_muda_quando_a_decisao_muda():
+    """E a outra metade: dois recibos da mesma peça com decisões diferentes
+    NÃO podem produzir o mesmo suprimento. O hash precisa dizer que a peça foi
+    liberada, não apenas que ela existe."""
+    from datetime import datetime, timezone
+
+    from app.routers.trafego import supply_sha256_dos_recibos
+
+    agora = datetime.now(timezone.utc)
+    liberado = _recibo("CLEAR", quando=agora)
+    bloqueado = _recibo("BLOCKED_BY_POLICY", quando=agora)
+
+    assert liberado.policy_receipt_ref == bloqueado.policy_receipt_ref, (
+        "o pré-requisito do teste: a referência sozinha não distingue os dois"
+    )
+    assert supply_sha256_dos_recibos([liberado]) != supply_sha256_dos_recibos(
+        [bloqueado])
+
+
+def test_supply_sha256_muda_quando_a_copy_muda():
+    from app.routers.trafego import supply_sha256_dos_recibos
+
+    assert supply_sha256_dos_recibos([_recibo("CLEAR", copy_sha="c" * 64)]) != (
+        supply_sha256_dos_recibos([_recibo("CLEAR", copy_sha="d" * 64)]))
+
+
+def test_search_sem_peca_nao_ganha_suprimento_nem_perde_a_chave_antiga():
+    """REGRESSÃO: Search não carrega asset, e a chave dele não pode mudar.
+
+    ⚠️ `tcpa: null` FICA no plano. A revisão adversarial mediu o preço de
+    removê-lo: a chave de idempotência de todo plano Search legado sem tCPA
+    mudava, e um lançamento registrado antes do deploy deixaria de ser
+    reconhecido depois — o ledger abriria intenção nova para o mesmo plano.
+    """
+    from app.routers import trafego as rt
+    from app.trafego import lote as dom
+
+    corpo = rt.ProvarEntrada(
+        opportunity_id=1, customer_id="5478096539",
+        login_customer_id="6016739364", canal="SEARCH",
+        budget_diario=10.0, cpc_inicial=0.20,
+    )
+    plano = rt.plano_do_ledger(corpo, cid="5478096539", mid="6016739364")
+
+    assert "tcpa" in plano and plano["tcpa"] is None
+    assert "tcpa_micros" not in plano
+    assert "supply_sha256" not in plano
+    dom.chave_de_idempotencia(
+        intencao_id="i" * 32, plataforma="GOOGLE_ADS",
+        conta_externa="5478096539", canal="SEARCH", ordem=0, plano=plano,
+    )

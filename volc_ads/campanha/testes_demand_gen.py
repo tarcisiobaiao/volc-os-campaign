@@ -971,3 +971,42 @@ def test_asset_sem_recibo_chega_ao_plano_com_codigo_e_nao_como_plano_vazio() -> 
     assert p.prontidao.monta is False
     assert plano.ASSET_SEM_RECIBO in {b.codigo for b in p.bloqueios}
     assert p.unidades == ()
+
+
+# ── as três automações de criativo, desligadas no AD GROUP AD ───────────────
+
+
+def test_as_tres_automacoes_de_demand_gen_viajam_desligadas():
+    """CONTRAPROVA: elas nascem LIGADAS, e vivem no ad group ad — não na campanha.
+
+    Ligadas, geram peça nova a partir dos assets aprovados (versão de design da
+    imagem, vídeo montado de outros assets, imagem animada). O que veicularia
+    deixaria de ser o que passou pelo portão de política e entrou no
+    `supply_sha256` do plano.
+    """
+    ops, r = demand_gen.construir(CID, _brief(), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+
+    ada = _por_tipo(ops, "ad_group_ad_operation")[0].ad_group_ad_operation.create
+    lidas = [
+        (s.asset_automation_type.name, s.asset_automation_status.name)
+        for s in ada.ad_group_ad_asset_automation_settings
+    ]
+    assert lidas == [
+        ("GENERATE_DESIGN_VERSIONS_FOR_IMAGES", "OPTED_OUT"),
+        ("GENERATE_VIDEOS_FROM_OTHER_ASSETS", "OPTED_OUT"),
+        ("GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS", "OPTED_OUT"),
+    ]
+
+
+def test_nenhum_objeto_demand_gen_nasce_ligado():
+    """Varredura, não lista: um objeto novo amanhã não pode escapar."""
+    ops, r = demand_gen.construir(CID, _brief(), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    for o in ops:
+        qual = o._pb.WhichOneof("operation")
+        criado = getattr(getattr(o, qual), "create", None)
+        estado = getattr(criado, "status", None)
+        nome = getattr(estado, "name", None)
+        if nome is not None:
+            assert nome != "ENABLED", f"{qual} nasceu ENABLED"

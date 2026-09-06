@@ -205,6 +205,17 @@ AUTOMACOES_PMAX_RECUSADAS: tuple[str, ...] = (
     "TEXT_ASSET_AUTOMATION",
     "GENERATE_IMAGE_ENHANCEMENT",
     "GENERATE_ENHANCED_YOUTUBE_VIDEOS",
+    # ⚠️ A QUINTA, e ela NÃO estava no work breakdown — veio da revisão de
+    # contrato de API (achado B5) e sobreviveu à conferência local no proto v25
+    # instalado, onde `GENERATE_IMAGE_EXTRACTION` existe.
+    #
+    # Ela raspa imagens DA LANDING PAGE para o pool visual da campanha. As
+    # outras quatro protegem o destino e a copy; esta protege a PEÇA — sem ela,
+    # o anúncio pode veicular uma imagem que nunca passou pelo portão de
+    # política, nunca teve `content_sha256` e não está no `supply_sha256` do
+    # plano aprovado. Fechar quatro portas e deixar essa aberta seria selar o
+    # suprimento e deixar o provedor acrescentar peça depois do selo.
+    "GENERATE_IMAGE_EXTRACTION",
 )
 
 

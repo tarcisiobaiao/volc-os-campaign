@@ -207,9 +207,11 @@ async def _compilar(
             # ⚠️ A prova vem da AUTORIZAÇÃO DO SERVIDOR, nunca do corpo do
             # pedido. Aceitá-la do navegador deixaria o mesmo interessado em
             # subir a campanha assinar a prova de que ela pode subir.
+            # ⚠️ POR CONTA. A prova é sobre a conta que este pedido escolheu, e
+            # a referência opaca é o que a identifica sem expor o id do provedor.
             prova_de_destino=(
                 DESTINO_SHOP_CONTA_NAO_ELEGIVEL
-                if capacidades_meta.destino_website_liberado()
+                if capacidades_meta.destino_website_liberado(payload.account_ref)
                 else DESTINO_SHOP_NAO_PROVADO
             ),
         )
@@ -262,7 +264,22 @@ async def capacidades(
         # A rota existe (`trafego_meta_criacao`), então "NOT_MOUNTED" deixou de
         # ser verdade. O que decide agora é a autorização do servidor, e as duas
         # flags são reportadas juntas para a tela poder dizer o que falta.
-        "create_paused": "ENABLED" if criacao_liberada() else "BLOCKED_BY_SERVER_FLAG",
+        # ⚠️ As travas DE PROCESSO. A prova de destino não entra aqui porque ela
+        # é POR CONTA, e esta rota não recebe conta nenhuma: reportá-la como
+        # bloqueio global faria a tela dizer "fechado" mesmo para a conta que
+        # foi conferida, e reportá-la como aberta faria o oposto. Ela viaja
+        # separada, em `destino_website`, e a tela a resolve quando o operador
+        # escolhe a conta.
+        "create_paused": (
+            "ENABLED" if not capacidades_meta.autorizacoes_de_processo_ausentes()
+            else "BLOCKED_BY_SERVER_FLAG"
+        ),
+        "destino_website": {
+            "escopo": "POR_CONTA",
+            "contas_conferidas": len(capacidades_meta.contas_com_destino_liberado()),
+            "motivo": capacidades_meta.MOTIVO_DA_FLAG[
+                capacidades_meta.FLAG_DESTINO_SHOP],
+        },
         "activation": "NOT_IMPLEMENTED",
         # Causa verificável de cada bloqueio, em linguagem de operador. A tela
         # mostra isto no lugar do nome de qualquer variável de ambiente.
@@ -292,7 +309,13 @@ async def capacidades(
                 "A validação remota está fechada neste servidor. Um administrador precisa "
                 "liberá-la antes de qualquer chamada à Meta."
             ),
-            "create_paused": motivo_da_criacao_fechada(),
+            "create_paused": " ".join(
+                capacidades_meta.motivos_de_processo_ausentes()
+            ) or (
+                "A criação PAUSED está liberada neste servidor. Ela ainda exige "
+                "aprovação humana vinculada ao plano validado, a conferência de "
+                "destino da conta escolhida, e nasce sempre em estado pausado."
+            ),
         },
     }
 
