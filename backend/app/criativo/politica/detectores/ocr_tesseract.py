@@ -27,7 +27,7 @@ from __future__ import annotations
 import io
 import logging
 
-from ..inspecao import LeituraDePixel
+from ..inspecao import CAPACIDADE_TEXTO_NA_IMAGEM, LeituraDePixel
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,13 @@ class DetectorOcrTesseract:
     """
 
     nome = "ocr.tesseract"
+
+    #: ⚠️ SÓ texto. Declarar `marca_visual` aqui seria mentir: `image_to_string`
+    #: devolve string vazia para um logotipo desenhado sem letra, e o portão
+    #: leria esse vazio como "olhei e não tem nada". Enquanto esta tupla não
+    #: tiver `marca_visual`, o portão continua em GATE_UNAVAILABLE mesmo com o
+    #: OCR instalado e funcionando — que é a resposta certa.
+    capacidades = (CAPACIDADE_TEXTO_NA_IMAGEM,)
 
     def __init__(self, versao: str) -> None:
         # A versão vem de quem construiu, e vem do BINÁRIO — não de um literal.

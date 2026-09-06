@@ -73,6 +73,8 @@ class _OcrHermetico:
 
     nome = "ocr_hermetico"
     versao = "teste-1"
+    # Representa inspeção COMPLETA: texto e marca visual.
+    capacidades = ("texto_na_imagem", "marca_visual")
 
     def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
         from app.criativo.politica import inspecao as insp

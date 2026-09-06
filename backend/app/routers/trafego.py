@@ -2932,6 +2932,26 @@ def _brief_pmax_offline(
         pecas_para_o_portao.append(
             (asset.identidade, dados, item.nome, medida.mime, origem_asset))
 
+    # ⚠️ VÍDEO DO YOUTUBE NÃO ATRAVESSA O PORTÃO, ENTÃO NÃO ATRAVESSA.
+    #
+    # `videos_youtube` são resource names: o servidor nunca vê os bytes, então
+    # não há `content_sha256`, não há inspeção e não há recibo. Anexá-los ao
+    # asset group depois do portão deixava passar, por outra porta, exatamente
+    # a peça de terceiro que o portão existe para barrar — e a revisão
+    # adversarial reproduziu isso.
+    #
+    # Recusar é a única resposta honesta enquanto não houver recibo por vídeo:
+    # o portão não sabe dizer nada sobre bytes que não leu.
+    videos = tuple(getattr(body.pmax, "videos_youtube", ()) or ())
+    if videos:
+        raise ValueError(
+            "Performance Max recebeu vídeo do YouTube por referência, e o "
+            "portão de política não consegue julgar bytes que não leu: um "
+            "resource name não tem hash, inspeção nem recibo. Enquanto não "
+            "existir recibo por vídeo, a receita PMax aceita somente as peças "
+            "cujos bytes o servidor releu."
+        )
+
     nicho = str(origem.nicho or "sem nicho declarado")
     # O MESMO portão de Display e Demand Gen, antes da ponte e da rede.
     recibos_de_politica = _recibos_de_politica_das_pecas(
@@ -4401,6 +4421,12 @@ async def subir(
             canario.campanhas_com_destino,
             customer_id=cid,
             login_customer_id=mid,
+            # ⚠️ O CANAL VIAJA. Sem ele a função caía no default SEARCH e, para
+            # PMax, consultaria `ad_group_ad` — perdendo exatamente a
+            # duplicidade que só existe em `asset_group`. E mesmo em Display,
+            # que por coincidência usa a mesma tabela, a evidência gravada
+            # dizia "SEARCH".
+            canal=preparo.canal,
             url_final=plano.brief.url_final,
         )
     except Exception as exc:  # noqa: BLE001

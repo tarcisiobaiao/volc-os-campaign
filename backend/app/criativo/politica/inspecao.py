@@ -38,11 +38,37 @@ from .lexico import Achado
 from .recibo import Detector
 
 
+#: As duas capacidades que a inspeção de pixel precisa ter, e que NÃO são a
+#: mesma coisa.
+#:
+#: ⚠️ Esta separação é o conserto de um fail-open que a revisão adversarial
+#: reproduziu. Antes, QUALQUER detector registrado satisfazia "a imagem foi
+#: inspecionada". Um OCR sozinho, diante de uma peça que traz só um logotipo
+#: DESENHADO, devolve texto vazio — e o vazio virava `PASS`, que virava
+#: `CLEAR`. Quer dizer: a peça exata do incidente (envelope com marca de banco,
+#: parte texto e parte desenho) passaria, com o portão "funcionando".
+#:
+#: Ler texto e reconhecer marca são perguntas diferentes, e responder uma não
+#: responde a outra.
+CAPACIDADE_TEXTO_NA_IMAGEM = "texto_na_imagem"
+CAPACIDADE_MARCA_VISUAL = "marca_visual"
+
+CAPACIDADES_EXIGIDAS: tuple[str, ...] = (
+    CAPACIDADE_TEXTO_NA_IMAGEM,
+    CAPACIDADE_MARCA_VISUAL,
+)
+
+
 class DetectorDePixel(Protocol):
-    """Um motor que olha os BYTES e devolve texto e rótulos encontrados."""
+    """Um motor que olha os BYTES e devolve texto e rótulos encontrados.
+
+    `capacidades` declara O QUE ele sabe responder. Um detector que não a
+    declara é tratado como cobrindo apenas texto — o lado conservador.
+    """
 
     nome: str
     versao: str
+    capacidades: tuple[str, ...]
 
     def inspecionar(self, bytes_da_peca: bytes, *, mime: str) -> "LeituraDePixel":
         ...
@@ -150,6 +176,17 @@ def inspecionar(
     portao_indisponivel = False
     if exigir_pixel:
         registrados = detectores_de_pixel_registrados()
+        # ⚠️ COBERTURA, e não presença. Ver `CAPACIDADES_EXIGIDAS`: um OCR
+        # sozinho não fecha a inspeção de pixel, porque logotipo desenhado sem
+        # texto sai dele como leitura vazia — e vazio viraria PASS.
+        cobertas: set[str] = set()
+        for detector in registrados:
+            cobertas.update(
+                getattr(detector, "capacidades", (CAPACIDADE_TEXTO_NA_IMAGEM,)))
+        faltando = [c for c in CAPACIDADES_EXIGIDAS if c not in cobertas]
+        if registrados and faltando and bytes_da_peca is not None:
+            portao_indisponivel = True
+            motivos.extend(f"PIXEL_CAPABILITY_MISSING:{c}" for c in faltando)
         if not registrados or bytes_da_peca is None:
             # ⚠️ ERROR, não PASS. Ver o cabeçalho deste módulo.
             detectores.append(Detector(

@@ -717,7 +717,12 @@ def test_provar_e_subir_reconstroem_o_mesmo_plano_antes_da_rede(
 
     def campanhas_com_destino(
         *, customer_id: str, login_customer_id: str, url_final: str,
+        canal: str = canario.CANAL,
     ):
+        # ⚠️ O canal viaja desde que a autoridade de URL virou por canal: sem
+        # ele, PMax consultaria `ad_group_ad` e perderia a duplicidade que só
+        # existe em `asset_group`.
+        assert canal == "SEARCH"
         assert customer_id == canario.CONTA
         assert login_customer_id == canario.MCC
         assert url_final == "https://portalmundomais.com.br/saque-anual/"

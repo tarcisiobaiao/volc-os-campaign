@@ -38,6 +38,8 @@ class _OcrHermetico:
 
     nome = "ocr_hermetico"
     versao = "teste-1"
+    # Representa inspeção COMPLETA: texto e marca visual.
+    capacidades = ("texto_na_imagem", "marca_visual")
 
     def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
         return _inspecao_de_politica.LeituraDePixel()
@@ -403,6 +405,8 @@ class _OcrComMarcaDeBanco:
 
     nome = "ocr_hermetico"
     versao = "teste-1"
+    # Representa inspeção COMPLETA: texto e marca visual.
+    capacidades = ("texto_na_imagem", "marca_visual")
 
     def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
         return _inspecao_de_politica.LeituraDePixel(

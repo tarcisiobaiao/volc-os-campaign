@@ -41,6 +41,8 @@ class _OcrFalso:
 
     nome = "ocr_hermetico"
     versao = "teste-1"
+    # Representa inspeção COMPLETA: texto e marca visual.
+    capacidades = ("texto_na_imagem", "marca_visual")
 
     def __init__(self, texto: str = "", rotulos: tuple = ()) -> None:
         self._texto = texto
@@ -268,6 +270,7 @@ def test_sem_detector_de_pixel_o_portao_fica_indisponivel_e_bloqueia():
 def test_detector_que_explode_tambem_deixa_o_portao_indisponivel():
     class _Explode:
         nome, versao = "ocr_quebrado", "teste-1"
+        capacidades = ("texto_na_imagem", "marca_visual")
 
         def inspecionar(self, *_a, **_k):
             raise RuntimeError("motor fora do ar")
@@ -437,3 +440,49 @@ def test_falha_do_motor_vira_ERROR_e_nunca_leitura_vazia():
     assert "PIXEL_DETECTOR_FAILED" in recibo_da_peca.motivos
     quebrado = [x for x in recibo_da_peca.detectores if x.nome == "ocr.tesseract"]
     assert quebrado and quebrado[0].resultado == "ERROR"
+
+
+def test_ocr_sozinho_nao_fecha_a_inspecao_de_pixel():
+    """CONTRAPROVA (revisão adversarial, fail-open alto): a peça do incidente.
+
+    Um logotipo DESENHADO, sem letra nenhuma, sai do OCR como texto vazio.
+    Antes desta correção o vazio virava PASS, que virava CLEAR — quer dizer, o
+    envelope com marca de banco passaria com o portão "funcionando".
+
+    Ler texto e reconhecer marca são perguntas diferentes. Um detector que só
+    responde a primeira não fecha a segunda.
+    """
+    class _SoOcr:
+        nome, versao = "ocr.tesseract", "5.0.0-fixture"
+        capacidades = ("texto_na_imagem",)
+
+        def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
+            # Logotipo desenhado: o OCR não acha letra nenhuma.
+            return insp.LeituraDePixel(texto="", rotulos=())
+
+    insp.registrar_detector_de_pixel(_SoOcr())
+    recibo_da_peca = _avaliar()
+
+    assert recibo_da_peca.decisao == P.GATE_UNAVAILABLE
+    assert recibo_da_peca.libera_midia_paga() is False
+    assert "PIXEL_CAPABILITY_MISSING:marca_visual" in recibo_da_peca.motivos
+
+
+def test_as_duas_capacidades_juntas_fecham_a_inspecao():
+    """E o outro lado: com texto E marca visual cobertos, a peça limpa passa."""
+    class _Completo:
+        nome, versao = "inspecao.completa", "fixture-1"
+        capacidades = ("texto_na_imagem", "marca_visual")
+
+        def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
+            return insp.LeituraDePixel()
+
+    insp.registrar_detector_de_pixel(_Completo())
+    assert _avaliar().decisao == P.CLEAR
+
+
+def test_o_adaptador_de_ocr_declara_apenas_o_que_sabe_responder():
+    """Declarar `marca_visual` no OCR seria mentir, e a mentira liberaria a peça."""
+    from app.criativo.politica.detectores import DetectorOcrTesseract
+
+    assert DetectorOcrTesseract.capacidades == ("texto_na_imagem",)
