@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-05T21:07:43-03:00",
+  "generated_at": "2026-09-06T16:54:17-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 658,
-    "markdown": 484,
+    "files": 659,
+    "markdown": 485,
     "sql": 174,
-    "tracked": 658,
+    "tracked": 659,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 335,
+      "documentation": 336,
       "generated": 2,
       "module-guide": 36,
       "product-document": 23,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 20865,
       "lines": 285,
-      "sha256": "9b3406fe33f2dc93cb8a70bb0545db90b4cbb3979c8ba594e1da20574fdb8eb1",
+      "sha256": "ae537e1b38435c37112754f750ff3dd0c101f376ed342d072c29b048aa0aeed7",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4138,6 +4138,18 @@
       "bytes": 10757,
       "lines": 237,
       "sha256": "daf8876cde74804d5948487512f666f3f14a1c2c79a05221eff71c94345bc795",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/volc-os-multichannel-completion-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 9368,
+      "lines": 150,
+      "sha256": "5be39455664c922bee7be191e271cfcfede02b7d20cf4273859ff029607ae7fc",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
