@@ -650,14 +650,27 @@ def avaliar(
             "exigido abaixo.",
             fonte=lida.procedencia))
     elif idade > IDADE_MAXIMA_DA_LEITURA:
+        # ⚠️ NÃO RETORNA AQUI, e o `return` que existia era um FAIL-OPEN.
+        #
+        # Achado da revisão adversarial de 06/09/2026, reproduzido: `LEITURA_VELHA`
+        # saía antecipadamente E estava em `pmax.AVISOS_DE_MENSURACAO`. Numa conta
+        # SEM NENHUMA ação de conversão, o recibo fresco produzia
+        # `SEM_ACAO_DE_CONVERSAO` → `r.erro` → campanha bloqueada; o MESMO recibo
+        # 25h mais velho produzia só `LEITURA_VELHA` → `r.aviso` → `r.ok=True` e o
+        # payload seguia para o `validate_only`. Ou seja: quanto mais VELHA a
+        # leitura, mais permissivo o canal — o oposto exato do que a idade
+        # significa.
+        #
+        # A idade continua sendo um bloqueio nomeado; o que ela deixa de fazer é
+        # esconder os fatos da conta que vêm no passo 7. Os dois viajam juntos, e
+        # quem classifica erro × aviso decide sobre a lista inteira.
         bloqueios.append(Bloqueio(
             LEITURA_VELHA,
             f"a mensuração foi lida há {int(idade.total_seconds() // 3600)}h, "
             f"além do limite de {int(IDADE_MAXIMA_DA_LEITURA.total_seconds() // 3600)}h. "
-            "Uma leitura velha continua sendo uma leitura — por isso o veredito "
-            "é INDETERMINADA e não NAO_PRONTA —, mas ela descreve o passado.",
+            "Uma leitura velha continua sendo uma leitura, e por isso ela não "
+            "esconde o que a conta respondeu — mas descreve o passado.",
             fonte=lida.procedencia))
-        return veredito(INDETERMINADA)
 
     # ── 7. os fatos da conta ───────────────────────────────────────────────
     #
@@ -815,6 +828,22 @@ def avaliar(
         indefinidas = tuple(a for a in primarias if a.carrega_valor is None)
         if com_valor:
             elegiveis = tuple(a for a in elegiveis if a.carrega_valor is True)
+            if not elegiveis and not bloqueios:
+                # ⚠️ VALOR NUMA AÇÃO, SINAL NOUTRA — e a autoridade não tinha
+                # estado para isso. `com_valor` é calculado sobre as primárias e
+                # o filtro roda sobre as que sobreviveram ao sinal; quando as
+                # duas listas são disjuntas, `elegiveis` esvaziava SEM bloqueio e
+                # a eleição fazia `sorted(())[0]` — um `IndexError` que escapa do
+                # `except PortaoFechado` da rota e vira 500 em vez de 409.
+                # Reproduzido pela revisão adversarial de 06/09/2026.
+                bloqueios.append(Bloqueio(
+                    SEM_VALOR_DECLARADO,
+                    f"{estrategia} otimiza pelo VALOR, e nesta conta o valor e o "
+                    "sinal estão em ações DIFERENTES: as ações que carregam "
+                    "valor não receberam conversão recente, e as que receberam "
+                    "não carregam valor. Otimizar valor sobre a segunda é "
+                    "otimizar por zero; sobre a primeira, é otimizar sem sinal.",
+                    fonte=lida.procedencia))
         elif indefinidas and exige_valor_declarado:
             # Quem chama declarou regra de valor no perfil de mensuração e
             # assume a declaração no lugar da leitura. O aviso registra que a
@@ -840,11 +869,28 @@ def avaliar(
             elegiveis = ()
 
     if bloqueios:
-        return veredito(NAO_PRONTA)
+        # ⚠️ Leitura velha mantém o veredito INDETERMINADA mesmo quando os fatos
+        # da conta também bloqueiam: a idade é uma dúvida sobre a LEITURA, e
+        # `NAO_PRONTA` afirmaria sobre a CONTA com base num retrato de ontem.
+        # Os dois bloqueios viajam juntos; o estado é o mais humilde dos dois.
+        velha = any(b.codigo == LEITURA_VELHA for b in bloqueios)
+        return veredito(INDETERMINADA if velha else NAO_PRONTA)
 
     # A eleita: a mais recente entre as que sobraram, com desempate estável pelo
     # id. Empate resolvido por sorteio faria duas provas do mesmo pedido
     # gerarem planos diferentes — e o selo cobre o plano.
+    if not elegiveis:
+        # ⚠️ REDE DE SEGURANÇA, e ela é fail-CLOSED. Chegar aqui sem candidata e
+        # sem bloqueio significa que um ramo novo esvaziou a lista sem dizer por
+        # quê — e a resposta honesta para isso é recusar, nunca eleger.
+        bloqueios.append(Bloqueio(
+            SINAL_NAO_COMPROVADO,
+            "nenhuma ação sobreviveu a todas as exigências deste objetivo, e o "
+            "motivo não foi registrado por nenhum ramo. Recusa por construção: "
+            "não saber qual ação sustentaria o lance nunca autoriza.",
+            fonte=lida.procedencia))
+        return veredito(NAO_PRONTA)
+
     eleita = sorted(elegiveis,
                     key=lambda a: (a.dias_desde_a_ultima or 0, a.id))[0]
     return veredito(PRONTA, acao=eleita)

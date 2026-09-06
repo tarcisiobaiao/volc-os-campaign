@@ -750,3 +750,72 @@ def test_ausencia_de_medicao_e_zero_medido_sao_bloqueios_DIFERENTES():
     assert "volume medido é zero" in medido_zero
     assert "ninguém mediu o volume" not in medido_zero, (
         "zero medido virou 'ninguém mediu' — os dois estados colapsaram")
+
+
+def test_recibo_VELHO_nao_transforma_erro_de_mensuracao_em_aviso():
+    """CONTRAPROVA: quanto mais velha a leitura, NÃO mais permissivo o canal.
+
+    ⚠️ Fail-open reproduzido pela revisão adversarial de 06/09/2026.
+    `LEITURA_VELHA` era uma saída ANTECIPADA em `avaliar` E estava na lista de
+    avisos de PMax. Numa conta SEM nenhuma ação de conversão: recibo fresco →
+    `SEM_ACAO_DE_CONVERSAO` → `r.erro` → campanha bloqueada; o MESMO recibo 25h
+    mais velho → só `LEITURA_VELHA` → `r.aviso` → `r.ok=True` e o payload seguia
+    para o `validate_only`.
+
+    A idade continua sendo um bloqueio nomeado; o que ela deixou de fazer é
+    ESCONDER o que a conta respondeu.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from volc_ads import mensuracao as mens
+
+    agora = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+
+    def _v(horas: int):
+        return mens.avaliar(
+            customer_id="1", canal="PERFORMANCE_MAX",
+            estrategia_lance="MAXIMIZE_CONVERSIONS",
+            leitura=mens.Leitura(
+                estado=mens.VAZIO_CONFIRMADO, acoes=(), procedencia="teste",
+                lido_em=(agora - timedelta(hours=horas)).isoformat()),
+            agora=agora)
+
+    fresco, velho = _v(1), _v(25)
+    assert mens.SEM_ACAO_DE_CONVERSAO in fresco.codigos
+    # ⚠️ O FATO DA CONTA SOBREVIVE À IDADE — era ele que sumia.
+    assert mens.SEM_ACAO_DE_CONVERSAO in velho.codigos
+    assert mens.LEITURA_VELHA in velho.codigos
+    assert velho.autoriza is False
+
+
+def test_valor_e_sinal_em_acoes_diferentes_recusa_em_vez_de_estourar():
+    """CONTRAPROVA: `avaliar` sempre devolve Veredito — nunca um IndexError.
+
+    ⚠️ Reproduzido pela revisão adversarial: com valor numa ação e sinal noutra,
+    `elegiveis` esvaziava SEM bloqueio e a eleição fazia `sorted(())[0]`. Um
+    `IndexError` escapa do `except PortaoFechado` da rota e vira 500 — quando a
+    resposta certa é 409 com o bloqueio nomeado.
+    """
+    from volc_ads import mensuracao as mens
+
+    com_valor_sem_sinal = mens.AcaoLida(
+        id="1", status="ENABLED", carrega_valor=True, conversoes_na_janela=0.0)
+    com_sinal_sem_valor = mens.AcaoLida(
+        id="2", status="ENABLED", carrega_valor=False,
+        conversoes_na_janela=5.0, dias_desde_a_ultima=2)
+
+    v = mens.avaliar(
+        customer_id="1", canal="SEARCH", estrategia_lance="TARGET_ROAS",
+        leitura=mens.Leitura(estado=mens.COM_DADOS, procedencia="teste",
+                             acoes=(com_valor_sem_sinal, com_sinal_sem_valor)))
+    assert v.estado == mens.NAO_PRONTA
+    assert mens.SEM_VALOR_DECLARADO in v.codigos
+    assert "ações DIFERENTES" in v.resumo()
+
+    # E `exigir` levanta a exceção TIPADA, que a rota traduz em 409.
+    with pytest.raises(mens.MensuracaoNaoProvada):
+        mens.exigir(customer_id="1", canal="SEARCH",
+                    estrategia_lance="TARGET_ROAS",
+                    leitura=mens.Leitura(
+                        estado=mens.COM_DADOS, procedencia="teste",
+                        acoes=(com_valor_sem_sinal, com_sinal_sem_valor)))
