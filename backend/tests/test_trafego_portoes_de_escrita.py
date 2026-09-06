@@ -584,12 +584,20 @@ def test_nenhuma_rota_de_ativacao_existe_no_APP_INTEIRO():
         "sistema, e um verde aqui não provaria nada")
 
 
-def test_smart_bidding_sem_medicao_bloqueia_em_TODO_canal():
-    """CONTRAPROVA 7: a recusa é da autoridade, e ela vale para os quatro canais.
+def test_smart_bidding_sem_LEITURA_bloqueia_nos_quatro_canais_conhecidos():
+    """CONTRAPROVA 7: sem leitura, a autoridade recusa nos quatro canais.
 
-    ⚠️ O portão vivia só no caminho de Search. A autoridade única
-    (`volc_ads.mensuracao`) é consultada por canal, e um canal que não declara
-    a estratégia pedida recusa ANTES de a conta ser consultada.
+    ⚠️ O NOME E A DOCSTRING FORAM CORRIGIDOS. Eles prometiam que "um canal que
+    não declara a estratégia pedida recusa ANTES de a conta ser consultada" —
+    propriedade que este corpo NÃO exercita: sem `leitura`, o passo 5
+    (`SEM_LEITURA`) sai antes de qualquer regra por canal, e as três asserções
+    valem para os quatro por CONSTRUÇÃO, não por comportamento. Medido em
+    06/09/2026: fazendo a autoridade canonizar todo canal para `SEARCH`, o corpo
+    inteiro continuava passando.
+
+    O que este teste guarda de verdade — e vale guardar — é que a ausência de
+    leitura recusa em todo canal conhecido. O poder de detecção por canal mora
+    em `test_a_autoridade_adjudica_CADA_canal_e_nao_todos_como_Search`.
     """
     from volc_ads import mensuracao as mens
 
@@ -599,6 +607,9 @@ def test_smart_bidding_sem_medicao_bloqueia_em_TODO_canal():
         assert v.autoriza is False, canal
         assert v.estado == mens.INDETERMINADA, canal
         assert mens.SEM_LEITURA in v.codigos, canal
+        # ⚠️ E o veredito NOMEIA o canal que foi pedido. Sem isto, uma
+        # autoridade que colapsasse tudo em Search passaria igual.
+        assert v.canal == canal, canal
 
     # E MANUAL_CPC continua nascendo nos canais que o aceitam — o portão é
     # sobre APRENDER, não sobre nascer.
@@ -819,3 +830,268 @@ def test_valor_e_sinal_em_acoes_diferentes_recusa_em_vez_de_estourar():
                     leitura=mens.Leitura(
                         estado=mens.COM_DADOS, procedencia="teste",
                         acoes=(com_valor_sem_sinal, com_sinal_sem_valor)))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AUSÊNCIA DE LEITURA × AFIRMAÇÃO SOBRE A CONTA — os dois lados do frescor
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _meta_biddable_de_campanha() -> pm.MetaEfetiva:
+    return pm.MetaEfetiva(
+        nivel=pm.NIVEL_CAMPAIGN, nivel_estado=pm.COM_DADOS,
+        metas_da_conta=(), metas_da_conta_estado=pm.VAZIO_CONFIRMADO,
+        metas_da_campanha=(pm.Meta(categoria="SUBMIT_LEAD_FORM",
+                                   origem="WEBSITE", biddable=True,
+                                   campaign="customers/123/campaigns/1"),),
+        metas_da_campanha_estado=pm.COM_DADOS)
+
+
+def _acao_valida() -> pm.AcaoDeConversao:
+    return pm.AcaoDeConversao(
+        resource_name="customers/123/conversionActions/99", id="99",
+        nome="Lead", tipo="WEBPAGE", categoria="SUBMIT_LEAD_FORM",
+        origem="WEBSITE", status="ENABLED", primaria=True,
+        incluida_em_metricas=True, owner_customer_id="123")
+
+
+def _veredito_do_plano(frescor, *, acoes_estado=pm.COM_DADOS):
+    """Plano real → `de_plano` → `avaliar`, com relógio fixo."""
+    from datetime import datetime, timedelta, timezone
+
+    from volc_ads import mensuracao as mens
+
+    agora = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+    plano = pm.montar(
+        customer_id="123", login_customer_id="9",
+        meta_efetiva=_meta_biddable_de_campanha(),
+        acoes=(() if acoes_estado in pm.ESTADOS_SEM_CONCLUSAO
+               else (_acao_valida(),)),
+        acoes_estado=acoes_estado, frescor=frescor)
+    leitura = mens.de_plano(plano,
+                            lido_em=(agora - timedelta(hours=1)).isoformat())
+    return leitura, mens.avaliar(
+        customer_id="123", canal="SEARCH",
+        estrategia_lance="MAXIMIZE_CONVERSIONS", leitura=leitura, agora=agora)
+
+
+def test_frescor_que_NAO_CONCLUIU_e_INDETERMINADA_e_nao_NAO_PRONTA():
+    """CONTRAPROVA: uma GAQL que caiu não vira afirmação sobre a conta.
+
+    ⚠️ `de_plano` lia `dias_desde_a_ultima`, `conversoes_na_janela` e
+    `conversion_action_id` do frescor, e IGNORAVA `frescor.estado`. Um
+    `Frescor(estado='falhou')` chegava com `conversoes_na_janela=None`,
+    indistinguível de "ninguém consultou a janela" — e, como a leitura das AÇÕES
+    tinha concluído, o veredito saía `NAO_PRONTA`, que o próprio módulo define
+    como "leu-se o bastante para afirmar que a conta não sustenta". O cabeçalho
+    promete o contrário: "Ausência de leitura é INDETERMINADA".
+
+    Reproduzido em 06/09/2026 contra o plano real, com o caminho de produção
+    (`metas_efetivas.ler_frescor` devolve `falhou` quando a quinta GAQL cai, e
+    `ler_plano` declara que nenhuma leitura aborta a próxima).
+    """
+    from volc_ads import mensuracao as mens
+
+    _, quebrou = _veredito_do_plano(pm.Frescor(
+        estado=pm.FALHOU, conversion_action_id="99",
+        causa="a leitura de frescor não completou para esta conta."))
+    _, hidden = _veredito_do_plano(pm.Frescor(
+        estado=pm.INELEGIVEL, conversion_action_id="99",
+        causa="a leitura de frescor não devolveu linha nenhuma."))
+    _, zero = _veredito_do_plano(pm.Frescor(
+        estado=pm.VAZIO_CONFIRMADO, conversion_action_id="99",
+        conversoes_na_janela=0.0))
+
+    assert quebrou.estado == mens.INDETERMINADA
+    assert hidden.estado == mens.INDETERMINADA
+    assert mens.SINAL_NAO_LIDO in quebrou.codigos
+    assert mens.SINAL_NAO_LIDO in hidden.codigos
+
+    # ⚠️ A TRAVA: humildade não é permissão. `INDETERMINADA` recusa igual.
+    assert quebrou.autoriza is False
+    assert hidden.autoriza is False
+    with pytest.raises(mens.MensuracaoNaoProvada):
+        mens.exigir(customer_id="123", canal="SEARCH",
+                    estrategia_lance="MAXIMIZE_CONVERSIONS",
+                    leitura=_veredito_do_plano(pm.Frescor(
+                        estado=pm.FALHOU, conversion_action_id="99",
+                        causa="caiu"))[0])
+
+    # ⚠️ E O OUTRO LADO NÃO SE MEXEU: zero MEDIDO continua sendo um fato sobre
+    # a conta, e ausência de leitura não virou zero.
+    assert zero.estado == mens.NAO_PRONTA
+    assert mens.SINAL_NAO_COMPROVADO in zero.codigos
+    assert "volume medido é zero" in zero.resumo()
+
+    # A asserção mais forte: os dois fatos deixaram de compartilhar um código.
+    assert set(quebrou.codigos) != set(zero.codigos), (
+        "falha de leitura e zero medido colapsaram no mesmo código")
+
+
+def test_frescor_sem_sujeito_continua_sendo_ausencia_de_medicao():
+    """O marcador tem SUJEITO: ele não se espalha por quem o frescor não cobre.
+
+    Um frescor que nunca foi lido — sem `conversion_action_id` — não fala de
+    ação nenhuma, e "ninguém perguntou" continua sendo o que sempre foi. Sem
+    esta guarda, a correção acima transformaria toda conta não consultada em
+    `INDETERMINADA` e apagaria a distinção que o módulo inteiro defende.
+    """
+    from volc_ads import mensuracao as mens
+
+    _, v = _veredito_do_plano(pm.frescor_nao_lido())
+    assert v.estado == mens.NAO_PRONTA
+    assert mens.SINAL_NAO_COMPROVADO in v.codigos
+    assert mens.SINAL_NAO_LIDO not in v.codigos
+
+
+def test_falha_da_leitura_de_ACOES_nao_e_explicada_pela_causa_do_FRESCOR():
+    """CONTRAPROVA: cada causa explica a SUA leitura.
+
+    ⚠️ `estado` vinha de `plano.acoes_estado` (GAQL_ACOES) e a causa vinha de
+    `frescor.causa` (GAQL_FRESCOR). São consultas independentes, e o caminho era
+    determinístico: quando `ler_acoes` cai, nenhuma ação é eleita e
+    `ler_frescor` sai pelo curto-circuito com "nenhuma ação de conversão foi
+    eleita para esta campanha" — que virava a explicação da falha da OUTRA
+    consulta. O operador ia conferir eleição de meta quando o que caiu foi a
+    leitura das ações.
+    """
+    from volc_ads import mensuracao as mens
+
+    leitura, v = _veredito_do_plano(
+        pm.Frescor(estado=pm.INELEGIVEL,
+                   causa=("nenhuma ação de conversão foi eleita para esta "
+                          "campanha; frescor sem sujeito não decide nada.")),
+        acoes_estado=pm.FALHOU)
+
+    # A DECISÃO sempre esteve certa; o defeito era a atribuição da causa.
+    assert v.estado == mens.INDETERMINADA
+    assert mens.LEITURA_FALHOU in v.codigos
+
+    assert "frescor" not in leitura.causa.lower(), (
+        "a falha da leitura de AÇÕES foi explicada pela causa do FRESCOR")
+    assert "eleita" not in leitura.causa.lower()
+    assert "ações de conversão" in leitura.causa.lower()
+
+
+def test_leitura_velha_continua_mantendo_o_veredito_humilde():
+    """A mecânica que virou tupla continua valendo para quem já a usava.
+
+    ⚠️ Sem esta contraprova, trocar `INDETERMINADA if duvida else NAO_PRONTA`
+    por `NAO_PRONTA` sobrevivia à suíte inteira — medido em 06/09/2026 por
+    análise de mutação.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from volc_ads import mensuracao as mens
+
+    agora = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+    velho = (agora - timedelta(hours=25)).isoformat()
+
+    # (a) O FATO DA CONTA SOBREVIVE À IDADE — a correção de 369585f, que tirou
+    # `LEITURA_VELHA` da saída antecipada. Conta vazia continua sendo declarada
+    # vazia, e a recusa é a mesma de um recibo fresco.
+    vazia = mens.avaliar(
+        customer_id="1", canal="SEARCH",
+        estrategia_lance="MAXIMIZE_CONVERSIONS",
+        leitura=mens.Leitura(estado=mens.VAZIO_CONFIRMADO, acoes=(),
+                             procedencia="teste", lido_em=velho),
+        agora=agora)
+    assert mens.LEITURA_VELHA in vazia.codigos
+    assert mens.SEM_ACAO_DE_CONVERSAO in vazia.codigos
+    assert vazia.autoriza is False
+
+    # (b) ONDE O FECHO É ALCANÇADO, a idade mantém o veredito humilde. Sem esta
+    # asserção, trocar `INDETERMINADA if duvida else NAO_PRONTA` por
+    # `NAO_PRONTA` sobrevivia à suíte inteira.
+    com_acao = mens.avaliar(
+        customer_id="1", canal="SEARCH",
+        estrategia_lance="MAXIMIZE_CONVERSIONS",
+        leitura=mens.Leitura(
+            estado=mens.COM_DADOS, procedencia="teste", lido_em=velho,
+            meta_biddable=True,
+            acoes=(mens.AcaoLida(id="9", status="ENABLED", primaria=True,
+                                 conversoes_na_janela=0.0,
+                                 dias_desde_a_ultima=1),)),
+        agora=agora)
+    assert mens.LEITURA_VELHA in com_acao.codigos
+    assert mens.SINAL_NAO_COMPROVADO in com_acao.codigos
+    assert com_acao.estado == mens.INDETERMINADA
+    assert com_acao.autoriza is False
+
+    assert mens.LEITURA_VELHA in mens.CODIGOS_DE_DUVIDA_SOBRE_A_LEITURA
+    assert mens.SINAL_NAO_LIDO in mens.CODIGOS_DE_DUVIDA_SOBRE_A_LEITURA
+
+
+def test_a_autoridade_adjudica_CADA_canal_e_nao_todos_como_Search():
+    """CONTRAPROVA com PODER DE DETECÇÃO: falha se o canal for ignorado.
+
+    ⚠️ O teste irmão (`..._sem_LEITURA_bloqueia_nos_quatro_canais_conhecidos`)
+    varre `mens.CANAIS` e afirma três propriedades que são as mesmas para os
+    quatro por construção — ele passaria intacto numa autoridade que jogasse o
+    parâmetro `canal` fora. E o passo 1 dele é circular: iterar a própria lista
+    e afirmar que a checagem de pertinência passou não prova pertinência
+    nenhuma.
+
+    Aqui há três blocos, e cada um mata uma mutação diferente.
+    """
+    import ast
+    import pathlib as _p
+
+    from volc_ads import mensuracao as mens
+
+    # ── 1. IDENTIDADE: o veredito nomeia o canal PEDIDO ────────────────────
+    # Mata a mutação `canonizar_canal = lambda c: "SEARCH"`.
+    for canal in mens.CANAIS:
+        v = mens.avaliar(customer_id="1", canal=canal,
+                         estrategia_lance="MAXIMIZE_CONVERSIONS")
+        assert v.canal == canal, f"pedi {canal} e a autoridade adjudicou {v.canal}"
+
+    # ── 2. UM CASO NEGATIVO que o laço não consegue produzir ───────────────
+    # Mata a circularidade: um canal FORA da lista tem de cair em outro código.
+    fora = mens.avaliar(customer_id="1", canal="TIKTOK",
+                        estrategia_lance="MAXIMIZE_CONVERSIONS")
+    assert mens.CANAL_DESCONHECIDO in fora.codigos
+    assert mens.SEM_LEITURA not in fora.codigos
+    assert fora.autoriza is False
+
+    # ── 3. DESFECHOS DIFERENTES POR CANAL ──────────────────────────────────
+    # Mata a mutação que ignora `lances_do_canal`. As listas são lidas por
+    # ÁRVORE SINTÁTICA dos módulos do canal — o backend não pode importá-los,
+    # porque eles arrastam o SDK do Google.
+    raiz = _p.Path(__file__).resolve().parents[2] / "volc_ads" / "campanha"
+
+    def _lances_permitidos(arquivo: str) -> tuple[str, ...]:
+        arvore = ast.parse((raiz / arquivo).read_text(encoding="utf-8"))
+        for no in ast.walk(arvore):
+            alvos = (no.targets if isinstance(no, ast.Assign)
+                     else [no.target] if isinstance(no, ast.AnnAssign) else [])
+            for alvo in alvos:
+                if getattr(alvo, "id", "") == "LANCES_PERMITIDOS":
+                    return tuple(ast.literal_eval(no.value))
+        raise AssertionError(f"LANCES_PERMITIDOS não existe em {arquivo}")
+
+    por_canal = {
+        "SEARCH": _lances_permitidos("search.py"),
+        "DISPLAY": _lances_permitidos("display.py"),
+        "DEMAND_GEN": _lances_permitidos("demand_gen.py"),
+        "PERFORMANCE_MAX": _lances_permitidos("pmax.py"),
+    }
+    assert "MANUAL_CPC" in por_canal["SEARCH"]
+    for canal in ("DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"):
+        assert "MANUAL_CPC" not in por_canal[canal], canal
+
+    desfechos = {}
+    for canal, aceitos in por_canal.items():
+        v = mens.avaliar(customer_id="1", canal=canal,
+                         estrategia_lance="MANUAL_CPC",
+                         lances_do_canal=aceitos)
+        desfechos[canal] = (v.estado, v.codigos)
+
+    assert desfechos["SEARCH"] == (mens.NAO_APLICAVEL, ())
+    for canal in ("DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"):
+        estado, codigos = desfechos[canal]
+        assert estado == mens.NAO_PRONTA, canal
+        assert mens.ESTRATEGIA_FORA_DO_CANAL in codigos, canal
+
+    # A asserção literal de que os quatro NÃO colapsaram.
+    assert len(set(desfechos.values())) > 1

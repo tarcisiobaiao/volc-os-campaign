@@ -200,20 +200,60 @@ def test_pmax_recusa_video_do_youtube_por_referencia():
         no = _funcao(montador)
         trecho = ast.get_source_segment(fonte, no) or ""
         assert "videos_youtube" in trecho, montador
-        assert "não tem hash" in trecho or "não tem hash, inspeção nem recibo" in trecho, (
-            f"{montador} não explica por que recusa vídeo por referência")
-        # A recusa é uma exceção, e não um aviso.
-        assert any(isinstance(f, ast.Raise) for f in ast.walk(no)), montador
+        # ⚠️ A ASSERÇÃO DE PROSA SAIU. Ela era `"não tem hash" in trecho` — uma
+        # substring da mensagem que o próprio autor escreveu, e que um bloco de
+        # comentário preservado satisfaria sozinho. O que a recusa É fica com o
+        # teste comportamental; o que sobra aqui é ESTRUTURA: existe um
+        # `if videos:` cujo corpo levanta.
+        assert any(
+            isinstance(f, ast.Raise)
+            for bloco in ast.walk(no)
+            if isinstance(bloco, ast.If)
+            and getattr(bloco.test, "id", "") == "videos"
+            for f in ast.walk(bloco)
+        ), montador
 
 
 def test_a_recusa_de_video_vem_antes_do_portao_em_pmax():
-    ordem = _chamadas(_funcao("_montar_plano_pmax"))
-    fonte = ROTA.read_text(encoding="utf-8")
-    no = _funcao("_montar_plano_pmax")
-    linhas_de_raise = [
-        f.lineno for f in ast.walk(no)
-        if isinstance(f, ast.Raise)
-        and "videos_youtube" in (ast.get_source_segment(fonte, no) or "")
-    ]
-    assert linhas_de_raise
-    assert "_recibos_de_politica_das_pecas" in ordem
+    """A ORDEM, comparada de fato — nos DOIS montadores.
+
+    ⚠️ Este teste não comparava nada. Ele coletava todos os `ast.Raise` da
+    função e afirmava `assert linhas_de_raise` mais `assert "portão" in ordem`:
+    duas propriedades INDEPENDENTES, nunca a relação entre elas. E o filtro
+    avaliava `"videos_youtube" in get_source_segment(fonte, no)` sobre `no` — a
+    função inteira —, uma constante que não filtrava raise nenhum. Medido em
+    06/09/2026: mover o bloco de vídeo para depois do portão deixava este teste
+    e o irmão VERDES.
+
+    A prova forte é COMPORTAMENTAL e mora em
+    `test_trafego_display_imagens.py::test_video_do_youtube_por_referencia_e_recusado_antes_do_portao_e_da_ponte`,
+    com espiões no portão e na ponte. Esta aqui é a de FORMA, e agora ela
+    compara POSIÇÕES: o `raise` do bloco de vídeo vem antes da chamada do portão
+    e antes da ponte, em `_montar_plano_pmax` E em `_brief_pmax_offline` — o
+    segundo é justamente o que ainda carrega a atribuição pós-ponte.
+    """
+    for montador in ("_montar_plano_pmax", "_brief_pmax_offline"):
+        no = _funcao(montador)
+
+        # O bloco é ancorado por ESTRUTURA: o `if videos:` cujo corpo levanta.
+        raises_do_video = [
+            filho.lineno
+            for bloco in ast.walk(no)
+            if isinstance(bloco, ast.If)
+            and getattr(bloco.test, "id", "") == "videos"
+            for filho in ast.walk(bloco)
+            if isinstance(filho, ast.Raise)
+        ]
+        assert raises_do_video, f"{montador} não recusa vídeo por referência"
+
+        portao = [c.lineno for c in ast.walk(no) if isinstance(c, ast.Call)
+                  and getattr(c.func, "id", "") == "_recibos_de_politica_das_pecas"]
+        ponte = [c.lineno for c in ast.walk(no) if isinstance(c, ast.Call)
+                 and getattr(c.func, "attr", "") == "imagens_de_pmax"]
+        assert portao, f"{montador} não chama o portão de política"
+        assert ponte, f"{montador} não chama a ponte do Estúdio"
+
+        assert max(raises_do_video) < min(portao), (
+            f"{montador}: a recusa de vídeo ficou DEPOIS do portão")
+        assert max(raises_do_video) < min(ponte), (
+            f"{montador}: a recusa de vídeo ficou DEPOIS da ponte")

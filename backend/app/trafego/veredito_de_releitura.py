@@ -112,6 +112,47 @@ TETO_DE_LINHAS = "linhas"
 
 TETOS: Tuple[str, ...] = (TETO_DE_PAGINAS, TETO_DE_LINHAS)
 
+# ═══════════════════════════════════════════════════════════════════════════
+# O PRÓXIMO ATO — tipado, porque uma propriedade guardada por prosa não é
+# guardada
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# ⚠️ "O read-back nunca manda reenviar" era verificado por
+# `assert "reenvi" not in ato.lower()` — duas substrings da redação vigente, e
+# não a propriedade. Medido em 06/09/2026: trocar o texto de `AUSENCIA_PROVADA`
+# para "conferi e não está: crie a campanha de novo pela rota de criação" deixa
+# os 20 testes do arquivo VERDES. As substrings proibidas foram escolhidas para
+# caber na prosa do próprio autor — o texto vigente já contém "criar de novo".
+#
+# Agora o ato é um valor de um conjunto FECHADO, o teste compara o valor, e a
+# prosa fica sendo o que ela é: apresentação.
+
+#: Nada a fazer: o que está na conta é o que o plano descreve.
+ATO_NADA_A_FAZER = "nada_a_fazer"
+#: Abrir a campanha na conta e comparar. Ato humano de inspeção.
+ATO_CONFERIR_NA_CONTA = "conferir_na_conta"
+#: Ler de novo. ⚠️ NÃO é reenviar o mutate: é repetir a LEITURA.
+ATO_RELER = "reler"
+#: Consertar a leitura (credencial, quota, indisponibilidade) e repetir.
+ATO_CONSERTAR_A_LEITURA = "consertar_a_leitura"
+#: Decisão humana. Nenhuma repetição automática é autorizada.
+ATO_DECISAO_HUMANA = "decisao_humana"
+#: Levar o caso à rota de criação, que tem autorização humana e ledger próprios.
+#: ⚠️ ESCALAR NÃO É EXECUTAR — este módulo não cria nada, em desfecho nenhum.
+ATO_ESCALAR_PARA_A_ROTA_DE_CRIACAO = "escalar_para_a_rota_de_criacao"
+
+#: O vocabulário FECHADO de próximos atos do read-back.
+ATOS_DO_READBACK: Tuple[str, ...] = (
+    ATO_NADA_A_FAZER, ATO_CONFERIR_NA_CONTA, ATO_RELER,
+    ATO_CONSERTAR_A_LEITURA, ATO_DECISAO_HUMANA,
+    ATO_ESCALAR_PARA_A_ROTA_DE_CRIACAO)
+
+#: O que o read-back JAMAIS devolve — e é essa AUSÊNCIA que um teste consegue
+#: provar. Alargar `ATOS_DO_READBACK` para caber um destes passa a exigir editar
+#: a contraprova, que é um ato visível; antes bastava reescrever uma frase.
+ATOS_DE_DESPACHO: Tuple[str, ...] = (
+    "criar", "recriar", "reenviar_mutate", "ativar")
+
 
 @dataclass(frozen=True)
 class VereditoDaReleitura:
@@ -284,9 +325,31 @@ def resumo(vereditos: Tuple[VereditoDaReleitura, ...]) -> Dict[str, Any]:
         # desfecho, nem mesmo em `AUSENCIA_PROVADA`. Quem decide criar de novo é
         # a rota de criação, com autorização humana e ledger próprios.
         "proximo_ato": _proximo_ato(estado),
+        # ⚠️ O CAMPO QUE O TESTE COMPARA. `proximo_ato` acima é prosa para o
+        # operador e pode ser melhorada a qualquer momento; este é o valor
+        # fechado que carrega a propriedade.
+        "proximo_ato_tipo": tipo_do_ato(estado),
         "reenvio_por_readback": False,
         "objetos": [v.para_json() for v in vereditos],
     }
+
+
+#: Estado → ato tipado. ⚠️ EXAUSTIVO: um oitavo estado sem ato mapeado estoura
+#: `KeyError` em vez de passar em silêncio, e a contraprova cobra isso.
+_ATO_POR_ESTADO: Dict[EstadoDaReleitura, str] = {
+    EstadoDaReleitura.CONGRUENTE: ATO_NADA_A_FAZER,
+    EstadoDaReleitura.DIVERGENTE: ATO_CONFERIR_NA_CONTA,
+    EstadoDaReleitura.AUSENCIA_PROVADA: ATO_ESCALAR_PARA_A_ROTA_DE_CRIACAO,
+    EstadoDaReleitura.LEITURA_PARCIAL: ATO_RELER,
+    EstadoDaReleitura.FALHA: ATO_CONSERTAR_A_LEITURA,
+    EstadoDaReleitura.NAO_SUPORTADO: ATO_NADA_A_FAZER,
+    EstadoDaReleitura.AMBIGUO: ATO_DECISAO_HUMANA,
+}
+
+
+def tipo_do_ato(estado: EstadoDaReleitura) -> str:
+    """O ato tipado deste estado. A prosa correspondente é `_proximo_ato`."""
+    return _ATO_POR_ESTADO[estado]
 
 
 def _proximo_ato(estado: EstadoDaReleitura) -> str:

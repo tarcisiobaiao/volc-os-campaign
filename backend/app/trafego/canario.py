@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
@@ -83,9 +83,28 @@ CANAIS_DO_CANARIO: tuple[str, ...] = (
 #: esta janela. Uma trava que só existe num dos dois caminhos que chegam ao
 #: `mutate` é uma convenção, não uma trava.
 #:
-#: `is` — e não `==` — é o que `test_trafego_canario.py` cobra: com um objeto
-#: só, não há como os dois lados divergirem.
-CANAIS_COM_CRIACAO_AUTORIZADA: frozenset[str] = aut.CANAIS_COM_CRIACAO_AUTORIZADA
+#: ⚠️ ESTE NOME NÃO DECIDE NADA, e a versão anterior dizia que decidia.
+#:
+#: Ele era `= aut.CANAIS_COM_CRIACAO_AUTORIZADA`, uma ligação por VALOR no
+#: import, e a docstring afirmava "não há cópia para divergir... `is` é o que
+#: `test_trafego_canario.py` cobra". As duas frases eram falsas: religar
+#: qualquer um dos dois lados em runtime descolava os nomes, e o teste citado
+#: (`test_canario_referencia_a_autoridade_unica_de_canal`) NUNCA EXISTIU no
+#: repositório — um grep por ele achava só a própria docstring que o citava.
+#:
+#: Medido em 06/09/2026, nas duas direções:
+#:   - revogar `aut.CANAIS_COM_CRIACAO_AUTORIZADA` num incidente deixava este
+#:     módulo — e a rota HTTP — ainda autorizando Search;
+#:   - religar só este nome não abria nada, mas ninguém provava isso.
+#:
+#: Agora o julgamento é sempre `aut.autorizado(...)`, lido NA CHAMADA. Este
+#: nome sobrevive como VISTA de leitura para mensagem e documentação, e é
+#: resolvido dinamicamente pelo `__getattr__` do módulo (PEP 562) — nunca há
+#: snapshot para envelhecer.
+def __getattr__(nome: str):
+    if nome == "CANAIS_COM_CRIACAO_AUTORIZADA":
+        return aut.CANAIS_COM_CRIACAO_AUTORIZADA
+    raise AttributeError(f"module {__name__!r} has no attribute {nome!r}")
 
 _IMPRESSAO = re.compile(r"^[0-9a-f]{64}$")
 _CARIMBO_NOME = re.compile(r"^[0-9]{8}_[0-9]{6}$")
@@ -163,8 +182,13 @@ class Politica:
 #: A política de Search. ⚠️ `criacao_autorizada` DERIVA do conjunto — ela não é
 #: um literal. Era `True` por default, e por isso revogar a autorização não
 #: fechava Search em lugar nenhum da leitura.
-POLITICA = Politica(
-    criacao_autorizada=CANAL in CANAIS_COM_CRIACAO_AUTORIZADA)
+#:
+#: ⚠️ E ela é um SNAPSHOT DO IMPORT — a segunda cópia congelada, criada pela
+#: própria correção anterior. Por isso `politica_do_canal` não a devolve mais
+#: por atalho quando as duas discordam: quem decide é `aut.autorizado`, lido na
+#: chamada. Este objeto continua existindo porque a tela, o contrato de canais
+#: e os testes o leem como "a política de Search".
+POLITICA = Politica(criacao_autorizada=aut.autorizado(CANAL))
 
 
 def politica_do_canal(canal: Any) -> Politica:
@@ -186,15 +210,23 @@ def politica_do_canal(canal: Any) -> Politica:
             f"o canário não tem política para o canal {canal!r}; "
             f"os canais com janela são {', '.join(CANAIS_DO_CANARIO)}."
         )
+    # ⚠️ A AUTORIZAÇÃO É LIDA AGORA, na autoridade única, e nunca de um
+    # snapshot. Revogar `aut.CANAIS_COM_CRIACAO_AUTORIZADA` num incidente tem
+    # de fechar a leitura DESTE módulo no mesmo instante — senão a tela afirma
+    # uma autorização que o executor já nega.
+    autorizado = aut.autorizado(nome)
     if nome == CANAL:
-        return POLITICA
+        # Identidade preservada enquanto as duas concordam — que é sempre, fora
+        # de um incidente. Quando discordam, quem vale é a autoridade.
+        return (POLITICA if POLITICA.criacao_autorizada == autorizado
+                else replace(POLITICA, criacao_autorizada=autorizado))
     com_cpc = nome in CANAIS_COM_CPC_E_REDE
     return Politica(
         canal=nome,
         orcamento_diario_maximo_brl=str(TETO_DIARIO_POR_CANAL[nome]),
         cpc_maximo_brl=str(CPC_MAXIMO_BRL) if com_cpc else None,
         exige_rede=com_cpc,
-        criacao_autorizada=nome in CANAIS_COM_CRIACAO_AUTORIZADA,
+        criacao_autorizada=autorizado,
     )
 
 
@@ -291,10 +323,14 @@ def exigir(
     # O canal ganhou teto, vocabulário e capacidades próprias; criar de verdade
     # continua dependendo do canário DAQUELE canal — ato humano separado, com
     # runbook próprio, ainda não executado.
-    if not politica.criacao_autorizada:
+    # ⚠️ AS DUAS, e a segunda é a que fecha a porta. `politica` pode ter sido
+    # construída à mão por quem chama — um `Politica(criacao_autorizada=True)`
+    # atravessaria a primeira metade sozinho. A autoridade única é consultada
+    # aqui, na decisão, e não confia no objeto que lhe entregaram.
+    if not politica.criacao_autorizada or not aut.autorizado(politica.canal):
         raise CanarioRecusado(
             f"o canário ainda não autoriza CRIAR em {politica.canal}: apenas "
-            f"{', '.join(sorted(CANAIS_COM_CRIACAO_AUTORIZADA))} tem canário "
+            f"{', '.join(aut.canais_autorizados()) or '(nenhum canal)'} tem canário "
             f"aceito. Provar continua liberado; criar exige o canário do canal. "
             f"⚠️ Isto NÃO é uma dúvida sobre o estado inicial: quando este canal "
             f"criar, ele criará PAUSADO como todos os outros."

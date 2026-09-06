@@ -69,6 +69,22 @@ vi.mock('@/components/trafego/canais/PainelDeCanais', () => ({
   default: () => 'painel dos canais',
 }));
 
+// A visão multicanal é dublada pelo MESMO motivo, e a regra estava escrita três
+// telas acima quando ela chegou sem dublê: ela chama `useCanais()`, que é
+// `useQuery` puro, e esta moldura não monta `QueryClientProvider`.
+//
+// ⚠️ O efeito não era estético. A navegação por seta do Radix usa
+// `activationMode="automatic"`: atravessar a aba MONTA o painel. O erro subia
+// fora de qualquer error boundary e o vitest fechava a corrida com
+// "Errors 1 error" e EXIT_CODE=1 — com os 15 testes PASSANDO. Uma suíte
+// vermelha sem nenhum teste vermelho é o tipo de ruído que ensina a ignorar o
+// vermelho. Medido em 06/09/2026; o produto está certo (`App.tsx` monta o
+// provider acima da rota) e quem estava errado era esta moldura.
+vi.mock('@/components/trafego/multicanal/VisaoMulticanal', () => ({
+  VisaoMulticanal: () => 'visao multicanal',
+  default: () => 'visao multicanal',
+}));
+
 vi.mock('@/hooks/useNotificacoes', () => ({
   useNotificacoes: () => notificacoes,
   INTERVALO_NOTIFICACOES_MS: 600000,
@@ -207,7 +223,12 @@ describe('navegação por teclado', () => {
     montar();
     // ⚠️ A seta anda UMA casa. Com `Canais` consolidada em `criar`, a casa
     // seguinte a Campanhas voltou a ser Preparar.
-    const [campanhas, preparar, atencao] = screen.getAllByRole('tab');
+    //
+    // ⚠️ E a TERCEIRA casa é `multicanal`, não `atencao`. A variável se chamava
+    // `atencao` e media a aba errada desde que a quarta aba nasceu: o teste
+    // passava por coincidência posicional, e era justamente esta seta que
+    // montava a visão multicanal e derrubava a árvore.
+    const [campanhas, preparar, multicanal] = screen.getAllByRole('tab');
     campanhas.focus();
     fireEvent.keyDown(campanhas, { key: 'ArrowRight' });
 
@@ -225,9 +246,16 @@ describe('navegação por teclado', () => {
     preparar.focus();
     fireEvent.keyDown(preparar, { key: 'ArrowRight' });
     await waitFor(() => {
-      expect(atencao.getAttribute('aria-selected')).toBe('true');
+      expect(multicanal.getAttribute('aria-selected')).toBe('true');
     });
-    expect(atencao.getAttribute('tabindex')).toBe('0');
+    expect(multicanal.getAttribute('tabindex')).toBe('0');
+
+    // ⚠️ E O PAINEL DA TERCEIRA CASA MONTA. Esta asserção é a contraprova do
+    // erro não tratado: sem o dublê, a `VisaoMulticanal` real pede um
+    // `QueryClient` que esta moldura não tem, o throw acontece no commit do
+    // React — nenhum `expect` falha — e a corrida termina EXIT_CODE=1 com 15
+    // verdes. Aqui o painel tem de aparecer.
+    expect(screen.getByText('visao multicanal')).toBeTruthy();
   });
 
   it('a lista de abas se anuncia, e o painel ativo pertence à aba ativa', () => {

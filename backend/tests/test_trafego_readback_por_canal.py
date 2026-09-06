@@ -240,6 +240,61 @@ def test_sem_linhas_e_ausencia_provada_e_os_filhos_nao_afirmam_nada():
     # ⚠️ Sem id de campanha não há por onde consultar os filhos. Isso é
     # NAO_SUPORTADO para ESTA leitura, e não ausência.
     assert [x.estado for x in v[1:]] == [E.NAO_SUPORTADO, E.NAO_SUPORTADO]
+    # ⚠️ E A AUSÊNCIA DE VERDADE NÃO BLOQUEIA. Esta linha faltava, e é ela que
+    # impede a "correção" preguiçosa do achado da campanha oca: meter
+    # `AUSENCIA_PROVADA` em `ESTADOS_QUE_BLOQUEIAM` faria toda ausência
+    # bloquear, e ausência conferida é conclusão neutra.
+    r = vrel.resumo(v)
+    assert r["estado"] == "ausencia_provada"
+    assert r["bloqueia"] is False
+
+
+def test_campanha_presente_sem_filhos_e_divergencia_estrutural_e_bloqueia():
+    """⚠️ Campanha OCA não é conta limpa: ela existe e não veicula.
+
+    Ausência da CAMPANHA é conclusão neutra. Ausência dos FILHOS de uma campanha
+    que EXISTE é divergência estrutural — e neutralizar isso não era acadêmico:
+    reproduzido em 06/09/2026 até o ledger, `/reconciliar` respondia 200 e
+    gravava `achou=True` com o motivo "campanha encontrada na leitura da conta"
+    para uma campanha com zero grupos e zero anúncios, e ainda vinculava o plano
+    de mensuração a ela.
+
+    O módulo tinha a informação para distinguir os dois casos e a jogava fora: o
+    laço dos filhos só é alcançado quando a campanha-mãe foi RESOLVIDA.
+    """
+    v = rel.reler_na_conta(
+        canal="DISPLAY",
+        buscar=busca(campanhas=[_campanha()]),   # grupo e anúncio VAZIOS
+        campaign_id="99", esperado=ESPERADO)
+
+    assert v[0].estado is E.CONGRUENTE            # a mãe está lá, e está certa
+
+    for filho in (x for x in v if x.objeto in ("grupo", "anuncio")):
+        assert filho.estado is E.DIVERGENTE, filho.estado
+        assert filho.prova_ausencia is False      # não afirma "não existe"
+        assert filho.bloqueia is True
+        assert filho.quantidade == 0
+        assert "quantidade" in filho.campos_divergentes
+        assert filho.esperado["quantidade_minima"] >= 1
+
+    r = vrel.resumo(v)
+    assert r["estado"] == "divergente"
+    assert r["bloqueia"] is True
+    # ⚠️ E bloquear NÃO é autorizar reenvio.
+    assert r["reenvio_por_readback"] is False
+    assert r["proximo_ato_tipo"] == vrel.ATO_CONFERIR_NA_CONTA
+
+
+def test_pmax_criada_sem_asset_group_tambem_bloqueia():
+    """A campanha oca de PMax é oca pelo objeto que PMax tem."""
+    v = rel.reler_na_conta(
+        canal="PERFORMANCE_MAX",
+        buscar=busca(campanhas=[_campanha(canal="PERFORMANCE_MAX")]),
+        campaign_id="99",
+        esperado={"status": "PAUSED", "canal": "PERFORMANCE_MAX"})
+    grupo = next(x for x in v if x.objeto == "asset_group")
+    assert grupo.estado is E.DIVERGENTE
+    assert vrel.resumo(v)["bloqueia"] is True
 
 
 def test_duas_campanhas_e_ambiguo_e_nunca_escolhe_uma():
@@ -284,19 +339,179 @@ def test_leitura_no_teto_e_parcial_e_nomeia_o_teto_de_LINHAS():
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_nenhum_proximo_ato_manda_reenviar():
+def test_nenhum_proximo_ato_e_um_ato_de_despacho():
     """CONTRAPROVA: em nenhum dos sete desfechos a saída é repetir o mutate.
 
-    Nem em `AUSENCIA_PROVADA`, que é o caso tentador: "conferi e não está" NÃO
-    autoriza criar de novo — quem cria é a rota de criação, com autorização
-    humana e ledger próprios. Uma releitura que dispara criação transforma uma
-    resposta perdida em duas campanhas.
+    ⚠️ ESTE TESTE CASAVA A PROSA DO PRÓPRIO AUTOR, e por isso não guardava
+    nada. Ele afirmava a propriedade com `assert "reenvi" not in ato.lower()` e
+    `assert "tente de novo criando" not in ato.lower()` — duas substrings da
+    redação vigente. Medido em 06/09/2026: trocar o texto de `AUSENCIA_PROVADA`
+    para "conferi e não está: crie a campanha de novo pela rota de criação"
+    mantinha os 20 testes do arquivo VERDES, e a orientação impressa ao operador
+    passava a ser exatamente o ato que transforma uma resposta perdida em duas
+    campanhas. As substrings proibidas tinham sido escolhidas para caber na
+    prosa: o texto vigente já continha "criar de novo".
+
+    Agora o ato é um valor de um conjunto FECHADO e é o VALOR que se compara. A
+    prosa continua existindo, e continua livre para melhorar.
     """
+    # (a) exaustivo: um oitavo estado sem ato mapeado estoura, não passa calado.
+    assert set(vrel._ATO_POR_ESTADO) == set(E)
+
+    # (b) o vocabulário é congelado AQUI. Alargá-lo para caber um ato de criação
+    # passa a exigir editar esta linha, que é um ato visível; antes bastava
+    # reescrever uma frase.
+    assert set(vrel.ATOS_DO_READBACK) == {
+        "nada_a_fazer", "conferir_na_conta", "reler", "consertar_a_leitura",
+        "decisao_humana", "escalar_para_a_rota_de_criacao"}
+
+    # (c) escalar não é executar, e os dois conjuntos não se tocam.
+    assert set(vrel.ATOS_DO_READBACK).isdisjoint(vrel.ATOS_DE_DESPACHO)
+
+    # (d) e nenhum estado — nem `AUSENCIA_PROVADA`, o caso tentador — sai com um
+    # ato de despacho.
     for estado in E:
-        ato = vrel._proximo_ato(estado)
-        assert "reenvi" not in ato.lower(), (estado, ato)
-        assert "tente de novo criando" not in ato.lower()
+        ato = vrel.tipo_do_ato(estado)
+        assert ato in vrel.ATOS_DO_READBACK, (estado, ato)
+        assert ato not in vrel.ATOS_DE_DESPACHO, (estado, ato)
+
     assert vrel.resumo(())["reenvio_por_readback"] is False
+    assert vrel.resumo(())["proximo_ato_tipo"] == vrel.ATO_CONSERTAR_A_LEITURA
+
+
+def test_search_recem_criado_pela_casa_nao_bloqueia():
+    """⚠️ Os filhos de Search nascem ENABLED — dentro de uma campanha PAUSED.
+
+    `comum.op_adgroup` tem `status: str = "ENABLED"` como default e `search.py`
+    chama sem passar status; `search.py` também liga o `AdGroupAd`. A própria
+    docstring de `op_adgroup` explica: "Search nasce assim desde sempre — o
+    grupo ligado dentro de uma campanha PAUSED, que não veicula".
+
+    O read-back exigia PAUSED de TODO filho, contra uma premissa falsa sobre os
+    builders desta casa. Medido em 06/09/2026: uma campanha Search correta,
+    criada pelos próprios construtores e nunca ativada, saía `divergente` e
+    `/reconciliar` respondia 409 — em 100% dos lançamentos do ÚNICO canal com
+    criação autorizada. Os testes não pegavam porque só exercitavam DISPLAY,
+    que de fato cria tudo pausado.
+    """
+    v = rel.reler_na_conta(
+        canal="SEARCH",
+        buscar=busca(campanhas=[_campanha(canal="SEARCH")],
+                     grupos=[_grupo(status="ENABLED")],
+                     anuncios=[_anuncio(status="ENABLED")]),
+        campaign_id="99",
+        # O MESMO `esperado` que a rota monta.
+        esperado={"status": rel.NASCE_PAUSADO, "canal": rel.canonizar("SEARCH")})
+
+    r = vrel.resumo(v)
+    assert r["estado"] == "congruente", [x.estado for x in v]
+    assert r["bloqueia"] is False
+    for filho in (x for x in v if x.objeto in ("grupo", "anuncio")):
+        assert filho.estado is E.CONGRUENTE
+        assert filho.campos_divergentes == ()
+
+
+def test_campanha_nascida_enabled_continua_bloqueando():
+    """⚠️ A PROVA DO NASCIMENTO NÃO AFROUXOU — ela é sobre a CAMPANHA.
+
+    `comum.py` faz `camp.status = PAUSED` nos quatro canais, e é a campanha
+    pausada que garante que nada veicule sem decisão humana. Um grupo ligado
+    dentro dela não gasta; uma campanha ligada, sim.
+
+    Este teste falharia se alguém "consertasse" o achado dos filhos tirando o
+    `status` do `esperado` da campanha. E ativação posterior não vira ausência:
+    ela é DIVERGÊNCIA, que é decisão humana.
+    """
+    v = rel.reler_na_conta(
+        canal="SEARCH",
+        buscar=busca(campanhas=[_campanha(canal="SEARCH", status="ENABLED")],
+                     grupos=[_grupo(status="ENABLED")],
+                     anuncios=[_anuncio(status="ENABLED")]),
+        campaign_id="99",
+        esperado={"status": rel.NASCE_PAUSADO, "canal": rel.canonizar("SEARCH")})
+
+    campanha = next(x for x in v if x.objeto == vrel.CAMPANHA)
+    assert campanha.estado is E.DIVERGENTE
+    assert campanha.campos_divergentes == ("status",)
+    assert campanha.prova_ausencia is False
+    assert vrel.resumo(v)["bloqueia"] is True
+
+
+def test_o_perfil_de_nascimento_bate_com_os_builders():
+    """⚠️ IMPEDE A DERIVA QUE CRIOU O DEFEITO — lido por ÁRVORE SINTÁTICA.
+
+    O backend não pode importar `volc_ads/campanha/*` (eles arrastam o SDK do
+    Google), então `NASCE_COM_STATUS` é declarado aqui e a coerência com os
+    construtores é COBRADA lendo o fonte deles. Falharia no dia em que um
+    builder trocasse o estado de nascimento sem o perfil acompanhar — que é
+    exatamente o buraco por onde este defeito entrou.
+    """
+    import ast
+    import pathlib as _p
+
+    raiz = _p.Path(__file__).resolve().parents[2] / "volc_ads" / "campanha"
+
+    def _status_do_anuncio(arquivo: str) -> set[str]:
+        """Os `...Status...Enum.X` atribuídos a um `.status` naquele builder."""
+        arvore = ast.parse((raiz / arquivo).read_text(encoding="utf-8"))
+        achados = set()
+        for no in ast.walk(arvore):
+            if not isinstance(no, ast.Assign):
+                continue
+            alvo = no.targets[0]
+            if not (isinstance(alvo, ast.Attribute) and alvo.attr == "status"):
+                continue
+            if isinstance(no.value, ast.Attribute):
+                achados.add(no.value.attr)
+        return achados
+
+    # Search LIGA o anúncio; Display o cria pausado. É essa diferença que o
+    # perfil por canal precisa carregar.
+    assert "ENABLED" in _status_do_anuncio("search.py")
+    assert rel.NASCE_COM_STATUS["SEARCH"][vrel.ANUNCIO] == "ENABLED"
+    assert _status_do_anuncio("display.py") == {"PAUSED"}
+    assert rel.NASCE_COM_STATUS["DISPLAY"][vrel.ANUNCIO] == "PAUSED"
+
+    # E o default de `op_adgroup` — a outra metade do caso de Search.
+    comum = ast.parse((raiz / "comum.py").read_text(encoding="utf-8"))
+    op = next(n for n in ast.walk(comum)
+              if isinstance(n, ast.FunctionDef) and n.name == "op_adgroup")
+    padrao = {a.arg: d for a, d in zip(op.args.kwonlyargs, op.args.kw_defaults)}
+    assert padrao["status"].value == "ENABLED"
+    assert rel.NASCE_COM_STATUS["SEARCH"][vrel.GRUPO] == "ENABLED"
+
+    # Todo canal com objetos declarados tem perfil para cada filho.
+    for canal, objetos in rel.OBJETOS_POR_CANAL.items():
+        for objeto in objetos[1:]:
+            assert objeto in rel.NASCE_COM_STATUS[canal], (canal, objeto)
+
+
+def test_nem_o_readback_nem_o_veredito_importam_despachante():
+    """Lista BRANCA de imports — a negra deixava passar o caminho prático.
+
+    ⚠️ `test_o_modulo_de_releitura_nao_tem_caminho_de_escrita` proíbe uma lista
+    de CHAMADAS por nome, e por isso um reenvio que importasse o despachante e o
+    chamasse por outro nome passaria. Um despacho de verdade exige um cliente, e
+    um cliente entra por import ou pelo `buscar` injetado — este teste fecha a
+    primeira porta, e a segunda é do chamador.
+    """
+    import ast
+    import inspect
+
+    for modulo in (rel, vrel):
+        arvore = ast.parse(inspect.getsource(modulo))
+        importados: list[str] = []
+        for no in ast.walk(arvore):
+            if isinstance(no, ast.Import):
+                importados += [a.name for a in no.names]
+            elif isinstance(no, ast.ImportFrom):
+                importados.append(no.module or "")
+                importados += [f"{no.module or ''}.{a.name}" for a in no.names]
+        for nome in importados:
+            assert not nome.startswith("volc_ads"), (modulo.__name__, nome)
+            for proibido in ("executor", "subir", "gads", "sincronizador",
+                             "client"):
+                assert proibido not in nome, (modulo.__name__, nome)
 
 
 def test_o_modulo_de_releitura_nao_tem_caminho_de_escrita():

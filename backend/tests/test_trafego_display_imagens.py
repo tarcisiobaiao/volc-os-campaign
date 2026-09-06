@@ -558,3 +558,120 @@ def test_o_canal_viaja_para_o_portao_em_cada_caminho():
         trafego._montar_plano_demand_gen)
     assert 'canal="PERFORMANCE_MAX"' in inspect.getsource(
         trafego._brief_pmax_offline)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# VÍDEO DO YOUTUBE — a recusa vem ANTES do portão e da ponte, por COMPORTAMENTO
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _corpo_pmax(videos: list[str]) -> dict:
+    return {
+        "opportunity_id": 1,
+        "customer_id": "8017851692",
+        "login_customer_id": "6016739364",
+        "copy": {
+            "headlines": ["Título um", "Título dois", "Título três"],
+            "long_headlines": ["Um título longo para a campanha"],
+            "descriptions": [
+                "Descrição curta para o anúncio.",
+                "Outra descrição completa para o anúncio.",
+            ],
+            "business_name": "VOLC",
+        },
+        "budget_diario": 20,
+        "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+        "vertical": "informativo",
+        "url_final": "https://example.com/r/pauta/",
+        "pmax": {
+            "brand_guidelines_enabled": False,
+            "audiencias": [],
+            "search_themes": ["tema informativo"],
+            "negativas": [],
+            "nome_do_asset_group": "Grupo principal",
+            "videos_youtube": videos,
+        },
+        "assets_pmax": [
+            _asset("imagem_marketing", "banner", 600, 314),
+            _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+            _asset("logo_quadrado", "logo", 128, 128),
+        ],
+    }
+
+
+def _cockpit_pmax():
+    origem = SimpleNamespace(
+        pais="BR", idioma="pt", vertical="informativo",
+        url_final="https://example.com/r/pauta/", nicho="pauta", slug="pauta",
+    )
+    return SimpleNamespace(origem=origem, bloqueios=(), avisos=())
+
+
+def test_video_do_youtube_por_referencia_e_recusado_antes_do_portao_e_da_ponte(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """CONTRAPROVA COMPORTAMENTAL: zero chamada ao portão e zero à ponte.
+
+    ⚠️ A contraprova anterior (`test_a_recusa_de_video_vem_antes_do_portao_em_pmax`)
+    NÃO testava a ordem que o nome prometia. Ela coletava os `ast.Raise` da
+    função e afirmava duas propriedades INDEPENDENTES — "existe um raise" e "o
+    portão é chamado" —, sem nunca comparar as duas posições; e o filtro da
+    list-comprehension avaliava `"videos_youtube" in get_source_segment(fonte,
+    no)` sobre `no`, a função INTEIRA, o que é uma constante que não filtra
+    nada. Medido em 06/09/2026: mover o bloco de vídeo para DEPOIS do portão
+    deixava os dois testes VERDES, com a peça de terceiro atravessando.
+
+    Aqui a ordem é observada, e não lida: se a recusa passar para depois, os
+    espiões registram a chamada e a lista deixa de ser vazia — mesmo que o
+    `ValueError` continue sendo levantado.
+
+    ⚠️ E nada aqui casa comentário nem mensagem redigida pelo autor do teste.
+    """
+    from volc_ads import criativo_ponte
+
+    chamadas: list[str] = []
+    monkeypatch.setattr(trafego, "_recibos_de_politica_das_pecas",
+                        lambda *_a, **_k: chamadas.append("portao"))
+    monkeypatch.setattr(criativo_ponte, "imagens_de_pmax",
+                        lambda *_a, **_k: chamadas.append("ponte"))
+
+    body = trafego.PlanejarPMaxEntrada.model_validate(
+        _corpo_pmax(["customers/8017851692/assets/555"]))
+
+    with pytest.raises(ValueError):
+        trafego._brief_pmax_offline(pautador_ponte, _cockpit_pmax(), body)
+
+    # ⚠️ A ASSERÇÃO QUE CARREGA A PROVA DE ORDEM.
+    assert chamadas == [], (
+        "o vídeo por referência atravessou o portão ou a ponte: " + str(chamadas))
+
+
+def test_sem_video_o_mesmo_payload_atravessa_o_portao_e_a_ponte(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A simetria que amarra o teste acima ao VÍDEO, e não a outra coisa.
+
+    Sem ela, um `raise` acidental em qualquer ponto anterior satisfaria a
+    asserção de lista vazia e o teste passaria pelo motivo errado.
+    """
+    from volc_ads import criativo_ponte
+
+    chamadas: list[str] = []
+    monkeypatch.setattr(trafego, "_recibos_de_politica_das_pecas",
+                        lambda *_a, **_k: chamadas.append("portao") or {})
+
+    entrega_real = criativo_ponte.imagens_de_pmax
+
+    def espiao(*a, **k):
+        chamadas.append("ponte")
+        return entrega_real(*a, **k)
+
+    monkeypatch.setattr(criativo_ponte, "imagens_de_pmax", espiao)
+
+    body = trafego.PlanejarPMaxEntrada.model_validate(_corpo_pmax([]))
+    brief = trafego._brief_pmax_offline(pautador_ponte, _cockpit_pmax(), body)
+
+    assert chamadas == ["portao", "ponte"]
+    # E a ponte pós-portão continua sem vídeo nenhum a anexar — a linha que
+    # reabriria o buraco é código morto enquanto a recusa vier antes.
+    assert list(getattr(brief.imagens_pmax, "videos_youtube", [])) == []

@@ -30,6 +30,7 @@ from pydantic import ValidationError
 from app.routers import trafego
 from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario
 from app.trafego import plataforma as plat
+from volc_ads import autorizacao_de_canal as aut
 from volc_ads import pautador_ponte
 from volc_ads import subir as motor
 from volc_ads.campanha.brief import Copy
@@ -1008,11 +1009,19 @@ def test_subir_display_nao_consulta_o_portao_do_conjunto_pago(
     isso a rota pararia em T01 antes de chegar à montagem — e o teste passaria
     sem provar nada. Abrir a janela não abre a escrita: `motor.subir` continua
     sendo um tripwire.
+
+    ⚠️ E O PATCH É NA AUTORIDADE ÚNICA, não no nome do canário. Ele era
+    `monkeypatch.setattr(trafego.canario, "CANAIS_COM_CRIACAO_AUTORIZADA", ...)`,
+    e funcionava porque os dois lados PODIAM divergir: abrir o símbolo do
+    backend deixava o executor fechado, em silêncio. Desde 06/09/2026 o
+    julgamento é `autorizacao_de_canal.autorizado(...)` lido na chamada, então
+    abrir a autoridade move os dois juntos — e esta linha é a demonstração
+    disso.
     """
     _isolar(monkeypatch)
     _deixar_subir_chegar_a_montagem(monkeypatch)
     monkeypatch.setattr(
-        trafego.canario, "CANAIS_COM_CRIACAO_AUTORIZADA",
+        aut, "CANAIS_COM_CRIACAO_AUTORIZADA",
         frozenset({"SEARCH", "DISPLAY"}))
 
     visitou_o_portao: list[str] = []

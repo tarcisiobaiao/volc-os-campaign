@@ -90,9 +90,55 @@ GAQL_ASSET_GROUP = (
     "FROM asset_group WHERE campaign.id = {kid} "
     "AND asset_group.status != 'REMOVED'")
 
-#: O estado em que TODO objeto criado por esta casa nasce. Nenhum canal foge —
-#: é literal em `campanha/comum.py` e em cada builder.
+#: O estado em que a CAMPANHA nasce. Este é o contrato que não se negocia:
+#: `campanha/comum.py` faz `camp.status = PAUSED` para os quatro canais, e é a
+#: campanha pausada que garante que nada veicule sem decisão humana.
 NASCE_PAUSADO = "PAUSED"
+
+#: O estado em que cada FILHO nasce — por canal, porque os builders divergem.
+#:
+#: ⚠️ O comentário anterior dizia "TODO objeto criado por esta casa nasce
+#: PAUSED. Nenhum canal foge", e isso era FALSO para Search: `comum.op_adgroup`
+#: tem `status: str = "ENABLED"` como default e `search.py` chama sem passar
+#: status; `search.py` também liga o `AdGroupAd`. A própria docstring de
+#: `op_adgroup` diz por quê — "Search nasce assim desde sempre: o grupo ligado
+#: dentro de uma campanha PAUSED, que não veicula".
+#:
+#: A regra de bloqueio foi escrita sobre a premissa errada, e o efeito foi
+#: medido: uma campanha Search recém-criada pelos builders desta casa, correta e
+#: nunca ativada, saía DIVERGENTE e `/reconciliar` devolvia 409 — em 100% dos
+#: lançamentos do único canal com criação autorizada. Achado da revisão
+#: adversarial de 06/09/2026, reproduzido.
+#:
+#: ⚠️ DECLARADO, e não deduzido, pelo mesmo motivo de `OBJETOS_POR_CANAL`: o
+#: backend não pode importar `volc_ads/campanha/*` (eles arrastam o SDK do
+#: Google). A coerência com os builders é cobrada por ÁRVORE SINTÁTICA em
+#: `test_trafego_readback_por_canal.py`, que é o padrão já usado neste repo.
+NASCE_COM_STATUS: Mapping[str, Mapping[str, str]] = {
+    # comum.op_adgroup default ENABLED · search.py `ada.status = ENABLED`
+    "SEARCH": {GRUPO: "ENABLED", ANUNCIO: "ENABLED"},
+    # display.py pede `status="PAUSED"` no grupo e no anúncio
+    "DISPLAY": {GRUPO: NASCE_PAUSADO, ANUNCIO: NASCE_PAUSADO},
+    # demand_gen.py idem, nas duas pernas
+    "DEMAND_GEN": {GRUPO: NASCE_PAUSADO, ANUNCIO: NASCE_PAUSADO},
+    # pmax.py `ag.status = AssetGroupStatusEnum.PAUSED`
+    "PERFORMANCE_MAX": {ASSET_GROUP: NASCE_PAUSADO},
+}
+
+#: Quantos filhos o plano exige de uma campanha que ESTÁ criada.
+#:
+#: ⚠️ Um é o mínimo que veicula: campanha sem grupo, grupo sem anúncio, ou PMax
+#: sem asset group não entregam impressão nenhuma. Sem esta declaração, "o plano
+#: pedia um grupo e a conta tem zero" era estruturalmente indetectável — não
+#: havia campo contra o que divergir —, e uma campanha OCA saía
+#: `ausencia_provada` com `bloqueia=False`, que a rota carimbava como
+#: reconciliada. Achado da revisão adversarial de 06/09/2026, reproduzido até o
+#: ledger.
+#:
+#: ⚠️ Ele só é cobrado onde a campanha-mãe JÁ FOI RESOLVIDA: a guarda de
+#: `reler_na_conta` devolve `NAO_SUPORTADO` antes disso, e "não sei" nunca vira
+#: exigência.
+MINIMO_DE_FILHOS_DE_CAMPANHA_CRIADA = 1
 
 
 def canonizar(canal: Any) -> str:
@@ -190,10 +236,19 @@ def _veredito_de_filho(canal: str, objeto: str, linhas: list,
                        esperado: Mapping[str, Any],
                        ident: Callable[[Any], str],
                        estado_de: Callable[[Any], str],
+                       minimo: int,
                        ) -> VereditoDaReleitura:
+    """O veredito de UM filho. ⚠️ Só é chamado com a campanha-mãe RESOLVIDA.
+
+    `minimo` é OBRIGATÓRIO e não tem default. Com default, um chamador futuro
+    que esquecesse de declarar a cardinalidade voltaria em silêncio ao neutro
+    que este parâmetro existe para eliminar; sem default, o esquecimento é um
+    `TypeError` na primeira chamada.
+    """
     base = dict(canal=canal, objeto=objeto, esperado=dict(esperado),
                 consulta=consulta, procedencia="GoogleAdsService.search (GAQL)")
     if teto is not None:
+        # ⚠️ ANTES DE TUDO: leitura truncada não prova ausência nem divergência.
         return VereditoDaReleitura(
             **base, estado=EstadoDaReleitura.LEITURA_PARCIAL,
             quantidade=len(linhas), teto_atingido=teto,
@@ -201,15 +256,39 @@ def _veredito_de_filho(canal: str, objeto: str, linhas: list,
                    f"{TETO_DE_LINHAS_DA_RELEITURA} LINHAS sem terminar. Isto "
                    "NÃO prova ausência."))
     if not linhas:
+        if minimo <= 0:
+            return VereditoDaReleitura(
+                **base, estado=EstadoDaReleitura.AUSENCIA_PROVADA,
+                quantidade=0)
+        # ⚠️ AQUI A CAMPANHA-MÃE EXISTE — `reler_na_conta` já devolveu
+        # `NAO_SUPORTADO` em todo caso em que ela não foi resolvida. Campanha
+        # criada e sem filho não é "conta limpa": é campanha OCA, que não
+        # veicula e não é o que o plano descreve. Isso é DIVERGÊNCIA
+        # ESTRUTURAL, e divergência bloqueia.
+        #
+        # ⚠️ E não autoriza reenvio: o próximo ato de DIVERGENTE manda abrir a
+        # campanha e comparar, `reenvio_por_readback` continua `False`, e este
+        # módulo não tem caminho de escrita nenhum.
         return VereditoDaReleitura(
-            **base, estado=EstadoDaReleitura.AUSENCIA_PROVADA, quantidade=0)
+            **base, estado=EstadoDaReleitura.DIVERGENTE, quantidade=0,
+            lido={"quantidade": 0}, campos_divergentes=("quantidade",),
+            causa=(f"a campanha existe na conta e o plano pedia ao menos "
+                   f"{minimo} {objeto}; a leitura terminou, foi completa e "
+                   f"encontrou zero. Campanha sem {objeto} não veicula — isto "
+                   "não é ausência da campanha, é uma criação que ficou pela "
+                   "metade."))
     estados = {estado_de(l) for l in linhas}
-    fora_de_pausado = sorted(e for e in estados if e != NASCE_PAUSADO)
+    # ⚠️ O `esperado` DECIDE, e antes ele era decorativo: a comparação era
+    # contra a constante do módulo, então passar `esperado={"status": "ENABLED"}`
+    # ainda dava divergente. O default continua sendo `NASCE_PAUSADO`, que é o
+    # fail-closed: objeto ou canal que ninguém declarou continua tendo de provar
+    # que nasceu pausado.
+    alvo = str((esperado or {}).get("status") or NASCE_PAUSADO)
+    fora_do_alvo = sorted(e for e in estados if e != alvo)
     lido = {"quantidade": len(linhas), "status": sorted(estados)}
-    if fora_de_pausado:
-        # ⚠️ NASCER PAUSADO É CONTRATO, e um objeto fora disso é DIVERGENTE —
-        # não um detalhe de um sucesso. Um `ENABLED` aqui significa que algo
-        # nesta conta pode gastar sem decisão humana.
+    if fora_do_alvo:
+        # ⚠️ NASCER COMO O BUILDER DAQUELE CANAL CRIA É CONTRATO, e um objeto
+        # fora disso é DIVERGENTE — não um detalhe de um sucesso.
         return VereditoDaReleitura(
             **base, estado=EstadoDaReleitura.DIVERGENTE,
             quantidade=len(linhas), lido=lido,
@@ -287,25 +366,32 @@ def reler_na_conta(
         return tuple(vereditos)
 
     for objeto in objetos[1:]:
+        # ⚠️ O estado esperado vem do BUILDER daquele canal, e não de uma
+        # constante única: Search cria os filhos ENABLED dentro da campanha
+        # PAUSED, os outros três criam tudo PAUSED. O default é `NASCE_PAUSADO`,
+        # que é o lado fail-closed de um canal ainda não declarado aqui.
+        nasce = NASCE_COM_STATUS.get(nome, {}).get(objeto, NASCE_PAUSADO)
+        alvo_filho: Mapping[str, Any] = {
+            "status": nasce,
+            "quantidade_minima": MINIMO_DE_FILHOS_DE_CAMPANHA_CRIADA,
+        }
         if objeto == GRUPO:
             consulta = GAQL_GRUPO.format(kid=int(id_da_campanha))
             ident = lambda l: str(l.ad_group.id)  # noqa: E731
             estado = lambda l: _nome_do_enum(l.ad_group.status)  # noqa: E731
-            alvo_filho: Mapping[str, Any] = {"status": NASCE_PAUSADO}
         elif objeto == ANUNCIO:
             consulta = GAQL_ANUNCIO.format(kid=int(id_da_campanha))
             ident = lambda l: str(l.ad_group_ad.ad.id)  # noqa: E731
             estado = lambda l: _nome_do_enum(l.ad_group_ad.status)  # noqa: E731
-            alvo_filho = {"status": NASCE_PAUSADO}
         else:  # ASSET_GROUP
             consulta = GAQL_ASSET_GROUP.format(kid=int(id_da_campanha))
             ident = lambda l: str(l.asset_group.id)  # noqa: E731
             estado = lambda l: _nome_do_enum(l.asset_group.status)  # noqa: E731
-            alvo_filho = {"status": NASCE_PAUSADO}
         try:
             linhas, teto = _linhas(buscar, consulta)
             vereditos.append(_veredito_de_filho(
-                nome, objeto, linhas, teto, consulta, alvo_filho, ident, estado))
+                nome, objeto, linhas, teto, consulta, alvo_filho, ident, estado,
+                alvo_filho["quantidade_minima"]))
         except Exception as exc:  # noqa: BLE001
             vereditos.append(VereditoDaReleitura(
                 canal=nome, objeto=objeto, estado=EstadoDaReleitura.FALHA,

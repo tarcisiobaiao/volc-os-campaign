@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from app.trafego import canario
 from app.routers import trafego
 from app.seguranca.identidade import Identidade
+from volc_ads import autorizacao_de_canal as aut
 
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -148,6 +149,68 @@ def test_criar_em_canal_sem_canario_e_recusado_pelo_motivo_certo():
         # NÃO pode ser a recusa de rede nem a de CPC.
         assert "rede declarada" not in mensagem
         assert "CPC inicial" not in mensagem
+
+
+def test_revogar_no_executor_fecha_o_backend_e_abrir_o_alias_nao_abre_nada():
+    """CONTRAPROVA: a autoridade de canal é UMA, e a divergência é impossível.
+
+    ⚠️ `canario.CANAIS_COM_CRIACAO_AUTORIZADA` era `= aut.CANAIS_...`, uma
+    ligação por VALOR feita no import, e a docstring afirmava "não há cópia para
+    divergir — o teste cobra a identidade dos objetos". As duas frases eram
+    falsas: o teste citado NUNCA EXISTIU (um grep achava só a própria docstring
+    que o citava), e havia DUAS cópias congeladas, porque `POLITICA` de Search
+    também derivava do conjunto no import e era devolvida por atalho.
+
+    Este teste prova a divergência nos DOIS sentidos, e não o caminho feliz.
+    """
+    # ── SENTIDO 1: revogar na autoridade fecha o backend NO MESMO INSTANTE ──
+    # É o sentido perigoso e o que falhava: esvaziar o conjunto para conter um
+    # incidente deixava a rota HTTP e a tela ainda autorizando Search, enquanto
+    # o executor já recusava. Não exige permissão nenhuma para acontecer.
+    monkeypatch_ = pytest.MonkeyPatch()
+    try:
+        monkeypatch_.setattr(aut, "CANAIS_COM_CRIACAO_AUTORIZADA", frozenset())
+        assert aut.canais_autorizados() == ()
+        assert canario.CANAIS_COM_CRIACAO_AUTORIZADA == frozenset()
+        assert canario.politica_do_canal("SEARCH").criacao_autorizada is False
+        with pytest.raises(canario.CanarioRecusado, match="ainda não autoriza CRIAR"):
+            canario.exigir(**_pedido_de_canal("SEARCH", rede=REDE_DO_CANARIO,
+                                              cpc_inicial="0.20"))
+    finally:
+        monkeypatch_.undo()
+
+    # E o mundo volta ao normal quando a revogação sai.
+    assert canario.politica_do_canal("SEARCH").criacao_autorizada is True
+
+    # ── SENTIDO 2: abrir o símbolo paralelo não abre NADA ───────────────────
+    monkeypatch_ = pytest.MonkeyPatch()
+    try:
+        monkeypatch_.setattr(canario, "CANAIS_COM_CRIACAO_AUTORIZADA",
+                             frozenset({"SEARCH", "DISPLAY"}), raising=False)
+        assert aut.autorizado("DISPLAY") is False
+        assert canario.politica_do_canal("DISPLAY").criacao_autorizada is False
+        with pytest.raises(canario.CanarioRecusado, match="ainda não autoriza CRIAR"):
+            canario.exigir(**_pedido_de_canal("DISPLAY"))
+    finally:
+        monkeypatch_.undo()
+
+    # ── SENTIDO 3: nem uma `Politica` forjada abre ──────────────────────────
+    # `exigir` consulta a autoridade NA DECISÃO, e não confia no objeto que a
+    # projeção lhe entregou. É a defesa em profundidade: mesmo que
+    # `politica_do_canal` passe a mentir, o portão continua fechado.
+    monkeypatch_ = pytest.MonkeyPatch()
+    try:
+        forjada = canario.Politica(canal="DISPLAY", criacao_autorizada=True,
+                                   cpc_maximo_brl=None, exige_rede=False,
+                                   orcamento_diario_maximo_brl="20.00")
+        assert forjada.criacao_autorizada is True
+        monkeypatch_.setattr(canario, "politica_do_canal",
+                             lambda _canal: forjada)
+        with pytest.raises(canario.CanarioRecusado,
+                           match="ainda não autoriza CRIAR"):
+            canario.exigir(**_pedido_de_canal("DISPLAY"))
+    finally:
+        monkeypatch_.undo()
 
 
 def test_o_teto_de_verba_e_julgado_antes_da_autorizacao_do_canal():
@@ -595,6 +658,32 @@ def _instalar_portas_hermeticas(monkeypatch: pytest.MonkeyPatch):
         "conta_da_casa",
         lambda customer_id: {"customer_id": customer_id},
     )
+    # ⚠️ AS DUAS PORTAS QUE `/provar` E `/subir` ABREM POR CONTA PRÓPRIA, e que
+    # este helper não fechava — dívida HERDADA do baseline, não desta rodada.
+    #
+    # `_prontidao_do_lancamento` desce até `contas.meta_de_conversao` e
+    # `_plano_de_mensuracao` desce pelo mesmo caminho; as duas chegam a
+    # `volc_ads.gads.client.cliente`, que é `lru_cache` e, com um
+    # `google-ads.yaml` na máquina, REFRESCA o token antes de qualquer consulta.
+    # O efeito é o pior dos dois mundos: o arquivo fica VERMELHO na máquina
+    # credenciada (a fixture de rede o derruba) e VERDE em CI, onde
+    # `load_from_storage` levanta e o `except` da rota engole com `metas=None` —
+    # ou seja, verde onde não prova nada.
+    #
+    # As duas linhas são as mesmas de `test_barreira3_destino_de_campanha.py` e
+    # `test_contraprovas_reauditoria.py`. A rota já trata "não li" como o caminho
+    # honesto, então nada é mascarado: o que era leitura remota vira ausência
+    # declarada, que é o que um teste hermético deve ver.
+    from app.trafego import contas as ct
+
+    def _sem_metas(*_a, **_k):
+        raise RuntimeError("leitura de metas desligada neste arquivo hermético")
+
+    async def _sem_plano(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(ct, "meta_de_conversao", _sem_metas)
+    monkeypatch.setattr(trafego, "_plano_de_mensuracao", _sem_plano)
     return planos_remotos
 
 

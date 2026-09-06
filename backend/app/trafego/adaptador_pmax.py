@@ -19,10 +19,26 @@ Este módulo exercita a MESMA autoridade que `canario` declara — `asset_group`
 
 **A URL é exclusiva por contrato.** Em Search e Display, várias URLs finais
 significam "não há UMA URL" e o espelho declara `null`. Em PMax, o contrato desta
-casa exige `final_urls = [LP aprovada]` — exatamente uma. Mais de uma não é
-ambiguidade de medição: é `DIVERGENCIA_URL_EXCLUSIVA`, e o inventário registra o
-fato em `urls_finais_lidas` para que a divergência seja investigável em vez de
-virar um `null` mudo.
+casa exige `final_urls = [LP aprovada]` — exatamente uma. Mais de uma é uma
+violação de contrato, e não uma ambiguidade de medição.
+
+⚠️ ONDE ESSA VIOLAÇÃO FICA REGISTRADA, medido em 06/09/2026 e dito aqui porque a
+versão anterior deste parágrafo afirmava o contrário. Ela fica no LOG
+(`log.info` mais abaixo, com a lista inteira) e em `urls_finais_lidas`, que
+viaja dentro do dicionário devolvido por `ler_filhas`. Ela **não** chega ao
+inventário: `sincronizador` consome exatamente duas chaves do `extra`
+(`lance_micros` e `url_final`) e `persistencia.espelho_de_campanha` tem lista
+fechada de colunas. O espelho grava `url_final=null` — o mesmo `null` que o
+texto antigo dizia impedir —, e `DIVERGENCIA_URL_EXCLUSIVA` é um símbolo que
+não existe neste repositório.
+
+Estes fatos são, portanto, OBSERVACIONAIS: medidos, registrados em log e
+disponíveis a quem chamar `ler_filhas`, e deliberadamente fora do espelho
+enquanto não houver coluna para eles. A coluna é trabalho de uma rodada que
+possa aplicar migration; até lá a fronteira está fixada por
+`test_os_fatos_de_canal_sao_observacionais_e_a_docstring_diz_isso`, para que
+ninguém acrescente a chave à whitelist de colunas sem a coluna existir. O mesmo
+vale para `tcpa_micros` (Display) e `superficies` (Demand Gen).
 
 Somente leitura: GAQL só tem SELECT, e a query passa pelo `_exigir_leitura` do
 núcleo antes de sair.

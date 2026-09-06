@@ -406,8 +406,9 @@ class Ledger:
         corpo = {k: v for k, v in argumentos.items() if v is not None or k == "p_achou"}
         return dict(await self._rpc_cru("trafego_ledger_reconciliar", corpo) or {})
 
-    async def conta_externa_do_item(self, item_id: str) -> Optional[str]:
-        """A conta a que o item pertence, ou `None` se o item não existe.
+    async def procedencia_do_item(
+        self, item_id: str) -> Optional[tuple[str, str]]:
+        """`(conta_externa, canal)` do item, ou `None` se o item não existe.
 
         ⚠️ `None` aqui é "não existe", e é diferente de "não consegui ler" —
         que sai como `LedgerIndisponivel`. Quem chama usa a distinção para
@@ -417,6 +418,19 @@ class Ledger:
         Existe porque `trafego_ledger_reconciliar` acha o item só pelo id e não
         confere o lote: sem esta leitura, reconciliar aceitaria casar um item
         com a campanha de outra conta.
+
+        ⚠️ O CANAL VEM DAQUI, E NÃO DO CLIENTE. `trafego_lote.canal` é
+        `NOT NULL`, tem CHECK do vocabulário canônico do Google e gatilho de
+        IMUTABILIDADE ("intenção, blueprint, plataforma, conta e canal são a
+        identidade do lote e não mudam"); ele foi escrito por `/subir` a partir
+        do MESMO preparo que construiu e provou o payload. Antes, o canal do
+        read-back vinha de um campo OPCIONAL do corpo do pedido, e o único
+        cliente de produção não o enviava — o veredito de sete estados ficava
+        desligado em 100% das reconciliações reais. Achado da revisão
+        adversarial de 06/09/2026, reproduzido até o ledger.
+
+        A consulta é a MESMA que já acontecia: uma coluna a mais no `select`,
+        zero ida e volta nova.
         """
         if not self.disponivel:
             raise LedgerIndisponivel(
@@ -430,13 +444,21 @@ class Ledger:
             lotes = await self._supa.select(
                 "trafego_lote",
                 {"lote_id": f"eq.{itens[0].get('lote_id')}",
-                 "select": "lote_id,conta_externa", "limit": "1"})
+                 "select": "lote_id,conta_externa,canal", "limit": "1"})
             if not lotes:
                 return None
-            return str(lotes[0].get("conta_externa") or "") or None
+            conta = str(lotes[0].get("conta_externa") or "") or None
+            if conta is None:
+                return None
+            return conta, str(lotes[0].get("canal") or "")
         except httpx.HTTPError as exc:
             raise LedgerIndisponivel(
                 f"não consegui ler o item {item_id}: {exc}") from exc
+
+    async def conta_externa_do_item(self, item_id: str) -> Optional[str]:
+        """A conta do item. Delega — não há segunda derivação escrita aqui."""
+        procedencia = await self.procedencia_do_item(item_id)
+        return None if procedencia is None else procedencia[0]
 
     async def _rpc_cru(self, funcao: str, corpo: Mapping[str, Any]) -> Any:
         """Como `_rpc`, mas sem podar `None` — para os campos tri-estado."""

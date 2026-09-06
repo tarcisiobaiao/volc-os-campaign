@@ -37,6 +37,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 import asyncio
 import socket
+import sys
 
 import httpx
 import pytest
@@ -127,10 +128,12 @@ class LedgerDeTeste:
     """Um ledger que registra a ordem dos atos no diário compartilhado."""
 
     def __init__(self, *, diario: list, disponivel: bool = True,
-                 erro_no_fechar_erro: Exception | None = None):
+                 erro_no_fechar_erro: Exception | None = None,
+                 canal_do_lote: str = "SEARCH"):
         self.diario = diario
         self._disponivel = disponivel
         self._erro_no_fechar_erro = erro_no_fechar_erro
+        self.canal_do_lote = canal_do_lote
 
     @property
     def disponivel(self) -> bool:
@@ -161,6 +164,13 @@ class LedgerDeTeste:
     async def fechar_sem_resposta(self, **kw):
         self.diario.append(("fechar_sem_resposta", kw))
         return {"desfecho": "sem_resposta"}
+
+    #: `trafego_lote.canal` — `NOT NULL` e imutável por gatilho. O dublê o
+    #: carrega porque a rota passou a DERIVAR daqui o canal do read-back, e não
+    #: mais de um campo opcional do corpo do pedido.
+    async def procedencia_do_item(self, item_id: str):
+        self.diario.append(("procedencia_do_item", {"item_id": item_id}))
+        return canario.CONTA, self.canal_do_lote
 
     async def conta_externa_do_item(self, item_id: str):
         self.diario.append(("conta_externa_do_item", {"item_id": item_id}))
@@ -711,16 +721,47 @@ def test_o_504_indeterminado_entrega_a_marca_e_a_chave_para_reconciliar(monkeypa
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+def _dublar_a_leitura_do_readback(monkeypatch, linhas_por_consulta):
+    """O `search` que o read-back tipado usa, sem rede.
+
+    ⚠️ Ele passou a ser OBRIGATÓRIO nestes testes, e a razão é a correção de
+    06/09/2026: o read-back só rodava quando o cliente mandava `canal` no corpo,
+    e o único cliente de produção nunca mandava — o veredito de sete estados
+    ficava desligado em 100% das reconciliações reais e o item era carimbado
+    assim mesmo. Agora o canal vem do ledger e a releitura roda SEMPRE, então a
+    rota consulta a conta de verdade e o dublê tem de existir.
+
+    `consultas` fica disponível para o teste afirmar QUE OBJETOS foram relidos.
+    """
+    consultas: list[str] = []
+
+    def _search(*, customer_id, query):
+        consultas.append(query)
+        for marca, linhas in linhas_por_consulta.items():
+            if marca in query:
+                return list(linhas)
+        return []
+
+    servico = SimpleNamespace(search=_search)
+    modulo = SimpleNamespace(cliente=lambda _mid: SimpleNamespace(
+        get_service=lambda _n: servico))
+    monkeypatch.setitem(sys.modules, "volc_ads.gads.client", modulo)
+    return consultas
+
+
 def _reconciliar(monkeypatch, *, encontradas, repo, ledger, diario,
-                 chave: str | None = None):
+                 chave: str | None = None, linhas_do_readback=None,
+                 canal_no_corpo: str | None = None):
     monkeypatch.setattr(trafego, "_ledger", lambda: ledger)
     monkeypatch.setattr(trafego, "_repositorio_de_plano", lambda: repo)
     monkeypatch.setattr(trafego, "_ler_campanha_na_conta",
                         lambda **_: tuple(encontradas))
+    _dublar_a_leitura_do_readback(monkeypatch, linhas_do_readback or {})
     corpo = trafego.ReconciliarEntrada(
         item_id="item-1", customer_id=canario.CONTA,
         marca="VOLC-CANARY-" + ("d" * 12),
         chave_intencao=chave,
+        canal=canal_no_corpo,
         login_customer_id=canario.MCC,
         motivo="leitura tardia depois do 504")
     return asyncio.run(trafego.reconciliar_lancamento(corpo, identidade=IDENTIDADE))
@@ -1465,3 +1506,143 @@ def test_provar_diz_que_o_plano_nao_esta_persistido(monkeypatch):
     assert persistencia_declarada["persistido"] is False
     assert persistencia_declarada["plano_id"] is None
     assert "não" in persistencia_declarada["porque"].lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PROVA 6 — o canal do read-back é do SERVIDOR, e o cliente não o escolhe
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _campanha_lida(status="PAUSED", canal="SEARCH"):
+    return SimpleNamespace(campaign=SimpleNamespace(
+        id=CAMPANHA, name="VOLC-CANARY-dddddddddddd / x",
+        status=SimpleNamespace(name=status),
+        advertising_channel_type=SimpleNamespace(name=canal),
+        bidding_strategy_type=SimpleNamespace(name="MAXIMIZE_CONVERSIONS")))
+
+
+def test_reconciliar_sem_canal_no_corpo_ainda_rele_o_canal_derivado_do_ledger(
+    monkeypatch,
+):
+    """CONTRAPROVA: o veredito de sete estados roda sem `canal` no pedido.
+
+    ⚠️ `ReconciliarEntrada.canal` é opcional e o único chamador de produção
+    (`NovaCampanhaPage.tsx`) monta o corpo sem ele — mesmo tendo a variável em
+    escopo. O guard da rota (`if canal_do_item and ...`) pulava o read-back
+    inteiro, o veredito saía `nao_suportado`/`bloqueia=False` e o item era
+    carimbado `achou=True` com "campanha encontrada na leitura da conta". Ou
+    seja: o recurso nasceu DESLIGADO em 100% das reconciliações reais.
+    Reproduzido em 06/09/2026 até a chamada do ledger.
+
+    ⚠️ E declarar `canal` no tipo do cliente não conserta isso: o cliente
+    continua não enviando. Por isso o canal passou a vir de `trafego_lote.canal`
+    — `NOT NULL`, com CHECK do vocabulário canônico e gatilho de imutabilidade,
+    escrito por `/subir` a partir do preparo que construiu o payload.
+
+    O corpo abaixo é LITERALMENTE o que a tela manda: sem `canal`.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario)
+    ledger = LedgerDeTeste(diario=diario, canal_do_lote="SEARCH")
+
+    # A conta tem a campanha, e ela DIVERGE do plano: nasceu ENABLED.
+    consultas: list[str] = []
+
+    def _capturar(monkeypatch_alvo):
+        return consultas
+
+    saida_ou_erro = None
+    try:
+        _reconciliar(
+            monkeypatch, repo=repo, ledger=ledger, diario=diario,
+            chave="d" * 64,
+            encontradas=[{"campaign_id": CAMPANHA,
+                          "campaign_name": "VOLC-CANARY-dddddddddddd / x",
+                          "status": "ENABLED"}],
+            linhas_do_readback={
+                "FROM campaign": [_campanha_lida(status="ENABLED")],
+                "FROM ad_group_ad": [SimpleNamespace(
+                    campaign=SimpleNamespace(id=CAMPANHA),
+                    ad_group_ad=SimpleNamespace(
+                        status=SimpleNamespace(name="ENABLED"),
+                        ad=SimpleNamespace(id="1", final_urls=["https://x/"])))],
+                "FROM ad_group": [SimpleNamespace(
+                    campaign=SimpleNamespace(id=CAMPANHA),
+                    ad_group=SimpleNamespace(
+                        id="1", status=SimpleNamespace(name="ENABLED")))],
+            })
+    except HTTPException as exc:
+        saida_ou_erro = exc
+
+    # ── O READ-BACK RODOU, e bloqueou ──────────────────────────────────────
+    assert saida_ou_erro is not None, (
+        "a rota fechou o recibo: o read-back não rodou sem `canal` no corpo")
+    assert saida_ou_erro.status_code == 409
+    detalhe = saida_ou_erro.detail
+    assert detalhe["estado"] == "releitura_divergente"
+    assert detalhe["releitura"]["estado"] == "divergente"
+    assert detalhe["releitura"]["bloqueia"] is True
+    # ⚠️ ANTI-REGRESSÃO EXPLÍCITA: este valor aqui significa que ninguém derivou
+    # o canal, que é exatamente o defeito.
+    assert detalhe["releitura"]["estado"] != "nao_suportado"
+    # E bloquear não é autorizar reenvio.
+    assert detalhe["reenvio_permitido"] is False
+    assert detalhe["releitura"]["reenvio_por_readback"] is False
+
+    # ── O ITEM NÃO FOI CARIMBADO COMO SUCESSO ──────────────────────────────
+    (reconciliacoes,) = [kw for ato, kw in diario if ato == "reconciliar"]
+    assert reconciliacoes["achou"] is None, (
+        "divergência virou sucesso: o item foi carimbado")
+    assert "releitura" in reconciliacoes["divergencia"], (
+        "o veredito tipado não chegou à trilha de auditoria")
+
+
+def test_o_canal_do_corpo_nao_troca_os_objetos_relidos(monkeypatch):
+    """O cliente não escolhe a semântica do read-back — o ledger vence.
+
+    Com o ledger dizendo SEARCH e o corpo pedindo PERFORMANCE_MAX, os objetos
+    relidos têm de ser os de Search (grupo e anúncio), e nunca `asset_group`.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario)
+    ledger = LedgerDeTeste(diario=diario, canal_do_lote="SEARCH")
+
+    # A conta tem a campanha Search CORRETA, criada como esta casa cria: a
+    # campanha PAUSED e os filhos ENABLED dentro dela.
+    consultas = _dublar_a_leitura_do_readback(monkeypatch, {
+        "FROM campaign": [_campanha_lida()],
+        "FROM ad_group_ad": [SimpleNamespace(
+            campaign=SimpleNamespace(id=CAMPANHA),
+            ad_group_ad=SimpleNamespace(
+                status=SimpleNamespace(name="ENABLED"),
+                ad=SimpleNamespace(id="1", final_urls=["https://x/"])))],
+        "FROM ad_group": [SimpleNamespace(
+            campaign=SimpleNamespace(id=CAMPANHA),
+            ad_group=SimpleNamespace(
+                id="1", status=SimpleNamespace(name="ENABLED")))],
+    })
+    monkeypatch.setattr(trafego, "_ledger", lambda: ledger)
+    monkeypatch.setattr(trafego, "_repositorio_de_plano", lambda: repo)
+    monkeypatch.setattr(trafego, "_ler_campanha_na_conta",
+                        lambda **_: ({"campaign_id": CAMPANHA,
+                                      "campaign_name": "VOLC-CANARY-dddddddddddd / x",
+                                      "status": "PAUSED"},))
+    corpo = trafego.ReconciliarEntrada(
+        item_id="item-1", customer_id=canario.CONTA,
+        marca="VOLC-CANARY-" + ("d" * 12),
+        canal="PERFORMANCE_MAX",           # ⚠️ a mentira do cliente
+        login_customer_id=canario.MCC)
+    saida = asyncio.run(
+        trafego.reconciliar_lancamento(corpo, identidade=IDENTIDADE))
+
+    texto = " ".join(consultas)
+    assert "FROM ad_group" in texto, consultas
+    assert "FROM asset_group" not in texto, consultas
+    # E a campanha Search correta desta casa NÃO bloqueia.
+    assert saida["releitura"]["estado"] == "congruente", saida["releitura"]
+    assert saida["releitura"]["bloqueia"] is False
+
+    # E a pista ignorada fica REGISTRADA, em vez de sumir.
+    (reconciliacoes,) = [kw for ato, kw in diario if ato == "reconciliar"]
+    assert reconciliacoes["divergencia"]["canal_derivado"] == "SEARCH"
+    assert reconciliacoes["divergencia"]["canal_pedido_ignorado"] == "PERFORMANCE_MAX"

@@ -202,6 +202,16 @@ META_NAO_BIDDABLE = "META_NAO_BIDDABLE"
 OBJETIVO_INCOMPATIVEL = "OBJETIVO_INCOMPATIVEL"
 SEM_VALOR_DECLARADO = "SEM_VALOR_DECLARADO"
 SINAL_NAO_COMPROVADO = "SINAL_NAO_COMPROVADO"
+#: ⚠️ A LEITURA DO SINAL NÃO CONCLUIU — e isso NÃO é `SINAL_NAO_COMPROVADO`.
+#:
+#: Os dois eram o mesmo código, e o colapso produzia a afirmação exatamente
+#: invertida: uma `GAQL_FRESCOR` que caiu em RATE_EXCEEDED saía como
+#: `NAO_PRONTA` ("leu-se o bastante para afirmar que a conta não sustenta"),
+#: quando o fato é "o Google não respondeu, releia". Ausência de leitura é
+#: `INDETERMINADA` — está no cabeçalho deste módulo, e era esse o ponto em que
+#: o arquivo se contradizia. Achado da revisão adversarial de 06/09/2026,
+#: reproduzido contra o plano real.
+SINAL_NAO_LIDO = "SINAL_NAO_LIDO"
 SINAL_ANTIGO = "SINAL_ANTIGO"
 SINAL_SEM_DATA = "SINAL_SEM_DATA"
 ESTRATEGIA_DESCONHECIDA = "ESTRATEGIA_DESCONHECIDA"
@@ -223,6 +233,20 @@ CANAL_DESCONHECIDO = "CANAL_DESCONHECIDO"
 #: Google mostra uma coisa e este sistema mostra outra.
 FORA_DA_METRICA_DE_CONVERSOES = "FORA_DA_METRICA_DE_CONVERSOES"
 CAMPO_DEPRECADO_DIVERGENTE = "CAMPO_DEPRECADO_DIVERGENTE"
+
+#: Os bloqueios que são DÚVIDA SOBRE A LEITURA, e não afirmação sobre a CONTA.
+#:
+#: ⚠️ Quando um deles está na lista, o veredito é `INDETERMINADA` mesmo que os
+#: fatos da conta também bloqueiem: o estado é o mais humilde dos dois. Um
+#: retrato de ontem, ou um retrato que não chegou, não sustenta a frase "provado
+#: que esta conta não mede".
+#:
+#: A mecânica já existia para `LEITURA_VELHA` (a correção de 06/09/2026 que
+#: tirou a idade da saída antecipada); ela virou tupla porque passou a ter dois
+#: membros, e porque uma condição com dois `or` soltos é onde o terceiro entra
+#: sem ninguém decidir.
+CODIGOS_DE_DUVIDA_SOBRE_A_LEITURA: Tuple[str, ...] = (
+    LEITURA_VELHA, SINAL_NAO_LIDO)
 
 
 @dataclass(frozen=True)
@@ -279,6 +303,17 @@ class AcaoLida:
     conversoes_na_janela: Optional[float] = None
     #: Dias desde a última conversão. `None` NUNCA vira um número grande.
     dias_desde_a_ultima: Optional[int] = None
+    #: ⚠️ A leitura que produziria `conversoes_na_janela` NÃO CONCLUIU.
+    #:
+    #: `True` diz que o `None` acima é ignorância DECLARADA — a consulta caiu,
+    #: ou a ação não apareceu no relatório —, e não "ninguém perguntou". Ele
+    #: nunca vira número e nunca autoriza: só troca `NAO_PRONTA` (afirmação
+    #: sobre a CONTA) por `INDETERMINADA` (dúvida sobre a LEITURA).
+    #:
+    #: Default `False` de propósito: quem não declara mantém o veredito de
+    #: sempre. Quem declara é `de_plano`, que é o único adaptador com acesso ao
+    #: estado da leitura de frescor.
+    sinal_indeterminado: bool = False
 
     @property
     def primaria_efetiva(self) -> bool:
@@ -316,6 +351,7 @@ class AcaoLida:
             "carrega_valor": self.carrega_valor,
             "conversoes_na_janela": self.conversoes_na_janela,
             "dias_desde_a_ultima": self.dias_desde_a_ultima,
+            "sinal_indeterminado": self.sinal_indeterminado,
             "ativa": self.ativa,
             "deprecado_discorda": self.deprecado_discorda,
         }
@@ -346,6 +382,13 @@ class Leitura:
     meta_biddable: Optional[bool] = None
     #: A causa, quando o estado não conclui.
     causa: str = ""
+    #: Por que a leitura do SINAL não concluiu, quando não concluiu.
+    #:
+    #: ⚠️ SUJEITO DIFERENTE de `causa`. `causa` explica o estado desta leitura
+    #: (a das AÇÕES); esta explica a leitura do FRESCOR, que é outra consulta e
+    #: falha por outros motivos. Misturar as duas foi um defeito reproduzido em
+    #: 06/09/2026 — o operador lia a razão de uma e ia consertar a outra.
+    causa_do_sinal: str = ""
 
     def __post_init__(self) -> None:
         if self.estado not in ESTADOS_DE_LEITURA:
@@ -369,6 +412,7 @@ class Leitura:
             "lido_em": self.lido_em,
             "meta_biddable": self.meta_biddable,
             "causa": self.causa,
+            "causa_do_sinal": self.causa_do_sinal,
             "acoes": [a.para_json() for a in self.acoes],
         }
 
@@ -774,13 +818,34 @@ def avaliar(
     elegiveis: Tuple[AcaoLida, ...] = ()
     medidas = tuple(a for a in primarias if a.conversoes_na_janela is not None)
     if not medidas:
-        bloqueios.append(Bloqueio(
-            SINAL_NAO_COMPROVADO,
-            f"das {len(primarias)} ações elegíveis, ninguém mediu o volume. "
-            "⚠️ Isto é ausência de medição, e NÃO 'zero conversões': as duas "
-            "pedem atos opostos — uma pede uma leitura, a outra pede conserto "
-            "da medição.",
-            fonte=lida.procedencia))
+        # ⚠️ DOIS FATOS DIFERENTES MORAVAM NESTE RAMO, e o código era um só.
+        #
+        # "a leitura do volume não concluiu" é dúvida sobre a LEITURA; "ninguém
+        # nunca mediu esta conta" é o que se sabe depois de uma leitura que
+        # concluiu. A primeira NÃO pode virar `NAO_PRONTA` — que é a frase
+        # "provado que a conta não sustenta" — só porque a leitura das AÇÕES,
+        # que é outra consulta, terminou bem. Achado da revisão adversarial de
+        # 06/09/2026, reproduzido com `Frescor(estado='falhou')`.
+        indeterminadas = tuple(a for a in primarias if a.sinal_indeterminado)
+        if indeterminadas:
+            porque = lida.causa_do_sinal or (
+                "a consulta que mediria o volume não concluiu")
+            bloqueios.append(Bloqueio(
+                SINAL_NAO_LIDO,
+                f"a leitura do sinal de {len(indeterminadas)} das "
+                f"{len(primarias)} ações elegíveis NÃO CONCLUIU: "
+                f"{porque.rstrip('.')}. ⚠️ Isto é dúvida sobre a LEITURA, e não "
+                "afirmação sobre a CONTA — releia antes de mexer na medição. "
+                "INDETERMINADA continua RECUSANDO.",
+                fonte=lida.procedencia))
+        else:
+            bloqueios.append(Bloqueio(
+                SINAL_NAO_COMPROVADO,
+                f"das {len(primarias)} ações elegíveis, ninguém mediu o volume. "
+                "⚠️ Isto é ausência de medição, e NÃO 'zero conversões': as duas "
+                "pedem atos opostos — uma pede uma leitura, a outra pede conserto "
+                "da medição.",
+                fonte=lida.procedencia))
     else:
         positivas = tuple(a for a in medidas
                           if (a.conversoes_na_janela or 0) > 0)
@@ -869,12 +934,14 @@ def avaliar(
             elegiveis = ()
 
     if bloqueios:
-        # ⚠️ Leitura velha mantém o veredito INDETERMINADA mesmo quando os fatos
-        # da conta também bloqueiam: a idade é uma dúvida sobre a LEITURA, e
-        # `NAO_PRONTA` afirmaria sobre a CONTA com base num retrato de ontem.
-        # Os dois bloqueios viajam juntos; o estado é o mais humilde dos dois.
-        velha = any(b.codigo == LEITURA_VELHA for b in bloqueios)
-        return veredito(INDETERMINADA if velha else NAO_PRONTA)
+        # ⚠️ Uma dúvida sobre a LEITURA mantém o veredito INDETERMINADA mesmo
+        # quando os fatos da conta também bloqueiam: `NAO_PRONTA` afirmaria
+        # sobre a CONTA com base num retrato de ontem (`LEITURA_VELHA`) ou num
+        # retrato que não chegou (`SINAL_NAO_LIDO`). Os bloqueios viajam
+        # juntos; o estado é o mais humilde de todos eles.
+        duvida = any(b.codigo in CODIGOS_DE_DUVIDA_SOBRE_A_LEITURA
+                     for b in bloqueios)
+        return veredito(INDETERMINADA if duvida else NAO_PRONTA)
 
     # A eleita: a mais recente entre as que sobraram, com desempate estável pelo
     # id. Empate resolvido por sorteio faria duas provas do mesmo pedido
@@ -1019,6 +1086,20 @@ def de_plano(plano: Any, *, lido_em: str = "") -> Leitura:
     dias = getattr(frescor, "dias_desde_a_ultima", None)
     contagem = getattr(frescor, "conversoes_na_janela", None)
     acao_do_frescor = str(getattr(frescor, "conversion_action_id", "") or "")
+    # ⚠️ O ESTADO DO FRESCOR ERA LIDO POR TODO MUNDO MENOS POR AQUI.
+    #
+    # `plano_mensuracao._corpo_da_impressao` já carrega `estados.frescor` na
+    # impressão canônica; este adaptador — o único ponto que transforma o plano
+    # em VEREDITO — lia os três números e ignorava o estado. O efeito era uma
+    # `GAQL_FRESCOR` que caiu virar `NAO_PRONTA`: uma afirmação sobre a conta a
+    # partir de uma consulta que não respondeu.
+    #
+    # A lista é BRANCA e positiva de propósito. `plano_mensuracao` tem dois
+    # estados a mais (`inelegivel`, `nao_suportado`) e — medido — NÃO inclui
+    # `parcial` na sua `ESTADOS_SEM_CONCLUSAO`; consultar a tupla de lá herdaria
+    # esse buraco. Aqui só `com_dados` e `vazio_confirmado` concluem.
+    estado_do_frescor = str(getattr(frescor, "estado", "") or "")
+    frescor_concluiu = estado_do_frescor in ("com_dados", "vazio_confirmado")
 
     meta = getattr(plano, "meta_efetiva", None)
     biddable = getattr(meta, "metas_biddable", None)
@@ -1045,15 +1126,44 @@ def de_plano(plano: Any, *, lido_em: str = "") -> Leitura:
             carrega_valor=None,
             conversoes_na_janela=(contagem if do_frescor else None),
             dias_desde_a_ultima=(dias if do_frescor else None),
+            # ⚠️ TRÊS GUARDAS, e cada uma tira um caso de cima da mesa.
+            #
+            # `do_frescor` mantém o SUJEITO: o marcador só cola na ação a que o
+            # frescor se refere. Um frescor sem sujeito — `frescor_nao_lido()`,
+            # ou o curto-circuito de "nenhuma ação foi eleita" — não marca
+            # ninguém, e "ninguém perguntou" continua sendo o que sempre foi.
+            #
+            # `contagem is None` garante que o marcador só explique uma
+            # AUSÊNCIA: ele nunca acompanha um número.
+            sinal_indeterminado=(do_frescor and not frescor_concluiu
+                                 and contagem is None),
         ))
 
+    # ⚠️ CADA CAUSA EXPLICA A SUA LEITURA — e eram duas leituras com uma causa.
+    #
+    # `estado` vem de `plano.acoes_estado` (GAQL_ACOES) e a causa vinha de
+    # `frescor.causa` (GAQL_FRESCOR). São consultas independentes, e o caminho
+    # não era hipotético: quando `ler_acoes` cai, nenhuma ação é eleita e
+    # `ler_frescor` sai pelo curto-circuito com "nenhuma ação de conversão foi
+    # eleita para esta campanha" — que virava a explicação da falha da OUTRA
+    # consulta, mandando o operador conferir eleição de meta quando o que caiu
+    # foi a leitura das ações. Reproduzido em 06/09/2026.
+    #
+    # `acao_alvo_causa` é o campo com o sujeito CERTO: `plano_mensuracao.montar`
+    # o escreve, nesse mesmo ramo, com "as ações de conversão da conta não foram
+    # lidas nesta sessão". A causa de transporte real de `ler_acoes` continua
+    # sendo descartada em `metas_efetivas.ler_plano` — dívida registrada, e
+    # propagá-la mexeria no schema do plano, que entra na impressão.
     causa = ""
     if estado in ESTADOS_SEM_CONCLUSAO:
-        causa = (str(getattr(frescor, "causa", "") or "")
+        causa = (str(getattr(plano, "acao_alvo_causa", "") or "")
                  or f"a leitura das ações de conversão está {estado_bruto}")
+    causa_do_sinal = ("" if frescor_concluiu
+                      else str(getattr(frescor, "causa", "") or ""))
     return Leitura(
         estado=estado, acoes=tuple(acoes),
         procedencia=("app.trafego.plano_mensuracao.PlanoDeMensuracao "
                      f"v{getattr(plano, 'versao', '?')}"),
         lido_em=str(lido_em or ""),
-        meta_biddable=meta_biddable, causa=causa)
+        meta_biddable=meta_biddable, causa=causa,
+        causa_do_sinal=causa_do_sinal)

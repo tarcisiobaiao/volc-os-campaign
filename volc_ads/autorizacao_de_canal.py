@@ -22,10 +22,22 @@ chegam ao `mutate` não é uma trava — é uma convenção.
 ## Por que a declaração mora aqui e não lá
 
 Aqui é o lugar que os DOIS lados alcançam: `volc_ads` é importável pelo backend,
-e o contrário não existe. `canario.py` passou a REFERENCIAR este conjunto em vez
-de declarar o seu — não há cópia para divergir, e o teste
-`test_canario_referencia_a_autoridade_unica_de_canal` cobra a identidade dos
-objetos, não a igualdade dos valores.
+e o contrário não existe.
+
+⚠️ A primeira versão desta frase dizia que `canario.py` "REFERENCIA este
+conjunto, então não há cópia para divergir", e citava um teste
+(`test_canario_referencia_a_autoridade_unica_de_canal`) que NUNCA existiu no
+repositório. As duas coisas eram falsas: `canario.CANAIS_COM_CRIACAO_AUTORIZADA`
+era uma ligação por VALOR feita no import, e religar qualquer um dos lados em
+runtime descolava os nomes em silêncio — a rota HTTP e o executor passavam a
+discordar sobre o mesmo canal.
+
+Desde 06/09/2026 não há mais cópia nenhuma: `canario` julga por
+`aut.autorizado(...)` em cada chamada (política por canal e `canario.exigir`),
+e o nome antigo sobrevive lá como vista dinâmica de leitura. Quem cobra isso é
+`test_revogar_no_executor_fecha_o_backend_e_abrir_o_alias_nao_abre_nada`, em
+`backend/tests/test_trafego_canario.py`, que prova a DIVERGÊNCIA nos dois
+sentidos — e não o caminho feliz.
 
 Stdlib pura, de propósito: nenhum import de `google.ads`, de `app.` ou de
 `volc_ads.campanha`. É o que permite ao backend importá-lo no topo.

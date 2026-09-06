@@ -4945,11 +4945,25 @@ async def subir(
         estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
     )
     try:
-        # ⚠️ CANAL E INSTANTE DA LEITURA VIAJAM. Sem o canal, a autoridade de
-        # mensuração adjudicaria toda campanha como se fosse Search — e o
-        # objetivo que cada canal aceita é diferente (PMax não tem MANUAL_CPC,
-        # Demand Gen só tem MAXIMIZE_CONVERSIONS). Sem `lido_em`, a leitura das
-        # cinco GAQL entraria sem procedência temporal.
+        # ⚠️ CANAL E INSTANTE DA LEITURA VIAJAM — e o comentário anterior dava
+        # a razão ERRADA para o canal.
+        #
+        # Ele dizia que sem o canal "o objetivo que cada canal aceita é
+        # diferente (PMax não tem MANUAL_CPC, Demand Gen só tem
+        # MAXIMIZE_CONVERSIONS)". Medido em 06/09/2026: essa proteção NÃO está
+        # ligada por aqui. O passo da autoridade que cobra a lista de lances do
+        # canal (`ESTRATEGIA_FORA_DO_CANAL`) só roda quando `lances_do_canal` é
+        # passado, e `exigir_para_criacao` não o passa — nem aceita.
+        #
+        # O que o canal faz de fato neste caminho: NOMEIA o canal na frase da
+        # recusa e no JSON do 409, e faz um canal fora de `mensuracao.CANAIS`
+        # cair em `CANAL_DESCONHECIDO`. Quem cobra a lista por canal é o
+        # BUILDER daquele canal (`LANCES_PERMITIDOS` em search/display/
+        # demand_gen/pmax), cuja recusa deixa `preparo.selo` vazio e vira 409
+        # bem antes desta chamada — a proteção existe, e mora a montante.
+        #
+        # Sem `lido_em`, a leitura das cinco GAQL entraria sem procedência
+        # temporal.
         veredito_da_mensuracao = pr.exigir_para_criacao(
             estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
             prontidao=portoes_do_lance,
@@ -5397,13 +5411,20 @@ class ReconciliarEntrada(BaseModel):
     #: plano com certeza. O fallback pela marca é candidato, não identidade: são
     #: 12 hex, e duas chaves com o mesmo prefixo são ambiguidade, não escolha.
     chave_intencao: Optional[str] = None
-    #: O canal do item, para o read-back saber QUE OBJETOS reler.
+    #: O canal do item, como PISTA — a autoridade é o servidor.
     #:
-    #: ⚠️ Opcional, e a ausência é resposta: sem canal declarado, o veredito
-    #: tipado sai `NAO_SUPORTADO` com a causa dita, em vez de assumir Search e
-    #: perguntar por `ad_group_ad` numa campanha PMax — onde a consulta voltaria
-    #: vazia SEMPRE, e o vazio viraria "não existe anúncio", que é falso: o que
-    #: não existe é a entidade.
+    #: ⚠️ ELE NÃO DECIDE MAIS NADA, e a versão anterior dizia que decidia ("a
+    #: ausência é resposta: sem canal declarado, o veredito tipado sai
+    #: NAO_SUPORTADO"). Na prática a ausência não era resposta, era
+    #: DESLIGAMENTO: o único cliente de produção nunca enviava o campo, então o
+    #: veredito de sete estados não rodava em nenhuma reconciliação real e o
+    #: item era carimbado assim mesmo. Reproduzido em 06/09/2026.
+    #:
+    #: O canal agora é derivado de `trafego_lote.canal`, que é `NOT NULL`,
+    #: imutável por gatilho e escrito por `/subir`. Este campo permanece só para
+    #: ser COMPARADO: quando discorda do ledger, a discordância é registrada na
+    #: verificação e o ledger vence. O cliente não escolhe qual semântica de
+    #: read-back se aplica ao lançamento dele.
     canal: Optional[str] = None
 
     @model_validator(mode="after")
@@ -5662,17 +5683,24 @@ async def reconciliar_lancamento(
     # trocasse um id por engano reconciliaria o item da conta A com a campanha
     # da conta B, carimbando no item uma identidade externa que não é dele.
     # Isso não cria campanha nenhuma, mas corrompe a procedência de duas.
+    #: ⚠️ A conta E o canal, na MESMA leitura que já acontecia. O canal do
+    #: read-back deixou de vir do corpo do pedido: `trafego_lote.canal` é
+    #: `NOT NULL`, imutável por gatilho, e foi escrito por `/subir` a partir do
+    #: preparo que construiu o payload. O cliente não escolhe qual semântica de
+    #: releitura se aplica ao lançamento dele.
+    procedencia_do_item: Optional[tuple[str, str]]
     try:
-        conta_do_item = await ledger.conta_externa_do_item(body.item_id)
+        procedencia_do_item = await ledger.procedencia_do_item(body.item_id)
     except led.LedgerIndisponivel as exc:
         raise HTTPException(
             status_code=503,
             detail=f"Não consegui ler o item para conferir a conta: {exc}.",
         ) from exc
-    if conta_do_item is None:
+    if procedencia_do_item is None:
         raise HTTPException(
             status_code=404,
             detail=f"O item {body.item_id} não existe. Nada foi reconciliado.")
+    conta_do_item, canal_do_ledger = procedencia_do_item
     if escopo.so_digitos(conta_do_item) != escopo.so_digitos(cid):
         raise HTTPException(
             status_code=409,
@@ -5749,16 +5777,38 @@ async def reconciliar_lancamento(
     # ⚠️ E ele NÃO reenvia nada, em nenhum desfecho — `reenvio_por_readback` sai
     # `False` literal no corpo, e é a propriedade que esta rota existe para
     # preservar.
-    releitura: Dict[str, Any] = {
-        "estado": rel.EstadoDaReleitura.NAO_SUPORTADO.value,
-        "bloqueia": False,
-        "proximo_ato": ("o canal deste item não foi declarado no pedido, então "
-                        "não há como saber que objetos reler nele."),
-        "reenvio_por_readback": False,
-        "objetos": [],
-    }
-    canal_do_item = str(getattr(body, "canal", "") or "").strip().upper()
-    if canal_do_item and rel.objetos_de(canal_do_item):
+    # ⚠️ O CANAL VEM DO SERVIDOR, e o guard que desligava o read-back MORREU.
+    #
+    # Era `canal_do_item = body.canal` mais `if canal_do_item and ...`. O campo
+    # é opcional e o único cliente de produção nunca o enviava, então o veredito
+    # de sete estados ficava desligado em 100% das reconciliações reais — e o
+    # item era carimbado `achou=True` do mesmo jeito. Reproduzido em 06/09/2026.
+    #
+    # Agora ele vem de `trafego_lote.canal`, que é a declaração imutável do
+    # lançamento, e `reler_na_conta` roda SEMPRE: quando o canal não é conhecido
+    # do módulo, é ele que responde `NAO_SUPORTADO` com a causa certa — e essa é
+    # uma resposta sobre o CANAL, não um desligamento silencioso do veredito.
+    canal_do_item = rel.canonizar(canal_do_ledger)
+    # ⚠️ O campo do cliente vira PISTA COMPARADA, e nunca autoridade. Quando ele
+    # discorda do ledger, o ledger vence e a discordância fica registrada — o
+    # cliente não pode escolher uma semântica de read-back diferente da que foi
+    # aprovada para aquele lançamento.
+    canal_pedido = rel.canonizar(getattr(body, "canal", "") or "")
+    canal_do_pedido_diverge = bool(canal_pedido) and canal_pedido != canal_do_item
+
+    releitura: Dict[str, Any]
+    if not canal_do_item:
+        # ⚠️ FALHA, e nunca `NAO_SUPORTADO`. Não conseguir derivar o canal é um
+        # fato sobre NÓS: `FALHA` bloqueia e não conclui nada sobre a conta,
+        # enquanto `NAO_SUPORTADO` descreve o CANAL e não bloqueia — usá-lo aqui
+        # transformaria a nossa ignorância numa afirmação sobre o lançamento.
+        releitura = vrel.resumo((vrel.VereditoDaReleitura(
+            canal="(não derivado)", objeto=vrel.CAMPANHA,
+            estado=vrel.EstadoDaReleitura.FALHA,
+            causa=("não consegui derivar o canal deste item no servidor, então "
+                   "não sei que objetos reler. Isto NÃO é uma afirmação sobre "
+                   "a conta.")),))
+    else:
         def _buscar_para_releitura(gaql: str):
             from volc_ads.gads.client import cliente  # noqa: PLC0415
 
@@ -5771,13 +5821,16 @@ async def reconciliar_lancamento(
                 rel.reler_na_conta,
                 canal=canal_do_item, buscar=_buscar_para_releitura,
                 campaign_id=body.campaign_id, marca=body.marca,
-                # ⚠️ CANONIZADO. `rel.objetos_de` canoniza (`PMAX` →
-                # `PERFORMANCE_MAX`) e o `esperado` ia CRU: a conta responde
-                # `PERFORMANCE_MAX` e a comparação acusava divergência de canal
-                # numa campanha perfeita. As duas metades da mesma decisão
-                # usavam vocabulários diferentes.
+                # ⚠️ CANONIZADO nas duas metades. `rel.objetos_de` canoniza
+                # (`PMAX` → `PERFORMANCE_MAX`) e o `esperado` ia CRU: a conta
+                # responde `PERFORMANCE_MAX` e a comparação acusava divergência
+                # de canal numa campanha perfeita.
+                #
+                # ⚠️ E o `status` aqui é o da CAMPANHA, que nasce PAUSED nos
+                # quatro canais. Os filhos têm perfil próprio por canal, dentro
+                # de `releitura_por_canal`, porque Search os cria ENABLED.
                 esperado={"status": rel.NASCE_PAUSADO,
-                          "canal": rel.canonizar(canal_do_item)})
+                          "canal": canal_do_item})
             releitura = vrel.resumo(vereditos)
         except Exception as exc:  # noqa: BLE001
             # ⚠️ A falha do read-back NÃO derruba a reconciliação: o recibo
@@ -5854,7 +5907,20 @@ async def reconciliar_lancamento(
             estado_externo=primeira.get("status"),
             divergencia={"campaign_id_solicitado": str(body.campaign_id or "") or None,
                          "marca_solicitada": str(body.marca or "") or None,
-                         "campanhas_encontradas": list(encontradas)},
+                         "campanhas_encontradas": list(encontradas),
+                         # ⚠️ O VEREDITO INTEIRO VAI PARA A TRILHA, e não só
+                         # para o corpo HTTP. Sem esta chave, um `ambiguo` — ou
+                         # um `leitura_parcial`, ou uma `falha` — do read-back
+                         # existia apenas na resposta que o operador fecha com a
+                         # aba: a linha de `trafego_verificacao` dizia "não
+                         # consegui ler a conta" enquanto a segunda leitura, na
+                         # mesma requisição, tinha visto duas campanhas.
+                         "releitura": releitura,
+                         "canal_derivado": canal_do_item or None,
+                         # A pista do cliente, quando ela discorda do ledger.
+                         # Registrada, nunca obedecida.
+                         "canal_pedido_ignorado": (
+                             canal_pedido if canal_do_pedido_diverge else None)},
         )
     except led.LedgerRecusou as exc:
         raise HTTPException(

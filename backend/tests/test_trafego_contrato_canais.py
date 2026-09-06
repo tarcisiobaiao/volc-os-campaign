@@ -808,3 +808,54 @@ def test_o_bloqueio_sobrevive_a_pmax_ENTRAR_no_executor(monkeypatch):
         "com PMax no executor, o portão ficou sem o bloqueio de "
         "observabilidade — criar sem conseguir reler é gasto cego")
     assert portao.estado == cc.BLOQUEADO
+
+
+# ── a economia de cada canal é a política DELE ──────────────────────────────
+
+
+def test_a_economia_de_cada_canal_e_a_politica_do_PROPRIO_canal():
+    """CONTRAPROVA: o card não pode anunciar o CPC de Search em quem não tem CPC.
+
+    ⚠️ `contrato()` fazia `pol = politica or can.POLITICA` e nenhum chamador
+    passa `politica` — então `economia_do_canal` copiava `cpc_maximo_brl="1.00"`
+    de Search para Display, Demand Gen e PMax, anulando `CANAIS_COM_CPC_E_REDE`.
+    A MESMA resposta de `/api/trafego/canais` se contradizia: o bloco
+    `politica_canario_por_canal` trazia `null` e o card trazia `R$ 1,00`, e o
+    ramo "este canal não tem CPC a declarar" ficava inalcançável nos três canais
+    para os quais foi escrito.
+
+    Corrigido em 1070568; esta é a contraprova que faltava — o defeito
+    sobrevivia à suíte inteira, porque nenhum teste do backend mencionava
+    `economia`.
+    """
+    canais = _por_canal()
+    for canal, contrato in canais.items():
+        politica = can.politica_do_canal(canal)
+        assert contrato.economia.cpc_maximo_brl == politica.cpc_maximo_brl, canal
+        assert (contrato.economia.teto_diario_brl
+                == politica.orcamento_diario_maximo_brl), canal
+
+    # ⚠️ E o literal, que é o que dá poder de detecção: comparar dois campos
+    # que o defeito iguala não detectaria nada.
+    assert canais["SEARCH"].economia.cpc_maximo_brl == "1.00"
+    for canal in ("DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"):
+        # ⚠️ `is None`, e NUNCA `== "0.00"`: ausência não é zero. Um teto de
+        # R$ 0,00 recusaria qualquer lance, que é o oposto de "não há teto de
+        # lance a declarar neste canal".
+        assert canais[canal].economia.cpc_maximo_brl is None, canal
+
+
+def test_o_teto_diario_do_canal_nao_e_o_de_Search(monkeypatch: pytest.MonkeyPatch):
+    """O eixo do teto só tem poder de detecção com os valores DIVERGIDOS.
+
+    Hoje `TETO_DIARIO_POR_CANAL` tem o mesmo `Decimal("20.00")` nos quatro, e
+    por isso a metade do teto do defeito era inócua na prática — nenhum número
+    errado saía. Divergir um deles é o que faz o teste falhar se a política
+    voltar a ser a de Search para todos.
+    """
+    from decimal import Decimal
+
+    monkeypatch.setitem(can.TETO_DIARIO_POR_CANAL, "DISPLAY", Decimal("7.00"))
+    canais = _por_canal()
+    assert canais["DISPLAY"].economia.teto_diario_brl == "7.00"
+    assert canais["SEARCH"].economia.teto_diario_brl == "20.00"

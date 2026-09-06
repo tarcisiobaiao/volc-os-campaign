@@ -1454,3 +1454,74 @@ async def test_a_chave_da_rodada_nao_colide_com_a_do_diario_de_estado():
     vid = sinc.volc_campaign_id("8017851692", "241")
     assert sinc.chave_da_rodada(vid) != alr.chave_de_estado(vid)
     assert sinc.chave_da_rodada("x").startswith("trafego.sincronizacao.rodada:")
+
+
+# ── a fronteira dos fatos próprios de canal ─────────────────────────────────
+
+
+def test_os_fatos_de_canal_sao_observacionais_e_a_docstring_diz_isso(caplog):
+    """CONTRAPROVA: onde os fatos de canal PARAM, e por que isso é declarado.
+
+    ⚠️ Os três adaptadores novos calculam fatos que o inventário nunca recebe:
+    `urls_finais_lidas`, `asset_group_status` e `asset_groups_lidos` (PMax),
+    `tcpa_micros` (Display) e `superficies` (Demand Gen). `sincronizador`
+    consome exatamente DUAS chaves do `extra` — `lance_micros` e `url_final` — e
+    `persistencia.espelho_de_campanha` tem lista fechada de colunas.
+
+    Isso é uma decisão, não um acidente: a coluna que faltaria exige migration
+    oficial, que não estava autorizada nesta rodada. O que era defeito é a
+    docstring do adaptador afirmar o CONTRÁRIO — ela dizia que "o inventário
+    registra o fato em `urls_finais_lidas` para que a divergência seja
+    investigável em vez de virar um `null` mudo", e o inventário gravava
+    exatamente o `null` mudo. Reproduzido em 06/09/2026.
+
+    Este teste fixa a fronteira nos dois sentidos: o adaptador continua medindo,
+    o espelho continua não recebendo, e a docstring não pode voltar a prometer.
+    """
+    import logging
+
+    from app.trafego import adaptador_pmax as pmx
+    from app.trafego import persistencia
+
+    class _DuasUrls(BuscaFalsa):
+        def __call__(self, gaql: str):
+            query = sinc._exigir_leitura(gaql)
+            self.consultas.append(query)
+            return [SimpleNamespace(
+                campaign=SimpleNamespace(id="241"),
+                asset_group=SimpleNamespace(
+                    id="900", status=SimpleNamespace(name="ENABLED"),
+                    final_urls=["https://lp.exemplo.com/a",
+                                "https://lp.exemplo.com/b"],
+                    final_mobile_urls=[]))]
+
+    with caplog.at_level(logging.INFO, logger="volc.trafego.adaptador_pmax"):
+        extras = pmx.PERFIL.ler_filhas(_DuasUrls(), ["241"])
+    extra = extras["241"]
+
+    # 1. O ADAPTADOR CONTINUA MEDINDO — apagar a lista quebra aqui.
+    assert extra["url_final"] is None            # duas URLs não são UMA URL
+    assert extra["urls_finais_lidas"] == ["https://lp.exemplo.com/a",
+                                          "https://lp.exemplo.com/b"]
+
+    # 2. A FRONTEIRA É DELIBERADA. Estas chaves NÃO atravessam a whitelist de
+    # colunas — e não podem atravessar sem a coluna existir, ou o INSERT seria
+    # recusado em produção por coluna inexistente.
+    espelho = persistencia.espelho_de_campanha({
+        "volc_campaign_id": "v1", "lido_em": "2026-09-06T12:00:00+00:00",
+        "presenca": None, "url_final": extra["url_final"],
+        "lance_micros": extra.get("lance_micros"),
+        **{k: extra[k] for k in ("urls_finais_lidas", "asset_group_status",
+                                 "asset_groups_lidos") if k in extra},
+    })
+    for chave in ("urls_finais_lidas", "asset_group_status",
+                  "asset_groups_lidos", "tcpa_micros", "superficies"):
+        assert chave not in espelho, chave
+
+    # 3. O ÚNICO CANAL SOBREVIVENTE É O LOG, e ele é obrigatório: sem ele a
+    # divergência de URL exclusiva de PMax não fica em lugar nenhum.
+    assert any("URLs finais" in r.getMessage() or "urls" in r.getMessage().lower()
+               for r in caplog.records), [r.getMessage() for r in caplog.records]
+
+    # 4. E A DOCSTRING NÃO PODE VOLTAR A MENTIR.
+    assert "o inventário registra o fato" not in (pmx.__doc__ or "")
