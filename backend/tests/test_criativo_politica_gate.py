@@ -373,3 +373,67 @@ def test_a_trava_aberta_nao_afrouxa_um_achado(monkeypatch):
 def test_o_padrao_da_trava_e_fechado(monkeypatch):
     monkeypatch.delenv(P.FLAG_ESTRITO, raising=False)
     assert P.modo_estrito() is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 9. O adaptador do motor que falta — escrito, e honestamente não registrado
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_o_registro_de_boot_nao_registra_nada_sem_motor():
+    """CONTRAPROVA A: sem OCR instalado, ninguém é registrado.
+
+    ⚠️ E o portão continua bloqueando. A tentação seria registrar um detector
+    que sempre devolve "não vi nada" — isso transformaria "não consegui olhar"
+    em "olhei e está limpo", que é a confusão que deixou a peça com marca de
+    banco ir ao ar. Detector mudo some com o ERROR do recibo.
+    """
+    from app.criativo.politica.detectores import (
+        DetectorOcrTesseract,
+        registrar_detectores_disponiveis,
+    )
+
+    assert DetectorOcrTesseract.se_disponivel() is None
+    assert registrar_detectores_disponiveis() == ()
+    assert insp.detectores_de_pixel_registrados() == ()
+    # E a consequência, medida e não suposta:
+    assert _avaliar().decisao == P.GATE_UNAVAILABLE
+
+
+def test_o_adaptador_respeita_o_protocol_do_portao():
+    """O adaptador existe pronto: assinatura conferida contra o seam."""
+    import inspect
+
+    from app.criativo.politica.detectores import DetectorOcrTesseract
+
+    d = DetectorOcrTesseract(versao="5.0.0-fixture")
+    assert d.nome == "ocr.tesseract"
+    assert d.versao == "5.0.0-fixture"
+    assinatura = inspect.signature(DetectorOcrTesseract.inspecionar)
+    assert list(assinatura.parameters) == ["self", "bytes_da_peca", "mime"]
+    # ⚠️ SÍNCRONO: é o Protocol que o portão declara, e o portão roda dentro de
+    # uma requisição async.
+    assert not inspect.iscoroutinefunction(DetectorOcrTesseract.inspecionar)
+
+
+def test_falha_do_motor_vira_ERROR_e_nunca_leitura_vazia():
+    """CONTRAPROVA: detector que explode não pode virar PASS.
+
+    Uma `LeituraDePixel()` vazia numa falha diria que a peça foi inspecionada e
+    está limpa. Levantar é o contrato — o portão marca ERROR e bloqueia.
+    """
+    from app.criativo.politica.detectores.ocr_tesseract import (
+        DetectorOcrTesseract,
+        MotorDeOcrIndisponivel,
+    )
+
+    d = DetectorOcrTesseract(versao="5.0.0-fixture")
+    with pytest.raises(MotorDeOcrIndisponivel):
+        d.inspecionar(b"nao-e-imagem", mime="image/png")
+
+    insp.registrar_detector_de_pixel(d)
+    recibo_da_peca = _avaliar()
+    assert recibo_da_peca.decisao == P.GATE_UNAVAILABLE
+    assert "PIXEL_DETECTOR_FAILED" in recibo_da_peca.motivos
+    quebrado = [x for x in recibo_da_peca.detectores if x.nome == "ocr.tesseract"]
+    assert quebrado and quebrado[0].resultado == "ERROR"

@@ -744,3 +744,118 @@ def test_provar_e_subir_reconstroem_o_mesmo_plano_antes_da_rede(
     assert "já aparece na conta" in str(erro.value.detail)
     assert len(planos_remotos) == 2
     assert planos_remotos[1] == planos_remotos[0]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Duplicidade por destino: a autoridade de URL é POR CANAL
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class _ServicoDeBusca:
+    """Dublê do GoogleAdsService: guarda a consulta e devolve linhas fixas."""
+
+    def __init__(self, linhas=()):
+        self.consultas: list[str] = []
+        self._linhas = linhas
+
+    def search(self, *, customer_id: str, query: str):
+        self.consultas.append(query)
+        return list(self._linhas)
+
+
+def _linha(campaign_id: str, urls: tuple, *, onde: str):
+    """Uma linha GAQL com a URL no lugar que o canal de fato usa."""
+    campanha = SimpleNamespace(
+        id=campaign_id, name=f"camp-{campaign_id}",
+        status=SimpleNamespace(name="PAUSED"))
+    if onde == "asset_group":
+        return SimpleNamespace(
+            campaign=campanha, asset_group=SimpleNamespace(final_urls=urls))
+    return SimpleNamespace(
+        campaign=campanha,
+        ad_group_ad=SimpleNamespace(ad=SimpleNamespace(final_urls=urls)))
+
+
+def test_pmax_procura_duplicidade_no_asset_group_e_nao_no_ad_group():
+    """CONTRAPROVA: PMax não tem ad group, e a consulta antiga era `FROM ad_group_ad`.
+
+    ⚠️ O defeito era silencioso e por isso pior: a consulta voltava vazia
+    SEMPRE, e vazio era lido como "não há campanha com este destino". A prova
+    de duplicidade de PMax nunca provou nada.
+    """
+    url = "https://exemplo.com.br/oferta/"
+    servico = _ServicoDeBusca([_linha("777", (url,), onde="asset_group")])
+
+    achados = canario.campanhas_com_destino(
+        customer_id=canario.CONTA, login_customer_id=canario.MCC,
+        url_final=url, canal="PERFORMANCE_MAX", servico=servico)
+
+    consulta = servico.consultas[0]
+    assert "FROM asset_group" in consulta
+    assert "asset_group.final_urls" in consulta
+    assert "ad_group_ad" not in consulta
+    assert len(achados) == 1
+    assert achados[0]["campaign_id"] == "777"
+    assert achados[0]["autoridade_de_url"] == "asset_group"
+
+
+def test_search_e_display_continuam_procurando_no_anuncio():
+    """REGRESSÃO: onde a URL de fato mora em Search/Display não pode mudar."""
+    url = "https://exemplo.com.br/oferta/"
+    for canal in ("SEARCH", "DISPLAY", "DEMAND_GEN"):
+        servico = _ServicoDeBusca([_linha("55", (url,), onde="ad_group_ad")])
+        achados = canario.campanhas_com_destino(
+            customer_id=canario.CONTA, login_customer_id=canario.MCC,
+            url_final=url, canal=canal, servico=servico)
+        assert "FROM ad_group_ad" in servico.consultas[0]
+        assert len(achados) == 1, canal
+
+
+def test_duas_correspondencias_sao_duplicidade_e_nao_escolha():
+    """Duas campanhas com o mesmo destino voltam AS DUAS. Escolher uma seria
+    decidir por quem tem de decidir."""
+    url = "https://exemplo.com.br/oferta/"
+    servico = _ServicoDeBusca([
+        _linha("111", (url,), onde="asset_group"),
+        _linha("222", (url,), onde="asset_group"),
+    ])
+    achados = canario.campanhas_com_destino(
+        customer_id=canario.CONTA, login_customer_id=canario.MCC,
+        url_final=url, canal="PERFORMANCE_MAX", servico=servico)
+    assert [a["campaign_id"] for a in achados] == ["111", "222"]
+
+
+def test_canal_sem_autoridade_de_url_conhecida_recusa_em_vez_de_chutar():
+    """Não saber onde o canal guarda a URL não pode virar 'não há duplicidade'."""
+    with pytest.raises(canario.CanarioRecusado, match="não sei onde"):
+        canario.campanhas_com_destino(
+            customer_id=canario.CONTA, login_customer_id=canario.MCC,
+            url_final="https://exemplo.com.br/x/", canal="VIDEO",
+            servico=_ServicoDeBusca())
+
+
+def test_leitura_truncada_bloqueia_em_vez_de_devolver_lista_parcial():
+    """⚠️ Leitura incompleta NÃO é ausência.
+
+    Uma lista parcial seria indistinguível de "conta limpa" para quem chama, e
+    é justamente essa confusão que libera a segunda campanha.
+    """
+    url = "https://exemplo.com.br/oferta/"
+    demais = [
+        _linha(str(i), ("https://outro.com.br/",), onde="asset_group")
+        for i in range(canario.MAXIMO_DE_PAGINAS_DE_DESTINO * 1000 + 2)
+    ]
+    servico = _ServicoDeBusca(demais)
+    with pytest.raises(canario.LeituraDeDestinoIncompleta, match="NÃO prova"):
+        canario.campanhas_com_destino(
+            customer_id=canario.CONTA, login_customer_id=canario.MCC,
+            url_final=url, canal="PERFORMANCE_MAX", servico=servico)
+
+
+def test_zero_resultados_com_leitura_completa_e_ausencia_de_verdade():
+    """O outro lado: leitura que TERMINOU e não achou nada é prova de ausência."""
+    servico = _ServicoDeBusca([])
+    assert canario.campanhas_com_destino(
+        customer_id=canario.CONTA, login_customer_id=canario.MCC,
+        url_final="https://exemplo.com.br/oferta/", canal="PERFORMANCE_MAX",
+        servico=servico) == ()

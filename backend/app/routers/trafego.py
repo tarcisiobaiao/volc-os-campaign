@@ -2748,6 +2748,7 @@ def _montar_plano_demand_gen(
 
     assets = []
     conteudo_por_identidade: Dict[str, bytes] = {}
+    pecas_para_o_portao: List[tuple] = []
     for item, dados in _assets_decodificados_demand_gen(body.assets_demand_gen):
         try:
             quando = datetime.fromisoformat(
@@ -2779,6 +2780,12 @@ def _montar_plano_demand_gen(
         )
         assets.append(asset)
         conteudo_por_identidade[asset.identidade] = dados
+        pecas_para_o_portao.append(
+            (asset.identidade, dados, item.nome, medida.mime, origem_asset))
+
+    # O MESMO portão de Display, antes da ponte e antes de qualquer rede.
+    recibos_de_politica = _recibos_de_politica_das_pecas(
+        pecas_para_o_portao, body=body, nicho=nicho, canal="DEMAND_GEN")
 
     lote = LoteDeAssets(
         canal="DEMAND_GEN",
@@ -2838,7 +2845,7 @@ def _montar_plano_demand_gen(
         )
     return pp.Plano(
         brief=brief, grupos=(), avisos=avisos + _avisos_da_ponte(entrega)
-    )
+    ), supply_sha256_dos_recibos(recibos_de_politica)
 
 
 def _brief_pmax_offline(
@@ -2889,6 +2896,7 @@ def _brief_pmax_offline(
 
     assets = []
     conteudo_por_identidade: Dict[str, bytes] = {}
+    pecas_para_o_portao: List[tuple] = []
     for item, dados in _assets_decodificados_pmax(body.assets_pmax):
         try:
             quando = datetime.fromisoformat(
@@ -2921,8 +2929,13 @@ def _brief_pmax_offline(
         )
         assets.append(asset)
         conteudo_por_identidade[asset.identidade] = dados
+        pecas_para_o_portao.append(
+            (asset.identidade, dados, item.nome, medida.mime, origem_asset))
 
     nicho = str(origem.nicho or "sem nicho declarado")
+    # O MESMO portão de Display e Demand Gen, antes da ponte e da rede.
+    recibos_de_politica = _recibos_de_politica_das_pecas(
+        pecas_para_o_portao, body=body, nicho=nicho, canal="PERFORMANCE_MAX")
     entrega = criativo_ponte.imagens_de_pmax(
         LoteDeAssets(
             canal="PERFORMANCE_MAX",
@@ -3645,9 +3658,10 @@ async def provar(
         )
         copy = _copy_do_corpo(body.texto_do_anuncio)
         if canal_resolvido == "DEMAND_GEN":
-            plano = _montar_plano_demand_gen(
+            plano, supply = _montar_plano_demand_gen(
                 pp, cockpit, escolha, copy, body
             )
+            suprimento.append(supply)
         elif canal_resolvido == "DISPLAY":
             plano, supply = _montar_plano_display(
                 pp, cockpit, escolha, copy, body)
@@ -4256,7 +4270,8 @@ async def subir(
         # aprovou, e a divergência só apareceria na conta.
         copy = _copy_do_corpo(body.texto_do_anuncio)
         if canal_resolvido == "DEMAND_GEN":
-            plano = _montar_plano_demand_gen(pp, cockpit, escolha, copy, body)
+            plano, supply = _montar_plano_demand_gen(pp, cockpit, escolha, copy, body)
+            suprimento.append(supply)
         elif canal_resolvido == "DISPLAY":
             plano, supply = _montar_plano_display(pp, cockpit, escolha, copy, body)
             suprimento.append(supply)

@@ -505,3 +505,52 @@ def test_a_copy_inteira_entra_no_portao_e_no_hash():
     junto = " ".join(partes.values())
     for pedaco in ("Uma", "Duas", "Tres", "VOLC"):
         assert pedaco in junto
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# O portão roda nos TRÊS canais — não só em Display
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_o_portao_de_politica_bloqueia_nos_tres_canais():
+    """CONTRAPROVA: sem detector de pixel, Display, Demand Gen e PMax param.
+
+    ⚠️ A prova é por CANAL e não por função: um `if` de canal escrito errado
+    deixaria um deles passar, e o sintoma só apareceria na conta.
+    """
+    from app.criativo import politica as pol
+
+    _inspecao_de_politica.limpar_detectores_de_pixel()
+
+    corpo = _corpo(assets_display=[
+        _asset("imagem_marketing", "banner", 600, 314),
+        _asset("imagem_marketing_quadrada", "quadrada", 300, 300),
+    ])
+    body = trafego.ProvarEntrada.model_validate(corpo)
+    with pytest.raises(pol.PoliticaCriativaRecusou) as display:
+        trafego._imagens_de_display(body, nicho="fixture")
+    assert display.value.codigo == f"POLICY_{pol.GATE_UNAVAILABLE}"
+
+    # E os outros dois consomem o MESMO portão, pela mesma função.
+    import inspect
+
+    fonte_dg = inspect.getsource(trafego._montar_plano_demand_gen)
+    fonte_pmax = inspect.getsource(trafego._brief_pmax_offline)
+    for nome, fonte in (("demand_gen", fonte_dg), ("pmax", fonte_pmax)):
+        assert "_recibos_de_politica_das_pecas(" in fonte, nome
+        # O portão vem ANTES da chamada à ponte do Estúdio em ambos — a
+        # ATRIBUIÇÃO `entrega = ...`, não a menção do módulo no import.
+        assert fonte.index("_recibos_de_politica_das_pecas(") < fonte.index(
+            "entrega = criativo_ponte.imagens_de_"), nome
+
+
+def test_o_canal_viaja_para_o_portao_em_cada_caminho():
+    """Cada canal declara o próprio nome ao portão — a autorização de terceiro
+    é escopada por canal, e um canal errado cobriria o achado errado."""
+    import inspect
+
+    assert 'canal="DISPLAY"' in inspect.getsource(trafego._imagens_de_display)
+    assert 'canal="DEMAND_GEN"' in inspect.getsource(
+        trafego._montar_plano_demand_gen)
+    assert 'canal="PERFORMANCE_MAX"' in inspect.getsource(
+        trafego._brief_pmax_offline)

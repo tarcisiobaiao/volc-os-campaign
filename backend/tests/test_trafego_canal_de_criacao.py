@@ -61,6 +61,35 @@ class _PonteFalsa:
         return SimpleNamespace(brief=object(), avisos=(), grupos=())
 
 
+class _OcrHermetico:
+    """Detector de pixel determinístico no lugar do motor real.
+
+    ⚠️ SEM detector nenhum, o portão de política declara a inspeção de imagem
+    indisponível e BLOQUEIA — que é a decisão certa: "não consegui olhar" não é
+    "olhei e não tem nada". Estes testes são sobre o contrato do canal, não
+    sobre a lacuna de OCR, então registram um motor que enxerga peça limpa.
+    A lacuna em si é provada em `test_criativo_politica_gate.py`.
+    """
+
+    nome = "ocr_hermetico"
+    versao = "teste-1"
+
+    def inspecionar(self, bytes_da_peca: bytes, *, mime: str):
+        from app.criativo.politica import inspecao as insp
+
+        return insp.LeituraDePixel()
+
+
+@pytest.fixture
+def com_inspecao_de_pixel():
+    from app.criativo.politica import inspecao as insp
+
+    insp.limpar_detectores_de_pixel()
+    insp.registrar_detector_de_pixel(_OcrHermetico())
+    yield
+    insp.limpar_detectores_de_pixel()
+
+
 def _isolar(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         trafego,
@@ -544,7 +573,9 @@ def test_selected_channels_duplicado_na_forma_canonica_e_recusado() -> None:
         )
 
 
-def test_plano_http_demand_gen_nao_depende_de_keyword_e_preserva_superficies() -> None:
+def test_plano_http_demand_gen_nao_depende_de_keyword_e_preserva_superficies(
+    com_inspecao_de_pixel,
+) -> None:
     def asset(tipo: str, nome: str, largura: int, altura: int) -> dict:
         dados = (
             b"\x89PNG\r\n\x1a\n"
@@ -615,7 +646,9 @@ def test_plano_http_demand_gen_nao_depende_de_keyword_e_preserva_superficies() -
         conversao="",
     )
 
-    plano = trafego._montar_plano_demand_gen(
+    # ⚠️ Dois valores desde que o portão de política entrou: o plano e a
+    # identidade do suprimento aprovado, que vai para a chave do ledger.
+    plano, supply_sha256 = trafego._montar_plano_demand_gen(
         pautador_ponte,
         cockpit,
         escolha,
@@ -627,6 +660,7 @@ def test_plano_http_demand_gen_nao_depende_de_keyword_e_preserva_superficies() -
         body,
     )
 
+    assert isinstance(supply_sha256, str) and len(supply_sha256) == 64
     assert plano.brief.keywords == []
     assert plano.brief.sub_intencoes == []
     assert plano.brief.demand_gen.audiencias == ()

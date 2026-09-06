@@ -353,33 +353,105 @@ def campanhas_com_marca(
     return tuple(encontrados)
 
 
+#: Onde mora a URL final de cada canal. NÃO é o mesmo lugar, e tratar como se
+#: fosse foi um defeito real: `ad_group_ad` era consultado para todo canal, e
+#: PMax NÃO TEM ad group. A consulta voltava vazia sempre, e vazio era lido
+#: como "não há duplicidade" — quer dizer, a prova de destino de PMax nunca
+#: provou nada.
+#:
+#: Cada entrada declara a tabela GAQL, o campo de URL e o filtro de estado.
+_AUTORIDADE_DE_URL: dict[str, dict[str, str]] = {
+    "SEARCH": {
+        "de": "ad_group_ad",
+        "campo": "ad_group_ad.ad.final_urls",
+        "filtro": "AND ad_group_ad.status != 'REMOVED'",
+    },
+    "DISPLAY": {
+        "de": "ad_group_ad",
+        "campo": "ad_group_ad.ad.final_urls",
+        "filtro": "AND ad_group_ad.status != 'REMOVED'",
+    },
+    "DEMAND_GEN": {
+        "de": "ad_group_ad",
+        "campo": "ad_group_ad.ad.final_urls",
+        "filtro": "AND ad_group_ad.status != 'REMOVED'",
+    },
+    # ⚠️ PMax não tem ad group nem anúncio. A URL vive no asset group, e é ele
+    # que precisa ser lido — a mesma matriz §1 que impede o builder de emitir
+    # `ad_group_operation`.
+    "PERFORMANCE_MAX": {
+        "de": "asset_group",
+        "campo": "asset_group.final_urls",
+        "filtro": "AND asset_group.status != 'REMOVED'",
+    },
+}
+
+#: Teto de páginas da leitura de duplicidade. Bater no teto NÃO é "não
+#: encontrei": é leitura incompleta, e leitura incompleta bloqueia.
+MAXIMO_DE_PAGINAS_DE_DESTINO = 50
+
+
+class LeituraDeDestinoIncompleta(CanarioRecusado):
+    """A leitura não terminou. ⚠️ Isto NÃO é prova de ausência de duplicidade."""
+
+
 def campanhas_com_destino(
     *, customer_id: str, login_customer_id: str, url_final: str,
-    servico: Any = None,
+    canal: str = CANAL, servico: Any = None,
 ) -> tuple[dict[str, str], ...]:
     """Recusa duplicidade por destino, mesmo que metadado mude a marca.
 
-    O primeiro canário não precisa de duas campanhas Search PAUSED/ENABLED
-    apontando para a mesma página. A leitura inclui anúncios porque, em Search,
-    a URL final pertence ao anúncio e não à campanha.
+    ⚠️ A AUTORIDADE DE URL É POR CANAL. Search, Display e Demand Gen guardam a
+    URL final no ANÚNCIO; Performance Max não tem anúncio nem ad group e a
+    guarda no ASSET GROUP. Até esta correção a consulta era sempre
+    `FROM ad_group_ad`, então para PMax ela voltava vazia — sempre — e o vazio
+    era lido como "não há campanha com este destino". A prova de duplicidade de
+    PMax não provava nada, e provar nada em silêncio é pior que não provar.
+
+    ⚠️ E leitura incompleta NÃO é ausência. O pager para no teto, e bater no
+    teto levanta `LeituraDeDestinoIncompleta` em vez de devolver a lista
+    parcial: uma lista parcial seria indistinguível de "conta limpa" para quem
+    chama, e é justamente essa confusão que libera a segunda campanha.
     """
     alvo = str(url_final or "").strip().rstrip("/")
     if not alvo.startswith("https://"):
         raise CanarioRecusado("o canário exige URL final HTTPS para a prova de duplicidade.")
+    nome_do_canal = str(canal or "").strip().upper()
+    autoridade = _AUTORIDADE_DE_URL.get(nome_do_canal)
+    if autoridade is None:
+        raise CanarioRecusado(
+            f"não sei onde {nome_do_canal or '(canal ausente)'} guarda a URL final, "
+            f"então não sei provar duplicidade de destino nele."
+        )
     if servico is None:
         from volc_ads.gads.client import cliente
 
         servico = cliente(login_customer_id).get_service("GoogleAdsService")
     consulta = (
         "SELECT campaign.id, campaign.name, campaign.status, "
-        "ad_group_ad.ad.final_urls "
-        "FROM ad_group_ad "
+        f"{autoridade['campo']} "
+        f"FROM {autoridade['de']} "
         "WHERE campaign.status != 'REMOVED' "
-        "AND ad_group_ad.status != 'REMOVED'"
+        f"{autoridade['filtro']}"
     )
+    caminho = autoridade["campo"].split(".")
     encontrados: dict[str, dict[str, str]] = {}
+    lidas = 0
     for linha in servico.search(customer_id=str(customer_id), query=consulta):
-        finais = tuple(str(u).strip().rstrip("/") for u in linha.ad_group_ad.ad.final_urls)
+        lidas += 1
+        if lidas > MAXIMO_DE_PAGINAS_DE_DESTINO * 1000:
+            raise LeituraDeDestinoIncompleta(
+                "a leitura de duplicidade por destino passou do teto seguro sem "
+                "terminar. Isto NÃO prova que não existe campanha com o mesmo "
+                "destino — a parte não lida da conta pode conter uma."
+            )
+        alvo_lido: Any = linha
+        for pedaco in caminho:
+            alvo_lido = getattr(alvo_lido, pedaco, None)
+            if alvo_lido is None:
+                break
+        finais = tuple(
+            str(u).strip().rstrip("/") for u in (alvo_lido or ()))
         if alvo not in finais:
             continue
         campanha = linha.campaign
@@ -389,5 +461,7 @@ def campanhas_com_destino(
             "campaign_name": str(campanha.name),
             "status": str(getattr(campanha.status, "name", campanha.status)),
             "url_final": str(url_final),
+            "canal": nome_do_canal,
+            "autoridade_de_url": autoridade["de"],
         }
     return tuple(encontrados[k] for k in sorted(encontrados))
