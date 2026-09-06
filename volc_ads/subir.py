@@ -53,7 +53,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import isencao, politica_auto
+from . import autorizacao_de_canal, isencao, politica_auto
 from .campanha import perfil, search
 from .campanha.brief import Brief, Linhagem
 from .campanha.criterio import chave as _chave_criterio
@@ -124,12 +124,19 @@ CONSTRUTORES_POR_CANAL = {
     "DISPLAY": perfil.DISPLAY.construtor,
 }
 
-# Vista separada da porta de prova. Demand Gen aparece aqui porque possui
-# builder + validate_only, e não aparece acima porque não pode alcançar mutar.
+# Vista separada da porta de prova. Demand Gen e Performance Max aparecem aqui
+# porque possuem builder + validate_only, e não aparecem acima porque não podem
+# alcançar `mutar`.
+#
+# ⚠️ A distância entre os dois dicionários É O CONTRATO, e não um atraso de
+# manutenção: provar é `validate_only` — leitura para todos os efeitos, que a
+# API confere e descarta — e criar é escrita. Um canal pode saber montar um
+# payload que a conta aceita sem ter autorização humana para gastar por ele.
 PROVADORES_POR_CANAL = {
     "SEARCH": perfil.SEARCH.validador,
     "DISPLAY": perfil.DISPLAY.validador,
     "DEMAND_GEN": perfil.DEMAND_GEN.validador,
+    "PERFORMANCE_MAX": perfil.PERFORMANCE_MAX.validador,
 }
 
 _esperado = set(perfil.canais_que_criam())
@@ -921,7 +928,36 @@ def subir(
 
 
 def _recusar_canal_sem_mutacao(canal: str) -> None:
-    """Demand Gen nunca alcança trava, recibo ou ``mutar`` nesta onda."""
+    """As DUAS travas de canal, cobradas aqui — e nenhuma delas basta sozinha.
+
+    ## 1. O que o ENGINE sabe fazer (`permite_mutacao_real`)
+
+    Demand Gen e Performance Max têm builder e `validate_only` e não podem
+    alcançar `mutar`. É a trava que o perfil declara.
+
+    ## 2. O que o CANÁRIO autorizou (`autorizacao_de_canal`)
+
+    ⚠️ ESTA FALTAVA AQUI, e a ausência era um buraco real medido em 06/09/2026.
+
+    `perfil.DISPLAY.permite_mutacao_real` é `True` desde T03, então a trava 1
+    deixa Display passar. O que impedia Display de nascer era
+    `canario.CANAIS_COM_CRIACAO_AUTORIZADA`, cobrado em `canario.exigir` — que
+    mora no BACKEND e que este módulo não importa (a dependência aponta sempre
+    `backend → volc_ads`). Ou seja: a rota HTTP recusava, e um script
+    in-process com `modo.destravar()` + `FORGE_PERMITIR_ESCRITA=1` chamando
+    `subir.subir()` direto **criaria uma campanha Display real** sem passar por
+    janela nenhuma.
+
+    A declaração foi para `volc_ads/autorizacao_de_canal.py`, que os dois lados
+    alcançam, e `canario.py` passou a REFERENCIÁ-LA. Agora os dois caminhos que
+    chegam ao `mutate` cobram a mesma trava, declarada uma vez.
+
+    ⚠️ A ORDEM importa: a trava do engine vem primeiro porque ela descreve uma
+    incapacidade (não há como montar isso com segurança) e a do canário descreve
+    uma decisão humana pendente. Dizer "não autorizado" para um canal que o
+    engine nem sabe criar mandaria o operador buscar uma autorização que não
+    resolveria nada.
+    """
     p = perfil.perfil(canal)
     if p is None or not p.sabe_criar:
         disponiveis = ", ".join(perfil.canais_que_criam())
@@ -930,6 +966,10 @@ def _recusar_canal_sem_mutacao(canal: str) -> None:
             "está proibida nesta onda. /subir aceita somente "
             f"{disponiveis}; nada foi enviado."
         )
+    try:
+        autorizacao_de_canal.exigir(p.canal)
+    except autorizacao_de_canal.CriacaoNaoAutorizada as exc:
+        raise CanalSemMutacaoReal(str(exc)) from exc
 
 
 def _exigir_motivo(motivo: str) -> None:

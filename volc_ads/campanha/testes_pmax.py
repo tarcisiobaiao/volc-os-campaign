@@ -883,26 +883,59 @@ def test_sdk_ausente_rebaixa_capacidade_sem_construir_cliente(
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_pmax_continua_sem_construtor_no_perfil_e_no_executor() -> None:
-    """A porta genérica continua fechada até existir o contrato HTTP PMax."""
+def test_pmax_prova_pelo_perfil_e_continua_fora_do_executor() -> None:
+    """A porta de PROVA abriu; a de CRIAÇÃO não. São duas."""
     p = perfil.PERFORMANCE_MAX
-    assert p.construtor is None
-    assert p.validador is None
-    assert p.sabe_provar is False
+    assert p.construtor is pmax.construir
+    assert p.validador is pmax.validar
+    assert p.sabe_provar is True
     assert p.sabe_criar is False
     assert p.permite_mutacao_real is False
 
-    assert "PERFORMANCE_MAX" not in perfil.canais_que_provam()
+    assert "PERFORMANCE_MAX" in perfil.canais_que_provam()
     assert "PERFORMANCE_MAX" not in perfil.canais_que_criam()
+    assert "PERFORMANCE_MAX" in motor.PROVADORES_POR_CANAL
     assert "PERFORMANCE_MAX" not in motor.CONSTRUTORES_POR_CANAL
-    assert "PERFORMANCE_MAX" not in motor.PROVADORES_POR_CANAL
 
 
-def test_pmax_planeja_mesmo_sem_construtor() -> None:
-    """Planejar e provar pela porta HTTP são perguntas diferentes."""
+def test_flag_do_perfil_sozinha_nao_abre_a_criacao(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """⚠️ CONTRAPROVA: são DUAS travas independentes, e uma não destranca a outra.
+
+    Ligar `permite_mutacao_real` no perfil faria PMax entrar em
+    `canais_que_criam()`. Isso ainda não cria nada: o canário de Performance Max
+    não foi aceito, e `canario.exigir` recusa por
+    `CANAIS_COM_CRIACAO_AUTORIZADA` — que lista apenas SEARCH.
+
+    O teste existe porque a pergunta "o que impede a criação de PMax?" tem duas
+    respostas, e um sistema que só tivesse uma delas ficaria a um commit de
+    distância de criar sem autorização humana.
+    """
+    import dataclasses
+
+    from app.trafego import canario  # noqa: PLC0415
+
+    aberto = dataclasses.replace(perfil.PERFORMANCE_MAX,
+                                 permite_mutacao_real=True)
+    assert aberto.sabe_criar is True, "a primeira trava de fato abriu"
+
+    assert "PERFORMANCE_MAX" not in canario.CANAIS_COM_CRIACAO_AUTORIZADA
+    with pytest.raises(canario.CanarioRecusado, match="não autoriza CRIAR"):
+        canario.exigir(
+            customer_id=canario.CONTA, login_customer_id=canario.MCC,
+            canal="PERFORMANCE_MAX", budget_diario="10.00", cpc_inicial=None,
+            chave_intencao="a" * 64, carimbo_nome="20260906_120000",
+            confirmar_criacao_pausada=True, rede=None,
+        )
+
+
+def test_pmax_planeja_e_prova_pelo_perfil() -> None:
+    """Planejar e provar são perguntas diferentes — e hoje as duas respondem sim."""
     assert perfil.PERFORMANCE_MAX.sabe_planejar is True
     assert "PERFORMANCE_MAX" in perfil.canais_que_planejam()
-    assert set(perfil.canais_que_provam()) < set(perfil.canais_que_planejam())
+    assert set(perfil.canais_que_provam()) == set(perfil.canais_que_planejam())
+    assert set(perfil.canais_que_criam()) < set(perfil.canais_que_provam())
 
     p = perfil.planejar("PMAX", CID, _brief(), login_customer_id=MCC)
     assert p.canal == "PERFORMANCE_MAX"
@@ -910,18 +943,18 @@ def test_pmax_planeja_mesmo_sem_construtor() -> None:
 
 
 def test_o_plano_de_pmax_carrega_codigo_proprio_e_nao_o_de_canal_inexistente() -> None:
-    """O canal existe, mas a fronteira HTTP ainda não carrega seu brief."""
+    """O canal monta e prova; o que o plano ainda declara é a criação fechada."""
     p = pmax.planejar(CID, _brief(), login_customer_id=MCC)
     assert plano.PMAX_FORA_DO_EXECUTOR in _codigos(p)
     assert plano.CANAL_SEM_BUILDER not in _codigos(p)
-    assert p.prontidao.pode_provar is False
+    assert p.prontidao.pode_provar is True
     assert p.prontidao.pode_criar is False
-    assert "rota HTTP" in p.prontidao.motivo_nao_prova
+    assert "permite_mutacao_real" in p.prontidao.motivo_nao_cria
+    assert "canário" in p.prontidao.motivo_nao_cria
 
 
-def test_exigir_prova_recusa_pmax_e_exigir_planejador_aceita() -> None:
-    with pytest.raises(perfil.CanalSemConstrutor):
-        perfil.exigir_prova("PERFORMANCE_MAX")
+def test_exigir_prova_aceita_pmax_e_exigir_criacao_recusa() -> None:
+    assert perfil.exigir_prova("PERFORMANCE_MAX") is perfil.PERFORMANCE_MAX
     with pytest.raises(perfil.CanalSemConstrutor):
         perfil.exigir("PERFORMANCE_MAX")
     assert perfil.exigir_planejador("PMAX") is perfil.PERFORMANCE_MAX

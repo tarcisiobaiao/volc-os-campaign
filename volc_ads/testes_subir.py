@@ -146,8 +146,9 @@ def preparo_provado(c, operacoes=None, conta: str = CONTA) -> subir.Preparo:
 @pytest.mark.parametrize(
     ("entrada", "canonico"),
     [
-        ("PERFORMANCE_MAX", "PERFORMANCE_MAX"),
-        ("PMAX", "PERFORMANCE_MAX"),
+        ("VIDEO", "VIDEO"),
+        ("SHOPPING", "SHOPPING"),
+        ("", "(vazio)"),
     ],
 )
 def test_canal_sem_construtor_falha_antes_de_montar(
@@ -156,8 +157,14 @@ def test_canal_sem_construtor_falha_antes_de_montar(
 ):
     """Inventariar um canal nunca autoriza criá-lo com o builder de outro.
 
-    PMax monta pelo módulo próprio, mas a porta genérica continua fechada até
-    carregar seu contrato tipado de assets e mensuração.
+    ⚠️ PMax SAIU desta lista em 06/09/2026, e não porque a regra afrouxou: ele
+    ganhou construtor e validador próprios no perfil, junto com a ponte tipada
+    de `/provar`. Quem continua fechado são os canais que o engine não monta —
+    Video e Shopping —, e a recusa continua acontecendo ANTES de o construtor
+    ser chamado.
+
+    A porta de CRIAÇÃO de PMax segue fechada por outra guarda, em
+    `test_pmax_prova_e_nao_cria` — e são duas perguntas diferentes.
     """
     with pytest.raises(subir.CanalSemConstrutor) as erro:
         subir.preparar(
@@ -169,7 +176,28 @@ def test_canal_sem_construtor_falha_antes_de_montar(
 
     mensagem = str(erro.value)
     assert canonico in mensagem
-    assert "disponível para montar/validate_only: DEMAND_GEN, DISPLAY, SEARCH" in mensagem
+    assert ("disponível para montar/validate_only: DEMAND_GEN, DISPLAY, "
+            "PERFORMANCE_MAX, SEARCH") in mensagem
+
+
+def test_pmax_prova_e_nao_cria():
+    """CONTRAPROVA: montar/provar e CRIAR são portas diferentes, e só uma abriu.
+
+    PMax entrou em `PROVADORES_POR_CANAL` (tem builder + validate_only) e
+    continua FORA de `CONSTRUTORES_POR_CANAL`. As duas listas são derivadas do
+    perfil por guarda de import, então esta contraprova não é sobre um literal:
+    é sobre `permite_mutacao_real`, que continua `False`.
+    """
+    assert "PERFORMANCE_MAX" in subir.PROVADORES_POR_CANAL
+    assert "PERFORMANCE_MAX" not in subir.CONSTRUTORES_POR_CANAL
+
+    canal, validador = subir.resolver_provador("pmax")
+    assert canal == "PERFORMANCE_MAX"
+    assert validador is not None
+
+    with pytest.raises(subir.CanalSemConstrutor) as erro:
+        subir.resolver_construtor("PERFORMANCE_MAX")
+    assert "disponível para criação: DISPLAY, SEARCH" in str(erro.value)
 
 
 def test_registry_resolve_search_e_canoniza_a_entrada():

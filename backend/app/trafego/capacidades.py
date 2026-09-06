@@ -75,6 +75,17 @@ ENV_LABORATORIO = "VOLC_LABORATORIO"
 # valor diferente de `on` mantêm a superfície fechada.
 ENV_DEMAND_GEN_VALIDATE_ONLY = "VOLC_DEMAND_GEN_VALIDATE_ONLY"
 
+# ⚠️ A MESMA PORTA, PARA PERFORMANCE MAX — e ela é SEPARADA de propósito.
+#
+# Uma flag só para os dois canais experimentais transformaria "abri Demand Gen"
+# em "abri PMax também", em silêncio, num servidor que ninguém reconfigurou. Os
+# dois canais têm contratos, assets e provas diferentes; abrir um não é ter
+# medido o outro.
+#
+# Também sem modo `auto`: ausência, erro de grafia ou qualquer valor diferente
+# de `on` mantêm a superfície fechada.
+ENV_PMAX_VALIDATE_ONLY = "VOLC_PMAX_VALIDATE_ONLY"
+
 AUTO = "auto"
 LIGADO = "on"
 DESLIGADO = "off"
@@ -140,6 +151,42 @@ def servidor_oferece_demand_gen_validate_only() -> bool:
     return ligado and _sdk_demand_gen_disponivel()
 
 
+@lru_cache(maxsize=1)
+def _sdk_pmax_disponivel() -> bool:
+    """O proto v25 de PMax existe e SERIALIZA neste ambiente?
+
+    Importar `google-ads` não prova que os campos que o builder emite existem:
+    `AssetGroup`, `AssetGroupAsset`, `AssetGroupSignal` e
+    `Campaign.asset_automation_settings` são de versões diferentes da API. A
+    sonda instancia e serializa um objeto de cada tipo, sem credencial e sem
+    rede — o mesmo desenho da sonda de Demand Gen.
+    """
+    raiz = str(pathlib.Path(__file__).resolve().parents[3])
+    if raiz not in sys.path:
+        sys.path.insert(0, raiz)
+    try:
+        from volc_ads.campanha.pmax import sondar_proto_v25  # noqa: PLC0415
+
+        return sondar_proto_v25().disponivel
+    except Exception:  # noqa: BLE001 — ausência do SDK é estado de capacidade
+        return False
+
+
+def servidor_oferece_pmax_validate_only() -> bool:
+    """Flag durável + proto v25 de PMax real; desligada por padrão.
+
+    ⚠️ Esta função responde à CAPACIDADE LOCAL, e não à autorização de gasto.
+    Ela pode devolver `True` num servidor onde a criação de PMax continua
+    fechada — e é exatamente esse o estado desta onda: o canal prova, e
+    `perfil.PERFORMANCE_MAX.permite_mutacao_real` segue `False`.
+    """
+    ligado = (
+        str(os.environ.get(ENV_PMAX_VALIDATE_ONLY) or "").strip().lower()
+        == LIGADO
+    )
+    return ligado and _sdk_pmax_disponivel()
+
+
 @dataclass(frozen=True)
 class Capacidades:
     """O que ESTA pessoa pode, neste servidor, neste instante."""
@@ -152,6 +199,10 @@ class Capacidades:
     #: Capacidade mais estreita: permite somente `/provar` Demand Gen. Nunca
     #: autoriza `/subir`, mesmo quando `google_mutate` está aberta para Search.
     google_demand_gen_validate_only: bool = False
+    #: A irmã de Performance Max. Também nunca autoriza `/subir`: a criação de
+    #: PMax depende de `permite_mutacao_real` no perfil E do canário do canal,
+    #: e nenhuma das duas é esta flag.
+    google_pmax_validate_only: bool = False
     #: Por que `google_mutate` está fechada, em uma frase que a tela pode
     #: mostrar. `None` quando ela está aberta.
     #:
@@ -183,6 +234,10 @@ class Capacidades:
             raise ValueError(
                 "prova Demand Gen sem capacidade geral de validate_only"
             )
+        if self.google_pmax_validate_only and not self.google_validate_only:
+            raise ValueError(
+                "prova Performance Max sem capacidade geral de validate_only"
+            )
         if self.google_mutate and self.porque_sem_mutacao:
             raise ValueError(
                 "mutação liberada com motivo de recusa preenchido — a tela "
@@ -209,6 +264,7 @@ class Capacidades:
             "google_validate_only": self.google_validate_only,
             "google_mutate": self.google_mutate,
             "google_demand_gen_validate_only": self.google_demand_gen_validate_only,
+            "google_pmax_validate_only": self.google_pmax_validate_only,
             "porque_sem_mutacao": self.porque_sem_mutacao,
         }
 
@@ -269,6 +325,9 @@ def de_identidade(*, papel: str, escrita_permitida: bool) -> Capacidades:
         google_mutate=mutar,
         google_demand_gen_validate_only=(
             provar and servidor_oferece_demand_gen_validate_only()
+        ),
+        google_pmax_validate_only=(
+            provar and servidor_oferece_pmax_validate_only()
         ),
         porque_sem_mutacao=porque,
     )

@@ -217,6 +217,51 @@ class Politica:
         return f"achado[{topicos}]"
 
 
+# ── o mínimo de orçamento que só a API sabe ─────────────────────────────────
+
+
+@dataclass(frozen=True)
+class MinimoDiario:
+    """O piso diário que a API DEVOLVEU — nunca um número desta casa.
+
+    ## Por que ele existe como tipo, e por que não há constante
+
+    O piso de orçamento de Demand Gen depende da MOEDA e da conta, e o Google o
+    devolve dentro do erro. Escrever `MINIMO_DG_BRL = 25.40` aqui produziria a
+    pior forma de estar certo: um número correto hoje, num país, que continua
+    sendo exibido depois de mudar — e o operador não teria como saber que a
+    recusa que ele lê não é a que a API deu.
+
+    Por isso este tipo transporta e não decide. `micros` e `moeda` vêm de
+    `details.budget_per_day_minimum_error_details` quando ela existe; quando não
+    existe, o campo fica `None` e a mensagem CRUA da API é o que sobra — que
+    continua sendo mais verdadeiro que um piso inventado.
+
+    ⚠️ `micros=None` NÃO é zero. Zero seria "o piso é R$ 0,00", que autorizaria
+    qualquer orçamento.
+    """
+
+    micros: int | None = None
+    moeda: str = ""
+
+    @property
+    def valor(self) -> str:
+        """O piso em unidade de moeda, como TEXTO. Vazio quando não veio."""
+        if self.micros is None:
+            return ""
+        inteiro, resto = divmod(int(self.micros), 1_000_000)
+        return f"{inteiro}.{resto // 10_000:02d}"
+
+    def para_json(self) -> dict:
+        return {"micros": self.micros, "moeda": self.moeda,
+                "valor": self.valor or None}
+
+
+#: O `valor_codigo` que a API usa quando o orçamento diário está abaixo do piso.
+#: Medido em 01/09/2026 num `validate_only` real de Demand Gen (EV-16).
+BUDGET_ABAIXO_DO_MINIMO = "BUDGET_BELOW_PER_DAY_MINIMUM"
+
+
 # ── erro individual ─────────────────────────────────────────────────────────
 
 
@@ -231,6 +276,14 @@ class ErroGads:
     indice_operacao: int | None = None  # a posição no mutate atômico
     gatilho: str = ""   # err.trigger, o valor que disparou
     politica: Politica | None = None
+    #: O piso diário devolvido pela API, quando o erro é de orçamento mínimo.
+    #: `None` em qualquer outro erro — e `None` aqui é ausência, não zero.
+    minimo_diario: MinimoDiario | None = None
+
+    @property
+    def orcamento_abaixo_do_minimo(self) -> bool:
+        """Este erro é o piso diário do canal? A pergunta que a rota traduz."""
+        return self.valor_codigo == BUDGET_ABAIXO_DO_MINIMO
 
     @property
     def classe(self) -> Classe:
@@ -320,6 +373,19 @@ class FalhaGads:
         return tuple(e.politica for e in self.erros if e.politica is not None)
 
     @property
+    def orcamento_abaixo_do_minimo(self) -> "ErroGads | None":
+        """O erro do piso diário, quando ele está nesta falha.
+
+        ⚠️ Devolve o ERRO, e não um booleano, porque quem traduz precisa do
+        valor e da moeda que a API mandou junto. Um `True` obrigaria a rota a
+        varrer a lista de novo, e é aí que alguém inventaria o número.
+        """
+        for e in self.erros:
+            if e.orcamento_abaixo_do_minimo:
+                return e
+        return None
+
+    @property
     def textos_violadores(self) -> tuple[str, ...]:
         vistos: list[str] = []
         for p in self.politicas:
@@ -403,6 +469,7 @@ def classificar(exc: Exception) -> FalhaGads:
                 indice_operacao=indice,
                 gatilho=_extrair_gatilho(err),
                 politica=_extrair_politica(err),
+                minimo_diario=_extrair_minimo_diario(err),
             )
         )
         if retry_apos is None:
@@ -574,6 +641,46 @@ def _restricoes(entrada) -> tuple[str, ...]:
         if nome and nome not in out:
             out.append(nome)
     return tuple(out)
+
+
+def _extrair_minimo_diario(err) -> MinimoDiario | None:
+    """Lê `details.budget_per_day_minimum_error_details`, quando ela existe.
+
+    ⚠️ Devolve `None` para qualquer erro que não seja o do piso — e devolve um
+    `MinimoDiario` VAZIO quando o erro é o do piso e o detalhe não veio. Os dois
+    casos são diferentes: o primeiro é "esta recusa não é sobre orçamento", o
+    segundo é "é sobre orçamento e a API não disse quanto". Colapsá-los faria a
+    tela mostrar um piso ausente como se o erro fosse outro.
+
+    O nome do sub-detalhe pode variar entre versões do SDK; por isso a busca é
+    por atributo, e a ausência é resposta em vez de exceção.
+    """
+    _, valor = _extrair_codigo(getattr(err, "error_code", None))
+    if valor != BUDGET_ABAIXO_DO_MINIMO:
+        return None
+    detalhes = getattr(err, "details", None)
+    bruto = None
+    for nome in ("budget_per_day_minimum_error_details",
+                 "budget_error_details", "quota_error_details"):
+        bruto = getattr(detalhes, nome, None) if detalhes else None
+        if bruto is not None:
+            break
+    if bruto is None:
+        return MinimoDiario()
+    micros = None
+    for nome in ("min_daily_budget_micros", "minimum_micros", "micros",
+                 "amount_micros"):
+        candidato = getattr(bruto, nome, None)
+        if candidato:
+            micros = int(candidato)
+            break
+    moeda = ""
+    for nome in ("currency_code", "currency"):
+        candidato = getattr(bruto, nome, None)
+        if candidato:
+            moeda = str(candidato)
+            break
+    return MinimoDiario(micros=micros, moeda=moeda)
 
 
 def _extrair_retry_delay(err) -> float | None:

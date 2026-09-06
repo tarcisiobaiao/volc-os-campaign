@@ -294,11 +294,21 @@ DEMAND_GEN = PerfilDeCanal(
     acoes_indisponiveis=demand_gen.NAO_OPERADO,
 )
 
-#: PMax continua fora do registro genérico do executor. O módulo próprio monta
-#: e serializa o grafo v25, inclusive o opt-out de expansão de URL, mas a porta
-#: HTTP ainda não transporta `ConfiguracaoPMax`, `ImagensPMax` e o recibo de
-#: mensuração emitido pela conta. Registrá-lo antes dessa ponte faria `/provar`
-#: aceitar um envelope que não consegue formar o brief tipado.
+#: PMax PROVA e não CRIA — e as duas metades desta frase têm datas diferentes.
+#:
+#: A ponte tipada passou a existir em 06/09/2026: `/provar` aceita
+#: `canal=PERFORMANCE_MAX`, decodifica `assets_pmax`, transporta
+#: `ConfiguracaoPMaxEntrada` e lê a mensuração NO SERVIDOR
+#: (`pmax.ler_mensuracao`) — que é a única forma de `brief.pmax.mensuracao`
+#: nascer válida, porque o recibo tem construtor privado e confere a própria
+#: impressão. Enquanto essa ponte não existia, registrar o construtor faria
+#: `/provar` aceitar um envelope que não consegue formar o brief tipado.
+#:
+#: `permite_mutacao_real` continua `False`, e ele é uma pergunta separada da
+#: capacidade local. O canal monta, valida e prova; criar exige, além disso, o
+#: canário de Performance Max aceito — `canario.CANAIS_COM_CRIACAO_AUTORIZADA`
+#: lista apenas `SEARCH`. Duas travas independentes: abrir uma não abre a outra,
+#: e `testes_pmax.py::test_flag_do_perfil_sozinha_nao_abre_a_criacao` prova isso.
 PERFORMANCE_MAX = PerfilDeCanal(
     canal=pmax.CANAL,
     rotulo="Performance Max",
@@ -314,6 +324,8 @@ PERFORMANCE_MAX = PerfilDeCanal(
         "pmax.nome_do_asset_group", "url_final", "budget_diario", "tcpa",
         "target_roas", "estrategia_lance",
     ),
+    construtor=pmax.construir,
+    validador=pmax.validar,
     planejador=pmax.planejar,
     coletor="volc_ads/observabilidade_pmax (kernel read-only, GAQL v25)",
     recursos_criativos=(
@@ -322,14 +334,15 @@ PERFORMANCE_MAX = PerfilDeCanal(
     ),
     lances_permitidos=pmax.LANCES_PERMITIDOS,
     opcoes=pmax.OPCOES,
+    provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
     permite_mutacao_real=False,
-    acoes_permitidas=("inventariar", "planejar"),
+    acoes_permitidas=("inventariar", "planejar", "montar", "provar"),
     acoes_indisponiveis=(
         "criar: Performance Max não está no registro do executor "
-        "(`subir.CONSTRUTORES_POR_CANAL`).",
-        "provar pela rota HTTP: falta a ponte tipada de assets e mensuração; "
-        "o módulo PMax pode montar e validar diretamente, sem autorizar mutate.",
+        "(`subir.CONSTRUTORES_POR_CANAL`), porque `permite_mutacao_real` é "
+        "False. E mesmo se ele virasse True, o canário de PMax não foi aceito: "
+        "`canario.CANAIS_COM_CRIACAO_AUTORIZADA` lista apenas SEARCH.",
     ) + pmax.NAO_OPERADO,
 )
 

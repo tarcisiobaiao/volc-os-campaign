@@ -29,6 +29,15 @@ from typing import Any, Dict, List, Optional, Sequence
 from app.trafego import perfil_de_mensuracao as pdm
 from app.trafego import plano_mensuracao as pm
 
+# ⚠️ A AUTORIDADE ÚNICA, importada no TOPO e de propósito.
+#
+# `volc_ads.mensuracao` é stdlib pura: não importa `google.ads`, não importa
+# `app.` e não importa `volc_ads.campanha`. É por isso que ele pode subir junto
+# com o backend sem arrastar o SDK para o boot — a mesma disciplina que faz
+# `routers/trafego.py` importar ESTE módulo no topo e o engine só dentro das
+# funções. `backend/tests/test_trafego_mensuracao_autoridade.py` cobra a pureza.
+from volc_ads import mensuracao as mens
+
 # Os estados possíveis de cada portão. `INDETERMINADO` é o default deliberado:
 # quem não mediu não sabe, e não saber não é o mesmo que estar pronto.
 PRONTO = "PRONTO"
@@ -696,7 +705,18 @@ def avaliar(
 
 
 class PortaoFechado(RuntimeError):
-    """A estratégia pedida exige prova que esta conta não tem. Nada foi enviado."""
+    """A estratégia pedida exige prova que esta conta não tem. Nada foi enviado.
+
+    ⚠️ Carrega o `Veredito` da autoridade, e não só a frase. A frase é prosa e
+    pode ser melhorada a qualquer momento; o veredito tem CÓDIGOS estáveis por
+    bloqueio, e é contra eles que a tela e o teste comparam sem casar texto.
+    `veredito=None` só acontece em quem levanta esta exceção fora do portão.
+    """
+
+    def __init__(self, mensagem: str,
+                 veredito: "Optional[mens.Veredito]" = None) -> None:
+        super().__init__(mensagem)
+        self.veredito = veredito
 
 
 class LanceSemMedicao(PortaoFechado):
@@ -711,25 +731,33 @@ class EstrategiaDesconhecida(PortaoFechado):
     """Uma estratégia que este portão não sabe classificar. Recusa, sempre."""
 
 
-#: As estratégias que NÃO aprendem de conversão. Uma lista fechada, e curta.
+#: ⚠️ AS QUATRO LISTAS ABAIXO DEIXARAM DE DECIDIR EM 06/09/2026.
 #:
-#: ⚠️ `MANUAL_CPC` é o padrão da casa. Recusá-lo porque a conta não mede
-#: transformaria uma conta sem conversão numa conta sem campanha — e o canário
-#: pausado existe justamente para colher veredito de política sem depender de
-#: medição. O portão é sobre APRENDER, não sobre nascer.
-ESTRATEGIAS_SEM_APRENDIZADO: tuple[str, ...] = ("MANUAL_CPC",)
+#: Quem classifica estratégia agora é `volc_ads.mensuracao`, a autoridade única
+#: de prontidão por conta, canal, objetivo e lance. Elas permanecem aqui, e
+#: permanecem EXPORTADAS, por dois motivos concretos:
+#:
+#:   1. `backend/tests/test_trafego_revisao_adversarial.py` e o vocabulário do
+#:      dossiê já leem estes nomes; apagá-los quebraria leitores que não têm
+#:      nada a ver com a unificação;
+#:   2. elas viraram uma PROJEÇÃO da autoridade, derivada dela em tempo de
+#:      import. Uma cópia literal poderia divergir em silêncio — que é
+#:      exatamente o defeito que esta tarefa existe para desfazer.
+#:
+#: `test_as_listas_de_estrategia_sao_projecao_da_autoridade` cobra a derivação.
+ESTRATEGIAS_SEM_APRENDIZADO: tuple[str, ...] = tuple(sorted(
+    e for e, o in mens.OBJETIVO_POR_ESTRATEGIA.items()
+    if o == mens.OBJETIVO_CLIQUE))
 
 #: As que aprendem pela CONTAGEM de conversões.
-ESTRATEGIAS_POR_CONTAGEM: tuple[str, ...] = (
-    "MAXIMIZE_CONVERSIONS",
-    "TARGET_CPA",
-)
+ESTRATEGIAS_POR_CONTAGEM: tuple[str, ...] = tuple(sorted(
+    e for e, o in mens.OBJETIVO_POR_ESTRATEGIA.items()
+    if o == mens.OBJETIVO_CONVERSAO))
 
 #: As que otimizam pelo VALOR de cada conversão, e não pela contagem.
-ESTRATEGIAS_QUE_EXIGEM_VALOR: tuple[str, ...] = (
-    "MAXIMIZE_CONVERSION_VALUE",
-    "TARGET_ROAS",
-)
+ESTRATEGIAS_QUE_EXIGEM_VALOR: tuple[str, ...] = tuple(sorted(
+    e for e, o in mens.OBJETIVO_POR_ESTRATEGIA.items()
+    if o == mens.OBJETIVO_VALOR))
 
 #: ⚠️ A UNIÃO FECHADA, e ela é o portão de verdade.
 #:
@@ -738,77 +766,83 @@ ESTRATEGIAS_QUE_EXIGEM_VALOR: tuple[str, ...] = (
 #: 02/09/2026 provou: com `measurement_ready=PRONTO`, a string
 #: `ESTRATEGIA_INVENTADA` atravessava. O fail-closed só valia no caso que já
 #: estava fechado, ou seja, não valia.
-#:
-#: `volc_ads/campanha/brief.py:ESTRATEGIAS_DE_LANCE` aceita exatamente três
-#: (`MANUAL_CPC`, `MAXIMIZE_CONVERSIONS`, `MAXIMIZE_CONVERSION_VALUE`) e é ele
-#: quem recusaria a string inventada mais adiante. Depender disso seria depender
-#: de uma guarda de OUTRO módulo para cumprir o contrato deste — e é
-#: exatamente o arranjo que esta missão existe para desfazer.
-ESTRATEGIAS_CONHECIDAS: tuple[str, ...] = (
-    ESTRATEGIAS_SEM_APRENDIZADO
-    + ESTRATEGIAS_POR_CONTAGEM
-    + ESTRATEGIAS_QUE_EXIGEM_VALOR
-)
+ESTRATEGIAS_CONHECIDAS: tuple[str, ...] = mens.ESTRATEGIAS_CONHECIDAS
 
 
 def exigir_para_criacao(*, estrategia_lance: str,
-                        prontidao: Prontidao) -> None:
+                        prontidao: Prontidao,
+                        canal: str = "SEARCH",
+                        lido_em: str = "") -> "mens.Veredito":
     """Recusa criar em lance automático o que a conta não sabe medir.
 
-    Levanta `PortaoFechado`; devolve `None` quando pode seguir.
+    Levanta `PortaoFechado`; devolve o **veredito da autoridade** quando pode
+    seguir — para que quem chama registre a prova em vez de recalculá-la.
 
-    ⚠️ O portão olha `measurement_ready`, e NÃO `smart_bidding_ready`. A
-    diferença é o instante: `smart_bidding_ready` exige observabilidade
-    pós-criação, que por definição não existe antes de a campanha nascer.
-    Exigi-la aqui tornaria `MANUAL_CPC` a única estratégia possível para sempre
-    — um portão que nunca abre não protege, só esconde a decisão.
+    ## ⚠️ ESTE PORTÃO NÃO DECIDE MAIS NADA SOZINHO
+
+    Desde 06/09/2026 ele é a FRONTEIRA de `volc_ads.mensuracao`, a autoridade
+    única de prontidão por (conta, canal, objetivo, estratégia de lance). Antes
+    havia três implementações da mesma frase — este módulo, `plano_mensuracao`
+    e a checagem interna de PMax — e elas já divergiam no ponto que mais
+    importa: `pmax.ler_mensuracao` lê `primary_for_goal` com `bool(...)`, o que
+    responde `False` para uma ação em que o campo não veio, enquanto
+    `plano_mensuracao.primaria_efetiva` aplica o default documentado (ausente
+    vale `true`). O mesmo dado, dois vereditos opostos.
+
+    O que sobra aqui é o que sempre foi deste módulo: TRADUZIR o veredito para
+    as exceções que a rota já traduz em HTTP, e preservar a distinção entre
+    "não mede" (`LanceSemMedicao`) e "mede e não tem valor" (`LanceSemValor`) —
+    duas recusas que pedem atos diferentes do operador.
+
+    ⚠️ O portão continua olhando o instante ANTES do nascimento, e não
+    `smart_bidding_ready`: este último exige observabilidade pós-criação, que
+    por definição não existe antes de a campanha nascer. Exigi-la aqui tornaria
+    `MANUAL_CPC` a única estratégia possível para sempre — e um portão que nunca
+    abre não protege, só esconde a decisão.
 
     ⚠️ `INDETERMINADO` RECUSA. Uma falha de leitura do Google não é permissão.
     O plano de ignorância continua deixando a campanha NASCER — pausada, com os
     portões fechados —, e deixa de permitir que ela nasça APRENDENDO.
     """
-    estrategia = str(estrategia_lance or "MANUAL_CPC").strip().upper()
+    leitura = mens.de_plano(prontidao.plano_de_mensuracao, lido_em=lido_em)
 
-    # ⚠️ O DESCONHECIDO É RECUSADO ANTES DE QUALQUER AVALIAÇÃO DE MEDIÇÃO.
+    # ⚠️ A REGRA DE VALOR É DECLARAÇÃO, e ela entra como declaração.
     #
-    # Antes, ele caía no ramo "aprende de conversão" — o que parecia
-    # fail-closed e não era: com a medição PRONTA, qualquer string atravessava.
-    # Uma estratégia que este portão não sabe classificar é uma estratégia cujo
-    # requisito ele não conhece, e não conhecer nunca autoriza.
-    if estrategia not in ESTRATEGIAS_CONHECIDAS:
-        raise EstrategiaDesconhecida(
-            f"{estrategia} não é uma estratégia de lance que este portão saiba "
-            f"classificar (conhecidas: {', '.join(ESTRATEGIAS_CONHECIDAS)}). "
-            "Sem saber se ela aprende de conversão, de valor ou de nenhum dos "
-            "dois, não há como dizer o que ela exige — e não saber não "
-            "autoriza. Nada foi enviado ao Google.")
+    # Este sistema não lê `conversion_action.value_settings` em nenhuma das
+    # cinco leituras GAQL (dito em voz alta desde a primeira versão deste
+    # portão). Sem ela, o único lastro possível para lance por VALOR é uma regra
+    # declarada no perfil de mensuração — e a autoridade registra, no veredito,
+    # que a prova veio de declaração e não de leitura.
+    regra = None if prontidao.perfil is None else prontidao.perfil.regra_de_valor
+    valor_declarado = bool(regra is not None and regra.modo != pdm.VALOR_SEM_VALOR)
 
-    if estrategia in ESTRATEGIAS_SEM_APRENDIZADO:
-        return
+    veredito = mens.avaliar(
+        customer_id=(getattr(prontidao.plano_de_mensuracao, "customer_id", "")
+                     or ""),
+        canal=canal,
+        estrategia_lance=estrategia_lance,
+        leitura=leitura,
+        exige_valor_declarado=valor_declarado,
+    )
+    if veredito.autoriza:
+        return veredito
 
-    if prontidao.measurement_ready != PRONTO:
-        razoes = list(prontidao.activation_blockers_materiais) or [
-            "a medição desta conta não foi provada nesta leitura"]
-        raise LanceSemMedicao(
-            f"{estrategia} exige meta de conversão efetiva resolvida e sinal "
-            f"CHEGANDO, e a medição está {prontidao.measurement_ready}: "
-            + "; ".join(razoes)
-            + ". Nada foi enviado ao Google. Suba em MANUAL_CPC — que não "
-              "aprende de conversão e por isso não depende desta prova — ou "
-              "conserte a medição antes.")
+    codigos = set(veredito.codigos)
+    frase = str(mens.MensuracaoNaoProvada(veredito))
+    if mens.ESTRATEGIA_DESCONHECIDA in codigos:
+        raise EstrategiaDesconhecida(frase, veredito)
 
-    if estrategia in ESTRATEGIAS_QUE_EXIGEM_VALOR:
-        # ⚠️ VALOR NÃO É CONVERSÃO, e este sistema não lê
-        # `conversion_action.value_settings` em nenhuma das cinco leituras
-        # GAQL. Sem ele, o único lastro possível é uma regra de valor DECLARADA
-        # no perfil de mensuração. Otimizar pelo valor sem nenhum dos dois é
-        # perseguir um número que pode ser zero em todas as linhas.
-        regra = None if prontidao.perfil is None else prontidao.perfil.regra_de_valor
-        if regra is None or regra.modo == pdm.VALOR_SEM_VALOR:
-            raise LanceSemValor(
-                f"{estrategia} otimiza pelo VALOR de cada conversão, e nenhuma "
-                "regra de valor foi declarada no perfil de mensuração. Este "
-                "sistema também não lê `conversion_action.value_settings`, "
-                "então não há como provar que a ação eleita carrega valor. "
-                "Nada foi enviado ao Google: declare a regra de valor do perfil "
-                "ou suba em MAXIMIZE_CONVERSIONS, que otimiza pela contagem.")
+    # ⚠️ A PRECEDÊNCIA É MEDIÇÃO ANTES DE VALOR, e ela não é estética.
+    #
+    # "A conta não mede" e "a conta mede e a ação não carrega valor" pedem atos
+    # OPOSTOS do operador: a primeira manda consertar a medição, a segunda manda
+    # declarar a regra de valor (ou trocar para uma estratégia que otimize por
+    # contagem). Anunciar a segunda numa conta que não mede mandaria alguém
+    # configurar `value_settings` numa ação que não recebe conversão nenhuma.
+    #
+    # A autoridade devolve TODAS as razões de uma vez — é ela que enxerga o
+    # tamanho do caminho. Quem escolhe a exceção é este portão, porque é a
+    # exceção que a rota traduz em HTTP e que o operador lê primeiro.
+    if codigos - {mens.SEM_VALOR_DECLARADO}:
+        raise LanceSemMedicao(frase, veredito)
+    raise LanceSemValor(frase, veredito)

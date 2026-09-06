@@ -59,7 +59,11 @@ def test_a_politica_nomeia_a_conta_laboratorio_e_nao_inclui_ativacao():
         "customer_label": "Portal Mundo Mais",
         "login_customer_id": "6016739364",
         "canal": "SEARCH",
+        # ⚠️ DOIS CAMPOS, e eles respondem perguntas diferentes: `cria_pausada`
+        # é COMO nasceria (sempre pausada, nos quatro canais) e
+        # `criacao_autorizada` é SE nasce (só Search tem canário aceito).
         "cria_pausada": True,
+        "criacao_autorizada": True,
         "inclui_ativacao": False,
         "orcamento_diario_maximo_brl": "20.00",
         "cpc_maximo_brl": "1.00",
@@ -88,7 +92,12 @@ def test_cada_canal_tem_a_propria_janela_e_search_nao_vaza_para_os_outros():
         # ⚠️ TER JANELA NÃO É TER AUTORIZAÇÃO. Teto e vocabulário existem;
         # criar não. Se isto virasse True sem o canário do canal, esta tarefa
         # teria aberto a escrita de Display de passagem.
-        assert politica.cria_pausada is False
+        assert politica.criacao_autorizada is False
+        # ⚠️ E `cria_pausada` continua TRUE nos quatro, porque ele responde
+        # outra pergunta: COMO nasceria, e não SE nasce. Colapsar os dois punha
+        # `cria_pausada: false` na tela de Display/DG/PMax — que se lê como
+        # "nasce ativa", exatamente o oposto do contrato.
+        assert politica.cria_pausada is True
         # Ativação continua fora, para todos os quatro.
         assert politica.inclui_ativacao is False
         # ⚠️ `None`, não `"0.00"`: ausência de CPC não é teto zero, que

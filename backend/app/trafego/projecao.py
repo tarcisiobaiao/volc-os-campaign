@@ -353,12 +353,64 @@ def _falha(f: Any) -> dict[str, Any] | None:
             "mensagem": getattr(e, "mensagem", ""),
             "gatilho": getattr(e, "gatilho", ""),
             "politica": _politica(getattr(e, "politica", None)),
+            # O piso diário que a API devolveu, quando o erro é o do orçamento
+            # mínimo. `None` em todo o resto — e `None` é ausência, nunca zero.
+            "minimo_diario": _minimo_diario(getattr(e, "minimo_diario", None)),
         } for e in (getattr(f, "erros", ()) or ())],
         # O que a tela precisa para oferecer a decisão: o texto que violou e se
         # a violação COMPORTA isenção. Sem isto, "reprovado" é um beco.
         "textos_violadores": list(getattr(f, "textos_violadores", ()) or ()),
         "chaves_isentaveis": [str(k) for k in (getattr(f, "chaves_isentaveis", ()) or ())],
         "de_politica": bool(getattr(f, "de_politica", False)),
+        # ⚠️ O BLOQUEIO DE ORÇAMENTO, PROMOVIDO A CAMPO PRÓPRIO.
+        #
+        # Sem ele, `BUDGET_BELOW_PER_DAY_MINIMUM` chega à tela como mais um
+        # item na lista de erros, com a mensagem crua do Google em inglês — e o
+        # operador lê "reprovado" sem saber que o conserto é UM número no campo
+        # de orçamento. É o único erro desta rota cuja saída é uma edição de um
+        # campo que a própria tela desenha.
+        #
+        # ⚠️ E ele NÃO carrega piso desta casa. `valor` e `moeda` são o que a
+        # API mandou; quando ela não mandou, ficam `None` e a mensagem crua é o
+        # que sobra. Um piso inventado aqui seria correto num país e num mês.
+        "orcamento_abaixo_do_minimo": _orcamento_abaixo(f),
+    }
+
+
+def _minimo_diario(m: Any) -> dict[str, Any] | None:
+    if m is None:
+        return None
+    return m.para_json() if hasattr(m, "para_json") else None
+
+
+def _orcamento_abaixo(f: Any) -> dict[str, Any] | None:
+    """O bloqueio legível de orçamento mínimo, quando a API o devolveu."""
+    erro = getattr(f, "orcamento_abaixo_do_minimo", None)
+    if erro is None:
+        return None
+    minimo = getattr(erro, "minimo_diario", None)
+    valor = getattr(minimo, "valor", "") if minimo is not None else ""
+    moeda = getattr(minimo, "moeda", "") if minimo is not None else ""
+    if valor:
+        frase = (
+            f"O orçamento diário deste pedido está abaixo do mínimo que a conta "
+            f"aceita para este canal: {moeda or ''} {valor}".strip()
+            + ". Nada foi criado — `validate_only` é leitura. Ajuste o "
+              "orçamento diário e prove de novo.")
+    else:
+        frase = (
+            "O orçamento diário deste pedido está abaixo do mínimo que a conta "
+            "aceita para este canal. ⚠️ A API não informou o valor do piso "
+            "nesta resposta, e este sistema não inventa um: o piso depende da "
+            "moeda e da conta. Leia a mensagem original abaixo e ajuste o "
+            "orçamento diário. Nada foi criado.")
+    return {
+        "codigo": "ORCAMENTO_ABAIXO_DO_MINIMO",
+        "campo": "budget_diario",
+        "mensagem": frase,
+        "minimo_diario": _minimo_diario(minimo),
+        "mensagem_da_api": getattr(erro, "mensagem", ""),
+        "nada_foi_criado": True,
     }
 
 

@@ -21,6 +21,10 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping
 
+# ⚠️ A autoridade única de autorização de canal, do lado que o EXECUTOR também
+# alcança. Stdlib pura — não arrasta o SDK do Google para o boot do backend.
+from volc_ads import autorizacao_de_canal as aut
+
 
 CONTA = "5478096539"
 CONTA_FORMATADA = "547-809-6539"
@@ -71,13 +75,17 @@ CANAIS_DO_CANARIO: tuple[str, ...] = (
 #: humano separado por canal (o canário Display, o Demand Gen, o PMax — cada um
 #: com seu runbook, nenhum executado aqui).
 #:
-#: Antes desta tarefa, `exigir` recusava todo canal != SEARCH com "apenas
-#: SEARCH". Dar janela aos outros três sem separar estes dois conjuntos teria
-#: ABERTO a escrita de Display em `/subir` — a política teria deixado de
-#: recusar, e a única coisa entre o operador e uma campanha Display real seria
-#: um gate que ninguém tinha auditado para esse fim. Uma tarefa cujo objetivo
-#: é dar tetos por canal não pode, de passagem, autorizar canal nenhum.
-CANAIS_COM_CRIACAO_AUTORIZADA: frozenset[str] = frozenset({"SEARCH"})
+#: ⚠️ **REFERÊNCIA, NÃO CÓPIA** (06/09/2026). A declaração mora em
+#: `volc_ads/autorizacao_de_canal.py`, e a mudança não foi cosmética: até aqui a
+#: trava existia SÓ neste módulo, que o executor não importa —
+#: `volc_ads.subir.subir()` conhecia apenas `permite_mutacao_real`, e um script
+#: in-process com a trava de escrita aberta criaria Display real sem passar por
+#: esta janela. Uma trava que só existe num dos dois caminhos que chegam ao
+#: `mutate` é uma convenção, não uma trava.
+#:
+#: `is` — e não `==` — é o que `test_trafego_canario.py` cobra: com um objeto
+#: só, não há como os dois lados divergirem.
+CANAIS_COM_CRIACAO_AUTORIZADA: frozenset[str] = aut.CANAIS_COM_CRIACAO_AUTORIZADA
 
 _IMPRESSAO = re.compile(r"^[0-9a-f]{64}$")
 _CARIMBO_NOME = re.compile(r"^[0-9]{8}_[0-9]{6}$")
@@ -101,7 +109,22 @@ class Politica:
     customer_label: str = NOME_DA_CONTA
     login_customer_id: str = MCC
     canal: str = CANAL
+    #: ⚠️ O QUE ESTA JANELA CRIA, QUANDO CRIA — e ela só cria PAUSADA.
+    #:
+    #: Ele é `True` para os QUATRO canais, e virou `True` para os quatro em
+    #: 06/09/2026. Até então ele carregava, sozinho, dois fatos que não são o
+    #: mesmo: "esta janela nasce pausada" (contrato, sempre verdadeiro) e "este
+    #: canal já tem canário aceito" (autorização, só Search). O colapso produzia
+    #: a leitura mais perigosa possível na tela — `cria_pausada: false` em
+    #: Display, Demand Gen e PMax —, que se lê como "então nasce ATIVA".
+    #:
+    #: Quem responde à segunda pergunta agora é `criacao_autorizada`, logo
+    #: abaixo, e é ele que `exigir` consulta.
     cria_pausada: bool = True
+    #: Este canal já teve o canário ACEITO? Ato humano separado, por canal, com
+    #: runbook próprio. `False` não diz nada sobre como a campanha nasceria: diz
+    #: que ela não nasce.
+    criacao_autorizada: bool = True
     inclui_ativacao: bool = False
     orcamento_diario_maximo_brl: str = str(ORCAMENTO_DIARIO_MAXIMO_BRL)
     #: `None` quando o canal não tem CPC a declarar. ⚠️ Ausência NÃO é zero:
@@ -118,6 +141,7 @@ class Politica:
             "login_customer_id": self.login_customer_id,
             "canal": self.canal,
             "cria_pausada": self.cria_pausada,
+            "criacao_autorizada": self.criacao_autorizada,
             "inclui_ativacao": self.inclui_ativacao,
             "orcamento_diario_maximo_brl": self.orcamento_diario_maximo_brl,
             "cpc_maximo_brl": self.cpc_maximo_brl,
@@ -149,7 +173,7 @@ def politica_do_canal(canal: Any) -> Politica:
         orcamento_diario_maximo_brl=str(TETO_DIARIO_POR_CANAL[nome]),
         cpc_maximo_brl=str(CPC_MAXIMO_BRL) if com_cpc else None,
         exige_rede=com_cpc,
-        cria_pausada=nome in CANAIS_COM_CRIACAO_AUTORIZADA,
+        criacao_autorizada=nome in CANAIS_COM_CRIACAO_AUTORIZADA,
     )
 
 
@@ -246,11 +270,13 @@ def exigir(
     # O canal ganhou teto, vocabulário e capacidades próprias; criar de verdade
     # continua dependendo do canário DAQUELE canal — ato humano separado, com
     # runbook próprio, ainda não executado.
-    if not politica.cria_pausada:
+    if not politica.criacao_autorizada:
         raise CanarioRecusado(
             f"o canário ainda não autoriza CRIAR em {politica.canal}: apenas "
             f"{', '.join(sorted(CANAIS_COM_CRIACAO_AUTORIZADA))} tem canário "
-            f"aceito. Provar continua liberado; criar exige o canário do canal."
+            f"aceito. Provar continua liberado; criar exige o canário do canal. "
+            f"⚠️ Isto NÃO é uma dúvida sobre o estado inicial: quando este canal "
+            f"criar, ele criará PAUSADO como todos os outros."
         )
 
     # ── CPC e rede: exclusivos de Search, e a exclusividade é o ponto ───────

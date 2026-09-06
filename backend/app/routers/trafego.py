@@ -71,6 +71,7 @@ from app.landing_policy import (
 from app.publisher_quality import fetch as pqf
 from app.trafego import (canario, capacidades as cap,
                          contrato_canais as ccan, escopo,
+                         plataforma as plat,
                          inteligencia_lab, ledger as led,
                          pmax_cockpit, projecao,
                          # ⚠️ No topo, e não dentro da função: desde 02/09/2026
@@ -81,6 +82,11 @@ from app.trafego import (canario, capacidades as cap,
                          # nem com o Supabase —, então subir o import não custa
                          # nada no boot.
                          prontidao as pr)
+# ⚠️ A autoridade única de prontidão de mensuração. Stdlib pura — não arrasta o
+# SDK do Google para o boot —, e é ela quem `prontidao.exigir_para_criacao`
+# consulta. O import direto existe para esta rota poder TIPAR o veredito que
+# viaja na recusa, sem reconstruir vocabulário paralelo.
+from volc_ads import mensuracao as mens
 
 log = logging.getLogger("volc.trafego")
 
@@ -1575,6 +1581,18 @@ class ProvarEntrada(BaseModel):
     #: imagem"; `[]` é "declarei que não há nenhuma". As duas recusam Display,
     #: e recusam com frases diferentes — ver `_imagens_de_display`.
     assets_display: Optional[List[AssetDemandGenEntrada]] = None
+    #: Só é consumido quando `canal=PERFORMANCE_MAX`.
+    #:
+    #: ⚠️ NÃO existe campo de mensuração aqui, e a ausência é o contrato. O
+    #: recibo (`brief.pmax.mensuracao`) só nasce válido de `pmax.ler_mensuracao`,
+    #: que é uma leitura DO SERVIDOR contra a conta: o tipo tem construtor
+    #: privado e confere a própria impressão, então um recibo montado por quem
+    #: chama responde `integro=False` e o builder o recusa. Um campo aqui
+    #: convidaria o cliente a declarar a própria medição — que é o autoatestado
+    #: que este desenho existe para impedir.
+    pmax: Optional[ConfiguracaoPMaxEntrada] = None
+    assets_pmax: Optional[List[AssetDemandGenEntrada]] = Field(
+        default=None, max_length=TETO_QUANTIDADE_ASSETS_PMAX)
 
     @model_validator(mode="before")
     @classmethod
@@ -1617,6 +1635,56 @@ class ProvarEntrada(BaseModel):
                 f"`canal=DISPLAY`; recebido canal {canal!r}. Nada foi "
                 "projetado, e nenhuma imagem foi descartada em silêncio."
             )
+        # ⚠️ A MESMA FRONTEIRA, NAS DUAS DIREÇÕES, PARA PERFORMANCE MAX.
+        #
+        # Sem ela, um pedido `canal=SEARCH` com `pmax={...}` seria aceito pelo
+        # Pydantic (o modelo é compartilhado) e IGNORADO pelo builder — sinais,
+        # negativas e brand guidelines sumiriam sem erro. E um pedido
+        # `canal=PERFORMANCE_MAX` sem `pmax` herdaria o contrato de Search em
+        # silêncio, que é o relabeling que T02 existe para fechar.
+        campos_pmax = [
+            campo for campo in ("pmax", "assets_pmax")
+            if campo in dados and dados[campo] is not None
+        ]
+        if campos_pmax and canal != "PERFORMANCE_MAX":
+            raise ValueError(
+                "Campos Performance Max pertencem ao contrato vertical e "
+                "exigem `canal=PERFORMANCE_MAX`; recebido canal "
+                f"{canal!r} com {', '.join(campos_pmax)}. Nada foi projetado."
+            )
+        if canal == "PERFORMANCE_MAX" and classe in {"ProvarEntrada",
+                                                     "SubirEntrada"}:
+            estrategia_pmax = str(
+                dados.get("estrategia_lance") or "").strip().upper()
+            if estrategia_pmax not in {"MAXIMIZE_CONVERSIONS",
+                                       "MAXIMIZE_CONVERSION_VALUE"}:
+                raise ValueError(
+                    "canal PERFORMANCE_MAX exige `estrategia_lance` "
+                    "MAXIMIZE_CONVERSIONS ou MAXIMIZE_CONVERSION_VALUE; "
+                    "ausência ou outro valor não herda o contrato Search."
+                )
+            ausentes_pmax = [
+                campo for campo in ("pmax", "assets_pmax")
+                if campo not in dados or dados[campo] is None
+            ]
+            if ausentes_pmax:
+                raise ValueError(
+                    "canal PERFORMANCE_MAX exige campos explícitos do "
+                    f"contrato vertical: {', '.join(ausentes_pmax)}. "
+                    "`null` é ausência."
+                )
+            campos_search_pmax = [
+                campo for campo in ("cpc_inicial", "match_type", "rede",
+                                    "keywords_fora")
+                if campo in dados
+            ]
+            if campos_search_pmax:
+                raise ValueError(
+                    "canal PERFORMANCE_MAX proíbe campos Search no envelope: "
+                    + ", ".join(campos_search_pmax)
+                    + ". PMax não tem keyword positiva, CPC nem controle de "
+                      "rede (matriz §13)."
+                )
         if canal != "DEMAND_GEN" or classe not in {"ProvarEntrada", "SubirEntrada"}:
             return dados
 
@@ -2848,6 +2916,241 @@ def _montar_plano_demand_gen(
     ), supply_sha256_dos_recibos(recibos_de_politica)
 
 
+def _montar_plano_pmax(
+    pp: Any,
+    cockpit: Any,
+    escolha: Any,
+    copy: Any,
+    body: ProvarEntrada,
+    *,
+    cid: str,
+    mid: str,
+    ler_mensuracao: Any = None,
+) -> Any:
+    """Monta o Brief PMax para `/provar` e `/subir`. **O MESMO builder.**
+
+    ## Por que esta função existe, e por que ela é uma só
+
+    `/planejar-pmax` já traduzia a bancada para o contrato PMax
+    (`_brief_pmax_offline`), e o fazia com a mensuração deliberadamente `None`:
+    aquela rota é projeção local e não fala com a conta. `/provar` e `/subir`
+    falam — e precisam do recibo real, porque sem ele o builder recusa por
+    `MENSURACAO_INADEQUADA` e o canal ficaria eternamente improvável.
+
+    Escrever uma segunda montagem "quase igual" para as rotas externas é
+    exatamente o defeito que T02 fechou em Display: o plano que `/subir` selaria
+    não seria o plano que `/provar` aprovou, e a divergência só apareceria na
+    conta. Aqui há UMA função, e as duas rotas a chamam.
+
+    ## A mensuração é lida NO SERVIDOR, e não pode ser digitada
+
+    `ReciboDeMensuracao` tem construtor privado e confere a própria impressão:
+    só `pmax.ler_mensuracao` o emite válido. O envelope HTTP não tem campo para
+    ele de propósito — um campo convidaria quem monta o pedido a declarar a
+    própria medição, que é a parte interessada em subir a campanha.
+
+    ⚠️ E a leitura é `search_stream` sobre `conversion_action`: **leitura pura**,
+    sem caminho para `mutar`. Ela acontece ANTES de qualquer `validate_only`, e
+    uma falha dela derruba a montagem em vez de virar recibo ausente — porque
+    "não consegui ler" e "a conta não mede" pedem atos opostos.
+    """
+    from datetime import datetime
+
+    from volc_ads import criativo_ponte
+    from volc_ads.campanha.brief import (
+        Brief,
+        ConfiguracaoPMax,
+        Copy,
+        SinalDeAudiencia,
+    )
+    from volc_ads.criativo.adaptadores import medir_imagem
+    from volc_ads.criativo.contrato import (
+        Asset,
+        LoteDeAssets,
+        Origem,
+        Procedencia,
+        TipoDeAsset,
+    )
+
+    entrada = body.pmax
+    if entrada is None:
+        raise ValueError(
+            "canal PERFORMANCE_MAX exige o objeto `pmax`; ausência não usa "
+            "defaults de marca, sinais ou negativas")
+    if body.assets_pmax is None:
+        raise ValueError(
+            "canal PERFORMANCE_MAX exige `assets_pmax`; ausência não é lote "
+            "vazio confirmado")
+
+    manual = str(getattr(escolha, "url_final", "") or "").strip()
+    ignorados_como_bloqueio = {"SEM_CLUSTER", "SEM_FILA_DE_ANUNCIO"}
+    bloqueios = [
+        aviso
+        for aviso in cockpit.bloqueios
+        if aviso.codigo not in ignorados_como_bloqueio
+        and not (manual and aviso.codigo in {"SEM_LP", "SEM_FUNIL"})
+    ]
+    if bloqueios:
+        raise pp.PonteIncompleta(
+            "o cockpit tem bloqueio aplicável a Performance Max: "
+            + " | ".join(
+                f"{a.codigo}: {a.titulo} — {a.detalhe}" for a in bloqueios))
+
+    origem = cockpit.origem
+    if origem is None:
+        raise pp.PonteIncompleta(
+            "Performance Max exige origem publicada com país, idioma e "
+            "vertical; uma URL manual decide o destino, mas não pode inventar "
+            "o resto")
+    pais = str(origem.pais or "").strip()
+    idioma = str(origem.idioma or "").strip()
+    if not pais or not idioma:
+        raise pp.PonteIncompleta(
+            "origem PMax sem país ou idioma; ausência não vira BR/pt")
+    vertical = str(getattr(escolha, "vertical", "") or origem.vertical or "").strip()
+    if not vertical:
+        raise pp.PonteIncompleta(
+            "origem PMax sem vertical confirmada; ausência não vira "
+            "`informativo`")
+    url = str(manual or origem.url_final or "").strip()
+    if not url.startswith("https://"):
+        raise ValueError(f"destino PMax {url!r} não é https")
+
+    # ⚠️ VÍDEO DO YOUTUBE NÃO ATRAVESSA O PORTÃO, ENTÃO NÃO ATRAVESSA.
+    #
+    # `videos_youtube` são resource names: o servidor nunca vê os bytes, então
+    # não há `content_sha256`, não há inspeção e não há recibo. Anexá-los ao
+    # asset group depois do portão deixava passar, por outra porta, exatamente a
+    # peça de terceiro que o portão existe para barrar.
+    videos = tuple(entrada.videos_youtube or ())
+    if videos:
+        raise ValueError(
+            "Performance Max recebeu vídeo do YouTube por referência, e o "
+            "portão de política não consegue julgar bytes que não leu: um "
+            "resource name não tem hash, inspeção nem recibo. Enquanto não "
+            "existir recibo por vídeo, a receita PMax aceita somente as peças "
+            "cujos bytes o servidor releu.")
+
+    assets = []
+    conteudo_por_identidade: Dict[str, bytes] = {}
+    pecas_para_o_portao: List[tuple] = []
+    for item, dados in _assets_decodificados_pmax(body.assets_pmax):
+        try:
+            quando = datetime.fromisoformat(
+                item.procedencia.quando.replace("Z", "+00:00"))
+            tipo = TipoDeAsset(item.tipo)
+            origem_asset = Origem(item.origem)
+        except ValueError as exc:
+            raise ValueError(
+                f"asset {item.nome!r}: contrato inválido — {exc}") from exc
+        medida = medir_imagem.medir(dados)
+        asset = Asset(
+            tipo=tipo,
+            procedencia=Procedencia(
+                motor=item.procedencia.motor,
+                versao_do_motor=item.procedencia.versao_do_motor,
+                insumo=item.procedencia.insumo,
+                quando=quando,
+                pedido=item.procedencia.pedido,
+                custo_usd=item.procedencia.custo_usd,
+            ),
+            conteudo_hash=item.conteudo_hash,
+            origem=origem_asset,
+            bytes_totais=medida.bytes_totais,
+            mime=medida.mime,
+            largura=medida.largura,
+            altura=medida.altura,
+            rotulo=item.nome,
+        )
+        assets.append(asset)
+        conteudo_por_identidade[asset.identidade] = dados
+        pecas_para_o_portao.append(
+            (asset.identidade, dados, item.nome, medida.mime, origem_asset))
+
+    nicho = str(origem.nicho or "sem nicho declarado")
+    # ⚠️ O PORTÃO DE POLÍTICA VEM ANTES DA PONTE E ANTES DA REDE — o mesmo de
+    # Display e Demand Gen, no mesmo lugar do fluxo. Ele levanta
+    # `PoliticaCriativaRecusou` na primeira recusa.
+    recibos_de_politica = _recibos_de_politica_das_pecas(
+        pecas_para_o_portao, body=body, nicho=nicho, canal="PERFORMANCE_MAX")
+    entrega = criativo_ponte.imagens_de_pmax(
+        LoteDeAssets(canal="PERFORMANCE_MAX", assets=tuple(assets),
+                     intencao=nicho),
+        conteudo_por_identidade,
+    )
+    if not entrega.ok or entrega.imagens is None:
+        raise ValueError(
+            "assets PMax recusados pela fronteira do Estúdio:\n"
+            + entrega.resumo())
+
+    # ── a mensuração, lida no SERVIDOR ─────────────────────────────────────
+    if ler_mensuracao is None:
+        from volc_ads.campanha import pmax as motor_pmax  # noqa: PLC0415
+
+        ler_mensuracao = motor_pmax.ler_mensuracao
+    try:
+        recibo_de_mensuracao = ler_mensuracao(cid, login_customer_id=mid)
+    except Exception as exc:  # noqa: BLE001
+        # ⚠️ DERRUBA, e não vira `mensuracao=None`. Recibo ausente produz o
+        # bloqueio "rode ler_mensuracao e traga o recibo" — uma instrução que o
+        # operador não tem como executar, porque quem lê é o servidor. Dizer
+        # que a LEITURA falhou é a única resposta acionável.
+        raise LeituraDaContaIndisponivel(
+            "não consegui ler a mensuração da conta para montar o plano PMax "
+            f"({type(exc).__name__}: {str(exc)[:160]}). Nada foi montado e "
+            "nenhum validate_only foi chamado. Isto NÃO é uma afirmação sobre "
+            "a conta medir ou não medir — é uma falha de leitura.") from exc
+
+    sinais = tuple(
+        [SinalDeAudiencia("audience", valor) for valor in entrada.audiencias]
+        + [SinalDeAudiencia("search_theme", valor)
+           for valor in entrada.search_themes]
+    )
+    configuracao = ConfiguracaoPMax(
+        brand_guidelines_enabled=entrada.brand_guidelines_enabled,
+        mensuracao=recibo_de_mensuracao,
+        sinais=sinais,
+        negativas=tuple(entrada.negativas),
+        nome_do_asset_group=entrada.nome_do_asset_group,
+    )
+    brief = Brief(
+        nicho=nicho,
+        slug=origem.slug or "",
+        url_final=url,
+        copy=copy or Copy(),
+        pais=pais,
+        idioma=idioma,
+        budget_diario=body.budget_diario,
+        tcpa=body.tcpa,
+        target_roas=getattr(body, "target_roas", None),
+        estrategia_lance=body.estrategia_lance,
+        vertical=vertical,
+        certificacoes=set(body.certificacoes),
+        prefixo_nome=getattr(escolha, "prefixo_nome", None) or body.prefixo_nome,
+        carimbo_nome=body.carimbo_nome,
+        keywords=[],
+        sub_intencoes=[],
+        criterios=[],
+        negativas_campanha=[],
+        negativas_adgroup=[],
+        imagens_pmax=entrega.imagens,
+        pmax=configuracao,
+    )
+    avisos: tuple = tuple(_avisos_da_ponte(entrega))
+    if manual:
+        avisos += (
+            pp.Aviso(
+                "URL_MANUAL",
+                "atencao",
+                "Destino colado à mão",
+                "A campanha perde a herança do funil e o cruzamento anúncio × "
+                "página; a URL continua sendo uma decisão explícita do pedido.",
+            ),
+        )
+    return pp.Plano(brief=brief, grupos=(), avisos=avisos), \
+        supply_sha256_dos_recibos(recibos_de_politica)
+
+
 def _brief_pmax_offline(
     pp: Any,
     cockpit: Any,
@@ -3567,6 +3870,40 @@ async def provar(
                 ),
             )
 
+    if canal_pedido in {"PERFORMANCE_MAX", "PMAX"}:
+        # ⚠️ A MESMA ESCADA DE DEMAND GEN, com a MESMA ordem e uma flag PRÓPRIA.
+        #
+        # Própria porque abrir Demand Gen não é ter medido PMax: os contratos,
+        # os assets e as provas são diferentes, e uma flag compartilhada faria
+        # um servidor configurado para um canal abrir o outro em silêncio.
+        #
+        # ⚠️ E ela é CAPACIDADE LOCAL, nunca autorização de gasto. Com ela
+        # ligada, PMax monta e chama `validate_only` — que a API confere e
+        # descarta. Criar continua fechado por `permite_mutacao_real=False` no
+        # perfil E pelo canário do canal, duas travas que esta flag não toca.
+        if not cap.servidor_oferece_pmax_validate_only():
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "A prova Performance Max está desabilitada neste servidor. "
+                    "Nada foi montado, nenhum validate_only foi chamado e "
+                    "criação real continua indisponível."
+                ),
+            )
+        capacidade_pmax = cap.de_identidade(
+            papel=getattr(identidade, "papel", ""),
+            escrita_permitida=False,
+        )
+        if not capacidade_pmax.google_pmax_validate_only:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Sua sessão não possui a capacidade experimental de prova "
+                    "Performance Max. Nada foi montado e nenhuma chamada foi "
+                    "feita."
+                ),
+            )
+
     cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     # A primeira prova cria; uma repetição ou a escrita reutiliza. O valor entra
     # no plano aprovável e impede que um carimbo novo altere o grafo entre as
@@ -3685,6 +4022,10 @@ async def provar(
         elif canal_resolvido == "DISPLAY":
             plano, supply = _montar_plano_display(
                 pp, cockpit, escolha, copy, body)
+            suprimento.append(supply)
+        elif canal_resolvido == "PERFORMANCE_MAX":
+            plano, supply = _montar_plano_pmax(
+                pp, cockpit, escolha, copy, body, cid=cid, mid=mid)
             suprimento.append(supply)
         else:
             plano = pp.montar_brief(cockpit, escolha, copy=copy)
@@ -4166,15 +4507,61 @@ async def subir(
     o comportamento medido hoje seja o de amanhã — e 1,6 s numa ação deliberada
     e rara não é preço.
     """
-    if str(body.canal or "SEARCH").strip().upper() == "DEMAND_GEN":
+    # ═══════════════════════════════════════════════════════════════════════
+    # O PORTÃO DE CANAL — derivado do perfil, e não de uma lista nesta rota
+    # ═══════════════════════════════════════════════════════════════════════
+    #
+    # ⚠️ ANTES DE TUDO: antes do escopo, do canário, da ponte, do cliente, da
+    # trava e do mutate. E antes também de qualquer segredo ser lido.
+    #
+    # Até 06/09/2026 este bloco era um `if canal == "DEMAND_GEN"` literal. Ele
+    # funcionava e tinha dois defeitos: PMax não estava nele (dependia de o
+    # `resolver_construtor` levantar mais abaixo, com um 422 que descreve
+    # "canal sem builder" — e PMax passou a TER builder), e a regra vivia numa
+    # rota em vez de no perfil, que é onde ela é declarada.
+    #
+    # Agora quem responde é `perfil.exigir`, pela mesma propriedade
+    # (`sabe_criar` = builder + `permite_mutacao_real`) que `subir.subir` cobra
+    # de novo lá dentro. Duas cobranças da mesma regra declarada uma vez.
+    # ⚠️ PELO MANIFESTO, e NÃO pela ponte. `_ponte()` importa o SDK do Google
+    # (grpc, protobuf, oauth); fazê-lo aqui carregaria o engine inteiro para
+    # devolver uma recusa que não depende dele — e
+    # `test_http_subir_demand_gen_valido_recusa_operacional_antes_de_efeitos`
+    # cobra exatamente isso: a recusa acontece antes de a ponte ser tocada.
+    #
+    # `plataforma.py` é a projeção SDK-free do mesmo fato, e
+    # `test_trafego_plataforma.py` compara os dois por árvore sintática a cada
+    # rodada — uma verdade e uma projeção verificada, nunca duas verdades.
+    try:
+        plat.exigir_construtor(plat.GOOGLE_ADS, body.canal)
+    except ValueError as exc:
         raise HTTPException(
             status_code=403,
-            detail=(
-                "DEMAND_GEN é somente prova validate_only nesta onda. /subir, "
-                "o canário real e o executor de mutação permanecem fechados; "
-                "nada foi enviado."
-            ),
-        )
+            detail={
+                "estado": "canal_sem_mutacao_real",
+                "canal": str(body.canal or "SEARCH").strip().upper(),
+                # ⚠️ A frase preserva o vocabulário que a tela e os testes já
+                # leem ("somente prova validate_only", "/subir"), porque ela
+                # continua descrevendo o mesmo fato — só deixou de ser escrita
+                # à mão para um canal só.
+                "mensagem": (
+                    f"{str(body.canal or 'SEARCH').strip().upper()} é somente "
+                    "prova validate_only nesta onda. /subir, o canário real e "
+                    "o executor de mutação permanecem fechados; nada foi "
+                    "enviado."),
+                "detalhe": str(exc),
+                "nada_foi_criado": True,
+                "chamada_google": "nenhuma — a recusa acontece antes da rede",
+                # As DUAS travas, nomeadas. Fechar uma não abre a outra, e um
+                # operador que só visse a primeira pediria a flag errada.
+                "travas": [
+                    "perfil.permite_mutacao_real (volc_ads/campanha/perfil.py)",
+                    "canario.CANAIS_COM_CRIACAO_AUTORIZADA "
+                    "(backend/app/trafego/canario.py)",
+                ],
+            },
+        ) from exc
+
     cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     chave_intencao = _impressao_aprovavel(body, cid=cid, mid=mid)
     try:
@@ -4294,6 +4681,21 @@ async def subir(
             suprimento.append(supply)
         elif canal_resolvido == "DISPLAY":
             plano, supply = _montar_plano_display(pp, cockpit, escolha, copy, body)
+            suprimento.append(supply)
+        elif canal_resolvido == "PERFORMANCE_MAX":
+            # ⚠️ A MESMA função de `/provar`, e a paridade é o assunto de T02.
+            # Um segundo montador "que faz quase o mesmo" faria o plano que
+            # `/subir` sela deixar de ser o plano que `/provar` aprovou — e a
+            # divergência só apareceria na conta.
+            #
+            # ⚠️ Este ramo NÃO é alcançável enquanto PMax não tiver canário
+            # aceito: `canario.exigir` já recusou lá em cima. Ele existe porque
+            # a paridade tem de ser ESTRUTURAL, e não uma promessa: quando a
+            # autorização chegar, o builder já é o mesmo, e
+            # `test_provar_e_subir_usam_o_mesmo_construtor_por_canal` prova isso
+            # por leitura de árvore sintática.
+            plano, supply = _montar_plano_pmax(
+                pp, cockpit, escolha, copy, body, cid=cid, mid=mid)
             suprimento.append(supply)
         else:
             plano = pp.montar_brief(cockpit, escolha, copy=copy)
@@ -4519,9 +4921,16 @@ async def subir(
         estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
     )
     try:
-        pr.exigir_para_criacao(
+        # ⚠️ CANAL E INSTANTE DA LEITURA VIAJAM. Sem o canal, a autoridade de
+        # mensuração adjudicaria toda campanha como se fosse Search — e o
+        # objetivo que cada canal aceita é diferente (PMax não tem MANUAL_CPC,
+        # Demand Gen só tem MAXIMIZE_CONVERSIONS). Sem `lido_em`, a leitura das
+        # cinco GAQL entraria sem procedência temporal.
+        veredito_da_mensuracao = pr.exigir_para_criacao(
             estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
-            prontidao=portoes_do_lance)
+            prontidao=portoes_do_lance,
+            canal=preparo.canal,
+            lido_em=lido_em_do_plano)
     except pr.PortaoFechado as exc:
         # 409, e não 422: o payload é válido: é o MUNDO que não sustenta o que
         # ele pede. O detalhe carrega os portões inteiros porque a tela precisa
@@ -4534,6 +4943,13 @@ async def subir(
                 "mensagem": str(exc),
                 "portoes": portoes_do_lance.portoes(),
                 "bloqueadores": list(portoes_do_lance.activation_blockers),
+                # ⚠️ O VEREDITO DA AUTORIDADE, com código estável por bloqueio.
+                # `mensagem` é prosa e pode ser melhorada; `codigo` é o que a
+                # tela e o teste comparam sem casar texto.
+                "mensuracao": (exc.veredito.para_json()
+                               if isinstance(getattr(exc, "veredito", None),
+                                             mens.Veredito)
+                               else None),
                 "plano_de_mensuracao": plano_de_mensuracao.para_json(),
             },
         ) from exc
@@ -4847,6 +5263,13 @@ async def subir(
         "confirmou_criacao_pausada": True,
         "ativacao_incluida": False,
         "marca_remota": marca,
+        # ⚠️ A PROVA DE MENSURAÇÃO VIAJA NO RECIBO, e não só na recusa.
+        #
+        # Um portão que só aparece quando fecha ensina a ler ausência como
+        # aprovação. Aqui fica registrado, ao lado de quem aprovou, sob QUAL
+        # veredito de medição esta campanha nasceu aprendendo — inclusive
+        # `NAO_APLICAVEL`, que é a resposta honesta de MANUAL_CPC.
+        "mensuracao": veredito_da_mensuracao.para_json(),
     }
 
     # ⚠️ O ID EXTERNO É A ÚNICA COISA QUE SÓ EXISTE DEPOIS DO MUTATE.

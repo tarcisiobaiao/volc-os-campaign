@@ -1104,11 +1104,17 @@ def test_os_dois_bloqueios_de_pmax_sao_independentes():
 
 
 def test_o_plano_persistido_nao_abre_a_criacao_de_pmax():
-    """Nenhuma escrita nova alcança o canal que não tem construtor."""
+    """Nenhuma escrita nova alcança o canal que não pode mutar.
+
+    ⚠️ PMax passou a estar em `PROVADORES_POR_CANAL` em 06/09/2026 — provar é
+    `validate_only`, que a API confere e descarta. O que este teste guarda é a
+    OUTRA lista: nada nesta fatia de persistência do plano pode fazer PMax
+    aparecer em `CONSTRUTORES_POR_CANAL`, que é a única porta para `mutar`.
+    """
     from volc_ads import subir as sb
 
+    assert "PERFORMANCE_MAX" in sb.PROVADORES_POR_CANAL
     assert "PERFORMANCE_MAX" not in sb.CONSTRUTORES_POR_CANAL
-    assert "PERFORMANCE_MAX" not in sb.PROVADORES_POR_CANAL
 
 
 # ═══════════════════════════════════════════════════════════════════════════

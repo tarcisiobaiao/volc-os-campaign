@@ -628,8 +628,11 @@ def test_o_canal_que_nao_cria_declara_a_ausencia_em_vez_de_ficar_vazio():
         p = perfil.PERFIS[canal]
         assert not p.sabe_criar
         assert p.acoes_indisponiveis, f"{canal} não explica por que não cria"
+    # ⚠️ OS DOIS PROVAM E NENHUM DOS DOIS CRIA. Saber montar um payload que a
+    # conta aceita não é ter autorização humana para gastar por ele, e é essa a
+    # distância que `permite_mutacao_real` guarda.
     assert perfil.DEMAND_GEN.sabe_provar is True
-    assert perfil.PERFORMANCE_MAX.sabe_provar is False
+    assert perfil.PERFORMANCE_MAX.sabe_provar is True
 
 
 def test_a_fatia_nao_emite_criterio_de_segmentacao_nenhum():

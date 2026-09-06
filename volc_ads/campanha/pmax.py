@@ -85,6 +85,7 @@ from importlib import import_module
 
 import yaml
 
+from .. import mensuracao
 from ..gads.client import VERSAO_API, buscar, cliente, validar_mutacoes
 from ..observabilidade_pmax import (
     PMAX_FIELD_REQUIREMENTS,
@@ -577,6 +578,34 @@ def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
     Se o primeiro sumisse amanhã (alguém habilita o canal), este continuaria de
     pé; provar isso é o objetivo de
     `testes_pmax.py::test_mensuracao_inadequada_bloqueia_mesmo_com_canal_habilitado`.
+
+    ## ⚠️ ELE NÃO DECIDE MAIS SOZINHO (06/09/2026)
+
+    O que era a TERCEIRA implementação de "a conta mede?" — ao lado de
+    `plano_mensuracao.py` e `prontidao.py`, no servidor — virou a fronteira de
+    `volc_ads.mensuracao`, a autoridade única por (conta, canal, objetivo,
+    estratégia de lance).
+
+    O que sobra aqui é o que sempre foi de PMax e de mais ninguém:
+
+      * o RECIBO — existir, ser do tipo certo, ser íntegro e ser DESTA conta sob
+        ESTE MCC. Nada disso é sobre a conta medir; é sobre a leitura ser desta
+        execução e deste endereço. Um recibo de outra conta não é uma medição
+        fraca: é uma medição de outro lugar;
+      * a TRADUÇÃO do veredito para `validacao.Resultado`, preservando a
+        fronteira erro × aviso que este canal já tinha.
+
+    ## Por que sinal e idade continuam AVISO, e não erro
+
+    Não é suavização: é altitude. Este resultado decide se o PAYLOAD pode ser
+    montado e enviado ao `validate_only`, e a API aceita uma campanha PMax numa
+    conta com zero conversão — barrar aqui recusaria localmente um payload que
+    o Google aceita, e faria o canal parecer quebrado quando ele está apenas
+    sem histórico.
+
+    O portão que recusa NASCER APRENDENDO é outro, mora em
+    `prontidao.exigir_para_criacao`, roda antes do segredo, do ledger e da rede
+    em `/subir`, e lê a MESMA autoridade. Duas alturas, uma decisão.
     """
     if cfg is None:
         return
@@ -618,43 +647,41 @@ def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
                f"o plano roda sob {login_customer_id}",
                plano.MENSURACAO_INADEQUADA)
 
-    validas = recibo.acoes_validas
-    if not validas:
-        r.erro("pmax.mensuracao", f"{len(recibo.acoes)} ações lidas, 0 válidas",
-               "nenhuma ação de conversão está ENABLED, primária da meta e "
-               "incluída na métrica de conversões ao mesmo tempo. As três "
-               "condições são da API, não de gosto: pausada não recebe, fora "
-               "de include_in_conversions_metric não entra na métrica que o "
-               "lance otimiza, e não-primária não participa do objetivo. "
-               "Criação e ativação de PMax ficam BLOQUEADAS",
-               plano.MENSURACAO_INADEQUADA)
-
-    if brief.estrategia_lance == "MAXIMIZE_CONVERSION_VALUE" and not recibo.acoes_com_valor:
-        r.erro("pmax.mensuracao", "nenhuma ação carrega valor",
-               "MAXIMIZE_CONVERSION_VALUE otimiza VALOR de conversão, e "
-               "nenhuma das ações válidas tem `value_settings` com valor "
-               "padrão positivo ou `always_use_default_value`. Otimizar valor "
-               "sobre conversões sem valor é otimizar por zero — use "
-               "MAXIMIZE_CONVERSIONS ou configure o valor das ações",
-               plano.MENSURACAO_INADEQUADA)
-
-    volume = recibo.volume_30d
-    if volume is None:
-        r.aviso("pmax.mensuracao", "volume não medido",
-                "`conversoes_ultimos_30d` é None em todas as ações válidas: "
-                "ninguém mediu o volume. Isso NÃO é zero conversões — é a "
-                "ausência da medida, e o plano diz isso em voz alta em vez de "
-                "escolher uma das duas leituras",
-                plano.MENSURACAO_INADEQUADA)
-    elif volume == 0.0:
-        r.aviso("pmax.mensuracao", "0 conversões em 30 dias",
-                "a tag está válida e o volume medido é zero. A API cria a "
-                "campanha assim; o Smart Bidding, porém, não tem histórico "
-                "para aprender. É aviso e não bloqueio porque barrar aqui "
-                "recusaria localmente um payload que a API aceita",
+    # ── e daqui para baixo quem decide é a autoridade ──────────────────────
+    veredito = mensuracao.avaliar(
+        customer_id=str(cid),
+        canal=CANAL,
+        estrategia_lance=brief.estrategia_lance,
+        leitura=mensuracao.de_recibo(recibo),
+        lances_do_canal=LANCES_PERMITIDOS,
+    )
+    for bloqueio in veredito.bloqueios:
+        alvo = r.aviso if bloqueio.codigo in AVISOS_DE_MENSURACAO else r.erro
+        alvo("pmax.mensuracao", bloqueio.codigo, bloqueio.causa,
+             plano.MENSURACAO_INADEQUADA)
+    for achado in veredito.avisos:
+        r.aviso("pmax.mensuracao", achado.codigo, achado.causa,
                 plano.MENSURACAO_INADEQUADA)
 
     _avisar_recibo_velho(recibo, r)
+
+
+#: Os códigos da autoridade que, NESTE canal e NESTA altitude, são aviso.
+#:
+#: ⚠️ A lista é curta e fechada de propósito: tudo o que não estiver aqui vira
+#: ERRO. Uma lista de exceções que crescesse por omissão seria a porta pela qual
+#: o próximo bloqueio entraria como aviso sem ninguém decidir isso.
+#:
+#: Os três são "a conta não tem histórico" — a API cria a campanha assim, e o
+#: que falta é aprendizado, não payload. O portão que transforma falta de
+#: aprendizado em recusa de NASCER é `prontidao.exigir_para_criacao`, no
+#: servidor, sobre o mesmo veredito.
+AVISOS_DE_MENSURACAO: tuple[str, ...] = (
+    mensuracao.SINAL_NAO_COMPROVADO,
+    mensuracao.SINAL_SEM_DATA,
+    mensuracao.SINAL_ANTIGO,
+    mensuracao.LEITURA_VELHA,
+)
 
 
 def _avisar_recibo_velho(recibo: ReciboDeMensuracao,
@@ -1050,22 +1077,42 @@ def _dto_do_plano(p: plano.PlanoDeCanal, cfg) -> PMaxAssetGroupDTO:
 
 
 def _prontidao(cfg, r: validacao.Resultado, ops) -> plano.Prontidao:
+    """As três perguntas, separadas — e a segunda mudou em 06/09/2026.
+
+    ⚠️ `pode_provar` era `False` por um motivo que deixou de ser verdade: "a
+    rota HTTP não transporta ConfiguracaoPMax, ImagensPMax e o recibo". A ponte
+    tipada existe agora (`/provar` aceita `canal=PERFORMANCE_MAX`, decodifica
+    `assets_pmax` e lê a mensuração NO SERVIDOR com `pmax.ler_mensuracao`), e
+    manter o `False` faria o plano recusar uma capacidade que o sistema tem.
+
+    ⚠️ `pode_criar` continua `False`, e não é a mesma pergunta. Provar é
+    `validate_only` — leitura para todos os efeitos, que a API descarta. Criar
+    exige `permite_mutacao_real` no perfil E o canário aceito do canal
+    (`canario.CANAIS_COM_CRIACAO_AUTORIZADA`), que é um ato humano separado,
+    com runbook próprio, ainda não executado. Duas travas independentes, e
+    nenhuma delas some porque a outra abriu.
+
+    ⚠️ E `monta` continua governando as duas: um brief que não passou na
+    validação local não prova nem cria, e é por isso que `pode_provar` é
+    `monta`, não `True`.
+    """
     monta = bool(ops) and r.ok
     return plano.Prontidao(
         monta=monta,
-        pode_provar=False,
+        pode_provar=monta,
         pode_criar=False,
         motivo_nao_monta=("" if monta else
                           "o brief não passou na validação local; veja bloqueios"),
         motivo_nao_prova=(
-            "Performance Max monta e serializa offline, mas a rota HTTP ainda "
-            "não transporta ConfiguracaoPMax, ImagensPMax e o recibo de "
-            "mensuração emitido pela conta"
+            "" if monta else
+            "o brief não passou na validação local; sem grafo montado não há o "
+            "que submeter ao validate_only"
         ),
         motivo_nao_cria=(
-            "criação real permanece fora de CONSTRUTORES_POR_CANAL até o "
-            "contrato HTTP transportar ConfiguracaoPMax, ImagensPMax e o "
-            "recibo de mensuração emitido pela conta"
+            "criação real permanece fora de CONSTRUTORES_POR_CANAL: o perfil "
+            "declara permite_mutacao_real=False e o canário de Performance Max "
+            "ainda não foi aceito (CANAIS_COM_CRIACAO_AUTORIZADA lista apenas "
+            "SEARCH). Provar não autoriza criar."
         ),
     )
 
@@ -1099,10 +1146,16 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDe
     )
 
     bloqueios = list(p.bloqueios)
+    # ⚠️ O bloqueio continua, e mudou de SUJEITO. Ele dizia "PMax está fora do
+    # executor porque a rota não transporta o contrato" — e a rota passou a
+    # transportar. O que segue verdadeiro é a outra metade: o canal monta e
+    # prova, e a CRIAÇÃO continua fechada por duas travas independentes. Apagar
+    # o achado faria o plano parecer criável; deixá-lo com a causa antiga faria
+    # o operador procurar uma ponte que já existe.
     bloqueios.append(plano.Achado(
         codigo=plano.PMAX_FORA_DO_EXECUTOR,
         campo="canal",
-        causa=p.prontidao.motivo_nao_prova,
+        causa=p.prontidao.motivo_nao_cria,
         valor=CANAL,
     ))
 

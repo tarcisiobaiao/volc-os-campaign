@@ -438,7 +438,10 @@ def test_o_perfil_e_o_plano_concordam_sobre_quem_planeja() -> None:
 
     assert criam <= provam <= planejam
     assert planejam == {"SEARCH", "DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"}
-    assert provam == {"SEARCH", "DISPLAY", "DEMAND_GEN"}
+    # ⚠️ PMax entrou em `provam` em 06/09/2026, junto com a ponte tipada de
+    # `/provar`. `criam` NÃO mudou — e a distância entre os dois conjuntos é o
+    # contrato desta onda, não um atraso.
+    assert provam == {"SEARCH", "DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"}
     assert criam == {"SEARCH", "DISPLAY"}
 
 

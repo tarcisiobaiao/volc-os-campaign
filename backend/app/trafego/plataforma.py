@@ -437,11 +437,32 @@ PERFORMANCE_MAX = ManifestoDeCanal(
     canal="PERFORMANCE_MAX",
     rotulo="Performance Max",
     hierarquia=(CAMPANHA, ASSET_GROUP, ASSET),
-    capacidades=(LER,),
+    paineis=("asset_group", "criativos", "sinais", "marca"),
+    #: ⚠️ `pmax_mensuracao` NÃO é campo do pedido do operador, e por isso não
+    #: está aqui: o recibo de mensuração é LIDO NO SERVIDOR
+    #: (`pmax.ler_mensuracao`) e tem construtor privado. Se ele aparecesse como
+    #: campo, a tela desenharia um controle para uma prova que ninguém pode
+    #: digitar — que é a definição de autoatestado.
+    campos_do_pedido=(
+        "copy", "criativos", "url_final", "verba_diaria",
+        "estrategia_de_lance", "nome_do_asset_group", "sinais_de_audiencia",
+        "search_themes", "negativas", "brand_guidelines",
+    ),
+    capacidades=(LER, PROPOR),
+    provas_obrigatorias=_PROVAS_SEARCH,
+    permite_prova=True,
+    permite_mutacao_real=False,
     indisponibilidades=(
-        "o módulo PMax monta e serializa offline, mas a porta HTTP não possui "
-        "o contrato tipado de assets e mensuração; por isso não oferece prova "
-        "nem criação nesta versão.",
+        "criação real continua recusada em /subir, no canário e no executor. "
+        "Performance Max não está em `subir.CONSTRUTORES_POR_CANAL` e o "
+        "canário do canal ainda não foi aceito — duas travas independentes.",
+        "o recibo de mensuração é lido no servidor e não pode ser digitado: "
+        "sem ação de conversão válida na conta, a prova é recusada localmente, "
+        "antes de qualquer chamada ao Google.",
+        "vídeo do YouTube por referência é recusado: o portão de política não "
+        "julga bytes que não leu, e um resource name não tem hash nem recibo.",
+        "retail (ShoppingSetting/listing group), múltiplos asset groups e "
+        "sub-tipos (Travel, Local Services) permanecem fora desta receita.",
     ),
 )
 

@@ -173,20 +173,37 @@ def _brief_pmax() -> Brief:
     )
 
 
-def test_birth_v1_pmax_fica_fora_da_porta_generica_sem_perder_o_builder() -> None:
-    assert perfil.PERFORMANCE_MAX.construtor is None
-    assert perfil.PERFORMANCE_MAX.validador is None
+def test_birth_v1_pmax_entra_na_porta_de_prova_e_nao_na_de_criacao() -> None:
+    """⚠️ O FATO MUDOU EM 06/09/2026, e mudou só de um lado.
+
+    A versão anterior deste teste afirmava `construtor is None` — verdade
+    enquanto a rota HTTP não transportava `ConfiguracaoPMax`, `ImagensPMax` e o
+    recibo de mensuração. Com a ponte tipada de `/provar`, manter o `None`
+    manteria fechada uma porta que o sistema sabe abrir.
+
+    O que NÃO mudou é o que este teste passa a guardar: `permite_mutacao_real`
+    segue `False`, PMax segue fora de `CONSTRUTORES_POR_CANAL`, e por isso
+    `sabe_criar` é `False`. Provar é `validate_only` (leitura); criar é escrita.
+    """
+    assert perfil.PERFORMANCE_MAX.construtor is pmax.construir
+    assert perfil.PERFORMANCE_MAX.validador is pmax.validar
+    assert perfil.PERFORMANCE_MAX.sabe_provar is True
+
     assert perfil.PERFORMANCE_MAX.permite_mutacao_real is False
-    assert callable(pmax.construir) and callable(pmax.validar)
-    assert "PERFORMANCE_MAX" not in motor.PROVADORES_POR_CANAL
+    assert perfil.PERFORMANCE_MAX.sabe_criar is False
+    assert "PERFORMANCE_MAX" in motor.PROVADORES_POR_CANAL
     assert "PERFORMANCE_MAX" not in motor.CONSTRUTORES_POR_CANAL
 
 
-def test_birth_v1_pmax_planeja_sem_bloqueio_de_executor_e_com_url_exata() -> None:
+def test_birth_v1_pmax_planeja_provavel_ainda_bloqueado_para_criar() -> None:
     plano = pmax.planejar(CID, _brief_pmax(), login_customer_id=MCC)
-    assert plano.prontidao.pode_provar is False
+    assert plano.prontidao.pode_provar is True
     assert plano.prontidao.pode_criar is False
-    assert [b for b in plano.bloqueios if b.codigo == "PMAX_FORA_DO_EXECUTOR"]
+    # O código continua no plano, e agora ele nomeia a trava que sobrou.
+    bloqueio = next(b for b in plano.bloqueios
+                    if b.codigo == "PMAX_FORA_DO_EXECUTOR")
+    assert "permite_mutacao_real" in bloqueio.causa
+    assert "canário" in bloqueio.causa
     grupo = next(u for u in plano.unidades if u.tipo == "asset_group")
     assert grupo.status == "PAUSED"
     assert grupo.urls_finais == ("https://example.invalid/lp/",)

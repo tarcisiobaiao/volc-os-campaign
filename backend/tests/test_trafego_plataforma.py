@@ -115,7 +115,14 @@ def test_canais_de_prova_batem_com_a_vista_separada_do_engine():
             registro = {k.value for k in no.value.keys
                         if isinstance(k, ast.Constant)}
     assert registro is not None
-    assert sabem_provar == registro == {"SEARCH", "DISPLAY", "DEMAND_GEN"}
+    # ⚠️ PMax entrou nos DOIS lados ao mesmo tempo, em 06/09/2026. É esse o
+    # ponto do teste: o manifesto do Hub e a vista do engine não podem divergir,
+    # e a igualdade é lida por árvore sintática justamente para o backend não
+    # precisar importar o SDK do Google.
+    assert sabem_provar == registro == {"SEARCH", "DISPLAY", "DEMAND_GEN",
+                                        "PERFORMANCE_MAX"}
+    assert plat.PERFORMANCE_MAX.sabe_provar is True
+    assert plat.PERFORMANCE_MAX.sabe_criar is False
     assert plat.DEMAND_GEN.sabe_provar is True
     assert plat.DEMAND_GEN.sabe_criar is False
     assert plat.exigir_provador(plat.GOOGLE_ADS, "DEMAND_GEN") is plat.DEMAND_GEN
@@ -165,12 +172,19 @@ def test_meta_nao_declara_nem_leitura():
 
 
 def test_recusa_de_canal_sem_construtor_diz_o_que_existe():
-    """A diferença entre "não deu certo" e uma recusa que ensina."""
+    """A diferença entre "não deu certo" e uma recusa que ensina.
+
+    ⚠️ A frase de PMax mudou em 06/09/2026: ela dizia que faltava a ponte HTTP,
+    e a ponte passou a existir. O que a recusa precisa nomear agora são as DUAS
+    travas que restam — `CONSTRUTORES_POR_CANAL` e o canário do canal —, porque
+    um operador que só visse uma pediria a permissão errada.
+    """
     with pytest.raises(ValueError) as exc:
         plat.exigir_construtor(plat.GOOGLE_ADS, "PERFORMANCE_MAX")
     mensagem = str(exc.value)
     assert "Search" in mensagem, "a recusa não diz o que existe"
-    assert "HTTP" in mensagem
+    assert "CONSTRUTORES_POR_CANAL" in mensagem
+    assert "canário" in mensagem
 
     with pytest.raises(ValueError) as exc2:
         plat.exigir_construtor(plat.GOOGLE_ADS, "TIKTOK")

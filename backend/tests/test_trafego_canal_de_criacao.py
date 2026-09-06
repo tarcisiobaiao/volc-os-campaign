@@ -120,11 +120,17 @@ def _payload_demand_gen_minimo(**troca: object) -> dict:
     return base
 
 
-@pytest.mark.parametrize("canal", ["PMAX"])
+@pytest.mark.parametrize("canal", ["VIDEO", "SHOPPING"])
 def test_provar_recusa_canal_sem_builder_com_422(
     monkeypatch: pytest.MonkeyPatch,
     canal: str,
 ) -> None:
+    """⚠️ PMAX SAIU desta lista em 06/09/2026 — ver o teste logo abaixo.
+
+    Ele ganhou construtor, validador e ponte tipada em `/provar`. Quem continua
+    sem builder são os canais que o engine não monta, e a recusa deles continua
+    sendo 422 com a lista do que existe.
+    """
     _isolar(monkeypatch)
 
     body = trafego.ProvarEntrada(
@@ -139,6 +145,42 @@ def test_provar_recusa_canal_sem_builder_com_422(
 
     assert erro.value.status_code == 422
     assert "não possui builder provável" in str(erro.value.detail)
+
+
+def test_provar_pmax_exige_a_capacidade_do_servidor_antes_de_montar(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CONTRAPROVA T08: o canal prova, e a porta local continua fechada por padrão.
+
+    ⚠️ A recusa acontece ANTES de `_no_escopo`, da ponte, do portão criativo e
+    de qualquer `validate_only` — e a flag é PRÓPRIA de PMax: um servidor com
+    Demand Gen aberto não abre Performance Max de passagem.
+    """
+    _isolar(monkeypatch)
+    monkeypatch.delenv("VOLC_PMAX_VALIDATE_ONLY", raising=False)
+    monkeypatch.setattr(
+        trafego, "_no_escopo",
+        lambda *_a: pytest.fail("flag fechada chegou ao portão de conta"))
+    monkeypatch.setattr(
+        trafego, "_ponte",
+        lambda *_a, **_k: pytest.fail("flag fechada chegou à ponte"))
+
+    body = trafego.ProvarEntrada(
+        opportunity_id=1,
+        customer_id="8017851692",
+        login_customer_id="6016739364",
+        canal="PERFORMANCE_MAX",
+        estrategia_lance="MAXIMIZE_CONVERSIONS",
+        pmax={"brand_guidelines_enabled": False},
+        assets_pmax=[],
+    )
+
+    with pytest.raises(HTTPException) as erro:
+        asyncio.run(trafego.provar(body))
+
+    assert erro.value.status_code == 403
+    assert "Performance Max está desabilitada" in str(erro.value.detail)
+    assert "criação real continua indisponível" in str(erro.value.detail)
 
 
 def test_provar_demand_gen_flag_off_recusa_antes_de_ponte_ou_api(
@@ -782,11 +824,17 @@ def test_subir_recusa_canal_fora_do_canario_antes_da_escrita(
     if canal == "DEMAND_GEN":
         body = trafego.SubirEntrada(**_payload_http_subir_demand_gen())
     else:
+        # ⚠️ Envelope PMax VÁLIDO de propósito. Um pedido incompleto morreria na
+        # projeção do contrato vertical (422) e este teste passaria sem nunca
+        # exercitar o portão de canal — que é o que ele existe para provar.
         body = trafego.SubirEntrada(
             opportunity_id=1,
             customer_id="5478096539",
             login_customer_id="6016739364",
             canal=canal,
+            estrategia_lance="MAXIMIZE_CONVERSIONS",
+            pmax={"brand_guidelines_enabled": False},
+            assets_pmax=[],
             motivo="prova hermética do canal recusado",
             confirmar_criacao_pausada=True,
             carimbo_nome="20260828_120000",
@@ -795,15 +843,21 @@ def test_subir_recusa_canal_fora_do_canario_antes_da_escrita(
     with pytest.raises(HTTPException) as erro:
         asyncio.run(trafego.subir(body))
 
-    # Na prova, o manifesto explica a ausência de builder (422). Na única rota
-    # que pode escrever, a política mais estreita vem antes: qualquer canal
-    # diferente de Search está fora da autorização do canário (403).
+    # Na prova, o canal com builder chega ao validate_only. Na única rota que
+    # ESCREVE, o portão de canal vem primeiro — antes do escopo, do canário e
+    # até de a ponte ser importada —, e ele é o mesmo para os dois canais.
     assert erro.value.status_code == 403
-    if canal == "DEMAND_GEN":
-        assert "somente prova validate_only" in str(erro.value.detail)
-        assert "/subir" in str(erro.value.detail)
-    else:
-        assert "apenas SEARCH" in str(erro.value.detail)
+    detalhe = erro.value.detail
+    assert isinstance(detalhe, dict), detalhe
+    assert detalhe["estado"] == "canal_sem_mutacao_real"
+    assert detalhe["canal"] == canal
+    assert "somente prova validate_only" in detalhe["mensagem"]
+    assert "/subir" in detalhe["mensagem"]
+    assert detalhe["nada_foi_criado"] is True
+    # ⚠️ AS DUAS TRAVAS, NOMEADAS. Um operador que só visse a primeira pediria
+    # a permissão errada — e fechar uma nunca abriu a outra.
+    assert any("permite_mutacao_real" in t for t in detalhe["travas"])
+    assert any("CANAIS_COM_CRIACAO_AUTORIZADA" in t for t in detalhe["travas"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════
