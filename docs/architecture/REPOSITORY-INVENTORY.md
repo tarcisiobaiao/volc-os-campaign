@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-05T11:46:27-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-05T21:07:43-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 657 arquivos: 483 Markdown e 174 SQL;
-- 656 versionados e 1 ainda não versionados;
+- 658 arquivos: 484 Markdown e 174 SQL;
+- 658 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 113 SQL com palavras de mutação de alto risco.
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-05T11:46:27-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 24 |
-| `documentation` | 334 |
+| `documentation` | 335 |
 | `generated` | 2 |
 | `module-guide` | 36 |
 | `product-document` | 23 |
@@ -113,7 +113,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/volc-sync/03_display_roi.sql` | `sql-migration-line` | 4 | 11 |
 | `src/sql/volc-sync/04_monthly_exchange_rate.BLOQUEADO.sql` | `sql-migration-line` | 6 | 10 |
 | `src/sql/volc-sync/APLICAR_NO_STUDIO.sql` | `sql-migration-line` | 14 | 49 |
-| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | 16 | 36 |
+| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | 15 | 34 |
 | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
@@ -246,7 +246,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/timezone-trigger.sql` | `sql-needs-lineage` | high | 6 | 18 |
 | `src/sql/update_sync_gam_function.sql` | `sql-needs-lineage` | medium | 2 | 2 |
 | `src/sql/update_user_roles_remove_viewer.sql` | `sql-needs-lineage` | high | 1 | 0 |
-| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | high | 16 | 36 |
+| `supabase/migrations/20260904183418_meta_create_paused_executor.sql` | `sql-needs-review` | high | 15 | 34 |
 | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | high | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
