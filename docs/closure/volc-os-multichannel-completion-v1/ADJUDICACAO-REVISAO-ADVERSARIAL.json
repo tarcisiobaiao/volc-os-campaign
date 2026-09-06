@@ -1,0 +1,276 @@
+{
+  "artefato": "Adjudicação dos achados da revisão adversarial multicanal",
+  "workflow_de_origem": "wf_76755fbe-7ac",
+  "achados_brutos": 33,
+  "achados_confirmados_pelos_verificadores": 14,
+  "base": "6aad83c48ed354b56239fbc7d127b723a6c38728",
+  "head_inicial": "369585f5a22ceaced733e48580bc1035cf2ed5d3",
+  "head_de_fechamento": "6c5de4f04d01ac109b5d1b09f29a1af70065e508",
+  "data": "2026-09-06",
+  "metodo": "Cada achado foi RE-REPRODUZIDO contra o HEAD antes de ser aceito ou refutado — os relatórios dos verificadores foram tratados como alegação, não como fato. As correções foram submetidas a análise de mutação: cada contraprova nova teve de FALHAR com o defeito reintroduzido em runtime.",
+  "vocabulario_de_classificacao": [
+    "FIXED_IN_369585F",
+    "ALREADY_FIXED_BEFORE_369585F",
+    "CONFIRMED_AND_FIXED_NOW",
+    "REFUTED_WITH_COUNTERPROOF",
+    "DEFERRED_NONBLOCKING"
+  ],
+  "zero_mutacao_externa": "Nenhuma chamada real a Google Ads (read, validate_only ou mutate), Meta Ads, Supabase oficial, n8n ou WordPress. Nenhuma migration aplicada. Nenhum push. Toda reprodução usou dublês injetados e bloqueio de socket.",
+  "achados": [
+    {
+      "id": "01",
+      "titulo": "avaliar() estourava IndexError quando a prova de VALOR e a de SINAL moravam em ações diferentes",
+      "classificacao_final": "FIXED_IN_369585F",
+      "severidade_final": "alta (fechada)",
+      "mecanismo": "com_valor era calculado sobre as primárias e o filtro rodava sobre as que sobreviveram ao sinal; listas disjuntas esvaziavam elegiveis SEM bloqueio e a eleição fazia sorted(())[0]. Um IndexError escapa do except PortaoFechado da rota e vira 500 onde a resposta certa é 409.",
+      "reproducao": "avaliar(canal=SEARCH, TARGET_ROAS) com AcaoLida(carrega_valor=True, conv=0.0) e AcaoLida(carrega_valor=False, conv=5.0, dias=2): devolve Veredito NAO_PRONTA/SEM_VALOR_DECLARADO. Contra a versão pré-fix o mesmo script dá IndexError.",
+      "evidencia": "volc_ads/mensuracao.py: bloqueio nomeado para valor×sinal disjuntos + rede fail-CLOSED antes da eleição.",
+      "correcao": "preservada; nenhuma alteração nesta rodada",
+      "contraprova": "test_valor_e_sinal_em_acoes_diferentes_recusa_em_vez_de_estourar — mata as mutações que removem o bloqueio nomeado e o defeito inteiro"
+    },
+    {
+      "id": "02",
+      "titulo": "Recibo de mensuração VELHO transformava erro de conteúdo em aviso no PMax",
+      "classificacao_final": "FIXED_IN_369585F",
+      "severidade_final": "alta (fechada)",
+      "mecanismo": "LEITURA_VELHA era saída ANTECIPADA em avaliar e ao mesmo tempo estava em pmax.AVISOS_DE_MENSURACAO: numa conta sem ação de conversão, o recibo fresco dava erro e o MESMO recibo 25h mais velho dava r.ok=True. Quanto mais velha a leitura, mais permissivo o canal.",
+      "reproducao": "pmax._checar_mensuracao com recibo de 1h e de 25h numa conta vazia: r.ok=False nos DOIS, com SEM_ACAO_DE_CONVERSAO presente também aos 25h. Com o módulo pré-fix injetado, 25h dá r.ok=True.",
+      "evidencia": "volc_ads/mensuracao.py: a idade deixou de retornar antecipadamente; continua bloqueio nomeado e o estado final é o mais humilde.",
+      "correcao": "preservada; a mecânica virou tupla nesta rodada para caber o segundo membro",
+      "contraprova": "test_recibo_VELHO_nao_transforma_erro_de_mensuracao_em_aviso + test_leitura_velha_continua_mantendo_o_veredito_humilde (novo — a linha do fecho não tinha guarda e sobrevivia à mutação)"
+    },
+    {
+      "id": "03",
+      "titulo": "Falha de rede na GAQL de frescor virava NAO_PRONTA em vez de INDETERMINADA",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "de_plano lia dias_desde_a_ultima, conversoes_na_janela e conversion_action_id do frescor e IGNORAVA frescor.estado. Frescor(estado=falhou) chegava com contagem None, indistinguível de 'ninguém consultou'; como a leitura das AÇÕES concluíra, o passo 7 fechava NAO_PRONTA — afirmação sobre a CONTA a partir de uma consulta que não respondeu, contra o cabeçalho do próprio módulo.",
+      "reproducao": "Plano real com acoes_estado=COM_DADOS e Frescor(FALHOU|INELEGIVEL): antes NAO_PRONTA/SINAL_NAO_COMPROVADO; depois INDETERMINADA/SINAL_NAO_LIDO, autoriza=False. Controles: frescor VAZIO_CONFIRMADO com 0.0 continua NAO_PRONTA; frescor sem sujeito continua NAO_PRONTA.",
+      "evidencia": "volc_ads/mensuracao.py: SINAL_NAO_LIDO, AcaoLida.sinal_indeterminado (três guardas: sujeito, lista branca de estados que concluem, e contagem ausente) e CODIGOS_DE_DUVIDA_SOBRE_A_LEITURA no fecho.",
+      "correcao": "Distinguir 'não concluiu' de 'concluiu e é zero' sem afrouxar nada: INDETERMINADA continua fora de ESTADOS_QUE_AUTORIZAM.",
+      "contraprova": "test_frescor_que_NAO_CONCLUIU_e_INDETERMINADA_e_nao_NAO_PRONTA e test_frescor_sem_sujeito_continua_sendo_ausencia_de_medicao — mortas pela mutação que descarta o marcador"
+    },
+    {
+      "id": "04",
+      "titulo": "A falha da leitura de AÇÕES era explicada com a causa da leitura de FRESCOR",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "Em de_plano, estado vinha de plano.acoes_estado (GAQL_ACOES) e causa vinha de frescor.causa (GAQL_FRESCOR). Quando ler_acoes cai, nenhuma ação é eleita e ler_frescor sai por curto-circuito com 'nenhuma ação de conversão foi eleita' — que virava a explicação da falha da OUTRA consulta.",
+      "reproducao": "Plano com acoes_estado=FALHOU: a causa saía 'nenhuma ação de conversão foi eleita...'; agora sai 'as ações de conversão da conta não foram lidas nesta sessão'.",
+      "evidencia": "volc_ads/mensuracao.py: a causa passa a vir de plano.acao_alvo_causa, que o próprio montar escreve nesse ramo com o sujeito certo.",
+      "correcao": "Trocar a fonte da causa; a decisão (bloquear) sempre esteve certa.",
+      "contraprova": "test_falha_da_leitura_de_ACOES_nao_e_explicada_pela_causa_do_FRESCOR — morta pela mutação que restaura a causa do frescor"
+    },
+    {
+      "id": "05",
+      "titulo": "O contrato de canal alimentava a Economia de Display/DG/PMax com a política de Search",
+      "classificacao_final": "ALREADY_FIXED_BEFORE_369585F",
+      "severidade_final": "nenhuma (contraprova acrescentada)",
+      "mecanismo": "contrato() fazia pol = politica or can.POLITICA e nenhum chamador passa politica, então economia_do_canal copiava cpc_maximo_brl='1.00' de Search para os quatro. A MESMA resposta HTTP trazia null em politica_canario_por_canal e R$ 1,00 no card.",
+      "reproducao": "Sonda nos quatro canais no HEAD: SEARCH 1.00, os outros três None — o defeito não existe. Reintroduzido por mutação, a suíte inteira continuava verde antes desta rodada.",
+      "evidencia": "Fechado em 1070568. O que faltava era a contraprova: nenhum teste do backend mencionava `economia`.",
+      "correcao": "nenhuma no código",
+      "contraprova": "test_a_economia_de_cada_canal_e_a_politica_do_PROPRIO_canal e test_o_teto_diario_do_canal_nao_e_o_de_Search (com os tetos divergidos por monkeypatch, sem o que o eixo não teria poder de detecção)"
+    },
+    {
+      "id": "06",
+      "titulo": "A 'autoridade única' de canal era um nome rebindável, e havia DUAS cópias congeladas",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "canario.CANAIS_COM_CRIACAO_AUTORIZADA era ligação por valor no import e POLITICA de Search era um segundo snapshot devolvido por atalho. A docstring afirmava que não havia cópia para divergir e citava test_canario_referencia_a_autoridade_unica_de_canal, que NUNCA existiu no repositório.",
+      "reproducao": "Revogando aut.CANAIS_COM_CRIACAO_AUTORIZADA: antes canario continuava autorizando Search; agora politica_do_canal e exigir fecham no mesmo instante. Abrindo só o símbolo do canário: nada abre.",
+      "evidencia": "Simetria quebrada nas duas direções, verificada por execução.",
+      "correcao": "backend/app/trafego/canario.py: __getattr__ dinâmico para a vista de leitura, decisão sempre por aut.autorizado(...), e exigir consulta a autoridade além do campo do objeto recebido.",
+      "contraprova": "test_revogar_no_executor_fecha_o_backend_e_abrir_o_alias_nao_abre_nada (três sentidos, incluindo Politica forjada). Consequência declarada: um teste da suíte dependia da divergência e passou a patchar a autoridade única."
+    },
+    {
+      "id": "07",
+      "titulo": "Campanha encontrada sem grupo e sem anúncio saía ausencia_provada com bloqueia=false",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P0",
+      "mecanismo": "_veredito_de_filho devolvia AUSENCIA_PROVADA para lista vazia e AUSENCIA_PROVADA não bloqueia; o esperado dos filhos não declarava cardinalidade, então 'o plano pedia um grupo e a conta tem zero' era estruturalmente indetectável. O laço dos filhos só roda com a campanha-mãe RESOLVIDA — a informação existia e era descartada.",
+      "reproducao": "Dublê com 1 campanha e filhos vazios: antes estado composto ausencia_provada/bloqueia=False, indistinguível do caso 'campanha ausente'; a rota respondia 200 e gravava achou=True com 'campanha encontrada na leitura da conta'. Depois: divergente/bloqueia=True e 409 sem carimbar.",
+      "evidencia": "Os quatro casos distintos foram separados e verificados: campanha ausente, campanha oca, leitura truncada e falha de leitura.",
+      "correcao": "backend/app/trafego/releitura_por_canal.py: MINIMO_DE_FILHOS_DE_CAMPANHA_CRIADA no esperado e DIVERGENTE com campos_divergentes=('quantidade',). ESTADOS_QUE_BLOQUEIAM não mudou; os sete estados continuam sete.",
+      "contraprova": "test_campanha_presente_sem_filhos_e_divergencia_estrutural_e_bloqueia, test_pmax_criada_sem_asset_group_tambem_bloqueia, e a linha que faltava no teste do contraste (ausência de verdade NÃO bloqueia) — o par impede tanto a volta do defeito quanto a 'correção' que faria toda ausência bloquear"
+    },
+    {
+      "id": "08",
+      "titulo": "Os fatos próprios de canal dos três adaptadores eram calculados e descartados",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "urls_finais_lidas, asset_group_status, asset_groups_lidos, tcpa_micros e superficies viajam no dicionário de ler_filhas; sincronizador consome duas chaves e persistencia tem whitelist fechada. A docstring do adaptador PMax afirmava que 'o inventário registra o fato em urls_finais_lidas', e o inventário grava null.",
+      "reproducao": "Asset group com DUAS final_urls: o adaptador devolve url_final=None e a lista; o espelho recebe null e nada mais.",
+      "evidencia": "Adjudicado como OBSERVACIONAL: a coluna exigiria migration oficial, não autorizada nesta rodada.",
+      "correcao": "backend/app/trafego/adaptador_pmax.py: docstring honesta sobre onde o fato para (log + retorno de ler_filhas) e por quê.",
+      "contraprova": "test_os_fatos_de_canal_sao_observacionais_e_a_docstring_diz_isso — fixa a fronteira nos dois sentidos e falha se alguém acrescentar a chave à whitelist sem a coluna existir"
+    },
+    {
+      "id": "09",
+      "titulo": "O read-back exigia PAUSED de todo filho e reprovava o único canal que cria",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P1",
+      "mecanismo": "NASCE_PAUSADO era cobrado de grupo, anúncio e asset group, sobre a premissa (escrita no módulo) de que 'nenhum canal foge'. Search cria o grupo e o anúncio ENABLED dentro da campanha PAUSED — default de comum.op_adgroup e search.py:264, deliberado e documentado. E a comparação IGNORAVA o argumento esperado, comparando com a constante do módulo.",
+      "reproducao": "Campanha PAUSED com filhos ENABLED, com o MESMO esperado da rota: antes divergente/bloqueia=True (409 em /reconciliar, recibo não fecha, plano não religa); depois congruente. Campanha nascida ENABLED continua divergente e bloqueando.",
+      "evidencia": "Adjudicação: a garantia do nascimento é sobre a CAMPANHA (comum.py: camp.status = PAUSED nos quatro canais), e é ela que impede veiculação. Ativação posterior continua DIVERGENTE — decisão humana —, nunca ausência, e nenhuma rota ENABLE foi criada.",
+      "correcao": "backend/app/trafego/releitura_por_canal.py: NASCE_COM_STATUS por canal (default fail-closed PAUSED) e comparação que lê o esperado.",
+      "contraprova": "test_search_recem_criado_pela_casa_nao_bloqueia, test_campanha_nascida_enabled_continua_bloqueando e test_o_perfil_de_nascimento_bate_com_os_builders (por árvore sintática, porque o backend não pode importar volc_ads/campanha/*)"
+    },
+    {
+      "id": "10",
+      "titulo": "A nova aba do Hub derrubava a corrida do vitest com 'No QueryClient set'",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "A navegação por seta do Radix usa activationMode automatic: atravessar a aba MONTA VisaoMulticanal, que chama useCanais()/useQuery. A moldura de teste do Hub não monta QueryClientProvider — e a própria suíte já documentava essa convenção para PainelDeCanais.",
+      "reproducao": "npx vitest run do arquivo do Hub: 15 passed com 'Errors 1 error' e EXIT_CODE=1; depois 15 passed, sem Errors, EXIT=0.",
+      "evidencia": "Defeito da MOLDURA, não do produto: App.tsx monta o provider acima da rota /trafego.",
+      "correcao": "Dublê de VisaoMulticanal na moldura, além da variável `atencao` que media a aba errada desde que a quarta aba nasceu.",
+      "contraprova": "asserção nova de que o painel da terceira casa MONTA — sem o dublê, o throw acontece no commit do React, nenhum expect falha e a corrida fecha vermelha"
+    },
+    {
+      "id": "11",
+      "titulo": "A contraprova do vídeo do YouTube não testava a ordem que prometia",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "O teste coletava os ast.Raise da função e afirmava duas propriedades INDEPENDENTES, sem nunca comparar posições; e o filtro avaliava get_source_segment sobre a função inteira, uma constante que não filtra nada. Havia ainda uma asserção sobre a prosa da mensagem do próprio autor.",
+      "reproducao": "Mutação de REORDENAÇÃO (mover o bloco de vídeo para depois do portão, sem apagar nada) numa cópia do fonte: antes os dois testes ficavam VERDES; depois os dois falham.",
+      "evidencia": "Não é defeito de produção — a recusa está antes do portão e da ponte nos dois montadores. É contraprova inerte.",
+      "correcao": "backend/tests: prova COMPORTAMENTAL com espiões (zero chamada ao portão e à ponte, mais a simetria sem vídeo) e a prova de FORMA comparando posições nos dois montadores.",
+      "contraprova": "test_video_do_youtube_por_referencia_e_recusado_antes_do_portao_e_da_ponte + test_sem_video_o_mesmo_payload_atravessa_o_portao_e_a_ponte"
+    },
+    {
+      "id": "12",
+      "titulo": "Na produção o read-back por canal NUNCA rodava: canal era opcional e o cliente não o enviava",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P1",
+      "mecanismo": "ReconciliarEntrada.canal é Optional e o guard `if canal_do_item and ...` pulava o read-back inteiro. O único chamador de produção monta o corpo sem canal — mesmo tendo a variável em escopo — então o veredito de sete estados ficava desligado em 100% das reconciliações reais, e o item era carimbado assim mesmo.",
+      "reproducao": "Rota exercitada com o corpo LITERAL da tela (sem canal): antes releitura=nao_suportado/bloqueia=False e HTTP 200 com achou=True; depois o read-back roda, devolve divergente e a rota responde 409 com achou=None.",
+      "evidencia": "A autoridade do canal não podia depender de um campo do cliente.",
+      "correcao": "trafego_lote.canal (NOT NULL, CHECK canônico, imutável por gatilho) derivado em ledger.procedencia_do_item — a MESMA consulta que já rodava. O campo do cliente virou pista comparada e registrada. Sem derivação o estado é FALHA (bloqueia), nunca NAO_SUPORTADO.",
+      "contraprova": "test_reconciliar_sem_canal_no_corpo_ainda_rele_o_canal_derivado_do_ledger e test_o_canal_do_corpo_nao_troca_os_objetos_relidos — mortos pela mutação que faz o servidor não derivar canal"
+    },
+    {
+      "id": "13",
+      "titulo": "O teste 'Smart Bidding sem mensuração bloqueia em TODO canal' não distinguia canal nenhum",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "O teste itera CANAIS mas chama avaliar sem leitura, forçando SEM_LEITURA/INDETERMINADA antes de qualquer regra por canal: as três asserções valem para os quatro por CONSTRUÇÃO. E o passo 1 é circular — itera a própria lista e afirma que a checagem de pertinência passou.",
+      "reproducao": "Mutação canonizar_canal = lambda c: 'SEARCH': o corpo do teste passava inteiro. Depois, dois testes falham.",
+      "evidencia": "Refutada a consequência alegada: /subir nunca passa lances_do_canal, então ESTRATEGIA_FORA_DO_CANAL é inalcançável por ali — a restrição por canal mora nos BUILDERS, a montante. O comentário do router dava a razão errada e foi corrigido.",
+      "correcao": "backend/app/routers/trafego.py: comentário honesto sobre o que o canal faz e onde a proteção realmente mora.",
+      "contraprova": "test_a_autoridade_adjudica_CADA_canal_e_nao_todos_como_Search — identidade do canal, um caso negativo fora da lista, e desfechos diferentes por canal com as listas lidas por árvore"
+    },
+    {
+      "id": "14",
+      "titulo": "'nenhum próximo ato manda reenviar' casava a prosa escrita pelo próprio autor",
+      "classificacao_final": "CONFIRMED_AND_FIXED_NOW",
+      "severidade_final": "P2",
+      "mecanismo": "A propriedade era verificada por duas substrings da redação vigente. O texto de AUSENCIA_PROVADA já continha 'criar de novo' — as substrings proibidas foram escolhidas para caber na prosa.",
+      "reproducao": "Mutação que troca o texto de AUSENCIA_PROVADA para 'crie a campanha de novo pela rota de criação': antes os 20 testes ficavam verdes; depois o teste falha.",
+      "evidencia": "Não é defeito de produção: o módulo continua sem caminho de escrita. É contraprova inerte.",
+      "correcao": "backend/app/trafego/veredito_de_releitura.py: vocabulário fechado ATOS_DO_READBACK + ATOS_DE_DESPACHO, mapa exaustivo por estado, e proximo_ato_tipo no resumo. A prosa continua, como apresentação.",
+      "contraprova": "test_nenhum_proximo_ato_e_um_ato_de_despacho (exaustividade, conjunto congelado, disjunção) e test_nem_o_readback_nem_o_veredito_importam_despachante (lista BRANCA de imports)"
+    }
+  ],
+  "dividas_do_worker": {
+    "A_campanha_sem_grupo_ou_anuncio": "coberta pelo achado 07 — tratada como P0 e fechada",
+    "B_estado_AMBIGUO_inalcancavel": {
+      "classificacao": "REFUTED_WITH_COUNTERPROOF",
+      "severidade": "P3",
+      "porque": "A premissa é falsa: o 409 de duplicidade e o read-back estão em rotas e momentos diferentes, e AMBIGUO é alcançável quando a primeira leitura falha e a segunda, na mesma requisição, vê duas campanhas. Ambiguidade existente é consultável (409 duplicidade_consumada, com a lista completa e registro no ledger), o portão não a esconde — ele a substitui por um relato mais rico —, e nenhuma correção permite reenviar: reconciliação não é criação e o módulo não tem caminho de escrita.",
+      "buraco_residual_fechado": "o veredito tipado existia só no corpo HTTP; agora vai inteiro para trafego_verificacao.divergencia, junto com o canal derivado e a pista do cliente quando ela é ignorada."
+    },
+    "C_readback_so_com_canal_do_cliente": "coberta pelo achado 12 — fechada com derivação no servidor"
+  },
+  "pontos_da_bia": {
+    "A_contradicao_de_memoria": {
+      "classificacao": "ALREADY_FIXED_BEFORE_369585F (parcial) + CONFIRMED_AND_FIXED_NOW (curadoria)",
+      "achado": "Busca literal e semântica em todo o repositório. HANDOFF e ROADMAP já estavam corrigidos e carregam a correção declarada com data — preservados como fato histórico. Restava a curadoria operacional, onde 'Ligado so em Display por enquanto' aparecia em tempo presente dentro de uma narrativa cronológica.",
+      "correcao": "a frase virou 'Naquele momento (05/09/2026) ele estava ligado so em Display', preservando o fato histórico sem afirmá-lo como atual. O estado real foi conferido NO CÓDIGO: o portão roda nos três canais.",
+      "churn_evitado": "nenhuma reescrita de HANDOFF ou ROADMAP"
+    },
+    "B_frescor_do_grafo": {
+      "classificacao": "CONFIRMED_AND_FIXED_NOW",
+      "achado": "UPDATE_STATUS.json apontava 53090e8 com o HEAD em 369585f, e `git diff 6aad83c..HEAD -- docs/volc-os-graph/` era VAZIO: a curadoria não havia sido tocada em toda a rodada.",
+      "correcao": "curadoria atualizada nos nós materialmente afetados, curadoria_atualizada_em em 2026-09-06, e rebuild COMPLETO (scripts/atualizar_grafo_volc_os.py, sem --reuse-technical, porque a camada de código mudou). --check passou a responder current=true com built_at_commit == 6c5de4f.",
+      "achado_adjacente_registrado": "tracked_inputs() não inclui curadoria-operacional.json no digest, então --check responde current=true depois de uma edição manual da curadoria ainda não regenerada. Herdado, não corrigido nesta rodada."
+    },
+    "C_teto_de_paginas_que_conta_linhas": {
+      "classificacao": "ALREADY_FIXED_BEFORE_369585F",
+      "prova": "canario.TETO_DE_LINHAS_DE_DESTINO = 50_000 é o nome vigente e o loop compara linhas; MAXIMO_DE_PAGINAS_DE_DESTINO sobrevive como alias derivado e documentado. Fail-closed preservado e leitura incompleta continua LEITURA_PARCIAL, nunca ausência.",
+      "contraprova_ja_existente": "test_trafego_sincronizador.py fixa os dois números e a distinção; test_trafego_canario.py exercita o teto com TETO_DE_LINHAS_DE_DESTINO + 2 linhas"
+    },
+    "D_teste_hermetico_herdado_alcancava_oauth": {
+      "classificacao": "CONFIRMED_AND_FIXED_NOW",
+      "herdado": "sim — reproduzido idêntico na árvore base 6aad83c, mesmo teste e mesmo endereço remoto; a rodada não tocou esse caminho",
+      "porque_corrigido_mesmo_assim": "a correção é a que a regra de escopo autoriza explicitamente: monkeypatch da prontidão, sem rede real, já copiado literalmente em três arquivos irmãos da mesma suíte",
+      "correcao": "_instalar_portas_hermeticas passou a fechar as duas portas que faltavam: contas.meta_de_conversao e trafego._plano_de_mensuracao. O arquivo saiu de 1 failed/28 passed para 30 passed.",
+      "nao_mascarado": "a rota já trata 'não li' como o caminho honesto; o que era leitura remota virou ausência declarada"
+    }
+  },
+  "garantias_verificadas_intactas": [
+    "gate criativo alcança Display, Demand Gen e PMax",
+    "o canal correto atravessa o gate",
+    "OCR sozinho não cobre marca_visual",
+    "detector ausente ou falho resulta em GATE_UNAVAILABLE",
+    "falha nunca vira CLEAR (na configuração efetiva do HEAD)",
+    "recibo velho continua exigindo conteúdo válido",
+    "erro de transporte não vira conclusão sobre a conta",
+    "vídeo YouTube sem bytes/hash/recibo é recusado antes do gate e da ponte",
+    "Search/Display/Demand Gen verificam duplicidade antes de criar",
+    "permite_mutacao_real inalterado (SEARCH e DISPLAY True; DEMAND_GEN e PMAX False)",
+    "nenhuma rota ENABLE introduzida — zero rotas novas em toda a rodada",
+    "leitura não realiza escrita",
+    "nenhum valor ausente virou zero, false ou conjunto vazio inventado",
+    "Smart Bidding sem mensuração comprovada permanece bloqueado",
+    "PMax continua com expansão automática de URL fechada"
+  ],
+  "dividas_herdadas_registradas_nao_corrigidas": [
+    {
+      "item": "CRIATIVO_POLICY_GATE_STRICT=0 faz detector que EXPLODE virar CLEAR",
+      "porque_nao_corrigida": "herdada — `git diff 6aad83c..HEAD -- backend/app/criativo/` é vazio. A trava é fail-closed por default e a variável não está definida em lugar nenhum do repositório, então a garantia está intacta na configuração efetiva. Corrigir muda a semântica do portão criativo, fora do escopo de uma rodada de fechamento.",
+      "correcao_sugerida": "gate.py deveria bloquear SEMPRE que um detector REGISTRADO falhou, deixando a trava governar apenas ausência/lacuna"
+    },
+    {
+      "item": "a causa de transporte real de ler_acoes é descartada em metas_efetivas.ler_plano",
+      "porque_nao_corrigida": "propagá-la exige campo novo em PlanoDeMensuracao, que entra na impressão canônica"
+    },
+    {
+      "item": "tracked_inputs() não vigia curadoria-operacional.json no digest do --check",
+      "porque_nao_corrigida": "herdada, e o efeito é um --check otimista, não um dado errado"
+    },
+    {
+      "item": "coluna de inventário para os fatos próprios de canal",
+      "porque_nao_corrigida": "exige migration oficial, não autorizada nesta rodada"
+    }
+  ],
+  "gates": {
+    "pytest_backend_e_volc_ads": {
+      "antes": "4766 passed / 3 failed",
+      "depois": "4785 passed / 3 failed",
+      "falhas": [
+        "test_canario_pedido_aprovado.py::test_4_identidade_do_pedido_bate_com_o_dossie",
+        "test_canario_pedido_aprovado.py::test_6b_carimbo_de_outra_execucao_invalida_o_selo",
+        "test_trafego.py::test_provar_sem_copy_reprova_e_diz_por_que"
+      ],
+      "nota": "as três são herdadas do baseline e não têm relação com esta rodada"
+    },
+    "vitest": {
+      "antes": "1672 passed / 15 failed + 1 unhandled error",
+      "depois": "1672 passed / 15 failed, ZERO unhandled error",
+      "nota": "as 15 falhas são as mesmas, nos mesmos 5 arquivos herdados"
+    },
+    "typescript": {
+      "comando_correto": "npx tsc -p tsconfig.app.json --noEmit",
+      "antes": 77,
+      "depois": 77,
+      "ratchet": "conjunto IDÊNTICO (zero novos, zero sumidos)",
+      "alerta": "o gate publicado `npx tsc --noEmit` mede ZERO por construção: o tsconfig raiz é solution-style com \"files\": []. Ele não detectaria regressão nenhuma."
+    },
+    "build": "npx vite build verde",
+    "git_diff_check": "limpo",
+    "scanner_de_segredos": "nenhum padrão forte no working tree",
+    "autoridade_supabase": "https://database.agenciavolc.com.br conferida",
+    "grafo": "--check current=true, built_at_commit == 6c5de4f"
+  }
+}
