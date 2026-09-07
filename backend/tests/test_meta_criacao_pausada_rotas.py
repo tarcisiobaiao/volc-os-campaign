@@ -190,7 +190,10 @@ class _GraphFalso:
             return _Resposta({"data": [{
                 "hash": IMAGEM_EXTERNA, "name": "Imagem de prova",
                 "width": 1080, "height": 1080,
-                "url_128": "https://scontent.example.fbcdn.net/preview.jpg",
+                # ⚠️ `url` (a peça), não `url_128` (a miniatura): desde que o gate
+                # recusa certificar uma miniatura, uma fixture só com
+                # `url_128` mediria a recusa, não o caminho feliz.
+                "url": "https://scontent.example.fbcdn.net/preview.jpg",
             }]})
         if url.endswith("/advideos"):
             return _Resposta({"data": []})

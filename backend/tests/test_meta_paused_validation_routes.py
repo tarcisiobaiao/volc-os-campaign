@@ -98,7 +98,7 @@ class _GraphFake:
             return _Resposta({'data': [{
                 'hash': 'hashImagem_123456', 'name': 'Imagem teste',
                 'width': 1080, 'height': 1080,
-                'url_128': 'https://scontent.example.fbcdn.net/preview.jpg',
+                'url': 'https://scontent.example.fbcdn.net/preview.jpg',
             }]})
         if url.endswith('/advideos'):
             return _Resposta({'data': [{

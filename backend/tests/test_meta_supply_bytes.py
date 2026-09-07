@@ -35,7 +35,6 @@ from app.trafego.meta_execucao import ativos as mod_ativos
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
 from app.trafego.meta_execucao.contrato import (
     ORIGEM_BIBLIOTECA,
-    ORIGEM_MINIATURA,
     DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
 )
@@ -239,19 +238,20 @@ async def test_dimensao_da_biblioteca_nao_substitui_a_medida() -> None:
     assert manifesto.byte_size == len(imagens_meta.png(600, 400))
 
 
-async def test_miniatura_e_medida_mas_nunca_etiquetada_como_a_peca() -> None:
-    """Só há `url_128`: os bytes são lidos, e o manifesto DECLARA que é miniatura.
+async def test_miniatura_nao_certifica_a_peca() -> None:
+    """Só há `url_128`: a peça NÃO pode ser certificada, e a recusa tem nome.
 
-    Ler e mentir sobre a origem seria pior do que não ler. O recibo público leva
-    `measured_on_original: false` para que nenhuma leitura posterior conclua que
-    a dimensão descreve a peça.
+    ⚠️ Uma versão anterior media os 128px e rotulava honestamente
+    (`rendition=THUMBNAIL_128`, `measured_on_original=false`) — mas ainda assim
+    emitia `AUTHORIZED` / `READY_FOR_PAID_MEDIA`. Nenhum consumidor lia o
+    rótulo, então o recibo continuava afirmando que a peça foi conferida. Rotular
+    com honestidade não basta quando o selo ao lado diz o contrário: é a mesma
+    classe de mentira que F01.
     """
-    referencias = await _resolver(_transporte(
-        corpo=imagens_meta.png(128, 128), usar_miniatura=True))
-    manifesto = next(iter(referencias.asset_supply_manifests.values()))
-    assert manifesto.rendition == ORIGEM_MINIATURA
-    assert manifesto.dimensoes_sao_do_original is False
-    assert manifesto.prova_publica()["measured_on_original"] is False
+    with pytest.raises(ErroDeNascimentoMeta) as erro:
+        await _resolver(_transporte(
+            corpo=imagens_meta.png(128, 128), usar_miniatura=True))
+    assert erro.value.codigo == "META_ASSET_ONLY_THUMBNAIL_AVAILABLE"
 
 
 # ---------------------------------------------------------------------------

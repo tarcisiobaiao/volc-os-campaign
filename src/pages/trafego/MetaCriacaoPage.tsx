@@ -695,6 +695,13 @@ const MetaCriacaoPage: React.FC = () => {
   const criar = () => umaVezSo('criar', async () => {
     if (!aprovacao) return;
     const referencia = aprovacao.approval_id;
+    // ⚠️ A REFERÊNCIA ENTRA NA URL ANTES DO DESPACHO, e a ordem é o conserto.
+    //
+    // Gravá-la só no caminho de sucesso deixava o INCIDENTE sem saída: um
+    // despacho ambíguo levanta, o `await` nunca retorna, e a única chave capaz
+    // de reabrir a operação morria com a aba. O caso em que o recibo mais
+    // importa era exatamente o caso em que ele não existia.
+    fixarOperacaoNaUrl(referencia);
     const resultado = await pautadorApi.criarCampanhaPausadaMeta(
       referencia, aprovacao.plano_sha256);
     // ⚠️ AQUI A RESPOSTA NUNCA É DESCARTADA, e a diferença em relação a
@@ -707,7 +714,6 @@ const MetaCriacaoPage: React.FC = () => {
     // opaca entra na URL para sobreviver ao reload.
     setNascimento(resultado);
     setOperacao(resultado.recibo);
-    fixarOperacaoNaUrl(referencia);
   });
 
   const reconciliar = () => umaVezSo('reconciliar', async () => {
@@ -730,11 +736,16 @@ const MetaCriacaoPage: React.FC = () => {
   );
   const desfechoDaOperacao = !reciboVigente
     ? null
-    : reciboVigente.steps.every((passo) => passo.state === 'CREATED')
-      ? (reciboVigente.steps.some((passo) => passo.readback_error)
-        ? 'Criada pausada, com divergência de leitura'
-        : 'Criada pausada')
-      : 'Incompleta · precisa de adjudicação por leitura';
+    // ⚠️ `every` sobre lista VAZIA devolve `true`. Sem esta guarda, uma
+    // aprovação que nunca despachou passo nenhum era exibida como "Criada
+    // pausada" — uma campanha completa que não existe.
+    : reciboVigente.steps.length === 0
+      ? 'Aprovada · nenhum passo despachado ainda'
+      : reciboVigente.steps.every((passo) => passo.state === 'CREATED')
+        ? (reciboVigente.steps.some((passo) => passo.readback_error)
+          ? 'Criada pausada, com divergência de leitura'
+          : 'Criada pausada')
+        : 'Incompleta · precisa de adjudicação por leitura';
   /** ⚠️ Reconciliar depende da REFERÊNCIA, não da flag de criação nem de haver
    *  uma aprovação viva em memória. É a saída de um incidente. */
   const podeReconciliar = Boolean(operacaoRef || aprovacao);

@@ -622,6 +622,23 @@ class ResolvedorAtivosMeta:
                 "META_ASSET_POLICY_RECEIPT_EXPIRED",
                 "a confirmação de direitos/identidade da peça expirou; confira novamente",
             )
+        # ⚠️ MINIATURA NÃO CERTIFICA A PEÇA, e rotular honestamente não bastava.
+        #
+        # A versão anterior media os 128px, declarava `rendition=THUMBNAIL_128` e
+        # `measured_on_original=false` — e mesmo assim emitia
+        # `AUTHORIZED` / `READY_FOR_PAID_MEDIA` com `image_hash_bound=true`.
+        # Nenhum consumidor lia o rótulo, então o recibo continuava afirmando
+        # que a peça foi conferida. É a mesma classe de mentira que F01: um selo
+        # sobre uma inspeção que não aconteceu.
+        #
+        # A recusa é NOMEADA e acionável: o operador precisa de uma peça cuja
+        # biblioteca devolva a imagem, não a miniatura dela.
+        if ativo.origem_dos_bytes != ORIGEM_BIBLIOTECA:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_ONLY_THUMBNAIL_AVAILABLE",
+                "a biblioteca Meta devolveu apenas a miniatura desta peça; "
+                "não é possível certificar a imagem que seria veiculada",
+            )
         conteudo, tipo_declarado = await self._ler_bytes_da_peca(ativo)
         mime, largura, altura = _decodificar_imagem(conteudo)
         # O cabeçalho pode mentir; agora existe com o que confrontá-lo. Um

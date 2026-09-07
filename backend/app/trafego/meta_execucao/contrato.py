@@ -150,8 +150,11 @@ class DeclaracaoPoliticaAtivoMeta:
 #: precise adivinhar o que a medida descreve.
 ORIGEM_BIBLIOTECA = "ORIGINAL_LIBRARY_URL"
 ORIGEM_MINIATURA = "THUMBNAIL_128"
+#: Snapshot antigo, anterior ao rótulo. Não é "original": é "ninguém registrou".
+ORIGEM_INDETERMINADA = "UNRECORDED"
 
-ORIGENS_DE_BYTES: frozenset[str] = frozenset({ORIGEM_BIBLIOTECA, ORIGEM_MINIATURA})
+ORIGENS_DE_BYTES: frozenset[str] = frozenset({
+    ORIGEM_BIBLIOTECA, ORIGEM_MINIATURA, ORIGEM_INDETERMINADA})
 
 
 @dataclass(frozen=True)
@@ -303,7 +306,10 @@ class ManifestoSupplyMeta:
             declared_width=materia.get("declared_width"),
             declared_height=materia.get("declared_height"),
             byte_size=materia.get("byte_size"),
-            rendition=str(materia.get("rendition") or ORIGEM_BIBLIOTECA),
+            # ⚠️ Ausência NÃO vira `ORIGINAL_LIBRARY_URL`. Um snapshot sem o
+            # campo é de antes do rótulo existir, e assumir o original faria o
+            # descongelamento AFIRMAR uma medição que ninguém registrou.
+            rendition=str(materia.get("rendition") or ORIGEM_INDETERMINADA),
         )
 
 

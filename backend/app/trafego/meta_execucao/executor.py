@@ -448,6 +448,16 @@ class ExecutorMetaPausado:
                 # dizendo apenas CREATED. Por isso ela é MARCADA no passo antes
                 # de a exceção subir: a resposta HTTP diz 502, e o recibo passa
                 # a dizer o mesmo.
+                # ⚠️ ZERADO A CADA PASSO, e isto conserta um defeito real.
+                #
+                # A primeira versão lia `locals().get("dados")` no tratamento da
+                # divergência. `dados` é de escopo de FUNÇÃO, não de iteração:
+                # quando `_read_one` falhava no AdSet, `dados` ainda continha a
+                # leitura da Campaign — e a evidência durável da divergência do
+                # AdSet era gravada com o status, o objetivo e o Advantage do
+                # OBJETO ANTERIOR. Um recibo que descreve o objeto errado é pior
+                # que um recibo vazio: ele parece adjudicável.
+                dados: Mapping[str, Any] | None = None
                 try:
                     dados = await self._read_one(
                         operacao.tipo_objeto, ids[operacao.chave], segredo)
@@ -467,7 +477,7 @@ class ExecutorMetaPausado:
                     await self._registrar_readback(
                         passo.passo_ref,
                         _evidencia_do_readback(
-                            operacao.tipo_objeto, locals().get("dados"), conferido=False),
+                            operacao.tipo_objeto, dados, conferido=False),
                         codigo=exc.codigo,
                     )
                     raise
