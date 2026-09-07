@@ -407,3 +407,117 @@ async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica()
             )},
         )
     assert resolvidas.image_hash == "hash_um"
+
+
+# ---------------------------------------------------------------------------
+# T01 — CAMPOS E PAYLOAD
+# ---------------------------------------------------------------------------
+# As provas desta seção nasceram de F14 e F15 do pacote
+# `docs/specs/traffic-operational-closure-v2/`.
+
+
+def test_mascara_de_creative_nao_pede_effective_status() -> None:
+    """O catálogo oficial v26 de AdCreative não declara `effective_status`.
+
+    Duas fontes independentes, lidas em 07/09/2026:
+
+    * o SDK gerado na tag 26.0.0 enumera `status`, `destination_spec`,
+      `object_story_spec`, `asset_feed_spec` e `degrees_of_freedom_spec`, e
+      NÃO enumera `effective_status`;
+    * a referência pública documenta `status` com
+      `ACTIVE, IN_PROCESS, WITH_ISSUES, DELETED` e não documenta
+      `effective_status`.
+
+    Um campo inválido no `fields` faz a Graph recusar a leitura INTEIRA. Como o
+    read-back acontece DEPOIS de o objeto nascer, o preço do campo a mais não
+    seria uma leitura vazia: seria um objeto criado cuja conferência falha.
+
+    ⚠️ Este teste NÃO afirma que a Meta recusaria a máscara antiga — nenhuma
+    conta foi chamada. Ele fixa a decisão de não pedir o que o catálogo não tem.
+    """
+    from app.trafego.meta_execucao.executor import CAMPOS_DE_LEITURA
+
+    assert "effective_status" not in CAMPOS_DE_LEITURA["creative"].split(",")
+    assert "destination_spec" not in CAMPOS_DE_LEITURA["creative"].split(",")
+    # `status` continua: é o estado de BIBLIOTECA do criativo, e é por ele que
+    # um criativo inutilizável é recusado.
+    assert "status" in CAMPOS_DE_LEITURA["creative"].split(",")
+    # Os objetos veiculáveis continuam pedindo o campo — para eles ele existe.
+    for veiculavel in ("campaign", "adset", "ad"):
+        assert "effective_status" in CAMPOS_DE_LEITURA[veiculavel].split(",")
+
+
+def test_creative_nunca_e_exigido_pausado_e_estados_de_biblioteca_decidem() -> None:
+    """O AdCreative não é pausável; o que o recusa é o estado de biblioteca."""
+    validar = ExecutorMetaPausado._validar_read_back
+    payload = {"name": "Criativo endurecido"}
+    comuns = dict(
+        payload=payload, identificador="777", ids={}, conta_externa="1234567890")
+
+    # ACTIVE é o estado normal de um criativo recém-criado — e passa.
+    validar("creative", {
+        "id": "777", "account_id": "act_1234567890",
+        "name": "Criativo endurecido", "status": "ACTIVE"}, **comuns)
+
+    # Sem `effective_status` na resposta, porque não foi pedido. Continua passando.
+    validar("creative", {
+        "id": "777", "account_id": "1234567890",
+        "name": "Criativo endurecido", "status": "IN_PROCESS"}, **comuns)
+
+    # O que recusa é o estado de biblioteca inutilizável.
+    for ruim in ("DELETED", "WITH_ISSUES"):
+        with pytest.raises(ErroRemotoMeta) as erro:
+            validar("creative", {
+                "id": "777", "account_id": "1234567890",
+                "name": "Criativo endurecido", "status": ruim}, **comuns)
+        assert erro.value.codigo == "META_READBACK_DIVERGENT"
+        assert "status" in str(erro.value)
+
+
+def test_payload_form_urlencoded_preserva_booleano_lista_e_objeto() -> None:
+    """A paridade que importa é a do que SAI no fio, não a do dict em memória.
+
+    `_form` é o serializador canônico: booleano vira `true`/`false` JSON (nunca
+    `True` do Python), lista e objeto viram JSON compacto, e escalar vira texto.
+    Comparar apenas os objetos pré-serialização deixaria passar exatamente o
+    erro que a Meta veria — `is_adset_budget_sharing_enabled=True` chegando como
+    a string `"True"`, que não é um booleano JSON.
+    """
+    import json as _json
+
+    from app.trafego.meta_execucao.executor import _form
+
+    plano = compilar_plano_pausado(_plano(), _refs())
+    campanha = next(op for op in plano.operacoes if op.tipo_objeto == "campaign")
+    conjunto = next(op for op in plano.operacoes if op.tipo_objeto == "adset")
+
+    fio_campanha = _form(campanha.payload)
+    # Booleano: JSON, minúsculo, jamais o repr do Python.
+    assert fio_campanha["is_adset_budget_sharing_enabled"] == "false"
+    assert "True" not in fio_campanha.values() and "False" not in fio_campanha.values()
+    # Lista vazia continua sendo uma lista, não string vazia nem ausência.
+    assert fio_campanha["special_ad_categories"] == "[]"
+    assert fio_campanha["status"] == "PAUSED"
+    assert fio_campanha["objective"] == "OUTCOME_TRAFFIC"
+
+    fio_conjunto = _form(conjunto.payload)
+    # Objeto aninhado: JSON compacto, e a escolha do Advantage+ sobrevive
+    # explícita no fio como 0/1 — a omissão é que ligaria o recurso.
+    alvo = _json.loads(fio_conjunto["targeting"])
+    assert alvo["targeting_automation"]["advantage_audience"] == 0
+    assert alvo["publisher_platforms"] == ["facebook"]
+    assert alvo["geo_locations"]["countries"] == ["BR"]
+    # Inteiro vira texto, e continua sendo o mesmo número.
+    assert fio_conjunto["daily_budget"] == "1000"
+    # `destination_type` não pertence a esta receita e não pode aparecer no fio.
+    assert "destination_type" not in fio_conjunto
+
+
+def test_todo_valor_do_payload_compilado_sobrevive_ao_serializador() -> None:
+    """Nenhuma chave do payload aprovado some ao virar form-urlencoded."""
+    from app.trafego.meta_execucao.executor import _form
+
+    for operacao in compilar_plano_pausado(_plano(), _refs()).operacoes:
+        fio = _form(operacao.payload)
+        assert set(fio) == set(operacao.payload), operacao.chave
+        assert all(isinstance(valor, str) for valor in fio.values()), operacao.chave

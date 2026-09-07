@@ -192,7 +192,33 @@ CAMPOS_DE_LEITURA: Mapping[str, str] = {
     # recusar a leitura INTEIRA — e o read-back de todo criativo passaria
     # a falhar por um campo que ninguém provou que existe. A garantia de
     # destino é dada antes do despacho, por `shop_redirect_proof`.
-    "creative": "id,account_id,name,status,effective_status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
+    #
+    # ⚠️ `effective_status` SAIU pelo MESMO motivo, e o motivo agora tem duas
+    # fontes oficiais concordantes, lidas em 07/09/2026:
+    #
+    #   1. O catálogo gerado do SDK v26.0.0 enumera `status`,
+    #      `destination_spec`, `object_story_spec`, `asset_feed_spec` e
+    #      `degrees_of_freedom_spec` para AdCreative — e NÃO enumera
+    #      `effective_status`. Os campos parecidos que existem são outros:
+    #      `effective_authorization_category`, `effective_instagram_media_id`
+    #      e `effective_object_story_id`.
+    #      https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreative.py
+    #   2. A referência pública de AdCreative documenta `status` com os valores
+    #      `ACTIVE, IN_PROCESS, WITH_ISSUES, DELETED` e não documenta
+    #      `effective_status`.
+    #      https://developers.facebook.com/docs/marketing-api/reference/ad-creative/
+    #
+    # Pedir um campo que o catálogo não tem arriscava a MESMA falha que a
+    # remoção de `destination_spec` evita: a Graph recusa a leitura inteira por
+    # um campo inválido, e o read-back de todo criativo passaria a falhar —
+    # depois de o objeto já ter nascido. Ausência no catálogo é sinal de risco,
+    # não prova de recusa remota; por isso o campo é OMITIDO do pedido e seu
+    # valor NÃO é inventado em lugar nenhum.
+    #
+    # Os estados de AdCreative são de BIBLIOTECA (ACTIVE/IN_PROCESS/
+    # WITH_ISSUES/DELETED), não de veiculação. Um criativo não é pausável, e
+    # `PAUSED` nunca foi esperado dele.
+    "creative": "id,account_id,name,status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
     "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,created_time",
 }
 
@@ -458,7 +484,17 @@ class ExecutorMetaPausado:
                     # Meta nunca pausa.
                     "veiculavel": tipos[chave] in {"campaign", "adset", "ad"},
                     "status": dados.get("configured_status") or dados.get("status"),
-                    "effective_status": dados.get("effective_status"),
+                    # ⚠️ `NAO_PEDIDO` e não `None`. Para o criativo o campo saiu
+                    # da máscara porque o catálogo oficial v26 não o declara, e
+                    # `None` seria lido como "a Meta não devolveu" — quer dizer,
+                    # como um fato sobre o objeto. A distinção entre "não
+                    # perguntei" e "perguntei e não veio" é a mesma que
+                    # `videos_indisponiveis` guarda em `ativos.py`.
+                    "effective_status": (
+                        dados.get("effective_status")
+                        if tipos[chave] in {"campaign", "adset", "ad"}
+                        else "NAO_PEDIDO"
+                    ),
                     "objective": dados.get("objective"),
                     "optimization_goal": dados.get("optimization_goal"),
                     "advantage_audience_lido": _advantage_audience(dados.get("targeting")),
@@ -620,10 +656,15 @@ class ExecutorMetaPausado:
             # O AdCreative não é um objeto veiculável: ele só entrega através de
             # um Ad, e a Meta o devolve ACTIVE por construção. O que precisa ser
             # recusado é o criativo inutilizável.
+            #
+            # ⚠️ SÓ `status`. A conferência de `effective_status` saiu junto com
+            # o campo na máscara: o catálogo oficial v26 de AdCreative não o
+            # declara (ver CAMPOS_DE_LEITURA). Uma comparação sobre um campo que
+            # nunca vem seria decorativa — `dados.get(...)` daria `None`, `None`
+            # nunca está no conjunto recusado, e a linha passaria a afirmar uma
+            # verificação que não acontece.
             if dados.get("status") in {"DELETED", "WITH_ISSUES"}:
                 divergiu("status")
-            if dados.get("effective_status") in {"DELETED", "WITH_ISSUES"}:
-                divergiu("effective_status")
         if str(dados.get("name") or "") != str(payload.get("name") or ""):
             divergiu("name")
         if nome == "campaign":

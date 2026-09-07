@@ -30,7 +30,7 @@ from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.seguranca.identidade import Identidade, exigir_admin
@@ -77,7 +77,29 @@ def _registro_saga() -> RegistroSagaMetaSupabase:
     return RegistroSagaMetaSupabase(SupabaseService(get_settings()))
 
 
+#: ⚠️ A FRONTEIRA HTTP FECHA, e o padrão do pydantic v2 é o oposto.
+#:
+#: Sem isto os modelos rodam com `extra='ignore'`: um campo que o cliente manda
+#: e o DTO não declara é DESCARTADO EM SILÊNCIO, com HTTP 200. Uma tela que
+#: passasse a enviar `age_min`, `objective` ou `placements` — todos fixos nesta
+#: receita, nenhum deles conectado ao DTO — receberia sucesso e o operador
+#: acreditaria ter escolhido algo que nunca saiu do navegador.
+#:
+#: `forbid` transforma esse silêncio num 422 com o nome do campo. É a mesma
+#: postura do resto da lane: o vocabulário é fechado, e o que está fora dele é
+#: recusado com nome próprio em vez de ser absorvido.
+#:
+#: ⚠️ Isto NÃO é um endurecimento de compatibilidade quebrada: os defaults que
+#: existem para abas antigas (`is_adset_budget_sharing_enabled=False`,
+#: `advantage_audience=False`) continuam sendo CAMPOS DECLARADOS com default —
+#: omiti-los continua válido e continua significando a escolha segura. O que
+#: passa a ser recusado é o campo que o servidor não conhece.
+SEM_CAMPO_DESCONHECIDO = ConfigDict(extra="forbid")
+
+
 class PedidoVariacaoEstaticaMeta(BaseModel):
+    model_config = SEM_CAMPO_DESCONHECIDO
+
     variation_key: str = Field(min_length=1, max_length=32)
     asset_ref: str = Field(min_length=8, max_length=180)
     creative_name: str = Field(min_length=1, max_length=400)
@@ -92,6 +114,8 @@ class PedidoVariacaoEstaticaMeta(BaseModel):
 
 
 class PedidoPlanoMetaPausado(BaseModel):
+    model_config = SEM_CAMPO_DESCONHECIDO
+
     account_ref: str = Field(min_length=8, max_length=180)
     page_ref: str = Field(min_length=8, max_length=180)
     asset_ref: str = Field(min_length=8, max_length=180)
@@ -123,6 +147,8 @@ class PedidoPlanoMetaPausado(BaseModel):
 
 
 class PedidoValidarMeta(BaseModel):
+    model_config = SEM_CAMPO_DESCONHECIDO
+
     plano: PedidoPlanoMetaPausado
     confirmar_validate_only: bool
 

@@ -66,6 +66,7 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.routers.trafego_meta_validacao import (
+    SEM_CAMPO_DESCONHECIDO,
     PedidoPlanoMetaPausado,
     _compilar,
     _declaracoes_de_politica,
@@ -127,6 +128,8 @@ JANELA_DA_VALIDACAO_S = 1800
 class PedidoAprovarCriacaoMeta(BaseModel):
     """O que a tela manda para APROVAR. O plano inteiro, mais três decisões."""
 
+    model_config = SEM_CAMPO_DESCONHECIDO
+
     plano: PedidoPlanoMetaPausado
     #: O hash que a tela exibiu ao operador. Se a recompilação no servidor der
     #: outro, alguma coisa mudou entre a conferência e o clique — e a aprovação
@@ -141,11 +144,15 @@ class PedidoAprovarCriacaoMeta(BaseModel):
 class PedidoCriarPausadaMeta(BaseModel):
     """O que a tela manda para CRIAR: duas referências, nenhum payload Meta."""
 
+    model_config = SEM_CAMPO_DESCONHECIDO
+
     approval_id: str = Field(min_length=8, max_length=80)
     plano_sha256_esperado: str = Field(min_length=64, max_length=64)
 
 
 class PedidoReconciliarCriacaoMeta(BaseModel):
+    model_config = SEM_CAMPO_DESCONHECIDO
+
     approval_id: str = Field(min_length=8, max_length=80)
 
 

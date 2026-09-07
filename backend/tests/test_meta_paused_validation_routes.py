@@ -550,3 +550,136 @@ def test_recusa_da_meta_nao_vaza_token_nem_id_bruto() -> None:
     # exatamente o que o operador precisa ler para consertar.
     assert 'is_adset_budget_sharing_enabled' in limpo
     assert 'bid strategy' in limpo
+
+
+# ---------------------------------------------------------------------------
+# T01/F15 — A FRONTEIRA HTTP FECHA
+# ---------------------------------------------------------------------------
+# Antes deste conserto os seis modelos de entrada rodavam com o padrão do
+# pydantic v2, `extra='ignore'`: um campo que o cliente mandasse e o DTO não
+# declarasse era DESCARTADO EM SILÊNCIO, com resposta de sucesso. País, faixa
+# etária, `objective`, `promoted_object` e `placements` são FIXOS nesta receita
+# e nenhum deles é campo conectado — uma tela que passasse a enviá-los receberia
+# 200 e o operador acreditaria ter escolhido algo que nunca saiu do navegador.
+
+_PLANO_MINIMO = {
+    'account_ref': 'metaacct_exemplo', 'page_ref': 'metapage_exemplo',
+    'asset_ref': 'metaasset_exemplo', 'campaign_name': 'Campanha',
+    'adset_name': 'Conjunto', 'creative_name': 'Criativo', 'ad_name': 'Anuncio',
+    'destination_url': 'https://example.com/', 'message': 'Mensagem',
+    'headline': 'Titulo', 'description': 'Descricao', 'daily_budget_minor': 1000,
+    'start_time': '2027-01-01T12:00:00Z', 'special_ad_categories': [],
+    'special_categories_confirmed': True, 'call_to_action_type': 'LEARN_MORE',
+}
+
+
+@pytest.mark.parametrize('campo,valor', [
+    # Escolhas que a receita FIXA e a tela poderia acreditar estar enviando.
+    ('objective', 'OUTCOME_SALES'),
+    ('optimization_goal', 'OFFSITE_CONVERSIONS'),
+    ('age_min', 25),
+    ('age_max', 45),
+    ('countries', ['US']),
+    ('placements', ['instagram']),
+    ('promoted_object', {'pixel_id': '123'}),
+    ('budget_scope', 'CAMPAIGN'),
+    # Identidades e provas que o navegador NUNCA pode assinar.
+    ('image_hash', 'hashImagem_falsificado'),
+    ('page_id', '99887766'),
+    ('account_id', 'act_123456789'),
+    ('shop_redirect_proof', 'ACCOUNT_NOT_SHOP_ELIGIBLE_PROVEN'),
+    ('policy_receipt_ref', 'metapolicy_' + 'c' * 24),
+    ('asset_supply_manifests', {'metaasset_exemplo': {'policy_state': 'CLEAR'}}),
+])
+def test_campo_desconhecido_recusa_antes_do_keychain_e_da_rede(
+    monkeypatch, campo: str, valor: object,
+) -> None:
+    """Campo que o servidor não conhece vira 422 com nome, não 200 em silêncio.
+
+    A armadilha no Keychain é o ponto: a recusa acontece na fronteira, ANTES de
+    o token ser lido e antes de qualquer requisição sair. Se o modelo voltasse a
+    `extra='ignore'`, a rota seguiria em frente e a armadilha dispararia.
+    """
+    monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
+    monkeypatch.setenv('META_VALIDATE_ONLY_ENABLED', '1')
+    monkeypatch.setattr(
+        trafego_meta_validacao, '_credencial_salva',
+        lambda *_: pytest.fail('nao deveria ler token'))
+    monkeypatch.setattr(
+        trafego_meta_validacao.httpx, 'AsyncClient',
+        lambda *a, **k: pytest.fail('nao deveria abrir cliente HTTP'))
+
+    resposta = _cliente().post('/api/trafego/meta/local/criacao/validar', json={
+        'confirmar_validate_only': True,
+        'plano': {**_PLANO_MINIMO, campo: valor},
+    })
+    assert resposta.status_code == 422
+    # O nome do campo recusado chega ao cliente — "pedido inválido" não diria
+    # qual escolha foi descartada.
+    assert campo in str(resposta.json())
+
+
+def test_campo_desconhecido_na_variacao_tambem_recusa(monkeypatch) -> None:
+    monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
+    monkeypatch.setenv('META_VALIDATE_ONLY_ENABLED', '1')
+    monkeypatch.setattr(
+        trafego_meta_validacao, '_credencial_salva',
+        lambda *_: pytest.fail('nao deveria ler token'))
+    resposta = _cliente().post('/api/trafego/meta/local/criacao/validar', json={
+        'confirmar_validate_only': True,
+        'plano': {**_PLANO_MINIMO, 'variations': [{
+            'variation_key': 'v1', 'asset_ref': 'metaasset_exemplo',
+            'creative_name': 'C1', 'ad_name': 'A1', 'message': 'M',
+            'headline': 'T', 'description': 'D',
+            'video_id': '55443322',
+        }]},
+    })
+    assert resposta.status_code == 422
+    assert 'video_id' in str(resposta.json())
+
+
+def test_confirmar_validate_only_desconhecido_no_envelope_tambem_recusa(monkeypatch) -> None:
+    """O envelope também fecha: `PedidoValidarMeta` não é um saco aberto."""
+    monkeypatch.setattr(meta_local.sys, 'platform', 'darwin')
+    monkeypatch.setenv('META_VALIDATE_ONLY_ENABLED', '1')
+    monkeypatch.setattr(
+        trafego_meta_validacao, '_credencial_salva',
+        lambda *_: pytest.fail('nao deveria ler token'))
+    resposta = _cliente().post('/api/trafego/meta/local/criacao/validar', json={
+        'confirmar_validate_only': True,
+        'confirmar_criacao': True,
+        'plano': _PLANO_MINIMO,
+    })
+    assert resposta.status_code == 422
+    assert 'confirmar_criacao' in str(resposta.json())
+
+
+def test_omitir_os_campos_de_compatibilidade_continua_valido() -> None:
+    """`forbid` fecha o desconhecido, não o omitido.
+
+    Os dois defaults de compatibilidade existem para abas abertas antes de os
+    campos entrarem no contrato. Omiti-los continua válido e continua
+    significando a escolha SEGURA — recusar o compartilhamento de verba e
+    recusar o Advantage+ Audience. Este teste existe para que o endurecimento
+    não seja confundido com quebra de compatibilidade.
+    """
+    modelo = trafego_meta_validacao.PedidoPlanoMetaPausado.model_validate(_PLANO_MINIMO)
+    assert modelo.is_adset_budget_sharing_enabled is False
+    assert modelo.advantage_audience is False
+    assert modelo.variations == []
+
+
+def test_todos_os_modelos_da_fronteira_meta_fecham_para_campo_extra() -> None:
+    """Um modelo novo nasce fechado, ou este teste falha com o nome dele."""
+    from app.routers import trafego_meta_criacao
+
+    modelos = [
+        trafego_meta_validacao.PedidoVariacaoEstaticaMeta,
+        trafego_meta_validacao.PedidoPlanoMetaPausado,
+        trafego_meta_validacao.PedidoValidarMeta,
+        trafego_meta_criacao.PedidoAprovarCriacaoMeta,
+        trafego_meta_criacao.PedidoCriarPausadaMeta,
+        trafego_meta_criacao.PedidoReconciliarCriacaoMeta,
+    ]
+    abertos = [m.__name__ for m in modelos if m.model_config.get('extra') != 'forbid']
+    assert abertos == []
