@@ -1,0 +1,85 @@
+{
+  "documento": "N8N-REMOTE-RECEIPT",
+  "contrato": "META_OPERATOR_GO_LIVE_V1",
+  "checkpoint": "CP5",
+  "veredito": "NENHUM_WORKFLOW_CRIADO__CREDENCIAL_NAO_PROVISIONADA",
+  "workflows_criados": 0,
+  "workflows_atualizados": 0,
+  "escritas_remotas_nesta_missao": 0,
+  "artefato": {
+    "arquivo": "n8n/volc_meta_insights_dia_d1.json",
+    "nome": "VOLC · Meta Ads insights campanha-dia · D-1 (fuso da conta)",
+    "nos": 27,
+    "impressao_do_payload_local": "6dfe0878aba5461c",
+    "active_no_arquivo": false,
+    "nota_sobre_active": "`active` NÃO viaja no POST da API n8n, que aceita só {name, nodes, connections, settings}. Então `active:false` no arquivo NÃO é o que mantém o workflow inativo no remoto: o default do POST é inativo, e a prova de inatividade tem de vir de um GET de volta lendo `active` do SERVIDOR. O publicador faz exatamente isso — quando puder publicar."
+  },
+  "leitura_remota": {
+    "efetuada": true,
+    "metodo": "GET /api/v1/workflows paginado",
+    "workflows_na_instancia": 396,
+    "homonimos_que_nao_sao_este_artefato": [
+      {
+        "nome": "Aprova - Dash Campanhas Meta Ads",
+        "active": true
+      },
+      {
+        "nome": "Meta Insights",
+        "active": false
+      },
+      {
+        "nome": "Scrape Meta Ads Ofertas",
+        "active": false
+      },
+      {
+        "nome": "04 - Meta Ads - 🎨 CREATIVE ROTATOR - Fatigue Detection",
+        "active": false
+      },
+      {
+        "nome": "APROVA Concursos - Criativos Meta",
+        "active": true
+      },
+      {
+        "nome": "[COMUNIDADE METAPLAY] 01 - INSIGHT DE CAMPANHAS",
+        "active": false
+      },
+      {
+        "nome": "META-WORKFLOW: Content Factory Multi-Site v2",
+        "active": true
+      },
+      {
+        "nome": "VOLC - Meta Ads",
+        "active": false
+      }
+    ],
+    "por_que_isso_importa": "Nove workflows têm 'meta' no nome e NÃO são este artefato — três deles ATIVOS. Uma busca por nome pegaria um deles e o sobrescreveria. Por isso o publicador procura por origem/hash/owner (meta.volc), nunca por nome.",
+    "coletores_gam_preservados": "Nenhuma escrita foi feita em workflow nenhum, então os coletores GAM oficiais ativos continuam exatamente como estavam.",
+    "homonimos_contagem_declarada_pela_ferramenta": 9,
+    "homonimos_listados_neste_recibo": 8,
+    "nota_de_contagem": "a ferramenta contou 9 e imprimiu 8; a diferença é truncamento da saída, não divergência de leitura. O número que vale é o contado."
+  },
+  "bloqueio": {
+    "estado": "WAITING_OWNER",
+    "codigo": "CREDENCIAL_NAO_PROVISIONADA",
+    "causa": "O tipo de credencial agora é REAL (httpHeaderAuth, nativo do n8n), mas o item correspondente não existe no cofre da instância. O id viaja como o marcador PROVISIONAR__VOLC_META_ADS_HEADER_AUTH, que não resolve.",
+    "natureza_do_bloqueio": "MECÂNICA, não conselho: `--apply` recusa antes de abrir socket, porque o artefato declara meta.volc.pronto_para_publicar=false.",
+    "proximo_ato": "o operador cria, na UI segura do n8n, um item Header Auth chamado 'VOLC Meta Ads · cabecalho do sistema', preenche CRED_META_ITEM_ID em n8n/gerar_flows_meta_ledger.py com o id do item e regera o JSON. NENHUM token deve ser colado em chat, log ou arquivo.",
+    "o_que_nao_foi_feito_de_proposito": [
+      "não copiamos o token do Keychain do Mac para o n8n",
+      "não publicamos um draft sem credencial só para ter um id remoto",
+      "não ativamos agenda nenhuma"
+    ]
+  },
+  "dependencia_de_schema": {
+    "migration": "supabase/migrations/20260908000000_meta_insights_escopo.sql",
+    "estado": "ESCRITA_NAO_APLICADA",
+    "consequencia": "Sem ela, `trafego_meta_persistir_snapshot` grava escopo='hierarchy' em silêncio para um snapshot de insights. E, pelo achado do CP1, a RPC sequer existe hoje na base oficial."
+  },
+  "teste_manual_de_coleta": {
+    "executado": false,
+    "motivo": "Ele exige as duas coisas que faltam: a credencial provisionada e o schema aplicado. Com qualquer uma das duas ausente, uma 'coleta manual' produziria erro de autenticação ou de RPC — e registrar isso como prova de coleta seria transformar falha em recibo.",
+    "conta_e_janela": "não escolhidas pelo operador nesta rodada"
+  },
+  "sem_credenciais": true,
+  "sem_conteudo_de_token": true
+}
