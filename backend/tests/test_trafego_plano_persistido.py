@@ -1646,3 +1646,84 @@ def test_o_canal_do_corpo_nao_troca_os_objetos_relidos(monkeypatch):
     (reconciliacoes,) = [kw for ato, kw in diario if ato == "reconciliar"]
     assert reconciliacoes["divergencia"]["canal_derivado"] == "SEARCH"
     assert reconciliacoes["divergencia"]["canal_pedido_ignorado"] == "PERFORMANCE_MAX"
+
+
+def test_sem_canal_no_ledger_o_readback_falha_e_a_pista_do_cliente_nao_vence(
+    monkeypatch,
+):
+    """CONTRAPROVA: o ramo "não derivei o canal" é FALHA, e bloqueia.
+
+    ⚠️ Este ramo é a escolha que o fechamento documenta em cinco linhas — FALHA
+    e nunca NAO_SUPORTADO, porque não conseguir reler é um fato sobre NÓS — e
+    não tinha teste nenhum: a verificação focal provou que trocá-lo por
+    NAO_SUPORTADO (que não bloqueia) deixava a suíte inteira verde.
+
+    ⚠️ E prova a metade que faltava da autoridade do canal. Os outros dois
+    testes mostram que o corpo não vence quando o ledger DIZ o canal; este
+    mostra que ele também não vence quando o ledger NÃO diz — a "conciliação"
+    óbvia (`canal_do_ledger or body.canal`) devolveria ao cliente exatamente a
+    escolha de semântica que o servidor tomou para si.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario)
+    ledger = LedgerDeTeste(diario=diario, canal_do_lote="")   # o lote não diz
+
+    consultas = _dublar_a_leitura_do_readback(monkeypatch, {})
+    monkeypatch.setattr(trafego, "_ledger", lambda: ledger)
+    monkeypatch.setattr(trafego, "_repositorio_de_plano", lambda: repo)
+    monkeypatch.setattr(trafego, "_ler_campanha_na_conta", lambda **_: ())
+    corpo = trafego.ReconciliarEntrada(
+        item_id="item-1", customer_id=canario.CONTA,
+        marca="VOLC-CANARY-" + ("d" * 12),
+        canal="PERFORMANCE_MAX",          # ⚠️ a pista do cliente
+        login_customer_id=canario.MCC)
+    saida = asyncio.run(
+        trafego.reconciliar_lancamento(corpo, identidade=IDENTIDADE))
+
+    r = saida["releitura"]
+    assert r["estado"] == "falha", r
+    assert r["bloqueia"] is True
+    assert r["proximo_ato_tipo"] == "consertar_a_leitura"
+    # ⚠️ E NENHUMA consulta foi emitida: a pista do cliente não escolheu
+    # objetos para reler.
+    assert consultas == [], consultas
+
+
+def test_o_veredito_do_readback_chega_a_trilha_tambem_no_carimbo_normal(
+    monkeypatch,
+):
+    """CONTRAPROVA: o recibo que FECHA também carrega o veredito.
+
+    A chave `releitura` no `divergencia` do carimbo normal — o caminho de 100%
+    das reconciliações que não divergem, inclusive as de falha, parcial e
+    ambíguo — não era afirmada por teste nenhum: a única asserção existente roda
+    no ramo DIVERGENTE, onde quem grava é a OUTRA chamada. Removê-la não
+    quebrava nada, e o veredito voltaria a existir só na resposta HTTP que o
+    operador fecha com a aba.
+    """
+    diario: list = []
+    repo = RepoDePlanoDeTeste(diario=diario)
+    ledger = LedgerDeTeste(diario=diario, canal_do_lote="SEARCH")
+
+    _reconciliar(
+        monkeypatch, repo=repo, ledger=ledger, diario=diario, chave="d" * 64,
+        encontradas=[{"campaign_id": CAMPANHA,
+                      "campaign_name": "VOLC-CANARY-dddddddddddd / x",
+                      "status": "PAUSED"}],
+        linhas_do_readback={
+            "FROM campaign": [_campanha_lida()],
+            "FROM ad_group_ad": [SimpleNamespace(
+                campaign=SimpleNamespace(id=CAMPANHA),
+                ad_group_ad=SimpleNamespace(
+                    status=SimpleNamespace(name="ENABLED"),
+                    ad=SimpleNamespace(id="1", final_urls=["https://x/"])))],
+            "FROM ad_group": [SimpleNamespace(
+                campaign=SimpleNamespace(id=CAMPANHA),
+                ad_group=SimpleNamespace(
+                    id="1", status=SimpleNamespace(name="ENABLED")))],
+        })
+
+    (reconciliacoes,) = [kw for ato, kw in diario if ato == "reconciliar"]
+    assert reconciliacoes["achou"] is True            # fechou, e fechou bem
+    assert reconciliacoes["divergencia"]["releitura"]["estado"] == "congruente"
+    assert reconciliacoes["divergencia"]["canal_derivado"] == "SEARCH"

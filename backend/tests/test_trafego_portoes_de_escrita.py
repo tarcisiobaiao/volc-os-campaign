@@ -927,6 +927,24 @@ def test_frescor_que_NAO_CONCLUIU_e_INDETERMINADA_e_nao_NAO_PRONTA():
     assert set(quebrou.codigos) != set(zero.codigos), (
         "falha de leitura e zero medido colapsaram no mesmo código")
 
+    # ⚠️ A CAUSA DO FRESCOR CHEGA AO OPERADOR. Sem isto, `causa_do_sinal` podia
+    # ser zerada e o bloqueio caía num texto genérico sem ninguém notar.
+    assert "não completou" in quebrou.resumo()
+    assert "não devolveu linha nenhuma" in hidden.resumo()
+
+    # ⚠️ E A TERCEIRA GUARDA: o marcador só explica uma AUSÊNCIA, nunca
+    # acompanha um número. `parcial` COM contagem é construível do lado do
+    # plano (a tupla de lá não inclui `parcial`), e o marcador não pode colar
+    # nele — senão o campo passaria a mentir sobre o que significa.
+    parcial_com_numero = _veredito_do_plano(pm.Frescor(
+        estado=pm.PARCIAL, conversion_action_id="99",
+        conversoes_na_janela=5.0, dias_desde_a_ultima=1,
+        causa="a leitura de frescor parou na metade."))[0]
+    (acao,) = parcial_com_numero.acoes
+    assert acao.conversoes_na_janela == 5.0
+    assert acao.sinal_indeterminado is False, (
+        "o marcador de ausência de leitura veio acompanhado de um número")
+
 
 def test_frescor_sem_sujeito_continua_sendo_ausencia_de_medicao():
     """O marcador tem SUJEITO: ele não se espalha por quem o frescor não cobre.

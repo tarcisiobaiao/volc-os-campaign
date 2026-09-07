@@ -31,6 +31,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 import asyncio
 import socket
+import sys
 
 import pytest
 from fastapi import HTTPException
@@ -512,12 +513,51 @@ def test_reprocessar_converge_para_o_mesmo_registro():
 # D. A saída de `indeterminado` como porta operacional
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _montar_reconciliacao(monkeypatch, *, ledger, encontradas):
+def _montar_reconciliacao(monkeypatch, *, ledger, encontradas,
+                          linhas_do_readback=None):
+    """As portas de saída da rota de reconciliação, e SÓ elas.
+
+    ⚠️ A TERCEIRA PORTA passou a existir em 06/09/2026: o read-back tipado por
+    canal deixou de depender de um campo opcional do corpo e passou a derivar o
+    canal de `trafego_lote.canal`, então ele roda em TODA reconciliação. Ele
+    abre o cliente do Google por conta própria — e `volc_ads.gads.client.cliente`
+    é `lru_cache` que, com um `google-ads.yaml` na máquina, REFRESCA o token
+    antes de qualquer consulta.
+
+    Sem este dublê os testes deste arquivo ficavam à mercê da ORDEM: verdes na
+    suíte inteira (onde outro arquivo já havia deixado o módulo no
+    `sys.modules`) e vermelhos rodando sozinhos, com a fixture de rede acusando.
+    Foi a verificação focal de 06/09/2026 que pegou isso.
+
+    `consultas` volta para que o teste possa afirmar QUE OBJETOS foram relidos.
+    """
     def ler(**_kw):
         return tuple(encontradas)
 
     monkeypatch.setattr(trafego, "_ler_campanha_na_conta", ler)
     monkeypatch.setattr(trafego, "_ledger", lambda: ledger)
+
+    return _dublar_o_cliente_do_readback(monkeypatch, linhas_do_readback)
+
+
+def _dublar_o_cliente_do_readback(monkeypatch, linhas_do_readback=None):
+    """O `search` que o read-back abre por conta própria. Sem rede."""
+    consultas: list[str] = []
+    por_consulta = linhas_do_readback or {}
+
+    def _search(*, customer_id, query):
+        consultas.append(query)
+        for marca, linhas in por_consulta.items():
+            if marca in query:
+                return list(linhas)
+        return []
+
+    servico = SimpleNamespace(search=_search)
+    monkeypatch.setitem(
+        sys.modules, "volc_ads.gads.client",
+        SimpleNamespace(cliente=lambda _mid: SimpleNamespace(
+            get_service=lambda _n: servico)))
+    return consultas
 
 
 CAMPANHA_NA_CONTA = {"campaign_id": "24183717006",
@@ -614,6 +654,7 @@ def test_leitura_impossivel_registra_e_nao_move_nada(monkeypatch):
 
     monkeypatch.setattr(trafego, "_ler_campanha_na_conta", ler_falha)
     monkeypatch.setattr(trafego, "_ledger", lambda: led.Ledger(supa))
+    _dublar_o_cliente_do_readback(monkeypatch)
 
     asyncio.run(trafego.reconciliar_lancamento(
         trafego.ReconciliarEntrada(
@@ -828,6 +869,7 @@ def test_reconciliar_por_marca_serve_o_item_que_nao_tem_id_externo(monkeypatch):
 
     monkeypatch.setattr(trafego, "_ler_campanha_na_conta", ler)
     monkeypatch.setattr(trafego, "_ledger", lambda: led.Ledger(supa))
+    _dublar_o_cliente_do_readback(monkeypatch)
 
     asyncio.run(trafego.reconciliar_lancamento(
         trafego.ReconciliarEntrada(
@@ -1074,3 +1116,105 @@ def test_leitura_de_metas_que_explode_nao_derruba_a_prontidao(monkeypatch):
         trafego.ProvarEntrada(**_payload_da_rota()), plano_valido=True))
     assert r.conversion_goal_status == "INDETERMINADO"
     assert r.creation_plan_ready == "PRONTO"
+
+
+def test_a_procedencia_do_item_pede_o_canal_ao_lote_e_o_devolve():
+    """CONTRAPROVA: a costura de que o canal do read-back vem do SERVIDOR.
+
+    ⚠️ Todo o argumento do fechamento — "o canal não vem mais de um campo
+    opcional do cliente, vem de `trafego_lote.canal`" — mora nesta consulta, e
+    ela não tinha teste. A verificação focal provou: revertendo o `select` ao
+    formato anterior, a rota volta ao ramo "não derivei o canal" e o item
+    continua sendo carimbado, com a suíte inteira verde por cima.
+
+    A coluna é `NOT NULL` na tabela real (v10_01), com CHECK do vocabulário
+    canônico e gatilho de imutabilidade — é por isso que ela pode ser a
+    autoridade.
+    """
+    supa = SupaDeTeste()
+    ledger = led.Ledger(supa)
+
+    procedencia = asyncio.run(ledger.procedencia_do_item("item-1"))
+
+    assert procedencia == (canario.CONTA, "SEARCH")
+    # A consulta PEDE a coluna — sem isto o canal chegaria vazio em silêncio.
+    (tabela, params) = next(
+        (t, p) for t, p in supa.selects if t == "trafego_lote")
+    assert "canal" in params["select"].split(","), params["select"]
+
+    # E `conta_externa_do_item` continua respondendo o que sempre respondeu:
+    # ela delega, para não existir uma segunda derivação da mesma linha.
+    assert asyncio.run(ledger.conta_externa_do_item("item-1")) == canario.CONTA
+
+
+def test_lote_sem_canal_nao_inventa_um_e_a_rota_recusa_concluir(monkeypatch):
+    """O caso negativo: linha sem canal vira ignorância declarada, não Search."""
+    supa = SupaDeTeste(respostas={"trafego_ledger_reconciliar": {}})
+
+    class SemCanal(SupaDeTeste):
+        async def select(self, tabela: str, params: dict):
+            linhas = await SupaDeTeste.select(self, tabela, params)
+            if tabela == "trafego_lote":
+                return [{k: v for k, v in linhas[0].items() if k != "canal"}]
+            return linhas
+
+    supa = SemCanal(respostas={"trafego_ledger_reconciliar": {}})
+    ledger = led.Ledger(supa)
+    assert asyncio.run(ledger.procedencia_do_item("item-1")) == (canario.CONTA, "")
+
+    _montar_reconciliacao(monkeypatch, ledger=ledger,
+                          encontradas=[CAMPANHA_NA_CONTA])
+    saida = asyncio.run(trafego.reconciliar_lancamento(
+        trafego.ReconciliarEntrada(
+            item_id="11111111-1111-1111-1111-111111111111",
+            customer_id=canario.CONTA, campaign_id="24183717006"),
+        identidade=IDENTIDADE))
+
+    # ⚠️ FALHA e bloqueia — nunca `nao_suportado`, que não bloqueia e
+    # transformaria a nossa ignorância numa afirmação sobre o canal.
+    assert saida["releitura"]["estado"] == "falha"
+    assert saida["releitura"]["bloqueia"] is True
+
+
+def test_a_reconciliacao_de_producao_exercita_o_readback_de_verdade(monkeypatch):
+    """⚠️ Os oito testes de rota deste arquivo não afirmavam nada da releitura.
+
+    Enquanto o dublê de `trafego_lote` não devolvia `canal`, todos caíam no ramo
+    "não derivei o canal" — passavam JUSTAMENTE porque o recurso novo não
+    rodava, e o ramo que eles não exercitavam abre o cliente do Google. Este
+    teste fixa o caminho real: canal derivado, GAQL emitida, veredito afirmado.
+    """
+    supa = SupaDeTeste(respostas={"trafego_ledger_reconciliar": {}})
+    consultas = _montar_reconciliacao(
+        monkeypatch, ledger=led.Ledger(supa), encontradas=[CAMPANHA_NA_CONTA],
+        linhas_do_readback={
+            "FROM campaign": [SimpleNamespace(campaign=SimpleNamespace(
+                id="24183717006", name="VOLC-CANARY-teste",
+                status=SimpleNamespace(name="PAUSED"),
+                advertising_channel_type=SimpleNamespace(name="SEARCH"),
+                bidding_strategy_type=SimpleNamespace(name="MAXIMIZE_CONVERSIONS")))],
+            "FROM ad_group_ad": [SimpleNamespace(
+                campaign=SimpleNamespace(id="24183717006"),
+                ad_group_ad=SimpleNamespace(
+                    status=SimpleNamespace(name="ENABLED"),
+                    ad=SimpleNamespace(id="1", final_urls=["https://x/"])))],
+            "FROM ad_group": [SimpleNamespace(
+                campaign=SimpleNamespace(id="24183717006"),
+                ad_group=SimpleNamespace(
+                    id="1", status=SimpleNamespace(name="ENABLED")))],
+        })
+
+    saida = asyncio.run(trafego.reconciliar_lancamento(
+        trafego.ReconciliarEntrada(
+            item_id="11111111-1111-1111-1111-111111111111",
+            customer_id=canario.CONTA, campaign_id="24183717006"),
+        identidade=IDENTIDADE))
+
+    # O read-back RODOU: leu a campanha e os objetos de Search.
+    texto = " ".join(consultas)
+    assert "FROM campaign" in texto and "FROM ad_group" in texto, consultas
+    assert "FROM asset_group" not in texto, consultas
+    # E a campanha Search correta desta casa não bloqueia.
+    assert saida["releitura"]["estado"] == "congruente", saida["releitura"]
+    assert saida["releitura"]["bloqueia"] is False
+    assert supa.corpo_de("trafego_ledger_reconciliar")["p_achou"] is True

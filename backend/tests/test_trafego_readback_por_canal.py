@@ -375,6 +375,20 @@ def test_nenhum_proximo_ato_e_um_ato_de_despacho():
         assert ato in vrel.ATOS_DO_READBACK, (estado, ato)
         assert ato not in vrel.ATOS_DE_DESPACHO, (estado, ato)
 
+    # (e) O PAR estado→ato, inteiro. A alínea (d) só cobra pertinência ao
+    # vocabulário: trocar o ato de `AUSENCIA_PROVADA` por `nada_a_fazer` fazia o
+    # operador ler "nada a fazer" diante de uma criação que provadamente não
+    # aconteceu, e nenhum teste caía. Medido pela verificação focal.
+    assert vrel._ATO_POR_ESTADO == {
+        E.CONGRUENTE: vrel.ATO_NADA_A_FAZER,
+        E.DIVERGENTE: vrel.ATO_CONFERIR_NA_CONTA,
+        E.AUSENCIA_PROVADA: vrel.ATO_ESCALAR_PARA_A_ROTA_DE_CRIACAO,
+        E.LEITURA_PARCIAL: vrel.ATO_RELER,
+        E.FALHA: vrel.ATO_CONSERTAR_A_LEITURA,
+        E.NAO_SUPORTADO: vrel.ATO_NADA_A_FAZER,
+        E.AMBIGUO: vrel.ATO_DECISAO_HUMANA,
+    }
+
     assert vrel.resumo(())["reenvio_por_readback"] is False
     assert vrel.resumo(())["proximo_ato_tipo"] == vrel.ATO_CONSERTAR_A_LEITURA
 
