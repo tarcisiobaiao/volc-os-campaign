@@ -139,6 +139,9 @@ class RegistroSagaMetaSupabase:
         nascimento_pausado_confirmado: bool,
         pedido_do_operador: Mapping[str, Any],
         recibos_de_supply: Sequence[Mapping[str, Any]],
+        plano_congelado: Mapping[str, Any],
+        versao_do_compilador: str,
+        snapshot_sha256: str,
     ) -> Mapping[str, Any]:
         """Registra a aprovação junto do manifesto imutável de passos.
 
@@ -170,6 +173,11 @@ class RegistroSagaMetaSupabase:
                 "META_ASSET_SUPPLY_RECEIPTS_INVALID",
                 "a aprovação precisa carregar entre 1 e 10 recibos de peça",
             )
+        if not plano_congelado:
+            raise ErroDeNascimentoMeta(
+                "META_PLAN_SNAPSHOT_MISSING",
+                "a aprovação precisa congelar o plano despachável antes de existir",
+            )
         return await self._rpc("trafego_meta_create_approve", {
             "p_plan_sha256": plano_sha256,
             "p_account_ref": account_ref,
@@ -183,6 +191,13 @@ class RegistroSagaMetaSupabase:
             "p_paused_birth_confirmed": True,
             "p_plan_request": dict(pedido_do_operador),
             "p_asset_supply_receipts": recibos,
+            # ⚠️ O PLANO DESPACHÁVEL, CONGELADO. É o que permite criar e
+            # reconciliar sem recompilar — sem reler a conta, sem rebaixar
+            # bytes do CDN e sem depender de a atestação de direitos ainda estar
+            # na validade. Não contém token nem segredo.
+            "p_compiled_plan": dict(plano_congelado),
+            "p_compiler_version": versao_do_compilador,
+            "p_snapshot_sha256": snapshot_sha256,
         })
 
     async def manifesto(self, approval_id: str) -> Mapping[str, Any]:
@@ -205,6 +220,50 @@ class RegistroSagaMetaSupabase:
             "META_AMBIGUOUS_REQUIRES_MANUAL_ADJUDICATION",
             "a ausência após despacho não prova que nada nasceu; o passo permanece ambíguo",
         )
+
+    async def reclamar_orfao(self, *, passo_ref: str, idade_minima_s: int) -> None:
+        """Promove um passo IN_FLIGHT ENVELHECIDO para AMBIGUO.
+
+        ## Por que isto não é um retry disfarçado
+
+        Não é. A promoção NÃO despacha nada e não autoriza nenhum POST: ela só
+        torna o passo VISÍVEL para a recuperação por leitura, que é read-only.
+        Um passo que ninguém consegue enxergar é pior que um passo ambíguo —
+        `F03` mediu o preço: a rota respondia `passos_ambiguos: 0`, resposta
+        indistinguível de "nada travado", enquanto o objeto podia existir na
+        conta.
+
+        ## Por que a idade substitui a lease
+
+        O schema não tem coluna de dono nem de expiração de reivindicação, e
+        inventar uma agora exigiria reescrever o caminho de despacho. A idade é
+        o substituto honesto: um passo preparado há muito mais tempo que o
+        timeout HTTP do executor não tem trabalhador vivo por trás. O limiar
+        precisa ficar confortavelmente acima de `TIMEOUT_META`, e o banco
+        recusa valores fora da faixa.
+
+        ⚠️ E ela funciona com aprovação EXPIRADA de propósito. Expiração fecha
+        novo despacho; ela não pode fechar a leitura do que já foi despachado.
+        """
+        await self._rpc("trafego_meta_create_reclaim_orphan", {
+            "p_step_ref": passo_ref, "p_min_age_seconds": int(idade_minima_s),
+        })
+
+    async def registrar_readback(
+        self, *, passo_ref: str, evidencia: Mapping[str, Any], codigo: str | None = None,
+    ) -> None:
+        """Grava o read-back — o que CONFIRMOU e o que divergiu — com horário.
+
+        Antes só a divergência ficava registrada (`readback_error`). Um recibo
+        que guarda apenas os fracassos não permite responder "isto foi conferido
+        e quando", e a resposta HTTP da UI passava a ser o único lugar onde a
+        confirmação existia. Uma mensagem de tela não é evidência durável.
+        """
+        await self._rpc("trafego_meta_create_record_readback", {
+            "p_step_ref": passo_ref,
+            "p_evidence": dict(evidencia),
+            "p_error_code": codigo,
+        })
 
     async def marcar_readback_divergente(self, *, passo_ref: str, codigo: str) -> None:
         """Grava, no passo já CRIADO, que o read-back não confirmou o objeto.

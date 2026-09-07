@@ -233,6 +233,32 @@ def _form(payload: Mapping[str, Any]) -> dict[str, str]:
     return saida
 
 
+def _evidencia_do_readback(
+    tipo: str, dados: Any, *, conferido: bool,
+) -> dict[str, Any]:
+    """A projeção SANITIZADA do que a leitura devolveu.
+
+    Só campos de vocabulário fechado e valores curtos. Nada de id externo, nada
+    de texto do operador, nada de `object_story_spec` inteiro — a evidência
+    existe para adjudicar um incidente, não para virar uma segunda cópia do
+    payload dentro do ledger. A RPC recusa a gravação se encontrar chave
+    sensível, e essa recusa é a rede de segurança, não a primeira defesa.
+    """
+    leitura = dados if isinstance(dados, Mapping) else {}
+    return {
+        "matched": bool(conferido),
+        "tipo": tipo,
+        "status": str(leitura.get("configured_status") or leitura.get("status") or "")[:40] or None,
+        "effective_status": (
+            str(leitura.get("effective_status") or "")[:40] or None
+            if tipo in {"campaign", "adset", "ad"} else "NAO_PEDIDO"
+        ),
+        "objective": str(leitura.get("objective") or "")[:60] or None,
+        "optimization_goal": str(leitura.get("optimization_goal") or "")[:60] or None,
+        "advantage_audience_lido": _advantage_audience(leitura.get("targeting")),
+    }
+
+
 class ExecutorMetaPausado:
     def __init__(
         self,
@@ -434,15 +460,25 @@ class ExecutorMetaPausado:
                         conta_externa=plano.conta_externa,
                     )
                 except ErroRemotoMeta as exc:
-                    marcar = getattr(self._registro, "marcar_readback_divergente", None)
-                    if marcar is not None:
-                        try:
-                            await marcar(passo_ref=passo.passo_ref, codigo=exc.codigo)
-                        except Exception:
-                            # Falhar ao anotar não pode apagar a divergência que
-                            # a exceção carrega: ela continua subindo.
-                            pass
+                    # ⚠️ A DIVERGÊNCIA É GRAVADA COM EVIDÊNCIA, não só com um
+                    # código. Saber QUE divergiu sem saber EM QUE campo obriga
+                    # a repetir a leitura para adjudicar — e a leitura de
+                    # amanhã pode já não descrever o instante do despacho.
+                    await self._registrar_readback(
+                        passo.passo_ref,
+                        _evidencia_do_readback(
+                            operacao.tipo_objeto, locals().get("dados"), conferido=False),
+                        codigo=exc.codigo,
+                    )
                     raise
+                # O read-back POSITIVO também vira evidência durável, com
+                # horário. Antes só o fracasso ficava registrado, e a
+                # confirmação existia apenas no corpo da resposta HTTP — quer
+                # dizer, apenas no navegador. Mensagem de tela não é recibo.
+                await self._registrar_readback(
+                    passo.passo_ref,
+                    _evidencia_do_readback(operacao.tipo_objeto, dados, conferido=True),
+                )
                 read_back[operacao.chave] = dados
                 tipos[operacao.chave] = operacao.tipo_objeto
         except httpx.TimeoutException as exc:
@@ -504,6 +540,38 @@ class ExecutorMetaPausado:
             },
             retry_permitido=False,
         )
+
+    async def _registrar_readback(
+        self,
+        passo_ref: str,
+        evidencia: Mapping[str, Any],
+        *,
+        codigo: str | None = None,
+    ) -> None:
+        """Grava a evidência do read-back sem deixar a gravação derrubar a saga.
+
+        ⚠️ A gravação é best-effort DE PROPÓSITO, e só ela. Falhar ao anotar não
+        pode apagar a divergência que a exceção carrega nem inventar uma
+        confirmação: quem decide o desfecho é o `raise` de quem chamou. O
+        registro melhora a auditoria; ele não é a autoridade.
+
+        Compatível com ledgers que ainda não têm o método — os dublês antigos e
+        qualquer implementação anterior à migration do snapshot.
+        """
+        registrar = getattr(self._registro, "registrar_readback", None)
+        if registrar is None:
+            # Caminho legado: só a divergência era registrável.
+            legado = getattr(self._registro, "marcar_readback_divergente", None)
+            if codigo and legado is not None:
+                try:
+                    await legado(passo_ref=passo_ref, codigo=codigo)
+                except Exception:
+                    pass
+            return
+        try:
+            await registrar(passo_ref=passo_ref, evidencia=dict(evidencia), codigo=codigo)
+        except Exception:
+            pass
 
     async def _post(
         self,

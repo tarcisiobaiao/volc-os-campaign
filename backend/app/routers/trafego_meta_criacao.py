@@ -75,6 +75,7 @@ from app.routers.trafego_meta_validacao import (
 from app.seguranca.identidade import Identidade, exigir_admin
 from app.services.supabase_service import SupabaseService
 from app.trafego.meta.credenciais import SegredoEfemero
+from app.trafego.meta_execucao import capacidades as capacidades_meta
 from app.trafego.meta_execucao.capacidades import (
     autorizacoes_de_processo_ausentes,
     motivos_de_processo_ausentes,
@@ -85,7 +86,12 @@ from app.trafego.meta_execucao.capacidades import (
     motivos_ausentes,
     motivos_do_ledger_ausente,
 )
-from app.trafego.meta_execucao.compilador import PlanoCompiladoMeta
+from app.trafego.meta_execucao.compilador import (
+    VERSAO_DO_COMPILADOR,
+    PlanoCompiladoMeta,
+    SnapshotMetaInvalido,
+    descongelar_plano,
+)
 from app.trafego.meta_execucao.contrato import AutorizacaoMeta, ErroDeNascimentoMeta
 from app.trafego.meta_execucao.executor import ErroRemotoMeta, ExecutorMetaPausado
 from app.trafego.meta_execucao.reconciliacao import (
@@ -117,6 +123,19 @@ JANELA_DA_APROVACAO = timedelta(minutes=15)
 #: prova de ontem não descreve a conta de hoje — saldo, Página e biblioteca de
 #: imagens mudam sem avisar.
 JANELA_DA_VALIDACAO_S = 1800
+
+#: Idade mínima de um passo IN_FLIGHT para a recuperação poder promovê-lo.
+#:
+#: ⚠️ O limiar é a defesa inteira, porque o schema não tem lease: sem dono e sem
+#: expiração de reivindicação, nada consegue afirmar que o processo que
+#: reivindicou o passo morreu. A idade é o substituto honesto — e por isso ela
+#: precisa ficar CONFORTAVELMENTE acima do timeout HTTP do executor
+#: (`TIMEOUT_META`, 20s). Um limiar apertado promoveria um passo que a saga
+#: ainda está despachando, e a corrida seguinte gravaria conclusões sobre um
+#: passo vivo.
+#:
+#: Promover NÃO despacha nada: só torna o passo visível para a leitura.
+IDADE_MINIMA_DO_ORFAO_S = 300
 
 #: ⚠️ As duas autorizações vivem em `meta_execucao.capacidades`, não aqui. A
 #: rota de capacidades RELATA o mesmo conjunto que esta rota EXIGE; se cada uma
@@ -335,6 +354,46 @@ def _orcamento_do_plano(compilado: PlanoCompiladoMeta) -> int:
         "META_BUDGET_NOT_IN_PLAN", "o plano compilado não declara orçamento no conjunto")
 
 
+def _passo_envelhecido(passo: Mapping[str, Any]) -> bool:
+    """Se o passo foi preparado há tempo bastante para não ter dono vivo.
+
+    A comparação é feita aqui só para EVITAR chamadas inúteis ao banco; quem
+    decide de verdade é a RPC, que refaz a conta dentro da transação. Um relógio
+    de processo não pode ser a autoridade sobre um estado compartilhado.
+    """
+    bruto = _texto(passo.get("prepared_at"))
+    if not bruto:
+        return False
+    try:
+        quando = datetime.fromisoformat(bruto.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if quando.tzinfo is None:
+        return False
+    return (datetime.now(timezone.utc) - quando).total_seconds() >= IDADE_MINIMA_DO_ORFAO_S
+
+
+def _plano_congelado_da_aprovacao(manifesto: Mapping[str, Any]) -> PlanoCompiladoMeta:
+    """O plano despachável que a aprovação congelou — ou uma recusa nomeada.
+
+    ⚠️ AUSÊNCIA DE SNAPSHOT NÃO VIRA RECOMPILAÇÃO SILENCIOSA. Uma aprovação
+    anterior a esta versão não tem plano congelado, e reconstruí-la a partir da
+    conta de hoje produziria outro plano com cara do mesmo — exatamente o que
+    `MASTER-SPEC.json` proíbe em `immutable_dispatch.migration_compatibility`.
+    Ela recebe um código próprio, `META_LEGACY_RECOVERY_REQUIRED`, e segue por
+    adjudicação manual com os IDs que o recibo já guarda.
+    """
+    congelado = manifesto.get("compiled_plan")
+    if not isinstance(congelado, Mapping) or not congelado:
+        raise ErroDeNascimentoMeta(
+            "META_LEGACY_RECOVERY_REQUIRED",
+            "esta aprovação é anterior ao plano congelado; ela não pode ser "
+            "recompilada em silêncio e precisa de adjudicação manual pelos IDs "
+            "já registrados no recibo",
+        )
+    return descongelar_plano(congelado)
+
+
 def _exigir_validacao_utilizavel(
     recibo: Mapping[str, Any], *, ator: str, plano_sha256: str,
 ) -> None:
@@ -453,6 +512,13 @@ async def aprovar(
                 manifesto.prova_publica()
                 for manifesto in compilado.asset_supply_manifests
             ],
+            # ⚠️ O PLANO DESPACHÁVEL CONGELADO. A partir daqui, criar e
+            # reconciliar leem ESTE plano — não a conta de agora. É o que tira
+            # a recuperação da dependência de reler a biblioteca, rebaixar
+            # bytes do CDN e a atestação de direitos ainda estar na validade.
+            plano_congelado=compilado.congelar(),
+            versao_do_compilador=VERSAO_DO_COMPILADOR,
+            snapshot_sha256=compilado.plano_sha256,
         )
         return {
             "ok": True,
@@ -480,8 +546,11 @@ async def criar_pausada(
 ) -> dict[str, Any]:
     """Executa a saga aprovada: Campaign → AdSet → Creative → Ad, tudo PAUSED.
 
-    Recebe duas referências e nada mais. O plano é relido do banco, recompilado
-    aqui dentro e conferido contra o hash aprovado antes de o executor existir.
+    Recebe duas referências e nada mais. O plano DESPACHÁVEL é lido do snapshot
+    congelado na aprovação, tem a identidade recalculada e é conferido contra o
+    hash aprovado antes de o executor existir. Nenhuma recompilação acontece
+    aqui: despachar não faz perguntas sobre o presente, exceto a única que
+    importa — se a autorização de destino desta conta continua de pé.
     """
     _exigir_host_local(request)
     _exigir_capacidade_de_criacao()
@@ -496,25 +565,39 @@ async def criar_pausada(
                 "META_APPROVED_PLAN_DIVERGED",
                 "a tela pediu a criação de uma versão diferente da aprovada")
 
-        pedido_gravado = manifesto.get("plan_request")
-        if not isinstance(pedido_gravado, Mapping):
-            raise ErroDeNascimentoMeta(
-                "META_APPROVAL_PLAN_REQUEST_INVALID",
-                "a aprovação não guarda o pedido do operador")
-        # O pedido gravado volta a passar pelo contrato inteiro. Ele foi
-        # validado uma vez na aprovação, e é validado de novo aqui: uma linha
-        # adulterada no banco não vira payload.
-        modelo = PedidoPlanoMetaPausado.model_validate(dict(pedido_gravado))
-        plano_puro = _plano(modelo)
-
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
-        compilado = await _compilar(modelo, plano_puro, segredo, ator=quem.sub)
+        # ⚠️ O PLANO VEM DO SNAPSHOT, NÃO DE UMA RECOMPILAÇÃO.
+        #
+        # Antes esta rota relia a conta inteira para reconstruir o plano e só
+        # então comparava hashes. Recompilar é fazer perguntas sobre o PRESENTE
+        # para despachar uma decisão do PASSADO: a biblioteca pode ter mudado, a
+        # atestação de direitos pode ter vencido, e o plano aprovado deixava de
+        # ser despachável sem que nada nele tivesse mudado.
+        #
+        # O snapshot é o plano que o operador aprovou, e `descongelar_plano`
+        # RECALCULA a identidade dele antes de devolver — uma linha adulterada
+        # no banco não vira payload.
+        compilado = _plano_congelado_da_aprovacao(manifesto)
         _plano_bate_com_a_aprovacao(
             compilado, manifesto, esperado_pela_tela=payload.plano_sha256_esperado)
         if _orcamento_do_plano(compilado) != int(manifesto.get("daily_budget_minor") or -1):
             raise ErroDeNascimentoMeta(
                 "META_BUDGET_DIVERGED",
                 "o orçamento do conjunto não é o orçamento aprovado")
+        # ⚠️ REVOGAÇÃO É CONFERIDA AGORA, e é a única pergunta sobre o presente
+        # que o despacho ainda faz. O snapshot carrega a prova de destino que
+        # foi aprovada; se um administrador retirou esta conta da lista de
+        # conferidas depois disso, a autorização deixou de existir. Antes essa
+        # revogação acontecia por ACIDENTE — a recompilação mudava o hash — e
+        # acidente não é mecanismo: a mensagem não dizia a causa e a mesma
+        # recompilação quebrava a recuperação histórica junto.
+        if not capacidades_meta.destino_website_liberado(compilado.account_ref):
+            raise ErroDeNascimentoMeta(
+                "META_SHOP_REDIRECT_REVOKED",
+                "a conferência de destino desta conta foi revogada depois da aprovação; "
+                "aprove de novo depois de conferir a conta",
+            )
+
+        segredo = SegredoEfemero(_credencial_salva(quem).token)
 
         autorizacao = AutorizacaoMeta(
             plano_sha256=compilado.plano_sha256,
@@ -578,11 +661,54 @@ async def reconciliar(
                 "quem aprovou não é quem está pedindo a reconciliação")
         passos = manifesto.get("steps")
         passos = list(passos) if isinstance(passos, (list, tuple)) else []
+
+        # ⚠️ O PASSO ÓRFÃO ENTRA NA RECUPERAÇÃO, e antes ele não entrava.
+        #
+        # `F03`: o filtro era `state == "AMBIGUOUS"` e nada mais. Um passo que
+        # ficou IN_FLIGHT — porque o processo caiu entre o POST e o registro da
+        # conclusão — era INVISÍVEL aqui, e a rota respondia `passos_ambiguos:
+        # 0`. Essa resposta é indistinguível de "nada travado", enquanto o
+        # objeto pode existir na conta. Pior: o índice de gêmeo entre aprovações
+        # trata IN_FLIGHT como reivindicação viva, então o órfão bloqueava
+        # PERMANENTEMENTE qualquer aprovação futura de criar aquele objeto.
+        #
+        # A promoção é por IDADE e acontece no banco. Ela não despacha nada:
+        # torna o passo legível para a adjudicação POR LEITURA, que é read-only.
+        orfaos = [
+            item for item in passos
+            if isinstance(item, Mapping)
+            and _texto(item.get("state")) == "IN_FLIGHT"
+            and _passo_envelhecido(item)
+        ]
+        promovidos: list[str] = []
+        for orfao in orfaos:
+            try:
+                await registro.reclamar_orfao(
+                    passo_ref=_texto(orfao.get("step_ref")),
+                    idade_minima_s=IDADE_MINIMA_DO_ORFAO_S,
+                )
+            except ErroDeNascimentoMeta:
+                # Corrida com um trabalhador que voltou à vida, ou passo que
+                # mudou de estado entre a leitura e a promoção. Nenhum dos dois
+                # é motivo para derrubar a recuperação dos outros passos.
+                continue
+            promovidos.append(_texto(orfao.get("name")))
+        if promovidos:
+            manifesto = await registro.manifesto(payload.approval_id)
+            passos = manifesto.get("steps")
+            passos = list(passos) if isinstance(passos, (list, tuple)) else []
+
         ambiguos = {
             _texto(item.get("name")): _texto(item.get("step_ref"))
             for item in passos
             if isinstance(item, Mapping) and _texto(item.get("state")) == "AMBIGUOUS"
         }
+        # Órfãos jovens demais para serem promovidos existem e precisam APARECER.
+        # Silenciá-los devolveria a mesma resposta enganosa por outra porta.
+        em_voo_recentes = [
+            _texto(item.get("name")) for item in passos
+            if isinstance(item, Mapping) and _texto(item.get("state")) == "IN_FLIGHT"
+        ]
         # O instante em que cada passo foi preparado. É o que separa "este
         # objeto nasceu do nosso despacho" de "a conta já tinha um homônimo".
         preparados = {
@@ -595,22 +721,23 @@ async def reconciliar(
                 "ok": True,
                 "efeito_externo": "NENHUM",
                 "passos_ambiguos": 0,
+                "passos_em_voo": em_voo_recentes,
+                "passos_promovidos": promovidos,
                 "conclusoes": [],
                 "recibo": dict(await registro.recibo(payload.approval_id)),
             }
 
-        pedido_gravado = manifesto.get("plan_request")
-        if not isinstance(pedido_gravado, Mapping):
-            raise ErroDeNascimentoMeta(
-                "META_APPROVAL_PLAN_REQUEST_INVALID",
-                "a aprovação não guarda o pedido do operador")
-        modelo = PedidoPlanoMetaPausado.model_validate(dict(pedido_gravado))
+        # ⚠️ O SNAPSHOT, NÃO UMA RECOMPILAÇÃO. Esta era a linha que fazia a
+        # recuperação depender de reler a biblioteca, rebaixar os bytes do CDN e
+        # de a atestação de direitos ainda estar dentro da validade — `F02`. Um
+        # despacho de duas horas atrás parava aqui, em
+        # META_ASSET_POLICY_RECEIPT_EXPIRED, antes de conseguir LER o que já
+        # podia existir na conta.
+        #
+        # Ler não precisa de nenhuma dessas perguntas. Precisa do plano que foi
+        # despachado, e ele está congelado.
+        compilado = _plano_congelado_da_aprovacao(manifesto)
         segredo = SegredoEfemero(_credencial_salva(quem).token)
-        compilado = await _compilar(modelo, _plano(modelo), segredo, ator=quem.sub)
-        if compilado.plano_sha256 != _texto(manifesto.get("plan_sha256")):
-            raise ErroDeNascimentoMeta(
-                "META_APPROVED_PLAN_DIVERGED",
-                "o plano recompilado difere do aprovado; não é possível reconciliar por nome")
 
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             conclusoes = await ReconciliadorMetaSomenteLeitura(cliente).conciliar(
@@ -627,6 +754,8 @@ async def reconciliar(
             "ok": True,
             "efeito_externo": "NENHUM",
             "passos_ambiguos": len(ambiguos),
+            "passos_em_voo": em_voo_recentes,
+            "passos_promovidos": promovidos,
             "conclusoes": publicadas,
             "recibo": dict(await registro.recibo(payload.approval_id)),
         }

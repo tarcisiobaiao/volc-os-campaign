@@ -253,6 +253,59 @@ class ManifestoSupplyMeta:
             "image_hash_bound": True,
         }
 
+    def congelado(self) -> Mapping[str, Any]:
+        """Tudo o que o snapshot precisa para reconstruir ESTE manifesto.
+
+        ⚠️ Diferente de `prova_publica()`, que é a projeção que entra no hash e
+        omite `provider_image_hash`. Aqui o `image_hash` da Meta viaja, porque
+        sem ele o plano congelado não seria despachável — e por isso o snapshot
+        é server-only e nunca entra no recibo do navegador.
+        """
+        return {
+            **self.prova_publica(),
+            "provider_image_hash": self.provider_image_hash,
+        }
+
+    @classmethod
+    def descongelado(cls, materia: Mapping[str, Any]) -> "ManifestoSupplyMeta":
+        """Reconstrói o manifesto a partir do snapshot.
+
+        ⚠️ NÃO reconfere validade. Um recibo de política expirado precisa
+        continuar reconstruível: expiração fecha NOVO despacho — e quem fecha é
+        `manifesto_for`, no caminho de compilação — mas nunca pode apagar a
+        leitura histórica do que já foi despachado. Recusar aqui transformaria
+        o snapshot em mais uma porta que fecha com o tempo, que é exatamente o
+        defeito que ele existe para consertar.
+        """
+        if not isinstance(materia, Mapping):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_INVALID",
+                "o manifesto congelado da peça é inválido")
+        try:
+            expira = datetime.fromisoformat(str(materia.get("policy_expires_at") or ""))
+        except ValueError:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_INVALID",
+                "o manifesto congelado não tem expiração legível") from None
+        return cls(
+            asset_ref=str(materia.get("asset_ref") or ""),
+            content_sha256=str(materia.get("content_sha256") or ""),
+            item_sha256=str(materia.get("item_sha256") or ""),
+            supply_sha256=str(materia.get("supply_sha256") or ""),
+            policy_receipt_ref=str(materia.get("policy_receipt_ref") or ""),
+            policy_state=str(materia.get("policy_state") or ""),
+            policy_expires_at=expira,
+            lifecycle=str(materia.get("lifecycle") or ""),
+            provider_image_hash=str(materia.get("provider_image_hash") or ""),
+            mime_type=str(materia.get("mime_type") or ""),
+            width=materia.get("width"),
+            height=materia.get("height"),
+            declared_width=materia.get("declared_width"),
+            declared_height=materia.get("declared_height"),
+            byte_size=materia.get("byte_size"),
+            rendition=str(materia.get("rendition") or ORIGEM_BIBLIOTECA),
+        )
+
 
 @dataclass(frozen=True)
 class PlanoMetaPausado:

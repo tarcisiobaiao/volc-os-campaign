@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from .contrato import (
     DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
@@ -21,9 +21,53 @@ from .contrato import (
 _CAMPAIGN = "$campaign.id"
 _ADSET = "$adset.id"
 
+#: Versão do compilador que produziu o plano congelado.
+#:
+#: Ela viaja com o snapshot para que uma mudança futura na forma do plano seja
+#: DETECTÁVEL em vez de silenciosa. Um snapshot de outra versão não é
+#: descongelado por adivinhação: ele é recusado com nome próprio, e a operação
+#: antiga segue pelo caminho de recuperação manual.
+VERSAO_DO_COMPILADOR = "meta-compilador-v2"
+
 
 def _canonico(valor: Any) -> str:
     return json.dumps(valor, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _materia_do_plano(
+    *,
+    api_version: str,
+    account_ref: str,
+    destination_url: str,
+    shop_redirect_proof: str,
+    asset_supply: list[Mapping[str, Any]],
+    operacoes: Sequence["OperacaoMeta"],
+) -> dict[str, Any]:
+    """A matéria canônica cujo sha256 é o `plano_sha256`.
+
+    ⚠️ Extraída para função porque agora ela tem DOIS chamadores: o compilador,
+    que a monta a partir da conta lida agora, e o descongelamento, que a remonta
+    a partir do snapshot para conferir integridade. Se cada um montasse a sua,
+    um snapshot íntegro poderia parecer adulterado — ou, pior, o contrário.
+    """
+    return {
+        "api_version": api_version,
+        "account_ref": account_ref,
+        "destination_url": destination_url,
+        # O selo cobre o DESTINO, e a prova de destino é parte dele: um plano
+        # aprovado com a prova em mãos não pode ser recriado sem ela.
+        "shop_redirect_proof": shop_redirect_proof,
+        "asset_supply": list(asset_supply),
+        "operations": [
+            {
+                "key": op.chave,
+                "type": op.tipo_objeto,
+                "endpoint": op.endpoint,
+                "payload": op.payload,
+            }
+            for op in operacoes
+        ],
+    }
 
 
 @dataclass(frozen=True)
@@ -104,6 +148,129 @@ class PlanoCompiladoMeta:
                 for op in self.operacoes
             ],
         }
+
+    def congelar(self) -> dict[str, Any]:
+        """O plano DESPACHÁVEL congelado, para o servidor guardar na aprovação.
+
+        ## Por que ele existe
+
+        Sem snapshot, criar e reconciliar precisavam RECOMPILAR — e recompilar
+        significa abrir o Keychain, reler a conta, rebaixar os bytes da peça do
+        CDN e depender da atestação de direitos ainda estar dentro da validade.
+        O preço estava medido em `FINDINGS.json:F02`: a atestação vale uma hora,
+        a aprovação vale quinze minutos, e um passo ambíguo ficava recuperável
+        só dentro de uma janela que fecha sessenta minutos depois de um clique
+        feito ANTES de aprovar. Passada a janela, a recuperação histórica era
+        impossível — embora os objetos pudessem existir na conta.
+
+        Com o snapshot, recuperar deixa de fazer perguntas sobre o presente.
+
+        ## O que ele NÃO contém
+
+        Token, `app_secret`, conteúdo de Keychain e URL assinada de CDN. O
+        snapshot carrega identidades resolvidas do provedor (`page_id`,
+        `image_hash`, endpoint com a conta) porque sem elas ele não seria
+        despachável — mas essas identidades são dado sensível de operação, não
+        segredo de autenticação, e por isso ele é SERVER-ONLY: projetado no
+        manifesto interno, nunca no recibo que vai ao navegador.
+        """
+        return {
+            "compiler_version": VERSAO_DO_COMPILADOR,
+            "api_version": self.api_version,
+            "account_ref": self.account_ref,
+            "destination_url": self.destination_url,
+            "shop_redirect_proof": self.shop_redirect_proof,
+            "estado_ao_nascer": self.estado_ao_nascer,
+            "plano_sha256": self.plano_sha256,
+            "asset_supply": [item.congelado() for item in self.asset_supply_manifests],
+            "operacoes": [
+                {
+                    "nome": op.nome,
+                    "endpoint": op.endpoint,
+                    "payload": op.payload,
+                    "depende_de": list(op.depende_de),
+                    "validavel_sem_criar_pai": op.validavel_sem_criar_pai,
+                    "tipo": op.tipo_objeto,
+                }
+                for op in self.operacoes
+            ],
+        }
+
+
+class SnapshotMetaInvalido(ErroDeNascimentoMeta):
+    """O snapshot existe mas não pode ser usado como plano despachável."""
+
+
+def descongelar_plano(materia: Mapping[str, Any]) -> PlanoCompiladoMeta:
+    """Reconstrói o plano congelado e CONFERE a integridade dele.
+
+    ⚠️ A conferência é o ponto inteiro. Um snapshot é uma autorização de gasto
+    guardada num banco; se ele pudesse ser editado por fora e ainda assim
+    despachar, a aprovação deixaria de descrever o que nasce. Por isso a matéria
+    canônica é remontada aqui e o `plano_sha256` é RECALCULADO — não lido.
+
+    Falhar aqui nunca é motivo para recompilar em silêncio. A recompilação
+    produziria outro plano com cara do mesmo, e é exatamente o que
+    `MASTER-SPEC.json` proíbe em `immutable_dispatch.migration_compatibility`.
+    """
+    if not isinstance(materia, Mapping) or not materia:
+        raise SnapshotMetaInvalido(
+            "META_PLAN_SNAPSHOT_MISSING", "esta aprovação não guarda um plano congelado")
+    versao = str(materia.get("compiler_version") or "")
+    if versao != VERSAO_DO_COMPILADOR:
+        raise SnapshotMetaInvalido(
+            "META_PLAN_SNAPSHOT_VERSION_UNSUPPORTED",
+            "o plano congelado foi produzido por outra versão do compilador",
+        )
+    operacoes_cruas = materia.get("operacoes")
+    if not isinstance(operacoes_cruas, (list, tuple)) or not operacoes_cruas:
+        raise SnapshotMetaInvalido(
+            "META_PLAN_SNAPSHOT_INVALID", "o plano congelado não tem operações")
+    operacoes: list[OperacaoMeta] = []
+    for bruta in operacoes_cruas:
+        if not isinstance(bruta, Mapping):
+            raise SnapshotMetaInvalido(
+                "META_PLAN_SNAPSHOT_INVALID", "o plano congelado tem operação inválida")
+        payload = bruta.get("payload")
+        if not isinstance(payload, Mapping):
+            raise SnapshotMetaInvalido(
+                "META_PLAN_SNAPSHOT_INVALID", "o plano congelado tem payload inválido")
+        operacoes.append(OperacaoMeta(
+            nome=str(bruta.get("nome") or ""),
+            endpoint=str(bruta.get("endpoint") or ""),
+            payload=dict(payload),
+            depende_de=tuple(str(item) for item in (bruta.get("depende_de") or ())),
+            validavel_sem_criar_pai=bool(bruta.get("validavel_sem_criar_pai")),
+            tipo=str(bruta.get("tipo") or "") or None,
+        ))
+    manifestos = tuple(
+        ManifestoSupplyMeta.descongelado(item)
+        for item in (materia.get("asset_supply") or ())
+    )
+    gravado = str(materia.get("plano_sha256") or "")
+    recalculado = hashlib.sha256(_canonico(_materia_do_plano(
+        api_version=str(materia.get("api_version") or ""),
+        account_ref=str(materia.get("account_ref") or ""),
+        destination_url=str(materia.get("destination_url") or ""),
+        shop_redirect_proof=str(materia.get("shop_redirect_proof") or ""),
+        asset_supply=[item.prova_publica() for item in manifestos],
+        operacoes=operacoes,
+    )).encode("utf-8")).hexdigest()
+    if recalculado != gravado:
+        raise SnapshotMetaInvalido(
+            "META_PLAN_SNAPSHOT_TAMPERED",
+            "o plano congelado não confere com a identidade que ele declara",
+        )
+    return PlanoCompiladoMeta(
+        account_ref=str(materia.get("account_ref") or ""),
+        destination_url=str(materia.get("destination_url") or ""),
+        operacoes=tuple(operacoes),
+        plano_sha256=gravado,
+        asset_supply_manifests=manifestos,
+        estado_ao_nascer=str(materia.get("estado_ao_nascer") or "PAUSED"),
+        api_version=str(materia.get("api_version") or "v26.0"),
+        shop_redirect_proof=str(materia.get("shop_redirect_proof") or DESTINO_SHOP_NAO_PROVADO),
+    )
 
 
 def compilar_plano_pausado(
@@ -238,24 +405,14 @@ def compilar_plano_pausado(
         referencias.manifesto_for(ref)
         for ref in dict.fromkeys(item.asset_ref for item in variacoes)
     )
-    materia = {
-        "api_version": "v26.0",
-        "account_ref": plano.account_ref,
-        "destination_url": plano.destination_url,
-        # O selo cobre o DESTINO, e a prova de destino é parte dele: um plano
-        # aprovado com a prova em mãos não pode ser recriado sem ela.
-        "shop_redirect_proof": referencias.shop_redirect_proof,
-        "asset_supply": [item.prova_publica() for item in manifestos],
-        "operations": [
-            {
-                "key": op.chave,
-                "type": op.tipo_objeto,
-                "endpoint": op.endpoint,
-                "payload": op.payload,
-            }
-            for op in operacoes
-        ],
-    }
+    materia = _materia_do_plano(
+        api_version="v26.0",
+        account_ref=plano.account_ref,
+        destination_url=plano.destination_url,
+        shop_redirect_proof=referencias.shop_redirect_proof,
+        asset_supply=[item.prova_publica() for item in manifestos],
+        operacoes=operacoes,
+    )
     return PlanoCompiladoMeta(
         account_ref=plano.account_ref,
         destination_url=plano.destination_url,

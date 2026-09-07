@@ -389,6 +389,11 @@ class _LedgerEmMemoria:
             "operations_expected": len(aprovacao["passos_esperados"]),
             "paused_birth_confirmed": True,
             "plan_request": aprovacao["pedido_do_operador"],
+            # ⚠️ O snapshot é SERVER-ONLY: ele aparece no manifesto interno e
+            # nunca no recibo do navegador. O dublê reproduz essa fronteira.
+            "compiled_plan": aprovacao.get("plano_congelado"),
+            "compiler_version": aprovacao.get("versao_do_compilador"),
+            "snapshot_sha256": aprovacao.get("snapshot_sha256"),
             "validation_id": aprovacao["validation_id"],
             "state": aprovacao["state"],
             "expires_at": aprovacao["expires_at"].isoformat(),
@@ -466,6 +471,38 @@ class _LedgerEmMemoria:
                 "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_CREATED")
         self.eventos.append(("readback", passo_ref))
         self.passos[passo_ref].update(readback=codigo)
+
+    async def reclamar_orfao(self, *, passo_ref: str, idade_minima_s: int) -> None:
+        """Promove IN_FLIGHT envelhecido para AMBIGUO — e recusa o resto.
+
+        ⚠️ O dublê reproduz as DUAS recusas da RPC, porque são elas que impedem
+        a promoção de virar um caminho para reenviar: um passo que não está em
+        voo não é promovível, e um passo jovem pode ter trabalhador vivo.
+        """
+        assert idade_minima_s >= 60
+        passo = self.passos.get(passo_ref)
+        if passo is None or passo["state"] != "IN_FLIGHT":
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_RECLAIMABLE")
+        if passo.get("jovem"):
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_RECLAIMABLE")
+        self.eventos.append(("reclamar", passo_ref))
+        passo["state"] = "AMBIGUOUS"
+
+    async def registrar_readback(
+        self, *, passo_ref: str, evidencia: dict[str, Any], codigo: str | None = None,
+    ) -> None:
+        self.eventos.append(("readback_evidencia", passo_ref))
+        self.passos[passo_ref].update(
+            readback_evidencia=evidencia, readback_at="2026-09-07T12:00:00+00:00")
+        if codigo:
+            # ⚠️ A DIVERGÊNCIA CONTINUA SENDO UM EVENTO PRÓPRIO. Ela é a marca
+            # que separa "objeto existe e confere" de "objeto existe e não é o
+            # aprovado"; diluí-la num evento genérico de evidência apagaria
+            # justamente a distinção que o recibo precisa carregar.
+            self.eventos.append(("readback", passo_ref))
+            self.passos[passo_ref].update(readback=codigo)
 
     async def recibo(self, approval_id: str) -> dict[str, Any]:
         manifesto = await self.manifesto(approval_id)
@@ -908,14 +945,25 @@ def test_saga_nasce_na_ordem_com_recibo_antes_de_cada_chamada(monkeypatch) -> No
         assert corpo["desfecho"] == "CREATED_PAUSED"
         assert corpo["retry_permitido"] is False
 
-        # ORDEM DA SAGA: cada passo prepara o recibo, cria e fecha, nesta ordem.
+        # ORDEM DA SAGA: cada passo prepara o recibo, cria, FECHA e só então
+        # grava a evidência do read-back.
+        #
+        # ⚠️ A posição da evidência é o ponto. Ela vem DEPOIS de `fechar` porque
+        # o id que a Meta devolveu precisa estar gravado antes de qualquer outra
+        # coisa: uma queda entre o POST e o INSERT perderia para sempre a única
+        # prova de que o objeto nasceu. A evidência melhora a auditoria; ela
+        # nunca pode disputar a vaga do id.
         saga = [evento for evento in ledger.eventos if evento[0] != "validacao"]
         assert saga == [
             ("aprovacao", "approval-0002"),
             ("preparar", "campaign"), ("fechar", "passo-campaign"),
+            ("readback_evidencia", "passo-campaign"),
             ("preparar", "adset"), ("fechar", "passo-adset"),
+            ("readback_evidencia", "passo-adset"),
             ("preparar", "creative:variation-001"), ("fechar", "passo-creative:variation-001"),
+            ("readback_evidencia", "passo-creative:variation-001"),
             ("preparar", "ad:variation-001"), ("fechar", "passo-ad:variation-001"),
+            ("readback_evidencia", "passo-ad:variation-001"),
         ]
         assert CENARIO.criados == ["campaign", "adset", "creative", "ad"]
 
