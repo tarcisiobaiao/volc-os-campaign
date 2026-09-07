@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-07",
+  "canonical_branch": "execution/volc-os-operacao-80-20",
+  "canonical_head_before_reconciliation_commit": "0bef14b05d34e65003ec3cd03574ee5595f05452",
+  "policy": {
+    "single_active_line": true,
+    "historical_refs_are_not_execution_sources": true,
+    "no_runtime_selected_from_partial_or_superseded_branches": true,
+    "remote_branch_deletion_requires_separate_authorization": true
+  },
+  "absorbed_by_ancestry": [
+    {
+      "ref": "origin/volc-os-v2",
+      "sha": "0aa090eb6a97e66b5ebdeb1c288d214003b06cbf"
+    },
+    {
+      "ref": "origin/sprint/asset-vault-operator-experience-v2",
+      "sha": "5d20467dac571c0a145396d46c7669bf9b2d858c"
+    },
+    {
+      "ref": "origin/sprint/pautador-psychological-validation-v2",
+      "sha": "17b841316cba791b8a8fdcd47057835888d03998"
+    },
+    {
+      "ref": "origin/sprint/search-production-closure-v1",
+      "sha": "cebbdc02fcafad0081aae8d6db5d37a5f6a1e0c1"
+    },
+    {
+      "ref": "origin/sprint/creative-factory-production-go-live-v1",
+      "sha": "b3292480417329d6822d10b94a211b0894bc1a43"
+    }
+  ],
+  "absorbed_by_patch_equivalence": [
+    {
+      "ref": "origin/sprint/hermes-meta-real-read-model-v1",
+      "sha": "b118d912fa75e85bd6981f693d24e898f0328b96"
+    },
+    {
+      "ref": "origin/sprint/hermes-meta-v26-ground-truth-v1",
+      "sha": "fbcbee6a44431060df28ee6fa1cd2d8e2a2dda4f"
+    },
+    {
+      "ref": "origin/sprint/hermes-gads-multichannel-birth-v1",
+      "sha": "21fbc3ba3a84a545edb8c7ce317549a153c34e37"
+    },
+    {
+      "ref": "origin/sprint/pautador-paid-keyword-eligibility-v1",
+      "sha": "68a8eaf2f7326d5924b1405d68ba376b0bd91a21"
+    }
+  ],
+  "documentary_specs_imported": [
+    {
+      "source_ref": "origin/spec/fable-creative-supply-chain-v1",
+      "source_sha": "5d2cbd0006b7d794e685ebf67d3d79e6a879e12c",
+      "destination": "docs/specs/creative-supply-chain-v1"
+    },
+    {
+      "source_ref": "origin/spec/gpt6-meta-completion-v1",
+      "source_sha": "2766e49aed7055f24cd97932e9995406a409826b",
+      "destination": "docs/specs/meta-completion-v1"
+    },
+    {
+      "source_ref": "origin/spec/hermes-meta-creative-p0-reconciliation-v1",
+      "source_sha": "a875f1f02437f98e317d20bcd5c050cbaf281d57",
+      "destination": "docs/specs/meta-creative-p0-reconciliation-v1"
+    },
+    {
+      "source_ref": "origin/spec/fable-google-multichannel-completion-v1",
+      "source_sha": "8b067f6d7a63997c8a43c9cbbf4933fda68bd0ef",
+      "destination": "docs/specs/google-multichannel-completion-v1"
+    },
+    {
+      "source_ref": "origin/spec/fable-creative-studio-operating-experience-v1",
+      "source_sha": "e6e29ce4a8ac1f21b9689ebbf6c3a8dc56181686",
+      "destination": "docs/specs/creative-studio-operating-experience-v1"
+    }
+  ],
+  "not_integrated": [
+    {
+      "ref": "origin/sprint/traffic-operating-cockpit-v2",
+      "sha": "85666dad16460846eb4077d4c8ff4e98c7bed961",
+      "disposition": "SUPERSEDED",
+      "reason": "A linha operacional contém a bancada e o cockpit posteriores, além das rodadas corretivas; importar o runtime antigo regrediria contratos e interface."
+    },
+    {
+      "ref": "origin/sprint/hermes-p09-t17-campaign-birth-authority-v1",
+      "sha": "821a9cfaa5ef07475c5a157d72cd3f8afb216a5d",
+      "disposition": "PARTIAL_NOT_SELECTED",
+      "reason": "A própria revisão congelou o candidato como parcial; a autoridade vigente foi implementada e endurecida posteriormente na linha operacional."
+    },
+    {
+      "ref": "origin/sprint/hermes-p10-t17-gads-ledger-concurrency-v1",
+      "sha": "2e882a91db354777417ac5060de9f30678e7ab57",
+      "disposition": "ALTERNATIVE_NOT_SELECTED",
+      "reason": "A prova e o runtime de concorrência selecionados chegaram por uma linha posterior já ancestral da branch canônica."
+    }
+  ],
+  "main_worktree_quarantine": {
+    "branch": "main",
+    "head": "9f70f65baf191c48a5d7e269718a91bb59a33646",
+    "status_entries_observed": 878,
+    "files_only_in_main_worktree": [
+      ".claude/skills/design-review/SKILL.md",
+      "tools/agent-harness/claude-lane-broker.sh",
+      "tools/agent-harness/missions/review-p14-t10-claude-gemini-v2.json"
+    ],
+    "decision": "DO_NOT_MERGE",
+    "reason": "O checkout é uma fotografia antiga e contém variantes que removeriam isolamento por usuário, routers Meta/Cofre e contratos posteriores. Os três arquivos extras são ferramentas locais ou missões antigas e não são autoridade de produto. A árvore permanece intocada até uma limpeza explicitamente autorizada."
+  },
+  "cleanup_policy": {
+    "before_remote_cleanup": [
+      "publicar o SHA canônico",
+      "confirmar o read-back remoto",
+      "manter um inventário de refs históricas",
+      "obter autorização explícita para apagar branches ou worktrees existentes"
+    ]
+  }
+}

@@ -18,6 +18,13 @@ Snapshot gerado em **22/08/2026** para impedir que roadmap, documentação e imp
 
 ## Regra de confiança
 
+- Frescor: execute `python3 scripts/atualizar_grafo_volc_os.py --check`. A
+  autoridade reproduzível é `BUILD-STATUS.json`, versionada nesta pasta, e o
+  veredito compara o digest dos insumos. `graphify-out/UPDATE_STATUS.json` é
+  somente um espelho local; sua ausência em um checkout limpo não torna os
+  insumos obsoletos. `built_at_commit` registra onde o build ocorreu, mas não
+  precisa coincidir com o HEAD quando os commits posteriores alteram apenas
+  documentação fora do digest.
 - Contagens do Supabase: `count=exact` pelo PostgREST em 22/08/2026.
 - Datas: menor/maior valor da coluna temporal selecionada.
 - n8n: `ativo` significa **estado declarado no inventário**, não execução bem-sucedida.

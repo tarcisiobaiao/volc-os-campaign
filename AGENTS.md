@@ -11,7 +11,7 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - For the high-level operational truth, consult the human curation at `docs/volc-os-graph/curadoria-operacional.json`; it records states, priorities and evidence that AST extraction cannot infer safely, and it is the only file in this chain edited by hand. `docs/volc-os-graph/volc-os-graph.json` is the generated snapshot of that curation: read it, never edit it — edits there are lost on the next build.
 - Never run `graphify update .` directly in this repository: it would replace the hybrid graph with a code-only graph. After material code, schema or roadmap changes, run `scripts/atualizar_grafo_volc_os.py` (use `--reuse-technical` only when the code layer did not change).
-- Before treating the graph as current, check `graphify-out/UPDATE_STATUS.json`. If its commit differs from `git rev-parse HEAD` or the status says inputs are stale, disclose that limitation.
+- Before treating the graph as current, run `python3 scripts/atualizar_grafo_volc_os.py --check`. The versioned authority is `docs/volc-os-graph/BUILD-STATUS.json`; freshness is decided by the input digest, not by equality between `built_at_commit` and `git rev-parse HEAD`. `graphify-out/UPDATE_STATUS.json` is only a local mirror and must never decide the verdict. If the check fails or reports stale inputs, disclose that limitation.
 - Save useful, corrected or dead-end graph answers with `graphify save-result`, so `graphify reflect` can turn repeated feedback into durable lessons without silently rewriting factual nodes.
 
 ### VOLC source-of-truth order
