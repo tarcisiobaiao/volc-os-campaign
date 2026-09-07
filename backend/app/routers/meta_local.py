@@ -6,7 +6,7 @@ integracao no Mac do operador, exigem papel ADMIN e nunca oferecem mutate.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -390,6 +390,25 @@ async def inventario_contas_persistidas(
     del quem
     _exigir_host_local(request)
     return await _repositorio_read_model().contas()
+
+
+@router.get("/financeiro/{referencia}")
+async def financeiro_persistido(
+    referencia: str,
+    request: Request,
+    conta_ref: str = Query(min_length=1, max_length=100),
+    inicio: date | None = Query(default=None),
+    fim: date | None = Query(default=None),
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    from app.trafego.meta.financeiro import ler_financeiro
+
+    del quem
+    _exigir_host_local(request)
+    try:
+        return await ler_financeiro(_repositorio_read_model(), referencia, conta_ref, inicio, fim)
+    except dom.ContratoMetaInvalido as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
 
 
 @router.get("/read-model/{entidade}")

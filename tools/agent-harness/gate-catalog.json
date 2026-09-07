@@ -40,7 +40,7 @@
     },
     "tipos-frontend": {
       "kind": "typescript",
-      "project_targets": [],
+      "project_targets": ["tsconfig.app.json"],
       "description": "tsc --noEmit sobre o app (ver CLAUDE.md: use -p tsconfig.app.json)"
     },
     "build-vite": {

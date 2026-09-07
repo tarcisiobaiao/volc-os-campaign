@@ -183,6 +183,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
         })
     elif nome == "creative":
         comum.update({
+            "url_tags": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
             "object_story_spec": {

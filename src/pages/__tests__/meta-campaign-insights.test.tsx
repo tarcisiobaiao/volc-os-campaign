@@ -23,6 +23,7 @@ const { api } = vi.hoisted(() => ({
     contasMetaReadModel: vi.fn(),
     inventarioMetaReadModel: vi.fn(),
     detalheMetaReadModel: vi.fn(),
+    financeiroMeta: vi.fn().mockResolvedValue({ estado: 'SEM_SNAPSHOT', impedimentos: [] }),
   },
 }));
 

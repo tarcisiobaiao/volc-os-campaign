@@ -404,10 +404,9 @@ const MetaCriacaoPage: React.FC = () => {
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([pautadorApi.contasMetaLocal(), pautadorApi.capacidadesCriacaoMeta()])
-      .then(([inventario, cap]) => {
+    pautadorApi.capacidadesCriacaoMeta()
+      .then((cap) => {
         if (!vivo) return;
-        setContas(inventario.contas);
         const bloqueios = (cap.bloqueios ?? {}) as Record<string, string>;
         setCapacidades({
           validateOnly: cap.validate_only === 'ENABLED',
@@ -422,14 +421,24 @@ const MetaCriacaoPage: React.FC = () => {
           criarPausada: cap.create_paused === 'ENABLED',
           criarPausadaMotivo: bloqueios.create_paused ?? null,
         });
-        if (inventario.contas.length === 1) {
-          setDraft((atual) => ({ ...atual, accountRef: inventario.contas[0].referencia_opaca }));
-        }
       })
       .catch((exc) => vivo && setAvisos(avisosDoErro(exc)))
       .finally(() => vivo && setCarregando(false));
     return () => { vivo = false; };
   }, []);
+
+  const carregarContas = async () => {
+    setCarregando(true);
+    try {
+      const inventario = await pautadorApi.contasMetaLocal();
+      setContas(inventario.contas);
+      if (inventario.contas.length === 1) mudar('accountRef', inventario.contas[0].referencia_opaca);
+    } catch (exc) {
+      setAvisos(avisosDoErro(exc));
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   /** Aplica um recibo só se ele for DESTA operação e mais novo que o exibido.
    *
@@ -877,6 +886,8 @@ const MetaCriacaoPage: React.FC = () => {
                   </option>
                 ))}
               </select>
+              <Button type="button" variant="outline" className="mt-2" disabled={carregando}
+                onClick={carregarContas}>Ler contas na Meta</Button>
             </Campo>
             <Campo id="meta-pagina" rotulo="Página do Facebook" ajuda="A Página assina os anúncios e precisa estar disponível para promoção nesta conta.">
               <select id="meta-pagina" className={campo} value={draft.pageRef}
@@ -1237,6 +1248,12 @@ const MetaCriacaoPage: React.FC = () => {
         <>
           <BlocoDeEvidencia titulo="O que será enviado à Meta" tom="verificado">
             <LinhaDeFato rotulo="Operações compiladas" valor={compilacao ? compilacao.plano.operacoes.length : null} fonte="o backend" ausencia="plano ainda não compilado" />
+            <LinhaDeFato rotulo="Receita e tracking" valor={compilacao?.plano.tracking?.revenue_join ?? null}
+              fonte="o plano compilado no backend" ausencia="recompile para conferir o vínculo GAM" />
+            {compilacao?.plano.tracking && <details className="text-sm text-muted-foreground">
+              <summary className="cursor-pointer py-2">Parâmetros incluídos nos criativos</summary>
+              {[...new Set(compilacao.plano.tracking.url_tags)].map((tags, i) => <code className="block break-all py-1" key={i}>{tags ?? 'tracking não declarado neste criativo'}</code>)}
+            </details>}
             <LinhaDeFato rotulo="Identidade do plano" valor={compilacao?.plano.plano_sha256 ?? null} fonte="o backend" ausencia="plano ainda não compilado" />
             <LinhaDeFato rotulo="Efeito externo da conferência" valor={compilacao ? 'Nenhum' : null} fonte="o backend" ausencia="—" />
           </BlocoDeEvidencia>
@@ -1536,6 +1553,9 @@ const MetaCriacaoPage: React.FC = () => {
           <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
+              <strong className="text-foreground">Receita GAM por campaign_id.</strong>{' '}
+              Novos planos usam utm_campaign e campaign_id com o ID dinâmico da campanha. A URL da LP permanece a escolhida;
+              a validação do plano atual e a prova do tracking no destino ainda são necessárias.{' '}
               <strong className="text-foreground">Ativar continua sendo outro ato, e ele não existe.</strong>{' '}
               Nenhuma rota desta bancada leva um objeto a ENABLE. Tudo que veicula nasce
               pausado e só uma pessoa, fora daqui, pode ligar.

@@ -278,6 +278,7 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
     if tipo == "creative":
         variacao = PLANO["variations"][0]
         return {**comum, "name": variacao["creative_name"], "status": "ACTIVE",
+                "url_tags": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
                 "effective_status": "ACTIVE",
                 "object_story_spec": {
                     "page_id": PAGINA_EXTERNA,

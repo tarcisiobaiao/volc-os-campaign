@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "run_id": "meta-gam-final-local-20260907",
+  "base_commit": "8697bf7fb1b3b6bc79cbc5dfe7669c5b08f4a349",
+  "status": "LOCAL_IMPLEMENTED_PRODUCTION_PARTIAL",
+  "decision": "GAM revenue joins by campaign_id, not ad_id, campaign name or Meta purchase value",
+  "endpoint": "GET /api/trafego/meta/local/financeiro/{referencia}",
+  "parameters": ["conta_ref", "inicio", "fim"],
+  "auth": "localhost + ADMIN; opaque references are not authorization tokens",
+  "meta_grain": ["account", "campaign", "day", "default attribution", "impression", "none breakdown", "latest revision"],
+  "gam_join": ["active Meta project binding", "unique GAM account for project", "utm_campaign_value = campaign_id", "same dates", "confirmed matching currency and timezone"],
+  "runtime_metadata": "META_GAM_REPORTING_CONTRACT_JSON keyed by gam_accounts.id; no secret values",
+  "money_json": "decimal string or null; never fill missing values with zero",
+  "tracking": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
+  "tracking_remote_acceptance": "UNPROVEN_CURRENT_PAYLOAD_REQUIRES_VALIDATION",
+  "tracking_click_to_gam": "UNPROVEN_REQUIRES_LP_INSTRUMENTATION_EVIDENCE",
+  "remaining_authorized_acts_required": ["CP2 schema", "CP3 current plan", "CP4 one PAUSED canary", "first persisted read", "GAM reporting metadata", "n8n inactive import/manual run/single schedule"],
+  "roadmap": ["P11-T05", "P11-T06", "P06-T04", "P10-T16"],
+  "graph_nodes": ["cap_meta_ads", "concept:meta_direct_traffic"],
+  "external_mutations": [],
+  "provider_authenticated_calls": 0
+}

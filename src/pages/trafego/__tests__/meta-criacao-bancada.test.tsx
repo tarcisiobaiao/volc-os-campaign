@@ -96,8 +96,25 @@ function abrir(etapa: string) {
 }
 
 async function esperarAtivos() {
+  if (!api.contasMetaLocal.mock.calls.length) {
+    const anterior = screen.getByRole('button', { current: 'step' });
+    fireEvent.click(screen.getByRole('button', { name: /^Base/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+    await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
+    fireEvent.click(anterior);
+  }
   await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
 }
+
+it('abrir a bancada não consulta a Meta sem clique explícito', async () => {
+  abrir('base');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
+  expect(api.contasMetaLocal).not.toHaveBeenCalled();
+  expect(api.ativosCriacaoMeta).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+  await waitFor(() => expect(api.contasMetaLocal).toHaveBeenCalledTimes(1));
+});
 
 /** Satisfaz as decisões que a bancada exige antes de liberar a conferência.
  *  A confirmação de categoria especial é uma delas, e é deliberada: sem ela o

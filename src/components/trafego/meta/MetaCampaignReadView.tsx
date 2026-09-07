@@ -30,18 +30,16 @@
  * caso, e nunca como tela em branco nem como aviso passageiro.
  *
  * ---------------------------------------------------------------------------
- * ⚠️ POR QUE O RETORNO FINANCEIRO APARECE COMO AUSENTE
+ * LEITURA FINANCEIRA POR CAMPANHA
  * ---------------------------------------------------------------------------
  *
- * `_sanitize_rows` remove `objeto_externo` de toda linha de insight antes de
- * ela sair do servidor — é a mesma regra que remove os identificadores crus da
- * Meta. Sem esse campo, uma linha de insight não declara A QUE objeto pertence:
- * ela é um fato da CONTA. Atribuir o gasto da conta a esta campanha seria
- * inventar a medida mais cara da tela. Então os quatro cartões da espinha
- * econômica mostram `—`, a frase diz por quê, e os insights da conta aparecem
- * embaixo com o rótulo de que são da conta.
+ * O endpoint financeiro resolve a campanha e filtra os Insights no servidor,
+ * onde o identificador bruto permanece. Receita GAM usa campaign_id, projeto
+ * e conta GAM confirmados. Os insights genéricos abaixo continuam rotulados
+ * como inventário da conta; nunca são somados pelo navegador.
  */
 import React from 'react';
+import { PeriodoFinanceiroMeta, useFinanceiroMeta } from './MetaFinanceiro';
 import {
   ArrowLeft,
   CircleDashed,
@@ -1106,6 +1104,8 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
   const escopo = useEscopoDeConta(contaPreferida);
   const { contaRef, conta, contas } = escopo;
 
+  const financeiro = useFinanceiroMeta(referencia, contaRef);
+
   const campanha = useDetalheDoReadModel('campanhas', referencia, contaRef);
   const conjuntos = usePaginaDoReadModel('conjuntos', contaRef);
   const anuncios = usePaginaDoReadModel('anuncios', contaRef);
@@ -1157,38 +1157,32 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
   const espinha = (
     <>
       <Kicker>Métricas principais</Kicker>
-      <p className="max-w-[80ch] text-[13px] leading-relaxed text-muted-foreground">
-        Nenhuma medida abaixo pôde ser atribuída a esta campanha. As linhas de insight que o
-        read model devolve são fatos <span className="font-medium text-foreground">da conta</span>:
-        o servidor remove a referência do objeto antes de enviá-las, e não existe caminho honesto
-        para dizer que um gasto da conta é o gasto desta campanha. Ausência aparece como{' '}
-        <span className="tabular font-medium text-foreground">{AUSENTE}</span> — nunca como zero.
-      </p>
+      <PeriodoFinanceiroMeta financeiro={financeiro} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <CartaoDeMedida
           rotulo="Investimento Total"
-          valor={AUSENTE}
+          valor={dinheiroMeta(financeiro.dados?.spend, financeiro.dados?.currency ?? null)}
           glifo={DollarSign}
-          nota="gasto não atribuído a esta campanha"
+          nota="Meta Insights · campanha · revisão corrente"
           ordem={2}
         />
         <CartaoDeMedida
           rotulo="Revenue"
-          valor={AUSENTE}
+          valor={dinheiroMeta(financeiro.dados?.revenue, financeiro.dados?.currency ?? null)}
           glifo={TrendingUp}
-          nota="nenhuma receita foi vinculada a esta campanha"
+          nota="GAM · campaign_id · mesmo período e moeda"
           ordem={3}
         />
         <CartaoDeMedida
           rotulo="Retorno excedente (%)"
-          valor={AUSENTE}
+          valor={decimalMeta(financeiro.dados?.retorno_excedente_pct, 2, '%')}
           glifo={Target}
           nota="excedente sobre o gasto, em pontos percentuais — não é a razão receita ÷ gasto"
           ordem={4}
         />
         <CartaoDeMedida
           rotulo="Lucro Bruto"
-          valor={AUSENTE}
+          valor={dinheiroMeta(financeiro.dados?.profit_gross, financeiro.dados?.currency ?? null)}
           glifo={TrendingUp}
           nota="revenue − mídia; sem as duas parcelas não há diferença a mostrar"
           ordem={5}

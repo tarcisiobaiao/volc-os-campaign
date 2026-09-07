@@ -90,6 +90,11 @@ async def _reconciliar_runs_orfaos() -> None:
     Nunca derruba a subida da API: banco fora do ar é problema para a primeira
     requisição resolver, não para impedir o processo de existir.
     """
+    # Esta rotina pode ESCREVER no banco. Iniciar/recarregar o servidor não
+    # constitui autorização de manutenção, mesmo com credenciais configuradas.
+    if os.environ.get("VOLC_RECONCILIAR_RUNS_NO_STARTUP") != "1":
+        log.info("Reconciliação de runs no startup desativada (opt-in explícito).")
+        return
     try:
         # ⚠️ O import mora DENTRO do `try`, e isso é conserto e não estilo.
         #
@@ -232,6 +237,7 @@ async def health() -> dict:
         "version": __version__,
         "engine": settings.resolve_engine(),
         "supabase": settings.has_supabase,
+        "startup_reconciliation": "ENABLED" if os.environ.get("VOLC_RECONCILIAR_RUNS_NO_STARTUP") == "1" else "DISABLED",
     }
 
 

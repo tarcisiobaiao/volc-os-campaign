@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, Mapping
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 import httpx
 
@@ -266,7 +266,7 @@ CAMPOS_DE_LEITURA: Mapping[str, str] = {
     # Os estados de AdCreative são de BIBLIOTECA (ACTIVE/IN_PROCESS/
     # WITH_ISSUES/DELETED), não de veiculação. Um criativo não é pausável, e
     # `PAUSED` nunca foi esperado dele.
-    "creative": "id,account_id,name,status,object_story_spec,asset_feed_spec,degrees_of_freedom_spec",
+    "creative": "id,account_id,name,status,object_story_spec,url_tags,asset_feed_spec,degrees_of_freedom_spec",
     "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,created_time",
 }
 
@@ -937,6 +937,8 @@ class ExecutorMetaPausado:
             if efetivo not in {None, "PAUSED", "PENDING_REVIEW", "IN_PROCESS"}:
                 divergiu("effective_status")
         if nome == "creative":
+            if "url_tags" in payload and sorted(parse_qsl(str(dados.get("url_tags") or ""), keep_blank_values=True)) != sorted(parse_qsl(str(payload["url_tags"]), keep_blank_values=True)):
+                divergiu("url_tags")
             # O AdCreative não é um objeto veiculável: ele só entrega através de
             # um Ad, e a Meta o devolve ACTIVE por construção. O que precisa ser
             # recusado é o criativo inutilizável.

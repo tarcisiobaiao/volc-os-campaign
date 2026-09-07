@@ -19,12 +19,12 @@ SELECT jsonb_pretty(jsonb_build_object(
   'columns', (SELECT coalesce(jsonb_agg(c.rel || '.' || c.att), '[]'::jsonb) FROM (
       SELECT a.attrelid::regclass::text AS rel, a.attname AS att
         FROM pg_attribute a
-       WHERE a.attrelid IN ('public.trafego_meta_create_step'::regclass,
-                            'public.trafego_meta_create_approval'::regclass)
+       WHERE a.attrelid IN (to_regclass('public.trafego_meta_create_step'),
+                            to_regclass('public.trafego_meta_create_approval'))
          AND a.attnum > 0 AND NOT a.attisdropped) c),
   'constraints', (SELECT coalesce(jsonb_agg(conname), '[]'::jsonb) FROM pg_constraint
-     WHERE conrelid IN ('public.trafego_meta_create_step'::regclass,
-                        'public.trafego_meta_create_approval'::regclass)),
+     WHERE conrelid IN (to_regclass('public.trafego_meta_create_step'),
+                        to_regclass('public.trafego_meta_create_approval'))),
   -- ⚠️ ASSINATURA DE IDENTIDADE, e não só o nome. Uma sobrecarga antiga viva ao
   -- lado da nova deixa o PostgREST sem conseguir escolher e as duas param de
   -- responder — sintoma que "a função existe" nunca detecta.
@@ -40,5 +40,6 @@ SELECT jsonb_pretty(jsonb_build_object(
        p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')'), '[]'::jsonb)
      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname LIKE 'trafego_meta%'
-      AND has_function_privilege('service_role', p.oid, 'EXECUTE'))
+      AND has_function_privilege(
+        (SELECT oid FROM pg_roles WHERE rolname = 'service_role'), p.oid, 'EXECUTE'))
 ));

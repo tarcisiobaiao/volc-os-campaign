@@ -236,6 +236,8 @@ function abrir() {
 /** Leva a bancada até uma validação aceita, que é o pré-requisito de aprovar. */
 async function ateAValidacao() {
   abrir();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
+  fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
   await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
   fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
@@ -543,6 +545,8 @@ describe('Revisão Meta — resposta adiada não contamina outro rascunho', () =
     api.compilarPlanoMeta.mockReturnValueOnce(porta.promessa);
 
     abrir();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
     await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));

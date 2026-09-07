@@ -29,6 +29,7 @@ const { api } = vi.hoisted(() => ({
     contasMetaReadModel: vi.fn(),
     inventarioMetaReadModel: vi.fn(),
     detalheMetaReadModel: vi.fn(),
+    financeiroMeta: vi.fn(),
   },
 }));
 
@@ -132,6 +133,7 @@ function responderPorEntidade(mapa: Record<string, unknown>) {
 }
 
 beforeEach(() => {
+  api.financeiroMeta.mockResolvedValue({ ok: true, estado: 'SEM_SNAPSHOT', spend: null, revenue: null, profit_gross: null, retorno_excedente_pct: null, currency: 'BRL', impedimentos: [] });
   api.contasMetaReadModel.mockReset().mockResolvedValue(contas());
   api.detalheMetaReadModel.mockReset().mockResolvedValue({
     ok: true,
@@ -161,6 +163,30 @@ const montar = (referencia = 'metaobj_campanha_1') =>
   );
 
 describe('MetaCampaignReadView — a hierarquia real', () => {
+  it('liga os quatro cards ao financeiro do servidor e aplica o período', async () => {
+    api.financeiroMeta.mockResolvedValue({ estado: 'COM_SNAPSHOT', currency: 'BRL',
+      spend: 10, revenue: 25, profit_gross: 15, retorno_excedente_pct: 150,
+      periodo_inicio: '2026-09-06', periodo_fim: '2026-09-06', timezone: 'America/Sao_Paulo', impedimentos: [] });
+    montar();
+    await screen.findByText(dinheiroMeta(25, 'BRL'));
+    expect(screen.getByText(dinheiroMeta(10, 'BRL'))).toBeTruthy();
+    expect(screen.getByText(dinheiroMeta(15, 'BRL'))).toBeTruthy();
+    expect(screen.getByText('150,00%')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Início do período financeiro'), { target: { value: '2026-09-01' } });
+    fireEvent.change(screen.getByLabelText('Fim do período financeiro'), { target: { value: '2026-09-06' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar período' }));
+    await waitFor(() => expect(api.financeiroMeta).toHaveBeenLastCalledWith('metaobj_campanha_1', CONTA.conta_ref, '2026-09-01', '2026-09-06'));
+  });
+
+  it('remove valores da campanha anterior enquanto a próxima está em leitura', async () => {
+    api.financeiroMeta.mockResolvedValueOnce({ currency: 'BRL', spend: 10, revenue: 25, profit_gross: 15, retorno_excedente_pct: 150, impedimentos: [] });
+    const tela = montar();
+    await screen.findByText(dinheiroMeta(25, 'BRL'));
+    api.financeiroMeta.mockReturnValue(new Promise(() => {}));
+    tela.rerender(<MemoryRouter><MetaCampaignReadView referencia="metaobj_outra" contaRef={CONTA.conta_ref} /></MemoryRouter>);
+    expect(screen.queryByText(dinheiroMeta(25, 'BRL'))).toBeNull();
+  });
+
   it('lê campanha → conjunto → anúncio → peça e nunca importa o cenário fictício', async () => {
     montar();
 
@@ -223,7 +249,7 @@ describe('MetaCampaignReadView — a hierarquia real', () => {
     expect(screen.queryByText('R$ 0,00')).toBeNull();
     expect(screen.queryByText('0,0%')).toBeNull();
     // E a tela DIZ por que não sabe, em vez de deixar quatro travessões mudos.
-    expect(screen.getByText(/pôde ser atribuída a esta campanha/i)).toBeTruthy();
+    expect(screen.getByText(/GAM pelo campaign_id/i)).toBeTruthy();
   });
 
   it('a linha de insight sem medida vira travessão, e o gasto medido sai em BRL', async () => {

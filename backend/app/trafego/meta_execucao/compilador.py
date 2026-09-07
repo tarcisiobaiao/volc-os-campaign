@@ -20,6 +20,9 @@ from .contrato import (
 
 
 _CAMPAIGN = "$campaign.id"
+# Parâmetro dinâmico do provedor, não marcador da nossa saga. Permanece
+# literal no payload aprovado; a Meta substitui no clique. Prova remota pendente.
+TRACKING_GAM_CAMPAIGN_ID = "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}"
 _ADSET = "$adset.id"
 
 #: Versão do compilador que produziu o plano congelado.
@@ -164,6 +167,10 @@ class PlanoCompiladoMeta:
             "estado_ao_nascer": self.estado_ao_nascer,
             "shop_redirect_proof": self.shop_redirect_proof,
             "destino_website_provado": self.destino_website_provado,
+            "tracking": {
+                "revenue_join": "GAM.utm_campaign_value = campaign_id",
+                "url_tags": [op.payload.get("url_tags") for op in self.operacoes if op.tipo_objeto == "creative"],
+            },
             "asset_supply": [item.prova_publica() for item in self.asset_supply_manifests],
             "operacoes": [
                 {
@@ -391,6 +398,7 @@ def compilar_plano_pausado(
         creative = {
             "name": variacao.creative_name,
             "object_story_spec": story,
+            "url_tags": TRACKING_GAM_CAMPAIGN_ID,
             # ⚠️ NENHUM `destination_spec` É ENVIADO, e a ausência é a decisão.
             #
             # A v26 redireciona o clique de anunciantes elegíveis a Shop, e a

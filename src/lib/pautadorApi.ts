@@ -381,6 +381,27 @@ export type PaginaMetaReadModel<T = ItemMetaReadModel> = {
   motivo: string | null;
 };
 
+export type FinanceiroMeta = {
+  ok: boolean;
+  estado: string;
+  currency: string | null;
+  timezone: string | null;
+  periodo_inicio: string | null;
+  periodo_fim: string | null;
+  provisorio: boolean;
+  frescor: string | null;
+  receita_frescor?: string | null;
+  /** Decimal do servidor viaja como string; number mantém compatibilidade de projeções. */
+  spend: string | number | null;
+  revenue: string | number | null;
+  profit_gross: string | number | null;
+  roas_ratio: string | number | null;
+  retorno_excedente_pct: string | number | null;
+  spend_completo: boolean;
+  revenue_completo: boolean;
+  impedimentos: string[];
+};
+
 export type DetalheMetaReadModel<T = ItemMetaReadModel> = {
   ok: true;
   has_snapshot: boolean;
@@ -468,6 +489,7 @@ export interface ResultadoCompilacaoMeta {
     api_version: 'v26.0';
     plano_sha256: string;
     estado_ao_nascer: 'PAUSED';
+    tracking?: { revenue_join: string; url_tags: Array<string | null> };
     operacoes: Array<{
       nome: string;
       tipo?: 'campaign' | 'adset' | 'creative' | 'ad';
@@ -754,6 +776,13 @@ export const pautadorApi = {
 
   contasMetaReadModel(): Promise<ContasDoReadModelMeta> {
     return request('/api/trafego/meta/local/read-model/contas');
+  },
+
+  financeiroMeta(referencia: string, contaRef: string, inicio?: string, fim?: string): Promise<FinanceiroMeta> {
+    const busca = new URLSearchParams({ conta_ref: contaRef });
+    if (inicio) busca.set('inicio', inicio);
+    if (fim) busca.set('fim', fim);
+    return request(`/api/trafego/meta/local/financeiro/${encodeURIComponent(referencia)}?${busca}`);
   },
 
   /**

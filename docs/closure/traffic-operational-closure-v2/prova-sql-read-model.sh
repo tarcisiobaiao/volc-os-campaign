@@ -130,6 +130,11 @@ psql_ -d postgres -Atc "select 'engine: '||version();"
 VERSAO=$(psql_ -d postgres -Atc "select current_setting('server_version_num')::int >= 150000;")
 ok "o engine é PostgreSQL 15 ou maior (security_invoker)" "$VERSAO" "t"
 
+# Catálogo vazio e sem service_role deve produzir JSON vazio, nunca regclass error.
+CATALOGO_VAZIO=$(psql_ -d postgres -Atq -f "$RAIZ/docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql")
+VAZIO_OK=$(printf '%s' "$CATALOGO_VAZIO" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(all(d[k] == [] for k in ("columns","constraints","functions","security_definer","granted")))')
+ok "leitor de catálogo funciona antes das migrations e roles" "$VAZIO_OK" "True"
+
 # ⚠️ LISTA EXPLÍCITA E ORDENADA. Nunca `supabase/migrations/*.sql`: metade do
 # diretório é ROLLBACK, e um glob executaria apply e rollback na mesma passada.
 # A candidata desta trilha NÃO está no SCHEMA-DEPLOY-MANIFEST.json (o manifesto

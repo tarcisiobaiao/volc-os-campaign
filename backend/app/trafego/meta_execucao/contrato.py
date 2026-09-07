@@ -103,6 +103,14 @@ def _url_https(valor: str) -> str:
     if partes.scheme != "https" or not partes.hostname or partes.username or partes.password:
         raise ErroDeNascimentoMeta(
             "META_DESTINATION_INVALID", "o destino Meta precisa ser uma URL HTTPS publica")
+    # Evita dois utm_campaign/campaign_id com precedência indefinida quando
+    # o provedor acrescenta o tracking canônico do criativo. Não remover em silêncio.
+    from urllib.parse import parse_qsl
+    if any(k.lower() in {"utm_campaign", "campaign_id", "utm_source", "utm_medium"}
+           for k, _ in parse_qsl(partes.query, keep_blank_values=True)):
+        raise ErroDeNascimentoMeta(
+            "META_DESTINATION_TRACKING_CONFLICT",
+            "use a URL da LP sem utm_campaign/campaign_id/utm_source/utm_medium; o criativo acrescenta o tracking por campaign_id")
     return saida
 
 
