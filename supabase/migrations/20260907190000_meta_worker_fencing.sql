@@ -156,7 +156,7 @@ COMMENT ON COLUMN public.trafego_meta_create_step.observed_external_ids IS
 -- -----------------------------------------------------------------------------
 -- Repetir o predicado em cinco funcoes seria repetir a chance de divergir. A
 -- unica autoridade sobre "este token ainda vale?" mora aqui.
-CREATE FUNCTION public.trafego_meta_create_exigir_claim(
+CREATE FUNCTION public.trafego_meta_exigir_claim_vigente(
   p_step public.trafego_meta_create_step,
   p_claim_token uuid
 )
@@ -387,7 +387,7 @@ BEGIN
       'ok', true, 'repeated', true, 'claim_token', v_token::text);
   END IF;
 
-  PERFORM public.trafego_meta_create_exigir_claim(v_step, p_claim_token);
+  PERFORM public.trafego_meta_exigir_claim_vigente(v_step, p_claim_token);
 
   -- ⚠️ AMBIGUOUS SAIU DAQUI. Antes o fechamento aceitava AMBIGUOUS -> CREATED,
   -- e era por essa porta que o trabalhador cercado concluia. Um passo ambiguo
@@ -444,7 +444,7 @@ BEGIN
     RAISE EXCEPTION 'META_STEP_CANNOT_MARK_AMBIGUOUS';
   END IF;
 
-  PERFORM public.trafego_meta_create_exigir_claim(v_step, p_claim_token);
+  PERFORM public.trafego_meta_exigir_claim_vigente(v_step, p_claim_token);
 
   -- Declarar a propria duvida ENCERRA a reivindicacao: quem nao sabe o que
   -- aconteceu nao pode seguir detendo autoridade de conclusao sobre o passo.
@@ -483,7 +483,7 @@ BEGIN
   -- ⚠️ FALHAR E A ESCRITA MAIS PERIGOSA DE TODAS para um trabalhador cercado.
   -- FAILED e o unico estado que declara "nada nasceu", e ele LIBERA o plano
   -- para nova aprovacao. Uma autoridade velha nunca pode emiti-lo.
-  PERFORM public.trafego_meta_create_exigir_claim(v_step, p_claim_token);
+  PERFORM public.trafego_meta_exigir_claim_vigente(v_step, p_claim_token);
 
   UPDATE public.trafego_meta_create_step
      SET state = 'FAILED', error_code = p_error_code,
@@ -580,7 +580,7 @@ BEGIN
   -- despacho ja concluiu e soltou a caneta — a anotacao e da recuperacao, que
   -- tem RPC propria e passa por aqui sem token.
   IF v_step.claim_token IS NOT NULL THEN
-    PERFORM public.trafego_meta_create_exigir_claim(v_step, p_claim_token);
+    PERFORM public.trafego_meta_exigir_claim_vigente(v_step, p_claim_token);
   END IF;
 
   IF v_step.readback_error IS NOT NULL
@@ -978,7 +978,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 11. Autoridade: nada disto e executavel por anon/authenticated
 -- -----------------------------------------------------------------------------
-REVOKE ALL ON FUNCTION public.trafego_meta_create_exigir_claim(
+REVOKE ALL ON FUNCTION public.trafego_meta_exigir_claim_vigente(
   public.trafego_meta_create_step, uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.trafego_meta_create_prepare_step(text,uuid,text,text,text)
   FROM PUBLIC, anon, authenticated;

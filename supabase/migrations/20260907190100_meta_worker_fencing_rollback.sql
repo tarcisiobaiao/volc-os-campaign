@@ -52,7 +52,7 @@ DROP FUNCTION IF EXISTS public.trafego_meta_create_record_readback(uuid,jsonb,te
 DROP FUNCTION IF EXISTS public.trafego_meta_create_fail_step(uuid,text,uuid);
 DROP FUNCTION IF EXISTS public.trafego_meta_create_mark_ambiguous(uuid,uuid);
 DROP FUNCTION IF EXISTS public.trafego_meta_create_close_step(uuid,text,uuid);
-DROP FUNCTION IF EXISTS public.trafego_meta_create_exigir_claim(
+DROP FUNCTION IF EXISTS public.trafego_meta_exigir_claim_vigente(
   public.trafego_meta_create_step, uuid);
 
 -- -----------------------------------------------------------------------------

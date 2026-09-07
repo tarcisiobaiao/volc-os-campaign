@@ -354,8 +354,24 @@ export interface ResultadoAprovacaoCriacaoMeta {
   aprovacao: AprovacaoCriacaoMeta;
 }
 
+/** O read-back SANITIZADO gravado no livro, exatamente como o backend o
+ *  produziu: vocabulário fechado, valores curtos, nenhum identificador. A RPC
+ *  de gravação RECUSA qualquer chave que pareça id, e é por isso que este
+ *  objeto pode atravessar até o navegador. */
+export interface EvidenciaDeLeituraMeta {
+  /** `true` = a leitura conferiu o objeto contra o aprovado. `false` = existe e
+   *  divergiu. Ausente é um terceiro caso: ninguém leu. */
+  matched: boolean;
+  tipo: string;
+  status: string | null;
+  effective_status: string | null;
+  objective?: string | null;
+  optimization_goal?: string | null;
+  advantage_audience_lido?: number | null;
+}
+
 /** Um passo do recibo durável. NUNCA carrega o id da Meta — só a afirmação
- *  de que ele existe. */
+ *  de que ele existe, e agora também o que a leitura de volta encontrou. */
 export interface PassoDoReciboMeta {
   name: string;
   state: 'IN_FLIGHT' | 'CREATED' | 'AMBIGUOUS' | 'FAILED';
@@ -365,6 +381,16 @@ export interface PassoDoReciboMeta {
   readback_error?: string | null;
   prepared_at?: string | null;
   closed_at?: string | null;
+  /** ⚠️ QUANDO a leitura foi gravada. `null` não é "não veicula": é "ninguém
+   *  conferiu", e a tela precisa das duas palavras diferentes. */
+  readback_at?: string | null;
+  readback_evidence?: EvidenciaDeLeituraMeta | null;
+  /** A mesma conclusão que o banco deriva. A tela a recalcula dos fatos crus;
+   *  este campo existe para quem não pode recalcular. */
+  readback_confirmed?: boolean;
+  /** Quantos ids um trabalhador SEM autoridade viu neste passo. O número
+   *  denuncia a ambiguidade; os ids nunca saem do servidor. */
+  observed_external_id_count?: number;
 }
 
 export interface ReciboCriacaoMeta {
@@ -373,6 +399,11 @@ export interface ReciboCriacaoMeta {
   capability: 'META_CREATE_PAUSED';
   state: string;
   expires_at: string;
+  /** ⚠️ O MANIFESTO APROVADO, em ordem. É o DENOMINADOR — e a razão de ele
+   *  existir aqui é que `steps` só lista o que já apareceu no livro. Contar
+   *  sobre `steps` foi o defeito que exibiu "1 de 1" para uma campanha de
+   *  quatro objetos. */
+  steps_expected?: string[];
   operations_expected?: number;
   daily_budget_minor?: number;
   currency?: string;

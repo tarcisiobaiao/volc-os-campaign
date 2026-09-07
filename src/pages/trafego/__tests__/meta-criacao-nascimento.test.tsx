@@ -126,7 +126,32 @@ const aprovacaoCriada = {
   },
 };
 
-function passo(name: string) {
+/** Um passo CRIADO cuja leitura de volta FICOU GRAVADA no livro.
+ *
+ * ⚠️ A evidência mora no RECIBO, e não mais no corpo da resposta de criação.
+ * Aquele corpo vivia num `useState` que o reload apaga — era por isso que as
+ * colunas de leitura voltavam vazias depois do F5 sobre uma evidência que
+ * estava gravada. O dublê passou a devolver o que a RPC devolve. */
+function passo(name: string, status = 'PAUSED') {
+  return {
+    name,
+    state: 'CREATED' as const,
+    has_external_id: true,
+    error_code: null,
+    readback_at: '2026-09-07T12:00:00+00:00',
+    readback_confirmed: true,
+    readback_evidence: {
+      matched: true,
+      tipo: name.split(':')[0],
+      status,
+      effective_status: status,
+    },
+  };
+}
+
+/** Um passo com o id gravado e NENHUMA leitura conferida. Ter o id e ter
+ *  conferido o objeto são fatos diferentes, e a tela precisa dizer os dois. */
+function passoSemLeitura(name: string) {
   return { name, state: 'CREATED' as const, has_external_id: true, error_code: null };
 }
 
@@ -151,12 +176,15 @@ const nascimentoFeito = {
     state: 'APPROVED',
     expires_at: '2026-09-05T12:15:00+00:00',
     operations_expected: 4,
+    // ⚠️ O DENOMINADOR APROVADO. Sem ele a tela contaria sobre os passos que
+    // EXISTEM, e uma campanha de um objeto virava "1 de 1".
+    steps_expected: ['campaign', 'adset', 'creative:variation-001', 'ad:variation-001'],
     daily_budget_minor: 1000,
     currency: 'BRL',
     paused_birth_confirmed: true,
     steps: [
       passo('campaign'), passo('adset'),
-      passo('creative:variation-001'), passo('ad:variation-001'),
+      passo('creative:variation-001', 'ACTIVE'), passo('ad:variation-001'),
     ],
   },
   retry_permitido: false as const,
@@ -410,8 +438,13 @@ describe('Revisão Meta — o recibo sanitizado', () => {
 
     const recibo = await screen.findByText(/Recibo durável da operação/i);
     expect(recibo).toBeTruthy();
-    expect(screen.getByText(/Criada pausada/i)).toBeTruthy();
-    expect(screen.getByText(/4 de 4/)).toBeTruthy();
+    expect(screen.getByText(/Criada pausada e conferida/i)).toBeTruthy();
+    // ⚠️ DUAS contagens, porque são DUAS perguntas: "existe" é o que a Meta
+    // devolveu, "confere" é o que a leitura de volta gravou. Uma linha só
+    // obrigaria a escolher qual delas mentir.
+    expect(screen.getAllByText(/^4 de 4$/)).toHaveLength(2);
+    expect(screen.getByText(/Passos conferidos por leitura/i)).toBeTruthy();
+    expect(screen.getByText(/Passos com id gravado/i)).toBeTruthy();
 
     const tabela = screen.getByRole('table', { name: /Estado de cada passo da operação/i });
     const linhaCampanha = within(tabela).getByRole('rowheader', { name: 'campaign' })
@@ -547,6 +580,124 @@ describe('Revisão Meta — resposta adiada não contamina outro rascunho', () =
     expect(screen.getByRole('button', { name: /Reconciliar por leitura/i })).toBeTruthy();
     // A DECISÃO caiu junto, como deve.
     expect(screen.queryByText(/Aprovação registrada/i)).toBeNull();
+  });
+});
+
+describe('Revisão Meta — o recibo conta contra o manifesto aprovado', () => {
+  function reabrir(referencia: string) {
+    return render(
+      <MemoryRouter initialEntries={[`/trafego/meta/nova?etapa=revisao&operacao=${referencia}`]}>
+        <MetaCriacaoPage />
+      </MemoryRouter>,
+    );
+  }
+
+  /** Um recibo com os passos que o teste pedir — e SEMPRE com o manifesto de
+   *  quatro operações, que é o denominador aprovado. */
+  function reciboCom(steps: unknown[]) {
+    return { ok: true, recibo: { ...nascimentoFeito.recibo, steps } };
+  }
+
+  async function abrirCom(steps: unknown[]) {
+    api.reciboCriacaoMeta.mockReset().mockResolvedValue(reciboCom(steps));
+    reabrir('approval-0001');
+    await screen.findByText(/Recibo durável da operação/i);
+  }
+
+  it('um passo criado de quatro aprovados NUNCA é uma campanha completa', async () => {
+    await abrirCom([passo('campaign')]);
+
+    // ⚠️ A LINHA DO DEFEITO. `every()` sobre um único CREATED respondia `true`.
+    expect(screen.getByText(/^Parcial ·/)).toBeTruthy();
+    expect(screen.queryByText(/^Criada pausada/)).toBeNull();
+    // Duas contagens, ambas 1 de 4: um conferido e um com id gravado.
+    expect(screen.getAllByText('1 de 4')).toHaveLength(2);
+    // ⚠️ A string literal do defeito não pode existir na tela.
+    expect(document.body.textContent).not.toContain('1 de 1');
+
+    // Os três passos aprovados que nunca despacharam APARECEM.
+    const tabela = screen.getByRole('table', { name: /Estado de cada passo/i });
+    expect(within(tabela).getByRole('rowheader', { name: 'adset' })).toBeTruthy();
+    expect(within(tabela).getAllByText(/não despachado/i).length).toBe(3);
+  });
+
+  it('nenhum passo despachado não é campanha criada', async () => {
+    await abrirCom([]);
+    expect(screen.getByText(/nenhum passo despachado ainda/i)).toBeTruthy();
+    expect(screen.getAllByText('0 de 4').length).toBeGreaterThan(0);
+  });
+
+  it('quatro ids gravados sem leitura não é verde', async () => {
+    await abrirCom([
+      passoSemLeitura('campaign'), passoSemLeitura('adset'),
+      passoSemLeitura('creative:variation-001'), passoSemLeitura('ad:variation-001'),
+    ]);
+    expect(screen.getByText(/leitura de volta não conferida/i)).toBeTruthy();
+    // Existe ≠ conferido, e as duas contagens dizem exatamente isso.
+    expect(screen.getByText('0 de 4')).toBeTruthy();
+    expect(screen.getByText('4 de 4')).toBeTruthy();
+    expect(screen.queryByText(/Criada pausada e conferida/i)).toBeNull();
+  });
+
+  it('divergência aparece como divergência, não como sucesso', async () => {
+    await abrirCom([
+      passo('campaign'), passo('adset'), passo('creative:variation-001', 'ACTIVE'),
+      {
+        ...passoSemLeitura('ad:variation-001'),
+        readback_error: 'META_READBACK_DIVERGENT',
+        readback_at: '2026-09-07T12:00:00+00:00',
+        readback_evidence: {
+          matched: false, tipo: 'ad', status: 'ACTIVE', effective_status: 'ACTIVE',
+        },
+      },
+    ]);
+    expect(screen.getByText(/^Divergente ·/)).toBeTruthy();
+    expect(screen.getByText(/existe, mas divergiu do aprovado/i)).toBeTruthy();
+    expect(screen.getByText('3 de 4')).toBeTruthy();
+  });
+
+  it('o read-back sobrevive ao reload sem nascimento nenhum na memória', async () => {
+    // ⚠️ A PROVA DA REIDRATAÇÃO: só o deep link, nenhuma criação nesta sessão.
+    // Antes, as colunas de leitura vinham do corpo HTTP guardado em `useState`
+    // e voltavam vazias depois do F5 sobre evidência que estava gravada.
+    await abrirCom(nascimentoFeito.recibo.steps);
+    expect(api.criarCampanhaPausadaMeta).not.toHaveBeenCalled();
+
+    const tabela = screen.getByRole('table', { name: /Estado de cada passo/i });
+    const linha = within(tabela).getByRole('rowheader', { name: 'campaign' })
+      .closest('tr') as HTMLElement;
+    expect(within(linha).getByText('PAUSED')).toBeTruthy();
+    expect(within(linha).getByText(/Sim · pausado/)).toBeTruthy();
+    expect(within(linha).getByText('2026-09-07T12:00:00+00:00')).toBeTruthy();
+  });
+
+  it('o recibo de outra referência nunca é exibido como se fosse desta', async () => {
+    // A resposta chega, e ela pertence a OUTRA operação. Exibi-la seria
+    // transformar um incidente em dois.
+    api.reciboCriacaoMeta.mockReset().mockResolvedValue({
+      ok: true,
+      recibo: { ...nascimentoFeito.recibo, approval_id: 'approval-0002' },
+    });
+    reabrir('approval-0001');
+    await waitFor(() => expect(api.reciboCriacaoMeta).toHaveBeenCalled());
+    expect(screen.queryByText(/Recibo durável da operação/i)).toBeNull();
+    expect(screen.queryByText(/Criada pausada/i)).toBeNull();
+  });
+
+  it('operação ambígua não ganha botão de tentar de novo', async () => {
+    await abrirCom([
+      passo('campaign'),
+      { name: 'adset', state: 'AMBIGUOUS', has_external_id: false, error_code: null },
+    ]);
+    expect(screen.getByText(/^Ambígua ·/)).toBeTruthy();
+    // ⚠️ O único controle que MUTA nesta tela está desabilitado, e o motivo é
+    // dito em palavras. Um botão habilitado aqui duplicaria a campanha.
+    expect(screen.getByRole('button', { name: /Criar campanha PAUSED/i }))
+      .toHaveProperty('disabled', true);
+    expect(screen.queryByRole('button', { name: /tentar de novo/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /reenviar/i })).toBeNull();
+    // A saída existe, e ela LÊ.
+    expect(screen.getByRole('button', { name: /Reconciliar por leitura/i })).toBeTruthy();
   });
 });
 

@@ -17,6 +17,32 @@ BEGIN
      OR to_regclass('public.trafego_meta_create_step') IS NULL THEN
     RAISE EXCEPTION 'rollback meta_recovery_snapshot exige o CREATE_ONLY aplicado';
   END IF;
+  -- ⚠️ A ORDEM DO DESMONTE E OBRIGATORIA, e sem esta guarda ela era silenciosa.
+  --
+  -- `20260907190000_meta_worker_fencing` foi construida EM CIMA desta: ela
+  -- recria `record_readback` com quatro argumentos e `flag_readback` com tres,
+  -- e as funcoes dela leem `readback_at`/`readback_evidence`. Rodar este
+  -- rollback com a cerca aplicada faria tres estragos ao mesmo tempo:
+  --
+  --   1. os `DROP FUNCTION IF EXISTS` abaixo citam as assinaturas ANTIGAS e
+  --      viram no-op silencioso — as novas continuam vivas;
+  --   2. o `CREATE OR REPLACE` de `flag_readback(uuid,text)` nasce AO LADO de
+  --      `flag_readback(uuid,text,uuid)`, e duas sobrecargas visiveis deixam o
+  --      PostgREST sem conseguir escolher — nenhuma das duas fica chamavel;
+  --   3. o `DROP COLUMN readback_at/readback_evidence` no fim removeria colunas
+  --      que as funcoes da cerca referenciam.
+  --
+  -- O conserto e trivial e precisa ser DITO: reverta a cerca primeiro.
+  IF EXISTS (
+    SELECT 1 FROM pg_attribute
+     WHERE attrelid = 'public.trafego_meta_create_step'::regclass
+       AND attname = 'claim_token' AND NOT attisdropped
+  ) THEN
+    RAISE EXCEPTION
+      'rollback meta_recovery_snapshot BLOQUEADO: 20260907190000_meta_worker_fencing '
+      'esta aplicada e depende deste perfil. Rode 20260907190100_meta_worker_fencing_rollback '
+      'antes deste arquivo.';
+  END IF;
 END
 $guarda$;
 
