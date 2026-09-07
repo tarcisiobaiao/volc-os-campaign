@@ -6,7 +6,7 @@ integracao no Mac do operador, exigem papel ADMIN e nunca oferecem mutate.
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -117,6 +117,7 @@ async def _preparar_snapshot_com_token(
     referencia_opaca: str,
     *,
     janela: str = "preview",
+    dias_de_insight: int = 1,
 ) -> SnapshotMetaCanonico:
     async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
         adaptador = AdaptadorMetaSomenteLeitura(cliente, limite_por_pagina=100, max_paginas_por_edge=100)
@@ -127,14 +128,26 @@ async def _preparar_snapshot_com_token(
         except dom.ContratoMetaInvalido as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from None
         leitura = await adaptador.ler_hierarquia(conta.id_externo, segredo)
-        hoje = date.today()
-        insights, _ = await adaptador.ler_insights(
-            conta.id_externo,
+        # O dia e o da CONTA. `date.today()` respondia sobre o Mac do operador:
+        # numa conta em America/Sao_Paulo lida por um backend em UTC, entre
+        # 21h e meia-noite locais o snapshot pedia o dia seguinte, recebia vazio
+        # e gravava "sem veiculacao" para um dia que ainda nao tinha comecado.
+        try:
+            hoje = dom.hoje_na_conta(conta.fuso)
+        except dom.ContratoMetaInvalido as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        resultado = await adaptador.ler_insights(
+            dom.PedidoDeInsights(
+                conta_externa=conta.id_externo,
+                nivel="campaign",
+                periodo_inicio=hoje - timedelta(days=int(dias_de_insight) - 1),
+                periodo_fim=hoje,
+                fuso_da_conta=conta.fuso or "",
+                time_increment="1",
+            ),
             segredo,
-            nivel="account",
-            periodo_inicio=hoje,
-            periodo_fim=hoje,
         )
+        insights = resultado.insights
         preflight = await adaptador.preflight_conta(referencia_opaca, segredo)
         mensuracao = {
             "pixels_ou_datasets": preflight.get("mensuracao", {}).get("pixels_ou_datasets") if isinstance(preflight.get("mensuracao"), dict) else None,

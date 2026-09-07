@@ -171,6 +171,8 @@ def test_insights_preservam_null_e_actions_nao_sao_achatadas() -> None:
         periodo_inicio=date(2026, 9, 1),
         periodo_fim=date(2026, 9, 1),
         janela_atribuicao="7d_click",
+        janelas_solicitadas=("7d_click",),
+        fuso_da_conta="America/Sao_Paulo",
         breakdown="none",
         observado_em=datetime.now(timezone.utc),
         spend=None,
@@ -205,14 +207,17 @@ def test_time_range_de_insights_vai_como_json_e_resposta_invalida_e_sanitizada()
             }])],
         })
         adaptador = AdaptadorMetaSomenteLeitura(cliente)  # type: ignore[arg-type]
-        fatos, _ = await adaptador.ler_insights(
-            "123456789012",
-            SegredoEfemero(TOKEN),
+        pedido = dom.PedidoDeInsights(
+            conta_externa="123456789012",
             nivel="account",
             periodo_inicio=date(2026, 9, 1),
             periodo_fim=date(2026, 9, 1),
+            fuso_da_conta="America/Sao_Paulo",
         )
+        resultado = await adaptador.ler_insights(pedido, SegredoEfemero(TOKEN))
+        fatos = resultado.insights
         assert fatos[0].spend == Decimal("1.25")
+        assert resultado.completo is True
         assert cliente.chamadas[0]["params"]["time_range"] == (
             '{"since":"2026-09-01","until":"2026-09-01"}')
 
@@ -225,12 +230,7 @@ def test_time_range_de_insights_vai_como_json_e_resposta_invalida_e_sanitizada()
         })
         with pytest.raises(ErroDeLeituraMeta) as erro:
             await AdaptadorMetaSomenteLeitura(ruim).ler_insights(  # type: ignore[arg-type]
-                "123456789012",
-                SegredoEfemero(TOKEN),
-                nivel="account",
-                periodo_inicio=date(2026, 9, 1),
-                periodo_fim=date(2026, 9, 1),
-            )
+                pedido, SegredoEfemero(TOKEN))
         assert erro.value.codigo == "META_INVALID_RESPONSE"
         assert "nao-e-data" not in erro.value.mensagem_segura
 

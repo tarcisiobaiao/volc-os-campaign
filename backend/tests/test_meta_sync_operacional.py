@@ -42,6 +42,8 @@ def insight(conta: str = "123456789012") -> dom.InsightMeta:
         periodo_inicio=date(2026, 9, 4),
         periodo_fim=date(2026, 9, 4),
         janela_atribuicao="7d_click",
+        janelas_solicitadas=("7d_click",),
+        fuso_da_conta="America/Sao_Paulo",
         breakdown="none",
         observado_em=datetime(2026, 9, 4, 12, tzinfo=timezone.utc),
         spend=None,

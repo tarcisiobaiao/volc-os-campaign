@@ -164,17 +164,36 @@ class AdaptadorMetaSomenteLeitura:
                 "codigo": exc.codigo,
                 "mensagem": exc.mensagem_segura,
             })
+        pedido_insights: dom.PedidoDeInsights | None = None
         try:
-            insights, paginas = await self.ler_insights(
-                conta.id_externo,
-                segredo,
+            # O "hoje" e o da CONTA, nunca o do host: o preflight de uma conta em
+            # America/Sao_Paulo rodando num backend em UTC pedia, durante tres
+            # horas por noite, um dia que a conta ainda nao tinha comecado — e
+            # lia vazio como se fosse ausencia de veiculacao.
+            hoje = dom.hoje_na_conta(conta.fuso)
+            pedido_insights = dom.PedidoDeInsights(
+                conta_externa=conta.id_externo,
                 nivel="account",
-                periodo_inicio=date.today(),
-                periodo_fim=date.today(),
+                periodo_inicio=hoje,
+                periodo_fim=hoje,
+                fuso_da_conta=conta.fuso or "",
+                limite_por_pagina=min(self._limite, 100),
             )
-            contagens["insights"] = len(insights)
-            paginas_lidas += paginas
+            resultado = await self.ler_insights(pedido_insights, segredo)
+            contagens["insights"] = len(resultado.insights)
+            paginas_lidas += resultado.paginas_lidas
             disponiveis.append("META_READ_INSIGHTS")
+        except dom.ContratoMetaInvalido as exc:
+            # Conta sem `timezone_name` legivel: a capacidade fica NAO TESTADA,
+            # que e diferente de ausente. Nao inventamos um fuso para conseguir
+            # perguntar.
+            contagens["insights"] = None
+            ausentes.append("META_READ_INSIGHTS")
+            erros.append({
+                "capability": "META_READ_INSIGHTS",
+                "codigo": "META_ACCOUNT_TIMEZONE_UNKNOWN",
+                "mensagem": str(exc),
+            })
         except ErroDeLeituraMeta as exc:
             contagens["insights"] = None
             ausentes.append("META_READ_INSIGHTS")
@@ -189,6 +208,8 @@ class AdaptadorMetaSomenteLeitura:
             "capacidades_disponiveis": sorted(set(disponiveis)),
             "capacidades_ausentes": sorted(set(ausentes)),
             "frescor": datetime.now(timezone.utc).isoformat(),
+            "pedido_de_insights": (pedido_insights.registro_do_pedido()
+                                   if pedido_insights is not None else None),
             "paginas_lidas": paginas_lidas,
             "erros": erros,
             "mensuracao": {
@@ -279,35 +300,25 @@ class AdaptadorMetaSomenteLeitura:
 
     async def ler_insights(
         self,
-        conta_externa: str,
+        pedido: dom.PedidoDeInsights,
         segredo: SegredoEfemero,
-        *,
-        nivel: str,
-        periodo_inicio: date,
-        periodo_fim: date,
-        breakdown: str = "none",
-        janela_atribuicao: str = "default",
-    ) -> tuple[tuple[dom.InsightMeta, ...], int]:
-        conta = dom.conta_canonica(conta_externa)
-        params_extra: dict[str, Any] = {
-            "level": nivel,
-            # Graph accepts JSON here. httpx coercion of a Python dict emits
-            # single quotes and the remote API rejects it.
-            "time_range": json.dumps(
-                {"since": periodo_inicio.isoformat(), "until": periodo_fim.isoformat()},
-                separators=(",", ":"),
-            ),
-            "fields": "account_id,campaign_id,adset_id,ad_id,date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,cpm,cpc,ctr,actions",
-            "limit": self._limite,
-        }
-        if breakdown != "none":
-            params_extra["breakdowns"] = breakdown
-        linhas, paginas = await self._listar_url(
-            f"{self._base}/{self._versao}/act_{conta}/insights",
+    ) -> dom.ResultadoDeInsights:
+        """Read one typed insights request; never invent the question.
+
+        The whole request comes in as ``PedidoDeInsights`` — period, level,
+        daily increment, account timezone, report time and attribution windows —
+        because a metric read under a different question is a different metric.
+        What went on the wire is exactly ``pedido.parametros_graph()``, and the
+        fact carries the same grain back, so nobody can later add two rows that
+        answered different questions.
+        """
+        linhas, paginas, completo, motivo = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{pedido.conta_externa}/insights",
             segredo,
             fields=None,
-            limite=self._limite,
-            parametros_extra=params_extra,
+            limite=pedido.limite_por_pagina,
+            parametros_extra=pedido.parametros_graph(),
+            truncar_em_vez_de_falhar=True,
         )
         observacao = datetime.now(timezone.utc)
         saida: list[dom.InsightMeta] = []
@@ -315,27 +326,25 @@ class AdaptadorMetaSomenteLeitura:
             if not isinstance(linha, dict):
                 raise ErroDeLeituraMeta("META_INVALID_RESPONSE", "insight invalido", True)
             try:
-                objeto = linha.get(f"{nivel}_id") or linha.get("account_id") or conta
-                actions = tuple(
-                    dom.AcaoInsightMeta(
-                        action_type=str(a.get("action_type") or "unknown"),
-                        value=dom.decimal_opcional(a.get("value"), campo="action.value"),
-                        attribution_window=str(a.get("attribution_window") or janela_atribuicao),
-                        object_level=nivel,
-                        date_start=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
-                        date_stop=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
-                    )
-                    for a in (linha.get("actions") or []) if isinstance(a, dict)
-                )
+                objeto = self._objeto_do_nivel(linha, pedido)
+                inicio_linha = date.fromisoformat(
+                    str(linha.get("date_start") or pedido.periodo_inicio.isoformat()))
+                fim_linha = date.fromisoformat(
+                    str(linha.get("date_stop") or pedido.periodo_fim.isoformat()))
+                actions = self._acoes(
+                    linha.get("actions"), pedido, inicio_linha, fim_linha, medida="count")
+                action_values = self._acoes(
+                    linha.get("action_values"), pedido, inicio_linha, fim_linha,
+                    medida="value")
                 saida.append(dom.InsightMeta(
                     provider=dom.META_ADS,
-                    conta_externa=conta,
-                    nivel=nivel,
+                    conta_externa=pedido.conta_externa,
+                    nivel=pedido.nivel,
                     objeto_externo=str(objeto),
-                    periodo_inicio=date.fromisoformat(str(linha.get("date_start") or periodo_inicio.isoformat())),
-                    periodo_fim=date.fromisoformat(str(linha.get("date_stop") or periodo_fim.isoformat())),
-                    janela_atribuicao=janela_atribuicao,
-                    breakdown=breakdown,
+                    periodo_inicio=inicio_linha,
+                    periodo_fim=fim_linha,
+                    janela_atribuicao=pedido.janela_declarada,
+                    breakdown=pedido.breakdown,
                     observado_em=observacao,
                     spend=dom.decimal_opcional(linha.get("spend"), campo="spend"),
                     impressions=_int_opcional(linha.get("impressions")),
@@ -348,14 +357,105 @@ class AdaptadorMetaSomenteLeitura:
                     cpc=dom.decimal_opcional(linha.get("cpc"), campo="cpc"),
                     ctr=dom.decimal_opcional(linha.get("ctr"), campo="ctr"),
                     actions=actions,
+                    action_values=action_values,
+                    time_increment=pedido.time_increment,
+                    action_report_time=pedido.action_report_time,
+                    fuso_da_conta=pedido.fuso_da_conta,
+                    janelas_solicitadas=pedido.janelas_de_atribuicao,
                 ))
+            except ErroDeLeituraMeta:
+                raise
             except (ValueError, TypeError, dom.ContratoMetaInvalido) as exc:
                 raise ErroDeLeituraMeta(
                     "META_INVALID_RESPONSE",
                     f"insight Meta invalido: {type(exc).__name__}",
                     True,
                 ) from None
-        return tuple(saida), paginas
+        return dom.ResultadoDeInsights(
+            pedido=pedido,
+            insights=tuple(saida),
+            paginas_lidas=paginas,
+            completo=completo,
+            motivo_incompleto=motivo,
+        )
+
+    @staticmethod
+    def _objeto_do_nivel(
+        linha: Mapping[str, Any], pedido: dom.PedidoDeInsights,
+    ) -> str:
+        """Resolve the row's object id at the REQUESTED level, or refuse.
+
+        Falling back to ``account_id`` when ``campaign_id`` is missing used to
+        produce a row labelled ``nivel="campaign"`` carrying the account's own
+        id.  Every later join then attached the whole account's spend to one
+        campaign that never spent it.  A missing id at the requested level is a
+        broken read, not a coarser one.
+        """
+        if pedido.nivel == "account":
+            valor = linha.get("account_id") or pedido.conta_externa
+            return str(valor)
+        bruto = linha.get(f"{pedido.nivel}_id")
+        if bruto in (None, ""):
+            raise ErroDeLeituraMeta(
+                "META_INSIGHT_LEVEL_MISMATCH",
+                f"linha de insight sem {pedido.nivel}_id no nivel pedido",
+                False,
+            )
+        return str(bruto)
+
+    @staticmethod
+    def _acoes(
+        bruto: Any,
+        pedido: dom.PedidoDeInsights,
+        inicio: date,
+        fim: date,
+        *,
+        medida: str,
+    ) -> tuple[dom.AcaoInsightMeta, ...]:
+        """Expand Meta's action rows WITHOUT flattening attribution windows.
+
+        With ``action_attribution_windows`` requested, Graph does not repeat the
+        row per window: it returns one row per action type carrying one key per
+        window (``{"action_type": "lead", "1d_click": "3", "7d_click": "5"}``).
+        Reading only ``value`` there silently collapses the windows into one
+        number whose meaning nobody can recover.  Each window becomes its own
+        typed row instead.
+        """
+        if bruto is None:
+            return ()
+        if not isinstance(bruto, list):
+            raise ErroDeLeituraMeta(
+                "META_INVALID_RESPONSE", "actions de insight nao e lista", True)
+        saida: list[dom.AcaoInsightMeta] = []
+        for item in bruto:
+            if not isinstance(item, dict):
+                continue
+            tipo = str(item.get("action_type") or "unknown")
+            janelas_presentes = [
+                j for j in pedido.janelas_de_atribuicao if j in item
+            ]
+            if janelas_presentes:
+                for janela in janelas_presentes:
+                    saida.append(dom.AcaoInsightMeta(
+                        action_type=tipo,
+                        value=dom.decimal_opcional(item.get(janela), campo="action.value"),
+                        attribution_window=janela,
+                        object_level=pedido.nivel,
+                        date_start=inicio,
+                        date_stop=fim,
+                        medida=medida,
+                    ))
+                continue
+            saida.append(dom.AcaoInsightMeta(
+                action_type=tipo,
+                value=dom.decimal_opcional(item.get("value"), campo="action.value"),
+                attribution_window=pedido.janela_declarada,
+                object_level=pedido.nivel,
+                date_start=inicio,
+                date_stop=fim,
+                medida=medida,
+            ))
+        return tuple(saida)
 
     async def _listar_edge(
         self, conta: str, tipo: str, segredo: SegredoEfemero,
@@ -385,12 +485,24 @@ class AdaptadorMetaSomenteLeitura:
         fields: str | None,
         limite: int,
         parametros_extra: Mapping[str, Any] | None = None,
-    ) -> tuple[list[Any], int]:
+        truncar_em_vez_de_falhar: bool = False,
+    ) -> tuple[list[Any], int] | tuple[list[Any], int, bool, str | None]:
+        """Page through an edge, and say whether the pass actually finished.
+
+        The page ceiling used to be a pure exception, which is right for the
+        hierarchy — a partial hierarchy must never overwrite a good projection.
+        For a reporting window the honest answer is different: keep the rows
+        already read and mark the window INCOMPLETE, so a watermark refuses to
+        advance and the dashboard says "partial" instead of drawing a smaller
+        number as if it were the measured truth.
+        """
         cursor: str | None = None
         linhas: list[Any] = []
         paginas = 0
         while True:
             if paginas >= self._max_paginas:
+                if truncar_em_vez_de_falhar:
+                    return linhas, paginas, False, "META_PAGINATION_LIMIT"
                 raise ErroDeLeituraMeta(
                     "META_PAGINATION_LIMIT", "limite seguro de paginas excedido", True)
             params: dict[str, Any] = {"limit": limite}
@@ -424,6 +536,8 @@ class AdaptadorMetaSomenteLeitura:
             linhas.extend(corpo["data"])
             proximo = self._cursor(corpo)
             if proximo is None:
+                if truncar_em_vez_de_falhar:
+                    return linhas, paginas, True, None
                 return linhas, paginas
             if proximo == cursor:
                 raise ErroDeLeituraMeta(
@@ -504,10 +618,34 @@ def _int_opcional(valor: Any) -> int | None:
 
 
 def _landing_page_views(actions: tuple[dom.AcaoInsightMeta, ...]) -> int | None:
-    total = 0
-    achou = False
-    for acao in actions:
-        if acao.action_type in {"landing_page_view", "offsite_conversion.fb_pixel_view_content"}:
-            achou = True
-            total += int(acao.value or 0)
-    return total if achou else None
+    """Landing page views, and ONLY landing page views.
+
+    ## O defeito que isto conserta
+
+    A versao anterior somava `landing_page_view` com
+    `offsite_conversion.fb_pixel_view_content`. Sao eventos diferentes, com
+    donos diferentes: LPV e medido pela Meta quando a pagina de destino carrega;
+    ViewContent e um evento do pixel disparado pelo site, que pode nem existir,
+    pode disparar em outra pagina, e pode disparar varias vezes por visita. Uma
+    linha com LPV=4 e ViewContent=7 devolvia 11 — um numero que nao e nenhuma
+    das duas medidas e que ia direto para `trafego_meta_insight_daily`, para o
+    custo por LPV do painel e para a decisao de orcamento do operador.
+
+    ## NULL nao e zero
+
+    `int(acao.value or 0)` transformava uma action presente sem valor medido em
+    zero. "A Meta nao mediu" e "a Meta mediu zero" sao respostas diferentes: a
+    primeira nao pode virar denominador nem preencher um grafico. Uma action
+    presente com `value` nulo devolve `None`; uma com `value` `0` devolve `0`.
+    """
+    relevantes = [
+        a for a in actions
+        if a.medida == "count" and a.action_type == dom.ACTION_TYPE_LPV
+    ]
+    if not relevantes:
+        return None
+    if any(a.value is None for a in relevantes):
+        # Presente e nao medida. Somar o resto produziria um total menor que o
+        # real e indistinguivel de uma medicao completa.
+        return None
+    return int(sum(int(a.value) for a in relevantes))
