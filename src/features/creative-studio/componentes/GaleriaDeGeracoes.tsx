@@ -28,12 +28,44 @@ export function GaleriaDeGeracoes({ geracoes, onComecar }: { geracoes: GeracaoRe
     async function ler() {
       setLendo(true);
       try {
-        const result = await Promise.all(ids.split(',').map(id => criativosApi.job(id)));
+        // `allSettled`, e não `all`: com `all`, UM id que falha rejeita tudo e
+        // descarta as leituras que deram certo — a galeria apagava os formatos
+        // já prontos por causa de um 404 transitório em outro job. Falha em um
+        // formato não pode apagar os formatos concluídos.
+        const respostas = await Promise.allSettled(
+          ids.split(',').map(id => criativosApi.job(id)),
+        );
         if (encerrado) return;
-        setJobs(result); setErro(null);
-        if (result.some(j => !jobTerminou(j.estado))) timer = setTimeout(ler, 4000);
-      } catch { if (!encerrado) setErro('Não foi possível atualizar os criativos. Tente novamente; nenhum trabalho será reenviado.'); }
-      finally { if (!encerrado) setLendo(false); }
+        const lidos = respostas
+          .filter((r): r is PromiseFulfilledResult<CreativeJob> => r.status === 'fulfilled')
+          .map(r => r.value);
+        const falharam = respostas.length - lidos.length;
+
+        setJobs(lidos);
+        // Leitura parcial é um estado próprio: mostra o que chegou E diz o que
+        // faltou. Antes isso virava "acervo vazio", que é a leitura errada mais
+        // cara desta tela.
+        setErro(
+          falharam === 0
+            ? null
+            : lidos.length === 0
+              ? 'Não foi possível atualizar os criativos. Tente novamente; nenhum trabalho será reenviado.'
+              : `${falharam} de ${respostas.length} trabalho(s) não puderam ser lidos agora. O que já ficou pronto continua abaixo.`,
+        );
+
+        // Continuar tentando enquanto houver trabalho não terminal OU leitura
+        // falha. Antes o `catch` matava o timer e a galeria parava para sempre
+        // no primeiro erro — o operador via "não foi possível" e nada mais
+        // acontecia, mesmo com o motor concluindo do outro lado.
+        if (falharam > 0 || lidos.some(j => !jobTerminou(j.estado))) {
+          timer = setTimeout(ler, 4000);
+        }
+      } catch {
+        if (!encerrado) {
+          setErro('Não foi possível atualizar os criativos. Tente novamente; nenhum trabalho será reenviado.');
+          timer = setTimeout(ler, 8000);
+        }
+      } finally { if (!encerrado) setLendo(false); }
     }
     void ler();
     return () => { encerrado = true; clearTimeout(timer); };
@@ -58,7 +90,17 @@ export function GaleriaDeAssets({ pecas, onComecar, carregando = false }: { peca
     const r = await fetch(p.previewUrl, { credentials: 'omit', redirect: 'error' });
     if (!r.ok) throw Error('O link expirou ou o arquivo não está disponível. Atualize a página.');
     const blob = await r.blob();
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type) || blob.type !== p.mime || blob.size > 25 * 1024 * 1024) throw Error('O arquivo não pôde ser baixado como imagem.');
+    // O tipo REAL dos bytes ainda é conferido contra a lista fechada. O que
+    // deixou de ser exigido é a igualdade com `p.mime` quando `p.mime` é null:
+    // o contrato documenta null como "ninguém mediu", e `blob.type !== null`
+    // é sempre verdadeiro — o guard travava o download de toda rendition cujo
+    // MIME não tinha sido registrado, que é justamente o caso de um acervo
+    // recém-gerado. Quando o MIME FOI medido, divergir continua sendo recusa.
+    const tipoAceito = ['image/png', 'image/jpeg', 'image/webp'].includes(blob.type);
+    const bateComOMedido = p.mime == null || blob.type === p.mime;
+    if (!tipoAceito || !bateComOMedido || blob.size > 25 * 1024 * 1024) {
+      throw Error('O arquivo não pôde ser baixado como imagem.');
+    }
     return blob;
   }
   const nome = (p: Rendition) => `criativo-${p.id.replace(/[^a-zA-Z0-9_-]/g, '')}-${p.slot.replace(/[^a-zA-Z0-9_-]/g, '')}.${p.mime === 'image/jpeg' ? 'jpg' : p.mime === 'image/webp' ? 'webp' : 'png'}`;

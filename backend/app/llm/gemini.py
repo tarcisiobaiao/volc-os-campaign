@@ -60,6 +60,13 @@ class GeminiClient(LLMClient):
             resp.raise_for_status()
             data = resp.json()
 
+        # O modelo que REALMENTE respondeu. O provider pode servir um alias por
+        # outro literal, e sem isto a procedência gravava sempre o que foi
+        # PEDIDO — um rebaixamento silencioso ficava indetectável depois.
+        # Fica como atributo de instância para não mexer no tipo de retorno,
+        # que outros consumidores (Pautador) já dependem de ser `str`.
+        self.modelo_servido = data.get("modelVersion") or None
+
         candidates = data.get("candidates") or []
         if not candidates:
             raise RuntimeError(f"Gemini returned no candidates: {data}")

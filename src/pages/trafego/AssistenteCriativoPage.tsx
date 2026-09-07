@@ -234,7 +234,11 @@ export default function AssistenteCriativoPage() {
       // A identidade já é durável aqui: mesmo que a execução falhe adiante, a
       // operação está no histórico e a run está retomável.
       navegar(`/trafego/meta/assistente-criativo/${criada.project_ref}?view=estrategia`);
-      setAviso('Operação criada. Execute a estratégia quando quiser.');
+      // A frase anterior — "execute a estratégia quando quiser" — era falsa: a
+      // linha seguinte já executa, e o modelo de texto já está rodando enquanto
+      // ela aparece na tela. Um aviso que descreve o contrário do que está
+      // acontecendo é pior que aviso nenhum quando o ato custa dinheiro.
+      setAviso('Operação criada. Gerando a estratégia com o agente — isto leva alguns instantes.');
       await executar(criada.project_ref, criada.run_ref);
     } catch (e) {
       const f = frase(e);

@@ -39,6 +39,26 @@ class ResultadoDoAgente:
     knowledge_sha256: str
 
 
+def _modelo_do_recibo(cliente: object) -> str:
+    """O que gravar em `criativo_agente_run.model`.
+
+    O cliente conhece dois modelos: o PEDIDO (`model`) e, quando o provider
+    informa, o que de fato respondeu (`modelo_servido`, lido de `modelVersion`).
+    Antes só o pedido era gravado, e um alias servido por outro literal ficava
+    indetectável — a procedência dizia "3.8" para uma resposta que veio de outra
+    coisa, e nada no banco desmentia.
+
+    Iguais ou desconhecido: grava um nome só. Divergentes: grava os dois, na
+    forma `pedido→servido`, porque as duas metades importam e a coluna é um
+    `text` livre — nenhuma migration é necessária para dizer a verdade aqui.
+    """
+    pedido = getattr(cliente, "model", None) or getattr(cliente, "name", None) or "unknown"
+    servido = getattr(cliente, "modelo_servido", None)
+    if not servido or servido == pedido:
+        return str(pedido)
+    return f"{pedido}→{servido}"
+
+
 def hash_do_pedido(pedido: PedidoDoAgente) -> str:
     material = pedido.model_dump(mode="json")
     cru = json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -91,7 +111,7 @@ class AgenteCriativoMeta:
             )
             return ResultadoDoAgente(
                 saida=saida,
-                modelo=getattr(self.cliente, "model", getattr(self.cliente, "name", "unknown")),
+                modelo=_modelo_do_recibo(self.cliente),
                 tentativas=tentativa,
                 request_sha256=hash_do_pedido(pedido),
                 knowledge_sha256=hash_da_base(),

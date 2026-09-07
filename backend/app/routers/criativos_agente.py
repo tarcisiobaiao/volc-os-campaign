@@ -6,6 +6,7 @@ faz upload ou publica campanha.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import secrets
@@ -751,7 +752,13 @@ async def gerar_imagens(
                 "rule_refs": list(linhagem.rule_refs),
             }
         )
-        executor.disparar(str(job["id"]))
+        # `disparar` é SÍNCRONO até o fim: ele enfileira e roda o render, que
+        # leva ~11s por peça. Chamá-lo direto de dentro da corrotina congelava o
+        # event loop inteiro pela duração do lote — /health, listagem e qualquer
+        # outra aba paravam de responder enquanto a primeira geração acontecia.
+        # `to_thread` mantém a mesma semântica (a resposta só sai quando o
+        # trabalho tem estado terminal) e devolve o loop ao resto do processo.
+        await asyncio.to_thread(executor.disparar, str(job["id"]))
         criados.append(
             {
                 "creative_ref": creative_ref,

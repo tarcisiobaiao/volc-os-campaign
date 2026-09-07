@@ -589,3 +589,42 @@ def test_primeira_run_nao_inventa_lote_anterior():
     )
     assert resposta.status_code == 201, resposta.text
     assert repo.run["input"]["saida_anterior"] is None
+
+
+# ── procedência do modelo ────────────────────────────────────────────────────
+
+
+class _ClienteFalso:
+    """Só o que `_modelo_do_recibo` lê: o pedido e, talvez, o servido."""
+
+    def __init__(self, model: str, modelo_servido: str | None = None):
+        self.model = model
+        self.modelo_servido = modelo_servido
+
+
+def test_recibo_grava_um_nome_so_quando_o_servido_confere():
+    from app.criativo.agente.orquestrador import _modelo_do_recibo
+
+    assert _modelo_do_recibo(_ClienteFalso("gemini-3.8-flash", "gemini-3.8-flash")) == "gemini-3.8-flash"
+
+
+def test_recibo_grava_um_nome_so_quando_o_provider_nao_informa():
+    """Ausência não vira invenção: sem `modelVersion`, fica o que foi pedido."""
+    from app.criativo.agente.orquestrador import _modelo_do_recibo
+
+    assert _modelo_do_recibo(_ClienteFalso("gemini-3.8-flash", None)) == "gemini-3.8-flash"
+
+
+def test_recibo_denuncia_rebaixamento_silencioso_do_provider():
+    """O defeito que isto fecha: pedir 3.8 e ser servido por outro literal.
+
+    Antes só o PEDIDO era gravado, então a procedência afirmava um modelo que
+    talvez não tivesse respondido, e nada no banco desmentia. Gravar os dois é
+    o que torna a divergência auditável depois — sem migration, porque a coluna
+    `model` da v11_05 é `text` livre.
+    """
+    from app.criativo.agente.orquestrador import _modelo_do_recibo
+
+    recibo = _modelo_do_recibo(_ClienteFalso("gemini-3.8-flash", "gemini-3.5-flash"))
+    assert recibo == "gemini-3.8-flash→gemini-3.5-flash"
+    assert "gemini-3.8-flash" in recibo and "gemini-3.5-flash" in recibo

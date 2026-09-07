@@ -33,3 +33,45 @@ describe('galeria do estúdio', () => {
     expect(screen.getByText('Aguardando arquivo')).toBeTruthy();
   });
 });
+
+/**
+ * Leitura parcial: o defeito mais caro desta galeria.
+ *
+ * O laço usava `Promise.all`. UM id que falhasse rejeitava tudo e descartava as
+ * leituras que tinham dado certo, então um 404 transitório num job apagava da
+ * tela os formatos que já estavam prontos em outro — exatamente o oposto de
+ * "falha em um formato não apaga os formatos concluídos". Pior: o `catch`
+ * matava o timer, e a galeria parava de acompanhar para sempre.
+ */
+const dublê = vi.hoisted(() => ({ job: vi.fn() }));
+vi.mock('@/lib/criativosApi', () => ({ criativosApi: dublê }));
+
+describe('a galeria sobrevive à leitura parcial', () => {
+  it('mostra o que chegou e declara o que faltou, sem virar acervo vazio', async () => {
+    dublê.job.mockImplementation(async (id: string) => {
+      if (id === 'job-ruim') throw new Error('não foi possível ler este trabalho');
+      return {
+        id: 'job-ok',
+        estado: 'concluido',
+        renditions: [{ ...peca, id: 'asset_ok', rotulo: 'Formato pronto' }],
+      };
+    });
+
+    const { GaleriaDeGeracoes } = await import('../componentes/GaleriaDeGeracoes');
+    render(
+      <GaleriaDeGeracoes
+        geracoes={[{ job_id: 'job-ok' }, { job_id: 'job-ruim' }] as never}
+        onComecar={vi.fn()}
+      />,
+    );
+
+    // O formato que ficou pronto continua na tela…
+    expect(await screen.findByRole('img')).toBeTruthy();
+    // …a falha do outro é dita, não escondida…
+    expect(
+      await screen.findByText(/1 de 2 trabalho\(s\) não puderam ser lidos/i),
+    ).toBeTruthy();
+    // …e não é confundida com acervo vazio.
+    expect(screen.queryByRole('button', { name: 'Preparar um briefing' })).toBeNull();
+  });
+});
