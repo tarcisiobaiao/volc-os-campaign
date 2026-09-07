@@ -36,7 +36,7 @@ ficaram no ar o tempo todo. O backend é reiniciado uma única vez no fim, e ess
 
 ## O que mudou, e por quê
 
-Quatro commits lineares. Nada foi corrigido "porque um spec antigo mandava": a
+Dez commits lineares. Nada foi corrigido "porque um spec antigo mandava": a
 adjudicação foi feita contra o HEAD, e ela mostrou que **T05 e T07 estavam byte
 a byte iguais à base do spec** — os commits `21fb1f2..546ac509` tocaram só a
 trilha de criação/fencing. Nenhum defeito deste marco tinha sido corrigido antes.
@@ -130,16 +130,28 @@ padrão nunca foi revogado.
 
 | gate | resultado | isolamento |
 |---|---|---|
-| testes Meta (Python) | **290 passaram** | TCP bloqueado |
+| testes Meta (Python) | **322 passaram** | TCP bloqueado |
 | testes n8n Meta | **31 passaram** | TCP bloqueado |
 | suíte backend inteira | **4108 passaram**, 38 falharam, 13 erros | TCP bloqueado |
-| SQL do read model | **145 asserções, 0 falhas** | PostgreSQL descartável, loopback |
-| validador n8n Meta | **264 provas, 0 falhas** | local |
+| SQL do read model | **151 asserções, 0 falhas** | PostgreSQL descartável, loopback |
+| validador n8n Meta | **265 provas, 0 falhas** | local |
 | validador n8n Google | **337 provas, 0 falhas** (não regrediu) | local |
 | gate de agenda única | **12 provas** · "UMA autoridade escolhida e NENHUMA ligada" | local |
 | geradores `--check` | Meta ok, Google ok | local |
+| TypeScript | **0 erros** | local |
+| build (`vite build`) | **ok**, sem classe nova de aviso | local |
+| testes UI focais Meta | **81 passaram** | jsdom |
+| suíte UI inteira | **1762 passaram**, 15 falharam em 5 arquivos | jsdom |
+| perfil de schema | CREATE_ONLY e META_READ_MODEL conferidos | local |
 
-**Sobre as 38 falhas da suíte inteira:** estão confinadas a seis arquivos —
+**Sobre as 15 falhas da suíte de UI:** estão em cinco arquivos —
+`inventario/{onze-estados,inventario-campanhas,achados-da-auditoria,projecao-de-atencao}`
+e `work-road/qg-logic` — nenhum deles modificado nesta sessão e nenhum
+importando qualquer arquivo do delta. `qg-logic` lê o `ROADMAP-VIVO.json` e
+falha em `expected 'P05-T12' to be 'P05-T11'`; conferi que a edição de roadmap
+desta sessão **não a piorou** (mesma asserção, mesmo valor, antes e depois).
+
+**Sobre as 38 falhas da suíte inteira do backend:** estão confinadas a seis arquivos —
 `test_adspower_broker_hermetico`, `test_trafego`, `test_quadro`,
 `test_publicar_pagina`, `test_reler_wordpress`, `test_canario_pedido_aprovado` —
 e **nenhum deles importa qualquer módulo do delta**. A causa visível é
@@ -161,6 +173,12 @@ O caminho de leitura real existe ponta a ponta **no código**, e responde com
 estados nomeados. Enquanto o schema de CP2 não for aplicado, ele responde
 `SCHEMA_NAO_APLICADO` — que é a resposta correta, e é diferente de "inventário
 vazio".
+
+**Pixels não foram verificados.** A extensão do navegador não estava conectada
+nesta sessão, então não houve inspeção visual autenticada em 390/1440 nem
+claro/escuro, nem verificação de foco por teclado. `HTTP 200` num SPA e testes
+em jsdom não substituem isso. Para fechar essa lacuna o operador precisa
+fornecer a sessão autenticada — nenhuma senha ou token deve passar pelo chat.
 
 ## Provado localmente × provado oficialmente
 
