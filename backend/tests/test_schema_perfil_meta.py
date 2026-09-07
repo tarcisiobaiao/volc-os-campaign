@@ -317,6 +317,27 @@ def test_regex_de_chamada_pega_as_duas_formas() -> None:
 # glob_hazard: o teste MEDE o diretório, não copia o número
 # ---------------------------------------------------------------------------
 
+def _sql_rastreados() -> list[Path]:
+    """Os .sql do diretório que FAZEM PARTE do commit.
+
+    ⚠️ Uma medição sobre o diretório cru mistura o estado commitado com o
+    rascunho de quem estiver trabalhando ao lado. Foi um caso real: outro writer
+    deixou duas migrations não commitadas na árvore e dois gates reprovaram um
+    manifesto que descrevia corretamente o commit. Mesma doutrina de
+    `tracked_inputs()` no wrapper do grafo.
+
+    ⚠️ Isto NÃO diminui o perigo do glob — ele pega o não commitado igual, e é
+    por isso que existe `test_sql_nao_rastreado_e_avisado_porque_o_glob_o_pega_igual`.
+    """
+    rastreados = set(subprocess.run(
+        ["git", "ls-files", "--", str(MIGRATIONS.relative_to(RAIZ))],
+        cwd=RAIZ, check=True, capture_output=True, text=True,
+    ).stdout.split())
+    return sorted(
+        p for p in MIGRATIONS.glob("*.sql")
+        if str(p.relative_to(RAIZ)) in rastreados)
+
+
 def test_glob_hazard_bate_com_a_medicao_do_diretorio(manifesto: dict) -> None:
     """MEDE o diretório agora e cobra o manifesto — nunca o contrário.
 
@@ -327,7 +348,19 @@ def test_glob_hazard_bate_com_a_medicao_do_diretorio(manifesto: dict) -> None:
     exatamente qual campo do manifesto reescrever e com que valor.
     """
     perigo = manifesto["glob_hazard"]
-    arquivos = sorted(p for p in MIGRATIONS.iterdir() if p.is_file())
+    # ⚠️ RASTREADOS, e a distinção nasceu de um caso real: outro writer deixou
+    # duas migrations NÃO COMMITADAS na árvore, e o gate reprovou um manifesto
+    # que descrevia corretamente o estado COMMITADO. Um arquivo não commitado
+    # não faz parte do commit — é a mesma doutrina de `tracked_inputs()` no
+    # wrapper do grafo, e sem ela o número do manifesto passaria a depender do
+    # rascunho de quem estivesse trabalhando ao lado.
+    rastreados = set(subprocess.run(
+        ["git", "ls-files", "--", str(MIGRATIONS.relative_to(RAIZ))],
+        cwd=RAIZ, check=True, capture_output=True, text=True,
+    ).stdout.split())
+    arquivos = sorted(
+        p for p in MIGRATIONS.iterdir()
+        if p.is_file() and str(p.relative_to(RAIZ)) in rastreados)
     sql = [p for p in arquivos if p.suffix == ".sql"]
     rollbacks = [p for p in sql if "rollback" in p.name.lower()]
 
@@ -352,6 +385,33 @@ def test_glob_hazard_bate_com_a_medicao_do_diretorio(manifesto: dict) -> None:
         p.name for p in arquivos if p.suffix != ".sql")
 
 
+def test_sql_nao_rastreado_e_avisado_porque_o_glob_o_pega_igual() -> None:
+    """O contador vive do estado COMMITADO; o PERIGO, não.
+
+    ⚠️ `for f in supabase/migrations/*.sql` no shell pega arquivo não commitado
+    do mesmo jeito. Então medir só o rastreado deixaria o número honesto e o
+    risco invisível. Este teste não reprova a presença — ela é legítima, outro
+    writer pode estar trabalhando — mas exige que ela seja VISÍVEL, para que
+    ninguém construa uma janela de apply por glob achando que o diretório tem
+    só o que o manifesto declara.
+    """
+    rastreados = set(subprocess.run(
+        ["git", "ls-files", "--", str(MIGRATIONS.relative_to(RAIZ))],
+        cwd=RAIZ, check=True, capture_output=True, text=True,
+    ).stdout.split())
+    nao_rastreados = sorted(
+        p.name for p in MIGRATIONS.glob("*.sql")
+        if str(p.relative_to(RAIZ)) not in rastreados)
+    if nao_rastreados:
+        print(
+            "\nAVISO · há .sql NÃO COMMITADO em supabase/migrations que um glob "
+            f"pegaria: {', '.join(nao_rastreados)}. Isso não invalida o manifesto "
+            "(que descreve o estado commitado), mas confirma por que a janela de "
+            "apply NUNCA pode ser construída por glob.")
+    # A asserção é sobre a regra que importa, e ela vale nos dois casos.
+    assert all(p.suffix == ".sql" for p in MIGRATIONS.glob("*.sql"))
+
+
 def test_rollback_nao_se_conta_por_grep_de_drop() -> None:
     """⚠️ `grep -l 'DROP '` devolve MAIS que o número de rollbacks, porque
     migrations FORWARD dropam para recriar — `20260907120000:84` dropa a
@@ -370,7 +430,7 @@ def test_on_error_stop_e_verdade_no_escopo_declarado(manifesto: dict) -> None:
     é falsa para o diretório e é o que justifica o executor `psql`. Aqui se prova
     onde ela VALE: nos arquivos que este manifesto manda aplicar e reverter."""
     metacomando = "\\set ON_ERROR_STOP on"
-    sem = [p.name for p in sorted(MIGRATIONS.glob("*.sql"))
+    sem = [p.name for p in _sql_rastreados()
            if metacomando not in p.read_text(encoding="utf-8")]
     assert sem, "a ressalva do manifesto ficou sem base: agora todos têm"
     assert "v12_03_pmax_observability_ledger.sql" in sem, (
@@ -381,7 +441,7 @@ def test_on_error_stop_e_verdade_no_escopo_declarado(manifesto: dict) -> None:
     # `20260908000000_meta_insights_escopo.sql`. Uma regra por prefixo já
     # nasceria falsa.
     trilho_por_nome = re.compile(r"(^|_)meta(_|\.)|^v15_")
-    casam = [p.name for p in sorted(MIGRATIONS.glob("*.sql"))
+    casam = [p.name for p in _sql_rastreados()
              if trilho_por_nome.search(p.name)]
     assert any(nome in sem for nome in casam), (
         "se o trilho inteiro passar a ter o meta-comando, a ressalva do "
