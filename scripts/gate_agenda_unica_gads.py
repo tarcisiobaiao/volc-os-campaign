@@ -35,6 +35,15 @@ WORKFLOWS = [
     RAIZ / "n8n" / "volc_gads_campanha_dia_d0.json",
     RAIZ / "n8n" / "volc_gads_campanha_dia_d1.json",
 ]
+# ⚠️ AGENDA META: DECLARADA, NAO DESCOBERTA.
+# Este gate varre artefato CAPAZ de agendar. O fluxo Meta de insights diarios
+# (n8n/gerar_flows_meta_ledger.py) tem `scheduleTrigger` e apareceria aqui como
+# "segunda agenda desconhecida" — e um gate que acusa o artefato legitimo ensina
+# a ignorar o gate. Ele e registrado no conjunto declarado abaixo e, como os
+# fluxos Google, tem de nascer INATIVO.
+WORKFLOWS_META = [
+    RAIZ / "n8n" / "volc_meta_insights_dia_d1.json",
+]
 UNITS = [
     "volc-google-intelligence@frequente.service",
     "volc-google-intelligence@completa.service",
@@ -101,7 +110,7 @@ else:
           not presentes, ", ".join(presentes))
 
 print("\n── 2. os workflows n8n versionados")
-for caminho in WORKFLOWS:
+for caminho in WORKFLOWS + [w for w in WORKFLOWS_META if w.exists()]:
     wf = json.loads(caminho.read_text(encoding="utf-8"))
     prova(f"{caminho.name} nasce inativo", wf.get("active") is False)
     prova(f"{caminho.name} declara o estado no meta",
@@ -146,6 +155,7 @@ for arquivo in rastreados():
 ESPERADOS = {
     "n8n/volc_gads_campanha_dia_d0.json",
     "n8n/volc_gads_campanha_dia_d1.json",
+    "n8n/volc_meta_insights_dia_d1.json",
     "n8n/joinads_report_day_before.json",
     "n8n/joinads_report_intraday.json",
     "n8n/joinads_day_before_simplificado.json",

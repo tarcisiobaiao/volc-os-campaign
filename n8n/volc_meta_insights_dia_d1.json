@@ -1,0 +1,1146 @@
+{
+  "name": "VOLC · Meta Ads insights campanha-dia · D-1 (fuso da conta)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "7f65f39c-c37d-5586-ba1e-4aefc9a0c6f4",
+      "name": "Agenda",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -660,
+        -120
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f416ba6b-319d-5888-8310-415541e21cab",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "SUPABASE_URL",
+              "type": "string",
+              "value": "https://database.agenciavolc.com.br"
+            },
+            {
+              "id": "c2",
+              "name": "GRAPH_BASE",
+              "type": "string",
+              "value": "https://graph.facebook.com"
+            },
+            {
+              "id": "c3",
+              "name": "GRAPH_API_VERSION",
+              "type": "string",
+              "value": "v26.0"
+            },
+            {
+              "id": "c4",
+              "name": "RPC_PERSISTIR",
+              "type": "string",
+              "value": "trafego_meta_persistir_snapshot"
+            },
+            {
+              "id": "c5",
+              "name": "JOB",
+              "type": "string",
+              "value": "meta_insights_dia_d1"
+            },
+            {
+              "id": "c6",
+              "name": "JANELA_MODO",
+              "type": "string",
+              "value": "D-1"
+            },
+            {
+              "id": "c7",
+              "name": "PASSOS",
+              "type": "string",
+              "value": "07"
+            },
+            {
+              "id": "c8",
+              "name": "PASSO_FORCADO",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "c9",
+              "name": "TZ_DO_DISPARO",
+              "type": "string",
+              "value": "America/Sao_Paulo"
+            },
+            {
+              "id": "c10",
+              "name": "NIVEL",
+              "type": "string",
+              "value": "campaign"
+            },
+            {
+              "id": "c11",
+              "name": "TIME_INCREMENT",
+              "type": "string",
+              "value": "1"
+            },
+            {
+              "id": "c12",
+              "name": "ACTION_REPORT_TIME",
+              "type": "string",
+              "value": "impression"
+            },
+            {
+              "id": "c13",
+              "name": "BREAKDOWN",
+              "type": "string",
+              "value": "none"
+            },
+            {
+              "id": "c14",
+              "name": "JANELAS_DE_ATRIBUICAO",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "c15",
+              "name": "CAMPOS_DE_INSIGHT",
+              "type": "string",
+              "value": "account_id,campaign_id,adset_id,ad_id,date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,cpm,cpc,ctr,actions,action_values"
+            },
+            {
+              "id": "c16",
+              "name": "LIMITE_POR_PAGINA",
+              "type": "string",
+              "value": "100"
+            },
+            {
+              "id": "c17",
+              "name": "MAX_PAGINAS",
+              "type": "string",
+              "value": "50"
+            },
+            {
+              "id": "c18",
+              "name": "MAX_DIAS_POR_PEDIDO",
+              "type": "string",
+              "value": "{\"1\":92,\"28\":731,\"7\":366,\"all_days\":731,\"monthly\":731}"
+            },
+            {
+              "id": "c19",
+              "name": "DIAS_DE_REPROCESSO",
+              "type": "string",
+              "value": "0"
+            },
+            {
+              "id": "c20",
+              "name": "PRONTIDOES_ACEITAS",
+              "type": "string",
+              "value": "READY_FOR_READ,READY_FOR_VALIDATION,READY_FOR_CREATE_PAUSED,READY_FOR_ACTIVATION"
+            },
+            {
+              "id": "c21",
+              "name": "CONTAS_PERMITIDAS",
+              "type": "string",
+              "value": ""
+            },
+            {
+              "id": "c22",
+              "name": "CONTRATO_VERSAO",
+              "type": "string",
+              "value": "meta-insights-dia-v1"
+            },
+            {
+              "id": "c23",
+              "name": "CONTRATO_SHA256",
+              "type": "string",
+              "value": "19d12eed5afe53a8edfbccb16e01dba5271301785ec81d0bd7de7c70825137a7"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2fe0b19-f376-5f8a-be2c-c4cf399f103a",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -440,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes: TEMPO E FUSO ─────────────────────────────────────────────────\n\nfunction dataNaZona(instante, tz) {\n  const partes = new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',\n  }).formatToParts(instante);\n  const v = {};\n  for (const p of partes) v[p.type] = p.value;\n  if (!v.year || !v.month || !v.day) {\n    throw new Error(`FUSO_INVALIDO: nao consegui ler a data em ${tz}`);\n  }\n  return `${v.year}-${v.month}-${v.day}`;\n}\n\nfunction horaNaZona(instante, tz) {\n  const partes = new Intl.DateTimeFormat('en-GB', {\n    timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',\n  }).formatToParts(instante);\n  const v = {};\n  for (const p of partes) v[p.type] = p.value;\n  return { hora: v.hour, minuto: v.minute };\n}\n\n// Um fuso que o runtime nao conhece NAO pode virar UTC calado: viraria um dia\n// errado com cara de dia certo.\nfunction fusoUtilizavel(tz) {\n  if (typeof tz !== 'string' || tz.trim() === '') return false;\n  try {\n    dataNaZona(new Date(), tz);\n    return true;\n  } catch (e) {\n    return false;\n  }\n}\n\n// Aritmetica de CALENDARIO, nao de milissegundos: subtrair 86400000 de um\n// instante erra no dia em que o fuso muda. Aqui o dia sai da data local ja\n// resolvida.\nfunction subtrairDias(iso, n) {\n  const [a, m, d] = iso.split('-').map(Number);\n  // Sem `|| 0`: o padrao de ausencia esta proibido em todo este arquivo, porque\n  // e assim que uma metrica ausente vira zero medido. Aqui a intencao e a\n  // mesma disciplina — declarar o caso, nao encobri-lo.\n  const passos = Number.isFinite(Number(n)) ? Number(n) : 0;\n  const x = new Date(Date.UTC(a, m - 1, d) - passos * 86400000);\n  const p = (v) => String(v).padStart(2, '0');\n  return `${x.getUTCFullYear()}-${p(x.getUTCMonth() + 1)}-${p(x.getUTCDate())}`;\n}\n\nfunction diasEntre(inicioIso, fimIso) {\n  const [a1, m1, d1] = inicioIso.split('-').map(Number);\n  const [a2, m2, d2] = fimIso.split('-').map(Number);\n  const t1 = Date.UTC(a1, m1 - 1, d1);\n  const t2 = Date.UTC(a2, m2 - 1, d2);\n  return Math.round((t2 - t1) / 86400000) + 1;\n}\n\n\n// ── ajudantes: VALORES E ETIQUETAS ──────────────────────────────────────────\n// A etiqueta da janela NUNCA promete uma janela que nao foi pedida.\n// Espelha `dominio.PedidoDeInsights.janela_declarada`.\nfunction janelaDeclarada(janelas) {\n  if (!Array.isArray(janelas) || janelas.length === 0) return 'default';\n  return janelas.slice().sort().join('+');\n}\n\n// Ausencia e ausencia; '' nao e zero. `Number('')` devolveria 0 e fabricaria\n// medida onde a Meta nao mediu nada.\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'boolean') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n}\nfunction inteiro(v) {\n  const n = num(v);\n  return n === null ? null : Math.trunc(n);\n}\nfunction texto(v) {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  return s === '' ? null : s;\n}\n\n// ── IDENTIDADE DA EXECUCAO ──────────────────────────────────────────────────\n//\n// ⚠️ A chave da execucao NAO carrega a janela coletada, e isso e uma diferenca\n// deliberada em relacao ao fluxo Google. La existe UM fuso; aqui cada conta tem\n// o seu, e \"ontem\" pode ser dia 12 numa conta e dia 11 na conta ao lado. Uma\n// chave com uma janela unica mentiria sobre metade das contas. Entao a chave da\n// execucao carrega a DATA DO DISPARO (rotulo da rodada, no fuso do workflow) e\n// a janela real viaja por conta, dentro do recibo.\nconst cfg = $('Config').first().json;\nconst tzDisparo = String(cfg.TZ_DO_DISPARO || 'America/Sao_Paulo');\nif (!fusoUtilizavel(tzDisparo)) {\n  throw new Error(`FUSO_DO_DISPARO_INVALIDO: ${tzDisparo}`);\n}\nconst modo = String(cfg.JANELA_MODO || '').toUpperCase();\nif (modo !== 'D-1') {\n  throw new Error(`JANELA_MODO_INVALIDO: ${cfg.JANELA_MODO}`);\n}\n\nconst nivel = String(cfg.NIVEL || '');\nif (['account', 'campaign', 'adset', 'ad'].indexOf(nivel) === -1) {\n  throw new Error(`NIVEL_DESCONHECIDO: ${nivel}`);\n}\nconst timeIncrement = String(cfg.TIME_INCREMENT || '');\nif (['1', '7', '28', 'monthly', 'all_days'].indexOf(timeIncrement) === -1) {\n  throw new Error(`TIME_INCREMENT_DESCONHECIDO: ${timeIncrement}`);\n}\nconst actionReportTime = String(cfg.ACTION_REPORT_TIME || '');\nif (['impression', 'conversion', 'mixed'].indexOf(actionReportTime) === -1) {\n  throw new Error(`ACTION_REPORT_TIME_DESCONHECIDO: ${actionReportTime}`);\n}\nconst breakdown = String(cfg.BREAKDOWN || 'none');\nconst BREAKDOWNS = ['none', 'publisher_platform', 'platform_position',\n  'impression_device', 'device_platform', 'country', 'region'];\nif (BREAKDOWNS.indexOf(breakdown) === -1) {\n  throw new Error(`BREAKDOWN_FORA_DA_ALLOWLIST: ${breakdown}`);\n}\nif (nivel === 'account' && (breakdown === 'region' || breakdown === 'platform_position')) {\n  throw new Error(`COMBINACAO_RECUSADA: ${breakdown} nao e correlacionavel em ${nivel}`);\n}\n\nconst JANELAS_VALIDAS = ['1d_click', '7d_click', '28d_click', '1d_view', '7d_view',\n  '28d_view', '1d_ev', '7d_ev', '28d_ev'];\nconst janelas = String(cfg.JANELAS_DE_ATRIBUICAO || '')\n  .split(',').map((s) => s.trim()).filter(Boolean);\nfor (const j of janelas) {\n  if (JANELAS_VALIDAS.indexOf(j) === -1) {\n    throw new Error(`JANELA_FORA_DA_ALLOWLIST: ${j}`);\n  }\n}\nif (new Set(janelas).size !== janelas.length) {\n  throw new Error('JANELA_REPETIDA_NO_PEDIDO');\n}\n\nconst agora = new Date();\nconst dataDoDisparo = dataNaZona(agora, tzDisparo);\nconst relogio = horaNaZona(agora, tzDisparo);\n\n// Disparo: `isExecuted` diz qual gatilho acordou o fluxo. Se o no nem existir na\n// execucao, tratamos como manual — nunca como agenda, porque declarar \"agenda\"\n// numa rodada manual mentiria para o deadman.\nlet porAgenda = false;\ntry { porAgenda = Boolean($('Agenda').isExecuted); } catch (e) { porAgenda = false; }\nconst disparo = porAgenda ? 'agenda' : 'manual';\n\nconst passosConfigurados = String(cfg.PASSOS || '')\n  .split(',').map((s) => s.trim()).filter(Boolean);\nfunction passoDaAgenda(hora) {\n  let escolhido = passosConfigurados[passosConfigurados.length - 1];\n  for (const p of passosConfigurados) {\n    if (p <= hora) escolhido = p;\n  }\n  return escolhido;\n}\nlet passo;\nif (String(cfg.PASSO_FORCADO || '').trim() !== '') {\n  passo = String(cfg.PASSO_FORCADO).trim();\n} else if (disparo === 'agenda') {\n  passo = passoDaAgenda(relogio.hora);\n} else {\n  // Rodada manual ganha passo proprio: repetir o mesmo minuto e idempotente, e\n  // um minuto depois e outra leitura, com outro recibo.\n  passo = `m${relogio.hora}${relogio.minuto}`;\n}\nif (!passo) throw new Error('PASSO_INDETERMINADO: PASSOS vazio no Config');\n\nconst job = String(cfg.JOB || '');\nif (!/^[a-z0-9_]{3,40}$/.test(job)) throw new Error(`JOB_INVALIDO: ${job}`);\n\nconst diasDeReprocesso = Math.max(0, Number(cfg.DIAS_DE_REPROCESSO) || 0);\nconst tetos = JSON.parse(String(cfg.MAX_DIAS_POR_PEDIDO || '{}'));\nconst teto = Number(tetos[timeIncrement] || tetos['1'] || 92);\nif (diasDeReprocesso + 1 > teto) {\n  throw new Error(`REPROCESSO_ACIMA_DO_TETO: ${diasDeReprocesso + 1} dias excede`\n    + ` o teto local de ${teto} para time_increment=${timeIncrement}`);\n}\n\nconst execucaoChave = `${job}:${modo}:${dataDoDisparo}:${passo}`;\nconst contasPermitidas = String(cfg.CONTAS_PERMITIDAS || '')\n  .split(',').map((s) => s.trim()).filter(Boolean);\nfor (const c of contasPermitidas) {\n  if (!/^[0-9]{1,40}$/.test(c)) {\n    throw new Error(`CONTA_PERMITIDA_INVALIDA: a allowlist so aceita id numerico`);\n  }\n}\nconst filtroConta = contasPermitidas.length\n  ? `&account_external_id=in.(${contasPermitidas.join(',')})`\n  : '';\n\nconst prontidoes = String(cfg.PRONTIDOES_ACEITAS || '')\n  .split(',').map((s) => s.trim()).filter(Boolean);\nif (prontidoes.length === 0) throw new Error('PRONTIDOES_ACEITAS_VAZIO');\n\nreturn [{\n  json: {\n    fonte: 'n8n',\n    provider: 'META_ADS',\n    job,\n    disparo,\n    origem_janela: modo,\n    data_do_disparo: dataDoDisparo,\n    dias_de_reprocesso: diasDeReprocesso,\n    passo,\n    execucao_chave: execucaoChave,\n    api_versao: String(cfg.GRAPH_API_VERSION || ''),\n    contrato_versao: String(cfg.CONTRATO_VERSAO || ''),\n    contrato_sha256: String(cfg.CONTRATO_SHA256 || ''),\n    nivel,\n    time_increment: timeIncrement,\n    action_report_time: actionReportTime,\n    breakdown,\n    janelas_solicitadas: janelas,\n    janela_declarada: janelaDeclarada(janelas),\n    campos_de_insight: String(cfg.CAMPOS_DE_INSIGHT || ''),\n    limite_por_pagina: Math.min(500, Math.max(1, Number(cfg.LIMITE_POR_PAGINA) || 100)),\n    tz_do_disparo: tzDisparo,\n    workflow_id: $workflow.id,\n    execucao_externa_id: String($execution.id),\n    iniciada_em: agora.toISOString(),\n    contas_permitidas: contasPermitidas,\n    url_contas: `${cfg.SUPABASE_URL}/rest/v1/trafego_meta_ad_account`\n      + '?select=cofre_ativo_id,account_external_id,timezone_name,moeda,'\n      + 'account_status,readiness_state,credential_ativo_id'\n      + `&readiness_state=in.(${prontidoes.join(',')})`\n      + `&order=cofre_ativo_id.asc&limit=500${filtroConta}`,\n  },\n}];\n"
+      },
+      "id": "a2227a42-a0b0-5f17-b7a7-5128cd44ab02",
+      "name": "Identidade da execucao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_contas }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "57b37223-dc94-537c-a2bc-0d821ad0c090",
+      "name": "Contas autorizadas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        -20
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes: TEMPO E FUSO ─────────────────────────────────────────────────\n\nfunction dataNaZona(instante, tz) {\n  const partes = new Intl.DateTimeFormat('en-CA', {\n    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',\n  }).formatToParts(instante);\n  const v = {};\n  for (const p of partes) v[p.type] = p.value;\n  if (!v.year || !v.month || !v.day) {\n    throw new Error(`FUSO_INVALIDO: nao consegui ler a data em ${tz}`);\n  }\n  return `${v.year}-${v.month}-${v.day}`;\n}\n\nfunction horaNaZona(instante, tz) {\n  const partes = new Intl.DateTimeFormat('en-GB', {\n    timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',\n  }).formatToParts(instante);\n  const v = {};\n  for (const p of partes) v[p.type] = p.value;\n  return { hora: v.hour, minuto: v.minute };\n}\n\n// Um fuso que o runtime nao conhece NAO pode virar UTC calado: viraria um dia\n// errado com cara de dia certo.\nfunction fusoUtilizavel(tz) {\n  if (typeof tz !== 'string' || tz.trim() === '') return false;\n  try {\n    dataNaZona(new Date(), tz);\n    return true;\n  } catch (e) {\n    return false;\n  }\n}\n\n// Aritmetica de CALENDARIO, nao de milissegundos: subtrair 86400000 de um\n// instante erra no dia em que o fuso muda. Aqui o dia sai da data local ja\n// resolvida.\nfunction subtrairDias(iso, n) {\n  const [a, m, d] = iso.split('-').map(Number);\n  // Sem `|| 0`: o padrao de ausencia esta proibido em todo este arquivo, porque\n  // e assim que uma metrica ausente vira zero medido. Aqui a intencao e a\n  // mesma disciplina — declarar o caso, nao encobri-lo.\n  const passos = Number.isFinite(Number(n)) ? Number(n) : 0;\n  const x = new Date(Date.UTC(a, m - 1, d) - passos * 86400000);\n  const p = (v) => String(v).padStart(2, '0');\n  return `${x.getUTCFullYear()}-${p(x.getUTCMonth() + 1)}-${p(x.getUTCDate())}`;\n}\n\nfunction diasEntre(inicioIso, fimIso) {\n  const [a1, m1, d1] = inicioIso.split('-').map(Number);\n  const [a2, m2, d2] = fimIso.split('-').map(Number);\n  const t1 = Date.UTC(a1, m1 - 1, d1);\n  const t2 = Date.UTC(a2, m2 - 1, d2);\n  return Math.round((t2 - t1) / 86400000) + 1;\n}\n\n\n// ── ajudantes: VALORES E ETIQUETAS ──────────────────────────────────────────\n// A etiqueta da janela NUNCA promete uma janela que nao foi pedida.\n// Espelha `dominio.PedidoDeInsights.janela_declarada`.\nfunction janelaDeclarada(janelas) {\n  if (!Array.isArray(janelas) || janelas.length === 0) return 'default';\n  return janelas.slice().sort().join('+');\n}\n\n// Ausencia e ausencia; '' nao e zero. `Number('')` devolveria 0 e fabricaria\n// medida onde a Meta nao mediu nada.\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'boolean') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n}\nfunction inteiro(v) {\n  const n = num(v);\n  return n === null ? null : Math.trunc(n);\n}\nfunction texto(v) {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  return s === '' ? null : s;\n}\n\n// ── CONTAS AUTORIZADAS E A JANELA DE CADA UMA ───────────────────────────────\n//\n// ⚠️ AQUI MORA A PROPRIEDADE MAIS IMPORTANTE DESTE FLUXO.\n//\n// A janela D-1 e calculada NO FUSO DA CONTA, lido de\n// `trafego_meta_ad_account.timezone_name`. Nao no fuso do servidor n8n, nao no\n// `TZ_DO_DISPARO`, nao num padrao. Uma conta em America/Sao_Paulo lida por um\n// host em UTC recebe, durante tres horas toda noite, o pedido de um dia que a\n// conta ainda nao comecou: a Meta devolve serie vazia, e o painel desenha um\n// zero medido para um dia que nao existiu. Foi exatamente este defeito que o\n// lado Python corrigiu em `dominio.hoje_na_conta`.\n//\n// Conta sem fuso, ou com fuso que este runtime nao conhece, NAO cai num padrao:\n// ela e recusada, com motivo, e a execucao registra a recusa. Um fuso chutado e\n// pior que uma conta a menos.\nconst ident = $('Identidade da execucao').first().json;\nconst cfg = $('Config').first().json;\nconst permitidas = ident.contas_permitidas || [];\nconst agora = new Date();\n\nconst vistas = new Set();\nconst contas = [];\nconst recusadas = [];\nfor (const item of $input.all()) {\n  const linha = item.json;\n  if (linha === null || linha === undefined) continue;\n  const externo = texto(linha.account_external_id);\n  const ativo = texto(linha.cofre_ativo_id);\n  if (externo === null || ativo === null) continue;\n  const conta = externo.replace(/^act_/, '');\n  if (!/^[0-9]{1,40}$/.test(conta)) {\n    recusadas.push({ conta_ativo_id: ativo, motivo: 'ID_EXTERNO_INVALIDO' });\n    continue;\n  }\n  if (permitidas.length && permitidas.indexOf(conta) === -1) continue;\n  if (vistas.has(ativo)) continue;\n  vistas.add(ativo);\n\n  const fuso = texto(linha.timezone_name);\n  if (fuso === null) {\n    recusadas.push({ conta_ativo_id: ativo, motivo: 'CONTA_SEM_FUSO' });\n    continue;\n  }\n  if (!fusoUtilizavel(fuso)) {\n    recusadas.push({ conta_ativo_id: ativo, motivo: 'FUSO_DESCONHECIDO' });\n    continue;\n  }\n\n  // Hoje NA CONTA, e so entao o dia anterior — aritmetica de calendario.\n  const hojeNaConta = dataNaZona(agora, fuso);\n  const janelaFim = subtrairDias(hojeNaConta, 1);\n  const janelaInicio = subtrairDias(janelaFim, ident.dias_de_reprocesso);\n  contas.push({\n    conta_ativo_id: ativo,\n    // Referencia OPACA: e o sufixo estavel do ativo do cofre\n    // (`meta_account_metaacct_…`), o mesmo handle que\n    // `dominio.referencia_opaca_conta` produz. E ela que vai para recibo,\n    // alerta e log — nunca o id numerico.\n    conta_ref: ativo.replace(/^meta_account_/, ''),\n    conta_externa: conta,\n    id_mascarado: `••••${conta.slice(-4)}`,\n    credencial_ativo_id: texto(linha.credential_ativo_id),\n    fuso_da_conta: fuso,\n    moeda: texto(linha.moeda),\n    hoje_na_conta: hojeNaConta,\n    janela_inicio: janelaInicio,\n    janela_fim: janelaFim,\n    dias_na_janela: diasEntre(janelaInicio, janelaFim),\n  });\n}\ncontas.sort((a, b) => (a.conta_ativo_id < b.conta_ativo_id ? -1 : 1));\n\n// Falha fechada. Zero conta autorizada NAO e \"nada a fazer\": ou o read model\n// nao respondeu, ou a allowlist esta errada, ou nenhuma conta tem fuso. Seguir\n// daria um recibo verde de uma rodada que nao leu nada.\nif (contas.length === 0) {\n  throw new Error('SEM_CONTA_AUTORIZADA: o read model nao devolveu conta Meta'\n    + ' com fuso utilizavel para esta execucao; nada foi lido e nada sera'\n    + ' declarado como vazio'\n    + (recusadas.length ? ` (${recusadas.length} recusada(s))` : ''));\n}\n\nconst ativos = contas.map((c) => c.conta_ativo_id);\nconst url = `${cfg.SUPABASE_URL}/rest/v1/trafego_meta_campaign`\n  + '?select=meta_campaign_id,ad_account_ativo_id,external_id&limit=20000'\n  + `&ad_account_ativo_id=in.(${ativos.join(',')})`;\n\nreturn [{\n  json: {\n    ...ident,\n    contas,\n    total_contas: contas.length,\n    contas_recusadas_na_selecao: recusadas,\n    url_objetos: url,\n  },\n}];\n"
+      },
+      "id": "2aef8f35-82b2-59ef-a9e8-4d821cce2b96",
+      "name": "Selecionar contas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url_objetos }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "f18d248c-ea06-5a6d-9eed-b30848f61268",
+      "name": "Objetos conhecidos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        -20
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── IDENTIDADE VOLC POR CONTA ───────────────────────────────────────────────\n//\n// Cada conta leva SO o seu pedaco do mapa. Carregar o mapa inteiro em todo item\n// engordaria o laco sem necessidade, e ler o mapa com `$('No').all()` dentro do\n// laco seria o acumulador global que este contrato proibe.\nconst base = $('Selecionar contas').first().json;\nconst porConta = {};\nfor (const item of $input.all()) {\n  const linha = item.json;\n  if (!linha) continue;\n  const ativo = linha.ad_account_ativo_id === null || linha.ad_account_ativo_id === undefined\n    ? null : String(linha.ad_account_ativo_id);\n  const externo = linha.external_id === null || linha.external_id === undefined\n    ? null : String(linha.external_id);\n  const volc = linha.meta_campaign_id === null || linha.meta_campaign_id === undefined\n    ? null : String(linha.meta_campaign_id);\n  if (!ativo || !externo || !volc) continue;\n  if (!porConta[ativo]) porConta[ativo] = {};\n  porConta[ativo][externo] = volc;\n}\n\nreturn base.contas.map((conta, i) => ({\n  json: {\n    fonte: base.fonte,\n    provider: base.provider,\n    job: base.job,\n    disparo: base.disparo,\n    origem_janela: base.origem_janela,\n    data_do_disparo: base.data_do_disparo,\n    execucao_chave: base.execucao_chave,\n    api_versao: base.api_versao,\n    contrato_versao: base.contrato_versao,\n    contrato_sha256: base.contrato_sha256,\n    nivel: base.nivel,\n    time_increment: base.time_increment,\n    action_report_time: base.action_report_time,\n    breakdown: base.breakdown,\n    janelas_solicitadas: base.janelas_solicitadas,\n    janela_declarada: base.janela_declarada,\n    campos_de_insight: base.campos_de_insight,\n    limite_por_pagina: base.limite_por_pagina,\n    workflow_id: base.workflow_id,\n    execucao_externa_id: base.execucao_externa_id,\n    iniciada_em: base.iniciada_em,\n    contas_tentadas: base.contas.map((c) => c.conta_ref),\n    total_contas: base.total_contas,\n    contas_recusadas_na_selecao: base.contas_recusadas_na_selecao,\n    conta_ativo_id: conta.conta_ativo_id,\n    conta_ref: conta.conta_ref,\n    conta_externa: conta.conta_externa,\n    id_mascarado: conta.id_mascarado,\n    credencial_ativo_id: conta.credencial_ativo_id,\n    fuso_da_conta: conta.fuso_da_conta,\n    moeda: conta.moeda,\n    hoje_na_conta: conta.hoje_na_conta,\n    janela_inicio: conta.janela_inicio,\n    janela_fim: conta.janela_fim,\n    dias_na_janela: conta.dias_na_janela,\n    conta_ordinal: i + 1,\n    mapa_conta: porConta[conta.conta_ativo_id] || {},\n  },\n}));\n"
+      },
+      "id": "fd518528-653f-51c9-a516-c2e94e80694b",
+      "name": "Identidade VOLC por conta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "0c49729e-46cd-565d-9343-13383330bcc8",
+      "name": "Lote de contas",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        880,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes: VALORES E ETIQUETAS ──────────────────────────────────────────\n// A etiqueta da janela NUNCA promete uma janela que nao foi pedida.\n// Espelha `dominio.PedidoDeInsights.janela_declarada`.\nfunction janelaDeclarada(janelas) {\n  if (!Array.isArray(janelas) || janelas.length === 0) return 'default';\n  return janelas.slice().sort().join('+');\n}\n\n// Ausencia e ausencia; '' nao e zero. `Number('')` devolveria 0 e fabricaria\n// medida onde a Meta nao mediu nada.\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'boolean') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n}\nfunction inteiro(v) {\n  const n = num(v);\n  return n === null ? null : Math.trunc(n);\n}\nfunction texto(v) {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  return s === '' ? null : s;\n}\n\n// ── PEDIDO DE UMA PAGINA ────────────────────────────────────────────────────\n//\n// ⚠️ UMA CONTA POR ITERACAO, e isso e decisao, nao descuido. O edge de insights\n// e `/act_<conta>/insights`: um lote com N contas exigiria abrir o lote de novo\n// dentro do laco, e o retorno do laco passaria a disparar mais de uma vez por\n// iteracao — que e exatamente como um `SplitInBatches` pula lote. O lote de\n// VOLUME e a pagina (`limit` linhas por chamada e por RPC).\n//\n// ⚠️ O QUE VAI NO FIO E O QUE FICA NO RECIBO. `parametros_graph` e montado uma\n// vez e viaja inteiro: `level`, `time_range`, `time_increment`,\n// `action_report_time`, `fields`, `limit` e — SO SE PEDIDAS —\n// `action_attribution_windows` e `breakdowns`. Espelha\n// `dominio.PedidoDeInsights.parametros_graph()`.\nconst itens = $input.all();\nif (itens.length === 0) {\n  throw new Error('LOTE_VAZIO: o laco entregou zero item');\n}\nif (itens.length > 1) {\n  throw new Error(`LOTE_CONTAS_MAIOR_QUE_UM: ${itens.length} contas na mesma iteracao;`\n    + ' o batchSize do laco precisa continuar 1 enquanto a chamada for por conta');\n}\nconst ctx = itens[0].json;\nconst cfg = $('Config').first().json;\n\nif (!ctx || String(ctx.conta_externa || '') === '') {\n  throw new Error('CONTEXTO_PERDIDO: a iteracao chegou sem a conta a ler');\n}\nif (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(ctx.janela_inicio || ''))\n    || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(ctx.janela_fim || ''))) {\n  throw new Error('JANELA_INVALIDA: a conta chegou sem periodo resolvido no fuso dela');\n}\nif (String(ctx.fuso_da_conta || '').trim() === '') {\n  throw new Error('FUSO_AUSENTE: nao existe \"ontem\" sem o fuso da conta');\n}\n\nconst pagina = Number(ctx.pagina || 0) + 1;\nconst teto = Math.max(1, Number(cfg.MAX_PAGINAS) || 50);\n// ⚠️ DIFERENCA DELIBERADA EM RELACAO AO FLUXO GOOGLE. La estourar o teto e erro\n// duro. Aqui a janela truncada e um RESULTADO INCOMPLETO declarado: a leitura\n// para, o que ja foi lido continua valendo, e a marca d'agua NAO avanca. E o\n// equivalente de `dominio.ResultadoDeInsights(completo=False, motivo=…)`.\nconst estourouOTeto = pagina > teto;\n\nconst campos = String(ctx.campos_de_insight || '');\nif (campos.trim() === '') throw new Error('CAMPOS_DE_INSIGHT_VAZIO');\nif (campos.indexOf('action_values') === -1 || campos.indexOf('actions') === -1) {\n  throw new Error('CAMPOS_SEM_ACTIONS_OU_ACTION_VALUES: `actions` conta eventos e'\n    + ' `action_values` soma dinheiro; uma nao se deriva da outra');\n}\n\nconst janelas = Array.isArray(ctx.janelas_solicitadas) ? ctx.janelas_solicitadas : [];\nconst parametros = {\n  level: String(ctx.nivel),\n  time_range: JSON.stringify({ since: ctx.janela_inicio, until: ctx.janela_fim }),\n  time_increment: String(ctx.time_increment),\n  action_report_time: String(ctx.action_report_time),\n  fields: campos,\n  limit: Number(ctx.limite_por_pagina),\n};\nif (String(ctx.breakdown) !== 'none') parametros.breakdowns = String(ctx.breakdown);\n// NUNCA enviar `action_attribution_windows` vazio: enviar a chave sem janela\n// pediria \"nenhuma janela\" em vez de \"a janela da conta\".\nif (janelas.length) parametros.action_attribution_windows = JSON.stringify(janelas);\n\nconst cursor = String(ctx.proximo_cursor || '');\nif (cursor !== '') parametros.after = cursor;\n\nreturn [{\n  json: {\n    ...ctx,\n    pagina,\n    estourou_o_teto: estourouOTeto,\n    parametros_graph: parametros,\n    // O `registro_do_pedido` de `dominio.PedidoDeInsights`: e isto que da\n    // significado ao numero, e e isto que o recibo guarda.\n    pedido: {\n      nivel: String(ctx.nivel),\n      periodo_inicio: String(ctx.janela_inicio),\n      periodo_fim: String(ctx.janela_fim),\n      fuso_da_conta: String(ctx.fuso_da_conta),\n      time_increment: String(ctx.time_increment),\n      breakdown: String(ctx.breakdown),\n      action_report_time: String(ctx.action_report_time),\n      janelas_solicitadas: janelas,\n      janela_declarada: janelaDeclarada(janelas),\n    },\n    url_graph: `${cfg.GRAPH_BASE}/${ctx.api_versao}/act_${ctx.conta_externa}/insights`,\n    acumulado: ctx.acumulado || {\n      linhas_lidas: 0, linhas_aceitas: 0, linhas_rejeitadas: 0,\n      acoes: 0, valores_de_acao: 0, paginas: 0,\n    },\n  },\n}];\n"
+      },
+      "id": "695de75d-1b1b-5dad-8e10-375f05ba9f54",
+      "name": "Pagina: preparar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url_graph }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "metaGraphApiNaoProvisionada",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={{ JSON.stringify($json.parametros_graph) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "8e549e9d-b389-5ac2-aa34-356482d55fda",
+      "name": "Meta Graph: insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        120
+      ],
+      "credentials": {
+        "metaGraphApiNaoProvisionada": {
+          "id": "REPLACE_ME",
+          "name": "VOLC Meta Ads · CREDENCIAL NAO PROVISIONADA"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "263b7bf3-4779-5500-8947-714d4726cf14",
+      "name": "Juntar contexto e resposta",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1450,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "2be278f0-00f9-54d7-ae90-742556a7d1e1",
+      "name": "Juntar contexto e erro",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1450,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes: VALORES E ETIQUETAS ──────────────────────────────────────────\n// A etiqueta da janela NUNCA promete uma janela que nao foi pedida.\n// Espelha `dominio.PedidoDeInsights.janela_declarada`.\nfunction janelaDeclarada(janelas) {\n  if (!Array.isArray(janelas) || janelas.length === 0) return 'default';\n  return janelas.slice().sort().join('+');\n}\n\n// Ausencia e ausencia; '' nao e zero. `Number('')` devolveria 0 e fabricaria\n// medida onde a Meta nao mediu nada.\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'boolean') return null;\n  const n = Number(v);\n  return Number.isFinite(n) ? n : null;\n}\nfunction inteiro(v) {\n  const n = num(v);\n  return n === null ? null : Math.trunc(n);\n}\nfunction texto(v) {\n  if (v === null || v === undefined) return null;\n  const s = String(v).trim();\n  return s === '' ? null : s;\n}\n\n// ── NORMALIZACAO DA PAGINA ──────────────────────────────────────────────────\n//\n// ⚠️ O contexto CHEGA NO ITEM, vindo do Merge — nao de\n// `$('Pagina: preparar pedido')`. `$()` resolve pelo INDICE DA RODADA do no que\n// pergunta, e uma conta que falha faz o pedido rodar mais vezes que a\n// normalizacao: da segunda conta em diante, o contexto lido seria o da\n// PRIMEIRA, com a mesma cara. `combineByPosition` casa resposta e contexto da\n// MESMA iteracao.\n//\n// ⚠️ AUSENCIA NAO VIRA ZERO. `null` significa \"a Meta nao devolveu\"; `0`\n// significa \"a Meta mediu zero\". Os dois viajam ate o banco, onde a coluna nao\n// tem DEFAULT.\n//\n// ⚠️ `actions` e `action_values` sao SEPARADOS ate o fim. Contar eventos e\n// somar dinheiro sao unidades diferentes; misturar as duas inventa receita.\nconst ctx = $input.first().json;\nconst corpo = ctx;\n\nif (!ctx || String(ctx.conta_externa || '') === '') {\n  throw new Error('CONTEXTO_PERDIDO: a iteracao nao trouxe a conta pedida');\n}\n\nconst dados = Array.isArray(corpo && corpo.data) ? corpo.data : [];\nconst paging = (corpo && corpo.paging) || {};\n// A Meta devolve `paging.cursors.after` MESMO na ultima pagina. Quem decide se\n// existe proxima pagina e `paging.next`; usar o cursor como sinal pagina para\n// sempre. Espelha `adaptador.ClienteMetaGraph._cursor`.\nconst temProxima = Boolean(paging && paging.next);\nconst cursorApos = paging && paging.cursors && typeof paging.cursors.after === 'string'\n  ? paging.cursors.after.trim() : '';\n\nlet incompleto = null;\nif (temProxima && cursorApos === '') {\n  incompleto = 'META_INVALID_PAGINATION: paging.next sem cursor after';\n}\nif (temProxima && cursorApos !== '' && cursorApos === String(ctx.proximo_cursor || '')) {\n  incompleto = 'META_PAGINATION_LOOP: cursor de paginacao nao avancou';\n}\nif (ctx.estourou_o_teto) {\n  incompleto = `PAGINACAO_ACIMA_DO_TETO: a janela ${ctx.janela_inicio}..${ctx.janela_fim}`\n    + ' passou do teto de paginas e ficou truncada';\n}\n\nconst janelas = Array.isArray(ctx.janelas_solicitadas) ? ctx.janelas_solicitadas : [];\nconst janelaDoFato = janelaDeclarada(janelas);\nconst colhidaEm = new Date().toISOString();\n\n// Expande as actions SEM achatar janela de atribuicao. Com\n// `action_attribution_windows` pedidas, a Graph nao repete a linha por janela:\n// devolve uma linha por action_type com UMA CHAVE POR JANELA. Ler so `value`\n// colapsaria as janelas num numero cujo significado ninguem recupera.\n// Espelha `adaptador.ClienteMetaGraph._acoes`.\nfunction expandirAcoes(bruto, medida, inicio, fim) {\n  if (bruto === null || bruto === undefined) return [];\n  if (!Array.isArray(bruto)) {\n    throw new Error(`META_INVALID_RESPONSE: ${medida} de insight nao e lista`);\n  }\n  const saida = [];\n  for (const item of bruto) {\n    if (!item || typeof item !== 'object') continue;\n    const tipo = texto(item.action_type) || 'unknown';\n    const presentes = janelas.filter((j) => Object.prototype.hasOwnProperty.call(item, j));\n    if (presentes.length) {\n      for (const janela of presentes) {\n        saida.push({\n          action_type: tipo,\n          value: num(item[janela]),\n          attribution_window: janela,\n          object_level: String(ctx.nivel),\n          date_start: inicio,\n          date_stop: fim,\n          medida,\n        });\n      }\n      continue;\n    }\n    saida.push({\n      action_type: tipo,\n      value: num(item.value),\n      attribution_window: janelaDoFato,\n      object_level: String(ctx.nivel),\n      date_start: inicio,\n      date_stop: fim,\n      medida,\n    });\n  }\n  return saida;\n}\n\n// Landing page views e SO `landing_page_view`. Somar\n// `offsite_conversion.fb_pixel_view_content` ali foi o defeito T05: LPV e medido\n// pela Meta quando a pagina carrega; ViewContent e evento do pixel do site, com\n// outra definicao e outro dono. LPV=4 + ViewContent=7 devolvia 11, um numero que\n// nao e nenhuma das duas medidas. E action presente sem valor medido devolve\n// null, nunca zero. Espelha `adaptador._landing_page_views`.\nfunction landingPageViews(acoes) {\n  const relevantes = acoes.filter(\n    (a) => a.medida === 'count' && a.action_type === 'landing_page_view');\n  if (relevantes.length === 0) return null;\n  if (relevantes.some((a) => a.value === null)) return null;\n  let total = 0;\n  for (const a of relevantes) total += Math.trunc(a.value);\n  return total;\n}\n\nconst fatos = [];\nfor (const linha of dados) {\n  if (!linha || typeof linha !== 'object') {\n    throw new Error('META_INVALID_RESPONSE: insight nao e objeto');\n  }\n  const contaDevolvida = texto(linha.account_id);\n  if (contaDevolvida !== null\n      && contaDevolvida.replace(/^act_/, '') !== String(ctx.conta_externa)) {\n    throw new Error('IDENTIDADE_DIVERGENTE: a resposta trouxe outra conta Meta');\n  }\n\n  const inicio = texto(linha.date_start) || String(ctx.janela_inicio);\n  const fim = texto(linha.date_stop) || String(ctx.janela_fim);\n  let objeto;\n  if (ctx.nivel === 'account') objeto = String(ctx.conta_externa);\n  else if (ctx.nivel === 'campaign') objeto = texto(linha.campaign_id);\n  else if (ctx.nivel === 'adset') objeto = texto(linha.adset_id);\n  else objeto = texto(linha.ad_id);\n\n  const acoes = expandirAcoes(linha.actions, 'count', inicio, fim);\n  const valores = expandirAcoes(linha.action_values, 'value', inicio, fim);\n\n  fatos.push({\n    provider: 'META_ADS',\n    conta_externa: String(ctx.conta_externa),\n    conta_ativo_id: String(ctx.conta_ativo_id),\n    nivel: String(ctx.nivel),\n    objeto_externo: objeto,\n    volc_objeto_id: (ctx.mapa_conta || {})[objeto] || null,\n    periodo_inicio: inicio,\n    periodo_fim: fim,\n    janela_atribuicao: janelaDoFato,\n    breakdown: String(ctx.breakdown),\n    observado_em: colhidaEm,\n    time_increment: String(ctx.time_increment),\n    action_report_time: String(ctx.action_report_time),\n    fuso_da_conta: String(ctx.fuso_da_conta),\n    janelas_solicitadas: janelas,\n\n    spend: num(linha.spend),\n    impressions: inteiro(linha.impressions),\n    reach: inteiro(linha.reach),\n    frequency: num(linha.frequency),\n    clicks: inteiro(linha.clicks),\n    inline_link_clicks: inteiro(linha.inline_link_clicks),\n    landing_page_views: landingPageViews(acoes),\n    cpm: num(linha.cpm),\n    cpc: num(linha.cpc),\n    ctr: num(linha.ctr),\n\n    actions: acoes,\n    action_values: valores,\n  });\n}\n\n// O ordinal do lote e o indice da rodada DESTE no, que so executa quando a\n// chamada a Meta deu certo. Assim a sequencia de lotes fica contigua e o\n// fechamento consegue acusar lote perdido.\nconst loteOrdinal = Number($runIndex) + 1;\nif (!Number.isInteger(loteOrdinal) || loteOrdinal < 1) {\n  throw new Error(`LOTE_ORDINAL_INVALIDO: ${loteOrdinal}`);\n}\n\nreturn [{\n  json: {\n    ...ctx,\n    lote_ordinal: loteOrdinal,\n    fatos,\n    linhas_lidas_na_pagina: fatos.length,\n    proximo_cursor: incompleto === null && temProxima ? cursorApos : '',\n    tem_proxima_pagina: incompleto === null && temProxima,\n    motivo_incompleto: incompleto,\n    pagina_lida_em: colhidaEm,\n  },\n}];\n"
+      },
+      "id": "b10bddc5-1ab6-5eeb-9aa0-b09bab3f1052",
+      "name": "Pagina: normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes: IDENTIDADE ESTAVEL ───────────────────────────────────────────\n// JSON estavel: mesma forma que `read_model._stable_json` (chaves ordenadas,\n// sem espaco). O hash so e util se dois produtores da mesma verdade chegarem no\n// mesmo texto.\nfunction jsonEstavel(valor) {\n  if (valor === null || valor === undefined) return 'null';\n  if (typeof valor === 'number') return Number.isFinite(valor) ? String(valor) : 'null';\n  if (typeof valor === 'boolean') return valor ? 'true' : 'false';\n  if (typeof valor === 'string') return JSON.stringify(valor);\n  if (Array.isArray(valor)) return '[' + valor.map(jsonEstavel).join(',') + ']';\n  const chaves = Object.keys(valor).sort();\n  return '{' + chaves.map((k) => JSON.stringify(k) + ':' + jsonEstavel(valor[k])).join(',') + '}';\n}\n\n// UTF-8 sem TextEncoder: o sandbox do Code node nao garante o global.\nfunction bytesUtf8(texto) {\n  const saida = [];\n  for (let i = 0; i < texto.length; i += 1) {\n    let c = texto.charCodeAt(i);\n    if (c >= 0xd800 && c <= 0xdbff && i + 1 < texto.length) {\n      const prox = texto.charCodeAt(i + 1);\n      if (prox >= 0xdc00 && prox <= 0xdfff) {\n        c = 0x10000 + ((c - 0xd800) << 10) + (prox - 0xdc00);\n        i += 1;\n      }\n    }\n    if (c < 0x80) saida.push(c);\n    else if (c < 0x800) saida.push(0xc0 | (c >> 6), 0x80 | (c & 63));\n    else if (c < 0x10000) saida.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n    else saida.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n  }\n  return saida;\n}\n\n// SHA-256 em JS puro. Existe para que a IDENTIDADE do fato calculada aqui seja\n// a MESMA que `persistencia.linhas_de_insights()` calcula em Python\n// (`meta_insight_` + sha256 do grao) e para que `snapshot_hash` e\n// `idempotency_key` respeitem os CHECKs de `trafego_meta_sync_run`\n// (`^meta_snapshot_[a-f0-9]{32}$` e `^meta_sync_[a-f0-9]{32}$`).\nconst SHA256_K = [\n  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,\n  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\n  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,\n  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,\n  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,\n  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,\n  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,\n  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,\n];\n\nfunction sha256Hex(texto) {\n  const h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,\n             0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];\n  const msg = bytesUtf8(texto);\n  const bits = msg.length * 8;\n  msg.push(0x80);\n  while (msg.length % 64 !== 56) msg.push(0);\n  const alto = Math.floor(bits / 4294967296);\n  const baixo = bits >>> 0;\n  msg.push((alto >>> 24) & 255, (alto >>> 16) & 255, (alto >>> 8) & 255, alto & 255);\n  msg.push((baixo >>> 24) & 255, (baixo >>> 16) & 255, (baixo >>> 8) & 255, baixo & 255);\n\n  const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;\n  const w = new Array(64);\n  for (let bloco = 0; bloco < msg.length; bloco += 64) {\n    for (let i = 0; i < 16; i += 1) {\n      w[i] = ((msg[bloco + i * 4] << 24) | (msg[bloco + i * 4 + 1] << 16)\n        | (msg[bloco + i * 4 + 2] << 8) | msg[bloco + i * 4 + 3]) >>> 0;\n    }\n    for (let i = 16; i < 64; i += 1) {\n      const s0 = (rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3)) >>> 0;\n      const s1 = (rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10)) >>> 0;\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    let [a, b, c, d, e, f, g, hh] = h;\n    for (let i = 0; i < 64; i += 1) {\n      const S1 = (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const t1 = (hh + S1 + ch + SHA256_K[i] + w[i]) >>> 0;\n      const S0 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const t2 = (S0 + maj) >>> 0;\n      hh = g; g = f; f = e; e = (d + t1) >>> 0;\n      d = c; c = b; b = a; a = (t1 + t2) >>> 0;\n    }\n    h[0] = (h[0] + a) >>> 0; h[1] = (h[1] + b) >>> 0;\n    h[2] = (h[2] + c) >>> 0; h[3] = (h[3] + d) >>> 0;\n    h[4] = (h[4] + e) >>> 0; h[5] = (h[5] + f) >>> 0;\n    h[6] = (h[6] + g) >>> 0; h[7] = (h[7] + hh) >>> 0;\n  }\n  return h.map((x) => ('00000000' + x.toString(16)).slice(-8)).join('');\n}\n\n\n// ── VALIDACAO SEMANTICA E MONTAGEM DO SNAPSHOT ──────────────────────────────\n//\n// O banco valida de novo, e isso e de proposito: aqui a recusa vira motivo\n// legivel no recibo, la ela vira constraint. Duas redes, a mesma regra.\n//\n// ⚠️ METRICAS NAO ADITIVAS. `reach`, `frequency`, `cpm`, `cpc` e `ctr` NAO\n// podem ser somadas entre dias, objetos ou breakdowns — somar alcance de sete\n// dias produz um numero maior que as pessoas alcancadas. O fluxo nao soma\n// nenhuma delas em lugar nenhum; guarda linha a linha e deixa a soma para quem\n// sabe recalcular pelos denominadores.\nconst ctx = $input.first().json;\nconst fatos = Array.isArray(ctx.fatos) ? ctx.fatos : [];\n\nconst TAXAS = ['ctr'];\nconst NAO_NEGATIVAS = ['spend', 'impressions', 'reach', 'frequency', 'clicks',\n  'inline_link_clicks', 'landing_page_views', 'cpm', 'cpc'];\n\nconst boas = [];\nconst recusadas = [];\nconst chaves = new Set();\n\nfor (let i = 0; i < fatos.length; i += 1) {\n  const f = fatos[i];\n  let motivo = null;\n\n  if (!/^[0-9]{1,40}$/.test(String(f.conta_externa || ''))) motivo = 'CONTA_INVALIDA';\n  else if (f.nivel !== 'account' && !/^[0-9]{1,40}$/.test(String(f.objeto_externo || ''))) motivo = 'OBJETO_INVALIDO';\n  else if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(f.periodo_inicio || ''))) motivo = 'PERIODO_INICIO_AUSENTE';\n  else if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(f.periodo_fim || ''))) motivo = 'PERIODO_FIM_AUSENTE';\n  else if (f.periodo_fim < f.periodo_inicio) motivo = 'PERIODO_INVERTIDO';\n  else if (f.periodo_inicio < ctx.janela_inicio || f.periodo_fim > ctx.janela_fim) motivo = 'DATA_FORA_DA_JANELA';\n  else if (String(f.janela_atribuicao || '') !== String(ctx.janela_declarada)) motivo = 'JANELA_CARIMBADA_SEM_PEDIDO';\n\n  if (motivo === null) {\n    for (const campo of TAXAS) {\n      const v = f[campo];\n      if (v !== null && (typeof v !== 'number' || v < 0 || v > 1)) {\n        motivo = `TAXA_FORA_DE_0_1:${campo}`;\n        break;\n      }\n    }\n  }\n  if (motivo === null) {\n    for (const campo of NAO_NEGATIVAS) {\n      const v = f[campo];\n      if (v !== null && (typeof v !== 'number' || v < 0)) {\n        motivo = `VALOR_NEGATIVO_OU_NAO_NUMERICO:${campo}`;\n        break;\n      }\n    }\n  }\n  if (motivo === null) {\n    const chave = `${f.nivel}|${f.objeto_externo}|${f.periodo_inicio}|${f.periodo_fim}`\n      + `|${f.janela_atribuicao}|${f.breakdown}`;\n    if (chaves.has(chave)) motivo = 'LINHA_DUPLICADA_NA_PAGINA';\n    else chaves.add(chave);\n  }\n\n  if (motivo === null) boas.push(f);\n  else recusadas.push({ ordinal: i + 1, motivo });\n}\n\n// ── linhas, na forma exata de `persistencia.linhas_de_insights()` ───────────\n//\n// A identidade do fato inclui `observado_em`: reler um dia passado NAO duplica\n// gasto, produz uma REVISAO nova do mesmo grao. Quem le resolve pela projecao\n// mais recente. Por isso o id e o mesmo que o Python calcularia — sha256 do\n// grao com o instante da observacao.\n// A completude da JANELA e decidida antes do laco porque ela entra em cada\n// linha do fato: uma janela truncada precisa marcar TODAS as linhas que ela\n// produziu, e nao so o recibo. Declarar depois do laco deixava a linha lendo a\n// constante antes da inicializacao.\nconst completo = ctx.motivo_incompleto === null || ctx.motivo_incompleto === undefined;\nconst insightDaily = [];\nconst insightAction = [];\nfor (const f of boas) {\n  // ⚠️ ESTA LISTA E A MESMA, NA MESMA ORDEM, de\n  // `backend/app/trafego/meta/persistencia.py::linhas_de_insights`. Os dois\n  // produtores precisam gerar o MESMO `meta_insight_daily_id` para o mesmo\n  // fato: se divergirem, o mesmo dia entra duas vezes com duas chaves e a\n  // projecao `latest` passa a expor duas \"revisoes correntes\" do mesmo grao.\n  // Mexeu num lado, mexa no outro na mesma mudanca.\n  const identidade = [\n    f.provider, f.conta_externa, f.nivel, f.objeto_externo,\n    f.periodo_inicio, f.periodo_fim, f.janela_atribuicao, f.breakdown,\n    f.time_increment, f.action_report_time, f.fuso_da_conta || '',\n    f.observado_em,\n  ].join('|');\n  const fatoId = 'meta_insight_' + sha256Hex(identidade);\n  insightDaily.push({\n    meta_insight_daily_id: fatoId,\n    ad_account_ativo_id: f.conta_ativo_id,\n    provider: f.provider,\n    conta_externa: f.conta_externa,\n    nivel: f.nivel,\n    objeto_externo: f.objeto_externo,\n    periodo_inicio: f.periodo_inicio,\n    periodo_fim: f.periodo_fim,\n    janela_atribuicao: f.janela_atribuicao,\n    breakdown: f.breakdown,\n    // O grao inteiro chega a linha. Sem estes campos uma serie diaria e uma\n    // linha agregada do mesmo periodo ficam indistinguiveis — e somaveis.\n    time_increment: f.time_increment,\n    action_report_time: f.action_report_time,\n    account_timezone: f.fuso_da_conta,\n    currency: ctx.moeda || null,\n    completo: completo,\n    observado_em: f.observado_em,\n    spend: f.spend,\n    impressions: f.impressions,\n    reach: f.reach,\n    frequency: f.frequency,\n    clicks: f.clicks,\n    inline_link_clicks: f.inline_link_clicks,\n    landing_page_views: f.landing_page_views,\n    cpm: f.cpm,\n    cpc: f.cpc,\n    ctr: f.ctr,\n  });\n  // `actions` (contagem) e `action_values` (dinheiro) vao para a MESMA tabela,\n  // separadas pela coluna `medida`, com `ordem` CONTINUA entre as duas. A chave\n  // e (fato, ordem): reiniciar a numeracao nos valores faria cada linha de\n  // dinheiro sobrescrever uma linha de contagem, e o total de eventos viraria o\n  // total em reais sem nada reclamar. A RPC recusa a colisao\n  // (`META_ACTION_ORDEM_COLIDE`), mas o produtor nao pode depender disso.\n  let ordemDaAction = 0;\n  for (const a of f.actions.concat(f.action_values)) {\n    insightAction.push({\n      meta_insight_daily_id: fatoId,\n      ordem: ordemDaAction,\n      action_type: a.action_type,\n      value: a.value,\n      attribution_window: a.attribution_window,\n      object_level: a.object_level,\n      date_start: a.date_start,\n      date_stop: a.date_stop,\n      medida: a.medida === 'value' ? 'value' : 'count',\n    });\n    ordemDaAction += 1;\n  }\n}\n\nconst houveRecusa = recusadas.length > 0;\nconst parcialidade = [];\nif (!completo) parcialidade.push(String(ctx.motivo_incompleto));\nif (houveRecusa) {\n  parcialidade.push(`${recusadas.length} de ${fatos.length} linhas recusadas na validacao local`);\n}\n// A lacuna anterior fechou: a migration candidata do read model adicionou a\n// coluna `medida` a `trafego_meta_insight_action`, e o backend passou a emitir\n// as linhas de `action_values` na mesma tabela. Nao ha mais valor monetario\n// viajando sem destino, entao nada a declarar como parcialidade aqui.\n\nconst rows = {\n  trafego_meta_insight_daily: insightDaily,\n  trafego_meta_insight_action: insightAction,\n};\nconst janela = `${ctx.janela_inicio}..${ctx.janela_fim}`;\nconst paraHash = {\n  provider: 'META_ADS',\n  conta: String(ctx.conta_externa),\n  janela,\n  pedido: ctx.pedido,\n  pagina: Number(ctx.pagina),\n  linhas: rows,\n};\nconst snapshotHash = 'meta_snapshot_' + sha256Hex(jsonEstavel(paraHash)).slice(0, 32);\nconst idempotencia = 'meta_sync_' + sha256Hex(\n  `META_ADS|${ctx.execucao_chave}|${ctx.conta_ref}|${janela}|${ctx.pagina}|${snapshotHash}`\n).slice(0, 32);\n\nconst agora = new Date().toISOString();\nconst snapshot = {\n  provider: 'META_ADS',\n  escopo: 'insights_pagina',\n  account_ref: String(ctx.conta_ref),\n  account_asset_id: String(ctx.conta_ativo_id),\n  credential_asset_id: ctx.credencial_ativo_id || null,\n  window: janela,\n  observed_at: ctx.iniciada_em,\n  idempotency_key: idempotencia,\n  snapshot_hash: snapshotHash,\n  page_count: Number(ctx.pagina),\n  counts: {\n    insight: insightDaily.length,\n    action: insightAction.filter((a) => a.medida === 'count').length,\n    action_value: insightAction.filter((a) => a.medida === 'value').length,\n    recusadas: recusadas.length,\n  },\n  partiality: parcialidade,\n  completo: completo && !houveRecusa,\n  motivo_incompleto: parcialidade.length ? parcialidade.join(' | ') : null,\n  // Marca d'agua so avanca sobre janela lida inteira. Incompleta nao avanca —\n  // e por isso ela vem `null`, e nao \"a data que quase deu certo\".\n  marca_dagua: completo && !houveRecusa ? String(ctx.janela_fim) : null,\n  pedido: ctx.pedido,\n  execucao: {\n    fonte: ctx.fonte,\n    job: ctx.job,\n    disparo: ctx.disparo,\n    execucao_chave: ctx.execucao_chave,\n    workflow_id: ctx.workflow_id,\n    execucao_externa_id: ctx.execucao_externa_id,\n    api_versao: ctx.api_versao,\n    contrato_versao: ctx.contrato_versao,\n    contrato_sha256: ctx.contrato_sha256,\n    lote_ordinal: ctx.lote_ordinal,\n    iniciada_em: ctx.iniciada_em,\n    encerrada_em: agora,\n  },\n  rows,\n};\n\nreturn [{\n  json: {\n    ...ctx,\n    snapshot,\n    linhas_enviadas: insightDaily.length,\n    acoes_enviadas: insightAction.filter((a) => a.medida === 'count').length,\n    valores_enviados: insightAction.filter((a) => a.medida === 'value').length,\n    linhas_recusadas_localmente: recusadas.length,\n    recusas_locais: recusadas,\n  },\n}];\n"
+      },
+      "id": "d9b4eb2e-36cb-5f74-bad9-76b8e4c0790e",
+      "name": "Validar semanticamente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1850,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/rpc/trafego_meta_persistir_snapshot",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_snapshot: $json.snapshot }) }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "857ba26d-3746-5703-a301-2ad686f31d50",
+      "name": "RPC: ingerir lote",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2050,
+        40
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── RECONCILIACAO DO LOTE ───────────────────────────────────────────────────\n//\n// O recibo do banco tem de bater com o que o fluxo enviou. Nao bater e defeito,\n// nao ruido — e o fluxo para em vez de fechar uma execucao que mente.\nconst recibo = $input.first().json;\nconst ctx = $('Validar semanticamente').first().json;\n\nif (!recibo || typeof recibo !== 'object') {\n  throw new Error('RPC_SEM_RECIBO: a persistencia nao devolveu documento');\n}\nif (recibo.ok !== true) {\n  throw new Error('RPC_RECUSOU_O_SNAPSHOT: a persistencia nao confirmou a escrita');\n}\nconst repetido = Boolean(recibo.repetido);\nconst runId = recibo.run_id === null || recibo.run_id === undefined ? null : String(recibo.run_id);\nif (runId === null || runId === '') {\n  throw new Error('RPC_SEM_RUN_ID: sem identidade da gravacao nao ha o que reconciliar');\n}\n\nconst antes = ctx.acumulado || {};\nconst acumulado = {\n  linhas_lidas: Number(antes.linhas_lidas || 0) + Number(ctx.linhas_lidas_na_pagina || 0),\n  linhas_aceitas: Number(antes.linhas_aceitas || 0) + Number(ctx.linhas_enviadas || 0),\n  linhas_rejeitadas: Number(antes.linhas_rejeitadas || 0) + Number(ctx.linhas_recusadas_localmente || 0),\n  acoes: Number(antes.acoes || 0) + Number(ctx.acoes_enviadas || 0),\n  valores_de_acao: Number(antes.valores_de_acao || 0) + Number(ctx.valores_enviados || 0),\n  paginas: Number(antes.paginas || 0) + 1,\n};\nconst parcialidades = (antes.parcialidades || []).concat(ctx.snapshot.partiality || []);\nconst persistencias = (antes.persistencias || []).concat([repetido ? 'repetido' : 'gravado']);\n\nreturn [{\n  json: {\n    fonte: ctx.fonte,\n    provider: ctx.provider,\n    job: ctx.job,\n    disparo: ctx.disparo,\n    origem_janela: ctx.origem_janela,\n    data_do_disparo: ctx.data_do_disparo,\n    execucao_chave: ctx.execucao_chave,\n    api_versao: ctx.api_versao,\n    contrato_versao: ctx.contrato_versao,\n    contrato_sha256: ctx.contrato_sha256,\n    nivel: ctx.nivel,\n    time_increment: ctx.time_increment,\n    action_report_time: ctx.action_report_time,\n    breakdown: ctx.breakdown,\n    janelas_solicitadas: ctx.janelas_solicitadas,\n    janela_declarada: ctx.janela_declarada,\n    campos_de_insight: ctx.campos_de_insight,\n    limite_por_pagina: ctx.limite_por_pagina,\n    workflow_id: ctx.workflow_id,\n    execucao_externa_id: ctx.execucao_externa_id,\n    iniciada_em: ctx.iniciada_em,\n    contas_tentadas: ctx.contas_tentadas,\n    total_contas: ctx.total_contas,\n    contas_recusadas_na_selecao: ctx.contas_recusadas_na_selecao,\n    conta_ativo_id: ctx.conta_ativo_id,\n    conta_ref: ctx.conta_ref,\n    conta_externa: ctx.conta_externa,\n    id_mascarado: ctx.id_mascarado,\n    credencial_ativo_id: ctx.credencial_ativo_id,\n    fuso_da_conta: ctx.fuso_da_conta,\n    moeda: ctx.moeda,\n    hoje_na_conta: ctx.hoje_na_conta,\n    janela_inicio: ctx.janela_inicio,\n    janela_fim: ctx.janela_fim,\n    dias_na_janela: ctx.dias_na_janela,\n    conta_ordinal: ctx.conta_ordinal,\n    mapa_conta: ctx.mapa_conta,\n    pedido: ctx.pedido,\n    pagina: ctx.pagina,\n    proximo_cursor: ctx.proximo_cursor,\n    tem_proxima_pagina: Boolean(ctx.tem_proxima_pagina),\n    motivo_incompleto: ctx.motivo_incompleto,\n    acumulado: { ...acumulado, parcialidades, persistencias },\n    estado_conta: 'lida',\n    persistencia_confirmada: true,\n    ultimo_run_id: runId,\n    ultima_idempotencia: ctx.snapshot.idempotency_key,\n  },\n}];\n"
+      },
+      "id": "ebdb839b-23f0-537a-b2de-f66ba38b3dc1",
+      "name": "Reconciliar lote",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0145771a-3a67-5431-a384-82a9b7453180",
+              "leftValue": "={{ $json.tem_proxima_pagina }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ba0b1e37-748a-5820-8223-fc5764ce494e",
+      "name": "Tem proxima pagina?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2450,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── CLASSIFICACAO DO ERRO DA META ───────────────────────────────────────────\n//\n// ⚠️ A saida de erro NUNCA volta para o no de requisicao. Ela segue para a\n// frente e reentra no laco de contas, que so anda — por isso 401/403 nao tem\n// como girar. A repeticao limitada de 429/5xx e o `maxTries` do proprio no\n// (backoff fixo, tres tentativas). O n8n nao sabe repetir condicionalmente por\n// codigo; a defesa contra \"repetir para sempre\" e topologica, nao configuravel.\n//\n// AUTENTICACAO PARA E EXIGE ACAO: a conta e encerrada como incompleta, a marca\n// d'agua nao avanca, e o batimento vira alerta. Nao existe caminho que tente de\n// novo dentro da mesma execucao.\n//\n// Rotulo desconhecido vira DESCONHECIDA, nunca \"ok\". A mensagem publica nao\n// interpola o texto bruto do erro: ele pode carregar token e cabecalho.\n// Mesma razao da normalizacao: contexto pelo Merge, nunca por `$()` no laco.\nconst ctx = $input.first().json || {};\nconst bruto = ctx;\n\nconst alvo = bruto.error && typeof bruto.error === 'object' ? bruto.error : bruto;\nlet codigo = null;\nfor (const chave of ['httpCode', 'status', 'statusCode', 'code']) {\n  const v = alvo[chave];\n  if (v !== null && v !== undefined && /^[0-9]{3}$/.test(String(v))) {\n    codigo = Number(v);\n    break;\n  }\n}\nif (codigo === null) {\n  const m = String(alvo.message || '').match(/\\b(4[0-9]{2}|5[0-9]{2})\\b/);\n  if (m) codigo = Number(m[1]);\n}\n\n// Codigos proprios da Graph, quando o HTTP nao conta a historia inteira.\nconst grafo = (alvo.error && typeof alvo.error === 'object') ? alvo.error : {};\nconst codigoGraph = Number(grafo.code);\nconst subcodigo = Number(grafo.error_subcode);\n\nif (String(ctx.conta_ref || '') === '') {\n  throw new Error('CONTEXTO_PERDIDO: a falha chegou sem a conta que a produziu');\n}\n\nlet classe;\nif (codigo === 401 || codigo === 403 || codigoGraph === 190 || codigoGraph === 200\n    || codigoGraph === 10) {\n  classe = 'AUTENTICACAO';\n} else if (codigo === 429 || codigoGraph === 4 || codigoGraph === 17 || codigoGraph === 613\n           || codigoGraph === 80004) {\n  classe = 'COTA';\n} else if (codigo !== null && codigo >= 500) {\n  classe = 'INDISPONIVEL';\n} else if (codigoGraph === 1 || codigoGraph === 2) {\n  classe = 'INDISPONIVEL';\n} else if (codigo !== null && codigo >= 400) {\n  classe = 'PEDIDO_INVALIDO';\n} else {\n  classe = 'DESCONHECIDA';\n}\n\nconst exigeAcaoHumana = classe === 'AUTENTICACAO';\n// Repetir vale na PROXIMA rodada agendada, nao dentro desta: a janela ficou\n// incompleta e a marca d'agua nao avancou, entao a proxima leitura cobre o\n// mesmo periodo sem duplicar gasto (produz outra revisao do mesmo grao).\nconst retryNaProximaRodada = classe === 'COTA' || classe === 'INDISPONIVEL';\n\nconst antes = ctx.acumulado || {};\nconst motivo = `META_${classe}`\n  + (codigo === null ? '' : `_HTTP_${codigo}`)\n  + (Number.isFinite(codigoGraph) && codigoGraph ? `_GRAPH_${codigoGraph}` : '')\n  + (Number.isFinite(subcodigo) && subcodigo ? `_SUB_${subcodigo}` : '');\n\nreturn [{\n  json: {\n    fonte: ctx.fonte,\n    provider: ctx.provider,\n    job: ctx.job,\n    disparo: ctx.disparo,\n    origem_janela: ctx.origem_janela,\n    data_do_disparo: ctx.data_do_disparo,\n    execucao_chave: ctx.execucao_chave,\n    api_versao: ctx.api_versao,\n    contrato_versao: ctx.contrato_versao,\n    contrato_sha256: ctx.contrato_sha256,\n    nivel: ctx.nivel,\n    time_increment: ctx.time_increment,\n    action_report_time: ctx.action_report_time,\n    breakdown: ctx.breakdown,\n    janelas_solicitadas: ctx.janelas_solicitadas,\n    janela_declarada: ctx.janela_declarada,\n    workflow_id: ctx.workflow_id,\n    execucao_externa_id: ctx.execucao_externa_id,\n    iniciada_em: ctx.iniciada_em,\n    contas_tentadas: ctx.contas_tentadas,\n    total_contas: ctx.total_contas,\n    contas_recusadas_na_selecao: ctx.contas_recusadas_na_selecao,\n    conta_ativo_id: ctx.conta_ativo_id,\n    conta_ref: ctx.conta_ref,\n    id_mascarado: ctx.id_mascarado,\n    fuso_da_conta: ctx.fuso_da_conta,\n    janela_inicio: ctx.janela_inicio,\n    janela_fim: ctx.janela_fim,\n    dias_na_janela: ctx.dias_na_janela,\n    conta_ordinal: ctx.conta_ordinal,\n    pedido: ctx.pedido,\n    pagina: ctx.pagina,\n    acumulado: { ...antes, parcialidades: (antes.parcialidades || []).concat([motivo]) },\n    estado_conta: 'falhou',\n    persistencia_confirmada: false,\n    erro_classe: classe,\n    erro_codigo: codigo === null ? null : String(codigo),\n    erro_codigo_graph: Number.isFinite(codigoGraph) && codigoGraph ? String(codigoGraph) : null,\n    // Mensagem SANITIZADA: rotulo, nunca o corpo bruto do erro.\n    erro_mensagem: motivo,\n    exige_acao_humana: exigeAcaoHumana,\n    retry_na_proxima_rodada: retryNaProximaRodada,\n    motivo_incompleto: motivo,\n    tem_proxima_pagina: false,\n    proximo_cursor: '',\n  },\n}];\n"
+      },
+      "id": "ce905142-4106-5757-b6e1-6e653f07804f",
+      "name": "Classificar erro da Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── ajudantes: IDENTIDADE ESTAVEL ───────────────────────────────────────────\n// JSON estavel: mesma forma que `read_model._stable_json` (chaves ordenadas,\n// sem espaco). O hash so e util se dois produtores da mesma verdade chegarem no\n// mesmo texto.\nfunction jsonEstavel(valor) {\n  if (valor === null || valor === undefined) return 'null';\n  if (typeof valor === 'number') return Number.isFinite(valor) ? String(valor) : 'null';\n  if (typeof valor === 'boolean') return valor ? 'true' : 'false';\n  if (typeof valor === 'string') return JSON.stringify(valor);\n  if (Array.isArray(valor)) return '[' + valor.map(jsonEstavel).join(',') + ']';\n  const chaves = Object.keys(valor).sort();\n  return '{' + chaves.map((k) => JSON.stringify(k) + ':' + jsonEstavel(valor[k])).join(',') + '}';\n}\n\n// UTF-8 sem TextEncoder: o sandbox do Code node nao garante o global.\nfunction bytesUtf8(texto) {\n  const saida = [];\n  for (let i = 0; i < texto.length; i += 1) {\n    let c = texto.charCodeAt(i);\n    if (c >= 0xd800 && c <= 0xdbff && i + 1 < texto.length) {\n      const prox = texto.charCodeAt(i + 1);\n      if (prox >= 0xdc00 && prox <= 0xdfff) {\n        c = 0x10000 + ((c - 0xd800) << 10) + (prox - 0xdc00);\n        i += 1;\n      }\n    }\n    if (c < 0x80) saida.push(c);\n    else if (c < 0x800) saida.push(0xc0 | (c >> 6), 0x80 | (c & 63));\n    else if (c < 0x10000) saida.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n    else saida.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));\n  }\n  return saida;\n}\n\n// SHA-256 em JS puro. Existe para que a IDENTIDADE do fato calculada aqui seja\n// a MESMA que `persistencia.linhas_de_insights()` calcula em Python\n// (`meta_insight_` + sha256 do grao) e para que `snapshot_hash` e\n// `idempotency_key` respeitem os CHECKs de `trafego_meta_sync_run`\n// (`^meta_snapshot_[a-f0-9]{32}$` e `^meta_sync_[a-f0-9]{32}$`).\nconst SHA256_K = [\n  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,\n  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,\n  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,\n  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,\n  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,\n  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,\n  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,\n  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,\n];\n\nfunction sha256Hex(texto) {\n  const h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,\n             0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];\n  const msg = bytesUtf8(texto);\n  const bits = msg.length * 8;\n  msg.push(0x80);\n  while (msg.length % 64 !== 56) msg.push(0);\n  const alto = Math.floor(bits / 4294967296);\n  const baixo = bits >>> 0;\n  msg.push((alto >>> 24) & 255, (alto >>> 16) & 255, (alto >>> 8) & 255, alto & 255);\n  msg.push((baixo >>> 24) & 255, (baixo >>> 16) & 255, (baixo >>> 8) & 255, baixo & 255);\n\n  const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;\n  const w = new Array(64);\n  for (let bloco = 0; bloco < msg.length; bloco += 64) {\n    for (let i = 0; i < 16; i += 1) {\n      w[i] = ((msg[bloco + i * 4] << 24) | (msg[bloco + i * 4 + 1] << 16)\n        | (msg[bloco + i * 4 + 2] << 8) | msg[bloco + i * 4 + 3]) >>> 0;\n    }\n    for (let i = 16; i < 64; i += 1) {\n      const s0 = (rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3)) >>> 0;\n      const s1 = (rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10)) >>> 0;\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    let [a, b, c, d, e, f, g, hh] = h;\n    for (let i = 0; i < 64; i += 1) {\n      const S1 = (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const t1 = (hh + S1 + ch + SHA256_K[i] + w[i]) >>> 0;\n      const S0 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const t2 = (S0 + maj) >>> 0;\n      hh = g; g = f; f = e; e = (d + t1) >>> 0;\n      d = c; c = b; b = a; a = (t1 + t2) >>> 0;\n    }\n    h[0] = (h[0] + a) >>> 0; h[1] = (h[1] + b) >>> 0;\n    h[2] = (h[2] + c) >>> 0; h[3] = (h[3] + d) >>> 0;\n    h[4] = (h[4] + e) >>> 0; h[5] = (h[5] + f) >>> 0;\n    h[6] = (h[6] + g) >>> 0; h[7] = (h[7] + hh) >>> 0;\n  }\n  return h.map((x) => ('00000000' + x.toString(16)).slice(-8)).join('');\n}\n\n\n// ── FECHAMENTO DA EXECUCAO ──────────────────────────────────────────────────\n//\n// ⚠️ O acumulado vem de `$input.all()` — a saida `done` do laco, que traz TODOS\n// os itens que reentraram nele. Nao de `$('No dentro do laco').all()`, que\n// devolveria so a ultima rodada e faria o recibo declarar o ultimo lote como se\n// fosse a execucao inteira.\nconst itens = $input.all().map((i) => i.json);\nif (itens.length === 0) {\n  throw new Error('FECHAMENTO_SEM_ITEM: o laco terminou sem devolver conta nenhuma');\n}\nconst base = itens[0];\n\nlet lidas = 0; let aceitas = 0; let rejeitadas = 0;\nlet acoes = 0; let valores = 0; let paginas = 0;\nconst contas = [];\nconst contasAceitas = [];\nconst contasRecusadas = [];\nconst parcialidades = [];\nlet exigeAcaoHumana = false;\n\nfor (const it of itens) {\n  const a = it.acumulado || {};\n  lidas += Number(a.linhas_lidas || 0);\n  aceitas += Number(a.linhas_aceitas || 0);\n  rejeitadas += Number(a.linhas_rejeitadas || 0);\n  acoes += Number(a.acoes || 0);\n  valores += Number(a.valores_de_acao || 0);\n  paginas += Number(a.paginas || 0);\n  for (const p of (a.parcialidades || [])) parcialidades.push(p);\n\n  const falhou = it.estado_conta === 'falhou';\n  const completo = !falhou && (it.motivo_incompleto === null || it.motivo_incompleto === undefined);\n  if (falhou && it.exige_acao_humana) exigeAcaoHumana = true;\n\n  // ⚠️ SUB-RECIBO POR CONTA, COM O SUFICIENTE PARA REPROCESSAR: referencia\n  // opaca (nunca id cru), periodo NO FUSO DA CONTA, versao da API, os parametros\n  // efetivamente pedidos, paginas, contagens, completude, se a persistencia foi\n  // confirmada e o erro ja sanitizado.\n  contas.push({\n    conta_ref: String(it.conta_ref),\n    id_mascarado: it.id_mascarado || null,\n    fuso_da_conta: it.fuso_da_conta || null,\n    moeda: it.moeda || null,\n    periodo_inicio: it.janela_inicio || null,\n    periodo_fim: it.janela_fim || null,\n    dias_na_janela: it.dias_na_janela === undefined ? null : it.dias_na_janela,\n    api_versao: it.api_versao || null,\n    pedido: it.pedido || null,\n    paginas: Number(a.paginas || 0),\n    linhas_lidas: Number(a.linhas_lidas || 0),\n    linhas_aceitas: Number(a.linhas_aceitas || 0),\n    linhas_rejeitadas: Number(a.linhas_rejeitadas || 0),\n    acoes: Number(a.acoes || 0),\n    valores_de_acao: Number(a.valores_de_acao || 0),\n    completo,\n    motivo_incompleto: it.motivo_incompleto === undefined ? null : it.motivo_incompleto,\n    persistencia_confirmada: Boolean(it.persistencia_confirmada),\n    // A marca d'agua so avanca sobre janela lida INTEIRA e persistida.\n    marca_dagua: completo && it.persistencia_confirmada ? (it.janela_fim || null) : null,\n    erro_classe: falhou ? (it.erro_classe || 'DESCONHECIDA') : null,\n    erro_codigo: falhou ? (it.erro_codigo === undefined ? null : it.erro_codigo) : null,\n    erro_mensagem: falhou ? (it.erro_mensagem || null) : null,\n    exige_acao_humana: Boolean(falhou && it.exige_acao_humana),\n    retry_na_proxima_rodada: Boolean(falhou && it.retry_na_proxima_rodada),\n    ultimo_run_id: it.ultimo_run_id || null,\n  });\n\n  if (falhou) {\n    contasRecusadas.push({ conta_ref: String(it.conta_ref),\n                           classe: it.erro_classe || 'DESCONHECIDA' });\n  } else {\n    contasAceitas.push(String(it.conta_ref));\n  }\n}\n\nconst incompletas = contas.filter((c) => !c.completo).length;\n\n// Uma falha de conta nao pode virar vazio nem sumir. Ela decide o desfecho.\nlet resultado;\nlet motivo = null;\nif (contasRecusadas.length === 0 && rejeitadas === 0 && incompletas === 0) {\n  resultado = 'ok';\n} else if (contasRecusadas.length === 0 && incompletas === 0) {\n  resultado = aceitas > 0 ? 'parcial' : 'falhou';\n  motivo = `${rejeitadas} linhas rejeitadas semanticamente; nenhuma recusa pode virar ok`;\n} else if (contasAceitas.length > 0 || aceitas > 0) {\n  resultado = 'parcial';\n  motivo = `${contasRecusadas.length} de ${itens.length} contas falharam,`\n    + ` ${incompletas} janela(s) incompleta(s), ${rejeitadas} linhas rejeitadas`;\n} else {\n  resultado = 'falhou';\n  motivo = `todas as ${contasRecusadas.length} contas falharam;`\n    + ` ${rejeitadas} linhas rejeitadas`;\n}\n// `falhou` significa \"nada aproveitavel\". Se linha verde existe, o desfecho\n// honesto e parcial.\nif (resultado === 'falhou' && aceitas > 0) {\n  resultado = 'parcial';\n  motivo = `linhas aceitas apesar de contas falhas: ${motivo}`;\n}\nif (exigeAcaoHumana) {\n  motivo = `AUTORIZACAO_META_EXIGE_ACAO — ${motivo || 'leitura interrompida'}`;\n}\n\nconst agora = new Date().toISOString();\nconst janela = `${base.data_do_disparo}:${base.origem_janela}`;\nconst paraHash = {\n  provider: 'META_ADS',\n  execucao: String(base.execucao_chave),\n  contas,\n  resultado,\n};\nconst snapshotHash = 'meta_snapshot_' + sha256Hex(jsonEstavel(paraHash)).slice(0, 32);\nconst idempotencia = 'meta_sync_' + sha256Hex(\n  `META_ADS|fechamento|${base.execucao_chave}|${snapshotHash}`).slice(0, 32);\n\n// ⚠️ FECHAMENTO DA EXECUCAO, NAO DE UMA CONTA: `account_asset_id` vem `null` de\n// proposito e `contas[]` traz um sub-recibo por conta. Ver CONTRATO_RPC no\n// gerador — a v15_02 exigiria uma conta; a revisao da RPC precisa aceitar o\n// escopo de execucao.\nconst snapshot = {\n  provider: 'META_ADS',\n  escopo: 'insights_fechamento',\n  account_ref: null,\n  account_asset_id: null,\n  credential_asset_id: null,\n  window: janela,\n  observed_at: base.iniciada_em,\n  idempotency_key: idempotencia,\n  snapshot_hash: snapshotHash,\n  page_count: paginas,\n  counts: {\n    contas: itens.length,\n    contas_aceitas: contasAceitas.length,\n    contas_recusadas: contasRecusadas.length,\n    insight: aceitas,\n    action: acoes,\n    action_value: valores,\n    recusadas: rejeitadas,\n  },\n  partiality: parcialidades,\n  completo: resultado === 'ok',\n  motivo_incompleto: resultado === 'ok' ? null : motivo,\n  marca_dagua: null,\n  contas,\n  execucao: {\n    fonte: base.fonte,\n    job: base.job,\n    disparo: base.disparo,\n    execucao_chave: base.execucao_chave,\n    workflow_id: base.workflow_id,\n    execucao_externa_id: base.execucao_externa_id,\n    api_versao: base.api_versao,\n    contrato_versao: base.contrato_versao,\n    contrato_sha256: base.contrato_sha256,\n    origem_janela: base.origem_janela,\n    data_do_disparo: base.data_do_disparo,\n    iniciada_em: base.iniciada_em,\n    encerrada_em: agora,\n    duracao_ms: Math.max(0, Date.parse(agora) - Date.parse(base.iniciada_em)),\n    resultado,\n    motivo,\n  },\n  rows: {},\n};\n\nreturn [{\n  json: {\n    snapshot,\n    resumo: {\n      job: base.job,\n      execucao_chave: base.execucao_chave,\n      idempotencia_fechamento: idempotencia,\n      data_do_disparo: base.data_do_disparo,\n      contas_lidas: contasAceitas.length,\n      contas_recusadas: contasRecusadas.length,\n      contas_incompletas: incompletas,\n      paginas,\n      linhas_lidas: lidas,\n      linhas_aceitas: aceitas,\n      linhas_rejeitadas: rejeitadas,\n      acoes: acoes,\n      valores_de_acao: valores,\n      exige_acao_humana: exigeAcaoHumana,\n      resultado,\n      motivo,\n      contas,\n    },\n  },\n}];\n"
+      },
+      "id": "f40b9c53-da1e-5cce-973f-f7bdd9df0861",
+      "name": "Fechar execucao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 1
+      },
+      "id": "09d322a0-b72c-5855-80e5-446096959a8b",
+      "name": "Limite do fechamento",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/rpc/trafego_meta_persistir_snapshot",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_snapshot: $json.snapshot }) }}",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "9f03e2f9-ddb9-5835-9546-5158b24b928c",
+      "name": "RPC: fechar recibo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -220
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "url": "={{ $node[\"Config\"].json[\"SUPABASE_URL\"] + '/rest/v1/trafego_meta_sync_run?select=run_id,chave_de_idempotencia,escopo,resultado,paginas_lidas,contagens,parcialidade,snapshot_hash,escrita_executada,erro_codigo,erro_mensagem&chave_de_idempotencia=eq.' + $node[\"Fechar execucao\"].json[\"resumo\"][\"idempotencia_fechamento\"] }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "5a48de81-cc77-589f-b92b-a1b7a0a764c9",
+      "name": "Releitura do recibo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -220
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ── BATIMENTO E SAUDE ───────────────────────────────────────────────────────\n//\n// A leitura de volta prova que o recibo POUSOU. Sem ela, o fluxo declararia\n// sucesso com base na propria memoria — o autoatestado que o contrato de saude\n// proibe.\n//\n// ⚠️ SAUDAVEL nunca sai so de tentativa ou de batimento. Ausencia de leitura de\n// volta e INDETERMINADO, nao sucesso.\nconst fechamento = $('Fechar execucao').first().json;\nconst resumo = fechamento.resumo;\n\nconst linhas = $input.all().map((i) => i.json)\n  .filter((l) => l && l.chave_de_idempotencia);\nconst lido = linhas.find(\n  (l) => String(l.chave_de_idempotencia) === String(resumo.idempotencia_fechamento)) || null;\n\nlet estado;\nlet alerta = false;\nlet motivoAlerta = null;\n\nif (resumo.exige_acao_humana) {\n  // Autorizacao quebrada nao e \"parcial que melhora sozinho\": alguem precisa\n  // agir. Ela ganha estado proprio e nunca e silenciada por uma releitura boa.\n  estado = 'BLOQUEADO_AUTORIZACAO';\n  alerta = true;\n  motivoAlerta = 'a Meta recusou a autorizacao; a leitura parou e exige acao humana';\n} else if (lido === null) {\n  estado = 'INDETERMINADO';\n  alerta = true;\n  motivoAlerta = 'o recibo de fechamento nao foi encontrado na releitura';\n} else if (String(lido.resultado) === 'falhou') {\n  estado = 'FALHOU';\n  alerta = true;\n  motivoAlerta = String(lido.erro_mensagem || 'falha sem motivo declarado');\n} else if (Number(lido.paginas_lidas) !== Number(resumo.paginas)) {\n  estado = 'INDETERMINADO';\n  alerta = true;\n  motivoAlerta = `releitura diverge: banco ${lido.paginas_lidas} paginas,`\n    + ` fluxo ${resumo.paginas}`;\n} else if (String(resumo.resultado) === 'parcial' || Number(resumo.contas_incompletas) > 0) {\n  estado = 'PARCIAL';\n  alerta = true;\n  motivoAlerta = String(resumo.motivo || 'parcial sem motivo declarado');\n} else {\n  // Vazio confirmado NAO e alerta: a leitura foi boa e nao havia linha.\n  estado = 'SAUDAVEL';\n  alerta = false;\n}\n\n// O que sai daqui vai para alerta e log: referencia opaca, contagens e rotulos.\n// Nunca id de conta cru, nunca token, nunca valor financeiro.\nconst contasSanitizadas = (resumo.contas || []).map((c) => ({\n  conta_ref: c.conta_ref,\n  periodo_inicio: c.periodo_inicio,\n  periodo_fim: c.periodo_fim,\n  fuso_da_conta: c.fuso_da_conta,\n  paginas: c.paginas,\n  linhas_aceitas: c.linhas_aceitas,\n  completo: c.completo,\n  persistencia_confirmada: c.persistencia_confirmada,\n  marca_dagua: c.marca_dagua,\n  erro_classe: c.erro_classe,\n}));\n\nreturn [{\n  json: {\n    job: resumo.job,\n    execucao_chave: resumo.execucao_chave,\n    data_do_disparo: resumo.data_do_disparo,\n    contas_lidas: resumo.contas_lidas,\n    contas_recusadas: resumo.contas_recusadas,\n    contas_incompletas: resumo.contas_incompletas,\n    paginas: resumo.paginas,\n    linhas_lidas: resumo.linhas_lidas,\n    linhas_aceitas: resumo.linhas_aceitas,\n    linhas_rejeitadas: resumo.linhas_rejeitadas,\n    resultado: resumo.resultado,\n    motivo: resumo.motivo,\n    estado_saude: estado,\n    alerta,\n    motivo_alerta: motivoAlerta,\n    exige_acao_humana: Boolean(resumo.exige_acao_humana),\n    releitura_encontrada: lido !== null,\n    persistencia_confirmada: lido !== null && String(lido.resultado) === 'ok',\n    vazio_confirmado: Number(resumo.linhas_lidas) === 0 && String(resumo.resultado) === 'ok',\n    contas: contasSanitizadas,\n  },\n}];\n"
+      },
+      "id": "a5e823ef-ea10-582d-8afc-d3322d07c01c",
+      "name": "Batimento e saude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ca16172d-3e7a-58b5-b376-8eac677edbb9",
+              "leftValue": "={{ $json.alerta }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "616d4476-cd67-59ff-852b-33a4e49a0c0d",
+      "name": "Falha real?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2200,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "on_conflict",
+              "value": "key"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ key: 'meta_insights_' + $json.job + '_ultimo_alerta', value: $json.execucao_chave + ' | ' + $json.estado_saude + ' | ' + ($json.motivo_alerta || 'sem motivo declarado'), updated_at: new Date().toISOString() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8e5799e4-07f5-50f6-9428-1c9d9a660343",
+      "name": "Alerta de rotina parada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2420,
+        -220
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "3lSRuywq3fwQ3z3I",
+          "name": "VOLC Oficial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "width": 980,
+        "height": 380,
+        "content": "## VOLC · Meta Ads insights campanha-dia · D-1 (fuso da conta)\n\n**INATIVO por contrato E SEM CREDENCIAL.** Este JSON nao foi importado, nao foi executado e nao foi ativado. A agenda so pode ser ligada depois do pacote de autorizacao.\n\n**A credencial Meta NAO EXISTE ainda.** O no `Meta Graph: insights` aponta para o tipo `metaGraphApiNaoProvisionada`, que e um PLACEHOLDER e nao resolve. Isso e deliberado: sem provisionamento, o no para em vez de ler a Meta com meia autorizacao. Nenhum token, id de app ou id de conta vive neste arquivo.\n\nGerado por `n8n/gerar_flows_meta_ledger.py`. **Nao edite este JSON a mao** — edite o gerador e regere.\n\n**A janela e D-1 NO FUSO DA CONTA** (`trafego_meta_ad_account.timezone_name`), nunca no fuso do servidor n8n. `TZ_DO_DISPARO` so rotula a rodada.\n\n`action_report_time`, `time_increment`, `breakdown` e as janelas de atribuicao sao pedidos explicitos e voltam no recibo. Sem janela pedida, o fato carimba `default` — nunca uma janela nominal que ninguem solicitou.\n\nDestino unico: `database.agenciavolc.com.br`. Somente leitura na Meta (nenhum POST/DELETE em objeto de anuncio). Ausencia permanece NULL; zero medido permanece zero. Janela truncada vira INCOMPLETA e nao avanca marca d'agua.\n\nAntes de ativar: provisionar a credencial Meta, revisar `trafego_meta_persistir_snapshot` para os escopos `insights_pagina`/`insights_fechamento`, e rodar o canario com `CONTAS_PERMITIDAS` = uma conta."
+      },
+      "id": "00da0435-d293-5ac0-b201-4d4f31a828f2",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        -520
+      ]
+    }
+  ],
+  "connections": {
+    "Agenda": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Identidade da execucao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identidade da execucao": {
+      "main": [
+        [
+          {
+            "node": "Contas autorizadas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contas autorizadas": {
+      "main": [
+        [
+          {
+            "node": "Selecionar contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selecionar contas": {
+      "main": [
+        [
+          {
+            "node": "Objetos conhecidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Objetos conhecidos": {
+      "main": [
+        [
+          {
+            "node": "Identidade VOLC por conta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identidade VOLC por conta": {
+      "main": [
+        [
+          {
+            "node": "Lote de contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lote de contas": {
+      "main": [
+        [
+          {
+            "node": "Fechar execucao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pagina: preparar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pagina: preparar pedido": {
+      "main": [
+        [
+          {
+            "node": "Meta Graph: insights",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Juntar contexto e resposta",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Juntar contexto e erro",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Meta Graph: insights": {
+      "main": [
+        [
+          {
+            "node": "Juntar contexto e resposta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Juntar contexto e erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar contexto e resposta": {
+      "main": [
+        [
+          {
+            "node": "Pagina: normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar contexto e erro": {
+      "main": [
+        [
+          {
+            "node": "Classificar erro da Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pagina: normalizar": {
+      "main": [
+        [
+          {
+            "node": "Validar semanticamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar semanticamente": {
+      "main": [
+        [
+          {
+            "node": "RPC: ingerir lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC: ingerir lote": {
+      "main": [
+        [
+          {
+            "node": "Reconciliar lote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reconciliar lote": {
+      "main": [
+        [
+          {
+            "node": "Tem proxima pagina?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem proxima pagina?": {
+      "main": [
+        [
+          {
+            "node": "Pagina: preparar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lote de contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classificar erro da Meta": {
+      "main": [
+        [
+          {
+            "node": "Lote de contas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fechar execucao": {
+      "main": [
+        [
+          {
+            "node": "Limite do fechamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limite do fechamento": {
+      "main": [
+        [
+          {
+            "node": "RPC: fechar recibo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RPC: fechar recibo": {
+      "main": [
+        [
+          {
+            "node": "Releitura do recibo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Releitura do recibo": {
+      "main": [
+        [
+          {
+            "node": "Batimento e saude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batimento e saude": {
+      "main": [
+        [
+          {
+            "node": "Falha real?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falha real?": {
+      "main": [
+        [
+          {
+            "node": "Alerta de rotina parada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "executionTimeout": 3600
+  },
+  "pinData": {},
+  "meta": {
+    "volc": {
+      "gerador": "n8n/gerar_flows_meta_ledger.py",
+      "contrato": "meta-insights-dia-v1",
+      "contrato_sha256": "19d12eed5afe53a8edfbccb16e01dba5271301785ec81d0bd7de7c70825137a7",
+      "provider": "META_ADS",
+      "rpc": "trafego_meta_persistir_snapshot",
+      "rpc_contrato": {
+        "rpc": "trafego_meta_persistir_snapshot",
+        "escopos": [
+          "insights_pagina",
+          "insights_fechamento"
+        ],
+        "chave_snapshot": "^meta_snapshot_[a-f0-9]{32}$",
+        "chave_idempotencia": "^meta_sync_[a-f0-9]{32}$",
+        "tabelas_de_linha": [
+          "trafego_meta_insight_daily",
+          "trafego_meta_insight_action"
+        ],
+        "releitura": "trafego_meta_sync_run",
+        "migration_base": "supabase/migrations/v15_02_meta_ads_insights.sql",
+        "revisao_necessaria": true
+      },
+      "migration": "supabase/migrations/v15_02_meta_ads_insights.sql",
+      "papel": "D-1",
+      "fuso_da_janela": "trafego_meta_ad_account.timezone_name",
+      "credencial": {
+        "tipo_placeholder": "metaGraphApiNaoProvisionada",
+        "estado": "NAO_PROVISIONADA",
+        "observacao": "placeholder deliberado; nao existe prova de que esta instancia n8n tenha tipo de credencial Meta. Ver o pedido de provisionamento."
+      },
+      "estado": "INATIVO — depende do pacote de autorizacao E do provisionamento da credencial Meta"
+    }
+  }
+}
