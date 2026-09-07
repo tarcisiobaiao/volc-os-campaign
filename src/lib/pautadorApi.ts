@@ -231,6 +231,171 @@ export interface InventarioMetaPersistido<T = Record<string, unknown>> {
   contas?: T[];
   recibo?: T | null;
   motivo?: string;
+  /** O estado de prontidão do read model. Ver `EstadoDoReadModelMeta`. */
+  estado?: string;
+}
+
+// ---------------------------------------------------------------------------
+// READ MODEL META — o contrato ESCOPADO (backend/app/trafego/meta/read_model.py)
+// ---------------------------------------------------------------------------
+//
+// ⚠️ AUSÊNCIA AQUI TEM SEIS NOMES, E NENHUM DELES É LISTA VAZIA.
+//
+// `listar()` no servidor devolve SEMPRE `ok: true` — inclusive quando o
+// Supabase está fora, quando as tabelas nunca foram criadas e quando a conta
+// pedida não existe no snapshot. Um cliente que tipasse a resposta como
+// `{ items: T[] }` transformaria as três em "esta conta não tem campanhas", que
+// é a única leitura que o servidor NUNCA fez. O estado viaja junto do dado
+// justamente para que a tela não possa perdê-lo, e por isso ele é obrigatório
+// no tipo — não opcional.
+
+/**
+ * Os estados de prontidão que o read model Meta devolve.
+ *
+ * Os quatro primeiros aparecem em qualquer leitura; `ESCOPO_*` só nas entidades
+ * que exigem conta; `NAO_ENCONTRADO_*` só no detalhe de um objeto.
+ */
+export type EstadoDoReadModelMeta =
+  | 'COM_SNAPSHOT'
+  | 'SEM_SNAPSHOT'
+  | 'SCHEMA_NAO_APLICADO'
+  | 'SEM_CONEXAO'
+  | 'ESCOPO_OBRIGATORIO'
+  | 'ESCOPO_DESCONHECIDO'
+  | 'NAO_ENCONTRADO_NO_ESCOPO'
+  | 'NAO_ENCONTRADO_ESCOPO_PARCIAL';
+
+/** As sete entidades projetadas. `conjuntos`, `anuncios` e `vinculos` exigem conta. */
+export type EntidadeMetaReadModel =
+  | 'campanhas'
+  | 'conjuntos'
+  | 'anuncios'
+  | 'criativos'
+  | 'vinculos'
+  | 'insights'
+  | 'mensuracao';
+
+/** As entidades que respondem `ESCOPO_OBRIGATORIO` sem `conta_ref`. */
+export const ENTIDADES_META_QUE_EXIGEM_CONTA: ReadonlySet<string> = new Set([
+  'conjuntos',
+  'anuncios',
+  'vinculos',
+]);
+
+/**
+ * Uma conta no read model.
+ *
+ * ⚠️ `type` e não `interface`: `MetaReadPreview` guarda esta resposta numa
+ * variável tipada como `InventarioMetaPersistido<Record<string, unknown>>`, e o
+ * TypeScript só concede a assinatura de índice implícita a apelidos de tipo.
+ * Trocar por `interface` quebra aquele arquivo sem que nada aqui mude.
+ */
+export type ContaMetaReadModel = {
+  cofre_ativo_id?: string | null;
+  /** Referência opaca da conta — é ela que viaja como `conta_ref`. */
+  conta_ref?: string | null;
+  id_mascarado?: string | null;
+  nome_observado?: string | null;
+  moeda?: string | null;
+  timezone_name?: string | null;
+  account_status?: string | null;
+  readiness_state?: string | null;
+  observado_em?: string | null;
+  ultima_leitura_ok_em?: string | null;
+};
+
+/**
+ * Uma linha de qualquer das sete entidades.
+ *
+ * Todos os campos são opcionais porque cada tabela traz os seus; a assinatura de
+ * índice existe para que uma coluna nova no servidor não derrube a tela. O
+ * identificador cru da Meta NÃO está aqui de propósito: ele é removido no
+ * servidor, e `entity_ref` + `id_mascarado` são a única identidade pública.
+ */
+export type ItemMetaReadModel = {
+  entity_ref?: string | null;
+  id_mascarado?: string | null;
+  meta_campaign_id?: string | null;
+  meta_adset_id?: string | null;
+  meta_ad_id?: string | null;
+  meta_creative_id?: string | null;
+  ad_account_ativo_id?: string | null;
+  nome?: string | null;
+  status?: string | null;
+  effective_status?: string | null;
+  objetivo?: string | null;
+  optimization_goal?: string | null;
+  object_story_id?: string | null;
+  observado_em?: string | null;
+  ultima_vez_visto_em?: string | null;
+  /** insights */
+  nivel?: string | null;
+  periodo_inicio?: string | null;
+  periodo_fim?: string | null;
+  janela_atribuicao?: string | null;
+  currency?: string | null;
+  completo?: boolean | null;
+  spend?: number | string | null;
+  impressions?: number | null;
+  reach?: number | null;
+  frequency?: number | string | null;
+  clicks?: number | null;
+  inline_link_clicks?: number | null;
+  landing_page_views?: number | null;
+  cpm?: number | string | null;
+  cpc?: number | string | null;
+  ctr?: number | string | null;
+  /** mensuração */
+  measurement_type?: string | null;
+  observed_count?: number | null;
+  [campo: string]: unknown;
+};
+
+export type ContasDoReadModelMeta = InventarioMetaPersistido<ContaMetaReadModel> & {
+  estado: EstadoDoReadModelMeta;
+  contas: ContaMetaReadModel[];
+};
+
+/**
+ * Uma PÁGINA de uma entidade — e a página sabe dizer que é página.
+ *
+ * `completo` responde "isto é tudo que existe neste escopo?" e `has_more`
+ * responde "existe próxima página?". As duas são diferentes: o escopo pode ter
+ * sido truncado no servidor (`motivo: ESCOPO_PAI_TRUNCADO`) mesmo quando não há
+ * próxima página a pedir.
+ */
+export type PaginaMetaReadModel<T = ItemMetaReadModel> = {
+  ok: true;
+  has_snapshot: boolean;
+  estado: EstadoDoReadModelMeta;
+  entidade: string;
+  conta_ref: string | null;
+  moeda?: string | null;
+  fuso?: string | null;
+  /** `ultima_leitura_ok_em` da conta, em ISO 8601 — não uma palavra. */
+  frescor?: string | null;
+  items: T[];
+  completo: boolean;
+  has_more: boolean;
+  proximo_cursor: string | null;
+  motivo: string | null;
+};
+
+export type DetalheMetaReadModel<T = ItemMetaReadModel> = {
+  ok: true;
+  has_snapshot: boolean;
+  estado: EstadoDoReadModelMeta;
+  entidade: string;
+  item: T | null;
+  conta_ref?: string | null;
+  motivo?: string | null;
+};
+
+/** Escopo, cursor e tamanho de uma leitura paginada. */
+export interface OpcoesDeLeituraMeta {
+  contaRef?: string | null;
+  cursor?: string | null;
+  tamanho?: number | null;
 }
 
 export interface AtivoCriacaoMeta {
@@ -587,13 +752,53 @@ export const pautadorApi = {
     });
   },
 
-  contasMetaReadModel(): Promise<InventarioMetaPersistido> {
+  contasMetaReadModel(): Promise<ContasDoReadModelMeta> {
     return request('/api/trafego/meta/local/read-model/contas');
   },
 
-  inventarioMetaReadModel(entidade: string, contaOpaca?: string): Promise<InventarioMetaPersistido> {
-    const qs = contaOpaca ? `?conta_opaca=${encodeURIComponent(contaOpaca)}` : '';
+  /**
+   * Uma página de uma entidade do read model Meta.
+   *
+   * ⚠️ A ASSINATURA ANTIGA CONTINUA VALENDO. O segundo argumento aceita a
+   * referência da conta como string (a forma posicional que existia) ou o
+   * objeto de opções. Trocar a forma sem manter a antiga quebraria quem já
+   * chamava a função de fora deste milestone, e uma tela de leitura não é lugar
+   * para um erro de compilação de outra equipe.
+   *
+   * O parâmetro na URL passou a ser `conta_ref`; o servidor ainda aceita
+   * `conta_opaca` marcado como obsoleto, e mandar os dois só multiplicaria os
+   * caminhos que precisam concordar.
+   */
+  inventarioMetaReadModel<T = ItemMetaReadModel>(
+    entidade: EntidadeMetaReadModel | string,
+    escopo?: string | OpcoesDeLeituraMeta | null,
+  ): Promise<PaginaMetaReadModel<T>> {
+    const opcoes: OpcoesDeLeituraMeta =
+      typeof escopo === 'string' ? { contaRef: escopo } : (escopo ?? {});
+    const busca = new URLSearchParams();
+    if (opcoes.contaRef) busca.set('conta_ref', opcoes.contaRef);
+    if (opcoes.cursor) busca.set('cursor', opcoes.cursor);
+    if (opcoes.tamanho != null) busca.set('tamanho', String(opcoes.tamanho));
+    const qs = busca.toString() ? `?${busca.toString()}` : '';
     return request(`/api/trafego/meta/local/read-model/${encodeURIComponent(entidade)}${qs}`);
+  },
+
+  /**
+   * Um objeto do read model, resolvido DENTRO de uma conta.
+   *
+   * `referencia` aceita tanto o UUID persistido quanto a referência
+   * `metaobj_…` que o recibo de criação entrega — as duas nascem do mesmo par
+   * (conta, id externo) e o servidor compara com as duas.
+   */
+  detalheMetaReadModel<T = ItemMetaReadModel>(
+    entidade: EntidadeMetaReadModel | string,
+    referencia: string,
+    contaRef?: string | null,
+  ): Promise<DetalheMetaReadModel<T>> {
+    const qs = contaRef ? `?conta_ref=${encodeURIComponent(contaRef)}` : '';
+    return request(
+      `/api/trafego/meta/local/read-model/${encodeURIComponent(entidade)}/${encodeURIComponent(referencia)}${qs}`,
+    );
   },
 
   ultimoReciboMetaLocal(): Promise<InventarioMetaPersistido> {

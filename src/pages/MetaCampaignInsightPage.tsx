@@ -1,5 +1,44 @@
+/**
+ * O detalhe de uma campanha Meta — REAL por padrão, demonstrativo por decisão.
+ *
+ * ---------------------------------------------------------------------------
+ * O DEFEITO CENTRAL QUE ESTA REVISÃO FECHA
+ * ---------------------------------------------------------------------------
+ *
+ * A versão anterior começava assim:
+ *
+ *     const campanha = META_DEMO.campanhas.find((item) => item.id === campaignId);
+ *     const leitura  = META_INSIGHTS_DEMO[campaignId];
+ *     if (!campanha || !leitura) return <Navigate to="/settings/campaigns?rede=meta" replace />;
+ *
+ * Três linhas, três problemas, e o terceiro é o que importa:
+ *
+ *  1. o cenário FICTÍCIO era a única fonte que a página sabia abrir;
+ *  2. a identidade REAL — a única que pode existir depois de uma sincronização
+ *     — nunca casava, porque o id real não está no dicionário de demonstração;
+ *  3. logo, toda campanha real caía no `<Navigate>` e SUMIA sem uma palavra. A
+ *     tela não dizia "não encontrei", não dizia "não consegui ler", não dizia
+ *     nada: ela trocava de página. O operador conclui que a campanha não
+ *     existe, e essa é a conclusão que este produto inteiro existe para não
+ *     deixar ninguém tirar por engano.
+ *
+ * A regra agora é uma frase: **identidade real lê o read model; a demonstração
+ * só existe atrás da porta explícita `?modo=demo`.** Nenhum estado de leitura
+ * — falha, vazio, escopo desconhecido, objeto fora do escopo — leva de volta ao
+ * cenário fictício, porque cair na demonstração por acidente é pior que a tela
+ * vazia: a tela vazia não mente.
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE NÃO EXISTE AQUI, DE PROPÓSITO
+ * ---------------------------------------------------------------------------
+ *
+ * Nenhum botão de ativar, editar ou mexer em orçamento. Não é omissão de
+ * escopo: um controle que existe sem o ato por trás dele ensina que o ato está
+ * disponível, e o operador descobre que não está no momento em que precisava
+ * dele. Neste marco a capacidade é ler.
+ */
 import React from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
@@ -9,13 +48,13 @@ import {
   DollarSign,
   Eye,
   FileText,
+  FlaskConical,
   GitBranch,
   History,
   Layers,
   MousePointer,
   MousePointerClick,
   Radio,
-  Settings,
   Target,
   TrendingUp,
   Users,
@@ -28,34 +67,129 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { chartColor, volcGrid, volcAxis, volcLine, volcCursor, VolcTooltip } from '@/lib/chartTheme';
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
-import { MetaFrescorBadge, MetaPeriodoChip } from '@/components/campaign/MetaDemoStatus';
-import { calculateROAS } from '@/utils/roasCalculations';
+import { FaixaDeDemonstracao, MetaFrescorBadge, MetaPeriodoChip } from '@/components/campaign/MetaDemoStatus';
+import { lucroBruto, retornoExcedentePct } from '@/utils/roasCalculations';
+import { AUSENTE, contagem } from '@/components/trafego/inventario/formato';
+import { useDensidade } from '@/components/trafego/inventario/densidade';
+import { MetaCampaignReadView } from '@/components/trafego/meta/MetaCampaignReadView';
 import { META_DEMO, META_INSIGHTS_DEMO, type MetaInsightDiarioDemo } from '@/components/trafego/meta/modelo';
 
-const moeda = (valor: number | null) => valor === null ? 'Não medido' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-const inteiro = (valor: number | null) => valor === null ? 'Não medido' : new Intl.NumberFormat('pt-BR').format(valor);
-const decimal = (valor: number | null, sufixo = '') => valor === null ? 'Não medido' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(valor)}${sufixo}`;
-const dataBr = (iso?: string | null) => iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : 'Não medido';
+/**
+ * ⚠️ FORMATO: as regras moram em `inventario/formato.tsx`, não aqui.
+ *
+ * Esta página tinha quatro helpers próprios (`moeda`, `inteiro`, `decimal`,
+ * `dataBr`) que diziam "Não medido" onde o resto do produto diz `—`. Duas
+ * grafias para a mesma ausência é como uma delas some sem ninguém perceber.
+ * `contagem` e `AUSENTE` vêm do módulo; a moeda do cenário demonstrativo é BRL
+ * fixo e continua local por isso — `dinheiro()` recebe micros, e o cenário
+ * fictício não tem micros nem conta de onde tirar a moeda.
+ */
+const moedaDemo = (valor: number | null) =>
+  valor === null
+    ? AUSENTE
+    : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+const dataBr = (iso?: string | null) =>
+  iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : AUSENTE;
 
+/**
+ * ⚠️ `retornoExcedentePct`, e NÃO `calculateROAS`.
+ *
+ * As duas fazem a mesma conta. A diferença é o nome, a unidade declarada e o
+ * que elas respondem quando não sabem: `calculateROAS` devolve `0` para gasto
+ * ausente e um `100` simbólico para receita sem gasto — dois valores
+ * inventados. Numa tela cuja regra é "ausência nunca vira zero", a função
+ * legada era a única coisa que ainda inventava número.
+ */
 function pontoDoGrafico(dia: MetaInsightDiarioDemo) {
-  const lucro = dia.receitaGam - dia.gasto;
-  const roas = calculateROAS(dia.receitaGam, dia.gasto);
-  const ctr = dia.impressoes > 0 ? (dia.cliquesNoLink / dia.impressoes) * 100 : 0;
-  const cpc = dia.cliquesNoLink > 0 ? dia.gasto / dia.cliquesNoLink : 0;
-  const cpm = dia.impressoes > 0 ? (dia.gasto / dia.impressoes) * 1000 : 0;
-  const frequencia = dia.alcance > 0 ? dia.impressoes / dia.alcance : 0;
-  return { ...dia, lucro, roas, ctr, cpc, cpm, frequencia };
+  return {
+    ...dia,
+    lucro: lucroBruto(dia.receitaGam, dia.gasto),
+    retornoExcedentePct: retornoExcedentePct(dia.receitaGam, dia.gasto),
+    ctr: dia.impressoes > 0 ? (dia.cliquesNoLink / dia.impressoes) * 100 : null,
+    cpc: dia.cliquesNoLink > 0 ? dia.gasto / dia.cliquesNoLink : null,
+    cpm: dia.impressoes > 0 ? (dia.gasto / dia.impressoes) * 1000 : null,
+    frequencia: dia.alcance > 0 ? dia.impressoes / dia.alcance : null,
+  };
 }
+
+const decimalDemo = (valor: number | null, sufixo = '') =>
+  valor === null
+    ? AUSENTE
+    : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(valor)}${sufixo}`;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A PORTA DA DEMONSTRAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** A demonstração pedida com um identificador que ela não tem. */
+const CenarioInexistente: React.FC<{ id: string }> = ({ id }) => (
+  <div className="space-y-4">
+    <FaixaDeDemonstracao oQue="Esta rota foi aberta em modo demonstrativo." />
+    <div className="rounded-md border border-border bg-card px-4 py-6" role="status">
+      <h2 className="font-display text-base font-semibold">
+        Este identificador não existe no cenário demonstrativo
+      </h2>
+      <p className="mt-2 max-w-[74ch] text-[13px] leading-relaxed text-muted-foreground">
+        O cenário fictício tem um punhado de campanhas inventadas, e{' '}
+        <span className="tabular break-all font-medium text-foreground">{id}</span> não é uma
+        delas. Isto não diz nada sobre a campanha real de mesmo identificador: para lê-la, abra
+        esta mesma rota sem <code className="rounded-sm bg-muted px-1 py-0.5">modo=demo</code>.
+      </p>
+    </div>
+  </div>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A PÁGINA
+// ═══════════════════════════════════════════════════════════════════════════
 
 export const MetaCampaignInsightPage: React.FC = () => {
   const { campaignId = '' } = useParams<{ campaignId: string }>();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const densidade = useDensidade();
+  const isMobile = densidade === 'compacta';
+
+  const modoDemo = params.get('modo') === 'demo';
+
+  const trocarConta = React.useCallback(
+    (contaRef: string) => {
+      const proximos = new URLSearchParams(params);
+      proximos.set('conta', contaRef);
+      setParams(proximos, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  // ── caminho REAL — o padrão ──────────────────────────────────────────────
+  if (!modoDemo) {
+    return (
+      <Layout>
+        <MetaCampaignReadView
+          referencia={campaignId}
+          contaRef={params.get('conta')}
+          aoEscolherConta={trocarConta}
+          aoVoltar={() => navigate(-1)}
+        />
+      </Layout>
+    );
+  }
+
+  // ── caminho DEMONSTRATIVO — só por decisão explícita na URL ──────────────
   const campanha = META_DEMO.campanhas.find((item) => item.id === campaignId);
   const leitura = META_INSIGHTS_DEMO[campaignId];
-  if (!campanha || !leitura) return <Navigate to="/settings/campaigns?rede=meta" replace />;
+  if (!campanha || !leitura) {
+    return (
+      <Layout>
+        <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4`}>
+          <CenarioInexistente id={campaignId} />
+        </div>
+      </Layout>
+    );
+  }
 
-  const lucro = leitura.gasto !== null && leitura.receitaGam !== null ? leitura.receitaGam - leitura.gasto : null;
-  const roasExcedente = leitura.gasto !== null && leitura.receitaGam !== null ? calculateROAS(leitura.receitaGam, leitura.gasto) : null;
+  const lucro = lucroBruto(leitura.receitaGam, leitura.gasto);
+  const excedente = retornoExcedentePct(leitura.receitaGam, leitura.gasto);
   const ctr = leitura.impressoes !== null && leitura.cliquesNoLink !== null && leitura.impressoes > 0 ? (leitura.cliquesNoLink / leitura.impressoes) * 100 : null;
   const cpc = leitura.gasto !== null && leitura.cliquesNoLink !== null && leitura.cliquesNoLink > 0 ? leitura.gasto / leitura.cliquesNoLink : null;
   const cpm = leitura.gasto !== null && leitura.impressoes !== null && leitura.impressoes > 0 ? (leitura.gasto / leitura.impressoes) * 1000 : null;
@@ -89,22 +223,20 @@ export const MetaCampaignInsightPage: React.FC = () => {
     );
   };
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
   return (
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 md:space-y-6`}>
         {/* Header */}
         <div className="space-y-4">
-          <div className="flex items-start gap-4 reveal" style={{ ['--i' as any]: 0 }}>
+          <div className="flex items-start gap-4 reveal" style={{ '--i': 0 } as React.CSSProperties}>
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex-shrink-0 gap-2 touch-target">
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Voltar
             </Button>
             <div className="flex-1 min-w-0">
               <div className="kicker mb-2 flex items-center gap-2">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" aria-hidden />
-                Detalhe da campanha
+                <FlaskConical className="h-3 w-3 text-warning" aria-hidden />
+                Detalhe da campanha · demonstração
               </div>
               <h1 className={`font-display font-bold tracking-tight leading-[1.05] ${isMobile ? 'text-2xl' : 'text-4xl'}`}>
                 Dashboard da <span className="text-foreground">Campanha</span>
@@ -116,23 +248,20 @@ export const MetaCampaignInsightPage: React.FC = () => {
             </div>
           </div>
 
+          <FaixaDeDemonstracao oQue="Esta é a página de detalhe montada sobre um cenário fictício." />
+
           {/* Filters and Actions Section */}
           <div className={`flex ${isMobile ? 'flex-col' : 'items-center flex-wrap'} gap-3`}>
             <MetaPeriodoChip label={leitura.periodo} className={isMobile ? 'w-full' : undefined} />
 
             <div className="flex items-center gap-2 flex-wrap">
               <MetaFrescorBadge />
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 flex-shrink-0"
-                disabled
-                title="Configuração indisponível no cenário demonstrativo Meta."
-              >
-                <Settings className="h-4 w-4" aria-hidden />
-                Configurar
-              </Button>
+              {/* ⚠️ O botão "Configurar" desapareceu daqui.
+                  Ele era um controle desabilitado com um `title` explicando que
+                  o ato não existe. Um controle sem ato ensina que o ato está
+                  disponível — e desabilitado ele ainda ocupa a posição do
+                  botão primário da região, que é onde o operador procura o que
+                  fazer em seguida. */}
               <div className="flex-shrink-0">
                 {getStatusBadge(campanha.status)}
               </div>
@@ -141,7 +270,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
         </div>
 
         {/* Campaign Info */}
-        <Card className="reveal hover-lift" style={{ ['--i' as any]: 1 }}>
+        <Card className="reveal hover-lift" style={{ '--i': 1 } as React.CSSProperties}>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="flex items-center gap-2 font-display">
@@ -176,51 +305,51 @@ export const MetaCampaignInsightPage: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {/* Gasto */}
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 2 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 2 } as React.CSSProperties}>
             <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-info" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">Investimento Total</span>
               <span className="rounded-md bg-info/10 text-info p-1.5"><DollarSign className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight">{moeda(leitura.gasto)}</div>
+              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight">{moedaDemo(leitura.gasto)}</div>
               <div className="mt-2 text-xs text-muted-foreground">
-                Orçamento: <span className="tabular">{campanha.orcamento ?? 'Não medido'}</span>
+                Orçamento: <span className="tabular">{campanha.orcamento ?? AUSENTE}</span>
               </div>
             </CardContent>
           </Card>
 
           {/* Revenue */}
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 3 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 3 } as React.CSSProperties}>
             <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-success" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">Revenue</span>
               <span className="rounded-md bg-success/10 text-success p-1.5"><TrendingUp className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight text-success">{moeda(leitura.receitaGam)}</div>
+              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight text-success">{moedaDemo(leitura.receitaGam)}</div>
               <div className="mt-2 text-xs text-success font-medium tabular">
-                ROAS: {roasExcedente === null ? 'Não medido' : `${roasExcedente.toFixed(1)}%`}
+                Retorno excedente: {excedente === null ? AUSENTE : `${excedente.toFixed(1)}%`}
               </div>
             </CardContent>
           </Card>
 
-          {/* ROAS */}
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 4 }}>
+          {/* Retorno excedente — a unidade está NO RÓTULO, não só na nota */}
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 4 } as React.CSSProperties}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <span className="kicker">ROAS</span>
+              <span className="kicker">Retorno excedente (%)</span>
               <span className="rounded-md bg-primary/10 text-primary p-1.5"><Target className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight">{roasExcedente === null ? 'Não medido' : `${roasExcedente.toFixed(1)}%`}</div>
+              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight">{excedente === null ? AUSENTE : `${excedente.toFixed(1)}%`}</div>
               <div className="mt-2 text-xs text-muted-foreground">
-                {leitura.eventoDeResultado}: <span className="tabular">{inteiro(leitura.visualizacoesDaPagina)}</span>
+                quanto a receita passou do gasto — não é a razão receita ÷ gasto
               </div>
             </CardContent>
           </Card>
 
           {/* Lucro Bruto */}
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 5 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 5 } as React.CSSProperties}>
             <span className={`pointer-events-none absolute inset-x-0 top-0 h-0.5 ${lucro === null ? 'bg-muted-foreground/30' : lucro >= 0 ? 'bg-success' : 'bg-destructive'}`} />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">Lucro Bruto</span>
@@ -228,7 +357,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className={`font-display text-2xl md:text-3xl font-bold tabular tracking-tight ${lucro === null ? '' : lucro >= 0 ? 'text-success' : 'text-destructive'}`}>
-                {moeda(lucro)}
+                {moedaDemo(lucro)}
               </div>
               <div className="mt-2 text-xs text-muted-foreground">
                 revenue − mídia
@@ -239,30 +368,30 @@ export const MetaCampaignInsightPage: React.FC = () => {
 
         {/* Métricas Secundárias */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 6 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 6 } as React.CSSProperties}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">CTR de Link</span>
               <span className="rounded-md bg-primary/10 text-primary p-1.5"><MousePointer className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-2xl font-bold tabular tracking-tight">{ctr === null ? 'Não medido' : `${ctr.toFixed(2)}%`}</div>
+              <div className="font-display text-2xl font-bold tabular tracking-tight">{ctr === null ? AUSENTE : `${ctr.toFixed(2)}%`}</div>
               <div className="mt-2 text-xs text-muted-foreground">
-                <span className="tabular">{inteiro(leitura.cliquesNoLink)}</span> cliques • <span className="tabular">{inteiro(leitura.impressoes)}</span> impressões
+                <span className="tabular">{contagem(leitura.cliquesNoLink)}</span> cliques • <span className="tabular">{contagem(leitura.impressoes)}</span> impressões
               </div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 7 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 7 } as React.CSSProperties}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">CPC de Link</span>
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><DollarSign className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-2xl font-bold tabular tracking-tight">{moeda(cpc)}</div>
+              <div className="font-display text-2xl font-bold tabular tracking-tight">{moedaDemo(cpc)}</div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 8 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 8 } as React.CSSProperties}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">Custo/LP View</span>
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Target className="h-4 w-4" aria-hidden /></span>
@@ -270,13 +399,13 @@ export const MetaCampaignInsightPage: React.FC = () => {
             <CardContent>
               <div className="font-display text-2xl font-bold tabular tracking-tight">
                 {leitura.gasto !== null && leitura.visualizacoesDaPagina !== null && leitura.visualizacoesDaPagina > 0
-                  ? moeda(leitura.gasto / leitura.visualizacoesDaPagina)
-                  : 'Não medido'}
+                  ? moedaDemo(leitura.gasto / leitura.visualizacoesDaPagina)
+                  : AUSENTE}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 9 }}>
+          <Card className="relative overflow-hidden reveal hover-lift" style={{ '--i': 9 } as React.CSSProperties}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <span className="kicker">Dias Ativos</span>
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Calendar className="h-4 w-4" aria-hidden /></span>
@@ -301,7 +430,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Eye className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-xl font-bold tabular tracking-tight">{inteiro(leitura.impressoes)}</div>
+              <div className="font-display text-xl font-bold tabular tracking-tight">{contagem(leitura.impressoes)}</div>
               <div className="mt-1 text-xs text-muted-foreground">impressions</div>
             </CardContent>
           </Card>
@@ -312,7 +441,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Users className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-xl font-bold tabular tracking-tight">{inteiro(leitura.alcance)}</div>
+              <div className="font-display text-xl font-bold tabular tracking-tight">{contagem(leitura.alcance)}</div>
               <div className="mt-1 text-xs text-muted-foreground">reach</div>
             </CardContent>
           </Card>
@@ -323,7 +452,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Radio className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-xl font-bold tabular tracking-tight">{decimal(frequencia)}</div>
+              <div className="font-display text-xl font-bold tabular tracking-tight">{decimalDemo(frequencia)}</div>
               <div className="mt-1 text-xs text-muted-foreground">impressões ÷ alcance</div>
             </CardContent>
           </Card>
@@ -334,7 +463,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><MousePointerClick className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-xl font-bold tabular tracking-tight">{inteiro(leitura.cliquesNoLink)}</div>
+              <div className="font-display text-xl font-bold tabular tracking-tight">{contagem(leitura.cliquesNoLink)}</div>
               <div className="mt-1 text-xs text-muted-foreground">inline_link_clicks</div>
             </CardContent>
           </Card>
@@ -345,7 +474,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Layers className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-xl font-bold tabular tracking-tight">{inteiro(leitura.visualizacoesDaPagina)}</div>
+              <div className="font-display text-xl font-bold tabular tracking-tight">{contagem(leitura.visualizacoesDaPagina)}</div>
               <div className="mt-1 text-xs text-muted-foreground">action metric</div>
             </CardContent>
           </Card>
@@ -356,7 +485,7 @@ export const MetaCampaignInsightPage: React.FC = () => {
               <span className="rounded-md bg-muted text-muted-foreground p-1.5"><Coins className="h-4 w-4" aria-hidden /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-xl font-bold tabular tracking-tight">{moeda(cpm)}</div>
+              <div className="font-display text-xl font-bold tabular tracking-tight">{moedaDemo(cpm)}</div>
               <div className="mt-1 text-xs text-muted-foreground">gasto por mil impressões</div>
             </CardContent>
           </Card>

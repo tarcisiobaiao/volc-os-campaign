@@ -1,3 +1,33 @@
+/**
+ * O cenário DEMONSTRATIVO de `/settings/campaigns`.
+ *
+ * ---------------------------------------------------------------------------
+ * ⚠️ ESTA TELA NÃO É MAIS O DESTINO DE `?rede=meta`
+ * ---------------------------------------------------------------------------
+ *
+ * Ela era montada incondicionalmente quando a rede escolhida era Meta: o
+ * operador pedia a lista de campanhas Meta e recebia números inventados, sem ter
+ * pedido demonstração nenhuma. Agora `?rede=meta` lê o read model, e esta tela
+ * só abre por `?rede=meta&modo=demo` — uma porta que alguém precisa atravessar
+ * de propósito.
+ *
+ * Como ela continua existindo (e continua sendo útil para conhecer a forma da
+ * tela antes de haver conta conectada), o caráter fictício passou a ser dito em
+ * CONTEÚDO FIXO, no topo, e não só num chip de 11 px ao lado de um filtro: quem
+ * chega no meio da rolagem, ou olha um print, precisa ler a mesma coisa.
+ *
+ * ---------------------------------------------------------------------------
+ * ⚠️ E O RETORNO PASSOU A TER UNIDADE NO NOME
+ * ---------------------------------------------------------------------------
+ *
+ * A coluna dizia "ROAS" e mostrava `calculateROAS`, que não devolve ROAS:
+ * devolve o EXCEDENTE sobre o gasto em pontos percentuais. Para receita 200 e
+ * gasto 100 ela responde `100`, enquanto o ROAS que a Meta chama de ROAS vale
+ * `2`. O número não mudou — as quatro faixas de cor estão calibradas nesta
+ * escala e continuam iguais —, mudou o nome, que agora carrega a unidade, e a
+ * função, que devolve `null` em vez dos dois valores inventados da legada
+ * (`0` para gasto ausente, `100` simbólico para receita sem gasto).
+ */
 import React, { useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -23,11 +53,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { SeletorRedeCampanhas, type RedeDeCampanhas } from '@/components/campaign/SeletorRedeCampanhas';
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
-import { MetaFrescorBadge, MetaPeriodoChip } from '@/components/campaign/MetaDemoStatus';
+import { FaixaDeDemonstracao, MetaFrescorBadge, MetaPeriodoChip } from '@/components/campaign/MetaDemoStatus';
 import { CampaignSortSelect } from '@/components/campaign/CampaignSortSelect';
 import { sortCampaigns, type CampaignSortKey } from '@/lib/campaignSort';
-import { calculateROAS, getROASColorCategory, getROASColorStyles } from '@/utils/roasCalculations';
+import { getROASColorCategory, getROASColorStyles, lucroBruto, retornoExcedentePct } from '@/utils/roasCalculations';
 import { META_DEMO, META_INSIGHTS_DEMO, type ObjetoMetaDemo } from '@/components/trafego/meta/modelo';
+import { useDensidade } from '@/components/trafego/inventario/densidade';
 
 interface Props {
   onNetworkChange: (rede: RedeDeCampanhas) => void;
@@ -72,16 +103,20 @@ interface LeituraFinanceira {
   gasto: number | null;
   receita: number | null;
   lucro: number | null;
-  retorno: number | null;
+  /** Excedente sobre o gasto, em PONTOS PERCENTUAIS. Nunca a razão. */
+  excedentePct: number | null;
 }
 
 function leituraFinanceira(campanhaId: string): LeituraFinanceira {
   const leitura = META_INSIGHTS_DEMO[campanhaId];
   const gasto = leitura?.gasto ?? null;
   const receita = leitura?.receitaGam ?? null;
-  const lucro = gasto !== null && receita !== null ? receita - gasto : null;
-  const retorno = gasto !== null && receita !== null ? calculateROAS(receita, gasto) : null;
-  return { gasto, receita, lucro, retorno };
+  return {
+    gasto,
+    receita,
+    lucro: lucroBruto(receita, gasto),
+    excedentePct: retornoExcedentePct(receita, gasto),
+  };
 }
 
 export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) => {
@@ -103,15 +138,18 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
       const matchesProjeto = projetoFiltro === 'all' || campanha.projeto === projetoFiltro;
       let matchesStatus = true;
       if (statusFiltro !== 'all') {
-        const { retorno } = leituraFinanceira(campanha.id);
-        matchesStatus = retorno !== null && getROASColorCategory(retorno) === statusFiltro;
+        const { excedentePct } = leituraFinanceira(campanha.id);
+        matchesStatus = excedentePct !== null && getROASColorCategory(excedentePct) === statusFiltro;
       }
       return matchesBusca && matchesProjeto && matchesStatus;
     });
 
     const paraOrdenar = filtradas.map((campanha) => {
       const { gasto, receita } = leituraFinanceira(campanha.id);
-      return { campanha, name: campanha.nome, investment: gasto ?? 0, revenue: receita ?? 0 };
+      return { campanha, name: campanha.nome, // Ausência NÃO é zero, nem para ordenar: um gasto não medido virando
+      // `0` empurra a campanha para o topo do "melhor retorno" por não ter
+      // gastado nada. `NaN` mantém a linha fora da comparação.
+      investment: gasto ?? Number.NaN, revenue: receita ?? Number.NaN };
     });
     return sortCampaigns(paraOrdenar, sortKey).map((item) => item.campanha);
   }, [busca, projetoFiltro, statusFiltro, sortKey]);
@@ -123,7 +161,7 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
     });
   };
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = useDensidade() === 'compacta';
 
   return (
     <Layout>
@@ -141,7 +179,7 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
                   <Settings className="h-3 w-3" aria-hidden />
                 </span>
-                Configurações · Campanhas
+                Configurações · Campanhas · demonstração
               </div>
               <h1 className={`font-display font-bold tracking-tight leading-[1.05] ${isMobile ? 'text-[1.7rem]' : 'text-4xl'}`}>
                 Campanhas
@@ -157,6 +195,8 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
               </p>
             </div>
           </div>
+
+          <FaixaDeDemonstracao oQue="Esta é a lista de campanhas montada sobre um cenário fictício." />
 
           <SeletorRedeCampanhas rede="meta" onChange={onNetworkChange} />
 
@@ -188,25 +228,25 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
                 <SelectItem value="green">
                   <span className="flex items-center gap-2">
                     <Circle className="h-3 w-3 fill-green-600 text-green-600" />
-                    Campanhas Verdes (ROAS ≥ 80%)
+                    Verdes (excedente ≥ 80%)
                   </span>
                 </SelectItem>
                 <SelectItem value="yellow">
                   <span className="flex items-center gap-2">
                     <Circle className="h-3 w-3 fill-yellow-600 text-yellow-600" />
-                    Campanhas Amarelas (ROAS 40-79%)
+                    Amarelas (excedente 40–79%)
                   </span>
                 </SelectItem>
                 <SelectItem value="orange">
                   <span className="flex items-center gap-2">
                     <Circle className="h-3 w-3 fill-orange-600 text-orange-600" />
-                    Campanhas Laranjas (ROAS 0-39%)
+                    Laranjas (excedente 0–39%)
                   </span>
                 </SelectItem>
                 <SelectItem value="red">
                   <span className="flex items-center gap-2">
                     <Circle className="h-3 w-3 fill-red-600 text-red-600" />
-                    Campanhas Vermelhas (ROAS negativo)
+                    Vermelhas (excedente negativo)
                   </span>
                 </SelectItem>
               </SelectContent>
@@ -252,8 +292,8 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
                   <span key={cor} className="flex items-center gap-1">
                     <Circle className={`h-2 w-2 ${dotClass}`} />
                     {campanhasFiltradas.filter((c) => {
-                      const { retorno } = leituraFinanceira(c.id);
-                      return retorno !== null && getROASColorCategory(retorno) === cor;
+                      const { excedentePct } = leituraFinanceira(c.id);
+                      return excedentePct !== null && getROASColorCategory(excedentePct) === cor;
                     }).length}
                   </span>
                 ))}
@@ -265,7 +305,7 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
         {/* Campaigns List */}
         <div className="space-y-4">
           {campanhasFiltradas.map((campanha, index) => {
-            const { gasto, receita, lucro, retorno } = leituraFinanceira(campanha.id);
+            const { gasto, receita, lucro, excedentePct } = leituraFinanceira(campanha.id);
             const periodo = META_INSIGHTS_DEMO[campanha.id]?.periodo ?? 'Cenário demonstrativo';
             return (
               <Link
@@ -313,9 +353,9 @@ export const MetaCampaignsSettingsDemo: React.FC<Props> = ({ onNetworkChange }) 
                             <p className="kicker mb-1">Revenue</p>
                             <p className="font-display text-base md:text-lg font-bold tabular text-success">{moeda(receita)}</p>
                           </div>
-                          <div className={`relative overflow-hidden text-center p-3 rounded-lg border ${retorno === null ? 'border-border bg-card' : getROASColorStyles(retorno)}`}>
-                            <p className="kicker mb-1">ROAS</p>
-                            <p className="font-display text-base md:text-lg font-bold tabular">{retorno === null ? 'Não medido' : `${retorno.toFixed(1)}%`}</p>
+                          <div className={`relative overflow-hidden text-center p-3 rounded-lg border ${excedentePct === null ? 'border-border bg-card' : getROASColorStyles(excedentePct)}`}>
+                            <p className="kicker mb-1">Retorno excedente (%)</p>
+                            <p className="font-display text-base md:text-lg font-bold tabular">{excedentePct === null ? 'Não medido' : `${excedentePct.toFixed(1)}%`}</p>
                           </div>
                           <div className="relative overflow-hidden text-center p-3 rounded-lg border border-border bg-card">
                             <span className={`pointer-events-none absolute inset-x-0 top-0 h-0.5 ${lucro === null ? 'bg-muted-foreground/30' : lucro >= 0 ? 'bg-success' : 'bg-destructive'}`} />

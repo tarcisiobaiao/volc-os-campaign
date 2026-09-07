@@ -24,6 +24,7 @@ import { useCampaignComparisons } from "@/hooks/useCampaignComparisons";
 import { IdentidadeDeCanal } from "@/components/trafego/hub/IdentidadeDeCanal";
 import { SeletorRedeCampanhas, type RedeDeCampanhas } from "@/components/campaign/SeletorRedeCampanhas";
 import MetaCampaignsSettingsDemo from "./MetaCampaignsSettingsDemo";
+import { MetaCampanhasSettingsReal } from "@/components/trafego/meta/MetaCampaignReadView";
 
 const GoogleCampaignsSettings: React.FC<{ onNetworkChange: (rede: RedeDeCampanhas) => void }> = ({ onNetworkChange }) => {
   const navigate = useNavigate();
@@ -760,20 +761,55 @@ const GoogleCampaignsSettings: React.FC<{ onNetworkChange: (rede: RedeDeCampanha
   );
 };
 
+/**
+ * A DECISÃO DE MONTAGEM — e por que ela mudou.
+ *
+ * `?rede=meta` montava `MetaCampaignsSettingsDemo` incondicionalmente. O efeito
+ * é o defeito central deste marco: o operador pedia a lista de campanhas Meta e
+ * recebia um cenário FICTÍCIO, sem ter escolhido demonstração nenhuma. Um
+ * cenário de demonstração que é o destino padrão de uma rota de produção deixa
+ * de ser demonstração — ele vira o painel, com números inventados dentro.
+ *
+ * Agora `?rede=meta` lê o read model. A demonstração continua existindo, atrás
+ * da porta explícita que o produto já usa em toda superfície Meta:
+ * `?modo=demo`. Nenhuma falha de leitura, nenhuma lista vazia e nenhum 404
+ * levam até ela — quem quiser a demonstração pede a demonstração.
+ *
+ * O ramo do Google está intocado, e é para continuar assim.
+ */
 const CampaignsSettings = () => {
   const [params, setParams] = useSearchParams();
   const rede: RedeDeCampanhas = params.get('rede') === 'meta' ? 'meta' : 'google';
+  const modoDemo = params.get('modo') === 'demo';
 
   const mudarRede = (proximaRede: RedeDeCampanhas) => {
     const proximos = new URLSearchParams(params);
     if (proximaRede === 'meta') proximos.set('rede', 'meta');
-    else proximos.delete('rede');
+    else {
+      proximos.delete('rede');
+      // A porta da demonstração é da Meta. Levá-la para o Google faria a rota
+      // do Google carregar um parâmetro que ela não conhece e não obedece.
+      proximos.delete('modo');
+      proximos.delete('conta');
+    }
     setParams(proximos, { replace: true });
   };
 
-  return rede === 'meta'
-    ? <MetaCampaignsSettingsDemo onNetworkChange={mudarRede} />
-    : <GoogleCampaignsSettings onNetworkChange={mudarRede} />;
+  const escolherConta = (contaRef: string) => {
+    const proximos = new URLSearchParams(params);
+    proximos.set('conta', contaRef);
+    setParams(proximos, { replace: true });
+  };
+
+  if (rede !== 'meta') return <GoogleCampaignsSettings onNetworkChange={mudarRede} />;
+  if (modoDemo) return <MetaCampaignsSettingsDemo onNetworkChange={mudarRede} />;
+  return (
+    <MetaCampanhasSettingsReal
+      onNetworkChange={mudarRede}
+      contaRef={params.get('conta')}
+      aoEscolherConta={escolherConta}
+    />
+  );
 };
 
 export default CampaignsSettings;

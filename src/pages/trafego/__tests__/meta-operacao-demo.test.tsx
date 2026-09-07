@@ -25,7 +25,35 @@ describe('Meta demonstrativa navegável', () => {
     expect(screen.getByRole('heading', { name: 'Guia Encceja · Descoberta' })).toBeTruthy();
     expect(screen.getByText(/identidade, entrega e métricas são fictícias/i)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Brasil · Amplo · 18–54' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /editar campanha/i }).hasAttribute('disabled')).toBe(true);
+
+    // ⚠️ O caráter fictício virou CONTEÚDO FIXO, com nome acessível próprio.
+    // Antes ele morava numa caixa `verified` sem papel, indistinguível de um
+    // aviso informativo qualquer no meio da página.
+    const faixa = screen.getByRole('note', { name: 'cenário demonstrativo' });
+    expect(faixa.textContent).toContain('nada aqui é real');
+
+    // ⚠️ "Editar campanha" saiu — e a prova mudou de "está desabilitado" para
+    // "não existe". Um botão desabilitado ainda ensina que o ato existe e está
+    // a um passo; neste marco não há edição nenhuma, nem aqui nem na leitura
+    // real, e a tela não pode sugerir o contrário.
+    expect(screen.queryByRole('button', { name: /editar campanha/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^pausar/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /alterar configuração/i })).toBeNull();
+    // O caminho até haver ato continua escrito, que é a parte útil.
+    expect(screen.getByText(/provar token e conta em somente leitura/i)).toBeTruthy();
+  });
+
+  it('a demonstração de objeto NÃO é o destino de uma rota sem `modo=demo`', () => {
+    // A rota real monta a leitura do read model; sem backend no teste ela
+    // mostra o esqueleto e depois um estado nomeado — nunca o cenário fictício.
+    render(
+      <MemoryRouter initialEntries={['/trafego/meta/campanhas/campanha-descoberta-01']}>
+        <Routes><Route path="/trafego/meta/:tipo/:objetoId" element={<MetaObjetoPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('heading', { name: 'Guia Encceja · Descoberta' })).toBeNull();
+    expect(screen.queryByRole('note', { name: 'cenário demonstrativo' })).toBeNull();
+    expect(screen.getByText(/leitura real/i)).toBeTruthy();
   });
 
   it('expõe as oito decisões da criação e mantém o envio bloqueado', () => {

@@ -1,15 +1,126 @@
 /**
- * Utility functions for ROAS calculations
+ * Vocabulário de retorno: três medidas, três unidades, três nomes.
  *
- * ROAS (Return on Ad Spend) is calculated as excess return over investment
- * Example: If investment = 100 and revenue = 167, ROAS = 67% (not 167%)
+ * ---------------------------------------------------------------------------
+ * O PROBLEMA QUE ESTE ARQUIVO CARREGAVA
+ * ---------------------------------------------------------------------------
+ *
+ * `calculateROAS` NÃO devolve ROAS. Devolve o EXCEDENTE sobre o gasto:
+ * `((receita / gasto) - 1) * 100`. Para receita 200 e gasto 100 ela responde
+ * `100`, enquanto ROAS — a medida que a Meta e o Google Ads chamam de ROAS —
+ * vale `2`. Três fórmulas diferentes convivem na base com alguma variação do
+ * mesmo nome (excedente %, tradicional %, ROI %), e a coluna da tela diz
+ * "ROAS" para todas.
+ *
+ * O risco concreto não é estético: `target_roas` do Google Ads é uma RAZÃO
+ * enviada à plataforma. Um dia alguém "unifica" os nomes, o `100` do excedente
+ * viaja para o campo de meta, e a conta passa a perseguir um alvo 50× maior do
+ * que o pretendido.
+ *
+ * ---------------------------------------------------------------------------
+ * A DECISÃO (adjudicação O02)
+ * ---------------------------------------------------------------------------
+ *
+ * `calculateROAS` fica EXATAMENTE como estava e passa a ser explicitamente
+ * legado. Dez arquivos a consomem, cinco deles painéis do Google alimentados
+ * por `daily_campaign_metrics`, e as quatro faixas de cor logo abaixo estão
+ * calibradas na escala do excedente (>=80 verde, >=40 amarelo, >=0 laranja).
+ * Trocar a fórmula global recoloriria cinco páginas e reescreveria relatórios
+ * históricos em silêncio — exatamente o que não se deve fazer para arrumar um
+ * nome.
+ *
+ * O que muda é que passam a existir os nomes certos, com unidade no nome, e
+ * ausência que continua ausência:
+ *
+ *   | função                  | fórmula              | unidade   | 200/100 |
+ *   |-------------------------|----------------------|-----------|---------|
+ *   | `roasRatio`             | receita / gasto      | razão     | `2`     |
+ *   | `retornoExcedentePct`   | (receita/gasto - 1)  | %         | `100`   |
+ *   | `roiLiquidoPct`         | lucro líq. / invest. | %         | depende |
+ *
+ * As três devolvem `null` quando a resposta não é conhecida. `calculateROAS`
+ * devolve `0` para gasto ausente e um `100` simbólico para receita sem gasto —
+ * dois valores inventados que o vocabulário novo não reproduz.
+ *
+ * NUNCA envie nenhuma destas a um campo de meta de plataforma. `target_roas`
+ * do Google Ads é montado em `src/pages/trafego/NovaCampanhaPage.tsx` a partir
+ * do que o operador digita, e deve continuar assim.
  */
 
+/** Valor financeiro que pode não ter sido medido. `null` nunca é zero. */
+export type ValorMedido = number | null | undefined;
+
+const medido = (valor: ValorMedido): number | null =>
+  typeof valor === 'number' && Number.isFinite(valor) ? valor : null;
+
 /**
- * Calculate ROAS as excess percentage over investment
+ * ROAS de verdade: receita dividida por gasto, adimensional.
+ *
+ * É a medida que a Meta e o Google Ads chamam de ROAS. Devolve `null` — e não
+ * zero — quando o gasto não foi medido ou é zero: dividir por zero não produz
+ * "retorno nulo", produz uma pergunta sem resposta, e um zero aqui viraria
+ * "campanha ruim" num painel onde a verdade é "ainda não dá para dizer".
+ */
+export const roasRatio = (receita: ValorMedido, gasto: ValorMedido): number | null => {
+  const r = medido(receita);
+  const g = medido(gasto);
+  if (r === null || g === null || g <= 0) return null;
+  return r / g;
+};
+
+/**
+ * Retorno EXCEDENTE sobre o gasto, em pontos percentuais.
+ *
+ * Mesma aritmética de `calculateROAS`, com o nome que descreve o que ela faz e
+ * sem os dois valores inventados. 200/100 => `100` (cem por cento acima do
+ * gasto), não `200`.
+ */
+export const retornoExcedentePct = (receita: ValorMedido, gasto: ValorMedido): number | null => {
+  const razao = roasRatio(receita, gasto);
+  return razao === null ? null : (razao - 1) * 100;
+};
+
+/** Lucro bruto: receita menos gasto de mídia. `null` se qualquer parcela falta. */
+export const lucroBruto = (receita: ValorMedido, gasto: ValorMedido): number | null => {
+  const r = medido(receita);
+  const g = medido(gasto);
+  return r === null || g === null ? null : r - g;
+};
+
+/**
+ * ROI líquido em pontos percentuais, depois de deduções explícitas.
+ *
+ * `deducoes` são impostos, taxas e custos operacionais que a REGRA VERSIONADA
+ * daquele projeto e daquele mês produziu. Não há alíquota padrão aqui de
+ * propósito: as planilhas de referência trazem percentuais históricos, e
+ * transformar um deles em constante universal aplicaria a taxa de um cliente à
+ * conta de outro. Sem regra resolvida, `deducoes` é `null` e o ROI líquido é
+ * `null` — o gasto e a receita continuam úteis mesmo assim.
+ */
+export const roiLiquidoPct = (
+  receita: ValorMedido,
+  gasto: ValorMedido,
+  deducoes: ValorMedido,
+): number | null => {
+  const r = medido(receita);
+  const g = medido(gasto);
+  const d = medido(deducoes);
+  if (r === null || g === null || d === null) return null;
+  const investimento = g + d;
+  if (investimento <= 0) return null;
+  return ((r - investimento) / investimento) * 100;
+};
+
+/**
+ * @deprecated Nome errado para o que calcula: devolve EXCEDENTE em %, não ROAS.
+ *
+ * Preservada byte a byte porque cinco painéis do Google e as faixas de cor
+ * abaixo dependem desta escala. Para código novo use `roasRatio` (razão) ou
+ * `retornoExcedentePct` (%), que distinguem ausência de zero.
+ *
  * @param revenue - Total revenue generated
  * @param investment - Total investment/spend
- * @returns ROAS as excess percentage (e.g., 67% for 167% traditional ROAS)
+ * @returns Excedente em % (ex.: 67 para uma razão de 1,67)
  */
 export const calculateROAS = (revenue: number, investment: number): number => {
   // Caso especial: Se há faturamento mas sem gasto, retorna +100% simbólico
