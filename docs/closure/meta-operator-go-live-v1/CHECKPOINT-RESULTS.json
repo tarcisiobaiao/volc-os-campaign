@@ -412,10 +412,50 @@
     }
   ],
   "suites": {
-    "backend_tests": "3 falhas, 4508 passando, 89 pulados",
+    "backend_tests": "3 falhas pré-existentes, 4532 passando, 89 pulados",
     "as_3_falhas": "PRE-EXISTENTES: test_canario_pedido_aprovado (2) e test_trafego (1). trafego.py e canario.py estão INTACTOS desde a base b3afa8b — nada nesta missão os tocou.",
     "volc_ads_junto": "Rodar `backend/tests volc_ads` acrescenta 16 falhas em test_meta_supply_bytes que NÃO acontecem isoladamente. É poluição entre suítes PRE-EXISTENTE: volc_ads teve ZERO arquivos alterados nesta missão, e a poluição se reproduz com `pytest volc_ads backend/tests/test_meta_supply_bytes.py`.",
     "vitest": "199 passando em 16 arquivos (139 existentes + 60 novos), zero regressões",
-    "typescript": "76 erros — ABAIXO da baseline medida de 77; nenhum em arquivo desta missão"
+    "typescript": "76 erros — ABAIXO da baseline medida de 77; nenhum em arquivo desta missão",
+    "meta": "656 testes"
+  },
+  "revisao_focal": {
+    "metodo": "seis eixos de risco revisados em paralelo; cada achado atacado por um cético instruído a REFUTAR",
+    "agentes": 30,
+    "achados_confirmados": 11,
+    "corrigidos_nesta_rodada": 7,
+    "corrigidos": [
+      "5xx e 4xx sem objeto de erro viravam FALHOU (que autoriza reenvio) — agora AMBIGUO",
+      "só TimeoutException era capturado; queda de conexão travava o par (conta, bytes)",
+      "resposta.json() sem guarda deixava a reserva pendurada",
+      "ContratoMetaInvalido e ErroDeLeituraMeta viravam HTTP 500 sem código na rota de registro",
+      "rotas de catálogo devolviam 500 genérico perdendo a causa da recusa da Meta",
+      "ficha do canário mostrava o orçamento de UM conjunto como o do pedido em ABO",
+      "publicador n8n reenviaria a API key para o host de um redirect"
+    ],
+    "nao_corrigidos_e_declarados": [
+      {
+        "achado": "AMBIGUO é beco sem saída: um timeout tranca aqueles bytes naquela conta",
+        "por_que_nao": "sair dele exige uma RPC de reconciliação cercada e auditada, que lê a biblioteca da conta e fecha como REGISTRADO ou reabre. É tarefa própria, com migration e provas próprias — não cabia numa rodada corretiva.",
+        "impacto_hoje": "nenhum operador está bloqueado: o registro de mídia ainda não foi usado em conta real"
+      },
+      {
+        "achado": "vídeo acima de 25 MB não é armazenável apesar do teto declarado de 200 MB",
+        "por_que_nao": "o teto vive em armazenamento.py, fora do escopo desta missão; já declarado como BLOCKED em A29",
+        "impacto_hoje": "cada tentativa deixa projeto+briefing+job órfãos — vale conserto próprio"
+      },
+      {
+        "achado": "GET de status perde previewUrl de entrada deduplicada contra master de outro job",
+        "por_que_nao": "defeito de leitura no router de importação; não afeta os bytes nem a posse",
+        "impacto_hoje": "a entrada aparece sem preview no GET, com os dados corretos no POST"
+      },
+      {
+        "achado": "troca de conta na tela não limpa seleções quando a leitura de ativos falha",
+        "por_que_nao": "correção de interface; a resolução no servidor JÁ recusa referência de outra conta",
+        "impacto_hoje": "a tela pode exibir uma seleção órfã; o backend não a aceitaria"
+      }
+    ],
+    "refutados": 12,
+    "nota_sobre_refutados": "Metade dos achados não sobreviveu à verificação. Entre eles, um ALTA sobre evento arbitrário virar custom_event_type: o cético mostrou que a receita de Traffic não admite OPTIMIZE e que as receitas de conversão exigem prova remota que não existe — o caminho não é alcançável hoje. Registrado como refutado, não como corrigido."
   }
 }

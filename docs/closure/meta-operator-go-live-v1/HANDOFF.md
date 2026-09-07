@@ -125,8 +125,8 @@ peça.
 
 | Medida | Baseline | Agora |
 |---|---|---|
-| Testes Meta (backend) | 417 | **631** |
-| Suíte `backend/tests` | — | 4508 passando, 3 falhas **pré-existentes**, 89 pulados |
+| Testes Meta (backend) | 417 | **656** |
+| Suíte `backend/tests` | — | **4532** passando, 3 falhas **pré-existentes**, 89 pulados |
 | Testes de interface | 139 | **199** |
 | Erros TypeScript | 77 | **76** |
 | Conferências do validador n8n | 265 | 293 |
@@ -141,6 +141,40 @@ peça.
   suítes pré-existente: `volc_ads` teve **zero** arquivos alterados nesta missão,
   e a poluição se reproduz com `pytest volc_ads backend/tests/test_meta_supply_bytes.py`.
   Vale um conserto próprio — não é desta missão.
+
+## A revisão focal, e o que ela pegou
+
+Seis eixos de risco revisados em paralelo, cada achado depois atacado por um
+cético instruído a **refutar**. Trinta agentes; **11 achados sobreviveram**, 12
+foram refutados. Sete foram corrigidos na rodada corretiva.
+
+Os dois mais graves eram a mesma família, no registro de mídia:
+
+1. **5xx virava FALHOU — e FALHOU autoriza nova tentativa.** Um 502 de gateway
+   não prova nada: o multipart já foi encaminhado e o `adimages` pode ter
+   nascido. O servidor reenviaria os mesmos bytes e criaria um **segundo ativo
+   na biblioteca do cliente**. Hoje "recusa explícita" é 4xx **com** o objeto de
+   erro do provedor; todo o resto é AMBIGUO.
+2. **Só `TimeoutException` era capturado.** Uma queda de conexão depois do POST
+   atravessava tudo e deixava a reserva pendurada em DESPACHAR.
+
+A invariante que amarra as correções está provada: **nenhuma saída de
+`_registrar_uma` deixa a reserva sem fechamento** — o teste percorre os quatro
+cenários.
+
+Um achado ALTA foi **refutado** e está registrado como tal: "evento arbitrário
+vira `custom_event_type`". O cético mostrou que Traffic não admite `OPTIMIZE` e
+que as receitas de conversão exigem prova remota inexistente — o caminho não é
+alcançável hoje. Fica anotado, não corrigido.
+
+Quatro achados confirmados **não** foram corrigidos, e estão nomeados em
+`CHECKPOINT-RESULTS.json` com o porquê. O principal: **AMBIGUO ainda é um beco
+sem saída** — sair dele exige uma RPC de reconciliação cercada, com migration e
+provas próprias, e isso é tarefa, não rodada corretiva.
+
+O co-revisor externo (Gemini, autorizado pelo operador) leu um diff delimitado
+das sete invariantes do registro de mídia e não encontrou violação — um lente a
+mais, e a mais fraca das duas: ausência de achado prova menos que um achado.
 
 ## Ressalvas sobre o próprio gate do grafo
 
