@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "document_id": "META_DESTINATION_EVIDENCE_V2",
+  "task": "T10",
+  "finding": "F13",
+  "checkpoint": "CP3",
+  "produced_at": "2026-09-07",
+  "produced_on_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "scope": "PARTE LOCAL. Adjudicacao documental do destino website-only e da identidade Page/placements, mais o plano de prova externa. NENHUMA chamada a conta Meta foi feita nesta rodada.",
+  "verdict": "PREMISSA_MANTIDA_BLOQUEIO_PRESERVADO_PROVA_REFORMULADA",
+  "verdict_meaning": "A pesquisa oficial desta rodada NAO derrubou a premissa do gate: continua sem fonte que estabeleca como garantir website-only por payload nesta receita. O bloqueio de CRIAR permanece correto e nada de destination_spec foi inventado. O que muda e a natureza da PROVA: membership em variavel de ambiente deixa de ser aceitavel como recibo.",
+
+  "official_sources_read_this_round": [
+    {
+      "id": "T10-S01",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreative.py",
+      "kind": "PUBLIC_OFFICIAL_SDK_TAG",
+      "read_on": "2026-09-07",
+      "observed": "A enumeracao de campos de AdCreative contem status, destination_spec, account_id, object_story_spec, asset_feed_spec e degrees_of_freedom_spec. NAO contem effective_status (contem effective_authorization_category, effective_instagram_media_id e effective_object_story_id, que sao outros campos). O enum Status declara ACTIVE, DELETED, IN_PROCESS e WITH_ISSUES.",
+      "supports": ["F14", "a mascara de leitura de creative"],
+      "does_not_support": "Nao estabelece a semantica de destination_spec nem como desligar Shop."
+    },
+    {
+      "id": "T10-S02",
+      "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/",
+      "kind": "PUBLIC_OFFICIAL_REFERENCE",
+      "read_on": "2026-09-07",
+      "observed": "A referencia publica de AdCreative documenta status com os valores 'ACTIVE, IN_PROCESS, WITH_ISSUES, DELETED'. NAO documenta effective_status. NAO documenta destination_spec, nem discute destino website versus Shop / native_commerce_experience.",
+      "supports": ["F14", "F13"],
+      "note": "Fonte independente do SDK e concordante com ele. Nesta rodada a pagina respondeu; na rodada anterior o HTML Meta estava indisponivel (API-EVIDENCE.json:policy)."
+    },
+    {
+      "id": "T10-S03",
+      "url": "busca restrita a developers.facebook.com e www.facebook.com — 'Meta Marketing API v26 ad creative destination_spec shop opt out website traffic objective'",
+      "kind": "PUBLIC_OFFICIAL_SEARCH",
+      "read_on": "2026-09-07",
+      "observed": "Nenhum resultado oficial descreve destination_spec, opt-out de Shop ou a combinacao com o objetivo de trafego. Os resultados citam destination_type no AD SET (ex.: WHATSAPP, FACEBOOK), que e outro campo, em outro objeto.",
+      "supports": ["F13"],
+      "conclusion": "A ausencia e consistente entre SDK, referencia e busca. Isso e evidencia de que a semantica NAO esta publicada — nao e prova de que o redirecionamento nao exista."
+    }
+  ],
+
+  "adjudication": [
+    {
+      "id": "T10-A01",
+      "question": "Shop se aplica a receita exata OUTCOME_TRAFFIC / LANDING_PAGE_VIEWS / Facebook-only?",
+      "answer": "NAO RESOLVIDO POR FONTE PUBLICA.",
+      "reasoning": "T10-S01 prova que o CAMPO destination_spec existe no catalogo v26. T10-S02 e T10-S03 mostram que a referencia publica nao documenta o campo nem a semantica de Shop para este objetivo. Existencia de campo no SDK gerado nao e aplicabilidade da combinacao a uma conta, e o proprio pacote ja registra isso (API-EVIDENCE.json, API-M04: READ_OFFICIAL_SCHEMA_INSUFFICIENT_SEMANTICS).",
+      "consequence": "Continua PROIBIDO enviar destination_spec ou destination_type na receita P0. O codigo atual ja NAO os envia, e a ausencia e deliberada e documentada (compilador.py, bloco de comentario dentro de `creative`; contrato.py, destination_type e rotulo VOLC e nao campo de payload). Nada a corrigir aqui.",
+      "premise_status": "MANTIDA"
+    },
+    {
+      "id": "T10-A02",
+      "question": "A lista de env META_SHOP_REDIRECT_CLEARED e um recibo aceitavel?",
+      "answer": "NAO.",
+      "reasoning": "capacidades.py:contas_com_destino_liberado le a variavel, corta por virgula e devolve um conjunto de referencias opacas; destino_website_liberado responde apenas 'esta conta esta na lista'. Nao existe, no caminho observado: data da conferencia, fonte consultada, receita a que a conferencia se aplica, ator responsavel, validade nem revogacao. Um valor exportado no ambiente errado, ou herdado de um shell antigo, e indistinguivel de uma conferencia feita hoje.",
+      "what_is_already_right": [
+        "A prova e POR CONTA, nao por processo — a versao anterior aceitava '1' global e foi corrigida; ha teste que fixa isso (test_meta_paused_birth.py: test_a_prova_de_destino_de_uma_conta_nao_vale_para_outra e test_o_valor_antigo_um_nao_libera_conta_nenhuma).",
+        "A prova vem da AUTORIZACAO DO SERVIDOR, nunca do corpo do pedido (trafego_meta_validacao.py, chamada a capacidades_meta.destino_website_liberado com o account_ref do pedido).",
+        "O vocabulario e fechado: PROVAS_DE_DESTINO_WEBSITE = {UNPROVEN, ACCOUNT_NOT_SHOP_ELIGIBLE_PROVEN}; string inventada e recusada em ReferenciasMetaResolvidas.__post_init__.",
+        "A prova entra no plan_sha256 (compilador.py, materia.shop_redirect_proof), entao um plano aprovado com a prova nao pode ser recriado sem ela.",
+        "O bloqueio incide sobre CRIAR e nao sobre compilar/validar (executor.criar_pausada, META_SHOP_REDIRECT_UNPROVEN), que e o lado certo: validate_only nao cria nada e e por ele que a prova externa sera obtida."
+      ],
+      "what_must_change": "A origem da prova, nao o seu efeito. Substituir membership em env por um recibo datado, com fonte, receita, ator, validade e revogacao — mantendo o mesmo vocabulario fechado e o mesmo ponto de cobranca no executor.",
+      "premise_status": "REFORMULADA"
+    },
+    {
+      "id": "T10-A03",
+      "question": "URL exata, link_data/CTA e website-only estao preservados?",
+      "answer": "SIM, e nada foi afrouxado nesta rodada.",
+      "evidence": [
+        "contrato.py:_url_https exige HTTPS com hostname e recusa credencial embutida; o destino e a URL inteira, nao o dominio.",
+        "compilador.py monta object_story_spec.link_data com link = plano.destination_url e call_to_action.value.link = a MESMA URL.",
+        "executor.py:_mesmo_destino compara esquema, host, porta, caminho, query e fragmento na forma canonica — porta e fragmento entram de proposito.",
+        "targeting.publisher_platforms = ['facebook'] fixo; placements_mode != FACEBOOK_ONLY e recusado em PlanoMetaPausado.__post_init__."
+      ],
+      "premise_status": "MANTIDA"
+    },
+    {
+      "id": "T10-A04",
+      "question": "Page permission e identidade para Facebook-only tem recibo?",
+      "answer": "PARCIALMENTE — ha prova de pertencimento, nao ha recibo datado.",
+      "reasoning": "ResolvedorAtivosMeta le /promote_pages da conta e so aceita uma page_ref presente nessa listagem; ReferenciasMetaResolvidas recusa page_permission_proven falso e placement_identity_mode diferente de FACEBOOK_ONLY_PAGE_PROVEN. Isso prova que a Pagina estava promovivel NO INSTANTE DA LEITURA. Nao ha registro durável desse instante separado do plano, entao a distincao entre 'estava promovivel quando compilei' e 'esta promovivel agora' nao e recuperavel depois.",
+      "instagram": "A receita NAO exige Instagram e nao deve exigir. instagram_actor_ref diferente de None e recusado com META_INSTAGRAM_IDENTITY_UNPROVEN. Iniciar Instagram nao e pre-condicao para liberar Facebook-only, e o contrario tornaria o P0 mais largo, nao mais seguro.",
+      "premise_status": "MANTIDA_COM_LACUNA_DE_RECIBO"
+    }
+  ],
+
+  "required_shape_of_a_real_destination_receipt": {
+    "why": "Um recibo precisa responder, sem consultar quem o emitiu: sobre QUE conta, sob QUE receita, a partir de QUE fonte, por QUEM, QUANDO, ate QUANDO, e como revogar.",
+    "fields": [
+      {"campo": "account_ref", "regra": "referencia opaca da conta conferida; nunca id bruto do provedor"},
+      {"campo": "recipe_id", "regra": "a receita a que a conferencia se aplica — OUTCOME_TRAFFIC_LPV_STATIC_PAUSED. Um recibo de outra receita nao vale."},
+      {"campo": "api_version", "regra": "v26.0. Mudanca de versao invalida a conferencia."},
+      {"campo": "proof_value", "regra": "somente ACCOUNT_NOT_SHOP_ELIGIBLE_PROVEN, do vocabulario fechado ja existente"},
+      {"campo": "source", "regra": "o que foi lido: endpoint/campo/documento, com a resposta sanitizada. 'Um administrador conferiu' nao e fonte."},
+      {"campo": "observed_at", "regra": "instante da leitura, com fuso"},
+      {"campo": "expires_at", "regra": "validade explicita e curta o bastante para nao sobreviver a uma mudanca de elegibilidade sem ninguem notar"},
+      {"campo": "actor_id", "regra": "quem conferiu — do servidor, nunca do corpo do pedido"},
+      {"campo": "revoked_at / revoke_reason", "regra": "revogacao explicita, sem apagar a linha historica"}
+    ],
+    "invariants_that_must_survive": [
+      "Escopo POR CONTA. Recibo da conta A nunca libera a conta B.",
+      "A prova continua entrando no plan_sha256, para que um plano aprovado com prova nao possa ser recriado sem ela.",
+      "O bloqueio continua incidindo sobre CRIAR. Compilar e validar continuam abertos.",
+      "Recibo expirado fecha NOVO despacho e NAO apaga historico nem impede reconciliacao por leitura de uma execucao antiga.",
+      "Vocabulario fechado. Valor fora de PROVAS_DE_DESTINO_WEBSITE e recusado antes de virar comparacao '!= UNPROVEN' em qualquer lugar."
+    ],
+    "not_implemented_this_round": "A troca de env por recibo persistido NAO foi implementada neste lote. Ela toca a tabela de aprovacao e o gate do executor, e o proprio EXECUTION-PLAN coloca T10 como 'curta_com_gate_externo' cujo criterio de saida depende de CP3. Implementar o recibo antes de saber QUE leitura o preenche produziria uma tabela com uma coluna que ninguem sabe alimentar.",
+    "explicit_dependency": "A forma final do campo `source` depende de RCH-M01 ser resolvido. Enquanto nao houver leitura estabelecida, um recibo bem estruturado com fonte vazia seria a mesma flag com mais cerimonia."
+  },
+
+  "external_proof_plan": {
+    "authorization_required": "CP3 — EXPLICIT_META_READ_VALIDATE_AND_OPTIONAL_VALIDATION_LEDGER_WRITE. NAO CONCEDIDA nesta rodada.",
+    "principle": "Escopo minimo. Somente leitura e validate_only; zero objetos criados.",
+    "steps": [
+      {
+        "ordem": 1,
+        "act": "READ",
+        "target": "A conta autorizada, campo a campo",
+        "detail": "Ler a conta e perguntar se existe qualquer campo legivel que descreva elegibilidade a Shop ou destino comercial. Registrar a AUSENCIA com o mesmo cuidado da presenca: 'o campo nao foi devolvido' e um fato, e nao prova que o redirecionamento nao ocorre.",
+        "creates": 0
+      },
+      {
+        "ordem": 2,
+        "act": "READ",
+        "target": "Um AdCreative existente da conta, se houver",
+        "detail": "Pedir a mascara `id,account_id,name,status,object_story_spec` e, numa SEGUNDA chamada separada, tentar `destination_spec` sozinho. Separar as chamadas e o ponto: um campo invalido faz a Graph recusar a leitura INTEIRA, entao misturar as duas perguntas perderia tambem a resposta boa. Isto responde de uma vez se destination_spec e legivel nesta conta.",
+        "creates": 0
+      },
+      {
+        "ordem": 3,
+        "act": "VALIDATE_ONLY",
+        "target": "O plano atual, raizes independentes",
+        "detail": "Campaign + N Creatives sob execution_options=validate_only, com a mascara de creative JA corrigida (sem effective_status). Cobertura declarada INDEPENDENT_ROOTS_ONLY; AdSet e Ad NAO podem constar como validados.",
+        "creates": 0
+      }
+    ],
+    "success_criteria": "Uma das duas: (a) existe leitura por conta que estabelece nao-elegibilidade, e entao o recibo tem `source` real e o gate passa a ser alimentado por ela; ou (b) fica provado que nenhuma leitura publica estabelece isso, e entao a decisao sobe para o dono — assumir o risco por escrito, com recibo de decisao humana datado e revogavel, ou nao criar.",
+    "explicit_non_goals": [
+      "Nao criar objeto nenhum para 'descobrir' o comportamento.",
+      "Nao enviar destination_spec como tentativa cega.",
+      "Nao abrir META_SHOP_REDIRECT_CLEARED para passar o gate.",
+      "Nao iniciar Instagram: a receita e Facebook-only e nao depende disso."
+    ]
+  },
+
+  "what_this_document_does_not_prove": [
+    "Que a conta do canario seja ou nao elegivel a Shop — nenhuma conta foi lida.",
+    "Que a Graph aceite ou recuse qualquer mascara — nenhuma chamada foi feita.",
+    "Que o redirecionamento de clique ocorra ou nao ocorra em producao.",
+    "Que a Pagina esteja promovivel agora — a ultima leitura conhecida e a do momento da compilacao, e ela nao e persistida separadamente."
+  ],
+
+  "blocker": {
+    "id": "RCH-M01",
+    "type": "PROVA_DE_CONTA_E_LACUNA_DOCUMENTAL",
+    "cause": "Nenhuma fonte publica oficial estabelece como garantir website-only por payload, nem se Shop e aplicavel a receita OUTCOME_TRAFFIC/LPV/Facebook-only. Confirmado nesta rodada em tres consultas independentes.",
+    "is_it_local": false,
+    "smallest_action_that_resolves_it": "Autorizar CP3 com escopo minimo de leitura sobre UMA conta, executando os passos 1 e 2 do external_proof_plan. Se a leitura nao existir, a decisao vira um ato do dono, registrado como recibo humano datado e revogavel — nunca como default permissivo."
+  }
+}

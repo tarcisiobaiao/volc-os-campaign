@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "mode": "PROPOSED_NOT_APPLIED",
+  "date": "2026-09-07",
+  "supersedes": "docs/specs/traffic-operational-closure-v2/CURATION-HANDOFF.json (proposta da rodada de spec, feita ANTES da implementação)",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "head_commit": "9b7c519",
+  "why_not_applied": {
+    "authorization": "A missão desta janela declara NÃO AUTORIZADO: 'edição de Roadmap, curadoria ou grafo'. Este arquivo é o delta PROPOSTO para quando essa autorização existir.",
+    "agents_md": "AGENTS.md também determina que trabalhadores paralelos não editem as autoridades compartilhadas: eles emitem um handoff de curadoria, e um único agente integrador executa os passos 1–5 uma vez, depois da integração.",
+    "graph_rebuild": "Nenhum `scripts/atualizar_grafo_volc_os.py` foi executado nesta janela. O grafo continua descrevendo a base d54e100; ele NÃO descreve os quatro commits desta implementação.",
+    "human_source_untouched": "docs/volc-os-graph/curadoria-operacional.json não foi lido para escrita nem alterado. `git status` prova que nenhum arquivo dessas autoridades entrou em commit."
+  },
+
+  "what_actually_changed_and_deserves_curation": [
+    {
+      "roadmap_id": "P11-T02",
+      "state_before": "partial",
+      "state_proposed": "partial",
+      "state_change": false,
+      "why_still_partial": "O gate técnico da peça passou a decodificar de verdade — isso fecha F01 —, mas a lane continua sem prova de conta. Promover para `done` afirmaria compatibilidade com a Meta que ninguém mediu.",
+      "evidence_to_record": [
+        "commit b7c2915: decode real com Pillow, teto de pixels próprio, leitura limitada durante streaming, MIME cruzado com o formato decodificado, dimensões MEDIDAS substituindo as declaradas, rendition declarada, recibo vinculado a ator/conta/finalidade, e fechamento sem decodificador",
+        "backend/tests/test_meta_supply_bytes.py: 19 contraprovas, incluindo a reprodução de F01 (NOT_AN_IMAGE rotulado image/png) e a bomba de pixels que passa no teto de bytes"
+      ],
+      "still_missing": "CP3 (leitura autorizada de conta) e a ponte com o Estúdio (T15).",
+      "spec_tasks": ["T01", "T02"]
+    },
+    {
+      "roadmap_id": "P11-T05",
+      "state_before": "partial",
+      "state_proposed": "partial",
+      "state_change": false,
+      "why_still_partial": "O nascimento passou a ser RECUPERÁVEL localmente, mas nenhum objeto foi criado em conta nenhuma. O marco que muda este estado é CP4, e ele exige autorização e conta.",
+      "evidence_to_record": [
+        "commit 24ad9a1: snapshot congelado do plano despachável; recuperação sem recompilar; órfão IN_FLIGHT promovido por idade e visível; revogação de destino como mecanismo nomeado; evidência durável de read-back positivo",
+        "commit 9b7c519: recibo reabrível por referência opaca, disponível com a criação FECHADA; selo em todos os atos assíncronos; execução despachada que não desaparece ao editar outro rascunho",
+        "docs/closure/traffic-operational-closure-v2/prova-sql-local.sh: prova reproduzível em PostgreSQL 17.9 descartável de que expiração fecha novo despacho e NÃO fecha recuperação histórica"
+      ],
+      "still_missing": "CP2 (schema oficial), CP3 (roots do plano atual) e CP4 (canário). Nenhum deles foi executado.",
+      "spec_tasks": ["T03", "T04", "T11-local"]
+    },
+    {
+      "roadmap_id": "P11-T03",
+      "state_before": "partial",
+      "state_proposed": "partial",
+      "state_change": false,
+      "why_still_partial": "F17 continua verdadeiro e não foi alvo desta janela: a operação Meta depende de macOS, host local e Keychain. Nada nesta implementação torna a lane implantável em outro host, e nada da proteção de host foi relaxado.",
+      "evidence_to_record": ["Nenhuma alteração em backend/app/routers/meta_local.py nesta janela."],
+      "spec_tasks": ["T14"]
+    }
+  ],
+
+  "corrections_to_the_previous_handoff": [
+    {
+      "item": "CURATION-HANDOFF.json:tasks[P11-T05].proof_to_add",
+      "said": "'necessário snapshot imutável/recibo durável'",
+      "now": "O snapshot imutável e o recibo durável EXISTEM localmente (24ad9a1, 9b7c519), com contraprovas. O que continua faltando é prova de conta, não implementação.",
+      "action": "Ao aplicar a curadoria, trocar a redação de 'necessário' para 'implementado localmente, pendente de prova de conta'. Não promover o estado."
+    },
+    {
+      "item": "CURATION-HANDOFF.json:tasks[P11-T02].proof_to_add",
+      "said": "'gate técnico aceitou bytes inválidos em probe. Necessário decode/policy receipt bound'",
+      "now": "Feito. O probe P02 deixa de reproduzir: bytes NOT_AN_IMAGE agora recusam com META_ASSET_BYTES_NOT_DECODABLE.",
+      "action": "Registrar o fechamento de F01 com o commit e o teste; manter o estado `partial` pela prova de conta ausente."
+    }
+  ],
+
+  "findings_status_after_this_window": {
+    "F01": "FECHADO LOCALMENTE — decode real, com contraprova que reproduzia o defeito.",
+    "F02": "FECHADO LOCALMENTE — recuperação lê o snapshot congelado; não recompila, não relê a conta, não depende de atestação vigente.",
+    "F03": "FECHADO LOCALMENTE — órfão IN_FLIGHT promovido por idade e visível; órfão jovem aparece sem ser promovido.",
+    "F04": "FECHADO LOCALMENTE — recibo reabrível por referência opaca, fora do portão de criação.",
+    "F05": "FECHADO LOCALMENTE — selo em todos os atos e `ocupado` sempre liberado.",
+    "F14": "FECHADO LOCALMENTE — effective_status fora da máscara de AdCreative, com duas fontes oficiais concordantes. A compatibilidade remota continua pendente de CP3/CP4.",
+    "F15": "FECHADO LOCALMENTE — extra=forbid nos seis modelos da fronteira, com tripwire para modelo novo.",
+    "F13": "ABERTO — premissa mantida, prova reformulada. Ver META-DESTINATION-EVIDENCE.json. Depende de RCH-M01 e de CP3.",
+    "F17": "ABERTO — fora do escopo desta janela; nada foi relaxado.",
+    "F19": "ABERTO no lado Google — adjudicado como SEM alcance na lane Meta: o caminho Meta não importa `app.criativo.politica` em ponto nenhum.",
+    "F23": "ABERTO — contradição de conteúdo humano na curadoria sobre Google. Não corrigida aqui porque editar a curadoria não está autorizado nesta janela."
+  },
+
+  "graph_note": {
+    "current_digest_claim": "d3adee58eec72aabf2948081844f7813e21f97bbc346ced33ae633b25fea883a, medido sobre a base d54e100",
+    "warning": "Esse digest está OBSOLETO em relação ao HEAD 9b7c519: quatro commits mudaram código e schema. Qualquer leitura do grafo agora descreve a base, não a árvore atual.",
+    "required_when_authorized": "Corrigir a fonte humana UMA vez, rodar scripts/atualizar_grafo_volc_os.py e depois --check. Digest fresco não corrige texto falso; as duas coisas são separadas.",
+    "not_run_here": "Nem o build nem o --check foram executados nesta janela."
+  },
+
+  "explicitly_not_proposed": [
+    "Promover qualquer tarefa para `done`. Nada foi provado numa conta.",
+    "Reabrir P05-T11 (primeiro canário Search histórico concluído) para financiar contagem de progresso multicanal.",
+    "Qualquer alteração em docs/volc-os-graph/volc-os-graph.json, que é gerado e nunca editado à mão."
+  ]
+}

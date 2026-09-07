@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "receipt_id": "TRAFFIC_OPERATIONAL_CLOSURE_V2_R0",
+  "selected_release": "R0",
+  "verdict": "META_R0_RECOVERABLE_LOCAL_CANDIDATE_READY",
+  "verdict_meaning": "Os quatro achados P0/P1 que R0 tinha de fechar estão fechados LOCALMENTE, com contraprovas que reproduziam o defeito antes da correção. Isto NÃO afirma aceite da Meta, schema oficial aplicado, campanha existente nem pixel verificado em navegador autenticado.",
+  "date": "2026-09-07",
+  "branch": "execution/volc-os-operacao-80-20",
+  "worktree": "/private/tmp/volc-os-operacao-80-20",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "code_tested_sha": "a1454b4f7849943ee6d3f354e153c8564651f07b",
+  "one_writer": "Um único escritor (Claude). Coexecutores e revisores foram estritamente read-only.",
+
+  "path_correction": {
+    "issue": "A missão apontou a worktree operacional como /private/tmp/volc-os-operacao-80-os-campaign, que NÃO existe.",
+    "resolution": "A única worktree existente é /private/tmp/volc-os-operacao-80-20, e é exatamente a que todos os paths canônicos da seção 2 da missão citam, a que o GUIDE-EXECUCAO.md indica e a que roda o localhost:8080. Trabalhei nela.",
+    "no_new_worktree_or_branch": true
+  },
+
+  "drift_adjudicated": {
+    "head_was": "d54e100, idêntico à base inspecionada pelo spec — nenhum avanço de código para adjudicar.",
+    "untracked_received": [
+      "docs/specs/traffic-operational-closure-v2/** (12 arquivos)",
+      ".claude-ads/runs/traffic-operational-closure-v2-20260907/manifest.json"
+    ],
+    "integrity_checked": "Os 12 hashes de VERIFICATION.json:artifacts_sha256 conferem (12/12, 0 divergem); nenhum artefato do diretório ficou sem hash declarado; todos os JSON parseiam.",
+    "preserved_in": "07f8e26 — commit documental explícito, por path, antes de qualquer implementação. Nenhum `git add` indiscriminado."
+  },
+
+  "environment": {
+    "python": "3.14.6 (backend/.venv)",
+    "node": "v26.5.0",
+    "npm": "11.17.0",
+    "pillow": "12.3.0 — já instalado e já declarado em backend/requirements.txt",
+    "facebook_business_sdk": "AUSENTE por desenho; a lane fala Graph por HTTP form-urlencoded",
+    "postgres_descartavel": "17.9 (Homebrew), 127.0.0.1:55432, datadir temporário, destruído ao fim",
+    "package_scripts": "dev=vite, build=vite build, test=vitest run, lint=eslint ."
+  },
+
+  "baseline": {
+    "measured_once_at": "início do lote, sobre d54e100 + o commit documental",
+    "backend_focal": "129 passed, 0 failed (6 módulos Meta)",
+    "typescript": "77 erros no projeto — mesmo número do relato histórico do pacote",
+    "note": "A contagem de erros TypeScript NÃO é usada sozinha para alegar delta zero: a comparação é por ARQUIVO e assinatura."
+  },
+
+  "tasks": [
+    {
+      "id": "T00", "state": "DONE",
+      "evidence": "Branch/HEAD/status conferidos; base ancestral confirmada; pacote preservado em 07f8e26 com integridade de hash; versões registradas; baseline focal medido uma vez; writer único declarado."
+    },
+    {
+      "id": "T01", "state": "DONE_LOCAL", "commit": "21fb1f2", "findings": ["F15", "F14"],
+      "evidence": "extra=forbid nos SEIS modelos da fronteira, com tripwire que falha nomeando qualquer modelo novo que nasça aberto; effective_status fora da máscara de AdCreative com DUAS fontes oficiais concordantes; paridade form-urlencoded provada no serializador canônico.",
+      "counterproof_discriminates": "Revertendo os modelos para extra='ignore' num conftest descartável, os 14 casos parametrizados passam de 422 (campo nomeado) para 409 (campo engolido).",
+      "not_proven": "Compatibilidade remota da máscara. Ausência no catálogo é sinal de risco, não prova de recusa da Graph. Depende de CP3/CP4."
+    },
+    {
+      "id": "T02", "state": "DONE_LOCAL", "commit": "b7c2915 + a1454b4", "findings": ["F01"],
+      "evidence": "Decodificação real (Pillow, dependência já declarada); teto de pixels próprio cobrado ANTES do load; teto de bytes cobrado DURANTE o streaming; redirect com código próprio; MIME cruzado com o formato decodificado; dimensões MEDIDAS substituindo as declaradas, com as declaradas preservadas ao lado; recibo vinculado a ator/conta/finalidade e versionado; fechamento nomeado sem decodificador; miniatura RECUSADA em vez de certificada.",
+      "counterproof_discriminates": "As fixtures anteriores serviam b'bytes-imagem-meta' (17 bytes de ASCII) e o caminho feliz inteiro ficava VERDE — a suíte media a ausência do gate. Hoje esse corpo recusa com META_ASSET_BYTES_NOT_DECODABLE.",
+      "declared_risk": "Se o CDN Meta negociar conteúdo e transcodificar a peça, o cruzamento MIME recusaria uma peça legítima. Não é decidível sem leitura de conta; fica em CP3."
+    },
+    {
+      "id": "T03", "state": "DONE_LOCAL", "commit": "24ad9a1 + a1454b4", "findings": ["F02", "F03"],
+      "evidence": "Snapshot canônico congelado na aprovação, server-only, sem token; `descongelar_plano` RECALCULA a identidade e recusa adulteração; criar e reconciliar deixam de recompilar; ausência de snapshot vira META_LEGACY_RECOVERY_REQUIRED com o recibo ainda legível; órfão IN_FLIGHT promovido por idade com aprovação EXPIRADA; órfão jovem visível sem ser promovido; revogação de destino como mecanismo nomeado; evidência durável de read-back positivo e divergente.",
+      "sql_proof": "docs/closure/traffic-operational-closure-v2/prova-sql-local.sh — reproduzível, em PostgreSQL 17.9 descartável.",
+      "not_proven": "Nada foi aplicado no Supabase oficial. A migration é candidata."
+    },
+    {
+      "id": "T04", "state": "DONE_LOCAL", "commit": "9b7c519 + a1454b4", "findings": ["F04", "F05"],
+      "evidence": "Cliente para POST /recibo (a rota existia e não tinha cliente); referência opaca na URL gravada ANTES do despacho; reidratação no mount; recuperação FORA do portão de criação; selo em todos os atos assíncronos com a distinção certa (aprovar descarta resposta obsoleta, criar e reconciliar nunca descartam); `ocupado` sempre liberado; falha de leitura declarada como falha de leitura; vocabulário de estado por palavra e glifo com descrição para leitor de tela; nenhum botão de reenviar sobre estado ambíguo.",
+      "deviation": "O painel ficou inline em MetaCriacaoPage.tsx em vez do MetaOperationReceipt.tsx sugerido pelo EXECUTION-PLAN. Organização, não comportamento.",
+      "not_proven": "Nenhuma inspeção visual autenticada. jsdom não prova pixel, foco real, 390px/1440px, claro/escuro nem reduced-motion."
+    },
+    {
+      "id": "T10", "state": "LOCAL_PART_DONE", "findings": ["F13"],
+      "artifact": "docs/closure/traffic-operational-closure-v2/META-DESTINATION-EVIDENCE.json",
+      "evidence": "Três consultas oficiais independentes nesta rodada (SDK v26.0.0, referência pública de AdCreative, busca restrita a developers.facebook.com). Nenhuma estabelece a semântica de destination_spec nem a aplicabilidade de Shop à receita OUTCOME_TRAFFIC/LPV/Facebook-only.",
+      "verdict": "PREMISSA MANTIDA, PROVA REFORMULADA. O bloqueio de CRIAR permanece correto e nada de destination_spec foi inventado. O que precisa mudar é a ORIGEM da prova: membership em variável de ambiente não é recibo datado, com fonte, ator, validade e revogação.",
+      "not_implemented_here": "A troca de env por recibo persistido. Ela entra no plan_sha256 e no gate do executor, e implementá-la antes de saber QUE leitura preenche o campo `source` produziria uma tabela que ninguém sabe alimentar.",
+      "blocker": "RCH-M01 — depende de CP3."
+    },
+    {
+      "id": "T11", "state": "LOCAL_PART_DONE", "findings": ["F17"],
+      "artifacts": [
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-RUNBOOK.md",
+        "docs/closure/traffic-operational-closure-v2/prova-sql-local.sh"
+      ],
+      "evidence": "Três perfis (CREATE_ONLY, META_READ_MODEL, GOOGLE_PMAX) com arquivos exatos, ordem, sha256, dependências e rollbacks explicitamente EXCLUÍDOS do apply. Ciclo completo exercitado: apply → uso → fronteira de autorização com papéis REAIS → concorrência → repetição recusada → rollback preservando a dependência → reapply.",
+      "glob_hazard_measured": "50 arquivos no diretório, 20 deles rollbacks, 2 não-SQL; todo arquivo abre com `\\set ON_ERROR_STOP on` e exige `psql`.",
+      "not_proven": "O catálogo oficial não foi lido. Este manifesto NÃO afirma que qualquer perfil esteja ausente, parcial ou aplicado no self-hosted."
+    }
+  ],
+
+  "gates": [
+    {"comando": "python3 scripts/verificar_autoridade_supabase.py", "resultado": "✓ Supabase oficial: https://database.agenciavolc.com.br"},
+    {"comando": "backend/.venv/bin/python -m pytest tests/ -k 'meta and not real_read_model'", "resultado": "278 passed"},
+    {"comando": "backend/.venv/bin/python -m pytest backend/tests/test_meta_real_read_model.py (da RAIZ)", "resultado": "10 passed — falha só quando o cwd é backend/, por path relativo"},
+    {"comando": "bash scripts/gates-backend.sh (suíte inteira)", "resultado": "5 failed, 4083 passed, 88 skipped"},
+    {"comando": "npx vitest run src/pages/trafego/__tests__/", "resultado": "75 passed (8 arquivos)"},
+    {"comando": "npx vite build", "resultado": "exit 0"},
+    {"comando": "npx tsc --noEmit -p tsconfig.app.json", "resultado": "77 erros no projeto; ZERO em MetaCriacaoPage.tsx e pautadorApi.ts"},
+    {"comando": "bash docs/closure/traffic-operational-closure-v2/prova-sql-local.sh", "resultado": "todas as sete etapas passam em PostgreSQL 17.9 descartável"}
+  ],
+
+  "suite_failures_adjudicated": {
+    "count": 5,
+    "claim": "NENHUMA delas está na lane Meta e nenhuma importa qualquer arquivo que este lote alterou.",
+    "by_name": [
+      {"teste": "test_meta_real_read_model.py::test_sql_e_rollback_de_insights_sao_coerentes", "causa": "lê 'supabase/migrations/v15_02_meta_ads_insights.sql' por path RELATIVO; o gate roda com cwd em backend/. Passa quando o cwd é a raiz (10 passed). Artefato de cwd."},
+      {"teste": "test_canario_pedido_aprovado.py::test_4_identidade_do_pedido_bate_com_o_dossie", "causa": "divergência de hash de dossiê no canário Google."},
+      {"teste": "test_canario_pedido_aprovado.py::test_6b_carimbo_de_outra_execucao_invalida_o_selo", "causa": "mesmo módulo, mesma lane Google."},
+      {"teste": "test_google_inteligencia_persistente.py::test_a_consulta_de_conta_nao_precisa_de_migration", "causa": "lane Google."},
+      {"teste": "test_trafego.py::test_provar_sem_copy_reprova_e_diz_por_que", "causa": "N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED — contrato de elegibilidade paga n8n/Google."}
+    ],
+    "honest_limit": "NÃO reexecutei a suíte contra a base para provar que eram vermelhas antes: a missão proíbe stash, reset e checkout destrutivo, e criar outra worktree também está fora de escopo. A evidência é: (a) nenhum dos três módulos importa `meta_execucao` ou os routers Meta; (b) as causas são de outra lane; (c) o baseline focal Meta media 129 passed / 0 failed e hoje mede 278 passed / 0 failed."
+  },
+
+  "review": {
+    "rounds": "uma rodada focal + uma rodada corretiva, como o gate_budget autoriza",
+    "lenses": ["autoridade/dinheiro", "concorrência/duplicação", "identidade/segredo", "honestidade de dado", "correção da recuperação"],
+    "p1_confirmed_and_fixed": 4,
+    "detail": [
+      "Evidência de read-back FABRICADA: `locals().get('dados')` escrevia a leitura do passo ANTERIOR como evidência deste passo. Apontado por quatro lentes independentes; introduzido por mim em 24ad9a1. Corrigido.",
+      "Referência da operação só entrava na URL no caminho de SUCESSO: um despacho ambíguo deixava a operação sem nada para reabrir — exatamente o caso que T04 existe para cobrir. Corrigido.",
+      "Recibo sem passos exibido como 'Criada pausada' (`every` de lista vazia é `true`). Corrigido.",
+      "Miniatura de 128px certificada como a peça, com AUTHORIZED/READY_FOR_PAID_MEDIA, apesar do rótulo honesto que ninguém lia. Corrigido com recusa nomeada."
+    ],
+    "p2_confirmed_and_declared_not_fixed": [
+      {"onde": "backend/app/trafego/meta_execucao/reconciliacao.py:241-261", "o_que": "a correlação temporal é de um lado só: um objeto com `created_time` MUITO posterior a `prepared_at` passa. Reduz a força da adjudicação por nome; não cria despacho nem ativação."},
+      {"onde": "backend/app/routers/trafego_meta_criacao.py (releitura do manifesto)", "o_que": "a releitura é condicionada a uma promoção BEM-SUCEDIDA; numa corrida, a rota pode responder sobre um manifesto levemente velho. Rota read-only; o pior caso é uma resposta obsoleta, não uma escrita errada."}
+    ],
+    "p2_refuted": 2
+  },
+
+  "capabilities": [
+    {"capacidade": "Gate técnico de bytes da peça", "local": "PROVADO", "conta": "NÃO PROVADO", "autorizacao": "CP3 para conferir contra peça real"},
+    {"capacidade": "Contrato de entrada fechado", "local": "PROVADO", "conta": "NÃO PROVADO", "autorizacao": "CP3/CP4"},
+    {"capacidade": "Snapshot imutável e recuperação sem recompilar", "local": "PROVADO (Python + SQL real)", "conta": "NÃO PROVADO", "autorizacao": "CP2 para o schema, CP4 para o canário"},
+    {"capacidade": "Recibo reabrível por referência opaca", "local": "PROVADO em jsdom", "conta": "NÃO PROVADO", "autorizacao": "sessão autenticada do operador para prova visual"},
+    {"capacidade": "Destino website-only", "local": "BLOQUEADO COM CAUSA", "conta": "NÃO PROVADO", "autorizacao": "CP3"},
+    {"capacidade": "Criar campanha", "local": "FECHADO POR FLAG", "conta": "NÃO EXECUTADO", "autorizacao": "CP4"}
+  ],
+
+  "external_effects": {
+    "meta_account_calls": 0,
+    "google_account_calls": 0,
+    "objects_created": 0,
+    "official_supabase_access": false,
+    "official_migration_applied": false,
+    "capi_events": 0,
+    "media_generated_or_uploaded": 0,
+    "push": false,
+    "deploy": false,
+    "n8n_wordpress_postiz_adspower": false,
+    "keychain_or_credentials_read": false,
+    "shared_authorities_edited": "nenhuma — docs/volc-os-graph, volc-os-workbook e graphify-out intocados (git status limpo nesses paths)",
+    "public_documentation_read": [
+      "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreative.py",
+      "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/",
+      "busca restrita a developers.facebook.com"
+    ],
+    "processes": "O vite da PRÓPRIA worktree já rodava em 8080 e foi preservado; nenhum processo de outro terminal foi tocado. O PostgreSQL descartável que eu criei foi parado e removido."
+  },
+
+  "models_used": [
+    {"modelo": "Claude Opus 5 (1M)", "papel": "coordenador e ÚNICO escritor da branch; adjudicação, integração e gates"},
+    {"modelo": "Codex gpt-5.5, reasoning high", "papel": "coexecutor de T03-SQL, read-only, briefing sanitizado", "entrega": "as duas migrations propostas", "adjudicacao": "integrei após revisão; corrigi o salt do lock consultivo de 1602 (namespace do PLANO no CREATE_ONLY) para 1604; mantive duas defesas que ele acrescentou e eu não havia pedido — o CHECK de pacote dos três campos do snapshot e a exigência de um booleano `matched` com varredura recursiva contra chave sensível na evidência"},
+    {"modelo": "subagentes Claude (read-only)", "papel": "mapeamento estrutural, adjudicação dos achados no HEAD com refutação adversarial, e a rodada focal de revisão em cinco lentes"}
+  ],
+  "gemini_not_used": "gemini-3.1-pro estava disponível (CLI 0.58.0) e NÃO foi acionado: T01/T02 já tinham fonte oficial primária lida diretamente, e o patch focal de T04 coube na mesma linha de execução. Registro para não dar a impressão de uma checagem independente que não aconteceu.",
+
+  "remaining_blockers": [
+    {"id": "B1", "tipo": "AUTORIZACAO_EXTERNA", "o_que": "CP2 — janela de schema oficial", "menor_acao": "Autorizar leitura do catálogo oficial e o apply do perfil CREATE_ONLY pelo SCHEMA-RUNBOOK.md, com os sha256 conferidos no momento da janela."},
+    {"id": "B2", "tipo": "PROVA_DE_CONTA", "o_que": "CP3 — roots do plano atual e adjudicação do destino Shop", "menor_acao": "Autorizar leitura + validate_only de escopo mínimo sobre UMA conta, executando os passos 1 e 2 do external_proof_plan em META-DESTINATION-EVIDENCE.json."},
+    {"id": "B3", "tipo": "DEPENDENCIA_AMBIENTAL", "o_que": "Inspeção visual autenticada em 390px e 1440px, claro/escuro, teclado/foco", "menor_acao": "O operador abrir http://localhost:8080/trafego/meta/nova?etapa=revisao já autenticado como ADMIN. Não pedi nem usei sessão, e não vou pedir senha em chat."},
+    {"id": "B4", "tipo": "CONFIRMACAO_DE_PRODUTO", "o_que": "O cruzamento MIME declarado × formato decodificado pode recusar peça legítima se o CDN transcodificar", "menor_acao": "Observar o comportamento real do CDN durante CP3 e, se houver transcodificação, relaxar para 'família de formato' em vez de igualdade estrita."},
+    {"id": "B5", "tipo": "AUTORIZACAO_EXTERNA", "o_que": "Curadoria e grafo desatualizados em relação ao HEAD", "menor_acao": "Autorizar a aplicação do CURATION-DELTA.json e o rebuild por scripts/atualizar_grafo_volc_os.py, seguido de --check."}
+  ],
+
+  "next_operator_action": "Conferir a bancada autenticado em http://localhost:8080/trafego/meta/nova?etapa=revisao (o vite desta worktree já está de pé). Depois, escolher UMA das duas janelas externas — CP2 (schema) ou CP3 (leitura de conta) — e autorizá-la isoladamente. Elas são independentes e nenhuma delas cria objeto.",
+
+  "explicitly_not_done": [
+    "T05–T09, T12–T20 — fora do lote R0.",
+    "Dashboard financeiro Meta, sincronização operacional, vídeo/flexível, Sales/Leads, custom conversions e CAPI.",
+    "Qualquer canário, em qualquer canal.",
+    "Aplicação de migration em banco oficial.",
+    "Edição de Roadmap, curadoria ou grafo."
+  ]
+}
