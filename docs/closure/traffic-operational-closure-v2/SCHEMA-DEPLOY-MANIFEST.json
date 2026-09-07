@@ -376,7 +376,7 @@
     {
       "id": "META_READ_MODEL",
       "purpose": "Leitura/sincronizacao Meta e insights. NAO e dependencia do nascimento; pertence a R2 (T05-T09).",
-      "local_cycle_result": "NOT_EXERCISED_THIS_ROUND",
+      "local_cycle_result": "PASS_EM_POSTGRES_DESCARTAVEL_20260907",
       "apply_order": [
         {
           "ordem": 1,
@@ -398,6 +398,26 @@
           "depends_on": [
             "v15_01_meta_ads_read_model.sql"
           ]
+        },
+        {
+          "ordem": 4,
+          "file": "supabase/migrations/20260907210000_meta_read_model_consistency.sql",
+          "sha256": "ab58e06070f6fdfa448988f7ecce2c912976ee33de9223fd9883061fe521f9bf",
+          "lines": 1385,
+          "depends_on": [
+            "v15_02_meta_ads_insights.sql"
+          ],
+          "provides": [
+            "public.vw_trafego_meta_insight_latest",
+            "colunas de grao em trafego_meta_insight_daily (time_increment, action_report_time, account_timezone, currency, completo)",
+            "coluna medida em trafego_meta_insight_action",
+            "guarda de monotonicidade em todo upsert",
+            "marcacao de ausencia condicionada a leitura completa",
+            "custodia de Cofre declarada (nunca verified) pelo escritor governado"
+          ],
+          "why_required": "Sem a projecao latest, somar trafego_meta_insight_daily conta o mesmo gasto uma vez por leitura; e sem as colunas de grao, uma serie diaria e uma linha agregada do mesmo periodo colidem na chave.",
+          "incremental": true,
+          "note": "Delta INCREMENTAL sobre v15_02, escrito para ser correto exista ou nao v15_02 aplicada no catalogo oficial: usa to_regclass/IF EXISTS/CREATE OR REPLACE e ABORTA nomeando o que falta. Reaplicar e no-op."
         }
       ],
       "rollback_files_never_in_apply": [
@@ -408,9 +428,36 @@
         {
           "file": "supabase/migrations/v15_99_meta_ads_read_model_rollback.sql",
           "sha256": "c8a0cf86a67babf708f490c74e737f9c91c8d803d187c2d947cb76a49237eb52"
+        },
+        {
+          "file": "supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql",
+          "sha256": "ffa7f3bb92c21c60406c89b1c21731cf09afc257f1683354c10885ff97b7459e"
         }
       ],
-      "not_a_create_only_dependency": "v15_02 nao e citada por nenhuma guarda do CREATE_ONLY. Exigi-la antes do canario faria o nascimento esperar o dashboard, o que o MASTER-SPEC recusa explicitamente (releases.R0.note)."
+      "not_a_create_only_dependency": "v15_02 nao e citada por nenhuma guarda do CREATE_ONLY. Exigi-la antes do canario faria o nascimento esperar o dashboard, o que o MASTER-SPEC recusa explicitamente (releases.R0.note).",
+      "local_cycle_evidence": {
+        "script": "docs/closure/traffic-operational-closure-v2/prova-sql-read-model.sh",
+        "engine": "PostgreSQL 17.9 (Homebrew)",
+        "host": "127.0.0.1",
+        "port": 55433,
+        "disposable": true,
+        "connected_to_official": false,
+        "assertions": 145,
+        "failures": 0,
+        "apply_order_used": "v13_01 -> v15_01 -> v15_02 -> 20260907210000, por lista explicita de arquivos, NUNCA por glob",
+        "covers": [
+          "duas leituras do mesmo dia -> uma linha por grao na projecao latest",
+          "replay da mesma chave -> repetido, sem run duplicado",
+          "snapshot mais antigo chegando depois -> recusado, nada regride, recibo informa quantas recusou",
+          "objeto ausente em leitura COMPLETA -> ausente_desde marcado",
+          "objeto ausente em leitura PARCIAL -> ausencia NAO marcada",
+          "service_role: DELETE recusado, SELECT ok, RPC executa",
+          "anon e authenticated: SELECT recusado em toda tabela Meta",
+          "medida count e value coexistem no mesmo action_type sem colidir",
+          "rollback -> reapply -> a sequencia inteira passa de novo",
+          "sem v15_02 aplicada, a candidata ABORTA nomeando o que falta"
+        ]
+      }
     },
     {
       "id": "GOOGLE_PMAX",
