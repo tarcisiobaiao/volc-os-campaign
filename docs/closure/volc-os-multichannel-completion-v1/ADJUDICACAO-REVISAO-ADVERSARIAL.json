@@ -292,10 +292,14 @@
     "scanner_de_segredos": "nenhum padrão forte no working tree",
     "autoridade_supabase": "https://database.agenciavolc.com.br conferida",
     "grafo": {
-      "check": "current=true",
-      "built_at_commit": "9c5e5991a0f06ee00a38cb4199716b3609a961ea",
+      "check": "current=true, exit 0",
+      "autoridade": "docs/volc-os-graph/BUILD-STATUS.json (VERSIONADA)",
+      "built_at_commit": "abbfc256d25824b284cddd02c8f8c346a623119e",
+      "input_sha256": "d3adee58eec72aabf2948081844f7813e21f97bbc346ced33ae633b25fea883a",
+      "input_file_count": 1659,
       "motivo": "insumos idênticos",
-      "limitacao_explicita": "O HEAD final da rodada fica ADIANTE de `built_at_commit`, e isso é esperado: os commits posteriores ao build mexem só em documentação, que está fora dos insumos que o digest do grafo vigia. Por isso `--check` responde `current: true` com o motivo `insumos idênticos` — o grafo NÃO está desatualizado. Alinhar os dois números exigiria rebuildar depois de cada commit documental, e cada rebuild produz outro commit: é uma regressão infinita, não um conserto. ⚠️ Consequência operacional a conhecer: `work_road` calcula `stale` por divergência de commit, então ele reportará o grafo como velho enquanto o `--check` diz que não está."
+      "reproduzivel_em_checkout_limpo": true,
+      "built_at_commit_nao_decide": "O frescor é decidido pelo DIGEST DOS INSUMOS, nunca pela igualdade entre `built_at_commit` e o HEAD. É esperado e correto que o HEAD fique adiante do build quando os commits posteriores mexem só em documentação fora dos insumos. Exigir a igualdade criaria o ciclo build → commit → o HEAD mudou → rebuild → commit, que não converge — e foi exatamente por isso que a rodada anterior teve de declarar o desalinhamento como limitação em vez de consertá-lo."
     }
   },
   "verificacao_focal_do_delta": {
@@ -374,5 +378,16 @@
       "⚠️ FALHA, LEITURA_PARCIAL, AMBIGUO e DIVERGENTE NUNCA podem autorizar ativação — os quatro são `ESTADOS_QUE_BLOQUEIAM`, e três deles são ignorância sobre a conta, não conclusão sobre ela."
     ],
     "nao_alterado_aqui": "o portão atual de `/reconciliar` continua agindo só sobre DIVERGENTE. Mudar isso é decisão de produto sobre o que impede ativação, e não cabe numa microcorreção documental."
+  },
+  "achado_bloqueante_da_revisao_independente": {
+    "id": "GOOGLE_MULTICHANNEL_LOCAL_CANDIDATE_APPROVED_PENDING_GRAPH_GATE_CORRECTION",
+    "estado": "FECHADO",
+    "o_que_era": "Este artefato declarava `grafo.current=true`, mas em checkout limpo o gate oficial respondia `{\"current\": false, \"reason\": \"UPDATE_STATUS.json ausente\"}`. Não porque o grafo estivesse velho: porque a evidência era IRREPRODUZÍVEL. `--check` só sabia responder lendo `graphify-out/UPDATE_STATUS.json`, e `graphify-out/` inteiro é derivado e ignorado pelo Git — de propósito, porque carrega dezenas de MB. Ninguém de fora conseguia conferir a afirmação.",
+    "correcao": "A autoridade do frescor passou a ser um manifesto pequeno e VERSIONADO (`docs/volc-os-graph/BUILD-STATUS.json`), que qualquer clone tem. O `graphify-out/UPDATE_STATUS.json` continua sendo escrito como espelho local e deixou de decidir — ele aparece na saída do `--check` com `usado_como_autoridade: false`. Nenhum arquivo pesado de `graphify-out/` foi versionado.",
+    "fail_closed": "Manifesto ausente, JSON inválido, `schema_version` de outro contrato ou sem `input_sha256` respondem `current: false` e exit 1. Não há fallback que responda `true` por ausência de evidência.",
+    "reprodutibilidade_do_digest": "O digest era calculado sobre `git ls-files -co` — rastreados MAIS não-rastreados —, então um `.py` de rascunho na árvore de alguém entrava na conta e fazia o gate acusar 'stale' contra um commit que não o contém. Passou a contar só o que está rastreado, que é o que um checkout limpo consegue reproduzir.",
+    "sem_autorreferencia": "O manifesto é excluído do próprio digest EXPLICITAMENTE. Ele já ficaria fora por acidente (`.json` não está em `CODE_SUFFIXES`), e é por isso que a linha existe: quem acrescentasse `.json` à lista quebraria o gate sem entender por quê.",
+    "contraprovas": "scripts/tests/test_frescor_do_grafo.py (13 provas)",
+    "escopo": "Nenhum engine de Ads, frontend, API, migration, package.json, Roadmap, curadoria operacional ou grafo curado foi tocado."
   }
 }

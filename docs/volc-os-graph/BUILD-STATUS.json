@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-09-07T07:15:22-03:00",
+  "built_at_commit": "abbfc256d25824b284cddd02c8f8c346a623119e",
+  "working_tree_dirty_at_build": true,
+  "input_sha256": "d3adee58eec72aabf2948081844f7813e21f97bbc346ced33ae633b25fea883a",
+  "input_file_count": 1659,
+  "graphify_version": "0.9.48",
+  "live_sources_refreshed": false,
+  "technical_layer_reused": false,
+  "sources": {
+    "operational": "docs/volc-os-graph/volc-os-graph.json",
+    "technical": ".graphify-cache/code/graphify-out/graph.json",
+    "canonical_hybrid": "graphify-out/graph.json"
+  },
+  "counts": {
+    "operational_nodes": 475,
+    "operational_edges": 737,
+    "hybrid_nodes": 29444,
+    "hybrid_edges": 69994
+  },
+  "freshness_rule": "Execute scripts/atualizar_grafo_volc_os.py --check; mudanças no digest exigem reconstrução. Decisões de negócio novas ainda exigem curadoria humana.",
+  "authority": "docs/volc-os-graph/BUILD-STATUS.json é a autoridade do frescor, porque é versionada e existe em qualquer clone. graphify-out/UPDATE_STATUS.json é espelho local e nunca decide.",
+  "built_at_commit_nao_decide": "⚠️ O frescor é decidido pelo DIGEST DOS INSUMOS, e nunca pela igualdade entre built_at_commit e o HEAD. built_at_commit registra onde o build rodou, e é normal que o HEAD fique adiante dele: um commit que mexe só em documentação fora dos insumos não torna o grafo velho. Exigir a igualdade criaria o ciclo infinito build → commit → o HEAD mudou → rebuild → commit, que não converge."
+}
