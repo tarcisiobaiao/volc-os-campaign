@@ -21,12 +21,23 @@
  *
  * Ela lê a conta real, compila o plano no backend e — só depois de clique
  * explícito e liberação do servidor — pede à Meta uma validação que não cria
- * nada. Não existe caminho de criação nem de ativação aqui.
+ * nada. Não existe caminho de criação nem de ativação para o contrato V2.
+ *
+ * ## ⚠️ DOIS CONTRATOS, UMA TELA, E A ESCOLHA É VISÍVEL
+ *
+ * `contratoDoPlano` (em `rascunho.ts`) decide se este rascunho fala V1 — a
+ * receita única que a Meta aceitou em 05/09/2026, e a única com rota de
+ * aprovação e criação PAUSED — ou V2, que descreve N conjuntos, ABO/CBO,
+ * público de verdade e mensuração com propósito, e que só tem `compilar` e
+ * `validar` no backend. A decisão é derivada da FORMA do plano e aparece na
+ * revisão com o motivo. Um operador nunca precisa adivinhar por que o botão de
+ * criar sumiu: a tela diz qual recurso levou o plano para o contrato sem rota
+ * de nascimento.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, CircleCheck, CircleDot, Copy, Film, Image as ImageIcon,
-  Layers3, Lock, Megaphone, Plus, ShieldCheck, Trash2,
+  Lock, Megaphone, Plus, ShieldCheck, Trash2,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -35,24 +46,34 @@ import {
   AcaoDominante, BlocoDeEvidencia, ChipDeEstado, LinhaDeFato, PainelDeBloqueio, Pedido,
 } from '@/components/trafego/bancada';
 import { MetaConfiguracaoLocal } from '@/components/trafego/meta/MetaConfiguracaoLocal';
+import { MapaDoPlano } from '@/components/trafego/meta/MapaDoPlano';
+import { PainelDeConjuntos } from '@/components/trafego/meta/PainelDeConjuntos';
+import { PainelDeMensuracao } from '@/components/trafego/meta/PainelDeMensuracao';
+import { PainelDeOrcamento } from '@/components/trafego/meta/PainelDeOrcamento';
+import { PainelDePublico } from '@/components/trafego/meta/PainelDePublico';
+import { PainelDeReceita } from '@/components/trafego/meta/PainelDeReceita';
+import { Campo, Escolha, GrupoDeEscolha, campo } from '@/components/trafego/meta/primitivas';
 import {
-  CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, Draft, EstadoDaEtapa, EtapaId,
-  LIMITE_VARIACOES, MidiaDaVariacao, VariacaoDraft, confirmacaoDeCriacaoValida,
-  dominioDoDestino, formatarBrl, inicioEmIso, nomeUnico, paraPlano,
+  BLOQUEIOS, CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, ConjuntoDraft, Draft, EstadoDaEtapa,
+  EtapaId, IDADE_MAXIMA_PADRAO, IDADE_MINIMA_PADRAO, LIMITE_CONJUNTOS, LIMITE_VARIACOES,
+  MidiaDaVariacao, NivelDeOrcamento, PeriodoDeOrcamento, PropositoDeMensuracao, RECEITA_PADRAO,
+  VariacaoDraft, conjuntoInicial, confirmacaoDeCriacaoValida, contratoDoPlano, dominioDoDestino,
+  formatarBrl, inicioEmIso, nomeUnico, orcamentosDoPlano, paraPlano, paraPlanoV2,
   prontidaoDasEtapas, prontoParaCompilar, proximaChave, reaisParaMinor, variacaoCompleta,
   variacaoInicial, variacoesEmitidas, type CapacidadesDaBancada,
 } from '@/components/trafego/meta/rascunho';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   fraseDaOperacao, lerOperacao,
 } from '@/components/trafego/meta/estadoDaOperacao';
 import { MetaOperationReceipt } from '@/components/trafego/meta/MetaOperationReceipt';
 import {
-  AprovacaoCriacaoMeta, AtivoCriacaoMeta, ContaMetaLocal, PautadorApiError, pautadorApi,
-  ReciboCriacaoMeta, ResultadoCompilacaoMeta,
+  AprovacaoCriacaoMeta, AtivoCriacaoMeta, CatalogoDeReceitasMeta, ContaMetaLocal,
+  ConversaoPersonalizadaMetaLocal, EnvelopeDeCatalogoMeta, FonteDeMensuracaoMeta,
+  LugarDoCatalogoMeta, PautadorApiError, PublicoDoCatalogoMeta, pautadorApi,
+  ReciboCriacaoMeta, ResultadoCompilacaoMeta, ResumoDoPlanoMetaV2,
   ResultadoReconciliacaoMeta, ResultadoValidacaoPlanoMeta,
 } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
@@ -61,11 +82,11 @@ import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
 const ETAPAS = [
   { id: 'base', nome: 'Base', pergunta: 'De qual conta e Página esta campanha nasce?' },
   { id: 'campanha', nome: 'Campanha', pergunta: 'Que campanha você está autorizando?' },
-  { id: 'orcamento', nome: 'Orçamento', pergunta: 'Quanto ela pode gastar por dia?' },
-  { id: 'conjunto', nome: 'Conjunto', pergunta: 'Como o conjunto vai entregar?' },
+  { id: 'orcamento', nome: 'Orçamento', pergunta: 'Quanto ela pode gastar, e onde a verba mora?' },
+  { id: 'conjunto', nome: 'Conjunto', pergunta: 'Quantos conjuntos, e como cada um entrega?' },
   { id: 'publico', nome: 'Público', pergunta: 'Quem pode ser alcançado?' },
-  { id: 'criativo', nome: 'Anúncios', pergunta: 'Quais anúncios vão nascer?' },
-  { id: 'mensuracao', nome: 'Mensuração', pergunta: 'Para onde o clique leva?' },
+  { id: 'criativo', nome: 'Anúncios', pergunta: 'Quais anúncios vão nascer, e em qual conjunto?' },
+  { id: 'mensuracao', nome: 'Mensuração', pergunta: 'Para onde o clique leva, e o que é medido?' },
   { id: 'revisao', nome: 'Revisão', pergunta: 'O que exatamente será enviado à Meta?' },
 ] as const satisfies readonly { id: EtapaId; nome: string; pergunta: string }[];
 
@@ -87,46 +108,12 @@ const CTAS: readonly [string, string][] = [
   ['CONTACT_US', 'Fale conosco'],
 ];
 
-/** Estado de cada passo, em palavra e tom — nunca só por cor.
- *
- * ⚠️ `AMBIGUOUS` NÃO é um erro, e a palavra tem de dizer isso: o objeto pode
- * existir na conta. Chamá-lo de "falhou" convidaria exatamente a reação errada,
- * que é tentar de novo. `IN_FLIGHT` também não é sucesso nem fracasso: é um
- * despacho sem conclusão registrada. */
-const PALAVRA_DO_PASSO: Record<string, string> = {
-  IN_FLIGHT: 'despachado, sem conclusão',
-  CREATED: 'criado pausado',
-  AMBIGUOUS: 'ambíguo · pode existir',
-  FAILED: 'recusado pela Meta',
-};
-
-const TOM_DO_PASSO: Record<string, 'verificado' | 'atencao' | 'ruim' | 'neutro'> = {
-  IN_FLIGHT: 'atencao',
-  CREATED: 'verificado',
-  AMBIGUOUS: 'atencao',
-  FAILED: 'ruim',
-};
-
-const GLIFO_DO_PASSO: Record<string, React.ComponentType<{ className?: string }>> = {
-  IN_FLIGHT: CircleDot,
-  CREATED: CircleCheck,
-  AMBIGUOUS: CircleDot,
-  FAILED: Lock,
-};
-
-/** O que a palavra AFIRMA — vai para o leitor de tela, não só para o `title`.
- *
- * ⚠️ Cada frase existe para impedir a reação errada. "Ambíguo" sem explicação
- * convida a tentar de novo; com a explicação, convida a reconciliar. */
-const DESCRICAO_DO_PASSO: Record<string, string> = {
-  IN_FLIGHT:
-    'o pedido saiu e a conclusão não foi registrada; o objeto pode existir na conta',
-  CREATED: 'o objeto existe na conta e nasceu pausado',
-  AMBIGUOUS:
-    'não está provado se o objeto existe; reconciliar por leitura é o caminho, '
-    + 'e reenviar duplicaria',
-  FAILED: 'a Meta recusou o pedido, então está provado que nada foi criado',
-};
+/* ⚠️ `PALAVRA_DO_PASSO`, `TOM_DO_PASSO`, `GLIFO_DO_PASSO` e `DESCRICAO_DO_PASSO`
+   viviam aqui e NÃO eram usados por nenhuma linha deste arquivo: as versões
+   vivas moram em `estadoDaOperacao.ts`, que é quem `MetaOperationReceipt` lê.
+   Duas cópias do mesmo vocabulário, uma delas morta, é como uma correção
+   acontece no lugar errado e ninguém entende por que a tela não mudou. A cópia
+   morta saiu. */
 
 const inicioPadrao = () => {
   const data = new Date(Date.now() + 30 * 60 * 1000);
@@ -135,48 +122,22 @@ const inicioPadrao = () => {
   return local.toISOString().slice(0, 16);
 };
 
+const CHAVE_DO_PRIMEIRO_CONJUNTO = 'adset-001';
+
 const DRAFT_INICIAL: Draft = {
-  accountRef: '', pageRef: '',
+  recipeId: RECEITA_PADRAO,
+  accountRef: '', pageRef: '', instagramActorRef: '',
   campaignName: 'VOLC · Meta · Tráfego · LPV',
-  adsetName: 'Brasil · Amplo · LPV · Automático',
   destinationUrl: 'https://focogenial.com/',
-  budgetBrl: '10,00', startTime: inicioPadrao(),
-  categoryConfirmed: false, budgetSharing: false, advantageAudience: false,
+  nivelDeOrcamento: 'ADSET',
+  periodoDeOrcamento: 'DAILY',
+  budgetBrl: '10,00',
+  categoryConfirmed: false,
   creativeMode: 'single',
-  variations: [variacaoInicial('variation-001', 1)],
+  conjuntos: [conjuntoInicial(
+    CHAVE_DO_PRIMEIRO_CONJUNTO, 'Brasil · Amplo · LPV · Automático', inicioPadrao(), '10,00')],
+  variations: [variacaoInicial('variation-001', 1, CHAVE_DO_PRIMEIRO_CONJUNTO)],
 };
-
-/** Espelha a primitiva `Input` (h-10, rounded-md, anel `ring`) para que um
- *  `<select>` nativo não seja um segundo vocabulário de controle. */
-const campo = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground ring-offset-background transition-volc duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
-
-const Campo: React.FC<{
-  id: string; rotulo: string; ajuda?: string; children: React.ReactNode; largo?: boolean;
-}> = ({ id, rotulo, ajuda, children, largo }) => (
-  <div className={cn('space-y-2', largo && 'md:col-span-2')}>
-    <Label htmlFor={id}>{rotulo}</Label>
-    {children}
-    {ajuda && <p className="max-w-[70ch] text-sm leading-relaxed text-pretty text-muted-foreground">{ajuda}</p>}
-  </div>
-);
-
-const Escolha: React.FC<{
-  marcado: boolean; onChange: (v: boolean) => void; titulo: string; children: React.ReactNode;
-}> = ({ marcado, onChange, titulo, children }) => (
-  <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 md:col-span-2">
-    <input
-      type="checkbox" checked={marcado} onChange={(e) => onChange(e.target.checked)}
-      className="mt-0.5 h-4 w-4 shrink-0"
-    />
-    <span>
-      <strong className="block text-sm text-foreground">{titulo}</strong>
-      <span className="mt-1 block max-w-[72ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-        {children}
-      </span>
-    </span>
-  </label>
-);
-
 /** A prévia real da peça, servida pelo proxy autenticado do backend. */
 const PreviaDaPeca: React.FC<{ accountRef: string; ativo?: AtivoCriacaoMeta }> = ({
   accountRef, ativo,
@@ -307,15 +268,51 @@ const MetaCriacaoPage: React.FC = () => {
   const [imagens, setImagens] = useState<AtivoCriacaoMeta[]>([]);
   const [videos, setVideos] = useState<AtivoCriacaoMeta[]>([]);
   const [capacidades, setCapacidades] = useState<CapacidadesDaBancada>(CAPACIDADES_FECHADAS);
+  /** O catálogo de receitas do servidor. `null` = ainda não lido, e a tela diz
+   *  isso em vez de inventar uma lista. */
+  const [catalogo, setCatalogo] = useState<CatalogoDeReceitasMeta | null>(null);
+  const [catalogoErro, setCatalogoErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [ocupado, setOcupado] = useState<
-    'ativos' | 'compilar' | 'validar' | 'aprovar' | 'criar' | 'reconciliar' | null>(null);
+    'ativos' | 'compilar' | 'validar' | 'aprovar' | 'criar' | 'reconciliar'
+    | 'conversoes' | 'publicos' | 'lugares' | null>(null);
   const [avisos, setAvisos] = useState<AvisoDoCockpit[]>([]);
   const [compilacao, setCompilacao] = useState<ResultadoCompilacaoMeta | null>(null);
   const [validacao, setValidacao] = useState<ResultadoValidacaoPlanoMeta | null>(null);
+  /** ⚠️ O RESUMO É DO SERVIDOR, e a revisão não tem outra fonte (`F37`, `A33`).
+   *  Ele cai junto com a compilação em `invalidar()`: um resumo que descreve o
+   *  plano anterior sobre um rascunho novo seria a divergência que ele existe
+   *  para impedir. */
+  const [resumo, setResumo] = useState<ResumoDoPlanoMetaV2 | null>(null);
   const [aprovacao, setAprovacao] = useState<AprovacaoCriacaoMeta | null>(null);
   const [reconciliacao, setReconciliacao] = useState<
     { referencia: string; resultado: ResultadoReconciliacaoMeta } | null>(null);
+  /** Os CATÁLOGOS lidos da conta, cada um com a conta a que pertence.
+   *
+   * ⚠️ O par com a referência da conta é a guarda de `A31`/`A13`: uma resposta
+   * lenta da conta A não pode pousar sobre a conta B, e a lista da conta
+   * anterior não pode continuar na tela da conta nova. Um público de outra
+   * conta nunca poderia ser escolhido aqui — e a referência dele nem resolveria
+   * no backend, que relê o catálogo da conta antes de traduzir.
+   *
+   * ⚠️ `null` significa NÃO LIDO, e isso é diferente de lista vazia. Nenhum
+   * deles é buscado ao montar: o preflight desta lane já custa nove requisições
+   * paginadas por clique, e um catálogo automático multiplicaria isso. */
+  const [catalogoDeMensuracao, setCatalogoDeMensuracao] = useState<{
+    contaRef: string;
+    fontes: EnvelopeDeCatalogoMeta<FonteDeMensuracaoMeta>;
+    conversoes: EnvelopeDeCatalogoMeta<ConversaoPersonalizadaMetaLocal>;
+  } | null>(null);
+  const [conversoesErro, setConversoesErro] = useState<string | null>(null);
+  const [catalogoDePublicos, setCatalogoDePublicos] = useState<
+    { contaRef: string; envelope: EnvelopeDeCatalogoMeta<PublicoDoCatalogoMeta> } | null>(null);
+  const [publicosErro, setPublicosErro] = useState<string | null>(null);
+  const [catalogoDeLugares, setCatalogoDeLugares] = useState<
+    { contaRef: string; envelope: EnvelopeDeCatalogoMeta<LugarDoCatalogoMeta> } | null>(null);
+  const [lugaresErro, setLugaresErro] = useState<string | null>(null);
+  /** Ordena as respostas de catálogo entre si, pelo mesmo motivo do selo dos
+   *  ativos: duas buscas seguidas podem voltar fora de ordem. */
+  const seloDosCatalogos = useRef(0);
   /** A OPERAÇÃO DURÁVEL, e ela é deliberadamente separada do rascunho.
    *
    * ⚠️ `invalidar()` derruba tudo o que descreve o rascunho — compilação,
@@ -333,32 +330,21 @@ const MetaCriacaoPage: React.FC = () => {
   const [operacaoCarregando, setOperacaoCarregando] = useState(false);
   const [operacaoErro, setOperacaoErro] = useState<
     { referencia: string; mensagem: string } | null>(null);
-  /** Esta sessão JÁ MANDOU criar por esta referência. Marcado ANTES do POST.
-   *
-   * ⚠️ Antes o botão fechava por `nascimento`, que só existia no caminho de
-   * SUCESSO. Um despacho que volta 502 com reconciliação necessária deixava
-   * "Criar campanha PAUSED" habilitado sobre uma campanha que pode ter nascido:
-   * um botão de reenviar por omissão, no único estado em que reenviar duplica. */
+  /** Esta sessão JÁ MANDOU criar por esta referência. Marcado ANTES do POST. */
   const [despachadaNestaSessao, setDespachadaNestaSessao] = useState<string | null>(null);
   const [confirmacaoMarcada, setConfirmacaoMarcada] = useState(false);
   const [confirmacaoDigitada, setConfirmacaoDigitada] = useState('');
+  /** Qual conjunto as etapas de público e mensuração estão editando. */
+  const [conjuntoFocadoRef, setConjuntoFocadoRef] = useState<string>(CHAVE_DO_PRIMEIRO_CONJUNTO);
 
   /** ⚠️ TRAVA SÍNCRONA de duplo clique.
    *
    * `ocupado` é `useState`: ele só chega ao DOM no render seguinte, e entre o
    * primeiro clique e esse render cabe um segundo clique inteiro. Para
    * "Validar" isso custaria uma chamada repetida que não cria nada; para
-   * "Criar campanha PAUSED" custaria uma segunda campanha na conta real.
-   *
-   * O `ref` fecha essa janela no mesmo tique do evento. Ele NÃO substitui a
-   * defesa durável — o ledger recusa reentrar num passo em voo — mas é a
-   * camada que impede o pedido de sair duas vezes do navegador. */
+   * "Criar campanha PAUSED" custaria uma segunda campanha na conta real. */
   const emVoo = useRef(false);
 
-  /** Grava a referência da operação na URL, preservando a etapa atual.
-   *
-   * `replace` de propósito: reabrir um recibo não é um passo de navegação que
-   * o operador queira desfazer com o botão voltar. */
   const fixarOperacaoNaUrl = useCallback((referencia: string) => {
     setParams((atuais) => {
       const proximos = new URLSearchParams(atuais);
@@ -372,35 +358,38 @@ const MetaCriacaoPage: React.FC = () => {
   // marca como validado um plano que já não existe.
   const selo = useRef(0);
 
-  /** ⚠️ O SELO DA OPERAÇÃO É OUTRO SELO, e a separação é deliberada.
-   *
-   * `selo` descreve o RASCUNHO e cai a cada edição de campo. A operação não
-   * pertence ao rascunho — derrubá-la por edição apagaria o recibo de objetos
-   * que já existem numa conta real, que é justamente o que `invalidar()` foi
-   * ensinado a não fazer. Este selo ordena RESPOSTAS DE RECIBO entre si: quem
-   * volta com a conclusão mais nova é quem escreve. */
+  /** ⚠️ O SELO DA OPERAÇÃO É OUTRO SELO, e a separação é deliberada. */
   const seloDaOperacao = useRef(0);
+  /** ⚠️ E O SELO DOS ATIVOS É UM TERCEIRO. Ele ordena as leituras de
+   *  inventário entre si: trocar de conta duas vezes rápido faz a resposta da
+   *  PRIMEIRA conta chegar por último, e sem um número por requisição ela
+   *  reescreveria Página e peça da conta que está na tela agora (`A31`). */
+  const seloDosAtivos = useRef(0);
+
   const invalidar = useCallback(() => {
     selo.current += 1;
     setCompilacao(null);
     setValidacao(null);
+    // ⚠️ O resumo do servidor cai junto. Ele descreve o plano que foi
+    // compilado, e mantê-lo sobre um rascunho editado faria a revisão afirmar
+    // números que o corpo enviado não tem mais (`A33`).
+    setResumo(null);
     // ⚠️ Editar o rascunho derruba a APROVAÇÃO junto. Uma aprovação viva
     // descreve um hash; manter o botão "Criar" habilitado depois de o operador
     // mudar o orçamento deixaria a tela oferecendo a criação de um plano que
-    // ninguém aprovou. O servidor recusaria pelo hash — e a tela não pode
-    // depender disso para não mentir.
+    // ninguém aprovou.
     setAprovacao(null);
-    // ⚠️ `nascimento`, `reconciliacao` e `operacao` NÃO são limpos aqui.
-    //
-    // Eles descrevem uma execução que já saiu do navegador. Um objeto criado
-    // numa conta real não deixa de existir porque alguém trocou o texto de um
-    // anúncio, e apagar o recibo da tela apagaria justamente o caminho de saída
-    // de um incidente. O que muda de rascunho é a DECISÃO; a EXECUÇÃO é outra
-    // coisa, e o recibo continua endereçável pela referência na URL.
+    // ⚠️ `reconciliacao` e `operacao` NÃO são limpos aqui: eles descrevem uma
+    // execução que já saiu do navegador.
     setConfirmacaoMarcada(false);
     setConfirmacaoDigitada('');
     setAvisos([]);
   }, []);
+
+  const mudar = useCallback(<K extends keyof Draft>(chave: K, valor: Draft[K]) => {
+    setDraft((atual) => ({ ...atual, [chave]: valor }));
+    invalidar();
+  }, [invalidar]);
 
   useEffect(() => {
     let vivo = true;
@@ -427,6 +416,29 @@ const MetaCriacaoPage: React.FC = () => {
     return () => { vivo = false; };
   }, []);
 
+  /** O catálogo de receitas. LEITURA LOCAL: a rota devolve o registro do
+   *  servidor e não fala com a Meta, então ela pode sair na montagem sem violar
+   *  "nenhuma chamada externa sem clique explícito".
+   *
+   * ⚠️ A falha NÃO vira aviso de operação. Sem catálogo a bancada continua com
+   * a receita provada; anunciar isso no painel de impedimentos misturaria uma
+   * leitura de configuração com a recusa de um ato. */
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const lido = await pautadorApi.receitasCriacaoMetaV2();
+        if (vivo) { setCatalogo(lido); setCatalogoErro(null); }
+      } catch (exc) {
+        if (vivo) {
+          setCatalogo(null);
+          setCatalogoErro(exc instanceof Error ? exc.message : 'catálogo indisponível');
+        }
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
   const carregarContas = async () => {
     setCarregando(true);
     try {
@@ -440,16 +452,7 @@ const MetaCriacaoPage: React.FC = () => {
     }
   };
 
-  /** Aplica um recibo só se ele for DESTA operação e mais novo que o exibido.
-   *
-   * Duas travas, e nenhuma substitui a outra:
-   *  · de CONTEÚDO — o recibo diz a que aprovação pertence, e um recibo de
-   *    outra aprovação jamais é exibido sob esta referência, por mais recente
-   *    que seja;
-   *  · de ORDEM — fixar a referência na URL dispara a releitura ANTES de o POST
-   *    de criação terminar. Sem o selo, essa leitura vazia — tirada quando o
-   *    objeto ainda não existia — chegaria depois e apagaria o nascimento.
-   */
+  /** Aplica um recibo só se ele for DESTA operação e mais novo que o exibido. */
   const aplicarRecibo = useCallback(
     (referencia: string, recibo: ReciboCriacaoMeta, meuSelo: number) => {
       if (meuSelo !== seloDaOperacao.current) return;
@@ -467,10 +470,7 @@ const MetaCriacaoPage: React.FC = () => {
       const resultado = await pautadorApi.reciboCriacaoMeta(referencia);
       aplicarRecibo(referencia, resultado.recibo, meu);
     } catch (exc) {
-      // ⚠️ Falha de leitura NÃO vira "nenhum recibo". A operação pode existir; o
-      // que falhou foi a consulta, e o operador precisa saber a diferença. E o
-      // erro carrega a REFERÊNCIA junto: uma falha ao ler A não pode aparecer
-      // debaixo de B.
+      // ⚠️ Falha de leitura NÃO vira "nenhum recibo".
       if (meu === seloDaOperacao.current) {
         setOperacaoErro({
           referencia,
@@ -484,21 +484,7 @@ const MetaCriacaoPage: React.FC = () => {
     }
   }, [aplicarRecibo]);
 
-  /** REIDRATA A OPERAÇÃO a partir da referência na URL.
-   *
-   * ⚠️ Esta é a correção de `F04`. Antes, aprovação, nascimento e reconciliação
-   * viviam só em `useState`, e o `approval_id` — a ÚNICA chave que o backend
-   * aceita para consultar ou reconciliar — vivia junto. Fechar a aba apagava a
-   * saída segura de um incidente, permanentemente.
-   *
-   * ⚠️ E ele NÃO depende da flag de criação. Ler um recibo e reconciliar por
-   * leitura dependem só da autoridade do ledger; a flag de criação governa o
-   * POST que faz nascer objeto. Confundir as duas deixaria o operador sem
-   * caminho de saída exatamente quando ele mais precisa.
-   *
-   * Montar a página não dispara nada além desta LEITURA: nenhuma chamada à
-   * Meta sai daqui, e reconciliar continua exigindo um clique.
-   */
+  /** REIDRATA A OPERAÇÃO a partir da referência na URL. */
   useEffect(() => {
     if (!operacaoRef) return;
     void lerRecibo(operacaoRef);
@@ -506,11 +492,18 @@ const MetaCriacaoPage: React.FC = () => {
 
   useEffect(() => {
     if (!draft.accountRef) { setPaginas([]); setImagens([]); setVideos([]); return; }
+    const contaPedida = draft.accountRef;
+    const meu = ++seloDosAtivos.current;
     let vivo = true;
     setOcupado('ativos');
-    pautadorApi.ativosCriacaoMeta(draft.accountRef)
+    pautadorApi.ativosCriacaoMeta(contaPedida)
       .then((resultado) => {
-        if (!vivo) return;
+        // ⚠️ DUAS GUARDAS, e nenhuma substitui a outra: `vivo` mata a resposta
+        // de um efeito desmontado; o selo mata a resposta de uma conta ANTERIOR
+        // que voltou depois da atual. Sem o selo, trocar de conta duas vezes
+        // rápido deixaria a Página e as peças da primeira conta em cima da
+        // segunda — e o operador aprovaria um plano da conta errada.
+        if (!vivo || meu !== seloDosAtivos.current) return;
         setPaginas(resultado.paginas);
         setImagens(resultado.imagens);
         setVideos(resultado.videos ?? []);
@@ -521,6 +514,30 @@ const MetaCriacaoPage: React.FC = () => {
           ...atual,
           pageRef: resultado.paginas.some((item) => item.referencia_opaca === atual.pageRef)
             ? atual.pageRef : (resultado.paginas[0]?.referencia_opaca || ''),
+          // ⚠️ TROCAR DE CONTA LIMPA SELEÇÃO INVÁLIDA. Identidade do Instagram
+          // e conversão personalizada são objetos DAQUELA conta: mantê-los
+          // deixaria o plano carregando referências que a nova conta não
+          // resolve, e o erro chegaria como "referência não encontrada" sem o
+          // operador entender que a culpa foi a troca de conta.
+          instagramActorRef: '',
+          // ⚠️ E as referências de PÚBLICO e de LUGAR saem junto: elas foram
+          // resolvidas contra o catálogo da conta anterior. `publicos.py`
+          // resolve LISTANDO o catálogo da conta escolhida, então uma
+          // referência da conta antiga simplesmente não bate — e a tela não
+          // pode continuar exibindo uma seleção que o plano não consegue mais
+          // traduzir.
+          conjuntos: atual.conjuntos.map((conjunto) => ({
+            ...conjunto,
+            mensuracao: {
+              ...conjunto.mensuracao, conversaoRef: '', fonteRef: '', fonteTipo: '',
+            },
+            publico: {
+              ...conjunto.publico,
+              incluirRefs: [], excluirRefs: [], lookalikeRefs: [],
+              interesseRefs: [], localeRefs: [],
+              geo: { ...conjunto.publico.geo, lugares: [] },
+            },
+          })),
           variations: atual.variations.map((variacao) => ({
             ...variacao,
             assetRef: resultado.imagens.some((item) => item.referencia_opaca === variacao.assetRef)
@@ -531,15 +548,26 @@ const MetaCriacaoPage: React.FC = () => {
           })),
         }));
       })
-      .catch((exc) => vivo && setAvisos(avisosDoErro(exc)))
-      .finally(() => vivo && setOcupado(null));
+      .catch((exc) => vivo && meu === seloDosAtivos.current && setAvisos(avisosDoErro(exc)))
+      .finally(() => { if (vivo && meu === seloDosAtivos.current) setOcupado(null); });
     return () => { vivo = false; };
   }, [draft.accountRef, invalidar]);
 
-  const mudar = <K extends keyof Draft>(chave: K, valor: Draft[K]) => {
-    setDraft((atual) => ({ ...atual, [chave]: valor }));
-    invalidar();
-  };
+  // ⚠️ TODO catálogo pertence a UMA conta. Trocar de conta os apaga — e apaga
+  // também a mensagem de erro, que descrevia a conta anterior. Manter a lista
+  // deixaria o operador escolhendo, na conta nova, um público que só existe na
+  // antiga: o backend recusaria a referência, e a tela teria oferecido.
+  useEffect(() => {
+    const daConta = <T,>(atual: { contaRef: string } & T) => (
+      atual.contaRef === draft.accountRef ? atual : null);
+    setCatalogoDeMensuracao((atual) => (atual ? daConta(atual) : null));
+    setCatalogoDePublicos((atual) => (atual ? daConta(atual) : null));
+    setCatalogoDeLugares((atual) => (atual ? daConta(atual) : null));
+    setConversoesErro(null);
+    setPublicosErro(null);
+    setLugaresErro(null);
+  }, [draft.accountRef]);
+
   const mudarVariacao = <K extends keyof VariacaoDraft>(
     posicaoAlvo: number, chave: K, valor: VariacaoDraft[K],
   ) => {
@@ -581,10 +609,11 @@ const MetaCriacaoPage: React.FC = () => {
   const adicionarVariacao = (origem?: number) => {
     setDraft((atual) => {
       if (atual.variations.length >= LIMITE_VARIACOES) return atual;
-      const chave = proximaChave(atual.variations.map((item) => item.key));
+      const chave = proximaChave(atual.variations.map((item) => item.key), 'variation');
       const numero = atual.variations.length + 1;
+      const padrao = atual.conjuntos[0]?.key ?? '';
       const base = origem === undefined
-        ? { ...variacaoInicial(chave, numero), ...pecaPadrao(atual) }
+        ? { ...variacaoInicial(chave, numero, padrao), ...pecaPadrao(atual) }
         : { ...atual.variations[origem], key: chave };
       return {
         ...atual,
@@ -610,11 +639,7 @@ const MetaCriacaoPage: React.FC = () => {
     });
     invalidar();
   };
-  /** Trocar de modo muda o que será EMITIDO, não o que está guardado.
-   *
-   * ⚠️ Truncar o rascunho aqui apagaria nove variações sem confirmação quando o
-   * operador só quisesse conferir o payload individual. `variacoesEmitidas` já
-   * limita a projeção; o lote continua inteiro e volta ao trocar de novo. */
+  /** Trocar de modo muda o que será EMITIDO, não o que está guardado. */
   const mudarModo = (modo: Draft['creativeMode']) => {
     setDraft((atual) => ({ ...atual, creativeMode: modo }));
     invalidar();
@@ -623,6 +648,74 @@ const MetaCriacaoPage: React.FC = () => {
     const ultima = atual.variations.at(-1);
     return { assetRef: ultima?.assetRef ?? '', videoRef: ultima?.videoRef ?? '', midia: ultima?.midia ?? 'image' };
   }
+
+  // ── Conjuntos ─────────────────────────────────────────────────────────────
+  const mudarConjunto = useCallback((chave: string, patch: Partial<ConjuntoDraft>) => {
+    setDraft((atual) => ({
+      ...atual,
+      conjuntos: atual.conjuntos.map(
+        (item) => (item.key === chave ? { ...item, ...patch } : item)),
+    }));
+    invalidar();
+  }, [invalidar]);
+
+  const adicionarConjunto = (origem?: string) => {
+    setDraft((atual) => {
+      if (atual.conjuntos.length >= LIMITE_CONJUNTOS) return atual;
+      const chave = proximaChave(atual.conjuntos.map((item) => item.key), 'adset');
+      const base = origem
+        ? atual.conjuntos.find((item) => item.key === origem)
+        : undefined;
+      const modelo = base
+        ? { ...base, key: chave }
+        : conjuntoInicial(
+          chave, `Conjunto ${atual.conjuntos.length + 1}`,
+          atual.conjuntos[0]?.startTime ?? inicioPadrao(),
+          atual.conjuntos[0]?.orcamentoBrl ?? '10,00');
+      return {
+        ...atual,
+        conjuntos: [...atual.conjuntos, {
+          ...modelo,
+          key: chave,
+          nome: nomeUnico(modelo.nome, atual.conjuntos.map((item) => item.nome)),
+        }],
+      };
+    });
+    invalidar();
+  };
+
+  const removerConjunto = (chave: string) => {
+    setDraft((atual) => (atual.conjuntos.length === 1 ? atual : {
+      ...atual,
+      conjuntos: atual.conjuntos.filter((item) => item.key !== chave),
+    }));
+    invalidar();
+  };
+
+  /** ⚠️ REORDENAR MOVE A POSIÇÃO, NUNCA A IDENTIDADE. Nenhuma chave é
+   *  recalculada aqui, e por isso todo anúncio continua apontando para o mesmo
+   *  conjunto depois do movimento. */
+  const moverConjunto = (chave: string, direcao: -1 | 1) => {
+    setDraft((atual) => {
+      const de = atual.conjuntos.findIndex((item) => item.key === chave);
+      const para = de + direcao;
+      if (de < 0 || para < 0 || para >= atual.conjuntos.length) return atual;
+      const proximos = [...atual.conjuntos];
+      [proximos[de], proximos[para]] = [proximos[para], proximos[de]];
+      return { ...atual, conjuntos: proximos };
+    });
+    invalidar();
+  };
+
+  /** A troca de modo de orçamento, já CONFIRMADA pelo painel.
+   *
+   * ⚠️ Nenhum valor é convertido: trocar diário por total não divide nem
+   * multiplica o número que a pessoa escreveu. O que muda é o significado, e
+   * quem decide o novo número é ela. */
+  const trocarModoDeOrcamento = (nivel: NivelDeOrcamento, periodo: PeriodoDeOrcamento) => {
+    setDraft((atual) => ({ ...atual, nivelDeOrcamento: nivel, periodoDeOrcamento: periodo }));
+    invalidar();
+  };
 
   const navegar = (proxima: EtapaId) => {
     const novos = new URLSearchParams(params);
@@ -636,13 +729,34 @@ const MetaCriacaoPage: React.FC = () => {
   const conta = contas.find((item) => item.referencia_opaca === draft.accountRef);
   const pagina = paginas.find((item) => item.referencia_opaca === draft.pageRef);
   const emitidas = variacoesEmitidas(draft);
+  const receitas = catalogo?.receitas ?? [];
+  const receita = receitas.find((item) => item.id === draft.recipeId) ?? null;
+  /** ⚠️ Memorizado porque `prontidaoDasEtapas` depende dele: um array novo a
+   *  cada render recalcularia a prontidão de todas as etapas em todo teclado. */
+  const propositosDaReceita = useMemo<readonly PropositoDeMensuracao[]>(
+    () => receita?.propositos_de_mensuracao ?? [], [receita]);
+  const limitesDeIdade = {
+    min: catalogo?.idade.min ?? IDADE_MINIMA_PADRAO,
+    max: catalogo?.idade.max ?? IDADE_MAXIMA_PADRAO,
+    motivo: catalogo?.idade.motivo ?? null,
+  };
+  /** ⚠️ Qual contrato este rascunho fala, e por quê. A revisão mostra os dois. */
+  const { contrato, motivos: motivosDoV2 } = contratoDoPlano(draft);
+  const conjuntoFocado = draft.conjuntos.find((item) => item.key === conjuntoFocadoRef)
+    ?? draft.conjuntos[0];
+  const resumoDoFocado = resumo?.conjuntos.find(
+    (item) => item.adset_key === conjuntoFocado?.key) ?? null;
+
   const estados = useMemo(
     () => prontidaoDasEtapas(draft, {
-      capacidades, compilado: Boolean(compilacao), validado: Boolean(validacao?.ok),
+      capacidades,
+      compilado: Boolean(compilacao),
+      validado: Boolean(validacao?.ok),
+      propositosDaReceita,
     }),
-    [draft, capacidades, compilacao, validacao],
+    [draft, capacidades, compilacao, validacao, propositosDaReceita],
   );
-  const podeCompilar = prontoParaCompilar(draft, capacidades);
+  const podeCompilar = prontoParaCompilar(draft, capacidades, propositosDaReceita);
 
   /** O que ainda impede o próximo ato — inteiro, em linguagem de operador. */
   const faltas = useMemo(() => {
@@ -651,51 +765,108 @@ const MetaCriacaoPage: React.FC = () => {
     if (!draft.pageRef) lista.push('Escolha a Página que assina os anúncios.');
     if (!draft.campaignName.trim()) lista.push('Dê um nome à campanha.');
     if (!draft.categoryConfirmed) lista.push('Confirme o enquadramento de categoria especial.');
-    if (reaisParaMinor(draft.budgetBrl) <= 0) lista.push('Informe um orçamento diário maior que zero.');
-    if (!inicioEmIso(draft.startTime)) lista.push('Informe uma data e hora de início válidas.');
-    if (!draft.adsetName.trim()) lista.push('Dê um nome ao conjunto.');
+    const varios = draft.conjuntos.length > 1;
+    const palavraDaVerba = draft.periodoDeOrcamento === 'DAILY' ? 'diário' : 'total';
+    orcamentosDoPlano(draft).forEach((item) => {
+      if (item.minor <= 0) {
+        lista.push(`Informe um orçamento ${palavraDaVerba} maior que zero${
+          varios && draft.nivelDeOrcamento === 'ADSET' ? ` no conjunto "${item.rotulo}"` : ''}.`);
+      }
+    });
+    draft.conjuntos.forEach((conjunto) => {
+      const onde = varios ? ` do conjunto "${conjunto.nome || 'sem nome'}"` : '';
+      if (!conjunto.nome.trim()) lista.push('Dê um nome ao conjunto.');
+      if (!inicioEmIso(conjunto.startTime)) {
+        lista.push(`Informe uma data e hora de início válidas${onde}.`);
+      }
+      if (draft.periodoDeOrcamento === 'LIFETIME' && !inicioEmIso(conjunto.endTime)) {
+        lista.push(`Orçamento total exige data de término${onde}.`);
+      }
+      if (!emitidas.some((item) => item.adsetKey === conjunto.key)) {
+        lista.push(
+          `Nenhum anúncio aponta para o conjunto "${conjunto.nome || 'sem nome'}"; `
+          + 'um conjunto sem anúncio é recusado pelo backend.');
+      }
+      if (conjunto.posicionamentoValores.includes('instagram') && !draft.instagramActorRef) {
+        lista.push(BLOQUEIOS.identidadeInstagram);
+      }
+      if (conjunto.posicionamentoModo === 'MANUAL' && conjunto.posicionamentoValores.length === 0) {
+        lista.push(`Escolha ao menos uma plataforma${onde}.`);
+      }
+      if (conjunto.mensuracao.proposito === 'OPTIMIZE' && !conjunto.mensuracao.fonteRef) {
+        lista.push(BLOQUEIOS.fonteDeMensuracao);
+      }
+    });
+    if (estados.publico !== 'pronto') {
+      lista.push('Confira o público: escolha ao menos um lugar para alcançar e uma faixa etária válida.');
+    }
     if (estados.mensuracao !== 'pronto') lista.push('Informe uma URL de destino HTTPS válida.');
     if (draft.creativeMode === 'flexible') {
       lista.push('O criativo flexível não emite payload: escolha Individual ou Lote.');
     } else {
-      if (emitidas.some((item) => item.midia === 'video') && !capacidades.video) {
-        lista.push('Um anúncio usa vídeo, e o criativo de vídeo está bloqueado.');
+      if (emitidas.some((item) => item.midia === 'video')) {
+        lista.push(`Um anúncio usa vídeo. ${BLOQUEIOS.videoNoCorpo}`);
       }
+      const chaves = new Set(draft.conjuntos.map((item) => item.key));
       emitidas.forEach((item, posicao) => {
-        if (!variacaoCompleta(item)) lista.push(`O anúncio ${posicao + 1} está incompleto.`);
+        if (!chaves.has(item.adsetKey)) {
+          lista.push(`O anúncio ${posicao + 1} aponta para um conjunto que não existe mais.`);
+        }
+        if (!variacaoCompleta(item) && item.midia !== 'video') {
+          lista.push(`O anúncio ${posicao + 1} está incompleto.`);
+        }
       });
     }
-    return lista;
-  }, [draft, estados, emitidas, capacidades]);
+    return [...new Set(lista)];
+  }, [draft, estados, emitidas]);
 
+  /** ⚠️ UMA PORTA POR CONTRATO, e a escolha é a forma do plano.
+   *
+   * A resposta do V2 carrega `resumo`; a do V1 não tem esse campo, e a revisão
+   * do V1 continua sendo a que sempre foi. Fundir os dois numa chamada só faria
+   * um plano de conjunto único perder a rota que ainda sustenta aprovação e
+   * criação PAUSED. */
   const compilar = async () => {
     const meu = ++selo.current;
     setOcupado('compilar');
     setAvisos([]);
     try {
-      const resultado = await pautadorApi.compilarPlanoMeta(paraPlano(draft));
-      if (meu !== selo.current) return;
-      setCompilacao(resultado);
+      if (contrato === 'V2') {
+        const resultado = await pautadorApi.compilarPlanoMetaV2(paraPlanoV2(draft));
+        if (meu !== selo.current) return;
+        setCompilacao(resultado);
+        setResumo(resultado.resumo);
+      } else {
+        const resultado = await pautadorApi.compilarPlanoMeta(paraPlano(draft));
+        if (meu !== selo.current) return;
+        setCompilacao(resultado);
+        setResumo(null);
+      }
       setValidacao(null);
     } catch (exc) {
       if (meu === selo.current) setAvisos(avisosDoErro(exc));
     } finally {
-      // ⚠️ SEM condição. A versão anterior só liberava o `ocupado` quando o
-      // selo ainda correspondia — e editar o rascunho durante a requisição
-      // muda o selo. O resultado era a bancada travada para sempre: toda ação
-      // dominante exige `ocupado === null`. Descartar a RESPOSTA obsoleta é
-      // correto; deixar a tela ocupada por causa dela, não.
+      // ⚠️ SEM condição: descartar a RESPOSTA obsoleta é correto; deixar a tela
+      // ocupada por causa dela, não.
       setOcupado(null);
     }
   };
+
   const validar = async () => {
     const meu = ++selo.current;
     setOcupado('validar');
     setAvisos([]);
     try {
-      const resultado = await pautadorApi.validarPlanoMeta(paraPlano(draft));
-      if (meu !== selo.current) return;
-      setValidacao(resultado);
+      if (contrato === 'V2') {
+        const resultado = await pautadorApi.validarPlanoMetaV2(paraPlanoV2(draft));
+        if (meu !== selo.current) return;
+        setValidacao(resultado);
+        setResumo(resultado.resumo);
+      } else {
+        const resultado = await pautadorApi.validarPlanoMeta(paraPlano(draft));
+        if (meu !== selo.current) return;
+        setValidacao(resultado);
+      }
     } catch (exc) {
       if (meu === selo.current) setAvisos(avisosDoErro(exc));
     } finally {
@@ -703,26 +874,80 @@ const MetaCriacaoPage: React.FC = () => {
     }
   };
 
-  /** Envolve um ato que não pode sair duas vezes do navegador.
+  /** Um catálogo da conta. LEITURA REAL, e por isso SÓ POR CLIQUE.
    *
-   * A trava é o `ref`, lido e escrito no mesmo tique do clique. `ocupado` só
-   * desabilita o botão no render seguinte, e essa diferença é a janela por
-   * onde um duplo clique passa.
-   */
+   * ⚠️ Três guardas, e nenhuma substitui a outra:
+   *  · a conta é capturada NA IDA e viaja com o resultado — uma resposta lenta
+   *    da conta A não pode pousar sobre a conta B;
+   *  · o selo descarta a resposta de uma busca ANTERIOR que voltou por último;
+   *  · a falha vira ERRO DE LEITURA nomeado, nunca "nenhum item": a conta pode
+   *    ter exatamente o que a consulta não conseguiu ver.
+   *
+   * ⚠️ E nada disto sai da montagem da página. `_exigir_host_local` e o custo
+   * real da leitura (nove requisições paginadas por clique no preflight desta
+   * lane) fazem do carregamento automático um multiplicador, não uma
+   * conveniência. */
+  const lerCatalogo = async <T,>(
+    rotulo: 'conversoes' | 'publicos' | 'lugares',
+    ler: (contaRef: string) => Promise<T>,
+    aplicar: (contaRef: string, resultado: T) => void,
+    aoFalhar: (mensagem: string) => void,
+    mensagemPadrao: string,
+  ) => {
+    const contaPedida = draft.accountRef;
+    if (!contaPedida) return;
+    const meu = ++seloDosCatalogos.current;
+    setOcupado(rotulo);
+    aoFalhar('');
+    try {
+      const resultado = await ler(contaPedida);
+      if (meu !== seloDosCatalogos.current) return;
+      aplicar(contaPedida, resultado);
+    } catch (exc) {
+      if (meu !== seloDosCatalogos.current) return;
+      aoFalhar(exc instanceof Error ? exc.message : mensagemPadrao);
+    } finally {
+      // Sem condição: descartar a RESPOSTA obsoleta é correto; deixar a
+      // bancada ocupada por causa dela, não.
+      setOcupado(null);
+    }
+  };
+
+  const lerConversoes = () => lerCatalogo(
+    'conversoes',
+    (contaRef) => pautadorApi.catalogoDeMensuracaoMeta(contaRef),
+    (contaRef, resultado) => setCatalogoDeMensuracao({
+      contaRef, fontes: resultado.fontes, conversoes: resultado.conversoes,
+    }),
+    (mensagem) => setConversoesErro(mensagem || null),
+    'Não foi possível ler a mensuração desta conta.',
+  );
+
+  const lerPublicos = () => lerCatalogo(
+    'publicos',
+    (contaRef) => pautadorApi.catalogoDePublicosMeta(contaRef),
+    (contaRef, envelope) => setCatalogoDePublicos({ contaRef, envelope }),
+    (mensagem) => setPublicosErro(mensagem || null),
+    'Não foi possível ler os públicos desta conta.',
+  );
+
+  /** ⚠️ O TERMO É BUSCA, NUNCA CHAVE. O que volta do catálogo é que carrega a
+   *  `key` canônica; o texto digitado nunca entra no plano. */
+  const buscarLugares = (termo: string) => lerCatalogo(
+    'lugares',
+    (contaRef) => pautadorApi.catalogoDeGeografiaMeta({ referenciaOpaca: contaRef, termo }),
+    (contaRef, envelope) => setCatalogoDeLugares({ contaRef, envelope }),
+    (mensagem) => setLugaresErro(mensagem || null),
+    'Não foi possível buscar lugares no catálogo da Meta.',
+  );
+
+  /** Envolve um ato que não pode sair duas vezes do navegador. */
   const umaVezSo = async (
     rotulo: 'aprovar' | 'criar' | 'reconciliar',
     ato: (aindaEDoMesmoRascunho: () => boolean) => Promise<void>,
   ) => {
     if (emVoo.current) return;
     emVoo.current = true;
-    // ⚠️ O SELO ENTROU AQUI, e antes ele não existia nestes três atos.
-    //
-    // `compilar` e `validar` já o conferiam; aprovar, criar e reconciliar
-    // aplicavam a resposta sem vínculo nenhum. Se o operador trocasse a conta,
-    // a peça ou o texto durante a requisição, uma APROVAÇÃO ANTIGA voltava a
-    // aparecer sobre um rascunho novo — e a tela oferecia criar um plano que
-    // ninguém tinha aprovado. O servidor recusaria pelo hash, mas a tela não
-    // pode depender disso para não mentir.
     const meu = ++selo.current;
     const meuAinda = () => meu === selo.current;
     setOcupado(rotulo);
@@ -751,7 +976,6 @@ const MetaCriacaoPage: React.FC = () => {
       confirmacaoDigitada,
     });
     // ⚠️ APROVAR ainda não criou nada, então a resposta obsoleta é DESCARTADA.
-    // Aplicá-la faria uma aprovação do rascunho antigo reaparecer sobre o novo.
     if (!aindaEDoMesmoRascunho()) return;
     setAprovacao(resultado.aprovacao);
   });
@@ -760,35 +984,17 @@ const MetaCriacaoPage: React.FC = () => {
     if (!aprovacao) return;
     const referencia = aprovacao.approval_id;
     // ⚠️ A REFERÊNCIA ENTRA NA URL ANTES DO DESPACHO, e a ordem é o conserto.
-    //
-    // Gravá-la só no caminho de sucesso deixava o INCIDENTE sem saída: um
-    // despacho ambíguo levanta, o `await` nunca retorna, e a única chave capaz
-    // de reabrir a operação morria com a aba. O caso em que o recibo mais
-    // importa era exatamente o caso em que ele não existia.
     fixarOperacaoNaUrl(referencia);
-    // ⚠️ MARCADO ANTES DO POST. Se o despacho falhar, ele PODE ter criado
-    // objetos — e o botão de criar precisa fechar de qualquer jeito. Fechá-lo
-    // só no caminho de sucesso deixava um botão de reenviar no único estado em
-    // que reenviar duplica.
+    // ⚠️ MARCADO ANTES DO POST: se o despacho falhar, ele PODE ter criado
+    // objetos — e o botão de criar precisa fechar de qualquer jeito.
     setDespachadaNestaSessao(referencia);
     try {
       const resultado = await pautadorApi.criarCampanhaPausadaMeta(
         referencia, aprovacao.plano_sha256);
-      // ⚠️ AQUI A RESPOSTA NUNCA É DESCARTADA, e a diferença em relação a
-      // `aprovar` é a única que importa: o despacho JÁ ACONTECEU. Objetos podem
-      // existir na conta. Jogar fora o recibo porque o operador editou outro
-      // campo enquanto a Meta respondia esconderia a execução exatamente quando
-      // ela mais precisa ser vista.
-      //
-      // ⚠️ O SELO É TOMADO NA VOLTA, e não na ida. Fixar a referência na URL
-      // dispara a releitura do recibo, e essa leitura sai antes de o POST
-      // terminar: reservar o selo na ida faria a leitura vazia chegar depois e
-      // apagar o nascimento. Quem volta com a conclusão mais nova ganha o selo.
+      // ⚠️ AQUI A RESPOSTA NUNCA É DESCARTADA: o despacho JÁ ACONTECEU.
       aplicarRecibo(referencia, resultado.recibo, ++seloDaOperacao.current);
     } catch (exc) {
-      // ⚠️ UM DESPACHO QUE FALHA PODE TER CRIADO OBJETOS. Sem esta releitura a
-      // tela fica com o recibo vazio que a própria URL disparou antes do POST —
-      // "nenhum passo despachado" sobre uma conta com campanha órfã.
+      // ⚠️ UM DESPACHO QUE FALHA PODE TER CRIADO OBJETOS.
       await lerRecibo(referencia);
       throw exc;
     }
@@ -798,62 +1004,61 @@ const MetaCriacaoPage: React.FC = () => {
     const referencia = operacaoRef || aprovacao?.approval_id;
     if (!referencia) return;
     const resultado = await pautadorApi.reconciliarCriacaoMeta(referencia);
-    // Leitura de uma operação real: o resultado descreve o que existe na conta,
-    // não o rascunho da tela. Ele também não é descartado por selo — e viaja
-    // com a referência, para não pousar sob outra operação.
     setReconciliacao({ referencia, resultado });
     aplicarRecibo(referencia, resultado.recibo, ++seloDaOperacao.current);
     fixarOperacaoNaUrl(referencia);
   });
 
-  /** A referência que a tela está OBRIGADA a mostrar agora. A URL manda; a
-   *  aprovação viva só entra enquanto a URL ainda não tem nada — o intervalo
-   *  entre aprovar e criar, onde o botão de reconciliar precisa existir. */
   const referenciaAlvo = operacaoRef || aprovacao?.approval_id || null;
 
-  /** ⚠️ UMA FONTE SÓ, E ELA É DURÁVEL. O `nascimento` em `useState` saiu de
-   *  vez: ele fazia a tabela ler o corpo HTTP de uma sessão que o reload apaga,
-   *  e era por isso que as colunas de leitura voltavam vazias depois do F5
-   *  mesmo com a evidência gravada no livro. O recibo é o recibo. */
   const reciboVigente =
     operacao && referenciaAlvo && operacao.referencia === referenciaAlvo
       ? operacao.recibo
       : null;
-  /** ⚠️ O DESFECHO É DERIVADO DO MANIFESTO APROVADO, não da lista de passos que
-   *  existem. `every()` sobre os passos existentes respondia "completa" para uma
-   *  Campaign criada de quatro objetos esperados — e escrevia "1 de 1". A
-   *  contagem, os estados e as frases moram todos em `estadoDaOperacao`. */
   const leituraDaOperacao = useMemo(() => lerOperacao(reciboVigente), [reciboVigente]);
   const desfechoDaOperacao = reciboVigente ? fraseDaOperacao(leituraDaOperacao) : null;
-  const operacaoTemIncidente =
-    Boolean(reciboVigente) && leituraDaOperacao.estado.tipo !== 'CONFIRMADA';
 
-  /** Despachou é despachado. A marca da sessão vale mesmo se o recibo não
-   *  voltou; o recibo vale mesmo depois do reload, quando a marca já morreu. */
   const jaDespachou = despachadaNestaSessao === referenciaAlvo
     || (reciboVigente?.steps.length ?? 0) > 0;
-  /** ⚠️ NENHUM BOTÃO DE REENVIAR SOBRE OPERAÇÃO AMBÍGUA. O único controle que
-   *  muta nesta tela fecha por `jaDespachou`, e `jaDespachou` é marcado ANTES do
-   *  POST — então nem uma falha o reabre. */
   const porQueNaoCriar = !jaDespachou
     ? null
     : (leituraDaOperacao.estado.tipo === 'CONFIRMADA'
       || leituraDaOperacao.estado.tipo === 'CRIADA_SEM_LEITURA')
       ? 'Esta aprovação já criou os objetos.'
       : 'Esta aprovação já despachou; repetir duplicaria. A saída é reconciliar por leitura.';
-  /** ⚠️ Reconciliar depende da REFERÊNCIA, não da flag de criação nem de haver
-   *  uma aprovação viva em memória. É a saída de um incidente. */
   const podeReconciliar = Boolean(referenciaAlvo);
 
+  /** ⚠️ CRIAR SÓ EXISTE NO V1, e a razão é o backend, não uma preferência.
+   *
+   * `/criacao/aprovar` recebe `PedidoPlanoMetaPausado` — o DTO do contrato V1.
+   * Não existe rota de aprovação para o plano V2. Deixar o painel de criação
+   * aberto sobre um plano V2 ofereceria um ato que a rota recusaria pelo hash,
+   * e a tela não pode depender dessa recusa para não mentir. */
+  const criacaoDisponivel = capacidades.criarPausada && contrato === 'V1';
+
+  const totalDeAnuncios = emitidas.length;
   const linhasDoPedido: LinhaDoPedido[] = [
     { rotulo: 'Conta', valor: conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null, fonte: 'a Meta, agora' },
     { rotulo: 'Página', valor: pagina?.nome ?? null, fonte: 'a Meta, agora' },
     { rotulo: 'Campanha', valor: draft.campaignName || null, fonte: 'você, agora' },
-    { rotulo: 'Objetivo', valor: 'Tráfego para site', fonte: 'a receita provada' },
-    { rotulo: 'Orçamento diário', valor: reaisParaMinor(draft.budgetBrl) > 0 ? `${formatarBrl(reaisParaMinor(draft.budgetBrl))} · no conjunto` : null, fonte: 'você, agora' },
-    { rotulo: 'Compartilhar verba entre conjuntos', valor: 'Não · receita de conjunto único', fonte: 'a Meta, na validação real' },
-    { rotulo: 'Advantage+ público', valor: draft.advantageAudience ? 'Aceito' : 'Recusado', fonte: 'você, agora' },
-    { rotulo: 'Estrutura', valor: `1 campanha · 1 conjunto · ${emitidas.length} criativo${emitidas.length === 1 ? '' : 's'} · ${emitidas.length} anúncio${emitidas.length === 1 ? '' : 's'}`, fonte: 'o compilador' },
+    { rotulo: 'Receita', valor: receita ? receita.rotulo : draft.recipeId, fonte: receita ? 'o registro de receitas' : 'a receita padrão' },
+    { rotulo: 'Contrato do plano', valor: contrato === 'V1' ? 'V1 · receita provada, criação liberada pelo servidor' : 'V2 · N conjuntos; criação não existe neste contrato', fonte: 'a forma deste plano' },
+    {
+      rotulo: draft.periodoDeOrcamento === 'DAILY' ? 'Orçamento diário' : 'Orçamento total',
+      valor: (() => {
+        const linhas = orcamentosDoPlano(draft).filter((item) => item.minor > 0);
+        if (!linhas.length) return null;
+        const onde = draft.nivelDeOrcamento === 'CAMPAIGN' ? 'na campanha' : 'no conjunto';
+        return linhas.length === 1
+          ? `${formatarBrl(linhas[0].minor)} · ${onde}`
+          : linhas.map((item) => `${item.rotulo}: ${formatarBrl(item.minor)}`).join(' · ');
+      })(),
+      fonte: 'você, agora',
+    },
+    { rotulo: 'Onde a verba mora', valor: resumo ? resumo.orcamento.onde_a_verba_mora : null, fonte: 'o resumo do backend' },
+    { rotulo: 'Compartilhar verba entre conjuntos', valor: 'Não · o contrato recusa true', fonte: 'a Meta, na validação real' },
+    { rotulo: 'Advantage+ público', valor: draft.conjuntos.map((item) => (item.publico.expansao ? 'Aceito' : 'Recusado')).join(' · '), fonte: 'você, agora' },
+    { rotulo: 'Estrutura', valor: `1 campanha · ${draft.conjuntos.length} conjunto${draft.conjuntos.length === 1 ? '' : 's'} · ${totalDeAnuncios} criativo${totalDeAnuncios === 1 ? '' : 's'} · ${totalDeAnuncios} anúncio${totalDeAnuncios === 1 ? '' : 's'}`, fonte: 'o compilador' },
     { rotulo: 'Estado ao nascer', valor: 'Pausada em todos os níveis veiculáveis', fonte: 'a receita provada' },
     { rotulo: 'Plano compilado', valor: compilacao ? `${compilacao.plano.plano_sha256.slice(0, 16)}…` : null, fonte: 'o backend' },
     { rotulo: 'Validação na Meta', valor: validacao?.ok ? `Aceita · ${validacao.operacoes_validadas.length} de ${validacao.operacoes_validadas.length + validacao.operacoes_dependentes_pendentes.length} operações` : null, fonte: 'a Meta' },
@@ -864,12 +1069,42 @@ const MetaCriacaoPage: React.FC = () => {
     : aprovacao
       ? 'Criar a campanha PAUSED. Os objetos passam a existir, e nenhum veicula.'
       : validacao?.ok
-        ? capacidades.criarPausada
+        ? criacaoDisponivel
           ? 'Confirmar e aprovar o plano. Aprovar ainda não cria nada.'
-          : 'Nada mais nesta bancada: a criação PAUSED está fechada neste servidor.'
+          : contrato === 'V2'
+            ? 'Nada mais nesta bancada: o contrato V2 não tem rota de criação.'
+            : 'Nada mais nesta bancada: a criação PAUSED está fechada neste servidor.'
         : compilacao
           ? 'Validar na Meta, sem criar nenhum objeto.'
           : faltas.length > 0 ? null : 'Conferir o plano no backend.';
+
+  /** Rótulos legíveis por `variation_key`, para o mapa da revisão. O resumo
+   *  identifica por chave; nome é rótulo, não afirmação sobre o plano. */
+  const rotuloDoAnuncio = (chave: string) => {
+    const variacao = draft.variations.find((item) => item.key === chave);
+    const lista = variacao?.midia === 'video' ? videos : imagens;
+    const escolhida = variacao?.midia === 'video' ? variacao?.videoRef : variacao?.assetRef;
+    return {
+      anuncio: variacao?.adName || chave,
+      peca: lista.find((item) => item.referencia_opaca === escolhida)?.nome ?? null,
+    };
+  };
+
+  /** O seletor de conjunto das etapas por conjunto. Só aparece quando há mais
+   *  de um: um seletor de um item só é ruído. */
+  const trilhoDeConjuntos = draft.conjuntos.length > 1 && conjuntoFocado ? (
+    <GrupoDeEscolha<string>
+      rotuloAcessivel="Conjunto em edição"
+      valor={conjuntoFocado.key}
+      colunas="sm:grid-cols-2 lg:grid-cols-3"
+      onEscolher={setConjuntoFocadoRef}
+      opcoes={draft.conjuntos.map((item, posicao) => ({
+        id: item.key,
+        nome: item.nome || `Conjunto ${posicao + 1}`,
+        detalhe: `conjunto ${posicao + 1} de ${draft.conjuntos.length}`,
+      }))}
+    />
+  ) : null;
 
   const conteudo = (() => {
     switch (etapa) {
@@ -907,6 +1142,10 @@ const MetaCriacaoPage: React.FC = () => {
             <LinhaDeFato rotulo="Fuso da conta" valor={conta?.fuso ?? null} fonte="a Meta" ausencia="não lido" />
             <LinhaDeFato rotulo="Imagens disponíveis" valor={draft.accountRef ? imagens.length : null} fonte="a Meta" ausencia="não lidas" />
             <LinhaDeFato rotulo="Vídeos disponíveis" valor={draft.accountRef ? videos.length : null} fonte="a Meta" ausencia="não lidos" />
+            {/* ⚠️ Identidade do Instagram: ausência DECLARADA, não silêncio. Sem
+                ela o posicionamento no Instagram é recusado pelo backend, e a
+                etapa de público mostra a caixa fechada com esta mesma causa. */}
+            <LinhaDeFato rotulo="Identidade do Instagram" valor={draft.instagramActorRef || null} fonte="a Meta" ausencia="não lida por esta bancada" />
           </BlocoDeEvidencia>
         </>
       );
@@ -919,104 +1158,64 @@ const MetaCriacaoPage: React.FC = () => {
             </Campo>
             <Escolha marcado={draft.categoryConfirmed} onChange={(v) => mudar('categoryConfirmed', v)}
               titulo="Confirmo que esta campanha não é de crédito, emprego, moradia nem política">
-              Declarar a ausência de categoria especial também é uma declaração. Campanhas dessas
-              categorias exigem público, texto e conferência próprios que esta receita ainda não prova.
+              Declarar a ausência de categoria especial também é uma declaração. Esta bancada não
+              tem caminho para DECLARAR uma categoria: o backend recusa qualquer uma delas
+              (META_SPECIAL_CATEGORY_RECIPE_UNPROVEN), porque exigem público, texto e conferência
+              próprios que esta receita ainda não prova. O que a caixa afirma é a AUSÊNCIA delas, e
+              é uma lista vazia que viaja no corpo enviado.
             </Escolha>
           </div>
-          <BlocoDeEvidencia titulo="O que a receita fixa nesta campanha" tom="info">
-            <LinhaDeFato rotulo="Objetivo" valor="Tráfego (OUTCOME_TRAFFIC)" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Compra" valor="Leilão (AUCTION)" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Categoria especial" valor="Nenhuma" fonte="você, agora" />
-            <LinhaDeFato rotulo="Estado ao nascer" valor="PAUSED" fonte="a receita provada" />
-          </BlocoDeEvidencia>
+          <PainelDeReceita
+            receitas={receitas}
+            erroDoCatalogo={catalogoErro}
+            escolhida={draft.recipeId}
+            onEscolher={(id) => mudar('recipeId', id)}
+          />
         </>
       );
       case 'orcamento': return (
-        <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="meta-budget" rotulo="Orçamento diário em reais"
-              ajuda={reaisParaMinor(draft.budgetBrl) > 0
-                ? `A bancada entendeu ${formatarBrl(reaisParaMinor(draft.budgetBrl))} por dia.`
-                : 'Informe um valor maior que zero. Use vírgula ou ponto para os centavos.'}>
-              <Input id="meta-budget" inputMode="decimal" value={draft.budgetBrl}
-                onChange={(e) => mudar('budgetBrl', e.target.value)} />
-            </Campo>
-            <Campo id="meta-start" rotulo="Início"
-              ajuda={conta?.fuso
-                ? `A conta opera em ${conta.fuso}. A bancada envia o instante com fuso explícito.`
-                : 'O fuso da conta ainda não foi lido; o instante viaja com fuso explícito mesmo assim.'}>
-              <Input id="meta-start" type="datetime-local" value={draft.startTime}
-                onChange={(e) => mudar('startTime', e.target.value)} />
-            </Campo>
-            {/* ⚠️ Não é mais uma escolha. Em 05/09/2026 a validação real na Meta
-                recusou o compartilhamento ligado com o código 100/4005 — ele
-                exige estratégia de lance no Campaign, e esta receita mantém a
-                estratégia no conjunto. Com um único conjunto o compartilhamento
-                também não produziria benefício. O campo continua viajando
-                explícito como `false`; ver `contrato.py`, que RECUSA `true` em
-                vez de convertê-lo em silêncio. */}
-            <div className="rounded-lg border border-border bg-muted/20 p-3 md:col-span-2">
-              <strong className="block text-sm text-foreground">
-                Compartilhamento entre conjuntos: desativado
-              </strong>
-              <p className="mt-1 max-w-[72ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-                Esta campanha possui um único conjunto. O compartilhamento ficará disponível em uma
-                receita multiconjunto com estratégia de lance compatível.
-                {capacidades.budgetSharingMotivo
-                  ? ` ${capacidades.budgetSharingMotivo}`
-                  : ''}
-              </p>
-            </div>
-          </div>
-          <BlocoDeEvidencia titulo="Como a verba é aplicada" tom="info">
-            <LinhaDeFato rotulo="Onde a verba mora" valor="No conjunto de anúncios" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Compartilhamento entre conjuntos" valor="Desativado" fonte="a Meta, na validação real" />
-            <LinhaDeFato rotulo="Lance" valor="Maior volume dentro da verba, sem teto de lance" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Valor enviado" valor={reaisParaMinor(draft.budgetBrl) > 0 ? `${reaisParaMinor(draft.budgetBrl)} centavos` : null} fonte="o compilador" ausencia="ainda não informado" />
-          </BlocoDeEvidencia>
-        </>
+        <PainelDeOrcamento
+          draft={draft}
+          modos={receita?.modos_de_orcamento ?? []}
+          resumo={resumo}
+          onTrocarModo={trocarModoDeOrcamento}
+          onValorDaCampanha={(texto) => mudar('budgetBrl', texto)}
+          onValorDoConjunto={(chave, texto) => mudarConjunto(chave, { orcamentoBrl: texto })}
+          motivoDoCompartilhamento={capacidades.budgetSharingMotivo}
+        />
       );
       case 'conjunto': return (
-        <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="meta-adset-name" rotulo="Nome do conjunto" largo>
-              <Input id="meta-adset-name" value={draft.adsetName}
-                onChange={(e) => mudar('adsetName', e.target.value)} />
-            </Campo>
-          </div>
-          <BlocoDeEvidencia titulo="Como este conjunto entrega" tom="info">
-            <LinhaDeFato rotulo="Meta de desempenho" valor="Visualizações da página de destino" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Cobrança" valor="Por impressão" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Tipo de destino" valor="Não declarado" fonte="a documentação Meta v26" />
-            <LinhaDeFato rotulo="Objeto promovido" valor="Nenhum" fonte="a receita provada" />
-          </BlocoDeEvidencia>
-          <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-            A Meta só aceita mensagem, WhatsApp e ligação como tipo de destino declarado no objetivo
-            Tráfego. Tráfego para site é o comportamento padrão do objetivo, então a bancada não
-            declara nenhum tipo de destino — declarar um inválido seria recusado na validação.
-          </p>
-        </>
+        <PainelDeConjuntos
+          draft={draft}
+          emitidas={emitidas}
+          onCampo={(chave, qual, valor) => mudarConjunto(chave, { [qual]: valor } as Partial<ConjuntoDraft>)}
+          onAdicionar={adicionarConjunto}
+          onRemover={removerConjunto}
+          onMover={moverConjunto}
+        />
       );
-      case 'publico': return (
+      case 'publico': return conjuntoFocado ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Escolha marcado={draft.advantageAudience} onChange={(v) => mudar('advantageAudience', v)}
-              titulo="Aceitar o público Advantage+, deixando a Meta ampliar além do público definido">
-              Esta escolha viaja sempre explícita. Se a bancada omitisse o campo, a Meta assumiria
-              que você aceitou e ampliaria o público sozinha — por isso não existe estado “não
-              declarado” aqui. Recusado, o conjunto entrega dentro do público que você definiu.
-            </Escolha>
-          </div>
-          <BlocoDeEvidencia titulo="O público desta receita" tom="info">
-            <LinhaDeFato rotulo="País" valor="Brasil" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Idade" valor="18 a 65+" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Posicionamentos" valor="Somente Facebook no primeiro canário" fonte="o contrato P0" />
-            <LinhaDeFato rotulo="Identidade" valor="Página provada pela conta; Instagram não utilizado" fonte="a Meta e o backend" />
-            <LinhaDeFato rotulo="Públicos salvos" valor="Nenhum incluído ou excluído" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Advantage+ público" valor={draft.advantageAudience ? 'Aceito (1)' : 'Recusado (0)'} fonte="você, agora" />
-          </BlocoDeEvidencia>
+          {trilhoDeConjuntos}
+          <PainelDePublico
+            draft={draft}
+            conjunto={conjuntoFocado}
+            idade={limitesDeIdade}
+            resumoDoConjunto={resumoDoFocado}
+            onConjunto={mudarConjunto}
+            catalogoDePublicos={catalogoDePublicos?.contaRef === draft.accountRef
+              ? catalogoDePublicos.envelope : null}
+            lendoPublicos={ocupado === 'publicos'}
+            erroDosPublicos={publicosErro}
+            onLerPublicos={lerPublicos}
+            catalogoDeLugares={catalogoDeLugares?.contaRef === draft.accountRef
+              ? catalogoDeLugares.envelope : null}
+            lendoLugares={ocupado === 'lugares'}
+            erroDosLugares={lugaresErro}
+            onBuscarLugares={buscarLugares}
+          />
         </>
-      );
+      ) : null;
       case 'criativo': return (
         <>
           <div>
@@ -1069,17 +1268,20 @@ const MetaCriacaoPage: React.FC = () => {
             </>
           ) : (
             <div className="space-y-5">
-              {!capacidades.video && (
-                <PainelDeBloqueio
-                  titulo="Anúncio em vídeo não pode ser emitido"
-                  bloqueios={[{
-                    codigo: 'META_VIDEO_THUMBNAIL_UNPROVEN', severidade: 'alta',
-                    titulo: 'A miniatura exigida pelo criativo de vídeo não tem caminho seguro',
-                    detalhe: capacidades.videoMotivo
-                      || 'O servidor não informou a causa do bloqueio.',
-                  }]}
-                />
-              )}
+              {/* ⚠️ O bloqueio de vídeo é do CONTRATO, não da capacidade: nem
+                  `variations[]` (V1) nem `ads[]` (V2) têm campo de vídeo. Mesmo
+                  que o servidor liberasse a capacidade, o corpo sairia com a
+                  peça vazia. A capacidade continua sendo mostrada porque ela
+                  explica a segunda metade do bloqueio. */}
+              <PainelDeBloqueio
+                titulo="Anúncio em vídeo não pode ser emitido"
+                bloqueios={[{
+                  codigo: 'META_VIDEO_NOT_IN_CONTRACT', severidade: 'alta',
+                  titulo: 'Nenhum dos dois contratos transporta vídeo',
+                  detalhe: `${BLOQUEIOS.videoNoCorpo}${
+                    capacidades.video ? '' : ` ${capacidades.videoMotivo || ''}`}`,
+                }]}
+              />
               {draft.variations.slice(0, draft.creativeMode === 'single' ? 1 : undefined).map((variacao, posicao) => {
                 const lista = variacao.midia === 'video' ? videos : imagens;
                 const escolhida = variacao.midia === 'video' ? variacao.videoRef : variacao.assetRef;
@@ -1093,6 +1295,7 @@ const MetaCriacaoPage: React.FC = () => {
                           {variacao.headline || 'Sem título'}
                         </p>
                         <p className="sr-only" data-testid="variacao-chave">{variacao.key}</p>
+                        <p className="sr-only" data-testid="variacao-conjunto">{variacao.adsetKey}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <ChipDeEstado
@@ -1123,7 +1326,12 @@ const MetaCriacaoPage: React.FC = () => {
                     <div className="grid gap-5 p-4 lg:grid-cols-[minmax(190px,30%)_1fr]">
                       <div>
                         <PreviaDaPeca accountRef={draft.accountRef} ativo={ativo} />
-                        <p className="mt-2 break-words text-sm font-medium text-foreground">
+                        {/* ⚠️ `A30`: o nome fica curto e truncado, com o valor
+                            inteiro no `title`. Um caminho de armazenamento como
+                            título estoura a coluna e empurra o controle para
+                            fora da tela. */}
+                        <p className="mt-2 max-w-full truncate text-sm font-medium text-foreground"
+                          title={ativo?.nome || undefined}>
                           {ativo?.nome || 'Escolha uma peça'}
                         </p>
                         {ativo?.largura && ativo?.altura && (
@@ -1131,13 +1339,32 @@ const MetaCriacaoPage: React.FC = () => {
                         )}
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
+                        {/* ⚠️ `F34`: o conjunto de cada anúncio é ESCOLHA
+                            explícita. Sem ela o backend teria de adivinhar um
+                            pai, e adivinhar significa entregar no lugar errado
+                            sem ninguém perceber. */}
+                        <Campo id={`meta-conjunto-${posicao}`} rotulo="Conjunto deste anúncio" largo
+                          ajuda="Cada anúncio nasce dentro de exatamente um conjunto, e é ele que define público, verba e posicionamento deste anúncio.">
+                          <select id={`meta-conjunto-${posicao}`} className={campo}
+                            value={variacao.adsetKey}
+                            onChange={(e) => mudarVariacao(posicao, 'adsetKey', e.target.value)}>
+                            {!draft.conjuntos.some((item) => item.key === variacao.adsetKey) && (
+                              <option value={variacao.adsetKey}>
+                                Conjunto removido · escolha outro
+                              </option>
+                            )}
+                            {draft.conjuntos.map((item, indice) => (
+                              <option key={item.key} value={item.key}>
+                                {item.nome || `Conjunto ${indice + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </Campo>
                         <Campo id={`meta-midia-${posicao}`} rotulo="Tipo de peça">
                           <select id={`meta-midia-${posicao}`} className={campo} value={variacao.midia}
                             onChange={(e) => mudarVariacao(posicao, 'midia', e.target.value as MidiaDaVariacao)}>
                             <option value="image">Imagem existente</option>
-                            <option value="video">
-                              Vídeo existente{capacidades.video ? '' : ' · emissão bloqueada'}
-                            </option>
+                            <option value="video">Vídeo existente · emissão bloqueada</option>
                           </select>
                         </Campo>
                         <Campo id={`meta-peca-${posicao}`} rotulo={variacao.midia === 'video' ? 'Vídeo da conta' : 'Imagem da conta'}>
@@ -1220,33 +1447,33 @@ const MetaCriacaoPage: React.FC = () => {
           )}
         </>
       );
-      case 'mensuracao': return (
+      case 'mensuracao': return conjuntoFocado ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="meta-url" rotulo="URL final HTTPS" largo
-              ajuda="Inclua os parâmetros de campanha diretamente nesta URL. A bancada não injeta marcação por conta própria.">
-              <Input id="meta-url" type="url" value={draft.destinationUrl}
-                onChange={(e) => mudar('destinationUrl', e.target.value)} />
-            </Campo>
-          </div>
-          <BlocoDeEvidencia titulo="O que será medido" tom="info">
-            <LinhaDeFato rotulo="Domínio do destino" valor={dominioDoDestino(draft.destinationUrl)} fonte="você, agora" ausencia="URL ainda inválida" />
-            <LinhaDeFato rotulo="Destino de comércio" valor="Somente website · Shop desativada explicitamente" fonte="Meta Marketing API v26" />
-            <LinhaDeFato rotulo="Otimização" valor="Visualizações da página de destino" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Pixel, conjunto de dados ou conversão personalizada" valor="Nenhum" fonte="a receita provada" />
-            <LinhaDeFato rotulo="Janela de atribuição" valor="Padrão efetivo da conta" fonte="a Meta" />
-            <LinhaDeFato rotulo="Domínio de conversão" valor="Não enviado" fonte="documentação Meta v26" />
-          </BlocoDeEvidencia>
-          <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-            A Meta exige o domínio de conversão quando a campanha compartilha dados com um pixel.
-            Esta receita não promove nenhum pixel, então o campo não é enviado. Receitas de venda e
-            de cadastro, quando forem provadas, trarão pixel, evento e domínio juntos.
-          </p>
+          {trilhoDeConjuntos}
+          <PainelDeMensuracao
+            draft={draft}
+            conjunto={conjuntoFocado}
+            propositosDaReceita={propositosDaReceita}
+            motivoDaReceita={receita && !receita.propositos_de_mensuracao.includes('OPTIMIZE')
+              ? 'Esta receita admite apenas relatar: otimizar mudaria o objetivo que ela declara.'
+              : null}
+            catalogoDeFontes={catalogoDeMensuracao?.contaRef === draft.accountRef
+              ? catalogoDeMensuracao.fontes : null}
+            catalogoDeConversoes={catalogoDeMensuracao?.contaRef === draft.accountRef
+              ? catalogoDeMensuracao.conversoes : null}
+            lendoConversoes={ocupado === 'conversoes'}
+            erroDasConversoes={conversoesErro}
+            resumoDoConjunto={resumoDoFocado}
+            onDestino={(url) => mudar('destinationUrl', url)}
+            onConjunto={mudarConjunto}
+            onLerConversoes={lerConversoes}
+          />
         </>
-      );
+      ) : null;
       case 'revisao': return (
         <>
           <BlocoDeEvidencia titulo="O que será enviado à Meta" tom="verificado">
+            <LinhaDeFato rotulo="Contrato do plano" valor={contrato === 'V1' ? 'V1 · a receita provada' : 'V2 · campanha com N conjuntos'} fonte="a forma deste plano" />
             <LinhaDeFato rotulo="Operações compiladas" valor={compilacao ? compilacao.plano.operacoes.length : null} fonte="o backend" ausencia="plano ainda não compilado" />
             <LinhaDeFato rotulo="Receita e tracking" valor={compilacao?.plano.tracking?.revenue_join ?? null}
               fonte="o plano compilado no backend" ausencia="recompile para conferir o vínculo GAM" />
@@ -1257,6 +1484,28 @@ const MetaCriacaoPage: React.FC = () => {
             <LinhaDeFato rotulo="Identidade do plano" valor={compilacao?.plano.plano_sha256 ?? null} fonte="o backend" ausencia="plano ainda não compilado" />
             <LinhaDeFato rotulo="Efeito externo da conferência" valor={compilacao ? 'Nenhum' : null} fonte="o backend" ausencia="—" />
           </BlocoDeEvidencia>
+
+          {/* ⚠️ POR QUE ESTE PLANO NÃO É O V1. A lista existe para que ninguém
+              precise adivinhar qual escolha fechou a criação: cada motivo é um
+              recurso que só o contrato V2 descreve, e o V2 não tem rota de
+              aprovação nem de nascimento. */}
+          {contrato === 'V2' && (
+            <BlocoDeEvidencia titulo="Por que este plano usa o contrato V2" tom="info">
+              {motivosDoV2.map((motivo) => (
+                <LinhaDeFato key={motivo} rotulo="Recurso do V2" valor={motivo} fonte="a forma deste plano" />
+              ))}
+              <LinhaDeFato
+                rotulo="Consequência"
+                valor="Conferir e validar continuam abertos; criar não existe neste contrato"
+                fonte="as rotas do backend"
+              />
+            </BlocoDeEvidencia>
+          )}
+
+          {/* ⚠️ A REVISÃO RENDERIZA O RESUMO DO SERVIDOR, e não recalcula nada
+              a partir do rascunho (`F37`, `A33`). Ele só existe depois de
+              compilar ou validar, e cai junto com eles quando um campo muda. */}
+          {resumo && <MapaDoPlano resumo={resumo} rotuloDoAnuncio={rotuloDoAnuncio} />}
 
           {compilacao && (
             <div className="overflow-x-auto rounded-lg border border-border/70">
@@ -1332,13 +1581,32 @@ const MetaCriacaoPage: React.FC = () => {
             </div>
           )}
 
-          {capacidades.criarPausada && (
+          {/* ⚠️ O SERVIDOR AUTORIZA CRIAR, MAS ESTE PLANO NÃO PODE NASCER.
+              São duas coisas diferentes e a tela as separa: a flag do servidor
+              governa o ato; o contrato governa a FORMA do plano. `/aprovar`
+              recebe o DTO do V1, e não existe rota de aprovação para o V2. */}
+          {capacidades.criarPausada && contrato === 'V2' && (
+            <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+              <div className="max-w-[74ch] space-y-2 text-sm leading-relaxed text-pretty text-foreground">
+                <p><strong>Este plano não pode nascer nesta bancada.</strong></p>
+                <p className="text-muted-foreground">
+                  A criação PAUSED está aberta no servidor, mas ela existe apenas para o contrato
+                  V1 — a receita de conjunto único que a Meta aceitou. Este plano usa recursos do
+                  contrato V2, que tem conferência e validação, e não tem rota de aprovação nem de
+                  nascimento. Conferir e validar continuam liberados, e nada é criado.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {criacaoDisponivel && (
             <div className="space-y-4 rounded-lg border border-border/70 p-4">
               <BlocoDeEvidencia titulo="O que será criado agora, de verdade" tom="atencao">
                 <LinhaDeFato rotulo="Conta" valor={conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null} fonte="a Meta" ausencia="não escolhida" />
-                <LinhaDeFato rotulo="Orçamento diário" valor={reaisParaMinor(draft.budgetBrl) > 0 ? `${formatarBrl(reaisParaMinor(draft.budgetBrl))} · no conjunto` : null} fonte="você" ausencia="não informado" />
+                <LinhaDeFato rotulo="Orçamento diário" valor={reaisParaMinor(draft.conjuntos[0]?.orcamentoBrl ?? '') > 0 ? `${formatarBrl(reaisParaMinor(draft.conjuntos[0].orcamentoBrl))} · no conjunto` : null} fonte="você" ausencia="não informado" />
                 <LinhaDeFato rotulo="Campanha" valor={draft.campaignName || null} fonte="você" ausencia="sem nome" />
-                <LinhaDeFato rotulo="Conjunto" valor={draft.adsetName || null} fonte="você" ausencia="sem nome" />
+                <LinhaDeFato rotulo="Conjunto" valor={draft.conjuntos[0]?.nome || null} fonte="você" ausencia="sem nome" />
                 <LinhaDeFato rotulo="Criativos e anúncios" valor={`${emitidas.length} criativo${emitidas.length === 1 ? '' : 's'} · ${emitidas.length} anúncio${emitidas.length === 1 ? '' : 's'}`} fonte="o compilador" />
                 <LinhaDeFato rotulo="Estado ao nascer" valor="Pausado em todos os níveis veiculáveis" fonte="a receita provada" />
                 <LinhaDeFato rotulo="Identidade do plano" valor={compilacao?.plano.plano_sha256 ?? null} fonte="o backend" ausencia="plano ainda não compilado" />
@@ -1382,8 +1650,7 @@ const MetaCriacaoPage: React.FC = () => {
               </Campo>
 
               {/* Dois atos separados, e a separação é o desenho: aprovar
-                  decide, criar executa. Um botão só faria a decisão e a
-                  execução caberem no mesmo clique. */}
+                  decide, criar executa. */}
               <div className="space-y-4">
                 <AcaoDominante
                   pode={
@@ -1427,21 +1694,9 @@ const MetaCriacaoPage: React.FC = () => {
 
           {/* ================================================================
               A OPERAÇÃO DURÁVEL — fora do portão da criação, de propósito.
-
-              ⚠️ Este bloco morava DENTRO de `capacidades.criarPausada`. Fechar
-              a criação no servidor fechava junto o recibo e o botão de
-              reconciliar — quer dizer, exatamente a saída segura de um
-              incidente sumia no momento em que ela mais importa. Ler um recibo
-              e reconciliar por leitura dependem só da autoridade do ledger; a
-              flag de criação governa o POST que faz nascer objeto.
-
-              Os controles que CRIAM continuam lá em cima, atrás do portão.
+              Ler um recibo e reconciliar por leitura dependem só da autoridade
+              do ledger; a flag de criação governa o POST que faz nascer objeto.
               ================================================================ */}
-          {/* ⚠️ `aprovacao` entra na condição: uma aprovação viva já é uma
-              operação em curso do ponto de vista do operador, e é dela que sai
-              o botão de reconciliar caso o despacho falhe no meio. Deixá-la de
-              fora esconderia a saída justamente no intervalo entre aprovar e
-              criar — o intervalo mais perigoso da tela. */}
           {referenciaAlvo && (
             <section
               className="space-y-4 rounded-lg border border-border/70 p-4"
@@ -1464,8 +1719,7 @@ const MetaCriacaoPage: React.FC = () => {
                 </p>
               )}
 
-              {/* ⚠️ Falha de LEITURA nunca vira "nenhum recibo". A operação pode
-                  existir; o que falhou foi a consulta. */}
+              {/* ⚠️ Falha de LEITURA nunca vira "nenhum recibo". */}
               {operacaoErro && operacaoErro.referencia === referenciaAlvo && !reciboVigente && (
                 <PainelDeBloqueio
                   titulo="Não foi possível ler o recibo desta operação"
@@ -1490,22 +1744,15 @@ const MetaCriacaoPage: React.FC = () => {
                 </BlocoDeEvidencia>
               )}
 
-              {/* ⚠️ O RECIBO INTEIRO MORA NUM COMPONENTE SÓ, e ele lê apenas o
-                  livro. A tabela antiga cruzava o recibo durável com o
-                  `read_back` da resposta HTTP: depois de um reload aquele
-                  objeto não existia mais e as colunas de leitura voltavam
-                  vazias sobre uma evidência que estava gravada. */}
               {reciboVigente && referenciaAlvo && (
                 <MetaOperationReceipt recibo={reciboVigente} referencia={referenciaAlvo} />
               )}
 
               {podeReconciliar && (
                 <div className="border-t border-border pt-4">
-                  {/* ⚠️ Reconciliar LÊ. Ela existe porque um passo ambíguo sem
-                      caminho de saída deixa o recibo aberto para sempre — e
-                      nunca porque reenviar seria uma opção. Não existe, e não
-                      pode existir, um botão "tentar criar de novo": depois de
-                      um despacho, repetir duplica. */}
+                  {/* ⚠️ Reconciliar LÊ. Não existe, e não pode existir, um botão
+                      "tentar criar de novo": depois de um despacho, repetir
+                      duplica. */}
                   <AcaoDominante
                     pode={ocupado === null}
                     enviando={ocupado === 'reconciliar'}
@@ -1563,9 +1810,25 @@ const MetaCriacaoPage: React.FC = () => {
           </div>
         </>
       );
+      // ⚠️ O `default` não é decoração. Sem ele, uma `EtapaId` nova sem `case`
+      // renderiza tela em branco — sem erro de compilação e sem erro de runtime,
+      // porque o `switch` simplesmente devolve `undefined`. Um passo em branco
+      // numa bancada de gasto é pior do que uma falha ruidosa.
+      default: return (
+        <PainelDeBloqueio
+          titulo="Esta etapa não tem conteúdo desenhado"
+          bloqueios={[{
+            codigo: 'META_STEP_WITHOUT_CONTENT',
+            severidade: 'alta',
+            titulo: `A etapa "${etapa}" existe no trilho e não tem tela`,
+            detalhe:
+              'Nada foi perdido do rascunho. Volte uma etapa e siga pelo trilho; '
+              + 'esta é uma falha da bancada, não do seu plano.',
+          }]}
+        />
+      );
     }
   })();
-
   return (
     <Layout>
       <div className="bancada-shell mx-auto max-w-[1480px] px-4 pb-24 pt-4 md:px-6 md:pt-6">

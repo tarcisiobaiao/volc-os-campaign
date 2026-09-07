@@ -178,6 +178,27 @@ export interface ResultadoDasContasMetaLocal {
   proxima_acao: 'preflight_somente_leitura';
 }
 
+/** O estado de uma conversão, tal como `trafego/meta/dominio.py` o fecha.
+ *
+ * ⚠️ `UNKNOWN` NÃO é um quarto sabor de "disponível": é a resposta que a Meta
+ * não permitiu concluir. `ESTADOS_DE_CONVERSAO` o lista ao lado de
+ * `UNKNOWN_FRESHNESS` (disparou, mas não se sabe quando) e de `INVALID` (o
+ * contrato do item quebrou) — e a União anterior OMITIA os três. Omitir na
+ * tipagem é como o desconhecido vira "disponível" na tela: o `switch` não tem
+ * ramo para ele, o default cai no otimista, e um item que ninguém classificou
+ * aparece elegível para otimização. */
+export type EstadoDaConversaoMeta =
+  /** Disponível, sem eixo de frescor — é o estado dos catálogos de público e
+   *  de geolocalização (`ESTADOS_DE_PUBLICO`, `ESTADOS_DE_GEOLOCALIZACAO`). */
+  | 'AVAILABLE'
+  | 'AVAILABLE_FIRED'
+  | 'AVAILABLE_NEVER_FIRED'
+  | 'UNKNOWN_FRESHNESS'
+  | 'ARCHIVED'
+  | 'UNAVAILABLE'
+  | 'UNKNOWN'
+  | 'INVALID';
+
 export interface ConversaoPersonalizadaMetaLocal {
   referencia_opaca: string;
   id_mascarado: string | null;
@@ -187,7 +208,110 @@ export interface ConversaoPersonalizadaMetaLocal {
   event_source_id_mascarado: string | null;
   first_fired_time: string | null;
   last_fired_time: string | null;
-  estado: 'AVAILABLE_FIRED' | 'AVAILABLE_NEVER_FIRED' | 'ARCHIVED' | 'UNAVAILABLE';
+  estado: EstadoDaConversaoMeta;
+  /** A razão fechada do desconhecimento, quando o estado é `UNKNOWN`. */
+  motivo_desconhecido?: string | null;
+}
+
+// ⚠️ Quem decide se um estado pode ser OFERECIDO é
+// `components/trafego/meta/conversoes.ts`, e é lá de propósito: elegibilidade e
+// frescor são dois eixos, com palavra, glifo e descrição próprios. Duplicar a
+// regra aqui criaria duas fontes que divergiriam no primeiro estado novo.
+
+/** O mesmo vocabulário serve públicos, lugares e fontes de mensuração:
+ *  `ESTADOS_DE_PUBLICO` e `ESTADOS_DE_GEOLOCALIZACAO` são subconjuntos do que
+ *  `ESTADOS_DE_CONVERSAO` já lista. Um alias, e não uma segunda união, porque
+ *  duas uniões divergiriam no primeiro estado novo do provedor. */
+export type EstadoDeItemDeCatalogoMeta = EstadoDaConversaoMeta;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CATÁLOGOS SELECIONÁVEIS — o envelope, e por que ele não pode ser achatado
+//
+// ⚠️ `A11`: `[]` completo, permissão negada, timeout, página truncada e leitura
+// vencida são CINCO respostas diferentes. Um `items: []` sozinho colapsa todas
+// em "vazio", e o operador conclui que apagaram o público dele. O envelope
+// carrega os cinco separados, e a tela é obrigada a distingui-los.
+//
+// ⚠️ `estado_do_catalogo` é um eixo ORTOGONAL a `estado`: uma leitura pode ter
+// itens E estar vencida. Fundir os dois num selo só esconderia a idade da lista
+// exatamente quando ela importa.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type EstadoDoCatalogoMeta =
+  | 'COM_ITENS' | 'VAZIO_COMPLETO' | 'PARCIAL' | 'INDISPONIVEL';
+
+export type FrescorDoCatalogoMeta = 'VIGENTE' | 'OBSOLETO';
+
+export interface EnvelopeDeCatalogoMeta<T> {
+  ok: boolean;
+  catalogo: string;
+  api_version: string;
+  referencia_opaca_da_conta: string;
+  estado: EstadoDoCatalogoMeta;
+  /** Código da causa quando `INDISPONIVEL` ou `PARCIAL`. Nunca prosa livre. */
+  motivo: string | null;
+  /** `true` = tentar de novo pode resolver. `false` = falta acesso. */
+  retryable: boolean;
+  items: T[];
+  total: number;
+  /** Itens que vieram malformados. Contados, não escondidos. */
+  invalidos: number;
+  desconhecidos: number;
+  /** `false` = existe mais do que você está vendo. */
+  completo: boolean;
+  paginas_lidas: number;
+  observado_em: string;
+  ttl_s: number;
+  expira_em: string;
+  estado_do_catalogo: FrescorDoCatalogoMeta;
+}
+
+export interface PublicoDoCatalogoMeta {
+  referencia_opaca: string;
+  id_mascarado: string | null;
+  nome: string;
+  /** CUSTOM, LOOKALIKE, WEBSITE… o que a Meta mandar, sem invenção. */
+  subtype: string | null;
+  delivery_status_code: number | null;
+  operation_status_code: number | null;
+  tamanho_aproximado_min: number | null;
+  tamanho_aproximado_max: number | null;
+  estado: EstadoDeItemDeCatalogoMeta;
+  motivo_desconhecido?: string | null;
+}
+
+export interface LugarDoCatalogoMeta {
+  /** ⚠️ A CHAVE CANÔNICA do compilador. Texto digitado jamais vira uma destas. */
+  key: string | null;
+  name: string | null;
+  type: string | null;
+  country_code: string | null;
+  region: string | null;
+  supports_region: boolean | null;
+  supports_city: boolean | null;
+  estado: EstadoDeItemDeCatalogoMeta;
+  motivo_desconhecido?: string | null;
+}
+
+export interface FonteDeMensuracaoMeta {
+  referencia_opaca: string;
+  id_mascarado: string | null;
+  nome: string;
+  /** ⚠️ `PIXEL` e `DATASET` são objetos DIFERENTES na Meta. `UNKNOWN` é "a
+   *  resposta não disse qual", e não pode virar nenhum dos dois. */
+  source_kind: 'PIXEL' | 'DATASET' | 'UNKNOWN';
+  last_fired_time: string | null;
+  estado: EstadoDeItemDeCatalogoMeta;
+  motivo_desconhecido?: string | null;
+}
+
+export interface CatalogoDeMensuracaoMeta {
+  ok: true;
+  /** ⚠️ Dois envelopes, e a separação é o contrato: pixel e conversão
+   *  personalizada são objetos distintos, e uma lista só faria o seletor de
+   *  otimização oferecer um no lugar do outro. */
+  fontes: EnvelopeDeCatalogoMeta<FonteDeMensuracaoMeta>;
+  conversoes: EnvelopeDeCatalogoMeta<ConversaoPersonalizadaMetaLocal>;
 }
 
 export interface ResultadoDoPreflightMetaLocal {
@@ -523,6 +647,189 @@ export interface ResultadoValidacaoPlanoMeta {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTRATO V2 — campanha + N conjuntos + N anúncios
+//
+// ⚠️ Estes tipos são a TRANSCRIÇÃO literal de `PedidoPlanoMetaV2` e vizinhos em
+// `backend/app/routers/trafego_meta_validacao.py`. O DTO é `extra="forbid"`:
+// um campo a mais volta 422 nomeando o campo. Por isso nada aqui é opcional
+// "por conveniência" — o que o servidor aceita como ausente é `| null`, e o que
+// ele exige não tem `?`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface OrcamentoMetaV2Input {
+  nivel: 'ADSET' | 'CAMPAIGN';
+  periodo: 'DAILY' | 'LIFETIME';
+  /** Unidade MENOR da moeda — centavos para BRL. Reais aqui fariam R$10,00
+   *  virar dez centavos, e o erro só apareceria na fatura. */
+  amount_minor: number;
+  currency: 'BRL';
+}
+
+export interface GeografiaMetaV2Input {
+  countries: string[];
+  region_keys: string[];
+  city_keys: string[];
+  zip_keys: string[];
+  custom_locations: Array<{
+    latitude: number; longitude: number; radius: number;
+    distance_unit: 'kilometer' | 'mile';
+  }>;
+  excluded_countries: string[];
+  excluded_region_keys: string[];
+  excluded_city_keys: string[];
+  excluded_zip_keys: string[];
+}
+
+export interface PublicoMetaV2Input {
+  mode: 'BROAD' | 'MANUAL' | 'EXISTING_CUSTOM' | 'EXISTING_LOOKALIKE';
+  geo: GeografiaMetaV2Input;
+  age_min: number;
+  age_max: number;
+  locale_refs: string[];
+  include_custom_refs: string[];
+  exclude_custom_refs: string[];
+  lookalike_refs: string[];
+  interest_refs: string[];
+  /** ⚠️ SEM `?`, e isso é o contrato. O DTO não tem default porque a Meta
+   *  assume 1 quando o campo não viaja: omitir LIGA a expansão de público. */
+  expansion: boolean;
+}
+
+export interface ConjuntoMetaV2Input {
+  adset_key: string;
+  name: string;
+  start_time: string;
+  end_time: string | null;
+  audience: PublicoMetaV2Input;
+  placements: { mode: 'FACEBOOK_ONLY' | 'MANUAL'; values: string[] };
+  measurement: {
+    purpose: 'REPORT_ONLY' | 'OPTIMIZE';
+    source_kind: 'PIXEL' | 'DATASET' | null;
+    source_ref: string | null;
+    custom_conversion_ref: string | null;
+    standard_event: string | null;
+  };
+  /** Presente só em ABO. Em CBO precisa ser `null`: os dois níveis juntos são
+   *  409 META_BUDGET_DUPLICATED. */
+  budget: OrcamentoMetaV2Input | null;
+}
+
+export interface AnuncioMetaV2Input {
+  variation_key: string;
+  /** ⚠️ A ligação explícita com o conjunto. Sem ela o backend recusa com
+   *  META_AD_ADSET_UNKNOWN em vez de adivinhar um pai. */
+  adset_key: string;
+  asset_ref: string;
+  creative_name: string;
+  ad_name: string;
+  message: string;
+  headline: string;
+  description: string;
+  call_to_action_type: string;
+  asset_rights_confirmed: boolean;
+  third_party_identity_cleared: boolean;
+  asset_policy_confirmed_at: string | null;
+}
+
+export interface PlanoMetaV2Input {
+  recipe_id: string;
+  account_ref: string;
+  page_ref: string;
+  instagram_actor_ref: string | null;
+  campaign_name: string;
+  destination_url: string;
+  /** Presente só em CBO; em ABO precisa ser `null`. */
+  campaign_budget: OrcamentoMetaV2Input | null;
+  special_ad_categories: string[];
+  special_categories_confirmed: boolean;
+  is_adset_budget_sharing_enabled: boolean;
+  adsets: ConjuntoMetaV2Input[];
+  ads: AnuncioMetaV2Input[];
+}
+
+export interface ModoDeOrcamentoMetaV2 {
+  id: string;
+  nivel: 'ADSET' | 'CAMPAIGN';
+  periodo: 'DAILY' | 'LIFETIME';
+  prova: string;
+  criar_liberado: boolean;
+}
+
+export interface ReceitaMetaV2 {
+  id: string;
+  rotulo: string;
+  descricao: string;
+  objetivo: string;
+  otimizacao: string;
+  exige_fonte_de_conversao: boolean;
+  propositos_de_mensuracao: Array<'REPORT_ONLY' | 'OPTIMIZE'>;
+  prova: string;
+  /** ⚠️ `false` fecha CRIAR, nunca compilar nem validar — é a validação que
+   *  produz a prova que falta. Ver `receitas.py`, seção "não provado". */
+  criar_liberado: boolean;
+  motivo_sem_prova: string | null;
+  modos_de_orcamento: ModoDeOrcamentoMetaV2[];
+}
+
+export interface CatalogoDeReceitasMeta {
+  ok: true;
+  api_version: 'v26.0';
+  receita_padrao: string;
+  receitas: ReceitaMetaV2[];
+  limites: {
+    conjuntos: number;
+    anuncios_por_conjunto: number;
+    anuncios_total: number;
+    classificacao: string;
+  };
+  idade: { min: number; max: number; motivo: string };
+}
+
+/** O resumo que a REVISÃO renderiza. Ele é a autoridade: `A33`/`F37` cobram que
+ *  rascunho e resumo não possam divergir, e a única forma de garantir isso é a
+ *  tela não ter outra fonte além desta. */
+export interface ResumoDoPlanoMetaV2 {
+  receita: {
+    id: string; rotulo: string; objetivo: string; otimizacao: string; prova: string;
+  };
+  orcamento: {
+    nivel: 'ADSET' | 'CAMPAIGN';
+    periodo: 'DAILY' | 'LIFETIME';
+    modo: string;
+    prova: string;
+    onde_a_verba_mora: string;
+  };
+  conjuntos: Array<{
+    adset_key: string;
+    nome: string;
+    orcamento_minor: number | null;
+    publico_modo: string;
+    publicos_incluidos: number;
+    publicos_excluidos: number;
+    expansao_advantage: boolean;
+    /** ⚠️ A frase de `A16` sai DAQUI. `false` proíbe a tela de dizer que só o
+     *  público selecionado será alcançado. */
+    promete_alcance_exclusivo: boolean;
+    posicionamentos: string[];
+    mensuracao_proposito: string;
+    mensuracao_altera_entrega: boolean;
+    anuncios: string[];
+  }>;
+  bloqueios_para_criar: string[];
+}
+
+export interface ResultadoCompilacaoMetaV2 extends ResultadoCompilacaoMeta {
+  contrato: 'V2';
+  resumo: ResumoDoPlanoMetaV2;
+}
+
+export interface ResultadoValidacaoPlanoMetaV2 extends ResultadoValidacaoPlanoMeta {
+  contrato: 'V2';
+  cobertura_explicada: string;
+  resumo: ResumoDoPlanoMetaV2;
+}
+
 /** O que a tela precisa mostrar antes de existir qualquer objeto na conta. */
 export interface AprovacaoCriacaoMeta {
   approval_id: string;
@@ -658,10 +965,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   let resp: Response;
   try {
+    // ⚠️ `Content-Type` só entra quando o corpo REALMENTE é JSON.
+    //
+    // Antes ele era injetado sempre. Um corpo `FormData` precisa que o
+    // navegador escreva `multipart/form-data; boundary=…` sozinho, e o
+    // `boundary` só existe no momento do envio: fixar o cabeçalho aqui produz
+    // um multipart sem fronteira, que o servidor recusa como corpo malformado.
+    // Sobrescrever também não resolve — passar `undefined` num objeto de
+    // cabeçalhos vira a string "undefined". A saída é NÃO declarar, e é o que
+    // `baixarComoBlobUrl` já fazia por não ter corpo nenhum.
+    // Só o corpo que o navegador precisa rotular sozinho perde o cabeçalho; um
+    // GET ou um POST com JSON continua exatamente como estava.
+    const corpo = init?.body;
+    const oNavegadorRotula = typeof FormData !== 'undefined' && corpo instanceof FormData;
     resp = await fetch(url(path), {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
+        ...(oNavegadorRotula ? {} : { 'Content-Type': 'application/json' }),
         ...(await autorizacao()),
         ...(init?.headers || {}),
       },
@@ -863,6 +1183,88 @@ export const pautadorApi = {
 
   validarPlanoMeta(plano: PlanoMetaPausadoInput): Promise<ResultadoValidacaoPlanoMeta> {
     return request('/api/trafego/meta/local/criacao/validar', {
+      method: 'POST',
+      body: JSON.stringify({ plano, confirmar_validate_only: true }),
+    });
+  },
+
+  /** Públicos personalizados e semelhantes que JÁ EXISTEM nesta conta.
+   *
+   * ⚠️ POST com corpo, e não GET com query, pelo mesmo motivo que `/preflight`:
+   * a referência opaca da conta é dado de operação, e uma query string entra em
+   * log de proxy, histórico do navegador e `Referer`.
+   *
+   * ⚠️ Selecionar daqui NUNCA cria público nem semelhante, e nenhuma lista de
+   * membros atravessa: o que volta são metadados do objeto.
+   *
+   * ⚠️ Custa leitura real da conta. Só sai por clique. */
+  catalogoDePublicosMeta(
+    referenciaOpaca: string,
+  ): Promise<EnvelopeDeCatalogoMeta<PublicoDoCatalogoMeta>> {
+    return request('/api/trafego/meta/local/catalogos/publicos', {
+      method: 'POST',
+      body: JSON.stringify({ referencia_opaca: referenciaOpaca }),
+    });
+  },
+
+  /** Pixels/datasets E conversões personalizadas, em DOIS envelopes. */
+  catalogoDeMensuracaoMeta(referenciaOpaca: string): Promise<CatalogoDeMensuracaoMeta> {
+    return request('/api/trafego/meta/local/catalogos/mensuracao', {
+      method: 'POST',
+      body: JSON.stringify({ referencia_opaca: referenciaOpaca }),
+    });
+  },
+
+  /** Busca de lugares no catálogo da Meta.
+   *
+   * ⚠️ A `key` devolvida É a chave que o compilador usa. O termo digitado é
+   * BUSCA, nunca chave: se o texto livre virasse `region_keys`, uma segmentação
+   * inventada teria cara de escolha do operador.
+   *
+   * `tipos` sai explícito porque o default da rota inclui `country`, e país
+   * nesta bancada é código ISO num campo próprio — deixar os dois caminhos
+   * abertos criaria duas formas de dizer a mesma coisa, que divergem. */
+  catalogoDeGeografiaMeta(entrada: {
+    referenciaOpaca: string;
+    termo: string;
+    tipos?: string[];
+    pais?: string | null;
+  }): Promise<EnvelopeDeCatalogoMeta<LugarDoCatalogoMeta>> {
+    return request('/api/trafego/meta/local/catalogos/geografia', {
+      method: 'POST',
+      body: JSON.stringify({
+        referencia_opaca: entrada.referenciaOpaca,
+        termo: entrada.termo,
+        tipos: entrada.tipos ?? ['region', 'city', 'zip'],
+        pais: entrada.pais ?? null,
+      }),
+    });
+  },
+
+  /** O catálogo de receitas do contrato V2, COM o nível de prova de cada uma.
+   *
+   * ⚠️ Leitura LOCAL: a rota devolve o registro do servidor e não toca a Meta.
+   * Por isso ela pode sair na montagem da página sem violar "nenhuma chamada
+   * externa sem clique" — o que a regra proíbe é falar com o provedor. */
+  receitasCriacaoMetaV2(): Promise<CatalogoDeReceitasMeta> {
+    return request('/api/trafego/meta/local/criacao/v2/receitas');
+  },
+
+  /** Compila o plano V2. Efeito externo declarado: NENHUM. */
+  compilarPlanoMetaV2(plano: PlanoMetaV2Input): Promise<ResultadoCompilacaoMetaV2> {
+    return request('/api/trafego/meta/local/criacao/v2/compilar', {
+      method: 'POST',
+      body: JSON.stringify(plano),
+    });
+  },
+
+  /** `validate_only` do plano V2 — por clique, e sem criar nada.
+   *
+   * ⚠️ Uma receita ou um modo de orçamento sem prova remota CHEGA aqui de
+   * propósito: é esta chamada que produz a prova que falta. O que a ausência de
+   * prova fecha é criar. */
+  validarPlanoMetaV2(plano: PlanoMetaV2Input): Promise<ResultadoValidacaoPlanoMetaV2> {
+    return request('/api/trafego/meta/local/criacao/v2/validar', {
       method: 'POST',
       body: JSON.stringify({ plano, confirmar_validate_only: true }),
     });

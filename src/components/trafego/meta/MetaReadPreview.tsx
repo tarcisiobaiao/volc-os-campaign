@@ -21,6 +21,19 @@ import {
 } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
 
+import { lerConversao, motivoLegivel } from './conversoes';
+
+/** O leito do selo por tom. A cor mora na borda e no fundo, nunca só nela:
+ *  a palavra e a descrição continuam sendo os portadores de significado. */
+const TINTA_DO_ESTADO: Record<string, string> = {
+  neutro: 'border-border bg-muted/50 text-foreground',
+  bom: 'border-success/25 bg-success/10 text-success',
+  verificado: 'border-verified/25 bg-verified/10 text-verified',
+  atencao: 'border-warning/25 bg-warning/10 text-warning',
+  ruim: 'border-destructive/25 bg-destructive/10 text-destructive',
+  info: 'border-info/25 bg-info/10 text-info',
+};
+
 function mensagem(erro: unknown): string {
   return erro instanceof PautadorApiError || erro instanceof Error
     ? erro.message
@@ -129,12 +142,39 @@ const Resultado: React.FC<{ prova: ResultadoDoPreflightMetaLocal }> = ({ prova }
           <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" aria-hidden /><h4 className="text-sm font-semibold">Mensuração disponível</h4></div>
           {conversoes.length ? (
             <div className="mt-3 divide-y divide-border rounded-lg border border-border">
-              {conversoes.map((conversao) => (
-                <div key={conversao.referencia_opaca} className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 text-xs">
-                  <div className="min-w-0"><p className="truncate font-medium text-foreground">{conversao.nome}</p><p className="mt-1 text-muted-foreground">{conversao.custom_event_type ?? 'evento não informado'} · {conversao.id_mascarado ?? 'ID oculto'}</p></div>
-                  <span className={cn('rounded-full border px-2 py-1 font-medium', conversao.estado === 'AVAILABLE_FIRED' ? 'border-success/25 bg-success/10 text-success' : 'border-warning/25 bg-warning/10 text-warning')}>{conversao.estado === 'AVAILABLE_FIRED' ? 'disparando' : conversao.estado.toLocaleLowerCase('pt-BR').replaceAll('_', ' ')}</span>
-                </div>
-              ))}
+              {/* ⚠️ ANTES, TUDO QUE NÃO FOSSE `AVAILABLE_FIRED` ERA AMARELO.
+                  Com os estados novos do backend isso significa que `UNKNOWN` —
+                  "a Meta não devolveu a flag" — apareceria como mais um aviso
+                  entre avisos, e `A12` proíbe exatamente isso: "não sei" não
+                  pode ser apresentado como um estado conhecido. O vocabulário
+                  agora mora em `conversoes.ts`, com dois eixos separados
+                  (elegibilidade e frescor) e um ramo seguro para o enum que
+                  esta tela ainda não conhece. */}
+              {conversoes.map((conversao) => {
+                const leitura = lerConversao(conversao.estado);
+                const causa = motivoLegivel(conversao.motivo_desconhecido);
+                return (
+                  <div key={conversao.referencia_opaca} className="flex flex-wrap items-start justify-between gap-3 px-3 py-3 text-xs">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{conversao.nome}</p>
+                      <p className="mt-1 text-muted-foreground">{conversao.custom_event_type ?? 'evento não informado'} · {conversao.id_mascarado ?? 'ID oculto'}</p>
+                      {/* O FRESCOR é o segundo eixo e vive numa linha própria:
+                          fundi-lo ao selo faria "elegível sem carimbo de
+                          disparo" parecer "inelegível". */}
+                      {leitura.frescor && <p className="mt-1 text-muted-foreground">frescor: {leitura.frescor}</p>}
+                      {causa && <p className="mt-1 max-w-[62ch] text-muted-foreground">causa: {causa}</p>}
+                      {!leitura.elegivel && <p className="mt-1 text-muted-foreground">não pode ser escolhida para otimizar</p>}
+                    </div>
+                    <span
+                      className={cn('shrink-0 rounded-full border px-2 py-1 font-medium', TINTA_DO_ESTADO[leitura.tom] ?? TINTA_DO_ESTADO.neutro)}
+                      title={`${leitura.palavra} — ${leitura.descricao}`}
+                    >
+                      {leitura.palavra}
+                      <span className="sr-only"> — {leitura.descricao}</span>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           ) : <p className="mt-3 rounded-lg border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">Nenhuma conversão personalizada foi devolvida nesta leitura. Isso não cria nem altera conversões.</p>}
         </div>
