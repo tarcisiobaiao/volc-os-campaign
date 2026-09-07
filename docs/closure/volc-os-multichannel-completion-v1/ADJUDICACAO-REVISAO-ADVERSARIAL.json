@@ -5,7 +5,7 @@
   "achados_confirmados_pelos_verificadores": 14,
   "base": "6aad83c48ed354b56239fbc7d127b723a6c38728",
   "head_inicial": "369585f5a22ceaced733e48580bc1035cf2ed5d3",
-  "head_de_fechamento": "065147934eb7a253649b0807582ab5c1b1c7867f",
+  "head_de_fechamento": "9c5e599 (ver git log; o SHA final está no relatório de handoff)",
   "data": "2026-09-06",
   "metodo": "Cada achado foi RE-REPRODUZIDO contra o HEAD antes de ser aceito ou refutado — os relatórios dos verificadores foram tratados como alegação, não como fato. As correções foram submetidas a análise de mutação: cada contraprova nova teve de FALHAR com o defeito reintroduzido em runtime.",
   "vocabulario_de_classificacao": [
@@ -15,7 +15,7 @@
     "REFUTED_WITH_COUNTERPROOF",
     "DEFERRED_NONBLOCKING"
   ],
-  "zero_mutacao_externa": "Nenhuma chamada real a Google Ads (read, validate_only ou mutate), Meta Ads, Supabase oficial, n8n ou WordPress. Nenhuma migration aplicada. Nenhum push. Toda reprodução usou dublês injetados e bloqueio de socket.",
+  "zero_mutacao_externa": "Nenhuma chamada real a Google Ads (read, validate_only ou mutate), Meta Ads, n8n ou WordPress. Nenhuma migration aplicada. Nenhum push. O delta não acrescenta nenhuma chamada externa, e cada arquivo de teste que ele tocou roda SOZINHO com socket bloqueado sem uma única tentativa. ⚠️ DIVULGAÇÃO HERDADA, medida e não mascarada: cinco testes PRÉ-EXISTENTES de test_trafego_contrato_canais.py exercitam GET /api/trafego/canais, que lê o espelho operacional — e neste ambiente isso resolve para o Supabase OFICIAL (database.agenciavolc.com.br). Rodar a suíte herdada tenta esses TCP connects; com socket bloqueado os testes passam igual (27 tentativas recusadas, nenhum assert cai). São leituras de rota, não escrita, e existem desde antes desta rodada — a leitura da rota não foi tocada pelo delta, e os dois testes que ESTA rodada acrescentou ao arquivo fazem zero tentativa. Registrado como dívida herdada, sem correção aqui.",
   "achados": [
     {
       "id": "01",
@@ -255,6 +255,11 @@
     {
       "item": "Frescor(parcial, conversoes=N) atravessa como medição",
       "porque_nao_corrigida": "plano_mensuracao.ESTADOS_SEM_CONCLUSAO não inclui 'parcial', então __post_init__ deixa construir parcial COM contagem. Dívida DECLARADA em voz alta no próprio código do delta, e hoje inalcançável pelo caminho de produção"
+    },
+    {
+      "item": "cinco testes de test_trafego_contrato_canais.py alcançam o Supabase oficial ao exercitar GET /api/trafego/canais",
+      "porque_nao_corrigida": "herdada e fora do escopo de fechamento; os testes passam com a conexão recusada, então não há falha mascarada — o que há é uma suíte que fala com o banco oficial quando a rede está aberta",
+      "correcao_sugerida": "dublar a porta de Supabase nesses cinco, como os arquivos irmãos já fazem"
     }
   ],
   "gates": {
@@ -327,6 +332,27 @@
         "correcao": "unificados em FALHA, com a causa dizendo qual dos dois; objetos_de volta à rota como pergunta, não como interruptor"
       }
     ],
-    "cegueira_de_teste_corrigida": "o dublê de Supabase da suíte de PRODUÇÃO do ledger não devolvia trafego_lote.canal (NOT NULL na tabela real), então os oito testes de rota daquele arquivo corriam pelo ramo 'não consegui derivar' sem que nenhum assert percebesse"
+    "cegueira_de_teste_corrigida": "o dublê de Supabase da suíte de PRODUÇÃO do ledger não devolvia trafego_lote.canal (NOT NULL na tabela real), então os oito testes de rota daquele arquivo corriam pelo ramo 'não consegui derivar' sem que nenhum assert percebesse",
+    "analise_de_mutacao": {
+      "mutacoes_rodadas": 24,
+      "mortas_de_saida": 17,
+      "sobreviventes_fechadas_em": "9c5e599",
+      "defeito_meu_que_a_lente_pegou": {
+        "gravidade": "P1",
+        "titulo": "o conserto do dublê do ledger quebrou a hermeticidade, e a ORDEM escondia",
+        "mecanismo": "acrescentar `canal` ao dublê de trafego_lote fez os oito testes de rota daquele arquivo percorrerem o read-back de verdade — que abre o cliente do Google por conta própria. Sozinho: 6 falhas. Na suíte inteira: verde, porque outro arquivo já havia deixado volc_ads.gads.client no sys.modules. Verde por ordem e vermelho sozinho é pior que vermelho sempre.",
+        "correcao": "o helper dubla o cliente e devolve as consultas emitidas",
+        "verificacao": "45 passed com socket bloqueado, zero tentativa externa"
+      },
+      "contraprovas_acrescentadas": [
+        "procedencia_do_item pede a coluna canal e a devolve (a costura do argumento inteiro não tinha guarda)",
+        "o par estado→ato INTEIRO (AUSENCIA_PROVADA podia virar 'nada a fazer')",
+        "o ramo 'não derivei o canal' é FALHA e bloqueia",
+        "a pista do cliente não vence nem quando o lote não declara canal",
+        "o veredito chega à trilha também no carimbo normal",
+        "a terceira guarda de sinal_indeterminado (contagem is None)",
+        "causa_do_sinal chega ao operador dentro do bloqueio"
+      ]
+    }
   }
 }
