@@ -330,10 +330,23 @@ async def ultimo_recibo(
         return remoto
     recibo = await _REPOSITORIO_PREVIEW.ultimo_recibo()
     if recibo is None:
-        return {"ok": True, "has_snapshot": False, "recibo": None, "persistencia": "NAO_EXECUTADA"}
+        # O estado do read model viaja junto: "as tabelas nao existem" e
+        # "nenhum sync rodou" sao respostas diferentes, e colapsar as duas
+        # mandava o operador procurar uma sincronizacao que nao poderia
+        # sequer ter persistido.
+        return {
+            "ok": True,
+            "has_snapshot": False,
+            "recibo": None,
+            "estado": remoto.get("estado", "SEM_SNAPSHOT"),
+            "motivo": remoto.get("motivo"),
+            "persistencia": "NAO_EXECUTADA",
+        }
     return {
         "ok": True,
         "has_snapshot": True,
+        "estado": "PREVIEW_EM_MEMORIA",
+        "estado_read_model": remoto.get("estado"),
         "recibo": {
             "run_id": recibo.run_id,
             "resultado": recibo.resultado,
@@ -376,28 +389,35 @@ async def inventario_contas_persistidas(
 async def inventario_persistido(
     entidade: str,
     request: Request,
-    conta_opaca: str | None = Query(default=None),
+    conta_ref: str | None = Query(default=None),
+    conta_opaca: str | None = Query(default=None, deprecated=True),
+    cursor: str | None = Query(default=None, max_length=400),
+    tamanho: int = Query(default=100, ge=1, le=500),
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     del quem
     _exigir_host_local(request)
     try:
-        return await _repositorio_read_model().listar(entidade, conta_opaca)
+        return await _repositorio_read_model().listar(
+            entidade, conta_ref or conta_opaca, cursor=cursor, tamanho=tamanho)
     except dom.ContratoMetaInvalido as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from None
 
 
-@router.get("/read-model/{entidade}/{opaque_id}")
+@router.get("/read-model/{entidade}/{referencia}")
 async def detalhe_persistido(
     entidade: str,
-    opaque_id: str,
+    referencia: str,
     request: Request,
+    conta_ref: str | None = Query(default=None),
+    conta_opaca: str | None = Query(default=None, deprecated=True),
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     del quem
     _exigir_host_local(request)
     try:
-        return await _repositorio_read_model().detalhe(entidade, opaque_id)
+        return await _repositorio_read_model().detalhe(
+            entidade, referencia, conta_ref or conta_opaca)
     except dom.ContratoMetaInvalido as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from None
 

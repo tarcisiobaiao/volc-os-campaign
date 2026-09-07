@@ -326,12 +326,17 @@ def test_read_model_sem_migration_e_estado_nomeado_em_vez_de_500() -> None:
         repo = RepositorioMetaReadModelSupabase(SupaSemSchema())
         contas = await repo.contas()
         recibo = await repo.ultimo_recibo()
-        assert contas == {
-            'ok': True, 'has_snapshot': False, 'contas': [],
-            'motivo': 'meta_schema_not_applied',
-        }
+        assert contas['ok'] is True
+        assert contas['has_snapshot'] is False
+        assert contas['contas'] == []
+        assert contas['motivo'] == 'meta_schema_not_applied'
+        # O estado nomeado passou a viajar junto do motivo: "as tabelas nao
+        # existem" precisa ser distinguivel de "nenhum snapshot ainda", e o
+        # chamador nao pode perder essa diferenca pelo caminho.
+        assert contas['estado'] == 'SCHEMA_NAO_APLICADO'
         assert recibo['has_snapshot'] is False
         assert recibo['motivo'] == 'meta_schema_not_applied'
+        assert recibo['estado'] == 'SCHEMA_NAO_APLICADO'
 
     asyncio.run(cenario())
 
