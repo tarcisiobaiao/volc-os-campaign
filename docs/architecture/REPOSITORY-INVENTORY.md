@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-07T17:33:16-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-07T18:00:49-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
 - 698 arquivos: 511 Markdown e 187 SQL;
-- 695 versionados e 3 ainda não versionados;
+- 698 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 125 SQL com palavras de mutação de alto risco.
 
@@ -122,8 +122,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260907190100_meta_worker_fencing_rollback.sql` | `sql-needs-review` | 10 | 19 |
 | `supabase/migrations/20260907210000_meta_read_model_consistency.sql` | `sql-needs-review` | 5 | 15 |
 | `supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql` | `sql-needs-review` | 2 | 3 |
-| `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | 0 | 0 |
-| `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | 0 | 0 |
+| `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | 2 | 8 |
+| `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
@@ -135,9 +135,9 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_02_rollback.sql` | `sql-needs-review` | 2 | 3 |
 | `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | 18 | 55 |
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | 1 | 0 |
-| `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | 0 | 0 |
-| `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | 0 | 0 |
-| `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | 0 | 0 |
+| `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | 3 | 8 |
+| `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
@@ -267,9 +267,9 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260907190100_meta_worker_fencing_rollback.sql` | `sql-needs-review` | high | 10 | 19 |
 | `supabase/migrations/20260907210000_meta_read_model_consistency.sql` | `sql-needs-review` | high | 5 | 15 |
 | `supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql` | `sql-needs-review` | high | 2 | 3 |
-| `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 0 | 0 |
-| `supabase/migrations/20260908020000_meta_asset_registration.sql` | `sql-needs-review` | medium | 0 | 0 |
-| `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | high | 0 | 0 |
+| `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 2 | 8 |
+| `supabase/migrations/20260908020000_meta_asset_registration.sql` | `sql-needs-review` | medium | 5 | 8 |
+| `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | high | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | high | 33 | 126 |
@@ -284,9 +284,9 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_02_rollback.sql` | `sql-needs-review` | high | 2 | 3 |
 | `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | high | 18 | 55 |
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | high | 0 | 0 |
-| `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | high | 0 | 0 |
-| `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | high | 0 | 0 |
+| `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | high | 3 | 8 |
+| `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | high | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
