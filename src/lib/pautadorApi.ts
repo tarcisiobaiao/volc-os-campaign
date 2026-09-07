@@ -361,6 +361,10 @@ export interface PassoDoReciboMeta {
   state: 'IN_FLIGHT' | 'CREATED' | 'AMBIGUOUS' | 'FAILED';
   has_external_id: boolean;
   error_code: string | null;
+  /** Divergência de leitura sobre um objeto que EXISTE. Diferente de erro. */
+  readback_error?: string | null;
+  prepared_at?: string | null;
+  closed_at?: string | null;
 }
 
 export interface ReciboCriacaoMeta {
@@ -408,7 +412,18 @@ export interface ResultadoReconciliacaoMeta {
   ok: true;
   efeito_externo: 'NENHUM';
   passos_ambiguos: number;
+  /** Passos ainda em voo: jovens demais para serem promovidos, e que NÃO podem
+   *  ser escondidos — silenciá-los devolveria "nada travado" sobre um despacho
+   *  sem conclusão. */
+  passos_em_voo?: string[];
+  /** Órfãos que esta chamada tornou visíveis. Promover não despacha nada. */
+  passos_promovidos?: string[];
   conclusoes: ConclusaoDaReconciliacaoMeta[];
+  recibo: ReciboCriacaoMeta;
+}
+
+export interface ResultadoReciboCriacaoMeta {
+  ok: true;
   recibo: ReciboCriacaoMeta;
 }
 
@@ -621,6 +636,21 @@ export const pautadorApi = {
       body: JSON.stringify({
         approval_id: approvalId, plano_sha256_esperado: planoSha256,
       }),
+    });
+  },
+
+  /** O recibo durável de uma operação, por referência opaca.
+   *
+   *  ⚠️ É o que permite REABRIR uma operação depois de fechar a aba. Sem ele, o
+   *  recibo e o `approval_id` viviam só em `useState`: um reload apagava a
+   *  única saída segura de um incidente. A rota já existia no backend e não
+   *  tinha cliente. Ela depende só da autoridade do LEDGER — a flag de criação
+   *  governa o POST que faz nascer objeto, não a leitura do que já nasceu.
+   */
+  reciboCriacaoMeta(approvalId: string): Promise<ResultadoReciboCriacaoMeta> {
+    return request('/api/trafego/meta/local/criacao/recibo', {
+      method: 'POST',
+      body: JSON.stringify({ approval_id: approvalId }),
     });
   },
 

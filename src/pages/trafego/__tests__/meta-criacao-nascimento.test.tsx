@@ -25,6 +25,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PautadorApiError } from '@/lib/pautadorApi';
 import MetaCriacaoPage from '@/pages/trafego/MetaCriacaoPage';
 
 Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
@@ -41,6 +42,7 @@ const { api } = vi.hoisted(() => ({
     aprovarCriacaoMeta: vi.fn(),
     criarCampanhaPausadaMeta: vi.fn(),
     reconciliarCriacaoMeta: vi.fn(),
+    reciboCriacaoMeta: vi.fn(),
   },
 }));
 
@@ -95,6 +97,17 @@ const validacaoAceita = {
     registrada: true,
     validation_id: 'validation-0001',
     validated_at: '2026-09-05T12:00:00+00:00',
+  },
+};
+
+/** O plano compilado que o dublê devolve. Extraído para constante porque os
+ *  testes de promessa adiada precisam resolver a MESMA carga fora do `beforeEach`. */
+const COMPILACAO_FEITA = {
+  ok: true as const, efeito_externo: 'NENHUM' as const,
+  plano: {
+    account_ref: 'metaacct_conta_de_prova', destination_url: 'https://focogenial.com/',
+    api_version: 'v26.0', plano_sha256: 'b'.repeat(64), estado_ao_nascer: 'PAUSED',
+    operacoes: [],
   },
 };
 
@@ -171,18 +184,15 @@ beforeEach(() => {
     receita: 'OUTCOME_TRAFFIC_WEBSITE_LPV_STATIC_PAUSED',
   });
   api.previewAtivoMeta.mockReset().mockRejectedValue(new Error('sem prévia no teste'));
-  api.compilarPlanoMeta.mockReset().mockResolvedValue({
-    ok: true, efeito_externo: 'NENHUM',
-    plano: {
-      account_ref: conta.referencia_opaca, destination_url: 'https://focogenial.com/',
-      api_version: 'v26.0', plano_sha256: HASH, estado_ao_nascer: 'PAUSED',
-      operacoes: [],
-    },
-  });
+  api.compilarPlanoMeta.mockReset().mockResolvedValue(COMPILACAO_FEITA);
   api.validarPlanoMeta.mockReset().mockResolvedValue(validacaoAceita);
   api.aprovarCriacaoMeta.mockReset().mockResolvedValue(aprovacaoCriada);
   api.criarCampanhaPausadaMeta.mockReset().mockResolvedValue(nascimentoFeito);
   api.reconciliarCriacaoMeta.mockReset();
+  // ⚠️ Sem referência na URL a página NÃO lê recibo nenhum ao montar. O
+  // dublê existe para provar isso: se ele fosse chamado, o teste veria.
+  api.reciboCriacaoMeta.mockReset().mockRejectedValue(
+    new Error('nao deveria ler recibo sem referencia na URL'));
 });
 
 afterEach(cleanup);
@@ -398,12 +408,12 @@ describe('Revisão Meta — o recibo sanitizado', () => {
     await ateAValidacao();
     await aprovarEcriar();
 
-    const recibo = await screen.findByText(/Recibo do nascimento/i);
+    const recibo = await screen.findByText(/Recibo durável da operação/i);
     expect(recibo).toBeTruthy();
     expect(screen.getByText(/Criada pausada/i)).toBeTruthy();
     expect(screen.getByText(/4 de 4/)).toBeTruthy();
 
-    const tabela = screen.getByRole('table', { name: /Leitura de volta/i });
+    const tabela = screen.getByRole('table', { name: /Estado de cada passo da operação/i });
     const linhaCampanha = within(tabela).getByRole('rowheader', { name: 'campaign' })
       .closest('tr') as HTMLElement;
     expect(within(linhaCampanha).getByText('PAUSED')).toBeTruthy();
@@ -446,5 +456,169 @@ describe('Revisão Meta — o recibo sanitizado', () => {
     await waitFor(() => expect(api.reconciliarCriacaoMeta).toHaveBeenCalledWith('approval-0001'));
     expect(await screen.findByText(/Nenhum · apenas leitura/i)).toBeTruthy();
     expect(screen.getByText(/a conta tem mais de um objeto com este nome/i)).toBeTruthy();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// T04 — CONCORRÊNCIA DA INTERFACE E RECIBO REABRÍVEL
+// ---------------------------------------------------------------------------
+// `F04` e `F05` do pacote `docs/specs/traffic-operational-closure-v2/`.
+//
+// Antes: aprovar, criar e reconciliar aplicavam a resposta SEM conferir o selo
+// do rascunho, e compilar/validar só liberavam `ocupado` quando o selo ainda
+// correspondia. As duas metades erradas do mesmo mecanismo — uma resposta velha
+// entrava, e a bancada travava.
+
+/** Uma promessa que o teste resolve na hora que quiser. */
+function adiada<T>() {
+  let resolver!: (valor: T) => void;
+  let rejeitar!: (erro: unknown) => void;
+  const promessa = new Promise<T>((ok, falha) => { resolver = ok; rejeitar = falha; });
+  return { promessa, resolver, rejeitar };
+}
+
+describe('Revisão Meta — resposta adiada não contamina outro rascunho', () => {
+  it('não aplica uma aprovação antiga depois de o rascunho mudar', async () => {
+    const porta = adiada<{ ok: true; efeito_externo: 'NENHUM'; aprovacao: typeof aprovacaoCriada.aprovacao }>();
+    api.aprovarCriacaoMeta.mockReturnValue(porta.promessa);
+
+    await ateAValidacao();
+    await confirmar();
+    fireEvent.click(screen.getByRole('button', { name: /^Aprovar plano$/i }));
+    await waitFor(() => expect(api.aprovarCriacaoMeta).toHaveBeenCalled());
+
+    // O operador muda o orçamento ENQUANTO a aprovação está no ar.
+    fireEvent.click(screen.getByRole('button', { name: /^Orçamento/i }));
+    fireEvent.change(screen.getByLabelText(/Orçamento diário/i), { target: { value: '77,00' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+
+    await act(async () => { porta.resolver(aprovacaoCriada); await Promise.resolve(); });
+
+    // A aprovação descrevia o plano de R$ 10,00. Ela NÃO pode reaparecer sobre
+    // um rascunho de R$ 77,00 — o servidor recusaria pelo hash, e a tela não
+    // pode depender disso para não mentir.
+    expect(screen.queryByText(/Aprovação registrada/i)).toBeNull();
+    // E a bancada continua utilizável: `ocupado` foi liberado.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /conferir o plano/i }))
+        .toHaveProperty('disabled', false));
+  });
+
+  it('libera a bancada mesmo quando a resposta ficou obsoleta', async () => {
+    const porta = adiada<Awaited<ReturnType<typeof api.compilarPlanoMeta>>>();
+    api.compilarPlanoMeta.mockReturnValueOnce(porta.promessa);
+
+    abrir();
+    await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Anúncios/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
+    await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalled());
+
+    // Editar durante o voo muda o selo — e era exatamente aqui que a bancada
+    // travava para sempre, porque o `finally` só liberava com o selo igual.
+    fireEvent.click(screen.getByRole('button', { name: /^Orçamento/i }));
+    fireEvent.change(screen.getByLabelText(/Orçamento diário/i), { target: { value: '33,00' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+
+    await act(async () => { porta.resolver(COMPILACAO_FEITA); await Promise.resolve(); });
+
+    const conferir = await screen.findByRole('button', { name: /conferir o plano/i });
+    expect(conferir).toHaveProperty('disabled', false);
+  });
+
+  it('mantém a execução já despachada quando o operador edita outro rascunho', async () => {
+    await ateAValidacao();
+    await aprovarEcriar();
+    expect(await screen.findByText(/Recibo durável da operação/i)).toBeTruthy();
+
+    // O despacho ACONTECEU. Editar um campo não desfaz objetos numa conta real,
+    // e apagar o recibo da tela apagaria a saída de um incidente.
+    fireEvent.click(screen.getByRole('button', { name: /^Orçamento/i }));
+    fireEvent.change(screen.getByLabelText(/Orçamento diário/i), { target: { value: '55,00' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+
+    expect(screen.getByText(/Recibo durável da operação/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Reconciliar por leitura/i })).toBeTruthy();
+    // A DECISÃO caiu junto, como deve.
+    expect(screen.queryByText(/Aprovação registrada/i)).toBeNull();
+  });
+});
+
+describe('Revisão Meta — o recibo sobrevive ao reload', () => {
+  function reabrir(referencia: string) {
+    return render(
+      <MemoryRouter initialEntries={[`/trafego/meta/nova?etapa=revisao&operacao=${referencia}`]}>
+        <MetaCriacaoPage />
+      </MemoryRouter>,
+    );
+  }
+
+  it('reidrata a operação por referência opaca, com a criação FECHADA', async () => {
+    // O pior momento possível: o servidor fechou a criação e o operador só tem
+    // a URL. Antes, isso deixava o recibo e a reconciliação inalcançáveis.
+    api.capacidadesCriacaoMeta.mockResolvedValue(capacidades(false));
+    api.reciboCriacaoMeta.mockReset().mockResolvedValue({
+      ok: true, recibo: nascimentoFeito.recibo,
+    });
+
+    reabrir('approval-0001');
+    await waitFor(() =>
+      expect(api.reciboCriacaoMeta).toHaveBeenCalledWith('approval-0001'));
+    expect(await screen.findByText(/Recibo durável da operação/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Reconciliar por leitura/i })).toBeTruthy();
+
+    // Criar continua fechado — reabrir um recibo não abre autoridade nenhuma.
+    expect(screen.queryByRole('button', { name: /Criar campanha PAUSED/i })).toBeNull();
+    expect(api.criarCampanhaPausadaMeta).not.toHaveBeenCalled();
+    // E montar a página não dispara reconciliação sozinha.
+    expect(api.reconciliarCriacaoMeta).not.toHaveBeenCalled();
+    // Nenhum id cru da Meta atravessa a tela.
+    expect(document.body.textContent).not.toContain(ID_META_CRU);
+  });
+
+  it('falha de leitura não vira "nenhum recibo"', async () => {
+    api.reciboCriacaoMeta.mockReset().mockRejectedValue(
+      new PautadorApiError('A autoridade persistente não respondeu.', 503));
+
+    reabrir('approval-0001');
+    await waitFor(() => expect(api.reciboCriacaoMeta).toHaveBeenCalled());
+
+    // ⚠️ A operação pode existir. O que falhou foi a CONSULTA, e a tela precisa
+    // dizer a diferença em vez de mostrar uma ausência tranquilizadora.
+    expect(await screen.findByText(/Não foi possível ler o recibo desta operação/i))
+      .toBeTruthy();
+    expect(screen.getByText(/falha de LEITURA, não a ausência de um recibo/i)).toBeTruthy();
+    expect(screen.queryByText(/Recibo durável da operação/i)).toBeNull();
+  });
+
+  it('nenhum estado ambíguo recebe um botão de tentar de novo', async () => {
+    api.reciboCriacaoMeta.mockReset().mockResolvedValue({
+      ok: true,
+      recibo: {
+        ...nascimentoFeito.recibo,
+        steps: nascimentoFeito.recibo.steps.map((passo, indice) => (
+          indice === 1
+            ? { ...passo, state: 'AMBIGUOUS' as const, has_external_id: false }
+            : passo
+        )),
+      },
+    });
+
+    reabrir('approval-0001');
+    expect(await screen.findByText(/Recibo durável da operação/i)).toBeTruthy();
+
+    // A palavra do estado diz que o objeto PODE existir, e a única ação
+    // oferecida é ler. Reenviar, depois de um despacho, duplica.
+    expect(screen.getByText(/ambíguo · pode existir/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Reconciliar por leitura/i })).toBeTruthy();
+    for (const proibido of [/tentar novamente/i, /tentar de novo/i, /reenviar/i, /criar de novo/i]) {
+      expect(screen.queryByRole('button', { name: proibido })).toBeNull();
+    }
   });
 });

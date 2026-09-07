@@ -48,8 +48,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AprovacaoCriacaoMeta, AtivoCriacaoMeta, ContaMetaLocal, PautadorApiError, pautadorApi,
-  ResultadoCompilacaoMeta, ResultadoCriacaoPausadaMeta, ResultadoReconciliacaoMeta,
-  ResultadoValidacaoPlanoMeta,
+  ReciboCriacaoMeta, ResultadoCompilacaoMeta, ResultadoCriacaoPausadaMeta,
+  ResultadoReconciliacaoMeta, ResultadoValidacaoPlanoMeta,
 } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
@@ -82,6 +82,47 @@ const CTAS: readonly [string, string][] = [
   ['GET_QUOTE', 'Solicitar cotação'],
   ['CONTACT_US', 'Fale conosco'],
 ];
+
+/** Estado de cada passo, em palavra e tom — nunca só por cor.
+ *
+ * ⚠️ `AMBIGUOUS` NÃO é um erro, e a palavra tem de dizer isso: o objeto pode
+ * existir na conta. Chamá-lo de "falhou" convidaria exatamente a reação errada,
+ * que é tentar de novo. `IN_FLIGHT` também não é sucesso nem fracasso: é um
+ * despacho sem conclusão registrada. */
+const PALAVRA_DO_PASSO: Record<string, string> = {
+  IN_FLIGHT: 'despachado, sem conclusão',
+  CREATED: 'criado pausado',
+  AMBIGUOUS: 'ambíguo · pode existir',
+  FAILED: 'recusado pela Meta',
+};
+
+const TOM_DO_PASSO: Record<string, 'verificado' | 'atencao' | 'ruim' | 'neutro'> = {
+  IN_FLIGHT: 'atencao',
+  CREATED: 'verificado',
+  AMBIGUOUS: 'atencao',
+  FAILED: 'ruim',
+};
+
+const GLIFO_DO_PASSO: Record<string, React.ComponentType<{ className?: string }>> = {
+  IN_FLIGHT: CircleDot,
+  CREATED: CircleCheck,
+  AMBIGUOUS: CircleDot,
+  FAILED: Lock,
+};
+
+/** O que a palavra AFIRMA — vai para o leitor de tela, não só para o `title`.
+ *
+ * ⚠️ Cada frase existe para impedir a reação errada. "Ambíguo" sem explicação
+ * convida a tentar de novo; com a explicação, convida a reconciliar. */
+const DESCRICAO_DO_PASSO: Record<string, string> = {
+  IN_FLIGHT:
+    'o pedido saiu e a conclusão não foi registrada; o objeto pode existir na conta',
+  CREATED: 'o objeto existe na conta e nasceu pausado',
+  AMBIGUOUS:
+    'não está provado se o objeto existe; reconciliar por leitura é o caminho, '
+    + 'e reenviar duplicaria',
+  FAILED: 'a Meta recusou o pedido, então está provado que nada foi criado',
+};
 
 const inicioPadrao = () => {
   const data = new Date(Date.now() + 30 * 60 * 1000);
@@ -246,6 +287,13 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
 const MetaCriacaoPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const pedida = params.get('etapa') as EtapaId | null;
+  /** A referência OPACA da operação, e é só ela que viaja na URL.
+   *
+   * ⚠️ Nem token, nem id da Meta, nem o plano congelado: o `approval_id` é um
+   * UUID que só significa alguma coisa dentro do banco, e o servidor ainda
+   * confere se quem pede é quem aprovou. Uma referência malformada não chega
+   * perto de credencial nenhuma — ela morre na validação da rota. */
+  const operacaoRef = params.get('operacao');
   const etapa: EtapaId = ETAPAS.some((item) => item.id === pedida) ? pedida! : 'base';
   const indice = ETAPAS.findIndex((item) => item.id === etapa);
 
@@ -264,6 +312,16 @@ const MetaCriacaoPage: React.FC = () => {
   const [aprovacao, setAprovacao] = useState<AprovacaoCriacaoMeta | null>(null);
   const [nascimento, setNascimento] = useState<ResultadoCriacaoPausadaMeta | null>(null);
   const [reconciliacao, setReconciliacao] = useState<ResultadoReconciliacaoMeta | null>(null);
+  /** A OPERAÇÃO DURÁVEL, e ela é deliberadamente separada do rascunho.
+   *
+   * ⚠️ `invalidar()` derruba tudo o que descreve o rascunho — compilação,
+   * validação, aprovação. A operação NÃO entra nessa lista: ela descreve o que
+   * já foi despachado, e editar um campo da tela não desfaz um objeto criado
+   * numa conta real. Ela é recuperada por referência opaca e sobrevive ao
+   * reload. */
+  const [operacao, setOperacao] = useState<ReciboCriacaoMeta | null>(null);
+  const [operacaoCarregando, setOperacaoCarregando] = useState(false);
+  const [operacaoErro, setOperacaoErro] = useState<string | null>(null);
   const [confirmacaoMarcada, setConfirmacaoMarcada] = useState(false);
   const [confirmacaoDigitada, setConfirmacaoDigitada] = useState('');
 
@@ -279,6 +337,18 @@ const MetaCriacaoPage: React.FC = () => {
    * camada que impede o pedido de sair duas vezes do navegador. */
   const emVoo = useRef(false);
 
+  /** Grava a referência da operação na URL, preservando a etapa atual.
+   *
+   * `replace` de propósito: reabrir um recibo não é um passo de navegação que
+   * o operador queira desfazer com o botão voltar. */
+  const fixarOperacaoNaUrl = useCallback((referencia: string) => {
+    setParams((atuais) => {
+      const proximos = new URLSearchParams(atuais);
+      proximos.set('operacao', referencia);
+      return proximos;
+    }, { replace: true });
+  }, [setParams]);
+
   // ⚠️ Toda resposta assíncrona carrega o selo do rascunho que a pediu. Sem
   // isso, o operador troca a URL enquanto a Meta responde e a resposta antiga
   // marca como validado um plano que já não existe.
@@ -293,8 +363,13 @@ const MetaCriacaoPage: React.FC = () => {
     // ninguém aprovou. O servidor recusaria pelo hash — e a tela não pode
     // depender disso para não mentir.
     setAprovacao(null);
-    setNascimento(null);
-    setReconciliacao(null);
+    // ⚠️ `nascimento`, `reconciliacao` e `operacao` NÃO são limpos aqui.
+    //
+    // Eles descrevem uma execução que já saiu do navegador. Um objeto criado
+    // numa conta real não deixa de existir porque alguém trocou o texto de um
+    // anúncio, e apagar o recibo da tela apagaria justamente o caminho de saída
+    // de um incidente. O que muda de rascunho é a DECISÃO; a EXECUÇÃO é outra
+    // coisa, e o recibo continua endereçável pela referência na URL.
     setConfirmacaoMarcada(false);
     setConfirmacaoDigitada('');
     setAvisos([]);
@@ -328,6 +403,42 @@ const MetaCriacaoPage: React.FC = () => {
       .finally(() => vivo && setCarregando(false));
     return () => { vivo = false; };
   }, []);
+
+  /** REIDRATA A OPERAÇÃO a partir da referência na URL.
+   *
+   * ⚠️ Esta é a correção de `F04`. Antes, aprovação, nascimento e reconciliação
+   * viviam só em `useState`, e o `approval_id` — a ÚNICA chave que o backend
+   * aceita para consultar ou reconciliar — vivia junto. Fechar a aba apagava a
+   * saída segura de um incidente, permanentemente.
+   *
+   * ⚠️ E ele NÃO depende da flag de criação. Ler um recibo e reconciliar por
+   * leitura dependem só da autoridade do ledger; a flag de criação governa o
+   * POST que faz nascer objeto. Confundir as duas deixaria o operador sem
+   * caminho de saída exatamente quando ele mais precisa.
+   *
+   * Montar a página não dispara nada além desta LEITURA: nenhuma chamada à
+   * Meta sai daqui, e reconciliar continua exigindo um clique.
+   */
+  useEffect(() => {
+    if (!operacaoRef) return;
+    let vivo = true;
+    setOperacaoCarregando(true);
+    setOperacaoErro(null);
+    pautadorApi.reciboCriacaoMeta(operacaoRef)
+      .then((resultado) => { if (vivo) setOperacao(resultado.recibo); })
+      .catch((exc) => {
+        // ⚠️ Falha de leitura NÃO vira "nenhum recibo". A operação pode existir;
+        // o que falhou foi a consulta, e o operador precisa saber a diferença.
+        if (vivo) {
+          setOperacaoErro(
+            exc instanceof PautadorApiError
+              ? exc.message
+              : 'Não foi possível ler o recibo desta operação.');
+        }
+      })
+      .finally(() => { if (vivo) setOperacaoCarregando(false); });
+    return () => { vivo = false; };
+  }, [operacaoRef]);
 
   useEffect(() => {
     if (!draft.accountRef) { setPaginas([]); setImagens([]); setVideos([]); return; }
@@ -505,7 +616,12 @@ const MetaCriacaoPage: React.FC = () => {
     } catch (exc) {
       if (meu === selo.current) setAvisos(avisosDoErro(exc));
     } finally {
-      if (meu === selo.current) setOcupado(null);
+      // ⚠️ SEM condição. A versão anterior só liberava o `ocupado` quando o
+      // selo ainda correspondia — e editar o rascunho durante a requisição
+      // muda o selo. O resultado era a bancada travada para sempre: toda ação
+      // dominante exige `ocupado === null`. Descartar a RESPOSTA obsoleta é
+      // correto; deixar a tela ocupada por causa dela, não.
+      setOcupado(null);
     }
   };
   const validar = async () => {
@@ -519,7 +635,7 @@ const MetaCriacaoPage: React.FC = () => {
     } catch (exc) {
       if (meu === selo.current) setAvisos(avisosDoErro(exc));
     } finally {
-      if (meu === selo.current) setOcupado(null);
+      setOcupado(null);
     }
   };
 
@@ -531,23 +647,33 @@ const MetaCriacaoPage: React.FC = () => {
    */
   const umaVezSo = async (
     rotulo: 'aprovar' | 'criar' | 'reconciliar',
-    ato: () => Promise<void>,
+    ato: (aindaEDoMesmoRascunho: () => boolean) => Promise<void>,
   ) => {
     if (emVoo.current) return;
     emVoo.current = true;
+    // ⚠️ O SELO ENTROU AQUI, e antes ele não existia nestes três atos.
+    //
+    // `compilar` e `validar` já o conferiam; aprovar, criar e reconciliar
+    // aplicavam a resposta sem vínculo nenhum. Se o operador trocasse a conta,
+    // a peça ou o texto durante a requisição, uma APROVAÇÃO ANTIGA voltava a
+    // aparecer sobre um rascunho novo — e a tela oferecia criar um plano que
+    // ninguém tinha aprovado. O servidor recusaria pelo hash, mas a tela não
+    // pode depender disso para não mentir.
+    const meu = ++selo.current;
+    const meuAinda = () => meu === selo.current;
     setOcupado(rotulo);
     setAvisos([]);
     try {
-      await ato();
+      await ato(meuAinda);
     } catch (exc) {
-      setAvisos(avisosDoErro(exc));
+      if (meuAinda()) setAvisos(avisosDoErro(exc));
     } finally {
       emVoo.current = false;
       setOcupado(null);
     }
   };
 
-  const aprovar = () => umaVezSo('aprovar', async () => {
+  const aprovar = () => umaVezSo('aprovar', async (aindaEDoMesmoRascunho) => {
     const prova = validacao?.prova_duravel;
     if (!validacao?.ok || !prova?.registrada || !prova.validation_id) {
       throw new PautadorApiError(
@@ -560,20 +686,58 @@ const MetaCriacaoPage: React.FC = () => {
       validationId: prova.validation_id,
       confirmacaoDigitada,
     });
+    // ⚠️ APROVAR ainda não criou nada, então a resposta obsoleta é DESCARTADA.
+    // Aplicá-la faria uma aprovação do rascunho antigo reaparecer sobre o novo.
+    if (!aindaEDoMesmoRascunho()) return;
     setAprovacao(resultado.aprovacao);
   });
 
   const criar = () => umaVezSo('criar', async () => {
     if (!aprovacao) return;
+    const referencia = aprovacao.approval_id;
     const resultado = await pautadorApi.criarCampanhaPausadaMeta(
-      aprovacao.approval_id, aprovacao.plano_sha256);
+      referencia, aprovacao.plano_sha256);
+    // ⚠️ AQUI A RESPOSTA NUNCA É DESCARTADA, e a diferença em relação a
+    // `aprovar` é a única que importa: o despacho JÁ ACONTECEU. Objetos podem
+    // existir na conta. Jogar fora o recibo porque o operador editou outro
+    // campo enquanto a Meta respondia esconderia a execução exatamente quando
+    // ela mais precisa ser vista.
+    //
+    // Ela vai para a OPERAÇÃO, que `invalidar()` não limpa, e a referência
+    // opaca entra na URL para sobreviver ao reload.
     setNascimento(resultado);
+    setOperacao(resultado.recibo);
+    fixarOperacaoNaUrl(referencia);
   });
 
   const reconciliar = () => umaVezSo('reconciliar', async () => {
-    if (!aprovacao) return;
-    setReconciliacao(await pautadorApi.reconciliarCriacaoMeta(aprovacao.approval_id));
+    const referencia = operacaoRef || aprovacao?.approval_id;
+    if (!referencia) return;
+    const resultado = await pautadorApi.reconciliarCriacaoMeta(referencia);
+    // Leitura de uma operação real: o resultado descreve o que existe na conta,
+    // não o rascunho da tela. Ele também não é descartado por selo.
+    setReconciliacao(resultado);
+    setOperacao(resultado.recibo);
+    fixarOperacaoNaUrl(referencia);
   });
+
+  /** O recibo que a tela mostra: o da operação recuperada, ou o do nascimento
+   *  desta sessão. Uma fonte só, para a tabela não contar duas histórias. */
+  const reciboVigente = operacao ?? nascimento?.recibo ?? null;
+  const operacaoTemIncidente = Boolean(
+    reciboVigente?.steps.some(
+      (passo) => passo.state !== 'CREATED' || passo.readback_error),
+  );
+  const desfechoDaOperacao = !reciboVigente
+    ? null
+    : reciboVigente.steps.every((passo) => passo.state === 'CREATED')
+      ? (reciboVigente.steps.some((passo) => passo.readback_error)
+        ? 'Criada pausada, com divergência de leitura'
+        : 'Criada pausada')
+      : 'Incompleta · precisa de adjudicação por leitura';
+  /** ⚠️ Reconciliar depende da REFERÊNCIA, não da flag de criação nem de haver
+   *  uma aprovação viva em memória. É a saída de um incidente. */
+  const podeReconciliar = Boolean(operacaoRef || aprovacao);
 
   const linhasDoPedido: LinhaDoPedido[] = [
     { rotulo: 'Conta', valor: conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null, fonte: 'a Meta, agora' },
@@ -1144,7 +1308,66 @@ const MetaCriacaoPage: React.FC = () => {
                 </div>
               </div>
 
-              {aprovacao && !nascimento && (
+            </div>
+          )}
+
+          {/* ================================================================
+              A OPERAÇÃO DURÁVEL — fora do portão da criação, de propósito.
+
+              ⚠️ Este bloco morava DENTRO de `capacidades.criarPausada`. Fechar
+              a criação no servidor fechava junto o recibo e o botão de
+              reconciliar — quer dizer, exatamente a saída segura de um
+              incidente sumia no momento em que ela mais importa. Ler um recibo
+              e reconciliar por leitura dependem só da autoridade do ledger; a
+              flag de criação governa o POST que faz nascer objeto.
+
+              Os controles que CRIAM continuam lá em cima, atrás do portão.
+              ================================================================ */}
+          {/* ⚠️ `aprovacao` entra na condição: uma aprovação viva já é uma
+              operação em curso do ponto de vista do operador, e é dela que sai
+              o botão de reconciliar caso o despacho falhe no meio. Deixá-la de
+              fora esconderia a saída justamente no intervalo entre aprovar e
+              criar — o intervalo mais perigoso da tela. */}
+          {(operacao || nascimento || operacaoRef || aprovacao) && (
+            <section
+              className="space-y-4 rounded-lg border border-border/70 p-4"
+              aria-labelledby="meta-operacao-titulo"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 id="meta-operacao-titulo" className="font-display text-lg font-semibold text-foreground">
+                  Operação despachada
+                </h3>
+                {operacaoRef && (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    referência {operacaoRef.slice(0, 8)}…
+                  </span>
+                )}
+              </div>
+
+              {operacaoCarregando && (
+                <p className="text-sm text-muted-foreground" aria-live="polite">
+                  Lendo o recibo desta operação…
+                </p>
+              )}
+
+              {/* ⚠️ Falha de LEITURA nunca vira "nenhum recibo". A operação pode
+                  existir; o que falhou foi a consulta. */}
+              {operacaoErro && !operacao && (
+                <PainelDeBloqueio
+                  titulo="Não foi possível ler o recibo desta operação"
+                  bloqueios={[{
+                    codigo: 'META_RECEIPT_READ_FAILED',
+                    severidade: 'alta',
+                    titulo: operacaoErro,
+                    detalhe:
+                      'A operação pode existir: isto é uma falha de LEITURA, não a '
+                      + 'ausência de um recibo. Tente ler de novo antes de concluir '
+                      + 'qualquer coisa sobre o que existe na conta.',
+                  }]}
+                />
+              )}
+
+              {aprovacao && !nascimento && !operacao && (
                 <BlocoDeEvidencia titulo="Aprovação registrada" tom="verificado">
                   <LinhaDeFato rotulo="Operações autorizadas" valor={String(aprovacao.operacoes)} fonte="o backend" />
                   <LinhaDeFato rotulo="Passos aprovados" valor={aprovacao.manifesto.join(' → ')} fonte="o backend" />
@@ -1153,50 +1376,79 @@ const MetaCriacaoPage: React.FC = () => {
                 </BlocoDeEvidencia>
               )}
 
-              {nascimento && (
+              {reciboVigente && (
                 <>
-                  <BlocoDeEvidencia titulo="Recibo do nascimento" tom="verificado">
-                    <LinhaDeFato rotulo="Desfecho" valor="Criada pausada" fonte="o backend" />
-                    <LinhaDeFato rotulo="Identidade do plano" valor={nascimento.plano_sha256} fonte="o backend" />
-                    <LinhaDeFato rotulo="Passos fechados" valor={`${nascimento.recibo.steps.filter((p) => p.state === 'CREATED').length} de ${nascimento.recibo.steps.length}`} fonte="o recibo durável" />
+                  <BlocoDeEvidencia
+                    titulo="Recibo durável da operação"
+                    tom={operacaoTemIncidente ? 'atencao' : 'verificado'}
+                  >
+                    <LinhaDeFato rotulo="Desfecho" valor={desfechoDaOperacao} fonte="o recibo durável" />
+                    <LinhaDeFato rotulo="Identidade do plano" valor={reciboVigente.plan_sha256} fonte="o backend" />
+                    <LinhaDeFato
+                      rotulo="Passos fechados"
+                      valor={`${reciboVigente.steps.filter((passo) => passo.state === 'CREATED').length} de ${reciboVigente.steps.length}`}
+                      fonte="o recibo durável"
+                    />
+                    {/* ⚠️ Validade da APROVAÇÃO e estado da EXECUÇÃO são fatos
+                        diferentes. Uma aprovação expirada fecha novo despacho e
+                        não apaga o que já foi criado. */}
+                    <LinhaDeFato rotulo="Estado da aprovação" valor={reciboVigente.state} fonte="o backend" />
                   </BlocoDeEvidencia>
+
                   <div className="overflow-x-auto rounded-lg border border-border/70">
-                    <table className="w-full min-w-[520px] text-sm">
-                      <caption className="sr-only">Leitura de volta de cada objeto criado</caption>
+                    <table className="w-full min-w-[560px] text-sm">
+                      <caption className="sr-only">Estado de cada passo da operação</caption>
                       <thead className="bg-muted/40 text-left text-muted-foreground">
                         <tr>
                           <th scope="col" className="px-3 py-2 font-medium">Objeto</th>
+                          <th scope="col" className="px-3 py-2 font-medium">Estado</th>
                           <th scope="col" className="px-3 py-2 font-medium">Estado lido</th>
                           <th scope="col" className="px-3 py-2 font-medium">Veicula</th>
-                          <th scope="col" className="px-3 py-2 font-medium">Recibo</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/60">
-                        {nascimento.recibo.steps.map((passo) => (
-                          <tr key={passo.name}>
-                            <th scope="row" className="px-3 py-2 text-left font-medium text-foreground">{passo.name}</th>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {nascimento.read_back[passo.name]?.status ?? 'não veiculável'}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {nascimento.read_back[passo.name]?.veiculavel ? 'Sim · pausado' : 'Não'}
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {passo.state === 'CREATED' ? 'Fechado' : passo.state}
-                            </td>
-                          </tr>
-                        ))}
+                        {reciboVigente.steps.map((passo) => {
+                          const leitura = nascimento?.read_back[passo.name];
+                          return (
+                            <tr key={passo.name}>
+                              <th scope="row" className="px-3 py-2 text-left font-medium text-foreground">
+                                {passo.name}
+                              </th>
+                              <td className="px-3 py-2">
+                                <ChipDeEstado
+                                  glifo={GLIFO_DO_PASSO[passo.state]}
+                                  palavra={PALAVRA_DO_PASSO[passo.state]}
+                                  descricao={DESCRICAO_DO_PASSO[passo.state]}
+                                  tom={TOM_DO_PASSO[passo.state]}
+                                />
+                                {passo.readback_error && (
+                                  <span className="ml-2 text-xs text-warning">
+                                    existe, mas divergiu do aprovado
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {leitura?.status ?? '—'}
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {leitura ? (leitura.veiculavel ? 'Sim · pausado' : 'Não') : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </>
               )}
 
-              {aprovacao && (
+              {podeReconciliar && (
                 <div className="border-t border-border pt-4">
-                  {/* Reconciliar LÊ. Ela existe porque um passo ambíguo sem
+                  {/* ⚠️ Reconciliar LÊ. Ela existe porque um passo ambíguo sem
                       caminho de saída deixa o recibo aberto para sempre — e
-                      nunca porque reenviar seria uma opção. */}
+                      nunca porque reenviar seria uma opção. Não existe, e não
+                      pode existir, um botão "tentar criar de novo": depois de
+                      um despacho, repetir duplica. */}
                   <AcaoDominante
                     pode={ocupado === null}
                     enviando={ocupado === 'reconciliar'}
@@ -1205,10 +1457,32 @@ const MetaCriacaoPage: React.FC = () => {
                   >
                     Reconciliar por leitura
                   </AcaoDominante>
+                  <p className="mt-2 max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
+                    Ler a conta e fechar o que estiver provado. Nenhum objeto é criado
+                    aqui, e ausência depois de um despacho nunca vira permissão para
+                    enviar de novo.
+                  </p>
                   {reconciliacao && (
-                    <BlocoDeEvidencia titulo="Reconciliação por leitura" tom={reconciliacao.passos_ambiguos > 0 ? 'atencao' : 'verificado'}>
+                    <BlocoDeEvidencia
+                      titulo="Reconciliação por leitura"
+                      tom={reconciliacao.passos_ambiguos > 0 ? 'atencao' : 'verificado'}
+                    >
                       <LinhaDeFato rotulo="Passos ambíguos" valor={String(reconciliacao.passos_ambiguos)} fonte="o recibo durável" />
                       <LinhaDeFato rotulo="Efeito externo" valor="Nenhum · apenas leitura" fonte="o backend" />
+                      {(reconciliacao.passos_promovidos?.length ?? 0) > 0 && (
+                        <LinhaDeFato
+                          rotulo="Passos recuperados"
+                          valor={`${reconciliacao.passos_promovidos!.join(', ')} · estavam em voo sem conclusão`}
+                          fonte="o recibo durável"
+                        />
+                      )}
+                      {(reconciliacao.passos_em_voo?.length ?? 0) > 0 && (
+                        <LinhaDeFato
+                          rotulo="Ainda em voo"
+                          valor={`${reconciliacao.passos_em_voo!.join(', ')} · recentes demais para adjudicar`}
+                          fonte="o recibo durável"
+                        />
+                      )}
                       {reconciliacao.conclusoes.map((item) => (
                         <LinhaDeFato key={item.passo} rotulo={item.passo} valor={item.explicacao} fonte="a leitura da conta" />
                       ))}
@@ -1216,7 +1490,7 @@ const MetaCriacaoPage: React.FC = () => {
                   )}
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">
