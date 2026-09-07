@@ -73,6 +73,12 @@ class SnapshotMetaCanonico:
     #: watermark, e o recibo nao pode afirmar que ela esta completa.
     insights_completos: bool = True
     motivo_incompleto: str | None = None
+    #: A hierarquia so chega aqui COMPLETA: `ler_hierarquia` levanta erro ao
+    #: estourar o teto de paginas, porque uma hierarquia parcial nunca pode
+    #: sobrescrever uma projecao boa. O campo existe assim mesmo para que um
+    #: caminho futuro tolerante a parcialidade nao consiga afirmar completude
+    #: por omissao — e porque a RPC RECUSA um snapshot que nao a declare.
+    hierarquia_completa: bool = True
 
     def payload_rpc(self) -> dict[str, Any]:
         return {
@@ -83,6 +89,15 @@ class SnapshotMetaCanonico:
             "window": self.janela,
             "observed_at": self.observado_em,
             "idempotency_key": self.idempotency_key,
+            # Mesma chave, sob o nome que a RPC exige para reconhecer que ela
+            # NAO carrega o instante da leitura. Sem este campo a RPC aceita a
+            # volatil e carimba `chave_origem: volatil` no recibo, deixando a
+            # degradacao visivel em vez de silenciosa.
+            "stable_idempotency_key": self.idempotency_key,
+            # Obrigatorio. Marcar ausencia a partir de uma leitura parcial
+            # apagaria objetos que existem, entao a RPC recusa o snapshot que
+            # nao declare completude em vez de adivinhar.
+            "hierarchy_complete": self.hierarquia_completa,
             "snapshot_hash": self.snapshot_hash,
             "page_count": self.leitura.paginas_lidas,
             "complete": self.insights_completos,
@@ -129,6 +144,7 @@ def montar_snapshot_canonico(
     *,
     insights_completos: bool = True,
     motivo_incompleto: str | None = None,
+    hierarquia_completa: bool = True,
 ) -> SnapshotMetaCanonico:
     dom.instante_utc(observado_em, campo="observado_em")
     if leitura.conta_externa != conta.id_externo:
@@ -183,6 +199,7 @@ def montar_snapshot_canonico(
         snapshot_hash=snapshot_hash,
         insights_completos=insights_completos,
         motivo_incompleto=motivo_incompleto,
+        hierarquia_completa=hierarquia_completa,
     )
 
 
