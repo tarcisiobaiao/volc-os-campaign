@@ -1,0 +1,72 @@
+{
+  "documento": "CANARY-AUTHORIZATION-REQUEST",
+  "contrato": "META_OPERATOR_GO_LIVE_V1",
+  "estado": "CANARY_AUTHORIZATION_REQUIRED",
+  "autorizado": false,
+  "objetos_criados": 0,
+  "campanhas_criadas": 0,
+  "adsets_criados": 0,
+  "ads_criados": 0,
+  "efeito_deste_documento": "NENHUM",
+  "como_a_ficha_e_produzida": {
+    "rota": "POST /api/trafego/meta/local/criacao/v2/canario/ficha",
+    "o_que_ela_faz": "compila o plano localmente para ter o hash EXATO do que seria criado",
+    "o_que_ela_nao_faz": "não cria, não valida remotamente, não guarda autorização, não agenda",
+    "funcao_pura": "backend/app/trafego/meta_execucao/contrato_v2.py::ficha_de_canario"
+  },
+  "conta_opaca": "NAO_ESCOLHIDA_PELO_OPERADOR",
+  "pagina_opaca": "NAO_ESCOLHIDA_PELO_OPERADOR",
+  "lp": "NAO_ESCOLHIDA_PELO_OPERADOR",
+  "peca_ref": "NAO_ESCOLHIDA_PELO_OPERADOR",
+  "orcamento": "NAO_ESCOLHIDO_PELO_OPERADOR",
+  "contagem_prevista": {
+    "campanha": 1,
+    "conjunto": 1,
+    "anuncio": 1,
+    "nota": "o primeiro canário do contrato é exatamente isto; um plano maior não é o canário"
+  },
+  "estado_ao_nascer": "PAUSED",
+  "plano_sha256": "NAO_COMPILADO__EXIGE_CONTA_E_CREDENCIAL",
+  "tracking": {
+    "template_versionado": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
+    "camadas": [
+      {
+        "id": "COMPILADO_LOCAL",
+        "prova": "o template está no payload, entra no hash e é lido de volta do plano",
+        "nao_prova": "que a Meta aceita este criativo"
+      },
+      {
+        "id": "ROOTS_REMOTO",
+        "prova": "a Meta aceitou campanha e criativo sob validate_only",
+        "nao_prova": "que o conjunto e o anúncio seriam aceitos, que a macro expande, e que existe receita"
+      },
+      {
+        "id": "EXPANSAO_REAL",
+        "prova": "a macro virou um campaign.id real e sobreviveu aos redirects até a LP",
+        "nao_prova": "que o valor chegou à dimensão financeira",
+        "exige": "uma campanha ENTREGANDO — autorização separada"
+      },
+      {
+        "id": "RECEITA_NO_GAM",
+        "prova": "utm_campaign_value bateu com campaign_id no join financeiro",
+        "nao_prova": "nada além do período e do escopo medidos",
+        "exige": "entrega real e janela de coleta — autorização separada"
+      }
+    ]
+  },
+  "provas_faltantes": [
+    "o operador não escolheu conta, Página, LP nem peça nesta rodada",
+    "nenhum validate_only foi disparado: não existe recibo durável para hash nenhum",
+    "o schema Meta NÃO está aplicado no Supabase oficial — sem ele o recibo durável não tem onde ser gravado, e criar sem recibo é criar sem poder reconciliar",
+    "META_CREATE_PAUSED_ENABLED e META_CREATE_LEDGER_WRITE_ENABLED estão fechadas neste servidor",
+    "a elegibilidade a Shop da conta escolhida não foi conferida (META_SHOP_REDIRECT_CLEARED é por conta)",
+    "a expansão real da macro {{campaign.id}} e a chegada da receita ao GAM exigem entrega real"
+  ],
+  "o_que_este_documento_NAO_autoriza": [
+    "criar Campaign, AdSet, Ad ou Creative — nem em PAUSED",
+    "ativar qualquer objeto",
+    "ligar agenda n8n ou backfill",
+    "enviar evento CAPI, criar público ou definir conversão"
+  ],
+  "proximo_ato_unico": "o operador escolhe UMA conta e clica em validar o plano atual; a resposta produz o recibo durável, e só então a ficha sai com hash e provas para uma autorização nominal"
+}

@@ -1,0 +1,421 @@
+{
+  "documento": "CHECKPOINT-RESULTS",
+  "contrato": "META_OPERATOR_GO_LIVE_V1",
+  "regra": "Requisito não exercitado recebe NOT_PROVEN/WAITING_OWNER com motivo e próximo ato. Nunca PASS por ausência de erro.",
+  "resumo": {
+    "NOT_PROVEN": 5,
+    "WAITING_OWNER": 6,
+    "LOCAL_PASS": 35
+  },
+  "checkpoints": [
+    {
+      "id": "CP0",
+      "estado": "LOCAL_PASS",
+      "nota": "branch, HEAD e ancestralidade conferidos; base 4c2d17a é ancestral de b3afa8b; nenhum writer concorrente sobre os mesmos arquivos."
+    },
+    {
+      "id": "CP1",
+      "estado": "WAITING_OWNER",
+      "nota": "Achado: nenhuma tabela e nenhuma RPC Meta existe no Supabase oficial. Aplicar exige psql, e o ambiente só expõe PostgREST."
+    },
+    {
+      "id": "CP2",
+      "estado": "LOCAL_PASS",
+      "nota": "ABO/CBO, múltiplos conjuntos, público e conversões ligados ponta a ponta no contrato, no compilador e na tela. Catálogo real só é consultado por ato do operador."
+    },
+    {
+      "id": "CP3",
+      "estado": "LOCAL_PASS_COM_BLOQUEIO_DE_VIDEO",
+      "nota": "Importação individual/ZIP e registro de imagem completos e provados. Vídeo declarado BLOCKED com causa."
+    },
+    {
+      "id": "CP4",
+      "estado": "WAITING_OWNER",
+      "nota": "Bindings adjudicados e testes de interface verdes, mas a inspeção VISUAL autenticada não aconteceu: a extensão do navegador não conecta nesta sessão."
+    },
+    {
+      "id": "CP5",
+      "estado": "WAITING_OWNER",
+      "nota": "Gerador, validador e migration prontos e provados. Zero workflows criados: o item de credencial não existe no cofre do n8n."
+    },
+    {
+      "id": "CP6",
+      "estado": "PARCIAL",
+      "nota": "Ficha do canário e camadas de prova entregues. Nenhum validate_only disparado; nenhum objeto criado."
+    }
+  ],
+  "checks": [
+    {
+      "id": "A01",
+      "task": "T01",
+      "estado": "NOT_PROVEN",
+      "prova": "Checksums 16/16 conferidos contra disco e contra o commit carimbado; a lista de apply só vem de --lista-apply, nunca digitada; nenhum arquivo de rollback aparece em apply.",
+      "evidencia": "backend/tests/test_schema_perfil_meta.py; scripts/verificar_perfil_schema_meta.py --perfil CREATE_ONLY|META_READ_MODEL (exit 0)",
+      "falta_para_fechar": "O catálogo OFICIAL foi lido só por existência (PostgREST), não por coluna/constraint/assinatura/grant. O leitor completo corrigido nunca rodou contra banco: isso exige psql, e o ambiente só expõe PostgREST."
+    },
+    {
+      "id": "A02",
+      "task": "T01",
+      "estado": "WAITING_OWNER",
+      "prova": "A ordem única da união dos dois perfis foi derivada e travada em teste (7 arquivos, compartilhadas uma vez).",
+      "evidencia": "backend/tests/test_schema_perfil_meta.py",
+      "falta_para_fechar": "Nada foi aplicado. O achado do CP1 é que NENHUMA tabela e NENHUMA RPC Meta existe hoje no oficial."
+    },
+    {
+      "id": "A03",
+      "task": "T01",
+      "estado": "LOCAL_PASS",
+      "prova": "Na migration NOVA, provado em Postgres descartável com papéis reais: service_role NÃO faz INSERT direto (só a RPC escreve) e FAZ SELECT; RLS ligada e forçada; a cerca recusa token errado e token já usado.",
+      "evidencia": "docs/closure/meta-operator-go-live-v1/prova-sql-registro-de-midia.sh — 25/25 asserções",
+      "falta_para_fechar": "Para os perfis EXISTENTES, nada pôde ser provado no oficial: eles não estão aplicados."
+    },
+    {
+      "id": "A04",
+      "task": "T01",
+      "estado": "LOCAL_PASS",
+      "prova": "/health do backend vivo devolve startup_reconciliation=DISABLED e routers_ausentes=[]; nenhuma rotina de startup escreve.",
+      "evidencia": "curl http://localhost:8010/health"
+    },
+    {
+      "id": "A05",
+      "task": "T02",
+      "estado": "LOCAL_PASS",
+      "prova": "DTO V2 com extra=forbid: campo desconhecido é 422 com o nome do campo. `expansion` NÃO tem default — omitir é 422, porque na Meta omitir LIGA o Advantage+.",
+      "evidencia": "backend/tests/test_meta_rotas_v2.py::test_campo_desconhecido_vira_422_com_o_nome_do_campo, ::test_expansao_advantage_e_obrigatoria_no_dto"
+    },
+    {
+      "id": "A06",
+      "task": "T02",
+      "estado": "LOCAL_PASS",
+      "prova": "V1 INTACTO. Para a mesma campanha, V1 e V2 emitem payloads idênticos campo a campo em campaign, adset e creative.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_v2_emite_os_mesmos_payloads_que_o_v1_para_a_mesma_campanha, ::test_v1_continua_compilando_sem_tocar_no_v2"
+    },
+    {
+      "id": "A07",
+      "task": "T03",
+      "estado": "LOCAL_PASS",
+      "prova": "ABO emite verba+lance no conjunto e nada na campanha; CBO o inverso; os dois níveis juntos são recusados no contrato, antes de qualquer rede.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_abo_emite_verba_no_conjunto_e_nunca_na_campanha, ::test_cbo_emite_verba_e_lance_na_campanha_e_nenhum_no_conjunto, ::test_orcamento_nos_dois_niveis_e_recusado_antes_de_compilar"
+    },
+    {
+      "id": "A08",
+      "task": "T03",
+      "estado": "LOCAL_PASS",
+      "prova": "Troca ABO/CBO e diário/total em DOIS TEMPOS na tela, com a consequência escrita; minor units validadas (float de reais não atravessa).",
+      "evidencia": "src/pages/trafego/__tests__/meta-criacao-v2.test.tsx; backend/tests/test_meta_contrato_v2.py::test_valor_em_reais_como_float_nao_atravessa"
+    },
+    {
+      "id": "A09",
+      "task": "T03",
+      "estado": "LOCAL_PASS",
+      "prova": "Reordenar conjuntos não troca adset_key nem o mapa anúncio→conjunto; as dependências citam adset:{key} e creative:{key}.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_multiplos_conjuntos_mantem_chave_apos_reordenar, ::test_dependencias_do_anuncio_citam_o_conjunto_certo"
+    },
+    {
+      "id": "A10",
+      "task": "T03",
+      "estado": "LOCAL_PASS",
+      "prova": "A saga de criação NÃO foi reescrita; suas provas de fencing/ambiguidade continuam verdes. Para o ato NOVO (registro de mídia), o mesmo contrato foi provado do zero.",
+      "evidencia": "backend/tests/test_meta_recovery_durable.py (intacto); backend/tests/test_meta_registro_de_midia.py::test_timeout_vira_ambiguo_e_nao_fracasso"
+    },
+    {
+      "id": "A11",
+      "task": "T04",
+      "estado": "LOCAL_PASS",
+      "prova": "Cinco estados distintos e testados: VAZIO_COMPLETO, INDISPONIVEL/permissão, INDISPONIVEL/timeout, PARCIAL e OBSOLETO — este último num eixo ortogonal.",
+      "evidencia": "backend/tests/test_meta_catalogos_selecionaveis.py; backend/tests/test_meta_rotas_catalogos.py::test_catalogo_de_publicos_entrega_o_envelope_inteiro"
+    },
+    {
+      "id": "A12",
+      "task": "T04",
+      "estado": "LOCAL_PASS",
+      "prova": "O achado central do pacote, corrigido: flag AUSENTE vira UNKNOWN e nunca AVAILABLE. Controle de mutação executado — restaurando bool(get(...)), 4 contraprovas centrais falham.",
+      "evidencia": "backend/tests/test_meta_catalogos_selecionaveis.py"
+    },
+    {
+      "id": "A13",
+      "task": "T04",
+      "estado": "LOCAL_PASS",
+      "prova": "Referência de outra conta não resolve, e o isolamento é CONSEQUÊNCIA de a lista vir da conta certa, não de um if: referencia_opaca_objeto é sha256 de mão única.",
+      "evidencia": "backend/tests/test_meta_rotas_v2.py::test_publico_de_outra_conta_nao_resolve, ::test_conta_fora_da_credencial_nao_resolve"
+    },
+    {
+      "id": "A14",
+      "task": "T05",
+      "estado": "LOCAL_PASS",
+      "prova": "Inclusões e exclusões chegam ao payload resolvidas e entram no hash; conflito é recusado localmente.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_publicos_incluidos_e_excluidos_chegam_ao_payload_resolvidos, ::test_mesmo_publico_incluido_e_excluido_e_recusado",
+      "falta_para_fechar": "Read-back do targeting exige objeto real criado — autorização separada."
+    },
+    {
+      "id": "A15",
+      "task": "T05",
+      "estado": "LOCAL_PASS",
+      "prova": "País/região/cidade/CEP usam chave de catálogo; texto livre é recusado; exclusões preservadas; BR deixou de ser fixo escondido.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_texto_livre_nao_vira_chave_de_geografia, ::test_exclusao_geografica_chega_ao_payload, ::test_raio_valido_chega_ao_payload"
+    },
+    {
+      "id": "A16",
+      "task": "T05",
+      "estado": "LOCAL_PASS",
+      "prova": "promete_alcance_exclusivo é derivado no servidor e vira FALSE quando a expansão está ligada; a tela lê esse campo em vez de decidir sozinha.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_expansao_ligada_derruba_a_promessa_de_alcance_exclusivo; backend/tests/test_meta_rotas_v2.py::test_resumo_nao_promete_alcance_exclusivo_com_expansao_ligada"
+    },
+    {
+      "id": "A17",
+      "task": "T05",
+      "estado": "NOT_PROVEN",
+      "prova": "Idade fora da faixa do produto é recusada; a faixa é declarada com o motivo em /v2/receitas.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_faixa_etaria_fora_do_produto_e_recusada",
+      "falta_para_fechar": "IDIOMAS e SEGMENTAÇÃO DETALHADA não têm catálogo provado: a seleção é aceita no contrato e RECUSADA na resolução, com META_AUDIENCE_CATALOG_NOT_PROVEN. É bloqueio nomeado, não capacidade entregue."
+    },
+    {
+      "id": "A18",
+      "task": "T05",
+      "estado": "LOCAL_PASS",
+      "prova": "Instagram sem identidade bloqueia o plano; plataforma fora do vocabulário v26 é recusada; Facebook-only não se amplia sozinho.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_instagram_sem_identidade_bloqueia_o_plano, ::test_plataforma_fora_do_vocabulario_e_recusada, ::test_facebook_only_nao_se_amplia_sozinho"
+    },
+    {
+      "id": "A19",
+      "task": "T06",
+      "estado": "LOCAL_PASS",
+      "prova": "REPORT_ONLY produz payload de conjunto IDÊNTICO ao de um plano sem mensuração — comparação de dicionário inteiro, não de um campo. OPTIMIZE exige fonte e evento elegíveis.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_relatar_conversao_nao_muda_o_payload_do_conjunto, ::test_otimizar_sem_fonte_e_recusado"
+    },
+    {
+      "id": "A20",
+      "task": "T06",
+      "estado": "LOCAL_PASS",
+      "prova": "Evento padrão e conversão personalizada são caminhos EXCLUSIVOS; mandar os dois é recusado em vez de deixar o provedor escolher. Nenhum mapeamento para OTHER/PURCHASE.",
+      "evidencia": "backend/tests/test_meta_contrato_v2.py::test_conversao_personalizada_e_evento_padrao_juntos_sao_recusados, ::test_conversao_personalizada_emite_o_par_correto"
+    },
+    {
+      "id": "A21",
+      "task": "T06",
+      "estado": "NOT_PROVEN",
+      "prova": "attribution_spec do AdSet atravessa contrato e compilador como campo próprio, separado da query de Insights.",
+      "evidencia": "backend/app/trafego/meta_execucao/compilador.py (attribution_spec)",
+      "falta_para_fechar": "As JANELAS suportadas por receita não foram provadas nesta rodada. Nenhuma janela é inventada como default."
+    },
+    {
+      "id": "A22",
+      "task": "T07",
+      "estado": "LOCAL_PASS",
+      "prova": "Upload individual e ZIP percorrem rota real com ownership por master→job→criado_por; não é input file sem backend.",
+      "evidencia": "backend/tests/test_criativo_importacao.py"
+    },
+    {
+      "id": "A23",
+      "task": "T07",
+      "estado": "LOCAL_PASS",
+      "prova": "Uma prova por regra: zipbomb recusado pelo diretório central antes de descomprimir, traversal, absoluto, unidade Windows, symlink, aninhados, criptografado, duplicata normalizada, MIME por magic, teto de pixel no cabeçalho antes do load(), prazo de decode.",
+      "evidencia": "backend/tests/test_criativo_importacao.py"
+    },
+    {
+      "id": "A24",
+      "task": "T07",
+      "estado": "LOCAL_PASS",
+      "prova": "Procedência 'importado' com as CHECKs de custódia espelhadas de 'observado': sem custo próprio inventado, com origem externa obrigatória. Aplicado e provado em Postgres descartável.",
+      "evidencia": "backend/tests/test_criativo_importacao.py; supabase/migrations/v11_04_criativo_importacao.sql"
+    },
+    {
+      "id": "A25",
+      "task": "T07",
+      "estado": "LOCAL_PASS",
+      "prova": "O hash é dos BYTES FINAIS, medido depois do saneamento, e difere do insumo_hash; saneamento é determinístico e idempotente.",
+      "evidencia": "backend/tests/test_criativo_importacao.py",
+      "falta_para_fechar": "Preview autorizado não foi inspecionado visualmente (ver A30/A34)."
+    },
+    {
+      "id": "A26",
+      "task": "T07",
+      "estado": "LOCAL_PASS",
+      "prova": "Gate ausente (GATE_UNAVAILABLE) e direitos desconhecidos (RIGHTS_UNKNOWN) bloqueiam, cada um com teste; declaração do operador não contorna.",
+      "evidencia": "backend/tests/test_criativo_importacao.py"
+    },
+    {
+      "id": "A27",
+      "task": "T08",
+      "estado": "LOCAL_PASS",
+      "prova": "Importar NÃO chama a Meta: provado por dublê que levanta ao CONSTRUIR o cliente + socket.connect que levanta, e por varredura do AST do router. Registrar exige confirmação que repete conta e quantidade.",
+      "evidencia": "backend/tests/test_criativo_importacao.py; backend/tests/test_meta_registro_de_midia.py::test_conta_confirmada_diferente_da_conta_do_pedido_recusa, ::test_conta_nao_liberada_recusa_antes_de_ler_token_ou_bytes"
+    },
+    {
+      "id": "A28",
+      "task": "T08",
+      "estado": "LOCAL_PASS",
+      "prova": "Idempotência por (conta, sha256 dos bytes) provada nos dois níveis: no serviço e no banco. Timeout vira AMBIGUO e não reenvia; o id é gravado ANTES do read-back; a cerca recusa token antigo.",
+      "evidencia": "backend/tests/test_meta_registro_de_midia.py (28 provas); prova-sql-registro-de-midia.sh (25/25)"
+    },
+    {
+      "id": "A29",
+      "task": "T08",
+      "estado": "NOT_PROVEN",
+      "prova": "Imagem não depende de leitura de vídeo, e o registro de vídeo é declarado BLOCKED com causa em vez de ausente.",
+      "evidencia": "backend/tests/test_meta_registro_de_midia.py::test_video_e_declarado_bloqueado_e_nao_disponivel",
+      "falta_para_fechar": "Upload em fases, espera de processamento e miniatura de bytes sob custódia não foram implementados nem provados. O marco M_MEDIA NÃO pode ser declarado completo."
+    },
+    {
+      "id": "A30",
+      "task": "T09",
+      "estado": "WAITING_OWNER",
+      "prova": "Nenhuma. Truncamento e ausência de overflow são afirmações de PIXEL.",
+      "evidencia": "—",
+      "falta_para_fechar": "A extensão do navegador não conecta nesta sessão. Exige inspeção autenticada real; jsdom não substitui."
+    },
+    {
+      "id": "A31",
+      "task": "T09",
+      "estado": "LOCAL_PASS",
+      "prova": "O campo de orçamento não perde foco após o primeiro dígito — provado por identidade do nó e document.activeElement. Resposta de conta antiga não substitui a conta atual (guard de request-id).",
+      "evidencia": "src/pages/trafego/__tests__/meta-criacao-v2.test.tsx"
+    },
+    {
+      "id": "A32",
+      "task": "T09",
+      "estado": "LOCAL_PASS",
+      "prova": "Público por conjunto e mapa peça→conjunto→anúncio na revisão; lote estático nunca rotulado como flexível.",
+      "evidencia": "src/pages/trafego/__tests__/meta-criacao-v2.test.tsx; src/components/trafego/meta/MapaDoPlano.tsx",
+      "falta_para_fechar": "A leitura visual do mapa continua pendente de A34."
+    },
+    {
+      "id": "A33",
+      "task": "T09",
+      "estado": "LOCAL_PASS",
+      "prova": "A revisão renderiza SÓ o resumo do servidor — rascunho e resumo não têm como divergir. Mudar campo invalida compilação, resumo e validação juntos.",
+      "evidencia": "backend/tests/test_meta_rotas_v2.py::test_resumo_diz_onde_a_verba_mora; src/pages/trafego/__tests__/meta-criacao-v2.test.tsx"
+    },
+    {
+      "id": "A34",
+      "task": "T09",
+      "estado": "WAITING_OWNER",
+      "prova": "Nenhuma.",
+      "evidencia": "—",
+      "falta_para_fechar": "Inspeção autenticada desktop e mobile, light e dark, com sessão real. A extensão do navegador não conecta nesta sessão."
+    },
+    {
+      "id": "A35",
+      "task": "T10",
+      "estado": "LOCAL_PASS",
+      "prova": "O tipo de credencial agora é REAL (httpHeaderAuth, na forma do precedente do próprio repositório). O item do cofre não existe, e isso BLOQUEIA mecanicamente: --apply recusa antes de abrir socket.",
+      "evidencia": "backend/tests/test_meta_workflows_n8n.py; scripts/publicar_workflows_n8n_meta.py (dry-run)"
+    },
+    {
+      "id": "A36",
+      "task": "T10",
+      "estado": "LOCAL_PASS",
+      "prova": "Varredura de segredos no export, no gerador e nos Code nodes; o que viaja é uma REFERÊNCIA (id + nome do item do cofre), como já acontece com supabaseApi.",
+      "evidencia": "backend/tests/test_meta_workflows_n8n.py"
+    },
+    {
+      "id": "A37",
+      "task": "T10",
+      "estado": "LOCAL_PASS",
+      "prova": "D-1 calculado no fuso DA CONTA, sem fallback UTC, provado com duas contas em fusos que discordam da data; bootstrap de objetos precede métricas.",
+      "evidencia": "backend/tests/test_meta_workflows_n8n.py"
+    },
+    {
+      "id": "A38",
+      "task": "T10",
+      "estado": "LOCAL_PASS",
+      "prova": "Paginação completa, NULL/actions preservados, snapshot latest sem soma duplicada, marca d'água não avança em janela parcial. Chave estável derivada só do QUE foi pedido, nunca do QUANDO, e carregando o número da página.",
+      "evidencia": "backend/tests/test_meta_workflows_n8n.py; supabase/migrations/20260908000000_meta_insights_escopo.sql"
+    },
+    {
+      "id": "A39",
+      "task": "T11",
+      "estado": "WAITING_OWNER",
+      "prova": "A leitura remota foi feita (396 workflows, paginada) e nenhum flow de terceiro foi tocado. O publicador procura por origem/hash/owner, nunca por nome — e a instância tem 9 workflows com 'meta' no nome que NÃO são este artefato, 3 deles ATIVOS.",
+      "evidencia": "docs/closure/meta-operator-go-live-v1/N8N-REMOTE-RECEIPT.json",
+      "falta_para_fechar": "ZERO workflows criados: o item de credencial não existe no cofre. Sem ele não há o que ler de volta."
+    },
+    {
+      "id": "A40",
+      "task": "T11",
+      "estado": "WAITING_OWNER",
+      "prova": "Nenhuma coleta foi executada.",
+      "evidencia": "—",
+      "falta_para_fechar": "Exige as duas coisas que faltam: credencial provisionada e schema aplicado. Com qualquer uma ausente, a 'coleta' produziria erro — e registrar isso como prova seria transformar falha em recibo."
+    },
+    {
+      "id": "A41",
+      "task": "T11",
+      "estado": "LOCAL_PASS",
+      "prova": "Zero escritas na instância n8n nesta missão, então os coletores GAM ativos continuam exatamente como estavam. Confirmado por leitura.",
+      "evidencia": "docs/closure/meta-operator-go-live-v1/N8N-REMOTE-RECEIPT.json"
+    },
+    {
+      "id": "A42",
+      "task": "T11",
+      "estado": "NOT_PROVEN",
+      "prova": "A regra 'receita ausente não vira zero' continua no financeiro e não foi alterada.",
+      "evidencia": "backend/app/trafego/meta/financeiro.py (intacto)",
+      "falta_para_fechar": "O dashboard não foi exercitado com janela real: sem schema aplicado e sem coleta, não há dado para conferir."
+    },
+    {
+      "id": "A43",
+      "task": "T12",
+      "estado": "WAITING_OWNER",
+      "prova": "O plano é recompilado e o hash é recalculado a cada mudança; a rota de validação exige clique explícito E a flag do servidor.",
+      "evidencia": "backend/tests/test_meta_rotas_v2.py::test_validate_only_v2_sem_confirmacao_recusa, ::test_validate_only_v2_fechado_recusa_antes_de_ler_token",
+      "falta_para_fechar": "Nenhum validate_only foi disparado: exige conta escolhida pelo operador e a flag aberta. Nada foi validado remotamente nesta rodada."
+    },
+    {
+      "id": "A44",
+      "task": "T12",
+      "estado": "LOCAL_PASS",
+      "prova": "As quatro camadas de prova ficam separadas no contrato e na resposta: compilado local, roots remoto, expansão real da macro e receita no GAM. A resposta de validar carrega cobertura_explicada em português.",
+      "evidencia": "backend/tests/test_meta_rotas_v2.py::test_as_quatro_camadas_de_prova_ficam_separadas"
+    },
+    {
+      "id": "A45",
+      "task": "T12",
+      "estado": "LOCAL_PASS",
+      "prova": "Nenhuma rota nova de criar/aprovar/ativar. A flag de upload de mídia é SEPARADA das de criação e não as abre. Nem com create_paused=ENABLED um plano V2 ganha botão que cria.",
+      "evidencia": "backend/tests/test_meta_rotas_v2.py::test_o_v2_nao_acrescentou_rota_de_criacao_aprovacao_ou_ativacao; backend/tests/test_meta_registro_de_midia.py::test_a_flag_de_upload_nao_abre_a_criacao_de_campanha; src/pages/trafego/__tests__/meta-criacao-v2.test.tsx"
+    },
+    {
+      "id": "A46",
+      "task": "T13",
+      "estado": "LOCAL_PASS",
+      "prova": "Uma branch (execution/volc-os-operacao-80-20), commits lineares sem push, ambiente identificado por PID/cwd: vite 8080, express 3001 e FastAPI 8010, os três nesta worktree.",
+      "evidencia": "git log --oneline; lsof por porta",
+      "falta_para_fechar": "O grafo é regenerado pelo wrapper no fechamento; ver BUILD-STATUS."
+    }
+  ],
+  "marcos": [
+    {
+      "id": "M_SCHEMA",
+      "veredito": "NAO_ALCANCADO",
+      "motivo": "o schema não está aplicado no oficial"
+    },
+    {
+      "id": "M_CREATOR",
+      "veredito": "PARCIAL",
+      "motivo": "A17 e A21 parciais; A30 e A34 dependem de inspeção visual autenticada"
+    },
+    {
+      "id": "M_MEDIA",
+      "veredito": "NAO_ALCANCADO",
+      "motivo": "A29 (vídeo) não provado — a própria checklist proíbe declarar o marco sem ele"
+    },
+    {
+      "id": "M_REPORTS",
+      "veredito": "NAO_ALCANCADO",
+      "motivo": "A39, A40 e A42 dependem de credencial e schema"
+    },
+    {
+      "id": "M_PRE_CANARY",
+      "veredito": "PARCIAL",
+      "motivo": "A44/A45/A46 verdes; A43 aguarda clique do operador"
+    }
+  ],
+  "suites": {
+    "backend_tests": "3 falhas, 4508 passando, 89 pulados",
+    "as_3_falhas": "PRE-EXISTENTES: test_canario_pedido_aprovado (2) e test_trafego (1). trafego.py e canario.py estão INTACTOS desde a base b3afa8b — nada nesta missão os tocou.",
+    "volc_ads_junto": "Rodar `backend/tests volc_ads` acrescenta 16 falhas em test_meta_supply_bytes que NÃO acontecem isoladamente. É poluição entre suítes PRE-EXISTENTE: volc_ads teve ZERO arquivos alterados nesta missão, e a poluição se reproduz com `pytest volc_ads backend/tests/test_meta_supply_bytes.py`.",
+    "vitest": "178 passando (139 existentes + 39 novos)",
+    "typescript": "76 erros — ABAIXO da baseline medida de 77, e nenhum em arquivo desta missão"
+  }
+}
