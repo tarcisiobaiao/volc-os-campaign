@@ -5,7 +5,8 @@
   "achados_confirmados_pelos_verificadores": 14,
   "base": "6aad83c48ed354b56239fbc7d127b723a6c38728",
   "head_inicial": "369585f5a22ceaced733e48580bc1035cf2ed5d3",
-  "head_de_fechamento": "9c5e599 (ver git log; o SHA final está no relatório de handoff)",
+  "head_do_codigo_testado": "9c5e5991a0f06ee00a38cb4199716b3609a961ea",
+  "nota_sobre_o_sha_de_transporte": "Este artefato nomeia o HEAD em que o CÓDIGO foi medido. O SHA final de transporte da rodada não pode morar aqui: ele é o commit que grava este próprio arquivo, e escrevê-lo aqui seria uma referência circular impossível. Ele aparece no relatório de handoff, depois do commit.",
   "data": "2026-09-06",
   "metodo": "Cada achado foi RE-REPRODUZIDO contra o HEAD antes de ser aceito ou refutado — os relatórios dos verificadores foram tratados como alegação, não como fato. As correções foram submetidas a análise de mutação: cada contraprova nova teve de FALHAR com o defeito reintroduzido em runtime.",
   "vocabulario_de_classificacao": [
@@ -265,13 +266,14 @@
   "gates": {
     "pytest_backend_e_volc_ads": {
       "antes": "4766 passed / 3 failed",
-      "depois": "4785 passed / 3 failed",
+      "depois": "4791 passed / 3 failed",
       "falhas": [
         "test_canario_pedido_aprovado.py::test_4_identidade_do_pedido_bate_com_o_dossie",
         "test_canario_pedido_aprovado.py::test_6b_carimbo_de_outra_execucao_invalida_o_selo",
         "test_trafego.py::test_provar_sem_copy_reprova_e_diz_por_que"
       ],
-      "nota": "as três são herdadas do baseline e não têm relação com esta rodada"
+      "nota": "as três são herdadas do baseline e não têm relação com esta rodada",
+      "porque_seis_a_mais_que_o_medido_no_meio_da_rodada": "A medição intermediária deste artefato dizia 4785, tirada em 6c5de4f. Os seis testes a mais vieram das contraprovas que a verificação focal pediu: um em 0651479 (a direção do estado de nascimento — pausar nunca é divergência) e cinco em 9c5e599 (a coluna `canal` pedida ao lote, o lote sem canal, o read-back exercitado de verdade na suíte de produção do ledger, o ramo FALHA com a pista do cliente que não vence, e o veredito chegando à trilha no carimbo normal). Nenhum teste foi removido e nenhuma falha nova apareceu."
     },
     "vitest": {
       "antes": "1672 passed / 15 failed + 1 unhandled error",
@@ -289,7 +291,12 @@
     "git_diff_check": "limpo",
     "scanner_de_segredos": "nenhum padrão forte no working tree",
     "autoridade_supabase": "https://database.agenciavolc.com.br conferida",
-    "grafo": "--check current=true, built_at_commit == 6c5de4f"
+    "grafo": {
+      "check": "current=true",
+      "built_at_commit": "9c5e5991a0f06ee00a38cb4199716b3609a961ea",
+      "motivo": "insumos idênticos",
+      "limitacao_explicita": "O HEAD final da rodada fica ADIANTE de `built_at_commit`, e isso é esperado: os commits posteriores ao build mexem só em documentação, que está fora dos insumos que o digest do grafo vigia. Por isso `--check` responde `current: true` com o motivo `insumos idênticos` — o grafo NÃO está desatualizado. Alinhar os dois números exigiria rebuildar depois de cada commit documental, e cada rebuild produz outro commit: é uma regressão infinita, não um conserto. ⚠️ Consequência operacional a conhecer: `work_road` calcula `stale` por divergência de commit, então ele reportará o grafo como velho enquanto o `--check` diz que não está."
+    }
   },
   "verificacao_focal_do_delta": {
     "escopo": "git diff 369585f..1409c42, quatro lentes read-only (fail-open, regressão, contraprovas, contrato Google/vocabulário)",
@@ -354,5 +361,18 @@
         "causa_do_sinal chega ao operador dentro do bloqueio"
       ]
     }
+  },
+  "semantica_de_leitura_achou_x_releitura_bloqueia": {
+    "porque_esta_aqui": "A verificação focal apontou que a MESMA resposta pode trazer `releitura.bloqueia=true` e `leitura.achou=true`, e leu isso como contradição. Não é: são duas perguntas diferentes. Fica registrado como DECISÃO DE PRODUTO, e esta microcorreção não a altera.",
+    "leitura_achou": "responde SE A CAMPANHA EXISTE. É ele que fecha a ambiguidade do despacho — a resposta que se perdeu — e por isso o recibo pode fechar mesmo quando a conferência dos detalhes não concluiu.",
+    "releitura_bloqueia": "responde SE O ESTADO LIDO PERMITE SEGUIR PARA ATIVAÇÃO. É outra pergunta, sobre outro momento, e não governa o fechamento do recibo.",
+    "regra": "fechar a reconciliação de EXISTÊNCIA não equivale a autorizar ATIVAÇÃO, e nunca equivaleu.",
+    "estado_de_hoje": "não existe rota de ativação neste sistema — provado por varredura do app inteiro em `test_nenhuma_rota_de_ativacao_existe_no_APP_INTEIRO`, e nenhuma foi introduzida nesta rodada.",
+    "exigencia_para_qualquer_rota_futura_de_ativacao": [
+      "exigir `releitura.bloqueia == false`",
+      "exigir veredito compatível com o plano aprovado",
+      "⚠️ FALHA, LEITURA_PARCIAL, AMBIGUO e DIVERGENTE NUNCA podem autorizar ativação — os quatro são `ESTADOS_QUE_BLOQUEIAM`, e três deles são ignorância sobre a conta, não conclusão sobre ela."
+    ],
+    "nao_alterado_aqui": "o portão atual de `/reconciliar` continua agindo só sobre DIVERGENTE. Mudar isso é decisão de produto sobre o que impede ativação, e não cabe numa microcorreção documental."
   }
 }
