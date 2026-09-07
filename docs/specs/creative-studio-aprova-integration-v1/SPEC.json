@@ -1,0 +1,438 @@
+{
+  "schema_version": "1.0",
+  "id": "VOLC_CREATIVE_STUDIO_APROVA_ADAPTATION_V1",
+  "status": "READY_FOR_EXECUTION_NOT_IMPLEMENTED",
+  "baseline": {
+    "branch": "execution/volc-os-operacao-80-20",
+    "code_sha": "53d57746f8ba00461dd1b0d6056a695c89b34c86",
+    "source_sha": "a1d9ae65bb5d18097d33b7e16d86dcd0713779b8",
+    "import": "services/creative-studio/upstream",
+    "import_is_reference_only": true
+  },
+  "objective": "Reaproveitar o fluxo visual Aprova no VOLC, usando o Assistente Meta como única autoridade estratégica e o parque de mídia existente para materializar peças rastreáveis.",
+  "current_scope": "Cópia sanitizada e contrato. Nenhuma aplicação, migration, geração real ou montagem de rota nesta preparação.",
+  "decisions": [
+    {
+      "id": "D01",
+      "decision": "Um produto, um login, um backend canônico. Não importar BrowserRouter, App, Login ou SettingsModal legados para produção. Não usar iframe nem outra porta de front."
+    },
+    {
+      "id": "D02",
+      "decision": "Microserviço por contrato e pacote, sem duplicar autoridades: UI isolável em src/features/creative-studio, fachada em backend/app/criativo/studio, transporte autenticado no backend existente. Geração/armazenamento/aprovação por adaptadores do parque canônico. Separação em outro processo é posterior e opcional."
+    },
+    {
+      "id": "D03",
+      "decision": "CreativeStrategistAgent e prompts de concurso são referência, não o cérebro de arbitragem. Estratégia, grupos, copies e fatos vêm de app/criativo/agente; um adaptador visual pode compor o prompt de imagem, sem alterar copy/fatos aprovados."
+    },
+    {
+      "id": "D04",
+      "decision": "A imagem pronta não está aprovada para mídia paga. Validação técnica, revisão humana e recibo de política/identidade são atos separados. BrandGuardian/QualityReview do Aprova não provam elegibilidade Meta."
+    },
+    {
+      "id": "D05",
+      "decision": "Gerar estratégia, aprovar briefing, gerar imagens e usar em campanha são quatro atos explícitos. Abrir/recarregar uma rota, listar ou reconectar stream nunca dispara geração."
+    },
+    {
+      "id": "D06",
+      "decision": "Reaproveitar componentes e fluxo, não copiar CSS global, marca Aprova, fontes ou tokens. design.md VOLC vence a referência. Não mudar design.md para legitimar copiar o tema do cliente."
+    },
+    {
+      "id": "D07",
+      "decision": "Não trocar IDs para encaixar: crproj_ do assistente não é creative_projeto.id. Ponte explícita owner-scoped entre operação/run/peça estratégica e projeto/briefing/job/master do Estúdio."
+    },
+    {
+      "id": "D08",
+      "decision": "P0 estático Meta/arbitragem. Preservar referência de news/Pinterest e providers, mas não abrir esses modos nem vídeo, publicação orgânica ou upload Meta nesta sprint."
+    }
+  ],
+  "evidence": [
+    {
+      "path": "services/creative-studio/upstream/src/pages/Index.tsx",
+      "finding": "form/loading/results/error; formulário gera um formato por request; APROVA_LOGO fixo; stream traz slots."
+    },
+    {
+      "path": "services/creative-studio/upstream/src/components/ResultScreen.tsx",
+      "finding": "Galeria original força aspect-[4/5]/object-cover; não reutilizar essa distorção em multiformato."
+    },
+    {
+      "path": "services/creative-studio/upstream/src/lib/api.ts",
+      "finding": "Fallback sem endpoint espera e retorna ZIP vazio; remover no adapter. Endpoint/webhook arbitrário não é fronteira autorizada."
+    },
+    {
+      "path": "services/creative-studio/upstream/backend/app/agents/creative_strategist.py",
+      "finding": "Brief visual textual e pesquisa de concurso; não substitui estratégia de funil/copies compartilhadas."
+    },
+    {
+      "path": "services/creative-studio/upstream/backend/app/agents/quality_review.py",
+      "finding": "Checa apenas bytes mínimos/MIME declarado; não verifica política, conteúdo, pixels ou identidade."
+    },
+    {
+      "path": "services/creative-studio/upstream/backend/app/runtime_config.py",
+      "finding": "Legado armazena chave em JSON; não portar este mecanismo."
+    },
+    {
+      "path": "backend/app/criativo/agente/contrato.py",
+      "finding": "Refs de operação, grupo, copy, estado mental, peça e fatos; MAX_VARIACOES=15; campos de formato usam 1x1/4x5/9x16."
+    },
+    {
+      "path": "backend/app/criativo/execucao.py",
+      "finding": "Executor de jobs já separa criar de executar e mantém slots. Reutilizar antes de introduzir nova fila."
+    }
+  ],
+  "routes": {
+    "entry": {
+      "source": "src/pages/trafego/HubDeTrafegoPage.tsx",
+      "condition": "rede=meta, todas as abas",
+      "label": "Assistente Criativo",
+      "placement": "Abaixo de Nova Campanha Meta, botão secundário; configuração continua discreta ao lado.",
+      "to": "/trafego/meta/assistente-criativo"
+    },
+    "pages": [
+      "/trafego/meta/assistente-criativo",
+      "/trafego/meta/assistente-criativo/:projectRef"
+    ],
+    "query_views": [
+      "briefing",
+      "estrategia",
+      "producao",
+      "assets",
+      "historico"
+    ],
+    "router": "src/App.tsx: rotas estáticas protegidas antes de /trafego/meta/:tipo/:objetoId; recarregamento por URL recupera contexto.",
+    "existing_studio": "Não substituir /criativos ou toda a bancada Meta. Reusar galeria/master/detalhe existentes quando compatíveis."
+  },
+  "ux": {
+    "scene": "Operador VOLC em estação de trabalho diurna, preparando uma campanha e conferindo peças antes de gastar.",
+    "layout": "Layout/ProtectedRoute do VOLC; cabeçalho compacto, coluna principal de trabalho e contexto recolhível. Não duplicar main/sidebar/router.",
+    "screens": [
+      {
+        "id": "briefing",
+        "primary": "Criar estratégia",
+        "fields": [
+          "nome_da_operacao",
+          "destination_ref resolvido no servidor",
+          "objetivo_meta",
+          "contexto_do_publico",
+          "pais",
+          "idioma",
+          "fatos_da_oferta com origem",
+          "restricoes",
+          "brand_pack_ref opcional",
+          "formatos_permitidos",
+          "quantidade_de_pecas"
+        ],
+        "behavior": "Seletor visual Aprova, mas formatos vêm de capacidades. Oferecer forma de selecionar destino real/projeto; não exigir que operador digite refs opacas."
+      },
+      {
+        "id": "estrategia",
+        "primary": "Aprovar briefing selecionado",
+        "fields": [
+          "diagnostico",
+          "jornada",
+          "grupos",
+          "copies_compartilhadas",
+          "pecas",
+          "feedback",
+          "feedback_escopo"
+        ],
+        "behavior": "Diagnóstico resumido, seleção por grupo, peças com hook/copy/direção visual. Editar/refinar com refs estáveis; histórico acessível. Texto gerado identificado como proposta, não fato aprovado."
+      },
+      {
+        "id": "producao",
+        "primary": "Gerar imagens",
+        "fields": [
+          "selected_creative_refs",
+          "format_ids",
+          "brand_pack_ref",
+          "generation_count",
+          "limits",
+          "cost_estimate"
+        ],
+        "behavior": "Mostrar N conceitos × M formatos = total de renders e eventuais bloqueios antes do clique; custo desconhecido é null. Progresso por slot realmente observado. Cancelar observação não é cancelar provider."
+      },
+      {
+        "id": "assets",
+        "primary": "Baixar selecionados",
+        "fields": [
+          "asset_ref",
+          "creative_ref",
+          "copy_ref",
+          "width",
+          "height",
+          "mime_type",
+          "technical_status",
+          "policy_status",
+          "human_decision"
+        ],
+        "behavior": "Galeria com proporção real/object-contain, zoom acessível, download individual/ZIP, filtro formato e seleção. Ação secundária Usar na campanha apenas prepara seleção/ref; nunca registra mídia ou cria anúncio silenciosamente."
+      },
+      {
+        "id": "historico",
+        "primary": "Abrir operação",
+        "fields": [
+          "project_ref",
+          "latest_run_ref",
+          "status",
+          "updated_at"
+        ],
+        "behavior": "Listagem paginada por dono, busca e reabertura. Não depender apenas de blob URLs/sessionStorage."
+      }
+    ],
+    "states": [
+      "empty",
+      "loading",
+      "queued",
+      "running",
+      "partial",
+      "ready_for_review",
+      "approved",
+      "failed",
+      "cancel_requested",
+      "cancelled",
+      "unavailable"
+    ],
+    "requirements": [
+      "Foco visível e ordem de teclado; live region sem anunciar a cada token; reduced-motion",
+      "375/768/1440 px nos dois temas; botões principais visíveis sem hover",
+      "Hero/formato/cópia não podem estourar com URL/título longo",
+      "Sem loader cronometrado, progresso inventado, branding Aprova ou segunda tela de login",
+      "Preview da arte não recebe ref/status/texto operacional queimado nos pixels"
+    ],
+    "visual_validation": "Capturar tela autenticada real; se browser indisponível, declarar não verificado e fornecer URL sem alegar visualmente aprovado."
+  },
+  "field_adapter": [
+    {
+      "from": "PecaCriativa.ref",
+      "to": "creative_ref",
+      "rule": "Estável; selecionado de saída persistida no servidor."
+    },
+    {
+      "from": "PecaCriativa.group_ref/shared_copy_ref/estado_mental_ref",
+      "to": "lineage.group_ref/copy_ref/state_ref",
+      "rule": "Preservar e validar vínculo ao mesmo run e owner."
+    },
+    {
+      "from": "headline_interna/complemento_interno/cta_visual/direcao_visual",
+      "to": "image_brief",
+      "rule": "Texto interno da arte e instruções visuais; não usar texto_principal por engano como toda a arte."
+    },
+    {
+      "from": "CopyCompartilhada.texto_principal/titulo/descricao/cta_nativa",
+      "to": "campaign_copy",
+      "rule": "Copy externa preservada separada da imagem e herdada por variantes."
+    },
+    {
+      "from": "fato_refs/rule_refs/brand_pack_ref",
+      "to": "provenance",
+      "rule": "Resolver no servidor; marca opcional, nunca usar logotipo Aprova por default."
+    },
+    {
+      "from": "formatos_permitidos 1x1/4x5/9x16",
+      "to": "format_catalog entries",
+      "rule": "Mapeamento explícito e testado para ratio 1:1/4:5/9:16 e pixels 1080x1080/1080x1350/1080x1920, somente quando capability permite; não inferir aprovação Meta."
+    },
+    {
+      "from": "SaidaDoAgente.recibo.valido",
+      "to": "strategy_contract_valid",
+      "rule": "NÃO é aprovação humana/política Meta."
+    }
+  ],
+  "contracts": {
+    "authority": "Contratos existentes vencem nomes propostos abaixo; registrar mapeamento final em FIELD-BINDINGS.json, sem segundo enum divergente.",
+    "generation_request": {
+      "schema_version": "1",
+      "project_ref": "opaque",
+      "run_ref": "opaque",
+      "selected_creative_refs": "non-empty unique refs",
+      "format_ids": "non-empty unique allowed formats",
+      "approval_ref": "persisted same owner/run/content",
+      "idempotency_key": "scoped by owner and payload hash"
+    },
+    "forbidden_request_fields": [
+      "api_key",
+      "provider_token",
+      "service_role",
+      "raw_sql",
+      "trusted_owner_id",
+      "policy_clear_from_browser"
+    ],
+    "generation_result": {
+      "job_ref": "opaque",
+      "status": "server observed",
+      "assets": "array of asset_ref + lineage + measured dimensions/MIME/hash + safe preview",
+      "error": "typed sanitized optional",
+      "next_action": "bounded"
+    },
+    "limits": "MAX_VARIACOES=15 estratégico, não herdar quantity20 do Aprova. Teto de renders separado, explícito em capabilities; validar N×M antes de gravar/despachar. Sem fallback de provider desconhecido.",
+    "persistence": "Fonte de verdade server-side. GET operações paginado, GET run e decisões, dispatch retorna ID antes do LLM longo; fila/claim existentes ou extensão mínima. Idempotência atômica, mesma chave/outro payload=409. Reconnect/GET não geram de novo.",
+    "refinement": "Carregar saída anterior completa e decisões aplicáveis; detectar refs duplicadas antes de dict; validar estado mental pertence ao grupo; snapshots aprovados por refs estáveis, sem JSON pointer negativo/índice instável; refinamento não muda aprovados; UNIVERSAL não grava regras globais a partir de feedback de usuário.",
+    "media": "Reutilizar creative_job/master/rendition/storage privados e registro existente. Upload importado e geração têm procedências distintas. Bytes e política pós-render vinculados ao content hash; prévia expira e renova autenticada. Falha em uma variante preserva sucessos.",
+    "portability": "Testar core com portas fake de identity/repository/media/events. Handler HTTP não conhece caminho GoogleDrive. Host VOLC fornece auth, storage e observabilidade. Não instalar deps nem iniciar serviço legado por copiar o diretório."
+  },
+  "security": [
+    "Não importar SettingsModal ou /config/test, runtime_config.json, senha local ou flags de sessionStorage.",
+    "Não habilitar upload Meta, create/activate, Ads APIs ou n8n como efeito do botão Gerar.",
+    "Sem fallback para *.supabase.co, sem bucket público nem segredo no browser/log/ZIP.",
+    "Não copiar prompts/client branding para geração Meta por default; claims vindos do briefing são dados não confiáveis.",
+    "Falha de pesquisa/política/modelo não vira sucesso vazio ou CLEAR; aprovação da estratégia não aprova pixels.",
+    "Revisar grants de v11_05: clientes não podem fabricar run/approval via REST; owner+project+run consistentes; operações privilegiadas autorizadas no servidor."
+  ],
+  "tasks": [
+    {
+      "id": "S01",
+      "depends_on": [],
+      "title": "Preflight e extrair fluxo",
+      "paths": [
+        "services/creative-studio/upstream",
+        "src/features/creative-studio",
+        "src/pages/trafego/HubDeTrafegoPage.tsx",
+        "src/App.tsx"
+      ],
+      "acceptance": "Referência quarantinada não vira dependência runtime; shell único e rotas sem colisão; importar só componentes reutilizáveis."
+    },
+    {
+      "id": "S02",
+      "depends_on": [
+        "S01"
+      ],
+      "title": "Fechar lifecycle do assistente e ponte tipada",
+      "paths": [
+        "backend/app/criativo/agente",
+        "backend/app/routers/criativos_agente.py",
+        "backend/app/criativo/studio",
+        "backend/tests/test_criativo_agente_meta.py"
+      ],
+      "acceptance": "Listar/retomar/refinar/aprovar com owner, refs e snapshot; ID observável sem aguardar modelo; rerun não altera aprovados."
+    },
+    {
+      "id": "S03",
+      "depends_on": [
+        "S02"
+      ],
+      "title": "Persistência candidata e runbook oficial delimitado",
+      "paths": [
+        "supabase/migrations/v11_05_criativo_agente_meta.sql",
+        "supabase/migrations/v11_05_rollback.sql",
+        "backend/app/criativo/agente/persistencia.py"
+      ],
+      "acceptance": "Catálogo/dependências/grants verificados; teste usuário A/B/anon; apply/use/rollback/reapply descartável. Não editar migration já aplicada. Manifesto exato de SQL e checksum para janela oficial."
+    },
+    {
+      "id": "S04",
+      "depends_on": [
+        "S02"
+      ],
+      "title": "Adaptador estratégia→imagem e multiformato",
+      "paths": [
+        "backend/app/criativo/studio",
+        "backend/app/criativo/execucao.py",
+        "services/creative_engine",
+        "volc_ads/criativo"
+      ],
+      "acceptance": "Mesmo conceito produz variantes por formato sem redigir outra estratégia; aprovações/fatos/copy preservados; limites antes de efeitos; falha parcial recuperável."
+    },
+    {
+      "id": "S05",
+      "depends_on": [
+        "S02",
+        "S04"
+      ],
+      "title": "Frontend completo",
+      "paths": [
+        "src/features/creative-studio",
+        "src/lib/criativosApi.ts",
+        "src/lib/pautadorApi.ts"
+      ],
+      "acceptance": "Formulário→estratégia→aprovação→geração→galeria→reabertura. Progresso observado, erros acionáveis, seleção e download multi-formato; endpoints tipados realmente conectados."
+    },
+    {
+      "id": "S06",
+      "depends_on": [
+        "S03",
+        "S05"
+      ],
+      "title": "Verificação e prova operacional autorizada",
+      "paths": [
+        "backend/tests",
+        "src/features/creative-studio",
+        "docs/closure/creative-studio-aprova-integration-v1"
+      ],
+      "acceptance": "Testes focais, build, delta TS, screenshots desktop/mobile/temas e SQL descartável. Prova live de banco/modelo apenas no escopo autorizado; registrar separada da prova fake."
+    },
+    {
+      "id": "S07",
+      "depends_on": [
+        "S06"
+      ],
+      "title": "Memória e handoff único",
+      "paths": [
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/volc-os-graph/curadoria-operacional.json"
+      ],
+      "acceptance": "P11-T02/P11-T04 e cap_creative_engines com prova e lacunas reais. Wrapper do grafo + check. Nada de done por cópia ou mocks; sem push."
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "CP0",
+      "when": "antes de editar",
+      "proof": "HEAD/branch/tree; reconhecer import local desta missão; não resetar/copiar por cima; nenhum outro writer."
+    },
+    {
+      "id": "CP1",
+      "when": "primeira fatia utilizável",
+      "proof": "Botão/rotas + briefing + estratégia retomável com transporte fake; contratos ligados; screenshot."
+    },
+    {
+      "id": "CP2",
+      "when": "persistência/mídia prontas localmente",
+      "proof": "RLS e lineage/approval, multiformato, preview/download, cancelamento e retry sem geração duplicada."
+    },
+    {
+      "id": "CP3",
+      "when": "antes de efeitos externos",
+      "proof": "Listar arquivos e hashes SQL necessários, destino oficial, auth segura e rollback/backup; listar modelo/quantidade/custo estimado para prova de geração. Pedir aprovação adicional para qualquer expansão além da v11_05 previamente solicitada."
+    },
+    {
+      "id": "CP4",
+      "when": "fechamento",
+      "proof": "Relatar LOCAL_READY vs OFFICIAL_DB_VERIFIED vs LIVE_GENERATION_VERIFIED separadamente. Acesso 8080 preservado; sem canário/campanha criado."
+    }
+  ],
+  "stop_rules": [
+    "Não usar npm install amplo para apagar erro de lock; diagnosticar e corrigir apenas delta necessário autorizado.",
+    "Uma rodada focal de correção; escalar bloqueio real, não inventar fixture de produção.",
+    "Não contornar quarentena upstream apenas removendo guard; montar adaptador autenticado primeiro.",
+    "Não aplicar todo diretório supabase/migrations nem exigir todo schema Meta para usar assistente."
+  ],
+  "authorization": {
+    "now": [
+      "copia_local_sanitizada",
+      "spec_e_prompt"
+    ],
+    "executor_local": [
+      "runtime_front_backend_escopado",
+      "testes",
+      "migrations_candidatas",
+      "commits_lineares_escopados"
+    ],
+    "not_implicit": [
+      "push",
+      "deploy",
+      "Meta_Google_read_validate_mutate",
+      "n8n",
+      "WordPress",
+      "geracao_paga_automatica",
+      "migration_oficial_fora_escopo"
+    ],
+    "supabase_official": "A solicitação anterior inclui v11_05. Primeiro preparar/verificar o SQL exato e acesso seguro; alterações adicionais de schema/storage e smoke de escrita precisam de escopo confirmado no checkpoint. Nada oficial foi feito nesta preparação."
+  },
+  "roadmap": {
+    "tasks": [
+      "P11-T02",
+      "P11-T04"
+    ],
+    "node": "cap_creative_engines",
+    "status": "partial"
+  }
+}

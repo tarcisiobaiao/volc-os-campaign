@@ -1,0 +1,12 @@
+# Import envelope: never bring source credentials/builds back into version control.
+**/.env
+**/.env.*
+!**/.env.example
+**/runtime_config.json
+**/node_modules/
+**/dist/
+**/.vite/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+**/.DS_Store

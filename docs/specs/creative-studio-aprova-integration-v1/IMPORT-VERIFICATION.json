@@ -1,0 +1,30 @@
+{
+  "status": "REFERENCE_COPY_VERIFIED",
+  "source_original_preserved": true,
+  "files_hash_verified": 126,
+  "restored_only_in_copy": 11,
+  "python_files_syntax_checked": 28,
+  "package_scripts_blocked": 7,
+  "legacy_password_removed_and_no_literal_remaining": true,
+  "backend_startup_guard_before_settings": true,
+  "spec_tasks_dependency_check": 7,
+  "secret_scan": "no strong patterns found",
+  "runtime_tests": "not run; quarantined reference, not a mounted application",
+  "visual_validation": "not performed; UX assessment from source and user reference",
+  "git": {
+    "head": "53d57746f8ba00461dd1b0d6056a695c89b34c86",
+    "branch": "execution/volc-os-operacao-80-20",
+    "commit_created": false,
+    "push": false,
+    "changes": "only new services/creative-studio and docs/specs/creative-studio-aprova-integration-v1 directories; untracked for executor to preserve and commit"
+  },
+  "external": {
+    "source_writes": false,
+    "provider_calls": false,
+    "supabase": false,
+    "campaigns": false,
+    "n8n": false,
+    "process_restart": false
+  },
+  "design_influence": "Impeccable: reusable flow adapted to existing VOLC product tokens/shell; no transfer of client login/global CSS. Supabase: explicit schema/grants verification and scoped migration checkpoint."
+}

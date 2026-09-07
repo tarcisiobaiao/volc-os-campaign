@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "status": "PREPARATION_ONLY_NOT_RUNTIME_INTEGRATED",
+  "tasks": [
+    {
+      "id": "P11-T02",
+      "retain_state": "partial",
+      "proposed_evidence": "Cópia Aprova sanitizada e SPEC de adaptação preparados. Assistente estratégico existente continua autoridade; frontend, endurecimento de v11_05 e ponte estratégica→mídia ainda não implementados."
+    },
+    {
+      "id": "P11-T04",
+      "retain_state": "partial",
+      "proposed_evidence": "126 arquivos importados em services/creative-studio/upstream, 11 recuperados do Git fonte apenas na cópia, entrypoints legados bloqueados. Manifesto com hashes e diferença explícita. Não é adapter produtivo nem geração real provada."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "cap_creative_engines",
+      "retain_state": "partial"
+    }
+  ],
+  "shared_authorities_changed": false,
+  "reason": "Preparação de referência e contrato, não integração runtime. Executor deve reconciliar a memória uma vez após implementar; nenhum aceite de função ou produção concedido.",
+  "graph_preparation_check": {
+    "current": true,
+    "reason": "insumos idênticos",
+    "built_at_commit": "64fd5d147ab62cdad91cd11ca515f430b5d7b315",
+    "baseline": "53d57746f8ba00461dd1b0d6056a695c89b34c86",
+    "limitation": "Importação local ainda não rastreada não está indexada no grafo; o check cobre somente seus insumos rastreados. Não usar esse resultado para dizer que o novo microserviço está integrado."
+  }
+}
