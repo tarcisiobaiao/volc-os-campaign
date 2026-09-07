@@ -1,4 +1,5 @@
 {
+  "followup_notice": "Historico: A06 foi reaberto pela revisao de 833d40d (token revogado aceito apos a recuperacao limpar o claim). Consulte ../r0-fencing-final-v1/EXECUTION-RECEIPT.json para a correcao subsequente. As classificacoes abaixo descrevem o julgamento original, nao o aceite atual.",
   "schema_version": 1,
   "run_id": "volc-r0-corrective-v1",
   "adjudicated_at": "2026-09-07",

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "verdict": "META_R0_RESIDUAL_FENCING_FIXED_LOCALLY",
+  "base_sha": "833d40dad901156d6a48d967735157452507079e",
+  "branch": "execution/volc-os-operacao-80-20",
+  "tested_revision": "Working-tree delta sobre base_sha, antes do commit desta entrega; nao confundir com teste de producao",
+  "findings": {
+    "R0-C01": {
+      "status": "FIXED_AND_PROVEN_LOCAL",
+      "migration": "supabase/migrations/20260907190000_meta_worker_fencing.sql",
+      "migration_sha256": "2fc1857a8f0501e4ba4f2f3f41dc45acdba2664e489113e18710b857f8cd68ce",
+      "predicate": "p_claim_token IS NOT NULL OR v_step.claim_token IS NOT NULL",
+      "invariant": "Token fornecido sempre exige autoridade vigente; null no livro nao revalida token antigo. Recuperacao governada sem token e sem dono permanece permitida.",
+      "rollback": "Sem alteracao: remove a funcao corrigida; ciclo de rollback/reapply reexecutado",
+      "schema_authority": "Candidato local; nenhuma migration oficial aplicada ou catalogo oficial consultado"
+    },
+    "R0-C02": {
+      "status": "HISTORICAL_ZERO_EFFECT_CLAIM_RETRACTED",
+      "actual_prior_external_effects": "UNKNOWN",
+      "evidence_scope": "Artefatos versionados da rodada anterior e leitura dos testes/fixtures/endpoint, sem abrir credenciais, contas ou logs oficiais",
+      "missing_evidence": ["comandos completos e isolamento da rerodagem", "identidade dos tres testes skipped", "tracos sanitizados dos requests efetivamente executados"],
+      "action": "Recibo e handoff historicos corrigidos; nao repetir os testes com rede liberada. Nao afirmar escrita ocorrida nem zero acesso sem evidencia."
+    }
+  },
+  "verification": {
+    "new_python_regressions_before_fix": "6 failed: DID NOT RAISE",
+    "meta_file_suite_after_fix": "223 passed; test_meta*.py; runner versionado bloqueando AF_INET/AF_INET6 connect",
+    "sql_after_fix": "38 assercoes, 0 falhas; PostgreSQL 17.9 local descartavel, inclui grants, concorrencia, schema, rollback e reapply",
+    "manifest": "CREATE_ONLY conferido, cinco arquivos e checksum atualizado",
+    "broader_selection_attempt": "-k meta selecionou tambem quatro testes AdsPower com metadados no nome: 309 passed / 4 errors de bind no sandbox. Rede nao foi liberada; selecao final por arquivos Meta.",
+    "flaky_test_found": "ID sintetico 1001 coincidiu com substring do SHA do plano; fixture local do teste agora usa IDs sinteticos de 18 digitos e mantem scanner do corpo inteiro",
+    "frontend": "Nao alterado; nenhum novo build/tsc/pixel claim"
+  },
+  "operational_memory": {
+    "roadmap_task": "P11-T05",
+    "status": "partial",
+    "spec_tasks": ["T03", "T11"],
+    "graph_check": "current:false, codigo/SQL mudou",
+    "shared_authorities_edited": false,
+    "curation_delta": "Anexar prova de token revogado recusado apos claim encerrado; preservar partial ate CP2/CP3/CP4. Reconciliacao de memoria reservada ao integrador em ato autorizado."
+  },
+  "this_execution_effects": {
+    "official_services": "Nenhum Meta/Google Ads, token/Keychain, Supabase oficial, n8n, WordPress, deploy ou migration oficial",
+    "local_sql": "Somente clusters temporarios; removidos ao fim pelo script",
+    "environment": "Sem alteracao de flags, credenciais ou processos operacionais",
+    "git": "Alteracoes e commit locais apenas; nenhum push, merge, rebase, amend ou nova branch"
+  },
+  "next": "Inspecao do operador e autorizacao separada de CP2; depois CP3 e CP4. A entrega nao declara Meta ou trafego finalizados."
+}

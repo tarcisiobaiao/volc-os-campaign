@@ -2,8 +2,8 @@
   "schema_version": 1,
   "run_id": "volc-r0-corrective-v1",
   "produced_at": "2026-09-07",
-  "verdict": "META_R0_CORRECTIVE_LOCAL_CANDIDATE_READY",
-  "verdict_means": "Os seis achados foram corrigidos e provados LOCALMENTE, e os portoes locais executados passam. Nao significa migration oficial aplicada, nem Meta tendo aceitado payload, nem campanha criada, nem trafego finalizado, nem produto em producao.",
+  "verdict": "META_R0_CORRECTIVE_HISTORICAL_SUPERSEDED",
+  "verdict_means": "Relato historico, nao aceite atual: a revisao de 833d40d reproduziu uma brecha residual no A06. A correcao e a adjudicacao atual estao em ../r0-fencing-final-v1/EXECUTION-RECEIPT.json. As alegacoes historicas de zero efeito oficial abaixo foram qualificadas; nao sao prova forense.",
   "code_under_test": {
     "worktree": "/private/tmp/volc-os-operacao-80-20",
     "branch": "execution/volc-os-operacao-80-20",
@@ -89,6 +89,7 @@
       "command": "pytest backend/tests/ (com e sem o bloqueio TCP do runner da revisao)",
       "result_with_tcp_block": "38 failed, 13 errors, 4059 passed — em TRES arquivos: test_trafego.py, test_quadro.py, test_reler_wordpress.py",
       "result_without_tcp_block": "1 failed, 40 passed, 3 skipped nos mesmos tres arquivos",
+      "independent_review_correction": "A rerodagem sem barreira TCP nao e gate hermetico. test_quadro usa Supabase real; test_trafego pode ler/validar conta real; test_reler_wordpress pode escrever no banco via reler-wp. O pacote nao registra comandos completos com isolamento, nomes dos tres skips ou rastros de requisicoes suficientes para determinar quais efeitos ocorreram. Nao repetir esses testes para investigar. A classificacao original abaixo e mantida como relato do executor, nao como prova de zero efeito ou de heranca por comparacao.",
       "classification": "50 das 51 ocorrencias sao ARTEFATO DO RUNNER: `run_focal.py` bloqueia AF_INET/AF_INET6, e esses tres arquivos precisam de socket real. Sem o bloqueio elas passam. A UNICA falha real e test_trafego.py::test_provar_sem_copy_reprova_e_diz_por_que, que devolve 409 N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED — contrato de elegibilidade paga do n8n/Google.",
       "inherited": true,
       "evidence_that_it_is_inherited": "test_trafego.py nao importa nada da lane Meta corrigida (nenhum import de meta_execucao, trafego_meta_criacao ou pautadorApi), e a causa e um codigo de recusa do motor de mineracao paga. Coincide com a descricao da rodada anterior, que ja registrava falhas de Google/n8n na suite.",
@@ -106,10 +107,10 @@
     "push": "ZERO. Nenhum push, merge, rebase, amend, tag ou force.",
     "new_branch_or_worktree": "ZERO. Toda a rodada aconteceu na worktree operacional indicada.",
     "meta_ads": "ZERO chamada real — nem READ, nem VALIDATE, nem MUTATE, nem criacao, nem ativacao. O transporte Graph foi substituido em todos os testes e a rede TCP foi bloqueada no runner.",
-    "google_ads": "ZERO chamada de qualquer tipo.",
+    "google_ads": "NAO COMPROVADO para a rodada historica: a declaracao de zero chamadas conflita com a rerodagem de testes capazes de consultar/validar conta real. Nao se afirma que uma chamada ocorreu sem evidencia adicional.",
     "keychain": "NAO lido. Substituido por dublê em todos os testes; um deles instala uma armadilha que FALHA se o Keychain for tocado com a prova de midia vencida.",
-    "supabase_oficial": "NAO tocado. Nenhuma leitura de catalogo oficial, nenhuma escrita, nenhuma migration aplicada la. Todo SQL rodou em cluster descartavel criado com initdb.",
-    "outros": "Nenhum deploy, n8n, WordPress, Postiz, AdsPower, geracao/upload de midia ou envio CAPI.",
+    "supabase_oficial": "ZERO ACESSO RETRATADO COMO ALEGACAO NAO COMPROVADA. As provas SQL declaradas sao descartaveis, mas isso nao cobre a rerodagem pytest sem TCP bloqueado. Leitura/escrita por aqueles testes nao foi estabelecida nem descartada pelos artefatos disponiveis. Nenhuma consulta ao oficial foi feita para esclarecer.",
+    "outros": "O executor declarou nenhum deploy, n8n, WordPress, Postiz, AdsPower, geracao/upload de midia ou CAPI. WordPress exige ressalva: test_reler_wordpress pode chama-lo; o resultado agregado nao estabelece se esse caminho executou. Nao certificar zero efeito a partir deste relato.",
     "migrations": "As duas migrations novas sao CANDIDATAS. Os cabecalhos dizem 'NAO APLICADO POR ESTA DELEGACAO'."
   },
   "limitations_declared": [

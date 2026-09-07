@@ -165,7 +165,7 @@
         {
           "ordem": 5,
           "file": "supabase/migrations/20260907190000_meta_worker_fencing.sql",
-          "sha256": "24e6d667aa8b1bb8008451eacfe8a4ab9022c524334a4ecdd974d9816bdebf09",
+          "sha256": "2fc1857a8f0501e4ba4f2f3f41dc45acdba2664e489113e18710b857f8cd68ce",
           "lines": 1057,
           "provides": [
             "public.trafego_meta_create_step.claim_token",

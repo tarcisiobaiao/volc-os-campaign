@@ -275,6 +275,79 @@ SQL
 )
 ok "a leitura conclui o passo E grava a confirmação" "$CONFIRMADO" "true"
 
+# R0-C01: testar depois que a recuperação/read-back LIMPA o token, não só
+# enquanto existe um dono novo. As recusas precisam preservar a linha inteira.
+psql_ -d "$BASE" -q -v token="$TOKEN" -v aprov="$APROVACAO" <<'SQL'
+SET ROLE service_role;
+SELECT set_config('volc.test_revoked_token', :'token', false),
+       set_config('volc.test_approval', :'aprov', false);
+DO $$
+DECLARE
+  v_step uuid;
+  v_prepare jsonb;
+  v_token uuid;
+  v_rotated uuid;
+  v_tokens uuid[];
+  v_phase integer;
+  v_matched boolean;
+  v_before jsonb;
+  v_after jsonb;
+BEGIN
+  FOR v_phase IN 0..1 LOOP
+    IF v_phase = 0 THEN
+      SELECT step_id INTO STRICT v_step FROM public.trafego_meta_create_step
+       WHERE approval_id = current_setting('volc.test_approval')::uuid
+         AND step_name = 'campaign';
+      v_tokens := ARRAY[current_setting('volc.test_revoked_token')::uuid];
+    ELSE
+      v_prepare := public.trafego_meta_create_prepare_step(
+        repeat('7',64), current_setting('volc.test_approval')::uuid,
+        'ator-1', 'adset', repeat('9',64));
+      v_step := (v_prepare->>'step_ref')::uuid;
+      v_token := (v_prepare->>'claim_token')::uuid;
+      v_rotated := (public.trafego_meta_create_close_step(
+        v_step, '1002', v_token)->>'claim_token')::uuid;
+      PERFORM public.trafego_meta_create_record_readback(
+        v_step, '{"matched":true,"tipo":"adset","status":"PAUSED"}'::jsonb,
+        NULL, v_rotated);
+      v_tokens := ARRAY[v_token, v_rotated];
+    END IF;
+    SELECT to_jsonb(s) INTO STRICT v_before
+      FROM public.trafego_meta_create_step s WHERE step_id = v_step;
+    IF v_before->>'claim_token' IS NOT NULL THEN
+      RAISE EXCEPTION 'FALHA: precondicao exige claim encerrado';
+    END IF;
+    FOREACH v_token IN ARRAY v_tokens LOOP
+      FOREACH v_matched IN ARRAY ARRAY[true, false] LOOP
+        BEGIN
+          PERFORM public.trafego_meta_create_record_readback(
+            v_step, jsonb_build_object('matched', v_matched, 'status',
+              CASE WHEN v_matched THEN 'PAUSED' ELSE 'ENABLED' END),
+            CASE WHEN v_matched THEN NULL ELSE 'META_STALE_WORKER_PROBE' END,
+            v_token);
+          RAISE EXCEPTION 'FALHA: token revogado sobrescreveu read-back';
+        EXCEPTION WHEN raise_exception THEN
+          IF SQLERRM <> 'META_STEP_CLAIM_FENCED' THEN RAISE; END IF;
+        END;
+        SELECT to_jsonb(s) INTO STRICT v_after
+          FROM public.trafego_meta_create_step s WHERE step_id = v_step;
+        IF v_after IS DISTINCT FROM v_before THEN
+          RAISE EXCEPTION 'FALHA: recusa alterou evidencias, erro ou geracao';
+        END IF;
+      END LOOP;
+    END LOOP;
+    -- A recuperação governada sem token continua funcionando após a recusa.
+    PERFORM public.trafego_meta_create_conclude_by_recovery(
+      v_step, v_before->>'external_object_id', v_before->'readback_evidence');
+  END LOOP;
+END $$;
+SQL
+PROVAS=$((PROVAS + 8)) # seis recusas + duas recuperações legítimas
+echo "   OK   seis tokens revogados recusados sem alterar evidência; duas recuperações preservadas"
+# Retira apenas o AdSet sintético desta contraprova; o cenário original abaixo
+# continua com uma Campaign, como antes. Exclusivamente no cluster descartável.
+psql_ -d "$BASE" -q -c "DELETE FROM public.trafego_meta_create_step WHERE step_name='adset';"
+
 echo
 echo "== 6. o invariante central: expiração fecha DESPACHO, não RECUPERAÇÃO =="
 psql_ -d "$BASE" -q -c "UPDATE public.trafego_meta_create_step SET state='IN_FLIGHT', external_object_id=NULL, closed_at=NULL, readback_at=NULL, readback_evidence=NULL, claim_token=NULL, claim_owner=NULL, claimed_at=NULL, prepared_at=clock_timestamp()-interval '30 minutes';"

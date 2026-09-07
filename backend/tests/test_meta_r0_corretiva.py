@@ -229,6 +229,10 @@ def test_recuperacao_por_id_nao_devolve_identificador_ao_navegador(
     monkeypatch,
 ) -> None:
     """O id resolvido é contrato interno. Ele entra no reconciliador, não na tela."""
+    # IDs sintéticos curtos (1001...) podem coincidir com um trecho do SHA do
+    # plano e acusar vazamento aleatoriamente. Mantém a inspeção do corpo inteiro.
+    for indice, tipo in enumerate(h.IDS_CRIADOS, start=1):
+        monkeypatch.setitem(h.IDS_CRIADOS, tipo, f"9999900000000000{indice:02d}")
     ledger, cliente, aprovacao = _abrir_bancada(monkeypatch)
     _passo_criado_sem_conferir(ledger, aprovacao)
 
@@ -572,5 +576,55 @@ def test_cercado_nao_sobrescreve_identidade_divergente(monkeypatch) -> None:
         assert linha["id_externo"] == "1001"
         assert linha["observados"] == ["9999"]
         assert linha["state"] == "CREATED"
+
+    asyncio.run(cenario())
+
+
+@pytest.mark.parametrize("conclusao", ["recuperacao", "readback_despacho", "readback_girado"])
+@pytest.mark.parametrize("divergente", [False, True])
+def test_token_revogado_nao_anota_depois_que_o_passo_fica_sem_dono(
+    monkeypatch, conclusao: str, divergente: bool,
+) -> None:
+    """NULL no livro não reabilita um token antigo apresentado pelo worker."""
+    from copy import deepcopy
+
+    ledger = h._LedgerEmMemoria()
+    _abrir_bancada(monkeypatch, ledger)
+
+    async def cenario() -> None:
+        aprovacao = next(iter(ledger.aprovacoes.values()))
+        passo = await ledger.preparar_passo(
+            plano_sha256=aprovacao["plano_sha256"],
+            approval_id=aprovacao["approval_id"], ator=aprovacao["ator"],
+            nome="campaign", payload_sha256="a" * 64)
+        vencido = passo.claim_token
+        evidencia = {"matched": True, "tipo": "campaign", "status": "PAUSED"}
+        if conclusao == "recuperacao":
+            ledger.passos[passo.passo_ref]["prepared_at"] = h.PREPARADO_EM
+            await ledger.reclamar_orfao(passo_ref=passo.passo_ref, idade_minima_s=300)
+            await ledger.concluir_por_recuperacao(
+                passo_ref=passo.passo_ref, id_externo="1001", evidencia=evidencia)
+        else:
+            girado = await ledger.fechar_passo(
+                passo_ref=passo.passo_ref, id_externo="1001", claim_token=vencido)
+            await ledger.registrar_readback(
+                passo_ref=passo.passo_ref, evidencia=evidencia, claim_token=girado)
+            if conclusao == "readback_girado":
+                vencido = girado
+
+        antes = deepcopy(ledger.passos[passo.passo_ref])
+        assert antes["claim_token"] is None
+        with pytest.raises(h.ErroDeNascimentoMeta, match="META_STEP_CLAIM_FENCED"):
+            await ledger.registrar_readback(
+                passo_ref=passo.passo_ref,
+                evidencia={"matched": not divergente, "tipo": "campaign",
+                           "status": "ENABLED" if divergente else "PAUSED"},
+                codigo="META_STALE_WORKER_PROBE" if divergente else None,
+                claim_token=vencido)
+        assert ledger.passos[passo.passo_ref] == antes
+        # O caminho governado da recuperação, sem token, continua utilizável.
+        await ledger.concluir_por_recuperacao(
+            passo_ref=passo.passo_ref, id_externo="1001", evidencia=evidencia)
+        assert ledger.passos[passo.passo_ref]["readback_evidencia"] == evidencia
 
     asyncio.run(cenario())

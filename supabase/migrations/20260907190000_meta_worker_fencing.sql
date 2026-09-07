@@ -581,11 +581,11 @@ BEGIN
     RAISE EXCEPTION 'META_STEP_NOT_CREATED';
   END IF;
 
-  -- ⚠️ A CERCA VALE ENQUANTO A REIVINDICACAO EXISTIR. Se o passo ainda tem
-  -- dono, so o dono anota; se ninguem detem a reivindicacao — porque o
-  -- despacho ja concluiu e soltou a caneta — a anotacao e da recuperacao, que
-  -- tem RPC propria e passa por aqui sem token.
-  IF v_step.claim_token IS NOT NULL THEN
+  -- Um token apresentado SEMPRE precisa estar vigente, inclusive depois que
+  -- a recuperacao ou o read-back limpou a reivindicacao. NULL no livro nao
+  -- reabilita o trabalhador antigo. Sem dono e sem token, o caminho governado
+  -- de recuperacao continua podendo anotar; com dono, omitir o token recusa.
+  IF p_claim_token IS NOT NULL OR v_step.claim_token IS NOT NULL THEN
     PERFORM public.trafego_meta_exigir_claim_vigente(v_step, p_claim_token);
   END IF;
 

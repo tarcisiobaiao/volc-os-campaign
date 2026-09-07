@@ -695,15 +695,15 @@ class _LedgerEmMemoria:
         if _tem_chave_sensivel(evidencia):
             raise ErroDeNascimentoMeta(
                 "META_CREATE_LEDGER_REJECTED", "META_READBACK_EVIDENCE_NOT_SANITIZED")
+        # Mesma ordem e predicado da RPC: um token fornecido nunca pode voltar
+        # a valer quando a recuperação encerra a reivindicação no livro.
+        if claim_token is not None or passo.get("claim_token") is not None:
+            self._exigir_claim(passo, claim_token)
         if passo.get("readback") and codigo != passo["readback"]:
             # A primeira divergência vista é a que o livro guarda; uma
             # confirmação posterior não a apaga.
             raise ErroDeNascimentoMeta(
                 "META_CREATE_LEDGER_REJECTED", "META_READBACK_ERROR_ALREADY_RECORDED")
-        # A cerca vale enquanto a reivindicação existir; a recuperação anota
-        # depois de encerrá-la, e por isso passa sem token.
-        if passo.get("claim_token") is not None:
-            self._exigir_claim(passo, claim_token)
         self.eventos.append(("readback_evidencia", passo_ref))
         passo.update(
             readback_evidencia=evidencia, readback_at="2026-09-07T12:00:00+00:00")

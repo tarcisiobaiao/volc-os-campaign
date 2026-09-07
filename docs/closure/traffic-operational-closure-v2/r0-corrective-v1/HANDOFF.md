@@ -1,5 +1,10 @@
 # Handoff — rodada corretiva R0 (A01 a A06)
 
+> Relato histórico, substituído pela [correção focal final](../r0-fencing-final-v1/HANDOFF.md).
+> A revisão de `833d40d` reabriu A06 e não confirmou a alegação de zero acesso
+> oficial da rerodagem pytest sem bloqueio TCP. Os números abaixo pertencem à
+> rodada anterior; não são gates do código posterior.
+
 Branch `execution/volc-os-operacao-80-20` · base `d54e100` · HEAD revisado
 `187c4f1` · **HEAD final `91967b1`** · três commits nesta rodada, árvore limpa.
 
@@ -136,6 +141,10 @@ não apaga a campanha; apaga só a prova dela.
 
 ## Efeitos desta rodada
 
-Zero push. Zero acesso ao Supabase oficial. Zero chamada real a Meta ou Google.
-O Keychain não foi lido. Todo SQL rodou em cluster descartável criado com
-`initdb` e destruído ao fim. As flags de criação continuam fechadas.
+O executor declarou zero push e SQL em cluster descartável. Entretanto, o
+`EXECUTION-RECEIPT.json` também registra uma rerodagem pytest sem bloqueio TCP
+em arquivos que restauram ambiente real e podem acessar Supabase/Google/WordPress.
+Portanto, a afirmação anterior de **zero acesso oficial não está comprovada e
+foi retratada**. Não há aqui prova de que houve escrita, nem prova de que não
+houve. Não repetir os testes com rede aberta; preservar e examinar registros
+locais existentes caso se queira apurar os efeitos daquela sessão.
