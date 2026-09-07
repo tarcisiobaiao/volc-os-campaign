@@ -461,3 +461,39 @@ def test_a_flag_de_upload_nao_abre_a_criacao_de_campanha(monkeypatch) -> None:
     assert caps.criacao_liberada("metaacct_exemplo") is False
     assert caps.FLAG_UPLOAD_DE_ATIVO not in caps.FLAGS_DE_CRIACAO
     assert caps.FLAG_UPLOAD_DE_ATIVO not in caps.FLAGS_DE_PROCESSO
+
+
+def test_a_ponte_de_custodia_usa_a_classe_que_existe_de_verdade() -> None:
+    """A prova que faltava: o caminho de custódia é EXECUTADO, não só lido.
+
+    ⚠️ Esta prova nasceu de um defeito real. `_carregar_pecas` importava
+    `RepositorioCriativoSupabase`, classe que NÃO existe — o nome certo é
+    `Repositorio`, construído com base+chave (criativos.py:110). Nenhuma prova
+    anterior chegava nesta linha, porque a confirmação de conta e a flag por
+    conta disparam antes; o defeito só apareceria no primeiro clique real do
+    operador, em produção, como ImportError.
+
+    Aqui o caminho é chamado DIRETAMENTE, sem dublê, justamente para que o
+    import e a construção sejam exercitados.
+    """
+    import asyncio
+
+    from app.trafego.meta_execucao.registro_de_midia import ErroDeRegistroDeMidia
+
+    with pytest.raises(ErroDeRegistroDeMidia) as erro:
+        asyncio.run(trafego_meta_ativos._carregar_pecas(
+            ["nao-e-um-uuid"], ator="operador-meta"))
+    # "não existe" e "não é seu" devolvem a MESMA recusa — responder diferente
+    # confirmaria a existência de um master alheio para quem só tem o id.
+    assert erro.value.codigo in {
+        "META_ASSET_MASTER_NOT_FOUND", "META_ASSET_CUSTODY_UNAVAILABLE"}
+
+
+def test_erro_de_banco_nao_vira_500_no_registro() -> None:
+    """Um 22P02 do PostgREST não pode dizer ao operador que o servidor quebrou."""
+    from app.trafego.meta_execucao.registro_de_midia import ErroDeRegistroDeMidia
+
+    convertido = trafego_meta_ativos._erro(
+        ErroDeRegistroDeMidia("META_ASSET_MASTER_NOT_FOUND", "não é sua"))
+    assert convertido.status_code == 409
+    assert convertido.detail["codigo"] == "META_ASSET_MASTER_NOT_FOUND"

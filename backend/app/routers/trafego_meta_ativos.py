@@ -220,13 +220,33 @@ async def _carregar_pecas(
     diferentes dos que passaram pelo gate de política — e o recibo descreveria
     uma peça que não foi a enviada.
     """
-    from app.criativo.persistencia import RepositorioCriativoSupabase
+    # ⚠️ O repositório do Estúdio é construído com base+chave, e NÃO com o
+    # SupabaseService — é a mesma forma usada por `criativos.py:110`. Manter
+    # duas maneiras de abrir a mesma porta é como uma delas fica para trás.
+    from app.criativo.persistencia import Repositorio
 
-    repositorio = RepositorioCriativoSupabase(SupabaseService(get_settings()))
+    ajustes = get_settings()
+    repositorio = Repositorio(
+        ajustes.supabase_url, ajustes.supabase_service_role_key)
+    if not repositorio.habilitado:
+        raise ErroDeRegistroDeMidia(
+            "META_ASSET_CUSTODY_UNAVAILABLE",
+            "o Supabase operacional não está configurado neste backend",
+        )
     loja = armazenamento_padrao()
     pecas: list[PecaParaRegistrar] = []
     for referencia in master_refs:
-        linha = await repositorio.buscar_master_do_dono(referencia, criado_por=ator)
+        try:
+            linha = await repositorio.buscar_master_do_dono(referencia, criado_por=ator)
+        except Exception:
+            # ⚠️ Erro de persistência NÃO pode virar 500 aqui. Uma referência
+            # malformada faz o PostgREST devolver 22P02, e um 500 diria ao
+            # operador "o servidor quebrou" quando a verdade é "essa peça não é
+            # sua ou não existe" — a MESMA resposta dos dois casos, de propósito.
+            raise ErroDeRegistroDeMidia(
+                "META_ASSET_MASTER_NOT_FOUND",
+                "uma das peças selecionadas não existe ou não pertence a você",
+            ) from None
         if linha is None:
             raise ErroDeRegistroDeMidia(
                 "META_ASSET_MASTER_NOT_FOUND",

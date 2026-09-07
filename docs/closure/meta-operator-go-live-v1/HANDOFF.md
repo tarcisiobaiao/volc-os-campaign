@@ -172,6 +172,25 @@ Preservado e no ar, tudo nesta worktree:
   no processo vivo. As rotas novas respondem 401 sem sessão, e uma rota
   inexistente responde 404 — o contraste é a prova de que elas estão montadas.
 
+## Trabalho de OUTRO writer preservado na árvore
+
+Durante o fechamento apareceram, não commitados, arquivos de outra frente
+(assistente estratégico de criativos Meta): `backend/app/routers/criativos_agente.py`,
+`backend/app/criativo/agente/`, `docs/closure/meta-creative-agent-v1/`,
+`supabase/migrations/v11_05_criativo_agente_meta.sql` e o rollback correspondente,
+mais duas linhas em `backend/app/main.py` e um campo em `backend/app/config.py`.
+
+**Foram preservados, não commitados e não tocados.** Conferi a sobreposição em
+`main.py`: as adições são estritamente aditivas e as minhas linhas
+(`trafego_meta_ativos`, `criativos_importacao`) continuam intactas — não há
+trecho sobreposto a parar.
+
+⚠️ Consequência para o gate do grafo: o digest de frescor lê o CONTEÚDO dos
+arquivos rastreados, então `main.py` e `config.py` entraram na reconstrução com
+o estado não commitado do outro writer. É por isso que `working_tree_dirty_at_build`
+importa, e é por isso que ele está sendo declarado aqui em vez de ficar só no
+manifesto.
+
 ## Artefatos deste fechamento
 
 - `HANDOFF.md` (este)
