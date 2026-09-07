@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "run_id": "volc-r0-corrective-v1",
+  "produced_at": "2026-09-07",
+  "verdict": "META_R0_CORRECTIVE_LOCAL_CANDIDATE_READY",
+  "verdict_means": "Os seis achados foram corrigidos e provados LOCALMENTE, e os portoes locais executados passam. Nao significa migration oficial aplicada, nem Meta tendo aceitado payload, nem campanha criada, nem trafego finalizado, nem produto em producao.",
+  "code_under_test": {
+    "worktree": "/private/tmp/volc-os-operacao-80-20",
+    "branch": "execution/volc-os-operacao-80-20",
+    "base": "d54e10012c34aeaae2e2089945178bc20353e145",
+    "reviewed_head": "187c4f111d204d6e0adcd52a8f94b39e5c330c9b",
+    "final_head": "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f",
+    "tested_sha": "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f",
+    "tree_state": "limpa apos os tres commits desta rodada",
+    "commits_this_round": [
+      "cea43e203d96df178b66ae57ab5c98610a7313ce fix(meta): cercar o trabalhador, exigir a evidencia e reler pelo id (R0-A02/A03/A05/A06)",
+      "af821a57131fbcbee2ef7f91c429c09c86783dbe fix(meta): contar contra o manifesto aprovado, nao contra os passos que existem (R0-A04)",
+      "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f fix(schema): o perfil publicado passa a ser o que o runtime exige (R0-A01)"
+    ],
+    "commits_since_base": 10,
+    "diffstat_this_round": "26 arquivos, +5496 / -390",
+    "history": "Linear. Nenhum reset, rebase, amend, stash ou force. A base nunca foi revisitada."
+  },
+  "findings": {
+    "R0-A01": "FIXED_AND_PROVEN",
+    "R0-A02": "FIXED_AND_PROVEN",
+    "R0-A03": "FIXED_AND_PROVEN",
+    "R0-A04": "FIXED_AND_PROVEN",
+    "R0-A05": "FIXED_AND_PROVEN",
+    "R0-A06": "FIXED_AND_PROVEN"
+  },
+  "gates_executed": [
+    {
+      "gate": "sondas de observacao da revisao",
+      "command": "pytest evidence-recebida/test_review_probes.py (transporte TCP bloqueado)",
+      "before": "4 passed — os quatro defeitos reproduzidos",
+      "after": "4 failed — nenhum dos comportamentos medidos ainda ocorre",
+      "result": "PASS (inversao esperada)"
+    },
+    {
+      "gate": "regressoes novas que EXIGEM o comportamento correto",
+      "command": "pytest backend/tests/test_meta_r0_corretiva.py",
+      "result": "19 passed",
+      "discriminance": "Todo simbolo que estas regressoes exigem — META_READBACK_NOT_DURABLE, META_WORKER_FENCED, META_READBACK_LEDGER_UNAVAILABLE, META_STEP_CLAIM_FENCED, passos_sem_confirmacao, passos_em_recuperacao, passos_nao_despachados, CONFIRMADO_POR_LEITURA, readback_confirmed, observed_external_id_count, claim_token, provas_de_midia_vencidas, _validade_da_aprovacao, _motivo_da_recuperacao, concluir_por_recuperacao, registrar_despacho_cercado — tem ZERO ocorrencias em 187c4f1 (conferido com git grep no proprio commit revisado). Elas nao podem passar no HEAD revisado."
+    },
+    {
+      "gate": "conjunto focal backend integrado",
+      "command": "pytest sobre os 5 modulos focais + paused_birth + static_batch + as regressoes R0",
+      "result": "196 passed",
+      "baseline": "144 passed no HEAD revisado (os 5 modulos focais); o crescimento e das regressoes novas e dos dois modulos que passaram a exercitar o contrato de read-back"
+    },
+    {
+      "gate": "UI",
+      "command": "vitest meta-criacao-nascimento.test.tsx + estado-da-operacao.test.ts",
+      "result": "42 passed (19 originais + 7 renderizados novos + 16 da matriz pura)",
+      "baseline": "19 passed no HEAD revisado"
+    },
+    {
+      "gate": "ciclo SQL descartavel, com concorrencia e falha deliberada",
+      "command": "bash docs/closure/traffic-operational-closure-v2/prova-sql-local.sh",
+      "result": "30 assercoes, 0 falhas, exit 0",
+      "negative_control": "Com o perfil reduzido a 4 arquivos (sem a cerca), a MESMA prova sai com exit 1. Checksum divergente, dependencia fora de ordem e rollback na lista de apply tambem saem com exit 1, cada um com a causa nomeada.",
+      "engine": "PostgreSQL 17.9 (Homebrew), cluster criado com initdb num diretorio temporario, 127.0.0.1, porta propria, destruido ao fim"
+    },
+    {
+      "gate": "verificador de perfil",
+      "command": "python3 scripts/verificar_perfil_schema_meta.py",
+      "result": "exit 0 com o perfil correto; exit 1 em cada violacao deliberada"
+    },
+    {
+      "gate": "TypeScript",
+      "command": "npx tsc --noEmit -p tsconfig.app.json",
+      "result": "44 erros pre-existentes, comparados POR PATH/ASSINATURA e nao por contagem. ZERO erros nos paths tocados nesta rodada (MetaCriacaoPage.tsx, estadoDaOperacao.ts, MetaOperationReceipt.tsx, pautadorApi.ts). Os 44 vivem em SiteAnalysis, AddOpportunityModal, MetaReadPreview, supabase.ts, CampaignDetailDashboard e outros — herdados e fora deste escopo."
+    },
+    {
+      "gate": "build",
+      "command": "npx vite build",
+      "result": "built in 11.26s"
+    },
+    {
+      "gate": "higiene do diff",
+      "command": "git diff --check; varredura de segredos nos paths alterados e nos arquivos novos",
+      "result": "sem whitespace quebrado; nenhum token, chave, credencial ou identificador real. O unico casamento do scanner foi um sha256 documentado no manifesto."
+    },
+    {
+      "gate": "suite backend inteira, para classificar falha herdada",
+      "command": "pytest backend/tests/ (com e sem o bloqueio TCP do runner da revisao)",
+      "result_with_tcp_block": "38 failed, 13 errors, 4059 passed — em TRES arquivos: test_trafego.py, test_quadro.py, test_reler_wordpress.py",
+      "result_without_tcp_block": "1 failed, 40 passed, 3 skipped nos mesmos tres arquivos",
+      "classification": "50 das 51 ocorrencias sao ARTEFATO DO RUNNER: `run_focal.py` bloqueia AF_INET/AF_INET6, e esses tres arquivos precisam de socket real. Sem o bloqueio elas passam. A UNICA falha real e test_trafego.py::test_provar_sem_copy_reprova_e_diz_por_que, que devolve 409 N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED — contrato de elegibilidade paga do n8n/Google.",
+      "inherited": true,
+      "evidence_that_it_is_inherited": "test_trafego.py nao importa nada da lane Meta corrigida (nenhum import de meta_execucao, trafego_meta_criacao ou pautadorApi), e a causa e um codigo de recusa do motor de mineracao paga. Coincide com a descricao da rodada anterior, que ja registrava falhas de Google/n8n na suite.",
+      "not_reexecuted_against_base": "Correto, e declarado: stash, reset e checkout destrutivo estao proibidos nesta missao, e abrir outra worktree tambem. A evidencia de heranca e por PATH e por CAUSA, nao por comparacao de execucao.",
+      "zero_failures_in_the_meta_lane": "Nenhum FAILED ou ERROR em qualquer arquivo com 'meta' no nome, nas duas execucoes."
+    },
+    {
+      "gate": "cobertura mais larga que o conjunto focal",
+      "command": "pytest backend/tests/ -k meta  |  vitest run src/pages/trafego/__tests__/ src/components/trafego/meta/__tests__/",
+      "result": "307 passed na lane Meta do backend; 100 passed em 10 arquivos de UI",
+      "baseline_declarado_na_rodada_anterior": "278 backend -k meta; 75 UI em 8 arquivos"
+    }
+  ],
+  "authority_and_effects": {
+    "push": "ZERO. Nenhum push, merge, rebase, amend, tag ou force.",
+    "new_branch_or_worktree": "ZERO. Toda a rodada aconteceu na worktree operacional indicada.",
+    "meta_ads": "ZERO chamada real — nem READ, nem VALIDATE, nem MUTATE, nem criacao, nem ativacao. O transporte Graph foi substituido em todos os testes e a rede TCP foi bloqueada no runner.",
+    "google_ads": "ZERO chamada de qualquer tipo.",
+    "keychain": "NAO lido. Substituido por dublê em todos os testes; um deles instala uma armadilha que FALHA se o Keychain for tocado com a prova de midia vencida.",
+    "supabase_oficial": "NAO tocado. Nenhuma leitura de catalogo oficial, nenhuma escrita, nenhuma migration aplicada la. Todo SQL rodou em cluster descartavel criado com initdb.",
+    "outros": "Nenhum deploy, n8n, WordPress, Postiz, AdsPower, geracao/upload de midia ou envio CAPI.",
+    "migrations": "As duas migrations novas sao CANDIDATAS. Os cabecalhos dizem 'NAO APLICADO POR ESTA DELEGACAO'."
+  },
+  "limitations_declared": [
+    "SEM INSPECAO VISUAL. A extensao do Chrome nao esta conectada nesta sessao ('Browser extension is not connected'). A rota http://localhost:8080/trafego/meta/nova?etapa=revisao responde HTTP 200 e o build passa — e nenhuma das duas coisas prova pixel. jsdom nao prova pixel. Desktop/mobile, claro/escuro, foco e teclado, nomes longos e os estados parcial/divergente/confirmado NAO foram vistos em tela nesta rodada.",
+    "O ciclo SQL prova o comportamento das RPCs num PostgreSQL 17.9 descartavel. Ele NAO afirma nada sobre o estado do catalogo oficial, que nao foi lido, nem sobre versao, papeis ou extensoes do self-hosted.",
+    "A cerca garante autoridade de conclusao; ela NAO promete exactly-once entre PostgreSQL e Meta, e a janela entre a autorizacao do banco e a chegada do POST continua aberta por construcao.",
+    "Nenhum comportamento real da Meta foi observado. Todo read-back, divergencia e ambiguidade foram exercitados contra transporte substituido.",
+    "O grafo de curadoria continua desatualizado. O delta desta rodada esta proposto em CURATION-DELTA-PROPOSTO.json e NAO foi aplicado."
+  ],
+  "next_minimal_act": {
+    "operator": "Ler ADJUDICATION.json e HANDOFF.md, e decidir se autoriza a janela oficial de schema (CP2).",
+    "before_any_official_window": [
+      "python3 scripts/verificar_autoridade_supabase.py",
+      "python3 scripts/verificar_perfil_schema_meta.py",
+      "bash docs/closure/traffic-operational-closure-v2/prova-sql-local.sh",
+      "psql <conexao oficial, com autorizacao propria de LEITURA> -Atq -f docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql > catalogo.json",
+      "python3 scripts/verificar_perfil_schema_meta.py --catalogo catalogo.json"
+    ],
+    "not_authorized_by_this_handoff": [
+      "Aplicar qualquer migration no Supabase oficial",
+      "Abrir META_CREATE_PAUSED_ENABLED ou META_CREATE_LEDGER_WRITE_ENABLED",
+      "Qualquer chamada real a Meta ou Google Ads",
+      "CP4: o primeiro canario PAUSED completo"
+    ]
+  },
+  "urls_for_inspection": {
+    "local_dev": "http://localhost:8080/trafego/meta/nova?etapa=revisao",
+    "caveat": "HTTP 200 numa SPA nao e prova de render. A inspecao visual continua pendente."
+  }
+}

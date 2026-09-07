@@ -1,0 +1,72 @@
+== 0. o perfil declarado bate com os arquivos ==
+perfil CREATE_ONLY: conferido
+   OK   o manifesto declara os arquivos do perfil
+
+== 0b. cluster descartável em /var/folders/n_/pq8ng_k14vsfx82xb9b8b3980000gp/T/tmp.Kak4iSInkp/data (porta 55432) ==
+engine: PostgreSQL 17.9 (Homebrew) on aarch64-apple-darwin24.6.0, compiled by Apple clang version 17.0.0 (clang-1700.6.3.2), 64-bit
+
+== 1. apply do perfil, na ordem do MANIFESTO ==
+   v13_01_cofre_de_ativos.sql                           psql:/private/tmp/volc-os-operacao-80-20/supabase/migrations/v13_01_cofre_de_ativos.sql:161: NOTICE:  v13_01: guardas ok (papel=postgres, versao=17.9 (Homebrew))
+psql:/private/tmp/volc-os-operacao-80-20/supabase/migrations/v13_01_cofre_de_ativos.sql:2195: NOTICE:  v13_01: postgres atravessa RLS — funcoes governadas operarao sob FORCE
+psql:/private/tmp/volc-os-operacao-80-20/supabase/migrations/v13_01_cofre_de_ativos.sql:2269: NOTICE:  v13_01: 9 tabelas revogadas nominalmente, RLS forcada, zero policies
+psql:/private/tmp/volc-os-operacao-80-20/supabase/migrations/v13_01_cofre_de_ativos.sql:2339: NOTICE:  v13_01 OK: 9 tabelas, RLS forcada em 9, 0 policies, 0 grants a anon/authenticated
+APLICADA
+   v15_01_meta_ads_read_model.sql                       APLICADA
+   20260904183418_meta_create_paused_executor.sql       APLICADA
+   20260907120000_meta_recovery_snapshot.sql            APLICADA
+   20260907190000_meta_worker_fencing.sql               psql:/private/tmp/volc-os-operacao-80-20/supabase/migrations/20260907190000_meta_worker_fencing.sql:1055: NOTICE:  meta_worker_fencing OK: cerca versionada ativa em close/ambiguous/fail/readback
+APLICADA
+
+== 2. fronteira de autorização com os papéis REAIS ==
+NOTICE:     OK   anon recusado na função
+NOTICE:     OK   authenticated sem SELECT na tabela
+NOTICE:     OK   service_role sem INSERT direto — só a RPC escreve
+
+== 3. fixture: validação -> aprovação COM snapshot -> passo preparado ==
+   approval_id=c5a6b98c-117f-4f83-b600-2359acc87c63
+
+== 4. CONCORRÊNCIA: duas sessões preparando o MESMO passo ==
+   worker1: DESPACHAR
+   worker2: AMBIGUO
+   OK   no máximo UM worker recebe DESPACHAR
+   OK   o outro é obrigado a reconciliar (AMBIGUO)
+
+== 5. A CERCA: autoridade velha não conclui, e o id visto não se perde ==
+   OK   o DESPACHAR entrega um token de reivindicação
+   OK   a promoção por idade INCREMENTA a geração (revoga)
+   OK   fechar com token vencido é recusado PELA CAUSA
+   OK   FALHAR com token vencido é recusado PELA CAUSA
+   OK   o id observado pelo cercado é preservado
+   OK   e ele NÃO vira identidade concluída do passo
+   OK   a leitura conclui o passo E grava a confirmação
+
+== 6. o invariante central: expiração fecha DESPACHO, não RECUPERAÇÃO ==
+   OK   a aprovação vencida é declarada EXPIRED
+   OK   novo despacho recusado PELA CAUSA certa
+   OK   o órfão continua recuperável com aprovação EXPIRADA
+   OK   e ele APARECE para a reconciliação
+
+== 7. o snapshot é server-only, e o recibo não vaza identificador ==
+   OK   o manifesto INTERNO traz compiled_plan
+   OK   o recibo do navegador NÃO traz compiled_plan
+   OK   o recibo do navegador NÃO vaza o endpoint da conta
+   OK   o recibo do navegador NÃO traz external_object_id
+
+== 8. o catálogo vivo é classificado, e precisa ser o PERFIL ATUAL ==
+estado do catálogo: PERFIL_ATUAL
+perfil CREATE_ONLY: conferido
+   OK   catálogo classificado como PERFIL_ATUAL
+
+== 9. repetição, rollback na ORDEM e reapply ==
+   OK   reaplicar a cerca sobre schema já aplicado é RECUSADO
+   OK   rollback FORA DE ORDEM é recusado pela causa
+   OK   rollback com id conhecido é PROIBIDO
+   OK   rollback da cerca sobre tabelas vazias
+   OK   rollback do snapshot, agora na ordem certa
+   OK   o CREATE_ONLY base é PRESERVADO pelos dois rollbacks
+psql:/private/tmp/volc-os-operacao-80-20/supabase/migrations/20260907190000_meta_worker_fencing.sql:1055: NOTICE:  meta_worker_fencing OK: cerca versionada ativa em close/ambiguous/fail/readback
+   OK   reapply da escada inteira
+
+============================================================
+PROVA COMPLETA: 30 asserções, 0 falhas.
+Cluster descartável removido. Nenhum banco oficial foi tocado.

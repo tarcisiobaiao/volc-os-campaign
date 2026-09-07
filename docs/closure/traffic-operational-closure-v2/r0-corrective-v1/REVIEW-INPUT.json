@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "verdict": "META_R0_PARTIAL_LOCAL_CORRECTIONS_REQUIRED",
+  "code_reviewed_sha": "187c4f111d204d6e0adcd52a8f94b39e5c330c9b",
+  "base": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "spec": "docs/specs/traffic-operational-closure-v2/",
+  "scope": "R0 only: T00-T04, local T10/T11 and closure; no R2/R3/R4 implementation expected",
+  "verified": {
+    "branch": "execution/volc-os-operacao-80-20",
+    "tree_clean": true,
+    "commits_since_base": 7,
+    "existing_backend_tests": "144 passed; selected five R0 modules; TCP connections blocked",
+    "existing_ui_tests": "19 passed; meta-criacao-nascimento.test.tsx",
+    "new_counterprobes": "4 passed OBSERVATION tests reproducing defects, not acceptance tests",
+    "ui_expression_probe": "Actual source expression reports Criada pausada for one CREATED step of four expected",
+    "graph_check": "current:false; material code/SQL inputs changed; disclosed by executor"
+  },
+  "findings": [
+    {
+      "id": "R0-A01",
+      "priority": "P1",
+      "tasks": ["T03", "T11"],
+      "title": "Deployment profile omits required snapshot migration",
+      "evidence": ["docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json:75", "docs/closure/traffic-operational-closure-v2/SCHEMA-RUNBOOK.md:52", "backend/app/trafego/meta_execucao/registro.py:117"],
+      "observed": "CREATE_ONLY apply_order stops at 20260904183418. Runtime calls extended approve signature and new recovery/read-back RPCs supplied only by 20260907120000_meta_recovery_snapshot.sql. Disposable proof uses this fourth migration; deploy manifest/runbook do not.",
+      "fix": "Include snapshot migration and rollback/checksums/signatures in exact profile; verify columns/RPC signatures/grants rather than declaring ALREADY_APPLIED from table existence. Make proof use the same manifest and fail on incorrect results.",
+      "acceptance": "Fresh schema and base CREATE_ONLY upgrade both satisfy runtime contract; absent snapshot is detected before window; wrong checksum/rollback in apply/worker result/expected refusal fail the gate.",
+      "related_test_gap": "prova-sql-local.sh prints concurrency and secrecy expectations without asserting them; unexpected successful reapply prints FALHA but does not force failure."
+    },
+    {
+      "id": "R0-A02",
+      "priority": "P1",
+      "tasks": ["T03"],
+      "title": "Read-back persistence failure is silently treated as success",
+      "evidence": ["backend/app/trafego/meta_execucao/executor.py:554"],
+      "probe": "test_readback_persistence_failure_still_reports_success",
+      "observed": "All four registrar_readback calls throw; saga still returns HTTP 200 CREATED_PAUSED and creates all four fake nodes with zero durable read-back evidence.",
+      "fix": "Preserve IDs, stop dependent dispatch when required read-back cannot be persisted, return explicit recoverable incomplete result. Do not swallow evidence write failure into success. Persist successful recovery read-back too.",
+      "acceptance": "Read-back persistence outage cannot produce certified success or lose divergence; no duplicate POST, known IDs remain recoverable."
+    },
+    {
+      "id": "R0-A03",
+      "priority": "P1",
+      "tasks": ["T03"],
+      "title": "Recovery ignores CREATED objects whose read-back was never completed",
+      "evidence": ["backend/app/routers/trafego_meta_criacao.py:701", "backend/app/routers/trafego_meta_criacao.py:719", "backend/app/trafego/meta_execucao/reconciliacao.py:30"],
+      "probe": "test_known_created_id_is_not_read_by_recovery",
+      "observed": "Crash state after Campaign ID was persisted but before read-back: one CREATED step, four expected. Reconcile returns zero ambiguous and makes zero GETs. Internal manifest exposes only has_external_id, so reconciler cannot prioritize exact known ID.",
+      "fix": "Expose resolved IDs only server-side to recovery; distinguish ID recorded from read-back confirmed; read known IDs even with approval expired/create off; persist result without reentering creation.",
+      "acceptance": "Crash after ID/before read-back is recoverable by read-only path, including Creative with known ID. Unknown Creative remains manual."
+    },
+    {
+      "id": "R0-A04",
+      "priority": "P1",
+      "tasks": ["T04"],
+      "title": "Partial receipt incorrectly displayed as complete paused birth",
+      "evidence": ["src/pages/trafego/MetaCriacaoPage.tsx:737", "src/pages/trafego/MetaCriacaoPage.tsx:1400", "src/pages/trafego/MetaCriacaoPage.tsx:1422"],
+      "observed": "The actual expression checks every existing step, ignores operations_expected and durable read-back. One CREATED Campaign out of four expected shows Criada pausada and 1 de 1. Reloaded read-back columns depend on nascimento useState, not durable receipt.",
+      "fix": "Use expected manifest/count plus durable per-step confirmation to derive complete/partial/divergent states; restore sanitized read-back from receipt after reload; ensure operation responses stay bound to correct opaque reference.",
+      "acceptance": "0/4, 1/4, 3/4, all IDs without read-back, divergence and 4/4 confirmed render different honest states; reload preserves evidence; never offer resend for ambiguous work."
+    },
+    {
+      "id": "R0-A05",
+      "priority": "P1",
+      "tasks": ["T02", "T03"],
+      "title": "Expired media-policy receipt still authorizes new frozen-plan dispatch",
+      "evidence": ["backend/app/routers/trafego_meta_criacao.py:493", "backend/app/routers/trafego_meta_criacao.py:579", "backend/app/trafego/meta_execucao/contrato.py:276"],
+      "probe": "test_supply_expiry_does_not_close_new_dispatch",
+      "observed": "Approval at policy minute 59 remains valid for 15 minutes. At minute 61 the frozen media receipt is expired, but create still sends four fake mutations. Old validity check exists only in manifesto_for during compilation, which dispatch no longer uses.",
+      "fix": "Check applicable frozen-receipt validity/revocation before new dispatch without recompiling; cap approval validity where appropriate. Do not apply current validity restriction to historical recovery.",
+      "acceptance": "Expired media proof blocks new POST before secret/network; same expired snapshot remains usable for historical read-only reconciliation."
+    },
+    {
+      "id": "R0-A06",
+      "priority": "P1",
+      "tasks": ["T03"],
+      "title": "Orphan age promotion does not fence the old worker",
+      "evidence": ["supabase/migrations/20260907120000_meta_recovery_snapshot.sql:373", "backend/app/trafego/meta_execucao/executor.py:381", "backend/app/trafego/meta_execucao/registro.py:235"],
+      "probe": "test_late_worker_posts_after_claim_was_reclaimed",
+      "observed": "Simulated delayed prepare response: another worker reclaims row to AMBIGUOUS, old worker resumes using previous DESPACHAR reply and issues POSTs. SQL has age/state compare-and-set but no ownership generation/fencing checked by dispatcher.",
+      "fix": "Implement the spec's worker authority/fencing contract with explicit late-worker outcome; age is eligibility for inspection, not proof of worker death. Preserve uncertain in-flight calls and known IDs, never assume exactly-once across provider and database.",
+      "acceptance": "Two real SQL sessions plus delayed transport prove stale worker cannot obtain new dispatch authority or overwrite a newer conclusion; no retry opened by expiry or absence."
+    }
+  ],
+  "outside_local_repair_scope": [
+    "Official schema CP2 and account/roots proof CP3 require separate authority",
+    "Website-only/Shop applicability remains explicitly unresolved",
+    "First complete PAUSED canary CP4 not authorized or performed",
+    "Authenticated visual validation missing; jsdom is not pixel proof",
+    "T05-T09/R2 real read model, metrics and dashboards not part of R0",
+    "R3 advanced creatives and R4 Google not claimed complete"
+  ],
+  "recommendation": "One bounded corrective executor on current branch/HEAD for these six linked items, then focal verification and corrected closure. No new architecture or all-platform review. Do not open official schema/create window from current handoff.",
+  "effects": "Repository unchanged, no push, no credentials, no official DB or Ads calls. Scratch diagnostics only."
+}

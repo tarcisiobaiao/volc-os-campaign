@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "mode": "PROPOSED_NOT_APPLIED",
+  "date": "2026-09-07",
+  "supersedes": "docs/closure/traffic-operational-closure-v2/CURATION-DELTA.json (proposta da rodada anterior, feita ANTES desta revisão independente)",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "reviewed_head": "187c4f111d204d6e0adcd52a8f94b39e5c330c9b",
+  "head_commit": "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f",
+
+  "why_not_applied": {
+    "authorization": "A missão desta rodada declara NÃO AUTORIZADO: 'Edição de Roadmap, curadoria ou grafo'. Este arquivo é o delta PROPOSTO para quando essa autorização existir.",
+    "agents_md": "AGENTS.md determina que trabalhadores paralelos não editem as autoridades compartilhadas: eles emitem um handoff de curadoria, e um único agente integrador executa os passos 1–5 uma vez, depois da integração.",
+    "graph_rebuild": "Nenhum `scripts/atualizar_grafo_volc_os.py` foi executado. O grafo continua descrevendo a base d54e100 e NÃO descreve os dez commits acumulados — muito menos os três desta rodada.",
+    "human_source_untouched": "docs/volc-os-graph/curadoria-operacional.json não foi lido para escrita nem alterado."
+  },
+
+  "no_task_is_promoted_to_done": "Nenhum estado sobe nesta proposta. Corrigir seis defeitos de honestidade não cria capacidade nova: o que mudou é que o sistema parou de AFIRMAR o que não sabia. Promover qualquer tarefa aqui repetiria, na curadoria, exatamente o defeito que o código acabou de perder.",
+
+  "what_changed_and_deserves_curation": [
+    {
+      "roadmap_id": "P11-T05",
+      "state_before": "partial",
+      "state_proposed": "partial",
+      "state_change": false,
+      "why_still_partial": "O nascimento ficou mais honesto e mais recuperável, e continua sem nenhum objeto criado em conta nenhuma. O marco que muda este estado é CP4, e ele exige autorização e conta.",
+      "evidence_to_record": [
+        "commit cea43e2: autoridade versionada de trabalhador (claim_token + claim_generation), com as três janelas nomeadas e o mecanismo de cada uma; evidência de read-back deixou de ser best-effort; recuperação lê PELO ID durável; validade da prova de mídia voltou a fechar novo despacho sem recompilar",
+        "commit 91967b1: perfil de schema passou de três para cinco arquivos, com lista canônica única e verificador derivado do código; a prova SQL virou 30 asserções com exit != 0",
+        "As quatro sondas de observação da revisão independente deixaram de reproduzir os defeitos; 19 regressões novas exigem o comportamento correto"
+      ],
+      "still_missing": "CP2 (schema oficial), CP3 (roots do plano atual) e CP4 (canário). Nenhum foi executado.",
+      "spec_tasks": ["T03", "T04", "T11"]
+    },
+    {
+      "roadmap_id": "P11-T04",
+      "state_before": "partial",
+      "state_proposed": "partial",
+      "state_change": false,
+      "why_still_partial": "A bancada parou de afirmar que uma campanha pela metade estava completa, e passou a reidratar a execução do recibo durável. Isso conserta uma mentira de tela; não cria nascimento nenhum.",
+      "evidence_to_record": [
+        "commit af821a5: contagem contra o manifesto aprovado; estados explícitos do contrato de recuperação; ausência de manifesto é DESCONHECIDO; `nascimento` em useState removido; resposta ligada à referência opaca correta",
+        "16 casos puros da matriz + 7 renderizados por deep link, incluindo a proibição literal da string '1 de 1' no DOM"
+      ],
+      "still_missing": "Inspeção visual autenticada. jsdom e build não provam pixel, e a extensão do navegador não estava conectada nesta sessão.",
+      "spec_tasks": ["T04"]
+    }
+  ],
+
+  "new_risks_to_record": [
+    {
+      "id": "R-FENCE-01",
+      "statement": "A janela entre 'o banco autorizou o despacho' e 'a Meta recebeu o POST' NÃO é fechável por nenhuma linha de banco. A cerca garante autoridade de CONCLUSÃO, não exclusão de envio.",
+      "mitigation_in_place": "O trabalhador cercado que já despachou grava o id observado em `observed_external_ids`, e o passo fica visível para a recuperação por leitura. Ambiguidade continua sendo estado normal tratável.",
+      "never_promise": "exactly-once entre PostgreSQL e Meta"
+    },
+    {
+      "id": "R-ROLLBACK-01",
+      "statement": "Reverter as migrations fora de ordem é pior que não reverter: o rollback do snapshot com a cerca aplicada criaria uma segunda sobrecarga viva de `flag_readback` — e com duas visíveis nenhuma responde — além de dropar colunas que as funções da cerca leem.",
+      "mitigation_in_place": "Os dois arquivos de rollback recusam sozinhos, com a causa dita, e a prova SQL exercita as duas recusas.",
+      "spec_tasks": ["T11"]
+    }
+  ],
+
+  "graph_freshness": {
+    "checked": false,
+    "why": "Rodar `--check` produziria um veredito sobre um grafo que esta rodada não tem autorização para reconstruir. A declaração honesta é a de sempre: o grafo está desatualizado e isso já foi declarado na rodada anterior; estes três commits o deixam mais desatualizado ainda.",
+    "next_act_for_the_integrator": "Depois da integração e com autorização de curadoria: atualizar `curadoria-operacional.json` com os deltas acima, rodar `scripts/atualizar_grafo_volc_os.py` e depois `--check`, e registrar o resultado de frescor no handoff."
+  }
+}

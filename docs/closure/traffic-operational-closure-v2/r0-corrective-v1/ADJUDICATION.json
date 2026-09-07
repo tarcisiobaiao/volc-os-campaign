@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "run_id": "volc-r0-corrective-v1",
+  "adjudicated_at": "2026-09-07",
+  "branch": "execution/volc-os-operacao-80-20",
+  "base": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "reviewed_head": "187c4f111d204d6e0adcd52a8f94b39e5c330c9b",
+  "final_head": "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f",
+  "review_input": "REVIEW-INPUT.json (copia rastreavel de /private/tmp/volc-r0-review-66AMCU/REVIEW.json, sha256 f32649331ee8bd36c818c37d2cf6c00c0f20b5c70630faf289f3297dd2f0717c)",
+  "adjudication_rule": "O MASTER-SPEC e o contrato pretendido; o codigo e as reproducoes estabelecem o estado atual. Nenhum achado foi aceito por concordancia: cada um foi reproduzido nesta arvore antes de ser corrigido, e cada correcao tem um teste que exige o comportamento certo.",
+  "observation_probes": {
+    "file": "evidence-recebida/test_review_probes.py",
+    "semantics": "Sondas de OBSERVACAO: passam quando REPRODUZEM o defeito. Nao sao aceite.",
+    "before_correction": "4 passed — os quatro defeitos reproduzidos no HEAD revisado",
+    "after_correction": "4 failed — nenhum dos quatro comportamentos antigos ainda ocorre",
+    "why_this_is_the_discriminating_evidence": "Uma sonda que passa ao ver o bug volta a passar no dia em que o bug volta. A inversao pass->fail e o que prova que o comportamento medido deixou de existir; as regressoes em test_meta_r0_corretiva.py sao o que impede que ele volte."
+  },
+  "findings": [
+    {
+      "id": "R0-A01",
+      "title": "Perfil de migration incompativel com o runtime",
+      "state": "FIXED_AND_PROVEN",
+      "reproduction": "SCHEMA-DEPLOY-MANIFEST.json encerrava o CREATE_ONLY em 20260904183418 (3 arquivos). O runtime chama 14 RPCs; quatro delas (reclaim_orphan, record_readback, record_fenced_dispatch, conclude_by_recovery) e a aridade de 15 argumentos de approve so existem a partir da quarta e da quinta migration. Reproduzido sem banco: o verificador novo, rodado contra o perfil de 3 arquivos, lista as funcoes ausentes e sai com codigo 1.",
+      "conclusion": "CONFIRMADO. E pior do que a revisao descreve: apos esta rodada faltavam CINCO arquivos, nao quatro, porque a correcao de A06 acrescentou duas RPCs novas.",
+      "paths": [
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-RUNBOOK.md",
+        "docs/closure/traffic-operational-closure-v2/prova-sql-local.sh",
+        "docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql",
+        "scripts/verificar_perfil_schema_meta.py",
+        "supabase/migrations/20260907120100_meta_recovery_snapshot_rollback.sql"
+      ],
+      "correction": [
+        "Perfil de cinco arquivos, com sha256, depends_on e rollback separado e ORDENADO por ordem de reversao.",
+        "Lista canonica UNICA: prova-sql-local.sh pede a lista ao verificador (--lista-apply) em vez de manter a propria.",
+        "runtime_contract derivado do CODIGO: o verificador le registro.py, extrai toda RPC chamada e recusa perfil que nao a cubra. `defined_by` e recalculado como o ULTIMO arquivo que emite cada CREATE — 11 das 16 funcoes sao recriadas por mais de um degrau.",
+        "Classificacao por COLUNAS, CONSTRAINTS, ASSINATURAS DE IDENTIDADE e GRANTS. Estados DERIVADOS da escada: NAO_APLICADO, ESCADA_INCOMPLETA_ATE_<arquivo>, PERFIL_ATUAL, PARCIAL_OU_DIVERGENTE.",
+        "Sobrecarga homonima viva e tratada como fatal (PGRST203), nao como 'a funcao existe'.",
+        "Helpers que deliberadamente NAO recebem grant estao declarados por nome; um verificador que varresse o prefixo marcaria um schema correto como divergente.",
+        "Rollback do snapshot passa a RECUSAR rodar com a cerca aplicada — fora de ordem ele criaria uma segunda sobrecarga de flag_readback e dropparia colunas que as funcoes da cerca leem."
+      ],
+      "tests": [
+        "prova-sql-local.sh: 30 assercoes, exit 0",
+        "gate provado nos dois sentidos: checksum divergente -> exit 1; dependencia fora de ordem -> exit 1; rollback na lista de apply -> exit 1; perfil de 3 arquivos -> exit 1; reapply aceito -> FALHA",
+        "perfil sem a cerca faz a prova inteira sair com exit 1"
+      ],
+      "found_by_the_new_gate": "O portao encontrou uma inconsistencia real na propria correcao de A06: fail_step respondia META_STEP_CANNOT_FAIL a um trabalhador cercado, e essa frase o mandaria ao tratamento generico onde o id observado se perde. Corrigido: a cerca passou a vir antes do estado."
+    },
+    {
+      "id": "R0-A02",
+      "title": "Read-back best-effort silencioso",
+      "state": "FIXED_AND_PROVEN",
+      "reproduction": "test_readback_persistence_failure_still_reports_success: as quatro gravacoes de evidencia falham, a saga cria os quatro objetos e devolve HTTP 200 CREATED_PAUSED com zero read-back duravel.",
+      "conclusion": "CONFIRMADO. `_registrar_readback` engolia toda excecao por desenho declarado.",
+      "paths": [
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/tests/test_meta_criacao_pausada_rotas.py"
+      ],
+      "correction": [
+        "`_registrar_readback` levanta `_EvidenciaNaoGravada` — tipo privado, deliberadamente NAO um ErroRemotoMeta, para que o reempacotamento de 502 nao afirme que a Meta fez algo que ela nao fez.",
+        "Caminho positivo: a saga PARA antes do proximo objeto e devolve 502 META_READBACK_NOT_DURABLE com evidencia_duravel=false. O id continua gravado; nada e reenviado; falhar_passo NAO e chamado (falha nossa nao vira recusa provada da Meta).",
+        "Caminho da divergencia: a divergencia continua sendo o veredito e so a durabilidade cai. Trocar o codigo apagaria o fato mais grave dos dois.",
+        "Ledger sem suporte a read-back recusa ANTES do primeiro POST (409 META_READBACK_LEDGER_UNAVAILABLE) em vez de seguir em silencio.",
+        "A recuperacao tambem grava a evidencia que leu, pela RPC conclude_by_recovery."
+      ],
+      "tests": [
+        "test_falha_ao_gravar_confirmacao_para_a_saga_e_recusa_o_sucesso",
+        "test_o_recibo_do_incidente_acompanha_a_resposta_de_falha",
+        "test_ledger_que_nao_sabe_gravar_readback_recusa_antes_do_primeiro_post",
+        "test_divergencia_sobrevive_a_falha_de_anotar_a_evidencia"
+      ]
+    },
+    {
+      "id": "R0-A03",
+      "title": "Recuperacao ignora CREATED sem read-back",
+      "state": "FIXED_AND_PROVEN",
+      "reproduction": "test_known_created_id_is_not_read_by_recovery: Campaign CREATED com id persistido e sem read-back; /reconciliar responde passos_ambiguos: 0 e faz ZERO GETs.",
+      "conclusion": "CONFIRMADO em tres camadas: o filtro da rota era `state == AMBIGUOUS`; o manifesto server-only expunha apenas has_external_id; e o reconciliador reconstruia identidade por nome mesmo para passos cujo id o proprio POST devolveu.",
+      "paths": [
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "supabase/migrations/20260907190000_meta_worker_fencing.sql"
+      ],
+      "correction": [
+        "`_motivo_da_recuperacao` distingue AMBIGUO, DIVERGENTE e SEM_CONFIRMACAO; readback_at ausente tambem entra (reler e read-only e a leitura grava a confirmacao que faltava).",
+        "O manifesto INTERNO passa a devolver external_object_id e readback_confirmed. O recibo do navegador continua com has_external_id e nada mais.",
+        "`_conferir_por_id` le PELO ID com a mascara EXATA do read-back da criacao e roda `_validar_read_back` sem afrouxar nada — conta, tipo, PAUSED, nome, campos criticos e o PAI.",
+        "Creative com id conhecido passa a ser conferivel (a correlacao temporal era o unico obstaculo, e ela nao e necessaria quando o id veio do nosso POST). Creative sem id continua manual.",
+        "Passo ja confirmado no livro nao e relido: ele so empresta a identidade aos filhos.",
+        "`concluir_por_recuperacao` grava id e evidencia no MESMO ato e nunca escreve FAILED."
+      ],
+      "tests": [
+        "test_id_conhecido_sem_confirmacao_entra_na_recuperacao_e_e_lido_pelo_id",
+        "test_recuperacao_por_id_nao_devolve_identificador_ao_navegador",
+        "test_criativo_com_id_conhecido_e_conferido_pelo_id",
+        "test_divergencia_lida_pelo_id_registra_e_nao_confirma",
+        "test_passo_ja_confirmado_nao_e_relido",
+        "test_passo_nunca_despachado_aparece_com_nome_proprio"
+      ]
+    },
+    {
+      "id": "R0-A04",
+      "title": "Recibo parcial exibido como campanha completa",
+      "state": "FIXED_AND_PROVEN",
+      "reproduction": "A expressao real era `steps.every((p) => p.state === 'CREATED')` sobre a lista dos passos que EXISTEM. Uma Campaign de quatro objetos esperados exibia 'Criada pausada' e '1 de 1'.",
+      "conclusion": "CONFIRMADO, e a reproducao foi exercitada no componente real, nao numa copia da expressao.",
+      "paths": [
+        "src/components/trafego/meta/estadoDaOperacao.ts",
+        "src/components/trafego/meta/MetaOperationReceipt.tsx",
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "src/lib/pautadorApi.ts",
+        "supabase/migrations/20260907190000_meta_worker_fencing.sql"
+      ],
+      "correction": [
+        "O denominador vem do manifesto aprovado (steps_expected/operations_expected). Ausencia dele e DESCONHECIDO, nunca sucesso; recibo que se contradiz sobre a contagem tambem.",
+        "Estados explicitos do contrato de recuperacao: NAO_DESPACHADO, EM_VOO, CRIADO_SEM_LEITURA, CONFIRMADO, DIVERGENTE, AMBIGUO, RECUSADO, NAO_RECONHECIDO. So CONFIRMADA e verde.",
+        "Duas contagens separadas — 'conferidos por leitura' e 'com id gravado' — porque sao duas perguntas.",
+        "O `nascimento` em useState saiu: a fonte e o recibo duravel, que sobrevive ao reload. O recibo passa a carregar readback_at, readback_confirmed e a evidencia sanitizada.",
+        "Toda resposta viaja com a REFERENCIA a que pertence, e um selo proprio ordena as respostas: recibo de outra aprovacao nunca e exibido sob esta referencia, e a releitura disparada pela URL antes do POST nao apaga o nascimento que chega depois.",
+        "O botao de criar fecha ANTES do despacho (despachadaNestaSessao), entao nem uma falha o reabre. Nao existe botao de reenviar."
+      ],
+      "tests": [
+        "16 casos puros da matriz: 0/4, 1/4, 3/4, quatro ids sem leitura, divergencia, 4/4, ambiguo, em voo, sem manifesto, manifesto contraditorio, passo fora do manifesto, CREATED sem id, confirmacao pela metade",
+        "7 casos renderizados por deep link: 1/4 nunca e completa (com a string literal '1 de 1' proibida no DOM), 0/4, quatro ids sem leitura, divergencia, reidratacao apos reload sem criacao nenhuma na sessao, recibo de outra referencia nao e exibido, operacao ambigua sem botao habilitado",
+        "os 19 testes originais continuam passando"
+      ],
+      "visual_language": "Preservada. BlocoDeEvidencia, LinhaDeFato, ChipDeEstado, PainelDeBloqueio e as mesmas classes da tabela. A unica mudanca de geometria e min-w-[560px] -> min-w-[680px] pela quinta coluna."
+    },
+    {
+      "id": "R0-A05",
+      "title": "Expiracao da prova de midia nao fechava novo despacho",
+      "state": "FIXED_AND_PROVEN",
+      "reproduction": "test_supply_expiry_does_not_close_new_dispatch reproduz o defeito, MAS por um motivo diferente do que a sonda supunha: ela troca `contrato.datetime`, e o caminho de despacho nunca consultava aquele relogio. Ela passava porque NADA no despacho olhava as horas — nao porque o relogio falso funcionou.",
+      "conclusion": "CONFIRMADO, e a adjudicacao corrige a leitura da propria sonda. A checagem antiga vivia so em `manifesto_for`, na compilacao, corretamente removida do caminho de criacao por F02 — e nunca substituida.",
+      "paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/routers/trafego_meta_criacao.py"
+      ],
+      "correction": [
+        "`contrato.agora_utc()` — um relogio unico e SUBSTITUIVEL, que e a funcao que o despacho realmente chama.",
+        "`PlanoCompiladoMeta.provas_de_midia_vencidas(agora)` pergunta ao SNAPSHOT: nada e relido, nada e rebaixado do CDN, nenhum recibo novo e emitido e o hash nao muda.",
+        "A validade da APROVACAO passa a ser limitada pela prova que a sustenta: min(agora + 15min, policy_expires_at). Aprovar no minuto 59 produzia expires_at DEPOIS de policy_expires_at.",
+        "O despacho reconfere ANTES do Keychain, e a cada degrau — porque cada degrau e um POST novo e a saga pode atravessar o instante do vencimento.",
+        "A leitura historica do MESMO snapshot expirado continua aberta. A assimetria e o contrato, e e a regressao que F02 consertou."
+      ],
+      "tests": [
+        "test_aprovacao_nunca_vive_mais_que_a_prova_que_a_sustenta",
+        "test_prova_vencida_fecha_novo_despacho_antes_do_keychain (com armadilha no lugar do Keychain)",
+        "test_expiracao_da_prova_nao_fecha_a_recuperacao_do_mesmo_snapshot",
+        "test_vencimento_no_meio_da_saga_nao_libera_passo_novo"
+      ],
+      "note_on_test_design": "As regressoes NAO copiam o monkeypatch da sonda. Elas substituem `contrato.agora_utc`, a funcao que o despacho consulta — um teste montado sobre a classe `datetime` mediria a propria fixture."
+    },
+    {
+      "id": "R0-A06",
+      "title": "Idade nao substitui autoridade do trabalhador",
+      "state": "FIXED_AND_PROVEN",
+      "reproduction": "test_late_worker_posts_after_claim_was_reclaimed: o trabalhador volta com a resposta velha de DESPACHAR depois de outro processo ter promovido a linha para AMBIGUOUS, e despacha os quatro objetos. Reproduzido tambem no SQL real: close_step aceitava AMBIGUOUS -> CREATED de qualquer chamador com o step_ref.",
+      "conclusion": "CONFIRMADO. O SQL tinha compare-and-set por idade/estado e nenhuma geracao de posse conferida pelo despachante.",
+      "paths": [
+        "supabase/migrations/20260907190000_meta_worker_fencing.sql",
+        "supabase/migrations/20260907190100_meta_worker_fencing_rollback.sql",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/registro.py"
+      ],
+      "correction": [
+        "Autoridade versionada: claim_token + claim_generation na linha do passo. prepare_step cunha o token na MESMA transacao que insere a linha IN_FLIGHT.",
+        "close_step, mark_ambiguous, fail_step e record_readback exigem o token VIGENTE. Reentrar num passo e promover um orfao REVOGAM a reivindicacao anterior.",
+        "O token GIRA ao fechar: anotar a leitura exige o token girado, entao uma anotacao emitida com a autoridade do despacho nao pousa sobre conclusao mais nova.",
+        "A cerca vem ANTES da divergencia de id em close_step e antes do estado em fail_step: 'voce foi cercado' e a unica resposta que leva o chamador ao caminho da OBSERVACAO, onde o id que ele tem na mao e preservado.",
+        "record_fenced_dispatch grava o id observado em observed_external_ids — ao lado da identidade concluida, nunca no lugar dela, e nunca sobrescrevendo identidade divergente.",
+        "reclaim_orphan continua promovendo por idade e passou a revogar; idade e elegibilidade para investigar, nunca prova de morte."
+      ],
+      "windows_and_their_mechanisms": {
+        "reivindicacao_ate_envio": "O token nasce na mesma transacao que insere a linha, sob o lock consultivo 1601. Nao existe instante em que o passo esteja em voo sem dono.",
+        "envio_ate_conclusao": "Token vigente exigido nas tres escritas de conclusao. E o cercado tambem NAO avanca: a regra de ordinal do prepare_step exige o degrau anterior CRIADO, e o degrau dele acabou de virar AMBIGUOUS — a cerca de um passo fecha a saga inteira daquele trabalhador NO BANCO, sem depender de o processo dele cooperar.",
+        "conclusao_ate_readback": "close_step gira o token e devolve o novo."
+      },
+      "honest_guarantee": "NAO ha exactly-once entre PostgreSQL e Meta, e nada aqui promete um. A janela entre 'o banco autorizou' e 'a Meta recebeu' e a unica que nenhuma linha de banco fecha. O que esta provado e mais estreito: no maximo UM trabalhador detem autoridade de conclusao por reivindicacao, autoridade velha nao sobrescreve conclusao mais nova, o id que ela viu nao se perde, e ambiguidade continua sendo estado normal.",
+      "tests": [
+        "SQL REAL, duas sessoes no cluster descartavel: prepare_step -> reclaim_orphan (geracao 1 -> 2) -> close_step com token velho recusa META_STEP_CLAIM_FENCED -> fail_step idem -> record_fenced_dispatch preserva o id -> conclude_by_recovery conclui e grava a confirmacao",
+        "concorrencia real: duas sessoes psql simultaneas no mesmo passo, com os dois estados CONFERIDOS por assercao (exatamente um DESPACHAR, exatamente um AMBIGUO)",
+        "hermetico: test_trabalhador_cercado_nao_conclui_e_o_id_visto_nao_se_perde, test_o_id_observado_pelo_cercado_alimenta_a_recuperacao_por_leitura, test_autoridade_vencida_nao_fecha_nem_falha_o_passo, test_o_token_gira_ao_fechar_para_a_anotacao_nao_pousar_em_conclusao_nova, test_cercado_nao_sobrescreve_identidade_divergente"
+      ],
+      "mock_alone_does_not_close_it": "Correto, e por isso a prova SQL cobre o cenario com sessoes reais. O dublê em memoria foi endurecido para reproduzir as MESMAS recusas — um dublê complacente faria os testes provarem um contrato que nao existe."
+    }
+  ],
+  "coexecution": {
+    "requested": "Codex gpt-5.5 reasoning high; Gemini-3.1-pro",
+    "codex": {
+      "model_requested": "gpt-5.1-codex-max",
+      "model_effectively_used": "gpt-6-astra (default provisionado no CLI), model_reasoning_effort=high",
+      "substitution_disclosed_because": "gpt-5.5/gpt-5.1-codex-max nao sao suportados por esta conta: 'The gpt-5.1-codex-max model is not supported when using Codex with a ChatGPT account'. Nenhum modelo foi trocado em silencio.",
+      "delegation": "Uma pergunta focal, sanitizada, sobre fencing/concorrencia em PostgreSQL. Sem credenciais, sem identificadores de conta, schema sintetico.",
+      "what_it_changed": "Duas coisas concretas foram adotadas por serem corretas e por mim verificadas: (1) a janela conclusao->read-back precisava de fencing proprio, o que motivou o GIRO do token ao fechar; (2) a ordem 'cerca antes da divergencia de id', que sem isso perderia o id do trabalhador cercado num erro generico. Nada foi aplicado sem verificacao propria."
+    },
+    "gemini": {
+      "status": "NAO_USADO",
+      "reason": "O CLI esta instalado (0.58.0). A duvida que restava — contrato de estado da UI — foi respondida pela analise interna e provada por 16 casos puros mais 7 renderizados; abrir uma terceira opiniao nao mudaria nenhuma decisao ja provada."
+    },
+    "single_writer": "Toda alteracao e todo commit foram feitos por este executor. Coexecutores receberam contexto sanitizado e devolveram analise; nenhum escreveu no repositorio."
+  },
+  "out_of_scope_confirmed_untouched": [
+    "T05-T09, dashboard financeiro e sync",
+    "Novas receitas, video/flexivel, Sales/Leads e CAPI",
+    "Google multicanal",
+    "O bloqueio website-only/Shop permanece — nao foi removido e nao foi provado",
+    "CP2/CP3/CP4 reais"
+  ]
+}

@@ -1,5 +1,24 @@
 # Fechamento R0 — Meta estático recuperável, candidato local
 
+> ## ⚠️ SUPERADO EM PARTE por `r0-corrective-v1/`
+>
+> Uma revisão independente sobre o HEAD `187c4f1` encontrou **seis achados P1**
+> que este handoff não conhecia, e a rodada corretiva os fechou em
+> [`r0-corrective-v1/`](r0-corrective-v1/HANDOFF.md).
+>
+> **Três afirmações abaixo deixaram de valer:**
+>
+> | O que este arquivo diz | O que é verdade depois de `91967b1` |
+> |---|---|
+> | O perfil `CREATE_ONLY` tem **três** arquivos | Tem **cinco**. O runtime já dependia da 4ª migration, e agora também da 5ª — era o achado `R0-A01`. |
+> | `prova-sql-local.sh` tem **sete etapas, todas passando** | Ela **imprimia** expectativas em vez de cobrá-las: dizia `(precisa ser false)` ao lado de um valor, mostrava os dois workers sem compará-los e escrevia `FALHA (reaplicou)` **saindo com zero**. Agora são **30 asserções** e qualquer violação sai com código ≠ 0. |
+> | "duas sessões concorrentes produzindo exatamente **um** `DESPACHAR`" | Continua verdade — mas naquela versão **nada comparava** os dois estados. Hoje é asserção. |
+>
+> O restante deste documento — o que foi construído em T01–T04 e o que
+> permanece fora de escopo — continua válido. Leia-o com o corretivo ao lado.
+
+
+
 Marco **R0** do pacote [`docs/specs/traffic-operational-closure-v2/`](../../specs/traffic-operational-closure-v2/GUIDE-EXECUCAO.md).
 
 | | |
