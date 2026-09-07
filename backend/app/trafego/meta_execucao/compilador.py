@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping, Sequence
 
+from . import contrato_v2
 from .contrato import (
     DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     DESTINO_SHOP_NAO_PROVADO,
@@ -519,3 +520,195 @@ def resolver_dependencias(payload: Mapping[str, Any], ids: Mapping[str, str]) ->
         alvo[folha] = ids[referencia]
     _exigir_sem_marcador(saida)
     return saida
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Compilador V2: campanha + N conjuntos + N anúncios
+#
+# ⚠️ Ele reusa `_materia_do_plano`, `OperacaoMeta` e `PlanoCompiladoMeta` de
+# propósito. Um segundo cálculo de `plano_sha256` seria uma segunda autoridade
+# sobre a identidade do plano — e duas autoridades sobre a mesma identidade é
+# como um snapshot íntegro passa a parecer adulterado.
+#
+# ⚠️ E ele NÃO substitui `compilar_plano_pausado`. O V1 continua sendo o único
+# caminho dos planos já aprovados: descongelar uma aprovação antiga passa pelo
+# mesmo código que a congelou. `test_meta_contrato_v2.py` prova que, para a
+# mesma campanha, os PAYLOADS emitidos pelos dois são iguais campo a campo.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _payload_de_campanha_v2(plano: "contrato_v2.PlanoMetaV2") -> dict[str, Any]:
+    campanha: dict[str, Any] = {
+        "name": plano.campaign_name,
+        "objective": plano.receita.objective,
+        "buying_type": "AUCTION",
+        "special_ad_categories": list(plano.special_ad_categories),
+        "is_adset_budget_sharing_enabled": plano.is_adset_budget_sharing_enabled,
+        "status": "PAUSED",
+    }
+    orcamento = plano.orcamento_campanha
+    if orcamento is not None:
+        # ⚠️ CBO: a verba E a estratégia de lance sobem juntas. A Meta declarou
+        # essa exigência em 05/09/2026 com o código 100/4005 — "não é possível
+        # usar o compartilhamento do orçamento do conjunto de anúncios sem uma
+        # estratégia de lance". A receita de conjunto único recusou o pedido
+        # por não poder atendê-la sem virar outra receita; aqui ela É outra.
+        campanha[orcamento.campo_da_graph] = orcamento.amount_minor
+        campanha["bid_strategy"] = plano.receita.bid_strategy
+    return campanha
+
+
+def _targeting_v2(
+    conjunto: "contrato_v2.ConjuntoMeta",
+    publicos: "contrato_v2.ReferenciasDePublicoResolvidas",
+) -> dict[str, Any]:
+    """O targeting com TODA referência opaca já trocada pelo id do provedor.
+
+    ⚠️ A troca acontece aqui, e não no contrato, porque o contrato é puro: ele
+    julga a intenção do operador sem tocar na conta. Um id de provedor dentro
+    do contrato faria o plano deixar de ser comparável entre contas.
+    """
+    alvo = conjunto.publico.targeting()
+    publico = conjunto.publico
+    if publico.locale_refs:
+        alvo["locales"] = [publicos.locale(ref) for ref in publico.locale_refs]
+    if publico.incluir_custom_refs or publico.lookalike_refs:
+        alvo["custom_audiences"] = [
+            {"id": publicos.publico(ref)}
+            for ref in (publico.incluir_custom_refs + publico.lookalike_refs)
+        ]
+    if publico.excluir_custom_refs:
+        alvo["excluded_custom_audiences"] = [
+            {"id": publicos.publico(ref)} for ref in publico.excluir_custom_refs]
+    if publico.interesse_refs:
+        alvo["flexible_spec"] = [
+            {"interests": [
+                {"id": publicos.interesse(ref)} for ref in publico.interesse_refs]}]
+    alvo["publisher_platforms"] = list(conjunto.posicionamentos.plataformas)
+    return alvo
+
+
+def _promoted_object_v2(
+    conjunto: "contrato_v2.ConjuntoMeta",
+    publicos: "contrato_v2.ReferenciasDePublicoResolvidas",
+) -> dict[str, Any] | None:
+    """`promoted_object` derivado da receita e da fonte RESOLVIDA.
+
+    ⚠️ `REPORT_ONLY` devolve `None`. Escolher uma conversão para VER não pode
+    mudar o que a campanha otimiza — é literalmente a diferença que `F25`
+    cobra, e injetar o objeto aqui faria a tela mentir sobre a entrega.
+
+    ⚠️ Evento arbitrário NÃO vira `OTHER` nem `custom_event_str`. O contrato já
+    recusou a combinação ambígua; aqui só chega um dos dois caminhos.
+    """
+    medida = conjunto.mensuracao
+    if not medida.altera_payload:
+        return None
+    fonte = publicos.fonte(str(medida.source_ref))
+    if medida.custom_conversion_ref is not None:
+        return {
+            "pixel_id": fonte,
+            "custom_conversion_id": publicos.conversao(medida.custom_conversion_ref),
+        }
+    return {"pixel_id": fonte, "custom_event_type": medida.standard_event}
+
+
+def compilar_plano_v2(
+    plano: "contrato_v2.PlanoMetaV2",
+    referencias: ReferenciasMetaResolvidas,
+    publicos: "contrato_v2.ReferenciasDePublicoResolvidas | None" = None,
+) -> PlanoCompiladoMeta:
+    """Compila um plano V2 em operações Meta determinísticas e PAUSED."""
+    resolvidos = publicos if publicos is not None else contrato_v2.ReferenciasDePublicoResolvidas()
+    conta = referencias.account_id
+    receita = plano.receita
+
+    operacoes: list[OperacaoMeta] = [
+        OperacaoMeta(
+            "campaign", f"/act_{conta}/campaigns", _payload_de_campanha_v2(plano),
+            validavel_sem_criar_pai=True, tipo="campaign"),
+    ]
+
+    for conjunto in plano.conjuntos:
+        adset: dict[str, Any] = {
+            "name": conjunto.nome,
+            "campaign_id": _CAMPAIGN,
+            "billing_event": receita.billing_event,
+            "optimization_goal": receita.optimization_goal,
+            "start_time": conjunto.programacao.start_time.isoformat(),
+            "targeting": _targeting_v2(conjunto, resolvidos),
+            "status": "PAUSED",
+        }
+        if conjunto.orcamento is not None:
+            # ABO: verba e lance ficam no conjunto, como na receita provada.
+            adset[conjunto.orcamento.campo_da_graph] = conjunto.orcamento.amount_minor
+            adset["bid_strategy"] = receita.bid_strategy
+        if conjunto.programacao.end_time is not None:
+            adset["end_time"] = conjunto.programacao.end_time.isoformat()
+        promovido = _promoted_object_v2(conjunto, resolvidos)
+        if promovido is not None:
+            adset["promoted_object"] = promovido
+        if conjunto.mensuracao.attribution_spec:
+            adset["attribution_spec"] = [
+                dict(item) for item in conjunto.mensuracao.attribution_spec]
+        operacoes.append(OperacaoMeta(
+            conjunto.chave_de_operacao, f"/act_{conta}/adsets", adset,
+            depende_de=("campaign",), tipo="adset"))
+
+    for anuncio in plano.anuncios:
+        variacao = anuncio.variacao
+        chave_criativo = f"creative:{variacao.variation_key}"
+        chave_anuncio = f"ad:{variacao.variation_key}"
+        chave_conjunto = f"adset:{anuncio.adset_key}"
+        story: dict[str, Any] = {
+            "page_id": referencias.page_id,
+            "link_data": {
+                "image_hash": referencias.image_hash_for(
+                    variacao.asset_ref, fallback_ref=variacao.asset_ref),
+                "link": plano.destination_url,
+                "message": variacao.message,
+                "name": variacao.headline,
+                "description": variacao.description,
+                "call_to_action": {
+                    "type": variacao.call_to_action_type,
+                    "value": {"link": plano.destination_url},
+                },
+            },
+        }
+        if referencias.instagram_actor_id is not None:
+            story["instagram_actor_id"] = referencias.instagram_actor_id
+        operacoes.append(OperacaoMeta(
+            chave_criativo, f"/act_{conta}/adcreatives",
+            {
+                "name": variacao.creative_name,
+                "object_story_spec": story,
+                "url_tags": TRACKING_GAM_CAMPAIGN_ID,
+                # Sem `destination_spec`, pela mesma razão documentada no V1.
+            },
+            validavel_sem_criar_pai=True, tipo="creative"))
+        operacoes.append(OperacaoMeta(
+            chave_anuncio, f"/act_{conta}/ads",
+            {
+                "name": variacao.ad_name,
+                "adset_id": f"${chave_conjunto}.id",
+                "creative": {"creative_id": f"${chave_criativo}.id"},
+                "status": "PAUSED",
+            },
+            depende_de=(chave_conjunto, chave_criativo), tipo="ad"))
+
+    manifestos = tuple(referencias.manifesto_for(ref) for ref in plano.asset_refs)
+    materia = _materia_do_plano(
+        api_version="v26.0",
+        account_ref=plano.account_ref,
+        destination_url=plano.destination_url,
+        shop_redirect_proof=referencias.shop_redirect_proof,
+        asset_supply=[item.prova_publica() for item in manifestos],
+        operacoes=tuple(operacoes),
+    )
+    return PlanoCompiladoMeta(
+        account_ref=plano.account_ref,
+        destination_url=plano.destination_url,
+        operacoes=tuple(operacoes),
+        asset_supply_manifests=manifestos,
+        shop_redirect_proof=referencias.shop_redirect_proof,
+        plano_sha256=hashlib.sha256(_canonico(materia).encode("utf-8")).hexdigest(),
+    )
