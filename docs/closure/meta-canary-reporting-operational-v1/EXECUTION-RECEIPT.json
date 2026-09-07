@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "receipt_id": "META_CANARY_REPORTING_OPERATIONAL_V1",
+  "produced_at": "2026-09-07",
+  "worktree": "/private/tmp/volc-os-operacao-80-20",
+  "branch": "execution/volc-os-operacao-80-20",
+  "base_commit": "546ac50910583901d6d24611c7f37f66672bcdfa",
+  "head_commit": "e0eb60ca9d9f25ce39ffa54ec2374672cf273448",
+  "tree_clean_at_close": false,
+  "commits": [
+    {
+      "sha": "91bab5385c0211d266917ab6bfc1efeae83696da",
+      "subject": "fix(meta): perguntar a coisa certa a Insights e nao somar o que nao e LPV (T05)"
+    },
+    {
+      "sha": "552349ace5dac40342673a46c837e8a7c14ea9cc",
+      "subject": "fix(meta): o filtro de conta precisa CHEGAR aos conjuntos e anuncios (T07)"
+    },
+    {
+      "sha": "c339764104512d55d9a192f744b5a4cd852e10a4",
+      "subject": "fix(meta): o grao inteiro precisa chegar a linha, e a parcialidade ao recibo"
+    },
+    {
+      "sha": "8089eabea68626706588daf151d068a3c4b5f271",
+      "subject": "fix(meta): declarar completude e chave estavel no payload da RPC"
+    },
+    {
+      "sha": "70849956dad4aa3d10da2a482dac739d943f4cc7",
+      "subject": "feat(n8n): coleta diaria Meta nascida desligada, com o dia no fuso da conta"
+    },
+    {
+      "sha": "85eebb359dcdece8dd0a9918fd129b77594e7702",
+      "subject": "feat(schema): migration candidata que faz o read model Meta dizer a verdade"
+    },
+    {
+      "sha": "d694224069cbd0a1c6662ec42a6acedc21be80d6",
+      "subject": "fix(meta): separar \"cliquei duas vezes\" de \"o numero mudou\""
+    },
+    {
+      "sha": "e0eb60ca9d9f25ce39ffa54ec2374672cf273448",
+      "subject": "feat(meta): as telas Meta passam a ler o read model, e a demo vira porta explicita (T08/T09)"
+    }
+  ],
+  "single_writer": true,
+  "forbidden_git_ops_used": "nenhuma pelo integrador (sem reset, rebase, merge, amend, force push, stash, limpeza destrutiva). Um subagente executou `git stash push -u`/`pop` uma vez para medir a baseline de TypeScript, contra a instrucao explicita; o ciclo fechou limpo e foi verificado depois: `git stash list` mostra apenas uma entrada pre-existente de 27/08 em `main`, todos os arquivos dos outros agentes seguem presentes e nenhum commit foi perdido. Registrado como desvio de processo sem dano.",
+  "pushed": false,
+  "authority": {
+    "executed": "LOCAL_EXECUTION apenas.",
+    "meta_api_calls": 0,
+    "google_api_calls": 0,
+    "official_supabase_writes": 0,
+    "official_catalog_reads": 0,
+    "migrations_applied_officially": 0,
+    "n8n_imports": 0,
+    "n8n_executions": 0,
+    "n8n_activations": 0,
+    "tokens_transported": 0,
+    "deploys": 0,
+    "supabase_authority_gate": "python3 scripts/verificar_autoridade_supabase.py -> Supabase oficial: https://database.agenciavolc.com.br (confere configuracao; NAO e autorizacao de acesso)"
+  },
+  "environment": {
+    "urls": [
+      "http://localhost:8080/trafego?rede=meta",
+      "http://localhost:8080/trafego/meta/nova",
+      "http://localhost:8080/settings/campaigns?rede=meta"
+    ],
+    "http_status": {
+      "trafego_meta": 200,
+      "meta_nova": 200,
+      "settings_campaigns_meta": 200
+    },
+    "http_200_is_not_proof": "HTTP 200 num SPA prova que o servidor responde, nao que a tela esta certa.",
+    "processes": {
+      "vite_8080": "no ar durante toda a sessao",
+      "node_api_3001": "no ar durante toda a sessao",
+      "uvicorn_8010": "PARADO antes da primeira edicao de Python e reiniciado uma vez ao final"
+    },
+    "why_uvicorn_stopped": "backend/app/main.py::_reconciliar_runs_orfaos roda no startup e faz select E update em pautador_funnel_runs no Supabase oficial, sem flag que desligue. Com --reload, cada save de Python reexecutaria isso. Parar o watcher trocou dezenas dessas execucoes por uma.",
+    "restart_effect_measured": "O startup do reinicio rodou a reconciliacao sem erro e NAO registrou 'reconciliei N run(s)', mensagem que so aparece quando N>0. Logo: houve um SELECT no Supabase oficial e NENHUMA escrita."
+  },
+  "gates": [
+    {
+      "gate": "testes Meta (Python)",
+      "resultado": "322 passaram",
+      "isolamento": "TCP bloqueado por run_focal.py"
+    },
+    {
+      "gate": "testes n8n Meta (Python)",
+      "resultado": "31 passaram",
+      "isolamento": "TCP bloqueado"
+    },
+    {
+      "gate": "suite backend inteira",
+      "resultado": "4108 passaram, 38 falharam, 13 erros",
+      "isolamento": "TCP bloqueado",
+      "nota": "as falhas estao confinadas a test_adspower_broker_hermetico, test_trafego, test_quadro, test_publicar_pagina, test_reler_wordpress e test_canario_pedido_aprovado. Nenhum desses arquivos importa qualquer modulo do delta, e a causa visivel e 'NETWORK BLOCKED DURING REVIEW'. NAO se afirma que passariam sem isolamento: o isolamento nao foi retirado, de proposito."
+    },
+    {
+      "gate": "SQL do read model",
+      "resultado": "151 asseracoes, 0 falhas",
+      "isolamento": "PostgreSQL 17.9 descartavel, initdb proprio, 127.0.0.1:55433, recusa rodar com qualquer SUPABASE_* no ambiente"
+    },
+    {
+      "gate": "validador n8n Meta",
+      "resultado": "265 provas, 0 falhas",
+      "isolamento": "local"
+    },
+    {
+      "gate": "validador n8n Google",
+      "resultado": "337 provas, 0 falhas (nao regrediu)",
+      "isolamento": "local"
+    },
+    {
+      "gate": "gate de agenda unica",
+      "resultado": "12 provas — 'UMA autoridade de agenda escolhida (n8n) e NENHUMA ligada'",
+      "isolamento": "local"
+    },
+    {
+      "gate": "geradores --check",
+      "resultado": "Meta ok, Google ok",
+      "isolamento": "local"
+    },
+    {
+      "gate": "perfil de schema",
+      "resultado": "CREATE_ONLY conferido; META_READ_MODEL --arquivos conferido",
+      "isolamento": "local"
+    },
+    {
+      "gate": "TypeScript",
+      "resultado": "0 erros",
+      "isolamento": "local"
+    },
+    {
+      "gate": "build",
+      "resultado": "vite build ok, sem classe nova de aviso",
+      "isolamento": "local"
+    },
+    {
+      "gate": "testes UI focais Meta",
+      "resultado": "81 passaram",
+      "isolamento": "jsdom"
+    },
+    {
+      "gate": "suite UI inteira",
+      "resultado": "1762 passaram, 15 falharam em 5 arquivos",
+      "isolamento": "jsdom",
+      "nota": "os 5 arquivos (inventario/{onze-estados,inventario-campanhas,achados-da-auditoria,projecao-de-atencao} e work-road/qg-logic) nao importam nada do delta e nao foram modificados aqui."
+    }
+  ],
+  "counter_proofs": [
+    "LPV: 11 -> 4 com ViewContent presente; action sem valor: 0 -> None",
+    "nivel campaign sem campaign_id: virava o id da CONTA -> erro tipado",
+    "filtro de conta: conjuntos/anuncios/mensuracao eram enviados SEM escopo",
+    "identidade do fato: lista antiga de 9 campos produz hash diferente da atual de 12",
+    "completude: com `coalesce(completo, true)` a prova SQL falha com 'esperado [false], obtido [true]'",
+    "escopo de conta na UI: 2 testes falham contra a queda para a conta unica"
+  ],
+  "pixels": {
+    "verified": false,
+    "reason": "A extensao do navegador nao esta conectada nesta sessao.",
+    "not_claimed": "Nao ha inspecao visual autenticada em 390/1440, claro/escuro, nem verificacao de foco por teclado. HTTP 200 e jsdom nao substituem isso.",
+    "next_act": "O operador fornece a sessao autenticada. Nenhuma senha ou token deve passar pelo chat."
+  },
+  "canary": {
+    "executed": false,
+    "reason": "CP4 nao autorizado. Nada foi criado."
+  },
+  "collection": {
+    "executed": false,
+    "reason": "Sem autorizacao de leitura e sem credencial de servico provisionada."
+  },
+  "explicitly_not_done": [
+    "T10/T11 como atos externos (CP2/CP3 pedidos, nao executados)",
+    "T12 canario (CP4)",
+    "T13 gestao Meta pos-nascimento",
+    "T15/T16 video, flexivel, catalogo, CAPI, custom conversions como receita",
+    "T17-T19 Google multicanal",
+    "catalogo selecionavel de pixels/conversoes personalizadas (o router ainda colapsa a lista com len())",
+    "prontidao_leitura continua constante READY_FOR_READ",
+    "semantica financeira do Google (AVG de taxas, cambio embutido, ausencia virando zero em useDisplayROI) — fora do escopo, registrada em METRIC-CONTRACT.json"
+  ],
+  "external_authorizations_pending": [
+    "CP2-a leitura do catalogo oficial",
+    "CP2-b aplicacao do perfil",
+    "CP3 leitura/validate_only Meta",
+    "CP4 um canario PAUSED",
+    "C-1 leitura Meta para coleta",
+    "C-2 persistencia oficial",
+    "C-3 n8n: importar / executar / ativar (tres atos distintos)",
+    "provisionamento da credencial Meta de servico (bloqueio concreto da coleta agendada)"
+  ]
+}

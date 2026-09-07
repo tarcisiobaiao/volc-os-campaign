@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "matrix_id": "META_REPORTING_FIELD_BINDING_V1",
+  "produced_at": "2026-09-07",
+  "scope": "Trilha de LEITURA/RELATORIO Meta (T05-T09). A trilha de CRIACAO ja tem sua propria matriz em docs/specs/traffic-operational-closure-v2/FIELD-CONTRACTS.json#/meta_p0 (22 campos) e NAO e reproduzida aqui.",
+  "authority": "LOCAL_EXECUTION. Cada linha descreve codigo lido e testado localmente com a rede bloqueada. Nenhuma linha afirma que um dado real atravessou a cadeia.",
+  "status_vocabulary": {
+    "LOCAL_COMPLETO": "cadeia inteira implementada e coberta por teste local; falta apenas o dado real atravessar",
+    "PENDENTE_SCHEMA_CP2": "implementado dos dois lados, mas a coluna/projecao so existe depois da janela de schema autorizada (CP2)",
+    "PENDENTE_UI": "backend pronto e provado; a tela ainda nao consome",
+    "NAO_COLETADO": "a Meta oferece, nos nao pedimos",
+    "SEM_LINEAGE": "coletavel, mas sem procedencia que autorize apresenta-lo como receita de arbitragem"
+  },
+  "chain_legend": "campo UI -> DTO (dominio.py) -> adaptador (o que vai no fio) -> linha/coluna (persistencia.py) -> RPC/schema -> leitura do dashboard (read_model.py)",
+  "bindings": [
+    {
+      "ui_field": "gasto",
+      "ui_label": "Gasto",
+      "unit": "moeda da conta",
+      "dto": "InsightMeta.spend (Decimal | None)",
+      "adapter": "campo `spend` em CAMPOS_DE_INSIGHT; decimal_opcional preserva NULL",
+      "row_column": "trafego_meta_insight_daily.spend (numeric, nullable)",
+      "rpc": "trafego_meta_persistir_snapshot",
+      "dashboard_read": "read_model.listar('insights') via vw_trafego_meta_insight_latest",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "A projecao latest so existe apos a migration candidata 20260907210000. Antes dela a leitura de insights responde SCHEMA_NAO_APLICADO — de proposito: ler a tabela crua somaria uma revisao por leitura."
+    },
+    {
+      "ui_field": "receitaGam",
+      "ui_label": "Receita",
+      "unit": "moeda declarada na linha de receita",
+      "dto": "NAO existe no InsightMeta",
+      "adapter": "n/a — receita GAM nao vem da Meta",
+      "row_column": "n/a nesta trilha",
+      "dashboard_read": "hoje: META_INSIGHTS_DEMO.receitaGam (demonstrativo)",
+      "status": "SEM_LINEAGE",
+      "gap": "Receita GAM nao e receita de compras atribuida pela Meta. O join precisa de identidade/UTM comprovada, e a regra de cambio/imposto/revshare e versionada e ainda nao resolvida. Enquanto nao houver lineage, receita e ROAS ficam INDISPONIVEIS e o gasto continua util. Ver METRIC-CONTRACT.json."
+    },
+    {
+      "ui_field": "visualizacoesDaPagina",
+      "ui_label": "Visualizacoes da pagina de destino",
+      "unit": "contagem",
+      "dto": "InsightMeta.landing_page_views (int | None)",
+      "adapter": "derivado SOMENTE do action_type landing_page_view; ViewContent excluido",
+      "row_column": "trafego_meta_insight_daily.landing_page_views (bigint, nullable)",
+      "dashboard_read": "vw_trafego_meta_insight_latest",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Nenhum no codigo. Regressao medida: uma linha com LPV=4 e ViewContent=7 devolvia 11 e agora devolve 4; action presente sem valor devolvia 0 e agora devolve NULL."
+    },
+    {
+      "ui_field": "cliquesNoLink",
+      "ui_label": "Cliques no link",
+      "unit": "contagem",
+      "dto": "InsightMeta.inline_link_clicks",
+      "adapter": "campo inline_link_clicks",
+      "row_column": "trafego_meta_insight_daily.inline_link_clicks",
+      "dashboard_read": "vw_trafego_meta_insight_latest",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Distinto de `clicks` (todos os cliques, inclusive reacoes e expansoes). Os dois sao coletados separados e nao podem ser trocados um pelo outro no CTR/CPC."
+    },
+    {
+      "ui_field": "cliques",
+      "ui_label": "Cliques (todos)",
+      "unit": "contagem",
+      "dto": "InsightMeta.clicks",
+      "row_column": "trafego_meta_insight_daily.clicks",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "nenhum"
+    },
+    {
+      "ui_field": "impressoes",
+      "ui_label": "Impressoes",
+      "unit": "contagem",
+      "dto": "InsightMeta.impressions",
+      "row_column": "trafego_meta_insight_daily.impressions",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "nenhum"
+    },
+    {
+      "ui_field": "alcance",
+      "ui_label": "Alcance",
+      "unit": "pessoas unicas",
+      "dto": "InsightMeta.reach",
+      "row_column": "trafego_meta_insight_daily.reach",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "NAO ADITIVA. Declarada em dominio.METRICAS_NAO_ADITIVAS. Somar o alcance de sete dias nao produz o alcance da semana: produz um numero maior que a populacao alcancada. Um alcance unico do periodo exige um pedido proprio a Meta, com time_increment=all_days — que e outro grao e nao pode ser comparado com a serie diaria."
+    },
+    {
+      "ui_field": "frequencia",
+      "ui_label": "Frequencia",
+      "unit": "razao",
+      "dto": "InsightMeta.frequency",
+      "row_column": "trafego_meta_insight_daily.frequency",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "NAO ADITIVA e nao mediavel entre dias."
+    },
+    {
+      "ui_field": "ctr / cpc / cpm",
+      "ui_label": "CTR, CPC, CPM",
+      "unit": "% e moeda",
+      "dto": "InsightMeta.ctr / cpc / cpm",
+      "row_column": "colunas homonimas",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "NAO ADITIVAS. Ao agregar periodos, recalcular pela RAZAO DAS SOMAS, nunca pela media das taxas. O lado Google ainda usa AVG de taxas em rpc_get_campaign_detailed_metrics.sql; divergencia registrada em METRIC-CONTRACT.json e deliberadamente nao corrigida aqui."
+    },
+    {
+      "ui_field": "atribuicao",
+      "ui_label": "Janela de atribuicao",
+      "unit": "rotulo",
+      "dto": "InsightMeta.janela_atribuicao + janelas_solicitadas",
+      "adapter": "action_attribution_windows, enviado somente quando solicitado",
+      "row_column": "trafego_meta_insight_daily.janela_atribuicao",
+      "status": "LOCAL_COMPLETO",
+      "gap": "Nenhum. Vazio significa 'a conta decidiu' e o rotulo e `default`. O TIPO recusa um fato cuja etiqueta nao corresponda ao que foi pedido — o carimbo falso e impossivel por construcao."
+    },
+    {
+      "ui_field": "grao do periodo",
+      "ui_label": "Diario / agregado",
+      "dto": "InsightMeta.time_increment",
+      "adapter": "time_increment (antes NUNCA era enviado: um pedido de 30 dias voltava como UMA linha agregada e era guardada como serie)",
+      "row_column": "trafego_meta_insight_daily.time_increment (coluna NOVA)",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "A coluna nasce na migration candidata. Sem ela, uma serie diaria e uma linha agregada do mesmo periodo colidem na chave e uma sobrescreve a outra."
+    },
+    {
+      "ui_field": "instante de atribuicao",
+      "dto": "InsightMeta.action_report_time",
+      "adapter": "action_report_time",
+      "row_column": "trafego_meta_insight_daily.action_report_time (coluna NOVA)",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Muda gasto e resultado de dia. Faz parte da identidade do fato."
+    },
+    {
+      "ui_field": "fuso da conta",
+      "dto": "InsightMeta.fuso_da_conta",
+      "adapter": "resolvido de ContaMetaDescoberta.fuso; dominio.hoje_na_conta",
+      "row_column": "trafego_meta_insight_daily.account_timezone (coluna NOVA)",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Nenhum no codigo. date.today() do host foi removido dos dois unicos pontos que o usavam."
+    },
+    {
+      "ui_field": "moeda",
+      "dto": "ContaMetaDescoberta.moeda, copiada para o fato",
+      "row_column": "trafego_meta_insight_daily.currency (coluna NOVA)",
+      "dashboard_read": "listar() devolve `moeda` no envelope da pagina",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Copiada NO INSTANTE do snapshot: uma edicao posterior da conta nao pode reescrever o dinheiro de um periodo ja medido."
+    },
+    {
+      "ui_field": "completude da janela",
+      "ui_label": "Parcial",
+      "dto": "ResultadoDeInsights.completo / motivo_incompleto",
+      "row_column": "trafego_meta_insight_daily.completo (coluna NOVA)",
+      "dashboard_read": "listar() devolve `completo`, `has_more`, `motivo`",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Nenhum no codigo. Uma janela truncada preserva as linhas lidas, marca a parcialidade no recibo e na linha, e NAO avanca watermark nem autoriza marcar ausencia."
+    },
+    {
+      "ui_field": "actions por tipo",
+      "dto": "InsightMeta.actions (medida='count')",
+      "row_column": "trafego_meta_insight_action (action_type, value, attribution_window, medida)",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "A coluna `medida` nasce na migration candidata."
+    },
+    {
+      "ui_field": "valor monetario por action",
+      "dto": "InsightMeta.action_values (medida='value')",
+      "adapter": "action_values, agora pedido explicitamente",
+      "row_column": "trafego_meta_insight_action com medida='value'",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "Coletado e persistido, mas NAO usado como receita de arbitragem: purchase value da Meta e outra fonte, com outro dono, e nao substitui lineage de GAM."
+    },
+    {
+      "ui_field": "nome / status / effective_status",
+      "dto": "ObjetoMeta",
+      "row_column": "trafego_meta_campaign|adset|ad.nome/status/effective_status",
+      "dashboard_read": "read_model.listar('campanhas'|'conjuntos'|'anuncios')",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "A tela ja consome o read model (T08 entregue): identidade real usa a leitura, a demonstracao ficou atras de `?modo=demo` e cada estado do backend vira conteudo nomeado. O que falta e o schema de CP2 e um dado real atravessar."
+    },
+    {
+      "ui_field": "identidade publica do objeto",
+      "ui_label": "entity_ref",
+      "dto": "dominio.referencia_opaca_objeto",
+      "row_column": "derivada de (conta, tipo, external_id) na leitura",
+      "dashboard_read": "cada item carrega entity_ref + id_mascarado; o id bruto e removido",
+      "status": "LOCAL_COMPLETO",
+      "gap": "O handle e DERIVAVEL de ids do provedor sem segredo — e referencia estavel, nao capability token. A autorizacao e sempre server-side por escopo de conta."
+    },
+    {
+      "ui_field": "vinculo anuncio<->criativo",
+      "dto": "trafego_meta_ad_creative_binding",
+      "dashboard_read": "read_model.listar('vinculos') — superficie NOVA",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "A tela ja consome o read model (T08 entregue): identidade real usa a leitura, a demonstracao ficou atras de `?modo=demo` e cada estado do backend vira conteudo nomeado. O que falta e o schema de CP2 e um dado real atravessar."
+    },
+    {
+      "ui_field": "frescor do snapshot",
+      "dto": "ultima_leitura_ok_em da conta",
+      "dashboard_read": "listar() devolve `frescor`; a tela deriva a palavra pela idade e marca `parcial` quando completo=false",
+      "status": "PENDENTE_SCHEMA_CP2",
+      "gap": "A tela ja consome o read model (T08 entregue): identidade real usa a leitura, a demonstracao ficou atras de `?modo=demo` e cada estado do backend vira conteudo nomeado. O que falta e o schema de CP2 e um dado real atravessar."
+    },
+    {
+      "ui_field": "pixels / conversoes personalizadas",
+      "dto": "adaptador.ler_conversoes_personalizadas devolve registro rico (referencia opaca, tipo, fonte mascarada, estado, primeiro/ultimo disparo)",
+      "row_column": "trafego_meta_custom_measurement guarda apenas uma CONTAGEM",
+      "status": "NAO_COLETADO",
+      "gap": "O router colapsa a lista com len() antes de persistir. O catalogo selecionavel por conta/acao/elegibilidade nao existe. Nao foi feito nesta rodada: exigiria tabela nova e a missao exclui custom conversions como receita de criacao."
+    }
+  ],
+  "chain_gaps_not_field_specific": [
+    {
+      "gap": "A projecao `latest` e pre-requisito de leitura correta de insights",
+      "detail": "read_model le vw_trafego_meta_insight_latest e NAO a tabela crua. Antes da migration candidata a leitura responde SCHEMA_NAO_APLICADO. Isto e deliberado: a tabela crua guarda uma revisao por leitura, e soma-la conta o mesmo gasto uma vez por sync."
+    },
+    {
+      "gap": "Abrir a bancada de criacao dispara chamada real a Meta",
+      "detail": "src/pages/trafego/MetaCriacaoPage.tsx:405-407 chama pautadorApi.contasMetaLocal() num useEffect de montagem, e essa rota faz GET real em /me/adaccounts. Nao e coleta completa (e descoberta de contas), mas e uma chamada ao provedor no carregamento da pagina. NAO alterado nesta rodada: a bancada e superficie fechada do marco R0 e precisa da lista de contas para renderizar; mudar isso e decisao de produto, nao conserto.",
+      "recommendation": "tornar a descoberta acionada por clique, como ja e em MetaReadPreview."
+    },
+    {
+      "gap": "credential_ativo_id e uma constante literal do lado Python",
+      "detail": "read_model.py passa 'meta_credential_keychain_local'. Dois operadores em dois Macs, com tokens diferentes, colapsam na mesma linha de Cofre. A migration candidata fixa o lado servidor (resolve server-side e recusa divergencia do payload); o lado Python continua enviando o literal.",
+      "status": "PARCIAL"
+    },
+    {
+      "gap": "prontidao_leitura e constante",
+      "detail": "dominio.ContaMetaDescoberta.prontidao_leitura devolve sempre READY_FOR_READ, ignorando account_status e as capacidades que falharam no mesmo preflight. Seis dos dez estados declarados em ESTADOS_DE_PRONTIDAO sao inalcancaveis.",
+      "status": "NAO CORRIGIDO nesta rodada"
+    }
+  ],
+  "ui_status": {
+    "delivered": "T08/T09 na UI entregues em e0eb60c.",
+    "properties_proved": [
+      "identidade real nao importa nem renderiza demonstracao, e nao redireciona",
+      "falha de leitura vira estado NOMEADO, nunca demo",
+      "os seis estados do backend viram conteudo",
+      "metrica nao medida vira AUSENTE, nunca 0",
+      "has_more/completo aparecem honestamente, com cursor",
+      "demo so atras de `?modo=demo`, e dizendo que e demonstracao",
+      "nenhuma superficie Meta usa a formula legada calculateROAS",
+      "nenhum controle para acao nao implementada ou nao autorizada",
+      "handle de conta desconhecido NAO e trocado pela conta unica",
+      "pagina parcial nao afirma ausencia de filhos"
+    ],
+    "pixels": "NAO VERIFICADOS. A extensao do navegador nao esta conectada nesta sessao, entao nao houve inspecao visual autenticada em 390/1440 nem claro/escuro. Isto e uma lacuna declarada, nao uma aprovacao: HTTP 200 e jsdom nao provam pixel.",
+    "pixels_next_act": "O operador precisa fornecer a sessao autenticada; nenhuma senha ou token deve passar pelo chat."
+  }
+}

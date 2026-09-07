@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "contract_id": "META_DAILY_REPORTING_CONTRACT_V1",
+  "produced_at": "2026-09-07",
+  "authority": "LOCAL_EXECUTION. Contrato implementado e provado localmente com a rede bloqueada. Nenhuma conta Meta foi consultada, nenhum dado real foi coletado e nenhuma agenda foi ativada.",
+  "graph_api_version": "v26.0",
+  "version_pinned_at": [
+    "backend/app/trafego/meta/adaptador.py (default do construtor, validado por forma)",
+    "backend/app/routers/meta_local.py (GRAPH_BASE)",
+    "backend/app/trafego/meta_execucao/executor.py (fixado, levanta se divergir)"
+  ],
+
+  "request_grain": {
+    "statement": "O numero que a Meta devolve depende inteiramente do que foi pedido. Duas linhas so podem ser comparadas — muito menos somadas — quando o grao coincide inteiro.",
+    "fields": [
+      {"name": "nivel", "values": ["account", "campaign", "adset", "ad"], "note": "Metrica de nivel account NUNCA e somada com nivel campaign."},
+      {"name": "periodo_inicio / periodo_fim", "note": "Inclusivo. Resolvido no fuso da CONTA."},
+      {"name": "fuso_da_conta", "note": "Obrigatorio. Sem fuso nao existe 'hoje' e o pedido e recusado."},
+      {"name": "time_increment", "values": ["1", "7", "28", "monthly", "all_days"], "note": "Somente '1' produz serie diaria. 'all_days' devolve UMA linha agregada do periodo, que nao e comparavel nem somavel com a serie."},
+      {"name": "action_report_time", "values": ["impression", "conversion", "mixed"], "note": "Move gasto e resultado entre dias. Faz parte da identidade."},
+      {"name": "janelas_de_atribuicao", "note": "Vazio significa 'a conta decide', e a linha e rotulada 'default'. NUNCA carimbar uma janela nominal que nao foi solicitada."},
+      {"name": "breakdown", "note": "Allowlist curta. Cada breakdown muda o grao da linha."}
+    ],
+    "implemented_in": "backend/app/trafego/meta/dominio.py::PedidoDeInsights",
+    "enforcement": "O tipo InsightMeta RECUSA um fato cuja etiqueta de janela nao corresponda as janelas solicitadas. O carimbo falso deixou de ser possivel por construcao, nao por disciplina."
+  },
+
+  "fields_requested": "account_id,campaign_id,adset_id,ad_id,date_start,date_stop,spend,impressions,reach,frequency,clicks,inline_link_clicks,cpm,cpc,ctr,actions,action_values",
+
+  "semantics": [
+    {
+      "metric": "landing_page_views",
+      "rule": "Somente o action_type landing_page_view. ViewContent (offsite_conversion.fb_pixel_view_content) e evento do pixel do site, com outro dono e outra definicao, e NUNCA entra nesta conta.",
+      "null_rule": "Action ausente => NULL. Action presente com value nulo => NULL. Action presente com value 0 => 0.",
+      "measured_regression": "Uma linha com LPV=4 e ViewContent=7 devolvia 11; agora devolve 4.",
+      "divergence_from_a_review_suggestion": "Uma revisao sugeriu cair para ViewContent quando LPV esta inteiramente ausente, gravando a fonte usada. NAO foi adotado: o contrato manda tratar ViewContent como independente, e um fallback silencioso reintroduz exatamente a conflacao que o defeito original tinha."
+    },
+    {
+      "metric": "actions vs action_values",
+      "rule": "actions conta EVENTOS; action_values soma DINHEIRO do mesmo evento. Vao para a mesma tabela filha com a coluna medida ('count' | 'value') separando as duas. Somar as duas, ou tratar uma como a outra, inventa receita."
+    },
+    {
+      "metric": "janelas multiplas",
+      "rule": "Quando ha janelas solicitadas, a Graph devolve uma chave por janela dentro da mesma action ({action_type, 1d_click, 7d_click}). Cada janela vira uma LINHA propria; ler so 'value' achataria as duas num numero cujo significado ninguem recupera."
+    },
+    {
+      "metric": "reach, frequency, cpm, cpc, ctr",
+      "rule": "NAO ADITIVAS. reach conta pessoas unicas: somar sete dias nao produz o alcance da semana. Taxas se recalculam pela razao das somas, nunca pela media das taxas."
+    },
+    {
+      "metric": "nivel do objeto",
+      "rule": "Uma linha sem {nivel}_id no nivel pedido e erro tipado (META_INSIGHT_LEVEL_MISMATCH), nunca um fallback para o id da conta. O fallback colava o gasto do anunciante inteiro numa campanha que nao o gastou."
+    },
+    {
+      "metric": "dia da linha",
+      "rule": "Uma linha sem date_start/date_stop proprios e erro tipado (META_INSIGHT_SEM_PERIODO). Carimbar o periodo PEDIDO inventa um dia que a linha nunca mediu — e com time_increment=1 o pedido abrange varios dias."
+    }
+  ],
+
+  "windows": {
+    "daily_close": "D-1 no fuso da conta, configuravel.",
+    "today_is_provisional": "O dia corrente e explicitamente provisorio: a conta ainda esta veiculando e o numero muda.",
+    "reprocessing_window": "Uma janela de reprocessamento para revisoes tardias da Meta. Reler um dia passado produz uma REVISAO do mesmo grao, nunca trafego adicional.",
+    "host_clock_prohibition": "date.today() do host esta proibido nesta trilha. Numa conta em America/Sao_Paulo lida por um backend em UTC, por tres horas toda noite o coletor pedia um dia que a conta ainda nao tinha comecado e lia o vazio como ausencia de veiculacao. Resolvido por dominio.hoje_na_conta(fuso).",
+    "max_span_local_policy": {"1": 92, "7": 366, "28": 731, "monthly": 731, "all_days": 731, "note": "Teto LOCAL desta base, revisavel. NAO e limite publicado pela Meta e nao deve ser citado como tal."}
+  },
+
+  "pagination_and_completeness": {
+    "cursor": "paging.cursors.after real; cursor que nao avanca e erro tipado (META_PAGINATION_LOOP).",
+    "ceiling": "Teto de paginas por edge.",
+    "hierarchy_behaviour": "Estourar o teto e ERRO: uma hierarquia parcial nunca pode sobrescrever uma projecao boa.",
+    "insights_behaviour": "Estourar o teto preserva as linhas ja lidas e marca a janela INCOMPLETA com motivo. A parcialidade atravessa snapshot, payload da RPC, recibo e a coluna 'completo' da propria linha.",
+    "watermark_rule": "Uma janela incompleta NAO avanca watermark e NAO autoriza marcacao de ausencia."
+  },
+
+  "idempotency": {
+    "run_key": "sha256(META_ADS|conta|janela) — identifica o PEDIDO.",
+    "why": "A chave incluia o snapshot_hash, que depende de observado_em: dois cliques em Persistir com um segundo de diferenca eram dois pedidos distintos para o banco e o mesmo dia entrava duas vezes.",
+    "content_fingerprint": "snapshot_hash continua existindo, separado, como impressao digital do conteudo lido.",
+    "fact_key": "O id do fato inclui o grao inteiro MAIS observado_em, porque a tabela guarda historico: cada releitura e uma REVISAO.",
+    "revision_rule": "Somar a tabela crua conta o mesmo gasto uma vez por leitura. Todo consumo passa pela projecao latest, que expoe uma revisao por grao."
+  },
+
+  "error_handling": {
+    "retry_with_backoff": ["META_RATE_LIMIT (429)", "META_REMOTE_FAILURE (5xx)", "META_TRANSPORT_FAILURE"],
+    "stop_and_demand_action": ["META_AUTHENTICATION_FAILED (401)", "META_PERMISSIONS_INSUFFICIENT (403)", "META_ACCOUNT_INACCESSIBLE (404)"],
+    "rule": "Falha de autorizacao exige acao humana, nunca retry infinito.",
+    "sanitization": "Mensagem de erro nunca carrega token, id bruto de conta ou registro financeiro."
+  },
+
+  "run_receipt_must_contain": [
+    "referencia opaca da conta (nunca o id bruto)",
+    "periodo e fuso aplicados",
+    "versao da API",
+    "parametros efetivamente enviados (PedidoDeInsights.registro_do_pedido)",
+    "paginas lidas",
+    "contagens por entidade",
+    "timestamps de inicio e fim",
+    "completude e motivo quando incompleta",
+    "confirmacao de persistencia",
+    "erro sanitizado",
+    "o suficiente para reprocessar"
+  ],
+
+  "identity_and_scope": {
+    "tenant_grain": "provider + conta + rede + nivel + objeto. IDs de plataformas diferentes nunca colidem: o id interno e uuid5 sobre (provider, conta, tipo, id externo).",
+    "public_handle": "metaobj_<sha256[:24]> por (conta, tipo, id externo); metaacct_ para contas. O id bruto da Meta nunca cruza a fronteira do navegador.",
+    "known_limitation": "O handle e DERIVAVEL de ids do provedor sem segredo. Ele e uma referencia estavel e nao-reversivel do lado do navegador, NAO um capability token. Por isso a autorizacao e sempre server-side por escopo de conta, nunca por posse do handle.",
+    "server_side_scope": "Toda leitura resolve o handle contra as contas efetivamente persistidas. Um handle desconhecido vira escopo VAZIO, nunca 'a conta inteira'. Conjuntos e anuncios, que nao tem coluna de conta, sao escopados por caminhada parental com teto declarado."
+  },
+
+  "state_vocabulary": {
+    "COM_SNAPSHOT": "leitura respondeu e ha dados",
+    "SEM_SNAPSHOT": "leitura respondeu e nao ha nada — zero medido",
+    "SCHEMA_NAO_APLICADO": "as tabelas nao existem no destino",
+    "SEM_CONEXAO": "Supabase indisponivel",
+    "ESCOPO_OBRIGATORIO": "a entidade exige conta e ela nao foi informada",
+    "ESCOPO_DESCONHECIDO": "o handle de conta nao resolve",
+    "rule": "Ausente, parcial, antigo e zero medido sao estados distintos e nunca colapsam num unico vazio. Falha de coleta NUNCA substitui dado bom por zeros."
+  },
+
+  "explicitly_out_of_scope": [
+    "Conversions API e envio de eventos: coletar Insights NAO e enviar eventos.",
+    "Ativacao de campanha, orcamento automatico, edicao e gestao.",
+    "Video, flexivel, catalogo, multiplos conjuntos e CBO.",
+    "Sales/Leads/custom conversions como novas receitas de criacao.",
+    "Instagram e placements alem de Facebook na receita P0."
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "contract_id": "VOLC_METRIC_CONTRACT_META_V1",
+  "task": "T09",
+  "checkpoint": "CP5",
+  "produced_at": "2026-09-07",
+  "authority": "LOCAL_EXECUTION. Nenhuma conta Meta ou Google foi consultada para produzir este contrato; ele descreve o codigo lido e a decisao tomada, nao numeros medidos.",
+
+  "why_this_exists": "Tres formulas diferentes convivem na base com alguma variante do mesmo nome, e a coluna da tela diz ROAS para todas. O risco nao e estetico: target_roas do Google Ads e uma RAZAO enviada a plataforma, e o valor que a base chama de ROAS e um EXCEDENTE em pontos percentuais. Para receita 200 e gasto 100 os dois valem 100 e 2. Uma unificacao de nomes feita sem este contrato faria a conta perseguir um alvo cinquenta vezes maior.",
+
+  "vocabulary": [
+    {
+      "name": "spend",
+      "definition": "Gasto de midia cobrado pela plataforma, na moeda da conta.",
+      "unit": "moeda da conta (ISO-4217, carimbada na linha)",
+      "source": "Meta Insights campo spend; Google Ads metrics.cost_micros",
+      "nullability": "NULL quando nao medido. NULL nunca vira zero.",
+      "additive": true,
+      "additive_only_within": "mesmo grao: nivel, periodo, janela de atribuicao, breakdown, time_increment, action_report_time e fuso."
+    },
+    {
+      "name": "revenue",
+      "definition": "Receita atribuida, por fonte declarada.",
+      "unit": "moeda declarada na propria linha de receita",
+      "source": "GAM/JoinAds por identidade comprovada. NAO e o purchase value da Meta e NAO e conversao personalizada.",
+      "nullability": "NULL quando nao ha lineage. Sem join confiavel a receita fica NAO CONCILIADA, nunca zero e nunca distribuida.",
+      "additive": true
+    },
+    {
+      "name": "lucroBruto",
+      "definition": "revenue - spend",
+      "unit": "moeda",
+      "nullability": "NULL se qualquer parcela falta",
+      "implementation": "src/utils/roasCalculations.ts::lucroBruto"
+    },
+    {
+      "name": "roasRatio",
+      "definition": "revenue / spend",
+      "unit": "razao adimensional",
+      "example": "receita 200, gasto 100 => 2",
+      "nullability": "NULL quando gasto e nulo ou <= 0",
+      "implementation": "src/utils/roasCalculations.ts::roasRatio",
+      "note": "Esta e a medida que Meta e Google Ads chamam de ROAS."
+    },
+    {
+      "name": "retornoExcedentePct",
+      "definition": "(revenue / spend - 1) * 100",
+      "unit": "pontos percentuais",
+      "example": "receita 200, gasto 100 => 100",
+      "nullability": "NULL quando gasto e nulo ou <= 0",
+      "implementation": "src/utils/roasCalculations.ts::retornoExcedentePct"
+    },
+    {
+      "name": "roiLiquidoPct",
+      "definition": "((revenue - (spend + deducoes)) / (spend + deducoes)) * 100",
+      "unit": "pontos percentuais",
+      "nullability": "NULL enquanto a regra de deducoes daquele projeto e daquele mes nao estiver resolvida. Gasto e receita continuam uteis sem ela.",
+      "implementation": "src/utils/roasCalculations.ts::roiLiquidoPct"
+    }
+  ],
+
+  "legacy": {
+    "symbol": "calculateROAS",
+    "file": "src/utils/roasCalculations.ts",
+    "formula": "((revenue / investment) - 1) * 100",
+    "actual_meaning": "excedente em pontos percentuais",
+    "decision": "PRESERVADA BYTE A BYTE e marcada como deprecated.",
+    "why_not_changed": "Dez arquivos a consomem, cinco deles paineis do Google alimentados por daily_campaign_metrics, e as quatro faixas de cor do mesmo modulo estao calibradas na escala do excedente (>=80 verde, >=40 amarelo, >=0 laranja, <0 vermelho). Trocar a formula global recoloriria cinco paginas e reescreveria relatorios historicos em silencio, para arrumar um nome.",
+    "invented_values_it_returns": [
+      "investment <= 0 && revenue > 0 => 100 simbolico",
+      "investment <= 0 => 0, que e ausencia apresentada como medida"
+    ],
+    "replacement_for_new_code": "roasRatio ou retornoExcedentePct, que devolvem null quando a resposta nao e conhecida."
+  },
+
+  "must_not_change": [
+    {
+      "path": "src/pages/trafego/NovaCampanhaPage.tsx",
+      "why": "Monta target_roas do Google Ads a partir do que o operador digita. E uma RAZAO enviada a plataforma. Nao importa roasCalculations e nao pode passar a importar."
+    },
+    {"path": "backend/app/routers/trafego.py", "why": "Valida target_roas por estrategia de lance; semantica de plataforma."},
+    {"path": "src/pages/GeneralDashboard.tsx", "why": "Painel Google na escala do excedente."},
+    {"path": "src/pages/Reports.tsx", "why": "Painel Google na escala do excedente."},
+    {"path": "src/pages/ProjectDashboard.tsx", "why": "Painel Google na escala do excedente."},
+    {"path": "src/pages/settings/ProjectsSettings.tsx", "why": "Painel Google na escala do excedente."},
+    {"path": "src/pages/CampaignDetailDashboard.tsx", "why": "Dashboard financeiro Google aprovado; e a base visual que Meta reusa, nao um alvo de mudanca nesta rodada."},
+    {"path": "src/lib/campaignSort.ts", "why": "Unico cruzamento entre as duas redes. Mudar a formula mudaria a ordenacao das duas ao mesmo tempo."}
+  ],
+
+  "non_additive_metrics": {
+    "list": ["reach", "frequency", "cpm", "cpc", "ctr"],
+    "rule": "reach conta PESSOAS unicas: somar o alcance de sete dias nao produz o alcance da semana, produz um numero maior que a populacao alcancada. Taxas precisam ser recalculadas a partir dos denominadores (razao das somas), nunca somadas nem mediadas.",
+    "declared_in": "backend/app/trafego/meta/dominio.py::METRICAS_NAO_ADITIVAS"
+  },
+
+  "known_divergences_not_fixed_here": [
+    {
+      "what": "AVG de taxas ao inves de razao das somas",
+      "where": "src/sql/rpc_get_campaign_detailed_metrics.sql (avg_gam_ecpm, avg_gam_cpc, avg_match_rate, avg_fill_rate, avg_gam_ctr)",
+      "why_not_fixed": "E semantica financeira do Google, fora do escopo desta missao, que manda preservar Google. Corrigir aqui mudaria numeros de paineis em producao sem autorizacao para isso.",
+      "severity": "real, mede errado quando os dias tem volumes diferentes"
+    },
+    {
+      "what": "Cambio embutido no codigo (5.50 e 5.35)",
+      "where": "src/services/supabaseDataService.ts, src/utils/currencyUtils.ts, src/pages/CampaignDetailDashboard.tsx, src/sql/fix_campaigns_revenue_revshare.sql",
+      "why_not_fixed": "Exige tabela de regra versionada com data e fonte, decisao de produto e migration. Nao inventamos alíquota nem cotacao nesta rodada.",
+      "requirement_if_addressed": "fx_rate(effective_date, rate, source, fetched_at) resolvido PELA DATA DO FATO, com o id da regra aplicada gravado na linha financeira."
+    },
+    {
+      "what": "Ausencia renderizada como zero",
+      "where": "src/hooks/useDisplayROI.ts (roas = ... : 0, e a faixa LUCRATIVO/NEUTRO/PREJUIZO derivada dele)",
+      "why_not_fixed": "Superficie Google/Display, fora do escopo Meta desta missao.",
+      "note": "A view que ele le devolve NULL de proposito nesse caso; o hook e que coage para zero."
+    },
+    {
+      "what": "Join de receita por utm_campaign_value sem gate de forma",
+      "where": "src/sql/fix_campaigns_revenue_revshare.sql, src/sql/update_sync_gam_function.sql, src/sql/joinads/01_joinads_metrics.sql",
+      "why_not_fixed": "Pipeline de receita Google/GAM. A chave declarada JA e identidade (campaign_id = utm_campaign_value), nao nome de campanha, que era o risco que este contrato precisava descartar. O que falta e recusar um utm fora da gramatica de id para uma tabela de nao conciliados.",
+      "verdict": "o requisito 'nunca juntar por nome' esta SATISFEITO; o endurecimento fica registrado como pendencia."
+    }
+  ],
+
+  "taxes_fees_fx": {
+    "rule": "Sao regra VERSIONADA por projeto e por mes, com fonte e data, resolvida pela data do fato.",
+    "prohibition": "Nao copiar percentual historico das planilhas de referencia como default universal: a taxa de um cliente aplicada a conta de outro produz lucro que nao existe.",
+    "status": "NAO RESOLVIDO nesta rodada. roiLiquidoPct devolve null enquanto as deducoes nao chegam resolvidas.",
+    "external_dependency": "O Apps Script e as formulas das planilhas Webgo nao acompanham os XLSX (docs/refs/meta-webgo-20260907/README.md). Sem elas, a aritmetica de imposto e revshare seria adivinhada a partir de titulos de coluna."
+  },
+
+  "revenue_attribution": {
+    "rule": "Receita GAM NAO e receita de compras atribuida pela Meta. Sao fontes diferentes, com donos e definicoes diferentes.",
+    "join_key": "identidade comprovada ou UTM que passe pela gramatica de id do provedor. NUNCA nome de campanha ou de projeto.",
+    "unmatched": "Receita sem correspondencia fica NAO CONCILIADA em seu proprio grao. Nao e zero, nao e distribuida proporcionalmente e nao e somada ao total atribuido.",
+    "meta_status": "Meta agora COLETA action_values separado de actions (backend/app/trafego/meta/dominio.py::CAMPOS_DE_INSIGHT), o que torna o purchase value obtivel. Nada disso e usado como receita de arbitragem sem lineage."
+  },
+
+  "proofs": {
+    "file": "src/pages/__tests__/campaign-metric-semantics.test.tsx",
+    "count": 15,
+    "covers": [
+      "200/100 => razao 2 e excedente 100",
+      "gasto zero, nulo, ausente e NaN => indisponivel, nunca zero",
+      "gasto sem receita => prejuizo medido (-100%), que e diferente de ausencia",
+      "ROI liquido sem regra de deducoes => null",
+      "denominador zero nunca produz Infinity nem NaN",
+      "calculateROAS devolve exatamente os mesmos valores de antes em seis casos",
+      "as faixas de cor continuam calibradas no excedente, e a razao cairia na faixa errada"
+    ]
+  }
+}

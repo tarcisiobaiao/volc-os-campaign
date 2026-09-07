@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T12:59:31-03:00",
+  "generated_at": "2026-09-07T14:28:40-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 682,
-    "markdown": 503,
-    "sql": 179,
-    "tracked": 682,
-    "untracked": 0,
+    "files": 687,
+    "markdown": 506,
+    "sql": 181,
+    "tracked": 684,
+    "untracked": 3,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 353,
+      "documentation": 356,
       "generated": 2,
       "module-guide": 37,
       "product-document": 23,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 66,
+      "sql-needs-review": 68,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 118,
+      "high": 120,
       "medium": 45,
       "read-only-or-ddl-free": 16
     }
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 21422,
       "lines": 290,
-      "sha256": "5369c68fcf4e04c4b1750268c33d0fc226c27b84db6efde41da99153e1146f37",
+      "sha256": "48d4caf6974ecd70e6056be8113d76a60337110e83e2e7a0b2bf0e3e605da543",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3202,6 +3202,42 @@
       "bytes": 10071,
       "lines": 200,
       "sha256": "6e7d73fbc8952f3c192dcc01564c40f95dee1342768ca45b13e85e36b97f0561",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-canary-reporting-operational-v1/AUTHORIZATION-REQUESTS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 10231,
+      "lines": 192,
+      "sha256": "1846ec13c7ca1126b23d5ae791e9c56263efbb7100c97689fdd2b4310fbd30ef",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-canary-reporting-operational-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 12860,
+      "lines": 248,
+      "sha256": "b6c029627add8dc368895cd08feb33a03c671dae8e64908595a7162cd560034d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-canary-reporting-operational-v1/N8N-OPERATIONS-RUNBOOK.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 9372,
+      "lines": 179,
+      "sha256": "79ab499f4a18e0dc998da557e5c43eb5deaa6b3f94801dfa26b9ef7d92ba5a77",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7344,6 +7380,30 @@
       "sha256": "286070508afe71c2e6006267d4672a8ad6fcb41b789853d0ae8eaacdf95e6f6c",
       "graph_nodes": 10,
       "graph_degree": 19,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20260907210000_meta_read_model_consistency.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 70548,
+      "lines": 1398,
+      "sha256": "2644c37553abffcd4cd7234d90225f96cfcb3329b54ff5449e058967d2049a3f",
+      "graph_nodes": 5,
+      "graph_degree": 15,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 21649,
+      "lines": 294,
+      "sha256": "48a93d1b58af0b1252c1439bad332336a3f72fe7abc72972d0496806b8be146e",
+      "graph_nodes": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
