@@ -11,7 +11,7 @@ import json
 import secrets
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.config import Settings, get_settings
 from app.criativo.agente.contrato import (
@@ -21,6 +21,7 @@ from app.criativo.agente.contrato import (
     PedidoDeDecisao,
     PedidoDoAgente,
 )
+from app.criativo.agente.caminhos import CaminhoInvalido, resolver as resolver_caminho
 from app.criativo.agente.orquestrador import AgenteCriativoMeta, RespostaDoModeloInvalida
 from app.criativo.agente.persistencia import NaoEncontrado, RepositorioAgenteCriativo
 from app.llm.gemini import GeminiClient
@@ -30,6 +31,12 @@ from app.services.supabase_service import SupabaseService
 
 router = APIRouter(prefix="/api/criativos/meta/agente", tags=["criativos-meta-agente"])
 ProjectRef = Annotated[str, Path(pattern=r"^crproj_[a-f0-9]{24}$")]
+RunRef = Annotated[str, Path(pattern=r"^crrun_[a-f0-9]{24}$")]
+
+#: Quanto uma run pode ficar `RUNNING` sem sinal antes de ser retomável.
+#: Duas tentativas de modelo com retry cabem folgadamente aqui; abaixo disso
+#: uma execução saudável e lenta seria roubada por um segundo clique.
+LEASE_DE_EXECUCAO_S = 600
 
 
 def _ref(prefixo: str) -> str:
@@ -59,22 +66,6 @@ def obter_agente(settings: Settings = Depends(get_settings)) -> AgenteCriativoMe
     # de um schema e de uma matriz; 0.9 aumenta variação sintática e custo de
     # retry sem dar autoridade nova ao modelo.
     return AgenteCriativoMeta(GeminiClient(settings, model=model, temperature=0.35))
-
-
-def _resolver_json_pointer(documento: Any, caminho: str) -> Any:
-    atual = documento
-    for parte in caminho.lstrip("/").split("/"):
-        chave = parte.replace("~1", "/").replace("~0", "~")
-        if isinstance(atual, list):
-            try:
-                atual = atual[int(chave)]
-            except (ValueError, IndexError) as exc:
-                raise KeyError(caminho) from exc
-        elif isinstance(atual, dict) and chave in atual:
-            atual = atual[chave]
-        else:
-            raise KeyError(caminho)
-    return atual
 
 
 def _hash_valor(valor: Any) -> str:
@@ -131,13 +122,63 @@ async def _executar_e_persistir(
     return {"run_ref": run_ref, "status": row["status"], "output": row["output"]}
 
 
+@router.get("/operacoes")
+async def listar_operacoes(
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+    limite: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> dict[str, Any]:
+    """O histórico do dono. Sem esta rota não existe retomada.
+
+    Devolve o suficiente para a lista decidir — ref, nome, status, quando mudou —
+    e NÃO devolve `input` nem `output`: um lote inteiro por linha transformaria
+    uma listagem de 20 itens em megabytes, e a tela de histórico não desenha
+    peça nenhuma. Quem abre a operação busca o detalhe pela rota de leitura.
+    """
+    linhas = await repo.listar_operacoes(identidade.sub, limite=limite, offset=offset)
+    return {
+        "operacoes": [
+            {
+                "project_ref": linha["project_ref"],
+                "nome_da_operacao": (linha.get("input") or {}).get("nome_da_operacao"),
+                "status": linha.get("status"),
+                "latest_run_ref": linha.get("latest_run_ref"),
+                "created_at": linha.get("created_at"),
+                "updated_at": linha.get("updated_at"),
+            }
+            for linha in linhas
+        ],
+        "limite": limite,
+        "offset": offset,
+    }
+
+
 @router.post("/operacoes", status_code=status.HTTP_201_CREATED)
 async def criar_operacao(
     entrada: EntradaNovaOperacao,
     identidade: Identidade = Depends(exigir_usuario),
     repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
-    agente: AgenteCriativoMeta = Depends(obter_agente),
 ) -> dict[str, Any]:
+    """Cria a operação e enfileira a primeira run. NÃO chama o modelo.
+
+    ## Por que criar e executar são dois atos
+
+    A versão anterior chamava o LLM DENTRO deste POST. Duas gerações de ~40s
+    encadeadas passam de qualquer timeout de proxy, e quem recarregava a página
+    não tinha como saber se a run existia: o `run_ref` só nascia na resposta que
+    nunca chegava. O mesmo defeito que `criativo/execucao.py` já tinha
+    documentado e resolvido para imagem — "não faça o request HTTP esperar o
+    render terminar" — valia aqui e não tinha sido aplicado.
+
+    Agora o 201 sai com `project_ref` e `run_ref` já gravados e `QUEUED`. Se a
+    conexão cair no segundo seguinte, a operação está no histórico e a run está
+    na fila, retomável. Executar é a rota seguinte, e é um clique próprio.
+
+    ⚠️ `obter_agente` NÃO é dependência aqui de propósito: montar a página ou
+    criar o rascunho não pode exigir credencial de modelo nem testá-la. A falta
+    de modelo aparece ao executar, que é quando ela de fato impede algo.
+    """
     project_ref = _ref("crproj_")
     run_ref = _ref("crrun_")
     pedido = PedidoDoAgente(
@@ -158,16 +199,17 @@ async def criar_operacao(
             "run_ref": run_ref,
             "project_ref": project_ref,
             "owner_id": identidade.sub,
-            "status": "RUNNING",
+            "status": "QUEUED",
             "phase": pedido.fase.value,
             "input": pedido.model_dump(mode="json"),
         }
     )
-    resposta = await _executar_e_persistir(
-        pedido=pedido, run_ref=run_ref, identidade=identidade, repo=repo, agente=agente
-    )
-    resposta["project_ref"] = project_ref
-    return resposta
+    return {
+        "project_ref": project_ref,
+        "run_ref": run_ref,
+        "status": "QUEUED",
+        "proximo_ato": "executar",
+    }
 
 
 @router.post("/operacoes/{project_ref}/runs", status_code=status.HTTP_201_CREATED)
@@ -176,8 +218,8 @@ async def continuar_operacao(
     continuacao: PedidoDeContinuacao,
     identidade: Identidade = Depends(exigir_usuario),
     repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
-    agente: AgenteCriativoMeta = Depends(obter_agente),
 ) -> dict[str, Any]:
+    """Enfileira a run seguinte com o lote anterior em mãos. NÃO chama o modelo."""
     try:
         operacao = await repo.obter_operacao(project_ref, identidade.sub)
         decisoes = await repo.listar_decisoes(project_ref, identidade.sub)
@@ -203,6 +245,15 @@ async def continuar_operacao(
         )
         for d in aprovacoes
     ]
+    # A saída da última run CONCLUÍDA é o que está sendo criticado. Sem ela o
+    # modelo recebia briefing + feedback e refazia do zero: "troque o hook da
+    # peça do público frio" não tinha peça nenhuma a que se referir, e o lote
+    # novo só coincidia com o anterior nos pontos congelados. Carregá-la é o que
+    # transforma "gerar de novo" em "refinar".
+    runs = await repo.listar_runs(project_ref, identidade.sub)
+    concluidas = [r for r in runs if r.get("status") == "COMPLETED" and r.get("output")]
+    saida_anterior = concluidas[0]["output"] if concluidas else None
+
     pedido = PedidoDoAgente(
         **entrada,
         project_ref=project_ref,
@@ -210,6 +261,7 @@ async def continuar_operacao(
         elementos_congelados=congelados,
         feedback=continuacao.feedback,
         feedback_escopo=continuacao.feedback_escopo,
+        saida_anterior=saida_anterior,
     )
     run_ref = _ref("crrun_")
     await repo.criar_run(
@@ -217,11 +269,68 @@ async def continuar_operacao(
             "run_ref": run_ref,
             "project_ref": project_ref,
             "owner_id": identidade.sub,
-            "status": "RUNNING",
+            "status": "QUEUED",
             "phase": pedido.fase.value,
             "input": pedido.model_dump(mode="json"),
         }
     )
+    return {"run_ref": run_ref, "status": "QUEUED", "proximo_ato": "executar"}
+
+
+@router.post("/operacoes/{project_ref}/runs/{run_ref}/executar")
+async def executar_run(
+    project_ref: ProjectRef,
+    run_ref: RunRef,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+    agente: AgenteCriativoMeta = Depends(obter_agente),
+) -> dict[str, Any]:
+    """Executa uma run já enfileirada. É aqui — e só aqui — que o modelo roda.
+
+    ## As três respostas que não geram nada
+
+    - run já `COMPLETED`: devolve a saída que existe. Reabrir a aba, reconectar
+      ou clicar duas vezes NÃO paga uma segunda geração, e esta é a única
+      leitura de idempotência que interessa ao operador.
+    - run `RUNNING` com dono vivo: 409. Duas abas não disputam o mesmo lote.
+    - run `FAILED`: 409 com o caminho certo, que é enfileirar outra run. Reusar
+      a ref de uma execução falha apagaria o registro do próprio defeito.
+
+    ⚠️ `obter_agente` é dependência e roda ANTES do corpo, de propósito: sem
+    credencial de modelo a resposta é 503 e a run continua `QUEUED`, em vez de
+    ser reivindicada por uma execução que nunca poderia acontecer.
+    """
+    try:
+        await repo.obter_operacao(project_ref, identidade.sub)
+        run = await repo.obter_run(run_ref, identidade.sub)
+    except NaoEncontrado as exc:
+        raise _erro("CRIATIVO_AGENTE_ALVO_INEXISTENTE", "Operação ou run não encontrada.", 404) from exc
+
+    if run.get("project_ref") != project_ref:
+        raise _erro("CRIATIVO_AGENTE_ALVO_INVALIDO", "A run não pertence a esta operação.", 409)
+
+    if run.get("status") == "COMPLETED":
+        return {"run_ref": run_ref, "status": "COMPLETED", "output": run["output"], "reexecutado": False}
+    if run.get("status") == "FAILED":
+        raise _erro(
+            "CRIATIVO_AGENTE_RUN_FALHOU",
+            "Esta execução falhou e fica no histórico; enfileire uma nova run para tentar de novo.",
+            409,
+        )
+
+    reivindicada = await repo.reivindicar_run(run_ref, identidade.sub)
+    if reivindicada is None:
+        reivindicada = await repo.reivindicar_run_abandonada(
+            run_ref, identidade.sub, lease_s=LEASE_DE_EXECUCAO_S
+        )
+    if reivindicada is None:
+        raise _erro(
+            "CRIATIVO_AGENTE_RUN_EM_EXECUCAO",
+            "Esta run já está sendo executada; acompanhe pela leitura da operação.",
+            409,
+        )
+
+    pedido = PedidoDoAgente.model_validate(run["input"])
     return await _executar_e_persistir(
         pedido=pedido, run_ref=run_ref, identidade=identidade, repo=repo, agente=agente
     )
@@ -256,9 +365,13 @@ async def decidir(
     if run.get("project_ref") != project_ref or run.get("status") != "COMPLETED":
         raise _erro("CRIATIVO_AGENTE_ALVO_INVALIDO", "A decisão não aponta para uma run concluída desta operação.", 409)
     try:
-        snapshot = _resolver_json_pointer(run["output"], pedido.caminho)
-    except KeyError as exc:
-        raise _erro("CRIATIVO_AGENTE_CAMINHO_INVALIDO", "O caminho não existe na saída escolhida.", 422) from exc
+        snapshot = resolver_caminho(run["output"], pedido.caminho)
+    except CaminhoInvalido as exc:
+        raise _erro(
+            "CRIATIVO_AGENTE_CAMINHO_INVALIDO",
+            f"O caminho não endereça nada estável na saída escolhida: {exc.motivo}.",
+            422,
+        ) from exc
     row = await repo.registrar_decisao(
         {
             "decision_ref": _ref("crdec_"),

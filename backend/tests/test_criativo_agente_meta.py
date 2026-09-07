@@ -217,7 +217,7 @@ def test_elemento_aprovado_e_literalmente_congelado():
             "elementos_congelados": [
                 ElementoCongelado(
                     ref="frozen_titulo_grupo",
-                    caminho="/grupos/0/nome",
+                    caminho="/grupos/group_territorio_1/nome",
                     valor=json.dumps("Território 1", ensure_ascii=False),
                     aprovado_em="2026-09-07T12:00:00Z",
                 )
@@ -228,6 +228,49 @@ def test_elemento_aprovado_e_literalmente_congelado():
     bruto["grupos"][0]["nome"] = "Outro nome"
     with pytest.raises(SaidaCriativaInvalida, match="foi alterado"):
         validar_saida(base, SaidaDoAgente.model_validate(bruto))
+
+
+def test_caminho_por_indice_nao_e_aceito_como_congelamento():
+    """A posição muda a cada geração; o congelamento tem de recusá-la.
+
+    Antes, `/grupos/0/nome` resolvia por índice e o congelamento comparava
+    "seja lá o que estiver na primeira posição agora" com o valor aprovado.
+    Reordenar o lote trocava o objeto sem trocar o caminho.
+    """
+    base = pedido().model_copy(
+        update={
+            "elementos_congelados": [
+                ElementoCongelado(
+                    ref="frozen_por_indice",
+                    caminho="/grupos/0/nome",
+                    valor=json.dumps("Território 1", ensure_ascii=False),
+                    aprovado_em="2026-09-07T12:00:00Z",
+                )
+            ]
+        }
+    )
+    with pytest.raises(SaidaCriativaInvalida, match="ausente da saída"):
+        validar_saida(base, SaidaDoAgente.model_validate(saida()))
+
+
+def test_indice_negativo_nao_vira_ultimo_elemento():
+    """`-1` passava no padrão do contrato e virava o ÚLTIMO item da lista."""
+    from app.criativo.agente.caminhos import CaminhoInvalido, resolver
+
+    documento = SaidaDoAgente.model_validate(saida()).model_dump(mode="json")
+    with pytest.raises(CaminhoInvalido):
+        resolver(documento, "/grupos/-1/nome")
+    # e o endereçamento por ref continua funcionando
+    assert resolver(documento, "/grupos/group_territorio_1/nome") == "Território 1"
+
+
+def test_peca_nao_pode_usar_estado_mental_de_outro_grupo():
+    """Existir na jornada não basta: o estado precisa ser do grupo da peça."""
+    bruto = saida()
+    # a peça do grupo 1 passa a apontar para o estado do grupo 2
+    bruto["pecas"][0]["estado_mental_ref"] = "state_momento_2"
+    with pytest.raises(SaidaCriativaInvalida, match="não pertence a group_territorio_1"):
+        validar_saida(pedido(), SaidaDoAgente.model_validate(bruto))
 
 
 class RepoFake:
@@ -242,9 +285,25 @@ class RepoFake:
         return row
 
     async def criar_run(self, row):
-        self.eventos.append("run_running")
+        self.eventos.append("run_queued" if row.get("status") == "QUEUED" else "run_running")
         self.run = row
         return row
+
+    async def reivindicar_run(self, run_ref, owner_id):
+        if self.run.get("status") != "QUEUED":
+            return None
+        self.eventos.append("run_claimed")
+        self.run["status"] = "RUNNING"
+        return self.run
+
+    async def reivindicar_run_abandonada(self, run_ref, owner_id, *, lease_s):
+        return None
+
+    async def devolver_run_para_fila(self, run_ref, owner_id):
+        self.eventos.append("run_requeued")
+
+    async def listar_operacoes(self, owner_id, *, limite=20, offset=0):
+        return [self.operacao] if self.operacao else []
 
     async def concluir_run(self, run_ref, owner_id, **kwargs):
         self.eventos.append("run_completed")
@@ -300,12 +359,84 @@ def test_api_grava_run_running_antes_de_chamar_modelo():
         ],
         quantidade_de_pecas=3,
     )
-    resposta = _app(repo).post(
+    cliente = _app(repo)
+    resposta = cliente.post(
         "/api/criativos/meta/agente/operacoes", json=entrada.model_dump(mode="json")
     )
     assert resposta.status_code == 201, resposta.text
-    assert repo.eventos[:3] == ["operacao", "run_running", "run_completed"]
-    assert resposta.json()["project_ref"].startswith("crproj_")
+    corpo = resposta.json()
+
+    # O POST devolve identidade durável e NÃO chamou o modelo: nada de
+    # `run_completed` aqui. É isso que permite recarregar a página sem perder a
+    # operação e sem pagar duas vezes.
+    assert repo.eventos == ["operacao", "run_queued"]
+    assert corpo["project_ref"].startswith("crproj_")
+    assert corpo["run_ref"].startswith("crrun_")
+    assert corpo["status"] == "QUEUED"
+
+    executada = cliente.post(
+        f"/api/criativos/meta/agente/operacoes/{corpo['project_ref']}"
+        f"/runs/{corpo['run_ref']}/executar"
+    )
+    assert executada.status_code == 200, executada.text
+    assert repo.eventos == ["operacao", "run_queued", "run_claimed", "run_completed"]
+    assert executada.json()["status"] == "COMPLETED"
+
+
+def test_reexecutar_run_concluida_devolve_o_lote_sem_gerar_de_novo():
+    """Recarregar a aba não pode pagar uma segunda geração."""
+    repo = RepoFake()
+    repo.operacao = {"project_ref": PROJECT_REF, "owner_id": OWNER, "input": {}}
+    repo.run = {
+        "run_ref": RUN_REF,
+        "project_ref": PROJECT_REF,
+        "status": "COMPLETED",
+        "output": saida(),
+    }
+    resposta = _app(repo).post(
+        f"/api/criativos/meta/agente/operacoes/{PROJECT_REF}/runs/{RUN_REF}/executar"
+    )
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["reexecutado"] is False
+    # nenhum claim, nenhuma conclusão: o modelo não foi tocado
+    assert repo.eventos == []
+
+
+def test_run_em_execucao_recusa_segundo_disparo():
+    repo = RepoFake()
+    repo.operacao = {"project_ref": PROJECT_REF, "owner_id": OWNER, "input": {}}
+    repo.run = {
+        "run_ref": RUN_REF,
+        "project_ref": PROJECT_REF,
+        "status": "RUNNING",
+        "output": None,
+    }
+    resposta = _app(repo).post(
+        f"/api/criativos/meta/agente/operacoes/{PROJECT_REF}/runs/{RUN_REF}/executar"
+    )
+    assert resposta.status_code == 409
+    assert resposta.json()["detail"]["codigo"] == "CRIATIVO_AGENTE_RUN_EM_EXECUCAO"
+
+
+def test_listagem_de_operacoes_existe_e_e_confinada_ao_dono():
+    repo = RepoFake()
+    repo.operacao = {
+        "project_ref": PROJECT_REF,
+        "owner_id": OWNER,
+        "status": "READY_FOR_REVIEW",
+        "input": {"nome_da_operacao": "Operação teste"},
+        "latest_run_ref": RUN_REF,
+        "created_at": "2026-09-07T12:00:00Z",
+        "updated_at": "2026-09-07T13:00:00Z",
+    }
+    resposta = _app(repo).get("/api/criativos/meta/agente/operacoes")
+    assert resposta.status_code == 200, resposta.text
+    corpo = resposta.json()
+    assert corpo["operacoes"][0]["project_ref"] == PROJECT_REF
+    assert corpo["operacoes"][0]["nome_da_operacao"] == "Operação teste"
+    # a listagem não carrega o lote inteiro
+    assert "output" not in corpo["operacoes"][0]
+    assert "input" not in corpo["operacoes"][0]
 
 
 def test_falha_ao_gravar_recibo_nao_mascara_erro_original_do_modelo():
@@ -326,7 +457,8 @@ def test_falha_ao_gravar_recibo_nao_mascara_erro_original_do_modelo():
     app.dependency_overrides[criativos_agente.obter_repositorio] = lambda: repo
     app.dependency_overrides[criativos_agente.obter_agente] = lambda: AgenteComSaidaInvalida()
 
-    resposta = TestClient(app).post(
+    cliente = TestClient(app)
+    criada = cliente.post(
         "/api/criativos/meta/agente/operacoes",
         json={
             "nome_da_operacao": "Operação teste",
@@ -342,6 +474,14 @@ def test_falha_ao_gravar_recibo_nao_mascara_erro_original_do_modelo():
             ],
             "quantidade_de_pecas": 3,
         },
+    )
+    assert criada.status_code == 201, criada.text
+    corpo = criada.json()
+    repo.operacao["project_ref"] = corpo["project_ref"]
+
+    resposta = cliente.post(
+        f"/api/criativos/meta/agente/operacoes/{corpo['project_ref']}"
+        f"/runs/{corpo['run_ref']}/executar"
     )
 
     assert resposta.status_code == 422
@@ -363,9 +503,89 @@ def test_decisao_congela_snapshot_lido_no_servidor():
             "run_ref": RUN_REF,
             "decisao": "APROVADO",
             "escopo": "GRUPO",
-            "caminho": "/grupos/0/nome",
+            "caminho": "/grupos/group_territorio_1/nome",
         },
     )
     assert resposta.status_code == 201, resposta.text
     assert resposta.json()["snapshot_sha256"]
     assert repo.eventos == ["decisao"]
+
+
+def test_refinamento_carrega_o_lote_anterior_no_pedido():
+    """Refinar sem o lote anterior é refazer do zero.
+
+    O feedback do operador fala de peças que ele acabou de ler; se o pedido
+    seguinte não as carrega, o modelo não tem a que se referir e a run devolve
+    um lote novo que só coincide com o anterior nos pontos congelados.
+    """
+    repo = RepoFake()
+    anterior = saida()
+    repo.operacao = {
+        "project_ref": PROJECT_REF,
+        "owner_id": OWNER,
+        "input": {
+            "nome_da_operacao": "Operação teste",
+            "destination_ref": "destino:teste",
+            "objetivo_meta": "OUTCOME_TRAFFIC",
+            "contexto_do_publico": "Pessoa buscando entender o processo.",
+            "fatos_da_oferta": [
+                {
+                    "ref": "fact_lp_offer",
+                    "declaracao": "Conteúdo informativo e independente.",
+                    "origem": "LANDING_PAGE",
+                }
+            ],
+            "quantidade_de_pecas": 3,
+        },
+    }
+    repo.run = {
+        "run_ref": RUN_REF,
+        "project_ref": PROJECT_REF,
+        "status": "COMPLETED",
+        "output": anterior,
+    }
+
+    resposta = _app(repo).post(
+        f"/api/criativos/meta/agente/operacoes/{PROJECT_REF}/runs",
+        json={"fase": "REFACAO", "feedback": "Troque o hook da peça do frio.", "feedback_escopo": "PONTUAL"},
+    )
+    assert resposta.status_code == 201, resposta.text
+    assert resposta.json()["status"] == "QUEUED"
+
+    gravado = repo.run["input"]
+    assert gravado["saida_anterior"] is not None
+    assert [p["ref"] for p in gravado["saida_anterior"]["pecas"]] == [
+        p["ref"] for p in anterior["pecas"]
+    ]
+    assert gravado["feedback"] == "Troque o hook da peça do frio."
+
+
+def test_primeira_run_nao_inventa_lote_anterior():
+    """Sem run concluída, `saida_anterior` é ausência declarada, não objeto vazio."""
+    repo = RepoFake()
+    repo.operacao = {
+        "project_ref": PROJECT_REF,
+        "owner_id": OWNER,
+        "input": {
+            "nome_da_operacao": "Operação teste",
+            "destination_ref": "destino:teste",
+            "objetivo_meta": "OUTCOME_TRAFFIC",
+            "contexto_do_publico": "Pessoa buscando entender o processo.",
+            "fatos_da_oferta": [
+                {
+                    "ref": "fact_lp_offer",
+                    "declaracao": "Conteúdo informativo e independente.",
+                    "origem": "LANDING_PAGE",
+                }
+            ],
+            "quantidade_de_pecas": 3,
+        },
+    }
+    repo.run = {"run_ref": RUN_REF, "project_ref": PROJECT_REF, "status": "FAILED", "output": None}
+
+    resposta = _app(repo).post(
+        f"/api/criativos/meta/agente/operacoes/{PROJECT_REF}/runs",
+        json={"fase": "MATRIZ"},
+    )
+    assert resposta.status_code == 201, resposta.text
+    assert repo.run["input"]["saida_anterior"] is None

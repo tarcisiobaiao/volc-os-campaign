@@ -7,6 +7,7 @@ import json
 import re
 from typing import Any
 
+from .caminhos import CaminhoInvalido, resolver as resolver_caminho
 from .conhecimento import carregar_regras
 from .contrato import PedidoDoAgente, PecaCriativa, SaidaDoAgente, contem_metadado_operacional
 
@@ -34,22 +35,6 @@ def _distancia(a: PecaCriativa, b: PecaCriativa) -> int:
     return sum(getattr(a, c).casefold() != getattr(b, c).casefold() for c in campos)
 
 
-def _resolver_json_pointer(documento: Any, caminho: str) -> Any:
-    atual = documento
-    for parte in caminho.lstrip("/").split("/"):
-        chave = parte.replace("~1", "/").replace("~0", "~")
-        if isinstance(atual, list):
-            try:
-                atual = atual[int(chave)]
-            except (ValueError, IndexError) as exc:
-                raise KeyError(caminho) from exc
-        elif isinstance(atual, dict) and chave in atual:
-            atual = atual[chave]
-        else:
-            raise KeyError(caminho)
-    return atual
-
-
 def validar_saida(pedido: PedidoDoAgente, saida: SaidaDoAgente) -> None:
     erros: list[str] = []
     if saida.project_ref != pedido.project_ref:
@@ -65,6 +50,7 @@ def validar_saida(pedido: PedidoDoAgente, saida: SaidaDoAgente) -> None:
     regras = {r["id"] for r in carregar_regras()["rules"]}
     estados = {e.ref for e in saida.jornada}
     grupos = {g.ref for g in saida.grupos}
+    grupo_por_ref = {g.ref: g for g in saida.grupos}
     copies = {c.ref: c for c in saida.copies_compartilhadas}
     texto_da_saida = saida.model_dump_json().casefold()
     if _ID_OU_SEGREDO_EXTERNO.search(saida.model_dump_json()):
@@ -105,8 +91,8 @@ def validar_saida(pedido: PedidoDoAgente, saida: SaidaDoAgente) -> None:
     documento = saida.model_dump(mode="json")
     for caminho, valor in congelados.items():
         try:
-            atual = _resolver_json_pointer(documento, caminho)
-        except KeyError:
+            atual = resolver_caminho(documento, caminho)
+        except CaminhoInvalido:
             erros.append(f"elemento congelado ausente da saída: {caminho}")
             continue
         canonico = json.dumps(atual, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -118,6 +104,21 @@ def validar_saida(pedido: PedidoDoAgente, saida: SaidaDoAgente) -> None:
             erros.append(f"{peca.ref} cita grupo inexistente")
         if peca.estado_mental_ref not in estados:
             erros.append(f"{peca.ref} cita estado mental inexistente")
+        else:
+            # Existir na jornada não basta: a peça precisa falar com um estado
+            # DO SEU grupo. Sem esta contraprova o modelo podia montar uma peça
+            # do grupo "quem já conhece" endereçando a dúvida de "quem nunca
+            # ouviu falar" — as duas refs são válidas isoladamente, e a
+            # incoerência só apareceria depois, na leitura humana do lote.
+            grupo_da_peca = grupo_por_ref.get(peca.group_ref)
+            if (
+                grupo_da_peca is not None
+                and peca.estado_mental_ref not in grupo_da_peca.estado_mental_refs
+            ):
+                erros.append(
+                    f"{peca.ref} usa estado mental {peca.estado_mental_ref} "
+                    f"que não pertence a {peca.group_ref}"
+                )
         copy = copies.get(peca.shared_copy_ref)
         if copy is None:
             erros.append(f"{peca.ref} cita copy compartilhada inexistente")

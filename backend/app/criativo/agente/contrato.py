@@ -90,6 +90,15 @@ class PedidoDoAgente(ModeloEstrito):
     quantidade_de_pecas: int = Field(default=6, ge=1, le=MAX_VARIACOES)
     feedback: str | None = Field(default=None, max_length=4000)
     feedback_escopo: EscopoFeedback | None = None
+    #: O lote que a run anterior produziu, quando existe.
+    #:
+    #: Refinar sem ele é reescrever do zero: o modelo recebia briefing, feedback
+    #: e elementos congelados, mas NÃO o que ele mesmo tinha proposto — então
+    #: "troque o hook da peça do frio" não tinha peça nenhuma para trocar, e a
+    #: run devolvia um lote novo que só coincidia com o anterior nos pontos
+    #: congelados. O campo é montado no servidor a partir da última run
+    #: concluída; o cliente não o envia e não pode forjá-lo.
+    saida_anterior: "SaidaDoAgente | None" = None
 
     @field_validator("formatos_permitidos")
     @classmethod
@@ -250,3 +259,9 @@ def campos_textuais_da_peca(peca: PecaCriativa) -> str:
 
 def contem_metadado_operacional(peca: PecaCriativa) -> bool:
     return bool(_METADADO_NA_PECA.search(campos_textuais_da_peca(peca)))
+
+
+# `PedidoDoAgente.saida_anterior` referencia `SaidaDoAgente`, que nasce mais
+# abaixo neste módulo. A reconstrução resolve a referência adiante sem inverter
+# a ordem de leitura do arquivo, que vai do pedido para a saída de propósito.
+PedidoDoAgente.model_rebuild()
