@@ -9,17 +9,19 @@
     "branch": "execution/volc-os-operacao-80-20",
     "base": "d54e10012c34aeaae2e2089945178bc20353e145",
     "reviewed_head": "187c4f111d204d6e0adcd52a8f94b39e5c330c9b",
-    "final_head": "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f",
+    "final_head": "951c3fda569a2d83b4c13d93ae3580b7df4c64d9",
     "tested_sha": "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f",
     "tree_state": "limpa apos os tres commits desta rodada",
     "commits_this_round": [
       "cea43e203d96df178b66ae57ab5c98610a7313ce fix(meta): cercar o trabalhador, exigir a evidencia e reler pelo id (R0-A02/A03/A05/A06)",
       "af821a57131fbcbee2ef7f91c429c09c86783dbe fix(meta): contar contra o manifesto aprovado, nao contra os passos que existem (R0-A04)",
-      "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f fix(schema): o perfil publicado passa a ser o que o runtime exige (R0-A01)"
+      "91967b13b8b7efa29fe349d4e8ce3f5993b2b55f fix(schema): o perfil publicado passa a ser o que o runtime exige (R0-A01)",
+      "951c3fda569a2d83b4c13d93ae3580b7df4c64d9 docs(closure): adjudicacao, recibo e handoff da rodada corretiva R0"
     ],
-    "commits_since_base": 10,
+    "commits_since_base": 11,
     "diffstat_this_round": "26 arquivos, +5496 / -390",
-    "history": "Linear. Nenhum reset, rebase, amend, stash ou force. A base nunca foi revisitada."
+    "history": "Linear. Nenhum reset, rebase, amend, stash ou force. A base nunca foi revisitada.",
+    "note_on_shas": "O codigo foi testado em 91967b1; 951c3fd acrescenta APENAS documentacao de fechamento (nenhum arquivo de codigo, teste, migration ou script). Os dois SHAs sao declarados separados de proposito: dizer que a suite rodou no HEAD final quando ela rodou no anterior seria a mesma categoria de imprecisao que esta rodada foi corrigir."
   },
   "findings": {
     "R0-A01": "FIXED_AND_PROVEN",
