@@ -336,10 +336,18 @@ BEGIN
       ADD CONSTRAINT trafego_meta_insight_grao_unico UNIQUE (
         ad_account_ativo_id, nivel, objeto_externo,
         periodo_inicio, periodo_fim, janela_atribuicao, breakdown,
-        time_increment, action_report_time, observado_em);
+        time_increment, action_report_time, account_timezone, observado_em);
   END IF;
 END
 $identidade$;
+
+-- ⚠️ `account_timezone` entra nesta UNIQUE porque ele entra na identidade que
+-- os PRODUTORES hasheiam (`persistencia.linhas_de_insights` e o mesmo campo no
+-- fluxo n8n). Se a chave logica do banco for mais estreita que a chave fisica
+-- deles, uma conta que muda de fuso no meio da janela gera duas linhas com
+-- `meta_insight_daily_id` distintos e a MESMA tupla logica: a segunda estoura
+-- `unique_violation`, cai no handler da funcao, e o dia inteiro e recusado por
+-- um motivo que nao descreve a causa.
 
 -- A PK (meta_insight_daily_id, ordem) ja separa duas acoes; o que ela NAO
 -- garante e que uma linha de `action_values` nao seja numerada por cima de uma
@@ -1093,7 +1101,11 @@ BEGIN
            coalesce(action_report_time, 'impression'),
            coalesce(account_timezone, v_fuso),
            coalesce(currency, v_moeda),
-           coalesce(completo, true)
+           -- Omitir a completude da LINHA nao pode significar "completa": a
+           -- transacao ja sabe, por `hierarchy_complete`, que esta leitura foi
+           -- truncada. Herdar `v_completo` diz a verdade; `true` inventaria a
+           -- mesma ausencia que a RPC acabou de recusar la em cima.
+           coalesce(completo, v_completo)
       FROM entrada
     ON CONFLICT (meta_insight_daily_id) DO UPDATE
        SET spend              = EXCLUDED.spend,

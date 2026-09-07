@@ -23,6 +23,11 @@ from . import dominio as dom
 from .persistencia import linhas_da_leitura, linhas_de_contas, linhas_de_insights
 
 
+#: Instantes de observacao. Dizem QUANDO olhamos, nunca O QUE vimos, e por isso
+#: ficam fora da impressao digital do conteudo.
+_COLUNAS_DE_INSTANTE = frozenset({"observado_em", "ultima_vez_visto_em"})
+
+
 def _json_default(valor: Any) -> str:
     if isinstance(valor, (datetime, date)):
         return valor.isoformat()
@@ -169,23 +174,51 @@ def montar_snapshot_canonico(
                 "snapshot_hash": "__pending__",
             })
     linhas["trafego_meta_custom_measurement"] = medida_rows
+    # ------------------------------------------------------------------
+    # A IMPRESSAO DIGITAL E DO CONTEUDO, E SO DELE
+    # ------------------------------------------------------------------
+    # `observado_em` e `ultima_vez_visto_em` sao QUANDO olhamos, nao O QUE
+    # vimos. Deixa-los entrar no hash fazia duas leituras identicas, separadas
+    # por um segundo, parecerem conteudos diferentes — e era isso que quebrava a
+    # idempotencia rio abaixo.
+    #
+    # Com eles fora, o hash responde exatamente a pergunta util: "o que a Meta
+    # diz desta janela mudou desde a ultima vez?"
+    linhas_sem_instante = {
+        tabela: [
+            {k: v for k, v in linha.items()
+             if k not in _COLUNAS_DE_INSTANTE}
+            for linha in linhas_da_tabela
+        ]
+        for tabela, linhas_da_tabela in linhas.items()
+    }
     bruto_para_hash = {
         "provider": dom.META_ADS,
         "conta": conta.id_externo,
         "janela": janela,
-        "linhas": linhas,
+        "linhas": linhas_sem_instante,
     }
     snapshot_hash = "meta_snapshot_" + hashlib.sha256(_stable_json(bruto_para_hash).encode("utf-8")).hexdigest()[:32]
     for row in medida_rows:
         row["snapshot_hash"] = snapshot_hash
-    # A chave de idempotencia identifica o PEDIDO (provedor, conta, janela), nao
-    # o conteudo lido. Enquanto ela incluia `snapshot_hash` — que por sua vez
-    # depende de `observado_em` — dois cliques no botao Persistir com um segundo
-    # de diferenca produziam duas chaves distintas, o EXISTS do lado do banco
-    # nao reconhecia a repeticao, e o mesmo dia era gravado duas vezes.
-    # `snapshot_hash` continua existindo, como impressao digital do conteudo.
+    # ------------------------------------------------------------------
+    # A CHAVE DE IDEMPOTENCIA E (PEDIDO + CONTEUDO), E PRECISA SER OS DOIS
+    # ------------------------------------------------------------------
+    # So o pedido (provedor, conta, janela) nao serve: a RPC trata chave
+    # repetida como replay e nao escreve nada, entao a coleta do dia seguinte
+    # da MESMA janela viraria um no-op — e a marcacao de ausencia e as guardas
+    # de monotonicidade nunca mais rodariam depois da primeira leitura. Uma
+    # revisao legitima ficaria invisivel.
+    #
+    # So o conteudo tambem nao serve: sem a janela, duas janelas com numeros por
+    # acaso identicos colidiriam.
+    #
+    # Com os dois, cada caso cai onde deve:
+    #   • dois cliques, mesmo conteudo  -> mesma chave -> replay, nao escreve;
+    #   • releitura com numeros novos    -> outra chave -> grava uma REVISAO;
+    #   • releitura com numeros iguais   -> mesma chave -> nada mudou, no-op.
     idem = "meta_sync_" + hashlib.sha256(
-        f"{dom.META_ADS}|{conta.id_externo}|{janela}".encode("utf-8")
+        f"{dom.META_ADS}|{conta.id_externo}|{janela}|{snapshot_hash}".encode("utf-8")
     ).hexdigest()[:32]
     return SnapshotMetaCanonico(
         conta=conta,

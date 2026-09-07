@@ -631,6 +631,13 @@ def validar_contrato_do_pedido_no_fio(wf: dict, r: Relatorio, rotulo: str) -> No
             "f.observado_em," in valida and "'meta_insight_' + sha256Hex(identidade)" in valida)
     r.prova(f"{rotulo} · o snapshot carrega o registro do pedido",
             "pedido: ctx.pedido" in valida)
+    # A impressão digital precisa ser do CONTEÚDO nos DOIS produtores. Se um
+    # incluir o instante e o outro não, o mesmo fato vira replay de um lado e
+    # revisão do outro — e os dois escrevem na mesma tabela pela mesma RPC.
+    r.prova(f"{rotulo} · o hash do snapshot exclui os instantes de observação",
+            "SEM_INSTANTE" in valida
+            and "'observado_em', 'ultima_vez_visto_em'" in valida
+            and "linhas: rows," not in valida)
     # A lacuna anterior fechou: `medida` chegou na migration candidata do read
     # model e o backend passou a emitir as duas medidas na mesma tabela. O que
     # precisa ser vigiado agora é a colisão de chave: `actions` e `action_values`

@@ -191,8 +191,11 @@ def test_idempotencia_do_run_nao_depende_do_instante_da_leitura() -> None:
     primeiro = snap(datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc))
     segundo = snap(datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc))
     assert primeiro.idempotency_key == segundo.idempotency_key
-    # A impressao digital do conteudo continua distinguindo as duas leituras.
-    assert primeiro.snapshot_hash != segundo.snapshot_hash
+    # A impressao digital e do CONTEUDO: `observado_em` diz quando olhamos, nao
+    # o que vimos. Duas leituras identicas separadas por um segundo sao a mesma
+    # verdade, e precisam ter o mesmo hash — era justamente o contrario disso
+    # que quebrava a idempotencia rio abaixo.
+    assert primeiro.snapshot_hash == segundo.snapshot_hash
     # E uma janela diferente continua sendo outro pedido.
     outra = montar_snapshot_canonico(
         conta=conta, leitura=leitura(), insights=(insight(),),
@@ -216,3 +219,48 @@ def test_janela_truncada_chega_incompleta_ao_recibo() -> None:
     assert parcial.payload_rpc()["incomplete_reason"] == "META_PAGINATION_LIMIT"
     # E a linha persistida carrega a marca, para nao virar verdade medida.
     assert parcial.linhas["trafego_meta_insight_daily"][0]["completo"] is False
+
+
+def test_releitura_com_numeros_novos_nao_e_replay() -> None:
+    """A chave precisa separar "cliquei duas vezes" de "o numero mudou".
+
+    Se a chave dependesse so do pedido (conta + janela), a RPC trataria a coleta
+    do dia seguinte da MESMA janela como replay e nao escreveria nada: a
+    marcacao de ausencia e as guardas de monotonicidade nunca mais rodariam
+    depois da primeira leitura, e uma revisao legitima da Meta ficaria invisivel.
+
+    Se dependesse so do conteudo, duas janelas com numeros por acaso identicos
+    colidiriam. Ela depende dos dois.
+    """
+    conta = dom.ContaMetaDescoberta("123456789012", "Conta", "1", "BRL", "America/Sao_Paulo")
+
+    def com_nome(nome: str) -> dom.LeituraDaHierarquia:
+        base = leitura()
+        renomeada = dom.ObjetoMeta(
+            "campaign", base.campanhas[0].id_externo, nome,
+            base.campanhas[0].status, base.campanhas[0].effective_status)
+        return dom.LeituraDaHierarquia(
+            conta_externa=base.conta_externa, campanhas=(renomeada,),
+            conjuntos=base.conjuntos, anuncios=base.anuncios,
+            criativos=base.criativos, paginas_lidas=base.paginas_lidas)
+
+    def snap(leit, instante):
+        return montar_snapshot_canonico(
+            conta=conta, leitura=leit, insights=(),
+            mensuracao={"pixels_ou_datasets": 1, "custom_conversions": 0},
+            janela="2026-09-06", observado_em=instante)
+
+    t1 = datetime(2026, 9, 7, 10, tzinfo=timezone.utc)
+    t2 = datetime(2026, 9, 8, 10, tzinfo=timezone.utc)
+    igual_depois = snap(com_nome("Campanha"), t2)
+    original = snap(com_nome("Campanha"), t1)
+    mudou = snap(com_nome("Campanha renomeada"), t2)
+
+    # Nada mudou de um dia para o outro: e replay, e nao escrever esta certo.
+    assert igual_depois.idempotency_key == original.idempotency_key
+    # O conteudo mudou: precisa virar uma REVISAO, nao ser engolido como replay.
+    assert mudou.idempotency_key != original.idempotency_key
+    assert mudou.snapshot_hash != original.snapshot_hash
+    # A chave estavel exposta a RPC acompanha.
+    assert (mudou.payload_rpc()["stable_idempotency_key"]
+            != original.payload_rpc()["stable_idempotency_key"])

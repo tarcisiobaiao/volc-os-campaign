@@ -364,6 +364,7 @@ rodar_sequencia() {  # rodar_sequencia <db> <sufixo>
   local CHAVE_S2="meta_sync_$(printf '%s' "s2$SUF" | md5_hex)"
   local CHAVE_S0="meta_sync_$(printf '%s' "s0$SUF" | md5_hex)"
   local CHAVE_S3="meta_sync_$(printf '%s' "s3$SUF" | md5_hex)"
+  local CHAVE_S3P="meta_sync_$(printf '%s' "s3p$SUF" | md5_hex)"
   local CHAVE_S4="meta_sync_$(printf '%s' "s4$SUF" | md5_hex)"
   local CONTA_ATIVO
   CONTA_ATIVO="meta_account_metaacct_$(psql_ -d "$BASE" -Atc "select md5('conta$SUF');")"
@@ -427,6 +428,41 @@ SQL
   ok "leitura parcial NÃO marca ausência" "$AUSENTE_PARCIAL" "NULL"
   ok "e o recibo declara a leitura como incompleta" "$(campo s3 leitura_completa)" "false"
   ok "e não marcou nada" "$(campo s3 ausencias_marcadas)" "0"
+
+  # Uma linha que OMITE `completo` não pode ser gravada como completa quando a
+  # própria transação acabou de ser informada de que a leitura foi truncada.
+  # `coalesce(completo, true)` inventaria exatamente a certeza que a RPC recusou
+  # lá em cima ao exigir `hierarchy_complete`.
+  psql_ -d "$BASE" -q <<SQL
+SET ROLE service_role;
+WITH cru AS (SELECT public.prova_meta_payload(
+       '$SUF', 259200, false, ARRAY['$C1'], '$CHAVE_S3P', 'q', true) AS p),
+     sem AS (
+       SELECT jsonb_set(p, '{rows,trafego_meta_insight_daily}',
+                (SELECT coalesce(jsonb_agg(linha - 'completo'), '[]'::jsonb)
+                   FROM jsonb_array_elements(p->'rows'->'trafego_meta_insight_daily') AS linha)
+              ) AS p
+         FROM cru)
+INSERT INTO public.prova_recibo (nome, recibo)
+SELECT 'sem_completo', public.trafego_meta_persistir_snapshot(p) FROM sem
+ON CONFLICT (nome) DO UPDATE SET recibo = EXCLUDED.recibo;
+SQL
+  # O id do fato é determinístico em `prova_meta_payload` (md5 de 'dia'||suf||seg),
+  # então a linha é endereçada diretamente. Conferir que ela EXISTE antes de
+  # afirmar qualquer coisa sobre ela: uma consulta que não acha nada devolveria
+  # NULL e o teste passaria sem ter medido nada.
+  FATO_SEM_COMPLETO=$(psql_ -d "$BASE" -Atc "SELECT 'meta_insight_' || md5('dia' || '$SUF' || '259200');")
+  EXISTE=$(psql_ -d "$BASE" -Atc "SELECT count(*) FROM public.trafego_meta_insight_daily WHERE meta_insight_daily_id='$FATO_SEM_COMPLETO';")
+  ok "a linha sem \`completo\` foi mesmo gravada (o teste tem o que medir)" "$EXISTE" "1"
+  COMPLETO_HERDADO=$(psql_ -d "$BASE" -Atc "SELECT completo::text FROM public.trafego_meta_insight_daily WHERE meta_insight_daily_id='$FATO_SEM_COMPLETO';")
+  ok "linha sem \`completo\` herda a incompletude da leitura, não vira 'true'" \
+     "$COMPLETO_HERDADO" "false"
+
+  # A identidade lógica do banco tem de ser tão larga quanto a que os produtores
+  # hasheiam: `account_timezone` entra nas duas, ou uma conta que muda de fuso no
+  # meio da janela estoura `unique_violation` e derruba o dia inteiro.
+  FUSO_NO_GRAO=$(psql_ -d "$BASE" -Atc "SELECT (position('account_timezone' in pg_get_constraintdef(oid)) > 0)::text FROM pg_constraint WHERE conname='trafego_meta_insight_grao_unico';")
+  ok "o grão único do banco inclui o fuso da conta" "$FUSO_NO_GRAO" "true"
 
   echo
   echo "-- [$SUF] 4. objeto ausente numa leitura COMPLETA vira ausência --"

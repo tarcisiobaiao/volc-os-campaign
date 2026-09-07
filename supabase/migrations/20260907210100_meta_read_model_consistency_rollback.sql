@@ -7,7 +7,12 @@
 --   * a ausencia volta a nunca ser marcada (objeto apagado na Meta fica
 --     "presente" para sempre);
 --   * um snapshot atrasado volta a sobrescrever um mais novo em silencio;
---   * `service_role` volta a ter DELETE e TRUNCATE nas tres tabelas de fatos;
+--   * `service_role` volta a ter SELECT, INSERT e UPDATE nas tres tabelas de
+--     fatos. Este rollback NAO devolve DELETE nem TRUNCATE, e nao devolve o
+--     ACL de PUBLIC: reverter uma correcao de seguranca ate o estado exato
+--     anterior nao e obrigacao do rollback, e reabrir TRUNCATE por simetria
+--     seria pior do que a divergencia. Se o estado anterior for mesmo
+--     necessario, ele precisa de um ato proprio e explicito;
 --   * a RPC volta a `search_path = public, pg_catalog` (public na frente);
 --   * a RPC volta a escrever `cofre_ativo` direto, com custodia 'verified'
 --     forjada e sem trilha de revisao;

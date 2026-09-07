@@ -1105,13 +1105,30 @@ const rows = {
   trafego_meta_insight_action: insightAction,
 };
 const janela = `${ctx.janela_inicio}..${ctx.janela_fim}`;
+// ⚠️ A IMPRESSAO DIGITAL E DO CONTEUDO, E SO DELE — igual ao lado Python
+// (`read_model._COLUNAS_DE_INSTANTE`). `observado_em` e `ultima_vez_visto_em`
+// dizem QUANDO olhamos, nao O QUE vimos. Se entrassem no hash, duas leituras
+// identicas da mesma janela pareceriam conteudos diferentes, a RPC nunca
+// reconheceria um replay, e uma reexecucao manual gravaria uma revisao que nao
+// revisa nada. Com eles fora, o hash responde a pergunta util: "mudou?".
+const SEM_INSTANTE = new Set(['observado_em', 'ultima_vez_visto_em']);
+const semInstante = (lista) => lista.map((linha) => {
+  const copia = {};
+  for (const chave of Object.keys(linha)) {
+    if (!SEM_INSTANTE.has(chave)) copia[chave] = linha[chave];
+  }
+  return copia;
+});
 const paraHash = {
   provider: 'META_ADS',
   conta: String(ctx.conta_externa),
   janela,
   pedido: ctx.pedido,
   pagina: Number(ctx.pagina),
-  linhas: rows,
+  linhas: {
+    trafego_meta_insight_daily: semInstante(rows.trafego_meta_insight_daily),
+    trafego_meta_insight_action: semInstante(rows.trafego_meta_insight_action),
+  },
 };
 const snapshotHash = 'meta_snapshot_' + sha256Hex(jsonEstavel(paraHash)).slice(0, 32);
 const idempotencia = 'meta_sync_' + sha256Hex(
