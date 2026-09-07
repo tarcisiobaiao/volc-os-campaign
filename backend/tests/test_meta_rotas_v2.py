@@ -409,3 +409,95 @@ async def test_catalogo_sem_o_leitor_diz_isso_em_vez_de_dizer_nao_encontrado() -
             None, plano=plano, account_ref="metaacct_exemplo",
             segredo=None, catalogo=_SemLeitor())
     assert erro.value.codigo == "META_CATALOG_READER_UNAVAILABLE"
+
+
+# ── T12: a ficha do canário ─────────────────────────────────────────────────
+
+
+def _compilado_falso(sha: str = "f" * 64):
+    class _Op:
+        tipo_objeto = "creative"
+        payload = {"url_tags": (
+            "utm_source=meta&utm_medium=paid_social"
+            "&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}")}
+
+    class _Compilado:
+        plano_sha256 = sha
+        operacoes = (_Op(),)
+
+    return _Compilado()
+
+
+def test_ficha_declara_que_nada_foi_criado_ao_gera_la() -> None:
+    ficha = c2.ficha_de_canario(_plano(), _compilado_falso())
+    assert ficha["estado"] == "CANARY_AUTHORIZATION_REQUIRED"
+    assert ficha["efeito_desta_ficha"] == "NENHUM"
+    assert ficha["objetos_criados"] == 0
+    assert ficha["autorizado"] is False
+
+
+def test_ficha_nao_carrega_identificador_real_do_provedor() -> None:
+    """Uma ficha é feita para ser copiada para um chat ou ticket."""
+    import json
+
+    texto = json.dumps(c2.ficha_de_canario(_plano(), _compilado_falso()))
+    assert "act_" not in texto
+    # As referências que viajam são as opacas que o navegador já tinha.
+    assert "metaacct_exemplo" in texto
+
+
+def test_sem_recibo_de_validacao_a_ficha_lista_a_lacuna() -> None:
+    ficha = c2.ficha_de_canario(_plano(), _compilado_falso(), prova_de_validacao=None)
+    assert any("recibo durável" in item for item in ficha["provas_faltantes"])
+
+    ficha_com = c2.ficha_de_canario(
+        _plano(), _compilado_falso(), prova_de_validacao={"registrada": True})
+    assert not any("recibo durável" in item for item in ficha_com["provas_faltantes"])
+
+
+def test_plano_maior_que_o_canario_e_apontado_como_lacuna() -> None:
+    """Um plano de dois conjuntos não é inválido — ele só não é o canário."""
+    corpo = _corpo()
+    corpo["adsets"].append({
+        "adset_key": "segundo", "name": "Segundo", "start_time": INICIO,
+        "audience": {"mode": "BROAD", "geo": {"countries": ["BR"]}, "expansion": False},
+        "budget": {"nivel": "ADSET", "periodo": "DAILY", "amount_minor": 2000},
+    })
+    corpo["ads"].append({
+        "variation_key": "v2", "adset_key": "segundo", "asset_ref": "metaasset_exemplo",
+        "creative_name": "C2", "ad_name": "A2", "message": "m", "headline": "h",
+        "description": "d",
+    })
+    plano = trafego_meta_validacao._plano_v2_do_pedido(
+        trafego_meta_validacao.PedidoPlanoMetaV2.model_validate(corpo))
+    ficha = c2.ficha_de_canario(
+        plano, _compilado_falso(), prova_de_validacao={"registrada": True})
+    assert any("primeiro canário" in item for item in ficha["provas_faltantes"])
+
+
+def test_as_quatro_camadas_de_prova_ficam_separadas() -> None:
+    """`A44`: roots não prova dependentes, nem expansão, nem receita."""
+    ficha = c2.ficha_de_canario(_plano(), _compilado_falso())
+    camadas = {item["id"]: item for item in ficha["tracking"]["camadas"]}
+    assert set(camadas) == {
+        "COMPILADO_LOCAL", "ROOTS_REMOTO", "EXPANSAO_REAL", "RECEITA_NO_GAM"}
+    assert "conjunto" in camadas["ROOTS_REMOTO"]["nao_prova"]
+    assert "macro" in camadas["ROOTS_REMOTO"]["nao_prova"]
+    assert "receita" in camadas["ROOTS_REMOTO"]["nao_prova"]
+    # As duas últimas dependem de entrega real, e a ficha diz isso.
+    assert "autorização separada" in camadas["EXPANSAO_REAL"]["exige"]
+    assert "autorização separada" in camadas["RECEITA_NO_GAM"]["exige"]
+
+
+def test_a_ficha_pede_o_hash_exato_do_plano() -> None:
+    ficha = c2.ficha_de_canario(_plano(), _compilado_falso(sha="a" * 64))
+    assert ficha["pedido"]["plano_sha256"] == "a" * 64
+    assert ficha["pedido"]["estado_ao_nascer"] == "PAUSED"
+
+
+def test_a_rota_da_ficha_nao_cria_nem_valida_remotamente() -> None:
+    paths = {rota.path for rota in trafego_meta_validacao.router.routes}
+    assert "/api/trafego/meta/local/criacao/v2/canario/ficha" in paths
+    # A ficha é um documento; ela não ganhou uma rota de execução irmã.
+    assert all("canario/criar" not in path for path in paths)
+    assert all("canario/executar" not in path for path in paths)

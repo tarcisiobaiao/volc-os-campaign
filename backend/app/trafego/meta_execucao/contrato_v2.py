@@ -876,3 +876,121 @@ class ReferenciasDePublicoResolvidas:
 
     def __repr__(self) -> str:
         return "ReferenciasDePublicoResolvidas(<ocultas>)"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# A ficha do canário (T12) — um pedido de autorização, nunca uma execução
+# ═════════════════════════════════════════════════════════════════════════════
+
+#: As quatro camadas de prova do tracking, e o que cada uma NÃO prova.
+#:
+#: ⚠️ Elas existem separadas porque a confusão entre elas é o defeito que a
+#: spec chama pelo nome: "roots não prova expansão das macros nem receita".
+#: `validate_only` das raízes independentes diz que a Meta aceitou o FORMATO do
+#: criativo — não que `{{campaign.id}}` virou um número, não que o parâmetro
+#: sobreviveu ao redirect da LP, e não que a receita chegou ao GAM.
+CAMADAS_DE_PROVA_DE_TRACKING: tuple[Mapping[str, str], ...] = (
+    {
+        "id": "COMPILADO_LOCAL",
+        "prova": "o template está no payload, entra no hash e é lido de volta do plano",
+        "nao_prova": "que a Meta aceita este criativo",
+    },
+    {
+        "id": "ROOTS_REMOTO",
+        "prova": "a Meta aceitou campanha e criativo sob validate_only",
+        "nao_prova": (
+            "que o conjunto e o anúncio seriam aceitos, que a macro expande, "
+            "e que existe receita"
+        ),
+    },
+    {
+        "id": "EXPANSAO_REAL",
+        "prova": "a macro virou um campaign.id real e sobreviveu aos redirects até a LP",
+        "nao_prova": "que o valor chegou à dimensão financeira",
+        "exige": "uma campanha ENTREGANDO — autorização separada",
+    },
+    {
+        "id": "RECEITA_NO_GAM",
+        "prova": "utm_campaign_value bateu com campaign_id no join financeiro",
+        "nao_prova": "nada além do período e do escopo medidos",
+        "exige": "entrega real e janela de coleta — autorização separada",
+    },
+)
+
+
+def ficha_de_canario(
+    plano: PlanoMetaV2,
+    compilado: Any,
+    *,
+    prova_de_validacao: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Monta a FICHA de autorização do primeiro canário.
+
+    ⚠️ Ela não executa, não agenda e não guarda autorização. É um documento
+    para uma pessoa ler e decidir — e por isso ele precisa listar exatamente o
+    que ainda NÃO foi provado, e não só o que foi.
+
+    ⚠️ Nenhum identificador real do provedor entra aqui: conta, Página e peça
+    viajam como referências opacas. Uma ficha é feita para ser copiada para um
+    chat ou um ticket, e é justamente aí que um `act_<id>` vazaria.
+    """
+    conjuntos = plano.conjuntos
+    total_anuncios = len(plano.anuncios)
+    faltando: list[str] = list(plano.bloqueios_para_criar())
+
+    if prova_de_validacao is None or not prova_de_validacao.get("registrada"):
+        faltando.append(
+            "não existe recibo durável de validate_only para este hash; valide o "
+            "plano atual por clique antes de pedir autorização"
+        )
+
+    # O primeiro canário do contrato é UMA campanha, UM conjunto, UM anúncio
+    # estático. Um plano maior não é inválido — ele só não é o CANÁRIO, e
+    # deixar isso implícito seria pedir autorização para outra coisa.
+    if len(conjuntos) != 1 or total_anuncios != 1:
+        faltando.append(
+            f"o primeiro canário é uma campanha, um conjunto e um anúncio; este "
+            f"plano tem {len(conjuntos)} conjunto(s) e {total_anuncios} anúncio(s)"
+        )
+
+    orcamento = (
+        plano.orcamento_campanha if plano.orcamento_e_da_campanha
+        else conjuntos[0].orcamento
+    )
+    return {
+        "documento": "CANARY_AUTHORIZATION_REQUEST",
+        "estado": "CANARY_AUTHORIZATION_REQUIRED",
+        # ⚠️ Dito com todas as letras, no corpo do documento: gerar a ficha não
+        # autoriza nada, e nada foi criado ao gerá-la.
+        "efeito_desta_ficha": "NENHUM",
+        "objetos_criados": 0,
+        "pedido": {
+            "conta_ref": plano.account_ref,
+            "pagina_ref": plano.page_ref,
+            "receita": plano.receita.id,
+            "objetivo": plano.receita.objective,
+            "otimizacao": plano.receita.optimization_goal,
+            "destino_url": plano.destination_url,
+            "peca_refs": list(plano.asset_refs),
+            "orcamento": None if orcamento is None else {
+                "nivel": orcamento.nivel,
+                "periodo": orcamento.periodo,
+                "amount_minor": orcamento.amount_minor,
+                "currency": orcamento.currency,
+            },
+            "conjuntos": len(conjuntos),
+            "anuncios": total_anuncios,
+            "estado_ao_nascer": "PAUSED",
+            "plano_sha256": getattr(compilado, "plano_sha256", None),
+        },
+        "tracking": {
+            "template": None,
+            "camadas": [dict(camada) for camada in CAMADAS_DE_PROVA_DE_TRACKING],
+        },
+        "provas_faltantes": faltando,
+        "autorizado": False,
+        "proximo_ato": (
+            "uma pessoa autoriza nominalmente a criação PAUSED deste hash exato; "
+            "sem essa autorização nada é criado"
+        ),
+    }

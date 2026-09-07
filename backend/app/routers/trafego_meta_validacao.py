@@ -972,3 +972,73 @@ async def validar_v2(
         }
     except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
         raise _erro(exc) from None
+
+
+@router.post("/v2/canario/ficha")
+async def ficha_do_canario(
+    payload: PedidoPlanoMetaV2,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    """A ficha de autorização do primeiro canário — um documento, não um ato.
+
+    ⚠️ Ela COMPILA (para ter o hash exato do que seria criado) e NÃO cria, não
+    valida remotamente e não guarda autorização. Compilar é local: nenhum
+    objeto nasce, nenhuma verba é comprometida.
+
+    ⚠️ E ela procura o recibo durável de validação DESTE hash. Sem recibo, a
+    ficha sai com a lacuna nomeada em vez de sair "pronta" — porque pedir
+    autorização para um plano que ninguém validou é pedir uma assinatura em
+    branco.
+    """
+    _exigir_host_local(request)
+    try:
+        plano = _plano_v2_do_pedido(payload)
+        _declaracoes_de_politica_v2(payload)
+        compilado = await _compilar_v2(
+            payload, plano, SegredoEfemero(_credencial_salva(quem).token), ator=quem.sub)
+        ficha = contrato_v2.ficha_de_canario(
+            plano, compilado,
+            prova_de_validacao=await _prova_de_validacao_do_hash(compilado.plano_sha256),
+        )
+        # O tracking real vem do plano COMPILADO, não de uma constante repetida
+        # aqui: duas cópias do mesmo template é como uma delas fica para trás.
+        ficha["tracking"]["template"] = next(
+            (op.payload.get("url_tags") for op in compilado.operacoes
+             if op.tipo_objeto == "creative"),
+            None,
+        )
+        return {"ok": True, "efeito_externo": "NENHUM", "ficha": ficha}
+    except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
+        raise _erro(exc) from None
+
+
+async def _prova_de_validacao_do_hash(plano_sha256: str) -> dict[str, Any]:
+    """Procura o recibo durável de validate_only para ESTE hash exato.
+
+    ⚠️ Um hash novo exige recibo novo. É o mesmo princípio de
+    `AutorizacaoMeta.exigir`: mudar qualquer campo muda o hash, e um recibo
+    antigo descreveria um plano que já não é este.
+    """
+    if not ledger_liberado():
+        return {
+            "registrada": False,
+            "motivo": "o registro durável Meta está fechado neste servidor",
+        }
+    try:
+        encontrado = await _registro_saga().buscar_validacao(plano_sha256=plano_sha256)
+    except AttributeError:
+        # ⚠️ LACUNA NOMEADA. O ledger sabe GRAVAR a validação
+        # (`registrar_validacao`) e ainda não sabe procurá-la por hash. Fingir
+        # que encontrou seria pior do que dizer que não sei procurar.
+        return {
+            "registrada": False,
+            "motivo": (
+                "este servidor ainda não sabe consultar o recibo de validação por "
+                "hash; confirme a validação pela resposta do clique de validar"
+            ),
+            "codigo": "META_VALIDATION_RECEIPT_LOOKUP_UNAVAILABLE",
+        }
+    except ErroDeNascimentoMeta as exc:
+        return {"registrada": False, "motivo": str(exc), "codigo": exc.codigo}
+    return {"registrada": bool(encontrado), "recibo": encontrado or None}
