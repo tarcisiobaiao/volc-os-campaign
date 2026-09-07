@@ -285,7 +285,11 @@ class _SupabaseFake:
 
     async def rpc(self, funcao: str, argumentos: dict[str, Any]) -> dict[str, Any]:
         self.calls.append((funcao, argumentos))
-        return {'step_ref': 'passo_meta_01', 'state': 'DESPACHAR'}
+        # ⚠️ O token acompanha o DESPACHAR, como na RPC: é ele que autoriza
+        # concluir aquele despacho, e um adaptador que o omitisse produziria um
+        # passo despachável que ninguém consegue fechar.
+        return {'step_ref': 'passo_meta_01', 'state': 'DESPACHAR',
+                'claim_token': 'claim-meta-01'}
 
 
 def test_adapter_persistente_fica_fechado_por_flag_e_vincula_ator(monkeypatch) -> None:

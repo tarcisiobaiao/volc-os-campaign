@@ -21,6 +21,15 @@ class PassoPreparadoMeta:
     passo_ref: str
     estado: EstadoPassoMeta
     id_externo: str | None = None
+    #: A CERCA. Só o `DESPACHAR` recebe token, e só quem o carrega consegue
+    #: concluir aquele despacho. Um trabalhador cuja reivindicação foi tomada
+    #: por outro processo continua com o token ANTIGO, e é isso que o impede de
+    #: fechar, falhar ou anotar por cima de uma conclusão mais nova.
+    #:
+    #: ⚠️ Ausente nos demais estados de propósito: `CRIADO` não tem conclusão
+    #: pendente para cercar, e `AMBIGUO` é justamente o estado de quem NÃO tem
+    #: autoridade. Cunhar token neles seria conceder o que eles não têm.
+    claim_token: str | None = None
 
     def __post_init__(self) -> None:
         if not self.passo_ref.strip():
@@ -30,6 +39,11 @@ class PassoPreparadoMeta:
                 raise ValueError("passo CRIADO precisa de id externo")
         elif self.id_externo is not None:
             raise ValueError("id externo so pertence a passo CRIADO")
+        if self.estado == "DESPACHAR":
+            if not str(self.claim_token or "").strip():
+                raise ValueError("passo DESPACHAR precisa de token de reivindicacao")
+        elif self.claim_token is not None:
+            raise ValueError("token de reivindicacao so pertence a passo DESPACHAR")
 
 
 class RegistroSagaMeta(Protocol):
@@ -45,11 +59,17 @@ class RegistroSagaMeta(Protocol):
         """Persist and COMMIT the in-flight receipt before returning."""
         ...
 
-    async def fechar_passo(self, *, passo_ref: str, id_externo: str) -> None: ...
+    async def fechar_passo(
+        self, *, passo_ref: str, id_externo: str, claim_token: str,
+    ) -> str | None:
+        """Fecha o passo e DEVOLVE o token girado, para anotar o read-back."""
+        ...
 
-    async def marcar_ambiguo(self, *, passo_ref: str) -> None: ...
+    async def marcar_ambiguo(self, *, passo_ref: str, claim_token: str) -> None: ...
 
-    async def falhar_passo(self, *, passo_ref: str, codigo: str) -> None: ...
+    async def falhar_passo(
+        self, *, passo_ref: str, codigo: str, claim_token: str,
+    ) -> None: ...
 
 
 class RegistroSagaMetaSupabase:
@@ -207,6 +227,14 @@ class RegistroSagaMetaSupabase:
         este manifesto carrega o pedido do operador e o `step_ref` de cada
         passo. É o que permite a rota de criação receber apenas o
         `approval_id` e reconstruir o plano sem confiar no cliente.
+
+        ⚠️ E ele carrega o `external_object_id` RESOLVIDO de cada passo fechado
+        — só aqui, nunca no recibo. Sem esse campo a recuperação só consegue
+        reconstruir identidade por NOME, e esta mesma lane já mediu o preço
+        disso: a conta pode ter um homônimo da semana passada, e adotá-lo
+        penduraria o AdSet novo na campanha errada. O id veio da resposta do
+        NOSSO POST e foi gravado antes de qualquer outra coisa; procedência
+        prova mais que coincidência de nome.
         """
         return await self._rpc(
             "trafego_meta_create_approval_manifest", {"p_approval_id": approval_id})
@@ -233,14 +261,19 @@ class RegistroSagaMetaSupabase:
         indistinguível de "nada travado", enquanto o objeto podia existir na
         conta.
 
-        ## Por que a idade substitui a lease
+        ## Por que a idade NÃO é a cerca
 
-        O schema não tem coluna de dono nem de expiração de reivindicação, e
-        inventar uma agora exigiria reescrever o caminho de despacho. A idade é
-        o substituto honesto: um passo preparado há muito mais tempo que o
-        timeout HTTP do executor não tem trabalhador vivo por trás. O limiar
-        precisa ficar confortavelmente acima de `TIMEOUT_META`, e o banco
-        recusa valores fora da faixa.
+        A idade é ELEGIBILIDADE para investigar, e nunca foi prova de que o
+        trabalhador morreu: um processo pausado, uma fila drenando devagar ou um
+        GC longo produzem o mesmo sintoma. Tratá-la como prova foi o defeito
+        medido — o trabalhador antigo voltava com a resposta velha e fechava o
+        passo depois da promoção.
+
+        Quem cerca é a autoridade versionada: esta promoção INCREMENTA
+        `claim_generation` e apaga o `claim_token`, e a partir daí nenhuma
+        escrita do dono anterior é aceita. O limiar de idade continua existindo
+        para não tomar a reivindicação de uma chamada que ainda pode estar
+        dentro do próprio timeout, e o banco recusa valores fora da faixa.
 
         ⚠️ E ela funciona com aprovação EXPIRADA de propósito. Expiração fecha
         novo despacho; ela não pode fechar a leitura do que já foi despachado.
@@ -250,7 +283,12 @@ class RegistroSagaMetaSupabase:
         })
 
     async def registrar_readback(
-        self, *, passo_ref: str, evidencia: Mapping[str, Any], codigo: str | None = None,
+        self,
+        *,
+        passo_ref: str,
+        evidencia: Mapping[str, Any],
+        codigo: str | None = None,
+        claim_token: str | None = None,
     ) -> None:
         """Grava o read-back — o que CONFIRMOU e o que divergiu — com horário.
 
@@ -258,11 +296,17 @@ class RegistroSagaMetaSupabase:
         que guarda apenas os fracassos não permite responder "isto foi conferido
         e quando", e a resposta HTTP da UI passava a ser o único lugar onde a
         confirmação existia. Uma mensagem de tela não é evidência durável.
+
+        ⚠️ `claim_token` é o token GIRADO que `fechar_passo` devolveu, e a RPC o
+        exige enquanto a reivindicação existir. A recuperação chama sem token —
+        ela anota sobre um passo cuja reivindicação já foi encerrada, e a
+        própria RPC distingue os dois casos.
         """
         await self._rpc("trafego_meta_create_record_readback", {
             "p_step_ref": passo_ref,
             "p_evidence": dict(evidencia),
             "p_error_code": codigo,
+            "p_claim_token": claim_token,
         })
 
     async def marcar_readback_divergente(self, *, passo_ref: str, codigo: str) -> None:
@@ -309,19 +353,87 @@ class RegistroSagaMetaSupabase:
             estado=str(resposta.get("state") or ""),  # type: ignore[arg-type]
             id_externo=(str(resposta["external_object_id"])
                         if resposta.get("external_object_id") is not None else None),
+            claim_token=(str(resposta["claim_token"])
+                         if resposta.get("claim_token") is not None else None),
         )
 
-    async def fechar_passo(self, *, passo_ref: str, id_externo: str) -> None:
-        await self._rpc("trafego_meta_create_close_step", {
-            "p_step_ref": passo_ref, "p_external_object_id": id_externo,
+    async def fechar_passo(
+        self, *, passo_ref: str, id_externo: str, claim_token: str,
+    ) -> str | None:
+        """Fecha o passo com a autoridade vigente e devolve o token GIRADO.
+
+        ⚠️ O giro fecha a terceira janela. Fechar é uma conclusão; o read-back
+        que vem depois é outro ato, sobre um passo que já existe. Se o token
+        continuasse o mesmo, uma anotação de leitura atrasada — emitida com a
+        autoridade do despacho — poderia pousar sobre uma conclusão mais nova.
+        Só quem recebeu ESTA resposta consegue anotar a leitura deste
+        fechamento.
+        """
+        resposta = await self._rpc("trafego_meta_create_close_step", {
+            "p_step_ref": passo_ref,
+            "p_external_object_id": id_externo,
+            "p_claim_token": claim_token,
+        })
+        girado = resposta.get("claim_token")
+        return str(girado) if girado is not None else None
+
+    async def marcar_ambiguo(self, *, passo_ref: str, claim_token: str) -> None:
+        await self._rpc("trafego_meta_create_mark_ambiguous", {
+            "p_step_ref": passo_ref, "p_claim_token": claim_token,
         })
 
-    async def marcar_ambiguo(self, *, passo_ref: str) -> None:
-        await self._rpc("trafego_meta_create_mark_ambiguous", {"p_step_ref": passo_ref})
-
-    async def falhar_passo(self, *, passo_ref: str, codigo: str) -> None:
+    async def falhar_passo(
+        self, *, passo_ref: str, codigo: str, claim_token: str,
+    ) -> None:
         await self._rpc("trafego_meta_create_fail_step", {
-            "p_step_ref": passo_ref, "p_error_code": codigo,
+            "p_step_ref": passo_ref,
+            "p_error_code": codigo,
+            "p_claim_token": claim_token,
+        })
+
+    async def registrar_despacho_cercado(
+        self, *, passo_ref: str, claim_token: str, id_externo: str,
+    ) -> Mapping[str, Any]:
+        """Grava o id que um trabalhador CERCADO já viu nascer.
+
+        ⚠️ NENHUM BANCO CANCELA UMA REQUISIÇÃO JÁ ENVIADA. Quando a
+        reivindicação troca de mãos enquanto o POST está no ar, o trabalhador
+        antigo volta com um id REAL e sem autoridade nenhuma. As duas saídas
+        erradas são simétricas: deixá-lo concluir sobrescreveria uma conclusão
+        mais nova; jogar o id fora perderia a única prova de que o objeto pode
+        existir na conta.
+
+        Esta é a terceira saída. O id entra como OBSERVAÇÃO — ao lado da
+        identidade concluída, nunca no lugar dela — e o passo fica visível para
+        a recuperação por leitura, que é quem decide.
+        """
+        return await self._rpc("trafego_meta_create_record_fenced_dispatch", {
+            "p_step_ref": passo_ref,
+            "p_claim_token": claim_token,
+            "p_external_object_id": id_externo,
+        })
+
+    async def concluir_por_recuperacao(
+        self,
+        *,
+        passo_ref: str,
+        id_externo: str,
+        evidencia: Mapping[str, Any] | None = None,
+        codigo: str | None = None,
+    ) -> Mapping[str, Any]:
+        """Fecha um passo pela LEITURA, gravando a evidência no mesmo ato.
+
+        A recuperação não tem token de despacho — ela nunca despachou. A
+        autoridade dela é outra: ela LEU o objeto e provou o que o despacho não
+        conseguiu declarar. Por isso esta RPC supera qualquer reivindicação
+        aberta, e por isso ela nunca escreve FAILED: ausência depois do despacho
+        continua não provando inexistência.
+        """
+        return await self._rpc("trafego_meta_create_conclude_by_recovery", {
+            "p_step_ref": passo_ref,
+            "p_external_object_id": id_externo,
+            "p_evidence": dict(evidencia) if evidencia is not None else None,
+            "p_error_code": codigo,
         })
 
     async def recibo(self, approval_id: str) -> Mapping[str, Any]:

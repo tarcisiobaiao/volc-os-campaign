@@ -76,6 +76,7 @@ from app.seguranca.identidade import Identidade, exigir_admin
 from app.services.supabase_service import SupabaseService
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao import capacidades as capacidades_meta
+from app.trafego.meta_execucao import contrato as contrato_meta
 from app.trafego.meta_execucao.capacidades import (
     autorizacoes_de_processo_ausentes,
     motivos_de_processo_ausentes,
@@ -96,7 +97,9 @@ from app.trafego.meta_execucao.contrato import AutorizacaoMeta, ErroDeNascimento
 from app.trafego.meta_execucao.executor import ErroRemotoMeta, ExecutorMetaPausado
 from app.trafego.meta_execucao.reconciliacao import (
     AUSENTE,
+    CONFIRMADO,
     CRIADO,
+    DIVERGENTE,
     ConclusaoDoPasso,
     ReconciliadorMetaSomenteLeitura,
 )
@@ -213,7 +216,7 @@ def _exigir_capacidade_do_ledger() -> None:
     })
 
 
-def _erro(exc: Exception) -> HTTPException:
+def _erro(exc: Exception, *, recibo: Mapping[str, Any] | None = None) -> HTTPException:
     """Três status, três significados distintos — e a diferença importa.
 
     409  uma guarda local ou durável recusou; nada foi despachado.
@@ -246,6 +249,11 @@ def _erro(exc: Exception) -> HTTPException:
         ambiguo = exc.exige_reconciliacao or exc.codigo in {
             "META_READBACK_FAILED",
             "META_READBACK_DIVERGENT",
+            # Confirmação que não entrou no livro: o objeto existe e o id está
+            # gravado; o que não está provado no recibo é o ESTADO dele. Mesma
+            # família das duas acima — incerteza sobre o estado, nunca sobre a
+            # existência —, e por isso 502 com leitura pendente, não 422.
+            "META_READBACK_NOT_DURABLE",
         }
         return HTTPException(
             status_code=502 if ambiguo else 422,
@@ -258,10 +266,38 @@ def _erro(exc: Exception) -> HTTPException:
                 "retry_permitido": False if ambiguo else exc.retryable,
                 "reconciliacao_necessaria": ambiguo,
                 "objetos_criados": list(exc.objetos_criados),
+                # ⚠️ FALSO quando a leitura aconteceu e NÃO ficou gravada. A
+                # tela precisa distinguir "não confirmei" de "confirmei e não
+                # anotei": só a segunda diz que o livro está atrás do mundo.
+                "evidencia_duravel": exc.evidencia_duravel,
                 "provedor": exc.detalhe_provedor,
+                # ⚠️ O RECIBO DO INSTANTE DO INCIDENTE. A tela fixa a referência
+                # na URL ANTES do despacho e lê o recibo naquele momento; sem
+                # este anexo, depois de um despacho que parou no meio o operador
+                # olharia uma foto do PASSADO apresentada como estado atual.
+                **({"recibo": dict(recibo)} if recibo is not None else {}),
             },
         )
     return HTTPException(status_code=500, detail="Falha interna no controle Meta.")
+
+
+async def _recibo_do_incidente(
+    registro: RegistroSagaMetaSupabase, approval_id: str,
+) -> Mapping[str, Any] | None:
+    """O recibo durável anexado ao incidente — projeção, nunca a evidência.
+
+    A evidência é o que já está gravado no livro. Este anexo existe porque a
+    tela leu o recibo ANTES do despacho: sem ele, um despacho que parou no meio
+    deixaria o operador olhando o estado anterior como se fosse o atual.
+
+    ⚠️ Falhar aqui não muda o veredito — e é só por isso que não levanta. O 502
+    já está decidido pela exceção que chegou; não conseguir anexar a foto não
+    pode transformá-lo em outra coisa.
+    """
+    try:
+        return await registro.recibo(approval_id)
+    except Exception:
+        return None
 
 
 def _texto(valor: Any) -> str:
@@ -371,6 +407,101 @@ def _passo_envelhecido(passo: Mapping[str, Any]) -> bool:
     if quando.tzinfo is None:
         return False
     return (datetime.now(timezone.utc) - quando).total_seconds() >= IDADE_MINIMA_DO_ORFAO_S
+
+
+def _validade_da_aprovacao(compilado: PlanoCompiladoMeta, *, agora: datetime) -> datetime:
+    """Até quando esta aprovação pode despachar — nunca além da própria prova.
+
+    ⚠️ O TETO É A EVIDÊNCIA, não o relógio da janela. A atestação da peça vale
+    uma hora a partir da confirmação do operador; a aprovação vale quinze
+    minutos. Somar quinze minutos ao agora produzia autoridade de gasto sobre
+    prova que já não existe: uma confirmação de cinquenta minutos atrás gerava
+    `expires_at` DEPOIS de `policy_expires_at`, e criar-pausada despachava os
+    quatro objetos com o recibo da peça vencido.
+
+    Cortar aqui faz `expires_at` dizer a verdade para todos os leitores que já
+    existem, sem que nenhum precise aprender uma segunda regra: a RPC do
+    manifesto, que devolve EXPIRED sozinha; `prepare_step`, que recusa aprovação
+    inativa; o recibo; e o "Válida até" da tela.
+
+    ⚠️ E o corte NÃO substitui a conferência no despacho. Ele não alcança as
+    aprovações gravadas antes desta versão, e não existe relógio único entre
+    este processo e o banco.
+    """
+    prova = compilado.prova_de_midia_expira_em
+    if prova is None:
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_SUPPLY_MANIFEST_MISSING",
+            "o plano aprovado precisa carregar o recibo de política de cada peça")
+    if prova <= agora:
+        # Janela de faca: a atestação venceu entre a compilação e a gravação.
+        # Uma recusa nomeada é melhor que uma aprovação de zero segundo.
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_POLICY_RECEIPT_EXPIRED",
+            "a atestação da peça venceu enquanto o plano era conferido; "
+            "confira a peça de novo")
+    return min(agora + JANELA_DA_APROVACAO, prova)
+
+
+def _evidencia_de_midia_utilizavel(compilado: PlanoCompiladoMeta) -> None:
+    """A prova congelada da peça ainda cobre um NOVO despacho?
+
+    ⚠️ Roda ANTES do Keychain, como as outras conferências desta rota: uma
+    atestação vencida precisa parar o pedido sem que o token seja lido e sem que
+    a Meta receba uma única requisição.
+
+    ⚠️ E ela pergunta ao SNAPSHOT. Não recompila, não relê a biblioteca, não
+    rebaixa bytes do CDN, não emite recibo novo e não toca no hash. É a
+    diferença entre "a autorização de mídia deste plano continua de pé?" —
+    legítima — e "como seria este plano se eu o compilasse agora?", que é a
+    pergunta que `F02` proibiu.
+
+    ⚠️ `/reconciliar` e `/recibo` NÃO fazem esta pergunta, e a assimetria é o
+    contrato: expiração fecha o que ainda pode NASCER, nunca a leitura do que já
+    pode existir.
+    """
+    if not compilado.asset_supply_manifests:
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_SUPPLY_MANIFEST_MISSING",
+            "este plano congelado não carrega recibo de política de peça nenhuma")
+    vencidas = compilado.provas_de_midia_vencidas(contrato_meta.agora_utc())
+    if vencidas:
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_POLICY_RECEIPT_EXPIRED",
+            "a atestação de direitos e identidade da peça expirou depois da "
+            "aprovação; confira a peça de novo e aprove um plano novo — o recibo "
+            "desta aprovação continua legível")
+
+
+def _motivo_da_recuperacao(passo: Mapping[str, Any]) -> str | None:
+    """Por que este passo entra na leitura — ou `None` quando ele não entra.
+
+    ⚠️ ESTE PREDICADO É O ACHADO INTEIRO. Antes ele era `state == "AMBIGUOUS"`,
+    e essa frase confunde duas coisas que o livro registra SEPARADO: ter o ID e
+    ter CONFERIDO o objeto. Um passo CRIADO cujo read-back nunca aconteceu —
+    porque o processo caiu entre `fechar_passo` e a leitura, ou porque a
+    gravação da evidência falhou — ficava invisível aqui, e a rota respondia
+    `passos_ambiguos: 0` sobre uma campanha que existe na conta e que ninguém
+    conferiu. Zero ambíguos com zero leituras é a mesma resposta que "está tudo
+    certo", e não é a mesma coisa.
+
+    ⚠️ `readback_at` AUSENTE do manifesto — aprovação anterior à RPC que passou
+    a gravá-lo — também entra. Reler é read-only, é barato, e a leitura GRAVA a
+    confirmação que faltava. Presumir conferido para evitar uma leitura seria
+    inventar a prova que a coluna não tem.
+    """
+    estado = _texto(passo.get("state"))
+    if estado == "AMBIGUOUS":
+        return "AMBIGUO"
+    if estado != "CREATED":
+        # IN_FLIGHT jovem continua aparecendo em `passos_em_voo`; FAILED é
+        # recusa PROVADA pela Meta, e recusa provada não se relê.
+        return None
+    if _texto(passo.get("readback_error")):
+        return "DIVERGENTE"
+    if not _texto(passo.get("readback_at")):
+        return "SEM_CONFIRMACAO"
+    return None
 
 
 def _plano_congelado_da_aprovacao(manifesto: Mapping[str, Any]) -> PlanoCompiladoMeta:
@@ -490,7 +621,9 @@ async def aprovar(
         if compilado.estado_ao_nascer != "PAUSED":
             raise ErroDeNascimentoMeta(
                 "META_NOT_PAUSED", "este plano não nasce pausado")
-        expira_em = datetime.now(timezone.utc) + JANELA_DA_APROVACAO
+        # ⚠️ A validade da aprovação é limitada pela prova que a sustenta.
+        expira_em = _validade_da_aprovacao(
+            compilado, agora=contrato_meta.agora_utc())
         aprovacao = await registro.aprovar(
             plano_sha256=compilado.plano_sha256,
             account_ref=compilado.account_ref,
@@ -583,13 +716,24 @@ async def criar_pausada(
             raise ErroDeNascimentoMeta(
                 "META_BUDGET_DIVERGED",
                 "o orçamento do conjunto não é o orçamento aprovado")
-        # ⚠️ REVOGAÇÃO É CONFERIDA AGORA, e é a única pergunta sobre o presente
-        # que o despacho ainda faz. O snapshot carrega a prova de destino que
-        # foi aprovada; se um administrador retirou esta conta da lista de
+        # ⚠️ A PROVA DA PEÇA, ANTES DO SEGREDO. A atestação de direitos vale uma
+        # hora; a aprovação, quinze minutos. Quando a aprovação é dada no
+        # minuto 59 da atestação, existe uma faixa em que a aprovação está viva
+        # e a prova já não está — e era nessa faixa que o plano congelado
+        # continuava sendo despachado. A pergunta é feita ao SNAPSHOT, sem
+        # recompilar nada: ver `_evidencia_de_midia_utilizavel`.
+        _evidencia_de_midia_utilizavel(compilado)
+        # ⚠️ REVOGAÇÃO É CONFERIDA AGORA. Junto da validade da prova acima, são
+        # as DUAS únicas perguntas sobre o presente que o despacho faz — e
+        # nenhuma delas recompila. O snapshot carrega a prova de destino que foi
+        # aprovada; se um administrador retirou esta conta da lista de
         # conferidas depois disso, a autorização deixou de existir. Antes essa
         # revogação acontecia por ACIDENTE — a recompilação mudava o hash — e
         # acidente não é mecanismo: a mensagem não dizia a causa e a mesma
         # recompilação quebrava a recuperação histórica junto.
+        #
+        # A ordem é deliberada: a validade da prova é propriedade do PRÓPRIO
+        # plano; a revogação é propriedade da CONTA.
         if not capacidades_meta.destino_website_liberado(compilado.account_ref):
             raise ErroDeNascimentoMeta(
                 "META_SHOP_REDIRECT_REVOKED",
@@ -622,8 +766,14 @@ async def criar_pausada(
             "recibo": dict(recibo),
             "retry_permitido": resultado.retry_permitido,
         }
-    except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
+    except ErroDeNascimentoMeta as exc:
         raise _erro(exc) from None
+    except ErroRemotoMeta as exc:
+        # Só o caminho REMOTO pode ter deixado objetos na conta; o local recusou
+        # antes de qualquer efeito externo e não tem estado novo para mostrar.
+        raise _erro(
+            exc, recibo=await _recibo_do_incidente(registro, payload.approval_id),
+        ) from None
     except httpx.TimeoutException as exc:
         # Rede de segurança: a saga já traduz timeout em ambiguidade, mas um
         # silêncio fora dela não pode escapar como 500 nu e virar "tente de novo".
@@ -698,11 +848,30 @@ async def reconciliar(
             passos = manifesto.get("steps")
             passos = list(passos) if isinstance(passos, (list, tuple)) else []
 
-        ambiguos = {
+        motivos = {
+            _texto(item.get("name")): _motivo_da_recuperacao(item)
+            for item in passos if isinstance(item, Mapping)
+        }
+        recuperaveis = {
             _texto(item.get("name")): _texto(item.get("step_ref"))
             for item in passos
-            if isinstance(item, Mapping) and _texto(item.get("state")) == "AMBIGUOUS"
+            if isinstance(item, Mapping) and motivos.get(_texto(item.get("name")))
         }
+        # ⚠️ OS IDS RESOLVIDOS, E ELES NÃO VOLTAM POR ESTA ROTA. Vêm do manifesto
+        # (server-only, service_role) e entram só no reconciliador, que lê PELO
+        # ID em vez de reconstruir identidade por nome. O recibo devolvido ao
+        # navegador continua dizendo `has_external_id` e nada mais.
+        ids_conhecidos = {
+            _texto(item.get("name")): _texto(item.get("external_object_id"))
+            for item in passos
+            if isinstance(item, Mapping) and _texto(item.get("external_object_id"))
+        }
+        # Passos que o livro já dá por conferidos: eles emprestam a identidade
+        # aos filhos e não são relidos.
+        confirmados = tuple(
+            nome for nome, motivo in motivos.items()
+            if motivo is None and nome and nome in ids_conhecidos
+        )
         # Órfãos jovens demais para serem promovidos existem e precisam APARECER.
         # Silenciá-los devolveria a mesma resposta enganosa por outra porta.
         em_voo_recentes = [
@@ -716,13 +885,36 @@ async def reconciliar(
             for item in passos
             if isinstance(item, Mapping)
         }
-        if not ambiguos:
+        # Passos do manifesto aprovado que NUNCA ganharam linha no livro. A
+        # linha commita ANTES do POST, então a ausência dela é prova de que
+        # nenhuma rede saiu por este passo — e é a única coisa que a leitura
+        # pode afirmar sem olhar a conta.
+        no_livro = {
+            _texto(item.get("name")) for item in passos if isinstance(item, Mapping)}
+        nao_despachados = [
+            str(nome) for nome in (manifesto.get("steps_expected") or [])
+            if str(nome) not in no_livro
+        ]
+        # ⚠️ `passos_ambiguos` MANTÉM o significado antigo — quantos passos estão
+        # em estado AMBIGUOUS — porque é o número que a tela e os testes já leem.
+        # O total em recuperação é outro, e ganha nome próprio em vez de mudar o
+        # sentido de um campo publicado.
+        contagem_ambigua = sum(1 for m in motivos.values() if m == "AMBIGUO")
+        panorama = {
+            "passos_ambiguos": contagem_ambigua,
+            "passos_em_recuperacao": len(recuperaveis),
+            "passos_sem_confirmacao": [
+                n for n, m in motivos.items() if m == "SEM_CONFIRMACAO"],
+            "passos_divergentes": [n for n, m in motivos.items() if m == "DIVERGENTE"],
+            "passos_nao_despachados": nao_despachados,
+            "passos_em_voo": em_voo_recentes,
+            "passos_promovidos": promovidos,
+        }
+        if not recuperaveis:
             return {
                 "ok": True,
                 "efeito_externo": "NENHUM",
-                "passos_ambiguos": 0,
-                "passos_em_voo": em_voo_recentes,
-                "passos_promovidos": promovidos,
+                **panorama,
                 "conclusoes": [],
                 "recibo": dict(await registro.recibo(payload.approval_id)),
             }
@@ -742,20 +934,19 @@ async def reconciliar(
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             conclusoes = await ReconciliadorMetaSomenteLeitura(cliente).conciliar(
                 compilado, segredo,
-                passos_ambiguos=tuple(ambiguos), preparados_em=preparados)
+                passos_ambiguos=tuple(recuperaveis), preparados_em=preparados,
+                ids_conhecidos=ids_conhecidos, confirmados=confirmados)
 
         publicadas: list[dict[str, Any]] = []
         for conclusao in conclusoes:
-            if conclusao.passo not in ambiguos:
+            if conclusao.passo not in recuperaveis:
                 continue
             publicadas.append(await _fechar_conclusao(
-                registro, conclusao, passo_ref=ambiguos[conclusao.passo]))
+                registro, conclusao, passo_ref=recuperaveis[conclusao.passo]))
         return {
             "ok": True,
             "efeito_externo": "NENHUM",
-            "passos_ambiguos": len(ambiguos),
-            "passos_em_voo": em_voo_recentes,
-            "passos_promovidos": promovidos,
+            **panorama,
             "conclusoes": publicadas,
             "recibo": dict(await registro.recibo(payload.approval_id)),
         }
@@ -770,9 +961,62 @@ async def _fechar_conclusao(
     passo_ref: str,
 ) -> dict[str, Any]:
     """Aplica ao ledger o que a leitura provou — e só o que ela provou."""
+    if conclusao.conclusao == CONFIRMADO and conclusao.id_externo:
+        # ⚠️ O PASSO JÁ ESTÁ CRIADO E O ID JÁ É NOSSO. Não se fecha de novo: o
+        # que faltava era a EVIDÊNCIA, e é só ela que a recuperação grava.
+        # Reescrever o id daria à leitura autoridade sobre o que a criação já
+        # registrou.
+        try:
+            await registro.registrar_readback(
+                passo_ref=passo_ref, evidencia=dict(conclusao.evidencia or {}))
+        except (ErroDeNascimentoMeta, ErroRemotoMeta):
+            # ⚠️ Não gravar a evidência NÃO vira sucesso. O objeto confere, mas
+            # a única prova disso seria esta resposta HTTP — quer dizer, o
+            # navegador — e a recuperação continua pendente.
+            return {
+                "passo": conclusao.passo,
+                "tipo": conclusao.tipo,
+                "conclusao": "PERMANECE_SEM_CONFIRMACAO",
+                "explicacao": ("o objeto confere com o plano aprovado, mas a "
+                               "confirmação não pôde ser gravada; a recuperação "
+                               "continua pendente"),
+            }
+        return {
+            "passo": conclusao.passo,
+            "tipo": conclusao.tipo,
+            "conclusao": "CONFIRMADO_POR_LEITURA",
+            "explicacao": ("o objeto existe pelo id registrado, confere com o plano "
+                           "aprovado e permanece PAUSED; existir não autoriza ativar"),
+        }
+    if conclusao.conclusao == DIVERGENTE and conclusao.codigo:
+        try:
+            await registro.registrar_readback(
+                passo_ref=passo_ref, evidencia=dict(conclusao.evidencia or {}),
+                codigo=conclusao.codigo)
+        except (ErroDeNascimentoMeta, ErroRemotoMeta):
+            # A RPC recusa sobrescrever uma divergência JÁ registrada com outro
+            # código, e a recusa é boa: a PRIMEIRA divergência vista é a que o
+            # livro guarda. A resposta continua dizendo o que a leitura viu.
+            pass
+        return {
+            "passo": conclusao.passo,
+            "tipo": conclusao.tipo,
+            "conclusao": "DIVERGENTE",
+            "explicacao": (conclusao.motivo
+                           or "o objeto existe e não é o objeto aprovado"),
+        }
     if conclusao.conclusao == CRIADO and conclusao.id_externo:
-        await registro.fechar_passo(
-            passo_ref=passo_ref, id_externo=conclusao.id_externo)
+        # ⚠️ FECHAR POR LEITURA TEM AUTORIDADE PRÓPRIA, e não é a do despacho: a
+        # recuperação nunca despachou, então ela não tem — nem pode ter — token
+        # de reivindicação. `concluir_por_recuperacao` supera qualquer
+        # reivindicação aberta porque provou, lendo, o que o despacho não
+        # conseguiu declarar; e grava id e evidência no MESMO ato, para que o
+        # passo não fique CREATED sem confirmação de novo.
+        await registro.concluir_por_recuperacao(
+            passo_ref=passo_ref,
+            id_externo=conclusao.id_externo,
+            evidencia=dict(conclusao.evidencia) if conclusao.evidencia else None,
+        )
         return {
             "passo": conclusao.passo,
             "tipo": conclusao.tipo,

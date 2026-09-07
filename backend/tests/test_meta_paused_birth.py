@@ -40,19 +40,41 @@ class RegistroEmMemoria:
         assert len(payload_sha256) == 64
         self.eventos.append(("preparar", nome))
         if nome in self.retomados:
+            # Retomada sem POST: não há despacho, então não há autoridade de
+            # conclusão a cunhar — como na RPC.
             return PassoPreparadoMeta(f"passo_{nome}", "CRIADO", self.retomados[nome])
-        return PassoPreparadoMeta(f"passo_{nome}", "DESPACHAR")
+        return PassoPreparadoMeta(
+            f"passo_{nome}", "DESPACHAR", claim_token=f"claim_{nome}")
 
-    async def fechar_passo(self, *, passo_ref: str, id_externo: str) -> None:
+    async def fechar_passo(
+        self, *, passo_ref: str, id_externo: str, claim_token: str,
+    ) -> str | None:
+        assert claim_token, "fechar exige a reivindicacao vigente"
         self.eventos.append(("fechar", passo_ref.removeprefix("passo_")))
         assert id_externo.isdigit()
+        # O token GIRA ao fechar: anotar a leitura é outro ato.
+        return f"{claim_token}-girado"
 
-    async def marcar_ambiguo(self, *, passo_ref: str) -> None:
+    async def marcar_ambiguo(self, *, passo_ref: str, claim_token: str) -> None:
         self.eventos.append(("ambiguo", passo_ref.removeprefix("passo_")))
 
-    async def falhar_passo(self, *, passo_ref: str, codigo: str) -> None:
+    async def falhar_passo(
+        self, *, passo_ref: str, codigo: str, claim_token: str,
+    ) -> None:
+        assert claim_token, "falhar exige a reivindicacao vigente"
         self.eventos.append(("falhar", passo_ref.removeprefix("passo_")))
         assert codigo.startswith("META_")
+
+    async def registrar_readback(
+        self, *, passo_ref: str, evidencia: dict, codigo: str | None = None,
+        claim_token: str | None = None,
+    ) -> None:
+        # ⚠️ EXISTE PORQUE O SERVIDOR PASSOU A EXIGIR: o executor recusa
+        # despachar com um ledger que não sabe gravar read-back. O evento
+        # entra na lista para que a ORDEM — id primeiro, evidência depois —
+        # fique provada, e não apenas descrita em comentário.
+        assert evidencia["matched"] is (codigo is None)
+        self.eventos.append(("readback", passo_ref.removeprefix("passo_")))
 
 
 def plano(**mudancas: object) -> PlanoMetaPausado:
@@ -322,11 +344,17 @@ async def test_saga_valida_cria_e_confere_cada_degrau_em_ordem() -> None:
     assert json.loads(posts_reais[3]["creative"])["creative_id"] == "1003"
     assert resultado.desfecho == "CREATED_PAUSED"
     assert resultado.retry_permitido is False
+    # ⚠️ A ORDEM DENTRO DE CADA PASSO É PARTE DA GARANTIA: preparar (o recibo
+    # commita antes do POST), fechar (o id é gravado antes de qualquer outra
+    # coisa) e só então readback (a confirmação durável). Uma evidência gravada
+    # antes do id perderia o id numa queda; uma sem evidência deixaria o passo
+    # CREATED sem confirmação — que é exatamente o estado de onde a recuperação
+    # precisa tirar a saga.
     assert diario.eventos == [
-        ("preparar", "campaign"), ("fechar", "campaign"),
-        ("preparar", "adset"), ("fechar", "adset"),
-        ("preparar", "creative"), ("fechar", "creative"),
-        ("preparar", "ad"), ("fechar", "ad"),
+        ("preparar", "campaign"), ("fechar", "campaign"), ("readback", "campaign"),
+        ("preparar", "adset"), ("fechar", "adset"), ("readback", "adset"),
+        ("preparar", "creative"), ("fechar", "creative"), ("readback", "creative"),
+        ("preparar", "ad"), ("fechar", "ad"), ("readback", "ad"),
     ]
     assert set(resultado.referencias_opacas) == {"campaign", "adset", "creative", "ad"}
     serializado = json.dumps({

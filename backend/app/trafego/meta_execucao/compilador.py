@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Mapping, Sequence
 
 from .contrato import (
@@ -121,6 +122,38 @@ class PlanoCompiladoMeta:
     def destino_website_provado(self) -> bool:
         """Se o despacho pode acontecer sem redirecionamento não autorizado."""
         return self.shop_redirect_proof == DESTINO_SHOP_CONTA_NAO_ELEGIVEL
+
+    def provas_de_midia_vencidas(self, agora: datetime) -> tuple[str, ...]:
+        """As peças cuja atestação já não cobre um NOVO despacho.
+
+        ⚠️ A pergunta é feita ao SNAPSHOT, não à conta de hoje, e é isso que a
+        separa da recompilação que `F02` proibiu: nada é relido, nada é
+        rebaixado do CDN, nenhum recibo novo é emitido, o hash não muda e nada é
+        gravado. O manifesto congelado já declara até quando a atestação vale;
+        despachar depois disso é criar mídia paga sob uma autorização que deixou
+        de existir.
+
+        Devolve os `asset_ref` vencidos — e não um booleano — porque num lote de
+        dez variações o operador precisa saber QUAL peça reconferir.
+        """
+        return tuple(
+            manifesto.asset_ref
+            for manifesto in self.asset_supply_manifests
+            if manifesto.policy_expires_at <= agora
+        )
+
+    @property
+    def prova_de_midia_expira_em(self) -> datetime | None:
+        """O instante em que a PRIMEIRA atestação deste plano vence.
+
+        É o teto da autoridade de despacho: uma aprovação não pode viver mais do
+        que a prova que a sustenta. `None` só acontece em snapshot sem recibo
+        nenhum, e quem pergunta recusa esse caso com nome próprio.
+        """
+        return min(
+            (item.policy_expires_at for item in self.asset_supply_manifests),
+            default=None,
+        )
 
     def publico(self) -> Mapping[str, Any]:
         return {

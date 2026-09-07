@@ -27,17 +27,32 @@ passo **permanece AMBIGUO**. Não conseguir provar a ausência não é o mesmo q
 provar a ausência, e tratar os dois casos igual é exatamente o caminho para
 reenviar um pedido que já criou uma campanha.
 
-## Por que ele relê a saga inteira, e não só o passo ambíguo
+## Identidade vem do LIVRO primeiro, da conta depois
 
-O ledger, de propósito, nunca devolve `external_object_id` (o recibo diz apenas
-`has_external_id`). Então a reconciliação não tem os ids dos passos anteriores
-— e sem eles não daria para conferir `campaign_id` do conjunto nem `adset_id`
-do anúncio, que é justamente o que prova pertencimento.
+O id que a Meta devolveu ao nosso POST é gravado antes de qualquer outra coisa
+— `fechar_passo` acontece antes do read-back, de propósito. Quando ele existe,
+ele É a identidade: procedência prova mais que qualquer coincidência de nome.
+O manifesto interno (server-only, `service_role`) devolve esse id ao
+reconciliador; o recibo do navegador continua dizendo apenas `has_external_id`.
 
-A saída é reconstruir o estado a partir da CONTA: percorrer o manifesto em
-ordem, achar cada objeto pelo nome aprovado, e usar o id encontrado como pai do
-passo seguinte. É mais leitura, e é a única forma de o read-back da
-reconciliação ser tão exigente quanto o read-back da criação.
+A leitura por NOME continua existindo para o passo que ficou AMBÍGUO, onde id
+nenhum chegou a ser gravado. Ela é o caminho fraco, e por isso carrega as três
+camadas descritas abaixo. Ela percorre o manifesto inteiro em ordem porque os
+ids dos passos anteriores são o que prova o pertencimento dos seguintes.
+
+Isso muda um caso inteiro: um `AdCreative` com id conhecido PODE ser conferido,
+porque a conferência não depende do `created_time` que a Marketing API não
+expõe. Um `AdCreative` SEM id conhecido continua sem poder ser adotado por
+nome, e permanece manual.
+
+## Ter o ID e ter CONFERIDO são fatos diferentes
+
+Um passo pode estar `CREATED`, com id gravado, e nunca ter sido conferido —
+porque o processo caiu entre o fechamento e a leitura, ou porque a gravação da
+evidência falhou. Antes esse passo era invisível para a recuperação, e a rota
+respondia `passos_ambiguos: 0` sobre um objeto que existe na conta e que
+ninguém olhou. Zero ambíguos com zero leituras é indistinguível de "está tudo
+certo", e não é a mesma coisa.
 
 ## Identidade: por que o nome NÃO basta
 
@@ -76,8 +91,13 @@ import httpx
 
 from app.trafego.meta.credenciais import SegredoEfemero
 
-from .compilador import PlanoCompiladoMeta, resolver_dependencias
-from .executor import CAMPOS_DE_LEITURA, ErroRemotoMeta, ExecutorMetaPausado
+from .compilador import OperacaoMeta, PlanoCompiladoMeta, resolver_dependencias
+from .executor import (
+    CAMPOS_DE_LEITURA,
+    ErroRemotoMeta,
+    ExecutorMetaPausado,
+    _evidencia_do_readback,
+)
 
 
 #: Quantas páginas a leitura percorre antes de desistir. Um teto é obrigatório:
@@ -93,6 +113,15 @@ TAMANHO_DA_PAGINA = 200
 CRIADO = "CRIADO"
 AUSENTE = "AUSENTE"
 INDETERMINADO = "INDETERMINADO"
+#: O passo JÁ estava CRIADO no livro e a leitura PELO ID confirmou o objeto.
+#: Diferente de `CRIADO`: lá a leitura DESCOBRE o id percorrendo a conta; aqui
+#: ela confirma um id que já era nosso. O que falta gravar é a EVIDÊNCIA, nunca
+#: o id — reescrevê-lo daria à leitura autoridade sobre o que a criação já
+#: registrou.
+CONFIRMADO = "CONFIRMADO"
+#: O objeto existe pelo id registrado e NÃO é o objeto aprovado. Existir não é
+#: estar aceito: não autoriza substituir, reenviar nem ativar.
+DIVERGENTE = "DIVERGENTE"
 
 #: Folga de relógio entre o nosso `prepared_at` e o `created_time` da Meta. Os
 #: dois carimbos vêm de máquinas diferentes; exigir precisão absoluta recusaria
@@ -113,11 +142,20 @@ class ConclusaoDoPasso:
     passo: str
     tipo: str
     conclusao: str
-    #: Só existe quando `conclusao == CRIADO`. Nunca sai numa resposta HTTP.
+    #: Só existe quando a leitura identificou o objeto. Nunca sai numa
+    #: resposta HTTP.
     id_externo: str | None = None
     #: Frase de operador dizendo por que a leitura não decidiu. Vocabulário
     #: fechado e sem texto do provedor.
     motivo: str | None = None
+    #: Código da divergência, quando `conclusao == DIVERGENTE`. Vocabulário do
+    #: executor (`META_READBACK_DIVERGENT`), nunca texto do provedor.
+    codigo: str | None = None
+    #: A projeção SANITIZADA da leitura — a MESMA que a saga grava. Fica aqui,
+    #: e não o corpo cru, para que nenhum id, `page_id` ou `image_hash`
+    #: atravesse a fronteira do módulo por descuido: a rota só pode repassar o
+    #: que já passou por `_evidencia_do_readback`.
+    evidencia: Mapping[str, Any] | None = None
 
 
 class ReconciliadorMetaSomenteLeitura:
@@ -146,6 +184,8 @@ class ReconciliadorMetaSomenteLeitura:
         *,
         passos_ambiguos: Sequence[str],
         preparados_em: Mapping[str, str] | None = None,
+        ids_conhecidos: Mapping[str, str] | None = None,
+        confirmados: Sequence[str] = (),
     ) -> tuple[ConclusaoDoPasso, ...]:
         """Conclui, por leitura, o que existe na conta para cada passo do plano.
 
@@ -158,9 +198,16 @@ class ReconciliadorMetaSomenteLeitura:
         separa "este objeto nasceu do nosso despacho" de "a conta já tinha um
         objeto com este nome" — e sem essa separação a reconciliação adota um
         objeto antigo e a saga passa a pendurar filhos nele.
+
+        `ids_conhecidos` traz o `external_object_id` que o livro já gravou, e é
+        ele que muda o caminho: com id, a leitura CONFERE; sem id, ela PROCURA.
+        `confirmados` diz quais passos já têm read-back confirmado no livro —
+        esses não são relidos, só emprestam a identidade aos filhos.
         """
         ambiguos = set(passos_ambiguos)
         carimbos = dict(preparados_em or {})
+        conhecidos = {k: v for k, v in dict(ids_conhecidos or {}).items() if v}
+        ja_confirmados = set(confirmados)
         ids: dict[str, str] = {}
         conclusoes: list[ConclusaoDoPasso] = []
         for operacao in plano.operacoes:
@@ -175,6 +222,22 @@ class ReconciliadorMetaSomenteLeitura:
                     operacao.chave, operacao.tipo_objeto, INDETERMINADO,
                     motivo="o objeto pai não foi localizado na conta",
                 ))
+                continue
+            conhecido = conhecidos.get(operacao.chave, "")
+            if conhecido and operacao.chave in ja_confirmados:
+                # ⚠️ ID DURÁVEL + read-back JÁ CONFERIDO no livro. Reler não
+                # acrescentaria prova nenhuma, e listar a conta para "achar de
+                # novo" trocaria um id de procedência por um homônimo. O passo
+                # não vira conclusão: ele só empresta a identidade aos filhos.
+                ids[operacao.chave] = conhecido
+                continue
+            if conhecido:
+                conclusao, identificado = await self._conferir_por_id(
+                    operacao, conhecido, payload=payload, ids=ids,
+                    conta_externa=plano.conta_externa, segredo=segredo)
+                if identificado:
+                    ids[operacao.chave] = conhecido
+                conclusoes.append(conclusao)
                 continue
             try:
                 encontrados = await self._listar_por_nome(
@@ -235,9 +298,114 @@ class ReconciliadorMetaSomenteLeitura:
                 continue
             ids[operacao.chave] = identificador
             conclusoes.append(ConclusaoDoPasso(
-                operacao.chave, operacao.tipo_objeto, CRIADO, id_externo=identificador))
+                operacao.chave, operacao.tipo_objeto, CRIADO,
+                id_externo=identificador,
+                # ⚠️ A LEITURA DA RECUPERAÇÃO TAMBÉM É EVIDÊNCIA. Sem ela o
+                # passo fechava CREATED sem `readback_at` — indistinguível do
+                # passo cujo id foi gravado e nunca conferido, que é exatamente
+                # o estado do qual a recuperação existe para sair.
+                evidencia=_evidencia_do_readback(
+                    operacao.tipo_objeto, dados, conferido=True)))
         del ambiguos  # o filtro é da rota; aqui devolvemos o quadro inteiro
         return tuple(conclusoes)
+
+    async def _conferir_por_id(
+        self,
+        operacao: OperacaoMeta,
+        identificador: str,
+        *,
+        payload: Mapping[str, Any],
+        ids: Mapping[str, str],
+        conta_externa: str,
+        segredo: SegredoEfemero,
+    ) -> tuple[ConclusaoDoPasso, bool]:
+        """Lê o objeto PELO ID durável e o confronta com o plano aprovado.
+
+        Devolve a conclusão e se o id pode ser emprestado aos filhos como pai.
+
+        ⚠️ Este caminho NÃO pergunta `created_time` a ninguém, e a diferença
+        para a busca por nome não é folga. Lá o nome é a única pista e o instante
+        é o que separa o nosso objeto de um homônimo; aqui o id veio da resposta
+        do NOSSO POST e foi gravado antes de qualquer outra coisa. Procedência
+        prova mais que carimbo — e é por isso que um `AdCreative`, que a
+        Marketing API não carimba, pode ser conferido por id e continua sem
+        poder ser adotado por nome.
+
+        ⚠️ E a conferência é a MESMA do executor, sem afrouxar nada:
+        `_validar_read_back` cobre conta, tipo, PAUSED, nome, campos críticos e
+        o PAI (`campaign_id`, `adset_id`, `creative.id`) — e o pai vem de `ids`,
+        que nesta ordem já foi semeado com o id durável dele.
+        """
+        try:
+            dados = await self._ler_por_id(
+                operacao.tipo_objeto, identificador, segredo)
+        except _LeituraIncompleta as exc:
+            # ⚠️ Não conseguir ler NÃO é o objeto não existir. O passo mantém o
+            # id, permanece recuperável e nada é gravado: registrar divergência
+            # aqui marcaria como divergente um objeto que ninguém olhou.
+            return ConclusaoDoPasso(
+                operacao.chave, operacao.tipo_objeto, INDETERMINADO,
+                motivo=exc.motivo), False
+        try:
+            ExecutorMetaPausado._validar_read_back(
+                operacao.tipo_objeto, dados,
+                payload=payload, identificador=identificador,
+                ids=ids, conta_externa=conta_externa)
+        except ErroRemotoMeta as exc:
+            return ConclusaoDoPasso(
+                operacao.chave, operacao.tipo_objeto, DIVERGENTE,
+                id_externo=identificador, codigo=exc.codigo,
+                evidencia=_evidencia_do_readback(
+                    operacao.tipo_objeto, dados, conferido=False),
+                motivo=("o objeto existe pelo id registrado e divergiu do plano "
+                        f"aprovado ({exc.codigo})"),
+            ), False
+        return ConclusaoDoPasso(
+            operacao.chave, operacao.tipo_objeto, CONFIRMADO,
+            id_externo=identificador,
+            evidencia=_evidencia_do_readback(
+                operacao.tipo_objeto, dados, conferido=True)), True
+
+    async def _ler_por_id(
+        self, tipo: str, identificador: str, segredo: SegredoEfemero,
+    ) -> Mapping[str, Any]:
+        """UM GET no objeto, com a máscara EXATA do read-back da criação.
+
+        ⚠️ `CAMPOS_DE_LEITURA`, a mesma do executor, e não uma reduzida:
+        reconciliar com menos campos do que a criação exigiu seria confirmar por
+        um critério mais frouxo do que o que teria barrado o objeto ao nascer.
+        """
+        campos = CAMPOS_DE_LEITURA.get(tipo)
+        if campos is None:
+            raise _LeituraIncompleta("tipo de objeto Meta desconhecido")
+        if not identificador.isdigit() or len(identificador) > 40:
+            # ⚠️ O id vem do ledger, que já o restringe a `^[0-9]{1,40}$`. Esta
+            # é a segunda conferência, e ela não é decorativa: um id com barra
+            # ou `?` viraria OUTRO caminho na Graph, e o cabeçalho Authorization
+            # — o token — viajaria junto.
+            raise _LeituraIncompleta("o id registrado não tem a forma de um id da Meta")
+        try:
+            resposta = await self._cliente.get(
+                f"{self._base}/{self._versao}/{identificador}",
+                params={"fields": campos},
+                headers={"Authorization": segredo.cabecalho_bearer()},
+            )
+        except httpx.HTTPError:
+            raise _LeituraIncompleta("a Meta não respondeu à leitura do objeto") from None
+        try:
+            corpo = resposta.json()
+        except (ValueError, TypeError):
+            raise _LeituraIncompleta("a Meta devolveu um corpo ilegível") from None
+        if (
+            resposta.status_code >= 400
+            or not isinstance(corpo, Mapping)
+            or isinstance(corpo.get("error"), Mapping)
+        ):
+            # ⚠️ Objeto que não responde não é objeto que não existe: pode ter
+            # sido apagado, ou a permissão da conta pode ter mudado. O passo
+            # continua CRIADO, com o id gravado.
+            raise _LeituraIncompleta("a Meta recusou a leitura deste objeto")
+        return corpo
 
     @staticmethod
     def _sem_correlacao_temporal(

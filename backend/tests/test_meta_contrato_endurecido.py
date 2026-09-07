@@ -86,6 +86,14 @@ def _refs() -> ReferenciasMetaResolvidas:
 
 
 class _Registro:
+    """Dublê mínimo do ledger — e mínimo NÃO quer dizer mais permissivo.
+
+    ⚠️ Ele carrega o token de reivindicação e sabe gravar read-back porque o
+    servidor passou a exigir as duas coisas: o executor recusa despachar com um
+    ledger que não sabe registrar o que leu. Um dublê menos capaz que o único
+    ledger do runtime faria os testes provarem um contrato que não existe.
+    """
+
     def __init__(self) -> None:
         self.eventos: list[tuple[str, str]] = []
 
@@ -94,16 +102,32 @@ class _Registro:
         nome: str, payload_sha256: str,
     ) -> PassoPreparadoMeta:
         self.eventos.append(("preparar", nome))
-        return PassoPreparadoMeta("passo_1", "DESPACHAR")
+        return PassoPreparadoMeta("passo_1", "DESPACHAR", claim_token="claim_1")
 
-    async def fechar_passo(self, *, passo_ref: str, id_externo: str) -> None:
+    async def fechar_passo(
+        self, *, passo_ref: str, id_externo: str, claim_token: str,
+    ) -> str | None:
+        assert claim_token, "fechar exige a reivindicacao vigente"
         self.eventos.append(("fechar", id_externo))
+        return f"{claim_token}-girado"
 
-    async def marcar_ambiguo(self, *, passo_ref: str) -> None:
+    async def marcar_ambiguo(self, *, passo_ref: str, claim_token: str) -> None:
         self.eventos.append(("ambiguo", passo_ref))
 
-    async def falhar_passo(self, *, passo_ref: str, codigo: str) -> None:
+    async def falhar_passo(
+        self, *, passo_ref: str, codigo: str, claim_token: str,
+    ) -> None:
+        assert claim_token, "falhar exige a reivindicacao vigente"
         self.eventos.append(("falhar", codigo))
+
+    async def registrar_readback(
+        self, *, passo_ref: str, evidencia: dict, codigo: str | None = None,
+        claim_token: str | None = None,
+    ) -> None:
+        # A evidência positiva e a divergente são fatos opostos; confundi-las
+        # aqui deixaria passar uma correção que grava a errada.
+        assert evidencia["matched"] is (codigo is None)
+        self.eventos.append(("readback", passo_ref))
 
 
 def _autorizacao(hash_plano: str) -> AutorizacaoMeta:

@@ -14,6 +14,26 @@ class ErroDeNascimentoMeta(ValueError):
         self.codigo = codigo
 
 
+def agora_utc() -> datetime:
+    """O relógio de quem julga validade — um ponto só, e ele é substituível.
+
+    ⚠️ Existe porque a prova de que a expiração fecha o despacho precisa ADIANTAR
+    o tempo, e trocar a classe `datetime` de um módulo faz a prova depender de
+    quem importou o quê. A sonda da revisão trocou `contrato.datetime` e mediu
+    verde um caminho que nunca consultou aquele relógio: `criar-pausada` não
+    chama `manifesto_for`. Ela passou porque NADA no despacho olhava as horas —
+    não porque o relógio falso funcionou.
+
+    Substituir a FUNÇÃO que o despacho realmente usa é o que faz a prova falhar
+    quando a conferência não existe.
+
+    ⚠️ `ativos.py` NÃO passa por aqui, de propósito: a frescura da atestação é
+    julgada contra o mundo real no momento de compilar, nunca contra um relógio
+    que um teste possa adiantar.
+    """
+    return datetime.now(timezone.utc)
+
+
 _CTA = {"LEARN_MORE", "APPLY_NOW", "SIGN_UP", "GET_QUOTE", "CONTACT_US"}
 
 #: As duas únicas respostas honestas sobre redirecionamento para Shop.
@@ -273,12 +293,17 @@ class ManifestoSupplyMeta:
     def descongelado(cls, materia: Mapping[str, Any]) -> "ManifestoSupplyMeta":
         """Reconstrói o manifesto a partir do snapshot.
 
-        ⚠️ NÃO reconfere validade. Um recibo de política expirado precisa
-        continuar reconstruível: expiração fecha NOVO despacho — e quem fecha é
-        `manifesto_for`, no caminho de compilação — mas nunca pode apagar a
-        leitura histórica do que já foi despachado. Recusar aqui transformaria
-        o snapshot em mais uma porta que fecha com o tempo, que é exatamente o
-        defeito que ele existe para consertar.
+        ⚠️ NÃO reconfere validade, e o motivo tem dois lados. Um recibo de
+        política expirado precisa continuar RECONSTRUÍVEL: expiração fecha NOVO
+        despacho, nunca a leitura histórica do que já foi despachado. Recusar
+        aqui transformaria o snapshot em mais uma porta que fecha com o tempo,
+        que é exatamente o defeito que ele existe para consertar (`F02`).
+
+        ⚠️ E quem fecha o novo despacho NÃO é mais `manifesto_for`. Ele só roda
+        na COMPILAÇÃO, e criar deixou de recompilar — foi assim que a expiração
+        deixou de fechar coisa alguma (`R0-A05`). A validade passou a ser
+        cobrada NO DESPACHO, sobre este mesmo manifesto reconstruído, por
+        `PlanoCompiladoMeta.provas_de_midia_vencidas`.
         """
         if not isinstance(materia, Mapping):
             raise ErroDeNascimentoMeta(
@@ -580,7 +605,7 @@ class ReferenciasMetaResolvidas:
                 "META_ASSET_SUPPLY_MANIFEST_MISSING",
                 "a peça não possui manifesto de bytes e política emitido pelo backend",
             ) from None
-        if manifesto.policy_expires_at <= datetime.now(timezone.utc):
+        if manifesto.policy_expires_at <= agora_utc():
             raise ErroDeNascimentoMeta(
                 "META_ASSET_POLICY_RECEIPT_EXPIRED",
                 "o recibo de política da peça expirou; confira a peça novamente",

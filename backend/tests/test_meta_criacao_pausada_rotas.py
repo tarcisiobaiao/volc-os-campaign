@@ -25,8 +25,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Mapping
 
 import httpx
 import pytest
@@ -301,6 +302,40 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
 # LEDGER EM MEMÓRIA — a autoridade durável, sem Supabase
 # ---------------------------------------------------------------------------
 
+#: As chaves que a RPC de read-back recusa em qualquer profundidade. O dublê
+#: precisa reproduzir a recusa: sem ela, a afirmação "a evidência é uma projeção
+#: sanitizada" seria observada pelos testes, nunca exigida por eles.
+_CHAVE_SENSIVEL = re.compile(
+    r"(^id$|_id$|external|token|secret|account_id|campaign_id|adset_id"
+    r"|creative_id|ad_id|page_id|image_hash)", re.IGNORECASE)
+
+
+def _tem_chave_sensivel(valor: Any) -> bool:
+    if isinstance(valor, Mapping):
+        return any(
+            _CHAVE_SENSIVEL.search(str(chave)) or _tem_chave_sensivel(item)
+            for chave, item in valor.items()
+        )
+    if isinstance(valor, (list, tuple)):
+        return any(_tem_chave_sensivel(item) for item in valor)
+    return False
+
+
+def _confirmado(passo: Mapping[str, Any]) -> bool:
+    """Ter o ID e ter CONFERIDO o objeto são fatos diferentes.
+
+    A derivação é a mesma do SQL: só é confirmação quando a leitura aconteceu,
+    não divergiu e a evidência diz que conferiu.
+    """
+    evidencia = passo.get("readback_evidencia")
+    return bool(
+        passo.get("readback_at")
+        and not passo.get("readback")
+        and isinstance(evidencia, Mapping)
+        and evidencia.get("matched") is True
+    )
+
+
 class _LedgerEmMemoria:
     """Reproduz o contrato das RPCs, incluindo o que elas RECUSAM.
 
@@ -403,7 +438,18 @@ class _LedgerEmMemoria:
             "steps": [
                 {"step_ref": ref, "name": passo["nome"], "ordinal": passo["ordinal"],
                  "state": passo["state"], "has_external_id": passo["id_externo"] is not None,
+                 # ⚠️ O ID RESOLVIDO viaja só no manifesto interno, como na RPC.
+                 # É ele que permite à recuperação ler PELO ID em vez de
+                 # reconstruir identidade por nome. O recibo, abaixo, continua
+                 # sem ele.
+                 "external_object_id": passo["id_externo"],
+                 "observed_external_ids": list(passo.get("observados") or ()),
                  "error_code": passo["codigo"], "readback_error": passo["readback"],
+                 "readback_at": passo.get("readback_at"),
+                 "readback_evidence": passo.get("readback_evidencia"),
+                 "readback_confirmed": _confirmado(passo),
+                 "claim_generation": passo.get("claim_generation", 0),
+                 "claim_active": passo.get("claim_token") is not None,
                  "prepared_at": passo["prepared_at"]}
                 for ref, passo in sorted(
                     self.passos.items(), key=lambda item: item[1]["ordinal"])
@@ -429,27 +475,147 @@ class _LedgerEmMemoria:
         if existente is not None:
             if existente["state"] == "CREATED":
                 return PassoPreparadoMeta(ref, "CRIADO", existente["id_externo"])
+            # Reentrar REVOGA a reivindicação anterior, como a RPC faz: promover
+            # sem revogar anunciaria a dúvida deixando a caneta na mão de quem a
+            # causou — o defeito medido em R0-A06.
             existente["state"] = "AMBIGUOUS"
+            self._revogar(existente)
             return PassoPreparadoMeta(ref, "AMBIGUO")
+        # ⚠️ A REGRA DE ORDINAL, como no banco: um passo só nasce sobre um
+        # degrau anterior CRIADO. É ela que impede o trabalhador cercado num
+        # passo de seguir despachando o próximo — sem depender de o processo
+        # dele cooperar.
+        ordinal = manifesto.index(nome) + 1
+        if ordinal > 1:
+            anterior = manifesto[ordinal - 2]
+            passo_anterior = self.passos.get(f"passo-{anterior}")
+            if passo_anterior is None or passo_anterior["state"] != "CREATED":
+                raise ErroDeNascimentoMeta(
+                    "META_CREATE_LEDGER_REJECTED", "META_STEP_OUT_OF_ORDER")
+        self._sequencia += 1
         self.passos[ref] = {
             "approval_id": approval_id, "nome": nome,
-            "ordinal": manifesto.index(nome) + 1,
+            "ordinal": ordinal,
             "state": "IN_FLIGHT", "id_externo": None, "codigo": None,
             "readback": None, "prepared_at": PREPARADO_EM,
+            "claim_token": f"claim-{self._sequencia:04d}",
+            "claim_generation": 1,
+            "observados": [],
         }
-        return PassoPreparadoMeta(ref, "DESPACHAR")
+        return PassoPreparadoMeta(
+            ref, "DESPACHAR", claim_token=self.passos[ref]["claim_token"])
 
-    async def fechar_passo(self, *, passo_ref: str, id_externo: str) -> None:
+    # -- a cerca ------------------------------------------------------------
+    @staticmethod
+    def _revogar(passo: dict[str, Any]) -> None:
+        """Encerra a reivindicação viva. Autoridade velha nunca volta a valer."""
+        passo["claim_token"] = None
+        passo["claim_generation"] = int(passo.get("claim_generation") or 0) + 1
+
+    def _exigir_claim(self, passo: dict[str, Any], claim_token: str | None) -> None:
+        """A MESMA recusa da RPC, e o dublê precisa dela para a prova existir.
+
+        ⚠️ Um dublê que aceitasse qualquer token faria os testes de concorrência
+        passarem sem que a cerca existisse — exatamente o tipo de espelho
+        complacente que esta classe recusa ser.
+        """
+        if claim_token is None or passo.get("claim_token") != claim_token:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_CLAIM_FENCED")
+
+    async def fechar_passo(
+        self, *, passo_ref: str, id_externo: str, claim_token: str,
+    ) -> str | None:
+        passo = self.passos[passo_ref]
+        # ⚠️ A cerca vem ANTES da divergência de id, como na RPC: quem foi
+        # cercado precisa ouvir "cercado" para que o id que ele tem na mão vá
+        # para a observação em vez de se perder num erro genérico.
+        self._exigir_claim(passo, claim_token)
+        if passo["state"] == "CREATED" and passo["id_externo"] != id_externo:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_EXTERNAL_ID_DIVERGED")
+        if passo["state"] not in {"IN_FLIGHT", "CREATED"}:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_CANNOT_CLOSE")
         self.eventos.append(("fechar", passo_ref))
-        self.passos[passo_ref].update(state="CREATED", id_externo=id_externo)
+        # O token GIRA ao fechar: anotar a leitura é outro ato, e só quem
+        # recebeu ESTA resposta pode anotá-la.
+        self._sequencia += 1
+        girado = f"claim-{self._sequencia:04d}"
+        passo.update(
+            state="CREATED", id_externo=id_externo,
+            claim_token=girado,
+            claim_generation=int(passo.get("claim_generation") or 0) + 1,
+        )
+        return girado
 
-    async def marcar_ambiguo(self, *, passo_ref: str) -> None:
+    async def marcar_ambiguo(self, *, passo_ref: str, claim_token: str) -> None:
+        passo = self.passos[passo_ref]
+        if passo["state"] in {"AMBIGUOUS", "CREATED"}:
+            self.eventos.append(("ambiguo", passo_ref))
+            return
+        self._exigir_claim(passo, claim_token)
         self.eventos.append(("ambiguo", passo_ref))
-        self.passos[passo_ref]["state"] = "AMBIGUOUS"
+        passo["state"] = "AMBIGUOUS"
+        self._revogar(passo)
 
-    async def falhar_passo(self, *, passo_ref: str, codigo: str) -> None:
+    async def falhar_passo(
+        self, *, passo_ref: str, codigo: str, claim_token: str,
+    ) -> None:
+        passo = self.passos[passo_ref]
+        # ⚠️ FALHAR é a escrita mais perigosa para um cercado: FAILED declara
+        # "nada nasceu" e LIBERA o plano para nova aprovação.
+        self._exigir_claim(passo, claim_token)
         self.eventos.append(("falhar", passo_ref))
-        self.passos[passo_ref].update(state="FAILED", codigo=codigo)
+        passo.update(state="FAILED", codigo=codigo)
+        self._revogar(passo)
+
+    async def registrar_despacho_cercado(
+        self, *, passo_ref: str, claim_token: str, id_externo: str,
+    ) -> dict[str, Any]:
+        """Guarda o id visto por quem perdeu a autoridade. Nunca conclui nada."""
+        passo = self.passos[passo_ref]
+        if claim_token is not None and passo.get("claim_token") == claim_token:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_CLAIM_STILL_VALID")
+        self.eventos.append(("cercado", passo_ref))
+        ja_conhecido = passo.get("id_externo") == id_externo
+        if not ja_conhecido and id_externo not in passo.setdefault("observados", []):
+            passo["observados"].append(id_externo)
+        if passo["state"] == "IN_FLIGHT":
+            passo["state"] = "AMBIGUOUS"
+            self._revogar(passo)
+        return {
+            "ok": True,
+            "recorded_as": "ALREADY_CONCLUDED" if ja_conhecido else "OBSERVED_WITHOUT_AUTHORITY",
+            "state": passo["state"],
+        }
+
+    async def concluir_por_recuperacao(
+        self,
+        *,
+        passo_ref: str,
+        id_externo: str,
+        evidencia: dict[str, Any] | None = None,
+        codigo: str | None = None,
+    ) -> dict[str, Any]:
+        """Fecha por LEITURA e grava a evidência no mesmo ato."""
+        passo = self.passos[passo_ref]
+        if passo["state"] not in {"AMBIGUOUS", "CREATED"}:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_RECOVERABLE")
+        if passo.get("id_externo") is not None and passo["id_externo"] != id_externo:
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_EXTERNAL_ID_DIVERGED")
+        self.eventos.append(("recuperar", passo_ref))
+        passo.update(state="CREATED", id_externo=id_externo)
+        # A leitura supera qualquer reivindicação aberta: ela provou o que o
+        # despacho não conseguiu declarar.
+        self._revogar(passo)
+        if evidencia is not None:
+            await self.registrar_readback(
+                passo_ref=passo_ref, evidencia=evidencia, codigo=codigo)
+        return {"ok": True, "state": "CREATED", "concluded_by": "RECOVERY_READ"}
 
     async def resolver_ausente(
         self, *, passo_ref: str, codigo: str, idade_minima_s: int = 120,
@@ -492,20 +658,63 @@ class _LedgerEmMemoria:
                 "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_RECLAIMABLE")
         self.eventos.append(("reclamar", passo_ref))
         passo["state"] = "AMBIGUOUS"
+        # ⚠️ A PROMOÇÃO REVOGA. Idade é elegibilidade para investigar, nunca
+        # prova de que o trabalhador morreu; quem cerca é a autoridade
+        # versionada. Sem esta linha o dublê reproduziria o defeito em vez da
+        # correção, e a prova de concorrência passaria vazia.
+        self._revogar(passo)
 
     async def registrar_readback(
-        self, *, passo_ref: str, evidencia: dict[str, Any], codigo: str | None = None,
+        self,
+        *,
+        passo_ref: str,
+        evidencia: dict[str, Any],
+        codigo: str | None = None,
+        claim_token: str | None = None,
     ) -> None:
+        passo = self.passos[passo_ref]
+        # As recusas da RPC, reproduzidas: um dublê que aceitasse qualquer
+        # evidência deixaria passar uma correção que grava evidência malformada,
+        # fora de hora ou por cima de uma divergência já registrada.
+        if passo["state"] != "CREATED":
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_NOT_CREATED")
+        if not isinstance(evidencia.get("matched"), bool):
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_READBACK_EVIDENCE_INVALID")
+        if evidencia["matched"] is not (codigo is None):
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED",
+                "META_READBACK_POSITIVE_EVIDENCE_INVALID" if codigo is None
+                else "META_READBACK_DIVERGENT_EVIDENCE_INVALID")
+        if _tem_chave_sensivel(evidencia):
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_READBACK_EVIDENCE_NOT_SANITIZED")
+        if passo.get("readback") and codigo != passo["readback"]:
+            # A primeira divergência vista é a que o livro guarda; uma
+            # confirmação posterior não a apaga.
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_READBACK_ERROR_ALREADY_RECORDED")
+        # A cerca vale enquanto a reivindicação existir; a recuperação anota
+        # depois de encerrá-la, e por isso passa sem token.
+        if passo.get("claim_token") is not None:
+            self._exigir_claim(passo, claim_token)
         self.eventos.append(("readback_evidencia", passo_ref))
-        self.passos[passo_ref].update(
+        passo.update(
             readback_evidencia=evidencia, readback_at="2026-09-07T12:00:00+00:00")
+        # ⚠️ E aqui a reivindicação termina, como na RPC: anotar a leitura é o
+        # último ato do despacho sobre este passo. Manter o token vivo faria uma
+        # retomada legítima — `preparar_passo` devolvendo CRIADO, sem token —
+        # parecer falha de durabilidade.
+        if passo.get("claim_token") is not None:
+            self._revogar(passo)
         if codigo:
             # ⚠️ A DIVERGÊNCIA CONTINUA SENDO UM EVENTO PRÓPRIO. Ela é a marca
             # que separa "objeto existe e confere" de "objeto existe e não é o
             # aprovado"; diluí-la num evento genérico de evidência apagaria
             # justamente a distinção que o recibo precisa carregar.
             self.eventos.append(("readback", passo_ref))
-            self.passos[passo_ref].update(readback=codigo)
+            passo.update(readback=codigo)
 
     async def recibo(self, approval_id: str) -> dict[str, Any]:
         manifesto = await self.manifesto(approval_id)
@@ -516,12 +725,22 @@ class _LedgerEmMemoria:
             "daily_budget_minor": manifesto["daily_budget_minor"],
             "currency": manifesto["currency"],
             "operations_expected": manifesto["operations_expected"],
+            "steps_expected": list(manifesto["steps_expected"]),
             "paused_birth_confirmed": True,
             "state": manifesto["state"],
             "expires_at": manifesto["expires_at"],
-            # ⚠️ Como a RPC real: afirma que o id existe, nunca o devolve.
+            # ⚠️ Como a RPC real: afirma que o id existe, nunca o devolve — e
+            # isso vale para o id observado sem autoridade também, que aparece
+            # só como CONTAGEM. A confirmação durável, essa sim, viaja: sem ela
+            # a tela teria de acreditar no `read_back` da resposta HTTP, que o
+            # reload apaga.
             "steps": [
-                {k: v for k, v in passo.items() if k != "step_ref"}
+                {
+                    **{k: v for k, v in passo.items()
+                       if k not in {"step_ref", "external_object_id",
+                                    "observed_external_ids", "claim_generation"}},
+                    "observed_external_id_count": len(passo["observed_external_ids"]),
+                }
                 for passo in manifesto["steps"]
             ],
         }

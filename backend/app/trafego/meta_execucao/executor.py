@@ -20,6 +20,7 @@ from .contrato import (
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
 )
+from . import contrato as contrato_meta
 from .registro import RegistroSagaMeta
 
 
@@ -52,10 +53,20 @@ class ErroRemotoMeta(RuntimeError):
         detalhe_provedor: Mapping[str, Any] | None = None,
         criacao_descartada: bool = False,
         exige_reconciliacao: bool = False,
+        evidencia_duravel: bool = True,
     ) -> None:
         super().__init__(mensagem)
         self.codigo = codigo
         self.retryable = retryable
+        # ⚠️ FALSO quando o read-back ACONTECEU mas NÃO ficou gravado. É um fato
+        # sobre o LIVRO, nunca sobre o objeto: a Meta aceitou, o id está
+        # registrado e a leitura até pode ter conferido — quem falhou fomos nós.
+        #
+        # A distinção existe porque confundi-la foi o defeito: com todas as
+        # escritas de evidência falhando, a saga criava os quatro objetos e
+        # devolvia 200 CREATED_PAUSED. Um recibo incompleto lido como completo é
+        # pior que um recibo vazio — ele parece adjudicável.
+        self.evidencia_duravel = evidencia_duravel
         # Names only. Provider ids remain backend-private even on failures.
         self.objetos_criados = objetos_criados
         self.detalhe_provedor = dict(detalhe_provedor or {})
@@ -73,6 +84,43 @@ class ErroRemotoMeta(RuntimeError):
         # `reconciliacao_necessaria=false`. O ledger e o protocolo contavam
         # histórias diferentes sobre o mesmo despacho.
         self.exige_reconciliacao = exige_reconciliacao
+
+
+class _EvidenciaNaoGravada(RuntimeError):
+    """A evidência do read-back não entrou no livro. Não diz nada do objeto.
+
+    ⚠️ Deliberadamente NÃO é um `ErroRemotoMeta`. Se fosse, o `except` da saga a
+    trataria como resultado da Meta, e o reempacotamento de 502 afirmaria que a
+    Meta fez algo que ela não fez. Quem falhou fomos nós, gravando.
+    """
+
+    def __init__(self, causa: str) -> None:
+        super().__init__(causa)
+        #: Vocabulário FECHADO — o código do ledger, ou o nome da classe da
+        #: exceção. Nunca a mensagem crua: ela pode carregar URL, corpo de
+        #: resposta ou qualquer coisa que o transporte tenha anexado.
+        self.causa = causa
+
+
+#: A recusa que o ledger emite quando o token de reivindicação já não vale.
+#: Vocabulário FECHADO: comparar por substring de mensagem livre deixaria
+#: qualquer erro que mencionasse a palavra virar "fui cercado" — e o caminho do
+#: cercado preserva o id em vez de reconciliar, então errar aqui é caro.
+CODIGO_CERCADO = "META_STEP_CLAIM_FENCED"
+
+
+def _cercado(exc: BaseException) -> bool:
+    """Se esta recusa do ledger foi a cerca, e não outra coisa.
+
+    ⚠️ O ledger real traduz a exceção do PostgreSQL em
+    `META_CREATE_LEDGER_REJECTED` com a mensagem da RPC; o dublê hermético
+    levanta o código diretamente. As duas formas precisam ser reconhecidas, ou a
+    garantia existiria só num dos dois mundos.
+    """
+    codigo = str(getattr(exc, "codigo", "") or "")
+    if codigo == CODIGO_CERCADO:
+        return True
+    return codigo == "META_CREATE_LEDGER_REJECTED" and CODIGO_CERCADO in str(exc)
 
 
 def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
@@ -346,6 +394,19 @@ class ExecutorMetaPausado:
                 "META_DURABLE_RECEIPT_UNAVAILABLE",
                 "criacao Meta exige registro duravel antes de qualquer POST",
             )
+        # ⚠️ O LEDGER PRECISA SABER GRAVAR READ-BACK ANTES DO PRIMEIRO POST.
+        #
+        # Havia um caminho legado adiante: sem `registrar_readback`, a saga
+        # seguia gravando só a divergência — e, sem nem isso, seguia em
+        # silêncio. Silêncio não é compatibilidade. Nenhum ledger do runtime
+        # está nessa situação; o caminho existia para dublês antigos, e um dublê
+        # não é motivo para o servidor aceitar despachar sem poder registrar o
+        # que leu. A recusa acontece aqui, antes de qualquer efeito externo.
+        if not callable(getattr(self._registro, "registrar_readback", None)):
+            raise ErroDeNascimentoMeta(
+                "META_READBACK_LEDGER_UNAVAILABLE",
+                "este registro nao sabe gravar read-back; nada e despachado",
+            )
         # ⚠️ O PORTÃO DO DESTINO, ANTES DO PRIMEIRO POST.
         #
         # C01 do contrato mestre: "any inability to prove no unauthorized Shop
@@ -355,11 +416,38 @@ class ExecutorMetaPausado:
         if not plano.destino_website_provado:
             raise ErroDeNascimentoMeta(
                 "META_SHOP_REDIRECT_UNPROVEN", MOTIVO_DESTINO_SHOP_NAO_PROVADO)
+        # ⚠️ Um plano sem recibo de peça não é despachável: a mídia sairia sem
+        # atestação nenhuma por trás. O compilador emite um manifesto por
+        # `asset_ref` e o banco exige de 1 a 10 recibos — chegar aqui vazio
+        # significa snapshot de outra origem.
+        if not plano.asset_supply_manifests:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_MISSING",
+                "este plano nao carrega o recibo de politica das pecas")
         ids: dict[str, str] = {}
         read_back: dict[str, Mapping[str, Any]] = {}
         tipos: dict[str, str] = {}
         try:
             for operacao in plano.operacoes:
+                # ⚠️ A PROVA É RECONFERIDA A CADA DEGRAU, porque cada degrau é um
+                # POST NOVO. A saga tem quatro passos e pode atravessar o
+                # instante em que a atestação vence; deixar o terceiro sair
+                # porque o primeiro saiu a tempo é o mesmo defeito da porta,
+                # noventa segundos depois.
+                #
+                # ⚠️ ANTES de `preparar_passo`, de propósito. Depois dele, um
+                # passo recusado deixaria uma linha IN_FLIGHT que nunca foi
+                # despachada: a recuperação a promoveria a AMBIGUOUS, procuraria
+                # na conta um objeto que não existe e ficaria ambígua para
+                # sempre — além de prender o índice de gêmeo entre aprovações.
+                vencidas = plano.provas_de_midia_vencidas(contrato_meta.agora_utc())
+                if vencidas:
+                    raise ErroDeNascimentoMeta(
+                        "META_ASSET_POLICY_RECEIPT_EXPIRED",
+                        "a atestacao da peca venceu durante o despacho; os objetos "
+                        "ja criados permanecem PAUSED e legiveis, e nenhum passo "
+                        "novo foi enviado",
+                    )
                 payload = resolver_dependencias(operacao.payload, ids)
                 if operacao.tipo_objeto in {"campaign", "adset", "ad"} and payload.get("status") != "PAUSED":
                     raise ErroDeNascimentoMeta(
@@ -391,6 +479,12 @@ class ExecutorMetaPausado:
                         f"o passo {operacao.chave} esta ambiguo; reconciliar antes de continuar",
                         exige_reconciliacao=True,
                     )
+                # ⚠️ O TOKEN DA REIVINDICAÇÃO, e ele muda ao longo do passo. É a
+                # cerca: só quem o carrega conclui este despacho. `fechar_passo`
+                # devolve um token GIRADO, e é esse que autoriza anotar o
+                # read-back — separando a autoridade de FECHAR da autoridade de
+                # CONFERIR.
+                token = passo.claim_token
                 if passo.estado == "CRIADO":
                     ids[operacao.chave] = str(passo.id_externo)
                 else:
@@ -398,10 +492,7 @@ class ExecutorMetaPausado:
                         resposta = await self._post(
                             operacao, payload, segredo, exige_id=True)
                     except httpx.TimeoutException:
-                        try:
-                            await self._registro.marcar_ambiguo(passo_ref=passo.passo_ref)
-                        except Exception:
-                            pass
+                        await self._marcar_ambiguo_sem_derrubar(passo.passo_ref, token)
                         raise
                     except ErroRemotoMeta as exc:
                         # Só a recusa explícita da Meta prova que o objeto não
@@ -409,32 +500,43 @@ class ExecutorMetaPausado:
                         # AMBÍGUA para não bloquear a reconciliação por leitura.
                         if exc.criacao_descartada:
                             await self._registro.falhar_passo(
-                                passo_ref=passo.passo_ref, codigo=exc.codigo)
+                                passo_ref=passo.passo_ref, codigo=exc.codigo,
+                                claim_token=str(token))
                         else:
-                            try:
-                                await self._registro.marcar_ambiguo(
-                                    passo_ref=passo.passo_ref)
-                            except Exception:
-                                pass
+                            await self._marcar_ambiguo_sem_derrubar(
+                                passo.passo_ref, token)
                             # O passo ficou AMBIGUO no ledger; a exceção precisa
                             # dizer isso, senão a resposta HTTP afirma o oposto.
                             exc.exige_reconciliacao = True
                         raise
                     ids[operacao.chave] = str(resposta["id"])
                     try:
-                        await self._registro.fechar_passo(
+                        token = await self._registro.fechar_passo(
                             passo_ref=passo.passo_ref,
                             id_externo=ids[operacao.chave],
+                            claim_token=str(passo.claim_token),
                         )
                     except Exception as exc:
-                        try:
-                            await self._registro.marcar_ambiguo(passo_ref=passo.passo_ref)
-                        except Exception:
-                            pass
+                        if _cercado(exc):
+                            # ⚠️ A REQUISIÇÃO JÁ FOI ENVIADA E O OBJETO PODE
+                            # EXISTIR. Outro processo tomou a reivindicação
+                            # enquanto o POST estava no ar; nenhuma linha de
+                            # banco cancela o que já saiu. Jogar o id fora
+                            # perderia a única prova disso, e concluir por cima
+                            # sobrescreveria uma decisão mais nova. O id vira
+                            # OBSERVAÇÃO, e a leitura decide.
+                            raise await self._registrar_despacho_cercado(
+                                operacao, passo.passo_ref,
+                                str(passo.claim_token), ids[operacao.chave],
+                                ids=ids,
+                            ) from exc
+                        await self._marcar_ambiguo_sem_derrubar(
+                            passo.passo_ref, passo.claim_token)
                         raise ErroRemotoMeta(
                             "META_REMOTE_RESULT_AMBIGUOUS",
                             "a Meta criou o objeto, mas o recibo nao fechou; reconciliar por leitura",
                             exige_reconciliacao=True,
+                            objetos_criados=tuple(ids),
                         ) from exc
                 # Confirm each durable step before allowing the next dependent
                 # object to be created. A mismatch stops the saga immediately.
@@ -474,21 +576,57 @@ class ExecutorMetaPausado:
                     # código. Saber QUE divergiu sem saber EM QUE campo obriga
                     # a repetir a leitura para adjudicar — e a leitura de
                     # amanhã pode já não descrever o instante do despacho.
-                    await self._registrar_readback(
-                        passo.passo_ref,
-                        _evidencia_do_readback(
-                            operacao.tipo_objeto, dados, conferido=False),
-                        codigo=exc.codigo,
-                    )
+                    try:
+                        await self._registrar_readback(
+                            passo.passo_ref,
+                            _evidencia_do_readback(
+                                operacao.tipo_objeto, dados, conferido=False),
+                            codigo=exc.codigo,
+                            claim_token=token,
+                        )
+                    except _EvidenciaNaoGravada:
+                        # ⚠️ A DIVERGÊNCIA SOBREVIVE À FALHA DE ANOTÁ-LA. Trocar
+                        # o código aqui apagaria o fato mais grave dos dois — o
+                        # objeto existe e NÃO é o aprovado. O que muda é a
+                        # DURABILIDADE, e a resposta passa a declarar que o
+                        # livro não guardou esta divergência.
+                        exc.evidencia_duravel = False
+                    if not exc.objetos_criados:
+                        exc.objetos_criados = tuple(ids)
                     raise
                 # O read-back POSITIVO também vira evidência durável, com
                 # horário. Antes só o fracasso ficava registrado, e a
                 # confirmação existia apenas no corpo da resposta HTTP — quer
                 # dizer, apenas no navegador. Mensagem de tela não é recibo.
-                await self._registrar_readback(
-                    passo.passo_ref,
-                    _evidencia_do_readback(operacao.tipo_objeto, dados, conferido=True),
-                )
+                try:
+                    await self._registrar_readback(
+                        passo.passo_ref,
+                        _evidencia_do_readback(
+                            operacao.tipo_objeto, dados, conferido=True),
+                        claim_token=token,
+                    )
+                except _EvidenciaNaoGravada as falha:
+                    # ⚠️ O ID CONTINUA GRAVADO E NADA É REENVIADO. O passo fica
+                    # CREATED com o id verdadeiro — é assim que ele permanece
+                    # recuperável por leitura. O que falta é a CONFIRMAÇÃO
+                    # durável, e sem ela nenhum dependente pode nascer: criar o
+                    # próximo seria pendurá-lo numa leitura que só existe nesta
+                    # resposta HTTP.
+                    #
+                    # ⚠️ E isto NÃO é recusa da Meta. `criacao_descartada` fica
+                    # falso e `falhar_passo` NÃO é chamado: converter falha
+                    # nossa em rejeição provada autorizaria alguém a reenviar
+                    # por cima de um objeto que existe.
+                    raise ErroRemotoMeta(
+                        "META_READBACK_NOT_DURABLE",
+                        f"{operacao.chave} nasceu PAUSED e conferiu na leitura, mas a "
+                        f"confirmacao nao ficou gravada ({falha.causa}); nada foi "
+                        "reenviado e nenhum objeto dependente foi criado",
+                        retryable=False,
+                        objetos_criados=tuple(ids),
+                        criacao_descartada=False,
+                        evidencia_duravel=False,
+                    ) from falha
                 read_back[operacao.chave] = dados
                 tipos[operacao.chave] = operacao.tipo_objeto
         except httpx.TimeoutException as exc:
@@ -512,6 +650,9 @@ class ExecutorMetaPausado:
                 # ⚠️ A bandeira SOBREVIVE ao reempacotamento. Perdê-la aqui
                 # devolveria 422 sobre um passo que ficou AMBIGUO no banco.
                 exige_reconciliacao=exc.exige_reconciliacao,
+                # ⚠️ E esta sobrevive pela mesma razão: perdê-la devolveria um
+                # 502 afirmando que a evidência ficou gravada quando não ficou.
+                evidencia_duravel=exc.evidencia_duravel,
             ) from exc
         opacas = {
             chave: meta_dom.referencia_opaca_objeto(
@@ -551,37 +692,102 @@ class ExecutorMetaPausado:
             retry_permitido=False,
         )
 
+    async def _marcar_ambiguo_sem_derrubar(
+        self, passo_ref: str, claim_token: str | None,
+    ) -> None:
+        """Declara a dúvida no livro sem transformar a anotação num segundo erro.
+
+        ⚠️ O `except` largo continua aqui de propósito, e ele não é o defeito de
+        R0-A02: quem chamou já está subindo uma exceção que descreve o
+        incidente, e falhar ao anotá-lo não pode APAGAR essa exceção. A
+        diferença em relação ao read-back é que ali o silêncio produzia um
+        SUCESSO certificado; aqui ele nunca produz sucesso nenhum.
+        """
+        if claim_token is None:
+            return
+        try:
+            await self._registro.marcar_ambiguo(
+                passo_ref=passo_ref, claim_token=claim_token)
+        except Exception:
+            pass
+
+    async def _registrar_despacho_cercado(
+        self,
+        operacao: OperacaoMeta,
+        passo_ref: str,
+        claim_token: str,
+        id_externo: str,
+        *,
+        ids: Mapping[str, str],
+    ) -> ErroRemotoMeta:
+        """Preserva o id visto por um trabalhador que perdeu a autoridade.
+
+        Devolve a exceção que quem chamou deve levantar — nunca um sucesso. O
+        passo fica visível para a recuperação por leitura, e o id observado fica
+        gravado ao lado da identidade concluída, jamais no lugar dela.
+        """
+        preservado = False
+        registrar = getattr(self._registro, "registrar_despacho_cercado", None)
+        if registrar is not None:
+            try:
+                await registrar(
+                    passo_ref=passo_ref, claim_token=claim_token,
+                    id_externo=id_externo)
+                preservado = True
+            except Exception:
+                preservado = False
+        return ErroRemotoMeta(
+            "META_WORKER_FENCED",
+            f"a reivindicacao de {operacao.chave} passou a outro processo enquanto o "
+            f"pedido estava no ar; o objeto pode existir e "
+            + ("o id foi preservado para a leitura"
+               if preservado else "o id NAO pode ser preservado no livro")
+            + "; nada foi reenviado",
+            retryable=False,
+            objetos_criados=tuple(ids),
+            criacao_descartada=False,
+            exige_reconciliacao=True,
+            evidencia_duravel=preservado,
+        )
+
     async def _registrar_readback(
         self,
         passo_ref: str,
         evidencia: Mapping[str, Any],
         *,
         codigo: str | None = None,
+        claim_token: str | None = None,
     ) -> None:
-        """Grava a evidência do read-back sem deixar a gravação derrubar a saga.
+        """Grava a evidência do read-back. Falhar aqui NÃO é silêncio.
 
-        ⚠️ A gravação é best-effort DE PROPÓSITO, e só ela. Falhar ao anotar não
-        pode apagar a divergência que a exceção carrega nem inventar uma
-        confirmação: quem decide o desfecho é o `raise` de quem chamou. O
-        registro melhora a auditoria; ele não é a autoridade.
+        ⚠️ ERA BEST-EFFORT, e a revisão mediu o preço: com todas as escritas de
+        evidência falhando, a saga criava os quatro objetos e devolvia 200
+        CREATED_PAUSED com ZERO read-back durável. A confirmação existia só no
+        corpo da resposta — quer dizer, só no navegador. `MASTER-SPEC.json` diz
+        o contrário em `recovery.durability`: a resposta HTTP da UI não é o
+        único recibo.
 
-        Compatível com ledgers que ainda não têm o método — os dublês antigos e
-        qualquer implementação anterior à migration do snapshot.
+        Levantar é o que devolve a decisão a QUEM CHAMOU: no caminho positivo a
+        saga PARA antes de criar o próximo objeto; no caminho da divergência a
+        divergência continua sendo o veredito e só a durabilidade dela cai.
         """
         registrar = getattr(self._registro, "registrar_readback", None)
-        if registrar is None:
-            # Caminho legado: só a divergência era registrável.
-            legado = getattr(self._registro, "marcar_readback_divergente", None)
-            if codigo and legado is not None:
-                try:
-                    await legado(passo_ref=passo_ref, codigo=codigo)
-                except Exception:
-                    pass
-            return
+        if registrar is None:  # pragma: no cover - barrado antes do primeiro POST
+            raise _EvidenciaNaoGravada("META_READBACK_LEDGER_UNAVAILABLE")
         try:
-            await registrar(passo_ref=passo_ref, evidencia=dict(evidencia), codigo=codigo)
-        except Exception:
-            pass
+            await registrar(
+                passo_ref=passo_ref,
+                evidencia=dict(evidencia),
+                codigo=codigo,
+                claim_token=claim_token,
+            )
+        except Exception as exc:
+            # ⚠️ A CAUSA É NORMALIZADA AQUI, e não é zelo estético. O ledger real
+            # levanta `ErroDeNascimentoMeta`, que a rota traduz em 409 "nada foi
+            # despachado". Deixá-la subir crua depois de quatro POSTs seria
+            # trocar um silêncio por uma mentira pior.
+            raise _EvidenciaNaoGravada(
+                str(getattr(exc, "codigo", None) or type(exc).__name__)[:80]) from exc
 
     async def _post(
         self,
