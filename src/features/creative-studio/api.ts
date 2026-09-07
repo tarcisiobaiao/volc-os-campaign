@@ -25,6 +25,7 @@
 import { supabase } from '@/lib/supabase';
 
 import type {
+  AutorizacaoDeGasto,
   DecisaoRegistrada,
   EntradaNovaOperacao,
   FormatoDisponivel,
@@ -286,7 +287,16 @@ export async function planejarGeracao(
  */
 export async function gerarImagens(
   projectRef: string,
-  pedido: { run_ref: string; selected_creative_refs: string[]; format_ids: string[] },
+  pedido: {
+    run_ref: string;
+    selected_creative_refs: string[];
+    format_ids: string[];
+    /**
+     * Obrigatória. O servidor recusa com 409 sem ela, e a recusa carrega o
+     * modelo e o total que precisam ser confirmados.
+     */
+    autorizacao: AutorizacaoDeGasto;
+  },
   signal?: AbortSignal,
 ): Promise<{
   geracoes: GeracaoRegistrada[];

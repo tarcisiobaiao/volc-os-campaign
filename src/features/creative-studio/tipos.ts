@@ -157,6 +157,31 @@ export interface OperacaoCompleta {
     updated_at: string | null;
   };
   runs: RunDaOperacao[];
+  /**
+   * As decisões persistidas, já reduzidas à efetiva de cada caminho — uma
+   * reprovação posterior desfaz a aprovação anterior sem apagar a trilha.
+   *
+   * Sem isto, recarregar a página perdia a revisão inteira: as decisões estavam
+   * no banco e a tela só as tinha em estado de sessão.
+   */
+  decisoes: DecisaoPersistida[];
+  /**
+   * Por run concluída, os caminhos cuja aprovação AINDA descreve o conteúdo
+   * daquela run. Quem decide isso é o servidor: a tela não tem o hash aprovado
+   * nem autoridade para comparar.
+   */
+  aprovacoes_validas: Record<string, string[]>;
+}
+
+export interface DecisaoPersistida {
+  decision_ref: string;
+  run_ref: string;
+  path: string;
+  decisao: 'APROVADO' | 'REPROVADO';
+  scope: string;
+  snapshot_sha256: string;
+  feedback: string | null;
+  created_at: string | null;
 }
 
 export interface EntradaNovaOperacao {
@@ -259,9 +284,31 @@ export interface PlanoDeGeracao {
   total_de_renders: number;
   teto: number;
   custo_estimado_usd: number | null;
+  /**
+   * Sempre `true`: o provider cobra por token e nunca devolve dólar, então o
+   * número acima vem de tabela de referência. A tela precisa dizer isso — um
+   * valor apresentado como fatura ao lado de um botão que gasta é uma promessa
+   * que o mecanismo não sustenta.
+   */
+  custo_e_estimado: boolean;
+  /** Como o servidor nomeia o motor que rodaria. `null` quando não há motor. */
+  modelo_de_imagem: string | null;
+  motor_configurado: boolean;
   pode_executar: boolean;
   bloqueios: Bloqueio[];
   briefings: BriefingResumido[];
+}
+
+/**
+ * O consentimento que a rota de geração exige. Espelha o que a tela mostrou.
+ *
+ * O servidor reconfere os três contra o que ele mesmo mediu; isto não é o teto,
+ * é a declaração de que uma pessoa leu o teto.
+ */
+export interface AutorizacaoDeGasto {
+  modelo: string;
+  total_de_renders: number;
+  teto_custo_usd: number | null;
 }
 
 /** A procedência: de qual peça aprovada saiu qual job de mídia. */

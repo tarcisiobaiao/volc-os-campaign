@@ -25,7 +25,7 @@ from app.criativo.agente.contrato import (
 from app.criativo.agente.caminhos import CaminhoInvalido, resolver as resolver_caminho
 from app.criativo.agente.orquestrador import AgenteCriativoMeta, RespostaDoModeloInvalida
 from app.criativo.agente.persistencia import NaoEncontrado, RepositorioAgenteCriativo
-from app.criativo.studio import PedidoDeGeracao, PlanoDeGeracao
+from app.criativo.studio import AutorizacaoDeGasto, PedidoDeGeracao, PlanoDeGeracao
 from app.llm.gemini import GeminiClient
 from app.seguranca.identidade import Identidade, exigir_usuario
 from app.services.supabase_service import SupabaseService
@@ -73,6 +73,68 @@ def obter_agente(settings: Settings = Depends(get_settings)) -> AgenteCriativoMe
 def _hash_valor(valor: Any) -> str:
     cru = json.dumps(valor, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(cru.encode("utf-8")).hexdigest()
+
+
+def _decisoes_efetivas(decisoes: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """A última decisão de cada caminho é a que vale.
+
+    `listar_decisoes` devolve em ordem crescente de `created_at`, então a
+    reatribuição por caminho deixa a mais recente. Reprovar depois de aprovar
+    desfaz o congelamento sem apagar a trilha append-only — que é o ponto de a
+    tabela não ter UPDATE.
+    """
+    return {d["path"]: d for d in decisoes}
+
+
+def _aprovados_validos(
+    output: Any, efetivas: dict[str, dict[str, Any]]
+) -> frozenset[str]:
+    """As aprovações que ainda descrevem ESTE conteúdo.
+
+    Uma decisão guarda `path` + `snapshot_sha256`. O caminho é estável por
+    construção (`caminhos.py` endereça por `ref`, nunca por índice), então ele
+    sobrevive à run seguinte — mas o CONTEÚDO naquele caminho não precisa
+    sobreviver: refinar uma peça mantém a ref e troca o texto.
+
+    Conferir só o caminho, como fazíamos, herdava a aprovação da versão
+    anterior: o operador aprovava a peça A, pedia refinamento, e o botão que
+    gasta liberava a peça A' que ninguém leu. Reconferir o hash é o que
+    transforma "esta ref foi aprovada um dia" em "este conteúdo foi aprovado".
+
+    Uma aprovação cujo caminho sumiu do lote também não conta — não há o que
+    autorizar.
+    """
+    validos: set[str] = set()
+    for caminho, d in efetivas.items():
+        if d.get("decisao") != "APROVADO":
+            continue
+        try:
+            atual = resolver_caminho(output, caminho)
+        except CaminhoInvalido:
+            continue
+        if _hash_valor(atual) == d.get("snapshot_sha256"):
+            validos.add(caminho)
+    return frozenset(validos)
+
+
+def _decisao_para_json(d: dict[str, Any]) -> dict[str, Any]:
+    """O que a tela precisa para redesenhar a revisão — e nada além disso.
+
+    O `snapshot` inteiro fica de fora de propósito: ele é uma cópia da peça que
+    a própria run já devolve, e mandá-lo de novo dobraria a resposta sem
+    acrescentar informação. O `snapshot_sha256` basta para explicar por que uma
+    aprovação antiga deixou de valer.
+    """
+    return {
+        "decision_ref": d.get("decision_ref"),
+        "run_ref": d.get("run_ref"),
+        "path": d.get("path"),
+        "decisao": d.get("decisao"),
+        "scope": d.get("scope"),
+        "snapshot_sha256": d.get("snapshot_sha256"),
+        "feedback": d.get("feedback"),
+        "created_at": d.get("created_at"),
+    }
 
 
 async def _executar_e_persistir(
@@ -349,7 +411,29 @@ async def ler_operacao(
     except NaoEncontrado as exc:
         raise _erro("CRIATIVO_AGENTE_OPERACAO_INEXISTENTE", "Operação não encontrada.", 404) from exc
     runs = await repo.listar_runs(project_ref, identidade.sub)
-    return {"operacao": operacao, "runs": runs}
+    decisoes = await repo.listar_decisoes(project_ref, identidade.sub)
+    efetivas = _decisoes_efetivas(decisoes)
+
+    # Sem esta projeção o reload perdia a revisão: a tela guardava as aprovações
+    # só em estado de sessão, então recarregar mostrava um lote inteiro como não
+    # aprovado enquanto o servidor — que é quem manda — já tinha as decisões
+    # gravadas. O operador reaprovava por engano, ou achava que tinha perdido o
+    # trabalho.
+    #
+    # A validade é recalculada AQUI, por run, contra o conteúdo de cada run. A
+    # tela não pode decidir isso: ela não tem o hash aprovado nem autoridade
+    # para comparar.
+    aprovacoes_validas = {
+        run["run_ref"]: sorted(_aprovados_validos(run.get("output"), efetivas))
+        for run in runs
+        if run.get("status") == "COMPLETED" and run.get("output")
+    }
+    return {
+        "operacao": operacao,
+        "runs": runs,
+        "decisoes": [_decisao_para_json(d) for d in efetivas.values()],
+        "aprovacoes_validas": aprovacoes_validas,
+    }
 
 
 async def _lote_e_aprovados(
@@ -374,21 +458,144 @@ async def _lote_e_aprovados(
         )
 
     # A decisão mais recente por caminho é a efetiva — uma reprovação posterior
-    # desfaz o congelamento sem apagar a história.
-    por_caminho = {d["path"]: d for d in decisoes}
-    aprovados = frozenset(
-        caminho for caminho, d in por_caminho.items() if d["decisao"] == "APROVADO"
-    )
+    # desfaz o congelamento sem apagar a história — e ela só vale se o conteúdo
+    # naquele caminho ainda for o que foi aprovado. Conferir apenas o caminho
+    # deixava uma peça refinada herdar a aprovação da versão anterior.
+    aprovados = _aprovados_validos(run["output"], _decisoes_efetivas(decisoes))
     return operacao, SaidaDoAgente.model_validate(run["output"]), aprovados
 
 
+def _identidade_do_motor() -> dict[str, Any]:
+    """Qual motor de imagem ESTE processo usaria, sem chamar nada e sem chave.
+
+    A tela precisa nomear o modelo antes do clique — "gerar" sem dizer com o quê
+    é pedir autorização em branco. Construir o motor só lê o ambiente; nenhuma
+    requisição sai daqui.
+
+    Devolve `modelo: None` quando o pacote do motor nem existe no ambiente, em
+    vez de derrubar a rota de PLANO: planejar precisa continuar funcionando para
+    mostrar o bloqueio, e um plano que não abre esconde a causa.
+    """
+    try:
+        from app.routers.criativos import obter_motor  # noqa: PLC0415
+
+        motor = obter_motor()
+    except Exception:  # noqa: BLE001
+        return {"modelo": None, "configurado": False}
+    return {
+        "modelo": getattr(motor, "nome", None),
+        "configurado": bool(getattr(motor, "configurado", False)),
+    }
+
+
+def _conferir_autorizacao(
+    autorizacao: AutorizacaoDeGasto | None, plano: PlanoDeGeracao, motor: Any
+) -> None:
+    """A confirmação humana do gasto, reconferida contra o que o servidor mediu.
+
+    ## Por que não basta o plano
+
+    O plano já é recalculado no servidor, mas ele responde "o que aconteceria",
+    não "alguém autorizou que acontecesse". Sem esta porta, qualquer cliente que
+    montasse o POST — uma aba antiga, um script, um duplo clique num botão que
+    mudou de significado desde que a tela foi desenhada — despacharia renders
+    pagos sem ninguém ter lido um número.
+
+    ## O que é exigido, e por quê cada um
+
+    - `modelo`: o operador autoriza um motor específico. Se o servidor trocou de
+      modelo entre a tela e o clique, o consentimento não cobre o que rodaria.
+    - `total_de_renders`: é o único limite que o servidor impõe com EXATIDÃO,
+      porque conta chamadas, e chamada é a unidade que se paga. Divergiu do que
+      a tela mostrou, recusa — a seleção mudou debaixo do operador.
+    - `teto_custo_usd`: opcional, e conferido contra a ESTIMATIVA. Quando o
+      custo é desconhecido não há o que comparar, e o servidor não finge que o
+      teto foi respeitado: ele diz que o limite efetivo é a contagem.
+
+    Nada foi criado quando esta função levanta — ela roda antes do primeiro job.
+    """
+    if autorizacao is None:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_SEM_AUTORIZACAO_DE_GASTO",
+                "mensagem": (
+                    "Gerar imagem gasta. Confirme o modelo, a quantidade e o teto "
+                    "antes de despachar."
+                ),
+                "modelo_de_imagem": getattr(motor, "nome", None),
+                "total_de_renders": plano.total_de_renders,
+                "custo_estimado_usd": plano.custo_estimado_usd,
+                "custo_e_estimado": True,
+                "nada_foi_criado": True,
+            },
+        )
+
+    nome_do_motor = getattr(motor, "nome", None)
+    if nome_do_motor and autorizacao.modelo != nome_do_motor:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_MODELO_DIVERGENTE",
+                "mensagem": (
+                    "A autorização é para outro modelo; confira o plano e confirme de novo."
+                ),
+                "autorizado": autorizacao.modelo,
+                "modelo_de_imagem": nome_do_motor,
+                "nada_foi_criado": True,
+            },
+        )
+
+    if autorizacao.total_de_renders != plano.total_de_renders:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_TOTAL_DIVERGENTE",
+                "mensagem": (
+                    "A seleção mudou depois da confirmação: "
+                    f"autorizou {autorizacao.total_de_renders} imagem(ns) e este "
+                    f"pedido produz {plano.total_de_renders}."
+                ),
+                "autorizado": autorizacao.total_de_renders,
+                "total_de_renders": plano.total_de_renders,
+                "nada_foi_criado": True,
+            },
+        )
+
+    teto = autorizacao.teto_custo_usd
+    estimado = plano.custo_estimado_usd
+    if teto is not None and estimado is not None and estimado > teto:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_TETO_DE_CUSTO",
+                "mensagem": (
+                    f"A estimativa de US$ {estimado:.2f} passa do teto autorizado de "
+                    f"US$ {teto:.2f}."
+                ),
+                "custo_estimado_usd": estimado,
+                "teto_custo_usd": teto,
+                "custo_e_estimado": True,
+                "nada_foi_criado": True,
+            },
+        )
+
+
 def _plano_para_json(plano: PlanoDeGeracao) -> dict[str, Any]:
+    motor = _identidade_do_motor()
     return {
         "conceitos": plano.conceitos,
         "formatos": plano.formatos,
         "total_de_renders": plano.total_de_renders,
         "teto": plano.teto,
         "custo_estimado_usd": plano.custo_estimado_usd,
+        # O custo é SEMPRE derivado de tabela de referência do provider, que
+        # cobra por token e não publica dólar por chamada. Marcar a estimativa
+        # como estimativa é o que impede a tela de escrever um número como se
+        # fosse fatura — e `null` continua significando "não sei", nunca zero.
+        "custo_e_estimado": True,
+        "modelo_de_imagem": motor["modelo"],
+        "motor_configurado": motor["configurado"],
         "pode_executar": plano.pode_executar,
         "bloqueios": [b.model_dump() for b in plano.bloqueios],
         "briefings": [
@@ -491,6 +698,8 @@ async def gerar_imagens(
             "O motor de imagem não está configurado neste servidor; nada foi criado.",
             503,
         )
+
+    _conferir_autorizacao(pedido.autorizacao, plano, motor)
 
     # O executor do processo, com a trava de concorrência compartilhada — a
     # mesma que impede dois disparos do mesmo job pagarem duas vezes.

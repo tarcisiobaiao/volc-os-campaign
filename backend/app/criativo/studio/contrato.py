@@ -65,6 +65,31 @@ class BriefingDeImagem(ModeloEstrito):
     objetivo: str = Field(min_length=3, max_length=64)
 
 
+class AutorizacaoDeGasto(ModeloEstrito):
+    """O que a PESSOA confirmou ver antes do clique que gasta.
+
+    Não é telemetria e não é conveniência de interface: é o consentimento que a
+    rota de geração exige para despachar. Os três campos são exatamente os três
+    que o operador precisa ter lido — qual modelo vai rodar, quantos arquivos
+    saem, e até quanto ele autoriza — e o servidor RECALCULA os três antes de
+    aceitar. Um teto conferido no browser não é um teto.
+
+    ⚠️ `teto_custo_usd` limita uma ESTIMATIVA. O provider devolve contagem de
+    token, nunca dólar, então este número é derivado de tabela de referência e
+    não de fatura. O limite que o servidor consegue impor com exatidão é
+    `total_de_renders`: ele conta chamadas, e chamada é o que se paga. Prometer
+    controle financeiro exato aqui seria mentira; os dois campos existem juntos
+    porque um é verificável e o outro é declarado.
+    """
+
+    #: O identificador do motor tal como a tela o exibiu (ex.: "gemini:<modelo>").
+    modelo: str = Field(min_length=3, max_length=120)
+    #: Quantos arquivos o operador viu que seriam produzidos. Divergiu, recusa.
+    total_de_renders: int = Field(ge=1, le=MAX_RENDERS_POR_PEDIDO)
+    #: Teto autorizado, em dólares, sobre a ESTIMATIVA de referência.
+    teto_custo_usd: float | None = Field(default=None, ge=0)
+
+
 class PedidoDeGeracao(ModeloEstrito):
     """O que o cliente manda. Refs opacas; nada de credencial ou SQL."""
 
@@ -73,6 +98,10 @@ class PedidoDeGeracao(ModeloEstrito):
     selected_creative_refs: list[str] = Field(min_length=1, max_length=15)
     format_ids: list[str] = Field(min_length=1, max_length=12)
     brand_pack_ref: str | None = Field(default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$")
+    #: Ausente ao PLANEJAR (planejar não gasta) e obrigatória ao GERAR.
+    #: Deixá-la opcional no modelo é o que permite a mesma forma servir as duas
+    #: rotas; quem exige é a rota que despacha, e ela exige explicitamente.
+    autorizacao: AutorizacaoDeGasto | None = None
 
     @model_validator(mode="after")
     def sem_duplicatas(self) -> "PedidoDeGeracao":

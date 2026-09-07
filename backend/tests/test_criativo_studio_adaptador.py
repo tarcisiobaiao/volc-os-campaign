@@ -344,6 +344,8 @@ def test_um_job_recusa_misturar_conceitos():
 from fastapi import FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+from app.criativo.agente.caminhos import CaminhoInvalido  # noqa: E402
+from app.criativo.agente.caminhos import resolver as resolver_caminho  # noqa: E402
 from app.routers import criativos_agente  # noqa: E402
 from app.seguranca.identidade import Identidade, exigir_usuario  # noqa: E402
 
@@ -377,16 +379,35 @@ class RepoDeGeracao:
         }
 
     async def listar_decisoes(self, project_ref, owner_id):
-        return [
-            {
-                "path": f"/pecas/{ref}",
-                "decisao": "APROVADO",
-                "decision_ref": "crdec_" + "c" * 24,
-                "snapshot": {},
-                "created_at": "2026-09-07T12:00:00Z",
-            }
-            for ref in self.aprovadas
-        ]
+        """Decisões como o banco as guarda: com o snapshot REAL e o hash dele.
+
+        O dublê antes devolvia `snapshot: {}` e nenhum `snapshot_sha256`, o que
+        aprovava por caminho e nunca por conteúdo — justamente a falha que o
+        servidor passou a recusar. Resolver o caminho na saída deste lote é o
+        que faz o teste exercitar a autoridade de verdade em vez de uma
+        aprovação que o banco jamais produziria.
+        """
+        saida = self.saida.model_dump(mode="json")
+        decisoes = []
+        for ref in self.aprovadas:
+            caminho = f"/pecas/{ref}"
+            try:
+                instantaneo = resolver_caminho(saida, caminho)
+            except CaminhoInvalido:
+                instantaneo = {}
+            decisoes.append(
+                {
+                    "path": caminho,
+                    "decisao": "APROVADO",
+                    "decision_ref": "crdec_" + "c" * 24,
+                    "run_ref": RUN_REF,
+                    "scope": "PECA",
+                    "snapshot": instantaneo,
+                    "snapshot_sha256": criativos_agente._hash_valor(instantaneo),
+                    "created_at": "2026-09-07T12:00:00Z",
+                }
+            )
+        return decisoes
 
     async def listar_pontes(self, project_ref, owner_id):
         return self.pontes

@@ -15,6 +15,7 @@ de dentro da função, como `obter_motor` já faz em `routers/criativos.py`.
 """
 
 from .contrato import (
+    AutorizacaoDeGasto,
     MAX_RENDERS_POR_PEDIDO,
     Bloqueio,
     BriefingDeImagem,
@@ -25,6 +26,7 @@ from .contrato import (
 
 __all__ = [
     "MAX_RENDERS_POR_PEDIDO",
+    "AutorizacaoDeGasto",
     "Bloqueio",
     "BriefingDeImagem",
     "Linhagem",

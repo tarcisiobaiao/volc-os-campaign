@@ -157,12 +157,37 @@ export default function AssistenteCriativoPage() {
 
   const saida: SaidaDoAgente | null = runAtual?.output ?? null;
 
-  // Espelho das decisões confirmadas nesta sessão. A API de detalhe ainda não
-  // projeta decisões; após reload a produção continua dependendo do servidor.
-  const [aprovados, setAprovados] = useState<Set<string>>(new Set());
+  // ── Aprovação: a autoridade é o servidor ──────────────────────────────────
+  //
+  // Antes isto era um `Set` de sessão. As decisões estavam gravadas no banco e
+  // mesmo assim o F5 mostrava o lote inteiro como não revisado — o operador
+  // reaprovava por engano ou achava que tinha perdido o trabalho.
+  //
+  // `aprovacoes_validas` chega POR RUN e já foi conferida contra o conteúdo
+  // daquela run: uma peça refinada mantém a `ref` e perde a aprovação, porque
+  // o que foi aprovado era o texto anterior. Essa conta não pode ser feita
+  // aqui — a tela não tem o hash aprovado nem autoridade para comparar.
+  const aprovadosDoServidor = useMemo(() => {
+    const porRun = detalhe?.aprovacoes_validas ?? {};
+    return new Set(runAtual ? porRun[runAtual.run_ref] ?? [] : []);
+  }, [detalhe, runAtual]);
+
+  // Sobreposição otimista, viva só entre o clique e a releitura do detalhe.
+  // Sem ela o botão fica mudo por um round-trip; com ela, a resposta do
+  // servidor ainda é quem manda, porque a releitura zera este mapa.
+  const [decisoesPendentes, setDecisoesPendentes] = useState<Map<string, boolean>>(new Map());
   useEffect(() => {
-    setAprovados(new Set());
-  }, [projectRef]);
+    setDecisoesPendentes(new Map());
+  }, [projectRef, detalhe]);
+
+  const aprovados = useMemo(() => {
+    const efetivos = new Set(aprovadosDoServidor);
+    for (const [caminho, aprovado] of decisoesPendentes) {
+      if (aprovado) efetivos.add(caminho);
+      else efetivos.delete(caminho);
+    }
+    return efetivos;
+  }, [aprovadosDoServidor, decisoesPendentes]);
 
   const [plano, setPlano] = useState<PlanoDeGeracao | null>(null);
   const [planejando, setPlanejando] = useState(false);
@@ -241,7 +266,12 @@ export default function AssistenteCriativoPage() {
     setErroAcao(null);
     try {
       await registrarDecisao(projectRef, pedido);
-      setAprovados((atual) => { const proximo = new Set(atual); if (pedido.decisao === 'APROVADO') proximo.add(pedido.caminho); else proximo.delete(pedido.caminho); return proximo; });
+      setDecisoesPendentes((atual) =>
+        new Map(atual).set(pedido.caminho, pedido.decisao === 'APROVADO'),
+      );
+      // Reler é o que faz a decisão virar estado durável em vez de memória de
+      // aba: a partir daqui, recarregar a página mostra a mesma revisão.
+      await carregarDetalhe(projectRef);
     } catch (e) {
       const f = frase(e);
       if (f) setErroAcao(f);
@@ -290,8 +320,17 @@ export default function AssistenteCriativoPage() {
     }
   }
 
-  async function gerar(creativeRefs: string[], formatIds: string[]) {
-    if (!projectRef || !runAtual) return;
+  /**
+   * O ato que gasta. Exige um plano conferido e a confirmação explícita dele.
+   *
+   * `autorizacao` não é telemetria: é o consentimento que a rota exige, e o
+   * servidor reconfere os três campos contra o que ele mesmo mediu. Sem plano
+   * na tela não há o que confirmar, então não há como chegar aqui — e se a
+   * seleção mudou depois do plano, o servidor recusa com o total divergente em
+   * vez de gerar um lote que ninguém aprovou.
+   */
+  async function gerar(creativeRefs: string[], formatIds: string[], teto: number | null) {
+    if (!projectRef || !runAtual || !plano || !plano.modelo_de_imagem) return;
     setGerando(true);
     setErroAcao(null);
     try {
@@ -299,6 +338,11 @@ export default function AssistenteCriativoPage() {
         run_ref: runAtual.run_ref,
         selected_creative_refs: creativeRefs,
         format_ids: formatIds,
+        autorizacao: {
+          modelo: plano.modelo_de_imagem,
+          total_de_renders: plano.total_de_renders,
+          teto_custo_usd: teto,
+        },
       });
       await carregarGeracoes(projectRef);
       setAviso('Pedido registrado. Os arquivos aparecem aqui conforme o motor concluir.');

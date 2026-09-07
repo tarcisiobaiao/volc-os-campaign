@@ -33,12 +33,21 @@ export interface PainelDeProducaoProps {
   gerando: boolean;
   erro?: string | null;
   onPlanejar: (creativeRefs: string[], formatIds: string[]) => void;
-  onGerar: (creativeRefs: string[], formatIds: string[]) => void;
+  onGerar: (creativeRefs: string[], formatIds: string[], tetoUsd: number | null) => void;
 }
 
 function moeda(v: number | null | undefined): string {
   if (v === null || v === undefined) return 'não publicado pelo motor';
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'USD' });
+}
+
+/** Teto sugerido: a estimativa arredondada PARA CIMA, nunca para baixo.
+ *
+ * Arredondar para baixo produziria um teto abaixo do próprio número que a tela
+ * acabou de mostrar, e o servidor recusaria o clique que ele mesmo sugeriu. */
+function tetoSugerido(estimado: number | null): string {
+  if (estimado === null) return '';
+  return (Math.ceil(estimado * 100) / 100).toFixed(2);
 }
 
 export function PainelDeProducao({
@@ -60,6 +69,24 @@ export function PainelDeProducao({
   const [formatos, setFormatos] = useState<string[]>(['1x1', '4x5', '9x16']);
   const [selecaoConferida, setSelecaoConferida] = useState<string | null>(null);
   const assinatura = JSON.stringify([selecionadas, formatos]);
+
+  // ── A autorização de gasto ────────────────────────────────────────────────
+  const [teto, setTeto] = useState<string>('');
+  const [autorizado, setAutorizado] = useState(false);
+
+  // Qualquer mudança de plano ou de seleção derruba a confirmação. Autorizar
+  // seis imagens e gerar nove porque a caixa continuou marcada é exatamente o
+  // gasto sem decisão que esta tela existe para impedir.
+  useEffect(() => {
+    setAutorizado(false);
+  }, [assinatura, plano]);
+
+  useEffect(() => {
+    setTeto(tetoSugerido(plano?.custo_estimado_usd ?? null));
+  }, [plano]);
+
+  const tetoNumero = teto.trim() === '' ? null : Number(teto.replace(',', '.'));
+  const tetoValido = tetoNumero === null || (Number.isFinite(tetoNumero) && tetoNumero >= 0);
 
   // Uma peça que perdeu a aprovação sai da seleção sozinha: manter selecionado
   // algo que não pode gerar deixaria o total mentindo sobre o que vai sair.
@@ -217,6 +244,18 @@ export function PainelDeProducao({
             </div>
           </dl>
 
+          <p className="mt-3 text-xs text-muted-foreground">
+            Modelo:{' '}
+            <span className="font-mono text-foreground">
+              {plano.modelo_de_imagem ?? 'nenhum motor configurado neste servidor'}
+            </span>
+          </p>
+          <p className="mt-1 max-w-[70ch] text-xs text-muted-foreground">
+            {plano.custo_estimado_usd === null
+              ? 'O motor não publica preço por imagem, então não há estimativa. O limite que este servidor consegue impor com exatidão é a quantidade de imagens acima.'
+              : 'Este valor é uma ESTIMATIVA de tabela de referência, não uma fatura: o provedor cobra por token e não devolve o preço da chamada. O limite exato que o servidor impõe é a quantidade de imagens.'}
+          </p>
+
           {plano.bloqueios.length > 0 && (
             <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/5 p-3">
               <p className="flex items-center gap-2 text-sm font-medium text-destructive">
@@ -249,17 +288,75 @@ export function PainelDeProducao({
             </p>
           )}
 
+          {plano.pode_executar && (
+            <div className="mt-4 rounded-md border border-border bg-card p-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[9rem]">
+                  <Label htmlFor="teto-de-custo" className="text-xs">
+                    Teto autorizado (US$)
+                  </Label>
+                  <input
+                    id="teto-de-custo"
+                    type="text"
+                    inputMode="decimal"
+                    value={teto}
+                    onChange={(e) => setTeto(e.target.value)}
+                    placeholder="sem teto"
+                    aria-invalid={!tetoValido}
+                    className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm tabular-nums"
+                  />
+                </div>
+                <p className="flex-1 text-xs text-muted-foreground">
+                  Em branco significa sem teto financeiro declarado — a quantidade de
+                  imagens continua limitando o gasto.
+                </p>
+              </div>
+
+              <label className="mt-3 flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                  checked={autorizado}
+                  disabled={!tetoValido}
+                  onChange={(e) => setAutorizado(e.target.checked)}
+                />
+                <span className="text-sm text-foreground">
+                  Autorizo produzir {plano.total_de_renders} imagem(ns) com{' '}
+                  <span className="font-mono text-xs">{plano.modelo_de_imagem}</span>
+                  {tetoNumero !== null ? `, até US$ ${tetoNumero.toFixed(2)}` : ', sem teto declarado'}.
+                </span>
+              </label>
+              {!tetoValido && (
+                <p role="alert" className="mt-2 text-xs text-destructive">
+                  O teto precisa ser um número em dólares, ou ficar em branco.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="mt-4">
             <Button
               type="button"
-              disabled={!plano.pode_executar || gerando || planejando || !podePedirPlano}
-              onClick={() => onGerar(selecionadas, formatos)}
+              disabled={
+                !plano.pode_executar ||
+                gerando ||
+                planejando ||
+                !podePedirPlano ||
+                !autorizado ||
+                !tetoValido
+              }
+              onClick={() => onGerar(selecionadas, formatos, tetoNumero)}
             >
               <ImageIcon className="h-4 w-4" aria-hidden />
               {gerando
                 ? 'Mandando produzir…'
                 : `Gerar ${plano.total_de_renders} imagem(ns)`}
             </Button>
+            {!autorizado && plano.pode_executar && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Confirme a autorização acima para liberar o botão.
+              </p>
+            )}
           </div>
         </section>
       )}
