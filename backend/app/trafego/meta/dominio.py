@@ -11,7 +11,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -200,6 +200,45 @@ def texto_opcional(valor: Any) -> str | None:
     return texto or None
 
 
+def booleano_opcional(valor: Any, *, campo: str = "flag") -> bool | None:
+    """Tri-state honesto para uma flag da Graph: AUSENTE nao e ``False``.
+
+    ## O defeito que isto conserta (A12)
+
+    ``adaptador.py`` classificava disponibilidade com ``bool(linha.get(...))``.
+    ``dict.get`` devolve ``None`` tanto para a chave AUSENTE quanto para o valor
+    ``null``, e ``bool(None)`` e ``False``. Ou seja: quando a Meta NAO devolvia
+    ``is_archived`` — por permissao insuficiente, por mascara de campos, por
+    mudanca de versao do node — o codigo lia "nao esta arquivada" e o item caia
+    em ``AVAILABLE_*``. "Nao sei" era APRESENTADO ao operador como "disponivel",
+    que e a pior das tres respostas possiveis: e a unica que autoriza uma acao.
+
+    ``None`` != ``False``:
+
+    * ``False`` e uma AFIRMACAO do provedor ("li a flag; ela e falsa").
+    * ``None`` e a AUSENCIA de afirmacao ("a flag nao veio; nao posso concluir").
+
+    Por isso nao existe default para ``False`` aqui, e nao existe coercao
+    silenciosa: o que nao for booleano de verdade nem uma das strings que a
+    Graph documenta e RECUSADO. Um ``2``, um ``"talvez"`` ou um ``"yes"``
+    significam que o contrato mudou — e um contrato mudado deve parar a leitura,
+    nao virar um palpite.
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, bool):
+        return valor
+    if isinstance(valor, str):
+        texto = valor.strip().lower()
+        if texto in ("true", "1"):
+            return True
+        if texto in ("false", "0"):
+            return False
+    raise ContratoMetaInvalido(
+        f"{campo} Meta precisa ser booleano ou 'true'/'false'/'1'/'0'"
+    )
+
+
 def decimal_opcional(valor: Any, *, campo: str) -> Decimal | None:
     if valor is None or valor == "":
         return None
@@ -207,6 +246,257 @@ def decimal_opcional(valor: Any, *, campo: str) -> Decimal | None:
         return Decimal(str(valor))
     except Exception as exc:  # pragma: no cover - branch defensive
         raise ContratoMetaInvalido(f"{campo} precisa ser decimal") from exc
+
+
+# ---------------------------------------------------------------------------
+# CATALOGOS SELECIONAVEIS (T04): TRI-STATE, FRESCOR E VOCABULARIO FECHADO
+# ---------------------------------------------------------------------------
+# O criador precisa ESCOLHER de listas reais — publicos existentes, fontes de
+# mensuracao, localidades. Escolher errado custa dinheiro, e a fonte mais barata
+# de escolha errada e um estado otimista: um item que a Meta nao soube descrever
+# aparecendo como "disponivel". Todo o vocabulario abaixo existe para separar
+# tres respostas que o codigo antigo achatava em duas: SIM, NAO e NAO SEI.
+
+#: Estado de um item cuja disponibilidade NAO pode ser concluida da resposta.
+#: E deliberadamente distinto de qualquer ``AVAILABLE_*``: um item UNKNOWN pode
+#: ser exibido, mas nao pode ser tratado como elegivel para otimizacao.
+ESTADO_DESCONHECIDO = "UNKNOWN"
+
+#: Item cujo CONTRATO quebrou (id ilegivel, documento que nao e dict). Nos
+#: catalogos novos ele vira uma LINHA com este estado em vez de derrubar a
+#: pagina inteira — mas e contado a parte no envelope, para que "li tudo" nunca
+#: se confunda com "li o que deu".
+ESTADO_INVALIDO = "INVALID"
+
+#: Disponivel e ja disparou: a Meta devolveu ``last_fired_time`` com valor.
+ESTADO_DISPONIVEL_COM_DISPARO = "AVAILABLE_FIRED"
+#: Disponivel e nunca disparou: ver ``classificar_frescor`` para a prova.
+ESTADO_DISPONIVEL_SEM_DISPARO = "AVAILABLE_NEVER_FIRED"
+#: Disponivel, mas o carimbo de ultimo disparo NAO veio e ha evidencia de que
+#: houve disparo. Nao e "nunca disparou": e "nao sei quando foi a ultima vez".
+ESTADO_FRESCOR_DESCONHECIDO = "UNKNOWN_FRESHNESS"
+ESTADO_ARQUIVADO = "ARCHIVED"
+ESTADO_INDISPONIVEL = "UNAVAILABLE"
+ESTADO_DISPONIVEL = "AVAILABLE"
+
+ESTADOS_DE_CONVERSAO = (
+    ESTADO_DISPONIVEL_COM_DISPARO, ESTADO_DISPONIVEL_SEM_DISPARO,
+    ESTADO_FRESCOR_DESCONHECIDO, ESTADO_ARQUIVADO, ESTADO_INDISPONIVEL,
+    ESTADO_DESCONHECIDO, ESTADO_INVALIDO,
+)
+ESTADOS_DE_FONTE_DE_MENSURACAO = ESTADOS_DE_CONVERSAO
+ESTADOS_DE_PUBLICO = (
+    ESTADO_DISPONIVEL, ESTADO_INDISPONIVEL, ESTADO_DESCONHECIDO, ESTADO_INVALIDO,
+)
+ESTADOS_DE_GEOLOCALIZACAO = (ESTADO_DISPONIVEL, ESTADO_INVALIDO)
+
+#: Vocabulario FECHADO da razao do desconhecimento. Um motivo livre viraria
+#: prosa que ninguem consegue contar nem agregar; um motivo fechado permite
+#: dizer "37 itens UNKNOWN, todos por IS_ARCHIVED_AUSENTE" — que e um pedido de
+#: permissao, nao um misterio.
+MOTIVO_IS_ARCHIVED_AUSENTE = "IS_ARCHIVED_AUSENTE"
+MOTIVO_IS_UNAVAILABLE_AUSENTE = "IS_UNAVAILABLE_AUSENTE"
+MOTIVO_LAST_FIRED_AUSENTE = "LAST_FIRED_TIME_AUSENTE"
+MOTIVO_DELIVERY_STATUS_AUSENTE = "DELIVERY_STATUS_AUSENTE"
+MOTIVO_SOURCE_KIND_INDISTINGUIVEL = "SOURCE_KIND_INDISTINGUIVEL"
+MOTIVO_SOURCE_KIND_NAO_RECONHECIDO = "SOURCE_KIND_NAO_RECONHECIDO"
+MOTIVO_CONTRATO_DO_ITEM_INVALIDO = "CONTRATO_DO_ITEM_INVALIDO"
+MOTIVOS_DE_DESCONHECIMENTO = (
+    MOTIVO_IS_ARCHIVED_AUSENTE, MOTIVO_IS_UNAVAILABLE_AUSENTE,
+    MOTIVO_LAST_FIRED_AUSENTE, MOTIVO_DELIVERY_STATUS_AUSENTE,
+    MOTIVO_SOURCE_KIND_INDISTINGUIVEL, MOTIVO_SOURCE_KIND_NAO_RECONHECIDO,
+    MOTIVO_CONTRATO_DO_ITEM_INVALIDO,
+)
+
+#: PIXEL e DATASET sao tipos DIFERENTES de fonte de mensuracao, nao sinonimos.
+#: A edge ``act_{id}/adspixels`` da v26 devolve o node AdsPixel sem discriminador
+#: — por isso o kind honesto, na ausencia de um campo que o diga, e UNKNOWN.
+#: Achatar os dois no rotulo "pixel" faria o operador escolher uma fonte que a
+#: receita de conversao pode nao aceitar.
+KIND_PIXEL = "PIXEL"
+KIND_DATASET = "DATASET"
+KINDS_DE_FONTE_DE_MENSURACAO = (KIND_PIXEL, KIND_DATASET, ESTADO_DESCONHECIDO)
+
+#: ``location_types`` aceitos no pedido de busca geografica. A lista e curta e
+#: fechada de proposito: um tipo nao registrado aqui produz uma chave que o
+#: compilador nao sabe posicionar em ``targeting.geo_locations``.
+TIPOS_DE_GEOLOCALIZACAO = (
+    "country", "region", "city", "zip", "geo_market", "electoral_district",
+    "country_group", "neighborhood", "subneighborhood", "subcity",
+    "metro_area", "large_geo_area", "medium_geo_area", "small_geo_area",
+)
+
+#: Tipos cuja referencia opaca o servidor sabe RE-derivar a partir do catalogo
+#: da conta. Fora desta lista nao existe edge conhecida — e adivinhar uma edge
+#: e como adivinhar um id.
+TIPOS_RESOLVIVEIS_POR_REFERENCIA = ("custom_audience", "pixel", "custom_conversion")
+
+#: Frescor e DADO, nao cache. Ver ``frescor_do_catalogo``.
+CATALOGO_VIGENTE = "VIGENTE"
+CATALOGO_OBSOLETO = "OBSOLETO"
+ESTADOS_DO_CATALOGO = (CATALOGO_VIGENTE, CATALOGO_OBSOLETO)
+#: TTL LOCAL, politica desta base — nao e um numero publicado pela Meta.
+TTL_PADRAO_DO_CATALOGO_S = 300
+#: Geografia muda em escala de meses; publico e pixel mudam em escala de horas.
+TTL_PADRAO_DO_CATALOGO_GEO_S = 86_400
+
+
+def motivo_de_desconhecimento(motivo: str) -> str:
+    """Guarda do vocabulario fechado: motivo nao registrado e erro de contrato."""
+    if motivo not in MOTIVOS_DE_DESCONHECIMENTO:
+        raise ContratoMetaInvalido(f"motivo de desconhecimento nao registrado: {motivo!r}")
+    return motivo
+
+
+def classificar_disponibilidade(
+    *,
+    arquivada: bool | None,
+    indisponivel: bool | None,
+    is_archived_esperado: bool = True,
+) -> tuple[str, str | None]:
+    """Disponibilidade tri-state a partir de flags que podem NAO ter vindo.
+
+    Devolve ``(estado, motivo_desconhecido)``.
+
+    ## A invariante
+
+    ``AVAILABLE`` exige DUAS afirmacoes explicitas do provedor: arquivada e
+    ``False`` E indisponivel e ``False``. Falta uma? O estado e ``UNKNOWN``.
+    Nenhuma combinacao com flag ausente pode produzir ``AVAILABLE_*``.
+
+    ## A ordem, e por que ela nao e a ordem literal do enunciado
+
+    A evidencia POSITIVA e decisiva e checada primeiro: se a Meta disse
+    ``is_archived=true``, o item esta arquivado — nao saber ``is_unavailable``
+    nao torna esse fato menos verdadeiro, e degradar para ``UNKNOWN`` apagaria
+    do operador a unica informacao util da linha. A invariante que importa
+    ("ausencia nunca vira disponivel") continua valida: ``UNAVAILABLE`` e
+    ``ARCHIVED`` sao MAIS restritivos que ``UNKNOWN``, nunca menos.
+
+    ## ``is_archived_esperado``
+
+    O node ``AdsPixel`` da v26 nao possui ``is_archived`` (so ``is_unavailable``).
+    Exigir um campo que o node nao tem marcaria TODO pixel como ``UNKNOWN`` —
+    ruido que ensina o operador a ignorar o estado. Ausencia so e ignorancia
+    quando o campo era ESPERADO; por isso o chamador declara o que esperava.
+    """
+    if arquivada is True:
+        return ESTADO_ARQUIVADO, None
+    if indisponivel is True:
+        return ESTADO_INDISPONIVEL, None
+    if is_archived_esperado and arquivada is None:
+        return ESTADO_DESCONHECIDO, motivo_de_desconhecimento(MOTIVO_IS_ARCHIVED_AUSENTE)
+    if indisponivel is None:
+        return ESTADO_DESCONHECIDO, motivo_de_desconhecimento(MOTIVO_IS_UNAVAILABLE_AUSENTE)
+    return ESTADO_DISPONIVEL, None
+
+
+def classificar_frescor(
+    *,
+    ultimo_presente: bool,
+    ultimo: str | None,
+    primeiro: str | None,
+    corroborador_disponivel: bool = True,
+) -> tuple[str, str | None]:
+    """"Nunca disparou" e "nao sei quando disparou" sao respostas diferentes.
+
+    Devolve ``(estado, motivo_desconhecido)``.
+
+    ``adaptador.py:264`` decidia com ``elif ultimo is None:`` — e ``None`` ali
+    cobria os dois casos, porque ``dict.get`` nao distingue chave ausente de
+    valor nulo. Um item cujo ``last_fired_time`` a Meta simplesmente nao
+    devolveu era apresentado como ``AVAILABLE_NEVER_FIRED``, isto e, como uma
+    AFIRMACAO sobre o historico do pixel que ninguem tinha feito.
+
+    ## Como a ausencia e desambiguada aqui
+
+    A Graph OMITE do corpo o campo cujo valor e nulo, mesmo quando ele foi
+    pedido em ``fields``. Logo, para um objeto que nunca disparou, ``first`` e
+    ``last`` somem JUNTOS — essa e a assinatura coerente de "nunca disparou".
+    Ja um corpo com ``first_fired_time`` presente e ``last_fired_time`` ausente
+    e uma CONTRADICAO: o objeto comprovadamente disparou ao menos uma vez, e
+    dizer "nunca disparou" seria mentir. Esse caso, e so ele, vira
+    ``UNKNOWN_FRESHNESS``.
+
+    Quando o campo VEM no corpo com valor vazio/nulo explicito, a resposta e do
+    provedor e nao precisa de corroboracao: ``AVAILABLE_NEVER_FIRED``.
+
+    ``corroborador_disponivel=False`` desliga essa desambiguacao para nodes que
+    NAO possuem o campo corroborador — e ai toda ausencia vira
+    ``UNKNOWN_FRESHNESS``, porque nao ha nada com que cruzar.
+    """
+    if ultimo is not None:
+        return ESTADO_DISPONIVEL_COM_DISPARO, None
+    if ultimo_presente:
+        return ESTADO_DISPONIVEL_SEM_DISPARO, None
+    if not corroborador_disponivel:
+        # Sem campo corroborador no node (caso do `AdsPixel`, que nao tem
+        # `first_fired_time`), a ausencia e simplesmente indecifravel. Aqui
+        # nao ha assinatura coerente para invocar: a resposta honesta e "nao
+        # sei", e nunca "nunca disparou".
+        return ESTADO_FRESCOR_DESCONHECIDO, motivo_de_desconhecimento(
+            MOTIVO_LAST_FIRED_AUSENTE)
+    if primeiro is not None:
+        return ESTADO_FRESCOR_DESCONHECIDO, motivo_de_desconhecimento(
+            MOTIVO_LAST_FIRED_AUSENTE)
+    return ESTADO_DISPONIVEL_SEM_DISPARO, None
+
+
+def estado_do_catalogo(
+    observado_em: datetime, ttl_s: int, *, agora: datetime | None = None,
+) -> str:
+    """VIGENTE enquanto dentro do TTL; OBSOLETO fora dele. Nunca "quase"."""
+    momento = instante_utc(observado_em, campo="observado_em")
+    if ttl_s < 0:
+        raise ContratoMetaInvalido("ttl_s do catalogo nao pode ser negativo")
+    referencia = agora or datetime.now(timezone.utc)
+    referencia = instante_utc(referencia, campo="agora")
+    decorrido = (referencia - momento).total_seconds()
+    return CATALOGO_VIGENTE if decorrido <= ttl_s else CATALOGO_OBSOLETO
+
+
+def frescor_do_catalogo(
+    observado_em: datetime, ttl_s: int, *, agora: datetime | None = None,
+) -> dict[str, Any]:
+    """Frescor como DADO no envelope — nao como cache invisivel.
+
+    Esta lane nao tem cache nem TTL de armazenamento, e este bloco NAO cria um.
+    Um cache invisivel resolve o custo da chamada e cria um problema pior: o
+    operador ve uma lista sem saber de QUANDO ela e, e uma re-busca silenciosa
+    troca a lista debaixo de uma selecao ja feita. Aqui o instante da observacao
+    e o prazo de validade viajam junto dos itens, e uma leitura fora do prazo
+    aparece MARCADA como ``OBSOLETO`` — visivel, com os itens ainda a vista,
+    nunca escondida e nunca re-buscada em silencio.
+    """
+    momento = instante_utc(observado_em, campo="observado_em")
+    return {
+        "observado_em": momento.isoformat(),
+        "ttl_s": int(ttl_s),
+        "expira_em": (momento + timedelta(seconds=int(ttl_s))).isoformat(),
+        "estado_do_catalogo": estado_do_catalogo(momento, ttl_s, agora=agora),
+    }
+
+
+def reavaliar_frescor(
+    envelope: Mapping[str, Any], *, agora: datetime | None = None,
+) -> dict[str, Any]:
+    """Re-carimba ``estado_do_catalogo`` de um envelope JA lido, sem rede.
+
+    E o unico caminho legitimo para um envelope virar ``OBSOLETO``: recalcular a
+    partir do instante que ele proprio carrega. Os itens permanecem intactos —
+    marcar e diferente de esconder, e diferente de buscar de novo.
+    """
+    observado = envelope.get("observado_em")
+    ttl = envelope.get("ttl_s")
+    if not isinstance(observado, str) or not isinstance(ttl, int):
+        raise ContratoMetaInvalido("envelope de catalogo sem observado_em/ttl_s")
+    try:
+        momento = datetime.fromisoformat(observado)
+    except ValueError:
+        raise ContratoMetaInvalido("observado_em do catalogo nao e ISO-8601") from None
+    novo = dict(envelope)
+    novo["estado_do_catalogo"] = estado_do_catalogo(momento, ttl, agora=agora)
+    return novo
 
 
 @dataclass(frozen=True)

@@ -459,3 +459,105 @@ async def remover_configuracao(
     except ConfiguracaoLocalIndisponivel as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from None
     return {"removido": removido}
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Catálogos selecionáveis (T04) — leitura escopada por conta, POR ATO EXPLÍCITO
+#
+# ⚠️ Elas ficam AQUI, no plano de leitura, e não junto do compilador: nenhuma
+# delas escreve nada, em lugar nenhum. O que elas fazem é responder "o que
+# existe nesta conta" para que o criador possa OFERECER escolhas em vez de
+# fixá-las na receita.
+#
+# ⚠️ E são POST com corpo, não GET com query, pelo mesmo motivo que
+# `/preflight` é: a referência opaca da conta é dado de operação, e uma query
+# string entra em log de proxy, histórico do navegador e referer.
+#
+# ⚠️ NADA É CHAMADO AO MONTAR A PÁGINA. O contrato desta missão é explícito
+# ("Catálogo real só consultado após seleção explícita de conta"), e o custo é
+# real: o preflight desta lane já dispara nove requisições paginadas por
+# clique. Um catálogo que carregasse sozinho multiplicaria isso por conta
+# visitada.
+# ═════════════════════════════════════════════════════════════════════════════
+
+class PedidoDeCatalogo(BaseModel):
+    referencia_opaca: str = Field(min_length=12, max_length=80)
+
+
+class PedidoDeGeografia(BaseModel):
+    referencia_opaca: str = Field(min_length=12, max_length=80)
+    termo: str = Field(min_length=2, max_length=120)
+    tipos: list[str] = Field(default_factory=lambda: ["country", "region", "city", "zip"], max_length=4)
+    pais: str | None = Field(default=None, min_length=2, max_length=2)
+
+
+async def _catalogo(quem: Identidade, metodo: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Abre o cliente, chama UM leitor de catálogo e devolve o envelope dele.
+
+    ⚠️ O envelope vem do adaptador inteiro, sem reempacotamento. Ele já carrega
+    a distinção entre vazio-completo, permissão negada, timeout, parcial e
+    obsoleto — cinco estados diferentes que uma rota "simplificadora" achataria
+    em "nenhum resultado", que é exatamente o defeito que `A11` proíbe.
+    """
+    segredo = SegredoEfemero(_credencial_salva(quem).token)
+    async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+        adaptador = AdaptadorMetaSomenteLeitura(cliente)
+        try:
+            return dict(await getattr(adaptador, metodo)(*args, segredo=segredo, **kwargs))
+        except dom.ContratoMetaInvalido as exc:
+            # Referência que não pertence a esta credencial. 404, e a mesma
+            # resposta para "não existe" e "não é sua".
+            raise HTTPException(status_code=404, detail=str(exc)) from None
+
+
+@router.post("/catalogos/mensuracao")
+async def catalogo_de_mensuracao(
+    payload: PedidoDeCatalogo,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    """Pixels/datasets e conversões personalizadas desta conta.
+
+    ⚠️ Os dois catálogos viajam JUNTOS mas SEPARADOS: pixel e conversão
+    personalizada são objetos diferentes, e achatá-los numa lista só faria o
+    seletor de otimização oferecer um no lugar do outro.
+    """
+    _exigir_host_local(request)
+    fontes = await _catalogo(
+        quem, "catalogo_de_fontes_de_mensuracao", payload.referencia_opaca)
+    conversoes = await _catalogo(
+        quem, "catalogo_de_conversoes_personalizadas", payload.referencia_opaca)
+    return {"ok": True, "fontes": fontes, "conversoes": conversoes}
+
+
+@router.post("/catalogos/publicos")
+async def catalogo_de_publicos(
+    payload: PedidoDeCatalogo,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    """Públicos personalizados e semelhantes que JÁ EXISTEM nesta conta.
+
+    ⚠️ Selecionar daqui NUNCA cria público nem semelhante, e nenhuma lista de
+    membros atravessa: o que volta são metadados do objeto.
+    """
+    _exigir_host_local(request)
+    return await _catalogo(quem, "catalogo_de_publicos", payload.referencia_opaca)
+
+
+@router.post("/catalogos/geografia")
+async def catalogo_de_geografia(
+    payload: PedidoDeGeografia,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    """Busca de lugares no catálogo da Meta.
+
+    ⚠️ A `key` que volta É a chave canônica que o compilador usa. Texto livre
+    digitado pelo operador jamais vira key — se virasse, uma segmentação
+    inventada teria cara de escolha dele.
+    """
+    _exigir_host_local(request)
+    return await _catalogo(
+        quem, "catalogo_de_geolocalizacoes", payload.referencia_opaca, payload.termo,
+        tipos=tuple(payload.tipos), pais=payload.pais)

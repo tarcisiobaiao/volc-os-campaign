@@ -7,9 +7,10 @@ keeps tests hermetic and prevents the package from touching Meta by import.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import urlparse
 
 import httpx
@@ -253,18 +254,42 @@ class AdaptadorMetaSomenteLeitura:
             except dom.ContratoMetaInvalido as exc:
                 raise ErroDeLeituraMeta(
                     "META_INVALID_RESPONSE", str(exc), True) from None
-            arquivada = bool(linha.get("is_archived"))
-            indisponivel = bool(linha.get("is_unavailable"))
+            # A12 — o achado central deste pacote. As duas linhas antigas eram
+            # `bool(linha.get("is_archived"))` / `bool(linha.get("is_unavailable"))`.
+            # `dict.get` devolve None para chave AUSENTE e para valor nulo, e
+            # `bool(None)` e False: uma conversao cuja flag a Meta nao devolveu
+            # — por permissao, por mascara de `fields`, por mudanca de node —
+            # era classificada como NAO arquivada e caia em AVAILABLE_*. O
+            # operador via "disponivel" onde a resposta correta era "nao sei",
+            # e so uma das duas autoriza selecionar a conversao para otimizar.
+            # Ver dominio.booleano_opcional (None != False) e
+            # dominio.classificar_disponibilidade (AVAILABLE exige DUAS
+            # afirmacoes explicitas).
+            try:
+                arquivada = dom.booleano_opcional(
+                    linha.get("is_archived"), campo="custom_conversion.is_archived")
+                indisponivel = dom.booleano_opcional(
+                    linha.get("is_unavailable"),
+                    campo="custom_conversion.is_unavailable")
+            except dom.ContratoMetaInvalido as exc:
+                raise ErroDeLeituraMeta(
+                    "META_INVALID_RESPONSE", str(exc), True) from None
             primeiro = dom.texto_opcional(linha.get("first_fired_time"))
             ultimo = dom.texto_opcional(linha.get("last_fired_time"))
-            if arquivada:
-                estado = "ARCHIVED"
-            elif indisponivel:
-                estado = "UNAVAILABLE"
-            elif ultimo is None:
-                estado = "AVAILABLE_NEVER_FIRED"
-            else:
-                estado = "AVAILABLE_FIRED"
+            estado, motivo_desconhecido = dom.classificar_disponibilidade(
+                arquivada=arquivada, indisponivel=indisponivel)
+            if estado == dom.ESTADO_DISPONIVEL:
+                # adaptador.py:264 tinha o defeito irmao: `elif ultimo is None`
+                # confundia "nunca disparou" com "last_fired_time nao veio".
+                # `custom_conversion` tem `first_fired_time`, entao a ausencia
+                # dos DOIS carimbos ainda e a assinatura coerente de "nunca
+                # disparou"; `first` presente com `last` ausente e contradicao,
+                # e vira UNKNOWN_FRESHNESS.
+                estado, motivo_desconhecido = dom.classificar_frescor(
+                    ultimo_presente="last_fired_time" in linha,
+                    ultimo=ultimo,
+                    primeiro=primeiro,
+                )
             saida.append({
                 "referencia_opaca": dom.referencia_opaca_objeto(
                     conta, "custom_conversion", identificador),
@@ -276,8 +301,653 @@ class AdaptadorMetaSomenteLeitura:
                 "first_fired_time": primeiro,
                 "last_fired_time": ultimo,
                 "estado": estado,
+                "motivo_desconhecido": motivo_desconhecido,
             })
         return tuple(saida), paginas
+
+    # =====================================================================
+    # CATALOGOS SELECIONAVEIS (T04)
+    # =====================================================================
+    # O criador precisa ESCOLHER de listas reais: publicos que ja existem,
+    # fontes de mensuracao que ja existem, localidades que a Meta reconhece.
+    # Tres regras valem para tudo abaixo:
+    #
+    # 1. So GET. Selecionar do catalogo NAO cria publico, NAO cria lookalike,
+    #    NAO cria pixel e NAO cria custom conversion — essas mutacoes continuam
+    #    ausentes desta base, e nao ha caminho daqui ate elas.
+    # 2. So METADADO do objeto. Nenhuma lista de membros, nenhum dado de
+    #    pessoa, nenhum PII atravessa: o item devolvido tem chaves fixas, e o
+    #    que a Meta mandar fora dessa lista fica no corpo da resposta HTTP e
+    #    morre ali.
+    # 3. Estado honesto por item, contagem honesta por pagina. Um item que nao
+    #    da para classificar vira UNKNOWN, nunca AVAILABLE; um item cujo
+    #    contrato quebrou vira INVALID e e CONTADO no envelope, para que "li
+    #    tudo" nunca se confunda com "li o que deu".
+
+    #: Chaves publicas de uma fonte de mensuracao. A lista existe para ser
+    #: comparada em teste: nenhum campo novo entra sem passar por aqui.
+    CHAVES_DE_FONTE_DE_MENSURACAO = (
+        "referencia_opaca", "id_mascarado", "nome", "source_kind",
+        "motivo_do_source_kind", "last_fired_time", "estado",
+        "motivo_desconhecido", "pertence_a_conta_lida",
+    )
+    #: Chaves publicas de um publico personalizado. Note o que NAO esta aqui:
+    #: nada de `users`, `customer_file_source`, `data_source`, `rule`, hash,
+    #: e-mail, telefone ou qualquer contagem por pessoa.
+    CHAVES_DE_PUBLICO = (
+        "referencia_opaca", "id_mascarado", "nome", "subtype",
+        "delivery_status_code", "delivery_status_descricao",
+        "operation_status_code", "operation_status_descricao",
+        "tamanho_aproximado_min", "tamanho_aproximado_max",
+        "estado", "motivo_desconhecido", "pertence_a_conta_lida",
+    )
+    #: Chaves publicas de uma localidade. `key` e a UNICA identidade que o
+    #: compilador pode usar em `targeting.geo_locations`.
+    CHAVES_DE_GEOLOCALIZACAO = (
+        "key", "name", "type", "country_code", "region",
+        "supports_region", "supports_city", "estado", "motivo_desconhecido",
+    )
+
+    async def ler_fontes_de_mensuracao(
+        self, conta_externa: str, segredo: SegredoEfemero,
+    ) -> tuple[tuple[Mapping[str, Any], ...], int]:
+        """Catalogo de pixels/datasets da conta — as LINHAS, nao a contagem.
+
+        ## O defeito que isto conserta (F22)
+
+        `preflight_conta` (adaptador.py:137-151) ja lia `act_{id}/adspixels`
+        com `fields='id,name'` e JOGAVA AS LINHAS FORA, guardando apenas
+        `len(linhas)`; a exposicao em adaptador.py:216 e literalmente
+        `'pixels_ou_datasets': <int>`. Um numero nao e um catalogo: com "3" na
+        tela o operador sabe que existem tres fontes e nao consegue escolher
+        nenhuma, e o compilador nao tem como montar `promoted_object`.
+
+        ## PIXEL e DATASET nao sao sinonimos
+
+        Sao tipos diferentes de fonte, e uma receita de conversao pode aceitar
+        um e recusar o outro. A edge `adspixels` da v26 devolve o node
+        `AdsPixel` SEM discriminador de kind — entao, quando o corpo nao traz um
+        campo que diga qual e, `source_kind` fica `UNKNOWN` com
+        `motivo_do_source_kind` explicando por que. Achatar os dois em "pixel"
+        seria inventar um fato que a resposta nao contem.
+
+        ## Sobre o namespace da referencia opaca
+
+        O handle usa `tipo='pixel'` porque esse e o nome da EDGE lida
+        (`act_{id}/adspixels`), nao uma afirmacao sobre o kind. Se o handle
+        seguisse o kind, o MESMO objeto trocaria de referencia no dia em que a
+        Meta passasse a discriminar — e toda selecao ja gravada apontaria para
+        o nada. O kind viaja como DADO, ao lado.
+        """
+        conta = dom.conta_canonica(conta_externa)
+        linhas, paginas = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{conta}/adspixels",
+            segredo,
+            # `is_archived` NAO e pedido: o node `AdsPixel` nao tem esse campo.
+            # Pedir um campo inexistente faz a Graph recusar a leitura inteira,
+            # e "esperar" um campo que nao existe marcaria TODA fonte como
+            # UNKNOWN — ruido que ensina o operador a ignorar o estado.
+            fields="id,name,is_unavailable,last_fired_time,creation_time,owner_ad_account",
+            limite=min(self._limite, 100),
+        )
+        saida: list[Mapping[str, Any]] = []
+        for linha in linhas:
+            saida.append(self._fonte_de_mensuracao(conta, linha))
+        return tuple(saida), paginas
+
+    def _fonte_de_mensuracao(
+        self, conta: str, linha: Any,
+    ) -> Mapping[str, Any]:
+        vazio: dict[str, Any] = {c: None for c in self.CHAVES_DE_FONTE_DE_MENSURACAO}
+        if not isinstance(linha, dict):
+            return {**vazio, "nome": "Fonte ilegivel",
+                    "source_kind": dom.ESTADO_DESCONHECIDO,
+                    "motivo_do_source_kind": dom.MOTIVO_SOURCE_KIND_INDISTINGUIVEL,
+                    "estado": dom.ESTADO_INVALIDO,
+                    "motivo_desconhecido": dom.MOTIVO_CONTRATO_DO_ITEM_INVALIDO}
+        kind, motivo_kind = self._kind_da_fonte(linha)
+        try:
+            identificador = dom.id_externo(linha.get("id"), campo="pixel.id")
+            indisponivel = dom.booleano_opcional(
+                linha.get("is_unavailable"), campo="pixel.is_unavailable")
+        except dom.ContratoMetaInvalido:
+            # Robustez POR ITEM: uma linha malformada vira uma LINHA invalida,
+            # nao o fim da pagina. Sem `referencia_opaca` ela tambem nao pode
+            # ser selecionada — um item sem handle e inerte por construcao.
+            return {**vazio,
+                    "nome": dom.texto_opcional(linha.get("name")) or "Fonte ilegivel",
+                    "source_kind": kind, "motivo_do_source_kind": motivo_kind,
+                    "estado": dom.ESTADO_INVALIDO,
+                    "motivo_desconhecido": dom.MOTIVO_CONTRATO_DO_ITEM_INVALIDO}
+        estado, motivo = dom.classificar_disponibilidade(
+            arquivada=None, indisponivel=indisponivel, is_archived_esperado=False)
+        if estado == dom.ESTADO_DISPONIVEL:
+            estado, motivo = dom.classificar_frescor(
+                ultimo_presente="last_fired_time" in linha,
+                ultimo=dom.texto_opcional(linha.get("last_fired_time")),
+                primeiro=None,
+                # `AdsPixel` nao tem `first_fired_time`: nao ha com o que cruzar
+                # a ausencia, entao ela permanece "nao sei".
+                corroborador_disponivel=False,
+            )
+        return {
+            "referencia_opaca": dom.referencia_opaca_objeto(conta, "pixel", identificador),
+            "id_mascarado": dom.mascarar_id(identificador),
+            "nome": dom.texto_opcional(linha.get("name")) or "Fonte sem nome",
+            "source_kind": kind,
+            "motivo_do_source_kind": motivo_kind,
+            "last_fired_time": dom.texto_opcional(linha.get("last_fired_time")),
+            "estado": estado,
+            "motivo_desconhecido": motivo,
+            "pertence_a_conta_lida": self._pertence_a_conta(
+                conta, linha.get("owner_ad_account")),
+        }
+
+    @staticmethod
+    def _kind_da_fonte(linha: Mapping[str, Any]) -> tuple[str, str | None]:
+        """PIXEL, DATASET ou UNKNOWN — nunca um chute entre os dois."""
+        for chave in ("source_kind", "type", "dataset_type"):
+            bruto = dom.texto_opcional(linha.get(chave))
+            if bruto is None:
+                continue
+            normalizado = bruto.upper()
+            if normalizado in (dom.KIND_PIXEL, dom.KIND_DATASET):
+                return normalizado, None
+            return dom.ESTADO_DESCONHECIDO, dom.motivo_de_desconhecimento(
+                dom.MOTIVO_SOURCE_KIND_NAO_RECONHECIDO)
+        return dom.ESTADO_DESCONHECIDO, dom.motivo_de_desconhecimento(
+            dom.MOTIVO_SOURCE_KIND_INDISTINGUIVEL)
+
+    @staticmethod
+    def _pertence_a_conta(conta: str, dono: Any) -> bool | None:
+        """True/False/None — e `None` quando o dono simplesmente nao veio.
+
+        Um objeto compartilhado por outro Business aparece na edge da conta sem
+        pertencer a ela. Dizer `False` por ausencia repetiria, em outro campo, o
+        mesmo defeito que A12 conserta.
+        """
+        if isinstance(dono, dict):
+            dono = dono.get("id")
+        if dono in (None, ""):
+            return None
+        try:
+            return dom.conta_canonica(str(dono)) == conta
+        except dom.ContratoMetaInvalido:
+            return None
+
+    async def ler_publicos_personalizados(
+        self, conta_externa: str, segredo: SegredoEfemero,
+    ) -> tuple[tuple[Mapping[str, Any], ...], int]:
+        """Catalogo de publicos EXISTENTES da conta (F12/F13/F14).
+
+        Hoje nao existe uma unica linha disto na base: o criador oferece
+        publico amplo e nada mais. Este leitor devolve METADADO de publico —
+        nome, subtipo, estado de entrega, tamanho aproximado quando a Meta o
+        informa — e nada alem disso.
+
+        ## O que NAO atravessa, por construcao
+
+        Nenhuma lista de membros, nenhum registro de pessoa, nenhum PII, nenhum
+        hash de identificador, nenhuma origem de arquivo de cliente. A saida tem
+        chaves FIXAS (`CHAVES_DE_PUBLICO`): campos que a Meta devolver fora
+        dessa lista ficam no corpo HTTP e nao entram no dicionario. Isto e
+        testado sobre as CHAVES do item, nao sobre uma inspecao de valores.
+
+        ## Selecionar nao cria
+
+        Ler `customaudiences` e escolher um `metaobj_...` nao cria publico e nao
+        cria lookalike (F14). A criacao de publico e de customer list continua
+        fora de escopo desta base, e nao ha rota que leve daqui ate la.
+
+        ## Modo de paginacao
+
+        `_listar_url` tem ARIDADE DE RETORNO VARIAVEL (adaptador.py, ver
+        `truncar_em_vez_de_falhar`): no modo estrito devolve 2 valores, e com
+        truncamento devolve 4. Aqui usamos o modo ESTRITO de proposito: um
+        catalogo pela metade, entregue como se fosse o catalogo, faz o operador
+        concluir que um publico "nao existe mais" quando ele so ficou na pagina
+        seguinte. O teto de paginas levanta META_PAGINATION_LIMIT, e a camada de
+        envelope transforma isso em `estado='PARCIAL'` com `completo=False`.
+        """
+        conta = dom.conta_canonica(conta_externa)
+        linhas, paginas = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{conta}/customaudiences",
+            segredo,
+            fields=(
+                "id,name,subtype,account_id,delivery_status,operation_status,"
+                "approximate_count_lower_bound,approximate_count_upper_bound,"
+                "time_updated"
+            ),
+            limite=min(self._limite, 100),
+        )
+        saida: list[Mapping[str, Any]] = []
+        for linha in linhas:
+            saida.append(self._publico_personalizado(conta, linha))
+        return tuple(saida), paginas
+
+    def _publico_personalizado(self, conta: str, linha: Any) -> Mapping[str, Any]:
+        vazio: dict[str, Any] = {c: None for c in self.CHAVES_DE_PUBLICO}
+        if not isinstance(linha, dict):
+            return {**vazio, "nome": "Publico ilegivel",
+                    "estado": dom.ESTADO_INVALIDO,
+                    "motivo_desconhecido": dom.MOTIVO_CONTRATO_DO_ITEM_INVALIDO}
+        try:
+            identificador = dom.id_externo(linha.get("id"), campo="custom_audience.id")
+        except dom.ContratoMetaInvalido:
+            return {**vazio,
+                    "nome": dom.texto_opcional(linha.get("name")) or "Publico ilegivel",
+                    "estado": dom.ESTADO_INVALIDO,
+                    "motivo_desconhecido": dom.MOTIVO_CONTRATO_DO_ITEM_INVALIDO}
+        entrega_codigo, entrega_texto = self._status_de_publico(linha.get("delivery_status"))
+        operacao_codigo, operacao_texto = self._status_de_publico(linha.get("operation_status"))
+        if entrega_codigo is None:
+            # O node `CustomAudience` nao tem `is_archived`/`is_unavailable`: a
+            # disponibilidade vive em `delivery_status`. Ausente => UNKNOWN,
+            # pela mesma regra do item 1 — nunca AVAILABLE por omissao.
+            estado: str = dom.ESTADO_DESCONHECIDO
+            motivo: str | None = dom.motivo_de_desconhecimento(
+                dom.MOTIVO_DELIVERY_STATUS_AUSENTE)
+        elif entrega_codigo == 200:
+            estado, motivo = dom.ESTADO_DISPONIVEL, None
+        else:
+            # Qualquer codigo != 200 e um NAO do provedor. O codigo cru viaja
+            # junto para que a UI mostre a razao da Meta, sem que este modulo
+            # invente uma taxonomia de codigos que a Meta nao publicou.
+            estado, motivo = dom.ESTADO_INDISPONIVEL, None
+        return {
+            "referencia_opaca": dom.referencia_opaca_objeto(
+                conta, "custom_audience", identificador),
+            "id_mascarado": dom.mascarar_id(identificador),
+            "nome": dom.texto_opcional(linha.get("name")) or "Publico sem nome",
+            # Sem invencao: CUSTOM/LOOKALIKE/WEBSITE/... e o que a Meta mandar.
+            "subtype": dom.texto_opcional(linha.get("subtype")),
+            "delivery_status_code": entrega_codigo,
+            "delivery_status_descricao": entrega_texto,
+            "operation_status_code": operacao_codigo,
+            "operation_status_descricao": operacao_texto,
+            # Tamanho NUNCA e inventado: sem os limites na resposta, fica None.
+            # Um publico com tamanho desconhecido nao pode virar "publico
+            # pequeno demais" nem "grande o suficiente" por default.
+            "tamanho_aproximado_min": self._inteiro_tolerante(
+                linha.get("approximate_count_lower_bound")),
+            "tamanho_aproximado_max": self._inteiro_tolerante(
+                linha.get("approximate_count_upper_bound")),
+            "estado": estado,
+            "motivo_desconhecido": motivo,
+            "pertence_a_conta_lida": self._pertence_a_conta(
+                conta, linha.get("account_id")),
+        }
+
+    @staticmethod
+    def _status_de_publico(valor: Any) -> tuple[int | None, str | None]:
+        if not isinstance(valor, dict):
+            return None, None
+        try:
+            codigo = _int_opcional(valor.get("code"))
+        except (TypeError, ValueError):
+            codigo = None
+        return codigo, dom.texto_opcional(valor.get("description"))
+
+    @staticmethod
+    def _inteiro_tolerante(valor: Any) -> int | None:
+        try:
+            numero = _int_opcional(valor)
+        except (TypeError, ValueError):
+            return None
+        # A Meta devolve -1 quando o tamanho ainda nao foi calculado. -1 nao e
+        # um tamanho; virar 0 ou virar "menos um usuario" seria pior que nao
+        # saber.
+        if numero is not None and numero < 0:
+            return None
+        return numero
+
+    async def buscar_geolocalizacoes(
+        self,
+        termo: str,
+        tipos: Sequence[str],
+        segredo: SegredoEfemero,
+        *,
+        pais: str | None = None,
+    ) -> tuple[tuple[Mapping[str, Any], ...], int]:
+        """Busca geografica canonica (F15/F16/F17).
+
+        ## Endpoint
+
+        `/{versao}/search?type=adgeolocation` — um endpoint de BUSCA, nao uma
+        edge de `act_{id}`. Nao existe `act_{id}/adgeolocations`, e chamar a
+        edge errada devolveria 404 que o preflight leria como "conta sem
+        permissao de geografia".
+
+        ## A regra critica
+
+        A `key` devolvida AQUI e a chave canonica que o compilador poe em
+        `targeting.geo_locations`. Texto livre digitado pelo operador JAMAIS
+        vira key: "Curitiba" nao e um identificador de cidade, e a Meta so
+        reconhece `2418779`. Uma linha que chegue sem `key` legivel vira item
+        INVALID — nunca cai para o `name` nem para o termo pesquisado.
+        """
+        consulta = dom.texto_opcional(termo)
+        if consulta is None:
+            raise dom.ContratoMetaInvalido("termo de busca geografica vazio")
+        pedidos = tuple(str(t).strip().lower() for t in tipos)
+        if not pedidos:
+            raise dom.ContratoMetaInvalido("tipos de geolocalizacao vazios")
+        for tipo in pedidos:
+            if tipo not in dom.TIPOS_DE_GEOLOCALIZACAO:
+                raise dom.ContratoMetaInvalido(
+                    f"tipo de geolocalizacao nao registrado: {tipo!r}")
+        parametros: dict[str, Any] = {
+            "type": "adgeolocation",
+            "q": consulta,
+            "location_types": json.dumps(list(pedidos)),
+        }
+        if pais is not None:
+            codigo = dom.texto_opcional(pais)
+            if codigo is None or not re.fullmatch(r"[A-Za-z]{2}", codigo):
+                raise dom.ContratoMetaInvalido("pais precisa ser ISO-3166 alpha-2")
+            parametros["country_code"] = codigo.upper()
+        linhas, paginas = await self._listar_url(
+            f"{self._base}/{self._versao}/search",
+            segredo,
+            fields=None,
+            limite=min(self._limite, 100),
+            parametros_extra=parametros,
+        )
+        saida: list[Mapping[str, Any]] = []
+        for linha in linhas:
+            saida.append(self._geolocalizacao(linha))
+        return tuple(saida), paginas
+
+    def _geolocalizacao(self, linha: Any) -> Mapping[str, Any]:
+        vazio: dict[str, Any] = {c: None for c in self.CHAVES_DE_GEOLOCALIZACAO}
+        invalido = {**vazio, "estado": dom.ESTADO_INVALIDO,
+                    "motivo_desconhecido": dom.MOTIVO_CONTRATO_DO_ITEM_INVALIDO}
+        if not isinstance(linha, dict):
+            return invalido
+        chave = dom.texto_opcional(linha.get("key"))
+        tipo = dom.texto_opcional(linha.get("type"))
+        if chave is None or tipo is None:
+            # Sem key nao ha identidade utilizavel. NAO se cai para `name`.
+            return {**invalido, "name": dom.texto_opcional(linha.get("name")),
+                    "type": tipo}
+        try:
+            suporta_regiao = dom.booleano_opcional(
+                linha.get("supports_region"), campo="geo.supports_region")
+            suporta_cidade = dom.booleano_opcional(
+                linha.get("supports_city"), campo="geo.supports_city")
+        except dom.ContratoMetaInvalido:
+            return {**invalido, "key": chave, "type": tipo,
+                    "name": dom.texto_opcional(linha.get("name"))}
+        return {
+            "key": chave,
+            "name": dom.texto_opcional(linha.get("name")),
+            "type": tipo,
+            "country_code": dom.texto_opcional(linha.get("country_code")),
+            "region": dom.texto_opcional(linha.get("region")),
+            # None quando a Meta nao disse. `False` aqui significaria "esta
+            # localidade comprovadamente nao suporta regiao", que e outra coisa.
+            "supports_region": suporta_regiao,
+            "supports_city": suporta_cidade,
+            "estado": dom.ESTADO_DISPONIVEL,
+            "motivo_desconhecido": None,
+        }
+
+    # ── envelopes: frescor como DADO, nunca cache invisivel ───────────────
+
+    async def catalogo_de_fontes_de_mensuracao(
+        self,
+        referencia_opaca: str,
+        segredo: SegredoEfemero,
+        *,
+        ttl_s: int = dom.TTL_PADRAO_DO_CATALOGO_S,
+    ) -> Mapping[str, Any]:
+        """Envelope do catalogo de pixels/datasets, escopado por conta (A13)."""
+        conta = await self._conta_do_operador(referencia_opaca, segredo)
+        return await self._envelope_de_leitura(
+            catalogo="measurement_sources",
+            conta=conta,
+            ttl_s=ttl_s,
+            leitura=lambda: self.ler_fontes_de_mensuracao(conta.id_externo, segredo),
+        )
+
+    async def catalogo_de_publicos(
+        self,
+        referencia_opaca: str,
+        segredo: SegredoEfemero,
+        *,
+        ttl_s: int = dom.TTL_PADRAO_DO_CATALOGO_S,
+    ) -> Mapping[str, Any]:
+        """Envelope do catalogo de publicos personalizados/semelhantes (A13)."""
+        conta = await self._conta_do_operador(referencia_opaca, segredo)
+        return await self._envelope_de_leitura(
+            catalogo="custom_audiences",
+            conta=conta,
+            ttl_s=ttl_s,
+            leitura=lambda: self.ler_publicos_personalizados(conta.id_externo, segredo),
+        )
+
+    async def catalogo_de_conversoes_personalizadas(
+        self,
+        referencia_opaca: str,
+        segredo: SegredoEfemero,
+        *,
+        ttl_s: int = dom.TTL_PADRAO_DO_CATALOGO_S,
+    ) -> Mapping[str, Any]:
+        """Envelope do catalogo de conversoes personalizadas ja existente.
+
+        A leitura em si nao muda (`ler_conversoes_personalizadas` continua
+        levantando em item malformado, ver nota de robustez la); o que muda e
+        que agora ela chega com escopo de conta, frescor e estado de catalogo,
+        do mesmo jeito que as outras duas.
+        """
+        conta = await self._conta_do_operador(referencia_opaca, segredo)
+        return await self._envelope_de_leitura(
+            catalogo="custom_conversions",
+            conta=conta,
+            ttl_s=ttl_s,
+            leitura=lambda: self.ler_conversoes_personalizadas(conta.id_externo, segredo),
+        )
+
+    async def catalogo_de_geolocalizacoes(
+        self,
+        referencia_opaca: str,
+        termo: str,
+        segredo: SegredoEfemero,
+        *,
+        tipos: Sequence[str] = ("country", "region", "city", "zip"),
+        pais: str | None = None,
+        ttl_s: int = dom.TTL_PADRAO_DO_CATALOGO_GEO_S,
+    ) -> Mapping[str, Any]:
+        """Envelope da busca geografica.
+
+        A busca em si nao e escopada por conta na Graph, mas a conta continua
+        obrigatoria aqui: catalogo real so e consultado APOS selecao explicita
+        de conta, e uma referencia de outra conta/ator e recusada ANTES da rede.
+        """
+        conta = await self._conta_do_operador(referencia_opaca, segredo)
+        return await self._envelope_de_leitura(
+            catalogo="geolocations",
+            conta=conta,
+            ttl_s=ttl_s,
+            leitura=lambda: self.buscar_geolocalizacoes(
+                termo, tipos, segredo, pais=pais),
+        )
+
+    async def _conta_do_operador(
+        self, referencia_opaca: str, segredo: SegredoEfemero,
+    ) -> dom.ContaMetaDescoberta:
+        """A13 — isolamento por RELEITURA, nao por `if`.
+
+        A conta nunca vem do navegador: vem de `descobrir_contas`, que so
+        devolve o que ESTE token alcanca, e a referencia opaca e resolvida
+        contra essa lista. Uma referencia de outra conta ou de outro ator nao
+        aparece na lista, entao nao resolve — e a leitura do catalogo nem chega
+        a ser montada.
+        """
+        contas = await self.descobrir_contas(segredo)
+        return self.resolver_referencia_opaca(contas, referencia_opaca)
+
+    async def _envelope_de_leitura(
+        self,
+        *,
+        catalogo: str,
+        conta: dom.ContaMetaDescoberta,
+        ttl_s: int,
+        leitura: Any,
+    ) -> Mapping[str, Any]:
+        """Quatro respostas distintas para quatro situacoes distintas (A11).
+
+        `[]` completo, permissao negada, timeout e pagina truncada NAO podem
+        chegar iguais na UI: a primeira significa "escolha nada porque nao ha
+        nada", a segunda "pede acesso", a terceira "tenta de novo" e a quarta
+        "existe mais do que voce esta vendo". Um `items: []` sem mais nada
+        colapsa as quatro em "vazio", e o operador conclui que apagaram o
+        publico dele.
+
+          estado=VAZIO_COMPLETO  ok=True  completo=True  motivo=None
+          estado=INDISPONIVEL    ok=False completo=False motivo=<codigo> retryable=False/True
+          estado=PARCIAL         ok=True  completo=False motivo=META_PAGINATION_LIMIT
+          estado_do_catalogo=OBSOLETO  — eixo ORTOGONAL, ver frescor_do_catalogo
+        """
+        try:
+            itens, paginas = await leitura()
+        except ErroDeLeituraMeta as exc:
+            parcial = exc.codigo == "META_PAGINATION_LIMIT"
+            return self._envelope(
+                catalogo=catalogo,
+                conta=conta,
+                itens=(),
+                paginas=0,
+                ttl_s=ttl_s,
+                completo=False,
+                estado="PARCIAL" if parcial else "INDISPONIVEL",
+                motivo=exc.codigo,
+                retryable=exc.retryable,
+            )
+        return self._envelope(
+            catalogo=catalogo, conta=conta, itens=itens, paginas=paginas, ttl_s=ttl_s)
+
+    def _envelope(
+        self,
+        *,
+        catalogo: str,
+        conta: dom.ContaMetaDescoberta,
+        itens: tuple[Mapping[str, Any], ...],
+        paginas: int,
+        ttl_s: int,
+        completo: bool = True,
+        estado: str | None = None,
+        motivo: str | None = None,
+        retryable: bool = False,
+    ) -> Mapping[str, Any]:
+        invalidos = sum(
+            1 for item in itens if item.get("estado") == dom.ESTADO_INVALIDO)
+        desconhecidos = sum(
+            1 for item in itens
+            if str(item.get("estado", "")).startswith(dom.ESTADO_DESCONHECIDO))
+        if estado is None:
+            estado = "COM_ITENS" if itens else "VAZIO_COMPLETO"
+        return {
+            "ok": estado != "INDISPONIVEL",
+            "catalogo": catalogo,
+            "api_version": self._versao,
+            "referencia_opaca_da_conta": conta.referencia_opaca,
+            "estado": estado,
+            "motivo": motivo,
+            "retryable": retryable,
+            "items": list(itens),
+            "total": len(itens),
+            # "li tudo" nunca pode se confundir com "li o que deu": os itens
+            # INVALID continuam na lista (inertes, sem handle) E aparecem
+            # contados aqui.
+            "invalidos": invalidos,
+            "desconhecidos": desconhecidos,
+            "completo": completo,
+            "paginas_lidas": paginas,
+            **dom.frescor_do_catalogo(datetime.now(timezone.utc), ttl_s),
+        }
+
+    # ── resolucao SERVER-ONLY de referencia opaca -> id real ──────────────
+
+    _EDGES_RESOLVIVEIS: Mapping[str, str] = {
+        "custom_audience": "customaudiences",
+        "pixel": "adspixels",
+        "custom_conversion": "customconversions",
+    }
+
+    async def resolver_ids_por_referencia(
+        self,
+        conta_externa: str,
+        tipo: str,
+        referencias: Iterable[str],
+        segredo: SegredoEfemero,
+    ) -> dict[str, str]:
+        """Traduz `metaobj_...` -> id externo CRU. NUNCA vai para uma resposta HTTP.
+
+        ## Por que este metodo existe
+
+        A projecao que os catalogos devolvem e browser-facing e OMITE o id cru
+        de proposito: so `referencia_opaca` + `id_mascarado`. Isso esta certo e
+        continua assim. Mas o compilador precisa do id REAL para montar
+        `targeting.custom_audiences[].id` e `promoted_object.pixel_id`, e
+        `dominio.referencia_opaca_objeto` e sha256 de mao unica — nao ha como
+        inverter. A unica forma honesta e RE-LISTAR o catalogo da conta e
+        recalcular o handle de cada item ate achar o pedido.
+
+        ## O retorno e dado de PROCESSO, nao de resposta
+
+        O dicionario devolvido contem ids externos CRUS. Ele nao pode ser
+        serializado numa resposta HTTP, nem logado, nem devolvido ao navegador:
+        e insumo do compilador, como `ReferenciasMetaResolvidas`. Quem o expuser
+        desfaz, numa linha, o motivo de a referencia ser opaca.
+
+        ## Isolamento (A13) sem `if`
+
+        O isolamento vem de a LISTA ser a da conta certa: um handle de outra
+        conta simplesmente nao aparece entre os recalculados, entao nao entra no
+        indice. Nao existe comparacao de tenant a ser esquecida.
+
+        ## Ausencia nao levanta
+
+        Handle nao encontrado apenas nao aparece no retorno. Quem cobra a
+        ausencia e o chamador (meta_execucao, META_AUDIENCE_REFERENCE_UNRESOLVED),
+        porque "nao achei este publico" e "nao consegui ler o catalogo" precisam
+        continuar sendo erros diferentes — o segundo ja levanta ErroDeLeituraMeta.
+        """
+        if tipo not in dom.TIPOS_RESOLVIVEIS_POR_REFERENCIA:
+            raise dom.ContratoMetaInvalido(
+                f"tipo nao resolvivel por referencia: {tipo!r}")
+        pedidas = {
+            texto for texto in (str(r or "").strip() for r in referencias) if texto
+        }
+        if not pedidas:
+            # Compilar sem selecao nao pode custar leitura: zero chamadas.
+            return {}
+        conta = dom.conta_canonica(conta_externa)
+        linhas, _ = await self._listar_url(
+            f"{self._base}/{self._versao}/act_{conta}/{self._EDGES_RESOLVIVEIS[tipo]}",
+            segredo,
+            fields="id",
+            limite=min(self._limite, 100),
+        )
+        indice: dict[str, str] = {}
+        for linha in linhas:
+            if not isinstance(linha, dict):
+                continue
+            try:
+                identificador = dom.id_externo(linha.get("id"), campo=f"{tipo}.id")
+                # A referencia RECALCULADA e a que vale. Confiar numa
+                # `referencia_opaca` que viesse no corpo deixaria uma resposta
+                # adulterada escolher a que id ela mapeia — que e exatamente o
+                # ataque que o handle opaco existe para impedir.
+                calculada = dom.referencia_opaca_objeto(conta, tipo, identificador)
+            except dom.ContratoMetaInvalido:
+                # Um item ilegivel nao entra no indice e nao derruba os outros:
+                # a resolucao dos demais handles continua valendo.
+                continue
+            if calculada in pedidas:
+                indice[calculada] = identificador
+        return indice
 
     async def ler_hierarquia(
         self, conta_externa: str, segredo: SegredoEfemero,
