@@ -1,0 +1,134 @@
+{
+  "documento": "SCHEMA-APPLY-RECEIPT",
+  "contrato": "META_OPERATOR_GO_LIVE_V1",
+  "checkpoint": "CP1",
+  "veredito": "OFFICIAL_SCHEMA_NOT_APPLIED__APPLY_WINDOW_WAITING_OWNER",
+  "destino": {
+    "host": "database.agenciavolc.com.br",
+    "autoridade": "https://database.agenciavolc.com.br",
+    "conferido_por": "scripts/verificar_autoridade_supabase.py (exit 0)",
+    "e_a_autoridade_oficial": true
+  },
+  "o_que_foi_feito": [
+    "leitura SOMENTE-LEITURA do catálogo oficial por PostgREST",
+    "confirmação por segundo ângulo, consultando as RPCs",
+    "ciclo SQL completo das migrations novas em PostgreSQL DESCARTÁVEL"
+  ],
+  "o_que_NAO_foi_feito": [
+    "nenhum apply no banco oficial",
+    "nenhum DDL, INSERT, UPDATE ou DELETE oficial",
+    "nenhum backup restrito (não havia o que aplicar sem a janela)"
+  ],
+  "achado_determinante": {
+    "afirmacao": "Nenhuma tabela e nenhuma RPC dos perfis Meta existe hoje no Supabase oficial.",
+    "consequencia": "CREATE_ONLY e META_READ_MODEL estão INTEIRAMENTE por aplicar. O runtime Meta não consegue gravar recibo de validação, passo de saga, read model, insights nem registro de mídia contra esta base — toda escrita falharia fechada, que é o comportamento correto, mas significa que nenhum marco remoto pode ser declarado pronto.",
+    "corrige_a_spec": "O pacote de especificação dizia 'estado oficial desconhecido nesta inspeção'. Deixou de ser desconhecido: está ausente.",
+    "limite_desta_leitura": "PGRST205 significa 'não está no cache de schema do PostgREST'. Isso cobre 'não existe' e também 'existe e não está exposta ao PostgREST'. As duas leituras concordam, e o contraste com cofre_ativo (403, existe e é negada) e criativo_* (200) mostra que a sonda DISTINGUE os casos — mas a prova definitiva de ausência exige o catálogo por psql."
+  },
+  "catalogo_lido": {
+    "metodo": "PostgREST GET limit=0 (somente leitura)",
+    "resumo": {
+      "AUSENTE": 17,
+      "EXISTE": 3,
+      "SEM_PERMISSAO_DE_LEITURA": 1
+    },
+    "por_tabela": {
+      "trafego_meta_validation_receipt": "AUSENTE",
+      "trafego_meta_create_approval": "AUSENTE",
+      "trafego_meta_create_step": "AUSENTE",
+      "trafego_meta_business": "AUSENTE",
+      "trafego_meta_ad_account": "AUSENTE",
+      "trafego_meta_project_binding": "AUSENTE",
+      "trafego_meta_campaign": "AUSENTE",
+      "trafego_meta_adset": "AUSENTE",
+      "trafego_meta_ad": "AUSENTE",
+      "trafego_meta_creative": "AUSENTE",
+      "trafego_meta_sync_run": "AUSENTE",
+      "trafego_meta_custom_measurement": "AUSENTE",
+      "trafego_meta_insight_daily": "AUSENTE",
+      "trafego_meta_insight_action": "AUSENTE",
+      "trafego_meta_asset_registration": "AUSENTE",
+      "criativo_job": "EXISTE",
+      "criativo_master": "EXISTE",
+      "criativo_projeto": "EXISTE",
+      "criativo_importacao_lote": "AUSENTE",
+      "criativo_importacao_entrada": "AUSENTE",
+      "cofre_ativo": "SEM_PERMISSAO_DE_LEITURA"
+    },
+    "rpcs_meta": "AUSENTES (PGRST202 'Could not find the function') nas quatro consultadas"
+  },
+  "o_que_existe_hoje": {
+    "criativo_job": "EXISTE",
+    "criativo_master": "EXISTE",
+    "criativo_projeto": "EXISTE",
+    "cofre_ativo": "EXISTE (leitura negada a esta credencial, e isso é o esperado)",
+    "leitura": "o Estúdio Criativo está aplicado; o trilho Meta não"
+  },
+  "migrations_candidatas_desta_missao": [
+    {
+      "arquivo": "supabase/migrations/20260908000000_meta_insights_escopo.sql",
+      "sha256": "a5923845cbc75ca8659e1bda6ad02cf6418e638c74a92ff02bbb24d227e4cd03",
+      "linhas": 860,
+      "aplicada_no_oficial": false,
+      "on_error_stop": false,
+      "on_error_stop_linha": null,
+      "criterio": "linha de comando \\set ON_ERROR_STOP on, não menção em comentário"
+    },
+    {
+      "arquivo": "supabase/migrations/20260908020000_meta_asset_registration.sql",
+      "sha256": "9b78c4dd4f5f05d083a00970d7ae614baea74f78bf7bee785bed0a29e0d94882",
+      "linhas": 319,
+      "aplicada_no_oficial": false,
+      "on_error_stop": true,
+      "on_error_stop_linha": 34,
+      "criterio": "linha de comando \\set ON_ERROR_STOP on, não menção em comentário"
+    },
+    {
+      "arquivo": "supabase/migrations/20260908020100_meta_asset_registration_rollback.sql",
+      "sha256": "9885be7c5907aef9a6e780e6baa49a7ba7ebd7e467de9c376f6f551d1779cde5",
+      "linhas": 46,
+      "aplicada_no_oficial": false,
+      "on_error_stop": true,
+      "on_error_stop_linha": 16,
+      "criterio": "linha de comando \\set ON_ERROR_STOP on, não menção em comentário"
+    },
+    {
+      "arquivo": "supabase/migrations/v11_04_criativo_importacao.sql",
+      "sha256": "5d02a2fb41f5682e21ad1bdddd36e7fdbb1332f737b4a0312c622f30a4c92054",
+      "linhas": 430,
+      "aplicada_no_oficial": false,
+      "on_error_stop": false,
+      "on_error_stop_linha": null,
+      "criterio": "linha de comando \\set ON_ERROR_STOP on, não menção em comentário"
+    }
+  ],
+  "prova_local_descartavel": {
+    "20260908020000_meta_asset_registration.sql": {
+      "script": "docs/closure/meta-operator-go-live-v1/prova-sql-registro-de-midia.sh",
+      "ciclo": "apply -> uso -> idempotência -> isolamento -> cerca -> rollback -> reapply",
+      "asseracoes": "25/25",
+      "resultado": "PASS"
+    },
+    "20260908000000_meta_insights_escopo.sql": {
+      "ciclo": "cadeia real v13_01 -> v15_01 -> v15_02 -> 20260907210000 -> nova, em Postgres descartável",
+      "resultado": "PASS",
+      "achado": "ANTES da migration a RPC vigente NÃO recusa o snapshot de insights: ela grava escopo='hierarchy' em silêncio, e uma leitura de insights entra no ledger como leitura de hierarquia. É pior do que a incompatibilidade que a spec previa."
+    }
+  },
+  "bloqueio": {
+    "estado": "WAITING_OWNER",
+    "causa": "A janela de apply exige psql: as migrations do trilho Meta abrem com o metacomando \\set ON_ERROR_STOP on, e o manifesto declara psql como executor obrigatório. Esta instalação expõe apenas SUPABASE_URL + SERVICE_ROLE_KEY (PostgREST); não há string de conexão Postgres direta no ambiente.",
+    "nao_e_causa": [
+      "não é falta de autorização: o operador já autorizou o escopo",
+      "não é risco de destruir dados: as tabelas não existem, então o apply é aditivo puro"
+    ],
+    "proximo_ato": "o operador fornece a string de conexão psql do Supabase oficial (ou roda a janela documentada em SCHEMA-RUNBOOK.md), na ordem que `scripts/verificar_perfil_schema_meta.py --lista-apply` imprimir"
+  },
+  "lacunas_nomeadas": [
+    "20260908000000_meta_insights_escopo.sql e v11_04_criativo_importacao.sql NÃO usam \\set ON_ERROR_STOP on — e isso é DELIBERADO nos dois, não esquecimento: ambos são um único BEGIN/COMMIT, onde um erro aborta a transação e o COMMIT vira ROLLBACK. Sem metacomando, o mesmo arquivo roda igual por psql, pelo Supabase CLI ou colado num console SQL. O verificador registra a exceção como lacuna nomeada em vez de afirmar que 'todo arquivo começa com o metacomando', que era falso.",
+    "as migrations desta missão ainda NÃO foram declaradas em nenhum apply_order do manifesto",
+    "o leitor de catálogo corrigido (ler-catalogo-meta.sql) nunca foi executado contra banco nenhum"
+  ],
+  "sem_credenciais": true,
+  "nota_de_integracao": "Tentei acrescentar o metacomando a 20260908000000 e a mudança quebrou duas provas que já cobriam a decisão contrária. Revertida. O registro fica aqui porque a decisão de NÃO usar metacomando é a que está documentada no cabeçalho do arquivo, e ela é a mais forte: a transação protege mais do que o ON_ERROR_STOP protegeria."
+}

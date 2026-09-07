@@ -50,7 +50,21 @@ AGENDAS = {"volc_meta_insights_dia_d1.json": "0 7 * * *"}
 
 DESTINO_OFICIAL = "database.agenciavolc.com.br"
 META_HOST = "graph.facebook.com"
-CRED_META_TIPO = "metaGraphApiNaoProvisionada"
+#: ⚠️ ERA `metaGraphApiNaoProvisionada`, um tipo INVENTADO. A prova antiga
+#: ("o tipo é o placeholder declarado") descrevia bem a INTENÇÃO e mal o
+#: RESULTADO: um `nodeCredentialType` fora do catálogo da instância não produz
+#: "credencial pendente", produz workflow inválido — o n8n não tem onde pendurar
+#: o item do cofre e o operador não consegue provisionar nem depois de ter o
+#: token. O tipo passou a ser `httpHeaderAuth`, nativo, na forma literal do
+#: precedente vivo desta base (`n8n/joinads_report_day_before.json:144-146` e
+#: `:190-194`). O que continua faltando — e continua PROVADO abaixo — é o ITEM
+#: do cofre.
+CRED_META_TIPO = "httpHeaderAuth"
+#: A única forma genérica aceita. `httpQueryAuth` está fora de propósito: ela põe
+#: o token na query string, onde ele vaza para log de proxy e para o histórico de
+#: execução do n8n.
+GENERIC_AUTH_PERMITIDO = {"httpHeaderAuth"}
+CRED_META_MARCADOR = "PROVISIONAR__VOLC_META_ADS_HEADER_AUTH"
 NO_GRAPH = "Meta Graph: insights"
 
 TIPOS_GATILHO = {
@@ -249,9 +263,31 @@ def validar_nos(wf: dict, nos: dict[str, dict], r: Relatorio, rotulo: str) -> No
 
         elif tipo == "n8n-nodes-base.httpRequest":
             opcoes = params.get("options", {})
+            # ⚠️ O GATE ALARGOU, E A REGRA CONTINUA A MESMA: a autorização sai de
+            # um ITEM DO COFRE, nunca de algo escrito no workflow. O que mudou é
+            # que agora existem DUAS formas legítimas de dizer isso no n8n — o
+            # tipo predefinido (`supabaseApi`, que os nós do Supabase usam) e o
+            # genérico por cabeçalho (`httpHeaderAuth`, a forma que
+            # `n8n/joinads_report_day_before.json:144-146` já usa nesta base). A
+            # versão anterior só aceitava a primeira, e por isso obrigava a
+            # inventar um `nodeCredentialType` Meta que não existe.
+            # `genericAuthType` fica preso à allowlist: `httpQueryAuth` mandaria o
+            # token pela query string.
+            autentica_por_cofre = (
+                (params.get("authentication") == "predefinedCredentialType"
+                 and bool(params.get("nodeCredentialType")))
+                or (params.get("authentication") == "genericCredentialType"
+                    and params.get("genericAuthType") in GENERIC_AUTH_PERMITIDO)
+            )
             r.prova(f"{rotulo} · [{nome}] autentica por credencial, não por header manual",
-                    params.get("authentication") == "predefinedCredentialType"
-                    and bool(params.get("nodeCredentialType")))
+                    autentica_por_cofre,
+                    f"{params.get('authentication')}/{params.get('genericAuthType')}")
+            r.prova(f"{rotulo} · [{nome}] nenhuma autenticação põe segredo na URL",
+                    params.get("genericAuthType") != "httpQueryAuth"
+                    and "authentication" not in {
+                        p.get("name", "").lower()
+                        for p in params.get("queryParameters", {}).get("parameters", [])}
+                    and not re.search(r"(?i)access[_-]?token", str(params.get("url", ""))))
             r.prova(f"{rotulo} · [{nome}] credencial é referência (id+nome), sem valor",
                     all(set(v.keys()) <= {"id", "name"}
                         for v in (no.get("credentials") or {}).values()))
@@ -426,40 +462,104 @@ def validar_seguranca(wf: dict, r: Relatorio, rotulo: str) -> None:
 
 
 def validar_credencial_meta(wf: dict, r: Relatorio, rotulo: str) -> None:
-    """A lacuna de credencial é DECLARADA, não disfarçada.
+    """Nenhum SEGREDO viaja, e o estado de provisionamento é declarado com honestidade.
 
-    ⚠️ Este bloco existe porque o caminho fácil seria escolher um tipo de
-    credencial plausível do n8n e seguir em frente. Nesta base não há prova de
-    que a instância tenha um tipo Meta instalado, e o token que o operador usa
-    hoje vive no Keychain do macOS dele — que não existe num servidor n8n.
-    Fingir que resolve produziria um fluxo que parece pronto e não é.
+    ⚠️ POR QUE A PROVA ANTIGA DEIXOU DE DESCREVER A VERDADE.
+
+    Este bloco exigia `nodeCredentialType == 'metaGraphApiNaoProvisionada'` e
+    `cred['id'] == 'REPLACE_ME'`. A intenção era boa — não fingir uma integração
+    que não existe — mas o que ele provava era só que o arquivo continuava com
+    dois literais. E os dois literais, juntos, produziam algo PIOR que uma
+    pendência: um `nodeCredentialType` fora do catálogo da instância não faz o nó
+    "parar por falta de credencial", faz o workflow ser inválido. O n8n não
+    oferece o seletor, não há onde pendurar o item do cofre, e o operador não
+    consegue provisionar nem depois de ter o token na mão. A lacuna virava beco
+    sem saída, e o gate carimbava isso como estado desejado.
+
+    O que este bloco prova AGORA — e o que ele continuará provando depois que a
+    credencial existir, que é o teste de um gate que não é teatro:
+
+      (a) **nenhum segredo viaja no JSON.** A autorização sai de um item do cofre
+          por REFERÊNCIA (id + nome). Nada de valor, nada de cabeçalho montado à
+          mão, nada de token em query, nada de `access_token` em Code node.
+      (b) **o estado de provisionamento é declarado, e bate com o que está no
+          nó.** A coerência é conferida NOS DOIS SENTIDOS: declarar
+          `provisionada: false` obriga o nó a carregar o marcador nomeado, e
+          declarar `provisionada: true` PROÍBE o marcador. Assim ninguém publica
+          um workflow que se diz pronto carregando o placeholder, nem esconde uma
+          referência real atrás de um "ainda não provisionado".
     """
     graph = next((n for n in wf["nodes"] if n["name"] == NO_GRAPH), None)
     if graph is None:
         r.prova(f"{rotulo} · nó da Meta presente para conferir credencial", False)
         return
 
-    tipo = graph["parameters"].get("nodeCredentialType")
-    r.prova(f"{rotulo} · a credencial Meta é o placeholder declarado",
-            tipo == CRED_META_TIPO, str(tipo))
+    params = graph["parameters"]
+    r.prova(f"{rotulo} · a credencial Meta usa um tipo REAL do n8n (header genérico)",
+            params.get("authentication") == "genericCredentialType"
+            and params.get("genericAuthType") == CRED_META_TIPO,
+            f"{params.get('authentication')}/{params.get('genericAuthType')}")
+    # O tipo inventado não pode voltar por nenhuma porta.
+    r.prova(f"{rotulo} · nenhum tipo de credencial fictício sobrou no workflow",
+            "metaGraphApiNaoProvisionada" not in _texto(wf))
+
     cred = (graph.get("credentials") or {}).get(CRED_META_TIPO, {})
-    r.prova(f"{rotulo} · a credencial Meta é referência sem valor",
-            set(cred.keys()) <= {"id", "name"})
-    r.prova(f"{rotulo} · o id da credencial Meta continua REPLACE_ME",
-            cred.get("id") == "REPLACE_ME", str(cred.get("id")))
-    r.prova(f"{rotulo} · o nome da credencial diz que ela NÃO foi provisionada",
-            "NAO PROVISIONADA" in str(cred.get("name", "")))
-    r.prova(f"{rotulo} · o meta do workflow declara a credencial como pendente",
-            wf.get("meta", {}).get("volc", {}).get("credencial", {}).get("estado")
-            == "NAO_PROVISIONADA")
-    # O token não pode entrar por query nem por Code node.
+    r.prova(f"{rotulo} · a credencial Meta é REFERÊNCIA (id+nome), nunca valor",
+            set(cred.keys()) == {"id", "name"}, str(sorted(cred)))
+    # (a) O id e o nome são rótulos. Se algum deles PARECESSE material de
+    # segredo, a varredura global já teria acusado — mas ela varre o arquivo
+    # inteiro, e aqui a pergunta é específica: o campo que aponta para o cofre
+    # não pode carregar o conteúdo do cofre.
+    achados = [rot for padrao, rot in SEGREDOS
+               if padrao.search(f"{cred.get('id', '')} {cred.get('name', '')}")]
+    r.prova(f"{rotulo} · nem o id nem o nome da credencial carregam segredo",
+            not achados, ", ".join(achados))
+
+    # (b) Coerência entre o que o workflow DIZ e o que ele CARREGA.
+    declarado = wf.get("meta", {}).get("volc", {}).get("credencial", {})
+    provisionada = declarado.get("provisionada")
+    r.prova(f"{rotulo} · o meta do workflow declara o provisionamento como booleano",
+            isinstance(provisionada, bool), str(type(provisionada).__name__))
+    r.prova(f"{rotulo} · o tipo declarado no meta é o mesmo que o nó usa",
+            declarado.get("tipo") == params.get("genericAuthType"),
+            f"{declarado.get('tipo')} vs {params.get('genericAuthType')}")
+    id_no_no = str(cred.get("id", ""))
+    if provisionada is False:
+        r.prova(f"{rotulo} · não provisionada ⇒ o nó carrega o MARCADOR nomeado, "
+                "não um id de cofre",
+                id_no_no == CRED_META_MARCADOR, id_no_no)
+        r.prova(f"{rotulo} · não provisionada ⇒ o marcador está declarado no meta",
+                declarado.get("item_id_marcador") == CRED_META_MARCADOR)
+        r.prova(f"{rotulo} · não provisionada ⇒ o workflow não se declara publicável",
+                wf["meta"]["volc"].get("pronto_para_publicar") is False)
+        r.prova(f"{rotulo} · não provisionada ⇒ o nome do item avisa que falta provisionar",
+                "A PROVISIONAR" in str(cred.get("name", "")))
+    elif provisionada is True:
+        # ⚠️ O outro sentido da coerência. Sem ele, bastaria virar o booleano
+        # para "liberar" um workflow que continua apontando para o marcador.
+        r.prova(f"{rotulo} · provisionada ⇒ o marcador SUMIU do nó",
+                id_no_no != CRED_META_MARCADOR and CRED_META_MARCADOR not in _texto(wf),
+                id_no_no)
+        r.prova(f"{rotulo} · provisionada ⇒ o id do item do cofre é não-vazio",
+                id_no_no.strip() != "" and id_no_no != "REPLACE_ME", id_no_no)
+        r.prova(f"{rotulo} · provisionada ⇒ o nome do item não diz mais 'A PROVISIONAR'",
+                "A PROVISIONAR" not in str(cred.get("name", "")))
+
+    # (a, continuação) Nenhum caminho alternativo de autorização.
     js_todos = "\n".join(n["parameters"].get("jsCode", "")
                          for n in wf["nodes"] if n["type"] == "n8n-nodes-base.code")
     r.prova(f"{rotulo} · nenhum Code node monta access_token",
             "access_token" not in js_todos)
-    consulta = graph["parameters"].get("jsonQuery", "")
+    consulta = params.get("jsonQuery", "")
     r.prova(f"{rotulo} · a query da Meta sai do pedido tipado, não de literal",
             consulta == "={{ JSON.stringify($json.parametros_graph) }}", consulta)
+    # Com `httpHeaderAuth`, NOME e VALOR do cabeçalho vivem no item do cofre. Um
+    # cabeçalho de autorização declarado aqui significaria que alguém o montou
+    # fora do cofre — o caminho por onde um token entraria no arquivo.
+    cabecalhos = {p.get("name", "").lower()
+                  for p in params.get("headerParameters", {}).get("parameters", [])}
+    r.prova(f"{rotulo} · o cabeçalho de autorização vive no cofre, não no workflow",
+            "authorization" not in cabecalhos, ", ".join(sorted(cabecalhos)))
 
 
 def validar_contrato_meta(wf: dict, r: Relatorio, rotulo: str) -> None:
@@ -585,6 +685,23 @@ def validar_fuso_da_conta(wf: dict, r: Relatorio, rotulo: str) -> None:
             "TZ_DO_DISPARO" not in js and "tz_do_disparo" not in js)
     r.prova(f"{rotulo} · zero conta autorizada falha fechado",
             "SEM_CONTA_AUTORIZADA" in js)
+    # ⚠️ SEM FALLBACK UTC, DITO COMO AUSÊNCIA DE UM PADRÃO. `dataNaZona` recebe o
+    # fuso da conta e mais nada; um `|| 'UTC'` (ou 'Etc/UTC', ou 'Z') em qualquer
+    # ponto do caminho da janela devolveria a data do meridiano de Greenwich com
+    # cara de data da conta — que é a regressão inteira, escrita numa linha.
+    # Grepar só "UTC" daria falso vermelho: `subtrairDias` usa `Date.UTC` de
+    # propósito, como ARITMÉTICA de calendário sobre uma data local já resolvida.
+    js_janela = _sem_comentarios(_code(wf, "Selecionar contas")
+                                 + "\n" + _code(wf, "Pagina: preparar pedido"))
+    fallbacks = re.findall(r"(?:\|\||\?\?)\s*'(?:UTC|Etc/UTC|GMT|Z)'", js_janela)
+    r.prova(f"{rotulo} · nenhum fallback para UTC no caminho da janela",
+            not fallbacks, ", ".join(fallbacks))
+    # A pergunta é sobre a ÚNICA chamada que decide a janela: qual variável de
+    # zona ela recebe. Um conjunto é mais honesto que um "não casa com": diz
+    # exatamente o que está lá quando falha.
+    zonas = set(re.findall(r"dataNaZona\(\s*agora\s*,\s*([A-Za-z_$][\w.$]*)\s*\)", js))
+    r.prova(f"{rotulo} · na seleção de contas, `dataNaZona(agora, …)` só recebe `fuso`",
+            zonas == {"fuso"}, ", ".join(sorted(zonas)) or "nenhuma chamada")
 
     ident = _sem_comentarios(_code(wf, "Identidade da execucao"))
     r.prova(f"{rotulo} · a chave da execução usa a data do DISPARO como rótulo",
@@ -750,6 +867,76 @@ def validar_recibo(wf: dict, r: Relatorio, rotulo: str) -> None:
             "'meta_sync_' + sha256Hex(" in valida and ".slice(0, 32)" in valida)
     r.prova(f"{rotulo} · o hash do snapshot respeita o CHECK do banco",
             "'meta_snapshot_' + sha256Hex(" in valida)
+
+    # ── os três campos que a RPC canônica exige e o fluxo não emitia ──────────
+    #
+    # ⚠️ ESTE BLOCO É NOVO PORQUE O ENVELOPE MUDOU, e ele existe para que a
+    # próxima pessoa não desfaça a correção sem perceber. Os três campos estão em
+    # `20260907210000_meta_read_model_consistency.sql:1260-1272` (o comentário que
+    # É o contrato) e em `backend/app/trafego/meta/read_model.py:101-105`.
+    for no, js in (("Validar semanticamente", valida),
+                   ("Fechar execucao", fechar)):
+        r.prova(f"{rotulo} · [{no}] o snapshot declara `hierarchy_complete` booleano",
+                re.search(r"hierarchy_complete:\s*(?:true|false)\b", js) is not None)
+        # ⚠️ `false`, e não por timidez: `hierarchy_complete` é a ÚNICA declaração
+        # que autoriza a RPC a marcar ausência de campanha/adset/ad
+        # (20260907210000:713 e 7.7). Este fluxo lê INSIGHTS — nunca percorre a
+        # hierarquia —, então `true` aqui autorizaria apagar inventário a partir
+        # de uma leitura que não olhou para ele.
+        r.prova(f"{rotulo} · [{no}] uma leitura de insights NÃO se declara "
+                "hierarquia completa",
+                "hierarchy_complete: true" not in js)
+        r.prova(f"{rotulo} · [{no}] o snapshot leva a chave de idempotência ESTÁVEL",
+                "stable_idempotency_key: idempotenciaEstavel" in js)
+
+    # ⚠️ A CHAVE ESTÁVEL NÃO PODE CONTER O INSTANTE — é literalmente a definição
+    # dela (`chave_origem: 'volatil'` é o defeito que ela existe para consertar).
+    # Derivar de `snapshot_hash` seria o erro exato: o hash cobre linhas que
+    # carregam `observado_em`. Derivar de `execucao_chave` seria o mesmo por outro
+    # caminho: numa rodada manual ela termina em `m<HH><MM>`, um relógio.
+    estavel_pagina = valida.split("const pedidoEstavel", 1)
+    r.prova(f"{rotulo} · a chave estável da página é derivada de um bloco próprio",
+            len(estavel_pagina) == 2)
+    if len(estavel_pagina) == 2:
+        corpo = estavel_pagina[1].split("idempotenciaEstavel =", 1)[0]
+        proibidos = [t for t in ("snapshotHash", "execucao_chave", "iniciada_em",
+                                 "observado_em", "passo", "Date")
+                     if t in corpo]
+        r.prova(f"{rotulo} · a chave estável da página não carrega o instante",
+                not proibidos, ", ".join(proibidos))
+        # E carrega o que DESCREVE o pedido — inclusive a página: sem ela as
+        # páginas 2..N nasceriam com a chave da página 1 e a RPC as descartaria
+        # como replay (20260907210000:746-757 devolve `repetido` sem escrever).
+        exigidos = ["ctx.conta_externa", "janela", "ctx.nivel", "ctx.time_increment",
+                    "ctx.action_report_time", "ctx.breakdown", "ctx.janela_declarada",
+                    "ctx.campos_de_insight", "pagina="]
+        faltando = [t for t in exigidos if t not in corpo]
+        r.prova(f"{rotulo} · a chave estável da página descreve o pedido inteiro",
+                not faltando, ", ".join(faltando))
+
+    estavel_fecha = fechar.split("const fechamentoEstavel", 1)
+    r.prova(f"{rotulo} · a chave estável do fechamento é derivada de um bloco próprio",
+            len(estavel_fecha) == 2)
+    if len(estavel_fecha) == 2:
+        corpo = estavel_fecha[1].split("idempotenciaEstavel =", 1)[0]
+        proibidos = [t for t in ("snapshotHash", "execucao_chave", "iniciada_em",
+                                 "ultimo_run_id", "agora", "resultado")
+                     if t in corpo]
+        r.prova(f"{rotulo} · a chave estável do fechamento não carrega o instante "
+                "nem o desfecho", not proibidos, ", ".join(proibidos))
+
+    # ⚠️ E A RELEITURA TEM DE PROCURAR A CHAVE QUE O BANCO GRAVOU. Com a chave
+    # estável presente, a RPC grava ELA (20260907210000:727-742). Apontar a
+    # releitura para a volátil devolveria zero linha e faria "Batimento e saude"
+    # carimbar INDETERMINADO em toda rodada — um alerta permanente, que é a
+    # maneira mais eficiente de ensinar alguém a ignorar alertas.
+    r.prova(f"{rotulo} · o fechamento publica a chave ESTÁVEL como endereço de releitura",
+            "idempotencia_fechamento: idempotenciaEstavel" in fechar)
+    releitura = next((n for n in wf["nodes"] if n["name"] == "Releitura do recibo"), None)
+    r.prova(f"{rotulo} · a releitura consulta por `idempotencia_fechamento`",
+            releitura is not None
+            and "[\"resumo\"][\"idempotencia_fechamento\"]"
+            in str(releitura["parameters"].get("url", "")))
 
     rec = _sem_comentarios(_code(wf, "Reconciliar lote"))
     r.prova(f"{rotulo} · a persistência só é dada por confirmada com run_id",

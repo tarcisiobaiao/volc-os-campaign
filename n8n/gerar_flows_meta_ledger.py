@@ -54,25 +54,52 @@ RPC_PERSISTIR = "trafego_meta_persistir_snapshot"
 
 # ───────────────────────────────────────────────────────── credencial ──
 #
-# ⚠️ LACUNA DECLARADA, NAO INTEGRACAO INVENTADA.
+# ⚠️ O QUE MUDOU, E POR QUE A PROVA ANTIGA DEIXOU DE DESCREVER A VERDADE.
 #
-# O fluxo Google autentica por `nodeCredentialType: googleAdsOAuth2Api`, um tipo
-# PREDEFINIDO do n8n. Para a Meta nao existe, NESTA base, prova de que a
-# instancia n8n tenha um tipo equivalente instalado — e o token Meta que o
-# operador usa hoje vive no Keychain do macOS dele, que nao existe num servidor
-# n8n. Entao aqui NAO se escolhe um tipo real e se torce: declara-se um
-# PLACEHOLDER que nao resolve.
+# A versao anterior declarava `nodeCredentialType: "metaGraphApiNaoProvisionada"`
+# — um tipo INVENTADO. A intencao era honesta (nao fingir integracao), mas o
+# efeito era pior do que parar: um `nodeCredentialType` que nao existe no catalogo
+# da instancia nao e "credencial pendente", e workflow INVALIDO. O n8n nao tem
+# onde pendurar o item do cofre, o editor nao oferece o seletor, e o operador nao
+# consegue provisionar nada nem depois de ter o token na mao. A lacuna deixava de
+# ser uma pendencia e virava um beco sem saida.
 #
-# Consequencia deliberada: se alguem importar este JSON e mandar rodar, o no
-# para na credencial. Ele nao le a Meta com meia autorizacao, nao cai num
-# caminho alternativo e nao inventa header. A liberacao exige o pedido de
-# provisionamento que acompanha esta entrega.
+# A troca e para um mecanismo REAL e ja usado nesta base:
+# `authentication: "genericCredentialType"` + `genericAuthType: "httpHeaderAuth"`,
+# a forma literal de `n8n/joinads_report_day_before.json:144-146` (parametros) e
+# `:190-194` (bloco `credentials`). O tipo `httpHeaderAuth` e nativo do n8n, nao
+# exige node community instalado, e guarda NOME e VALOR do cabecalho DENTRO do
+# item do cofre — por isso o workflow nao precisa (e nao pode) saber nem o nome do
+# cabecalho. A Graph API aceita o token por cabecalho, e essa e a unica forma que
+# mantem o segredo fora da URL: `httpQueryAuth` colocaria o token na query string,
+# onde ele vaza para log de proxy e para o historico de execucao do n8n.
 #
-# O que NUNCA aparece aqui: token, app secret, id de app, id de conta, cabecalho
-# `Authorization` montado a mao, `$env`, endpoint de admin em localhost.
-CRED_META_TIPO = "metaGraphApiNaoProvisionada"
-CRED_META = {CRED_META_TIPO: {"id": "REPLACE_ME",
-                              "name": "VOLC Meta Ads · CREDENCIAL NAO PROVISIONADA"}}
+# ⚠️ ID DE ITEM DE COFRE E REFERENCIA, NAO SEGREDO — mas ele ainda NAO EXISTE.
+# Nada nesta base prova que a instancia tenha um item `httpHeaderAuth` com o token
+# Meta (o inventario sanitizado em `docs/volc-os-graph/inventario-n8n-sanitizado.json`
+# recusa o campo `id` de proposito e nao lista credencial nenhuma). Entao o id sai
+# como um MARCADOR NOMEADO, e o workflow declara `credencial_provisionada: false`
+# no proprio `meta.volc`. Quem for provisionar preenche `CRED_META_ITEM_ID` com o
+# id do item criado no cofre e regera: o marcador some, `credencial_provisionada`
+# vira `true`, e so entao `scripts/publicar_workflows_n8n_meta.py --apply` deixa de
+# recusar. O bloqueio e mecanico, nao um lembrete.
+#
+# O que NUNCA aparece aqui, provisionado ou nao: token, app secret, id de app, id
+# de conta, cabecalho de autorizacao montado a mao, `$env`, endpoint local.
+CRED_META_TIPO = "httpHeaderAuth"
+#: Id do item no cofre do n8n. VAZIO = ainda nao provisionado. Preencher aqui
+#: (e SO aqui) e regerar e o unico passo que libera a publicacao.
+CRED_META_ITEM_ID = ""
+#: Marcador que ocupa o lugar do id enquanto o item nao existe. Nomeado de
+#: proposito: `REPLACE_ME` aparece em fluxo de tres provedores diferentes nesta
+#: base (JoinAds inclusive), e um grep por ele nao diz QUAL credencial falta.
+CRED_META_ITEM_MARCADOR = "PROVISIONAR__VOLC_META_ADS_HEADER_AUTH"
+CRED_META_ITEM_NOME = "VOLC Meta Ads · cabecalho do sistema · A PROVISIONAR"
+CRED_META_PROVISIONADA = bool(CRED_META_ITEM_ID.strip())
+CRED_META = {CRED_META_TIPO: {
+    "id": CRED_META_ITEM_ID.strip() if CRED_META_PROVISIONADA else CRED_META_ITEM_MARCADOR,
+    "name": CRED_META_ITEM_NOME,
+}}
 # A credencial do Supabase e uma REFERENCIA (id + nome do item no cofre do n8n),
 # a mesma ja versionada nos fluxos Google e JoinAds.
 CRED_SUPABASE = {"supabaseApi": {"id": "3lSRuywq3fwQ3z3I", "name": "VOLC Oficial"}}
@@ -112,11 +139,25 @@ ACTION_TYPE_LPV = "landing_page_view"
 # account_asset_id, credential_asset_id, window, observed_at, idempotency_key,
 # snapshot_hash, page_count, counts, rows.
 #
-# O que o fluxo ACRESCENTA e que a versao v15_02 da RPC ainda NAO le:
+# O que o fluxo ACRESCENTA — e que, ate a migration
+# `20260908000000_meta_insights_escopo.sql`, a RPC nao sabia ler:
 #   • `escopo`            — "insights_pagina" | "insights_fechamento".
-#                            Hoje `trafego_meta_sync_run` tem
-#                            CHECK (escopo = 'hierarchy'); a RPC em revisao
-#                            precisa aceitar os dois novos valores.
+#                            v15_01:238 punha CHECK (escopo = 'hierarchy') em
+#                            `trafego_meta_sync_run` e a RPC gravava 'hierarchy'
+#                            FIXO (20260907210000:1203-1205): os dois valores do
+#                            fluxo eram IMPOSSIVEIS de gravar. A migration nova
+#                            alarga o CHECK e faz a RPC ler o escopo do envelope,
+#                            com DEFAULT 'hierarchy' para o produtor Python atual,
+#                            que nao o envia.
+#   • `hierarchy_complete` — booleano OBRIGATORIO no escopo 'hierarchy'
+#                            (20260907210000:713 levanta META_LEITURA_SEM_COMPLETUDE
+#                            sem ele). O fluxo nunca le hierarquia, entao emite
+#                            `false`: e a declaracao de que esta leitura NAO
+#                            autoriza marcar ausencia de campanha nenhuma.
+#   • `stable_idempotency_key` — a chave que NAO carrega o instante, na forma que
+#                            o comentario-contrato de 20260907210000:1260-1272
+#                            pede. Sem ela a RPC cai para a volatil e carimba
+#                            `chave_origem: "volatil"` no recibo.
 #   • `partiality`         — a RPC ja faz coalesce(p_snapshot->'partiality'), so
 #                            que nada o preenchia. O fluxo preenche.
 #   • `pedido`             — o registro sanitizado do pedido (nivel, periodo,
@@ -136,11 +177,11 @@ ACTION_TYPE_LPV = "landing_page_view"
 #                            linha de dinheiro sobrescrever uma de contagem.
 #   • fechamento           — o snapshot de `escopo: "insights_fechamento"` e da
 #                            EXECUCAO, nao de uma conta: `account_asset_id` vem
-#                            `null` e `contas[]` traz um sub-recibo por conta. A
-#                            v15_02 exigiria `account_asset_id`; a revisao
-#                            precisa aceitar o fechamento de execucao e gravar
-#                            uma linha de `trafego_meta_sync_run` por conta,
-#                            mais a linha do fechamento com a chave abaixo.
+#                            `null` e `contas[]` traz um sub-recibo por conta.
+#                            20260907210000:699 recusava snapshot sem conta; a
+#                            migration nova troca isso por um CHECK CONDICIONAL —
+#                            conta continua obrigatoria em 'hierarchy' e em
+#                            'insights_pagina', e so o fechamento pode vir sem.
 #
 # A releitura de saude procura o fechamento por `chave_de_idempotencia`.
 CONTRATO_RPC = {
@@ -154,7 +195,15 @@ CONTRATO_RPC = {
     ],
     "releitura": "trafego_meta_sync_run",
     "migration_base": "supabase/migrations/v15_02_meta_ads_insights.sql",
-    "revisao_necessaria": True,
+    "migration_vigente": "supabase/migrations/20260907210000_meta_read_model_consistency.sql",
+    "migration_escopo": "supabase/migrations/20260908000000_meta_insights_escopo.sql",
+    # ⚠️ ESCRITA, NAO APLICADA. A revisao que destrava os tres campos existe como
+    # arquivo neste repositorio; nada aqui prova que ela rodou no banco oficial.
+    # Enquanto ela nao for aplicada, a RPC vigente RECUSA o snapshot de
+    # fechamento (sem conta) e o de pagina (sem `hierarchy_complete`). Declarar
+    # `revisao_necessaria: false` sem essa distincao seria trocar uma pendencia
+    # por uma afirmacao falsa.
+    "revisao": "ESCRITA_NAO_APLICADA",
 }
 
 # ────────────────────────────────────────────────────────── code: comuns ──
@@ -1135,6 +1184,44 @@ const idempotencia = 'meta_sync_' + sha256Hex(
   `META_ADS|${ctx.execucao_chave}|${ctx.conta_ref}|${janela}|${ctx.pagina}|${snapshotHash}`
 ).slice(0, 32);
 
+// ── CHAVE ESTAVEL: SO O QUE FOI PEDIDO, NADA DO QUANDO ──────────────────────
+//
+// ⚠️ A chave acima e VOLATIL por construcao, e o comentario-contrato de
+// `20260907210000_meta_read_model_consistency.sql:1272-1276` nomeia o defeito:
+// ela deriva de `execucao_chave` (que numa rodada manual carrega `m<HH><MM>`, um
+// relogio) e de `snapshotHash` (que deriva das linhas, que carregam
+// `observado_em`). Dois cliques com um segundo de diferenca produzem duas chaves
+// e DOIS runs da mesma leitura — e a RPC carimba `chave_origem: "volatil"` no
+// recibo justamente para deixar essa degradacao visivel.
+//
+// A chave estavel responde outra pergunta: QUAL UNIDADE LOGICA DE TRABALHO e
+// esta? Ela nao pode conter instante nenhum — nem `execucao_chave`, nem `passo`,
+// nem `iniciada_em`, nem o hash do conteudo. Ela carrega exatamente o que
+// DESCREVE O PEDIDO: conta, janela, grao (nivel, incremento, instante de
+// relatorio, breakdown, janela de atribuicao declarada), a lista de campos, e a
+// versao do contrato.
+//
+// ⚠️ E A PAGINA ENTRA. Nao por gosto: sem ela, as paginas 2..N da mesma janela
+// nasceriam com a MESMA chave da pagina 1, a RPC as reconheceria como replay
+// (20260907210000:746-757 devolve `repetido: true` e NAO escreve linha nenhuma) e
+// tudo depois da primeira pagina seria descartado em silencio. A pagina e "que
+// pedaco do pedido", nao "quando a resposta chegou": duas leituras da mesma
+// janela paginam igual.
+const pedidoEstavel = [
+  'META_ADS',
+  String(ctx.conta_externa),
+  janela,
+  String(ctx.nivel),
+  String(ctx.time_increment),
+  String(ctx.action_report_time),
+  String(ctx.breakdown),
+  String(ctx.janela_declarada),
+  String(ctx.campos_de_insight),
+  String(ctx.contrato_sha256),
+  `pagina=${Number(ctx.pagina)}`,
+].join('|');
+const idempotenciaEstavel = 'meta_sync_' + sha256Hex(pedidoEstavel).slice(0, 32);
+
 const agora = new Date().toISOString();
 const snapshot = {
   provider: 'META_ADS',
@@ -1145,6 +1232,20 @@ const snapshot = {
   window: janela,
   observed_at: ctx.iniciada_em,
   idempotency_key: idempotencia,
+  // A chave que a RPC prefere. Quando ela chega, o recibo carimba
+  // `chave_origem: "estavel"`; a volatil continua viajando ao lado porque a RPC
+  // a guarda em `cursor_final.chave_volatil` para forense.
+  stable_idempotency_key: idempotenciaEstavel,
+  // ⚠️ FALSE, E ISSO E UMA AFIRMACAO, NAO UM PADRAO. `hierarchy_complete` e a
+  // UNICA declaracao que autoriza a RPC a marcar ausencia de campanha/adset/ad
+  // (20260907210000:713 e 7.7). Este fluxo le INSIGHTS: ele nunca percorre a
+  // hierarquia da conta, entao nao tem como saber o que sumiu. Mandar `true`
+  // aqui autorizaria apagar inventario a partir de uma leitura que nem olhou
+  // para ele. Mandar `false` diz a verdade: esta leitura nao marca ausencia
+  // nenhuma. (Depois da migration de escopo, a RPC so EXIGE o campo no escopo
+  // 'hierarchy'; o fluxo o envia mesmo assim, para que o envelope siga valido
+  // por qualquer caminho e para que a resposta fique escrita em vez de omitida.)
+  hierarchy_complete: false,
   snapshot_hash: snapshotHash,
   page_count: Number(ctx.pagina),
   counts: {
@@ -1270,7 +1371,14 @@ return [{
     estado_conta: 'lida',
     persistencia_confirmada: true,
     ultimo_run_id: runId,
-    ultima_idempotencia: ctx.snapshot.idempotency_key,
+    // A chave sob a qual o banco gravou este lote e a ESTAVEL (a RPC so cai para
+    // a volatil quando a estavel falta). Guardar a volatil aqui faria o traco
+    // apontar para uma chave que nao esta em `trafego_meta_sync_run`.
+    ultima_idempotencia: ctx.snapshot.stable_idempotency_key,
+    ultima_idempotencia_volatil: ctx.snapshot.idempotency_key,
+    // A RPC diz de qual chave ela partiu; guardar a resposta DELA e melhor que
+    // supor. `volatil` aqui significaria que a chave estavel nao chegou.
+    chave_origem: recibo.chave_origem === undefined ? null : String(recibo.chave_origem),
   },
 }];
 """
@@ -1514,6 +1622,44 @@ const snapshotHash = 'meta_snapshot_' + sha256Hex(jsonEstavel(paraHash)).slice(0
 const idempotencia = 'meta_sync_' + sha256Hex(
   `META_ADS|fechamento|${base.execucao_chave}|${snapshotHash}`).slice(0, 32);
 
+// ── CHAVE ESTAVEL DO FECHAMENTO ─────────────────────────────────────────────
+//
+// ⚠️ NEM `execucao_chave` NEM `snapshotHash` PODEM ENTRAR AQUI, e cada um por um
+// motivo proprio:
+//   • `execucao_chave` termina em `passo`, que numa rodada manual e
+//     `m<HH><MM>` — um relogio (ver JS da "Identidade da execucao").
+//   • `snapshotHash` do fechamento cobre `contas[]`, e cada sub-recibo carrega
+//     `ultimo_run_id`, um uuid sorteado pela RPC a cada gravacao. Duas execucoes
+//     identicas jamais produziriam o mesmo hash.
+// Qualquer um dos dois faria a chave "estavel" ser tao volatil quanto a outra —
+// o defeito que `20260907210000:1272-1276` chama de `chave_origem: volatil`.
+//
+// O que IDENTIFICA esta unidade de trabalho: o job, o modo da janela, o DIA de
+// calendario do disparo (rotulo, nao instante), a versao do contrato, e o
+// conjunto ordenado de (conta, periodo lido). O `resultado` fica de fora de
+// proposito: desfecho e consequencia, nao pedido.
+//
+// ⚠️ CONSEQUENCIA ACEITA E DECLARADA: rerodar o MESMO job, no MESMO dia, sobre as
+// MESMAS janelas produz a mesma chave, e a RPC devolve `repetido: true` sem
+// gravar um segundo fechamento. Isso e o comportamento pedido — duas leituras
+// identicas sao uma unidade de trabalho, nao duas. Quando a segunda rodada le um
+// numero de paginas diferente da primeira, "Batimento e saude" acusa
+// INDETERMINADO ("releitura diverge"), que e exatamente o sinal que o operador
+// precisa ver. O que nao acontece e a segunda rodada passar por execucao nova.
+const contasParaChave = contas
+  .map((c) => `${c.conta_ref}@${c.periodo_inicio}..${c.periodo_fim}`)
+  .sort();
+const fechamentoEstavel = [
+  'META_ADS',
+  'fechamento',
+  String(base.job),
+  String(base.origem_janela),
+  String(base.data_do_disparo),
+  String(base.contrato_sha256),
+  contasParaChave.join(','),
+].join('|');
+const idempotenciaEstavel = 'meta_sync_' + sha256Hex(fechamentoEstavel).slice(0, 32);
+
 // ⚠️ FECHAMENTO DA EXECUCAO, NAO DE UMA CONTA: `account_asset_id` vem `null` de
 // proposito e `contas[]` traz um sub-recibo por conta. Ver CONTRATO_RPC no
 // gerador — a v15_02 exigiria uma conta; a revisao da RPC precisa aceitar o
@@ -1527,6 +1673,11 @@ const snapshot = {
   window: janela,
   observed_at: base.iniciada_em,
   idempotency_key: idempotencia,
+  stable_idempotency_key: idempotenciaEstavel,
+  // Mesma afirmacao do snapshot de pagina: o fechamento resume leituras de
+  // INSIGHTS, nunca uma varredura de hierarquia. `false` nega, explicitamente,
+  // autorizacao para marcar ausencia de qualquer objeto da conta.
+  hierarchy_complete: false,
   snapshot_hash: snapshotHash,
   page_count: paginas,
   counts: {
@@ -1570,7 +1721,17 @@ return [{
     resumo: {
       job: base.job,
       execucao_chave: base.execucao_chave,
-      idempotencia_fechamento: idempotencia,
+      // ⚠️ A RELEITURA PROCURA A CHAVE QUE O BANCO GRAVOU, e o banco grava a
+      // ESTAVEL quando ela chega: `20260907210000:727-742` faz
+      // `v_chave := v_chave_estavel` e so cai para a volatil quando o campo
+      // falta. Apontar "Releitura do recibo" para a volatil daria
+      // `chave_de_idempotencia=eq.<chave que nao existe>`, zero linha de volta e
+      // "Batimento e saude" carimbando INDETERMINADO em TODA rodada — um alerta
+      // permanente que ensina o operador a ignorar alerta.
+      idempotencia_fechamento: idempotenciaEstavel,
+      // A volatil continua no recibo, mas como TRACO, nao como endereco: e ela
+      // que a RPC guarda em `cursor_final.chave_volatil` para forense.
+      idempotencia_volatil: idempotencia,
       data_do_disparo: base.data_do_disparo,
       contas_lidas: contasAceitas.length,
       contas_recusadas: contasRecusadas.length,
@@ -1822,12 +1983,16 @@ def construir(papel: str, contrato_sha: str) -> dict:
             "method": "GET",
             "url": "={{ $json.url_graph }}",
             # ⚠️ A AUTORIZACAO E DA CREDENCIAL, NAO DO WORKFLOW. Nao existe
-            # header `Authorization` montado aqui, nem `access_token` em query,
-            # nem `$env`. O tipo abaixo e um PLACEHOLDER que NAO resolve nesta
-            # instancia: enquanto a credencial nao for provisionada, o no para —
-            # que e o comportamento desejado.
-            "authentication": "predefinedCredentialType",
-            "nodeCredentialType": CRED_META_TIPO,
+            # cabecalho de autorizacao montado aqui, nem `access_token` em query,
+            # nem `$env`. A forma abaixo e copia literal do precedente vivo desta
+            # base — `n8n/joinads_report_day_before.json:144-146` — e e a unica
+            # que mantem NOME e VALOR do cabecalho dentro do item do cofre. Por
+            # isso o workflow nao declara (nem precisa saber) qual e o cabecalho.
+            # `httpQueryAuth` seria a alternativa obvia e esta PROIBIDA: ela
+            # poria o token na query string, onde ele vaza para log de proxy e
+            # para o historico de execucao do n8n.
+            "authentication": "genericCredentialType",
+            "genericAuthType": CRED_META_TIPO,
             "sendQuery": True,
             "specifyQuery": "json",
             "jsonQuery": "={{ JSON.stringify($json.parametros_graph) }}",
@@ -1937,10 +2102,23 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 "**INATIVO por contrato E SEM CREDENCIAL.** Este JSON nao foi importado, "
                 "nao foi executado e nao foi ativado. A agenda so pode ser ligada depois "
                 "do pacote de autorizacao.\n\n"
-                "**A credencial Meta NAO EXISTE ainda.** O no `Meta Graph: insights` aponta "
-                f"para o tipo `{CRED_META_TIPO}`, que e um PLACEHOLDER e nao resolve. Isso e "
-                "deliberado: sem provisionamento, o no para em vez de ler a Meta com meia "
-                "autorizacao. Nenhum token, id de app ou id de conta vive neste arquivo.\n\n"
+                + ("**A credencial Meta NAO EXISTE ainda.** O no `Meta Graph: insights` "
+                   f"autentica por `{CRED_META_TIPO}` — um tipo REAL do n8n — mas o id do "
+                   f"item do cofre esta como o marcador `{CRED_META_ITEM_MARCADOR}`, que "
+                   "nao resolve. Para provisionar: crie no cofre do n8n um item **Header "
+                   f"Auth** chamado `{CRED_META_ITEM_NOME}` com o cabecalho de autorizacao "
+                   "do token de sistema Meta, preencha `CRED_META_ITEM_ID` em "
+                   "`n8n/gerar_flows_meta_ledger.py` com o id desse item e REGERE. Ate la "
+                   "`meta.volc.credencial.provisionada` fica `false` e o publicador recusa "
+                   "`--apply`.\n\n"
+                   if not CRED_META_PROVISIONADA else
+                   "**Credencial Meta PROVISIONADA.** O no `Meta Graph: insights` autentica "
+                   f"por `{CRED_META_TIPO}`, referenciando pelo id o item "
+                   f"`{CRED_META_ITEM_NOME}` do cofre do n8n. O nome e o valor do cabecalho "
+                   "vivem no item, nunca neste arquivo.\n\n")
+                + "Nenhum token, id de app ou id de conta vive neste arquivo — nem antes "
+                "nem depois do provisionamento: o que viaja e uma REFERENCIA (id + nome do "
+                "item do cofre), como ja acontece com `supabaseApi`.\n\n"
                 "Gerado por `n8n/gerar_flows_meta_ledger.py`. **Nao edite este JSON a mao** — "
                 "edite o gerador e regere.\n\n"
                 "**A janela e D-1 NO FUSO DA CONTA** (`trafego_meta_ad_account.timezone_name`), "
@@ -1952,8 +2130,9 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 "(nenhum POST/DELETE em objeto de anuncio). Ausencia permanece NULL; zero "
                 "medido permanece zero. Janela truncada vira INCOMPLETA e nao avanca marca "
                 "d'agua.\n\n"
-                "Antes de ativar: provisionar a credencial Meta, revisar "
-                f"`{RPC_PERSISTIR}` para os escopos `insights_pagina`/`insights_fechamento`, "
+                "Antes de ativar: provisionar a credencial Meta, APLICAR "
+                "`supabase/migrations/20260908000000_meta_insights_escopo.sql` (sem ela "
+                f"`{RPC_PERSISTIR}` recusa os escopos `insights_pagina`/`insights_fechamento`), "
                 "e rodar o canario com `CONTAS_PERMITIDAS` = uma conta."
             ),
         }),
@@ -2043,6 +2222,15 @@ def construir(papel: str, contrato_sha: str) -> dict:
         "meta": {
             "volc": {
                 "gerador": "n8n/gerar_flows_meta_ledger.py",
+                # ⚠️ IDENTIDADE PARA REENCONTRAR ESTE WORKFLOW NA INSTANCIA, e o
+                # motivo dela existir: a instancia tem 396 workflows e ja carrega
+                # nomes vizinhos ("Meta Insights", "VOLC - Meta Ads"). Procurar
+                # por NOME casaria com um workflow de outra pessoa e o
+                # sobrescreveria. `scripts/publicar_workflows_n8n_meta.py` procura
+                # por (gerador, dono, contrato_sha256) — origem, dono e hash —, e
+                # so trata como "o mesmo artefato" quem bate nos tres.
+                "dono": "volc-os/trafego-meta",
+                "artefato": "n8n/volc_meta_insights_dia_d1.json",
                 "contrato": CONTRATO_VERSAO,
                 "contrato_sha256": contrato_sha,
                 "provider": "META_ADS",
@@ -2052,16 +2240,41 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 "papel": modo,
                 "fuso_da_janela": "trafego_meta_ad_account.timezone_name",
                 "credencial": {
-                    "tipo_placeholder": CRED_META_TIPO,
-                    "estado": "NAO_PROVISIONADA",
+                    # O TIPO agora e real (`httpHeaderAuth`, nativo do n8n); o que
+                    # continua faltando e o ITEM no cofre. Os dois fatos sao
+                    # diferentes e por isso viajam em campos diferentes: declarar
+                    # so "NAO_PROVISIONADA" escondia que o tipo tambem era falso,
+                    # e declarar so o tipo esconderia que nada resolve ainda.
+                    "tipo": CRED_META_TIPO,
+                    "mecanismo": "genericCredentialType",
+                    "provisionada": CRED_META_PROVISIONADA,
+                    "estado": ("PROVISIONADA" if CRED_META_PROVISIONADA
+                               else "NAO_PROVISIONADA"),
+                    "item_nome": CRED_META_ITEM_NOME,
+                    # O id do item e REFERENCIA, nao segredo — mas enquanto o item
+                    # nao existe o que viaja e o marcador, e ele fica declarado
+                    # aqui para que um gate possa provar a COERENCIA entre o que o
+                    # workflow diz e o que ele carrega no no.
+                    "item_id_marcador": (None if CRED_META_PROVISIONADA
+                                         else CRED_META_ITEM_MARCADOR),
                     "observacao": (
-                        "placeholder deliberado; nao existe prova de que esta instancia n8n "
-                        "tenha tipo de credencial Meta. Ver o pedido de provisionamento."
+                        "o item do cofre ainda nao existe; o no aponta para um marcador "
+                        "nomeado e nao resolve. Provisionar = criar o item Header Auth no "
+                        "cofre do n8n, preencher CRED_META_ITEM_ID no gerador e regerar."
+                        if not CRED_META_PROVISIONADA else
+                        "referencia por id ao item do cofre do n8n; nome e valor do "
+                        "cabecalho vivem no item, nunca neste arquivo."
                     ),
                 },
+                # ⚠️ ESTE E O BLOQUEIO, e ele e mecanico: enquanto for `false`,
+                # `scripts/publicar_workflows_n8n_meta.py` recusa `--apply`. Nao
+                # e um lembrete para alguem ler.
+                "pronto_para_publicar": CRED_META_PROVISIONADA,
                 "estado": (
                     "INATIVO — depende do pacote de autorizacao E do provisionamento "
                     "da credencial Meta"
+                    if not CRED_META_PROVISIONADA else
+                    "INATIVO — credencial provisionada; depende do pacote de autorizacao"
                 ),
             }
         },

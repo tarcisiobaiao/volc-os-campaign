@@ -88,29 +88,84 @@ def test_o_workflow_nasce_inativo_e_declara_isso_no_meta():
     assert "INATIVO" in wf["meta"]["volc"]["estado"]
 
 
-def test_a_credencial_meta_e_um_placeholder_que_nao_resolve():
-    """A lacuna é declarada, não disfarçada.
+def test_a_credencial_meta_usa_um_tipo_real_e_nao_carrega_segredo():
+    """O tipo é REAL; o que falta é o ITEM do cofre — e isso fica declarado.
 
-    ⚠️ O caminho fácil seria escolher um tipo de credencial plausível do n8n e
-    seguir em frente. Não existe, nesta base, prova de que a instância tenha um
-    tipo Meta instalado, e o token que o operador usa hoje vive no Keychain do
-    macOS dele — que não existe num servidor n8n. Fingir que resolve produziria
-    um fluxo que parece pronto e não é.
+    ⚠️ POR QUE A CONTRAPROVA ANTIGA DEIXOU DE DESCREVER A VERDADE.
+
+    Este teste exigia `nodeCredentialType == 'metaGraphApiNaoProvisionada'` e
+    `id == 'REPLACE_ME'`, com a justificativa de que inventar um tipo plausível
+    seria fingir integração. A justificativa continua válida; o que estava errado
+    era supor que um tipo INVENTADO fosse o oposto de fingir. Um
+    `nodeCredentialType` fora do catálogo da instância não faz o nó "parar por
+    falta de credencial": faz o workflow ser inválido. O n8n não oferece o
+    seletor, não há onde pendurar o item do cofre, e o operador não consegue
+    provisionar nem depois de ter o token na mão. A pendência virava beco sem
+    saída, e o teste carimbava isso como estado desejado.
+
+    O tipo agora é `httpHeaderAuth` — nativo do n8n, na forma literal do
+    precedente vivo desta base (`n8n/joinads_report_day_before.json:144-146` e
+    `:190-194`). Ele guarda NOME e VALOR do cabeçalho dentro do item do cofre, e
+    por isso o workflow não sabe (nem precisa saber) qual é o cabeçalho.
+    `httpQueryAuth` seria a alternativa óbvia e está proibida: poria o token na
+    query string, onde ele vaza para log de proxy e histórico de execução.
+
+    O que continua sendo provado, e continuará depois do provisionamento:
+    nenhum segredo viaja, e `provisionada` bate com o que está no nó NOS DOIS
+    SENTIDOS.
     """
     wf = _wf()
     graph = next(n for n in wf["nodes"] if n["name"] == "Meta Graph: insights")
-    tipo = graph["parameters"]["nodeCredentialType"]
-    assert tipo == "metaGraphApiNaoProvisionada"
-    cred = graph["credentials"][tipo]
-    assert set(cred) == {"id", "name"}
-    assert cred["id"] == "REPLACE_ME"
-    assert "NAO PROVISIONADA" in cred["name"]
-    assert wf["meta"]["volc"]["credencial"]["estado"] == "NAO_PROVISIONADA"
-    # E nenhum caminho alternativo de autorização.
+    params = graph["parameters"]
+    assert params["authentication"] == "genericCredentialType"
+    assert params["genericAuthType"] == "httpHeaderAuth"
+    assert "nodeCredentialType" not in params
+    # O tipo fictício não pode voltar por nenhuma porta.
     bruto = D1.read_text(encoding="utf-8")
+    assert "metaGraphApiNaoProvisionada" not in bruto
+
+    cred = graph["credentials"]["httpHeaderAuth"]
+    assert set(cred) == {"id", "name"}, "credencial é REFERÊNCIA, nunca valor"
+
+    declarado = wf["meta"]["volc"]["credencial"]
+    assert isinstance(declarado["provisionada"], bool)
+    assert declarado["tipo"] == params["genericAuthType"]
+    # Coerência nos DOIS sentidos: sem ela bastaria virar o booleano para
+    # "liberar" um workflow que continua apontando para o marcador.
+    if declarado["provisionada"] is False:
+        assert cred["id"] == "PROVISIONAR__VOLC_META_ADS_HEADER_AUTH"
+        assert declarado["item_id_marcador"] == cred["id"]
+        assert declarado["estado"] == "NAO_PROVISIONADA"
+        assert wf["meta"]["volc"]["pronto_para_publicar"] is False
+        assert "A PROVISIONAR" in cred["name"]
+    else:
+        assert "PROVISIONAR__" not in bruto
+        assert cred["id"].strip() and cred["id"] != "REPLACE_ME"
+        assert wf["meta"]["volc"]["pronto_para_publicar"] is True
+
+    # E nenhum caminho alternativo de autorização.
     assert "access_token" not in bruto
+    # Com httpHeaderAuth o cabeçalho vive no item do cofre; um cabeçalho de
+    # autorização escrito aqui significaria que alguém o montou fora dele.
     assert not re.search(r"(?i)\"authorization\"", bruto)
     assert not re.search(r"(?i)localhost|127\.0\.0\.1|keychain|/Users/", bruto)
+
+
+def test_a_falta_de_credencial_bloqueia_a_publicacao_de_verdade():
+    """O bloqueio é MECÂNICO, não um lembrete no sticky note.
+
+    Uma pendência que depende de alguém ler um aviso não é bloqueio. O publicador
+    lê `meta.volc.pronto_para_publicar` do artefato e recusa `--apply` enquanto
+    ele for falso — e é isso que este teste amarra, para que ninguém apague o
+    portão achando que o aviso basta.
+    """
+    publicador = (RAIZ / "scripts" / "publicar_workflows_n8n_meta.py").read_text(
+        encoding="utf-8")
+    assert "pronto_para_publicar" in publicador
+    assert "CREDENCIAL_NAO_PROVISIONADA" in publicador
+    wf = _wf()
+    assert wf["meta"]["volc"]["pronto_para_publicar"] is (
+        wf["meta"]["volc"]["credencial"]["provisionada"])
 
 
 def test_nenhum_destino_fora_da_autoridade_oficial():
@@ -446,6 +501,8 @@ out.truncada_marca = rodar('Validar semanticamente',
 const val = rodar('Validar semanticamente', { entrada: [norm] })[0].json;
 out.snapshot_hash = val.snapshot.snapshot_hash;
 out.idempotencia = val.snapshot.idempotency_key;
+out.idempotencia_estavel = val.snapshot.stable_idempotency_key;
+out.hierarchy_complete = val.snapshot.hierarchy_complete;
 out.escopo = val.snapshot.escopo;
 out.marca_completa = val.snapshot.marca_dagua;
 out.pedido_no_snapshot = val.snapshot.pedido;
@@ -517,6 +574,11 @@ out.fechamento = {
   resultado: fech.resumo.resultado,
   marcas: fech.snapshot.contas.map((c) => c.marca_dagua),
   idempotencia: fech.snapshot.idempotency_key,
+  idempotencia_estavel: fech.snapshot.stable_idempotency_key,
+  hierarchy_complete: fech.snapshot.hierarchy_complete,
+  // O endereço que "Releitura do recibo" consulta. Tem de ser a chave que a RPC
+  // grava — a ESTÁVEL —, não a volátil.
+  endereco_releitura: fech.resumo.idempotencia_fechamento,
   texto: JSON.stringify(fech.snapshot.contas),
 };
 
@@ -558,6 +620,66 @@ out.janelas = {
   fato: normJ.fatos[0].janela_atribuicao,
 };
 
+// ── O MESMO PEDIDO, UM MINUTO DEPOIS ────────────────────────────────────────
+//
+// O defeito que a chave estável existe para consertar: dois cliques com um
+// minuto de diferença produziam duas chaves e DOIS runs da mesma leitura.
+//
+// ⚠️ RODADA MANUAL, e não por agenda — `Agenda` fica FORA de `nos`, que é como o
+// `try { $('Agenda').isExecuted } catch` do nó decide `disparo = 'manual'`. Numa
+// rodada agendada o `passo` é a HORA (`07`), então dois disparos do mesmo cron
+// já colidem por construção; é a rodada manual que ganha `passo = m<HH><MM>` e
+// produz duas chaves por causa do relógio. É esse o caso que precisa de prova.
+// O relógio anda 61 segundos: muda o minuto (e a chave volátil) sem mudar o dia
+// em fuso nenhum. A chave estável TEM de sair idêntica.
+function rodarPagina() {
+  const i = rodar('Identidade da execucao', { nos: { Config: cfg } })[0].json;
+  const s = rodar('Selecionar contas',
+    { entrada: contas, nos: { Config: cfg, 'Identidade da execucao': i } })[0].json;
+  const m = rodar('Identidade VOLC por conta', {
+    entrada: [{ ad_account_ativo_id: contas[0].cofre_ativo_id, external_id: '111',
+                meta_campaign_id: 'volc-1' }],
+    nos: { 'Selecionar contas': s } }).map((x) => x.json);
+  const c = m.find((x) => x.fuso_da_conta === 'America/Sao_Paulo');
+  const pg = rodar('Pagina: preparar pedido', { entrada: [c], nos: { Config: cfg } })[0].json;
+  const nm = rodar('Pagina: normalizar', { entrada: [{ ...pg, paging: {}, data: [{
+    account_id: 'act_1234567890', campaign_id: '111',
+    date_start: pg.pedido.periodo_inicio, date_stop: pg.pedido.periodo_fim,
+    spend: '10.50', impressions: '1000', clicks: '20',
+    actions: [{ action_type: 'landing_page_view', value: '4' }] }] }] })[0].json;
+  const v = rodar('Validar semanticamente', { entrada: [nm] })[0].json;
+  const r = rodar('Reconciliar lote',
+    { entrada: [{ ok: true, repetido: false, run_id: 'r1', chave_origem: 'estavel' }],
+      nos: { 'Validar semanticamente': v } })[0].json;
+  const f = rodar('Fechar execucao', { entrada: [{ ...r, motivo_incompleto: null }] })[0].json;
+  return {
+    passo: i.passo,
+    janela: `${c.janela_inicio}..${c.janela_fim}`,
+    estavel: v.snapshot.stable_idempotency_key,
+    volatil: v.snapshot.idempotency_key,
+    fech_estavel: f.snapshot.stable_idempotency_key,
+    fech_volatil: f.snapshot.idempotency_key,
+  };
+}
+const clique1 = rodarPagina();
+RELOGIO = new RealDate('2026-09-07T02:01:01.000Z');
+const clique2 = rodarPagina();
+RELOGIO = new RealDate('2026-09-07T02:00:00.000Z');
+out.dois_cliques = { clique1, clique2 };
+
+// A data que um cálculo em UTC teria devolvido no MESMO instante — é ela que as
+// janelas das contas precisam contradizer para provar que não há fallback.
+out.d1_em_utc = (() => {
+  const hojeUtc = new RealDate('2026-09-07T02:00:00.000Z').toISOString().slice(0, 10);
+  const d = new RealDate(RealDate.parse(hojeUtc + 'T00:00:00Z') - 86400000);
+  return { hoje: hojeUtc, d1: d.toISOString().slice(0, 10) };
+})();
+
+// A chave estável da PÁGINA 2 não pode repetir a da página 1: se repetisse, a
+// RPC trataria a página 2 como replay e descartaria tudo depois da primeira.
+out.estavel_por_pagina = [1, 2, 3].map((n) => rodar('Validar semanticamente',
+  { entrada: [{ ...norm, pagina: n }] })[0].json.snapshot.stable_idempotency_key);
+
 console.log(JSON.stringify(out));
 """
 
@@ -598,6 +720,141 @@ def test_sim_a_janela_e_d1_no_fuso_da_conta_e_nao_do_servidor(simulacao):
     assert simulacao["sem_conta_falha_fechado"] is True
     # E o que viaja é a referência opaca, nunca o id numérico.
     assert all(r.startswith("metaacct_") for r in simulacao["refs_opacas"])
+
+
+def test_sim_a_janela_contradiz_a_data_utc_do_mesmo_instante(simulacao):
+    """A prova de que NÃO existe fallback para UTC — dita como contradição.
+
+    ⚠️ Provar "a janela sai do fuso da conta" comparando duas contas entre si é
+    metade da prova: se as duas caíssem no mesmo fallback, elas concordariam
+    entre si e estariam as duas erradas. A outra metade é comparar com o que UTC
+    teria dado NO MESMO INSTANTE.
+
+    Relógio em 2026-09-07T02:00Z. Nesse instante:
+      · em UTC              é dia 7 → D-1 seria 2026-09-06;
+      · em America/Sao_Paulo são 23:00 do dia 6 → D-1 é 2026-09-05;
+      · em Asia/Tokyo        são 11:00 do dia 7 → D-1 é 2026-09-06.
+    São Paulo tem de DISCORDAR de UTC. É nas três horas em que ela discorda que
+    o defeito antigo pedia à Meta um dia que a conta ainda não começou — e a
+    série vazia entrava no painel como zero medido.
+    """
+    utc = simulacao["d1_em_utc"]
+    assert utc["hoje"] == "2026-09-07" and utc["d1"] == "2026-09-06"
+    janelas = simulacao["janelas_por_fuso"]
+    assert janelas["America/Sao_Paulo"] == "2026-09-05"
+    assert janelas["America/Sao_Paulo"] != utc["d1"], (
+        "a janela de São Paulo coincidiu com a de UTC no instante em que elas "
+        "TÊM de divergir; isso é a assinatura de um fallback para UTC")
+    # E Tóquio, que nesse instante coincide com UTC, coincide por estar na mesma
+    # data — não por ter caído no mesmo padrão. A prova disso é discordar de SP.
+    assert janelas["Asia/Tokyo"] == "2026-09-06"
+    assert janelas["Asia/Tokyo"] != janelas["America/Sao_Paulo"]
+
+
+def test_sim_dois_cliques_no_mesmo_pedido_dao_UMA_chave_estavel(simulacao):
+    """O defeito `chave_origem: 'volatil'`, fixado como contraprova.
+
+    `20260907210000_meta_read_model_consistency.sql:1272-1276` nomeia o problema:
+    a chave de idempotência derivava de `snapshot_hash`, que deriva das linhas,
+    que carregam `observado_em`. Dois cliques com um segundo de diferença viravam
+    duas chaves e DOIS runs da mesma leitura.
+
+    Aqui o relógio anda 61 segundos — o bastante para mudar `passo`,
+    `execucao_chave` e `observado_em`, e portanto a chave volátil — sem mudar o
+    dia em fuso nenhum. A chave ESTÁVEL tem de sair idêntica.
+    """
+    a, b = simulacao["dois_cliques"]["clique1"], simulacao["dois_cliques"]["clique2"]
+    # O relógio realmente andou (senão o teste passaria por não testar nada).
+    assert a["passo"] != b["passo"], (a["passo"], b["passo"])
+    assert a["volatil"] != b["volatil"], "a chave volátil deveria ter mudado"
+    # E a janela pedida é a mesma: é o MESMO trabalho.
+    assert a["janela"] == b["janela"] == "2026-09-05..2026-09-05"
+    assert a["estavel"] == b["estavel"], "a chave estável carregou o instante"
+    assert a["fech_estavel"] == b["fech_estavel"], (
+        "a chave estável do fechamento carregou o instante")
+    assert a["fech_volatil"] != b["fech_volatil"]
+
+
+def test_sim_cada_pagina_tem_a_sua_chave_estavel(simulacao):
+    """Sem a página na chave, tudo depois da primeira sumiria em silêncio.
+
+    A RPC devolve `repetido: true` e NÃO escreve quando já existe run 'ok' com a
+    chave (`20260907210000:746-757`). Se as páginas 2..N nascessem com a chave da
+    página 1, cada uma delas seria descartada como replay — e o recibo diria
+    `ok`. A página descreve QUE PEDAÇO do pedido, não QUANDO a resposta chegou.
+    """
+    chaves = simulacao["estavel_por_pagina"]
+    assert len(set(chaves)) == len(chaves) == 3, chaves
+    for k in chaves:
+        assert re.fullmatch(r"meta_sync_[a-f0-9]{32}", k), k
+
+
+def test_sim_o_envelope_leva_os_tres_campos_que_a_rpc_canonica_exige(simulacao):
+    """A costura onde o fluxo e a RPC discordavam calados.
+
+    Os três campos estão em `read_model.py:101-105` e no comentário-contrato de
+    `20260907210000_meta_read_model_consistency.sql:1260-1272`.
+    """
+    assert simulacao["escopo"] == "insights_pagina"
+    assert simulacao["fechamento"]["escopo"] == "insights_fechamento"
+
+    # ⚠️ `false`, e isso é uma AFIRMAÇÃO. `hierarchy_complete` é a única
+    # declaração que autoriza a RPC a marcar ausência de campanha/adset/ad
+    # (20260907210000:713 e seção 7.7). Este fluxo lê INSIGHTS: nunca percorre a
+    # hierarquia. Mandar `true` autorizaria apagar inventário a partir de uma
+    # leitura que não olhou para ele.
+    assert simulacao["hierarchy_complete"] is False
+    assert simulacao["fechamento"]["hierarchy_complete"] is False
+
+    for chave in (simulacao["idempotencia_estavel"],
+                  simulacao["fechamento"]["idempotencia_estavel"]):
+        assert re.fullmatch(r"meta_sync_[a-f0-9]{32}", chave), chave
+    # A estável e a volátil são chaves DIFERENTES: se coincidissem, a estável
+    # estaria derivando do mesmo material volátil.
+    assert simulacao["idempotencia_estavel"] != simulacao["idempotencia"]
+
+    # ⚠️ E a releitura de saúde procura a chave que o banco GRAVA. Com a estável
+    # presente a RPC usa ela (20260907210000:727-742); apontar a releitura para a
+    # volátil devolveria zero linha e o batimento carimbaria INDETERMINADO em
+    # TODA rodada — um alerta permanente ensina a ignorar alertas.
+    assert (simulacao["fechamento"]["endereco_releitura"]
+            == simulacao["fechamento"]["idempotencia_estavel"])
+
+
+def test_a_migration_de_escopo_destrava_os_tres_impedimentos(simulacao):
+    """O SQL que torna o envelope gravável — lido, não suposto.
+
+    Sem esta migration os três campos acima não resolvem nada: `v15_01:238` põe
+    `CHECK (escopo = 'hierarchy')` e `20260907210000:1203-1205` grava o literal
+    `'hierarchy'`, então um snapshot de `insights_pagina` era gravado com o
+    escopo ERRADO, em silêncio — pior que uma recusa.
+    """
+    sql = (RAIZ / "supabase" / "migrations"
+           / "20260908000000_meta_insights_escopo.sql").read_text(encoding="utf-8")
+    # (a) escopo alargado, e a RPC passa a LER em vez de fixar.
+    assert "CHECK (escopo IN ('hierarchy', 'insights_pagina', 'insights_fechamento'))" in sql
+    assert "v_escopo             text := coalesce(nullif(p_snapshot->>'escopo', ''), 'hierarchy')" in sql
+    assert "v_chave, v_escopo, 'ok'" in sql
+    assert "v_chave, 'hierarchy', 'ok'" not in sql
+    # (b) conta opcional SÓ no fechamento — CHECK condicional, não NULL geral.
+    assert ("CHECK (ad_account_ativo_id IS NOT NULL OR escopo = 'insights_fechamento')"
+            in sql)
+    assert "ALTER COLUMN ad_account_ativo_id DROP NOT NULL" in sql
+    assert "META_SNAPSHOT_SEM_CONTA" in sql
+    # (c) completude exigida SÓ na hierarquia — e a marcação de ausência também,
+    # senão a migration teria aberto um buraco maior do que fechou.
+    assert "IF v_escopo = 'hierarchy' THEN" in sql
+    assert "META_LEITURA_SEM_COMPLETUDE" in sql
+    assert "IF v_completo AND v_escopo = 'hierarchy' THEN" in sql
+    # Aditiva: nada de DROP de dado.
+    assert not re.search(r"(?i)\bDROP\s+(TABLE|COLUMN|SCHEMA)\b", sql)
+    assert not re.search(r"(?i)\b(DELETE\s+FROM|TRUNCATE)\b", sql)
+    # E sem metacomando de psql: o arquivo tem de rodar igual por psql, pelo
+    # Supabase CLI ou colado num console SQL.
+    assert not re.search(r"(?m)^\s*\\[a-z]", sql)
+    # O escopo que o fluxo produz é o escopo que a migration passou a aceitar.
+    for escopo in (simulacao["escopo"], simulacao["fechamento"]["escopo"]):
+        assert f"'{escopo}'" in sql, escopo
 
 
 def test_sim_o_pedido_leva_o_grao_inteiro_e_nada_que_nao_foi_pedido(simulacao):
