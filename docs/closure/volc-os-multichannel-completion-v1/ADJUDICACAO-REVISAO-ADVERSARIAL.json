@@ -5,7 +5,7 @@
   "achados_confirmados_pelos_verificadores": 14,
   "base": "6aad83c48ed354b56239fbc7d127b723a6c38728",
   "head_inicial": "369585f5a22ceaced733e48580bc1035cf2ed5d3",
-  "head_de_fechamento": "6c5de4f04d01ac109b5d1b09f29a1af70065e508",
+  "head_de_fechamento": "065147934eb7a253649b0807582ab5c1b1c7867f",
   "data": "2026-09-06",
   "metodo": "Cada achado foi RE-REPRODUZIDO contra o HEAD antes de ser aceito ou refutado — os relatórios dos verificadores foram tratados como alegação, não como fato. As correções foram submetidas a análise de mutação: cada contraprova nova teve de FALHAR com o defeito reintroduzido em runtime.",
   "vocabulario_de_classificacao": [
@@ -242,6 +242,19 @@
     {
       "item": "coluna de inventário para os fatos próprios de canal",
       "porque_nao_corrigida": "exige migration oficial, não autorizada nesta rodada"
+    },
+    {
+      "item": "releitura['bloqueia'] não bloqueia: o único desfecho que muda o curso de /reconciliar é DIVERGENTE",
+      "porque_nao_corrigida": "pré-existente, mas ATIVADO por esta rodada — antes o read-back não rodava em produção, então FALHA, LEITURA_PARCIAL e AMBIGUO nunca chegavam vivos. Fazer FALHA bloquear quebraria o propósito da rota (fechar o recibo quando algo falhou); decidir o que deve impedir ativação é decisão de produto, não de fechamento. Registrado alto e claro.",
+      "consequencia_hoje": "a mesma resposta pode trazer releitura.bloqueia=true e leitura.achou=true — que respondem perguntas diferentes (é o que o plano descrevia? × a campanha existe?), mas o nome 'bloqueia' promete mais do que a rota entrega"
+    },
+    {
+      "item": "'DISCOVERY' está no CHECK de trafego_lote.canal e não existe no AdvertisingChannelTypeEnum da v25 instalada",
+      "porque_nao_corrigida": "pré-existente na migration; corrigir exige migration oficial, não autorizada nesta rodada"
+    },
+    {
+      "item": "Frescor(parcial, conversoes=N) atravessa como medição",
+      "porque_nao_corrigida": "plano_mensuracao.ESTADOS_SEM_CONCLUSAO não inclui 'parcial', então __post_init__ deixa construir parcial COM contagem. Dívida DECLARADA em voz alta no próprio código do delta, e hoje inalcançável pelo caminho de produção"
     }
   ],
   "gates": {
@@ -272,5 +285,48 @@
     "scanner_de_segredos": "nenhum padrão forte no working tree",
     "autoridade_supabase": "https://database.agenciavolc.com.br conferida",
     "grafo": "--check current=true, built_at_commit == 6c5de4f"
+  },
+  "verificacao_focal_do_delta": {
+    "escopo": "git diff 369585f..1409c42, quatro lentes read-only (fail-open, regressão, contraprovas, contrato Google/vocabulário)",
+    "achados_confirmados_por_execucao": 5,
+    "corrigidos_em": "0651479",
+    "introduzidos_pela_propria_rodada_de_fechamento": [
+      {
+        "gravidade": "P2",
+        "titulo": "inversão: pausar um filho de Search virou divergência",
+        "mecanismo": "a correção por canal comparava por igualdade exata; com alvo=ENABLED para Search, um grupo pausado por ato humano legítimo passava a divergir e /reconciliar respondia 409",
+        "correcao": "o conjunto aceito é {estado de nascimento, PAUSED}: pausar nunca ameaça 'nada veicula sem decisão humana'; ENABLED onde o builder cria PAUSED continua divergindo em todo canal",
+        "contraprova": "test_pausar_um_filho_nunca_e_divergencia_e_ligar_onde_nasce_pausado_sempre_e"
+      },
+      {
+        "gravidade": "P2",
+        "titulo": "a contraprova por árvore do perfil de nascimento não guardava",
+        "mecanismo": "lia só search.py e display.py, e o helper juntava todo `X.status = Enum.Y` num conjunto único — o AdGroupCriterionStatusEnum de search.py satisfazia sozinho a asserção sobre o ANÚNCIO; quatro derivas independentes passavam verdes",
+        "correcao": "os quatro builders, cada objeto contra o SEU enum",
+        "contraprova": "test_o_perfil_de_nascimento_bate_com_os_builders (as quatro derivas mortas)"
+      },
+      {
+        "gravidade": "P3",
+        "titulo": "a contraprova da autoridade de canal poluía a sessão de teste",
+        "mecanismo": "a vista é um __getattr__ de módulo (PEP 562); monkeypatch.setattr lê pela vista e no undo faz setattr de volta, MATERIALIZANDO o atributo e matando a vista para o resto da sessão",
+        "correcao": "shadow posto e retirado à mão, mais asserção de que a vista continua dinâmica",
+        "contraprova": "test_revogar_no_executor_fecha_o_backend_e_abrir_o_alias_nao_abre_nada"
+      }
+    ],
+    "encontrados_e_fechados_de_tabela": [
+      {
+        "gravidade": "P3",
+        "titulo": "canario.POLITICA, a última cópia congelada, era servido cru por três leituras",
+        "mecanismo": "politica_do_canal e exigir passaram a julgar na chamada, mas POLITICA continua construído no import; numa revogação em runtime a mesma resposta HTTP dizia criacao_autorizada true no bloco de Search e false no bloco por canal",
+        "correcao": "as três leituras derivam na chamada"
+      },
+      {
+        "gravidade": "P3",
+        "titulo": "a mesma ignorância saía com dois estados",
+        "mecanismo": "canal vazio dava FALHA (bloqueia) e canal aceito pelo CHECK do banco mas desconhecido do read-back — VIDEO, SHOPPING e mais sete — dava NAO_SUPORTADO, que não bloqueia",
+        "correcao": "unificados em FALHA, com a causa dizendo qual dos dois; objetos_de volta à rota como pergunta, não como interruptor"
+      }
+    ],
+    "cegueira_de_teste_corrigida": "o dublê de Supabase da suíte de PRODUÇÃO do ledger não devolvia trafego_lote.canal (NOT NULL na tabela real), então os oito testes de rota daquele arquivo corriam pelo ramo 'não consegui derivar' sem que nenhum assert percebesse"
   }
 }
