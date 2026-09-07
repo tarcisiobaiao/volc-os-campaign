@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-07T17:17:26-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-07T17:33:16-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 694 arquivos: 509 Markdown e 185 SQL;
-- 694 versionados e 0 ainda não versionados;
+- 698 arquivos: 511 Markdown e 187 SQL;
+- 695 versionados e 3 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 123 SQL com palavras de mutação de alto risco.
+- 125 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-07T17:17:26-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 24 |
-| `documentation` | 359 |
+| `documentation` | 361 |
 | `generated` | 2 |
 | `module-guide` | 37 |
 | `product-document` | 23 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-07T17:17:26-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 72 |
+| `sql-needs-review` | 74 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -136,6 +136,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | 18 | 55 |
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | 0 | 0 |
+| `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | 0 | 0 |
+| `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | 0 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
@@ -283,12 +285,12 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_03_execucao_criativa.sql` | `sql-needs-review` | high | 18 | 55 |
 | `supabase/migrations/v11_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | high | 0 | 0 |
+| `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | high | 0 | 0 |
+| `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | high | 0 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | high | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
 | `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v12_03_pmax_observability_ledger.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v12_03_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

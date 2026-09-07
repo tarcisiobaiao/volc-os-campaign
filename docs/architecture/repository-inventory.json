@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T17:17:26-03:00",
+  "generated_at": "2026-09-07T17:33:16-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 694,
-    "markdown": 509,
-    "sql": 185,
-    "tracked": 694,
-    "untracked": 0,
+    "files": 698,
+    "markdown": 511,
+    "sql": 187,
+    "tracked": 695,
+    "untracked": 3,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 359,
+      "documentation": 361,
       "generated": 2,
       "module-guide": 37,
       "product-document": 23,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 72,
+      "sql-needs-review": 74,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 123,
+      "high": 125,
       "medium": 46,
       "read-only-or-ddl-free": 16
     }
@@ -1099,9 +1099,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 21670,
-      "lines": 292,
-      "sha256": "0f61ad5ec415e86d7b00773b88776d7d01b01b6214263611260a5bdb4d91d2a4",
+      "bytes": 22001,
+      "lines": 295,
+      "sha256": "7dac7b0ff7e9526ba5be13f1dbbf904c83aff15da56f5edd80b12c94b5af1e7b",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3303,6 +3303,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/meta-creative-agent-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 2121,
+      "lines": 45,
+      "sha256": "bfc6acf6d68c3d912d556a09e6f1d126d64975f6301e93dd86cc5f64c73a9ed5",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/meta-gam-final-local-v1/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3370,6 +3382,18 @@
       "bytes": 15302,
       "lines": 155,
       "sha256": "c46791de9f2a13a61338173fad4c704e078062054add1cc7755360f265b12841",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-operator-go-live-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 11573,
+      "lines": 215,
+      "sha256": "06a5d0c7d734924449c0fcd8a46ff8ba12405e3e9f2b74b398560ccb3b1f8003",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7678,6 +7702,30 @@
       "bytes": 21226,
       "lines": 431,
       "sha256": "5d02a2fb41f5682e21ad1bdddd36e7fdbb1332f737b4a0312c622f30a4c92054",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v11_05_criativo_agente_meta.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": false,
+      "bytes": 5696,
+      "lines": 104,
+      "sha256": "d269bdc50a71fb9cd4bfad9a036ba58973a8cec190d8c50ed8a2042a53b3d63c",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v11_05_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": false,
+      "bytes": 286,
+      "lines": 8,
+      "sha256": "61ed96b2d743a308f302d27988110165b6539586b5ea465164373b89c77c99a8",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": "high"
