@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-09-07",
+  "policy": "Fontes oficiais consultadas nesta rodada. SDK gerado prova existência de campos/tipos, não aplicabilidade de qualquer combinação à conta. HTML de referência Meta retornou indisponibilidade/rate limit; lacunas não foram preenchidas por memória.",
+  "sources": [
+    {
+      "id": "API-M01",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreative.py",
+      "version": "SDK tag26.0.0",
+      "status": "READ_OFFICIAL_SCHEMA",
+      "supports": "Catálogo de AdCreative contém status, object_story_spec, asset_feed_spec e destination_spec; não lista effective_status. Estados de biblioteca são distintos de PAUSED. Não prova que toda máscara de campo é aceita remotamente.",
+      "task_ids": [
+        "T01",
+        "T12"
+      ],
+      "finding_ids": [
+        "F14"
+      ]
+    },
+    {
+      "id": "API-M02",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreativeobjectstoryspec.py",
+      "version": "SDK tag26.0.0",
+      "status": "READ_OFFICIAL_SCHEMA",
+      "supports": "ObjectStorySpec usa page_id e instagram_user_id; contém estruturas link_data/video_data. Não justifica usar instagram_actor_id legado nem dispensar autorização da identidade.",
+      "task_ids": [
+        "T15",
+        "T16"
+      ]
+    },
+    {
+      "id": "API-M03",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreativevideodata.py",
+      "version": "SDK tag26.0.0",
+      "status": "READ_OFFICIAL_SCHEMA",
+      "supports": "VideoData descreve video_id e campos image_hash/image_url, além de mensagem/CTA. Compatibilidade da thumbnail e origem da mídia exige contrato e prova de conta; existência do campo não aceita URL CDN arbitrária.",
+      "task_ids": [
+        "T15"
+      ]
+    },
+    {
+      "id": "API-M04",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreativedestinationspec.py",
+      "version": "SDK tag26.0.0",
+      "status": "READ_OFFICIAL_SCHEMA_INSUFFICIENT_SEMANTICS",
+      "supports": "destination_spec contém destination_type/website/native_commerce_experience como estruturas genéricas. O arquivo não documenta como garantir website-only nem se Shop é aplicável à receita P0.",
+      "task_ids": [
+        "T10"
+      ],
+      "finding_ids": [
+        "F13"
+      ]
+    },
+    {
+      "id": "API-M05",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adaccount.py",
+      "version": "SDK tag26.0.0",
+      "status": "READ_OFFICIAL_SCHEMA",
+      "supports": "get_insights declara action_attribution_windows, action_report_time, breakdowns, level, time_increment, time_range e use_unified_attribution_setting. A conta expõe moeda/timezone. Compatibilidade e janelas efetivas precisam de request explícito/prova, não rótulo local.",
+      "task_ids": [
+        "T05",
+        "T16"
+      ]
+    },
+    {
+      "id": "API-M06",
+      "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adsinsights.py",
+      "version": "SDK tag26.0.0",
+      "status": "READ_OFFICIAL_SCHEMA",
+      "supports": "Modelo oficial dos campos/enums de Insights como referência do DTO; não determina a atribuição GAM nem autoriza somar ações de tipos diferentes.",
+      "task_ids": [
+        "T05",
+        "T09"
+      ]
+    },
+    {
+      "id": "API-G01",
+      "url": "https://developers.google.com/google-ads/api/performance-max/optimizations",
+      "version": "guia atualizado2026-08-19",
+      "status": "READ_OFFICIAL_GUIDE",
+      "supports": "Desdev22, controle de expansão final via FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION em asset_automation_settings; url_expansion_opt_out era mecanismo de versões anteriores. Text customization é controle separado. Aplicar a decisão de URL exclusiva exige inspecionar também outras fontes de destinos.",
+      "task_ids": [
+        "T17",
+        "T18"
+      ]
+    },
+    {
+      "id": "API-G02",
+      "url": "https://raw.githubusercontent.com/googleapis/googleapis/master/google/ads/googleads/v25/enums/asset_automation_type.proto",
+      "version": "namespacev25, branchmaster mutável",
+      "status": "READ_OFFICIAL_PROTO",
+      "supports": "Enums tipados de automação são referência de serialização. Conferir contra versão SDK usada e fixture do payload, não assumir campo de spec antigo.",
+      "task_ids": [
+        "T17",
+        "T18"
+      ]
+    },
+    {
+      "id": "API-G03",
+      "url": "https://developers.google.com/google-ads/api/docs/demand-gen/create-campaign",
+      "version": "guia corrente consultado",
+      "status": "READ_OFFICIAL_GUIDE",
+      "supports": "Criação Demand Gen organiza budget/campaign/adgroup/assets/ad; recomenda lote de operações relacionadas e budget não compartilhado. O guia descreve opções de bidding/channel controls, mas não prova elegibilidade da conta usada no canário.",
+      "task_ids": [
+        "T17",
+        "T19"
+      ]
+    },
+    {
+      "id": "API-G04",
+      "url": "https://developers.google.com/google-ads/api/docs/conversions/goals/overview",
+      "version": "guia corrente consultado",
+      "status": "READ_OFFICIAL_GUIDE",
+      "supports": "Metas de conversão são recursos próprios e têm escopo de conta/campanha. Não equiparar action existente a meta efetiva pronta ou fabricar conversões.",
+      "task_ids": [
+        "T18"
+      ]
+    },
+    {
+      "id": "API-G05",
+      "url": "https://developers.google.com/google-ads/api/docs/release-notes",
+      "version": "v25/v25.1 no guia consultado",
+      "status": "READ_OFFICIAL_GUIDE",
+      "supports": "Fonte para adjudicar versão e deprecações antes de alterar campos. Não é autorização para atualizar SDK/package lock de modo amplo.",
+      "task_ids": [
+        "T17",
+        "T18"
+      ]
+    },
+    {
+      "id": "API-S01",
+      "url": "https://supabase.com/docs/guides/database/functions",
+      "version": "documentação corrente; não prova versão self-hosted",
+      "status": "READ_OFFICIAL_GUIDE",
+      "supports": "Funções invoker/definer têm autoridades diferentes; search_path e privilégios de execução precisam ser controlados. Ensaiar RPC com papéis reais, não apenas testar função como superuser.",
+      "task_ids": [
+        "T03",
+        "T06",
+        "T11"
+      ]
+    },
+    {
+      "id": "API-S02",
+      "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+      "version": "documentação corrente; não prova implantação",
+      "status": "READ_OFFICIAL_GUIDE",
+      "supports": "RLS, views e privilégios elevados precisam ser considerados juntos. service_role pode contornar RLS; não expor segredo ao browser nem usar FORCE RLS como prova suficiente de fronteira da RPC.",
+      "task_ids": [
+        "T06",
+        "T07",
+        "T11"
+      ]
+    },
+    {
+      "id": "API-S03",
+      "url": "https://supabase.com/changelog",
+      "version": "feed consultado2026-09-07",
+      "status": "READ_OFFICIAL_CHANGELOG",
+      "supports": "Consulta de contexto de mudanças. Nenhuma feature hospedada/versão recente é presumida instalada no único self-hosted operacional. O endpoint markdown não pôde ser lido, HTML foi acessível.",
+      "task_ids": [
+        "T11",
+        "T14"
+      ]
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "RCH-M01",
+      "question": "Shop/destination_spec: aplicabilidade e prova website-only na receita exata Traffic/LPV/Facebook-only",
+      "reason": "Referências HTML Meta indisponíveis nesta rodada; schema SDK não define nested semantics/defaults.",
+      "task_ids": [
+        "T10"
+      ],
+      "blocks": "CP3/CP4 se esta pré-condição continuar aplicável; admissível corrigir a premissa com fonte oficial."
+    },
+    {
+      "id": "RCH-M02",
+      "question": "Máscara AdCreative e metadados de identidade disponíveis na conta",
+      "reason": "Ausência de effective_status no SDK sugere risco, não prova rejeição por Graph.",
+      "task_ids": [
+        "T01",
+        "T12"
+      ],
+      "blocks": "Aceite de read-back; resolver máscara local antes de prova real limitada."
+    },
+    {
+      "id": "RCH-M03",
+      "question": "Flexível/asset_feed_spec com Page/Instagram e vídeo+thumbnail da receita",
+      "reason": "Tipos disponíveis não provam limites/defaults/combinações aceitas pela conta.",
+      "task_ids": [
+        "T15"
+      ],
+      "blocks": "Somente essas capacidades; não bloquear estático mínimo."
+    },
+    {
+      "id": "RCH-M04",
+      "question": "Elegibilidade e campos de Sales/Leads/custom conversion/Advantage+ do caso de uso",
+      "reason": "P0 não oferece essas receitas; é necessário contrato próprio com API vigente e conta.",
+      "task_ids": [
+        "T16"
+      ],
+      "blocks": "Somente expansão escolhida; não substituir LPV silently."
+    },
+    {
+      "id": "RCH-G01",
+      "question": "Mínimos por moeda, metas efetivas, automações e estado AssetGroup aceitos para o plano novo",
+      "reason": "Provas de código/históricas não cobrem conta, assets e request atuais.",
+      "task_ids": [
+        "T18",
+        "T19"
+      ],
+      "blocks": "Canário do canal afetado."
+    }
+  ],
+  "inference_boundary": "Achados F01/F07/F09 são reproduções locais; F02 combina probe de componente com ligação de fonte. Nenhum desses fatos depende de supor resposta de conta real. A documentação pública não substitui read-back."
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "traffic-operational-closure-v2-20260907",
+  "workflow": "ENGINE_AND_UI_SPEC_NOT_ACCOUNT_AUDIT",
+  "status": "SPEC_READY_FOR_EXECUTOR_NOT_PRODUCTION_ACCEPTANCE",
+  "canonical_manifest": "docs/specs/traffic-operational-closure-v2/RUN-MANIFEST.json",
+  "canonical_outputs": "docs/specs/traffic-operational-closure-v2/",
+  "platforms": [
+    "META",
+    "GOOGLE"
+  ],
+  "account_access": false,
+  "mutation_authority": "none",
+  "health_score": null,
+  "scoring_reason": "Inspeção de engenharia, não auditoria de saúde de contas; não há score aplicável.",
+  "data_lifecycle": {
+    "classification": "INTERNAL_CODE_AND_PUBLIC_DOCUMENTATION",
+    "contains_account_data": false,
+    "contains_credentials": false,
+    "contains_raw_prompts": false,
+    "minimum_retention_days": 0,
+    "deletion_deadline": "OWNER_CONTROLLED_PROJECT_DOCUMENTATION",
+    "exception": "Manter especificação versionável até substituição/arquivamento explícito; não há export de conta a reter.",
+    "encryption_evidence": "Nenhuma criptografia adicional aplicada ou alegada; documentos técnicos locais sem credenciais.",
+    "access_roles": [
+      "repository_owner",
+      "authorized_local_executor"
+    ],
+    "deletion_verification": "NOT_APPLICABLE_NO_DATA_DELETED",
+    "incident_owner": "operador responsável pelo repositório",
+    "incident_channel": "handoff local sem segredos"
+  },
+  "validation": "Schema próprio de execução + referências; schemas v1 de artefatos de conta não se aplicam a este spec de engenharia e não foram alegados.",
+  "artifacts": [
+    "docs/specs/traffic-operational-closure-v2/MASTER-SPEC.json",
+    "docs/specs/traffic-operational-closure-v2/EXECUTION-PLAN.json",
+    "docs/specs/traffic-operational-closure-v2/FIELD-CONTRACTS.json",
+    "docs/specs/traffic-operational-closure-v2/GOOGLE-FIELD-INVENTORY.json",
+    "docs/specs/traffic-operational-closure-v2/CHECKPOINTS.json",
+    "docs/specs/traffic-operational-closure-v2/FINDINGS.json",
+    "docs/specs/traffic-operational-closure-v2/API-EVIDENCE.json",
+    "docs/specs/traffic-operational-closure-v2/CURATION-HANDOFF.json",
+    "docs/specs/traffic-operational-closure-v2/GUIDE-EXECUCAO.md",
+    "docs/specs/traffic-operational-closure-v2/PROBES.md",
+    "docs/specs/traffic-operational-closure-v2/EXECUTION-PLAN.schema.json",
+    "docs/specs/traffic-operational-closure-v2/VERIFICATION.json"
+  ]
+}

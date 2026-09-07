@@ -1,0 +1,1001 @@
+{
+  "schema_version": 1,
+  "plan_id": "TRAFFIC_OPERATIONAL_EXECUTION_V2",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "task_count": 21,
+  "execution_policy": {
+    "no_authority_inferred": "Este checklist é um contrato de planejamento, não uma autorização de executar todos os atos.",
+    "first_terminal": "Executar T00→T01/T02→T03→T04, adjudicar T10 e preparar T11. T01/T02 podem ser sequenciados pelo mesmo escritor; não exigir vários terminais. Fechar CP1 e pedir somente a autorização externa que faltar.",
+    "not_big_bang": "T05–T09 são a próxima lane no mesmo branch, não pré-condição artificial de um único canário. T15/T16 e Google não fazem R1 esperar.",
+    "tests": "Contraprovas novas para achados, testes focais por commit; uma suíte/build por checkpoint material. Não repetir milhares de testes por mudança documental.",
+    "dependency_semantics": "depends_on indica artefato local necessário; prova externa pode ser checkpoint posterior. T20 usa selected_release_required_tasks registrados em execução.",
+    "paths": "modify_paths são candidatos de ownership, não obrigação de editar todos. Caminhos com <novo_timestamp> são nomes a resolver em T11, não scripts existentes.",
+    "no_blind_rewrites": "Adjudicar cada achado no HEAD executor e marcar ALREADY_FIXED com evidência quando couber. Não alterar código só para satisfazer spec desatualizado."
+  },
+  "tasks": [
+    {
+      "id": "T00",
+      "title": "Congelar base e escolher o marco sem reabrir trabalho pronto",
+      "release": "R0",
+      "depends_on": [],
+      "finding_ids": [],
+      "size": "curta",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "AGENTS.md",
+        "PRODUCT.md",
+        "design.md",
+        "docs/specs/traffic-operational-closure-v2",
+        "docs/closure/unified-operational-line-v1"
+      ],
+      "modify_paths": [],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/EXECUTION-RECEIPT.json"
+      ],
+      "steps": [
+        "Confirmar branch, HEAD, status e ancestralidade; inventariar drift por path sem reset/stash/merge. Este pacote documental pode estar untracked: preservar e incluí-lo explicitamente no checkpoint documental autorizado.",
+        "Escolher R0 primeiro; resolver somente dependências do marco. Marcar tarefa já satisfeita com teste/evidência no HEAD, não pela narrativa do spec antigo.",
+        "Registrar versões reais Python/Node/SDK e comandos do package.json. Medir uma vez baseline focal; não reinstalar tudo nem atualizar lockfile sem necessidade demonstrada.",
+        "Anunciar ownership: um writer; se usar revisores autorizados, somente leitura e escopo fechado."
+      ],
+      "minimum_tests": [
+        "Gate de branch/base e proteção de paths fora do marco; rede negada nos testes de produto."
+      ],
+      "done_when": [
+        "Recibo contém SHA de código testado, drift, marco, paths e comandos reais; nenhum trabalho do usuário foi descartado."
+      ],
+      "checkpoint": "CP0",
+      "rollback": "Somente documentos novos; não manipular histórico."
+    },
+    {
+      "id": "T01",
+      "title": "Selar campos Meta e máscaras reais de leitura",
+      "release": "R0",
+      "depends_on": [
+        "T00"
+      ],
+      "finding_ids": [
+        "F05",
+        "F14",
+        "F15"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "src/components/trafego/meta/rascunho.ts"
+      ],
+      "modify_paths": [
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "src/lib/pautadorApi.ts",
+        "backend/tests/test_meta_contrato_endurecido.py",
+        "backend/tests/test_meta_paused_validation_routes.py",
+        "src/pages/trafego/__tests__/meta-criacao-bancada.test.tsx"
+      ],
+      "new_paths": [],
+      "steps": [
+        "Adotar FIELD-CONTRACTS.json: cada campo transmitido tem destino real ou recusa explícita; aplicar extra=forbid nas entradas relevantes e manter default sharing=false documentado.",
+        "Publicar recipe_id/version e campos fixos nas capacidades; não aumentar alcance do P0 para esconder campo faltante.",
+        "Adjudicar máscara AdCreative contra SDK oficial v26 e docs; omitir effective_status do pedido se não sustentado, sem inventar seu valor. Separar máscaras por objeto e preservar account/parent identity em read-back.",
+        "Checar start_time timezone/expiração de aprovação no servidor e expor horário efetivo; não corrigir horário silenciosamente depois de aprovado.",
+        "Snapshot/teste de paridade UI→DTO→plano→form-urlencoded e retorno de erros seguros. Modelo de request não permite o browser enviar IDs externos, hash do provedor ou prova política autoemitida."
+      ],
+      "minimum_tests": [
+        "Campo desconhecido falha antes de Keychain/HTTP; omissão sharing => false e true => 409 sem HTTP.",
+        "Todos os modos de CTA/Advantage suportados alteram payload/hash esperado; campo fixo adulterado recusa.",
+        "Máscaras por tipo são exercitadas por mocks estritos: Creative tem status de biblioteca, não PAUSED/effective_status presumido.",
+        "Payload form-urlencoded conserva booleanos/JSON/listas conforme serializer canônico; não comparar apenas objetos pré-serialização."
+      ],
+      "done_when": [
+        "Nenhum controle P0 é descartado silenciosamente; máscaras tipadas; endpoint e UI concordam sobre editável/fixo/indisponível. Compatibilidade do provider ainda exige CP3/CP4."
+      ],
+      "checkpoint": "CP1",
+      "rollback": "Reverter o delta local via novo commit se autorizado, nunca relaxar o contrato para manter UI enganosa."
+    },
+    {
+      "id": "T02",
+      "title": "Provar pixels e selar supply/política da peça",
+      "release": "R0",
+      "depends_on": [
+        "T00"
+      ],
+      "finding_ids": [
+        "F01",
+        "F19"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "docs/specs/creative-supply-chain-v1",
+        "docs/specs/creative-studio-operating-experience-v1",
+        "backend/app/criativo/politica"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "backend/tests/test_meta_static_batch.py"
+      ],
+      "new_paths": [
+        "backend/tests/test_meta_supply_bytes.py"
+      ],
+      "steps": [
+        "Implementar leitura limitada durante streaming, allowlist/redirect guard, MIME sniff e decode seguro com dependência já existente quando possível; medir dimensões, pixels e hash.",
+        "Distinguir bytes originais/preview/rendition; confirmar que inspeção e preview representam a peça efetivamente referenciada na conta. image_hash não é SHA do conteúdo.",
+        "Emitir recibo humano AUTHORIZED apenas no backend, com ator/conta/bytes/copy/finalidade/versão/horários. Não aceitar timestamp futuro ou identidade de ator enviada no body como autoridade.",
+        "Criar/reusar um policy_receipt_ref estável após conferência explícita da peça. Compile→validate→approve transportam esse mesmo recibo ainda válido; não emitir timestamp novo a cada recompilação. Renovação explícita gera nova revisão e invalida validação/aprovação anteriores.",
+        "Persistir referência de supply na aprovação; nova peça/copy invalida aprovação sem apagar recibo de execução antiga.",
+        "Preparar seam compartilhado para Google: OCR insuficiente continua bloqueado; adapter visual ou via humana requer contrato explícito. Não exigir concluir catálogo/upload de todo o Estúdio para Meta estático existente."
+      ],
+      "minimum_tests": [
+        "NOT_AN_IMAGE rotulado image/png rejeita antes de READY; imagem truncada, MIME divergente, pixel bomb, body que excede limite durante streaming e redirect proibido rejeitam.",
+        "Dimensões da biblioteca divergentes não substituem as medidas; hash muda com bytes, não com nome.",
+        "Recibo de outra conta/ator/peça/finalidade/copy, expirado ou futuro não autoriza novo despacho; falha de detector nunca CLEAR.",
+        "Uma imagem válida e a declaração humana admitida continuam aptas; teste não pode só provar recusas.",
+        "Compile→validate→approve do mesmo input/referência mantém hash estável; nova atestação explícita ou bytes diferentes muda revisão. Repetição idempotente da conferência não fabrica provas novas."
+      ],
+      "done_when": [
+        "Gate técnico mede mídia válida e recibo é auditável/bound à seleção. Tarefa não afirma direitos jurídicos nem policy approval Meta."
+      ],
+      "checkpoint": "CP1",
+      "rollback": "Fechar emissão de novos recibos; manter recibos históricos e recuperação."
+    },
+    {
+      "id": "T03",
+      "title": "Recuperar despacho sem recompilar nem duplicar",
+      "release": "R0",
+      "depends_on": [
+        "T01",
+        "T02"
+      ],
+      "finding_ids": [
+        "F02",
+        "F03"
+      ],
+      "size": "grande_bounded_saga",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql"
+      ],
+      "modify_paths": [
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "backend/tests/test_meta_criacao_pausada_rotas.py",
+        "backend/tests/test_meta_paused_birth.py"
+      ],
+      "new_paths": [
+        "supabase/migrations/<novo_timestamp>_meta_recovery_snapshot.sql",
+        "supabase/migrations/<novo_timestamp>_meta_recovery_snapshot_rollback.sql",
+        "backend/tests/test_meta_recovery_durable.py"
+      ],
+      "steps": [
+        "Persistir snapshot canônico despachável e bindings server-only no momento de aprovação; sem token. Preservar hashes e referências existentes; compatibilidade legacy declarada, nunca reconstrução silenciosa.",
+        "O criar-pausada também despacha o snapshot aprovado, validando integridade/versões/autoridade/validade atual sem recompilar nem emitir novo recibo de mídia. Se algo exige novo plano, recusar antes do POST e pedir nova aprovação. Nunca atualizar o snapshot por baixo do hash.",
+        "Reconciliação usa snapshot congelado; não chama _compilar, biblioteca/CDN, confirmação de direitos ou validação do draft atual.",
+        "Separar validade de aprovação de estado de execução. Expiração fecha novos POSTs, mas não esconde objetos/recibos nem impede leitura e conclusão.",
+        "Tratar IN_FLIGHT órfão com claim/fencing/compare-and-set e inspeção, mantendo todos os cenários pós-despacho ambíguos sem retry automático.",
+        "Persistir ID antes do read-back e armazenar read-back crítico de sucesso/divergência com tempo/versão; nenhuma mensagem de UI é a única evidência.",
+        "Manter dedup por identidade de payload em conta, inclusive plano novo com headline diferente mas Campaign idêntica; não converter ausência em nova permissão."
+      ],
+      "minimum_tests": [
+        "Crash antes do POST, durante POST, depois de resposta e antes de gravar ID, depois de ID e antes de read-back, e erro ao marcar ambíguo.",
+        "Dois workers concorrentes: no máximo um despacho autorizado por claim; worker atrasado não reabre/fecha indevidamente estado novo.",
+        "Reconciliação com declaração expirada, supply atual indisponível, flags create desligadas e aprovação expirada lê snapshot sem Keychain/CDN extra além do necessário para a leitura Meta.",
+        "IN_FLIGHT órfão aparece no recibo; ausência, 25 páginas incompletas, timeout e homônimo anterior não liberam POST.",
+        "ID conhecido e divergência persistem; Creative sem evidência suficiente permanece manual, não adotado por nome."
+      ],
+      "done_when": [
+        "Toda janela de falha tem estado durável recuperável e zero reenvio automático ambíguo. Ciclo SQL concorrente local prova regras; idempotência não é afirmada apenas por mock."
+      ],
+      "checkpoint": "CP1",
+      "rollback": "Nunca apagar ledger com despachos reais. Desabilitar criação, preservar snapshot/IDs e continuar recuperação por leitura."
+    },
+    {
+      "id": "T04",
+      "title": "Reabrir recibos e corrigir concorrência da interface",
+      "release": "R0",
+      "depends_on": [
+        "T03"
+      ],
+      "finding_ids": [
+        "F03",
+        "F04",
+        "F05"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "src/components/trafego/meta/rascunho.ts",
+        "src/pages/trafego/MetaObjetoPage.tsx"
+      ],
+      "modify_paths": [
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/app/trafego/meta_execucao/registro.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "src/lib/pautadorApi.ts",
+        "src/pages/trafego/__tests__/meta-criacao-nascimento.test.tsx"
+      ],
+      "new_paths": [
+        "src/components/trafego/meta/MetaOperationReceipt.tsx",
+        "backend/tests/test_meta_operation_receipts.py"
+      ],
+      "steps": [
+        "Adicionar listagem/consulta autorizada de operações e link por referência opaca; reaproveitar recibo existente como fonte, não criar segundo ledger.",
+        "Separar guardar rascunho de mostrar execução. Só referência opaca recuperável em URL/storage; tokens, IDs brutos e payload congelado nunca no browser persistente.",
+        "Exibir operação após reload; recuperação não depende de flag de criação. A UI pode sugerir leitura; chamada real continua exigindo clique/autoridade vigentes.",
+        "Request IDs/revisão do draft protegem aprovar/compilar/validar; busy é sempre liberado. Resultado de criação já despachada vai ao recibo da operação correta mesmo que o usuário edite outro draft.",
+        "Estados explícitos: não despachado, em curso, criado pausado, parcial, ambíguo, divergente; botão que pode duplicar nunca aparece como Tentar novamente."
+      ],
+      "minimum_tests": [
+        "Promises adiadas + alteração de conta/asset/copy durante cada ato: sem aprovação antiga aplicada ao draft novo e sem busy preso.",
+        "Reload/deep link reidrata; criação desligada mantém consulta/recuperação disponível; não despacha rede Meta automaticamente ao montar página.",
+        "Operação de outro ator/escopo não é legível; referência malformada não toca token.",
+        "Falha de leitura não vira Nenhum recibo; accessibility/foco do resultado e incidente."
+      ],
+      "done_when": [
+        "Operador consegue localizar e inspecionar a mesma operação após fechar a aba sem repetir criação."
+      ],
+      "checkpoint": "CP1",
+      "rollback": "Manter endpoint/recibos e desativar controles de ação, sem excluir histórico."
+    },
+    {
+      "id": "T05",
+      "title": "Corrigir Insights e request de coleta Meta",
+      "release": "R2",
+      "depends_on": [
+        "T00"
+      ],
+      "finding_ids": [
+        "F08",
+        "F09"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/trafego/meta/sincronizador.py"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/routers/meta_local.py",
+        "backend/tests/test_trafego_meta_adaptador.py",
+        "backend/tests/test_meta_sync_operacional.py"
+      ],
+      "new_paths": [],
+      "steps": [
+        "LPV usa somente action_type de LPV explicitamente documentado/medido; ViewContent independente e NULL preservado.",
+        "Request tipado de período, level, time_increment diário, timezone, report_time e janelas de atribuição suportadas. Registrar efetivamente enviado e aplicado; não carimbar metadado de janela que não foi solicitado.",
+        "Não depender date.today do host para hoje da conta. Receber conta+período e resolver timezone real; sem fallback para um nível diferente se falta *_id.",
+        "Allowlist de combinações breakdown/window/level; respostas parciais ou métricas não disponíveis permanecem tipadas. Não somar métricas de nível account com campaign.",
+        "Manter ações e valores separados; suportar paginação/limites e erro claro para período demasiado sem fazer sync amplo no teste."
+      ],
+      "minimum_tests": [
+        "LPV=4 + ViewContent=7 => LPV4; LPV NULL => null; zero explicitamente medido =>0; absence=>null.",
+        "Timezone atravessando meia-noite e período inclusivo; requests reais serializados capturados por MockTransport.",
+        "Falta campaign_id em level campaign não vira ID da conta; actions com janelas distintas não achatadas.",
+        "Reach/frequency não somados entre dias/campanhas; paginação truncada marca incompleto."
+      ],
+      "done_when": [
+        "DTO econômico tem fonte/grão/período/atribuição inequívocos e testes sem rede. Compatibilidade de parâmetros exige leitura real autorizada CP5."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Não reescrever snapshots históricos; versionar correção e reprocessar apenas com autorização."
+    },
+    {
+      "id": "T06",
+      "title": "Alinhar SQL real, snapshots e autoridade de Cofre",
+      "release": "R2",
+      "depends_on": [
+        "T05"
+      ],
+      "finding_ids": [
+        "F11",
+        "F12"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "supabase/migrations/v15_01_meta_ads_read_model.sql",
+        "supabase/migrations/v15_02_meta_ads_insights.sql",
+        "backend/app/trafego/meta/persistencia.py"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/trafego/meta/persistencia.py",
+        "backend/tests/test_trafego_meta_persistencia.py",
+        "backend/tests/test_meta_real_read_model.py"
+      ],
+      "new_paths": [
+        "supabase/migrations/<novo_timestamp>_meta_read_model_consistency.sql",
+        "supabase/migrations/<novo_timestamp>_meta_read_model_consistency_rollback.sql"
+      ],
+      "steps": [
+        "Ciclo SQL real deve igualar memória: marcação de ausência só após leitura completa no mesmo escopo, proteção observed_at contra snapshot antigo e idempotência por request/snapshot.",
+        "Criar projeção latest por grão de Insights, incluindo janelas/report_time/timezone; preservar revisões históricas sem somá-las como tráfego adicional.",
+        "Remover atestado automático de custódia VERIFIED. Se a RPC precisa registrar ativos no Cofre, declarar tipo observado e autoridade permitida; usar credential_ref única server-side sem segredo.",
+        "Restringir escrita às funções/grants necessários; verificar permissões reais de service_role, SECURITY DEFINER/search_path e bypass de RLS. RLS sozinho não limita service_role.",
+        "Migrations candidatas novas por padrão. Se oficialmente nunca aplicadas e houver decisão explícita, consolidar scripts antigos; não presumir o catálogo real. Manter rollback compatível sem excluir histórico de operação."
+      ],
+      "minimum_tests": [
+        "Postgres descartável: apply→duas snapshots→replay→snapshot antigo→leitura parcial→ausência confirmada→rollback→reapply.",
+        "Mesmo grão com duas revisões expõe latest uma vez; action NULL permanece NULL e joins não duplicam spend.",
+        "Papéis anon/authenticated/service_role e RPCs exercitados por SET ROLE, não apenas leitura de GRANTs.",
+        "Falha no meio da persistência é atômica; não promove custódia e não mistura credenciais locais distintas."
+      ],
+      "done_when": [
+        "Paridade demonstrada entre repositório de teste e SQL candidato; nenhum catálogo oficial foi presumido/aplicado."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Desabilitar sync; rollback de schema com dados reais exige plano de preservação, não DROP automático."
+    },
+    {
+      "id": "T07",
+      "title": "Conectar identidade, conta, paginação e detalhe reais",
+      "release": "R2",
+      "depends_on": [
+        "T06"
+      ],
+      "finding_ids": [
+        "F06",
+        "F07",
+        "F10",
+        "F11"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/registro.py"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/routers/meta_local.py",
+        "src/lib/pautadorApi.ts",
+        "backend/tests/test_meta_real_read_model.py"
+      ],
+      "new_paths": [
+        "backend/tests/test_meta_scoped_read_contract.py"
+      ],
+      "steps": [
+        "Resolver metaobj_* de receipt e UUID persistido para uma entity_ref pública estável; conservar IDs legados, não retaggear tudo.",
+        "Filtrar contas em conjuntos/anúncios/mensuração por joins parentais seguros; detail e insights exigem mesma conta/escopo. Não aceitar id direto como autorização.",
+        "Listas paginadas com cursor opaco e order total estável; retornar complete/has_more/motivo/timezone/currency/frescor. Teto500 nunca é sinônimo de completo.",
+        "Expor insights com entity_ref correlacionável e latest selection; fornecer hierarchy e relações Creative↔Ads sem inferir propriedade exclusiva.",
+        "GET real sem schema/conexão responde estado distinto de empty e sem demofallback. Escopo organizacional atual explícito, sem inventar reestruturação multitenant obrigatória."
+      ],
+      "minimum_tests": [
+        "Duas contas com homônimos e filhos em ambas: cada query retorna só escopo solicitado; detalhe fora de escopo recusa.",
+        "Mais de500 objetos/cursor repetido/página parcial; nenhum falsozero/ausente.",
+        "Recibo recém-criado resolve detalhe após sync; ID ainda não sincronizado mostra pending-sync e link de recibo, não redireciona para demo.",
+        "Canonical entity de insight persiste sem raw ID público e sem mudar UUID histórico."
+      ],
+      "done_when": [
+        "API de leitura atende rotas reais e corresponde conta→campanha→conjunto→anúncio→peça com paginação verificável."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Manter identificadores/resolver compatíveis; desabilitar nova projeção sem apagar dados."
+    },
+    {
+      "id": "T08",
+      "title": "Unificar as telas Meta com a base visual Google e dados reais",
+      "release": "R2",
+      "depends_on": [
+        "T04",
+        "T07"
+      ],
+      "finding_ids": [
+        "F04",
+        "F06",
+        "F10"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "src/pages/CampaignDetailDashboard.tsx",
+        "src/components/trafego/meta/MetaInventarioDemo.tsx",
+        "PRODUCT.md",
+        "design.md"
+      ],
+      "modify_paths": [
+        "src/pages/settings/CampaignsSettings.tsx",
+        "src/pages/settings/MetaCampaignsSettingsDemo.tsx",
+        "src/pages/MetaCampaignInsightPage.tsx",
+        "src/pages/CampaignDetailRouter.tsx",
+        "src/pages/trafego/MetaObjetoPage.tsx",
+        "src/components/trafego/hub/MetaNaoConfigurada.tsx",
+        "src/components/trafego/meta/MetaReadPreview.tsx",
+        "src/pages/__tests__/meta-campaign-insights.test.tsx",
+        "src/pages/trafego/__tests__/meta-operacao-demo.test.tsx"
+      ],
+      "new_paths": [
+        "src/components/trafego/meta/MetaCampaignReadView.tsx"
+      ],
+      "steps": [
+        "Extrair/reusar shell de catálogo de blocos e dashboard financeiro já aprovados; adapters fornecem rótulos e campos Meta, sem terceiro sistema visual.",
+        "Rotas com identidade real usam read model. Demo existe em entrada explícita identificada; falha de leitura não a ativa.",
+        "/trafego agrupa por conta com header/disclosure acessível e densidade distinta; detalhes mostram Campaign/AdSet/Ad e Creative reutilizável, ações suportadas e recibos.",
+        "Ligar filtros de conta/projeto/período/busca com semântica real; se backend não suporta um filtro, implementar ou não expor como funcional.",
+        "Mostrar a peça selecionada em imagem/vídeo e tratar longos nomes/URLs; tag de rede e estado não competem com título/métrica. Um botão principal por contexto, campos fixos sem seletor falso."
+      ],
+      "minimum_tests": [
+        "Página real não importa dados demo como fallback; IDs válidos navegam sem redirect silencioso.",
+        "Mesma base Google/Meta no catálogo/detalhe, métricas com null em vez de0 inventado.",
+        "Browser autenticado com sessão fornecida pelo operador em390/1440 claro/escuro; screenshots sanitizadas, zero overflow e foco alcançável.",
+        "Com conexão pendente, demo explícita continua navegável; 'Meta pendente' não muda saúde global para offline."
+      ],
+      "done_when": [
+        "Operador vê campanha/conjunto/anúncio reais com congruência visual, e consegue distinguir demonstração, dado velho, parcial e zero medido."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Preservar navegação/IDs; feature flag de projeção visual sem retornar demo automaticamente."
+    },
+    {
+      "id": "T09",
+      "title": "Fechar gasto, receita, ROAS e lineage da arbitragem",
+      "release": "R2",
+      "depends_on": [
+        "T05",
+        "T07",
+        "T08"
+      ],
+      "finding_ids": [
+        "F10",
+        "F16",
+        "F22"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "src/utils/roasCalculations.ts",
+        "src/pages/CampaignDetailDashboard.tsx",
+        "supabase/migrations/v15_01_meta_ads_read_model.sql"
+      ],
+      "modify_paths": [
+        "src/pages/MetaCampaignInsightPage.tsx",
+        "src/pages/CampaignDetailDashboard.tsx",
+        "src/utils/roasCalculations.ts",
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/trafego/meta/dominio.py"
+      ],
+      "new_paths": [
+        "backend/tests/test_meta_financial_lineage.py",
+        "src/pages/__tests__/campaign-metric-semantics.test.tsx",
+        "docs/closure/traffic-operational-closure-v2/METRIC-CONTRACT.json"
+      ],
+      "steps": [
+        "Mapear fonte GAM e identificador de atribuição já usados em Google; declarar o que Meta realmente transporta. Não inventar join por nome da campanha/projeto.",
+        "DTO financeiro separa spend/revenue/profit/roas_ratio/return_over_spend_pct, currency/timezone/grão/observação/coverage; ausência de lineage deixa revenue/ROAS indisponíveis, gasto permanece útil.",
+        "Revisões de gasto usam latest, actions não multiplicam valores; taxas recalculadas a partir de denominadores apropriados e métricas não aditivas preservadas.",
+        "Obter decisão O02 antes de alterar label histórico; não silenciosamente reinterpretar relatórios passados. Targets Google nunca usam excedente de ROAS legado.",
+        "Impostos/taxas/custos são regra versionada identificada; não generalizar 6% fixo como contrato universal Meta."
+      ],
+      "minimum_tests": [
+        "Receita sem gasto, gasto0, gastoNULL, moedas distintas, sérieparcial e denominadorzero.",
+        "Mesma campanha com duas revisões e duas actions não duplica spend; CPM/CTR/CPC diferenciam clique link/all.",
+        "Sem join confiável mostra receita pendente, nunca receita0 nem distribuição arbitrária.",
+        "Caso conhecido com revenue200/spend100 => ratio2, excedente100%; nenhum envia100 como target_roas."
+      ],
+      "done_when": [
+        "Dashboard compartilhado explica comparabilidade; métricas de arbitragem têm lineage verificável e unidades, sem prometer receita que não é atribuível."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Versionar fórmula/projeção, manter raw e nomenclatura histórica recuperável."
+    },
+    {
+      "id": "T10",
+      "title": "Adjudicar destino website-only e identidade Page/placements",
+      "release": "R0",
+      "depends_on": [
+        "T00"
+      ],
+      "finding_ids": [
+        "F13"
+      ],
+      "size": "curta_com_gate_externo",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_ACCOUNT_READ",
+      "read_paths": [
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "docs/specs/meta-creative-p0-reconciliation-v1"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "backend/tests/test_meta_contrato_endurecido.py"
+      ],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/META-DESTINATION-EVIDENCE.json"
+      ],
+      "steps": [
+        "Confrontar a aplicabilidade de Shop à receita exata OUTCOME_TRAFFIC/LPV/Facebook-only com fonte oficial atual; enum destination_spec do SDK não resolve nested payload/default.",
+        "Converter lista env 'cleared' em referência a evidência de conta/receita datada e revogável; se a premissa foi incorreta, corrigir contrato com fonte, não manter bloqueio inventado.",
+        "Preservar URL exata, link_data/CTA e website-only. Não adicionar destination_type=WEBSITE ou destination_spec por tentativa cega.",
+        "Page permission e identidade para Facebook-only precisam de recibo; não exigir Instagram nessa receita nem fingir identidade suficiente para outros placements.",
+        "Produzir plano de leitura/prova real com escopo mínimo. Falta de acesso/docs fica bloqueio bem definido, não razão para abrir campanhas."
+      ],
+      "minimum_tests": [
+        "Flag/env isolada não fabrica comprovante de conta; prova de outra conta/receita/versão ou expirada não abre canário.",
+        "Payload P0 mantém Facebook-only e URL exata; trocar Page invalida plano.",
+        "Nenhuma nova chamada real sem CP3; mocks não são rotulados como prova de Shop."
+      ],
+      "done_when": [
+        "Causa e critério de saída são objetivos; para canário, evidência real/documental aplicável aprovada. Não é necessário iniciar Instagram para liberar Facebook-only."
+      ],
+      "checkpoint": "CP3",
+      "rollback": "Revogar prova/fechar capacidade sem mexer em campanhas."
+    },
+    {
+      "id": "T11",
+      "title": "Preparar janela de schema sem confundir candidato com oficial",
+      "release": "R0",
+      "depends_on": [
+        "T03"
+      ],
+      "finding_ids": [
+        "F17"
+      ],
+      "size": "curta",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_OFFICIAL_SCHEMA",
+      "read_paths": [
+        "supabase/migrations/20260904183418_meta_create_paused_executor.sql",
+        "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql",
+        "supabase/migrations/v15_01_meta_ads_read_model.sql",
+        "supabase/migrations/v15_02_meta_ads_insights.sql",
+        "scripts/verificar_autoridade_supabase.py"
+      ],
+      "modify_paths": [],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-RUNBOOK.md"
+      ],
+      "steps": [
+        "Criar perfis CREATE_ONLY, META_READ_MODEL e GOOGLE_PMAX com dependências mínimas/ordem/checksums. CREATE_ONLY não espera T06–T09 se não depender desses schemas.",
+        "Inventariar tabelas/RPCs/grants exigidos e extensão/versão PG; evidência local não afirma instalado no self-hosted.",
+        "Não executar 'todas migrations': diretório contém rollbacks e scripts com comandos psql. Selecionar arquivos exatos e executor compatível.",
+        "Após autorização, ler catálogo oficial antes de decidir apply; baseline não aplicado vs parcialmente aplicado vs já aplicado precisam de caminhos distintos.",
+        "Definir backup/export/rollback pelo estado de uso. Se há IDs reais/recibos, nunca DROP de ledger; fechar flags e corrigir forward."
+      ],
+      "minimum_tests": [
+        "Postgres descartável no perfil selecionado: apply→uso→repetição→falha→rollback permitido→reapply, papéis reais e concorrência da saga.",
+        "Manifesto rejeita checksum divergente, falta de dependência e inclusão de rollback no apply.",
+        "Nenhum teste consulta oficial; nenhuma flag de criação aberta ao aplicar schema."
+      ],
+      "done_when": [
+        "Janela oficial pode ser executada por checklist curto, arquivos exatos, responsável e autoridade específica. CP2 documenta o que foi realmente aplicado."
+      ],
+      "checkpoint": "CP2",
+      "rollback": "Perfil local pode destruir ambiente descartável; oficial preserva dados e recibos conforme inventário."
+    },
+    {
+      "id": "T12",
+      "title": "Executar um canário Meta completo e pausado",
+      "release": "R1",
+      "depends_on": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T10",
+        "T11"
+      ],
+      "finding_ids": [
+        "F13",
+        "F14"
+      ],
+      "size": "curta_dependente_de_autorizacao",
+      "authorization": "EXPLICIT_META_CANARY_AND_LEDGER_WRITE",
+      "read_paths": [
+        "backend/app/routers/trafego_meta_criacao.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "docs/specs/traffic-operational-closure-v2/CHECKPOINTS.json"
+      ],
+      "modify_paths": [],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/META-CANARY-RECEIPT.json"
+      ],
+      "steps": [
+        "Confirmar CP1–CP3 e selecionar exatamente conta/Página/imagem/LP/budget/start/receita autorizados; nenhuma conta do histórico é automaticamente candidata.",
+        "Gerar novo plano e validação de raízes durável na mesma versão; checar máscara de Creative com leitura autorizada de peça existente quando possível, antes de criar objeto novo.",
+        "Aprovar hash e limites; abrir flags mínimas só na janela. Uma execução: Campaign→AdSet→Creative→Ad com validate dos passos dependentes quando suportado e ledger antes de POST.",
+        "Parar no primeiro erro/ambiguidade. IDs de objetos já criados ficam registrados e PAUSED quando veiculáveis; nenhum fallback automático, segunda campanha ou aumento de verba.",
+        "Read-back crítico dos quatro nós, parentes/conta/destino/budget/moeda/placements/Advantage; Creative no estado de biblioteca. Desligar novas criações após janela, manter recuperação permitida.",
+        "Abrir recibo na UI e após reload; registrar existências e policy review separadamente de entrega/aceite."
+      ],
+      "minimum_tests": [
+        "Checklist real por operador, não repetição de milhares de testes: mesmohash, limites, IDs, estados, pais, URL, uma execução, zero ativação.",
+        "Se rejeição dependente surgir, microcorreção local + nova autorização conforme impacto; não repetir automaticamente com aprovação anterior."
+      ],
+      "done_when": [
+        "META_STATIC_BIRTH_PROVEN somente quando quatro nós conferidos; caso contrário PARTIAL/AMBIGUOUS com IDs e próximo ato. Nunca chamar isso campanha entregando."
+      ],
+      "checkpoint": "CP4",
+      "rollback": "Não deletar objetos nem ledger. Manter PAUSED, reconciliar por leitura; cleanup exige autorização separada."
+    },
+    {
+      "id": "T13",
+      "title": "Gestão Meta mínima após nascimento",
+      "release": "R2",
+      "depends_on": [
+        "T08",
+        "T09",
+        "T12"
+      ],
+      "finding_ids": [
+        "F18"
+      ],
+      "size": "média_por_acao",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_MANAGEMENT_ACTS",
+      "read_paths": [
+        "backend/app/trafego/meta_execucao/registro.py",
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "src/pages/trafego/MetaObjetoPage.tsx"
+      ],
+      "modify_paths": [
+        "src/pages/trafego/MetaObjetoPage.tsx",
+        "src/lib/pautadorApi.ts",
+        "backend/app/trafego/meta_execucao/capacidades.py"
+      ],
+      "new_paths": [
+        "backend/app/routers/trafego_meta_gestao.py",
+        "backend/app/trafego/meta_execucao/gestao.py",
+        "backend/tests/test_meta_governed_management.py"
+      ],
+      "steps": [
+        "Contrato mínimo: ler configuração, propor mudança, revisar diff/efeito monetário, aprovar identidade+versão, aplicar, reler. Reusar ledger/recibos, não criar motor de saga rival.",
+        "Ações separadas: pausar, orçamento no nível correto, schedule; ativação com flag/autoridade própria e validação de todos os pais necessários. Nada montado como ENABLE genérico sem gate.",
+        "Pré-condição de estado/versão/frescor evita sobrescrever alteração feita fora do VOLC. Escopo por conta e limites por ato; erro ambíguo vira reconciliação, não retry.",
+        "Explicar configurações fixas/mutáveis vs mudanças que exigem novo anúncio/Creative. Nenhum botão placebo nem editabilidade presumida de todo campo do create.",
+        "Ativação só após policy/identidade/mensuração/destino/read-back necessários à receita; existência reconciliada não libera entrega."
+      ],
+      "minimum_tests": [
+        "Payload modificado após aprovação, objeto externo fora de conta, orçamento excedente e estado stale recusam antes da rede.",
+        "Flagvalidate/create não abre gestão/ativação; pausar não aumenta gasto; ativar pais parciais não passa.",
+        "Timeout no update não repete automaticamente; read-back de divergência preservado.",
+        "UI diff→aprovação→resultado→reload aponta operação correta."
+      ],
+      "done_when": [
+        "Ações locais fechadas e provas reais por ato autorizadas. Se ativação não autorizada, declarar pronta localmente e operação de entrega pendente."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Fechar flags; restaurar valor anterior somente em ato autorizado e após reler versão."
+    },
+    {
+      "id": "T14",
+      "title": "Operação local segura e perfil de produção remota",
+      "release": "R2",
+      "depends_on": [
+        "T07",
+        "T11"
+      ],
+      "finding_ids": [
+        "F12",
+        "F17"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_PRODUCTION",
+      "read_paths": [
+        "backend/app/trafego/meta/configuracao_local.py",
+        "backend/app/trafego/meta/credenciais.py",
+        "backend/app/routers/meta_local.py"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta/credenciais.py",
+        "backend/app/routers/meta_local.py"
+      ],
+      "new_paths": [
+        "backend/app/trafego/meta/credencial_provider.py",
+        "backend/tests/test_meta_credential_profiles.py",
+        "docs/closure/traffic-operational-closure-v2/OPERATING-PROFILES.md"
+      ],
+      "steps": [
+        "Manter MAC_LOCAL com Keychain e controles atuais. Perfil SERVER usa resolvedor de segredo server-side por referência autorizada; não transplantar token do Mac nem exigir concluir todo Cofre.",
+        "Autenticação/autorizações por conta/ator em serviços, não confiar em Host/localStorage. Rate limits, CSRF quando aplicável ao mecanismo escolhido, expiração/revogação e logs sanitizados.",
+        "Separar leitura de conta, persistência snapshot, upload, validate, create, ledger/recovery e gestão. Check de permissão/flag antecede resolução de credencial e rede quando a operação já é proibida.",
+        "Job de coleta eventual deve reutilizar serviço de sync, cursor e limite; scheduler idempotente/concurrency cap, heartbeat observável. Não ativar n8n/cron oficial sem autorização.",
+        "Definir perfis e runbook de deploy/recovery sem atualizar dependências/servidor por conta própria."
+      ],
+      "minimum_tests": [
+        "Token nunca em GET/UI/logs/storage; erro revogação preserva metadata não segredo.",
+        "Host spoof sozinho não libera SERVER, actor sem escopo não lê conta, rotação não altera identidade dos snapshots.",
+        "Sync fechado não busca token/conta; scheduler simulado respeita mutex/limites, cancelamento marca parcial."
+      ],
+      "done_when": [
+        "MAC_LOCAL operacional comprovável; SERVER pronto localmente ou comprovado após CP5/autorizações. Não confundir desenvolvimento com produção implantada."
+      ],
+      "checkpoint": "CP5",
+      "rollback": "Revogar adapter/janelas de sync; manter consulta de snapshots sem token."
+    },
+    {
+      "id": "T15",
+      "title": "Conectar Estúdio, vídeo e flexível por receitas verificáveis",
+      "release": "R3",
+      "depends_on": [
+        "T02"
+      ],
+      "finding_ids": [
+        "F18",
+        "F19"
+      ],
+      "size": "tres_slices_independentes",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_MEDIA_UPLOAD_AND_VALIDATION",
+      "read_paths": [
+        "docs/specs/creative-studio-operating-experience-v1",
+        "docs/specs/creative-supply-chain-v1",
+        "backend/app/criativo",
+        "backend/app/trafego/meta_execucao/ativos.py"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "src/components/trafego/meta/rascunho.ts"
+      ],
+      "new_paths": [
+        "backend/tests/test_meta_media_recipes.py",
+        "docs/closure/traffic-operational-closure-v2/MEDIA-RECIPE-PROOFS.json"
+      ],
+      "steps": [
+        "Slice A: reusar geração existente e biblioteca via supply_refs; selecionar/revisar/aprovar peça; lote estático mantém variações por anúncio, não se chama dinâmico.",
+        "Slice B: vídeo existente/upload governado, status de processamento, thumbnail válida em image_hash quando comprovado para a receita, preview real e recovery de upload. CDN preview não vira thumbnail enviada sem contrato.",
+        "Slice C: flexível/asset_feed_spec com Page/Instagram, CTAs, limites e placements conformes à versão; prova oficial+validate real antes de disponibilizar. Não confundir flexível com dynamic creative legado ou Advantage+ creative automático.",
+        "Spec de demand/supply continua com autoridades por campo: tráfego não gera bytes duplicando motores; Estúdio não decide orçamento/destino de campanha.",
+        "Para Google, registrar detector de marca visual ou alternativa adjudicada; publicidade paga não fica CLEAR por OCR nem por 'motor existente'. Paid/organic aprovações distintas."
+      ],
+      "minimum_tests": [
+        "Manifesto errado por conta/bytes/tipo/finalidade recusa, loteN corresponde Nads/creatives e todos têm preview.",
+        "Vídeo processando/falho/semthumb impede despacho; thumb inspecionada corresponde ao vídeo/conta.",
+        "Flexível não pode ignorar Page nem habilitar melhoria criativa omitida; unsupported combination com razão objetiva.",
+        "Upload ambíguo não duplica; consumo/reuso do asset mantém identidade e recibo."
+      ],
+      "done_when": [
+        "Cada slice possui capability state e prova própria. Adicionar API field ao DTO não é aceite. Estático permanece estável quando vídeo/flexível bloqueiam."
+      ],
+      "checkpoint": "CP6",
+      "rollback": "Fechar receita específica; preservar assets/IDs existentes, sem cleanup automático."
+    },
+    {
+      "id": "T16",
+      "title": "Custom conversions, CAPI e Advantage+ sem atalhos semânticos",
+      "release": "R3",
+      "depends_on": [
+        "T05",
+        "T09"
+      ],
+      "finding_ids": [
+        "F15",
+        "F18",
+        "F22"
+      ],
+      "size": "receitas_incrementais",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_MEASUREMENT_AND_RECIPE_PROOFS",
+      "read_paths": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "src/lib/metaCapi",
+        "docs/specs/meta-completion-v1"
+      ],
+      "modify_paths": [
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx"
+      ],
+      "new_paths": [
+        "backend/app/trafego/meta_execucao/receitas_otimizacao.py",
+        "backend/tests/test_meta_measurement_recipes.py",
+        "docs/closure/traffic-operational-closure-v2/META-OPTIMIZATION-MATRIX.json"
+      ],
+      "steps": [
+        "Persistir catálogo selecionável de pixel/dataset/custom conversion com conta, ação, elegibilidade, fonte/frescor; contagem depreflight não é seleção de evento.",
+        "Matriz versionada objetivo→optimization_goal→promoted_object→evento→placements→bid/budget→policy. P0 LPV não muda; Sales/Leads/especialidades são contratos novos quando demandados.",
+        "Implementar teste local de CAPI/dedup/consent/action_source/event_time/value/currency/identidade da mesma ocorrência, reusando integração existente. Nenhum evento fake para alimentar aprendizado ou monetização inventada.",
+        "Advantage Audience, placements, creative enhancement, campaign budget e budget sharing são capacidades diferentes com defaults explícitos e leitura de volta. Sharing=true exige receita multiadset e estratégia comprovadas, nunca toggle solto em P0.",
+        "Documentar o que é restrição da conta/provedor, produto ou falta de prova. Falta de volume tem diagnóstico observado, não um limiar universal inventado."
+      ],
+      "minimum_tests": [
+        "Evento de outra conta/desativado/incompatível rejeita; Pixel+CAPI duplicados representam uma ocorrência só.",
+        "Ausência de consentimento/identificador permitido não dispara envio; logs sem PII/token.",
+        "Payload de objetivo novo não reutiliza LPV com campos extra ignorados; mudanças de bid/budget têm validação cruzada.",
+        "Defaultomitido não ativa automações; special category não contorna regras de targeting."
+      ],
+      "done_when": [
+        "Matriz e UI fecham receitas explicitamente aceitas; provas reais limitadas autorizadas. Não afirmar toda API ou performance lucrativa garantida."
+      ],
+      "checkpoint": "CP6",
+      "rollback": "Fechar nova receita/envioCAPI; preservar histórico e nunca reenviar eventos antigos em massa."
+    },
+    {
+      "id": "T17",
+      "title": "Fechar apenas o delta local Google multicanal",
+      "release": "R4",
+      "depends_on": [
+        "T02"
+      ],
+      "finding_ids": [
+        "F19",
+        "F20"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION",
+      "read_paths": [
+        "docs/specs/google-multichannel-completion-v1",
+        "volc_ads/campanha/perfil.py",
+        "volc_ads/subir.py",
+        "backend/app/routers/trafego.py",
+        "volc_ads/autorizacao_de_canal.py",
+        "docs/specs/traffic-operational-closure-v2/GOOGLE-FIELD-INVENTORY.json"
+      ],
+      "modify_paths": [
+        "volc_ads/subir.py",
+        "volc_ads/campanha/perfil.py",
+        "backend/app/routers/trafego.py",
+        "src/pages/trafego/NovaCampanhaPage.tsx"
+      ],
+      "new_paths": [
+        "backend/tests/test_google_multichannel_execution_parity.py"
+      ],
+      "steps": [
+        "Adjudicar tasks históricas: prova PMax tipada já existe, não refazer. Mapear camposUI→ProvarEntrada→configtipada→builder→readback por canal.",
+        "Completar adaptadores de escrita DemandGen/PMax e observabilidade apenas onde faltam; manter autoridade defaultfechada e dispatcher único. Não trocar bool em perfil para simular licença.",
+        "Executar mesma reconstrução/hash/receita/prova/ledger/canário no caminho de escrita; mídia e destinação políticas recebidas com supply estável.",
+        "Preservar Search existente e Display PAUSED em todos nós veiculáveis; DG/PMax configuração compatível e URL constraints mantidas.",
+        "Campos importantes ausentes ganham controle conectado ou estado fixo/indisponível no servidor, sem UI expondo knobs unsupported."
+      ],
+      "minimum_tests": [
+        "Cada builder suportado nasce PAUSED; plano provado/escrito é o mesmo, alteração destino/copy/assets/estratégia invalida.",
+        "Flagvalidate não abre create; permissões de canal dinâmicas, nenhum dict alternativo de autoridade.",
+        "Google pixelgate exercitado nos3canais, falha/ausência não CLEAR; assets validate-only sem upload real oculto.",
+        "PMax AssetGroup/final URLs/automações e exclusãoPAGE_FEED sobrevivem serialização SDK efetiva."
+      ],
+      "done_when": [
+        "Candidato local completo dos três canais com flags fechadas e read-back/evidências por campo; sem afirmar criação autorizada."
+      ],
+      "checkpoint": "CP7",
+      "rollback": "Desabilitar canal novo; Search sem regressão, histórico/ledger preservado."
+    },
+    {
+      "id": "T18",
+      "title": "Fechar mensuração, estratégia e URL exclusiva Google",
+      "release": "R4",
+      "depends_on": [
+        "T00"
+      ],
+      "finding_ids": [
+        "F16",
+        "F21"
+      ],
+      "size": "média",
+      "authorization": "LOCAL_EXECUTION_THEN_EXPLICIT_GOOGLE_READ",
+      "read_paths": [
+        "volc_ads/mensuracao.py",
+        "backend/app/trafego/metas_efetivas.py",
+        "volc_ads/campanha/pmax.py",
+        "volc_ads/campanha/demand_gen.py"
+      ],
+      "modify_paths": [
+        "volc_ads/mensuracao.py",
+        "backend/app/trafego/metas_efetivas.py",
+        "volc_ads/campanha/pmax.py"
+      ],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/GOOGLE-ACCOUNT-PRECONDITIONS.json",
+        "backend/tests/test_google_destination_and_measurement_contract.py"
+      ],
+      "steps": [
+        "Preservar autoridade server-side de metas efetivas e binding ao contexto do plano. Atualizar campos deprecados só com fonte da versão SDK usada.",
+        "Por canal/estratégia: métricas readiness reais, action/configuration/status/goal scope e frescor; ausência nãozero nemPRONTO. Mínimos monetários por moeda/receita com evidência atual.",
+        "Unidades de CPC/CPA/micros/targetROAS exatas; não usar percentual de lucroROAS legado para estratégia.",
+        "PMax: inventariar destinos em AssetGroup, Campaign/Account assets, text/finalURL automations e PAGE_FEED. Apenas a LP autorizada pode receber clique sob contrato do usuário.",
+        "Identificar fronteira entre controles do provedor e comportamento/redirect do site; não afirmar URL imutável só porque optout está no protobuf."
+      ],
+      "minimum_tests": [
+        "Metasaccount vs campaignoverrides e deprecações, açõesinativas/desconhecidas e leitura parcial bloqueiam corretamente.",
+        "AlvoROASratio vs percentual, orçamento/moeda, conversão de micros sem float impreciso.",
+        "Qualquer URL alternativa/sitelink/feed/automação incompatível impede aceite PMax; URL mesmo domínio mas outraLP não basta.",
+        "Reread fresco muda readiness sem campos enviados pelo browser virarem autoridade."
+      ],
+      "done_when": [
+        "Pré-condições por conta/canal explícitas. Conta sem medição não é 'corrigida' fabricando ação/conversão."
+      ],
+      "checkpoint": "CP7",
+      "rollback": "Fechar capacidade de estratégia/URL se evidência expira; não alterar conversões oficiais automaticamente."
+    },
+    {
+      "id": "T19",
+      "title": "Provar canários Google em ordem e com limites por canal",
+      "release": "R4",
+      "depends_on": [
+        "T17",
+        "T18",
+        "T11"
+      ],
+      "finding_ids": [
+        "F20",
+        "F21"
+      ],
+      "size": "tres_janelas_reais",
+      "authorization": "EXPLICIT_GOOGLE_CANARY_PER_CHANNEL",
+      "read_paths": [
+        "volc_ads/autorizacao_de_canal.py",
+        "backend/app/trafego/canario.py",
+        "supabase/migrations/v12_03_pmax_observability_ledger.sql"
+      ],
+      "modify_paths": [],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/GOOGLE-CANARY-RECEIPTS.json"
+      ],
+      "steps": [
+        "Para cada canal selecionar conta/LP/peças/moeda/estratégia aprovadas; checar schema/perfil correspondentes e duplicidade por destino com leitura completa.",
+        "Executar validate-only atual por clique, capturando hash e operações sem mutação colateral de upload. Rejeição corrige localmente antes de outra autorização.",
+        "Display primeiro, DG depois, PMax por último. Abrir somente licença do canal/receita/limites da janela expressamente aprovada.",
+        "Executar um lote/ledger governado PAUSED com read-back de grafo e URLexclusivaPMax; zeroENABLE.",
+        "Erroambíguo interrompe sequência, preservaIDs e recupera. Fechar janelas após uso; lista de capabilities distingue local/proved/authorized."
+      ],
+      "minimum_tests": [
+        "No pré-clique apenas gates focais de canal/hash/limites. Na conta medir efetivamente IDs/status/budgets/URLs/strategy/network/automations/receipt.",
+        "Search canary histórico não repetido como nova prova multicanal."
+      ],
+      "done_when": [
+        "Cada canal ganha veredito próprio PROVEN_PAUSED ou pendência objetiva; não promover os3por um único sucesso."
+      ],
+      "checkpoint": "CP7",
+      "rollback": "Manter objetosPAUSED e ledger; nenhuma exclusão/recriaçãoautomática, nenhuma ativação herdada."
+    },
+    {
+      "id": "T20",
+      "title": "Encerrar o marco sem nova rodada infinita",
+      "release": "R5",
+      "depends_on": [
+        "T00"
+      ],
+      "finding_ids": [
+        "F23"
+      ],
+      "size": "curta_por_marco",
+      "authorization": "LOCAL_CLOSURE_AND_OPTIONAL_AUTHORIZED_CURATION",
+      "read_paths": [
+        "docs/specs/traffic-operational-closure-v2",
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/volc-os-graph/curadoria-operacional.json"
+      ],
+      "modify_paths": [],
+      "new_paths": [
+        "docs/closure/traffic-operational-closure-v2/HANDOFF.md",
+        "docs/closure/traffic-operational-closure-v2/CAPABILITY-RECEIPT.json",
+        "docs/closure/traffic-operational-closure-v2/CURATION-HANDOFF.json"
+      ],
+      "steps": [
+        "T20 depende dinamicamente apenas das tarefas do marco selecionado listadas no recibo; não afirmar R3/R4concluídos por fecharR1.",
+        "Uma revisão focal de mudanças de alto risco + uma rodada corretiva; achado novo grave exige correção, mas não reabre features não afetadas.",
+        "Rodar gates proporcionais definidos emCHECKPOINTS, comparar falhas por identidade à base e relatar ausência de browser/prova externa se existir.",
+        "Registrar SHAde código testado, SHAde transporte fora do própriocommit quando disponível, diff, tarefasfechadas/pendentes, operações reais e limites.",
+        "Se autorizado, um curador atualiza Roadmap/curadoria e regenera grafo; frescor por digest. Caso contrário sóhandoff. Não criar circularidade de HEAD→graph→commit.",
+        "Commit local somente se autorizado, sem amend, push ou branch nova. Push futuro usa SHA/refspec explícitos e read-back; não promover done por transporte."
+      ],
+      "minimum_tests": [
+        "JSONs/refs/DAG/evidências válidos, diff check, secret scan e auditoria de paths; grafo --check quando cabível.",
+        "Toda capability tem localstate, remoteproof, operatorauthorization, knownlimits; númerosbaseline não usados como selo geral."
+      ],
+      "done_when": [
+        "O usuário recebe o que consegue fazer agora, link da tela correta, o que falta e qual autorização mínima destrava próximo marco."
+      ],
+      "checkpoint": "CP8",
+      "rollback": "Sódocumental; nunca apagar provas de incidente para deixar verde."
+    }
+  ]
+}

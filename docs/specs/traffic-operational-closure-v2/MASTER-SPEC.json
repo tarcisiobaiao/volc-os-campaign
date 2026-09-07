@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "spec_id": "TRAFFIC_OPERATIONAL_CLOSURE_V2",
+  "verdict": "SPEC_READY_FOR_EXECUTOR_NOT_PRODUCTION_ACCEPTANCE",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "date": "2026-09-07",
+  "purpose": "Fechar caminhos operacionais de tráfego prioritariamente Meta: contrato honesto, mídia verificável, despacho recuperável, dados reais nas mesmas superfícies visuais e operação governada. Produzir implementação em marcos finitos, sem recomeçar engines prontos.",
+  "scope_authority": {
+    "current_round": "Documentação e diagnósticos herméticos somente. Este spec não autoriza implementação nem efeitos externos.",
+    "executor_prerequisite": "Obter autorização local específica para o marco escolhido. Chamadas de conta, persistência oficial, canários, gestão de campanha e deploy têm autorizações separadas em CHECKPOINTS.json.",
+    "branch": "execution/volc-os-operacao-80-20",
+    "worktree_hint": "Worktree operacional indicada no GUIDE-EXECUCAO.md; não usar checkout principal.",
+    "one_writer": "Um coordenador escritor por vez na worktree operacional; revisores somente leitura. Não criar branches/worktrees por tarefa, não mexer no checkout principal sujo.",
+    "drift": "Se HEAD avançou, comparar os paths afetados com a base e adjudicar tarefas já satisfeitas. Não resetar, rebasear, fazer stash ou sobrescrever trabalho concorrente.",
+    "inherited_specs": "Reusar os cinco pacotes já presentes. Este documento adjudica lacunas no HEAD atual; não transporta código nem dá precedência a afirmações históricas contrariadas pelo código.",
+    "shared_authorities": "Roadmap/curadoria/grafo permanecem intocados nesta rodada. Executor só os reconcilia uma vez por marco, com autorização, usando o handoff proposto.",
+    "single_branch_meaning": "Uma linha de execução ativa; não apagar branches históricas, stashes ou worktrees para produzir aparência de unificação."
+  },
+  "evidence_levels": [
+    "CURRENT_SOURCE",
+    "HERMETIC_REPRODUCED",
+    "HISTORICAL_REMOTE_RECEIPT",
+    "PUBLIC_OFFICIAL_SCHEMA",
+    "PENDING_REAL_PROOF"
+  ],
+  "deliverable_definition": {
+    "local_candidate": "Contrato, código, testes focais e preview medidos localmente. Não implica schema oficial, aceite Meta ou campanha existente.",
+    "meta_first_birth": "Campanha + conjunto + anúncio PAUSED e Creative associado, IDs persistidos e read-back crítico conferido no plano expressamente autorizado.",
+    "meta_operator_ready": "Meta first birth + recuperação após reload/incidente + read model real no inventário/detalhes + métricas corretas e capacidades claramente delimitadas.",
+    "meta_business_operation": "Meta operator ready + ações de gestão aprovadas, mensuração de arbitragem e coleta contínua governada; ativação só em ato separado.",
+    "production_remote": "Além da operação local, credencial/identidade servidor, permissões, logs, execução de sync, monitoramento e deploy efetivamente provados.",
+    "full_api_claim": "Não declarar 100% das combinações da API. Toda capacidade do produto é EDITABLE, FIXED_RECIPE, DISPLAY_ONLY, BLOCKED_WITH_REASON ou NOT_REQUESTED; vídeo/flexível/Sales/Leads são receitas separadas."
+  },
+  "releases": [
+    {
+      "id": "R0",
+      "name": "Candidato Meta estático recuperável",
+      "tasks": [
+        "T00",
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T10",
+        "T11"
+      ],
+      "exit": "CP1",
+      "note": "Preparação local de schema inclui dependências mínimas; não esperar front financeiro para provar nascimento."
+    },
+    {
+      "id": "R1",
+      "name": "Primeiro nascimento Meta completo PAUSED",
+      "tasks": [
+        "T12"
+      ],
+      "exit": "CP4",
+      "note": "Depende de autorização real e migrations efetivamente verificadas; um canário não fecha a frente inteira."
+    },
+    {
+      "id": "R2",
+      "name": "Meta com dados reais e gestão cotidiana",
+      "tasks": [
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T13",
+        "T14"
+      ],
+      "exit": "CP5",
+      "note": "T05–T09 podem ser implementadas antes do canário; ativação/produção têm autorizações distintas."
+    },
+    {
+      "id": "R3",
+      "name": "Mídia e otimização Meta avançadas",
+      "tasks": [
+        "T15",
+        "T16"
+      ],
+      "exit": "CP6",
+      "note": "Não bloqueiam o primeiro canário estático. Capacidade só sobe de estado com prova própria."
+    },
+    {
+      "id": "R4",
+      "name": "Google multicanal operacional",
+      "tasks": [
+        "T17",
+        "T18",
+        "T19"
+      ],
+      "exit": "CP7",
+      "note": "Reutiliza gate criativo e ledger; ordem Display → Demand Gen → PMax. Não exige ativar Meta."
+    },
+    {
+      "id": "R5",
+      "name": "Fechamento factual por marco",
+      "tasks": [
+        "T20"
+      ],
+      "exit": "CP8",
+      "note": "Executar para o marco selecionado; pendências de marcos futuros continuam explícitas."
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D01",
+      "decision": "Não mudar a receita Meta LPV estática durante a correção. Preservar Facebook-only, orçamento no conjunto, sharing=false explícito, Advantage Audience explícito, três nós PAUSED e Creative sem PAUSED inventado.",
+      "tasks": [
+        "T01",
+        "T12"
+      ]
+    },
+    {
+      "id": "D02",
+      "decision": "Recuperação usa plano e identidade congelados no despacho, não a configuração atual do criativo, da conta ou da UI. Expiração impede novo despacho, não a leitura do que já pode existir.",
+      "tasks": [
+        "T03",
+        "T04"
+      ]
+    },
+    {
+      "id": "D03",
+      "decision": "Ausência, timeout, erro de autenticação e paginação incompleta nunca autorizam reenviar operação possivelmente despachada. Uma lease expirada detecta incidente, não prova não criação.",
+      "tasks": [
+        "T03"
+      ]
+    },
+    {
+      "id": "D04",
+      "decision": "Validação das raízes prova somente Campaign/Creatives. AdSet/Ad dependentes precisam de validação/criação governada e read-back durante canário.",
+      "tasks": [
+        "T12"
+      ]
+    },
+    {
+      "id": "D05",
+      "decision": "A UI Meta reutiliza a base visual Google em /settings/campaigns e detalhe financeiro. /trafego mantém inventário operacional próprio. Adapter de dados por provedor, sem copiar regras Google para Meta.",
+      "tasks": [
+        "T08",
+        "T09"
+      ]
+    },
+    {
+      "id": "D06",
+      "decision": "Demo é uma escolha explícita de visualização, nunca fallback de falha ou ausência de conexão real. Empty, unavailable, partial, stale e zero medido são estados diferentes.",
+      "tasks": [
+        "T07",
+        "T08"
+      ]
+    },
+    {
+      "id": "D07",
+      "decision": "Receita GAM, conversões atribuídas Meta e gasto Meta são fatos de fontes diferentes. Não distribuir receita ou gasto de conta por nome/URL para fabricar rentabilidade de campanha.",
+      "tasks": [
+        "T05",
+        "T09",
+        "T16"
+      ]
+    },
+    {
+      "id": "D08",
+      "decision": "Preservar a convenção histórica de retorno excedente sem enviá-la como target_roas. Publicar definições e obter aceite de nomenclatura; novos DTOs transportam unidade e fórmula inequívocas.",
+      "tasks": [
+        "T09",
+        "T18"
+      ]
+    },
+    {
+      "id": "D09",
+      "decision": "Declaração humana pode ser AUTHORIZED quando o contrato permitir; não é detector automatizado CLEAR nem aprovação da plataforma. Vincular declaração a bytes e ator, não a um checkbox solto.",
+      "tasks": [
+        "T02",
+        "T15"
+      ]
+    },
+    {
+      "id": "D10",
+      "decision": "Para Google, PMax já tem prova tipada. Não refazer builder pronto; implementar apenas delta de executor/capacidade e provar URL exclusiva do funil em todos os destinos clicáveis pertinentes.",
+      "tasks": [
+        "T17",
+        "T18",
+        "T19"
+      ]
+    },
+    {
+      "id": "D11",
+      "decision": "A provisão Meta via Keychain continua válida para operação local. Produção remota requer adapter seguro próprio; não é obrigatório concluir todo o Cofre para esse adapter, nem aceitável remover proteção localhost.",
+      "tasks": [
+        "T14"
+      ]
+    },
+    {
+      "id": "D12",
+      "decision": "Não persistir VERIFIED de custódia como efeito de leitura Meta. Inventário observado, autoridade de credencial e titularidade/custódia são evidências distintas.",
+      "tasks": [
+        "T06",
+        "T14"
+      ]
+    }
+  ],
+  "contracts": {
+    "immutable_dispatch": {
+      "persist_before_network": [
+        "recipe_id/recipe_version",
+        "api_version",
+        "compiler_version",
+        "actor_id e escopo organizacional atual",
+        "account_ref",
+        "plan_sha256",
+        "operation_manifest ordenado",
+        "payloads canônicos com placeholders tipados e identidades externas restritas ao servidor",
+        "resolved_bindings",
+        "asset_supply_manifest e policy_receipt_refs",
+        "validation_receipt_ref e coverage",
+        "aprovação e validade",
+        "limites monetários/moeda",
+        "destination_proof_ref"
+      ],
+      "dispatch_rule": "Criar usa o snapshot aprovado e verifica integridade/validade/revogação antes do POST; não recompila mídia nem emite recibo novo. Mudança que afeta o plano exige nova aprovação, nunca atualização silenciosa do snapshot.",
+      "never_persist": [
+        "access_token",
+        "app_secret",
+        "URLs assinadas/CDN efêmeras como identidade do criativo",
+        "conteúdo do Keychain",
+        "credenciais em JSON público"
+      ],
+      "privacy": "Copy, destino, orçamento e IDs externos no snapshot são dados sensíveis de operação, não segredos de autenticação; acesso server-only, política de retenção e projeção sanitizada.",
+      "hash": "Hash de identidade semântica inclui receita/versões, escolhas efetivas, conta, destinos, bytes e finalidade/copy. Recibo de aprovação referencia seu próprio tempo/expiração. Não mudar o hash histórico em recuperação nem usar expiração como identidade de objeto remoto.",
+      "migration_compatibility": "Operações antigas sem snapshot íntegro entram LEGACY_RECOVERY_REQUIRED com IDs conhecidos e instrução manual. Não recompilar silenciosamente para fazer parecer o mesmo plano."
+    },
+    "recovery": {
+      "operation_authority": "Separar estado da aprovação (pode despachar?) do estado da execução (o que ocorreu?). Uma aprovação EXPIRED não apaga execução CREATED/PARTIAL/AMBIGUOUS.",
+      "step_states": [
+        "PREPARED_NOT_DISPATCHED",
+        "IN_FLIGHT",
+        "CREATED_ID_RECORDED",
+        "READBACK_CONFIRMED",
+        "READBACK_DIVERGENT",
+        "REJECTED_PROVEN",
+        "AMBIGUOUS",
+        "MANUAL_REVIEW_REQUIRED"
+      ],
+      "transition_rules": [
+        "PREPARED_NOT_DISPATCHED só significa sem rede se a sequência/claim no servidor prova isso. Não inferir pelo relógio.",
+        "Persistir claim/identidade antes do POST; registrar ID devolvido antes de qualquer read-back.",
+        "Resposta HTTP rejeitada só é REJECTED_PROVEN se origem/semântica provam rejeição do objeto; gateway/timeout/5xx pós-despacho são ambíguos.",
+        "IN_FLIGHT órfão é elegível a inspeção por leitura após exclusão/fencing do trabalhador vivo. Não reabrir POST ao expirar lease.",
+        "Read-back por ID conhecido é prioritário. Busca por nome exige conta, conteúdo crítico, pais e temporalidade; Creative sem identidade temporal suficiente permanece manual.",
+        "Um objeto encontrado com configuração divergente existe, mas não está aceito. Não criar substituto, não ativar, não ocultar divergência.",
+        "Reconciliação pode gravar conclusão no ledger; isso é Supabase write autorizado, embora não seja Meta mutate."
+      ],
+      "concurrency": "Bloqueio transacional único sobre conta + identidade de payload do passo, com versionamento/fencing no ledger; preservar cross-plan dedup existente. Não tentar prometer exactly-once entre Postgres e Meta. Ambiguidade é estado normal tratável.",
+      "durability": "Salvar campos críticos e timestamp de cada read-back bem-sucedido e divergente; a resposta HTTP da UI não é o único recibo.",
+      "ui": "GET de operações/recibo autorizado + deep link opaco, reidratação após reload, ações de recuperação visíveis com criação desligada."
+    },
+    "asset_supply": {
+      "technical": "Download no servidor com allowlist/validação de URL e redirecionamentos, timeout, limite durante streaming, MIME sniffing e decode real. Limitar dimensões/pixels e bombas de descompressão. Hash dos bytes decodificáveis lidos, dimensões medidas, formato e orientação efetivos.",
+      "identity": "image_hash da Meta é referência opaca do provedor, não SHA-256 do conteúdo. Registrar associação observada entre account_ref, asset_ref, provider_image_hash e a representação realmente inspecionada, sem afirmar igualdade criptográfica.",
+      "rendition": "Distinguir original, preview e thumbnail. Se só se obtém rendition, medir/hash dessa rendition com origem declarada e adjudicar se basta para o gate. Nunca etiquetar preview como original sem prova.",
+      "policy": "Recibo backend datado, versionado, escopo paid/organic/canal/conta/finalidade/copy, ator autorizado, evidência e validade. Alteração de bytes/copy/destino/finalidade invalida a aprovação correspondente; recuperação histórica permanece possível.",
+      "receipt_lifecycle": "Conferência explícita emite policy_receipt_ref estável e idempotente, bound ao conteúdo e ator. Compile/validate/approve reusam a mesma referência válida. Timestamp novo a cada chamada é proibido porque mudaria o plano validado. Renovação é explícita e invalida aprovação antiga; leitura histórica continua possível.",
+      "preview": "UI mostra a mesma peça/revisão selecionada, com imagem ou vídeo+poster, estados de carregamento/falha e nome curto. Nenhum path enorme, image_hash bruto ou URL assinada persistida em storage.",
+      "reusable": "Conectar motores existentes do Estúdio. Geração, inspeção, aprovação, upload e uso remoto são atos distintos; upload precisa de autoridade de escrita própria."
+    },
+    "read_model": {
+      "identity": "Chave canônica por provedor + conta + tipo + external_id server-only. Preservar UUIDs existentes e introduzir resolver para metaobj_* de recibos. DTO público usa entity_ref estável e parents, sem vazamento de IDs brutos.",
+      "hierarchy": "Campaign → AdSet → Ad; Creative é entidade reutilizável associada ao Ad, não filho exclusivo. Preservar múltiplos anúncios que usam a mesma peça.",
+      "scope": "Aplicar conta em todos os níveis via joins/IDs resolvidos; detalhar também exige escopo/ator. O admin atual não autoriza futura mistura de contas por omissão de filtro.",
+      "pagination": "Cursor opaco e estável + has_more + complete + observed_at + request_scope. Teto ou erro de página é leitura parcial, nunca ausência.",
+      "snapshots": "Marcar ausentes somente em escopo integral concluído; snapshots parciais preservam objetos anteriores. Não permitir observação mais velha substituir mais nova. Persistir provenance e idempotência da run.",
+      "insights_latest": "Raw revisões imutáveis; projeção latest seleciona a observação mais recente por grão completo. Nunca somar snapshots observados_em diferentes do mesmo fato.",
+      "states": [
+        "NO_CONNECTION",
+        "SCHEMA_UNAVAILABLE",
+        "NO_SNAPSHOT",
+        "PARTIAL",
+        "STALE",
+        "EMPTY_CONFIRMED",
+        "READY",
+        "FORBIDDEN",
+        "ERROR"
+      ],
+      "failures": "Erro de configuração/credencial não vira lista vazia. Meta não configurada não significa todo o backend offline."
+    },
+    "insights_and_money": {
+      "request_dimensions": [
+        "account_ref",
+        "level",
+        "date_start",
+        "date_stop",
+        "account_timezone",
+        "time_increment",
+        "breakdowns allowlisted",
+        "action_attribution_windows efetivos",
+        "action_report_time",
+        "use_unified_attribution_setting quando suportado e escolhido",
+        "api_version"
+      ],
+      "storage_grain": "provider/account/entity/level/date_start/date_stop/timezone/currency/breakdowns/attribution/report_time + observed_at revision. Não duplicar métricas ao juntar actions ou somar níveis.",
+      "nullable": "Ausência, indisponibilidade, privacidade e zero medido separados. Decimal para dinheiro; conversão minor units por moeda, não sempre x100 fora do BRL.",
+      "metrics": [
+        {
+          "name": "spend",
+          "formula": "valor monetário canônico da conta",
+          "unit": "currency"
+        },
+        {
+          "name": "landing_page_views",
+          "formula": "somente ação LPV suportada/selecionada; nunca somar ViewContent",
+          "unit": "count_nullable"
+        },
+        {
+          "name": "ctr_link",
+          "formula": "inline_link_clicks / impressions * 100 se disponíveis e impressions>0",
+          "unit": "percent"
+        },
+        {
+          "name": "ctr_all",
+          "formula": "clicks / impressions * 100 se disponíveis e impressions>0",
+          "unit": "percent"
+        },
+        {
+          "name": "cpc_link",
+          "formula": "spend / inline_link_clicks se >0 e moeda compatível",
+          "unit": "currency"
+        },
+        {
+          "name": "roas_ratio",
+          "formula": "revenue_attributed / spend se spend>0 e cobertura compatível",
+          "unit": "ratio"
+        },
+        {
+          "name": "gross_profit",
+          "formula": "revenue_attributed - spend; impostos/custos só na regra versionada separada",
+          "unit": "currency"
+        },
+        {
+          "name": "return_over_spend_pct",
+          "formula": "(revenue_attributed / spend - 1) * 100 se spend>0",
+          "unit": "percent_not_google_target_roas"
+        }
+      ],
+      "non_additive": [
+        "reach",
+        "frequency",
+        "unique_*",
+        "rates",
+        "cross-level metrics"
+      ],
+      "attribution": "Receita GAM requer identificador persistente de campanha/creative/jornada, janela/timezone/currency e cobertura do join. Não usar receita atribuída pela Meta como receita publisher sem definição explícita.",
+      "conversions": "actions/action_values, custom conversion e eventos CAPI permanecem separados; deduplicar Pixel+CAPI pelo mesmo event_name/event_id da mesma ocorrência, sem fabricar eventos para readiness."
+    },
+    "operator_experience": {
+      "layout": "Mesma base Google no catálogo de campanhas e dashboard financeiro, com adaptações Meta somente nos campos e capacidades. Reutilizar componentes e tokens atuais; não criar um segundo design system.",
+      "inventory": "Em /trafego: conta com hierarquia visual forte e disclosure acessível; campanhas em tabela/lista responsiva. Em /settings/campaigns: preservar os blocos existentes pedidos pelo operador.",
+      "detail": "Cabeçalho compacto com conta/rede/estado/frescor; métricas financeiras compartilhadas; hierarchy tabs e dados Meta específicos; ação disponível vem de capacidade do servidor.",
+      "creation": "Uma decisão por etapa, resumo compacto; contrato técnico em disclosure; estado fixo explicado como fixo, não toggle falso. Erro por causa única com campo e próximo ato.",
+      "action_state": "Vincular toda resposta ao request_id + draft_revision + plan_sha256 apropriados; limpar busy independentemente de a resposta ainda ser aplicável. Despacho já iniciado não desaparece se usuário editar draft.",
+      "testing": "Inspeção visual autenticada e demo explícita em 390px e 1440px, claro/escuro; teclado/foco, overflow de nomes e URLs, aria-live de resultado, reduced-motion. Login e transição VOLC são referência, não alvos de refação."
+    },
+    "google": {
+      "canonical_paths": "Reusar /provar e /subir, política de canário e ledger existentes; comparar plano/hash entre prova e escrita. Nenhum executor paralelo por canal.",
+      "guards": "Search já provado historicamente não autoriza Display/Demand Gen/PMax. Flag de validate-only jamais abre mutate. Assets preparados no validate-only não podem ser enviados por upload separado real disfarçado.",
+      "pmax_destination": "final URLs do asset group, automações text/final URL, PAGE_FEED e assets de campanha/conta com destinos alternativos devem ser inventariados. A decisão do operador é URL exclusiva da LP, não apenas mesmo domínio.",
+      "measurement": "Ler ações/metas efetivas e estratégia suportada no servidor. Não inventar conversão, calibrar receita ou relaxar target para passar gate. Targets e orçamento são escolhas distintas.",
+      "sequencing": "Display estático; Demand Gen estático; PMax. Cada plano depende de mídia apta, mensuração/estratégia compatível, validate-only atual e autorização de nascimento própria."
+    }
+  },
+  "owner_decisions": [
+    {
+      "id": "O01",
+      "blocking": "T12",
+      "question": "Qual conta/Página/peça/LP, orçamento e janela usar no primeiro canário? Nenhum ID bruto ou escolha histórica é autorização atual."
+    },
+    {
+      "id": "O02",
+      "blocking": "renomear métrica histórica em T09",
+      "question": "Aceitar ROAS = receita/gasto e Retorno sobre mídia = excedente, preservando comparação histórica? Até aceite, manter label legado explicitamente identificado, sem contaminar targets."
+    },
+    {
+      "id": "O03",
+      "blocking": "CP5 produção remota",
+      "question": "O próximo aceite é operação real neste Mac ou serviço remoto implantado? Preparar ambos os contratos, não iniciar deploy por inferência."
+    },
+    {
+      "id": "O04",
+      "blocking": "ativação, nunca o canário PAUSED",
+      "question": "Quais limites por ato/dia e quem pode ativar/alterar orçamento? Não herdar autorização do canário."
+    }
+  ],
+  "completion_rule": "Um marco fecha por evidências dos checkpoints, não por número de testes, porcentagem do grafo ou um selo geral ACCEPTED. Bloqueio externo não exige nova auditoria inteira."
+}

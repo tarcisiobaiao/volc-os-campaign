@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "status": "DOCUMENTAL_VERIFIED",
+  "date": "2026-09-07",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "scope": "Spec e quatro probes de componentes. Nenhuma certificação de runtime completo, conta, Supabase oficial ou pixels.",
+  "checks": [
+    {
+      "id": "V01",
+      "check": "JSON parsing / schema",
+      "result": "PASS",
+      "method": "Node JSON.parse em todos artefatos; Ajv instalado, JSON Schema draft7 do EXECUTION-PLAN.",
+      "negative_proof": "minimum_tests vazio foi deliberadamente recusado pelo schema; nenhuma dependência instalada."
+    },
+    {
+      "id": "V02",
+      "check": "IDs, DAG e referências",
+      "result": "PASS",
+      "method": "21 tarefas únicas, 23 achados, dependências sem ciclo, referências a tarefas/checkpoints/fontes existentes. Paths de evidência/read/modify existem; linhas dentro do arquivo."
+    },
+    {
+      "id": "V03",
+      "check": "Cobertura Meta atual",
+      "result": "PASS",
+      "method": "AST puro dos dois modelos HTTP comparado à matriz por conjunto de nomes.",
+      "measured": {
+        "plan_fields": 22,
+        "variation_fields": 11
+      },
+      "limit": "Cobertura de nomes não prova paridade runtime completa; T01 implementa testes end-to-end do payload."
+    },
+    {
+      "id": "V04",
+      "check": "Inventário Google",
+      "result": "PASS",
+      "method": "AST sem import do router;14modelos/109declarações com tipo/default/herança.",
+      "limit": "Inventário de contrato atual, não declaração de que todos estão conectados à UI."
+    },
+    {
+      "id": "V05",
+      "check": "Probes herméticos",
+      "result": "PASS_REPRODUCTION",
+      "method": "Bloco de PROBES.md executado em Python -B, socket.connect/connect_ex/create_connection negados, httpx.MockTransport/spy.",
+      "observed": {
+        "P01": "conta omitida em conjuntos/anuncios/mensuracao",
+        "P02": "bytes NOT_AN_IMAGE aceitos AUTHORIZED/READY",
+        "P03": "declaração2h rejeitada META_ASSET_POLICY_RECEIPT_EXPIRED",
+        "P04": {
+          "lpv_and_viewcontent": 11,
+          "lpv_null": 0
+        }
+      }
+    },
+    {
+      "id": "V06",
+      "check": "Whitespace de arquivos novos",
+      "result": "PASS",
+      "method": "git diff --no-index --check /dev/null por artefato, interpretando status1 sem diagnóstico como diferença normal; EOF extra do PROBES.md corrigido."
+    },
+    {
+      "id": "V07",
+      "check": "Scanner",
+      "result": "PASS",
+      "command": "python3 scripts/verificar_segredos.py",
+      "observed": "nenhum padrão forte encontrado",
+      "limit": "Scanner não é prova absoluta de ausência de qualquer informação sensível; pacote não contém token ou export de conta."
+    },
+    {
+      "id": "V08",
+      "check": "Frescor do grafo",
+      "result": "PASS_INPUT_DIGEST",
+      "command": "python3 scripts/atualizar_grafo_volc_os.py --check",
+      "observed": {
+        "current": true,
+        "reason": "insumos idênticos",
+        "input_sha256": "d3adee58eec72aabf2948081844f7813e21f97bbc346ced33ae633b25fea883a",
+        "input_file_count": 1659
+      },
+      "limit": "F23 permanece contradição de conteúdo humano, não defeito do cálculo de frescor."
+    },
+    {
+      "id": "V09",
+      "check": "Isolamento",
+      "result": "DOCS_ONLY",
+      "observed": "Nenhuma alteração tracked em runtime/teste/migration; HEAD preservado. Novos arquivos apenas docs/specs/traffic-operational-closure-v2 e manifesto .claude-ads desta rodada."
+    }
+  ],
+  "explicitly_not_run": [
+    "suite pytest completa",
+    "suite Vitest completa",
+    "TypeScript/build do produto",
+    "browser autenticado",
+    "API de conta Meta/Google",
+    "Keychain ou token",
+    "Supabase oficial/catalogo",
+    "apply de migration",
+    "push/deploy",
+    "revisão cross-model independente"
+  ],
+  "adaptations": "jsonschema não está instalado nos venvs Python consultados; validado com Ajv já provisionado e schema draft7 equivalente, sem instalar pacote. O primeiro checker tratou status1 de git no-index como falha de whitespace; corrigido para examinar diagnóstico. Nenhuma dessas tentativas alterou o produto.",
+  "artifacts_sha256": {
+    "API-EVIDENCE.json": "7de88dd0eaa3fcb243862170e00a757cc73acb492cce7130ad03f5a47efca7cd",
+    "CHECKPOINTS.json": "01dcef3eb1e1c5a9e78c83e0ff8603913dd725b31a7367e1fbf48f5d782be77a",
+    "CURATION-HANDOFF.json": "bc309d3dc05364fad49cc7c46035edf23fb677e26c8b6245b8b10c108d62f557",
+    "EXECUTION-PLAN.json": "78a08c51e9f0048a6f4ae46975f8fd62bfe49b3b0b025abb1a3ece7bfb389a1b",
+    "EXECUTION-PLAN.schema.json": "b8884b5506ba5b07a7caa728fd2547254b50fae28474a07751768a36aebd983f",
+    "FIELD-CONTRACTS.json": "061527a241ac6672d1db7cb17b6fe9387e9ed7fd25c7d22180a310da44ff78d4",
+    "FINDINGS.json": "d6e0fe7b830c58f61592badbf208438ece32b15545b142b1081a5d8331be4a83",
+    "GOOGLE-FIELD-INVENTORY.json": "2c7a9ef4b061f72cb09c04ddd47f9c82c4ea6b78bdb66df9735fc24ad6d5c624",
+    "GUIDE-EXECUCAO.md": "7b306588a2064d559fb2e0e69fb8f4f6e4ee47f0de55990e899967bc629b86a8",
+    "MASTER-SPEC.json": "3b15cc8770cdd6ca4287364158892f04cde08039bf950dec8aada5e6720c1828",
+    "PROBES.md": "18062b3c3bab4cb55a37288f5aea066acc5ecf2c7550b942d9269eecf72379a3",
+    "RUN-MANIFEST.json": "0ba96099010a58a5dea5c7bdba425fbe456287e9a1e2eb5d54fb08ad55093fe3"
+  },
+  "hash_rule": "Hash de conteúdo dos demais arquivos do pacote; exclui este recibo para evitar autorreferência. O manifesto da skill é índice de rastreabilidade, não segunda fonte dos contratos.",
+  "next": "Autorizar execução local do primeiro lote; só depois pedir a janela externa pertinente."
+}

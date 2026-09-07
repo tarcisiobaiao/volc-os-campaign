@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "execution_order": [
+    "CP0",
+    "CP1",
+    "CP2",
+    "CP3",
+    "CP4",
+    "CP5",
+    "CP6",
+    "CP7",
+    "CP8"
+  ],
+  "current_authority": "SPEC_ONLY: nenhum checkpoint de implementação ou conta está sendo executado nesta rodada.",
+  "stop_rules": [
+    "Um gate local defeituoso não autoriza chamada real para experimentar.",
+    "Falha herdada precisa de nome/assinatura/arquivo e comparação na base; número de erros igual sozinho não prova ausência de regressão.",
+    "Sem sessão de browser, declarar pixels não verificados e pedir sessão do operador; não pedir senha/token no chat, não chamar fixture de dados reais.",
+    "Timeout ou desconexão após despacho: interromper lote, preservar recibo e IDs, manter PAUSED, reconciliar; não repetir clique/create.",
+    "Autorização de leitura não cobre persistência oficial; reconcile pode escrever ledger mesmo fazendo só GET na Meta.",
+    "Capacidade local não vira licença de conta. Autorização de um canário/conta/canal não cobre upload, segundo canário, orçamento maior, ativação ou deploy.",
+    "Não executar scripts de migration por glob: há rollbacks dentro do diretório.",
+    "Qualquer efeito não autorizado interrompe somente esse ato; trabalho local independente pode continuar."
+  ],
+  "gate_budget": {
+    "per_change": "Testes focais e contraprova da correção.",
+    "per_material_checkpoint": "Uma medição dos conjuntos afetados + TypeScript por assinatura + build se frontend; SQL ciclo apenas se schema/RPC mudou.",
+    "review": "Uma revisão focal nos pontos de dinheiro/autoridade/concorrência/dados. Uma rodada corretiva planejada. Não declarar aceite com P0 restante, nem reiniciar auditoria global para cada detalhe.",
+    "docs_only": "JSON, referências, diff e scanner; não repetir pytest/build por mudanças exclusivamente documentais.",
+    "baseline": "Capturar no começo do marco. Histórico 4791 passed/3 failed e tsc77 é relato anterior, não medição deste spec nem limiar imutável.",
+    "duration": "Gates longos em processo monitorável com updates; nenhuma espera bloqueante longa que esconda andamento do operador."
+  },
+  "checkpoints": [
+    {
+      "id": "CP0",
+      "name": "Preflight local",
+      "required_tasks": [
+        "T00"
+      ],
+      "authority": "LOCAL_EXECUTION",
+      "evidence": [
+        "HEAD/base/branch/status e diff",
+        "escopo do marco e owner único",
+        "versões reais de dependências/SDK",
+        "baseline focal nomeado"
+      ],
+      "pass": "Sem colisão com trabalho do usuário, pacote preservado e writer único.",
+      "fail": "Parar apenas em colisão real ou base errada. Não resetar para satisfazer o spec."
+    },
+    {
+      "id": "CP1",
+      "name": "Meta estático recuperável — candidato local",
+      "required_tasks": [
+        "T01",
+        "T02",
+        "T03",
+        "T04"
+      ],
+      "supporting_local_parts": [
+        "T10",
+        "T11"
+      ],
+      "authority": "LOCAL_EXECUTION",
+      "evidence": [
+        "DTO/form-urlencoded paritário",
+        "bytes inválidos rejeitados e peça válida aceita",
+        "snapshot/fencing/recuperação sem recompilar",
+        "crashes em cada janela e duas execuções concorrentes em SQL descartável",
+        "recibo/deep link após reload, createflagoff e estadoambíguo",
+        "testes UI focais, tsc por assinatura, build, diff/scanner"
+      ],
+      "pass": "LOCAL_META_STATIC_RECOVERABLE_CANDIDATE; nenhuma chamada Meta/oficial e create flags continuam fechadas.",
+      "does_not_prove": [
+        "aceite real AdSet/Ad",
+        "migration oficial",
+        "Page/Shop na conta",
+        "pixels autenticados se sessão não foi inspecionada"
+      ]
+    },
+    {
+      "id": "CP2",
+      "name": "Schema oficial do perfil explicitamente escolhido",
+      "required_tasks": [
+        "T11"
+      ],
+      "authority": "EXPLICIT_OFFICIAL_SCHEMA_AND_CATALOG",
+      "evidence": [
+        "autoridade Supabase única confirmada",
+        "inventário autorizado do catálogo real antes de alterar",
+        "manifesto de arquivos/hash/ordem e dependências",
+        "backup/ponto de recuperação e procedimento compatível com dados existentes",
+        "apply exato/funcões/grants/roles/constraints/versão lidos de volta",
+        "janelas de create ainda fechadas"
+      ],
+      "pass": "Perfil CREATE_ONLY ou outro escolhido verificado; não afirmar todos schemas do produto aplicados.",
+      "fail": "Nenhum rerun destrutivo para limpar parcialmente aplicado; manter inspeção e plano forward/rollback preservando recibos."
+    },
+    {
+      "id": "CP3",
+      "name": "Meta preflight e roots reais do plano atual",
+      "required_tasks": [
+        "T10"
+      ],
+      "authority": "EXPLICIT_META_READ_VALIDATE_AND_OPTIONAL_VALIDATION_LEDGER_WRITE",
+      "evidence": [
+        "conta/ator/Page/asset/LP/receita autorizados e suas refs opacas",
+        "Shop/website-only adjudicado por fonte/prova aplicável",
+        "imagem exata inspecionada/preview/receipt bound",
+        "máscara Creative sustentável testada por leitura autorizada quando possível",
+        "request do plano atual + roots validate_only + receipt durável e coverage",
+        "response metadata sanitizado incluindo versão/código/objeto; zero objetos criados"
+      ],
+      "pass": "ROOTS_PROVEN_CURRENT_PLAN — somente Campaign + N Creatives. Coverage não pode listar AdSet/Ad como validados sem prova.",
+      "fail": "Microcorreção específica em código local; não tentar criar para descobrir erro de raiz."
+    },
+    {
+      "id": "CP4",
+      "name": "Um nascimento Meta completo PAUSED",
+      "required_tasks": [
+        "T12"
+      ],
+      "authority": "EXPLICIT_META_CANARY_AND_LEDGER_WRITE",
+      "evidence": [
+        "CP1/CP2perfil/CP3 satisfeitos no código/plan autorizado",
+        "aprovação/hash/conta/limites e janela vigente",
+        "IDs persistidos antes do read-back, pais/conta coerentes",
+        "Campaign/AdSet/Ad PAUSED; Creative estado de biblioteca",
+        "URL/copy/peça/budget/moeda/placements/Advantage conferidos",
+        "receipt após reload e nenhuma segunda criação/ativação",
+        "policy review e provas dependentes descritas separadamente"
+      ],
+      "pass": "META_STATIC_BIRTH_PROVEN. Só o número de objetos/variações autorizado.",
+      "fail": "PARTIAL ou AMBIGUOUS com objetos conhecidos preservados. Nenhum cleanup/delete nem retry automático."
+    },
+    {
+      "id": "CP5",
+      "name": "Meta com dados reais e operação",
+      "required_tasks": [
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09"
+      ],
+      "optional_extensions": [
+        "T13",
+        "T14"
+      ],
+      "authority": "EXPLICIT_META_READ_AND_OFFICIAL_SYNC; MANAGEMENT_AND_DEPLOY_SEPARATE",
+      "evidence": [
+        "período/timezone/janelas efetivos; LPV/actions/null testados",
+        "mais de uma conta com filtros e paginação corretos",
+        "snapshot completo/parcial/out-of-order e latest SQL",
+        "IDs de receipt resolvem entidades reais após sync",
+        "catálogo/detalhes reais e demo explicitamente separada",
+        "spend canônico e revenue lineage/cobertura; sem distribuição inventada",
+        "capturas autenticadas light/dark390/1440 e navegação por teclado",
+        "recibo do primeiro sync autorizado com tabelas/efeitos declarados"
+      ],
+      "pass": "META_READ_AND_OPERATOR_VIEWS_PROVEN; declarar separadamente LOCAL_HOST_ONLY/REMOTE_DEPLOYED e MANAGEMENT_UNPROVEN/PROVEN.",
+      "extensions": [
+        {
+          "id": "MANAGEMENT",
+          "requires": [
+            "T13"
+          ],
+          "proof": "Por ato autorizado: diff aprovado, mutate, read-back de pausa/budget/ativação; nunca autorização genérica herdada do create."
+        },
+        {
+          "id": "REMOTE_PRODUCTION",
+          "requires": [
+            "T14"
+          ],
+          "proof": "Adapter de segredo/escopo servidor + sync/heartbeat + deploy autorizado verificados; remover Hostguard sozinho reprova."
+        }
+      ]
+    },
+    {
+      "id": "CP6",
+      "name": "Capacidade avançada Meta por receita",
+      "required_tasks": [
+        "T15",
+        "T16"
+      ],
+      "authority": "EXPLICIT_MEDIA_UPLOAD_VALIDATE_CREATE_OR_CAPI_AS_SELECTED",
+      "evidence": [
+        "receita/versão/combinações/campos e source IDs",
+        "vídeo/thumbnail/processing ou flexível/Page/copy com preview",
+        "upload é ato mutável identificado, não parte oculta devalidate",
+        "evento/dataset/consent/dedup/value/currency do uso escolhido",
+        "prova real específica e limites de capability"
+      ],
+      "pass": "Apenas capacidades efetivamente demonstradas sobem de estado. Completar imagem não marca vídeo/flexível/Sales/Leads como prontos.",
+      "fail": "Manter estático e receitas provadas usáveis; erro avançado não trava todo tráfego."
+    },
+    {
+      "id": "CP7",
+      "name": "Google multicanal por canal",
+      "required_tasks": [
+        "T17",
+        "T18",
+        "T19"
+      ],
+      "authority": "EXPLICIT_GOOGLE_READ_VALIDATE_CANARY_PER_CHANNEL_AND_REQUIRED_SCHEMA",
+      "evidence": [
+        "Search não regrediu; typedproofPMax reaproveitada",
+        "política das peças e mensuração reais aplicáveis",
+        "paridade hash/provar/subir e flags separadas",
+        "Display PAUSED→DG PAUSED→PMax PAUSED com planos autorizados",
+        "PMax exclusividade de destino+optouts+fontes alternativas+read-back",
+        "recibo por canal e nenhuma ativação"
+      ],
+      "pass": "Veredito individual por canal. Pré-condição de conta que falta permanece ACCOUNT_BLOCKED, não NOT_IMPLEMENTED.",
+      "fail": "Não mudar estratégia/LP/metas para passar sem nova decisão; zero mutação por fora do ledger."
+    },
+    {
+      "id": "CP8",
+      "name": "Handoff e memória operacional",
+      "required_tasks": [
+        "T20"
+      ],
+      "authority": "LOCAL_DOCUMENTATION; SHARED_CURATION_AND_PUSH_ONLY_IF_AUTHORIZED",
+      "evidence": [
+        "selected_release_required_tasks e estados reais",
+        "SHA código testado, diff e gates medidos",
+        "capability receipt separando local/prova/autoridade/conta",
+        "pendências externas concretas e próxima autorização",
+        "curation delta proposto/aplicado conforme escopo; graph digest quando autorizado",
+        "URL/worktree/branch do ambiente efetivo, não apenas HTTP200SPA"
+      ],
+      "pass": "Marco nomeado encerrado sem percentual inventado e sem autoaceite da próxima etapa."
+    }
+  ],
+  "authorization_templates": [
+    {
+      "id": "AUTH-LOCAL",
+      "purpose": "Implementação local do marco escolhido",
+      "required_values": [
+        "MARCO",
+        "HEAD_CONFIRMADO",
+        "TASK_IDS"
+      ],
+      "text": "AUTORIZO implementar localmente as tarefas <TASK_IDS> do marco <MARCO> na branch execution/volc-os-operacao-80-20, a partir de <HEAD_CONFIRMADO>, incluindo runtime, testes e migrations candidatas locais necessárias. Um writer. Preservar localhost:8080. NÃO AUTORIZO push, deploy, chamadas Meta/Google Ads, Supabase oficial, migration oficial, criação/ativação, n8n, WordPress ou alteração de Roadmap/curadoria/grafo. O checkpoint final deve declarar precisamente o que continua dependente de autorização."
+    },
+    {
+      "id": "AUTH-SCHEMA",
+      "purpose": "Catálogo e migration de perfil exato",
+      "required_values": [
+        "PERFIL",
+        "MANIFESTO_SHA",
+        "ARQUIVOS_E_HASHES",
+        "JANELA",
+        "PLANO_DE_PRESERVACAO"
+      ],
+      "text": "AUTORIZO consultar o catálogo do Supabase operacional https://database.agenciavolc.com.br e aplicar somente o perfil <PERFIL>, arquivos/hashes <ARQUIVOS_E_HASHES> do manifesto <MANIFESTO_SHA>, na janela <JANELA>, após o preflight e preservação <PLANO_DE_PRESERVACAO>. Se catálogo divergir, parar antes de alterar. NÃO AUTORIZO Meta/Google Ads, create/activate, sync de contas, deploy, n8n, WordPress, drop de dados existentes ou outros schemas."
+    },
+    {
+      "id": "AUTH-ROOTS",
+      "purpose": "Leitura e validação Meta limitada",
+      "required_values": [
+        "ACCOUNT_REF",
+        "PAGE_REF",
+        "ASSET_REFS",
+        "PLAN_SHA",
+        "RECIPE_VERSION",
+        "LEDGER_SCOPE"
+      ],
+      "text": "AUTORIZO por clique explícito ler somente os dados necessários da conta <ACCOUNT_REF>, Page <PAGE_REF> e peças <ASSET_REFS>, e executar Meta validate_only das raízes do plano <PLAN_SHA>, receita <RECIPE_VERSION>. AUTORIZO gravar apenas os recibos de validação/proveniência no escopo de ledger <LEDGER_SCOPE> se necessário e já instalado. NÃO AUTORIZO criar/alterar campanhas, conjuntos, anúncios, assets, orçamento, integração, metas, ativação, deploy, migrations ou sync amplo."
+    },
+    {
+      "id": "AUTH-CANARY",
+      "purpose": "Uma criação Meta PAUSED",
+      "required_values": [
+        "CODE_SHA",
+        "PLAN_SHA",
+        "ACCOUNT_REF",
+        "PAGE_REF",
+        "ASSET_REFS",
+        "EXACT_LP",
+        "BUDGET_MINOR",
+        "CURRENCY",
+        "MAX_VARIATIONS",
+        "WINDOW",
+        "SCHEMA_PROFILE"
+      ],
+      "text": "AUTORIZO UMA execução governada do plano <PLAN_SHA> no código <CODE_SHA>, conta <ACCOUNT_REF>, Page <PAGE_REF>, peças <ASSET_REFS>, LP <EXACT_LP>, orçamento diário <BUDGET_MINOR> <CURRENCY>, até <MAX_VARIATIONS> variações, janela <WINDOW>. AUTORIZO os reads/validate_only necessários e ledger write exclusivamente da operação no perfil <SCHEMA_PROFILE>. Campaign/AdSet/Ad devem nascer PAUSED; Creative é biblioteca. Em erro ambíguo, parar sem reenviar e preservar IDs. NÃO AUTORIZO segunda campanha, upload não listado, ativação, aumento de orçamento, cleanup/delete, deploy, outras contas, migrations, sync amplo, n8n ou WordPress."
+    },
+    {
+      "id": "AUTH-SYNC",
+      "purpose": "Leitura/persistência reais separadas da criação",
+      "required_values": [
+        "ACCOUNT_REFS",
+        "PERIOD",
+        "LEVELS",
+        "ATTRIBUTION",
+        "TABLES_AND_COFRE_EFFECTS",
+        "LIMITS"
+      ],
+      "text": "AUTORIZO ler <ACCOUNT_REFS> no período <PERIOD>, níveis <LEVELS>, atribuição <ATTRIBUTION>, com limites <LIMITS>, e persistir snapshots somente nas tabelas e efeitos de Cofre explicitamente listados <TABLES_AND_COFRE_EFFECTS>. NÃO AUTORIZO atestar custódia sem prova, Meta mutate, campanha/asset/ativação, migration, deploy ou coleta fora desse escopo."
+    }
+  ],
+  "remaining_authorizations": "Uploads, novas receitas, gestão/ativação, Google canários e deploy exigem atos equivalentes com alvos/hash/limites/janela específicos. Não copiar AUTH-CANARY mudando apenas rótulo do provedor sem conferir o contrato."
+}

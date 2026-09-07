@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Traffic execution plan v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "base_commit",
+    "task_count",
+    "execution_policy",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "plan_id": {
+      "const": "TRAFFIC_OPERATIONAL_EXECUTION_V2"
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "task_count": {
+      "const": 21
+    },
+    "execution_policy": {
+      "type": "object"
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 21,
+      "maxItems": 21,
+      "items": {
+        "$ref": "#/definitions/task"
+      }
+    }
+  },
+  "definitions": {
+    "texts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "release",
+        "depends_on",
+        "finding_ids",
+        "size",
+        "authorization",
+        "read_paths",
+        "modify_paths",
+        "new_paths",
+        "steps",
+        "minimum_tests",
+        "done_when",
+        "checkpoint",
+        "rollback"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^T[0-2][0-9]$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "release": {
+          "enum": [
+            "R0",
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^T[0-2][0-9]$"
+          }
+        },
+        "finding_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^F[0-9]{2}$"
+          }
+        },
+        "size": {
+          "type": "string"
+        },
+        "authorization": {
+          "type": "string",
+          "minLength": 1
+        },
+        "read_paths": {
+          "$ref": "#/definitions/paths"
+        },
+        "modify_paths": {
+          "$ref": "#/definitions/paths"
+        },
+        "new_paths": {
+          "$ref": "#/definitions/paths"
+        },
+        "steps": {
+          "$ref": "#/definitions/texts"
+        },
+        "minimum_tests": {
+          "$ref": "#/definitions/texts"
+        },
+        "done_when": {
+          "$ref": "#/definitions/texts"
+        },
+        "checkpoint": {
+          "type": "string",
+          "pattern": "^CP[0-8]$"
+        },
+        "rollback": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

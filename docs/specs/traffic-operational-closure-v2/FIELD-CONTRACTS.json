@@ -1,0 +1,654 @@
+{
+  "schema_version": 1,
+  "coverage": "Cobertura explícita de todos os 22 campos atuais de PedidoPlanoMetaPausado e dos11 campos de PedidoVariacaoEstaticaMeta. Campos fixos do domínio separados. Google agrupado por contrato; T17 deve expandir os nomes exatos de seus DTOs em matriz gerada antes de editar UI. Não é inventário de toda API pública.",
+  "source_files": [
+    "backend/app/routers/trafego_meta_validacao.py",
+    "backend/app/trafego/meta_execucao/contrato.py",
+    "backend/app/trafego/meta_execucao/compilador.py",
+    "src/components/trafego/meta/rascunho.ts",
+    "backend/app/routers/trafego.py"
+  ],
+  "states": [
+    "EDITABLE",
+    "FIXED_RECIPE",
+    "DISPLAY_ONLY",
+    "BLOCKED_WITH_REASON",
+    "SERVER_AUTHORITY_AFTER_T02"
+  ],
+  "meta_p0": [
+    {
+      "field": "account_ref",
+      "ui": "accountRef",
+      "state": "EDITABLE",
+      "provider": "Resolvedor server-side → act_<account_id>",
+      "validation": "seleção opaca de conta com permissão/BRL",
+      "storage": "approval.account_ref + snapshot.account_ref",
+      "readback": "read-back account_id de todos nós",
+      "task_id": "T01"
+    },
+    {
+      "field": "page_ref",
+      "ui": "pageRef",
+      "state": "EDITABLE",
+      "provider": "AdCreative.object_story_spec.page_id",
+      "validation": "Página da conta/ator, prova de identidade para placements",
+      "storage": "snapshot.resolved_bindings",
+      "readback": "object_story_spec.page_id",
+      "task_id": "T01"
+    },
+    {
+      "field": "asset_ref",
+      "ui": "variations[0].assetRef (compatibilidade single)",
+      "state": "EDITABLE",
+      "provider": "AdCreative.object_story_spec.link_data.image_hash",
+      "validation": "referência opaca; bytes+policy bound; não image_hash do browser",
+      "storage": "asset_supply_manifest + snapshot",
+      "readback": "link_data.image_hash + associação conta/peça",
+      "task_id": "T02"
+    },
+    {
+      "field": "campaign_name",
+      "ui": "campaignName",
+      "state": "EDITABLE",
+      "provider": "Campaign.name",
+      "validation": "1..400 no DTO atual; trim/duplicidade sem mudar depois de aprovado",
+      "storage": "frozen plan / campaign observed",
+      "readback": "name + account",
+      "task_id": "T01"
+    },
+    {
+      "field": "adset_name",
+      "ui": "adsetName",
+      "state": "EDITABLE",
+      "provider": "AdSet.name",
+      "validation": "1..400 e unicidade no plano",
+      "storage": "frozen plan / adset observed",
+      "readback": "name + campaign_id",
+      "task_id": "T01"
+    },
+    {
+      "field": "creative_name",
+      "ui": "variations[0].creativeName",
+      "state": "EDITABLE",
+      "provider": "AdCreative.name",
+      "validation": "1..400; modo lote usa variations",
+      "storage": "frozen plan / creative observed",
+      "readback": "name + parent binding",
+      "task_id": "T01"
+    },
+    {
+      "field": "ad_name",
+      "ui": "variations[0].adName",
+      "state": "EDITABLE",
+      "provider": "Ad.name",
+      "validation": "1..400; modo lote usa variations",
+      "storage": "frozen plan / ad observed",
+      "readback": "name + adset_id + creative.id",
+      "task_id": "T01"
+    },
+    {
+      "field": "destination_url",
+      "ui": "destinationUrl",
+      "state": "EDITABLE",
+      "provider": "link_data.link e call_to_action.value.link",
+      "validation": "URL exata do plano, evidência website-only, não trocar por redirect inferido",
+      "storage": "snapshot + destination proof",
+      "readback": "destinos efetivamente lidos; prova externa separada",
+      "task_id": "T10"
+    },
+    {
+      "field": "message",
+      "ui": "variations[0].message",
+      "state": "EDITABLE",
+      "provider": "link_data.message",
+      "validation": "1..2200 no DTO; limite de contrato não promessa de exibição integral",
+      "storage": "frozen plan + policy purpose",
+      "readback": "link_data.message",
+      "task_id": "T01"
+    },
+    {
+      "field": "headline",
+      "ui": "variations[0].headline",
+      "state": "EDITABLE",
+      "provider": "link_data.name",
+      "validation": "1..255 no DTO; texto efetivo revisado",
+      "storage": "frozen plan + policy purpose",
+      "readback": "link_data.name",
+      "task_id": "T01"
+    },
+    {
+      "field": "description",
+      "ui": "variations[0].description",
+      "state": "EDITABLE",
+      "provider": "link_data.description",
+      "validation": "1..255 no DTO; se opcionalizar, contrato inteiro deve aceitar empty/null de modo consistente",
+      "storage": "frozen plan",
+      "readback": "link_data.description quando retornado/suportado",
+      "task_id": "T01"
+    },
+    {
+      "field": "daily_budget_minor",
+      "ui": "budgetBrl → minor inteiro",
+      "state": "EDITABLE",
+      "provider": "AdSet.daily_budget",
+      "validation": "BRL no P0; >0 e <=10_000_000 no DTO, teto de autorização menor prevalece; API mínimo precisa ser provado",
+      "storage": "approval budget/currency + snapshot",
+      "readback": "daily_budget e conta.currency",
+      "task_id": "T01"
+    },
+    {
+      "field": "start_time",
+      "ui": "startTime",
+      "state": "EDITABLE",
+      "provider": "AdSet.start_time",
+      "validation": "timezone obrigatório e política de data no servidor; mostrar instante efetivo",
+      "storage": "frozen plan",
+      "readback": "start_time normalizado como mesmo instante",
+      "task_id": "T01"
+    },
+    {
+      "field": "special_ad_categories",
+      "ui": "implícito [] com categoryConfirmed",
+      "state": "FIXED_RECIPE",
+      "provider": "Campaign.special_ad_categories=[]",
+      "validation": "categoria especial selecionada é outra receita; não omitir confirmação",
+      "storage": "snapshot",
+      "readback": "special_ad_categories",
+      "task_id": "T01"
+    },
+    {
+      "field": "special_categories_confirmed",
+      "ui": "categoryConfirmed",
+      "state": "EDITABLE",
+      "provider": "nenhum: atestado da receita",
+      "validation": "true explícito; não prova elegibilidade de categoria",
+      "storage": "approval/plan",
+      "readback": "recibo local, não um campo Meta",
+      "task_id": "T01"
+    },
+    {
+      "field": "is_adset_budget_sharing_enabled",
+      "ui": "budgetSharing (fato travado)",
+      "state": "FIXED_RECIPE",
+      "provider": "Campaign.is_adset_budget_sharing_enabled=false",
+      "validation": "ausente=>false compatível; true recusa antes de Keychain; não inventar Campaign.bid_strategy",
+      "storage": "snapshot",
+      "readback": "false explícito",
+      "task_id": "T01"
+    },
+    {
+      "field": "advantage_audience",
+      "ui": "advantageAudience",
+      "state": "EDITABLE",
+      "provider": "AdSet.targeting.targeting_automation.advantage_audience=0|1",
+      "validation": "default explícito false; não herdar opt-in por omissão",
+      "storage": "snapshot",
+      "readback": "targeting_automation.advantage_audience",
+      "task_id": "T01"
+    },
+    {
+      "field": "call_to_action_type",
+      "ui": "variations[0].cta",
+      "state": "EDITABLE",
+      "provider": "link_data.call_to_action.type",
+      "validation": "allowlist atual LEARN_MORE/APPLY_NOW/SIGN_UP/GET_QUOTE/CONTACT_US; validar receita do destino",
+      "storage": "snapshot",
+      "readback": "call_to_action.type e link",
+      "task_id": "T01"
+    },
+    {
+      "field": "asset_rights_confirmed",
+      "ui": "variations[0].assetRightsConfirmed",
+      "state": "EDITABLE",
+      "provider": "nenhum: declaração humana",
+      "validation": "declaração de ator autenticado bound à mídia; não é aprovação automática/provedor",
+      "storage": "policy_receipt server-side",
+      "readback": "receipt de supply",
+      "task_id": "T02"
+    },
+    {
+      "field": "third_party_identity_cleared",
+      "ui": "variations[0].thirdPartyIdentityCleared",
+      "state": "EDITABLE",
+      "provider": "nenhum: declaração/gate local",
+      "validation": "não atestar terceiro automaticamente; consequência e autoria explícitas",
+      "storage": "policy_receipt server-side",
+      "readback": "receipt de supply",
+      "task_id": "T02"
+    },
+    {
+      "field": "asset_policy_confirmed_at",
+      "ui": "variations[0].assetPolicyConfirmedAt",
+      "state": "SERVER_AUTHORITY_AFTER_T02",
+      "provider": "nenhum",
+      "validation": "hoje cliente envia timestamp; futuro receipt deve carimbar no servidor. Expiração não bloqueia recuperação histórica",
+      "storage": "policy_receipt",
+      "readback": "timestamp do servidor",
+      "task_id": "T02"
+    },
+    {
+      "field": "variations",
+      "ui": "variations[]",
+      "state": "EDITABLE",
+      "provider": "1 Campaign +1 AdSet +N Creatives +N Ads",
+      "validation": "N=1..10, variation_key estável/única, no mode batch copiar defaults com semântica explícita; não gerar singleextra",
+      "storage": "snapshot.operation_manifest",
+      "readback": "2+2N operações/IDs, links pais",
+      "task_id": "T01"
+    }
+  ],
+  "meta_variation": {
+    "fields": [
+      "variation_key",
+      "asset_ref",
+      "creative_name",
+      "ad_name",
+      "message",
+      "headline",
+      "description",
+      "call_to_action_type",
+      "asset_rights_confirmed",
+      "third_party_identity_cleared",
+      "asset_policy_confirmed_at"
+    ],
+    "mapping": "Mesma regra do campo correspondente em meta_p0; variation_key identifica operação/variação, não ID Meta. O envelope de lote usa variations, top-level single só compatibilidade explícita.",
+    "key_contract": {
+      "ui": "VariacaoDraft.key",
+      "provider": "nenhum; nome lógico de passo creative:<key>/ad:<key>",
+      "storage": "manifesto/hash",
+      "validation": "1..32 caracteres conforme contrato, unicidade após normalização"
+    },
+    "assertion": "Renomear/remover variação muda plano. N=10 não é Nconjuntos nem Creative flexível."
+  },
+  "meta_domain_fixed": [
+    {
+      "field": "objective",
+      "value": "OUTCOME_TRAFFIC",
+      "provider": "Campaign.objective",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "optimization_goal",
+      "value": "LANDING_PAGE_VIEWS",
+      "provider": "AdSet.optimization_goal",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "billing_event",
+      "value": "IMPRESSIONS",
+      "provider": "AdSet.billing_event",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "bid_strategy",
+      "value": "LOWEST_COST_WITHOUT_CAP",
+      "provider": "AdSet.bid_strategy",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "destination_type",
+      "value": "WEBSITE interno; NÃO emitido como destination_type no P0 atual",
+      "provider": "decisão de receita; dependência CP3/CP4",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "budget_scope",
+      "value": "ADSET",
+      "provider": "daily_budget no AdSet; Campaign sem orçamento",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "placements_mode",
+      "value": "FACEBOOK_ONLY",
+      "provider": "targeting.publisher_platforms=['facebook']",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "shop_destination_mode",
+      "value": "WEBSITE_ONLY",
+      "provider": "prova por conta/receita, não toggle do browser",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "countries",
+      "value": "['BR']",
+      "provider": "targeting.geo_locations.countries",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "age_min",
+      "value": "18",
+      "provider": "targeting.age_min",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "age_max",
+      "value": "65",
+      "provider": "targeting.age_max",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "currency",
+      "value": "BRL",
+      "provider": "lida da conta, não alterada no Campaign",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "instagram_actor_ref",
+      "value": "null, sem identidade Instagram na receita Facebook-only",
+      "provider": "campo futuro deve usar schema/API verificados, não mapear legacyname cegamente",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "promoted_object",
+      "value": "null e nonempty recusado",
+      "provider": "nenhum no P0 LPV; receita Sales/Leads separada",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "status",
+      "value": "PAUSED nos3nós veiculáveis",
+      "provider": "Campaign/AdSet/Ad.status; Creative estado de biblioteca",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    },
+    {
+      "field": "buying_type",
+      "value": "AUCTION",
+      "provider": "Campaign.buying_type",
+      "state": "FIXED_RECIPE",
+      "change_policy": "Mudança exige recipe_id/version e prova de campos cruzados; não incluir campo descartável no DTO P0.",
+      "task_ids": [
+        "T01",
+        "T16"
+      ]
+    }
+  ],
+  "planned_meta_fields_after_T02": [
+    {"field":"asset_policy_receipt_ref","location":"plano e variations[] conforme modo","state":"SERVER_AUTHORITY_AFTER_T02","rule":"Referência opaca de recibo emitido/reusado pelo servidor após conferência explícita. O cliente pode referenciá-lo, não criar sua validade/ator/hash. Fase de compatibilidade aceita declaração antiga somente na conferência, nunca como aprovação confiável de um despacho.","task_ids":["T01","T02","T03"]}
+  ],
+  "effect_projection": "Respostas devem distinguir leitura do provedor, validate_only, mutate do provedor e escrita no banco. Compilar/resolver pode ler mídia; aprovar escreve ledger; reconciliar pode ler Meta e escrever conclusão. Nenhum desses casos deve ser rotulado genericamente como zero efeito externo sem escopo.",
+  "meta_act_envelopes": [
+    {
+      "act": "compile",
+      "input": "plano estrito",
+      "effects": "Pode resolver/ler ativos e criar prova local conforme flag/autoridade; compilar não é garantia de zero leitura externa.",
+      "ui": "Conferir plano",
+      "storage": "não constitui aprovação"
+    },
+    {
+      "act": "validate",
+      "input": "plano + confirmar_validate_only",
+      "effects": "API Meta validate_only por clique; recibo durável depende de autorização de ledger write, nunca de createflag.",
+      "ui": "Valida raízes sem criar; mostra cobertura e operações pendentes",
+      "storage": "validation_receipt server-bound"
+    },
+    {
+      "act": "approve",
+      "input": "validation_ref + plano/hash efetivo + confirmação e limites",
+      "effects": "grava aprovação, não Meta mutate",
+      "ui": "diff/hash/conta/verba/validade",
+      "storage": "approval"
+    },
+    {
+      "act": "create_paused",
+      "input": "duas referências canônicas da rota existente, nenhum payload Meta livre",
+      "effects": "Meta mutate + ledger write somente CP4",
+      "ui": "gesto explícito, progresso somente de estados reais",
+      "storage": "snapshot + steps + IDs + readbacks"
+    },
+    {
+      "act": "reconcile",
+      "input": "approval_ref/operation_ref",
+      "effects": "Meta read + ledger write de conclusões; sem reenviar",
+      "ui": "recuperável após reload/createflagoff",
+      "storage": "frozen snapshot + proof"
+    },
+    {
+      "act": "receipt",
+      "input": "ref opaca + escopo autenticado",
+      "effects": "leitura banco; não toca Meta/Keychain automaticamente",
+      "ui": "link estável, estado de execução separado da expiração",
+      "storage": "projeção sanitizada"
+    }
+  ],
+  "meta_extension_matrix": [
+    {
+      "capability": "IMAGE_SINGLE_OR_BATCH",
+      "current": "LOCAL_IMPLEMENTED_ROOTS_HISTORICALLY_PROVEN",
+      "target": "T01–T04 e CP4",
+      "ui": "1..10 previews e mensagens por variação",
+      "not_equivalent_to": "conjunto múltiplo/flexível"
+    },
+    {
+      "capability": "VIDEO",
+      "current": "READ_PREVIEW_ONLY_EMISSION_BLOCKED",
+      "target": "T15 sliceB",
+      "ui": "vídeo+poster/processamento/thumbnailvalidada",
+      "not_equivalent_to": "URLCDN como asset publicável"
+    },
+    {
+      "capability": "FLEXIBLE",
+      "current": "BLOCKED_PENDING_CONTRACT_PROOF",
+      "target": "T15 sliceC",
+      "ui": "conjunto de mídia/copy e combinações permitidas",
+      "not_equivalent_to": "dynamic creative legado ou batch"
+    },
+    {
+      "capability": "MULTI_ADSET_CAMPAIGN_BUDGET_SHARING",
+      "current": "NOT_IN_P0",
+      "target": "T16 receita própria",
+      "ui": "nível do orçamento/estratégia/públicos e limites explícitos",
+      "not_equivalent_to": "ligarsharingtrue"
+    },
+    {
+      "capability": "INSTAGRAM_PLACEMENTS",
+      "current": "NOT_IN_FACEBOOK_ONLY_P0",
+      "target": "T15/T16 com identidade comprovada",
+      "ui": "Página/Instagram e placements adequados",
+      "not_equivalent_to": "inferir ator Instagram da Página"
+    },
+    {
+      "capability": "CUSTOM_CONVERSION_OPTIMIZATION",
+      "current": "PREFLIGHT_READ_ONLY",
+      "target": "T16",
+      "ui": "evento/dataset/conta/objetivo/elegibilidade",
+      "not_equivalent_to": "contador de conversões ou eventoCAPI enviado"
+    },
+    {
+      "capability": "PAUSE_BUDGET_ACTIVATE",
+      "current": "NOT_IMPLEMENTED_FOR_META_OPERATION",
+      "target": "T13 por ato",
+      "ui": "ações por campo suportado/risco",
+      "not_equivalent_to": "createflag"
+    }
+  ],
+  "google_groups": [
+    {
+      "group": "Identidade/destino",
+      "ui": "conta, oportunidade/run, LP e papel",
+      "http": "contexto da rota + ProvarEntrada/SubirEntrada",
+      "engine": "reconstrução canônica no servidor",
+      "storage": "plano/ledger + vínculo funil/conta",
+      "readback": "customer/campaign/channel/final URLs",
+      "rule": "Browser não substitui conjunto pago aprovado nem payload de controle por dados próprios.",
+      "task": "T17"
+    },
+    {
+      "group": "Canal",
+      "ui": "Search/Display/Demand Gen/PMax",
+      "http": "canal/perfil",
+      "engine": "perfil.py + autorizacao_de_canal.py",
+      "storage": "manifesto e lote com canal explícito",
+      "readback": "advertising_channel_type/subtype",
+      "rule": "Prova por canal não equivale a autorização mutate; não mapear Display pelo Search.",
+      "task": "T17"
+    },
+    {
+      "group": "Orçamento",
+      "ui": "valor diário e moeda",
+      "http": "budget_diario",
+      "engine": "conversão tipada a micros",
+      "storage": "budget/limites de autorização",
+      "readback": "campaign_budget.amount_micros + currency",
+      "rule": "Minimos por canal/moeda da receita; não arredondar/default silencioso.",
+      "task": "T18"
+    },
+    {
+      "group": "Lance/metas",
+      "ui": "estratégia e somente alvos aplicáveis",
+      "http": "estrategia/lance_inicial_cpc/tcpa/roas conforme DTO atual",
+      "engine": "mensuracao.py e metas_efetivas.py + builder específico",
+      "storage": "plano/readiness snapshot/goal context",
+      "readback": "bidding strategy e metas efetivas",
+      "rule": "Mapear nomes exatos do DTO no T17; ratio e micros tipados; metas de conta não alteradas por checkbox.",
+      "task": "T18"
+    },
+    {
+      "group": "Search",
+      "ui": "termos/match/negativas/rede/AI Max/copy",
+      "http": "conjunto aprovado + match/negativas/rede/copy/ai_max",
+      "engine": "builder Search existente",
+      "storage": "hash conjunto/política/copy",
+      "readback": "ad groups/keywords/RSA/network",
+      "rule": "Preservar regressões e canário histórico; nenhuma nova criação Search necessária para dizer Google3canais.",
+      "task": "T17"
+    },
+    {
+      "group": "Display",
+      "ui": "peças/textos/business name/audiências/expansões",
+      "http": "copy/assets + config de canal atual",
+      "engine": "Display builder + control_spec",
+      "storage": "supply refs/policy receipts",
+      "readback": "adgroup/ad PAUSED e automações",
+      "rule": "Campos readonly vs editáveis enumerados pelo executor; peça política é pré-condição.",
+      "task": "T17"
+    },
+    {
+      "group": "Demand Gen",
+      "ui": "peças/textos/CTA/business/audiências e controles canais",
+      "http": "DemandGenConfiguracaoEntrada + assets",
+      "engine": "builder demand_gen.py",
+      "storage": "supply/meta de proveniência e controle",
+      "readback": "ad/adgroup/campaign + automations",
+      "rule": "upgraded_targeting null ≠ false. Capacidade desconhecida não vira opção ligada; minbudget prova atual.",
+      "task": "T17"
+    },
+    {
+      "group": "PMax",
+      "ui": "brand/asset group/audiências/themes/negativas/textos/peças",
+      "http": "PMaxConfiguracaoEntrada + assets",
+      "engine": "grafo tipado PMax já existente",
+      "storage": "v12_03 quando oficialmente verificado",
+      "readback": "AssetGroup/AssetGroupAsset + campaign controls",
+      "rule": "Não reimplementar planner. YouTube referência recusada no gate atual até supply/política próprios.",
+      "task": "T17"
+    },
+    {
+      "group": "URL exclusiva PMax",
+      "ui": "LP fixa com declaração de exclusividade",
+      "http": "URL canônica e políticas não alteráveis pelo browser",
+      "engine": "asset_automation_settings e PAGE_FEED exclusion pertinentes",
+      "storage": "recibo destino e manifesto inteiro",
+      "readback": "todas finalURLs e fontes alternativas de URL",
+      "rule": "Mesmo domínio não basta; incluir sitelinks/assets de conta/campanha aplicáveis e redirecionamento de destino.",
+      "task": "T18"
+    },
+    {
+      "group": "Assets/preview",
+      "ui": "seleção visual e estado técnico/política",
+      "http": "assets/provenance conforme envelope atual; evoluir a asset_ref reutilizável",
+      "engine": "gate antes da ponte/upload",
+      "storage": "hash/versão/origem/purpose/conta/receipt",
+      "readback": "resource refs e bindings sem segredos",
+      "rule": "validate_only não pode realizar uploads reais por fora; limites bytes/pixels verificados.",
+      "task": "T17"
+    },
+    {
+      "group": "Provar/criar/recuperar",
+      "ui": "atos separados + recibo durável",
+      "http": "/provar /subir /reconciliar canônicos",
+      "engine": "mesmo hash + autoridade canal + ledger",
+      "storage": "IDs/readbacks/ambiguidade",
+      "readback": "estado/pais/conta/destino/control spec",
+      "rule": "Não clonar executor por canal; status de leitura ≠ permissão de ativação.",
+      "task": "T19"
+    }
+  ],
+  "metric_and_database_contract": "MASTER-SPEC.json#/contracts/insights_and_money e read_model; T05–T09 produzem DTO real e testes de SQL.",
+  "update_rule": "Executor mantém matriz de paridade junto ao diff: campo recebido não utilizado deve falhar, campo fixo deve ser visível e impossível de adulterar, readonly nunca vira edição sem nova receita."
+}

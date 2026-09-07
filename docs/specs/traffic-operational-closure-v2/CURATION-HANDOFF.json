@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "mode": "PROPOSED_NOT_APPLIED",
+  "date": "2026-09-07",
+  "base_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "shared_files_modified": [],
+  "runtime_changed": false,
+  "graph": {
+    "check_current": true,
+    "reason": "insumos idênticos",
+    "authority": "docs/volc-os-graph/BUILD-STATUS.json",
+    "input_sha256": "d3adee58eec72aabf2948081844f7813e21f97bbc346ced33ae633b25fea883a",
+    "limitation": "Frescor por digest não valida afirmações antigas da curadoria. F23 identifica contradição factual em cap_google_multichannel."
+  },
+  "tasks": [
+    {
+      "roadmap_id": "P11-T02",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T01",
+        "T02",
+        "T15"
+      ],
+      "proof_to_add": "DTO P0 completo mapeado; gate técnico aceitou bytes inválidos em probe. Necessário decode/policy receipt bound e ponte com Estúdio.",
+      "completion_checkpoint": "CP1 para estático; CP6 para expansões"
+    },
+    {
+      "roadmap_id": "P11-T03",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T14"
+      ],
+      "proof_to_add": "Keychain/localhost é perfil local, não prova produção remota. Preservar leitura histórica e explicitar escopo.",
+      "completion_checkpoint": "CP5 perfil autorizado"
+    },
+    {
+      "roadmap_id": "P11-T04",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T02",
+        "T15"
+      ],
+      "proof_to_add": "Motores existentes não equivalem a supply inspecionado/upload/uso provados em Meta. Vídeo/flexível têm contratos separados.",
+      "completion_checkpoint": "CP6 por receita"
+    },
+    {
+      "roadmap_id": "P11-T05",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T01",
+        "T02",
+        "T03",
+        "T04",
+        "T10",
+        "T11",
+        "T12"
+      ],
+      "proof_to_add": "Roots históricas não cobrem nascimento completo. Novo risco de recuperação dependente de declaração expirada e IN_FLIGHT órfão; necessário snapshot imutável/recibo durável.",
+      "completion_checkpoint": "CP4, sem incluir ativação"
+    },
+    {
+      "roadmap_id": "P11-T06",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09"
+      ],
+      "proof_to_add": "Views atuais Meta são demo; backend ignora conta em alguns níveis e coleta account/today. LPV mistura ViewContent; precisará dados/identidade/financeiro reais.",
+      "completion_checkpoint": "CP5"
+    },
+    {
+      "roadmap_id": "P05-T11",
+      "observed_state": "done",
+      "proposed_state": "done",
+      "spec_tasks": [],
+      "proof_to_add": "Preservar primeiro canário Search histórico concluído. Não reabrir para financiar contagem de progresso multicanal.",
+      "completion_checkpoint": "não se aplica"
+    },
+    {
+      "roadmap_id": "P05-T12",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T18"
+      ],
+      "proof_to_add": "Estender/adjudicar escopo de metas efetivas por canal sem reescrever núcleo pronto; conta real continua pré-condição.",
+      "completion_checkpoint": "CP7 do canal"
+    },
+    {
+      "roadmap_id": "P09-T17",
+      "observed_state": "partial",
+      "proposed_state": "partial",
+      "spec_tasks": [
+        "T17",
+        "T19"
+      ],
+      "proof_to_add": "Preservar autoridade única e flag por canal. Fechar delta DG/PMax no caminho canônico, sem tratar prova como licença de mutate.",
+      "completion_checkpoint": "CP7"
+    }
+  ],
+  "refinements_proposed": [
+    {
+      "parent": "P11-T06",
+      "description": "Separar entrega de UI demo, read model real com escopo/paginação, e financeiro com lineage como critérios de aceite distintos.",
+      "task_ids": [
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09"
+      ]
+    },
+    {
+      "parent": "P11-T05",
+      "description": "Registrar recuperação/reload/IN_FLIGHT e proof coverage como critérios, não apenas sucesso de create.",
+      "task_ids": [
+        "T03",
+        "T04",
+        "T12"
+      ]
+    },
+    {
+      "parent": "P11",
+      "description": "Representar gestão/ativação e perfil remoto de produção em tarefas próprias antes de declarar toda a frente Meta fechada; criar IDs somente pelo curador autorizado.",
+      "task_ids": [
+        "T13",
+        "T14",
+        "T16"
+      ]
+    }
+  ],
+  "graph_node_proposals": [
+    {
+      "id": "cap_meta_ads",
+      "state": "partial",
+      "summary": "Criação estática/lote e validação de raízes implementadas com controles; recuperação durável, schema/prova completa e vistas reais ainda têm lacunas. Página demo não equivale a operação real.",
+      "instruction": "Mover narrativa antiga contraditória para histórico datado e emitir resumo atual apoiado nos achados/recibos. Não afirmar sem rota de criação nem ausência pós-despacho como permissão de retry."
+    },
+    {
+      "id": "cap_google_multichannel",
+      "state": "partial",
+      "summary": "Builders e provas tipadas de Display, Demand Gen e PMax existem no HEAD. Falta concluir delta de escrita/licença dos canais, inspeção de peças e provas de conta/canários; Search mantém autorização atual.",
+      "instruction": "Remover do resumo factual corrente 'DG/PMax sem construtor' e 'ProvarEntrada sem imagem'. Guardar como história, não como bloqueio atual."
+    }
+  ],
+  "apply_instructions": [
+    "Este handoff não autoriza alteração compartilhada.",
+    "Um curador autorizado identifica/refina tarefas, grava fatos/pendências e corrige cap_meta_ads/cap_google_multichannel sem promover por spec.",
+    "Rebuild somente via scripts/atualizar_grafo_volc_os.py, nunca editar output ou graphify update .; --check por digest.",
+    "Registrar estado oficial desconhecido separadamente de candidato local."
+  ],
+  "no_promotions": "Nenhuma nova tarefa done nesta rodada. O spec está pronto; o produto ainda depende de implementação/provas."
+}
