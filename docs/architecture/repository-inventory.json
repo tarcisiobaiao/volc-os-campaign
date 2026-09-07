@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T18:00:49-03:00",
+  "generated_at": "2026-09-07T19:38:13-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 698,
-    "markdown": 511,
-    "sql": 187,
-    "tracked": 698,
+    "files": 708,
+    "markdown": 517,
+    "sql": 191,
+    "tracked": 708,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 361,
+      "documentation": 365,
       "generated": 2,
-      "module-guide": 37,
+      "module-guide": 39,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 74,
+      "sql-needs-review": 78,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 125,
+      "high": 129,
       "medium": 46,
       "read-only-or-ddl-free": 16
     }
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22158,
       "lines": 297,
-      "sha256": "8eb72f1e424d4da004d4d14a6b20b8b54f4d3b33c362b26903d4f3762a5e44d2",
+      "sha256": "b738e00cef57039d5b2b9aaa7d718adc48936102401d5844f3d6006bedb211c0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3391,9 +3391,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 13425,
-      "lines": 249,
-      "sha256": "30f3627ae153b1152cb8b258229f78c83269862ff30332c1366228b6083cc576",
+      "bytes": 13774,
+      "lines": 256,
+      "sha256": "1de607d28bca6cfabce7409833285da1119e0a0339e78bb1983d921ba6fa8a21",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4839,6 +4839,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/specs/creative-studio-aprova-integration-v1/EXECUTION-GUIDE.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5734,
+      "lines": 98,
+      "sha256": "33a45e64d4b3f4e5cf34aa714be11c444d2e1733637cded4c375c8adfc430256",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/specs/creative-studio-aprova-integration-v1/EXECUTOR-PROMPT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5062,
+      "lines": 98,
+      "sha256": "38b6a3a62e7e5a9d7515c701bfab9a55918efefb8dd24f2fd3b3ef3f94f14ad5",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/specs/creative-studio-operating-experience-v1/AS-IS-ARCHITECTURE.md",
       "extension": ".md",
       "classification": "documentation",
@@ -5785,6 +5809,54 @@
       "graph_nodes": 6,
       "graph_degree": 12,
       "sql_risk": "high"
+    },
+    {
+      "path": "services/creative-studio/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 2260,
+      "lines": 40,
+      "sha256": "ac88748a802ee37f19bb79e26f5bea9e2ea277758bf96f089a99c46fcc067bb9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "services/creative-studio/upstream/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 1279,
+      "lines": 52,
+      "sha256": "b157d7ad3cf15d0c9abe3c21908d500f04324f6c8c9f997eaf59be29fb3b8643",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "services/creative-studio/upstream/design.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4896,
+      "lines": 110,
+      "sha256": "a77841bf55c2ab4a0813d47b80a75a0c4194779e2bfec961a6bfbcac55aefc12",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "services/creative-studio/upstream/docs/superpowers/specs/2026-06-17-realtime-progress-and-errors-design.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5456,
+      "lines": 93,
+      "sha256": "5b4359390d1add4fa221d6e44b5533f4fab0324e440f2d628d17c5e95d3e912b",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
     },
     {
       "path": "sql/2025-09-10_drop_costs_summary_by_category.sql",
@@ -7726,6 +7798,54 @@
       "bytes": 286,
       "lines": 8,
       "sha256": "61ed96b2d743a308f302d27988110165b6539586b5ea465164373b89c77c99a8",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v11_06_criativo_agente_endurecimento.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 14211,
+      "lines": 303,
+      "sha256": "cfddb4e8aa0f8d2286974c70b66a5e9b98877b455cca7054e5e7c9cfe773c233",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v11_06_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 5353,
+      "lines": 105,
+      "sha256": "497feb449c29b7f93211ef90989aff0a3e5261505771ad85f16e7b4c51650c8f",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 7392,
+      "lines": 173,
+      "sha256": "594d7fa28e6d9ac9e105af8e53494788dce671115f63953f6bc5c6c6c01a192c",
+      "graph_nodes": 2,
+      "graph_degree": 3,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v11_07_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 2321,
+      "lines": 60,
+      "sha256": "3d14b8d29983a6315ec179323b7f07d9c7eadd8419a4557eacf07ccb65c3370c",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"

@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-07T18:00:49-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-07T19:38:13-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 698 arquivos: 511 Markdown e 187 SQL;
-- 698 versionados e 0 ainda não versionados;
+- 708 arquivos: 517 Markdown e 191 SQL;
+- 708 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 125 SQL com palavras de mutação de alto risco.
+- 129 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,9 +17,9 @@ Gerado em `2026-09-07T18:00:49-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 24 |
-| `documentation` | 361 |
+| `documentation` | 365 |
 | `generated` | 2 |
-| `module-guide` | 37 |
+| `module-guide` | 39 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-09-07T18:00:49-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 74 |
+| `sql-needs-review` | 78 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -138,6 +138,10 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | 3 | 8 |
 | `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v11_06_criativo_agente_endurecimento.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v11_06_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql` | `sql-needs-review` | 2 | 3 |
+| `supabase/migrations/v11_07_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | 3 | 4 |
 | `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | 5 | 23 |
@@ -287,10 +291,10 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_04_criativo_importacao.sql` | `sql-needs-review` | high | 3 | 8 |
 | `supabase/migrations/v11_05_criativo_agente_meta.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v12_01_google_inteligencia_coletas.sql` | `sql-needs-review` | high | 3 | 4 |
-| `supabase/migrations/v12_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v12_02_plano_de_mensuracao.sql` | `sql-needs-review` | high | 5 | 23 |
-| `supabase/migrations/v12_02_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v11_06_criativo_agente_endurecimento.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v11_06_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql` | `sql-needs-review` | high | 2 | 3 |
+| `supabase/migrations/v11_07_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
