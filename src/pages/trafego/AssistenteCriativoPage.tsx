@@ -29,26 +29,33 @@ import {
   executarRun,
   lerOperacao,
   listarOperacoes,
+  gerarImagens,
+  listarGeracoes,
+  planejarGeracao,
   registrarDecisao,
 } from '@/features/creative-studio/api';
 import { FormularioDeBriefing } from '@/features/creative-studio/componentes/FormularioDeBriefing';
 import { HistoricoDeOperacoes } from '@/features/creative-studio/componentes/HistoricoDeOperacoes';
 import { PainelDeEstrategia } from '@/features/creative-studio/componentes/PainelDeEstrategia';
+import { PainelDeProducao } from '@/features/creative-studio/componentes/PainelDeProducao';
 import type {
   EntradaNovaOperacao,
   EscopoFeedback,
   OperacaoCompleta,
   PedidoDeDecisao,
+  GeracaoRegistrada,
+  PlanoDeGeracao,
   ResumoDaOperacao,
   SaidaDoAgente,
 } from '@/features/creative-studio/tipos';
 
-type Vista = 'briefing' | 'estrategia' | 'historico';
+type Vista = 'briefing' | 'estrategia' | 'producao' | 'historico';
 
 const VISTAS: { id: Vista; rotulo: string }[] = [
   { id: 'historico', rotulo: 'Histórico' },
   { id: 'briefing', rotulo: 'Briefing' },
   { id: 'estrategia', rotulo: 'Estratégia' },
+  { id: 'producao', rotulo: 'Produção' },
 ];
 
 function frase(erro: unknown): string {
@@ -149,6 +156,34 @@ export default function AssistenteCriativoPage() {
     setAprovados(new Set());
   }, [projectRef]);
 
+  const [plano, setPlano] = useState<PlanoDeGeracao | null>(null);
+  const [planejando, setPlanejando] = useState(false);
+  const [gerando, setGerando] = useState(false);
+  const [geracoes, setGeracoes] = useState<GeracaoRegistrada[]>([]);
+
+  // Trocar de peça ou de formato invalida o plano anterior: um total na tela
+  // que não corresponde mais à seleção é pior que total nenhum.
+  useEffect(() => {
+    setPlano(null);
+  }, [projectRef]);
+
+  const carregarGeracoes = useCallback(
+    async (ref: string) => {
+      if (!configurado) return;
+      try {
+        const r = await listarGeracoes(ref);
+        setGeracoes(r.geracoes);
+      } catch {
+        /* a procedência é complementar; a falta dela não derruba a tela */
+      }
+    },
+    [configurado],
+  );
+
+  useEffect(() => {
+    if (projectRef) void carregarGeracoes(projectRef);
+  }, [projectRef, carregarGeracoes]);
+
   // ── Ações ─────────────────────────────────────────────────────────────────
   async function criar(entrada: EntradaNovaOperacao) {
     setOcupado(true);
@@ -218,6 +253,47 @@ export default function AssistenteCriativoPage() {
     }
   }
 
+  async function planejar(creativeRefs: string[], formatIds: string[]) {
+    if (!projectRef || !runAtual) return;
+    setPlanejando(true);
+    setErroAcao(null);
+    try {
+      setPlano(
+        await planejarGeracao(projectRef, {
+          run_ref: runAtual.run_ref,
+          selected_creative_refs: creativeRefs,
+          format_ids: formatIds,
+        }),
+      );
+    } catch (e) {
+      const f = frase(e);
+      if (f) setErroAcao(f);
+      setPlano(null);
+    } finally {
+      setPlanejando(false);
+    }
+  }
+
+  async function gerar(creativeRefs: string[], formatIds: string[]) {
+    if (!projectRef || !runAtual) return;
+    setGerando(true);
+    setErroAcao(null);
+    try {
+      await gerarImagens(projectRef, {
+        run_ref: runAtual.run_ref,
+        selected_creative_refs: creativeRefs,
+        format_ids: formatIds,
+      });
+      await carregarGeracoes(projectRef);
+      setAviso('Produção pedida. Acompanhe as peças no Estúdio Criativo.');
+    } catch (e) {
+      const f = frase(e);
+      if (f) setErroAcao(f);
+    } finally {
+      setGerando(false);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Layout>
@@ -257,7 +333,8 @@ export default function AssistenteCriativoPage() {
           <div className="inline-flex rounded-lg border border-border bg-muted p-1">
             {VISTAS.map((v) => {
               const ativa = vista === v.id;
-              const desabilitada = v.id === 'estrategia' && !projectRef;
+              const desabilitada =
+                (v.id === 'estrategia' || v.id === 'producao') && !projectRef;
               return (
                 <button
                   key={v.id}
@@ -303,6 +380,64 @@ export default function AssistenteCriativoPage() {
               }
               onNova={() => irPara('briefing')}
             />
+          )}
+
+          {vista === 'producao' && (
+            <div className="space-y-4">
+              {!saida && (
+                <div className="rounded-lg border border-border bg-card p-6 shadow-card">
+                  <p className="text-sm font-medium text-foreground">
+                    Ainda não há estratégia concluída para produzir.
+                  </p>
+                  <p className="mt-1 max-w-[70ch] text-sm text-muted-foreground">
+                    A imagem sai de uma peça aprovada; sem lote não há o que aprovar.
+                  </p>
+                </div>
+              )}
+              {saida && (
+                <PainelDeProducao
+                  saida={saida}
+                  aprovados={aprovados}
+                  plano={plano}
+                  planejando={planejando}
+                  gerando={gerando}
+                  erro={erroAcao}
+                  onPlanejar={planejar}
+                  onGerar={gerar}
+                />
+              )}
+              {geracoes.length > 0 && (
+                <section className="rounded-lg border border-border bg-card p-4 shadow-card">
+                  <h2 className="font-display text-lg font-semibold">Procedência</h2>
+                  <p className="mt-1 max-w-[70ch] text-sm text-muted-foreground">
+                    De qual peça aprovada saiu cada trabalho de mídia. A mesma peça da
+                    mesma run não é produzida duas vezes.
+                  </p>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[34rem] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th scope="col" className="px-3 py-2 font-semibold">Peça</th>
+                          <th scope="col" className="px-3 py-2 font-semibold">Formatos</th>
+                          <th scope="col" className="px-3 py-2 font-semibold">Trabalho</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {geracoes.map((g) => (
+                          <tr key={g.ponte_ref} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2 font-mono text-[11px]">{g.creative_ref}</td>
+                            <td className="px-3 py-2">{g.slots.join(' · ')}</td>
+                            <td className="px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                              {g.job_id}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+            </div>
           )}
 
           {vista === 'briefing' && (

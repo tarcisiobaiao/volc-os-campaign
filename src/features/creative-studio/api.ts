@@ -28,10 +28,12 @@ import type {
   DecisaoRegistrada,
   EntradaNovaOperacao,
   FormatoDisponivel,
+  GeracaoRegistrada,
   OperacaoCompleta,
   OperacaoEnfileirada,
   PedidoDeContinuacao,
   PedidoDeDecisao,
+  PlanoDeGeracao,
   ResumoDaOperacao,
   RunEnfileirada,
   RunExecutada,
@@ -255,3 +257,52 @@ export const FORMATOS_DO_MOTOR: readonly FormatoDisponivel[] = [
 
 /** Teto estratégico do agente. Espelha `MAX_VARIACOES` do contrato. */
 export const MAX_PECAS = 15;
+
+// ── Produção ─────────────────────────────────────────────────────────────────
+
+/**
+ * Confere o pedido sem produzir nada.
+ *
+ * Existe separada de `gerarImagens` porque o operador tem direito de ver o
+ * total, o teto e o custo — e as recusas — sem arriscar um clique que gasta.
+ */
+export async function planejarGeracao(
+  projectRef: string,
+  pedido: { run_ref: string; selected_creative_refs: string[]; format_ids: string[] },
+  signal?: AbortSignal,
+): Promise<PlanoDeGeracao> {
+  return chamar(endereco(`/operacoes/${projectRef}/geracoes/plano`), {
+    method: 'POST',
+    body: JSON.stringify(pedido),
+    signal,
+  });
+}
+
+/**
+ * O ato que gasta. Só por clique explícito, nunca ao montar ou reconectar.
+ *
+ * O servidor RECALCULA o plano e ignora qualquer total que esta tela tenha
+ * mostrado: um teto conferido no browser não é um teto.
+ */
+export async function gerarImagens(
+  projectRef: string,
+  pedido: { run_ref: string; selected_creative_refs: string[]; format_ids: string[] },
+  signal?: AbortSignal,
+): Promise<{
+  geracoes: GeracaoRegistrada[];
+  total_de_renders: number;
+  custo_estimado_usd: number | null;
+}> {
+  return chamar(endereco(`/operacoes/${projectRef}/geracoes`), {
+    method: 'POST',
+    body: JSON.stringify(pedido),
+    signal,
+  });
+}
+
+export async function listarGeracoes(
+  projectRef: string,
+  signal?: AbortSignal,
+): Promise<{ geracoes: GeracaoRegistrada[] }> {
+  return chamar(endereco(`/operacoes/${projectRef}/geracoes`), { signal });
+}

@@ -135,7 +135,7 @@ create index if not exists criativo_agente_operacao_dono_ix
 -- ⚠️ A ORDEM AQUI E O QUE TORNA O REAPPLY POSSIVEL. As FKs compostas dependem
 -- dos indices das chaves unicas, entao um `drop constraint ... uk` com a FK
 -- ainda de pe falha com "other objects depend on it" — medido na SEGUNDA
--- aplicacao, no passo 9 de `scripts/provar-ciclo-v11_06.sh`. Filhos primeiro,
+-- aplicacao, no passo 9 de `scripts/provar-ciclo-assistente-criativo.sh`. Filhos primeiro,
 -- depois as chaves, depois os filhos de novo.
 
 -- (i) soltar as FKs compostas, caso venham de uma aplicacao anterior

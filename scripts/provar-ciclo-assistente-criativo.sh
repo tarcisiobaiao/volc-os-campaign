@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Prova o ciclo apply -> uso -> rollback -> reapply da v11_05 + v11_06 num
+# Prova o ciclo apply -> uso -> rollback -> reapply da v11_05 + v11_06 + v11_07 num
 # PostgreSQL DESCARTAVEL. Nunca toca database.agenciavolc.com.br.
 #
 # Por que um cluster proprio e nao um banco no cluster do dev: o teste precisa
 # criar as roles `anon`, `authenticated` e `service_role` e mexer em ACL default.
 # Fazer isso num cluster compartilhado deixa residuo que ninguem procura depois.
 #
-# Uso:  ./scripts/provar-ciclo-v11_06.sh
+# Uso:  ./scripts/provar-ciclo-assistente-criativo.sh
 # Saida: PROVA OK / PROVA FALHOU, e o diretorio do cluster e removido no fim.
 set -euo pipefail
 
@@ -68,8 +68,18 @@ begin
 end $$;
 SQL
 
+echo "── 2b. stub de criativo_job (a v11_01 inteira nao faz parte desta prova)"
+psql -q <<'SQL'
+-- Apenas a superficie que a ponte referencia. Provar a v11_01 aqui seria provar
+-- outra migration; o que importa e que a FK da ponte encontra o alvo certo.
+create table if not exists public.criativo_job (id uuid primary key);
+SQL
+
 echo "── 3. apply v11_06 (endurecimento + fila)"
 psql -q -f "$MIG/v11_06_criativo_agente_endurecimento.sql"
+
+echo "── 3b. apply v11_07 (ponte peca->job)"
+psql -q -f "$MIG/v11_07_criativo_agente_ponte_estudio.sql"
 
 echo "── 4. USO: o backend (service_role) trabalha; o cliente nao"
 psql -q <<'SQL'
@@ -165,6 +175,64 @@ begin
 end $$;
 SQL
 
+echo "── 6b. a ponte guarda procedencia e recusa gerar a mesma peca duas vezes"
+psql -q <<'SQL'
+set role service_role;
+insert into public.criativo_job (id) values ('00000000-0000-0000-0000-0000000000aa');
+insert into public.criativo_agente_peca_job
+  (ponte_ref, owner_id, project_ref, run_ref, creative_ref, group_ref, copy_ref, state_ref, job_id, slots)
+values ('crpj_'||repeat('1',24), '11111111-1111-1111-1111-111111111111',
+        'crproj_'||repeat('a',24), 'crrun_'||repeat('b',24),
+        'creative_hook_frio', 'group_frio', 'copy_frio', 'state_frio',
+        '00000000-0000-0000-0000-0000000000aa', array['1x1','4x5']);
+reset role;
+
+do $$
+declare bloqueado boolean := false;
+begin
+  begin
+    set local role service_role;
+    insert into public.criativo_agente_peca_job
+      (ponte_ref, owner_id, project_ref, run_ref, creative_ref, group_ref, copy_ref, state_ref, job_id, slots)
+    values ('crpj_'||repeat('2',24), '11111111-1111-1111-1111-111111111111',
+            'crproj_'||repeat('a',24), 'crrun_'||repeat('b',24),
+            'creative_hook_frio', 'group_frio', 'copy_frio', 'state_frio',
+            '00000000-0000-0000-0000-0000000000aa', array['9x16']);
+  exception when unique_violation then
+    bloqueado := true;
+  end;
+  reset role;
+  if not bloqueado then
+    raise exception 'PONTE FALHOU: a mesma peca da mesma run gerou dois jobs';
+  end if;
+  raise notice 'ponte OK: (run_ref, creative_ref) e unica — reenviar nao paga de novo';
+end $$;
+
+do $$
+declare bloqueado boolean := false;
+begin
+  begin
+    set local role service_role;
+    update public.criativo_agente_peca_job set slots = array['1x1'];
+  exception when insufficient_privilege then
+    bloqueado := true;
+  end;
+  reset role;
+  if not bloqueado then
+    raise exception 'PONTE FALHOU: a procedencia deveria ser append-only';
+  end if;
+  raise notice 'ponte OK: append-only, nem o servidor reescreve procedencia';
+end $$;
+SQL
+
+echo "── 6c. o rollback da ponte RECUSA apagar procedencia sem confirmacao"
+if psql -q -f "$MIG/v11_07_rollback.sql" >/dev/null 2>&1; then
+  echo "PROVA FALHOU: o rollback da ponte apagou procedencia sem confirmacao"; exit 1
+fi
+echo "   salvaguarda OK: rollback da ponte recusado"
+psql -q -v confirmar_perda_de_procedencia=1 -f "$MIG/v11_07_rollback.sql" >/dev/null
+echo "   com a intencao declarada, o rollback da ponte roda"
+
 echo "── 7. rollback RECUSA enquanto houver run em QUEUED"
 psql -q -c "set role service_role; insert into public.criativo_agente_run (run_ref, project_ref, owner_id, status, phase, input) values ('crrun_'||repeat('9',24), 'crproj_'||repeat('a',24), '11111111-1111-1111-1111-111111111111', 'QUEUED', 'COPY', '{}'); reset role;"
 if psql -q -f "$MIG/v11_06_rollback.sql" >/dev/null 2>&1; then
@@ -194,4 +262,4 @@ psql -q -f "$MIG/v11_06_criativo_agente_endurecimento.sql"
 echo "   reapply OK: aplicar duas vezes seguidas nao quebra"
 
 echo
-echo "PROVA OK — v11_05 + v11_06: apply, uso, seguranca, integridade, rollback, reapply."
+echo "PROVA OK — v11_05 + v11_06 + v11_07: apply, uso, seguranca, integridade, ponte, rollback, reapply."

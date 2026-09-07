@@ -1,0 +1,160 @@
+{
+  "schema_version": "1.0",
+  "id": "CP3_ASSISTENTE_CRIATIVO_META_SQL",
+  "status": "CANDIDATO_NAO_APLICADO",
+  "gerado_em_commit": "ver git log da branch execution/volc-os-operacao-80-20",
+  "destino_oficial": "https://database.agenciavolc.com.br",
+  "executor_obrigatorio": "psql",
+  "declaracao": "Nada deste conjunto foi aplicado em nenhum banco oficial. As provas abaixo vêm de um cluster PostgreSQL descartável criado e destruído pelo script de prova. O operador pediu a v11_05; os deltas v11_06 e v11_07 são NOVOS e exigem autorização própria antes da janela.",
+
+  "por_que_existe_delta": "A v11_05 sozinha não sustenta a jornada implementada, e tem uma porta aberta. (a) SEGURANÇA: ela concede select/insert/update a `authenticated` com policies `for all`, então um cliente autenticado fabrica, via PostgREST e sem passar pelo backend, uma run COMPLETED com `output` arbitrário e uma decisão APROVADO com `snapshot_sha256` que só passa por regex. Como revoga apenas de `anon`, `authenticated` ainda herda DELETE do default ACL quebrado deste banco (ACHADO H, 24/08/2026, registrado em v11_04:312) e pode apagar a própria trilha. (b) FILA: o backend passou a separar criar de executar, o que exige o valor QUEUED no CHECK de status e a coluna claimed_at. (c) LISTAGEM: não havia índice para as operações de um dono. (d) INTEGRIDADE: owner→operação→run→decisão era convenção de aplicação, não constraint. (e) PONTE: a decisão D07 exige vínculo explícito entre peça estratégica e job de mídia, e ele não existia em lugar nenhum.",
+
+  "ordem_de_aplicacao": [
+    "supabase/migrations/v11_05_criativo_agente_meta.sql",
+    "supabase/migrations/v11_06_criativo_agente_endurecimento.sql",
+    "supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql"
+  ],
+  "rollback_files_never_in_apply": [
+    "supabase/migrations/v11_05_rollback.sql",
+    "supabase/migrations/v11_06_rollback.sql",
+    "supabase/migrations/v11_07_rollback.sql"
+  ],
+
+  "arquivos": [
+    {
+      "path": "supabase/migrations/v11_05_criativo_agente_meta.sql",
+      "sha256": "73bbe1f5f7ed1f6f83a11858b4ff6f195cf5784c897f9725b763f63de88130a9",
+      "linhas": 102,
+      "autoria": "pré-existente nesta branch; NÃO foi alterado por esta missão",
+      "cria": [
+        "table public.criativo_agente_operacao",
+        "table public.criativo_agente_run",
+        "table public.criativo_agente_decisao",
+        "index criativo_agente_run_project_ix",
+        "index criativo_agente_decisao_project_ix",
+        "4 policies RLS por dono",
+        "3 grants a authenticated"
+      ],
+      "on_error_stop": false,
+      "idempotente": false,
+      "ressalva": "O `alter table ... add constraint criativo_agente_latest_run_fk` (linha 46) não tem guarda; reaplicar contra um banco já aplicado aborta com SQLSTATE 42710. As tabelas e policies são idempotentes; essa linha não é."
+    },
+    {
+      "path": "supabase/migrations/v11_06_criativo_agente_endurecimento.sql",
+      "sha256": "cfddb4e8aa0f8d2286974c70b66a5e9b98877b455cca7054e5e7c9cfe773c233",
+      "linhas": 302,
+      "autoria": "NOVO nesta missão — exige autorização de delta",
+      "cria": [
+        "status QUEUED no CHECK de criativo_agente_run",
+        "column criativo_agente_run.claimed_at timestamptz",
+        "index criativo_agente_run_fila_ix (parcial, status QUEUED/RUNNING)",
+        "index criativo_agente_operacao_dono_ix (owner_id, updated_at desc)",
+        "unique criativo_agente_operacao_ref_dono_uk (project_ref, owner_id)",
+        "unique criativo_agente_run_ref_dono_uk (run_ref, owner_id)",
+        "FK composta criativo_agente_run_operacao_dono_fk",
+        "FK composta criativo_agente_decisao_operacao_dono_fk",
+        "FK composta criativo_agente_decisao_run_dono_fk"
+      ],
+      "remove": [
+        "as 4 policies da v11_05",
+        "todo privilégio de public, anon, authenticated e service_role nas 3 tabelas",
+        "as FKs simples que as compostas substituem"
+      ],
+      "concede": [
+        "select, insert, update a service_role em operacao e run",
+        "select, insert a service_role em decisao (append-only)"
+      ],
+      "on_error_stop": true,
+      "idempotente": true,
+      "verificacao_embutida": "6 checagens que levantam exceção: zero privilégio a anon/authenticated/public; service_role sem DELETE/TRUNCATE/REFERENCES/TRIGGER; zero policies; RLS forçada nas 3; claimed_at e QUEUED presentes; 3 FKs compostas presentes."
+    },
+    {
+      "path": "supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql",
+      "sha256": "594d7fa28e6d9ac9e105af8e53494788dce671115f63953f6bc5c6c6c01a192c",
+      "linhas": 172,
+      "autoria": "NOVO nesta missão — exige autorização de delta",
+      "cria": [
+        "table public.criativo_agente_peca_job (ponte peça estratégica -> job de mídia)",
+        "unique (run_ref, creative_ref) — a mesma peça da mesma run não gera dois jobs",
+        "FKs compostas para run e operação, com o dono nas duas pontas",
+        "FK para public.criativo_job",
+        "index criativo_agente_peca_job_operacao_ix e _job_ix",
+        "RLS forçada, zero policies, grant select+insert só a service_role"
+      ],
+      "on_error_stop": true,
+      "idempotente": true,
+      "depende_de": [
+        "v11_05 (criativo_agente_run, criativo_agente_operacao)",
+        "v11_06 (as chaves únicas que sustentam as FKs compostas)",
+        "v11_01 (public.criativo_job)"
+      ],
+      "pre_voo": "Aborta com mensagem própria se qualquer uma das três dependências faltar."
+    },
+    {
+      "path": "supabase/migrations/v11_05_rollback.sql",
+      "sha256": "61ed96b2d743a308f302d27988110165b6539586b5ea465164373b89c77c99a8",
+      "linhas": 7,
+      "destrutivo": true,
+      "ressalva": "DERRUBA AS TRÊS TABELAS. Não tem ON_ERROR_STOP, não conta linhas e não pede confirmação. NÃO USAR contra um banco oficial que já tenha operações sem autorização específica e salvaguarda dos dados."
+    },
+    {
+      "path": "supabase/migrations/v11_06_rollback.sql",
+      "sha256": "497feb449c29b7f93211ef90989aff0a3e5261505771ad85f16e7b4c51650c8f",
+      "linhas": 104,
+      "destrutivo": false,
+      "salvaguarda": "RECUSA rodar enquanto existir run em QUEUED — sem 'QUEUED' no CHECK, uma run enfileirada violaria a constraint e o trabalho do operador seria perdido para caber no schema antigo.",
+      "ressalva": "⚠️ REABRE a porta da v11_05: recria as 4 policies e os grants a authenticated. Reverter é decisão de disponibilidade, nunca de segurança. Nenhuma linha é apagada."
+    },
+    {
+      "path": "supabase/migrations/v11_07_rollback.sql",
+      "sha256": "3d14b8d29983a6315ec179323b7f07d9c7eadd8419a4557eacf07ccb65c3370c",
+      "linhas": 59,
+      "destrutivo": "só quanto a procedência",
+      "salvaguarda": "RECUSA apagar procedência sem confirmação explícita: psql -v confirmar_perda_de_procedencia=1. Imagens e jobs sobrevivem; o que se perde é a resposta para 'de qual peça aprovada veio esta imagem'."
+    }
+  ],
+
+  "prova_local": {
+    "script": "scripts/provar-ciclo-assistente-criativo.sh",
+    "sha256": "80f4398ede3ac8d5d745950543ac096afa69fc53f7d9da1af3552554545057b7",
+    "onde": "cluster PostgreSQL descartável criado por initdb e removido no trap EXIT. NUNCA toca database.agenciavolc.com.br.",
+    "fidelidade": "As roles anon/authenticated/service_role são criadas, `service_role` com BYPASSRLS como no Supabase real, `auth.uid()` é stub, e o default ACL quebrado (ACHADO H) é REPRODUZIDO com `alter default privileges ... grant all`. Sem essa reprodução a prova de segurança seria mais fácil que a realidade e não valeria nada.",
+    "passos_provados": [
+      "1. apply v11_05",
+      "2. a v11_05 é confirmada ABERTA: 6 grants INSERT/UPDATE a authenticated",
+      "3. apply v11_06 e v11_07, com as verificações embutidas passando",
+      "4. USO: service_role enfileira, reivindica por compare-and-set, conclui e registra decisão",
+      "5. SEGURANÇA: authenticated é recusado ao tentar fabricar run E ao tentar DELETE",
+      "6. INTEGRIDADE: a FK composta recusa run de outro dono sobre a operação alheia",
+      "6b. PONTE: (run_ref, creative_ref) é única e a tabela é append-only mesmo para service_role",
+      "6c. o rollback da ponte é recusado sem confirmação e roda com ela",
+      "7. o rollback da v11_06 é recusado com fila não vazia",
+      "8. rollback aplicado: schema volta à v11_05 e os dados ficam",
+      "9. reapply: aplicar duas vezes seguidas não quebra"
+    ],
+    "defeito_que_a_prova_pegou": "O passo 9 reprovou a primeira versão da v11_06: as FKs compostas dependem dos índices das chaves únicas, e `drop constraint ... uk` com a FK de pé falha com 'other objects depend on it'. A ordem foi corrigida (filhos primeiro) e comentada no arquivo.",
+    "ultimo_resultado": "PROVA OK — v11_05 + v11_06 + v11_07: apply, uso, seguranca, integridade, ponte, rollback, reapply."
+  },
+
+  "estado_oficial_desconhecido": {
+    "afirmacao": "O estado físico do banco oficial permanece DESCONHECIDO até um catálogo SQL real.",
+    "o_que_foi_medido": "Um GET PostgREST autenticado às três tabelas devolveu 404. Isso NÃO prova inexistência — prova apenas que elas não estão expostas no schema da Data API.",
+    "evidencia_documental_de_nao_aplicacao": "v11_05 está ausente do ledger `supabase/migrations/README.md` (onde toda migration aplicada tem linha com timestamp, ambiente, executor e sha256) e ausente do `apply_order` de docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json. Não existe supabase/config.toml nem tabela schema_migrations no repositório. O único registro é narrativo: docs/volc-os-graph/volc-os-graph.json diz que a v11_05 'foi provada apenas em PostgreSQL descartável'.",
+    "o_que_falta_para_a_janela": "Catálogo por information_schema/pg_catalog com conexão SQL real (não PostgREST): existência das tabelas, definição das constraints, lista de policies, ACL por role e ownership. Só depois disso a ordem de aplicação acima pode ser confirmada."
+  },
+
+  "autorizacao": {
+    "concedida_pelo_operador": ["v11_05"],
+    "exige_autorizacao_nova": [
+      "v11_06_criativo_agente_endurecimento.sql",
+      "v11_07_criativo_agente_ponte_estudio.sql"
+    ],
+    "nao_autorizado_por_este_pacote": [
+      "qualquer rollback contra o banco oficial",
+      "aplicar o diretório supabase/migrations por glob",
+      "backup/restore",
+      "alteração de credenciais"
+    ],
+    "backup_antes_da_janela": "Exigido para v11_06 e v11_07 se as tabelas da v11_05 já existirem com dados. Se o banco não tiver as tabelas, o conjunto é criação e o risco de dado é nulo — mas isso precisa ser MEDIDO pelo catálogo, não presumido."
+  }
+}

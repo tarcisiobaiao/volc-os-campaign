@@ -233,3 +233,45 @@ export interface FormatoDisponivel {
   altura: number;
   descricao: string;
 }
+
+// ── Produção ─────────────────────────────────────────────────────────────────
+
+export interface Bloqueio {
+  codigo: string;
+  mensagem: string;
+}
+
+export interface BriefingResumido {
+  creative_ref: string;
+  formato_slot: string;
+  texto_na_arte: string;
+}
+
+/**
+ * O plano é calculado NO SERVIDOR. A tela desenha; ela não decide o teto.
+ *
+ * `custo_estimado_usd` é `null` quando o motor não publica preço — e a tela
+ * escreve ausência, nunca "US$ 0,00".
+ */
+export interface PlanoDeGeracao {
+  conceitos: number;
+  formatos: number;
+  total_de_renders: number;
+  teto: number;
+  custo_estimado_usd: number | null;
+  pode_executar: boolean;
+  bloqueios: Bloqueio[];
+  briefings: BriefingResumido[];
+}
+
+/** A procedência: de qual peça aprovada saiu qual job de mídia. */
+export interface GeracaoRegistrada {
+  ponte_ref: string;
+  creative_ref: string;
+  group_ref: string;
+  run_ref: string;
+  job_id: string;
+  slots: string[];
+  created_at: string | null;
+  criado_agora?: boolean;
+}

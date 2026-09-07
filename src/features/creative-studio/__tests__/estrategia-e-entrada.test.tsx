@@ -242,3 +242,77 @@ describe('a entrada do Hub', () => {
     expect(comParam).toBeLessThan(dinamica);
   });
 });
+
+describe('a produção mostra o preço antes do botão', () => {
+  const PLANO_SEM_PRECO = {
+    conceitos: 2,
+    formatos: 3,
+    total_de_renders: 6,
+    teto: 45,
+    custo_estimado_usd: null,
+    pode_executar: true,
+    bloqueios: [],
+    briefings: [],
+  };
+
+  async function montarProducao(plano: typeof PLANO_SEM_PRECO | null, aprovadas: string[]) {
+    const { PainelDeProducao } = await import(
+      '@/features/creative-studio/componentes/PainelDeProducao'
+    );
+    return render(
+      <PainelDeProducao
+        saida={saida()}
+        aprovados={new Set(aprovadas)}
+        plano={plano}
+        planejando={false}
+        gerando={false}
+        onPlanejar={() => {}}
+        onGerar={() => {}}
+      />,
+    );
+  }
+
+  it('custo desconhecido vira ausência declarada, nunca US$ 0,00', async () => {
+    await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
+    expect(screen.getByText(/não publicado pelo motor/i)).toBeTruthy();
+    // ⚠️ Zero é um preço. "Não sei" não é.
+    expect(screen.queryByText(/US\$\s*0[.,]00/)).toBeNull();
+  });
+
+  it('mostra N x M e o teto antes de existir o botão de gerar', async () => {
+    await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
+    expect(screen.getByText('Conceitos')).toBeTruthy();
+    expect(screen.getByText('Imagens')).toBeTruthy();
+    expect(screen.getByText(/de 45 no teto/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /gerar 6 imagem/i })).toBeTruthy();
+  });
+
+  it('um pedido bloqueado explica o motivo e desabilita a geração', async () => {
+    await montarProducao(
+      {
+        ...PLANO_SEM_PRECO,
+        pode_executar: false,
+        bloqueios: [
+          {
+            codigo: 'CRIATIVO_STUDIO_TETO_DE_RENDERS',
+            mensagem: '12 conceito(s) × 4 formato(s) dão 48 imagens, acima do teto de 45 por pedido.',
+          },
+        ],
+      },
+      ['/pecas/creative_hook_frio'],
+    );
+    expect(screen.getByText(/acima do teto de 45/i)).toBeTruthy();
+    expect(screen.getByText(/Nada foi criado e nada foi cobrado/i)).toBeTruthy();
+    // `/^gerar/` e não `/gerar/`: "Conferir antes de gerar" também casaria,
+    // e o teste passaria olhando para o botão errado.
+    const botao = screen.getByRole('button', { name: /^gerar/i }) as HTMLButtonElement;
+    expect(botao.disabled).toBe(true);
+  });
+
+  it('sem peça aprovada não há produção, e a tela diz por quê', async () => {
+    await montarProducao(null, []);
+    expect(screen.getByText(/Nenhuma peça foi aprovada ainda/i)).toBeTruthy();
+    expect(screen.getByText(/recibo de contrato do Assistente não substitui/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^gerar/i })).toBeNull();
+  });
+});

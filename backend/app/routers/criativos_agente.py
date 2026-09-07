@@ -20,10 +20,12 @@ from app.criativo.agente.contrato import (
     PedidoDeContinuacao,
     PedidoDeDecisao,
     PedidoDoAgente,
+    SaidaDoAgente,
 )
 from app.criativo.agente.caminhos import CaminhoInvalido, resolver as resolver_caminho
 from app.criativo.agente.orquestrador import AgenteCriativoMeta, RespostaDoModeloInvalida
 from app.criativo.agente.persistencia import NaoEncontrado, RepositorioAgenteCriativo
+from app.criativo.studio import PedidoDeGeracao, PlanoDeGeracao
 from app.llm.gemini import GeminiClient
 from app.seguranca.identidade import Identidade, exigir_usuario
 from app.services.supabase_service import SupabaseService
@@ -348,6 +350,241 @@ async def ler_operacao(
         raise _erro("CRIATIVO_AGENTE_OPERACAO_INEXISTENTE", "Operação não encontrada.", 404) from exc
     runs = await repo.listar_runs(project_ref, identidade.sub)
     return {"operacao": operacao, "runs": runs}
+
+
+async def _lote_e_aprovados(
+    project_ref: str,
+    run_ref: str,
+    identidade: Identidade,
+    repo: RepositorioAgenteCriativo,
+) -> tuple[dict[str, Any], SaidaDoAgente, frozenset[str]]:
+    """A operação, o lote concluído e o que uma PESSOA aprovou nele."""
+    try:
+        operacao = await repo.obter_operacao(project_ref, identidade.sub)
+        run = await repo.obter_run(run_ref, identidade.sub)
+        decisoes = await repo.listar_decisoes(project_ref, identidade.sub)
+    except NaoEncontrado as exc:
+        raise _erro("CRIATIVO_AGENTE_ALVO_INEXISTENTE", "Operação ou run não encontrada.", 404) from exc
+
+    if run.get("project_ref") != project_ref or run.get("status") != "COMPLETED":
+        raise _erro(
+            "CRIATIVO_AGENTE_ALVO_INVALIDO",
+            "A geração precisa apontar para uma run concluída desta operação.",
+            409,
+        )
+
+    # A decisão mais recente por caminho é a efetiva — uma reprovação posterior
+    # desfaz o congelamento sem apagar a história.
+    por_caminho = {d["path"]: d for d in decisoes}
+    aprovados = frozenset(
+        caminho for caminho, d in por_caminho.items() if d["decisao"] == "APROVADO"
+    )
+    return operacao, SaidaDoAgente.model_validate(run["output"]), aprovados
+
+
+def _plano_para_json(plano: PlanoDeGeracao) -> dict[str, Any]:
+    return {
+        "conceitos": plano.conceitos,
+        "formatos": plano.formatos,
+        "total_de_renders": plano.total_de_renders,
+        "teto": plano.teto,
+        "custo_estimado_usd": plano.custo_estimado_usd,
+        "pode_executar": plano.pode_executar,
+        "bloqueios": [b.model_dump() for b in plano.bloqueios],
+        "briefings": [
+            {
+                "creative_ref": b.linhagem.creative_ref,
+                "formato_slot": b.formato_slot,
+                "texto_na_arte": b.texto_na_arte,
+            }
+            for b in plano.briefings
+        ],
+    }
+
+
+@router.post("/operacoes/{project_ref}/geracoes/plano")
+async def planejar_geracao(
+    project_ref: ProjectRef,
+    pedido: PedidoDeGeracao,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """Calcula N×M, custo e recusas. NÃO grava, NÃO despacha, NÃO gasta.
+
+    Existe como rota própria porque a tela precisa mostrar o tamanho e o preço
+    do lote ANTES de o botão de gerar ficar disponível — e porque uma recusa
+    (peça não aprovada, formato inexistente, teto estourado) é informação que o
+    operador tem direito de ver sem arriscar um clique.
+    """
+    from app.criativo.studio.adaptador import montar_plano  # noqa: PLC0415
+
+    operacao, saida, aprovados = await _lote_e_aprovados(
+        project_ref, pedido.run_ref, identidade, repo
+    )
+    entrada = operacao.get("input") or {}
+    plano = montar_plano(
+        saida=saida,
+        pedido=pedido,
+        caminhos_aprovados=aprovados,
+        contexto_do_publico=entrada.get("contexto_do_publico") or "Público não declarado.",
+        objetivo=entrada.get("objetivo_meta") or "OUTCOME_TRAFFIC",
+    )
+    return _plano_para_json(plano)
+
+
+@router.post("/operacoes/{project_ref}/geracoes", status_code=status.HTTP_201_CREATED)
+async def gerar_imagens(
+    project_ref: ProjectRef,
+    pedido: PedidoDeGeracao,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """Manda produzir as imagens das peças aprovadas. É o ato que gasta.
+
+    ## A ordem importa, e é esta
+
+    1. o plano é RECALCULADO no servidor — o que o cliente mandou como plano é
+       ignorado, porque um teto conferido no browser não é um teto;
+    2. qualquer bloqueio recusa aqui, antes de existir job;
+    3. a falta de motor recusa aqui, antes de existir job: aceitar trabalho que
+       vai falhar por credencial deixaria lixo na biblioteca e faria o operador
+       esperar por nada;
+    4. só então um job por conceito é criado, com os M formatos dele dentro.
+
+    ## O que NÃO acontece aqui
+
+    Nenhuma campanha é criada, nenhuma mídia sobe para a Meta e nenhuma API de
+    anúncios é chamada. Produzir arquivo e usar arquivo em campanha são atos
+    diferentes, e este é o primeiro.
+    """
+    from app.criativo.studio.adaptador import montar_plano  # noqa: PLC0415
+
+    operacao, saida, aprovados = await _lote_e_aprovados(
+        project_ref, pedido.run_ref, identidade, repo
+    )
+    entrada = operacao.get("input") or {}
+    plano = montar_plano(
+        saida=saida,
+        pedido=pedido,
+        caminhos_aprovados=aprovados,
+        contexto_do_publico=entrada.get("contexto_do_publico") or "Público não declarado.",
+        objetivo=entrada.get("objetivo_meta") or "OUTCOME_TRAFFIC",
+    )
+    if not plano.pode_executar:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_PEDIDO_BLOQUEADO",
+                "mensagem": "Este pedido não pode virar imagem ainda.",
+                "bloqueios": [b.model_dump() for b in plano.bloqueios],
+                "nada_foi_criado": True,
+            },
+        )
+
+    from app.criativo.studio.adaptador import pedido_de_job  # noqa: PLC0415
+    from app.routers.criativos import obter_executor, obter_motor  # noqa: PLC0415
+
+    motor = obter_motor()
+    if not getattr(motor, "configurado", False):
+        raise _erro(
+            "CRIATIVO_STUDIO_MOTOR_SEM_CREDENCIAL",
+            "O motor de imagem não está configurado neste servidor; nada foi criado.",
+            503,
+        )
+
+    # O executor do processo, com a trava de concorrência compartilhada — a
+    # mesma que impede dois disparos do mesmo job pagarem duas vezes.
+    from app.routers.criativos import obter_assinador, obter_repo  # noqa: PLC0415
+
+    executor = obter_executor(obter_repo(get_settings()), obter_assinador())
+
+    por_conceito: dict[str, list[Any]] = {}
+    for briefing in plano.briefings:
+        por_conceito.setdefault(briefing.linhagem.creative_ref, []).append(briefing)
+
+    criados: list[dict[str, Any]] = []
+    for creative_ref, briefings in por_conceito.items():
+        # Reenviar o mesmo pedido não paga de novo: a ponte é única por
+        # (run_ref, creative_ref) e responde antes de o executor ser chamado.
+        ja = await repo.ponte_por_peca(pedido.run_ref, creative_ref, identidade.sub)
+        if ja is not None:
+            criados.append(
+                {
+                    "creative_ref": creative_ref,
+                    "job_id": ja["job_id"],
+                    "slots": ja.get("slots") or [],
+                    "criado_agora": False,
+                }
+            )
+            continue
+
+        job, criado = await executor.criar_job_de_imagem(
+            pedido_de_job(
+                briefings,
+                nome_da_operacao=entrada.get("nome_da_operacao") or "Operação sem nome",
+            ),
+            identidade.sub,
+        )
+        linhagem = briefings[0].linhagem
+        await repo.registrar_ponte(
+            {
+                "ponte_ref": _ref("crpj_"),
+                "owner_id": identidade.sub,
+                "project_ref": project_ref,
+                "run_ref": pedido.run_ref,
+                "creative_ref": linhagem.creative_ref,
+                "group_ref": linhagem.group_ref,
+                "copy_ref": linhagem.copy_ref,
+                "state_ref": linhagem.state_ref,
+                "job_id": str(job["id"]),
+                "slots": [b.formato_slot for b in briefings],
+                "fato_refs": list(linhagem.fato_refs),
+                "rule_refs": list(linhagem.rule_refs),
+            }
+        )
+        executor.disparar(str(job["id"]))
+        criados.append(
+            {
+                "creative_ref": creative_ref,
+                "job_id": str(job["id"]),
+                "slots": [b.formato_slot for b in briefings],
+                "criado_agora": criado,
+            }
+        )
+
+    return {
+        "geracoes": criados,
+        "total_de_renders": plano.total_de_renders,
+        "custo_estimado_usd": plano.custo_estimado_usd,
+    }
+
+
+@router.get("/operacoes/{project_ref}/geracoes")
+async def listar_geracoes(
+    project_ref: ProjectRef,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """A procedência: quais peças aprovadas viraram job de mídia, e quando."""
+    try:
+        await repo.obter_operacao(project_ref, identidade.sub)
+    except NaoEncontrado as exc:
+        raise _erro("CRIATIVO_AGENTE_OPERACAO_INEXISTENTE", "Operação não encontrada.", 404) from exc
+    pontes = await repo.listar_pontes(project_ref, identidade.sub)
+    return {
+        "geracoes": [
+            {
+                "ponte_ref": p.get("ponte_ref"),
+                "creative_ref": p.get("creative_ref"),
+                "group_ref": p.get("group_ref"),
+                "run_ref": p.get("run_ref"),
+                "job_id": p.get("job_id"),
+                "slots": p.get("slots") or [],
+                "created_at": p.get("created_at"),
+            }
+            for p in pontes
+        ]
+    }
 
 
 @router.post("/operacoes/{project_ref}/decisoes", status_code=status.HTTP_201_CREATED)

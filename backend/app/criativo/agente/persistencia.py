@@ -236,6 +236,43 @@ class RepositorioAgenteCriativo:
             raise RuntimeError("o banco não devolveu a decisão criada")
         return rows[0]
 
+    async def registrar_ponte(self, row: dict[str, Any]) -> dict[str, Any]:
+        """Grava de qual peça aprovada saiu um job de mídia.
+
+        Append-only por construção: não existe método de update aqui, e o grant
+        da v11_07 também não dá UPDATE a ninguém. Procedência que se reescreve
+        não é procedência.
+        """
+        rows = await self.db.insert("criativo_agente_peca_job", [row])
+        if not rows:
+            raise RuntimeError("o banco não devolveu a ponte criada")
+        return rows[0]
+
+    async def listar_pontes(self, project_ref: str, owner_id: str) -> list[dict[str, Any]]:
+        return await self.db.select(
+            "criativo_agente_peca_job",
+            {
+                "project_ref": f"eq.{project_ref}",
+                "owner_id": f"eq.{owner_id}",
+                "order": "created_at.desc",
+                "limit": 200,
+            },
+        )
+
+    async def ponte_por_peca(
+        self, run_ref: str, creative_ref: str, owner_id: str
+    ) -> dict[str, Any] | None:
+        rows = await self.db.select(
+            "criativo_agente_peca_job",
+            {
+                "run_ref": f"eq.{run_ref}",
+                "creative_ref": f"eq.{creative_ref}",
+                "owner_id": f"eq.{owner_id}",
+                "limit": 1,
+            },
+        )
+        return rows[0] if rows else None
+
     async def listar_decisoes(self, project_ref: str, owner_id: str) -> list[dict[str, Any]]:
         return await self.db.select(
             "criativo_agente_decisao",
