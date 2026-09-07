@@ -206,24 +206,31 @@ Preservado e no ar, tudo nesta worktree:
   no processo vivo. As rotas novas respondem 401 sem sessão, e uma rota
   inexistente responde 404 — o contraste é a prova de que elas estão montadas.
 
-## Trabalho de OUTRO writer preservado na árvore
+## Outro writer commitou na MESMA branch
 
-Durante o fechamento apareceram, não commitados, arquivos de outra frente
-(assistente estratégico de criativos Meta): `backend/app/routers/criativos_agente.py`,
-`backend/app/criativo/agente/`, `docs/closure/meta-creative-agent-v1/`,
-`supabase/migrations/v11_05_criativo_agente_meta.sql` e o rollback correspondente,
-mais duas linhas em `backend/app/main.py` e um campo em `backend/app/config.py`.
+Durante o fechamento, uma segunda frente (assistente estratégico de criativos
+Meta) trabalhou nesta árvore e **commitou por conta própria**: `a0a1546`
+*"feat(criativo): fundar assistente estrategico Meta"*, às 17:54, entre dois
+commits meus. São 19 arquivos, incluindo `backend/app/criativo/agente/`,
+`supabase/migrations/v11_05_criativo_agente_meta.sql` e duas linhas em
+`backend/app/main.py`.
 
-**Foram preservados, não commitados e não tocados.** Conferi a sobreposição em
-`main.py`: as adições são estritamente aditivas e as minhas linhas
-(`trafego_meta_ativos`, `criativos_importacao`) continuam intactas — não há
-trecho sobreposto a parar.
+**Nada disso é meu, e eu não o toquei.** A separação é verificável: todos os
+meus commits carregam o trailer `Co-Authored-By` e o link da sessão; `a0a1546`
+não carrega nenhum dos dois. Conferi a sobreposição em `main.py` — as adições
+são estritamente aditivas e as minhas linhas (`trafego_meta_ativos`,
+`criativos_importacao`) continuam intactas, então não havia trecho sobreposto a
+parar.
 
-⚠️ Consequência para o gate do grafo: o digest de frescor lê o CONTEÚDO dos
-arquivos rastreados, então `main.py` e `config.py` entraram na reconstrução com
-o estado não commitado do outro writer. É por isso que `working_tree_dirty_at_build`
-importa, e é por isso que ele está sendo declarado aqui em vez de ficar só no
-manifesto.
+⚠️ Duas consequências que valem registro, e nenhuma delas é hipótese:
+
+1. **O contrato pedia um writer só nesta linha operacional**, e houve dois. Isso
+   não corrompeu nada aqui, mas a próxima janela deveria decidir isso antes de
+   começar, não durante.
+2. **O gate do manifesto de schema reprovou duas vezes** por causa das
+   migrations da outra lane aparecendo no diretório. Foi o que motivou medir por
+   arquivo RASTREADO em vez de diretório cru — e o teste, ao falhar, disse
+   exatamente qual número atualizar. O gate funcionou.
 
 ## Artefatos deste fechamento
 
