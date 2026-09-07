@@ -562,12 +562,32 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
                   Nova campanha
                 </Button>
               )}
+              {/* A coluna existe para o Assistente ficar ABAIXO de Nova campanha
+                  Meta, com a configuração seguindo discreta ao lado da primária.
+                  Numa linha só os três empatariam em peso, e a SPEC §5 é
+                  explícita sobre não criar barras equivalentes.
+
+                  ⚠️ O link do Assistente NÃO herda `?modo=demo`. Aquele
+                  parâmetro pertence à criação de campanha; carregá-lo para cá
+                  faria uma sala que fala com o modelo de verdade parecer uma
+                  demonstração — ou pior, ser tratada como uma. */}
               {!google && (
-                <Button asChild className="min-h-10 px-4 font-semibold">
-                  <Link to="/trafego/meta/nova?modo=demo">Nova campanha Meta</Link>
-                </Button>
+                <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button asChild className="min-h-10 px-4 font-semibold">
+                      <Link to="/trafego/meta/nova?modo=demo">Nova campanha Meta</Link>
+                    </Button>
+                    <MetaConfiguracaoLocal />
+                  </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="min-h-10 px-4 font-medium"
+                  >
+                    <Link to="/trafego/meta/assistente-criativo">Assistente Criativo</Link>
+                  </Button>
+                </div>
               )}
-              {!google && <MetaConfiguracaoLocal />}
               {google && (
                 <FaixaDeSituacao
                   leitura={inventario}

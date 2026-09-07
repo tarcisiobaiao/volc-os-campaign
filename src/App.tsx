@@ -43,6 +43,9 @@ import MetaCriacaoPage from "./pages/trafego/MetaCriacaoPage";
 import MetaObjetoPage from "./pages/trafego/MetaObjetoPage";
 // Estúdio Criativo — área de PRODUÇÃO, não subaba de Tráfego (SPEC §6).
 // Carregado sob demanda: quem nunca abre `/criativos` não baixa o chunk.
+const AssistenteCriativoPage = lazy(
+  () => import("./pages/trafego/AssistenteCriativoPage"),
+);
 const EstudioHomePage = lazy(() => import("./pages/criativos/EstudioHomePage"));
 const BriefingDeImagemPage = lazy(() => import("./pages/criativos/BriefingDeImagemPage"));
 const BriefingDeVideoPage = lazy(() => import("./pages/criativos/BriefingDeVideoPage"));
@@ -74,6 +77,28 @@ const RotaDoEstudio = ({ children }: { children: React.ReactNode }) => (
         <div className="flex min-h-screen items-center justify-center" role="status">
           <LoadingSpinner />
           <span className="sr-only">Carregando o Estúdio Criativo</span>
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  </ProtectedRoute>
+);
+
+/**
+ * Rota do Assistente: sessão + chunk sob demanda.
+ *
+ * Wrapper próprio em vez de reusar `RotaDoEstudio` porque o texto do leitor de
+ * tela nomeia o que está carregando, e anunciar "Estúdio Criativo" em outra
+ * sala é exatamente o tipo de rótulo herdado que ninguém revisa depois.
+ */
+const RotaDoAssistente = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center" role="status">
+          <LoadingSpinner />
+          <span className="sr-only">Carregando o Assistente Criativo</span>
         </div>
       }
     >
@@ -131,6 +156,13 @@ const App = () => (
             <Route path="/trafego" element={<ProtectedRoute><HubDeTrafegoPage oportunidades={<QuadroDeOportunidades />} /></ProtectedRoute>} />
             <Route path="/trafego/meta/campanhas" element={<Navigate to="/trafego?rede=meta&nivel=campanhas" replace />} />
             <Route path="/trafego/meta/nova" element={<ProtectedRoute><MetaCriacaoPage /></ProtectedRoute>} />
+            {/* Assistente Criativo. Estáticas ANTES da dinâmica abaixo: o v6
+                já resolve por especificidade, e a ordem explícita é a convenção
+                desta casa. `/assistente-criativo/:projectRef` tem o mesmo número
+                de segmentos que `/:tipo/:objetoId`, e é justamente por isso que
+                ela precisa estar declarada primeiro para quem LÊ o arquivo. */}
+            <Route path="/trafego/meta/assistente-criativo" element={<RotaDoAssistente><AssistenteCriativoPage /></RotaDoAssistente>} />
+            <Route path="/trafego/meta/assistente-criativo/:projectRef" element={<RotaDoAssistente><AssistenteCriativoPage /></RotaDoAssistente>} />
             <Route path="/trafego/meta/:tipo/:objetoId" element={<ProtectedRoute><MetaObjetoPage /></ProtectedRoute>} />
             <Route path="/trafego/laboratorio/inteligencia/:scenarioId" element={<ProtectedRoute><DecisionIntelligenceLabPage /></ProtectedRoute>} />
             <Route path="/trafego/campanhas/:volcCampaignId" element={<ProtectedRoute><CampanhaCanonPage /></ProtectedRoute>} />
