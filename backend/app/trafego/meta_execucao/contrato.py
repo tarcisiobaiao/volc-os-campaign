@@ -141,6 +141,19 @@ class DeclaracaoPoliticaAtivoMeta:
                 "META_ASSET_POLICY_RECEIPT_INVALID", "o carimbo da confirmação precisa ter fuso")
 
 
+#: De onde vieram os bytes que o backend realmente inspecionou.
+#:
+#: ⚠️ A distinção é o contrato: `url` da biblioteca é a peça; `url_128` é uma
+#: MINIATURA. Medir 128 pixels e chamar aquilo de "a peça" seria etiquetar
+#: preview como original — exatamente o que o master spec proíbe em
+#: `asset_supply.rendition`. O manifesto carrega a origem para que ninguém
+#: precise adivinhar o que a medida descreve.
+ORIGEM_BIBLIOTECA = "ORIGINAL_LIBRARY_URL"
+ORIGEM_MINIATURA = "THUMBNAIL_128"
+
+ORIGENS_DE_BYTES: frozenset[str] = frozenset({ORIGEM_BIBLIOTECA, ORIGEM_MINIATURA})
+
+
 @dataclass(frozen=True)
 class ManifestoSupplyMeta:
     """Manifesto emitido pelo backend para uma imagem exata da biblioteca Meta."""
@@ -155,8 +168,20 @@ class ManifestoSupplyMeta:
     lifecycle: str
     provider_image_hash: str
     mime_type: str
+    #: MEDIDOS nos bytes decodificados, nunca copiados do inventário.
     width: int | None = None
     height: int | None = None
+    #: O que a BIBLIOTECA declarou, preservado ao lado da medida em vez de
+    #: substituí-la. Divergência é um fato observável — e é esperada quando a
+    #: origem é a miniatura — não um motivo para descartar a medição.
+    declared_width: int | None = None
+    declared_height: int | None = None
+    byte_size: int | None = None
+    #: ⚠️ Default deliberado, com vocabulário fechado: o único produtor real
+    #: (`ResolvedorAtivosMeta`) sempre informa a origem explicitamente. O
+    #: default existe para fixtures, e um valor fora do vocabulário é recusado
+    #: abaixo — então nenhuma origem inventada atravessa.
+    rendition: str = ORIGEM_BIBLIOTECA
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "asset_ref", _referencia(self.asset_ref, "asset_ref"))
@@ -182,6 +207,27 @@ class ManifestoSupplyMeta:
         if not self.mime_type.startswith("image/"):
             raise ErroDeNascimentoMeta(
                 "META_ASSET_SUPPLY_MANIFEST_INVALID", "a peça selecionada não é uma imagem")
+        if self.rendition not in ORIGENS_DE_BYTES:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_SUPPLY_MANIFEST_INVALID",
+                "a origem dos bytes inspecionados não pertence ao vocabulário fechado")
+        # ⚠️ Medida ausente é `None`, NUNCA 0. Um cabeçalho corrompido que
+        # devolvesse zero faria o resto do sistema tratar "não deu para ler"
+        # como "li e deu zero" — a mesma regra que
+        # `volc_ads/criativo/adaptadores/medir_imagem.py` documenta.
+        for campo in ("width", "height", "declared_width", "declared_height", "byte_size"):
+            valor = getattr(self, campo)
+            if valor is None:
+                continue
+            if not isinstance(valor, int) or isinstance(valor, bool) or valor <= 0:
+                raise ErroDeNascimentoMeta(
+                    "META_ASSET_SUPPLY_MANIFEST_INVALID",
+                    f"{campo} precisa ser inteiro positivo ou ausente")
+
+    @property
+    def dimensoes_sao_do_original(self) -> bool:
+        """Se a medida descreve a peça ou apenas uma miniatura dela."""
+        return self.rendition == ORIGEM_BIBLIOTECA
 
     def prova_publica(self) -> Mapping[str, Any]:
         return {
@@ -196,6 +242,14 @@ class ManifestoSupplyMeta:
             "mime_type": self.mime_type,
             "width": self.width,
             "height": self.height,
+            "declared_width": self.declared_width,
+            "declared_height": self.declared_height,
+            "byte_size": self.byte_size,
+            "rendition": self.rendition,
+            # A medida vale para a peça, ou só para a miniatura que deu para ler?
+            # Sem este campo o recibo afirmaria dimensões da peça a partir de um
+            # thumbnail de 128 pixels.
+            "measured_on_original": self.dimensoes_sao_do_original,
             "image_hash_bound": True,
         }
 

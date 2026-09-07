@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
+import imagens_meta
+
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao.compilador import (
     compilar_plano_pausado,
@@ -382,7 +384,9 @@ async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica()
         if caminho.endswith("/advideos"):
             return httpx.Response(403, json={"error": {"code": 200, "message": "sem permissao"}})
         if request.url.host.endswith(".fbcdn.net"):
-            return httpx.Response(200, content=b"imagem-exata-hash-um", headers={
+            # ⚠️ Imagem DE VERDADE: a fixture antiga não decodificava e o
+            # caminho feliz media a ausência do gate, não o gate.
+            return httpx.Response(200, content=imagens_meta.png(1080, 1080), headers={
                 "content-type": "image/png"})
         raise AssertionError(request.url)
 
@@ -396,6 +400,7 @@ async def test_inventario_de_video_indisponivel_nao_derruba_a_receita_estatica()
         assert inventario["videos_indisponiveis"] == "META_ASSET_READ_FAILED"
         asset_ref = inventario["imagens"][0]["referencia_opaca"]
         resolvidas = await resolvedor.resolver_lote(
+            ator="operador@example.com",
             account_ref=inventario["account_ref"],
             page_ref=inventario["paginas"][0]["referencia_opaca"],
             asset_refs=(asset_ref,),

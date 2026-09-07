@@ -20,6 +20,8 @@ from app.trafego.meta_execucao.contrato import (
 from app.trafego.meta_execucao.registro import RegistroSagaMetaSupabase
 from app.trafego.meta.read_model import RepositorioMetaReadModelSupabase
 
+import imagens_meta
+
 
 class _Resposta:
     def __init__(self, body: dict[str, Any], *, content: bytes = b"", headers=None) -> None:
@@ -32,15 +34,59 @@ class _Resposta:
         return self._body
 
 
+class _Fluxo:
+    """Dublê de `client.stream(...)`: o gate lê os bytes em pedaços.
+
+    ⚠️ Existe desde que o teto de bytes passou a ser cobrado DURANTE a leitura.
+    Um dublê que só oferecesse `.get()` esconderia justamente a diferença — com
+    `.get()` o corpo inteiro já está na memória quando o limite é aplicado.
+    """
+
+    def __init__(self, origem, url: str, *, pedaco: int = 4096) -> None:
+        self._origem = origem
+        self._url = url
+        self._pedaco = pedaco
+        self._resposta: Any = None
+
+    async def __aenter__(self) -> "_Fluxo":
+        self._resposta = await self._origem.get(self._url)
+        return self
+
+    async def __aexit__(self, *_: Any) -> None:
+        return None
+
+    @property
+    def status_code(self) -> int:
+        return self._resposta.status_code
+
+    @property
+    def headers(self):
+        return self._resposta.headers
+
+    async def aiter_bytes(self):
+        dados = self._resposta.content
+        for inicio in range(0, len(dados), self._pedaco):
+            yield dados[inicio:inicio + self._pedaco]
+
+
 class _GraphFake:
     def __init__(self) -> None:
         self.chamadas: list[tuple[str, dict[str, str]]] = []
+
+    def stream(self, metodo: str, url: str, **_: Any) -> _Fluxo:
+        del metodo
+        return _Fluxo(self, url)
 
     async def get(self, url: str, *, params=None, headers=None):
         del params
         self.chamadas.append((url, dict(headers or {})))
         if url.endswith('.fbcdn.net/preview.jpg'):
-            return _Resposta({}, content=b'bytes-imagem-meta', headers={'content-type': 'image/jpeg'})
+            # ⚠️ Imagem DE VERDADE. A fixture antiga era b'bytes-imagem-meta' —
+            # dezessete bytes de ASCII — e o caminho feliz ficava verde
+            # exercitando o defeito F01 em vez de exercitar o gate.
+            return _Resposta(
+                {}, content=imagens_meta.jpeg(1080, 1080),
+                headers={'content-type': 'image/jpeg'})
         if url.endswith('/me/adaccounts'):
             return _Resposta({'data': [{
                 'id': 'act_123456789', 'name': 'Conta teste', 'account_status': 1,

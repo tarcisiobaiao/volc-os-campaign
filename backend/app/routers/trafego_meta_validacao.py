@@ -213,6 +213,8 @@ async def _compilar(
     payload: PedidoPlanoMetaPausado,
     plano: PlanoMetaPausado,
     segredo: SegredoEfemero,
+    *,
+    ator: str,
 ) -> PlanoCompiladoMeta:
     """Resolve os ativos da conta e compila o plano JÁ validado.
 
@@ -229,6 +231,11 @@ async def _compilar(
             page_ref=payload.page_ref,
             asset_refs=asset_refs,
             segredo=segredo,
+            # ⚠️ O ATOR VEM DA SESSÃO, nunca do corpo do pedido. O recibo de
+            # supply se vincula a quem atestou; aceitar essa identidade do
+            # navegador deixaria o mesmo interessado em subir a campanha
+            # assinar a atestação que a autoriza.
+            ator=ator,
             declaracoes=declaracoes,
             # ⚠️ A prova vem da AUTORIZAÇÃO DO SERVIDOR, nunca do corpo do
             # pedido. Aceitá-la do navegador deixaria o mesmo interessado em
@@ -413,7 +420,8 @@ async def compilar(
         plano = _plano(payload)
         _declaracoes_de_politica(payload)
         compilado = await _compilar(
-            payload, plano, SegredoEfemero(_credencial_salva(quem).token))
+            payload, plano, SegredoEfemero(_credencial_salva(quem).token),
+            ator=quem.sub)
         return {"ok": True, "plano": compilado.publico(), "efeito_externo": "NENHUM"}
     except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
         raise _erro(exc) from None
@@ -442,7 +450,7 @@ async def validar(
         pedido = _plano(payload.plano)
         _declaracoes_de_politica(payload.plano)
         segredo = SegredoEfemero(_credencial_salva(quem).token)
-        plano = await _compilar(payload.plano, pedido, segredo)
+        plano = await _compilar(payload.plano, pedido, segredo, ator=quem.sub)
         autorizacao = AutorizacaoMeta(
             plano_sha256=plano.plano_sha256,
             ator=quem.sub,

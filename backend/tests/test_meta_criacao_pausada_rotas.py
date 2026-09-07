@@ -30,6 +30,8 @@ from typing import Any
 
 import httpx
 import pytest
+
+import imagens_meta
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -113,11 +115,50 @@ def _cenario_limpo():
     CENARIO.reiniciar()
 
 
+class _FluxoFalso:
+    """Dublê de `client.stream(...)`: o gate lê os bytes em pedaços.
+
+    ⚠️ Existe desde que o teto de bytes passou a ser cobrado DURANTE a leitura.
+    Um dublê que só oferecesse `.get()` esconderia a diferença que importa: com
+    `.get()` o corpo inteiro já está na memória quando o limite é aplicado.
+    """
+
+    def __init__(self, origem: "_GraphFalso", url: str, *, pedaco: int = 4096) -> None:
+        self._origem = origem
+        self._url = url
+        self._pedaco = pedaco
+        self._resposta: Any = None
+
+    async def __aenter__(self) -> "_FluxoFalso":
+        self._resposta = await self._origem.get(self._url)
+        return self
+
+    async def __aexit__(self, *_: Any) -> None:
+        return None
+
+    @property
+    def status_code(self) -> int:
+        return self._resposta.status_code
+
+    @property
+    def headers(self) -> Any:
+        return self._resposta.headers
+
+    async def aiter_bytes(self):
+        dados = self._resposta.content
+        for inicio in range(0, len(dados), self._pedaco):
+            yield dados[inicio:inicio + self._pedaco]
+
+
 class _GraphFalso:
     """Grava tudo o que sai e devolve respostas plausíveis da Graph v26."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         del args, kwargs
+
+    def stream(self, metodo: str, url: str, **_: Any) -> _FluxoFalso:
+        del metodo
+        return _FluxoFalso(self, url)
 
     async def __aenter__(self) -> "_GraphFalso":
         return self
@@ -130,7 +171,10 @@ class _GraphFalso:
         if url.endswith(".fbcdn.net/preview.jpg"):
             CENARIO.gets.append(url)
             resposta = _Resposta({})
-            resposta.content = b"bytes-imagem-meta"
+            # ⚠️ Imagem DE VERDADE. A fixture antiga era b"bytes-imagem-meta" —
+            # dezessete bytes de ASCII — e a suíte inteira ficava verde
+            # exercitando o defeito F01 em vez de exercitar o gate técnico.
+            resposta.content = imagens_meta.jpeg(1080, 1080)
             resposta.headers = {"content-type": "image/jpeg"}
             return resposta
         assert headers == {"Authorization": f"Bearer {TOKEN}"}

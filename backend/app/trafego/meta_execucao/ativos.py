@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -16,12 +17,166 @@ from app.trafego.meta.credenciais import SegredoEfemero
 
 from .contrato import (
     DESTINO_SHOP_NAO_PROVADO,
+    ORIGEM_BIBLIOTECA,
+    ORIGEM_MINIATURA,
     PROVAS_DE_DESTINO_WEBSITE,
     DeclaracaoPoliticaAtivoMeta,
     ErroDeNascimentoMeta,
     ManifestoSupplyMeta,
     ReferenciasMetaResolvidas,
 )
+
+
+#: Teto de bytes do corpo. Cobrado DURANTE a leitura, não depois: um corpo de
+#: 4 GiB não pode ser carregado inteiro na memória para só então ser recusado
+#: por tamanho.
+LIMITE_DE_BYTES = 12_000_000
+
+#: Teto de pixels DECLARADOS no cabeçalho, cobrado ANTES de decodificar.
+#:
+#: ⚠️ O limite de bytes não alcança este ataque, e a diferença é medida: um PNG
+#: branco de 12000x12000 ocupa ~157 KiB comprimido — passa folgado no teto de
+#: bytes — e declara 144 milhões de pixels, que a decodificação materializaria
+#: como centenas de MiB de memória. Por isso a dimensão é lida do cabeçalho
+#: (`Image.open` é preguiçoso) e julgada antes de qualquer `load()`.
+LIMITE_DE_PIXELS = 40_000_000
+
+#: Formatos que esta receita aceita, do nome do decodificador para o MIME
+#: canônico. Vocabulário fechado: o que o decodificador reconhecer fora desta
+#: lista é recusado, não traduzido por adivinhação.
+FORMATOS_ACEITOS: Mapping[str, str] = {
+    "PNG": "image/png",
+    "JPEG": "image/jpeg",
+    "GIF": "image/gif",
+    "WEBP": "image/webp",
+}
+
+#: Versão da matéria canônica do recibo de supply. Entra no hash: mudar a forma
+#: do recibo sem mudar a versão faria dois recibos diferentes colidirem.
+VERSAO_DO_RECIBO_DE_SUPPLY = "meta-supply-v2"
+
+#: A finalidade a que o recibo se vincula. Não é decoração: um recibo emitido
+#: para inspeção interna não autoriza mídia paga, e o campo é o que permite
+#: recusar essa confusão por nome.
+FINALIDADE_DO_RECIBO = "PAID_MEDIA_META_FACEBOOK"
+
+
+@dataclass(frozen=True)
+class MedidaDaPeca:
+    """O que os BYTES revelaram — nunca o que o inventário declarou."""
+
+    mime: str
+    largura: int
+    altura: int
+    bytes_totais: int
+    content_sha256: str
+
+
+def _decodificar_imagem(conteudo: bytes) -> tuple[str, int, int]:
+    """Decodifica de verdade e devolve (mime, largura, altura).
+
+    ## Por que o cabeçalho `Content-Type` não bastava
+
+    O gate anterior lia `Content-Type`, conferia o tamanho total e hasheava. O
+    cabeçalho é uma AFIRMAÇÃO de quem serve os bytes; ele não é os bytes. Um
+    corpo com o literal ``NOT_AN_IMAGE`` rotulado ``image/png`` era selado como
+    `AUTHORIZED` / `READY_FOR_PAID_MEDIA`, e o recibo passava a afirmar uma
+    inspeção que nunca aconteceu. Esse é o defeito F01, reproduzido
+    hermeticamente pelo probe P02 do pacote.
+
+    ## A ordem das perguntas, e por que ela é essa
+
+    1. ABRIR. `Image.open` lê só o cabeçalho. Se os bytes não forem uma imagem
+       reconhecível, ele levanta aqui — antes de qualquer alocação grande.
+    2. MEDIR E JULGAR O TAMANHO. `size` sai do cabeçalho, sem decodificar. É
+       aqui que a bomba de descompressão morre: declarar 144 milhões de pixels
+       custa 157 KiB no fio e centenas de MiB na memória.
+    3. DECODIFICAR. Só depois de o tamanho ser aceitável é que `load()` desenha
+       os pixels. É o que separa "tem cabeçalho de PNG" de "é um PNG inteiro":
+       um arquivo truncado abre e mede, mas não carrega.
+
+    ⚠️ O que isto prova é FORMA, nunca CONTEÚDO. Que os bytes são uma imagem
+    real destas dimensões — não que ela esteja livre de marca, logotipo ou
+    identidade de terceiro. Essa é outra pergunta, feita pela atestação humana,
+    e nenhuma das duas substitui a outra.
+    """
+    try:  # pragma: no cover - ausência de Pillow é falha de ambiente, não de dados
+        from PIL import Image
+    except ImportError as exc:  # pragma: no cover
+        # ⚠️ FECHA. Sem decodificador não existe gate técnico, e responder
+        # "CLEAR por falta de motor" seria exatamente a mentira que o gate
+        # existe para impedir.
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_DECODER_UNAVAILABLE",
+            "o decodificador de imagem não está disponível neste servidor; "
+            "a peça não pode ser conferida",
+        ) from exc
+
+    import warnings
+
+    bomba = ErroDeNascimentoMeta(
+        "META_ASSET_PIXELS_EXCEEDED",
+        "a peça declara mais pixels do que este servidor decodifica com segurança")
+
+    try:
+        with warnings.catch_warnings():
+            # ⚠️ O aviso de bomba do Pillow é SILENCIADO de propósito, e o teto
+            # que decide é o desta receita (LIMITE_DE_PIXELS), não o padrão da
+            # biblioteca. Deixar o aviso virar exceção aqui faria uma bomba ser
+            # reportada como "não decodificável" — causa errada para o
+            # operador, e um limite que muda quando o Pillow muda.
+            #
+            # O erro DURO do Pillow continua valendo: ele dispara acima do
+            # dobro do limite padrão e é traduzido para o mesmo código nomeado.
+            warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(conteudo)) as cabecalho:
+                formato = str(cabecalho.format or "")
+                largura, altura = cabecalho.size
+    except Image.DecompressionBombError as exc:
+        raise bomba from exc
+    except ErroDeNascimentoMeta:
+        raise
+    except Exception as exc:
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_BYTES_NOT_DECODABLE",
+            "os bytes da peça não são uma imagem decodificável",
+        ) from exc
+
+    if formato not in FORMATOS_ACEITOS:
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_FORMAT_UNSUPPORTED",
+            "o formato da peça não pertence aos formatos aceitos nesta receita")
+    if largura <= 0 or altura <= 0:
+        # Cabeçalho corrompido ou sintético. Zero não é medida.
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_BYTES_NOT_DECODABLE",
+            "o cabeçalho da peça não trouxe dimensão utilizável")
+    if largura * altura > LIMITE_DE_PIXELS:
+        raise bomba
+
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+            with Image.open(io.BytesIO(conteudo)) as imagem:
+                # AGORA sim os pixels são desenhados. Um arquivo truncado abre,
+                # mede e falha aqui — que é o ponto. E chegar até aqui já provou
+                # que a dimensão cabe no teto desta receita.
+                imagem.load()
+                if imagem.size != (largura, altura):
+                    raise ErroDeNascimentoMeta(
+                        "META_ASSET_BYTES_NOT_DECODABLE",
+                        "a dimensão decodificada não confere com o cabeçalho da peça")
+    except Image.DecompressionBombError as exc:  # pragma: no cover - o teto já barrou
+        raise bomba from exc
+    except ErroDeNascimentoMeta:
+        raise
+    except Exception as exc:
+        raise ErroDeNascimentoMeta(
+            "META_ASSET_BYTES_TRUNCATED",
+            "os bytes da peça não decodificam por inteiro",
+        ) from exc
+
+    return FORMATOS_ACEITOS[formato], largura, altura
 
 
 @dataclass(frozen=True)
@@ -51,6 +206,9 @@ class _AtivoResolvido:
     publico: AtivoDeCriacaoMeta
     id_externo: str
     preview_url: str | None = None
+    #: Qual URL a biblioteca deu. `url` é a peça; `url_128` é miniatura — e o
+    #: manifesto precisa dizer qual delas foi medida.
+    origem_dos_bytes: str = ORIGEM_BIBLIOTECA
 
     def __repr__(self) -> str:
         return "_AtivoResolvido(<oculto>)"
@@ -186,7 +344,13 @@ class ResolvedorAtivosMeta:
             # `url` representa a peça da biblioteca; `url_128` é apenas a
             # miniatura. O manifesto de conteúdo nunca pode hashear a miniatura
             # e afirmar que ela são os bytes aprovados do image_hash.
-            preview_url = str(item.get("url") or item.get("url_128") or "").strip() or None
+            #
+            # ⚠️ Quando só a miniatura existe, os bytes ainda são lidos e
+            # medidos — mas o manifesto DECLARA que a medida é da miniatura.
+            # Ler e mentir sobre a origem seria pior que não ler.
+            da_biblioteca = str(item.get("url") or "").strip()
+            preview_url = da_biblioteca or str(item.get("url_128") or "").strip() or None
+            origem = ORIGEM_BIBLIOTECA if da_biblioteca else ORIGEM_MINIATURA
             # image hashes are not numeric, so the opaque handle is derived
             # from a stable digest and never exposes the provider hash.
             digest = hashlib.sha256(
@@ -203,6 +367,7 @@ class ResolvedorAtivosMeta:
                 ),
                 id_externo=image_hash,
                 preview_url=preview_url,
+                origem_dos_bytes=origem,
             ))
         videos: list[_AtivoResolvido] = []
         for item in videos_raw:
@@ -251,6 +416,7 @@ class ResolvedorAtivosMeta:
         page_ref: str,
         asset_ref: str,
         segredo: SegredoEfemero,
+        ator: str,
         prova_de_destino: str = DESTINO_SHOP_NAO_PROVADO,
     ) -> ReferenciasMetaResolvidas:
         return await self.resolver_lote(
@@ -258,6 +424,7 @@ class ResolvedorAtivosMeta:
             page_ref=page_ref,
             asset_refs=(asset_ref,),
             segredo=segredo,
+            ator=ator,
             prova_de_destino=prova_de_destino,
         )
 
@@ -268,6 +435,7 @@ class ResolvedorAtivosMeta:
         page_ref: str,
         asset_refs: Sequence[str],
         segredo: SegredoEfemero,
+        ator: str,
         declaracoes: Mapping[str, DeclaracaoPoliticaAtivoMeta] | None = None,
         prova_de_destino: str = DESTINO_SHOP_NAO_PROVADO,
     ) -> ReferenciasMetaResolvidas:
@@ -318,7 +486,14 @@ class ResolvedorAtivosMeta:
         manifestos: dict[str, ManifestoSupplyMeta] = {}
         for referencia in referencias:
             manifestos[referencia] = await self._manifestar_imagem(
-                imagens_por_ref[referencia], declaracoes[referencia])
+                imagens_por_ref[referencia], declaracoes[referencia],
+                # ⚠️ A conta é a REFERÊNCIA OPACA já resolvida, e o ator vem da
+                # sessão do servidor. Nenhum dos dois pode chegar pelo corpo do
+                # pedido: quem quer subir a campanha não assina a própria
+                # autorização.
+                account_ref=conta.referencia_opaca,
+                ator=ator,
+            )
         primeira = imagens_por_ref[referencias[0]]
         return ReferenciasMetaResolvidas(
             account_id=conta.id_externo,
@@ -334,19 +509,20 @@ class ResolvedorAtivosMeta:
             asset_supply_manifests=manifestos,
         )
 
-    async def _manifestar_imagem(
-        self,
-        ativo: _AtivoResolvido,
-        declaracao: DeclaracaoPoliticaAtivoMeta,
-    ) -> ManifestoSupplyMeta:
-        """Lê os bytes no backend e sela a correspondência peça↔image_hash."""
-        agora = datetime.now(timezone.utc)
-        confirmado = declaracao.confirmada_em.astimezone(timezone.utc)
-        if confirmado > agora + timedelta(minutes=5) or confirmado < agora - timedelta(hours=1):
-            raise ErroDeNascimentoMeta(
-                "META_ASSET_POLICY_RECEIPT_EXPIRED",
-                "a confirmação de direitos/identidade da peça expirou; confira novamente",
-            )
+    async def _ler_bytes_da_peca(self, ativo: _AtivoResolvido) -> tuple[bytes, str]:
+        """Baixa os bytes com teto cobrado DURANTE a leitura.
+
+        ⚠️ A versão anterior fazia `await cliente.get(url)` e só então conferia
+        `len(conteudo) > 12_000_000`. Nessa ordem o corpo inteiro já está na
+        memória quando o limite é aplicado: o teto protegia o resto do sistema,
+        não este processo. Aqui a leitura é interrompida no pedaço que
+        ultrapassa o teto, e o que veio antes é descartado.
+
+        O redirecionamento também deixa de ser silencioso. Um 3xx tem status
+        abaixo de 400 e corpo vazio, então a checagem antiga o rejeitava como
+        "imagem inválida" — mensagem errada para a causa real, e uma que o
+        operador não consegue agir.
+        """
         if not ativo.preview_url:
             raise ErroDeNascimentoMeta(
                 "META_ASSET_BYTES_UNAVAILABLE",
@@ -359,26 +535,120 @@ class ResolvedorAtivosMeta:
                 "META_ASSET_BYTES_HOST_REJECTED",
                 "os bytes da peça não vieram do CDN Meta permitido",
             )
+        pedacos: list[bytes] = []
+        total = 0
         try:
-            resposta = await self._cliente.get(ativo.preview_url)
+            async with self._cliente.stream("GET", ativo.preview_url) as resposta:
+                if 300 <= resposta.status_code < 400:
+                    # Seguir o desvio levaria os bytes para fora da allowlist
+                    # que acabou de ser conferida.
+                    raise ErroDeNascimentoMeta(
+                        "META_ASSET_BYTES_REDIRECT_REFUSED",
+                        "a leitura dos bytes da peça foi redirecionada para fora do CDN permitido",
+                    )
+                if resposta.status_code >= 400:
+                    raise ErroDeNascimentoMeta(
+                        "META_ASSET_BYTES_READ_FAILED",
+                        "o CDN Meta recusou a leitura dos bytes da peça",
+                    )
+                tipo = resposta.headers.get("content-type", "").split(";", 1)[0].lower()
+                async for pedaco in resposta.aiter_bytes():
+                    total += len(pedaco)
+                    if total > LIMITE_DE_BYTES:
+                        raise ErroDeNascimentoMeta(
+                            "META_ASSET_BYTES_TOO_LARGE",
+                            "os bytes da peça excedem o limite seguro deste servidor",
+                        )
+                    pedacos.append(pedaco)
+        except ErroDeNascimentoMeta:
+            raise
         except httpx.HTTPError:
             raise ErroDeNascimentoMeta(
                 "META_ASSET_BYTES_READ_FAILED", "não foi possível ler os bytes da peça") from None
-        tipo = resposta.headers.get("content-type", "").split(";", 1)[0].lower()
-        conteudo = bytes(resposta.content)
-        if resposta.status_code >= 400 or not conteudo or len(conteudo) > 12_000_000 \
-                or not tipo.startswith("image/"):
+        conteudo = b"".join(pedacos)
+        if not conteudo:
             raise ErroDeNascimentoMeta(
-                "META_ASSET_BYTES_INVALID", "a peça não retornou uma imagem válida dentro do limite")
+                "META_ASSET_BYTES_EMPTY", "o CDN Meta devolveu um corpo vazio para a peça")
+        return conteudo, tipo
+
+    async def _manifestar_imagem(
+        self,
+        ativo: _AtivoResolvido,
+        declaracao: DeclaracaoPoliticaAtivoMeta,
+        *,
+        account_ref: str,
+        ator: str,
+    ) -> ManifestoSupplyMeta:
+        """Lê os bytes, DECODIFICA e sela a correspondência peça↔image_hash.
+
+        ## O que mudou, e por quê
+
+        Antes o gate lia `Content-Type`, conferia tamanho e hasheava — e o
+        recibo dizia `AUTHORIZED` / `READY_FOR_PAID_MEDIA` sobre bytes que
+        ninguém tinha aberto. Agora a imagem é decodificada de verdade
+        (`_decodificar_imagem`) e as dimensões vêm da MEDIÇÃO. As dimensões que
+        a biblioteca declara continuam viajando ao lado, para que a divergência
+        seja visível — mas elas não substituem mais a medida.
+
+        ## O recibo é do SERVIDOR, e a quem ele se vincula
+
+        Ator e conta entram na matéria canônica. Sem eles o recibo descreveria
+        só "estes bytes foram vistos alguma vez", e um recibo assim não sabe
+        dizer *quem* atestou nem *sobre qual conta*. A identidade do ator vem da
+        sessão, nunca do corpo do pedido: quem quer subir a campanha não pode
+        assinar a própria autorização.
+
+        ⚠️ Copy e destino NÃO entram aqui, e a ausência é deliberada: eles já são
+        selados pelo `plano_sha256`, que cobre os payloads inteiros. Repeti-los
+        no recibo de supply criaria um segundo recibo por variação para a mesma
+        peça — e o compilador emite um manifesto por `asset_ref`, não por texto.
+        A invalidação por mudança de copy continua acontecendo, pelo hash do
+        plano, e há contraprova disso.
+
+        ## Estabilidade
+
+        `policy_receipt_ref` é DERIVADO da matéria: mesma peça, mesmo ator,
+        mesma conta e mesma atestação produzem sempre a mesma referência.
+        Compilar, validar e aprovar reusam o mesmo recibo, e por isso o hash do
+        plano não muda entre os três atos. Nenhum `now()` entra aqui — um
+        carimbo novo a cada chamada mudaria o plano validado por acidente.
+        Renovar é um ato explícito do operador (nova atestação), e ele muda a
+        revisão de propósito.
+        """
+        agora = datetime.now(timezone.utc)
+        confirmado = declaracao.confirmada_em.astimezone(timezone.utc)
+        if confirmado > agora + timedelta(minutes=5) or confirmado < agora - timedelta(hours=1):
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_POLICY_RECEIPT_EXPIRED",
+                "a confirmação de direitos/identidade da peça expirou; confira novamente",
+            )
+        conteudo, tipo_declarado = await self._ler_bytes_da_peca(ativo)
+        mime, largura, altura = _decodificar_imagem(conteudo)
+        # O cabeçalho pode mentir; agora existe com o que confrontá-lo. Um
+        # `image/png` que decodifica como JPEG é peça errada ou entrega errada,
+        # e nos dois casos o recibo não pode afirmar qual das duas é.
+        if tipo_declarado and tipo_declarado != mime:
+            raise ErroDeNascimentoMeta(
+                "META_ASSET_MIME_DIVERGED",
+                "o tipo declarado pelo CDN não confere com o formato decodificado da peça",
+            )
         content_sha = hashlib.sha256(conteudo).hexdigest()
         materia = {
+            "versao": VERSAO_DO_RECIBO_DE_SUPPLY,
+            "finalidade": FINALIDADE_DO_RECIBO,
+            "account_ref": account_ref,
+            "actor_id": ator,
             "asset_ref": ativo.publico.referencia_opaca,
             "content_sha256": content_sha,
             "item_sha256": content_sha,
             "provider_image_hash": ativo.id_externo,
-            "mime_type": tipo,
-            "width": ativo.publico.largura,
-            "height": ativo.publico.altura,
+            "mime_type": mime,
+            "byte_size": len(conteudo),
+            "width": largura,
+            "height": altura,
+            "declared_width": ativo.publico.largura,
+            "declared_height": ativo.publico.altura,
+            "rendition": ativo.origem_dos_bytes,
             "policy_state": "AUTHORIZED",
             "confirmed_at": confirmado.isoformat(),
             "lifecycle": "READY_FOR_PAID_MEDIA",
@@ -386,9 +656,9 @@ class ResolvedorAtivosMeta:
         canonico = json.dumps(
             materia, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         supply_sha = hashlib.sha256(canonico).hexdigest()
-        policy_ref = "metapolicy_" + hashlib.sha256(
-            (content_sha + confirmado.isoformat() + ativo.publico.referencia_opaca).encode("utf-8")
-        ).hexdigest()[:24]
+        # Derivado da MESMA matéria: a referência não pode descrever menos do
+        # que o manifesto que ela identifica.
+        policy_ref = "metapolicy_" + supply_sha[:24]
         return ManifestoSupplyMeta(
             asset_ref=ativo.publico.referencia_opaca,
             content_sha256=content_sha,
@@ -399,9 +669,13 @@ class ResolvedorAtivosMeta:
             policy_expires_at=confirmado + timedelta(hours=1),
             lifecycle="READY_FOR_PAID_MEDIA",
             provider_image_hash=ativo.id_externo,
-            mime_type=tipo,
-            width=ativo.publico.largura,
-            height=ativo.publico.altura,
+            mime_type=mime,
+            width=largura,
+            height=altura,
+            declared_width=ativo.publico.largura,
+            declared_height=ativo.publico.altura,
+            byte_size=len(conteudo),
+            rendition=ativo.origem_dos_bytes,
         )
 
     async def preview_url(

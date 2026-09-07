@@ -8,6 +8,8 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
+import imagens_meta
+
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta import dominio as meta_dom
 from app.trafego.meta_execucao.ativos import ResolvedorAtivosMeta
@@ -201,8 +203,12 @@ async def test_resolvedor_lote_le_inventario_uma_vez_e_resolve_refs_opacas() -> 
                  "picture": "https://scontent.example.fbcdn.net/thumb.jpg"},
             ]})
         if request.url.host.endswith(".fbcdn.net"):
+            # ⚠️ Imagem DE VERDADE, e DIFERENTE por peça: o hash de conteúdo
+            # precisa distinguir as duas imagens do lote. Uma cor por caminho
+            # faz isso sem colar blob nenhum no teste.
+            semente = sum(request.url.path.encode()) % 200
             return httpx.Response(
-                200, content=f"bytes:{request.url.path}".encode(),
+                200, content=imagens_meta.png(600, 600, (semente, 40, 90)),
                 headers={"content-type": "image/png"})
         raise AssertionError(request.url)
 
@@ -215,6 +221,7 @@ async def test_resolvedor_lote_le_inventario_uma_vez_e_resolve_refs_opacas() -> 
         page_ref = inventario["paginas"][0]["referencia_opaca"]
         chamadas.clear()
         resolvidas = await resolvedor.resolver_lote(
+            ator="operador@example.com",
             account_ref=inventario["account_ref"],
             page_ref=page_ref,
             asset_refs=asset_refs,

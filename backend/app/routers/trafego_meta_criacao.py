@@ -423,7 +423,7 @@ async def aprovar(
         pedido = _plano(payload.plano)
         _declaracoes_de_politica(payload.plano)
         segredo = SegredoEfemero(_credencial_salva(quem).token)
-        compilado = await _compilar(payload.plano, pedido, segredo)
+        compilado = await _compilar(payload.plano, pedido, segredo, ator=quem.sub)
         if compilado.plano_sha256 != payload.plano_sha256_esperado:
             raise ErroDeNascimentoMeta(
                 "META_APPROVED_PLAN_DIVERGED",
@@ -508,7 +508,7 @@ async def criar_pausada(
         plano_puro = _plano(modelo)
 
         segredo = SegredoEfemero(_credencial_salva(quem).token)
-        compilado = await _compilar(modelo, plano_puro, segredo)
+        compilado = await _compilar(modelo, plano_puro, segredo, ator=quem.sub)
         _plano_bate_com_a_aprovacao(
             compilado, manifesto, esperado_pela_tela=payload.plano_sha256_esperado)
         if _orcamento_do_plano(compilado) != int(manifesto.get("daily_budget_minor") or -1):
@@ -606,7 +606,7 @@ async def reconciliar(
                 "a aprovação não guarda o pedido do operador")
         modelo = PedidoPlanoMetaPausado.model_validate(dict(pedido_gravado))
         segredo = SegredoEfemero(_credencial_salva(quem).token)
-        compilado = await _compilar(modelo, _plano(modelo), segredo)
+        compilado = await _compilar(modelo, _plano(modelo), segredo, ator=quem.sub)
         if compilado.plano_sha256 != _texto(manifesto.get("plan_sha256")):
             raise ErroDeNascimentoMeta(
                 "META_APPROVED_PLAN_DIVERGED",
