@@ -324,3 +324,45 @@ def test_moeda_fuso_e_frescor_acompanham_a_pagina():
     assert saida["moeda"] == "BRL"
     assert saida["fuso"] == "America/Sao_Paulo"
     assert saida["frescor"] == "2026-09-06T10:00:00Z"
+
+
+# ---------------------------------------------------------------------------
+# Recibo por conta, id bruto que nao vaza, snapshot e idempotencia
+# ---------------------------------------------------------------------------
+
+def test_ultimo_recibo_nao_devolve_o_da_outra_conta():
+    tabelas = _base()
+    tabelas["trafego_meta_sync_run"] = [
+        {"run_id": "run-a", "ad_account_ativo_id": ATIVO_A, "resultado": "ok",
+         "concluido_em": "2026-09-06T09:00:00Z", "paginas_lidas": 4,
+         "contagens": {}, "snapshot_hash": "meta_snapshot_a",
+         "escrita_executada": True, "erro_codigo": None, "erro_mensagem": None},
+        {"run_id": "run-b", "ad_account_ativo_id": ATIVO_B, "resultado": "ok",
+         "concluido_em": "2026-09-06T23:00:00Z", "paginas_lidas": 4,
+         "contagens": {}, "snapshot_hash": "meta_snapshot_b",
+         "escrita_executada": True, "erro_codigo": None, "erro_mensagem": None},
+    ]
+    r, _ = repo(tabelas)
+    # Sem escopo, o mais recente e o da conta B.
+    assert asyncio.run(r.ultimo_recibo())["recibo"]["run_id"] == "run-b"
+    # Com escopo, cada conta le o seu.
+    assert asyncio.run(r.ultimo_recibo(REF_A))["recibo"]["run_id"] == "run-a"
+    assert asyncio.run(r.ultimo_recibo(REF_B))["recibo"]["run_id"] == "run-b"
+
+
+def test_object_story_id_nao_atravessa_a_fronteira_do_navegador():
+    # `<page_id>_<post_id>` e identificador bruto da Meta e nao termina em
+    # `external_id`, entao a regra de sufixo sozinha nao o alcancava.
+    tabelas = _base()
+    tabelas["trafego_meta_creative"] = [{
+        "meta_creative_id": "cr-a-1", "ad_account_ativo_id": ATIVO_A,
+        "external_id": "71", "nome": "Peca",
+        "object_story_id": "123456789_987654321",
+        "observado_em": "2026-09-06T10:00:00Z",
+    }]
+    r, _ = repo(tabelas)
+    saida = asyncio.run(r.listar("criativos", REF_A))
+    item = saida["items"][0]
+    assert "object_story_id" not in item
+    assert "123456789_987654321" not in str(item)
+    assert item["entity_ref"].startswith("metaobj_")

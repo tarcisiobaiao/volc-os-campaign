@@ -35,12 +35,24 @@ def _stable_json(payload: Mapping[str, Any]) -> str:
     return json.dumps(payload, sort_keys=True, ensure_ascii=False, default=_json_default, separators=(",", ":"))
 
 
+#: Colunas que carregam identificador bruto da Meta e nunca cruzam a fronteira
+#: do navegador. A lista e explicita porque o sufixo `_external_id` sozinho nao
+#: as reconhece.
+_COLUNAS_DE_ID_BRUTO = frozenset({
+    "external_id", "account_external_id", "conta_externa", "objeto_externo",
+    "business_external_id", "object_story_id",
+})
+
+
 def _sanitize_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     safe: list[dict[str, Any]] = []
     for row in rows:
         item = dict(row)
         for key in list(item):
-            if key.endswith("external_id") or key in {"external_id", "account_external_id", "conta_externa", "objeto_externo", "business_external_id"}:
+            # `object_story_id` nao termina em `external_id`, mas E um id bruto
+            # da Meta: o formato e `<page_id>_<post_id>`. Ele passava inteiro
+            # para o navegador enquanto os outros eram removidos.
+            if key.endswith("external_id") or key in _COLUNAS_DE_ID_BRUTO:
                 item.pop(key, None)
         safe.append(item)
     return safe
@@ -57,6 +69,10 @@ class SnapshotMetaCanonico:
     linhas: Mapping[str, list[dict[str, Any]]]
     idempotency_key: str
     snapshot_hash: str
+    #: Uma janela lida so em parte NAO pode marcar ausencia nem avancar
+    #: watermark, e o recibo nao pode afirmar que ela esta completa.
+    insights_completos: bool = True
+    motivo_incompleto: str | None = None
 
     def payload_rpc(self) -> dict[str, Any]:
         return {
@@ -69,6 +85,8 @@ class SnapshotMetaCanonico:
             "idempotency_key": self.idempotency_key,
             "snapshot_hash": self.snapshot_hash,
             "page_count": self.leitura.paginas_lidas,
+            "complete": self.insights_completos,
+            "incomplete_reason": self.motivo_incompleto,
             "measurement": dict(self.mensuracao),
             "counts": {
                 **dict(self.leitura.contagens),
@@ -87,7 +105,10 @@ class SnapshotMetaCanonico:
                 "insight": len(self.insights),
             },
             "paginas_lidas": self.leitura.paginas_lidas,
-            "parcialidade": [],
+            "completo": self.insights_completos,
+            "parcialidade": ([] if self.insights_completos
+                             else [{"escopo": "insights",
+                                    "motivo": self.motivo_incompleto}]),
             "erros": [],
             "snapshot_hash": self.snapshot_hash,
             "observado_em": self.observado_em.isoformat(),
@@ -105,6 +126,9 @@ def montar_snapshot_canonico(
     mensuracao: Mapping[str, Any],
     janela: str,
     observado_em: datetime,
+    *,
+    insights_completos: bool = True,
+    motivo_incompleto: str | None = None,
 ) -> SnapshotMetaCanonico:
     dom.instante_utc(observado_em, campo="observado_em")
     if leitura.conta_externa != conta.id_externo:
@@ -112,7 +136,12 @@ def montar_snapshot_canonico(
     linhas: dict[str, list[dict[str, Any]]] = {}
     linhas.update(linhas_de_contas((conta,), observado_em, credencial_ativo_id="meta_credential_keychain_local"))
     linhas.update(linhas_da_leitura(leitura, observado_em, conta_ativo_id=f"meta_account_{conta.referencia_opaca}"))
-    linhas.update(linhas_de_insights(tuple(insights), conta_ativo_id=f"meta_account_{conta.referencia_opaca}"))
+    linhas.update(linhas_de_insights(
+        tuple(insights),
+        conta_ativo_id=f"meta_account_{conta.referencia_opaca}",
+        moeda=conta.moeda,
+        completo=insights_completos,
+    ))
     medida_rows: list[dict[str, Any]] = []
     for nome, valor in mensuracao.items():
         if isinstance(valor, int) or valor is None:
@@ -133,8 +162,14 @@ def montar_snapshot_canonico(
     snapshot_hash = "meta_snapshot_" + hashlib.sha256(_stable_json(bruto_para_hash).encode("utf-8")).hexdigest()[:32]
     for row in medida_rows:
         row["snapshot_hash"] = snapshot_hash
+    # A chave de idempotencia identifica o PEDIDO (provedor, conta, janela), nao
+    # o conteudo lido. Enquanto ela incluia `snapshot_hash` — que por sua vez
+    # depende de `observado_em` — dois cliques no botao Persistir com um segundo
+    # de diferenca produziam duas chaves distintas, o EXISTS do lado do banco
+    # nao reconhecia a repeticao, e o mesmo dia era gravado duas vezes.
+    # `snapshot_hash` continua existindo, como impressao digital do conteudo.
     idem = "meta_sync_" + hashlib.sha256(
-        f"{dom.META_ADS}|{conta.id_externo}|{janela}|{snapshot_hash}".encode("utf-8")
+        f"{dom.META_ADS}|{conta.id_externo}|{janela}".encode("utf-8")
     ).hexdigest()[:32]
     return SnapshotMetaCanonico(
         conta=conta,
@@ -146,6 +181,8 @@ def montar_snapshot_canonico(
         linhas=linhas,
         idempotency_key=idem,
         snapshot_hash=snapshot_hash,
+        insights_completos=insights_completos,
+        motivo_incompleto=motivo_incompleto,
     )
 
 
@@ -518,7 +555,7 @@ class RepositorioMetaReadModelSupabase:
                 "motivo": "referencia nao pertence a esta conta ou ainda nao sincronizou",
                 "conta_ref": contexto["conta_ref"]}
 
-    async def ultimo_recibo(self) -> dict[str, Any]:
+    async def ultimo_recibo(self, conta_ref: str | None = None) -> dict[str, Any]:
         """The last receipt, with the readiness state kept ATTACHED.
 
         The caller used to collapse three different worlds into one answer:
@@ -530,12 +567,23 @@ class RepositorioMetaReadModelSupabase:
         if not getattr(self._supa, "enabled", False):
             return {"ok": True, "has_snapshot": False, "recibo": None,
                     "estado": "SEM_CONEXAO", "motivo": "supabase_indisponivel"}
+        params: dict[str, Any] = {
+            "select": "run_id,resultado,concluido_em,paginas_lidas,contagens,"
+                      "snapshot_hash,escrita_executada,erro_codigo,erro_mensagem",
+            "order": "concluido_em.desc", "limit": 1,
+        }
+        if conta_ref:
+            # Sem este filtro, o "ultimo recibo" era o mais recente de QUALQUER
+            # conta: com duas contas sincronizadas, o operador lia o recibo da
+            # outra como se fosse o da coleta que acabou de pedir.
+            contexto = await self._contexto_da_conta(conta_ref)
+            if contexto is None:
+                return {"ok": True, "has_snapshot": False, "recibo": None,
+                        "estado": "ESCOPO_DESCONHECIDO",
+                        "motivo": "conta_opaca_nao_resolvida"}
+            params["ad_account_ativo_id"] = f"eq.{contexto['ativo_id']}"
         rows, schema_ready = await self._select_seguro(
-            "trafego_meta_sync_run",
-            {"select": "run_id,resultado,concluido_em,paginas_lidas,contagens,"
-                       "snapshot_hash,escrita_executada,erro_codigo,erro_mensagem",
-             "order": "concluido_em.desc", "limit": 1},
-        )
+            "trafego_meta_sync_run", params)
         if not schema_ready:
             return {"ok": True, "has_snapshot": False, "recibo": None,
                     "estado": "SCHEMA_NAO_APLICADO", "motivo": "meta_schema_not_applied"}

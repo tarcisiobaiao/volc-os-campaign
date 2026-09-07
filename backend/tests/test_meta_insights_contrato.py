@@ -245,3 +245,91 @@ def test_metricas_nao_aditivas_estao_declaradas():
     assert "frequency" in dom.METRICAS_NAO_ADITIVAS
     assert "spend" in dom.METRICAS_ADITIVAS
     assert not set(dom.METRICAS_NAO_ADITIVAS) & set(dom.METRICAS_ADITIVAS)
+
+
+# ---------------------------------------------------------------------------
+# O grao viaja ate a linha, e a completude ate o recibo
+# ---------------------------------------------------------------------------
+
+@pytest.mark.anyio
+async def test_linha_sem_periodo_proprio_nao_recebe_o_periodo_pedido():
+    # Com time_increment=1 o pedido abrange varios dias: carimbar a linha com o
+    # periodo pedido inventa um dia que ela nunca mediu.
+    with pytest.raises(ErroDeLeituraMeta) as erro:
+        await _ler([{"campaign_id": "555", "spend": "10"}])
+    assert erro.value.codigo == "META_INSIGHT_SEM_PERIODO"
+
+
+@pytest.mark.anyio
+async def test_action_malformada_e_recusada_e_nao_engolida():
+    with pytest.raises(ErroDeLeituraMeta):
+        await _ler([{
+            "campaign_id": "555", "date_start": "2026-09-01",
+            "date_stop": "2026-09-01", "actions": ["nao-e-documento"],
+        }])
+    with pytest.raises(ErroDeLeituraMeta) as erro:
+        await _ler([{
+            "campaign_id": "555", "date_start": "2026-09-01",
+            "date_stop": "2026-09-01", "actions": [{"value": "3"}],
+        }])
+    assert "action_type" in erro.value.mensagem_segura
+
+
+def test_linhas_de_insights_carregam_o_grao_inteiro_e_os_valores():
+    from app.trafego.meta.persistencia import linhas_de_insights
+
+    acao = dom.AcaoInsightMeta("purchase", "2", "7d_click", "campaign",
+                               date(2026, 9, 1), date(2026, 9, 1), medida="count")
+    valor = dom.AcaoInsightMeta("purchase", "199.90", "7d_click", "campaign",
+                                date(2026, 9, 1), date(2026, 9, 1), medida="value")
+    insight = dom.InsightMeta(
+        provider="META_ADS", conta_externa="123456789012", nivel="campaign",
+        objeto_externo="555", periodo_inicio=date(2026, 9, 1),
+        periodo_fim=date(2026, 9, 1), janela_atribuicao="7d_click",
+        janelas_solicitadas=("7d_click",), breakdown="none",
+        observado_em=datetime(2026, 9, 2, 10, tzinfo=timezone.utc),
+        fuso_da_conta="America/Sao_Paulo", time_increment="1",
+        action_report_time="conversion", spend="10",
+        actions=(acao,), action_values=(valor,),
+    )
+    linhas = linhas_de_insights([insight], conta_ativo_id="ativo-meta",
+                                moeda="BRL", completo=False)
+    fato = linhas["trafego_meta_insight_daily"][0]
+    assert fato["time_increment"] == "1"
+    assert fato["action_report_time"] == "conversion"
+    assert fato["account_timezone"] == "America/Sao_Paulo"
+    assert fato["currency"] == "BRL"
+    assert fato["completo"] is False
+
+    acoes = linhas["trafego_meta_insight_action"]
+    assert len(acoes) == 2, "action_values nao pode ser descartado"
+    por_medida = {a["medida"]: a["value"] for a in acoes}
+    assert por_medida["count"] == Decimal("2")
+    assert por_medida["value"] == Decimal("199.90")
+    assert len({a["ordem"] for a in acoes}) == 2, "a chave da tabela filha colide"
+
+
+def test_grao_diferente_produz_linha_diferente():
+    from app.trafego.meta.persistencia import linhas_de_insights
+
+    def fato(**kw):
+        base = dict(
+            provider="META_ADS", conta_externa="123456789012", nivel="campaign",
+            objeto_externo="555", periodo_inicio=date(2026, 9, 1),
+            periodo_fim=date(2026, 9, 1), janela_atribuicao="default",
+            breakdown="none", observado_em=datetime(2026, 9, 2, 10, tzinfo=timezone.utc),
+            fuso_da_conta="America/Sao_Paulo",
+        )
+        base.update(kw)
+        return dom.InsightMeta(**base)
+
+    diario = fato(time_increment="1")
+    agregado = fato(time_increment="all_days")
+    ids = {
+        linhas_de_insights([i], conta_ativo_id="a")["trafego_meta_insight_daily"][0]
+        ["meta_insight_daily_id"]
+        for i in (diario, agregado)
+    }
+    # Uma serie diaria e uma linha agregada do MESMO periodo sao fatos
+    # diferentes. Compartilhar a chave faria uma sobrescrever a outra.
+    assert len(ids) == 2

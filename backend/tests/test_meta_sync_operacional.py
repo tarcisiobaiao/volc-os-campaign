@@ -171,3 +171,48 @@ def test_router_nao_expoe_mutate() -> None:
     rotas = [(sorted(getattr(r, "methods", set())), r.path) for r in meta_local.router.routes]
     assert not any(any(m in {"PUT", "PATCH"} for m in metodos) for metodos, _ in rotas)
     assert not any("mutate" in path or "criar" in path or "ativar" in path for _, path in rotas)
+
+
+def test_idempotencia_do_run_nao_depende_do_instante_da_leitura() -> None:
+    """Dois cliques em Persistir sao o MESMO pedido, nao dois.
+
+    A chave incluia `snapshot_hash`, que por sua vez depende de `observado_em`.
+    Duas leituras da mesma janela com um segundo de diferenca produziam duas
+    chaves, o EXISTS do banco nao reconhecia a repeticao e o mesmo dia era
+    gravado duas vezes — dobrando o gasto de quem somasse a tabela crua.
+    """
+    conta = dom.ContaMetaDescoberta("123456789012", "Conta", "1", "BRL", "America/Sao_Paulo")
+    def snap(instante: datetime) -> Any:
+        return montar_snapshot_canonico(
+            conta=conta, leitura=leitura(), insights=(insight(),),
+            mensuracao={"pixels_ou_datasets": 1, "custom_conversions": 0},
+            janela="2026-09-04", observado_em=instante,
+        )
+    primeiro = snap(datetime(2026, 9, 5, 12, 0, 0, tzinfo=timezone.utc))
+    segundo = snap(datetime(2026, 9, 5, 12, 0, 1, tzinfo=timezone.utc))
+    assert primeiro.idempotency_key == segundo.idempotency_key
+    # A impressao digital do conteudo continua distinguindo as duas leituras.
+    assert primeiro.snapshot_hash != segundo.snapshot_hash
+    # E uma janela diferente continua sendo outro pedido.
+    outra = montar_snapshot_canonico(
+        conta=conta, leitura=leitura(), insights=(insight(),),
+        mensuracao={"pixels_ou_datasets": 1, "custom_conversions": 0},
+        janela="2026-09-05", observado_em=datetime(2026, 9, 5, 12, tzinfo=timezone.utc))
+    assert outra.idempotency_key != primeiro.idempotency_key
+
+
+def test_janela_truncada_chega_incompleta_ao_recibo() -> None:
+    conta = dom.ContaMetaDescoberta("123456789012", "Conta", "1", "BRL", "America/Sao_Paulo")
+    parcial = montar_snapshot_canonico(
+        conta=conta, leitura=leitura(), insights=(insight(),),
+        mensuracao={"pixels_ou_datasets": 1, "custom_conversions": 0},
+        janela="2026-09-04", observado_em=datetime(2026, 9, 5, 12, tzinfo=timezone.utc),
+        insights_completos=False, motivo_incompleto="META_PAGINATION_LIMIT")
+    recibo = parcial.recibo_sanitizado(escrita="executada")
+    assert recibo["completo"] is False
+    assert recibo["parcialidade"] == [
+        {"escopo": "insights", "motivo": "META_PAGINATION_LIMIT"}]
+    assert parcial.payload_rpc()["complete"] is False
+    assert parcial.payload_rpc()["incomplete_reason"] == "META_PAGINATION_LIMIT"
+    # E a linha persistida carrega a marca, para nao virar verdade medida.
+    assert parcial.linhas["trafego_meta_insight_daily"][0]["completo"] is False

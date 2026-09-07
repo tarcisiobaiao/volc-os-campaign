@@ -160,6 +160,12 @@ async def _preparar_snapshot_com_token(
             mensuracao=mensuracao,
             janela=janela,
             observado_em=datetime.now(timezone.utc),
+            # A completude atravessa ate o recibo. Sem isto o adaptador
+            # calculava que a janela tinha sido truncada, o resultado carregava
+            # o motivo, e a fronteira jogava os dois fora — o recibo afirmava
+            # "completo" sobre uma leitura que parou no teto de paginas.
+            insights_completos=resultado.completo,
+            motivo_incompleto=resultado.motivo_incompleto,
         )
 
 
@@ -321,11 +327,12 @@ async def preparar_sincronizacao(
 @router.get("/recibo/ultimo")
 async def ultimo_recibo(
     request: Request,
+    conta_ref: str | None = Query(default=None),
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     del quem
     _exigir_host_local(request)
-    remoto = await _repositorio_read_model().ultimo_recibo()
+    remoto = await _repositorio_read_model().ultimo_recibo(conta_ref)
     if remoto.get("recibo"):
         return remoto
     recibo = await _REPOSITORIO_PREVIEW.ultimo_recibo()

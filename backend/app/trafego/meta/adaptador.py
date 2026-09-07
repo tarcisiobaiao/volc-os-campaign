@@ -327,10 +327,7 @@ class AdaptadorMetaSomenteLeitura:
                 raise ErroDeLeituraMeta("META_INVALID_RESPONSE", "insight invalido", True)
             try:
                 objeto = self._objeto_do_nivel(linha, pedido)
-                inicio_linha = date.fromisoformat(
-                    str(linha.get("date_start") or pedido.periodo_inicio.isoformat()))
-                fim_linha = date.fromisoformat(
-                    str(linha.get("date_stop") or pedido.periodo_fim.isoformat()))
+                inicio_linha, fim_linha = self._periodo_da_linha(linha, pedido)
                 actions = self._acoes(
                     linha.get("actions"), pedido, inicio_linha, fim_linha, medida="count")
                 action_values = self._acoes(
@@ -378,6 +375,37 @@ class AdaptadorMetaSomenteLeitura:
             completo=completo,
             motivo_incompleto=motivo,
         )
+
+    @staticmethod
+    def _periodo_da_linha(
+        linha: Mapping[str, Any], pedido: dom.PedidoDeInsights,
+    ) -> tuple[date, date]:
+        """The row's own day, or a typed refusal — never the requested window.
+
+        Falling back to the REQUESTED period when Graph omits ``date_start``
+        stamps a row of unknown day with the day we happened to ask for. With
+        ``time_increment=1`` the request spans many days and the fabricated
+        label is almost certainly wrong, yet it becomes part of the grain: the
+        fact then claims to describe a day it never measured.
+        """
+        bruto_inicio = linha.get("date_start")
+        bruto_fim = linha.get("date_stop")
+        if bruto_inicio in (None, "") or bruto_fim in (None, ""):
+            raise ErroDeLeituraMeta(
+                "META_INSIGHT_SEM_PERIODO",
+                "linha de insight sem date_start/date_stop proprios",
+                False,
+            )
+        try:
+            inicio = date.fromisoformat(str(bruto_inicio))
+            fim = date.fromisoformat(str(bruto_fim))
+        except ValueError:
+            raise ErroDeLeituraMeta(
+                "META_INVALID_RESPONSE", "periodo de insight ilegivel", True) from None
+        if fim < inicio:
+            raise ErroDeLeituraMeta(
+                "META_INVALID_RESPONSE", "periodo de insight invertido", True)
+        return inicio, fim
 
     @staticmethod
     def _objeto_do_nivel(
@@ -428,9 +456,17 @@ class AdaptadorMetaSomenteLeitura:
                 "META_INVALID_RESPONSE", "actions de insight nao e lista", True)
         saida: list[dom.AcaoInsightMeta] = []
         for item in bruto:
+            # Uma linha malformada e recusada de forma tipada; uma ACTION
+            # malformada era simplesmente pulada, e um `action_type` ausente
+            # virava a string "unknown". As duas somem em silencio da soma e do
+            # historico: o mesmo defeito, aplicado a um so dos dois ramos.
             if not isinstance(item, dict):
-                continue
-            tipo = str(item.get("action_type") or "unknown")
+                raise ErroDeLeituraMeta(
+                    "META_INVALID_RESPONSE", "action de insight nao e documento", True)
+            tipo = dom.texto_opcional(item.get("action_type"))
+            if tipo is None:
+                raise ErroDeLeituraMeta(
+                    "META_INVALID_RESPONSE", "action de insight sem action_type", True)
             janelas_presentes = [
                 j for j in pedido.janelas_de_atribuicao if j in item
             ]

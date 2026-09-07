@@ -164,12 +164,27 @@ def linhas_de_insights(
     insights: list[dom.InsightMeta] | tuple[dom.InsightMeta, ...],
     *,
     conta_ativo_id: str,
+    moeda: str | None = None,
+    completo: bool = True,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Map insight facts/actions without flattening actions or converting NULL to zero."""
+    """Map insight facts/actions without flattening actions or converting NULL to zero.
+
+    ``moeda`` and ``completo`` are copied onto every fact ON PURPOSE. The
+    currency belongs to the account today, but a later account edit must not
+    restate the money of a period already measured; and a window read only in
+    part must carry that fact into the row, or a dashboard will draw a smaller
+    number and call it the measured truth.
+    """
     if not conta_ativo_id.strip():
         raise dom.ContratoMetaInvalido("ativo da conta Meta vazio")
     saida = {"trafego_meta_insight_daily": [], "trafego_meta_insight_action": []}
     for insight in insights:
+        # O GRAO e a pergunta que foi feita. Duas linhas so podem ser comparadas
+        # — muito menos somadas — quando ele coincide inteiro. `observado_em`
+        # entra na identidade da LINHA porque a tabela guarda historico: cada
+        # releitura do mesmo dia e uma REVISAO, nao trafego adicional. Quem
+        # consome escolhe a revisao corrente pela projecao `latest`; somar a
+        # tabela crua conta o mesmo gasto uma vez por leitura.
         identidade = "|".join((
             insight.provider,
             insight.conta_externa,
@@ -179,6 +194,9 @@ def linhas_de_insights(
             insight.periodo_fim.isoformat(),
             insight.janela_atribuicao,
             insight.breakdown,
+            insight.time_increment,
+            insight.action_report_time,
+            insight.fuso_da_conta or "",
             insight.observado_em.isoformat(),
         ))
         fato_id = "meta_insight_" + hashlib.sha256(
@@ -194,6 +212,14 @@ def linhas_de_insights(
             "periodo_fim": insight.periodo_fim,
             "janela_atribuicao": insight.janela_atribuicao,
             "breakdown": insight.breakdown,
+            # Sem estes tres a tabela nao consegue distinguir uma serie diaria
+            # de uma linha agregada do mesmo periodo, nem duas contagens feitas
+            # em instantes de atribuicao diferentes.
+            "time_increment": insight.time_increment,
+            "action_report_time": insight.action_report_time,
+            "account_timezone": insight.fuso_da_conta,
+            "currency": moeda,
+            "completo": completo,
             "observado_em": insight.observado_em,
             "spend": insight.spend,
             "impressions": insight.impressions,
@@ -206,12 +232,17 @@ def linhas_de_insights(
             "cpc": insight.cpc,
             "ctr": insight.ctr,
         })
-        for pos, action in enumerate(insight.actions):
+        # `actions` conta eventos e `action_values` soma dinheiro. As duas vao
+        # para a mesma tabela filha em sequencia continua de `ordem`, com
+        # `medida` dizendo qual e qual: sem esse discriminador uma soma de
+        # `value` misturaria contagem com moeda.
+        for pos, action in enumerate(insight.actions + insight.action_values):
             saida["trafego_meta_insight_action"].append({
                 "meta_insight_daily_id": fato_id,
                 "ordem": pos,
                 "action_type": action.action_type,
                 "value": action.value,
+                "medida": action.medida,
                 "attribution_window": action.attribution_window,
                 "object_level": action.object_level,
                 "date_start": action.date_start,
