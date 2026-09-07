@@ -47,15 +47,58 @@ projeto é o self-hosted; `*.supabase.co` nunca é fallback.
 
 ## ⚠️ Nunca aplique por glob
 
-`supabase/migrations/` tem 50 arquivos. **20 deles são rollbacks** que dropam
-tabelas e funções, e os dois restantes nem são SQL (`README.md`,
-`PLANO-v11_03.md`). Um `for f in supabase/migrations/*.sql` executa apply e
-rollback na mesma passada.
+`supabase/migrations/` tem **60 arquivos**, dos quais **58 são SQL** e **24
+desses são rollbacks** que dropam tabelas e funções; os dois que sobram nem são
+SQL (`README.md`, `PLANO-v11_03.md`). Um `for f in supabase/migrations/*.sql`
+executa apply e rollback na mesma passada.
 
-Além disso, todo arquivo abre com `\set ON_ERROR_STOP on` — meta-comando de
-`psql`. Um driver que envie o arquivo como SQL puro ou falha na primeira linha
-ou, pior, ignora o `ON_ERROR_STOP` e **continua depois de um erro**, deixando
-metade do schema aplicado sem ninguém saber.
+Medido, não copiado — a versão anterior deste runbook dizia 50/48/20, de uma
+árvore mais antiga:
+
+```bash
+ls -1 supabase/migrations | wc -l                             # 60
+ls -1 supabase/migrations/*.sql | wc -l                       # 58
+ls -1 supabase/migrations/*.sql | grep -ic rollback           # 24
+```
+
+> ⚠️ **Estes números crescem.** Eles vivem no manifesto, e
+> `backend/tests/test_schema_perfil_meta.py::test_glob_hazard_bate_com_a_medicao_do_diretorio`
+> mede o diretório em tempo de execução e reprova dizendo qual campo atualizar.
+> Um número congelado num teste vira mentira no dia seguinte; congelado no
+> manifesto, ele é pego no mesmo dia.
+
+> ⚠️ Rollback se identifica pelo **nome** — o mesmo critério de
+> `rollback_files_never_in_apply`. Contar por `grep -l "DROP "` devolve **32** e
+> está errado: **onze migrations FORWARD contêm `DROP` legítimo**.
+> `20260907120000_meta_recovery_snapshot.sql:84` dropa a assinatura *antiga* de
+> `approve` antes de recriar a estendida. Dropar para recriar é apply.
+
+Sobre `\set ON_ERROR_STOP on`, o meta-comando de `psql`: **ele não está em todo
+arquivo do diretório.** Medido, **15 dos 58 não o têm em linha nenhuma** — entre
+eles `v12_03_pmax_observability_ledger.sql`, que é o `apply_order[0]` do perfil
+`GOOGLE_PMAX`. E nenhum dos 58 o tem na *primeira* linha; todos abrem com
+cabeçalho de comentário.
+
+```bash
+for f in supabase/migrations/*.sql; do
+  grep -q '\set ON_ERROR_STOP on' "$f" || basename "$f"
+done | wc -l                                                  # 15
+```
+
+> ⚠️ **O escopo não pode ser "o trilho Meta pelo nome".** Medido: o padrão
+> `(^|_)meta(_|\.)|^v15_` casa **15** arquivos e **14** têm o meta-comando —
+> `20260908000000_meta_insights_escopo.sql` **não tem**. Uma regra por prefixo
+> de nome já nasceria falsa.
+
+O escopo em que a afirmação **é** verdadeira, e é o único que importa para uma
+janela: os **arquivos que este manifesto declara** nos perfis Meta — hoje 14
+(7 do apply + 7 rollbacks), e todos os 14 têm o meta-comando (`v13_01:99`,
+`v15_01:12`, `20260904183418:8`, `20260907120000:9`, `20260907190000:74`,
+`v15_02:10`, `20260907210000:101`, e os sete rollbacks). O teste recalcula esse
+conjunto **a partir do manifesto**, então declarar um arquivo novo passa a
+exigir o meta-comando dele sozinho. Um driver que envie esses arquivos como SQL
+puro ou falha nessa linha ou, pior, ignora o `ON_ERROR_STOP` e **continua depois
+de um erro**, deixando metade do schema aplicado sem ninguém saber.
 
 O executor é `psql`. A lista de arquivos é a do manifesto, explícita e ordenada.
 
@@ -98,8 +141,39 @@ python3 scripts/verificar_perfil_schema_meta.py
 ```
 
 A última conferência é a que teria pego `R0-A01` sozinha, e ela é derivada do
-CÓDIGO: o verificador lê `registro.py`, extrai toda RPC efetivamente chamada e
-exige que o perfil a cubra. Uma lista escrita à mão envelhece em silêncio.
+CÓDIGO: o verificador lê o arquivo que o **próprio perfil** declara em
+`runtime_contract.derivado_de`, extrai toda RPC efetivamente chamada e exige que
+o perfil a cubra. Uma lista escrita à mão envelhece em silêncio.
+
+| Perfil | Fonte de RPC declarada |
+|--------|------------------------|
+| `CREATE_ONLY` | `backend/app/trafego/meta_execucao/registro.py` |
+| `META_READ_MODEL` | `backend/app/trafego/meta/read_model.py` |
+| `GOOGLE_PMAX` | **nenhuma** — lacuna nomeada, ver abaixo |
+
+> ⚠️ A fonte era **uma constante do script**, apontando sempre para
+> `registro.py`. Com isso `META_READ_MODEL` era reprovado por não declarar
+> catorze RPCs que ele nunca serviu, e `trafego_meta_persistir_snapshot` — que
+> roda em produção (`backend/app/trafego/meta/read_model.py:347`) e é chamada
+> por um terceiro consumidor fora do backend
+> (`n8n/volc_meta_insights_dia_d1.json:451,590`) — **não era cobrada de perfil
+> nenhum**. Agora ela está no contrato de `META_READ_MODEL`, com a assinatura
+> lida em `20260907210000_meta_read_model_consistency.sql:657`.
+
+### Lacuna nomeada não é sucesso
+
+`GOOGLE_PMAX` não declara `runtime_contract` nem `catalog_probe`. O verificador
+**diz isso e sai com 1**:
+
+```bash
+python3 scripts/verificar_perfil_schema_meta.py --perfil GOOGLE_PMAX
+# LACUNA NOMEADA: 1 conferência(s) que o manifesto não declara — isto NÃO é sucesso
+```
+
+Pular em silêncio o que não está declarado é o defeito de `R0-A01` com outra
+roupa: o verde passaria a afirmar uma cobertura que ninguém mediu. A lacuna se
+fecha **declarando o contrato** — nunca afrouxando a conferência. As três
+lacunas abertas estão em `named_gaps` no manifesto.
 
 
 ## Classificar o estado antes de decidir
@@ -115,7 +189,31 @@ nenhum: quem escolhe a conexão é você.
 ```bash
 psql "$CONEXAO" -Atq -f docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql > /tmp/catalogo.json
 python3 scripts/verificar_perfil_schema_meta.py --catalogo /tmp/catalogo.json
+python3 scripts/verificar_perfil_schema_meta.py --perfil META_READ_MODEL --catalogo /tmp/catalogo.json
 ```
+
+> ⚠️ **O leitor de catálogo era incompleto, e um leitor incompleto reprova ou
+> aprova pelo motivo errado.** A versão anterior tinha 45 linhas e *digitava* as
+> duas tabelas a inspecionar, então era cega para `trafego_meta_validation_receipt`
+> (a terceira tabela do `CREATE_ONLY`,
+> `20260904183418_meta_create_paused_executor.sql:51`), para as **nove** tabelas
+> de `v15_01`, para as três de `v15_02`, e não coletava função com retorno,
+> grant de tabela, índice, gatilho nem RLS. Agora o conjunto é **derivado do
+> próprio catálogo** por prefixo (`public.trafego_meta%`,
+> `public.vw_trafego_meta%`, mais `cofre_ativo`/`cofre_cadastrar_ativo`, que as
+> guardas nomeiam), e o JSON traz `relations`, `columns`, `constraints`,
+> `indexes`, `triggers`, `rls`, `functions`, `functions_detail`,
+> `security_definer`, `granted` e `grants`.
+
+O que separa dois catálogos não é a tabela — é o detalhe. Dois exemplos medidos
+nos próprios arquivos:
+
+- `v15_02` deixa `service_role` com `INSERT`/`UPDATE` nas três tabelas de
+  insight (`v15_02:123-125`); `20260907210000:486-489` revoga tudo e reconcede
+  **só `SELECT`**. Mesmas tabelas, mesmas colunas, ACL oposta.
+- só `20260907210000:511` cria os gatilhos `_sem_truncate` — e **`TRUNCATE` não
+  dispara gatilho de `DELETE`**, então sem eles a recusa de remoção apenas
+  *parece* completa.
 
 Os estados são **derivados da escada**, não enumerados à mão — uma sexta
 migration acrescenta um degrau sozinha:
@@ -130,6 +228,10 @@ migration acrescenta um degrau sozinha:
   assinatura/grant fora do contrato. Alguém aplicou fora de ordem, reverteu pela
   metade, ou existe sobrecarga duplicada. **Parar e inventariar objeto a
   objeto.**
+- **`SEM_SONDA_DECLARADA`** — o perfil não declara `catalog_probe` em degrau
+  nenhum. ⚠️ Isto **não** é `NAO_APLICADO`: antes, zero sonda devolvia
+  `NAO_APLICADO` para um catálogo completo, e o operador aplicaria por cima do
+  que já existe. É o caso de `GOOGLE_PMAX`.
 
 Um rollback usado como faxina dropa tabelas que podem já conter recibos reais —
 e esses recibos são a única prova de que um objeto pode existir numa conta.

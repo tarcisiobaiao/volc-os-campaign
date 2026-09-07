@@ -4,7 +4,10 @@
   "task": "T11",
   "checkpoint": "CP2",
   "produced_at": "2026-09-07",
-  "produced_on_commit": "d54e10012c34aeaae2e2089945178bc20353e145",
+  "produced_on_commit": "b3afa8b8e86d2d27650d03f4e747e5756dcf9ba6",
+  "provenance_recalculated_because": "O carimbo anterior era d54e10012c34aeaae2e2089945178bc20353e145 e era FALSO: `git cat-file -e d54e100:supabase/migrations/20260907120000_meta_recovery_snapshot.sql` responde 'exists on disk, but not in d54e100' — idem 20260907190000 e 20260907210000. Tres arquivos que este manifesto declara com sha256 NAO EXISTIAM naquele commit (d54e100 e de 2026-09-07 07:37:31 -0300, anterior aos tres), entao a proveniencia afirmava ter sido produzida contra uma arvore que nao continha o que ela declara.",
+  "provenance_measured_by": "Para cada um dos 16 arquivos declarados (7 do apply Meta, v12_03, e os 8 rollbacks): `git show b3afa8b:<arquivo> | shasum -a 256` — os 16 batem, digito a digito, com o `sha256` deste manifesto E com o arquivo em disco. Zero divergencias.",
+  "provenance_means": "⚠️ `produced_on_commit` afirma UMA coisa, e e a unica que importa: existe um commit cuja arvore contem TODOS os arquivos declarados aqui com EXATAMENTE os sha256 declarados. Ele nao afirma ser o HEAD — o HEAD anda enquanto a janela e preparada. O que fecharia a janela e o contrario: um carimbo apontando para uma arvore que nao contem o que o manifesto declara, que era o caso de d54e100. `backend/tests/test_schema_perfil_meta.py::test_commit_de_proveniencia_contem_os_arquivos_declarados` cobra exatamente isso.",
   "authority": {
     "current": "LOCAL_ONLY",
     "statement": "Este manifesto NAO foi executado contra o Supabase oficial. Ele foi exercitado apenas num PostgreSQL descartavel criado para esta rodada. Nenhuma leitura de catalogo oficial ocorreu, entao este arquivo NAO afirma que qualquer perfil esteja ausente, parcial ou aplicado no self-hosted.",
@@ -30,15 +33,21 @@
   },
   "glob_hazard": {
     "statement": "NUNCA aplicar supabase/migrations/*.sql por glob.",
-    "directory_file_count": 50,
-    "sql_file_count": 48,
-    "rollback_file_count": 20,
+    "directory_file_count": 60,
+    "sql_file_count": 58,
+    "rollback_file_count": 24,
+    "counts_are_of_the_working_tree": "⚠️ Estes tres numeros descrevem o DIRETORIO, nao o commit — e o diretorio cresce. `backend/tests/test_schema_perfil_meta.py::test_glob_hazard_bate_com_a_medicao_do_diretorio` MEDE em tempo de execucao e reprova nomeando o numero a escrever aqui. Um numero congelado no teste vira mentira no dia seguinte; um numero congelado no manifesto e pego pelo teste no mesmo dia.",
+    "counts_measured_by": "`ls -1 supabase/migrations | wc -l` = 60; `ls -1 supabase/migrations/*.sql | wc -l` = 58; `ls -1 supabase/migrations/*.sql | grep -ic rollback` = 24. Os numeros anteriores (50/48/20) eram de uma arvore mais antiga; a medicao intermediaria desta rodada deu 56/54/23 no commit b3afa8b, e subiu para 60/58/24 com quatro migrations acrescentadas em paralelo (20260908000000_meta_insights_escopo.sql, 20260908020000_meta_asset_registration.sql, 20260908020100_meta_asset_registration_rollback.sql, v11_04_criativo_importacao.sql). Nenhuma delas entra em apply_order nenhum aqui — a ordem delas e decisao da integracao.",
+    "rollback_criterion": "NOME do arquivo (contem `rollback`) — o mesmo criterio de `rollback_files_never_in_apply`. ⚠️ NAO usar `grep -l 'DROP '`: esse criterio devolve 32 arquivos (medido) porque ONZE migrations FORWARD contem DROP legitimo: 20260907190000, 20260907120000, 20260908000000_meta_insights_escopo, 20260907210000, v12_03_pmax_observability_ledger, v13_02_cofre_recusa_sem_vazar_linha, v8_03_users_rls_policies, v8_02_pautador_policies_rewire, v11_04_criativo_importacao, v9_03_historico_e_ordem_operacional, v8_05_users_safe_view. Exemplo: 20260907120000:84 dropa a assinatura ANTIGA de approve antes de recriar a estendida — dropar para recriar e apply, nao reversao.",
     "non_sql_files": [
       "README.md",
       "PLANO-v11_03.md"
     ],
-    "reason": "20 dos 48 arquivos SQL do diretorio sao ROLLBACKS que dropam tabelas e funcoes. Um glob ordenado alfabeticamente executa apply e rollback na mesma passada; um glob por timestamp mistura series independentes. Alem disso todo arquivo comeca com a meta-instrucao psql `\\set ON_ERROR_STOP on`, que exige o executor `psql` — um driver que envie o arquivo como SQL puro falha na primeira linha ou, pior, ignora o ON_ERROR_STOP e segue depois de um erro.",
-    "required_executor": "psql (as migrations usam meta-comandos de barra invertida)",
+    "reason": "24 dos 58 arquivos SQL do diretorio sao ROLLBACKS que dropam tabelas e funcoes. Um glob ordenado alfabeticamente executa apply e rollback na mesma passada; um glob por timestamp mistura series independentes. Alem disso as migrations do trilho Meta usam a meta-instrucao psql `\\set ON_ERROR_STOP on`, que exige o executor `psql` — um driver que envie o arquivo como SQL puro falha nessa linha ou, pior, ignora o ON_ERROR_STOP e segue depois de um erro.",
+    "on_error_stop_scope": "⚠️ A afirmacao anterior — 'todo arquivo comeca com \\set ON_ERROR_STOP on' — era FALSA para o diretorio inteiro, e continua falsa. Medido: `for f in supabase/migrations/*.sql; do grep -q '\\set ON_ERROR_STOP on' \"$f\" || basename \"$f\"; done | wc -l` = 15 de 58 sem o meta-comando em linha nenhuma. Sao eles: 20260908000000_meta_insights_escopo, v10_03_recibo_atomico, v10_03_rollback, v10_04_rollback, v10_04_saida_do_indeterminado, v11_04_criativo_importacao, v12_01_google_inteligencia_coletas, v12_01_rollback, v12_03_pmax_observability_ledger, v12_03_rollback, v12_04_gads_fato_canonico_dia, v12_04_rollback, v13_02_cofre_recusa_sem_vazar_linha, v14_01_publicacao_organica, v14_99_publicacao_organica_rollback. E FALSA tambem a palavra 'comeca': NENHUM dos 58 tem o meta-comando na LINHA 1 (todos abrem com cabecalho de comentario) — onde ele existe, esta depois do cabecalho.",
+    "on_error_stop_where_it_is_true": "⚠️ O escopo NAO pode ser 'o trilho Meta por nome', e isso foi MEDIDO agora: `(^|_)meta(_|\\.)|^v15_` casa 15 arquivos e 14 tem o meta-comando — 20260908000000_meta_insights_escopo.sql NAO tem. Uma regra por prefixo de nome ja nasceria falsa. O escopo que E verdadeiro, e que cresce sozinho sem virar mentira, e o DECLARADO: todo arquivo listado em `apply_order` ou em `rollback_files_never_in_apply` dos perfis Meta deste manifesto. Medido, 14 de 14 — v13_01:99, v15_01:12, 20260904183418:8, 20260907120000:9, 20260907190000:74, v15_02:10, 20260907210000:101, 20260904183514:15, 20260907120100:6, 20260907190100:18, 20260907210100:45, v15_98:6, v15_99:5, v13_99:77. `backend/tests/test_schema_perfil_meta.py::test_on_error_stop_e_verdade_no_escopo_declarado` recalcula esse conjunto a partir do manifesto, entao declarar um arquivo novo passa a exigir o meta-comando dele automaticamente — e e por isso que o executor obrigatorio continua sendo `psql`.",
+    "on_error_stop_gap_medido": "20260908000000_meta_insights_escopo.sql esta no trilho Meta pelo nome e NAO tem `\\set ON_ERROR_STOP on` (medido com `grep -c` = 0). Ele nao entra em apply_order nenhum deste manifesto — a ordem dele e decisao da integracao — mas, no dia em que entrar, ou ele ganha o meta-comando ou a regra `psql` deixa de valer para o perfil que o inclua. Ver named_gaps: LACUNA-ON_ERROR_STOP-20260908000000.",
+    "required_executor": "psql (as migrations declaradas usam meta-comandos de barra invertida)",
     "forbidden_in_apply": "Qualquer arquivo listado em rollback_files. O apply nunca inclui rollback."
   },
   "profiles": [
@@ -388,7 +397,56 @@
           "ordem": 2,
           "file": "supabase/migrations/v15_01_meta_ads_read_model.sql",
           "sha256": "2343deefdf82f7b641ed68996d833ddfda1a4a632b34fe8bb27e0500af2e595d",
-          "shared_with": "CREATE_ONLY"
+          "lines": 313,
+          "shared_with": "CREATE_ONLY",
+          "catalog_probe": {
+            "columns": [
+              "trafego_meta_project_binding.project_id",
+              "trafego_meta_project_binding.desfeito_motivo",
+              "trafego_meta_ad_account.account_external_id"
+            ],
+            "constraints": [
+              "trafego_meta_binding_desfeito_completo",
+              "trafego_meta_binding_evidencia_util"
+            ],
+            "indexes": [
+              "trafego_meta_project_binding.trafego_meta_project_binding_ativo_ux"
+            ],
+            "rls_forced": [
+              "trafego_meta_project_binding"
+            ],
+            "grants": [
+              "trafego_meta_project_binding:service_role:INSERT"
+            ]
+          },
+          "probe_origin": "Cada item lido em v15_01_meta_ads_read_model.sql: project_id:96, desfeito_motivo:102, account_external_id:65, trafego_meta_binding_desfeito_completo:107, trafego_meta_binding_evidencia_util:105, trafego_meta_project_binding_ativo_ux:113, FORCE ROW LEVEL SECURITY:297 e GRANT SELECT,INSERT,UPDATE:298 (o laco das linhas 287-299 inclui project_binding). Nada aqui e alterado por v15_02 nem por 20260907210000, entao o degrau continua presente depois deles — sonda nao-monotona quebraria a escada.",
+          "why_this_probe_exists": "⚠️ A guarda de dependencia de 20260907210000_meta_read_model_consistency.sql:141-147 lista OITO tabelas do v15_01 e OMITE `trafego_meta_project_binding` (criada em v15_01:93). Um catalogo sem project_binding PASSA naquela guarda. A correcao no arquivo .sql pertence a quem edita migrations; a lista completa e cobrada AQUI, e o `columns`/`indexes` acima e o que reprova o catalogo que a guarda deixaria passar.",
+          "dependency_guard_gap": {
+            "arquivo": "supabase/migrations/20260907210000_meta_read_model_consistency.sql",
+            "linhas": "141-147",
+            "declara": [
+              "trafego_meta_business",
+              "trafego_meta_ad_account",
+              "trafego_meta_campaign",
+              "trafego_meta_adset",
+              "trafego_meta_ad",
+              "trafego_meta_creative",
+              "trafego_meta_ad_creative_binding",
+              "trafego_meta_sync_run"
+            ],
+            "lista_correta_de_v15_01": [
+              "trafego_meta_business",
+              "trafego_meta_ad_account",
+              "trafego_meta_project_binding",
+              "trafego_meta_campaign",
+              "trafego_meta_adset",
+              "trafego_meta_ad",
+              "trafego_meta_creative",
+              "trafego_meta_ad_creative_binding",
+              "trafego_meta_sync_run"
+            ],
+            "medida_por": "`grep -n 'CREATE TABLE' supabase/migrations/v15_01_meta_ads_read_model.sql` = 9 tabelas (46,61,93,117,140,163,185,206,219); a guarda cobra 8. A mesma lista de 9 aparece completa em v15_01:272-275 e 287-290, entao a guarda de 20260907210000 e que esta curta."
+          }
         },
         {
           "ordem": 3,
@@ -397,7 +455,32 @@
           "lines": 235,
           "depends_on": [
             "v15_01_meta_ads_read_model.sql"
-          ]
+          ],
+          "catalog_probe": {
+            "relations": [
+              "trafego_meta_insight_daily:r",
+              "trafego_meta_insight_action:r",
+              "trafego_meta_custom_measurement:r"
+            ],
+            "columns": [
+              "trafego_meta_insight_daily.inline_link_clicks",
+              "trafego_meta_insight_action.attribution_window",
+              "trafego_meta_custom_measurement.snapshot_hash"
+            ],
+            "constraints": [
+              "trafego_meta_insight_metricas_nao_negativas",
+              "trafego_meta_action_value_nao_negativo",
+              "trafego_meta_measurement_hash_valido"
+            ],
+            "rls_forced": [
+              "trafego_meta_insight_daily",
+              "trafego_meta_insight_action",
+              "trafego_meta_custom_measurement"
+            ]
+          },
+          "probe_origin": "Cada item lido em v15_02_meta_ads_insights.sql: as tres tabelas em 29, 82 e 100; inline_link_clicks:46; attribution_window:87; snapshot_hash:105; trafego_meta_insight_metricas_nao_negativas:58; trafego_meta_action_value_nao_negativo:97; trafego_meta_measurement_hash_valido:110; FORCE ROW LEVEL SECURITY:114,116,118.",
+          "why_no_grant_probe_here": "⚠️ v15_02:123-125 concede SELECT, INSERT e UPDATE das tres tabelas a service_role, mas 20260907210000:486-489 REVOGA tudo e reconcede so SELECT. Uma sonda com `...:service_role:INSERT` viraria FALSA assim que o degrau seguinte fosse aplicado, e a escada leria PARCIAL_OU_DIVERGENTE num catalogo correto. Sonda de degrau tem de ser MONOTONA: so o que os degraus posteriores preservam.",
+          "why_no_function_probe_here": "v15_02:127 cria `trafego_meta_persistir_snapshot(p_snapshot jsonb)` e 20260907210000:657 recria com a MESMA assinatura de identidade. A assinatura, sozinha, nao separa os dois degraus; o que separa esta na sonda de 20260907210000."
         },
         {
           "ordem": 4,
@@ -417,9 +500,89 @@
           ],
           "why_required": "Sem a projecao latest, somar trafego_meta_insight_daily conta o mesmo gasto uma vez por leitura; e sem as colunas de grao, uma serie diaria e uma linha agregada do mesmo periodo colidem na chave.",
           "incremental": true,
-          "note": "Delta INCREMENTAL sobre v15_02, escrito para ser correto exista ou nao v15_02 aplicada no catalogo oficial: usa to_regclass/IF EXISTS/CREATE OR REPLACE e ABORTA nomeando o que falta. Reaplicar e no-op."
+          "note": "Delta INCREMENTAL sobre v15_02, escrito para ser correto exista ou nao v15_02 aplicada no catalogo oficial: usa to_regclass/IF EXISTS/CREATE OR REPLACE e ABORTA nomeando o que falta. Reaplicar e no-op.",
+          "catalog_probe": {
+            "relations": [
+              "vw_trafego_meta_insight_latest:v"
+            ],
+            "columns": [
+              "trafego_meta_insight_daily.time_increment",
+              "trafego_meta_insight_daily.action_report_time",
+              "trafego_meta_insight_daily.account_timezone",
+              "trafego_meta_insight_daily.currency",
+              "trafego_meta_insight_daily.completo",
+              "trafego_meta_insight_action.medida",
+              "vw_trafego_meta_insight_latest.completo"
+            ],
+            "constraints": [
+              "trafego_meta_insight_time_increment_conhecido",
+              "trafego_meta_insight_report_time_conhecido",
+              "trafego_meta_insight_timezone_util",
+              "trafego_meta_insight_moeda_iso",
+              "trafego_meta_action_medida_conhecida",
+              "trafego_meta_insight_grao_unico",
+              "trafego_meta_action_grao_unico"
+            ],
+            "indexes": [
+              "trafego_meta_insight_daily.trafego_meta_insight_grao_corrente_ix"
+            ],
+            "triggers": [
+              "trafego_meta_insight_daily.trafego_meta_insight_daily_sem_truncate",
+              "trafego_meta_insight_action.trafego_meta_insight_action_sem_truncate",
+              "trafego_meta_custom_measurement.trafego_meta_custom_measurement_sem_truncate"
+            ],
+            "functions": [
+              "trafego_meta_credencial_pinada()",
+              "trafego_meta_cofre_declarar_ativo(p_ativo_id text, p_kind text, p_cluster text, p_nome text, p_estado text, p_criticidade text, p_resumo text, p_proxima_acao text, p_capacidades text[], p_tags text[])",
+              "trafego_meta_persistir_snapshot(p_snapshot jsonb)"
+            ],
+            "granted_to_service_role": [
+              "trafego_meta_persistir_snapshot(p_snapshot jsonb)"
+            ],
+            "grants": [
+              "vw_trafego_meta_insight_latest:service_role:SELECT",
+              "trafego_meta_persistir_snapshot(p_snapshot jsonb):service_role:EXECUTE"
+            ]
+          },
+          "probe_origin": "Cada item lido em 20260907210000_meta_read_model_consistency.sql: time_increment/action_report_time/account_timezone/currency/completo:232-236; medida:239; trafego_meta_insight_time_increment_conhecido:247; trafego_meta_insight_report_time_conhecido:255; trafego_meta_insight_timezone_util:263; trafego_meta_insight_moeda_iso:271; trafego_meta_action_medida_conhecida:279; trafego_meta_insight_grao_unico:336; trafego_meta_action_grao_unico:372; trafego_meta_insight_grao_corrente_ix:386; a view e a coluna `completo` dela:398 e 418; os tres gatilhos `_sem_truncate`:505-513 (o laco de 479-482 da os tres nomes); trafego_meta_credencial_pinada():205; trafego_meta_cofre_declarar_ativo(...):558-569; GRANT SELECT na view:444; GRANT EXECUTE em persistir_snapshot:1288.",
+          "why_trigger_and_grant_probe": "⚠️ v15_02 e 20260907210000 produzem tabelas com o MESMO nome e quase as mesmas colunas. O que separa os dois estados sem ambiguidade e (a) o gatilho `_sem_truncate`, que so 20260907210000:511 cria — TRUNCATE nao dispara gatilho de DELETE, entao sem ele a recusa de remocao so PARECE completa; e (b) a ACL: v15_02:123-125 deixa service_role com INSERT/UPDATE e 20260907210000:486-489 revoga tudo e reconcede so SELECT. Nenhum dos dois aparece em `columns` ou em `functions`, e e por isso que o leitor de catalogo precisou passar a coletar gatilho, indice, RLS e grant de tabela."
         }
       ],
+      "runtime_contract": {
+        "derivado_de": "backend/app/trafego/meta/read_model.py",
+        "por_que_uma_fonte_diferente": "⚠️ O verificador lia SEMPRE `meta_execucao/registro.py`, a fonte do NASCIMENTO. Com isso este perfil era reprovado por nao declarar catorze RPCs que ele nunca serviu, e — pior — `trafego_meta_persistir_snapshot`, que ele SERVE e que roda em producao, nao era cobrada de perfil nenhum. A fonte agora e declarada por perfil e o script a le daqui.",
+        "regra": "⚠️ `defined_by` e o ULTIMO arquivo do apply_order que emite um CREATE para a funcao. `trafego_meta_persistir_snapshot` e criada DUAS vezes na escada — v15_02:127 e 20260907210000:657 — e a que vale e a segunda. `verificar_perfil_schema_meta.py --runtime` recalcula isto e recusa um valor escrito a mao que discorde.",
+        "terceiro_consumidor_fora_do_backend": "n8n/volc_meta_insights_dia_d1.json:451 e :590 fazem POST em /rest/v1/rpc/trafego_meta_persistir_snapshot (gerado por n8n/gerar_flows_meta_ledger.py:53). O fluxo esta INATIVO e sem credencial, mas a assinatura e o grant deste perfil sao o contrato dele tambem: quebra-los quebra um consumidor que o `grep` no backend nao encontra.",
+        "rpcs": [
+          {
+            "name": "trafego_meta_persistir_snapshot",
+            "identity_args": "p_snapshot jsonb",
+            "defined_by": "20260907210000_meta_read_model_consistency.sql",
+            "security_definer": true,
+            "service_role_execute": true,
+            "assinatura_lida_em": "supabase/migrations/20260907210000_meta_read_model_consistency.sql:657 (`CREATE OR REPLACE FUNCTION public.trafego_meta_persistir_snapshot(p_snapshot jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public`), com o GRANT EXECUTE a service_role na linha 1288.",
+            "chamada_em": "backend/app/trafego/meta/read_model.py:347"
+          }
+        ],
+        "helpers_que_NAO_recebem_grant": [
+          {
+            "name": "trafego_meta_recusa_delete()",
+            "porque": "gatilho BEFORE DELETE (v15_01:262); roda pelo dono da tabela e e revogada de todos em v15_01:303-306. Ninguem a chama por RPC"
+          },
+          {
+            "name": "trafego_meta_recusa_remocao()",
+            "porque": "mesmo papel, para DELETE e TRUNCATE das tabelas de insight (20260907210000:459), revogada em 471-474"
+          },
+          {
+            "name": "trafego_meta_credencial_pinada()",
+            "porque": "constante IMMUTABLE lida de dentro de `trafego_meta_persistir_snapshot` (20260907210000:205). ⚠️ Um verificador que varresse o PREFIXO `trafego_meta%` marcaria estas tres como violacao num schema correto"
+          },
+          {
+            "name": "trafego_meta_cofre_declarar_ativo(text,text,text,text,text,text,text,text,text[],text[])",
+            "porque": "escritor governado chamado de dentro da RPC SECURITY DEFINER; revogada explicitamente de service_role em 20260907210000:647"
+          }
+        ]
+      },
       "rollback_files_never_in_apply": [
         {
           "file": "supabase/migrations/v15_98_meta_ads_insights_rollback.sql",
@@ -477,7 +640,10 @@
           "sha256": "e92d0d794c5ffe9349854bb10632d8af04031163a4088bc8a8269adbc647e607"
         }
       ],
-      "independent_of_meta": true
+      "independent_of_meta": true,
+      "runtime_contract_ausente": "LACUNA NOMEADA, e por isso `verificar_perfil_schema_meta.py --perfil GOOGLE_PMAX` sai com 1. Este perfil nao declara `runtime_contract`, entao NENHUMA conferencia derivada de codigo roda sobre ele. Medido: `grep -in 'create ' supabase/migrations/v12_03_pmax_observability_ledger.sql` nao devolve nada — o arquivo nao cria tabela nem funcao, so amplia o CHECK `trafego_google_coleta_tipo` da v12_01 (cabecalho do proprio arquivo). Um contrato de RPC vazio seria uma AFIRMACAO de que ninguem chama nada, e ninguem mediu isso; declarar a fonte de codigo deste perfil e trabalho de R4. Enquanto nao for declarada, a lacuna aparece na saida em vez de sumir num verde.",
+      "catalog_probe_ausente": "Mesma lacuna do outro lado: sem `catalog_probe` em degrau nenhum, `--catalogo` responde SEM_SONDA_DECLARADA em vez de NAO_APLICADO. ⚠️ Antes, zero sonda devolvia NAO_APLICADO para um catalogo COMPLETO, e o operador aplicaria por cima do que ja existe. Sondar este perfil exige ler o CHECK vivo de `trafego_google_inteligencia_coleta` — e leitura de catalogo oficial, que este pacote nao autoriza.",
+      "executor_nota": "⚠️ Diferente das 14 migrations do trilho Meta, v12_03_pmax_observability_ledger.sql NAO tem `\\set ON_ERROR_STOP on` (medido com `grep -c '\\set ON_ERROR_STOP on'` = 0). A regra `psql` deste manifesto continua valendo por prudencia, mas a JUSTIFICATIVA dela — meta-comando de barra invertida — nao se aplica a este arquivo."
     }
   ],
   "verification_rules": {
@@ -504,8 +670,8 @@
     "sequence": [
       {
         "step": "apply",
-        "detail": "v13_01 -> v15_01 -> 20260904183418, na ordem declarada",
-        "result": "APLICADA nas tres"
+        "detail": "v13_01 -> v15_01 -> 20260904183418 -> 20260907120000 -> 20260907190000, na ordem declarada. ⚠️ Sao CINCO arquivos. Esta linha dizia TRES e contradizia, dentro do mesmo arquivo, `profiles[CREATE_ONLY].apply_order` (5 degraus), `why_five_files` e a tabela de ordem do SCHEMA-RUNBOOK.md:64-70 — a mesma divergencia de listas que R0-A01 mediu, sobrevivendo dentro da propria evidencia.",
+        "result": "APLICADA nas cinco"
       },
       {
         "step": "authorization_boundary",
@@ -544,6 +710,33 @@
       "qualquer comportamento da Meta"
     ]
   },
+  "named_gaps": [
+    {
+      "id": "LACUNA-GOOGLE_PMAX-RUNTIME",
+      "onde": "profiles[GOOGLE_PMAX].runtime_contract_ausente",
+      "efeito": "`verificar_perfil_schema_meta.py --perfil GOOGLE_PMAX` sai com 1 e imprime LACUNA NOMEADA. Isto e deliberado: sucesso silencioso afirmaria uma cobertura que ninguem mediu.",
+      "fecha_quando": "R4 declarar a fonte de codigo que consome o ledger PMax em `runtime_contract.derivado_de` (e as RPCs, se houver)."
+    },
+    {
+      "id": "LACUNA-GOOGLE_PMAX-CATALOGO",
+      "onde": "profiles[GOOGLE_PMAX].catalog_probe_ausente",
+      "efeito": "`--catalogo` responde SEM_SONDA_DECLARADA para este perfil, nunca NAO_APLICADO.",
+      "fecha_quando": "Houver autorizacao para ler o CHECK vivo de `trafego_google_inteligencia_coleta` e derivar a sonda dele."
+    },
+    {
+      "id": "LACUNA-GUARDA-20260907210000-PROJECT_BINDING",
+      "onde": "profiles[META_READ_MODEL].apply_order[2].dependency_guard_gap",
+      "efeito": "A guarda de dependencia de supabase/migrations/20260907210000_meta_read_model_consistency.sql:141-147 cobra 8 das 9 tabelas de v15_01 e deixa passar um catalogo sem `trafego_meta_project_binding`. O conserto do .sql pertence a quem edita migrations; aqui a lista completa e cobrada pela sonda de catalogo do degrau v15_01.",
+      "fecha_quando": "A guarda do .sql passar a listar as nove tabelas de v15_01 (46,61,93,117,140,163,185,206,219)."
+    },
+    {
+      "id": "LACUNA-ON_ERROR_STOP-20260908000000",
+      "onde": "glob_hazard.on_error_stop_gap_medido",
+      "efeito": "supabase/migrations/20260908000000_meta_insights_escopo.sql pertence ao trilho Meta pelo nome e NAO tem `\\set ON_ERROR_STOP on`. Enquanto ele nao estiver em apply_order nenhum, e so um fato registrado; no instante em que entrar, o perfil que o incluir passa a ter um arquivo que segue depois de um erro — a metade exata do schema aplicado sem ninguem saber que o executor `psql` existe para impedir.",
+      "medido_por": "`grep -c '\\set ON_ERROR_STOP on' supabase/migrations/20260908000000_meta_insights_escopo.sql` = 0, contra `= 1` nos 14 arquivos que este manifesto declara.",
+      "fecha_quando": "O arquivo ganhar o meta-comando, ou a integracao declarar por escrito que ele nao entra em janela nenhuma."
+    }
+  ],
   "open_items_for_cp2": [
     "Ler o catalogo oficial (autorizacao propria) e classificar o perfil em NOT_APPLIED / PARTIALLY_APPLIED / ALREADY_APPLIED antes de decidir o apply.",
     "Confirmar a versao do PostgreSQL do self-hosted; o manifesto exige >= 15 e foi exercitado em 17.9.",

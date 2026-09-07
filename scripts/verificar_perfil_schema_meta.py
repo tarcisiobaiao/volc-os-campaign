@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verificador do perfil de schema CREATE_ONLY do nascimento Meta PAUSED.
+"""Verificador dos perfis de schema do trilho Meta (e do ledger PMax).
 
 ## Por que ele existe
 
@@ -18,17 +18,31 @@ a mesma. Duas listas divergem; é o que aconteceu.
                   e NENHUM rollback dentro da lista de apply. Divergência aborta
                   a janela: o que seria aplicado não é o que foi conferido.
 
-    --runtime     o manifesto cobre TODAS as RPCs que `registro.py` chama. Esta
-                  é a conferência que teria pego R0-A01 sozinha, e ela é
+    --runtime     o manifesto cobre TODAS as RPCs que o código do PERFIL chama.
+                  Esta é a conferência que teria pego R0-A01 sozinha, e ela é
                   derivada do CÓDIGO — não de uma lista escrita à mão que
-                  envelhece em silêncio.
+                  envelhece em silêncio. A fonte do código é declarada POR
+                  PERFIL em `runtime_contract.derivado_de`: o nascimento lê
+                  `meta_execucao/registro.py`, o read model lê
+                  `meta/read_model.py`. Uma fonte única para todo perfil foi o
+                  que deixou `trafego_meta_persistir_snapshot` — chamada em
+                  produção — fora de qualquer contrato.
 
-    --catalogo    classifica um catálogo VIVO por colunas, constraints,
-                  assinaturas de função e grants. Existência de tabela não
-                  distingue "CREATE_ONLY antigo" de "perfil atualizado", e foi
-                  exatamente essa confusão que o manifesto anterior carregava.
+    --catalogo    classifica um catálogo VIVO por coluna, constraint, índice,
+                  gatilho, RLS, assinatura de função e grant. Existência de
+                  tabela não distingue "CREATE_ONLY antigo" de "perfil
+                  atualizado", e foi exatamente essa confusão que o manifesto
+                  anterior carregava.
 
     --lista-apply imprime a lista canônica, para a prova SQL consumir a MESMA.
+
+## LACUNA NOMEADA não é sucesso
+
+⚠️ Quando um perfil não declara contrato de runtime, ou não declara sonda de
+catálogo, este programa DIZ ISSO e sai diferente de zero. Pular em silêncio o
+que não está declarado é o mesmo defeito de R0-A01 com outra roupa: o verde
+passaria a afirmar uma cobertura que ninguém mediu. Uma lacuna se fecha
+declarando o contrato — nunca afrouxando a conferência.
 
 ## Autoridade
 
@@ -51,12 +65,36 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 MANIFESTO = (RAIZ / "docs/closure/traffic-operational-closure-v2"
              / "SCHEMA-DEPLOY-MANIFEST.json")
-REGISTRO = RAIZ / "backend/app/trafego/meta_execucao/registro.py"
 PERFIL_PADRAO = "CREATE_ONLY"
+
+#: ⚠️ Casa as DUAS formas de chamada que existem no repositório:
+#: `self._rpc("nome"` (backend/app/trafego/meta_execucao/registro.py:136) e
+#: `self._supa.rpc("nome"` (backend/app/trafego/meta/read_model.py:347). A regex
+#: anterior só conhecia a primeira, e por isso o verificador era CEGO para
+#: `trafego_meta_persistir_snapshot` — uma RPC de produção, chamada também por um
+#: terceiro consumidor fora do backend (n8n/volc_meta_insights_dia_d1.json:451).
+#: `\b` antes do `_?` ancora no ponto do atributo e evita casar a DEFINIÇÃO
+#: (`def _rpc(self, funcao: str` — sem aspas depois do parêntese).
+PADRAO_CHAMADA_RPC = re.compile(r'\b_?rpc\(\s*"([a-z0-9_]+)"')
+
+#: `defined_by` é o ÚLTIMO arquivo do apply_order que emite um CREATE para o
+#: nome. Onze das quatorze funções do nascimento são recriadas por mais de um
+#: degrau; conferir contra o primeiro aprovaria uma assinatura já substituída.
+PADRAO_CREATE_FUNCTION = re.compile(
+    r"CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)")
 
 
 class Violacao(Exception):
     """Um fato que fecha a janela. Nunca um aviso."""
+
+
+class LacunaNomeada(Exception):
+    """Algo que o manifesto NÃO declara — e cuja ausência não pode passar calada.
+
+    Distinta de `Violacao` só na mensagem: as duas fecham a janela. A separação
+    existe para o operador saber se o conserto é corrigir um fato declarado ou
+    declarar um fato que falta.
+    """
 
 
 def _perfil(nome: str) -> dict:
@@ -121,22 +159,49 @@ def conferir_arquivos(perfil: dict) -> list[str]:
 # --runtime
 # ---------------------------------------------------------------------------
 
-def rpcs_do_runtime() -> set[str]:
-    """As RPCs que o backend REALMENTE chama, lidas do código.
+def fontes_de_rpc(perfil: dict) -> list[Path]:
+    """Os arquivos de código que ESTE perfil serve — declarados no manifesto.
 
-    ⚠️ Derivar do código é o ponto. Uma lista escrita à mão no manifesto
-    envelhece em silêncio — foi assim que duas RPCs novas ficaram de fora do
-    perfil publicado enquanto o runtime já dependia delas.
+    ⚠️ A fonte é POR PERFIL, e não uma constante do script. Enquanto ela era uma
+    constante apontando para `meta_execucao/registro.py`, dois perfis erravam ao
+    mesmo tempo: META_READ_MODEL era reprovado por não declarar RPCs do
+    nascimento (que ele não serve), e `trafego_meta_persistir_snapshot` — que
+    ele SERVE, e que roda em produção — não era cobrada de ninguém.
     """
-    fonte = REGISTRO.read_text(encoding="utf-8")
-    return set(re.findall(r'_rpc\(\s*"([a-z0-9_]+)"', fonte))
+    contrato = perfil.get("runtime_contract")
+    if not contrato:
+        raise LacunaNomeada(
+            f"o perfil {perfil['id']} não declara contrato de runtime "
+            "(`runtime_contract`): nenhuma RPC deste perfil está sendo conferida "
+            "contra o código. Declare o contrato no manifesto — a conferência "
+            "não pode ser pulada em silêncio")
+    declarado = contrato.get("derivado_de")
+    caminhos = [declarado] if isinstance(declarado, str) else list(declarado or [])
+    if not caminhos:
+        raise LacunaNomeada(
+            f"o perfil {perfil['id']} declara `runtime_contract` sem "
+            "`derivado_de`: a lista de RPCs ficaria escrita à mão, que é "
+            "exatamente a lista que envelhece em silêncio")
+    return [RAIZ / caminho for caminho in caminhos]
+
+
+def rpcs_do_runtime(perfil: dict) -> set[str]:
+    """As RPCs que o código REALMENTE chama, lidas dos arquivos do perfil."""
+    chamadas: set[str] = set()
+    for caminho in fontes_de_rpc(perfil):
+        if not caminho.exists():
+            raise Violacao(
+                f"{caminho.relative_to(RAIZ)}: declarada em "
+                "`runtime_contract.derivado_de` e AUSENTE no repositório")
+        chamadas |= set(PADRAO_CHAMADA_RPC.findall(caminho.read_text(encoding="utf-8")))
+    return chamadas
 
 
 def conferir_runtime(perfil: dict) -> list[str]:
     problemas: list[str] = []
     contrato = perfil.get("runtime_contract", {}).get("rpcs", [])
     declaradas = {rpc["name"] for rpc in contrato}
-    chamadas = rpcs_do_runtime()
+    chamadas = rpcs_do_runtime(perfil)
 
     faltando = sorted(chamadas - declaradas)
     if faltando:
@@ -148,17 +213,14 @@ def conferir_runtime(perfil: dict) -> list[str]:
             "o perfil declara RPCs que o runtime não chama: " + ", ".join(sobrando))
 
     # Toda RPC declarada precisa ser CRIADA por algum arquivo da lista de apply,
-    # e o arquivo que vale é o ÚLTIMO que a cria — não o primeiro. Onze das
-    # dezesseis funções são recriadas por mais de um arquivo da escada.
+    # e o arquivo que vale é o ÚLTIMO que a cria — não o primeiro.
     criadores: dict[str, str] = {}
     for passo in perfil["apply_order"]:
         caminho = RAIZ / passo["file"]
         if not caminho.exists():
             continue
         corpo = caminho.read_text(encoding="utf-8")
-        for nome in re.findall(
-            r"CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.([a-z0-9_]+)", corpo
-        ):
+        for nome in PADRAO_CREATE_FUNCTION.findall(corpo):
             criadores[nome] = Path(passo["file"]).name
     for rpc in contrato:
         nome = rpc["name"]
@@ -176,6 +238,51 @@ def conferir_runtime(perfil: dict) -> list[str]:
 # --catalogo
 # ---------------------------------------------------------------------------
 
+#: Cada chave de sonda e onde ela é procurada no JSON do catálogo, mais o rótulo
+#: da falta. ⚠️ Sonda com chave DESCONHECIDA é violação, não campo ignorado: um
+#: `contraints:` digitado errado passaria silenciosamente e o degrau inteiro
+#: seria dado como presente sem nada ter sido conferido.
+SONDAS: dict[str, tuple[tuple[str, ...], str]] = {
+    "relations": (("relations",), "relação ausente"),
+    "columns": (("columns",), "coluna ausente"),
+    "constraints": (("constraints",), "constraint ausente"),
+    "indexes": (("indexes",), "índice ausente"),
+    "triggers": (("triggers",), "gatilho ausente"),
+    "functions": (("functions",), "assinatura ausente"),
+    "granted_to_service_role": (("granted",), "sem EXECUTE para service_role"),
+    "grants": (("grants",), "grant ausente"),
+    "rls_enabled": (("rls", "enabled"), "sem ROW LEVEL SECURITY"),
+    "rls_forced": (("rls", "forced"), "sem FORCE ROW LEVEL SECURITY"),
+    "policies": (("rls", "policies"), "policy ausente"),
+}
+
+
+def _no_catalogo(catalogo: dict, caminho: tuple[str, ...]) -> list:
+    atual: object = catalogo
+    for chave in caminho:
+        if not isinstance(atual, dict):
+            return []
+        atual = atual.get(chave)
+    return list(atual) if isinstance(atual, list) else []
+
+
+def _assinaturas(catalogo: dict) -> list[str]:
+    """As assinaturas vivas, aceitando as duas formas que o leitor emite.
+
+    `functions` é lista de string (o contrato antigo, e o que o leitor continua
+    emitindo). `functions_detail` é a mesma coisa com retorno e `prosecdef`.
+    Aceitar as duas evita que uma troca no leitor faça o verificador aprovar um
+    catálogo que ele deixou de conseguir ler.
+    """
+    cruas = catalogo.get("functions") or []
+    if cruas and isinstance(cruas[0], dict):
+        return [item.get("signature", "") for item in cruas]
+    if cruas:
+        return list(cruas)
+    return [item.get("signature", "")
+            for item in catalogo.get("functions_detail") or []]
+
+
 #: O estado do catálogo, na ordem da escada. Ele é DERIVADO da lista de apply —
 #: não enumerado à mão. Uma sexta migration acrescenta um degrau sozinha; uma
 #: lista fixa reabriria exatamente o buraco que R0-A01 mediu.
@@ -190,52 +297,61 @@ def classificar(perfil: dict, catalogo: dict) -> tuple[str, list[str]]:
     """Diz em que degrau o catálogo está — e o que falta para o próximo.
 
     ⚠️ A sonda de cada degrau NÃO é "a tabela existe". É coluna, constraint,
-    assinatura de função e grant, porque é isso que separa "CREATE_ONLY antigo"
-    de "perfil atualizado": as duas instalações têm as mesmas três tabelas.
+    índice, gatilho, RLS, assinatura de função e grant, porque é isso que separa
+    "CREATE_ONLY antigo" de "perfil atualizado": as duas instalações têm as
+    mesmas três tabelas.
     """
+    degraus = _degraus(perfil)
+    if not degraus:
+        # ⚠️ Zero sonda NÃO é "nada aplicado". Sem sonda nenhuma o classificador
+        # devolveria NAO_APLICADO para um catálogo completo, e o operador
+        # aplicaria por cima do que já existe.
+        return "SEM_SONDA_DECLARADA", [
+            f"o perfil {perfil['id']} não declara `catalog_probe` em nenhum "
+            "degrau: não há como distinguir aplicado de ausente"]
+
     presentes: list[str] = []
     faltando: list[str] = []
-    for passo in _degraus(perfil):
-        sonda = passo["catalog_probe"]
-        ausentes = _ausentes(sonda, catalogo)
+    for passo in degraus:
+        ausentes = _ausentes(passo["catalog_probe"], catalogo)
         if not ausentes:
             presentes.append(Path(passo["file"]).name)
         else:
             faltando.extend(f"{Path(passo['file']).name}: {item}" for item in ausentes)
 
-    degraus = [Path(p["file"]).name for p in _degraus(perfil)]
-    completos = [nome for nome in degraus if nome in presentes]
+    nomes = [Path(p["file"]).name for p in degraus]
+    completos = [nome for nome in nomes if nome in presentes]
     if not completos:
         return "NAO_APLICADO", faltando
     # Um degrau presente DEPOIS de um ausente é estado parcial: alguém aplicou
     # fora de ordem, ou uma reversão parou no meio. Nunca é "atualizar o resto".
     prefixo = 0
-    for nome in degraus:
+    for nome in nomes:
         if nome in presentes:
             prefixo += 1
         else:
             break
     if prefixo != len(completos):
         return "PARCIAL_OU_DIVERGENTE", faltando
-    if prefixo == len(degraus):
+    if prefixo == len(nomes):
         return "PERFIL_ATUAL", []
-    return f"ESCADA_INCOMPLETA_ATE_{degraus[prefixo - 1]}", faltando
+    return f"ESCADA_INCOMPLETA_ATE_{nomes[prefixo - 1]}", faltando
 
 
 def _ausentes(sonda: dict, catalogo: dict) -> list[str]:
     faltas: list[str] = []
-    for coluna in sonda.get("columns", []):
-        if coluna not in catalogo.get("columns", []):
-            faltas.append(f"coluna ausente: {coluna}")
-    for constraint in sonda.get("constraints", []):
-        if constraint not in catalogo.get("constraints", []):
-            faltas.append(f"constraint ausente: {constraint}")
-    for assinatura in sonda.get("functions", []):
-        if assinatura not in catalogo.get("functions", []):
-            faltas.append(f"assinatura ausente: {assinatura}")
-    for concedida in sonda.get("granted_to_service_role", []):
-        if concedida not in catalogo.get("granted", []):
-            faltas.append(f"sem EXECUTE para service_role: {concedida}")
+    for chave, esperados in sonda.items():
+        if chave not in SONDAS:
+            faltas.append(
+                f"sonda desconhecida no manifesto: {chave} "
+                f"(conhecidas: {', '.join(sorted(SONDAS))})")
+            continue
+        caminho, rotulo = SONDAS[chave]
+        vivos = _assinaturas(catalogo) if chave == "functions" \
+            else _no_catalogo(catalogo, caminho)
+        for esperado in esperados:
+            if esperado not in vivos:
+                faltas.append(f"{rotulo}: {esperado}")
     return faltas
 
 
@@ -248,7 +364,7 @@ def conferir_contrato_no_catalogo(perfil: dict, catalogo: dict) -> list[str]:
     existe" nunca detecta.
     """
     problemas: list[str] = []
-    vivas = catalogo.get("functions", [])
+    vivas = _assinaturas(catalogo)
     for rpc in perfil.get("runtime_contract", {}).get("rpcs", []):
         assinatura = f"{rpc['name']}({rpc['identity_args']})"
         if assinatura not in vivas:
@@ -293,27 +409,46 @@ def main() -> int:
         return 0
 
     problemas: list[str] = []
+    lacunas: list[str] = []
     # Sem opção nenhuma, roda as duas conferências que não precisam de banco.
     tudo = not (opcoes.arquivos or opcoes.runtime or opcoes.catalogo)
     if opcoes.arquivos or tudo:
         problemas += conferir_arquivos(perfil)
     if opcoes.runtime or tudo:
-        problemas += conferir_runtime(perfil)
+        # ⚠️ Um perfil sem `runtime_contract` não é um perfil conferido: é um
+        # perfil cuja conferência ninguém declarou. Antes, `conferir_runtime`
+        # rodava para QUALQUER perfil contra uma fonte fixa, e META_READ_MODEL
+        # reprovava por não declarar RPCs que ele nunca serviu.
+        try:
+            problemas += conferir_runtime(perfil)
+        except LacunaNomeada as lacuna:
+            lacunas.append(str(lacuna))
+        except Violacao as violacao:
+            problemas.append(str(violacao))
     if opcoes.catalogo:
         catalogo = json.loads(Path(opcoes.catalogo).read_text(encoding="utf-8"))
         estado, faltas = classificar(perfil, catalogo)
         print(f"estado do catálogo: {estado}")
         for falta in faltas:
             print(f"   · {falta}")
-        problemas += conferir_contrato_no_catalogo(perfil, catalogo)
-        if estado != "PERFIL_ATUAL":
-            problemas.append(
-                f"o catálogo não está no perfil atual: {estado}")
+        if estado == "SEM_SONDA_DECLARADA":
+            lacunas.extend(faltas)
+        else:
+            problemas += conferir_contrato_no_catalogo(perfil, catalogo)
+            if estado != "PERFIL_ATUAL":
+                problemas.append(
+                    f"o catálogo não está no perfil atual: {estado}")
 
-    if problemas:
-        print(f"FALHA: {len(problemas)} violação(ões) do perfil", file=sys.stderr)
-        for problema in problemas:
-            print(f"   · {problema}", file=sys.stderr)
+    if problemas or lacunas:
+        if problemas:
+            print(f"FALHA: {len(problemas)} violação(ões) do perfil", file=sys.stderr)
+            for problema in problemas:
+                print(f"   · {problema}", file=sys.stderr)
+        if lacunas:
+            print(f"LACUNA NOMEADA: {len(lacunas)} conferência(s) que o manifesto "
+                  "não declara — isto NÃO é sucesso", file=sys.stderr)
+            for lacuna in lacunas:
+                print(f"   · {lacuna}", file=sys.stderr)
         return 1
     print(f"perfil {opcoes.perfil}: conferido")
     return 0
