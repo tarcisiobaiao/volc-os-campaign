@@ -40,6 +40,8 @@ from app.criativo.armazenamento import armazenamento_padrao
 from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.seguranca.identidade import Identidade, exigir_admin
 from app.services.supabase_service import SupabaseService
+from app.trafego.meta import dominio as dom
+from app.trafego.meta.adaptador import ErroDeLeituraMeta
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao import capacidades as capacidades_meta
 from app.trafego.meta_execucao.contrato import ErroDeNascimentoMeta
@@ -176,6 +178,27 @@ async def registrar(
             )
     except (ErroDeRegistroDeMidia, ErroDeNascimentoMeta) as exc:
         raise _erro(exc) from None
+    except dom.ContratoMetaInvalido:
+        # ⚠️ IRMÃ de ErroDeNascimentoMeta, não descendente — por isso escapava do
+        # except acima e virava 500 sem `codigo`, quebrando o contrato de erro
+        # sobre o qual a lane inteira é construída. O caso é banal: um handle de
+        # conta desatualizado na tela.
+        raise HTTPException(status_code=409, detail={
+            "codigo": "META_ASSET_ACCOUNT_UNKNOWN",
+            "mensagem": (
+                "esta conta não está entre as que a credencial desta sessão alcança; "
+                "recarregue a lista de contas"
+            ),
+        }) from None
+    except ErroDeLeituraMeta as exc:
+        # ⚠️ RuntimeError, e `@dataclass(frozen=True)`: ao atravessar a fronteira
+        # ASGI ela virava FrozenInstanceError e o código original sumia até do
+        # log. Traduzida aqui, como todas as outras rotas que falam com o mesmo
+        # adaptador já fazem (meta_local.py:109-111).
+        raise HTTPException(status_code=502, detail={
+            "codigo": getattr(exc, "codigo", "META_READ_FAILED"),
+            "mensagem": getattr(exc, "mensagem_segura", "a Meta não respondeu à leitura"),
+        }) from None
 
     return {
         "ok": all(item.utilizavel for item in resultados),

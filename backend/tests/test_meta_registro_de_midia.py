@@ -497,3 +497,109 @@ def test_erro_de_banco_nao_vira_500_no_registro() -> None:
         ErroDeRegistroDeMidia("META_ASSET_MASTER_NOT_FOUND", "não é sua"))
     assert convertido.status_code == 409
     assert convertido.detail["codigo"] == "META_ASSET_MASTER_NOT_FOUND"
+
+
+# ── Rodada corretiva da revisão focal: o que NÃO prova que nada nasceu ───────
+
+
+@pytest.mark.anyio
+async def test_5xx_nao_e_recusa_e_nao_pode_autorizar_reenvio() -> None:
+    """`A28`: um 502 de gateway não prova nada — o adimages pode ter nascido.
+
+    ⚠️ Antes, qualquer status >= 400 virava FALHOU. E FALHOU AUTORIZA nova
+    tentativa: o servidor reenviaria os mesmos bytes e criaria um segundo ativo
+    na biblioteca do cliente.
+    """
+    graph = _GraphFake(status=502, resposta={"mensagem": "bad gateway"})
+    livro = _LivroFake()
+    resultados = await _registrar(graph, livro)
+    assert livro.falhados == []
+    assert livro.ambiguos == ["reserva-1"]
+    assert resultados[0].estado == ESTADO_AMBIGUO
+    assert resultados[0].codigo == "META_ASSET_REGISTRATION_INCONCLUSIVE"
+
+
+@pytest.mark.anyio
+async def test_4xx_sem_objeto_de_erro_do_provedor_tambem_e_ambiguo() -> None:
+    """"Recusa explícita" é 4xx COM o objeto de erro da Meta, não só o status."""
+    graph = _GraphFake(status=404, resposta={"texto": "not found"})
+    livro = _LivroFake()
+    resultados = await _registrar(graph, livro)
+    assert livro.falhados == []
+    assert resultados[0].estado == ESTADO_AMBIGUO
+
+
+@pytest.mark.anyio
+async def test_queda_de_conexao_depois_do_post_vira_ambiguo() -> None:
+    """Antes, só TimeoutException era capturado; o resto travava a reserva."""
+    class _Cai(_GraphFake):
+        async def post(self, url: str, *, headers=None, files=None, **_: Any):
+            self.posts.append((url, dict(headers or {})))
+            raise httpx.ConnectError("conexao caiu")
+
+    graph, livro = _Cai(), _LivroFake()
+    resultados = await _registrar(graph, livro)
+    assert livro.ambiguos == ["reserva-1"]
+    assert resultados[0].estado == ESTADO_AMBIGUO
+    assert resultados[0].codigo == "META_ASSET_REGISTRATION_TRANSPORT"
+
+
+@pytest.mark.anyio
+async def test_corpo_nao_json_nao_deixa_a_reserva_pendurada() -> None:
+    class _Lixo(_GraphFake):
+        async def post(self, url: str, *, headers=None, files=None, **_: Any):
+            self.posts.append((url, dict(headers or {})))
+
+            class _R:
+                status_code = 200
+
+                def json(self):
+                    raise ValueError("nao e json")
+
+            return _R()
+
+    graph, livro = _Lixo(), _LivroFake()
+    resultados = await _registrar(graph, livro)
+    assert livro.ambiguos == ["reserva-1"]
+    assert resultados[0].estado == ESTADO_AMBIGUO
+
+
+@pytest.mark.anyio
+async def test_nenhuma_saida_deixa_a_reserva_sem_fechamento() -> None:
+    """A invariante que amarra as quatro provas acima."""
+    cenarios = [
+        _GraphFake(),                                        # sucesso
+        _GraphFake(status=400, resposta={"error": {"m": 1}}),  # recusa explícita
+        _GraphFake(status=502, resposta={}),                  # inconclusivo
+        _GraphFake(estourar=True),                            # timeout
+    ]
+    for graph in cenarios:
+        livro = _LivroFake()
+        await _registrar(graph, livro)
+        fechamentos = len(livro.concluidos) + len(livro.ambiguos) + len(livro.falhados)
+        assert fechamentos == 1, f"{graph.__class__.__name__} deixou a reserva sem fechamento"
+
+
+def test_conta_fora_do_alcance_do_token_vira_409_nomeado_e_nao_500(monkeypatch) -> None:
+    """Handle de conta desatualizado é caso banal; não pode virar 500 sem código."""
+    from app.trafego.meta import dominio as dom
+
+    monkeypatch.setattr(meta_local.sys, "platform", "darwin")
+    monkeypatch.setenv("META_UPLOAD_ASSET_ENABLED", "metaacct_exemplo")
+    monkeypatch.setattr(trafego_meta_ativos, "_credencial_salva", lambda *_: _Credencial())
+
+    async def _pecas(refs, *, ator):
+        return [_peca()]
+
+    async def _conta(ref, segredo):
+        raise dom.ContratoMetaInvalido("referencia opaca Meta desconhecida")
+
+    monkeypatch.setattr(trafego_meta_ativos, "_carregar_pecas", _pecas)
+    monkeypatch.setattr(trafego_meta_ativos, "_conta_externa_da", _conta)
+    resposta = _app().post("/api/trafego/meta/ativos/registrar", json=_pedido())
+    assert resposta.status_code == 409
+    assert resposta.json()["detail"]["codigo"] == "META_ASSET_ACCOUNT_UNKNOWN"
+
+
+class _Credencial:
+    token = "token-meta-falso-seguro"

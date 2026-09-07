@@ -508,6 +508,13 @@ async def _catalogo(quem: Identidade, metodo: str, *args: Any, **kwargs: Any) ->
             # Referência que não pertence a esta credencial. 404, e a mesma
             # resposta para "não existe" e "não é sua".
             raise HTTPException(status_code=404, detail=str(exc)) from None
+        except ErroDeLeituraMeta as exc:
+            # ⚠️ Sem isto a rota devolvia 500 genérico quando a Meta recusava o
+            # token — perdendo exatamente a causa que a rota IRMÃ deste mesmo
+            # arquivo (`_preflight_com_token`) já entrega ao operador.
+            raise _erro_meta(
+                {"error": {"message": exc.mensagem_segura, "code": exc.codigo}}, 502
+            ) from None
 
 
 @router.post("/catalogos/mensuracao")

@@ -501,3 +501,40 @@ def test_a_rota_da_ficha_nao_cria_nem_valida_remotamente() -> None:
     # A ficha é um documento; ela não ganhou uma rota de execução irmã.
     assert all("canario/criar" not in path for path in paths)
     assert all("canario/executar" not in path for path in paths)
+
+
+def test_ficha_em_abo_nao_mostra_o_orcamento_de_um_conjunto_como_o_do_pedido() -> None:
+    """A ficha é o documento sobre o qual alguém assina — o número tem de ser o certo.
+
+    ⚠️ Antes, `conjuntos[0].orcamento` fazia a ficha pedir autorização para o
+    orçamento do PRIMEIRO conjunto enquanto o plano autorizava a soma de todos.
+    """
+    corpo = _corpo()
+    corpo["adsets"].append({
+        "adset_key": "segundo", "name": "Segundo", "start_time": INICIO,
+        "audience": {"mode": "BROAD", "geo": {"countries": ["BR"]}, "expansion": False},
+        "budget": {"nivel": "ADSET", "periodo": "DAILY", "amount_minor": 2000},
+    })
+    corpo["ads"].append({
+        "variation_key": "v2", "adset_key": "segundo", "asset_ref": "metaasset_exemplo",
+        "creative_name": "C2", "ad_name": "A2", "message": "m", "headline": "h",
+        "description": "d",
+    })
+    plano = trafego_meta_validacao._plano_v2_do_pedido(
+        trafego_meta_validacao.PedidoPlanoMetaV2.model_validate(corpo))
+    orcamento = c2.ficha_de_canario(plano, _compilado_falso())["pedido"]["orcamento"]
+    assert orcamento["escopo"] == "CONJUNTOS_ABO"
+    assert orcamento["total_minor"] == 3000  # 1000 + 2000, não 1000
+    assert len(orcamento["por_conjunto"]) == 2
+    assert "soma de 2 conjunto" in orcamento["rotulo_do_total"]
+
+
+def test_ficha_em_cbo_rotula_o_escopo_da_verba() -> None:
+    corpo = _corpo(
+        campaign_budget={"nivel": "CAMPAIGN", "periodo": "DAILY", "amount_minor": 5000})
+    corpo["adsets"][0].pop("budget")
+    plano = trafego_meta_validacao._plano_v2_do_pedido(
+        trafego_meta_validacao.PedidoPlanoMetaV2.model_validate(corpo))
+    orcamento = c2.ficha_de_canario(plano, _compilado_falso())["pedido"]["orcamento"]
+    assert orcamento["escopo"] == "CAMPANHA_CBO"
+    assert orcamento["amount_minor"] == 5000

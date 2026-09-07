@@ -297,22 +297,68 @@ class RegistradorDeMidiaMeta:
                 ),
                 codigo="META_ASSET_REGISTRATION_TIMEOUT",
             )
-
-        if resposta.status_code >= 400:
-            # Recusa EXPLÍCITA da Meta é a única prova de que nada nasceu.
-            await self._livro.falhar(
-                reserva_ref=reserva_ref,
-                codigo="META_ASSET_UPLOAD_REJECTED",
-                claim_token=token,
-            )
+        except httpx.HTTPError:
+            # ⚠️ QUALQUER falha de transporte depois do POST é ambígua, não é
+            # fracasso. Antes só o timeout era capturado, e uma queda de conexão
+            # atravessava `_registrar_uma`, atravessava a rota e deixava a
+            # reserva pendurada em DESPACHAR — travando aqueles bytes naquela
+            # conta sem nenhum recibo dizendo por quê.
+            await self._livro.marcar_ambiguo(reserva_ref=reserva_ref, claim_token=token)
             return ResultadoDoRegistro(
                 master_ref=peca.master_ref,
-                estado=ESTADO_RECUSADO,
-                motivo="a Meta recusou o registro desta peça",
-                codigo="META_ASSET_UPLOAD_REJECTED",
+                estado=ESTADO_AMBIGUO,
+                motivo=(
+                    "a conexão caiu depois do envio; a peça pode ter sido registrada. "
+                    "Reconcilie por leitura — reenviar duplicaria."
+                ),
+                codigo="META_ASSET_REGISTRATION_TRANSPORT",
             )
 
-        image_hash = _hash_da_resposta(resposta.json(), nome=peca.nome)
+        # ⚠️ `resposta.json()` PRECISA de guarda. Um 200 com corpo não-JSON
+        # levantaria ValueError aqui e deixaria a reserva pendurada — o mesmo
+        # dano da queda de conexão, por um caminho diferente.
+        try:
+            corpo = resposta.json()
+        except (ValueError, TypeError):
+            corpo = {}
+
+        if resposta.status_code >= 400:
+            # ⚠️ SÓ A RECUSA EXPLÍCITA DA META prova que nada nasceu, e "explícita"
+            # é 4xx COM objeto de erro do provedor. Um 5xx não prova nada: o
+            # multipart já foi encaminhado, e o `adimages` pode ter nascido atrás
+            # de um gateway que devolveu 502. Tratar isso como FALHOU era pior do
+            # que parecer, porque FALHOU AUTORIZA nova tentativa — o servidor
+            # reenviaria os mesmos bytes e criaria um segundo ativo na conta do
+            # cliente.
+            recusa_do_provedor = (
+                400 <= resposta.status_code < 500
+                and isinstance(corpo, Mapping)
+                and isinstance(corpo.get("error"), Mapping)
+            )
+            if recusa_do_provedor:
+                await self._livro.falhar(
+                    reserva_ref=reserva_ref,
+                    codigo="META_ASSET_UPLOAD_REJECTED",
+                    claim_token=token,
+                )
+                return ResultadoDoRegistro(
+                    master_ref=peca.master_ref,
+                    estado=ESTADO_RECUSADO,
+                    motivo="a Meta recusou o registro desta peça",
+                    codigo="META_ASSET_UPLOAD_REJECTED",
+                )
+            await self._livro.marcar_ambiguo(reserva_ref=reserva_ref, claim_token=token)
+            return ResultadoDoRegistro(
+                master_ref=peca.master_ref,
+                estado=ESTADO_AMBIGUO,
+                motivo=(
+                    f"a Meta respondeu {resposta.status_code} sem recusa explícita; "
+                    "a peça pode ter sido registrada. Reconcilie por leitura."
+                ),
+                codigo="META_ASSET_REGISTRATION_INCONCLUSIVE",
+            )
+
+        image_hash = _hash_da_resposta(corpo, nome=peca.nome)
         if image_hash is None:
             # A Meta respondeu 200 e não deu para achar o hash. NÃO é sucesso e
             # NÃO é fracasso: o ativo provavelmente existe e nós não sabemos o

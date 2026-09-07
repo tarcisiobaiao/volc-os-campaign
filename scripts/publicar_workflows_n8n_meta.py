@@ -108,6 +108,23 @@ def credencial(chave: str) -> tuple[str, str]:
 # ────────────────────────────────────────────────────────────────── cliente ──
 
 
+class _SemRedirect(urllib.request.HTTPRedirectHandler):
+    """Recusa seguir redirect. A API key viaja num cabeçalho.
+
+    ⚠️ `urlopen` segue redirects por padrão, e `HTTPRedirectHandler` copia TODOS
+    os cabeçalhos (menos content-length/content-type) para a URL nova — sem
+    checar se o host mudou. Um 302 da instância, ou um proxy mal configurado no
+    caminho, entregaria `X-N8N-API-KEY` a um terceiro. Aqui o redirect vira erro
+    visível em vez de vazamento silencioso.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
+        raise urllib.error.HTTPError(
+            req.full_url, code,
+            f"redirect recusado para {newurl!r}: a chave da API não acompanha redirect",
+            headers, fp)
+
+
 class ClienteN8n:
     def __init__(self, base: str, chave: str) -> None:
         self.base = base.rstrip("/")
@@ -122,7 +139,7 @@ class ClienteN8n:
         if corpo is not None:
             req.add_header("Content-Type", "application/json")
         try:
-            with urllib.request.urlopen(req, timeout=TEMPO_LIMITE) as r:
+            with urllib.request.build_opener(_SemRedirect).open(req, timeout=TEMPO_LIMITE) as r:
                 return json.loads(r.read() or b"null")
         except urllib.error.HTTPError as e:
             # ⚠️ O CORPO DO ERRO NÃO É IMPRESSO. Uma resposta de erro da API pode

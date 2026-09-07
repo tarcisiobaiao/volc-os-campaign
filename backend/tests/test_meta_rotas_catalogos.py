@@ -145,3 +145,20 @@ def test_as_rotas_de_catalogo_nao_escrevem_nada() -> None:
         assert set(rota.methods) == {"POST"}  # POST por causa do corpo, não por escrever
         for proibido in ("criar", "registrar", "persistir", "ativar", "aprovar"):
             assert proibido not in rota.path
+
+
+def test_recusa_da_meta_no_catalogo_vira_502_com_causa_e_nao_500(monkeypatch) -> None:
+    """A rota irmã deste mesmo arquivo já entregava a causa; o catálogo não.
+
+    ⚠️ Um 500 genérico faz o operador procurar defeito no servidor quando a
+    verdade é "a Meta recusou o token".
+    """
+    from app.trafego.meta.adaptador import ErroDeLeituraMeta
+
+    _dublar(monkeypatch, catalogo_de_publicos=ErroDeLeituraMeta(
+        "META_TOKEN_INVALID", "a Meta recusou a credencial", False))
+    resposta = _cliente().post(
+        "/api/trafego/meta/local/catalogos/publicos",
+        json={"referencia_opaca": "metaacct_exemplo01"})
+    assert resposta.status_code == 502
+    assert resposta.status_code != 500

@@ -953,10 +953,31 @@ def ficha_de_canario(
             f"plano tem {len(conjuntos)} conjunto(s) e {total_anuncios} anúncio(s)"
         )
 
-    orcamento = (
-        plano.orcamento_campanha if plano.orcamento_e_da_campanha
-        else conjuntos[0].orcamento
-    )
+    # ⚠️ Em ABO com N conjuntos, o orçamento do PEDIDO não é o do primeiro
+    # conjunto. `conjuntos[0].orcamento` faria a ficha pedir autorização para
+    # R$50/dia enquanto o plano autoriza R$150/dia — e a ficha é, pelo próprio
+    # contrato, o documento sobre o qual alguém assina.
+    if plano.orcamento_e_da_campanha:
+        orcamento: Mapping[str, Any] | None = {
+            "escopo": "CAMPANHA_CBO",
+            "nivel": plano.orcamento_campanha.nivel,
+            "periodo": plano.orcamento_campanha.periodo,
+            "amount_minor": plano.orcamento_campanha.amount_minor,
+            "currency": plano.orcamento_campanha.currency,
+        }
+    else:
+        por_conjunto = [
+            {"adset_key": c.adset_key, "amount_minor": c.orcamento.amount_minor,
+             "periodo": c.orcamento.periodo, "currency": c.orcamento.currency}
+            for c in conjuntos if c.orcamento is not None
+        ]
+        orcamento = {
+            "escopo": "CONJUNTOS_ABO",
+            "por_conjunto": por_conjunto,
+            "total_minor": sum(item["amount_minor"] for item in por_conjunto),
+            "rotulo_do_total": (
+                f"soma de {len(por_conjunto)} conjunto(s) no mesmo período"),
+        }
     return {
         "documento": "CANARY_AUTHORIZATION_REQUEST",
         "estado": "CANARY_AUTHORIZATION_REQUIRED",
@@ -972,12 +993,7 @@ def ficha_de_canario(
             "otimizacao": plano.receita.optimization_goal,
             "destino_url": plano.destination_url,
             "peca_refs": list(plano.asset_refs),
-            "orcamento": None if orcamento is None else {
-                "nivel": orcamento.nivel,
-                "periodo": orcamento.periodo,
-                "amount_minor": orcamento.amount_minor,
-                "currency": orcamento.currency,
-            },
+            "orcamento": orcamento,
             "conjuntos": len(conjuntos),
             "anuncios": total_anuncios,
             "estado_ao_nascer": "PAUSED",
