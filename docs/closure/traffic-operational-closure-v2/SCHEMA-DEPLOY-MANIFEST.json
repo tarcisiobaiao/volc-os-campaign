@@ -402,8 +402,8 @@
         {
           "ordem": 4,
           "file": "supabase/migrations/20260907210000_meta_read_model_consistency.sql",
-          "sha256": "ab58e06070f6fdfa448988f7ecce2c912976ee33de9223fd9883061fe521f9bf",
-          "lines": 1385,
+          "sha256": "2644c37553abffcd4cd7234d90225f96cfcb3329b54ff5449e058967d2049a3f",
+          "lines": 1397,
           "depends_on": [
             "v15_02_meta_ads_insights.sql"
           ],
@@ -431,7 +431,7 @@
         },
         {
           "file": "supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql",
-          "sha256": "ffa7f3bb92c21c60406c89b1c21731cf09afc257f1683354c10885ff97b7459e"
+          "sha256": "48a93d1b58af0b1252c1439bad332336a3f72fe7abc72972d0496806b8be146e"
         }
       ],
       "not_a_create_only_dependency": "v15_02 nao e citada por nenhuma guarda do CREATE_ONLY. Exigi-la antes do canario faria o nascimento esperar o dashboard, o que o MASTER-SPEC recusa explicitamente (releases.R0.note).",

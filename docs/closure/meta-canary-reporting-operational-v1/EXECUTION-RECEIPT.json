@@ -121,11 +121,6 @@
       "isolamento": "local"
     },
     {
-      "gate": "perfil de schema",
-      "resultado": "CREATE_ONLY conferido; META_READ_MODEL --arquivos conferido",
-      "isolamento": "local"
-    },
-    {
       "gate": "TypeScript",
       "resultado": "0 erros",
       "isolamento": "local"
@@ -145,6 +140,12 @@
       "resultado": "1762 passaram, 15 falharam em 5 arquivos",
       "isolamento": "jsdom",
       "nota": "os 5 arquivos (inventario/{onze-estados,inventario-campanhas,achados-da-auditoria,projecao-de-atencao} e work-road/qg-logic) nao importam nada do delta e nao foram modificados aqui."
+    },
+    {
+      "gate": "perfil de schema",
+      "resultado": "CREATE_ONLY conferido; META_READ_MODEL conferido (--arquivos)",
+      "isolamento": "local",
+      "nota": "A primeira gravacao do manifesto usou checksums calculados ANTES de tres correcoes na migration (completude herdada, fuso no grao unico, cabecalho do rollback). O proprio gate pegou a divergencia — 'sha256 diverge — manifesto ab58e060…, arquivo 2644c375…' — e os valores foram recalculados. E exatamente para isso que a disciplina de checksum existe: um manifesto que descreve um arquivo que ja mudou guiaria uma janela de CP2 para o arquivo errado."
     }
   ],
   "counter_proofs": [
