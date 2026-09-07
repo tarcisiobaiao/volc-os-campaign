@@ -478,12 +478,18 @@ BEGIN
   SELECT * INTO v_step FROM public.trafego_meta_create_step
    WHERE step_id = p_step_ref FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'META_STEP_NOT_FOUND'; END IF;
-  IF v_step.state <> 'IN_FLIGHT' THEN RAISE EXCEPTION 'META_STEP_CANNOT_FAIL'; END IF;
 
   -- ⚠️ FALHAR E A ESCRITA MAIS PERIGOSA DE TODAS para um trabalhador cercado.
   -- FAILED e o unico estado que declara "nada nasceu", e ele LIBERA o plano
   -- para nova aprovacao. Uma autoridade velha nunca pode emiti-lo.
+  --
+  -- ⚠️ E A CERCA VEM ANTES DO ESTADO, pela mesma razao que em `close_step`. Um
+  -- passo ja promovido a AMBIGUOUS responderia META_STEP_CANNOT_FAIL, e essa
+  -- frase manda o chamador para o tratamento de erro generico — onde o id que
+  -- ele tem na mao se perde. "Voce foi cercado" e a unica resposta que o leva
+  -- ao caminho da OBSERVACAO.
   PERFORM public.trafego_meta_exigir_claim_vigente(v_step, p_claim_token);
+  IF v_step.state <> 'IN_FLIGHT' THEN RAISE EXCEPTION 'META_STEP_CANNOT_FAIL'; END IF;
 
   UPDATE public.trafego_meta_create_step
      SET state = 'FAILED', error_code = p_error_code,

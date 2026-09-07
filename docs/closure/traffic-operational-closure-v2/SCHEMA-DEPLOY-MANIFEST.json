@@ -21,7 +21,11 @@
     "database": "r0_create_only",
     "disposable": true,
     "connected_to_official": false,
-    "roles_created_for_the_test": ["anon", "authenticated", "service_role"],
+    "roles_created_for_the_test": [
+      "anon",
+      "authenticated",
+      "service_role"
+    ],
     "note": "Cluster criado do zero com initdb, sem rede externa (listen_addresses=127.0.0.1). Pode ser destruido inteiro; nao contem dado real."
   },
   "glob_hazard": {
@@ -29,7 +33,10 @@
     "directory_file_count": 50,
     "sql_file_count": 48,
     "rollback_file_count": 20,
-    "non_sql_files": ["README.md", "PLANO-v11_03.md"],
+    "non_sql_files": [
+      "README.md",
+      "PLANO-v11_03.md"
+    ],
     "reason": "20 dos 48 arquivos SQL do diretorio sao ROLLBACKS que dropam tabelas e funcoes. Um glob ordenado alfabeticamente executa apply e rollback na mesma passada; um glob por timestamp mistura series independentes. Alem disso todo arquivo comeca com a meta-instrucao psql `\\set ON_ERROR_STOP on`, que exige o executor `psql` — um driver que envie o arquivo como SQL puro falha na primeira linha ou, pior, ignora o ON_ERROR_STOP e segue depois de um erro.",
     "required_executor": "psql (as migrations usam meta-comandos de barra invertida)",
     "forbidden_in_apply": "Qualquer arquivo listado em rollback_files. O apply nunca inclui rollback."
@@ -37,15 +44,17 @@
   "profiles": [
     {
       "id": "CREATE_ONLY",
-      "purpose": "Autoridade duravel do nascimento Meta PAUSED: recibo de validate_only, aprovacao e passos da saga. E o unico perfil que R0/R1 exigem.",
-      "local_cycle_result": "PASS",
+      "purpose": "Autoridade duravel do nascimento Meta PAUSED: recibo de validate_only, aprovacao com plano congelado, passos da saga, recuperacao por leitura e a cerca versionada do trabalhador. E o unico perfil que R0/R1 exigem — e ele tem CINCO arquivos, nao tres.",
+      "local_cycle_result": "PASS_APOS_CORRECAO_R0",
       "apply_order": [
         {
           "ordem": 1,
           "file": "supabase/migrations/v13_01_cofre_de_ativos.sql",
           "sha256": "786d71f134cc89c553709243ff0fc66a6ac54a70e140d08b792850ae4d7575e1",
           "lines": 2345,
-          "provides": ["public.cofre_ativo"],
+          "provides": [
+            "public.cofre_ativo"
+          ],
           "why_required": "Guarda de v15_01 exige `to_regclass('public.cofre_ativo')` nao nulo.",
           "depends_on": [],
           "skip_if": "public.cofre_ativo ja existe no catalogo oficial — nesse caso este arquivo NAO deve ser reaplicado."
@@ -68,7 +77,9 @@
             "public.trafego_meta_recusa_delete()"
           ],
           "why_required": "Guarda do CREATE_ONLY exige `to_regclass('public.trafego_meta_ad_account')` nao nulo.",
-          "depends_on": ["v13_01_cofre_de_ativos.sql"],
+          "depends_on": [
+            "v13_01_cofre_de_ativos.sql"
+          ],
           "skip_if": "As nove tabelas ja existem — a propria guarda de v15_01 aborta com 'ja parece aplicada'."
         },
         {
@@ -93,31 +104,149 @@
             "public.trafego_meta_create_receipt(uuid)"
           ],
           "why_required": "E o perfil.",
-          "depends_on": ["v15_01_meta_ads_read_model.sql"],
-          "skip_if": "As tres tabelas ja existem — a guarda aborta com 'ja parece aplicado; rode o rollback correspondente'."
+          "depends_on": [
+            "v15_01_meta_ads_read_model.sql"
+          ],
+          "skip_if": "As tres tabelas ja existem — a guarda aborta com 'ja parece aplicado; rode o rollback correspondente'.",
+          "catalog_probe": {
+            "columns": [
+              "trafego_meta_create_step.state",
+              "trafego_meta_create_approval.plan_sha256"
+            ],
+            "constraints": [
+              "trafego_meta_create_step_shape",
+              "trafego_meta_create_approval_manifesto"
+            ],
+            "functions": [
+              "trafego_meta_create_prepare_step(p_plan_sha256 text, p_approval_id uuid, p_actor_id text, p_step_name text, p_payload_sha256 text)"
+            ],
+            "granted_to_service_role": [
+              "trafego_meta_create_receipt(p_approval_id uuid)"
+            ]
+          }
+        },
+        {
+          "ordem": 4,
+          "file": "supabase/migrations/20260907120000_meta_recovery_snapshot.sql",
+          "sha256": "26b031da6847fdefc2d29bdfc7e9b49e7c9580f27db2951d656865c76a9920c5",
+          "lines": 527,
+          "provides": [
+            "public.trafego_meta_create_approval.compiled_plan",
+            "public.trafego_meta_create_approval.compiler_version",
+            "public.trafego_meta_create_approval.snapshot_sha256",
+            "public.trafego_meta_create_step.readback_at",
+            "public.trafego_meta_create_step.readback_evidence",
+            "public.trafego_meta_create_approve(text,text,text,bigint,text,timestamptz,text[],uuid,integer,boolean,jsonb,jsonb,jsonb,text,text)",
+            "public.trafego_meta_create_reclaim_orphan(uuid,integer)",
+            "public.trafego_meta_create_record_readback(uuid,jsonb,text)"
+          ],
+          "why_required": "O runtime grava e le o plano congelado (`registro.aprovar` manda 15 argumentos) e promove o orfao IN_FLIGHT. Sem este arquivo, `trafego_meta_create_approve` resolve so na aridade antiga e a aprovacao para em PGRST202 — depois da janela aberta.",
+          "depends_on": [
+            "20260904183418_meta_create_paused_executor.sql"
+          ],
+          "skip_if": "A coluna `compiled_plan` ja existe — a propria guarda aborta com 'ja parece aplicado'.",
+          "catalog_probe": {
+            "columns": [
+              "trafego_meta_create_approval.compiled_plan",
+              "trafego_meta_create_step.readback_evidence"
+            ],
+            "constraints": [
+              "trafego_meta_create_approval_snapshot_bundle",
+              "trafego_meta_create_step_readback_evidence"
+            ],
+            "functions": [
+              "trafego_meta_create_reclaim_orphan(p_step_ref uuid, p_min_age_seconds integer)"
+            ],
+            "granted_to_service_role": [
+              "trafego_meta_create_reclaim_orphan(p_step_ref uuid, p_min_age_seconds integer)"
+            ]
+          }
+        },
+        {
+          "ordem": 5,
+          "file": "supabase/migrations/20260907190000_meta_worker_fencing.sql",
+          "sha256": "24e6d667aa8b1bb8008451eacfe8a4ab9022c524334a4ecdd974d9816bdebf09",
+          "lines": 1057,
+          "provides": [
+            "public.trafego_meta_create_step.claim_token",
+            "public.trafego_meta_create_step.claim_generation",
+            "public.trafego_meta_create_step.observed_external_ids",
+            "public.trafego_meta_exigir_claim_vigente(trafego_meta_create_step,uuid)",
+            "public.trafego_meta_create_close_step(uuid,text,uuid)",
+            "public.trafego_meta_create_mark_ambiguous(uuid,uuid)",
+            "public.trafego_meta_create_fail_step(uuid,text,uuid)",
+            "public.trafego_meta_create_record_readback(uuid,jsonb,text,uuid)",
+            "public.trafego_meta_create_flag_readback(uuid,text,uuid)",
+            "public.trafego_meta_create_record_fenced_dispatch(uuid,uuid,text)",
+            "public.trafego_meta_create_conclude_by_recovery(uuid,text,jsonb,text)"
+          ],
+          "why_required": "R0-A06: a promocao por idade nao cerca ninguem. O runtime passou a carregar `claim_token` em toda conclusao, e chama duas RPCs que so este arquivo cria (`record_fenced_dispatch`, `conclude_by_recovery`). Sem ele o despacho falha na primeira conclusao de passo.",
+          "depends_on": [
+            "20260907120000_meta_recovery_snapshot.sql"
+          ],
+          "skip_if": "A coluna `claim_token` ja existe — a propria guarda aborta com 'ja parece aplicado'.",
+          "catalog_probe": {
+            "columns": [
+              "trafego_meta_create_step.claim_token",
+              "trafego_meta_create_step.observed_external_ids"
+            ],
+            "constraints": [
+              "trafego_meta_create_step_claim_bundle",
+              "trafego_meta_create_step_observed_ids"
+            ],
+            "functions": [
+              "trafego_meta_create_close_step(p_step_ref uuid, p_external_object_id text, p_claim_token uuid)",
+              "trafego_meta_create_conclude_by_recovery(p_step_ref uuid, p_external_object_id text, p_evidence jsonb, p_error_code text)",
+              "trafego_meta_create_record_fenced_dispatch(p_step_ref uuid, p_claim_token uuid, p_external_object_id text)"
+            ],
+            "granted_to_service_role": [
+              "trafego_meta_create_close_step(p_step_ref uuid, p_external_object_id text, p_claim_token uuid)"
+            ]
+          }
         }
       ],
       "rollback_files_never_in_apply": [
         {
+          "file": "supabase/migrations/20260907190100_meta_worker_fencing_rollback.sql",
+          "sha256": "286070508afe71c2e6006267d4672a8ad6fcb41b789853d0ae8eaacdf95e6f6c",
+          "ordem_de_reversao": 1,
+          "drops": "as colunas de cerca e as assinaturas com claim_token; recria as anteriores",
+          "recusa_se": "existir qualquer external_object_id ou observed_external_ids — a prova de que um objeto pode existir na conta"
+        },
+        {
+          "file": "supabase/migrations/20260907120100_meta_recovery_snapshot_rollback.sql",
+          "sha256": "eac0dc851df267f34d69cc295e8067fc54b9a0bc68fdc5e44a8311f1b8c061ba",
+          "ordem_de_reversao": 2,
+          "drops": "compiled_plan/readback_at/readback_evidence e as assinaturas do snapshot",
+          "recusa_se": "a cerca (claim_token) ainda estiver aplicada — reverter fora de ordem criaria uma segunda sobrecarga de flag_readback e dropparia colunas que as funcoes da cerca leem"
+        },
+        {
           "file": "supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql",
           "sha256": "898e6f9dacb317647c319461734d5f25c6f358b9dc20a26164e93005307671a2",
-          "drops": "as 3 tabelas e as 11 funcoes do perfil"
+          "ordem_de_reversao": 3,
+          "drops": "as 3 tabelas e as funcoes do perfil"
         },
         {
           "file": "supabase/migrations/v15_99_meta_ads_read_model_rollback.sql",
           "sha256": "c8a0cf86a67babf708f490c74e737f9c91c8d803d187c2d947cb76a49237eb52",
+          "ordem_de_reversao": 4,
           "drops": "as 9 tabelas do read model Meta"
         },
         {
           "file": "supabase/migrations/v13_99_cofre_de_ativos_rollback.sql",
           "sha256": "329867f92cfde9d5353e21f2b72d320ed3d9ae36da4c20edd6bfbbc3d9ce6480",
+          "ordem_de_reversao": 5,
           "drops": "o Cofre de Ativos inteiro"
         }
       ],
       "preconditions": {
         "role": "postgres ou supabase_admin (a guarda de cada arquivo recusa qualquer outro `current_user`)",
         "server_version_num": ">= 150000",
-        "supabase_roles_present": ["anon", "authenticated", "service_role"],
+        "supabase_roles_present": [
+          "anon",
+          "authenticated",
+          "service_role"
+        ],
         "extensions": "nenhuma extensao adicional exigida; `gen_random_uuid()` e `hashtextextended()` sao nativos do PG >= 13",
         "measured_on": "PostgreSQL 17.9 descartavel — aplicou sem instalar extensao nenhuma"
       },
@@ -125,6 +254,123 @@
         "META_CREATE_PAUSED_ENABLED": "permanece fechada. Aplicar schema nao autoriza criar.",
         "META_CREATE_LEDGER_WRITE_ENABLED": "permanece fechada ate autorizacao propria.",
         "META_VALIDATE_ONLY_ENABLED": "irrelevante para o schema; nunca reutilizar como licenca de criacao."
+      },
+      "why_five_files": "R0-A01: o perfil publicado parava em 20260904183418 enquanto o runtime ja chamava a assinatura estendida de approve e as RPCs de recuperacao/read-back que so 20260907120000 cria — e, depois desta rodada, tambem as de cerca que so 20260907190000 cria. Seguir o runbook antigo deixaria o schema aplicado e o codigo sem conseguir usa-lo. A lista aqui e a unica: `scripts/verificar_perfil_schema_meta.py` e `prova-sql-local.sh` leem ESTE arquivo.",
+      "runtime_contract": {
+        "derivado_de": "backend/app/trafego/meta_execucao/registro.py",
+        "regra": "⚠️ `defined_by` e o ULTIMO arquivo do apply_order que emite um CREATE para a funcao — nao o primeiro. Onze das dezesseis funcoes sao recriadas por mais de um degrau da escada, e conferir contra o primeiro aprovaria uma assinatura que ja foi substituida. `verificar_perfil_schema_meta.py --runtime` recalcula isto e recusa um valor escrito a mao que discorde.",
+        "resolucao_postgrest": "Uma candidata resolve quando as chaves do corpo sao um SUBCONJUNTO dos parametros e todo parametro omitido tem DEFAULT. Por isso `flag_readback` e chamada com dois argumentos e tem tres, e `record_readback` e chamada com quatro e tem dois com default: igualdade exata de nomes de argumento reprovaria um schema correto.",
+        "sobrecarga_e_fatal": "Duas assinaturas vivas com o mesmo nome deixam o PostgREST sem conseguir escolher (PGRST203) e NENHUMA das duas responde. O verificador recusa homonimas.",
+        "rpcs": [
+          {
+            "name": "trafego_meta_create_record_validation",
+            "identity_args": "p_plan_sha256 text, p_account_ref text, p_actor_id text, p_coverage text, p_steps_validated text[], p_steps_pending text[], p_operations_total integer, p_objects_created integer",
+            "defined_by": "20260904183418_meta_create_paused_executor.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_validation_lookup",
+            "identity_args": "p_validation_id uuid",
+            "defined_by": "20260904183418_meta_create_paused_executor.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_approve",
+            "identity_args": "p_plan_sha256 text, p_account_ref text, p_actor_id text, p_daily_budget_minor bigint, p_currency text, p_expires_at timestamp with time zone, p_steps_expected text[], p_validation_id uuid, p_validation_max_age_seconds integer, p_paused_birth_confirmed boolean, p_plan_request jsonb, p_asset_supply_receipts jsonb, p_compiled_plan jsonb, p_compiler_version text, p_snapshot_sha256 text",
+            "defined_by": "20260907120000_meta_recovery_snapshot.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_approval_manifest",
+            "identity_args": "p_approval_id uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_prepare_step",
+            "identity_args": "p_plan_sha256 text, p_approval_id uuid, p_actor_id text, p_step_name text, p_payload_sha256 text",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_close_step",
+            "identity_args": "p_step_ref uuid, p_external_object_id text, p_claim_token uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_mark_ambiguous",
+            "identity_args": "p_step_ref uuid, p_claim_token uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_fail_step",
+            "identity_args": "p_step_ref uuid, p_error_code text, p_claim_token uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_reclaim_orphan",
+            "identity_args": "p_step_ref uuid, p_min_age_seconds integer",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_record_readback",
+            "identity_args": "p_step_ref uuid, p_evidence jsonb, p_error_code text, p_claim_token uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_flag_readback",
+            "identity_args": "p_step_ref uuid, p_error_code text, p_claim_token uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_record_fenced_dispatch",
+            "identity_args": "p_step_ref uuid, p_claim_token uuid, p_external_object_id text",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_conclude_by_recovery",
+            "identity_args": "p_step_ref uuid, p_external_object_id text, p_evidence jsonb, p_error_code text",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          },
+          {
+            "name": "trafego_meta_create_receipt",
+            "identity_args": "p_approval_id uuid",
+            "defined_by": "20260907190000_meta_worker_fencing.sql",
+            "security_definer": true,
+            "service_role_execute": true
+          }
+        ],
+        "helpers_que_NAO_recebem_grant": [
+          {
+            "name": "trafego_meta_exigir_service_role()",
+            "porque": "so e chamada de dentro de funcoes SECURITY DEFINER; conceder EXECUTE a service_role nao acrescentaria nada e alargaria a superficie"
+          },
+          {
+            "name": "trafego_meta_exigir_claim_vigente(trafego_meta_create_step,uuid)",
+            "porque": "mesma razao, e ela nem e SECURITY DEFINER — e predicado puro. ⚠️ Um verificador que varresse o PREFIXO em vez de uma lista canonica marcaria estas duas como violacao num schema correto"
+          }
+        ]
       }
     },
     {
@@ -149,7 +395,9 @@
           "file": "supabase/migrations/v15_02_meta_ads_insights.sql",
           "sha256": "a459984edeea4cc6273fe93d77bbd603fd033a8ca1d510ab47b6f610513c59f1",
           "lines": 235,
-          "depends_on": ["v15_01_meta_ads_read_model.sql"]
+          "depends_on": [
+            "v15_01_meta_ads_read_model.sql"
+          ]
         }
       ],
       "rollback_files_never_in_apply": [

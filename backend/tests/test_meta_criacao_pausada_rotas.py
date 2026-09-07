@@ -564,8 +564,13 @@ class _LedgerEmMemoria:
     ) -> None:
         passo = self.passos[passo_ref]
         # ⚠️ FALHAR é a escrita mais perigosa para um cercado: FAILED declara
-        # "nada nasceu" e LIBERA o plano para nova aprovação.
+        # "nada nasceu" e LIBERA o plano para nova aprovação. A cerca vem ANTES
+        # do estado, como na RPC: um passo já promovido responderia
+        # "não posso falhar", e essa frase perde o id que o cercado tem na mão.
         self._exigir_claim(passo, claim_token)
+        if passo["state"] != "IN_FLIGHT":
+            raise ErroDeNascimentoMeta(
+                "META_CREATE_LEDGER_REJECTED", "META_STEP_CANNOT_FAIL")
         self.eventos.append(("falhar", passo_ref))
         passo.update(state="FAILED", codigo=codigo)
         self._revogar(passo)
