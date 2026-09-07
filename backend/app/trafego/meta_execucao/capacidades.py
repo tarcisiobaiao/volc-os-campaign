@@ -64,6 +64,25 @@ FLAG_LEDGER = "META_CREATE_LEDGER_WRITE_ENABLED"
 #: separadas por vírgula: `META_SHOP_REDIRECT_CLEARED=metaacct_abc,metaacct_def`.
 FLAG_DESTINO_SHOP = "META_SHOP_REDIRECT_CLEARED"
 
+#: Autoriza ENVIAR bytes para a biblioteca de uma conta (`adimages`/`advideos`).
+#:
+#: ## Por que ela é separada das três de criação
+#:
+#: Registrar mídia e criar campanha são atos diferentes com riscos diferentes.
+#: Registrar cria PATRIMÔNIO na conta — uma peça que passa a existir na
+#: biblioteca e que alguém vai ter de apagar se estiver errada — mas não gasta
+#: verba e não entrega nada a ninguém. Amarrá-la a `FLAG_CRIACAO` obrigaria a
+#: abrir a porta do gasto para poder subir uma imagem, e é justamente esse tipo
+#: de acoplamento que faz uma autorização virar carimbo.
+#:
+#: ## E por que ela é POR CONTA, como a prova de destino
+#:
+#: Pelo mesmo motivo medido em `FLAG_DESTINO_SHOP`: conferir a conta A e
+#: exportar um `"1"` autorizaria escrever na conta B, C e em qualquer outra que
+#: a credencial alcançasse. O valor é a lista de referências opacas de conta
+#: liberadas, separadas por vírgula.
+FLAG_UPLOAD_DE_ATIVO = "META_UPLOAD_ASSET_ENABLED"
+
 #: As autorizações que valem para o PROCESSO inteiro, independentes de conta.
 #: São elas que a porta da rota cobra, antes de saber qual conta o pedido
 #: escolheu.
@@ -76,6 +95,30 @@ FLAGS_DE_PROCESSO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER)
 #: consulta recebe `account_ref`: o painel de capacidades de uma conta não pode
 #: dizer "liberado" por causa da conferência de outra.
 FLAGS_DE_CRIACAO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER, FLAG_DESTINO_SHOP)
+
+
+def contas_com_upload_liberado() -> frozenset[str]:
+    """As contas em que este servidor pode registrar mídia."""
+    bruto = str(os.environ.get(FLAG_UPLOAD_DE_ATIVO) or "").strip()
+    if not bruto:
+        return frozenset()
+    return frozenset(parte.strip() for parte in bruto.split(",") if parte.strip())
+
+
+def upload_de_ativo_liberado(account_ref: str | None = None) -> bool:
+    """Se ESTA conta aceita registro de mídia por este servidor.
+
+    ⚠️ `account_ref=None` devolve False mesmo com a variável preenchida, pela
+    mesma razão de `destino_website_liberado`: quem não sabe de qual conta está
+    falando não pode receber a autorização de nenhuma.
+    """
+    if not account_ref:
+        return False
+    return account_ref in contas_com_upload_liberado()
+
+
+def motivo_do_upload_fechado(account_ref: str | None = None) -> str:
+    return MOTIVO_DA_FLAG[FLAG_UPLOAD_DE_ATIVO]
 
 
 def autorizacoes_de_processo_ausentes() -> list[str]:
@@ -97,6 +140,12 @@ MOTIVO_DA_FLAG: Mapping[str, str] = {
     FLAG_LEDGER: (
         "O registro durável da criação está fechado neste servidor. Sem ele não há "
         "recibo antes da chamada, e criar sem recibo é criar sem poder reconciliar."
+    ),
+    FLAG_UPLOAD_DE_ATIVO: (
+        "O registro de mídia nesta conta está fechado neste servidor. Enviar bytes "
+        "para a biblioteca de anúncios cria patrimônio na conta do cliente, então "
+        "um administrador precisa liberar a conta explicitamente antes do primeiro "
+        "envio."
     ),
     FLAG_DESTINO_SHOP: (
         "Ninguém provou que o clique desta conta não pode ser redirecionado para uma "

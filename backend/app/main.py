@@ -18,9 +18,11 @@ from app.publicacao_organica import rotas as publicacao_organica
 from app.routers import (
     criativos,
     criativos_execucao,
+    criativos_importacao,
     entities,
     pautador,
     meta_local,
+    trafego_meta_ativos,
     trafego_meta_criacao,
     trafego_meta_validacao,
     trafego,
@@ -200,6 +202,15 @@ app.include_router(trafego_meta_validacao.router)
 # META_CREATE_LEDGER_WRITE_ENABLED; sem as duas, recusa antes do Keychain.
 # Nao existe rota de ativacao aqui nem em lugar nenhum.
 app.include_router(trafego_meta_criacao.router)
+# Registro de midia na conta Meta (T08). Router SEPARADO pelo mesmo motivo do
+# de criacao, e por um a mais: `trafego_meta_validacao` declara no cabecalho que
+# nao tem efeito externo alem do validate_only, e um POST que escreve na
+# biblioteca do cliente ali dentro tornaria aquela declaracao falsa.
+#
+# ⚠️ Autoridade PROPRIA e POR CONTA (`META_UPLOAD_ASSET_ENABLED`). Ela NAO abre
+# criacao de campanha: subir uma imagem e gastar verba sao riscos diferentes, e
+# amarrar os dois obrigaria a abrir a porta do gasto para poder subir uma peca.
+app.include_router(trafego_meta_ativos.router)
 # Inventário operacional (Fase 1B). `registrar()` inclui DOIS routers com o
 # mesmo prefixo: o de sessão (`exigir_usuario`) e o de serviço
 # (`exigir_servico`), que o agendador usa. Separados porque a origem da
@@ -211,6 +222,10 @@ trafego_inventario.registrar(app)
 # fronteira separada. Nenhum dos dois publica em plataforma.
 app.include_router(criativos.router)
 app.include_router(criativos_execucao.router)
+# Importacao privada de midia (T07). ⚠️ Ela NAO chama a Meta: `SPEC.json ->
+# proposed_routes` declara "importacao privada; nao chama Meta", e o registro na
+# conta continua sendo outro ato, em `POST /api/trafego/meta/assets/registrar`.
+app.include_router(criativos_importacao.router)
 # Cofre de Ativos (P03-T06/T10). O router ja nasce fechado: `exigir_admin` esta
 # no nivel do APIRouter, entao uma rota nova adicionada la nao pode nascer
 # aberta por esquecimento — que e o defeito que a camada de identidade veio
