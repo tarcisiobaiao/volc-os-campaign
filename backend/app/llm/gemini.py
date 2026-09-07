@@ -12,7 +12,13 @@ _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 class GeminiClient(LLMClient):
-    def __init__(self, settings: Settings, model: Optional[str] = None):
+    def __init__(
+        self,
+        settings: Settings,
+        model: Optional[str] = None,
+        *,
+        temperature: float = 0.9,
+    ):
         self.settings = settings
         self.api_key = settings.resolved_gemini_key
         # Accept both "gemini-3.5-flash" and "models/gemini-3.1-pro-preview".
@@ -20,6 +26,9 @@ class GeminiClient(LLMClient):
         # to avoid a doubled path (.../models/models/...).
         raw_model = model or settings.pautador_gemini_model
         self.model = (raw_model or "").strip().removeprefix("models/")
+        if not 0 <= temperature <= 2:
+            raise ValueError("temperature must be between 0 and 2")
+        self.temperature = temperature
         self.name = "gemini"
 
     async def complete(self, system: str, user: str) -> str:
@@ -28,7 +37,7 @@ class GeminiClient(LLMClient):
 
         url = f"{_BASE}/{self.model}:generateContent"
         generation_config = {
-            "temperature": 0.9,
+            "temperature": self.temperature,
             "responseMimeType": "application/json",
         }
         # Only cap output tokens if explicitly configured. Omitting lets each

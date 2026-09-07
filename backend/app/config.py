@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     volc_factory_raiz: Optional[str] = None
     google_api_key: Optional[str] = None  # alias accepted
     pautador_gemini_model: str = "gemini-2.0-flash"
+    # Assistente estratégico de Criativos Meta. Separado do Pautador para que
+    # trocar o modelo de descoberta não altere silenciosamente a memória
+    # criativa e vice-versa. Sem chave, o router falha fechado — não cai em mock.
+    criativo_meta_gemini_model: str = "gemini-3.8-flash"
     # Cap on Gemini output tokens. None = omit (model uses its own outputTokenLimit,
     # e.g. 65536 for gemini-3.x flash). Set a number only to force a smaller cap.
     pautador_gemini_max_output_tokens: Optional[int] = None

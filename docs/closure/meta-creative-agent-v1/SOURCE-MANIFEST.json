@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "source_classification": "PRIVATE_USER_PROVIDED_REFERENCE_CORPUS",
+  "raw_files_committed": false,
+  "raw_path_committed": false,
+  "derived_knowledge_file": "backend/app/criativo/agente/meta_regras.v1.json",
+  "files": [
+    {"name":"01_Constituicao_Copiloto_Meta_Ads_V2.md","sha256":"85ace44af38c5c7ef63f178047d8eab8b17d6477fc31fcc357d658518d09fc9a"},
+    {"name":"02_Framework_Diagnostico_e_Jornada.md","sha256":"b1c47c8dba0f4074640a3709f0123d9782ccb4d769e9b85651d2d270f0b56146"},
+    {"name":"03_Matriz_de_Criativos.md","sha256":"8f8789d2df4ba26ca9713d291725378a7a5946b39667b2a688fcf29ab7991c75"},
+    {"name":"04_Biblioteca_de_Formatos_Criativos.md","sha256":"161225b46fb0717130f6111ab749d58a97846cf8726032fcb6a7f69acdbb0a5d"},
+    {"name":"05_Sistema_de_Copy_Meta_Ads.md","sha256":"02e65d9b0982988865a7737767363e2895176cfc4c5cc8023803b934262162e3"},
+    {"name":"06_Compliance_e_Coerencia_com_LP.md","sha256":"9da3cb2b61e0cd25a030f05047f4e573f1252c345578b7ef873c490928556104"},
+    {"name":"07_Protocolo_de_Producao_e_Status.md","sha256":"5ebc4951552b5d9395682063fbd7bf25cf615106e0fb257db561cd95d10a153f"},
+    {"name":"08_Case_Renovacao_CNH.md","sha256":"29fcb56ced4cbfa77a2d976d28322ea0c5713b2496df8dde2b3c236d300dcaf1"},
+    {"name":"09_Instrucoes_Principais_Copiloto_V2.md","sha256":"c05490bd07407ac2bd9ea65a0729b838c9760a34d73e9689e4a09a4dfb951730"},
+    {"name":"10_Template_Estado_do_Projeto.md","sha256":"c33b26ba32c487e52ca79258206d81ab78bd441ec0fc6dbf9dd131230ac91f35"},
+    {"name":"11_Template_Entrega_Nova_Operacao.md","sha256":"fd2c306631da370bc0b7c8ac13aa6be57314fe92d43fa3fc9f6dcd3819da7922"},
+    {"name":"Instruções.txt","sha256":"216d88205262f96c235c9559039bdc61e734cccd0d83aff91c05b5282b68f483"}
+  ],
+  "review": {
+    "primary": "Codex source inspection",
+    "secondary_requested_model": "gemini-3.8-flash",
+    "secondary_effective_model_reported_by_cli": "gemini-3.5-flash",
+    "secondary_used_as_authority": false,
+    "runtime_contract_smoke": {
+      "model": "gemini-3.8-flash",
+      "result": "VALID_ON_SECOND_ATTEMPT",
+      "requested_pieces": 3,
+      "returned_pieces": 3,
+      "external_effects": "Gemini generation only; no Ads, database or media calls"
+    },
+    "adjudications": [
+      "Rejected direct AssetDemandManifest emission: campaign engine owns demand.",
+      "Rejected chain-of-thought persistence: only concise evidence and decision fields are stored.",
+      "Rejected realistic automatic mock fallback: missing model fails explicitly.",
+      "Rejected raw-corpus copy into repository: only normalized rules and hashes are stored."
+    ]
+  }
+}

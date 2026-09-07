@@ -17,6 +17,7 @@ from app.asset_vault import rotas as cofre_ativos
 from app.publicacao_organica import rotas as publicacao_organica
 from app.routers import (
     criativos,
+    criativos_agente,
     criativos_execucao,
     criativos_importacao,
     entities,
@@ -221,6 +222,7 @@ trafego_inventario.registrar(app)
 # observação; o router de execução conserva os mesmos paths `/bancada` numa
 # fronteira separada. Nenhum dos dois publica em plataforma.
 app.include_router(criativos.router)
+app.include_router(criativos_agente.router)
 app.include_router(criativos_execucao.router)
 # Importacao privada de midia (T07). ⚠️ Ela NAO chama a Meta: `SPEC.json ->
 # proposed_routes` declara "importacao privada; nao chama Meta", e o registro na
