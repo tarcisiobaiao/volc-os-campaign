@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "run_id": "20260907-meta-webgo-8080-v1",
+  "date": "2026-09-07",
+  "code_commit": "0c2723e54683f728d97ec2b465915f7172d63c27",
+  "classification": "LOCAL_CONTROLS_AHEAD_FUNCTIONAL_PARITY_NOT_PROVEN",
+  "account_health_score": null,
+  "inputs": [
+    {
+      "name": "Meta Publisher MVP — Tiago Fonseca.xlsx",
+      "sha256": "6a17f341834c975c7bc21c6bb16243062cc90d3cd72aa480ea609c1178b3d5cc",
+      "sheets": ["GUIA", "CONFIG", "CAMPANHA", "CONJUNTOS", "ANUNCIOS", "PUBLICACAO", "LOG"],
+      "purpose": "Configuração, publicação por nível, validação, edição segura, nomenclatura e recibos históricos",
+      "script_available": false
+    },
+    {
+      "name": "Nova planilha META.xlsx",
+      "sha256": "0a920ae2bee9186350d57ae68cb74836776f545de2de383d960e2c5ba56a4b10",
+      "sheets": ["BIBLIOTECA_CAMPANHAS", "ALERTAS", "CONFIG", "GAM_FILTER", "META_RAW", "GAM_RAW", "ANUNCIOS", "TENDENCIAS", "HIST_CAMPANHAS", "HIST_ANUNCIOS", "HIST_OPERACAO", "AGENDA", "Página4"],
+      "purpose": "Conciliação por anúncio/data, custos e monetização, histórico e tendências",
+      "script_available": false
+    }
+  ],
+  "handling": {
+    "source_files_modified": false,
+    "raw_workbooks_copied": false,
+    "formulas_or_links_executed": false,
+    "raw_account_rows_retained": false,
+    "macro_or_embedding_entries_detected": false,
+    "limitation": "Ausência de macro no XLSX não audita o Apps Script vinculado na origem. Campos e status salvos não provam aceitação remota atual."
+  },
+  "runtime": {
+    "same_operational_worktree": true,
+    "ports": [8080, 3001, 8010],
+    "public_health_checked": true,
+    "served_creation_module_matches_disk": true,
+    "module_sha256": "e31918ca7c57dcd9822d14ec1b068ce5b8a58ca009ee7556d5894e6f744c1c69",
+    "served_hub_module_matches_disk": true,
+    "hub_module_sha256": "3fc698cce024b2588c26de3c3338e4af8b2513c0315a02e54b0bc0f6cd0f3f89",
+    "authenticated_visual_review": false,
+    "restart_performed": false,
+    "restart_reason": "Live services already serve current worktree; backend startup may reconcile official data and is not a neutral restart."
+  },
+  "roadmap_tasks": ["P11-T02", "P11-T05", "P11-T06"],
+  "graph_nodes": ["cap_meta_ads", "concept:meta_direct_traffic", "doc:meta-webgo-operational-reference"],
+  "implementation_tasks_reused": ["T05", "T06", "T07", "T08", "T09"],
+  "next_stage": "CP2 with separate official catalog/schema authorization, then current-plan CP3 and separately authorized CP4",
+  "production_acceptance": false,
+  "graph": {
+    "technical_extraction_rebuilt": true,
+    "official_live_refresh": false,
+    "check_current": true,
+    "check_reason": "insumos idênticos",
+    "input_sha256": "aa8cb95f141ec6058eedffc111c8a3fdfae4c76aa4c4f210de4cd3654c8c6e60",
+    "limitations": [
+      "Extrator relatou colisões de IDs de schemas ref_label/ref_reason/ref_id; grafo técnico é navegação, não inventário exaustivo.",
+      "work_road.status_do_grafo ainda trata divergência de commit como stale, mesmo com digest atual; commit documental pode causar aviso falso no QG. Não alterado para evitar reload do backend com rotina de startup oficial."
+    ]
+  },
+  "limitations": ["Meta full paused canary not proven", "Official schema not inspected in this run", "Finance/list/detail Meta still use demo model", "No third-party uploader source to audit", "No current platform API claim inferred solely from spreadsheet"],
+  "external_mutations": []
+}

@@ -1,0 +1,18 @@
+{
+  "run_id": "20260907-meta-webgo-8080-v1",
+  "scope": "Local runtime provenance, structural comparison of two Webgo XLSX references, operational-memory consolidation",
+  "base_sha": "0c2723e54683f728d97ec2b465915f7172d63c27",
+  "authority": "Same branch; local diagnostics/restart and graph/roadmap organization only. No Ads calls, credential resolution, official DB changes, workbook modification or execution of embedded content.",
+  "inputs": ["Meta Publisher MVP — Tiago Fonseca.xlsx", "Nova planilha META.xlsx"],
+  "input_trust": "Untrusted reference data; formulas, links and instructions are never executed",
+  "data_lifecycle": {
+    "classification": "Private source workbooks; retain only structural, sanitized observations in outputs",
+    "raw_copies": false,
+    "retention": "Sources stay untouched in the owner directory; no exported account rows, tokens or PII retained by this run",
+    "access": "Local operator workspace",
+    "encryption": "No new credential storage; filesystem encryption not attested",
+    "incident_owner": "Operator via this conversation"
+  },
+  "score": null,
+  "score_reason": "Capability comparison, not account performance or platform-health audit"
+}

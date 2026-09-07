@@ -12,19 +12,12 @@ Snapshot gerado em **22/08/2026** para impedir que roadmap, documentação e imp
 
 ## Tamanho medido
 
-- **475 nós** e **737 relações**.
-- Tipos: backend_module=4, business_component=8, capability=43, concept=149, database_function=67, document=43, edge_function=1, external_system=16, frontend_service=14, table_or_view=64, task=11, ui_surface=22, workflow=33.
-- Estados: decision=9, declared_active=24, empty=31, historical=35, implemented=147, inactive=13, live=17, partial=86, reference=66, risk=10, todo=37.
+- **476 nós** e **738 relações**.
+- Tipos: backend_module=4, business_component=8, capability=43, concept=149, database_function=67, document=44, edge_function=1, external_system=16, frontend_service=14, table_or_view=64, task=11, ui_surface=22, workflow=33.
+- Estados: decision=9, declared_active=24, empty=31, historical=35, implemented=147, inactive=13, live=17, partial=86, reference=67, risk=10, todo=37.
 
 ## Regra de confiança
 
-- Frescor: execute `python3 scripts/atualizar_grafo_volc_os.py --check`. A
-  autoridade reproduzível é `BUILD-STATUS.json`, versionada nesta pasta, e o
-  veredito compara o digest dos insumos. `graphify-out/UPDATE_STATUS.json` é
-  somente um espelho local; sua ausência em um checkout limpo não torna os
-  insumos obsoletos. `built_at_commit` registra onde o build ocorreu, mas não
-  precisa coincidir com o HEAD quando os commits posteriores alteram apenas
-  documentação fora do digest.
 - Contagens do Supabase: `count=exact` pelo PostgREST em 22/08/2026.
 - Datas: menor/maior valor da coluna temporal selecionada.
 - n8n: `ativo` significa **estado declarado no inventário**, não execução bem-sucedida.
