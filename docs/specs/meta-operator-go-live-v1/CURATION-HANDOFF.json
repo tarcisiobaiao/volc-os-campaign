@@ -1,0 +1,30 @@
+{
+  "mode": "PROPOSED_ONLY",
+  "affected_tasks": [
+    "P11-T02",
+    "P11-T03",
+    "P11-T04",
+    "P11-T05",
+    "P11-T06",
+    "P10-T16"
+  ],
+  "artifact": "docs/specs/meta-operator-go-live-v1/SPEC.json",
+  "business_state_changed": false,
+  "affected_graph_nodes": ["cap_meta_ads", "concept:meta_direct_traffic", "cap_creative_engines", "cap_workflows", "concept:data_pipeline_registry"],
+  "runtime_delivered": false,
+  "official_schema_applied": false,
+  "n8n_workflow_created": false,
+  "instructions": "Este pacote conclui especificação, não capacidades. Não promover tarefas. Executor único mapeia as tasks novas a estes itens, registra provas e pendências, atualiza curadoria se o estado material mudou e regenera pelo wrapper uma vez ao fechar.",
+  "graph_observation": {
+    "checked_base": "4c2d17a215a13c7202c99bf89b65ef92926e9300",
+    "last_observed_current": true,
+    "built_at_commit": "dbc678a943dbde428f46ae5e58bb580fda5fbddb",
+    "criterion": "digest dos insumos, não simples igualdade de SHA"
+  },
+  "proposed_subtasks": [
+    "criador V2 com públicos/conversões",
+    "importação privada e registro de mídia",
+    "perfis schema operacionais",
+    "n8n Meta manual inativo e vínculo GAM"
+  ]
+}

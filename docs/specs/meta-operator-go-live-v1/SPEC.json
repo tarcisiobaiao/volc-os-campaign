@@ -1,0 +1,259 @@
+{
+  "schema_version": "1.0.0",
+  "id": "META_OPERATOR_GO_LIVE_V1",
+  "status": "READY_FOR_EXECUTION_WITH_EXPLICIT_REMOTE_CHECKPOINTS",
+  "language": "pt-BR",
+  "code_base": "4c2d17a215a13c7202c99bf89b65ef92926e9300",
+  "branch": "execution/volc-os-operacao-80-20",
+  "worktree": "/private/tmp/volc-os-operacao-80-20",
+  "objective": "Concluir a operação Meta de forma incremental: schema operacional, criador congruente com contratos, públicos/conversões selecionáveis, importação de mídia e relatórios manuais no n8n. Não confundir este marco com ativação de campanhas.",
+  "current_truth": {
+    "budget": "ABO, não CBO",
+    "recipe": "Traffic/LPV, um AdSet, Facebook-only; batch estático até dez Ads",
+    "audiences": "público configurável/custom não ligado ao criador",
+    "custom_conversions": "catálogo de leitura existe; seleção de otimização não ligada",
+    "uploads": "individual/ZIP sem caminho implementado no criador",
+    "schema": "candidatos locais; estado oficial desconhecido nesta inspeção",
+    "n8n": "REST de leitura acessível; gerador Meta contém tipo de credencial placeholder",
+    "real_proof": "histórico roots Campaign/Creative não prova AdSet/Ad, tracking atual ou criação"
+  },
+  "scope": {
+    "required": [
+      "ABO e CBO explícitos, sem orçamento em ambos os níveis",
+      "múltiplos conjuntos com identidade estável e vinculação explícita de anúncios",
+      "geografia inclusões/exclusões; público amplo/manual e personalizado/semelhante existente; controle vs sugestão Advantage+",
+      "pixel/dataset e conversão personalizada existente: seleção, elegibilidade e reporte distintos",
+      "upload individual/ZIP com preview, importação canônica e registro de mídia por conta",
+      "schema Meta e dependências criativas necessárias no Supabase oficial",
+      "workflows n8n novos identificados, inativos, teste manual delimitado e vínculo financeiro GAM",
+      "UI consistente com VOLC e campo auditável ponta a ponta"
+    ],
+    "not_implied": [
+      "todas as combinações possíveis da Marketing API",
+      "criar ou ativar campanha sem autorização específica",
+      "criar público/customer list e enviar PII",
+      "criar definição de custom conversion",
+      "enviar eventos CAPI",
+      "reescrever motores de imagem/vídeo",
+      "migrar Google Ads ou alterar seus workflows",
+      "transformar ZIP em dynamic creative",
+      "publicar/deployar o produto ou ativar agendas"
+    ]
+  },
+  "permissions": {
+    "this_run": "Somente inspeção e documentos locais; leitura n8n e documentação pública, sem writes externos.",
+    "executor_authorized": [
+      "runtime/testes/docs e migrations candidatas locais nesta única branch",
+      "consultar catálogo do Supabase operacional e aplicar migrations necessárias exatas após CP1, sem DROP destrutivo nem migração Google",
+      "criar workflows n8n delimitados INATIVOS após CP5, sem sobrescrever flows existentes",
+      "preservar localhost:8080 na mesma árvore"
+    ],
+    "operator_checkpoints": [
+      "selecionar conta e janela para leitura/persistência manual e teste n8n; não varrer indiscriminadamente todas as contas",
+      "clique explícito para validate_only do plano atual; não disparar ao montar a página",
+      "registro/upload Meta somente com confirmação de conta, arquivos e efeito externo, por botão dedicado",
+      "credencial n8n provisionada pelo operador em canal seguro; chave local não é autorização para transferi-la"
+    ],
+    "separate_authorization": [
+      "Campaign/AdSet/Ad create, mesmo PAUSED",
+      "ativação/edição de campanhas reais",
+      "agendas n8n ativas e backfill amplo",
+      "CAPI/CRM/novo público/novas conversões",
+      "deploy/push/merge/destruição de dados"
+    ],
+    "operational_supabase": "https://database.agenciavolc.com.br",
+    "no_fallback": true
+  },
+  "invariants": [
+    "Campos inválidos são recusados antes de resolver segredo ou fazer HTTP; não coerção silenciosa de intenção.",
+    "Todo campo que altera entrega, orçamento, identidade, mídia, tracking ou mensuração entra no plano versionado, hash, aprovação e comparação crítica de retorno.",
+    "Alteração após validar/aprovar invalida referências anteriores. Novos contratos não reinterpretam snapshots de aprovações legadas.",
+    "Campaign/AdSet/Ad permanecem PAUSED no nascimento; Creative é entidade de biblioteca, não enum PAUSED.",
+    "Reutilizar ledger antes do POST, worker fencing, idempotência durável e tratamento de ambiguidade. Nenhuma ausência/dúvida libera reenvio pós-despacho.",
+    "ZERO observado, NULL ausente, erro, leitura parcial e dado antigo são estados distintos.",
+    "IDs externos resolvidos no backend e isolados por ator/tenant/conta; API da UI trabalha com referências opacas.",
+    "Revenue vem do GAM por campaign_id e escopo comprovado, não das métricas purchase da Meta.",
+    "Prévia fictícia só em modo explícito; jamais fallback de erro da conta real.",
+    "Capability BLOCKED/UNPROVEN aparece honestamente; widget desabilitado não conta como requisito implementado."
+  ],
+  "creator_contract": {
+    "version": "V2 proposto; preservar decoder V1/P0",
+    "structure": "campaign + adsets[] com adset_key estável + ads[] com variation_key e adset_key + manifests + measurement + tracking",
+    "limits": {
+      "classification": "limites operacionais propostos, não limites oficiais Meta",
+      "adsets_max": 10,
+      "ads_per_adset_max": 10,
+      "total_ads_max": 50,
+      "first_canary": "uma campanha, um conjunto, um anúncio estático; autorização separada"
+    },
+    "budget": {
+      "ABO": "Campaign sem orçamento; cada AdSet define daily OU lifetime, unidade minor da moeda real.",
+      "CBO": "Campaign define daily OU lifetime e estratégia compatível; AdSet sem orçamento próprio. Limites por conjunto somente se documentados/compatíveis.",
+      "sharing": "false explícito na receita P0; CBO não significa adset_budget_sharing. true exige receita própria comprovada, nunca default.",
+      "schedule": "end_time obrigatório para lifetime quando a receita exige; datas/fuso/moeda confirmados no servidor; start futuro e DST testados.",
+      "migration": "troca ABO/CBO apresenta consequência e pede confirmação; não move valores silenciosamente nem preserva orçamento duplicado."
+    },
+    "recipes": {
+      "default": "TRAFFIC_WEBSITE_LPV_STATIC",
+      "additional_required": [
+        "WEB_SALES_CONVERSION",
+        "WEB_LEADS_CONVERSION"
+      ],
+      "authority": "registro tipado por versão da API/objetivo/destino/otimização/billing/lance/placement/fonte; somente combinações sustentadas. Nome de receita é interno, não enum Meta.",
+      "unknown": "impedir somente a ação/receita não comprovada e informar campo/evidência faltante; pesquisa bloqueada não libera enum inventado."
+    },
+    "audiences": {
+      "modes": [
+        "BROAD",
+        "MANUAL",
+        "EXISTING_CUSTOM",
+        "EXISTING_LOOKALIKE"
+      ],
+      "geo": [
+        "país/região/cidade/chave postal válidos",
+        "raio/coordenadas quando elegíveis",
+        "inclusões e exclusões"
+      ],
+      "catalog": "GETs paginados via backend; conta, permissões, termo, país, TTL e versão no cache. Sem PII de membros ou upload de lista.",
+      "semantics": "Explicitar controles rígidos versus sugestões/expansão Advantage+. Se provedor não garante inclusão exclusiva, UI não promete remarketing exclusivo.",
+      "demographics": "Idade, idiomas e demais atributos somente quando disponíveis na receita; restrições de categorias especiais aplicadas no servidor. Não inferir atributos sensíveis.",
+      "placements": "Manual ou Advantage+ conforme receita; Facebook mantém fallback explícito. Instagram só com identidade validada. Mudança de plataforma revalida formatos e preview."
+    },
+    "measurement": {
+      "purposes": [
+        "REPORT_ONLY",
+        "OPTIMIZE"
+      ],
+      "source": "pixel/dataset como tipos distintos, referência resolvida e relação com conta comprovada",
+      "selection": "eventos padrão elegíveis e custom conversions existentes; não catálogo universal de todos eventos supostamente enviados",
+      "eligibility": [
+        "propriedade/acesso à conta e fonte",
+        "não arquivada/não indisponível comprovados, ausência vira UNKNOWN",
+        "objetivo/destino/otimização/atribuição compatíveis",
+        "frescor e atividade apresentados separadamente da elegibilidade"
+      ],
+      "promoted_object": "Derivado no servidor da receita e fonte resolvida. pixel_id/custom_conversion_id/custom_event_type e seus tipos exatos exigem prova v26; não converter arbitrário para PURCHASE, OTHER ou custom_event_str.",
+      "traffic": "Não injetar promoted_object só para satisfazer seletor em Traffic/LPV; conversão de reporte pode coexistir sem mudar otimização.",
+      "CAPI": "fora deste sprint de criação; selecionar evento não implica envio de evento nem nova definição."
+    }
+  },
+  "media_contract": {
+    "canonical": "criativo_master + job/ownership existente; novo registro de associação remota por conta, não biblioteca concorrente",
+    "import_origin": "Adjudicar nova procedência de importação com migrations aditivas. Não registrar arquivo importado como geração VOLC, custo inventado ou observed sem custódia.",
+    "project_binding": "criativo_projeto UUID e projects financeiro bigint não são o mesmo ID. Manter relacionamento explícito e autorizado.",
+    "manifest": "Versionar conflito SUP-INV-01: mídia importada própria/licenciada, bytes medidos e política válida pode ser utilizável sem fingir natureza producao. Normalizar sha256:<hex> do master para hex do manifest com parser estrito.",
+    "sources": [
+      "Biblioteca Meta existente",
+      "Estúdio VOLC",
+      "Arquivos individuais/ZIP"
+    ],
+    "pipeline": [
+      "RECEIVED",
+      "QUARANTINED",
+      "INSPECTED",
+      "IMPORTED_PRIVATE",
+      "POLICY_PENDING",
+      "READY_FOR_REGISTRATION",
+      "REGISTERING",
+      "REGISTERED",
+      "SELECTABLE"
+    ],
+    "failures": [
+      "REJECTED",
+      "PARTIAL_BATCH",
+      "AMBIGUOUS_REGISTRATION"
+    ],
+    "zip": {
+      "max_entries": 50,
+      "compressed_bytes_max": 104857600,
+      "expanded_bytes_max": 262144000,
+      "expansion_ratio_max": 100,
+      "image_bytes_max": 26214400,
+      "video_bytes_max": 209715200,
+      "rules": [
+        "stream e limite agregado antes de alocar/decodificar; limites aplicados também em upload individual",
+        "rejeitar traversal/absolutos/symlinks/archives aninhados/criptografados/duplicatas de caminho normalizado",
+        "arquivo malicioso invalida o archive; mídia não suportada é resultado por entrada, nunca silêncio",
+        "detectar MIME por bytes; decodificar imagem; medir vídeo com timeout/limites de pixels, frames e duração",
+        "gerar nomes internos opacos; descartar EXIF/localização desnecessários; referência hash sobre bytes finais exatos enviados",
+        "hash idêntico reutiliza master autorizado, mas política/referência de outra conta não é automaticamente válida"
+      ],
+      "limits_source": "limites de segurança do produto; confrontar limite real do provedor e usar o mais restritivo"
+    },
+    "storage": "privado, ownership via job, previews autorizados/assinados curtos; sem base64 no DB ou bucket público",
+    "registration": "adimages/advideos por ato próprio. Idempotência por tenant+account+bytes+variante; gravar antes do despacho, persistir ID antes de read-back; timeout ambíguo não reenvia.",
+    "video": "Preparar upload/processing/thumbnail própria e image_hash conforme receita. Não usar proibição pontual de CDN para declarar todo vídeo impossível. Caminho sem prova fica não emissível.",
+    "batch": "Mapeamento explícito arquivo→master→conta→adset_key→ad. ZIP não cria campanhas automaticamente nem combinações cartesianas ocultas.",
+    "rights": "declaração do operador não substitui gate técnico/identidade/política. Preservar CLEAR/AUTHORIZED vinculado a bytes, finalidade, conta e expiração conforme contrato atual.",
+    "UX": "miniaturas reais, player de vídeo, erro por arquivo, nome curto e detalhe expansível. Nenhum path de storage como título gigante."
+  },
+  "schema": {
+    "authority_manifest": "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+    "existing_profiles": [
+      "CREATE_ONLY",
+      "META_READ_MODEL"
+    ],
+    "new_profile": "CREATIVE_IMPORT_META (proposto; somente dependências comprovadas)",
+    "apply": "Ler catálogo/histórico e checksums. Derivar ordem do manifesto, compartilhadas uma vez. Existência de tabela não basta; conferir constraints, RPC aridades/assinaturas, ACL, RLS, índices e ownership.",
+    "safety": "Não glob de migrations: há rollback destrutivo no diretório. Arquivos com \\set exigem runner psql compatível, não SQL API bruto. Banco parcial exige delta aditivo, nunca drop/reapply cego.",
+    "proof": "apply→uso→idempotência→isolamento→rollback→reapply em Postgres descartável. Official: backup restrito + apply exato + catálogo/read-back + RPC mínima autorizada, sem rotina de startup disparar escrita.",
+    "new_entities": "Só se necessário: lote/entrada de importação e associação trafego_meta_asset_upload. Reusar catálogos e custom_measurement existentes; registrar novos nomes como propostos até migration.",
+    "rollback": "Após dados reais, interromper produtor e usar correção forward; rollback destrutivo não é compensação automática."
+  },
+  "reporting": {
+    "source": "n8n/gerar_flows_meta_ledger.py",
+    "workflow_artifact": "n8n/volc_meta_insights_dia_d1.json",
+    "credentials": "Substituir tipo fictício por credencial HTTP Request suportada na instância; escopo mínimo. Nunca copiar token Keychain para JSON, logs ou chat. Sem credencial segura, publicar somente draft inativo e declarar bloqueio real.",
+    "workflow_1": "VOLC · Meta · Insights D-1 · v1 — derivado do gerador atual, active:false; manual account/date override validado.",
+    "workflow_2": "VOLC · Meta · Conferência de coleta D-1 · v1 — manual/inativo, somente recibos, completude e frescor; não outro coletor, não outra fórmula financeira. Pode ser subworkflow se mais simples.",
+    "remote_publication": "Pesquisar por origem/hash/owner, não nome sozinho. Criar novos IDs ou atualizar apenas ID VOLC comprovadamente pertencente a este artefato. Ler de volta active=false, revisão e estrutura sanitizada.",
+    "existing_GAM": "Preservar os dois coletores GAM ativos encontrados; conferir linhagem campaign_id neles sem alterar esta rodada.",
+    "bootstrap": "Inventário/objetos precisam ser persistidos via trilha canônica antes de Insights. Usar bootstrap manual já existente; refresh posterior sem dependência localhost/Keychain.",
+    "time_and_grain": "D-1 do fuso da conta; account/campaign/adset/ad/date/atribuição/breakdown com grão explícito. Páginas completas e actions separadas; snapshot latest/revisões, não soma de snapshots.",
+    "manual_proof": "Uma conta/janela selecionada; repetir mesma execução não duplica. Fonte parcial/authfail não vira zero nem avança watermark. Fluxos continuam inativos após teste.",
+    "financial_join": "GAM utm_campaign_value=campaign_id + rede Meta + projeto/vínculo único/GAMaccount + janela compatível + moeda/fuso/metadados confirmados. Não inventar contratos GAM ausentes; colisão e múltiplo vínculo bloqueiam.",
+    "dashboard": "Usar backend financeiro canônico. n8n conferência não acessa localhost nem duplica cálculo no Code node. Sem receita observada, card não vira R$0 por conveniência."
+  },
+  "tracking": {
+    "url_tags": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
+    "proof_layers": [
+      "compilado/hash/read-back local",
+      "roots remoto do plano atual, por clique",
+      "expansão real e parâmetros preservados em redirects/LP",
+      "valor observado na dimensão GAM e join financeiro sem colisão"
+    ],
+    "not_equivalent": "validate_only roots não cria campaign.id e não prova expansão ou receita. Prova de entrega que exija ativação fica para autorização posterior; usar campanha já existente só com leitura permitida, nunca ID fictício como prova real."
+  },
+  "proposed_routes": [
+    {
+      "route": "GET /api/trafego/meta/local/catalogos/publicos",
+      "effect": "Meta READ por seleção explícita, cache escopado"
+    },
+    {
+      "route": "GET /api/trafego/meta/local/catalogos/geografia",
+      "effect": "busca pública/provedor autenticada somente via backend conforme fonte"
+    },
+    {
+      "route": "GET /api/trafego/meta/local/catalogos/mensuracao",
+      "effect": "reutiliza pixels/custom conversions; elegibilidade por receita"
+    },
+    {
+      "route": "POST /api/criativos/importacoes",
+      "effect": "importação privada; não chama Meta"
+    },
+    {
+      "route": "GET /api/criativos/importacoes/{referencia}",
+      "effect": "status/preview por owner"
+    },
+    {
+      "route": "POST /api/trafego/meta/assets/registrar",
+      "effect": "UPLOAD REAL DE MÍDIA por confirmação; não cria Campaign/AdSet/Ad"
+    },
+    {
+      "route": "existing compile/validate/approve/create endpoints",
+      "effect": "evoluir contrato versionado sem duplicar autoridade; criação continua fechada"
+    }
+  ],
+  "route_note": "Rotas novas acima são propostas; nomes finais podem seguir router existente com decisão registrada. Nunca apresentá-las como já montadas.",
+  "completion": "Ver ACCEPTANCE-CHECKLIST e EXECUTION-PLAN. Local implementado, schema aplicado, validado remotamente e operação autorizada são estados separados."
+}

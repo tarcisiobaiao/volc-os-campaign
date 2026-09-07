@@ -1,0 +1,378 @@
+{
+  "contract": "META_OPERATOR_GO_LIVE_V1",
+  "definition": "Requisito não exercitado recebe NOT_PROVEN/WAITING_OWNER com motivo e próximo ato, nunca PASS por ausência de erro.",
+  "states": [
+    "NOT_STARTED",
+    "LOCAL_PASS",
+    "REMOTE_PASS",
+    "NOT_PROVEN",
+    "WAITING_OWNER",
+    "NOT_APPLICABLE_WITH_REASON"
+  ],
+  "checks": [
+    {
+      "id": "A01",
+      "task": "T01",
+      "assertion": "Catálogo e checksums reais dos perfis Meta; nenhuma aplicação por glob de diretório.",
+      "evidence": "OFFICIAL_RECEIPT"
+    },
+    {
+      "id": "A02",
+      "task": "T01",
+      "assertion": "CREATE_ONLY e META_READ_MODEL compartilham dependências aplicadas uma vez; schema parcial reparado aditivamente.",
+      "evidence": "SQL_AND_OFFICIAL"
+    },
+    {
+      "id": "A03",
+      "task": "T01",
+      "assertion": "RLS/ACL/RPCs: outro owner não acessa; service role não contorna ledger por gravação direta proibida.",
+      "evidence": "SQL_COUNTERPROOF"
+    },
+    {
+      "id": "A04",
+      "task": "T01",
+      "assertion": "Startup/health não escrevem nem sincronizam; importação/ledger/validação têm permissões distintas.",
+      "evidence": "HERMETIC"
+    },
+    {
+      "id": "A05",
+      "task": "T02",
+      "assertion": "Novo DTO não perde campo da UI e não aceita campo extra arbitrário; receita versionada determina defaults.",
+      "evidence": "ROUND_TRIP"
+    },
+    {
+      "id": "A06",
+      "task": "T02",
+      "assertion": "Plano legado continua decodificável; versão nova não muda payload de aprovação passada.",
+      "evidence": "REGRESSION"
+    },
+    {
+      "id": "A07",
+      "task": "T03",
+      "assertion": "ABO emite budget no AdSet; CBO na Campaign; nenhum payload tem ambos.",
+      "evidence": "PAYLOAD"
+    },
+    {
+      "id": "A08",
+      "task": "T03",
+      "assertion": "Troca ABO/CBO e daily/lifetime tem confirmação/clear explícito; minor units corretas.",
+      "evidence": "UI_AND_PAYLOAD"
+    },
+    {
+      "id": "A09",
+      "task": "T03",
+      "assertion": "Múltiplos conjuntos mantêm chave estável, orçamento, público e ads corretos após reorder.",
+      "evidence": "NONEMPTY_DAG_REPLAY"
+    },
+    {
+      "id": "A10",
+      "task": "T03",
+      "assertion": "Timeout parcial, worker velho e retorno inconclusivo não habilitam reenvio/duplicação.",
+      "evidence": "SAGA_REGRESSION"
+    },
+    {
+      "id": "A11",
+      "task": "T04",
+      "assertion": "Catálogo vazio completo difere de permission denied, timeout, parcial e obsoleto.",
+      "evidence": "CATALOG"
+    },
+    {
+      "id": "A12",
+      "task": "T04",
+      "assertion": "Custom conversion sem is_archived/is_unavailable fica UNKNOWN, nunca AVAILABLE por bool(None).",
+      "evidence": "COUNTERPROOF"
+    },
+    {
+      "id": "A13",
+      "task": "T04",
+      "assertion": "IDs opacos de outra conta/ator não são resolvidos; relação pixel/dataset/conversão é verificada no servidor.",
+      "evidence": "ISOLATION"
+    },
+    {
+      "id": "A14",
+      "task": "T05",
+      "assertion": "Inclusões/exclusões de públicos chegam ao payload, hash e read-back; conflito recusa localmente.",
+      "evidence": "ROUND_TRIP"
+    },
+    {
+      "id": "A15",
+      "task": "T05",
+      "assertion": "País/região/cidade/CEP/raio usam chaves/tipos válidos e exclusões preservadas; país não fica BR fixo escondido.",
+      "evidence": "GEO"
+    },
+    {
+      "id": "A16",
+      "task": "T05",
+      "assertion": "Advantage+ informa quais valores são controles e quais sugestões; nenhuma promessa de público exclusivo indevida.",
+      "evidence": "UI_AND_CONTRACT"
+    },
+    {
+      "id": "A17",
+      "task": "T05",
+      "assertion": "Idade/idiomas/segmentação incompatíveis com categoria/receita não são silenciosamente ignorados.",
+      "evidence": "POLICY"
+    },
+    {
+      "id": "A18",
+      "task": "T05",
+      "assertion": "Instagram/placements precisam de identidade e formato; Facebook-only legado não se amplia sozinho.",
+      "evidence": "IDENTITY"
+    },
+    {
+      "id": "A19",
+      "task": "T06",
+      "assertion": "REPORT_ONLY não muda promoted_object/objetivo/lance; OPTIMIZE exige combinação/fonte/conversão elegíveis.",
+      "evidence": "MEASUREMENT"
+    },
+    {
+      "id": "A20",
+      "task": "T06",
+      "assertion": "Custom event desconhecido não vira PURCHASE/OTHER; estado elegível inclui prova de fonte e frescor.",
+      "evidence": "COUNTERPROOF"
+    },
+    {
+      "id": "A21",
+      "task": "T06",
+      "assertion": "Atribuição de AdSet e query Insights separadas; métricas de janelas diferentes não somadas.",
+      "evidence": "GRAIN"
+    },
+    {
+      "id": "A22",
+      "task": "T07",
+      "assertion": "Upload individual e ZIP percorrem endpoint real e ownership; não simples input file sem backend.",
+      "evidence": "INTEGRATION"
+    },
+    {
+      "id": "A23",
+      "task": "T07",
+      "assertion": "Traversal, ZIP bomb, symlink, MIME falso, entrada duplicada e timeout de decoder falham com orçamento de recursos.",
+      "evidence": "SECURITY"
+    },
+    {
+      "id": "A24",
+      "task": "T07",
+      "assertion": "Mídia importada mantém natureza/custo/ownership verdadeiros; master tem job/projeto corretos.",
+      "evidence": "DB_AND_MANIFEST"
+    },
+    {
+      "id": "A25",
+      "task": "T07",
+      "assertion": "Hash do manifest corresponde aos bytes finais enviados; preview autorizado não expõe bucket público.",
+      "evidence": "BYTES_AND_ACCESS"
+    },
+    {
+      "id": "A26",
+      "task": "T07",
+      "assertion": "Gate de identidade/política ausente ou falho não vira CLEAR; declaração de direitos não é bypass.",
+      "evidence": "COUNTERPROOF"
+    },
+    {
+      "id": "A27",
+      "task": "T08",
+      "assertion": "Importar arquivo não chama Meta. Registrar exige confirmação separada de conta/lote/efeito.",
+      "evidence": "ZERO_HTTP_UNTIL_CONFIRM"
+    },
+    {
+      "id": "A28",
+      "task": "T08",
+      "assertion": "Registro de mídia conta+hash idempotente; timeout ambíguo não reenvia; ID salvo antes de read-back.",
+      "evidence": "SAGA"
+    },
+    {
+      "id": "A29",
+      "task": "T08",
+      "assertion": "Vídeo tem processamento e thumbnail próprios provados; imagem não depende de vídeo.",
+      "evidence": "MEDIA_BRANCHES"
+    },
+    {
+      "id": "A30",
+      "task": "T09",
+      "assertion": "Preview de imagem/player é visível; nome longo quebra/trunca sem overflow e sem path interno gigante.",
+      "evidence": "PIXEL"
+    },
+    {
+      "id": "A31",
+      "task": "T09",
+      "assertion": "Orçamento não perde foco após primeiro dígito; resposta de conta antiga não substitui conta atual.",
+      "evidence": "UI_REGRESSION"
+    },
+    {
+      "id": "A32",
+      "task": "T09",
+      "assertion": "Público por conjunto e associação arquivo→Ad claros; lote estático não rotulado como flexível.",
+      "evidence": "UX"
+    },
+    {
+      "id": "A33",
+      "task": "T09",
+      "assertion": "Clique protegido e revisão apontam payload real; mudança invalida prova, não reinicia seleção inteira sem razão.",
+      "evidence": "STATE"
+    },
+    {
+      "id": "A34",
+      "task": "T09",
+      "assertion": "Desktop/mobile e light/dark inspecionados com sessão real; teclado/foco e avisos compreensíveis.",
+      "evidence": "BROWSER"
+    },
+    {
+      "id": "A35",
+      "task": "T10",
+      "assertion": "JSON executável usa credencial instalada; REPLACE_ME/metaGraphApiNaoProvisionada bloqueiam READY.",
+      "evidence": "CONFIG"
+    },
+    {
+      "id": "A36",
+      "task": "T10",
+      "assertion": "Credenciais não aparecem no Git, browser storage, Code nodes, URL, erro ou export.",
+      "evidence": "SECRETS"
+    },
+    {
+      "id": "A37",
+      "task": "T10",
+      "assertion": "D-1 calculado pelo timezone da conta, sem fallback UTC; bootstrap de objetos precede métricas.",
+      "evidence": "TIME_AND_FK"
+    },
+    {
+      "id": "A38",
+      "task": "T10",
+      "assertion": "Paginação completa; NULL/actions preservados; snapshots/latest sem soma duplicada ou watermark parcial.",
+      "evidence": "REPORT_CONTRACT"
+    },
+    {
+      "id": "A39",
+      "task": "T11",
+      "assertion": "Workflows existem remotamente com revisão/hash e active=false lidos de volta; nenhum flow de terceiro sobrescrito.",
+      "evidence": "N8N_REMOTE"
+    },
+    {
+      "id": "A40",
+      "task": "T11",
+      "assertion": "Uma coleta manual conta/janela e replay com recibo persistido; não só importação JSON local.",
+      "evidence": "REAL_MANUAL"
+    },
+    {
+      "id": "A41",
+      "task": "T11",
+      "assertion": "Coletores GAM ativos preservados; conta/projeto/rede/moeda/fuso determinam join campaign_id.",
+      "evidence": "FINANCIAL"
+    },
+    {
+      "id": "A42",
+      "task": "T11",
+      "assertion": "Receita ausente não é zero; purchase value Meta não vira receita GAM; cartões usam mesma janela.",
+      "evidence": "DASHBOARD"
+    },
+    {
+      "id": "A43",
+      "task": "T12",
+      "assertion": "Plano atual recompilado e roots validados por clique; hash novo exige recibo novo.",
+      "evidence": "REMOTE_ROOTS"
+    },
+    {
+      "id": "A44",
+      "task": "T12",
+      "assertion": "Não afirmar AdSet/Ad/expansão/receita provados por roots; cobertura explícita em recibo/UI.",
+      "evidence": "TRUTH"
+    },
+    {
+      "id": "A45",
+      "task": "T12",
+      "assertion": "Flags de leitura/validação/upload não permitem criar/ativar Campaign/AdSet/Ad.",
+      "evidence": "AUTHORITY"
+    },
+    {
+      "id": "A46",
+      "task": "T13",
+      "assertion": "Uma branch, commits lineares, ambiente 8080 identificado; grafo pelo wrapper e estado parcial factual.",
+      "evidence": "HANDOFF"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "M_SCHEMA",
+      "required": [
+        "A01",
+        "A02",
+        "A03",
+        "A04"
+      ],
+      "verdict": "META_SCHEMA_OPERATIONAL"
+    },
+    {
+      "id": "M_CREATOR",
+      "required": [
+        "A05",
+        "A06",
+        "A07",
+        "A08",
+        "A09",
+        "A10",
+        "A11",
+        "A12",
+        "A13",
+        "A14",
+        "A15",
+        "A16",
+        "A17",
+        "A18",
+        "A19",
+        "A20",
+        "A21",
+        "A31",
+        "A32",
+        "A33",
+        "A34"
+      ],
+      "verdict": "META_CREATOR_V2_LOCALLY_WIRED_AND_VISUALLY_REVIEWED",
+      "note": "Não equivale a todas receitas validadas ou criadas na Meta."
+    },
+    {
+      "id": "M_MEDIA",
+      "required": [
+        "A22",
+        "A23",
+        "A24",
+        "A25",
+        "A26",
+        "A27",
+        "A28",
+        "A29",
+        "A30"
+      ],
+      "verdict": "META_MEDIA_IMPORT_AND_REGISTRATION_PROVEN",
+      "note": "Especificar imagem e vídeo separadamente; ausência de prova vídeo não permite declarar este marco completo."
+    },
+    {
+      "id": "M_REPORTS",
+      "required": [
+        "A35",
+        "A36",
+        "A37",
+        "A38",
+        "A39",
+        "A40",
+        "A41",
+        "A42"
+      ],
+      "verdict": "META_REPORTING_MANUAL_OPERATION_PROVEN",
+      "note": "Agendas continuam inativas; receita real não pode ser inventada para fechar marco."
+    },
+    {
+      "id": "M_PRE_CANARY",
+      "required": [
+        "A43",
+        "A44",
+        "A45",
+        "A46"
+      ],
+      "verdict": "META_CURRENT_PLAN_ROOTS_PROVEN_CANARY_AUTHORIZATION_REQUIRED"
+    }
+  ],
+  "economical_validation": "Testes focais por módulo e ciclo SQL descartável para migrations; build e TypeScript por diff contra baseline real; uma revisão focal de risco e uma rodada corretiva. Não repetir suíte inteira após alteração só documental.",
+  "later_separate_proofs": [
+    "primeiro Campaign/AdSet/Ad PAUSED com read-back completo e autorização nominal",
+    "expansão real de macro e chegada ao GAM quando observável; não ativar para forçar prova",
+    "agenda diária e backfill autorizados",
+    "CAPI/novo público/custom conversion definition/dynamic creative como tarefas distintas"
+  ]
+}

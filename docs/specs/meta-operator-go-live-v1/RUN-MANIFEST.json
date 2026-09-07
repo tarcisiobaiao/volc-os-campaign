@@ -1,0 +1,82 @@
+{
+  "run_id": "meta-operator-go-live-20260907",
+  "status": "SPEC_READY_FOR_SCOPED_EXECUTION",
+  "mode": "SPEC_ONLY",
+  "base_commit": "4c2d17a215a13c7202c99bf89b65ef92926e9300",
+  "branch": "execution/volc-os-operacao-80-20",
+  "scope": [
+    "Meta official schema execution plan",
+    "ABO/CBO and multiple adsets",
+    "audiences, geolocation and explicit expansion",
+    "custom conversions and recipe eligibility",
+    "individual/ZIP media ingestion and registration",
+    "operator-triggered tracking validation",
+    "inactive n8n reporting publication and manual proof",
+    "GAM campaign_id lineage"
+  ],
+  "runtime_changes": false,
+  "external_writes_in_this_run": false,
+  "classification": "internal engineering; no tokens, raw account IDs or user media",
+  "retention": "versioned specification retained with repository; no raw provider payload retained",
+  "access": "existing repository access; no new public share",
+  "incident_owner": "VOLC operator; report in current work thread",
+  "artifacts": [
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/ACCEPTANCE-CHECKLIST.json",
+      "sha256": "fa24b0b99b2a0206246ed8d85ca45dbc4c88078b5f583be815109aa94601b7e6"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/CURATION-HANDOFF.json",
+      "sha256": "5504379db5ec6765505f3f0b01cd91a02a089e6f3855965e27db16b00208dea5"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/EVIDENCE.json",
+      "sha256": "7263791adc2186e0a2c4b090059d4162ef948aaf8113f5f2d782596825274beb"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/EXECUTION-PLAN.json",
+      "sha256": "4b2cde06d5cd1e401187f11990a220d0da093f77e733030d3476f2cc73d55392"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/EXECUTOR-PROMPT.md",
+      "sha256": "363b0a9a339013b7531246b2dee522dc16dbef1a0f4f1daf9e208e8a0463ebb8"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/FIELD-BINDINGS.json",
+      "sha256": "237ed85080c09a97dba02b790eca975322836b35f970ebec5ff2b7c3fb9edc00"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/HANDOFF.md",
+      "sha256": "d4bdfcaa5d8001f61a5ae5fbca900ea010d401271fc38f6f3354cf98f5d38364"
+    },
+    {
+      "path": "docs/specs/meta-operator-go-live-v1/SPEC.json",
+      "sha256": "f80101b0e818726dbcfebbcd93e8063a0e1004df0ef9a07a468a434bb520cbcb"
+    }
+  ],
+  "official_schema_applied": false,
+  "n8n_workflow_created": false,
+  "read_only_external_checks": [
+    "public documentation",
+    "n8n workflow inventory: 396 workflows across four pages, complete"
+  ],
+  "gates": {
+    "json_files": 7,
+    "tasks": 13,
+    "field_bindings": 40,
+    "acceptance_checks": 46,
+    "unique_ids": true,
+    "task_graph": "ACYCLIC",
+    "referenced_existing_paths": "ALL_EXIST",
+    "secrets_scan": "NO_STRONG_PATTERNS",
+    "graph_check": {
+      "current": true,
+      "reason": "insumos idênticos",
+      "input_sha256": "06189b062c3a2a88f9eeb64edbf9b9fa3909f9707508f4816145168deca551fd"
+    },
+    "runtime_tests": "NOT_RERUN_DOCS_ONLY",
+    "browser_review": "NOT_PERFORMED"
+  },
+  "roadmap_changes": "NONE; proposed handoff only, capabilities remain partial",
+  "manifest_hash_rule": "This file excludes its own hash; transport SHA reported outside the commit content."
+}

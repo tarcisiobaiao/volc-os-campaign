@@ -1,0 +1,408 @@
+{
+  "contract": "META_OPERATOR_GO_LIVE_V1",
+  "binding_rule": "request_path define a proposta sem congelar nomes de implementação. Executor deve registrar no FIELD-BINDINGS-IMPLEMENTED.json o arquivo:linha concreto de UI, DTO, domínio, resolver, compilador, hash, persistência e read-back por campo, ou razão legítima de UI-only.",
+  "readback_rule": "Campo crítico não legível diretamente precisa evidência alternativa específica ou estado UNVERIFIED; nunca ignorar na comparação. Normalizações do provedor devem ser documentadas/testadas por receita.",
+  "persistence_rule": "Preferências locais não são autoridade. Persistir plano congelado autorizado, chaves estáveis, refs e resultado sanitizado no ledger/read model existente; não segredos/listas de pessoas.",
+  "fields": [
+    {
+      "id": "F01",
+      "label": "Conta",
+      "request_path": "account_ref",
+      "resolver": "resolver ator/tenant/conta BRL e permissões",
+      "provider_path": "edge act_{account_id}",
+      "current": "EXISTING",
+      "task": "T04",
+      "acceptance": "recusar referência de outra conta/ator antes de rede"
+    },
+    {
+      "id": "F02",
+      "label": "Página / Instagram",
+      "request_path": "page_ref; instagram_identity_ref",
+      "resolver": "provar Page/account e identidade por placement",
+      "provider_path": "creative.object_story_spec.page_id; campo Instagram vigente por receita",
+      "current": "PAGE_ONLY",
+      "task": "T05",
+      "acceptance": "IG sem vínculo bloqueia apenas placements incompatíveis, nunca fallback silencioso"
+    },
+    {
+      "id": "F03",
+      "label": "Objetivo e destino",
+      "request_path": "recipe_id; destination.kind",
+      "resolver": "registro de receitas v26 website-only/Shop",
+      "provider_path": "campaign.objective; adset.optimization_goal; destination_type somente quando comprovado",
+      "current": "FIXED_TRAFFIC_LPV",
+      "task": "T02",
+      "acceptance": "combinação não registrada rejeita antes de HTTP"
+    },
+    {
+      "id": "F04",
+      "label": "ABO / CBO",
+      "request_path": "campaign.budget.mode",
+      "resolver": "união discriminada de orçamento",
+      "provider_path": "campaign.daily_budget/lifetime_budget OU adset.daily_budget/lifetime_budget",
+      "current": "ABO_ONLY",
+      "task": "T03",
+      "acceptance": "nunca emitir orçamento nos dois níveis nem mover valores sem confirmação"
+    },
+    {
+      "id": "F05",
+      "label": "Valor e moeda",
+      "request_path": "budget.amount_minor; currency",
+      "resolver": "moeda da conta e mínimos de receita",
+      "provider_path": "unidades minor, não float de reais",
+      "current": "PARTIAL",
+      "task": "T03",
+      "acceptance": "R$10=1000 minor, valor inválido/naN/moeda divergente recusados"
+    },
+    {
+      "id": "F06",
+      "label": "Diário / total",
+      "request_path": "budget.period",
+      "resolver": "exclusividade DAILY/LIFETIME",
+      "provider_path": "daily_budget OU lifetime_budget",
+      "current": "DAILY_ONLY",
+      "task": "T03",
+      "acceptance": "lifetime sem programação válida não compila"
+    },
+    {
+      "id": "F07",
+      "label": "Lance",
+      "request_path": "bidding.strategy; bidding.limit",
+      "resolver": "matriz receita/objetivo/budget/goal",
+      "provider_path": "bid_strategy; bid_amount/ROAS control somente se receita suportar",
+      "current": "FIXED_LOWEST_COST",
+      "task": "T03",
+      "acceptance": "não inventar Campaign bid_strategy para contornar budget sharing"
+    },
+    {
+      "id": "F08",
+      "label": "Compartilhamento entre conjuntos",
+      "request_path": "budget.adset_sharing",
+      "resolver": "receita separada; P0 sempre false",
+      "provider_path": "campaign.is_adset_budget_sharing_enabled",
+      "current": "FALSE_FIXED",
+      "task": "T03",
+      "acceptance": "false explícito; CBO não liga compartilhamento"
+    },
+    {
+      "id": "F09",
+      "label": "Programação",
+      "request_path": "adsets[].schedule",
+      "resolver": "fuso da conta e relógio servidor",
+      "provider_path": "start_time/end_time em forma API compatível",
+      "current": "START_ONLY",
+      "task": "T03",
+      "acceptance": "datas inválidas/DST/end<=start recusadas"
+    },
+    {
+      "id": "F10",
+      "label": "Múltiplos conjuntos",
+      "request_path": "adsets[].adset_key",
+      "resolver": "chave estável, limites e DAG",
+      "provider_path": "op adset:{key}; ads referenciam essa operação",
+      "current": "SINGLE_ONLY",
+      "task": "T03",
+      "acceptance": "reordenar não troca identidade; retry ambíguo não duplica em outro grupo"
+    },
+    {
+      "id": "F11",
+      "label": "Tipo de público",
+      "request_path": "adsets[].audience.mode",
+      "resolver": "modo explícito e compatibilidade da receita",
+      "provider_path": "targeting derivado no servidor",
+      "current": "PARTIAL",
+      "task": "T05",
+      "acceptance": "switch modo exibe alterações e invalida aprovação"
+    },
+    {
+      "id": "F12",
+      "label": "Públicos personalizados incluídos",
+      "request_path": "audience.include_custom_refs[]",
+      "resolver": "catálogo conta/owner/status/TTL",
+      "provider_path": "targeting.custom_audiences quando suportado",
+      "current": "ABSENT",
+      "task": "T05",
+      "acceptance": "público de outra conta recusado; nunca lista de membros"
+    },
+    {
+      "id": "F13",
+      "label": "Públicos excluídos",
+      "request_path": "audience.exclude_custom_refs[]",
+      "resolver": "valida catálogo e conflito inclusão/exclusão",
+      "provider_path": "targeting.excluded_custom_audiences quando suportado",
+      "current": "ABSENT",
+      "task": "T05",
+      "acceptance": "interseção ou exclusão não suportada é erro legível"
+    },
+    {
+      "id": "F14",
+      "label": "Semelhantes existentes",
+      "request_path": "audience.lookalike_refs[]",
+      "resolver": "subtipo e elegibilidade observados",
+      "provider_path": "custom_audiences com IDs resolvidos conforme API",
+      "current": "ABSENT",
+      "task": "T05",
+      "acceptance": "não criar lookalike por selecionar catálogo"
+    },
+    {
+      "id": "F15",
+      "label": "País/região/cidade/CEP",
+      "request_path": "audience.geo.include[]",
+      "resolver": "tipo/chave canônica obtida do catálogo",
+      "provider_path": "targeting.geo_locations",
+      "current": "BRAZIL_FIXED",
+      "task": "T05",
+      "acceptance": "texto livre não vira ID; chaves válidas e conflitos testados"
+    },
+    {
+      "id": "F16",
+      "label": "Excluir localidades",
+      "request_path": "audience.geo.exclude[]",
+      "resolver": "normalização e regra de cobertura",
+      "provider_path": "targeting.excluded_geo_locations",
+      "current": "ABSENT",
+      "task": "T05",
+      "acceptance": "não omitir exclusão para fazer Meta aceitar"
+    },
+    {
+      "id": "F17",
+      "label": "Raio / ponto",
+      "request_path": "audience.geo.custom_locations[]",
+      "resolver": "lat/lon, unidade e raio elegíveis",
+      "provider_path": "geo_locations.custom_locations conforme documentação da versão",
+      "current": "ABSENT",
+      "task": "T05",
+      "acceptance": "intervalo/NaN/unidade inválidos e categoria restrita recusados"
+    },
+    {
+      "id": "F18",
+      "label": "Idade e idiomas",
+      "request_path": "audience.age; audience.locale_refs[]",
+      "resolver": "regras categoria/país/modo; catálogo locales",
+      "provider_path": "age_min/age_max/locales quando elegíveis",
+      "current": "FIXED_AGE",
+      "task": "T05",
+      "acceptance": "restrição especial ou Advantage altera semântica visível, nunca falso controle rígido"
+    },
+    {
+      "id": "F19",
+      "label": "Segmentação detalhada",
+      "request_path": "audience.interest_refs[]",
+      "resolver": "catálogo atual e disponibilidade; não inferir atributo sensível",
+      "provider_path": "targeting permitido pela receita, forma comprovada",
+      "current": "ABSENT",
+      "task": "T05",
+      "acceptance": "feature indisponível é bloqueada com causa; não usar enums históricos retirados"
+    },
+    {
+      "id": "F20",
+      "label": "Advantage+ Audience",
+      "request_path": "audience.expansion",
+      "resolver": "declaração explícita de automação/sugestões",
+      "provider_path": "targeting.targeting_automation e controles compatíveis",
+      "current": "BOOLEAN_EXISTS",
+      "task": "T05",
+      "acceptance": "distinção controle/sugestão deve aparecer na revisão; nenhuma expansão por omissão"
+    },
+    {
+      "id": "F21",
+      "label": "Posicionamentos",
+      "request_path": "placements.mode; placements.values[]",
+      "resolver": "identidade, objetivo e formatos",
+      "provider_path": "publisher_platforms e posições elegíveis",
+      "current": "FACEBOOK_ONLY",
+      "task": "T05",
+      "acceptance": "IG sem identidade ou formato não suportado bloqueiam; default não se amplia sozinho"
+    },
+    {
+      "id": "F22",
+      "label": "Pixel / dataset",
+      "request_path": "measurement.source_ref; source_kind",
+      "resolver": "fonte backend escopada e relação com conta",
+      "provider_path": "promoted_object conforme receita, não ID mascarado da UI",
+      "current": "READ_ONLY",
+      "task": "T06",
+      "acceptance": "fonte errada/ausente para receita de conversão recusa"
+    },
+    {
+      "id": "F23",
+      "label": "Conversão personalizada",
+      "request_path": "measurement.custom_conversion_ref",
+      "resolver": "estado tri-state, acesso, fonte e compatibilidade",
+      "provider_path": "custom_conversion_id e campos exigidos, somente combinação comprovada",
+      "current": "READ_ONLY",
+      "task": "T06",
+      "acceptance": "archived/unavailable/unknown não vira elegível; evento arbitrário não mapeia OTHER"
+    },
+    {
+      "id": "F24",
+      "label": "Evento padrão",
+      "request_path": "measurement.standard_event",
+      "resolver": "registro por receita/fonte",
+      "provider_path": "custom_event_type ou campo vigente comprovado",
+      "current": "ABSENT",
+      "task": "T06",
+      "acceptance": "Traffic/LPV não ganha promoted_object por campo de relatório"
+    },
+    {
+      "id": "F25",
+      "label": "Uso da conversão",
+      "request_path": "measurement.purpose",
+      "resolver": "REPORT_ONLY ou OPTIMIZE",
+      "provider_path": "payload só muda em OPTIMIZE; preferência de relatório separada",
+      "current": "ABSENT",
+      "task": "T06",
+      "acceptance": "selecionar KPI não muda objetivo/lance e não envia CAPI"
+    },
+    {
+      "id": "F26",
+      "label": "Atribuição",
+      "request_path": "measurement.attribution",
+      "resolver": "janelas suportadas + semântica de action_report_time",
+      "provider_path": "adset.attribution_spec; Insights attribution params são contratos distintos",
+      "current": "READ_MODEL_ONLY",
+      "task": "T06",
+      "acceptance": "não somar grãos/janelas diferentes; exposição da fonte no relatório"
+    },
+    {
+      "id": "F27",
+      "label": "Destino da campanha",
+      "request_path": "destination.url",
+      "resolver": "LP publicada, website-only, política e redirects",
+      "provider_path": "link_data/video_data URL ou formato equivalente",
+      "current": "EXISTING",
+      "task": "T02",
+      "acceptance": "URL final/hash/gate coerentes, parâmetros conflitantes recusados"
+    },
+    {
+      "id": "F28",
+      "label": "Tracking",
+      "request_path": "tracking.template",
+      "resolver": "constante versionada no servidor",
+      "provider_path": "creative.url_tags",
+      "current": "LOCAL_EXISTS",
+      "task": "T12",
+      "acceptance": "hash muda com tracking; roots não prova expansão; não enviar template duplamente escapado"
+    },
+    {
+      "id": "F29",
+      "label": "Origem da mídia",
+      "request_path": "media.source; master_ref/asset_ref",
+      "resolver": "mesmo resolvedor canônico para biblioteca/estúdio/importação",
+      "provider_path": "image_hash/video_id só no backend",
+      "current": "EXISTING_ACCOUNT_ONLY",
+      "task": "T09",
+      "acceptance": "preview real, owner/conta conferidos em todas as fontes"
+    },
+    {
+      "id": "F30",
+      "label": "Arquivos individuais / ZIP",
+      "request_path": "multipart.files; import_batch_ref",
+      "resolver": "intake privado, limites, bytes, hash, origem",
+      "provider_path": "nenhum payload Meta durante importação",
+      "current": "ABSENT",
+      "task": "T07",
+      "acceptance": "ZIP traversal/bomb não grava fora de quarentena; não gera campanha"
+    },
+    {
+      "id": "F31",
+      "label": "Registrar mídia na conta",
+      "request_path": "registration.account_ref; master_refs[]",
+      "resolver": "consentimento por lote, gate e idempotência",
+      "provider_path": "adimages/advideos; leitura de processamento",
+      "current": "ABSENT",
+      "task": "T08",
+      "acceptance": "não repetir registro ambíguo; outra conta requer associação própria"
+    },
+    {
+      "id": "F32",
+      "label": "Vídeo e miniatura",
+      "request_path": "media.video_master_ref; thumbnail_master_ref",
+      "resolver": "bytes próprios, processamento e thumbnail elegível",
+      "provider_path": "video_data com referência apropriada e thumbnail comprovada",
+      "current": "PREVIEW_ONLY",
+      "task": "T08",
+      "acceptance": "vídeo sem processing concluído/thumbnail não é emissível; não bloquear imagem por consulta vídeo"
+    },
+    {
+      "id": "F33",
+      "label": "Mensagem/título/descrição/CTA",
+      "request_path": "ads[].copy",
+      "resolver": "limites por formato e política",
+      "provider_path": "object_story_spec copy/CTA conforme receita",
+      "current": "STATIC_EXISTS",
+      "task": "T09",
+      "acceptance": "edição invalida hashes/evidência afetada; copy por ad sem produto cartesiano oculto"
+    },
+    {
+      "id": "F34",
+      "label": "Lote e destino por anúncio",
+      "request_path": "ads[].variation_key; adset_key; media_ref",
+      "resolver": "mapeamento explícito e limites do produto",
+      "provider_path": "N Creative + N Ad com dependências estáveis",
+      "current": "BATCH_SINGLE_ADSET",
+      "task": "T09",
+      "acceptance": "ZIP com N arquivos não vira N campanhas; mapa revisável exato"
+    },
+    {
+      "id": "F35",
+      "label": "Direitos/política",
+      "request_path": "media.policy_receipt_ref",
+      "resolver": "bytes/conta/finalidade/expiração + gate atual",
+      "provider_path": "precondição; não campo arbitrário Meta",
+      "current": "EXISTING_POLICY",
+      "task": "T07",
+      "acceptance": "upload/importação não ignora identidade de terceiros nem política"
+    },
+    {
+      "id": "F36",
+      "label": "Preview",
+      "request_path": "preview_ref",
+      "resolver": "URL autorizada efêmera por owner",
+      "provider_path": "UI-only",
+      "current": "EXISTING_PARTIAL",
+      "task": "T09",
+      "acceptance": "nome curto, imagem/player; falha não cai para fixture"
+    },
+    {
+      "id": "F37",
+      "label": "Orçamento e público na revisão",
+      "request_path": "compiled_summary",
+      "resolver": "somente plano canônico do backend",
+      "provider_path": "UI-only; snapshot aprovado",
+      "current": "PARTIAL",
+      "task": "T09",
+      "acceptance": "rascunho e resumo não podem divergir; campos alterados revogam validação antiga"
+    },
+    {
+      "id": "F38",
+      "label": "Estado ao nascer",
+      "request_path": "birth_state",
+      "resolver": "PAUSED fixo Campaign/AdSet/Ad",
+      "provider_path": "status",
+      "current": "EXISTING",
+      "task": "T12",
+      "acceptance": "Creative não PAUSED; nenhuma rota de ativação adicionada"
+    },
+    {
+      "id": "F39",
+      "label": "Projeto e receita",
+      "request_path": "project_binding_ref; GAM contract",
+      "resolver": "vínculo explícito de projeto/conta GAM/moeda/fuso",
+      "provider_path": "DB financeiro, não promoted_object",
+      "current": "LOCAL_EXISTS",
+      "task": "T11",
+      "acceptance": "UUID criativo não convertido para bigint financeiro; colisão de rede bloqueia"
+    },
+    {
+      "id": "F40",
+      "label": "Flexível / dinâmico",
+      "request_path": "creative_mode",
+      "resolver": "capacidade própria, não sinônimo de ZIP",
+      "provider_path": "asset_feed_spec somente com receita comprovada",
+      "current": "BLOCKED",
+      "task": "T09",
+      "acceptance": "label separa lote de variações flexíveis; não declarar flexível pronto neste marco"
+    }
+  ]
+}

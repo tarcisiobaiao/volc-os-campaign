@@ -1,0 +1,379 @@
+{
+  "contract": "META_OPERATOR_GO_LIVE_V1",
+  "execution": "SINGLE_WRITER_ON_EXISTING_OPERATIONAL_BRANCH",
+  "task_count": 13,
+  "rules": [
+    "Sem nova investigação global, novo spec amplo ou comitê de revisores.",
+    "Reproduzir achado contra HEAD antes de corrigir; preservar correções e contratos já existentes.",
+    "Dependência externa de uma task não impede trabalho local de outra pronta.",
+    "Não declarar público/conversão/upload funcionando se só existe widget ou mock.",
+    "Não mudar baseline/limites para obter verde; medir uma vez e executar suites focais, build e uma revisão final."
+  ],
+  "checkpoints": [
+    {
+      "id": "CP0",
+      "goal": "AGENTS/skills, branch, HEAD e diff; congelar execução e insumos de schema",
+      "external_effect": "nenhum",
+      "stop_if": "writer concorrente sobre os mesmos arquivos ou branch divergente não adjudicada"
+    },
+    {
+      "id": "CP1",
+      "goal": "Meta schema operacional com recibo exato",
+      "external_effect": "Supabase schema autorizado e provas mínimas, sem criação Meta",
+      "stop_if": "destino não é autoridade oficial ou reparo requer destruir dados"
+    },
+    {
+      "id": "CP2",
+      "goal": "ABO/CBO/públicos/conversões ligados ao contrato",
+      "external_effect": "catálogo/validate apenas por ato do operador",
+      "stop_if": "somente a receita incompatível fica bloqueada; não encerrar demais tasks"
+    },
+    {
+      "id": "CP3",
+      "goal": "mídia individual/ZIP privada e registro por conta",
+      "external_effect": "storage/schema delimitados; Meta upload só por confirmação dedicada",
+      "stop_if": "política/ownership incertos ou upload ambíguo"
+    },
+    {
+      "id": "CP4",
+      "goal": "inspeção visual autenticada e bindings de todos os campos",
+      "external_effect": "nenhum implícito",
+      "stop_if": "sem sessão, pedir login manual; não forjar sessão nem dados reais"
+    },
+    {
+      "id": "CP5",
+      "goal": "n8n inativo real, coleta manual e dashboard",
+      "external_effect": "criação de flows inativos e sincronização manual delimitada",
+      "stop_if": "credencial ausente ou conta/janela não escolhida; não ativar schedule"
+    },
+    {
+      "id": "CP6",
+      "goal": "prova do plano atual, memória e ficha do canário",
+      "external_effect": "validate_only por clique; zero Campaign/AdSet/Ad create",
+      "stop_if": "criação/ativação exigem autorização nova"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T01",
+      "checkpoint": "CP1",
+      "title": "Schema oficial Meta e perfil de importação preparado",
+      "depends_on": [],
+      "existing_paths": [
+        "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+        "scripts/verificar_perfil_schema_meta.py",
+        "supabase/migrations"
+      ],
+      "implementation": "Inspecionar catálogo oficial; verificar CREATE_ONLY/META_READ_MODEL e dependências. Corrigir leitor de catálogo completo e preparar delta seguro para importação. Aplicar os dois perfis Meta existentes exatos após prova local e backup. Não aplicar novo perfil criativo antes de T07.",
+      "minimum_counterproofs": [
+        "catálogo vazio/parcial/completo",
+        "checksums/ordem compartilhada",
+        "RPC idempotente e gravação direta indevida recusada"
+      ],
+      "done_when": "Recibo de catálogo antes/depois, migrations e hashes efetivos, roles/RLS; nenhum schema Google tocado.",
+      "authority": "OFFICIAL_SCHEMA_SCOPED"
+    },
+    {
+      "id": "T02",
+      "checkpoint": "CP2",
+      "title": "Contrato de criador V2 e receitas",
+      "depends_on": [],
+      "existing_paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/trafego/meta_execucao/capacidades.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "src/lib/pautadorApi.ts"
+      ],
+      "implementation": "Versionar request/plano; registry tipado Traffic/LPV e conversões web Sales/Leads, por documentação v26. Preservar decoder legado, defaults explícitos e website-only. Resolver campos antes de Keychain; emitir capabilities e razões curtas de incompatibilidade.",
+      "minimum_counterproofs": [
+        "payload legado preservado",
+        "campo desconhecido recusado",
+        "falso default de objetivo/Shop",
+        "recipe não verificada não emitida"
+      ],
+      "done_when": "UI e servidor compartilham tipos/capabilities; nenhuma exceção broad permite enums inventados; plano novo não reaproveita aprovação antiga.",
+      "authority": "LOCAL"
+    },
+    {
+      "id": "T03",
+      "checkpoint": "CP2",
+      "title": "ABO/CBO, programação e múltiplos conjuntos",
+      "depends_on": [
+        "T02"
+      ],
+      "existing_paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta_execucao/reconciliacao.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx"
+      ],
+      "implementation": "União discriminada orçamento, chaves estáveis de AdSets e Ads; evoluir dependências/resolução do executor sem reescrever saga/fencing. Leitura crítica Campaign budget e AdSet budgets; transferir orçamento somente após confirmação. CBO e budget sharing independentes.",
+      "minimum_counterproofs": [
+        "orçamento duplicado",
+        "reorder e replay",
+        "timeout no AdSet intermediário",
+        "moeda/fuso/unidade/end_time",
+        "legacy static single-AdSet"
+      ],
+      "done_when": "Compilar localmente ABO 1/N e CBO 1/N com Ads corretamente associados e todos PAUSED; read-back exercitado por objetos não vazios.",
+      "authority": "LOCAL"
+    },
+    {
+      "id": "T04",
+      "checkpoint": "CP2",
+      "title": "Catálogos de públicos/geografia/mensuração",
+      "depends_on": [
+        "T02"
+      ],
+      "existing_paths": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/dominio.py",
+        "backend/app/trafego/meta/read_model.py",
+        "backend/app/routers/meta_local.py",
+        "backend/app/trafego/meta_execucao/ativos.py"
+      ],
+      "implementation": "Adicionar seleção paginada escopada a conta de públicos personalizados/semelhantes existentes e geo. Reusar pixels/custom conversions; preservar ausência de flags e relação real de fonte no backend. Catálogo obsoleto visível, não otimização permitida.",
+      "minimum_counterproofs": [
+        "cross-account/tenant",
+        "paginação incompleta",
+        "missing flags != false",
+        "revogação e expirado",
+        "IDs mascarados não resolvem fonte"
+      ],
+      "done_when": "Referências opacas, TTL/frescor, UNKNOWN/UNAVAILABLE distintos. Catálogo real só consultado após seleção explícita de conta.",
+      "authority": "LOCAL_THEN_OPERATOR_READ"
+    },
+    {
+      "id": "T05",
+      "checkpoint": "CP2",
+      "title": "Público e posicionamentos completos no contrato",
+      "depends_on": [
+        "T03",
+        "T04"
+      ],
+      "existing_paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx"
+      ],
+      "implementation": "Ligar inclusões/exclusões, geo e raio elegíveis, idade/idiomas, públicos existentes e expansão; representar sugestão vs controle. Revalidar Page/Instagram/formatos por placement e restrições especiais; não ampliar alcance silenciosamente.",
+      "minimum_counterproofs": [
+        "público fora da conta",
+        "exclusão perdida",
+        "lat/radius inválido",
+        "Advantage muda semântica",
+        "Instagram sem identidade",
+        "categoria especial incompatível"
+      ],
+      "done_when": "Escolhas chegam a payload/hash e read-back; preview distingue público estrito de expansão. Sem criação de público ou PII.",
+      "authority": "LOCAL_THEN_OPERATOR_READ_VALIDATE"
+    },
+    {
+      "id": "T06",
+      "checkpoint": "CP2",
+      "title": "Conversões personalizadas e eventos por receita",
+      "depends_on": [
+        "T04",
+        "T05"
+      ],
+      "existing_paths": [
+        "backend/app/trafego/meta_execucao/contrato.py",
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/trafego/meta/adaptador.py",
+        "src/pages/trafego/MetaCriacaoPage.tsx"
+      ],
+      "implementation": "Separar REPORT_ONLY/OPTIMIZE; source_kind/ref e custom conversion/evento elegível. Derivar promoted_object e atribuição por receita comprovada, sem hacks de OTHER. Registrar restrições da conta e ação útil quando não houver fonte. Não implementar envio CAPI nesta task.",
+      "minimum_counterproofs": [
+        "fonte não associada",
+        "archived/unknown",
+        "evento sem compatibilidade",
+        "Traffic relatório não muda otimização",
+        "read-back fonte/conversão divergente"
+      ],
+      "done_when": "Seletores funcionais quando elegíveis; bloqueio individual fundamentado quando não. Recipe não comprovada permanece partial, não é falsamente concluída.",
+      "authority": "LOCAL_THEN_OPERATOR_READ_VALIDATE"
+    },
+    {
+      "id": "T07",
+      "checkpoint": "CP3",
+      "title": "Importar imagens/vídeos individuais e ZIP",
+      "depends_on": [
+        "T02"
+      ],
+      "remote_precondition": "CP1/T01 deve estar comprovado antes da aplicação oficial e do uso do storage oficial; implementação local não depende disso.",
+      "existing_paths": [
+        "backend/app/routers/criativos.py",
+        "backend/app/criativo/armazenamento.py",
+        "backend/app/criativo/persistencia.py",
+        "supabase/migrations/v11_01_estudio_criativo.sql",
+        "docs/specs/creative-supply-chain-v1/ASSET-SUPPLY-MANIFEST.schema.json"
+      ],
+      "implementation": "Implementar intake privado e origem importada, mantendo master→job→owner e projeto correto. Resolver conflito de manifest por versão explícita; nova migration aditiva, nunca editar migration aplicada e reexecutar. Publicar perfil CREATIVE_IMPORT_META mínimo com checksums e aplicar após prova SQL. Preview técnico e política antes de uso pago.",
+      "minimum_counterproofs": [
+        "zipbomb/traversal/symlink/mime falso/timeout decode",
+        "cross-owner signed preview",
+        "hash final e duplicata",
+        "arquivo próprio não geração fictícia",
+        "política falha não vira CLEAR"
+      ],
+      "done_when": "Arquivo individual e ZIP produzem masters reais privados e resultados por entrada; bytes aprovados iguais aos destinados ao provedor. Zero Meta durante importação.",
+      "authority": "LOCAL_AND_PRIVATE_STORAGE_SCHEMA_SCOPED"
+    },
+    {
+      "id": "T08",
+      "checkpoint": "CP3",
+      "title": "Registrar mídia na Meta como ato independente",
+      "depends_on": [
+        "T07",
+        "T04"
+      ],
+      "existing_paths": [
+        "backend/app/trafego/meta_execucao/ativos.py",
+        "backend/app/criativo/armazenamento.py",
+        "backend/app/routers/meta_local.py"
+      ],
+      "implementation": "Adicionar serviço/rota de associação por conta, idempotência durável antes de upload e read-back. Imagem primeiro; vídeo com processamento e thumbnail de bytes sob custódia. Nenhum endpoint genérico de mutate. Referências existentes seguem compatíveis.",
+      "minimum_counterproofs": [
+        "timeout com resultado desconhecido",
+        "replay por conta/hash",
+        "upload conta errada",
+        "vídeo pendente",
+        "imagem não depende de leitura vídeo",
+        "token nunca payload/log"
+      ],
+      "done_when": "Teste local hermético; registro real só por clique que lista conta/arquivos. Registrar exatamente arquivos selecionados, sem Campaign/AdSet/Ad create.",
+      "authority": "OPERATOR_SCOPED_MEDIA_REGISTRATION"
+    },
+    {
+      "id": "T09",
+      "checkpoint": "CP4",
+      "title": "Criador VOLC integrado e inspecionado",
+      "depends_on": [
+        "T03",
+        "T05",
+        "T06",
+        "T07",
+        "T08"
+      ],
+      "existing_paths": [
+        "src/pages/trafego/MetaCriacaoPage.tsx",
+        "src/components/trafego/meta/rascunho.ts",
+        "src/components/trafego/meta/modelo.ts",
+        "src/lib/pautadorApi.ts"
+      ],
+      "implementation": "Reusar base visual VOLC, uma decisão por etapa. Orçamento ABO/CBO inteligível, público por conjunto, fonte/conversão e biblioteca/Estúdio/upload. Thumbnail/player, mapa lote→AdSet→Ads, resumo do servidor e próximos atos claros. Não redesenhar outro sistema ou reproduzir JSON no corpo principal.",
+      "minimum_counterproofs": [
+        "digitar orçamento sem desmontagem",
+        "troca conta limpa seleções inválidas",
+        "response tardia não entra em outra conta",
+        "ZIP preview não vaza path",
+        "reload sem secreto/approval falsa",
+        "todos campos F01..F40 adjudicados"
+      ],
+      "done_when": "Inspeção autenticada real desktop e mobile: screenshots com dados sanitizados, sem overflow; botões de efeitos externos explícitos, criação/ativação fechadas.",
+      "authority": "LOCAL_BROWSER_NO_IMPLICIT_EXTERNAL"
+    },
+    {
+      "id": "T10",
+      "checkpoint": "CP5",
+      "title": "n8n credenciais reais e persistência canônica",
+      "depends_on": [],
+      "existing_paths": [
+        "n8n/gerar_flows_meta_ledger.py",
+        "n8n/volc_meta_insights_dia_d1.json",
+        "scripts/validar_workflows_n8n_meta.py",
+        "backend/tests/test_meta_workflows_n8n.py",
+        "backend/app/trafego/meta/read_model.py"
+      ],
+      "implementation": "Substituir placeholder por credencial suportada e configurada com operador, ajustar gerador/validator/testes. Confirmar origem de rede n8n→Meta/Supabase, bootstrap de account/objects, timezone e RPC canônica. Não copiar token Mac nem adicionar URL localhost ao flow remoto.",
+      "minimum_counterproofs": [
+        "REPLACE_ME bloqueia pronto",
+        "sem segredos em export",
+        "D-1 em fusos distintos",
+        "actions separadas/NULL",
+        "paginação incompleta sem watermark",
+        "idempotência mesma janela"
+      ],
+      "done_when": "JSON gerado executável para versão instalada; prova de credencial/config sem revelar valores. Falta de credencial é única dependência humana, não motivo para reabrir arquitetura.",
+      "authority": "LOCAL_AND_SECURE_CREDENTIAL_SELECTION"
+    },
+    {
+      "id": "T11",
+      "checkpoint": "CP5",
+      "title": "Publicação inativa e teste manual de reporting/GAM",
+      "depends_on": [
+        "T01",
+        "T10"
+      ],
+      "existing_paths": [
+        "n8n/gerar_flows_meta_ledger.py",
+        "backend/app/trafego/meta/financeiro.py",
+        "backend/app/routers/meta_local.py",
+        "src/components/trafego/meta/MetaFinanceiro.tsx"
+      ],
+      "implementation": "Criar os workflows delimitados inativos via API real e ler de volta. Selecionar uma conta/janela, executar coleta manual e repetir; conferir recibos, grão, latest e dashboard. Conferência de coleta usa recibos sem duplicar cálculo financeiro. Preservar GAM ativo e confirmar contratos/metadados de join.",
+      "minimum_counterproofs": [
+        "remoto realmente inactive",
+        "nome igual não autoriza overwrite",
+        "replay não duplica",
+        "Meta spend versus GAM revenue",
+        "colisão/múltiplo projeto",
+        "sem receita real não vira zero"
+      ],
+      "done_when": "IDs/revisões remotos sanitizados e active=false; execução manual com recibo durável e dashboard por mesma janela. Se n8n não alcança serviço, corrigir integração dentro do escopo ou declarar endpoint/deploy pendente, sem fake localhost.",
+      "authority": "INACTIVE_WORKFLOW_CREATE_AND_OPERATOR_MANUAL_SYNC"
+    },
+    {
+      "id": "T12",
+      "checkpoint": "CP6",
+      "title": "Validação do plano atual e preparação do canário",
+      "depends_on": [
+        "T09"
+      ],
+      "remote_precondition": "CP1 para validação durável. Reporting T11 não é pré-condição para o clique de roots, mas permanece requisito separado do fechamento de reporting.",
+      "existing_paths": [
+        "backend/app/trafego/meta_execucao/compilador.py",
+        "backend/app/trafego/meta_execucao/executor.py",
+        "backend/app/routers/trafego_meta_validacao.py",
+        "backend/app/routers/trafego_meta_criacao.py"
+      ],
+      "implementation": "Recompilar tracking e campos selecionados, validar roots somente por clique. Separar prova de raízes, dependentes, expansão e receita. Preparar ficha única do canário (conta/Page/LP/peça/orçamento/hash/contagem), sem executá-lo nesta autorização.",
+      "minimum_counterproofs": [
+        "nova alteração invalida prova",
+        "url_tags preservado e conflitos recusados",
+        "roots não implica dependentes",
+        "flags validate/read/upload não abrem criação",
+        "reconciliação ambígua sem retry"
+      ],
+      "done_when": "Recibo honesto do plano atual ou erro útil. CANARY_AUTHORIZATION_REQUIRED continua até autorização específica; nenhuma ativação nem criação automática.",
+      "authority": "OPERATOR_VALIDATE_ONLY_NO_CAMPAIGN_CREATE"
+    },
+    {
+      "id": "T13",
+      "checkpoint": "CP6",
+      "title": "Fechamento e memória operacional",
+      "depends_on": [
+        "T11",
+        "T12"
+      ],
+      "existing_paths": [
+        "volc-os-workbook/ROADMAP-VIVO.json",
+        "docs/volc-os-graph/curadoria-operacional.json",
+        "scripts/atualizar_grafo_volc_os.py"
+      ],
+      "implementation": "Uma revisão focal final dos riscos de escrita/isolamento/mapeamento, uma correção. Registrar bindings concretos, evidências local/remoto, pendências por requisito e permissões. Um integrador atualiza memória e regenera grafo pelo wrapper; commits lineares locais, sem push.",
+      "minimum_counterproofs": [
+        "nenhum done por código só",
+        "graph --check",
+        "baseline por conjunto, não contagem ilusória",
+        "runtime 8080 mesma worktree/HEAD"
+      ],
+      "done_when": "Relatório com URLs, SHA, schema/workflow receipts, evidências dos campos e próximos atos. Ausência de canário/receita não maquiada como produção.",
+      "authority": "LOCAL_CURATION"
+    }
+  ]
+}

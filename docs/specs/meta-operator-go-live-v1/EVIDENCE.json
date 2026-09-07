@@ -1,0 +1,215 @@
+{
+  "base_commit": "4c2d17a215a13c7202c99bf89b65ef92926e9300",
+  "inspected_at": "2026-09-07",
+  "note": "Inspeção de código e leitura remota delimitada. Não houve QA visual autenticado, Meta real nem catálogo Supabase oficial nesta rodada.",
+  "entries": [
+    {
+      "id": "E01",
+      "kind": "CODE",
+      "source": "backend/app/trafego/meta_execucao/contrato.py",
+      "locator": "PlanoMetaPausado",
+      "finding": "Receita atual fixa ABO/ADSET, Traffic/LPV, BRL, Facebook-only, um conjunto. Não é CBO.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E02",
+      "kind": "CODE",
+      "source": "backend/app/trafego/meta_execucao/compilador.py",
+      "locator": "compilar; campaign/adset/targeting",
+      "finding": "daily_budget e bid_strategy estão no AdSet. Campaign não recebe orçamento. Placeholder singular de AdSet exige evolução real para multi-conjuntos.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E03",
+      "kind": "CODE",
+      "source": "backend/app/routers/trafego_meta_validacao.py",
+      "locator": "PedidoPlanoMetaPausado; extra=forbid",
+      "finding": "DTO não oferece geo configurável, públicos personalizados nem promoted_object. Adicionar widgets não basta.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E04",
+      "kind": "CODE",
+      "source": "src/pages/trafego/MetaCriacaoPage.tsx",
+      "locator": "Orçamento/Público/Peça",
+      "finding": "Seleção de ativo preexistente com preview; não há entrada multipart/ZIP. Público tem opções fixas e Advantage Audience.",
+      "status": "CONFIRMED_LOCAL_NOT_PIXEL_REVIEW"
+    },
+    {
+      "id": "E05",
+      "kind": "CODE",
+      "source": "backend/app/trafego/meta/adaptador.py",
+      "locator": "ler_conversoes_personalizadas",
+      "finding": "Catálogo de conversões já existe; bool(linha.get(...)) apaga ausência de is_archived/is_unavailable. Fonte mascarada não pode resolver a relação de otimização.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E06",
+      "kind": "CODE",
+      "source": "backend/app/trafego/meta_execucao/executor.py",
+      "locator": "CAMPOS_DE_LEITURA; execução dependente",
+      "finding": "Reutilizar saga, fencing e read-back. CBO, múltiplos conjuntos, segmentação e eventos exigem ampliar leitura crítica.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E07",
+      "kind": "CODE",
+      "source": "backend/app/trafego/meta/financeiro.py",
+      "locator": "projeção financeira",
+      "finding": "GAM por campaign_id via utm_campaign_value; escopo de projeto/conta GAM/moeda/fuso e latest. Não substituir por purchase_roas Meta.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E08",
+      "kind": "CODE",
+      "source": "supabase/migrations/v11_01_estudio_criativo.sql",
+      "locator": "criativo_job/criativo_master",
+      "finding": "Master exige job_id e projeto criativo UUID. Job só admite volc_os/observado. Importação requer adjudicação explícita, não job gerado fictício.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E09",
+      "kind": "CODE",
+      "source": "backend/app/criativo/armazenamento.py",
+      "locator": "adaptadores e preview assinado",
+      "finding": "Reutilizar armazenamento privado e preview; comentário histórico sobre bucket não prova estado oficial atual.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E10",
+      "kind": "SPEC",
+      "source": "docs/specs/creative-supply-chain-v1/ASSET-SUPPLY-MANIFEST.schema.json",
+      "locator": "SUP-INV-01",
+      "finding": "Natureza producao para AVAILABLE conflita com importação legítima; versionar e testar exceção contratual explícita, não contornar política.",
+      "status": "CONFLICT_TO_RESOLVE"
+    },
+    {
+      "id": "E11",
+      "kind": "SPEC",
+      "source": "docs/closure/hermes-meta-v26-ground-truth-v1/META-CREATIVE-ZIP-CONTRACT.json",
+      "locator": "ZIP",
+      "finding": "Contrato documental já enumera ingestão; não comprova endpoint nem upload real.",
+      "status": "DOCUMENT_ONLY"
+    },
+    {
+      "id": "E12",
+      "kind": "MANIFEST",
+      "source": "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+      "locator": "CREATE_ONLY/META_READ_MODEL",
+      "finding": "Manifesto canônico/checksums locais passaram. Estado oficial não consultado nesta rodada.",
+      "status": "LOCAL_VALIDATED_OFFICIAL_UNKNOWN"
+    },
+    {
+      "id": "E13",
+      "kind": "CODE",
+      "source": "n8n/gerar_flows_meta_ledger.py",
+      "locator": "CRED_META_TIPO",
+      "finding": "metaGraphApiNaoProvisionada e REPLACE_ME ainda impedem execução real. Corrigir gerador, validador e testes juntos.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E14",
+      "kind": "REMOTE_READ",
+      "source": "n8n configured instance",
+      "locator": "GET /api/v1/workflows; paginação completa",
+      "finding": "396 workflows, quatro páginas. GAM REPORT - CAMPAIGN ID e GAM REPORT - CAMPAIGN ID - DAY BEFORE OFICIAL ativos; Meta Insights e VOLC - Meta Ads inativos. Nomes não provam propriedade/compatibilidade. Nenhuma escrita.",
+      "status": "CONFIRMED_READ_ONLY"
+    },
+    {
+      "id": "E15",
+      "kind": "CODE",
+      "source": "backend/app/routers/meta_local.py",
+      "locator": "sincronizacao/preparar; sincronizacao/persistir",
+      "finding": "Bootstrap manual existe. n8n remoto não pode depender de localhost ou Keychain do Mac.",
+      "status": "CONFIRMED_LOCAL"
+    },
+    {
+      "id": "E16",
+      "kind": "OFFICIAL",
+      "source": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/campaign.py",
+      "locator": "Field",
+      "finding": "SDK expõe orçamentos e estratégia. main é mutável; não prova compatibilidade v26 nem permissões de uma conta.",
+      "status": "FIELD_SHAPE_ONLY"
+    },
+    {
+      "id": "E17",
+      "kind": "OFFICIAL",
+      "source": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/adset.py",
+      "locator": "Field",
+      "finding": "Campos de targeting, promoted_object, orçamento e otimização. Combinações exigem documentação versionada e prova de conta.",
+      "status": "FIELD_SHAPE_ONLY"
+    },
+    {
+      "id": "E18",
+      "kind": "OFFICIAL",
+      "source": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/targeting.py",
+      "locator": "Field",
+      "finding": "Forma dos campos de públicos/geografia; não prova todas as combinações ou disponibilidade.",
+      "status": "FIELD_SHAPE_ONLY"
+    },
+    {
+      "id": "E19",
+      "kind": "OFFICIAL",
+      "source": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/adaccount.py",
+      "locator": "get_custom_audiences/create_ad_image",
+      "finding": "Edges de públicos existentes e adimages com upload de arquivo; não prova registro real nesta conta.",
+      "status": "FIELD_SHAPE_ONLY"
+    },
+    {
+      "id": "E20",
+      "kind": "OFFICIAL",
+      "source": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/customconversion.py",
+      "locator": "Field",
+      "finding": "Não transformar enum SDK em catálogo universal de eventos elegíveis.",
+      "status": "FIELD_SHAPE_ONLY"
+    },
+    {
+      "id": "E21",
+      "kind": "OFFICIAL",
+      "source": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+      "locator": "RLS",
+      "finding": "Permissões e políticas devem ser provadas, inclusive RPCs e bypass de gravação direta.",
+      "status": "DOCUMENTATION_READ"
+    },
+    {
+      "id": "E22",
+      "kind": "OFFICIAL",
+      "source": "https://supabase.com/docs/guides/storage/security/access-control",
+      "locator": "Storage access control",
+      "finding": "Bucket privado e políticas por ownership; URL assinada curta não substitui autorização ao emitir URL.",
+      "status": "DOCUMENTATION_READ"
+    },
+    {
+      "id": "E23",
+      "kind": "OFFICIAL",
+      "source": "https://docs.n8n.io/integrations/builtin/credentials/httprequest/",
+      "locator": "Header authentication",
+      "finding": "HTTP Request admite credencial Header Auth/Bearer. Conferir tipo e versão instalados antes de publicar.",
+      "status": "DOCUMENTATION_READ"
+    },
+    {
+      "id": "E24",
+      "kind": "OFFICIAL",
+      "source": "https://developers.facebook.com/docs/marketing-api/audiences/guides/custom-audiences/",
+      "locator": "consulta pública",
+      "finding": "Páginas developers.facebook.com de targeting/conversion/upload retornaram 429/erro nesta rodada. Falha de pesquisa não é capacidade inexistente.",
+      "status": "RESEARCH_REQUIRED"
+    },
+    {
+      "id": "E25",
+      "kind": "LOCAL_PROOF",
+      "source": "docs/closure/meta-gam-final-local-v1/HANDOFF.md",
+      "locator": "tracking e financeiro",
+      "finding": "Tracking novo existe localmente; aceitação remota, expansão das macros e chegada à dimensão GAM continuam por provar.",
+      "status": "LOCAL_ONLY"
+    },
+    {
+      "id": "E26",
+      "kind": "REFERENCE",
+      "source": "docs/refs/meta-webgo-20260907/COMPARISON.json",
+      "locator": "planilhas Webgo",
+      "finding": "Paridade de campos é referência, não autorização para copiar Apps Script nem regra não comprovada.",
+      "status": "REFERENCE_ONLY"
+    }
+  ]
+}
