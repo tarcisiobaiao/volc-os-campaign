@@ -1,0 +1,100 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Download, ImageIcon, Loader2, Package, RefreshCw, ZoomIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { criativosApi } from '@/lib/criativosApi';
+import { jobTerminou, type CreativeJob, type Rendition } from '@/types/criativos';
+import type { GeracaoRegistrada } from '../tipos';
+import { zipDeImagens } from '../zip';
+
+function salvar(blob: Blob, nome: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Same result-screen affordances as Aprova, reading canonical jobs, never generating. */
+export function GaleriaDeGeracoes({ geracoes, onComecar }: { geracoes: GeracaoRegistrada[]; onComecar: () => void }) {
+  const [jobs, setJobs] = useState<CreativeJob[]>([]);
+  const [erro, setErro] = useState<string | null>(null);
+  const [lendo, setLendo] = useState(false);
+  const [revisao, setRevisao] = useState(0);
+  const ids = useMemo(() => [...new Set(geracoes.map(g => g.job_id))].sort().join(','), [geracoes]);
+  useEffect(() => {
+    let encerrado = false; let timer: ReturnType<typeof setTimeout> | undefined;
+    setJobs([]); setErro(null); setLendo(false);
+    if (!ids) return;
+    async function ler() {
+      setLendo(true);
+      try {
+        const result = await Promise.all(ids.split(',').map(id => criativosApi.job(id)));
+        if (encerrado) return;
+        setJobs(result); setErro(null);
+        if (result.some(j => !jobTerminou(j.estado))) timer = setTimeout(ler, 4000);
+      } catch { if (!encerrado) setErro('Não foi possível atualizar os criativos. Tente novamente; nenhum trabalho será reenviado.'); }
+      finally { if (!encerrado) setLendo(false); }
+    }
+    void ler();
+    return () => { encerrado = true; clearTimeout(timer); };
+  }, [ids, revisao]);
+
+  return <div className="space-y-4">
+    {erro && <div role="alert" className="studio-surface text-sm"><p className="text-destructive">{erro}</p><Button className="mt-3" variant="outline" onClick={() => setRevisao(r => r + 1)}><RefreshCw className="h-4 w-4" aria-hidden />Atualizar criativos</Button></div>}
+    {lendo && jobs.length === 0 && <p role="status" className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Buscando seus criativos…</p>}
+    {(!erro || jobs.length > 0) && <GaleriaDeAssets pecas={jobs.flatMap(j => j.renditions)} onComecar={onComecar} carregando={lendo || Boolean(ids && !jobs.length && !erro)} />}
+  </div>;
+}
+
+export function GaleriaDeAssets({ pecas, onComecar, carregando = false }: { pecas: Rendition[]; onComecar: () => void; carregando?: boolean }) {
+  const [ampliada, setAmpliada] = useState<Rendition | null>(null);
+  const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const [baixando, setBaixando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const prontas = pecas.filter(p => p.previewUrl && p.estado === 'pronta');
+  async function bytes(p: Rendition) {
+    if (!p.previewUrl) throw Error('Prévia indisponível.');
+    // Signed URL from the authenticated backend. Never attach session credentials to storage.
+    const r = await fetch(p.previewUrl, { credentials: 'omit', redirect: 'error' });
+    if (!r.ok) throw Error('O link expirou ou o arquivo não está disponível. Atualize a página.');
+    const blob = await r.blob();
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type) || blob.type !== p.mime || blob.size > 25 * 1024 * 1024) throw Error('O arquivo não pôde ser baixado como imagem.');
+    return blob;
+  }
+  const nome = (p: Rendition) => `criativo-${p.id.replace(/[^a-zA-Z0-9_-]/g, '')}-${p.slot.replace(/[^a-zA-Z0-9_-]/g, '')}.${p.mime === 'image/jpeg' ? 'jpg' : p.mime === 'image/webp' ? 'webp' : 'png'}`;
+  async function baixar(uma?: Rendition) {
+    setBaixando(true); setErro(null);
+    try {
+      if (uma) salvar(await bytes(uma), nome(uma));
+      else {
+        const arquivos: { name: string; data: Uint8Array }[] = []; let total = 0;
+        for (const p of prontas.filter(p => selecionadas.includes(p.id))) {
+          const blob = await bytes(p); total += blob.size;
+          if (total > 100 * 1024 * 1024) throw Error('Selecione menos imagens para um ZIP de até 100 MB.');
+          arquivos.push({ name: nome(p), data: new Uint8Array(await blob.arrayBuffer()) });
+        }
+        salvar(zipDeImagens(arquivos), 'criativos-meta.zip');
+      }
+    } catch (e) { setErro(e instanceof Error ? e.message : 'Não foi possível baixar os arquivos.'); }
+    finally { setBaixando(false); }
+  }
+
+  if (!pecas.length && !carregando) return <section className="studio-surface py-12 text-center">
+    <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/5 text-primary"><ImageIcon className="h-6 w-6" aria-hidden /></span>
+    <h2 className="mt-5 font-display text-xl font-semibold">Seu próximo criativo começa aqui</h2>
+    <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">As imagens geradas aparecem nesta galeria. Você poderá ampliar, selecionar e baixar as peças individualmente ou em ZIP.</p>
+    <Button className="mt-6" variant="outline" onClick={onComecar}>Preparar um briefing</Button>
+  </section>;
+
+  return <section aria-label="Galeria de criativos" className="space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-display text-xl font-semibold">Seus criativos</h2><p className="mt-1 text-xs text-muted-foreground">{prontas.length} de {pecas.length} arquivos disponíveis · revisão de uso separada</p></div><Button variant="outline" disabled={baixando || !prontas.some(p => selecionadas.includes(p.id))} onClick={() => void baixar()}><Package className="h-4 w-4" aria-hidden />{baixando ? 'Preparando…' : 'Baixar selecionados (.zip)'}</Button></div>
+    {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
+    <div className="grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 sm:grid-cols-3">{pecas.map(p => <article key={p.id} className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex min-h-44 items-center justify-center bg-muted/30 p-3" style={{ aspectRatio: `${p.largura ?? p.larguraPedida} / ${p.altura ?? p.alturaPedida}` }}>
+        {p.previewUrl ? <img src={p.previewUrl} alt={p.rotulo} className="max-h-full w-full object-contain" loading="lazy" /> : <div className="text-center text-xs text-muted-foreground"><ImageIcon className="mx-auto mb-2 h-6 w-6" aria-hidden />{p.erro ? 'Falha nesta peça' : 'Aguardando arquivo'}</div>}
+      </div>
+      <div className="space-y-3 p-3"><label className="flex items-center gap-2 text-xs font-medium"><input type="checkbox" aria-label={`Selecionar ${p.rotulo}`} disabled={!p.previewUrl || p.estado !== 'pronta'} checked={selecionadas.includes(p.id)} onChange={() => setSelecionadas(a => a.includes(p.id) ? a.filter(id => id !== p.id) : [...a, p.id])} className="h-4 w-4 accent-primary" />{p.rotulo}</label><p className="text-[11px] tabular-nums text-muted-foreground">{p.largura ?? '—'} × {p.altura ?? '—'} px</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={!p.previewUrl} onClick={() => setAmpliada(p)} aria-label={`Ampliar ${p.rotulo}`}><ZoomIn className="h-4 w-4" aria-hidden /><span className="sr-only">Ampliar</span></Button><Button variant="outline" size="sm" disabled={!p.previewUrl || baixando} onClick={() => void baixar(p)} aria-label={`Baixar ${p.rotulo}`}><Download className="h-4 w-4" aria-hidden /><span>Baixar</span></Button></div></div>
+    </article>)}</div>
+    <Dialog open={Boolean(ampliada)} onOpenChange={open => { if (!open) setAmpliada(null); }}><DialogContent className="max-w-3xl"><DialogTitle>{ampliada?.rotulo ?? 'Prévia do criativo'}</DialogTitle><DialogDescription>Confira a composição na proporção original.</DialogDescription>{ampliada?.previewUrl && <img src={ampliada.previewUrl} alt={ampliada.rotulo} className="max-h-[70vh] w-full object-contain" />}</DialogContent></Dialog>
+  </section>;
+}

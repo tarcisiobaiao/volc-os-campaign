@@ -58,6 +58,8 @@ export function PainelDeProducao({
 
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
   const [formatos, setFormatos] = useState<string[]>(['1x1', '4x5', '9x16']);
+  const [selecaoConferida, setSelecaoConferida] = useState<string | null>(null);
+  const assinatura = JSON.stringify([selecionadas, formatos]);
 
   // Uma peça que perdeu a aprovação sai da seleção sozinha: manter selecionado
   // algo que não pode gerar deixaria o total mentindo sobre o que vai sair.
@@ -169,7 +171,7 @@ export function PainelDeProducao({
             type="button"
             variant="outline"
             disabled={!podePedirPlano || planejando}
-            onClick={() => onPlanejar(selecionadas, formatos)}
+            onClick={() => { setSelecaoConferida(assinatura); onPlanejar(selecionadas, formatos); }}
           >
             {planejando ? 'Conferindo…' : 'Conferir antes de gerar'}
           </Button>
@@ -179,7 +181,7 @@ export function PainelDeProducao({
         </div>
       </section>
 
-      {plano && (
+      {plano && selecaoConferida === assinatura && (
         <section
           className="rounded-lg border border-border bg-muted/20 p-4"
           aria-live="polite"
@@ -250,7 +252,7 @@ export function PainelDeProducao({
           <div className="mt-4">
             <Button
               type="button"
-              disabled={!plano.pode_executar || gerando}
+              disabled={!plano.pode_executar || gerando || planejando || !podePedirPlano}
               onClick={() => onGerar(selecionadas, formatos)}
             >
               <ImageIcon className="h-4 w-4" aria-hidden />

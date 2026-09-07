@@ -259,7 +259,7 @@ describe('a produção mostra o preço antes do botão', () => {
     const { PainelDeProducao } = await import(
       '@/features/creative-studio/componentes/PainelDeProducao'
     );
-    return render(
+    const view = render(
       <PainelDeProducao
         saida={saida()}
         aprovados={new Set(aprovadas)}
@@ -270,6 +270,11 @@ describe('a produção mostra o preço antes do botão', () => {
         onGerar={() => {}}
       />,
     );
+    if (aprovadas.length) {
+      fireEvent.click(screen.getAllByRole('checkbox')[0]);
+      fireEvent.click(screen.getByRole('button', { name: 'Conferir antes de gerar' }));
+    }
+    return view;
   }
 
   it('custo desconhecido vira ausência declarada, nunca US$ 0,00', async () => {
@@ -314,5 +319,11 @@ describe('a produção mostra o preço antes do botão', () => {
     expect(screen.getByText(/Nenhuma peça foi aprovada ainda/i)).toBeTruthy();
     expect(screen.getByText(/recibo de contrato do Assistente não substitui/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^gerar/i })).toBeNull();
+  });
+  it('mudar a seleção invalida o plano e retira o botão de gerar', async () => {
+    await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
+    expect(screen.getByRole('button', { name: /^gerar 6/i })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('checkbox')[1]);
+    expect(screen.queryByRole('button', { name: /^gerar 6/i })).toBeNull();
   });
 });

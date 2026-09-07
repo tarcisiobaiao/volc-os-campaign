@@ -84,13 +84,15 @@ async function abrirPagina(rota: string) {
 describe('abrir a página nunca gera', () => {
   it('a montagem não chama executar, nem em lista nem em detalhe', async () => {
     await abrirPagina('/trafego/meta/assistente-criativo');
-    await waitFor(() => expect(chamadas.length).toBeGreaterThan(0));
+    expect(await screen.findByRole('heading', { name: 'Tipo de criação' })).toBeTruthy();
 
     // ⚠️ A prova central desta frente. `executar` é a ÚNICA chamada que faz o
     // modelo rodar; se ela aparecer aqui, abrir a tela passou a custar dinheiro.
     expect(chamadas.some((c) => c.url.includes('/executar'))).toBe(false);
-    // e o que ela faz é ler a lista do dono
-    expect(chamadas.some((c) => c.url.includes('/operacoes') && c.metodo === 'GET')).toBe(true);
+    expect(chamadas).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Histórico' }));
+    await waitFor(() => expect(chamadas.some((c) => c.url.includes('/operacoes') && c.metodo === 'GET')).toBe(true));
+    expect(chamadas.every(c => c.metodo === 'GET')).toBe(true);
   });
 
   it('reabrir uma operação existente também não executa nada', async () => {
@@ -118,7 +120,7 @@ describe('abrir a página nunca gera', () => {
 
 describe('o histórico é uma tabela com ação de verdade', () => {
   it('estado vazio explica o que é uma operação e oferece o primeiro passo', async () => {
-    await abrirPagina('/trafego/meta/assistente-criativo');
+    await abrirPagina('/trafego/meta/assistente-criativo?view=historico');
     expect(
       await screen.findByText(/ainda não tem operações do Assistente/i),
     ).toBeTruthy();
@@ -148,7 +150,7 @@ describe('o histórico é uma tabela com ação de verdade', () => {
       })) as unknown as typeof fetch,
     );
 
-    await abrirPagina('/trafego/meta/assistente-criativo');
+    await abrirPagina('/trafego/meta/assistente-criativo?view=historico');
     expect(await screen.findByRole('table')).toBeTruthy();
     expect(screen.getByText('Encceja setembro')).toBeTruthy();
     // Inventário comparável é tabela, não mural de cartões idênticos.
@@ -163,11 +165,11 @@ describe('o briefing mostra a consequência antes da ação', () => {
     await abrirPagina('/trafego/meta/assistente-criativo?view=briefing');
     expect(await screen.findByRole('heading', { name: 'Fatos da oferta' })).toBeTruthy();
 
-    // 6 peças (padrão) x 3 formatos (padrão) = 18 renders futuros, declarados
+    // 4 peças (padrão) x 1 formato (padrão) = 4 renders futuros, declarados
     // ANTES de o operador poder clicar.
     const consequencia = screen.getByText(/O que este clique faz/i).closest('section');
-    expect(consequencia?.textContent).toContain('18');
-    expect(consequencia?.textContent).toMatch(/Nenhuma é gerada agora/i);
+    expect(consequencia?.textContent).toContain('4 imagens');
+    expect(consequencia?.textContent).toMatch(/Nenhuma imagem é gerada agora/i);
     expect(consequencia?.textContent).toMatch(/não cria campanha/i);
   });
 
@@ -197,14 +199,12 @@ describe('o briefing mostra a consequência antes da ação', () => {
     expect(chamadas.some((c) => c.url.includes('/executar'))).toBe(false);
   });
 
-  it('a ref do fato é derivada do texto, e o operador não digita ref opaca', async () => {
+  it('o operador informa fatos, sem referências técnicas expostas', async () => {
     await abrirPagina('/trafego/meta/assistente-criativo?view=briefing');
     fireEvent.change(await screen.findByLabelText('Declaração'), {
       target: { value: 'Conteúdo informativo e independente' },
     });
-    expect(
-      await screen.findByText('fact_conteudo_informativo_e_independente_1'),
-    ).toBeTruthy();
+    expect(screen.queryByText(/fact_/)).toBeNull();
     // não existe campo pedindo a ref
     expect(screen.queryByLabelText(/^ref/i)).toBeNull();
   });

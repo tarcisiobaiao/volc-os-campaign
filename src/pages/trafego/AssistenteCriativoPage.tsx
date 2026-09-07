@@ -16,7 +16,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
+import { AlertCircle, ArrowLeft, History, Loader2, Sparkles } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -49,13 +49,16 @@ import type {
   SaidaDoAgente,
 } from '@/features/creative-studio/tipos';
 
-type Vista = 'briefing' | 'estrategia' | 'producao' | 'historico';
+import '@/features/creative-studio/studio.css';
+import { GaleriaDeGeracoes } from '@/features/creative-studio/componentes/GaleriaDeGeracoes';
+
+type Vista = 'briefing' | 'estrategia' | 'producao' | 'assets' | 'historico';
 
 const VISTAS: { id: Vista; rotulo: string }[] = [
-  { id: 'historico', rotulo: 'Histórico' },
   { id: 'briefing', rotulo: 'Briefing' },
   { id: 'estrategia', rotulo: 'Estratégia' },
   { id: 'producao', rotulo: 'Produção' },
+  { id: 'assets', rotulo: 'Criativos' },
 ];
 
 function frase(erro: unknown): string {
@@ -66,10 +69,13 @@ function frase(erro: unknown): string {
 
 export default function AssistenteCriativoPage() {
   const { projectRef } = useParams<{ projectRef?: string }>();
+  const projetoAtivo = useRef(projectRef);
+  projetoAtivo.current = projectRef;
   const [busca, setBusca] = useSearchParams();
   const navegar = useNavigate();
 
-  const vista = (busca.get('view') as Vista | null) ?? (projectRef ? 'estrategia' : 'historico');
+  const solicitada = busca.get('view');
+  const vista: Vista = ['briefing', 'estrategia', 'producao', 'assets', 'historico'].includes(solicitada ?? '') ? solicitada as Vista : projectRef ? 'estrategia' : 'briefing';
 
   const [operacoes, setOperacoes] = useState<ResumoDaOperacao[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(false);
@@ -111,8 +117,8 @@ export default function AssistenteCriativoPage() {
   }, [configurado]);
 
   useEffect(() => {
-    if (!projectRef) void carregarLista();
-  }, [projectRef, carregarLista]);
+    if (vista === 'historico') void carregarLista();
+  }, [vista, carregarLista]);
 
   // ── Detalhe / retomada ────────────────────────────────────────────────────
   const carregarDetalhe = useCallback(
@@ -121,18 +127,20 @@ export default function AssistenteCriativoPage() {
       setCarregandoDetalhe(true);
       setErroDetalhe(null);
       try {
-        setDetalhe(await lerOperacao(ref));
+        const recebido = await lerOperacao(ref);
+        if (projetoAtivo.current === ref) setDetalhe(recebido);
       } catch (e) {
         const f = frase(e);
-        if (f) setErroDetalhe(f);
+        if (f && projetoAtivo.current === ref) setErroDetalhe(f);
       } finally {
-        setCarregandoDetalhe(false);
+        if (projetoAtivo.current === ref) setCarregandoDetalhe(false);
       }
     },
     [configurado],
   );
 
   useEffect(() => {
+    setDetalhe(null);
     if (projectRef) void carregarDetalhe(projectRef);
   }, [projectRef, carregarDetalhe]);
 
@@ -149,8 +157,8 @@ export default function AssistenteCriativoPage() {
 
   const saida: SaidaDoAgente | null = runAtual?.output ?? null;
 
-  // Caminhos já congelados. Vem das decisões que o servidor guardou; a tela não
-  // inventa aprovação local que sumiria no recarregamento.
+  // Espelho das decisões confirmadas nesta sessão. A API de detalhe ainda não
+  // projeta decisões; após reload a produção continua dependendo do servidor.
   const [aprovados, setAprovados] = useState<Set<string>>(new Set());
   useEffect(() => {
     setAprovados(new Set());
@@ -160,21 +168,29 @@ export default function AssistenteCriativoPage() {
   const [planejando, setPlanejando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [geracoes, setGeracoes] = useState<GeracaoRegistrada[]>([]);
+  const [erroGeracoes, setErroGeracoes] = useState<string | null>(null);
+  const [lendoGeracoes, setLendoGeracoes] = useState(false);
 
   // Trocar de peça ou de formato invalida o plano anterior: um total na tela
   // que não corresponde mais à seleção é pior que total nenhum.
   useEffect(() => {
     setPlano(null);
+    setGeracoes([]);
+    setErroGeracoes(null);
   }, [projectRef]);
 
   const carregarGeracoes = useCallback(
     async (ref: string) => {
       if (!configurado) return;
+      setLendoGeracoes(true);
+      setErroGeracoes(null);
       try {
         const r = await listarGeracoes(ref);
-        setGeracoes(r.geracoes);
-      } catch {
-        /* a procedência é complementar; a falta dela não derruba a tela */
+        if (projetoAtivo.current === ref) setGeracoes(r.geracoes);
+      } catch (e) {
+        if (projetoAtivo.current === ref) setErroGeracoes(frase(e));
+      } finally {
+        if (projetoAtivo.current === ref) setLendoGeracoes(false);
       }
     },
     [configurado],
@@ -225,7 +241,7 @@ export default function AssistenteCriativoPage() {
     setErroAcao(null);
     try {
       await registrarDecisao(projectRef, pedido);
-      setAprovados((atual) => new Set(atual).add(pedido.caminho));
+      setAprovados((atual) => { const proximo = new Set(atual); if (pedido.decisao === 'APROVADO') proximo.add(pedido.caminho); else proximo.delete(pedido.caminho); return proximo; });
     } catch (e) {
       const f = frase(e);
       if (f) setErroAcao(f);
@@ -285,7 +301,8 @@ export default function AssistenteCriativoPage() {
         format_ids: formatIds,
       });
       await carregarGeracoes(projectRef);
-      setAviso('Produção pedida. Acompanhe as peças no Estúdio Criativo.');
+      setAviso('Pedido registrado. Os arquivos aparecem aqui conforme o motor concluir.');
+      irPara('assets');
     } catch (e) {
       const f = frase(e);
       if (f) setErroAcao(f);
@@ -297,22 +314,16 @@ export default function AssistenteCriativoPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Layout>
-      <div className="p-4 md:p-8">
-        <header className="max-w-[70ch]">
-          <div className="kicker mb-2 flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden />
-            </span>
-            criativo meta
-          </div>
-          <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight md:text-[2.5rem]">
-            Assistente Criativo
-          </h1>
-          <div className="mt-3 aurora-rule w-16" />
-          <p className="mt-3 text-pretty text-sm text-muted-foreground">
-            Transforma fatos declarados em estratégia, peças e copies rastreáveis. Nada aqui
-            cria campanha, sobe mídia ou chama a Meta.
-          </p>
+      <div className="studio-workspace">
+        <div className="mb-7 flex items-center justify-between gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navegar('/trafego?rede=meta')}><ArrowLeft className="h-4 w-4" aria-hidden />Tráfego Meta</Button>
+          <Button variant="ghost" size="sm" onClick={() => navegar('/trafego/meta/assistente-criativo?view=historico')}><History className="h-4 w-4" aria-hidden />Histórico</Button>
+        </div>
+        <header className="mb-7 text-center">
+          <div className="kicker mb-3 flex items-center justify-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary"><Sparkles className="h-3.5 w-3.5" aria-hidden /></span>Estúdio · Meta Ads</div>
+          <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-[2.5rem]">Assistente Criativo</h1>
+          <div className="aurora-rule mx-auto mt-4 w-16" />
+          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">Da primeira ideia à peça pronta. Escolha o formato e dê direção à sua próxima campanha.</p>
         </header>
 
         {!configurado && (
@@ -329,8 +340,8 @@ export default function AssistenteCriativoPage() {
         )}
 
         {/* Abas segmentadas num poço, como o resto do produto. */}
-        <nav className="mt-6" aria-label="Etapas do Assistente">
-          <div className="inline-flex rounded-lg border border-border bg-muted p-1">
+        <nav className="mb-6" aria-label="Etapas do Assistente">
+          <div className="flex rounded-lg border border-border bg-muted p-1">
             {VISTAS.map((v) => {
               const ativa = vista === v.id;
               const desabilitada =
@@ -342,15 +353,15 @@ export default function AssistenteCriativoPage() {
                   disabled={desabilitada}
                   aria-current={ativa ? 'page' : undefined}
                   onClick={() => {
-                    if (v.id === 'historico' && projectRef) {
-                      navegar('/trafego/meta/assistente-criativo?view=historico');
+                    if (v.id === 'briefing' && projectRef) {
+                      navegar('/trafego/meta/assistente-criativo?view=briefing');
                       return;
                     }
                     const proxima = new URLSearchParams(busca);
                     proxima.set('view', v.id);
                     setBusca(proxima, { replace: true });
                   }}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`min-w-0 flex-1 rounded-md px-2 py-2 text-sm font-medium transition-[background-color,color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
                     ativa
                       ? 'bg-card text-foreground shadow-card'
                       : 'text-muted-foreground hover:text-foreground'
@@ -369,7 +380,8 @@ export default function AssistenteCriativoPage() {
           </p>
         )}
 
-        <main className="mt-6">
+        <div className="mt-5">
+          {vista === 'assets' && (erroGeracoes ? <div role="alert" className="studio-surface"><p className="text-sm text-destructive">Não foi possível ler a galeria. {erroGeracoes}</p><Button variant="outline" className="mt-4" onClick={() => projectRef && void carregarGeracoes(projectRef)}>Tentar novamente</Button></div> : lendoGeracoes ? <p role="status" className="py-8 text-center text-sm text-muted-foreground">Buscando seus criativos…</p> : <GaleriaDeGeracoes key={projectRef ?? 'sem-operacao'} geracoes={geracoes} onComecar={() => navegar('/trafego/meta/assistente-criativo?view=briefing')} />)}
           {vista === 'historico' && (
             <HistoricoDeOperacoes
               operacoes={operacoes}
@@ -378,7 +390,7 @@ export default function AssistenteCriativoPage() {
               onAbrir={(ref) =>
                 navegar(`/trafego/meta/assistente-criativo/${ref}?view=estrategia`)
               }
-              onNova={() => irPara('briefing')}
+              onNova={() => navegar('/trafego/meta/assistente-criativo?view=briefing')}
             />
           )}
 
@@ -466,13 +478,14 @@ export default function AssistenteCriativoPage() {
                 </p>
               )}
 
+              {ocupado && <section role="status" className="studio-surface text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" aria-hidden /><h2 className="mt-4 font-display text-xl font-semibold">Sua estratégia está sendo preparada</h2><p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">Estamos aguardando o resultado do assistente. A operação já está salva; nenhuma imagem está sendo gerada nesta etapa.</p></section>}
               {carregandoDetalhe && (
                 <p role="status" className="text-sm text-muted-foreground">
                   Lendo a operação…
                 </p>
               )}
 
-              {!carregandoDetalhe && !saida && runPendente && projectRef && (
+              {!ocupado && !carregandoDetalhe && !saida && runPendente && projectRef && (
                 <div className="rounded-lg border border-border bg-card p-6 shadow-card">
                   <p className="text-sm font-medium text-foreground">
                     Esta operação tem uma estratégia enfileirada e ainda não executada.
@@ -497,7 +510,7 @@ export default function AssistenteCriativoPage() {
                 </div>
               )}
 
-              {!carregandoDetalhe && !saida && !runPendente && detalhe && (
+              {!ocupado && !carregandoDetalhe && !saida && !runPendente && detalhe && (
                 <div className="rounded-lg border border-border bg-card p-6 shadow-card">
                   <p className="text-sm font-medium text-foreground">
                     Esta operação ainda não tem um lote concluído.
@@ -522,7 +535,7 @@ export default function AssistenteCriativoPage() {
               )}
             </div>
           )}
-        </main>
+        </div>
       </div>
     </Layout>
   );

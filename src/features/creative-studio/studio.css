@@ -1,0 +1,8 @@
+.studio-workspace { max-width: 760px; margin-inline: auto; padding: 24px 20px 64px; }
+.studio-surface { border: 1px solid hsl(var(--border)); border-radius: 16px; background: hsl(var(--card)); padding: 24px; box-shadow: 0 6px 20px -12px hsl(var(--foreground) / .16); }
+.studio-section-label { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; color: hsl(var(--foreground)); }
+.studio-field-label { font-size: 12px; font-weight: 550; color: hsl(var(--foreground)); }
+.studio-input { border-radius: 10px; background: hsl(var(--muted) / .28); border-color: hsl(var(--border)); }
+.studio-brief fieldset:disabled { opacity: .65; }
+@media (max-width: 480px) { .studio-workspace { padding: 20px 12px 40px; } .studio-surface { padding: 18px 14px; } }
+@media (prefers-reduced-motion: reduce) { .studio-workspace *, .studio-workspace *::before { animation: none !important; transition: none !important; } }
