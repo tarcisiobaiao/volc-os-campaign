@@ -284,7 +284,19 @@ def _veredito_de_filho(canal: str, objeto: str, linhas: list,
     # fail-closed: objeto ou canal que ninguém declarou continua tendo de provar
     # que nasceu pausado.
     alvo = str((esperado or {}).get("status") or NASCE_PAUSADO)
-    fora_do_alvo = sorted(e for e in estados if e != alvo)
+    # ⚠️ PAUSAR NUNCA É VIOLAÇÃO, e a igualdade exata dizia que era.
+    #
+    # A verificação focal deste fechamento pegou a inversão que a correção
+    # anterior tinha criado: com `alvo=ENABLED` para os filhos de Search, um
+    # grupo que alguém PAUSOU — ato humano legítimo, e o lado seguro — passava a
+    # divergir, e /reconciliar respondia 409. O que o contrato protege é "nada
+    # veicula sem decisão humana": PAUSED nunca ameaça isso, em canal nenhum.
+    #
+    # Então o conjunto aceito é o estado de nascimento MAIS o pausado. O caso
+    # perigoso continua divergindo em todos os canais: um objeto ENABLED onde o
+    # builder cria PAUSED.
+    aceitos = {alvo, NASCE_PAUSADO}
+    fora_do_alvo = sorted(e for e in estados if e not in aceitos)
     lido = {"quantidade": len(linhas), "status": sorted(estados)}
     if fora_do_alvo:
         # ⚠️ NASCER COMO O BUILDER DAQUELE CANAL CRIA É CONTRATO, e um objeto

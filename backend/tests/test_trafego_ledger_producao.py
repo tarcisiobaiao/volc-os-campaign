@@ -149,7 +149,13 @@ class SupaDeTeste:
         if tabela == "trafego_lote_item":
             return [{"item_id": "item-1", "lote_id": "lote-1"}]
         if tabela == "trafego_lote":
-            return [{"lote_id": "lote-1", "conta_externa": self._conta_do_item}]
+            return [{"lote_id": "lote-1", "conta_externa": self._conta_do_item,
+                     # ⚠️ `canal` é `NOT NULL` na tabela real, e a rota deriva
+                     # dele o canal do read-back. Sem esta coluna o dublê fazia
+                     # os oito testes de rota deste arquivo correrem pelo ramo
+                     # "não consegui derivar o canal" sem que nenhum assert
+                     # percebesse — a verificação focal mediu isso.
+                     "canal": "SEARCH"}]
         return []
 
     async def rpc(self, funcao: str, corpo: dict):

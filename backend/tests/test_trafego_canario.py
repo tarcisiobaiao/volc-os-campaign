@@ -183,16 +183,26 @@ def test_revogar_no_executor_fecha_o_backend_e_abrir_o_alias_nao_abre_nada():
     assert canario.politica_do_canal("SEARCH").criacao_autorizada is True
 
     # ── SENTIDO 2: abrir o símbolo paralelo não abre NADA ───────────────────
-    monkeypatch_ = pytest.MonkeyPatch()
+    #
+    # ⚠️ O shadow é posto e retirado À MÃO, e não por `monkeypatch`. A vista é
+    # um `__getattr__` de módulo (PEP 562), consultado só quando a busca no
+    # `__dict__` falha; `monkeypatch.setattr` guarda o valor lido pela vista e,
+    # no `undo`, faz `setattr` de volta — MATERIALIZANDO um atributo real e
+    # matando a vista para o resto da sessão de teste. A verificação focal
+    # pegou isso: com monkeypatch, rodar este teste duas vezes falhava na
+    # segunda.
+    canario.CANAIS_COM_CRIACAO_AUTORIZADA = frozenset({"SEARCH", "DISPLAY"})
     try:
-        monkeypatch_.setattr(canario, "CANAIS_COM_CRIACAO_AUTORIZADA",
-                             frozenset({"SEARCH", "DISPLAY"}), raising=False)
         assert aut.autorizado("DISPLAY") is False
         assert canario.politica_do_canal("DISPLAY").criacao_autorizada is False
         with pytest.raises(canario.CanarioRecusado, match="ainda não autoriza CRIAR"):
             canario.exigir(**_pedido_de_canal("DISPLAY"))
     finally:
-        monkeypatch_.undo()
+        del canario.CANAIS_COM_CRIACAO_AUTORIZADA
+
+    # E a vista voltou a ser DINÂMICA — não um snapshot materializado.
+    assert "CANAIS_COM_CRIACAO_AUTORIZADA" not in vars(canario)
+    assert canario.CANAIS_COM_CRIACAO_AUTORIZADA is aut.CANAIS_COM_CRIACAO_AUTORIZADA
 
     # ── SENTIDO 3: nem uma `Politica` forjada abre ──────────────────────────
     # `exigir` consulta a autoridade NA DECISÃO, e não confia no objeto que a

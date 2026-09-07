@@ -411,6 +411,39 @@ def test_search_recem_criado_pela_casa_nao_bloqueia():
         assert filho.campos_divergentes == ()
 
 
+def test_pausar_um_filho_nunca_e_divergencia_e_ligar_onde_nasce_pausado_sempre_e():
+    """⚠️ A DIREÇÃO IMPORTA: o contrato protege contra VEICULAR, não contra pausar.
+
+    A primeira versão da correção por canal comparava por igualdade exata, e com
+    isso inverteu o defeito em vez de fechá-lo: com `alvo=ENABLED` para os
+    filhos de Search, um grupo que alguém PAUSOU — ato humano legítimo, e o lado
+    seguro — passava a divergir e /reconciliar respondia 409. A verificação
+    focal deste fechamento mediu a inversão.
+
+    O conjunto aceito é o estado de nascimento MAIS o pausado, em todo canal. O
+    caso perigoso — ENABLED onde o builder cria PAUSED — continua divergindo.
+    """
+    def _conjunto(canal, status_do_grupo, status_do_anuncio):
+        v = rel.reler_na_conta(
+            canal=canal,
+            buscar=busca(campanhas=[_campanha(canal=canal)],
+                         grupos=[_grupo(status=status_do_grupo)],
+                         anuncios=[_anuncio(status=status_do_anuncio)]),
+            campaign_id="99",
+            esperado={"status": rel.NASCE_PAUSADO, "canal": canal})
+        return vrel.resumo(v)
+
+    # Search: nasce ENABLED, e pausado depois também está certo.
+    assert _conjunto("SEARCH", "ENABLED", "ENABLED")["bloqueia"] is False
+    assert _conjunto("SEARCH", "PAUSED", "PAUSED")["bloqueia"] is False
+    assert _conjunto("SEARCH", "PAUSED", "ENABLED")["bloqueia"] is False
+
+    # Display: nasce PAUSED, e ENABLED é o que ameaça — em qualquer objeto.
+    assert _conjunto("DISPLAY", "PAUSED", "PAUSED")["bloqueia"] is False
+    assert _conjunto("DISPLAY", "PAUSED", "ENABLED")["bloqueia"] is True
+    assert _conjunto("DISPLAY", "ENABLED", "PAUSED")["bloqueia"] is True
+
+
 def test_campanha_nascida_enabled_continua_bloqueando():
     """⚠️ A PROVA DO NASCIMENTO NÃO AFROUXOU — ela é sobre a CAMPANHA.
 
@@ -451,34 +484,62 @@ def test_o_perfil_de_nascimento_bate_com_os_builders():
 
     raiz = _p.Path(__file__).resolve().parents[2] / "volc_ads" / "campanha"
 
-    def _status_do_anuncio(arquivo: str) -> set[str]:
-        """Os `...Status...Enum.X` atribuídos a um `.status` naquele builder."""
+    def _status_por_enum(arquivo: str) -> dict[str, set[str]]:
+        """`{EnumDeStatus: {VALORES}}` atribuídos a `.status` naquele builder.
+
+        ⚠️ Agrupado POR ENUM, e não numa bolsa única. A primeira versão deste
+        helper juntava todo `X.status = <Attribute>` num conjunto só — e
+        `search.py` também liga um `AdGroupCriterionStatusEnum.ENABLED`, que
+        sozinho satisfazia a asserção do ANÚNCIO. A verificação focal provou:
+        quatro derivas independentes dos builders passavam verdes.
+        """
         arvore = ast.parse((raiz / arquivo).read_text(encoding="utf-8"))
-        achados = set()
+        achados: dict[str, set[str]] = {}
         for no in ast.walk(arvore):
             if not isinstance(no, ast.Assign):
                 continue
             alvo = no.targets[0]
             if not (isinstance(alvo, ast.Attribute) and alvo.attr == "status"):
                 continue
-            if isinstance(no.value, ast.Attribute):
-                achados.add(no.value.attr)
+            valor = no.value
+            if not (isinstance(valor, ast.Attribute)
+                    and isinstance(valor.value, ast.Attribute)):
+                continue
+            achados.setdefault(valor.value.attr, set()).add(valor.attr)
         return achados
 
-    # Search LIGA o anúncio; Display o cria pausado. É essa diferença que o
-    # perfil por canal precisa carregar.
-    assert "ENABLED" in _status_do_anuncio("search.py")
-    assert rel.NASCE_COM_STATUS["SEARCH"][vrel.ANUNCIO] == "ENABLED"
-    assert _status_do_anuncio("display.py") == {"PAUSED"}
-    assert rel.NASCE_COM_STATUS["DISPLAY"][vrel.ANUNCIO] == "PAUSED"
+    # Os QUATRO builders, cada objeto contra o SEU enum.
+    esperado_dos_builders = {
+        # arquivo: {enum: (objeto do read-back, estado)}
+        "search.py": {"AdGroupAdStatusEnum": ("SEARCH", vrel.ANUNCIO)},
+        "display.py": {"AdGroupAdStatusEnum": ("DISPLAY", vrel.ANUNCIO)},
+        "demand_gen.py": {"AdGroupAdStatusEnum": ("DEMAND_GEN", vrel.ANUNCIO),
+                          "AdGroupStatusEnum": ("DEMAND_GEN", vrel.GRUPO)},
+        "pmax.py": {"AssetGroupStatusEnum": ("PERFORMANCE_MAX", vrel.ASSET_GROUP)},
+    }
+    for arquivo, mapa in esperado_dos_builders.items():
+        por_enum = _status_por_enum(arquivo)
+        for enum, (canal, objeto) in mapa.items():
+            estados = por_enum.get(enum, set())
+            assert estados, f"{arquivo} não atribui {enum} a nenhum .status"
+            assert estados == {rel.NASCE_COM_STATUS[canal][objeto]}, (
+                arquivo, enum, estados, rel.NASCE_COM_STATUS[canal][objeto])
 
-    # E o default de `op_adgroup` — a outra metade do caso de Search.
+    # E o default de `op_adgroup` — a outra metade do caso de Search, e o que
+    # Display/Demand Gen sobrescrevem explicitamente.
     comum = ast.parse((raiz / "comum.py").read_text(encoding="utf-8"))
     op = next(n for n in ast.walk(comum)
               if isinstance(n, ast.FunctionDef) and n.name == "op_adgroup")
     padrao = {a.arg: d for a, d in zip(op.args.kwonlyargs, op.args.kw_defaults)}
-    assert padrao["status"].value == "ENABLED"
-    assert rel.NASCE_COM_STATUS["SEARCH"][vrel.GRUPO] == "ENABLED"
+    assert padrao["status"].value == rel.NASCE_COM_STATUS["SEARCH"][vrel.GRUPO]
+
+    # Display pede o grupo PAUSADO na chamada, e é isso que o perfil declara.
+    display = ast.parse((raiz / "display.py").read_text(encoding="utf-8"))
+    pedidos = {k.value.value
+               for c in ast.walk(display) if isinstance(c, ast.Call)
+               and getattr(c.func, "attr", "") == "op_adgroup"
+               for k in c.keywords if k.arg == "status"}
+    assert pedidos == {rel.NASCE_COM_STATUS["DISPLAY"][vrel.GRUPO]}, pedidos
 
     # Todo canal com objetos declarados tem perfil para cada filho.
     for canal, objetos in rel.OBJETOS_POR_CANAL.items():

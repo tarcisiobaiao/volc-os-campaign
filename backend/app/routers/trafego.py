@@ -271,7 +271,9 @@ def _politica_do_canario(canal: Any) -> "canario.Politica":
     try:
         return canario.politica_do_canal(canal)
     except canario.CanarioRecusado:
-        return canario.POLITICA
+        # Derivado, e não o snapshot do import: ver a nota nas duas rotas que
+        # servem esta política.
+        return canario.politica_do_canal(canario.CANAL)
 
 
 def _no_escopo(customer_id: Any, login_customer_id: Any) -> tuple[str, str]:
@@ -5797,17 +5799,31 @@ async def reconciliar_lancamento(
     canal_do_pedido_diverge = bool(canal_pedido) and canal_pedido != canal_do_item
 
     releitura: Dict[str, Any]
-    if not canal_do_item:
-        # ⚠️ FALHA, e nunca `NAO_SUPORTADO`. Não conseguir derivar o canal é um
-        # fato sobre NÓS: `FALHA` bloqueia e não conclui nada sobre a conta,
-        # enquanto `NAO_SUPORTADO` descreve o CANAL e não bloqueia — usá-lo aqui
+    if not canal_do_item or not rel.objetos_de(canal_do_item):
+        # ⚠️ FALHA, e nunca `NAO_SUPORTADO`. Não conseguir reler é um fato sobre
+        # NÓS: `FALHA` bloqueia e não conclui nada sobre a conta, enquanto
+        # `NAO_SUPORTADO` descreve o CANAL e não bloqueia — usá-lo aqui
         # transformaria a nossa ignorância numa afirmação sobre o lançamento.
+        #
+        # ⚠️ E OS DOIS CASOS SÃO A MESMA IGNORÂNCIA, com um estado só. A
+        # verificação focal pegou a assimetria: canal vazio saía `falha` e um
+        # canal que o CHECK do banco aceita mas este módulo não conhece (VIDEO,
+        # SHOPPING, e mais sete) saía `nao_suportado`, que não bloqueia. Nos
+        # dois o fato é "não sei o que reler neste item".
+        #
+        # ⚠️ `objetos_de` volta a ser consultado aqui — mas como PERGUNTA, e não
+        # como interruptor: ele não desliga mais o veredito, ele escolhe entre
+        # reler e declarar que não sei reler.
+        porque = ("não consegui derivar o canal deste item no servidor"
+                  if not canal_do_item else
+                  f"o canal declarado deste item é {canal_do_item}, e este "
+                  "read-back não sabe quais objetos ele tem "
+                  f"(conhecidos: {', '.join(sorted(rel.OBJETOS_POR_CANAL))})")
         releitura = vrel.resumo((vrel.VereditoDaReleitura(
-            canal="(não derivado)", objeto=vrel.CAMPANHA,
+            canal=canal_do_item or "(não derivado)", objeto=vrel.CAMPANHA,
             estado=vrel.EstadoDaReleitura.FALHA,
-            causa=("não consegui derivar o canal deste item no servidor, então "
-                   "não sei que objetos reler. Isto NÃO é uma afirmação sobre "
-                   "a conta.")),))
+            causa=(porque + ", então não sei que objetos reler. Isto NÃO é uma "
+                   "afirmação sobre a conta.")),))
     else:
         def _buscar_para_releitura(gaql: str):
             from volc_ads.gads.client import cliente  # noqa: PLC0415
@@ -6727,7 +6743,12 @@ async def estado_da_trava() -> Any:
         **e,
         # Escopo da janela de criação, separado da trava global. Abrir a trava
         # não autoriza outra conta nem outro canal.
-        "canario": canario.POLITICA.para_json(),
+        # ⚠️ `politica_do_canal`, e NÃO `canario.POLITICA`: aquele objeto é
+        # construído no import e por isso é a última cópia congelada da
+        # autorização. Numa revogação em runtime a tela mostrava
+        # `criacao_autorizada: true` enquanto o portão já recusava — e a
+        # MESMA resposta trazia `false` no bloco por canal.
+        "canario": canario.politica_do_canal(canario.CANAL).para_json(),
         # ⚠️ ESTE TEXTO VAI PARA A TELA DO OPERADOR.
         #
         # A versão anterior citava `destravar()` e o nome da variável de
@@ -6887,7 +6908,9 @@ async def contrato_dos_canais(
     return {
         "operador": c.json(),
         # Mantida para quem já lia este campo: continua sendo a de Search.
-        "politica_canario": canario.POLITICA.para_json(),
+        # ⚠️ Idem: derivado na chamada, para não contradizer
+        # `politica_canario_por_canal` dentro do mesmo payload.
+        "politica_canario": canario.politica_do_canal(canario.CANAL).para_json(),
         # ⚠️ E o mapa por canal ao lado, porque teto, CPC e rede deixaram de
         # ser um número só. `cria_pausada` aqui é a diferença entre "tem
         # janela" e "tem autorização": só Search tem canário aceito.
