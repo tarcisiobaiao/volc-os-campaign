@@ -1,0 +1,427 @@
+{
+  "documento": "FIELD-BINDINGS-IMPLEMENTED",
+  "contrato": "META_OPERATOR_GO_LIVE_V1",
+  "regra_de_leitura": "Nenhum número de linha aqui foi digitado. Cada localização foi RESOLVIDA a partir de uma âncora literal que precisa existir no arquivo; se não existisse, o campo sairia como NAO_LOCALIZADO em vez de sair com uma linha inventada. Um binding que aponta para a linha errada é pior do que um binding ausente: ele parece verificado.",
+  "papeis": {
+    "dto": "fronteira HTTP (pydantic, extra=forbid)",
+    "dominio": "contrato puro — julga antes de qualquer rede ou segredo",
+    "resolver": "troca referência opaca por id do provedor, por LISTAGEM da conta",
+    "catalogo": "leitura Graph escopada por conta",
+    "compilador": "emissão do payload e entrada no hash do plano",
+    "rota": "porta HTTP do ato",
+    "ui": "controle na bancada do operador",
+    "teste": "a contraprova que sustenta a afirmação"
+  },
+  "vocabulario_de_estado": {
+    "LIGADO": "escolha do operador chega ao payload, entra no hash e tem contraprova",
+    "LIGADO_FECHADO": "ligado no contrato e deliberadamente recusado, com causa e teste",
+    "LIGADO_LOCAL": "compilado e no hash; a prova REMOTA correspondente não existe",
+    "LIGADO_BLOQUEADO_POR_SCHEMA": "código e provas completos; depende de migration não aplicada",
+    "PARCIAL": "parte do campo está ligada; a parte que falta está nomeada",
+    "BLOQUEADO_COM_CAUSA": "recusado com nome próprio e teste — não é ausência silenciosa",
+    "INTACTO": "não alterado nesta missão, de propósito"
+  },
+  "resumo": {
+    "LIGADO": 29,
+    "PARCIAL": 4,
+    "INTACTO": 1,
+    "LIGADO_FECHADO": 1,
+    "BLOQUEADO_COM_CAUSA": 3,
+    "LIGADO_LOCAL": 1,
+    "LIGADO_BLOQUEADO_POR_SCHEMA": 1
+  },
+  "total": 40,
+  "nao_localizados": 0,
+  "sem_read_back_remoto": "NENHUM campo tem read-back REMOTO nesta entrega: nenhum objeto foi criado na Meta. Onde o contrato pede comparação de retorno, o estado honesto é a ausência dela.",
+  "campos": {
+    "F30": {
+      "label": "Arquivos individuais / ZIP",
+      "estado": "LIGADO",
+      "nota": "Importar NAO chama a Meta: provado por duble que levanta ao CONSTRUIR o cliente HTTP, por socket.connect que levanta, e por varredura do AST do router.",
+      "bindings": {
+        "dominio": "backend/app/criativo/importacao.py:238",
+        "rota": "backend/app/routers/criativos_importacao.py:3",
+        "migration": "supabase/migrations/v11_04_criativo_importacao.sql:71",
+        "teste": "backend/tests/test_criativo_importacao.py:167"
+      }
+    },
+    "F35": {
+      "label": "Direitos/política",
+      "estado": "LIGADO",
+      "nota": "Gate ausente (GATE_UNAVAILABLE) e direitos desconhecidos (RIGHTS_UNKNOWN) bloqueiam; declaracao do operador nao contorna.",
+      "bindings": {
+        "gate": "backend/app/routers/criativos_importacao.py:45",
+        "teste": "backend/tests/test_criativo_importacao.py:167"
+      }
+    },
+    "F36": {
+      "label": "Preview",
+      "estado": "PARCIAL",
+      "nota": "Preview autorizado por owner existe no caminho de importacao. A verificacao VISUAL (imagem/player, nome curto, sem overflow) e A30/A34 e nao aconteceu: a extensao de navegador nao conectou.",
+      "bindings": {
+        "dominio": "backend/app/routers/criativos_importacao.py:4"
+      }
+    },
+    "F39": {
+      "label": "Projeto e receita",
+      "estado": "INTACTO",
+      "nota": "Nao alterado nesta missao, de proposito. O vinculo criativo (uuid) x projects (bigint) continua exigindo tabela de ponte propria e autorizada; converter um no outro seria o defeito que o contrato proibe. Receita segue vindo do GAM por utm_campaign_value=campaign_id.",
+      "bindings": {
+        "financeiro": "backend/app/trafego/meta/financeiro.py:20"
+      }
+    },
+    "F01": {
+      "label": "Conta",
+      "estado": "LIGADO",
+      "bindings": {
+        "dto": "backend/app/routers/trafego_meta_validacao.py:125",
+        "resolver": "backend/app/trafego/meta_execucao/publicos.py:245",
+        "teste": "backend/tests/test_meta_rotas_v2.py:339"
+      }
+    },
+    "F02": {
+      "label": "Página / Instagram",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:446",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:398",
+        "teste": "backend/tests/test_meta_contrato_v2.py:479"
+      }
+    },
+    "F03": {
+      "label": "Objetivo e destino",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/receitas.py:127",
+        "dto": "backend/app/routers/trafego_meta_validacao.py:646",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:542",
+        "teste": "backend/tests/test_meta_contrato_v2.py:602",
+        "ui": "src/components/trafego/meta/PainelDeReceita.tsx:25"
+      }
+    },
+    "F04": {
+      "label": "ABO / CBO",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:688",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:539",
+        "dto": "backend/app/routers/trafego_meta_validacao.py:546",
+        "teste": "backend/tests/test_meta_contrato_v2.py:189",
+        "ui": "src/components/trafego/meta/PainelDeOrcamento.tsx:85"
+      }
+    },
+    "F05": {
+      "label": "Valor e moeda",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:113",
+        "teste": "backend/tests/test_meta_contrato_v2.py:255",
+        "ui": "src/components/trafego/meta/PainelDeOrcamento.tsx:85"
+      }
+    },
+    "F06": {
+      "label": "Diário / total",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:143",
+        "teste": "backend/tests/test_meta_contrato_v2.py:226",
+        "ui": "src/components/trafego/meta/PainelDeOrcamento.tsx:85"
+      }
+    },
+    "F07": {
+      "label": "Lance",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/receitas.py:139",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:556",
+        "teste": "backend/tests/test_meta_contrato_v2.py:178"
+      }
+    },
+    "F08": {
+      "label": "Compartilhamento entre conjuntos",
+      "estado": "LIGADO_FECHADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:715",
+        "teste": "backend/tests/test_meta_contrato_v2.py:637"
+      }
+    },
+    "F09": {
+      "label": "Programação",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:148",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:646",
+        "teste": "backend/tests/test_meta_contrato_v2.py:243"
+      }
+    },
+    "F10": {
+      "label": "Múltiplos conjuntos",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:561",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:654",
+        "teste": "backend/tests/test_meta_contrato_v2.py:268",
+        "ui": "src/components/trafego/meta/PainelDeConjuntos.tsx:35"
+      }
+    },
+    "F11": {
+      "label": "Tipo de público",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:68",
+        "teste": "backend/tests/test_meta_contrato_v2.py:450",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57",
+        "catalogo_ui": "src/components/trafego/meta/CatalogoDaConta.tsx:50"
+      }
+    },
+    "F12": {
+      "label": "Públicos personalizados incluídos",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:323",
+        "resolver": "backend/app/trafego/meta_execucao/publicos.py:129",
+        "catalogo": "backend/app/trafego/meta/adaptador.py:478",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:575",
+        "teste": "backend/tests/test_meta_contrato_v2.py:339",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F13": {
+      "label": "Públicos excluídos",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:324",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:580",
+        "teste": "backend/tests/test_meta_contrato_v2.py:367",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F14": {
+      "label": "Semelhantes existentes",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:325",
+        "catalogo": "backend/app/trafego/meta/adaptador.py:478",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F15": {
+      "label": "País/região/cidade/CEP",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:202",
+        "catalogo": "backend/app/trafego/meta/adaptador.py:604",
+        "rota": "backend/app/routers/meta_local.py:548",
+        "teste": "backend/tests/test_meta_contrato_v2.py:387",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F16": {
+      "label": "Excluir localidades",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:302",
+        "teste": "backend/tests/test_meta_contrato_v2.py:378",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F17": {
+      "label": "Raio / ponto",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:168",
+        "teste": "backend/tests/test_meta_contrato_v2.py:408",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      }
+    },
+    "F18": {
+      "label": "Idade e idiomas",
+      "estado": "PARCIAL",
+      "nota": "Idade ligada ponta a ponta. IDIOMAS: recusa nomeada (META_AUDIENCE_CATALOG_NOT_PROVEN) — o catálogo de locales vem do endpoint /search e não tem contrato provado nesta missão. Idade tem controle na tela. Idiomas continuam sem catálogo e sem seletor.",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:92",
+        "teste": "backend/tests/test_meta_contrato_v2.py:460",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      }
+    },
+    "F19": {
+      "label": "Segmentação detalhada",
+      "estado": "BLOQUEADO_COM_CAUSA",
+      "nota": "Aceito no contrato e RECUSADO na resolução, com causa nomeada. Emitir um id adivinhado seria segmentação inventada com cara de escolha do operador. Com a interface ligada, o modo aparece com o bloqueio VISÍVEL e a causa escrita; os campos viajam vazios. Continua BLOQUEADO_COM_CAUSA, não entregue.",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:326",
+        "resolver": "backend/app/trafego/meta_execucao/publicos.py:200",
+        "teste": "backend/tests/test_meta_rotas_v2.py:373"
+      }
+    },
+    "F20": {
+      "label": "Advantage+ Audience",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:380",
+        "dto": "backend/app/routers/trafego_meta_validacao.py:593",
+        "resumo": "backend/app/routers/trafego_meta_validacao.py:845",
+        "teste": "backend/tests/test_meta_contrato_v2.py:439",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      }
+    },
+    "F21": {
+      "label": "Posicionamentos",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:418",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:586",
+        "teste": "backend/tests/test_meta_contrato_v2.py:473",
+        "ui": "src/components/trafego/meta/PainelDePublico.tsx:57"
+      }
+    },
+    "F22": {
+      "label": "Pixel / dataset",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:87",
+        "catalogo": "backend/app/trafego/meta/adaptador.py:351",
+        "rota": "backend/app/routers/meta_local.py:513",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:590",
+        "teste": "backend/tests/test_meta_catalogos_selecionaveis.py:112",
+        "ui": "src/components/trafego/meta/PainelDeMensuracao.tsx:41"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F23": {
+      "label": "Conversão personalizada",
+      "estado": "LIGADO",
+      "bindings": {
+        "catalogo": "backend/app/trafego/meta/adaptador.py:223",
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:462",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:610",
+        "teste": "backend/tests/test_meta_contrato_v2.py:580",
+        "ui": "src/components/trafego/meta/PainelDeMensuracao.tsx:41"
+      },
+      "nota": "Catálogo real ligado na tela: o item escolhido viaja como referência opaca (ou key de catálogo, na geografia); texto digitado não tem porta por onde virar id."
+    },
+    "F24": {
+      "label": "Evento padrão",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:463",
+        "teste": "backend/tests/test_meta_contrato_v2.py:525",
+        "ui": "src/components/trafego/meta/PainelDeMensuracao.tsx:41"
+      }
+    },
+    "F25": {
+      "label": "Uso da conversão",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:515",
+        "teste": "backend/tests/test_meta_contrato_v2.py:508",
+        "ui": "src/components/trafego/meta/PainelDeMensuracao.tsx:41"
+      }
+    },
+    "F26": {
+      "label": "Atribuição",
+      "estado": "PARCIAL",
+      "nota": "O campo atravessa contrato e compilador. As JANELAS suportadas por receita não foram provadas nesta rodada; nenhuma janela é inventada como default.",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:464",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:651"
+      }
+    },
+    "F27": {
+      "label": "Destino da campanha",
+      "estado": "LIGADO",
+      "nota": "Reusa o guarda V1, que já recusa utm_campaign/campaign_id/utm_source/utm_medium na LP (META_DESTINATION_TRACKING_CONFLICT).",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:608"
+      }
+    },
+    "F28": {
+      "label": "Tracking",
+      "estado": "LIGADO_LOCAL",
+      "nota": "Compilado e no hash. Expansão da macro e receita no GAM continuam POR PROVAR e exigem entrega real.",
+      "bindings": {
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:26",
+        "camadas": "backend/app/trafego/meta_execucao/contrato_v2.py:892",
+        "teste": "backend/tests/test_meta_rotas_v2.py:478"
+      }
+    },
+    "F29": {
+      "label": "Origem da mídia",
+      "estado": "PARCIAL",
+      "nota": "Biblioteca Meta e registro produzem a MESMA referência opaca. Estúdio e importado dependem de T07.",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/registro_de_midia.py:148",
+        "teste": "backend/tests/test_meta_registro_de_midia.py:131"
+      }
+    },
+    "F31": {
+      "label": "Registrar mídia na conta",
+      "estado": "LIGADO_BLOQUEADO_POR_SCHEMA",
+      "nota": "Código e provas completos; o ledger exige a migration 20260908020000, que não está aplicada no oficial.",
+      "bindings": {
+        "servico": "backend/app/trafego/meta_execucao/registro_de_midia.py:163",
+        "rota": "backend/app/routers/trafego_meta_ativos.py:116",
+        "ledger": "backend/app/trafego/meta_execucao/registro_de_midia.py:370",
+        "teste": "backend/tests/test_meta_registro_de_midia.py:145"
+      }
+    },
+    "F32": {
+      "label": "Vídeo e miniatura",
+      "estado": "BLOQUEADO_COM_CAUSA",
+      "nota": "Processamento em fases e miniatura própria são capacidade diferente. Declarado BLOCKED, não ausente.",
+      "bindings": {
+        "rota": "backend/app/routers/trafego_meta_ativos.py:108",
+        "teste": "backend/tests/test_meta_registro_de_midia.py:382"
+      }
+    },
+    "F33": {
+      "label": "Mensagem/título/descrição/CTA",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:566"
+      }
+    },
+    "F34": {
+      "label": "Lote e destino por anúncio",
+      "estado": "LIGADO",
+      "bindings": {
+        "dominio": "backend/app/trafego/meta_execucao/contrato_v2.py:780",
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:661",
+        "teste": "backend/tests/test_meta_contrato_v2.py:307",
+        "ui": "src/components/trafego/meta/MapaDoPlano.tsx:23"
+      }
+    },
+    "F37": {
+      "label": "Orçamento e público na revisão",
+      "estado": "LIGADO",
+      "nota": "Derivado do CONTRATO, não do rascunho — rascunho e resumo não podem divergir.",
+      "bindings": {
+        "resumo": "backend/app/routers/trafego_meta_validacao.py:806",
+        "teste": "backend/tests/test_meta_rotas_v2.py:204",
+        "ui": "src/components/trafego/meta/MapaDoPlano.tsx:23"
+      }
+    },
+    "F38": {
+      "label": "Estado ao nascer",
+      "estado": "LIGADO",
+      "bindings": {
+        "compilador": "backend/app/trafego/meta_execucao/compilador.py:328",
+        "executor": "backend/app/trafego/meta_execucao/executor.py:454",
+        "teste": "backend/tests/test_meta_contrato_v2.py:326"
+      }
+    },
+    "F40": {
+      "label": "Flexível / dinâmico",
+      "estado": "BLOQUEADO_COM_CAUSA",
+      "nota": "ZIP não é asset_feed_spec. Lote estático e variação flexível continuam rotulados separados.",
+      "bindings": {
+        "capacidade": "backend/app/routers/trafego_meta_validacao.py:298"
+      }
+    }
+  }
+}

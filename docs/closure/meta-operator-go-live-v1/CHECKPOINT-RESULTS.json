@@ -21,7 +21,7 @@
     {
       "id": "CP2",
       "estado": "LOCAL_PASS",
-      "nota": "ABO/CBO, múltiplos conjuntos, público e conversões ligados ponta a ponta no contrato, no compilador e na tela. Catálogo real só é consultado por ato do operador."
+      "nota": "ABO/CBO, múltiplos conjuntos, público e conversões ligados ponta a ponta no contrato, no compilador e na tela. Catálogo real só é consultado por ato do operador. Catálogos de público, geografia e mensuração ligados na tela, com os cinco estados distintos e nada carregando sozinho."
     },
     {
       "id": "CP3",
@@ -122,8 +122,8 @@
       "id": "A11",
       "task": "T04",
       "estado": "LOCAL_PASS",
-      "prova": "Cinco estados distintos e testados: VAZIO_COMPLETO, INDISPONIVEL/permissão, INDISPONIVEL/timeout, PARCIAL e OBSOLETO — este último num eixo ortogonal.",
-      "evidencia": "backend/tests/test_meta_catalogos_selecionaveis.py; backend/tests/test_meta_rotas_catalogos.py::test_catalogo_de_publicos_entrega_o_envelope_inteiro"
+      "prova": "Cinco estados distintos e testados: VAZIO_COMPLETO, INDISPONIVEL/permissão, INDISPONIVEL/timeout, PARCIAL e OBSOLETO — este último num eixo ortogonal. Na tela, CatalogoDaConta dá PALAVRA PRÓPRIA a cada um dos cinco, e o frescor aparece como eixo ortogonal, com os itens ainda à vista e sem re-busca silenciosa.",
+      "evidencia": "backend/tests/test_meta_catalogos_selecionaveis.py; backend/tests/test_meta_rotas_catalogos.py::test_catalogo_de_publicos_entrega_o_envelope_inteiro; src/components/trafego/meta/__tests__/catalogo-da-conta.test.tsx"
     },
     {
       "id": "A12",
@@ -260,7 +260,7 @@
       "id": "A30",
       "task": "T09",
       "estado": "WAITING_OWNER",
-      "prova": "Nenhuma. Truncamento e ausência de overflow são afirmações de PIXEL.",
+      "prova": "Nenhuma afirmação de pixel foi feita. O que existe é prova de COMPORTAMENTO em jsdom (truncamento por classe, ausência de path interno como título), que não substitui a leitura visual.",
       "evidencia": "—",
       "falta_para_fechar": "A extensão do navegador não conecta nesta sessão. Exige inspeção autenticada real; jsdom não substitui."
     },
@@ -415,7 +415,7 @@
     "backend_tests": "3 falhas, 4508 passando, 89 pulados",
     "as_3_falhas": "PRE-EXISTENTES: test_canario_pedido_aprovado (2) e test_trafego (1). trafego.py e canario.py estão INTACTOS desde a base b3afa8b — nada nesta missão os tocou.",
     "volc_ads_junto": "Rodar `backend/tests volc_ads` acrescenta 16 falhas em test_meta_supply_bytes que NÃO acontecem isoladamente. É poluição entre suítes PRE-EXISTENTE: volc_ads teve ZERO arquivos alterados nesta missão, e a poluição se reproduz com `pytest volc_ads backend/tests/test_meta_supply_bytes.py`.",
-    "vitest": "178 passando (139 existentes + 39 novos)",
-    "typescript": "76 erros — ABAIXO da baseline medida de 77, e nenhum em arquivo desta missão"
+    "vitest": "199 passando em 16 arquivos (139 existentes + 60 novos), zero regressões",
+    "typescript": "76 erros — ABAIXO da baseline medida de 77; nenhum em arquivo desta missão"
   }
 }
