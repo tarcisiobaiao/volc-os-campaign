@@ -14,17 +14,20 @@ class PedidoDeGestaoMeta(BaseModel):
     model_config = ConfigDict(extra="forbid")
     conta_ref: str = Field(pattern=r"^[A-Za-z0-9:_-]{8,180}$")
     campanha_ref: str = Field(pattern=r"^[A-Za-z0-9:_-]{8,180}$")
-    entidade: Literal["campanha", "conjunto"]
+    entidade: Literal["campanha", "conjunto", "anuncio"]
     referencia: str = Field(pattern=r"^[A-Za-z0-9:_-]{8,180}$")
-    acao: Literal["PAUSAR", "ORCAMENTO_DIARIO", "LANCE", "DUPLICAR_CONJUNTO"]
+    acao: Literal["PAUSAR", "ORCAMENTO_DIARIO", "LANCE", "DUPLICAR_CONJUNTO", "DUPLICAR_ANUNCIO"]
     valor_minor: int | None = Field(default=None, strict=True, gt=0, le=100_000_000)
     estrategia: Literal["LOWEST_COST_WITHOUT_CAP", "COST_CAP", "LOWEST_COST_WITH_BID_CAP"] | None = None
     nome: str | None = Field(default=None, min_length=1, max_length=200)
 
     @model_validator(mode="after")
     def conferir(self):
-        if self.acao == "DUPLICAR_CONJUNTO":
-            if self.entidade != "conjunto" or not (self.nome or "").strip():
+        if self.entidade == "anuncio" and self.acao not in {"PAUSAR", "DUPLICAR_ANUNCIO"}:
+            raise ValueError("Anúncio não possui orçamento ou lance próprios.")
+        if self.acao in {"DUPLICAR_CONJUNTO", "DUPLICAR_ANUNCIO"}:
+            esperado = "anuncio" if self.acao == "DUPLICAR_ANUNCIO" else "conjunto"
+            if self.entidade != esperado or not (self.nome or "").strip():
                 raise ValueError("Escolha um conjunto e dê um nome à cópia.")
         elif self.nome is not None:
             raise ValueError("Nome só pertence à proposta de duplicação.")
@@ -37,12 +40,12 @@ class PedidoDeGestaoMeta(BaseModel):
                 raise ValueError("Estratégia com limite exige valor; sem limite não admite valor.")
         elif self.estrategia is not None:
             raise ValueError("Estratégia só pertence à proposta de lance.")
-        if self.acao in {"PAUSAR", "DUPLICAR_CONJUNTO"} and self.valor_minor is not None:
+        if self.acao in {"PAUSAR", "DUPLICAR_CONJUNTO", "DUPLICAR_ANUNCIO"} and self.valor_minor is not None:
             raise ValueError("Esta proposta não recebe valor de lance ou orçamento.")
         return self
 
 
-async def planejar_gestao(repo, pedido: PedidoDeGestaoMeta, *, ator: str) -> dict:
+async def alvo_validado(repo, pedido: PedidoDeGestaoMeta) -> dict:
     campanha = await repo.detalhe("campanhas", pedido.campanha_ref, pedido.conta_ref)
     pai = campanha.get("item") if campanha.get("estado") == "COM_SNAPSHOT" else None
     if not pai:
@@ -51,6 +54,15 @@ async def planejar_gestao(repo, pedido: PedidoDeGestaoMeta, *, ator: str) -> dic
         if pedido.referencia not in {pedido.campanha_ref, pai.get("entity_ref"), pai.get("meta_campaign_id")}:
             raise ValueError("A proposta precisa pertencer à campanha aberta.")
         item = pai
+    elif pedido.entidade == "anuncio":
+        detalhe = await repo.detalhe("anuncios", pedido.referencia, pedido.conta_ref)
+        item = detalhe.get("item") if detalhe.get("estado") == "COM_SNAPSHOT" else None
+        if not item or not item.get("meta_adset_id"):
+            raise ValueError("Anúncio não encontrado nesta conta.")
+        detalhe_pai = await repo.detalhe("conjuntos", item["meta_adset_id"], pedido.conta_ref)
+        conjunto = detalhe_pai.get("item") if detalhe_pai.get("estado") == "COM_SNAPSHOT" else None
+        if not conjunto or not pai.get("meta_campaign_id") or conjunto.get("meta_campaign_id") != pai["meta_campaign_id"]:
+            raise ValueError("Anúncio não pertence à campanha aberta.")
     else:
         detalhe = await repo.detalhe("conjuntos", pedido.referencia, pedido.conta_ref)
         item = detalhe.get("item") if detalhe.get("estado") == "COM_SNAPSHOT" else None
@@ -58,6 +70,11 @@ async def planejar_gestao(repo, pedido: PedidoDeGestaoMeta, *, ator: str) -> dic
             raise ValueError("Conjunto não encontrado nesta campanha e conta.")
     if item.get("status") in {"DELETED", "ARCHIVED"}:
         raise ValueError("Objetos removidos ou arquivados não aceitam proposta nesta bancada.")
+    return item
+
+
+async def planejar_gestao(repo, pedido: PedidoDeGestaoMeta, *, ator: str) -> dict:
+    item = await alvo_validado(repo, pedido)
 
     # Explicit projection, never echo the repository's entire record.
     antes = {k: item.get(k) for k in ("status", "daily_budget", "lifetime_budget", "bid_strategy", "bid_amount")}
@@ -82,8 +99,10 @@ async def planejar_gestao(repo, pedido: PedidoDeGestaoMeta, *, ator: str) -> dic
         efeito = "Alterar a estratégia de entrega; pode afetar aprendizado e gasto."
         requisitos.append("Validar moeda da conta, estratégia, objetivo, otimização e dono do lance antes de compilar payload Meta.")
     else:
-        depois = {"nome": pedido.nome.strip(), "status": "PAUSED", "incluir_anuncios": True}
-        efeito = "Criar um novo conjunto e cópias de seus anúncios, todos pausados, na mesma campanha."
+        depois = {"nome": pedido.nome.strip(), "status": "PAUSED", "incluir_anuncios": pedido.entidade == "conjunto"}
+        efeito = ("Criar um novo anúncio pausado no mesmo conjunto; preservar a origem sem transferir desempenho."
+                  if pedido.entidade == "anuncio" else
+                  "Criar um novo conjunto e cópias de seus anúncios, todos pausados, na mesma campanha.")
         requisitos.extend([
             "Reler todos os anúncios e criativos, com paginação completa e sem copiar IDs antigos.",
             "Recompilar url_tags por conjunto. O novo ID terá receita própria; não transferir histórico da origem.",

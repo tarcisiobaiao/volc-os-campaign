@@ -223,6 +223,8 @@ trafego_inventario.registrar(app)
 # fronteira separada. Nenhum dos dois publica em plataforma.
 app.include_router(criativos.router)
 app.include_router(criativos_agente.router)
+from app.routers import criativos_packs
+app.include_router(criativos_packs.router)
 app.include_router(criativos_execucao.router)
 # Importacao privada de midia (T07). ⚠️ Ela NAO chama a Meta: `SPEC.json ->
 # proposed_routes` declara "importacao privada; nao chama Meta", e o registro na

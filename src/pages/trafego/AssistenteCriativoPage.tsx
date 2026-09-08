@@ -84,6 +84,8 @@ export default function AssistenteCriativoPage() {
 
   const solicitada = busca.get('view');
   const vista: Vista = ['briefing', 'estrategia', 'producao', 'assets', 'historico'].includes(solicitada ?? '') ? solicitada as Vista : projectRef ? 'estrategia' : 'briefing';
+  const vistaAtiva = useRef(vista);
+  vistaAtiva.current = vista;
 
   const [operacoes, setOperacoes] = useState<ResumoDaOperacao[]>([]);
   const [carregandoLista, setCarregandoLista] = useState(false);
@@ -256,7 +258,13 @@ export default function AssistenteCriativoPage() {
 
   const [plano, setPlano] = useState<PlanoDeGeracao | null>(null);
   const [planejando, setPlanejando] = useState(false);
-  const [gerando, setGerando] = useState(false);
+  const geracaoEmCurso = useRef<string | null>(null);
+  const [geracaoPendente, setGeracaoPendente] = useState<{
+    projectRef: string;
+    plano: PlanoDeGeracao;
+  } | null>(null);
+  const gerando = geracaoPendente !== null && geracaoPendente.projectRef === projectRef;
+  const [falhaDaGeracao, setFalhaDaGeracao] = useState<{ projectRef: string; mensagem: string } | null>(null);
   const [geracoes, setGeracoes] = useState<GeracaoRegistrada[]>([]);
   const [erroGeracoes, setErroGeracoes] = useState<string | null>(null);
   const [lendoGeracoes, setLendoGeracoes] = useState(false);
@@ -373,7 +381,7 @@ export default function AssistenteCriativoPage() {
   }
 
   async function planejar(creativeRefs: string[], formatIds: string[]) {
-    if (!projectRef || !runAtual) return;
+    if (!projectRef || !runAtual || geracaoEmCurso.current === projectRef) return;
     setPlanejando(true);
     setErroAcao(null);
     try {
@@ -414,7 +422,18 @@ export default function AssistenteCriativoPage() {
     // consentimento ao CONTEÚDO exato que a pessoa leu.
     if (!projectRef || !runAtual || !plano || !plano.modelo_de_imagem) return;
     if (!plano.selo_do_plano) return;
-    setGerando(true);
+    // A ref trava inclusive dois cliques antes do próximo render. O estado
+    // guarda a operação e o plano autorizado, mesmo que a pessoa navegue.
+    if (geracaoEmCurso.current) {
+      if (geracaoEmCurso.current !== projectRef) {
+        setErroAcao('Há uma geração em andamento em outra operação. Aguarde a resposta antes de iniciar outra.');
+      }
+      return;
+    }
+    const operacaoDoPedido = projectRef;
+    geracaoEmCurso.current = operacaoDoPedido;
+    setGeracaoPendente({ projectRef: operacaoDoPedido, plano });
+    setFalhaDaGeracao(null);
     setErroAcao(null);
     try {
       await gerarImagens(projectRef, {
@@ -431,19 +450,28 @@ export default function AssistenteCriativoPage() {
           aceito_sem_estimativa: aceitoSemEstimativa,
         },
       });
-      await carregarGeracoes(projectRef);
-      setAviso('Pedido registrado. Os arquivos aparecem aqui conforme o motor concluir.');
-      irPara('assets');
+      if (projetoAtivo.current === operacaoDoPedido) {
+        await carregarGeracoes(operacaoDoPedido);
+        if (projetoAtivo.current === operacaoDoPedido) {
+          setAviso('Resposta recebida. Confira as imagens e eventuais falhas em Criativos.');
+          if (vistaAtiva.current === 'producao') irPara('assets', operacaoDoPedido);
+        }
+      }
     } catch (e) {
       const f = frase(e);
-      if (f) setErroAcao(f);
+      if (f && projetoAtivo.current === operacaoDoPedido) {
+        const mensagem = `${f} Confira a aba Criativos antes de solicitar outra geração: a solicitação pode ter sido recebida mesmo sem uma resposta nesta tela.`;
+        setErroAcao(mensagem);
+        setFalhaDaGeracao({ projectRef: operacaoDoPedido, mensagem });
+      }
     } finally {
-      setGerando(false);
+      geracaoEmCurso.current = null;
+      setGeracaoPendente(null);
     }
   }
 
   async function anexarFoto(arquivo: File) {
-    if (!projectRef) return;
+    if (!projectRef || geracaoEmCurso.current === projectRef) return;
     setEnviandoFoto(true);
     setErroDaFoto(null);
     try {
@@ -460,7 +488,7 @@ export default function AssistenteCriativoPage() {
   }
 
   async function removerFoto() {
-    if (!projectRef || !anexo) return;
+    if (!projectRef || !anexo || geracaoEmCurso.current === projectRef) return;
     setErroDaFoto(null);
     const alvo = anexo.anexo_ref;
     // Otimista: o botão precisa responder na hora, e a releitura corrige.
@@ -545,9 +573,28 @@ export default function AssistenteCriativoPage() {
           </div>
         </nav>
 
+        {gerando && vista !== 'producao' && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-card">
+            <p role="status" className="flex items-center gap-2 text-sm text-foreground">
+              <Loader2 className="h-4 w-4 text-primary motion-safe:animate-spin motion-reduce:animate-none" aria-hidden />
+              Uma geração desta operação está aguardando resposta.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => irPara('producao')}>
+              Acompanhar geração
+            </Button>
+          </div>
+        )}
+
         {aviso && (
           <p className="mt-4 rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
             {aviso}
+          </p>
+        )}
+
+        {vista === 'assets' && falhaDaGeracao && falhaDaGeracao.projectRef === projectRef && (
+          <p role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            {falhaDaGeracao.mensagem}
           </p>
         )}
 
@@ -579,7 +626,7 @@ export default function AssistenteCriativoPage() {
               )}
               {saida && (
                 <>
-                  <FotografiaReal
+                  {!gerando && <FotografiaReal
                     anexo={anexo}
                     modos={capacidades?.modos_de_composicao ?? []}
                     modo={modoDeComposicao}
@@ -593,7 +640,7 @@ export default function AssistenteCriativoPage() {
                       // descreve mais o que este clique produziria.
                       setPlano(null);
                     }}
-                  />
+                  />}
                   <PainelDeProducao
                     saida={saida}
                     aprovados={aprovados}
@@ -601,7 +648,7 @@ export default function AssistenteCriativoPage() {
                     formatosDoBriefing={formatosDoBriefing}
                     anexo={anexo}
                     modoDeComposicao={anexo ? modoDeComposicao : 'sem_foto'}
-                    plano={plano}
+                    plano={gerando ? geracaoPendente?.plano ?? plano : plano}
                     planejando={planejando}
                     gerando={gerando}
                     erro={erroAcao}

@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T17:29:14-03:00",
+  "generated_at": "2026-09-08T18:07:40-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 721,
-    "markdown": 526,
-    "sql": 195,
-    "tracked": 721,
+    "files": 723,
+    "markdown": 527,
+    "sql": 196,
+    "tracked": 723,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 374,
+      "documentation": 375,
       "generated": 2,
       "module-guide": 39,
       "product-document": 23,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 82,
+      "sql-needs-review": 83,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 133,
+      "high": 134,
       "medium": 46,
       "read-only-or-ddl-free": 16
     }
@@ -1099,9 +1099,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 22942,
-      "lines": 305,
-      "sha256": "0e9c6f3fbbc963041c1d144e8b1c7578161c0c029cb5dadbfa9aaa00aad8d002",
+      "bytes": 23057,
+      "lines": 306,
+      "sha256": "6027181a6e47f8ba16530c1144a2fdc98733a4b46264c4f017da34c7649a6fbc",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3382,6 +3382,18 @@
       "bytes": 2121,
       "lines": 45,
       "sha256": "bfc6acf6d68c3d912d556a09e6f1d126d64975f6301e93dd86cc5f64c73a9ed5",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-creative-reuse-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4362,
+      "lines": 46,
+      "sha256": "dedbffca4cb5ffaeae56c1af1d90a29bd6953559efeb6ce5db94e118fb204766",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7707,6 +7719,18 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/20260908205124_creative_reuse_packs.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 2275,
+      "lines": 38,
+      "sha256": "4b4757b3935e9aae750b58f74ca8909d9b3f09be1698cbb3e27c6ac12f8fb544",
+      "graph_nodes": 3,
+      "graph_degree": 5,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/PLANO-v11_03.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7723,9 +7747,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 70381,
-      "lines": 1243,
-      "sha256": "c390d2cd5ab068489761a8436148b68d5dcd9336130a02472cf93505942a0954",
+      "bytes": 70849,
+      "lines": 1251,
+      "sha256": "e77cd7ed5d61bc978e8e1b9e8e813bce155fc331cf66ab7cd8ca4af020a49baf",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

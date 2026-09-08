@@ -11,11 +11,11 @@ export interface TrackingAutomaticoMeta {
   efeito_externo: 'NENHUM';
 }
 
-export type AcaoGestaoMeta = 'PAUSAR' | 'ORCAMENTO_DIARIO' | 'LANCE' | 'DUPLICAR_CONJUNTO';
+export type AcaoGestaoMeta = 'PAUSAR' | 'ORCAMENTO_DIARIO' | 'LANCE' | 'DUPLICAR_CONJUNTO' | 'DUPLICAR_ANUNCIO';
 export interface PedidoGestaoMeta {
   conta_ref: string;
   campanha_ref: string;
-  entidade: 'campanha' | 'conjunto';
+  entidade: 'campanha' | 'conjunto' | 'anuncio';
   referencia: string;
   acao: AcaoGestaoMeta;
   valor_minor?: number;

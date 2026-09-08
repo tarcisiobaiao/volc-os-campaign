@@ -13,9 +13,9 @@
  * Nenhum teste aqui chama provider, banco ou API de anúncios: o `fetch` é dublê.
  */
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
 
@@ -130,7 +130,7 @@ function detalheComAprovacao(aprovado: boolean) {
 
 let chamadas: { url: string; metodo: string; corpo: unknown }[] = [];
 
-function instalarFetch(aprovado: boolean) {
+function instalarFetch(aprovado: boolean, responderGeracao?: () => Promise<Response>) {
   chamadas = [];
   vi.stubGlobal(
     'fetch',
@@ -150,6 +150,7 @@ function instalarFetch(aprovado: boolean) {
       else if (endereco.includes('/anexos')) corpo = { anexos: [] };
       else if (endereco.includes('/geracoes/plano')) corpo = PLANO;
       else if (endereco.includes('/geracoes') && metodo === 'POST') {
+        if (responderGeracao) return responderGeracao();
         corpo = { geracoes: [], total_de_renders: 1, custo_estimado_usd: 0.039 };
       } else if (endereco.includes('/geracoes')) corpo = { geracoes: [] };
       else if (endereco.includes(PROJECT_REF)) corpo = detalheComAprovacao(aprovado);
@@ -164,7 +165,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function abrirProducao() {
+function NavegacaoDeTeste() {
+  const navegar = useNavigate();
+  const local = useLocation();
+  return <>
+    <output data-testid="rota-atual">{local.pathname}{local.search}</output>
+    <button onClick={() => navegar(`/trafego/meta/assistente-criativo/crproj_${'d'.repeat(24)}?view=producao`)}>Outra operação de teste</button>
+  </>;
+}
+
+async function abrirProducao(comNavegacao = false) {
   const { default: AssistenteCriativoPage } = await import(
     '@/pages/trafego/AssistenteCriativoPage'
   );
@@ -172,6 +182,7 @@ async function abrirProducao() {
     <MemoryRouter
       initialEntries={[`/trafego/meta/assistente-criativo/${PROJECT_REF}?view=producao`]}
     >
+      {comNavegacao && <NavegacaoDeTeste />}
       <Routes>
         <Route
           path="/trafego/meta/assistente-criativo/:projectRef"
@@ -203,6 +214,105 @@ describe('a revisão sobrevive ao reload', () => {
 
     expect(await screen.findByText(/Nenhuma peça foi aprovada ainda/i)).toBeTruthy();
     expect(screen.queryByText(PECA.hook)).toBeNull();
+  });
+});
+
+describe('espera da geração', () => {
+  async function autorizarEGerar() {
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Hook que interrompe/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Conferir antes de gerar/i }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Autorizo produzir/i }));
+    const botao = screen.getByRole('button', { name: /Gerar 1 imagem/i });
+    fireEvent.click(botao);
+    fireEvent.click(botao);
+    await screen.findByRole('heading', { name: 'Geração solicitada' });
+  }
+
+  function respostaPendente() {
+    let resolver!: (resposta: Response) => void;
+    let rejeitar!: (erro: Error) => void;
+    const resposta = new Promise<Response>((resolve, reject) => {
+      resolver = resolve;
+      rejeitar = reject;
+    });
+    return {
+      resposta,
+      concluir: () => resolver({ ok: true, status: 200, json: async () => ({ geracoes: [], total_de_renders: 1 }) } as Response),
+      falhar: () => rejeitar(new Error('Conexão interrompida')),
+    };
+  }
+
+  it('mostra o pedido autorizado, protege o formulário e preserva o acompanhamento ao trocar de aba', async () => {
+    const pendente = respostaPendente();
+    instalarFetch(true, () => pendente.resposta);
+    await abrirProducao();
+    await autorizarEGerar();
+
+    const painel = screen.getByRole('region', { name: 'Geração solicitada' });
+    expect(document.activeElement).toBe(painel);
+    expect(within(painel).getByRole('status').textContent).toContain('Aguardando resposta');
+    expect(within(painel).getByText(MODELO)).toBeTruthy();
+    expect(within(painel).getByText('medium')).toBeTruthy();
+    expect(within(painel).getByText('1')).toBeTruthy();
+    expect(painel.textContent).not.toMatch(/\d+%|\d+ segundos|renderizando|finalizando/i);
+    expect(painel.querySelectorAll('[class*="motion-reduce:animate-none"]').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /Conferir antes de gerar/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Gerar 1 imagem/i })).toBeNull();
+    expect(screen.queryByText('Fotografia real')).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /Hook que interrompe/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Criativos' }));
+    expect(await screen.findByText('Uma geração desta operação está aguardando resposta.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Acompanhar geração' }));
+    expect(await screen.findByRole('region', { name: 'Geração solicitada' })).toBeTruthy();
+    expect(chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'POST')).toHaveLength(1);
+
+    await act(async () => pendente.concluir());
+    expect(await screen.findByText('Resposta recebida. Confira as imagens e eventuais falhas em Criativos.')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Geração solicitada' })).toBeNull();
+  });
+
+  it('uma falha orienta conferir o acervo e exige nova autorização, sem repetir o pedido', async () => {
+    const pendente = respostaPendente();
+    instalarFetch(true, () => pendente.resposta);
+    await abrirProducao();
+    await autorizarEGerar();
+    await act(async () => pendente.falhar());
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Confira a aba Criativos antes de solicitar outra geração');
+    expect(screen.queryByRole('heading', { name: 'Geração solicitada' })).toBeNull();
+    expect((screen.getByRole('button', { name: /Gerar 1 imagem/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('checkbox', { name: /Autorizo produzir/i }) as HTMLInputElement).checked).toBe(false);
+    expect(chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'POST')).toHaveLength(1);
+  });
+
+  it('a resposta de uma operação anterior não muda a rota nem o aviso da operação atual', async () => {
+    const pendente = respostaPendente();
+    instalarFetch(true, () => pendente.resposta);
+    await abrirProducao(true);
+    await autorizarEGerar();
+    fireEvent.click(screen.getByRole('button', { name: 'Outra operação de teste' }));
+    await screen.findByText('Ainda não há estratégia concluída para produzir.');
+    const rota = screen.getByTestId('rota-atual').textContent;
+    const leiturasAntes = chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'GET').length;
+
+    await act(async () => pendente.concluir());
+    expect(screen.getByTestId('rota-atual').textContent).toBe(rota);
+    expect(screen.queryByText(/Resposta recebida/)).toBeNull();
+    expect(chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'GET')).toHaveLength(leiturasAntes);
+  });
+
+  it('mantém o erro visível quando a pessoa acompanha pela aba Criativos', async () => {
+    const pendente = respostaPendente();
+    instalarFetch(true, () => pendente.resposta);
+    await abrirProducao();
+    await autorizarEGerar();
+    fireEvent.click(screen.getByRole('button', { name: 'Criativos' }));
+    await act(async () => pendente.falhar());
+
+    expect((await screen.findByRole('alert')).textContent).toContain('a solicitação pode ter sido recebida');
+    expect(screen.queryByText('Uma geração desta operação está aguardando resposta.')).toBeNull();
+    expect(chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'POST')).toHaveLength(1);
   });
 });
 

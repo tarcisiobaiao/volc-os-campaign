@@ -123,7 +123,7 @@ export function criarDadosDemoCampanha(id: string): MetaCampaignDataApi | null {
     },
     async planejarGestaoMeta(pedido) {
       conferir(pedido.campanha_ref, pedido.conta_ref);
-      const alvo = pedido.entidade === 'campanha' ? campanha : conjuntos.find(c => c.entity_ref === pedido.referencia);
+      const alvo = pedido.entidade === 'campanha' ? campanha : (pedido.entidade === 'anuncio' ? anuncios : conjuntos).find(c => c.entity_ref === pedido.referencia);
       if (!alvo || alvo.entity_ref !== pedido.referencia) throw new Error('Objeto fora do exemplo.');
       if (pedido.acao === 'DUPLICAR_CONJUNTO' && (pedido.entidade !== 'conjunto' || !pedido.nome?.trim())) throw new Error('Escolha um conjunto e o nome da cópia.');
       if (pedido.valor_minor !== undefined && (!Number.isSafeInteger(pedido.valor_minor) || pedido.valor_minor <= 0)) throw new Error('Valor inválido.');

@@ -45,6 +45,21 @@ const RAW_BASE = (import.meta.env.VITE_PAUTADOR_API_URL || '').trim();
 const API_BASE = RAW_BASE.replace(/\/$/, '');
 const PREFIXO = '/api/criativos/meta/agente';
 
+export interface CreativePack {
+  id: string; nome: string; manifest_sha256: string; created_at: string;
+  manifest: { source: 'STUDIO' | 'META_SNAPSHOT'; launch_authorized: false;
+    items: Array<{ master_ref?: string; content_hash?: string; slot?: string;
+      copy_snapshot?: { texto_principal: string; titulo: string; descricao: string; cta_nativa: string } | null }> };
+}
+export const salvarPack = (nome: string, master_refs: string[]) =>
+  chamar<CreativePack>(endereco('/packs'), { method: 'POST', body: JSON.stringify({ nome, master_refs }) });
+export const listarPacks = (offset = 0) =>
+  chamar<{ packs: CreativePack[]; has_more: boolean }>(endereco('/packs', { offset }));
+export const selecionarPack = (id: string) =>
+  chamar<{ master_refs: string[]; launch_authorized: false; scope: 'DRAFT_MEDIA_ONLY' }>(endereco(`/packs/${encodeURIComponent(id)}/selecao`));
+export const salvarPackMeta = (pedido: { conta_ref: string; campanha_ref: string; entidade: 'conjunto' | 'anuncio'; referencia: string; nome: string }) =>
+  chamar<CreativePack>(endereco('/packs/meta'), { method: 'POST', body: JSON.stringify(pedido) });
+
 export class ErroDoAssistente extends Error {
   readonly codigo: string;
   constructor(mensagem: string, codigo: string) {

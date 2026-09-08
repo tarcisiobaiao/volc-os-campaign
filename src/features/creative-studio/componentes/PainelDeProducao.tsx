@@ -51,6 +51,7 @@ import type {
   SaidaDoAgente,
 } from '../tipos';
 import { SeletorDeFormatos } from './SeletorDeFormatos';
+import { ProgressoDeGeracao } from './ProgressoDeGeracao';
 
 export interface PainelDeProducaoProps {
   saida: SaidaDoAgente;
@@ -138,7 +139,7 @@ export function PainelDeProducao({
   useEffect(() => {
     setAutorizado(false);
     setAceitoSemEstimativa(false);
-  }, [assinatura, plano]);
+  }, [assinatura, plano, gerando]);
 
   useEffect(() => {
     setTeto(tetoSugerido(plano?.custo_estimado_usd ?? null));
@@ -157,6 +158,10 @@ export function PainelDeProducao({
   const semEstimativa = plano ? plano.custo_tem_estimativa === false : false;
   const consentimentoDeCusto = !semEstimativa || aceitoSemEstimativa;
   const totalPrevisto = selecionadas.length * formatos.length;
+
+  // O formulário sai de cena enquanto o pedido aguarda resposta. O plano
+  // recebido aqui é o retrato autorizado, preservado pela página até o fim.
+  if (gerando) return <ProgressoDeGeracao plano={plano} />;
 
   if (aprovadas.length === 0) {
     return (
@@ -476,9 +481,7 @@ export function PainelDeProducao({
               }
             >
               <ImageIcon className="h-4 w-4" aria-hidden />
-              {gerando
-                ? 'Mandando produzir…'
-                : `Gerar ${plano.total_de_renders} imagem(ns)`}
+              {`Gerar ${plano.total_de_renders} imagem(ns)`}
             </Button>
             {!autorizado && plano.pode_executar && (
               <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">

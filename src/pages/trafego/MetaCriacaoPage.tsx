@@ -53,6 +53,7 @@ import '@/components/trafego/meta/jornada.css';
 import { lerSelecaoDoAssistente, lerSelecaoDeCopy, type SelecaoDeCopy } from '@/components/trafego/meta/ponteAssistente';
 import { ImportarCopyDoAssistente } from '@/components/trafego/meta/ImportarCopyDoAssistente';
 import { AssistenteNaJornada } from '@/components/trafego/meta/AssistenteNaJornada';
+import { selecionarPack } from '@/features/creative-studio/api';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
 
 const CTAS: readonly [string, string][] = [
@@ -224,6 +225,20 @@ const MetaCriacaoPage: React.FC = () => {
   const iframeAssistente = useRef<HTMLIFrameElement>(null);
   const [projetoCriativo, setProjetoCriativo] = useState<string | null>(null);
   const [mastersSelecionados, setMastersSelecionados] = useState<string[]>([]);
+  const [packAviso, setPackAviso] = useState('');
+  const packRef = params.get('pack');
+  useEffect(() => {
+    let vivo = true;
+    if (!packRef) return;
+    setPackAviso('Conferindo as peças do pack…');
+    if (!/^[0-9a-f-]{36}$/i.test(packRef)) { setPackAviso('Referência de pack inválida.'); return; }
+    selecionarPack(packRef).then(r => {
+      if (!vivo) return;
+      setMastersSelecionados(r.master_refs);
+      setPackAviso('Pack selecionado no rascunho. Revise as peças na etapa Criativos; nada foi enviado à Meta.');
+    }).catch(e => { if (vivo) setPackAviso(e instanceof Error ? e.message : 'Não foi possível conferir o pack.'); });
+    return () => { vivo = false; };
+  }, [packRef]);
   const [copySelecionada, setCopySelecionada] = useState<SelecaoDeCopy | null>(null);
   const [copyAplicada, setCopyAplicada] = useState(false);
   useEffect(() => {
@@ -1241,6 +1256,7 @@ const MetaCriacaoPage: React.FC = () => {
             <AssistenteNaJornada ref={iframeAssistente} projeto={projetoCriativo} />
             <Button variant="outline" onClick={() => setOrigemCriativa('conta')}>Escolher imagens disponíveis na conta</Button>
           </section>}
+          {packAviso && <p role="status" className="text-sm text-muted-foreground">{packAviso}</p>}
           {mastersSelecionados.length > 0 && <div role="status" className="rounded-lg border border-border p-4 text-sm">
             {mastersSelecionados.length} peça(s) selecionada(s) no Estúdio. Falta registrar essas imagens na conta com avaliação de política antes de vinculá-las aos anúncios. Elas ainda não fazem parte do plano compilado.
             <Button variant="ghost" className="mt-2" onClick={() => setMastersSelecionados([])}>Retirar seleção do Estúdio e usar imagens da conta</Button>

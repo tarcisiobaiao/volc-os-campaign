@@ -2,6 +2,14 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Packs reutilizáveis — 08/09/2026
+
+`20260908205124_creative_reuse_packs.sql` aplicada no Supabase oficial, com
+RLS forçada e somente SELECT/INSERT para service_role. Nenhuma permissão para
+anon/authenticated. A tabela contém manifestos imutáveis; não armazena bytes
+de imagem nem confere aprovação de publicação. Recibo de aplicação, backup e
+prova transacional sem resíduos: [creative reuse](../../docs/closure/meta-creative-reuse-v1/RECEIPT.json).
+
 ## Atualização oficial — v16_01 (08/09/2026)
 
 `v16_01_criativo_procedencia_e_anexo.sql` foi **aplicada e relida** em

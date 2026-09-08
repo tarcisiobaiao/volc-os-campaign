@@ -1,0 +1,58 @@
+{
+  "verdict": "CREATIVE_REUSE_LOCAL_PARTIAL_OFFICIAL_PACK_SCHEMA_VERIFIED",
+  "date": "2026-09-08",
+  "branch": "execution/volc-os-operacao-80-20",
+  "base_short": "ce79dbc",
+  "migration": {
+    "file": "supabase/migrations/20260908205124_creative_reuse_packs.sql",
+    "sha256": "4b4757b3935e9aae750b58f74ca8909d9b3f09be1698cbb3e27c6ac12f8fb544",
+    "target": "https://database.agenciavolc.com.br",
+    "applied": true,
+    "transaction": "COMMIT",
+    "rls_enabled_and_forced": true,
+    "anon_authenticated_grants": [],
+    "service_role_grants": ["SELECT", "INSERT"],
+    "official_insert_readback_with_rollback": true,
+    "residual_test_rows": 0,
+    "postgrest_read": "READ_OK",
+    "local_sql": "PostgreSQL 16.11: apply/reapply, 14 invalid manifests rejected, role grants, immutable trigger, owner-scoped unique, DDL/DML rollback",
+    "official_postgres": "15.8",
+    "schema_backup": "/root/backups/pre-creative-reuse-packs-schema-Nbtz0Phg.dump",
+    "backup_bytes": 982215,
+    "backup_sha256": "43455f1129be3017fded30c6e0d97588df1545ed4a2167271648850f1ef36a42"
+  },
+  "verification": {
+    "backend_focal_passed": 84,
+    "frontend_new_tests_passed": 4,
+    "frontend_all_selected_passed": 58,
+    "build": "PASS",
+    "typecheck": "76 errors outside changed files; no diagnostics in this delivery",
+    "visual": "Real components rendered in browser with demo provider, not authenticated production QA",
+    "loading_viewports": [375, 768, 1440],
+    "loading_themes": ["light", "dark"],
+    "horizontal_overflow": false,
+    "escape_closes_actions": true,
+    "reduced_motion_animation": "none",
+    "frontend_8080": 200,
+    "pack_endpoint_without_session": 401
+  },
+  "review_fixes": [
+    "Missing JSON fields cannot pass SQL CHECK via NULL; launch_authorized must be JSON false",
+    "Pack uses the same server-validated target snapshot, no second target read mixing hierarchy",
+    "Reusing a master rechecks image kind as well as owner/hash/archive"
+  ],
+  "remaining": ["Studio media registration with final-image policy gate", "Remote pause/duplicate executor", "Verified existing-post identity and reuse", "Observed lineage from local master to real ad uses", "Authenticated save-pack QA"],
+  "external_ad_mutations": 0,
+  "observed_existing_generation": {
+    "image_masters": 1,
+    "requested_model": "gpt-image-2",
+    "served_model": null,
+    "quality": "medium",
+    "width": 1080,
+    "height": 1350,
+    "measured_bytes": 1807002,
+    "proof": "Read-only scoped official SQL aggregate, not a new generation or downloaded-byte verification"
+  },
+  "paid_generations": 0,
+  "push": false
+}

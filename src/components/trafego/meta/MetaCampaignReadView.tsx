@@ -39,6 +39,7 @@
  * como inventário da conta; nunca são somados pelo navegador.
  */
 import React from 'react';
+import { AcoesDaHierarquia, type EscopoDaHierarquia } from './AcoesDaHierarquia';
 import { useMetaCampaignApi, useMetaCampaignDemo } from './MetaCampaignData';
 import { PeriodoFinanceiroMeta, useFinanceiroMeta } from './MetaFinanceiro';
 import {
@@ -882,7 +883,9 @@ const LinhaDeAnuncio: React.FC<{
   anuncio: ItemMetaReadModel;
   criativo: ItemMetaReadModel | null;
   densidade: Densidade;
-}> = ({ anuncio, criativo, densidade }) => {
+  escopo?: EscopoDaHierarquia;
+}> = ({ anuncio, criativo, densidade, escopo }) => {
+  const acoes = escopo && anuncio.entity_ref ? <AcoesDaHierarquia {...escopo} entidade="anuncio" referencia={String(anuncio.entity_ref)} nome={String(anuncio.nome ?? 'Anúncio')} /> : null;
   if (densidade === 'compacta') {
     return (
       <li className="border-t border-border/60 px-3 py-2.5">
@@ -895,6 +898,7 @@ const LinhaDeAnuncio: React.FC<{
         </div>
         <div className="mt-1.5">
           <Peca criativo={criativo} />
+          {acoes}
         </div>
       </li>
     );
@@ -915,6 +919,7 @@ const LinhaDeAnuncio: React.FC<{
       <td className="px-3 py-2.5">
         <div className="max-w-[46ch]">
           <Peca criativo={criativo} />
+          {acoes}
         </div>
       </td>
     </tr>
@@ -925,7 +930,8 @@ const Hierarquia: React.FC<{
   arvore: Arvore[];
   densidade: Densidade;
   temCampanha: boolean;
-}> = ({ arvore, densidade, temCampanha }) => {
+  escopo?: EscopoDaHierarquia;
+}> = ({ arvore, densidade, temCampanha, escopo }) => {
   if (!temCampanha) return null;
   if (arvore.length === 0) {
     return (
@@ -941,6 +947,7 @@ const Hierarquia: React.FC<{
         {arvore.map(({ conjunto, anuncios }, i) => (
           <section key={chave(conjunto, i)} className="border-b border-border last:border-b-0">
             <div className="px-3 py-3">
+              {escopo && conjunto.entity_ref && <AcoesDaHierarquia {...escopo} entidade="conjunto" referencia={String(conjunto.entity_ref)} nome={String(conjunto.nome ?? 'Conjunto')} />}
               <p className="break-words font-display text-[15px] font-semibold">
                 {textoOuAusente(conjunto.nome)}
               </p>
@@ -963,6 +970,7 @@ const Hierarquia: React.FC<{
                     anuncio={anuncio}
                     criativo={criativo}
                     densidade={densidade}
+                    escopo={escopo}
                   />
                 ))}
               </ul>
@@ -988,6 +996,7 @@ const Hierarquia: React.FC<{
           <tbody key={chave(conjunto, i)} className="border-b border-border last:border-b-0">
             <tr>
               <th scope="rowgroup" colSpan={3} className="px-3 py-3 text-left font-normal">
+                {escopo && conjunto.entity_ref && <AcoesDaHierarquia {...escopo} entidade="conjunto" referencia={String(conjunto.entity_ref)} nome={String(conjunto.nome ?? 'Conjunto')} />}
                 <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   conjunto
                 </span>
@@ -1015,6 +1024,7 @@ const Hierarquia: React.FC<{
                   anuncio={anuncio}
                   criativo={criativo}
                   densidade={densidade}
+                  escopo={escopo}
                 />
               ))
             )}
@@ -1247,7 +1257,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
       <ConjuntosFinanceiros financeiro={financeiro.dados} aoAbrirConjunto={(ref) => {
         const ramo = arvore.find(({ conjunto }) => conjunto.entity_ref === ref || conjunto.meta_adset_id === ref);
         return ramo
-          ? <Hierarquia arvore={[ramo]} densidade={densidade} temCampanha={Boolean(itemCampanha)} />
+          ? <Hierarquia arvore={[ramo]} densidade={densidade} temCampanha={Boolean(itemCampanha)} escopo={contaRef ? { contaRef, campanhaRef: referencia } : undefined} />
           : <p className="p-3 text-sm text-muted-foreground">Os anúncios deste conjunto ainda não estão disponíveis nesta leitura. Carregue as próximas páginas da hierarquia abaixo.</p>;
       }} />
     </>
@@ -1373,7 +1383,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
                   aoTentarDeNovo={conjuntos.recarregar}
                 />
               )}
-            <Hierarquia arvore={arvore} densidade={densidade} temCampanha={Boolean(itemCampanha)} />
+            <Hierarquia arvore={arvore} densidade={densidade} temCampanha={Boolean(itemCampanha)} escopo={contaRef ? { contaRef, campanhaRef: referencia } : undefined} />
             {paginaDe(conjuntos) && (
               <Continuacao
                 pagina={paginaDe(conjuntos)!}
