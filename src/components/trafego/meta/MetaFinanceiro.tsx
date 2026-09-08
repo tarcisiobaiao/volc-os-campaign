@@ -93,7 +93,7 @@ export function PeriodoFinanceiroMeta({ financeiro }: {
       Ausência permanece —; zero só aparece quando foi medido.
     </p>
     {dados && <p className="text-xs text-muted-foreground">
-      Última leitura · Meta: {dados.frescor ?? 'sem carimbo'} · GAM: {dados.receita_frescor ?? 'sem carimbo'}.
+      Última leitura · Meta: {dados.frescor ?? 'sem carimbo'} · GAM: {dados.receita_frescor ?? 'sem carimbo'}.{' '}
       {demo ? 'Valores e carimbos fictícios para demonstrar a interface.' : 'Valores exibidos são o último snapshot, não uma leitura ao vivo dos provedores.'}
     </p>}
     {!!dados?.impedimentos.length && <details className="text-sm text-muted-foreground">

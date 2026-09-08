@@ -571,7 +571,7 @@ const CabecalhoDaConta: React.FC<{
             </span>
           </span>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2 sm:justify-end">
           <Chip
             glifo={Coins}
             palavra={moeda ?? 'sem moeda'}
@@ -1405,7 +1405,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
         <p className="max-w-[80ch] text-[13px] leading-relaxed text-muted-foreground">
           Estas linhas pertencem à conta{' '}
           <span className="tabular font-medium text-foreground">{identificacaoDaConta}</span> e não
-          a um objeto: o servidor remove a referência do objeto antes de enviá-las. Elas estão aqui
+          a um objeto: o servidor remove a referência do objeto antes de enviá-las. Elas estão aqui{' '}
           {demo ? 'como exemplos fictícios' : 'porque são medidas reais'}, e fora dos cartões acima porque atribuí-las a esta campanha
           seria inventar.
         </p>

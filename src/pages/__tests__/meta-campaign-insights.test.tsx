@@ -271,6 +271,21 @@ describe('a demonstração — só atrás de `?modo=demo`, e dizendo que é', ()
     await waitFor(() => expect(screen.queryByText(/O exemplo contém dados somente/)).toBeNull());
   });
 
+  it('também expande o conjunto e mostra CTR/CPC no celular', async () => {
+    const largura = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 375 });
+    try {
+      abrir('/dashboard/campaign/campanha-descoberta-01?rede=meta&modo=demo');
+      const botao = await screen.findByRole('button', { name: /Brasil · Amplo/ });
+      fireEvent.click(botao);
+      expect(botao.getAttribute('aria-expanded')).toBe('true');
+      expect(screen.getAllByText('Certificado Encceja · imagem A').length).toBeGreaterThan(1);
+      expect(screen.getAllByText('CTR').length).toBeGreaterThan(1);
+      expect(screen.getAllByText('CPC').length).toBeGreaterThan(1);
+      expect(api.financeiroMeta).not.toHaveBeenCalled();
+    } finally { Object.defineProperty(window, 'innerWidth', { configurable: true, value: largura }); }
+  });
+
   it('id inexistente no cenário fictício vira frase, não redirecionamento', () => {
     abrir('/dashboard/campaign/metaobj_campanha_1?rede=meta&modo=demo');
     expect(

@@ -191,7 +191,13 @@ export const ConjuntosFinanceiros: React.FC<{
         <ul className="space-y-2">
           {conjuntos.map((c) => (
             <li key={c.adset_ref} className="rounded-lg border border-border/60 p-3">
-              <p className="font-mono text-xs">{c.id_mascarado ?? c.adset_ref}</p>
+              {aoAbrirConjunto ? <button type="button"
+                className="flex min-h-11 w-full items-center gap-2 text-left text-sm font-medium hover:underline"
+                aria-expanded={aberto === c.adset_ref}
+                onClick={() => setAberto(aberto === c.adset_ref ? null : c.adset_ref)}>
+                {aberto === c.adset_ref ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />}
+                {c.id_mascarado ?? c.adset_ref}
+              </button> : <p className="font-mono text-xs">{c.id_mascarado ?? c.adset_ref}</p>}
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">Gasto</dt>
                 <dd className="tabular text-right">{dinheiroMeta(c.spend, moeda)}</dd>
@@ -205,8 +211,16 @@ export const ConjuntosFinanceiros: React.FC<{
                 <dd className="tabular text-right">{contagemMeta(c.impressions)}</dd>
                 <dt className="text-muted-foreground">Cliques</dt>
                 <dd className="tabular text-right">{contagemMeta(c.clicks)}</dd>
+                <dt className="text-muted-foreground">CTR</dt>
+                <dd className="tabular text-right">{decimalMeta(c.ctr, 2, '%')}</dd>
+                <dt className="text-muted-foreground">CPC</dt>
+                <dd className="tabular text-right">{dinheiroMeta(c.cpc, moeda)}</dd>
               </dl>
               <FraseDaRazao razao={c.razao} />
+              {aberto === c.adset_ref && aoAbrirConjunto && <div className="mt-3 border-t border-border pt-3">
+                <p className="mb-2 text-xs text-muted-foreground">Anúncios deste conjunto. A receita é medida no conjunto, não por anúncio.</p>
+                {aoAbrirConjunto(c.adset_ref)}
+              </div>}
             </li>
           ))}
         </ul>
