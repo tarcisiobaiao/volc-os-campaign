@@ -21,10 +21,54 @@ from .contrato import (
 
 
 _CAMPAIGN = "$campaign.id"
-# Parâmetro dinâmico do provedor, não marcador da nossa saga. Permanece
-# literal no payload aprovado; a Meta substitui no clique. Prova remota pendente.
-TRACKING_GAM_CAMPAIGN_ID = "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}"
 _ADSET = "$adset.id"
+
+#: O tracking que os anúncios REAIS carregam, e por isso o único que o GAM sabe ler.
+#:
+#: ⚠️ MUDOU DE GRÃO EM 08/09/2026. A constante anterior chamava-se
+#: `TRACKING_GAM_CAMPAIGN_ID` e valia
+#:
+#:     utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}
+#:
+#: A operação real nunca usou isso. Os anúncios que rodaram e cuja receita o GAM
+#: efetivamente atribuiu carregam `utm_campaign={{adset.id}}`. Emitir
+#: `{{campaign.id}}` em `utm_campaign` produziria criativos cuja receita o
+#: pipeline de atribuição não conseguiria casar — e o defeito só apareceria
+#: dias depois, como receita ausente, num criativo que "nasceu certo".
+#:
+#: ## Por que `campaign_id` continua aqui, e o que ele NÃO significa
+#:
+#: O GAM materializa UMA dimensão de atribuição: `utm_campaign_value`. Ele não
+#: persiste `campaign_id`, `utm_term`, `utm_content` nem `placement`. Esses
+#: parâmetros viajam porque a instrumentação do SITE os lê, e porque um clique
+#: sem eles perde a procedência do anúncio para sempre. Mas o contrato NÃO
+#: declara suporte de atribuição a nenhum deles: a campanha de uma receita é
+#: resolvida pelo read model, do conjunto para o pai (`trafego_meta_adset.
+#: meta_campaign_id`), e nunca lida do GAM.
+#:
+#: ## O que é macro do provedor e o que é marcador nosso
+#:
+#: `{{...}}` é macro dinâmica da Meta: permanece LITERAL no payload aprovado e
+#: no hash, e é a Meta que substitui no clique. `$adset.id` (`_ADSET`) é
+#: marcador da nossa saga, resolvido antes do POST. Confundir os dois é o que
+#: faria o hash aprovado divergir do payload aceito.
+#:
+#: Prova remota pendente: nenhuma expansão de macro foi observada nesta lane.
+TRACKING_GAM_ADSET_ID = (
+    "utm_source={{site_source_name}}"
+    "&utm_medium=paid_social"
+    "&utm_campaign={{adset.id}}"
+    "&utm_term={{adset.id}}"
+    "&utm_content={{ad.id}}"
+    "&placement={{placement}}"
+    "&campaign_id={{campaign.id}}"
+)
+
+#: A chave que o GAM realmente materializa, escrita uma vez só.
+JOIN_DE_RECEITA = "GAM.utm_campaign_value = adset_id"
+
+#: Como a campanha de uma receita é descoberta. NÃO é pelo GAM.
+RESOLUCAO_DE_CAMPANHA = "read model: trafego_meta_adset.meta_campaign_id (conjunto -> campanha)"
 
 #: Versão do compilador que produziu o plano congelado.
 #:
@@ -169,7 +213,11 @@ class PlanoCompiladoMeta:
             "shop_redirect_proof": self.shop_redirect_proof,
             "destino_website_provado": self.destino_website_provado,
             "tracking": {
-                "revenue_join": "GAM.utm_campaign_value = campaign_id",
+                "revenue_join": JOIN_DE_RECEITA,
+                "resolucao_de_campanha": RESOLUCAO_DE_CAMPANHA,
+                # A frase que o operador precisa ler antes de aprovar. Ela é o
+                # resumo do contrato financeiro, não enfeite de UI.
+                "grao_da_receita": "Receita atribuída ao CONJUNTO; a campanha soma os conjuntos.",
                 "url_tags": [op.payload.get("url_tags") for op in self.operacoes if op.tipo_objeto == "creative"],
             },
             "asset_supply": [item.prova_publica() for item in self.asset_supply_manifests],
@@ -399,7 +447,7 @@ def compilar_plano_pausado(
         creative = {
             "name": variacao.creative_name,
             "object_story_spec": story,
-            "url_tags": TRACKING_GAM_CAMPAIGN_ID,
+            "url_tags": TRACKING_GAM_ADSET_ID,
             # ⚠️ NENHUM `destination_spec` É ENVIADO, e a ausência é a decisão.
             #
             # A v26 redireciona o clique de anunciantes elegíveis a Shop, e a
@@ -681,7 +729,7 @@ def compilar_plano_v2(
             {
                 "name": variacao.creative_name,
                 "object_story_spec": story,
-                "url_tags": TRACKING_GAM_CAMPAIGN_ID,
+                "url_tags": TRACKING_GAM_ADSET_ID,
                 # Sem `destination_spec`, pela mesma razão documentada no V1.
             },
             validavel_sem_criar_pai=True, tipo="creative"))

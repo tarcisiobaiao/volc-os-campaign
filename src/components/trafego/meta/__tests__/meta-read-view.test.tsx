@@ -249,7 +249,9 @@ describe('MetaCampaignReadView — a hierarquia real', () => {
     expect(screen.queryByText('R$ 0,00')).toBeNull();
     expect(screen.queryByText('0,0%')).toBeNull();
     // E a tela DIZ por que não sabe, em vez de deixar quatro travessões mudos.
-    expect(screen.getByText(/GAM pelo campaign_id/i)).toBeTruthy();
+    // A frase carrega o GRÃO: receita é do conjunto, campanha é a soma deles.
+    expect(screen.getByText(/GAM pelo conjunto/i)).toBeTruthy();
+    expect(screen.getByText(/a campanha soma os conjuntos/i)).toBeTruthy();
   });
 
   it('a linha de insight sem medida vira travessão, e o gasto medido sai em BRL', async () => {

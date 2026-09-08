@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from app.trafego.meta.credenciais import SegredoEfemero
-from app.trafego.meta_execucao.compilador import compilar_plano_pausado
+from app.trafego.meta_execucao.compilador import compilar_plano_pausado, TRACKING_GAM_ADSET_ID
 from app.trafego.meta_execucao.contrato import (
     DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     AutorizacaoMeta,
@@ -183,7 +183,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
         })
     elif nome == "creative":
         comum.update({
-            "url_tags": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
+            "url_tags": TRACKING_GAM_ADSET_ID,
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
             "object_story_spec": {

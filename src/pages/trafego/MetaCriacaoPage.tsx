@@ -1800,8 +1800,11 @@ const MetaCriacaoPage: React.FC = () => {
           <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-              <strong className="text-foreground">Receita GAM por campaign_id.</strong>{' '}
-              Novos planos usam utm_campaign e campaign_id com o ID dinâmico da campanha. A URL da LP permanece a escolhida;
+              <strong className="text-foreground">Receita atribuída ao conjunto; a campanha soma os conjuntos.</strong>{' '}
+              Novos planos emitem <code>utm_campaign</code> e <code>utm_term</code> com o ID dinâmico do CONJUNTO — é essa a
+              dimensão que o GAM guarda. <code>utm_content</code> leva o ID do anúncio e <code>campaign_id</code> viaja em
+              parâmetro separado, para a instrumentação do site; a campanha de uma receita é resolvida do conjunto para o pai,
+              nunca lida do GAM. A URL da LP permanece a escolhida;
               a validação do plano atual e a prova do tracking no destino ainda são necessárias.{' '}
               <strong className="text-foreground">Ativar continua sendo outro ato, e ele não existe.</strong>{' '}
               Nenhuma rota desta bancada leva um objeto a ENABLE. Tudo que veicula nasce

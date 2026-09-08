@@ -16,6 +16,17 @@ const MOTIVOS: Record<string, string> = {
   MOEDA_FUSO_COLUNA_GAM_NAO_CONFIRMADOS: 'Confirme moeda, fuso e coluna de receita do relatório GAM no servidor.',
   GAM_META_MOEDA_OU_FUSO_DIVERGENTE: 'GAM e Meta estão em moedas ou fusos diferentes. Não há comparação direta.',
   CAMPAIGN_ID_GAM_COM_NAMESPACE_NAO_UNIVOCO: 'Não foi possível distinguir com segurança o campaign_id entre Google e Meta.',
+  ADSET_ID_GAM_COM_NAMESPACE_NAO_UNIVOCO: 'Um ID de conjunto colide com um ID de campanha do Google; não dá para saber de quem é a receita.',
+  CAMPANHA_SEM_CONJUNTOS_CONHECIDOS: 'Esta campanha não tem conjuntos no read model — o grão da receita não pôde ser lido.',
+  CONJUNTOS_DA_CAMPANHA_TRUNCADOS: 'A campanha tem mais conjuntos do que uma leitura comporta; o total seria parcial.',
+  CONJUNTO_COM_IDENTIDADE_INVALIDA: 'Um conjunto do read model tem identidade fora do formato de ID da Meta.',
+  INSIGHT_DUPLICADO_NO_MESMO_GRAO: 'O mesmo conjunto/dia apareceu duas vezes; somar contaria o dia em dobro.',
+  INSIGHTS_TRUNCADOS_PELO_TETO: 'A leitura de gasto atingiu o teto de linhas e seria parcial.',
+  RECEITA_GAM_TRUNCADA_PELO_TETO: 'A leitura de receita atingiu o teto de linhas e seria parcial.',
+  RECEITA_GAM_DUPLICADA_NO_MESMO_GRAO: 'O mesmo conjunto/dia apareceu duas vezes no GAM.',
+  RECEITA_GAM_INDISPONIVEL: 'A tabela de receita do GAM não respondeu.',
+  SCHEMA_DE_CONJUNTOS_NAO_APLICADO: 'O schema de conjuntos ainda não foi aplicado neste banco.',
+  SCHEMA_DE_INSIGHTS_NAO_APLICADO: 'O schema de insights ainda não foi aplicado neste banco.',
   CAMPAIGN_ID_META_NAO_UNIVOCO: 'O campaign_id está associado a mais de uma conta Meta.',
   RECEITA_GAM_AUSENTE_PARCIAL_OU_DUPLICADA: 'Faltam dias de receita GAM ou há registros duplicados no período.',
   RECEITA_GAM_NULA_OU_INVALIDA: 'O GAM não informou receita válida para todos os dias.',
@@ -73,7 +84,8 @@ export function PeriodoFinanceiroMeta({ financeiro }: {
         dados?.periodo_inicio ? `${dados.periodo_inicio} → ${dados.periodo_fim} · ${dados.timezone ?? 'fuso não informado'}${dados.provisorio ? ' · período provisório' : ''}` : 'Aguardando dados desta campanha.'}
     </p>
     <p className="max-w-[80ch] text-[13px] leading-relaxed text-muted-foreground">
-      Investimento: Meta Insights desta campanha. Receita: GAM pelo campaign_id, dentro do projeto e da conta GAM confirmados.
+      Investimento: Meta Insights por conjunto. Receita: GAM pelo conjunto (utm_campaign leva o ID do conjunto),
+      dentro do projeto e da conta GAM confirmados. <strong>A receita é atribuída ao conjunto; a campanha soma os conjuntos.</strong>{' '}
       Ausência permanece —; zero só aparece quando foi medido.
     </p>
     {dados && <p className="text-xs text-muted-foreground">

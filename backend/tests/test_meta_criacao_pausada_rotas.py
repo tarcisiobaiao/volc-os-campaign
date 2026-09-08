@@ -44,6 +44,7 @@ from app.seguranca.identidade import Identidade, exigir_admin
 from app.trafego.meta.dominio import referencia_opaca_conta
 from app.trafego.meta_execucao.contrato import ErroDeNascimentoMeta
 from app.trafego.meta_execucao.registro import PassoPreparadoMeta
+from app.trafego.meta_execucao.compilador import TRACKING_GAM_ADSET_ID
 
 
 TOKEN = "token-meta-falso-que-nao-pode-vazar"
@@ -278,7 +279,7 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
     if tipo == "creative":
         variacao = PLANO["variations"][0]
         return {**comum, "name": variacao["creative_name"], "status": "ACTIVE",
-                "url_tags": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
+                "url_tags": TRACKING_GAM_ADSET_ID,
                 "effective_status": "ACTIVE",
                 "object_story_spec": {
                     "page_id": PAGINA_EXTERNA,

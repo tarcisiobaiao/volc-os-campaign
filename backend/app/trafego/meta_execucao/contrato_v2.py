@@ -905,13 +905,13 @@ CAMADAS_DE_PROVA_DE_TRACKING: tuple[Mapping[str, str], ...] = (
     },
     {
         "id": "EXPANSAO_REAL",
-        "prova": "a macro virou um campaign.id real e sobreviveu aos redirects até a LP",
+        "prova": "a macro virou um adset.id real e sobreviveu aos redirects até a LP",
         "nao_prova": "que o valor chegou à dimensão financeira",
         "exige": "uma campanha ENTREGANDO — autorização separada",
     },
     {
         "id": "RECEITA_NO_GAM",
-        "prova": "utm_campaign_value bateu com campaign_id no join financeiro",
+        "prova": "utm_campaign_value bateu com o adset_id no join financeiro",
         "nao_prova": "nada além do período e do escopo medidos",
         "exige": "entrega real e janela de coleta — autorização separada",
     },

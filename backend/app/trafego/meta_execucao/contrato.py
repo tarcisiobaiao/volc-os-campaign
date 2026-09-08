@@ -103,14 +103,25 @@ def _url_https(valor: str) -> str:
     if partes.scheme != "https" or not partes.hostname or partes.username or partes.password:
         raise ErroDeNascimentoMeta(
             "META_DESTINATION_INVALID", "o destino Meta precisa ser uma URL HTTPS publica")
-    # Evita dois utm_campaign/campaign_id com precedência indefinida quando
-    # o provedor acrescenta o tracking canônico do criativo. Não remover em silêncio.
+    # Evita dois valores do MESMO parâmetro com precedência indefinida quando o
+    # provedor acrescenta o tracking canônico do criativo. Não remover em
+    # silêncio: reescrever a URL do operador esconderia a intenção dele.
+    #
+    # ⚠️ A lista cresceu em 08/09/2026 junto com o tracking. O contrato passou a
+    # emitir também `utm_term`, `utm_content` e `placement`; se a LP já trouxer
+    # um deles, o clique chega com o parâmetro duplicado e QUAL dos dois vale
+    # passa a depender do servidor da LP. Um `utm_term` fixo na LP competindo
+    # com `{{adset.id}}` é exatamente o defeito que a atribuição por conjunto
+    # não teria como perceber depois.
     from urllib.parse import parse_qsl
-    if any(k.lower() in {"utm_campaign", "campaign_id", "utm_source", "utm_medium"}
+    conflitantes = {"utm_campaign", "campaign_id", "utm_source", "utm_medium",
+                    "utm_term", "utm_content", "placement"}
+    if any(k.lower() in conflitantes
            for k, _ in parse_qsl(partes.query, keep_blank_values=True)):
         raise ErroDeNascimentoMeta(
             "META_DESTINATION_TRACKING_CONFLICT",
-            "use a URL da LP sem utm_campaign/campaign_id/utm_source/utm_medium; o criativo acrescenta o tracking por campaign_id")
+            "use a URL da LP sem " + "/".join(sorted(conflitantes))
+            + "; o criativo acrescenta o tracking por adset_id")
     return saida
 
 
