@@ -78,7 +78,11 @@ class PedidoDoAgente(ModeloEstrito):
     brand_pack_ref: str | None = Field(
         default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$"
     )
-    destination_ref: str = Field(pattern=r"^[A-Za-z0-9:_-]{3,180}$")
+    # Vínculo interno opcional. O Assistente não abre URL nem precisa obrigar o
+    # operador a conhecer uma referência técnica para criar uma estratégia.
+    destination_ref: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$"
+    )
     objetivo_meta: str = Field(min_length=3, max_length=64)
     pais: str = Field(default="BR", pattern=r"^[A-Z]{2}$")
     idioma: str = Field(default="pt-BR", pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$")
@@ -125,7 +129,9 @@ class EntradaNovaOperacao(ModeloEstrito):
     brand_pack_ref: str | None = Field(
         default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$"
     )
-    destination_ref: str = Field(pattern=r"^[A-Za-z0-9:_-]{3,180}$")
+    destination_ref: str | None = Field(
+        default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$"
+    )
     objetivo_meta: str = Field(min_length=3, max_length=64)
     pais: str = Field(default="BR", pattern=r"^[A-Z]{2}$")
     idioma: str = Field(default="pt-BR", pattern=r"^[a-z]{2}(?:-[A-Z]{2})?$")

@@ -163,7 +163,7 @@ describe('o histórico é uma tabela com ação de verdade', () => {
 describe('o briefing mostra a consequência antes da ação', () => {
   it('declara N peças x M formatos e que nada é gerado agora', async () => {
     await abrirPagina('/trafego/meta/assistente-criativo?view=briefing');
-    expect(await screen.findByRole('heading', { name: 'Fatos da oferta' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /Fatos da oferta/i })).toBeTruthy();
 
     // 4 peças (padrão) x 1 formato (padrão) = 4 renders futuros, declarados
     // ANTES de o operador poder clicar.
@@ -178,13 +178,10 @@ describe('o briefing mostra a consequência antes da ação', () => {
     const botao = (await screen.findByRole('button', { name: 'Criar estratégia' })) as HTMLButtonElement;
     expect(botao.disabled).toBe(true);
 
-    fireEvent.change(screen.getByLabelText('Nome da operação'), {
+    fireEvent.change(screen.getByLabelText(/Nome do trabalho/i), {
       target: { value: 'Operação de teste' },
     });
-    fireEvent.change(screen.getByLabelText('Destino'), {
-      target: { value: 'destino:teste' },
-    });
-    fireEvent.change(screen.getByLabelText('Contexto do público'), {
+    fireEvent.change(screen.getByLabelText(/Público e momento/i), {
       target: { value: 'Pessoa buscando entender o processo.' },
     });
     fireEvent.change(screen.getByLabelText('Declaração'), {
@@ -197,6 +194,13 @@ describe('o briefing mostra a consequência antes da ação', () => {
     });
     // e nada foi gerado só por preencher
     expect(chamadas.some((c) => c.url.includes('/executar'))).toBe(false);
+  });
+
+  it('não exige nem expõe uma referência técnica de destino', async () => {
+    await abrirPagina('/trafego/meta/assistente-criativo?view=briefing');
+    expect(screen.queryByLabelText(/^Destino$/i)).toBeNull();
+    expect(screen.queryByText(/referência do destino cadastrado/i)).toBeNull();
+    expect(screen.getByLabelText(/Objetivo da campanha/i)).toBeTruthy();
   });
 
   it('o operador informa fatos, sem referências técnicas expostas', async () => {

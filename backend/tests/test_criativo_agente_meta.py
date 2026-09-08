@@ -383,6 +383,30 @@ def test_api_grava_run_running_antes_de_chamar_modelo():
     assert executada.json()["status"] == "COMPLETED"
 
 
+def test_api_nao_exige_referencia_tecnica_de_destino():
+    """O briefing humano não precisa conhecer uma chave interna sem resolver."""
+    repo = RepoFake()
+    entrada = EntradaNovaOperacao(
+        nome_da_operacao="Operação sem destino vinculado",
+        objetivo_meta="OUTCOME_TRAFFIC",
+        contexto_do_publico="Pessoa buscando entender o processo.",
+        fatos_da_oferta=[
+            {
+                "ref": "fact_operador_1",
+                "declaracao": "Conteúdo informativo e independente.",
+                "origem": "OPERADOR",
+            }
+        ],
+    )
+    resposta = _app(repo).post(
+        "/api/criativos/meta/agente/operacoes",
+        json=entrada.model_dump(mode="json"),
+    )
+    assert resposta.status_code == 201, resposta.text
+    assert repo.operacao["input"]["destination_ref"] is None
+    assert repo.run["input"]["destination_ref"] is None
+
+
 def test_reexecutar_run_concluida_devolve_o_lote_sem_gerar_de_novo():
     """Recarregar a aba não pode pagar uma segunda geração."""
     repo = RepoFake()

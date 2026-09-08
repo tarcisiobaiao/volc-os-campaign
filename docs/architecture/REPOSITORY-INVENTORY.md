@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-08T11:54:16-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-08T12:22:06-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 713 arquivos: 520 Markdown e 193 SQL;
-- 713 versionados e 0 ainda não versionados;
+- 714 arquivos: 521 Markdown e 193 SQL;
+- 714 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 131 SQL com palavras de mutação de alto risco.
 
@@ -17,7 +17,7 @@ Gerado em `2026-09-08T11:54:16-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 24 |
-| `documentation` | 368 |
+| `documentation` | 369 |
 | `generated` | 2 |
 | `module-guide` | 39 |
 | `product-document` | 23 |

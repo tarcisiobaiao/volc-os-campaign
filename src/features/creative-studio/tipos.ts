@@ -186,7 +186,8 @@ export interface DecisaoPersistida {
 
 export interface EntradaNovaOperacao {
   nome_da_operacao: string;
-  destination_ref: string;
+  /** Vínculo interno opcional, preenchido por integrações que já conhecem o destino. */
+  destination_ref?: string | null;
   objetivo_meta: string;
   pais?: string;
   idioma?: string;
