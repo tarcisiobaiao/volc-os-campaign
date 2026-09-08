@@ -447,7 +447,10 @@ export function variacoesEmitidas(draft: Draft): VariacaoDraft[] {
 export function destinoValido(url: string): boolean {
   try {
     const partes = new URL(url.trim());
-    return partes.protocol === 'https:' && Boolean(partes.hostname);
+    const reservados = new Set(['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'campaign_id', 'placement']);
+    return partes.protocol === 'https:' && Boolean(partes.hostname)
+      && !partes.username && !partes.password
+      && !Array.from(partes.searchParams.keys()).some(k => reservados.has(k.toLowerCase()));
   } catch {
     return false;
   }

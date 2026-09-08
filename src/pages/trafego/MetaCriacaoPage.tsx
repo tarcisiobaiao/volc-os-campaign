@@ -52,6 +52,7 @@ import { PainelDeMensuracao } from '@/components/trafego/meta/PainelDeMensuracao
 import { PainelDeOrcamento } from '@/components/trafego/meta/PainelDeOrcamento';
 import { PainelDePublico } from '@/components/trafego/meta/PainelDePublico';
 import { PainelDeReceita } from '@/components/trafego/meta/PainelDeReceita';
+import { TrackingAutomatico } from '@/components/trafego/meta/TrackingAutomatico';
 import { Campo, Escolha, GrupoDeEscolha, campo } from '@/components/trafego/meta/primitivas';
 import {
   BLOQUEIOS, CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, ConjuntoDraft, Draft, EstadoDaEtapa,
@@ -1156,6 +1157,10 @@ const MetaCriacaoPage: React.FC = () => {
               <Input id="meta-nome" value={draft.campaignName}
                 onChange={(e) => mudar('campaignName', e.target.value)} />
             </Campo>
+            <Campo id="meta-destino-campanha" rotulo="Página de destino" largo ajuda="Cole a URL HTTPS sem UTMs. O tracking por conjunto é automático.">
+              <Input id="meta-destino-campanha" type="url" value={draft.destinationUrl}
+                onChange={(e) => mudar('destinationUrl', e.target.value)} />
+            </Campo>
             <Escolha marcado={draft.categoryConfirmed} onChange={(v) => mudar('categoryConfirmed', v)}
               titulo="Confirmo que esta campanha não é de crédito, emprego, moradia nem política">
               Declarar a ausência de categoria especial também é uma declaração. Esta bancada não
@@ -1171,6 +1176,7 @@ const MetaCriacaoPage: React.FC = () => {
             escolhida={draft.recipeId}
             onEscolher={(id) => mudar('recipeId', id)}
           />
+          <TrackingAutomatico destino={draft.destinationUrl} />
         </>
       );
       case 'orcamento': return (
@@ -1472,6 +1478,7 @@ const MetaCriacaoPage: React.FC = () => {
       ) : null;
       case 'revisao': return (
         <>
+          <TrackingAutomatico destino={draft.destinationUrl} />
           <BlocoDeEvidencia titulo="O que será enviado à Meta" tom="verificado">
             <LinhaDeFato rotulo="Contrato do plano" valor={contrato === 'V1' ? 'V1 · a receita provada' : 'V2 · campanha com N conjuntos'} fonte="a forma deste plano" />
             <LinhaDeFato rotulo="Operações compiladas" valor={compilacao ? compilacao.plano.operacoes.length : null} fonte="o backend" ausencia="plano ainda não compilado" />

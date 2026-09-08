@@ -1047,9 +1047,8 @@ async def gerar_imagens(
             503,
         )
 
-    _conferir_autorizacao(
-        pedido.autorizacao, plano, motor, _assinatura_do_plano(pedido, plano, motor)
-    )
+    assinatura_atual = _assinatura_do_plano(pedido, plano, motor)
+    _conferir_autorizacao(pedido.autorizacao, plano, motor, assinatura_atual)
 
     # O executor do processo, com a trava de concorrência compartilhada — a
     # mesma que impede dois disparos do mesmo job pagarem duas vezes.
@@ -1083,6 +1082,10 @@ async def gerar_imagens(
                 nome_da_operacao=entrada.get("nome_da_operacao") or "Operação sem nome",
                 modo_de_composicao=pedido.modo_de_composicao,
                 anexo=anexo,
+                plano_sha256=assinatura_atual,
+                teto_custo_usd=(
+                    pedido.autorizacao.teto_custo_usd if pedido.autorizacao else None
+                ),
             ),
             identidade.sub,
         )

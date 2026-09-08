@@ -75,6 +75,7 @@ import {
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
 import { useDensidade, type Densidade } from '@/components/trafego/inventario/densidade';
 import { ConjuntosFinanceiros } from './ConjuntosFinanceiros';
+import { GestaoDaCampanha } from './GestaoDaCampanha';
 import {
   AvisoDeLeituraParcial,
   EsqueletoDoInventario,
@@ -1237,7 +1238,12 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
         Dias ativos não é exibido: o read model guarda quando a campanha foi LIDA,
         não quando ela começou a veicular. Derivar uma coisa da outra seria inventar.
       </p>
-      <ConjuntosFinanceiros financeiro={financeiro.dados} />
+      <ConjuntosFinanceiros financeiro={financeiro.dados} aoAbrirConjunto={(ref) => {
+        const ramo = arvore.find(({ conjunto }) => conjunto.entity_ref === ref || conjunto.meta_adset_id === ref);
+        return ramo
+          ? <Hierarquia arvore={[ramo]} densidade={densidade} temCampanha={Boolean(itemCampanha)} />
+          : <p className="p-3 text-sm text-muted-foreground">Os anúncios deste conjunto ainda não estão disponíveis nesta leitura. Carregue as próximas páginas da hierarquia abaixo.</p>;
+      }} />
     </>
   );
 
@@ -1332,6 +1338,13 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
         )}
 
         {espinha}
+
+        {itemCampanha && contaRef && <GestaoDaCampanha
+          key={`${contaRef}:${referencia}`}
+          contaRef={contaRef} campanhaRef={referencia} campanha={itemCampanha}
+          conjuntos={arvore.map(r => r.conjunto)}
+          completo={paginaDe(conjuntos)?.estado === 'COM_SNAPSHOT' && paginaDe(conjuntos)?.completo === true}
+        />}
 
         <Kicker>Campanha → conjuntos → anúncios → peça</Kicker>
         {[conjuntos, anuncios, criativos, vinculos].some((p) => p.leitura.fase === 'lendo') ? (
@@ -1447,8 +1460,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
             Identidade: {referencia}
           </p>
           <p className="mt-1 max-w-[80ch] text-sm text-muted-foreground">
-            Somente leitura. Não há ativação, edição nem ato de orçamento neste marco — e por isso
-            não há botão para nenhum deles.
+            Acompanhe receita e gasto por conjunto. Em Gestão da campanha, prepare alterações para revisão; a aplicação na Meta ainda está indisponível.
           </p>
         </div>
       </div>

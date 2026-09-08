@@ -276,6 +276,18 @@ def _declaracoes_de_politica(
     return declaracoes
 
 
+@router.get("/tracking")
+async def tracking_automatico(
+    request: Request,
+    destination_url: str = Query(default="", max_length=2000),
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    from app.trafego.meta_execucao.tracking import apresentar_tracking
+
+    _exigir_host_local(request)
+    return apresentar_tracking(destination_url)
+
+
 @router.get("/capacidades")
 async def capacidades(
     request: Request,

@@ -1,0 +1,58 @@
+{
+  "gerado_em": "2026-09-08",
+  "como_foi_feita": "seis lentes independentes read-only sobre o diff 3b8d405..HEAD (contrato do provider, gasto, seguranca da fotografia, schema, UX/acessibilidade, regressao), cada achado seguido de um verificador adversarial instruido a REFUTAR",
+  "aceitos_e_corrigidos": [
+    {
+      "severidade": "bloqueador",
+      "achado": "o `create or replace` de criativo_master_imutavel() apagava a guarda de arquivamento da v11_02",
+      "por_que_era_real": "a funcao foi reescrita a partir de um RESUMO dela, e o resumo nao mencionava o terceiro bloco. O gatilho continuaria existindo e disparando; a unica coisa que mudaria e que arquivar um master com aprovacao vigente passaria a ser PERMITIDO. Os `errcode = integrity_constraint_violation` e as mensagens originais tambem tinham sido achatados.",
+      "correcao": "o corpo da v11_02 foi reproduzido na integra, lendo a FONTE, e as cinco colunas novas foram apenas acrescentadas ao mesmo conjunto. O rollback tinha o mesmo defeito e recebeu a mesma correcao.",
+      "prova": "a verificacao embutida agora procura a CONDICAO `new.arquivado_em is not null and old.arquivado_em is null` no prosrc, e um mutante que troque o if por `if false` e REPROVADO"
+    },
+    {
+      "severidade": "alto",
+      "achado": "criativo_rendition_canvas_positivo nao impedia o par meio-preenchido",
+      "por_que_era_real": "`(a is null and b is null) or (a > 0 and b > 0)` com a=1024 e b=NULL avalia `false or NULL` = NULL, e um CHECK que avalia NULL PASSA",
+      "correcao": "criativo_rendition_canvas_completo com num_nulls(...) in (0,2), mais posicao_nao_negativa",
+      "prova": "update com canvas_largura=1024 e canvas_altura=null: RECUSOU"
+    },
+    {
+      "severidade": "alto",
+      "achado": "a verificacao embutida engolia a propria excecao de falha",
+      "por_que_era_real": "o bloco `begin ... exception when others then null` capturava tambem o `raise exception` que anunciava o defeito: a secao 8 nunca reprovava",
+      "correcao": "a prova de forma passou a ser feita no CATALOGO (contagem em pg_constraint), sem insert e sem bloco de excecao",
+      "prova": "mutante que renomeia uma constraint: REPROVADO com '17 das 18 constraints novas foram criadas'"
+    },
+    {
+      "severidade": "alto",
+      "achado": "quatro das dez colunas novas de criativo_job (a trilha de autorizacao) nunca eram escritas",
+      "por_que_era_real": "a migration criava espaco sem criar prova: plano_sha256, teto_custo_usd, autorizado_por e autorizado_em ficariam sempre nulas, e 'quem autorizou este gasto, quando, sobre qual plano?' continuaria sem resposta em SQL",
+      "correcao": "a assinatura do plano e o teto viajam do router ate criar_job_de_imagem e sao gravados no mesmo insert da procedencia; autorizado_por/em viajam em PAR porque a CHECK exige"
+    },
+    {
+      "severidade": "medio",
+      "achado": "a migration nao era re-executavel",
+      "por_que_era_real": "`add column if not exists` e idempotente mas `add constraint` nao e: na segunda rodada ela estourava com 'already exists' ANTES de chegar a verificacao, e uma migration que so roda uma vez nao pode ser reaplicada depois de um rollback parcial",
+      "correcao": "as 18 constraints passaram por um ajudante pg_temp que consulta pg_constraint antes de criar",
+      "prova": "tres aplicacoes seguidas sem erro"
+    }
+  ],
+  "rejeitados_ou_adiados": [
+    {
+      "achado": "canvas_para escolhe sempre um canvas MENOR que o formato final",
+      "decisao": "ACEITO COMO PROJETO, nao como defeito",
+      "justificativa": "e escolha de custo declarada em BORDA_LONGA_PADRAO: o preco do gpt-image-2 e por token e cresce com a area, entao gerar em 3840 para reduzir a 1080 paga por pixels descartados. A ampliacao final e LANCZOS a partir de um canvas de proporcao exata, e o fato viaja no recibo (canvas_largura/altura ao lado de largura/altura). Trocar isso e uma decisao de qualidade-versus-custo do operador, nao um conserto."
+    },
+    {
+      "achado": "transformacao_final publica 'reducao_e_recorte_centralizado' para 100% dos formatos, mas so 1.91x1 recorta",
+      "decisao": "ADIADO",
+      "justificativa": "e impreciso e vale corrigir, mas e rotulo de rota de capacidades e nao muda pixel nem gasto. Anotado aqui para nao se perder."
+    },
+    {
+      "achado": "POST /geracoes exige apenas sessao valida enquanto POST /jobs/{id}/retry exige admin",
+      "decisao": "FORA DE ESCOPO DESTA RODADA",
+      "justificativa": "e mudanca de politica de acesso, nao de mecanismo, e afeta quem hoje consegue operar o Assistente. Registrado em SECURITY-AND-IDEMPOTENCY.json como pendencia conhecida."
+    }
+  ],
+  "nota_de_metodo": "o defeito bloqueador nasceu de eu ter reescrito uma funcao existente a partir da descricao dela, e nao da fonte. A regra que fica: `create or replace` de funcao existente se escreve LENDO O ARQUIVO ORIGINAL."
+}

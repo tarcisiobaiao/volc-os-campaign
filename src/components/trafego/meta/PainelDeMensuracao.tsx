@@ -86,7 +86,7 @@ export const PainelDeMensuracao: React.FC<{
           id="meta-url"
           rotulo="URL final HTTPS"
           largo
-          ajuda="Inclua os parâmetros de campanha diretamente nesta URL. A bancada não injeta marcação por conta própria."
+          ajuda="Use a URL da página sem UTMs. Os parâmetros de atribuição por conjunto são adicionados automaticamente pelo sistema."
         >
           <Input
             id="meta-url" type="url" value={draft.destinationUrl}

@@ -37,6 +37,9 @@ begin
         return;
     end if;
 
+    -- ⚠️ O corpo abaixo e o da v11_02 na INTEGRA, incluindo a guarda de
+    -- arquivamento e os `errcode`. Reescrever a partir de um resumo foi o
+    -- defeito que a revisao adversarial pegou na versao anterior desta rodada.
     create or replace function public.criativo_master_imutavel()
     returns trigger
     language plpgsql
@@ -57,23 +60,39 @@ begin
            or new.disclosure is distinct from old.disclosure
         then
             raise exception
-                'criativo_master e imutavel: identidade, procedencia e origem '
-                'nao podem ser reescritas depois da criacao';
+                'criativo_master %: conteudo, procedencia e declaracao sao imutaveis. Crie uma versao nova (versao=%).',
+                old.id, old.versao + 1
+                using errcode = 'integrity_constraint_violation';
         end if;
 
         if (old.largura is not null and new.largura is distinct from old.largura)
            or (old.altura is not null and new.altura is distinct from old.altura)
-           or (old.bytes_totais is not null
-               and new.bytes_totais is distinct from old.bytes_totais)
-           or (old.duracao_ms is not null
-               and new.duracao_ms is distinct from old.duracao_ms)
+           or (old.bytes_totais is not null and new.bytes_totais is distinct from old.bytes_totais)
+           or (old.duracao_ms is not null and new.duracao_ms is distinct from old.duracao_ms)
         then
             raise exception
-                'criativo_master: medida ja registrada nao pode ser reescrita';
+                'criativo_master %: medida ja registrada nao se reescreve. O arquivo nao mudou.',
+                old.id
+                using errcode = 'integrity_constraint_violation';
+        end if;
+
+        if new.arquivado_em is not null and old.arquivado_em is null then
+            if exists (
+                select 1 from public.criativo_aprovacao a
+                where a.subject_tipo = 'master'
+                  and a.subject_id = old.id
+                  and a.decisao = 'aprovado'
+                  and a.revogada_em is null
+            ) then
+                raise exception
+                    'criativo_master %: nao arquiva master com aprovacao vigente. Revogue a aprovacao antes.',
+                    old.id
+                    using errcode = 'integrity_constraint_violation';
+            end if;
         end if;
 
         return new;
-    end
+    end;
     $corpo$;
 end
 $imutabilidade$;
@@ -108,7 +127,9 @@ alter table public.criativo_master
     drop constraint if exists criativo_master_qualidade_valida;
 
 alter table public.criativo_rendition
+    drop constraint if exists criativo_rendition_canvas_completo,
     drop constraint if exists criativo_rendition_canvas_positivo,
+    drop constraint if exists criativo_rendition_posicao_nao_negativa,
     drop constraint if exists criativo_rendition_crop_completo,
     drop constraint if exists criativo_rendition_crop_positivo,
     drop constraint if exists criativo_rendition_escala_positiva,

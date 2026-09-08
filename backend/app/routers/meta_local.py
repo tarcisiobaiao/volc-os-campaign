@@ -33,6 +33,7 @@ from app.trafego.meta.read_model import (
 )
 from app.services.supabase_service import SupabaseService
 from app.config import get_settings
+from app.trafego.meta.gestao import PedidoDeGestaoMeta, planejar_gestao
 
 
 router = APIRouter(prefix="/api/trafego/meta/local", tags=["meta-local"])
@@ -380,6 +381,19 @@ async def persistir_snapshot(
         return await _repositorio_read_model().persistir_snapshot(snapshot)
     except PersistenciaMetaBloqueada as exc:
         raise HTTPException(status_code=409, detail=exc.recibo) from None
+
+
+@router.post("/gestao/planejar")
+async def proposta_de_gestao(
+    payload: PedidoDeGestaoMeta,
+    request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    _exigir_host_local(request)
+    try:
+        return await planejar_gestao(_repositorio_read_model(), payload, ator=quem.sub)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
 
 
 @router.get("/read-model/contas")

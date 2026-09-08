@@ -1115,6 +1115,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const pautadorApi = {
+  planejarGestaoMeta(pedido: import('@/types/metaOperacao').PedidoGestaoMeta): Promise<import('@/types/metaOperacao').PropostaGestaoMeta> {
+    return request('/api/trafego/meta/local/gestao/planejar', { method: 'POST', body: JSON.stringify(pedido) });
+  },
+  trackingAutomaticoMeta(destinationUrl: string): Promise<import('@/types/metaOperacao').TrackingAutomaticoMeta> {
+    return request(`/api/trafego/meta/local/criacao/tracking?${new URLSearchParams({ destination_url: destinationUrl })}`);
+  },
   get baseUrl() {
     return API_BASE;
   },

@@ -275,6 +275,8 @@ def pedido_de_job(
     nome_da_operacao: str,
     modo_de_composicao: str = "sem_foto",
     anexo: dict[str, Any] | None = None,
+    plano_sha256: str | None = None,
+    teto_custo_usd: float | None = None,
 ) -> dict:
     """O `pedido` que `Executor.criar_job_de_imagem` espera, para UM conceito.
 
@@ -314,4 +316,8 @@ def pedido_de_job(
         "anexo_sha256": (anexo or {}).get("content_sha256"),
         "anexo_storage_chave": (anexo or {}).get("storage_chave"),
         "anexo_mime": (anexo or {}).get("mime"),
+        # A trilha da autorizacao acompanha o pedido ate o job: sem ela, "quem
+        # autorizou este gasto e sobre qual plano?" nao tem resposta em SQL.
+        "plano_sha256": plano_sha256,
+        "teto_custo_usd": teto_custo_usd,
     }

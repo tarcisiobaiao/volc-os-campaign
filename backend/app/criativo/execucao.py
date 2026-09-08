@@ -224,6 +224,18 @@ class Executor:
                 "qualidade": getattr(self.motor, "qualidade", None),
                 "modo_de_composicao": pedido.get("modo_de_composicao") or "sem_foto",
                 "anexo_sha256": pedido.get("anexo_sha256"),
+                # A trilha da AUTORIZACAO, no mesmo insert que a procedencia.
+                #
+                # ⚠️ Sem estes quatro campos, as colunas existiriam e ficariam
+                # sempre nulas: a pergunta "quem autorizou este gasto, quando, e
+                # sobre qual plano?" continuaria sem resposta em SQL, e a
+                # migration teria criado espaco sem criar prova. `autorizado_por`
+                # e `autorizado_em` viajam JUNTOS porque a CHECK exige o par —
+                # numero sem carimbo nao e autorizacao.
+                "plano_sha256": pedido.get("plano_sha256"),
+                "teto_custo_usd": pedido.get("teto_custo_usd"),
+                "autorizado_por": usuario_id if pedido.get("plano_sha256") else None,
+                "autorizado_em": agora() if pedido.get("plano_sha256") else None,
                 "criado_por": usuario_id,
             }
         )
