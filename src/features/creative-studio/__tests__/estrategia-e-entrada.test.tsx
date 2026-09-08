@@ -102,7 +102,7 @@ describe('aprovar endereça por ref, nunca por posição', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /aprovar peça/i }));
+    fireEvent.click(screen.getByRole('button', { name: /aprovar para produção/i }));
 
     expect(decisoes).toHaveLength(1);
     // ⚠️ `/pecas/0` congelaria "seja lá o que estiver na primeira posição", e a
@@ -128,8 +128,44 @@ describe('aprovar endereça por ref, nunca por posição', () => {
         onRefinar={() => {}}
       />,
     );
-    expect(screen.getByText('Congelada')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /aprovar peça/i })).toBeNull();
+    expect(screen.getByText('Pronta para produção')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /aprovar para produção/i })).toBeNull();
+    expect(screen.getByLabelText('1 de 1 peças aprovadas')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /continuar para produção/i })).toBeTruthy();
+  });
+
+  it('aprovar a direção não é apresentado como aprovação das peças', () => {
+    render(
+      <PainelDeEstrategia
+        saida={saida()}
+        runRef={RUN_REF}
+        aprovados={new Set(['/grupos/group_frio'])}
+        ocupado={false}
+        onDecidir={() => {}}
+        onRefinar={() => {}}
+      />,
+    );
+    expect(screen.getByText('Direção aprovada')).toBeTruthy();
+    expect(screen.getByText(/cada peça continua com aprovação própria/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /aprovar para produção/i })).toBeTruthy();
+    expect((screen.getByRole('button', { name: /continuar para produção/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('continuar apenas navega para a produção após uma peça aprovada', () => {
+    const continuar = vi.fn();
+    render(
+      <PainelDeEstrategia
+        saida={saida()}
+        runRef={RUN_REF}
+        aprovados={new Set(['/pecas/creative_hook_frio'])}
+        ocupado={false}
+        onDecidir={() => {}}
+        onRefinar={() => {}}
+        onContinuar={continuar}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /continuar para produção/i }));
+    expect(continuar).toHaveBeenCalledOnce();
   });
 });
 
@@ -145,10 +181,10 @@ describe('o recibo não é promovido a aprovação', () => {
         onRefinar={() => {}}
       />,
     );
-    const secao = screen.getByText(/O que este recibo prova/i).closest('section');
+    const secao = screen.getByText(/Validação técnica do lote/i).closest('details');
     expect(secao?.textContent).toMatch(/contraprovas determinísticas de contrato/i);
-    expect(secao?.textContent).toMatch(/não.{0,3} é aprovação humana/i);
-    expect(secao?.textContent).toMatch(/elegibilidade de mídia\s+paga na Meta/i);
+    expect(secao?.textContent).toMatch(/não substitui a sua aprovação/i);
+    expect(secao?.textContent).toMatch(/elegibilidade na Meta/i);
     expect(secao?.textContent).toMatch(/a imagem ainda\s+não existe/i);
   });
 
@@ -177,7 +213,7 @@ describe('o recibo não é promovido a aprovação', () => {
         onRefinar={() => {}}
       />,
     );
-    expect(screen.getByText(/declarou não saber/i)).toBeTruthy();
+    expect(screen.getByText(/ponto sem comprovação/i)).toBeTruthy();
     expect(screen.getByText('Taxa de aprovação não medida')).toBeTruthy();
   });
 });

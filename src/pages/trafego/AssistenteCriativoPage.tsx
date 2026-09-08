@@ -93,6 +93,7 @@ export default function AssistenteCriativoPage() {
   useEffect(() => () => abortar.current?.abort(), []);
 
   const configurado = assistenteConfigurado();
+  const emOperacao = Boolean(projectRef);
 
   function irPara(v: Vista, ref?: string) {
     const alvo = ref ?? projectRef;
@@ -362,16 +363,16 @@ export default function AssistenteCriativoPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Layout>
-      <div className="studio-workspace">
-        <div className="mb-7 flex items-center justify-between gap-3">
+      <div className={`studio-workspace ${emOperacao ? 'studio-workspace--wide' : ''}`}>
+        <div className="mb-5 flex items-center justify-between gap-3">
           <Button variant="ghost" size="sm" onClick={() => navegar('/trafego?rede=meta')}><ArrowLeft className="h-4 w-4" aria-hidden />Tráfego Meta</Button>
           <Button variant="ghost" size="sm" onClick={() => navegar('/trafego/meta/assistente-criativo?view=historico')}><History className="h-4 w-4" aria-hidden />Histórico</Button>
         </div>
-        <header className="mb-7 text-center">
-          <div className="kicker mb-3 flex items-center justify-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary"><Sparkles className="h-3.5 w-3.5" aria-hidden /></span>Estúdio · Meta Ads</div>
-          <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-[2.5rem]">Assistente Criativo</h1>
-          <div className="aurora-rule mx-auto mt-4 w-16" />
-          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">Da primeira ideia à peça pronta. Escolha o formato e dê direção à sua próxima campanha.</p>
+        <header className={`mb-6 ${emOperacao ? 'text-left' : 'text-center'}`}>
+          <div className={`kicker mb-3 flex items-center gap-2 ${emOperacao ? 'justify-start' : 'justify-center'}`}><span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary"><Sparkles className="h-3.5 w-3.5" aria-hidden /></span>Estúdio · Meta Ads</div>
+          <h1 className={`font-display font-bold leading-[1.05] tracking-tight ${emOperacao ? 'text-[2rem]' : 'text-[2rem] sm:text-[2.5rem]'}`}>Assistente Criativo</h1>
+          <div className={`aurora-rule mt-4 w-16 ${emOperacao ? '' : 'mx-auto'}`} />
+          <p className={`mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground ${emOperacao ? '' : 'mx-auto max-w-md'}`}>{emOperacao ? 'Revise as direções, aprove as peças que quer produzir e avance para escolher os formatos.' : 'Da primeira ideia à peça pronta. Escolha o formato e dê direção à sua próxima campanha.'}</p>
         </header>
 
         {!configurado && (
@@ -579,6 +580,7 @@ export default function AssistenteCriativoPage() {
                   erro={erroAcao}
                   onDecidir={decidir}
                   onRefinar={refinar}
+                  onContinuar={() => irPara('producao')}
                 />
               )}
             </div>
