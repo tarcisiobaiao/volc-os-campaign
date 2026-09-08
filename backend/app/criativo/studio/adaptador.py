@@ -302,7 +302,10 @@ def pedido_de_job(
         # Gravar `full_llm` numa peça composta apagaria essa distinção no banco.
         "modo": "photo_preserved" if modo_de_composicao == "hibrido" else "full_llm",
         "slots": [b.formato_slot for b in briefings],
-        "origem": "assistente_criativo_meta",
+        # Origem e o dominio chamador, conforme criativo_projeto_origem_valida
+        # (v11_01), nao o nome da ferramenta. A identificacao do Assistente
+        # permanece na ponte project/run/creative -> job, sem ampliar o enum SQL.
+        "origem": "trafego",
         "destinos_pretendidos": ["meta_feed"],
         # ⚠️ `creative_ref` e `run_ref` entram no pedido, e não é decoração: eles
         # participam da CHAVE DE IDEMPOTÊNCIA. Sem eles, duas peças que o modelo

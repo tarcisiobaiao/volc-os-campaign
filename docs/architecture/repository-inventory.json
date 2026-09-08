@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T17:23:11-03:00",
+  "generated_at": "2026-09-08T17:29:14-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 720,
-    "markdown": 525,
+    "files": 721,
+    "markdown": 526,
     "sql": 195,
-    "tracked": 720,
+    "tracked": 721,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 373,
+      "documentation": 374,
       "generated": 2,
       "module-guide": 39,
       "product-document": 23,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22942,
       "lines": 305,
-      "sha256": "2cb0d175525a28d0a77a55ef201306e541b80449aa4d46ed387f1c9628014b97",
+      "sha256": "0e9c6f3fbbc963041c1d144e8b1c7578161c0c029cb5dadbfa9aaa00aad8d002",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1990,6 +1990,18 @@
       "bytes": 10741,
       "lines": 197,
       "sha256": "d2e6b32217ba34ae501c1f2be443fa647aba70dcefa9c531284e5cb7e1ea03f9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/creative-studio-v16-01-official/ORIGIN-FIX.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 1893,
+      "lines": 34,
+      "sha256": "f43905fa54111f2014718684ef67f367c5f6c105cb44c82022c9bd7847b2220a",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

@@ -317,10 +317,25 @@ def test_um_job_cobre_um_conceito_com_todos_os_seus_formatos():
     )
     pedido = pedido_de_job(p.briefings, nome_da_operacao="Operação teste")
     assert pedido["slots"] == ["1x1", "4x5", "9x16"]
-    assert pedido["origem"] == "assistente_criativo_meta"
+    assert pedido["origem"] == "trafego"
     assert "Direcao visual material 1" in pedido["mensagem"]
     assert "Headline interna 1" in pedido["mensagem"]
     assert "COPY EXTERNA DO ANUNCIO" not in pedido["mensagem"]
+
+
+def test_origem_do_assistente_respeita_o_check_sql_sem_perder_linhagem():
+    from pathlib import Path
+    import re
+
+    sql = (Path(__file__).resolve().parents[2] / "supabase/migrations/v11_01_estudio_criativo.sql").read_text()
+    check = re.search(r"constraint criativo_projeto_origem_valida\s+check \(origem in \((.*?)\)\)", sql, re.S)
+    assert check is not None
+    permitidas = re.findall(r"'([^']+)'", check.group(1))
+    p = plano(PedidoDeGeracao(run_ref=RUN_REF, selected_creative_refs=["creative_variacao_1"], format_ids=["1x1"]))
+    pedido = pedido_de_job(p.briefings, nome_da_operacao="Teste de contrato SQL")
+    assert pedido["origem"] in permitidas
+    assert pedido["creative_ref"] == "creative_variacao_1"
+    assert pedido["run_ref"] == RUN_REF
 
 
 def test_um_job_recusa_misturar_conceitos():

@@ -1069,6 +1069,30 @@ async def gerar_imagens(
     identidade: Identidade = Depends(exigir_usuario),
     repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
 ) -> dict[str, Any]:
+    """Preserva uma resposta JSON/CORS segura para falhas de persistencia.
+
+    Um lote pode falhar DEPOIS de registrar ou despachar uma peca. Nao afirmar
+    ausencia de efeito nem sugerir retry automatico sem consultar os jobs.
+    """
+    from app.criativo.persistencia import ErroDePersistencia
+
+    try:
+        return await _gerar_imagens_autorizadas(project_ref, pedido, identidade, repo)
+    except ErroDePersistencia:
+        raise _erro(
+            "CRIATIVO_STUDIO_PERSISTENCIA_INDISPONIVEL",
+            "O banco não conseguiu registrar a geração. Confira a aba Criativos "
+            "antes de reenviar; um trabalho pode ter sido registrado.",
+            503,
+        ) from None
+
+
+async def _gerar_imagens_autorizadas(
+    project_ref: str,
+    pedido: PedidoDeGeracao,
+    identidade: Identidade,
+    repo: RepositorioAgenteCriativo,
+) -> dict[str, Any]:
     """Manda produzir as imagens das peças aprovadas. É o ato que gasta.
 
     ## A ordem importa, e é esta

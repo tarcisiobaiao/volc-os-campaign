@@ -251,6 +251,32 @@ def test_autorizacao_conferida_despacha_um_job_por_conceito(cenario):
     assert all(p["group_ref"] and p["copy_ref"] and p["state_ref"] for p in repo.pontes)
 
 
+@pytest.mark.parametrize("falhar_no_segundo", [False, True])
+def test_falha_de_persistencia_e_json_seguro_sem_promessa_de_ausencia(cenario, monkeypatch, falhar_no_segundo):
+    from app.criativo.persistencia import ErroDePersistencia
+    from starlette.middleware.cors import CORSMiddleware
+
+    cliente, executor, repo = cenario
+    cliente.app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8080"], allow_methods=["*"])
+    cliente.headers["Origin"] = "http://localhost:8080"
+    original = executor.criar_job_de_imagem
+
+    async def falhar(pedido, owner):
+        if not falhar_no_segundo or executor.criados:
+            raise ErroDePersistencia("23514 failing row: PRIVATE_SQL_AND_COPY")
+        return await original(pedido, owner)
+
+    monkeypatch.setattr(executor, "criar_job_de_imagem", falhar)
+    r = _gerar(cliente, _ok(cliente))
+    assert r.status_code == 503
+    assert r.headers["access-control-allow-origin"] == "http://localhost:8080"
+    assert r.json()["detail"]["codigo"] == "CRIATIVO_STUDIO_PERSISTENCIA_INDISPONIVEL"
+    assert "PRIVATE_SQL" not in r.text and "23514" not in r.text
+    assert "um trabalho pode ter sido registrado" in r.json()["detail"]["mensagem"]
+    assert len(executor.disparados) == int(falhar_no_segundo)
+    assert len(repo.pontes) == int(falhar_no_segundo)
+
+
 def test_teto_ausente_e_permitido_e_a_contagem_continua_valendo(cenario):
     """Custo desconhecido não pode travar o produto — a contagem ainda limita.
 
