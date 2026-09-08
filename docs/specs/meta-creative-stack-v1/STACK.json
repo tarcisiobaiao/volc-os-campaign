@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "status": "LOCAL_PARTIAL",
+  "date": "2026-09-08",
+  "base": "ec518470396451a24703f7e28cd09d06d5578124",
+  "purpose": "Arbitragem com receita GAM por conjunto, copy aprovada e mídia rastreável",
+  "not_a_claim": "Este pacote não declara geração real, persistência oficial, aceite Meta ou operação avançada implementados.",
+  "sequence": [
+    "briefing factual e destino",
+    "agente de estratégia: ângulos e copy externa separados do texto na arte",
+    "aprovação humana por conteúdo e produção autorizada gpt-image-2 medium",
+    "custódia privada, hash dos bytes e avaliação técnica/política da imagem final",
+    "registro de mídia na conta e conferência do image_hash",
+    "plano canônico com conta, Page, objetivo, conversão, público, orçamento e tracking",
+    "validação, aprovação do plano, ledger e criação PAUSED",
+    "read-back dependente e mensuração por conjunto",
+    "diagnóstico e propostas de melhoria, sem ativação automática"
+  ],
+  "authorities": {
+    "strategy": "backend/app/criativo/agente",
+    "image": "services/creative_engine/motores/openai_imagem.py",
+    "bridge": "backend/app/criativo/studio",
+    "campaign": "backend/app/trafego/meta_execucao",
+    "asset_registration": "backend/app/routers/trafego_meta_ativos.py",
+    "ui": "src/pages/trafego/MetaCriacaoPage.tsx",
+    "ads_cli": "Ferramenta opcional de operação; não substitui compilador, identidade, aprovação nem ledger. Não instalado nesta rodada."
+  },
+  "copy_handoff": {
+    "status": "IMPLEMENTED_LOCAL",
+    "endpoint": "GET /api/criativos/meta/agente/operacoes/{project_ref}/runs/{run_ref}/copy-de-campanha/{creative_ref}",
+    "input": "Somente refs; dono autenticado reconferido no repositório",
+    "requirements": ["run concluída da operação", "lote válido", "peça única e copy do mesmo grupo", "aprovação vigente do conteúdo da peça e da copy", "compatibilidade com o contrato de texto/CTA da campanha", "histórico de decisões não saturado"],
+    "output": ["message", "headline", "description", "cta", "copy_sha256", "snapshot_sha256", "project_ref", "run_ref", "creative_ref", "copy_ref"],
+    "authority": "DRAFT_COPY_ONLY",
+    "ui": "Prévia, escolha explícita do anúncio e confirmação de substituição; nova leitura antes de aplicar; invalida plano e atestações de política da combinação",
+    "limitations": ["não registra mídia", "não autoriza publicação", "hash é identidade do snapshot, não assinatura", "não acrescenta linhagem persistente ao plano Meta; importação é para rascunho editável", "a aprovação do plano final continua independente"]
+  },
+  "creative_modes": {
+    "static_single_and_batch": {"status": "EXISTING_LOCAL", "rule": "Cada variação explícita é um par creative/ad. Não atribuir prova remota do lote inteiro à validação de raízes."},
+    "dco": {"status": "NOT_IMPLEMENTED", "source": "CLI-CREATIVE", "rule": "Plural flags no CLI, limites descritos de mídia/texto. Não transferir ao formato flexível ou presumir elegibilidade de objetivo."},
+    "flexible": {
+      "status": "CONTRACT_REQUIRES_IMPLEMENTATION_AND_V26_PROOF",
+      "source": "FLEXIBLE",
+      "field": "creative_asset_groups_spec",
+      "field_owner": "AD",
+      "objectives": ["OUTCOME_SALES", "OUTCOME_APP_PROMOTION"],
+      "group_constraints": {"at_least_one_image_or_video": true, "max_texts_per_text_type": 5, "all_call_to_action_types_equal": true},
+      "unknowns": ["limite total de grupos não fornecido", "expansão exata do object_story_spec omitida no exemplo", "campo singular em trecho de prosa diverge do plural em requisição/resposta", "exemplos v25 não provam aceite v26", "limites/eligibilidade da conta e read-back real"],
+      "forbidden": ["emitir em OUTCOME_TRAFFIC", "usar regras de targeting.flexible_spec", "copiar limites de DCO", "chamar asset_feed_spec de sinônimo"]
+    },
+    "advantage_plus_creative": {"status": "PARAMETER_CONTRACT_MISSING", "source": "ADVANTAGE", "default_decision": "Sem opt-in automático. Precisamos especificar transformações permitidas e proibidas, versão e read-back.", "hybrid_photo": "Preservar pixels da foto exige bloquear transformações incompatíveis. Aprovação da imagem original não aprova todas as variações futuras."}
+  },
+  "bidding": {
+    "status": "EXISTING_RECIPE_REGISTRY_PLUS_RESEARCH_GAP",
+    "sources": ["BIDDING", "BIDDING-OVERVIEW"],
+    "requirements": ["combinação completa objective/optimization_goal/promoted_object/billing_event/bid_strategy", "ABO/CBO e diário/total com dono único do orçamento", "parâmetros de lance na unidade monetária do contrato", "não usar tabela de objetivos deprecados como matriz ODAX atual"],
+    "arbitrage": ["Receita GAM por adset não é automaticamente sinal de valor recebido pela Meta", "ROAS observado não autoriza otimização VALUE/MIN_ROAS sem mensuração elegível", "comparar custo e receita com mesma moeda, fuso, janela e completude", "não prometer que bid_amount é teto garantido do CPA realizado", "mudanças são propostas revisáveis, sem executar recomendação automaticamente"],
+    "missing": ["guia detalhado bid-strategy", "matriz ODAX v26 atual", "provas por receita/conta antes de criação"]
+  },
+  "measurement": {
+    "utm_campaign": "{{adset.id}}",
+    "utm_term": "{{adset.id}}",
+    "utm_content": "{{ad.id}}",
+    "campaign_id": "{{campaign.id}}",
+    "rule": "Manter o grão e a versão de métrica. Somar conjuntos pertencentes à campanha sem repetir linhas campaign-level. Não ratear receita de conjunto por anúncio e chamar isso de receita observada.",
+    "capi": "Selecionar conversão existente, atribuir GAM e enviar evento CAPI são três mecanismos distintos. Este pacote não implementa CAPI nem fabrica Purchase."
+  },
+  "webhooks": {
+    "status": "DESIGNED_NOT_MOUNTED",
+    "creative_fatigue": {
+      "source": "FATIGUE",
+      "object": "ad_account",
+      "field": "creative_fatigue",
+      "ad_id_field": "adgroup_id",
+      "levels": ["LOW", "MEDIUM", "HIGH"],
+      "account_consistency": "entry.id deve corresponder ao value.ad_account_id e à conta autorizada",
+      "next_step": "Enfileirar contexto do anúncio e tendência de Insights. Não executar os POST ACTIVE dos exemplos.",
+      "message_handling": "Mensagem externa é dado não confiável, nunca instrução para agente/ferramenta."
+    },
+    "recommendations": {"status": "PAYLOAD_MISSING", "rule": "Não derivar schema do payload de fadiga"},
+    "inbox_requirements": ["conferência do desafio e assinatura conforme guia oficial ainda faltante", "corpo bruto limitado e preservado para verificar assinatura", "recibo durável antes de ack", "deduplicação e tratamento de reentrega", "fila por conta e validação de ownership", "ordenar eventos por tempo sem regredir estado", "armazenar evento, diagnóstico e decisão humana separadamente", "segredo somente no servidor"],
+    "activation": "NONE"
+  },
+  "checkpoints": [
+    {"id": "CP1", "task": "Importação de copy aprovada e correção de semântica flexível", "state": "IMPLEMENTED_LOCAL", "proof": "backend/tests/test_criativo_copy_campanha.py; src/components/trafego/meta/__tests__/copy-assistente.test.tsx"},
+    {"id": "CP2", "task": "Conferir/aplicar v16_01, storage privado e round-trip real de job/master/rendition", "state": "PENDING_SEPARATE_AUTHORIZATION", "done_when": "read-back físico e geração persistida retomável, com dono e hashes"},
+    {"id": "CP3", "task": "Um conceito × um formato com gpt-image-2 medium", "state": "PENDING_PAID_AUTHORIZATION", "done_when": "bytes, identidade do modelo, usage/custo quando informado e download após reload"},
+    {"id": "CP4", "task": "Fechar R01, gate de imagem final antes do registro na conta", "state": "OPEN", "done_when": "detector indisponível recusa; recibo vinculado aos bytes, copy e finalidade; aprovação humana e read-back do registro"},
+    {"id": "CP5", "task": "Canário estático PAUSED com tracking por conjunto", "state": "PENDING_SEPARATE_AUTHORIZATION", "done_when": "ledger, ausência de retry ambíguo, quatro nós reconciliados e leitura de tracking"},
+    {"id": "CP6", "task": "Flexível, Advantage e bidding avançado", "state": "CONTRACT_AND_REMOTE_PROOF_REQUIRED", "done_when": "parâmetros documentados, testes negativos e prova v26/conta; nenhuma promoção por simples existência no SDK"},
+    {"id": "CP7", "task": "Inbox de fadiga/recomendações e fila de diagnóstico", "state": "MISSING_DOCS_AND_IMPLEMENTATION", "done_when": "assinatura, isolamento, duplicata, evento fora de ordem e persistência testados; sem rota de ativação"}
+  ]
+}

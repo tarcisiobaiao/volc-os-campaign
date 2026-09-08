@@ -56,7 +56,7 @@ describe('Meta demonstrativa navegável', () => {
     expect(screen.getByText(/leitura real/i)).toBeTruthy();
   });
 
-  it('expõe as oito decisões da criação e mantém o envio bloqueado', () => {
+  it('expõe a jornada guiada da criação e mantém o envio bloqueado', () => {
     render(
       <MemoryRouter initialEntries={['/trafego/meta/nova?modo=demo&etapa=base']}>
         <MetaCriacaoPage />
@@ -64,7 +64,7 @@ describe('Meta demonstrativa navegável', () => {
     );
     expect(screen.getByRole('heading', { name: 'Nova campanha Meta' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Etapas da criação Meta' })).toBeTruthy();
-    for (const etapa of ['Base', 'Campanha', 'Orçamento', 'Conjunto', 'Público', 'Anúncios', 'Mensuração', 'Revisão']) {
+    for (const etapa of ['Destino', 'Conta', 'Página', 'Resultado', 'Público', 'Orçamento', 'Conjuntos', 'Criativos', 'Revisão']) {
       expect(screen.getByRole('button', { name: new RegExp(`^${etapa}`, 'i') })).toBeTruthy();
     }
     fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
@@ -93,6 +93,8 @@ describe('Meta demonstrativa navegável', () => {
     expect(screen.getByRole('radio', { name: /lote controlado/i })).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /flexível/i }));
     expect(screen.getByText('Criativo flexível não emite payload')).toBeTruthy();
+    expect(screen.getByText('Vendas e Promoção de app. Não inclui Tráfego.')).toBeTruthy();
+    expect(screen.queryByText('Obrigatórias neste objetivo, até 5')).toBeNull();
     expect(screen.queryByRole('button', { name: /adicionar outro anúncio ao lote/i })).toBeNull();
     fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
     fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio ao lote/i }));

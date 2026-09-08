@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-08",
+  "provenance": "Conteúdo fornecido pelo usuário via Copiar para LLM, não revalidado no site. As tentativas diretas às páginas Meta receberam 429/cache miss/erro de acesso. Nenhum exemplo foi executado.",
+  "sources": [
+    {"id": "CREATIVE", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/creative", "read": "USER_ATTACHMENT", "finding": "Creative independente, anúncio referencia creative_id, previews por ID ou spec; exemplos v25. Prosa de placements contém vocabulário antigo, não transplantar para v26."},
+    {"id": "CLI", "url": "https://developers.facebook.com/documentation/ads-commerce/ads-ai-connectors/ads-cli/ads-cli-overview", "read": "USER_MESSAGE", "finding": "CLI sobre Marketing API, system-user token, operações CRUD. Não cria autorização adicional."},
+    {"id": "CLI-CREATIVE", "url": "https://developers.facebook.com/documentation/ads-commerce/ads-ai-connectors/ads-cli/ad-creatives", "read": "USER_ATTACHMENT", "finding": "Page exigida pelo CLI; envio automático de arquivos; DCO com flags plurais. Exemplo creative update status PAUSED conflita com enum do SDK consultado: adjudicação pendente, não alterar enum de Creative."},
+    {"id": "ADVANTAGE", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/creative/advantage-creative", "read": "USER_MESSAGE", "finding": "Visão geral de variações personalizadas. Não fornece flags de features, defaults ou opt-outs; Get Started ainda inacessível."},
+    {"id": "BIDDING", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/bidding", "read": "USER_MESSAGE", "finding": "Índice de estratégia, orçamento, pacing, billing. Bid multipliers de disponibilidade limitada."},
+    {"id": "BIDDING-OVERVIEW", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/bidding/overview", "read": "USER_ATTACHMENT", "finding": "Distingue bid_amount, bid_strategy e optimization_goal. A tabela tem aviso explícito de objetivos deprecados desde v17; não prova matriz ODAX v26."},
+    {"id": "WEBHOOKS", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ads-webhooks/ads-webhooks-overview", "read": "NOT_OBTAINED", "finding": "Ainda faltam contrato de autenticação, assinatura, assinatura de campos, permissões e entrega."},
+    {"id": "FATIGUE", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ads-webhooks/creative-fatigue", "read": "USER_MESSAGE", "finding": "adgroup_id é AD_ID, não ADSET_ID; enum LOW/MEDIUM/HIGH; mensagem é dado externo. Propostas de ACTIVE no exemplo não são autorização operacional."},
+    {"id": "RECOMMENDATIONS", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ads-webhooks/ad-recommendations", "read": "NOT_OBTAINED", "finding": "Payload específico não fornecido nem recuperado."},
+    {"id": "FLEXIBLE", "url": "https://developers.facebook.com/documentation/ads-commerce/marketing-api/flexible-ad-format", "read": "USER_MESSAGE", "finding": "creative_asset_groups_spec no AD; Sales/App Promotion; mídia por grupo; mesmo tipo de CTA; cinco textos por tipo/grupo. Exemplos v25; prosa usa singular uma vez, exemplos usam plural."},
+    {"id": "OPENAI-IMAGE", "url": "https://developers.openai.com/api/docs/guides/image-generation", "read": "WEB_OFFICIAL", "finding": "Seção GPT Image 2 confirma medium, dimensões múltiplas de 16 e omissão de input_fidelity. Há exemplos de preço de saída por tamanho, mas não teto total para qualquer canvas/entrada. Corrigida alegação local de inexistência de tabela."},
+    {"id": "META-SDK", "url": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/adcreative.py", "read": "WEB_OFFICIAL_SDK_UNPINNED", "finding": "Somente forma de campos, não elegibilidade na v26. Status de Creative não inclui PAUSED nesta leitura."}
+  ],
+  "missing_for_next_pass": [
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/creative/advantage-creative/get-started",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/bidding/overview/bid-strategy",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ads-webhooks/ads-webhooks-overview",
+    "https://developers.facebook.com/documentation/ads-commerce/marketing-api/ads-webhooks/ad-recommendations"
+  ]
+}

@@ -61,6 +61,7 @@ import {
 } from '@/components/ui/select';
 
 import { caminhoDe } from '../api';
+import { assistenteIntegrado } from '@/components/trafego/meta/ponteAssistente';
 import type {
   EscopoFeedback,
   PecaCriativa,
@@ -292,6 +293,7 @@ export function PainelDeEstrategia({
                   const pecaAprovada = aprovados.has(caminho);
                   const estado = estadoPorRef.get(peca.estado_mental_ref);
                   const copy = copyPorRef.get(peca.shared_copy_ref);
+                  const copyAprovada = !!copy && aprovados.has(caminhoDe('copies_compartilhadas', copy.ref));
                   const aberta = abertas.has(peca.ref);
                   return (
                     <li key={peca.ref} className="bg-card p-5">
@@ -394,6 +396,24 @@ export function PainelDeEstrategia({
                               <dd className="mt-0.5 text-foreground">
                                 <span className="font-medium">{copy.titulo}</span>.{' '}
                                 {copy.texto_principal}
+                                <span className="mt-2 block">{copy.descricao} · Botão: {copy.cta_nativa}</span>
+                                <span className="mt-3 flex flex-wrap gap-2">
+                                  <Button type="button" variant="outline" size="sm" disabled={ocupado}
+                                    onClick={() => decidir('copies_compartilhadas', copy.ref,
+                                      copyAprovada ? 'REPROVADO' : 'APROVADO', 'PONTUAL')}>
+                                    {copyAprovada ? 'Desfazer aprovação do texto' : 'Aprovar texto do anúncio'}
+                                  </Button>
+                                  {assistenteIntegrado() && <Button type="button" size="sm"
+                                    disabled={ocupado || !copyAprovada || !pecaAprovada}
+                                    onClick={() => window.parent.postMessage({ type: 'volc:creative-copy',
+                                      projectRef: saida.project_ref, runRef, creativeRef: peca.ref,
+                                    }, window.location.origin)}>
+                                    Usar texto na campanha
+                                  </Button>}
+                                </span>
+                                <span className="mt-2 block text-muted-foreground">
+                                  A aprovação deste texto é separada da imagem e vale para as peças que o compartilham.
+                                </span>
                               </dd>
                             </div>
                           )}

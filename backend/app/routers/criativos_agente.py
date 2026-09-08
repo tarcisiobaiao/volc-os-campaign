@@ -1,7 +1,7 @@
 """API autenticada do Assistente de Criativos Meta.
 
-As rotas criam estratégia e briefs; nenhuma delas chama Meta Ads, gera mídia,
-faz upload ou publica campanha.
+As rotas criam estratégia, briefs e, mediante autorização de gasto, imagens.
+Nenhuma delas chama Meta Ads ou publica campanha. Exportar copy é só leitura.
 """
 
 from __future__ import annotations
@@ -630,8 +630,70 @@ async def _lote_e_aprovados(
     # desfaz o congelamento sem apagar a história — e ela só vale se o conteúdo
     # naquele caminho ainda for o que foi aprovado. Conferir apenas o caminho
     # deixava uma peça refinada herdar a aprovação da versão anterior.
+    if len(decisoes) >= 1000:
+        raise _erro(
+            "CRIATIVO_AGENTE_DECISOES_INCOMPLETAS",
+            "O histórico de decisões atingiu o limite de leitura. Não é seguro reutilizar aprovações.",
+            409,
+        )
     aprovados = _aprovados_validos(run["output"], _decisoes_efetivas(decisoes))
     return operacao, SaidaDoAgente.model_validate(run["output"]), aprovados
+
+
+@router.get("/operacoes/{project_ref}/runs/{run_ref}/copy-de-campanha/{creative_ref}")
+async def copy_de_campanha(
+    project_ref: ProjectRef,
+    run_ref: RunRef,
+    creative_ref: Annotated[str, Path(pattern=r"^creative_[a-z0-9_-]{3,64}$")],
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """Projeção de copy aprovada para um rascunho, não permissão de publicação.
+
+    O navegador fornece referências, nunca texto a certificar. A aprovação é
+    conferida novamente no servidor. Texto na arte não vira texto de anúncio.
+    O hash identifica o snapshot lido; não é assinatura nem aprovação de mídia.
+    """
+    _, lote, aprovados = await _lote_e_aprovados(project_ref, run_ref, identidade, repo)
+    if lote.project_ref != project_ref or not lote.recibo.valido:
+        raise _erro("CRIATIVO_COPY_LOTE_INVALIDO", "O lote não tem validação de contrato válida.", 409)
+    pecas = [p for p in lote.pecas if p.ref == creative_ref]
+    if len(pecas) != 1:
+        raise _erro("CRIATIVO_COPY_PECA_INVALIDA", "A peça não é identificável neste lote.", 409)
+    peca = pecas[0]
+    copies = [c for c in lote.copies_compartilhadas if c.ref == peca.shared_copy_ref]
+    if len(copies) != 1 or copies[0].group_ref != peca.group_ref:
+        raise _erro("CRIATIVO_COPY_VINCULO_INVALIDO", "A copy não corresponde à direção desta peça.", 409)
+    copy = copies[0]
+    # The strategist supports DOWNLOAD, but our campaign recipe does not.
+    # Consult its canonical validator instead of silently changing the CTA.
+    from app.trafego.meta_execucao.contrato import ErroDeNascimentoMeta, VariacaoEstaticaMeta
+    try:
+        VariacaoEstaticaMeta(
+            variation_key="copy-check", creative_name="Copy", ad_name="Copy",
+            asset_ref="copy-validation-only", message=copy.texto_principal,
+            headline=copy.titulo, description=copy.descricao, call_to_action_type=copy.cta_nativa,
+        )
+    except ErroDeNascimentoMeta as exc:
+        raise _erro("CRIATIVO_COPY_RECEITA_INCOMPATIVEL", "O texto ou botão não é compatível com o contrato da campanha. Ajuste e aprove novamente.", 409) from exc
+    if not {f"/pecas/{peca.ref}", f"/copies_compartilhadas/{copy.ref}"}.issubset(aprovados):
+        raise _erro(
+            "CRIATIVO_COPY_APROVACAO_PENDENTE",
+            "Aprove a peça e o texto do anúncio antes de usá-los no rascunho.",
+            409,
+        )
+    snapshot = {
+        "project_ref": project_ref, "run_ref": run_ref,
+        "creative_ref": peca.ref, "copy_ref": copy.ref,
+        "copy_sha256": _hash_valor(copy.model_dump(mode="json")),
+        "message": copy.texto_principal, "headline": copy.titulo,
+        "description": copy.descricao, "cta": copy.cta_nativa,
+    }
+    return {
+        **snapshot, "snapshot_sha256": _hash_valor(snapshot),
+        "scope": "DRAFT_COPY_ONLY", "launch_authorized": False,
+        "media_registered": False,
+    }
 
 
 def _identidade_do_motor() -> dict[str, Any]:

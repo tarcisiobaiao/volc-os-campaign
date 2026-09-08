@@ -50,7 +50,8 @@ import {
 import { cn } from '@/lib/utils';
 import { perguntaDaUrl, perguntasMeta, type PerguntaMeta } from '@/components/trafego/meta/jornada';
 import '@/components/trafego/meta/jornada.css';
-import { lerSelecaoDoAssistente } from '@/components/trafego/meta/ponteAssistente';
+import { lerSelecaoDoAssistente, lerSelecaoDeCopy, type SelecaoDeCopy } from '@/components/trafego/meta/ponteAssistente';
+import { ImportarCopyDoAssistente } from '@/components/trafego/meta/ImportarCopyDoAssistente';
 import { AssistenteNaJornada } from '@/components/trafego/meta/AssistenteNaJornada';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
 
@@ -223,6 +224,8 @@ const MetaCriacaoPage: React.FC = () => {
   const iframeAssistente = useRef<HTMLIFrameElement>(null);
   const [projetoCriativo, setProjetoCriativo] = useState<string | null>(null);
   const [mastersSelecionados, setMastersSelecionados] = useState<string[]>([]);
+  const [copySelecionada, setCopySelecionada] = useState<SelecaoDeCopy | null>(null);
+  const [copyAplicada, setCopyAplicada] = useState(false);
   useEffect(() => {
     function receber(evento: MessageEvent) {
       if (evento.origin !== window.location.origin || !iframeAssistente.current
@@ -232,6 +235,8 @@ const MetaCriacaoPage: React.FC = () => {
           && /^crproj_[a-zA-Z0-9_-]{8,160}$/.test(evento.data.projectRef)) setProjetoCriativo(evento.data.projectRef);
       const selecao = lerSelecaoDoAssistente(evento.data);
       if (selecao) setMastersSelecionados(selecao.masterRefs);
+      const copy = lerSelecaoDeCopy(evento.data);
+      if (copy) { setCopySelecionada(copy); setCopyAplicada(false); }
     }
     window.addEventListener('message', receber);
     return () => window.removeEventListener('message', receber);
@@ -1240,6 +1245,19 @@ const MetaCriacaoPage: React.FC = () => {
             {mastersSelecionados.length} peça(s) selecionada(s) no Estúdio. Falta registrar essas imagens na conta com avaliação de política antes de vinculá-las aos anúncios. Elas ainda não fazem parte do plano compilado.
             <Button variant="ghost" className="mt-2" onClick={() => setMastersSelecionados([])}>Retirar seleção do Estúdio e usar imagens da conta</Button>
           </div>}
+          {copySelecionada && <ImportarCopyDoAssistente
+            key={`${copySelecionada.runRef}:${copySelecionada.creativeRef}`}
+            selecao={copySelecionada} anuncios={variacoesEmitidas(draft)}
+            onCancelar={() => setCopySelecionada(null)}
+            onAplicar={(key, copy) => {
+              setDraft(atual => ({ ...atual, variations: atual.variations.map(v => v.key === key ? {
+                ...v, message: copy.message, headline: copy.headline,
+                description: copy.description, cta: copy.cta,
+                assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
+              } : v) }));
+              invalidar(); setCopySelecionada(null); setCopyAplicada(true); setOrigemCriativa('conta');
+            }} />}
+          {copyAplicada && <p role="status" className="text-sm text-success">Texto importado do assistente. Revise a imagem e a combinação final antes de conferir o plano.</p>}
           <div hidden={origemCriativa !== 'conta'} className="space-y-5">
           <div>
             <div className="grid gap-2 rounded-lg border border-border bg-muted p-1 sm:grid-cols-3"
@@ -1274,19 +1292,18 @@ const MetaCriacaoPage: React.FC = () => {
               <PainelDeBloqueio
                 titulo="Criativo flexível não emite payload"
                 bloqueios={[{
-                  codigo: 'META_ASSET_FEED_SPEC_UNPROVEN', severidade: 'alta',
-                  titulo: 'Falta uma prova oficial para montar o criativo dinâmico',
+                  codigo: 'META_FLEXIBLE_ASSET_GROUPS_UNPROVEN', severidade: 'alta',
+                  titulo: 'Formato flexível ainda não está disponível nesta jornada',
                   detalhe: capacidades.flexivelMotivo
                     || 'O servidor não informou a causa do bloqueio.',
                 }]}
               />
-              <BlocoDeEvidencia titulo="O que já está provado do contrato flexível" tom="verificado">
-                <LinhaDeFato rotulo="Formato do anúncio" valor="Obrigatório, um único formato por conjunto de peças" fonte="documentação Meta v26" />
-                <LinhaDeFato rotulo="URLs de destino" valor="Obrigatórias, até 5" fonte="documentação Meta v26" />
-                <LinhaDeFato rotulo="Chamadas para ação" valor="Obrigatórias neste objetivo, até 5" fonte="documentação Meta v26" />
-                <LinhaDeFato rotulo="Imagens" valor="Obrigatórias no formato de imagem única, até 10" fonte="documentação Meta v26" />
-                <LinhaDeFato rotulo="Textos, títulos e descrições" valor="Opcionais, até 5 cada" fonte="documentação Meta v26" />
-                <LinhaDeFato rotulo="Chave interna da Meta e o resto" valor="Ainda sem prova pública" fonte="documentação Meta v26" ausencia="não comprovado" />
+              <BlocoDeEvidencia titulo="Regras do guia de formato flexível" tom="atencao">
+                <LinhaDeFato rotulo="Objetivos compatíveis" valor="Vendas e Promoção de app. Não inclui Tráfego." fonte="guia Meta fornecido pelo operador, exemplos v25" />
+                <LinhaDeFato rotulo="Mídia por grupo" valor="Pelo menos uma imagem ou um vídeo" fonte="guia Meta fornecido pelo operador" />
+                <LinhaDeFato rotulo="Chamadas para ação" valor="Todas devem ter o mesmo tipo" fonte="guia Meta fornecido pelo operador" />
+                <LinhaDeFato rotulo="Textos por grupo" valor="Até 5 de cada tipo" fonte="guia Meta fornecido pelo operador" />
+                <LinhaDeFato rotulo="Disponibilidade no sistema" valor="Contrato e validação v26 pendentes; nenhum payload é emitido" fonte="backend VOLC" ausencia="não comprovado" />
               </BlocoDeEvidencia>
             </>
           ) : (

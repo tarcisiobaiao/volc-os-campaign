@@ -12,8 +12,8 @@ com um `if` no meio mentisse sobre os dois. O Gemini manda um JSON para
 `gpt-image-2` tem DOIS endpoints (`/v1/images/generations`, JSON, e
 `/v1/images/edits`, multipart), pede a medida em pixels no campo `size` sob
 quatro regras aritméticas, e sempre devolve base64. Além disso o preço é por
-token e **não há tabela publicada de dólar por imagem**, enquanto o Gemini tem
-um preço de referência.
+token. Exemplos publicados de custo de saída não constituem um teto total
+para nossos tamanhos e entradas variáveis.
 
 Fundir os dois faria a identidade do que rodou depender de leitura de
 configuração, e a pergunta que este produto precisa responder — "o que gerou e
@@ -45,11 +45,11 @@ aceita mudar isso. Mandá-lo "por garantia" é o tipo de cópia de código de
 
 ## O preço: `None`, e isso é uma afirmação, não uma lacuna
 
-A tabela oficial publica apenas preço por 1M de tokens (US$ 8,00 de entrada de
-imagem, US$ 5,00 de entrada de texto, US$ 30,00 de saída). Não existe, na
-documentação consultada, dólar por imagem por `size`/`quality` para o
-`gpt-image-2`. Portanto `PRECO_REFERENCIA_USD_POR_IMAGEM = None`, e o plano
-mostra "estimativa indisponível" em vez de um número inventado — e nunca zero.
+A documentação publica preços por tokens e exemplos de custo de saída para
+algumas medidas. Esses exemplos não incluem todo o custo de entrada, nem
+cobrem automaticamente nossos canvases. Sem um estimador implementado e
+verificado por tamanho e entrada, `PRECO_REFERENCIA_USD_POR_IMAGEM = None`.
+O plano mostra "estimativa indisponível", nunca zero ou teto garantido.
 """
 
 from __future__ import annotations
@@ -110,17 +110,17 @@ VERSAO_DO_ADAPTADOR = "1.0.0"
 #: (`^[a-z0-9][a-z0-9_.:-]{1,62}$`).
 SLUG = "openai-gpt-image-2"
 
-#: Não há preço por imagem publicado para `gpt-image-2`. Ver o cabeçalho.
+#: Não há estimador total implementado para nossos canvases. Ver o cabeçalho.
 #:
 #: `None` e não `0.0`: zero é um preço, e um "custo estimado US$ 0,00" ao lado de
 #: um botão que gasta é a frase mais cara que a interface poderia dizer.
 PRECO_REFERENCIA_USD_POR_IMAGEM: float | None = None
 
 FONTE_DO_PRECO = (
-    "developers.openai.com/api/docs/pricing (lido em 08/09/2026): gpt-image-2 é "
-    "cobrado por token — US$ 8,00/1M de entrada de imagem, US$ 5,00/1M de entrada "
-    "de texto e US$ 30,00/1M de saída. Não há tabela publicada de dólar por "
-    "imagem por size/quality, então não há estimativa a exibir."
+    "developers.openai.com/api/docs/guides/image-generation (consultado em 08/09/2026): "
+    "gpt-image-2 é cobrado por tokens; há exemplos de custo de saída por medida e "
+    "qualidade. Eles não são teto total. O estimador para nossos canvases e entradas "
+    "ainda não está implementado; nenhuma estimativa total é exibida."
 )
 
 #: Tetos do endpoint de edição, conforme a documentação oficial.

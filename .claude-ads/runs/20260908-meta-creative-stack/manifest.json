@@ -1,0 +1,11 @@
+{
+  "run_id": "20260908-meta-creative-stack",
+  "status": "local_partial",
+  "artifacts": ["docs/specs/meta-creative-stack-v1/STACK.json", "docs/specs/meta-creative-stack-v1/EVIDENCE.json", "docs/specs/meta-creative-stack-v1/HANDOFF.md"],
+  "scope": "VOLC Meta local creative-to-campaign integration and official API evidence",
+  "business_model": "arbitrage; GAM revenue attributed by adset UTM and rolled up to campaign",
+  "base": "ec518470396451a24703f7e28cd09d06d5578124",
+  "authority": {"local_code": true, "public_documentation": true, "paid_generation": false, "meta_remote": false, "official_schema": false, "push": false},
+  "privacy": {"classification": "public docs and sanitized repository findings", "secrets": "presence and configuration names only", "raw_customer_data": false, "retention": "versioned evidence; no private account exports", "owner": "repository operator"},
+  "requested_features": ["gpt-image-2 medium", "approved ad copy", "creative registration", "advantage creative", "bidding", "ads cli", "creative fatigue and recommendations webhooks", "flexible creative"]
+}

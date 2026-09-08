@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T16:39:32-03:00",
+  "generated_at": "2026-09-08T17:03:55-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 719,
-    "markdown": 524,
+    "files": 720,
+    "markdown": 525,
     "sql": 195,
-    "tracked": 719,
+    "tracked": 720,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 372,
+      "documentation": 373,
       "generated": 2,
       "module-guide": 39,
       "product-document": 23,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22942,
       "lines": 305,
-      "sha256": "976235f20bfb8b035c0e00843ad342fb40b706b8ad3036764eaea06e7e6704eb",
+      "sha256": "2f7a8698750e5e680550caec804654499885b325eef15d3089042cbad28f7935",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5062,6 +5062,18 @@
       "bytes": 2923,
       "lines": 45,
       "sha256": "ef6410612b6a4c9bb136ce16f9f8e83b939f06e5fbc3ffb82f0665739476560c",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/specs/meta-creative-stack-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4072,
+      "lines": 37,
+      "sha256": "3f5e96a4f4dca2c939f544e7199c77b3ad5796a74c1f6dd00812109ffe6cd12c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

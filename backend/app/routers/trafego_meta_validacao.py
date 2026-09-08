@@ -307,7 +307,7 @@ async def capacidades(
         "adset_budget_sharing": "BLOCKED_IN_SINGLE_ADSET_RECIPE",
         "video_creative": "BLOCKED_UNTIL_VIDEO_THUMBNAIL_CONTRACT_PROVEN",
         "video_inventory": "AVAILABLE_READ_ONLY",
-        "flexible_creative": "BLOCKED_UNTIL_ASSET_FEED_SPEC_PROVEN",
+        "flexible_creative": "BLOCKED_UNTIL_CREATIVE_ASSET_GROUPS_PROVEN",
         "validate_only": (
             "ENABLED" if os.environ.get("META_VALIDATE_ONLY_ENABLED") == "1"
             else "BLOCKED_BY_SERVER_FLAG"
@@ -342,11 +342,12 @@ async def capacidades(
                 "seria uma escrita de ativo não autorizada nesta missão."
             ),
             "flexible_creative": (
-                "Está provado que asset_feed_spec exige ad_formats, link_urls e "
-                "call_to_action_types, que as imagens usam a chave hash e que "
-                "is_dynamic_creative vive no conjunto. Falta prova oficial de como a Página "
-                "viaja junto do asset_feed_spec: nenhum exemplo da Meta mostra "
-                "object_story_spec e asset_feed_spec no mesmo criativo."
+                "O guia de formato flexível usa creative_asset_groups_spec no anúncio, "
+                "com pelo menos uma imagem ou vídeo por grupo, até cinco textos de cada "
+                "tipo por grupo e chamadas para ação do mesmo tipo. O guia restringe "
+                "os objetivos a Vendas e Promoção de app; Tráfego não é compatível. "
+                "Os exemplos são v25: faltam o contrato local e a validação na v26. "
+                "DCO via asset_feed_spec é outro caminho, não uma equivalência."
             ),
             "adset_budget_sharing": (
                 "Esta campanha possui um único conjunto. Em 05/09/2026 a validação real "

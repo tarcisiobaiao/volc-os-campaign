@@ -153,6 +153,41 @@ export async function lerOperacao(
   return chamar(endereco(`/operacoes/${projectRef}`), { signal });
 }
 
+export interface CopyDeCampanha {
+  project_ref: string;
+  run_ref: string;
+  creative_ref: string;
+  copy_ref: string;
+  copy_sha256: string;
+  snapshot_sha256: string;
+  message: string;
+  headline: string;
+  description: string;
+  cta: string;
+  scope: 'DRAFT_COPY_ONLY';
+  launch_authorized: false;
+  media_registered: false;
+}
+
+export async function lerCopyDeCampanha(
+  selecao: { projectRef: string; runRef: string; creativeRef: string },
+  signal?: AbortSignal,
+): Promise<CopyDeCampanha> {
+  const { projectRef, runRef, creativeRef } = selecao;
+  const resultado = await chamar<CopyDeCampanha>(endereco(
+    `/operacoes/${projectRef}/runs/${runRef}/copy-de-campanha/${creativeRef}`,
+  ), { signal });
+  if (resultado.project_ref !== projectRef || resultado.run_ref !== runRef
+      || resultado.creative_ref !== creativeRef || resultado.scope !== 'DRAFT_COPY_ONLY'
+      || resultado.launch_authorized !== false || resultado.media_registered !== false
+      || !/^[a-f0-9]{64}$/.test(resultado.snapshot_sha256)
+      || [resultado.message, resultado.headline, resultado.description, resultado.cta]
+        .some(valor => typeof valor !== 'string' || !valor.trim())) {
+    throw new ErroDoAssistente(FRASE.semForma, 'copy_incompativel');
+  }
+  return resultado;
+}
+
 // ── Estratégia ───────────────────────────────────────────────────────────────
 
 /**
