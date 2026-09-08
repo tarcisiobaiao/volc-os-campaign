@@ -20,10 +20,12 @@ Data: 08/09/2026. Estado: **LOCAL_PARTIAL**, sem aceite de produção.
 ## Evidências
 
 - Backend: 73 testes passaram em `test_meta_gestao_tracking_ux.py`, `test_meta_tracking_gam.py` e `test_meta_rotas_v2.py`. Incluem zero acesso ao resolvedor de token, escopo cruzado recusado, ausência preservada, valores estritos, moeda proposta e conflito de tracking.
-- UI: testes focais de tracking/gestão, read view, rascunho V2 e financeiro por conjunto. Resultado final no relatório da rodada.
+- UI: 67 testes passaram nos quatro arquivos focais de tracking/gestão, read view, rascunho V2 e financeiro por conjunto.
 - `npm run build` passou antes da última correção de rótulo/moeda. TypeScript avaliado no projeto `tsconfig.app.json`, não no alvo raiz vazio; erros globais não são escondidos.
+- TypeScript final: exit 2, 76 erros globais, nenhum nos arquivos de produção tocados por esta lane. Não foi repetido baseline em checkout separado e não se declara delta formal contra a base.
 - Browser: componentes reais isolados, usando respostas fictícias explícitas, em 375/768/1440 e claro/escuro. Seis cenários sem overflow horizontal nem erros de página. Inspeção humana dos screenshots desktop claro e mobile escuro nesta rodada. O harness temporário foi removido.
 - Isso NÃO prova página autenticada completa, clique de anúncio real, expansão das macros, persistência GAM ou capacidade de mutação Meta.
+- Grafo reconstruído pela cadeia oficial, sem refresh de fontes externas: 34.266 nós, 79.482 arestas. P11-T05/P11-T06 e os nós cap_meta_ads/concept:meta_direct_traffic mantêm estado partial; gestão remota explicitamente pendente. Scanner sem padrões fortes; diff check limpo.
 - 8080 conferido com HTTP 200 e cwd operacional. As novas rotas protegidas devolvem 401 sem sessão, não 404; nenhuma credencial foi lida para esta conferência.
 
 ## Fontes e limites da revisão
@@ -47,6 +49,6 @@ Páginas de documentação Meta responderam 429 ou exigiram login. Não foram pr
 
 ## Isolamento
 
-Sem nova branch ou worktree. Nenhuma alteração deliberada no Assistente Criativo, engine de imagens ou suas migrations. O terminal paralelo criou `5a0ee63572fa55daeefd63dc443db2da2ef6e274` incluindo os arquivos desta lane que estavam no mesmo diretório. Essa história foi preservada, sem amend/rebase. As correções finais e memória desta lane são separadas e não reescrevem os commits alheios.
+Sem nova branch ou worktree. Nenhuma alteração deliberada no Assistente Criativo, engine de imagens ou suas migrations. O terminal paralelo criou `5a0ee63572fa55daeefd63dc443db2da2ef6e274` incluindo os arquivos desta lane que estavam no mesmo diretório; depois, `957af61f0de42d8db68a44830ca458dc836fe88c` também incluiu sua correção de moeda e memória durante as verificações. Essa história foi preservada, sem amend/rebase. O fechamento documental final não reescreve os commits alheios. Evitar novos commits amplos enquanto outro executor escreve no mesmo diretório.
 
 Zero push, deploy, chamada Meta, Supabase oficial, migration, n8n, Google Ads ou geração paga nesta rodada. A proposta de gestão não altera o status das campanhas.

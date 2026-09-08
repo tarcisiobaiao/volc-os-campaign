@@ -1,0 +1,36 @@
+{
+  "status": "META_TRACKING_AND_MANAGEMENT_PROPOSALS_LOCAL_PARTIAL",
+  "date": "2026-09-08",
+  "branch": "execution/volc-os-operacao-80-20",
+  "implementation_included_by_parallel_commit": "5a0ee63572fa55daeefd63dc443db2da2ef6e274",
+  "final_code_tested_commit": "957af61f0de42d8db68a44830ca458dc836fe88c",
+  "tracking": {
+    "source": "canonical_compiler_template",
+    "gam_key": "adset_id",
+    "campaign_revenue": "sum_of_linked_adsets_same_period",
+    "ad_revenue": "not_attributed",
+    "live_click_proven": false
+  },
+  "management": {
+    "actions": ["PAUSAR", "ORCAMENTO_DIARIO", "LANCE", "DUPLICAR_CONJUNTO"],
+    "state": "PROPOSTA_LOCAL_NAO_EXECUTAVEL",
+    "persisted": false,
+    "dispatch_route": false,
+    "activation": false,
+    "proposal_currency": "BRL_REQUIRES_ACCOUNT_CONFIRMATION"
+  },
+  "checks": {
+    "backend_passed": 73,
+    "frontend_passed": 67,
+    "build": "PASS_BEFORE_FINAL_CURRENCY_LABEL_CHANGE",
+    "typescript": {"exit": 2, "errors": 76, "touched_production_file_errors": 0, "base_comparison": "NOT_REPEATED"},
+    "visual": {"scope": "real_components_isolated_with_fixtures", "widths": [375, 768, 1440], "themes": ["light", "dark"], "horizontal_overflow": false, "page_errors": [], "authenticated_e2e": false},
+    "secrets": "NO_STRONG_PATTERN",
+    "diff_check": "PASS"
+  },
+  "graph": {"current": true, "input_sha256": "49fe87d5a941e2da4287113b2fc26827347c8b0b19efec8321bf6bf1405a2c8a"},
+  "roadmap": ["P11-T05", "P11-T06"],
+  "curation_nodes": ["cap_meta_ads", "concept:meta_direct_traffic"],
+  "remote_mutations": [],
+  "remaining": ["Read current budget and bidding", "Governed management executor and durable approval", "Current recipe real validation and PAUSED canary", "LP/GAM tracking proof", "Authenticated full-page visual QA"]
+}

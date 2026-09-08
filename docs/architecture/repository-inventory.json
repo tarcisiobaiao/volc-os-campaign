@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T15:11:32-03:00",
+  "generated_at": "2026-09-08T15:12:17-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 717,
     "markdown": 522,
     "sql": 195,
-    "tracked": 716,
-    "untracked": 1,
+    "tracked": 717,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22942,
       "lines": 305,
-      "sha256": "8ddee82b209d1e9388ec6666a028b6eb79a77d3911c4854b1b5fe644aad25bcf",
+      "sha256": "966df1ba778ab3564e1a23d70aa398787ecb8fa1df795773f9b310766165849c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3246,7 +3246,7 @@
       "path": "docs/closure/meta-campaign-tracking-management-ux-v1/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 5261,
       "lines": 53,
       "sha256": "16cf48c942878f190c6427e01b35f56a037c47110a4a55bda950cda0bf2b08e4",
