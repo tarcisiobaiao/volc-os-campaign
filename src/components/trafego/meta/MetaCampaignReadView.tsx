@@ -76,6 +76,7 @@ import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
 import { useDensidade, type Densidade } from '@/components/trafego/inventario/densidade';
 import { ConjuntosFinanceiros } from './ConjuntosFinanceiros';
 import { GestaoDaCampanha } from './GestaoDaCampanha';
+import { MetaFrescorBadge } from '@/components/campaign/MetaDemoStatus';
 import {
   AvisoDeLeituraParcial,
   EsqueletoDoInventario,
@@ -548,6 +549,7 @@ const CabecalhoDaConta: React.FC<{
   moeda: string | null;
   fuso: string | null;
 }> = ({ conta, parcial, moeda, fuso }) => {
+  const demo = useMetaCampaignDemo();
   const { frescor, leitura } = frescorDaConta(conta, parcial);
   const hora = horaDeLeitura(conta.ultima_leitura_ok_em ?? conta.observado_em ?? null);
   return (
@@ -590,8 +592,8 @@ const CabecalhoDaConta: React.FC<{
             }
             tom={fuso ? 'neutro' : 'atencao'}
           />
-          <SeloDeFrescor frescor={frescor} leitura={leitura} />
-          {hora && <span className="text-[11px] text-muted-foreground">às {hora}</span>}
+          {demo ? <MetaFrescorBadge /> : <SeloDeFrescor frescor={frescor} leitura={leitura} />}
+          {!demo && hora && <span className="text-[11px] text-muted-foreground">às {hora}</span>}
         </div>
       </div>
     </div>

@@ -11,7 +11,7 @@
  * não existe. Cada caso abaixo falha contra aquela versão.
  */
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -107,6 +107,8 @@ function abrir(url: string) {
 }
 
 beforeEach(() => {
+  api.financeiroMeta.mockClear();
+  api.planejarGestaoMeta.mockClear();
   api.contasMetaReadModel.mockReset().mockResolvedValue({
     ok: true,
     has_snapshot: true,
@@ -217,7 +219,7 @@ describe('a demonstração — só atrás de `?modo=demo`, e dizendo que é', ()
     expect(screen.getByText('Retorno excedente (%)')).toBeTruthy();
     expect(screen.getByText('Lucro Bruto')).toBeTruthy();
     expect(screen.getAllByText('ROAS').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Conjuntos de anúncios').length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: /Brasil · Amplo/ })).toBeTruthy();
 
     // ⚠️ O caráter fictício é CONTEÚDO FIXO, não um chip que passa despercebido.
     const faixa = screen.getByRole('note', { name: 'cenário demonstrativo' });

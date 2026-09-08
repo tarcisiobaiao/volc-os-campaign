@@ -70,7 +70,7 @@ export function criarDadosDemoCampanha(id: string): MetaCampaignDataApi | null {
       observado_em: CARIMBO, ultima_leitura_ok_em: CARIMBO,
     }] }; },
     async inventarioMetaReadModel(entidade, opcoes) {
-      conferir(id, opcoes?.contaRef);
+      conferir(id, typeof opcoes === 'string' ? opcoes : opcoes?.contaRef);
       const items = inventario[entidade] ?? [];
       return { ok: true, estado: 'COM_SNAPSHOT', has_snapshot: true, entidade,
         conta_ref: CONTA_DEMO_META, moeda: 'BRL', fuso: FUSO, frescor: CARIMBO,
