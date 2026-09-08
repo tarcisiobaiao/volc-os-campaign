@@ -33,9 +33,9 @@
   },
   "glob_hazard": {
     "statement": "NUNCA aplicar supabase/migrations/*.sql por glob.",
-    "directory_file_count": 68,
-    "sql_file_count": 66,
-    "rollback_file_count": 28,
+    "directory_file_count": 70,
+    "sql_file_count": 68,
+    "rollback_file_count": 29,
     "counts_are_of_the_working_tree": "⚠️ Estes tres numeros descrevem o DIRETORIO, nao o commit — e o diretorio cresce. `backend/tests/test_schema_perfil_meta.py::test_glob_hazard_bate_com_a_medicao_do_diretorio` MEDE em tempo de execucao e reprova nomeando o numero a escrever aqui. Um numero congelado no teste vira mentira no dia seguinte; um numero congelado no manifesto e pego pelo teste no mesmo dia.",
     "counts_measured_by": "Medido sobre os arquivos RASTREADOS (`git ls-files -- supabase/migrations`): diretorio=66, sql=64, rollback=27. A medicao passou a ser por arquivo rastreado, e nao pelo diretorio cru, porque trabalho nao commitado de outro writer fazia estes numeros oscilarem e reprovar um manifesto correto — mesma doutrina de `tracked_inputs()` no wrapper do grafo. Historico: 50/48/20 (arvore antiga) -> 56/54/23 (commit b3afa8b) -> 60/58/24 (as quatro migrations daquela missao) -> 62/60/25 -> os numeros atuais, que somam as QUATRO da lane do Assistente Criativo Meta (v11_06 endurecimento + rollback, v11_07 ponte + rollback). ⚠️ O perigo do glob NAO se limita ao rastreado: um `*.sql` no shell pega o nao commitado igual, e `test_sql_nao_rastreado_e_avisado_porque_o_glob_o_pega_igual` torna isso visivel.",
     "rollback_criterion": "NOME do arquivo (contem `rollback`) — o mesmo criterio de `rollback_files_never_in_apply`. ⚠️ NAO usar `grep -l 'DROP '`: esse criterio devolve 32 arquivos (medido) porque ONZE migrations FORWARD contem DROP legitimo: 20260907190000, 20260907120000, 20260908000000_meta_insights_escopo, 20260907210000, v12_03_pmax_observability_ledger, v13_02_cofre_recusa_sem_vazar_linha, v8_03_users_rls_policies, v8_02_pautador_policies_rewire, v11_04_criativo_importacao, v9_03_historico_e_ordem_operacional, v8_05_users_safe_view. Exemplo: 20260907120000:84 dropa a assinatura ANTIGA de approve antes de recriar a estendida — dropar para recriar e apply, nao reversao.",

@@ -279,6 +279,24 @@ export interface FormatoDisponivel {
   aceita_fotografia_real: boolean;
 }
 
+/**
+ * A fotografia real, depois de o servidor normaliza-la.
+ *
+ * O que volta e uma referencia opaca e um hash. Os BYTES nao voltam: a tela
+ * nao precisa deles e carrega-los seria reabrir o caminho do base64 no estado.
+ */
+export interface Anexo {
+  anexo_ref: string;
+  mime: string;
+  largura: number;
+  altura: number;
+  bytes_totais: number;
+  /** Hash dos bytes NORMALIZADOS. A autorizacao de gasto e assinada contra ele. */
+  content_sha256: string;
+  exif_removido: boolean;
+  criado_em: string | null;
+}
+
 export interface ModoDeComposicao {
   id: string;
   rotulo: string;
@@ -361,6 +379,10 @@ export interface PlanoDeGeracao {
    * selo convidaria o cliente a tentar assim mesmo.
    */
   selo_do_plano: string | null;
+  /** Como a fotografia entra, ecoado pelo servidor. */
+  modo_de_composicao: string;
+  /** Hash dos bytes normalizados do anexo, quando ha um. */
+  anexo_sha256: string | null;
   pode_executar: boolean;
   bloqueios: Bloqueio[];
   briefings: BriefingResumido[];

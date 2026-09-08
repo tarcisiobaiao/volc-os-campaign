@@ -342,8 +342,30 @@ class Repositorio:
             params["estado"] = f"in.({','.join(estados)})"
         return await self._get(_TABELA_JOB, params)
 
-    async def atualizar_job(self, job_id: str, campos: dict[str, Any]) -> dict[str, Any] | None:
-        linhas = await self._atualizar(_TABELA_JOB, {"id": f"eq.{job_id}"}, campos)
+    async def atualizar_job(
+        self,
+        job_id: str,
+        campos: dict[str, Any],
+        *,
+        estados_esperados: list[str] | None = None,
+    ) -> dict[str, Any] | None:
+        """Atualiza o job; com `estados_esperados`, e um compare-and-set.
+
+        ⚠️ O filtro de estado viaja no PROPRIO comando de escrita, e nao numa
+        leitura anterior. A diferenca importa em `retentar`: dois processos que
+        leiam o mesmo job `failed` no mesmo segundo passam os dois pelo
+        `pode_retentar`, disparam os dois lacos, e o mesmo slot e gerado — e
+        COBRADO — duas vezes. Com o filtro dentro do PATCH, quem perde a corrida
+        recebe zero linhas do banco em vez de descobrir o conflito depois de ja
+        ter pago.
+
+        E o mesmo desenho de `agente/persistencia.reivindicar_run`, pela mesma
+        razao, num recurso que custa dinheiro em vez de tempo.
+        """
+        alvo: dict[str, Any] = {"id": f"eq.{job_id}"}
+        if estados_esperados:
+            alvo["estado"] = f"in.({','.join(estados_esperados)})"
+        linhas = await self._atualizar(_TABELA_JOB, alvo, campos)
         return linhas[0] if linhas else None
 
     async def contar_jobs_por_estado(

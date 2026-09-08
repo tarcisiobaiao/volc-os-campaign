@@ -26,19 +26,26 @@ import {
   assistenteConfigurado,
   criarOperacao,
   enfileirarRun,
+  enviarFotografia,
   executarRun,
+  lerCapacidades,
   lerOperacao,
+  listarFotografias,
   listarOperacoes,
   gerarImagens,
   listarGeracoes,
   planejarGeracao,
   registrarDecisao,
+  removerFotografia,
 } from '@/features/creative-studio/api';
 import { FormularioDeBriefing } from '@/features/creative-studio/componentes/FormularioDeBriefing';
 import { HistoricoDeOperacoes } from '@/features/creative-studio/componentes/HistoricoDeOperacoes';
 import { PainelDeEstrategia } from '@/features/creative-studio/componentes/PainelDeEstrategia';
 import { PainelDeProducao } from '@/features/creative-studio/componentes/PainelDeProducao';
+import { FotografiaReal } from '@/features/creative-studio/componentes/FotografiaReal';
 import type {
+  Anexo,
+  Capacidades,
   EntradaNovaOperacao,
   EscopoFeedback,
   OperacaoCompleta,
@@ -95,6 +102,40 @@ export default function AssistenteCriativoPage() {
   const configurado = assistenteConfigurado();
   const emOperacao = Boolean(projectRef);
 
+  // ── Capacidades: o catálogo de formatos e a identidade do motor ──────────
+  //
+  // Buscadas UMA vez por montagem, e são leitura pura: não geram, não gastam e
+  // não criam nada. Antes o catálogo era uma constante escrita nesta feature,
+  // com três dos quatro formatos que o motor produz — o `1.91x1` simplesmente
+  // não existia na tela, e nenhum teste falhava.
+  const [capacidades, setCapacidades] = useState<Capacidades | null>(null);
+  useEffect(() => {
+    if (!configurado) return;
+    let vivo = true;
+    void (async () => {
+      try {
+        const lidas = await lerCapacidades();
+        if (vivo) setCapacidades(lidas);
+      } catch {
+        // Falhar aqui não pode derrubar a página: sem catálogo os seletores
+        // dizem que não há formato, que é a verdade, e o resto continua legível.
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [configurado]);
+
+  // ── Fotografia real ──────────────────────────────────────────────────────
+  const [anexo, setAnexo] = useState<Anexo | null>(null);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [erroDaFoto, setErroDaFoto] = useState<string | null>(null);
+  const [modoDeComposicao, setModoDeComposicao] = useState('hibrido');
+  // Os formatos escolhidos no briefing, para a Produção herdar em vez de
+  // marcar todos: o "até N imagens" da entrada não pode triplicar no ato que
+  // gasta.
+  const [formatosDoBriefing, setFormatosDoBriefing] = useState<string[]>([]);
+
   function irPara(v: Vista, ref?: string) {
     const alvo = ref ?? projectRef;
     const query = `?view=${v}`;
@@ -144,6 +185,28 @@ export default function AssistenteCriativoPage() {
     setDetalhe(null);
     if (projectRef) void carregarDetalhe(projectRef);
   }, [projectRef, carregarDetalhe]);
+
+  // A fotografia é da OPERAÇÃO, e é relida ao abri-la. Sem esta leitura, um F5
+  // mostrava a produção sem a foto que o operador já tinha enviado — e a peça
+  // sairia diferente da que ele preparou.
+  useEffect(() => {
+    setAnexo(null);
+    setErroDaFoto(null);
+    if (!projectRef || !configurado) return;
+    let vivo = true;
+    void (async () => {
+      try {
+        const { anexos } = await listarFotografias(projectRef);
+        if (vivo) setAnexo(anexos[0] ?? null);
+      } catch {
+        // A ausência de anexo é o caso normal; um erro de leitura aqui não pode
+        // impedir a revisão da estratégia.
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [projectRef, configurado]);
 
   // A run concluída mais recente é o lote que está na tela.
   const runAtual = useMemo(() => {
@@ -230,6 +293,10 @@ export default function AssistenteCriativoPage() {
   async function criar(entrada: EntradaNovaOperacao) {
     setOcupado(true);
     setErroAcao(null);
+    // A escolha da entrada viaja até a Produção. Antes ela era descartada, e a
+    // Produção começava com três formatos marcados — o total que o operador
+    // autorizava não era o que ele tinha lido no briefing.
+    setFormatosDoBriefing([...(entrada.formatos_permitidos ?? [])]);
     try {
       const criada = await criarOperacao(entrada);
       // A identidade já é durável aqui: mesmo que a execução falhe adiante, a
@@ -314,6 +381,8 @@ export default function AssistenteCriativoPage() {
           run_ref: runAtual.run_ref,
           selected_creative_refs: creativeRefs,
           format_ids: formatIds,
+          anexo_ref: anexo?.anexo_ref ?? null,
+          modo_de_composicao: anexo ? modoDeComposicao : 'sem_foto',
         }),
       );
     } catch (e) {
@@ -334,8 +403,16 @@ export default function AssistenteCriativoPage() {
    * seleção mudou depois do plano, o servidor recusa com o total divergente em
    * vez de gerar um lote que ninguém aprovou.
    */
-  async function gerar(creativeRefs: string[], formatIds: string[], teto: number | null) {
+  async function gerar(
+    creativeRefs: string[],
+    formatIds: string[],
+    teto: number | null,
+    aceitoSemEstimativa: boolean,
+  ) {
+    // Sem selo não há o que autorizar: ele é emitido pelo plano e amarra o
+    // consentimento ao CONTEÚDO exato que a pessoa leu.
     if (!projectRef || !runAtual || !plano || !plano.modelo_de_imagem) return;
+    if (!plano.selo_do_plano) return;
     setGerando(true);
     setErroAcao(null);
     try {
@@ -343,10 +420,14 @@ export default function AssistenteCriativoPage() {
         run_ref: runAtual.run_ref,
         selected_creative_refs: creativeRefs,
         format_ids: formatIds,
+        anexo_ref: anexo?.anexo_ref ?? null,
+        modo_de_composicao: anexo ? modoDeComposicao : 'sem_foto',
         autorizacao: {
           modelo: plano.modelo_de_imagem,
           total_de_renders: plano.total_de_renders,
           teto_custo_usd: teto,
+          selo_do_plano: plano.selo_do_plano,
+          aceito_sem_estimativa: aceitoSemEstimativa,
         },
       });
       await carregarGeracoes(projectRef);
@@ -357,6 +438,38 @@ export default function AssistenteCriativoPage() {
       if (f) setErroAcao(f);
     } finally {
       setGerando(false);
+    }
+  }
+
+  async function anexarFoto(arquivo: File) {
+    if (!projectRef) return;
+    setEnviandoFoto(true);
+    setErroDaFoto(null);
+    try {
+      setAnexo(await enviarFotografia(projectRef, arquivo));
+      // A foto muda a peça: o plano conferido antes dela não descreve mais o
+      // que este clique produziria.
+      setPlano(null);
+    } catch (e) {
+      const f = frase(e);
+      if (f) setErroDaFoto(f);
+    } finally {
+      setEnviandoFoto(false);
+    }
+  }
+
+  async function removerFoto() {
+    if (!projectRef || !anexo) return;
+    setErroDaFoto(null);
+    const alvo = anexo.anexo_ref;
+    // Otimista: o botão precisa responder na hora, e a releitura corrige.
+    setAnexo(null);
+    setPlano(null);
+    try {
+      await removerFotografia(projectRef, alvo);
+    } catch (e) {
+      const f = frase(e);
+      if (f) setErroDaFoto(f);
     }
   }
 
@@ -456,16 +569,37 @@ export default function AssistenteCriativoPage() {
                 </div>
               )}
               {saida && (
-                <PainelDeProducao
-                  saida={saida}
-                  aprovados={aprovados}
-                  plano={plano}
-                  planejando={planejando}
-                  gerando={gerando}
-                  erro={erroAcao}
-                  onPlanejar={planejar}
-                  onGerar={gerar}
-                />
+                <>
+                  <FotografiaReal
+                    anexo={anexo}
+                    modos={capacidades?.modos_de_composicao ?? []}
+                    modo={modoDeComposicao}
+                    enviando={enviandoFoto}
+                    erro={erroDaFoto}
+                    onEnviar={(arquivo) => void anexarFoto(arquivo)}
+                    onRemover={() => void removerFoto()}
+                    onModo={(id) => {
+                      setModoDeComposicao(id);
+                      // Trocar o modo muda a peça: o plano conferido não
+                      // descreve mais o que este clique produziria.
+                      setPlano(null);
+                    }}
+                  />
+                  <PainelDeProducao
+                    saida={saida}
+                    aprovados={aprovados}
+                    capacidades={capacidades}
+                    formatosDoBriefing={formatosDoBriefing}
+                    anexo={anexo}
+                    modoDeComposicao={anexo ? modoDeComposicao : 'sem_foto'}
+                    plano={plano}
+                    planejando={planejando}
+                    gerando={gerando}
+                    erro={erroAcao}
+                    onPlanejar={planejar}
+                    onGerar={gerar}
+                  />
+                </>
               )}
               {geracoes.length > 0 && (
                 <section className="rounded-lg border border-border bg-card p-4 shadow-card">
@@ -502,7 +636,13 @@ export default function AssistenteCriativoPage() {
           )}
 
           {vista === 'briefing' && (
-            <FormularioDeBriefing ocupado={ocupado} erro={erroAcao} onEnviar={criar} />
+            <FormularioDeBriefing
+              ocupado={ocupado}
+              erro={erroAcao}
+              formatos={capacidades?.formatos ?? []}
+              carregandoFormatos={configurado && capacidades === null}
+              onEnviar={criar}
+            />
           )}
 
           {vista === 'estrategia' && (
@@ -578,6 +718,7 @@ export default function AssistenteCriativoPage() {
                   aprovados={aprovados}
                   ocupado={ocupado}
                   erro={erroAcao}
+                  nomeDaOperacao={detalhe?.operacao?.input?.nome_da_operacao ?? null}
                   onDecidir={decidir}
                   onRefinar={refinar}
                   onContinuar={() => irPara('producao')}

@@ -34,7 +34,41 @@ vi.mock('@/lib/supabase', () => ({
 
 const chamadas: { url: string; metodo: string }[] = [];
 
+/** O catalogo que o servidor publica. A tela nao tem lista propria de formatos. */
+export const CAPACIDADES = {
+  formatos: [
+    { slot: '1x1', rotulo: 'Quadrado', proporcao: '1:1', largura: 1080, altura: 1080,
+      descricao: 'Feed quadrado.', destinos_tipicos: [], canvas_nativo: null,
+      transformacao_final: null, aceita_fotografia_real: true },
+    { slot: '4x5', rotulo: 'Retrato', proporcao: '4:5', largura: 1080, altura: 1350,
+      descricao: 'Ocupa mais altura.', destinos_tipicos: [], canvas_nativo: null,
+      transformacao_final: null, aceita_fotografia_real: true },
+    { slot: '9x16', rotulo: 'Vertical', proporcao: '9:16', largura: 1080, altura: 1920,
+      descricao: 'Tela cheia.', destinos_tipicos: [], canvas_nativo: null,
+      transformacao_final: null, aceita_fotografia_real: true },
+    { slot: '1.91x1', rotulo: 'Paisagem', proporcao: '1.91:1', largura: 1200, altura: 628,
+      descricao: 'Paisagem de display.', destinos_tipicos: [], canvas_nativo: null,
+      transformacao_final: null, aceita_fotografia_real: true },
+  ],
+  teto_de_renders_por_pedido: 45,
+  motor: { modelo: 'openai:gpt-image-2', qualidade: 'medium', configurado: true,
+           publica_preco_por_imagem: false },
+  modos_de_composicao: [
+    { id: 'sem_foto', rotulo: 'Gerar a arte inteira', descricao: 'x',
+      preserva_pixels_da_foto: false },
+    { id: 'hibrido', rotulo: 'Compor com a fotografia', descricao: 'x',
+      preserva_pixels_da_foto: true },
+    { id: 'reinterpretado', rotulo: 'Reinterpretar com IA', descricao: 'x',
+      preserva_pixels_da_foto: false },
+  ],
+};
+
 function respostaDe(url: string): unknown {
+  // ⚠️ O catalogo de formatos VEM DO SERVIDOR desde 08/09/2026. Um dublê que
+  // nao o serve deixa a tela sem formato nenhum, e os testes de briefing e de
+  // producao passam a medir o dublê incompleto em vez do produto.
+  if (url.includes('/capacidades')) return CAPACIDADES;
+  if (url.includes('/anexos')) return { anexos: [] };
   if (url.includes('/operacoes?') || url.endsWith('/operacoes')) {
     return { operacoes: [], limite: 20, offset: 0 };
   }
@@ -89,7 +123,12 @@ describe('abrir a página nunca gera', () => {
     // ⚠️ A prova central desta frente. `executar` é a ÚNICA chamada que faz o
     // modelo rodar; se ela aparecer aqui, abrir a tela passou a custar dinheiro.
     expect(chamadas.some((c) => c.url.includes('/executar'))).toBe(false);
-    expect(chamadas).toHaveLength(0);
+    // ⚠️ A montagem LÊ o catálogo de formatos, e leitura não é geração: a
+    // asserção passou de "nenhuma chamada" para "nenhuma chamada que escreva".
+    // Trocar por "zero chamadas" de novo obrigaria a tela a inventar a lista de
+    // formatos, que é justamente o defeito que a rota de capacidades fecha.
+    expect(chamadas.every((c) => c.metodo === 'GET')).toBe(true);
+    expect(chamadas.every((c) => c.url.includes('/capacidades'))).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Histórico' }));
     await waitFor(() => expect(chamadas.some((c) => c.url.includes('/operacoes') && c.metodo === 'GET')).toBe(true));
     expect(chamadas.every(c => c.metodo === 'GET')).toBe(true);
@@ -101,14 +140,16 @@ describe('abrir a página nunca gera', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         chamadas.push({ url: String(url), metodo: init?.method ?? 'GET' });
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            operacao: { project_ref: ref, status: 'READY_FOR_REVIEW', input: {}, latest_run_ref: null },
-            runs: [],
-          }),
-        } as unknown as Response;
+        const endereco = String(url);
+        const corpo = endereco.includes('/capacidades')
+          ? CAPACIDADES
+          : endereco.includes('/anexos')
+            ? { anexos: [] }
+            : {
+                operacao: { project_ref: ref, status: 'READY_FOR_REVIEW', input: {}, latest_run_ref: null },
+                runs: [],
+              };
+        return { ok: true, status: 200, json: async () => corpo } as unknown as Response;
       }),
     );
 
@@ -130,10 +171,10 @@ describe('o histórico é uma tabela com ação de verdade', () => {
   it('com operações, é uma TABELA e o botão Abrir não depende de hover', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({
+      vi.fn(async (url: string) => ({
         ok: true,
         status: 200,
-        json: async () => ({
+        json: async () => String(url).includes('/capacidades') ? CAPACIDADES : ({
           operacoes: [
             {
               project_ref: `crproj_${'b'.repeat(24)}`,

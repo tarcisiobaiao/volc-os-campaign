@@ -524,13 +524,16 @@ async def obter_job(
 async def retentar(
     job_id: str,
     # Retry também gasta: ele chama o provider para as peças que faltaram.
-    _: Identidade = Depends(exigir_admin),
+    identidade: Identidade = Depends(exigir_admin),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
     executor: Executor = Depends(obter_executor),
 ) -> dict[str, Any]:
     try:
-        job = await executor.retentar(job_id)
+        # ⚠️ `criado_por` não é telemetria. Sem ele, quem tivesse o UUID de um
+        # job alheio recolocava o trabalho de outra pessoa na fila e fazia o
+        # provider cobrá-la. Ser admin autoriza retentar o PRÓPRIO trabalho.
+        job = await executor.retentar(job_id, criado_por=identidade.sub)
     except JobNaoEncontrado as e:
         raise _falha("ESTUDIO.job_inexistente", "Este trabalho não existe.", 404) from e
     except TransicaoInvalida as e:
@@ -546,13 +549,13 @@ async def cancelar(
     # `Identidade` com `papel=""` quando não há linha em `app_auth.user_roles`
     # (é o que `test_sem_linha_de_autorizacao_nao_e_admin` fixa), então qualquer
     # conta em `auth.users` interrompia a produção de outro operador.
-    _: Identidade = Depends(exigir_admin),
+    identidade: Identidade = Depends(exigir_admin),
     repo: Repositorio = Depends(obter_repo),
     assinador: Assinador = Depends(obter_assinador),
     executor: Executor = Depends(obter_executor),
 ) -> dict[str, Any]:
     try:
-        job = await executor.cancelar(job_id)
+        job = await executor.cancelar(job_id, criado_por=identidade.sub)
     except JobNaoEncontrado as e:
         raise _falha("ESTUDIO.job_inexistente", "Este trabalho não existe.", 404) from e
     except TransicaoInvalida as e:
@@ -805,7 +808,15 @@ async def aprovar(
         )
 
     asset_id = _uuid_ou_404(asset_id, "asset")
-    master = await _ou_503(repo.buscar_master(asset_id))
+    # ⚠️ `buscar_master_do_dono` e não `buscar_master`. Ser admin autoriza
+    # decidir sobre o PRÓPRIO patrimônio, não sobre o de outro operador: uma
+    # reprovação registrada aqui TRANCA o ativo, porque o índice de vigência é
+    # único por (ativo, versão, finalidade) e a próxima decisão passa a exigir
+    # revogação. O 404 é idêntico ao de "não existe", para que a rota não vire
+    # um oráculo de existência de ativo alheio.
+    master = await _ou_503(
+        repo.buscar_master_do_dono(asset_id, criado_por=identidade.sub)
+    )
     if master is None:
         raise _falha("ESTUDIO.asset_inexistente", "Este ativo não existe.", 404)
 

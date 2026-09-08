@@ -102,7 +102,7 @@ describe('aprovar endereça por ref, nunca por posição', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /aprovar para produção/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Aprovar .* para produção$/i }));
 
     expect(decisoes).toHaveLength(1);
     // ⚠️ `/pecas/0` congelaria "seja lá o que estiver na primeira posição", e a
@@ -128,8 +128,8 @@ describe('aprovar endereça por ref, nunca por posição', () => {
         onRefinar={() => {}}
       />,
     );
-    expect(screen.getByText('Pronta para produção')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /aprovar para produção/i })).toBeNull();
+    expect(screen.getByText('Aprovada')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Aprovar .* para produção$/i })).toBeNull();
     expect(screen.getByLabelText('1 de 1 peças aprovadas')).toBeTruthy();
     expect(screen.getByRole('button', { name: /continuar para produção/i })).toBeTruthy();
   });
@@ -147,7 +147,7 @@ describe('aprovar endereça por ref, nunca por posição', () => {
     );
     expect(screen.getByText('Direção aprovada')).toBeTruthy();
     expect(screen.getByText(/cada peça continua com aprovação própria/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /aprovar para produção/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Aprovar .* para produção$/i })).toBeTruthy();
     expect((screen.getByRole('button', { name: /continuar para produção/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -287,11 +287,39 @@ describe('a produção mostra o preço antes do botão', () => {
     teto: 45,
     custo_estimado_usd: null,
     custo_e_estimado: true,
-    modelo_de_imagem: 'gemini:gemini-3.1-flash-image',
+    // ⚠️ `false` e o caso NORMAL do gpt-image-2: ele e cobrado por token e a
+    // OpenAI nao publica dolar por imagem. A tela troca o campo de teto por um
+    // consentimento explicito, porque um teto sem estimativa nao tem contra o
+    // que ser conferido — e antes era ignorado em silencio.
+    custo_tem_estimativa: false,
+    modelo_de_imagem: 'openai:gpt-image-2',
+    qualidade_de_imagem: 'medium',
     motor_configurado: true,
     pode_executar: true,
     bloqueios: [],
     briefings: [],
+    selo_do_plano: 'selo-de-teste.assinatura',
+    modo_de_composicao: 'sem_foto',
+    anexo_sha256: null,
+  };
+
+  /** O catalogo que o servidor publica. A tela nao tem lista propria. */
+  const CAPACIDADES = {
+    formatos: [
+      { slot: '1x1', rotulo: 'Quadrado', proporcao: '1:1', largura: 1080, altura: 1080,
+        descricao: 'Feed quadrado.', destinos_tipicos: [], canvas_nativo: null,
+        transformacao_final: null, aceita_fotografia_real: true },
+      { slot: '4x5', rotulo: 'Retrato', proporcao: '4:5', largura: 1080, altura: 1350,
+        descricao: 'Ocupa mais altura.', destinos_tipicos: [], canvas_nativo: null,
+        transformacao_final: null, aceita_fotografia_real: true },
+      { slot: '9x16', rotulo: 'Vertical', proporcao: '9:16', largura: 1080, altura: 1920,
+        descricao: 'Tela cheia.', destinos_tipicos: [], canvas_nativo: null,
+        transformacao_final: null, aceita_fotografia_real: true },
+    ],
+    teto_de_renders_por_pedido: 45,
+    motor: { modelo: 'openai:gpt-image-2', qualidade: 'medium', configurado: true,
+             publica_preco_por_imagem: false },
+    modos_de_composicao: [],
   };
 
   async function montarProducao(plano: typeof PLANO_SEM_PRECO | null, aprovadas: string[]) {
@@ -302,6 +330,10 @@ describe('a produção mostra o preço antes do botão', () => {
       <PainelDeProducao
         saida={saida()}
         aprovados={new Set(aprovadas)}
+        capacidades={CAPACIDADES as never}
+        formatosDoBriefing={['1x1', '4x5', '9x16']}
+        anexo={null}
+        modoDeComposicao="sem_foto"
         plano={plano}
         planejando={false}
         gerando={false}
@@ -318,7 +350,7 @@ describe('a produção mostra o preço antes do botão', () => {
 
   it('custo desconhecido vira ausência declarada, nunca US$ 0,00', async () => {
     await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
-    expect(screen.getByText(/não publicado pelo motor/i)).toBeTruthy();
+    expect(screen.getByText(/estimativa indisponível/i)).toBeTruthy();
     // ⚠️ Zero é um preço. "Não sei" não é.
     expect(screen.queryByText(/US\$\s*0[.,]00/)).toBeNull();
   });
@@ -362,7 +394,30 @@ describe('a produção mostra o preço antes do botão', () => {
   it('mudar a seleção invalida o plano e retira o botão de gerar', async () => {
     await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
     expect(screen.getByRole('button', { name: /^gerar 6/i })).toBeTruthy();
-    fireEvent.click(screen.getAllByRole('checkbox')[1]);
+    // Tirar um FORMATO muda o total. O formato deixou de ser checkbox e passou
+    // a ser um bloco proporcional com `aria-pressed`: a tela desenha a
+    // proporção em vez de listá-la como texto.
+    fireEvent.click(screen.getByRole('button', { name: /Vertical, 9:16/i }));
     expect(screen.queryByRole('button', { name: /^gerar 6/i })).toBeNull();
+  });
+
+  it('o plano nomeia o modelo E a qualidade dentro da própria autorização', async () => {
+    await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
+    // Quem autoriza precisa ler os dois na frase que confirma, e não uma linha
+    // acima: a autorização é nominal.
+    const consentimento = screen.getByText(/Autorizo produzir/i);
+    expect(consentimento.textContent).toContain('openai:gpt-image-2');
+    expect(consentimento.textContent).toContain('medium');
+  });
+
+  it('sem estimativa, o teto some e entra um aceite explícito', async () => {
+    await montarProducao(PLANO_SEM_PRECO, ['/pecas/creative_hook_frio']);
+    // Um teto sem estimativa não tem contra o que ser conferido, e antes ele
+    // era ignorado em silêncio.
+    expect(screen.queryByLabelText(/Teto autorizado/i)).toBeNull();
+    expect(screen.getByText(/Aceito produzir sem estimativa de custo/i)).toBeTruthy();
+
+    const gerar = screen.getByRole('button', { name: /^gerar 6/i }) as HTMLButtonElement;
+    expect(gerar.disabled).toBe(true);
   });
 });

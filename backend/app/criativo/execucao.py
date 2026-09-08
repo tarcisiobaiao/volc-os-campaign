@@ -129,6 +129,10 @@ class Executor:
             "motor_versao": self.motor.versao,
             "criado_por": usuario_id,
             "destinos_pretendidos": pedido.get("destinos_pretendidos") or [],
+            "creative_ref": pedido.get("creative_ref"),
+            "run_ref": pedido.get("run_ref"),
+            "modo_de_composicao": pedido.get("modo_de_composicao") or "sem_foto",
+            "anexo_sha256": pedido.get("anexo_sha256"),
         }
         chave = dominio.chave_de_idempotencia(material)
 
@@ -183,6 +187,11 @@ class Executor:
                     for f in formatos
                 ],
                 "destinos_pretendidos": pedido.get("destinos_pretendidos") or [],
+                # A fotografia anexada vive em `referencias`, a coluna jsonb que
+                # a v11_01 criou para exatamente isto. Uma coluna nova por anexo
+                # obrigaria uma migration por tipo de material de entrada, e o
+                # briefing e o lugar onde "esta peca usa esta foto" pertence.
+                "referencias": _referencias_do_pedido(pedido),
                 "criado_por": usuario_id,
             }
         )
@@ -206,6 +215,15 @@ class Executor:
                 # Estimativa declarada, nunca custo medido: o provider reporta
                 # tokens, não dólares. `custo_real_usd` fica NULL de propósito.
                 "custo_estimado_usd": _estimativa(len(formatos), self.motor),
+                # A procedencia do MODELO, separada de `motor`/`motor_versao`.
+                # `motor` carrega "openai:gpt-image-2" (identidade do adaptador);
+                # `modelo_pedido` carrega "gpt-image-2" (o que foi pedido ao
+                # provider). O SERVIDO so existe depois da resposta, e por isso
+                # ele nasce nulo aqui e e preenchido pela peca.
+                "modelo_pedido": getattr(self.motor, "modelo", None),
+                "qualidade": getattr(self.motor, "qualidade", None),
+                "modo_de_composicao": pedido.get("modo_de_composicao") or "sem_foto",
+                "anexo_sha256": pedido.get("anexo_sha256"),
                 "criado_por": usuario_id,
             }
         )
@@ -458,8 +476,39 @@ class Executor:
             job_id, "gerando", f"Gerando o formato {formato.rotulo}.", slot=slot
         )
 
+        fotografia = _fotografia_do_briefing(briefing)
+        modo = fotografia.get("modo") or "sem_foto"
+        chave_do_anexo = fotografia.get("storage_chave")
+        foto: bytes | None = None
+        if modo != "sem_foto":
+            if not chave_do_anexo:
+                await self._marcar_falha_da_peca(
+                    job_id, slot,
+                    _erro_generico(
+                        "este pedido pede fotografia e o anexo não está registrado"
+                    ),
+                )
+                return
+            foto = await asyncio.to_thread(self._ler_anexo, str(chave_do_anexo))
+            if not foto:
+                # Gerar sem a foto entregaria uma peça que ninguém pediu, e
+                # cobraria por ela. Falhar a peça é mais barato que isso.
+                await self._marcar_falha_da_peca(
+                    job_id, slot,
+                    _erro_generico("a fotografia anexada não pôde ser lida"),
+                )
+                return
+
         try:
-            resposta = await asyncio.to_thread(self._chamar_motor, slot, formato, insumo)
+            resposta = await asyncio.to_thread(
+                self._chamar_motor,
+                slot,
+                formato,
+                insumo,
+                modo=modo,
+                foto=foto,
+                foto_mime=fotografia.get("mime"),
+            )
         except ErroDoMotor as erro:
             await self._marcar_falha_da_peca(job_id, slot, erro)
             return
@@ -478,6 +527,31 @@ class Executor:
 
         arquivo = resposta.arquivos[0]
         dados = arquivo.conteudo or b""
+        composta = None
+        if modo == "hibrido" and foto:
+            # O provider devolveu o ENTORNO. Os pixels da fotografia entram
+            # AGORA, por aritmética, sem provider no meio: é isto que torna
+            # verdadeira a frase "a fotografia entra sem ser regerada".
+            from .studio import composicao as compositor  # noqa: PLC0415
+
+            try:
+                composta = await asyncio.to_thread(
+                    compositor.compor,
+                    fundo=dados,
+                    foto=foto,
+                    slot=slot,
+                    largura=formato.largura,
+                    altura=formato.altura,
+                )
+                dados = composta.conteudo
+            except Exception as erro:  # noqa: BLE001
+                log.exception("composição híbrida falhou no slot %s", slot)
+                await self._marcar_falha_da_peca(
+                    job_id, slot,
+                    _erro_generico(f"não foi possível compor a fotografia: {erro}"),
+                )
+                return
+
         content_hash = dominio.hash_de_conteudo(dados)
         mime = arquivo.mime or "image/png"
         extensao = _EXTENSAO_POR_MIME.get(mime, "bin")
@@ -546,6 +620,16 @@ class Executor:
                     "altura": arquivo.altura,
                     "motor": self.motor.nome,
                     "motor_versao": self.motor.versao,
+                    # A procedencia do MODELO, na peca e nao so no pedido: um job
+                    # retentado produz masters em momentos diferentes, e o modelo
+                    # servido pode divergir ENTRE eles. Guardar so no job
+                    # responderia "o que foi pedido" e nao "o que gerou ESTE
+                    # arquivo".
+                    "modelo_pedido": meta.get("modelo_pedido") or None,
+                    "modelo_servido": meta.get("modelo_servido") or None,
+                    "qualidade": meta.get("qualidade") or None,
+                    "prompt_sha256": meta.get("prompt_sha256") or None,
+                    "anexo_sha256": fotografia.get("sha256") or None,
                     "insumo_hash": dominio.hash_de_insumo(insumo),
                     # O prompt completo NÃO é guardado: ele é reconstruível a partir
                     # do briefing, e guardá-lo duplicado num campo que a API lê seria
@@ -613,10 +697,34 @@ class Executor:
                 "content_hash": content_hash,
                 "nativo_largura": _int_ou_none(meta.get("nativo_largura")),
                 "nativo_altura": _int_ou_none(meta.get("nativo_altura")),
-                "enquadramento": meta.get("enquadramento"),
-                "transformacoes": [
-                    t for t in (meta.get("transformacoes") or "").split(" | ") if t
-                ],
+                "canvas_largura": _int_ou_none(meta.get("canvas_largura")),
+                "canvas_altura": _int_ou_none(meta.get("canvas_altura")),
+                # `recomposto` e o rotulo que a v11_01 ja reservou para a peca
+                # que passou por um compositor. Deixa-la como `cover_crop` diria
+                # que so houve recorte, quando houve colagem de fotografia real.
+                "enquadramento": (
+                    "recomposto" if composta is not None else meta.get("enquadramento")
+                ),
+                "transformacoes": (
+                    list(composta.transformacoes)
+                    if composta is not None
+                    else [t for t in (meta.get("transformacoes") or "").split(" | ") if t]
+                ),
+                **(
+                    {
+                        "crop_x": composta.crop[0],
+                        "crop_y": composta.crop[1],
+                        "crop_largura": composta.crop[2],
+                        "crop_altura": composta.crop[3],
+                        "escala": composta.escala,
+                        "posicao_x": composta.posicao[0],
+                        "posicao_y": composta.posicao[1],
+                        "compositor": composta.compositor,
+                        "compositor_versao": composta.compositor_versao,
+                    }
+                    if composta is not None
+                    else {}
+                ),
                 "concluida_em": agora(),
                 "erro_codigo": None,
                 "erro_mensagem": None,
@@ -628,15 +736,65 @@ class Executor:
             job_id, "peca_pronta", f"{formato.rotulo} pronta.", slot=slot
         )
 
-    def _chamar_motor(self, slot: str, formato: dominio.Formato, insumo: str) -> RespostaDoMotor:
+    def _chamar_motor(
+        self,
+        slot: str,
+        formato: dominio.Formato,
+        insumo: str,
+        *,
+        modo: str = "sem_foto",
+        foto: bytes | None = None,
+        foto_mime: str | None = None,
+    ) -> RespostaDoMotor:
+        """A única chamada ao provider, e o que muda em cada modo.
+
+        `hibrido`   a foto NÃO vai ao provider. Ele recebe a instrução de deixar
+                    a região vazia; a fotografia é colada depois, aqui dentro.
+                    Mandá-la como referência faria o modelo desenhar uma pessoa
+                    parecida, e a peça final teria duas: a desenhada e a colada.
+
+        `reinterpretado`  a foto vai como referência e o modelo redesenha a
+                    cena. É outro produto, e a interface diz isso.
+        """
+        from volc_ads.criativo.porta import ImagemDeReferencia  # noqa: PLC0415
+
+        texto = insumo
+        referencias: tuple[Any, ...] = ()
+        if modo == "hibrido":
+            from .studio.composicao import instrucao_de_fundo  # noqa: PLC0415
+
+            texto = f"{insumo}\n\n{instrucao_de_fundo(slot)}"
+        elif modo == "reinterpretado" and foto:
+            referencias = (
+                ImagemDeReferencia(
+                    nome=f"referencia.{_EXTENSAO_POR_MIME.get(foto_mime or '', 'png')}",
+                    conteudo=foto,
+                    mime=foto_mime or "image/png",
+                ),
+            )
+
         pedido = PedidoDeGeracao(
             referencia=f"estudio/{slot}",
             tipo=formato.tipo,
-            insumo=insumo,
+            insumo=texto,
             especificacao=formato.especificacao(),
             contexto={"formato": formato.rotulo},
+            referencias=referencias,
         )
         return self.motor.receber(self.motor.solicitar_geracao(pedido))
+
+    def _ler_anexo(self, chave: str) -> bytes | None:
+        """Os bytes da fotografia guardada, ou `None` quando ela não abre.
+
+        `None` e não exceção: uma peça produzida sem a foto que o operador
+        anexou seria uma peça DIFERENTE da pedida, então quem chama trata a
+        ausência como falha da peça — mas a leitura em si não derruba o lote.
+        """
+        try:
+            return self.armazenamento.ler(chave)
+        except Exception:  # noqa: BLE001
+            log.exception("não foi possível ler o anexo em %s", chave)
+            return None
 
     async def _marcar_falha_da_peca(
         self, job_id: str, slot: str, erro: ErroDoMotor
@@ -745,8 +903,24 @@ class Executor:
 
     # ── retry e cancelamento ─────────────────────────────────────────────────
 
-    async def retentar(self, job_id: str) -> dict[str, Any]:
-        job = await self.repo.buscar_job(job_id)
+    async def retentar(
+        self, job_id: str, *, criado_por: str | None = None
+    ) -> dict[str, Any]:
+        """Repõe as peças que faltaram. É um ato que GASTA.
+
+        ⚠️ Duas conferências que não existiam.
+
+        `criado_por` chega até `buscar_job`: sem ele, quem tivesse o UUID de um
+        job alheio — de um print, de um log — recolocava o trabalho de outra
+        pessoa na fila e fazia o provider cobrá-la. `JobNaoEncontrado` é o mesmo
+        404 de "não existe", porque distinguir os dois transforma a rota num
+        oráculo de existência de job alheio.
+
+        E a transição é compare-and-set: o filtro de estado viaja no PATCH. Dois
+        processos que leiam o mesmo job `failed` no mesmo segundo passavam os
+        dois pelo `pode_retentar` e disparavam os dois laços.
+        """
+        job = await self.repo.buscar_job(job_id, criado_por=criado_por)
         if job is None:
             raise JobNaoEncontrado(job_id)
         if not dominio.pode_retentar(job["estado"]):
@@ -763,7 +937,14 @@ class Executor:
                 "cancelado_pedido_em": None,
                 "cancelado_em": None,
             },
+            estados_esperados=list(dominio.ESTADOS_QUE_RETENTAM),
         )
+        if atualizado is None:
+            # O banco não devolveu linha: outro processo já retomou este job
+            # entre a nossa leitura e a nossa escrita. Não disparar é o ponto.
+            raise TransicaoInvalida(
+                "este trabalho já foi retomado por outra execução"
+            )
         prontas = sum(
             1 for r in await self.repo.renditions_do_job(job_id) if r["estado"] == "pronta"
         )
@@ -777,8 +958,11 @@ class Executor:
         self.disparar(job_id)
         return atualizado or job
 
-    async def cancelar(self, job_id: str) -> dict[str, Any]:
-        job = await self.repo.buscar_job(job_id)
+    async def cancelar(
+        self, job_id: str, *, criado_por: str | None = None
+    ) -> dict[str, Any]:
+        """Pede o cancelamento. `criado_por` confina: cancelar DESTRÓI trabalho pago."""
+        job = await self.repo.buscar_job(job_id, criado_por=criado_por)
         if job is None:
             raise JobNaoEncontrado(job_id)
         if not dominio.pode_cancelar(job["estado"]):
@@ -824,6 +1008,41 @@ class Executor:
 # ─────────────────────────────────────────────────────────────────────────────
 # Auxiliares
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _referencias_do_pedido(pedido: dict[str, Any]) -> list[dict[str, Any]]:
+    """O material de entrada do briefing, em forma de lista tipada.
+
+    Lista e nao campo solto porque `referencias` ja era uma lista e porque um dia
+    havera mais de um material (logo, paleta, produto). Cada item se identifica
+    pelo `tipo`, entao acrescentar o segundo nao muda a leitura do primeiro.
+    """
+    chave = pedido.get("anexo_storage_chave")
+    if not chave:
+        return []
+    return [
+        {
+            "tipo": "fotografia",
+            "modo": pedido.get("modo_de_composicao") or "sem_foto",
+            "anexo_ref": pedido.get("anexo_ref"),
+            "sha256": pedido.get("anexo_sha256"),
+            "storage_chave": chave,
+            "mime": pedido.get("anexo_mime") or "image/png",
+        }
+    ]
+
+
+def _fotografia_do_briefing(briefing: dict[str, Any]) -> dict[str, Any]:
+    """A fotografia deste briefing, ou um dicionario vazio.
+
+    Vazio e nao `None` para que quem chama leia `.get("modo")` sem um `if` antes:
+    a ausencia de foto e o caso normal, e o caminho normal nao deve ser o que
+    precisa de guarda.
+    """
+    for item in briefing.get("referencias") or []:
+        if isinstance(item, dict) and item.get("tipo") == "fotografia":
+            return item
+    return {}
 
 
 def _insumo_do_briefing(pedido: dict[str, Any]) -> str:

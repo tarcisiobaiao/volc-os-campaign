@@ -34,7 +34,29 @@ vi.mock('@/lib/supabase', () => ({
 const PROJECT_REF = `crproj_${'a'.repeat(24)}`;
 const RUN_REF = `crrun_${'b'.repeat(24)}`;
 const CAMINHO = '/pecas/creative_hook_frio';
-const MODELO = 'gemini:gemini-3.1-flash-image';
+const MODELO = 'openai:gpt-image-2';
+const SELO = 'selo-de-teste.assinatura';
+
+/** O catalogo que o servidor publica. A tela nao tem lista propria. */
+const CAPACIDADES = {
+  formatos: [
+    { slot: '1x1', rotulo: 'Quadrado', proporcao: '1:1', largura: 1080, altura: 1080,
+      descricao: 'Feed quadrado.', destinos_tipicos: [], canvas_nativo: null,
+      transformacao_final: null, aceita_fotografia_real: true },
+    { slot: '4x5', rotulo: 'Retrato', proporcao: '4:5', largura: 1080, altura: 1350,
+      descricao: 'Retrato.', destinos_tipicos: [], canvas_nativo: null,
+      transformacao_final: null, aceita_fotografia_real: true },
+  ],
+  teto_de_renders_por_pedido: 45,
+  motor: { modelo: MODELO, qualidade: 'medium', configurado: true,
+           publica_preco_por_imagem: true },
+  modos_de_composicao: [
+    { id: 'sem_foto', rotulo: 'Gerar a arte inteira', descricao: 'x',
+      preserva_pixels_da_foto: false },
+    { id: 'hibrido', rotulo: 'Compor com a fotografia', descricao: 'x',
+      preserva_pixels_da_foto: true },
+  ],
+};
 
 const PECA = {
   ref: 'creative_hook_frio',
@@ -64,11 +86,18 @@ const PLANO = {
   teto: 45,
   custo_estimado_usd: 0.039,
   custo_e_estimado: true,
+  custo_tem_estimativa: true,
   modelo_de_imagem: MODELO,
+  qualidade_de_imagem: 'medium',
   motor_configurado: true,
   pode_executar: true,
   bloqueios: [],
-  briefings: [{ creative_ref: PECA.ref, formato_slot: '1x1', texto_na_arte: 'Estude com método' }],
+  selo_do_plano: SELO,
+  modo_de_composicao: 'sem_foto',
+  anexo_sha256: null,
+  briefings: [{ creative_ref: PECA.ref, formato_slot: '1x1',
+                texto_na_arte: 'Estude com método',
+                direcao_visual: 'Mesa de estudo.' }],
 };
 
 /** O detalhe COMO O SERVIDOR passou a devolvê-lo: com as decisões projetadas. */
@@ -115,7 +144,11 @@ function instalarFetch(aprovado: boolean) {
       });
 
       let corpo: unknown = {};
-      if (endereco.includes('/geracoes/plano')) corpo = PLANO;
+      // O catálogo VEM DO SERVIDOR: um dublê que não o serve deixa a tela sem
+      // formato nenhum, e o teste passa a medir o dublê.
+      if (endereco.includes('/capacidades')) corpo = CAPACIDADES;
+      else if (endereco.includes('/anexos')) corpo = { anexos: [] };
+      else if (endereco.includes('/geracoes/plano')) corpo = PLANO;
       else if (endereco.includes('/geracoes') && metodo === 'POST') {
         corpo = { geracoes: [], total_de_renders: 1, custo_estimado_usd: 0.039 };
       } else if (endereco.includes('/geracoes')) corpo = { geracoes: [] };
@@ -207,6 +240,11 @@ describe('gerar exige autorização explícita', () => {
       modelo: MODELO,
       total_de_renders: 1,
       teto_custo_usd: 0.04,
+      // ⚠️ O selo é o que amarra o consentimento ao CONTEÚDO do plano. Sem ele,
+      // autorizar duas peças e produzir outras duas passava nas conferências de
+      // modelo e de total, porque nenhuma delas descreve qual conteúdo.
+      selo_do_plano: SELO,
+      aceito_sem_estimativa: false,
     });
   });
 
@@ -223,7 +261,7 @@ describe('gerar exige autorização explícita', () => {
 
     // Tirar um formato muda o total. A confirmação anterior não cobre o novo
     // lote, e o plano conferido deixa de valer junto.
-    fireEvent.click(screen.getByRole('checkbox', { name: /Quadrado|1:1|1x1/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Quadrado, 1:1/i }));
 
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /Gerar 1 imagem/i })).toBeNull(),

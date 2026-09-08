@@ -25,6 +25,7 @@
 import { supabase } from '@/lib/supabase';
 
 import type {
+  Anexo,
   AutorizacaoDeGasto,
   Capacidades,
   DecisaoRegistrada,
@@ -110,7 +111,13 @@ async function chamar<T>(url: string, init?: RequestInit): Promise<T> {
     resp = await fetch(url, {
       ...init,
       headers: {
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        // ⚠️ `FormData` NÃO recebe `Content-Type`. O browser precisa escrever o
+        // cabeçalho inteiro, com o `boundary` que ele sorteia; declarar
+        // `application/json` — ou mesmo `multipart/form-data` sem boundary —
+        // produz um corpo que o servidor não consegue separar em partes.
+        ...(init?.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...(await autorizacao()),
         ...(init?.headers ?? {}),
       },
@@ -240,6 +247,56 @@ export async function lerCapacidades(signal?: AbortSignal): Promise<Capacidades>
 /** Teto estratégico do agente. Espelha `MAX_VARIACOES` do contrato. */
 export const MAX_PECAS = 15;
 
+// ── Fotografia real ──────────────────────────────────────────────────────────
+
+/**
+ * Envia a fotografia. O arquivo NUNCA vira base64 no estado da tela.
+ *
+ * Um base64 no estado atravessa o `localStorage`, aparece em todo log que
+ * registre corpo, e reaparece num projeto novo se alguém esquecer de limpar. O
+ * que volta daqui é uma referência opaca e um hash — e é contra o hash que a
+ * autorização de gasto é assinada, de modo que trocar a foto depois de conferir
+ * o plano invalida a autorização em vez de passar despercebido.
+ *
+ * A validação inteira é do servidor: MIME por assinatura de bytes, teto de
+ * pixels contra decompression bomb, EXIF removido. Um `accept=".png"` no input
+ * é conveniência, nunca garantia.
+ */
+export async function enviarFotografia(
+  projectRef: string,
+  arquivo: File,
+  signal?: AbortSignal,
+): Promise<Anexo> {
+  const formulario = new FormData();
+  formulario.append('arquivo', arquivo, arquivo.name);
+  formulario.append('consentimento', 'true');
+  // Sem `Content-Type` explícito: o browser precisa escrever o `boundary`, e
+  // declará-lo à mão produz um corpo que o servidor não consegue separar.
+  return chamar(endereco(`/operacoes/${projectRef}/anexos`), {
+    method: 'POST',
+    body: formulario,
+    signal,
+  });
+}
+
+export async function listarFotografias(
+  projectRef: string,
+  signal?: AbortSignal,
+): Promise<{ anexos: Anexo[] }> {
+  return chamar(endereco(`/operacoes/${projectRef}/anexos`), { signal });
+}
+
+export async function removerFotografia(
+  projectRef: string,
+  anexoRef: string,
+  signal?: AbortSignal,
+): Promise<{ anexo_ref: string; removido: boolean }> {
+  return chamar(endereco(`/operacoes/${projectRef}/anexos/${anexoRef}`), {
+    method: 'DELETE',
+    signal,
+  });
+}
+
 // ── Produção ─────────────────────────────────────────────────────────────────
 
 /**
@@ -250,7 +307,13 @@ export const MAX_PECAS = 15;
  */
 export async function planejarGeracao(
   projectRef: string,
-  pedido: { run_ref: string; selected_creative_refs: string[]; format_ids: string[] },
+  pedido: {
+    run_ref: string;
+    selected_creative_refs: string[];
+    format_ids: string[];
+    anexo_ref?: string | null;
+    modo_de_composicao?: string;
+  },
   signal?: AbortSignal,
 ): Promise<PlanoDeGeracao> {
   return chamar(endereco(`/operacoes/${projectRef}/geracoes/plano`), {
@@ -272,6 +335,8 @@ export async function gerarImagens(
     run_ref: string;
     selected_creative_refs: string[];
     format_ids: string[];
+    anexo_ref?: string | null;
+    modo_de_composicao?: string;
     /**
      * Obrigatória. O servidor recusa com 409 sem ela, e a recusa carrega o
      * modelo e o total que precisam ser confirmados.

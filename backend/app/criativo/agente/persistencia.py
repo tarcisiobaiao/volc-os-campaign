@@ -283,3 +283,70 @@ class RepositorioAgenteCriativo:
                 "limit": 1000,
             },
         )
+
+    # ── Anexos do operador ───────────────────────────────────────────────────
+
+    async def registrar_anexo(self, row: dict[str, Any]) -> dict[str, Any]:
+        """Grava a fotografia normalizada. Sem consentimento o banco recusa.
+
+        A conferência do consentimento é CHECK de tabela e não `if` de Python:
+        uma fotografia de pessoa real armazenada sem declaração é um problema no
+        instante em que ela é gravada, e um `if` some quando alguém acrescenta
+        uma rota nova.
+        """
+        rows = await self.db.insert("criativo_agente_anexo", [row])
+        if not rows:
+            raise RuntimeError("o banco não devolveu o anexo criado")
+        return rows[0]
+
+    async def obter_anexo(
+        self, anexo_ref: str, owner_id: str
+    ) -> dict[str, Any] | None:
+        """O anexo DO DONO. Ref opaca não é autorização.
+
+        `owner_id` entra na consulta e não numa checagem posterior: a diferença
+        aparece no dia em que alguém esquecer o `if`, e não aparece nunca quando
+        o filtro está no `where`.
+        """
+        rows = await self.db.select(
+            "criativo_agente_anexo",
+            {
+                "anexo_ref": f"eq.{anexo_ref}",
+                "owner_id": f"eq.{owner_id}",
+                "removido_em": "is.null",
+                "limit": 1,
+            },
+        )
+        return rows[0] if rows else None
+
+    async def listar_anexos(
+        self, project_ref: str, owner_id: str
+    ) -> list[dict[str, Any]]:
+        return await self.db.select(
+            "criativo_agente_anexo",
+            {
+                "project_ref": f"eq.{project_ref}",
+                "owner_id": f"eq.{owner_id}",
+                "removido_em": "is.null",
+                "order": "criado_em.desc",
+                "limit": 20,
+            },
+        )
+
+    async def remover_anexo(self, anexo_ref: str, owner_id: str, *, em: str) -> bool:
+        """Carimba `removido_em`. NÃO apaga a linha.
+
+        Apagar quebraria a procedência de um job que já usou esta foto: a peça
+        continuaria existindo e a pergunta "de qual imagem ela saiu?" perderia a
+        resposta. Trocar a foto é um ato do operador; apagar a história não é.
+        """
+        rows = await self.db.patch(
+            "criativo_agente_anexo",
+            {
+                "anexo_ref": f"eq.{anexo_ref}",
+                "owner_id": f"eq.{owner_id}",
+                "removido_em": "is.null",
+            },
+            {"removido_em": em},
+        )
+        return bool(rows)

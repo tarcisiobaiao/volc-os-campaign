@@ -181,6 +181,25 @@ _CAMPOS_DA_CHAVE = (
     # depois.
     "criado_por",
     "destinos_pretendidos",
+    # ⚠️ `creative_ref` e `run_ref` ENTRARAM em 08/09/2026, e fecharam um defeito
+    # que só aparece quando o modelo repete a si mesmo.
+    #
+    # A chave é derivada do CONTEÚDO do briefing (mensagem, objetivo, audiência).
+    # Duas peças estratégicas diferentes que o modelo devolveu com a MESMA
+    # `direcao_visual` e o MESMO texto na arte — porque o refinamento mexeu só
+    # em campos que não entram no pedido de job — produziam a MESMA chave. O
+    # segundo conceito recebia o job do primeiro, `criado=False`, e a resposta
+    # dizia "4 renders" enquanto 2 tinham sido pedidos. O operador autorizava 4
+    # e recebia 2, sem nenhuma recusa e sem nenhum erro.
+    #
+    # A peça é a identidade do pedido, e não o texto que ela por acaso gerou.
+    "creative_ref",
+    "run_ref",
+    # O modo e o anexo mudam a PEÇA, não só o preço: a mesma direção visual
+    # composta sobre a fotografia de ontem e sobre a de hoje são duas peças
+    # diferentes, e a chave precisa dizer isso.
+    "modo_de_composicao",
+    "anexo_sha256",
 )
 
 
@@ -295,7 +314,17 @@ def pode_retentar(estado: EstadoDoJob) -> bool:
     para pagar duas vezes. Job preso em `running` por processo morto é problema
     da reconciliação de subida, não do botão.
     """
-    return estado in ("partial", "failed", "cancelled", "queued")
+    return estado in ESTADOS_QUE_RETENTAM
+
+
+#: Os mesmos estados de `pode_retentar`, em forma de DADO.
+#:
+#: Existe porque o retry precisa mandar essa lista para o banco como filtro de
+#: compare-and-set, e reescrevê-la lá criaria duas listas que envelhecem em
+#: separado — a de Python e a do PATCH — sem nada que force as duas a
+#: concordarem. Um estado acrescentado a uma e esquecido na outra produziria um
+#: retry que passa no `if` e não escreve, ou pior, o contrário.
+ESTADOS_QUE_RETENTAM: tuple[str, ...] = ("partial", "failed", "cancelled", "queued")
 
 
 def pode_cancelar(estado: EstadoDoJob) -> bool:

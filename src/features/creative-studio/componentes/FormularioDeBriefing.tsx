@@ -1,26 +1,44 @@
 /** Aprova's compact format → context → quantity composition, with VOLC contracts. */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowRight, Check, Layers, Megaphone, Plus, Sparkles, Target, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { FORMATOS_DO_MOTOR, MAX_PECAS } from '../api';
-import type { EntradaNovaOperacao, OrigemDoFato } from '../tipos';
+import { MAX_PECAS } from '../api';
+import type { EntradaNovaOperacao, FormatoDisponivel, OrigemDoFato } from '../tipos';
 import { SeletorDeFormatos } from './SeletorDeFormatos';
 
 export interface FormularioDeBriefingProps {
   ocupado: boolean;
   erro?: string | null;
+  /** O catálogo VEM DO SERVIDOR. Nenhuma lista de formatos mora nesta tela. */
+  formatos: readonly FormatoDisponivel[];
+  carregandoFormatos?: boolean;
   onEnviar: (entrada: EntradaNovaOperacao) => void;
 }
 
-export function FormularioDeBriefing({ ocupado, erro, onEnviar }: FormularioDeBriefingProps) {
+export function FormularioDeBriefing({
+  ocupado,
+  erro,
+  formatos: catalogo,
+  carregandoFormatos = false,
+  onEnviar,
+}: FormularioDeBriefingProps) {
   const [nome, setNome] = useState('');
   const [objetivo, setObjetivo] = useState('OUTCOME_TRAFFIC');
   const [contexto, setContexto] = useState('');
   const [fatos, setFatos] = useState<{ declaracao: string; origem: OrigemDoFato }[]>([{ declaracao: '', origem: 'OPERADOR' }]);
-  const [formatos, setFormatos] = useState<string[]>(['4x5']);
+  const [formatos, setFormatos] = useState<string[]>([]);
+  // A pré-seleção espera o catálogo: escolher `4x5` antes de saber se ele
+  // existe neste servidor produziria um pedido que o motor recusa depois.
+  const preSelecionado = useRef(false);
+  useEffect(() => {
+    if (preSelecionado.current || catalogo.length === 0) return;
+    preSelecionado.current = true;
+    const padrao = catalogo.find(f => f.slot === '4x5') ?? catalogo[0];
+    setFormatos([padrao.slot]);
+  }, [catalogo]);
   const [quantidade, setQuantidade] = useState(4);
   const fatosValidos = fatos.filter(f => f.declaracao.trim().length >= 3);
   const nomeValido = nome.trim().length >= 3;
@@ -56,8 +74,8 @@ export function FormularioDeBriefing({ ocupado, erro, onEnviar }: FormularioDeBr
       </section>
 
       <section className="studio-surface">
-        <div className="studio-section-label"><Layers aria-hidden className="h-4 w-4" /><h2>Formato</h2><span className="ml-auto normal-case tracking-normal text-muted-foreground">{FORMATOS_DO_MOTOR.length} formatos</span></div>
-        <SeletorDeFormatos selecionados={formatos} onChange={setFormatos} />
+        <div className="studio-section-label"><Layers aria-hidden className="h-4 w-4" /><h2>Formato</h2><span className="ml-auto normal-case tracking-normal text-muted-foreground">{catalogo.length} formatos</span></div>
+        <SeletorDeFormatos formatos={catalogo} selecionados={formatos} onChange={setFormatos} carregando={carregandoFormatos} />
       </section>
 
       <section className="studio-surface">

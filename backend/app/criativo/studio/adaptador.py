@@ -98,6 +98,7 @@ def montar_plano(
     contexto_do_publico: str,
     objetivo: str,
     motor: Any = None,
+    anexo: dict[str, Any] | None = None,
 ) -> PlanoDeGeracao:
     """Expande a seleção em N×M briefings, ou explica por que não expande.
 
@@ -162,6 +163,35 @@ def montar_plano(
                 ),
             )
         )
+
+    # (3b) A fotografia precisa existir E ser desta operação. A ref é opaca, mas
+    #      ref opaca não é autorização: quem a resolve confere o dono, e este
+    #      bloqueio existe para o caso em que ela some entre a tela e o clique
+    #      (o operador removeu o anexo noutra aba).
+    if pedido.modo_de_composicao != "sem_foto" and anexo is None:
+        bloqueios.append(
+            Bloqueio(
+                codigo="CRIATIVO_STUDIO_ANEXO_INDISPONIVEL",
+                mensagem=(
+                    "A fotografia escolhida não está mais disponível nesta operação. "
+                    "Envie a imagem de novo ou produza sem fotografia."
+                ),
+            )
+        )
+
+    # (3c) O motor precisa saber receber a foto. Um motor que ignorasse o anexo
+    #      entregaria uma peça diferente da pedida e cobraria por ela.
+    if pedido.modo_de_composicao == "reinterpretado" and motor is not None:
+        if not getattr(motor, "aceita_referencia", True):
+            bloqueios.append(
+                Bloqueio(
+                    codigo="CRIATIVO_STUDIO_MOTOR_SEM_REFERENCIA",
+                    mensagem=(
+                        "O motor configurado neste servidor não recebe fotografia "
+                        "como referência."
+                    ),
+                )
+            )
 
     conceitos = len(pedido.selected_creative_refs)
     formatos = len(pedido.format_ids)
@@ -234,10 +264,18 @@ def montar_plano(
         total_de_renders=total,
         custo_estimado_usd=_custo_estimado(total, motor),
         bloqueios=bloqueios,
+        modo_de_composicao=pedido.modo_de_composicao,
+        anexo_sha256=(anexo or {}).get("content_sha256"),
     )
 
 
-def pedido_de_job(briefings: list[BriefingDeImagem], *, nome_da_operacao: str) -> dict:
+def pedido_de_job(
+    briefings: list[BriefingDeImagem],
+    *,
+    nome_da_operacao: str,
+    modo_de_composicao: str = "sem_foto",
+    anexo: dict[str, Any] | None = None,
+) -> dict:
     """O `pedido` que `Executor.criar_job_de_imagem` espera, para UM conceito.
 
     Todos os briefings desta lista pertencem à MESMA peça: um job carrega os M
@@ -256,8 +294,24 @@ def pedido_de_job(briefings: list[BriefingDeImagem], *, nome_da_operacao: str) -
         "objetivo": primeiro.objetivo,
         "mensagem": f"{primeiro.direcao_visual}\nTexto na arte: {primeiro.texto_na_arte}",
         "audiencia": primeiro.contexto_do_publico,
-        "modo": "full_llm",
+        # `photo_preserved` e `full_llm` são modos DIFERENTES no vocabulário que
+        # a v11_04 já fechou por CHECK, e a diferença é exatamente a promessa
+        # que a peça faz: um preserva os pixels da fotografia, o outro não.
+        # Gravar `full_llm` numa peça composta apagaria essa distinção no banco.
+        "modo": "photo_preserved" if modo_de_composicao == "hibrido" else "full_llm",
         "slots": [b.formato_slot for b in briefings],
         "origem": "assistente_criativo_meta",
         "destinos_pretendidos": ["meta_feed"],
+        # ⚠️ `creative_ref` e `run_ref` entram no pedido, e não é decoração: eles
+        # participam da CHAVE DE IDEMPOTÊNCIA. Sem eles, duas peças que o modelo
+        # devolveu com a mesma direção visual e o mesmo texto colapsavam num job
+        # só, e a resposta mentia o total — o operador autorizava 4 renders e
+        # recebia 2, sem nenhuma recusa.
+        "creative_ref": primeiro.linhagem.creative_ref,
+        "run_ref": primeiro.linhagem.run_ref,
+        "modo_de_composicao": modo_de_composicao,
+        "anexo_ref": (anexo or {}).get("anexo_ref"),
+        "anexo_sha256": (anexo or {}).get("content_sha256"),
+        "anexo_storage_chave": (anexo or {}).get("storage_chave"),
+        "anexo_mime": (anexo or {}).get("mime"),
     }

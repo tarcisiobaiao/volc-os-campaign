@@ -31,6 +31,21 @@ SCHEMA_VERSION = "1"
 #: número que importa para o custo é o segundo.
 MAX_RENDERS_POR_PEDIDO = 45
 
+#: Os modos de composição, e o que cada um promete.
+#:
+#: `sem_foto`        o modelo compõe a peça inteira. Nenhuma fotografia entra.
+#: `hibrido`         os PIXELS da fotografia entram; o modelo faz só o entorno,
+#:                   e um compositor determinístico junta os dois.
+#: `reinterpretado`  a fotografia entra como REFERÊNCIA e o modelo redesenha a
+#:                   cena. Semelhança, rosto e detalhes podem mudar.
+#:
+#: ⚠️ Os dois últimos não são graus do mesmo modo, são promessas diferentes. O
+#: endpoint de edição do provider REGERA a imagem: chamar isso de "preserva a
+#: foto" é a frase mais fácil de escrever e a mais cara de descobrir, porque o
+#: operador só vê a diferença depois de pagar. Por isso `hibrido` é o padrão
+#: quando há foto, e `reinterpretado` precisa ser escolhido de propósito.
+MODOS_DE_COMPOSICAO: tuple[str, ...] = ("sem_foto", "hibrido", "reinterpretado")
+
 
 class ModeloEstrito(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -115,6 +130,10 @@ class PedidoDeGeracao(ModeloEstrito):
     selected_creative_refs: list[str] = Field(min_length=1, max_length=15)
     format_ids: list[str] = Field(min_length=1, max_length=12)
     brand_pack_ref: str | None = Field(default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$")
+    #: A fotografia real, quando o operador anexou uma. Referência opaca.
+    anexo_ref: str | None = Field(default=None, pattern=r"^crimg_[a-f0-9]{24}$")
+    #: Como a fotografia entra na peça. Ver `MODOS_DE_COMPOSICAO`.
+    modo_de_composicao: str = "sem_foto"
     #: Ausente ao PLANEJAR (planejar não gasta) e obrigatória ao GERAR.
     #: Deixá-la opcional no modelo é o que permite a mesma forma servir as duas
     #: rotas; quem exige é a rota que despacha, e ela exige explicitamente.
@@ -126,6 +145,22 @@ class PedidoDeGeracao(ModeloEstrito):
             raise ValueError("selected_creative_refs contém refs duplicadas")
         if len(set(self.format_ids)) != len(self.format_ids):
             raise ValueError("format_ids contém formatos duplicados")
+        if self.modo_de_composicao not in MODOS_DE_COMPOSICAO:
+            raise ValueError(
+                f"modo de composição desconhecido: {self.modo_de_composicao!r}"
+            )
+        # As duas combinações impossíveis, recusadas na FORMA e não numa rota:
+        # um modo com foto sem foto anexada produziria uma peça diferente da
+        # pedida, e uma foto anexada com `sem_foto` seria um anexo ignorado em
+        # silêncio — que é o mesmo defeito visto do outro lado.
+        if self.modo_de_composicao != "sem_foto" and not self.anexo_ref:
+            raise ValueError(
+                f"o modo {self.modo_de_composicao!r} exige uma fotografia anexada"
+            )
+        if self.modo_de_composicao == "sem_foto" and self.anexo_ref:
+            raise ValueError(
+                "há fotografia anexada mas o modo escolhido não a usaria"
+            )
         return self
 
 
@@ -154,6 +189,14 @@ class PlanoDeGeracao(ModeloEstrito):
     #: "não sei" não é um preço.
     custo_estimado_usd: float | None = None
     bloqueios: list[Bloqueio] = Field(default_factory=list)
+    #: O modo com que a fotografia entra, ecoado pelo servidor.
+    modo_de_composicao: str = "sem_foto"
+    #: O hash dos bytes NORMALIZADOS do anexo, quando há um.
+    #:
+    #: Entra na assinatura do plano: trocar a fotografia depois de conferir muda
+    #: a peça inteira sem mexer em nenhum outro campo, e sem este hash a troca
+    #: passaria pelas conferências de modelo e de total sem ser notada.
+    anexo_sha256: str | None = None
 
     @property
     def pode_executar(self) -> bool:

@@ -12,7 +12,7 @@ import json
 import secrets
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 
 from app.config import Settings, get_settings
 from app.criativo.agente.contrato import (
@@ -656,6 +656,30 @@ def _segredo_do_selo() -> str:
     return segredo_de_assinatura()
 
 
+async def _anexo_do_pedido(
+    pedido: PedidoDeGeracao,
+    project_ref: str,
+    identidade: Identidade,
+    repo: RepositorioAgenteCriativo,
+) -> dict[str, Any] | None:
+    """A fotografia deste pedido, conferida contra o DONO e contra a operação.
+
+    Ref opaca não é autorização. O filtro de dono viaja no `where` de
+    `obter_anexo`, e a operação é conferida aqui: um anexo válido de OUTRA
+    operação do mesmo dono continua sendo material que esta operação não pediu.
+
+    `None` quando não há foto ou quando ela não resolve — e `montar_plano`
+    transforma esse `None` em bloqueio visível, em vez de produzir uma peça
+    diferente da pedida.
+    """
+    if not pedido.anexo_ref:
+        return None
+    linha = await repo.obter_anexo(pedido.anexo_ref, identidade.sub)
+    if linha is None or linha.get("project_ref") != project_ref:
+        return None
+    return linha
+
+
 def _assinatura_do_plano(
     pedido: PedidoDeGeracao, plano: PlanoDeGeracao, motor: Any
 ) -> str:
@@ -673,8 +697,8 @@ def _assinatura_do_plano(
         qualidade=getattr(motor, "qualidade", None),
         total_de_renders=plano.total_de_renders,
         custo_estimado_usd=plano.custo_estimado_usd,
-        anexo_sha256=None,
-        modo_de_composicao=None,
+        anexo_sha256=plano.anexo_sha256,
+        modo_de_composicao=plano.modo_de_composicao,
     )
 
 
@@ -870,6 +894,8 @@ def _plano_para_json(plano: PlanoDeGeracao, selo: str | None = None) -> dict[str
         # para pedir o consentimento explícito de gastar sem estimativa, em vez
         # de desenhar um campo de teto que o servidor não teria como honrar.
         "custo_tem_estimativa": plano.custo_estimado_usd is not None,
+        "modo_de_composicao": plano.modo_de_composicao,
+        "anexo_sha256": plano.anexo_sha256,
         "modelo_de_imagem": motor["modelo"],
         "qualidade_de_imagem": motor["qualidade"],
         "motor_configurado": motor["configurado"],
@@ -935,6 +961,7 @@ async def planejar_geracao(
     # constante do motor Gemini importada direto, e um plano de outro provider
     # exibia o preço de um motor que não seria chamado.
     motor = _motor_ou_none()
+    anexo = await _anexo_do_pedido(pedido, project_ref, identidade, repo)
     plano = montar_plano(
         saida=saida,
         pedido=pedido,
@@ -942,6 +969,7 @@ async def planejar_geracao(
         contexto_do_publico=entrada.get("contexto_do_publico") or "Público não declarado.",
         objetivo=entrada.get("objetivo_meta") or "OUTCOME_TRAFFIC",
         motor=motor,
+        anexo=anexo,
     )
     return _plano_para_json(plano, _selo_do_plano(pedido, plano, motor))
 
@@ -991,6 +1019,7 @@ async def gerar_imagens(
     motor = obter_motor()
 
     entrada = operacao.get("input") or {}
+    anexo = await _anexo_do_pedido(pedido, project_ref, identidade, repo)
     plano = montar_plano(
         saida=saida,
         pedido=pedido,
@@ -998,6 +1027,7 @@ async def gerar_imagens(
         contexto_do_publico=entrada.get("contexto_do_publico") or "Público não declarado.",
         objetivo=entrada.get("objetivo_meta") or "OUTCOME_TRAFFIC",
         motor=motor,
+        anexo=anexo,
     )
     if not plano.pode_executar:
         raise HTTPException(
@@ -1051,6 +1081,8 @@ async def gerar_imagens(
             pedido_de_job(
                 briefings,
                 nome_da_operacao=entrada.get("nome_da_operacao") or "Operação sem nome",
+                modo_de_composicao=pedido.modo_de_composicao,
+                anexo=anexo,
             ),
             identidade.sub,
         )
@@ -1159,3 +1191,231 @@ async def decidir(
         }
     )
     return {"decision_ref": row["decision_ref"], "decisao": row["decisao"], "snapshot_sha256": row["snapshot_sha256"]}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ANEXOS — a fotografia real, opcional, do operador
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@router.post(
+    "/operacoes/{project_ref}/anexos", status_code=status.HTTP_201_CREATED
+)
+async def anexar_fotografia(
+    project_ref: ProjectRef,
+    request: Request,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """Recebe a fotografia, valida NOS BYTES e devolve uma referência opaca.
+
+    ## Por que a foto não viaja em base64 pelo resto do fluxo
+
+    Porque um base64 no estado da tela atravessa o `localStorage`, aparece em
+    todo log de requisição que registre corpo, e reaparece num projeto novo se
+    alguém esquecer de limpar. A referência opaca é curta, não é adivinhável, e
+    a autorização de gasto é assinada contra o HASH dos bytes normalizados — de
+    modo que trocar a foto depois de conferir o plano invalida a autorização em
+    vez de passar despercebido.
+
+    ## O que a validação cobre, e por que ela é toda server-side
+
+    MIME por assinatura de bytes (o `Content-Type` do multipart é escrito pelo
+    cliente), teto de bytes, teto de PIXELS antes de decodificar — que é a
+    decompression bomb —, decodificação completa contra arquivo truncado, lado
+    mínimo, e remoção do EXIF com a orientação aplicada aos pixels.
+
+    ⚠️ O consentimento é exigido AQUI e não na composição: uma fotografia de
+    pessoa real armazenada sem declaração é um problema no instante em que ela é
+    gravada. O banco também exige, por CHECK — um `if` de rota some no dia em
+    que alguém acrescentar um segundo caminho de upload.
+
+    Nada aqui chama provider, gera imagem ou gasta.
+    """
+    from app.criativo.armazenamento import armazenamento_padrao  # noqa: PLC0415
+    from app.criativo.studio import anexo as politica  # noqa: PLC0415
+
+    try:
+        await repo.obter_operacao(project_ref, identidade.sub)
+    except NaoEncontrado as exc:
+        raise _erro("CRIATIVO_AGENTE_ALVO_INEXISTENTE", "Operação não encontrada.", 404) from exc
+
+    arquivo, mime_declarado, consentiu = await _parte_de_imagem(request)
+    if not consentiu:
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_SEM_CONSENTIMENTO",
+            "Confirme que você tem autorização para usar esta imagem antes de enviá-la.",
+            400,
+        )
+
+    try:
+        normalizado = politica.normalizar(arquivo, mime_declarado=mime_declarado)
+    except politica.AnexoRecusado as exc:
+        # A mensagem de `AnexoRecusado` é escrita para o operador e não cita
+        # caminho de disco, biblioteca nem traceback.
+        raise _erro("CRIATIVO_STUDIO_ANEXO_RECUSADO", str(exc), 400) from exc
+
+    chave = politica.chave_de_anexo(
+        identidade.sub, normalizado.ref, normalizado.extensao
+    )
+    try:
+        armazenamento_padrao().guardar(chave, normalizado.conteudo, normalizado.mime)
+    except Exception as exc:  # noqa: BLE001
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_NAO_ARMAZENADO",
+            "Não foi possível guardar a imagem agora. Tente novamente.",
+            503,
+        ) from exc
+
+    linha = await repo.registrar_anexo(
+        {
+            "anexo_ref": normalizado.ref,
+            "owner_id": identidade.sub,
+            "project_ref": project_ref,
+            "storage_chave": chave,
+            "mime": normalizado.mime,
+            "largura": normalizado.largura,
+            "altura": normalizado.altura,
+            "bytes_totais": len(normalizado.conteudo),
+            "content_sha256": normalizado.content_sha256,
+            "exif_removido": normalizado.exif_removido,
+            "consentimento": True,
+        }
+    )
+    return _anexo_para_json(linha)
+
+
+@router.get("/operacoes/{project_ref}/anexos")
+async def listar_anexos(
+    project_ref: ProjectRef,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """As fotografias vivas desta operação. Só as do dono, só as não removidas."""
+    try:
+        await repo.obter_operacao(project_ref, identidade.sub)
+    except NaoEncontrado as exc:
+        raise _erro("CRIATIVO_AGENTE_ALVO_INEXISTENTE", "Operação não encontrada.", 404) from exc
+    linhas = await repo.listar_anexos(project_ref, identidade.sub)
+    return {"anexos": [_anexo_para_json(linha) for linha in linhas]}
+
+
+@router.delete("/operacoes/{project_ref}/anexos/{anexo_ref}")
+async def remover_anexo(
+    project_ref: ProjectRef,
+    anexo_ref: Annotated[str, Path(pattern=r"^crimg_[a-f0-9]{24}$")],
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: RepositorioAgenteCriativo = Depends(obter_repositorio),
+) -> dict[str, Any]:
+    """Tira a foto de circulação SEM apagar a linha.
+
+    Apagar quebraria a procedência de um job que já a usou: a peça continuaria
+    existindo e "de qual imagem ela saiu?" perderia a resposta. Trocar a foto é
+    um ato do operador; apagar a história não é.
+    """
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    removeu = await repo.remover_anexo(
+        anexo_ref, identidade.sub, em=datetime.now(timezone.utc).isoformat()
+    )
+    if not removeu:
+        # 404 idêntico para "não existe" e "não é seu": distinguir os dois
+        # transforma a rota num oráculo de existência de anexo alheio.
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_INEXISTENTE", "Anexo não encontrado.", 404
+        )
+    return {"anexo_ref": anexo_ref, "removido": True}
+
+
+def _anexo_para_json(linha: dict[str, Any]) -> dict[str, Any]:
+    """O que a tela precisa. A chave de storage NÃO vai junto.
+
+    Ela é caminho interno: publicá-la ensina o formato do bucket a quem só
+    precisa saber que a foto existe, e `design.md` proíbe expor nome de tabela e
+    caminho interno ao operador pelo mesmo motivo.
+    """
+    return {
+        "anexo_ref": linha.get("anexo_ref"),
+        "mime": linha.get("mime"),
+        "largura": linha.get("largura"),
+        "altura": linha.get("altura"),
+        "bytes_totais": linha.get("bytes_totais"),
+        "content_sha256": linha.get("content_sha256"),
+        "exif_removido": linha.get("exif_removido"),
+        "criado_em": linha.get("criado_em"),
+    }
+
+
+#: Teto de corpo do upload, com folga para os cabeçalhos do multipart.
+#:
+#: O teto de CONTEÚDO é o de `studio/anexo.py` (25 MB). Este é maior de
+#: propósito: recusar aqui um corpo que caberia depois do envelope trocaria uma
+#: mensagem sobre a imagem por uma mensagem sobre protocolo.
+_TETO_DO_CORPO = 27 * 1024 * 1024
+
+
+async def _parte_de_imagem(request: Request) -> tuple[bytes, str | None, bool]:
+    """Lê o `multipart/form-data` à mão, e a razão é declarada.
+
+    `python-multipart` NÃO está instalado neste backend e não está em
+    `requirements.txt`. O FastAPI levanta ao MONTAR uma rota com `File(...)` ou
+    `Form(...)` sem ele — o backend inteiro deixaria de subir por causa desta
+    rota. É o mesmo motivo, com as mesmas palavras, que `criativos_importacao.py`
+    já documenta; o leitor dele é reusado aqui em vez de duplicado.
+
+    Devolve `(bytes, mime declarado, consentimento)`. O MIME declarado é o que o
+    cliente escreveu e serve APENAS para ser conferido contra a assinatura dos
+    bytes; ele nunca decide nada sozinho.
+    """
+    from app.routers.criativos_importacao import _ler_multipart  # noqa: PLC0415
+
+    tipo = request.headers.get("content-type", "")
+    if "multipart/form-data" not in tipo.lower():
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_PEDIDO_INVALIDO",
+            "Envie a imagem como multipart/form-data.",
+            400,
+        )
+    corpo = await request.body()
+    if len(corpo) > _TETO_DO_CORPO:
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_GRANDE_DEMAIS",
+            "O envio passa do tamanho que este servidor aceita.",
+            413,
+        )
+
+    try:
+        partes = _ler_multipart(corpo, tipo)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_PEDIDO_INVALIDO",
+            "Envie a imagem como multipart/form-data.",
+            400,
+        ) from exc
+
+    dados: bytes | None = None
+    consentiu = False
+    for parte in partes:
+        if parte.arquivo is not None and dados is None:
+            dados = parte.conteudo
+        elif parte.nome == "consentimento":
+            consentiu = parte.conteudo.strip().lower() in (b"1", b"true", b"sim", b"on")
+
+    if not dados:
+        raise _erro(
+            "CRIATIVO_STUDIO_ANEXO_AUSENTE", "Nenhuma imagem foi enviada.", 400
+        )
+    # ⚠️ O MIME declarado sai como `None` DE PROPÓSITO, e não porque foi
+    # esquecido. `_ler_multipart` guarda nome, arquivo e conteúdo, e descarta os
+    # cabeçalhos de cada parte — então não há `Content-Type` de parte para
+    # conferir. A alternativa seria adivinhar pelo sufixo do nome do arquivo, e
+    # adivinhar seria PIOR que não conferir: uma foto legítima renomeada de
+    # `.jpeg` para `.png` viraria recusa, e a extensão não é evidência de
+    # conteúdo nenhum.
+    #
+    # A guarda real é a assinatura de bytes, que `anexo.normalizar` aplica
+    # sozinha por allowlist. A conferência declarado-contra-bytes continua viva
+    # no módulo, para quem chame com um `Content-Type` de verdade.
+    return dados, None, consentiu
