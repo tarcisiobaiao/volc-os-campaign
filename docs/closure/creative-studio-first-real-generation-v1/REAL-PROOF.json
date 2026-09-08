@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0",
+  "id": "CREATIVE_STUDIO_FIRST_REAL_GENERATION_REAL_PROOF",
+  "principio": "Cada estado traz PROVA ou BLOQUEIO. Nada aqui é declarado a partir de HTTP 200, de jsdom ou de um teste com dublê. Prova real e prova hermética estão separadas de propósito.",
+  "medido_em": "2026-09-07",
+  "head": "059d903ac7f1eaa4fb8c14d9b83f33892933691f",
+
+  "estados": {
+    "OFFICIAL_SCHEMA_VERIFIED": {
+      "veredito": "BLOQUEADO",
+      "bloqueio": "Não existe caminho de SQL provisionado para database.agenciavolc.com.br neste ambiente. DDL exige psql; o host publica apenas HTTPS, o PostgREST não executa SQL arbitrário e não há RPC que o faça.",
+      "o_que_foi_realmente_medido": {
+        "metodo": "GET https://database.agenciavolc.com.br/rest/v1/ com service_role, somente leitura",
+        "http": 200,
+        "tabelas_e_views_expostas": 109,
+        "rpcs": 92,
+        "criativo_agente_operacao_run_decisao_expostas": false,
+        "v11_01_e_v11_02_presentes": true,
+        "portas": { "5432": "fechada/filtrada", "6543": "fechada/filtrada", "443": "aberta" }
+      },
+      "limite_da_afirmacao": "Ausência no catálogo do PostgREST é evidência FORTE de ausência física — pelo ACHADO H, toda tabela nova em public nasce concedida e apareceria — mas NÃO é prova. Só um catálogo por pg_catalog/information_schema decide.",
+      "prova_disponivel_hoje": "Ciclo completo apply/uso/segurança/integridade/ponte/rollback/reapply em PostgreSQL DESCARTÁVEL, sobre os arquivos com sha256 conferido: PROVA OK. Ensaio do runbook oficial no mesmo tipo de cluster: ENSAIO OK.",
+      "nada_aplicado_no_oficial": true,
+      "desbloqueio": "operador exporta DATABASE_URL localmente; depois `./scripts/aplicar-assistente-criativo-oficial.sh --conferir` e, se o catálogo confirmar, `--aplicar`"
+    },
+
+    "REAL_STRATEGY_VERIFIED": {
+      "veredito": "BLOQUEADO",
+      "bloqueio": "Sem as tabelas do CP1, o PRIMEIRO ato da jornada — POST /operacoes — falha ao inserir. Nenhuma estratégia real pôde ser gerada.",
+      "o_que_foi_provado": {
+        "modelo": "gemini-3.8-flash",
+        "prova": "ListModels (GET /v1beta/models) HTTP 200; o literal está entre os 55 modelos servidos",
+        "custo_desta_prova": "zero — ListModels não gera token de saída",
+        "credencial": "GEMINI_API_KEY presente e aceita pelo provedor",
+        "importancia": "derruba a suspeita levantada na auditoria de que o id pudesse não ser servido e estivesse sendo rebaixado em silêncio"
+      },
+      "o_que_continua_sem_prova": "nenhuma chamada de GERAÇÃO foi feita a este modelo nesta rodada",
+      "endurecimento_relacionado": "o recibo passou a gravar `pedido→servido` quando o provedor informa modelVersion divergente; antes um rebaixamento silencioso era indetectável"
+    },
+
+    "REAL_IMAGE_GENERATION_VERIFIED": {
+      "veredito": "NAO_EXECUTADA",
+      "motivo": "depende do CP1 e de autorização nominal do operador com modelo, quantidade e teto",
+      "o_que_foi_provado": {
+        "modelo": "gemini-3.1-flash-image",
+        "prova": "ListModels HTTP 200; o literal está entre os modelos servidos",
+        "motor": "MotorGeminiImagem, singleton por processo, endpoint v1beta :generateContent com imageConfig.aspectRatio",
+        "preco_de_referencia_usd_por_imagem": 0.039,
+        "natureza_do_preco": "tabela de referência do provedor, NÃO fatura; custo_usd é gravado como null, nunca zero inventado"
+      },
+      "controle_de_gasto_implementado_e_testado": {
+        "exige": ["modelo", "total_de_renders", "teto_custo_usd"],
+        "reconferido_pelo_servidor": true,
+        "antes_do_primeiro_job": true,
+        "testes": "8 testes cobrindo as quatro recusas, o caminho autorizado e o reenvio idempotente — inclusive o PRIMEIRO teste do caminho que despacha, que antes não tinha cobertura nenhuma"
+      },
+      "desconhecido": "se a GEMINI_API_KEY carrega direito de geração de IMAGEM, e não só de texto — ListModels não responde isso; só a primeira chamada real responde"
+    },
+
+    "ASSET_PERSISTENCE_VERIFIED": {
+      "veredito": "PARCIAL",
+      "funciona": "ArmazenamentoLocal com leitura de volta verificada; hash dos bytes, MIME e dimensões medidos; linhagem peça→job registrada pela ponte append-only da v11_07",
+      "bloqueio_real": {
+        "storage_privado_oficial": "NÃO EXISTE",
+        "prova": "GET https://database.agenciavolc.com.br/storage/v1/bucket com service_role → HTTP 200, lista vazia, 0 buckets",
+        "medido_em": "2026-09-07",
+        "consequencia": "o adaptador ArmazenamentoSupabase está implementado e testado contra transporte falso, mas continua DESARMADO; não há destino durável remoto para os bytes"
+      },
+      "lacunas_de_schema_nao_fechadas": [
+        "criativo_master não tem coluna de custo",
+        "criativo_master e criativo_rendition não têm owner_id/tenant_id próprios — a posse é herdada do job",
+        "o estado de verificação de storage não é persistido"
+      ],
+      "nao_foi_feito": "nenhuma imagem foi produzida nesta rodada, então nenhum asset real foi persistido"
+    },
+
+    "RELOAD_RECOVERY_VERIFIED": {
+      "veredito": "IMPLEMENTADO_E_PROVADO_POR_TESTE",
+      "nao_provado": "ponta a ponta contra o banco oficial — depende do CP1",
+      "provas_hermeticas": {
+        "backend": "6 testes: projeção das decisões, reprovação posterior prevalecendo, conteúdo mudado NÃO herdando aprovação, caminho sumido do lote, run não concluída fora de aprovacoes_validas, e operação de outro dono devolvendo 404",
+        "frontend": "2 testes: a aprovação vem do servidor sem nenhum clique na sessão, e sem aprovação válida a produção declara que não há o que produzir"
+      },
+      "defeito_material_corrigido": "a aprovação era conferida só pelo CAMINHO; como o caminho endereça por ref e a ref sobrevive ao refinamento, uma peça reescrita continuava aprovada e liberava o botão que gasta",
+      "reinicio_do_processo": {
+        "medido": true,
+        "prova": "o 8010 foi efetivamente reiniciado nesta rodada; /health respondeu ok com startup_reconciliation=DISABLED, a rota do agente respondeu 401 sem sessão e nenhuma geração foi disparada pela subida"
+      }
+    },
+
+    "META_SUPPLY_HANDOFF_READY": {
+      "veredito": "NAO_PRONTO",
+      "lacunas_concretas": [
+        "uma imagem gerada não tem image_hash da Meta, então não tem asset_ref metaasset_ e não aparece no seletor de ativos da campanha",
+        "não há chamador de interface para a rota que registra mídia na conta",
+        "a liberação de upload é por conta e nenhuma variável META_* existe em nenhum arquivo de ambiente desta worktree",
+        "um master gerado não carrega avaliação de política de nenhum tipo — nem bloqueada",
+        "nada liga criativo_master de volta à referência metaasset_ para seleção posterior"
+      ],
+      "o_que_esta_preservado_para_o_futuro": "linhagem (creative_ref, group_ref, copy_ref, state_ref, fato_refs, rule_refs), identidade estável e bytes com hash medido",
+      "separacao_mantida": "elegibilidade e política são atos separados da geração; gerar imagem não aprova para mídia paga"
+    },
+
+    "META_PUBLICATION_NOT_EXECUTED": {
+      "veredito": "CONFIRMADO",
+      "provas": [
+        "backend/app/criativo não importa nenhum módulo de app.trafego nem cliente graph.facebook/googleads",
+        "nenhuma variável META_* existe em nenhum arquivo de ambiente desta worktree, então nenhuma chamada Meta é possível a partir deste ambiente",
+        "o trilho de persistência Meta continua inteiramente não aplicado no banco oficial",
+        "os testes de frontend contam as chamadas e provam que montar, recarregar, listar e reabrir emitem apenas GET"
+      ],
+      "nenhum_upload_validate_create_ou_activate": true
+    }
+  },
+
+  "custo_observado": {
+    "geracao": "US$ 0,00 — nenhuma chamada de geração foi feita a nenhum provedor",
+    "leitura": "duas leituras somente-catálogo (ListModels do Gemini e OpenAPI/Storage do Supabase), sem token de saída e sem escrita"
+  },
+
+  "nao_declarado": [
+    "aprovação visual — a extensão de navegador não conectou nesta sessão",
+    "existência física das tabelas da v11_05 no banco oficial",
+    "direito de geração de imagem da credencial",
+    "qualquer afirmação de que a frente Meta esteja concluída"
+  ]
+}

@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T20:16:53-03:00",
+  "generated_at": "2026-09-07T21:04:48-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 710,
-    "markdown": 519,
+    "files": 711,
+    "markdown": 520,
     "sql": 191,
     "tracked": 710,
-    "untracked": 0,
+    "untracked": 1,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 367,
+      "documentation": 368,
       "generated": 2,
       "module-guide": 39,
       "product-document": 23,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22511,
       "lines": 301,
-      "sha256": "f10c165f56183c8c9c824673a4e553530f99cedd2cb0df00ed1f84b3298ce8a4",
+      "sha256": "81b261ff7d16c6994d0d9141b4ee71878705924908bc56fc6d9aaaa29ad3e0fb",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1983,13 +1983,25 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/creative-studio-first-real-generation-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 10741,
+      "lines": 197,
+      "sha256": "d2e6b32217ba34ae501c1f2be443fa647aba70dcefa9c531284e5cb7e1ea03f9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/creative-studio-visual-correction-v1/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 2621,
-      "lines": 46,
-      "sha256": "6567646d0d3a480e79e5164ac77e22f95c971bb6e4dd0ed874cf9432b0dfb45d",
+      "bytes": 2854,
+      "lines": 49,
+      "sha256": "03186eb58beb696edf7ca06a70fc368492f7707a68523b82b346a24684268b74",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

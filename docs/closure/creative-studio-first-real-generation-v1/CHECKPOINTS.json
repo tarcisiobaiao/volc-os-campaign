@@ -1,0 +1,187 @@
+{
+  "schema_version": "1.0",
+  "id": "CREATIVE_STUDIO_FIRST_REAL_GENERATION_V1",
+  "branch": "execution/volc-os-operacao-80-20",
+  "base": "83ca75ac2a33f010d9d87241da712e1e2431c0de",
+  "head": "059d903ac7f1eaa4fb8c14d9b83f33892933691f",
+  "worktree": "/private/tmp/volc-os-operacao-80-20",
+  "url_local": "http://localhost:8080/trafego/meta/assistente-criativo?view=briefing",
+  "backend_local": "http://127.0.0.1:8010",
+  "push_ou_deploy": false,
+  "commits": [
+    {
+      "sha": "46e44bc",
+      "titulo": "feat(creative-studio): retomada da revisão e autorização explícita do gasto"
+    },
+    {
+      "sha": "53c49e4",
+      "titulo": "feat(migrations): runbook guardado da janela oficial v11_05+v11_06+v11_07"
+    },
+    {
+      "sha": "059d903",
+      "titulo": "fix(creative-studio): defeitos que a primeira geração real encontraria"
+    }
+  ],
+
+  "CP0_INVENTARIO_FOCAL": {
+    "estado": "CONCLUIDO",
+    "modelo_de_estrategia": "gemini-3.8-flash",
+    "modelo_de_imagem": "gemini-3.1-flash-image",
+    "provedor": "Google Generative Language (v1beta :generateContent)",
+    "prova_dos_modelos": "GET /v1beta/models (ListModels) respondeu 200 com 55 modelos; ambos os literais estão na lista. ListModels não gera token de saída — custo de geração zero.",
+    "gpt_image_2": {
+      "configurado_neste_produto": false,
+      "onde_aparece": [
+        "docstring de services/creative_engine/motores/gemini_imagem.py, explicando por que o caminho OpenAI não foi escolhido",
+        "cópia quarentenada services/creative-studio/upstream, cujo main.py levanta UPSTREAM_REFERENCE_ONLY e que nada sob backend/app ou src importa"
+      ],
+      "conclusao": "Nenhuma imagem do Estúdio pode ser produzida por ele hoje. Modelo não foi substituído por conta própria."
+    },
+    "formatos_ponta_a_ponta": {
+      "1x1": "1:1 / 1080x1080",
+      "4x5": "4:5 / 1080x1350",
+      "9x16": "9:16 / 1080x1920"
+    },
+    "tetos": {
+      "MAX_VARIACOES_estrategico": 15,
+      "MAX_RENDERS_POR_PEDIDO": 45,
+      "onde_e_conferido": "antes de qualquer insert e antes de qualquer chamada ao provedor"
+    },
+    "credenciais_por_presenca": [
+      { "nome": "GEMINI_API_KEY", "presente": true, "prova": "ListModels HTTP 200" },
+      { "nome": "SUPABASE_SERVICE_ROLE_KEY", "presente": true, "prova": "OpenAPI do PostgREST HTTP 200" },
+      { "nome": "OPENAI_API_KEY", "presente": true, "observacao": "não usada por nenhum motor de imagem alcançável" },
+      { "nome": "DATABASE_URL", "presente": false, "consequencia": "bloqueia CP1" },
+      { "nome": "META_*", "presente": false, "consequencia": "nenhuma chamada Meta é possível deste ambiente" }
+    ],
+    "ciclo_de_vida_do_processo": "Sem worker, sem reaper, sem cron, sem lifespan de reconciliação. startup_reconciliation=DISABLED medido no /health após o reinício. QUEUED existe no schema e nada o consome sozinho: quem executa é um POST humano.",
+    "storage_atual": "ArmazenamentoLocal em ~/.volc-os/criativos. ArmazenamentoSupabase existe, é testado contra transporte falso e está DESARMADO."
+  },
+
+  "CP1_MIGRATIONS_OFICIAIS": {
+    "estado": "BLOQUEADO_AGUARDANDO_ACESSO_SQL",
+    "verificar_autoridade_supabase": "OK — https://database.agenciavolc.com.br",
+    "conjunto_exato_desta_frente": [
+      { "path": "supabase/migrations/v11_05_criativo_agente_meta.sql", "sha256": "73bbe1f5f7ed1f6f83a11858b4ff6f195cf5784c897f9725b763f63de88130a9" },
+      { "path": "supabase/migrations/v11_06_criativo_agente_endurecimento.sql", "sha256": "cfddb4e8aa0f8d2286974c70b66a5e9b98877b455cca7054e5e7c9cfe773c233" },
+      { "path": "supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql", "sha256": "594d7fa28e6d9ac9e105af8e53494788dce671115f63953f6bc5c6c6c01a192c" }
+    ],
+    "hashes_conferidos_contra_o_manifesto_cp3": "os 7 arquivos (3 de aplicação + 3 de rollback + o script de prova) batem byte a byte",
+    "ordem": "v11_05 -> v11_06 -> v11_07, na mesma execução, sem pausa entre 05 e 06",
+    "por_que_sem_pausa": "a v11_05 concede insert/update a authenticated; entre ela e a v11_06 existe uma janela em que um cliente PostgREST fabrica run COMPLETED e decisão APROVADO sem passar pelo backend",
+    "estado_oficial_medido_hoje": {
+      "metodo": "PostgREST autenticado com service_role, somente leitura",
+      "tabelas_expostas": 109,
+      "rpcs": 92,
+      "rpc_de_sql_arbitrario": false,
+      "aplicadas": ["v11_01 (criativo_job, criativo_master, criativo_rendition, criativo_pacote, ...)", "v11_02 (parque)"],
+      "ausentes": ["v11_03 (criativo_render_*)", "v11_04 (criativo_importacao_*)", "v11_05 (criativo_agente_*)"],
+      "forca_da_evidencia": "FORTE, NAO PROVA. O ACHADO H (pg_default_acl de public concede em toda tabela nova) implica que uma tabela criada em public apareceria no catálogo do PostgREST. Só um catálogo por pg_catalog decide."
+    },
+    "por_que_a_janela_nao_abriu": {
+      "porta_5432": "fechada/filtrada",
+      "porta_6543": "fechada/filtrada",
+      "https": "responde (401 sem chave), mas PostgREST não executa DDL",
+      "rpc_sql": "não existe",
+      "DATABASE_URL": "ausente em todos os arquivos de ambiente",
+      "ssh": "porta 22 aberta e known_hosts tem entradas, mas a política de permissão desta sessão bloqueou o teste; não foi contornada"
+    },
+    "prova_descartavel": {
+      "script": "scripts/provar-ciclo-assistente-criativo.sh",
+      "resultado": "PROVA OK — apply, uso, segurança, integridade, ponte, rollback, reapply",
+      "onde": "cluster PostgreSQL criado por initdb e destruído no trap EXIT; nunca tocou o oficial"
+    },
+    "runbook": {
+      "path": "scripts/aplicar-assistente-criativo-oficial.sh",
+      "ensaio": "ENSAIO OK em cluster descartável: conferir, aplicar e reaplicar",
+      "defeito_que_o_ensaio_encontrou": "a v11_06 é idempotente sozinha mas NÃO depois da v11_07: a ponte cria FKs compostas sobre as mesmas chaves únicas que a v11_06 derruba e recria, e o drop bate em 'other objects depend on it'. O runbook passou a medir as 5 invariantes da v11_06 e a pular a migration quando as cinco valem; meio a meio ele PARA."
+    },
+    "nada_foi_aplicado_no_oficial": true
+  },
+
+  "CP2_PERSISTENCIA_E_RETOMADA": {
+    "estado": "IMPLEMENTADO_E_PROVADO_POR_TESTE",
+    "nao_provado": "ponta a ponta contra o banco oficial — depende do CP1",
+    "lacuna_conhecida_fechada": "GET /operacoes/{ref} passou a projetar `decisoes` (a efetiva de cada caminho) e `aprovacoes_validas` por run",
+    "autoridade_no_servidor": [
+      "decisão ligada à peça E ao conteúdo aprovado: a aprovação só vale se o conteúdo no caminho ainda casar com snapshot_sha256",
+      "reprovação posterior prevalece (última decisão por caminho)",
+      "mudança de conteúdo NÃO herda aprovação — era um defeito real, agora coberto por teste",
+      "aprovação cujo caminho sumiu do lote não conta",
+      "consultas confinadas por owner_id; operação de outro dono devolve 404"
+    ],
+    "outras_confirmacoes": [
+      "montar/recarregar/listar/reconectar não dispara geração — provado por teste que conta as chamadas",
+      "reinício do 8010 não perde estado nem gera nada: startup_reconciliation=DISABLED, sem worker",
+      "plano mostrado corresponde à seleção atual: mudar seleção ou formato invalida o plano e derruba a confirmação de gasto",
+      "resposta assíncrona antiga não contamina outra operação: guarda por projetoAtivo.current"
+    ],
+    "nao_ha_base64_no_historico_do_agente": true
+  },
+
+  "CP3_ASSETS_E_PACK": {
+    "estado": "PARCIAL",
+    "reuso_canonico": "jobs/renditions/masters/pacote do parque existente; a ponte v11_07 é append-only e única por (run_ref, creative_ref)",
+    "implementado_nesta_rodada": [
+      "galeria sobrevive à leitura parcial: allSettled, estado próprio para 'N de M não puderam ser lidos', e o laço continua tentando em vez de morrer no primeiro erro",
+      "falha em um formato não apaga os formatos concluídos",
+      "download deixou de ser bloqueado quando o MIME medido é null"
+    ],
+    "lacunas_reais_nao_fechadas": [
+      "storage privado oficial NÃO existe: GET /storage/v1/bucket devolveu 200 com 0 buckets, medido hoje",
+      "não há coluna de custo por asset em criativo_master",
+      "não há owner_id/tenant_id nas linhas de asset — a posse é herdada do job",
+      "o estado de verificação de storage não é persistido"
+    ]
+  },
+
+  "CP4_PRIMEIRA_GERACAO": {
+    "estado": "NAO_EXECUTADA",
+    "motivo": "depende do CP1 (schema) e de uma autorização nominal do operador",
+    "controle_implementado": "a rota que gasta exige `autorizacao {modelo, total_de_renders, teto_custo_usd}` e reconfere os três contra o que o servidor mediu; sem ela, 409 com nada_foi_criado",
+    "recusas_tipadas": [
+      "CRIATIVO_STUDIO_SEM_AUTORIZACAO_DE_GASTO",
+      "CRIATIVO_STUDIO_MODELO_DIVERGENTE",
+      "CRIATIVO_STUDIO_TOTAL_DIVERGENTE",
+      "CRIATIVO_STUDIO_TETO_DE_CUSTO"
+    ],
+    "teste_inicial_recomendado": {
+      "pecas": 1,
+      "formatos": 1,
+      "total_de_renders": 1,
+      "custo_estimado_usd": 0.039,
+      "teto_sugerido_usd": 0.04,
+      "natureza_do_teto": "ESTIMATIVA de tabela de referência. O provedor cobra por token e não devolve o preço da chamada. O limite exato que o servidor impõe é a CONTAGEM de renders."
+    },
+    "politica_de_retry": "reexecutar uma run COMPLETED devolve o lote sem gerar de novo; RUNNING e FAILED devolvem 409. Reenviar o mesmo pedido de geração não paga duas vezes: a ponte é única por (run_ref, creative_ref) e responde antes do executor.",
+    "ambiguidade": "falha do provedor é registrada com o resultado exato e não vira retry pago automático"
+  },
+
+  "UX": {
+    "preservado": [
+      "composição centralizada inspirada no Aprova",
+      "tokens e identidade VOLC",
+      "formatos visuais e quantidade por slider",
+      "separação clara entre estratégia, produção e galeria",
+      "campos técnicos em detalhe secundário"
+    ],
+    "acrescentado": "bloco de autorização de gasto na Produção: teto em US$, frase de confirmação que nomeia o modelo e a quantidade, e botão travado até a confirmação",
+    "inspecao_visual_autenticada": {
+      "executada": false,
+      "motivo": "a extensão de navegador não conectou nesta sessão (Browser extension is not connected)",
+      "declaracao": "nenhuma aprovação visual é afirmada a partir de HTTP 200 ou de jsdom"
+    }
+  },
+
+  "VALIDACAO": {
+    "backend": "855 passed, 59 skipped (suítes criativa + Pautador)",
+    "backend_focal_desta_frente": "51 passed (17 novos)",
+    "frontend_focal": "31 passed (base 26)",
+    "build_vite": "OK",
+    "typescript_tsconfig_app": { "erros": 76, "baseline": 76, "nesta_frente": 0 },
+    "sql_descartavel": "PROVA OK",
+    "ensaio_do_runbook": "ENSAIO OK",
+    "grafo_check": "current=true, insumos idênticos",
+    "scanner_de_segredos_no_delta": "0 ocorrências"
+  }
+}
