@@ -22,6 +22,7 @@ import { BiddingActionBox } from "@/components/campaign/BiddingActionBox";
 import { OtimizacaoBox } from "@/components/campaign/OtimizacaoBox";
 import { DisplayROITable } from "@/components/campaign/DisplayROITable";
 import { PlacementNegationCard } from "@/components/campaign/PlacementNegationCard";
+import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
 
 export default function CampaignDetailDashboard() {
 
@@ -303,12 +304,13 @@ export default function CampaignDetailDashboard() {
   if (!campaignId) {
     return (
       <Layout>
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">Erro: ID da campanha não fornecido</h1>
-          <Button onClick={() => navigate("/dashboard/campaigns")} className="mt-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar às Campanhas
-          </Button>
+        <div className="page-workspace">
+          <EstadoOperacional
+            tom="erro"
+            titulo="Campanha sem identificador"
+            explicacao="Esta rota precisa do ID da campanha na URL."
+            acao={{ rotulo: "Voltar às campanhas", onClick: () => navigate("/settings/campaigns") }}
+          />
         </div>
       </Layout>
     );
@@ -330,12 +332,13 @@ export default function CampaignDetailDashboard() {
   if (error) {
     return (
       <Layout>
-        <div className="p-6 text-center">
-          <h1 className="text-2xl font-bold text-destructive">Erro ao carregar dados</h1>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Tentar novamente
-          </Button>
+        <div className="page-workspace">
+          <EstadoOperacional
+            tom="erro"
+            titulo="A leitura da campanha falhou"
+            explicacao={error}
+            acao={{ rotulo: "Tentar ler de novo", onClick: () => window.location.reload() }}
+          />
         </div>
       </Layout>
     );
@@ -345,15 +348,13 @@ export default function CampaignDetailDashboard() {
   if (!campaignData || !campaignData.campaignMetrics) {
     return (
       <Layout>
-        <div className="p-6 text-center">
-          <h1 className="text-2xl font-bold text-muted-foreground">Campanha não encontrada</h1>
-          <p className="text-muted-foreground mb-4">
-            A campanha com ID {campaignId} não foi encontrada no banco de dados.
-          </p>
-          <Button onClick={() => navigate("/dashboard/campaigns")} className="mt-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar às Campanhas
-          </Button>
+        <div className="page-workspace">
+          <EstadoOperacional
+            tom="vazio"
+            titulo="Campanha não encontrada"
+            explicacao={`A campanha ${campaignId} não foi encontrada na leitura.`}
+            acao={{ rotulo: "Voltar às campanhas", onClick: () => navigate("/settings/campaigns") }}
+          />
         </div>
       </Layout>
     );

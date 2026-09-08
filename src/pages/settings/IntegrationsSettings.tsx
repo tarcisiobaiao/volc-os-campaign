@@ -53,7 +53,9 @@ export default function IntegrationsSettings() {
       <div className={`${isMobile ? "p-4" : "p-6"} space-y-6 max-w-5xl mx-auto`}>
         <div className="reveal" style={{ ["--i" as any]: 0 }}>
           <div className="kicker mb-2 flex items-center gap-2">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Settings className="h-3 w-3" />
+            </span>
             Integrações
           </div>
           <h1

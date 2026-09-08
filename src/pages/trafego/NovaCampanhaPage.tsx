@@ -862,16 +862,16 @@ const NovaCampanhaPage: React.FC = () => {
                 <span className="bancada-command-icon">
                   <Rocket className="h-3.5 w-3.5" aria-hidden />
                 </span>
-                <span className="kicker text-slate-400">Missão de lançamento · {canal}</span>
+                <span className="kicker">Missão de lançamento · {canal}</span>
               </div>
-              <h1 className="mt-2 max-w-[22ch] font-display text-[2rem] font-bold leading-[1.02] tracking-[-0.035em] text-white text-balance md:text-[2.75rem]">
+              <h1 className="mt-2 max-w-[22ch] font-display text-[2rem] font-bold leading-[1.02] tracking-[-0.035em] text-foreground text-balance md:text-[2.75rem]">
                 {titulo}
               </h1>
             </div>
             <div className="bancada-safety-contract">
               <span className="bancada-safety-dot" aria-hidden />
               <div>
-                <p className="font-semibold text-white">Criação segura</p>
+                <p className="font-semibold text-foreground">Criação segura</p>
                 <p>A campanha nasce pausada</p>
               </div>
             </div>

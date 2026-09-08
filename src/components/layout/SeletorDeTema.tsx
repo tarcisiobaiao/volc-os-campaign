@@ -83,7 +83,13 @@ export const SeletorDeTema: React.FC<{ className?: string }> = ({ className }) =
           return (
             <DropdownMenuItem
               key={o.valor}
-              onSelect={() => setTheme(o.valor)}
+              onSelect={() => {
+                document.documentElement.dataset.themeSwitching = "true";
+                setTheme(o.valor);
+                window.setTimeout(() => {
+                  delete document.documentElement.dataset.themeSwitching;
+                }, 80);
+              }}
               className="gap-2 text-[13px]"
               // Estado não depende só de cor: o item ativo é anunciado.
               aria-current={ativo ? 'true' : undefined}

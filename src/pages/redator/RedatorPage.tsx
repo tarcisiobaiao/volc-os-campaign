@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { PenLine, RefreshCw, SlidersHorizontal } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
+import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DispararRedatorDialog } from '@/components/pautador-pro/entity/DispararRedatorDialog';
@@ -144,10 +145,14 @@ const RedatorPage: React.FC = () => {
         )}
 
         {erro && (
-          <p className="max-w-[68ch] text-sm leading-relaxed text-destructive">{erro}</p>
+          <EstadoOperacional
+            tom="erro"
+            titulo="A leitura do quadro falhou"
+            explicacao={erro}
+          />
         )}
         {carregando && !quadro && (
-          <p className="text-sm text-muted-foreground">Lendo o quadro…</p>
+          <p className="text-sm text-muted-foreground" aria-live="polite">Lendo o quadro</p>
         )}
 
         {quadro && (

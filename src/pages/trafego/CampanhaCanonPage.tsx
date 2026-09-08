@@ -161,16 +161,16 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
             <SeloDePresenca presenca={c.presenca} />
           </div>
         </div>
-        <h1 className="mt-4 max-w-[26ch] text-balance font-display text-2xl font-bold tracking-[-0.03em] text-white md:text-4xl">
+        <h1 className="mt-4 max-w-[26ch] text-balance font-display text-2xl font-bold tracking-[-0.03em] text-foreground md:text-4xl">
           {c.nome}
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <IdentidadeDeCanal rede="google" canal={c.canal} />
-          <span className="text-[12px] text-slate-300">
+          <span className="text-[12px] text-muted-foreground">
             Google Ads · conta {identidade.conta_externa ?? conta.customer_id ?? AUSENTE}
           </span>
           {palavraDaVeiculacao(c.veiculacao) && (
-            <span className="text-[12px] font-medium text-slate-200">
+            <span className="text-[12px] font-medium text-foreground">
               {palavraDaVeiculacao(c.veiculacao)}
             </span>
           )}
@@ -178,7 +178,7 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
 
         {/* Os identificadores ficam no cabeçalho, em linha, porque são
             resposta de conferência — não decisão. */}
-        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-slate-300">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted-foreground">
           <IdentificadorEmLinha rotulo="identificador interno" valor={identidade.volc_campaign_id} />
           <IdentificadorEmLinha rotulo="id no Google" valor={identidade.id_externo} />
           <IdentificadorEmLinha

@@ -249,6 +249,65 @@
             "risk:gates_nao_versionados"
           ],
           "updated_at": "2026-08-30"
+        },
+        {
+          "id": "P01-T11",
+          "title": "Design System V2: control room operacional no frontend local",
+          "status": "done",
+          "order": 11,
+          "priority": 2,
+          "owner": "design-system-volc",
+          "explanation": "Substitui a autoridade visual institucional (Inter, canvas quase branco, navy tímido) por um sistema mineral de control room, com tokens reais, dark mode completo e estados operacionais honestos. Não altera contratos HTTP, rotas, payloads, backend nem integrações.",
+          "proof": "Worktree execution/volc-os-operacao-80-20 a partir de c08bdf5. PRODUCT.md e design.md V2 coerentes; tokens em src/index.css e Tailwind; primitivos, shell e rotas do inventário herdaram o sistema. Gates: 84 testes focais verdes, npm run build verde, git diff --check limpo, scanner de segredos limpo. npm test: 1873 passed, 57 failed herdados (QG/Router/timeouts/packs), sem mascarar. QA visual localhost sem sessão: login identidade noturna 375–1440; 404 mineral e carvão 375–1440; /trafego?rede=meta redireciona a /login. Shell autenticado não fotografado (proibido puxar dados externos). Zero push, deploy, Meta, Google, Supabase, n8n ou geração paga.",
+          "acceptance": [
+            "PRODUCT.md e design.md descrevem o mesmo produto sem contradição",
+            "Tokens semânticos estão no CSS e os componentes não usam hex solto",
+            "Light mode tem canvas, card e tinta com hierarquia perceptível",
+            "Dark mode é interpretação completa, não inversão do navy",
+            "Estados de erro, vazio, bloqueado e demo permanecem distintos",
+            "Rotas, query params, payloads e regras de aprovação não mudaram"
+          ],
+          "checklist": [
+            {
+              "id": "P01-T11-C01",
+              "description": "Reescrever PRODUCT.md e a autoridade visual V2",
+              "done": true,
+              "proof": "PRODUCT.md, design.md, docs/DESIGN.md, .impeccable/design.json"
+            },
+            {
+              "id": "P01-T11-C02",
+              "description": "Implementar tokens, primitivos e estados nas rotas",
+              "done": true,
+              "proof": "src/index.css, componentes/ui, componentes/sistema, páginas operacionais"
+            },
+            {
+              "id": "P01-T11-C03",
+              "description": "Provar build, testes focais e QA visual local",
+              "done": true,
+              "proof": "docs/design/REDESIGN-V2-QA.md"
+            }
+          ],
+          "links": [
+            {
+              "kind": "path",
+              "label": "Auditoria V2",
+              "value": "docs/design/REDESIGN-V2-AUDIT.md"
+            },
+            {
+              "kind": "path",
+              "label": "Cobertura de rotas V2",
+              "value": "docs/design/REDESIGN-V2-ROUTE-COVERAGE.md"
+            },
+            {
+              "kind": "path",
+              "label": "QA V2",
+              "value": "docs/design/REDESIGN-V2-QA.md"
+            }
+          ],
+          "graph_nodes": [
+            "cap_portfolio"
+          ],
+          "updated_at": "2026-09-08"
         }
       ]
     },

@@ -255,8 +255,8 @@ export const Navigation: React.FC<NavigationProps> = ({
         "group w-full justify-start gap-3 rounded-md transition-colors duration-150 relative overflow-hidden active:scale-100",
         isMobile ? "h-14" : "h-12",
         isActive
-          ? "bg-primary/[0.05] text-primary font-medium hover:bg-primary/[0.08] hover:text-primary"
-          : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
+          ? "bg-primary/12 text-primary font-semibold hover:bg-primary/16 hover:text-primary"
+          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         isCollapsed && !isMobile && "justify-center px-2"
       )}
     >
@@ -361,7 +361,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             onClick={() => openCommandPalette()}
             title="Buscar (⌘K)"
             className={cn(
-              "w-full flex items-center gap-2 h-10 rounded-md border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-primary/30 transition-colors text-sm",
+              "w-full flex items-center gap-2 h-11 rounded-md border border-sidebar-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground hover:border-primary/40 transition-[background-color,border-color,color] duration-150 text-sm",
               isCollapsed && !isMobile ? "justify-center px-2" : "px-3"
             )}
           >
@@ -443,7 +443,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   {user?.email || "Usuário"}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Online
+                  {userProfile?.role === "ADMIN" ? "Administrador" : userProfile?.role === "OPERATOR" ? "Operador" : "Conta"}
                 </div>
               </div>
             </div>
@@ -540,7 +540,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           ref={drawerRef}
           tabIndex={-1}
           className={cn(
-            "fixed top-0 left-0 h-full w-80 max-w-[88vw] bg-gradient-to-b from-card via-card to-muted/30 border-r border-border flex flex-col shadow-2xl z-50 transition-transform duration-200 ease-out motion-reduce:transition-none",
+            "fixed top-0 left-0 z-[50] flex h-full w-80 max-w-[88vw] flex-col border-r border-sidebar-border bg-sidebar shadow-elevated transition-transform duration-[280ms] ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none",
             isMobileOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
@@ -554,7 +554,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <div
       className={cn(
-        "relative bg-gradient-to-b from-card via-card to-muted/30 border-r border-border transition-[width] duration-200 ease-out flex flex-col shadow-lg",
+        "relative flex flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]",
         isCollapsed ? "w-16" : "w-80"
       )}
     >

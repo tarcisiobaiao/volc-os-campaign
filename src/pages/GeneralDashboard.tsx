@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SimpleDateFilter } from "@/components/dashboard/SimpleDateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
+import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -655,16 +656,14 @@ export default function GeneralDashboard() {
   if (error) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-screen p-8">
-          <div className="text-center">
-            <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Erro ao carregar dados</h1>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={handleRefresh} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tentar novamente
-            </Button>
-          </div>
+        <div className="page-workspace flex min-h-[60vh] items-center">
+          <EstadoOperacional
+            className="w-full"
+            tom="erro"
+            titulo="A leitura do portfólio falhou"
+            explicacao={error}
+            acao={{ rotulo: "Tentar ler de novo", onClick: handleRefresh }}
+          />
         </div>
       </Layout>
     );
@@ -679,8 +678,7 @@ export default function GeneralDashboard() {
           <div className="flex items-start justify-between gap-4 reveal" style={{ ['--i' as any]: 0 }}>
             <div className="flex-1 min-w-0">
               <div className="kicker mb-2 flex items-center gap-2">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                Visão geral · Tempo real
+                Portfólio
               </div>
               <h1 className={`font-display font-bold tracking-tight leading-[1.05] ${isMobile ? 'text-[1.7rem]' : 'text-4xl'}`}>
                 Dashboard <span className="text-foreground">Geral</span>

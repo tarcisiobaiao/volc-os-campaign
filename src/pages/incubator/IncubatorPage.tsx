@@ -11,6 +11,7 @@ import { useIncubatorSites } from '@/hooks/incubator/useIncubatorSites';
 import { useIncubatorRealtime } from '@/hooks/incubator/useIncubatorRealtime';
 import { useTriggerPipeline } from '@/hooks/incubator/useTriggerPipeline';
 
+import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { KpiCards } from '@/components/incubator/dashboard/KpiCards';
 import { SiteGrid } from '@/components/incubator/dashboard/SiteGrid';
 import { KanbanBoard } from '@/components/incubator/kanban/KanbanBoard';
@@ -27,6 +28,7 @@ const IncubatorPage: React.FC = () => {
   const {
     sites,
     loading,
+    error,
     kpis,
     refresh,
     create,
@@ -107,8 +109,7 @@ const IncubatorPage: React.FC = () => {
         <div className="flex items-start justify-between flex-wrap gap-3 reveal" style={{ ['--i' as any]: 0 }}>
           <div>
             <div className="kicker mb-2 flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              Pipeline · AdSense
+              Pipeline
             </div>
             <h1 className="font-display font-bold tracking-tight leading-[1.05] text-3xl md:text-4xl">
               Incubadora de <span className="text-foreground">Sites</span>
@@ -151,6 +152,13 @@ const IncubatorPage: React.FC = () => {
               <div className="flex items-center justify-center py-16">
                 <LoadingSpinner />
               </div>
+            ) : error ? (
+              <EstadoOperacional
+                tom="erro"
+                titulo="A leitura da incubadora falhou"
+                explicacao={error}
+                acao={{ rotulo: "Tentar ler de novo", onClick: () => void refresh() }}
+              />
             ) : (
               <SiteGrid
                 sites={sites}
@@ -166,6 +174,13 @@ const IncubatorPage: React.FC = () => {
               <div className="flex items-center justify-center py-16">
                 <LoadingSpinner />
               </div>
+            ) : error ? (
+              <EstadoOperacional
+                tom="erro"
+                titulo="A leitura da incubadora falhou"
+                explicacao={error}
+                acao={{ rotulo: "Tentar ler de novo", onClick: () => void refresh() }}
+              />
             ) : (
               <KanbanBoard
                 sites={sites}

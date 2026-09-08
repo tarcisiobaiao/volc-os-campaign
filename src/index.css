@@ -3,50 +3,56 @@
 @tailwind utilities;
 
 /* =====================================================================
-   VOLC O.S. — Design System
-   "Exploding Ideas": canvas claro premium, aurora de assinatura com grão,
-   Space Grotesk (display/tech) + Inter (corpo/dados). Arestas técnicas,
-   profundidade por glow — não por sombra preta genérica.
-   Todas as cores em HSL. Os nomes de variável do shadcn são preservados
-   (todo componente existente herda o novo visual); os VALORES são VOLC.
+   VOLC OS — Design System V2
+   Control room editorial: canvas mineral, superfícies elevadas, teal
+   proprietário, Outfit + IBM Plex Sans + IBM Plex Mono.
+   Nomes shadcn preservados; valores são os tokens de design.md.
    ===================================================================== */
 
 @layer base {
   :root {
-    /* — Canvas & tinta — */
-    --background: 210 20% 96%;          /* #F3F5F7 */          /* off-white frio #F3F4F6 */
-    --foreground: 210 7% 11%;           /* #1A1C1E */          /* tinta grafite #1A1C1E */
+    --background: 214 16% 86%;          /* #D4DBE3 canvas mineral */
+    --foreground: 220 22% 10%;          /* #13171E */
 
-    --card: 210 25% 98%;                /* #FAFBFC — DESIGN.md proíbe branco puro no workspace */
-    --card-foreground: 220 14% 11%;
+    --card: 210 33% 97%;                /* #F4F7FA */
+    --card-foreground: 220 22% 10%;
 
-    --popover: 210 25% 98%;
-    --popover-foreground: 220 14% 11%;
+    --raised: 210 33% 99%;              /* #FBFCFE */
+    --raised-foreground: 220 22% 10%;
 
-    /* — Accent VOLC (deep-blue como workhorse, neon como glow) — */
-    --primary: 216 85% 34%;             /* #0D47A1 — a ÚNICA cor de ação padrão */
-    --primary-hover: 216 85% 27%;       /* #0A397F */
-    --primary-foreground: 210 40% 99%;
-    --primary-glow: 191 100% 50%;       /* neon-blue #00D4FF — só glow/hover */
+    --popover: 210 33% 99%;
+    --popover-foreground: 220 22% 10%;
 
-    --secondary: 220 14% 93%;
-    --secondary-foreground: 220 14% 16%;
+    --primary: 189 81% 21%;             /* #0A5461 teal VOLC */
+    --primary-hover: 189 80% 16%;       /* #083F49 */
+    --primary-foreground: 190 40% 97%;
+    --primary-glow: 191 100% 50%;
 
-    --muted: 210 31% 95%;               /* #EEF2F6 — superfície sutil */
-    /* Era 45% (#68717D). Passava sobre o canvas (4,52:1) e sobre o card (4,73:1)
-       e reprovava justamente sobre `--muted` (4,40:1) — que é o poço da aba
-       segmentada que o contrato torna obrigatório. O rótulo inativo de toda aba
-       do produto ficava abaixo do piso. A 42% dá 4,88:1 no poço.
+    --secondary: 214 16% 80%;           /* #C5CDD6 */
+    --secondary-foreground: 220 22% 10%;
 
-       Baixou mais um passo, para 40%, depois que o segundo lote migrou as
-       faixas de ROAS para o vocabulário semântico: os cartões passaram a ter
-       fundo TINGIDO (`bg-{token}/10`), e sobre esse leito o texto secundário
-       media 4,33:1. A 40% o pior leito de todo o produto — texto secundário
-       sobre tinte destrutivo no canvas — dá 4,66:1. */
-    --muted-foreground: 214 9% 40%;     /* #5D656F */
+    --muted: 214 16% 80%;               /* poço / grupo — distinto do canvas */
+    --muted-foreground: 214 16% 28%;    /* #3D4754 — 4,5:1+ no poço e no canvas */
 
-    --accent: 214 90% 34%;
-    --accent-foreground: 210 40% 99%;
+    --accent: 189 81% 21%;
+    --accent-foreground: 190 40% 97%;
+
+    --demo: 34 60% 26%;                 /* #6B4A1B demonstração */
+    --demo-foreground: 36 40% 96%;
+
+    --motion-press: 140ms;
+    --motion-menu: 200ms;
+    --motion-sheet: 280ms;
+    --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-move: cubic-bezier(0.25, 1, 0.5, 1);
+
+    --z-base: 0;
+    --z-sticky: 20;
+    --z-shell: 30;
+    --z-nav: 40;
+    --z-overlay: 50;
+    --z-modal: 60;
+    --z-toast: 70;
 
     /* — Cores semânticas de dado (ROAS/status/deltas) — */
     /* ⚠️ MEDIDO, não escolhido. O contrato manda o chip combinar glifo + PALAVRA,
@@ -114,43 +120,34 @@
       hsl(var(--aurora-purple)) 100%
     );
     --gradient-dashboard: var(--gradient-aurora);
-    --gradient-card: linear-gradient(160deg, hsl(0 0% 100%), hsl(220 24% 98%));
+    --gradient-card: linear-gradient(160deg, hsl(210 33% 99%), hsl(214 16% 94%));
 
-    /* — Profundidade: sombras TINGIDAS (frias), nunca preto puro — */
     --shadow-card:
-      0 1px 2px hsl(214 45% 22% / 0.04),
-      0 10px 30px -12px hsl(214 60% 28% / 0.14);
+      0 1px 2px hsl(220 22% 10% / 0.06),
+      0 12px 28px -14px hsl(214 40% 18% / 0.28);
+    --shadow-sticky: 0 4px 16px hsl(220 22% 10% / 0.10);
     --shadow-elevated:
-      0 2px 4px hsl(214 45% 22% / 0.05),
-      0 24px 48px -16px hsl(214 60% 28% / 0.20);
+      0 2px 6px hsl(220 22% 10% / 0.08),
+      0 18px 40px -16px hsl(214 40% 18% / 0.28);
+    --shadow-modal: 0 28px 64px hsl(220 22% 10% / 0.24);
     --shadow-dashboard: var(--shadow-card);
-    --shadow-glow: 0 0 44px -6px hsl(var(--primary-glow) / 0.35);
+    --shadow-glow: 0 0 36px -8px hsl(var(--primary) / 0.28);
 
-    /* — Bordas / inputs / foco — */
-    --border: 214 22% 87%;              /* #D8DEE6 */
-    /* A borda é o que identifica um campo de formulário, então ela cai sob o
-       piso de 3:1 da WCAG 1.4.11 — e media 1,28:1 contra o card. A 57% dá
-       3,10:1. Continua sendo um fio, não uma moldura: o que mudou é que agora
-       ele existe para quem não enxerga bem. */
-    --input: 220 15% 57%;               /* #818CA2 — 3,10:1 contra card e canvas */
-    /* O trilho do switch desligado. Era `--input`, e um token não pode servir
-       a dois papéis com requisitos opostos: a borda precisa ser escura para se
-       destacar do campo; o trilho desligado precisa ser claro para se
-       distinguir do ligado. Aqui o valor antigo de `--input` continua certo. */
-    --switch-off: 220 15% 86%;          /* #D6DAE1 — 6,08:1 contra o trilho ligado */
-    --ring: 216 85% 44%;
+    --border: 214 15% 65%;              /* #9AA6B4 — fio visível no canvas mineral */
+    --input: 214 14% 42%;               /* 3:1+ contra card */
+    --switch-off: 214 12% 72%;
+    --ring: 189 81% 28%;
 
-    --radius: 0.5rem;                   /* técnico mas não cortante */
+    --radius: 0.625rem;
 
-    /* — Sidebar — */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 12% 30%;
-    --sidebar-primary: 214 90% 34%;
-    --sidebar-primary-foreground: 210 40% 99%;
-    --sidebar-accent: 220 16% 95%;
-    --sidebar-accent-foreground: 214 90% 30%;
-    --sidebar-border: 220 15% 90%;
-    --sidebar-ring: 214 90% 44%;
+    --sidebar-background: 214 16% 78%;  /* chrome mineral, abaixo do canvas */
+    --sidebar-foreground: 220 22% 12%;
+    --sidebar-primary: 189 81% 21%;
+    --sidebar-primary-foreground: 190 40% 97%;
+    --sidebar-accent: 214 18% 84%;
+    --sidebar-accent-foreground: 189 81% 18%;
+    --sidebar-border: 214 14% 62%;
+    --sidebar-ring: 189 81% 28%;
 
     /* — Séries de gráfico (aurora → semânticas) — */
     --chart-1: 214 88% 42%;             /* deep-blue */
@@ -161,81 +158,73 @@
   }
 
   .dark {
-    --background: 220 38% 8%;           /* #0C111B */
-    --foreground: 214 41% 97%;          /* #F3F6FA */
+    --background: 216 28% 7%;           /* #0D1218 */
+    --foreground: 214 30% 93%;          /* #E8EEF4 */
 
-    --card: 221 39% 11%;                /* #111827 */
-    --card-foreground: 214 41% 97%;
+    --card: 218 26% 12%;                /* #171E28 */
+    --card-foreground: 214 30% 93%;
 
-    --popover: 221 39% 11%;
-    --popover-foreground: 214 41% 97%;
+    --raised: 214 26% 16%;              /* #1E2733 */
+    --raised-foreground: 214 30% 93%;
 
-    /* ⚠️ O escuro NÃO troca a ação primária por neon.
-       A versão anterior fazia `--primary` virar aurora-blue no tema escuro, e o
-       DESIGN.md é explícito: a aurora é assinatura de marca e NUNCA uma cor de
-       estado operacional. Um botão de ação pintado de aurora ensina o operador
-       que aurora significa "clique aqui" — e aí ela deixa de poder significar
-       identidade. O azul profundo é clareado só o bastante para o contraste. */
-    --primary: 214 90% 61%;
-    --primary-foreground: 220 38% 8%;
-    --primary-hover: 214 90% 68%;
-    --primary-glow: 191 100% 60%;
+    --popover: 214 26% 16%;
+    --popover-foreground: 214 30% 93%;
 
-    --secondary: 221 38% 15%;           /* #172033 */
-    --secondary-foreground: 210 30% 96%;
+    --primary: 186 51% 47%;             /* #3BA8B4 */
+    --primary-foreground: 190 40% 6%;
+    --primary-hover: 186 48% 54%;
+    --primary-glow: 191 80% 56%;
 
-    --muted: 220 18% 14%;
-    --muted-foreground: 214 16% 67%;    /* #9CA8B8 */
+    --secondary: 216 20% 16%;
+    --secondary-foreground: 214 30% 93%;
 
-    --accent: 191 96% 52%;
-    --accent-foreground: 220 40% 8%;
+    --muted: 216 24% 10%;               /* #121821 */
+    --muted-foreground: 214 16% 71%;    /* #A8B4C2 */
+
+    --accent: 186 51% 47%;
+    --accent-foreground: 190 40% 6%;
+
+    --demo: 36 48% 62%;
+    --demo-foreground: 30 30% 10%;
 
     --success: 158 66% 46%;
     --success-foreground: 220 40% 8%;
     --warning: 36 96% 56%;
     --warning-foreground: 30 40% 10%;
-    --verified: 192 88% 52%;            /* observado — clareado para contraste no escuro */
+    --verified: 192 88% 52%;
     --verified-foreground: 220 38% 8%;
 
     --info: 191 92% 52%;
     --info-foreground: 220 40% 8%;
-    /* 56% + branco dava 4,13:1 no botão sólido e 4,18:1 como texto sobre o card:
-       reprovava nos dois papéis ao mesmo tempo. Clarear o preenchimento sozinho
-       conserta o texto e piora o botão, então o par inteiro mudou: âmbar-tinta
-       escura sobre vermelho claro. 4,81:1 sólido, 4,64:1 como texto. */
-    --destructive: 0 74% 60%;           /* #E44E4E */
+    --destructive: 0 74% 60%;
     --destructive-foreground: 0 60% 10%;
 
-    --gradient-card: linear-gradient(160deg, hsl(220 22% 10%), hsl(220 24% 7%));
-    /* Sombra preta sobre canvas quase preto não separa nada: o card e o fundo
-       diferiam 1,04:1 e a sombra era invisível. No escuro, quem cria plano é um
-       fio de luz na aresta superior — a mesma leitura física de uma superfície
-       levantada perto de uma fonte de luz. A sombra continua, mas como apoio. */
+    --gradient-card: linear-gradient(160deg, hsl(218 26% 14%), hsl(216 28% 8%));
     --shadow-card:
-      inset 0 1px 0 0 hsl(214 41% 97% / 0.06),
-      0 1px 2px hsl(0 0% 0% / 0.5),
-      0 12px 32px -12px hsl(220 60% 2% / 0.6);
+      inset 0 1px 0 0 hsl(214 30% 93% / 0.06),
+      0 1px 2px hsl(220 40% 2% / 0.45),
+      0 14px 36px -14px hsl(220 50% 2% / 0.7);
+    --shadow-sticky: 0 6px 18px hsl(220 50% 2% / 0.45);
     --shadow-elevated:
-      inset 0 1px 0 0 hsl(214 41% 97% / 0.09),
-      0 2px 6px hsl(0 0% 0% / 0.6),
-      0 28px 56px -18px hsl(220 60% 2% / 0.75);
-    --shadow-glow: 0 0 48px -6px hsl(var(--primary-glow) / 0.45);
+      inset 0 1px 0 0 hsl(214 30% 93% / 0.08),
+      0 2px 8px hsl(220 40% 2% / 0.5),
+      0 28px 56px -18px hsl(220 50% 2% / 0.75);
+    --shadow-modal: 0 32px 72px hsl(220 50% 2% / 0.72);
+    --shadow-glow: 0 0 40px -8px hsl(var(--primary) / 0.35);
 
-    --border: 216 28% 21%;              /* #263244 */
-    --input: 216 28% 43%;               /* #4F688C — 3,12:1; era 1,54:1 a 24% */
-    --switch-off: 216 28% 24%;          /* #2C3A4E — o valor antigo, que como trilho estava certo */
-    /* O foco acompanha a ação primária, não a aurora: anel neon sobre tabela
-       é glow decorativo em controle operacional, que o DESIGN.md proíbe. */
-    --ring: 214 90% 66%;
+    --border: 214 20% 28%;              /* #3A4656 */
+    --input: 214 18% 48%;
+    --switch-off: 216 20% 22%;
+    --ring: 186 51% 56%;
 
-    --sidebar-background: 220 24% 7%;
-    --sidebar-foreground: 210 20% 82%;
-    --sidebar-primary: 191 96% 52%;
-    --sidebar-primary-foreground: 220 40% 8%;
-    --sidebar-accent: 220 18% 13%;
-    --sidebar-accent-foreground: 191 96% 62%;
-    --sidebar-border: 216 20% 16%;
-    --sidebar-ring: 191 96% 56%;
+    --sidebar-background: 218 26% 9%;
+    --sidebar-foreground: 214 20% 86%;
+    --sidebar-primary: 186 51% 47%;
+    --sidebar-primary-foreground: 190 40% 6%;
+    --sidebar-accent: 216 22% 14%;
+    --sidebar-accent-foreground: 186 48% 62%;
+    --sidebar-border: 216 18% 18%;
+    --sidebar-ring: 186 51% 56%;
 
     --chart-1: 191 92% 54%;
     --chart-2: 214 88% 60%;
@@ -311,12 +300,19 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-    font-feature-settings: "cv11", "ss01";
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "ss01";
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     position: relative;
     min-height: 100dvh;
+  }
+
+  [data-theme-switching] *,
+  [data-theme-switching] *::before,
+  [data-theme-switching] *::after {
+    transition: none !important;
+    animation: none !important;
   }
 
   /* ── A ATMOSFERA DE MARCA É OPT-IN, E O WORKSPACE NÃO A PEDE ──────────────
@@ -390,18 +386,39 @@
 @layer components {
   /* Fonte display para títulos/kickers/números-herói. */
   .font-display {
-    font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.01em;
+    font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.02em;
   }
 
-  /* Kicker técnico: rótulo de categoria, caixa alta, tracking largo. */
+  .font-data {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
   .kicker {
-    font-family: "Space Grotesk", sans-serif;
+    font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
     font-size: 0.6875rem;
     font-weight: 600;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: hsl(var(--muted-foreground));
+  }
+
+  .page-workspace {
+    width: min(100%, 88rem);
+    margin-inline: auto;
+    padding: 1.25rem 1rem 2rem;
+  }
+  @media (min-width: 768px) {
+    .page-workspace { padding: 1.5rem 1.5rem 2.5rem; }
+  }
+
+  input[readonly],
+  textarea[readonly] {
+    cursor: default;
+    background: hsl(var(--muted) / 0.45);
+    color: hsl(var(--foreground));
+    opacity: 1;
   }
 
   /* Texto com preenchimento aurora (substitui o gradiente "AI" roxo/branco). */
@@ -995,36 +1012,35 @@
 }
 
 /* VOLC Mission Control -----------------------------------------------------
- * A identidade escura fica contida no deck de comando. O trabalho continua
- * sobre o canvas claro: contraste para orientar, não um tema escuro aleatório.
+ * Deck de comando no mesmo tema da página. Não inverter para um bloco
+ * escuro no meio do canvas claro: isso quebra hierarquia e contraste.
  */
 .bancada-command-deck {
   position: relative;
   overflow: hidden;
-  border: 1px solid hsl(218 30% 22%);
+  border: 1px solid hsl(var(--border));
   border-radius: 14px;
-  color: hsl(215 20% 90%);
-  background:
-    linear-gradient(135deg, hsl(222 34% 10%), hsl(225 31% 13%) 62%, hsl(229 28% 16%));
-  box-shadow: 0 18px 45px hsl(220 30% 10% / 0.16);
+  color: hsl(var(--card-foreground));
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
 }
 
 .traffic-hub-command {
   position: relative;
   overflow: hidden;
-  border: 1px solid hsl(218 30% 22%);
+  border: 1px solid hsl(var(--border));
   border-radius: 14px;
   padding: 22px 24px 18px;
-  color: white;
-  background: linear-gradient(135deg, hsl(222 34% 10%), hsl(226 31% 14%) 68%, hsl(232 27% 17%));
-  box-shadow: 0 16px 38px hsl(220 30% 10% / 0.14);
+  color: hsl(var(--card-foreground));
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
 }
 
 .traffic-hub-command::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: 2px;
+  height: 3px;
   background: linear-gradient(90deg, hsl(var(--aurora-blue)), hsl(var(--aurora-purple)), hsl(var(--aurora-orange)));
 }
 
@@ -1036,14 +1052,11 @@
   width: 360px;
   height: 280px;
   pointer-events: none;
-  opacity: 0.28;
-  background: radial-gradient(circle, hsl(var(--aurora-purple) / 0.26), transparent 68%);
+  opacity: 0.12;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.28), transparent 68%);
 }
 
 .traffic-hub-command > * { position: relative; z-index: 1; }
-.traffic-hub-command .text-muted-foreground { color: hsl(215 16% 69%); }
-.traffic-hub-command .kicker { color: hsl(215 16% 65%); }
-.traffic-hub-command .border-border { border-color: hsl(215 24% 30%); }
 
 .traffic-hub-signal {
   display: flex;
@@ -1074,19 +1087,19 @@
 .campaign-cockpit-hero {
   position: relative;
   overflow: hidden;
-  border: 1px solid hsl(218 30% 22%);
+  border: 1px solid hsl(var(--border));
   border-radius: 14px;
   padding: 24px;
-  color: white;
-  background: linear-gradient(135deg, hsl(222 34% 10%), hsl(226 31% 14%) 68%, hsl(232 27% 17%));
-  box-shadow: 0 16px 38px hsl(220 30% 10% / 0.14);
+  color: hsl(var(--card-foreground));
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
 }
 
 .campaign-cockpit-hero::before {
   content: '';
   position: absolute;
   inset: 0 0 auto;
-  height: 2px;
+  height: 3px;
   background: linear-gradient(90deg, hsl(var(--aurora-blue)), hsl(var(--aurora-purple)), hsl(var(--aurora-orange)));
 }
 
@@ -1098,14 +1111,11 @@
   width: 390px;
   height: 300px;
   pointer-events: none;
-  opacity: 0.3;
-  background: radial-gradient(circle, hsl(var(--aurora-purple) / 0.28), transparent 68%);
+  opacity: 0.12;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.28), transparent 68%);
 }
 
 .campaign-cockpit-hero > * { position: relative; z-index: 1; }
-.campaign-cockpit-hero .kicker { color: hsl(215 16% 67%); }
-.campaign-cockpit-hero dt { color: hsl(215 16% 64%); }
-.campaign-cockpit-hero dd { color: hsl(215 20% 89%); }
 
 .campaign-cockpit-signal {
   display: flex;
@@ -1198,8 +1208,8 @@
   width: 360px;
   height: 280px;
   pointer-events: none;
-  opacity: 0.32;
-  background: radial-gradient(circle, hsl(var(--aurora-purple) / 0.24), transparent 68%);
+  opacity: 0.1;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.24), transparent 68%);
 }
 
 .bancada-command-topline {
@@ -1224,13 +1234,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: hsl(215 16% 70%);
+  color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
   transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1), transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .bancada-back-link:hover { color: white; transform: translateX(-2px); }
+  .bancada-back-link:hover { color: hsl(var(--foreground)); transform: translateX(-2px); }
 }
 
 .bancada-command-icon {
@@ -1251,10 +1261,10 @@
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid hsl(215 25% 27%);
+  border: 1px solid hsl(var(--border));
   border-radius: 10px;
-  background: hsl(222 30% 9% / 0.56);
-  color: hsl(215 16% 68%);
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -1271,15 +1281,15 @@
 .bancada-route {
   position: relative;
   z-index: 1;
-  border-top: 1px solid hsl(215 25% 25%);
-  background: hsl(222 31% 10% / 0.72);
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.45);
 }
 
 .bancada-route-heading {
   display: flex;
   justify-content: space-between;
   padding: 12px 28px 4px;
-  color: hsl(215 15% 59%);
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -1306,20 +1316,20 @@
   border: 1px solid transparent;
   border-radius: 9px;
   padding: 8px 10px;
-  color: hsl(215 15% 64%);
+  color: hsl(var(--muted-foreground));
   font-size: 0.8125rem;
 }
 
 .bancada-route-step-active {
-  border-color: hsl(215 24% 30%);
-  color: white;
-  background: hsl(218 27% 18%);
-  box-shadow: 0 8px 22px hsl(220 40% 5% / 0.24);
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-card);
 }
 
 .bancada-route-step-idle:hover {
-  color: hsl(215 20% 90%);
-  background: hsl(218 27% 16%);
+  color: hsl(var(--foreground));
+  background: hsl(var(--card) / 0.7);
 }
 
 .bancada-route-step-locked { opacity: 0.48; }
@@ -1331,16 +1341,16 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid hsl(215 22% 32%);
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
-  color: hsl(215 15% 75%);
+  color: hsl(var(--muted-foreground));
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
 }
 
 .bancada-route-step-active .bancada-route-index {
   border-color: hsl(var(--primary));
-  color: white;
+  color: hsl(var(--primary-foreground));
   background: hsl(var(--primary));
 }
 

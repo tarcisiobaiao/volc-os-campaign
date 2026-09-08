@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from "@/components/layout/Layout";
+import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1185,16 +1186,14 @@ export default function Reports() {
   if (error) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-screen p-8">
-          <div className="text-center">
-            <Activity className="h-16 w-16 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Erro ao carregar relatório</h1>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={handleRefresh} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tentar novamente
-            </Button>
-          </div>
+        <div className="page-workspace flex min-h-[60vh] items-center">
+          <EstadoOperacional
+            className="w-full"
+            tom="erro"
+            titulo="A leitura do relatório falhou"
+            explicacao={error}
+            acao={{ rotulo: "Tentar ler de novo", onClick: handleRefresh }}
+          />
         </div>
       </Layout>
     );
@@ -1523,6 +1522,14 @@ export default function Reports() {
             </div>
           </div>
         </div>
+
+        {(!campaigns || campaigns.length === 0) && (
+          <EstadoOperacional
+            tom="vazio"
+            titulo="Nenhuma campanha neste recorte"
+            explicacao="O relatório não inventa totais. Sem campanha lida para o período e os filtros atuais, não há consolidado para mostrar."
+          />
+        )}
 
         {/* Banner do filtro por operador */}
         {isOperatorFiltered && (

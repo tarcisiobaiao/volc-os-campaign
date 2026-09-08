@@ -29,12 +29,6 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Tabs,
   TabsContent,
   TabsList,
@@ -43,10 +37,11 @@ import {
 import {
   Network,
   Receipt,
-  ShieldAlert,
   Users as UsersIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { CabecalhoDePagina } from "@/components/sistema/CabecalhoDePagina";
+import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
 import { UsersTab } from "@/v6/components/UsersTab";
 import { MembershipsTab } from "@/v6/components/MembershipsTab";
 import { CommissionsTab } from "@/v6/components/CommissionsTab";
@@ -61,19 +56,12 @@ export default function UsersSettings() {
   if (userProfile?.role !== "ADMIN") {
     return (
       <Layout>
-        <div className="container mx-auto p-4">
-          <Card className="border-destructive/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <ShieldAlert className="h-5 w-5" /> Acesso restrito
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Esta área é exclusiva para administradores.
-              </p>
-            </CardContent>
-          </Card>
+        <div className="page-workspace">
+          <EstadoOperacional
+            tom="bloqueado"
+            titulo="Acesso restrito"
+            explicacao="Cadastro de usuários, vínculos e comissões é exclusivo para administradores."
+          />
         </div>
       </Layout>
     );
@@ -93,18 +81,11 @@ function UsersSettingsContent() {
   return (
     <Layout>
       <div className="container mx-auto space-y-5 p-4">
-        <header className="space-y-1 border-b pb-5">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Configurações
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Usuários e acessos
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Cadastre operadores, defina acessos por campanha e configure
-            vigências de comissão.
-          </p>
-        </header>
+        <CabecalhoDePagina
+          kicker="Configurações"
+          titulo="Usuários e acessos"
+          proposito="Cadastre operadores, defina acessos por campanha e configure vigências de comissão."
+        />
 
         <Tabs defaultValue="usuarios" className="space-y-4">
           <TabsList className="h-10 w-full justify-start gap-1 rounded-lg bg-muted/40 p-1">

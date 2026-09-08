@@ -28,6 +28,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Lock, SlidersHorizontal } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
+import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { pautadorApi } from '@/lib/pautadorApi';
@@ -110,7 +111,13 @@ const ConfigRedatorPage: React.FC = () => {
           </Card>
         )}
 
-        {erro && <p className="mt-8 max-w-[68ch] text-sm text-destructive">{erro}</p>}
+        {erro && (
+          <EstadoOperacional
+            tom="erro"
+            titulo="A leitura da configuração falhou"
+            explicacao={erro}
+          />
+        )}
         {!cfg && !erro && <p className="mt-8 text-sm text-muted-foreground">Lendo o motor…</p>}
 
         {cfg && (

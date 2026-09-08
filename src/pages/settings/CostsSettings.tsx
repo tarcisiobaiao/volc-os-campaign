@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Layout } from "@/components/layout/Layout";
+import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
 import { operationalCostsService, OperationalCostCategory, OperationalCost, OperationalCostInput } from '@/services/operationalCostsService';
 import { taxHistoryService, TaxHistoryDisplay } from '@/services/taxHistoryService';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -33,6 +34,8 @@ export default function CostsSettings() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [currentTaxRate, setCurrentTaxRate] = useState(8.1);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   
   // Tax management
   const [taxHistory, setTaxHistory] = useState<TaxHistoryDisplay[]>([]);
@@ -106,9 +109,11 @@ export default function CostsSettings() {
         // Group costs by category
         const grouped = await operationalCostsService.getCostsByCategory(selectedMonth);
         setGroupedCosts(grouped);
+        setLoadError(null);
         
       } catch (error: any) {
         console.error('Erro ao carregar dados:', error);
+        setLoadError(String(error?.message || error));
         toast({ 
           title: 'Erro ao carregar dados', 
           description: String(error?.message || error),
@@ -120,7 +125,7 @@ export default function CostsSettings() {
     };
 
     loadData();
-  }, [selectedMonth]);
+  }, [selectedMonth, reloadNonce]);
 
   // Category management functions
   const handleCreateCategory = async () => {
@@ -517,6 +522,21 @@ export default function CostsSettings() {
             <LoadingSpinner size="lg" />
             <p className="text-muted-foreground">Carregando dados de custos...</p>
           </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Layout>
+        <div className="page-workspace">
+          <EstadoOperacional
+            tom="erro"
+            titulo="A leitura de custos falhou"
+            explicacao={loadError}
+            acao={{ rotulo: "Tentar ler de novo", onClick: () => { setLoadError(null); setReloadNonce((n) => n + 1); } }}
+          />
         </div>
       </Layout>
     );

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
+import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { CountryCombobox } from '@/components/pautador-pro/CountryCombobox';
 import { NicheMultiSelect } from '@/components/pautador-pro/NicheMultiSelect';
 import { AddNicheModal } from '@/components/pautador-pro/AddNicheModal';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { RefreshCw, Radar, Columns3, Globe2, ShieldAlert, Loader2, Database, AlertTriangle, Plus } from 'lucide-react';
+import { RefreshCw, Radar, Columns3, Globe2, Loader2, Database, AlertTriangle, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { useEntityPautador } from '@/hooks/pautador/useEntityPautador';
@@ -30,17 +30,12 @@ import { PAUTADOR_COUNTRIES } from '@/data/pautadorCountries';
 
 const ForbiddenView: React.FC = () => (
   <Layout>
-    <div className="p-4 md:p-6">
-      <Card className="border-destructive/30 bg-destructive/5 max-w-lg mx-auto mt-16 reveal">
-        <CardContent className="p-8 text-center space-y-3">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-            <ShieldAlert className="h-6 w-6" />
-          </span>
-          <div className="kicker">Acesso restrito</div>
-          <h2 className="font-display text-lg font-bold tracking-tight">Pautador Pro</h2>
-          <p className="text-sm text-muted-foreground">O Pautador Pro é exclusivo para administradores.</p>
-        </CardContent>
-      </Card>
+    <div className="page-workspace">
+      <EstadoOperacional
+        tom="bloqueado"
+        titulo="Acesso restrito"
+        explicacao="O Pautador Pro é exclusivo para administradores."
+      />
     </div>
   </Layout>
 );
@@ -194,15 +189,12 @@ const PautadorProContent: React.FC = () => {
               discoveryRunning ? (
                 <DiscoverySkeleton />
               ) : (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Radar className="h-6 w-6" />
-                  </span>
-                  <div className="kicker">Sem entidades</div>
-                  <p className="max-w-sm text-sm text-muted-foreground">
-                    Nenhuma entidade ainda para <b className="text-foreground">{selectedCountry}</b>. Clique em <b className="text-foreground">Disparar descoberta</b>.
-                  </p>
-                </div>
+                <EstadoOperacional
+                  tom="vazio"
+                  titulo="Nenhuma entidade neste país"
+                  explicacao={`Ainda não há entidade para ${selectedCountry}. Dispare a descoberta para povoar o quadro.`}
+                  acao={{ rotulo: "Disparar descoberta", onClick: runDiscovery }}
+                />
               )
             ) : (
               <>

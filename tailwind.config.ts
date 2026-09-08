@@ -19,8 +19,9 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-				display: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				display: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				data: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
@@ -77,6 +78,14 @@ export default {
 				info: {
 					DEFAULT: 'hsl(var(--info))',
 					foreground: 'hsl(var(--info-foreground))'
+				},
+				demo: {
+					DEFAULT: 'hsl(var(--demo))',
+					foreground: 'hsl(var(--demo-foreground))'
+				},
+				raised: {
+					DEFAULT: 'hsl(var(--raised))',
+					foreground: 'hsl(var(--raised-foreground))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
@@ -170,7 +179,9 @@ export default {
 			boxShadow: {
 				'dashboard': 'var(--shadow-dashboard)',
 				'card': 'var(--shadow-card)',
+				'sticky': 'var(--shadow-sticky)',
 				'elevated': 'var(--shadow-elevated)',
+				'modal': 'var(--shadow-modal)',
 				'glow': 'var(--shadow-glow)'
 			}
 		}

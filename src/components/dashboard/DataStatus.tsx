@@ -51,8 +51,8 @@ export function DataStatus({ loading, error, lastUpdate, showDetails = false }: 
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Clock className="h-4 w-4 animate-spin" />
-        <span>Carregando dados...</span>
+        <Clock className="h-4 w-4 animate-spin" data-motion="essencial" />
+        <span>Lendo dados</span>
       </div>
     );
   }
@@ -68,15 +68,25 @@ export function DataStatus({ loading, error, lastUpdate, showDetails = false }: 
     );
   }
 
+  if (!globalMostRecent && !detailedTimestamps?.mostRecent) {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="border-border bg-muted text-foreground">
+          Horário da leitura desconhecido
+        </Badge>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       <Badge
         variant="outline"
-        className="flex items-center gap-1.5 bg-success/12 text-success border-success/25 cursor-pointer whitespace-nowrap hover:bg-success/20 transition-colors"
+        className="flex items-center gap-1.5 border-verified/25 bg-verified/12 text-foreground cursor-pointer whitespace-nowrap hover:bg-verified/20 transition-colors"
         onClick={() => setShowDetailView(!showDetailView)}
       >
-        <CheckCircle className="h-3 w-3 flex-shrink-0" />
-        <span className="whitespace-nowrap">Dados atualizados</span>
+        <CheckCircle className="h-3 w-3 flex-shrink-0 text-verified" />
+        <span className="whitespace-nowrap">Leitura datada</span>
         <Info className="h-3 w-3 ml-0.5 flex-shrink-0 opacity-70" />
       </Badge>
 

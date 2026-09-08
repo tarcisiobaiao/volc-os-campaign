@@ -65,7 +65,8 @@ export const CabecalhoDoEstudio: React.FC<{
           <h1 className="mt-1 text-balance font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-foreground lg:text-[2rem]">
             {titulo}
           </h1>
-          <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
+          <div className="aurora-rule mt-3 w-16" aria-hidden />
+          <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground">
             {proposito}
           </p>
         </div>

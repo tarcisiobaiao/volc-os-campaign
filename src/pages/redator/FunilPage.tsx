@@ -19,6 +19,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, GitFork, RefreshCw } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
+import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -220,13 +221,16 @@ const FunilPage: React.FC = () => {
           <div className="mt-3 aurora-rule w-16" />
         </header>
 
-        {carregando && !matriz && <p className="mt-8 text-sm text-muted-foreground">Lendo a execução…</p>}
-        {erro && <p className="mt-8 text-sm text-destructive">{erro}</p>}
+        {carregando && !matriz && <p className="mt-8 text-sm text-muted-foreground" aria-live="polite">Lendo a execução</p>}
+        {erro && (
+          <EstadoOperacional tom="erro" titulo="A leitura do funil falhou" explicacao={erro} />
+        )}
         {!escolhido && (
-          <p className="mt-8 max-w-[60ch] text-sm leading-relaxed text-muted-foreground">
-            Endereço de funil inválido. Volte ao{' '}
-            <Link to="/redator" className="underline underline-offset-4">quadro do redator</Link>.
-          </p>
+          <EstadoOperacional
+            tom="vazio"
+            titulo="Endereço de funil inválido"
+            explicacao="Este endereço não aponta para uma execução. Volte ao quadro do redator."
+          />
         )}
 
         {matriz && (

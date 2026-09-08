@@ -16,7 +16,7 @@
       "cluster": "strategy",
       "state": "implemented",
       "summary": "Dashboard geral, projetos, relatórios, custos, impostos, câmbio e permissões.",
-      "evidence": "Rotas /, /dashboard/project/:id, /reports e configurações existem no front. A revisão visual global a407381..7cad5ec integrou o shell e as superfícies herdadas ao contrato canônico, com 1080 testes, build verde e 48 combinações visuais sem falha de contraste ou overflow. O aceite é visual: falhas de RPC convertidas em zero, estados ausentes e desvios silenciosos de permissão continuam como dívidas funcionais abertas."
+      "evidence": "Rotas /, /dashboard/project/:id, /reports e configurações existem no front. A revisão visual global a407381..7cad5ec integrou o shell e as superfícies herdadas ao contrato canônico, com 1080 testes, build verde e 48 combinações visuais sem falha de contraste ou overflow. O aceite é visual: falhas de RPC convertidas em zero, estados ausentes e desvios silenciosos de permissão continuam como dívidas funcionais abertas. Em 08/09/2026, na worktree local execution/volc-os-operacao-80-20, o frontend recebeu o Design System V2 (PRODUCT.md + design.md + tokens em src/index.css): canvas mineral, teal de ação, Outfit/IBM Plex, estados operacionais honestos e dark mode completo. Prova local: build Vite verde, 84 testes focais do sistema/bancada verdes, QA visual em localhost sem dados externos. Não prova sessão autenticada, leitura Meta/Google nem deploy."
     },
     {
       "id": "cap_campaign_cockpit",

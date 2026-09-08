@@ -538,8 +538,8 @@ const HubDeTrafegoPage: React.FC<PropsDoHub> = ({
             <div className="min-w-0">
               {tituloEhDoHub && (
                 <>
-                  <div className="kicker text-slate-400">compra de tráfego</div>
-                  <h1 className="mt-1 text-balance font-display text-[2rem] font-bold leading-tight tracking-tight text-white md:text-[2.5rem]">
+                  <div className="kicker">compra de tráfego</div>
+                  <h1 className="mt-1 text-balance font-display text-[2rem] font-bold leading-tight tracking-tight text-foreground md:text-[2.5rem]">
                     Tráfego
                   </h1>
                 </>

@@ -301,7 +301,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                  className="absolute right-1 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -372,7 +372,7 @@ export default function Login() {
           </div>
 
           <div className="mt-6 flex items-center justify-center gap-2 reveal" style={{ ["--i" as any]: 10 }}>
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-glow" />
+            <span className="h-1.5 w-1.5 rounded-full bg-success" />
             <span className="kicker">Acesso por convite</span>
           </div>
         </div>

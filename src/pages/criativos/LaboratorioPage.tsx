@@ -10,6 +10,7 @@
  */
 import React from 'react';
 
+import { Layout } from '@/components/layout/Layout';
 import { CabecalhoDoEstudio, Corpo } from '@/components/criativos/comum/Painel';
 import { Carregando, ErroDeLeitura } from '@/components/criativos/comum/Estados';
 import { Laboratorio } from '@/components/criativos/laboratorio/Laboratorio';
@@ -27,7 +28,8 @@ const LaboratorioPage: React.FC = () => {
   const { parque, carregando, erro, recarregar } = useParqueCriativo();
 
   return (
-    <div className="min-h-screen bg-background">
+    <Layout>
+    <div className="min-h-[100dvh] bg-background">
       <CabecalhoDoEstudio
         kicker="Estúdio Criativo"
         titulo="Laboratório de Templates"
@@ -66,6 +68,7 @@ const LaboratorioPage: React.FC = () => {
         {!carregando && !erro && parque && <Laboratorio parque={parque} />}
       </Corpo>
     </div>
+    </Layout>
   );
 };
 

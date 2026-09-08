@@ -47,7 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {isMobile ? (
           /* Mobile: sino no cabeçalho, entre a marca e a busca. */
-          <header className="sticky top-0 z-30 h-14 glass flex items-center px-4 border-0 border-b border-border/60 relative">
+          <header className="sticky top-0 z-[30] flex h-14 items-center border-b border-border bg-card px-4">
             <Button
               variant="ghost"
               size="sm"
@@ -84,13 +84,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               <Search className="h-5 w-5" />
             </Button>
-            {/* fio aurora sob o header */}
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-aurora opacity-70" />
           </header>
         ) : (
           /* Desktop: cabeçalho global. O canto superior direito é o lugar em
              que o operador procura notificações, independentemente da página. */
-          <header className="relative z-30 flex h-14 shrink-0 items-center justify-end border-b border-border bg-background px-6">
+          <header className="relative z-[30] flex h-14 shrink-0 items-center justify-end border-b border-border bg-card px-6">
             <div className="flex items-center gap-2">
               <SeletorDeTema />
               <SinoDeAlertas

@@ -1,253 +1,356 @@
 ---
 colors:
-  canvas-light: "#F3F5F7"
-  surface-light: "#FAFBFC"
-  surface-subtle-light: "#EEF2F6"
-  ink-light: "#1A1C1E"
-  ink-muted-light: "#68717D"
-  border-light: "#D8DEE6"
-  canvas-dark: "#0C111B"
-  surface-dark: "#111827"
-  surface-subtle-dark: "#172033"
-  ink-dark: "#F3F6FA"
-  ink-muted-dark: "#9CA8B8"
-  border-dark: "#263244"
-  primary: "#0D47A1"
-  primary-hover: "#0A397F"
-  verified: "#009FC7"
-  success: "#168B68"
-  warning: "#D9850B"
-  destructive: "#C83D3D"
+  canvas-light: "#D4DBE3"
+  surface-light: "#F4F7FA"
+  surface-raised-light: "#FBFCFE"
+  surface-subtle-light: "#C5CDD6"
+  ink-light: "#13171E"
+  ink-muted-light: "#3D4754"
+  border-light: "#9AA6B4"
+  canvas-dark: "#0D1218"
+  surface-dark: "#171E28"
+  surface-raised-dark: "#1E2733"
+  surface-subtle-dark: "#121821"
+  ink-dark: "#E8EEF4"
+  ink-muted-dark: "#A8B4C2"
+  border-dark: "#3A4656"
+  primary: "#0A5461"
+  primary-hover: "#083F49"
+  primary-foreground: "#F2FBFC"
+  verified: "#006A85"
+  success: "#116E52"
+  warning: "#885407"
+  destructive: "#B33232"
+  info: "#05697F"
+  demo: "#6B4A1B"
   aurora-blue: "#00D4FF"
   aurora-purple: "#8A2BE2"
   aurora-orange: "#FF3D00"
 typography:
-  display: "Space Grotesk"
-  body: "Inter"
-  data: "Inter"
+  display: "Outfit"
+  body: "IBM Plex Sans"
+  data: "IBM Plex Mono"
+  fallback: "ui-sans-serif, system-ui, sans-serif"
   base-size: "16px"
   base-line-height: "1.5"
 rounded:
-  control: "6px"
-  panel: "8px"
-  modal: "12px"
+  control: "8px"
+  panel: "10px"
+  modal: "14px"
+  pill: "999px"
 spacing:
   unit: "4px"
   scale: [4, 8, 12, 16, 24, 32, 48]
+motion:
+  press: "140ms"
+  menu: "200ms"
+  sheet: "280ms"
+  enter: "cubic-bezier(0.22, 1, 0.36, 1)"
+  move: "cubic-bezier(0.25, 1, 0.5, 1)"
 components:
   button-primary:
-    background: "#0D47A1"
-    foreground: "#F8FAFC"
-    border: "#0D47A1"
-    radius: "6px"
+    background: "var(--primary)"
+    foreground: "var(--primary-foreground)"
+    radius: "8px"
     height: "40px"
   button-secondary:
-    background: "transparent"
-    foreground: "#1A1C1E"
-    border: "#C8D0DA"
-    radius: "6px"
+    background: "var(--secondary)"
+    foreground: "var(--secondary-foreground)"
+    radius: "8px"
     height: "40px"
   input:
-    background: "#FAFBFC"
-    foreground: "#1A1C1E"
-    border: "#C8D0DA"
-    radius: "6px"
+    background: "var(--card)"
+    foreground: "var(--foreground)"
+    border: "var(--input)"
+    radius: "8px"
     height: "40px"
   state-chip:
     radius: "999px"
     height: "24px"
   campaign-row:
-    background: "#FAFBFC"
-    border: "#D8DEE6"
+    background: "var(--card)"
+    border: "var(--border)"
     radius: "0px"
 ---
 
 ## Agent contract (read this first)
 
-If you are about to change any file under `src/`, `src/pages/`, `src/components/` or `src/index.css`, this file is the only product-UI authority. Stop and copy the recipes below. Do not invent a third visual language.
+If you are about to change any file under `src/`, this file is the only product-UI authority.
+`PRODUCT.md` defines meaning and bans. This file defines tokens, components and visual QA.
+Do not invent a third language. Do not copy `docs/design/DESIGN-SYSTEM.md` into the workspace.
 
 **Where to read**
 
 | File | Role |
 |---|---|
-| `design.md` (repository root) | **This file.** Impeccable / Cursor load it with `PRODUCT.md`. |
-| `docs/DESIGN.md` | Pointer plus the same recipes in Portuguese. If it diverges, **this file wins**. |
-| `docs/design/DESIGN-SYSTEM.md` | Branded presentations, login, external decks. Never copy into Hub, QG, Pautador, Estúdio or campaign inventory. |
-| `PRODUCT.md` | Register (`product`), users, bans. Not a component recipe. |
+| `design.md` (repository root) | **This file.** Visual authority. Wins any divergence. |
+| `PRODUCT.md` | Product contract. Meaning, users, truth states, action types. |
+| `docs/DESIGN.md` | Pointer. If it diverges, **this file wins**. |
+| `.impeccable/design.json` | Machine mirror. Derived. Never a second spec. |
+| `docs/design/DESIGN-SYSTEM.md` | Presentations and external decks. Never product UI. |
 
-**Register.** Product. Design serves the task. An operator at 14:00 on a 27-inch monitor by a window is the scene. Light is the default. Familiarity is a feature. Do not import landing-page energy, orchestrated page-load choreography, or presentation-scale type into the workspace.
+**Register.** Product. Control room editorial, not landing page.
+Dials for this system: `DESIGN_VARIANCE: 5`, `MOTION_INTENSITY: 4`, `VISUAL_DENSITY: 7`.
 
-### Mandatory page identity
+VOLC OS is a bench for paid media and creation. The interface must look used every day: obvious actions, readable type, distinct surfaces, honest states.
 
-Every new or touched operational page header follows this exact stack, in this order:
+## Authority and precedence
 
-1. **Kicker** — uppercase 11px, letter-spacing `0.1em`, plus a 20×20 icon chip (`rounded-md bg-primary/10 text-primary`, icon `h-3.5 w-3.5`).
-2. **H1** — Space Grotesk, 32–40px, `font-bold tracking-tight leading-[1.05]`, ink (`text-foreground`). Identity rooms may color the **second** H1 word with `text-aurora`: QG (`Operacional`), Pautador (`Pro`), Redator (`Editorial`). Nowhere else — never the campaign title on `/redator/funil/:id`, never Estúdio.
-3. **`aurora-rule w-16`** — the 3px identity hairline, immediately under the H1. This is a landmark, not a status color.
-4. **Purpose** — one sentence, `text-sm text-muted-foreground text-pretty`, `max-w-3xl` or `70ch`.
-5. **At most one primary button** in the header region.
-6. **Budget** — 220–280px on desktop so the first operational row is visible without scrolling.
+1. `PRODUCT.md` for meaning, security and data truth.
+2. This file for tokens, type, density, motion and component recipes.
+3. Implemented CSS variables in `src/index.css` for rendered values.
+4. Tailwind maps those variables. Components consume tokens, never raw hex.
+5. Historical notes in `docs/design/` are evidence, not current law.
 
-Estúdio Criativo (`src/components/criativos/**`, `src/pages/criativos/**`): never write `text-aurora`, `aurora-blue`, `aurora-purple`, `aurora-orange` or `gradient-aurora` in non-comment source. A test fails the build if you do. The title stays the single ink string **Estúdio Criativo**. The class `aurora-rule` is allowed.
+The previous contract used Inter, Space Grotesk, near-white canvas and institutional navy. That language is retired here on purpose.
 
-### Surfaces, tabs, chips, inventory
+## Visual concept
 
-- **Canvas vs card.** `--background` `#F3F5F7` and `--card` `#FAFBFC` are almost the same ink. A work surface that must separate from the canvas uses `bg-card` + `border-border` + `shadow-card`. A flat `bg-card` on the canvas is invisible. Do not “fix” this by painting aurora behind the workspace.
-- **Segmented tabs**, not underlines. Well: `rounded-lg border border-border bg-muted p-1` (solid muted — not `/60`, or the well disappears into the canvas). Selected: `bg-card text-foreground shadow-card`. Never `bg-background` for the selected pill: that token *is* the canvas (`#F3F5F7`), so the pill and the page become the same grey. Inactive: `text-muted-foreground`. Never recreate a third tab style (underline, contained pills outside the well, equal-weight bars).
-- **Chips.** Glyph + word + optional description. The word uses `text-foreground` or the semantic token (`text-success`, `text-warning`, …), never muted-on-muted. Neutral chips: `bg-muted/50 text-foreground`.
-- **Inventory is a table.** Comparable campaigns, tasks or rows are never a grid of identical cards. Account groups are a tinted header row, not a second elevated card.
-- **Status on a card** (QG tasks, workbook): a **2px top hairline** in the semantic color. Never a left/right stripe thicker than 1px.
-- **Nested cards are always wrong.** Inside a `bg-card` surface, nest hairlines and `bg-muted/20` wells, not another `shadow-card`.
+**VOLC Control Room.** Mineral graphite canvas, lifted work surfaces, dark readable ink, one proprietary teal for primary acts, VOLC aurora only as signature.
 
-### Aurora, color, type
+Light mode has real planes: canvas, sidebar chrome, card, raised popover. Not white on almost-white.
+Dark mode is a complete pairing: off-black canvas, cooler elevated panels, the same teal acting as a lighter fill, never neon as operational status.
 
-- Aurora (`#00D4FF / #8A2BE2 / #FF3D00`) is an identity signature: shell edge, `aurora-rule`, the second H1 word on QG / Pautador Pro / Redator, login. It is **never** an operational status, a table background, a warning, a progress fill, or a metric color.
-- Semantic vocabulary is closed: `primary` `#0D47A1`, `verified`, `success` `#168B68`, `warning` `#D9850B`, `destructive` `#C83D3D`, `info`. Color is never the only carrier of meaning.
-- Two families only: **Space Grotesk** (titles, kickers) and **Inter** (everything else). No third family. No `clamp()` on product headings. Tabular numerals on any number that updates or compares.
+Brand energy (aurora cyan, purple, orange) appears in:
 
-### Motion (product, MOTION ~3)
+- the 3px shell edge;
+- `aurora-rule` under identity titles;
+- the second word of H1 only in QG (`Operacional`), Pautador (`Pro`) and Redator (`Editorial`);
+- login, change-password and 404.
 
-Purpose is feedback, orientation or continuity. Not decoration.
+Aurora is never a table background, warning, progress fill, metric or selected-row color.
 
-| Token | Value |
-|---|---|
-| Duration | 150–220ms (press 100–160ms) |
-| Enter curve | `cubic-bezier(0.22, 1, 0.36, 1)` |
-| Properties | Name them. Never `transition: all` / `transition-all`. |
-| Press | `scale(0.96)` on buttons. Not below `0.95`. |
-| Hover lift | `translateY(-2px)` and only inside `@media (hover: hover) and (pointer: fine)`. |
-| Reduced motion | `prefers-reduced-motion: reduce` disables non-essential motion. |
-| Page load | No stagger on high-frequency surfaces (`/trafego` Hub). Occasional rooms (QG, Pautador, Redator, Login) may use `.reveal`. |
-| Keyboard | Do not choreograph arrow/tab navigation. Color/shadow ≤160ms is the ceiling. |
-| Animate | `transform` and `opacity`; color/background for selected state. Never `width`, `height`, `top`, `left`. |
+## Semantic color tokens
 
-Live metrics, warning color and spend actions must not pulse or bounce.
+Use the CSS variables. Hex below is the normative hue for documentation and `.impeccable/design.json`.
 
-### Hard bans (match and refuse)
+### Light
 
-- Nested elevated cards; identical card grids for comparable inventory.
-- Underline tabs; a second tab vocabulary on the same product.
-- Left/right color stripes `>1px`; gradient text (except the second identity word on QG, Pautador Pro and Redator); decorative glassmorphism; glow on operational controls.
-- Fake KPI heroes; invented zeros; numbers without freshness.
-- `transition: all`; hover-lift on touch pointers; page-load theatre on Hub.
-- Copying `docs/design/DESIGN-SYSTEM.md` into the workspace.
-- Treating `docs/DESIGN.md` as a second spec that can override this file.
+| Token | Role | Normative |
+|---|---|---|
+| `--background` | Page canvas, mineral | `#D4DBE3` |
+| `--card` | Work surface | `#F4F7FA` |
+| `--raised` | Popover, sticky overlay | `#FBFCFE` |
+| `--muted` | Wells, group headers | `#C5CDD6` |
+| `--foreground` | Ink | `#13171E` |
+| `--muted-foreground` | Secondary text | `#3D4754` |
+| `--border` | Structural hairline | `#9AA6B4` |
+| `--input` | Field outline (3:1 vs card) | measured in CSS |
+| `--primary` | Only default action fill | `#0A5461` |
+| `--success` | Healthy completed state | `#116E52` |
+| `--warning` | Attention, not error | `#885407` |
+| `--destructive` | Error, block, irreversible | `#B33232` |
+| `--verified` | Source observed | `#006A85` |
+| `--info` | Neutral information | `#05697F` |
+| `--demo` | Demonstration / fixture | `#6B4A1B` |
 
-Copy Pautador Pro (`/pautador-pro`), QG (`/settings/qg-agentico`) and Hub (`/trafego`) when in doubt. They already implement this contract.
+### Dark
 
-## Overview
+| Token | Role | Normative |
+|---|---|---|
+| `--background` | Canvas | `#0D1218` |
+| `--card` | Work surface | `#171E28` |
+| `--raised` | Overlay | `#1E2733` |
+| `--muted` | Wells | `#121821` |
+| `--foreground` | Ink | `#E8EEF4` |
+| `--muted-foreground` | Secondary | `#A8B4C2` |
+| `--primary` | Action fill, lightened teal | `#3BA8B4` |
 
-VOLC O.S. is an operational mission control for attention, media and arbitrage. Its interface exists to help an operator understand what is happening, what is known, what remains uncertain and what decision is safe to take next. It is a product workspace, not a marketing page and not a decorative dashboard.
+Semantic meanings stay closed: `primary`, `verified`, `success`, `warning`, `destructive`, `info`, `demo`.
+`verified` is not success. `demo` is not warning. `destructive` is not a loud primary.
 
-The reference scene is an operator at 14:00 on a 27-inch monitor beside a window, checking live media before authorizing spend. Light mode is the default for this scene. Dark mode is complete and equivalent, not a reduced alternate skin.
+## Contrast
 
-The visual direction is **VOLC Mission Control**: restrained, dense, calm and unmistakably VOLC. It combines the operational hierarchy of Linear, the clarity and trust of Stripe Dashboard, the domain familiarity of Google Ads and the VOLC signature. Brand energy appears at identity landmarks. Operational workspaces remain quiet.
-
-The interface follows five named rules:
-
-1. **Truth Before Decoration.** Every number exposes freshness and provenance. Absence, failure, stale data and measured zero are different states.
-2. **One Dominant Signal.** Each row, panel and step has one primary status or next action. Supporting facts never compete with it.
-3. **Identity at the Edge.** The VOLC aurora belongs to shell landmarks, activation moments and identity surfaces. It never becomes a workspace background or an operational status color.
-4. **Density With Air.** Comparable information stays compact and aligned. Whitespace separates decisions, not every field.
-5. **Consequences Before Actions.** Any action that writes, publishes, changes delivery or can spend money explains scope, consequence, reversibility and approval before it becomes available.
-
-The product hierarchy is always: context, task, filters, workspace, deep detail. A page header must normally fit within 220 to 280 pixels on desktop so the first operational content remains visible without scrolling.
-
-`docs/design/DESIGN-SYSTEM.md` is a sibling reference for branded presentations. It is not the product UI authority. Presentation-scale typography, full-canvas auroras, noise and theatrical composition must not be copied into the operational workspace.
-
-## Colors
-
-The palette uses cool tinted neutrals for approximately ninety percent of the interface. Pure white and absolute black are avoided in the product workspace. `canvas-light` and `canvas-dark` establish the page; `surface-light` and `surface-dark` establish working surfaces; subtle surfaces separate filters, selected rows and secondary regions without creating nested cards.
-
-`primary` is the only default action color. Use it for selected task navigation, the single primary button in a region and links that move the operator forward. `verified` means a source was observed or reconciled. It does not mean success. `success` means a healthy completed state. `warning` means pending attention or a decision that deserves care. `destructive` is reserved for true errors, blocked states and irreversible or high-risk actions.
-
-Operational states must never reuse `aurora-blue`, `aurora-purple` or `aurora-orange`. The aurora trio is a brand signature only. It may appear as a two-pixel shell accent, a focused identity mark, a contained activation surface or a short transition between major product modes. Never place aurora gradients behind tables, forms, metrics, warnings or long reading surfaces.
-
-Color is never the sole carrier of meaning. Every state combines a glyph, a plain-language label and, when necessary, one short explanation. Light and dark themes preserve semantic contrast and hierarchy rather than merely inverting values.
+- Body and labels: 4.5:1 against the actual bed (canvas, card, muted well, tinted chip).
+- Large text and UI glyphs: 3:1.
+- Primary button text vs primary fill: 4.5:1 in both themes.
+- Field border vs card: 3:1.
+- Measure on the rendered surface, not on the theoretical card.
 
 ## Typography
 
-Use **Space Grotesk** for page titles, short section titles and a small number of identity landmarks. Use **Inter** for body text, controls, tables, forms, labels and data. Do not introduce a third family.
+Three families, no fourth.
 
-Page titles use Space Grotesk at 32 to 40 pixels, weight 600 or 650, with tight but readable line height. Section titles use 18 to 24 pixels. Operational body text uses Inter at 14 to 16 pixels. Dense table content may use 13 to 14 pixels, but essential actions and explanatory text never drop below 14 pixels.
+| Role | Family | Use |
+|---|---|---|
+| Display | **Outfit** | Page titles, short section titles, identity kickers |
+| Body | **IBM Plex Sans** | UI, forms, explanations, navigation |
+| Data | **IBM Plex Mono** | IDs, hashes, receipts, timestamps when they must not dance |
 
-Metadata labels may use uppercase Inter or Space Grotesk at 11 to 12 pixels, weight 600, with restrained letter spacing. Uppercase is a navigation aid, not a decorative texture. Do not uppercase paragraphs, actions or status explanations.
+Fallbacks: `ui-sans-serif, system-ui, sans-serif` and `ui-monospace, SFMono-Regular, Menlo, monospace`.
 
-Numeric columns use tabular figures and right alignment when comparison matters. Campaign names, destinations and operator-facing explanations remain sentence case and left aligned. Truncation must preserve access to the full value through expansion or an accessible title. Never truncate the primary identity while repeating secondary tags in full.
+Scale:
 
-## Elevation
+| Role | Size | Weight | Notes |
+|---|---|---|---|
+| Page title | 28–36px | 650 | `tracking-tight`, line-height 1.1 |
+| Section | 16–20px | 600 | Sentence case |
+| Body | 14–16px | 400 | Line-height 1.5 |
+| Table dense | 13px | 400 | Tabular nums. Actions stay ≥14px |
+| Kicker | 11px | 600 | Uppercase, tracking 0.12em. Navigation aid only |
+| Chip word | 13px | 600 | Sentence case. Never muted-on-muted |
 
-Elevation communicates ownership and temporary layering, not importance. Most workspace separation uses borders, tinted surfaces and spacing.
+No `clamp()` on product headings. No Inter. No Space Grotesk.
+Numbers that compare use `tabular-nums` / `.tabular` / IBM Plex Mono when they are identifiers.
 
-The Traffic Hub keeps four distinguishable planes:
+## Spacing, radius, shadow, z-index
 
-1. **Canvas** — the page background (`canvas-light` / `canvas-dark`).
-2. **Work surface** — the inventory table, the Create bench, QG scorecards, Estúdio `Secao`. These use `shadow-card` so they separate from the canvas. They are not nested card stacks.
-3. **Account group** — a muted tint on the account header, typographically larger than a campaign row, never a second elevated card.
-4. **Interactive / selected row** — background tint and an inset primary accent. Rows never float. Frequent keyboard and table navigation is not animated.
+Spacing unit 4px. Scale: 4, 8, 12, 16, 24, 32, 48.
 
-Use no shadow for filters, chips and unselected rows. Use a restrained structural shadow for sticky toolbars when they overlap content. Use a medium shadow for popovers and menus. Use the strongest product shadow only for modals that block interaction and require a decision.
+Radius: control 8, panel 10, modal 14, pill 999. Inner elements are tighter than their container.
 
-Do not stack elevated cards inside elevated cards. Do not add glow to operational controls, metrics or alerts. Selected state is expressed through background tint, border and focus, never by floating the element toward the operator.
+Shadows are tinted to the mineral hue. No pure-black glow on light canvas.
 
-**Task tabs** (Campaigns / Prepare / Create / Attention, and QG Agora / Timeline / …) are a segmented control in a muted well. Selected state is a white (`bg-background`) pill with `shadow-card`. Do not use underline tabs.
+| Token | Use |
+|---|---|
+| none | Filters, chips, unselected rows |
+| `--shadow-card` | Work surface on canvas |
+| `--shadow-sticky` | Sticky toolbar over content |
+| `--shadow-elevated` | Popover, menu |
+| `--shadow-modal` | Blocking dialog |
 
-## Components
+Z-index scale, no `9999`:
 
-**Application shell.** The shell provides identity, primary navigation, account context and global attention. It may carry a restrained VOLC signature at its edge. It must not compete with the current task.
+| Token | Value | Use |
+|---|---|---|
+| `--z-base` | 0 | Content |
+| `--z-sticky` | 20 | Table header, local toolbar |
+| `--z-shell` | 30 | App header |
+| `--z-nav` | 40 | Sidebar / drawer backdrop |
+| `--z-overlay` | 50 | Drawer, popover |
+| `--z-modal` | 60 | Dialog, skip link when focused |
+| `--z-toast` | 70 | Toasts |
 
-**Page header.** Keep the title, one-sentence purpose, freshness summary and one primary global action within the first desktop viewport. Network, channel and task are not three equal navigation bars: network defines context, task defines the job and channel narrows the inventory.
+## Density by screen type
 
-**Task tabs.** Campaigns, Prepare, Create and Attention (and QG view tabs) are a segmented control in a muted well. Selected pill: `bg-background shadow-card`. Counts are quiet metadata and never replace the task label. Never underline tabs.
+Follow `PRODUCT.md` §9. In CSS, prefer:
 
-**Channel selector.** Channel is a compact filter within the selected network. Canonical Google Ads values are Search, Display, Demand Gen, Performance Max, Video and Shopping. Do not make an unavailable channel look implemented. State capability honestly.
+- dashboards and inventories: compact rows, 8–12px vertical rhythm;
+- wizards: 16–24px between decisions;
+- identity surfaces: more air, never presentation-scale type in the workspace.
 
-**Filters.** Search and high-frequency filters remain visible and may become sticky with table headers. Advanced filters collapse into one secondary control. Every active filter is removable and the result count states both the visible subset and the universe.
+## Page identity
 
-**Account group.** An account header is compact and sticky within long inventories. It shows account identity, freshness, campaign count and the read-only refresh action. It does not create a large empty banner.
+Every operational page header, in this order:
 
-**Campaign row.** Use a dense, aligned master row with one primary identity line and one muted metadata line. The row exposes status, campaign, channel, strategy, bid, daily budget, delivery, cost and freshness in a comparable grid. Provenance, reconciliation and linkage become one compact evidence cluster, not repeated colored tags. Active or attention-worthy rows precede history through server authority. Removed history is hidden by default.
+1. Kicker: 11px uppercase + optional 20×20 icon chip (`bg-primary/10 text-primary`).
+2. H1 Outfit 28–36px, ink. Identity rooms may color the second word with `text-aurora` only as listed above. Estúdio never uses aurora text.
+3. `aurora-rule w-16` under the H1.
+4. One purpose sentence, `text-sm text-muted-foreground`, max ~70ch.
+5. At most one primary button in the header.
+6. Desktop budget 200–260px so the first work row stays on screen.
 
-**Inline detail.** Expansion answers the immediate question without turning into another dashboard. It shows full identity, external and internal IDs, source, freshness, funnel linkage, reservations and the next safe action. Complex diagnosis and management move to the canonical campaign page.
+Use `CabecalhoDePagina` when touching a header. Do not invent a second stack.
 
-**Canonical campaign page.** The page follows this order: breadcrumb and identity; delivery and freshness; observed evidence; diagnosis; funnel and lineage; channel-specific structure; history and receipts; action rail. Search, Display, Demand Gen, Performance Max, Video, Shopping and Meta may expose different manifests. Missing capabilities remain explicit and never become fabricated zero values.
+## Base components
 
-**Create studio.** Creation is a channel-specific operational bench, not a generic seven-step form. Search, Display, Demand Gen, Performance Max, Shopping and Video each have their own journey, derived from a typed registry crossed with the backend manifesto, the operator permission and the write lock. Search opens the real cockpit. Video is observe-and-analyze only: the Google Ads API does not create or update Video campaigns. A planned channel shows the next unlock, never a fake form. A disabled or missing action explains the missing prerequisite.
+**Button.** Primary is filled teal, weight 600, min-height 40 desktop / 44 mobile, visible mass. Secondary is solid muted, not a pale outline. Outline is tertiary. Destructive is isolated. Press: `scale(0.97)` in 140ms. Disabled: 0.45 opacity, `pointer-events: none`. Hover lift only inside `@media (hover: hover) and (pointer: fine)`.
 
-**Attention queue.** Attention groups conditions by operator decision, not by implementation source. Each item states what was observed, why it matters, confidence, freshness and the next safe action. A stale account condition and a campaign delivery condition remain distinct even when shown together.
+**Field.** Label above. Helper before error. Error below, in context, with recovery. Height 40/44. Focus ring uses `--ring`. Disabled is washed out. Read-only keeps ink and a muted bed, never the disabled fade.
 
-**Buttons.** Each region has at most one primary button. Secondary and tertiary controls are visually quieter. Destructive controls are isolated and always confirm scope. Button labels use verbs and name the result.
+**Tabs.** Segmented well: `bg-muted p-1 border`. Selected pill: `bg-card shadow-card`. Never `bg-background` for the selected pill. Never underline tabs.
 
-**State chips.** Chips are compact semantic labels, not decoration. One dominant chip is normally enough. When multiple facts matter, render a sentence or evidence cluster instead of a pile of badges.
+**Chips.** Glyph + word + description (sr-only if needed). Height 24, radius full. Word uses `text-foreground` or the semantic token, never muted-on-muted.
 
-**Forms.** Labels remain visible. Helper text is concise and appears before an error when it prevents one. Validation occurs at the field and at the workflow boundary. Never rely on placeholder text as a label.
+**Table.** Inventory is a table. Sticky header, hairline rows, selected row tint, expand in place. Account group is a muted header row.
 
-**Empty, loading and failure states.** An empty result after filtering is different from an empty source. Loading preserves layout. A failed read does not erase the last good data without explaining its age. Technical stack traces, database vocabulary and raw API errors do not appear in the operator interface.
+**Card.** Only for an object, a modal surface or a real grouping. No nested `shadow-card`.
 
-## Do's and Don'ts
+**Dialog / sheet / drawer.** Emerge from the trigger. 200–350ms, move curve. Scrim 45–60%.
 
-### Do
+**Toast.** 3–5s, `aria-live="polite"`, does not steal focus.
 
-- Start every screen from the operator's decision, then reveal implementation detail only when it supports that decision.
-- Keep the first operational rows visible in the initial desktop viewport.
-- Preserve real data, source, freshness, uncertainty and receipts throughout the UI.
-- Hide removed history by default and make its count and disclosure explicit.
-- Keep comparable metrics aligned in a dense grid with sticky context on long lists.
-- Use one dominant state and one dominant action per region.
-- Explain why an action is unavailable and what prerequisite is missing.
-- Make light and dark themes equivalent and test both with real content.
-- Provide visible keyboard focus, semantic names, logical tab order and reduced motion.
-- Use the VOLC aurora sparingly enough that it still feels like a signature.
+## Form, table, dashboard, wizard, creation, settings
 
-### Don't
+- Forms: visible labels, grouped fieldsets, validate on blur, focus first invalid.
+- Tables: comparable columns, right-aligned money, sentence-case names.
+- Dashboards: one dominant period control, freshness, no identical metric-card grid as the only structure.
+- Wizards: step names are verbs, not "Etapa 1". Back is always available.
+- Creation benches keep the safety contract visible.
+- Settings look like the rest of the product. No orphan admin theme.
 
-- Do not use nested cards to represent every field or state.
-- Do not use colored side stripes thicker than 1px, gradient text (except the QG identity word), glassmorphism or decorative glow in the workspace.
-- Do not repeat piles of tags when a single evidence sentence is clearer.
-- Do not present a number without freshness or turn absence into zero.
-- Do not equate observed, linked, healthy and successful. They are different facts.
-- Do not expose PostgREST, GAQL, SQL, internal table names, environment flags or stack traces to the operator.
-- Do not make spend, publish, pause, budget, bid or duplication actions feel trivial.
-- Do not redesign backend contracts to make a layout easier.
-- Do not allow a huge header, empty account banner or expansion panel to push the actual work below the fold.
-- Do not copy the presentation design system wholesale into the product UI.
+## Empty, error, loading, blocked, demo
+
+Use `EstadoOperacional` for page-level states:
+
+| Tone | Use |
+|---|---|
+| `loading` | Skeleton matching the destination layout |
+| `vazio` | Collection exists and is empty |
+| `filtro` | Universe has rows, recorte has none |
+| `erro` | Recoverable read/write failure + retry |
+| `bloqueado` | Permission, policy or lock |
+| `demo` | Fixture or exploratory UI |
+| `parcial` | Incomplete read, say what is missing |
+| `indisponivel` | Source down or not configured |
+| `sucesso` | Completed act, no exclamation |
+
+Loading, empty and error are never the same grey box.
+
+## Motion
+
+Purpose: feedback, orientation, continuity. Not decoration.
+
+| Token | Duration | Easing |
+|---|---|---|
+| `--motion-press` | 100–160ms | enter curve |
+| `--motion-menu` | 150–250ms | enter curve |
+| `--motion-sheet` | 200–350ms | move curve |
+
+Animate only `transform`, `opacity`, `color`, `background-color`.
+Never `width`, `height`, `top`, `left`. Never `transition: all`.
+Do not animate keyboard-initiated navigation.
+No infinite loops except essential progress (spinner, indeterminate bar).
+`prefers-reduced-motion: reduce` kills non-essential motion.
+`[data-theme-switching] * { transition: none !important }`.
+Hub `/trafego` does not stagger on load.
+
+## Breakpoints
+
+375, 768, 1024, 1440.
+Mobile: single column, no horizontal overflow, 44px targets, primary action reachable.
+Desktop: sidebar + workspace. Content max width ~1400px on economic pages; inventories may use the full work column.
+
+## Icons
+
+One family per surface. Product already uses Hugeicons via `Icone` plus a few Lucide leftovers.
+New work uses `Icone` / Hugeicons. Do not introduce Phosphor or a third family.
+Stroke weight stays consistent. Icon-only controls have an accessible name.
+
+## Real content versus demo
+
+Demo, fixture and exploratory Meta/Google surfaces must use `tone="demo"` or `VerdadeDoDado` with `demo`.
+Never style demo numbers as live success.
+Never hide the word "demonstração".
+
+## Forbidden
+
+- Inter or Space Grotesk as product fonts
+- AI purple gradient as action language
+- Landing hero on operational routes
+- White-on-white surfaces
+- Pale outline as the only primary
+- Nested elevated cards
+- Underline tabs
+- Side color stripes thicker than 1px
+- Glassmorphism in the workspace
+- Glow on operational controls
+- Invented zeros and fake live dots
+- `transition: all`
+- Decorative infinite motion
+- Raw hex in components
+- Copying the presentation design system into the product
+
+## Visual QA
+
+Prove, do not infer:
+
+1. Light and dark on 375, 768, 1024, 1440.
+2. Skip link, focus ring, keyboard path, reduced motion.
+3. Loading, empty, error, blocked, demo, disabled, read-only.
+4. Primary action visible without hunting.
+5. No horizontal overflow.
+6. Contrast of body, muted, chip, field border and primary button.
+7. Copy audit: no vague AI phrasing on screen.
+
+Acceptance name for this system: `VOLC_OS_DESIGN_SYSTEM_V2_LOCAL_READY`.

@@ -55,6 +55,8 @@ import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
 import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { useToast } from "@/hooks/use-toast";
+import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
 
 interface ProjectIntegration {
   googleAds: {
@@ -77,6 +79,7 @@ export default function ProjectsSettings() {
 
   const navigate = useNavigate();
   const { userProfile } = useAuth();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState("");
   const [userProjectIds, setUserProjectIds] = useState<number[]>([]);
@@ -383,7 +386,7 @@ export default function ProjectsSettings() {
         .single();
 
       if (error) {
-        alert('Erro ao criar projeto: ' + error.message);
+        toast({ title: 'Erro ao criar projeto', description: error.message, variant: 'destructive' });
         return;
       }
 
@@ -399,7 +402,7 @@ export default function ProjectsSettings() {
       refresh(filters);
       
     } catch (error) {
-      alert('Erro ao criar projeto. Tente novamente.');
+      toast({ title: 'Erro ao criar projeto', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
       setIsCreatingProject(false);
     }
@@ -412,7 +415,7 @@ export default function ProjectsSettings() {
 
     // At least one field must be filled to save
     if (!editForm.gamNetworkCode.trim() && !editForm.revenueShare.trim()) {
-      alert('Preencha pelo menos um dos campos para salvar.');
+      toast({ title: 'Nada para salvar', description: 'Preencha pelo menos um dos campos.', variant: 'destructive' });
       return;
     }
 
@@ -441,7 +444,7 @@ export default function ProjectsSettings() {
         .single();
 
       if (error) {
-        alert('Erro ao atualizar projeto: ' + error.message);
+        toast({ title: 'Erro ao atualizar projeto', description: error.message, variant: 'destructive' });
         return;
       }
 
@@ -456,7 +459,7 @@ export default function ProjectsSettings() {
       refresh(filters);
       
     } catch (error) {
-      alert('Erro ao atualizar projeto. Tente novamente.');
+      toast({ title: 'Erro ao atualizar projeto', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
       setIsUpdatingProject(false);
     }
@@ -482,7 +485,7 @@ export default function ProjectsSettings() {
 
 
       if (error) {
-        alert('Erro ao carregar projetos: ' + error.message);
+        toast({ title: 'Erro ao carregar projetos', description: error.message, variant: 'destructive' });
         return;
       }
 
@@ -507,7 +510,7 @@ export default function ProjectsSettings() {
 
       visibilityModal.openModal();
     } catch (error) {
-      alert('Erro ao abrir configurações de visibilidade: ' + (error as Error).message);
+      toast({ title: 'Erro ao abrir visibilidade', description: (error as Error).message, variant: 'destructive' });
     }
   };
 
@@ -536,7 +539,7 @@ export default function ProjectsSettings() {
       // Refresh data to reflect changes
       refresh(filters);
     } catch (error) {
-      alert('Erro ao salvar configurações de visibilidade');
+      toast({ title: 'Erro ao salvar visibilidade', description: 'A alteração não foi gravada.', variant: 'destructive' });
     } finally {
       setIsSavingVisibility(false);
     }
@@ -570,15 +573,14 @@ export default function ProjectsSettings() {
   if (error) {
     return (
       <Layout>
-        <div className="p-6 space-y-8 max-w-7xl mx-auto">
-          <div className="flex flex-col items-center justify-center min-h-64">
-            <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Erro ao carregar projetos</h1>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()} variant="outline">
-              Tentar novamente
-            </Button>
-          </div>
+        <div className="page-workspace flex min-h-[60vh] items-center">
+          <EstadoOperacional
+            className="w-full"
+            tom="erro"
+            titulo="A leitura de projetos falhou"
+            explicacao={error}
+            acao={{ rotulo: "Tentar ler de novo", onClick: () => window.location.reload() }}
+          />
         </div>
       </Layout>
     );

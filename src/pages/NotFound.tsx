@@ -44,7 +44,7 @@ const NotFound = () => {
           className="kicker mb-4 flex items-center justify-center gap-2 reveal"
           style={{ ["--i" as any]: 1 }}
         >
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-destructive" />
           ERR 404 // Rota não encontrada
         </div>
 
