@@ -1,0 +1,60 @@
+{
+  "contrato": "meta-operations-v1-final-local/CANARY-READINESS",
+  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "veredito": "NAO_PRONTO_PARA_CANARIO — bloqueios estruturais, não de código",
+  "o_que_esta_pronto_localmente": {
+    "compilador_deterministico": true,
+    "plano_hash_snapshot": true,
+    "tracking_no_grao_certo": "SIM — corrigido nesta missão (utm_campaign={{adset.id}})",
+    "validate_only_separado_de_create": true,
+    "create_paused_separado_de_approve": true,
+    "ledger_antes_do_POST": true,
+    "idempotencia_por_chave": true,
+    "ambiguidade_sem_retry": true,
+    "read_back": true,
+    "nenhum_caminho_ENABLE": "CONFIRMADO — nenhuma rota leva objeto a ENABLE"
+  },
+  "bloqueios": [
+    {
+      "id": "B-01",
+      "o_que": "schema oficial Meta NÃO aplicado",
+      "evidencia": "docs/closure/meta-operator-go-live-v1/SCHEMA-APPLY-RECEIPT.json: OFFICIAL_SCHEMA_NOT_APPLIED__APPLY_WINDOW_WAITING_OWNER; 17 tabelas ausentes; 4 RPCs PGRST202",
+      "efeito": "validar-com-recibo, aprovar, criar-pausada, reconciliar e registrar mídia falham TODOS fechados"
+    },
+    {
+      "id": "B-02",
+      "o_que": "ficha de canário nunca sai completa, por construção",
+      "evidencia": "trafego_meta_validacao.py:1029 chama _registro_saga().buscar_validacao(plano_sha256=...), método que não existe em registro.py",
+      "nota": "É uma LACUNA NOMEADA, não um acidente: o AttributeError é capturado e a rota responde META_VALIDATION_RECEIPT_LOOKUP_UNAVAILABLE com mensagem explícita. Fechá-la exige uma RPC de busca por hash — ou seja, schema — e a janela oficial não estava autorizada nesta missão.",
+      "forma_da_correcao": "RPC trafego_meta_create_find_validation(p_plan_sha256) + método no repositório"
+    },
+    {
+      "id": "B-03",
+      "o_que": "adset e ad NUNCA foram validados remotamente",
+      "evidencia": "a única prova remota é validate_only de 05/09/2026 com cobertura INDEPENDENT_ROOTS_ONLY (campaign + creative)",
+      "por_que": "é estrutural: adset e ad dependem do pai real"
+    },
+    {
+      "id": "B-04",
+      "o_que": "contrato V2 (ABO/CBO, N conjuntos, públicos, placements manuais) não tem rota de criação",
+      "evidencia": "a rota /aprovar aceita apenas PedidoPlanoMetaPausado; _orcamento_do_plano exige daily_budget na operação adset, o que quebraria CBO"
+    },
+    {
+      "id": "B-05",
+      "o_que": "o bloqueio de destino Shop é afirmação humana, não leitura",
+      "evidencia": "FLAG_DESTINO_SHOP é lista CSV em variável de ambiente preenchida à mão"
+    }
+  ],
+  "o_que_esta_missao_mudou_para_o_canario": [
+    "o tracking que um canário nasceria carregando agora é o que o GAM sabe ler",
+    "o read-back recusa explicitamente o tracking ANTIGO voltando",
+    "a URL de destino recusa utm_term/utm_content/placement conflitantes",
+    "a ficha de canário deixou de afirmar 'utm_campaign_value bateu com campaign_id'"
+  ],
+  "atos_reais_executados_nesta_missao": {
+    "leitura_meta": 0,
+    "validate_only": 0,
+    "criacao": 0,
+    "ativacao": 0
+  }
+}

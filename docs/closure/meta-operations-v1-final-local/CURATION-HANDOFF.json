@@ -1,0 +1,81 @@
+{
+  "contrato": "meta-operations-v1-final-local/CURATION-HANDOFF",
+  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "quem_integrou": "lead único (Claude); nenhum worker paralelo editou as autoridades compartilhadas",
+  "roadmap": {
+    "arquivo": "volc-os-workbook/ROADMAP-VIVO.json",
+    "updated_at": "2026-09-08",
+    "tarefas": {
+      "P10-T16": {
+        "status": "partial",
+        "mudou": [
+          "proof",
+          "gaps"
+        ],
+        "gap_novo": "linhas de insight em nível adset são órfãs sem hierarquia corrente"
+      },
+      "P11-T02": {
+        "status": "partial",
+        "mudou": [
+          "proof",
+          "acceptance (CRIADO)",
+          "gaps (CRIADO)"
+        ]
+      },
+      "P11-T03": {
+        "status": "partial",
+        "mudou": [
+          "proof",
+          "acceptance (CRIADO)",
+          "gaps (CRIADO)"
+        ]
+      },
+      "P11-T04": {
+        "status": "partial",
+        "mudou": [
+          "proof",
+          "acceptance (CRIADO)",
+          "gaps (CRIADO)"
+        ]
+      },
+      "P11-T05": {
+        "status": "partial",
+        "mudou": [
+          "proof",
+          "gaps"
+        ]
+      },
+      "P11-T06": {
+        "status": "partial",
+        "mudou": [
+          "proof",
+          "gaps"
+        ],
+        "correcao": "a afirmação de receita por campaign_id foi declarada supersedida"
+      }
+    },
+    "nenhuma_promovida_para_done": true,
+    "por_que": "O done_when da iniciativa P11 é 'Briefing, criativo, campanha, conjunto, anúncio, inventário e análise percorrem um primeiro lançamento seguro'. Nada foi lançado: zero leitura Meta real, zero criação, zero geração, zero upload. `partial` é a resposta honesta.",
+    "achado_do_raio_x": "P11-T02/T03/T04 NÃO TINHAM o campo `acceptance`. O protocolo de fechamento exige provar critérios de aceite, e sem o campo isso era literalmente inexequível. O campo foi CRIADO nas três, com o critério escrito antes da prova."
+  },
+  "curadoria": {
+    "arquivo": "docs/volc-os-graph/curadoria-operacional.json",
+    "curadoria_atualizada_em": "2026-09-08",
+    "nos_alterados": {
+      "cap_meta_ads": "summary e evidence — o grão passou a ser conjunto/dia; a evidência anterior foi declarada supersedida",
+      "concept:meta_direct_traffic": "summary e evidence — o tracking canônico e a resolução de campanha pelo read model",
+      "cap_revenue_ingestion": "evidence — a chave de receita do lado Meta e a ambiguidade entre contas GAM",
+      "cap_attribution": "evidence — grão próprio do eixo Meta e semântica de ausência"
+    },
+    "nos_criados": [],
+    "arestas_criadas": [],
+    "prioridades_alteradas": []
+  },
+  "grafo": {
+    "gerado_por": "python3 scripts/atualizar_grafo_volc_os.py",
+    "nunca_editado_a_mao": [
+      "docs/volc-os-graph/volc-os-graph.json",
+      "graphify-out/graph.json"
+    ]
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "contrato": "meta-operations-v1-final-local/SCHEMA-MANIFEST",
+  "head": "74df1f8f27fd80e1b347ee43728050713fbd9ad2",
+  "veredito_de_aplicacao": "NENHUMA MIGRATION FOI APLICADA OFICIALMENTE NESTA MISSÃO",
+  "autoridade_supabase": "https://database.agenciavolc.com.br (NÃO TOCADA)",
+  "pergunta_obrigatoria": {
+    "existe_migration_atual_que_acomode_o_grao_adset_dia": "SIM, quase inteira",
+    "o_que_ja_cabia": [
+      "trafego_meta_insight_daily aceita nivel='adset' (v15_02_meta_ads_insights.sql:54)",
+      "objeto_externo, periodo_inicio/fim, spend, impressions, reach, clicks (v15_02:34-50)",
+      "currency, account_timezone, completo (20260907210000_meta_read_model_consistency.sql:234-236)",
+      "trafego_meta_adset.meta_campaign_id — o elo conjunto->campanha (v15_01:142)",
+      "UNIQUE level-agnóstica do grão (20260907210000:336-339)"
+    ],
+    "o_que_faltava": "APENAS o JOIN: o fato guarda (nivel, objeto_externo) e ninguém resolvia esse par para (campaign_id, adset_id)",
+    "por_que_nao_criei_v16": "Uma tabela nova duplicaria o gasto em dois lugares e criaria a pergunta 'qual das duas está certa?' — o defeito que o grão veio consertar. O delta indispensável é VIEW."
+  },
+  "migration_nova": {
+    "arquivo": "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql",
+    "rollback": "supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql",
+    "estado": "CANDIDATA — não aplicada",
+    "cria": [
+      "vw_trafego_meta_financeiro_conjunto_dia",
+      "vw_trafego_meta_financeiro_campanha_dia",
+      "vw_trafego_meta_financeiro_conjunto_dia_gam (condicional: só se public.gam_metrics existir)"
+    ],
+    "cria_tabela": false,
+    "altera_tabela": false,
+    "apaga_dado": false,
+    "security_invoker": true,
+    "grants": {
+      "anon": "REVOKE",
+      "authenticated": "REVOKE",
+      "PUBLIC": "REVOKE",
+      "service_role": "SELECT apenas"
+    },
+    "auto_conferencia": "a própria migration falha antes do COMMIT se alguma view nascer sem security_invoker ou com grant a anon/authenticated/PUBLIC"
+  },
+  "cadeia_minima_provada": [
+    "v13_01_cofre_de_ativos.sql",
+    "v15_01_meta_ads_read_model.sql",
+    "v15_02_meta_ads_insights.sql",
+    "20260907210000_meta_read_model_consistency.sql",
+    "20260908120000_meta_financeiro_conjunto_dia.sql"
+  ],
+  "cadeia_completa_que_aplica_em_cluster_virgem": [
+    "v13_01_cofre_de_ativos.sql",
+    "v13_02_cofre_recusa_sem_vazar_linha.sql",
+    "v15_01_meta_ads_read_model.sql",
+    "v15_02_meta_ads_insights.sql",
+    "20260907210000_meta_read_model_consistency.sql",
+    "20260908000000_meta_insights_escopo.sql",
+    "20260904183418_meta_create_paused_executor.sql",
+    "20260907120000_meta_recovery_snapshot.sql",
+    "20260907190000_meta_worker_fencing.sql",
+    "20260908020000_meta_asset_registration.sql",
+    "20260908120000_meta_financeiro_conjunto_dia.sql"
+  ],
+  "ciclo_exercido_em_postgres_descartavel": {
+    "versao": "PostgreSQL 16.11 (Homebrew)",
+    "apply": "OK",
+    "uso": "golden real carregado nas tabelas reais; SQL e Python somam igual",
+    "replay": "OK (aplicar por cima é idempotente)",
+    "concorrencia": "4 sessões simultâneas devolvem o mesmo total",
+    "rollback": "OK — 0 views, fato preservado",
+    "reapply": "OK — mesma conta",
+    "prova": "backend/tests/test_meta_financeiro_sql_conjunto_dia.py (14 testes)"
+  },
+  "migrations_que_continuam_candidatas_e_nao_aplicadas": [
+    "v11_05_criativo_agente_meta.sql",
+    "v11_06_criativo_agente_endurecimento.sql",
+    "v11_07_criativo_agente_ponte_estudio.sql",
+    "v15_01_meta_ads_read_model.sql",
+    "v15_02_meta_ads_insights.sql",
+    "20260904183418_meta_create_paused_executor.sql",
+    "20260907120000_meta_recovery_snapshot.sql",
+    "20260907190000_meta_worker_fencing.sql",
+    "20260907210000_meta_read_model_consistency.sql",
+    "20260908000000_meta_insights_escopo.sql",
+    "20260908020000_meta_asset_registration.sql",
+    "20260908120000_meta_financeiro_conjunto_dia.sql"
+  ],
+  "tabelas_legadas_sem_ddl_neste_repositorio": {
+    "gam_metrics": "consumida por PostgREST; schema vive só no banco remoto",
+    "gam_accounts": "idem",
+    "consequencia": "qualquer mudança de grão na RECEITA não é versionável a partir daqui; por isso a view de receita é condicional e separada do núcleo"
+  },
+  "url_ou_chave_webgo_hardcoded_na_migration": false
+}

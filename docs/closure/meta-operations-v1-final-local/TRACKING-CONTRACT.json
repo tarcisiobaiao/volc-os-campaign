@@ -1,0 +1,65 @@
+{
+  "contrato": "meta-tracking-adset-v1",
+  "vigente_desde": "2026-09-08",
+  "template": "utm_source={{site_source_name}}&utm_medium=paid_social&utm_campaign={{adset.id}}&utm_term={{adset.id}}&utm_content={{ad.id}}&placement={{placement}}&campaign_id={{campaign.id}}",
+  "constante": "backend/app/trafego/meta_execucao/compilador.py::TRACKING_GAM_ADSET_ID",
+  "template_anterior": "utm_source=meta&utm_medium=paid_social&utm_campaign={{campaign.id}}&campaign_id={{campaign.id}}",
+  "dimensao_que_o_gam_persiste": [
+    "utm_campaign_value"
+  ],
+  "dimensoes_que_viajam_mas_o_gam_nao_persiste": [
+    "utm_term",
+    "utm_content",
+    "placement",
+    "campaign_id",
+    "utm_source",
+    "utm_medium"
+  ],
+  "por_que_campaign_id_continua": "A instrumentação do SITE o lê, e um clique sem ele perde a procedência do anúncio. O contrato NÃO declara atribuição por ele — a campanha de uma receita é resolvida pelo read model, do conjunto para o pai.",
+  "resolucao_de_campanha": "read model: trafego_meta_adset.meta_campaign_id",
+  "macro_versus_marcador": {
+    "{{...}}": "macro dinâmica da Meta; permanece LITERAL no payload e no hash; a Meta substitui no clique",
+    "$adset.id": "marcador da saga do compilador; resolvido antes do POST"
+  },
+  "guarda_de_destino": {
+    "codigo": "META_DESTINATION_TRACKING_CONFLICT",
+    "parametros_recusados_na_lp": [
+      "campaign_id",
+      "placement",
+      "utm_campaign",
+      "utm_content",
+      "utm_medium",
+      "utm_source",
+      "utm_term"
+    ],
+    "por_que": "um parâmetro duplicado faz QUAL dos dois vale depender do servidor da LP, e a atribuição não perceberia depois"
+  },
+  "hash": {
+    "tracking_entra_no_hash_do_plano": true,
+    "prova": "backend/tests/test_meta_tracking_gam.py::test_tracking_diferente_produz_hash_diferente"
+  },
+  "read_back": {
+    "divergente_reenvia_criacao": false,
+    "por_que": "um retry criaria um segundo criativo certo deixando o primeiro errado vivo na conta",
+    "contraprovas": [
+      "ausente",
+      "trocado",
+      "tracking antigo voltando",
+      "parâmetro duplicado",
+      "macro trocada de dimensão",
+      "ordem diferente (ACEITA)"
+    ]
+  },
+  "ui": {
+    "frase": "Receita atribuída ao conjunto; a campanha soma os conjuntos.",
+    "onde": [
+      "src/pages/trafego/MetaCriacaoPage.tsx",
+      "src/components/trafego/meta/MetaFinanceiro.tsx",
+      "src/components/trafego/meta/MetaCampaignReadView.tsx (nota do cartão Revenue)",
+      "src/components/trafego/meta/ConjuntosFinanceiros.tsx"
+    ]
+  },
+  "plano_historico_reescrito_em_silencio": false,
+  "prova_remota_de_expansao_de_macro": "AUSENTE — nenhuma expansão foi observada nesta lane",
+  "head": "74df1f8f27fd80e1b347ee43728050713fbd9ad2"
+}

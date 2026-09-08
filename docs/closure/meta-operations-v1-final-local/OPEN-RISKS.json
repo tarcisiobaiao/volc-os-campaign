@@ -1,0 +1,112 @@
+{
+  "contrato": "meta-operations-v1-final-local/OPEN-RISKS",
+  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "riscos": [
+    {
+      "id": "R-01",
+      "severidade": "ALTO",
+      "area": "criativo/segurança",
+      "risco": "Uma peça gerada pelo Estúdio pode ser registrada como patrimônio na conta do cliente sem NENHUMA avaliação de política e sem aprovação humana.",
+      "por_que_existe": "nem criativos_agente.py nem criativo/execucao.py importam app.criativo.politica",
+      "mitigacao_hoje": "ORGANIZACIONAL: host local (macOS) + sessão admin + flag META_UPLOAD_ASSET_ENABLED por conta",
+      "o_que_foi_feito": "a afirmação falsa de que o gate havia rodado foi CORRIGIDA no código",
+      "forma_da_correcao": "chamar o gate na execução do Estúdio e exigir criativo_aprovacao na rota de registro"
+    },
+    {
+      "id": "R-02",
+      "severidade": "MEDIO",
+      "area": "criativo/governança",
+      "risco": "Não é possível provar depois quem autorizou quanto gasto de geração.",
+      "por_que_existe": "a autorização é validada e o objeto é descartado; não há coluna nem tabela",
+      "forma_da_correcao": "persistir a autorização com ator, teto, modelo e total de renders"
+    },
+    {
+      "id": "R-03",
+      "severidade": "MEDIO",
+      "area": "criativo/procedência",
+      "risco": "Um rebaixamento silencioso do modelo de IMAGEM é indetectável.",
+      "por_que_existe": "o motor de imagem não lê modelVersion; grava o modelo PEDIDO",
+      "forma_da_correcao": "ler o modelo SERVIDO da resposta e gravá-lo ao lado do pedido, como o texto já faz"
+    },
+    {
+      "id": "R-04",
+      "severidade": "MEDIO",
+      "area": "schema/atribuição",
+      "risco": "A view SQL de receita não reproduz o escopo por vínculo de projeto nem a recusa de colisão Google/Meta que o backend aplica.",
+      "por_que_existe": "a view não alcança trafego_meta_project_binding nem campaigns",
+      "mitigacao_hoje": "o fan-out foi eliminado (LATERAL) e a ambiguidade de conta vira GAM_AMBIGUO_MULTIPLAS_CONTAS com receita NULL; o escopo continua sendo aplicado no backend",
+      "forma_da_correcao": "parametrizar a view por gam_accounts_id, ou trocá-la por função com o escopo como argumento"
+    },
+    {
+      "id": "R-05",
+      "severidade": "MEDIO",
+      "area": "criativo/autoridade",
+      "risco": "O mesmo usuário propõe, aprova e autoriza o gasto da peça estratégica.",
+      "por_que_existe": "aprovar ATIVO exige admin; aprovar a PEÇA exige apenas usuário"
+    },
+    {
+      "id": "R-06",
+      "severidade": "ALTO",
+      "area": "coleta",
+      "risco": "Uma coleta em nivel=adset produz linhas ÓRFÃS se a hierarquia não estiver corrente.",
+      "por_que_existe": "trafego_meta_insight_daily não guarda o campaign_id pai; o único elo é trafego_meta_adset, populado por OUTRO fluxo, e o fluxo de insights envia hierarchy_complete:false de propósito",
+      "o_que_foi_feito": "registrado no próprio gerador n8n, ao lado da constante NIVEL",
+      "forma_da_correcao": "rodar a sincronização de hierarquia antes de publicar o fluxo de insights"
+    },
+    {
+      "id": "R-07",
+      "severidade": "ALTO",
+      "area": "schema",
+      "risco": "NADA do trilho Meta existe no Supabase oficial.",
+      "evidencia": "SCHEMA-APPLY-RECEIPT.json: 17 tabelas ausentes, 4 RPCs PGRST202",
+      "consequencia": "toda a lane falha fechada, independentemente das flags"
+    },
+    {
+      "id": "R-08",
+      "severidade": "MEDIO",
+      "area": "portabilidade",
+      "risco": "O id do item de cofre n8n está fixo em 8 artefatos.",
+      "nota": "é REFERÊNCIA e não segredo, mas é específico daquela instância"
+    },
+    {
+      "id": "R-09",
+      "severidade": "MEDIO",
+      "area": "gates",
+      "risco": "7 arquivos de teste do frontend falham (22 testes), em inventário, creative-studio e work-road.",
+      "estado": "PRÉ-EXISTENTES — o mesmo conjunto falha antes e depois desta missão, e nenhum deles está no raio dos arquivos tocados",
+      "nota": "3 arquivos adicionais falham só em execução PARALELA e passam isolados; é instabilidade de paralelismo, não defeito"
+    },
+    {
+      "id": "R-10",
+      "severidade": "MEDIO",
+      "area": "gates",
+      "risco": "2 testes de backend falham (test_canario_pedido_aprovado).",
+      "estado": "PRÉ-EXISTENTES — falham também em isolamento, no commit base d806705"
+    },
+    {
+      "id": "R-11",
+      "severidade": "BAIXO",
+      "area": "dívida",
+      "risco": "76 erros de TypeScript pelo tsconfig.app.json.",
+      "estado": "PRÉ-EXISTENTES, todos fora dos arquivos tocados; a contagem é idêntica antes e depois"
+    },
+    {
+      "id": "R-12",
+      "severidade": "OBSERVACAO",
+      "area": "segurança do ambiente",
+      "risco": "O arquivo de configuração do Codex CLI da máquina (~/.codex/config.toml, FORA deste repositório) guarda um access token de plataforma Supabase em texto claro.",
+      "o_que_foi_feito": "o valor NÃO foi copiado, impresso em artefato nem versionado; o scanner de segredos deste repositório passou a reconhecer o padrão sbp_ para impedir que uma chave dessa classe entre aqui",
+      "acao_do_dono": "rotacionar e mover para um cofre é decisão fora desta missão"
+    }
+  ],
+  "provas_externas_que_faltam": [
+    "leitura Meta real no grão adset (nenhuma chamada foi feita)",
+    "validate_only cobrindo adset e ad (estrutural: dependem do pai real)",
+    "criação PAUSED de qualquer objeto",
+    "read-back remoto de url_tags com a macro expandida",
+    "expansão real de {{adset.id}} sobrevivendo aos redirects até a LP",
+    "uma linha de gam_metrics real casando com um adset_id nascido deste compilador",
+    "bucket privado com bytes reais e image_hash real",
+    "QA visual autenticado em navegador"
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "contrato": "meta-atribuicao-adset-v1",
+  "vigente_desde": "2026-09-08",
+  "supersede": [
+    "docs/closure/meta-gam-final-local-v1/CONTRACT.json (gam_join: utm_campaign_value = campaign_id)",
+    "docs/specs/meta-operator-go-live-v1/SPEC.json (financial_join por campaign_id)",
+    "backend/app/trafego/meta/financeiro.py docstring anterior ('decisão do operador 2026-09-07')"
+  ],
+  "por_que_supersede": "A operação real gravou utm_campaign={{adset.id}}. A coluna GAM utm_campaign_value guarda um id de CONJUNTO, não de campanha. O join anterior casava zero linhas contra o dado real.",
+  "grao_canonico": {
+    "chave": [
+      "account_ref",
+      "campaign_id",
+      "adset_id",
+      "date",
+      "metric_scope",
+      "metric_version"
+    ],
+    "metric_scope_valores": [
+      "adset",
+      "campaign",
+      "ad"
+    ],
+    "metric_version_atual": "meta-atribuicao-adset-v1",
+    "por_que_escopo_entra_na_identidade": "Para tornar impossível somar leitura campaign-level às leituras adset-level: as duas medem a mesma despesa por caminhos diferentes, e somá-las dobra o gasto."
+  },
+  "campos": {
+    "identidade": [
+      "account_ref",
+      "campaign_id",
+      "adset_id",
+      "date",
+      "metric_scope",
+      "metric_version",
+      "project_id"
+    ],
+    "meta": [
+      "spend",
+      "impressions",
+      "clicks",
+      "reach"
+    ],
+    "gam": [
+      "gam_revenue_original",
+      "gam_revenue_brl",
+      "gam_impressions",
+      "gam_clicks",
+      "fx_rate"
+    ],
+    "procedencia": [
+      "attribution_method",
+      "mapping_status",
+      "source",
+      "currency",
+      "timezone",
+      "source_freshness",
+      "revenue_freshness",
+      "completo"
+    ],
+    "nao_somavel": [
+      "reach"
+    ],
+    "recalculado_no_total_nunca_somado": [
+      "ctr",
+      "cpc",
+      "roas_ratio",
+      "retorno_excedente_pct"
+    ]
+  },
+  "resolucao": {
+    "operacao_nova": "adset_id, emitido pelo compilador em utm_campaign e utm_term",
+    "operacao_historica": "adset_id, já presente em gam_metrics.utm_campaign_value",
+    "campanha": "AGREGAÇÃO dos conjuntos filhos; nunca lida do GAM",
+    "elo_conjunto_para_campanha": "trafego_meta_adset.meta_campaign_id (read model)",
+    "double_count": "recusado por META_ESCOPOS_MISTURADOS em atribuicao._exigir_homogeneidade",
+    "receita_por_anuncio": "NÃO EXISTE. Se existir, nasce em metric_scope='ad' e a mesma trava impede a soma."
+  },
+  "idempotencia": {
+    "chave": "LinhaAtribuicao.chave = (account_ref, campaign_id, adset_id, date, metric_scope, metric_version)",
+    "nome_participa": false,
+    "duplicata": "recusada por META_GRAO_DUPLICADO antes de virar total",
+    "gramatica_de_id": "^[0-9]{1,40}$ (atribuicao.id_meta_valido); uma URL nunca vira chave"
+  },
+  "semantica_de_ausencia": {
+    "nao_medido_ou_associacao_desconhecida": "NULL",
+    "entrega_medida_com_receita_zero": "0",
+    "sem_utm_no_gam": "mapping_status=SEM_UTM_ADSET_NO_GAM, receita NULL",
+    "gam_nao_lido": "mapping_status=SEM_LEITURA_GAM, receita NULL",
+    "leitura_parcial": "completo=False; RazaoDaSoma.spend_completo/revenue_completo",
+    "soma_com_parcela_nula": "total NULL (uma parcela desconhecida torna o total desconhecido)",
+    "fallback_por_nome": "INEXISTENTE em todo o caminho"
+  },
+  "estados_de_mapeamento": [
+    "FATURAMENTO_ATRIBUIDO_VIA_ADSET",
+    "SEM_UTM_ADSET_NO_GAM",
+    "SEM_LEITURA_GAM"
+  ],
+  "moeda_e_fuso": {
+    "parte_do_contrato": true,
+    "moedas_diferentes": "recusadas (META_MOEDAS_MISTURADAS)",
+    "fusos_diferentes": "recusados (META_FUSOS_MISTURADOS)",
+    "cambio": "fx_rate é DERIVADO da própria linha para auditar a conversão que a fonte já fez; nunca uma taxa presumida"
+  },
+  "reconciliacao": {
+    "o_que_e": "comparação entre a soma dos conjuntos e a leitura campaign-level da Meta",
+    "o_que_nao_e": "parcela; ela nunca entra no total",
+    "estados": [
+      "reconciliado=true",
+      "DIVERGENCIA_ENTRE_NIVEIS",
+      "SEM_LEITURA_CAMPAIGN_LEVEL",
+      "MEDIDA_AUSENTE"
+    ]
+  },
+  "contrato_google": {
+    "alterado": false,
+    "nota": "Nenhum caminho Google foi tocado. A conferência de colisão de namespace passou a olhar os IDS DOS CONJUNTOS contra campaigns.google_ads_campaign_id (ADSET_ID_GAM_COM_NAMESPACE_NAO_UNIVOCO)."
+  },
+  "implementacao": {
+    "dominio": "backend/app/trafego/meta/atribuicao.py",
+    "leitura": "backend/app/trafego/meta/financeiro.py",
+    "sql": "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql (CANDIDATA)",
+    "testes": [
+      "backend/tests/test_meta_atribuicao_adset.py",
+      "backend/tests/test_meta_financeiro_sql_conjunto_dia.py",
+      "backend/tests/test_meta_financial_lineage.py"
+    ]
+  },
+  "head": "74df1f8f27fd80e1b347ee43728050713fbd9ad2"
+}

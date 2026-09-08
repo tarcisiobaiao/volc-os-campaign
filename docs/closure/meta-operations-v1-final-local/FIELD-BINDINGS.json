@@ -1,0 +1,96 @@
+{
+  "contrato": "meta-operations-v1-final-local/FIELD-BINDINGS",
+  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "nota": "Nenhum id bruto de conta, campanha, conjunto ou projeto aparece neste documento.",
+  "grao": {
+    "account_ref": {
+      "origem": "dom.referencia_opaca_conta(account_external_id)",
+      "tipo": "handle opaco",
+      "vaza_id_bruto": false
+    },
+    "campaign_id": {
+      "origem": "trafego_meta_campaign.external_id",
+      "grafia": "^[0-9]{1,40}$",
+      "servidor_apenas": true
+    },
+    "adset_id": {
+      "origem": "trafego_meta_adset.external_id",
+      "grafia": "^[0-9]{1,40}$",
+      "servidor_apenas": true
+    },
+    "date": {
+      "origem": "vw_trafego_meta_insight_latest.periodo_inicio",
+      "invariante": "periodo_fim = periodo_inicio"
+    },
+    "metric_scope": {
+      "origem": "constante do contrato",
+      "valores": [
+        "adset",
+        "campaign",
+        "ad"
+      ]
+    },
+    "metric_version": {
+      "origem": "atribuicao.VERSAO_DA_ATRIBUICAO",
+      "atual": "meta-atribuicao-adset-v1"
+    },
+    "project_id": {
+      "origem": "trafego_meta_project_binding.project_id",
+      "unicidade": "exatamente 1 vínculo ativo"
+    }
+  },
+  "meta": {
+    "spend": "vw_trafego_meta_insight_latest.spend (nivel=adset)",
+    "impressions": "idem",
+    "clicks": "idem",
+    "reach": "idem — NÃO SOMÁVEL entre linhas",
+    "currency": "da PRÓPRIA linha de insight (corrigido na rodada adversarial)",
+    "timezone": "account_timezone da PRÓPRIA linha de insight",
+    "completo": "vw_trafego_meta_insight_latest.completo",
+    "source_freshness": "observado_em"
+  },
+  "gam": {
+    "chave_de_join": "gam_metrics.utm_campaign_value = adset_id",
+    "escopo": "gam_accounts.id resolvido por trafego_meta_project_binding -> project_id",
+    "gam_revenue_original": "gam_metrics.revenue",
+    "gam_revenue_brl": "gam_metrics.<revenue_column do contrato> (revenue | revenue_converted)",
+    "gam_impressions": "gam_metrics.impressions (passou a ser pedido na rodada adversarial)",
+    "gam_clicks": "gam_metrics.clicks (idem)",
+    "fx_rate": "DERIVADO: revenue_converted / revenue; existe para AUDITAR, nunca para converter",
+    "revenue_freshness": "gam_metrics.updated_at",
+    "contrato_de_moeda_fuso_coluna": "META_GAM_REPORTING_CONTRACT_JSON, por gam_accounts.id"
+  },
+  "tracking_para_grao": {
+    "utm_campaign": "-> adset_id  (a ÚNICA dimensão que o GAM materializa)",
+    "utm_term": "-> adset_id  (redundância deliberada; o GAM não a persiste)",
+    "utm_content": "-> ad_id     (procedência; o GAM não a persiste)",
+    "placement": "-> placement (o GAM não a persiste)",
+    "campaign_id": "-> campaign_id (instrumentação do site; o GAM não a persiste)",
+    "utm_source": "-> {{site_source_name}}",
+    "utm_medium": "-> paid_social"
+  },
+  "campanha_de_uma_receita": {
+    "como_e_resolvida": "trafego_meta_adset.meta_campaign_id -> trafego_meta_campaign.external_id",
+    "como_NAO_e_resolvida": "pelo GAM; ele não guarda campaign_id"
+  },
+  "contrato_frontend": {
+    "FinanceiroMeta": "src/lib/pautadorApi.ts",
+    "campos_novos": [
+      "grao",
+      "contrato",
+      "conjuntos[]",
+      "razao",
+      "reconciliacao",
+      "revenue_original",
+      "impressions",
+      "clicks",
+      "ctr",
+      "cpc",
+      "gam_impressions",
+      "gam_clicks",
+      "conjuntos_conhecidos"
+    ],
+    "id_bruto_no_navegador": false,
+    "como_o_conjunto_viaja": "adset_ref (referência opaca) + id_mascarado"
+  }
+}

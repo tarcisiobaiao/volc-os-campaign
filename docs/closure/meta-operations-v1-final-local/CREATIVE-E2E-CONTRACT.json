@@ -1,0 +1,62 @@
+{
+  "contrato": "meta-operations-v1-final-local/CREATIVE-E2E-CONTRACT",
+  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "rota": "/trafego/meta/assistente-criativo (e /:projectRef)",
+  "experiencia": "Aprova-inspired PRESERVADA — nenhuma tela foi redesenhada nesta missão",
+  "veredito": "FECHADO LOCALMENTE COM DUBLÊS; NÃO PRONTO EM PRODUÇÃO",
+  "provado_localmente_com_fixtures": [
+    "briefing",
+    "formatos Meta",
+    "quantidade",
+    "estratégia",
+    "aprovação/refinamento",
+    "plano de produção",
+    "galeria",
+    "zoom",
+    "download individual",
+    "ZIP (client-side)",
+    "retomada após reload",
+    "erro parcial por rendition",
+    "custo estimado e teto",
+    "botão de geração bloqueado sem autorização explícita"
+  ],
+  "NAO_pronto_e_nao_declarado_pronto": {
+    "bucket_oficial": "GET /storage/v1/bucket no host oficial devolveu HTTP 200 com ZERO buckets. `armazenamento_padrao()` devolve ArmazenamentoLocal; ArmazenamentoSupabase está implementado e DESARMADO. Os bytes vivem em disco do processo.",
+    "render_real": "REAL_IMAGE_GENERATION_VERIFIED = NAO_EXECUTADA; custo observado US$ 0,00",
+    "upload_real_a_meta": "zero objetos criados; zero bytes enviados",
+    "image_hash_real": "nenhum image_hash real foi obtido",
+    "schema_oficial": "criativo_agente_operacao/run/decisao AUSENTES no catálogo oficial (109 tabelas/views, 92 RPCs conferidos). O PRIMEIRO ato da jornada falha no insert."
+  },
+  "defeitos_conhecidos_nao_corrigidos_nesta_missao": {
+    "gate_de_politica_nao_roda_sobre_peca_gerada": {
+      "onde": "nem criativos_agente.py nem criativo/execucao.py importam app.criativo.politica",
+      "quem_chama_hoje": [
+        "backend/app/routers/trafego.py (Google Ads)",
+        "backend/app/routers/criativos_importacao.py (intake humano)"
+      ],
+      "efeito": "um criativo_master gerado não carrega avaliação de política de nenhum tipo",
+      "acao_tomada": "CORRIGIDA A AFIRMAÇÃO FALSA em trafego_meta_ativos.py, que dizia que a peça 'já passou pelo gate de política'. O comentário agora lista o que a rota DE FATO verifica (host local, admin, conta confirmada, quantidade, flag por conta, POSSE, content_sha256) e declara o que ela NÃO verifica. Escrever que o gate rodou é pior do que a ausência do gate: a próxima pessoa confiaria na frase e pararia de procurar.",
+      "risco_residual": "OPEN-RISKS R-01"
+    },
+    "autorizacao_de_gasto_nao_persistida": {
+      "onde": "criativos_agente.py valida modelo/renders/teto e DESCARTA o objeto",
+      "efeito": "depois do fato é impossível provar quem autorizou quanto",
+      "risco_residual": "OPEN-RISKS R-02"
+    },
+    "procedencia_do_modelo_so_cobre_texto": {
+      "onde": "o motor de IMAGEM não lê modelVersion; criativo_master.motor grava o modelo PEDIDO",
+      "efeito": "um rebaixamento silencioso do modelo de imagem — o gasto que importa — é indetectável",
+      "risco_residual": "OPEN-RISKS R-03"
+    },
+    "assimetria_de_autoridade": {
+      "onde": "aprovar ATIVO exige admin; aprovar a PEÇA ESTRATÉGICA (que libera o gasto) exige só usuário",
+      "risco_residual": "OPEN-RISKS R-05"
+    }
+  },
+  "ponte_para_a_biblioteca_meta": {
+    "rota": "POST /api/trafego/meta/ativos/registrar",
+    "testes": 36,
+    "cliente_no_frontend": "NENHUM — grep de 'meta/ativos' em src/ retorna zero",
+    "consequencia": "capacidade inalcançável pela interface hoje"
+  }
+}

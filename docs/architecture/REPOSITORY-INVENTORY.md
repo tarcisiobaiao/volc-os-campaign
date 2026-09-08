@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-07T21:04:48-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-08T11:54:16-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 711 arquivos: 520 Markdown e 191 SQL;
-- 710 versionados e 1 ainda não versionados;
+- 713 arquivos: 520 Markdown e 193 SQL;
+- 713 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 129 SQL com palavras de mutação de alto risco.
+- 131 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -27,7 +27,7 @@ Gerado em `2026-09-07T21:04:48-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 78 |
+| `sql-needs-review` | 80 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -124,6 +124,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql` | `sql-needs-review` | 2 | 3 |
 | `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | 2 | 8 |
 | `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql` | `sql-needs-review` | 4 | 15 |
+| `supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | 33 | 126 |
@@ -274,6 +276,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 2 | 8 |
 | `supabase/migrations/20260908020000_meta_asset_registration.sql` | `sql-needs-review` | medium | 5 | 8 |
 | `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
+| `supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql` | `sql-needs-review` | high | 4 | 15 |
+| `supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_01_intencao_e_lote.sql` | `sql-needs-review` | high | 37 | 131 |
 | `supabase/migrations/v10_01_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v10_02_autogestao.sql` | `sql-needs-review` | high | 33 | 126 |
@@ -293,8 +297,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v11_05_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_06_criativo_agente_endurecimento.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/v11_06_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/v11_07_criativo_agente_ponte_estudio.sql` | `sql-needs-review` | high | 2 | 3 |
-| `supabase/migrations/v11_07_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

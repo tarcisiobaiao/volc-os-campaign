@@ -1,0 +1,171 @@
+{
+  "contrato": "meta-operations-v1-final-local/EXECUTION-RESULT",
+  "missao": "VOLC_META_OPERATIONS_V1_FINAL_LOCAL_CLOSURE",
+  "data": "2026-09-08",
+  "branch": "execution/volc-os-operacao-80-20",
+  "base": "d8067053e3774e06d300e8129ed82d066be4a6e6",
+  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "veredito": "META_OPERATIONS_V1_LOCAL_PARTIAL",
+  "por_que_este_veredito": "O grão financeiro, o tracking, o read model candidato e a superfície do dashboard fecharam localmente com prova. Mas CP5 e CP6 não fecharam: o schema oficial Meta não existe na base, não há bucket, não houve geração nem upload real, a ficha de canário não sai completa por uma lacuna nomeada de schema, o contrato V2 não tem rota de criação, e não houve QA visual em navegador. Declarar COMPLETE com esses buracos seria exatamente o tipo de afirmação que esta missão existe para não fazer.",
+  "preflight_git": {
+    "checkout_usado": "/private/tmp/volc-os-operacao-80-20 (worktree JÁ REGISTRADA, não criada)",
+    "worktree_nova": false,
+    "branch_nova": false,
+    "stash": false,
+    "reset": false,
+    "clean": false,
+    "rebase": false,
+    "merge": false,
+    "amend": false,
+    "push": false,
+    "d54e100_e_ancestral": true,
+    "d806705_e_ancestral": true,
+    "checkout_principal_em_main": "INTOCADO — permaneceu em main com 879 entradas de terceiros",
+    "incidente": "A worktree operacional estava REGISTRADA mas quebrada: o coletor de /tmp do macOS apagou o arquivo .git, o pyvenv.cfg do venv, o conteúdo de site-packages, o node_modules e 2.372 arquivos rastreados. Nenhuma modificação foi perdida: as 2.372 entradas eram 100% DELEÇÕES, com zero M/A/R/C. Recuperado com `git worktree repair` e `git checkout-index --all` (que por desenho NÃO sobrescreve arquivo existente), mais reinstalação de venv e node_modules."
+  },
+  "commits": [
+    {
+      "sha": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+      "assunto": "fix(meta): rodada corretiva da revisão adversarial — 12 achados, 12 endereçados"
+    },
+    {
+      "sha": "74df1f8f27fd80e1b347ee43728050713fbd9ad2",
+      "assunto": "fix(n8n,seguranca): destino único no fluxo Meta, grão adset e scanner que olha o risco novo"
+    },
+    {
+      "sha": "7a8859cdd1a7a65f03265c82a7017209ce22297d",
+      "assunto": "feat(dashboard-meta): o conjunto vira superfície, e o total prova a soma"
+    },
+    {
+      "sha": "ab5921b71d44064664a05a3ca7166a406bd066d6",
+      "assunto": "feat(migrations): o grão conjunto/dia em SQL, provado contra o contrato Python"
+    },
+    {
+      "sha": "fd0702a72f1aef79d7ef405a09ee1de1fde8ab85",
+      "assunto": "feat(meta): o tracking de nascimento passa a emitir o ID do CONJUNTO"
+    },
+    {
+      "sha": "62ae6c9ee1b8940fe2a5c97f1af2bd4c60f858cd",
+      "assunto": "feat(meta): o grão financeiro canônico passa a ser CONJUNTO/DIA"
+    },
+    {
+      "sha": "15f042ece10bdfa04dd3c247129bbdcab54f69ff",
+      "assunto": "fix(gates): o comando oficial da suíte rodava com asyncio em STRICT"
+    }
+  ],
+  "arquivos_alterados": [
+    "backend/app/routers/trafego_meta_ativos.py",
+    "backend/app/trafego/meta/atribuicao.py",
+    "backend/app/trafego/meta/financeiro.py",
+    "backend/app/trafego/meta_execucao/compilador.py",
+    "backend/app/trafego/meta_execucao/contrato.py",
+    "backend/app/trafego/meta_execucao/contrato_v2.py",
+    "backend/tests/goldens/atribuicao-meta-adset-v1.json",
+    "backend/tests/test_meta_atribuicao_adset.py",
+    "backend/tests/test_meta_criacao_pausada_rotas.py",
+    "backend/tests/test_meta_financeiro_sql_conjunto_dia.py",
+    "backend/tests/test_meta_financial_lineage.py",
+    "backend/tests/test_meta_paused_birth.py",
+    "backend/tests/test_meta_tracking_gam.py",
+    "backend/tests/test_meta_workflows_n8n.py",
+    "docs/closure/traffic-operational-closure-v2/SCHEMA-DEPLOY-MANIFEST.json",
+    "n8n/gerar_flows_meta_ledger.py",
+    "n8n/volc_meta_insights_dia_d1.json",
+    "pytest.ini",
+    "scripts/gerar_golden_atribuicao_meta.py",
+    "scripts/verificar_segredos.py",
+    "src/components/trafego/meta/ConjuntosFinanceiros.tsx",
+    "src/components/trafego/meta/MetaCampaignReadView.tsx",
+    "src/components/trafego/meta/MetaFinanceiro.tsx",
+    "src/components/trafego/meta/__tests__/conjuntos-financeiros.test.tsx",
+    "src/components/trafego/meta/__tests__/meta-read-view.test.tsx",
+    "src/lib/pautadorApi.ts",
+    "src/pages/trafego/MetaCriacaoPage.tsx",
+    "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql",
+    "supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql"
+  ],
+  "prova_matematica_da_fixture": {
+    "linhas_campanha_dia": 64,
+    "atribuidas": 62,
+    "sem_utm": 2,
+    "gasto_total": "1029.410000",
+    "receita_total_brl": "1140.73",
+    "receita_total_original": "232.8000",
+    "roas": "1.1081396139536239",
+    "lucro_bruto": "111.320000",
+    "impressoes_meta": 234333,
+    "cliques_meta": 18961,
+    "impressoes_gam": 11734,
+    "cliques_gam": 5424,
+    "campanhas": 7,
+    "conjuntos": 12,
+    "dias": 17,
+    "linhas_conjunto_dia": 87,
+    "rollup_exato": "campanha == soma dos conjuntos, em Decimal, pelos dois caminhos (Python e SQL)",
+    "duplicacao": 0
+  },
+  "checkpoints": {
+    "CP0_raio_x": {
+      "estado": "FEITO",
+      "prova": "AS-IS-MATRIX.json — 254 linhas de matriz, 12 áreas, 12 agentes read-only"
+    },
+    "CP1_contrato_de_atribuicao": {
+      "estado": "FEITO",
+      "prova": "atribuicao.py + 33 testes golden + financeiro.py reescrito + 29 testes de linhagem"
+    },
+    "CP2_tracking_de_nascimento": {
+      "estado": "FEITO",
+      "prova": "TRACKING_GAM_ADSET_ID + 22 testes, incluindo o template antigo voltando"
+    },
+    "CP3_read_model_e_persistencia": {
+      "estado": "FEITO_COMO_CANDIDATA",
+      "prova": "2 views + 1 condicional, 17 testes em PostgreSQL descartável, ciclo apply→uso→replay→concorrência→rollback→reapply",
+      "ressalva": "NÃO aplicada oficialmente"
+    },
+    "CP4_dashboard": {
+      "estado": "PARCIAL",
+      "feito": "seção de conjuntos com prova da soma, 5 cartões novos, drill-down, contrato novo, 12 testes",
+      "falta": "colunas financeiras na LISTA de campanhas, filtros projeto/conta/estado, MetricDelta, QA visual em navegador"
+    },
+    "CP5_assistente_criativo": {
+      "estado": "PARCIAL_BLOQUEADO",
+      "feito": "inventário linha a linha; correção da afirmação falsa sobre o gate de política",
+      "falta": "schema, bucket, geração real, upload real, image_hash real"
+    },
+    "CP6_criador_e_canario": {
+      "estado": "PARCIAL_BLOQUEADO",
+      "feito": "tracking correto no nascimento, read-back endurecido, ficha objetiva de bloqueios",
+      "falta": "schema oficial, rota de criação do contrato V2, RPC de busca de validação por hash"
+    },
+    "CP7_pacote_portavel": {
+      "estado": "FEITO_COMO_CONTRATO",
+      "prova": "WEBGO-PORTABILITY.json + destino único no fluxo n8n",
+      "ressalva": "nenhuma instalação foi feita"
+    }
+  },
+  "fora_do_bloqueio_v1_nao_expandido": [
+    "CAPI",
+    "criação de públicos",
+    "upload de listas",
+    "Dynamic/Flexible Creative",
+    "edição ampla de campanhas existentes",
+    "ativação",
+    "escala automática"
+  ],
+  "confirmacao_literal": {
+    "zero_push": true,
+    "zero_deploy": true,
+    "zero_meta_real": true,
+    "zero_criacao": true,
+    "zero_ativacao": true,
+    "zero_supabase_oficial": true,
+    "zero_migration_oficial": true,
+    "zero_n8n_remoto": true,
+    "zero_google_ads": true,
+    "zero_geracao_paga": true,
+    "zero_upload_de_midia": true,
+    "zero_leitura_de_token": true,
+    "zero_env_webgo": true,
+    "zero_segredo_commitado": true
+  }
+}

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T21:04:48-03:00",
+  "generated_at": "2026-09-08T11:54:16-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 711,
+    "files": 713,
     "markdown": 520,
-    "sql": 191,
-    "tracked": 710,
-    "untracked": 1,
+    "sql": 193,
+    "tracked": 713,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 78,
+      "sql-needs-review": 80,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 129,
+      "high": 131,
       "medium": 46,
       "read-only-or-ddl-free": 16
     }
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22511,
       "lines": 301,
-      "sha256": "81b261ff7d16c6994d0d9141b4ee71878705924908bc56fc6d9aaaa29ad3e0fb",
+      "sha256": "2dec9e7ec550f420aadb68700cb7383f73315dcde8a7134d4455bc046c94a220",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1986,7 +1986,7 @@
       "path": "docs/closure/creative-studio-first-real-generation-v1/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 10741,
       "lines": 197,
       "sha256": "d2e6b32217ba34ae501c1f2be443fa647aba70dcefa9c531284e5cb7e1ea03f9",
@@ -7606,6 +7606,30 @@
       "bytes": 2414,
       "lines": 47,
       "sha256": "9885be7c5907aef9a6e780e6baa49a7ba7ebd7e467de9c376f6f551d1779cde5",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 18245,
+      "lines": 360,
+      "sha256": "1d803eb623a716a263ae6cdcef886285d7fb60581bb0382f5dc9d4047f34f51a",
+      "graph_nodes": 4,
+      "graph_degree": 15,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1727,
+      "lines": 47,
+      "sha256": "6e3fe31a6ef271583a4cb7152e41a1ea04d41e6da9f0b7a866ff304e5e91600d",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"

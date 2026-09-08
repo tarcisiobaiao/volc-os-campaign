@@ -5,7 +5,7 @@
     "papel": "FONTE HUMANA. Editável à mão. O pipeline lê este arquivo e NUNCA o sobrescreve.",
     "saida_gerada": "docs/volc-os-graph/volc-os-graph.json",
     "snapshot_date": "2026-08-22",
-    "curadoria_atualizada_em": "2026-09-07",
+    "curadoria_atualizada_em": "2026-09-08",
     "method": "Código + PostgREST vivo + inventário n8n + ClickUp + fontes oficiais + decisões do dono",
     "warning": "Ativo declarado no n8n nao equivale a execucao comprovada. Um workflow versionado com active:false tambem nao equivale a workflow importado: gerar, importar, executar e ativar sao quatro atos distintos."
   },
@@ -104,7 +104,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Une AdSense, GAM e JoinAds por projeto, campanha, URL e placement.",
-      "evidence": "daily_project_metrics chegou a 22/08; tabelas GAM/JoinAds estão vazias e AdSense parou em fevereiro."
+      "evidence": "daily_project_metrics chegou a 22/08; tabelas GAM/JoinAds estão vazias e AdSense parou em fevereiro. 08/09/2026: do lado Meta, a receita passou a ser resolvida por gam_metrics.utm_campaign_value = adset_id, com escopo por vínculo de projeto e conta GAM única. Ambiguidade entre contas GAM vira estado explícito com receita NULL, nunca escolha. gam_metrics/gam_accounts continuam sem DDL neste repositório — schema legado."
     },
     {
       "id": "cap_behavior",
@@ -120,7 +120,7 @@
       "cluster": "measurement",
       "state": "partial",
       "summary": "Conecta origem de mídia, campanha, funil, URL e comportamento.",
-      "evidence": "1 de 4 campanhas tem funnel_run_id; a campanha nova tem 0 URLs em campaign_funnel_urls."
+      "evidence": "1 de 4 campanhas tem funnel_run_id; a campanha nova tem 0 URLs em campaign_funnel_urls. 08/09/2026: o eixo Meta ganhou grão próprio (conjunto/dia) com semântica de ausência explícita — associação desconhecida é NULL e nunca zero — e três estados de mapeamento distintos. Receita não desce para anúncio ou criativo."
     },
     {
       "id": "cap_offline_conversion",
@@ -271,8 +271,8 @@
       "label": "Operação Meta Ads",
       "cluster": "acquisition",
       "state": "partial",
-      "summary": "Meta P0 PAUSED e read model implementados localmente; dashboard ligado a gasto por campanha e receita GAM por campaign_id. Schema, canário, tracking e primeira coleta oficial pendentes.",
-      "evidence": "Fechamento local 07/09/2026 em docs/closure/meta-gam-final-local-v1/HANDOFF.md. Mantidas aprovação, ledger, despacho, read-back e fencing da trilha r0-fencing-final-v1. Corrigidos catálogo vazio, startup com mutação implícita e leitura automática Meta ao montar bancada. Receita usa utm_campaign_value=campaign_id com projeto/conta GAM e moeda/fuso confirmados. Insights campaign/dia/latest, sem somar revisões. Tracking entra no hash e read-back, sem aceitação/expansão remota provada. Cards reais conectados, demo explícita. 355 testes backend Meta TCP-bloqueados, 75 UI focais, 152 SQL descartáveis. TypeScript 77 erros herdados idênticos à base 8697bf7; a antiga afirmação tsc 0 não verificava tsconfig.app.json. Histórico remoto cobre contas e roots, não nascimento completo. Sem schema oficial, canário, coleta, agenda, deploy ou push nesta rodada. Não certificar retroativamente efeitos indeterminados de sessões anteriores. P11-T05/T06 partial. 07/09/2026, execution/volc-os-operacao-80-20: o criador deixou de ser ABO fixo de um conjunto. Contrato V2 com ABO/CBO (união discriminada, nunca os dois níveis), diário/total, múltiplos conjuntos com adset_key estável, público por conjunto (geo incluída/excluída, raio, públicos existentes, idade), posicionamentos e mensuração com propósito REPORT_ONLY/OPTIMIZE. O V1 ficou intacto e há prova de paridade de payload. Registro de mídia na conta virou ato próprio, com autorização POR CONTA separada da de criação. Estado continua partial e ficou mais bem delimitado: leitura do Supabase oficial mostrou que NENHUMA tabela e NENHUMA RPC Meta existe lá; zero validate_only foi disparado; zero objeto foi criado; a inspeção visual autenticada não aconteceu. Receita e modo de orçamento sem prova remota bloqueiam CRIAR, não compilar nem validar."
+      "summary": "Meta P0 PAUSED e read model implementados localmente. O grão financeiro canônico passou a ser CONJUNTO/DIA e o dashboard mostra o financeiro por conjunto com prova da soma. Schema oficial, canário, expansão de macro e primeira coleta oficial seguem pendentes.",
+      "evidence": "Fechamento local 08/09/2026 em docs/closure/meta-operations-v1-final-local/, HEAD 0e8ce6c. ⚠️ SUPERSEDE a evidência anterior desta capacidade, que dizia 'Receita usa utm_campaign_value=campaign_id' e 'Insights campaign/dia/latest': os anúncios reais gravam utm_campaign com o id do CONJUNTO, e o join por campanha casava zero linhas contra o dado real. Agora o grão é account_ref+campaign_id+adset_id+date+metric_scope+metric_version; a campanha é a SOMA dos conjuntos filhos; somar leitura campaign-level às adset-level é recusado com nome próprio, e a leitura de campanha serve só para reconciliar. Golden derivado de operação real sanitizada: 64 linhas campanha/dia, 62 atribuídas e 2 sem UTM, R$ 1.029,41 de gasto e R$ 1.140,73 de receita, provado pelos dois caminhos (Python e SQL, em PostgreSQL descartável). Revisão adversarial por Codex read-only devolveu 12 achados, todos endereçados e nenhum refutado. Continuam sem prova remota: leitura Meta no grão adset, criação, expansão de macro e QA visual autenticado."
     },
     {
       "id": "cap_creative_engines",
@@ -593,8 +593,8 @@
       "label": "Meta direto para o site",
       "cluster": "acquisition",
       "state": "partial",
-      "summary": "Meta → site → GAM: tracking local por campaign_id, financeiro escopado e dashboard real conectados. Canário, instrumentação da LP e conciliação com dados oficiais ainda pendentes.",
-      "evidence": "Decisão do dono em 07/09/2026: receita GAM por campaign_id, não ad_id. backend/app/trafego/meta/financeiro.py resolve campanha na conta, vínculo Meta→projeto→conta GAM única e gam_metrics por utm_campaign_value/datas/conta. Recusa colisão de namespace, duplicatas e metadados ausentes; sem FX automático ou purchase value Meta como GAM. Novos criativos emitem url_tags por campaign_id, no hash e read-back; aprovações históricas não são reescritas. Quatro cards reais consomem endpoint financeiro, nunca gasto da conta inteira atribuído à campanha. Provas e lacunas em docs/closure/meta-gam-final-local-v1/HANDOFF.md. CP2/CP3/CP4, primeira persistência, tracking LP/GAM e regras fiscais versionadas pendentes. 07/09/2026: as quatro camadas de prova do tracking passaram a ser explícitas no contrato (compilado local, roots remoto, expansão real da macro, receita no GAM), justamente para impedir que uma validação de raízes seja lida como prova de expansão ou de receita. Nenhuma delas além da primeira foi obtida nesta rodada."
+      "summary": "Meta → site → GAM: o tracking de nascimento leva o id do CONJUNTO, que é a única dimensão que o GAM materializa; financeiro escopado por conjunto/dia e dashboard real conectados. Canário, instrumentação da LP e conciliação com dados oficiais seguem pendentes.",
+      "evidence": "⚠️ A 'Decisão do dono em 07/09/2026: receita GAM por campaign_id' está SUPERSEDIDA pela decisão de 08/09/2026, tomada contra prova de operação real. O tracking canônico passou a ser utm_source={{site_source_name}}&utm_medium=paid_social&utm_campaign={{adset.id}}&utm_term={{adset.id}}&utm_content={{ad.id}}&placement={{placement}}&campaign_id={{campaign.id}}. campaign_id viaja para a instrumentação do SITE, e o contrato NÃO declara atribuição por ele: a campanha de uma receita é resolvida pelo read model, do conjunto para o pai. A URL da LP recusa os sete parâmetros conflitantes; o tracking entra no hash; o read-back recusa o template antigo voltando e a macro trocada de dimensão. Aprovações históricas não são reescritas. Sem prova remota de aceitação ou expansão de macro."
     },
     {
       "id": "concept:meta_chat_retention",

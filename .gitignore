@@ -139,3 +139,6 @@ tools/agent-harness/**/heartbeat.jsonl
 tools/agent-harness/**/compiled-mission.json
 tools/agent-harness/**/gate-plan.json
 tools/agent-harness/**/ownership-proposal.json
+
+# Cache do Vite (dev). Local, regenerável, nunca versionado.
+.vite/

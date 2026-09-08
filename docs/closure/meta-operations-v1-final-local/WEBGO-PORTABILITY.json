@@ -1,0 +1,168 @@
+{
+  "contrato": "meta-operations-v1-final-local/WEBGO-PORTABILITY",
+  "head": "74df1f8f27fd80e1b347ee43728050713fbd9ad2",
+  "estado": "CONTRATO DE EMPACOTAMENTO — nenhuma instalação foi feita; Supabase Webgo não foi tocado",
+  "principio": "O núcleo Meta não conhece o destino. Tudo o que é específico de uma instalação entra por adaptador, e o núcleo falha fechado quando o adaptador não existe.",
+  "modulos": {
+    "meta-core": {
+      "o_que_e": "contrato de atribuição, agregação e recusas. Sem I/O.",
+      "arquivos": [
+        "backend/app/trafego/meta/atribuicao.py"
+      ],
+      "depende_de": [],
+      "conhece_supabase": false,
+      "conhece_webgo": false
+    },
+    "meta-provider": {
+      "o_que_e": "adaptador da Graph API: leitura, paginação, contrato de pedido de insights.",
+      "arquivos": [
+        "backend/app/trafego/meta/adaptador.py",
+        "backend/app/trafego/meta/dominio.py"
+      ],
+      "segredo": "por secret-provider; nunca por variável de ambiente com valor"
+    },
+    "meta-storage": {
+      "o_que_e": "custódia de bytes de criativo.",
+      "arquivos": [
+        "backend/app/criativo/armazenamento.py"
+      ],
+      "estado": "ArmazenamentoLocal ativo; ArmazenamentoSupabase implementado e DESARMADO"
+    },
+    "meta-revenue": {
+      "o_que_e": "resolvedor de receita. É a costura que troca por instalação.",
+      "arquivos": [
+        "backend/app/trafego/meta/financeiro.py",
+        "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql (view _gam, condicional)"
+      ],
+      "por_que_separado": "gam_metrics/gam_accounts são schema LEGADO sem DDL neste repositório"
+    },
+    "meta-creative": {
+      "o_que_e": "estúdio e agente criativo",
+      "arquivos": [
+        "backend/app/criativo/",
+        "backend/app/routers/criativos_agente.py"
+      ]
+    },
+    "meta-ui": {
+      "o_que_e": "superfícies React",
+      "arquivos": [
+        "src/components/trafego/meta/",
+        "src/pages/trafego/",
+        "src/pages/MetaCampaignInsightPage.tsx"
+      ]
+    },
+    "adapters-volc": {
+      "supabase": "https://database.agenciavolc.com.br",
+      "n8n": "instância VOLC; item de cofre supabaseApi",
+      "keychain": "br.com.agenciavolc.volc-os.meta-system-user (macOS)"
+    },
+    "adapters-webgo": {
+      "estado": "NÃO IMPLEMENTADO — este documento é o contrato que ele terá de cumprir"
+    }
+  },
+  "interfaces": {
+    "secret-provider": {
+      "contrato": "resolver(nome) -> SegredoEfemero; nunca persiste, nunca loga, nunca serializa",
+      "implementacoes_hoje": [
+        "Keychain do macOS (local)",
+        "item httpHeaderAuth do cofre n8n (a provisionar)"
+      ],
+      "hiato_registrado": "n8n remoto não pode depender de localhost nem do Keychain do Mac (docs/specs/meta-operator-go-live-v1/EVIDENCE.json:123). É o hiato real entre o caminho local, que funciona, e o caminho n8n, que não pode rodar."
+    },
+    "storage-provider": {
+      "contrato": "guardar(bytes) -> ref; ler(ref) -> bytes; url_assinada(ref, ttl)",
+      "invariante": "bucket privado; nenhuma URL pública; content_sha256 confere na leitura"
+    },
+    "revenue-resolver": {
+      "contrato": "receita(adset_ids, intervalo, escopo) -> linhas por (adset_id, date)",
+      "invariante": "a chave é adset_id; ausência é NULL e nunca zero; ambiguidade de conta é estado explícito, nunca escolha"
+    }
+  },
+  "variaveis_de_ambiente": {
+    "aviso": "NOMES apenas. Nenhum valor foi lido, impresso ou versionado.",
+    "meta": [
+      "META_GAM_REPORTING_CONTRACT_JSON",
+      "META_READ_MODEL_WRITE_ENABLED",
+      "META_CREATE_LEDGER_WRITE_ENABLED",
+      "META_VALIDATE_ONLY_ENABLED",
+      "META_UPLOAD_ASSET_ENABLED"
+    ],
+    "n8n": [
+      "N8N_BASE_URL",
+      "N8N_API_KEY"
+    ],
+    "supabase": [
+      "SUPABASE_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY"
+    ],
+    "gap": "NENHUMA das META_* nem N8N_* aparece em .env.example, .env.server.example ou backend/.env.example. Não existe template para o stack Meta."
+  },
+  "n8n_io_schema": {
+    "fluxo": "n8n/volc_meta_insights_dia_d1.json (gerado por n8n/gerar_flows_meta_ledger.py)",
+    "entrada": {
+      "NIVEL": "adset (mudou de campaign em 08/09/2026)",
+      "TIME_INCREMENT": "1",
+      "ACTION_REPORT_TIME": "impression",
+      "BREAKDOWN": "none",
+      "SUPABASE_URL": "parametrizado no nó Config — agora os TRÊS nós de escrita o usam"
+    },
+    "saida": {
+      "rpc": "trafego_meta_persistir_snapshot",
+      "escopos": [
+        "insights_pagina",
+        "insights_fechamento"
+      ],
+      "idempotencia": "chave estável derivada do pedido, sem instante"
+    },
+    "validador": "scripts/validar_workflows_n8n_meta.py — 293 asserções, nó a nó"
+  },
+  "mapeamento_volc_para_webgo": {
+    "supabase": "VOLC=database.agenciavolc.com.br -> WEBGO=<a definir>; hoje trocável num ponto (nó Config)",
+    "item_de_cofre_n8n": "id '3lSRuywq3fwQ3z3I' ('VOLC Oficial', supabaseApi) está fixo em 8 artefatos. É REFERÊNCIA e não segredo, mas é específico daquela instância — bloqueador de portabilidade se o destino mudar.",
+    "workflows_de_referencia": {
+      "Webgo Meta Daily V2": "VzmAz4wpkf5CSmcU",
+      "Webgo Meta Backfill": "9jOsfVPGrFOQAcUR",
+      "nota": "IDs de contexto. Nenhum foi aberto, editado ou executado."
+    }
+  },
+  "instalacao": [
+    "1. aplicar a cadeia de migrations na ordem de SCHEMA-MANIFEST.json, como postgres/supabase_admin",
+    "2. criar os papéis anon/authenticated/service_role se não existirem",
+    "3. provisionar o secret-provider (item de cofre) — o núcleo falha fechado sem ele",
+    "4. apontar Config.SUPABASE_URL do fluxo n8n para o destino",
+    "5. rodar a hierarquia ANTES dos insights: sem trafego_meta_adset populado, insights adset ficam órfãos",
+    "6. healthcheck e smoke abaixo"
+  ],
+  "rollback": [
+    "20260908120100_meta_financeiro_conjunto_dia_rollback.sql (só views; nenhum dado perdido)",
+    "v15_98/v15_99 para os insights e o read model",
+    "20260904183514 / 20260907120100 / 20260907190100 / 20260908020100 para os demais"
+  ],
+  "healthcheck": [
+    "SELECT count(*) FROM public.vw_trafego_meta_financeiro_conjunto_dia — a view existe e responde",
+    "as três views têm security_invoker=true e zero grants a anon/authenticated",
+    "para toda campanha do período: conjuntos_no_dia == conjuntos_conhecidos_na_campanha",
+    "nenhuma linha do rollup com moedas_no_dia > 1"
+  ],
+  "smoke_tests": [
+    "backend/tests/test_meta_atribuicao_adset.py (33)",
+    "backend/tests/test_meta_financeiro_sql_conjunto_dia.py (17, exige Postgres descartável)",
+    "backend/tests/test_meta_financial_lineage.py (29)",
+    "backend/tests/test_meta_tracking_gam.py (22)",
+    "scripts/validar_workflows_n8n_meta.py (293)"
+  ],
+  "politica_de_compatibilidade": {
+    "metric_version": "muda quando a forma da atribuição muda; linhas de versões diferentes NÃO somam",
+    "contrato_do_compilador": "VERSAO_DO_COMPILADOR recusa descongelar snapshot de outra versão",
+    "quebra": "mudar o grão de novo exige nova metric_version e novo golden, nunca reinterpretar o antigo"
+  },
+  "higiene": {
+    "env_webgo_existe_no_worktree": false,
+    "url_ou_chave_webgo_hardcoded": false,
+    "endpoint_webgo_no_core": false,
+    "id_bruto_de_conta_ou_projeto_neste_documento": false,
+    "verificado_por": "scripts/verificar_segredos.py (com os quatro padrões novos do trilho Meta)"
+  }
+}

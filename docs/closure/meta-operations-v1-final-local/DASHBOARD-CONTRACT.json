@@ -1,0 +1,84 @@
+{
+  "contrato": "meta-operations-v1-final-local/DASHBOARD-CONTRACT",
+  "head": "74df1f8f27fd80e1b347ee43728050713fbd9ad2",
+  "rotas": {
+    "lista": "/settings/campaigns?rede=meta -> MetaCampanhasSettingsReal",
+    "detalhe": "/dashboard/campaign/:campaignId?rede=meta -> MetaCampaignInsightPage",
+    "demo": "/settings/campaigns?rede=meta&demo=1 -> MetaCampaignsSettingsDemo (porta explícita)"
+  },
+  "casca_visual_compartilhada_com_google": {
+    "ja_reusada": [
+      "Layout",
+      "Card/CardHeader/CardContent/CardTitle/CardDescription",
+      "Button",
+      "SeletorRedeCampanhas",
+      "IdentidadeDeCanal",
+      "classes kicker/aurora-rule/hairline-aurora/reveal/hover-lift/shadow-card/tabular/font-display"
+    ],
+    "ainda_nao_reusada": [
+      "DateFilter",
+      "DataStatus",
+      "CampaignSortSelect + sortCampaigns",
+      "MetricDelta + useCampaignComparisons",
+      "Select (projeto/performance)",
+      "Input type=search",
+      "Badge de contagem",
+      "getROASColorCategory/getROASColorStyles"
+    ]
+  },
+  "entregue_nesta_missao": {
+    "secao_conjuntos_de_anuncios": {
+      "componente": "src/components/trafego/meta/ConjuntosFinanceiros.tsx",
+      "colunas": [
+        "conjunto (id mascarado)",
+        "gasto",
+        "receita GAM",
+        "ROAS",
+        "lucro bruto",
+        "impressões",
+        "cliques",
+        "CTR",
+        "CPC"
+      ],
+      "rodape": "total da campanha",
+      "prova_da_soma": "frase explícita: 'A soma dos N conjuntos é exatamente o total da campanha'",
+      "divergencia": "mostrada, nunca resolvida escolhendo um lado",
+      "mobile": "vira LISTA por useDensidade, não tabela com arrasto lateral"
+    },
+    "cartoes_novos": [
+      "ROAS (razão)",
+      "Impressões",
+      "Cliques",
+      "CTR",
+      "CPC"
+    ],
+    "cartoes_corrigidos": [
+      "Investimento Total (nota: soma dos conjuntos)",
+      "Revenue (nota: atribuída ao conjunto)"
+    ],
+    "drill_down": "campanha -> conjunto (com métricas) -> anúncio -> criativo, com aviso explícito de que a receita NÃO desce",
+    "receita_so_no_grao_medido": true,
+    "contrato_frontend": [
+      "FinanceiroMeta.grao",
+      "FinanceiroMeta.conjuntos[]",
+      "ConjuntoFinanceiroMeta",
+      "RazaoDaSomaMeta",
+      "ReconciliacaoMeta"
+    ]
+  },
+  "nao_entregue_e_por_que": {
+    "dias_ativos": "NÃO IMPLEMENTADO DE PROPÓSITO. O read model expõe observado_em e ultima_vez_visto_em, que são carimbos de LEITURA, não de criação. Derivar um do outro inventaria a métrica. A tela diz isso por escrito.",
+    "filtros_por_projeto_conta_periodo_estado_na_lista": "PARCIAL — o período existe; projeto/conta/estado ainda não foram migrados do lado Google",
+    "lista_meta_congruente_com_google_com_numeros_por_campanha": "PARCIAL — a seção financeira por conjunto existe no DETALHE; a LISTA Meta continua sem colunas financeiras por campanha",
+    "MetricDelta_periodo_anterior": "não implementado no lado Meta"
+  },
+  "semantica_visual": {
+    "ausencia": "—",
+    "zero": "R$ 0,00 apenas quando medido",
+    "frescor": "SeloDeFrescor + carimbo Meta e GAM separados",
+    "leitura_parcial": "AvisoDeLeituraParcial + RazaoDaSoma na seção de conjuntos",
+    "demo": "só atrás de porta explicitamente marcada"
+  },
+  "dado_ficticio_apresentado_como_real": false,
+  "qa_visual_em_navegador": "NÃO REALIZADO nesta missão — ver OPEN-RISKS.json"
+}

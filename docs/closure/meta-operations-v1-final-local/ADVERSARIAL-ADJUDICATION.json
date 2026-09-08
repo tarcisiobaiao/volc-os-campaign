@@ -1,0 +1,184 @@
+{
+  "contrato": "meta-operations-v1-final-local/ADVERSARIAL-ADJUDICATION",
+  "head_apos_rodada_corretiva": "74df1f8f27fd80e1b347ee43728050713fbd9ad2",
+  "revisor": {
+    "ferramenta": "codex exec (Codex CLI 0.153.4), sandbox read-only",
+    "modelo_pedido_pela_missao": "gpt-5.5-codex",
+    "modelo_efetivamente_usado": "gpt-6-astra (padrão da conta)",
+    "por_que_divergiu": "A conta ChatGPT deste ambiente recusa 'gpt-5.5-codex' com invalid_request_error: 'The gpt-5.5-codex model is not supported when using Codex with a ChatGPT account.' Registrado aqui em vez de silenciado.",
+    "esforco": "model_reasoning_effort=high",
+    "escopo": "diff d806705..7a8859c, leitura estática de SQL, 78 testes focais executados pelo revisor",
+    "editou_arquivos": false
+  },
+  "resumo": {
+    "achados": 12,
+    "CONFIRMED_FIXED": 11,
+    "CONFIRMED_FIXED_PARCIALMENTE": 1,
+    "CONFIRMED_DEFERRED": 0,
+    "REFUTED_WITH_EVIDENCE": 0,
+    "nota": "Nenhum achado foi refutado. Dois (6 e 3) já estavam sendo corrigidos quando o relatório completo chegou, a partir do raciocínio parcial do revisor."
+  },
+  "categorias_sem_achado": {
+    "8_rls_grants_security_invoker": "conferido: security_invoker nas três views, REVOKE de PUBLIC/anon/authenticated, só SELECT a service_role, rollback sem CASCADE",
+    "9_retry_ambiguo": "conferido no caminho operacional: id preservado, estado ambíguo bloqueia, divergência registrada, retry_permitido=False",
+    "10_hash_do_plano": "conferido: url_tags na matéria do hash, recálculo no descongelamento, macros preservadas na resolução",
+    "11_autorizacao_implicita": "conferido: aprovação separada, vínculo ator/hash, flags de capacidade, PAUSED exigido",
+    "12_demo_como_real": "conferido: porta explícita de demonstração, sem fallback fictício na leitura real",
+    "13_receita_replicada_por_anuncio": "conferido: receita só no grão do conjunto",
+    "14_campanha_somando_campanha_mais_adsets": "conferido: filtro adset nos fatos, rollup só dos conjuntos, campaign-level só na reconciliação"
+  },
+  "achados": [
+    {
+      "n": 1,
+      "sev": "ALTO",
+      "cat": [
+        1,
+        15
+      ],
+      "arquivo": "backend/app/trafego/meta/atribuicao.py",
+      "alegacao": "Receita nula ou inválida é excluída da soma sem impedir revenue_completo=True.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "Reproduzido: uma linha ATRIBUIDO_VIA_ADSET cujo valor de receita seja NULL (ou NaN, que _decimal também vira None) saía da soma por _somar_ignorando_ausentes e ainda deixava o total completo. A associação existir não é a medida existir.",
+      "correcao": "RazaoDaSoma ganhou `linhas_com_receita_nula`, e `revenue_completo` passou a exigir zero delas. O teste que codificava o defeito (test_receita_nula_no_gam_nao_vira_receita_zero, que afirmava revenue_completo is True) foi corrigido para exigir False."
+    },
+    {
+      "n": 2,
+      "sev": "ALTO",
+      "cat": [
+        6,
+        15
+      ],
+      "arquivo": "backend/app/trafego/meta/financeiro.py",
+      "alegacao": "Insights incompatíveis continuam somados após receberem moeda e fuso da conta.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "Reproduzido: a linha recebia a moeda da CONTA, então _exigir_homogeneidade nunca via a divergência. 6 USD + 4 BRL viravam '10 BRL' com completo=False ao lado — e os derivados (ROAS, lucro) saíam dessa soma. Marcar parcial não torna a soma válida.",
+      "correcao": "A linha passa a carregar a moeda e o fuso DO PRÓPRIO INSIGHT. A soma agora levanta META_MOEDAS_MISTURADAS / META_FUSOS_MISTURADOS, e ler_financeiro traduz para impedimento nomeado com estado GRAO_INCOERENTE e todos os totais None."
+    },
+    {
+      "n": 3,
+      "sev": "ALTO",
+      "cat": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "arquivo": "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql",
+      "alegacao": "O join SQL de receita omite conta GAM, vínculo de projeto e desambiguação Google/Meta, permitindo multiplicar o grão.",
+      "veredito": "CONFIRMED_FIXED_PARCIALMENTE",
+      "adjudicacao": "A parte grave é REAL e foi corrigida: o LEFT JOIN por (adset_id, date) contra uma tabela chaveada por (gam_accounts_id, utm_campaign_value, date) FANOUT-ava, e duas contas GAM duplicavam a linha — logo duplicavam o GASTO, que não depende do GAM para existir. Esse era o defeito de verdade.",
+      "correcao": "LEFT JOIN LATERAL com LIMIT 1: no máximo uma linha por conjunto/dia, gasto contado uma vez só. Ambiguidade não vira escolha arbitrária — n_contas>1 produz mapping_status='GAM_AMBIGUO_MULTIPLAS_CONTAS' com receita NULL. Teste: test_duas_contas_gam_no_mesmo_conjunto_dia_nao_duplicam_o_gasto.",
+      "deferido": "O escopo por vínculo de projeto e a recusa de colisão Google/Meta continuam no backend (financeiro.py) e NÃO são reproduzidos na view: a view não tem acesso a trafego_meta_project_binding nem a campaigns. Registrado em OPEN-RISKS como R-04."
+    },
+    {
+      "n": 4,
+      "sev": "ALTO",
+      "cat": [
+        6
+      ],
+      "arquivo": "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql",
+      "alegacao": "O rollup SQL escolhe moeda e fuso com min() enquanto soma parcelas incompatíveis.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "min() escolhia um rótulo e somava por baixo dele. Mesmo defeito do achado 2, do lado SQL.",
+      "correcao": "A view expõe moedas_no_dia/fusos_no_dia e os totais só existem quando count(DISTINCT currency) <= 1 e count(DISTINCT timezone) <= 1. Teste: test_moedas_diferentes_no_mesmo_dia_nao_viram_um_total."
+    },
+    {
+      "n": 5,
+      "sev": "ALTO",
+      "cat": [
+        7
+      ],
+      "arquivo": "supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql",
+      "alegacao": "A completude SQL considera só insights existentes, tornando invisível o filho sem medida.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "Real e assimétrico com o Python: o caminho Python parte dos filhos CONHECIDOS e devolve gasto desconhecido; o SQL partia dos insights que existem e dizia completo=true.",
+      "correcao": "A view expõe conjuntos_conhecidos_na_campanha (de trafego_meta_adset, ignorando ausentes) e `completo` exige que ele bata com conjuntos_no_dia. Teste: test_conjunto_conhecido_sem_insight_nao_fica_invisivel."
+    },
+    {
+      "n": 6,
+      "sev": "MEDIO",
+      "cat": [
+        7
+      ],
+      "arquivo": "backend/app/trafego/meta/financeiro.py",
+      "alegacao": "A detecção de truncamento compara com 4.000, embora o servidor limite antes.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "O achado mais valioso da rodada. O PostgREST corta em db-max-rows (1000) e IGNORA um limit maior — o próprio supabase_service.py:75-78 documenta isso. A guarda em 4000 NUNCA disparava, e as linhas que não vinham eram classificadas como SEM_UTM_ADSET_NO_GAM: leitura truncada apresentada como 'este conjunto/dia não tem receita'.",
+      "correcao": "_TETO_DE_LINHAS = 1000 (a fronteira real) e nova guarda RECORTE_MAIOR_QUE_UMA_PAGINA quando conjuntos x dias excede a página. Testes com um dublê que corta como o servidor: test_leitura_truncada_pelo_servidor_nao_vira_ausencia_de_receita e test_recorte_maior_que_uma_pagina_e_recusado_antes_de_somar."
+    },
+    {
+      "n": 7,
+      "sev": "MEDIO",
+      "cat": [
+        7
+      ],
+      "arquivo": "src/components/trafego/meta/ConjuntosFinanceiros.tsx",
+      "alegacao": "A 'prova da soma' usa semântica diferente do backend e trata igualdade entre ausências como prova.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "Dois defeitos num: (a) a tela usava 'qualquer null derruba a soma' também para RECEITA, enquanto o servidor soma o atribuído — filhos 15 e null faziam a tela acusar divergência contra um backend correto; (b) null === null podia afirmar 'exatamente o total' sobre uma campanha desconhecida.",
+      "correcao": "Duas funções de soma espelhando o servidor (somarExigindoTodas para gasto, somarMedidas para receita) e a frase só afirma prova quando os DOIS lados são números. Testes: 'receita parcial NÃO é acusada como divergência' e 'ausência dos dois lados NÃO vira prova'."
+    },
+    {
+      "n": 8,
+      "sev": "MEDIO",
+      "cat": [
+        1
+      ],
+      "arquivo": "backend/app/trafego/meta/financeiro.py",
+      "alegacao": "Impressões e cliques GAM são descartados antes de construir o grão.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "O contrato público declarava gam_impressions/gam_clicks, a consulta não os pedia e o grão os recebia sempre None. Um zero MEDIDO do lado GAM virava ausência — o inverso do erro que este contrato mais persegue.",
+      "correcao": "A consulta passou a pedir impressions,clicks e o dicionário intermediário a repassá-los."
+    },
+    {
+      "n": 9,
+      "sev": "ALTO",
+      "cat": [
+        16
+      ],
+      "arquivo": "backend/tests/test_meta_atribuicao_adset.py",
+      "alegacao": "Os testes versionam IDs reais que permitem desfazer parte da sanitização do golden.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "Seis ids reais literais no arquivo de teste — inclusive numa asserção cujo objetivo era provar que eles NÃO estão no golden. Com o sal público do gerador, os literais permitem religar as linhas. Um teste de sanitização não pode carregar o dado que sanitiza.",
+      "correcao": "A prova virou ESTRUTURAL (todo id do golden tem a forma sintética: prefixo '9', 15 dígitos) e as fixtures passaram a usar ids sintéticos declarados. Zero ocorrências de id real restam nos testes, incluindo o teste do frontend."
+    },
+    {
+      "n": 10,
+      "sev": "MEDIO",
+      "cat": [
+        17,
+        18
+      ],
+      "arquivo": "scripts/gerar_golden_atribuicao_meta.py",
+      "alegacao": "A promessa de conservação exata não cobre totais negativos, totais sub-passo e pesos vazios.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "O golden atual fecha (o revisor conferiu 15.030 casos não negativos), mas a função aceitava calada entradas que não sabia cumprir. Uma função cuja promessa é maior que sua garantia é armadilha para o próximo uso.",
+      "correcao": "Precondições explícitas: recusa total negativo, total não representável na granularidade e pesos vazios com total != 0. Verificado: os três casos RECUSAM e 2.000 casos válidos conservam a soma exatamente. O golden regenerado é byte-idêntico."
+    },
+    {
+      "n": 11,
+      "sev": "MEDIO",
+      "cat": [
+        15
+      ],
+      "arquivo": "backend/tests/test_meta_financeiro_sql_conjunto_dia.py",
+      "alegacao": "O teste contra soma campaign-level ignora se a inserção adversarial aconteceu.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "Real: cluster['sql'] devolve returncode sem levantar, então um INSERT recusado deixaria o teste verde provando a trava contra nada. E o achado revelou algo maior — as 'limpezas' por DELETE falhavam em silêncio, porque 20260907210000:496-511 instala gatilhos BEFORE DELETE que RECUSAM remoção nas tabelas de insight. O schema estava certo; os testes é que supunham poder desfazer.",
+      "correcao": "O teste confere returncode E a presença da linha. As provas adversariais passaram a usar uma data FORA da janela do golden, os totais passaram a ser escopados nessa janela, e a limpeza do adset órfão virou UPDATE ausente_desde — o estado que o próprio schema oferece."
+    },
+    {
+      "n": 12,
+      "sev": "MEDIO",
+      "cat": [
+        9,
+        15
+      ],
+      "arquivo": "backend/tests/test_meta_tracking_gam.py",
+      "alegacao": "O teste 'readback divergente não reenvia criação' não executa criação, retry ou ledger.",
+      "veredito": "CONFIRMED_FIXED",
+      "adjudicacao": "O nome prometia mais do que o corpo entregava. Não há defeito de retry hoje — o próprio revisor conferiu retry_permitido=False no caminho operacional — mas a asserção não protegia a propriedade anunciada.",
+      "correcao": "Renomeado para test_readback_divergente_levanta_em_vez_de_devolver_ok, com docstring apontando o teste que de fato percorre a saga e conta POSTs (test_meta_paused_birth.py::test_retomada_de_passo_criado_nao_repete_post_real)."
+    }
+  ]
+}
