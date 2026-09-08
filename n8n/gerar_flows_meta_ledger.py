@@ -47,6 +47,23 @@ from typing import Any
 
 RAIZ = Path(__file__).resolve().parent
 SUPABASE = "https://database.agenciavolc.com.br"
+
+#: O MESMO destino, mas lido do no `Config` em tempo de execucao.
+#:
+#: ⚠️ POR QUE ISTO EXISTE. Ate 08/09/2026 os tres nos de ESCRITA
+#: (`RPC: ingerir lote`, `RPC: fechar recibo`, `Alerta de rotina parada`)
+#: carregavam a URL ABSOLUTA, enquanto `Releitura do recibo` ja lia
+#: `Config.SUPABASE_URL`. O efeito: trocar `Config.SUPABASE_URL` movia a
+#: LEITURA e deixava as ESCRITAS apontando para o destino antigo — o fluxo
+#: continuaria "funcionando" e gravaria no banco errado, sem erro nenhum.
+#:
+#: E o mesmo modo de falha que o repositorio ja sofreu com a Vercel em
+#: 24/08/2026 (`scripts/guarda-vercel.sh`), quando uma investigacao inteira
+#: rodou contra o projeto errado porque o destino nao era um so lugar.
+#:
+#: A constante `SUPABASE` continua sendo o DEFAULT que o `Config` recebe; o
+#: destino efetivo passa a ser um so, e trocavel num ponto.
+SUPABASE_DO_CONFIG = "={{ $node[\"Config\"].json[\"SUPABASE_URL\"] + '%s' }}"
 GRAPH_BASE = "https://graph.facebook.com"
 API_VERSION = "v26.0"
 CONTRATO_VERSAO = "meta-insights-dia-v1"
@@ -109,7 +126,28 @@ CRED_SUPABASE = {"supabaseApi": {"id": "3lSRuywq3fwQ3z3I", "name": "VOLC Oficial
 # Espelha `backend/app/trafego/meta/dominio.py`. O validador
 # (scripts/validar_workflows_n8n_meta.py) compara estes valores com os do modulo
 # Python quando ele esta importavel; divergencia derruba o gate.
-NIVEL = "campaign"
+#: ⚠️ MUDOU DE `campaign` PARA `adset` EM 08/09/2026.
+#:
+#: O grao financeiro canonico da Meta passou a ser CONJUNTO/DIA, porque os
+#: anuncios reais gravam `utm_campaign={{adset.id}}` e e por essa chave que a
+#: receita do GAM chega. Enquanto este fluxo pedisse `campaign`, o grao
+#: simplesmente NAO EXISTIRIA no banco: o schema ja aceita `adset`
+#: (`v15_02_meta_ads_insights.sql:54`), o dominio ja aceita
+#: (`dominio.NIVEIS_DE_INSIGHT`) e o codigo JS deste gerador ja sabe extrair
+#: `linha.adset_id` — faltava so alguem pedir.
+#:
+#: A leitura campaign-level continua util para RECONCILIAR a soma dos
+#: conjuntos, mas ela e uma coleta SEPARADA: somar os dois niveis contaria a
+#: mesma despesa duas vezes, e `atribuicao.py` recusa essa soma com nome
+#: proprio (`META_ESCOPOS_MISTURADOS`).
+#:
+#: ⚠️ DEPENDENCIA QUE ESTE ARQUIVO NAO RESOLVE: uma linha de insight em nivel
+#: `adset` NAO carrega o `campaign_id` pai — o unico elo e
+#: `trafego_meta_adset.meta_campaign_id`, populado pelo fluxo de HIERARQUIA.
+#: Sem uma sincronizacao de hierarquia corrente, uma coleta em `adset` produz
+#: linhas orfas que nao somam para campanha nenhuma. Publicar este fluxo sem a
+#: hierarquia em dia e um ato incompleto.
+NIVEL = "adset"
 TIME_INCREMENT = "1"
 ACTION_REPORT_TIME = "impression"
 BREAKDOWN = "none"
@@ -2022,7 +2060,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
         _code("Validar semanticamente", [1850, 40], JS_VALIDAR),
         _no("RPC: ingerir lote", "n8n-nodes-base.httpRequest", 4.2, [2050, 40], {
             "method": "POST",
-            "url": f"{SUPABASE}/rest/v1/rpc/{RPC_PERSISTIR}",
+            "url": SUPABASE_DO_CONFIG % f"/rest/v1/rpc/{RPC_PERSISTIR}",
             "authentication": "predefinedCredentialType",
             "nodeCredentialType": "supabaseApi",
             "sendHeaders": True,
@@ -2043,7 +2081,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
             {"maxItems": 1}),
         _no("RPC: fechar recibo", "n8n-nodes-base.httpRequest", 4.2, [1540, -220], {
             "method": "POST",
-            "url": f"{SUPABASE}/rest/v1/rpc/{RPC_PERSISTIR}",
+            "url": SUPABASE_DO_CONFIG % f"/rest/v1/rpc/{RPC_PERSISTIR}",
             "authentication": "predefinedCredentialType",
             "nodeCredentialType": "supabaseApi",
             "sendHeaders": True,
@@ -2074,7 +2112,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
         _se_booleano("Falha real?", [2200, -220], "={{ $json.alerta }}"),
         _no("Alerta de rotina parada", "n8n-nodes-base.httpRequest", 4.2, [2420, -220], {
             "method": "POST",
-            "url": f"{SUPABASE}/rest/v1/system_settings",
+            "url": SUPABASE_DO_CONFIG % "/rest/v1/system_settings",
             "authentication": "predefinedCredentialType",
             "nodeCredentialType": "supabaseApi",
             "sendQuery": True,

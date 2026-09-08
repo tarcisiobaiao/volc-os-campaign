@@ -94,7 +94,7 @@
               "id": "c10",
               "name": "NIVEL",
               "type": "string",
-              "value": "campaign"
+              "value": "adset"
             },
             {
               "id": "c11",
@@ -172,7 +172,7 @@
               "id": "c23",
               "name": "CONTRATO_SHA256",
               "type": "string",
-              "value": "19d12eed5afe53a8edfbccb16e01dba5271301785ec81d0bd7de7c70825137a7"
+              "value": "455842768f31e2cae023f9957cd176c1cf3db237048f045c950ea306a1834495"
             }
           ]
         },
@@ -448,7 +448,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://database.agenciavolc.com.br/rest/v1/rpc/trafego_meta_persistir_snapshot",
+        "url": "={{ $node[\"Config\"].json[\"SUPABASE_URL\"] + '/rest/v1/rpc/trafego_meta_persistir_snapshot' }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -587,7 +587,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://database.agenciavolc.com.br/rest/v1/rpc/trafego_meta_persistir_snapshot",
+        "url": "={{ $node[\"Config\"].json[\"SUPABASE_URL\"] + '/rest/v1/rpc/trafego_meta_persistir_snapshot' }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -726,7 +726,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://database.agenciavolc.com.br/rest/v1/system_settings",
+        "url": "={{ $node[\"Config\"].json[\"SUPABASE_URL\"] + '/rest/v1/system_settings' }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendQuery": true,
@@ -1115,7 +1115,7 @@
       "dono": "volc-os/trafego-meta",
       "artefato": "n8n/volc_meta_insights_dia_d1.json",
       "contrato": "meta-insights-dia-v1",
-      "contrato_sha256": "19d12eed5afe53a8edfbccb16e01dba5271301785ec81d0bd7de7c70825137a7",
+      "contrato_sha256": "455842768f31e2cae023f9957cd176c1cf3db237048f045c950ea306a1834495",
       "provider": "META_ADS",
       "rpc": "trafego_meta_persistir_snapshot",
       "rpc_contrato": {
