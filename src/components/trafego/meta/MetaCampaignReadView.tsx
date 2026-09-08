@@ -74,6 +74,7 @@ import {
 } from '@/lib/pautadorApi';
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
 import { useDensidade, type Densidade } from '@/components/trafego/inventario/densidade';
+import { ConjuntosFinanceiros } from './ConjuntosFinanceiros';
 import {
   AvisoDeLeituraParcial,
   EsqueletoDoInventario,
@@ -1163,21 +1164,24 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
           rotulo="Investimento Total"
           valor={dinheiroMeta(financeiro.dados?.spend, financeiro.dados?.currency ?? null)}
           glifo={DollarSign}
-          nota="Meta Insights · campanha · revisão corrente"
+          nota="Meta Insights · soma dos conjuntos · revisão corrente"
           ordem={2}
         />
         <CartaoDeMedida
           rotulo="Revenue"
           valor={dinheiroMeta(financeiro.dados?.revenue, financeiro.dados?.currency ?? null)}
           glifo={TrendingUp}
-          nota="GAM · campaign_id · mesmo período e moeda"
+          nota="GAM · atribuída ao conjunto · a campanha soma os conjuntos"
           ordem={3}
         />
+        {/* ROAS e retorno excedente respondem perguntas DIFERENTES e por isso
+            ocupam cartões diferentes: 1,10 e "10% acima do investido" já
+            produziram decisão errada quando apareceram como o mesmo número. */}
         <CartaoDeMedida
-          rotulo="Retorno excedente (%)"
-          valor={decimalMeta(financeiro.dados?.retorno_excedente_pct, 2, '%')}
+          rotulo="ROAS"
+          valor={decimalMeta(financeiro.dados?.roas_ratio, 2)}
           glifo={Target}
-          nota="excedente sobre o gasto, em pontos percentuais — não é a razão receita ÷ gasto"
+          nota="razão receita ÷ gasto — 1,10 significa R$ 1,10 por real investido"
           ordem={4}
         />
         <CartaoDeMedida
@@ -1188,6 +1192,52 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
           ordem={5}
         />
       </div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+        <CartaoDeMedida
+          rotulo="Retorno excedente (%)"
+          valor={decimalMeta(financeiro.dados?.retorno_excedente_pct, 2, '%')}
+          glifo={Target}
+          nota="excedente sobre o gasto, em pontos percentuais — não é a razão receita ÷ gasto"
+          ordem={6}
+        />
+        <CartaoDeMedida
+          rotulo="Impressões"
+          valor={contagemMeta(financeiro.dados?.impressions ?? null)}
+          glifo={TrendingUp}
+          nota="Meta · soma dos conjuntos"
+          ordem={7}
+        />
+        <CartaoDeMedida
+          rotulo="Cliques"
+          valor={contagemMeta(financeiro.dados?.clicks ?? null)}
+          glifo={TrendingUp}
+          nota="Meta · soma dos conjuntos"
+          ordem={8}
+        />
+        <CartaoDeMedida
+          rotulo="CTR"
+          valor={decimalMeta(financeiro.dados?.ctr ?? null, 2, '%')}
+          glifo={Target}
+          nota="cliques ÷ impressões, recalculado do total — não é a média dos conjuntos"
+          ordem={9}
+        />
+        <CartaoDeMedida
+          rotulo="CPC"
+          valor={dinheiroMeta(financeiro.dados?.cpc ?? null, financeiro.dados?.currency ?? null)}
+          glifo={DollarSign}
+          nota="gasto ÷ cliques, recalculado do total"
+          ordem={10}
+        />
+      </div>
+      {/* ⚠️ "Dias ativos" NÃO entra aqui. O read model real não expõe data de
+          criação: `observado_em` e `ultima_vez_visto_em` são carimbos de
+          LEITURA, e usá-los como proxy inventaria a métrica. Ela existe só na
+          demonstração, onde o dado é declaradamente fictício. */}
+      <p className="text-xs text-muted-foreground">
+        Dias ativos não é exibido: o read model guarda quando a campanha foi LIDA,
+        não quando ela começou a veicular. Derivar uma coisa da outra seria inventar.
+      </p>
+      <ConjuntosFinanceiros financeiro={financeiro.dados} />
     </>
   );
 

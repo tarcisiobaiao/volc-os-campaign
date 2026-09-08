@@ -1,0 +1,242 @@
+import React from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { ConjuntoFinanceiroMeta, FinanceiroMeta } from '@/lib/pautadorApi';
+import { comoNumero, contagemMeta, decimalMeta, dinheiroMeta } from './MetaCampaignReadView';
+import { useDensidade } from '@/components/trafego/inventario/densidade';
+
+/**
+ * A seção "Conjuntos de anúncios" — o grão em que a receita foi MEDIDA.
+ *
+ * ## Por que esta tela existe
+ *
+ * Até 08/09/2026 o frontend não mostrava nenhum número por conjunto. A seção de
+ * conjuntos era só um agrupador estrutural (estado, nome, objetivo), e a regra
+ * "receita da campanha = SOMA dos conjuntos filhos" não tinha sequer os insumos
+ * para ser conferida na tela. O operador via um total e precisava acreditar.
+ *
+ * Agora o total é CONFERÍVEL: cada conjunto traz o que foi medido nele, e o
+ * rodapé soma na frente de quem olha, ao lado do total que veio do servidor.
+ * Se os dois divergirem, a tela DIZ que divergiram em vez de escolher um.
+ *
+ * ## O que ela recusa fazer
+ *
+ * - não repete a receita do conjunto em cada anúncio: a receita aparece SÓ no
+ *   grão em que foi medida, e abaixo do conjunto ela é explicitamente ausente;
+ * - não transforma ausência em zero. `—` é "não medido"; `R$ 0,00` só aparece
+ *   quando o zero foi medido;
+ * - não soma alcance, porque alcance é gente e a mesma pessoa aparece em dois
+ *   dias. A coluna nem existe aqui.
+ */
+
+const Celula: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <td className={`px-3 py-2 align-middle tabular ${className}`}>{children}</td>
+);
+
+function somar(conjuntos: ConjuntoFinanceiroMeta[], campo: 'spend' | 'revenue_brl'): number | null {
+  // Uma parcela desconhecida torna a soma desconhecida — é a mesma regra do
+  // servidor, repetida aqui de propósito: se a tela somasse ignorando `null`,
+  // ela mostraria um total que PARECE completo e contradiria o backend.
+  let total = 0;
+  for (const c of conjuntos) {
+    const valor = comoNumero(c[campo]);
+    if (valor === null) return null;
+    total += valor;
+  }
+  return conjuntos.length ? total : null;
+}
+
+const FraseDaRazao: React.FC<{ razao: ConjuntoFinanceiroMeta['razao'] | null | undefined }> = ({ razao }) => {
+  if (!razao) return null;
+  const partes: string[] = [];
+  if (razao.linhas_sem_utm > 0) {
+    partes.push(`${razao.linhas_sem_utm} conjunto/dia sem UTM no GAM (receita desconhecida, não zero)`);
+  }
+  if (razao.linhas_sem_leitura_gam > 0) {
+    partes.push(`${razao.linhas_sem_leitura_gam} conjunto/dia sem leitura do GAM`);
+  }
+  if (razao.linhas_sem_entrega > 0) {
+    partes.push(`${razao.linhas_sem_entrega} conjunto/dia sem entrega medida`);
+  }
+  if (!partes.length) return null;
+  return (
+    <p className="text-xs text-muted-foreground">{partes.join(' · ')}</p>
+  );
+};
+
+export const ConjuntosFinanceiros: React.FC<{
+  financeiro: FinanceiroMeta | null;
+  /** Render do drill-down de um conjunto: anúncios e criativos daquele conjunto. */
+  aoAbrirConjunto?: (adsetRef: string) => React.ReactNode;
+}> = ({ financeiro, aoAbrirConjunto }) => {
+  const [aberto, setAberto] = React.useState<string | null>(null);
+  const densidade = useDensidade();
+  const conjuntos = financeiro?.conjuntos ?? [];
+  const moeda = financeiro?.currency ?? null;
+
+  if (!financeiro) return null;
+
+  if (!conjuntos.length) {
+    // ⚠️ Uma campanha sem conjuntos NÃO é uma campanha com gasto zero. A frase
+    // precisa dizer qual das duas coisas está acontecendo.
+    return (
+      <section aria-labelledby="conjuntos-financeiros" className="space-y-2">
+        <h3 id="conjuntos-financeiros" className="kicker">Conjuntos de anúncios</h3>
+        <p className="text-sm text-muted-foreground">
+          {financeiro.estado === 'SEM_CONJUNTOS_NO_READ_MODEL'
+            ? 'Esta campanha não tem conjuntos no read model. Sem conjunto conhecido não há grão de receita — o que falta é leitura, não dinheiro.'
+            : 'Nenhum conjunto com medida no período.'}
+        </p>
+      </section>
+    );
+  }
+
+  const somaGasto = somar(conjuntos, 'spend');
+  const somaReceita = somar(conjuntos, 'revenue_brl');
+  const totalGasto = comoNumero(financeiro.spend);
+  const totalReceita = comoNumero(financeiro.revenue);
+  // A prova aritmética que a missão pede: o total da campanha É a soma dos
+  // conjuntos. Comparação em centavos para não brigar com ponto flutuante.
+  const centavos = (n: number | null) => (n === null ? null : Math.round(n * 100));
+  const gastoBate = centavos(somaGasto) === centavos(totalGasto);
+  const receitaBate = centavos(somaReceita) === centavos(totalReceita);
+
+  const linhas = conjuntos.map((c) => {
+    const expandido = aberto === c.adset_ref;
+    return (
+      <React.Fragment key={c.adset_ref}>
+        <tr className="border-t border-border/60">
+          <Celula className="text-left">
+            {aoAbrirConjunto ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-left hover:underline"
+                aria-expanded={expandido}
+                onClick={() => setAberto(expandido ? null : c.adset_ref)}
+              >
+                {expandido ? <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                           : <ChevronRight className="h-3.5 w-3.5" aria-hidden />}
+                <span className="font-mono text-xs">{c.id_mascarado ?? c.adset_ref}</span>
+              </button>
+            ) : (
+              <span className="font-mono text-xs">{c.id_mascarado ?? c.adset_ref}</span>
+            )}
+          </Celula>
+          <Celula>{dinheiroMeta(c.spend, moeda)}</Celula>
+          <Celula>{dinheiroMeta(c.revenue_brl, moeda)}</Celula>
+          <Celula>{decimalMeta(c.roas_ratio, 2)}</Celula>
+          <Celula>{dinheiroMeta(c.profit_gross, moeda)}</Celula>
+          <Celula>{contagemMeta(c.impressions)}</Celula>
+          <Celula>{contagemMeta(c.clicks)}</Celula>
+          <Celula>{decimalMeta(c.ctr, 2, '%')}</Celula>
+          <Celula>{dinheiroMeta(c.cpc, moeda)}</Celula>
+        </tr>
+        {expandido && aoAbrirConjunto && (
+          <tr>
+            <td colSpan={9} className="bg-muted/20 px-3 py-3">
+              <p className="mb-2 text-xs text-muted-foreground">
+                Anúncios e criativos deste conjunto. <strong>A receita não desce até aqui</strong> —
+                ela foi medida no conjunto, e repeti-la por anúncio contaria o mesmo dinheiro
+                várias vezes.
+              </p>
+              {aoAbrirConjunto(c.adset_ref)}
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  });
+
+  const cabecalho = ['Conjunto', 'Gasto', 'Receita GAM', 'ROAS', 'Lucro bruto',
+                     'Impressões', 'Cliques', 'CTR', 'CPC'];
+
+  return (
+    <section aria-labelledby="conjuntos-financeiros" className="space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id="conjuntos-financeiros" className="kicker">
+          Conjuntos de anúncios ({conjuntos.length})
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Receita atribuída ao conjunto; a campanha soma os conjuntos.
+        </p>
+      </div>
+
+      {densidade === 'compacta' ? (
+        // No telefone é LISTA, não tabela espremida com arrasto lateral.
+        <ul className="space-y-2">
+          {conjuntos.map((c) => (
+            <li key={c.adset_ref} className="rounded-lg border border-border/60 p-3">
+              <p className="font-mono text-xs">{c.id_mascarado ?? c.adset_ref}</p>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">Gasto</dt>
+                <dd className="tabular text-right">{dinheiroMeta(c.spend, moeda)}</dd>
+                <dt className="text-muted-foreground">Receita GAM</dt>
+                <dd className="tabular text-right">{dinheiroMeta(c.revenue_brl, moeda)}</dd>
+                <dt className="text-muted-foreground">ROAS</dt>
+                <dd className="tabular text-right">{decimalMeta(c.roas_ratio, 2)}</dd>
+                <dt className="text-muted-foreground">Lucro bruto</dt>
+                <dd className="tabular text-right">{dinheiroMeta(c.profit_gross, moeda)}</dd>
+                <dt className="text-muted-foreground">Impressões</dt>
+                <dd className="tabular text-right">{contagemMeta(c.impressions)}</dd>
+                <dt className="text-muted-foreground">Cliques</dt>
+                <dd className="tabular text-right">{contagemMeta(c.clicks)}</dd>
+              </dl>
+              <FraseDaRazao razao={c.razao} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <caption className="sr-only">
+              Financeiro por conjunto de anúncios, no período selecionado
+            </caption>
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                {cabecalho.map((titulo, i) => (
+                  <th key={titulo} scope="col" className={`px-3 py-2 ${i === 0 ? '' : 'text-left'}`}>
+                    {titulo}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>{linhas}</tbody>
+            <tfoot>
+              <tr className="border-t-2 border-border font-medium">
+                <Celula className="text-left">Total da campanha</Celula>
+                <Celula>{dinheiroMeta(financeiro.spend, moeda)}</Celula>
+                <Celula>{dinheiroMeta(financeiro.revenue, moeda)}</Celula>
+                <Celula>{decimalMeta(financeiro.roas_ratio, 2)}</Celula>
+                <Celula>{dinheiroMeta(financeiro.profit_gross, moeda)}</Celula>
+                <Celula>{contagemMeta(financeiro.impressions ?? null)}</Celula>
+                <Celula>{contagemMeta(financeiro.clicks ?? null)}</Celula>
+                <Celula>{decimalMeta(financeiro.ctr ?? null, 2, '%')}</Celula>
+                <Celula>{dinheiroMeta(financeiro.cpc ?? null, moeda)}</Celula>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {/* A prova aritmética, escrita. Ela não é enfeite: é o que permite ao
+          operador confiar no total sem abrir o banco. */}
+      <p className="text-xs text-muted-foreground" data-testid="prova-da-soma">
+        {gastoBate && receitaBate
+          ? `A soma dos ${conjuntos.length} conjuntos é exatamente o total da campanha.`
+          : 'ATENÇÃO: a soma dos conjuntos não bate com o total da campanha. '
+            + 'Nenhum dos dois foi ajustado — a divergência está sendo mostrada como é.'}
+      </p>
+      <FraseDaRazao razao={financeiro.razao} />
+
+      {financeiro.reconciliacao && financeiro.reconciliacao.reconciliado === false && (
+        <p className="text-xs text-amber-600 dark:text-amber-500">
+          A leitura campaign-level da Meta diverge da soma dos conjuntos
+          ({dinheiroMeta(financeiro.reconciliacao.diferenca, moeda)}). Ela serve para
+          reconciliar e <strong>não</strong> entra no total — somá-la contaria a mesma
+          despesa duas vezes.
+        </p>
+      )}
+    </section>
+  );
+};
+
+export default ConjuntosFinanceiros;

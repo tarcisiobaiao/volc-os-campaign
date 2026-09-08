@@ -251,7 +251,10 @@ describe('MetaCampaignReadView — a hierarquia real', () => {
     // E a tela DIZ por que não sabe, em vez de deixar quatro travessões mudos.
     // A frase carrega o GRÃO: receita é do conjunto, campanha é a soma deles.
     expect(screen.getByText(/GAM pelo conjunto/i)).toBeTruthy();
-    expect(screen.getByText(/a campanha soma os conjuntos/i)).toBeTruthy();
+    // A frase do grão aparece em mais de um lugar de propósito: na explicação
+    // do período e na nota do cartão de receita. O operador não deveria ter de
+    // rolar a tela para descobrir de onde o número veio.
+    expect(screen.getAllByText(/a campanha soma os conjuntos/i).length).toBeGreaterThanOrEqual(2);
   });
 
   it('a linha de insight sem medida vira travessão, e o gasto medido sai em BRL', async () => {

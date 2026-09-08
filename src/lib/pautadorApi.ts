@@ -505,9 +505,63 @@ export type PaginaMetaReadModel<T = ItemMetaReadModel> = {
   motivo: string | null;
 };
 
+/** Por que um total é o que é. Um número sozinho não diz se ele é completo. */
+export type RazaoDaSomaMeta = {
+  conjuntos: number;
+  dias: number;
+  conjuntos_atribuidos: number;
+  /** Contagens por LINHA do grão (conjunto/dia), não por conjunto. */
+  linhas: number;
+  linhas_atribuidas: number;
+  linhas_sem_utm: number;
+  linhas_sem_leitura_gam: number;
+  linhas_sem_entrega: number;
+  spend_completo: boolean;
+  revenue_completo: boolean;
+};
+
+/** O financeiro de UM conjunto no período. É o grão em que a receita foi medida. */
+export type ConjuntoFinanceiroMeta = {
+  /** Referência opaca do read model. O id bruto nunca chega ao navegador. */
+  adset_ref: string;
+  id_mascarado: string | null;
+  spend: string | number | null;
+  revenue_original: string | number | null;
+  revenue_brl: string | number | null;
+  impressions: number | null;
+  clicks: number | null;
+  gam_impressions: number | null;
+  gam_clicks: number | null;
+  /** Sempre null: alcance não soma entre linhas. */
+  reach: null;
+  ctr: string | number | null;
+  cpc: string | number | null;
+  roas_ratio: string | number | null;
+  profit_gross: string | number | null;
+  retorno_excedente_pct: string | number | null;
+  currency: string | null;
+  timezone: string | null;
+  source: string;
+  source_freshness: string | null;
+  revenue_freshness: string | null;
+  razao: RazaoDaSomaMeta;
+};
+
+/** Reconciliação com a leitura campaign-level. DIAGNÓSTICO, nunca parcela. */
+export type ReconciliacaoMeta = {
+  reconciliado: boolean | null;
+  motivo: string | null;
+  spend_conjuntos: string | number | null;
+  spend_campanha: string | number | null;
+  diferenca: string | number | null;
+};
+
 export type FinanceiroMeta = {
   ok: boolean;
   estado: string;
+  /** O grão em que a receita foi medida. 'adset' desde 08/09/2026. */
+  grao?: string;
+  contrato?: string;
   currency: string | null;
   timezone: string | null;
   periodo_inicio: string | null;
@@ -518,11 +572,25 @@ export type FinanceiroMeta = {
   /** Decimal do servidor viaja como string; number mantém compatibilidade de projeções. */
   spend: string | number | null;
   revenue: string | number | null;
+  revenue_original?: string | number | null;
   profit_gross: string | number | null;
   roas_ratio: string | number | null;
   retorno_excedente_pct: string | number | null;
+  /** Já eram calculados no servidor e não tinham onde aparecer. */
+  impressions?: number | null;
+  clicks?: number | null;
+  ctr?: string | number | null;
+  cpc?: string | number | null;
+  gam_impressions?: number | null;
+  gam_clicks?: number | null;
   spend_completo: boolean;
   revenue_completo: boolean;
+  conjuntos_conhecidos?: number;
+  /** O drill-down: a campanha é a soma destes. */
+  conjuntos?: ConjuntoFinanceiroMeta[];
+  razao?: RazaoDaSomaMeta | null;
+  reconciliacao?: ReconciliacaoMeta | null;
+  fontes?: Record<string, string>;
   impedimentos: string[];
 };
 
