@@ -39,6 +39,7 @@
  * como inventário da conta; nunca são somados pelo navegador.
  */
 import React from 'react';
+import { useMetaCampaignApi, useMetaCampaignDemo } from './MetaCampaignData';
 import { PeriodoFinanceiroMeta, useFinanceiroMeta } from './MetaFinanceiro';
 import {
   ArrowLeft,
@@ -63,7 +64,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 import {
   ENTIDADES_META_QUE_EXIGEM_CONTA,
-  pautadorApi,
   type ContaMetaReadModel,
   type ContasDoReadModelMeta,
   type DetalheMetaReadModel,
@@ -342,13 +342,14 @@ export function useContasDoReadModel(): {
   leitura: Leitura<ContasDoReadModelMeta>;
   recarregar: () => void;
 } {
+  const api = useMetaCampaignApi();
   const [leitura, setLeitura] = React.useState<Leitura<ContasDoReadModelMeta>>({ fase: 'lendo' });
   const [tentativa, setTentativa] = React.useState(0);
 
   React.useEffect(() => {
     let vivo = true;
     setLeitura({ fase: 'lendo' });
-    pautadorApi
+    api
       .contasMetaReadModel()
       .then((resposta) => {
         if (vivo) setLeitura({ fase: 'respondeu', resposta });
@@ -360,7 +361,7 @@ export function useContasDoReadModel(): {
     return () => {
       vivo = false;
     };
-  }, [tentativa]);
+  }, [tentativa, api]);
 
   return { leitura, recarregar: () => setTentativa((n) => n + 1) };
 }
@@ -386,6 +387,7 @@ export function usePaginaDoReadModel(
   contaRef: string | null,
   ativo = true,
 ): PaginaEmLeitura {
+  const api = useMetaCampaignApi();
   const [leitura, setLeitura] = React.useState<Leitura<PaginaMetaReadModel>>({ fase: 'lendo' });
   const [carregandoMais, setCarregandoMais] = React.useState(false);
   const [tentativa, setTentativa] = React.useState(0);
@@ -422,7 +424,7 @@ export function usePaginaDoReadModel(
     }
     let vivo = true;
     setLeitura({ fase: 'lendo' });
-    pautadorApi
+    api
       .inventarioMetaReadModel(entidade, { contaRef })
       .then((resposta) => {
         if (vivo) setLeitura({ fase: 'respondeu', resposta });
@@ -434,7 +436,7 @@ export function usePaginaDoReadModel(
     return () => {
       vivo = false;
     };
-  }, [entidade, contaRef, ativo, tentativa]);
+  }, [entidade, contaRef, ativo, tentativa, api]);
 
   const cursor =
     leitura.fase === 'respondeu' && leitura.resposta.has_more
@@ -444,7 +446,7 @@ export function usePaginaDoReadModel(
   const carregarMais = React.useCallback(() => {
     if (!cursor) return;
     setCarregandoMais(true);
-    pautadorApi
+    api
       .inventarioMetaReadModel(entidade, { contaRef, cursor })
       .then((proxima) => {
         setLeitura((antes) =>
@@ -458,7 +460,7 @@ export function usePaginaDoReadModel(
       })
       .catch((erro) => setLeitura({ fase: 'falhou', ocorrencia: usarFalha(erro) }))
       .finally(() => setCarregandoMais(false));
-  }, [entidade, contaRef, cursor]);
+  }, [entidade, contaRef, cursor, api]);
 
   return {
     leitura,
@@ -474,6 +476,7 @@ export function useDetalheDoReadModel(
   referencia: string,
   contaRef: string | null,
 ): { leitura: Leitura<DetalheMetaReadModel>; recarregar: () => void } {
+  const api = useMetaCampaignApi();
   const [leitura, setLeitura] = React.useState<Leitura<DetalheMetaReadModel>>({ fase: 'lendo' });
   const [tentativa, setTentativa] = React.useState(0);
 
@@ -493,7 +496,7 @@ export function useDetalheDoReadModel(
     }
     let vivo = true;
     setLeitura({ fase: 'lendo' });
-    pautadorApi
+    api
       .detalheMetaReadModel(entidade, referencia, contaRef)
       .then((resposta) => {
         if (vivo) setLeitura({ fase: 'respondeu', resposta });
@@ -505,7 +508,7 @@ export function useDetalheDoReadModel(
     return () => {
       vivo = false;
     };
-  }, [entidade, referencia, contaRef, tentativa]);
+  }, [entidade, referencia, contaRef, tentativa, api]);
 
   return { leitura, recarregar: () => setTentativa((n) => n + 1) };
 }
@@ -1106,6 +1109,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
   const escopo = useEscopoDeConta(contaPreferida);
   const { contaRef, conta, contas } = escopo;
 
+  const demo = useMetaCampaignDemo();
   const financeiro = useFinanceiroMeta(referencia, contaRef);
 
   const campanha = useDetalheDoReadModel('campanhas', referencia, contaRef);
@@ -1400,7 +1404,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
           Estas linhas pertencem à conta{' '}
           <span className="tabular font-medium text-foreground">{identificacaoDaConta}</span> e não
           a um objeto: o servidor remove a referência do objeto antes de enviá-las. Elas estão aqui
-          porque são medidas reais, e fora dos cartões acima porque atribuí-las a esta campanha
+          {demo ? 'como exemplos fictícios' : 'porque são medidas reais'}, e fora dos cartões acima porque atribuí-las a esta campanha
           seria inventar.
         </p>
         {insights.leitura.fase === 'lendo' && <EsqueletoDoInventario contas={1} linhas={3} />}
@@ -1446,7 +1450,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
           </Button>
         )}
         <div className="min-w-0 flex-1">
-          <div className="kicker mb-2">Leitura do read model Meta</div>
+          <div className="kicker mb-2">{demo ? 'Demonstração interativa · dados fictícios' : 'Leitura do read model Meta'}</div>
           <h1
             className={cn(
               'font-display font-bold tracking-tight leading-[1.05]',

@@ -579,3 +579,49 @@ def test_tipo_que_nao_e_imagem_e_recusado():
     )
     with pytest.raises(PedidoRecusado):
         motor.solicitar_geracao(pedido)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 10. O QUE A REVISÃO ADVERSARIAL PEGOU
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_status_nao_previsto_e_TRANSITORIO_e_nao_permanente():
+    """Um 408 do gateway matava a peça sem direito a retry.
+
+    As faixas tratadas deixam de fora os 4xx transitórios (408, 409, 425, 499), e
+    o catch-all era `GeracaoFracassada`, que é permanente. A assimetria decide:
+    marcar transitório o que era permanente custa UMA chamada; marcar permanente
+    o que era transitório custa a peça e obriga refazer o lote na mão.
+    """
+    for status in (408, 409, 425, 499):
+        motor = MotorOpenAIImagem(chave="x", transporte=TransporteFalso(erro=_erro(status)))
+        with pytest.raises(MotorIndisponivel) as capturado:
+            _rodar(motor, _pedido())
+        assert capturado.value.permanente is False, f"status {status} virou permanente"
+
+
+def test_a_transformacao_final_publicada_diz_o_SENTIDO_certo():
+    """A rota publicava "reducao_e_recorte_centralizado" para 100% do catálogo.
+
+    Os quatro canvases nativos são MENORES que a medida final, então a
+    normalização AMPLIA — e em três deles a razão bate exatamente, sem recorte
+    nenhum. Um campo que diz "reduzida e recortada" quando houve ampliação sem
+    recorte é pior que campo nenhum: ele parece conferido.
+    """
+    from app.criativo import dominio
+    from app.routers.criativos_agente import _mesma_razao, _transformacao_final
+
+    esperado = {
+        "1x1": ("ampliacao_proporcional", True),
+        "4x5": ("ampliacao_proporcional", True),
+        "9x16": ("ampliacao_proporcional", True),
+        "1.91x1": ("ampliacao_e_recorte_centralizado", False),
+    }
+    for formato in dominio.FORMATOS:
+        canvas = envelope.canvas_para(formato.largura, formato.altura)
+        rotulo, preserva = esperado[formato.slot]
+        assert _transformacao_final(canvas, formato) == rotulo, formato.slot
+        assert _mesma_razao(canvas, formato) is preserva, formato.slot
+        # E o canvas e MENOR que o alvo nas duas bordas: e ampliacao mesmo.
+        assert canvas.largura <= formato.largura and canvas.altura <= formato.altura

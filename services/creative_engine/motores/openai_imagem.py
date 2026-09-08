@@ -649,4 +649,18 @@ def _traduzir_status(erro: RespostaHTTP, referencia: str):
         return MotorIndisponivel(
             "o provedor do motor de imagem está indisponível", pedido=referencia
         )
-    return GeracaoFracassada("o motor falhou de forma não prevista", pedido=referencia)
+    # ⚠️ O default do caminho NÃO PREVISTO é transitório, e não permanente.
+    #
+    # Antes ele era `GeracaoFracassada`, que tem `permanente = True`. As faixas
+    # tratadas acima deixam de fora os 4xx transitórios — 408 (Request Timeout),
+    # 409, 425 (Too Early), 499 —, e um 408 do gateway matava a peça sem direito
+    # a retry: o operador pagaria de novo por um pedido que teria dado certo na
+    # segunda tentativa.
+    #
+    # A assimetria dos dois erros é o argumento: marcar transitório o que era
+    # permanente custa UMA chamada a mais; marcar permanente o que era
+    # transitório custa a peça inteira e obriga refazer o lote na mão. Status
+    # desconhecido é ignorância, e ignorância pede nova tentativa, não desistência.
+    return MotorIndisponivel(
+        "o motor falhou de forma não prevista", pedido=referencia
+    )

@@ -1,8 +1,10 @@
 import React from 'react';
-import { pautadorApi, type FinanceiroMeta } from '@/lib/pautadorApi';
+import { useMetaCampaignApi, useMetaCampaignDemo } from './MetaCampaignData';
+import { type FinanceiroMeta } from '@/lib/pautadorApi';
 import { Button } from '@/components/ui/button';
 
 const MOTIVOS: Record<string, string> = {
+  DEMO_PERIODO_SEM_DADOS: 'O exemplo contém dados somente de 29/08 a 04/09/2026. Escolha esse intervalo para explorar as métricas.',
   SUPABASE_INDISPONIVEL: 'Banco de leitura indisponível.',
   CONTA_NAO_RESOLVIDA: 'Conta ainda não sincronizada.',
   FUSO_META_NAO_CONFIRMADO: 'Confirme o fuso da conta Meta.',
@@ -33,6 +35,7 @@ const MOTIVOS: Record<string, string> = {
 };
 
 export function useFinanceiroMeta(referencia: string, contaRef: string | null) {
+  const api = useMetaCampaignApi();
   const [periodo, setPeriodo] = React.useState({ inicio: '', fim: '' });
   const [versao, atualizar] = React.useReducer((n: number) => n + 1, 0);
   const [leitura, setLeitura] = React.useState<{
@@ -42,11 +45,11 @@ export function useFinanceiroMeta(referencia: string, contaRef: string | null) {
   React.useEffect(() => {
     if (!contaRef) return;
     let vivo = true;
-    pautadorApi.financeiroMeta(referencia, contaRef, periodo.inicio || undefined, periodo.fim || undefined)
+    api.financeiroMeta(referencia, contaRef, periodo.inicio || undefined, periodo.fim || undefined)
       .then((dados) => vivo && setLeitura({ chave, dados, erro: false }))
       .catch(() => vivo && setLeitura({ chave, dados: null, erro: true }));
     return () => { vivo = false; };
-  }, [chave, referencia, contaRef, periodo.inicio, periodo.fim]);
+  }, [chave, referencia, contaRef, periodo.inicio, periodo.fim, api]);
   // Dados de outra conta/campanha/período não sobrevivem nem por um render.
   return { dados: leitura?.chave === chave ? leitura.dados : null,
     erro: leitura?.chave === chave && leitura.erro,
@@ -57,6 +60,7 @@ export function useFinanceiroMeta(referencia: string, contaRef: string | null) {
 export function PeriodoFinanceiroMeta({ financeiro }: {
   financeiro: ReturnType<typeof useFinanceiroMeta>;
 }) {
+  const demo = useMetaCampaignDemo();
   const [inicio, setInicio] = React.useState('');
   const [fim, setFim] = React.useState('');
   const { dados, erro, carregando } = financeiro;
@@ -77,10 +81,10 @@ export function PeriodoFinanceiroMeta({ financeiro }: {
       <Button type="submit" variant="outline" disabled={carregando}>Aplicar período</Button>
       <Button type="button" variant="ghost" disabled={carregando} onClick={() => {
         setInicio(''); setFim(''); financeiro.setPeriodo({ inicio: '', fim: '' }); financeiro.atualizar();
-      }}>Ontem · fuso da conta</Button>
+      }}>{demo ? 'Período do exemplo' : 'Ontem · fuso da conta'}</Button>
     </form>
     <p className="text-sm text-muted-foreground" role="status">
-      {carregando ? 'Lendo o período no banco…' : erro ? 'Não foi possível ler as métricas. Tente novamente.' :
+      {carregando ? (demo ? 'Carregando exemplo…' : 'Lendo o período no banco…') : erro ? 'Não foi possível ler as métricas. Tente novamente.' :
         dados?.periodo_inicio ? `${dados.periodo_inicio} → ${dados.periodo_fim} · ${dados.timezone ?? 'fuso não informado'}${dados.provisorio ? ' · período provisório' : ''}` : 'Aguardando dados desta campanha.'}
     </p>
     <p className="max-w-[80ch] text-[13px] leading-relaxed text-muted-foreground">
@@ -90,7 +94,7 @@ export function PeriodoFinanceiroMeta({ financeiro }: {
     </p>
     {dados && <p className="text-xs text-muted-foreground">
       Última leitura · Meta: {dados.frescor ?? 'sem carimbo'} · GAM: {dados.receita_frescor ?? 'sem carimbo'}.
-      Valores exibidos são o último snapshot, não uma leitura ao vivo dos provedores.
+      {demo ? 'Valores e carimbos fictícios para demonstrar a interface.' : 'Valores exibidos são o último snapshot, não uma leitura ao vivo dos provedores.'}
     </p>}
     {!!dados?.impedimentos.length && <details className="text-sm text-muted-foreground">
       <summary className="cursor-pointer py-2">O que falta para completar estas métricas ({dados.impedimentos.length})</summary>

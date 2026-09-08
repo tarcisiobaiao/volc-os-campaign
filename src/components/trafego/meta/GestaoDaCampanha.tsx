@@ -1,8 +1,8 @@
 import React from 'react';
+import { useMetaCampaignApi, useMetaCampaignDemo } from './MetaCampaignData';
 import { Settings2, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { pautadorApi } from '@/lib/pautadorApi';
 import type { ItemMetaReadModel } from '@/lib/pautadorApi';
 import type { AcaoGestaoMeta, PedidoGestaoMeta, PropostaGestaoMeta } from '@/types/metaOperacao';
 import { Campo, campo } from './primitivas';
@@ -28,6 +28,8 @@ export function GestaoDaCampanha({ contaRef, campanhaRef, campanha, conjuntos, c
   conjuntos: ItemMetaReadModel[];
   completo: boolean;
 }) {
+  const api = useMetaCampaignApi();
+  const demo = useMetaCampaignDemo();
   const [alvo, setAlvo] = React.useState('campanha');
   const [acao, setAcao] = React.useState<AcaoGestaoMeta>('PAUSAR');
   const [valor, setValor] = React.useState('');
@@ -49,7 +51,7 @@ export function GestaoDaCampanha({ contaRef, campanhaRef, campanha, conjuntos, c
     const minhaVersao = versao.current;
     setLendo(true);
     try {
-      const r = await pautadorApi.planejarGestaoMeta({
+      const r = await api.planejarGestaoMeta({
         conta_ref: contaRef, campanha_ref: campanhaRef, entidade,
         referencia: entidade === 'campanha' ? campanhaRef : alvo, acao,
         ...(precisaValor ? { valor_minor: minor! } : {}),
@@ -63,7 +65,7 @@ export function GestaoDaCampanha({ contaRef, campanhaRef, campanha, conjuntos, c
   }
   function baixar() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(proposta, null, 2)], { type: 'application/json' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'meta-proposta-nao-executavel.json'; link.click();
+    const link = document.createElement('a'); link.href = url; link.download = demo ? 'meta-demo-proposta-ficticia.json' : 'meta-proposta-nao-executavel.json'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <details className="rounded-lg border border-border bg-card shadow-card">
@@ -73,6 +75,7 @@ export function GestaoDaCampanha({ contaRef, campanhaRef, campanha, conjuntos, c
     </summary>
     <div className="space-y-4 border-t border-border p-4">
       <p className="max-w-[72ch] text-sm text-muted-foreground">Prepare a mudança da campanha ou de um conjunto com seus valores anteriores. Esta etapa não aplica alterações na Meta. A execução de gestão ainda precisa ser integrada.</p>
+      {demo && <p role="status" className="text-sm text-warning">Simulação local: você pode conferir e baixar propostas fictícias. Nenhuma campanha será modificada.</p>}
       {!completo && <p role="status" className="text-sm text-warning">Carregue a leitura completa dos conjuntos antes de preparar uma alteração.</p>}
       <div className="grid gap-4 md:grid-cols-2">
         <Campo id="meta-gestao-alvo" rotulo="Onde alterar">

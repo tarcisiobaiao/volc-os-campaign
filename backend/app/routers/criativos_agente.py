@@ -248,20 +248,17 @@ async def capacidades(
                     else {
                         "largura": canvas.largura,
                         "altura": canvas.altura,
-                        "proporcao_preservada": canvas.derivado,
+                        # ⚠️ Derivado da RAZÃO, e não de `canvas.derivado`.
+                        # `derivado` responde "o canvas foi calculado ou é um
+                        # nomeado?", que é outra pergunta: para 1200x628 ele é
+                        # `True` e a razão NÃO bate (1,9189 contra 1,9108), ou
+                        # seja, o único slot que recorta era o que dizia
+                        # "proporção preservada".
+                        "proporcao_preservada": _mesma_razao(canvas, formato),
                         "observacao": canvas.motivo or None,
                     }
                 ),
-                "transformacao_final": (
-                    None
-                    if canvas is None
-                    else (
-                        "nenhuma"
-                        if (canvas.largura, canvas.altura)
-                        == (formato.largura, formato.altura)
-                        else "reducao_e_recorte_centralizado"
-                    )
-                ),
+                "transformacao_final": _transformacao_final(canvas, formato),
                 "aceita_fotografia_real": True,
             }
         )
@@ -307,6 +304,35 @@ async def capacidades(
             },
         ],
     }
+
+
+def _mesma_razao(canvas: Any, formato: Any) -> bool:
+    """A proporção do canvas é a do formato, dentro da tolerância?"""
+    alvo = formato.largura / formato.altura
+    return abs((canvas.largura / canvas.altura) - alvo) / alvo <= 1e-6
+
+
+def _transformacao_final(canvas: Any, formato: Any) -> str | None:
+    """O que acontece com os pixels DEPOIS do provider, dito com o sinal certo.
+
+    ⚠️ Este campo publicava `reducao_e_recorte_centralizado` para 100% do
+    catálogo, e estava errado nas quatro linhas. Os quatro canvases nativos são
+    MENORES que a medida final (1024x1024, 1024x1280, 864x1536, 1136x592), então
+    a normalização AMPLIA — e em três deles a razão bate exatamente, ou seja,
+    não há recorte nenhum.
+
+    O campo existe para responder "esta peça foi composta neste formato ou
+    recortada de outro?". Uma resposta que diz "reduzida e recortada" quando
+    houve ampliação sem recorte é pior que campo nenhum: ela parece conferida.
+    """
+    if canvas is None:
+        return None
+    if (canvas.largura, canvas.altura) == (formato.largura, formato.altura):
+        return "nenhuma"
+    sentido = "ampliacao" if canvas.largura < formato.largura else "reducao"
+    if _mesma_razao(canvas, formato):
+        return f"{sentido}_proporcional"
+    return f"{sentido}_e_recorte_centralizado"
 
 
 def _envelope_do_motor(motor: Any):

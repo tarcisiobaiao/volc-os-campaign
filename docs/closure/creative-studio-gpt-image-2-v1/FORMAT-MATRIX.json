@@ -9,7 +9,7 @@
       "proporcao": "1:1",
       "final": "1080x1080",
       "canvas_nativo": "1024x1024",
-      "transformacao": "reducao proporcional (sem recorte)",
+      "transformacao": "ampliacao proporcional 1024->1080 (sem recorte)",
       "regiao_da_foto": "topo, 100% da largura x 62% da altura",
       "aceita_fotografia": true
     },
@@ -19,7 +19,7 @@
       "proporcao": "4:5",
       "final": "1080x1350",
       "canvas_nativo": "1024x1280",
-      "transformacao": "reducao proporcional (sem recorte)",
+      "transformacao": "ampliacao proporcional 1024x1280->1080x1350 (sem recorte)",
       "regiao_da_foto": "topo, 100% x 64%",
       "aceita_fotografia": true
     },
@@ -29,7 +29,7 @@
       "proporcao": "9:16",
       "final": "1080x1920",
       "canvas_nativo": "864x1536",
-      "transformacao": "reducao proporcional (sem recorte)",
+      "transformacao": "ampliacao proporcional 864x1536->1080x1920 (sem recorte)",
       "regiao_da_foto": "meio, 100% x 58% a partir de 10% do topo, fora das faixas cobertas pela interface de stories",
       "aceita_fotografia": true
     },
@@ -39,7 +39,7 @@
       "proporcao": "1.91:1",
       "final": "1200x628",
       "canvas_nativo": "1136x592",
-      "transformacao": "cover + crop centralizado de ~0,42%",
+      "transformacao": "ampliacao + crop centralizado de ~0,42% (a razao 1.91:1 nao e expressavel com bordas multiplas de 16 num tamanho economico)",
       "regiao_da_foto": "esquerda, 48% da largura x 100% da altura",
       "aceita_fotografia": true
     }
@@ -50,5 +50,6 @@
     "test_a_peca_final_sai_na_dimensao_pedida_e_nao_na_nativa",
     "test_todo_slot_do_catalogo_tem_regiao_declarada",
     "test_a_fotografia_real_ocupa_a_regiao_declarada (parametrizado nos 4 slots)"
-  ]
+  ],
+  "nota_de_correcao": "A primeira versao deste arquivo dizia 'reducao proporcional'. Estava errado no SENTIDO: os quatro canvases nativos sao MENORES que a medida final, entao a normalizacao amplia. A revisao adversarial pegou o mesmo erro na rota de capacidades, que publicava 'reducao_e_recorte_centralizado' para 100% do catalogo — inclusive para os tres slots que nao recortam nada."
 }

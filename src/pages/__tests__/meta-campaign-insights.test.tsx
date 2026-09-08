@@ -11,7 +11,7 @@
  * não existe. Cada caso abaixo falha contra aquela versão.
  */
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +24,7 @@ const { api } = vi.hoisted(() => ({
     inventarioMetaReadModel: vi.fn(),
     detalheMetaReadModel: vi.fn(),
     financeiroMeta: vi.fn().mockResolvedValue({ estado: 'SEM_SNAPSHOT', impedimentos: [] }),
+    planejarGestaoMeta: vi.fn(),
   },
 }));
 
@@ -208,25 +209,64 @@ describe('a demonstração — só atrás de `?modo=demo`, e dizendo que é', ()
     abrir('/dashboard/campaign/campanha-descoberta-01?rede=meta&modo=demo');
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Dashboard da Campanha');
-    expect(screen.getByRole('heading', { name: 'Guia Encceja · Descoberta' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Guia Encceja · Descoberta' })).toBeTruthy();
 
     // A mesma espinha econômica do Google, com a unidade dita no rótulo.
     expect(screen.getByText('Investimento Total')).toBeTruthy();
     expect(screen.getByText('Revenue')).toBeTruthy();
     expect(screen.getByText('Retorno excedente (%)')).toBeTruthy();
     expect(screen.getByText('Lucro Bruto')).toBeTruthy();
-    expect(screen.getByText('Landing Page Views')).toBeTruthy();
-    expect(screen.getByText('Janela de Atribuição')).toBeTruthy();
+    expect(screen.getAllByText('ROAS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Conjuntos de anúncios').length).toBeGreaterThan(0);
 
     // ⚠️ O caráter fictício é CONTEÚDO FIXO, não um chip que passa despercebido.
     const faixa = screen.getByRole('note', { name: 'cenário demonstrativo' });
     expect(faixa.textContent).toContain('nada aqui é real');
     expect(faixa.textContent).toContain('Nenhuma conta Meta foi consultada');
-    expect(screen.getByText('Dados demonstrativos')).toBeTruthy();
+    expect(screen.getByText('Demonstração interativa · dados fictícios')).toBeTruthy();
 
     // A demonstração NÃO fala com o backend. Nem uma requisição.
     expect(api.contasMetaReadModel).not.toHaveBeenCalled();
     expect(api.detalheMetaReadModel).not.toHaveBeenCalled();
+    expect(api.financeiroMeta).not.toHaveBeenCalled();
+    expect(api.inventarioMetaReadModel).not.toHaveBeenCalled();
+  });
+
+  it('abre os anúncios do conjunto e simula todas as propostas sem acessar a API real', async () => {
+    abrir('/dashboard/campaign/campanha-descoberta-01?rede=meta&modo=demo');
+    const abrirConjunto = await screen.findByRole('button', { name: /Brasil · Amplo/ });
+    fireEvent.click(abrirConjunto);
+    expect(abrirConjunto.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getAllByText('Certificado Encceja · imagem A').length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByText('Gestão da campanha'));
+    fireEvent.change(screen.getByLabelText('Onde alterar'), { target: { value: 'conjunto-aberto-01' } });
+    const conferir = () => fireEvent.click(screen.getByRole('button', { name: 'Conferir proposta sem aplicar' }));
+    conferir();
+    await screen.findByText('Proposta preparada, nenhuma alteração aplicada');
+    expect(screen.getByText('Simulação da alteração escolhida. Nenhum objeto foi alterado ou criado.')).toBeTruthy();
+    for (const acao of ['ORCAMENTO_DIARIO', 'LANCE', 'DUPLICAR_CONJUNTO']) {
+      fireEvent.change(screen.getByLabelText('Alteração proposta'), { target: { value: acao } });
+      if (acao === 'ORCAMENTO_DIARIO') fireEvent.change(screen.getByLabelText('Novo orçamento diário em R$ (proposta BRL)'), { target: { value: '25,00' } });
+      if (acao === 'DUPLICAR_CONJUNTO') fireEvent.change(screen.getByLabelText('Nome do novo conjunto'), { target: { value: 'Cópia demonstrativa' } });
+      conferir();
+      await screen.findByText('Proposta preparada, nenhuma alteração aplicada');
+    }
+    expect(screen.getByRole('button', {name:'Baixar proposta'})).toBeTruthy();
+    expect(api.planejarGestaoMeta).not.toHaveBeenCalled();
+    expect(api.financeiroMeta).not.toHaveBeenCalled();
+    expect(api.contasMetaReadModel).not.toHaveBeenCalled();
+  });
+
+  it('filtra apenas os dias fictícios e não inventa métricas fora do período', async () => {
+    abrir('/dashboard/campaign/campanha-descoberta-01?rede=meta&modo=demo');
+    await screen.findByRole('button', { name: /Brasil · Amplo/ });
+    fireEvent.change(screen.getByLabelText('Início do período financeiro'), { target: { value:'2025-01-01' } });
+    fireEvent.change(screen.getByLabelText('Fim do período financeiro'), { target: { value:'2025-01-02' } });
+    fireEvent.click(screen.getByRole('button', { name:'Aplicar período' }));
+    await screen.findByText(/O exemplo contém dados somente/);
+    expect(api.financeiroMeta).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name:'Período do exemplo' }));
+    await waitFor(() => expect(screen.queryByText(/O exemplo contém dados somente/)).toBeNull());
   });
 
   it('id inexistente no cenário fictício vira frase, não redirecionamento', () => {
