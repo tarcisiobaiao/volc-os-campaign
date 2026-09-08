@@ -2,6 +2,18 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Atualização oficial — v16_01 (08/09/2026)
+
+`v16_01_criativo_procedencia_e_anexo.sql` foi **aplicada e relida** em
+`https://database.agenciavolc.com.br`, exclusivamente sob autorização do operador.
+SHA256: `e2be2073dbd83d86956d7bf7341a9608dd2e8e2dfdf717570ae02f892f547aee`.
+O cabeçalho histórico do SQL foi preservado para não alterar o arquivo autorizado.
+São 26 colunas novas em job/master/rendition e a tabela de anexos com RLS
+forçada e acesso somente do backend. As verificações de catálogo e PostgREST
+passaram; não houve geração paga, criação de bucket ou outra migration.
+Recibo: [RECEIPT.json](../../docs/closure/creative-studio-v16-01-official/RECEIPT.json).
+Aplicar schema não comprova geração, escrita de assets ou publicação Meta.
+
 ## Estado de aplicação
 
 | Arquivo | Estado | Quando | Ambiente | Executor |
