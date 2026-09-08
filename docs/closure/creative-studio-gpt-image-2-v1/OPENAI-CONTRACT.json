@@ -1,0 +1,106 @@
+{
+  "gerado_em": "2026-09-08",
+  "modelo": "gpt-image-2",
+  "qualidade": "medium",
+  "imposicao": "constantes de modulo em services/creative_engine/motores/openai_imagem.py; NAO sao parametros do construtor nem do pedido, porque a autorizacao de gasto nomeia o par (modelo, qualidade)",
+  "fonte": {
+    "host": "developers.openai.com",
+    "lido_em": "2026-09-08",
+    "observacao": "platform.openai.com/docs respondeu HTTP 403 em todas as URLs alvo; developers.openai.com e o host atual da mesma documentacao"
+  },
+  "endpoints": {
+    "sem_anexo": {
+      "metodo": "POST",
+      "caminho": "/v1/images/generations",
+      "content_type": "application/json"
+    },
+    "com_anexo": {
+      "metodo": "POST",
+      "caminho": "/v1/images/edits",
+      "content_type": "multipart/form-data"
+    }
+  },
+  "size": {
+    "nomeados": [
+      "1024x1024",
+      "1536x1024",
+      "1024x1536",
+      "2048x2048",
+      "2048x1152",
+      "3840x2160",
+      "2160x3840",
+      "auto"
+    ],
+    "arbitrario_suportado": true,
+    "regras": {
+      "borda_maxima_px": 3840,
+      "bordas_multiplas_de": 16,
+      "razao_maxima_maior_sobre_menor": 3.0,
+      "pixels_minimos": 655360,
+      "pixels_maximos": 8294400
+    },
+    "consequencia_medida": "NENHUM dos quatro formatos comerciais do catalogo passa na regra dos multiplos de 16 (1080/16 = 67,5; 628/16 = 39,25). Nao existe o caminho 'pedir a medida final ao provider'."
+  },
+  "canvas_derivado_por_formato": {
+    "1x1 (1080x1080)": {
+      "canvas": "1024x1024",
+      "erro_de_proporcao_pct": 0.0
+    },
+    "4x5 (1080x1350)": {
+      "canvas": "1024x1280",
+      "erro_de_proporcao_pct": 0.0
+    },
+    "9x16 (1080x1920)": {
+      "canvas": "864x1536",
+      "erro_de_proporcao_pct": 0.0
+    },
+    "1.91x1 (1200x628)": {
+      "canvas": "1136x592",
+      "erro_de_proporcao_pct": 0.423,
+      "nota": "1.91:1 nao e expressavel com bordas multiplas de 16 num tamanho economico; o residuo vira cover_crop registrado"
+    }
+  },
+  "parametros_enviados": {
+    "model": "gpt-image-2 (sempre explicito: o default de /edits e gpt-image-1.5 e o de /generations e dall-e-2)",
+    "prompt": "texto orientado ao canvas",
+    "size": "canvas derivado, validado contra as quatro regras antes do envio",
+    "quality": "medium",
+    "output_format": "png",
+    "n": 1
+  },
+  "parametros_deliberadamente_ausentes": {
+    "input_fidelity": "a doc do gpt-image-2 manda OMITIR: o modelo ja processa toda entrada em alta fidelidade e a API nao aceita mudar isso",
+    "response_format": "modelos GPT-image sempre devolvem base64; o parametro pertence ao DALL-E"
+  },
+  "resposta": {
+    "campo": "data[0].b64_json",
+    "modelo_servido": "data.model quando presente; NULO quando ausente, nunca preenchido com o pedido"
+  },
+  "anexo": {
+    "campo": "image",
+    "maximo_de_imagens": 16,
+    "mime_aceitos": [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ],
+    "bytes_maximos_por_arquivo": 52428800
+  },
+  "erros": {
+    "classificacao": "por STATUS HTTP e por error.code/error.type; NUNCA pelo texto de error.message",
+    "mapa": {
+      "401/403": "MotorIndisponivel",
+      "429": "MotorIndisponivel",
+      "400/404/413/422": "PedidoRecusado (permanente)",
+      "5xx": "MotorIndisponivel"
+    },
+    "sem_retry_por_texto": "a referencia do Aprova retenta num tamanho padrao quando a mensagem contem 'size'; aqui um 400 e um 400, e o desvio de canvas acontece antes, por geometria"
+  },
+  "preco": {
+    "por_imagem_usd": null,
+    "motivo": "a OpenAI publica apenas preco por 1M de tokens para gpt-image-2 (US$ 8,00 entrada de imagem, US$ 5,00 entrada de texto, US$ 30,00 saida). Nao ha tabela de dolar por imagem por size/quality.",
+    "consequencia_no_produto": "custo_estimado_usd = null, a tela escreve 'estimativa indisponivel' e a autorizacao exige aceito_sem_estimativa explicito. Nunca zero."
+  },
+  "LIVE_GENERATION_VERIFIED": false,
+  "contraprovas": "backend/tests/test_criativo_motor_openai.py — 48 testes, transporte dublê, nenhum socket"
+}

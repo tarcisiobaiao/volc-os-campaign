@@ -2039,6 +2039,19 @@
       "source": "Curadoria humana, atualizada em 2026-09-08"
     },
     {
+      "id": "concept:composicao-hibrida-fotografia",
+      "label": "Composição híbrida com fotografia real",
+      "type": "concept",
+      "cluster": "production",
+      "cluster_label": "Conteúdo & publicação",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
+      "tier": 1,
+      "summary": "Modo em que os PIXELS da fotografia do operador entram na peça sem serem regerados: o modelo compõe apenas o entorno e um compositor determinístico junta os dois, registrando crop, escala, posição e versão da régua.",
+      "evidence": "08/09/2026 · backend/app/criativo/studio/composicao.py e anexo.py, com 26 contraprovas em test_criativo_anexo_e_composicao.py e 6 de ponta a ponta pelo Executor real em test_criativo_execucao.py. A preservação é provada NO PIXEL: fundo verde do motor dublê, foto vermelha, vermelho no centro da região declarada. O modo 'reinterpretado' existe separado e avisa que rosto e detalhes mudam, porque o endpoint de edição do provider regera a imagem inteira. Colunas de crop/escala/posição/compositor existem na v16_01, que NÃO foi aplicada no Supabase oficial: a prova de schema é local, em PostgreSQL descartável.",
+      "source": "Curadoria humana, atualizada em 2026-09-08"
+    },
+    {
       "id": "concept:content_shortcut",
       "label": "Conteúdo como atalho legítimo",
       "type": "concept",
@@ -2243,7 +2256,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Parque de contratos, brand packs, destinos, renderizadores, gates e laboratórios que separa pixels variáveis por IA de pixels exatos controlados por código.",
-      "evidence": "Snapshot reproduzível em docs/creative-engines/snapshots/motor-imagem-2026-08-26.json: 856 arquivos lidos, 443 fontes/contratos hasheados, 18 specs, 7 skins e 94 imagens no out canônico. Entre 64 renders, 26 são tipografia pura, 12 são gráfico+tipografia por código e 26 são híbridos com asset de IA. Não é um repo ou serviço único.",
+      "evidence": "Snapshot reproduzível em docs/creative-engines/snapshots/motor-imagem-2026-08-26.json: 856 arquivos lidos, 443 fontes/contratos hasheados, 18 specs, 7 skins e 94 imagens no out canônico. Entre 64 renders, 26 são tipografia pura, 12 são gráfico+tipografia por código e 26 são híbridos com asset de IA. Não é um repo ou serviço único. Em 08/09/2026 o motor deixou de ser UM: entrou o `MotorOpenAIImagem` (openai:gpt-image-2, quality medium impostos como constantes de modulo) ao lado do Gemini, com escolha por configuracao unica e SEM fallback — um fallback tornaria decorativa a conferencia do modelo autorizado. O envelope do provider virou dado testavel: nenhum dos quatro formatos comerciais cabe nele (1080 nao e multiplo de 16), entao toda peca passa por canvas nativo e normalizacao deterministica. O preco por imagem do gpt-image-2 e `None`, porque a OpenAI cobra por token e nao publica dolar por imagem — e `None` nunca vira zero. LIVE_GENERATION_VERIFIED=false: 48 contraprovas hermeticas, nenhuma abre socket.",
       "source": "Curadoria humana, atualizada em 2026-09-08"
     },
     {
@@ -10262,6 +10275,13 @@
       "source": "concept:cofre-handoff",
       "target": "cap_creative_engines",
       "relation": "informa_sem_autorizar",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "concept:composicao-hibrida-fotografia",
+      "target": "system:motor-imagem-volc",
+      "relation": "compoe_sobre_a_saida_de",
       "evidence": "",
       "confidence": "curated"
     },

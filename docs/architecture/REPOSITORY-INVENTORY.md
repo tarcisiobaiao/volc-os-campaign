@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-08T12:47:20-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-09-08T14:43:17-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 714 arquivos: 521 Markdown e 193 SQL;
-- 714 versionados e 0 ainda não versionados;
+- 716 arquivos: 521 Markdown e 195 SQL;
+- 716 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 131 SQL com palavras de mutação de alto risco.
+- 133 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -27,7 +27,7 @@ Gerado em `2026-09-08T12:47:20-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 41 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 80 |
+| `sql-needs-review` | 82 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -161,6 +161,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | 5 | 13 |
 | `supabase/migrations/v15_98_meta_ads_insights_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v15_99_meta_ads_read_model_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v16_01_criativo_procedencia_e_anexo.sql` | `sql-needs-review` | 3 | 5 |
+| `supabase/migrations/v16_01_rollback.sql` | `sql-needs-review` | 2 | 2 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |

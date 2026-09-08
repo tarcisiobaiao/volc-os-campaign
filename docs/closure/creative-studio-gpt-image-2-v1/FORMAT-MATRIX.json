@@ -1,0 +1,54 @@
+{
+  "gerado_em": "2026-09-08",
+  "autoridade": "backend/app/criativo/dominio.py::FORMATOS, publicada por GET /api/criativos/meta/agente/capacidades",
+  "copia_removida": "src/features/creative-studio/api.ts::FORMATOS_DO_MOTOR era uma TERCEIRA copia com 3 dos 4 formatos: o 1.91x1 nunca aparecia no Assistente e nenhum teste falhava, porque constante desatualizada nao quebra nada, ela so some. Foi apagada, nao corrigida.",
+  "formatos": [
+    {
+      "slot": "1x1",
+      "rotulo": "Quadrado",
+      "proporcao": "1:1",
+      "final": "1080x1080",
+      "canvas_nativo": "1024x1024",
+      "transformacao": "reducao proporcional (sem recorte)",
+      "regiao_da_foto": "topo, 100% da largura x 62% da altura",
+      "aceita_fotografia": true
+    },
+    {
+      "slot": "4x5",
+      "rotulo": "Retrato",
+      "proporcao": "4:5",
+      "final": "1080x1350",
+      "canvas_nativo": "1024x1280",
+      "transformacao": "reducao proporcional (sem recorte)",
+      "regiao_da_foto": "topo, 100% x 64%",
+      "aceita_fotografia": true
+    },
+    {
+      "slot": "9x16",
+      "rotulo": "Vertical",
+      "proporcao": "9:16",
+      "final": "1080x1920",
+      "canvas_nativo": "864x1536",
+      "transformacao": "reducao proporcional (sem recorte)",
+      "regiao_da_foto": "meio, 100% x 58% a partir de 10% do topo, fora das faixas cobertas pela interface de stories",
+      "aceita_fotografia": true
+    },
+    {
+      "slot": "1.91x1",
+      "rotulo": "Paisagem",
+      "proporcao": "1.91:1",
+      "final": "1200x628",
+      "canvas_nativo": "1136x592",
+      "transformacao": "cover + crop centralizado de ~0,42%",
+      "regiao_da_foto": "esquerda, 48% da largura x 100% da altura",
+      "aceita_fotografia": true
+    }
+  ],
+  "provas": [
+    "test_o_size_enviado_sempre_passa_nas_quatro_regras_oficiais",
+    "test_nenhum_formato_comercial_e_enviado_cru_ao_provider",
+    "test_a_peca_final_sai_na_dimensao_pedida_e_nao_na_nativa",
+    "test_todo_slot_do_catalogo_tem_regiao_declarada",
+    "test_a_fotografia_real_ocupa_a_regiao_declarada (parametrizado nos 4 slots)"
+  ]
+}

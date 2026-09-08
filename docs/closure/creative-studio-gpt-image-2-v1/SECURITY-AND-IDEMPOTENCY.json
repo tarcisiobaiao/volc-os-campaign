@@ -1,0 +1,72 @@
+{
+  "gerado_em": "2026-09-08",
+  "portas_de_gasto": {
+    "ordem_no_POST_geracoes": [
+      "1. lote e aprovacoes lidas com filtro de dono",
+      "2. motor construido (identidade e preco entram no plano)",
+      "3. plano RECALCULADO no servidor; bloqueio recusa aqui, antes de existir job",
+      "4. credencial do motor exigida (depois dos bloqueios: 'peca nao aprovada' e mais util que 'servidor sem chave')",
+      "5. autorizacao conferida: modelo, total, teto, aceite-sem-estimativa e SELO do plano",
+      "6. so entao um job por conceito"
+    ],
+    "recusas_409": [
+      "CRIATIVO_STUDIO_SEM_AUTORIZACAO_DE_GASTO",
+      "CRIATIVO_STUDIO_MODELO_DIVERGENTE (inclui motor que nao se nomeia)",
+      "CRIATIVO_STUDIO_TOTAL_DIVERGENTE",
+      "CRIATIVO_STUDIO_TETO_DE_CUSTO",
+      "CRIATIVO_STUDIO_SEM_ESTIMATIVA_DE_CUSTO",
+      "CRIATIVO_STUDIO_AUTORIZACAO_VENCIDA",
+      "CRIATIVO_STUDIO_PLANO_DIVERGENTE"
+    ]
+  },
+  "selo_do_plano": {
+    "o_que_amarra": "sha256 do conteudo canonico: run_ref, refs ordenadas, formatos ordenados, modelo, qualidade, total, estimativa e hash do anexo",
+    "como_expira": "HMAC do par (assinatura, instante de expiracao) com o segredo do servidor; 10 minutos",
+    "por_que_HMAC": "um expira_em como campo comum seria decoracao — o cliente manda o timestamp que quiser",
+    "defeito_que_fecha": "modelo igual + total igual permitia ler o plano de {peca A, peca B} e produzir {peca C, peca D}: nenhum dos tres campos antigos descreve QUAL conteudo",
+    "reordenar_nao_invalida": "refs e formatos entram ORDENADOS: [A,B] e [B,A] sao a mesma escolha"
+  },
+  "custo": {
+    "regra": "o preco vem do MOTOR que vai rodar, nunca de uma constante importada de outro provider",
+    "nunca_zero": "_estimativa devolve None quando o motor nao publica preco; a coluna sai NULL",
+    "teto_sem_estimativa": "recusado com codigo proprio, a menos que aceito_sem_estimativa=true. Antes era ignorado em silencio, e com o gpt-image-2 isso deixaria de ser excecao"
+  },
+  "idempotencia": {
+    "campos_da_chave_acrescentados": [
+      "creative_ref",
+      "run_ref",
+      "modo_de_composicao",
+      "anexo_sha256"
+    ],
+    "defeito_que_fecha": "duas pecas com a mesma direcao visual e o mesmo texto colapsavam num job so: o operador autorizava 4 renders e recebia 2, sem recusa e sem erro",
+    "retry": "compare-and-set com o filtro de estado dentro do PATCH; o segundo processo da corrida recebe zero linhas em vez de disparar um laco pago"
+  },
+  "confinamento": {
+    "corrigidos": [
+      "Executor.retentar(criado_por=) — quem tivesse o UUID de um job alheio o recolocava na fila e fazia o provider cobrar o dono",
+      "Executor.cancelar(criado_por=) — cancelar DESTROI trabalho pago",
+      "aprovar usa buscar_master_do_dono — uma reprovacao TRANCA o ativo (indice de vigencia unico por ativo/versao/finalidade)",
+      "obter_anexo filtra por owner no WHERE, e a operacao e conferida na rota"
+    ],
+    "404_identico": "'nao existe' e 'nao e seu' respondem igual, para a rota nao virar oraculo de existencia"
+  },
+  "fotografia": {
+    "validacao_server_side": [
+      "MIME por assinatura de bytes (o Content-Type do multipart e escrito pelo cliente)",
+      "teto de bytes antes de qualquer decodificacao",
+      "teto de PIXELS lido do CABECALHO — a decompression bomb passa em qualquer teto de bytes",
+      "load() completo contra arquivo truncado (um JPEG cortado decodifica 'com sucesso' e sai metade cinza)",
+      "lado minimo de 320px",
+      "EXIF removido COM a orientacao aplicada aos pixels"
+    ],
+    "hash_publicado": "dos bytes NORMALIZADOS, que sao os que a autorizacao assina e os que o compositor usa",
+    "nao_trafega_base64": "a tela recebe uma referencia opaca; o base64 no estado atravessaria localStorage e todo log de corpo",
+    "consentimento": "exigido na rota E por CHECK de tabela — um if de rota some quando alguem acrescenta um segundo caminho de upload"
+  },
+  "o_que_NAO_foi_corrigido_nesta_rodada": [
+    "POST /operacoes/{ref}/geracoes ainda exige apenas sessao valida, enquanto POST /jobs/{id}/retry exige admin. A assimetria e real e foi deixada de fora por ser mudanca de politica de acesso, nao de mecanismo.",
+    "A resposta de gerar_imagens ainda espera o despacho sincrono local; para lotes grandes o request pode morrer no proxy antes da lista de job_id.",
+    "A chave de storage do Estudio (nao a do anexo) continua sem o dono no primeiro nivel.",
+    "A chave da API do Gemini continua na query string (o motor OpenAI usa header)."
+  ]
+}

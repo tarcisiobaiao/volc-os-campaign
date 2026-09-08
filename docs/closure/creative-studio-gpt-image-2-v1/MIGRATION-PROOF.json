@@ -1,0 +1,38 @@
+{
+  "gerado_em": "2026-09-08",
+  "migration": "supabase/migrations/v16_01_criativo_procedencia_e_anexo.sql",
+  "rollback": "supabase/migrations/v16_01_rollback.sql",
+  "aplicada_em_producao": false,
+  "onde_foi_provada": "PostgreSQL 15.19 descartavel em container Docker, com as roles anon/authenticated/service_role/supabase_admin e um auth.uid() dublê criados para o teste",
+  "base_aplicada_antes": [
+    "v11_01",
+    "v11_02",
+    "v11_05",
+    "v11_06",
+    "v11_07"
+  ],
+  "ciclo_executado": [
+    "apply -> OK",
+    "uso real: insert de criativo_job com modelo_pedido/modelo_servido/qualidade/hashes/teto/plano_sha256/autorizacao/modo, e de criativo_rendition com canvas/crop/escala/posicao/compositor",
+    "rollback -> OK",
+    "reapply -> OK",
+    "rollback -> OK (idempotente)",
+    "reapply -> OK"
+  ],
+  "contraprovas_negativas": {
+    "hash fora de forma": "RECUSADO",
+    "qualidade fora do dominio": "RECUSADO",
+    "modo de composicao invalido": "RECUSADO",
+    "teto negativo": "RECUSADO",
+    "autorizacao meio preenchida (por sem em, ou em sem por)": "RECUSADO",
+    "caixa de crop incompleta": "RECUSADO",
+    "compositor sem versao": "RECUSADO",
+    "anexo sem consentimento": "RECUSADO",
+    "chave de storage fora do prefixo": "RECUSADO",
+    "anexo cross-tenant na operacao alheia": "RECUSADO pela FK (project_ref, owner_id)"
+  },
+  "aditiva": true,
+  "toda_coluna_nova_e_nullable": true,
+  "gatilho_estendido": "criativo_master_imutavel() recriada com as cinco colunas novas no mesmo conjunto fechado; o rollback restaura o corpo da v11_02",
+  "aviso_do_rollback": "o rollback APAGA a procedencia (modelo servido e hashes) e a tabela de anexo, deixando os arquivos orfaos no armazenamento. Para reversao de emergencia, prefira parar de escrever nas colunas: todas sao NULLABLE."
+}

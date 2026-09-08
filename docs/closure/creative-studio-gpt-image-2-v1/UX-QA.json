@@ -1,0 +1,73 @@
+{
+  "gerado_em": "2026-09-08",
+  "VISUAL_VERIFIED": false,
+  "por_que": "A extensao de browser do Claude nao conectou nesta sessao (tabs_context_mcp respondeu 'Browser extension is not connected'). A missao e explicita: sem autenticacao no navegador, VISUAL_VERIFIED=false, e jsdom NAO substitui inspecao visual.",
+  "o_que_ficou_sem_prova": [
+    "capturas em 375px, 768px e 1440px, em tema claro e escuro",
+    "navegacao por teclado real e ordem de foco na tela",
+    "contraste medido",
+    "leitura por leitor de tela",
+    "a jornada completa clicada por uma pessoa"
+  ],
+  "o_que_FOI_verificado_sem_navegador": {
+    "servidor de desenvolvimento": "http://localhost:8080 responde 200 e serve ESTE checkout (vite pid do proprio diretorio); http://localhost:8010 responde 200 e ja publica a rota nova (401 em /capacidades = rota existe e exige sessao)",
+    "build": "npm run build concluiu",
+    "tipos": "npx tsc --noEmit -p tsconfig.app.json: 76 erros, TODOS herdados do webgo e ZERO no dominio criativo (o mesmo numero que CLAUDE.md documenta como baseline)",
+    "testes de interface": "36/36 no vitest de src/features/creative-studio, com jsdom",
+    "bans do design.md": "grep sem ocorrencia de transition-all, backdrop-blur, glass, bg-clip-text, gradient-text, shadow-glow, text-aurora, aurora-blue/purple/orange e gradient-aurora nos arquivos do Estudio; a unica mencao a aurora e um comentario explicando a proibicao",
+    "travessao em copy de interface": "removido o unico caso encontrado fora de comentario"
+  },
+  "defeitos_de_UX_corrigidos_nesta_rodada": [
+    {
+      "defeito": "erro de aprovar/refinar renderizado dentro de um <details> FECHADO",
+      "consequencia": "o operador clicava, nada acontecia, nenhuma mensagem aparecia",
+      "correcao": "o alerta subiu para o topo do painel, fora de bloco condicional"
+    },
+    {
+      "defeito": "erro da conferencia renderizado dentro do bloco do plano",
+      "consequencia": "o bloco e justamente o que nao existe quando a conferencia falha",
+      "correcao": "idem, no topo do painel de producao"
+    },
+    {
+      "defeito": "a Producao ignorava os formatos do briefing e marcava tres",
+      "consequencia": "quem pediu um formato e leu 'ate 4 imagens' autorizava 12",
+      "correcao": "a Producao herda a escolha da entrada"
+    },
+    {
+      "defeito": "'pendente' era a AUSENCIA de chip e 'rejeitado' nao existia visualmente",
+      "consequencia": "estado que so existe por ausencia nao e legivel",
+      "correcao": "cada peca carrega o proprio chip, com glifo e palavra"
+    },
+    {
+      "defeito": "nao havia como desfazer uma aprovacao",
+      "consequencia": "o contrato sempre teve REPROVADO e o servidor sempre aceitou; faltava o botao",
+      "correcao": "botao 'Desfazer' na peca aprovada"
+    },
+    {
+      "defeito": "N botoes homonimos 'Aprovar para producao'",
+      "consequencia": "nome acessivel repetido em lista",
+      "correcao": "aria-label distinto por peca"
+    },
+    {
+      "defeito": "a Estrategia era um dossie integralmente expandido",
+      "consequencia": "nada comparavel; cada peca ocupava uma tela",
+      "correcao": "cartoes comparaveis em grade, detalhe atras de 'Ver detalhes'"
+    },
+    {
+      "defeito": "a tela nao dizia QUAL operacao estava aberta",
+      "consequencia": "sem nome, o historico e a tela nao se ligam",
+      "correcao": "o nome da operacao entrou no kicker"
+    },
+    {
+      "defeito": "o operador autorizava sem ver o texto que vai para dentro da arte",
+      "consequencia": "plano.briefings vinha do servidor e nunca era desenhado",
+      "correcao": "bloco 'Ver o texto que vai para dentro da arte' na conferencia"
+    },
+    {
+      "defeito": "a autorizacao nomeava so o modelo",
+      "consequencia": "a qualidade decide o custo e nao era lida",
+      "correcao": "modelo E qualidade dentro da frase que a pessoa confirma"
+    }
+  ],
+  "proxima_acao_para_fechar_VISUAL_VERIFIED": "conectar a extensao do Claude no Chrome, abrir http://localhost:8080/trafego/meta/assistente-criativo com uma sessao Supabase valida e capturar as seis telas (375/768/1440 x claro/escuro)."
+}

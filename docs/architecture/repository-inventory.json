@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T12:47:20-03:00",
+  "generated_at": "2026-09-08T14:43:17-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 714,
+    "files": 716,
     "markdown": 521,
-    "sql": 193,
-    "tracked": 714,
+    "sql": 195,
+    "tracked": 716,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
@@ -22,11 +22,11 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 41,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 80,
+      "sql-needs-review": 82,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 131,
+      "high": 133,
       "medium": 46,
       "read-only-or-ddl-free": 16
     }
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22772,
       "lines": 303,
-      "sha256": "494666ffa5d7aeeef60c026cfcf04d5a03e3c0d020d03f890100afb2f442f8f5",
+      "sha256": "e7c9e35656d24c6164d9c5251048998d523214500d3fea1541a6008642036bba",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5469,7 +5469,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "6ea0f17c903413ea927f93dcb25312b9e3fc6b4040d75e689e9614f37bb74d07",
+      "sha256": "1c3c03f9c37f1728fbc496297335a2721adf9ed6736a96be0629da91839d294d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -8124,6 +8124,30 @@
       "sha256": "c8a0cf86a67babf708f490c74e737f9c91c8d803d187c2d947cb76a49237eb52",
       "graph_nodes": 1,
       "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v16_01_criativo_procedencia_e_anexo.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 19854,
+      "lines": 409,
+      "sha256": "236a25429fcccf1144be56358c7028d4510ea4ce5af5aca8862e56bfa845188b",
+      "graph_nodes": 3,
+      "graph_degree": 5,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v16_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 7490,
+      "lines": 184,
+      "sha256": "93b16fdd036258f16c48acb9914e0defff2d10159f7982ae7ae680e477ec8c12",
+      "graph_nodes": 2,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {
