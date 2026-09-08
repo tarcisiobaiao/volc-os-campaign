@@ -1,6 +1,5 @@
 """No provider calls: previews and management proposals never dispatch changes."""
 from copy import deepcopy
-from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
@@ -41,6 +40,19 @@ async def test_pause_is_proposal_only_and_never_echoes_raw_identifiers():
     assert r["depois"] == {"status": "PAUSED"}
     assert "DO_NOT_EXPOSE" not in str(r)
     assert repo.conjunto == original
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("acao,extra", [
+    ("ORCAMENTO_DIARIO", {}), ("LANCE", {"estrategia": "COST_CAP"}),
+])
+async def test_money_proposal_seals_currency_without_claiming_account_currency(acao, extra):
+    p = pedido().model_dump()
+    p.update(acao=acao, valor_minor=2500, **extra)
+    r = await planejar_gestao(Repo(), PedidoDeGestaoMeta(**p), ator="admin")
+    assert r["depois"]["moeda_proposta"] == "BRL"
+    assert r["executavel"] is False
+    assert any("moeda" in x.lower() for x in r["requisitos_para_executar"])
 
 
 @pytest.mark.asyncio

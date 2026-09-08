@@ -72,13 +72,15 @@ async def planejar_gestao(repo, pedido: PedidoDeGestaoMeta, *, ator: str) -> dic
         if item.get("status") == "PAUSED":
             raise ValueError("O estado configurado já é PAUSED na leitura disponível.")
     elif pedido.acao == "ORCAMENTO_DIARIO":
-        depois = {"daily_budget_minor": pedido.valor_minor}
+        depois = {"daily_budget_minor": pedido.valor_minor, "moeda_proposta": "BRL"}
         efeito = "Alterar a verba diária disponível para este escopo."
         requisitos.append("Confirmar moeda, limites e dono do orçamento: campanha em CBO, conjunto em ABO. Orçamento vitalício exige outro plano.")
     elif pedido.acao == "LANCE":
         depois = {"bid_strategy": pedido.estrategia, "bid_amount_minor": pedido.valor_minor}
+        if pedido.valor_minor is not None:
+            depois["moeda_proposta"] = "BRL"
         efeito = "Alterar a estratégia de entrega; pode afetar aprendizado e gasto."
-        requisitos.append("Validar estratégia, objetivo, otimização e dono do lance antes de compilar payload Meta.")
+        requisitos.append("Validar moeda da conta, estratégia, objetivo, otimização e dono do lance antes de compilar payload Meta.")
     else:
         depois = {"nome": pedido.nome.strip(), "status": "PAUSED", "incluir_anuncios": True}
         efeito = "Criar um novo conjunto e cópias de seus anúncios, todos pausados, na mesma campanha."

@@ -17,6 +17,7 @@ const ROTULOS: Record<string, string> = {
   lifetime_budget: 'Orçamento vitalício (centavos)', bid_strategy: 'Estratégia de lance',
   bid_amount: 'Valor de lance (centavos)', daily_budget_minor: 'Novo orçamento diário (centavos)',
   bid_amount_minor: 'Novo limite de lance (centavos)', nome: 'Nome da cópia', incluir_anuncios: 'Copiar anúncios',
+  moeda_proposta: 'Moeda proposta (confirmar na conta)',
 };
 
 /** Preparation only: the server has no management dispatch route. */

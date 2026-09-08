@@ -1,0 +1,17 @@
+{
+  "run_id": "meta-campaign-ux-20260908-local-v1",
+  "status": "LOCAL_PARTIAL",
+  "kind": "local_product_implementation_not_account_audit",
+  "manifest_timing": "Recorded at closure, not before analysis",
+  "platforms": ["META_ADS"],
+  "objective": "Expose automatic adset tracking and prepare non-executable campaign management proposals",
+  "business_model": "Paid traffic to publisher site, GAM revenue by adset_id",
+  "account_authority": "No real account read, validation or mutation in this run",
+  "account_budget": null,
+  "measurement_window": null,
+  "account_score": null,
+  "skills": ["ads", "impeccable"],
+  "handoff": "docs/closure/meta-campaign-tracking-management-ux-v1/HANDOFF.md",
+  "remaining": ["Management executor", "Authenticated end-to-end UI", "Live tracking expansion and GAM matching"],
+  "mutations_external": []
+}
