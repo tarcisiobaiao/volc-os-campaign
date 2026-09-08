@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-09-08T16:38:12-03:00",
-  "built_at_commit": "a61cd6d7965cf1b5a8ab84971de3c95af848ccd7",
+  "generated_at": "2026-09-08T16:39:33-03:00",
+  "built_at_commit": "f846ad586f580ca7ba5936c08536c21596157701",
   "working_tree_dirty_at_build": true,
-  "input_sha256": "b1efd88917c804bbbc89396d5c6c84a33fb9dbf26d858b6544ea29c6c10a523b",
-  "input_file_count": 1899,
+  "input_sha256": "11083333c88350a20b59d91c656b75510a45481511f4a16a7988d1b5df6986d9",
+  "input_file_count": 1903,
   "graphify_version": "0.9.48",
   "live_sources_refreshed": false,
-  "technical_layer_reused": false,
+  "technical_layer_reused": true,
   "sources": {
     "operational": "docs/volc-os-graph/volc-os-graph.json",
     "technical": ".graphify-cache/code/graphify-out/graph.json",
