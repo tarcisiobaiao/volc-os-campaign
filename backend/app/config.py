@@ -78,6 +78,28 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     pautador_openai_model: str = "gpt-4o-mini"
 
+    # ── Motor de imagem do Estúdio Criativo ─────────────────────────────────
+    #
+    # O SLUG do motor que este processo usa para gerar imagem. É a única chave
+    # que escolhe provider, e ela escolhe UM: não existe "auto", não existe
+    # lista de preferência e não existe queda para outro motor quando o
+    # escolhido está sem credencial.
+    #
+    # ⚠️ Por que não há fallback, sendo que `pautador_engine` tem "auto":
+    # descobrir texto com outro modelo é uma degradação de qualidade; GERAR
+    # IMAGEM com outro modelo é gastar dinheiro num ato que o operador
+    # autorizou nominalmente. A autorização de gasto grava o nome do motor e o
+    # servidor reconfere; um fallback silencioso tornaria essa conferência
+    # decorativa, porque o nome conferido não seria o nome que rodou.
+    #
+    # Sem credencial, o motor escolhido responde `configurado = False`, o plano
+    # mostra o bloqueio e nada é despachado. Falhar fechado é o desenho.
+    #
+    # Valores reconhecidos: ver `MOTORES_DE_IMAGEM` em `app/routers/criativos.py`.
+    # O modelo e a qualidade NÃO são configuráveis aqui: eles são constantes do
+    # motor, porque é o par (modelo, qualidade) que a pessoa autoriza.
+    criativo_motor_de_imagem: str = "openai-gpt-image-2"
+
     # ---- KW Mining (Fase 2) / Funnel Builder (Fase 3) -------------------------
     # Per-operation Gemini models (mirror the n8n workflows, which used
     # models/gemini-3.1-pro-preview for kw research + funnel architecture).

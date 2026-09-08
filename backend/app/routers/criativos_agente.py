@@ -27,6 +27,13 @@ from app.criativo.agente.caminhos import CaminhoInvalido, resolver as resolver_c
 from app.criativo.agente.orquestrador import AgenteCriativoMeta, RespostaDoModeloInvalida
 from app.criativo.agente.persistencia import NaoEncontrado, RepositorioAgenteCriativo
 from app.criativo.studio import AutorizacaoDeGasto, PedidoDeGeracao, PlanoDeGeracao
+from app.criativo.studio.contrato import MAX_RENDERS_POR_PEDIDO
+from app.criativo.studio.autorizacao import (
+    SeloInvalido,
+    assinatura_do_plano,
+    conferir_selo,
+    emitir_selo,
+)
 from app.llm.gemini import GeminiClient
 from app.seguranca.identidade import Identidade, exigir_usuario
 from app.services.supabase_service import SupabaseService
@@ -185,6 +192,141 @@ async def _executar_e_persistir(
             502,
         ) from exc
     return {"run_ref": run_ref, "status": row["status"], "output": row["output"]}
+
+
+@router.get("/capacidades")
+async def capacidades(
+    identidade: Identidade = Depends(exigir_usuario),
+) -> dict[str, Any]:
+    """O catálogo de formatos e a identidade do motor. UMA autoridade, no servidor.
+
+    ## O defeito que esta rota fecha
+
+    O catálogo vivia em TRÊS lugares: `app/criativo/dominio.py::FORMATOS` (4
+    slots, a verdade do motor), `src/types/criativos.ts::FORMATOS_DE_IMAGEM`
+    (espelhado e conferido por teste) e
+    `src/features/creative-studio/api.ts::FORMATOS_DO_MOTOR` — uma terceira
+    cópia, escrita à mão, com **três** slots. O Assistente Criativo nunca
+    ofereceu o `1.91x1` porque a lista dele estava desatualizada, e nada quebrava:
+    uma constante a menos não falha teste nenhum, ela só some da tela.
+
+    Um catálogo que o frontend BUSCA não pode divergir, porque não existe segunda
+    cópia para divergir. É por isso que esta rota existe, e é por isso que a
+    constante do `api.ts` foi apagada em vez de corrigida.
+
+    ## O que cada formato declara, e por que
+
+    `canvas_nativo` e `transformacao_final` são a resposta honesta a "esta peça
+    foi composta neste formato ou recortada de outro?". O `gpt-image-2` não
+    aceita 1080x1350 (as bordas precisam ser múltiplas de 16), então TODA peça
+    passa por um canvas nativo e uma normalização — esconder isso faria a tela
+    prometer uma composição nativa que não existe.
+
+    Nada aqui gasta, chama provider ou lê banco: é o contrato do processo.
+    """
+    from app.criativo import dominio  # noqa: PLC0415
+
+    motor = _motor_ou_none()
+    identidade_do_motor = _identidade_do_motor()
+    envelope = _envelope_do_motor(motor)
+
+    formatos = []
+    for formato in dominio.FORMATOS:
+        canvas = envelope(formato.largura, formato.altura) if envelope else None
+        formatos.append(
+            {
+                "slot": formato.slot,
+                "rotulo": formato.rotulo,
+                "proporcao": formato.proporcao,
+                "largura": formato.largura,
+                "altura": formato.altura,
+                "descricao": formato.descricao,
+                "destinos_tipicos": list(formato.destinos_tipicos),
+                "canvas_nativo": (
+                    None
+                    if canvas is None
+                    else {
+                        "largura": canvas.largura,
+                        "altura": canvas.altura,
+                        "proporcao_preservada": canvas.derivado,
+                        "observacao": canvas.motivo or None,
+                    }
+                ),
+                "transformacao_final": (
+                    None
+                    if canvas is None
+                    else (
+                        "nenhuma"
+                        if (canvas.largura, canvas.altura)
+                        == (formato.largura, formato.altura)
+                        else "reducao_e_recorte_centralizado"
+                    )
+                ),
+                "aceita_fotografia_real": True,
+            }
+        )
+
+    return {
+        "formatos": formatos,
+        "teto_de_renders_por_pedido": MAX_RENDERS_POR_PEDIDO,
+        "motor": {
+            "modelo": identidade_do_motor["modelo"],
+            "qualidade": identidade_do_motor["qualidade"],
+            "configurado": identidade_do_motor["configurado"],
+            "publica_preco_por_imagem": (
+                getattr(motor, "preco_referencia_usd_por_imagem", None) is not None
+            ),
+        },
+        "modos_de_composicao": [
+            {
+                "id": "sem_foto",
+                "rotulo": "Gerar a arte inteira",
+                "descricao": (
+                    "O modelo compõe a peça toda a partir da direção aprovada. "
+                    "Nenhuma fotografia é usada."
+                ),
+                "preserva_pixels_da_foto": False,
+            },
+            {
+                "id": "hibrido",
+                "rotulo": "Compor com a fotografia",
+                "descricao": (
+                    "A fotografia entra nos pixels finais sem ser regerada; o modelo "
+                    "produz o entorno e um compositor determinístico junta os dois."
+                ),
+                "preserva_pixels_da_foto": True,
+            },
+            {
+                "id": "reinterpretado",
+                "rotulo": "Reinterpretar com IA",
+                "descricao": (
+                    "A fotografia entra como referência e o modelo redesenha a cena. "
+                    "Semelhança, rosto e detalhes podem mudar."
+                ),
+                "preserva_pixels_da_foto": False,
+            },
+        ],
+    }
+
+
+def _envelope_do_motor(motor: Any):
+    """A função de canvas nativo do motor, quando ele tem uma.
+
+    Cada provider tem o seu envelope: o `gpt-image-2` aceita dimensão arbitrária
+    sob quatro regras aritméticas, e o Gemini aceita uma lista fechada de
+    proporções. Um `if` por provider aqui recriaria, no router, a decisão que já
+    mora no motor — então o router pergunta ao motor e aceita `None` como
+    resposta.
+    """
+    if motor is None:
+        return None
+    if getattr(motor, "slug", "") == "openai-gpt-image-2":
+        from services.creative_engine.envelope_openai import (  # noqa: PLC0415
+            canvas_para,
+        )
+
+        return canvas_para
+    return None
 
 
 @router.get("/operacoes")
@@ -477,20 +619,70 @@ def _identidade_do_motor() -> dict[str, Any]:
     vez de derrubar a rota de PLANO: planejar precisa continuar funcionando para
     mostrar o bloqueio, e um plano que não abre esconde a causa.
     """
-    try:
-        from app.routers.criativos import obter_motor  # noqa: PLC0415
-
-        motor = obter_motor()
-    except Exception:  # noqa: BLE001
-        return {"modelo": None, "configurado": False}
+    motor = _motor_ou_none()
+    if motor is None:
+        return {"modelo": None, "qualidade": None, "configurado": False}
     return {
         "modelo": getattr(motor, "nome", None),
+        "qualidade": getattr(motor, "qualidade", None),
         "configurado": bool(getattr(motor, "configurado", False)),
     }
 
 
+def _motor_ou_none() -> Any:
+    """O motor de imagem deste processo, ou `None` quando não dá para construí-lo.
+
+    `None` em vez de exceção porque PLANEJAR precisa continuar funcionando: um
+    plano que não abre esconde a causa, e a causa é exatamente o que a tela
+    precisa mostrar como bloqueio.
+    """
+    try:
+        from app.routers.criativos import obter_motor  # noqa: PLC0415
+
+        return obter_motor()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _segredo_do_selo() -> str:
+    """O segredo que sela o plano. Sem ele, não há autorização a emitir.
+
+    É o MESMO segredo que assina os links de arquivo (`segredo_de_assinatura`),
+    porque os dois protegem atos do mesmo servidor e um segundo segredo seria
+    mais uma chave para rotacionar sem ganho de isolamento.
+    """
+    from app.criativo.armazenamento import segredo_de_assinatura  # noqa: PLC0415
+
+    return segredo_de_assinatura()
+
+
+def _assinatura_do_plano(
+    pedido: PedidoDeGeracao, plano: PlanoDeGeracao, motor: Any
+) -> str:
+    """A identidade do CONTEÚDO do plano, recalculada do zero no servidor.
+
+    Recalcular é o ponto: o cliente devolve um selo, não uma assinatura. Se o
+    servidor aceitasse a assinatura que o cliente mandou, ela provaria apenas que
+    o cliente sabe digitar 64 caracteres.
+    """
+    return assinatura_do_plano(
+        run_ref=pedido.run_ref,
+        creative_refs=pedido.selected_creative_refs,
+        format_ids=pedido.format_ids,
+        modelo=getattr(motor, "nome", None),
+        qualidade=getattr(motor, "qualidade", None),
+        total_de_renders=plano.total_de_renders,
+        custo_estimado_usd=plano.custo_estimado_usd,
+        anexo_sha256=None,
+        modo_de_composicao=None,
+    )
+
+
 def _conferir_autorizacao(
-    autorizacao: AutorizacaoDeGasto | None, plano: PlanoDeGeracao, motor: Any
+    autorizacao: AutorizacaoDeGasto | None,
+    plano: PlanoDeGeracao,
+    motor: Any,
+    assinatura_do_plano_atual: str,
 ) -> None:
     """A confirmação humana do gasto, reconferida contra o que o servidor mediu.
 
@@ -512,6 +704,10 @@ def _conferir_autorizacao(
     - `teto_custo_usd`: opcional, e conferido contra a ESTIMATIVA. Quando o
       custo é desconhecido não há o que comparar, e o servidor não finge que o
       teto foi respeitado: ele diz que o limite efetivo é a contagem.
+    - `selo_do_plano`: amarra o consentimento ao CONTEÚDO exato do plano e lhe dá
+      prazo. Sem ele, autorizar {peça A, peça B} × {1x1} e produzir
+      {peça C, peça D} × {1x1} passava nas três conferências acima — modelo
+      igual, total igual —, e o lote que rodava não era o que a pessoa leu.
 
     Nada foi criado quando esta função levanta — ela roda antes do primeiro job.
     """
@@ -533,7 +729,12 @@ def _conferir_autorizacao(
         )
 
     nome_do_motor = getattr(motor, "nome", None)
-    if nome_do_motor and autorizacao.modelo != nome_do_motor:
+    # ⚠️ `not nome_do_motor` recusa, e isso é conserto. Antes a conferência era
+    # `if nome_do_motor and ...`: um motor que não se nomeia — um adaptador novo,
+    # um dublê que escapasse para produção — transformava "não sei qual motor vai
+    # rodar" em "autorizado". Um motor anônimo não pode receber consentimento
+    # nominal.
+    if not nome_do_motor or autorizacao.modelo != nome_do_motor:
         raise HTTPException(
             409,
             detail={
@@ -581,8 +782,78 @@ def _conferir_autorizacao(
             },
         )
 
+    # ⚠️ Estimativa ausente com teto declarado era ignorada em silêncio, e o
+    # `gpt-image-2` fez disso a regra e não a exceção: a OpenAI cobra por token e
+    # não publica dólar por imagem, então `custo_estimado_usd` é SEMPRE `None`
+    # para ele. O operador digitava um teto, o servidor não tinha o que comparar,
+    # e o lote inteiro rodava com o teto na tela parecendo respeitado.
+    #
+    # Agora a ausência é dita: ou a pessoa marca que aceita gastar sem estimativa,
+    # ou o pedido é recusado. Nada é criado nos dois casos.
+    if estimado is None and not autorizacao.aceito_sem_estimativa:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_SEM_ESTIMATIVA_DE_CUSTO",
+                "mensagem": (
+                    "Este motor não publica preço por imagem, então não há estimativa "
+                    "a conferir contra um teto. Confirme que aceita produzir "
+                    f"{plano.total_de_renders} imagem(ns) sem estimativa de custo."
+                ),
+                "modelo_de_imagem": nome_do_motor,
+                "total_de_renders": plano.total_de_renders,
+                "custo_estimado_usd": None,
+                "teto_custo_usd": teto,
+                "limite_efetivo": "quantidade_de_imagens",
+                "nada_foi_criado": True,
+            },
+        )
 
-def _plano_para_json(plano: PlanoDeGeracao) -> dict[str, Any]:
+    # O selo é a última porta, e é a que amarra tudo o que veio antes ao CONTEÚDO
+    # do plano. As conferências acima olham três números; esta olha o pedido
+    # inteiro, e é a única que recusa "mesmo modelo, mesmo total, outras peças".
+    try:
+        selada = conferir_selo(autorizacao.selo_do_plano, segredo=_segredo_do_selo())
+    except SeloInvalido as e:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_AUTORIZACAO_VENCIDA",
+                "mensagem": (
+                    "A conferência deste plano não vale mais. Confira o pedido de "
+                    "novo antes de autorizar."
+                ),
+                "nada_foi_criado": True,
+            },
+        ) from e
+    except (RuntimeError, ValueError) as e:
+        raise HTTPException(
+            503,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_SEM_SEGREDO_DE_ASSINATURA",
+                "mensagem": (
+                    "O Estúdio está indisponível: o servidor está sem chave de "
+                    "assinatura para selar a autorização."
+                ),
+                "nada_foi_criado": True,
+            },
+        ) from e
+
+    if selada != assinatura_do_plano_atual:
+        raise HTTPException(
+            409,
+            detail={
+                "codigo": "CRIATIVO_STUDIO_PLANO_DIVERGENTE",
+                "mensagem": (
+                    "O que foi autorizado não é o que este pedido produz. Confira o "
+                    "plano de novo e confirme."
+                ),
+                "nada_foi_criado": True,
+            },
+        )
+
+
+def _plano_para_json(plano: PlanoDeGeracao, selo: str | None = None) -> dict[str, Any]:
     motor = _identidade_do_motor()
     return {
         "conceitos": plano.conceitos,
@@ -595,19 +866,49 @@ def _plano_para_json(plano: PlanoDeGeracao) -> dict[str, Any]:
         # como estimativa é o que impede a tela de escrever um número como se
         # fosse fatura — e `null` continua significando "não sei", nunca zero.
         "custo_e_estimado": True,
+        # `false` quando o motor não publica preço por imagem. A tela usa isto
+        # para pedir o consentimento explícito de gastar sem estimativa, em vez
+        # de desenhar um campo de teto que o servidor não teria como honrar.
+        "custo_tem_estimativa": plano.custo_estimado_usd is not None,
         "modelo_de_imagem": motor["modelo"],
+        "qualidade_de_imagem": motor["qualidade"],
         "motor_configurado": motor["configurado"],
         "pode_executar": plano.pode_executar,
         "bloqueios": [b.model_dump() for b in plano.bloqueios],
+        # O selo que a autorização precisa devolver. Ausente quando o plano não
+        # pode executar: não há o que autorizar, e emitir um selo para um plano
+        # bloqueado convidaria o cliente a tentar mesmo assim.
+        "selo_do_plano": selo,
         "briefings": [
             {
                 "creative_ref": b.linhagem.creative_ref,
                 "formato_slot": b.formato_slot,
                 "texto_na_arte": b.texto_na_arte,
+                "direcao_visual": b.direcao_visual,
             }
             for b in plano.briefings
         ],
     }
+
+
+def _selo_do_plano(pedido: PedidoDeGeracao, plano: PlanoDeGeracao, motor: Any) -> str | None:
+    """Emite o selo, ou `None` quando não há o que selar.
+
+    Um plano bloqueado não recebe selo: emitir um convidaria o cliente a mandar
+    o POST de geração mesmo assim, e a recusa aconteceria mais tarde, com mais
+    caminho percorrido, para dizer a mesma coisa que o bloqueio já dizia.
+
+    Falta de segredo também devolve `None` em vez de derrubar o PLANO: planejar
+    precisa continuar respondendo para que a tela mostre o motivo.
+    """
+    if not plano.pode_executar:
+        return None
+    try:
+        return emitir_selo(
+            _assinatura_do_plano(pedido, plano, motor), segredo=_segredo_do_selo()
+        )
+    except (RuntimeError, ValueError):
+        return None
 
 
 @router.post("/operacoes/{project_ref}/geracoes/plano")
@@ -630,14 +931,19 @@ async def planejar_geracao(
         project_ref, pedido.run_ref, identidade, repo
     )
     entrada = operacao.get("input") or {}
+    # O motor entra no plano porque o PREÇO é dele. Antes o custo vinha de uma
+    # constante do motor Gemini importada direto, e um plano de outro provider
+    # exibia o preço de um motor que não seria chamado.
+    motor = _motor_ou_none()
     plano = montar_plano(
         saida=saida,
         pedido=pedido,
         caminhos_aprovados=aprovados,
         contexto_do_publico=entrada.get("contexto_do_publico") or "Público não declarado.",
         objetivo=entrada.get("objetivo_meta") or "OUTCOME_TRAFFIC",
+        motor=motor,
     )
-    return _plano_para_json(plano)
+    return _plano_para_json(plano, _selo_do_plano(pedido, plano, motor))
 
 
 @router.post("/operacoes/{project_ref}/geracoes", status_code=status.HTTP_201_CREATED)
@@ -670,6 +976,20 @@ async def gerar_imagens(
     operacao, saida, aprovados = await _lote_e_aprovados(
         project_ref, pedido.run_ref, identidade, repo
     )
+
+    from app.criativo.studio.adaptador import pedido_de_job  # noqa: PLC0415
+    from app.routers.criativos import obter_executor, obter_motor  # noqa: PLC0415
+
+    # ⚠️ O motor é CONSTRUÍDO antes do plano porque o preço e a identidade dele
+    # entram no plano e na assinatura que a autorização confere. Montar o plano
+    # sem o motor produziria uma assinatura sobre um modelo vazio, que nunca
+    # bateria com a que a rota de plano emitiu.
+    #
+    # Mas a CREDENCIAL só é exigida depois dos bloqueios: uma peça não aprovada
+    # é uma recusa mais útil que "o servidor está sem chave", e trocar a ordem
+    # esconderia o motivo verdadeiro atrás de um problema de configuração.
+    motor = obter_motor()
+
     entrada = operacao.get("input") or {}
     plano = montar_plano(
         saida=saida,
@@ -677,6 +997,7 @@ async def gerar_imagens(
         caminhos_aprovados=aprovados,
         contexto_do_publico=entrada.get("contexto_do_publico") or "Público não declarado.",
         objetivo=entrada.get("objetivo_meta") or "OUTCOME_TRAFFIC",
+        motor=motor,
     )
     if not plano.pode_executar:
         raise HTTPException(
@@ -689,10 +1010,6 @@ async def gerar_imagens(
             },
         )
 
-    from app.criativo.studio.adaptador import pedido_de_job  # noqa: PLC0415
-    from app.routers.criativos import obter_executor, obter_motor  # noqa: PLC0415
-
-    motor = obter_motor()
     if not getattr(motor, "configurado", False):
         raise _erro(
             "CRIATIVO_STUDIO_MOTOR_SEM_CREDENCIAL",
@@ -700,7 +1017,9 @@ async def gerar_imagens(
             503,
         )
 
-    _conferir_autorizacao(pedido.autorizacao, plano, motor)
+    _conferir_autorizacao(
+        pedido.autorizacao, plano, motor, _assinatura_do_plano(pedido, plano, motor)
+    )
 
     # O executor do processo, com a trava de concorrência compartilhada — a
     # mesma que impede dois disparos do mesmo job pagarem duas vezes.

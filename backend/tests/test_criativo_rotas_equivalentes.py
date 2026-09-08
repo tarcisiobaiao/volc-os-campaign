@@ -393,7 +393,7 @@ def _resetar_caches_criativos(app: FastAPI) -> None:
 
     servico.parar_reaper()
     servico._BANCADA = None
-    criativos._motor_cache = None
+    criativos._motor_cache.clear()
     criativos._executor_cache.clear()
     get_settings.cache_clear()
     app.openapi_schema = None

@@ -42,6 +42,30 @@ from .contrato import EspecificacaoDeAsset, Falha, TipoDeAsset
 # ── o pedido ────────────────────────────────────────────────────────────────
 
 
+@dataclass(frozen=True)
+class ImagemDeReferencia:
+    """Uma imagem que ENTRA na geração, e não sai dela.
+
+    Existe na porta, e não dentro de um motor, porque mais de um provider aceita
+    material de entrada e porque a IDENTIDADE dessa entrada é contratual: a
+    autorização de gasto é assinada contra `sha256`, de modo que trocar o anexo
+    depois da confirmação invalida a autorização em vez de passar despercebido.
+
+    `nome` existe porque `multipart/form-data` exige um nome de arquivo; ele é
+    sanitizado por quem monta o pedido e nunca é o nome que o operador enviou.
+    """
+
+    nome: str
+    conteudo: bytes
+    mime: str
+
+    @property
+    def sha256(self) -> str:
+        import hashlib  # noqa: PLC0415
+
+        return hashlib.sha256(self.conteudo).hexdigest()
+
+
 @dataclass
 class PedidoDeGeracao:
     """O que se pede ao motor. É contra isto que a resposta é conferida.
@@ -57,6 +81,12 @@ class PedidoDeGeracao:
     quantidade: int = 1
     especificacao: EspecificacaoDeAsset | None = None
     contexto: dict[str, str] = field(default_factory=dict)
+    #: Material de entrada, quando existe. Vazio é o caso normal.
+    #:
+    #: Um motor que não sabe receber entrada deve RECUSAR um pedido com
+    #: referências, nunca ignorá-las: gerar sem a foto que o operador anexou
+    #: entrega uma peça que não é a que ele pediu, e cobra por ela.
+    referencias: tuple[ImagemDeReferencia, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.referencia.strip():
@@ -70,6 +100,8 @@ class PedidoDeGeracao:
                 f"pedido de {self.tipo.value} com especificação de "
                 f"{self.especificacao.tipo.value}"
             )
+        if any(not r.conteudo for r in self.referencias):
+            raise ValueError("imagem de referência sem bytes não é referência")
 
 
 # ── a resposta ──────────────────────────────────────────────────────────────

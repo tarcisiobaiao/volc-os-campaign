@@ -22,6 +22,8 @@ da arte não RECEBE a copy da campanha — ela não tem como cometer o engano.
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.criativo import dominio
 from app.criativo.agente.contrato import (
     CopyCompartilhada,
@@ -51,22 +53,41 @@ def texto_na_arte(peca: PecaCriativa) -> str:
     return " · ".join(p.strip() for p in partes if p and p.strip())
 
 
-def _custo_estimado(total: int) -> float | None:
-    """Preço de referência do motor, ou ausência declarada.
+def preco_de_referencia(motor: Any) -> float | None:
+    """O preço por imagem que ESTE motor publica, ou `None`.
 
-    ⚠️ Devolve `None`, nunca `0.0`, quando o motor não publica preço. Zero é um
+    ⚠️ Antes esta função importava a constante do motor Gemini, sem olhar para o
+    motor que ia rodar. Com um provider novo instalado, o plano continuava
+    mostrando US$ 0,039 por imagem — o preço de um motor que não seria chamado.
+    Um número de preço ao lado de um botão que gasta precisa ser o preço DAQUELE
+    ato; um número herdado de outro provider é pior que nenhum, porque parece
+    conferido.
+
+    O `gpt-image-2` é o caso que expõe a diferença: ele é cobrado por TOKEN e a
+    OpenAI não publica dólar por imagem por `size`/`quality`. O motor declara
+    `preco_referencia_usd_por_imagem = None`, e `None` sobe até a tela como
+    "estimativa indisponível".
+    """
+    preco = getattr(motor, "preco_referencia_usd_por_imagem", None)
+    if preco is None:
+        return None
+    try:
+        return float(preco)
+    except (TypeError, ValueError):
+        return None
+
+
+def _custo_estimado(total: int, motor: Any) -> float | None:
+    """A estimativa do lote, ou ausência declarada.
+
+    Devolve `None`, nunca `0.0`, quando o motor não publica preço. Zero é um
     preço — e um "custo estimado: US$ 0,00" ao lado de um botão que gasta é a
     frase mais cara que esta tela poderia dizer.
     """
-    try:
-        from services.creative_engine.motores.gemini_imagem import (  # noqa: PLC0415
-            PRECO_REFERENCIA_USD_POR_IMAGEM,
-        )
-    except Exception:  # noqa: BLE001
+    preco = preco_de_referencia(motor)
+    if not preco:
         return None
-    if not PRECO_REFERENCIA_USD_POR_IMAGEM:
-        return None
-    return round(total * float(PRECO_REFERENCIA_USD_POR_IMAGEM), 6)
+    return round(total * preco, 6)
 
 
 def montar_plano(
@@ -76,6 +97,7 @@ def montar_plano(
     caminhos_aprovados: frozenset[str],
     contexto_do_publico: str,
     objetivo: str,
+    motor: Any = None,
 ) -> PlanoDeGeracao:
     """Expande a seleção em N×M briefings, ou explica por que não expande.
 
@@ -210,7 +232,7 @@ def montar_plano(
         conceitos=conceitos,
         formatos=formatos,
         total_de_renders=total,
-        custo_estimado_usd=_custo_estimado(total),
+        custo_estimado_usd=_custo_estimado(total, motor),
         bloqueios=bloqueios,
     )
 

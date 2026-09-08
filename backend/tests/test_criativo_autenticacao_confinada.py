@@ -210,7 +210,7 @@ def cliente_isolado(monkeypatch, tmp_path):
         monkeypatch.setattr(servico, "_REAPER", None, raising=False)
         monkeypatch.setattr(armazenamento, "_padrao", None, raising=False)
         criativos._executor_cache.clear()
-        criativos._motor_cache = None
+        criativos._motor_cache.clear()
         app.dependency_overrides.clear()
         app.dependency_overrides.update(overrides_antes)
         get_settings.cache_clear()

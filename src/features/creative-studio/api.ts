@@ -26,9 +26,9 @@ import { supabase } from '@/lib/supabase';
 
 import type {
   AutorizacaoDeGasto,
+  Capacidades,
   DecisaoRegistrada,
   EntradaNovaOperacao,
-  FormatoDisponivel,
   GeracaoRegistrada,
   OperacaoCompleta,
   OperacaoEnfileirada,
@@ -222,39 +222,20 @@ export function caminhoDe(colecao: string, ref: string, campo?: string): string 
 // ── Capacidades ──────────────────────────────────────────────────────────────
 
 /**
- * Os formatos que o motor sabe produzir.
+ * O que este servidor sabe produzir: formatos, motor e modos de composição.
  *
- * ⚠️ Enquanto a rota de capacidades do Estúdio não expõe este catálogo, a lista
- * espelha `backend/app/criativo/dominio.py:FORMATOS` e é verificada por teste
- * contra aquele arquivo. Ela NÃO é uma promessa de elegibilidade Meta: é o que
- * o motor renderiza.
+ * ⚠️ Aqui morava `FORMATOS_DO_MOTOR`, uma terceira cópia do catálogo escrita à
+ * mão. Ela tinha TRÊS slots enquanto `backend/app/criativo/dominio.py:FORMATOS`
+ * produzia quatro: o `1.91x1` nunca apareceu no Assistente, e nenhum teste
+ * falhou, porque uma constante desatualizada não quebra nada — ela só some da
+ * tela.
+ *
+ * A cópia foi apagada em vez de corrigida. Um catálogo buscado do servidor não
+ * pode divergir dele, porque não existe segunda lista para divergir.
  */
-export const FORMATOS_DO_MOTOR: readonly FormatoDisponivel[] = [
-  {
-    slot: '1x1',
-    rotulo: 'Quadrado',
-    proporcao: '1:1',
-    largura: 1080,
-    altura: 1080,
-    descricao: 'Feed quadrado e display quadrado.',
-  },
-  {
-    slot: '4x5',
-    rotulo: 'Retrato',
-    proporcao: '4:5',
-    largura: 1080,
-    altura: 1350,
-    descricao: 'Ocupa mais altura no feed sem entrar em tela cheia.',
-  },
-  {
-    slot: '9x16',
-    rotulo: 'Vertical',
-    proporcao: '9:16',
-    largura: 1080,
-    altura: 1920,
-    descricao: 'Tela cheia de stories, reels e shorts.',
-  },
-] as const;
+export async function lerCapacidades(signal?: AbortSignal): Promise<Capacidades> {
+  return chamar(endereco('/capacidades'), { signal });
+}
 
 /** Teto estratégico do agente. Espelha `MAX_VARIACOES` do contrato. */
 export const MAX_PECAS = 15;

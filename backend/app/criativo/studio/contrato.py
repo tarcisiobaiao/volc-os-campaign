@@ -82,12 +82,29 @@ class AutorizacaoDeGasto(ModeloEstrito):
     porque um é verificável e o outro é declarado.
     """
 
-    #: O identificador do motor tal como a tela o exibiu (ex.: "gemini:<modelo>").
+    #: O identificador do motor tal como a tela o exibiu (ex.: "openai:<modelo>").
     modelo: str = Field(min_length=3, max_length=120)
     #: Quantos arquivos o operador viu que seriam produzidos. Divergiu, recusa.
     total_de_renders: int = Field(ge=1, le=MAX_RENDERS_POR_PEDIDO)
     #: Teto autorizado, em dólares, sobre a ESTIMATIVA de referência.
     teto_custo_usd: float | None = Field(default=None, ge=0)
+    #: O selo emitido por `POST .../geracoes/plano`, devolvido inteiro.
+    #:
+    #: É ele que amarra o consentimento ao CONTEÚDO do plano e lhe dá prazo. Sem
+    #: ele, autorizar {peça A, peça B} e produzir {peça C, peça D} passava nas
+    #: três conferências antigas, porque nenhuma delas descreve qual conteúdo.
+    #: Ver `studio/autorizacao.py`.
+    selo_do_plano: str = Field(min_length=16, max_length=512)
+    #: Consentimento explícito para gastar sem estimativa de preço.
+    #:
+    #: ⚠️ Existe porque o `gpt-image-2` é cobrado por token e a OpenAI não publica
+    #: dólar por imagem: para esse motor a estimativa é SEMPRE `None`. Antes, um
+    #: teto declarado com estimativa desconhecida era ignorado em silêncio — o
+    #: operador digitava US$ 0,50, o servidor não tinha o que comparar, e o lote
+    #: rodava inteiro. Agora ou existe estimativa a conferir, ou a pessoa declara
+    #: aqui que aceita gastar sem ela. O limite exato continua sendo a contagem
+    #: de imagens, que é o que o servidor mede com exatidão.
+    aceito_sem_estimativa: bool = False
 
 
 class PedidoDeGeracao(ModeloEstrito):

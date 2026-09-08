@@ -251,6 +251,14 @@ export interface DecisaoRegistrada {
  * `backend/app/criativo/dominio.py:FORMATOS`, e oferecer aqui um slot que o
  * motor não produz é prometer uma peça que nunca chega.
  */
+export interface CanvasNativo {
+  largura: number;
+  altura: number;
+  /** `false` quando a proporcao comercial nao coube no envelope do provider. */
+  proporcao_preservada: boolean;
+  observacao: string | null;
+}
+
 export interface FormatoDisponivel {
   slot: string;
   rotulo: string;
@@ -258,6 +266,45 @@ export interface FormatoDisponivel {
   largura: number;
   altura: number;
   descricao: string;
+  destinos_tipicos: string[];
+  /**
+   * O canvas em que o provider realmente compoe, antes da normalizacao.
+   *
+   * `null` quando o motor nao publica envelope. Quando existe e difere da
+   * medida final, a peca passou por reducao e recorte: dizer isso e o que
+   * impede a tela de prometer uma composicao nativa que nao aconteceu.
+   */
+  canvas_nativo: CanvasNativo | null;
+  transformacao_final: string | null;
+  aceita_fotografia_real: boolean;
+}
+
+export interface ModoDeComposicao {
+  id: string;
+  rotulo: string;
+  descricao: string;
+  /** `true` so no modo que preserva literalmente os pixels da fotografia. */
+  preserva_pixels_da_foto: boolean;
+}
+
+/**
+ * O que este servidor sabe produzir. Buscado, nunca escrito na tela.
+ *
+ * O catalogo ja morou em tres lugares e o do Assistente tinha tres formatos
+ * enquanto o motor produzia quatro: o `1.91x1` simplesmente nao aparecia, e
+ * nenhum teste falhava porque uma constante a menos nao quebra nada, ela so
+ * some. Buscar do servidor remove a segunda copia em vez de corrigi-la.
+ */
+export interface Capacidades {
+  formatos: FormatoDisponivel[];
+  teto_de_renders_por_pedido: number;
+  motor: {
+    modelo: string | null;
+    qualidade: string | null;
+    configurado: boolean;
+    publica_preco_por_imagem: boolean;
+  };
+  modos_de_composicao: ModoDeComposicao[];
 }
 
 // ── Produção ─────────────────────────────────────────────────────────────────
@@ -271,6 +318,7 @@ export interface BriefingResumido {
   creative_ref: string;
   formato_slot: string;
   texto_na_arte: string;
+  direcao_visual: string;
 }
 
 /**
@@ -292,9 +340,27 @@ export interface PlanoDeGeracao {
    * que o mecanismo não sustenta.
    */
   custo_e_estimado: boolean;
+  /**
+   * `false` quando o motor nao publica preco por imagem.
+   *
+   * O `gpt-image-2` e cobrado por token e a OpenAI nao publica dolar por
+   * imagem, entao para ele isto e sempre `false`. A tela usa este campo para
+   * pedir o consentimento explicito de gastar sem estimativa, em vez de
+   * desenhar um campo de teto que o servidor nao teria como honrar.
+   */
+  custo_tem_estimativa: boolean;
   /** Como o servidor nomeia o motor que rodaria. `null` quando não há motor. */
   modelo_de_imagem: string | null;
+  /** A qualidade imposta pelo motor. Entra na frase que a pessoa confirma. */
+  qualidade_de_imagem: string | null;
   motor_configurado: boolean;
+  /**
+   * O selo que a autorizacao precisa devolver inteiro.
+   *
+   * `null` quando o plano esta bloqueado: nao ha o que autorizar, e emitir um
+   * selo convidaria o cliente a tentar assim mesmo.
+   */
+  selo_do_plano: string | null;
   pode_executar: boolean;
   bloqueios: Bloqueio[];
   briefings: BriefingResumido[];
@@ -310,6 +376,21 @@ export interface AutorizacaoDeGasto {
   modelo: string;
   total_de_renders: number;
   teto_custo_usd: number | null;
+  /**
+   * O selo emitido pelo plano, devolvido inteiro.
+   *
+   * E ele que amarra o consentimento ao CONTEUDO do plano. Sem o selo,
+   * autorizar duas pecas e produzir outras duas passava nas conferencias de
+   * modelo e de total, porque nenhuma delas descreve qual conteudo.
+   */
+  selo_do_plano: string;
+  /**
+   * Consentimento explicito para gastar sem estimativa de preco.
+   *
+   * Obrigatorio quando `custo_tem_estimativa` e `false`. Antes, um teto
+   * declarado sem estimativa era ignorado em silencio.
+   */
+  aceito_sem_estimativa?: boolean;
 }
 
 /** A procedência: de qual peça aprovada saiu qual job de mídia. */

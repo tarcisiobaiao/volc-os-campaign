@@ -205,7 +205,7 @@ class Executor:
                 "procedencia_execucao": "volc_os",
                 # Estimativa declarada, nunca custo medido: o provider reporta
                 # tokens, não dólares. `custo_real_usd` fica NULL de propósito.
-                "custo_estimado_usd": _estimativa(len(formatos)),
+                "custo_estimado_usd": _estimativa(len(formatos), self.motor),
                 "criado_por": usuario_id,
             }
         )
@@ -837,12 +837,34 @@ def _insumo_do_briefing(pedido: dict[str, Any]) -> str:
     return "\n".join(p for p in partes if p) or "Peça publicitária institucional."
 
 
-def _estimativa(n_pecas: int) -> float:
-    from services.creative_engine.motores.gemini_imagem import (
-        PRECO_REFERENCIA_USD_POR_IMAGEM,
-    )
+def _estimativa(n_pecas: int, motor: Any) -> float | None:
+    """A estimativa gravada em `criativo_job.custo_estimado_usd`, ou `None`.
 
-    return round(n_pecas * PRECO_REFERENCIA_USD_POR_IMAGEM, 6)
+    ⚠️ Duas correções na mesma linha.
+
+    A primeira: o preço vinha do motor GEMINI, importado direto, sem olhar para o
+    motor que ia rodar. Com outro provider instalado, a coluna guardava o preço
+    de um motor que nunca foi chamado — um número plausível, conferível, e
+    errado.
+
+    A segunda: o resultado era sempre `float`. Um motor sem preço publicado — que
+    é o caso do `gpt-image-2`, cobrado por token — produziria `0.0`, e um custo
+    estimado de zero gravado ao lado de um gasto real é a mentira mais barata de
+    contar e a mais cara de descobrir. `None` vira NULL na coluna, que é o que
+    "não sei" quer dizer em SQL.
+    """
+    preco = getattr(motor, "preco_referencia_usd_por_imagem", None)
+    if preco is None:
+        # Motor legado que publica o preço só como constante de módulo: aceito,
+        # porque quem sabe o preço é o motor e não este arquivo.
+        preco = getattr(motor, "PRECO_REFERENCIA_USD_POR_IMAGEM", None)
+    try:
+        valor = float(preco) if preco is not None else 0.0
+    except (TypeError, ValueError):
+        return None
+    if not valor:
+        return None
+    return round(n_pecas * valor, 6)
 
 
 def _int_ou_none(valor: Any) -> int | None:

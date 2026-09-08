@@ -121,23 +121,91 @@ def obter_assinador() -> Assinador:
         ) from e
 
 
-_motor_cache: Any = None
+def _motor_openai() -> Any:
+    from services.creative_engine.motores.openai_imagem import (  # noqa: PLC0415
+        MotorOpenAIImagem,
+    )
+
+    return MotorOpenAIImagem()
+
+
+def _motor_gemini() -> Any:
+    from services.creative_engine.motores.gemini_imagem import (  # noqa: PLC0415
+        MotorGeminiImagem,
+    )
+
+    return MotorGeminiImagem()
+
+
+#: Os motores de imagem que este processo sabe construir, por SLUG.
+#:
+#: O slug — e não o nome com o modelo — é a chave porque é ele que identifica o
+#: motor em `criativo_motor.slug` e amarra `criativo_job.motor_id`. Trocar o
+#: modelo muda o nome e não pode mudar a FK.
+#:
+#: Cada valor é uma FUNÇÃO e não uma instância: construir importa o pacote do
+#: engine, que puxa dependências que um ambiente mínimo pode não ter. Importar
+#: os dois no topo faria o backend inteiro deixar de subir por causa de um
+#: módulo que este processo talvez nem use.
+MOTORES_DE_IMAGEM: dict[str, Any] = {
+    "openai-gpt-image-2": _motor_openai,
+    "gemini-imagem": _motor_gemini,
+}
+
+_motor_cache: dict[str, Any] = {}
+
+
+def slug_do_motor_configurado() -> str:
+    """O slug pedido por configuração, sem construir nada.
+
+    Existe separado para que a rota de capacidades e o diagnóstico possam dizer
+    "este processo está configurado para X" mesmo quando X não pode ser
+    construído — que é exatamente o momento em que o operador mais precisa ler o
+    nome.
+    """
+    escolhido = (
+        getattr(get_settings(), "criativo_motor_de_imagem", "") or ""
+    ).strip().lower()
+    return escolhido or "openai-gpt-image-2"
 
 
 def obter_motor() -> Any:
-    """O motor de imagem do processo.
+    """O motor de imagem do processo. UM, escolhido por configuração explícita.
 
-    Importado tarde, dentro da função, pelo mesmo motivo documentado em
-    `main.py` para o router de Tráfego: o pacote puxa dependências que um
-    ambiente mínimo pode não ter, e importá-lo no topo faria o backend inteiro
-    deixar de subir por causa de um módulo opcional.
+    ## Por que não há fallback, e por que isso é o contrário de fragilidade
+
+    Um `for` que tentasse os motores em ordem e ficasse com o primeiro que tem
+    chave transformaria a autorização de gasto numa formalidade: o operador
+    confirma "produzir 6 imagens com openai:gpt-image-2", o servidor reconfere o
+    nome contra `motor.nome` — e os dois lados concordariam com o nome do motor
+    que sobrou, não com o que a pessoa leu. O consentimento passaria a cobrir um
+    ato diferente do que roda.
+
+    Aqui a escolha é única e declarada. Sem credencial, o motor escolhido é
+    construído mesmo assim e responde `configurado = False`: o plano mostra o
+    bloqueio, o botão não libera e nada é despachado. Falhar fechado, com o nome
+    certo na tela, é melhor que gerar com outro modelo e acertar o nome depois.
+
+    Slug desconhecido é 503 e não 500: é configuração errada do servidor, não
+    defeito de quem chamou — e a frase precisa dizer isso sem expor a lista
+    interna de módulos.
     """
-    global _motor_cache
-    if _motor_cache is None:
-        from services.creative_engine.motores.gemini_imagem import MotorGeminiImagem
+    slug = slug_do_motor_configurado()
+    existente = _motor_cache.get(slug)
+    if existente is not None:
+        return existente
 
-        _motor_cache = MotorGeminiImagem()
-    return _motor_cache
+    construir = MOTORES_DE_IMAGEM.get(slug)
+    if construir is None:
+        raise _falha(
+            "ESTUDIO.motor_desconhecido",
+            "O Estúdio está indisponível: o servidor foi configurado com um motor "
+            "de imagem que ele não conhece.",
+            503,
+        )
+    motor = construir()
+    _motor_cache[slug] = motor
+    return motor
 
 
 _executor_cache: dict[str, Executor] = {}
