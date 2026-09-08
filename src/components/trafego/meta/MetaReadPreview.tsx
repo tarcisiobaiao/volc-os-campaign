@@ -278,8 +278,8 @@ export const MetaReadPreview: React.FC = () => {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-[68ch]">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-primary"><DatabaseZap className="h-4 w-4" aria-hidden /> Graph API v26.0</div>
-          <h2 className="mt-2 font-display text-xl font-semibold text-foreground">Meta real: ler, provar, preparar e persistir snapshot</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">O token permanece no Keychain/backend. A persistência é bloqueada por padrão e só executa com <code>META_READ_MODEL_WRITE_ENABLED=1</code> no servidor.</p>
+          <h2 className="mt-2 font-display text-xl font-semibold text-foreground">Conectar e atualizar suas campanhas</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Leia as contas disponíveis e confira se a sincronização está pronta.</p>
         </div>
         <Button type="button" onClick={carregarContas} disabled={carregando} className="min-h-10">{carregando ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw className="mr-2 h-4 w-4" aria-hidden />}{contas.length ? 'Reler contas' : 'Ler contas reais'}</Button>
       </div>

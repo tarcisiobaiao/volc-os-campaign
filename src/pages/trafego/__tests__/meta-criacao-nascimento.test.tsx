@@ -32,6 +32,7 @@ Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
 
 const { api } = vi.hoisted(() => ({
   api: {
+    trackingAutomaticoMeta: vi.fn().mockRejectedValue(new Error('Prévia indisponível neste dublê')),
     estadoMetaLocal: vi.fn(),
     contasMetaLocal: vi.fn(),
     capacidadesCriacaoMeta: vi.fn(),
@@ -226,22 +227,28 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function abrir() {
-  return render(
+  const tela = render(
     <MemoryRouter initialEntries={['/trafego/meta/nova?etapa=base']}>
       <MetaCriacaoPage />
     </MemoryRouter>,
   );
+  fireEvent.click(screen.getByText('Ver etapas e editar respostas'));
+  return tela;
 }
 
 /** Leva a bancada até uma validação aceita, que é o pré-requisito de aprovar. */
 async function ateAValidacao() {
   abrir();
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
-  fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
+  fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
   await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
-  fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+  fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
+  fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
-  fireEvent.click(screen.getByRole('button', { name: /^Anúncios/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Criativos$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
   fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
@@ -545,12 +552,16 @@ describe('Revisão Meta — resposta adiada não contamina outro rascunho', () =
     api.compilarPlanoMeta.mockReturnValueOnce(porta.promessa);
 
     abrir();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
-    fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
     await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^Anúncios/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+  fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
+  fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Criativos$/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
     fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));

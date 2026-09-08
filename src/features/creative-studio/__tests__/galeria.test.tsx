@@ -4,11 +4,29 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GaleriaDeAssets } from '../componentes/GaleriaDeGeracoes';
 import type { Rendition } from '@/types/criativos';
+import * as ponte from '@/components/trafego/meta/ponteAssistente';
 
 afterEach(cleanup);
+afterEach(() => vi.restoreAllMocks());
 const peca = { id: 'asset_teste', slot: '4x5', rotulo: 'Retrato de teste', estado: 'pronta', largura: 1080, altura: 1350, larguraPedida: 1080, alturaPedida: 1350, previewUrl: 'https://example.invalid/fixture.png', mime: 'image/png' } as Rendition;
 
 describe('galeria do estúdio', () => {
+  it('no assistente integrado envia somente masters selecionados, não URLs nem geração', () => {
+    vi.spyOn(ponte, 'assistenteIntegrado').mockReturnValue(true);
+    const enviar = vi.spyOn(window.parent, 'postMessage').mockImplementation(() => {});
+    render(<GaleriaDeAssets pecas={[{ ...peca, masterId: 'master_asset_teste' }]} onComecar={vi.fn()} />);
+    const selecionar = screen.getByRole('button', { name: 'Selecionar para esta campanha' });
+    expect(selecionar).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar/i }));
+    fireEvent.click(selecionar);
+    expect(enviar).toHaveBeenCalledExactlyOnceWith({ type: 'volc:creative-selection', masterRefs: ['master_asset_teste'] }, window.location.origin);
+  });
+  it('não oferece vinculação à campanha quando a imagem não tem master persistido', () => {
+    vi.spyOn(ponte, 'assistenteIntegrado').mockReturnValue(true);
+    render(<GaleriaDeAssets pecas={[peca]} onComecar={vi.fn()} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar/i }));
+    expect(screen.getByRole('button', { name: 'Selecionar para esta campanha' })).toHaveProperty('disabled', true);
+  });
   it('não inventa assets no vazio e oferece briefing', () => {
     const comecar = vi.fn();
     render(<GaleriaDeAssets pecas={[]} onComecar={comecar} />);

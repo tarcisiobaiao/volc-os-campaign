@@ -164,11 +164,11 @@ export const PainelDePublico: React.FC<{
   return (
     <>
       <div className="space-y-3">
-        <p className="kicker text-primary">Como este conjunto escolhe gente</p>
+        <p className="kicker text-primary">Tipo de público</p>
         <GrupoDeEscolha<ModoDePublico>
           rotuloAcessivel="Modo de público"
           valor={publico.modo}
-          colunas="sm:grid-cols-2 lg:grid-cols-4"
+          colunas="sm:grid-cols-2"
           onEscolher={(modo) => mudarPublico({ modo })}
           opcoes={[
             { id: 'BROAD', nome: 'Amplo', detalhe: 'geografia e idade, sem público salvo' },
@@ -188,6 +188,7 @@ export const PainelDePublico: React.FC<{
         </p>
       </div>
 
+      <details className="text-sm" open={publico.modo === 'EXISTING_CUSTOM' || publico.modo === 'EXISTING_LOOKALIKE' ? true : undefined}><summary className="cursor-pointer py-2 font-medium">Públicos salvos e exclusões</summary>
       {/* ── F12/F13/F14: públicos que JÁ EXISTEM na conta ──────────────────── */}
       <CatalogoDaConta
         titulo="Públicos salvos desta conta"
@@ -271,6 +272,7 @@ export const PainelDePublico: React.FC<{
         />
       )}
 
+      </details>
       <div className="grid gap-4 md:grid-cols-2">
         <Campo
           id={`meta-paises-${conjunto.key}`}
@@ -347,6 +349,7 @@ export const PainelDePublico: React.FC<{
         />
       )}
 
+      <details className="text-sm"><summary className="cursor-pointer py-2 font-medium">Localização avançada: cidades, regiões e raio</summary>
       {/* ── Raio (`F17`) — o único recorte fino que não depende de catálogo ── */}
       <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -526,6 +529,7 @@ export const PainelDePublico: React.FC<{
         {BLOQUEIOS.interessesEIdiomas}
       </p>
 
+      </details>
       {/* ── Posicionamentos (`F21`) ─────────────────────────────────────────── */}
       <div className="space-y-3">
         <p className="kicker text-primary">Onde o anúncio pode aparecer</p>
@@ -595,7 +599,7 @@ export const PainelDePublico: React.FC<{
         </Escolha>
       </div>
 
-      <BlocoDeEvidencia
+      <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Conferir configuração do público</summary><BlocoDeEvidencia
         titulo={`O público de "${conjunto.nome || 'conjunto sem nome'}"`}
         tom={resumoDoConjunto ? 'verificado' : 'info'}
       >
@@ -673,7 +677,7 @@ export const PainelDePublico: React.FC<{
             : 'A Meta pode alcançar pessoas fora do público selecionado'}
           fonte={resumoDoConjunto ? 'o resumo do backend' : 'a regra do contrato, ainda não conferida'}
         />
-      </BlocoDeEvidencia>
+      </BlocoDeEvidencia></details>
 
       {!exclusivo && (
         <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">

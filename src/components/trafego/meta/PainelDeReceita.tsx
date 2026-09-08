@@ -34,23 +34,23 @@ export const PainelDeReceita: React.FC<{
 
   return (
     <div className="space-y-3">
-      <p className="kicker text-primary">Que combinação esta campanha usa</p>
+      <p className="kicker text-primary">Resultado da campanha</p>
       {receitas.length > 0 ? (
         <GrupoDeEscolha<string>
           rotuloAcessivel="Receita da campanha"
           valor={escolhida}
-          colunas="sm:grid-cols-1 lg:grid-cols-3"
+          colunas="grid-cols-1"
           onEscolher={onEscolher}
           opcoes={receitas.map((item) => ({
             id: item.id,
             nome: item.rotulo,
             detalhe: (
               <>
-                {item.descricao}
+                {item.exige_fonte_de_conversao ? 'Encontrar pessoas que realizam uma ação no site.' : 'Levar pessoas para ler a sua página.'}
                 <span className="mt-1 block">
                   {item.criar_liberado
-                    ? 'criar liberado nesta conta'
-                    : 'criar fechado · compilar e validar continuam abertos'}
+                    ? 'Disponível para preparação'
+                    : 'Preparar e validar. Criação ainda indisponível.'}
                 </span>
               </>
             ),
@@ -65,6 +65,7 @@ export const PainelDeReceita: React.FC<{
         </p>
       )}
 
+      <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Detalhes da configuração</summary>
       <BlocoDeEvidencia
         titulo="O que a receita fixa nesta campanha"
         tom={receita?.criar_liberado ? 'verificado' : 'info'}
@@ -73,7 +74,7 @@ export const PainelDeReceita: React.FC<{
             glifo={receita.criar_liberado ? CircleCheck : Lock}
             palavra={receita.criar_liberado ? 'criar liberado' : 'criar fechado'}
             descricao={receita.criar_liberado
-              ? 'esta combinação já foi aceita pela Meta nesta conta'
+              ? 'esta receita admite criação; a conta e o plano ainda precisam ser validados'
               : 'compilar e validar continuam abertos; é a validação que produz a prova que falta'}
             tom={receita.criar_liberado ? 'bom' : 'atencao'}
           />
@@ -109,6 +110,7 @@ export const PainelDeReceita: React.FC<{
           fonte="o registro de receitas do backend"
           ausencia="catálogo não lido"
         />
+        {receita?.motivo_sem_prova && <p className="text-sm text-muted-foreground">{receita.motivo_sem_prova}</p>}
         {/* ⚠️ Categoria especial: a tela AFIRMA a ausência delas, e não existe
             caminho para declarar uma. O backend recusa qualquer categoria com
             META_SPECIAL_CATEGORY_RECIPE_UNPROVEN — um seletor aqui ofereceria
@@ -119,16 +121,15 @@ export const PainelDeReceita: React.FC<{
           fonte="você, agora"
         />
         <LinhaDeFato rotulo="Estado ao nascer" valor="PAUSED" fonte="a receita provada" />
-      </BlocoDeEvidencia>
+      </BlocoDeEvidencia></details>
 
       {receita && !receita.criar_liberado && (
         <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
           <div className="max-w-[74ch] space-y-2 text-sm leading-relaxed text-pretty text-foreground">
-            <p><strong>Criar está fechado para esta receita.</strong></p>
+            <p><strong>Você pode configurar e validar esta opção.</strong></p>
             <p className="text-muted-foreground">
-              {receita.motivo_sem_prova
-                ?? 'O servidor não informou a causa; a receita não tem prova remota aceita.'}
+              A criação desta opção ainda precisa ser liberada no servidor.
             </p>
           </div>
         </div>

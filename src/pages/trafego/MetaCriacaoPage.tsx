@@ -1,38 +1,8 @@
 /**
- * A bancada de criação Meta.
- *
- * ## Por que ela é irmã da bancada Google, e não um produto novo
- *
- * `design.md` diz duas coisas que decidem esta página: "this file is the only
- * product-UI authority… Do not invent a third visual language" e "Create studio.
- * Creation is a channel-specific operational bench". As duas juntas significam
- * que o Meta tem a SUA jornada, mas no MESMO vocabulário do lançamento Google
- * (`NovaCampanhaPage.tsx`): `bancada-command-deck`, `bancada-route`,
- * `bancada-stage`, `bancada-grid` e as peças de `components/trafego/bancada`.
- *
- * O trilho de etapas é desenhado aqui em vez de reusar `MapaDeParadas` porque
- * aquele componente é tipado por `ParadaDaBancada`, uma união fechada das
- * paradas do Google. Estender a união arrastaria os `Record` exaustivos de
- * `bancada/paradas.ts` para dentro de uma missão que não é sobre o Google. O
- * DESENHO é o mesmo — as classes `.bancada-route*` são as mesmas — e é o
- * desenho que o contrato de UI governa.
- *
- * ## ⚠️ O que esta tela pode e o que ela não pode
- *
- * Ela lê a conta real, compila o plano no backend e — só depois de clique
- * explícito e liberação do servidor — pede à Meta uma validação que não cria
- * nada. Não existe caminho de criação nem de ativação para o contrato V2.
- *
- * ## ⚠️ DOIS CONTRATOS, UMA TELA, E A ESCOLHA É VISÍVEL
- *
- * `contratoDoPlano` (em `rascunho.ts`) decide se este rascunho fala V1 — a
- * receita única que a Meta aceitou em 05/09/2026, e a única com rota de
- * aprovação e criação PAUSED — ou V2, que descreve N conjuntos, ABO/CBO,
- * público de verdade e mensuração com propósito, e que só tem `compilar` e
- * `validar` no backend. A decisão é derivada da FORMA do plano e aparece na
- * revisão com o motivo. Um operador nunca precisa adivinhar por que o botão de
- * criar sumiu: a tela diz qual recurso levou o plano para o contrato sem rota
- * de nascimento.
+ * Jornada guiada de criação Meta: uma decisão por tela, um único rascunho.
+ * O compilador do servidor continua sendo a autoridade do plano e do hash.
+ * V1 pode criar PAUSED com aprovação e flags; V2 apenas compila e valida.
+ * Navegar, escolher uma receita ou selecionar um asset não autoriza despacho.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -55,10 +25,10 @@ import { PainelDeReceita } from '@/components/trafego/meta/PainelDeReceita';
 import { TrackingAutomatico } from '@/components/trafego/meta/TrackingAutomatico';
 import { Campo, Escolha, GrupoDeEscolha, campo } from '@/components/trafego/meta/primitivas';
 import {
-  BLOQUEIOS, CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, ConjuntoDraft, Draft, EstadoDaEtapa,
+  BLOQUEIOS, CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, ConjuntoDraft, Draft,
   EtapaId, IDADE_MAXIMA_PADRAO, IDADE_MINIMA_PADRAO, LIMITE_CONJUNTOS, LIMITE_VARIACOES,
   MidiaDaVariacao, NivelDeOrcamento, PeriodoDeOrcamento, PropositoDeMensuracao, RECEITA_PADRAO,
-  VariacaoDraft, conjuntoInicial, confirmacaoDeCriacaoValida, contratoDoPlano, dominioDoDestino,
+  VariacaoDraft, conjuntoInicial, confirmacaoDeCriacaoValida, contratoDoPlano, dominioDoDestino, destinoValido,
   formatarBrl, inicioEmIso, nomeUnico, orcamentosDoPlano, paraPlano, paraPlanoV2,
   prontidaoDasEtapas, prontoParaCompilar, proximaChave, reaisParaMinor, variacaoCompleta,
   variacaoInicial, variacoesEmitidas, type CapacidadesDaBancada,
@@ -78,28 +48,11 @@ import {
   ResultadoReconciliacaoMeta, ResultadoValidacaoPlanoMeta,
 } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
+import { perguntaDaUrl, perguntasMeta, type PerguntaMeta } from '@/components/trafego/meta/jornada';
+import '@/components/trafego/meta/jornada.css';
+import { lerSelecaoDoAssistente } from '@/components/trafego/meta/ponteAssistente';
+import { AssistenteNaJornada } from '@/components/trafego/meta/AssistenteNaJornada';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
-
-const ETAPAS = [
-  { id: 'base', nome: 'Base', pergunta: 'De qual conta e Página esta campanha nasce?' },
-  { id: 'campanha', nome: 'Campanha', pergunta: 'Que campanha você está autorizando?' },
-  { id: 'orcamento', nome: 'Orçamento', pergunta: 'Quanto ela pode gastar, e onde a verba mora?' },
-  { id: 'conjunto', nome: 'Conjunto', pergunta: 'Quantos conjuntos, e como cada um entrega?' },
-  { id: 'publico', nome: 'Público', pergunta: 'Quem pode ser alcançado?' },
-  { id: 'criativo', nome: 'Anúncios', pergunta: 'Quais anúncios vão nascer, e em qual conjunto?' },
-  { id: 'mensuracao', nome: 'Mensuração', pergunta: 'Para onde o clique leva, e o que é medido?' },
-  { id: 'revisao', nome: 'Revisão', pergunta: 'O que exatamente será enviado à Meta?' },
-] as const satisfies readonly { id: EtapaId; nome: string; pergunta: string }[];
-
-const DESENHO_DO_ESTADO: Record<
-  EstadoDaEtapa,
-  { Glifo: React.ComponentType<{ className?: string }>; palavra: string; tinta: string }
-> = {
-  pronto: { Glifo: CircleCheck, palavra: 'pronto', tinta: 'text-success' },
-  pendente: { Glifo: CircleDot, palavra: 'pendente', tinta: 'text-muted-foreground' },
-  bloqueado: { Glifo: Lock, palavra: 'bloqueado', tinta: 'text-destructive' },
-  validado: { Glifo: ShieldCheck, palavra: 'validado', tinta: 'text-verified' },
-};
 
 const CTAS: readonly [string, string][] = [
   ['LEARN_MORE', 'Saiba mais'],
@@ -252,7 +205,6 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
 
 const MetaCriacaoPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
-  const pedida = params.get('etapa') as EtapaId | null;
   /** A referência OPACA da operação, e é só ela que viaja na URL.
    *
    * ⚠️ Nem token, nem id da Meta, nem o plano congelado: o `approval_id` é um
@@ -260,10 +212,32 @@ const MetaCriacaoPage: React.FC = () => {
    * confere se quem pede é quem aprovou. Uma referência malformada não chega
    * perto de credencial nenhuma — ela morre na validação da rota. */
   const operacaoRef = params.get('operacao');
-  const etapa: EtapaId = ETAPAS.some((item) => item.id === pedida) ? pedida! : 'base';
-  const indice = ETAPAS.findIndex((item) => item.id === etapa);
-
-  const [draft, setDraft] = useState<Draft>(DRAFT_INICIAL);
+  const [draft, setDraft] = useState<Draft>({ ...DRAFT_INICIAL, destinationUrl: '', campaignName: '' });
+  const mostraConversao = draft.recipeId !== RECEITA_PADRAO || params.get('pergunta') === 'conversao' || params.get('etapa') === 'mensuracao';
+  const perguntas = perguntasMeta(mostraConversao);
+  const pergunta = perguntaDaUrl(params, mostraConversao);
+  const etapa = pergunta.etapa;
+  const indice = perguntas.findIndex(p => p.id === pergunta.id);
+  const [origemCriativa, setOrigemCriativa] = useState<'conta' | 'assistente'>('conta');
+  const [assistenteAberto, setAssistenteAberto] = useState(false);
+  const iframeAssistente = useRef<HTMLIFrameElement>(null);
+  const [projetoCriativo, setProjetoCriativo] = useState<string | null>(null);
+  const [mastersSelecionados, setMastersSelecionados] = useState<string[]>([]);
+  useEffect(() => {
+    function receber(evento: MessageEvent) {
+      if (evento.origin !== window.location.origin || !iframeAssistente.current
+          || evento.source !== iframeAssistente.current.contentWindow) return;
+      if (evento.data?.type === 'volc:creative-project'
+          && typeof evento.data.projectRef === 'string'
+          && /^crproj_[a-zA-Z0-9_-]{8,160}$/.test(evento.data.projectRef)) setProjetoCriativo(evento.data.projectRef);
+      const selecao = lerSelecaoDoAssistente(evento.data);
+      if (selecao) setMastersSelecionados(selecao.masterRefs);
+    }
+    window.addEventListener('message', receber);
+    return () => window.removeEventListener('message', receber);
+  }, []);
+  const [erroDaPergunta, setErroDaPergunta] = useState('');
+  const tituloDaPergunta = useRef<HTMLHeadingElement>(null);
   const [contas, setContas] = useState<ContaMetaLocal[]>([]);
   const [paginas, setPaginas] = useState<AtivoCriacaoMeta[]>([]);
   const [imagens, setImagens] = useState<AtivoCriacaoMeta[]>([]);
@@ -388,9 +362,13 @@ const MetaCriacaoPage: React.FC = () => {
   }, []);
 
   const mudar = useCallback(<K extends keyof Draft>(chave: K, valor: Draft[K]) => {
+    setErroDaPergunta('');
     setDraft((atual) => ({ ...atual, [chave]: valor }));
     invalidar();
   }, [invalidar]);
+
+  // A selection from the studio changes operator intent even before upload.
+  useEffect(() => { invalidar(); }, [mastersSelecionados, invalidar]);
 
   useEffect(() => {
     let vivo = true;
@@ -720,12 +698,31 @@ const MetaCriacaoPage: React.FC = () => {
 
   const navegar = (proxima: EtapaId) => {
     const novos = new URLSearchParams(params);
+    novos.delete('pergunta');
     novos.set('etapa', proxima);
     setParams(novos);
     const reduzido = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: 0, behavior: reduzido ? 'auto' : 'smooth' });
   };
+
+  function irParaPergunta(alvo: PerguntaMeta) {
+    const novos = new URLSearchParams(params);
+    novos.set('pergunta', alvo.id);
+    novos.set('etapa', alvo.etapa);
+    setErroDaPergunta('');
+    setParams(novos);
+  }
+  useEffect(() => { tituloDaPergunta.current?.focus({ preventScroll: true }); }, [pergunta.id]);
+  function continuar() {
+    const faltando = pergunta.id === 'destino' ? (!destinoValido(draft.destinationUrl) ? 'Informe uma URL HTTPS válida, sem UTMs, para continuar.' : !draft.campaignName.trim() ? 'Dê um nome para reconhecer a campanha.' : '')
+      : pergunta.id === 'conta' && !draft.accountRef ? 'Escolha a conta de anúncios.'
+      : pergunta.id === 'pagina' && !draft.pageRef ? 'Escolha a Página que assina os anúncios.'
+      : pergunta.id === 'resultado' && !draft.categoryConfirmed ? 'Confirme a categoria da campanha.'
+      : '';
+    if (faltando) { setErroDaPergunta(faltando); return; }
+    if (indice < perguntas.length - 1) irParaPergunta(perguntas[indice + 1]);
+  }
 
   const conta = contas.find((item) => item.referencia_opaca === draft.accountRef);
   const pagina = paginas.find((item) => item.referencia_opaca === draft.pageRef);
@@ -757,7 +754,7 @@ const MetaCriacaoPage: React.FC = () => {
     }),
     [draft, capacidades, compilacao, validacao, propositosDaReceita],
   );
-  const podeCompilar = prontoParaCompilar(draft, capacidades, propositosDaReceita);
+  const podeCompilar = mastersSelecionados.length === 0 && prontoParaCompilar(draft, capacidades, propositosDaReceita);
 
   /** O que ainda impede o próximo ato — inteiro, em linguagem de operador. */
   const faltas = useMemo(() => {
@@ -1111,8 +1108,8 @@ const MetaCriacaoPage: React.FC = () => {
     switch (etapa) {
       case 'base': return (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="meta-conta" rotulo="Conta de anúncios" ajuda="Só contas ativas em reais entram nesta receita. O navegador recebe uma referência, nunca o identificador da conta.">
+          <div className="grid gap-4">
+            {pergunta.id !== 'pagina' && <Campo id="meta-conta" rotulo="Conta de anúncios" ajuda="Use uma conta ativa em reais.">
               <select id="meta-conta" className={campo} value={draft.accountRef} disabled={carregando}
                 onChange={(e) => mudar('accountRef', e.target.value)}>
                 <option value="">Selecione uma conta real</option>
@@ -1123,9 +1120,9 @@ const MetaCriacaoPage: React.FC = () => {
                 ))}
               </select>
               <Button type="button" variant="outline" className="mt-2" disabled={carregando}
-                onClick={carregarContas}>Ler contas na Meta</Button>
-            </Campo>
-            <Campo id="meta-pagina" rotulo="Página do Facebook" ajuda="A Página assina os anúncios e precisa estar disponível para promoção nesta conta.">
+                onClick={carregarContas}>Carregar minhas contas</Button>
+            </Campo>}
+            {pergunta.id === 'pagina' && <Campo id="meta-pagina" rotulo="Página do Facebook" ajuda="A Página assina os anúncios e precisa estar disponível para promoção nesta conta.">
               <select id="meta-pagina" className={campo} value={draft.pageRef}
                 disabled={!draft.accountRef || ocupado === 'ativos'}
                 onChange={(e) => mudar('pageRef', e.target.value)}>
@@ -1136,8 +1133,9 @@ const MetaCriacaoPage: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </Campo>
+            </Campo>}
           </div>
+          <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Detalhes da conexão</summary>
           <BlocoDeEvidencia titulo="O que foi lido da conta" tom="verificado">
             <LinhaDeFato rotulo="Moeda" valor={conta?.moeda ?? null} fonte="a Meta" ausencia="não lida" />
             <LinhaDeFato rotulo="Fuso da conta" valor={conta?.fuso ?? null} fonte="a Meta" ausencia="não lido" />
@@ -1147,36 +1145,39 @@ const MetaCriacaoPage: React.FC = () => {
                 ela o posicionamento no Instagram é recusado pelo backend, e a
                 etapa de público mostra a caixa fechada com esta mesma causa. */}
             <LinhaDeFato rotulo="Identidade do Instagram" valor={draft.instagramActorRef || null} fonte="a Meta" ausencia="não lida por esta bancada" />
-          </BlocoDeEvidencia>
+          </BlocoDeEvidencia></details>
         </>
       );
-      case 'campanha': return (
+      case 'campanha': return pergunta.id === 'destino' ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Campo id="meta-nome" rotulo="Nome da campanha" largo>
-              <Input id="meta-nome" value={draft.campaignName}
-                onChange={(e) => mudar('campaignName', e.target.value)} />
-            </Campo>
-            <Campo id="meta-destino-campanha" rotulo="Página de destino" largo ajuda="Cole a URL HTTPS sem UTMs. O tracking por conjunto é automático.">
-              <Input id="meta-destino-campanha" type="url" value={draft.destinationUrl}
-                onChange={(e) => mudar('destinationUrl', e.target.value)} />
-            </Campo>
-            <Escolha marcado={draft.categoryConfirmed} onChange={(v) => mudar('categoryConfirmed', v)}
-              titulo="Confirmo que esta campanha não é de crédito, emprego, moradia nem política">
-              Declarar a ausência de categoria especial também é uma declaração. Esta bancada não
-              tem caminho para DECLARAR uma categoria: o backend recusa qualquer uma delas
-              (META_SPECIAL_CATEGORY_RECIPE_UNPROVEN), porque exigem público, texto e conferência
-              próprios que esta receita ainda não prova. O que a caixa afirma é a AUSÊNCIA delas, e
-              é uma lista vazia que viaja no corpo enviado.
-            </Escolha>
-          </div>
-          <PainelDeReceita
-            receitas={receitas}
-            erroDoCatalogo={catalogoErro}
-            escolhida={draft.recipeId}
-            onEscolher={(id) => mudar('recipeId', id)}
-          />
-          <TrackingAutomatico destino={draft.destinationUrl} />
+          <Campo id="meta-destino-campanha" rotulo="Endereço da página">
+            <Input id="meta-destino-campanha" type="url" placeholder="https://seusite.com/materia"
+              value={draft.destinationUrl} onChange={e => mudar('destinationUrl', e.target.value)} />
+          </Campo>
+          <Campo id="meta-nome" rotulo="Como vamos chamar esta campanha?">
+            <Input id="meta-nome" placeholder="Ex.: Encceja · Brasil · Setembro" value={draft.campaignName}
+              onChange={e => mudar('campaignName', e.target.value)} />
+          </Campo>
+          <p className="text-sm text-muted-foreground">UTMs automáticas: receita por conjunto e total por campanha.</p>
+          <details className="text-sm"><summary className="cursor-pointer py-2">Ver como o acompanhamento funciona</summary>
+            <TrackingAutomatico destino={draft.destinationUrl} />
+          </details>
+        </>
+      ) : (
+        <>
+          <PainelDeReceita receitas={receitas} erroDoCatalogo={catalogoErro}
+            escolhida={draft.recipeId} onEscolher={(id) => {
+              if (id === draft.recipeId) return;
+              mudar('recipeId', id);
+              setDraft(atual => ({ ...atual, conjuntos: atual.conjuntos.map(c => ({
+                ...c, mensuracao: { ...c.mensuracao, proposito: id === RECEITA_PADRAO ? 'REPORT_ONLY' : 'OPTIMIZE',
+                  fonteRef: '', fonteTipo: '', conversaoRef: '', eventoPadrao: '' },
+              })) }));
+            }} />
+          <Escolha marcado={draft.categoryConfirmed} onChange={v => mudar('categoryConfirmed', v)}
+            titulo="Esta campanha não é de crédito, emprego, moradia nem política">
+            Essas categorias precisam de uma configuração específica, ainda indisponível aqui.
+          </Escolha>
         </>
       );
       case 'orcamento': return (
@@ -1224,6 +1225,22 @@ const MetaCriacaoPage: React.FC = () => {
       ) : null;
       case 'criativo': return (
         <>
+          <GrupoDeEscolha<'conta' | 'assistente'> rotuloAcessivel="Origem dos criativos" valor={origemCriativa}
+            onEscolher={valor => { setOrigemCriativa(valor); if (valor === 'assistente') setAssistenteAberto(true); }}
+            opcoes={[
+              { id: 'assistente', nome: 'Criar com o assistente', detalhe: 'Briefing, estratégia e produção de imagens.' },
+              { id: 'conta', nome: 'Usar imagens da conta', detalhe: 'Escolha a peça e ajuste o texto do anúncio.' },
+            ]} />
+          {assistenteAberto && <section hidden={origemCriativa !== 'assistente'} className="space-y-3">
+            <p className="text-sm text-muted-foreground">Crie e aprove suas peças aqui. O envio das imagens à conta é uma etapa separada; a geração não publica anúncios.</p>
+            <AssistenteNaJornada ref={iframeAssistente} projeto={projetoCriativo} />
+            <Button variant="outline" onClick={() => setOrigemCriativa('conta')}>Escolher imagens disponíveis na conta</Button>
+          </section>}
+          {mastersSelecionados.length > 0 && <div role="status" className="rounded-lg border border-border p-4 text-sm">
+            {mastersSelecionados.length} peça(s) selecionada(s) no Estúdio. Falta registrar essas imagens na conta com avaliação de política antes de vinculá-las aos anúncios. Elas ainda não fazem parte do plano compilado.
+            <Button variant="ghost" className="mt-2" onClick={() => setMastersSelecionados([])}>Retirar seleção do Estúdio e usar imagens da conta</Button>
+          </div>}
+          <div hidden={origemCriativa !== 'conta'} className="space-y-5">
           <div>
             <div className="grid gap-2 rounded-lg border border-border bg-muted p-1 sm:grid-cols-3"
               role="radiogroup" aria-label="Modo de criativo">
@@ -1279,7 +1296,7 @@ const MetaCriacaoPage: React.FC = () => {
                   que o servidor liberasse a capacidade, o corpo sairia com a
                   peça vazia. A capacidade continua sendo mostrada porque ela
                   explica a segunda metade do bloqueio. */}
-              <PainelDeBloqueio
+              {draft.variations.some(v => v.midia === 'video') && <PainelDeBloqueio
                 titulo="Anúncio em vídeo não pode ser emitido"
                 bloqueios={[{
                   codigo: 'META_VIDEO_NOT_IN_CONTRACT', severidade: 'alta',
@@ -1287,7 +1304,7 @@ const MetaCriacaoPage: React.FC = () => {
                   detalhe: `${BLOQUEIOS.videoNoCorpo}${
                     capacidades.video ? '' : ` ${capacidades.videoMotivo || ''}`}`,
                 }]}
-              />
+              />}
               {draft.variations.slice(0, draft.creativeMode === 'single' ? 1 : undefined).map((variacao, posicao) => {
                 const lista = variacao.midia === 'video' ? videos : imagens;
                 const escolhida = variacao.midia === 'video' ? variacao.videoRef : variacao.assetRef;
@@ -1451,6 +1468,7 @@ const MetaCriacaoPage: React.FC = () => {
               )}
             </div>
           )}
+          </div>
         </>
       );
       case 'mensuracao': return conjuntoFocado ? (
@@ -1478,6 +1496,9 @@ const MetaCriacaoPage: React.FC = () => {
       ) : null;
       case 'revisao': return (
         <>
+          {mastersSelecionados.length > 0 && <p role="alert" className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm">
+            Há {mastersSelecionados.length} peça(s) do Estúdio aguardando registro na conta. Volte a Criativos para resolver a seleção antes de conferir o plano.
+          </p>}
           <TrackingAutomatico destino={draft.destinationUrl} />
           <BlocoDeEvidencia titulo="O que será enviado à Meta" tom="verificado">
             <LinhaDeFato rotulo="Contrato do plano" valor={contrato === 'V1' ? 'V1 · a receita provada' : 'V2 · campanha com N conjuntos'} fonte="a forma deste plano" />
@@ -1841,123 +1862,65 @@ const MetaCriacaoPage: React.FC = () => {
   })();
   return (
     <Layout>
-      <div className="bancada-shell mx-auto max-w-[1480px] px-4 pb-24 pt-4 md:px-6 md:pt-6">
-        <section className="bancada-command-deck">
-          <div className="bancada-command-topline" aria-hidden />
-          <header className="bancada-command-header">
-            <div className="min-w-0">
-              <Link to="/trafego?rede=meta&aba=preparar" className="bancada-back-link">
-                <ArrowLeft className="h-4 w-4" aria-hidden /> Tráfego · Meta Ads
-              </Link>
-              <div className="mt-5 flex items-center gap-2">
-                <span className="bancada-command-icon">
-                  <Megaphone className="h-3.5 w-3.5" aria-hidden />
-                </span>
-                <span className="kicker text-slate-400">Nascimento controlado · Meta v26</span>
-              </div>
-              <h1 className="mt-2 max-w-[22ch] font-display text-[2rem] font-bold leading-[1.02] tracking-[-0.035em] text-white text-balance md:text-[2.5rem]">
-                Nova campanha Meta
-              </h1>
-            </div>
+      <div className="meta-journey">
+        <header>
+          <div className="meta-journey-top">
+            <Link to="/trafego?rede=meta" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" aria-hidden /> Tráfego Meta
+            </Link>
             <div className="flex items-center gap-3">
-              <div className="bancada-safety-contract">
-                <span className="bancada-safety-dot" aria-hidden />
-                <div>
-                  <p className="font-semibold text-white">Criação segura</p>
-                  <p>Tudo que veicula nasce pausado</p>
-                </div>
-              </div>
+              <span className="hidden text-sm text-muted-foreground sm:inline">Ao criar, tudo começa pausado</span>
               <MetaConfiguracaoLocal />
             </div>
-          </header>
-
-          <nav className="bancada-route" aria-label="Etapas da criação Meta">
-            <div className="bancada-route-heading">
-              <span>Plano de criação</span>
-              <span>etapa {indice + 1} de {ETAPAS.length}</span>
+          </div>
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="kicker flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" aria-hidden />Meta Ads · Arbitragem</p>
+              <h1 className="mt-2 font-display text-[2rem] font-bold tracking-tight">Nova campanha Meta</h1>
+              <div className="aurora-rule mt-3 w-16" />
             </div>
-            <ol className="bancada-route-track">
-              {ETAPAS.map((item, posicao) => {
-                const estado = estados[item.id];
-                const desenho = DESENHO_DO_ESTADO[estado];
-                const atual = item.id === etapa;
-                return (
-                  <li key={item.id} className="relative shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => navegar(item.id)}
-                      aria-current={atual ? 'step' : undefined}
-                      className={cn(
-                        'bancada-route-step transition-volc duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-                        atual ? 'bancada-route-step-active' : 'bancada-route-step-idle',
-                      )}
-                    >
-                      <span className="bancada-route-index" aria-hidden>
-                        {estado === 'pronto' || estado === 'validado'
-                          ? <desenho.Glifo className="h-3.5 w-3.5" />
-                          : String(posicao + 1).padStart(2, '0')}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-semibold">{item.nome}</span>
-                        <span className={cn('block truncate text-[0.6875rem]', desenho.tinta)}>
-                          {desenho.palavra}
-                        </span>
-                      </span>
-                      <span className="sr-only"> — {desenho.palavra}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
-        </section>
-
-        <div className="bancada-grid mt-6 grid gap-6">
-          <main className="bancada-stage min-w-0">
-            <header className="bancada-stage-header">
-              <div>
-                <p className="kicker text-primary">Etapa {indice + 1} de {ETAPAS.length}</p>
-                <h2 className="mt-2 max-w-[30ch] font-display text-2xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-[2rem]">
-                  {ETAPAS[indice].pergunta}
-                </h2>
-              </div>
-              <p className="bancada-stage-hint">
-                Uma decisão por vez. O contrato técnico fica disponível sem disputar a sua atenção.
-              </p>
-            </header>
-
-            <div className="space-y-5 p-4 md:p-6">
-              {/* ⚠️ Região viva: a falha de compilar ou validar chega depois do
-                  clique, e sem isto ela aparece na tela sem ser anunciada a
-                  quem usa leitor de tela. */}
-              <div role="alert" aria-live="assertive">
-                <PainelDeBloqueio bloqueios={avisos} titulo="A operação não foi concluída" />
-              </div>
-              {conteudo}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">
-                <Button type="button" variant="outline" disabled={indice === 0}
-                  onClick={() => navegar(ETAPAS[indice - 1].id)}>
-                  <ArrowLeft className="mr-2 h-4 w-4" aria-hidden /> Voltar
-                </Button>
-                {indice < ETAPAS.length - 1 && (
-                  <Button type="button" variant="outline"
-                    onClick={() => navegar(ETAPAS[indice + 1].id)}>
-                    Continuar <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
-                  </Button>
-                )}
-              </div>
-            </div>
-          </main>
-
-          <aside className="min-w-0">
-            <Pedido
-              linhas={linhasDoPedido}
-              faltas={faltas}
-              proximoAto={proximoAto}
-              lidoEm={null}
-            />
-          </aside>
-        </div>
+            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{indice + 1} / {perguntas.length}</span>
+          </div>
+          <div className="meta-journey-progress" role="progressbar" aria-label="Progresso da configuração"
+            aria-valuenow={indice + 1} aria-valuemin={0} aria-valuemax={perguntas.length}>
+            <span style={{ transform: `scaleX(${(indice + 1) / perguntas.length})` }} />
+          </div>
+          <details className="mt-3 text-sm">
+            <summary className="cursor-pointer py-2 text-muted-foreground">Ver etapas e editar respostas</summary>
+            <nav aria-label="Etapas da criação Meta" className="meta-journey-index">
+              {perguntasMeta(true).map(p => <button type="button" key={p.id} aria-current={p.id === pergunta.id ? 'step' : undefined}
+                onClick={() => irParaPergunta(p)} className={cn('focus-visible:ring-2 focus-visible:ring-ring',
+                  p.id === pergunta.id ? 'bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted')}>
+                {p.nome}
+              </button>)}
+            </nav>
+          </details>
+        </header>
+        <main className={cn('meta-journey-question', etapa === 'criativo' && 'meta-journey-question--wide')}>
+          <h2 ref={tituloDaPergunta} tabIndex={-1} className="font-display text-2xl font-semibold leading-tight tracking-tight outline-none sm:text-[2rem]">
+            {pergunta.titulo}
+          </h2>
+          <p className="mt-3 max-w-[65ch] text-base text-muted-foreground">{pergunta.ajuda}</p>
+          <div key={pergunta.id} className="meta-journey-body" onKeyDown={e => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && etapa !== 'revisao') { e.preventDefault(); continuar(); }
+          }}>
+            <div role="alert" aria-live="assertive"><PainelDeBloqueio bloqueios={avisos} titulo="Não foi possível concluir" /></div>
+            {conteudo}
+          </div>
+          <div className="meta-journey-footer">
+            <Button type="button" variant="ghost" disabled={indice === 0}
+              onClick={() => irParaPergunta(perguntas[indice - 1])}><ArrowLeft className="h-4 w-4" aria-hidden />Voltar</Button>
+            {indice < perguntas.length - 1 && <div className="flex items-center gap-4">
+              <span className="hidden text-xs text-muted-foreground sm:inline">⌘ / Ctrl + Enter</span>
+              <Button type="button" className="min-h-12 px-7" onClick={continuar}>Continuar<ArrowRight className="h-4 w-4" aria-hidden /></Button>
+            </div>}
+          </div>
+          {erroDaPergunta && <p role="alert" className="mt-3 text-sm text-destructive">{erroDaPergunta}</p>}
+          {etapa === 'revisao' && <details className="mt-8 text-sm">
+            <summary className="cursor-pointer py-3 font-medium">Respostas e pendências do plano</summary>
+            <Pedido linhas={linhasDoPedido} faltas={faltas} proximoAto={proximoAto} lidoEm={null} />
+          </details>}
+        </main>
       </div>
     </Layout>
   );

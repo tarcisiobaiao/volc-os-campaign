@@ -10,6 +10,7 @@ Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
 
 const { api } = vi.hoisted(() => ({
   api: {
+    trackingAutomaticoMeta: vi.fn().mockRejectedValue(new Error('Prévia indisponível neste dublê')),
     estadoMetaLocal: vi.fn(),
     contasMetaLocal: vi.fn(),
     capacidadesCriacaoMeta: vi.fn(),
@@ -87,20 +88,60 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+describe('jornada guiada e ponte do assistente', () => {
+  it('começa vazia, pede destino e limpa o erro quando a resposta muda, sem leitura Meta automática', async () => {
+    abrir('');
+    expect(screen.getByRole('heading', { name: 'Qual página você quer anunciar?' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByText('Informe uma URL HTTPS válida, sem UTMs, para continuar.')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://exemplo.com/materia' } });
+    expect(screen.queryByText('Informe uma URL HTTPS válida, sem UTMs, para continuar.')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Teste local' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByRole('heading', { name: 'Em qual conta vamos trabalhar?' })).toBeTruthy();
+    expect(api.contasMetaLocal).not.toHaveBeenCalled();
+    expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
+  });
+
+  it('aceita seleção apenas do iframe próprio e preserva o projeto ao retornar, sem upload', async () => {
+    abrir('criativo');
+    fireEvent.click(screen.getByRole('radio', { name: /Criar com o assistente/ }));
+    const frame = screen.getByTitle('Assistente Criativo da campanha') as HTMLIFrameElement;
+    const data = { type: 'volc:creative-selection', masterRefs: ['master_selecionado'] };
+    fireEvent(window, new MessageEvent('message', { origin: 'https://externo.invalid', source: frame.contentWindow, data }));
+    fireEvent(window, new MessageEvent('message', { origin: window.location.origin, source: window, data }));
+    expect(screen.queryByText(/1 peça\(s\) selecionada\(s\) no Estúdio/)).toBeNull();
+    fireEvent(window, new MessageEvent('message', { origin: window.location.origin, source: frame.contentWindow, data }));
+    expect(screen.getByText(/1 peça\(s\) selecionada\(s\) no Estúdio/)).toBeTruthy();
+    fireEvent(window, new MessageEvent('message', { origin: window.location.origin, source: frame.contentWindow,
+      data: { type: 'volc:creative-project', projectRef: 'crproj_projeto_de_teste' } }));
+    expect(frame.getAttribute('src')).toBe('/trafego/meta/assistente-criativo?view=briefing');
+    fireEvent.click(screen.getByRole('button', { name: 'Revisão' }));
+    expect(screen.getByText(/aguardando registro na conta/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Criativos' }));
+    expect(screen.getByTitle('Assistente Criativo da campanha').getAttribute('src'))
+      .toBe('/trafego/meta/assistente-criativo/crproj_projeto_de_teste?view=assets');
+    expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
+    expect(api.validarPlanoMeta).not.toHaveBeenCalled();
+  });
+});
+
 function abrir(etapa: string) {
-  return render(
+  const tela = render(
     <MemoryRouter initialEntries={[`/trafego/meta/nova?etapa=${etapa}`]}>
       <MetaCriacaoPage />
     </MemoryRouter>,
   );
+  fireEvent.click(screen.getByText('Ver etapas e editar respostas'));
+  return tela;
 }
 
 async function esperarAtivos() {
   if (!api.contasMetaLocal.mock.calls.length) {
     const anterior = screen.getByRole('button', { current: 'step' });
-    fireEvent.click(screen.getByRole('button', { name: /^Base/i }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
-    fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Conta$/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
     await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
     fireEvent.click(anterior);
   }
@@ -109,10 +150,10 @@ async function esperarAtivos() {
 
 it('abrir a bancada não consulta a Meta sem clique explícito', async () => {
   abrir('base');
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
   expect(api.contasMetaLocal).not.toHaveBeenCalled();
   expect(api.ativosCriacaoMeta).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
   await waitFor(() => expect(api.contasMetaLocal).toHaveBeenCalledTimes(1));
 });
 
@@ -120,12 +161,16 @@ it('abrir a bancada não consulta a Meta sem clique explícito', async () => {
  *  A confirmação de categoria especial é uma delas, e é deliberada: sem ela o
  *  plano não pode ser compilado. */
 function confirmarEnquadramento() {
-  fireEvent.click(screen.getByRole('button', { name: /^Campanha/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+  fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
+  fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
 }
 
 function confirmarPeca() {
-  fireEvent.click(screen.getByRole('button', { name: /^Anúncios/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^Criativos$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
 }
@@ -312,8 +357,8 @@ describe('Bancada de criação Meta — recusa real 100/4005', () => {
 
     // E o fato aparece travado, com a razão em linguagem de operador.
     expect(screen.getByText(/Compartilhamento entre conjuntos: desativado/i)).toBeTruthy();
-    expect(screen.getByText(/único conjunto/i)).toBeTruthy();
-    expect(screen.getByText(/receita multiconjunto com estratégia de lance compatível/i))
+    expect(screen.getByText(/fica desativado nesta configuração/i)).toBeTruthy();
+    expect(screen.getByText(/CBO.*escolha independente/i))
       .toBeTruthy();
   });
 

@@ -13,22 +13,33 @@ export const MetaNaoConfigurada: React.FC<{
   secao?: 'campanhas' | 'preparar' | 'atencao';
 }> = ({ nivel, secao = 'campanhas' }) => secao === 'campanhas' ? (
   <>
-    <MetaReadPreview />
-    <MetaInventarioDemo nivel={nivel} />
+    <section className="mb-6 flex flex-wrap items-center justify-between gap-5 border-b border-border pb-6">
+      <div><h2 className="font-display text-2xl font-semibold">Sua próxima campanha começa aqui</h2>
+        <p className="mt-2 max-w-xl text-sm text-muted-foreground">Defina o destino, escolha o resultado e prepare os criativos. O acompanhamento por conjunto já entra no plano.</p></div>
+      <Link to="/trafego/meta/nova" className="inline-flex min-h-12 items-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        Criar campanha guiada <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+    </section>
+    <details className="mb-5 rounded-lg border border-border bg-card p-4">
+      <summary className="cursor-pointer text-sm font-medium">Conexão e sincronização da conta</summary>
+      <div className="mt-4"><MetaReadPreview /></div>
+    </details>
+    <details className="text-sm"><summary className="cursor-pointer py-3 font-medium">Explorar campanhas de demonstração</summary>
+      <MetaInventarioDemo nivel={nivel} />
+    </details>
   </>
 ) : secao === 'preparar' ? (
   <section className="rounded-md border border-border bg-card p-5 shadow-card">
     <p className="kicker">Estúdio de criação Meta</p>
-    <h2 className="mt-2 font-display text-xl font-semibold">Do objetivo ao anúncio, sem esconder a hierarquia</h2>
+    <h2 className="mt-2 font-display text-xl font-semibold">Prepare sua campanha, uma decisão por vez</h2>
     <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
-      A bancada já pode ser explorada com um cenário demonstrativo. Ela percorre campanha,
-      conjunto, público, criativo, mensuração e revisão; o envio real continua bloqueado.
+      Comece pelo destino. Depois escolha o resultado, o público, o orçamento e os criativos.
+      Você confere o plano antes de qualquer envio. Criar depende de aprovação e liberação do servidor.
     </p>
     <Link
-      to="/trafego/meta/nova?modo=demo"
+      to="/trafego/meta/nova"
       className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      Explorar criação Meta <ArrowRight className="h-4 w-4" aria-hidden />
+      Criar campanha guiada <ArrowRight className="h-4 w-4" aria-hidden />
     </Link>
   </section>
 ) : (

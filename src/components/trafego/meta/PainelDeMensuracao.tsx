@@ -81,6 +81,7 @@ export const PainelDeMensuracao: React.FC<{
 
   return (
     <>
+      <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Destino e finalidade da mensuração</summary>
       <div className="grid gap-4 md:grid-cols-2">
         <Campo
           id="meta-url"
@@ -133,6 +134,7 @@ export const PainelDeMensuracao: React.FC<{
         </p>
       </div>
 
+      </details>
       {/* ── Os dois catálogos, lidos por UM clique e mostrados SEPARADOS ──── */}
       <CatalogoDaConta
         titulo="Conversões personalizadas desta conta"
@@ -158,7 +160,7 @@ export const PainelDeMensuracao: React.FC<{
                 id={`meta-conversao-${conjunto.key}`}
                 className={campo}
                 value={m.conversaoRef}
-                onChange={(e) => mudarMensuracao({ conversaoRef: e.target.value })}
+                onChange={(e) => mudarMensuracao({ conversaoRef: e.target.value, ...(e.target.value ? { eventoPadrao: '' } : {}) })}
               >
                 <option value="">Nenhuma conversão declarada</option>
                 {/* ⚠️ SÓ AS ELEGÍVEIS ENTRAM AQUI. Uma `UNKNOWN` nesta lista
@@ -172,7 +174,7 @@ export const PainelDeMensuracao: React.FC<{
               </select>
             </Campo>
 
-            <ul className="space-y-2">
+            <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Ver disponibilidade dos itens</summary><ul className="space-y-2">
               {conversoes.map((item) => {
                 const leitura = lerConversao(item.estado);
                 const causa = motivoLegivel(item.motivo_desconhecido);
@@ -211,7 +213,7 @@ export const PainelDeMensuracao: React.FC<{
                   </li>
                 );
               })}
-            </ul>
+            </ul></details>
           </>
         )}
       </CatalogoDaConta>
@@ -262,7 +264,7 @@ export const PainelDeMensuracao: React.FC<{
               </select>
             </Campo>
 
-            <ul className="space-y-2">
+            <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Ver disponibilidade dos itens</summary><ul className="space-y-2">
               {fontes.map((item) => {
                 const leitura = lerConversao(item.estado);
                 const causa = motivoLegivel(item.motivo_desconhecido);
@@ -303,7 +305,7 @@ export const PainelDeMensuracao: React.FC<{
                   </li>
                 );
               })}
-            </ul>
+            </ul></details>
           </>
         )}
       </CatalogoDaConta>
@@ -337,6 +339,7 @@ export const PainelDeMensuracao: React.FC<{
         />
       )}
 
+      <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Resumo da mensuração</summary>
       <BlocoDeEvidencia titulo="O que será medido" tom={resumoDoConjunto ? 'verificado' : 'info'}>
         <LinhaDeFato
           rotulo="Domínio do destino"
@@ -373,8 +376,8 @@ export const PainelDeMensuracao: React.FC<{
         />
         <LinhaDeFato
           rotulo="Otimização"
-          valor="Visualizações da página de destino"
-          fonte="a receita provada"
+          valor={m.proposito === 'OPTIMIZE' ? 'Conversão escolhida no site' : 'Visualizações da página de destino'}
+          fonte="a configuração escolhida"
         />
         <LinhaDeFato rotulo="Janela de atribuição" valor="Padrão efetivo da conta" fonte="a Meta" />
         <LinhaDeFato
@@ -382,12 +385,10 @@ export const PainelDeMensuracao: React.FC<{
           valor="Não enviado"
           fonte="documentação Meta v26"
         />
-      </BlocoDeEvidencia>
+      </BlocoDeEvidencia></details>
 
       <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-        A Meta exige o domínio de conversão quando a campanha compartilha dados com um pixel.
-        Esta receita não promove nenhum pixel, então o campo não é enviado. Receitas de venda e
-        de cadastro, quando forem provadas, trarão pixel, evento e domínio juntos.
+        Selecionar uma conversão existente não instala a Conversions API no site. Os eventos precisam estar chegando à fonte selecionada.
       </p>
     </>
   );

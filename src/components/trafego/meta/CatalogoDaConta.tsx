@@ -68,8 +68,7 @@ export const CatalogoDaConta = <T,>({
         <div className="min-w-0">
           <p className="kicker">{titulo}</p>
           <p className="mt-0.5 max-w-[70ch] text-sm text-muted-foreground">
-            A leitura é da conta real e só acontece por clique. Nada é criado, alterado nem
-            enviado à Meta além da consulta.
+            Itens disponíveis na conta selecionada.
           </p>
         </div>
         <Button
@@ -85,7 +84,7 @@ export const CatalogoDaConta = <T,>({
       {/* ── 1. NÃO LIDO. Não é vazio, e a diferença decide o próximo passo. ── */}
       {!envelope && !erro && !carregando && (
         <p className="text-sm text-muted-foreground">
-          Ainda não lido. Ausência de leitura não é ausência de {substantivo}.
+          Carregue a lista para escolher {substantivo}.
         </p>
       )}
 
@@ -120,9 +119,7 @@ export const CatalogoDaConta = <T,>({
       {/* ── 4. VAZIO COMPLETO — respondeu, e não há nada. Não é falha. ────── */}
       {envelope?.estado === 'VAZIO_COMPLETO' && (
         <p className="text-sm text-muted-foreground">
-          A conta respondeu e não tem nenhum item de {substantivo}. Isto é diferente de não ter
-          lido e diferente de a leitura ter falhado: aqui a resposta veio inteira, e ela está
-          vazia.
+          Nenhum item de {substantivo} encontrado nesta conta.
         </p>
       )}
 

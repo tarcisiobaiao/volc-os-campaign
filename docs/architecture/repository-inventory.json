@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-08T15:33:30-03:00",
+  "generated_at": "2026-09-08T16:38:41-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 718,
-    "markdown": 523,
+    "files": 719,
+    "markdown": 524,
     "sql": 195,
-    "tracked": 718,
+    "tracked": 719,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 24,
-      "documentation": 371,
+      "documentation": 372,
       "generated": 2,
       "module-guide": 39,
       "product-document": 23,
@@ -1101,7 +1101,7 @@
       "tracked": true,
       "bytes": 22942,
       "lines": 305,
-      "sha256": "55e295ff0adae8aa4bf0eed87f7965de3d371804f90cb987c879af63cac75ee3",
+      "sha256": "a873f07027e75b806aa2c767a10017edab71de1260812fe338eca409e5d16b93",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3442,6 +3442,18 @@
       "bytes": 15302,
       "lines": 155,
       "sha256": "c46791de9f2a13a61338173fad4c704e078062054add1cc7755360f265b12841",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-guided-campaign-journey-v1/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6130,
+      "lines": 99,
+      "sha256": "352c873cbec2558a3fe1e548cb1f050cb67738056e78d864d9b9aaef44435e74",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

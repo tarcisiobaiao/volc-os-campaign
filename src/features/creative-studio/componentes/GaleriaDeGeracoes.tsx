@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, ImageIcon, Loader2, Package, RefreshCw, ZoomIn } from 'lucide-react';
+import { assistenteIntegrado } from '@/components/trafego/meta/ponteAssistente';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { criativosApi } from '@/lib/criativosApi';
@@ -137,6 +138,13 @@ export function GaleriaDeAssets({ pecas, onComecar, carregando = false }: { peca
       </div>
       <div className="space-y-3 p-3"><label className="flex items-center gap-2 text-xs font-medium"><input type="checkbox" aria-label={`Selecionar ${p.rotulo}`} disabled={!p.previewUrl || p.estado !== 'pronta'} checked={selecionadas.includes(p.id)} onChange={() => setSelecionadas(a => a.includes(p.id) ? a.filter(id => id !== p.id) : [...a, p.id])} className="h-4 w-4 accent-primary" />{p.rotulo}</label><p className="text-[11px] tabular-nums text-muted-foreground">{p.largura ?? '—'} × {p.altura ?? '—'} px</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={!p.previewUrl} onClick={() => setAmpliada(p)} aria-label={`Ampliar ${p.rotulo}`}><ZoomIn className="h-4 w-4" aria-hidden /><span className="sr-only">Ampliar</span></Button><Button variant="outline" size="sm" disabled={!p.previewUrl || baixando} onClick={() => void baixar(p)} aria-label={`Baixar ${p.rotulo}`}><Download className="h-4 w-4" aria-hidden /><span>Baixar</span></Button></div></div>
     </article>)}</div>
+    {assistenteIntegrado() && <div className="mt-4 border-t border-border pt-4">
+      <Button disabled={!selecionadas.length || selecionadas.length > 10 || prontas.filter(p => selecionadas.includes(p.id)).some(p => !p.masterId)}
+        onClick={() => window.parent.postMessage({ type: 'volc:creative-selection',
+          masterRefs: prontas.filter(p => selecionadas.includes(p.id)).map(p => p.masterId),
+        }, window.location.origin)}>Selecionar para esta campanha</Button>
+      <p className="mt-2 text-xs text-muted-foreground">Seleciona as peças prontas. Enviar à conta e publicar são ações separadas.</p>
+    </div>}
     <Dialog open={Boolean(ampliada)} onOpenChange={open => { if (!open) setAmpliada(null); }}><DialogContent className="max-w-3xl"><DialogTitle>{ampliada?.rotulo ?? 'Prévia do criativo'}</DialogTitle><DialogDescription>Confira a composição na proporção original.</DialogDescription>{ampliada?.previewUrl && <img src={ampliada.previewUrl} alt={ampliada.rotulo} className="max-h-[70vh] w-full object-contain" />}</DialogContent></Dialog>
   </section>;
 }

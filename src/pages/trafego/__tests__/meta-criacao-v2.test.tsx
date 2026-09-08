@@ -26,6 +26,7 @@ Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
 
 const { api } = vi.hoisted(() => ({
   api: {
+    trackingAutomaticoMeta: vi.fn().mockRejectedValue(new Error('Prévia indisponível neste dublê')),
     estadoMetaLocal: vi.fn(),
     contasMetaLocal: vi.fn(),
     capacidadesCriacaoMeta: vi.fn(),
@@ -311,36 +312,45 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function abrir(etapa: string) {
-  return render(
+  const tela = render(
     <MemoryRouter initialEntries={[`/trafego/meta/nova?etapa=${etapa}`]}>
       <MetaCriacaoPage />
     </MemoryRouter>,
   );
+  fireEvent.click(screen.getByText('Ver etapas e editar respostas'));
+  return tela;
 }
 
 /** Lê a conta uma vez, por clique — como a bancada exige. */
 async function comConta(etapa: string) {
   abrir('base');
   await waitFor(() => expect(
-    screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
-  fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+    screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
+  fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
   await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
   await waitFor(() => expect(api.receitasCriacaoMetaV2).toHaveBeenCalled());
   if (etapa !== 'base') ir(etapa);
 }
 
 const NOME_DA_ETAPA: Record<string, RegExp> = {
-  base: /^Base/i, campanha: /^Campanha/i, orcamento: /^Orçamento/i, conjunto: /^Conjunto/i,
-  publico: /^Público/i, criativo: /^Anúncios/i, mensuracao: /^Mensuração/i, revisao: /^Revisão/i,
+  base: /^Conta$/i, campanha: /^Resultado$/i, orcamento: /^Orçamento/i, conjunto: /^Conjunto/i,
+  publico: /^Público/i, criativo: /^Criativos$/i, mensuracao: /^Conversão$/i, revisao: /^Revisão/i,
 };
 
 function ir(etapa: string) {
   fireEvent.click(screen.getByRole('button', { name: NOME_DA_ETAPA[etapa] }));
+  for (const summary of document.querySelectorAll('main details > summary')) {
+    if (!summary.parentElement!.hasAttribute('open')) fireEvent.click(summary);
+  }
 }
 
 /** Confirma as declarações que a bancada exige antes de liberar a conferência. */
 function confirmarDeclaracoes() {
   ir('campanha');
+  fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+  fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
+  fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
   ir('criativo');
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
@@ -462,6 +472,10 @@ async function comDoisConjuntos() {
   await waitFor(() => expect(screen.getAllByTestId('conjunto-chave')).toHaveLength(2));
 
   ir('campanha');
+  fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+  fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
+  fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
   ir('criativo');
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
@@ -650,10 +664,10 @@ describe('Mensuração', () => {
     await comConta('mensuracao');
     expect(api.catalogoDeMensuracaoMeta).not.toHaveBeenCalled();
     // Os DOIS catálogos anunciam o não-lido, cada um com o seu substantivo.
-    expect(screen.getByText(/Ainda não lido\. Ausência de leitura não é ausência de conversões/i))
+    expect(screen.getByText(/Carregue a lista para escolher conversões/i))
       .toBeTruthy();
     expect(screen.getByText(
-      /Ainda não lido\. Ausência de leitura não é ausência de fontes de mensuração/i)).toBeTruthy();
+      /Carregue a lista para escolher fontes de mensuração/i)).toBeTruthy();
   });
 
   it('relatar e otimizar são separados, e a receita decide qual existe', async () => {
@@ -804,8 +818,8 @@ describe('Catálogos da conta', () => {
     });
     abrir('base');
     await waitFor(() => expect(
-      screen.getByRole('button', { name: 'Ler contas na Meta' })).toHaveProperty('disabled', false));
-    fireEvent.click(screen.getByRole('button', { name: 'Ler contas na Meta' }));
+      screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
     await waitFor(() => expect(api.contasMetaLocal).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText(/conta de anúncios/i), {
       target: { value: conta.referencia_opaca },
@@ -829,7 +843,7 @@ describe('Catálogos da conta', () => {
 
     ir('publico');
     expect(screen.queryByText('Visitantes 30 dias')).toBeNull();
-    expect(screen.getByText(/Ainda não lido\. Ausência de leitura não é ausência de públicos/i))
+    expect(screen.getByText(/Carregue a lista para escolher públicos/i))
       .toBeTruthy();
     // E a seleção feita na conta anterior saiu junto: ela não resolveria aqui.
     expect(screen.getByText(/0 incluídos · 0 excluídos/)).toBeTruthy();
@@ -844,7 +858,7 @@ describe('Receita e revisão', () => {
   it('uma receita sem prova continua selecionável e diz que criar está fechado', async () => {
     await comConta('campanha');
     fireEvent.click(screen.getByRole('radio', { name: /Vendas no site/i }));
-    expect(screen.getByText(/Criar está fechado para esta receita/i)).toBeTruthy();
+    expect(screen.getByText(/A criação desta opção ainda precisa ser liberada no servidor/i)).toBeTruthy();
     expect(screen.getByText(/elegibilidade do evento desta conta não foi provada/i)).toBeTruthy();
     // E validar continua aberto: é ela que produz a prova que falta.
     ir('revisao');
@@ -861,8 +875,8 @@ describe('Receita e revisão', () => {
     expect(await screen.findByText(/Resultado da validação remota/i)).toBeTruthy();
     expect(screen.getAllByTestId('linha-do-mapa').length).toBeGreaterThan(0);
 
-    ir('campanha');
-    fireEvent.change(screen.getByLabelText(/nome da campanha/i), {
+    fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+    fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), {
       target: { value: 'Outra campanha inteira' },
     });
     ir('revisao');

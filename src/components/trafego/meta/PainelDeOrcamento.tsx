@@ -127,7 +127,7 @@ export const PainelDeOrcamento: React.FC<{
   const ajudaDoValor = (texto: string) => {
     const minor = reaisParaMinor(texto);
     return minor > 0
-      ? `A bancada entendeu ${formatarBrl(minor)}${diario ? ' por dia' : ' no período'} · ${minor} centavos no corpo enviado.`
+      ? `A bancada entendeu ${formatarBrl(minor)}${diario ? ' por dia' : ' no período'}.`
       : 'Informe um valor maior que zero. Use vírgula ou ponto para os centavos.';
   };
 
@@ -202,6 +202,12 @@ export const PainelDeOrcamento: React.FC<{
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
+        {diario && (cbo || draft.conjuntos.length === 1) && <div role="group" className="flex flex-wrap gap-2 md:col-span-2" aria-label="Valores sugeridos">
+          {[10, 25, 50, 100].map(valor => <Button key={valor} type="button" variant="outline" size="sm"
+            onClick={() => cbo ? onValorDaCampanha(`${valor},00`) : onValorDoConjunto(draft.conjuntos[0].key, `${valor},00`)}>
+            R$ {valor}/dia
+          </Button>)}
+        </div>}
         {cbo ? (
           <Campo
             id="meta-budget"
@@ -242,20 +248,17 @@ export const PainelDeOrcamento: React.FC<{
             exige estratégia de lance no Campaign. O contrato V2 recusa `true`
             com nome próprio em vez de convertê-lo em silêncio, e o corpo
             enviado carrega o booleano explícito como `false`. */}
-        <div className="rounded-lg border border-border bg-muted/20 p-3 md:col-span-2">
+        <details className="text-sm md:col-span-2"><summary className="cursor-pointer py-2 text-muted-foreground">Compartilhamento de orçamento</summary>
           <strong className="block text-sm text-foreground">
             Compartilhamento entre conjuntos: desativado
           </strong>
           <p className="mt-1 max-w-[72ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-            Esta campanha possui um único conjunto. O compartilhamento ficará disponível em uma
-            receita multiconjunto com estratégia de lance compatível.
-            {motivoDoCompartilhamento ? ` ${motivoDoCompartilhamento}` : ''}
-            {' '}Orçamento na campanha (CBO) NÃO é compartilhamento: são campos diferentes, com
-            semântica diferente, e ligar um por causa do outro mudaria a entrega sem você pedir.
+            O compartilhamento entre conjuntos fica desativado nesta configuração. O orçamento de campanha (CBO) continua disponível como uma escolha independente.
           </p>
-        </div>
+        </details>
       </div>
 
+      <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Conferir distribuição e configuração</summary>
       <BlocoDeEvidencia titulo="Como a verba é aplicada" tom={resumo ? 'verificado' : 'info'}>
         {/* ⚠️ A frase vem do SERVIDOR quando existe compilação. Recalculá-la
             aqui seria a tela afirmando sobre o corpo enviado uma coisa que o
@@ -303,7 +306,7 @@ export const PainelDeOrcamento: React.FC<{
             ausencia="ainda não informado"
           />
         ))}
-      </BlocoDeEvidencia>
+      </BlocoDeEvidencia></details>
 
       {modoDoPlano && !modoDoPlano.criar_liberado && (
         <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">

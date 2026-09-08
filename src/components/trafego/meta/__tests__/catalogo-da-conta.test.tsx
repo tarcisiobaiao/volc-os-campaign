@@ -64,7 +64,7 @@ function desenhar(
 describe('Os cinco estados de um catálogo', () => {
   it('NÃO LIDO não é vazio: a frase separa as duas coisas', () => {
     desenhar();
-    expect(screen.getByText(/Ainda não lido\. Ausência de leitura não é ausência de públicos/i))
+    expect(screen.getByText(/Carregue a lista para escolher públicos/i))
       .toBeTruthy();
     // E nenhuma das outras quatro frases aparece.
     expect(screen.queryByText(/A conta respondeu e não tem nenhum item/i)).toBeNull();
@@ -73,8 +73,8 @@ describe('Os cinco estados de um catálogo', () => {
 
   it('VAZIO_COMPLETO diz que a resposta veio inteira e está vazia', () => {
     desenhar({ envelope: envelope({ estado: 'VAZIO_COMPLETO', items: [], total: 0 }) });
-    expect(screen.getByText(/A conta respondeu e não tem nenhum item de públicos/i)).toBeTruthy();
-    expect(screen.getByText(/diferente de não ter lido e diferente de a leitura ter falhado/i))
+    expect(screen.getByText(/Nenhum item de públicos encontrado nesta conta/i)).toBeTruthy();
+    expect(screen.getByText(/Nenhum item de públicos encontrado nesta conta/i))
       .toBeTruthy();
     expect(screen.queryByText(/Ainda não lido/i)).toBeNull();
   });

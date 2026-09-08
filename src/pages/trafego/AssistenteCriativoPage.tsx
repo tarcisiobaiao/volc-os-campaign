@@ -14,10 +14,11 @@
  * fluxo do Aprova guardava tudo em estado de um componente só: fechar a aba
  * perdia a operação inteira, e não havia como mandar um link para alguém.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, History, Loader2, Sparkles } from 'lucide-react';
 
+import { assistenteIntegrado } from '@/components/trafego/meta/ponteAssistente';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 
@@ -473,15 +474,23 @@ export default function AssistenteCriativoPage() {
     }
   }
 
+  const integrado = assistenteIntegrado();
+  const Moldura = integrado ? Fragment : Layout;
+  useEffect(() => {
+    if (integrado && projectRef) window.parent.postMessage({
+      type: 'volc:creative-project', projectRef,
+    }, window.location.origin);
+  }, [integrado, projectRef]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Layout>
+    <Moldura>
       <div className={`studio-workspace ${emOperacao ? 'studio-workspace--wide' : ''}`}>
         <div className="mb-5 flex items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navegar('/trafego?rede=meta')}><ArrowLeft className="h-4 w-4" aria-hidden />Tráfego Meta</Button>
+          {!integrado && <Button variant="ghost" size="sm" onClick={() => navegar('/trafego?rede=meta')}><ArrowLeft className="h-4 w-4" aria-hidden />Tráfego Meta</Button>}
           <Button variant="ghost" size="sm" onClick={() => navegar('/trafego/meta/assistente-criativo?view=historico')}><History className="h-4 w-4" aria-hidden />Histórico</Button>
         </div>
-        <header className={`mb-6 ${emOperacao ? 'text-left' : 'text-center'}`}>
+        <header hidden={integrado} className={`mb-6 ${emOperacao ? 'text-left' : 'text-center'}`}>
           <div className={`kicker mb-3 flex items-center gap-2 ${emOperacao ? 'justify-start' : 'justify-center'}`}><span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary"><Sparkles className="h-3.5 w-3.5" aria-hidden /></span>Estúdio · Meta Ads</div>
           <h1 className={`font-display font-bold leading-[1.05] tracking-tight ${emOperacao ? 'text-[2rem]' : 'text-[2rem] sm:text-[2.5rem]'}`}>Assistente Criativo</h1>
           <div className={`aurora-rule mt-4 w-16 ${emOperacao ? '' : 'mx-auto'}`} />
@@ -728,6 +737,6 @@ export default function AssistenteCriativoPage() {
           )}
         </div>
       </div>
-    </Layout>
+    </Moldura>
   );
 }
