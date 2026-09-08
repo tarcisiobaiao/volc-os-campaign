@@ -4,7 +4,7 @@
   "data": "2026-09-08",
   "branch": "execution/volc-os-operacao-80-20",
   "base": "d8067053e3774e06d300e8129ed82d066be4a6e6",
-  "head": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "head": "64caf94843f463c1b5688ed0b4d784b651d8a452",
   "veredito": "META_OPERATIONS_V1_LOCAL_PARTIAL",
   "por_que_este_veredito": "O grão financeiro, o tracking, o read model candidato e a superfície do dashboard fecharam localmente com prova. Mas CP5 e CP6 não fecharam: o schema oficial Meta não existe na base, não há bucket, não houve geração nem upload real, a ficha de canário não sai completa por uma lacuna nomeada de schema, o contrato V2 não tem rota de criação, e não houve QA visual em navegador. Declarar COMPLETE com esses buracos seria exatamente o tipo de afirmação que esta missão existe para não fazer.",
   "preflight_git": {
@@ -24,6 +24,10 @@
     "incidente": "A worktree operacional estava REGISTRADA mas quebrada: o coletor de /tmp do macOS apagou o arquivo .git, o pyvenv.cfg do venv, o conteúdo de site-packages, o node_modules e 2.372 arquivos rastreados. Nenhuma modificação foi perdida: as 2.372 entradas eram 100% DELEÇÕES, com zero M/A/R/C. Recuperado com `git worktree repair` e `git checkout-index --all` (que por desenho NÃO sobrescreve arquivo existente), mais reinstalação de venv e node_modules."
   },
   "commits": [
+    {
+      "sha": "64caf94843f463c1b5688ed0b4d784b651d8a452",
+      "assunto": "docs(fechamento): Meta Operations V1 local — o grão mudou, e a memória agora diz isso"
+    },
     {
       "sha": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
       "assunto": "fix(meta): rodada corretiva da revisão adversarial — 12 achados, 12 endereçados"
@@ -167,5 +171,9 @@
     "zero_leitura_de_token": true,
     "zero_env_webgo": true,
     "zero_segredo_commitado": true
-  }
+  },
+  "head_no_momento_da_escrita": "0e8ce6cbb78c00ecfc1bb75c96ad0bd892f522dc",
+  "nota_sobre_o_head": "`head` é o SHA do commit de fechamento da memória operacional, que é o último desta linha. Os artefatos de contrato foram escritos no commit anterior (`head_no_momento_da_escrita`), porque o commit de fechamento inclui a si mesmo — o mesmo motivo pelo qual o manifesto do grafo se exclui do próprio digest.",
+  "sha_para_push_posterior": "64caf94843f463c1b5688ed0b4d784b651d8a452",
+  "arvore_limpa_no_fechamento": true
 }
