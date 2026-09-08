@@ -51,9 +51,25 @@ from . import dominio as dom
 #: nome próprio, nunca uma lista curta que parece completa.
 _TETO_DE_CONJUNTOS = 200
 
-#: 92 dias × 200 conjuntos não cabem numa página. O limite pedido acompanha o
-#: tamanho real do recorte, e a resposta é conferida contra ele.
-_TETO_DE_LINHAS = 4000
+#: O TETO REAL DE UMA PÁGINA DO POSTGREST, e não um número que a gente escolhe.
+#:
+#: ⚠️ ESTE VALOR JÁ ESTEVE ERRADO, E O ERRO ERA SILENCIOSO. A primeira versão
+#: pedia `limit=4000` e conferia `len(linhas) >= 4000`. Só que o PostgREST do
+#: Supabase corta toda resposta em `db-max-rows` (1000 neste projeto) e IGNORA
+#: um `limit` maior — o próprio `SupabaseService` documenta isso em
+#: `supabase_service.py:75-78`: "pedir limit=5000 devolve 1000 linhas sem erro
+#: nenhum".
+#:
+#: Consequência medida no raciocínio do revisor adversarial: com 1.200 linhas
+#: disponíveis, a leitura devolvia 1.000, a guarda NUNCA disparava, e as 200
+#: linhas que não vieram eram classificadas como `SEM_UTM_ADSET_NO_GAM` — ou
+#: seja, uma leitura truncada virava "este conjunto/dia não tem receita".
+#: Exatamente o que a semântica de ausência deste contrato existe para impedir.
+#:
+#: Agora a guarda mora na fronteira VERDADEIRA: uma resposta que chega cheia é
+#: uma resposta possivelmente truncada, e isso bloqueia o total com nome
+#: próprio em vez de virar ausência inventada.
+_TETO_DE_LINHAS = 1000
 
 
 def _contrato_gam(gam_id: str) -> dict | None:
@@ -183,6 +199,10 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
         return bloquear("SCHEMA_DE_INSIGHTS_NAO_APLICADO")
     if len(insights) >= _TETO_DE_LINHAS:
         return bloquear("INSIGHTS_TRUNCADOS_PELO_TETO")
+    if len(conjuntos) * len(dias) > _TETO_DE_LINHAS:
+        # O recorte pedido é maior do que UMA página cabe. Mesmo que a resposta
+        # tenha vindo curta, não dá para afirmar que ela é completa.
+        return bloquear("RECORTE_MAIOR_QUE_UMA_PAGINA")
 
     por_grao: dict[tuple[str, str], Mapping[str, Any]] = {}
     for linha in insights:
@@ -257,7 +277,13 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
 
     if cfg is not None:
         receita, pronto = await repo._select_seguro("gam_metrics", {
-            "select": f"date,utm_campaign_value,revenue,{cfg['revenue_column']},updated_at",
+            # ⚠️ `impressions` e `clicks` entraram em 08/09/2026: o contrato
+            # público já declarava `gam_impressions`/`gam_clicks`, a consulta
+            # não os pedia e o grão os recebia sempre `None`. Um zero MEDIDO do
+            # lado GAM virava ausência — o inverso exato do erro que este
+            # contrato mais persegue.
+            "select": (f"date,utm_campaign_value,revenue,{cfg['revenue_column']},"
+                       "impressions,clicks,updated_at"),
             "gam_accounts_id": f"eq.{gam_id}",
             "utm_campaign_value": "in.(" + ",".join(conjuntos) + ")",
             "and": f"(date.gte.{inicio},date.lte.{fim})",
@@ -293,16 +319,37 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
                 gam = {
                     "revenue": bruta.get("revenue"),
                     "revenue_converted": bruta.get(cfg["revenue_column"]) if cfg else None,
+                    "impressions": bruta.get("impressions"),
+                    "clicks": bruta.get("clicks"),
                     "updated_at": bruta.get("updated_at"),
                 }
+            # ⚠️ MOEDA E FUSO VÊM DA PRÓPRIA LINHA, não da conta.
+            #
+            # Achado do revisor adversarial: carimbar aqui a moeda da CONTA
+            # fazia `_exigir_homogeneidade` nunca enxergar a divergência —
+            # todas as linhas saíam com o mesmo carimbo, e um insight em USD
+            # somava com um em BRL produzindo um total "em BRL" que não era
+            # nem uma coisa nem outra. Marcar `completo=False` não torna essa
+            # soma válida; o total precisa ser RECUSADO.
+            #
+            # Com a moeda de cada insight na linha, moedas ou fusos diferentes
+            # levantam META_MOEDAS_MISTURADAS / META_FUSOS_MISTURADOS antes de
+            # qualquer número virar total.
             linhas.append(atr.linha_de_conjunto_dia(
                 account_ref=conta_ref, campaign_id=campaign_id, adset_id=conjunto,
                 date=date.fromisoformat(dia), insight=insight, receita_gam=gam,
                 gam_disponivel=gam_disponivel, project_id=project_id,
-                currency=vazio["currency"], timezone=vazio["timezone"],
+                currency=(insight or {}).get("currency") or vazio["currency"],
+                timezone=(insight or {}).get("account_timezone") or vazio["timezone"],
                 completo=completo_meta))
 
-    total = atr.totalizar(linhas)
+    try:
+        total = atr.totalizar(linhas)
+    except atr.AtribuicaoMetaInvalida as erro:
+        # Uma coleção que não pode virar total não vira total. O código da
+        # recusa viaja para a tela em vez de um número inventado.
+        vazio["estado"] = "GRAO_INCOERENTE"
+        return bloquear(erro.codigo)
     vazio.update(
         spend=total.spend, revenue=total.revenue_brl,
         revenue_original=total.revenue_original,

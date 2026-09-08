@@ -42,6 +42,16 @@ from app.trafego.meta.atribuicao import (
 
 GOLDEN = Path(__file__).parent / "goldens" / "atribuicao-meta-adset-v1.json"
 
+#: Ids SINTÉTICOS para as fixtures escritas à mão.
+#:
+#: ⚠️ Eles não vêm da operação real e não têm correspondência com nada. Usar um
+#: id real aqui — mesmo "só num teste" — devolveria ao repositório a identidade
+#: que o gerador do golden tirou de propósito.
+CAMPANHA_SINTETICA = "900000000000001"
+CONJUNTO_SINTETICO = "900000000000002"
+CAMPANHA_SINTETICA_2 = "900000000000003"
+CONJUNTO_SINTETICO_2 = "900000000000004"
+
 
 @pytest.fixture(scope="module")
 def golden() -> dict:
@@ -93,10 +103,25 @@ def test_o_golden_carrega_a_forma_da_operacao_real(golden):
     assert inv["campanha_dia_sem_utm"] == 2
     assert inv["total_spend"] == "1029.410000"
     assert inv["total_revenue_brl"] == "1140.73"
-    # Sanitização: nenhum id real sobrevive no arquivo versionado.
-    bruto = GOLDEN.read_text(encoding="utf-8")
-    for id_real in ("120250284618510361", "120249906498920361", "120250072969760361"):
-        assert id_real not in bruto
+    # Sanitização, provada pela FORMA e não por comparação com id real.
+    #
+    # ⚠️ A primeira versão listava três ids reais aqui para afirmar que eles
+    # NÃO estavam no golden. Achado do revisor adversarial: isso versionava
+    # justamente o que a sanitização removeu — com o sal público do gerador,
+    # os literais permitiam reconstruir a ligação com as linhas do golden. Um
+    # teste de sanitização não pode carregar o dado que sanitiza.
+    #
+    # A prova estrutural é mais forte e não vaza nada: TODO id do golden tem a
+    # forma sintética (prefixo '9', 15 dígitos), e nenhum tem a forma de id
+    # real da Meta desta operação (17 dígitos terminados em '361').
+    for r in golden["linhas"]:
+        for campo in ("campaign_id", "adset_id", "account_ref"):
+            valor = r[campo]
+            if valor is None:
+                continue
+            assert valor.isdigit() and len(valor) == 15 and valor[0] == "9", (
+                f"{campo}={valor!r} não tem a forma sintética do gerador")
+            assert not (len(valor) == 17 and valor.endswith("361"))
 
 
 def test_totais_do_periodo_batem_com_o_csv_real(golden):
@@ -264,8 +289,8 @@ def test_campanha_sem_utm_nao_vira_conjunto_com_receita_zero(golden):
 
 
 def test_gam_lido_sem_a_chave_e_diferente_de_gam_nao_lido():
-    comum = dict(account_ref="1", campaign_id="120250284618510361",
-                 adset_id="120250284746960361", date=date(2026, 8, 25),
+    comum = dict(account_ref="1", campaign_id=CAMPANHA_SINTETICA,
+                 adset_id=CONJUNTO_SINTETICO, date=date(2026, 8, 25),
                  insight={"spend": "2.15", "impressions": 331, "clicks": 14},
                  currency="BRL", timezone="America/Sao_Paulo")
     lido = linha_de_conjunto_dia(**comum, receita_gam=None, gam_disponivel=True)
@@ -281,8 +306,8 @@ def test_gam_lido_sem_a_chave_e_diferente_de_gam_nao_lido():
 
 def test_entrega_medida_com_receita_zero_e_zero_de_verdade():
     linha = linha_de_conjunto_dia(
-        account_ref="1", campaign_id="120250284618510361",
-        adset_id="120250284746960361", date=date(2026, 8, 25),
+        account_ref="1", campaign_id=CAMPANHA_SINTETICA,
+        adset_id=CONJUNTO_SINTETICO, date=date(2026, 8, 25),
         insight={"spend": "2.15", "impressions": 331, "clicks": 14},
         receita_gam={"revenue": "0", "revenue_converted": "0", "updated_at": "2026-08-26T00:00:00Z"},
         gam_disponivel=True, currency="BRL", timezone="America/Sao_Paulo")
@@ -300,8 +325,8 @@ def test_receita_com_zero_de_entrega_continua_visivel():
     medida chegando num dia em que a Meta não reportou entrega.
     """
     linha = linha_de_conjunto_dia(
-        account_ref="1", campaign_id="120250006866730361",
-        adset_id="120250006866720361", date=date(2026, 8, 18),
+        account_ref="1", campaign_id=CAMPANHA_SINTETICA_2,
+        adset_id=CONJUNTO_SINTETICO_2, date=date(2026, 8, 18),
         insight={"spend": "0", "impressions": 0, "clicks": 0},
         receita_gam={"revenue": "0.02", "revenue_converted": "0.10"},
         gam_disponivel=True, currency="BRL", timezone="America/Sao_Paulo")

@@ -80,6 +80,35 @@ describe('ConjuntosFinanceiros — a campanha soma os conjuntos', () => {
     expect(prova.textContent).toContain('Nenhum dos dois foi ajustado');
   });
 
+  it('receita parcial NÃO é acusada como divergência (semântica do servidor)', () => {
+    // Achado do revisor adversarial: a tela usava "qualquer null derruba a
+    // soma" também para a receita, e o servidor não faz isso. Filhos 15 e null
+    // com total 15 são CORRETOS e parciais — acusar divergência aqui seria a
+    // tela contradizendo um backend que está certo.
+    const dados = financeiro({ revenue: '15' });
+    dados.conjuntos![1] = conjunto({
+      adset_ref: 'metaobj_bbb', id_mascarado: '…5594250361', spend: '4',
+      revenue_brl: null, revenue_original: null, roas_ratio: null, profit_gross: null,
+      razao: razao({ linhas_atribuidas: 0, linhas_sem_utm: 1, revenue_completo: false }),
+    });
+    render(<ConjuntosFinanceiros financeiro={dados} />);
+    expect(screen.getByTestId('prova-da-soma').textContent).toContain('exatamente o total');
+  });
+
+  it('ausência dos dois lados NÃO vira prova de igualdade', () => {
+    // `null === null` faria a tela afirmar que a soma bate sobre uma campanha
+    // da qual não se sabe nada.
+    const dados = financeiro({ spend: null, revenue: null });
+    dados.conjuntos = [
+      conjunto({ spend: null, revenue_brl: null }),
+      conjunto({ adset_ref: 'metaobj_bbb', spend: null, revenue_brl: null }),
+    ];
+    render(<ConjuntosFinanceiros financeiro={dados} />);
+    const texto = screen.getByTestId('prova-da-soma').textContent ?? '';
+    expect(texto).toContain('Ausência não é prova de igualdade');
+    expect(texto).not.toContain('exatamente o total');
+  });
+
   it('receita desconhecida de um conjunto vira travessão, nunca R$ 0,00', () => {
     const dados = financeiro();
     dados.conjuntos![1] = conjunto({
@@ -143,7 +172,9 @@ describe('ConjuntosFinanceiros — a campanha soma os conjuntos', () => {
 
   it('o id bruto do conjunto nunca chega ao DOM', () => {
     const { container } = render(<ConjuntosFinanceiros financeiro={financeiro()} />);
-    expect(container.innerHTML).not.toContain('120250284746960361');
+    // Id SINTÉTICO com a forma de um id da Meta (17 dígitos). Um id real aqui
+    // devolveria ao repositório a identidade que a sanitização tirou.
+    expect(container.innerHTML).not.toContain('900000000000000361');
     // O que a tela mostra é o id MASCARADO; a referência opaca fica no
     // atributo de controle, nunca como texto de leitura.
     expect(container.innerHTML).toContain('…4960361');

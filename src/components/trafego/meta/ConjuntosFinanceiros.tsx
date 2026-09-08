@@ -32,10 +32,18 @@ const Celula: React.FC<{ children: React.ReactNode; className?: string }> = ({ c
   <td className={`px-3 py-2 align-middle tabular ${className}`}>{children}</td>
 );
 
-function somar(conjuntos: ConjuntoFinanceiroMeta[], campo: 'spend' | 'revenue_brl'): number | null {
-  // Uma parcela desconhecida torna a soma desconhecida — é a mesma regra do
-  // servidor, repetida aqui de propósito: se a tela somasse ignorando `null`,
-  // ela mostraria um total que PARECE completo e contradiria o backend.
+/**
+ * Soma com a MESMA semântica do servidor — e são duas, não uma.
+ *
+ * ⚠️ Achado do revisor adversarial: a primeira versão usava uma só regra
+ * (qualquer `null` derruba a soma) para os DOIS campos, e o servidor não faz
+ * isso. No servidor, GASTO exige todas as parcelas (`_somar`) e RECEITA soma o
+ * que foi atribuído levando a razão junto (`_somar_ignorando_ausentes`). Com a
+ * regra errada aplicada à receita, filhos `15` e `null` faziam a tela acusar
+ * divergência contra um backend que estava certo.
+ */
+function somarExigindoTodas(conjuntos: ConjuntoFinanceiroMeta[],
+                            campo: 'spend'): number | null {
   let total = 0;
   for (const c of conjuntos) {
     const valor = comoNumero(c[campo]);
@@ -43,6 +51,14 @@ function somar(conjuntos: ConjuntoFinanceiroMeta[], campo: 'spend' | 'revenue_br
     total += valor;
   }
   return conjuntos.length ? total : null;
+}
+
+function somarMedidas(conjuntos: ConjuntoFinanceiroMeta[],
+                      campo: 'revenue_brl'): number | null {
+  const medidas = conjuntos
+    .map((c) => comoNumero(c[campo]))
+    .filter((v): v is number => v !== null);
+  return medidas.length ? medidas.reduce((a, b) => a + b, 0) : null;
 }
 
 const FraseDaRazao: React.FC<{ razao: ConjuntoFinanceiroMeta['razao'] | null | undefined }> = ({ razao }) => {
@@ -90,15 +106,25 @@ export const ConjuntosFinanceiros: React.FC<{
     );
   }
 
-  const somaGasto = somar(conjuntos, 'spend');
-  const somaReceita = somar(conjuntos, 'revenue_brl');
+  const somaGasto = somarExigindoTodas(conjuntos, 'spend');
+  const somaReceita = somarMedidas(conjuntos, 'revenue_brl');
   const totalGasto = comoNumero(financeiro.spend);
   const totalReceita = comoNumero(financeiro.revenue);
   // A prova aritmética que a missão pede: o total da campanha É a soma dos
   // conjuntos. Comparação em centavos para não brigar com ponto flutuante.
   const centavos = (n: number | null) => (n === null ? null : Math.round(n * 100));
-  const gastoBate = centavos(somaGasto) === centavos(totalGasto);
-  const receitaBate = centavos(somaReceita) === centavos(totalReceita);
+  // ⚠️ `null === null` NÃO é prova de nada. Dois desconhecidos iguais fariam a
+  // tela afirmar "a soma é exatamente o total" sobre uma campanha da qual não
+  // se sabe nada — que é o oposto do que esta frase existe para dizer. Só há
+  // prova quando os DOIS lados são números.
+  const comparavel = (a: number | null, b: number | null) =>
+    a !== null && b !== null;
+  const gastoComparavel = comparavel(somaGasto, totalGasto);
+  const receitaComparavel = comparavel(somaReceita, totalReceita);
+  const gastoBate = gastoComparavel && centavos(somaGasto) === centavos(totalGasto);
+  const receitaBate = receitaComparavel && centavos(somaReceita) === centavos(totalReceita);
+  const haOQueProvar = gastoComparavel || receitaComparavel;
+  const divergiu = (gastoComparavel && !gastoBate) || (receitaComparavel && !receitaBate);
 
   const linhas = conjuntos.map((c) => {
     const expandido = aberto === c.adset_ref;
@@ -220,10 +246,18 @@ export const ConjuntosFinanceiros: React.FC<{
       {/* A prova aritmética, escrita. Ela não é enfeite: é o que permite ao
           operador confiar no total sem abrir o banco. */}
       <p className="text-xs text-muted-foreground" data-testid="prova-da-soma">
-        {gastoBate && receitaBate
-          ? `A soma dos ${conjuntos.length} conjuntos é exatamente o total da campanha.`
-          : 'ATENÇÃO: a soma dos conjuntos não bate com o total da campanha. '
-            + 'Nenhum dos dois foi ajustado — a divergência está sendo mostrada como é.'}
+        {!haOQueProvar
+          ? 'Sem medida suficiente para conferir a soma: o total e as parcelas '
+            + 'estão desconhecidos. Ausência não é prova de igualdade.'
+          : divergiu
+            ? 'ATENÇÃO: a soma dos conjuntos não bate com o total da campanha. '
+              + 'Nenhum dos dois foi ajustado — a divergência está sendo mostrada como é.'
+            : `A soma dos ${conjuntos.length} conjuntos é exatamente o total da campanha`
+              + (gastoComparavel && receitaComparavel
+                  ? '.'
+                  : gastoComparavel
+                    ? ' no gasto; a receita ainda não tem medida para conferir.'
+                    : ' na receita; o gasto ainda não tem medida para conferir.')}
       </p>
       <FraseDaRazao razao={financeiro.razao} />
 

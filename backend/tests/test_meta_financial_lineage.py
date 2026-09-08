@@ -200,15 +200,35 @@ def test_conjunto_de_outra_campanha_nao_entra_no_total(monkeypatch):
     assert '41' not in str(r['conjuntos'])
 
 
-@pytest.mark.parametrize('mudanca', [
-    {'completo': False}, {'currency': 'USD'}, {'account_timezone': 'UTC'},
-])
-def test_gasto_incompleto_ou_incomparavel_nao_vira_total(monkeypatch, mudanca):
+def test_gasto_incompleto_nao_vira_total_completo(monkeypatch):
     banco = preparar(monkeypatch)
-    banco.tabelas['vw_trafego_meta_insight_latest'][0].update(mudanca)
+    banco.tabelas['vw_trafego_meta_insight_latest'][0].update({'completo': False})
     r = ler(banco)
     assert r['razao']['spend_completo'] is False
     assert 'INSIGHTS_DIARIOS_AUSENTES_PARCIAIS_OU_INCOMPATIVEIS' in r['impedimentos']
+
+
+@pytest.mark.parametrize('mudanca,codigo', [
+    ({'currency': 'USD'}, 'META_MOEDAS_MISTURADAS'),
+    ({'account_timezone': 'UTC'}, 'META_FUSOS_MISTURADOS'),
+])
+def test_parcelas_incomparaveis_sao_RECUSADAS_e_nao_apenas_sinalizadas(
+        monkeypatch, mudanca, codigo):
+    """Achado do revisor adversarial: sinalizar não basta.
+
+    A versão anterior carimbava a moeda da CONTA em toda linha, então
+    `_exigir_homogeneidade` nunca via a divergência: 6 USD + 4 BRL viravam
+    "10 BRL" com `completo=False` ao lado. Uma soma inválida marcada como
+    parcial continua sendo uma soma inválida — e os derivados (ROAS, lucro)
+    saíam dela como se fossem comparáveis.
+    """
+    banco = preparar(monkeypatch)
+    banco.tabelas['vw_trafego_meta_insight_latest'][0].update(mudanca)
+    r = ler(banco)
+    assert codigo in r['impedimentos']
+    assert r['estado'] == 'GRAO_INCOERENTE'
+    assert r['spend'] is None and r['revenue'] is None
+    assert r['profit_gross'] is None and r['roas_ratio'] is None
 
 
 def test_um_dia_sem_linha_de_insight_nao_vira_gasto_zero(monkeypatch):
@@ -286,10 +306,12 @@ def test_receita_nula_no_gam_nao_vira_receita_zero(monkeypatch):
     banco = preparar(monkeypatch)
     banco.tabelas['gam_metrics'][0]['revenue_converted'] = None
     r = ler(banco)
-    # A linha existe no GAM (associação conhecida) mas o valor é nulo: o total
-    # do que foi medido continua sendo o do outro conjunto, e a razão avisa.
+    # A linha existe no GAM (associação conhecida) mas o VALOR é nulo. O total
+    # do que foi medido continua sendo o do outro conjunto — e o total NÃO pode
+    # se declarar completo. Associação existir não é medida existir.
     assert r['revenue'] == 10
-    assert r['razao']['revenue_completo'] is True
+    assert r['razao']['revenue_completo'] is False
+    assert r['razao']['linhas_com_receita_nula'] == 1
     assert any(c['revenue_brl'] is None for c in r['conjuntos'])
 
 
@@ -300,6 +322,71 @@ def test_colisao_de_namespace_e_verificada_nos_conjuntos(monkeypatch):
     r = ler(banco)
     assert 'ADSET_ID_GAM_COM_NAMESPACE_NAO_UNIVOCO' in r['impedimentos']
     assert r['revenue'] is None and r['spend'] == 10
+
+
+class BancoQueCortaComoOPostgREST(Banco):
+    """O PostgREST do Supabase corta em `db-max-rows` e IGNORA um limit maior.
+
+    ⚠️ O `Banco` honesto dos outros testes obedece ao `limit` pedido, e por isso
+    NENHUM deles conseguia enxergar este defeito: pedir 4000 e receber 1000 sem
+    erro nenhum é o comportamento REAL do servidor, documentado em
+    `supabase_service.py:75-78`, e era assim que uma leitura truncada virava
+    "este conjunto/dia não tem receita".
+    """
+
+    TETO_DO_SERVIDOR = 1000
+
+    async def select(self, tabela, params):
+        linhas = await super().select(tabela, params)
+        return linhas[: self.TETO_DO_SERVIDOR]
+
+
+def test_leitura_truncada_pelo_servidor_nao_vira_ausencia_de_receita(monkeypatch):
+    """1000 conjuntos com linha; o servidor devolve 1000 e não avisa que cortou.
+
+    Antes da correção o pedido era `limit=4000` e a guarda conferia
+    `len(linhas) >= 4000` — que NUNCA acontecia, porque o servidor corta em
+    1000. As linhas que não vieram viravam `SEM_UTM_ADSET_NO_GAM`, ou seja:
+    leitura truncada apresentada como "este conjunto/dia não tem receita".
+    """
+    banco = preparar(monkeypatch)
+    banco.__class__ = BancoQueCortaComoOPostgREST
+    # 200 conjuntos (o teto) x 5 dias = 1000 linhas de grão: cabe no recorte,
+    # e é exatamente onde a página do servidor termina.
+    conjuntos = [str(500000 + i) for i in range(200)]
+    dias = [f'2026-09-0{n}' for n in range(2, 7)]
+    banco.tabelas['trafego_meta_adset'] = [
+        {'meta_adset_id': f's-a-{i}', 'meta_campaign_id': 'c-a-1',
+         'external_id': c, 'nome': f'c{i}', 'observado_em': '2026-09-06T10:00:00Z'}
+        for i, c in enumerate(conjuntos)]
+    banco.tabelas['vw_trafego_meta_insight_latest'] = [
+        _insight(c, '1', meta_insight_daily_id=f'i-{c}-{d}',
+                 periodo_inicio=d, periodo_fim=d)
+        for c in conjuntos for d in dias]
+    banco.tabelas['gam_metrics'] = [
+        _receita(c, '1', date=d) for c in conjuntos for d in dias]
+    r = ler(banco, inicio=date(2026, 9, 2), fim=date(2026, 9, 6))
+    # A resposta chegou CHEIA: pode estar truncada, e isso bloqueia o total.
+    assert 'INSIGHTS_TRUNCADOS_PELO_TETO' in r['impedimentos']
+    assert r['spend'] is None and r['revenue'] is None
+    # E o grão NEM CHEGA A SER MONTADO: `razao` fica None porque não houve soma.
+    # Este é o ponto — antes, o grão era montado sobre uma leitura truncada e as
+    # linhas que não vieram viravam `SEM_UTM_ADSET_NO_GAM`.
+    assert r['razao'] is None
+    assert r['conjuntos'] == []
+
+
+def test_recorte_maior_que_uma_pagina_e_recusado_antes_de_somar(monkeypatch):
+    """Mesmo com resposta curta, um recorte maior que a página não é confiável."""
+    banco = preparar(monkeypatch)
+    # 200 conjuntos x 92 dias = 18.400 linhas possíveis, muito além de uma página.
+    banco.tabelas['trafego_meta_adset'] += [
+        {'meta_adset_id': f's-a-{i}', 'meta_campaign_id': 'c-a-1',
+         'external_id': str(500000 + i), 'nome': f'c{i}',
+         'observado_em': '2026-09-06T10:00:00Z'} for i in range(150)]
+    r = ler(banco, inicio=date(2026, 6, 8), fim=date(2026, 9, 6))
+    assert 'RECORTE_MAIOR_QUE_UMA_PAGINA' in r['impedimentos']
+    assert r['spend'] is None
 
 
 def test_dias_faltantes_nao_viram_semana_completa(monkeypatch):

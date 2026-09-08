@@ -461,7 +461,7 @@ out.parametros = pag.parametros_graph;
 out.url_graph = pag.url_graph;
 
 const resposta = { ...pag, data: [{
-  account_id: 'act_1234567890', campaign_id: '111',
+  account_id: 'act_1234567890', campaign_id: '111', adset_id: '1111',
   date_start: pag.pedido.periodo_inicio, date_stop: pag.pedido.periodo_fim,
   spend: '10.50', impressions: '1000', clicks: '20',
   actions: [
@@ -470,7 +470,7 @@ const resposta = { ...pag, data: [{
   ],
   action_values: [{ action_type: 'purchase', value: '199.90' }],
 }, {
-  account_id: '1234567890', campaign_id: '222',
+  account_id: '1234567890', campaign_id: '222', adset_id: '2222',
   date_start: pag.pedido.periodo_inicio, date_stop: pag.pedido.periodo_fim,
   spend: '5', impressions: '', clicks: '0',
   actions: [{ action_type: 'landing_page_view' }],
@@ -643,7 +643,7 @@ function rodarPagina() {
   const c = m.find((x) => x.fuso_da_conta === 'America/Sao_Paulo');
   const pg = rodar('Pagina: preparar pedido', { entrada: [c], nos: { Config: cfg } })[0].json;
   const nm = rodar('Pagina: normalizar', { entrada: [{ ...pg, paging: {}, data: [{
-    account_id: 'act_1234567890', campaign_id: '111',
+    account_id: 'act_1234567890', campaign_id: '111', adset_id: '1111',
     date_start: pg.pedido.periodo_inicio, date_stop: pg.pedido.periodo_fim,
     spend: '10.50', impressions: '1000', clicks: '20',
     actions: [{ action_type: 'landing_page_view', value: '4' }] }] }] })[0].json;
@@ -859,7 +859,11 @@ def test_a_migration_de_escopo_destrava_os_tres_impedimentos(simulacao):
 
 def test_sim_o_pedido_leva_o_grao_inteiro_e_nada_que_nao_foi_pedido(simulacao):
     p = simulacao["parametros"]
-    assert p["level"] == "campaign"
+    # ⚠️ MUDOU EM 08/09/2026: o grão financeiro canônico é CONJUNTO/DIA, e o
+    # fluxo pede `adset`. Enquanto ele pedia `campaign`, o grão simplesmente
+    # não existia no banco — o schema já aceitava `adset`, o domínio já
+    # aceitava, e o JS deste fluxo já sabia extrair `linha.adset_id`.
+    assert p["level"] == "adset"
     assert p["time_increment"] == "1"
     assert p["action_report_time"] == "impression"
     assert p["time_range"] == '{"since":"2026-09-05","until":"2026-09-05"}'

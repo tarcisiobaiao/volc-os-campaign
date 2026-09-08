@@ -154,8 +154,32 @@ async def registrar(
         #
         # ⚠️ Aceitar bytes no JSON transformaria esta rota num proxy de upload
         # para qualquer coisa que o navegador quisesse mandar. O que o cliente
-        # manda é uma REFERÊNCIA a algo que já passou pelo intake privado, pelo
-        # gate de política e pela inspeção de bytes.
+        # manda é uma REFERÊNCIA a algo que já está sob a nossa custódia.
+        #
+        # ⚠️ CORREÇÃO DE UMA AFIRMAÇÃO FALSA (08/09/2026). Este comentário dizia
+        # que a peça "já passou pelo intake privado, pelo gate de política e
+        # pela inspeção de bytes". Para um master GERADO pelo Estúdio isso não
+        # é verdade: nem `criativos_agente.py` nem `criativo/execucao.py`
+        # importam `app.criativo.politica` — os únicos chamadores do gate são o
+        # caminho Google Ads (`trafego.py`) e o intake humano
+        # (`criativos_importacao.py`). Uma peça gerada chega aqui SEM avaliação
+        # de política de nenhum tipo, nem sequer bloqueada.
+        #
+        # O que esta rota DE FATO verifica, e é só isto:
+        #   1. host local (`_exigir_host_local`) e sessão admin;
+        #   2. conta confirmada e quantidade confirmada batem com o pedido;
+        #   3. a conta está liberada por `META_UPLOAD_ASSET_ENABLED`;
+        #   4. POSSE: master -> job -> `criativo_job.criado_por` é o ator;
+        #   5. os bytes lidos batem com o `content_sha256` gravado.
+        #
+        # O que ela NÃO verifica: avaliação de política e aprovação humana da
+        # peça. A garantia contra registrar patrimônio não-aprovado na conta do
+        # cliente é hoje ORGANIZACIONAL (host local + admin + flag por conta),
+        # não técnica. Está registrado em
+        # `docs/closure/meta-operations-v1-final-local/OPEN-RISKS.json`.
+        #
+        # Escrever aqui que o gate rodou seria pior do que a ausência do gate:
+        # a próxima pessoa confiaria na frase e pararia de procurar.
         pecas = await _carregar_pecas(payload.master_refs, ator=quem.sub)
 
         segredo = SegredoEfemero(_credencial_salva(quem).token)

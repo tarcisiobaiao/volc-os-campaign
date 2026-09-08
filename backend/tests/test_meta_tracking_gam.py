@@ -131,11 +131,18 @@ def test_readback_aceita_mesmos_parametros_em_ordem_diferente():
     }, payload={'url_tags': TRACKING_GAM_ADSET_ID}, identificador='77', ids={}, conta_externa='88')
 
 
-def test_readback_divergente_nao_reenvia_criacao():
-    """Divergência levanta — ela nunca vira "tenta de novo".
+def test_readback_divergente_levanta_em_vez_de_devolver_ok():
+    """⚠️ ESTE TESTE FOI RENOMEADO, e o nome antigo era a mentira.
 
-    Um retry aqui criaria um SEGUNDO criativo com o tracking certo, deixando o
-    primeiro vivo com o tracking errado na conta.
+    Ele se chamava `test_readback_divergente_nao_reenvia_criacao` e NÃO prova
+    isso: chama `_validar_read_back` direto, sem percorrer a saga, sem ledger e
+    sem contar POSTs. Se o executor passasse a capturar a divergência e
+    reenviar, este teste continuaria verde — achado do revisor adversarial.
+
+    O que ele prova de fato é o degrau anterior: a validação LEVANTA em vez de
+    devolver "ok". Quem prova a não-repetição do POST é
+    `test_meta_paused_birth.py::test_retomada_de_passo_criado_nao_repete_post_real`,
+    que percorre a saga inteira e conta as chamadas.
     """
     from app.trafego.meta_execucao.executor import ExecutorMetaPausado, ErroRemotoMeta
     with pytest.raises(ErroRemotoMeta) as erro:

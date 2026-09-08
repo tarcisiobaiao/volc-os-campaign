@@ -228,6 +228,22 @@ def carregado(cluster, golden):
     return linhas
 
 
+#: A janela do golden. Tudo o que os testes INSEREM para provar uma recusa vai
+#: para fora dela.
+#:
+#: ⚠️ POR QUE ISTO EXISTE. `20260907210000:496-511` instala gatilhos
+#: `BEFORE DELETE` e `BEFORE TRUNCATE` que RECUSAM remoção nas três tabelas de
+#: insight — o fato é um livro-razão, e livro-razão não se apaga. A primeira
+#: versão destes testes "limpava" com DELETE e não conferia o resultado: as
+#: limpezas falhavam em silêncio e a linha adversarial de um teste vazava para
+#: o total do seguinte. O schema estava certo; os testes é que supunham poder
+#: desfazer o que gravaram.
+GOLDEN_INICIO, GOLDEN_FIM = "2026-08-09", "2026-08-25"
+NA_JANELA_DO_GOLDEN = f"date BETWEEN '{GOLDEN_INICIO}' AND '{GOLDEN_FIM}'"
+#: Data fora da janela, para as linhas adversariais que não podem ser removidas.
+DIA_DE_PROVA = "2026-07-15"
+
+
 def _consultar(cluster, consulta: str) -> list[list[str]]:
     r = subprocess.run(["psql", "-X", "-q", "-t", "-A", "-F", "|", "-v", "ON_ERROR_STOP=1",
                         "-c", consulta], env=cluster["env"], capture_output=True, text=True)
@@ -253,7 +269,7 @@ def test_o_sql_e_o_python_somam_o_mesmo_total(cluster, carregado):
     em_python = totalizar(carregado)
     em_sql = _consultar(cluster,
         "SELECT sum(spend)::text, sum(impressions)::text, sum(clicks)::text "
-        "FROM public.vw_trafego_meta_financeiro_conjunto_dia;")[0]
+        f"FROM public.vw_trafego_meta_financeiro_conjunto_dia WHERE {NA_JANELA_DO_GOLDEN};")[0]
     assert Decimal(em_sql[0]) == em_python.spend == Decimal("1029.410000")
     assert int(em_sql[1]) == em_python.impressions == 234333
     assert int(em_sql[2]) == em_python.clicks == 18961
@@ -299,7 +315,7 @@ def test_a_leitura_campaign_level_nao_entra_na_view_de_grao(cluster, carregado):
     """A trava contra o double count, em SQL."""
     antes = Decimal(_consultar(cluster,
         "SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia;")[0][0])
-    cluster["sql"](
+    r = cluster["sql"](
         "INSERT INTO public.trafego_meta_insight_daily "
         "(meta_insight_daily_id, ad_account_ativo_id, provider, conta_externa, nivel, objeto_externo,"
         " periodo_inicio, periodo_fim, janela_atribuicao, breakdown, time_increment,"
@@ -307,6 +323,14 @@ def test_a_leitura_campaign_level_nao_entra_na_view_de_grao(cluster, carregado):
         f" VALUES ('ins-campaign-level', '{ATIVO}', 'META_ADS', '{CONTA}', 'campaign',"
         f" '{carregado[0].campaign_id}', '{carregado[0].date}', '{carregado[0].date}', 'default',"
         " 'none', '1', 'impression', true, 'BRL', 'America/Sao_Paulo', '2026-09-01T00:00:00Z', 99999);")
+    # ⚠️ Achado do revisor adversarial: sem esta conferência, um INSERT que
+    # falhasse por constraint deixaria o teste VERDE sem nenhuma parcela
+    # campaign-level presente — provando que a trava funciona contra nada.
+    assert r.returncode == 0, r.stderr[-800:]
+    presente = _consultar(cluster,
+        "SELECT count(*)::text FROM public.trafego_meta_insight_daily "
+        "WHERE meta_insight_daily_id = 'ins-campaign-level';")
+    assert int(presente[0][0]) == 1, "a parcela adversarial precisa existir de fato"
     depois = Decimal(_consultar(cluster,
         "SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia;")[0][0])
     assert depois == antes, "uma linha campaign-level não pode entrar no grão de conjunto"
@@ -329,6 +353,109 @@ def test_uma_parcela_nula_torna_o_total_da_campanha_nulo(cluster, carregado):
         "FROM public.vw_trafego_meta_financeiro_campanha_dia WHERE date = '2026-07-01';")[0]
     assert linha[0] == "NULO", "gasto desconhecido não pode virar total conhecido"
     cluster["sql"]("DELETE FROM public.trafego_meta_insight_daily WHERE meta_insight_daily_id = 'ins-sem-gasto';")
+
+
+def test_duas_contas_gam_no_mesmo_conjunto_dia_nao_duplicam_o_gasto(cluster, carregado):
+    """O defeito que o revisor adversarial encontrou, virado teste.
+
+    `gam_metrics` e chaveada por (gam_accounts_id, utm_campaign_value, date).
+    Com um LEFT JOIN simples por (adset_id, date), DUAS contas GAM com o mesmo
+    id de conjunto no mesmo dia produziam DUAS linhas para o mesmo conjunto/dia
+    — e qualquer `sum(spend)` sobre a view contava o gasto daquele conjunto
+    DUAS VEZES. Um defeito de receita virava um defeito de GASTO, que e pior:
+    o gasto nao depende do GAM para existir.
+    """
+    alvo = carregado[0]
+    antes = _consultar(cluster,
+        "SELECT count(*)::text, sum(spend)::text "
+        "FROM public.vw_trafego_meta_financeiro_conjunto_dia_gam;")[0]
+    cluster["sql"](
+        "INSERT INTO public.gam_metrics (gam_accounts_id, utm_campaign_value, date,"
+        f" revenue, revenue_converted, updated_at) VALUES (99, '{alvo.adset_id}',"
+        f" '{alvo.date}', 777, 3888, '2026-09-01T00:00:00Z');")
+    depois = _consultar(cluster,
+        "SELECT count(*)::text, sum(spend)::text "
+        "FROM public.vw_trafego_meta_financeiro_conjunto_dia_gam;")[0]
+    assert depois[0] == antes[0], "uma segunda conta GAM nao pode criar uma segunda linha"
+    assert Decimal(depois[1]) == Decimal(antes[1]), "o gasto nao pode contar duas vezes"
+
+    linha = _consultar(cluster,
+        "SELECT mapping_status, coalesce(gam_revenue_brl::text,'NULO'),"
+        " coalesce(attribution_method,'NULO'), spend::text"
+        " FROM public.vw_trafego_meta_financeiro_conjunto_dia_gam"
+        f" WHERE adset_id = '{alvo.adset_id}' AND date = '{alvo.date}';")[0]
+    assert linha[0] == "GAM_AMBIGUO_MULTIPLAS_CONTAS"
+    assert linha[1] == "NULO", "ambiguidade nao vira zero nem 'a primeira que apareceu'"
+    assert linha[2] == "NULO"
+    assert Decimal(linha[3]) == alvo.spend, "o gasto sobrevive a ambiguidade da receita"
+
+    cluster["sql"]("DELETE FROM public.gam_metrics WHERE gam_accounts_id = 99;")
+
+
+def test_moedas_diferentes_no_mesmo_dia_nao_viram_um_total(cluster, carregado):
+    """Achado do revisor adversarial: `min()` escolhia um rótulo e somava.
+
+    6 USD + 4 BRL viravam "10 BRL" com `completo=true` ao lado.
+    """
+    alvo = carregado[0]
+    # Um conjunto NOVO da mesma campanha, medido em USD no mesmo dia. Precisa
+    # ser outro conjunto: o grão é único por (conjunto, dia, observado_em), e a
+    # view `latest` guarda uma revisão só — duas moedas no MESMO conjunto/dia
+    # seriam duas revisões, não duas parcelas.
+    r = cluster["sql"](
+        "INSERT INTO public.trafego_meta_adset (meta_adset_id, meta_campaign_id, external_id,"
+        " nome, observado_em, ultima_vez_visto_em) SELECT "
+        "'00000000-0000-0000-0003-000000000001', meta_campaign_id, '888888888888888',"
+        " 'conjunto em USD', now(), now() FROM public.trafego_meta_campaign "
+        f"WHERE external_id = '{alvo.campaign_id}';")
+    assert r.returncode == 0, r.stderr[-800:]
+    # Uma parcela BRL e uma USD no MESMO dia da mesma campanha.
+    r = cluster["sql"](
+        "INSERT INTO public.trafego_meta_insight_daily "
+        "(meta_insight_daily_id, ad_account_ativo_id, provider, conta_externa, nivel, objeto_externo,"
+        " periodo_inicio, periodo_fim, janela_atribuicao, breakdown, time_increment,"
+        " action_report_time, completo, currency, account_timezone, observado_em, spend, impressions, clicks)"
+        f" VALUES ('ins-usd', '{ATIVO}', 'META_ADS', '{CONTA}', 'adset',"
+        f" '888888888888888', '{DIA_DE_PROVA}', '{DIA_DE_PROVA}', 'default', 'none', '1',"
+        " 'impression', true, 'USD', 'America/Sao_Paulo', '2026-09-01T00:00:00Z', 6, 1, 1),"
+        f" ('ins-brl', '{ATIVO}', 'META_ADS', '{CONTA}', 'adset',"
+        f" '{alvo.adset_id}', '{DIA_DE_PROVA}', '{DIA_DE_PROVA}', 'default', 'none', '1',"
+        " 'impression', true, 'BRL', 'America/Sao_Paulo', '2026-09-01T00:00:00Z', 4, 1, 1);")
+    assert r.returncode == 0, r.stderr[-800:]
+    linha = _consultar(cluster,
+        "SELECT coalesce(spend::text,'NULO'), moedas_no_dia::text, completo::text "
+        "FROM public.vw_trafego_meta_financeiro_campanha_dia "
+        f"WHERE campaign_id = '{alvo.campaign_id}' AND date = '{DIA_DE_PROVA}';")[0]
+    assert linha[1] == "2", "o dia precisa enxergar as duas moedas"
+    assert linha[0] == "NULO", "somar moedas diferentes não pode produzir total"
+    assert linha[2] == "false"
+    # Sem limpeza: o gatilho `_sem_delete` recusa remoção, e a data de prova
+    # está fora da janela do golden justamente para não precisar dela.
+
+
+def test_conjunto_conhecido_sem_insight_nao_fica_invisivel(cluster, carregado):
+    """Achado do revisor adversarial: a completude só via os insights EXISTENTES."""
+    alvo = carregado[0]
+    r = cluster["sql"](
+        "INSERT INTO public.trafego_meta_adset (meta_adset_id, meta_campaign_id, external_id,"
+        " nome, observado_em, ultima_vez_visto_em) SELECT "
+        "'00000000-0000-0000-0002-000000000001', meta_campaign_id, '999999999999999',"
+        " 'orfao', now(), now() FROM public.trafego_meta_campaign "
+        f"WHERE external_id = '{alvo.campaign_id}';")
+    assert r.returncode == 0, r.stderr[-800:]
+    linha = _consultar(cluster,
+        "SELECT conjuntos_no_dia::text, conjuntos_conhecidos_na_campanha::text, completo::text "
+        "FROM public.vw_trafego_meta_financeiro_campanha_dia "
+        f"WHERE campaign_id = '{alvo.campaign_id}' AND date = '{alvo.date}';")[0]
+    assert int(linha[1]) > int(linha[0]), "a campanha conhece mais conjuntos do que mediu"
+    assert linha[2] == "false", "com filho sem medida o dia NÃO é completo"
+    # ⚠️ Não se apaga: `trafego_meta_adset_sem_delete` recusa remoção. A saída
+    # honesta é a que o próprio schema oferece — marcar AUSENTE, que é o estado
+    # que a view já filtra.
+    limpou = cluster["sql"](
+        "UPDATE public.trafego_meta_adset SET ausente_desde = now(),"
+        " ausencia_causa = 'nao_encontrada' WHERE external_id = '999999999999999';")
+    assert limpou.returncode == 0, limpou.stderr[-400:]
 
 
 def test_alcance_nao_soma_no_rollup(cluster, carregado):
@@ -383,7 +510,8 @@ def test_service_role_le_mas_nao_escreve_na_view(cluster, carregado):
 
 def test_leitura_concorrente_do_grao_devolve_o_mesmo_total(cluster, carregado):
     """Duas sessões simultâneas leem o mesmo total — a view não guarda estado."""
-    consulta = ("SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia;")
+    consulta = ("SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia"
+                f" WHERE {NA_JANELA_DO_GOLDEN};")
     processos = [
         subprocess.Popen(["psql", "-X", "-q", "-t", "-A", "-c", consulta],
                          env=cluster["env"], stdout=subprocess.PIPE, text=True)
@@ -410,7 +538,8 @@ def test_ciclo_rollback_e_reapply_preserva_o_fato(cluster, carregado):
     r = cluster["arquivo"](CANDIDATA)
     assert r.returncode == 0, r.stderr[-800:]
     total = _consultar(cluster,
-        "SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia;")
+        "SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia"
+        f" WHERE {NA_JANELA_DO_GOLDEN};")
     assert Decimal(total[0][0]) == Decimal("1029.410000"), "reapply precisa devolver a mesma conta"
 
 
@@ -420,5 +549,6 @@ def test_replay_da_migration_por_cima_e_idempotente(cluster, carregado):
     r = cluster["arquivo"](CANDIDATA)
     assert r.returncode == 0, r.stderr[-800:]
     total = _consultar(cluster,
-        "SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia;")
+        "SELECT sum(spend)::text FROM public.vw_trafego_meta_financeiro_conjunto_dia"
+        f" WHERE {NA_JANELA_DO_GOLDEN};")
     assert Decimal(total[0][0]) == Decimal("1029.410000")

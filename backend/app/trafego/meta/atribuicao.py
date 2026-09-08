@@ -376,6 +376,10 @@ class RazaoDaSoma:
     linhas_atribuidas: int
     linhas_sem_utm: int
     linhas_sem_leitura_gam: int
+    #: Linhas cujo conjunto/dia ESTÁ no GAM mas cujo valor de receita é nulo.
+    #: Associação conhecida, medida ausente — e é por isso que ela não pode
+    #: deixar o total se declarar completo.
+    linhas_com_receita_nula: int
     linhas_sem_entrega: int
     spend_completo: bool
     revenue_completo: bool
@@ -389,6 +393,7 @@ class RazaoDaSoma:
             "linhas_atribuidas": self.linhas_atribuidas,
             "linhas_sem_utm": self.linhas_sem_utm,
             "linhas_sem_leitura_gam": self.linhas_sem_leitura_gam,
+            "linhas_com_receita_nula": self.linhas_com_receita_nula,
             "linhas_sem_entrega": self.linhas_sem_entrega,
             "spend_completo": self.spend_completo,
             "revenue_completo": self.revenue_completo,
@@ -461,7 +466,7 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
             clicks=None, gam_impressions=None, gam_clicks=None, reach=None,
             ctr=None, cpc=None, roas_ratio=None, profit_gross=None,
             retorno_excedente_pct=None, currency=None, timezone=None,
-            razao=RazaoDaSoma(0, 0, 0, 0, 0, 0, 0, 0, False, False),
+            razao=RazaoDaSoma(0, 0, 0, 0, 0, 0, 0, 0, 0, False, False),
             source_freshness=None, revenue_freshness=None)
 
     _exigir_homogeneidade(linhas)
@@ -478,6 +483,9 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
     sem_utm = sum(1 for l in linhas if l.mapping_status == SEM_UTM_ADSET_NO_GAM)
     sem_leitura = sum(1 for l in linhas if l.mapping_status == SEM_LEITURA_GAM)
     atribuidas = sum(1 for l in linhas if l.mapping_status == ATRIBUIDO_VIA_ADSET)
+    com_receita_nula = sum(1 for l in linhas
+                           if l.mapping_status == ATRIBUIDO_VIA_ADSET
+                           and l.gam_revenue_brl is None)
     razao = RazaoDaSoma(
         conjuntos=len({l.adset_id for l in linhas}),
         dias=len({l.date for l in linhas}),
@@ -487,14 +495,25 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
         linhas_atribuidas=atribuidas,
         linhas_sem_utm=sem_utm,
         linhas_sem_leitura_gam=sem_leitura,
+        linhas_com_receita_nula=com_receita_nula,
         linhas_sem_entrega=sum(1 for l in linhas if not l.tem_entrega),
         spend_completo=spend is not None and all(l.completo for l in linhas),
         # Receita só é completa quando NENHUMA linha do grão ficou sem receita.
         # Um conjunto/dia sem UTM no GAM é associação desconhecida: ele mantém o
         # total honesto porque aparece na razão, mas não deixa o total
         # "completo" — e essa distinção é por DIA, não por conjunto.
+        # ⚠️ `linhas_com_receita_nula` entrou em 08/09/2026, por achado do
+        # revisor adversarial. A versão anterior olhava só os ESTADOS de
+        # mapeamento: uma linha `ATRIBUIDO_VIA_ADSET` cujo valor de receita
+        # viesse NULL (ou NaN, que `_decimal` também vira None) saía da soma
+        # por `_somar_ignorando_ausentes` e AINDA ASSIM deixava
+        # `revenue_completo=True`. Dois conjuntos com receitas NULL e 10
+        # devolviam receita 10 declarada completa — um total parcial vestido
+        # de total inteiro, que é exatamente o que este contrato existe para
+        # impedir. A associação existir não é a medida existir.
         revenue_completo=(
             revenue_brl is not None and not sem_leitura and not sem_utm
+            and not com_receita_nula
             and all(l.completo for l in linhas)),
     )
 

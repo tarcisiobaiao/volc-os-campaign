@@ -176,29 +176,57 @@ SELECT
   g.ad_account_ativo_id,
   g.account_external_id,
   g.campaign_id,
+  g.meta_campaign_id,
   g.date,
   'campaign_rollup_de_adset'::text AS metric_scope,
   'meta-atribuicao-adset-v1'::text AS metric_version,
+  -- ⚠️ `min()` SO e legitimo porque a soma e RECUSADA quando ha mais de uma
+  -- moeda ou mais de um fuso. Sem essa recusa, `min()` ESCOLHIA um rotulo:
+  -- 6 USD + 4 BRL viravam "10 BRL", com `completo=true` ao lado. Achado do
+  -- revisor adversarial.
   min(g.currency)                  AS currency,
   min(g.timezone)                  AS timezone,
+  count(DISTINCT g.currency)       AS moedas_no_dia,
+  count(DISTINCT g.timezone)       AS fusos_no_dia,
   count(*)                         AS conjuntos_no_dia,
   count(*) FILTER (WHERE NOT g.completo) AS linhas_incompletas,
   -- Uma parcela desconhecida torna o total desconhecido. `sum()` do Postgres
   -- IGNORA NULL, o que produziria um total que PARECE completo e nao e — por
-  -- isso o total so existe quando nenhuma parcela e nula.
+  -- isso o total so existe quando nenhuma parcela e nula. E ele tambem nao
+  -- existe quando as parcelas nao sao comparaveis entre si.
   CASE WHEN count(*) FILTER (WHERE g.spend IS NULL) = 0
+        AND count(DISTINCT g.currency) <= 1
+        AND count(DISTINCT g.timezone) <= 1
        THEN sum(g.spend) END       AS spend,
   CASE WHEN count(*) FILTER (WHERE g.impressions IS NULL) = 0
+        AND count(DISTINCT g.timezone) <= 1
        THEN sum(g.impressions) END AS impressions,
   CASE WHEN count(*) FILTER (WHERE g.clicks IS NULL) = 0
+        AND count(DISTINCT g.timezone) <= 1
        THEN sum(g.clicks) END      AS clicks,
   -- Alcance nao soma. NULL explicito, e o comentario da view diz por que.
   NULL::bigint                     AS reach,
-  bool_and(g.completo)             AS completo,
+  -- ⚠️ `conjuntos_conhecidos_na_campanha` entrou por achado do revisor
+  -- adversarial: a completude olhava so os insights QUE EXISTEM, entao uma
+  -- campanha com dois conjuntos conhecidos e insight de um so reportava
+  -- "1 conjunto, gasto 10, completo=true" — o filho sem medida era invisivel.
+  -- O caminho Python, que parte dos filhos CONHECIDOS, devolveria gasto
+  -- desconhecido. Agora a view expoe os dois numeros e `completo` exige que
+  -- eles batam.
+  (SELECT count(*) FROM public.trafego_meta_adset s2
+    WHERE s2.meta_campaign_id = g.meta_campaign_id
+      AND s2.ausente_desde IS NULL)  AS conjuntos_conhecidos_na_campanha,
+  (bool_and(g.completo)
+   AND count(DISTINCT g.currency) <= 1
+   AND count(DISTINCT g.timezone) <= 1
+   AND count(*) = (SELECT count(*) FROM public.trafego_meta_adset s3
+                    WHERE s3.meta_campaign_id = g.meta_campaign_id
+                      AND s3.ausente_desde IS NULL)) AS completo,
   min(g.source_freshness)          AS source_freshness,
   'META_ADS'::text                 AS source
 FROM public.vw_trafego_meta_financeiro_conjunto_dia g
-GROUP BY g.ad_account_ativo_id, g.account_external_id, g.campaign_id, g.date;
+GROUP BY g.ad_account_ativo_id, g.account_external_id, g.campaign_id,
+         g.meta_campaign_id, g.date;
 
 COMMENT ON VIEW public.vw_trafego_meta_financeiro_campanha_dia IS
   'Campanha/dia = SOMA dos conjuntos filhos daquele dia, e nada mais. Le apenas vw_trafego_meta_financeiro_conjunto_dia; nao alcanca nivel=campaign. Uma parcela NULL torna o total NULL — sum() ignoraria o NULL e devolveria um total que parece completo. reach e NULL de proposito: alcance nao soma.';
@@ -226,27 +254,58 @@ BEGIN
     SELECT
       g.*,
       m.gam_accounts_id,
-      m.revenue                AS gam_revenue_original,
-      m.revenue_converted      AS gam_revenue_brl,
-      m.updated_at             AS revenue_freshness,
+      -- Ambiguidade NAO vira zero e NAO vira "a primeira que apareceu": vira
+      -- ausencia declarada, com o estado ao lado dizendo por que.
+      CASE WHEN coalesce(m.n_contas, 1) = 1 THEN m.revenue END           AS gam_revenue_original,
+      CASE WHEN coalesce(m.n_contas, 1) = 1 THEN m.revenue_converted END AS gam_revenue_brl,
+      CASE WHEN coalesce(m.n_contas, 1) = 1 THEN m.updated_at END        AS revenue_freshness,
       CASE
-        WHEN m.utm_campaign_value IS NOT NULL THEN 'FATURAMENTO_ATRIBUIDO_VIA_ADSET'
-        ELSE 'SEM_UTM_ADSET_NO_GAM'
+        WHEN m.utm_campaign_value IS NULL          THEN 'SEM_UTM_ADSET_NO_GAM'
+        WHEN coalesce(m.n_contas, 1) > 1           THEN 'GAM_AMBIGUO_MULTIPLAS_CONTAS'
+        ELSE 'FATURAMENTO_ATRIBUIDO_VIA_ADSET'
       END                      AS mapping_status,
       CASE
-        WHEN m.utm_campaign_value IS NOT NULL THEN 'GAM.utm_campaign_value = adset_id'
+        WHEN m.utm_campaign_value IS NOT NULL AND coalesce(m.n_contas, 1) = 1
+        THEN 'GAM.utm_campaign_value = adset_id'
       END                      AS attribution_method,
       -- Cambio DERIVADO da propria linha, para AUDITAR a conversao que a fonte
       -- ja fez. Nunca para fazer uma conversao que a fonte nao fez.
-      CASE WHEN m.revenue IS NOT NULL AND m.revenue <> 0 AND m.revenue_converted IS NOT NULL
+      CASE WHEN coalesce(m.n_contas, 1) = 1 AND m.revenue IS NOT NULL
+                AND m.revenue <> 0 AND m.revenue_converted IS NOT NULL
            THEN m.revenue_converted / m.revenue END AS fx_rate
     FROM public.vw_trafego_meta_financeiro_conjunto_dia g
-    -- LEFT JOIN de proposito: um conjunto/dia sem linha no GAM continua
-    -- existindo com o gasto dele. Um INNER JOIN faria o conjunto SUMIR, e o
-    -- total do gasto encolheria em silencio.
-    LEFT JOIN public.gam_metrics m
-      ON m.utm_campaign_value = g.adset_id
-     AND m.date = g.date
+    -- LEFT JOIN LATERAL, e o LATERAL e a correcao de um defeito de DUPLICACAO.
+    --
+    -- ⚠️ A primeira versao era um LEFT JOIN simples por (adset_id, date). Como
+    -- `gam_metrics` e chaveada por (gam_accounts_id, utm_campaign_value, date),
+    -- DUAS contas GAM com o mesmo id de conjunto no mesmo dia produziam DUAS
+    -- linhas para o mesmo conjunto/dia — e qualquer `sum(spend)` sobre a view
+    -- contava o gasto daquele conjunto DUAS VEZES. Um defeito de receita virava
+    -- um defeito de gasto, que e pior: o gasto nao depende do GAM para existir.
+    --
+    -- O LATERAL com LIMIT garante NO MAXIMO uma linha por conjunto/dia, entao o
+    -- gasto e sempre contado uma vez so. E a ambiguidade nao vira escolha
+    -- arbitraria: quando ha mais de uma conta GAM candidata, `n_contas > 1` e a
+    -- receita sai NULL com `mapping_status = 'GAM_AMBIGUO_MULTIPLAS_CONTAS'`.
+    -- Escolher uma das contas seria inventar de quem e o dinheiro.
+    --
+    -- O escopo por conta GAM (via vinculo de projeto) continua sendo
+    -- responsabilidade de quem consulta; esta view apenas se recusa a
+    -- responder quando o escopo nao foi aplicado e a resposta seria ambigua.
+    LEFT JOIN LATERAL (
+      SELECT
+        count(*) OVER ()            AS n_contas,
+        x.gam_accounts_id,
+        x.utm_campaign_value,
+        x.revenue,
+        x.revenue_converted,
+        x.updated_at
+      FROM public.gam_metrics x
+      WHERE x.utm_campaign_value = g.adset_id
+        AND x.date = g.date
+      ORDER BY x.gam_accounts_id
+      LIMIT 1
+    ) m ON true
   $sql$;
 
   EXECUTE 'COMMENT ON VIEW public.vw_trafego_meta_financeiro_conjunto_dia_gam IS '

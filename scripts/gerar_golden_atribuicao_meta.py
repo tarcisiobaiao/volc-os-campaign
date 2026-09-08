@@ -73,9 +73,36 @@ def distribuir(total: Decimal, pesos: list[Decimal], casas: Decimal) -> list[Dec
     único jeito de descer de grão sem que a soma deixe de fechar — e a soma
     fechar é justamente o que o golden precisa provar.
     """
+    # ⚠️ PRECONDIÇÕES EXPLÍCITAS, por achado do revisor adversarial.
+    #
+    # A promessa "a soma das parcelas é EXATAMENTE o total" só vale para
+    # entradas que o algoritmo sabe cumprir, e a versão anterior aceitava
+    # calada entradas que ela não cumpria:
+    #
+    #   total=-0.01, pesos [1,1] -> AssertionError (ROUND_DOWN aproxima de zero
+    #                               e o laço só corrige falta POSITIVA);
+    #   total=0.001 com passo 0.01 -> AssertionError (o total não é
+    #                               representável na granularidade pedida);
+    #   pesos=[]   -> devolvia [] e soma 0, perdendo o total em silêncio.
+    #
+    # Nenhum desses casos ocorre no golden (todos os valores do CSV são não
+    # negativos e alinhados ao passo), mas uma função cuja promessa é maior do
+    # que sua garantia é uma armadilha para o próximo uso. Agora ela RECUSA em
+    # vez de mentir.
     n = len(pesos)
     if n == 0:
+        if total != 0:
+            raise ValueError(
+                f"não há como distribuir {total} entre zero parcelas sem perder o total")
         return []
+    if total < 0:
+        raise ValueError(
+            "distribuir() só conserva a soma para totais não negativos; "
+            f"recebeu {total}")
+    if total != total.quantize(casas):
+        raise ValueError(
+            f"o total {total} não é representável na granularidade {casas}; "
+            "distribuir() não pode fechar a soma")
     if total == 0:
         return [Decimal(0)] * n
     soma_pesos = sum(pesos)
