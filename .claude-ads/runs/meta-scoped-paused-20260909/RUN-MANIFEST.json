@@ -1,0 +1,20 @@
+{
+  "run_id": "meta-scoped-paused-20260909",
+  "status": "needs_input",
+  "authority": "User authorizes release and PAUSED creation restricted to the referenced draft; no activation or other drafts",
+  "scope": "Existing draft preflight and narrowly scoped creation permission",
+  "data_classification": "Sanitized engineering evidence only; no credentials or account exports",
+  "retention": "Engineering evidence retained with repository; no raw account payload artifact",
+  "owner": "VOLC operator",
+  "external_actions": [],
+  "evidence": {
+    "official_database_read_only": true,
+    "draft_version": 9,
+    "destination_needs_confirmation": true,
+    "measurement_source_missing": true,
+    "scheduled_start_in_past": true,
+    "permission_configuration_changed": false,
+    "meta_creation_called": false
+  },
+  "next_input": "Operator must identify the final destination, pixel/dataset for CONTENT_VIEW and intended start time. Authorization remains limited to the referenced draft and PAUSED state."
+}

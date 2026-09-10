@@ -24,6 +24,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -308,6 +309,26 @@ def test_com_anexo_usa_edits_com_multipart_e_os_bytes_do_anexo():
     assert chamada["url"] == "https://api.openai.com/v1/images/edits"
     assert chamada["arquivos"][0].conteudo == foto.conteudo
     assert chamada["campos"]["quality"] == QUALIDADE
+
+
+def test_inspiracao_visual_chega_ao_provider_sem_instruir_copia_da_marca():
+    foto = ImagemDeReferencia("referencia.png", _png(300, 400), "image/png")
+    transporte = TransporteFalso()
+    motor = MotorOpenAIImagem(chave="x", transporte=transporte)
+    assert motor.aceita_referencia is True
+    pedido = replace(_pedido(referencias=(foto,)),
+                     contexto={"modo_de_composicao": "referencia_visual"})
+    _rodar(motor, pedido)
+    chamada = transporte.chamadas[0]
+    assert chamada["url"].endswith("/images/edits")
+    assert chamada["campos"]["model"] == "gpt-image-2"
+    assert chamada["campos"]["quality"] == "medium"
+    assert chamada["arquivos"][0].conteudo == foto.conteudo
+    prompt = chamada["campos"]["prompt"]
+    assert "inspira somente estilo, paleta e composição" in prompt
+    assert "nunca o texto da referência" in prompt
+    assert "material de referência da marca" not in prompt
+    assert "Sem texto, sem letras" not in prompt
 
 
 def test_anexo_acima_do_teto_do_provider_e_recusa_permanente_sem_chamada():

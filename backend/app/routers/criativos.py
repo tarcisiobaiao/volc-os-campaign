@@ -787,6 +787,56 @@ async def obter_asset(
     }
 
 
+@router.delete("/assets/{asset_id}", status_code=200)
+async def arquivar_asset(
+    asset_id: str,
+    identidade: Identidade = Depends(exigir_usuario),
+    repo: Repositorio = Depends(obter_repo),
+) -> dict[str, Any]:
+    """Retira o ativo da biblioteca sem destruir a prova que o originou."""
+    asset_id = _uuid_ou_404(asset_id, "asset")
+    master = await _ou_503(
+        repo.buscar_master_do_dono(asset_id, criado_por=identidade.sub)
+    )
+    if master is None or master.get("arquivado_em"):
+        raise _falha("ESTUDIO.asset_inexistente", "Este ativo não existe.", 404)
+
+    vigentes = await _ou_503(repo.aprovacoes_vigentes_de([asset_id]))
+    vigente = vigentes.get(asset_id)
+    if vigente and vigente.get("decisao") == "aprovado":
+        raise _falha(
+            "ESTUDIO.asset_aprovado",
+            "Esta peça está aprovada. Revogue a aprovação antes de excluí-la da biblioteca.",
+            409,
+        )
+    try:
+        arquivado = await repo.arquivar_master_do_dono(
+            asset_id, criado_por=identidade.sub
+        )
+    except ErroDePersistencia as exc:
+        # O gatilho ainda arbitra uma aprovação criada na janela entre a leitura
+        # acima e o PATCH. Não exponha a mensagem SQL, mas preserve a semântica.
+        vigentes = await _ou_503(repo.aprovacoes_vigentes_de([asset_id]))
+        if vigentes.get(asset_id, {}).get("decisao") == "aprovado":
+            raise _falha(
+                "ESTUDIO.asset_aprovado",
+                "Esta peça foi aprovada enquanto você a revisava. Revogue a aprovação antes de excluí-la.",
+                409,
+            ) from exc
+        raise _falha(
+            "ESTUDIO.indisponivel",
+            "Não foi possível excluir a peça agora. Ela continua na biblioteca.",
+            503,
+        ) from exc
+    if arquivado is None:
+        raise _falha("ESTUDIO.asset_inexistente", "Este ativo não existe.", 404)
+    return {
+        "assetId": asset_id,
+        "estado": "arquivado",
+        "historicoPreservado": True,
+    }
+
+
 @router.post("/assets/{asset_id}/aprovacoes")
 async def aprovar(
     asset_id: str,
@@ -1104,6 +1154,22 @@ async def _job_dto(
     repo: Repositorio, assinador: Assinador, job: dict[str, Any], *, cursor: int | None = None
 ) -> dict[str, Any]:
     renditions = await _ou_503(repo.renditions_do_job(str(job["id"])))
+    ids_de_master = [str(r["master_id"]) for r in renditions if r.get("master_id")]
+    if ids_de_master:
+        masters = await _ou_503(
+            repo.masters_do_dono_por_ids(ids_de_master, criado_por=str(job["criado_por"]))
+        )
+        arquivados = {
+            str(master["id"])
+            for master in masters
+            if master.get("arquivado_em") is not None
+        }
+        renditions = [
+            rendition
+            for rendition in renditions
+            if not rendition.get("master_id")
+            or str(rendition["master_id"]) not in arquivados
+        ]
     seq = cursor if cursor is not None else await _ou_503(repo.ultimo_seq(str(job["id"])))
     briefing = await _ou_503(repo.buscar_briefing(str(job["briefing_id"])))
     projeto_titulo = ""

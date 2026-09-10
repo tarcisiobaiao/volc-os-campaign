@@ -1,0 +1,126 @@
+{
+  "slice": "followup-2",
+  "created_at": "2026-09-10T11:47:53.453804+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested": true,
+  "files": [
+    {
+      "path": "backend/app/criativo/execucao.py",
+      "start": 549,
+      "end": 637,
+      "sha256": "90cacaddc6a72d199d9eb9f90d7be526e94c4751d20cab8c962ca98b7b61eb38"
+    },
+    {
+      "path": "backend/app/trafego/meta_execucao/publicos.py",
+      "start": 209,
+      "end": 278,
+      "sha256": "e349a3eca9b2461691b36a1624cf545ddffcc9938d1f8159e8e3989b08e681d0"
+    },
+    {
+      "path": "src/pages/trafego/MetaCriacaoPage.tsx",
+      "start": 977,
+      "end": 1035,
+      "sha256": "e1bda0ed4d0a42e69317e4717e22656811dd1252cfad632b4e39e17599707f5f"
+    }
+  ],
+  "input_sha256": "ce9386de2747bec186da50ae98b2ea15fe367fc92896a1a362acf0d458325f33",
+  "status": "review_received",
+  "calls_attempted": 1,
+  "billing": "unknown unless provider supplies usage",
+  "modelVersion": "gemini-3.8-flash",
+  "model_verified": true,
+  "usage": {
+    "promptTokenCount": 47455,
+    "candidatesTokenCount": 641,
+    "totalTokenCount": 98535,
+    "cachedContentTokenCount": 18447,
+    "thoughtsTokenCount": 50439
+  },
+  "grounding": {
+    "webSearchQueries": [
+      "site:developers.facebook.com custom conversion \"is_unavailable\"",
+      "\"customconversion\" \"event_source_id\" facebook graph api"
+    ],
+    "groundingChunks": [
+      {
+        "web": {
+          "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEKTwBOUQ5HNXRMa27cjucg4JlOWlMqk3OrpK7M0MNGncjT6i0I8OfBLq3DlRSrCwEwkuXO0ZR54gntnX6xqdGdDXRyn6_NB-YhT7Waq2XGgPelQVha7TLX9mYpgrcg4Xxgg-l4x_YD_99mC7UzVBBz3hOMi1AIeDvS7RprkkaGybaP3tFmjlX218IVTZ5fdRIXpcu3x6bL48rASsnvLNfEFh_eIg==",
+          "title": "facebook.com"
+        }
+      },
+      {
+        "web": {
+          "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGe4P5eCT_OqD0K0aA7gmnviyz0MZ8TuNGB_fPfnSNAsxV2-iWxy2LhgdRHihfp1pSxfgP_sHVlDQbvirrOO_yXhKDQxdzQyeUWok6Y5lihdddi_KQxMTvRDCHYtkhBOJ_DzdSPYuKjf-ORCP90zehinwlk6PruQ0LXNK5EctI6eSZ9ODA=",
+          "title": "facebook.com"
+        }
+      }
+    ],
+    "groundingSupports": [
+      {
+        "segment": {
+          "startIndex": 449,
+          "endIndex": 594,
+          "text": "source_ref] raises an unhandled KeyError when an ad set tracks a custom conversion without an explicit source_ref or when fontes_pedidas is empty"
+        },
+        "groundingChunkIndices": [
+          0
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 909,
+          "endIndex": 1069,
+          "text": "source_ref is None or absent from resolvidas_fontes (e.g. when fontes_pedidas was empty), Python raises KeyError instead of handling the optional/unbound source"
+        },
+        "groundingChunkIndices": [
+          0
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1186,
+          "endIndex": 1825,
+          "text": "source_ref is truthy, comparing sources only when both values are known, or raising a descriptive ErroDeNascimentoMeta if source_ref is mandatory.\",\n      \"test\": \"Run plan resolution for an ad set specifying custom_conversion_ref with source_ref=None and empty fontes_pedidas, asserting no KeyError is thrown.\"\n    }\n  ],\n  \"sources\": [\n    {\n      \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/custom-conversion/\",\n      \"claim\": \"Custom conversion objects expose an event_source_id linking to their underlying event source (such as a Pixel or offline event set), while is_unavailable indicates flagged conversions"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "grounding_verified": true,
+  "finishReason": "STOP",
+  "review": {
+    "status": "partial",
+    "checked": [
+      "backend/app/criativo/execucao.py",
+      "backend/app/trafego/meta_execucao/publicos.py",
+      "src/pages/trafego/MetaCriacaoPage.tsx"
+    ],
+    "findings": [
+      {
+        "id": "measurement-source-keyerror",
+        "file": "backend/app/trafego/meta_execucao/publicos.py",
+        "line": 264,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "Direct dictionary lookup resolvidas_fontes[medida.source_ref] raises an unhandled KeyError when an ad set tracks a custom conversion without an explicit source_ref or when fontes_pedidas is empty.",
+        "evidence": "Line 261 filters with 'if not medida.altera_payload or not medida.custom_conversion_ref: continue' without validating medida.source_ref. When Meta returns event_source_id for the custom conversion, line 264 evaluates str(fonte_da_conversao) != resolvidas_fontes[medida.source_ref]. If medida.source_ref is None or absent from resolvidas_fontes (e.g. when fontes_pedidas was empty), Python raises KeyError instead of handling the optional/unbound source.",
+        "proposal": "Safely read the expected source via resolvidas_fontes.get(medida.source_ref) only when medida.source_ref is truthy, comparing sources only when both values are known, or raising a descriptive ErroDeNascimentoMeta if source_ref is mandatory.",
+        "test": "Run plan resolution for an ad set specifying custom_conversion_ref with source_ref=None and empty fontes_pedidas, asserting no KeyError is thrown."
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/custom-conversion/",
+        "claim": "Custom conversion objects expose an event_source_id linking to their underlying event source (such as a Pixel or offline event set), while is_unavailable indicates flagged conversions."
+      }
+    ],
+    "limitations": [
+      "Source excerpts are bounded; implementations of _resolver_mensuracao, _fotografia_do_briefing, and the enclosing function signature of _chamar_motor were omitted."
+    ],
+    "summary": "Byte-hash checks prior to engine invocation and pack focus isolation in the UI are sound, but custom conversion validation in publicos.py crashes with an unhandled KeyError when an ad set lacks an explicit pixel source reference."
+  }
+}

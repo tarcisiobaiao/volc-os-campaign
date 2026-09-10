@@ -1,0 +1,9 @@
+{
+  "run_id": "meta-local-flags-20260909",
+  "intent": "explicitly_authorized_local_configuration",
+  "scope": ["META_VALIDATE_ONLY_ENABLED=1", "META_CREATE_PAUSED_ENABLED=1", "META_CREATE_LEDGER_WRITE_ENABLED=1"],
+  "plan_approval_required": true,
+  "activation_allowed": false,
+  "campaign_creation_in_this_run": false,
+  "remote_database_mutation": false
+}

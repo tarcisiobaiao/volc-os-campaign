@@ -1,0 +1,14 @@
+{
+  "status": "blocked",
+  "read_only": true,
+  "findings": [
+    {"id":"MEDIA_SCHEMA_ABSENT","confidence":"high","evidence":"Official pg_proc: zero rows for all four media registration RPCs. to_regclass(public.trafego_meta_asset_registration) is NULL.","effect":"Reservation fails before Graph media POST; selected pack not attached."},
+    {"id":"LAUNCH_FLAGS_CLOSED","confidence":"high","evidence":"Current settings report validation=false, creation=false, ledger=false, website-proof=false for selected account; supplied frontend output agrees."},
+    {"id":"DRAFT_CONFIRMATIONS_RESET","confidence":"high","evidence":"Persisted category/rights/third-party flags are false by design on resume; selected ad lacks packOrigin."},
+    {"id":"DESTINATION_PLACEHOLDER","confidence":"high","evidence":"Current saved destination remains the previously identified test URL."}
+  ],
+  "safe_next_order": ["Install and verify media ledger schema", "Confirm exact draft launch scope and enable only authorized capabilities", "Upload and attach selected image", "Confirm final destination/category/rights", "Compile V2", "Validate without creation", "Approve immutable plan", "Create PAUSED with readback"],
+  "external_writes": 0,
+  "paid_calls": 0,
+  "limitation": "No authenticated end-to-end creation validation performed. No configuration/schema changed by this diagnosis."
+}

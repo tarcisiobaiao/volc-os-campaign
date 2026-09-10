@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-09-10T11:09:53.544543+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "google_search_requested": true,
+  "calls_attempted": 1,
+  "code_bundle_sha256": "396a8d82791cfa1bc8df350fb182c2de9dffb0502ee7a4f591b9455e043e68f4",
+  "allowlisted_files": [
+    {
+      "path": "backend/app/routers/trafego_meta_copy.py",
+      "sha256": "e5861e73a628fb88f4094aa8906c8688056f464d4bc3879f7c359535f208d446",
+      "lines": 88,
+      "bytes": 5663
+    },
+    {
+      "path": "backend/app/trafego/meta/copy_context.py",
+      "sha256": "4260452c7ef86b7128cb5f6c11d230d065b002ede14a4dd5141325d17be630a5",
+      "lines": 304,
+      "bytes": 18981
+    },
+    {
+      "path": "backend/app/trafego/meta/copy_suggestions.py",
+      "sha256": "0948507f06ae585c2106349f2f7542744487f258a91de8801993493a6571ec24",
+      "lines": 184,
+      "bytes": 10592
+    },
+    {
+      "path": "backend/tests/test_meta_copy_context_post.py",
+      "sha256": "aae5dd40db21736ba8a9c999470dd6a74023ac4efe005ee8768a8e102c1b5416",
+      "lines": 124,
+      "bytes": 6244
+    }
+  ],
+  "secret_scan": "passed",
+  "prompt_sha256": "4b9496d668cf10ffc2a3a5b8e5700412cec8ffe84e4f1e35efec56ec6bf38e2f",
+  "meta_mutations": 0,
+  "status": "transport_or_response_error"
+}

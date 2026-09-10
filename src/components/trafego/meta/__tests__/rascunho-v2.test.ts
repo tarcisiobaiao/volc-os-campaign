@@ -16,6 +16,45 @@ import {
 
 const CAPACIDADES = { ...CAPACIDADES_FECHADAS, loteEstatico: true, validateOnly: true };
 
+describe('reutilização do post original', () => {
+  it('promove o post existente para V2 e preserva referência e conjunto', () => {
+    const draft = comDoisConjuntos();
+    draft.variations[1].existingPostRef = `metapost_${'a'.repeat(32)}`;
+    expect(contratoDoPlano(draft).contrato).toBe('V2');
+    draft.conjuntos.reverse();
+    const ads = paraPlanoV2(draft).ads;
+    expect(ads[1].existing_post_ref).toBe(draft.variations[1].existingPostRef);
+    expect(ads[1].adset_key).toBe('adset-002');
+    expect(ads[0]).not.toHaveProperty('existing_post_ref');
+  });
+  it('um único anúncio com post existente não cai no contrato legado', () => {
+    const draft = rascunho();
+    expect(contratoDoPlano(draft).contrato).toBe('V1');
+    draft.variations[0].existingPostRef = `metapost_${'b'.repeat(32)}`;
+    expect(contratoDoPlano(draft).contrato).toBe('V2');
+    expect(paraPlanoV2(draft).ads[0].message).toBe(draft.variations[0].message);
+  });
+});
+
+describe('identidade regulatória por conjunto', () => {
+  it('não muda contratos antigos sem seleção e promove seleção explícita ao V2', () => {
+    const original = rascunho();
+    expect(contratoDoPlano(original).contrato).toBe('V1');
+    expect(paraPlanoV2(original).adsets[0]).not.toHaveProperty('regulatory_identity_ref');
+    original.conjuntos[0].regulatoryIdentityRef = 'metareg_escolhida';
+    expect(contratoDoPlano(original).contrato).toBe('V2');
+    expect(paraPlanoV2(original).adsets[0].regulatory_identity_ref).toBe('metareg_escolhida');
+  });
+  it('preserva a seleção no conjunto certo após reordenação', () => {
+    const draft = comDoisConjuntos();
+    draft.conjuntos[1].regulatoryIdentityRef = 'metareg_escolhida';
+    draft.conjuntos.reverse();
+    const sets = paraPlanoV2(draft).adsets;
+    expect(sets.find(s => s.adset_key === 'adset-002')?.regulatory_identity_ref).toBe('metareg_escolhida');
+    expect(sets.find(s => s.adset_key === 'adset-001')).not.toHaveProperty('regulatory_identity_ref');
+  });
+});
+
 function rascunho(troca: Partial<Draft> = {}): Draft {
   const conjunto = conjuntoInicial('adset-001', 'Brasil · Amplo', '2026-10-01T10:00', '10,00');
   return {

@@ -131,6 +131,11 @@ export const MetaConfiguracaoLocal: React.FC<{
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+        {status?.armazenamento === 'Cofre oficial' ? <>
+          <SheetHeader><SheetTitle>Conexão Meta</SheetTitle><SheetDescription>Os tokens são gerenciados por Business Manager no cofre oficial.</SheetDescription></SheetHeader>
+          <p className="my-6 text-sm">{status.configurado ? 'Há uma conexão selecionada para esta operação.' : 'Cadastre e selecione uma conexão antes de ler os ativos.'}</p>
+          <Button asChild><a href="/settings/integrations?tab=meta-ads">Gerenciar conexões Meta</a></Button>
+        </> : <>
         <SheetHeader className="pr-8">
           <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
             <KeyRound className="h-4 w-4" aria-hidden />
@@ -245,6 +250,7 @@ export const MetaConfiguracaoLocal: React.FC<{
             </div>
           )}
         </SheetFooter>
+        </>}
       </SheetContent>
     </Sheet>
   );

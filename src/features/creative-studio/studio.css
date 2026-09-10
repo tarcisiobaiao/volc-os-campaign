@@ -6,5 +6,13 @@
 .studio-field-label { font-size: 12px; font-weight: 550; color: hsl(var(--foreground)); }
 .studio-input { border-radius: 10px; background: hsl(var(--muted) / .28); border-color: hsl(var(--border)); }
 .studio-brief fieldset:disabled { opacity: .65; }
+.studio-generation-placeholder { position: relative; isolation: isolate; overflow: hidden; width: 100%; background: hsl(var(--primary) / .045); }
+.studio-generation-placeholder::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(110deg, transparent 25%, hsl(var(--primary) / .1) 50%, transparent 75%); transform: translateX(-100%); }
+@media (prefers-reduced-motion: no-preference) {
+  .studio-generation-placeholder::before { animation: studio-generation-sweep 2.8s ease-in-out infinite; }
+  .studio-generation-reveal { animation: studio-generation-reveal .3s ease-out both; }
+}
+@keyframes studio-generation-sweep { to { transform: translateX(100%); } }
+@keyframes studio-generation-reveal { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 480px) { .studio-workspace { padding: 20px 12px 40px; } .studio-surface { padding: 18px 14px; } }
 @media (prefers-reduced-motion: reduce) { .studio-workspace *, .studio-workspace *::before { animation: none !important; transition: none !important; } }

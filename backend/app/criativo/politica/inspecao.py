@@ -100,7 +100,7 @@ def limpar_detectores_de_pixel() -> None:
 
 
 #: Confiança a partir da qual um rótulo de logotipo/marca bloqueia. Abaixo dela
-#: o achado é registrado e mostrado, sem bloquear: um portão que bloqueia por
+#: a suspeita é registrada no recibo, sem bloquear: um portão que bloqueia por
 #: suspeita fraca é um portão que alguém desliga.
 LIMIAR_DE_ROTULO = 0.70
 
@@ -143,6 +143,7 @@ def inspecionar(
     prompt: str | None,
     identidade_propria: Iterable[str] | None,
     exigir_pixel: bool = True,
+    detectores_adicionais: Sequence[DetectorDePixel] = (),
 ) -> Inspecao:
     """Roda todos os detectores disponíveis e declara os que não rodaram.
 
@@ -175,7 +176,7 @@ def inspecionar(
 
     portao_indisponivel = False
     if exigir_pixel:
-        registrados = detectores_de_pixel_registrados()
+        registrados = detectores_de_pixel_registrados() + tuple(detectores_adicionais)
         # ⚠️ COBERTURA, e não presença. Ver `CAPACIDADES_EXIGIDAS`: um OCR
         # sozinho não fecha a inspeção de pixel, porque logotipo desenhado sem
         # texto sai dele como leitura vazia — e vazio viraria PASS.
@@ -205,7 +206,7 @@ def inspecionar(
             except Exception:  # noqa: BLE001 — falha de detector não é aprovação
                 detectores.append(Detector(
                     nome=detector.nome, versao=detector.versao,
-                    deterministico=True, resultado="ERROR"))
+                    deterministico=getattr(detector, "deterministico", True), resultado="ERROR"))
                 portao_indisponivel = True
                 motivos.append("PIXEL_DETECTOR_FAILED")
                 continue
@@ -214,13 +215,17 @@ def inspecionar(
                 identidade_propria=identidade_propria)
             achados.extend(do_pixel)
             fortes = [r for r, c in leitura.rotulos if c >= LIMIAR_DE_ROTULO]
+            # Preserve weak hypotheses as nonblocking warnings, not findings
+            # that the rights gate would treat as a proven third-party identity.
+            motivos.extend(f"VISUAL_BRAND_LOW_CONFIDENCE:{r}"
+                           for r, c in leitura.rotulos if c < LIMIAR_DE_ROTULO)
             for rotulo in fortes:
                 achados.append(Achado(
                     classe="ROTULO_VISUAL", termo=rotulo, origem="ocr",
                     posicao=0, peso="alto"))
             detectores.append(Detector(
                 nome=detector.nome, versao=detector.versao,
-                deterministico=True,
+                deterministico=getattr(detector, "deterministico", True),
                 resultado="FINDINGS" if (do_pixel or fortes) else "PASS",
             ))
 

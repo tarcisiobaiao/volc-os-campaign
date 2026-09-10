@@ -19,6 +19,7 @@ seleção que uma pessoa fez, e devolve pedidos de render com a linhagem intacta
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from .spec_visual import CreativeSpec
 
 
 SCHEMA_VERSION = "1"
@@ -42,9 +43,11 @@ MAX_RENDERS_POR_PEDIDO = 45
 #: ⚠️ Os dois últimos não são graus do mesmo modo, são promessas diferentes. O
 #: endpoint de edição do provider REGERA a imagem: chamar isso de "preserva a
 #: foto" é a frase mais fácil de escrever e a mais cara de descobrir, porque o
-#: operador só vê a diferença depois de pagar. Por isso `hibrido` é o padrão
-#: quando há foto, e `reinterpretado` precisa ser escolhido de propósito.
-MODOS_DE_COMPOSICAO: tuple[str, ...] = ("sem_foto", "hibrido", "reinterpretado")
+#: operador só vê a diferença depois de pagar. Cada uso do anexo precisa ser
+#: escolhido explicitamente; `referencia_visual` inspira estilo sem colagem.
+MODOS_DE_COMPOSICAO: tuple[str, ...] = (
+    "sem_foto", "hibrido", "reinterpretado", "referencia_visual",
+)
 
 
 class ModeloEstrito(BaseModel):
@@ -60,6 +63,7 @@ class Linhagem(ModeloEstrito):
     state_ref: str = Field(pattern=r"^state_[a-z0-9_-]{3,64}$")
     project_ref: str = Field(pattern=r"^crproj_[a-f0-9]{24}$")
     run_ref: str = Field(pattern=r"^crrun_[a-f0-9]{24}$")
+    geracao_ref: str | None = Field(default=None, pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")
     fato_refs: list[str] = Field(default_factory=list, max_length=30)
     rule_refs: list[str] = Field(default_factory=list, max_length=30)
 
@@ -78,6 +82,7 @@ class BriefingDeImagem(ModeloEstrito):
     texto_na_arte: str = Field(min_length=1, max_length=560)
     contexto_do_publico: str = Field(min_length=3, max_length=4000)
     objetivo: str = Field(min_length=3, max_length=64)
+    creative_spec: CreativeSpec | None = None
 
 
 class AutorizacaoDeGasto(ModeloEstrito):
@@ -127,6 +132,7 @@ class PedidoDeGeracao(ModeloEstrito):
 
     schema_version: str = SCHEMA_VERSION
     run_ref: str = Field(pattern=r"^crrun_[a-f0-9]{24}$")
+    geracao_ref: str | None = Field(default=None, pattern=r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")
     selected_creative_refs: list[str] = Field(min_length=1, max_length=15)
     format_ids: list[str] = Field(min_length=1, max_length=12)
     brand_pack_ref: str | None = Field(default=None, pattern=r"^[A-Za-z0-9:_-]{3,180}$")

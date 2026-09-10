@@ -36,31 +36,25 @@ def agora_utc() -> datetime:
 
 _CTA = {"LEARN_MORE", "APPLY_NOW", "SIGN_UP", "GET_QUOTE", "CONTACT_US"}
 
-#: As duas únicas respostas honestas sobre redirecionamento para Shop.
-#:
-#: ## Por que isto não é um campo do pedido
-#:
-#: A v26 passou a redirecionar o clique de anunciantes elegíveis a Shop, e a
-#: tentação é declarar o contrário no payload. A evidência oficial recolhida
-#: para esta lane recusa esse caminho: em
-#: `docs/specs/meta-completion-v1/OFFICIAL-META-API-EVIDENCE.json` a fonte
-#: `META-SHOP`, sobre `creative.destination_spec`, está marcada
-#: `confidence: RESEARCH_REQUIRED`, `impact: P0_BLOCKING` e
-#: `remote_behavior_proven: false` — "exact writable/readable shop opt-out
-#: placement not established here". O contrato mestre adjudicado diz o mesmo em
-#: C01: "no unproven destination_spec field is sent, and any inability to prove
-#: no unauthorized Shop redirection blocks create_paused".
-#:
-#: Então a ausência de prova NÃO vira um campo inventado no pedido. Ela vira um
-#: bloqueio nomeado do ato de CRIAR — e só dele. Compilar e validar continuam
-#: abertos, porque `validate_only` não cria nada e é por ele que a prova
-#: externa será obtida.
+#: Controles de destino, não um campo livre do pedido. A pesquisa inicial
+#: META-SHOP deixava o opt-out documentalmente indeterminado. O changelog
+#: oficial v26, conferido em 09/09/2026, documenta o valor explícito abaixo:
+#: docs/closure/meta-pack-v2-sprint-20260908/SHOP-OPT-OUT-OFFICIAL-20260909.json.
+#: O compilador só o aplica a criativos próprios de website; o executor exige
+#: readback exato. Snapshots legados preservam sua prova e sua política antiga.
+#: Configuração compilada não é elegibilidade inferida nem validação remota.
 DESTINO_SHOP_NAO_PROVADO = "UNPROVEN"
 DESTINO_SHOP_CONTA_NAO_ELEGIVEL = "ACCOUNT_NOT_SHOP_ELIGIBLE_PROVEN"
+# Official v26 changelog, read 2026-09-09: explicit creative-level opt-out.
+# This names a compiled control, NOT inferred account ineligibility or a
+# successful provider readback. Frozen legacy plans retain their old marker.
+DESTINO_SHOP_OPT_OUT_EXPLICITO = "EXPLICIT_WEBSITE_SHOP_OPT_OUT"
+DESTINATION_TYPE_WEBSITE_OPT_OUT = "WEBSITE_AND_SHOP_OPT_OUT"
 
 PROVAS_DE_DESTINO_WEBSITE: frozenset[str] = frozenset({
     DESTINO_SHOP_NAO_PROVADO,
     DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
+    DESTINO_SHOP_OPT_OUT_EXPLICITO,
 })
 
 MOTIVO_DESTINO_SHOP_NAO_PROVADO = (
@@ -137,6 +131,9 @@ class VariacaoEstaticaMeta:
     headline: str
     description: str
     call_to_action_type: str = "LEARN_MORE"
+    existing_post_ref: str | None = None
+    # Interno: somente V2 com pool flexível explícito aceita descrição ausente.
+    description_optional: bool = False
 
     def __post_init__(self) -> None:
         chave = str(self.variation_key or "").strip().lower()
@@ -150,8 +147,12 @@ class VariacaoEstaticaMeta:
             ("creative_name", 400), ("ad_name", 400),
             ("message", 2200), ("headline", 255), ("description", 255),
         ):
+            if campo == "description" and self.description_optional is True and self.description == "":
+                continue
             object.__setattr__(self, campo, _texto(getattr(self, campo), campo, maximo=limite))
         object.__setattr__(self, "asset_ref", _referencia(self.asset_ref, "asset_ref"))
+        if self.existing_post_ref is not None and not re.fullmatch(r"metapost_[a-f0-9]{32}", self.existing_post_ref):
+            raise ErroDeNascimentoMeta("META_EXISTING_POST_REFERENCE_INVALID", "Selecione uma publicação existente desta conta.")
         if self.call_to_action_type not in _CTA:
             raise ErroDeNascimentoMeta("META_CTA_INVALID", "CTA fora da allowlist P0")
 
@@ -510,6 +511,8 @@ class PlanoMetaPausado:
         if any(not isinstance(item, VariacaoEstaticaMeta) for item in variacoes):
             raise ErroDeNascimentoMeta(
                 "META_STATIC_BATCH_INVALID", "variacoes_estaticas contem item invalido")
+        if any(not item.description for item in variacoes):
+            raise ErroDeNascimentoMeta("META_BLUEPRINT_INVALID", "A descrição é obrigatória no lote estático.")
         nomes_criativos = [item.creative_name for item in variacoes]
         nomes_anuncios = [item.ad_name for item in variacoes]
         chaves = [item.variation_key for item in variacoes]

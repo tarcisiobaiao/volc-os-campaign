@@ -14,9 +14,9 @@ colors:
   ink-dark: "#E8EEF4"
   ink-muted-dark: "#A8B4C2"
   border-dark: "#3A4656"
-  primary: "#0A5461"
-  primary-hover: "#083F49"
-  primary-foreground: "#F2FBFC"
+  primary: "#0D47A1"
+  primary-hover: "#2A2F8F"
+  primary-foreground: "#F7FAFF"
   verified: "#006A85"
   success: "#116E52"
   warning: "#885407"
@@ -49,8 +49,8 @@ motion:
   move: "cubic-bezier(0.25, 1, 0.5, 1)"
 components:
   button-primary:
-    background: "var(--primary)"
-    foreground: "var(--primary-foreground)"
+    background: "var(--gradient-aurora-action)"
+    foreground: "#FFFFFF"
     radius: "8px"
     height: "40px"
   button-secondary:
@@ -102,23 +102,24 @@ VOLC OS is a bench for paid media and creation. The interface must look used eve
 4. Tailwind maps those variables. Components consume tokens, never raw hex.
 5. Historical notes in `docs/design/` are evidence, not current law.
 
-The previous contract used Inter, Space Grotesk, near-white canvas and institutional navy. That language is retired here on purpose.
+The previous timid contract used Inter, Space Grotesk, near-white canvas and teal-as-action. That language is retired here on purpose. Navy returns only as the VOLC action axis (deep → purple), not as a flat institutional fill.
 
 ## Visual concept
 
-**VOLC Control Room.** Mineral graphite canvas, lifted work surfaces, dark readable ink, one proprietary teal for primary acts, VOLC aurora only as signature.
+**VOLC Control Room.** Mineral graphite canvas, paper-white sidebar, lifted work surfaces, dark readable ink. Primary acts use the VOLC navy→purple action gradient — the same axis as the word Pro in Pautador. Teal is not an action color.
 
-Light mode has real planes: canvas, sidebar chrome, card, raised popover. Not white on almost-white.
-Dark mode is a complete pairing: off-black canvas, cooler elevated panels, the same teal acting as a lighter fill, never neon as operational status.
+Light mode has real planes: mineral canvas, off-white sidebar, card, raised popover. The sidebar must read brighter than the page.
+Dark mode is a complete pairing: off-black canvas, slightly lifted sidebar, navy-lavender action fill — never teal, never neon as operational status.
 
 Brand energy (aurora cyan, purple, orange) appears in:
 
 - the 3px shell edge;
 - `aurora-rule` under identity titles;
 - the second word of H1 only in QG (`Operacional`), Pautador (`Pro`) and Redator (`Editorial`);
-- login, change-password and 404.
+- login, change-password and 404;
+- the 2px rail and navy/purple wash of the active sidebar item (same axis as Pro, not a table state).
 
-Aurora is never a table background, warning, progress fill, metric or selected-row color.
+Aurora is never a table background, warning, progress fill, metric or selected-row color. Nav titles stay solid navy at 14px: clipped aurora text fails AA on the cyan stop.
 
 ## Semantic color tokens
 
@@ -136,7 +137,7 @@ Use the CSS variables. Hex below is the normative hue for documentation and `.im
 | `--muted-foreground` | Secondary text | `#3D4754` |
 | `--border` | Structural hairline | `#9AA6B4` |
 | `--input` | Field outline (3:1 vs card) | measured in CSS |
-| `--primary` | Only default action fill | `#0A5461` |
+| `--primary` | Navy for icons, rings, selected ink | `#0D47A1` |
 | `--success` | Healthy completed state | `#116E52` |
 | `--warning` | Attention, not error | `#885407` |
 | `--destructive` | Error, block, irreversible | `#B33232` |
@@ -154,7 +155,7 @@ Use the CSS variables. Hex below is the normative hue for documentation and `.im
 | `--muted` | Wells | `#121821` |
 | `--foreground` | Ink | `#E8EEF4` |
 | `--muted-foreground` | Secondary | `#A8B4C2` |
-| `--primary` | Action fill, lightened teal | `#3BA8B4` |
+| `--primary` | Action ink/fill, lightened navy | `#6B96E6` |
 
 Semantic meanings stay closed: `primary`, `verified`, `success`, `warning`, `destructive`, `info`, `demo`.
 `verified` is not success. `demo` is not warning. `destructive` is not a loud primary.
@@ -244,7 +245,7 @@ Use `CabecalhoDePagina` when touching a header. Do not invent a second stack.
 
 ## Base components
 
-**Button.** Primary is filled teal, weight 600, min-height 40 desktop / 44 mobile, visible mass. Secondary is solid muted, not a pale outline. Outline is tertiary. Destructive is isolated. Press: `scale(0.97)` in 140ms. Disabled: 0.45 opacity, `pointer-events: none`. Hover lift only inside `@media (hover: hover) and (pointer: fine)`.
+**Button.** Primary uses `gradient-aurora-action` (navy → purple), weight 600, min-height 40 desktop / 44 mobile, visible mass. Hover: 1px lift + gradient shift, 140–160ms, only inside `@media (hover: hover) and (pointer: fine)`. Secondary is solid muted, not a pale outline. Outline is tertiary. Destructive is isolated. Press: `scale(0.97)` in 140ms. Disabled: 0.45 opacity, `pointer-events: none`.
 
 **Field.** Label above. Helper before error. Error below, in context, with recovery. Height 40/44. Focus ring uses `--ring`. Disabled is washed out. Read-only keeps ink and a muted bed, never the disabled fade.
 
@@ -332,7 +333,7 @@ Never hide the word "demonstração".
 - Pale outline as the only primary
 - Nested elevated cards
 - Underline tabs
-- Side color stripes thicker than 1px
+- Side color stripes thicker than 1px, except the 2px aurora rail on the active nav item
 - Glassmorphism in the workspace
 - Glow on operational controls
 - Invented zeros and fake live dots

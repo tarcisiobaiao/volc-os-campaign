@@ -1,0 +1,11 @@
+{
+  "run_id": "meta-operational-live-20260908",
+  "mode": "authorized_implementation",
+  "authority": "https://database.agenciavolc.com.br",
+  "scope": ["V2 financial approval migration", "durable owner-scoped campaign drafts", "real image inspection", "local interface validation"],
+  "exclusions": ["Meta activation", "unbounded paid generation", "Google Ads", "n8n mutation", "push", "new worktree"],
+  "human_approval": "User authorization in current conversation",
+  "status": "partial",
+  "evidence": "docs/closure/meta-pack-v2-sprint-20260908/OFFICIAL-FOLLOWUP.md",
+  "remaining": ["visual-brand detector needs explicitly authorized pixel egress or real local model", "authenticated UI and PAUSED canary"]
+}

@@ -185,6 +185,29 @@ async function compilarPelaRevisao() {
 }
 
 describe('Bancada de criação Meta — contrato do rascunho', () => {
+  it('diz quais confirmações faltam sem declarar a URL inválida', async () => {
+    abrir('criativo');
+    await esperarAtivos();
+    confirmarEnquadramento();
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+    expect(screen.getAllByText(/Confirme os direitos de uso da imagem/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Confirme a revisão de marcas e identidade/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/O anúncio 1 está incompleto/)).toBeNull();
+    expect(screen.queryByText(/Informe uma URL de destino HTTPS/)).toBeNull();
+    expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
+  });
+
+  it('mostra andamento e conclusão da conferência', async () => {
+    let concluir!: (value: unknown) => void;
+    const resultado = { ok: true, efeito_externo: 'NENHUM', plano: { operacoes: [], plano_sha256: 'a'.repeat(64) } };
+    api.compilarPlanoMeta.mockImplementationOnce(() => new Promise(resolve => { concluir = resolve; }));
+    abrir('criativo');
+    await esperarAtivos();
+    await compilarPelaRevisao();
+    expect(screen.getByText(/Conferindo o plano no servidor/)).toBeTruthy();
+    concluir(resultado);
+    expect(await screen.findByText(/Plano conferido. Próximo passo/)).toBeTruthy();
+  });
   it('lê orçamento com ponto decimal sem multiplicar a verba por cem', async () => {
     abrir('orcamento');
     await esperarAtivos();
@@ -216,27 +239,25 @@ describe('Bancada de criação Meta — contrato do rascunho', () => {
   it('mantém variation_key única ao remover uma linha do meio e adicionar outra', async () => {
     abrir('criativo');
     await esperarAtivos();
-    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
-    const adicionar = () => screen.getByRole('button', { name: /adicionar outro anúncio/i });
+    const adicionar = () => screen.getByRole('button', { name: /adicionar anúncio neste conjunto/i });
     fireEvent.click(adicionar());
     fireEvent.click(adicionar());
-    await waitFor(() => expect(screen.getByText('3 de 10')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(3));
     fireEvent.click(screen.getAllByRole('button', { name: /remover/i })[1]);
-    await waitFor(() => expect(screen.getByText('2 de 10')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(2));
     fireEvent.click(adicionar());
-    await waitFor(() => expect(screen.getByText('3 de 10')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(3));
     const chaves = screen.getAllByTestId('variacao-chave').map((no) => no.textContent);
     expect(new Set(chaves).size).toBe(chaves.length);
   });
 
-  it('modo individual compila exatamente uma variação, mesmo depois de um lote', async () => {
+  it('remover o segundo anúncio volta ao modo individual e compila só o restante', async () => {
     abrir('criativo');
     await esperarAtivos();
-    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
-    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio/i }));
-    await waitFor(() => expect(screen.getByText('2 de 10')).toBeTruthy());
-    fireEvent.click(screen.getByRole('radio', { name: /individual/i }));
-    await waitFor(() => expect(screen.getByText('1 de 10')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /adicionar anúncio neste conjunto/i }));
+    await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(2));
+    fireEvent.click(screen.getAllByRole('button', { name: /^remover$/i })[1]);
+    await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(1));
     await compilarPelaRevisao();
     const enviado = api.compilarPlanoMeta.mock.calls[0][0];
     expect(enviado.variations).toHaveLength(1);
@@ -265,17 +286,16 @@ describe('Bancada de criação Meta — correções adversariais', () => {
     expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
   });
 
-  it('conferir o payload individual não apaga o lote montado', async () => {
+  it('ir à revisão e voltar não apaga os anúncios montados no conjunto', async () => {
     abrir('criativo');
     await esperarAtivos();
-    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
-    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio/i }));
-    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio/i }));
-    await waitFor(() => expect(screen.getByText('3 de 10')).toBeTruthy());
-    fireEvent.click(screen.getByRole('radio', { name: /individual/i }));
-    await waitFor(() => expect(screen.getByText('1 de 10')).toBeTruthy());
-    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
-    await waitFor(() => expect(screen.getByText('3 de 10')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /adicionar anúncio neste conjunto/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adicionar anúncio neste conjunto/i }));
+    await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(3));
+    const antes = screen.getAllByTestId('variacao-chave').map(no => no.textContent);
+    fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Criativos$/i }));
+    expect(screen.getAllByTestId('variacao-chave').map(no => no.textContent)).toEqual(antes);
   });
 
   it('anuncia a falha da operação a quem usa leitor de tela', async () => {
@@ -287,7 +307,7 @@ describe('Bancada de criação Meta — correções adversariais', () => {
     confirmarPeca();
     fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
     fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
-    const alerta = await screen.findByRole('alert');
+    const alerta = await screen.findByRole('alert', { name: 'Erros da operação' });
     await waitFor(() => expect(alerta.textContent).toContain('a Meta recusou o plano'));
   });
 });
@@ -318,7 +338,7 @@ describe('Bancada de criação Meta — timeout não é recusa', () => {
     await abrirComValidacaoLiberada();
     fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
 
-    const alerta = await screen.findByRole('alert');
+    const alerta = await screen.findByRole('alert', { name: 'Erros da operação' });
     await waitFor(() => expect(alerta.textContent).toContain('META_VALIDATE_TIMEOUT'));
     // O ponto do conserto: o operador não pode ler silêncio como reprovação.
     expect(alerta.textContent).toContain('não é uma recusa');
@@ -336,7 +356,7 @@ describe('Bancada de criação Meta — timeout não é recusa', () => {
     await abrirComValidacaoLiberada();
     fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
 
-    const alerta = await screen.findByRole('alert');
+    const alerta = await screen.findByRole('alert', { name: 'Erros da operação' });
     await waitFor(() => expect(alerta.textContent).toContain('100/1487079'));
     expect(alerta.textContent).not.toContain('não é uma recusa');
   });
@@ -403,7 +423,7 @@ describe('Bancada de criação Meta — recusa real 100/4005', () => {
     await compilarPelaRevisao();
     fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
 
-    const alerta = await screen.findByRole('alert');
+    const alerta = await screen.findByRole('alert', { name: 'Erros da operação' });
     // ⚠️ O ponto do conserto: três explicações são UM incidente.
     await waitFor(() => expect(alerta.textContent).toContain('1 impedimento'));
     expect(alerta.textContent).not.toContain('impedimentos');

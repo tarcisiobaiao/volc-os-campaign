@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { listarPacks, salvarPack, selecionarPack, type CreativePack } from '../api';
 import { assistenteIntegrado } from '@/components/trafego/meta/ponteAssistente';
+import { CapaPack, caminhoPack } from './PackVisual';
+import { AdicionarSelecaoAoPack } from './AdicionarSelecaoAoPack';
 
 export function PacksDeCriativos({ masterRefs }: { masterRefs: string[] }) {
   const [nome, setNome] = useState('');
@@ -35,16 +37,17 @@ export function PacksDeCriativos({ masterRefs }: { masterRefs: string[] }) {
         setAviso(`Pack “${r.nome}” salvo. A publicação continua separada.`);
       })}><BookmarkPlus className="h-4 w-4" aria-hidden />Salvar seleção ({masterRefs.length})</Button>
       <Button variant="ghost" disabled={ocupado} onClick={() => void executar(() => carregar())}><FolderOpen className="h-4 w-4" aria-hidden />Meus packs</Button>
+      <Button asChild variant="ghost"><Link to="/trafego/meta/packs">Abrir biblioteca</Link></Button>
     </div>
     {ocupado && <p role="status" className="text-sm text-muted-foreground">Acessando seus packs…</p>}
     {aviso && <p role="status" className="text-sm text-success">{aviso}</p>}
     {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
-    {packs && <ul className="divide-y divide-border rounded-lg border border-border px-3">
+    <AdicionarSelecaoAoPack masterRefs={masterRefs} />
+    {packs && <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {!packs.length && <li className="py-4 text-sm text-muted-foreground">Nenhum pack salvo ainda. Selecione as imagens acima para começar.</li>}
-      {packs.map(pack => <li key={pack.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-        <div><p className="text-sm font-medium">{pack.nome}</p><p className="text-xs text-muted-foreground">{pack.manifest.items.length} peça(s) · {pack.manifest.source === 'STUDIO' ? 'Arquivos do Estúdio' : 'Referências da Meta'} · revisão de uso pendente</p>
-          {pack.manifest.items.some(i => i.copy_snapshot) && <details className="mt-2 max-w-prose text-sm"><summary className="cursor-pointer text-primary">Textos de origem</summary>{pack.manifest.items.map((i, index) => i.copy_snapshot && <div key={index} className="space-y-1 border-l border-border pl-3 pt-2"><p className="font-medium">{i.copy_snapshot.titulo}</p><p>{i.copy_snapshot.texto_principal}</p><p className="text-muted-foreground">{i.copy_snapshot.descricao}</p></div>)}<p className="mt-2 text-xs text-muted-foreground">Referência preservada, não aprovação para uma nova finalidade.</p></details>}
-        </div>
+      {packs.map(pack => <li key={pack.id} className="overflow-hidden rounded-xl border border-border bg-card">
+        <Link to={caminhoPack(pack.id)} className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><CapaPack item={pack.manifest.items[0]} nome={pack.nome} /><div className="p-4"><p className="font-semibold">{pack.nome}</p><p className="mt-1 text-sm text-muted-foreground">{pack.manifest.items.length} peças · {pack.manifest.source === 'STUDIO' ? 'Estúdio' : 'Referências Meta'}</p><p className="mt-3 text-sm font-medium text-primary">Abrir galeria do pack →</p></div></Link>
+        <div className="px-4 pb-4">
         {pack.manifest.source === 'STUDIO' && (assistenteIntegrado()
           ? <Button size="sm" variant="outline" disabled={ocupado} onClick={() => void executar(async () => {
             const r = await selecionarPack(pack.id);
@@ -52,6 +55,7 @@ export function PacksDeCriativos({ masterRefs }: { masterRefs: string[] }) {
             setAviso('Peças selecionadas no rascunho. Nada foi enviado à Meta.');
           })}>Usar nesta campanha</Button>
           : <Button asChild size="sm" variant="outline"><Link to={`/trafego/meta/nova?pack=${encodeURIComponent(pack.id)}`}>Preparar campanha</Link></Button>)}
+        </div>
       </li>)}
     </ul>}
     {mais && <Button variant="ghost" disabled={ocupado} onClick={() => void executar(() => carregar(offset + 20))}>Carregar mais packs</Button>}

@@ -1,0 +1,40 @@
+{
+  "status": "LOCAL_PARTIAL",
+  "date": "2026-09-09",
+  "authority": "https://database.agenciavolc.com.br",
+  "migration": {
+    "file": "supabase/migrations/20260909234342_creative_generation_versions.sql",
+    "sha256": "ff2f68b4eae3e73ae95871a96b641bc2ce25628fa9f7ae1b19896503c5fa90c1",
+    "temporary_postgres_proof": "two applications, legacy backfill, unique versions, invalid UUID/hash rejection, RLS; ROLLBACK",
+    "local_postgres_limit": "initdb failed shmget, including escalation; existing official PG temporary table used instead",
+    "first_apply": "postgres was not table owner; transaction aborted, no changes",
+    "final_apply": "supabase_admin existing owner; COMMIT observed",
+    "backup_path": "/root/backups/pre-creative-versions-hu3F9u.dump",
+    "backup_sha256": "1cfa71d042b82ffa2709deeb60c7e2de846c0cb3ad5614b169f5f5f59059f6fa",
+    "backup_bytes": 8324,
+    "backup_scope": "only criativo_agente_peca_job schema and data; pg_restore list verified",
+    "rows_before": 4, "rows_after": 4, "legacy_original_rows": 4,
+    "rls": true, "force_rls": true,
+    "service_role_grants": ["INSERT", "SELECT"],
+    "anon_authenticated_grants": [],
+    "postgrest_readback": true
+  },
+  "lp_live_persistence": {
+    "snapshot_version": "creative_lp_context.v1", "excerpts": 5,
+    "jsonb_equal": true, "repository_owner_filter": true,
+    "technical_operation_archived": true, "runs_created": 0, "paid_calls": 0
+  },
+  "verification": {
+    "creative_contract_backend": 116, "creative_motor_execution_backend": 186, "meta_backend_agent": 195,
+    "creative_frontend": 62, "meta_frontend_focused_agent": 51,
+    "build": "passed", "secret_scan": "passed", "diff_check": "passed", "tsc_global_errors": 76,
+    "tsc_touched_creative_meta_errors": 0,
+    "browser": "real components, isolated fixture, not authenticated",
+    "viewports": [375, 768, 1440], "themes": ["light", "dark"],
+    "horizontal_overflow": false, "page_errors": 0,
+    "keyboard_focus_checked": true, "external_fonts_loaded": false
+  },
+  "operational_memory": {"roadmap_task": "P11-T17", "state": "partial", "graph_node": "volc::doc:meta-creative-closure-20260909", "graph_current": true, "input_sha256": "5567f1c6a08d9ba74deb144f8f8e069dfadbc1805ac446e2dc71a49f63c28882"},
+  "live_image_canary": {"executed": false, "planned_renders": 4, "reason": "temporary QA session consent pending", "model": "gpt-image-2", "quality": "medium"},
+  "meta_writes": 0, "activations": 0, "paid_vision_calls": 0, "webgo_changed": false
+}

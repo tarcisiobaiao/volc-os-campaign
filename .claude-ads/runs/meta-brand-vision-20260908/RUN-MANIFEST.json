@@ -1,0 +1,20 @@
+{
+  "run_id": "meta-brand-vision-20260908",
+  "status": "inspection_verified_operation_partial",
+  "evidence": "docs/closure/meta-pack-v2-sprint-20260908/GEMINI-BRAND-INSPECTION.md",
+  "live_inspection_calls": 3,
+  "live_customer_images_sent": 0,
+  "scope": "Inspeção de marcas/logotipos das imagens selecionadas para revisão de mídia Meta",
+  "authorization": {
+    "image_egress": true,
+    "provider": "Google Gemini Developer API",
+    "model": "gemini-3.8-flash",
+    "thinking": "MEDIUM",
+    "paid_inspection": true,
+    "payload": "Somente pixels sem metadados e instruções genéricas de inspeção",
+    "forbidden": ["código", "dados de campanha", "tokens de campanha", "publicação Meta", "ativação", "geração de imagens"]
+  },
+  "production_mutation": false,
+  "database_migration": false,
+  "test_plan": ["contrato hermético", "escopo de saída de dados", "canário de inspeção pago", "integração da revisão de mídia"]
+}

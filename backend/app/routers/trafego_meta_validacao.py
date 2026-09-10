@@ -21,16 +21,16 @@ prova não foi persistida — e a aprovação vai recusar mais tarde, por falta 
 recibo, em vez de aceitar uma afirmação sem lastro.
 """
 from __future__ import annotations
+from app.trafego.meta.business_credentials import credencial_operacional
 
-import os
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Annotated
 from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.seguranca.identidade import Identidade, exigir_admin
@@ -49,6 +49,7 @@ from app.trafego.meta_execucao.compilador import (
     compilar_plano_v2,
 )
 from app.trafego.meta_execucao.publicos import resolver_referencias_de_publico
+from app.trafego.meta_execucao import identidades_regulatorias
 from app.trafego.meta_execucao.contrato import (
     DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     DESTINO_SHOP_NAO_PROVADO,
@@ -307,9 +308,10 @@ async def capacidades(
         "adset_budget_sharing": "BLOCKED_IN_SINGLE_ADSET_RECIPE",
         "video_creative": "BLOCKED_UNTIL_VIDEO_THUMBNAIL_CONTRACT_PROVEN",
         "video_inventory": "AVAILABLE_READ_ONLY",
-        "flexible_creative": "BLOCKED_UNTIL_CREATIVE_ASSET_GROUPS_PROVEN",
+        "flexible_creative": "AVAILABLE",
+        "flexible_scope": "V2_SALES_IMAGE_GROUPS_REQUIRES_REMOTE_VALIDATION",
         "validate_only": (
-            "ENABLED" if os.environ.get("META_VALIDATE_ONLY_ENABLED") == "1"
+            "ENABLED" if capacidades_meta.validacao_liberada()
             else "BLOCKED_BY_SERVER_FLAG"
         ),
         # A rota existe (`trafego_meta_criacao`), então "NOT_MOUNTED" deixou de
@@ -326,10 +328,12 @@ async def capacidades(
             else "BLOCKED_BY_SERVER_FLAG"
         ),
         "destino_website": {
-            "escopo": "POR_CONTA",
+            "escopo": "CRIATIVO_PROPRIO_COM_OPT_OUT",
+            "controle_por_payload": "WEBSITE_AND_SHOP_OPT_OUT",
+            "exige_readback": True,
+            "legado_exige_prova_por_conta": True,
             "contas_conferidas": len(capacidades_meta.contas_com_destino_liberado()),
-            "motivo": capacidades_meta.MOTIVO_DA_FLAG[
-                capacidades_meta.FLAG_DESTINO_SHOP],
+            "motivo": "Criativos próprios novos levam opt-out explícito de Shop; a saga exige confirmação desse controle pela Meta. Planos antigos preservam a prova por conta.",
         },
         "activation": "NOT_IMPLEMENTED",
         # Causa verificável de cada bloqueio, em linguagem de operador. A tela
@@ -342,12 +346,9 @@ async def capacidades(
                 "seria uma escrita de ativo não autorizada nesta missão."
             ),
             "flexible_creative": (
-                "O guia de formato flexível usa creative_asset_groups_spec no anúncio, "
-                "com pelo menos uma imagem ou vídeo por grupo, até cinco textos de cada "
-                "tipo por grupo e chamadas para ação do mesmo tipo. O guia restringe "
-                "os objetivos a Vendas e Promoção de app; Tráfego não é compatível. "
-                "Os exemplos são v25: faltam o contrato local e a validação na v26. "
-                "DCO via asset_feed_spec é outro caminho, não uma equivalência."
+                "Imagens em grupos: um anúncio flexível por conjunto, apenas em Vendas. "
+                "A elegibilidade depende da validação da Meta para a conta e o plano. "
+                "Vídeos, catálogo e DCO via asset_feed_spec são contratos diferentes."
             ),
             "adset_budget_sharing": (
                 "Esta campanha possui um único conjunto. Em 05/09/2026 a validação real "
@@ -379,7 +380,7 @@ async def ativos(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    segredo = SegredoEfemero(_credencial_salva(quem).token)
+    segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             return dict(await ResolvedorAtivosMeta(cliente).inventariar(account_ref, segredo))
@@ -396,7 +397,7 @@ async def preview_ativo(
 ) -> Response:
     """Proxy an authenticated preview without exposing Meta's signed URL."""
     _exigir_host_local(request)
-    segredo = SegredoEfemero(_credencial_salva(quem).token)
+    segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
     try:
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             preview_url = await ResolvedorAtivosMeta(cliente).preview_url(
@@ -439,7 +440,7 @@ async def compilar(
         plano = _plano(payload)
         _declaracoes_de_politica(payload)
         compilado = await _compilar(
-            payload, plano, SegredoEfemero(_credencial_salva(quem).token),
+            payload, plano, SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token),
             ator=quem.sub)
         return {"ok": True, "plano": compilado.publico(), "efeito_externo": "NENHUM"}
     except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
@@ -458,7 +459,7 @@ async def validar(
             "codigo": "META_VALIDATE_ONLY_NOT_CONFIRMED",
             "mensagem": "confirme explicitamente a validacao remota",
         })
-    if os.environ.get("META_VALIDATE_ONLY_ENABLED") != "1":
+    if not capacidades_meta.validacao_liberada():
         raise HTTPException(status_code=409, detail={
             "codigo": "META_VALIDATE_ONLY_BLOCKED",
             "mensagem": "validate_only Meta permanece fechado neste servidor",
@@ -468,7 +469,7 @@ async def validar(
         # passa chega perto do Keychain ou da rede.
         pedido = _plano(payload.plano)
         _declaracoes_de_politica(payload.plano)
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
         plano = await _compilar(payload.plano, pedido, segredo, ator=quem.sub)
         autorizacao = AutorizacaoMeta(
             plano_sha256=plano.plano_sha256,
@@ -623,6 +624,13 @@ class PedidoMensuracaoV2(BaseModel):
     standard_event: str | None = Field(default=None, min_length=2, max_length=50)
 
 
+class PedidoTextosFlexiveisV2(BaseModel):
+    model_config = SEM_CAMPO_DESCONHECIDO
+    primary_text: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2200)]] = Field(min_length=1, max_length=5)
+    headline: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]] = Field(min_length=1, max_length=5)
+    description: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]] = Field(default_factory=list, max_length=5)
+
+
 class PedidoConjuntoV2(BaseModel):
     model_config = SEM_CAMPO_DESCONHECIDO
 
@@ -634,6 +642,8 @@ class PedidoConjuntoV2(BaseModel):
     placements: PedidoPosicionamentosV2 = Field(default_factory=PedidoPosicionamentosV2)
     measurement: PedidoMensuracaoV2 = Field(default_factory=PedidoMensuracaoV2)
     budget: PedidoOrcamentoV2 | None = None
+    regulatory_identity_ref: str | None = Field(default=None, pattern=r"^metareg_[a-f0-9]{32}$")
+    flexible_texts: PedidoTextosFlexiveisV2 | None = None
 
 
 class PedidoAnuncioV2(BaseModel):
@@ -642,11 +652,13 @@ class PedidoAnuncioV2(BaseModel):
     variation_key: str = Field(min_length=1, max_length=32)
     adset_key: str = Field(min_length=1, max_length=32)
     asset_ref: str = Field(min_length=8, max_length=180)
+    existing_post_ref: str | None = Field(default=None, pattern=r"^metapost_[a-f0-9]{32}$")
     creative_name: str = Field(min_length=1, max_length=400)
     ad_name: str = Field(min_length=1, max_length=400)
     message: str = Field(min_length=1, max_length=2200)
     headline: str = Field(min_length=1, max_length=255)
-    description: str = Field(min_length=1, max_length=255)
+    # V2 context decides: only an explicit flexible pool may omit description.
+    description: str = Field(min_length=0, max_length=255)
     call_to_action_type: str = Field(default="LEARN_MORE", min_length=3, max_length=40)
     asset_rights_confirmed: bool = False
     third_party_identity_cleared: bool = False
@@ -655,6 +667,8 @@ class PedidoAnuncioV2(BaseModel):
 
 class PedidoPlanoMetaV2(BaseModel):
     model_config = SEM_CAMPO_DESCONHECIDO
+
+    creative_mode: str = Field(default="STATIC", pattern=r"^(STATIC|FLEXIBLE_IMAGES)$")
 
     recipe_id: str = Field(min_length=3, max_length=80)
     account_ref: str = Field(min_length=8, max_length=180)
@@ -682,6 +696,9 @@ def _plano_v2_do_pedido(payload: PedidoPlanoMetaV2) -> contrato_v2.PlanoMetaV2:
     conjuntos = tuple(
         contrato_v2.ConjuntoMeta(
             adset_key=item.adset_key,
+            flexible_texts=(contrato_v2.TextosFlexiveisMeta(**item.flexible_texts.model_dump())
+                            if item.flexible_texts is not None else None),
+            regulatory_identity_ref=item.regulatory_identity_ref,
             nome=item.name,
             programacao=contrato_v2.ProgramacaoMeta(
                 start_time=item.start_time, end_time=item.end_time),
@@ -738,11 +755,15 @@ def _plano_v2_do_pedido(payload: PedidoPlanoMetaV2) -> contrato_v2.PlanoMetaV2:
             variacao=VariacaoEstaticaMeta(
                 variation_key=item.variation_key,
                 asset_ref=item.asset_ref,
+                existing_post_ref=item.existing_post_ref,
                 creative_name=item.creative_name,
                 ad_name=item.ad_name,
                 message=item.message,
                 headline=item.headline,
                 description=item.description,
+                description_optional=(payload.creative_mode == "FLEXIBLE_IMAGES" and any(
+                    conjunto.adset_key == item.adset_key and conjunto.flexible_texts is not None
+                    for conjunto in payload.adsets)),
                 call_to_action_type=item.call_to_action_type,
             ),
             adset_key=item.adset_key,
@@ -751,6 +772,7 @@ def _plano_v2_do_pedido(payload: PedidoPlanoMetaV2) -> contrato_v2.PlanoMetaV2:
     )
     return contrato_v2.PlanoMetaV2(
         recipe_id=payload.recipe_id,
+        creative_mode=payload.creative_mode,
         account_ref=payload.account_ref,
         page_ref=payload.page_ref,
         instagram_actor_ref=payload.instagram_actor_ref,
@@ -813,7 +835,43 @@ async def _compilar_v2(
         )
         publicos = await resolver_referencias_de_publico(
             cliente, plano=plano, account_ref=payload.account_ref, segredo=segredo)
-    return compilar_plano_v2(plano, referencias, publicos)
+        regulatory = {}
+        if any(item.regulatory_identity_ref for item in plano.conjuntos):
+            regulatory = await identidades_regulatorias.catalogo(cliente, payload.account_ref, segredo)
+        from app.trafego.meta_execucao import posts_existentes
+        posts = await posts_existentes.catalogo(cliente, payload.account_ref, payload.page_ref, segredo) if any(item.existing_post_ref for item in payload.ads) else {}
+    return compilar_plano_v2(plano, referencias, publicos, regulatory=regulatory, existing_posts=posts)
+
+
+@router.get("/v2/posts-existentes")
+async def listar_posts_existentes(request: Request,
+    account_ref: str = Query(min_length=8, max_length=180),
+    page_ref: str = Query(min_length=8, max_length=180),
+    q: str = Query(default="", max_length=200),
+    offset: int = Query(default=0, ge=0), limit: int = Query(default=24, ge=1, le=100),
+    quem: Identidade = Depends(exigir_admin)) -> dict[str, Any]:
+    _exigir_host_local(request)
+    from app.trafego.meta_execucao import posts_existentes
+    try:
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
+        async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+            items = await posts_existentes.catalogo_cached(cliente, account_ref, page_ref, segredo, owner=quem.sub)
+        return posts_existentes.publico(items, q, offset, limit)
+    except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
+        raise _erro(exc) from None
+
+
+@router.get("/v2/identidades-regulatorias")
+async def listar_identidades_regulatorias(request: Request,
+    account_ref: str = Query(min_length=8, max_length=180),
+    quem: Identidade = Depends(exigir_admin)) -> dict[str, Any]:
+    _exigir_host_local(request)
+    try:
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
+        async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
+            return await identidades_regulatorias.consultar_publico(cliente, account_ref, segredo)
+    except (ErroDeNascimentoMeta, ErroRemotoMeta) as exc:
+        raise _erro(exc) from None
 
 
 def _resumo_v2(plano: contrato_v2.PlanoMetaV2) -> dict[str, Any]:
@@ -824,12 +882,17 @@ def _resumo_v2(plano: contrato_v2.PlanoMetaV2) -> dict[str, Any]:
     o resumo não ter outra fonte.
     """
     return {
+        "formato_criativo": plano.creative_mode,
+        "total_anuncios_emitidos": len(plano.conjuntos) if plano.creative_mode == "FLEXIBLE_IMAGES" else len(plano.anuncios),
+        "total_grupos_de_imagem": sum(1 if c.flexible_texts is not None else len(plano.anuncios_do_conjunto(c.adset_key))
+                                      for c in plano.conjuntos) if plano.creative_mode == "FLEXIBLE_IMAGES" else 0,
         "receita": {
             "id": plano.receita.id,
             "rotulo": plano.receita.rotulo,
             "objetivo": plano.receita.objective,
             "otimizacao": plano.receita.optimization_goal,
             "prova": plano.receita.prova,
+            "capacidade_pausada": receitas.capacidade_pausada(),
         },
         "orcamento": {
             "nivel": plano.nivel_de_orcamento,
@@ -859,12 +922,17 @@ def _resumo_v2(plano: contrato_v2.PlanoMetaV2) -> dict[str, Any]:
                 "posicionamentos": list(conjunto.posicionamentos.plataformas),
                 "mensuracao_proposito": conjunto.mensuracao.proposito,
                 "mensuracao_altera_entrega": conjunto.mensuracao.altera_payload,
-                "anuncios": [
-                    item.variation_key for item in plano.anuncios_do_conjunto(conjunto.adset_key)],
+                "anuncios": [item.variation_key for item in (
+                    plano.anuncios_do_conjunto(conjunto.adset_key)[:1]
+                    if plano.creative_mode == "FLEXIBLE_IMAGES"
+                    else plano.anuncios_do_conjunto(conjunto.adset_key))],
+                "grupos_de_imagem": (1 if conjunto.flexible_texts is not None else len(plano.anuncios_do_conjunto(conjunto.adset_key))) if plano.creative_mode == "FLEXIBLE_IMAGES" else 0,
+                **({"flexible_texts": conjunto.flexible_texts.publico()} if conjunto.flexible_texts is not None else {}),
             }
             for conjunto in plano.conjuntos
         ],
         "bloqueios_para_criar": list(plano.bloqueios_para_criar()),
+        "lacunas_de_prova_historica": list(plano.bloqueios_para_criar()),
     }
 
 
@@ -914,7 +982,7 @@ async def compilar_v2(
         plano = _plano_v2_do_pedido(payload)
         _declaracoes_de_politica_v2(payload)
         compilado = await _compilar_v2(
-            payload, plano, SegredoEfemero(_credencial_salva(quem).token), ator=quem.sub)
+            payload, plano, SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token), ator=quem.sub)
         return {
             "ok": True,
             "contrato": "V2",
@@ -944,7 +1012,7 @@ async def validar_v2(
             "codigo": "META_VALIDATE_ONLY_NOT_CONFIRMED",
             "mensagem": "confirme explicitamente a validacao remota",
         })
-    if os.environ.get("META_VALIDATE_ONLY_ENABLED") != "1":
+    if not capacidades_meta.validacao_liberada():
         raise HTTPException(status_code=409, detail={
             "codigo": "META_VALIDATE_ONLY_BLOCKED",
             "mensagem": "validate_only Meta permanece fechado neste servidor",
@@ -952,7 +1020,7 @@ async def validar_v2(
     try:
         plano = _plano_v2_do_pedido(payload.plano)
         _declaracoes_de_politica_v2(payload.plano)
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
         compilado = await _compilar_v2(payload.plano, plano, segredo, ator=quem.sub)
         autorizacao = AutorizacaoMeta(
             plano_sha256=compilado.plano_sha256,
@@ -1009,10 +1077,10 @@ async def ficha_do_canario(
         plano = _plano_v2_do_pedido(payload)
         _declaracoes_de_politica_v2(payload)
         compilado = await _compilar_v2(
-            payload, plano, SegredoEfemero(_credencial_salva(quem).token), ator=quem.sub)
+            payload, plano, SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token), ator=quem.sub)
         ficha = contrato_v2.ficha_de_canario(
             plano, compilado,
-            prova_de_validacao=await _prova_de_validacao_do_hash(compilado.plano_sha256),
+            prova_de_validacao=await _prova_de_validacao_do_hash(compilado.plano_sha256, ator=quem.sub),
         )
         # O tracking real vem do plano COMPILADO, não de uma constante repetida
         # aqui: duas cópias do mesmo template é como uma delas fica para trás.
@@ -1026,32 +1094,18 @@ async def ficha_do_canario(
         raise _erro(exc) from None
 
 
-async def _prova_de_validacao_do_hash(plano_sha256: str) -> dict[str, Any]:
+async def _prova_de_validacao_do_hash(plano_sha256: str, *, ator: str) -> dict[str, Any]:
     """Procura o recibo durável de validate_only para ESTE hash exato.
 
     ⚠️ Um hash novo exige recibo novo. É o mesmo princípio de
     `AutorizacaoMeta.exigir`: mudar qualquer campo muda o hash, e um recibo
     antigo descreveria um plano que já não é este.
     """
-    if not ledger_liberado():
-        return {
-            "registrada": False,
-            "motivo": "o registro durável Meta está fechado neste servidor",
-        }
+    from app.routers.trafego_meta_criacao import JANELA_DA_VALIDACAO_S
+
     try:
-        encontrado = await _registro_saga().buscar_validacao(plano_sha256=plano_sha256)
-    except AttributeError:
-        # ⚠️ LACUNA NOMEADA. O ledger sabe GRAVAR a validação
-        # (`registrar_validacao`) e ainda não sabe procurá-la por hash. Fingir
-        # que encontrou seria pior do que dizer que não sei procurar.
-        return {
-            "registrada": False,
-            "motivo": (
-                "este servidor ainda não sabe consultar o recibo de validação por "
-                "hash; confirme a validação pela resposta do clique de validar"
-            ),
-            "codigo": "META_VALIDATION_RECEIPT_LOOKUP_UNAVAILABLE",
-        }
+        encontrado = await _registro_saga().buscar_validacao(
+            plano_sha256=plano_sha256, ator=ator, janela_da_validacao_s=JANELA_DA_VALIDACAO_S)
     except ErroDeNascimentoMeta as exc:
         return {"registrada": False, "motivo": str(exc), "codigo": exc.codigo}
     return {"registrada": bool(encontrado), "recibo": encontrado or None}

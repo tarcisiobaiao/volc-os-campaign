@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "run_id": "meta-creative-closure-20260909",
+  "status": "partial_waiting_qa_session_consent",
+  "evidence": "docs/closure/meta-creative-closure-20260909/EVIDENCE.json",
+  "objective": "LP context, explicit visual specification and correct Meta creative reuse",
+  "scope": ["VOLC local creative studio", "Meta draft assembly", "additive authorized persistence"],
+  "excluded": ["Webgo mutations", "campaign activation", "automatic paid vision review"],
+  "authority": "User adopted execution prompt; preserve plan and content approvals; PAUSED only",
+  "image_canary_maximum": 4,
+  "data_lifecycle": {
+    "classification": "internal sanitized engineering evidence",
+    "retention": "retain sanitized verification evidence with repository; no tokens or customer exports",
+    "access_roles": ["local operator", "implementing agents"],
+    "incident_owner": "local operator",
+    "raw_data": "excluded from committed evidence"
+  }
+}

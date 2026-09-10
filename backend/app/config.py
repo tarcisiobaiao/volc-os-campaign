@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     # trocar o modelo de descoberta não altere silenciosamente a memória
     # criativa e vice-versa. Sem chave, o router falha fechado — não cai em mock.
     criativo_meta_gemini_model: str = "gemini-3.8-flash"
+    # OCR local Apple Vision. No image data leaves the machine. Logo identity
+    # is a separate capability and is never implied by this setting.
+    criativo_policy_local_ocr_enabled: bool = False
+    # Explicit consent for paid pixel egress on selected Meta media reviews.
+    # Never registers an external detector for unrelated Studio/Google work.
+    criativo_policy_gemini_vision_enabled: bool = False
     # Cap on Gemini output tokens. None = omit (model uses its own outputTokenLimit,
     # e.g. 65536 for gemini-3.x flash). Set a number only to force a smaller cap.
     pautador_gemini_max_output_tokens: Optional[int] = None
@@ -162,6 +168,14 @@ class Settings(BaseSettings):
     # processo — foi exatamente essa a pegadinha que fez o cofre nascer "não
     # configurado" com a chave já gravada no backend/.env.
     volc_segredo_key: Optional[str] = None
+    meta_business_credentials_enabled: bool = False
+    # Flags estritas: só "1" abre o ato; listas autorizam apenas a conta indicada.
+    # BaseSettings lê os arquivos locais, mas não exporta seus valores em os.environ.
+    meta_create_paused_enabled: str = ""
+    meta_create_ledger_write_enabled: str = ""
+    meta_validate_only_enabled: str = ""
+    meta_shop_redirect_cleared: str = ""
+    meta_upload_asset_enabled: str = ""
 
     # ---- control plane externo de publicacao organica (Postiz, P12-T09) ------
     # ⚠️ O UNICO SEGREDO QUE O ADAPTADOR DE PUBLICACAO CONHECE. Ele nao le

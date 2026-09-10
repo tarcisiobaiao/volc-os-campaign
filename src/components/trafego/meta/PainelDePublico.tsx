@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 import { CatalogoDaConta } from './CatalogoDaConta';
+import { SeletorDePaises } from './SeletorDePaises';
 import { lerConversao, motivoLegivel } from './conversoes';
 import { Campo, Escolha, GrupoDeEscolha, NomeCurto, campo } from './primitivas';
 import {
@@ -56,6 +57,7 @@ const PONTO_NOVO: PontoComRaio = {
 
 export const PainelDePublico: React.FC<{
   draft: Draft;
+  demo?: boolean;
   conjunto: ConjuntoDraft;
   /** Limites que o servidor declarou em `/v2/receitas`. Sem catálogo, o
    *  fallback do contrato é usado — e a linha diz de onde veio. */
@@ -75,11 +77,18 @@ export const PainelDePublico: React.FC<{
   /** A BUSCA é o ato: o termo digitado nunca vira chave por conta própria. */
   onBuscarLugares: (termo: string) => void;
 }> = ({
-  draft, conjunto, idade, resumoDoConjunto, onConjunto,
+  draft, demo = false, conjunto, idade, resumoDoConjunto, onConjunto,
   catalogoDePublicos, lendoPublicos, erroDosPublicos, onLerPublicos,
   catalogoDeLugares, lendoLugares, erroDosLugares, onBuscarLugares,
 }) => {
   const publico = conjunto.publico;
+  const ultimaContaConsultada = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (demo || !draft.accountRef || lendoPublicos || catalogoDePublicos || erroDosPublicos
+      || ultimaContaConsultada.current === draft.accountRef) return;
+    ultimaContaConsultada.current = draft.accountRef;
+    onLerPublicos();
+  }, [demo, draft.accountRef, lendoPublicos, catalogoDePublicos, erroDosPublicos, onLerPublicos]);
   const incluidos = paisesIncluidos(publico.geo);
   const excluidos = paisesExcluidos(publico.geo);
   const colisao = incluidos.filter((pais) => excluidos.includes(pais));
@@ -175,22 +184,24 @@ export const PainelDePublico: React.FC<{
             { id: 'MANUAL', nome: 'Manual', detalhe: 'geografia, idade e recortes seus' },
             {
               id: 'EXISTING_CUSTOM', nome: 'Público personalizado',
-              detalhe: 'ao menos um público salvo da conta',
+              detalhe: 'clientes, visitantes do site ou pessoas que interagiram',
             },
             {
-              id: 'EXISTING_LOOKALIKE', nome: 'Semelhante',
-              detalhe: 'ao menos um semelhante da conta',
+              id: 'EXISTING_LOOKALIKE', nome: 'Semelhante (lookalike)',
+              detalhe: 'novas pessoas parecidas com um público de origem',
             },
           ]}
         />
         <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
-          {BLOQUEIOS.catalogoDePublicos}
+          Os públicos personalizados e semelhantes da conta são carregados automaticamente.
+          Escolha abaixo quais incluir ou excluir neste conjunto.
         </p>
       </div>
 
       <details className="text-sm" open={publico.modo === 'EXISTING_CUSTOM' || publico.modo === 'EXISTING_LOOKALIKE' ? true : undefined}><summary className="cursor-pointer py-2 font-medium">Públicos salvos e exclusões</summary>
       {/* ── F12/F13/F14: públicos que JÁ EXISTEM na conta ──────────────────── */}
       <CatalogoDaConta
+        automatico
         titulo="Públicos salvos desta conta"
         substantivo="públicos"
         envelope={catalogoDePublicos}
@@ -260,6 +271,20 @@ export const PainelDePublico: React.FC<{
         )}
       </CatalogoDaConta>
 
+      <details className="mt-3 rounded-lg border border-border bg-background p-4">
+        <summary className="cursor-pointer font-medium">Precisa criar um público ou importar uma lista CSV?</summary>
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+          Uma lista de clientes cria um público personalizado de origem. A partir dele, a Meta pode
+          criar um público semelhante. O envio de CSV e a criação de novos públicos ainda são feitos
+          no Gerenciador de Públicos; aqui você pode selecionar os públicos já disponíveis na conta.
+        </p>
+        <a href="https://business.facebook.com/adsmanager/audiences" target="_blank" rel="noopener noreferrer"
+          className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-3 text-sm font-medium text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Abrir Públicos na Meta ↗
+        </a>
+        <p className="mt-2 text-sm text-muted-foreground">Depois de criar, use “Atualizar lista” acima. O processamento da Meta pode levar algum tempo.</p>
+      </details>
+
       {usaPublicoSalvo && publico.modo === 'BROAD' && (
         <PainelDeBloqueio
           titulo="Público amplo não aceita público salvo"
@@ -277,29 +302,25 @@ export const PainelDePublico: React.FC<{
         <Campo
           id={`meta-paises-${conjunto.key}`}
           rotulo="Países alcançados"
-          ajuda={incluidos.length
-            ? `A bancada entendeu ${incluidos.join(', ')}. Códigos ISO de duas letras, separados por vírgula.`
-            : 'Escolha ao menos um lugar para alcançar. Use códigos ISO de duas letras (BR, PT, US).'}
+          ajuda="Busque pelo nome e selecione um ou mais países."
         >
-          <Input
+          <SeletorDePaises
             id={`meta-paises-${conjunto.key}`}
-            value={publico.geo.paisesTexto}
-            autoComplete="off"
-            onChange={(e) => mudarGeo({ paisesTexto: e.target.value })}
+            selecionados={incluidos}
+            impedidos={excluidos}
+            onChange={(codigos) => mudarGeo({ paisesTexto: codigos.join(', ') })}
           />
         </Campo>
         <Campo
           id={`meta-paises-ex-${conjunto.key}`}
           rotulo="Países excluídos"
-          ajuda={excluidos.length
-            ? `A bancada entendeu ${excluidos.join(', ')}.`
-            : 'Opcional. Excluir é uma decisão tão material quanto incluir, e por isso tem campo próprio.'}
+          ajuda="Opcional. Esses países ficam fora do alcance deste conjunto."
         >
-          <Input
+          <SeletorDePaises
             id={`meta-paises-ex-${conjunto.key}`}
-            value={publico.geo.exclusoesTexto}
-            autoComplete="off"
-            onChange={(e) => mudarGeo({ exclusoesTexto: e.target.value })}
+            selecionados={excluidos}
+            impedidos={incluidos}
+            onChange={(codigos) => mudarGeo({ exclusoesTexto: codigos.join(', ') })}
           />
         </Campo>
 

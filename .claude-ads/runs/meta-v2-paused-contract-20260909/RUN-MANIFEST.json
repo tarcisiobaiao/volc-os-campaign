@@ -1,0 +1,11 @@
+{
+  "run_id": "meta-v2-paused-contract-20260909",
+  "scope": "backend V2 paused creation gates and exact validation evidence",
+  "worker": "v2_birth",
+  "mode": "local implementation and hermetic tests",
+  "external_mutations": false,
+  "secrets_read": false,
+  "platform": "META_ADS",
+  "evidence": ["current source and test contracts", "official Meta documentation fetch returned HTTP 429"],
+  "data_lifecycle": {"classification":"sanitized code evidence only", "raw_account_data":"none", "retention":"repository engineering evidence", "owner":"integrating agent", "secrets":"prohibited"}
+}

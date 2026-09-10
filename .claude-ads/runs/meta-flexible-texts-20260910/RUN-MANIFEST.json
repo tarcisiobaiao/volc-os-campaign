@@ -1,0 +1,9 @@
+{
+  "run_id": "meta-flexible-texts-20260910",
+  "status": "implemented_remote_canary_pending",
+  "objective": "Editar e preservar variações de texto por conjunto no anúncio flexível",
+  "scope": ["editor", "draft", "V2 compiler", "approval and readback", "hermetic tests"],
+  "external_mutations": {"official_database_migrations": 1, "meta_writes": 0, "operator_drafts_changed": 0},
+  "evidence": "docs/closure/meta-flexible-texts-20260910/HANDOFF.md",
+  "data_lifecycle": {"classification": "synthetic engineering fixtures", "retention": "repository evidence without account exports", "access_roles": ["operator", "implementers"], "incident_owner": "operator"}
+}

@@ -1,13 +1,13 @@
 /**
  * Jornada guiada de criação Meta: uma decisão por tela, um único rascunho.
  * O compilador do servidor continua sendo a autoridade do plano e do hash.
- * V1 pode criar PAUSED com aprovação e flags; V2 apenas compila e valida.
+ * V1 e V2 exigem aprovação durável, capacidades do servidor e nascimento PAUSED.
  * Navegar, escolher uma receita ou selecionar um asset não autoriza despacho.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, CircleCheck, CircleDot, Copy, Film, Image as ImageIcon,
-  Lock, Megaphone, Plus, ShieldCheck, Trash2,
+  Lock, Megaphone, Plus, ShieldCheck, Trash2, Upload,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -16,9 +16,20 @@ import {
   AcaoDominante, BlocoDeEvidencia, ChipDeEstado, LinhaDeFato, PainelDeBloqueio, Pedido,
 } from '@/components/trafego/bancada';
 import { MetaConfiguracaoLocal } from '@/components/trafego/meta/MetaConfiguracaoLocal';
+import { RascunhosMeta } from '@/components/trafego/meta/RascunhosMeta';
 import { MapaDoPlano } from '@/components/trafego/meta/MapaDoPlano';
 import { PainelDeConjuntos } from '@/components/trafego/meta/PainelDeConjuntos';
 import { PainelDeMensuracao } from '@/components/trafego/meta/PainelDeMensuracao';
+import { IdentidadeDoAnunciante } from '@/components/trafego/meta/IdentidadeDoAnunciante';
+import { criarLeitorDeIdentidadesCompartilhado } from '@/components/trafego/meta/leituraCompartilhadaDeIdentidades';
+import { supabase } from '@/lib/supabase';
+import { EscolherBusinessMeta } from '@/components/trafego/meta/EscolherBusinessMeta';
+import { SelecionarAtivoMeta } from '@/components/trafego/meta/SelecionarAtivoMeta';
+import { FormatoDeCriativos } from '@/components/trafego/meta/FormatoDeCriativos';
+import { TextosDoAnuncioFlexivel } from '@/components/trafego/meta/TextosDoAnuncioFlexivel';
+import { VarinhaDeCopy } from '@/components/trafego/meta/VarinhaDeCopy';
+import { NomenclaturaAutomatica } from '@/components/trafego/meta/NomenclaturaAutomatica';
+import { aplicarNomenclatura, siteDoDestino, tipoDoDestino } from '@/components/trafego/meta/nomenclatura';
 import { PainelDeOrcamento } from '@/components/trafego/meta/PainelDeOrcamento';
 import { PainelDePublico } from '@/components/trafego/meta/PainelDePublico';
 import { PainelDeReceita } from '@/components/trafego/meta/PainelDeReceita';
@@ -27,11 +38,12 @@ import { Campo, Escolha, GrupoDeEscolha, campo } from '@/components/trafego/meta
 import {
   BLOQUEIOS, CAPACIDADES_FECHADAS, CONFIRMACAO_DE_CRIACAO, ConjuntoDraft, Draft,
   EtapaId, IDADE_MAXIMA_PADRAO, IDADE_MINIMA_PADRAO, LIMITE_CONJUNTOS, LIMITE_VARIACOES,
-  MidiaDaVariacao, NivelDeOrcamento, PeriodoDeOrcamento, PropositoDeMensuracao, RECEITA_PADRAO,
+  NivelDeOrcamento, PeriodoDeOrcamento, PropositoDeMensuracao, RECEITA_PADRAO,
   VariacaoDraft, conjuntoInicial, confirmacaoDeCriacaoValida, contratoDoPlano, dominioDoDestino, destinoValido,
   formatarBrl, inicioEmIso, nomeUnico, orcamentosDoPlano, paraPlano, paraPlanoV2,
-  prontidaoDasEtapas, prontoParaCompilar, proximaChave, reaisParaMinor, variacaoCompleta,
+  prontidaoDasEtapas, prontoParaCompilar, proximaChave, reaisParaMinor, variacaoCompleta, pendenciasDaVariacao,
   variacaoInicial, variacoesEmitidas, type CapacidadesDaBancada,
+  textosFlexiveisDoConjunto, pendenciasDosTextosFlexiveis, variacaoEfetiva, type TextosFlexiveisDraft,
 } from '@/components/trafego/meta/rascunho';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,12 +60,22 @@ import {
   ResultadoReconciliacaoMeta, ResultadoValidacaoPlanoMeta,
 } from '@/lib/pautadorApi';
 import { cn } from '@/lib/utils';
+import { useMetaCampaignDraft } from '@/hooks/useMetaCampaignDraft';
 import { perguntaDaUrl, perguntasMeta, type PerguntaMeta } from '@/components/trafego/meta/jornada';
 import '@/components/trafego/meta/jornada.css';
 import { lerSelecaoDoAssistente, lerSelecaoDeCopy, type SelecaoDeCopy } from '@/components/trafego/meta/ponteAssistente';
 import { ImportarCopyDoAssistente } from '@/components/trafego/meta/ImportarCopyDoAssistente';
 import { AssistenteNaJornada } from '@/components/trafego/meta/AssistenteNaJornada';
-import { selecionarPack } from '@/features/creative-studio/api';
+import {
+  fixarPackNoConjunto, importarMidiaPrivada, listarSelecoesDePack, retirarPackDoConjunto, salvarPack,
+  type DraftPackSelection,
+} from '@/features/creative-studio/api';
+import { EscolherPack } from '@/features/creative-studio/componentes/EscolherPack';
+import { adicionarAnuncioNoConjunto, duplicarParaTrocarImagem, removerConjuntoSemAnuncios } from '@/components/trafego/meta/vinculos';
+import { ReutilizarEmConjunto } from '@/components/trafego/meta/DistribuicaoDeAnuncios';
+import { PrepararPackMeta } from '@/components/trafego/meta/PrepararPackMeta';
+import { materializarPack, packMaterializado } from '@/components/trafego/meta/materializarPack';
+import { RevisaoHumanaDosAnuncios } from '@/components/trafego/meta/RevisaoHumanaDosAnuncios';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
 
 const CTAS: readonly [string, string][] = [
@@ -80,6 +102,15 @@ const inicioPadrao = () => {
 
 const CHAVE_DO_PRIMEIRO_CONJUNTO = 'adset-001';
 
+const novaReferenciaDeRascunho = () => (
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, caractere => {
+      const valor = Math.floor(Math.random() * 16);
+      return (caractere === 'x' ? valor : (valor & 0x3) | 0x8).toString(16);
+    })
+);
+
 const DRAFT_INICIAL: Draft = {
   recipeId: RECEITA_PADRAO,
   accountRef: '', pageRef: '', instagramActorRef: '',
@@ -95,8 +126,10 @@ const DRAFT_INICIAL: Draft = {
   variations: [variacaoInicial('variation-001', 1, CHAVE_DO_PRIMEIRO_CONJUNTO)],
 };
 /** A prévia real da peça, servida pelo proxy autenticado do backend. */
-const PreviaDaPeca: React.FC<{ accountRef: string; ativo?: AtivoCriacaoMeta }> = ({
-  accountRef, ativo,
+const PreviaDaPeca: React.FC<{
+  accountRef: string; ativo?: AtivoCriacaoMeta; onUpload?: (file: File) => void; uploadBusy?: boolean;
+}> = ({
+  accountRef, ativo, onUpload, uploadBusy = false,
 }) => {
   const [url, setUrl] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -129,6 +162,15 @@ const PreviaDaPeca: React.FC<{ accountRef: string; ativo?: AtivoCriacaoMeta }> =
           alt={`Prévia de ${ativo?.nome || 'peça selecionada'}`}
           className="h-full max-h-64 w-full object-contain"
         />
+      ) : onUpload ? (
+        <label className={cn('flex min-h-40 w-full cursor-pointer flex-col items-center justify-center gap-2 px-5 text-center text-sm transition-colors focus-within:ring-2 focus-within:ring-ring',
+          uploadBusy ? 'pointer-events-none opacity-60' : 'hover:bg-primary/5 hover:text-foreground')}>
+          <input type="file" className="sr-only" accept="image/jpeg,image/png" disabled={uploadBusy}
+            onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); event.currentTarget.value = ''; }} />
+          <Glifo className="h-7 w-7 opacity-50" aria-hidden />
+          <span>{uploadBusy ? 'Guardando imagem…' : erro || (ativo?.preview_disponivel ? 'Carregando prévia…' : 'Clique para enviar uma imagem')}</span>
+          {!uploadBusy && <span className="inline-flex items-center gap-1 font-medium text-primary"><Upload className="h-4 w-4" aria-hidden />JPEG ou PNG</span>}
+        </label>
       ) : (
         <div className="flex flex-col items-center gap-2 px-5 text-center text-sm text-muted-foreground">
           <Glifo className="h-7 w-7 opacity-50" aria-hidden />
@@ -150,11 +192,32 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
   }
   const corpo = (exc.corpo ?? {}) as {
     codigo?: string;
+    objetos_criados?: unknown;
     provedor?: {
       objeto?: string; code?: string; error_subcode?: string; messages?: string[];
     };
   };
   const provedor = corpo.provedor;
+
+  const criacaoParcial = Array.isArray(corpo.objetos_criados) && corpo.objetos_criados.length > 0;
+  const detalheParcial = criacaoParcial
+    ? 'A criação foi parcial: já existem objetos registrados na Meta. Confira o recibo '
+      + 'durável abaixo antes de continuar; não recomece a campanha do zero.'
+    : '';
+
+  if (corpo.codigo === 'META_VERIFIED_ADVERTISER_REQUIRED'
+    || (String(provedor?.code) === '100' && String(provedor?.error_subcode) === '3858634')) {
+    return [{
+      codigo: 'META_VERIFIED_ADVERTISER_REQUIRED',
+      severidade: 'alta',
+      titulo: 'Escolha a identificação do anunciante deste conjunto',
+      detalhe: 'A Meta recusou este conjunto (100/3858634). Na revisão, consulte as identificações da conta e escolha o cadastro correto. Nas Configurações de publicidade '
+        + 'da Meta, confira a identidade verificada do anunciante e as informações de '
+        + 'beneficiário e pagador exigidas para esta conta e público. Não escolhemos essa '
+        + 'identidade nem alteramos o público automaticamente. '
+        + (detalheParcial || 'Confira o recibo da operação antes de uma nova tentativa.'),
+    }];
+  }
 
   // Timeout não é recusa. Sem este ramo o operador lê "Nenhum detalhe
   // adicional foi devolvido" e conclui que a Meta reprovou o plano — quando na
@@ -191,9 +254,10 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
       codigo: corpo.codigo || `HTTP_${exc.status}`,
       severidade: 'alta',
       titulo: `A Meta recusou ${objeto}código ${provedor.code}${subcodigo}`,
-      detalhe: explicacoes.length
+      detalhe: (explicacoes.length
         ? explicacoes.join(' · ')
-        : 'A Meta não devolveu explicação adicional.',
+        : 'A Meta não devolveu explicação adicional.')
+        + (detalheParcial ? ` ${detalheParcial}` : ''),
     }];
   }
 
@@ -206,6 +270,16 @@ function avisosDoErro(exc: unknown): AvisoDoCockpit[] {
 }
 
 const MetaCriacaoPage: React.FC = () => {
+  const [epocaDaSessao, setEpocaDaSessao] = useState(0);
+  const lerIdentidades = useMemo(() => criarLeitorDeIdentidadesCompartilhado(pautadorApi.identidadesRegulatoriasMeta), [epocaDaSessao]);
+  const leitorAtual = useRef(lerIdentidades); leitorAtual.current = lerIdentidades;
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'INITIAL_SESSION') return;
+      leitorAtual.current.clear(); setEpocaDaSessao(epoch => epoch + 1);
+    });
+    return () => { data.subscription.unsubscribe(); leitorAtual.current.clear(); };
+  }, []);
   const [params, setParams] = useSearchParams();
   /** A referência OPACA da operação, e é só ela que viaja na URL.
    *
@@ -220,25 +294,52 @@ const MetaCriacaoPage: React.FC = () => {
   const pergunta = perguntaDaUrl(params, mostraConversao);
   const etapa = pergunta.etapa;
   const indice = perguntas.findIndex(p => p.id === pergunta.id);
-  const [origemCriativa, setOrigemCriativa] = useState<'conta' | 'assistente'>('conta');
+  const [origemCriativa, setOrigemCriativa] = useState<'conta' | 'assistente' | 'pack'>(params.get('pack') ? 'pack' : 'conta');
   const [assistenteAberto, setAssistenteAberto] = useState(false);
   const iframeAssistente = useRef<HTMLIFrameElement>(null);
   const [projetoCriativo, setProjetoCriativo] = useState<string | null>(null);
   const [mastersSelecionados, setMastersSelecionados] = useState<string[]>([]);
   const [packAviso, setPackAviso] = useState('');
+  const [packOcupado, setPackOcupado] = useState(false);
+  const [arquivoOcupado, setArquivoOcupado] = useState<string | null>(null);
+  const alvoDoUpload = useRef<{ packId: string; variationKey: string } | null>(null);
+  const [editandoPack, setEditandoPack] = useState(false);
+  const [selecoesDePack, setSelecoesDePack] = useState<DraftPackSelection[]>([]);
+  const [selecoesCarregadas, setSelecoesCarregadas] = useState(false);
+  const [selecoesErro, setSelecoesErro] = useState(false);
+  // Capture explicit resume before the new-draft effect adds its generated ID.
+  // A missing existing ID must never be recreated by autosaving blank defaults.
+  const [retomandoRascunho] = useState(() => params.has('rascunho'));
+  const [draftRef] = useState(() => {
+    const atual = params.get('rascunho');
+    return atual && /^[0-9a-f-]{36}$/i.test(atual) ? atual : novaReferenciaDeRascunho();
+  });
   const packRef = params.get('pack');
   useEffect(() => {
+    if (params.get('rascunho') === draftRef) return;
+    const nova = new URLSearchParams(params);
+    nova.set('rascunho', draftRef);
+    setParams(nova, { replace: true });
+  }, [draftRef]); // a referência nasce uma vez; mudanças de etapa não criam outro rascunho
+  useEffect(() => {
     let vivo = true;
-    if (!packRef) return;
-    setPackAviso('Conferindo as peças do pack…');
-    if (!/^[0-9a-f-]{36}$/i.test(packRef)) { setPackAviso('Referência de pack inválida.'); return; }
-    selecionarPack(packRef).then(r => {
-      if (!vivo) return;
-      setMastersSelecionados(r.master_refs);
-      setPackAviso('Pack selecionado no rascunho. Revise as peças na etapa Criativos; nada foi enviado à Meta.');
-    }).catch(e => { if (vivo) setPackAviso(e instanceof Error ? e.message : 'Não foi possível conferir o pack.'); });
+    setSelecoesCarregadas(false);
+    setSelecoesErro(false);
+    if (params.get('modo') === 'demo') {
+      setSelecoesDePack([]); setSelecoesCarregadas(true);
+      return () => { vivo = false; };
+    }
+    listarSelecoesDePack(draftRef).then(resposta => {
+      if (vivo) { setSelecoesDePack(resposta.selections); setSelecoesCarregadas(true); }
+    }).catch(exc => {
+      if (vivo) {
+        setSelecoesErro(true);
+        setPackAviso(exc instanceof Error ? exc.message : 'Não foi possível recuperar os packs deste rascunho.');
+        setSelecoesCarregadas(true);
+      }
+    });
     return () => { vivo = false; };
-  }, [packRef]);
+  }, [draftRef]);
   const [copySelecionada, setCopySelecionada] = useState<SelecaoDeCopy | null>(null);
   const [copyAplicada, setCopyAplicada] = useState(false);
   useEffect(() => {
@@ -257,8 +358,11 @@ const MetaCriacaoPage: React.FC = () => {
     return () => window.removeEventListener('message', receber);
   }, []);
   const [erroDaPergunta, setErroDaPergunta] = useState('');
+  const [avisoDaDuplicacao, setAvisoDaDuplicacao] = useState('');
   const tituloDaPergunta = useRef<HTMLHeadingElement>(null);
   const [contas, setContas] = useState<ContaMetaLocal[]>([]);
+  const [categoriaEspecial, setCategoriaEspecial] = useState(false);
+  const [contaParaRestaurar, setContaParaRestaurar] = useState('');
   const [paginas, setPaginas] = useState<AtivoCriacaoMeta[]>([]);
   const [imagens, setImagens] = useState<AtivoCriacaoMeta[]>([]);
   const [videos, setVideos] = useState<AtivoCriacaoMeta[]>([]);
@@ -272,6 +376,16 @@ const MetaCriacaoPage: React.FC = () => {
     'ativos' | 'compilar' | 'validar' | 'aprovar' | 'criar' | 'reconciliar'
     | 'conversoes' | 'publicos' | 'lugares' | null>(null);
   const [avisos, setAvisos] = useState<AvisoDoCockpit[]>([]);
+  const [feedbackDoPlano, setFeedbackDoPlano] = useState('');
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  const focarFeedback = useRef(false);
+  useEffect(() => {
+    if (feedbackDoPlano && focarFeedback.current) {
+      focarFeedback.current = false;
+      feedbackRef.current?.scrollIntoView?.({ block: 'center', behavior: 'auto' });
+      feedbackRef.current?.focus({ preventScroll: true });
+    }
+  }, [feedbackDoPlano]);
   const [compilacao, setCompilacao] = useState<ResultadoCompilacaoMeta | null>(null);
   const [validacao, setValidacao] = useState<ResultadoValidacaoPlanoMeta | null>(null);
   /** ⚠️ O RESUMO É DO SERVIDOR, e a revisão não tem outra fonte (`F37`, `A33`).
@@ -291,8 +405,9 @@ const MetaCriacaoPage: React.FC = () => {
    * no backend, que relê o catálogo da conta antes de traduzir.
    *
    * ⚠️ `null` significa NÃO LIDO, e isso é diferente de lista vazia. Nenhum
-   * deles é buscado ao montar: o preflight desta lane já custa nove requisições
-   * paginadas por clique, e um catálogo automático multiplicaria isso. */
+   * deles é buscado em um rascunho novo: o preflight desta lane já custa nove
+   * requisições paginadas por clique. Ao retomar, apenas a mensuração já
+   * selecionada é relida para recuperar nomes e elegibilidade sem mudar escolhas. */
   const [catalogoDeMensuracao, setCatalogoDeMensuracao] = useState<{
     contaRef: string;
     fontes: EnvelopeDeCatalogoMeta<FonteDeMensuracaoMeta>;
@@ -343,6 +458,8 @@ const MetaCriacaoPage: React.FC = () => {
   const fixarOperacaoNaUrl = useCallback((referencia: string) => {
     setParams((atuais) => {
       const proximos = new URLSearchParams(atuais);
+      const anterior = proximos.get('operacao');
+      if (anterior && anterior !== referencia) proximos.set('operacao_anterior', anterior);
       proximos.set('operacao', referencia);
       return proximos;
     }, { replace: true });
@@ -365,6 +482,7 @@ const MetaCriacaoPage: React.FC = () => {
     selo.current += 1;
     setCompilacao(null);
     setValidacao(null);
+    setFeedbackDoPlano(anterior => anterior ? 'O plano mudou. Confira e valide novamente antes de aprovar.' : '');
     // ⚠️ O resumo do servidor cai junto. Ele descreve o plano que foi
     // compilado, e mantê-lo sobre um rascunho editado faria a revisão afirmar
     // números que o corpo enviado não tem mais (`A33`).
@@ -381,14 +499,93 @@ const MetaCriacaoPage: React.FC = () => {
     setAvisos([]);
   }, []);
 
+  const rascunhoPersistido = useMetaCampaignDraft({
+    draftRef, draft, enabled: params.get('modo') !== 'demo',
+    requireExisting: retomandoRascunho,
+    onRestore: (salvo) => {
+      setDraft(salvo); invalidar();
+      setContaParaRestaurar(salvo.accountRef);
+      setConjuntoFocadoRef(salvo.conjuntos[0]?.key ?? CHAVE_DO_PRIMEIRO_CONJUNTO);
+      // Respect explicit deep links. A plain "Continuar" goes to the next
+      // meaningful decision instead of presenting the empty initial screen.
+      setParams(atuais => {
+        if (atuais.has('pergunta') || atuais.has('etapa')) return atuais;
+        const id = !salvo.accountRef ? 'conta' : !salvo.pageRef ? 'pagina'
+          : !destinoValido(salvo.destinationUrl) ? 'destino'
+          : salvo.conjuntos.some(c => c.mensuracao.proposito === 'OPTIMIZE' && !c.mensuracao.fonteRef)
+            ? 'conversao' : 'criativos';
+        const alvo = perguntasMeta(true).find(p => p.id === id)!;
+        const proximos = new URLSearchParams(atuais);
+        proximos.set('pergunta', alvo.id); proximos.set('etapa', alvo.etapa);
+        return proximos;
+      }, { replace: true });
+    },
+  });
+  useEffect(() => {
+    if (!contaParaRestaurar || contaParaRestaurar !== draft.accountRef || params.get('modo') === 'demo') return;
+    let vivo = true;
+    // Rehydrate labels, not intent. Never auto-select the first account here.
+    pautadorApi.contasMetaLocal().then(inventario => {
+      if (vivo) setContas(inventario.contas);
+    }).catch(exc => { if (vivo) setAvisos(avisosDoErro(exc)); });
+    return () => { vivo = false; };
+  }, [contaParaRestaurar, draft.accountRef]);
+  const mensuracaoParaRestaurar = contaParaRestaurar === draft.accountRef
+    && draft.conjuntos.some(c => c.mensuracao.fonteRef || c.mensuracao.conversaoRef)
+      ? contaParaRestaurar : '';
+  useEffect(() => {
+    if (!mensuracaoParaRestaurar || params.get('modo') === 'demo') return;
+    let vivo = true;
+    const meuSelo = seloDosCatalogos.current;
+    // Saved source IDs are intent; restore their live labels/eligibility too.
+    // This read never changes the chosen pixel or conversion event.
+    pautadorApi.catalogoDeMensuracaoMeta(mensuracaoParaRestaurar).then(resultado => {
+      if (vivo && meuSelo === seloDosCatalogos.current) {
+        setCatalogoDeMensuracao({ contaRef: mensuracaoParaRestaurar,
+          fontes: resultado.fontes, conversoes: resultado.conversoes });
+      }
+    }).catch(exc => {
+      if (vivo && meuSelo === seloDosCatalogos.current) {
+        setConversoesErro(exc instanceof Error ? exc.message : 'Não foi possível conferir a fonte de mensuração salva.');
+      }
+    });
+    return () => { vivo = false; };
+  }, [mensuracaoParaRestaurar]);
+  const contaAnteriorDosAtivos = useRef('');
+
+  const tamanhosParaNomes = Object.fromEntries([...imagens, ...videos]
+    .filter(a => a.largura && a.altura).map(a => [a.referencia_opaca, `${a.largura}x${a.altura}`]));
+  const nomesSizeKey = JSON.stringify(tamanhosParaNomes);
+  const conversoesParaNomes = Object.fromEntries((catalogoDeMensuracao?.contaRef === draft.accountRef
+    ? catalogoDeMensuracao.conversoes.items : []).map(c => [c.referencia_opaca, c.nome]));
+  const nomesConversoesKey = JSON.stringify(conversoesParaNomes);
+  useEffect(() => {
+    if (!draft.naming?.enabled || rascunhoPersistido.blocked) return;
+    const next = aplicarNomenclatura(draft, draft.naming, tamanhosParaNomes, false, conversoesParaNomes);
+    if (JSON.stringify(next) !== JSON.stringify(draft)) { setDraft(next); invalidar(); }
+  }, [draft, nomesSizeKey, nomesConversoesKey, rascunhoPersistido.blocked, invalidar]);
+
   const mudar = useCallback(<K extends keyof Draft>(chave: K, valor: Draft[K]) => {
     setErroDaPergunta('');
-    setDraft((atual) => ({ ...atual, [chave]: valor }));
+    setDraft((atual) => ({ ...atual, [chave]: valor,
+      ...(chave === 'destinationUrl' && atual.naming
+        ? { naming: { ...atual.naming,
+          landingType: ['', 'LP_R'].includes(atual.naming.landingType) ? tipoDoDestino(String(valor)) : atual.naming.landingType,
+          site: !atual.naming.site || atual.naming.site === siteDoDestino(atual.destinationUrl) ? siteDoDestino(String(valor)) : atual.naming.site,
+        } } : {}),
+      ...((chave === 'accountRef' || chave === 'pageRef') && atual[chave] !== valor ? {
+        variations: atual.variations.map(ad => ad.existingPostRef ? {
+          ...ad, existingPostRef: undefined, assetRef: '', message: '', headline: '', description: '',
+          assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
+        } : ad),
+      } : {}),
+    }));
     invalidar();
   }, [invalidar]);
 
   // A selection from the studio changes operator intent even before upload.
   useEffect(() => { invalidar(); }, [mastersSelecionados, invalidar]);
+  useEffect(() => { invalidar(); }, [selecoesDePack, invalidar]);
 
   useEffect(() => {
     let vivo = true;
@@ -438,19 +635,6 @@ const MetaCriacaoPage: React.FC = () => {
     return () => { vivo = false; };
   }, []);
 
-  const carregarContas = async () => {
-    setCarregando(true);
-    try {
-      const inventario = await pautadorApi.contasMetaLocal();
-      setContas(inventario.contas);
-      if (inventario.contas.length === 1) mudar('accountRef', inventario.contas[0].referencia_opaca);
-    } catch (exc) {
-      setAvisos(avisosDoErro(exc));
-    } finally {
-      setCarregando(false);
-    }
-  };
-
   /** Aplica um recibo só se ele for DESTA operação e mais novo que o exibido. */
   const aplicarRecibo = useCallback(
     (referencia: string, recibo: ReciboCriacaoMeta, meuSelo: number) => {
@@ -492,6 +676,8 @@ const MetaCriacaoPage: React.FC = () => {
   useEffect(() => {
     if (!draft.accountRef) { setPaginas([]); setImagens([]); setVideos([]); return; }
     const contaPedida = draft.accountRef;
+    const trocouDeConta = Boolean(contaAnteriorDosAtivos.current && contaAnteriorDosAtivos.current !== contaPedida);
+    contaAnteriorDosAtivos.current = contaPedida;
     const meu = ++seloDosAtivos.current;
     let vivo = true;
     setOcupado('ativos');
@@ -511,22 +697,23 @@ const MetaCriacaoPage: React.FC = () => {
         invalidar();
         setDraft((atual) => ({
           ...atual,
-          pageRef: resultado.paginas.some((item) => item.referencia_opaca === atual.pageRef)
+          pageRef: !trocouDeConta && atual.pageRef ? atual.pageRef : resultado.paginas.some((item) => item.referencia_opaca === atual.pageRef)
             ? atual.pageRef : (resultado.paginas[0]?.referencia_opaca || ''),
           // ⚠️ TROCAR DE CONTA LIMPA SELEÇÃO INVÁLIDA. Identidade do Instagram
           // e conversão personalizada são objetos DAQUELA conta: mantê-los
           // deixaria o plano carregando referências que a nova conta não
           // resolve, e o erro chegaria como "referência não encontrada" sem o
           // operador entender que a culpa foi a troca de conta.
-          instagramActorRef: '',
+          instagramActorRef: trocouDeConta ? '' : atual.instagramActorRef,
           // ⚠️ E as referências de PÚBLICO e de LUGAR saem junto: elas foram
           // resolvidas contra o catálogo da conta anterior. `publicos.py`
           // resolve LISTANDO o catálogo da conta escolhida, então uma
           // referência da conta antiga simplesmente não bate — e a tela não
           // pode continuar exibindo uma seleção que o plano não consegue mais
           // traduzir.
-          conjuntos: atual.conjuntos.map((conjunto) => ({
+          conjuntos: !trocouDeConta ? atual.conjuntos : atual.conjuntos.map((conjunto) => ({
             ...conjunto,
+            regulatoryIdentityRef: undefined,
             mensuracao: {
               ...conjunto.mensuracao, conversaoRef: '', fonteRef: '', fonteTipo: '',
             },
@@ -539,9 +726,10 @@ const MetaCriacaoPage: React.FC = () => {
           })),
           variations: atual.variations.map((variacao) => ({
             ...variacao,
-            assetRef: resultado.imagens.some((item) => item.referencia_opaca === variacao.assetRef)
+            ...(trocouDeConta ? { packOrigin: undefined, assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '' } : {}),
+            assetRef: !trocouDeConta && variacao.assetRef ? variacao.assetRef : resultado.imagens.some((item) => item.referencia_opaca === variacao.assetRef)
               ? variacao.assetRef : (resultado.imagens[0]?.referencia_opaca || ''),
-            videoRef: (resultado.videos ?? []).some(
+            videoRef: !trocouDeConta && variacao.videoRef ? variacao.videoRef : (resultado.videos ?? []).some(
               (item) => item.referencia_opaca === variacao.videoRef)
               ? variacao.videoRef : ((resultado.videos ?? [])[0]?.referencia_opaca || ''),
           })),
@@ -576,11 +764,12 @@ const MetaCriacaoPage: React.FC = () => {
         posicao === posicaoAlvo ? {
           ...item,
           [chave]: valor,
-          ...((chave === 'assetRef' || chave === 'videoRef' || chave === 'midia') ? {
+          ...((['assetRef', 'videoRef', 'midia', 'adsetKey', 'message', 'headline', 'description', 'cta', 'existingPostRef'] as string[]).includes(chave) ? {
             assetRightsConfirmed: false,
             thirdPartyIdentityCleared: false,
             assetPolicyConfirmedAt: '',
           } : {}),
+          ...((chave === 'assetRef' || chave === 'videoRef' || chave === 'midia') ? {packOrigin: undefined, existingPostRef: undefined} : {}),
         } : item
       )),
     }));
@@ -605,25 +794,12 @@ const MetaCriacaoPage: React.FC = () => {
     }));
     invalidar();
   };
-  const adicionarVariacao = (origem?: number) => {
+  const adicionarVariacao = (origem?: number, destino?: string) => {
     setDraft((atual) => {
-      if (atual.variations.length >= LIMITE_VARIACOES) return atual;
-      const chave = proximaChave(atual.variations.map((item) => item.key), 'variation');
-      const numero = atual.variations.length + 1;
-      const padrao = atual.conjuntos[0]?.key ?? '';
-      const base = origem === undefined
-        ? { ...variacaoInicial(chave, numero, padrao), ...pecaPadrao(atual) }
-        : { ...atual.variations[origem], key: chave };
-      return {
-        ...atual,
-        creativeMode: 'batch',
-        variations: [...atual.variations, {
-          ...base,
-          key: chave,
-          creativeName: nomeUnico(base.creativeName, atual.variations.map((i) => i.creativeName)),
-          adName: nomeUnico(base.adName, atual.variations.map((i) => i.adName)),
-        }],
-      };
+      const anterior = origem === undefined ? undefined : atual.variations[origem];
+      const alvo = destino ?? anterior?.adsetKey ?? (atual.conjuntos.length === 1 ? atual.conjuntos[0].key : '');
+      const next = adicionarAnuncioNoConjunto(atual, alvo, anterior?.key);
+      return atual.creativeMode === 'flexible' ? { ...next, creativeMode: 'flexible' } : next;
     });
     invalidar();
   };
@@ -632,7 +808,7 @@ const MetaCriacaoPage: React.FC = () => {
       const restantes = atual.variations.filter((_, posicao) => posicao !== posicaoAlvo);
       return {
         ...atual,
-        creativeMode: restantes.length === 1 ? 'single' : atual.creativeMode,
+        creativeMode: atual.creativeMode === 'flexible' ? 'flexible' : restantes.length === 1 ? 'single' : atual.creativeMode,
         variations: restantes,
       };
     });
@@ -640,14 +816,25 @@ const MetaCriacaoPage: React.FC = () => {
   };
   /** Trocar de modo muda o que será EMITIDO, não o que está guardado. */
   const mudarModo = (modo: Draft['creativeMode']) => {
-    setDraft((atual) => ({ ...atual, creativeMode: modo }));
+    setDraft((atual) => ({ ...atual, creativeMode: modo,
+      conjuntos: modo === 'flexible' ? atual.conjuntos.map(c => ({ ...c,
+        flexibleTexts: textosFlexiveisDoConjunto(atual, c.key),
+      })) : atual.conjuntos,
+      variations: modo === atual.creativeMode ? atual.variations : atual.variations.map(v => ({ ...v,
+        assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
+      })),
+    }));
     invalidar();
   };
-  function pecaPadrao(atual: Draft): Partial<VariacaoDraft> {
-    const ultima = atual.variations.at(-1);
-    return { assetRef: ultima?.assetRef ?? '', videoRef: ultima?.videoRef ?? '', midia: ultima?.midia ?? 'image' };
-  }
-
+  const mudarTextosFlexiveis = (chave: string, textos: TextosFlexiveisDraft) => {
+    setDraft(atual => ({ ...atual,
+      conjuntos: atual.conjuntos.map(c => c.key === chave ? { ...c, flexibleTexts: textos } : c),
+      variations: atual.variations.map(v => v.adsetKey === chave ? { ...v,
+        assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
+      } : v),
+    }));
+    invalidar();
+  };
   // ── Conjuntos ─────────────────────────────────────────────────────────────
   const mudarConjunto = useCallback((chave: string, patch: Partial<ConjuntoDraft>) => {
     setDraft((atual) => ({
@@ -684,10 +871,19 @@ const MetaCriacaoPage: React.FC = () => {
   };
 
   const removerConjunto = (chave: string) => {
-    setDraft((atual) => (atual.conjuntos.length === 1 ? atual : {
-      ...atual,
-      conjuntos: atual.conjuntos.filter((item) => item.key !== chave),
-    }));
+    const vinculo = selecoesDePack.find(item => item.adset_key === chave);
+    if (vinculo) {
+      // Não deixe um vínculo durável órfão e invisível. Retirar o conjunto e
+      // apagar o pack em background seria uma decisão destrutiva implícita;
+      // manter a linha faria o rascunho continuar bloqueado por um conjunto
+      // que já não aparece. O operador desfaz o vínculo explicitamente antes.
+      setConjuntoFocadoRef(chave);
+      setOrigemCriativa('pack');
+      setEditandoPack(true);
+      setPackAviso(`Retire “${vinculo.pack_name}” deste conjunto antes de excluí-lo.`);
+      return;
+    }
+    setDraft((atual) => removerConjuntoSemAnuncios(atual, chave));
     invalidar();
   };
 
@@ -739,6 +935,7 @@ const MetaCriacaoPage: React.FC = () => {
       : pergunta.id === 'conta' && !draft.accountRef ? 'Escolha a conta de anúncios.'
       : pergunta.id === 'pagina' && !draft.pageRef ? 'Escolha a Página que assina os anúncios.'
       : pergunta.id === 'resultado' && !draft.categoryConfirmed ? 'Confirme a categoria da campanha.'
+      : pergunta.id === 'criativos' ? motivoDeMidiaPendente
       : '';
     if (faltando) { setErroDaPergunta(faltando); return; }
     if (indice < perguntas.length - 1) irParaPergunta(perguntas[indice + 1]);
@@ -762,6 +959,18 @@ const MetaCriacaoPage: React.FC = () => {
   const { contrato, motivos: motivosDoV2 } = contratoDoPlano(draft);
   const conjuntoFocado = draft.conjuntos.find((item) => item.key === conjuntoFocadoRef)
     ?? draft.conjuntos[0];
+  const selecaoPackFocada = selecoesDePack.find(
+    item => item.adset_key === conjuntoFocado?.key,
+  ) ?? null;
+  const contextoDePack = useRef({draft, selecoesDePack});
+  contextoDePack.current = {draft, selecoesDePack};
+  const focoDePack = useRef({ key: conjuntoFocado?.key, accountRef: draft.accountRef });
+  focoDePack.current = { key: conjuntoFocado?.key, accountRef: draft.accountRef };
+  const packsPendentes = selecoesDePack.filter(item => !packMaterializado(draft, item));
+  const motivoDeMidiaPendente = !selecoesCarregadas ? 'Aguarde a recuperação dos packs deste rascunho.'
+    : selecoesErro ? 'Não foi possível recuperar os packs deste rascunho. Recarregue a página antes de conferir ou enviar o plano.'
+    : packsPendentes.length > 0 ? `Envie o pack e monte os anúncios em ${packsPendentes.map(item => draft.conjuntos.find(c => c.key === item.adset_key)?.nome || 'conjunto salvo').join(', ')}. Os anúncios anteriores não substituem o pack escolhido.`
+    : mastersSelecionados.length > 0 ? 'Salve e envie as peças selecionadas no assistente antes de conferir o plano.' : '';
   const resumoDoFocado = resumo?.conjuntos.find(
     (item) => item.adset_key === conjuntoFocado?.key) ?? null;
 
@@ -774,11 +983,108 @@ const MetaCriacaoPage: React.FC = () => {
     }),
     [draft, capacidades, compilacao, validacao, propositosDaReceita],
   );
-  const podeCompilar = mastersSelecionados.length === 0 && prontoParaCompilar(draft, capacidades, propositosDaReceita);
+  const podeCompilar = !motivoDeMidiaPendente
+    && prontoParaCompilar(draft, capacidades, propositosDaReceita);
+
+  async function escolherPackNoConjunto(packId: string) {
+    if (!conjuntoFocado || packOcupado) return;
+    const alvo = { key: conjuntoFocado.key, name: conjuntoFocado.nome, accountRef: draft.accountRef };
+    // Consume a deep-link once, before the request. A failure must not apply
+    // the same pack silently when the operator focuses a different ad set.
+    setParams(atuais => {
+      if (atuais.get('pack') !== packId) return atuais;
+      const nova = new URLSearchParams(atuais); nova.delete('pack'); return nova;
+    }, { replace: true });
+    setPackOcupado(true); setPackAviso('Gravando o vínculo deste conjunto…');
+    try {
+      const salva = await fixarPackNoConjunto(
+        draftRef, alvo.key, packId, selecaoPackFocada?.version ?? 0,
+      );
+      if (focoDePack.current.accountRef !== alvo.accountRef) return;
+      setSelecoesDePack(atuais => [
+        ...atuais.filter(item => item.adset_key !== salva.adset_key), salva,
+      ]);
+      setDraft(atual => ({ ...atual, variations: atual.variations.map(ad => ad.adsetKey === salva.adset_key ? {
+        ...ad, assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
+      } : ad) }));
+      if (focoDePack.current.key === alvo.key) {
+        setOrigemCriativa('pack'); setEditandoPack(false);
+      }
+      setPackAviso(`“${salva.pack_name}” ficou vinculado a ${alvo.name}. O vínculo está salvo; formato, imagens e copies continuam editáveis.`);
+    } catch (exc) {
+      setPackAviso(exc instanceof Error ? exc.message : 'Não foi possível fixar o pack neste conjunto.');
+    } finally { setPackOcupado(false); }
+  }
+
+  async function importarImagemParaVariacao(variacao: VariacaoDraft, arquivo: File) {
+    if (!conjuntoFocado || arquivoOcupado || packOcupado || !draft.accountRef) return;
+    setArquivoOcupado(variacao.key);
+    setPackAviso(`Guardando ${arquivo.name} na biblioteca privada…`);
+    try {
+      const imported = await importarMidiaPrivada(
+        arquivo, `${draft.campaignName || 'Campanha Meta'} · ${variacao.adName || 'nova imagem'}`,
+      );
+      const entry = imported.entradas.find(item => item.masterId);
+      if (!entry?.masterId) {
+        const rejected = imported.entradas[0];
+        throw new Error(rejected?.detalhe || rejected?.motivoRecusa || 'O arquivo não produziu uma imagem utilizável.');
+      }
+      const pack = await salvarPack(
+        `Upload · ${arquivo.name.replace(/\.[^.]+$/, '').slice(0, 120)}`,
+        [entry.masterId],
+      );
+      alvoDoUpload.current = { packId: pack.id, variationKey: variacao.key };
+      setOrigemCriativa('pack');
+      await escolherPackNoConjunto(pack.id);
+      setPackAviso('Imagem guardada. Confira a prévia e registre-a na conta para concluir a troca.');
+    } catch (exc) {
+      setPackAviso(exc instanceof Error ? exc.message : 'Não foi possível guardar esta imagem.');
+    } finally {
+      setArquivoOcupado(null);
+    }
+  }
+
+  async function retirarPackFocado() {
+    if (!conjuntoFocado || !selecaoPackFocada || packOcupado) return;
+    const alvo = { key: conjuntoFocado.key, name: conjuntoFocado.nome, accountRef: draft.accountRef };
+    setPackOcupado(true); setPackAviso('Retirando o vínculo deste conjunto…');
+    try {
+      await retirarPackDoConjunto(
+        draftRef, alvo.key, selecaoPackFocada.version,
+      );
+      if (focoDePack.current.accountRef !== alvo.accountRef) return;
+      setSelecoesDePack(atuais => atuais.filter(
+        item => item.adset_key !== alvo.key,
+      ));
+      if (focoDePack.current.key === alvo.key) { setOrigemCriativa('conta'); setEditandoPack(false); }
+      setPackAviso(`O pack foi retirado de ${alvo.name}.`);
+    } catch (exc) {
+      setPackAviso(exc instanceof Error ? exc.message : 'Não foi possível retirar o pack deste conjunto.');
+    } finally { setPackOcupado(false); }
+  }
+
+  const packDeLinkAplicado = useRef<string | null>(null);
+  useEffect(() => {
+    if (!packRef || rascunhoPersistido.blocked || !selecoesCarregadas || !conjuntoFocado
+        || packDeLinkAplicado.current === `${draftRef}:${packRef}`) return;
+    if (!/^[0-9a-f-]{36}$/i.test(packRef)) {
+      setPackAviso('Referência de pack inválida.'); return;
+    }
+    packDeLinkAplicado.current = `${draftRef}:${packRef}`;
+    void escolherPackNoConjunto(packRef);
+  }, [packRef, selecoesCarregadas, conjuntoFocado?.key, rascunhoPersistido.blocked]);
+
+  useEffect(() => {
+    if (selecaoPackFocada) {
+      setOrigemCriativa('pack');
+      setEditandoPack(false);
+    }
+  }, [conjuntoFocado?.key, selecaoPackFocada?.pack_id]);
 
   /** O que ainda impede o próximo ato — inteiro, em linguagem de operador. */
   const faltas = useMemo(() => {
     const lista: string[] = [];
+    if (motivoDeMidiaPendente) lista.push(motivoDeMidiaPendente);
     if (!draft.accountRef) lista.push('Escolha a conta de anúncios.');
     if (!draft.pageRef) lista.push('Escolha a Página que assina os anúncios.');
     if (!draft.campaignName.trim()) lista.push('Dê um nome à campanha.');
@@ -811,17 +1117,26 @@ const MetaCriacaoPage: React.FC = () => {
       if (conjunto.posicionamentoModo === 'MANUAL' && conjunto.posicionamentoValores.length === 0) {
         lista.push(`Escolha ao menos uma plataforma${onde}.`);
       }
-      if (conjunto.mensuracao.proposito === 'OPTIMIZE' && !conjunto.mensuracao.fonteRef) {
-        lista.push(BLOQUEIOS.fonteDeMensuracao);
+      const m = conjunto.mensuracao;
+      if (m.proposito === 'OPTIMIZE') {
+        if (!m.fonteRef || !m.fonteTipo) lista.push(`Escolha o pixel ou dataset da conta${onde}, em Conversão.`);
+        if (!m.conversaoRef && !m.eventoPadrao) lista.push(`Escolha um evento padrão ou uma conversão personalizada${onde}.`);
+        if (m.conversaoRef && m.eventoPadrao) lista.push(`Escolha apenas um evento de otimização${onde}: padrão ou conversão personalizada.`);
+      } else if (m.fonteRef && !m.fonteTipo) {
+        lista.push(`Selecione novamente o pixel ou dataset${onde}, para identificar seu tipo.`);
       }
     });
     if (estados.publico !== 'pronto') {
       lista.push('Confira o público: escolha ao menos um lugar para alcançar e uma faixa etária válida.');
     }
-    if (estados.mensuracao !== 'pronto') lista.push('Informe uma URL de destino HTTPS válida.');
+    if (!destinoValido(draft.destinationUrl)) lista.push('Informe uma URL de destino HTTPS válida, sem credenciais ou UTMs.');
     if (draft.creativeMode === 'flexible') {
-      lista.push('O criativo flexível não emite payload: escolha Individual ou Lote.');
-    } else {
+      if (draft.recipeId !== 'WEB_SALES_CONVERSION') lista.push('O formato flexível exige o resultado Vendas. Tráfego e Cadastros usam anúncios individuais.');
+      if (emitidas.some(item => item.existingPostRef)) lista.push('Não misture publicação existente com grupos flexíveis: escolha imagens para um novo anúncio.');
+      if (draft.conjuntos.some(c => new Set(emitidas.filter(v => v.adsetKey === c.key).map(v => v.cta)).size > 1)) lista.push('Use o mesmo botão em todas as peças flexíveis de cada conjunto.');
+      draft.conjuntos.forEach(c => pendenciasDosTextosFlexiveis(textosFlexiveisDoConjunto(draft, c.key)).forEach(f => lista.push(`${c.nome}: ${f}`)));
+    }
+    {
       if (emitidas.some((item) => item.midia === 'video')) {
         lista.push(`Um anúncio usa vídeo. ${BLOQUEIOS.videoNoCorpo}`);
       }
@@ -830,13 +1145,13 @@ const MetaCriacaoPage: React.FC = () => {
         if (!chaves.has(item.adsetKey)) {
           lista.push(`O anúncio ${posicao + 1} aponta para um conjunto que não existe mais.`);
         }
-        if (!variacaoCompleta(item) && item.midia !== 'video') {
-          lista.push(`O anúncio ${posicao + 1} está incompleto.`);
+        if (item.midia !== 'video') {
+          pendenciasDaVariacao(item, draft).forEach(falta => lista.push(`Anúncio ${posicao + 1}: ${falta}`));
         }
       });
     }
     return [...new Set(lista)];
-  }, [draft, estados, emitidas]);
+  }, [draft, estados, emitidas, motivoDeMidiaPendente]);
 
   /** ⚠️ UMA PORTA POR CONTRATO, e a escolha é a forma do plano.
    *
@@ -844,9 +1159,12 @@ const MetaCriacaoPage: React.FC = () => {
    * do V1 continua sendo a que sempre foi. Fundir os dois numa chamada só faria
    * um plano de conjunto único perder a rota que ainda sustenta aprovação e
    * criação PAUSED. */
-  const compilar = async () => {
+  const compilar = async (automatico = false) => {
+    if (motivoDeMidiaPendente) { setErroDaPergunta(motivoDeMidiaPendente); return; }
     const meu = ++selo.current;
+    focarFeedback.current = !automatico;
     setOcupado('compilar');
+    setFeedbackDoPlano('Conferindo o plano no servidor… Nenhum anúncio será criado.');
     setAvisos([]);
     try {
       if (contrato === 'V2') {
@@ -861,8 +1179,12 @@ const MetaCriacaoPage: React.FC = () => {
         setResumo(null);
       }
       setValidacao(null);
+      setFeedbackDoPlano('Plano conferido. Próximo passo: validar na Meta, sem criar nada.');
     } catch (exc) {
-      if (meu === selo.current) setAvisos(avisosDoErro(exc));
+      if (meu === selo.current) {
+        setAvisos(avisosDoErro(exc));
+        setFeedbackDoPlano('Não foi possível conferir o plano. Veja o motivo abaixo e tente novamente.');
+      }
     } finally {
       // ⚠️ SEM condição: descartar a RESPOSTA obsoleta é correto; deixar a tela
       // ocupada por causa dela, não.
@@ -870,9 +1192,12 @@ const MetaCriacaoPage: React.FC = () => {
     }
   };
 
-  const validar = async () => {
+  const validar = async (automatico = false) => {
+    if (motivoDeMidiaPendente) { setErroDaPergunta(motivoDeMidiaPendente); return; }
     const meu = ++selo.current;
+    focarFeedback.current = !automatico;
     setOcupado('validar');
+    setFeedbackDoPlano('Validando na Meta… Aguarde o resultado. Nenhum anúncio será criado.');
     setAvisos([]);
     try {
       if (contrato === 'V2') {
@@ -880,19 +1205,38 @@ const MetaCriacaoPage: React.FC = () => {
         if (meu !== selo.current) return;
         setValidacao(resultado);
         setResumo(resultado.resumo);
+        setFeedbackDoPlano(resultado.ok ? 'Validação concluída nas operações independentes. As demais serão verificadas durante a criação pausada.' : 'A validação retornou pendências. Confira o resultado abaixo.');
       } else {
         const resultado = await pautadorApi.validarPlanoMeta(paraPlano(draft));
         if (meu !== selo.current) return;
         setValidacao(resultado);
+        setFeedbackDoPlano(resultado.ok ? 'Validação concluída nas operações independentes. As demais serão verificadas durante a criação pausada.' : 'A validação retornou pendências. Confira o resultado abaixo.');
       }
     } catch (exc) {
-      if (meu === selo.current) setAvisos(avisosDoErro(exc));
+      if (meu === selo.current) {
+        setAvisos(avisosDoErro(exc));
+        setFeedbackDoPlano('Não foi possível validar na Meta. Veja o motivo abaixo e tente novamente.');
+      }
     } finally {
       setOcupado(null);
     }
   };
 
-  /** Um catálogo da conta. LEITURA REAL, e por isso SÓ POR CLIQUE.
+  const tentativaAutomatica = useRef('');
+  useEffect(() => {
+    if (etapa !== 'revisao' || params.get('modo') === 'demo' || ocupado || carregando || !podeCompilar || faltas.length || aprovacao) return;
+    const fase = !compilacao ? 'compilar' : (!validacao && capacidades.validateOnly ? 'validar' : null);
+    if (!fase) return;
+    const chave = `${fase}:${JSON.stringify(draft)}`;
+    if (tentativaAutomatica.current === chave) return;
+    const timer = window.setTimeout(() => {
+      tentativaAutomatica.current = chave;
+      void (fase === 'compilar' ? compilar(true) : validar(true));
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [etapa, draft, ocupado, carregando, podeCompilar, faltas.length, compilacao, validacao, capacidades.validateOnly, aprovacao, operacao]);
+
+  /** Um catálogo da conta. Leitura automática ou atualização explícita.
    *
    * ⚠️ Três guardas, e nenhuma substitui a outra:
    *  · a conta é capturada NA IDA e viaja com o resultado — uma resposta lenta
@@ -941,6 +1285,20 @@ const MetaCriacaoPage: React.FC = () => {
     'Não foi possível ler a mensuração desta conta.',
   );
 
+  /** Pixel, dataset e conversões são contexto da conta, não uma decisão do
+   * operador. Ao entrar na etapa, a leitura começa sozinha uma única vez por
+   * conta. Depois de uma falha, o catálogo mantém o botão apenas como retry. */
+  const mensuracaoAutomatica = useRef('');
+  useEffect(() => {
+    if (pergunta.id !== 'conversao' || params.get('modo') === 'demo' || !draft.accountRef
+        || ocupado || catalogoDeMensuracao?.contaRef === draft.accountRef) return;
+    const key = `${draftRef}:${draft.accountRef}`;
+    if (mensuracaoAutomatica.current === key) return;
+    mensuracaoAutomatica.current = key;
+    const timer = window.setTimeout(() => { void lerConversoes(); }, 120);
+    return () => window.clearTimeout(timer);
+  }, [pergunta.id, draftRef, draft.accountRef, ocupado, catalogoDeMensuracao?.contaRef]);
+
   const lerPublicos = () => lerCatalogo(
     'publicos',
     (contaRef) => pautadorApi.catalogoDePublicosMeta(contaRef),
@@ -981,6 +1339,10 @@ const MetaCriacaoPage: React.FC = () => {
   };
 
   const aprovar = () => umaVezSo('aprovar', async (aindaEDoMesmoRascunho) => {
+    if (motivoDeMidiaPendente) throw new PautadorApiError(motivoDeMidiaPendente, 409);
+    if (!await rascunhoPersistido.saveNow() || !aindaEDoMesmoRascunho()) {
+      throw new PautadorApiError('Salve o rascunho no servidor antes de aprovar. Se houver conflito, recupere a versão salva.', 409);
+    }
     const prova = validacao?.prova_duravel;
     if (!validacao?.ok || !prova?.registrada || !prova.validation_id) {
       throw new PautadorApiError(
@@ -988,7 +1350,7 @@ const MetaCriacaoPage: React.FC = () => {
         + 'antes de aprovar.', 409);
     }
     const resultado = await pautadorApi.aprovarCriacaoMeta({
-      plano: paraPlano(draft),
+      plano: contratoDoPlano(draft).contrato === 'V2' ? paraPlanoV2(draft) : paraPlano(draft),
       planoSha256: validacao.plano_sha256,
       validationId: prova.validation_id,
       confirmacaoDigitada,
@@ -996,9 +1358,16 @@ const MetaCriacaoPage: React.FC = () => {
     // ⚠️ APROVAR ainda não criou nada, então a resposta obsoleta é DESCARTADA.
     if (!aindaEDoMesmoRascunho()) return;
     setAprovacao(resultado.aprovacao);
+    // An old dispatched operation must not lock the newly approved plan.
+    // Its durable receipt remains reachable by its own operation URL.
+    // The server controls cross-approval step reuse, never the browser.
+    if (operacaoRef && operacaoRef !== resultado.aprovacao.approval_id) {
+      fixarOperacaoNaUrl(resultado.aprovacao.approval_id);
+    }
   });
 
   const criar = () => umaVezSo('criar', async () => {
+    if (motivoDeMidiaPendente) throw new PautadorApiError(motivoDeMidiaPendente, 409);
     if (!aprovacao) return;
     const referencia = aprovacao.approval_id;
     // ⚠️ A REFERÊNCIA ENTRA NA URL ANTES DO DESPACHO, e a ordem é o conserto.
@@ -1013,6 +1382,13 @@ const MetaCriacaoPage: React.FC = () => {
       aplicarRecibo(referencia, resultado.recibo, ++seloDaOperacao.current);
     } catch (exc) {
       // ⚠️ UM DESPACHO QUE FALHA PODE TER CRIADO OBJETOS.
+      // Keep the durable incident receipt even if the following GET fails.
+      // Match the operation before applying it; never use another draft's receipt.
+      const incidente = exc instanceof PautadorApiError
+        ? (exc.corpo as {recibo?: ReciboCriacaoMeta} | undefined)?.recibo : undefined;
+      if (incidente?.approval_id === referencia && Array.isArray(incidente.steps)) {
+        aplicarRecibo(referencia, incidente, ++seloDaOperacao.current);
+      }
       await lerRecibo(referencia);
       throw exc;
     }
@@ -1046,21 +1422,16 @@ const MetaCriacaoPage: React.FC = () => {
       : 'Esta aprovação já despachou; repetir duplicaria. A saída é reconciliar por leitura.';
   const podeReconciliar = Boolean(referenciaAlvo);
 
-  /** ⚠️ CRIAR SÓ EXISTE NO V1, e a razão é o backend, não uma preferência.
-   *
-   * `/criacao/aprovar` recebe `PedidoPlanoMetaPausado` — o DTO do contrato V1.
-   * Não existe rota de aprovação para o plano V2. Deixar o painel de criação
-   * aberto sobre um plano V2 ofereceria um ato que a rota recusaria pelo hash,
-   * e a tela não pode depender dessa recusa para não mentir. */
-  const criacaoDisponivel = capacidades.criarPausada && contrato === 'V1';
+  /** A aprovação do servidor congela o contrato completo, inclusive o orçamento V2. */
+  const criacaoDisponivel = capacidades.criarPausada && params.get('modo') !== 'demo';
 
-  const totalDeAnuncios = emitidas.length;
+  const totalDeAnuncios = draft.creativeMode === 'flexible' ? new Set(emitidas.map(v => v.adsetKey)).size : emitidas.length;
   const linhasDoPedido: LinhaDoPedido[] = [
     { rotulo: 'Conta', valor: conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null, fonte: 'a Meta, agora' },
     { rotulo: 'Página', valor: pagina?.nome ?? null, fonte: 'a Meta, agora' },
     { rotulo: 'Campanha', valor: draft.campaignName || null, fonte: 'você, agora' },
     { rotulo: 'Receita', valor: receita ? receita.rotulo : draft.recipeId, fonte: receita ? 'o registro de receitas' : 'a receita padrão' },
-    { rotulo: 'Contrato do plano', valor: contrato === 'V1' ? 'V1 · receita provada, criação liberada pelo servidor' : 'V2 · N conjuntos; criação não existe neste contrato', fonte: 'a forma deste plano' },
+    { rotulo: 'Contrato do plano', valor: contrato === 'V1' ? 'V1 · conjunto único' : 'V2 · conjuntos e orçamentos individualizados', fonte: 'a forma deste plano' },
     {
       rotulo: draft.periodoDeOrcamento === 'DAILY' ? 'Orçamento diário' : 'Orçamento total',
       valor: (() => {
@@ -1129,24 +1500,28 @@ const MetaCriacaoPage: React.FC = () => {
       case 'base': return (
         <>
           <div className="grid gap-4">
+            {pergunta.id !== 'pagina' && <EscolherBusinessMeta demo={params.get('modo') === 'demo'} onAccounts={setContas}
+              onChangeBusiness={() => mudar('accountRef', '')} />}
             {pergunta.id !== 'pagina' && <Campo id="meta-conta" rotulo="Conta de anúncios" ajuda="Use uma conta ativa em reais.">
               <select id="meta-conta" className={campo} value={draft.accountRef} disabled={carregando}
                 onChange={(e) => mudar('accountRef', e.target.value)}>
                 <option value="">Selecione uma conta real</option>
+                {draft.accountRef && !contas.some(item => item.referencia_opaca === draft.accountRef) &&
+                  <option value={draft.accountRef}>Conta salva · aguardando conferência do acesso</option>}
                 {contas.map((item) => (
                   <option key={item.referencia_opaca} value={item.referencia_opaca}>
                     {item.nome} · {item.id_mascarado || 'ID protegido'} · {item.moeda || 'moeda não lida'}
                   </option>
                 ))}
               </select>
-              <Button type="button" variant="outline" className="mt-2" disabled={carregando}
-                onClick={carregarContas}>Carregar minhas contas</Button>
             </Campo>}
             {pergunta.id === 'pagina' && <Campo id="meta-pagina" rotulo="Página do Facebook" ajuda="A Página assina os anúncios e precisa estar disponível para promoção nesta conta.">
               <select id="meta-pagina" className={campo} value={draft.pageRef}
                 disabled={!draft.accountRef || ocupado === 'ativos'}
                 onChange={(e) => mudar('pageRef', e.target.value)}>
                 <option value="">Selecione uma Página desta conta</option>
+                {draft.pageRef && !paginas.some(item => item.referencia_opaca === draft.pageRef) &&
+                  <option value={draft.pageRef}>Página salva · aguardando conferência do acesso</option>}
                 {paginas.map((item) => (
                   <option key={item.referencia_opaca} value={item.referencia_opaca}>
                     {item.nome} · {item.id_mascarado}
@@ -1174,6 +1549,10 @@ const MetaCriacaoPage: React.FC = () => {
             <Input id="meta-destino-campanha" type="url" placeholder="https://seusite.com/materia"
               value={draft.destinationUrl} onChange={e => mudar('destinationUrl', e.target.value)} />
           </Campo>
+          <NomenclaturaAutomatica
+            draft={draft} draftRef={draftRef} save={rascunhoPersistido.saveNow} sizes={tamanhosParaNomes}
+            conversionNames={conversoesParaNomes}
+            demo={params.get('modo') === 'demo'} onChange={next => { setDraft(next); invalidar(); }} />
           <Campo id="meta-nome" rotulo="Como vamos chamar esta campanha?">
             <Input id="meta-nome" placeholder="Ex.: Encceja · Brasil · Setembro" value={draft.campaignName}
               onChange={e => mudar('campaignName', e.target.value)} />
@@ -1194,10 +1573,15 @@ const MetaCriacaoPage: React.FC = () => {
                   fonteRef: '', fonteTipo: '', conversaoRef: '', eventoPadrao: '' },
               })) }));
             }} />
-          <Escolha marcado={draft.categoryConfirmed} onChange={v => mudar('categoryConfirmed', v)}
-            titulo="Esta campanha não é de crédito, emprego, moradia nem política">
-            Essas categorias precisam de uma configuração específica, ainda indisponível aqui.
-          </Escolha>
+          <Campo id="meta-categoria" rotulo="A campanha envolve crédito, emprego, moradia ou política?"
+            ajuda="A Meta exige o enquadramento da campanha. Se envolver uma dessas categorias, prepare-a no Gerenciador Meta; este criador ainda não oferece essa configuração.">
+            <select id="meta-categoria" className={campo} value={draft.categoryConfirmed ? 'none' : categoriaEspecial ? 'special' : ''}
+              onChange={e => { setCategoriaEspecial(e.target.value === 'special'); mudar('categoryConfirmed', e.target.value === 'none'); }}>
+              <option value="">Escolha o enquadramento</option>
+              <option value="none">Não, nenhuma dessas categorias</option>
+              <option value="special">Sim ou preciso verificar</option>
+            </select>
+          </Campo>
         </>
       );
       case 'orcamento': return (
@@ -1226,6 +1610,7 @@ const MetaCriacaoPage: React.FC = () => {
           {trilhoDeConjuntos}
           <PainelDePublico
             draft={draft}
+            demo={params.get('modo') === 'demo'}
             conjunto={conjuntoFocado}
             idade={limitesDeIdade}
             resumoDoConjunto={resumoDoFocado}
@@ -1245,28 +1630,122 @@ const MetaCriacaoPage: React.FC = () => {
       ) : null;
       case 'criativo': return (
         <>
-          <GrupoDeEscolha<'conta' | 'assistente'> rotuloAcessivel="Origem dos criativos" valor={origemCriativa}
-            onEscolher={valor => { setOrigemCriativa(valor); if (valor === 'assistente') setAssistenteAberto(true); }}
+          <section aria-label="Anúncios por conjunto" className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div><h3 className="text-xl font-semibold">Escolha o conjunto para montar seus anúncios</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Cada conjunto tem sua seleção. A mesma peça pode ser reutilizada sem mover o original.</p></div>
+              <p id="meta-limite-lote" className="text-sm tabular-nums text-muted-foreground">{emitidas.length} / {LIMITE_VARIACOES} {draft.creativeMode === 'flexible' ? 'imagens no anúncio flexível' : 'anúncios na campanha'}</p>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Escolher conjunto dos anúncios">
+              {draft.conjuntos.map((c, i) => {
+                const ads = emitidas.filter(v => v.adsetKey === c.key);
+                const prontos = ads.filter(v => variacaoCompleta(v, draft)).length;
+                const packDoConjunto = selecoesDePack.find(item => item.adset_key === c.key);
+                return <button type="button" key={c.key} aria-pressed={conjuntoFocado?.key === c.key}
+                  onClick={() => setConjuntoFocadoRef(c.key)}
+                  className={cn('min-w-48 max-w-80 shrink-0 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    conjuntoFocado?.key === c.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/50')}>
+                  <span className="block truncate font-semibold">{c.nome || `Conjunto ${i + 1}`}</span>
+                  <span className="mt-1 block text-sm">{ads.length ? `${prontos} de ${ads.length} ${draft.creativeMode === 'flexible' ? 'imagens prontas · 1 anúncio' : 'anúncios prontos'}` : 'Ainda sem anúncios'}</span>
+                  {packDoConjunto && <span className="mt-2 flex items-center gap-1 text-xs font-semibold"><Lock className="h-3 w-3" aria-hidden />{packDoConjunto.pack_name} vinculado</span>}
+                </button>;
+              })}
+            </div>
+            {conjuntoFocado && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+              <p className="text-sm">Editando <strong>{conjuntoFocado.nome}</strong></p>
+              <Button type="button" disabled={draft.variations.length >= LIMITE_VARIACOES}
+                onClick={() => { adicionarVariacao(undefined, conjuntoFocado.key); setOrigemCriativa('conta'); }}>
+                <Plus className="h-4 w-4" aria-hidden />{draft.creativeMode === 'flexible' ? 'Adicionar imagem neste conjunto' : 'Adicionar anúncio neste conjunto'}
+              </Button>
+            </div>}
+          </section>
+          <GrupoDeEscolha<'conta' | 'assistente' | 'pack'> rotuloAcessivel="Origem dos criativos" colunas="sm:grid-cols-3" valor={origemCriativa}
+            onEscolher={valor => {
+              if (selecaoPackFocada && valor !== 'pack') {
+                setPackAviso('Este conjunto já tem um pack vinculado. Use “Trocar ou retirar” para mudar a origem sem perder a decisão por engano.');
+                return;
+              }
+              setOrigemCriativa(valor); if (valor === 'assistente') setAssistenteAberto(true);
+            }}
             opcoes={[
               { id: 'assistente', nome: 'Criar com o assistente', detalhe: 'Briefing, estratégia e produção de imagens.' },
+              { id: 'pack', nome: 'Usar pack salvo', detalhe: 'Reaproveite as peças da sua biblioteca.' },
               { id: 'conta', nome: 'Usar imagens da conta', detalhe: 'Escolha a peça e ajuste o texto do anúncio.' },
             ]} />
+          {origemCriativa === 'pack' && selecaoPackFocada && !editandoPack && <section role="status" className="rounded-xl border border-success/40 bg-success/10 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex gap-3"><span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-success/15 text-success"><Lock className="h-4 w-4" aria-hidden /></span><div>
+                <p className="font-semibold">Pack vinculado neste conjunto</p>
+                <p className="mt-1 text-sm"><strong>{selecaoPackFocada.pack_name}</strong> · {selecaoPackFocada.master_refs.length} peça(s)</p>
+                <p className="mt-1 text-xs text-muted-foreground">Vínculo salvo no banco · versão {selecaoPackFocada.version}. Depois do registro, imagens, formato e banco de copies continuam editáveis.</p>
+              </div></div>
+              <Button type="button" variant="outline" disabled={packOcupado} onClick={() => setEditandoPack(true)}>Trocar ou retirar</Button>
+            </div>
+          </section>}
+          {origemCriativa === 'pack' && (!selecaoPackFocada || editandoPack) && <section className="space-y-4">
+            {selecaoPackFocada && <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm"><span>Você está trocando <strong>{selecaoPackFocada.pack_name}</strong> apenas em <strong>{conjuntoFocado?.nome}</strong>.</span><Button type="button" variant="destructive" disabled={packOcupado} onClick={() => void retirarPackFocado()}>Retirar deste conjunto</Button></div>}
+            <EscolherPack selecionado={selecaoPackFocada?.pack_id ?? null}
+              onEscolher={id => void escolherPackNoConjunto(id)} />
+          </section>}
+          {origemCriativa === 'pack' && selecaoPackFocada && !editandoPack && <PrepararPackMeta
+            key={`${draft.accountRef}:${draftRef}:${selecaoPackFocada.adset_key}:${selecaoPackFocada.pack_id}:${selecaoPackFocada.version}`}
+            selection={selecaoPackFocada} draftRef={draftRef} accountRef={draft.accountRef} accountName={conta?.nome || ''}
+            setName={conjuntoFocado?.nome || ''} demo={params.get('modo') === 'demo'}
+            attached={packMaterializado(draft, selecaoPackFocada)} onAttach={(pack, receipt) => {
+              const atual = contextoDePack.current;
+              const vigente = atual.selecoesDePack.find(s => s.adset_key === selecaoPackFocada.adset_key);
+              if (!vigente || vigente.pack_id !== selecaoPackFocada.pack_id || vigente.version !== selecaoPackFocada.version)
+                throw new Error('O vínculo do conjunto mudou durante o envio. As imagens registradas foram preservadas; revise a seleção.');
+              const uploadTarget = alvoDoUpload.current?.packId === pack.id
+                ? alvoDoUpload.current.variationKey : undefined;
+              const next = materializarPack(atual.draft, vigente, pack, draft.accountRef, receipt, uploadTarget);
+              if (uploadTarget) alvoDoUpload.current = null;
+              setImagens(current => {
+                const received = receipt.resultados.map(r => {
+                  const item = pack.manifest.items.find(i => i.master_ref === r.master_ref);
+                  return {referencia_opaca: r.asset_ref!, nome: item?.nome || pack.nome, tipo: 'image_asset' as const,
+                    id_mascarado: null, largura: item?.largura ?? null, altura: item?.altura ?? null, preview_disponivel: true};
+                });
+                return [...current.filter(i => !received.some(r => r.referencia_opaca === i.referencia_opaca)), ...received];
+              });
+              setDraft(next); invalidar();
+              setPackAviso('Imagens registradas e anúncios montados neste conjunto. Revise os textos e confirme os direitos de uso abaixo.');
+            }} />}
           {assistenteAberto && <section hidden={origemCriativa !== 'assistente'} className="space-y-3">
             <p className="text-sm text-muted-foreground">Crie e aprove suas peças aqui. O envio das imagens à conta é uma etapa separada; a geração não publica anúncios.</p>
-            <AssistenteNaJornada ref={iframeAssistente} projeto={projetoCriativo} />
+            <AssistenteNaJornada ref={iframeAssistente} projeto={projetoCriativo} destinationUrl={draft.destinationUrl} campaignObjective={receita?.objetivo} />
             <Button variant="outline" onClick={() => setOrigemCriativa('conta')}>Escolher imagens disponíveis na conta</Button>
           </section>}
           {packAviso && <p role="status" className="text-sm text-muted-foreground">{packAviso}</p>}
           {mastersSelecionados.length > 0 && <div role="status" className="rounded-lg border border-border p-4 text-sm">
             {mastersSelecionados.length} peça(s) selecionada(s) no Estúdio. Falta registrar essas imagens na conta com avaliação de política antes de vinculá-las aos anúncios. Elas ainda não fazem parte do plano compilado.
-            <Button variant="ghost" className="mt-2" onClick={() => setMastersSelecionados([])}>Retirar seleção do Estúdio e usar imagens da conta</Button>
+            <Button variant="ghost" className="mt-2" onClick={() => {
+              setMastersSelecionados([]); setPackAviso(''); setOrigemCriativa('conta');
+              const nova = new URLSearchParams(params); nova.delete('pack'); setParams(nova);
+            }}>Retirar seleção do Estúdio e usar imagens da conta</Button>
           </div>}
           {copySelecionada && <ImportarCopyDoAssistente
             key={`${copySelecionada.runRef}:${copySelecionada.creativeRef}`}
-            selecao={copySelecionada} anuncios={variacoesEmitidas(draft)}
+            selecao={copySelecionada} anuncios={variacoesEmitidas(draft).filter(v => v.adsetKey === conjuntoFocado?.key)}
             onCancelar={() => setCopySelecionada(null)}
             onAplicar={(key, copy) => {
-              setDraft(atual => ({ ...atual, variations: atual.variations.map(v => v.key === key ? {
+              const pai = draft.variations.find(v => v.key === key)?.adsetKey;
+              let banco: TextosFlexiveisDraft | undefined;
+              if (draft.creativeMode === 'flexible' && pai) {
+                const anterior = textosFlexiveisDoConjunto(draft, pai);
+                const adicionar = (valores: string[], texto: string) => [...new Set([...valores.filter(t => t.trim()), texto.trim()].filter(Boolean))];
+                banco = { primary_text: adicionar(anterior.primary_text, copy.message),
+                  headline: adicionar(anterior.headline, copy.headline), description: adicionar(anterior.description, copy.description) };
+                if (pendenciasDosTextosFlexiveis(banco).length) {
+                  setErroDaPergunta('Não foi possível acrescentar a copy. Revise o banco de textos deste conjunto: o limite é de 5 opções por tipo.');
+                  return;
+                }
+              }
+              setDraft(atual => ({ ...atual,
+                conjuntos: banco ? atual.conjuntos.map(c => c.key === pai ? { ...c, flexibleTexts: banco } : c) : atual.conjuntos,
+                variations: atual.variations.map(v => banco && v.adsetKey === pai ? {
+                  ...v, cta: copy.cta, assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
+                } : v.key === key ? {
                 ...v, message: copy.message, headline: copy.headline,
                 description: copy.description, cta: copy.cta,
                 assetRightsConfirmed: false, thirdPartyIdentityCleared: false, assetPolicyConfirmedAt: '',
@@ -1274,55 +1753,24 @@ const MetaCriacaoPage: React.FC = () => {
               invalidar(); setCopySelecionada(null); setCopyAplicada(true); setOrigemCriativa('conta');
             }} />}
           {copyAplicada && <p role="status" className="text-sm text-success">Texto importado do assistente. Revise a imagem e a combinação final antes de conferir o plano.</p>}
-          <div hidden={origemCriativa !== 'conta'} className="space-y-5">
-          <div>
-            <div className="grid gap-2 rounded-lg border border-border bg-muted p-1 sm:grid-cols-3"
-              role="radiogroup" aria-label="Modo de criativo">
-              {([
-                ['single', 'Individual', 'um anúncio'],
-                ['batch', 'Lote controlado', `até ${LIMITE_VARIACOES} anúncios`],
-                ['flexible', 'Flexível', 'inspeção do contrato'],
-              ] as const).map(([id, nome, detalhe]) => (
-                <button key={id} type="button" role="radio" aria-checked={draft.creativeMode === id}
-                  onClick={() => mudarModo(id)}
-                  className={cn(
-                    'min-h-14 rounded-md px-3 py-2 text-left transition-volc duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    draft.creativeMode === id
-                      ? 'bg-card text-foreground shadow-card'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}>
-                  <strong className="block text-sm">{nome}</strong>
-                  <span className="block text-sm">{detalhe}</span>
-                </button>
-              ))}
-            </div>
-            <p id="meta-limite-lote" className="mt-2 text-sm text-muted-foreground">
-              <strong>{emitidas.length} de {LIMITE_VARIACOES}</strong> anúncios serão emitidos.
-              Cada linha vira exatamente um criativo e um anúncio; não existe combinação implícita.
-              O limite de {LIMITE_VARIACOES} é uma contenção operacional da VOLC, não um limite da Meta.
-            </p>
-          </div>
-
-          {draft.creativeMode === 'flexible' ? (
-            <>
-              <PainelDeBloqueio
-                titulo="Criativo flexível não emite payload"
-                bloqueios={[{
-                  codigo: 'META_FLEXIBLE_ASSET_GROUPS_UNPROVEN', severidade: 'alta',
-                  titulo: 'Formato flexível ainda não está disponível nesta jornada',
-                  detalhe: capacidades.flexivelMotivo
-                    || 'O servidor não informou a causa do bloqueio.',
-                }]}
-              />
-              <BlocoDeEvidencia titulo="Regras do guia de formato flexível" tom="atencao">
-                <LinhaDeFato rotulo="Objetivos compatíveis" valor="Vendas e Promoção de app. Não inclui Tráfego." fonte="guia Meta fornecido pelo operador, exemplos v25" />
-                <LinhaDeFato rotulo="Mídia por grupo" valor="Pelo menos uma imagem ou um vídeo" fonte="guia Meta fornecido pelo operador" />
-                <LinhaDeFato rotulo="Chamadas para ação" valor="Todas devem ter o mesmo tipo" fonte="guia Meta fornecido pelo operador" />
-                <LinhaDeFato rotulo="Textos por grupo" valor="Até 5 de cada tipo" fonte="guia Meta fornecido pelo operador" />
-                <LinhaDeFato rotulo="Disponibilidade no sistema" valor="Contrato e validação v26 pendentes; nenhum payload é emitido" fonte="backend VOLC" ausencia="não comprovado" />
-              </BlocoDeEvidencia>
-            </>
-          ) : (
+          <div hidden={origemCriativa !== 'conta' && !(selecaoPackFocada && packMaterializado(draft, selecaoPackFocada))} className="space-y-5">
+          {draft.creativeMode === 'single' && draft.variations.length > 1 && <div role="alert" className="space-y-2">
+            <p>Há anúncios guardados fora da seleção anterior. Inclua-os para revisar todos os conjuntos.</p>
+            <Button onClick={() => mudarModo('batch')}>Incluir todos os anúncios guardados</Button>
+          </div>}
+          {avisoDaDuplicacao && <p role="status" className="rounded-lg bg-primary/10 p-3 text-sm">{avisoDaDuplicacao}</p>}
+          <FormatoDeCriativos draft={draft} onChange={mudarModo} />
+          {draft.creativeMode === 'flexible' && conjuntoFocado && <VarinhaDeCopy
+            key={`copy:${draftRef}:${conjuntoFocado.key}`} draft={draft} draftRef={draftRef} adsetKey={conjuntoFocado.key}
+            save={rascunhoPersistido.saveNow} demo={params.get('modo') === 'demo'}
+            onApply={textos => mudarTextosFlexiveis(conjuntoFocado.key, textos)} />}
+          {draft.creativeMode === 'flexible' && conjuntoFocado && <TextosDoAnuncioFlexivel
+            key={conjuntoFocado.key} conjunto={conjuntoFocado.nome}
+            imagens={emitidas.filter(v => v.adsetKey === conjuntoFocado.key).length}
+            value={textosFlexiveisDoConjunto(draft, conjuntoFocado.key)}
+            onChange={textos => mudarTextosFlexiveis(conjuntoFocado.key, textos)} />}
+          {!emitidas.some(v => v.adsetKey === conjuntoFocado?.key) && <p className="py-8 text-center text-muted-foreground">Este conjunto ainda não tem anúncios. Use “Adicionar anúncio neste conjunto” para começar.</p>}
+          {(
             <div className="space-y-5">
               {/* ⚠️ O bloqueio de vídeo é do CONTRATO, não da capacidade: nem
                   `variations[]` (V1) nem `ads[]` (V2) têm campo de vídeo. Mesmo
@@ -1338,7 +1786,7 @@ const MetaCriacaoPage: React.FC = () => {
                     capacidades.video ? '' : ` ${capacidades.videoMotivo || ''}`}`,
                 }]}
               />}
-              {draft.variations.slice(0, draft.creativeMode === 'single' ? 1 : undefined).map((variacao, posicao) => {
+              {draft.variations.map((variacao, posicao) => ({ variacao, posicao })).filter(({ variacao, posicao }) => variacao.adsetKey === conjuntoFocado?.key && (draft.creativeMode !== 'single' || posicao === 0)).map(({ variacao, posicao }) => {
                 const lista = variacao.midia === 'video' ? videos : imagens;
                 const escolhida = variacao.midia === 'video' ? variacao.videoRef : variacao.assetRef;
                 const ativo = lista.find((item) => item.referencia_opaca === escolhida);
@@ -1346,29 +1794,39 @@ const MetaCriacaoPage: React.FC = () => {
                   <section key={variacao.key} className="overflow-hidden rounded-lg border border-border bg-muted/20">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
                       <div className="min-w-0">
-                        <p className="kicker">Anúncio {posicao + 1}</p>
+                        <p className="kicker">{draft.creativeMode === 'flexible' ? 'Imagem do anúncio flexível' : 'Anúncio'} {posicao + 1}</p>
+                        <p className="text-sm font-medium text-primary">Conjunto: {draft.conjuntos.find(c => c.key === variacao.adsetKey)?.nome || 'Escolha um conjunto válido'}</p>
                         <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                          {variacao.headline || 'Sem título'}
+                          {variacaoEfetiva(draft, variacao).headline || 'Sem título'}
                         </p>
                         <p className="sr-only" data-testid="variacao-chave">{variacao.key}</p>
                         <p className="sr-only" data-testid="variacao-conjunto">{variacao.adsetKey}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <ChipDeEstado
-                          glifo={variacaoCompleta(variacao) ? CircleCheck : CircleDot}
-                          palavra={variacaoCompleta(variacao) ? 'completo' : 'incompleto'}
-                          descricao={variacaoCompleta(variacao)
+                          glifo={variacaoCompleta(variacao, draft) ? CircleCheck : CircleDot}
+                          palavra={variacaoCompleta(variacao, draft) ? 'completo' : 'incompleto'}
+                          descricao={variacaoCompleta(variacao, draft)
                             ? 'este anúncio tem peça, textos e chamada para ação'
-                            : 'falta preencher pelo menos um campo deste anúncio'}
-                          tom={variacaoCompleta(variacao) ? 'bom' : 'atencao'}
+                            : pendenciasDaVariacao(variacao, draft).join(' ')}
+                          tom={variacaoCompleta(variacao, draft) ? 'bom' : 'atencao'}
                         />
-                        {draft.creativeMode === 'batch' && (
+                        {(
                           <>
                             <Button type="button" variant="ghost" size="sm"
                               aria-describedby="meta-limite-lote"
                               disabled={draft.variations.length >= LIMITE_VARIACOES}
                               onClick={() => adicionarVariacao(posicao)}>
-                              <Copy className="mr-1.5 h-4 w-4" aria-hidden />Duplicar
+                              <Copy className="mr-1.5 h-4 w-4" aria-hidden />Duplicar neste conjunto
+                            </Button>
+                            <Button type="button" variant="outline" size="sm"
+                              disabled={draft.variations.length >= LIMITE_VARIACOES}
+                              onClick={() => {
+                                setDraft(current => duplicarParaTrocarImagem(current, variacao.key));
+                                invalidar();
+                                setAvisoDaDuplicacao('Cópia adicionada neste conjunto. Os textos foram mantidos; escolha a nova imagem e confirme seus direitos de uso.');
+                              }}>
+                              <ImageIcon className="mr-1.5 h-4 w-4" aria-hidden />Duplicar e trocar imagem
                             </Button>
                             <Button type="button" variant="ghost" size="sm"
                               disabled={draft.variations.length === 1}
@@ -1379,9 +1837,19 @@ const MetaCriacaoPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+                    {pendenciasDaVariacao(variacao, draft).length > 0 && <details className="border-b border-border px-4 py-3 text-sm">
+                      <summary className="cursor-pointer font-medium text-warning">O que falta neste anúncio ({pendenciasDaVariacao(variacao, draft).length})</summary>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-foreground">
+                        {pendenciasDaVariacao(variacao, draft).map(falta => <li key={falta}>{falta}</li>)}
+                      </ul>
+                      <p className="mt-2 text-muted-foreground">Ao reabrir o rascunho, confira novamente as permissões de uso da peça. Salvar a montagem não salva uma autorização de publicação.</p>
+                    </details>}
                     <div className="grid gap-5 p-4 lg:grid-cols-[minmax(190px,30%)_1fr]">
                       <div>
-                        <PreviaDaPeca accountRef={draft.accountRef} ativo={ativo} />
+                        <PreviaDaPeca accountRef={draft.accountRef} ativo={ativo}
+                          uploadBusy={arquivoOcupado === variacao.key}
+                          onUpload={draft.accountRef && !variacao.existingPostRef
+                            ? file => void importarImagemParaVariacao(variacao, file) : undefined} />
                         {/* ⚠️ `A30`: o nome fica curto e truncado, com o valor
                             inteiro no `title`. Um caminho de armazenamento como
                             título estoura a coluna e empurra o controle para
@@ -1395,51 +1863,18 @@ const MetaCriacaoPage: React.FC = () => {
                         )}
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
-                        {/* ⚠️ `F34`: o conjunto de cada anúncio é ESCOLHA
-                            explícita. Sem ela o backend teria de adivinhar um
-                            pai, e adivinhar significa entregar no lugar errado
-                            sem ninguém perceber. */}
-                        <Campo id={`meta-conjunto-${posicao}`} rotulo="Conjunto deste anúncio" largo
-                          ajuda="Cada anúncio nasce dentro de exatamente um conjunto, e é ele que define público, verba e posicionamento deste anúncio.">
-                          <select id={`meta-conjunto-${posicao}`} className={campo}
-                            value={variacao.adsetKey}
-                            onChange={(e) => mudarVariacao(posicao, 'adsetKey', e.target.value)}>
-                            {!draft.conjuntos.some((item) => item.key === variacao.adsetKey) && (
-                              <option value={variacao.adsetKey}>
-                                Conjunto removido · escolha outro
-                              </option>
-                            )}
-                            {draft.conjuntos.map((item, indice) => (
-                              <option key={item.key} value={item.key}>
-                                {item.nome || `Conjunto ${indice + 1}`}
-                              </option>
-                            ))}
-                          </select>
-                        </Campo>
-                        <Campo id={`meta-midia-${posicao}`} rotulo="Tipo de peça">
-                          <select id={`meta-midia-${posicao}`} className={campo} value={variacao.midia}
-                            onChange={(e) => mudarVariacao(posicao, 'midia', e.target.value as MidiaDaVariacao)}>
-                            <option value="image">Imagem existente</option>
-                            <option value="video">Vídeo existente · emissão bloqueada</option>
-                          </select>
-                        </Campo>
+                        {variacao.existingPostRef && <div className="space-y-2 text-sm text-muted-foreground md:col-span-2">
+                          <p>Este rascunho antigo ainda aponta para uma publicação existente. Converta-o para uma imagem editável antes de trocar mídia ou usar o formato flexível.</p>
+                          <Button type="button" variant="secondary" disabled={ocupado !== null}
+                            onClick={() => mudarVariacao(posicao, 'existingPostRef', undefined)}>Converter para imagem editável</Button>
+                        </div>}
                         <Campo id={`meta-peca-${posicao}`} rotulo={variacao.midia === 'video' ? 'Vídeo da conta' : 'Imagem da conta'}>
-                          <select id={`meta-peca-${posicao}`} className={campo} value={escolhida}
-                            disabled={!draft.accountRef || ocupado === 'ativos'}
-                            onChange={(e) => mudarVariacao(
-                              posicao, variacao.midia === 'video' ? 'videoRef' : 'assetRef', e.target.value)}>
-                            <option value="">
-                              {lista.length === 0
-                                ? `Nenhum ${variacao.midia === 'video' ? 'vídeo' : 'imagem'} nesta conta`
-                                : 'Selecione uma peça existente'}
-                            </option>
-                            {lista.map((item) => (
-                              <option key={item.referencia_opaca} value={item.referencia_opaca}>
-                                {item.nome}{item.largura && item.altura ? ` · ${item.largura}×${item.altura}` : ''}
-                              </option>
-                            ))}
-                          </select>
+                          <SelecionarAtivoMeta id={`meta-peca-${posicao}`} items={lista} value={escolhida}
+                            disabled={!draft.accountRef || ocupado === 'ativos' || Boolean(variacao.existingPostRef)}
+                            onChange={(ref) => mudarVariacao(
+                              posicao, variacao.midia === 'video' ? 'videoRef' : 'assetRef', ref)} />
                         </Campo>
+                        <details className="md:col-span-2"><summary className="cursor-pointer text-sm text-muted-foreground">Nomes internos do anúncio e do criativo</summary><div className="mt-3 grid gap-3 md:grid-cols-2">
                         <Campo id={`meta-ad-name-${posicao}`} rotulo="Nome do anúncio">
                           <Input id={`meta-ad-name-${posicao}`} value={variacao.adName}
                             onChange={(e) => mudarVariacao(posicao, 'adName', e.target.value)} />
@@ -1448,20 +1883,22 @@ const MetaCriacaoPage: React.FC = () => {
                           <Input id={`meta-creative-name-${posicao}`} value={variacao.creativeName}
                             onChange={(e) => mudarVariacao(posicao, 'creativeName', e.target.value)} />
                         </Campo>
-                        <Campo id={`meta-primary-${posicao}`} rotulo="Texto principal" largo>
-                          <Textarea id={`meta-primary-${posicao}`} rows={3} value={variacao.message}
+                        </div></details>
+                        {draft.creativeMode !== 'flexible' ? <><Campo id={`meta-primary-${posicao}`} rotulo="Texto principal" largo>
+                          <Textarea id={`meta-primary-${posicao}`} rows={3} value={variacao.message} readOnly={Boolean(variacao.existingPostRef)}
                             onChange={(e) => mudarVariacao(posicao, 'message', e.target.value)} />
                         </Campo>
                         <Campo id={`meta-headline-${posicao}`} rotulo="Título">
-                          <Input id={`meta-headline-${posicao}`} value={variacao.headline}
+                          <Input id={`meta-headline-${posicao}`} value={variacao.headline} readOnly={Boolean(variacao.existingPostRef)}
                             onChange={(e) => mudarVariacao(posicao, 'headline', e.target.value)} />
                         </Campo>
                         <Campo id={`meta-description-${posicao}`} rotulo="Descrição">
-                          <Input id={`meta-description-${posicao}`} value={variacao.description}
+                          <Input id={`meta-description-${posicao}`} value={variacao.description} readOnly={Boolean(variacao.existingPostRef)}
                             onChange={(e) => mudarVariacao(posicao, 'description', e.target.value)} />
                         </Campo>
+                        </> : <p className="md:col-span-2 text-sm text-muted-foreground">Esta imagem usará as variações de texto do conjunto, editadas acima. Ela pode aparecer com qualquer uma dessas opções.</p>}
                         <Campo id={`meta-cta-${posicao}`} rotulo="Chamada para ação" largo>
-                          <select id={`meta-cta-${posicao}`} className={campo} value={variacao.cta}
+                          <select id={`meta-cta-${posicao}`} className={campo} value={variacao.cta} disabled={Boolean(variacao.existingPostRef)}
                             onChange={(e) => mudarVariacao(posicao, 'cta', e.target.value)}>
                             {CTAS.map(([valor, rotulo]) => (
                               <option key={valor} value={valor}>{rotulo}</option>
@@ -1488,17 +1925,11 @@ const MetaCriacaoPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                    <ReutilizarEmConjunto draft={draft} origem={variacao.key} onDuplicar={destino => adicionarVariacao(posicao, destino)} />
                   </section>
                 );
               })}
-              {draft.creativeMode === 'batch' && (
-                <Button type="button" variant="outline" className="w-full border-dashed"
-                  aria-describedby="meta-limite-lote"
-                  disabled={draft.variations.length >= LIMITE_VARIACOES}
-                  onClick={() => adicionarVariacao()}>
-                  <Plus className="mr-2 h-4 w-4" aria-hidden />Adicionar outro anúncio ao lote
-                </Button>
-              )}
+
             </div>
           )}
           </div>
@@ -1529,9 +1960,35 @@ const MetaCriacaoPage: React.FC = () => {
       ) : null;
       case 'revisao': return (
         <>
-          {mastersSelecionados.length > 0 && <p role="alert" className="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm">
-            Há {mastersSelecionados.length} peça(s) do Estúdio aguardando registro na conta. Volte a Criativos para resolver a seleção antes de conferir o plano.
-          </p>}
+          {motivoDeMidiaPendente && <div role="alert" className="space-y-3 rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm">
+            <p>{motivoDeMidiaPendente}</p>
+            <Button variant="secondary" onClick={() => {
+              if (packsPendentes[0]) setConjuntoFocadoRef(packsPendentes[0].adset_key);
+              irParaPergunta(perguntasMeta(true).find(p => p.id === 'criativos')!);
+            }}>Voltar ao pack e concluir envio</Button>
+          </div>}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <div><h3 className="font-display text-xl font-semibold">{draft.campaignName || 'Sua campanha'}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{conta?.nome || 'Conta salva'} · {draft.conjuntos.length} conjuntos · {totalDeAnuncios} anúncios{draft.creativeMode === 'flexible' ? ` flexíveis com ${emitidas.length} imagens` : ' no rascunho'}</p></div>
+            <span className="inline-flex items-center gap-2 text-sm font-medium"><Lock className="h-4 w-4" aria-hidden />Começa pausada</span>
+          </div>
+          <RevisaoHumanaDosAnuncios draft={draft} anuncios={emitidas} bloqueado={Boolean(motivoDeMidiaPendente)}
+            onCategoria={value => mudar('categoryConfirmed', value)}
+            onAnuncio={(key, value) => {
+              setDraft(atual => ({ ...atual, variations: atual.variations.map(ad => ad.key === key ? {
+                ...ad, assetRightsConfirmed: value, thirdPartyIdentityCleared: value,
+                assetPolicyConfirmedAt: value ? new Date().toISOString() : '',
+              } : ad) }));
+              invalidar();
+            }}
+            preview={ad => <PreviaDaPeca accountRef={draft.accountRef} ativo={imagens.find(item => item.referencia_opaca === ad.assetRef)} />} />
+          {draft.conjuntos.map(conjunto => <IdentidadeDoAnunciante key={`${draft.accountRef}:${conjunto.key}`} accountRef={draft.accountRef}
+            consultar={lerIdentidades}
+            conjunto={conjunto} demo={params.get('modo') === 'demo'} disabled={ocupado !== null}
+            onChange={ref => mudarConjunto(conjunto.key, { regulatoryIdentityRef: ref || undefined })} />)}
+          <details className="border-t border-border pt-4 text-sm">
+            <summary className="cursor-pointer py-2 font-medium">Detalhes técnicos, tracking e evidências do plano</summary>
+            <div className="mt-4 space-y-4">
           <TrackingAutomatico destino={draft.destinationUrl} />
           <BlocoDeEvidencia titulo="O que será enviado à Meta" tom="verificado">
             <LinhaDeFato rotulo="Contrato do plano" valor={contrato === 'V1' ? 'V1 · a receita provada' : 'V2 · campanha com N conjuntos'} fonte="a forma deste plano" />
@@ -1546,10 +2003,7 @@ const MetaCriacaoPage: React.FC = () => {
             <LinhaDeFato rotulo="Efeito externo da conferência" valor={compilacao ? 'Nenhum' : null} fonte="o backend" ausencia="—" />
           </BlocoDeEvidencia>
 
-          {/* ⚠️ POR QUE ESTE PLANO NÃO É O V1. A lista existe para que ninguém
-              precise adivinhar qual escolha fechou a criação: cada motivo é um
-              recurso que só o contrato V2 descreve, e o V2 não tem rota de
-              aprovação nem de nascimento. */}
+          {/* A forma do plano escolhe o contrato; ambos têm aprovação e criação pausada. */}
           {contrato === 'V2' && (
             <BlocoDeEvidencia titulo="Por que este plano usa o contrato V2" tom="info">
               {motivosDoV2.map((motivo) => (
@@ -1557,7 +2011,7 @@ const MetaCriacaoPage: React.FC = () => {
               ))}
               <LinhaDeFato
                 rotulo="Consequência"
-                valor="Conferir e validar continuam abertos; criar não existe neste contrato"
+                valor="Criação pausada após validação, aprovação do plano e liberação desta conta"
                 fonte="as rotas do backend"
               />
             </BlocoDeEvidencia>
@@ -1604,29 +2058,25 @@ const MetaCriacaoPage: React.FC = () => {
               <LinhaDeFato rotulo="Objetos criados" valor={String(validacao.objetos_criados)} fonte="a Meta" />
             </BlocoDeEvidencia>
           )}
+            </div>
+          </details>
 
           <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Conferimos o plano e sua elegibilidade automaticamente. Nenhum objeto é criado antes da sua aprovação final.</p>
+            {(ocupado === 'compilar' || ocupado === 'validar') && <p role="status" className="flex items-center gap-2 text-sm font-medium text-primary"><CircleDot className="h-4 w-4 motion-safe:animate-pulse" aria-hidden />{ocupado === 'compilar' ? 'Conferindo a montagem…' : 'Validando a elegibilidade na Meta…'}</p>}
+            {validacao?.ok && !ocupado && <p role="status" className="flex items-center gap-2 text-sm font-medium"><CircleCheck className="h-4 w-4 text-success" aria-hidden />Conferência prévia concluída. Revise e confirme a criação pausada abaixo.</p>}
+            {params.get('modo') === 'demo' && <p className="text-sm">A demonstração não consulta nem valida campanhas na Meta.</p>}
+            {faltas.length > 0 && <ul className="list-disc space-y-1 pl-5 text-sm">{faltas.map(falta => <li key={falta}>{falta}</li>)}</ul>}
+            {params.get('modo') !== 'demo' && (avisos.length > 0 || validacao?.ok === false) && (
             <AcaoDominante
               pode={podeCompilar && ocupado === null}
-              enviando={ocupado === 'compilar'}
-              faltas={faltas}
-              onClick={compilar}
+              enviando={ocupado === 'compilar' || ocupado === 'validar'}
+              faltas={[]}
+              onClick={() => void (compilacao ? validar() : compilar())}
             >
-              Conferir o plano
-            </AcaoDominante>
-            <div className="border-t border-border pt-4">
-              <AcaoDominante
-                pode={Boolean(compilacao) && capacidades.validateOnly && ocupado === null}
-                enviando={ocupado === 'validar'}
-                faltas={[
-                  ...(compilacao ? [] : ['Confira o plano antes de falar com a Meta.']),
-                  ...(capacidades.validateOnly ? [] : ['A validação remota está fechada neste servidor; um administrador precisa liberá-la.']),
-                ]}
-                onClick={validar}
-              >
-                Validar na Meta, sem criar nada
-              </AcaoDominante>
-            </div>
+              Tentar conferência novamente
+            </AcaoDominante>)}
+            {!capacidades.validateOnly && <p className="text-sm text-warning">A validação remota precisa ser habilitada pelo administrador.</p>}
           </div>
 
           {!capacidades.criarPausada && (
@@ -1642,39 +2092,26 @@ const MetaCriacaoPage: React.FC = () => {
             </div>
           )}
 
-          {/* ⚠️ O SERVIDOR AUTORIZA CRIAR, MAS ESTE PLANO NÃO PODE NASCER.
-              São duas coisas diferentes e a tela as separa: a flag do servidor
-              governa o ato; o contrato governa a FORMA do plano. `/aprovar`
-              recebe o DTO do V1, e não existe rota de aprovação para o V2. */}
-          {capacidades.criarPausada && contrato === 'V2' && (
-            <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
-              <div className="max-w-[74ch] space-y-2 text-sm leading-relaxed text-pretty text-foreground">
-                <p><strong>Este plano não pode nascer nesta bancada.</strong></p>
-                <p className="text-muted-foreground">
-                  A criação PAUSED está aberta no servidor, mas ela existe apenas para o contrato
-                  V1 — a receita de conjunto único que a Meta aceitou. Este plano usa recursos do
-                  contrato V2, que tem conferência e validação, e não tem rota de aprovação nem de
-                  nascimento. Conferir e validar continuam liberados, e nada é criado.
-                </p>
-              </div>
-            </div>
-          )}
+          {params.get('modo') === 'demo' && <p role="status" className="text-sm text-muted-foreground">Demonstração: a criação de campanhas reais está desativada nesta tela.</p>}
 
           {criacaoDisponivel && (
             <div className="space-y-4 rounded-lg border border-border/70 p-4">
+              <h3 className="font-display text-lg font-semibold">Criar a campanha pausada</h3>
+              <p className="max-w-[70ch] text-sm text-muted-foreground">Confirme a criação dos objetos reais na conta {conta?.nome || 'selecionada'}. Isso não ativa a veiculação.</p>
+              <details className="text-sm"><summary className="cursor-pointer py-2 font-medium">Conferir conta, orçamento e prova da validação</summary>
               <BlocoDeEvidencia titulo="O que será criado agora, de verdade" tom="atencao">
                 <LinhaDeFato rotulo="Conta" valor={conta ? `${conta.nome} · ${conta.id_mascarado || 'ID protegido'}` : null} fonte="a Meta" ausencia="não escolhida" />
-                <LinhaDeFato rotulo="Orçamento diário" valor={reaisParaMinor(draft.conjuntos[0]?.orcamentoBrl ?? '') > 0 ? `${formatarBrl(reaisParaMinor(draft.conjuntos[0].orcamentoBrl))} · no conjunto` : null} fonte="você" ausencia="não informado" />
+                {orcamentosDoPlano(draft).map(item => <LinhaDeFato key={item.rotulo} rotulo={`Orçamento ${draft.periodoDeOrcamento === 'DAILY' ? 'diário' : 'total'} · ${item.rotulo}`} valor={item.minor > 0 ? formatarBrl(item.minor) : null} fonte="você" ausencia="não informado" />)}
                 <LinhaDeFato rotulo="Campanha" valor={draft.campaignName || null} fonte="você" ausencia="sem nome" />
-                <LinhaDeFato rotulo="Conjunto" valor={draft.conjuntos[0]?.nome || null} fonte="você" ausencia="sem nome" />
-                <LinhaDeFato rotulo="Criativos e anúncios" valor={`${emitidas.length} criativo${emitidas.length === 1 ? '' : 's'} · ${emitidas.length} anúncio${emitidas.length === 1 ? '' : 's'}`} fonte="o compilador" />
+                <LinhaDeFato rotulo="Conjuntos" valor={draft.conjuntos.map(c => c.nome).join(' · ') || null} fonte="você" ausencia="sem nome" />
+                <LinhaDeFato rotulo="Criativos e anúncios" valor={`${totalDeAnuncios} criativo${totalDeAnuncios === 1 ? '' : 's'} · ${totalDeAnuncios} anúncio${totalDeAnuncios === 1 ? '' : 's'}${draft.creativeMode === 'flexible' ? ` · ${emitidas.length} imagens` : ''}`} fonte="a montagem atual" />
                 <LinhaDeFato rotulo="Estado ao nascer" valor="Pausado em todos os níveis veiculáveis" fonte="a receita provada" />
                 <LinhaDeFato rotulo="Identidade do plano" valor={compilacao?.plano.plano_sha256 ?? null} fonte="o backend" ausencia="plano ainda não compilado" />
                 <LinhaDeFato rotulo="Validação remota" valor={validacao?.ok ? `Aceita · ${validacao.operacoes_validadas.join(', ')}` : null} fonte="a Meta" ausencia="ainda não validado" />
                 <LinhaDeFato rotulo="Prova durável da validação" valor={validacao?.prova_duravel?.registrada ? 'Gravada no servidor' : null} fonte="o backend" ausencia="não gravada" />
                 <LinhaDeFato rotulo="Ainda sem validação remota" valor={validacao?.operacoes_dependentes_pendentes.join(', ') || null} fonte="a Meta" ausencia="nenhuma" />
               </BlocoDeEvidencia>
+              </details>
 
               {/* ⚠️ A cobertura parcial fica JUNTO do botão que cria, não numa
                   nota de rodapé: conjunto e anúncio nunca foram validados
@@ -1715,7 +2152,7 @@ const MetaCriacaoPage: React.FC = () => {
               <div className="space-y-4">
                 <AcaoDominante
                   pode={
-                    Boolean(validacao?.ok && validacao.prova_duravel?.registrada)
+                    !motivoDeMidiaPendente && Boolean(validacao?.ok && validacao.prova_duravel?.registrada)
                     && !aprovacao && confirmacaoMarcada
                     && confirmacaoDeCriacaoValida(confirmacaoDigitada)
                     && ocupado === null
@@ -1737,7 +2174,7 @@ const MetaCriacaoPage: React.FC = () => {
 
                 <div className="border-t border-border pt-4">
                   <AcaoDominante
-                    pode={Boolean(aprovacao) && !jaDespachou && ocupado === null}
+                    pode={!motivoDeMidiaPendente && Boolean(aprovacao) && !jaDespachou && ocupado === null}
                     enviando={ocupado === 'criar'}
                     faltas={[
                       ...(aprovacao ? [] : ['Aprove o plano antes de criar.']),
@@ -1773,6 +2210,10 @@ const MetaCriacaoPage: React.FC = () => {
                   </span>
                 )}
               </div>
+              {params.get('operacao_anterior') && <Link className="inline-flex min-h-11 items-center text-sm text-primary underline" target="_blank" rel="noopener noreferrer"
+                to={`/trafego/meta/nova?rascunho=${encodeURIComponent(draftRef)}&etapa=revisao&operacao=${encodeURIComponent(params.get('operacao_anterior')!)}`}>
+                Consultar recibo da tentativa anterior (nova aba)
+              </Link>}
 
               {operacaoCarregando && (
                 <p className="text-sm text-muted-foreground" aria-live="polite">
@@ -1800,7 +2241,7 @@ const MetaCriacaoPage: React.FC = () => {
                 <BlocoDeEvidencia titulo="Aprovação registrada" tom="verificado">
                   <LinhaDeFato rotulo="Operações autorizadas" valor={String(aprovacao.operacoes)} fonte="o backend" />
                   <LinhaDeFato rotulo="Passos aprovados" valor={aprovacao.manifesto.join(' → ')} fonte="o backend" />
-                  <LinhaDeFato rotulo="Orçamento aprovado" valor={`${formatarBrl(aprovacao.orcamento_diario_minor)} · ${aprovacao.moeda}`} fonte="o backend" />
+                  {aprovacao.budget_manifest ? aprovacao.budget_manifest.entries.map(entry => <LinhaDeFato key={entry.step} rotulo={`Orçamento aprovado · ${entry.step}`} valor={`${formatarBrl(entry.amount_minor)} · ${entry.period === 'DAILY' ? 'por dia' : 'total do período'}`} fonte="plano congelado no backend" />) : <LinhaDeFato rotulo="Orçamento diário aprovado" valor={aprovacao.orcamento_diario_minor === null ? null : formatarBrl(aprovacao.orcamento_diario_minor)} fonte="o backend" ausencia="não informado" />}
                   <LinhaDeFato rotulo="Válida até" valor={aprovacao.expires_at} fonte="o backend" />
                 </BlocoDeEvidencia>
               )}
@@ -1862,14 +2303,8 @@ const MetaCriacaoPage: React.FC = () => {
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
               <strong className="text-foreground">Receita atribuída ao conjunto; a campanha soma os conjuntos.</strong>{' '}
-              Novos planos emitem <code>utm_campaign</code> e <code>utm_term</code> com o ID dinâmico do CONJUNTO — é essa a
-              dimensão que o GAM guarda. <code>utm_content</code> leva o ID do anúncio e <code>campaign_id</code> viaja em
-              parâmetro separado, para a instrumentação do site; a campanha de uma receita é resolvida do conjunto para o pai,
-              nunca lida do GAM. A URL da LP permanece a escolhida;
-              a validação do plano atual e a prova do tracking no destino ainda são necessárias.{' '}
-              <strong className="text-foreground">Ativar continua sendo outro ato, e ele não existe.</strong>{' '}
-              Nenhuma rota desta bancada leva um objeto a ENABLE. Tudo que veicula nasce
-              pausado e só uma pessoa, fora daqui, pode ligar.
+              As UTMs serão incluídas automaticamente e tudo nasce em PAUSED.
+              Ativar continua sendo outro ato, fora desta tela.
             </p>
           </div>
         </>
@@ -1904,6 +2339,11 @@ const MetaCriacaoPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <span className="hidden text-sm text-muted-foreground sm:inline">Ao criar, tudo começa pausado</span>
               <MetaConfiguracaoLocal />
+              <RascunhosMeta currentRef={draftRef} demo={params.get('modo') === 'demo'} beforeResume={async () => {
+                if (ocupado !== null || rascunhoPersistido.loading) return false;
+                if (rascunhoPersistido.blocked && rascunhoPersistido.version === 0) return true;
+                return rascunhoPersistido.saved || await rascunhoPersistido.saveNow();
+              }} />
             </div>
           </div>
           <div className="mt-6 flex items-center justify-between gap-4">
@@ -1929,23 +2369,53 @@ const MetaCriacaoPage: React.FC = () => {
             </nav>
           </details>
         </header>
-        <main className={cn('meta-journey-question', etapa === 'criativo' && 'meta-journey-question--wide')}>
-          <h2 ref={tituloDaPergunta} tabIndex={-1} className="font-display text-2xl font-semibold leading-tight tracking-tight outline-none sm:text-[2rem]">
+        <section aria-label="Salvamento do rascunho" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+          <p role="status" aria-live="polite" className="text-muted-foreground">
+            {params.get('modo') === 'demo' ? 'Demonstração · alterações ficam apenas nesta tela'
+              : rascunhoPersistido.loading ? 'Recuperando sua montagem…'
+              : rascunhoPersistido.saving ? 'Salvando conjuntos e anúncios…'
+              : rascunhoPersistido.conflict ? 'Há uma versão mais nova salva em outra aba'
+              : rascunhoPersistido.saved ? `Montagem salva no servidor · versão ${rascunhoPersistido.version}`
+              : 'Alterações ainda não salvas no servidor'}
+          </p>
+          {rascunhoPersistido.error && <div className="w-full" role="alert">
+            <p className="text-destructive">{rascunhoPersistido.error}</p>
+            <Button type="button" variant="outline" className="mt-2" onClick={() => {
+              if (window.confirm('Recuperar a versão salva? Alterações locais ainda não salvas serão descartadas.')) void rascunhoPersistido.reload();
+            }}>Recuperar versão salva</Button>
+            {!rascunhoPersistido.blocked && <Button type="button" variant="outline" className="mt-2 ml-2" onClick={() => { void rascunhoPersistido.saveNow(); }}>Tentar salvar novamente</Button>}
+            {rascunhoPersistido.blocked && rascunhoPersistido.version === 0 && <a className="ml-3 inline-flex min-h-11 items-center underline" href="/trafego/meta/nova">Iniciar uma nova campanha</a>}
+          </div>}
+        </section>
+        <main aria-labelledby="meta-question-title" className={cn('meta-journey-question', etapa === 'criativo' && 'meta-journey-question--wide')}>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">{pergunta.nome} <span className="font-normal text-muted-foreground">· {indice + 1} de {perguntas.length}</span></p>
+          <h2 id="meta-question-title" ref={tituloDaPergunta} tabIndex={-1} className="font-display text-2xl font-semibold leading-tight tracking-tight outline-none sm:text-[2rem]">
             {pergunta.titulo}
           </h2>
           <p className="mt-3 max-w-[65ch] text-base text-muted-foreground">{pergunta.ajuda}</p>
+          {feedbackDoPlano && <div ref={feedbackRef} role="status" aria-live="polite" tabIndex={-1}
+            className="mt-5 rounded-lg border border-primary/30 bg-card p-4 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+            {feedbackDoPlano}
+          </div>}
           <div key={pergunta.id} className="meta-journey-body" onKeyDown={e => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && etapa !== 'revisao') { e.preventDefault(); continuar(); }
           }}>
-            <div role="alert" aria-live="assertive"><PainelDeBloqueio bloqueios={avisos} titulo="Não foi possível concluir" /></div>
-            {conteudo}
+            <div role="alert" aria-label="Erros da operação" aria-live="assertive"><PainelDeBloqueio bloqueios={avisos} titulo="Não foi possível concluir" /></div>
+            <fieldset disabled={rascunhoPersistido.blocked} className="min-w-0 border-0 p-0">
+              <legend className="sr-only">Configuração da campanha</legend>
+              {['criativos', 'revisao'].includes(pergunta.id) && <NomenclaturaAutomatica
+                draft={draft} draftRef={draftRef} save={rascunhoPersistido.saveNow} sizes={tamanhosParaNomes}
+                conversionNames={conversoesParaNomes}
+                demo={params.get('modo') === 'demo'} onChange={next => { setDraft(next); invalidar(); }} />}
+              {conteudo}
+            </fieldset>
           </div>
           <div className="meta-journey-footer">
             <Button type="button" variant="ghost" disabled={indice === 0}
               onClick={() => irParaPergunta(perguntas[indice - 1])}><ArrowLeft className="h-4 w-4" aria-hidden />Voltar</Button>
             {indice < perguntas.length - 1 && <div className="flex items-center gap-4">
               <span className="hidden text-xs text-muted-foreground sm:inline">⌘ / Ctrl + Enter</span>
-              <Button type="button" className="min-h-12 px-7" onClick={continuar}>Continuar<ArrowRight className="h-4 w-4" aria-hidden /></Button>
+              <Button type="button" disabled={rascunhoPersistido.blocked} className="min-h-12 px-7" onClick={continuar}>Continuar<ArrowRight className="h-4 w-4" aria-hidden /></Button>
             </div>}
           </div>
           {erroDaPergunta && <p role="alert" className="mt-3 text-sm text-destructive">{erroDaPergunta}</p>}

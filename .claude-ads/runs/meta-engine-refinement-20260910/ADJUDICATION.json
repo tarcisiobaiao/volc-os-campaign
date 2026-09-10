@@ -1,0 +1,39 @@
+{
+  "status": "local_verified_remote_pending",
+  "calls": 6,
+  "exact_model_verified": true,
+  "model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested_all_calls": true,
+  "grounded_calls": ["measurement", "followup-2"],
+  "usage": {
+    "total_tokens": 350561,
+    "prompt_tokens": 177346,
+    "candidate_tokens": 6641,
+    "thought_tokens": 166574,
+    "cached_tokens": 88485,
+    "monetary_cost": "not supplied by provider"
+  },
+  "accepted": [
+    "validate_only_timeout_recovery",
+    "draft_autosave_recovery_after_new_edit",
+    "pack_binding_focus_isolation",
+    "ad_level_flexible_catalog",
+    "optional_flexible_description",
+    "explicit_measurement_unavailability",
+    "known_custom_conversion_source_mismatch",
+    "approved_attachment_byte_integrity",
+    "exact_visual_spec_per_slot"
+  ],
+  "refuted_or_already_guarded": [
+    "global_variation_key_collision",
+    "manual_existing_post_copy",
+    "stale_validation_cache",
+    "custom_conversion_without_source_ref",
+    "promoted_object_semantics_change",
+    "abo_cbo_budget_inversion",
+    "financial_partial_early_return"
+  ],
+  "mutations": {"meta": 0, "database": 0, "image_provider": 0},
+  "safety": {"paused_only_preserved": true, "final_plan_approval_preserved": true, "activation_added": false}
+}

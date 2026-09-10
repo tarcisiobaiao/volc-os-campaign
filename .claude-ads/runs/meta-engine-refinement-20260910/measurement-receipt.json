@@ -1,0 +1,300 @@
+{
+  "slice": "measurement",
+  "created_at": "2026-09-10T11:30:03.608436+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested": true,
+  "files": [
+    {
+      "path": "backend/app/trafego/meta_execucao/publicos.py",
+      "start": 136,
+      "end": 242,
+      "sha256": "f40bd6a859ed5274c9d0120ccb5a9c57b9225cbece8f49d8dd808b7c131ead7b"
+    },
+    {
+      "path": "backend/app/trafego/meta_execucao/compilador.py",
+      "start": 594,
+      "end": 723,
+      "sha256": "ed06de8cc25d80e82f95ca2099718837414caf593d9b1e5d8d9e9960a1f44ec6"
+    },
+    {
+      "path": "backend/app/trafego/meta/financeiro.py",
+      "start": 207,
+      "end": 393,
+      "sha256": "ef3c362e58fb16e0f240b30b7dfa7ea38f467fc793579c1ab53f355c398db049"
+    }
+  ],
+  "input_sha256": "c0182c7dfa672ac797cdf7c084872526551b6152aa856771b333aeb415e5e04d",
+  "status": "review_received",
+  "calls_attempted": 1,
+  "billing": "unknown unless provider supplies usage",
+  "modelVersion": "gemini-3.8-flash",
+  "model_verified": true,
+  "usage": {
+    "promptTokenCount": 41699,
+    "candidatesTokenCount": 1639,
+    "totalTokenCount": 78790,
+    "cachedContentTokenCount": 22359,
+    "thoughtsTokenCount": 35452
+  },
+  "grounding": {
+    "webSearchQueries": [
+      "\"campaigns\" \"is_adset_budget_sharing_enabled\" meta marketing api",
+      "\"promoted_object\" \"custom_conversion_id\" \"pixel_id\" meta marketing api",
+      "\"promoted_object\" \"custom_conversion_id\" site:developers.facebook.com"
+    ],
+    "groundingChunks": [
+      {
+        "web": {
+          "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF8Be521uugfB2a8uXa_L6fGC2tZhCPo7-c_RwWMjFpKbbqKxfFpT6m8yZ_-yL9HcruqV1fBWZDfrIrugnVDHes4y8cHlSsEloTVEKdnzJhfUV87hl-eco57-NPD4LoZcftyX2pgSxQEi3QQzkJ4feCDr9zRlMF6YX1ilTw8nDibyEe4eVUfwKduhscz6HEt-pgyq3ZZ-q69J89Uw==",
+          "title": "facebook.com"
+        }
+      },
+      {
+        "web": {
+          "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF8Be521uugfB2a8uXa_L6fGC2tZhCPo7-c_RwWMjFpKbbqKxfFpT6m8yZ_-yL9HcruqV1fBWZDfrIrugnVDHes4y8cHlSsEloTVEKdnzJhfUV87hl-eco57-NPD4LoZcftyX2pgSxQEi3QQzkJ4feCDr9zRlMF6YX1ilTw8nDibyEe4eVUfwKduhscz6HEt-pgyq3ZZ-q69J89Uw==",
+          "title": "facebook.com"
+        }
+      },
+      {
+        "web": {
+          "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF90WgrcH16l8VDtMVbS3g7Jlc1LSRa4Mut4X--88bkSNs7S3Pvz4NJ80s_Yo7GpK5XnH3awCevQdJLTtqFwnic8DE1cTWDuiy4Idd27hUsQIQHEeLvTxtU9LEyfXMhzi-WQOLvcn0keHbirV9TSlRGsXTe-mxkqjnxqAqf6tb2HIzCP9qd2h8nUcQwLkLNaiX_z7oJJWTRN8sf_2ToVCSYdzI=",
+          "title": "facebook.com"
+        }
+      },
+      {
+        "web": {
+          "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFHVV434SQvYBiAuewJQUsFREn28iWSGe3c7VU_macKzivtjYxPkD1re1Rmf8GCn4iLATglnyaYWW0a4_uYvp4Z25kgUyeeko3PIu8a08sCNsc-1G4gs6dt17BfxOeAmTK2Ckz6g2d4R8JuUgkRpBKpb-55QQdhRxchwbXss3UWGXErMBzISCdibkCBn_L1N5NaxhkQTHqo9GnCZ7cM-hZ7CNg=",
+          "title": "facebook.com"
+        }
+      }
+    ],
+    "groundingSupports": [
+      {
+        "segment": {
+          "endIndex": 578,
+          "text": "{\n  \"status\": \"partial\",\n  \"checked\": [\n    \"backend/app/trafego/meta_execucao/publicos.py\",\n    \"backend/app/trafego/meta_execucao/compilador.py\",\n    \"backend/app/trafego/meta/financeiro.py\"\n  ],\n  \"findings\": [\n    {\n      \"id\": \"promoted-object-custom-conversion-pixel-conflict\",\n      \"file\": \"backend/app/trafego/meta_execucao/compilador.py\",\n      \"line\": 662,\n      \"severity\": \"high\",\n      \"kind\": \"external_api\",\n      \"claim\": \"_promoted_object_v2 injects pixel_id alongside custom_conversion_id without custom_event_type and executes an unbound lookup on source_ref"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 656,
+          "endIndex": 727,
+          "text": "source_ref))' and emit {'pixel_id': fonte, 'custom_conversion_id': ...}"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 729,
+          "endIndex": 853,
+          "text": "Meta's API contract explicitly requires that if pixel_id is specified in promoted_object, custom_event_type must be provided"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1020,
+          "endIndex": 1043,
+          "text": "fonte('None') and crash"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1231,
+          "endIndex": 1313,
+          "text": "Reserve pixel_id and custom_event_type exclusively for standard event optimization"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1422,
+          "endIndex": 1499,
+          "text": "fonte is never invoked and promoted_object contains only custom_conversion_id"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1422,
+          "endIndex": 1875,
+          "text": "fonte is never invoked and promoted_object contains only custom_conversion_id.\"\n    },\n    {\n      \"id\": \"cbo-abo-budget-sharing-bid-strategy-misplacement\",\n      \"file\": \"backend/app/trafego/meta_execucao/compilador.py\",\n      \"line\": 601,\n      \"severity\": \"high\",\n      \"kind\": \"external_api\",\n      \"claim\": \"is_adset_budget_sharing_enabled is transmitted in CBO campaign payloads, while campaign bid_strategy is omitted when ABO uses budget sharing"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1422,
+          "endIndex": 1962,
+          "text": "fonte is never invoked and promoted_object contains only custom_conversion_id.\"\n    },\n    {\n      \"id\": \"cbo-abo-budget-sharing-bid-strategy-misplacement\",\n      \"file\": \"backend/app/trafego/meta_execucao/compilador.py\",\n      \"line\": 601,\n      \"severity\": \"high\",\n      \"kind\": \"external_api\",\n      \"claim\": \"is_adset_budget_sharing_enabled is transmitted in CBO campaign payloads, while campaign bid_strategy is omitted when ABO uses budget sharing.\",\n      \"evidence\": \"Line 601 sends 'is_adset_budget_sharing_enabled' unconditionally"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 1964,
+          "endIndex": 2091,
+          "text": "Meta's Marketing API specifies that is_adset_budget_sharing_enabled applies only to campaigns not using a campaign budget (ABO)"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 2093,
+          "endIndex": 2313,
+          "text": "Lines 606-612 misinterpret Meta error 100/4005 as a CBO requirement; in reality, enabling ad set budget sharing on an ABO campaign requires campaign-level bid_strategy, which lines 604-612 omit whenever orcamento is None"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 2093,
+          "endIndex": 2419,
+          "text": "Lines 606-612 misinterpret Meta error 100/4005 as a CBO requirement; in reality, enabling ad set budget sharing on an ABO campaign requires campaign-level bid_strategy, which lines 604-612 omit whenever orcamento is None.\",\n      \"proposal\": \"Conditionally omit is_adset_budget_sharing_enabled when orcamento is not None (CBO)"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 2515,
+          "endIndex": 2551,
+          "text": "bid_strategy to the campaign payload"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 2515,
+          "endIndex": 2751,
+          "text": "bid_strategy to the campaign payload.\",\n      \"test\": \"Compile both a CBO plan (confirming is_adset_budget_sharing_enabled is omitted) and an ABO plan with is_adset_budget_sharing_enabled=True (confirming campanha contains bid_strategy)"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 3638,
+          "endIndex": 4098,
+          "text": "\",\n      \"test\": \"Run financial attribution on an insight payload failing completo_meta checks; verify execution short-circuits immediately without querying GAM tables or invoking totalizar.\"\n    }\n  ],\n  \"sources\": [\n    {\n      \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/\",\n      \"claim\": \"If pixel_id is provided in promoted_object, custom_event_type must be provided; custom_conversion_id specifies a custom conversion"
+        },
+        "groundingChunkIndices": [
+          0,
+          1
+        ]
+      },
+      {
+        "segment": {
+          "startIndex": 3638,
+          "endIndex": 4329,
+          "text": "\",\n      \"test\": \"Run financial attribution on an insight payload failing completo_meta checks; verify execution short-circuits immediately without querying GAM tables or invoking totalizar.\"\n    }\n  ],\n  \"sources\": [\n    {\n      \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/\",\n      \"claim\": \"If pixel_id is provided in promoted_object, custom_event_type must be provided; custom_conversion_id specifies a custom conversion.\"\n    },\n    {\n      \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-set-budget-sharing\",\n      \"claim\": \"is_adset_budget_sharing_enabled allows ad sets to share budget for campaigns not using a campaign budget (ABO)"
+        },
+        "groundingChunkIndices": [
+          2,
+          3
+        ]
+      }
+    ]
+  },
+  "grounding_verified": true,
+  "finishReason": "STOP",
+  "review": {
+    "status": "partial",
+    "checked": [
+      "backend/app/trafego/meta_execucao/publicos.py",
+      "backend/app/trafego/meta_execucao/compilador.py",
+      "backend/app/trafego/meta/financeiro.py"
+    ],
+    "findings": [
+      {
+        "id": "promoted-object-custom-conversion-pixel-conflict",
+        "file": "backend/app/trafego/meta_execucao/compilador.py",
+        "line": 662,
+        "severity": "high",
+        "kind": "external_api",
+        "claim": "_promoted_object_v2 injects pixel_id alongside custom_conversion_id without custom_event_type and executes an unbound lookup on source_ref.",
+        "evidence": "Lines 662-667 fetch 'fonte = publicos.fonte(str(medida.source_ref))' and emit {'pixel_id': fonte, 'custom_conversion_id': ...}. Meta's API contract explicitly requires that if pixel_id is specified in promoted_object, custom_event_type must be provided. Furthermore, when an adset optimizes on a custom conversion without an explicit source_ref, publicos.py line 146 skips resolution, leading line 662 to call publicos.fonte('None') and crash.",
+        "proposal": "When medida.custom_conversion_ref is present, omit the source_ref lookup and return only {'custom_conversion_id': publicos.conversao(medida.custom_conversion_ref)}. Reserve pixel_id and custom_event_type exclusively for standard event optimization.",
+        "test": "Compile an adset with custom_conversion_ref set and source_ref=None; assert that publicos.fonte is never invoked and promoted_object contains only custom_conversion_id."
+      },
+      {
+        "id": "cbo-abo-budget-sharing-bid-strategy-misplacement",
+        "file": "backend/app/trafego/meta_execucao/compilador.py",
+        "line": 601,
+        "severity": "high",
+        "kind": "external_api",
+        "claim": "is_adset_budget_sharing_enabled is transmitted in CBO campaign payloads, while campaign bid_strategy is omitted when ABO uses budget sharing.",
+        "evidence": "Line 601 sends 'is_adset_budget_sharing_enabled' unconditionally. Meta's Marketing API specifies that is_adset_budget_sharing_enabled applies only to campaigns not using a campaign budget (ABO). Lines 606-612 misinterpret Meta error 100/4005 as a CBO requirement; in reality, enabling ad set budget sharing on an ABO campaign requires campaign-level bid_strategy, which lines 604-612 omit whenever orcamento is None.",
+        "proposal": "Conditionally omit is_adset_budget_sharing_enabled when orcamento is not None (CBO). For ABO (orcamento is None), if is_adset_budget_sharing_enabled is True, attach plano.receita.bid_strategy to the campaign payload.",
+        "test": "Compile both a CBO plan (confirming is_adset_budget_sharing_enabled is omitted) and an ABO plan with is_adset_budget_sharing_enabled=True (confirming campanha contains bid_strategy)."
+      },
+      {
+        "id": "missing-return-on-incomplete-insights-blocker",
+        "file": "backend/app/trafego/meta/financeiro.py",
+        "line": 239,
+        "severity": "medium",
+        "kind": "local_code",
+        "claim": "bloquear('INSIGHTS_DIARIOS_AUSENTES_PARCIAIS_OU_INCOMPATIVEIS') is invoked without return, allowing attribution and totalization to execute on invalid daily slices.",
+        "evidence": "In financeiro.py, terminal guards return the blocker helper (lines 210, 212, 216, 224, 363). At line 239, bloquear is called without return, so execution falls through to line 240, sets estado='COM_SNAPSHOT', executes GAM queries, and computes atr.totalizar(linhas), violating the comment at lines 343-344 requiring that incomplete/divergent slices be rejected.",
+        "proposal": "Change line 239 to 'return bloquear(\"INSIGHTS_DIARIOS_AUSENTES_PARCIAIS_OU_INCOMPATIVEIS\")'.",
+        "test": "Run financial attribution on an insight payload failing completo_meta checks; verify execution short-circuits immediately without querying GAM tables or invoking totalizar."
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign/",
+        "claim": "If pixel_id is provided in promoted_object, custom_event_type must be provided; custom_conversion_id specifies a custom conversion."
+      },
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/ad-set-budget-sharing",
+        "claim": "is_adset_budget_sharing_enabled allows ad sets to share budget for campaigns not using a campaign budget (ABO)."
+      }
+    ],
+    "limitations": [
+      "Whether plano.is_adset_budget_sharing_enabled defaults to False or can be True in ABO depends on omitted contrato_v2 validators.",
+      "Upstream validation guaranteeing that receita.standard_event is non-null when custom_conversion_ref is None was omitted from the excerpt.",
+      "The internal behavior of atr.totalizar and whether it raises on completo=False cannot be verified without the omitted modulo atr."
+    ],
+    "summary": "Identified three defects: invalid promoted_object construction bundling pixel_id and custom_conversion_id without custom_event_type alongside unsafe source_ref resolution, inverted CBO/ABO handling for ad set budget sharing and campaign bid_strategy, and a missing return statement that permits incomplete Meta insights to proceed through attribution totalization."
+  }
+}

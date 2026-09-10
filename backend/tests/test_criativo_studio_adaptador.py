@@ -427,8 +427,8 @@ class RepoDeGeracao:
     async def listar_pontes(self, project_ref, owner_id):
         return self.pontes
 
-    async def ponte_por_peca(self, run_ref, creative_ref, owner_id):
-        return next((p for p in self.pontes if p["creative_ref"] == creative_ref), None)
+    async def ponte_por_peca(self, run_ref, creative_ref, owner_id, *, geracao_ref=None):
+        return next((p for p in self.pontes if p["creative_ref"] == creative_ref and p.get("geracao_ref", "original") == (geracao_ref or "original")), None)
 
 
 def _app(repo) -> TestClient:

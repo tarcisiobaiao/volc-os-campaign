@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GaleriaDeAssets } from '../componentes/GaleriaDeGeracoes';
 import type { Rendition } from '@/types/criativos';
 import * as ponte from '@/components/trafego/meta/ponteAssistente';
+
+vi.mock('../componentes/PacksDeCriativos', () => ({ PacksDeCriativos: () => null }));
 
 afterEach(cleanup);
 afterEach(() => vi.restoreAllMocks());
@@ -48,7 +50,37 @@ describe('galeria do estúdio', () => {
   it('não permite selecionar arquivo que ainda não está pronto', () => {
     render(<GaleriaDeAssets pecas={[{ ...peca, estado: 'gerando', previewUrl: null }]} onComecar={vi.fn()} />);
     expect((screen.getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
-    expect(screen.getByText('Aguardando arquivo')).toBeTruthy();
+    expect(screen.getByText('Gerando imagem')).toBeTruthy();
+  });
+  it('exclusão é explícita, confirmada e arquiva o master sem apagar o recibo', async () => {
+    dublê.arquivarAsset.mockResolvedValue({
+      assetId: 'master_asset_teste', estado: 'arquivado', historicoPreservado: true,
+    });
+    const atualizou = vi.fn();
+    render(<GaleriaDeAssets pecas={[{ ...peca, masterId: 'master_asset_teste' }]} onComecar={vi.fn()} onArquivada={atualizou} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: /selecionar/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir selecionados' }));
+    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    expect(screen.getByText(/arquivo, a geração e o recibo são preservados/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir da biblioteca' }));
+    await waitFor(() => expect(dublê.arquivarAsset).toHaveBeenCalledWith('master_asset_teste'));
+    expect(atualizou).toHaveBeenCalledOnce();
+  });
+  it('arquiva uma única vez quando duas proporções pertencem ao mesmo master', async () => {
+    dublê.arquivarAsset.mockClear();
+    dublê.arquivarAsset.mockResolvedValue({
+      assetId: 'master_asset_teste', estado: 'arquivado', historicoPreservado: true,
+    });
+    render(<GaleriaDeAssets pecas={[
+      { ...peca, id: 'rendition-4x5', masterId: 'master_asset_teste' },
+      { ...peca, id: 'rendition-1x1', slot: '1x1', rotulo: 'Quadrado', masterId: 'master_asset_teste' },
+    ]} onComecar={vi.fn()} />);
+    screen.getAllByRole('checkbox').forEach(item => fireEvent.click(item));
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir selecionados' }));
+    expect(screen.getByText('Excluir 1 peça(s) da biblioteca?')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Excluir da biblioteca' }));
+    await waitFor(() => expect(dublê.arquivarAsset).toHaveBeenCalledTimes(1));
+    expect(dublê.arquivarAsset).toHaveBeenCalledWith('master_asset_teste');
   });
 });
 
@@ -61,7 +93,7 @@ describe('galeria do estúdio', () => {
  * "falha em um formato não apaga os formatos concluídos". Pior: o `catch`
  * matava o timer, e a galeria parava de acompanhar para sempre.
  */
-const dublê = vi.hoisted(() => ({ job: vi.fn() }));
+const dublê = vi.hoisted(() => ({ job: vi.fn(), arquivarAsset: vi.fn() }));
 vi.mock('@/lib/criativosApi', () => ({ criativosApi: dublê }));
 
 describe('a galeria sobrevive à leitura parcial', () => {
@@ -70,7 +102,7 @@ describe('a galeria sobrevive à leitura parcial', () => {
       if (id === 'job-ruim') throw new Error('não foi possível ler este trabalho');
       return {
         id: 'job-ok',
-        estado: 'concluido',
+        estado: 'succeeded',
         renditions: [{ ...peca, id: 'asset_ok', rotulo: 'Formato pronto' }],
       };
     });

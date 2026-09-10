@@ -1,0 +1,19 @@
+{
+  "run_id": "meta-darkpost-discovery-20260909",
+  "status": "completed_read_only",
+  "scope": "Diagnosticar e corrigir descoberta de posts existentes reutilizáveis sem criar ou publicar anúncios",
+  "authority": "VOLC-OS / Meta read-only",
+  "live_meta_mutations": false,
+  "raw_customer_data_retained": false,
+  "evidence": [
+    "100 anúncios inspecionados na primeira página da conta, sem mutação; todos tinham effective_object_story_id e asset_feed_spec",
+    "44 Dark Posts de imagem da Página selecionada passaram pelo catálogo corrigido",
+    "a referência representativa do primeiro post resolveu na biblioteca real de 358 imagens da mesma conta",
+    "97 testes backend focais, 34 testes frontend focais e build Vite aprovados"
+  ],
+  "gaps": [
+    "vídeos continuam fora deste seletor",
+    "reuso PAUSED remoto com readback ainda não foi executado",
+    "QA visual autenticado do seletor ainda depende do operador"
+  ]
+}

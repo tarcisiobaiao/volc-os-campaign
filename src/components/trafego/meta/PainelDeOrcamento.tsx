@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 import { Campo, GrupoDeEscolha } from './primitivas';
+import { fluxoPausadoImplementado } from './capacidadePausada';
 import {
   Draft, NivelDeOrcamento, PeriodoDeOrcamento, formatarBrl, ondeAVerbaMoraLocal,
   orcamentosDoPlano, reaisParaMinor,
@@ -308,17 +309,17 @@ export const PainelDeOrcamento: React.FC<{
         ))}
       </BlocoDeEvidencia></details>
 
-      {modoDoPlano && !modoDoPlano.criar_liberado && (
+      {modoDoPlano && !fluxoPausadoImplementado(modoDoPlano) && (
         <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4">
           {cbo
             ? <Landmark className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             : <Layers3 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
           <p className="max-w-[74ch] text-sm leading-relaxed text-pretty text-muted-foreground">
             <strong className="text-foreground">
-              Este modo de orçamento ainda não foi validado nesta conta.
+              Confira a disponibilidade deste modo de orçamento.
             </strong>{' '}
-            Conferir o plano e validar na Meta continuam liberados — é a validação que produz a
-            prova que falta. O que permanece fechado é criar.
+            O catálogo não confirmou o fluxo de criação pausada para esta opção.
+            Você pode preparar e validar o plano; a autorização de envio é conferida separadamente no servidor.
           </p>
         </div>
       )}

@@ -110,9 +110,13 @@ CENARIO = _Cenario()
 
 
 @pytest.fixture(autouse=True)
-def _cenario_limpo():
+def _cenario_limpo(monkeypatch):
     """Cada teste começa com um transporte virgem e sem gancho ligado."""
     CENARIO.reiniciar()
+    async def credencial_hermetica(quem, *, legado):
+        return legado()
+    for modulo in (trafego_meta_criacao, trafego_meta_validacao):
+        monkeypatch.setattr(modulo, "credencial_operacional", credencial_hermetica)
     yield
     CENARIO.reiniciar()
 
@@ -280,6 +284,7 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
         variacao = PLANO["variations"][0]
         return {**comum, "name": variacao["creative_name"], "status": "ACTIVE",
                 "url_tags": TRACKING_GAM_ADSET_ID,
+                "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
                 "effective_status": "ACTIVE",
                 "object_story_spec": {
                     "page_id": PAGINA_EXTERNA,
@@ -296,6 +301,7 @@ def _objeto_lido(tipo: str) -> dict[str, Any]:
                     },
                 }}
     return {**comum, "name": PLANO["variations"][0]["ad_name"],
+            "campaign_id": IDS_CRIADOS["campaign"],
             "adset_id": IDS_CRIADOS["adset"], "configured_status": "PAUSED",
             "effective_status": "PAUSED", "creative": {"id": IDS_CRIADOS["creative"]}}
 

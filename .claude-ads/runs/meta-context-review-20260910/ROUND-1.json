@@ -1,0 +1,520 @@
+{
+  "schema_version": 1,
+  "round": 1,
+  "created_at": "2026-09-10T10:37:48.099943+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_level": "high",
+  "google_search_requested": true,
+  "concurrency_limit": 2,
+  "round_call_limit": 3,
+  "total_authorized_rounds_limit": 2,
+  "calls_attempted": 2,
+  "status": "partial",
+  "lanes": [
+    {
+      "lane": "creative_contract",
+      "attempted": true,
+      "request_sha256": "beb63f674c09064da47902d0b8f96888cd3e8c1558c70304630e21d7f5c6c668",
+      "modelVersion": "gemini-3.8-flash",
+      "model_verified": true,
+      "usage": {
+        "promptTokenCount": 5413,
+        "candidatesTokenCount": 2601,
+        "thoughtsTokenCount": 11870,
+        "totalTokenCount": 19884
+      },
+      "grounding": {
+        "webSearchQueries": [
+          "\"creative_asset_groups_spec\" meta marketing api OR \"asset_feed_spec\"",
+          "site:developers.facebook.com \"flexible ad format\" OR \"creative_asset_groups_spec\"",
+          "\"flexible\" ad format meta marketing api objective",
+          "\"asset_feed_spec\" character limit \"primary_text\" OR \"bodies\" site:developers.facebook.com",
+          "\"object_story_id\" \"asset_feed_spec\" OR \"flexible\" meta ads api",
+          "site:developers.facebook.com/docs/marketing-api/ \"effective_object_story_id\"",
+          "\"Asset Feed Spec Options\" developers.facebook.com url"
+        ],
+        "groundingChunks": [
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG_XdgOSbmetzcFCBypmMKY7SnRmRlBHFryncUluoRqU1tY7Ejdepj-wdAGvYo_eTTwOcDVs9X400VaGNueRaem2DmHzRs9Ov88RZ-ll2Wu-NF9-zbD2Bs-6dPtYb170R20WTPAzJYZcMygBTbO5LtGGQpY1FyQDdx3y2sqqC-3-M5p1pOdXaRT16oPEf2rT3T9",
+              "title": "facebook.com"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFwySHqnODNPZ3F35OVrEXlz1qTZA0wPcpc6dj6JoRtgCTp4HiRgw7HFRwkxVwriU3BvpfVkDmB7NIZd3_ec06pPc00JdjRnpG_7ylpenWObulAqvpwRNlCDJ2OlTuD-2eTyrMMSfCYoVIw-yhmmJEAwjbqz8VcIJyKf4ejFBWPePq7QxbsR9b7FGbdIojbYS4=",
+              "title": "facebook.com"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEdzd670H7CjEnx13CcV3cI6nLdabTUy_P8sOupIl5SIx5_mQxuq3M4OBpovN1s-j1yVKX_2bjy7VZIdXvdjsYOCrBaVrA55SeaW_L8yDsHATpc0DahdCtydyMKyKl19Vunk9SVa0PDl-b9Bbk8j8tudfO4d7fBrHutBjs9FaD2u8D4ibGTGFcvhkSGS16XBOUMO-OSsozw-SOOqgT4u2ERUlg=",
+              "title": "facebook.com"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQETyKgA2mMMRzB8dn7Rtwx2EHeCUIocBcp4YPmG-jxTLXol95qkv9n41zosC4h_dwZV9MnTJRpvNpLoe7BZfH7u0jkkMRBe6h_-NmPD8o7z0Cu6PdzIS4U3lmsb5l84JA-ZCcE8n5flsvgiBE-VmPbPizICoHj7HA4JHp89K2BO8250kYnxpAM9bUHNjaycI8rG7Je3UIPi1WY9kWy4RgEGkg==",
+              "title": "facebook.com"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGI0ZdaOswVLBtU8IVSk9GlCaRUqH5v3NklvXfJNWIDEw_mMDHWs6buK0J797n4NazZd0SzSGYMmkGeKuMEfo5WikwvXb9enVCqI2ZNyCDNqNN9qnpXibK6u3aTLqQNvH7BB62_iGrsKNF1HM1V40dWfYDJYYLdRUQRE0PFP8HkJUUvgcR3bnVgn21Ab1jFaPmJTmXBU5SinWcxh46KmRE=",
+              "title": "facebook.com"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHk4te_cggqe4jxek447wruEx7EzeNzD9rUlGb9vibHPxBvRB-hdPp2Xw_PgR-RGTwdkCQ9FzEMBJyNP-3DMAqNwvAbYYp80-9daUGYbNwb3zs_u4u12RSxJHtNsdwq6yZviZZZsQlsjBWRGYd-1f_mhwB9uuSgBe3EURhs-4Q=",
+              "title": "facebook.com"
+            }
+          },
+          {
+            "web": {
+              "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHAJf65nZ4DYQ9qkNE5zqqcCd5Iy18n7pt67TA_Qi_Ee4Qf_3gLfywa0K0DI6M_98hLSYi4sRGGDSVlYtuV1SP0Pnf1RzOerG_u368RowTa7VzqbPbE1j_2PrwIu612S9ano0zOuTeKNPLpFDaTfT-OxuD-FbwrBB9vKpGlrV_fMTOpf7We3qbXPFKRHonkdk9TJI98v9r1",
+              "title": "facebook.com"
+            }
+          }
+        ],
+        "groundingSupports": [
+          {
+            "segment": {
+              "endIndex": 403,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 637,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site"
+            },
+            "groundingChunkIndices": [
+              0
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 933,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 1167,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 1755,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text"
+            },
+            "groundingChunkIndices": [
+              2,
+              3
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 1947,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description"
+            },
+            "groundingChunkIndices": [
+              2,
+              3
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 2202,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters"
+            },
+            "groundingChunkIndices": [
+              2,
+              3
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 2429,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass"
+            },
+            "groundingChunkIndices": [
+              2,
+              3
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 3305,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication"
+            },
+            "groundingChunkIndices": [
+              0,
+              4
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 3506,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication.\",\n      \"current_contract\": \"Architecture items 2 and 3 separate STATIC and existing-post modes from FLEXIBLE_IMAGES ('no existing-post refs') and compare declared/effective story IDs during readback"
+            },
+            "groundingChunkIndices": [
+              0,
+              4
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 3810,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication.\",\n      \"current_contract\": \"Architecture items 2 and 3 separate STATIC and existing-post modes from FLEXIBLE_IMAGES ('no existing-post refs') and compare declared/effective story IDs during readback.\",\n      \"proposal\": \"Maintain hard mutual exclusivity between object_story_id and creative_asset_groups_spec at compilation; in the step ledger, handle Meta's documented behavior when creating creatives where an existing object_story_id returns the existing creative_id rather than a newly allocated ID"
+            },
+            "groundingChunkIndices": [
+              0,
+              4
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 4131,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication.\",\n      \"current_contract\": \"Architecture items 2 and 3 separate STATIC and existing-post modes from FLEXIBLE_IMAGES ('no existing-post refs') and compare declared/effective story IDs during readback.\",\n      \"proposal\": \"Maintain hard mutual exclusivity between object_story_id and creative_asset_groups_spec at compilation; in the step ledger, handle Meta's documented behavior when creating creatives where an existing object_story_id returns the existing creative_id rather than a newly allocated ID.\",\n      \"acceptance_test\": \"Schema compiler test verifying that any creative configuration declaring both object_story_id and creative_asset_groups_spec fails compilation; and integration test verifying that creative creation with an already-used object_story_id accepts the returned creative_id without ledger mismatch"
+            },
+            "groundingChunkIndices": [
+              0,
+              4
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 4910,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication.\",\n      \"current_contract\": \"Architecture items 2 and 3 separate STATIC and existing-post modes from FLEXIBLE_IMAGES ('no existing-post refs') and compare declared/effective story IDs during readback.\",\n      \"proposal\": \"Maintain hard mutual exclusivity between object_story_id and creative_asset_groups_spec at compilation; in the step ledger, handle Meta's documented behavior when creating creatives where an existing object_story_id returns the existing creative_id rather than a newly allocated ID.\",\n      \"acceptance_test\": \"Schema compiler test verifying that any creative configuration declaring both object_story_id and creative_asset_groups_spec fails compilation; and integration test verifying that creative creation with an already-used object_story_id accepts the returned creative_id without ledger mismatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/ad-creative/\",\n          \"title\": \"Ad Creative - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-CTA-TYPE-UNIFORMITY\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API mandates that all call_to_actions provided within creative_asset_groups_spec must share the identical call-to-action type"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 5000,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication.\",\n      \"current_contract\": \"Architecture items 2 and 3 separate STATIC and existing-post modes from FLEXIBLE_IMAGES ('no existing-post refs') and compare declared/effective story IDs during readback.\",\n      \"proposal\": \"Maintain hard mutual exclusivity between object_story_id and creative_asset_groups_spec at compilation; in the step ledger, handle Meta's documented behavior when creating creatives where an existing object_story_id returns the existing creative_id rather than a newly allocated ID.\",\n      \"acceptance_test\": \"Schema compiler test verifying that any creative configuration declaring both object_story_id and creative_asset_groups_spec fails compilation; and integration test verifying that creative creation with an already-used object_story_id accepts the returned creative_id without ledger mismatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/ad-creative/\",\n          \"title\": \"Ad Creative - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-CTA-TYPE-UNIFORMITY\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API mandates that all call_to_actions provided within creative_asset_groups_spec must share the identical call-to-action type.\",\n      \"current_contract\": \"Architecture item 2 enforces 'one CTA type per set' locally"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "endIndex": 5231,
+              "text": "{\n  \"status\": \"partial\",\n  \"lane\": \"creative_contract\",\n  \"findings\": [\n    {\n      \"id\": \"CREATIVE-FLEX-OBJ-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API restricts creative_asset_groups_spec strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION objectives, making flexible ads unavailable for OUTCOME_TRAFFIC campaigns.\",\n      \"current_contract\": \"Architecture item 2 specifies that the flexible contract currently allows sales objectives only, while the operational summary states the operator buys traffic for an advertising-supported editorial site.\",\n      \"proposal\": \"Enforce the restriction of FLEXIBLE_IMAGES mode to OUTCOME_SALES at plan compilation, and reject compile-time flexible ad generation if an operator sets the campaign objective to OUTCOME_TRAFFIC; require STATIC or existing-post modes for editorial link-click/traffic setups.\",\n      \"acceptance_test\": \"Compile-time validation unit test asserting that an ad plan pairing campaign objective OUTCOME_TRAFFIC with creative mode FLEXIBLE_IMAGES fails with an actionable validation error prior to remote dispatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-TEXT-LENGTH-LIMIT\",\n      \"severity\": \"high\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"The local contract allows 2200 Unicode characters for primary_text, but Meta dynamic asset specifications enforce a maximum length of 1024 characters for body text.\",\n      \"current_contract\": \"Architecture item 2 defines per-set explicit pools where limits are 2200 Unicode characters for primary_text and 255 characters each for headline and description.\",\n      \"proposal\": \"Constrain preflight validation for primary_text in FLEXIBLE_IMAGES mode to a maximum of 1024 characters to prevent API rejection under dynamic asset feed parsing rules, while keeping headline and description capped at 255 characters.\",\n      \"acceptance_test\": \"Preflight validation test verifying that a flexible ad draft containing a primary_text entry between 1025 and 2200 characters is rejected before compilation, whereas strings <= 1024 characters pass.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/ad-creative/asset-feed-spec/options/\",\n          \"title\": \"Asset Feed Spec Options - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SPEC-MUTUAL-EXCLUSION\",\n      \"severity\": \"critical\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Reusing an existing post via object_story_id is structurally incompatible with flexible multi-asset generation (creative_asset_groups_spec), and reusing object_story_id triggers remote creative deduplication.\",\n      \"current_contract\": \"Architecture items 2 and 3 separate STATIC and existing-post modes from FLEXIBLE_IMAGES ('no existing-post refs') and compare declared/effective story IDs during readback.\",\n      \"proposal\": \"Maintain hard mutual exclusivity between object_story_id and creative_asset_groups_spec at compilation; in the step ledger, handle Meta's documented behavior when creating creatives where an existing object_story_id returns the existing creative_id rather than a newly allocated ID.\",\n      \"acceptance_test\": \"Schema compiler test verifying that any creative configuration declaring both object_story_id and creative_asset_groups_spec fails compilation; and integration test verifying that creative creation with an already-used object_story_id accepts the returned creative_id without ledger mismatch.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/ad-creative/\",\n          \"title\": \"Ad Creative - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-CTA-TYPE-UNIFORMITY\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Meta Marketing API mandates that all call_to_actions provided within creative_asset_groups_spec must share the identical call-to-action type.\",\n      \"current_contract\": \"Architecture item 2 enforces 'one CTA type per set' locally.\",\n      \"proposal\": \"Preserve the local 'one CTA type per set' rule as a strict API conformance invariant across all asset groups emitted in creative_asset_groups_spec for a given ad, rejecting multi-CTA variations at compilation"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 5339,
+              "endIndex": 5429,
+              "text": "type values within the same flexible ad group or ad set is blocked with a validation error"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 5339,
+              "endIndex": 6102,
+              "text": "type values within the same flexible ad group or ad set is blocked with a validation error.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SOCIAL-PROOF-NONTRANSFER\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Social proof is retained exclusively when referencing a stable Page post ID via object_story_id; dynamically rendered combinations from creative_asset_groups_spec do not yield a persistent, unified post ID for downstream social-proof reuse"
+            },
+            "groundingChunkIndices": [
+              0,
+              5
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 5339,
+              "endIndex": 6333,
+              "text": "type values within the same flexible ad group or ad set is blocked with a validation error.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SOCIAL-PROOF-NONTRANSFER\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Social proof is retained exclusively when referencing a stable Page post ID via object_story_id; dynamically rendered combinations from creative_asset_groups_spec do not yield a persistent, unified post ID for downstream social-proof reuse.\",\n      \"current_contract\": \"Architecture item 3 reads effective_object_story_id on creatives, and item 7 specifies that creative reuse should preserve eligible post/social proof without implying transfer of historical ad metrics"
+            },
+            "groundingChunkIndices": [
+              5
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 5339,
+              "endIndex": 6620,
+              "text": "type values within the same flexible ad group or ad set is blocked with a validation error.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SOCIAL-PROOF-NONTRANSFER\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Social proof is retained exclusively when referencing a stable Page post ID via object_story_id; dynamically rendered combinations from creative_asset_groups_spec do not yield a persistent, unified post ID for downstream social-proof reuse.\",\n      \"current_contract\": \"Architecture item 3 reads effective_object_story_id on creatives, and item 7 specifies that creative reuse should preserve eligible post/social proof without implying transfer of historical ad metrics.\",\n      \"proposal\": \"Explicitly codify that flexible ad runs cannot be harvested as reusable social posts; restrict post-reuse scaling workflows (e.g., ABO exploration to CBO scaling via object_story_id) exclusively to STATIC single-post creatives that have an explicit object_story_id"
+            },
+            "groundingChunkIndices": [
+              0,
+              5
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 5339,
+              "endIndex": 6887,
+              "text": "type values within the same flexible ad group or ad set is blocked with a validation error.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SOCIAL-PROOF-NONTRANSFER\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Social proof is retained exclusively when referencing a stable Page post ID via object_story_id; dynamically rendered combinations from creative_asset_groups_spec do not yield a persistent, unified post ID for downstream social-proof reuse.\",\n      \"current_contract\": \"Architecture item 3 reads effective_object_story_id on creatives, and item 7 specifies that creative reuse should preserve eligible post/social proof without implying transfer of historical ad metrics.\",\n      \"proposal\": \"Explicitly codify that flexible ad runs cannot be harvested as reusable social posts; restrict post-reuse scaling workflows (e.g., ABO exploration to CBO scaling via object_story_id) exclusively to STATIC single-post creatives that have an explicit object_story_id.\",\n      \"acceptance_test\": \"Pipeline validation test confirming that creative extraction workflows fail fast if attempting to promote a flexible ad unit via object_story_id, and succeed only when extracting verified object_story_id values from STATIC post creatives"
+            },
+            "groundingChunkIndices": [
+              0,
+              5
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 5339,
+              "endIndex": 7392,
+              "text": "type values within the same flexible ad group or ad set is blocked with a validation error.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    },\n    {\n      \"id\": \"CREATIVE-SOCIAL-PROOF-NONTRANSFER\",\n      \"severity\": \"medium\",\n      \"confidence\": \"high\",\n      \"support\": \"evidence_based\",\n      \"claim\": \"Social proof is retained exclusively when referencing a stable Page post ID via object_story_id; dynamically rendered combinations from creative_asset_groups_spec do not yield a persistent, unified post ID for downstream social-proof reuse.\",\n      \"current_contract\": \"Architecture item 3 reads effective_object_story_id on creatives, and item 7 specifies that creative reuse should preserve eligible post/social proof without implying transfer of historical ad metrics.\",\n      \"proposal\": \"Explicitly codify that flexible ad runs cannot be harvested as reusable social posts; restrict post-reuse scaling workflows (e.g., ABO exploration to CBO scaling via object_story_id) exclusively to STATIC single-post creatives that have an explicit object_story_id.\",\n      \"acceptance_test\": \"Pipeline validation test confirming that creative extraction workflows fail fast if attempting to promote a flexible ad unit via object_story_id, and succeed only when extracting verified object_story_id values from STATIC post creatives.\",\n      \"sources\": [\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/reference/ad-creative/\",\n          \"title\": \"Ad Creative - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        },\n        {\n          \"url\": \"https://developers.facebook.com/docs/marketing-api/flexible-ad-format/\",\n          \"title\": \"Get started with the flexible ad format - Meta for Developers\",\n          \"retrieved_on\": \"2026-09-10\"\n        }\n      ]\n    }\n  ],\n  \"contradictions\":"
+            },
+            "groundingChunkIndices": [
+              3
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 7393,
+              "endIndex": 7636,
+              "text": "\",\n    \"The operator's business model targets editorial traffic, but flexible ad format (creative_asset_groups_spec) is restricted by Meta API strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION, precluding its use in OUTCOME_TRAFFIC campaigns"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 7393,
+              "endIndex": 7871,
+              "text": "\",\n    \"The operator's business model targets editorial traffic, but flexible ad format (creative_asset_groups_spec) is restricted by Meta API strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION, precluding its use in OUTCOME_TRAFFIC campaigns.\"\n  ],\n  \"missing_inputs\": [\n    \"Confirmation of whether the editorial site optimizes campaigns under OUTCOME_SALES (e.g., pixel ViewContent/Custom Conversions) or OUTCOME_TRAFFIC, which dictates whether flexible ads are API-eligible"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 7393,
+              "endIndex": 8037,
+              "text": "\",\n    \"The operator's business model targets editorial traffic, but flexible ad format (creative_asset_groups_spec) is restricted by Meta API strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION, precluding its use in OUTCOME_TRAFFIC campaigns.\"\n  ],\n  \"missing_inputs\": [\n    \"Confirmation of whether the editorial site optimizes campaigns under OUTCOME_SALES (e.g., pixel ViewContent/Custom Conversions) or OUTCOME_TRAFFIC, which dictates whether flexible ads are API-eligible.\",\n    \"API verification of whether the Meta endpoint rejects primary_text exceeding 1024 characters in creative_asset_groups_spec or truncates it during ad delivery"
+            },
+            "groundingChunkIndices": [
+              2,
+              3
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 7393,
+              "endIndex": 8253,
+              "text": "\",\n    \"The operator's business model targets editorial traffic, but flexible ad format (creative_asset_groups_spec) is restricted by Meta API strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION, precluding its use in OUTCOME_TRAFFIC campaigns.\"\n  ],\n  \"missing_inputs\": [\n    \"Confirmation of whether the editorial site optimizes campaigns under OUTCOME_SALES (e.g., pixel ViewContent/Custom Conversions) or OUTCOME_TRAFFIC, which dictates whether flexible ads are API-eligible.\",\n    \"API verification of whether the Meta endpoint rejects primary_text exceeding 1024 characters in creative_asset_groups_spec or truncates it during ad delivery.\",\n    \"Payload verification confirming that creative_asset_groups_spec is transmitted at the Ad level (act_<AD_ACCOUNT_ID>/ads) alongside an underlying base creative object containing object_story_spec with page_id"
+            },
+            "groundingChunkIndices": [
+              6,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 7393,
+              "endIndex": 8284,
+              "text": "\",\n    \"The operator's business model targets editorial traffic, but flexible ad format (creative_asset_groups_spec) is restricted by Meta API strictly to OUTCOME_SALES and OUTCOME_APP_PROMOTION, precluding its use in OUTCOME_TRAFFIC campaigns.\"\n  ],\n  \"missing_inputs\": [\n    \"Confirmation of whether the editorial site optimizes campaigns under OUTCOME_SALES (e.g., pixel ViewContent/Custom Conversions) or OUTCOME_TRAFFIC, which dictates whether flexible ads are API-eligible.\",\n    \"API verification of whether the Meta endpoint rejects primary_text exceeding 1024 characters in creative_asset_groups_spec or truncates it during ad delivery.\",\n    \"Payload verification confirming that creative_asset_groups_spec is transmitted at the Ad level (act_<AD_ACCOUNT_ID>/ads) alongside an underlying base creative object containing object_story_spec with page_id.\"\n  ],\n  \"minimal_next_steps\":"
+            },
+            "groundingChunkIndices": [
+              3
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 8285,
+              "endIndex": 8419,
+              "text": "\",\n    \"Add a compile-time check that rejects FLEXIBLE_IMAGES whenever the campaign objective is OUTCOME_TRAFFIC or OUTCOME_ENGAGEMENT"
+            },
+            "groundingChunkIndices": [
+              0,
+              1
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 8285,
+              "endIndex": 8573,
+              "text": "\",\n    \"Add a compile-time check that rejects FLEXIBLE_IMAGES whenever the campaign objective is OUTCOME_TRAFFIC or OUTCOME_ENGAGEMENT.\",\n    \"Update step-ledger creative creation reconciliation to accept an existing creative_id when object_story_id deduplication triggers on the Meta API"
+            },
+            "groundingChunkIndices": [
+              4
+            ]
+          },
+          {
+            "segment": {
+              "startIndex": 8285,
+              "endIndex": 8709,
+              "text": "\",\n    \"Add a compile-time check that rejects FLEXIBLE_IMAGES whenever the campaign objective is OUTCOME_TRAFFIC or OUTCOME_ENGAGEMENT.\",\n    \"Update step-ledger creative creation reconciliation to accept an existing creative_id when object_story_id deduplication triggers on the Meta API.\",\n    \"Enforce in UI copy and schema contracts that creative promotion/scaling via post ID is unavailable for flexible creative groups"
+            },
+            "groundingChunkIndices": [
+              0,
+              5
+            ]
+          }
+        ]
+      },
+      "grounding_verified": true,
+      "finishReason": "STOP",
+      "status": "invalid_output",
+      "output_sha256": "5d2242967f63ba17447b38b3f857847c572ab316be07ce4b2278ac84ac35e7ab"
+    },
+    {
+      "lane": "launch_recovery",
+      "attempted": true,
+      "request_sha256": "098be8a7ad169e934636333499e47875577c5ddb95aecaa5baaa79fbfbba08f8",
+      "modelVersion": "gemini-3.8-flash",
+      "model_verified": true,
+      "usage": {
+        "promptTokenCount": 2867,
+        "candidatesTokenCount": 2169,
+        "thoughtsTokenCount": 6261,
+        "totalTokenCount": 11297
+      },
+      "grounding": {
+        "webSearchQueries": [],
+        "groundingChunks": [],
+        "groundingSupports": []
+      },
+      "grounding_verified": false,
+      "finishReason": "STOP",
+      "status": "ungrounded",
+      "review": {
+        "status": "partial",
+        "lane": "launch_recovery",
+        "findings": [
+          {
+            "id": "VAL-ONLY-DEPENDENCY-LIMIT",
+            "severity": "high",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "Meta's execution_options=['validate_only'] evaluates mutation payloads against existing Graph API nodes. Child objects (/adsets and /ads) require existing remote parent IDs (campaign_id, adset_id) and cannot execute remote validate_only preflight prior to parent node creation without triggering invalid parameter errors.",
+            "current_contract": "Launch performs compilation, validate_only, explicit approval tied to the plan hash, then PAUSED creation through a durable step ledger. The frontend is moving validation into automatic preflight with actionable failures while preserving the final human approval.",
+            "proposal": "Split preflight into two bounded stages: (1) Local Static Preflight, executing strict schema, character limit, and enum verification against the compiled plan hash without network calls; and (2) Phased Remote Preflight, issuing execution_options=['validate_only'] strictly to top-level nodes (/campaigns) prior to approval, deferring child node remote validation until parent remote IDs exist within the ledger sequence.",
+            "acceptance_test": "Execute a preflight run on an uncreated campaign draft containing child ad sets and ads; confirm the client performs local static verification without dispatching execution_options=['validate_only'] with dummy or draft parent IDs to /adsets or /ads, avoiding blame_field_specs errors on missing remote parents.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/ads",
+                "title": "Ad Account Ads - Meta for Developers",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group",
+                "title": "Ad Campaign Group - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          },
+          {
+            "id": "IDEMPOTENCY-READBACK-RECONCILIATION",
+            "severity": "critical",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "Meta Graph API creation endpoints lack native idempotent mutation tokens (such as client request idempotency keys). Network timeouts on POST calls to /campaigns, /adsets, /adcreatives, or /ads leave remote creation state ambiguous; re-transmitting without deterministic readback causes duplicated remote objects and budget allocation.",
+            "current_contract": "A timeout after create is ambiguous, requiring reconciliation, not blind retry. Missing durable receipt after a remote object exists likewise requires readback reconciliation. Partial creation is possible across campaign, ad sets, creative objects and ads and must be recoverable.",
+            "proposal": "Mandate a query-before-retry reconciliation pattern in the durable step ledger: attach a deterministic external tracking tag or unique client run identifier via adlabels or object names, and on any network timeout or missing receipt, query the parent node's edge (e.g., GET /{campaign_id}/adsets) filtering for the deterministic identifier. Only retry creation if zero matching remote objects exist; adopt existing remote IDs if found.",
+            "acceptance_test": "Inject a simulated network timeout during POST /act_{ad_account_id}/adsets when creating an ad set; assert the recovery ledger executes a GET readback query against the campaign's adsets edge, detects the created remote ad set, records its remote ID, and avoids issuing a duplicate POST call.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/error-reference",
+                "title": "Marketing API error codes - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/adsets",
+                "title": "Graph API Reference v26.0: Ad Set - Meta for Developers",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          },
+          {
+            "id": "ADVERTISER-IDENTITY-PREFLIGHT",
+            "severity": "high",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "AdCreative creation requires a verified Facebook Page ID (page_id in object_story_spec) and an associated Instagram identity (instagram_actor_id or page_backed_instagram_accounts). Insufficient token permissions (pages_manage_ads) or unlinked Instagram accounts fail at AdCreative/Ad creation time, aborting a partially constructed campaign tree mid-flight.",
+            "current_contract": "Account and Page are selected before final preparation. Creative readback includes object_story_spec, object_story_id, effective_object_story_id. Advertiser identity eligibility needs separate proofs; do not assume they exist.",
+            "proposal": "Incorporate an explicit advertiser identity verification step in the preflight compiler: invoke GET /{page_id}?fields=tasks,instagram_business_account,page_backed_instagram_accounts and GET /act_{ad_account_id}?fields=funding_source,user_tasks to prove the calling access token has advertising rights and a resolvable Instagram actor ID before plan compilation and approval.",
+            "acceptance_test": "Execute the preflight suite using an ad account token that lacks pages_manage_ads or advertiser tasks on the selected Page ID; verify that compilation halts with an actionable advertiser-identity failure before prompting the operator for plan approval or creating any remote campaign objects.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-object-story-spec/",
+                "title": "Ads that Click to Instagram - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/guides/manage-instagram-accounts-for-ads/",
+                "title": "Manage Instagram Accounts for Ads - Meta for Developers",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          },
+          {
+            "id": "BOUNDED-HUMAN-CHECKPOINTS",
+            "severity": "medium",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "Automating failure recovery without discrete human checkpoints creates the risk of unintended object duplication or unreviewed budget exposure if reconciliation logic encounters multi-match states or downstream policy warnings.",
+            "current_contract": "Campaign objects must be created PAUSED; activation remains a separately authorized human action. The goal is an intuitive guided launch with honest failure recovery, not removing API eligibility, human approval, ownership checks or durable idempotency protections.",
+            "proposal": "Formalize three explicit checkpoints: (1) Plan Hash Gate, where the operator authorizes the immutable payload specification following local and campaign-level validate_only preflight; (2) Ambiguity Recovery Gate, where the ledger pauses execution if reconciliation finds multiple matching remote objects or an unhandled blame_field_specs error; and (3) Activation Gate, requiring a separate operator action to unpause objects after successful readback verification.",
+            "acceptance_test": "Simulate a launch where an ad set times out and reconciliation returns two remote objects matching the deterministic name tag; verify the ledger transitions to an AMBIGUOUS_HOLD state and prompts for operator intervention rather than auto-selecting or auto-activating.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/campaigns",
+                "title": "Ad Account, Ad Campaigns - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/ads",
+                "title": "Ad Account Ads - Meta for Developers",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          }
+        ],
+        "contradictions": [
+          "Architecture section 5 implies moving validation into automatic preflight across the whole launch plan using remote validate_only, but Meta API child endpoints (/adsets and /ads) reject validate_only calls if the parent campaign_id or adset_id does not already exist on Meta's servers."
+        ],
+        "missing_inputs": [
+          "Deterministic naming or adlabels tagging schema used by the client to query and match orphaned remote objects during post-timeout reconciliation.",
+          "Specification of whether Instagram placements are enabled, which determines whether an instagram_actor_id or Page-Backed Instagram Account must be resolved during preflight."
+        ],
+        "minimal_next_steps": [
+          "Define a local client-side static validation schema (covering character limits, CTA enums, and required parameters) to validate child objects prior to plan hash generation and human approval.",
+          "Introduce a deterministic client run ID into campaign and ad set names or adlabels to facilitate deterministic GET readback reconciliation during recovery.",
+          "Implement Page and Instagram identity resolution queries in the preflight compiler before presenting the approval screen."
+        ]
+      }
+    },
+    {
+      "lane": "arbitrage_measurement",
+      "status": "not_called_after_failure",
+      "attempted": false
+    }
+  ]
+}

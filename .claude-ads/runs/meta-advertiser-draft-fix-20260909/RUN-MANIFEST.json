@@ -1,0 +1,1 @@
+{"run_id":"meta-advertiser-draft-fix-20260909","intent":"fix_draft_persistence_and_identify_advertiser_without_adset_names","scope":["local_code","official_database_scoped_rpc_fix","meta_read_only"],"meta_mutations":false,"deletion":false,"status":"local_and_database_verified_remote_canary_pending"}

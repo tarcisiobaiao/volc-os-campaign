@@ -534,12 +534,13 @@ def test_traffic_nao_admite_otimizar_por_conversao() -> None:
     assert erro.value.codigo == "META_MEASUREMENT_PURPOSE_NOT_IN_RECIPE"
 
 
-def test_receita_de_conversao_emite_promoted_object_resolvido() -> None:
+@pytest.mark.parametrize("evento", ["PURCHASE", "CONTENT_VIEW"])
+def test_receita_de_conversao_emite_promoted_object_resolvido(evento: str) -> None:
     medida = c2.MensuracaoMeta(
         proposito=receitas.MENSURACAO_OTIMIZACAO,
         source_kind=c2.FONTE_PIXEL,
         source_ref="metapixel_0123456789",
-        standard_event="PURCHASE",
+        standard_event=evento,
     )
     plano = _plano_v2(
         recipe_id="WEB_SALES_CONVERSION", conjuntos=(_conjunto(mensuracao=medida),))
@@ -548,7 +549,7 @@ def test_receita_de_conversao_emite_promoted_object_resolvido() -> None:
     compilado = compilar_plano_v2(plano, _referencias(), resolvidos)
     adset = next(op for op in compilado.operacoes if op.tipo_objeto == "adset").payload
     campanha = next(op for op in compilado.operacoes if op.tipo_objeto == "campaign").payload
-    assert adset["promoted_object"] == {"pixel_id": "555", "custom_event_type": "PURCHASE"}
+    assert adset["promoted_object"] == {"pixel_id": "555", "custom_event_type": evento}
     assert adset["optimization_goal"] == "OFFSITE_CONVERSIONS"
     assert campanha["objective"] == "OUTCOME_SALES"
 

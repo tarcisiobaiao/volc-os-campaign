@@ -74,6 +74,7 @@ export const PainelDeConjuntos: React.FC<{
         {draft.conjuntos.map((conjunto, posicao) => {
           const completo = conjuntoCompleto(conjunto, draft, emitidas);
           const doConjunto = emitidas.filter((item) => item.adsetKey === conjunto.key);
+          const todosDoConjunto = draft.variations.filter((item) => item.adsetKey === conjunto.key);
           return (
             <section
               key={conjunto.key}
@@ -130,8 +131,8 @@ export const PainelDeConjuntos: React.FC<{
                       correção é escolher outro conjunto na etapa Anúncios. */}
                   <Button
                     type="button" variant="ghost" size="sm"
-                    aria-describedby={doConjunto.length ? `meta-conjunto-preso-${conjunto.key}` : undefined}
-                    disabled={draft.conjuntos.length === 1 || doConjunto.length > 0}
+                    aria-describedby={todosDoConjunto.length ? `meta-conjunto-preso-${conjunto.key}` : undefined}
+                    disabled={draft.conjuntos.length === 1 || todosDoConjunto.length > 0}
                     onClick={() => onRemover(conjunto.key)}
                   >
                     <Trash2 className="mr-1.5 h-4 w-4" aria-hidden />Remover conjunto
@@ -139,13 +140,13 @@ export const PainelDeConjuntos: React.FC<{
                 </div>
               </div>
 
-              {doConjunto.length > 0 && draft.conjuntos.length > 1 && (
+              {todosDoConjunto.length > 0 && draft.conjuntos.length > 1 && (
                 <p
                   id={`meta-conjunto-preso-${conjunto.key}`}
                   className="border-b border-border/70 px-4 py-2 text-sm text-muted-foreground"
                 >
-                  Este conjunto não pode ser removido enquanto {doConjunto.length} anúncio(s)
-                  apontarem para ele. Reaponte-os na etapa Anúncios primeiro.
+                  Este conjunto não pode ser removido enquanto {todosDoConjunto.length} anúncio(s)
+                  apontarem para ele, inclusive os guardados fora do modo atual. Realoque-os na etapa Criativos primeiro.
                 </p>
               )}
 

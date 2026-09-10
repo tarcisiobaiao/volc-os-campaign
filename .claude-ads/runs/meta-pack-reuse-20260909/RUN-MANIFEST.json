@@ -1,0 +1,40 @@
+{
+  "run_id": "meta-pack-reuse-20260909",
+  "status": "local_and_official_schema_verified",
+  "scope": "Append versionado em packs, busca por nome e contrato de reuso de post original",
+  "authority": "https://database.agenciavolc.com.br",
+  "live_meta_mutations": false,
+  "paid_generations": false,
+  "raw_customer_data_retained": false,
+  "migrations_applied": [
+    "20260909215941_creative_pack_append_revisions.sql",
+    "20260909221222_meta_existing_post_draft.sql"
+  ],
+  "evidence": [
+    "docs/closure/meta-pack-reuse-20260909/HANDOFF.md",
+    "docs/closure/meta-pack-reuse-20260909/verify-rollback.sql"
+  ],
+  "verification": {
+    "backend_focused_passed": 49,
+    "frontend_focused_passed": 68,
+    "frontend_expanded": {
+      "passed": 228,
+      "failed": 1,
+      "failure": "Preexisting static assertion for Retorno excedente (%) in untouched MetaCampaignInsightPage"
+    },
+    "build": "passed",
+    "typecheck_global_errors": 76,
+    "typecheck_errors_current_files": 0,
+    "official_db": "PASS: append/owner/CAS/history/post save-read/invalid ref/grants; ROLLBACK",
+    "runtime": "8010 health OK;8080 packs 200;new routes unauthenticated401"
+  },
+  "gaps": [
+    "Authenticated visual QA not executed",
+    "No live Meta post reuse canary",
+    "Initial post catalog limited to supported single-image link posts with complete copy/context"
+  ],
+  "roadmap_task": "P11-T16",
+  "graph_nodes": [
+    "cap_meta_ads"
+  ]
+}

@@ -90,7 +90,7 @@ SELECT jsonb_pretty(jsonb_build_object(
 
   -- Existência de relação NÃO classifica nada sozinha (é o invariante do
   -- R0-A01). Ela vai no JSON só para o recibo dizer o que foi visto.
-  'relations', (SELECT coalesce(jsonb_agg(r.relname || ':' || r.relkind ORDER BY r.relname), '[]'::jsonb)
+  'relations', (SELECT coalesce(jsonb_agg(r.relname::text || ':' || r.relkind::text ORDER BY r.relname), '[]'::jsonb)
                   FROM relacoes r),
 
   'columns', (SELECT coalesce(jsonb_agg(r.relname || '.' || a.attname ORDER BY r.relname, a.attnum), '[]'::jsonb)

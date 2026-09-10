@@ -1,0 +1,10 @@
+{
+  "scope": "Image engine execution: persisted creative blueprint and approved attachment integrity before GPT image generation. Source-only, no operational data or credentials.",
+  "feedback": "Round 1 covered flexible ad interoperability, not actual image generation. Confirmed and corrected Ad-level group discovery, optional flexible descriptions, malformed provider object handling and conservative shared-post dedup. 68 hermetic tests pass. This follow-up targets the generation chain itself; keep gpt-image-2 and quality=medium unchanged.",
+  "question": "Find at most two concrete, testable defects in the persisted briefing/spec/reference -> image-provider bridge. Check whether bytes loaded by storage_chave are verified against the approved attachment sha256 before any paid generation or hybrid composition; distinguish recorded hash from actual verified bytes. Also check whether a briefing containing creative_spec references can silently fall back to a generic message when the requested slot's spec is missing, duplicated or malformed. Existing legacy briefings without any specs must remain compatible; do not require migrations or rewrite approved legacy direction. Propose bounded fixes and hermetic tests using fake motor/storage/repository, no paid image generation. Explain if a finding depends on unseen upstream invariants rather than claiming it is proven. Avoid aesthetic opinions or new global publication gates.",
+  "excerpts": [
+    {"path": "backend/app/criativo/execucao.py", "start": 533, "end": 620},
+    {"path": "backend/app/criativo/execucao.py", "start": 1101, "end": 1137},
+    {"path": "services/creative_engine/motores/openai_imagem.py", "start": 345, "end": 417}
+  ]
+}

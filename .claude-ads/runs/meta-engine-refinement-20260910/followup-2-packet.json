@@ -1,0 +1,10 @@
+{
+  "scope": "Final bounded verification of corrected Meta engine invariants. Source-only; no credentials, account data or external mutations.",
+  "feedback": "Five prior reviews were independently adjudicated. Implemented only locally reproduced defects: validate_only timeout before step reservation is retryable without false reconciliation; flexible ads are read from the Ad-level creative_asset_groups_spec without static fallback; explicitly archived/unavailable measurement selections and known pixel mismatch fail before creation; transient draft-save failures recover only after a new edit; pack binding writes to the captured adset and cannot leak to a newly focused adset; image attachments are byte-hash checked before paid generation; spec-enabled briefings require exactly one valid spec per slot while legacy no-spec briefings remain valid. Targeted suites currently pass. Rejected hypotheses contradicted by complete validators were not implemented. No database or Meta mutation occurred.",
+  "question": "Adversarially verify these corrected excerpts. Report at most two concrete regressions introduced by the fixes, especially a path that could cause provider cost before integrity proof, bind UI state to the wrong adset, loop autosave requests, or reject a legitimate unknown measurement state. Treat PAUSED-only creation and explicit final plan approval as non-negotiable. Do not propose broad redesign, new confirmation buttons, schema changes, account-level performance advice or allowlists unsupported by official Meta documentation. If the corrections are coherent, return no finding rather than inventing one. Use Google Search for an official Meta source if it is actually relevant, and say grounding unavailable otherwise.",
+  "excerpts": [
+    {"path": "backend/app/criativo/execucao.py", "start": 549, "end": 637},
+    {"path": "backend/app/trafego/meta_execucao/publicos.py", "start": 209, "end": 278},
+    {"path": "src/pages/trafego/MetaCriacaoPage.tsx", "start": 977, "end": 1035}
+  ]
+}

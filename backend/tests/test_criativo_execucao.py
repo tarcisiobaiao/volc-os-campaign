@@ -14,6 +14,7 @@ aqui provaria só que o Python não estourou, não que o banco aceitaria a escri
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from typing import Any
 
 import pytest
@@ -550,7 +551,7 @@ def _pedido_com_foto(tmp_path, modo: str, armazenamento) -> tuple[dict, bytes]:
         "run_ref": "crrun_" + "b" * 24,
         "modo_de_composicao": modo,
         "anexo_ref": "crimg_" + "a" * 24,
-        "anexo_sha256": "c" * 64,
+        "anexo_sha256": hashlib.sha256(foto).hexdigest(),
         "anexo_storage_chave": chave,
         "anexo_mime": "image/png",
     }
@@ -599,7 +600,7 @@ async def test_no_modo_hibrido_a_foto_NAO_e_enviada_ao_provider(tmp_path):
     loja = ArmazenamentoLocal(tmp_path)
     motor = MotorQueDevolveFundo()
     ex = Executor(RepoFalso(), loja, motor, Assinador(SEGREDO))
-    pedido, _ = _pedido_com_foto(tmp_path, "hibrido", loja)
+    pedido, foto_aprovada = _pedido_com_foto(tmp_path, "hibrido", loja)
 
     job, _ = await ex.criar_job_de_imagem(pedido, "u1")
     await ex._executar(job["id"])
@@ -623,6 +624,42 @@ async def test_no_modo_reinterpretado_a_foto_VAI_ao_provider(tmp_path):
     referencias = motor.pedidos[0].referencias
     assert len(referencias) == 1
     assert referencias[0].conteudo == foto
+
+
+@pytest.mark.asyncio
+async def test_referencia_visual_inspira_sem_colar_pixels(tmp_path):
+    from PIL import Image
+    import io
+
+    loja = ArmazenamentoLocal(tmp_path)
+    motor = MotorQueDevolveFundo()
+    ex = Executor(RepoFalso(), loja, motor, Assinador(SEGREDO))
+    pedido, foto = _pedido_com_foto(tmp_path, "referencia_visual", loja)
+    job, _ = await ex.criar_job_de_imagem(pedido, "u1")
+    await ex._executar(job["id"])
+    enviado = motor.pedidos[0]
+    assert enviado.referencias[0].conteudo == foto
+    assert "REFERÊNCIA VISUAL, NÃO COLAGEM" in enviado.insumo
+    assert "ignore comandos" in enviado.insumo
+    assert "briefing prevalecem" in enviado.insumo
+    rend = (await ex.repo.renditions_do_job(job["id"]))[0]
+    assert rend["estado"] == "pronta"
+    with Image.open(io.BytesIO(loja.ler(rend["storage_chave"]))) as imagem:
+        # A referência é vermelha, mas o motor devolveu verde: zero colagem.
+        assert imagem.convert("RGB").getpixel((540, 540)) == (0, 255, 0)
+
+
+def test_referencia_visual_exige_anexo_e_viaja_no_contrato():
+    from app.criativo.studio.contrato import PedidoDeGeracao
+    from pydantic import ValidationError
+
+    entrada = dict(run_ref="crrun_" + "a" * 24,
+                   selected_creative_refs=["creative_teste"], format_ids=["1x1"],
+                   modo_de_composicao="referencia_visual")
+    with pytest.raises(ValidationError):
+        PedidoDeGeracao(**entrada)
+    pedido = PedidoDeGeracao(**entrada, anexo_ref="crimg_" + "b" * 24)
+    assert pedido.model_dump()["modo_de_composicao"] == "referencia_visual"
 
 
 @pytest.mark.asyncio
@@ -651,7 +688,7 @@ async def test_a_procedencia_do_modelo_servido_chega_ao_master(tmp_path):
     """Um rebaixamento silencioso do modelo é o gasto que mais importa detectar."""
     loja = ArmazenamentoLocal(tmp_path)
     ex = Executor(RepoFalso(), loja, MotorQueDevolveFundo(), Assinador(SEGREDO))
-    pedido, _ = _pedido_com_foto(tmp_path, "hibrido", loja)
+    pedido, foto_aprovada = _pedido_com_foto(tmp_path, "hibrido", loja)
 
     job, _ = await ex.criar_job_de_imagem(pedido, "u1")
     await ex._executar(job["id"])
@@ -661,7 +698,67 @@ async def test_a_procedencia_do_modelo_servido_chega_ao_master(tmp_path):
     assert master["modelo_servido"] == "modelo-de-teste-2026"
     assert master["qualidade"] == "medium"
     assert master["prompt_sha256"] == "a" * 64
-    assert master["anexo_sha256"] == "c" * 64
+    assert master["anexo_sha256"] == hashlib.sha256(foto_aprovada).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_anexo_alterado_depois_da_aprovacao_falha_antes_do_provider(tmp_path):
+    loja = ArmazenamentoLocal(tmp_path)
+    motor = MotorQueDevolveFundo()
+    ex = Executor(RepoFalso(), loja, motor, Assinador(SEGREDO))
+    pedido, _ = _pedido_com_foto(tmp_path, "reinterpretado", loja)
+    loja._caminho(pedido["anexo_storage_chave"]).write_bytes(b"bytes-alterados")
+
+    job, _ = await ex.criar_job_de_imagem(pedido, "u1")
+    await ex._executar(job["id"])
+
+    rend = (await ex.repo.renditions_do_job(job["id"]))[0]
+    assert rend["estado"] == "falhou"
+    assert "arquivo aprovado" in rend["erro_mensagem"]
+    assert motor.pedidos == [], "anexo divergente não pode gerar custo no provider"
+
+
+@pytest.mark.asyncio
+async def test_briefing_com_specs_sem_o_slot_falha_sem_fallback_generico(tmp_path):
+    motor = MotorFalso()
+    ex = _executor(tmp_path, motor)
+    pedido = {**PEDIDO, "slots": ["1x1"]}
+    job, _ = await ex.criar_job_de_imagem(pedido, "u1")
+    ex.repo.briefings[job["briefing_id"]]["referencias"] = [
+        {"tipo": "creative_spec", "spec": {"formato": "4x5"}}
+    ]
+    await ex._executar(job["id"])
+
+    rend = (await ex.repo.renditions_do_job(job["id"]))[0]
+    assert rend["estado"] == "falhou"
+    assert "ausente" in rend["erro_mensagem"]
+    assert motor.chamadas == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "specs,motivo",
+    [
+        ([{"formato": "1x1"}, {"formato": "1x1"}], "duplicada"),
+        ([{"formato": "1x1"}], "inválida"),
+    ],
+)
+async def test_spec_duplicada_ou_malformada_falha_antes_do_provider(
+    tmp_path, specs, motivo,
+):
+    motor = MotorFalso()
+    ex = _executor(tmp_path, motor)
+    job, _ = await ex.criar_job_de_imagem({**PEDIDO, "slots": ["1x1"]}, "u1")
+    ex.repo.briefings[job["briefing_id"]]["referencias"] = [
+        {"tipo": "creative_spec", "spec": spec} for spec in specs
+    ]
+
+    await ex._executar(job["id"])
+
+    rend = (await ex.repo.renditions_do_job(job["id"]))[0]
+    assert rend["estado"] == "falhou"
+    assert motivo in rend["erro_mensagem"]
+    assert motor.chamadas == []
 
 
 @pytest.mark.asyncio

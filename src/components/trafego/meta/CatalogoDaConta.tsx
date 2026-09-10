@@ -40,15 +40,15 @@ function proximoPasso(motivo: string | null, retryable: boolean): string {
     return 'A leitura pode ser tentada de novo: nada mudou na conta, e nada foi criado.';
   }
   if (motivo && /PERMISSION|PERMISSAO|FORBIDDEN|OAUTH/i.test(motivo)) {
-    return 'Falta acesso a esta leitura nesta conta. Tentar de novo não resolve: '
-      + 'alguém precisa liberar a permissão.';
+    return 'A Meta recusou uma permissão exigida por esta consulta. Confira o acesso do usuário do sistema, '
+      + 'o vínculo com a conta e os campos solicitados. Após corrigir, releia a lista.';
   }
   return 'Tentar de novo não deve resolver sozinho. Isto é uma falha de LEITURA, '
     + 'não a ausência de itens na conta.';
 }
 
 export const CatalogoDaConta = <T,>({
-  titulo, substantivo, envelope, carregando, erro, podeLer, onLer, children,
+  titulo, substantivo, envelope, carregando, erro, podeLer, onLer, children, automatico = false,
 }: {
   titulo: string;
   /** "públicos", "lugares", "fontes de mensuração" — entra nas frases. */
@@ -58,6 +58,7 @@ export const CatalogoDaConta = <T,>({
   erro: string | null;
   podeLer: boolean;
   onLer: () => void;
+  automatico?: boolean;
   /** A lista, desenhada por quem sabe o que é um item deste catálogo. */
   children?: React.ReactNode;
 }) => {
@@ -77,14 +78,15 @@ export const CatalogoDaConta = <T,>({
           onClick={onLer}
         >
           <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />
-          {carregando ? 'Lendo a conta…' : `Ler ${substantivo} desta conta`}
+          {carregando ? 'Atualizando…' : automatico ? 'Atualizar lista' : `Ler ${substantivo} desta conta`}
         </Button>
       </div>
 
       {/* ── 1. NÃO LIDO. Não é vazio, e a diferença decide o próximo passo. ── */}
       {!envelope && !erro && !carregando && (
         <p className="text-sm text-muted-foreground">
-          Carregue a lista para escolher {substantivo}.
+          {automatico ? (podeLer ? `Buscando ${substantivo} da conta…` : 'Selecione uma conta para ver os públicos disponíveis.')
+            : `Carregue a lista para escolher ${substantivo}.`}
         </p>
       )}
 
@@ -142,7 +144,7 @@ export const CatalogoDaConta = <T,>({
             glifo={envelope.estado === 'COM_ITENS' ? CircleCheck
               : envelope.estado === 'VAZIO_COMPLETO' ? CircleDot
                 : envelope.estado === 'PARCIAL' ? TriangleAlert : CircleAlert}
-            palavra={`${envelope.total} de ${substantivo}`}
+            palavra={envelope.estado === 'INDISPONIVEL' ? 'Quantidade não confirmada' : `${envelope.total} de ${substantivo}`}
             descricao={`${envelope.paginas_lidas} página(s) lida(s) nesta consulta`}
             tom={envelope.estado === 'COM_ITENS' ? 'verificado'
               : envelope.estado === 'PARCIAL' ? 'atencao'
@@ -152,7 +154,7 @@ export const CatalogoDaConta = <T,>({
             <ChipDeEstado
               glifo={TriangleAlert}
               palavra="lista incompleta"
-              descricao="a leitura não chegou ao fim; existem itens que não estão aqui"
+              descricao="a leitura não chegou ao fim; não é possível confirmar o inventário completo"
               tom="atencao"
             />
           )}
@@ -173,7 +175,7 @@ export const CatalogoDaConta = <T,>({
             />
           )}
           {/* ⚠️ EIXO ORTOGONAL: a lista pode ter itens E estar vencida. */}
-          <ChipDeEstado
+          {envelope.estado !== 'INDISPONIVEL' && <ChipDeEstado
             glifo={obsoleto ? TriangleAlert : CircleCheck}
             palavra={obsoleto ? 'leitura vencida' : 'leitura vigente'}
             descricao={obsoleto
@@ -181,7 +183,7 @@ export const CatalogoDaConta = <T,>({
                 + 'porque isso trocaria a lista debaixo de uma seleção já feita'
               : 'esta lista está dentro do prazo declarado pelo servidor'}
             tom={obsoleto ? 'atencao' : 'verificado'}
-          />
+          />}
           <span className="text-sm text-muted-foreground">
             observada em {envelope.observado_em}
           </span>

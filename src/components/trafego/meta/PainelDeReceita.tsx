@@ -1,18 +1,9 @@
 /**
  * O seletor de receita (`F03`).
  *
- * ## ⚠️ SEM PROVA NÃO É SEM ESCOLHA
- *
- * `receitas.py` fixa o padrão desta lane: "compilar e validar continuam
- * ABERTOS, porque `validate_only` não cria nada e é por ele que a prova externa
- * é obtida; o que fecha é CRIAR". Uma receita com `criar_liberado: false`
- * continua selecionável aqui — o operador monta o plano, vê o payload exato e
- * pede a validação, e é a resposta da Meta que promove a receita. Desabilitá-la
- * tornaria a lacuna permanente: sem poder validar, a prova nunca apareceria.
- *
- * O que a tela DEVE fazer é dizer, na hora da escolha, que criar está fechado e
- * por quê. Uma receita apresentada como disponível e recusada pela rota é pior
- * do que uma receita ausente.
+ * Prova histórica e capacidade são independentes. O catálogo descreve o fluxo
+ * implementado; só as permissões atuais, validação exata e aprovação humana
+ * podem autorizar o envio. Receitas seguem selecionáveis para preparar o plano.
  */
 import React from 'react';
 import { CircleCheck, Lock } from 'lucide-react';
@@ -20,6 +11,7 @@ import { CircleCheck, Lock } from 'lucide-react';
 import { BlocoDeEvidencia, ChipDeEstado, LinhaDeFato } from '@/components/trafego/bancada';
 
 import { GrupoDeEscolha } from './primitivas';
+import { fluxoPausadoImplementado } from './capacidadePausada';
 import type { ReceitaMetaV2 } from '@/lib/pautadorApi';
 
 export const PainelDeReceita: React.FC<{
@@ -31,6 +23,7 @@ export const PainelDeReceita: React.FC<{
   onEscolher: (id: string) => void;
 }> = ({ receitas, erroDoCatalogo, escolhida, onEscolher }) => {
   const receita = receitas.find((item) => item.id === escolhida) ?? null;
+  const fluxoDisponivel = fluxoPausadoImplementado(receita);
 
   return (
     <div className="space-y-3">
@@ -48,9 +41,9 @@ export const PainelDeReceita: React.FC<{
               <>
                 {item.exige_fonte_de_conversao ? 'Encontrar pessoas que realizam uma ação no site.' : 'Levar pessoas para ler a sua página.'}
                 <span className="mt-1 block">
-                  {item.criar_liberado
-                    ? 'Disponível para preparação'
-                    : 'Preparar e validar. Criação ainda indisponível.'}
+                  {fluxoPausadoImplementado(item)
+                    ? 'Criação pausada após validar e aprovar o plano.'
+                    : 'Prepare o plano e confira a disponibilidade no servidor.'}
                 </span>
               </>
             ),
@@ -68,15 +61,15 @@ export const PainelDeReceita: React.FC<{
       <details className="text-sm"><summary className="cursor-pointer py-2 text-muted-foreground">Detalhes da configuração</summary>
       <BlocoDeEvidencia
         titulo="O que a receita fixa nesta campanha"
-        tom={receita?.criar_liberado ? 'verificado' : 'info'}
+        tom="info"
         acao={receita ? (
           <ChipDeEstado
-            glifo={receita.criar_liberado ? CircleCheck : Lock}
-            palavra={receita.criar_liberado ? 'criar liberado' : 'criar fechado'}
-            descricao={receita.criar_liberado
-              ? 'esta receita admite criação; a conta e o plano ainda precisam ser validados'
-              : 'compilar e validar continuam abertos; é a validação que produz a prova que falta'}
-            tom={receita.criar_liberado ? 'bom' : 'atencao'}
+            glifo={fluxoDisponivel ? CircleCheck : Lock}
+            palavra={fluxoDisponivel ? 'fluxo pausado disponível' : 'conferir disponibilidade'}
+            descricao={fluxoDisponivel
+              ? 'o fluxo existe; este plano ainda exige validação, aprovação e permissões atuais'
+              : 'o catálogo não confirmou o fluxo de criação pausada; a evidência histórica não autoriza envio'}
+            tom={fluxoDisponivel ? 'neutro' : 'atencao'}
           />
         ) : undefined}
       >
@@ -105,7 +98,7 @@ export const PainelDeReceita: React.FC<{
           fonte="o registro de receitas do backend"
         />
         <LinhaDeFato
-          rotulo="Nível de prova"
+          rotulo="Evidência histórica da receita"
           valor={receita?.prova ?? null}
           fonte="o registro de receitas do backend"
           ausencia="catálogo não lido"
@@ -123,13 +116,13 @@ export const PainelDeReceita: React.FC<{
         <LinhaDeFato rotulo="Estado ao nascer" valor="PAUSED" fonte="a receita provada" />
       </BlocoDeEvidencia></details>
 
-      {receita && !receita.criar_liberado && (
+      {receita && !fluxoDisponivel && (
         <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
           <div className="max-w-[74ch] space-y-2 text-sm leading-relaxed text-pretty text-foreground">
             <p><strong>Você pode configurar e validar esta opção.</strong></p>
             <p className="text-muted-foreground">
-              A criação desta opção ainda precisa ser liberada no servidor.
+              O catálogo não confirmou a disponibilidade da criação pausada. A autorização será conferida no servidor para o plano atual.
             </p>
           </div>
         </div>

@@ -1,0 +1,10 @@
+{
+  "run_id": "meta-validation-config-20260909",
+  "status": "partial",
+  "scope": "Local campaign validation UX and durable backend permission configuration",
+  "authority": "Local implementation and configuration only; no Meta dispatch or database mutation",
+  "data_classification": "Sanitized engineering evidence; no tokens, customer images or account exports",
+  "retention": "Keep engineering evidence with repository history; no raw payload retention",
+  "owner": "VOLC operator",
+  "outputs": ["docs/closure/meta-pack-v2-sprint-20260908/VALIDATION-CONFIG-FIX.md"]
+}

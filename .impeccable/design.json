@@ -1,7 +1,7 @@
 {
   "$schema": "https://impeccable.style/design.schema.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-08T18:30:00-03:00",
+  "generatedAt": "2026-09-08T18:56:00-03:00",
   "product": {
     "name": "VOLC OS",
     "register": "product",
@@ -14,29 +14,65 @@
     "referenceScene": "Operador conferindo mídia às 14h em monitor de 27 polegadas próximo a uma janela, antes de autorizar gasto."
   },
   "colors": {
-    "canvas": { "light": "#D4DBE3", "dark": "#0D1218" },
-    "surface": { "light": "#F4F7FA", "dark": "#171E28" },
-    "surfaceRaised": { "light": "#FBFCFE", "dark": "#1E2733" },
-    "surfaceSubtle": { "light": "#C5CDD6", "dark": "#121821" },
-    "ink": { "light": "#13171E", "dark": "#E8EEF4" },
-    "inkMuted": { "light": "#3D4754", "dark": "#A8B4C2" },
-    "border": { "light": "#9AA6B4", "dark": "#3A4656" },
-    "primary": { "light": "#0A5461", "dark": "#3BA8B4" },
-    "primaryHover": { "light": "#083F49", "dark": "#54B8C3" },
-    "primaryForeground": { "light": "#F2FBFC", "dark": "#061318" },
+    "canvas": {
+      "light": "#D4DBE3",
+      "dark": "#0D1218"
+    },
+    "surface": {
+      "light": "#F4F7FA",
+      "dark": "#171E28"
+    },
+    "surfaceRaised": {
+      "light": "#FBFCFE",
+      "dark": "#1E2733"
+    },
+    "surfaceSubtle": {
+      "light": "#C5CDD6",
+      "dark": "#121821"
+    },
+    "ink": {
+      "light": "#13171E",
+      "dark": "#E8EEF4"
+    },
+    "inkMuted": {
+      "light": "#3D4754",
+      "dark": "#A8B4C2"
+    },
+    "border": {
+      "light": "#9AA6B4",
+      "dark": "#3A4656"
+    },
+    "primary": {
+      "light": "#0D47A1",
+      "dark": "#6B96E6"
+    },
+    "primaryHover": {
+      "light": "#2A2F8F",
+      "dark": "#8A7AE8"
+    },
+    "primaryForeground": {
+      "light": "#F7FAFF",
+      "dark": "#0B1220"
+    },
     "verified": "#006A85",
     "success": "#116E52",
     "warning": "#885407",
     "destructive": "#B33232",
     "info": "#05697F",
     "demo": "#6B4A1B",
-    "aurora": ["#00D4FF", "#8A2BE2", "#FF3D00"]
+    "aurora": [
+      "#00D4FF",
+      "#8A2BE2",
+      "#FF3D00"
+    ]
   },
   "colorMeta": {
     "strategy": "mineral-control-room",
     "workspaceNeutralShare": 0.86,
     "rules": [
-      "Aurora is a brand signature, never an operational state.",
+      "Primary action is navy to purple, the Pro axis, never teal.",
+      "Sidebar is off-white paper against the mineral canvas.",
+      "Aurora rail marks the active nav item; aurora is never a table state.",
       "Verified, healthy, demo and successful are separate meanings.",
       "Every semantic color requires a glyph and label.",
       "Components consume CSS tokens, never raw hex."
@@ -49,15 +85,54 @@
     "fallback": "ui-sans-serif, system-ui, sans-serif"
   },
   "typographyMeta": {
-    "pageTitle": { "size": "2rem", "weight": 650, "lineHeight": 1.1 },
-    "sectionTitle": { "size": "1.125rem", "weight": 600, "lineHeight": 1.25 },
-    "body": { "size": "0.9375rem", "weight": 400, "lineHeight": 1.5 },
-    "dense": { "size": "0.8125rem", "weight": 400, "lineHeight": 1.4 },
-    "label": { "size": "0.6875rem", "weight": 650, "lineHeight": 1.2, "letterSpacing": "0.12em" },
-    "numeric": { "fontVariantNumeric": "tabular-nums" }
+    "pageTitle": {
+      "size": "2rem",
+      "weight": 650,
+      "lineHeight": 1.1
+    },
+    "sectionTitle": {
+      "size": "1.125rem",
+      "weight": 600,
+      "lineHeight": 1.25
+    },
+    "body": {
+      "size": "0.9375rem",
+      "weight": 400,
+      "lineHeight": 1.5
+    },
+    "dense": {
+      "size": "0.8125rem",
+      "weight": 400,
+      "lineHeight": 1.4
+    },
+    "label": {
+      "size": "0.6875rem",
+      "weight": 650,
+      "lineHeight": 1.2,
+      "letterSpacing": "0.12em"
+    },
+    "numeric": {
+      "fontVariantNumeric": "tabular-nums"
+    }
   },
-  "spacing": { "unit": 4, "scale": [4, 8, 12, 16, 24, 32, 48] },
-  "radii": { "control": 8, "panel": 10, "modal": 14, "pill": 999 },
+  "spacing": {
+    "unit": 4,
+    "scale": [
+      4,
+      8,
+      12,
+      16,
+      24,
+      32,
+      48
+    ]
+  },
+  "radii": {
+    "control": 8,
+    "panel": 10,
+    "modal": 14,
+    "pill": 999
+  },
   "shadows": {
     "workSurface": "0 1px 2px rgba(19, 23, 30, 0.06), 0 12px 28px -14px rgba(19, 36, 48, 0.28)",
     "sticky": "0 4px 16px rgba(19, 23, 30, 0.1)",
@@ -81,7 +156,12 @@
     "modal": 60,
     "toast": 70
   },
-  "breakpoints": { "phone": 375, "md": 768, "lg": 1024, "xl": 1440 },
+  "breakpoints": {
+    "phone": 375,
+    "md": 768,
+    "lg": 1024,
+    "xl": 1440
+  },
   "components": {
     "primaryButton": {
       "html": "<button class=\"ds-button ds-button--primary\" type=\"button\">Validar campanha</button>",

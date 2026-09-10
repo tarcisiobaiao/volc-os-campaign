@@ -245,10 +245,48 @@ def test_autorizacao_conferida_despacha_um_job_por_conceito(cenario):
     # Um job por CONCEITO, com os formatos dele dentro — é o que faz falha em
     # 9x16 não jogar fora o 1x1 pronto.
     assert len(executor.criados) == 2
-    assert executor.disparados == ["job-1", "job-2"]
+    assert sorted(executor.disparados) == ["job-1", "job-2"]
     # E a procedência foi gravada com a linhagem, não só com o id do job.
     assert len(repo.pontes) == 2
     assert all(p["group_ref"] and p["copy_ref"] and p["state_ref"] for p in repo.pontes)
+
+
+def test_conceitos_despacham_em_paralelo_com_todas_pontes_visiveis(cenario, monkeypatch):
+    import threading
+
+    cliente, executor, repo = cenario
+    barreira = threading.Barrier(2, timeout=3)
+    original = executor.disparar
+
+    def disparar(job_id):
+        assert len(repo.pontes) == 2, "galeria precisa conhecer todas as peças antes do render"
+        barreira.wait()  # O antigo laço serial expira aqui.
+        original(job_id)
+
+    monkeypatch.setattr(executor, "disparar", disparar)
+    r = _gerar(cliente, _ok(cliente))
+    assert r.status_code == 201, r.text
+    assert sorted(executor.disparados) == ["job-1", "job-2"]
+
+
+def test_falha_de_um_despacho_nao_abandona_o_irmao(cenario, monkeypatch):
+    import threading
+    from app.criativo.persistencia import ErroDePersistencia
+
+    cliente, executor, _repo = cenario
+    barreira = threading.Barrier(2, timeout=3)
+    original = executor.disparar
+
+    def disparar(job_id):
+        barreira.wait()
+        if job_id == "job-1":
+            raise ErroDePersistencia("falha hermética")
+        original(job_id)
+
+    monkeypatch.setattr(executor, "disparar", disparar)
+    r = _gerar(cliente, _ok(cliente))
+    assert r.status_code == 503
+    assert executor.disparados == ["job-2"]
 
 
 @pytest.mark.parametrize("falhar_no_segundo", [False, True])
@@ -299,6 +337,36 @@ def test_reenviar_o_mesmo_pedido_autorizado_nao_paga_de_novo(cenario):
     # A ponte é única por (run_ref, creative_ref) e responde ANTES do executor.
     assert len(executor.criados) == 2
     assert all(g["criado_agora"] is False for g in segunda.json()["geracoes"])
+
+
+def test_nova_versao_preserva_original_replay_e_recusa_mudanca_de_formatos(cenario):
+    cliente, executor, repo = cenario
+    assert _gerar(cliente, _ok(cliente)).status_code == 201
+    version = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    path = f"/api/criativos/meta/agente/operacoes/{PROJECT_REF}/geracoes"
+    corpo = {"run_ref": RUN_REF, "geracao_ref": version,
+             "selected_creative_refs": ["creative_variacao_1", "creative_variacao_2"], "format_ids": ["1x1"]}
+    def submit(body):
+        plan = cliente.post(path + "/plano", json=body).json()
+        return cliente.post(path, json={**body, "autorizacao": _ok(selo=plan["selo_do_plano"], total=plan["total_de_renders"])})
+    assert submit(corpo).status_code == 201
+    assert len(repo.pontes) == 4
+    assert len(executor.criados) == 4
+    assert submit(corpo).status_code == 201
+    assert len(executor.criados) == 4
+    changed = submit({**corpo, "format_ids": ["4x5"]})
+    assert changed.status_code == 409
+    assert changed.json()["detail"]["codigo"] == "CRIATIVO_STUDIO_VERSAO_DIVERGENTE"
+    assert len(executor.criados) == 4
+
+
+def test_geracao_ref_novo_exige_novo_selo(cenario):
+    cliente, executor, repo = cenario
+    corpo = {"run_ref": RUN_REF, "selected_creative_refs": ["creative_variacao_1", "creative_variacao_2"],
+             "format_ids": ["1x1"], "geracao_ref": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "autorizacao": _ok(cliente)}
+    result = cliente.post(f"/api/criativos/meta/agente/operacoes/{PROJECT_REF}/geracoes", json=corpo)
+    assert result.status_code == 409
+    assert executor.criados == [] and repo.pontes == []
 
 
 # ═══════════════════════════════════════════════════════════════════════════

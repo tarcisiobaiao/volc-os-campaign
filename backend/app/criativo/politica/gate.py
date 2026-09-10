@@ -126,6 +126,7 @@ def avaliar(
     natureza: str = "producao",
     exigir_pixel: bool = True,
     agora: datetime | None = None,
+    detectores_adicionais: Sequence[insp.DetectorDePixel] = (),
 ) -> rec.ReciboDePolitica:
     """Inspeciona, decide e assina. SEMPRE devolve recibo — inclusive ao bloquear.
 
@@ -140,6 +141,7 @@ def avaliar(
         bytes_da_peca=bytes_da_peca, mime=mime, copy=copy,
         nome_do_arquivo=nome_do_arquivo, prompt=prompt,
         identidade_propria=identidade_propria, exigir_pixel=exigir_pixel,
+        detectores_adicionais=detectores_adicionais,
     )
 
     motivos = list(leitura.motivos)

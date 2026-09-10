@@ -1,0 +1,20 @@
+{
+  "status": "PRIMARY_DOCUMENTATION_CONFIRMED_NOT_REMOTE_ACCOUNT_PROOF",
+  "retrieved_on": "2026-09-09",
+  "source": "https://developers.facebook.com/docs/graph-api/changelog/version26.0/?locale=en_US",
+  "method": "public HTTPS curl, no authentication; browser search had failed",
+  "response_html_sha256": "0ab5ee7430dfb772a736f70c2c7cf78aa6b8c01c338338f98256b7ea166d19fb",
+  "relevant_paragraph_sha256": "9b6f56bf52d0eb52073b981c098c3d48dae08eeec91b4df9307db970bd05b819",
+  "finding": "The v26 changelog explicitly documents an opt-out for eligible creatives whose advertiser has a shop.",
+  "payload": {"destination_spec":{"destination_type":"WEBSITE_AND_SHOP_OPT_OUT"}},
+  "secondary_primary_source": "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/26.0.0/facebook_business/adobjects/adcreativedestinationspec.py",
+  "sdk_support": "AdCreativeDestinationSpec declares destination_type as string; SDK alone does not establish allowed values.",
+  "scope": "New own static website creatives compiled by VOLC V1/V2, not existing posts or arbitrary external creatives",
+  "compiled_control": "EXPLICIT_WEBSITE_SHOP_OPT_OUT",
+  "account_ineligibility_claim": false,
+  "remote_behavior_proven": false,
+  "verification_required": ["exact plan validate_only", "per-step validate_only before create", "explicit destination_type readback; missing or changed fails closed", "deliverable objects stay PAUSED"],
+  "legacy": "Frozen old snapshots retain original payload/hash/proof; legacy account-scoped gate stays in force.",
+  "supersedes": "Documentary uncertainty about the opt-out field/value in META-SHOP and traffic-operational-closure-v2/META-DESTINATION-EVIDENCE.json; not their account-specific unknowns",
+  "limitations": ["No Meta account writes or credential reads in this worker", "No successful remote opt-out readback asserted", "No activation or delivery authorization"]
+}

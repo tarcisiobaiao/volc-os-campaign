@@ -1,0 +1,8 @@
+{
+  "run_id": "meta-human-review-draft-fix-20260909",
+  "status": "implemented_verified_scoped",
+  "scope": ["human-only review", "selected draft media grant", "draft resume", "recoverable draft deletion"],
+  "forbidden": ["vision API calls", "campaign activation", "unscoped launch grants", "deleting real customer drafts for tests"],
+  "supabase": "https://database.agenciavolc.com.br",
+  "manifest_timing": "Recorded after initial inspection and implementation; not a preflight manifest."
+}

@@ -1,0 +1,21 @@
+{
+  "run_id": "meta-big-ideas-20260909",
+  "status": "local_verified_live_quality_pending",
+  "objective": "Adapt Pautador Pro motivation and big-idea planning to Meta creative context, briefing and review UI",
+  "scope": ["Pautador Pro read-only investigation", "LP motivation hypotheses", "creative strategy and visual idea", "human review UI", "hermetic regression"],
+  "excluded": ["paid generation", "Meta mutations", "database migration", "changing Pautador engines", "rewriting frozen assets", "Webgo"],
+  "data_lifecycle": {"classification": "sanitized engineering evidence", "retention": "repository evidence; no user exports", "access_roles": ["operator", "implementing agents"], "incident_owner": "operator"},
+  "evidence": {
+    "backend_focal_tests": 250,
+    "frontend_studio_tests": 71,
+    "frontend_post_support_warning_focal_tests": 29,
+    "build": "passed",
+    "typescript": {"global_errors": 76, "creative_domain_errors": 0, "baseline": "unchanged from prior sprint"},
+    "browser": {"kind": "hermetic real component with fictitious context, no auth", "widths": [375, 1440], "themes": ["light", "dark"], "overflow": false, "page_errors": 0, "api_or_external_requests": 0, "keyboard_disclosure_and_selection": "passed", "screenshots": "/private/tmp/meta-motivacoes-{375,1440}-{light,dark}.png"},
+    "runtime": {"frontend_8080": 200, "backend_8010_health": 200},
+    "handoff": "docs/closure/meta-big-ideas-20260909/HANDOFF.md"
+  },
+  "gaps": ["No paid generation in this sprint", "New creative idea and raster quality still need human review", "No new live database persistence proof", "CTR requires an experiment"],
+  "roadmap_task": "P11-T17",
+  "graph_node": "doc:meta-creative-closure-20260909"
+}

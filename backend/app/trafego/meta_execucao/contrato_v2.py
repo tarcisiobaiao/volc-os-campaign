@@ -517,6 +517,30 @@ class MensuracaoMeta:
 
 
 @dataclass(frozen=True)
+class TextosFlexiveisMeta:
+    """Opções explicitamente aprováveis de UM grupo de imagens do conjunto."""
+    primary_text: tuple[str, ...]
+    headline: tuple[str, ...]
+    description: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for campo, minimo, limite in (("primary_text", 1, 2200), ("headline", 1, 255), ("description", 0, 255)):
+            bruto = getattr(self, campo)
+            if not isinstance(bruto, (list, tuple)) or not minimo <= len(bruto) <= 5:
+                raise ErroDeNascimentoMeta("META_FLEXIBLE_TEXTS_INVALID", f"{campo} precisa ter {minimo} a 5 opções.")
+            if any(not isinstance(texto, str) for texto in bruto):
+                raise ErroDeNascimentoMeta("META_FLEXIBLE_TEXTS_INVALID", f"{campo} só aceita textos.")
+            object.__setattr__(self, campo, tuple(_texto(texto, campo, maximo=limite) for texto in bruto))
+
+    def publico(self) -> dict[str, list[str]]:
+        return {campo: list(getattr(self, campo)) for campo in ("primary_text", "headline", "description")}
+
+    def textos_graph(self) -> list[dict[str, str]]:
+        return [{"text": texto, "text_type": campo}
+                for campo in ("primary_text", "headline", "description") for texto in getattr(self, campo)]
+
+
+@dataclass(frozen=True)
 class ConjuntoMeta:
     """Um Ad Set com identidade estável (`F10`)."""
 
@@ -529,10 +553,23 @@ class ConjuntoMeta:
     #: Presente somente em ABO. Em CBO ele é obrigatoriamente `None`, e a
     #: conferência acontece no plano — que é quem conhece os dois níveis.
     orcamento: OrcamentoMeta | None = None
+    regulatory_identity_ref: str | None = None
+    flexible_texts: TextosFlexiveisMeta | None = None
 
     def __post_init__(self) -> None:
+        if self.flexible_texts is not None and not isinstance(self.flexible_texts, TextosFlexiveisMeta):
+            raise ErroDeNascimentoMeta("META_FLEXIBLE_TEXTS_INVALID", "Opções flexíveis inválidas.")
         object.__setattr__(self, "adset_key", _chave_estavel(self.adset_key, "adset_key"))
         object.__setattr__(self, "nome", _texto(self.nome, "adset_name", maximo=400))
+        if self.regulatory_identity_ref is not None:
+            import re
+            if not isinstance(self.regulatory_identity_ref, str) or not re.fullmatch(r"metareg_[a-f0-9]{32}", self.regulatory_identity_ref):
+                raise ErroDeNascimentoMeta("META_REGULATORY_REFERENCE_INVALID", "Escolha um anunciante desta conta.")
+            if not isinstance(self.publico, PublicoMeta):
+                raise ErroDeNascimentoMeta("META_ADSET_INVALID", "O público do conjunto é inválido.")
+            geo = self.publico.geografia
+            if set(geo.countries) != {"BR"} or geo.region_keys or geo.city_keys or geo.zip_keys or geo.custom_locations:
+                raise ErroDeNascimentoMeta("META_REGULATORY_GEOGRAPHY_UNSUPPORTED", "Esta identidade pode ser reutilizada nesta versão apenas em conjuntos direcionados ao Brasil inteiro.")
         for campo, tipo in (
             ("programacao", ProgramacaoMeta), ("publico", PublicoMeta),
             ("posicionamentos", PosicionamentosMeta), ("mensuracao", MensuracaoMeta),
@@ -597,6 +634,8 @@ class PlanoMetaV2:
     orcamento_campanha: OrcamentoMeta | None = None
     is_adset_budget_sharing_enabled: bool = False
     instagram_actor_ref: str | None = None
+    # Image groups are an Ad-level format, not a dynamic AdCreative feed.
+    creative_mode: str = "STATIC"
 
     def __post_init__(self) -> None:
         receita = receitas.receita(self.recipe_id)
@@ -671,6 +710,23 @@ class PlanoMetaV2:
                 "todo conjunto do plano precisa de ao menos um anuncio",
             )
         object.__setattr__(self, "anuncios", anuncios)
+
+        if self.creative_mode not in {"STATIC", "FLEXIBLE_IMAGES"}:
+            raise ErroDeNascimentoMeta("META_CREATIVE_MODE_INVALID", "Formato criativo desconhecido.")
+        if self.creative_mode == "STATIC" and any(item.flexible_texts is not None for item in conjuntos):
+            raise ErroDeNascimentoMeta("META_FLEXIBLE_TEXTS_MODE_CONFLICT", "Opções flexíveis exigem o formato flexível.")
+        for anuncio in anuncios:
+            conjunto = next(item for item in conjuntos if item.adset_key == anuncio.adset_key)
+            if not anuncio.variacao.description and not (self.creative_mode == "FLEXIBLE_IMAGES" and conjunto.flexible_texts is not None):
+                raise ErroDeNascimentoMeta("META_BLUEPRINT_INVALID", "A descrição é obrigatória fora das opções flexíveis explícitas.")
+        if self.creative_mode == "FLEXIBLE_IMAGES":
+            if receita.objective != "OUTCOME_SALES":
+                raise ErroDeNascimentoMeta("META_FLEXIBLE_OBJECTIVE_UNSUPPORTED", "Formato flexível de imagens exige uma campanha de Vendas.")
+            if any(item.variacao.existing_post_ref for item in anuncios):
+                raise ErroDeNascimentoMeta("META_FLEXIBLE_EXISTING_POST_CONFLICT", "Publicações existentes não podem ser recombinadas em um anúncio flexível.")
+            for key in chaves:
+                if len({item.variacao.call_to_action_type for item in anuncios if item.adset_key == key}) != 1:
+                    raise ErroDeNascimentoMeta("META_FLEXIBLE_CTA_CONFLICT", "Todos os grupos do mesmo anúncio flexível precisam usar o mesmo botão.")
 
         # ── Orçamento: a união discriminada, cobrada aqui (`F04`) ────────────
         com_orcamento = [item for item in conjuntos if item.orcamento is not None]

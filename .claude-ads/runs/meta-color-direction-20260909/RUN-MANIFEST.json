@@ -1,0 +1,8 @@
+{
+  "run_id": "meta-color-direction-20260909",
+  "status": "local_verified_live_visual_pending",
+  "objective": "Strengthen thematic color and visual distinction in creative briefing without official impersonation",
+  "scope": ["LP visual-context instructions", "creative briefing instructions", "hermetic regression tests"],
+  "excluded": ["paid generation", "Meta mutations", "database migrations", "rewriting approved specs", "Webgo"],
+  "data_lifecycle": {"classification": "sanitized engineering evidence", "retention": "repository evidence, no customer exports", "access_roles": ["operator", "implementing agents"], "incident_owner": "operator"}
+}

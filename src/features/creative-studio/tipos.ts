@@ -89,6 +89,12 @@ export interface PecaCriativa {
   angulo: string;
   subangulo: string;
   hipotese: string;
+  big_idea?: {
+    ideia_central: string;
+    pergunta_latente: string;
+    promessa_do_clique: string;
+    cena_chave: string;
+  };
   hook: string;
   mecanismo_de_interrupcao: string;
   formato: string;
@@ -96,6 +102,7 @@ export interface PecaCriativa {
   complemento_interno?: string | null;
   cta_visual?: string | null;
   direcao_visual: string;
+  direcao_de_arte?: { blueprint_version?: 'volc.art-direction/2'; composicao: string; tipografia: string; paleta_e_contraste: string; cena: string; tratamento: string } | null;
   fato_refs: string[];
   rule_refs: string[];
 }
@@ -186,9 +193,13 @@ export interface DecisaoPersistida {
 
 export interface EntradaNovaOperacao {
   nome_da_operacao: string;
+  assunto_principal?: string;
+  referencias_visuais?: string;
   /** Vínculo interno opcional, preenchido por integrações que já conhecem o destino. */
   destination_ref?: string | null;
-  objetivo_meta: string;
+  objetivo_meta?: string | null;
+  url_destino?: string | null;
+  contexto_da_pagina?: ContextoDaPagina | null;
   pais?: string;
   idioma?: string;
   contexto_do_publico: string;
@@ -197,6 +208,35 @@ export interface EntradaNovaOperacao {
   brand_pack_ref?: string | null;
   formatos_permitidos: string[];
   quantidade_de_pecas: number;
+}
+
+/** Snapshot de leitura, não aprovação de alegações nem instruções para o agente. */
+export interface ContextoDaPagina {
+  schema_version: 'creative_lp_context.v1';
+  url_solicitada: string;
+  url_final: string;
+  analisado_em: string;
+  conteudo_sha256: string;
+  titulo: string;
+  assunto: string;
+  assunto_principal?: string;
+  referencias_visuais_sugeridas?: string;
+  motivacoes_sugeridas?: Array<{
+    tipo: 'dor' | 'desejo' | 'sonho' | 'receio';
+    hipotese: string;
+    pergunta_latente: string;
+    entrega_da_pagina: string;
+    fato_refs: string[];
+  }>;
+  proposta: string;
+  fatos: Array<{ ref: string; declaracao: string; trecho: string; origem_url: string }>;
+  publico_sugerido: string;
+  momento_sugerido: string;
+  angulos_sugeridos: string[];
+  informacoes_ausentes: string[];
+  avisos: string[];
+  metodo?: 'extracao' | 'extracao_e_sugestao';
+  modelo?: string | null;
 }
 
 /** O 201 de criar: identidade durável antes de qualquer modelo rodar. */
@@ -421,6 +461,7 @@ export interface GeracaoRegistrada {
   creative_ref: string;
   group_ref: string;
   run_ref: string;
+  geracao_ref?: string | null;
   job_id: string;
   slots: string[];
   created_at: string | null;

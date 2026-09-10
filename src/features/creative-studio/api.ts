@@ -28,6 +28,7 @@ import type {
   Anexo,
   AutorizacaoDeGasto,
   Capacidades,
+  ContextoDaPagina,
   DecisaoRegistrada,
   EntradaNovaOperacao,
   GeracaoRegistrada,
@@ -45,20 +46,92 @@ const RAW_BASE = (import.meta.env.VITE_PAUTADOR_API_URL || '').trim();
 const API_BASE = RAW_BASE.replace(/\/$/, '');
 const PREFIXO = '/api/criativos/meta/agente';
 
+export const analisarPaginaCriativa = (url: string) =>
+  chamar<ContextoDaPagina>(endereco('/contexto-pagina'), {
+    method: 'POST', body: JSON.stringify({ url }),
+  });
+
 export interface CreativePack {
   id: string; nome: string; manifest_sha256: string; created_at: string;
   manifest: { source: 'STUDIO' | 'META_SNAPSHOT'; launch_authorized: false;
-    items: Array<{ master_ref?: string; content_hash?: string; slot?: string;
+    items: Array<{ master_ref?: string; content_hash?: string; slot?: string; job_id?: string;
+      largura?: number; altura?: number; nome?: string;
       copy_snapshot?: { texto_principal: string; titulo: string; descricao: string; cta_nativa: string } | null }> };
 }
 export const salvarPack = (nome: string, master_refs: string[]) =>
   chamar<CreativePack>(endereco('/packs'), { method: 'POST', body: JSON.stringify({ nome, master_refs }) });
-export const listarPacks = (offset = 0) =>
-  chamar<{ packs: CreativePack[]; has_more: boolean }>(endereco('/packs', { offset }));
-export const selecionarPack = (id: string) =>
-  chamar<{ master_refs: string[]; launch_authorized: false; scope: 'DRAFT_MEDIA_ONLY' }>(endereco(`/packs/${encodeURIComponent(id)}/selecao`));
+export const listarPacks = (offset = 0, q = '') =>
+  chamar<{ packs: CreativePack[]; has_more: boolean }>(endereco('/packs', { offset, q }));
+export const adicionarAssetsAoPack = (id: string, master_refs: string[], expected_manifest_sha256: string) =>
+  chamar<CreativePack>(endereco(`/packs/${encodeURIComponent(id)}/assets`), {
+    method: 'POST', body: JSON.stringify({ master_refs, expected_manifest_sha256 }),
+  });
+export const lerPack = (id: string, manifest_sha256?: string) =>
+  chamar<CreativePack>(endereco(`/packs/${encodeURIComponent(id)}`, { manifest_sha256 }));
+export const selecionarPack = (id: string, manifest_sha256?: string) =>
+  chamar<{ master_refs: string[]; launch_authorized: false; scope: 'DRAFT_MEDIA_ONLY' }>(endereco(`/packs/${encodeURIComponent(id)}/selecao`, { manifest_sha256 }));
+
+export interface DraftPackSelection {
+  draft_ref: string;
+  adset_key: string;
+  pack_id: string;
+  pack_name: string;
+  manifest_sha256: string;
+  master_refs: string[];
+  version: number;
+  state: 'LOCKED';
+  selected_at: string;
+  launch_authorized: false;
+  scope: 'DRAFT_MEDIA_ONLY';
+}
+
+export const listarSelecoesDePack = (draftRef: string) =>
+  chamar<{ draft_ref: string; selections: DraftPackSelection[] }>(
+    endereco(`/packs/drafts/${encodeURIComponent(draftRef)}/selections`),
+  );
+
+export const fixarPackNoConjunto = (
+  draftRef: string, adsetKey: string, packId: string, expectedVersion: number,
+) => chamar<DraftPackSelection>(
+  endereco(`/packs/drafts/${encodeURIComponent(draftRef)}/adsets/${encodeURIComponent(adsetKey)}`),
+  { method: 'PUT', body: JSON.stringify({ pack_id: packId, expected_version: expectedVersion }) },
+);
+
+export const retirarPackDoConjunto = (
+  draftRef: string, adsetKey: string, expectedVersion: number,
+) => chamar<{ draft_ref: string; adset_key: string; state: 'REMOVED' }>(
+  endereco(`/packs/drafts/${encodeURIComponent(draftRef)}/adsets/${encodeURIComponent(adsetKey)}`, {
+    expected_version: expectedVersion,
+  }), { method: 'DELETE' },
+);
 export const salvarPackMeta = (pedido: { conta_ref: string; campanha_ref: string; entidade: 'conjunto' | 'anuncio'; referencia: string; nome: string }) =>
   chamar<CreativePack>(endereco('/packs/meta'), { method: 'POST', body: JSON.stringify(pedido) });
+
+export interface ImportacaoPrivadaDeMidia {
+  referencia: string;
+  estado: string;
+  entradas: Array<{
+    nome: string | null; estado: string; mime: string | null; masterId: string | null;
+    largura: number | null; altura: number | null; previewUrl: string | null;
+    motivoRecusa: string | null; detalhe: string | null;
+  }>;
+  registroRemoto: { estado: 'NAO_INICIADO'; explicacao: string };
+}
+
+/** Guarda um arquivo enviado pelo operador na biblioteca privada. Não fala
+ * com a Meta; o registro na conta continua passando pelo fluxo do pack. */
+export async function importarMidiaPrivada(arquivo: File, projetoTitulo: string): Promise<ImportacaoPrivadaDeMidia> {
+  const formulario = new FormData();
+  formulario.append('arquivo', arquivo, arquivo.name);
+  formulario.append('projetoTitulo', projetoTitulo.slice(0, 200));
+  const result = await chamar<ImportacaoPrivadaDeMidia>(
+    `${API_BASE}/api/criativos/importacoes`, { method: 'POST', body: formulario },
+  );
+  if (!result || !Array.isArray(result.entradas) || result.registroRemoto?.estado !== 'NAO_INICIADO') {
+    throw new ErroDoAssistente('A importação respondeu em um formato que esta tela não reconhece.', 'importacao_invalida');
+  }
+  return result;
+}
 
 export class ErroDoAssistente extends Error {
   readonly codigo: string;
@@ -359,6 +432,7 @@ export async function planejarGeracao(
   projectRef: string,
   pedido: {
     run_ref: string;
+    geracao_ref?: string | null;
     selected_creative_refs: string[];
     format_ids: string[];
     anexo_ref?: string | null;
@@ -383,6 +457,7 @@ export async function gerarImagens(
   projectRef: string,
   pedido: {
     run_ref: string;
+    geracao_ref?: string | null;
     selected_creative_refs: string[];
     format_ids: string[];
     anexo_ref?: string | null;

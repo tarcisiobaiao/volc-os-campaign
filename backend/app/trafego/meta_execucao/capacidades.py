@@ -27,6 +27,8 @@ from __future__ import annotations
 import os
 from typing import Mapping
 
+from app.config import get_settings
+
 #: Autoriza o ato de criar objetos reais numa conta de anúncios.
 FLAG_CRIACAO = "META_CREATE_PAUSED_ENABLED"
 
@@ -97,9 +99,26 @@ FLAGS_DE_PROCESSO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER)
 FLAGS_DE_CRIACAO: tuple[str, ...] = (FLAG_CRIACAO, FLAG_LEDGER, FLAG_DESTINO_SHOP)
 
 
+def valor_flag(nome: str) -> str:
+    """Ambiente explícito (inclusive vazio/0) prevalece sobre .env do backend.
+
+    Centraliza a leitura para capacidades e executores não discordarem após
+    reinício. Não copia segredos nem configurações para o ambiente do processo.
+    """
+    if nome not in (*FLAGS_DE_CRIACAO, FLAG_UPLOAD_DE_ATIVO, "META_VALIDATE_ONLY_ENABLED"):
+        raise ValueError("flag Meta desconhecida")
+    if nome in os.environ:
+        return os.environ[nome]
+    return getattr(get_settings(), nome.lower(), "")
+
+
+def validacao_liberada() -> bool:
+    return valor_flag("META_VALIDATE_ONLY_ENABLED") == "1"
+
+
 def contas_com_upload_liberado() -> frozenset[str]:
     """As contas em que este servidor pode registrar mídia."""
-    bruto = str(os.environ.get(FLAG_UPLOAD_DE_ATIVO) or "").strip()
+    bruto = valor_flag(FLAG_UPLOAD_DE_ATIVO).strip()
     if not bruto:
         return frozenset()
     return frozenset(parte.strip() for parte in bruto.split(",") if parte.strip())
@@ -123,7 +142,7 @@ def motivo_do_upload_fechado(account_ref: str | None = None) -> str:
 
 def autorizacoes_de_processo_ausentes() -> list[str]:
     """As travas que não dependem de conta, para a porta da rota."""
-    return [n for n in FLAGS_DE_PROCESSO if os.environ.get(n) != "1"]
+    return [n for n in FLAGS_DE_PROCESSO if valor_flag(n) != "1"]
 
 
 def motivos_de_processo_ausentes() -> list[str]:
@@ -167,7 +186,7 @@ def autorizacoes_ausentes(account_ref: str | None = None) -> list[str]:
         if nome == FLAG_DESTINO_SHOP:
             if not destino_website_liberado(account_ref):
                 faltando.append(nome)
-        elif os.environ.get(nome) != "1":
+        elif valor_flag(nome) != "1":
             faltando.append(nome)
     return faltando
 
@@ -183,12 +202,12 @@ def criacao_liberada(account_ref: str | None = None) -> bool:
 
 def ledger_liberado() -> bool:
     """Autoriza recibos/aprovação/reconciliação, mas nunca o despacho Meta."""
-    return os.environ.get(FLAG_LEDGER) == "1"
+    return valor_flag(FLAG_LEDGER) == "1"
 
 
 def contas_com_destino_liberado() -> frozenset[str]:
     """As contas cuja elegibilidade a Shop já foi conferida, e deu não-elegível."""
-    bruto = str(os.environ.get(FLAG_DESTINO_SHOP) or "").strip()
+    bruto = valor_flag(FLAG_DESTINO_SHOP).strip()
     if not bruto:
         return frozenset()
     return frozenset(

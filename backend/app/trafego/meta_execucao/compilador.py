@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping, Sequence
@@ -11,6 +12,8 @@ from . import contrato_v2
 from .contrato import (
     DESTINO_SHOP_CONTA_NAO_ELEGIVEL,
     DESTINO_SHOP_NAO_PROVADO,
+    DESTINO_SHOP_OPT_OUT_EXPLICITO,
+    DESTINATION_TYPE_WEBSITE_OPT_OUT,
     PLACEHOLDER_DE_DEPENDENCIA,
     ErroDeNascimentoMeta,
     ManifestoSupplyMeta,
@@ -169,7 +172,22 @@ class PlanoCompiladoMeta:
     @property
     def destino_website_provado(self) -> bool:
         """Se o despacho pode acontecer sem redirecionamento não autorizado."""
-        return self.shop_redirect_proof == DESTINO_SHOP_CONTA_NAO_ELEGIVEL
+        return self.shop_redirect_proof == DESTINO_SHOP_CONTA_NAO_ELEGIVEL or self.opt_out_website_explicito
+
+    @property
+    def opt_out_website_explicito(self) -> bool:
+        """Every own creative has the exact control; never trust the marker alone."""
+        creatives = tuple(op for op in self.operacoes if op.tipo_objeto == "creative")
+        return (self.shop_redirect_proof == DESTINO_SHOP_OPT_OUT_EXPLICITO
+                and bool(creatives) and all(
+                    op.payload.get("destination_spec") == {"destination_type": DESTINATION_TYPE_WEBSITE_OPT_OUT}
+                    and ((isinstance(op.payload.get("object_story_spec"), Mapping)
+                        and "object_story_id" not in op.payload
+                        and isinstance(op.payload["object_story_spec"].get("link_data"), Mapping)
+                        and op.payload["object_story_spec"]["link_data"].get("link") == self.destination_url)
+                        or ("object_story_spec" not in op.payload
+                            and re.fullmatch(r"[0-9]+_[0-9]+", str(op.payload.get("object_story_id") or "")) is not None))
+                    for op in creatives))
 
     def provas_de_midia_vencidas(self, agora: datetime) -> tuple[str, ...]:
         """As peças cuja atestação já não cobre um NOVO despacho.
@@ -212,6 +230,11 @@ class PlanoCompiladoMeta:
             "estado_ao_nascer": self.estado_ao_nascer,
             "shop_redirect_proof": self.shop_redirect_proof,
             "destino_website_provado": self.destino_website_provado,
+            "controle_destino": (
+                "EXPLICIT_OPT_OUT_REQUIRES_READBACK" if self.opt_out_website_explicito
+                else "LEGACY_ACCOUNT_EVIDENCE" if self.shop_redirect_proof == DESTINO_SHOP_CONTA_NAO_ELEGIVEL
+                else "UNPROVEN"
+            ),
             "tracking": {
                 "revenue_join": JOIN_DE_RECEITA,
                 "resolucao_de_campanha": RESOLUCAO_DE_CAMPANHA,
@@ -424,6 +447,8 @@ def compilar_plano_pausado(
     lote_explicito = bool(plano.variacoes_estaticas)
     operacoes_variacoes: list[OperacaoMeta] = []
     for variacao in variacoes:
+        if variacao.existing_post_ref:
+            raise ErroDeNascimentoMeta("META_EXISTING_POST_REQUIRES_V2", "Use o contrato V2 para reutilizar uma publicação existente.")
         sufixo = f":{variacao.variation_key}" if lote_explicito else ""
         chave_criativo = f"creative{sufixo}"
         chave_anuncio = f"ad{sufixo}"
@@ -448,25 +473,8 @@ def compilar_plano_pausado(
             "name": variacao.creative_name,
             "object_story_spec": story,
             "url_tags": TRACKING_GAM_ADSET_ID,
-            # ⚠️ NENHUM `destination_spec` É ENVIADO, e a ausência é a decisão.
-            #
-            # A v26 redireciona o clique de anunciantes elegíveis a Shop, e a
-            # correção óbvia seria declarar o opt-out aqui. A evidência oficial
-            # desta lane não sustenta esse campo: `META-SHOP` em
-            # `OFFICIAL-META-API-EVIDENCE.json` está `RESEARCH_REQUIRED` /
-            # `P0_BLOCKING` / `remote_behavior_proven: false` — "exact
-            # writable/readable shop opt-out placement not established here" — e
-            # a política de autoridade do mesmo arquivo declara todo campo
-            # registrado NÃO despachável nesta missão.
-            #
-            # Enviar um campo que a Meta talvez não aceite faria o payload
-            # aprovado divergir do payload aceito, e um enum inventado seria
-            # recusado no lote — depois do despacho da campanha. O contrato
-            # mestre (C01) fecha a questão: nada não provado é enviado, e a
-            # incapacidade de provar bloqueia CRIAR, não compilar.
-            #
-            # O bloqueio mora em `shop_redirect_proof`, que viaja no plano e é
-            # cobrado pelo executor antes do primeiro POST.
+            # Official v26 opt-out; acceptance is validated, then read back.
+            "destination_spec": {"destination_type": DESTINATION_TYPE_WEBSITE_OPT_OUT},
         }
         ad = {
             "name": variacao.ad_name,
@@ -499,7 +507,7 @@ def compilar_plano_pausado(
         api_version="v26.0",
         account_ref=plano.account_ref,
         destination_url=plano.destination_url,
-        shop_redirect_proof=referencias.shop_redirect_proof,
+        shop_redirect_proof=DESTINO_SHOP_OPT_OUT_EXPLICITO,
         asset_supply=[item.prova_publica() for item in manifestos],
         operacoes=operacoes,
     )
@@ -508,7 +516,7 @@ def compilar_plano_pausado(
         destination_url=plano.destination_url,
         operacoes=operacoes,
         asset_supply_manifests=manifestos,
-        shop_redirect_proof=referencias.shop_redirect_proof,
+        shop_redirect_proof=DESTINO_SHOP_OPT_OUT_EXPLICITO,
         plano_sha256=hashlib.sha256(_canonico(materia).encode("utf-8")).hexdigest(),
     )
 
@@ -664,6 +672,8 @@ def compilar_plano_v2(
     plano: "contrato_v2.PlanoMetaV2",
     referencias: ReferenciasMetaResolvidas,
     publicos: "contrato_v2.ReferenciasDePublicoResolvidas | None" = None,
+    *, regulatory: dict[str, Any] | None = None,
+    existing_posts: dict[str, Any] | None = None,
 ) -> PlanoCompiladoMeta:
     """Compila um plano V2 em operações Meta determinísticas e PAUSED."""
     resolvidos = publicos if publicos is not None else contrato_v2.ReferenciasDePublicoResolvidas()
@@ -690,6 +700,15 @@ def compilar_plano_v2(
             # ABO: verba e lance ficam no conjunto, como na receita provada.
             adset[conjunto.orcamento.campo_da_graph] = conjunto.orcamento.amount_minor
             adset["bid_strategy"] = receita.bid_strategy
+        if conjunto.regulatory_identity_ref:
+            selected = (regulatory or {}).get(conjunto.regulatory_identity_ref)
+            if not selected or selected.get("category") != "BRAZIL_REGULATION":
+                raise ErroDeNascimentoMeta("META_REGULATORY_REFERENCE_UNRESOLVED", "O anunciante escolhido não está mais disponível nesta conta. Leia e escolha novamente.")
+            identity = selected.get("identities")
+            if not isinstance(identity, dict) or set(identity) != {"universal_beneficiary", "universal_payer"} or not all(isinstance(value, str) and value.isascii() and value.isdigit() and 1 <= len(value) <= 40 for value in identity.values()):
+                raise ErroDeNascimentoMeta("META_REGULATORY_REFERENCE_INVALID", "O anunciante escolhido não tem beneficiário e pagador completos.")
+            adset["regional_regulated_categories"] = ["BRAZIL_REGULATION"]
+            adset["regional_regulation_identities"] = dict(identity)
         if conjunto.programacao.end_time is not None:
             adset["end_time"] = conjunto.programacao.end_time.isoformat()
         promovido = _promoted_object_v2(conjunto, resolvidos)
@@ -702,11 +721,17 @@ def compilar_plano_v2(
             conjunto.chave_de_operacao, f"/act_{conta}/adsets", adset,
             depende_de=("campaign",), tipo="adset"))
 
+    flexible_done: set[str] = set()
     for anuncio in plano.anuncios:
+        if plano.creative_mode == "FLEXIBLE_IMAGES":
+            if anuncio.adset_key in flexible_done:
+                continue
+            flexible_done.add(anuncio.adset_key)
         variacao = anuncio.variacao
         chave_criativo = f"creative:{variacao.variation_key}"
         chave_anuncio = f"ad:{variacao.variation_key}"
         chave_conjunto = f"adset:{anuncio.adset_key}"
+        textos_flexiveis = next(c.flexible_texts for c in plano.conjuntos if c.adset_key == anuncio.adset_key)
         story: dict[str, Any] = {
             "page_id": referencias.page_id,
             "link_data": {
@@ -724,21 +749,71 @@ def compilar_plano_v2(
         }
         if referencias.instagram_actor_id is not None:
             story["instagram_actor_id"] = referencias.instagram_actor_id
-        operacoes.append(OperacaoMeta(
-            chave_criativo, f"/act_{conta}/adcreatives",
-            {
+        creative_payload = {
                 "name": variacao.creative_name,
                 "object_story_spec": story,
                 "url_tags": TRACKING_GAM_ADSET_ID,
-                # Sem `destination_spec`, pela mesma razão documentada no V1.
-            },
+                "destination_spec": {"destination_type": DESTINATION_TYPE_WEBSITE_OPT_OUT},
+            }
+        if textos_flexiveis is not None:
+            # Fallback uses approved pool options, never stale legacy copy.
+            story["link_data"]["message"] = textos_flexiveis.primary_text[0]
+            story["link_data"]["name"] = textos_flexiveis.headline[0]
+            if textos_flexiveis.description:
+                story["link_data"]["description"] = textos_flexiveis.description[0]
+            else:
+                story["link_data"].pop("description", None)
+        if variacao.existing_post_ref:
+            source = (existing_posts or {}).get(variacao.existing_post_ref)
+            if source and source.get("is_flexible"):
+                raise ErroDeNascimentoMeta("META_FLEXIBLE_POST_REUSE_UNPROVEN", "Este criativo tem múltiplas variações. Reutilizar somente o ID do post não garante preservá-las; escolha um post estático ou monte um novo anúncio flexível.")
+            if not source or source.get("_page_id") != referencias.page_id or source.get("asset_ref") != variacao.asset_ref or source.get("_image_hash") != story["link_data"]["image_hash"]:
+                raise ErroDeNascimentoMeta("META_EXISTING_POST_UNRESOLVED", "A publicação não corresponde à conta, Página e imagem selecionadas. Escolha-a novamente.")
+            if source.get("destination_url") != plano.destination_url:
+                raise ErroDeNascimentoMeta("META_EXISTING_POST_DESTINATION_MISMATCH", "Para reutilizar esta publicação, mantenha o endereço original do anúncio.")
+            if any(source.get(field) != getattr(variacao, field) for field in ("message", "headline", "description", "call_to_action_type")):
+                raise ErroDeNascimentoMeta("META_EXISTING_POST_COPY_IMMUTABLE", "A publicação existente mantém seu texto e botão originais. Para editar, crie outro anúncio.")
+            if not re.fullmatch(r"[0-9]+_[0-9]+", str(source.get("_post_id") or "")):
+                raise ErroDeNascimentoMeta("META_EXISTING_POST_UNRESOLVED", "A publicação existente não tem identidade válida.")
+            creative_payload.pop("object_story_spec")
+            creative_payload["object_story_id"] = source["_post_id"]
+        operacoes.append(OperacaoMeta(
+            chave_criativo, f"/act_{conta}/adcreatives", creative_payload,
             validavel_sem_criar_pai=True, tipo="creative"))
+        groups = None
+        if plano.creative_mode == "FLEXIBLE_IMAGES":
+            # Preserve each approved image/text pairing. Never construct an
+            # implicit Cartesian product or flatten a provider asset feed.
+            groups = {"groups": [{
+                "images": [{"hash": referencias.image_hash_for(item.variacao.asset_ref,
+                    fallback_ref=item.variacao.asset_ref)}],
+                "texts": [
+                    {"text": item.variacao.message, "text_type": "primary_text"},
+                    {"text": item.variacao.headline, "text_type": "headline"},
+                    {"text": item.variacao.description, "text_type": "description"},
+                ],
+                "call_to_action": {"type": item.variacao.call_to_action_type,
+                    "value": {"link": plano.destination_url}},
+            } for item in plano.anuncios if item.adset_key == anuncio.adset_key]}
+            if textos_flexiveis is not None:
+                # Explicit pool opts into combination within THIS adset only.
+                # Legacy pairings above remain byte-for-byte when absent.
+                hashes = list(dict.fromkeys(referencias.image_hash_for(
+                    item.variacao.asset_ref, fallback_ref=item.variacao.asset_ref)
+                    for item in plano.anuncios if item.adset_key == anuncio.adset_key))
+                groups = {"groups": [{
+                    "images": [{"hash": valor} for valor in hashes],
+                    "texts": textos_flexiveis.textos_graph(),
+                    "call_to_action": {"type": variacao.call_to_action_type,
+                                       "value": {"link": plano.destination_url}},
+                }]}
         operacoes.append(OperacaoMeta(
             chave_anuncio, f"/act_{conta}/ads",
             {
                 "name": variacao.ad_name,
                 "adset_id": f"${chave_conjunto}.id",
                 "creative": {"creative_id": f"${chave_criativo}.id"},
+                **({"creative_asset_groups_spec": groups} if groups is not None else {}),
                 "status": "PAUSED",
             },
             depende_de=(chave_conjunto, chave_criativo), tipo="ad"))
@@ -748,7 +823,7 @@ def compilar_plano_v2(
         api_version="v26.0",
         account_ref=plano.account_ref,
         destination_url=plano.destination_url,
-        shop_redirect_proof=referencias.shop_redirect_proof,
+        shop_redirect_proof=DESTINO_SHOP_OPT_OUT_EXPLICITO,
         asset_supply=[item.prova_publica() for item in manifestos],
         operacoes=tuple(operacoes),
     )
@@ -757,6 +832,6 @@ def compilar_plano_v2(
         destination_url=plano.destination_url,
         operacoes=tuple(operacoes),
         asset_supply_manifests=manifestos,
-        shop_redirect_proof=referencias.shop_redirect_proof,
+        shop_redirect_proof=DESTINO_SHOP_OPT_OUT_EXPLICITO,
         plano_sha256=hashlib.sha256(_canonico(materia).encode("utf-8")).hexdigest(),
     )

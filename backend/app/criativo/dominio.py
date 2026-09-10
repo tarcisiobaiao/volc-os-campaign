@@ -227,6 +227,13 @@ def chave_de_idempotencia(pedido: dict[str, Any]) -> str:
             material[campo] = _normalizar_texto(valor)
         else:
             material[campo] = valor
+    # Só pedidos novos têm spec: manter o hash de briefings legados intacto.
+    # Texto, composição ou margem alterados exigem outro render; a ordem dos
+    # checkboxes de formato não exige. Não normalizar o texto exato da spec.
+    if pedido.get("creative_specs"):
+        material["creative_specs"] = sorted(pedido["creative_specs"], key=lambda s: s["formato"])
+    if pedido.get("geracao_ref"):
+        material["geracao_ref"] = pedido["geracao_ref"]
     cru = json.dumps(material, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return "cri_" + hashlib.sha256(cru.encode("utf-8")).hexdigest()
 

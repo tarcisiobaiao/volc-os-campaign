@@ -143,7 +143,7 @@ export class PautadorApiError extends Error {
 
 export interface EstadoDaConfiguracaoMetaLocal {
   configurado: boolean;
-  armazenamento: 'macOS Keychain';
+  armazenamento: 'macOS Keychain' | 'Cofre oficial';
   api_version: 'v26.0';
   salvo_em?: string;
 }
@@ -172,7 +172,7 @@ export interface ContaMetaLocal {
 export interface ResultadoDasContasMetaLocal {
   ok: true;
   api_version: 'v26.0';
-  armazenamento: 'macOS Keychain';
+  armazenamento: 'macOS Keychain' | 'Cofre oficial';
   contas: ContaMetaLocal[];
   contas_acessiveis: number;
   proxima_acao: 'preflight_somente_leitura';
@@ -556,6 +556,20 @@ export type ReconciliacaoMeta = {
   diferenca: string | number | null;
 };
 
+/** Insights do anúncio no mesmo período, sem atribuição de receita GAM. */
+export type AnuncioFinanceiroMeta = {
+  ad_ref: string;
+  adset_ref: string;
+  spend: string | number | null;
+  impressions: number | null;
+  clicks: number | null;
+  ctr: string | number | null;
+  cpc: string | number | null;
+  cpm: string | number | null;
+  source_freshness: string | null;
+  completo: boolean;
+};
+
 export type FinanceiroMeta = {
   ok: boolean;
   estado: string;
@@ -588,6 +602,9 @@ export type FinanceiroMeta = {
   conjuntos_conhecidos?: number;
   /** O drill-down: a campanha é a soma destes. */
   conjuntos?: ConjuntoFinanceiroMeta[];
+  anuncios?: AnuncioFinanceiroMeta[];
+  anuncios_completo?: boolean;
+  anuncios_impedimentos?: string[];
   razao?: RazaoDaSomaMeta | null;
   reconciliacao?: ReconciliacaoMeta | null;
   fontes?: Record<string, string>;
@@ -609,6 +626,20 @@ export interface OpcoesDeLeituraMeta {
   contaRef?: string | null;
   cursor?: string | null;
   tamanho?: number | null;
+}
+
+export interface PublicacaoExistenteMeta {
+  reuse_supported?: boolean;
+  reuse_reason?: string;
+  preview_only?: boolean;
+  copy_variants?: {messages: string[]; headlines: string[]; descriptions: string[]};
+  post_ref: string; asset_ref: string; label: string; creative_name: string;
+  source_ad_names: string[]; destination_url: string; call_to_action_type: string;
+  message: string; headline: string; description: string; preview_url: string | null;
+  /** Flexible ads remain reusable by their immutable post identity. These
+   * counts describe the original post; the UI must not imply it picked one
+   * of its placement/copy variants to recreate. */
+  is_flexible?: boolean; image_variants?: number; text_variants?: number;
 }
 
 export interface AtivoCriacaoMeta {
@@ -764,8 +795,17 @@ export interface PublicoMetaV2Input {
   expansion: boolean;
 }
 
+export interface TextosFlexiveisMetaV2Input {
+  primary_text: string[];
+  headline: string[];
+  description: string[];
+}
+
 export interface ConjuntoMetaV2Input {
   adset_key: string;
+  /** Textos independentes das imagens, exclusivos deste conjunto flexível. */
+  flexible_texts?: TextosFlexiveisMetaV2Input;
+  regulatory_identity_ref?: string | null;
   name: string;
   start_time: string;
   end_time: string | null;
@@ -784,6 +824,7 @@ export interface ConjuntoMetaV2Input {
 }
 
 export interface AnuncioMetaV2Input {
+  existing_post_ref?: string;
   variation_key: string;
   /** ⚠️ A ligação explícita com o conjunto. Sem ela o backend recusa com
    *  META_AD_ADSET_UNKNOWN em vez de adivinhar um pai. */
@@ -801,6 +842,7 @@ export interface AnuncioMetaV2Input {
 }
 
 export interface PlanoMetaV2Input {
+  creative_mode?: 'STATIC' | 'FLEXIBLE_IMAGES';
   recipe_id: string;
   account_ref: string;
   page_ref: string;
@@ -816,11 +858,28 @@ export interface PlanoMetaV2Input {
   ads: AnuncioMetaV2Input[];
 }
 
+/** Capacidade implementada, não autorização para enviar este plano. */
+export interface CapacidadePausadaMeta {
+  implementada: boolean;
+  fluxo: string;
+  estado_ao_nascer: string;
+  autoriza_ativacao: boolean;
+  exige_recibo_exato_do_plano: boolean;
+  cobertura_previa: string;
+  dependentes_validados_antes_de_criar: boolean;
+  exige_aprovacao_humana: boolean;
+  exige_capacidades_do_servidor: boolean;
+  exige_prova_de_destino: boolean;
+  prova_historica_nao_e_capacidade: boolean;
+}
+
 export interface ModoDeOrcamentoMetaV2 {
   id: string;
   nivel: 'ADSET' | 'CAMPAIGN';
   periodo: 'DAILY' | 'LIFETIME';
   prova: string;
+  capacidade_pausada?: CapacidadePausadaMeta;
+  /** Evidência histórica legada; não substitui a capacidade nem a aprovação. */
   criar_liberado: boolean;
 }
 
@@ -833,8 +892,8 @@ export interface ReceitaMetaV2 {
   exige_fonte_de_conversao: boolean;
   propositos_de_mensuracao: Array<'REPORT_ONLY' | 'OPTIMIZE'>;
   prova: string;
-  /** ⚠️ `false` fecha CRIAR, nunca compilar nem validar — é a validação que
-   *  produz a prova que falta. Ver `receitas.py`, seção "não provado". */
+  capacidade_pausada?: CapacidadePausadaMeta;
+  /** Evidência histórica legada; não substitui a capacidade nem a aprovação. */
   criar_liberado: boolean;
   motivo_sem_prova: string | null;
   modos_de_orcamento: ModoDeOrcamentoMetaV2[];
@@ -905,7 +964,12 @@ export interface AprovacaoCriacaoMeta {
   expires_at: string;
   operacoes: number;
   manifesto: string[];
-  orcamento_diario_minor: number;
+  orcamento_diario_minor: number | null;
+  budget_manifest?: {
+    version: 1; scope: 'ABO' | 'CBO'; currency: 'BRL';
+    entries: Array<{step: string; level: 'campaign' | 'adset'; period: 'DAILY' | 'LIFETIME'; amount_minor: number; currency: string}>;
+    daily_total_minor: number | null;
+  };
   moeda: 'BRL';
   nascimento_pausado_confirmado: true;
 }
@@ -1114,7 +1178,35 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return resp.json() as Promise<T>;
 }
 
+export interface RevisaoMidiaMeta {
+  ok: boolean;
+  resultados: Array<{master_ref: string; content_sha256: string; aprovacao_humana: boolean;
+    utilizavel: boolean; codigo: string | null; politica: {decisao: string; motivos: unknown[];
+      achados?: Array<{termo: string}>; detectores?: Array<{nome: string; resultado: string}>}}>;
+}
+export interface RegistroMidiaMeta {
+  ok: boolean;
+  resultados: Array<{master_ref: string; estado: string; asset_ref: string | null; motivo: string | null; codigo: string | null}>;
+}
+
 export const pautadorApi = {
+  revisarMidiaMeta(accountRef: string, masterRefs: string[]): Promise<RevisaoMidiaMeta> {
+    return request('/api/trafego/meta/ativos/revisar', { method: 'POST',
+      body: JSON.stringify({ account_ref: accountRef, master_refs: masterRefs }) });
+  },
+  capacidadesMidiaMeta(accountRef: string, draftRef?: string, masterRefs: string[] = []): Promise<{registro_de_imagem: string; motivo: string | null; escopo_do_envio?: string; autorizacao_expira_em?: string; inspecao_de_imagem: {disponivel: boolean; capacidades_ausentes: string[]}}> {
+    const query = new URLSearchParams({account_ref: accountRef});
+    if (draftRef) { query.set('draft_ref', draftRef); query.set('master_refs', masterRefs.join(',')); }
+    return request(`/api/trafego/meta/ativos/capacidades?${query}`);
+  },
+  registrarMidiaMeta(accountRef: string, revisoes: RevisaoMidiaMeta['resultados'], draftRef?: string): Promise<RegistroMidiaMeta> {
+    return request('/api/trafego/meta/ativos/registrar', { method: 'POST', body: JSON.stringify({
+      account_ref: accountRef, master_refs: revisoes.map(r => r.master_ref),
+      ...(draftRef ? {draft_ref: draftRef} : {}),
+      revisoes: revisoes.map(({master_ref, content_sha256}) => ({master_ref, content_sha256})),
+      confirmar_registro_na_conta: accountRef, confirmar_quantidade: revisoes.length,
+    }) });
+  },
   planejarGestaoMeta(pedido: import('@/types/metaOperacao').PedidoGestaoMeta): Promise<import('@/types/metaOperacao').PropostaGestaoMeta> {
     return request('/api/trafego/meta/local/gestao/planejar', { method: 'POST', body: JSON.stringify(pedido) });
   },
@@ -1141,6 +1233,12 @@ export const pautadorApi = {
 
   testarMetaLocal(): Promise<ResultadoDoTesteMetaLocal> {
     return request('/api/trafego/meta/local/testar', { method: 'POST' });
+  },
+
+  postsExistentesMeta(accountRef: string, pageRef: string, q = '', offset = 0): Promise<{
+    items: PublicacaoExistenteMeta[]; total: number; offset: number; has_more: boolean; complete: boolean;
+  }> {
+    return request(`/api/trafego/meta/local/criacao/v2/posts-existentes?${new URLSearchParams({ account_ref: accountRef, page_ref: pageRef, q, offset: String(offset), limit: '24' })}`);
   },
 
   contasMetaLocal(): Promise<ResultadoDasContasMetaLocal> {
@@ -1324,6 +1422,13 @@ export const pautadorApi = {
     return request('/api/trafego/meta/local/criacao/v2/receitas');
   },
 
+  identidadesRegulatoriasMeta(accountRef: string): Promise<{items: Array<{
+    reference: string; label: string; category: string;
+    beneficiary_name: string | null; payer_name: string | null; names_available: boolean;
+  }>; complete: boolean}> {
+    return request(`/api/trafego/meta/local/criacao/v2/identidades-regulatorias?account_ref=${encodeURIComponent(accountRef)}`);
+  },
+
   /** Compila o plano V2. Efeito externo declarado: NENHUM. */
   compilarPlanoMetaV2(plano: PlanoMetaV2Input): Promise<ResultadoCompilacaoMetaV2> {
     return request('/api/trafego/meta/local/criacao/v2/compilar', {
@@ -1350,7 +1455,7 @@ export const pautadorApi = {
    * `toLowerCase` e sem sinônimo. Uma tela que só exibisse o campo e mandasse
    * `true` teria trocado um portão por uma decoração. */
   aprovarCriacaoMeta(entrada: {
-    plano: PlanoMetaPausadoInput;
+    plano: PlanoMetaPausadoInput | PlanoMetaV2Input;
     planoSha256: string;
     validationId: string;
     confirmacaoDigitada: string;

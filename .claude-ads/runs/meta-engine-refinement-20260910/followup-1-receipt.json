@@ -1,0 +1,87 @@
+{
+  "slice": "followup-1",
+  "created_at": "2026-09-10T11:39:03.528320+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested": true,
+  "files": [
+    {
+      "path": "backend/app/criativo/execucao.py",
+      "start": 533,
+      "end": 620,
+      "sha256": "afb20862d5c8db8dfef629291492db72bfcf85337126d0b2a737d6f5d49bf2f1"
+    },
+    {
+      "path": "backend/app/criativo/execucao.py",
+      "start": 1101,
+      "end": 1137,
+      "sha256": "6324a49166cca1958de6c2d4b4e31a2c52f213385bbd24dc35e801dfc3cc9568"
+    },
+    {
+      "path": "services/creative_engine/motores/openai_imagem.py",
+      "start": 345,
+      "end": 417,
+      "sha256": "09c89148cc106661d759a9e9f7ad9fb04211011e4b7fa53f2b97447a7c8d09c4"
+    }
+  ],
+  "input_sha256": "9c50a6f6827d5a5c54476f4b3fefff775e6dfcd6f567c41c045f57d66f69eb77",
+  "status": "review_received",
+  "calls_attempted": 1,
+  "billing": "unknown unless provider supplies usage",
+  "modelVersion": "gemini-3.8-flash",
+  "model_verified": true,
+  "usage": {
+    "promptTokenCount": 4651,
+    "candidatesTokenCount": 975,
+    "totalTokenCount": 13623,
+    "thoughtsTokenCount": 7997
+  },
+  "grounding": {
+    "webSearchQueries": [],
+    "groundingChunks": [],
+    "groundingSupports": []
+  },
+  "grounding_verified": false,
+  "finishReason": "STOP",
+  "review": {
+    "status": "ok",
+    "checked": [
+      "backend/app/criativo/execucao.py",
+      "services/creative_engine/motores/openai_imagem.py"
+    ],
+    "findings": [
+      {
+        "id": "unverified-attachment-sha256",
+        "file": "backend/app/criativo/execucao.py",
+        "line": 561,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "Attachment bytes loaded from storage_chave are forwarded to paid image generation and composition without cryptographic hash verification against the approved briefing sha256.",
+        "evidence": "In _produzir_peca (lines 561-570), foto is read via self._ler_anexo(str(chave_do_anexo)) and checked only for non-empty bytes before calling _chamar_motor and compositor.compor. The recorded hash fotografia.get('sha256') (persisted in _referencias_do_pedido line 1117) is never compared to hashlib.sha256(foto).hexdigest(), and openai_imagem.py line 409 records declared metadata rather than verified byte hashes. Fact: execucao.py performs no hash calculation. Hypothesis: assumes _ler_anexo itself does not perform hash validation (omitted upstream implementation).",
+        "proposal": "Immediately after self._ler_anexo, compute hashlib.sha256(foto).hexdigest(). If fotografia.get('sha256') is present and differs from the computed digest, abort execution via await self._marcar_falha_da_peca(job_id, slot, _erro_generico('integridade da fotografia anexada corrompida')) before invoking _chamar_motor or compositor.compor.",
+        "test": "Hermetic test where fake storage returns b'tampered-bytes' while briefing references define sha256='expected-hash'. Verify rendition state transitions to failed with integrity error and fake motor _chamar_motor is never invoked."
+      },
+      {
+        "id": "silent-spec-fallback-or-misattributed-error",
+        "file": "backend/app/criativo/execucao.py",
+        "line": 575,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "Briefings with creative_spec references silently fall back to generic insumo when slot spec is missing or duplicated, and misattribute Pydantic validation errors to external motor failure.",
+        "evidence": "Lines 575-578 iterate over briefing references searching for matching slot spec. If a modern briefing contains creative_spec items but lacks one for the active slot, the loop finishes without match, silently executing _chamar_motor with the generic fallback insumo. If duplicates exist, it takes the first one silently via break. If CreativeSpec.model_validate raises ValidationError, it falls through to lines 591-595, logging 'motor falhou fora do contrato' even though the motor was not yet called. Fact: missing slot specs silently retain insumo. Hypothesis: assumes insumo argument passed into _produzir_peca is a generic briefing prompt and not pre-validated slot-specific instructions.",
+        "proposal": "Inspect briefing creative specs: specs = [r for r in briefing.get('referencias') or [] if isinstance(r, dict) and r.get('tipo') == 'creative_spec']. If specs is not empty, match specs by formato == slot: if 0 matches, fail with missing spec error; if >1 matches, fail with ambiguous spec error; validate CreativeSpec inside a dedicated try/except ValidationError block failing the rendition as invalid spec. If specs is empty (legacy briefing), preserve compatibility by keeping fallback insumo.",
+        "test": "Hermetic test with briefing containing creative_spec only for feed_1x1 while producing rendition for story_9x16: assert piece fails with missing spec error and motor is not called. Hermetic test with legacy briefing (zero creative_spec references) asserts generation proceeds with fallback insumo."
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/",
+        "claim": "Meta Marketing API AdCreative specification requires explicit, valid creative asset specs and references (such as image_hash) to associate ad assets reliably."
+      }
+    ],
+    "limitations": [
+      "Implementation of _ler_anexo and caller of _produzir_peca were omitted; verified-byte checks assume storage reader returns raw unvalidated bytes and insumo carries generic fallback text."
+    ],
+    "summary": "Identified missing SHA-256 byte verification of attachments before paid provider/compositor invocation and silent fallback to generic prompts when creative specs are missing in spec-enabled briefings."
+  }
+}

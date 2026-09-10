@@ -191,6 +191,19 @@ class Repositorio:
             or []
         )
 
+    async def _apagar(
+        self, alvo: str, params: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        return (
+            await self._req(
+                "DELETE",
+                alvo,
+                headers=self._headers("return=representation"),
+                params=params,
+            )
+            or []
+        )
+
     async def _contar(self, alvo: str, params: dict[str, Any]) -> int:
         """Contagem exata, ou EXCEÇÃO. Nunca zero por falha.
 
@@ -517,6 +530,51 @@ class Repositorio:
             _TABELA_MASTER, {"id": f"eq.{master_id}", "select": "*", "limit": 1}
         )
         return linhas[0] if linhas else None
+
+    async def masters_do_dono_por_ids(
+        self, ids: list[str], *, criado_por: str
+    ) -> list[dict[str, Any]]:
+        """Lote owner-scoped, incluindo arquivados para a apresentação ocultá-los.
+
+        A listagem normal exclui ``arquivado_em``. O DTO de job, porém, parte das
+        renditions históricas e precisa saber quais masters foram arquivados sem
+        transformar isso em uma consulta por card.
+        """
+        unicos = sorted(set(ids))
+        if not unicos:
+            return []
+        return [
+            _sem_embed(linha)
+            for linha in await self._get(
+                _TABELA_MASTER,
+                {
+                    "id": f"in.({','.join(unicos)})",
+                    "select": self._EMBED_DONO,
+                    "criativo_job.criado_por": f"eq.{criado_por}",
+                },
+            )
+        ]
+
+    async def arquivar_master_do_dono(
+        self, master_id: str, *, criado_por: str
+    ) -> dict[str, Any] | None:
+        """Arquiva sem apagar bytes, rendition, job ou recibo.
+
+        O ``!inner`` mantém a posse no filtro do servidor. O gatilho do banco é
+        a última autoridade: uma aprovação vigente impede a transição mesmo se
+        surgir entre a leitura e este PATCH.
+        """
+        linhas = await self._atualizar(
+            _TABELA_MASTER,
+            {
+                "id": f"eq.{master_id}",
+                "arquivado_em": "is.null",
+                "select": self._EMBED_DONO,
+                "criativo_job.criado_por": f"eq.{criado_por}",
+            },
+            {"arquivado_em": agora()},
+        )
+        return _sem_embed(linhas[0]) if linhas else None
 
     async def procedencia_dos_jobs(self, ids: list[str]) -> dict[str, str]:
         """`job_id -> procedencia_execucao`, numa consulta.

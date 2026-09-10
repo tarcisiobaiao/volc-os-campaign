@@ -1,0 +1,50 @@
+{
+  "scope": "publication-ledger-reconciliation",
+  "status": "implemented_and_hermetically_verified",
+  "live_meta_mutations": 0,
+  "worker_paid_calls": 0,
+  "review_receipt": "publication-receipt.json",
+  "review_grounding_verified": false,
+  "findings": [
+    {
+      "id": "validate_only_timeout_deadlock",
+      "verdict": "confirmed_and_fixed",
+      "evidence": "Before the patch, a synthetic timeout in creation-time validate_only returned META_REMOTE_RESULT_AMBIGUOUS with reconciliation_required=true even when ledger_events and created objects were empty. A dependent validation timeout likewise left only the previously completed campaign recorded, not an ambiguous child step.",
+      "precision": "The remote-creation ambiguity flag was false operational reporting; it did not actually create an AMBIGUOUS child row. The review overstated this as a permanently ambiguous row. The proven defect was the recovery instruction and HTTP contract.",
+      "change": "Classify validation timeout before prepare_passo as META_VALIDATE_TIMEOUT, preserve prior durable operation keys, permit retry of the same approval through the ledger, and return HTTP 504 without reconciliation_required. Creation POST timeout remains ambiguous and non-retriable.",
+      "files": ["backend/app/trafego/meta_execucao/executor.py", "backend/app/routers/trafego_meta_criacao.py"],
+      "tests": "Eight new regressions cover validation timeouts at all four object types, no reservation/ambiguity for the unsubmitted step, current partial receipt, HTTP 504, exact same-approval recovery with only four creation POSTs overall, genuine creation ambiguity, and duplicate-key rejection."
+    },
+    {
+      "id": "ad_key_collision_multi_adset",
+      "verdict": "refuted_existing_guard",
+      "evidence": "PlanoMetaV2 checks all variation_key values globally and raises META_STATIC_BATCH_DUPLICATE_KEY before compilation. A regression with different ad sets and the same variation key proves this rejection.",
+      "change": "None. Changing the operation-key namespace would needlessly invalidate existing approved snapshots and ledger references."
+    },
+    {
+      "id": "existing_post_copy_redundancy",
+      "verdict": "already_implemented",
+      "evidence": "MetaCriacaoPage onSelect copies post.message, post.headline, post.description and CTA automatically; selected existing-post text fields are readOnly. The compiler's equality check protects the approved snapshot rather than requiring manual retyping.",
+      "change": "None. Preserve immutable post copy and destination checks."
+    }
+  ],
+  "additional_test_repair": {
+    "file": "backend/tests/test_meta_r0_corretiva.py",
+    "cause": "Its local fixture shadowed the shared fixture that now injects the hermetic operational credential resolver, causing 25 tests to stop at a vault 503 before reaching their assertions.",
+    "change": "Delegate to the complete shared fixture; assertions and production authorization stay unchanged.",
+    "result": "25 previously blocked R0 tests passed."
+  },
+  "verification": {
+    "targeted_new_tests": "8 passed",
+    "publication_core_and_r0": "145 passed",
+    "expanded_with_legacy_validation_routes": "179 passed, 3 failed",
+    "diff_check": "passed"
+  },
+  "remaining_gaps": [
+    "Three existing validation-route flag tests delete environment variables but then load enabled values from the local backend environment file; this worker did not edit shared flag fixtures or runtime configuration.",
+    "Two pre-existing recovery tests depend on legacy destination/server flag behavior. No recovery policy was relaxed to make them pass.",
+    "No new Meta API integration call or live campaign was executed by this worker. Parent integrator owns the final browser test and operational memory reconciliation."
+  ],
+  "ux_proposal": "For META_VALIDATE_TIMEOUT, offer one explicit 'Retomar esta operação' action using the same approval and plan hash, and show already-created object counts from the returned receipt. Do not suggest starting another campaign or reconciling a child step that was never submitted. Keep genuine creation ambiguity on the read-only reconciliation path.",
+  "curation_handoff": "Publication validation timeout classification and same-approval recovery are proven locally. Parent should update the existing Meta creation/recovery roadmap node and rebuild the shared graph once, without treating Gemini's ungrounded API citations as external proof."
+}

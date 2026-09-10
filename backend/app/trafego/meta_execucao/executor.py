@@ -17,6 +17,7 @@ from app.trafego.meta.credenciais import SegredoEfemero
 from .compilador import PlanoCompiladoMeta, OperacaoMeta, resolver_dependencias
 from .contrato import (
     MOTIVO_DESTINO_SHOP_NAO_PROVADO,
+    DESTINATION_TYPE_WEBSITE_OPT_OUT,
     AutorizacaoMeta,
     ErroDeNascimentoMeta,
 )
@@ -144,6 +145,22 @@ def _texto_seguro_do_provedor(valor: Any, *, limite: int = 500) -> str | None:
     return texto[:limite]
 
 
+def _codigo_numerico_do_provedor(valor: Any) -> str | None:
+    """Structured error codes are diagnostics, not account identifiers.
+
+    Never pass arbitrary provider text through this exception to redaction.
+    Graph codes are non-negative 32-bit integers; bools, floats, long ids and
+    strings containing credentials remain invalid here.
+    """
+    if isinstance(valor, bool) or not isinstance(valor, (int, str)):
+        return None
+    texto = str(valor)
+    if not re.fullmatch(r"[0-9]{1,10}", texto):
+        return None
+    numero = int(texto)
+    return str(numero) if numero <= 2_147_483_647 else None
+
+
 _IDENTIFICADOR_DE_CAMPO = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
 
 
@@ -219,6 +236,25 @@ def _mesmo_instante(lido: Any, enviado: Any) -> bool:
     return a == b
 
 
+def _inicio_confere(lido: Any, enviado: Any, criado_em: Any) -> bool:
+    """An elapsed start can only normalize to the object's own creation time.
+
+    Graph clamps an already elapsed requested start to created_time. Exact
+    future schedules still must match, as must end_time. The object remains
+    explicitly PAUSED, checked independently by the caller.
+    """
+    if _mesmo_instante(lido, enviado):
+        return True
+    if not _mesmo_instante(lido, criado_em) or criado_em in (None, ""):
+        return False
+    try:
+        requested = datetime.fromisoformat(str(enviado).replace("Z", "+00:00"))
+        created = datetime.fromisoformat(str(criado_em).replace("Z", "+00:00"))
+        return requested.tzinfo is not None and created.tzinfo is not None and requested < created
+    except (ValueError, TypeError):
+        return False
+
+
 #: Máscara de campos por tipo de objeto, usada tanto no read-back da saga
 #: quanto na reconciliação por leitura. Uma máscara só: se a reconciliação
 #: lesse menos campos que o read-back, ela poderia "confirmar" um objeto que a
@@ -231,17 +267,13 @@ def _mesmo_instante(lido: Any, enviado: Any) -> bool:
 #: Marketing API, e a consequência está codificada em `reconciliacao.py`: um
 #: criativo nunca é fechado por leitura.
 CAMPOS_DE_LEITURA: Mapping[str, str] = {
-    "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info,created_time",
+    "campaign": "id,account_id,name,objective,buying_type,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,special_ad_categories,is_adset_budget_sharing_enabled,advantage_state_info,created_time",
     "adset": "id,account_id,campaign_id,name,status,configured_status,effective_status,daily_budget,lifetime_budget,bid_strategy,billing_event,optimization_goal,destination_type,start_time,end_time,targeting,promoted_object,attribution_spec,created_time",
-    # ⚠️ `destination_spec` SAIU da máscara, e a razão é a mesma que o tirou
-    # do payload: sua legibilidade não está estabelecida
-    # (`OFFICIAL-META-API-EVIDENCE.json`, fonte META-SHOP,
-    # `RESEARCH_REQUIRED`). Um campo inexistente no `fields` faz a Graph
-    # recusar a leitura INTEIRA — e o read-back de todo criativo passaria
-    # a falhar por um campo que ninguém provou que existe. A garantia de
-    # destino é dada antes do despacho, por `shop_redirect_proof`.
+    # destination_spec is now supported by the official v26 changelog and SDK
+    # evidence read on 2026-09-09. New snapshots require exact opt-out readback;
+    # old snapshots retain the historical interpretation of a missing field.
     #
-    # ⚠️ `effective_status` SAIU pelo MESMO motivo, e o motivo agora tem duas
+    # ⚠️ `effective_status` continua OMITIDO, com duas
     # fontes oficiais concordantes, lidas em 07/09/2026:
     #
     #   1. O catálogo gerado do SDK v26.0.0 enumera `status`,
@@ -256,8 +288,8 @@ CAMPOS_DE_LEITURA: Mapping[str, str] = {
     #      `effective_status`.
     #      https://developers.facebook.com/docs/marketing-api/reference/ad-creative/
     #
-    # Pedir um campo que o catálogo não tem arriscava a MESMA falha que a
-    # remoção de `destination_spec` evita: a Graph recusa a leitura inteira por
+    # Pedir um campo que o catálogo não tem arrisca uma falha na leitura:
+    # a Graph pode recusar a leitura inteira por
     # um campo inválido, e o read-back de todo criativo passaria a falhar —
     # depois de o objeto já ter nascido. Ausência no catálogo é sinal de risco,
     # não prova de recusa remota; por isso o campo é OMITIDO do pedido e seu
@@ -266,8 +298,8 @@ CAMPOS_DE_LEITURA: Mapping[str, str] = {
     # Os estados de AdCreative são de BIBLIOTECA (ACTIVE/IN_PROCESS/
     # WITH_ISSUES/DELETED), não de veiculação. Um criativo não é pausável, e
     # `PAUSED` nunca foi esperado dele.
-    "creative": "id,account_id,name,status,object_story_spec,url_tags,asset_feed_spec,degrees_of_freedom_spec",
-    "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,created_time",
+    "creative": "id,account_id,name,status,object_story_spec,object_story_id,effective_object_story_id,url_tags,asset_feed_spec,degrees_of_freedom_spec,destination_spec",
+    "ad": "id,account_id,campaign_id,adset_id,name,status,configured_status,effective_status,creative,creative_asset_groups_spec,created_time",
 }
 
 
@@ -293,6 +325,8 @@ def _evidencia_do_readback(
     sensível, e essa recusa é a rede de segurança, não a primeira defesa.
     """
     leitura = dados if isinstance(dados, Mapping) else {}
+    destino = leitura.get("destination_spec")
+    tipo_destino = destino.get("destination_type") if isinstance(destino, Mapping) else None
     return {
         "matched": bool(conferido),
         "tipo": tipo,
@@ -304,6 +338,11 @@ def _evidencia_do_readback(
         "objective": str(leitura.get("objective") or "")[:60] or None,
         "optimization_goal": str(leitura.get("optimization_goal") or "")[:60] or None,
         "advantage_audience_lido": _advantage_audience(leitura.get("targeting")),
+        "destination_type_lido": (
+            tipo_destino if tipo_destino in {
+                DESTINATION_TYPE_WEBSITE_OPT_OUT, "WEBSITE_AND_SHOP", "WEBSITE"
+            } else None
+        ) if isinstance(tipo_destino, str) else None,
     }
 
 
@@ -454,8 +493,24 @@ class ExecutorMetaPausado:
                         "META_NOT_PAUSED", f"{operacao.chave} nao esta PAUSED no payload aprovado")
                 validacao = dict(payload)
                 validacao["execution_options"] = ["validate_only"]
-                validado = await self._post(
-                    operacao, validacao, segredo, exige_id=False)
+                try:
+                    validado = await self._post(
+                        operacao, validacao, segredo, exige_id=False)
+                except httpx.TimeoutException:
+                    # No claim or create POST exists for this step yet. Keep
+                    # earlier durable IDs, but do not invent an ambiguous step
+                    # that reconciliation can never find. A retry still passes
+                    # the same approval and ledger; completed steps are reused.
+                    raise ErroRemotoMeta(
+                        "META_VALIDATE_TIMEOUT",
+                        f"a validacao de {operacao.chave} nao respondeu a tempo; "
+                        "a criacao deste passo nao foi enviada. Retome a mesma "
+                        "operacao; objetos anteriores permanecem PAUSED",
+                        retryable=True,
+                        objetos_criados=tuple(ids),
+                        detalhe_provedor={"objeto": operacao.chave},
+                        exige_reconciliacao=False,
+                    ) from None
                 if validado.get("success") is not True:
                     raise ErroRemotoMeta(
                         "META_REMOTE_RESULT_AMBIGUOUS",
@@ -562,7 +617,8 @@ class ExecutorMetaPausado:
                 dados: Mapping[str, Any] | None = None
                 try:
                     dados = await self._read_one(
-                        operacao.tipo_objeto, ids[operacao.chave], segredo)
+                        operacao.tipo_objeto, ids[operacao.chave], segredo,
+                        regulatory="regional_regulation_identities" in payload)
                     self._validar_read_back(
                         operacao.tipo_objeto,
                         dados,
@@ -824,10 +880,20 @@ class ExecutorMetaPausado:
             # HTML, pode ter chegado depois do encaminhamento: fica ambíguo.
             recusa_da_meta = isinstance(erro, Mapping) and (
                 erro.get("code") is not None or erro.get("message") is not None)
-            codigo = str(erro.get("code") or resposta.status_code) if isinstance(erro, Mapping) else str(resposta.status_code)
-            subcodigo = _texto_seguro_do_provedor(
+            codigo = (_codigo_numerico_do_provedor(
+                erro.get("code") if isinstance(erro, Mapping) else None)
+                or str(resposta.status_code))
+            subcodigo = _codigo_numerico_do_provedor(
                 erro.get("error_subcode") if isinstance(erro, Mapping) else None)
             explicacoes = []
+            anunciante_ausente = codigo == "100" and subcodigo == "3858634"
+            if anunciante_ausente:
+                explicacoes.append(
+                    "A Meta exige um anunciante verificado para as localizações "
+                    "deste conjunto. Confira a identidade verificada no "
+                    "Gerenciador de Anúncios e vincule o anunciante exigido ao "
+                    "conjunto antes de validar novamente. Não alteramos o público "
+                    "nem preenchemos uma identidade automaticamente.")
             if isinstance(erro, Mapping):
                 for campo in ("error_user_title", "error_user_msg", "message"):
                     valor = _texto_seguro_do_provedor(erro.get(campo))
@@ -835,7 +901,8 @@ class ExecutorMetaPausado:
                         explicacoes.append(valor)
             complemento = f": {' — '.join(explicacoes)}" if explicacoes else ""
             raise ErroRemotoMeta(
-                "META_REMOTE_VALIDATION_FAILED" if validacao else "META_REMOTE_CREATE_FAILED",
+                ("META_VERIFIED_ADVERTISER_REQUIRED" if anunciante_ausente else
+                 "META_REMOTE_VALIDATION_FAILED" if validacao else "META_REMOTE_CREATE_FAILED"),
                 f"a Meta recusou {operacao.chave} (código {codigo}{f'/{subcodigo}' if subcodigo else ''}){complemento}",
                 retryable=validacao and resposta.status_code >= 500,
                 criacao_descartada=(
@@ -867,6 +934,7 @@ class ExecutorMetaPausado:
 
     async def _read_one(
         self, nome: str, identificador: str, segredo: SegredoEfemero,
+        *, regulatory: bool = False,
     ) -> Mapping[str, Any]:
         campos = CAMPOS_DE_LEITURA
         if nome not in campos:
@@ -874,7 +942,7 @@ class ExecutorMetaPausado:
         try:
             resposta = await self._cliente.get(
                 f"{self._base}/{self._versao}/{identificador}",
-                params={"fields": campos[nome]},
+                params={"fields": campos[nome] + (",regional_regulated_categories,regional_regulation_identities" if regulatory and nome == "adset" else "")},
                 headers={"Authorization": segredo.cabecalho_bearer()},
             )
         except httpx.HTTPError as exc:
@@ -921,6 +989,39 @@ class ExecutorMetaPausado:
             divergiu(campo)
             raise AssertionError  # pragma: no cover - divergiu sempre levanta
 
+        def verba(campo: str) -> None:
+            esperado = payload.get(campo)
+            lido = dados.get(campo)
+            # Graph serializes minor units as digit strings. Absence of a
+            # budget at this level is meaningful (CBO); never invent one.
+            if esperado is None:
+                if lido not in (None, 0, "0"):
+                    divergiu(campo)
+            elif isinstance(lido, bool) or str(lido) != str(esperado):
+                divergiu(campo)
+
+        def projeção_confere(lido: Any, esperado: Any) -> bool:
+            # Provider objects may add names beside IDs and reorder lists.
+            # Every requested key and list member must still be accounted for.
+            if isinstance(esperado, Mapping):
+                return isinstance(lido, Mapping) and all(
+                    k in lido and projeção_confere(lido[k], v)
+                    for k, v in esperado.items())
+            if isinstance(esperado, (list, tuple)):
+                if not isinstance(lido, (list, tuple)) or len(lido) != len(esperado):
+                    return False
+                restantes = list(lido)
+                for item in esperado:
+                    indice = next((i for i, v in enumerate(restantes)
+                                   if projeção_confere(v, item)), None)
+                    if indice is None:
+                        return False
+                    restantes.pop(indice)
+                return True
+            if isinstance(esperado, bool):
+                return lido is esperado
+            return str(lido) == str(esperado)
+
         if str(dados.get("id") or "") != identificador:
             divergiu("id")
         # O objeto precisa pertencer à mesma conta que o plano resolveu, e a
@@ -934,7 +1035,17 @@ class ExecutorMetaPausado:
             if estado != "PAUSED":
                 divergiu("status")
             efetivo = dados.get("effective_status")
-            if efetivo not in {None, "PAUSED", "PENDING_REVIEW", "IN_PROCESS"}:
+            # Delivery can be paused by a parent as well as by this object's
+            # own configured_status. Meta returns CAMPAIGN_PAUSED for AdSets
+            # and CAMPAIGN_PAUSED/ADSET_PAUSED for Ads. These do not contradict
+            # the explicit PAUSED check above; rejecting them strands the saga
+            # immediately after creating its first AdSet.
+            estados_efetivos = {None, "PAUSED", "PENDING_REVIEW", "IN_PROCESS"}
+            if nome in {"adset", "ad"}:
+                estados_efetivos.add("CAMPAIGN_PAUSED")
+            if nome == "ad":
+                estados_efetivos.add("ADSET_PAUSED")
+            if efetivo not in estados_efetivos:
                 divergiu("effective_status")
         if nome == "creative":
             if "url_tags" in payload and sorted(parse_qsl(str(dados.get("url_tags") or ""), keep_blank_values=True)) != sorted(parse_qsl(str(payload["url_tags"]), keep_blank_values=True)):
@@ -954,9 +1065,11 @@ class ExecutorMetaPausado:
         if str(dados.get("name") or "") != str(payload.get("name") or ""):
             divergiu("name")
         if nome == "campaign":
-            for campo in ("objective", "buying_type"):
+            for campo in ("objective", "buying_type", "bid_strategy"):
                 if payload.get(campo) is not None and dados.get(campo) != payload.get(campo):
                     divergiu(campo)
+            for campo in ("daily_budget", "lifetime_budget"):
+                verba(campo)
             categorias = tuple(dados.get("special_ad_categories") or ())
             if categorias != tuple(payload.get("special_ad_categories") or ()):
                 divergiu("special_ad_categories")
@@ -965,7 +1078,7 @@ class ExecutorMetaPausado:
             ):
                 divergiu("is_adset_budget_sharing_enabled")
         elif nome == "adset":
-            if str(dados.get("campaign_id") or "") != ids.get("campaign"):
+            if str(dados.get("campaign_id") or "") != str(payload.get("campaign_id") or ids.get("campaign")):
                 divergiu("campaign_id")
             for campo in (
                 "billing_event", "optimization_goal", "bid_strategy", "destination_type",
@@ -974,15 +1087,26 @@ class ExecutorMetaPausado:
                 # pertence a esta receita e a Meta pode devolver o dela.
                 if campo in payload and dados.get(campo) != payload.get(campo):
                     divergiu(campo)
-            try:
-                verba_lida = int(str(dados.get("daily_budget")))
-            except (TypeError, ValueError):
-                divergiu("daily_budget")
-                return
-            if verba_lida != payload.get("daily_budget"):
-                divergiu("daily_budget")
-            if not _mesmo_instante(dados.get("start_time"), payload.get("start_time")):
+            for campo in ("daily_budget", "lifetime_budget"):
+                verba(campo)
+            if not _inicio_confere(dados.get("start_time"), payload.get("start_time"), dados.get("created_time")):
                 divergiu("start_time")
+            if "end_time" in payload and not _mesmo_instante(dados.get("end_time"), payload["end_time"]):
+                divergiu("end_time")
+            for campo in ("promoted_object", "attribution_spec", "regional_regulation_identities"):
+                if campo in payload and not projeção_confere(dados.get(campo), payload[campo]):
+                    divergiu(campo)
+            if "regional_regulated_categories" in payload:
+                categories = dados.get("regional_regulated_categories")
+                expected_categories = payload["regional_regulated_categories"]
+                # The live API appends this verification marker to a Brazil
+                # beneficiary/payer declaration. Preserve all requested legal
+                # categories and identities; only this observed additive
+                # marker may differ from the approved request.
+                if not isinstance(categories, (list, tuple)) or not all(isinstance(v, str) for v in categories):
+                    divergiu("regional_regulated_categories")
+                if not set(expected_categories).issubset(categories) or set(categories) - set(expected_categories) - {"VOLUNTARY_VERIFICATION"}:
+                    divergiu("regional_regulated_categories")
             alvo_lido = dados.get("targeting")
             alvo_enviado = payload.get("targeting")
             if isinstance(alvo_enviado, Mapping):
@@ -1000,6 +1124,10 @@ class ExecutorMetaPausado:
                 plataformas = tuple(alvo_lido.get("publisher_platforms") or ())
                 if plataformas != tuple(alvo_enviado.get("publisher_platforms") or ()):
                     divergiu("targeting.publisher_platforms")
+                for campo in ("geo_locations", "excluded_geo_locations", "locales",
+                              "custom_audiences", "excluded_custom_audiences", "flexible_spec"):
+                    if campo in alvo_enviado and not projeção_confere(alvo_lido.get(campo), alvo_enviado[campo]):
+                        divergiu(f"targeting.{campo}")
                 # Advantage+ Audience: confere quando a Meta devolve o campo.
                 # A leitura pode omiti-lo, e nesse caso o recibo declara que a
                 # escolha não foi confirmada em vez de fingir confirmação.
@@ -1008,8 +1136,26 @@ class ExecutorMetaPausado:
                 if lido is not None and esperado is not None and lido != esperado:
                     divergiu("targeting.targeting_automation.advantage_audience")
         elif nome == "ad":
-            if str(dados.get("adset_id") or "") != ids.get("adset"):
+            expected_groups = payload.get("creative_asset_groups_spec")
+            actual_groups = dados.get("creative_asset_groups_spec")
+            if expected_groups is not None:
+                # Provider-added group_uuid metadata is allowed; missing or
+                # additional image/text/CTA groups are not the approved plan.
+                if not projeção_confere(actual_groups, expected_groups):
+                    divergiu("creative_asset_groups_spec")
+                if isinstance(actual_groups, Mapping) and any(
+                    isinstance(group, Mapping) and group.get("videos")
+                    for group in actual_groups.get("groups", ())
+                ):
+                    divergiu("creative_asset_groups_spec.videos")
+            elif actual_groups:
+                divergiu("creative_asset_groups_spec")
+            # V2 parents are adset:<key>, not a single global ids['adset'].
+            # The payload was resolved against the approved dependency graph.
+            if str(dados.get("adset_id") or "") != str(payload.get("adset_id") or ids.get("adset")):
                 divergiu("adset_id")
+            if "campaign" in ids and str(dados.get("campaign_id") or "") != ids["campaign"]:
+                divergiu("campaign_id")
             criativo = dados.get("creative")
             creative_id = criativo.get("id") if isinstance(criativo, Mapping) else None
             criativo_esperado = payload.get("creative")
@@ -1020,29 +1166,28 @@ class ExecutorMetaPausado:
             if str(creative_id or "") != str(esperado or ""):
                 divergiu("creative.id")
         if nome == "creative":
+            if "object_story_id" in payload:
+                if str(dados.get("effective_object_story_id") or dados.get("object_story_id") or "") != str(payload["object_story_id"]):
+                    divergiu("object_story_id")
+            # Every new own website creative carries the official v26 opt-out.
+            # Missing/mutated provider data is not confirmation. Legacy frozen
+            # snapshots without this control keep their original read contract.
+            if payload.get("destination_spec") == {"destination_type": DESTINATION_TYPE_WEBSITE_OPT_OUT}:
+                destino = dados.get("destination_spec")
+                if not isinstance(destino, Mapping) or destino.get("destination_type") != DESTINATION_TYPE_WEBSITE_OPT_OUT:
+                    divergiu("destination_spec.destination_type")
             # Nunca emitimos asset_feed_spec. Se a Meta devolver um, o objeto
             # criado não é o criativo estático que foi aprovado.
             if "asset_feed_spec" not in payload and dados.get("asset_feed_spec"):
                 divergiu("asset_feed_spec")
-            # ⚠️ NADA de `destination_spec` é comparado, porque nada dele é
-            # enviado. Comparar um campo ausente dos dois lados só produziria a
-            # ilusão de conferência.
-            #
-            # ⚠️ E ESTA VERIFICAÇÃO NÃO É UMA GARANTIA — a revisão adversarial
-            # cobrou a distinção e ela é justa. O campo não está na máscara de
-            # leitura (sua legibilidade é `RESEARCH_REQUIRED`), então a Meta
-            # normalmente NÃO o devolve, e a ausência não é recusada. Quem
-            # garante o destino é o portão ANTES do despacho
-            # (`shop_redirect_proof`), não esta linha.
-            #
-            # Ela existe porque é barata e fecha um caso real: se a Meta
-            # devolver o campo por conta própria, um destino de Shop no objeto
-            # que o operador aprovou é divergência e para a saga. Ganho quando
-            # aparece; nunca uma prova de que não apareceu.
+            # Também rejeita Shop explicitamente retornada em snapshots
+            # legados, cujo contrato não exigia destination_spec. Para novos
+            # snapshots, a comparação exata acima é obrigatória. O valor de
+            # OPT_OUT contém SHOP no nome mas proíbe esse redirecionamento.
             destino_lido = dados.get("destination_spec")
             if isinstance(destino_lido, Mapping):
                 tipo_lido = str(destino_lido.get("destination_type") or "").upper()
-                if tipo_lido and "SHOP" in tipo_lido:
+                if tipo_lido and "SHOP" in tipo_lido and tipo_lido != DESTINATION_TYPE_WEBSITE_OPT_OUT:
                     divergiu("destination_spec.destination_type")
             historia_lida = dados.get("object_story_spec")
             historia_enviada = payload.get("object_story_spec")

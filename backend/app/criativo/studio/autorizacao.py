@@ -82,6 +82,8 @@ def assinatura_do_plano(
     custo_estimado_usd: float | None,
     anexo_sha256: str | None,
     modo_de_composicao: str | None,
+    creative_specs: list[dict[str, Any]] | None = None,
+    geracao_ref: str | None = None,
 ) -> str:
     """O sha256 do conteúdo do plano. Mesmo plano, mesma assinatura.
 
@@ -113,6 +115,10 @@ def assinatura_do_plano(
         "anexo_sha256": anexo_sha256 or "",
         "modo_de_composicao": modo_de_composicao or "",
     }
+    if creative_specs:
+        material["creative_specs"] = sorted(creative_specs, key=lambda s: (s["creative_ref"], s["formato"]))
+    if geracao_ref:
+        material["geracao_ref"] = geracao_ref
     cru = json.dumps(material, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(cru.encode("utf-8")).hexdigest()
 

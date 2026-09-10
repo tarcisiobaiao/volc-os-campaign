@@ -34,6 +34,7 @@ GAM vêm de vínculos persistidos; moeda e fuso são confirmados nas duas pontas
 from __future__ import annotations
 
 import json
+import asyncio
 import os
 import re
 from datetime import date, timedelta
@@ -43,6 +44,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from . import atribuicao as atr
 from . import dominio as dom
+from .desempenho_anuncios import indisponivel, ler_desempenho_anuncios
 
 #: Teto de conjuntos por campanha numa única leitura financeira.
 #:
@@ -114,6 +116,7 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
                    "revenue": "GAM · utm_campaign_value = adset_id",
                    "rollup": "campanha = SOMA dos conjuntos filhos"},
         "impedimentos": [],
+        **indisponivel("ANUNCIOS_ESCOPO_AINDA_NAO_RESOLVIDO"),
     }
 
     def bloquear(codigo: str) -> dict:
@@ -182,6 +185,14 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
         vazio["estado"] = "SEM_CONJUNTOS_NO_READ_MODEL"
         return bloquear("CAMPANHA_SEM_CONJUNTOS_CONHECIDOS")
     vazio["conjuntos_conhecidos"] = len(conjuntos)
+    # Grão independente: não soma ao financeiro e sua indisponibilidade não
+    # derruba o total da campanha nem espalha receita do GAM pelos anúncios.
+    try:
+        vazio.update(await asyncio.wait_for(ler_desempenho_anuncios(
+            repo, contexto, campanha["meta_campaign_id"], inicio, fim), timeout=20.0))
+    except Exception:
+        # Erro da fonte secundária não expõe IDs/URLs e não quebra a primária.
+        vazio.update(indisponivel("ANUNCIOS_LEITURA_INDISPONIVEL"))
 
     # -----------------------------------------------------------------------
     # Gasto por conjunto/dia. Uma única semântica de relatório: não somar

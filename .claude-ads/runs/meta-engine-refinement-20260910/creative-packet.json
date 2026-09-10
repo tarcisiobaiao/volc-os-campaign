@@ -1,0 +1,9 @@
+{
+  "scope": "Meta creative interoperability: flexible-image compilation, existing-post discovery and safe social-proof reuse. Source-only review; no credentials, campaign data or external writes.",
+  "question": "Find concrete defects and propose a minimal backward-compatible correction with hermetic tests. The V2 compiler writes creative_asset_groups_spec on the AD, whereas existing-post discovery reads only creative.asset_feed_spec. Can a previously generated flexible ad be misclassified as a reusable static post, silently losing its variants? Also inspect optional descriptions, malformed provider object_story_spec, pagination and deduplication when several ads share one post ID. Preserve genuine static object_story_id reuse/social proof, gpt-image-2 medium, owner/account/page boundaries, and never claim that post-ID reuse preserves an entire flexible asset group. Distinguish documented API capabilities from assumptions; search official Meta documentation for field placement if needed. Do not suggest live writes or broad relaxations.",
+  "excerpts": [
+    {"path": "backend/app/trafego/meta_execucao/posts_existentes.py", "start": 62, "end": 195},
+    {"path": "backend/app/trafego/meta_execucao/compilador.py", "start": 724, "end": 825},
+    {"path": "backend/app/trafego/meta_execucao/contrato_v2.py", "start": 713, "end": 730}
+  ]
+}

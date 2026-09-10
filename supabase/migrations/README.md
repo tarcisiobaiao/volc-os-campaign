@@ -2,6 +2,25 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Vínculo de pack por rascunho e conjunto — 08/09/2026
+
+`20260908230430_meta_creative_draft_pack_selection.sql` foi **aplicada e
+relida** no Supabase oficial (`database.agenciavolc.com.br`). SHA256:
+`05333075a699d3181b3629d004f4ca8670146da1c436cb24132011d0b4aed8f6`.
+
+A tabela `trafego_meta_rascunho_pack` materializa uma escolha por
+`owner_id + draft_ref + adset_key`, guarda o manifesto imutável do pack e usa
+versão otimista para impedir sobrescrita silenciosa entre abas. O vínculo é
+somente um rascunho de mídia: não autoriza lançamento, ativação ou mutação na
+Meta. RLS está habilitada e forçada, não há policies, `anon` e `authenticated`
+não possuem privilégios e somente `service_role` pode operar a tabela pelo
+backend autenticado.
+
+O postflight confirmou a FK para `criativo_reuso_pack`, a unicidade da
+identidade, todas as constraints, zero linhas iniciais e recarga do schema do
+PostgREST. Nenhuma outra migration foi aplicada e nenhuma linha de negócio foi
+criada durante a prova.
+
 ## Packs reutilizáveis — 08/09/2026
 
 `20260908205124_creative_reuse_packs.sql` aplicada no Supabase oficial, com
@@ -1248,3 +1267,32 @@ quantos fatos e recibos morreriam. Para seguir é preciso declarar na sessão
 `SET volc.rollback_v12_04_apagar_fatos = 'sim';`. E ele **não desfaz** o que a
 projeção escreveu na legada — o valor anterior não foi guardado, e inventar um
 seria pior do que declarar a lacuna.
+# Aplicação oficial adicional — 08/09/2026, Meta V2 e rascunhos
+
+Aplicadas exclusivamente em `https://database.agenciavolc.com.br`, mediante autorização do operador:
+
+- `20260908234824_meta_v2_approval_budget_manifest.sql` — SHA256 `ec81aaf6e3aab4476973d0146593f389a293a2d8653a11bd6d2b97e7f6c33f0a`.
+- `20260909000758_meta_campaign_draft_persistence.sql` — SHA256 `5e709189a997a304ff68c6a2eb634481279d434956dca4b7e02cba5a9e919cb0`.
+
+Backup de schema, COMMIT e RPC roundtrips oficiais com fixtures/Rollback comprovados. Executor: Codex, mesma árvore operacional. Evidência e limites: [OFFICIAL-FOLLOWUP](../../docs/closure/meta-pack-v2-sprint-20260908/OFFICIAL-FOLLOWUP.md). Isso não autoriza outra migration nem atesta campanha Meta lançada.
+
+## Aplicação oficial — 10/09/2026, roteamento GAM Google/Meta por grão
+
+Aplicadas no Supabase operacional `database.agenciavolc.com.br`, em ordem:
+
+1. `v15_02_meta_ads_insights.sql`;
+2. `20260907210000_meta_read_model_consistency.sql`;
+3. `20260908000000_meta_insights_escopo.sql`;
+4. `20260908120000_meta_financeiro_conjunto_dia.sql`;
+5. `20260910143000_gam_attribution_grain_router.sql`.
+
+O backup anterior ao DDL foi gravado em
+`/root/backups/pre_meta_gam_adset_grain_20260910_1345.dump` com SHA-256
+`b1a0c5f3d618c8ec1e676685e7bab460b9dc6330bde10110b956a2465b12b5a7`.
+
+Contrato: Google continua em campanha/dia; Meta resolve
+`gam_metrics.utm_campaign_value` como `adset_id`, atribui em conjunto/dia e soma
+os conjuntos para obter a campanha. Chave desconhecida ou ambígua não cria mais
+campanha sintética em `daily_campaign_metrics`. As 99 linhas legadas foram
+preservadas e as novas views não foram abertas ao browser. Provas e lacunas:
+[HANDOFF](../../docs/closure/meta-gam-adset-grain-20260910/HANDOFF.md).

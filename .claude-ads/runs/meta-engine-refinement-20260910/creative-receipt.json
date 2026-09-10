@@ -1,0 +1,90 @@
+{
+  "slice": "creative",
+  "created_at": "2026-09-10T11:29:58.581743+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested": true,
+  "files": [
+    {
+      "path": "backend/app/trafego/meta_execucao/posts_existentes.py",
+      "start": 62,
+      "end": 195,
+      "sha256": "286f344f45e20cbb49a657b25c5eb54c15cebfbcbd8f2a3da5c1a986ec00a62b"
+    },
+    {
+      "path": "backend/app/trafego/meta_execucao/compilador.py",
+      "start": 724,
+      "end": 825,
+      "sha256": "15e654a274e925bdba4dba2a9c029b21212a2c20d5a855e7b1a866711053a6ec"
+    },
+    {
+      "path": "backend/app/trafego/meta_execucao/contrato_v2.py",
+      "start": 713,
+      "end": 730,
+      "sha256": "4e0327a34701e07295a2f67fb250c4e1cd68dff1798195ea5ec87ea52bdd363f"
+    }
+  ],
+  "input_sha256": "8b3f6f0effff918695d9670316be3c31c25f700af82a207b0f17764174f0997d",
+  "status": "review_received",
+  "calls_attempted": 1,
+  "billing": "unknown unless provider supplies usage",
+  "modelVersion": "gemini-3.8-flash",
+  "model_verified": true,
+  "usage": {
+    "promptTokenCount": 23050,
+    "candidatesTokenCount": 1157,
+    "totalTokenCount": 45775,
+    "cachedContentTokenCount": 12331,
+    "thoughtsTokenCount": 21568
+  },
+  "grounding": {
+    "webSearchQueries": [],
+    "groundingChunks": [],
+    "groundingSupports": []
+  },
+  "grounding_verified": false,
+  "finishReason": "STOP",
+  "review": {
+    "status": "partial",
+    "checked": [
+      "backend/app/trafego/meta_execucao/posts_existentes.py",
+      "backend/app/trafego/meta_execucao/compilador.py",
+      "backend/app/trafego/meta_execucao/contrato_v2.py"
+    ],
+    "findings": [
+      {
+        "id": "flexible-ad-misclassified-static",
+        "file": "backend/app/trafego/meta_execucao/posts_existentes.py",
+        "line": 123,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "Flexible ads configured with creative_asset_groups_spec on the Ad are misclassified as reusable static posts, silently dropping asset variants upon reuse.",
+        "evidence": "compilador.py writes creative_asset_groups_spec to /act_{account}/ads while providing a fallback object_story_spec on the creative (lines 752-765, 810-819). In posts_existentes.py, catalogo requests only creative fields without creative_asset_groups_spec (line 157), and normalize checks only creative.get('asset_feed_spec') (line 123). Flexible ads fall through to the static parser (line 128), returning is_flexible=False and reuse_supported=True with a single image hash and copy. Furthermore, deduplication (lines 172-176) preserves the first record's flags when multiple ads share a post_id. When reused, compilador.py skips META_FLEXIBLE_POST_REUSE_UNPROVEN and builds a static ad referencing object_story_id, dropping all non-fallback variants without operator awareness.",
+        "proposal": "Include creative_asset_groups_spec in catalogo fields params. In normalize, check row.get('creative_asset_groups_spec') and extract asset variants into flexible preview metadata (is_flexible=True, reuse_supported=False, preview_only=True). In catalogo deduplication, escalate is_flexible=True and reuse_supported=False if any referencing ad row contains flexible specifications.",
+        "test": "Hermetic unit test: pass an ad row with creative_asset_groups_spec (containing multiple image hashes) and fallback object_story_spec into normalize; assert is_flexible=True, reuse_supported=False, and image_variants matches group count. Verify compilador raises META_FLEXIBLE_POST_REUSE_UNPROVEN when reusing this post. Verify deduplicating a static row and a flexible row sharing one post_id results in reuse_supported=False."
+      },
+      {
+        "id": "rejection-of-optional-descriptions",
+        "file": "backend/app/trafego/meta_execucao/posts_existentes.py",
+        "line": 141,
+        "severity": "medium",
+        "kind": "local_code",
+        "claim": "Existing-post discovery discards valid ads and posts that omit optional link descriptions, breaking social-proof reuse and flexible text pool parity.",
+        "evidence": "Line 141 enforces if not all(fields.values()): return None, where fields includes description: str(link.get('description') or ''). In Meta's Marketing API, link description is an optional attribute on link_data. compilador.py explicitly removes description when absent from flexible text pools (lines 762-765), and contrato_v2.py allows descriptions to be omitted in flexible blueprints (line 720). Consequently, any valid ad created without a description is discarded (returns None) during discovery, preventing legitimate static posts from being discovered or reused for social proof.",
+        "proposal": "Update normalize to require only mandatory fields ('message', 'headline'), treating 'description' as optional with fallback to empty string. In _normalize_flexible (line 89), remove 'or not descriptions' from the disqualifying check and default to an empty string preview when descriptions are absent.",
+        "test": "Hermetic unit test: invoke normalize with an ad row whose object_story_spec.link_data contains valid message, name, link, image_hash, and call_to_action, but lacks description; assert normalize returns a valid dict with description='' and reuse_supported=True instead of None."
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/ads/",
+        "claim": "In Meta Marketing API, the flexible ad format defines multiple creative assets via creative_asset_groups_spec on the Ad object, rather than asset_feed_spec on the child AdCreative."
+      }
+    ],
+    "limitations": [
+      "Fact: posts_existentes.py currently queries fields on creative without creative_asset_groups_spec on the ad row. Hypothesis: Provider ads created outside this system may continue using legacy dynamic creative via creative.asset_feed_spec, requiring both formats to be handled concurrently.",
+      "Fact: catalogo pagination breaks and raises META_EXISTING_POST_CATALOG_INCOMPLETE if cursors repeat or are absent while next exists. Hypothesis: Accounts exceeding 10,000 ads (100 iterations of limit 100) are intentionally blocked to avoid partial catalog states."
+    ],
+    "summary": "Flexible ads created with creative_asset_groups_spec at the ad level are misclassified as reusable static posts because discovery checks only creative.asset_feed_spec, silently discarding variant assets upon post-ID reuse. In addition, requiring descriptions on all posts causes valid ads lacking optional descriptions to be dropped from discovery."
+  }
+}

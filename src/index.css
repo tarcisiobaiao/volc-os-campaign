@@ -23,10 +23,10 @@
     --popover: 210 33% 99%;
     --popover-foreground: 220 22% 10%;
 
-    --primary: 189 81% 21%;             /* #0A5461 teal VOLC */
-    --primary-hover: 189 80% 16%;       /* #083F49 */
-    --primary-foreground: 190 40% 97%;
-    --primary-glow: 191 100% 50%;
+    --primary: 214 88% 34%;             /* #0D47A1 navy VOLC */
+    --primary-hover: 230 72% 32%;       /* navy → roxo */
+    --primary-foreground: 210 40% 99%;
+    --primary-glow: 271 76% 53%;
 
     --secondary: 214 16% 80%;           /* #C5CDD6 */
     --secondary-foreground: 220 22% 10%;
@@ -34,8 +34,8 @@
     --muted: 214 16% 80%;               /* poço / grupo — distinto do canvas */
     --muted-foreground: 214 16% 28%;    /* #3D4754 — 4,5:1+ no poço e no canvas */
 
-    --accent: 189 81% 21%;
-    --accent-foreground: 190 40% 97%;
+    --accent: 214 88% 34%;
+    --accent-foreground: 210 40% 99%;
 
     --demo: 34 60% 26%;                 /* #6B4A1B demonstração */
     --demo-foreground: 36 40% 96%;
@@ -136,18 +136,18 @@
     --border: 214 15% 65%;              /* #9AA6B4 — fio visível no canvas mineral */
     --input: 214 14% 42%;               /* 3:1+ contra card */
     --switch-off: 214 12% 72%;
-    --ring: 189 81% 28%;
+    --ring: 214 88% 38%;
 
     --radius: 0.625rem;
 
-    --sidebar-background: 214 16% 78%;  /* chrome mineral, abaixo do canvas */
+    --sidebar-background: 210 40% 99%;  /* papel off-white, acima do canvas mineral */
     --sidebar-foreground: 220 22% 12%;
-    --sidebar-primary: 189 81% 21%;
-    --sidebar-primary-foreground: 190 40% 97%;
-    --sidebar-accent: 214 18% 84%;
-    --sidebar-accent-foreground: 189 81% 18%;
-    --sidebar-border: 214 14% 62%;
-    --sidebar-ring: 189 81% 28%;
+    --sidebar-primary: 214 88% 34%;
+    --sidebar-primary-foreground: 210 40% 99%;
+    --sidebar-accent: 214 32% 96%;
+    --sidebar-accent-foreground: 214 88% 28%;
+    --sidebar-border: 214 16% 88%;
+    --sidebar-ring: 214 88% 38%;
 
     /* — Séries de gráfico (aurora → semânticas) — */
     --chart-1: 214 88% 42%;             /* deep-blue */
@@ -170,10 +170,10 @@
     --popover: 214 26% 16%;
     --popover-foreground: 214 30% 93%;
 
-    --primary: 186 51% 47%;             /* #3BA8B4 */
-    --primary-foreground: 190 40% 6%;
-    --primary-hover: 186 48% 54%;
-    --primary-glow: 191 80% 56%;
+    --primary: 214 72% 68%;             /* navy claro, não teal */
+    --primary-foreground: 220 40% 8%;
+    --primary-hover: 230 64% 72%;
+    --primary-glow: 271 70% 68%;
 
     --secondary: 216 20% 16%;
     --secondary-foreground: 214 30% 93%;
@@ -181,8 +181,8 @@
     --muted: 216 24% 10%;               /* #121821 */
     --muted-foreground: 214 16% 71%;    /* #A8B4C2 */
 
-    --accent: 186 51% 47%;
-    --accent-foreground: 190 40% 6%;
+    --accent: 214 72% 68%;
+    --accent-foreground: 220 40% 8%;
 
     --demo: 36 48% 62%;
     --demo-foreground: 30 30% 10%;
@@ -215,16 +215,16 @@
     --border: 214 20% 28%;              /* #3A4656 */
     --input: 214 18% 48%;
     --switch-off: 216 20% 22%;
-    --ring: 186 51% 56%;
+    --ring: 214 72% 72%;
 
-    --sidebar-background: 218 26% 9%;
-    --sidebar-foreground: 214 20% 86%;
-    --sidebar-primary: 186 51% 47%;
-    --sidebar-primary-foreground: 190 40% 6%;
-    --sidebar-accent: 216 22% 14%;
-    --sidebar-accent-foreground: 186 48% 62%;
-    --sidebar-border: 216 18% 18%;
-    --sidebar-ring: 186 51% 56%;
+    --sidebar-background: 218 24% 11%;
+    --sidebar-foreground: 214 20% 90%;
+    --sidebar-primary: 214 72% 68%;
+    --sidebar-primary-foreground: 220 40% 8%;
+    --sidebar-accent: 220 22% 16%;
+    --sidebar-accent-foreground: 214 80% 82%;
+    --sidebar-border: 216 18% 20%;
+    --sidebar-ring: 214 72% 72%;
 
     --chart-1: 191 92% 54%;
     --chart-2: 214 88% 60%;
@@ -274,6 +274,100 @@
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     transition-duration: 200ms;
   }
+
+/* Menu: papel off-white + item ativo no eixo navy/roxo do PRO. */
+.nav-item-volc {
+  position: relative;
+  overflow: hidden;
+  transition:
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-item-volc .nav-item-icon {
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nav-item-volc-active {
+  background: linear-gradient(90deg, hsl(214 88% 34% / 0.12), hsl(271 76% 53% / 0.08));
+  color: hsl(214 88% 26%);
+  box-shadow: inset 0 0 0 1px hsl(214 88% 34% / 0.10);
+}
+.nav-item-volc-active .nav-item-title {
+  color: hsl(214 88% 26%);
+}
+.nav-item-volc-rail {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--gradient-aurora);
+}
+.nav-search {
+  transition:
+    background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dark .nav-item-volc-active {
+  background: linear-gradient(90deg, hsl(214 88% 60% / 0.20), hsl(271 76% 62% / 0.14));
+  color: hsl(214 80% 86%);
+  box-shadow: inset 0 0 0 1px hsl(214 72% 68% / 0.18);
+}
+.dark .nav-item-volc-active .nav-item-title {
+  color: hsl(214 80% 86%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-item-volc:hover {
+    transform: translateX(3px);
+  }
+  .nav-item-volc:not(.nav-item-volc-active):hover {
+    background-color: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-accent-foreground));
+  }
+  .nav-item-volc-active:hover {
+    transform: translateX(2px);
+    background: linear-gradient(90deg, hsl(214 88% 34% / 0.16), hsl(271 76% 53% / 0.11));
+  }
+  .dark .nav-item-volc-active:hover {
+    background: linear-gradient(90deg, hsl(214 88% 60% / 0.26), hsl(271 76% 62% / 0.18));
+  }
+  .nav-item-volc:hover .nav-item-icon {
+    transform: scale(1.06);
+  }
+  .nav-search:hover {
+    transform: translateY(-1px);
+    border-color: hsl(var(--primary) / 0.45);
+    box-shadow: var(--shadow-card);
+  }
+  .btn-volc-primary:hover {
+    transform: translateY(-1px);
+  }
+}
+.nav-item-volc:focus-visible,
+.nav-search:focus-visible {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-item-volc,
+  .nav-item-volc .nav-item-icon,
+  .nav-search,
+  .btn-volc-primary {
+    transition: none;
+  }
+  .nav-item-volc:hover,
+  .nav-search:hover,
+  .btn-volc-primary:hover {
+    transform: none;
+  }
+}
+
 }
 
 @layer base {

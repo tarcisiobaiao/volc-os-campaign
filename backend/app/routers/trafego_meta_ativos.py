@@ -28,12 +28,14 @@ tivesse mandado junto — inclusive uma lista trocada por uma resposta tardia de
 outra conta.
 """
 from __future__ import annotations
+from app.trafego.meta.business_credentials import credencial_operacional
 
 from typing import Any
+from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.config import get_settings
 from app.criativo.armazenamento import armazenamento_padrao
@@ -44,12 +46,16 @@ from app.trafego.meta import dominio as dom
 from app.trafego.meta.adaptador import ErroDeLeituraMeta
 from app.trafego.meta.credenciais import SegredoEfemero
 from app.trafego.meta_execucao import capacidades as capacidades_meta
+from app.trafego.meta.draft_media_authority import check_draft_upload
 from app.trafego.meta_execucao.contrato import ErroDeNascimentoMeta
 from app.trafego.meta_execucao.registro_de_midia import (
     ErroDeRegistroDeMidia,
     LivroDeRegistroDeMidiaSupabase,
     PecaParaRegistrar,
     RegistradorDeMidiaMeta,
+)
+from app.trafego.meta_execucao.revisao_de_midia import (
+    capacidades_de_inspecao, exigir_revisoes, revisar_pecas,
 )
 
 
@@ -60,11 +66,28 @@ TIMEOUT_UPLOAD = 60.0
 SEM_CAMPO_DESCONHECIDO = ConfigDict(extra="forbid")
 
 
-class PedidoDeRegistroDeMidia(BaseModel):
+class RevisaoConfirmada(BaseModel):
     model_config = SEM_CAMPO_DESCONHECIDO
+    master_ref: str = Field(min_length=1, max_length=180)
+    content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
+
+class PedidoDeRevisaoDeMidia(BaseModel):
+    model_config = SEM_CAMPO_DESCONHECIDO
     account_ref: str = Field(min_length=8, max_length=180)
     master_refs: list[str] = Field(min_length=1, max_length=10)
+
+    @field_validator("master_refs")
+    @classmethod
+    def referencias_unicas(cls, refs: list[str]) -> list[str]:
+        if len(set(refs)) != len(refs):
+            raise ValueError("Selecione cada imagem apenas uma vez.")
+        return refs
+
+
+class PedidoDeRegistroDeMidia(PedidoDeRevisaoDeMidia):
+    draft_ref: UUID | None = None
+    revisoes: list[RevisaoConfirmada] = Field(default_factory=list, max_length=10)
     #: ⚠️ A confirmação carrega a CONTA e a CONTAGEM que o operador viu. O
     #: servidor confere as duas contra o que ele mesmo resolveu; divergência é
     #: recusa, não coerção. É a diferença entre "confirmo o que estou vendo" e
@@ -84,10 +107,66 @@ def _livro() -> LivroDeRegistroDeMidiaSupabase:
     return LivroDeRegistroDeMidiaSupabase(SupabaseService(get_settings()))
 
 
+def _repositorio():
+    from app.criativo.persistencia import Repositorio
+    ajustes = get_settings()
+    return Repositorio(ajustes.supabase_url, ajustes.supabase_service_role_key)
+
+
+async def _revisar_pecas(pecas, *, ator: str, account_ref: str):
+    return await revisar_pecas(pecas, repo=_repositorio(), ator=ator, account_ref=account_ref)
+
+
+async def _upload_authority(owner, account_ref, draft_ref=None, master_refs=None):
+    # Database resolves explicit per-draft OR owner/account operator grants.
+    # Both preserve the saved draft/selection context; never env-flag fallback.
+    if draft_ref is not None:
+        try:
+            return await check_draft_upload(owner, draft_ref, account_ref, master_refs or [])
+        except Exception:
+            raise HTTPException(503, detail={'codigo': 'META_DRAFT_UPLOAD_AUTHORITY_UNAVAILABLE',
+                'mensagem': 'Não foi possível conferir a autorização deste rascunho. Nenhuma imagem foi enviada.'}) from None
+    return {'allowed': capacidades_meta.upload_de_ativo_liberado(account_ref), 'scope': 'ACCOUNT'}
+
+
+async def _media_schema_ready() -> bool:
+    service = SupabaseService(get_settings())
+    if not service.enabled or service.base != 'https://database.agenciavolc.com.br':
+        return False
+    try:
+        result = await service.rpc('trafego_meta_media_schema_status', {})
+        return isinstance(result, dict) and result.get('ready') is True and result.get('schema_version') == 'media-ledger-v1'
+    except (httpx.HTTPError, ValueError):
+        return False
+
+
+@router.post("/revisar")
+async def revisar(
+    payload: PedidoDeRevisaoDeMidia, request: Request,
+    quem: Identidade = Depends(exigir_admin),
+) -> dict[str, Any]:
+    """Inspects owned bytes; does not access Meta or upload anything."""
+    _exigir_host_local(request)
+    try:
+        pecas = await _carregar_pecas(payload.master_refs, ator=quem.sub)
+        resultados = await _revisar_pecas(pecas, ator=quem.sub, account_ref=payload.account_ref)
+    except ErroDeNascimentoMeta as exc:
+        raise _erro(exc) from None
+    except Exception:
+        raise HTTPException(status_code=503, detail={
+            "codigo": "META_ASSET_REVIEW_UNAVAILABLE",
+            "mensagem": "Não foi possível revisar as imagens agora. Nenhuma peça foi enviada.",
+        }) from None
+    return {"ok": all(r["utilizavel"] for r in resultados),
+            "escopo": "FINAL_IMAGE_ONLY", "resultados": resultados}
+
+
 @router.get("/capacidades")
 async def capacidades_de_registro(
     request: Request,
     account_ref: str = "",
+    draft_ref: UUID | None = None,
+    master_refs: str = Query(default='', max_length=400),
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     """O que este servidor pode fazer com mídia NESTA conta.
@@ -97,21 +176,30 @@ async def capacidades_de_registro(
     nenhuma. Mesma regra de `destino_website_liberado`.
     """
     _exigir_host_local(request)
-    del quem
-    liberado = capacidades_meta.upload_de_ativo_liberado(account_ref or None)
+    authority = await _upload_authority(quem.sub, account_ref, draft_ref, master_refs.split(',') if master_refs else [])
+    autorizado = authority['allowed']
+    schema_ready = await _media_schema_ready() if autorizado else None
+    liberado = autorizado and schema_ready is True
     return {
         "ok": True,
         "api_version": "v26.0",
-        "registro_de_imagem": "ENABLED" if liberado else "BLOCKED_BY_SERVER_FLAG",
+        "registro_de_imagem": "ENABLED" if liberado else ("BLOCKED_SCHEMA_UNAVAILABLE" if autorizado else "BLOCKED_BY_SERVER_FLAG"),
+        "registro_duravel_disponivel": schema_ready,
+        "escopo_do_envio": authority.get('scope', 'DRAFT_SELECTED_MEDIA_ONLY'),
+        "autorizacao_expira_em": authority.get('expires_at'),
+        "codigo_da_autorizacao": authority.get('reason'),
         # ⚠️ Vídeo é uma CAPACIDADE DIFERENTE, não uma variação da imagem. Ele
         # exige upload em fases, espera de processamento e uma miniatura de
         # bytes sob nossa custódia — nada disso está provado aqui, e declarar
         # "disponível" faria a tela oferecer um caminho que não existe.
         "registro_de_video": "BLOCKED_UNTIL_VIDEO_PROCESSING_AND_THUMBNAIL_PROVEN",
         "cria_campanha": "NEVER_IN_THIS_ROUTE",
-        "motivo": None if liberado else capacidades_meta.motivo_do_upload_fechado(),
+        "motivo": None if liberado else ('O registro de mídia no banco oficial está indisponível. Suas aprovações estão salvas; o envio aguarda a conexão com esse registro.' if autorizado else ('Esta seleção ainda não tem autorização de envio vigente para este rascunho. Seu pack e suas aprovações continuam salvos.' if draft_ref else capacidades_meta.motivo_do_upload_fechado(account_ref))),
         "formatos_aceitos": ["image/jpeg", "image/png"],
         "limite_por_confirmacao": 10,
+        "inspecao_de_imagem": capacidades_de_inspecao(),
+        "aprovacao_final_exigida": True,
+        "finalidade_da_aprovacao": "meta_ads",
     }
 
 
@@ -143,10 +231,11 @@ async def registrar(
         })
 
     # ── 2. Esta conta foi liberada para receber patrimônio novo? ────────────
-    if not capacidades_meta.upload_de_ativo_liberado(payload.account_ref):
+    authority = await _upload_authority(quem.sub, payload.account_ref, payload.draft_ref, payload.master_refs)
+    if not authority['allowed']:
         raise HTTPException(status_code=409, detail={
             "codigo": "META_ASSET_UPLOAD_BLOCKED",
-            "mensagem": capacidades_meta.motivo_do_upload_fechado(payload.account_ref),
+            "mensagem": 'A seleção deste rascunho não tem autorização de envio vigente. Confira a seleção antes de enviar.' if payload.draft_ref else capacidades_meta.motivo_do_upload_fechado(payload.account_ref),
         })
 
     try:
@@ -156,40 +245,36 @@ async def registrar(
         # para qualquer coisa que o navegador quisesse mandar. O que o cliente
         # manda é uma REFERÊNCIA a algo que já está sob a nossa custódia.
         #
-        # ⚠️ CORREÇÃO DE UMA AFIRMAÇÃO FALSA (08/09/2026). Este comentário dizia
-        # que a peça "já passou pelo intake privado, pelo gate de política e
-        # pela inspeção de bytes". Para um master GERADO pelo Estúdio isso não
-        # é verdade: nem `criativos_agente.py` nem `criativo/execucao.py`
-        # importam `app.criativo.politica` — os únicos chamadores do gate são o
-        # caminho Google Ads (`trafego.py`) e o intake humano
-        # (`criativos_importacao.py`). Uma peça gerada chega aqui SEM avaliação
-        # de política de nenhum tipo, nem sequer bloqueada.
-        #
-        # O que esta rota DE FATO verifica, e é só isto:
-        #   1. host local (`_exigir_host_local`) e sessão admin;
-        #   2. conta confirmada e quantidade confirmada batem com o pedido;
-        #   3. a conta está liberada por `META_UPLOAD_ASSET_ENABLED`;
-        #   4. POSSE: master -> job -> `criativo_job.criado_por` é o ator;
-        #   5. os bytes lidos batem com o `content_sha256` gravado.
-        #
-        # O que ela NÃO verifica: avaliação de política e aprovação humana da
-        # peça. A garantia contra registrar patrimônio não-aprovado na conta do
-        # cliente é hoje ORGANIZACIONAL (host local + admin + flag por conta),
-        # não técnica. Está registrado em
-        # `docs/closure/meta-operations-v1-final-local/OPEN-RISKS.json`.
-        #
-        # Escrever aqui que o gate rodou seria pior do que a ausência do gate:
-        # a próxima pessoa confiaria na frase e pararia de procurar.
+        # Full-batch inspection happens before credentials, account lookup or
+        # upload. A browser receipt cannot authorize the operation: policy and
+        # active, version-bound human decisions are resolved anew here.
         pecas = await _carregar_pecas(payload.master_refs, ator=quem.sub)
+        if len({r.master_ref for r in payload.revisoes}) != len(payload.revisoes):
+            raise ErroDeRegistroDeMidia("META_ASSET_REVIEW_SET_MISMATCH", "Uma revisão foi repetida.")
+        revisoes = await _revisar_pecas(pecas, ator=quem.sub, account_ref=payload.account_ref)
+        exigir_revisoes(revisoes, {r.master_ref: r.content_sha256 for r in payload.revisoes})
 
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
+        # Inspection may take time. Recheck expiration/revocation and the current
+        # saved selection before credentials or any provider write.
+        authority = await _upload_authority(quem.sub, payload.account_ref, payload.draft_ref, payload.master_refs)
+        if not authority['allowed']:
+            raise ErroDeRegistroDeMidia('META_ASSET_UPLOAD_BLOCKED', 'A autorização ou a seleção mudou. Confira novamente antes de enviar.')
+
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
         conta_externa = await _conta_externa_da(payload.account_ref, segredo)
+
+        if payload.draft_ref is not None:
+            async def autorizar_ledger():
+                return (await _upload_authority(quem.sub, payload.account_ref, payload.draft_ref, payload.master_refs))['allowed']
+            livro = LivroDeRegistroDeMidiaSupabase(SupabaseService(get_settings()), autorizar_escrita=autorizar_ledger)
+        else:
+            livro = _livro()
 
         async with httpx.AsyncClient(
             timeout=TIMEOUT_UPLOAD, follow_redirects=False,
         ) as cliente:
             resultados = await RegistradorDeMidiaMeta(
-                cliente, _livro(),
+                cliente, livro,
             ).registrar_imagens(
                 conta_externa=conta_externa,
                 pecas=pecas,
@@ -223,11 +308,19 @@ async def registrar(
             "codigo": getattr(exc, "codigo", "META_READ_FAILED"),
             "mensagem": getattr(exc, "mensagem_segura", "a Meta não respondeu à leitura"),
         }) from None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail={
+            "codigo": "META_ASSET_REGISTRATION_UNAVAILABLE",
+            "mensagem": "Não foi possível concluir o registro agora. Confira o recibo antes de repetir.",
+        }) from None
 
     return {
         "ok": all(item.utilizavel for item in resultados),
         "efeito_externo": "UPLOAD_DE_MIDIA_NA_CONTA_ESCOLHIDA",
         "objetos_criados": 0,
+        "revisoes": revisoes,
         "resultados": [
             {
                 "master_ref": item.master_ref,
@@ -270,11 +363,9 @@ async def _carregar_pecas(
     # ⚠️ O repositório do Estúdio é construído com base+chave, e NÃO com o
     # SupabaseService — é a mesma forma usada por `criativos.py:110`. Manter
     # duas maneiras de abrir a mesma porta é como uma delas fica para trás.
-    from app.criativo.persistencia import Repositorio
-
-    ajustes = get_settings()
-    repositorio = Repositorio(
-        ajustes.supabase_url, ajustes.supabase_service_role_key)
+    if len(set(master_refs)) != len(master_refs):
+        raise ErroDeRegistroDeMidia("META_ASSET_DUPLICATE_MASTER", "Selecione cada peça uma única vez.")
+    repositorio = _repositorio()
     if not repositorio.habilitado:
         raise ErroDeRegistroDeMidia(
             "META_ASSET_CUSTODY_UNAVAILABLE",
@@ -336,7 +427,9 @@ async def _carregar_pecas(
             # ⚠️ Nome OPACO derivado do hash. O nome do arquivo do operador
             # pode conter dado pessoal, caminho interno ou marca de terceiro, e
             # ele viajaria para a biblioteca da conta do cliente.
-            nome=f"volc_{medido[:16]}",
+            # Meta uses the multipart filename extension when detecting type.
+            # Keep the opaque name, but preserve the actual stored MIME suffix.
+            nome=f"volc_{medido[:16]}{'.png' if mime == 'image/png' else '.jpg'}",
             mime_type=mime,
             conteudo=conteudo,
         ))

@@ -467,7 +467,7 @@ def test_mascara_de_creative_nao_pede_effective_status() -> None:
     from app.trafego.meta_execucao.executor import CAMPOS_DE_LEITURA
 
     assert "effective_status" not in CAMPOS_DE_LEITURA["creative"].split(",")
-    assert "destination_spec" not in CAMPOS_DE_LEITURA["creative"].split(",")
+    assert "destination_spec" in CAMPOS_DE_LEITURA["creative"].split(",")
     # `status` continua: é o estado de BIBLIOTECA do criativo, e é por ele que
     # um criativo inutilizável é recusado.
     assert "status" in CAMPOS_DE_LEITURA["creative"].split(",")

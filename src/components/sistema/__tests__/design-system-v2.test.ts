@@ -22,10 +22,15 @@ describe("Design System V2 tokens", () => {
     expect(css).not.toContain("--background: 210 20% 96%");
   });
 
-  it("ação primária é o teal proprietário, não o navy institucional", () => {
-    expect(css).toContain("--primary: 189 81% 21%");
-    expect(design).toContain("#0A5461");
-    expect(design).not.toContain("#0D47A1");
+  it("ação primária é navy VOLC, não teal", () => {
+    expect(css).toContain("--primary: 214 88% 34%");
+    expect(design).toContain("#0D47A1");
+    expect(css).not.toContain("--primary: 189 81% 21%");
+  });
+
+  it("sidebar clara é papel off-white acima do canvas mineral", () => {
+    expect(css).toContain("--sidebar-background: 210 40% 99%");
+    expect(css).toContain("--background: 214 16% 86%");
   });
 
   it("PRODUCT.md declara o contrato de verdade dos dados", () => {

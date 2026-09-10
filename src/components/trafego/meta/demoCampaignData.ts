@@ -1,5 +1,5 @@
 /** Pure, scoped demo adapter. No transport, credentials, storage or production fallback. */
-import type { ConjuntoFinanceiroMeta, ItemMetaReadModel, RazaoDaSomaMeta } from '@/lib/pautadorApi';
+import type { AnuncioFinanceiroMeta, ConjuntoFinanceiroMeta, ItemMetaReadModel, RazaoDaSomaMeta } from '@/lib/pautadorApi';
 import type { MetaCampaignDataApi } from './MetaCampaignData';
 import { META_DEMO, META_INSIGHTS_DEMO } from './modelo';
 
@@ -43,11 +43,17 @@ export function criarDadosDemoCampanha(id: string): MetaCampaignDataApi | null {
       nome: a.nome, status: status(a.status), effective_status: status(a.status),
       id_mascarado: 'DEMO · anúncio', observado_em: CARIMBO }));
   });
-  const criativos: ItemMetaReadModel[] = anuncios.map(a => ({
+  const criativos: ItemMetaReadModel[] = anuncios.slice(0, 3).map((a, i) => ({
     meta_creative_id: `demo-creative-${a.entity_ref}`, entity_ref: `demo-creative-${a.entity_ref}`,
     nome: `Peça demonstrativa · ${a.nome}`, object_story_id: null, observado_em: CARIMBO,
+    thumbnail_url: `/meta-demo/creative-${i + 1}.svg`,
+    body: ['Explore as etapas para voltar a estudar. Conteúdo ilustrativo para demonstrar o dashboard.',
+      'Organize o próximo passo com informações reunidas em um guia. Copy fictícia de demonstração.',
+      'Um novo capítulo começa com informação. Exemplo visual, não um anúncio publicado.'][i],
+    title: ['Seu próximo capítulo', 'Um passo de cada vez', 'Voltar a estudar'][i],
   }));
-  const vinculos = anuncios.map((a, i) => ({ meta_ad_id: a.meta_ad_id, meta_creative_id: criativos[i].meta_creative_id }));
+  // The last ad reuses the first creative to make reuse across adsets visible.
+  const vinculos = anuncios.map((a, i) => ({ meta_ad_id: a.meta_ad_id, meta_creative_id: criativos[i % criativos.length].meta_creative_id }));
   const linhas = leitura.serie.map(d => {
     const [dia, mes] = d.data.split('/');
     return { ...d, iso: `2026-${mes}-${dia}` };
@@ -110,6 +116,29 @@ export function criarDadosDemoCampanha(id: string): MetaCampaignDataApi | null {
         dias.length && filhos.length ? filhos.reduce((s,c) => s + Number(c[campo]),0) : null;
       const spend = total('spend'), revenue = total('revenue_brl'), impressions = total('impressions'), clicks = total('clicks');
       const profit = spend !== null && revenue !== null ? Math.round((revenue-spend)*100)/100 : null;
+      // Synthetic per-ad observations: unequal shares distinguish variants.
+      // This allocation exists ONLY in the fixture; real metrics come from ad Insights.
+      const ads: AnuncioFinanceiroMeta[] = filhos.flatMap(filho => {
+        const doConjunto = anuncios.filter(a => a.meta_adset_id === filho.adset_ref);
+        const distribuir = (valor: number, indice: number, peso: number) => {
+          if (doConjunto.length === 1) return valor;
+          const primeira = Math.floor(valor * peso);
+          const restantes = valor - primeira;
+          return indice === 0 ? primeira : Math.floor(restantes / (doConjunto.length - 1)) +
+            (indice === doConjunto.length - 1 ? restantes % (doConjunto.length - 1) : 0);
+        };
+        return doConjunto.map((ad, i) => {
+          const gasto = filho.spend === null ? null : distribuir(Math.round(Number(filho.spend) * 100), i, .64) / 100;
+          const views = filho.impressions === null ? null : distribuir(filho.impressions, i, .58);
+          const cliques = filho.clicks === null ? null : distribuir(filho.clicks, i, .72);
+          return { ad_ref: String(ad.entity_ref), adset_ref: filho.adset_ref,
+            spend: gasto, impressions: views, clicks: cliques,
+            ctr: views && cliques !== null ? cliques / views * 100 : null,
+            cpc: cliques && gasto !== null ? gasto / cliques : null,
+            cpm: views && gasto !== null ? gasto / views * 1000 : null,
+            source_freshness: dias.length ? CARIMBO : null, completo: dias.length > 0 };
+        });
+      });
       return { ok: true, estado: dias.length ? 'COM_SNAPSHOT' : 'SEM_SNAPSHOT', grao: 'adset',
         currency: 'BRL', timezone: FUSO, periodo_inicio: de, periodo_fim: ate,
         provisorio: false, frescor: CARIMBO, receita_frescor: CARIMBO,
@@ -118,6 +147,8 @@ export function criarDadosDemoCampanha(id: string): MetaCampaignDataApi | null {
         ctr: impressions && clicks !== null ? clicks/impressions*100 : null,
         cpc: clicks && spend !== null ? spend/clicks : null,
         spend_completo: dias.length > 0, revenue_completo: dias.length > 0, conjuntos: filhos,
+        anuncios: ads, anuncios_completo: dias.length > 0,
+        anuncios_impedimentos: dias.length ? [] : ['DEMO_PERIODO_SEM_DADOS'],
         razao: razao(filhos.length,dias.length), impedimentos: dias.length ? [] : ['DEMO_PERIODO_SEM_DADOS'],
       };
     },

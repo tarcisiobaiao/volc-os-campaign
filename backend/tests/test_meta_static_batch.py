@@ -325,6 +325,7 @@ async def test_executor_lote_resolve_cada_criativo_e_readback_por_tipo() -> None
         elif edge == "adcreatives":
             base.update({
                 "url_tags": dados["url_tags"],
+                "destination_spec": json.loads(dados["destination_spec"]),
                 "status": "ACTIVE", "effective_status": "ACTIVE",
                 # A leitura devolve a história inteira, como a Meta devolve.
                 "object_story_spec": json.loads(dados["object_story_spec"]),
@@ -332,6 +333,7 @@ async def test_executor_lote_resolve_cada_criativo_e_readback_por_tipo() -> None
         else:
             base.update({
                 "adset_id": dados["adset_id"],
+                "campaign_id": criados[dados["adset_id"]][1]["campaign_id"],
                 "creative": {"id": json.loads(dados["creative"])["creative_id"]},
                 "status": "PAUSED", "configured_status": "PAUSED", "effective_status": "PAUSED",
             })

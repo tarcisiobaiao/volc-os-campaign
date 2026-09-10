@@ -248,8 +248,8 @@ export function PainelDeEstrategia({
           const daDirecao = pecasPorGrupo.get(grupo.ref) ?? [];
           return (
             <section key={grupo.ref} className="studio-surface overflow-hidden p-0">
-              <div className="flex flex-wrap items-start justify-between gap-4 px-5 pt-5">
-                <div className="min-w-0 flex-1">
+              <div className="flex flex-col items-start justify-between gap-4 px-5 pt-5 sm:flex-row">
+                <div className="min-w-0 w-full flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display text-xl font-semibold">{grupo.nome}</h2>
                     {grupoAprovado ? (
@@ -287,7 +287,7 @@ export function PainelDeEstrategia({
               </div>
 
               {/* Cartões comparáveis, não um dossiê por peça. */}
-              <ul className="mt-5 grid gap-px border-t border-border bg-border sm:grid-cols-2">
+              <ul className={`mt-5 grid gap-4 border-t border-border bg-transparent p-4 ${daDirecao.length > 1 ? 'sm:grid-cols-2' : ''}`}>
                 {daDirecao.map((peca) => {
                   const caminho = caminhoDe('pecas', peca.ref);
                   const pecaAprovada = aprovados.has(caminho);
@@ -296,7 +296,7 @@ export function PainelDeEstrategia({
                   const copyAprovada = !!copy && aprovados.has(caminhoDe('copies_compartilhadas', copy.ref));
                   const aberta = abertas.has(peca.ref);
                   return (
-                    <li key={peca.ref} className="bg-card p-5">
+                    <li key={peca.ref} className="min-w-0 rounded-xl border border-border bg-card p-4">
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="min-w-0 text-base font-semibold leading-snug text-foreground">
                           {peca.hook}
@@ -314,6 +314,7 @@ export function PainelDeEstrategia({
                         )}
                       </div>
 
+                      {peca.big_idea && <div className="mt-3 max-w-prose"><p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Ideia central</p><p className="mt-1 text-sm leading-relaxed">{peca.big_idea.ideia_central}</p></div>}
                       <dl className="mt-3 space-y-1.5 text-xs">
                         <div className="flex gap-2">
                           <dt className="shrink-0 text-muted-foreground">Ângulo</dt>
@@ -327,11 +328,15 @@ export function PainelDeEstrategia({
                             {estado ? estado.nome : 'Não informado'}
                           </dd>
                         </div>
-                        <div className="flex gap-2">
-                          <dt className="shrink-0 text-muted-foreground">Na arte</dt>
-                          <dd className="min-w-0 text-foreground">{peca.headline_interna}</dd>
-                        </div>
                       </dl>
+
+                      <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-4" aria-label={`Texto previsto na imagem: ${peca.hook}`}>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Texto dentro da imagem</p>
+                        <p className="mt-2 whitespace-pre-wrap break-words font-display text-xl font-semibold leading-tight">{peca.headline_interna}</p>
+                        {peca.complemento_interno && <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed">{peca.complemento_interno}</p>}
+                        {peca.cta_visual && <p className="mt-3 inline-block rounded-md bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">{peca.cta_visual}</p>}
+                        <p className="mt-3 text-xs text-muted-foreground">Prévia do texto; a composição final será gerada na produção.</p>
+                      </div>
 
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         {pecaAprovada ? (
@@ -376,6 +381,11 @@ export function PainelDeEstrategia({
 
                       {aberta && (
                         <dl className="mt-4 space-y-3 border-t border-border pt-4 text-xs">
+                          {peca.big_idea && <>
+                            <div><dt className="text-muted-foreground">Pergunta que motiva o clique</dt><dd className="mt-0.5 text-foreground">{peca.big_idea.pergunta_latente}</dd></div>
+                            <div><dt className="text-muted-foreground">O que o clique promete entregar</dt><dd className="mt-0.5 text-foreground">{peca.big_idea.promessa_do_clique}</dd></div>
+                            <div><dt className="text-muted-foreground">Cena-chave</dt><dd className="mt-0.5 text-foreground">{peca.big_idea.cena_chave}</dd></div>
+                          </>}
                           <div>
                             <dt className="text-muted-foreground">Texto completo da arte</dt>
                             <dd className="mt-0.5 text-foreground">
@@ -388,6 +398,12 @@ export function PainelDeEstrategia({
                             <dt className="text-muted-foreground">Direção visual</dt>
                             <dd className="mt-0.5 text-foreground">{peca.direcao_visual}</dd>
                           </div>
+                          {peca.direcao_de_arte && <div><dt className="font-medium text-foreground">Como a peça será composta</dt><dd className="mt-2 space-y-2 text-muted-foreground">
+                            <p><span className="font-medium text-foreground">Composição: </span>{peca.direcao_de_arte.composicao}</p>
+                            <p><span className="font-medium text-foreground">Tipografia: </span>{peca.direcao_de_arte.tipografia}</p>
+                            <p><span className="font-medium text-foreground">Paleta e contraste: </span>{peca.direcao_de_arte.paleta_e_contraste}</p>
+                            <p><span className="font-medium text-foreground">Cena: </span>{peca.direcao_de_arte.cena}</p>
+                          </dd></div>}
                           {copy && (
                             <div>
                               <dt className="text-muted-foreground">

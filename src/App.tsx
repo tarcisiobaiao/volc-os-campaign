@@ -46,6 +46,7 @@ import MetaObjetoPage from "./pages/trafego/MetaObjetoPage";
 const AssistenteCriativoPage = lazy(
   () => import("./pages/trafego/AssistenteCriativoPage"),
 );
+const CreativePackPage = lazy(() => import('./pages/trafego/CreativePackPage'));
 const EstudioHomePage = lazy(() => import("./pages/criativos/EstudioHomePage"));
 const BriefingDeImagemPage = lazy(() => import("./pages/criativos/BriefingDeImagemPage"));
 const BriefingDeVideoPage = lazy(() => import("./pages/criativos/BriefingDeVideoPage"));
@@ -162,6 +163,8 @@ const App = () => (
                 de segmentos que `/:tipo/:objetoId`, e é justamente por isso que
                 ela precisa estar declarada primeiro para quem LÊ o arquivo. */}
             <Route path="/trafego/meta/assistente-criativo" element={<RotaDoAssistente><AssistenteCriativoPage /></RotaDoAssistente>} />
+            <Route path="/trafego/meta/packs" element={<RotaDoAssistente><CreativePackPage /></RotaDoAssistente>} />
+            <Route path="/trafego/meta/packs/:packId" element={<RotaDoAssistente><CreativePackPage /></RotaDoAssistente>} />
             <Route path="/trafego/meta/assistente-criativo/:projectRef" element={<RotaDoAssistente><AssistenteCriativoPage /></RotaDoAssistente>} />
             <Route path="/trafego/meta/:tipo/:objetoId" element={<ProtectedRoute><MetaObjetoPage /></ProtectedRoute>} />
             <Route path="/trafego/laboratorio/inteligencia/:scenarioId" element={<ProtectedRoute><DecisionIntelligenceLabPage /></ProtectedRoute>} />
@@ -191,7 +194,14 @@ const App = () => (
                 path="/admin/v6"
                 element={
                   <ProtectedRoute>
-                    <Suspense fallback={null}>
+                    <Suspense
+                      fallback={
+                        <div className="flex min-h-screen items-center justify-center" role="status">
+                          <LoadingSpinner />
+                          <span className="sr-only">Carregando o painel administrativo</span>
+                        </div>
+                      }
+                    >
                       <V6AdminPage />
                     </Suspense>
                   </ProtectedRoute>

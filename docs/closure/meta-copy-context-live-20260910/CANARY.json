@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-10",
+  "scope": "Real provider through copy POST with synthetic owner-scoped graph and repository fixtures",
+  "model": "gemini-3.8-flash",
+  "http_status": 200,
+  "paid_copy_calls": 1,
+  "elapsed_seconds_approx": 4.3,
+  "draft_reads": 2,
+  "context_mode": "SAVED_CREATIVE_CONTEXT",
+  "sources": ["BRIEFING", "STRATEGY", "PACK_COPY", "LP_SNAPSHOT"],
+  "facts_count": 1,
+  "returned_variations_per_type": 3,
+  "assertions": ["saved_creative_context sent", "private selection_stamp not sent", "no draft mutation"],
+  "live_database_probe": {
+    "authority": "https://database.agenciavolc.com.br",
+    "method": "Read-only administrative owner resolution, then owner-scoped repository reads; not browser authentication",
+    "requested_draft_found": true,
+    "requested_draft_version": 16,
+    "requested_draft_mode": "CURRENT_TEXTS_ONLY",
+    "active_drafts_checked_same_owner": 4,
+    "drafts_with_pack_selection": 0
+  },
+  "database_mutations": 0,
+  "meta_mutations": 0,
+  "limitations": ["Synthetic graph is not proof of a live selected pack", "No authenticated browser session", "No evidence of CTR or Meta approval"]
+}

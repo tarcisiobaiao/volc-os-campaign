@@ -14,17 +14,16 @@
  * conjunto, Brasil inteiro, Facebook-only — e é a única receita que a Meta
  * aceitou em 05/09/2026, com aprovação e criação PAUSED ligadas a ela. O V2
  * descreve campanha + N conjuntos + N anúncios, ABO/CBO, público de verdade e
- * mensuração com propósito — e tem apenas `compilar` e `validar`.
+ * mensuração com propósito, com aprovação financeira durável antes da criação.
  *
  * `contratoDoPlano` decide qual versão este rascunho fala, e a decisão é
  * DERIVADA DA FORMA DO PLANO, nunca de um interruptor escondido: um plano que
  * cabe inteiro na receita provada continua indo pelo V1 (e por isso continua
  * podendo nascer); qualquer recurso que só existe no V2 leva o plano para o V2
- * (e a criação fecha, porque não existe rota de aprovação V2). A tela mostra a
- * versão e o motivo — um operador nunca precisa adivinhar por que o botão de
- * criar sumiu.
+ * com seu próprio manifesto financeiro. A versão não autoriza criação: ambos
+ * os contratos exigem capacidades, validação, aprovação e nascimento PAUSED.
  */
-import type { PlanoMetaPausadoInput, PlanoMetaV2Input } from '@/lib/pautadorApi';
+import type { PlanoMetaPausadoInput, PlanoMetaV2Input, TextosFlexiveisMetaV2Input } from '@/lib/pautadorApi';
 
 export const LIMITE_VARIACOES = 10;
 /** Espelha `contrato_v2.MAX_CONJUNTOS`. Limite operacional do produto, não da Meta. */
@@ -138,7 +137,13 @@ export interface MensuracaoDraft {
   eventoPadrao: string;
 }
 
+export type TextosFlexiveisDraft = TextosFlexiveisMetaV2Input;
+
 export interface ConjuntoDraft {
+  /** Ausência preserva rascunhos legados; listas explícitas nunca são substituídas. */
+  flexibleTexts?: TextosFlexiveisDraft;
+  /** Identificação escolhida, nunca uma aprovação ou um ID Meta bruto. */
+  regulatoryIdentityRef?: string;
   /** `adset_key`: identidade ESTÁVEL. Reordenar a lista não a troca — é ela
    *  que amarra cada anúncio ao conjunto certo (`F34`). */
   key: string;
@@ -156,6 +161,10 @@ export interface ConjuntoDraft {
 }
 
 export interface VariacaoDraft {
+  /** Same existing Meta post, resolved again against account and Page by the server. */
+  existingPostRef?: string;
+  /** Proveniência de mídia local; nunca é uma autorização do provedor. */
+  packOrigin?: {packId: string; manifestHash: string; masterRef: string; accountRef: string; selectionVersion: number};
   key: string;
   /** A qual conjunto este anúncio pertence. Escolha EXPLÍCITA (`F34`). */
   adsetKey: string;
@@ -174,6 +183,14 @@ export interface VariacaoDraft {
 }
 
 export interface Draft {
+  naming?: {
+    enabled: boolean; topic: string; site: string; landingType: string; quiz: boolean; conversionLabel: string;
+    /** URL da qual o assunto foi inferido. Impede releituras pagas repetidas e
+     *  torna uma troca de destino detectável ao retomar o rascunho. */
+    topicSourceUrl?: string;
+    campaignNumber?: number; accountRef?: string;
+    adsetNumbers: Record<string, number>; adNumbers: Record<string, number>; generated: Record<string, string>;
+  };
   /** `recipe_id` do registro do servidor. O V1 só sabe emitir a padrão. */
   recipeId: string;
   accountRef: string;
@@ -417,21 +434,77 @@ export function variacaoInicial(
   };
 }
 
-export function variacaoCompleta(variacao: VariacaoDraft): boolean {
+/** Pools pertencem ao conjunto, não à ordem das imagens nem ao conjunto vizinho. */
+export function textosFlexiveisDoConjunto(draft: Draft, chave: string): TextosFlexiveisDraft {
+  const conjunto = draft.conjuntos.find(item => item.key === chave);
+  if (!conjunto) return { primary_text: [], headline: [], description: [] };
+  if (conjunto.flexibleTexts !== undefined) {
+    return {
+      primary_text: [...conjunto.flexibleTexts.primary_text],
+      headline: [...conjunto.flexibleTexts.headline],
+      description: [...conjunto.flexibleTexts.description],
+    };
+  }
+  const imagens = draft.variations.filter(item => item.adsetKey === chave);
+  const unicos = (campo: 'message' | 'headline' | 'description') =>
+    [...new Set(imagens.map(item => item[campo].trim()).filter(Boolean))];
+  // Não cortar em cinco: exceder o contrato deve produzir pendência visível.
+  return { primary_text: unicos('message'), headline: unicos('headline'), description: unicos('description') };
+}
+
+export function pendenciasDosTextosFlexiveis(textos: TextosFlexiveisDraft): string[] {
+  const faltas: string[] = [];
+  const campos = [
+    ['primary_text', 'textos principais', 1, 2200],
+    ['headline', 'títulos', 1, 255],
+    ['description', 'descrições', 0, 255],
+  ] as const;
+  for (const [campo, rotulo, minimo, limite] of campos) {
+    const valores = textos[campo];
+    if (valores.length < minimo) faltas.push(`Adicione pelo menos um item em ${rotulo}.`);
+    if (valores.length > 5) faltas.push(`Use no máximo 5 ${rotulo} por conjunto.`);
+    if (valores.some(texto => !texto.trim())) faltas.push(`Preencha ou remova os itens vazios em ${rotulo}.`);
+    if (valores.some(texto => Array.from(texto.trim()).length > limite)) faltas.push(`Cada item em ${rotulo} aceita até ${limite} caracteres.`);
+  }
+  return faltas;
+}
+
+/** Compatibilidade do DTO legado: o pool é a autoridade no modo flexível. */
+export function variacaoEfetiva(draft: Draft, variacao: VariacaoDraft): VariacaoDraft {
+  if (draft.creativeMode !== 'flexible') return variacao;
+  const textos = textosFlexiveisDoConjunto(draft, variacao.adsetKey);
+  return { ...variacao, message: textos.primary_text[0] ?? '', headline: textos.headline[0] ?? '', description: textos.description[0] ?? '' };
+}
+
+export function pendenciasDaVariacao(original: VariacaoDraft, draft?: Draft): string[] {
+  const flexivel = draft?.creativeMode === 'flexible';
+  const variacao = draft ? variacaoEfetiva(draft, original) : original;
   // ⚠️ VÍDEO NUNCA É COMPLETO, e a razão não é a capacidade do servidor.
   // Nem `variations[]` (V1) nem `ads[]` (V2) têm campo de vídeo: o corpo sairia
   // com `asset_ref` vazio. Antes isto dependia só de `capacidades.video`, e um
   // servidor que anunciasse o vídeo como disponível faria a bancada emitir uma
   // peça vazia. A recusa passou a ser do CONTRATO, que é onde ela é verdadeira.
-  if (variacao.midia === 'video') return false;
-  return Boolean(
-    variacao.assetRef && variacao.adsetKey
-    && variacao.creativeName.trim() && variacao.adName.trim()
-    && variacao.message.trim() && variacao.headline.trim()
-    && variacao.description.trim() && variacao.cta
-    && variacao.assetRightsConfirmed && variacao.thirdPartyIdentityCleared
-    && variacao.assetPolicyConfirmedAt,
-  );
+  if (variacao.midia === 'video') return ['Vídeo ainda não é aceito neste contrato.'];
+  const faltas: string[] = [];
+  if (!variacao.assetRef) faltas.push('Escolha a imagem registrada na conta.');
+  if (!variacao.adsetKey) faltas.push('Escolha o conjunto de destino.');
+  if (!variacao.adName.trim()) faltas.push('Preencha o nome do anúncio.');
+  if (!variacao.creativeName.trim()) faltas.push('Preencha o nome do criativo.');
+  if (!variacao.message.trim()) faltas.push('Preencha o texto principal.');
+  if (!variacao.headline.trim()) faltas.push('Preencha o título.');
+  if (!flexivel && !variacao.description.trim()) faltas.push('Preencha a descrição.');
+  if (flexivel) faltas.push(...pendenciasDosTextosFlexiveis(textosFlexiveisDoConjunto(draft, variacao.adsetKey)));
+  if (!variacao.cta) faltas.push('Escolha o botão do anúncio.');
+  if (!variacao.assetRightsConfirmed) faltas.push('Confirme os direitos de uso da imagem.');
+  if (!variacao.thirdPartyIdentityCleared) faltas.push('Confirme a revisão de marcas e identidade de terceiros.');
+  if (variacao.assetRightsConfirmed && variacao.thirdPartyIdentityCleared && !variacao.assetPolicyConfirmedAt) {
+    faltas.push('Refaça as confirmações de uso para registrar esta revisão.');
+  }
+  return faltas;
+}
+
+export function variacaoCompleta(variacao: VariacaoDraft, draft?: Draft): boolean {
+  return pendenciasDaVariacao(variacao, draft).length === 0;
 }
 
 /** As variações que o modo escolhido realmente emite.
@@ -440,7 +513,7 @@ export function variacaoCompleta(variacao: VariacaoDraft): boolean {
  * um lote que continua sendo enviado inteiro. */
 export function variacoesEmitidas(draft: Draft): VariacaoDraft[] {
   if (draft.creativeMode === 'single') return draft.variations.slice(0, 1);
-  if (draft.creativeMode === 'batch') return draft.variations.slice(0, LIMITE_VARIACOES);
+  if (draft.creativeMode === 'batch' || draft.creativeMode === 'flexible') return draft.variations.slice(0, LIMITE_VARIACOES);
   return [];
 }
 
@@ -543,13 +616,14 @@ export type VersaoDoContrato = 'V1' | 'V2';
 /** Qual contrato este rascunho fala, e por quê.
  *
  * ⚠️ `motivos` vazio ⇒ V1. Cada motivo é um recurso que SÓ existe no V2, escrito
- * em linguagem de operador porque é ele quem lê a consequência: no V2 a
- * validação continua aberta (é ela que produz a prova), e a criação PAUSED não
- * existe, porque o backend não tem rota de aprovação para o plano V2. */
+ * em linguagem de operador. O executor V2 preserva conjuntos, orçamento e
+ * vínculo de cada anúncio; nunca reduz o pedido ao primeiro conjunto. */
 export function contratoDoPlano(draft: Draft): {
   contrato: VersaoDoContrato; motivos: string[];
 } {
   const motivos: string[] = [];
+  if (draft.creativeMode === 'flexible') motivos.push('cada conjunto agrupa suas peças em um anúncio flexível');
+  if (draft.variations.some(item => item.existingPostRef)) motivos.push('o plano reutiliza uma publicação existente');
   if (draft.recipeId !== RECEITA_PADRAO) {
     motivos.push('a receita escolhida não é a receita de tráfego provada');
   }
@@ -564,6 +638,7 @@ export function contratoDoPlano(draft: Draft): {
   }
   if (draft.instagramActorRef) motivos.push('há identidade do Instagram no plano');
   for (const conjunto of draft.conjuntos) {
+    if (conjunto.regulatoryIdentityRef) motivos.push(`o conjunto "${conjunto.nome}" declara identificação do anunciante`);
     const p = conjunto.publico;
     if (p.modo !== 'BROAD') motivos.push(`o público do conjunto "${conjunto.nome}" não é amplo`);
     const incluidos = paisesIncluidos(p.geo);
@@ -675,6 +750,7 @@ export function paraPlanoV2(draft: Draft): PlanoMetaV2Input {
   const cbo = draft.nivelDeOrcamento === 'CAMPAIGN';
   const periodo = draft.periodoDeOrcamento;
   return {
+    ...(draft.creativeMode === 'flexible' ? { creative_mode: 'FLEXIBLE_IMAGES' as const } : {}),
     recipe_id: draft.recipeId,
     account_ref: draft.accountRef,
     page_ref: draft.pageRef,
@@ -692,6 +768,8 @@ export function paraPlanoV2(draft: Draft): PlanoMetaV2Input {
     is_adset_budget_sharing_enabled: false,
     adsets: draft.conjuntos.map((conjunto) => ({
       adset_key: conjunto.key,
+      ...(draft.creativeMode === 'flexible' ? { flexible_texts: textosFlexiveisDoConjunto(draft, conjunto.key) } : {}),
+      ...(conjunto.regulatoryIdentityRef ? { regulatory_identity_ref: conjunto.regulatoryIdentityRef } : {}),
       name: conjunto.nome,
       start_time: inicioEmIso(conjunto.startTime) ?? '',
       end_time: inicioEmIso(conjunto.endTime),
@@ -739,7 +817,8 @@ export function paraPlanoV2(draft: Draft): PlanoMetaV2Input {
         amount_minor: reaisParaMinor(conjunto.orcamentoBrl), currency: 'BRL',
       },
     })),
-    ads: emitidas.map((item) => ({
+    ads: emitidas.map(item => variacaoEfetiva(draft, item)).map((item) => ({
+      ...(item.existingPostRef ? { existing_post_ref: item.existingPostRef } : {}),
       variation_key: item.key,
       adset_key: item.adsetKey,
       asset_ref: item.assetRef,
@@ -846,7 +925,10 @@ export function prontidaoDasEtapas(
 ): Record<EtapaId, EstadoDaEtapa> {
   const emitidas = variacoesEmitidas(draft);
   const chaves = new Set(draft.conjuntos.map((item) => item.key));
-  const criativoBloqueado = draft.creativeMode === 'flexible'
+  const criativoBloqueado = (draft.creativeMode === 'flexible'
+      && (!contexto.capacidades.flexivel || draft.recipeId !== 'WEB_SALES_CONVERSION'
+        || emitidas.some(item => item.existingPostRef)
+        || draft.conjuntos.some(c => new Set(emitidas.filter(v => v.adsetKey === c.key).map(v => v.cta)).size > 1)))
     || (draft.creativeMode === 'batch' && !contexto.capacidades.loteEstatico)
     // ⚠️ Vídeo bloqueia INDEPENDENTE da capacidade: nenhum dos dois corpos o
     // transporta. Ver `variacaoCompleta`.
@@ -859,7 +941,7 @@ export function prontidaoDasEtapas(
       (nome) => nome.length > 0 && nome.length <= LIMITE_NOME);
   const criativoPronto = emitidas.length > 0
     && emitidas.length <= LIMITE_VARIACOES
-    && emitidas.every(variacaoCompleta)
+    && emitidas.every(item => variacaoCompleta(item, draft))
     && emitidas.every((item) => chaves.has(item.adsetKey))
     && nomesOk;
 

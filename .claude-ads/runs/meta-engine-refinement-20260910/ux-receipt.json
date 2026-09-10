@@ -1,0 +1,99 @@
+{
+  "slice": "ux",
+  "created_at": "2026-09-10T11:27:51.086746+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested": true,
+  "files": [
+    {
+      "path": "src/hooks/useMetaCampaignDraft.ts",
+      "start": 1,
+      "end": 121,
+      "sha256": "3190a951254cda4164886fb2be14834acddbf9ccf53b5990a1eca2bdc9501dd0"
+    },
+    {
+      "path": "src/pages/trafego/MetaCriacaoPage.tsx",
+      "start": 967,
+      "end": 1028,
+      "sha256": "d2c3ecaa88c7eba724fb21c6ec500ffa15f18a58e387c64074103d6b02095d45"
+    },
+    {
+      "path": "src/pages/trafego/MetaCriacaoPage.tsx",
+      "start": 1115,
+      "end": 1260,
+      "sha256": "7c3b54eb042a5ac7b9bf8658cc683a067e1b98af77cc1e1d517f84916cf85e0c"
+    }
+  ],
+  "input_sha256": "84ffee1850dcb18b33c3befa59422da5f0c77c9fe107ebf6a5c907bb3c0ea6e5",
+  "status": "review_received",
+  "calls_attempted": 1,
+  "billing": "unknown unless provider supplies usage",
+  "modelVersion": "gemini-3.8-flash",
+  "model_verified": true,
+  "usage": {
+    "promptTokenCount": 30012,
+    "candidatesTokenCount": 860,
+    "totalTokenCount": 58633,
+    "cachedContentTokenCount": 17070,
+    "thoughtsTokenCount": 27761
+  },
+  "grounding": {
+    "webSearchQueries": [],
+    "groundingChunks": [],
+    "groundingSupports": []
+  },
+  "grounding_verified": false,
+  "finishReason": "STOP",
+  "review": {
+    "status": "partial",
+    "checked": [
+      "src/hooks/useMetaCampaignDraft.ts",
+      "src/pages/trafego/MetaCriacaoPage.tsx"
+    ],
+    "findings": [
+      {
+        "id": "draft-autosave-latch-on-error",
+        "file": "src/hooks/useMetaCampaignDraft.ts",
+        "line": 106,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "Autosave stops indefinitely after any transient save failure because status === 'error' aborts the debounced timer on subsequent edits.",
+        "evidence": "Line 95 assigns status = 'error' on non-409 exceptions. Line 120 keeps blocked = false during errors, allowing continued user edits. However, line 106 aborts immediately if status === 'error', preventing saveNow() from scheduling on subsequent draft fingerprint changes.",
+        "proposal": "Reset status to 'idle' or bypass the status === 'error' abort condition when currentFingerprint !== saved.current so new operator input triggers a fresh saveNow() attempt.",
+        "test": "Mock saveMetaCampaignDraft to reject once with a 500 error, verify status transitions to 'error', update draft, and assert that saveNow is invoked after the 700ms debounce."
+      },
+      {
+        "id": "stale-plan-validation-bypass-on-draft-edit",
+        "file": "src/pages/trafego/MetaCriacaoPage.tsx",
+        "line": 1176,
+        "severity": "high",
+        "kind": "ux",
+        "claim": "Editing draft fields while on the review stage fails to invalidate existing compilation and Meta validation state, displaying validado: true on unverified plans.",
+        "evidence": "Line 1176 sets fase to null whenever compilacao and validacao are truthy. Modifying draft does not clear compilacao or validacao, leaving line 967 reporting validado: Boolean(validacao?.ok) and allowing human plan approval for an uncompiled, unvalidated payload.",
+        "proposal": "Clear compilacao and validacao (or compare stored validation draft fingerprints to current draft) on any draft mutation to require re-compilation and re-validation before approval.",
+        "test": "Enter etapa 'revisao', await compilation and validation completion, modify draft.variations, and verify that compilacao and validacao reset to null, disabling plan approval until re-run."
+      },
+      {
+        "id": "pack-binding-focus-race-and-param-leak",
+        "file": "src/pages/trafego/MetaCriacaoPage.tsx",
+        "line": 988,
+        "severity": "medium",
+        "kind": "local_code",
+        "claim": "Asynchronous pack binding applies creative origin UI state to whichever ad set is currently focused rather than the targeted ad set, and leaks the URL param on failure.",
+        "evidence": "escolherPackNoConjunto awaits fixarPackNoConjunto and then executes setOrigemCriativa('pack') and setPackAviso referencing conjuntoFocado directly, which may have shifted to another ad set during the flight. Furthermore, if fixarPackNoConjunto throws, line 991 never deletes 'pack' from params, causing line 1015 to re-fire on subsequent ad set clicks.",
+        "proposal": "Ensure UI updates check that salva.adset_key matches the actively focused ad set before toggling origemCriativa, and remove the pack search param within a finally block.",
+        "test": "Call escolherPackNoConjunto with simulated network latency, switch focused ad set before completion, and verify the newly focused ad set preserves its creative origin."
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-account/ads/",
+        "claim": "Specifying execution_options=['validate_only'] validates all field inputs against API rules without performing a mutation, returning success: true or field error details."
+      }
+    ],
+    "limitations": [
+      "Omitted implementations of draftWithoutAuthority, fixarPackNoConjunto, and backend approval endpoints prevent verifying server-side optimistic locking guarantees."
+    ],
+    "summary": "Draft autosave locks out future saves following transient network errors, review compilation/validation caches do not invalidate when the draft changes prior to approval, and asynchronous pack selection races with ad set focus switching."
+  }
+}

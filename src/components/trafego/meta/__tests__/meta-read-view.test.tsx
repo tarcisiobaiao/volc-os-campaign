@@ -191,8 +191,13 @@ describe('MetaCampaignReadView — a hierarquia real', () => {
     montar();
 
     expect(await screen.findByText('Encceja · leitura real')).toBeTruthy();
-    expect(screen.getByText('Brasil · amplo')).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Conjuntos/ }), { button: 0, ctrlKey: false });
+    expect(screen.getByRole('button', { name: 'Brasil · amplo' })).toBeTruthy();
+    const tabela = screen.getAllByRole('table')[0];
+    expect(tabela.parentElement?.className).toContain('overflow-x-auto');
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Anúncios/ }), { button: 0, ctrlKey: false });
     expect(screen.getByText('Certificado · imagem A')).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Criativos/ }), { button: 0, ctrlKey: false });
     expect(screen.getByText(CRIATIVO.nome)).toBeTruthy();
     expect(screen.getByText(CRIATIVO.object_story_id)).toBeTruthy();
 
@@ -201,8 +206,6 @@ describe('MetaCampaignReadView — a hierarquia real', () => {
     // A largura mora no contêiner da tabela, não no corpo: uma tabela larga
     // rola dentro da própria caixa. Sem isso, a página inteira ganha rolagem
     // lateral e o cabeçalho de conta sai da tela junto.
-    const tabela = screen.getAllByRole('table')[0];
-    expect(tabela.parentElement?.className).toContain('overflow-x-auto');
     expect(screen.getByText(CRIATIVO.nome).className).toContain('break-words');
     expect(screen.getByText(CRIATIVO.object_story_id).className).toContain('break-all');
 
@@ -234,7 +237,8 @@ describe('MetaCampaignReadView — a hierarquia real', () => {
     expect(screen.getAllByText(/leitura (recente|antiga)/i).length).toBeGreaterThan(0);
     // `CAMPAIGN_PAUSED` não existe no vocabulário do Google e precisa sair como
     // palavra da Meta, não como "estado não reconhecido".
-    expect(screen.getByText('CAMPAIGN_PAUSED')).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Conjuntos/ }), { button: 0, ctrlKey: false });
+    expect(screen.getByText('Campanha pausada')).toBeTruthy();
   });
 
   it('métrica não medida aparece como AUSENTE, jamais como zero', async () => {
@@ -393,7 +397,9 @@ describe('MetaCampaignReadView — a página que se declara página', () => {
     );
     montar();
 
-    expect(await screen.findByText('Brasil · amplo')).toBeTruthy();
+    await screen.findByText('Encceja · leitura real');
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /^Conjuntos/ }), { button: 0, ctrlKey: false });
+    expect(screen.getByRole('button', { name: 'Brasil · amplo' })).toBeTruthy();
     expect(screen.getByText(/há mais linhas neste escopo/i)).toBeTruthy();
     // Leitura incompleta é dita como leitura parcial em DOIS lugares — no selo
     // de frescor da conta e no aviso — porque as duas perguntas são diferentes:
@@ -401,8 +407,8 @@ describe('MetaCampaignReadView — a página que se declara página', () => {
     expect(screen.getAllByText(/Leitura parcial/i).length).toBeGreaterThanOrEqual(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'ler próxima página' }));
-    expect(await screen.findByText('Interesses')).toBeTruthy();
-    expect(screen.getByText('Brasil · amplo')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Interesses' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Brasil · amplo' })).toBeTruthy();
     await waitFor(() =>
       expect(api.inventarioMetaReadModel).toHaveBeenCalledWith('conjuntos', {
         contaRef: CONTA.conta_ref,

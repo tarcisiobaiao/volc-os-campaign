@@ -1,0 +1,8 @@
+{
+  "run_id": "meta-topic-congruence-20260909",
+  "status": "local_verified_live_visual_pending",
+  "objective": "Preserve the operator-confirmed main topic through LP insights, creative strategy and image spec",
+  "scope": ["local creative context extraction", "briefing and image prompt", "human-editable topic and visual references", "hermetic tests"],
+  "excluded": ["paid generation", "Meta mutations", "official-brand impersonation", "database migration", "Webgo"],
+  "data_lifecycle": {"classification": "sanitized internal engineering evidence", "retention": "repository evidence; no customer exports", "access_roles": ["operator", "implementing agents"], "incident_owner": "operator"}
+}

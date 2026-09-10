@@ -99,7 +99,7 @@ QUALIDADE = "medium"
 #: na normalização final, e as duas precisam concordar.
 FORMATO_DE_SAIDA = "png"
 
-VERSAO_DO_ADAPTADOR = "1.0.0"
+VERSAO_DO_ADAPTADOR = "1.1.0"
 
 #: A identidade do motor no registro (`criativo_motor.slug`).
 #:
@@ -264,6 +264,7 @@ class MotorOpenAIImagem:
     """
 
     tipos_suportados = TIPOS_DE_IMAGEM
+    aceita_referencia = True
 
     #: Lido por `studio/adaptador.py` e por `execucao.py` para calcular o custo.
     #: `None` significa "o provider não publica preço por imagem", nunca zero.
@@ -404,6 +405,7 @@ class MotorOpenAIImagem:
                         "nativo_altura": str(enquadrada.nativa_altura or ""),
                         "transformacoes": " | ".join(enquadrada.transformacoes),
                         "prompt_sha256": prompt_sha256,
+                        "prompt_efetivo": prompt,
                         "referencias_sha256": ",".join(r.sha256 for r in referencias),
                         "custo_fonte": FONTE_DO_PRECO,
                         "tokens_saida": str(_tokens_de_saida(bruto) or ""),
@@ -543,25 +545,48 @@ def _instrucao(
     dá. A preservação literal dos pixels é feita fora daqui, pelo compositor
     determinístico, e é ele que a interface chama de modo híbrido.
     """
-    contexto = "\n".join(
-        f"{chave}: {valor}" for chave, valor in sorted(pedido.contexto.items()) if valor
-    )
+    # ⚠️ O dicionário de contexto NÃO entra no prompt, e a razão é literal.
+    #
+    # Até 10/09/2026 esta função terminava com o despejo cru de `pedido.contexto`
+    # ordenado, o que colocava na ÚLTIMA linha do prompt — a posição de maior
+    # recência que o modelo lê — o par `formato: Retrato`. `formato.rotulo` para
+    # o slot 4x5 é a string "Retrato" (app/criativo/dominio.py:95), um rótulo de
+    # PROPORÇÃO na nossa interface e um pedido de RETRATO DE PESSOA em português.
+    # As quatro peças do lote reclamado eram, todas, retratos de adolescente.
+    # `modo_de_composicao: sem_foto` vinha logo em seguida, contradizendo o
+    # parágrafo que o prompt gasta explicando que sem_foto não proíbe cena.
+    #
+    # Estes dados continuam viajando em `metadados` e no recibo, que é onde a
+    # pergunta "o que gerou esta peça?" se responde. Prompt é direção de arte.
+    inspiracao = pedido.contexto.get("modo_de_composicao") == "referencia_visual"
     referencia = (
+        "A imagem anexada inspira somente estilo, paleta e composição. "
+        "Não é referência de identidade, marca, fatos ou texto.\n"
+        if com_referencia and inspiracao else
         "As imagens anexadas são material de referência da marca e do assunto. "
         "Use-as como base visual da composição.\n"
         if com_referencia
         else ""
     )
+    texto = (
+        "O texto explicitamente aprovado no briefing deve aparecer na arte final, "
+        "com todas as palavras e acentos, em hierarquia legível. "
+        "Não invente texto quando não foi solicitado. "
+        "Use apenas o texto na arte aprovado no briefing, nunca o texto da referência. "
+        "Sem logotipos ou marcas d'água copiados.\n"
+    )
+    # A única coisa que ESTA camada sabe e o blueprint não é a geometria. Onde o
+    # texto vive, se há área chapada e qual a ordem de leitura são decisões de
+    # direção de arte, e já viajam em `pedido.insumo`. A versão anterior ditava
+    # aqui um layout genérico ("uma área limpa e contínua para o texto") que se
+    # contradizia na mesma frase ("sem tarjas") e se repetia idêntico em toda
+    # peça de todo lote — era ele, e não o agente, quem desenhava a peça.
     return (
         f"{pedido.insumo}\n\n"
-        f"Formato de saída: {canvas.largura}x{canvas.altura} px, "
-        f"entrega final {largura}x{altura} px.\n"
-        f"Componha para este enquadramento especificamente, não para um quadrado "
-        f"recortado. Preencha o canvas inteiro, sem bordas vazias e sem tarjas. "
-        f"Reserve uma área limpa e contínua para texto, adequada a esta proporção.\n"
-        f"{referencia}"
-        "Sem texto, sem letras, sem logotipo e sem marca d'água na imagem.\n"
-        f"{contexto}"
+        f"Canvas de geração {canvas.largura}x{canvas.altura} px; "
+        f"entrega final {largura}x{altura} px. Componha para esta proporção, "
+        f"preenchendo o canvas inteiro.\n"
+        f"{referencia}{texto}"
     ).strip()
 
 

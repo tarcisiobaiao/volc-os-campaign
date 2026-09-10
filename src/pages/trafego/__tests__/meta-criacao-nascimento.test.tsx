@@ -55,6 +55,23 @@ vi.mock('@/lib/pautadorApi', async (importOriginal) => ({
 vi.mock('@/components/layout/Layout', () => ({
   Layout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+vi.mock('@/components/settings/MetaBusinessConnections', () => ({
+  businessRequest: vi.fn().mockResolvedValue({ selected_id: 'bm-prova', connections: [
+    { id: 'bm-prova', name: 'BM de prova', enabled: true },
+  ] }),
+}));
+
+// This suite exercises approval/PAUSED birth, not durable draft transport.
+// Real hydration, CAS and unavailable-session behavior have dedicated tests.
+vi.mock('@/hooks/useMetaCampaignDraft', () => ({
+  useMetaCampaignDraft: () => ({ loading: false, saving: false, saved: true, blocked: false,
+    version: 1, error: null, conflict: false, saveNow: async () => true, reload: async () => {} }),
+}));
+vi.mock('@/components/trafego/meta/RascunhosMeta', () => ({ RascunhosMeta: () => null }));
+vi.mock('@/features/creative-studio/api', async original => ({
+  ...await original<typeof import('@/features/creative-studio/api')>(),
+  listarSelecoesDePack: vi.fn().mockResolvedValue({ selections: [] }),
+}));
 
 const HASH = 'b'.repeat(64);
 /** O id que a Meta devolveria. Ele NUNCA pode aparecer na tela. */
@@ -239,22 +256,21 @@ function abrir() {
 /** Leva a bancada até uma validação aceita, que é o pré-requisito de aprovar. */
 async function ateAValidacao() {
   abrir();
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
-  fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Conta$/i }));
+  await screen.findByRole('option', { name: /Conta de prova/ });
+  fireEvent.change(screen.getByLabelText('Conta de anúncios'), { target: { value: conta.referencia_opaca } });
   await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
   fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
   fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
   fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
   fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
   fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
-  fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+  fireEvent.change(screen.getByLabelText(/A campanha envolve crédito/i), { target: { value: 'none' } });
   fireEvent.click(screen.getByRole('button', { name: /^Criativos$/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
   fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
-  fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
   await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalled());
-  fireEvent.click(await screen.findByRole('button', { name: /validar na meta/i }));
   await waitFor(() => expect(api.validarPlanoMeta).toHaveBeenCalled());
 }
 
@@ -441,6 +457,33 @@ describe('Revisão Meta — editar o rascunho invalida a aprovação', () => {
 
 
 describe('Revisão Meta — o recibo sanitizado', () => {
+  it('explica anunciante verificado e preserva o recibo da campanha já criada', async () => {
+    const reciboParcial = {
+      ...nascimentoFeito.recibo,
+      steps: nascimentoFeito.recibo.steps.filter(passo => passo.name === 'campaign'),
+    };
+    api.criarCampanhaPausadaMeta.mockRejectedValue(new PautadorApiError(
+      'a saga parou com objetos PAUSED ja criados: campaign', 422, {
+        codigo: 'META_VERIFIED_ADVERTISER_REQUIRED',
+        objetos_criados: ['campaign'],
+        provedor: { code: '100', error_subcode: '3858634',
+          objeto: 'adset:adset-001', messages: ['Invalid parameter'] },
+        recibo: reciboParcial,
+      },
+    ));
+    await ateAValidacao();
+    await aprovarEcriar();
+    expect(await screen.findByText('Escolha a identificação do anunciante deste conjunto')).toBeTruthy();
+    expect(screen.getByText(/Configurações de publicidade.*beneficiário e pagador/)).toBeTruthy();
+    expect(screen.getByText(/A criação foi parcial: já existem objetos registrados/)).toBeTruthy();
+    expect(screen.getByText(/não recomece a campanha do zero/)).toBeTruthy();
+    expect(screen.getByText(/Recibo durável da operação/i)).toBeTruthy();
+    const tabela = screen.getByRole('table', { name: /Estado de cada passo da operação/i });
+    expect(within(tabela).getByRole('rowheader', { name: 'campaign' })).toBeTruthy();
+    expect(document.body.textContent).not.toContain(ID_META_CRU);
+    expect(api.criarCampanhaPausadaMeta).toHaveBeenCalledTimes(1);
+  });
+
   it('mostra o read-back de cada objeto sem entregar identificador da Meta', async () => {
     await ateAValidacao();
     await aprovarEcriar();
@@ -541,10 +584,10 @@ describe('Revisão Meta — resposta adiada não contamina outro rascunho', () =
     // um rascunho de R$ 77,00 — o servidor recusaria pelo hash, e a tela não
     // pode depender disso para não mentir.
     expect(screen.queryByText(/Aprovação registrada/i)).toBeNull();
-    // E a bancada continua utilizável: `ocupado` foi liberado.
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /conferir o plano/i }))
-        .toHaveProperty('disabled', false));
+    // A preparação automática continua utilizável após descartar a resposta.
+    await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/Aprovação registrada/i)).toBeNull();
+    expect(api.criarCampanhaPausadaMeta).not.toHaveBeenCalled();
   });
 
   it('libera a bancada mesmo quando a resposta ficou obsoleta', async () => {
@@ -552,20 +595,20 @@ describe('Revisão Meta — resposta adiada não contamina outro rascunho', () =
     api.compilarPlanoMeta.mockReturnValueOnce(porta.promessa);
 
     abrir();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
-    fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Conta$/i }));
+    await screen.findByRole('option', { name: /Conta de prova/ });
+    fireEvent.change(screen.getByLabelText('Conta de anúncios'), { target: { value: conta.referencia_opaca } });
     await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
   fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
   fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
   fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
-  fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+  fireEvent.change(screen.getByLabelText(/A campanha envolve crédito/i), { target: { value: 'none' } });
     fireEvent.click(screen.getByRole('button', { name: /^Criativos$/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
     fireEvent.click(screen.getByRole('button', { name: /^Revisão/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /conferir o plano/i }));
     await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalled());
 
     // Editar durante o voo muda o selo — e era exatamente aqui que a bancada
@@ -576,8 +619,11 @@ describe('Revisão Meta — resposta adiada não contamina outro rascunho', () =
 
     await act(async () => { porta.resolver(COMPILACAO_FEITA); await Promise.resolve(); });
 
-    const conferir = await screen.findByRole('button', { name: /conferir o plano/i });
-    expect(conferir).toHaveProperty('disabled', false);
+    // A requisição antiga não deixa `ocupado` travado: o plano editado é
+    // recompilado automaticamente, sem reaproveitar a resposta obsoleta.
+    await waitFor(() => expect(api.compilarPlanoMeta).toHaveBeenCalledTimes(2));
+    expect(api.aprovarCriacaoMeta).not.toHaveBeenCalled();
+    expect(api.criarCampanhaPausadaMeta).not.toHaveBeenCalled();
   });
 
   it('mantém a execução já despachada quando o operador edita outro rascunho', async () => {

@@ -98,6 +98,27 @@ export default function AssistenteCriativoPage() {
   const [ocupado, setOcupado] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Only an explicit new-version action rotates this identity. Reload/retry
+  // keeps it so a lost response cannot buy the same images again.
+  const [versoesDeGeracao, setVersoesDeGeracao] = useState<Record<string, string>>(() => {
+    try {
+      const saved: unknown = JSON.parse(sessionStorage.getItem('volc:creative-generation-versions') || '{}');
+      if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+      return Object.fromEntries(Object.entries(saved).filter(([key, value]) =>
+        /^crproj_[a-f0-9]{24}$/.test(key) && typeof value === 'string' && /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value)));
+    }
+    catch { return {}; }
+  });
+  const geracaoRef = projectRef ? versoesDeGeracao[projectRef] ?? null : null;
+  function prepararNovaVersao() {
+    if (!projectRef || geracaoEmCurso.current) return;
+    const versoes = { ...versoesDeGeracao, [projectRef]: crypto.randomUUID() };
+    setVersoesDeGeracao(versoes);
+    try { sessionStorage.setItem('volc:creative-generation-versions', JSON.stringify(versoes)); } catch { /* memory remains valid */ }
+    setPlano(null);
+    setErroAcao(null);
+    setAviso('Nova versão preparada. Confira as peças, os formatos e autorize a geração abaixo. Os arquivos anteriores permanecem na biblioteca.');
+  }
 
   const abortar = useRef<AbortController | null>(null);
   useEffect(() => () => abortar.current?.abort(), []);
@@ -133,7 +154,8 @@ export default function AssistenteCriativoPage() {
   const [anexo, setAnexo] = useState<Anexo | null>(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [erroDaFoto, setErroDaFoto] = useState<string | null>(null);
-  const [modoDeComposicao, setModoDeComposicao] = useState('hibrido');
+  // Uma retomada não pode transformar inspiração em colagem silenciosamente.
+  const [modoDeComposicao, setModoDeComposicao] = useState('');
   // Os formatos escolhidos no briefing, para a Produção herdar em vez de
   // marcar todos: o "até N imagens" da entrada não pode triplicar no ato que
   // gasta.
@@ -194,6 +216,7 @@ export default function AssistenteCriativoPage() {
   // sairia diferente da que ele preparou.
   useEffect(() => {
     setAnexo(null);
+    setModoDeComposicao('');
     setErroDaFoto(null);
     if (!projectRef || !configurado) return;
     let vivo = true;
@@ -262,6 +285,8 @@ export default function AssistenteCriativoPage() {
   const [geracaoPendente, setGeracaoPendente] = useState<{
     projectRef: string;
     plano: PlanoDeGeracao;
+    runRef: string;
+    geracaoRef: string | null;
   } | null>(null);
   const gerando = geracaoPendente !== null && geracaoPendente.projectRef === projectRef;
   const [falhaDaGeracao, setFalhaDaGeracao] = useState<{ projectRef: string; mensagem: string } | null>(null);
@@ -295,8 +320,18 @@ export default function AssistenteCriativoPage() {
   );
 
   useEffect(() => {
-    if (projectRef) void carregarGeracoes(projectRef);
-  }, [projectRef, carregarGeracoes]);
+    if (!projectRef) return;
+    let saiu = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    async function acompanhar() {
+      await carregarGeracoes(projectRef!);
+      // Read-only registry polling also recovers bridges after a lost POST
+      // response or a reload. It never submits another paid generation.
+      if (!saiu && (gerando || vista === 'assets')) timer = setTimeout(acompanhar, 4000);
+    }
+    void acompanhar();
+    return () => { saiu = true; clearTimeout(timer); };
+  }, [projectRef, carregarGeracoes, gerando, vista]);
 
   // ── Ações ─────────────────────────────────────────────────────────────────
   async function criar(entrada: EntradaNovaOperacao) {
@@ -382,12 +417,18 @@ export default function AssistenteCriativoPage() {
 
   async function planejar(creativeRefs: string[], formatIds: string[]) {
     if (!projectRef || !runAtual || geracaoEmCurso.current === projectRef) return;
+    if (anexo && !modoDeComposicao) {
+      setPlano(null);
+      setErroAcao('Escolha como usar a imagem anexada: inspiração visual, fotografia preservada ou reinterpretação.');
+      return;
+    }
     setPlanejando(true);
     setErroAcao(null);
     try {
       setPlano(
         await planejarGeracao(projectRef, {
           run_ref: runAtual.run_ref,
+          geracao_ref: geracaoRef,
           selected_creative_refs: creativeRefs,
           format_ids: formatIds,
           anexo_ref: anexo?.anexo_ref ?? null,
@@ -432,12 +473,15 @@ export default function AssistenteCriativoPage() {
     }
     const operacaoDoPedido = projectRef;
     geracaoEmCurso.current = operacaoDoPedido;
-    setGeracaoPendente({ projectRef: operacaoDoPedido, plano });
+    setGeracaoPendente({ projectRef: operacaoDoPedido, plano, runRef: runAtual.run_ref, geracaoRef });
     setFalhaDaGeracao(null);
     setErroAcao(null);
+    setAviso(null);
+    irPara('assets', operacaoDoPedido);
     try {
       await gerarImagens(projectRef, {
         run_ref: runAtual.run_ref,
+        geracao_ref: geracaoRef,
         selected_creative_refs: creativeRefs,
         format_ids: formatIds,
         anexo_ref: anexo?.anexo_ref ?? null,
@@ -476,6 +520,7 @@ export default function AssistenteCriativoPage() {
     setErroDaFoto(null);
     try {
       setAnexo(await enviarFotografia(projectRef, arquivo));
+      setModoDeComposicao('');
       // A foto muda a peça: o plano conferido antes dela não descreve mais o
       // que este clique produziria.
       setPlano(null);
@@ -573,13 +618,13 @@ export default function AssistenteCriativoPage() {
           </div>
         </nav>
 
-        {gerando && vista !== 'producao' && (
+        {gerando && vista !== 'producao' && vista !== 'assets' && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 shadow-card">
             <p role="status" className="flex items-center gap-2 text-sm text-foreground">
               <Loader2 className="h-4 w-4 text-primary motion-safe:animate-spin motion-reduce:animate-none" aria-hidden />
-              Uma geração desta operação está aguardando resposta.
+              As imagens desta operação estão em produção.
             </p>
-            <Button variant="outline" size="sm" onClick={() => irPara('producao')}>
+            <Button variant="outline" size="sm" onClick={() => irPara('assets')}>
               Acompanhar geração
             </Button>
           </div>
@@ -599,7 +644,14 @@ export default function AssistenteCriativoPage() {
         )}
 
         <div className="mt-5">
-          {vista === 'assets' && (erroGeracoes ? <div role="alert" className="studio-surface"><p className="text-sm text-destructive">Não foi possível ler a galeria. {erroGeracoes}</p><Button variant="outline" className="mt-4" onClick={() => projectRef && void carregarGeracoes(projectRef)}>Tentar novamente</Button></div> : lendoGeracoes ? <p role="status" className="py-8 text-center text-sm text-muted-foreground">Buscando seus criativos…</p> : <GaleriaDeGeracoes key={projectRef ?? 'sem-operacao'} geracoes={geracoes} onComecar={() => navegar('/trafego/meta/assistente-criativo?view=briefing')} />)}
+          {vista === 'assets' && <>
+            {erroGeracoes && <div role="alert" className="studio-surface"><p className="text-sm text-destructive">Não foi possível atualizar a lista. {erroGeracoes} As imagens já carregadas continuam abaixo.</p><Button variant="outline" className="mt-4" onClick={() => projectRef && void carregarGeracoes(projectRef)}>Tentar novamente</Button></div>}
+            <GaleriaDeGeracoes key={projectRef ?? 'sem-operacao'} geracoes={geracoes}
+              consultando={lendoGeracoes}
+              pedido={gerando && geracaoPendente ? { runRef: geracaoPendente.runRef, geracaoRef: geracaoPendente.geracaoRef, briefings: geracaoPendente.plano.briefings, modelo: geracaoPendente.plano.modelo_de_imagem, qualidade: geracaoPendente.plano.qualidade_de_imagem } : null}
+              onConcluida={() => { if (projectRef) void carregarDetalhe(projectRef); }}
+              onComecar={() => navegar('/trafego/meta/assistente-criativo?view=briefing')} />
+          </>}
           {vista === 'historico' && (
             <HistoricoDeOperacoes
               operacoes={operacoes}
@@ -626,6 +678,10 @@ export default function AssistenteCriativoPage() {
               )}
               {saida && (
                 <>
+                  {!gerando && geracoes.length > 0 && <section className="studio-surface flex flex-wrap items-center justify-between gap-4">
+                    <div className="max-w-xl"><h2 className="text-base font-semibold">Quer outra versão destas peças?</h2><p className="mt-1 text-sm text-muted-foreground">Uma nova geração tem custo próprio. A estratégia aprovada e os arquivos anteriores são preservados.</p></div>
+                    <Button type="button" variant="secondary" className="min-h-11" onClick={prepararNovaVersao}>Preparar nova versão</Button>
+                  </section>}
                   {!gerando && <FotografiaReal
                     anexo={anexo}
                     modos={capacidades?.modos_de_composicao ?? []}
@@ -767,6 +823,14 @@ export default function AssistenteCriativoPage() {
                 </div>
               )}
 
+              {detalhe?.operacao.input.contexto_da_pagina && <details className="studio-surface text-sm">
+                <summary className="cursor-pointer font-semibold">Contexto da página salvo neste trabalho</summary>
+                <p className="mt-3 break-words text-muted-foreground">{detalhe.operacao.input.contexto_da_pagina.titulo}</p>
+                <p className="mt-1 break-all text-xs text-muted-foreground">{detalhe.operacao.input.url_destino}</p>
+                <p className="mt-3 whitespace-pre-wrap">{detalhe.operacao.input.contexto_do_publico}</p>
+                <ul className="mt-3 list-inside list-disc space-y-1">{detalhe.operacao.input.fatos_da_oferta.map(f => <li key={f.ref}>{f.declaracao}</li>)}</ul>
+                <p className="mt-3 text-xs text-muted-foreground">Contexto usado na estratégia. A leitura original e suas escolhas permanecem vinculadas ao projeto.</p>
+              </details>}
               {saida && runAtual && (
                 <PainelDeEstrategia
                   saida={saida}

@@ -82,6 +82,16 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
+async def _registrar_ocr_local() -> None:
+    if not settings.criativo_policy_local_ocr_enabled:
+        return
+    import asyncio
+    from app.criativo.politica.detectores.ocr_apple import registrar_ocr_apple
+    registered = await asyncio.to_thread(registrar_ocr_apple)
+    log.info("OCR local Apple Vision disponível: %s; marca visual é capacidade separada.", registered)
+
+
+@app.on_event("startup")
 async def _reconciliar_runs_orfaos() -> None:
     """Fecha os runs do redator que ficaram abertos de um backend anterior.
 
@@ -191,9 +201,11 @@ else:
 app.include_router(trafego.router)
 # Diagnóstico persistido de Search pelo ledger v12 (P05-T07).
 app.include_router(trafego_diagnostico.router)
-# Ponte provisoria Meta, restrita a localhost/macOS e ADMIN. O token fica no
-# Keychain local; nao toca o Cofre, o Supabase nem oferece qualquer mutate.
+# Ponte Meta local ADMIN; credencial oficial selecionada ou Keychain legado
+# conforme rollout. Cadastro criptografado por Business fica no router próprio.
 app.include_router(meta_local.router)
+from app.routers import meta_business
+app.include_router(meta_business.router)
 # Compilacao e validate_only do primeiro plano Meta PAUSED. Este router nao
 # possui endpoint de create, aprovacao persistente ou ativacao.
 app.include_router(trafego_meta_validacao.router)
@@ -203,6 +215,12 @@ app.include_router(trafego_meta_validacao.router)
 # META_CREATE_LEDGER_WRITE_ENABLED; sem as duas, recusa antes do Keychain.
 # Nao existe rota de ativacao aqui nem em lugar nenhum.
 app.include_router(trafego_meta_criacao.router)
+from app.routers import trafego_meta_drafts
+app.include_router(trafego_meta_drafts.router)
+from app.routers import trafego_meta_naming
+app.include_router(trafego_meta_naming.router)
+from app.routers import trafego_meta_copy
+app.include_router(trafego_meta_copy.router)
 # Registro de midia na conta Meta (T08). Router SEPARADO pelo mesmo motivo do
 # de criacao, e por um a mais: `trafego_meta_validacao` declara no cabecalho que
 # nao tem efeito externo alem do validate_only, e um POST que escreve na

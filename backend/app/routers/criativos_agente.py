@@ -26,6 +26,9 @@ from app.criativo.agente.contrato import (
 from app.criativo.agente.caminhos import CaminhoInvalido, resolver as resolver_caminho
 from app.criativo.agente.orquestrador import AgenteCriativoMeta, RespostaDoModeloInvalida
 from app.criativo.agente.persistencia import NaoEncontrado, RepositorioAgenteCriativo
+from app.criativo.contexto_pagina import (
+    ContextoDaPagina, EntradaContextoPagina, PaginaInacessivel, analisar_pagina,
+)
 from app.criativo.studio import AutorizacaoDeGasto, PedidoDeGeracao, PlanoDeGeracao
 from app.criativo.studio.contrato import MAX_RENDERS_POR_PEDIDO
 from app.criativo.studio.autorizacao import (
@@ -76,6 +79,27 @@ def obter_agente(settings: Settings = Depends(get_settings)) -> AgenteCriativoMe
     # de um schema e de uma matriz; 0.9 aumenta variação sintática e custo de
     # retry sem dar autoridade nova ao modelo.
     return AgenteCriativoMeta(GeminiClient(settings, model=model, temperature=0.35))
+
+
+@router.post("/contexto-pagina", response_model=ContextoDaPagina)
+async def analisar_contexto_pagina(
+    entrada: EntradaContextoPagina,
+    identidade: Identidade = Depends(exigir_usuario),
+    settings: Settings = Depends(get_settings),
+) -> ContextoDaPagina:
+    """Reads one public LP and suggests editable context; never starts an image.
+
+    No credentials or campaign data are sent to the page. The snapshot is
+    persisted only with the operator's operation input, not as policy approval.
+    Missing LLM credentials do not block manual use of extracted excerpts.
+    """
+    modelo = None
+    if settings.resolved_gemini_key:
+        modelo = GeminiClient(settings, model=settings.criativo_meta_gemini_model, temperature=0.15)
+    try:
+        return await analisar_pagina(entrada.url, modelo)
+    except PaginaInacessivel as exc:
+        raise _erro("CRIATIVO_PAGINA_INACESSIVEL", str(exc), 422) from exc
 
 
 def _hash_valor(valor: Any) -> str:
@@ -275,6 +299,16 @@ async def capacidades(
             ),
         },
         "modos_de_composicao": [
+            {
+                "id": "referencia_visual",
+                "rotulo": "Usar como inspiração visual",
+                "descricao": (
+                    "Cria novas versões inspiradas na composição, nas cores e no estilo. "
+                    "Não cola a imagem nem pede para reproduzir pessoas ou marcas. "
+                    "Os textos e fatos vêm do briefing aprovado. Revise o resultado."
+                ),
+                "preserva_pixels_da_foto": False,
+            },
             {
                 "id": "sem_foto",
                 "rotulo": "Gerar a arte inteira",
@@ -787,6 +821,8 @@ def _assinatura_do_plano(
         custo_estimado_usd=plano.custo_estimado_usd,
         anexo_sha256=plano.anexo_sha256,
         modo_de_composicao=plano.modo_de_composicao,
+        creative_specs=[b.creative_spec.model_dump(mode="json") for b in plano.briefings if b.creative_spec],
+        geracao_ref=pedido.geracao_ref,
     )
 
 
@@ -999,6 +1035,7 @@ def _plano_para_json(plano: PlanoDeGeracao, selo: str | None = None) -> dict[str
                 "formato_slot": b.formato_slot,
                 "texto_na_arte": b.texto_na_arte,
                 "direcao_visual": b.direcao_visual,
+                "creative_spec": b.creative_spec.model_dump(mode="json") if b.creative_spec else None,
             }
             for b in plano.briefings
         ],
@@ -1173,66 +1210,107 @@ async def _gerar_imagens_autorizadas(
         por_conceito.setdefault(briefing.linhagem.creative_ref, []).append(briefing)
 
     criados: list[dict[str, Any]] = []
-    for creative_ref, briefings in por_conceito.items():
-        # Reenviar o mesmo pedido não paga de novo: a ponte é única por
-        # (run_ref, creative_ref) e responde antes de o executor ser chamado.
-        ja = await repo.ponte_por_peca(pedido.run_ref, creative_ref, identidade.sub)
-        if ja is not None:
+    jobs_para_despachar: list[str] = []
+    erro_de_preparacao: BaseException | None = None
+    try:
+        for creative_ref, briefings in por_conceito.items():
+            # Reenviar o mesmo pedido não paga de novo: a ponte é única por
+            # (run_ref, creative_ref) e responde antes de o executor ser chamado.
+            ja = await repo.ponte_por_peca(
+                pedido.run_ref, creative_ref, identidade.sub,
+                **({"geracao_ref": pedido.geracao_ref} if pedido.geracao_ref else {}),
+            )
+            if ja is not None:
+                if ja.get("plano_sha256") != assinatura_atual:
+                    raise _erro(
+                        "CRIATIVO_STUDIO_VERSAO_DIVERGENTE",
+                        "Esta versão já pertence a outra seleção ou a um plano anterior. "
+                        "Prepare uma nova versão para gerar com estes formatos e textos; as imagens antigas continuam salvas.",
+                        409,
+                    )
+                criados.append(
+                    {
+                        "creative_ref": creative_ref,
+                        "job_id": ja["job_id"],
+                        "slots": ja.get("slots") or [],
+                        "criado_agora": False,
+                    }
+                )
+                continue
+
+            job, criado = await executor.criar_job_de_imagem(
+                pedido_de_job(
+                    briefings,
+                    nome_da_operacao=entrada.get("nome_da_operacao") or "Operação sem nome",
+                    modo_de_composicao=pedido.modo_de_composicao,
+                    anexo=anexo,
+                    plano_sha256=assinatura_atual,
+                    teto_custo_usd=(
+                        pedido.autorizacao.teto_custo_usd if pedido.autorizacao else None
+                    ),
+                ),
+                identidade.sub,
+            )
+            linhagem = briefings[0].linhagem
+            await repo.registrar_ponte(
+                {
+                    "ponte_ref": _ref("crpj_"),
+                    "geracao_ref": pedido.geracao_ref or "original",
+                    "plano_sha256": assinatura_atual,
+                    "owner_id": identidade.sub,
+                    "project_ref": project_ref,
+                    "run_ref": pedido.run_ref,
+                    "creative_ref": linhagem.creative_ref,
+                    "group_ref": linhagem.group_ref,
+                    "copy_ref": linhagem.copy_ref,
+                    "state_ref": linhagem.state_ref,
+                    "job_id": str(job["id"]),
+                    "slots": [b.formato_slot for b in briefings],
+                    "fato_refs": list(linhagem.fato_refs),
+                    "rule_refs": list(linhagem.rule_refs),
+                }
+            )
+            jobs_para_despachar.append(str(job["id"]))
             criados.append(
                 {
                     "creative_ref": creative_ref,
-                    "job_id": ja["job_id"],
-                    "slots": ja.get("slots") or [],
-                    "criado_agora": False,
+                    "job_id": str(job["id"]),
+                    "slots": [b.formato_slot for b in briefings],
+                    "criado_agora": criado,
                 }
             )
-            continue
+    except BaseException as erro:
+        # Os jobs cuja ponte já foi salva continuam autorizados. Não deixe
+        # esses pedidos presos em queued por uma falha ao preparar o próximo.
+        erro_de_preparacao = erro
 
-        job, criado = await executor.criar_job_de_imagem(
-            pedido_de_job(
-                briefings,
-                nome_da_operacao=entrada.get("nome_da_operacao") or "Operação sem nome",
-                modo_de_composicao=pedido.modo_de_composicao,
-                anexo=anexo,
-                plano_sha256=assinatura_atual,
-                teto_custo_usd=(
-                    pedido.autorizacao.teto_custo_usd if pedido.autorizacao else None
-                ),
-            ),
-            identidade.sub,
-        )
-        linhagem = briefings[0].linhagem
-        await repo.registrar_ponte(
-            {
-                "ponte_ref": _ref("crpj_"),
-                "owner_id": identidade.sub,
-                "project_ref": project_ref,
-                "run_ref": pedido.run_ref,
-                "creative_ref": linhagem.creative_ref,
-                "group_ref": linhagem.group_ref,
-                "copy_ref": linhagem.copy_ref,
-                "state_ref": linhagem.state_ref,
-                "job_id": str(job["id"]),
-                "slots": [b.formato_slot for b in briefings],
-                "fato_refs": list(linhagem.fato_refs),
-                "rule_refs": list(linhagem.rule_refs),
-            }
-        )
-        # `disparar` é SÍNCRONO até o fim: ele enfileira e roda o render, que
-        # leva ~11s por peça. Chamá-lo direto de dentro da corrotina congelava o
-        # event loop inteiro pela duração do lote — /health, listagem e qualquer
-        # outra aba paravam de responder enquanto a primeira geração acontecia.
-        # `to_thread` mantém a mesma semântica (a resposta só sai quando o
-        # trabalho tem estado terminal) e devolve o loop ao resto do processo.
-        await asyncio.to_thread(executor.disparar, str(job["id"]))
-        criados.append(
-            {
-                "creative_ref": creative_ref,
-                "job_id": str(job["id"]),
-                "slots": [b.formato_slot for b in briefings],
-                "criado_agora": criado,
-            }
-        )
+    # Todas as pontes existem antes do primeiro render: a galeria consegue
+    # acompanhar o lote inteiro enquanto este POST espera. Três despachos no
+    # máximo; o executor ainda aplica seu limite GLOBAL de três peças/provider.
+    from app.criativo.execucao import MAX_GERACOES_SIMULTANEAS
+
+    vagas_de_despacho = asyncio.Semaphore(MAX_GERACOES_SIMULTANEAS)
+
+    async def despachar(job_id: str) -> None:
+        async with vagas_de_despacho:
+            await asyncio.to_thread(executor.disparar, job_id)
+
+    lote = asyncio.gather(*(
+        despachar(job_id) for job_id in jobs_para_despachar
+    ), return_exceptions=True)
+    try:
+        resultados = await asyncio.shield(lote)
+    except asyncio.CancelledError:
+        # Fechar a aba não revoga autorização nem abandona conceitos na fila.
+        # O runtime local continua até os jobs terem desfecho persistido.
+        await lote
+        raise
+    # Uma falha de despacho não abandona os demais jobs já persistidos.
+    if erro_de_preparacao is not None:
+        raise erro_de_preparacao
+    for resultado in resultados:
+        if isinstance(resultado, BaseException):
+            raise resultado
 
     return {
         "geracoes": criados,
@@ -1257,6 +1335,7 @@ async def listar_geracoes(
         "geracoes": [
             {
                 "ponte_ref": p.get("ponte_ref"),
+                "geracao_ref": p.get("geracao_ref") or "original",
                 "creative_ref": p.get("creative_ref"),
                 "group_ref": p.get("group_ref"),
                 "run_ref": p.get("run_ref"),

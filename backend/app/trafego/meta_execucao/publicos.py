@@ -30,7 +30,7 @@ from typing import Any, Iterable, Mapping, Protocol
 import httpx
 
 from app.trafego.meta import dominio as dom
-from app.trafego.meta.adaptador import AdaptadorMetaSomenteLeitura
+from app.trafego.meta.adaptador import AdaptadorMetaSomenteLeitura, ErroDeLeituraMeta
 from app.trafego.meta.credenciais import SegredoEfemero
 
 from .contrato import ErroDeNascimentoMeta
@@ -126,6 +126,27 @@ def _cobrar(
     return resolvidas
 
 
+async def _resolver_mensuracao(
+    leitor: Any, conta: str, tipo: str, referencias: Iterable[str],
+    segredo: SegredoEfemero, o_que: str,
+) -> dict[str, Mapping[str, Any]]:
+    """Reusa a leitura de IDs com metadados, sem acrescentar uma requisição.
+
+    Leitores legados sem essa capacidade seguem sem evidência local de vínculo;
+    isso NÃO é aprovação de elegibilidade e não remove a validação remota.
+    """
+    try:
+        detalhes = getattr(leitor, "resolver_detalhes_por_referencia", None)
+        if callable(detalhes):
+            return await detalhes(conta, tipo, list(referencias), segredo)
+        ids = await _resolver(leitor, conta, tipo, referencias, segredo, o_que)
+        return {ref: {"id": identificador} for ref, identificador in ids.items()}
+    except ErroDeLeituraMeta as exc:
+        # As rotas de compilação tratam o erro de domínio. Não transformar a
+        # recusa conhecida da seleção em HTTP 500 nem expor a resposta Graph.
+        raise ErroDeNascimentoMeta(exc.codigo, exc.mensagem_segura) from None
+
+
 def _refs_de_publico(plano: PlanoMetaV2) -> tuple[str, ...]:
     refs: list[str] = []
     for conjunto in plano.conjuntos:
@@ -217,23 +238,34 @@ async def resolver_referencias_de_publico(
 
     resolvidas_fontes: dict[str, str] = {}
     if fontes_pedidas:
+        fontes = await _resolver_mensuracao(
+            leitor, conta, TIPO_PIXEL, fontes_pedidas, segredo, "os pixels e datasets")
         resolvidas_fontes = _cobrar(
             fontes_pedidas,
-            await _resolver(
-                leitor, conta, TIPO_PIXEL, fontes_pedidas, segredo,
-                "os pixels e datasets"),
+            {ref: item["id"] for ref, item in fontes.items()},
             "fonte(s) de mensuração",
         )
 
     resolvidas_conversoes: dict[str, str] = {}
     if conversoes_pedidas:
+        conversoes = await _resolver_mensuracao(
+            leitor, conta, TIPO_CONVERSAO, conversoes_pedidas, segredo,
+            "as conversões personalizadas")
         resolvidas_conversoes = _cobrar(
             conversoes_pedidas,
-            await _resolver(
-                leitor, conta, TIPO_CONVERSAO, conversoes_pedidas, segredo,
-                "as conversões personalizadas"),
+            {ref: item["id"] for ref, item in conversoes.items()},
             "conversão(ões) personalizada(s)",
         )
+        for conjunto in plano.conjuntos:
+            medida = conjunto.mensuracao
+            if not medida.altera_payload or not medida.custom_conversion_ref:
+                continue
+            fonte_da_conversao = conversoes[medida.custom_conversion_ref].get("event_source_id")
+            if fonte_da_conversao is not None and str(fonte_da_conversao) != resolvidas_fontes[medida.source_ref]:
+                raise ErroDeNascimentoMeta(
+                    "META_MEASUREMENT_SOURCE_MISMATCH",
+                    "A conversão personalizada pertence a outra fonte. Escolha o pixel/dataset correspondente ou outra conversão.",
+                )
 
     return ReferenciasDePublicoResolvidas(
         custom_audience_ids=resolvidos_publicos,

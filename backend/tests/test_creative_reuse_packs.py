@@ -2,7 +2,11 @@ from copy import deepcopy
 from uuid import uuid4
 import pytest
 from pydantic import ValidationError
-from app.criativo.packs import PedidoPack, salvar_assets, selecionar_assets, guardar, inventario_completo
+from app.criativo.packs import (
+    PedidoPack, PedidoSelecaoPack, fixar_pack_no_conjunto, guardar,
+    inventario_completo, listar_selecoes_do_rascunho, retirar_pack_do_conjunto,
+    salvar_assets, selecionar_assets,
+)
 from app.criativo.packs import PedidoPackMeta, salvar_meta
 from app.criativo.persistencia import ConflitoDeChave
 from app.trafego.meta.gestao import PedidoDeGestaoMeta, planejar_gestao
@@ -18,7 +22,17 @@ class Repo:
     async def buscar_master_do_dono(self, ref, *, criado_por):
         return self.master if criado_por == OWNER and ref == MASTER else None
     async def _inserir(self, table, row):
-        if any(r['owner_id'] == row['owner_id'] and r['manifest_sha256'] == row['manifest_sha256'] for r in self.rows):
+        if table == 'criativo_reuso_pack' and any(
+            r.get('owner_id') == row['owner_id']
+            and r.get('manifest_sha256') == row['manifest_sha256']
+            and 'nome' in r for r in self.rows
+        ):
+            raise ConflitoDeChave()
+        if table == 'trafego_meta_rascunho_pack' and any(
+            r.get('owner_id') == row['owner_id']
+            and r.get('draft_ref') == row['draft_ref']
+            and r.get('adset_key') == row['adset_key'] for r in self.rows
+        ):
             raise ConflitoDeChave()
         result = dict(row, id=str(uuid4()), created_at='2026-09-08T00:00:00Z')
         self.rows.append(result)
@@ -26,6 +40,16 @@ class Repo:
     async def _get(self, table, params):
         if table == 'criativo_agente_peca_job': return []
         return [r for r in self.rows if all(str(r.get(k)) == v[3:] for k, v in params.items() if str(v).startswith('eq.'))]
+
+    async def _atualizar(self, table, params, fields):
+        found = await self._get(table, params)
+        for row in found: row.update(fields)
+        return found
+
+    async def _apagar(self, table, params):
+        found = await self._get(table, params)
+        self.rows = [row for row in self.rows if row not in found]
+        return found
 
 @pytest.mark.asyncio
 async def test_pack_immutable_selection_owner_and_idempotency():
@@ -48,6 +72,35 @@ async def test_foreign_or_archived_master_never_creates_pack():
     repo.master['arquivado_em'] = '2026-09-08'
     with pytest.raises(ValueError): await salvar_assets(repo, OWNER, pedido)
     assert not repo.rows
+
+
+@pytest.mark.asyncio
+async def test_pack_binding_is_durable_per_adset_and_versioned():
+    repo = Repo()
+    pack = await salvar_assets(repo, OWNER, PedidoPack(nome='Pack A', master_refs=[MASTER]))
+    draft = uuid4()
+    first = await fixar_pack_no_conjunto(
+        repo, OWNER, draft, 'adset-001',
+        PedidoSelecaoPack(pack_id=pack['id'], expected_version=0),
+    )
+    second = await fixar_pack_no_conjunto(
+        repo, OWNER, draft, 'adset-002',
+        PedidoSelecaoPack(pack_id=pack['id'], expected_version=0),
+    )
+    assert first['version'] == second['version'] == 1
+    listed = await listar_selecoes_do_rascunho(repo, OWNER, draft)
+    assert [item['adset_key'] for item in listed['selections']] == ['adset-001', 'adset-002']
+    assert all(item['state'] == 'LOCKED' for item in listed['selections'])
+
+    with pytest.raises(ValueError, match='outra aba'):
+        await fixar_pack_no_conjunto(
+            repo, OWNER, draft, 'adset-001',
+            PedidoSelecaoPack(pack_id=pack['id'], expected_version=0),
+        )
+    removed = await retirar_pack_do_conjunto(repo, OWNER, draft, 'adset-001', 1)
+    assert removed['state'] == 'REMOVED'
+    assert [item['adset_key'] for item in
+            (await listar_selecoes_do_rascunho(repo, OWNER, draft))['selections']] == ['adset-002']
 
 @pytest.mark.asyncio
 async def test_changed_kind_is_not_valid_image_selection():
@@ -83,7 +136,22 @@ def test_pack_routes_require_authentication():
     app = FastAPI(); app.include_router(router)
     with TestClient(app) as cli:
         assert cli.get('/api/criativos/meta/agente/packs').status_code == 401
+        assert cli.get(f'/api/criativos/meta/agente/packs/{MASTER}').status_code == 401
         assert cli.post('/api/criativos/meta/agente/packs',json={'nome':'Teste','master_refs':[MASTER]}).status_code == 401
+
+@pytest.mark.asyncio
+async def test_pack_detail_is_owner_scoped_and_does_not_expose_storage():
+    from types import SimpleNamespace
+    from fastapi import HTTPException
+    from app.routers.criativos_packs import detalhe
+    repo = Repo()
+    p = await salvar_assets(repo, OWNER, PedidoPack(nome='Pack', master_refs=[MASTER]))
+    detail = await detalhe(p['id'], SimpleNamespace(sub=OWNER), repo)
+    assert detail == p
+    assert 'owner_id' not in detail and 'storage_chave' not in str(detail)
+    with pytest.raises(HTTPException) as error:
+        await detalhe(p['id'], SimpleNamespace(sub=str(uuid4())), repo)
+    assert error.value.status_code == 404
 
 @pytest.mark.asyncio
 async def test_meta_pack_uses_exact_validated_snapshot_without_second_target_read():

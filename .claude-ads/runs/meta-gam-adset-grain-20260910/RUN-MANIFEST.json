@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "run_id": "meta-gam-adset-grain-20260910",
+  "created_on": "2026-09-10",
+  "objective": "Corrigir a atribuição financeira Meta para casar a receita GAM no grão de conjunto de anúncios sem duplicar receita ou mídia.",
+  "platforms": ["meta_ads", "google_ad_manager"],
+  "scope": [
+    "workflow n8n 9jOsfVPGrFOQAcUR",
+    "daily_campaign_metrics",
+    "métricas Meta por campaign/adset/ad",
+    "dashboard de campanha Meta"
+  ],
+  "authority": {
+    "repository_changes": true,
+    "official_supabase_schema_change": "somente se necessária após inspeção, backup lógico e testes",
+    "n8n_workflow_mutation": false,
+    "meta_ads_mutation": false
+  },
+  "privacy": "Não registrar credenciais, tokens, exports de conta ou identificadores pessoais.",
+  "results": {
+    "official_database": "router e views de atribuição instalados após backup lógico",
+    "tests": "144 testes integrados; validador n8n isolado com 279 aprovações, 0 falhas e 1 integração pulada por PYTHONPATH",
+    "legacy_rows_preserved": 99,
+    "paid_api_cost": 0
+  },
+  "remaining": [
+    "reconciliar/importar o workflow remoto 9jOsfVPGrFOQAcUR",
+    "provar a primeira linha real Meta adset/dia com receita GAM do mesmo projeto"
+  ],
+  "status": "partial"
+}

@@ -1,0 +1,21 @@
+{
+  "run_id": "meta-engine-refinement-20260910",
+  "status": "local_verified_remote_pending",
+  "objective": "Review and refine Meta engine across publication, creative reuse, measurement and UX/persistence",
+  "authority": "Explicit user approval for paid gemini-3.8-flash high/search review, code changes and justified backed-up official migrations; final plan approval and PAUSED only",
+  "model": "gemini-3.8-flash",
+  "thinking": "high",
+  "search_grounding": true,
+  "limits": {"initial_calls": 4, "followup_calls": 2, "max_concurrency": 2, "automatic_retry": 0, "max_input_chars_per_call": 32000, "max_output_tokens_per_call": 8192},
+  "scope": ["publication and reconciliation", "creative generation/reuse/flexible", "measurement/bidding/tracking", "UX and draft persistence"],
+  "excluded": ["credentials", "environment files", "personal data", "customer lists", "live account exports", "Webgo changes", "Meta activation"],
+  "data_lifecycle": {"classification": "allowlisted engineering code and synthetic examples", "retention": "sanitized receipts retained with engineering evidence; no raw live exports", "access_roles": ["operator", "engineering"], "incident_owner": "operator", "encryption": "HTTPS provider transport; no claim of local disk encryption"},
+  "meta_mutations": 0,
+  "schema_mutations": 0,
+  "calls_completed": 6,
+  "exact_model_verified": true,
+  "grounded_calls": 2,
+  "provider_total_tokens": 350561,
+  "provider_monetary_cost": "not supplied",
+  "handoff": "docs/closure/meta-engine-refinement-20260910/HANDOFF.md"
+}

@@ -237,6 +237,7 @@ async def test_token_viaja_so_no_cabecalho_e_nunca_no_corpo() -> None:
     assert headers["Authorization"].startswith("Bearer ")
     assert "token" not in url and "access_token" not in url
     # O corpo multipart carrega os bytes e o nome — nada mais.
+    assert set(graph.corpos[0]) == {'filename'}
     assert "token-meta-falso-seguro" not in str(graph.corpos[0])
     # E o recibo durável também não vê o segredo.
     assert "token-meta-falso-seguro" not in str(livro.reservas)
@@ -365,6 +366,8 @@ def test_capacidades_sem_conta_ficam_fechadas(monkeypatch) -> None:
 
 
 def test_capacidades_sao_por_conta(monkeypatch) -> None:
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(trafego_meta_ativos, '_media_schema_ready', AsyncMock(return_value=True))
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     monkeypatch.setenv("META_UPLOAD_ASSET_ENABLED", "metaacct_liberada")
     cliente = _app()
@@ -381,6 +384,8 @@ def test_capacidades_sao_por_conta(monkeypatch) -> None:
 
 def test_video_e_declarado_bloqueado_e_nao_disponivel(monkeypatch) -> None:
     """`A29`: vídeo é capacidade diferente, com prova própria."""
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(trafego_meta_ativos, '_media_schema_ready', AsyncMock(return_value=True))
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     monkeypatch.setenv("META_UPLOAD_ASSET_ENABLED", "metaacct_liberada")
     corpo = _app().get(
@@ -445,7 +450,8 @@ def test_o_router_nao_tem_rota_de_criacao_ou_ativacao() -> None:
     """`A45`: a flag de upload não abre criar/ativar."""
     paths = {rota.path for rota in trafego_meta_ativos.router.routes}
     assert paths == {
-        "/api/trafego/meta/ativos/capacidades", "/api/trafego/meta/ativos/registrar"}
+        "/api/trafego/meta/ativos/capacidades", "/api/trafego/meta/ativos/registrar",
+        "/api/trafego/meta/ativos/revisar"}
     for proibido in ("campanha", "campaign", "adset", "criar", "ativar", "aprovar"):
         assert all(proibido not in path for path in paths)
 
@@ -586,17 +592,25 @@ def test_conta_fora_do_alcance_do_token_vira_409_nomeado_e_nao_500(monkeypatch) 
 
     monkeypatch.setattr(meta_local.sys, "platform", "darwin")
     monkeypatch.setenv("META_UPLOAD_ASSET_ENABLED", "metaacct_exemplo")
-    monkeypatch.setattr(trafego_meta_ativos, "_credencial_salva", lambda *_: _Credencial())
+    async def _credencial(*args, **kwargs):
+        return _Credencial()
+    monkeypatch.setattr(trafego_meta_ativos, "credencial_operacional", _credencial)
 
     async def _pecas(refs, *, ator):
-        return [_peca()]
+        return [PecaParaRegistrar("master-1", "test", "image/jpeg", _peca().conteudo)]
+
+    async def _revisoes(pecas, **kwargs):
+        return [{"master_ref": "master-1", "content_sha256": _peca().content_sha256,
+                 "utilizavel": True, "codigo": None}]
 
     async def _conta(ref, segredo):
         raise dom.ContratoMetaInvalido("referencia opaca Meta desconhecida")
 
     monkeypatch.setattr(trafego_meta_ativos, "_carregar_pecas", _pecas)
+    monkeypatch.setattr(trafego_meta_ativos, "_revisar_pecas", _revisoes)
     monkeypatch.setattr(trafego_meta_ativos, "_conta_externa_da", _conta)
-    resposta = _app().post("/api/trafego/meta/ativos/registrar", json=_pedido())
+    resposta = _app().post("/api/trafego/meta/ativos/registrar", json=_pedido(
+        revisoes=[{"master_ref": "master-1", "content_sha256": _peca().content_sha256}]))
     assert resposta.status_code == 409
     assert resposta.json()["detail"]["codigo"] == "META_ASSET_ACCOUNT_UNKNOWN"
 

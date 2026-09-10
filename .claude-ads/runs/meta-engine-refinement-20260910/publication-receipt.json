@@ -1,0 +1,101 @@
+{
+  "slice": "publication",
+  "created_at": "2026-09-10T11:27:44.361924+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_requested": "high",
+  "search_requested": true,
+  "files": [
+    {
+      "path": "backend/app/trafego/meta_execucao/executor.py",
+      "start": 473,
+      "end": 699,
+      "sha256": "d27c283ae154cbbd1eb7936690de34d2299d7e59221a7aab2f3391f615040778"
+    },
+    {
+      "path": "backend/app/trafego/meta_execucao/compilador.py",
+      "start": 671,
+      "end": 825,
+      "sha256": "0d9241d38cfdbdf7990ea5f3a39114d3672b9600ad757c80db678326d582c1dc"
+    },
+    {
+      "path": "backend/app/routers/trafego_meta_criacao.py",
+      "start": 969,
+      "end": 1056,
+      "sha256": "80f81ed6cf45720d32d2af140e65c73f2c13b0e555614c0207d4bc2436b46f28"
+    }
+  ],
+  "input_sha256": "534a9cfdf8777f60b00fb5b49764bbe700ae2947438d678e8f5b5c25dea0a0e8",
+  "status": "review_received",
+  "calls_attempted": 1,
+  "billing": "unknown unless provider supplies usage",
+  "modelVersion": "gemini-3.8-flash",
+  "model_verified": true,
+  "usage": {
+    "promptTokenCount": 30479,
+    "candidatesTokenCount": 1369,
+    "totalTokenCount": 55205,
+    "cachedContentTokenCount": 18278,
+    "thoughtsTokenCount": 23357
+  },
+  "grounding": {
+    "webSearchQueries": [],
+    "groundingChunks": [],
+    "groundingSupports": []
+  },
+  "grounding_verified": false,
+  "finishReason": "STOP",
+  "review": {
+    "status": "partial",
+    "checked": [
+      "backend/app/trafego/meta_execucao/executor.py",
+      "backend/app/trafego/meta_execucao/compilador.py",
+      "backend/app/routers/trafego_meta_criacao.py"
+    ],
+    "findings": [
+      {
+        "id": "validate_only_timeout_deadlock",
+        "file": "backend/app/trafego/meta_execucao/executor.py",
+        "line": 496,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "Timeout durante pre-flight validate_only antes de preparar o passo é capturado pelo tratador externo e classificado incorretamente como META_REMOTE_RESULT_AMBIGUOUS com exige_reconciliacao=True, travando a recuperação em falso PERMANECE_AMBIGUO.",
+        "evidence": "Na linha 496, self._post é chamado com execution_options=['validate_only'] antes de preparar_passo (linha 508). Conforme especificação da Meta, validate_only não executa mutação. Quando httpx.TimeoutException ocorre, ele não é tratado localmente e cai na linha 672, levantando ErroRemotoMeta(META_REMOTE_RESULT_AMBIGUOUS, exige_reconciliacao=True, retryable=False). Ao reconciliar via router (trafego_meta_criacao.py linha 1038), o objeto nunca é encontrado (AUSENTE), o que a rota converte em PERMANECE_AMBIGUO permanente.",
+        "proposal": "Envolver a chamada de validate_only na linha 496 em try/except específico para httpx.TimeoutException, levantando erro de validação transitório e retryable sem exige_reconciliacao=True nem bloqueio de reconciliação de passo inexistente.",
+        "test": "Simular httpx.TimeoutException no _post de validação (execution_options=['validate_only']) e verificar que o erro retornado possui exige_reconciliacao=False, retryable=True e não invoca _marcar_ambiguo_sem_derrubar nem preparar_passo."
+      },
+      {
+        "id": "ad_key_collision_multi_adset",
+        "file": "backend/app/trafego/meta_execucao/compilador.py",
+        "line": 732,
+        "severity": "high",
+        "kind": "local_code",
+        "claim": "chave_anuncio utiliza exclusivamente variacao.variation_key sem qualificação de anuncio.adset_key, causando colisão de chaves entre conjuntos que omite silenciosamente a criação de anúncios em conjuntos subsequentes no executor.",
+        "evidence": "Na linha 732, chave_anuncio = f'ad:{variacao.variation_key}'. Ao reutilizar uma mesma variação em múltiplos conjuntos de anúncio (padrão em testes ABO/CBO), múltiplos OperacaoMeta recebem a mesma chave. No executor.py linhas 508-529, após o primeiro conjunto criar o anúncio, o passo é fechado como CRIADO. Na iteração do segundo conjunto, preparar_passo devolve passo.estado == 'CRIADO', ativando a linha 527 e ignorando completamente o bloco else com a criação remota (linha 531), deixando os conjuntos posteriores sem anúncio na Meta.",
+        "proposal": "Adicionar o identificador do conjunto ao namespace da chave do anúncio: chave_anuncio = f'ad:{anuncio.adset_key}:{variacao.variation_key}', atualizando as referências de dependência correspondentes.",
+        "test": "Compilar plano com 2 conjuntos contendo a mesma variation_key; assegurar chaves distintas para cada ad (ex: ad:setA:var1 e ad:setB:var1) e validar que no executor mockado _post é chamado uma vez para cada conjunto."
+      },
+      {
+        "id": "existing_post_copy_redundancy",
+        "file": "backend/app/trafego/meta_execucao/compilador.py",
+        "line": 774,
+        "severity": "low",
+        "kind": "ux",
+        "claim": "Exigência de transcrição manual estrita de textos imutáveis para publicações existentes (META_EXISTING_POST_COPY_IMMUTABLE) gera fricção desnecessária ao operador para campos que são descartados na montagem do payload com object_story_id.",
+        "evidence": "As linhas 774-775 rejeitam a compilação caso message, headline, description ou call_to_action_type divirjam do source resolvido, mas a linha 778 remove object_story_spec por completo e injeta apenas object_story_id = source['_post_id']. Qualquer divergência irrelevante de digitação ou formatação bloqueia a esteira mesmo que a Meta utilize integralmente o conteúdo nativo da publicação existente.",
+        "proposal": "Permitir que a UI/compilador preencha automaticamente os campos de texto da variação diretamente a partir de source quando existing_post_ref for fornecido, mantendo a aprovação explícita e o status PAUSED sem exigir digitação duplicada de dados imutáveis.",
+        "test": "Submeter plano com existing_post_ref com textos preenchidos automaticamente do source resolvido e validar emissão de AdCreative com object_story_id sem disparo de META_EXISTING_POST_COPY_IMMUTABLE, preservando status PAUSED."
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://developers.facebook.com/docs/marketing-api/reference/adgroup/",
+        "claim": "Ao especificar execution_options com 'validate_only', a chamada de API não realiza mutação, executando apenas regras de validação contra os valores dos campos fornecidos."
+      }
+    ],
+    "limitations": [
+      "Implementação interna de resolver_dependencias, _read_one, _validar_read_back e das RPCs Supabase preparar_passo/fechar_passo omitida no trecho.",
+      "Hipótese de que conjunto.chave_de_operacao coincide com 'adset:{conjunto.adset_key}' depende da implementação de contrato_v2 não exibida."
+    ],
+    "summary": "Identificados defeito crítico de trava em reconciliação por falso positivo em timeout de validate_only, omissão silenciosa de anúncios em múltiplos conjuntos por colisão de chave no compilador, e oportunidade de simplificação de UX na resolução de posts existentes sem comprometer aprovação e status PAUSED."
+  }
+}

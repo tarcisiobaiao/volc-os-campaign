@@ -31,10 +31,10 @@ from app.trafego.meta_execucao import contrato as contrato_meta
 
 
 @pytest.fixture(autouse=True)
-def _cenario_limpo():
-    h.CENARIO.reiniciar()
-    yield
-    h.CENARIO.reiniciar()
+def _cenario_limpo(monkeypatch):
+    # Reuse the full hermetic setup, including the operational credential
+    # resolver introduced after these tests; no call may reach the real vault.
+    yield from h._cenario_limpo.__wrapped__(monkeypatch)
 
 
 def _abrir_bancada(monkeypatch, ledger=None, plano=None):

@@ -252,11 +252,10 @@ export const Navigation: React.FC<NavigationProps> = ({
       asChild
       variant="ghost"
       className={cn(
-        "group w-full justify-start gap-3 rounded-md transition-colors duration-150 relative overflow-hidden active:scale-100",
+        "nav-item-volc group w-full justify-start gap-3 rounded-md relative active:scale-100 hover:bg-transparent hover:text-inherit",
+        isActive && "nav-item-volc-active font-semibold",
+        !isActive && "text-sidebar-foreground",
         isMobile ? "h-14" : "h-12",
-        isActive
-          ? "bg-primary/12 text-primary font-semibold hover:bg-primary/16 hover:text-primary"
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         isCollapsed && !isMobile && "justify-center px-2"
       )}
     >
@@ -272,24 +271,22 @@ export const Navigation: React.FC<NavigationProps> = ({
         aria-current={isActive ? "page" : undefined}
         {...(isCollapsed && !isMobile ? { title: item.title, "aria-label": item.title } : {})}
       >
-        {/* Era uma faixa aurora de 3px. Duas proibições de uma vez: o
-            `design.md` bane faixa lateral acima de 1px, e bane aurora como
-            estado operacional — "selecionado" é estado, não identidade. O
-            tinte de fundo + a tinta primária + este fio de 1px já dizem
-            "você está aqui" sem gastar a assinatura da marca. */}
+        {/* O item ativo usa o mesmo eixo do "Pro" no Pautador: fio aurora +
+            wash navy/roxo. O título fica navy sólido — aurora em 14px
+            reprova AA no stop ciano. */}
         {isActive && (
-          <span aria-hidden="true" className="absolute left-0 top-1.5 bottom-1.5 w-px bg-primary" />
+          <span aria-hidden="true" className="nav-item-volc-rail" />
         )}
         <Icone
           icon={item.icon}
           className={cn(
-            "relative z-10 transition-colors",
-            isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+            "nav-item-icon relative z-10",
+            isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
           )}
         />
         {(!isCollapsed || isMobile) && (
           <div className="flex flex-col items-start relative z-10 min-w-0">
-            <span className="text-sm font-medium truncate">{item.title}</span>
+            <span className="nav-item-title text-sm font-medium truncate">{item.title}</span>
             <span className="text-[11px] text-muted-foreground truncate">{item.description}</span>
           </div>
         )}
@@ -301,7 +298,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const sidebarContent = (
     <>
       {/* Header */}
-      <div className="p-4 border-b border-border relative">
+      <div className="p-4 border-b border-sidebar-border relative">
         <span className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-aurora" />
         <div className="flex items-center justify-center w-full">
           {(!isCollapsed || isMobile) ? (
@@ -361,7 +358,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             onClick={() => openCommandPalette()}
             title="Buscar (⌘K)"
             className={cn(
-              "w-full flex items-center gap-2 h-11 rounded-md border border-sidebar-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground hover:border-primary/40 transition-[background-color,border-color,color] duration-150 text-sm",
+              "nav-search w-full flex items-center gap-2 h-11 rounded-md border border-sidebar-border bg-raised text-muted-foreground hover:text-foreground text-sm",
               isCollapsed && !isMobile ? "justify-center px-2" : "px-3"
             )}
           >
@@ -430,11 +427,11 @@ export const Navigation: React.FC<NavigationProps> = ({
       </ScrollArea>
 
       {/* User Section */}
-      <div className="p-4 border-t border-border bg-gradient-to-r from-muted/20 to-background">
+      <div className="p-4 border-t border-sidebar-border bg-sidebar">
         {(!isCollapsed || isMobile) ? (
           <div className="space-y-3 animate-fade-in">
             {/* User Info */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-raised border border-sidebar-border">
               <div className="h-8 w-8 rounded-full bg-gradient-aurora flex items-center justify-center shadow-glow">
                 <User className="h-4 w-4 text-white" />
               </div>
@@ -554,7 +551,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]",
+        "relative flex flex-col border-r border-sidebar-border bg-sidebar shadow-card transition-[width] duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]",
         isCollapsed ? "w-16" : "w-80"
       )}
     >

@@ -33,16 +33,15 @@ aceita omitir".
 
 ## O que "não provado" fecha, e o que ele NÃO fecha
 
-Esta lane já tem um padrão para capacidade sem prova remota, e ele foi escrito
-para o redirecionamento a Shop (`contrato.DESTINO_SHOP_NAO_PROVADO`): compilar
-e validar continuam ABERTOS, porque `validate_only` não cria nada e é por ele
-que a prova externa é obtida; o que fecha é CRIAR.
+O catálogo distingue prova histórica de capacidade implementada. Uma receita
+FIELD_SHAPE_ONLY pode percorrer compilar → validar → aprovação real do plano
+exato → criação PAUSED. A aceitação prévia cobre apenas raízes independentes;
+o executor valida cada passo dependente resolvido antes de criá-lo. Isso não
+promove a receita inteira nem sua elegibilidade para outra conta.
 
-Repetir esse padrão aqui é o que separa "evoluir de verdade" de "inventar
-enum". O operador pode montar um plano de conversão web, compilar, ver o
-payload exato e clicar para validar — e é a resposta da Meta que promove a
-receita, não uma afirmação nossa. Enquanto essa resposta não existir,
-`criar_pausada` recusa com nome próprio e diz qual prova falta.
+Os portões de processo, política, autorização e destino Shop permanecem
+independentes. `capacidade_pausada` descreve o caminho disponível, nunca licença
+para ignorar esses portões nem ativar uma campanha.
 """
 from __future__ import annotations
 
@@ -227,6 +226,18 @@ _CBO_TOTAL_FORMA = ModoDeOrcamento(
 _MODOS_PADRAO = (
     _ABO_DIARIO_PROVADO, _ABO_TOTAL_FORMA, _CBO_DIARIO_FORMA, _CBO_TOTAL_FORMA)
 
+# Traffic's historical acceptance is not evidence about Sales/Leads. Each
+# conversion budget combination remains field-shape evidence until its own
+# exact plan is validated and its dependent steps are created/read back.
+_MODOS_CONVERSAO = (
+    ModoDeOrcamento(
+        nivel=ORCAMENTO_NO_CONJUNTO, periodo=PERIODO_DIARIO,
+        prova=PROVA_FORMA_DE_CAMPO,
+        fonte="daily_budget existe no AdSet; a prova histórica de Traffic não prova esta receita de conversão",
+    ),
+    _ABO_TOTAL_FORMA, _CBO_DIARIO_FORMA, _CBO_TOTAL_FORMA,
+)
+
 #: Fontes de evento que o contrato aceita NOMEAR. Nenhuma delas cria coisa
 #: alguma: são referências a objetos que já existem na conta.
 FONTE_PIXEL = "EXISTING_PIXEL"
@@ -272,7 +283,7 @@ WEB_SALES_CONVERSION = Receita(
     optimization_goal="OFFSITE_CONVERSIONS",
     billing_event="IMPRESSIONS",
     bid_strategy="LOWEST_COST_WITHOUT_CAP",
-    modos_de_orcamento=_MODOS_PADRAO,
+    modos_de_orcamento=_MODOS_CONVERSAO,
     exige_promoted_object=True,
     propositos_de_mensuracao=frozenset({MENSURACAO_RELATORIO, MENSURACAO_OTIMIZACAO}),
     fontes_de_evento=frozenset({FONTE_PIXEL, FONTE_CONVERSAO_PERSONALIZADA}),
@@ -302,7 +313,7 @@ WEB_LEADS_CONVERSION = Receita(
     optimization_goal="OFFSITE_CONVERSIONS",
     billing_event="IMPRESSIONS",
     bid_strategy="LOWEST_COST_WITHOUT_CAP",
-    modos_de_orcamento=_MODOS_PADRAO,
+    modos_de_orcamento=_MODOS_CONVERSAO,
     exige_promoted_object=True,
     propositos_de_mensuracao=frozenset({MENSURACAO_RELATORIO, MENSURACAO_OTIMIZACAO}),
     fontes_de_evento=frozenset({FONTE_PIXEL, FONTE_CONVERSAO_PERSONALIZADA}),
@@ -347,6 +358,29 @@ def receita(identificador: str | None) -> Receita:
         ) from None
 
 
+def capacidade_pausada() -> Mapping[str, object]:
+    """Implemented workflow, NOT provider proof or permission to dispatch.
+
+    Current named recipes compile into the same guarded V2 saga. Historical
+    field/recipe evidence must not be mistaken for a feature toggle: approval
+    consumes a fresh exact-hash receipt, and every resolved dependent operation
+    is validated again before creation. No catalog response grants that right.
+    """
+    return {
+        "implementada": True,
+        "fluxo": "VALIDAR_APROVAR_CRIAR_PAUSADA",
+        "estado_ao_nascer": "PAUSED",
+        "autoriza_ativacao": False,
+        "exige_recibo_exato_do_plano": True,
+        "cobertura_previa": "INDEPENDENT_ROOTS_ONLY",
+        "dependentes_validados_antes_de_criar": True,
+        "exige_aprovacao_humana": True,
+        "exige_capacidades_do_servidor": True,
+        "exige_prova_de_destino": True,
+        "prova_historica_nao_e_capacidade": True,
+    }
+
+
 def catalogo_publico() -> list[Mapping[str, object]]:
     """O que a tela precisa para MOSTRAR as receitas sem inventar semântica.
 
@@ -364,6 +398,8 @@ def catalogo_publico() -> list[Mapping[str, object]]:
             "exige_fonte_de_conversao": item.exige_promoted_object,
             "propositos_de_mensuracao": sorted(item.propositos_de_mensuracao),
             "prova": item.prova,
+            "capacidade_pausada": capacidade_pausada(),
+            # Legacy historical badge, not permission to bypass approval/Shop.
             "criar_liberado": item.emissivel_para_criar,
             "motivo_sem_prova": item.motivo_sem_prova,
             "modos_de_orcamento": [
@@ -372,6 +408,7 @@ def catalogo_publico() -> list[Mapping[str, object]]:
                     "nivel": modo.nivel,
                     "periodo": modo.periodo,
                     "prova": modo.prova,
+                    "capacidade_pausada": capacidade_pausada(),
                     "criar_liberado": modo.emissivel_para_criar,
                 }
                 for modo in item.modos_de_orcamento

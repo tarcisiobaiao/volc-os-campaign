@@ -284,7 +284,9 @@ class RegistradorDeMidiaMeta:
                 # string à mão reintroduziria a variável que um traceback
                 # imprimiria.
                 headers={"Authorization": segredo.cabecalho_bearer()},
-                files={"source": (peca.nome, peca.conteudo, peca.mime_type)},
+                # AdAccount.create_ad_image uses filename (file), not source.
+                # Official facebook-python-business-sdk AdImage.Field.filename.
+                files={"filename": (peca.nome, peca.conteudo, peca.mime_type)},
             )
         except httpx.TimeoutException:
             await self._livro.marcar_ambiguo(reserva_ref=reserva_ref, claim_token=token)
@@ -336,6 +338,12 @@ class RegistradorDeMidiaMeta:
                 and isinstance(corpo.get("error"), Mapping)
             )
             if recusa_do_provedor:
+                from .executor import _texto_seguro_do_provedor
+                erro = corpo['error']
+                detalhe = _texto_seguro_do_provedor(erro.get('error_user_msg') or erro.get('message'))
+                codigo_meta = erro.get('code')
+                subcodigo_meta = erro.get('error_subcode')
+                numeros = '/'.join(str(n) for n in (codigo_meta, subcodigo_meta) if type(n) is int)
                 await self._livro.falhar(
                     reserva_ref=reserva_ref,
                     codigo="META_ASSET_UPLOAD_REJECTED",
@@ -344,7 +352,7 @@ class RegistradorDeMidiaMeta:
                 return ResultadoDoRegistro(
                     master_ref=peca.master_ref,
                     estado=ESTADO_RECUSADO,
-                    motivo="a Meta recusou o registro desta peça",
+                    motivo=f"A Meta recusou o envio{f' ({numeros})' if numeros else ''}. {detalhe or 'Confira a permissão de anúncios e o arquivo.'}",
                     codigo="META_ASSET_UPLOAD_REJECTED",
                 )
             await self._livro.marcar_ambiguo(reserva_ref=reserva_ref, claim_token=token)
@@ -422,13 +430,15 @@ class LivroDeRegistroDeMidiaSupabase:
     ninguém consegue reconciliar depois.
     """
 
-    def __init__(self, servico: Any) -> None:
+    def __init__(self, servico: Any, *, autorizar_escrita=None) -> None:
         self._servico = servico
+        self._autorizar_escrita = autorizar_escrita
+        self._escopo_admitido = False
 
     def _exigir_escrita(self) -> None:
-        import os
+        from .capacidades import ledger_liberado
 
-        if os.environ.get("META_CREATE_LEDGER_WRITE_ENABLED") != "1":
+        if not ledger_liberado():
             raise ErroDeRegistroDeMidia(
                 "META_ASSET_LEDGER_BLOCKED",
                 "o registro durável Meta permanece fechado neste servidor",
@@ -440,11 +450,28 @@ class LivroDeRegistroDeMidiaSupabase:
             )
 
     async def _rpc(self, funcao: str, argumentos: Mapping[str, Any]) -> Mapping[str, Any]:
-        self._exigir_escrita()
+        if self._autorizar_escrita is not None:
+            # Recheck before each new reservation. Once dispatched, the fenced
+            # completion/ambiguity receipt must remain writable even if the
+            # operator archives the draft while Meta is answering.
+            if not self._escopo_admitido or funcao == 'trafego_meta_reservar_registro_ativo':
+                if not await self._autorizar_escrita():
+                    raise ErroDeRegistroDeMidia('META_ASSET_UPLOAD_BLOCKED', 'A autorização deste rascunho não está vigente.')
+                self._escopo_admitido = True
+            if not getattr(self._servico, 'enabled', False) or self._servico.base != 'https://database.agenciavolc.com.br':
+                raise ErroDeRegistroDeMidia('META_ASSET_LEDGER_UNAVAILABLE', 'O armazenamento oficial está indisponível.')
+        else:
+            self._exigir_escrita()
         try:
             resposta = await self._servico.rpc(funcao, dict(argumentos))
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code if exc.response is not None else 500
+            if status == 404:
+                raise ErroDeRegistroDeMidia(
+                    "META_ASSET_SCHEMA_REQUIRED",
+                    "O registro de mídia não está instalado ou exposto no banco oficial. "
+                    "Nenhuma nova tentativa de upload deve ocorrer antes de conferir a instalação.",
+                ) from None
             texto = ""
             try:
                 texto = exc.response.text if exc.response is not None else ""

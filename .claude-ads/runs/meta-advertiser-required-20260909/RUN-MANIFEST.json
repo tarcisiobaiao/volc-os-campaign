@@ -1,0 +1,10 @@
+{
+  "run_id": "meta-advertiser-required-20260909",
+  "intent": "diagnose_and_harden_verified_advertiser_rejection",
+  "scope": ["official_ledger_read", "meta_read_only", "local_error_and_preflight_fixes"],
+  "campaign_creation_in_this_run": false,
+  "activation_allowed": false,
+  "identity_or_targeting_changes_allowed": false,
+  "evidence": "sanitized_operational_findings_only",
+  "status": "local_verified_remote_completion_pending"
+}

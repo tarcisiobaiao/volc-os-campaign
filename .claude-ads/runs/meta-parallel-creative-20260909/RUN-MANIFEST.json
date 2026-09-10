@@ -1,0 +1,8 @@
+{
+  "run_id": "meta-parallel-creative-20260909",
+  "status": "local_verified_live_visual_pending",
+  "objective": "Bounded parallel rendering, progressive gallery and congruent photographic creative direction",
+  "scope": ["local VOLC creative studio", "render execution", "strategic and visual prompting"],
+  "excluded": ["Meta writes", "campaign activation", "paid image or vision QA without applicable confirmation", "Webgo changes"],
+  "data_lifecycle": {"classification": "internal sanitized engineering evidence", "retention": "repository evidence only; no customer exports or tokens", "access_roles": ["operator", "implementing agents"], "incident_owner": "operator"}
+}

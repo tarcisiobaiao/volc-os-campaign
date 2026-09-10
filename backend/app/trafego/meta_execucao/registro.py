@@ -1,9 +1,9 @@
 """Durable saga boundary required before any Meta create request."""
 from __future__ import annotations
 
-import os
+import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Mapping, Protocol, Sequence
 
 import httpx
@@ -11,6 +11,8 @@ import httpx
 from app.services.supabase_service import SupabaseService
 
 from .contrato import ErroDeNascimentoMeta
+from .capacidades import ledger_liberado
+from .orcamento_aprovado import manifesto_orcamentario
 
 
 EstadoPassoMeta = Literal["DESPACHAR", "CRIADO", "AMBIGUO"]
@@ -79,7 +81,7 @@ class RegistroSagaMetaSupabase:
         self._servico = servico
 
     def _exigir_escrita(self) -> None:
-        if os.environ.get("META_CREATE_LEDGER_WRITE_ENABLED") != "1":
+        if not ledger_liberado():
             raise ErroDeNascimentoMeta(
                 "META_CREATE_LEDGER_WRITE_BLOCKED",
                 "o ledger de criacao Meta permanece fechado neste servidor",
@@ -96,6 +98,15 @@ class RegistroSagaMetaSupabase:
             resposta = await self._servico.rpc(funcao, dict(argumentos))
         except httpx.HTTPStatusError as exc:
             status = exc.response.status_code if exc.response is not None else 500
+            try:
+                provider_code = exc.response.json().get("code") if exc.response is not None else None
+            except (ValueError, AttributeError):
+                provider_code = None
+            if status == 404 or provider_code in {"PGRST202", "PGRST204", "42703", "42883"}:
+                raise ErroDeNascimentoMeta(
+                    "META_CREATE_SCHEMA_REQUIRED",
+                    "o banco precisa da migration de aprovação Meta V2 e recarga do schema",
+                ) from None
             raise ErroDeNascimentoMeta(
                 "META_CREATE_LEDGER_REJECTED",
                 f"a autoridade persistente recusou a operacao (HTTP {status})",
@@ -150,7 +161,7 @@ class RegistroSagaMetaSupabase:
         plano_sha256: str,
         account_ref: str,
         ator: str,
-        daily_budget_minor: int,
+        daily_budget_minor: int | None,
         moeda: str,
         expires_at: datetime,
         passos_esperados: Sequence[str],
@@ -198,7 +209,19 @@ class RegistroSagaMetaSupabase:
                 "META_PLAN_SNAPSHOT_MISSING",
                 "a aprovação precisa congelar o plano despachável antes de existir",
             )
-        return await self._rpc("trafego_meta_create_approve", {
+        budget = manifesto_orcamentario(plano_congelado)
+        if budget["daily_total_minor"] != daily_budget_minor:
+            raise ErroDeNascimentoMeta("META_BUDGET_DIVERGED", "o total diário não corresponde ao plano congelado")
+        requires_v2 = (budget["scope"] != "ABO" or len(budget["entries"]) != 1
+                       or budget["entries"][0]["step"] != "adset"
+                       or daily_budget_minor is None)
+        if requires_v2:
+            # The helper and approval migration commit atomically. Probe it
+            # before INSERT so an old schema cannot create a partial approval.
+            authoritative_budget = await self._rpc("trafego_meta_budget_manifest", {"p_snapshot": dict(plano_congelado)})
+            if authoritative_budget != budget:
+                raise ErroDeNascimentoMeta("META_BUDGET_DIVERGED", "o cálculo persistente de verba diverge do plano")
+        result = await self._rpc("trafego_meta_create_approve", {
             "p_plan_sha256": plano_sha256,
             "p_account_ref": account_ref,
             "p_actor_id": ator,
@@ -219,6 +242,9 @@ class RegistroSagaMetaSupabase:
             "p_compiler_version": versao_do_compilador,
             "p_snapshot_sha256": snapshot_sha256,
         })
+        if requires_v2 and result.get("budget_manifest") != budget:
+            raise ErroDeNascimentoMeta("META_CREATE_SCHEMA_REQUIRED", "a aprovação não confirmou o manifesto de orçamento V2")
+        return result
 
     async def manifesto(self, approval_id: str) -> Mapping[str, Any]:
         """A aprovação inteira, do lado do servidor.
@@ -331,6 +357,53 @@ class RegistroSagaMetaSupabase:
         """
         return await self._rpc(
             "trafego_meta_create_validation_lookup", {"p_validation_id": validation_id})
+
+    async def buscar_validacao(
+        self, *, plano_sha256: str, ator: str, janela_da_validacao_s: int,
+    ) -> Mapping[str, Any] | None:
+        """Read-only evidence for one exact plan AND actor; never launch authority.
+
+        The original ledger grants service_role SELECT. Do not reuse _rpc:
+        looking at evidence must not depend on enabling ledger writes.
+        """
+        if (not re.fullmatch(r"[a-f0-9]{64}", plano_sha256)
+                or not isinstance(ator, str) or not 1 <= len(ator.strip()) <= 200
+                or not 1 <= janela_da_validacao_s <= 3600):
+            raise ErroDeNascimentoMeta("META_VALIDATION_LOOKUP_INVALID", "consulta de validação inválida")
+        if not self._servico.enabled or self._servico.base.rstrip("/") != "https://database.agenciavolc.com.br":
+            raise ErroDeNascimentoMeta("META_CREATE_LEDGER_UNAVAILABLE", "o Supabase operacional não está disponível")
+        columns = ("validation_id,plan_sha256,actor_id,coverage,steps_validated,steps_pending,"
+                   "operations_total,objects_created,accepted,validated_at")
+        try:
+            rows = await self._servico.select("trafego_meta_validation_receipt", {
+                "select": columns, "plan_sha256": f"eq.{plano_sha256}",
+                "actor_id": f"eq.{ator}", "accepted": "eq.true",
+                "order": "validated_at.desc", "limit": 1,
+            })
+        except (httpx.HTTPError, ValueError):
+            raise ErroDeNascimentoMeta("META_VALIDATION_RECEIPT_LOOKUP_UNAVAILABLE", "não foi possível consultar a prova durável") from None
+        if not rows:
+            return None
+        if not isinstance(rows, list):
+            raise ErroDeNascimentoMeta("META_VALIDATION_RECEIPT_INVALID", "resposta de validação inválida")
+        row = rows[0]
+        # Defense in depth: a bad server/proxy response must not cross owners.
+        if (not isinstance(row, Mapping) or any(key not in row for key in columns.split(","))
+                or row.get("plan_sha256") != plano_sha256
+                or row.get("actor_id") != ator or row.get("accepted") is not True
+                or row.get("objects_created") != 0
+                or row.get("coverage") != "INDEPENDENT_ROOTS_ONLY"):
+            raise ErroDeNascimentoMeta("META_VALIDATION_RECEIPT_INVALID", "a prova recebida não corresponde à consulta")
+        try:
+            validated_at = datetime.fromisoformat(str(row["validated_at"]).replace("Z", "+00:00"))
+            if validated_at.tzinfo is None:
+                raise ValueError("timestamp sem fuso")
+            age = (datetime.now(timezone.utc) - validated_at).total_seconds()
+        except (KeyError, ValueError, TypeError):
+            raise ErroDeNascimentoMeta("META_VALIDATION_RECEIPT_INVALID", "a prova não informa uma data verificável") from None
+        if age < 0 or age > janela_da_validacao_s:
+            raise ErroDeNascimentoMeta("META_VALIDATION_RECEIPT_STALE", "valide novamente o plano atual; a prova está fora da janela de validade")
+        return {key: row[key] for key in columns.split(",") if key != "actor_id"} | {"idade_s": int(age)}
 
     async def preparar_passo(
         self,

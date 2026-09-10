@@ -264,6 +264,25 @@ def roteiro_de_fontes(linhas: list[Any]) -> dict[str, Any]:
     return {"adaccounts": [contas_visiveis()], "adspixels": [pagina(linhas)]}
 
 
+def test_shared_pixel_does_not_request_foreign_owner_account_permission() -> None:
+    class SharedPixelClient(ClienteGraphFake):
+        async def get(self, url, *, params=None, headers=None):
+            if url.endswith('/adspixels') and 'owner_ad_account' in (params or {}).get('fields', ''):
+                return RespostaFake(403, {'error': {'code': 200}})
+            return await super().get(url, params=params, headers=headers)
+
+    async def scenario():
+        client = SharedPixelClient(roteiro_de_fontes([{
+            'id': '777700001111', 'name': 'Pixel compartilhado',
+            'is_unavailable': False, 'last_fired_time': '2026-09-08T00:00:00+0000',
+        }]))
+        rows, pages = await adaptador(client).ler_fontes_de_mensuracao(CONTA, SegredoEfemero(TOKEN))
+        assert len(rows) == 1 and pages == 1
+        assert rows[0]['source_kind'] == 'PIXEL'
+        assert rows[0]['pertence_a_conta_lida'] is None
+    asyncio.run(scenario())
+
+
 def test_catalogo_de_fontes_devolve_linhas_e_nao_apenas_contagem() -> None:
     """F22: `preflight_conta` guardava `len(linhas)`; o operador precisa das linhas."""
     async def cenario() -> None:
@@ -294,8 +313,8 @@ def test_catalogo_de_fontes_devolve_linhas_e_nao_apenas_contagem() -> None:
 def test_pixel_e_dataset_nao_sao_achatados_no_mesmo_tipo() -> None:
     """PIXEL, DATASET e UNKNOWN sao TRES valores, nunca um rotulo so.
 
-    A edge `adspixels` da v26 nao traz discriminador; quando ele nao vem, o
-    kind honesto e UNKNOWN COM MOTIVO, e nao "pixel" por default.
+    A edge tipada fornece PIXEL sem exigir discriminador redundante.
+    Um discriminador explicito desconhecido continua UNKNOWN.
     """
     async def cenario() -> None:
         cliente = ClienteGraphFake(roteiro_de_fontes([
@@ -313,12 +332,11 @@ def test_pixel_e_dataset_nao_sao_achatados_no_mesmo_tipo() -> None:
         kinds = [i["source_kind"] for i in envelope["items"]]
 
         assert kinds == [dom.KIND_PIXEL, dom.KIND_DATASET,
-                         dom.ESTADO_DESCONHECIDO, dom.ESTADO_DESCONHECIDO]
+                         dom.KIND_PIXEL, dom.ESTADO_DESCONHECIDO]
         assert dom.KIND_PIXEL != dom.KIND_DATASET
         assert len(set(kinds)) == 3
         assert envelope["items"][0]["motivo_do_source_kind"] is None
-        assert (envelope["items"][2]["motivo_do_source_kind"]
-                == dom.MOTIVO_SOURCE_KIND_INDISTINGUIVEL)
+        assert envelope["items"][2]["motivo_do_source_kind"] is None
         assert (envelope["items"][3]["motivo_do_source_kind"]
                 == dom.MOTIVO_SOURCE_KIND_NAO_RECONHECIDO)
         # O handle NAO segue o kind: se seguisse, o mesmo objeto trocaria de

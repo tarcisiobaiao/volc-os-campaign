@@ -1,6 +1,7 @@
-"""Immutable, owner-scoped reuse snapshots. No provider calls or launch approval."""
+"""Owner-scoped pack library with immutable revisions. No provider calls or launch approval."""
 import hashlib
 import json
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import Literal
 
@@ -9,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.criativo.persistencia import ConflitoDeChave
 
 TABLE = 'criativo_reuso_pack'
+DRAFT_TABLE = 'trafego_meta_rascunho_pack'
+REVISION_TABLE = 'criativo_reuso_pack_revision'
 
 
 class PedidoPackMeta(BaseModel):
@@ -75,6 +78,18 @@ class PedidoPack(BaseModel):
         return value.strip()
 
 
+class PedidoSelecaoPack(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    pack_id: UUID
+    expected_version: int = Field(ge=0)
+
+
+class PedidoAdicionarAssets(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    master_refs: list[UUID] = Field(min_length=1, max_length=10)
+    expected_manifest_sha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
 def dto(row):
     return {k: row[k] for k in ('id', 'nome', 'manifest', 'manifest_sha256', 'created_at')}
 
@@ -98,9 +113,9 @@ async def guardar(repo, owner, nome, items, *, source='STUDIO'):
     return dto(row)
 
 
-async def salvar_assets(repo, owner, pedido):
+async def _snapshot_assets(repo, owner, master_refs):
     items = []
-    for ref in sorted({str(x) for x in pedido.master_refs}):
+    for ref in sorted({str(x) for x in master_refs}):
         master = await repo.buscar_master_do_dono(ref, criado_por=owner)
         if not master or master.get('arquivado_em') or master.get('kind') != 'imagem':
             raise ValueError('Uma peça não está disponível para sua conta. Atualize a seleção.')
@@ -133,14 +148,43 @@ async def salvar_assets(repo, owner, pedido):
             item['copy_snapshot'] = copy
             item['copy_scope'] = 'REFERENCE_NOT_APPROVAL'
         items.append(item)
-    return await guardar(repo, owner, pedido.nome, items)
+    return items
 
 
-async def selecionar_assets(repo, owner, pack_id):
-    rows = await repo._get(TABLE, {'id': f'eq.{pack_id}', 'owner_id': f'eq.{owner}', 'limit': 1})
-    if not rows:
+async def salvar_assets(repo, owner, pedido):
+    return await guardar(repo, owner, pedido.nome, await _snapshot_assets(repo, owner, pedido.master_refs))
+
+
+async def adicionar_assets(repo, owner, pack_id, pedido):
+    pack = await _pack_do_dono(repo, owner, pack_id)
+    if not pack or pack['manifest'].get('source') != 'STUDIO':
+        raise ValueError('Escolha um pack de imagens do seu Estúdio.')
+    if pack['manifest_sha256'] != pedido.expected_manifest_sha256:
+        raise ValueError('O pack mudou em outra aba. Atualize antes de adicionar imagens.')
+    existentes = {item['master_ref'] for item in pack['manifest']['items']}
+    novas = sorted({str(ref) for ref in pedido.master_refs} - existentes)
+    if len(existentes) + len(novas) > 10:
+        raise ValueError('Um pack comporta até 10 imagens. Crie outro pack para as demais.')
+    if not novas:
+        return dto(pack)
+    items = await _snapshot_assets(repo, owner, novas)
+    manifest = {**pack['manifest'], 'items': [*pack['manifest']['items'], *items]}
+    canonical = json.dumps(manifest, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
+    result = await repo._req('POST', 'rpc/criativo_reuso_pack_append', headers=repo._headers(), json={
+        'p_owner_id': str(owner), 'p_pack_id': str(pack_id),
+        'p_expected_manifest_sha256': pedido.expected_manifest_sha256,
+        'p_manifest_canonical': canonical,
+    })
+    if not result or not result.get('ok'):
+        raise ValueError('O pack mudou em outra aba ou não está disponível. Atualize antes de adicionar imagens.')
+    return dto(result['pack'])
+
+
+async def selecionar_assets(repo, owner, pack_id, manifest_sha256=None):
+    pack = await _pack_do_dono(repo, owner, pack_id, manifest_sha256)
+    if not pack:
         raise ValueError('Pack não encontrado para sua conta.')
-    manifest = rows[0]['manifest']
+    manifest = pack['manifest']
     if manifest['source'] != 'STUDIO':
         raise ValueError('Este pack registra anúncios Meta. Reuso do post exige conferência na conta de destino.')
     refs = []
@@ -150,3 +194,90 @@ async def selecionar_assets(repo, owner, pack_id):
             raise ValueError('Uma peça do pack mudou ou não está disponível. Nenhuma peça foi enviada.')
         refs.append(item['master_ref'])
     return {'master_refs': refs, 'launch_authorized': False, 'scope': 'DRAFT_MEDIA_ONLY'}
+
+
+def selecao_dto(row, *, pack_name):
+    return {
+        'draft_ref': row['draft_ref'], 'adset_key': row['adset_key'],
+        'pack_id': row['pack_id'], 'pack_name': pack_name,
+        'manifest_sha256': row['manifest_sha256'],
+        'master_refs': row['master_refs'], 'version': row['version'],
+        'state': 'LOCKED', 'selected_at': row['selected_at'],
+        'launch_authorized': False, 'scope': 'DRAFT_MEDIA_ONLY',
+    }
+
+
+async def _pack_do_dono(repo, owner, pack_id, manifest_sha256=None):
+    rows = await repo._get(TABLE, {
+        'id': f'eq.{pack_id}', 'owner_id': f'eq.{owner}', 'limit': 1})
+    if not rows:
+        return None
+    if not manifest_sha256 or rows[0]['manifest_sha256'] == manifest_sha256:
+        return rows[0]
+    versions = await repo._get(REVISION_TABLE, {'pack_id': f'eq.{pack_id}',
+        'owner_id': f'eq.{owner}', 'manifest_sha256': f'eq.{manifest_sha256}', 'limit': 1})
+    return {**versions[0], 'id': str(pack_id)} if versions else None
+
+
+async def listar_selecoes_do_rascunho(repo, owner, draft_ref):
+    rows = await repo._get(DRAFT_TABLE, {
+        'owner_id': f'eq.{owner}', 'draft_ref': f'eq.{draft_ref}',
+        'order': 'adset_key.asc'})
+    saida = []
+    for row in rows:
+        pack = await _pack_do_dono(repo, owner, row['pack_id'])
+        if not pack:
+            # A FK torna isto impossível no estado íntegro. Falhar fechado evita
+            # desenhar um vínculo que o operador não consegue conferir.
+            raise ValueError('Um vínculo do rascunho aponta para um pack indisponível.')
+        saida.append(selecao_dto(row, pack_name=pack['nome']))
+    return {'draft_ref': str(draft_ref), 'selections': saida}
+
+
+async def fixar_pack_no_conjunto(repo, owner, draft_ref, adset_key, pedido):
+    pack = await _pack_do_dono(repo, owner, str(pedido.pack_id))
+    if not pack:
+        raise ValueError('Pack não encontrado para sua conta.')
+    selecao = await selecionar_assets(repo, owner, str(pedido.pack_id), pack['manifest_sha256'])
+    atuais = await repo._get(DRAFT_TABLE, {
+        'owner_id': f'eq.{owner}', 'draft_ref': f'eq.{draft_ref}',
+        'adset_key': f'eq.{adset_key}', 'limit': 1})
+    base = {
+        'pack_id': str(pedido.pack_id),
+        'manifest_sha256': pack['manifest_sha256'],
+        'master_refs': selecao['master_refs'],
+        'updated_at': datetime.now(timezone.utc).isoformat(),
+    }
+    if not atuais:
+        if pedido.expected_version != 0:
+            raise ValueError('A seleção mudou em outra aba. Atualize antes de escolher novamente.')
+        try:
+            row = await repo._inserir(DRAFT_TABLE, {
+                'owner_id': owner, 'draft_ref': str(draft_ref),
+                'adset_key': adset_key, 'version': 1,
+                'selected_at': base['updated_at'], **base,
+            })
+        except ConflitoDeChave as exc:
+            raise ValueError('A seleção mudou em outra aba. Atualize antes de escolher novamente.') from exc
+    else:
+        atual = atuais[0]
+        if int(atual['version']) != pedido.expected_version:
+            raise ValueError('A seleção mudou em outra aba. Atualize antes de escolher novamente.')
+        linhas = await repo._atualizar(DRAFT_TABLE, {
+            'id': f'eq.{atual["id"]}', 'owner_id': f'eq.{owner}',
+            'version': f'eq.{pedido.expected_version}',
+        }, {**base, 'version': pedido.expected_version + 1})
+        if not linhas:
+            raise ValueError('A seleção mudou em outra aba. Atualize antes de escolher novamente.')
+        row = linhas[0]
+    return selecao_dto(row, pack_name=pack['nome'])
+
+
+async def retirar_pack_do_conjunto(repo, owner, draft_ref, adset_key, expected_version):
+    linhas = await repo._apagar(DRAFT_TABLE, {
+        'owner_id': f'eq.{owner}', 'draft_ref': f'eq.{draft_ref}',
+        'adset_key': f'eq.{adset_key}', 'version': f'eq.{expected_version}',
+    })
+    if not linhas:
+        raise ValueError('A seleção mudou em outra aba. Atualize antes de retirar o pack.')
+    return {'draft_ref': str(draft_ref), 'adset_key': adset_key, 'state': 'REMOVED'}

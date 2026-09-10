@@ -89,6 +89,21 @@ function saida(): SaidaDoAgente {
 }
 
 describe('aprovar endereça por ref, nunca por posição', () => {
+  it('mostra a ideia central antes da arte e detalha pergunta, entrega e cena sem alterar aprovação', () => {
+    const lote = saida();
+    lote.pecas[0].big_idea = { ideia_central:'O primeiro passo cabe numa página.', pergunta_latente:'Por onde começo sem me perder?', promessa_do_clique:'Encontrar as etapas explicadas.', cena_chave:'Uma página marcada entre vários papéis.' };
+    const decidir = vi.fn();
+    render(<PainelDeEstrategia saida={lote} runRef={RUN_REF} aprovados={new Set()} ocupado={false} onDecidir={decidir} onRefinar={()=>{}} />);
+    const ideia = screen.getByText(lote.pecas[0].big_idea.ideia_central);
+    const arte = screen.getByLabelText(`Texto previsto na imagem: ${lote.pecas[0].hook}`);
+    expect(ideia.compareDocumentPosition(arte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(lote.pecas[0].big_idea.pergunta_latente)).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:`Ver detalhes de ${lote.pecas[0].hook}`}));
+    expect(screen.getByText(lote.pecas[0].big_idea.pergunta_latente)).toBeTruthy();
+    expect(screen.getByText(lote.pecas[0].big_idea.promessa_do_clique)).toBeTruthy();
+    expect(screen.getByText(lote.pecas[0].big_idea.cena_chave)).toBeTruthy();
+    expect(decidir).not.toHaveBeenCalled();
+  });
   it('o caminho da decisão usa o ref do elemento', () => {
     const decisoes: PedidoDeDecisao[] = [];
     render(

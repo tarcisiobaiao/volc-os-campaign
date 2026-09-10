@@ -3,10 +3,10 @@ import { perguntaDaUrl, perguntasMeta } from '../jornada';
 import { lerSelecaoDoAssistente } from '../ponteAssistente';
 
 describe('jornada Meta', () => {
-  it('começa pelo destino e preserva o caminho de recibos existentes', () => {
-    expect(perguntaDaUrl(new URLSearchParams(), false).id).toBe('destino');
+  it('começa pela conta e preserva o caminho de recibos existentes', () => {
+    expect(perguntaDaUrl(new URLSearchParams(), false).id).toBe('conta');
     expect(perguntaDaUrl(new URLSearchParams('etapa=revisao&operacao=abc'), false).id).toBe('revisao');
-    expect(perguntaDaUrl(new URLSearchParams('pergunta=inexistente'), false).id).toBe('destino');
+    expect(perguntaDaUrl(new URLSearchParams('pergunta=inexistente'), false).id).toBe('conta');
   });
   it('pede conversão antes do público somente quando necessária', () => {
     expect(perguntasMeta(false).some(p => p.id === 'conversao')).toBe(false);

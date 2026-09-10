@@ -260,13 +260,14 @@ class RepositorioAgenteCriativo:
         )
 
     async def ponte_por_peca(
-        self, run_ref: str, creative_ref: str, owner_id: str
+        self, run_ref: str, creative_ref: str, owner_id: str, *, geracao_ref: str | None = None
     ) -> dict[str, Any] | None:
         rows = await self.db.select(
             "criativo_agente_peca_job",
             {
                 "run_ref": f"eq.{run_ref}",
                 "creative_ref": f"eq.{creative_ref}",
+                "geracao_ref": f"eq.{geracao_ref or 'original'}",
                 "owner_id": f"eq.{owner_id}",
                 "limit": 1,
             },

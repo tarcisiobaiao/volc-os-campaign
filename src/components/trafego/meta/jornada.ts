@@ -2,9 +2,9 @@ import type { EtapaId } from './rascunho';
 
 /** Navigation only. The canonical draft and server compiler retain ownership of payloads. */
 export const PERGUNTAS_META = [
-  { id: 'destino', etapa: 'campanha', titulo: 'Qual página você quer anunciar?', ajuda: 'Cole o endereço da matéria ou landing page. Vamos cuidar dos parâmetros de acompanhamento.', nome: 'Destino' },
   { id: 'conta', etapa: 'base', titulo: 'Em qual conta vamos trabalhar?', ajuda: 'Conecte a conta que vai receber esta campanha.', nome: 'Conta' },
   { id: 'pagina', etapa: 'base', titulo: 'Quem assina seus anúncios?', ajuda: 'Escolha a Página que seu público vai reconhecer.', nome: 'Página' },
+  { id: 'destino', etapa: 'campanha', titulo: 'Qual página você quer anunciar?', ajuda: 'Cole o endereço da matéria ou landing page. Vamos identificar o assunto e organizar os nomes desta conta.', nome: 'Destino' },
   { id: 'resultado', etapa: 'campanha', titulo: 'O que você quer que aconteça?', ajuda: 'Escolha como a Meta deve procurar as pessoas para esta campanha.', nome: 'Resultado' },
   { id: 'conversao', etapa: 'mensuracao', titulo: 'Qual ação vale uma conversão?', ajuda: 'Escolha uma conversão existente na conta. A receita do GAM continua sendo medida por conjunto.', nome: 'Conversão' },
   { id: 'publico', etapa: 'publico', titulo: 'Quem você quer alcançar?', ajuda: 'Defina a localização e o público. Abra os ajustes se precisar refinar.', nome: 'Público' },

@@ -364,12 +364,10 @@ class AdaptadorMetaSomenteLeitura:
 
         ## PIXEL e DATASET nao sao sinonimos
 
-        Sao tipos diferentes de fonte, e uma receita de conversao pode aceitar
-        um e recusar o outro. A edge `adspixels` da v26 devolve o node
-        `AdsPixel` SEM discriminador de kind — entao, quando o corpo nao traz um
-        campo que diga qual e, `source_kind` fica `UNKNOWN` com
-        `motivo_do_source_kind` explicando por que. Achatar os dois em "pixel"
-        seria inventar um fato que a resposta nao contem.
+        A edge `adspixels` e tipada como AdsPixel no SDK oficial Meta. Essa
+        procedencia permite classificar PIXEL quando falta um discriminador
+        no corpo. Nao inferimos DATASET do nome exibido no Business Manager,
+        nem ignoramos discriminadores explicitos desconhecidos.
 
         ## Sobre o namespace da referencia opaca
 
@@ -387,16 +385,20 @@ class AdaptadorMetaSomenteLeitura:
             # Pedir um campo inexistente faz a Graph recusar a leitura inteira,
             # e "esperar" um campo que nao existe marcaria TODA fonte como
             # UNKNOWN — ruido que ensina o operador a ignorar o estado.
-            fields="id,name,is_unavailable,last_fired_time,creation_time,owner_ad_account",
+            # owner_ad_account probes the owning account, not merely the account
+            # sharing this pixel. It can return #200/403 even when this edge and
+            # every required field are accessible. Ownership is optional here;
+            # missing ownership stays None, never True. Scope comes from the edge.
+            fields="id,name,is_unavailable,last_fired_time,creation_time",
             limite=min(self._limite, 100),
         )
         saida: list[Mapping[str, Any]] = []
         for linha in linhas:
-            saida.append(self._fonte_de_mensuracao(conta, linha))
+            saida.append(self._fonte_de_mensuracao(conta, linha, edge_pixel=True))
         return tuple(saida), paginas
 
     def _fonte_de_mensuracao(
-        self, conta: str, linha: Any,
+        self, conta: str, linha: Any, *, edge_pixel: bool = False,
     ) -> Mapping[str, Any]:
         vazio: dict[str, Any] = {c: None for c in self.CHAVES_DE_FONTE_DE_MENSURACAO}
         if not isinstance(linha, dict):
@@ -406,6 +408,8 @@ class AdaptadorMetaSomenteLeitura:
                     "estado": dom.ESTADO_INVALIDO,
                     "motivo_desconhecido": dom.MOTIVO_CONTRATO_DO_ITEM_INVALIDO}
         kind, motivo_kind = self._kind_da_fonte(linha)
+        if edge_pixel and motivo_kind == dom.MOTIVO_SOURCE_KIND_INDISTINGUIVEL:
+            kind, motivo_kind = dom.KIND_PIXEL, None
         try:
             identificador = dom.id_externo(linha.get("id"), campo="pixel.id")
             indisponivel = dom.booleano_opcional(
@@ -914,6 +918,20 @@ class AdaptadorMetaSomenteLeitura:
         porque "nao achei este publico" e "nao consegui ler o catalogo" precisam
         continuar sendo erros diferentes — o segundo ja levanta ErroDeLeituraMeta.
         """
+        detalhes = await self.resolver_detalhes_por_referencia(
+            conta_externa, tipo, referencias, segredo)
+        return {ref: item["id"] for ref, item in detalhes.items()}
+
+    async def resolver_detalhes_por_referencia(
+        self, conta_externa: str, tipo: str, referencias: Iterable[str],
+        segredo: SegredoEfemero,
+    ) -> dict[str, dict[str, Any]]:
+        """Metadados SERVER-ONLY da mesma leitura escopada, nunca um catálogo público.
+
+        Ausência de flags não prova indisponibilidade; a elegibilidade final
+        continua com a validação remota. Um NÃO explícito, porém, não pode
+        atravessar a compilação só porque a referência ainda existe.
+        """
         if tipo not in dom.TIPOS_RESOLVIVEIS_POR_REFERENCIA:
             raise dom.ContratoMetaInvalido(
                 f"tipo nao resolvivel por referencia: {tipo!r}")
@@ -927,10 +945,13 @@ class AdaptadorMetaSomenteLeitura:
         linhas, _ = await self._listar_url(
             f"{self._base}/{self._versao}/act_{conta}/{self._EDGES_RESOLVIVEIS[tipo]}",
             segredo,
-            fields="id",
+            fields={
+                "pixel": "id,is_unavailable",
+                "custom_conversion": "id,is_archived,is_unavailable,event_source_id",
+            }.get(tipo, "id"),
             limite=min(self._limite, 100),
         )
-        indice: dict[str, str] = {}
+        indice: dict[str, dict[str, Any]] = {}
         for linha in linhas:
             if not isinstance(linha, dict):
                 continue
@@ -946,7 +967,24 @@ class AdaptadorMetaSomenteLeitura:
                 # a resolucao dos demais handles continua valendo.
                 continue
             if calculada in pedidas:
-                indice[calculada] = identificador
+                if tipo in {"pixel", "custom_conversion"} and (
+                    linha.get("is_unavailable") is True
+                    or (tipo == "custom_conversion" and linha.get("is_archived") is True)
+                ):
+                    raise ErroDeLeituraMeta(
+                        "META_MEASUREMENT_SELECTION_UNAVAILABLE",
+                        "A fonte ou conversão escolhida está indisponível na Meta. Escolha outra na mensuração.",
+                        False,
+                    )
+                item: dict[str, Any] = {"id": identificador}
+                if tipo == "custom_conversion":
+                    fonte = linha.get("event_source_id")
+                    try:
+                        item["event_source_id"] = dom.id_externo(fonte, campo="custom_conversion.event_source_id")
+                    except dom.ContratoMetaInvalido:
+                        # Metadado ausente/ilegível não inventa um vínculo.
+                        item["event_source_id"] = None
+                indice[calculada] = item
         return indice
 
     async def ler_hierarquia(

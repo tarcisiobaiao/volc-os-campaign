@@ -12,7 +12,7 @@
  *   alcance               → a tela não promete o que o provedor não garante (`A16`)
  *   conversão UNKNOWN     → "não sei" nunca vira elegível (`A12`)
  *   editar invalida       → resumo e validação caem juntos (`A33`)
- *   nenhum nascimento     → o V2 não tem, e não pode ter, botão que cria
+ *   nascimento pausado    → o V2 exige aprovação durável antes de criar
  */
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -23,9 +23,22 @@ import MetaCriacaoPage from '@/pages/trafego/MetaCriacaoPage';
 import type { PlanoMetaV2Input } from '@/lib/pautadorApi';
 
 Object.defineProperty(window, 'scrollTo', { value: vi.fn(), writable: true });
+Object.defineProperty(window, 'ResizeObserver', {
+  value: class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+  writable: true,
+});
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  value: vi.fn(),
+  writable: true,
+});
 
-const { api } = vi.hoisted(() => ({
+const { api, packApi, businessApi } = vi.hoisted(() => ({
   api: {
+    capacidadesMidiaMeta: vi.fn().mockResolvedValue({ inspecao_de_imagem: { disponivel: false, capacidades_ausentes: ['marca_visual'] }, registro_de_imagem: 'DISABLED' }),
     trackingAutomaticoMeta: vi.fn().mockRejectedValue(new Error('Prévia indisponível neste dublê')),
     estadoMetaLocal: vi.fn(),
     contasMetaLocal: vi.fn(),
@@ -46,12 +59,38 @@ const { api } = vi.hoisted(() => ({
     reciboCriacaoMeta: vi.fn(),
     reconciliarCriacaoMeta: vi.fn(),
   },
+  packApi: {
+    lerPack: vi.fn().mockRejectedValue(new Error('Galeria indisponível neste teste de seleção')),
+    listarSelecoesDePack: vi.fn(),
+    fixarPackNoConjunto: vi.fn(),
+    retirarPackDoConjunto: vi.fn(),
+    listarPacks: vi.fn(),
+    importarMidiaPrivada: vi.fn(),
+    salvarPack: vi.fn(),
+  },
+  businessApi: vi.fn(),
+}));
+
+// Persistence has its own real-hook/API/CAS tests. These tests isolate the wizard contract.
+vi.mock('@/hooks/useMetaCampaignDraft', () => ({
+  useMetaCampaignDraft: () => ({ loading: false, saving: false, saved: true, version: 1,
+    error: null, conflict: false, saveNow: async () => true, reload: async () => {} }),
 }));
 
 vi.mock('@/lib/pautadorApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/pautadorApi')>()),
   pautadorApi: api,
 }));
+
+vi.mock('@/features/creative-studio/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/creative-studio/api')>()),
+  ...packApi,
+}));
+vi.mock('@/features/creative-studio/componentes/PackVisual', () => ({
+  CapaPack: () => <div>Prévia do pack</div>,
+  caminhoPack: (id: string) => `/trafego/meta/packs/${id}`,
+}));
+vi.mock('@/components/settings/MetaBusinessConnections', () => ({ businessRequest: businessApi }));
 
 vi.mock('@/components/layout/Layout', () => ({
   Layout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -84,6 +123,20 @@ const MODOS = [
   { id: 'CAMPAIGN_DAILY', nivel: 'CAMPAIGN' as const, periodo: 'DAILY' as const, prova: 'FIELD_SHAPE_ONLY', criar_liberado: false },
   { id: 'CAMPAIGN_LIFETIME', nivel: 'CAMPAIGN' as const, periodo: 'LIFETIME' as const, prova: 'FIELD_SHAPE_ONLY', criar_liberado: false },
 ];
+
+const CAPACIDADE_PAUSADA = {
+  implementada: true,
+  fluxo: 'VALIDAR_APROVAR_CRIAR_PAUSADA',
+  estado_ao_nascer: 'PAUSED',
+  autoriza_ativacao: false,
+  exige_recibo_exato_do_plano: true,
+  cobertura_previa: 'INDEPENDENT_ROOTS_ONLY',
+  dependentes_validados_antes_de_criar: true,
+  exige_aprovacao_humana: true,
+  exige_capacidades_do_servidor: true,
+  exige_prova_de_destino: true,
+  prova_historica_nao_e_capacidade: true,
+};
 
 const CATALOGO = {
   ok: true as const,
@@ -255,6 +308,44 @@ const PLANO_COMPILADO = {
 };
 
 beforeEach(() => {
+  businessApi.mockReset().mockResolvedValue({
+    selected_id: 'bm-prova',
+    connections: [{ id: 'bm-prova', name: 'BM de prova', enabled: true }],
+  });
+  packApi.listarSelecoesDePack.mockReset().mockResolvedValue({
+    draft_ref: '00000000-0000-4000-8000-000000000001', selections: [],
+  });
+  packApi.listarPacks.mockReset().mockResolvedValue({
+    packs: [{
+      id: '00000000-0000-4000-8000-000000000111', nome: 'Pack Encceja',
+      manifest_sha256: 'a'.repeat(64), created_at: '2026-09-08T00:00:00Z',
+      manifest: { source: 'STUDIO', launch_authorized: false, items: [{ master_ref: '00000000-0000-4000-8000-000000000222' }] },
+    }], has_more: false,
+  });
+  packApi.importarMidiaPrivada.mockReset().mockResolvedValue({
+    referencia: 'import-1', estado: 'CONCLUIDA',
+    entradas: [{ nome: 'troca.png', estado: 'ACEITO', mime: 'image/png',
+      masterId: '00000000-0000-4000-8000-000000000333', largura: 1080, altura: 1350,
+      previewUrl: null, motivoRecusa: null, detalhe: null }],
+    registroRemoto: { estado: 'NAO_INICIADO', explicacao: 'A Meta não foi chamada.' },
+  });
+  packApi.salvarPack.mockReset().mockResolvedValue({
+    id: '00000000-0000-4000-8000-000000000444', nome: 'Upload · troca',
+    manifest_sha256: 'b'.repeat(64), created_at: '2026-09-10T00:00:00Z',
+    manifest: { source: 'STUDIO', launch_authorized: false,
+      items: [{ master_ref: '00000000-0000-4000-8000-000000000333' }] },
+  });
+  packApi.fixarPackNoConjunto.mockReset().mockImplementation(
+    async (draftRef: string, adsetKey: string, packId: string, expectedVersion: number) => ({
+      draft_ref: draftRef, adset_key: adsetKey, pack_id: packId,
+      pack_name: 'Pack Encceja', manifest_sha256: 'a'.repeat(64),
+      master_refs: ['00000000-0000-4000-8000-000000000222'],
+      version: expectedVersion + 1, state: 'LOCKED',
+      selected_at: '2026-09-08T00:00:00Z', launch_authorized: false,
+      scope: 'DRAFT_MEDIA_ONLY',
+    }),
+  );
+  packApi.retirarPackDoConjunto.mockReset().mockResolvedValue({ state: 'REMOVED' });
   api.estadoMetaLocal.mockReset().mockResolvedValue({
     configurado: true, armazenamento: 'macOS Keychain', api_version: 'v26.0',
   });
@@ -321,13 +412,13 @@ function abrir(etapa: string) {
   return tela;
 }
 
-/** Lê a conta uma vez, por clique — como a bancada exige. */
+/** A BM selecionada carrega as contas automaticamente; a pessoa escolhe apenas
+ * a conta de anúncios. Não existe botão intermediário de sincronização. */
 async function comConta(etapa: string) {
   abrir('base');
-  await waitFor(() => expect(
-    screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
-  fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
-  await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
+  await waitFor(() => expect(api.contasMetaLocal).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText(/conta de anúncios/i), { target: { value: conta.referencia_opaca } });
+  await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalledWith(conta.referencia_opaca));
   await waitFor(() => expect(api.receitasCriacaoMetaV2).toHaveBeenCalled());
   if (etapa !== 'base') ir(etapa);
 }
@@ -351,7 +442,7 @@ function confirmarDeclaracoes() {
   fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
   fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
   fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
-  fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+  fireEvent.change(screen.getByLabelText(/campanha envolve crédito, emprego/i), { target: { value: 'none' } });
   ir('criativo');
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
@@ -372,9 +463,6 @@ function trocarOrcamento(nome: RegExp) {
 async function compilarV2() {
   const antes = api.compilarPlanoMetaV2.mock.calls.length;
   ir('revisao');
-  const botao = await screen.findByRole('button', { name: /conferir o plano/i });
-  expect(botao).toHaveProperty('disabled', false);
-  fireEvent.click(botao);
   await waitFor(
     () => expect(api.compilarPlanoMetaV2.mock.calls.length).toBe(antes + 1));
   return api.compilarPlanoMetaV2.mock.calls.at(-1)![0] as PlanoMetaV2Input;
@@ -476,19 +564,108 @@ async function comDoisConjuntos() {
   fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://focogenial.com/' } });
   fireEvent.change(screen.getByLabelText('Como vamos chamar esta campanha?'), { target: { value: 'Campanha de prova' } });
   fireEvent.click(screen.getByRole('button', { name: /^Resultado$/i }));
-  fireEvent.click(screen.getByRole('checkbox', { name: /não é de crédito, emprego/i }));
+  fireEvent.change(screen.getByLabelText(/campanha envolve crédito, emprego/i), { target: { value: 'none' } });
   ir('criativo');
   fireEvent.click(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i }));
   fireEvent.click(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i }));
-  fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
-  fireEvent.click(screen.getByRole('button', { name: /^Duplicar$/i }));
-  await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(2));
-  fireEvent.change(screen.getByLabelText(/conjunto deste anúncio/i, { selector: '#meta-conjunto-1' }), {
-    target: { value: 'adset-002' },
-  });
+  fireEvent.change(screen.getByLabelText('Reutilizar este criativo em outro conjunto'), { target: { value: 'adset-002' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Criar cópia no conjunto escolhido' }));
+  fireEvent.click(within(screen.getByRole('group', { name: 'Escolher conjunto dos anúncios' })).getByRole('button', { name: /Conjunto 2/ }));
+  await waitFor(() => expect(screen.getAllByTestId('variacao-chave')).toHaveLength(1));
+  expect(screen.getByTestId('variacao-conjunto').textContent).toBe('adset-002');
+  const direitos = screen.getAllByRole('checkbox', { name: /peça é própria ou licenciada/i });
+  const identidades = screen.getAllByRole('checkbox', { name: /marcas, logos e identidades/i });
+  expect(direitos[0]).toHaveProperty('checked', false);
+  expect(identidades[0]).toHaveProperty('checked', false);
+  fireEvent.click(direitos[0]); fireEvent.click(identidades[0]);
 }
 
 describe('Vários conjuntos e o mapa de anúncios', () => {
+  it('não avança nem compila anúncio antigo enquanto o pack selecionado aguarda envio', async () => {
+    await comDoisConjuntos();
+    fireEvent.click(screen.getByRole('radio', { name: /usar pack salvo/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Usar este pack' }));
+    await screen.findByText(/Pack vinculado neste conjunto/i);
+    fireEvent.click(screen.getByRole('button', { name: /^Continuar$/ }));
+    expect(screen.getByRole('heading', { name: 'Vamos dar forma à campanha?' })).toBeTruthy();
+    expect(screen.getByText(/Os anúncios anteriores não substituem o pack escolhido/)).toBeTruthy();
+    ir('revisao');
+    expect(screen.queryByRole('checkbox', { name: /Aprovo o uso da imagem/ })).toBeNull();
+    expect(screen.getByText(/Voltar ao pack e concluir envio/i)).toBeTruthy();
+    expect(api.compilarPlanoMetaV2).not.toHaveBeenCalled();
+    expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Voltar ao pack e concluir envio' })).toBeTruthy();
+  });
+
+  it('uma falha na recuperação dos packs não vira lista vazia autorizada', async () => {
+    packApi.listarSelecoesDePack.mockRejectedValue(new Error('Selection service unavailable'));
+    await comConta('criativo');
+    fireEvent.click(screen.getByRole('button', { name: /^Continuar$/ }));
+    expect(screen.getByText(/Não foi possível recuperar os packs deste rascunho/)).toBeTruthy();
+    ir('revisao');
+    expect(screen.getAllByText(/Não foi possível recuperar os packs deste rascunho/i).length).toBeGreaterThan(0);
+    expect(api.compilarPlanoMeta).not.toHaveBeenCalled();
+  });
+
+  it('a revisão final exige ato humano para o anúncio atual e invalida quando o texto muda', async () => {
+    await comConta('criativo');
+    ir('revisao');
+    const consent = screen.getByRole('checkbox', { name: /Aprovo o uso da imagem no anúncio 1/ });
+    expect(consent).toHaveProperty('checked', false);
+    fireEvent.click(consent);
+    expect(consent).toHaveProperty('checked', true);
+    ir('criativo');
+    expect(screen.getByRole('checkbox', { name: /peça é própria ou licenciada/i })).toHaveProperty('checked', true);
+    expect(screen.getByRole('checkbox', { name: /marcas, logos e identidades/i })).toHaveProperty('checked', true);
+    fireEvent.change(screen.getByLabelText('Texto principal'), { target: { value: 'Texto novo exige nova revisão.' } });
+    ir('revisao');
+    expect(screen.getByRole('checkbox', { name: /Aprovo o uso da imagem no anúncio 1/ })).toHaveProperty('checked', false);
+  });
+
+  it('persiste e restaura um pack diferente por conjunto sem seleção fantasma', async () => {
+    await comDoisConjuntos();
+    fireEvent.click(screen.getByRole('radio', { name: /usar pack salvo/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Usar este pack' }));
+    await screen.findByText(/Pack vinculado neste conjunto/i);
+    expect(packApi.fixarPackNoConjunto.mock.calls.at(-1)?.[1]).toBe('adset-002');
+
+    const trilho = screen.getByRole('group', { name: 'Escolher conjunto dos anúncios' });
+    fireEvent.click(within(trilho).getByRole('button', { name: /Brasil/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Usar este pack' }));
+    await waitFor(() => expect(packApi.fixarPackNoConjunto.mock.calls.at(-1)?.[1]).toBe('adset-001'));
+
+    fireEvent.click(within(trilho).getByRole('button', { name: /Conjunto 2/ }));
+    expect(await screen.findByText(/Pack vinculado neste conjunto/i)).toBeTruthy();
+    expect(screen.getAllByText(/Pack Encceja vinculado/i)).toHaveLength(2);
+  });
+  it('edita somente o anúncio do conjunto selecionado, preservando o índice original', async () => {
+    await comDoisConjuntos();
+    fireEvent.change(screen.getByLabelText('Título', { selector: '#meta-headline-1' }), { target: { value: 'Título só do segundo' } });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Escolher conjunto dos anúncios' })).getByRole('button', { name: /Brasil/ }));
+    expect(screen.getByLabelText('Título', { selector: '#meta-headline-0' })).not.toHaveProperty('value', 'Título só do segundo');
+    expect(screen.queryByLabelText('Título', { selector: '#meta-headline-1' })).toBeNull();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Escolher conjunto dos anúncios' })).getByRole('button', { name: /Conjunto 2/ }));
+    expect(screen.getByLabelText('Título', { selector: '#meta-headline-1' })).toHaveProperty('value', 'Título só do segundo');
+  });
+  it('duplica a copy, abre o slot vazio para upload e não oferece Dark Post', async () => {
+    await comConta('criativo');
+    expect(screen.queryByText(/Dark Post/i)).toBeNull();
+    expect(screen.queryByText(/publicação existente/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Duplicar e trocar imagem/i }));
+    const alvos = await screen.findAllByText(/Clique para enviar uma imagem/i);
+    expect(alvos).toHaveLength(2);
+    const input = alvos.at(-1)!.closest('label')!.querySelector('input[type="file"]')!;
+    const arquivo = new File(['png'], 'troca.png', { type: 'image/png' });
+    fireEvent.change(input, { target: { files: [arquivo] } });
+
+    await waitFor(() => expect(packApi.importarMidiaPrivada).toHaveBeenCalledWith(
+      arquivo, expect.stringContaining('Anúncio estático')));
+    await waitFor(() => expect(packApi.salvarPack).toHaveBeenCalledWith(
+      'Upload · troca', ['00000000-0000-4000-8000-000000000333']));
+    await waitFor(() => expect(packApi.fixarPackNoConjunto).toHaveBeenCalledWith(
+      expect.any(String), 'adset-001', '00000000-0000-4000-8000-000000000444', 0));
+  });
   it('reordenar não troca a identidade do conjunto nem o pai do anúncio', async () => {
     await comDoisConjuntos();
 
@@ -518,8 +695,6 @@ describe('Vários conjuntos e o mapa de anúncios', () => {
     ir('conjunto');
     fireEvent.click(screen.getByRole('button', { name: /adicionar outro conjunto/i }));
     ir('revisao');
-    const botao = await screen.findByRole('button', { name: /conferir o plano/i });
-    expect(botao.hasAttribute('disabled')).toBe(true);
     expect(screen.getAllByText(/Nenhum anúncio aponta para o conjunto/i).length)
       .toBeGreaterThan(0);
     expect(api.compilarPlanoMetaV2).not.toHaveBeenCalled();
@@ -564,10 +739,10 @@ describe('Público', () => {
     await comConta('publico');
     confirmarDeclaracoes();
     ir('publico');
-    fireEvent.change(screen.getByLabelText(/países alcançados/i), {
-      target: { value: 'BR, PT' },
-    });
-    fireEvent.change(screen.getByLabelText(/países excluídos/i), { target: { value: 'PY' } });
+    fireEvent.click(screen.getByLabelText(/países alcançados/i));
+    fireEvent.click(await screen.findByText('Portugal'));
+    fireEvent.click(screen.getByLabelText(/países excluídos/i));
+    fireEvent.click(await screen.findByText('Paraguai'));
     fireEvent.change(screen.getByLabelText(/idade mínima/i), { target: { value: '25' } });
 
     const corpo = await compilarV2();
@@ -613,9 +788,8 @@ describe('Público', () => {
 describe('Mensuração', () => {
   async function lerMensuracao() {
     await comConta('mensuracao');
-    // ⚠️ O catálogo NÃO sai da montagem: ele custa leitura real da conta.
-    expect(api.catalogoDeMensuracaoMeta).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /ler conversões desta conta/i }));
+    // Mensuração é contexto obrigatório da conta e chega automaticamente ao
+    // entrar na etapa; o botão restante serve apenas para atualizar/repetir.
     await waitFor(() => expect(api.catalogoDeMensuracaoMeta).toHaveBeenCalledTimes(1));
   }
 
@@ -660,14 +834,11 @@ describe('Mensuração', () => {
     expect(corpo.adsets[0].measurement.source_kind).toBe('PIXEL');
   });
 
-  it('a leitura da mensuração é da conta e não sai sem clique', async () => {
+  it('a leitura da mensuração é da conta e começa automaticamente na etapa', async () => {
     await comConta('mensuracao');
-    expect(api.catalogoDeMensuracaoMeta).not.toHaveBeenCalled();
-    // Os DOIS catálogos anunciam o não-lido, cada um com o seu substantivo.
-    expect(screen.getByText(/Carregue a lista para escolher conversões/i))
-      .toBeTruthy();
-    expect(screen.getByText(
-      /Carregue a lista para escolher fontes de mensuração/i)).toBeTruthy();
+    await waitFor(() => expect(api.catalogoDeMensuracaoMeta).toHaveBeenCalledTimes(1));
+    expect(await screen.findByLabelText(/fonte do evento/i)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /atualizar lista/i }).length).toBeGreaterThan(0);
   });
 
   it('relatar e otimizar são separados, e a receita decide qual existe', async () => {
@@ -684,29 +855,26 @@ describe('Mensuração', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('Catálogos da conta', () => {
-  it('nenhum catálogo é buscado sem clique, nem ao montar nem ao navegar', async () => {
+  it('mensuração e públicos chegam automaticamente; lugares continuam sob busca', async () => {
     await comConta('publico');
     ir('mensuracao');
+    await waitFor(() => expect(api.catalogoDeMensuracaoMeta).toHaveBeenCalledTimes(1));
     ir('publico');
     ir('conjunto');
     ir('publico');
-    expect(api.catalogoDePublicosMeta).not.toHaveBeenCalled();
-    expect(api.catalogoDeGeografiaMeta).not.toHaveBeenCalled();
-    expect(api.catalogoDeMensuracaoMeta).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: /ler públicos desta conta/i }));
     await waitFor(() => expect(api.catalogoDePublicosMeta).toHaveBeenCalledTimes(1));
+    expect(api.catalogoDeGeografiaMeta).not.toHaveBeenCalled();
+    expect(api.catalogoDeMensuracaoMeta).toHaveBeenCalledTimes(1);
     expect(api.catalogoDePublicosMeta).toHaveBeenCalledWith(conta.referencia_opaca);
     // Ler um catálogo não arrasta os outros junto.
     expect(api.catalogoDeGeografiaMeta).not.toHaveBeenCalled();
-    expect(api.catalogoDeMensuracaoMeta).not.toHaveBeenCalled();
+    expect(api.catalogoDeMensuracaoMeta).toHaveBeenCalledTimes(1);
   });
 
   it('o público escolhido viaja como referencia_opaca, no campo do subtipo certo', async () => {
     await comConta('publico');
     confirmarDeclaracoes();
     ir('publico');
-    fireEvent.click(screen.getByRole('button', { name: /ler públicos desta conta/i }));
     await waitFor(() => expect(api.catalogoDePublicosMeta).toHaveBeenCalled());
 
     // Público amplo não aceita público salvo: a escolha do modo é explícita.
@@ -728,7 +896,6 @@ describe('Catálogos da conta', () => {
 
   it('um público UNKNOWN não pode ser escolhido', async () => {
     await comConta('publico');
-    fireEvent.click(screen.getByRole('button', { name: /ler públicos desta conta/i }));
     await waitFor(() => expect(api.catalogoDePublicosMeta).toHaveBeenCalled());
     expect(await screen.findByLabelText('Decisão sobre o público Público sem flag'))
       .toHaveProperty('disabled', true);
@@ -740,7 +907,6 @@ describe('Catálogos da conta', () => {
     await comConta('publico');
     confirmarDeclaracoes();
     ir('publico');
-    fireEvent.click(screen.getByRole('button', { name: /ler públicos desta conta/i }));
     await waitFor(() => expect(api.catalogoDePublicosMeta).toHaveBeenCalled());
     fireEvent.change(
       await screen.findByLabelText('Decisão sobre o público Visitantes 30 dias'),
@@ -749,8 +915,7 @@ describe('Catálogos da conta', () => {
     expect(screen.getByText(/Público amplo não aceita público salvo/i)).toBeTruthy();
     expect(screen.getAllByText(/META_AUDIENCE_MODE_CONFLICT/).length).toBeGreaterThan(0);
     ir('revisao');
-    expect((await screen.findByRole('button', { name: /conferir o plano/i }))
-      .hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('button', { name: /tentar conferência novamente/i })).toBeNull();
     expect(api.compilarPlanoMetaV2).not.toHaveBeenCalled();
   });
 
@@ -817,9 +982,6 @@ describe('Catálogos da conta', () => {
       ok: true, api_version: 'v26.0', armazenamento: 'macOS Keychain', contas: [conta, outra],
     });
     abrir('base');
-    await waitFor(() => expect(
-      screen.getByRole('button', { name: 'Carregar minhas contas' })).toHaveProperty('disabled', false));
-    fireEvent.click(screen.getByRole('button', { name: 'Carregar minhas contas' }));
     await waitFor(() => expect(api.contasMetaLocal).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText(/conta de anúncios/i), {
       target: { value: conta.referencia_opaca },
@@ -827,7 +989,6 @@ describe('Catálogos da conta', () => {
     await waitFor(() => expect(api.ativosCriacaoMeta).toHaveBeenCalled());
 
     ir('publico');
-    fireEvent.click(screen.getByRole('button', { name: /ler públicos desta conta/i }));
     await waitFor(() => expect(api.catalogoDePublicosMeta).toHaveBeenCalled());
     fireEvent.change(
       await screen.findByLabelText('Decisão sobre o público Visitantes 30 dias'),
@@ -843,8 +1004,8 @@ describe('Catálogos da conta', () => {
 
     ir('publico');
     expect(screen.queryByText('Visitantes 30 dias')).toBeNull();
-    expect(screen.getByText(/Carregue a lista para escolher públicos/i))
-      .toBeTruthy();
+    await waitFor(() => expect(api.catalogoDePublicosMeta).toHaveBeenLastCalledWith(outra.referencia_opaca));
+    expect(screen.queryByText('Visitantes 30 dias')).toBeTruthy();
     // E a seleção feita na conta anterior saiu junto: ela não resolveria aqui.
     expect(screen.getByText(/0 incluídos · 0 excluídos/)).toBeTruthy();
   });
@@ -855,14 +1016,65 @@ describe('Catálogos da conta', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('Receita e revisão', () => {
-  it('uma receita sem prova continua selecionável e diz que criar está fechado', async () => {
+  it('não acusa URL válida quando a pendência é a fonte da conversão', async () => {
     await comConta('campanha');
     fireEvent.click(screen.getByRole('radio', { name: /Vendas no site/i }));
-    expect(screen.getByText(/A criação desta opção ainda precisa ser liberada no servidor/i)).toBeTruthy();
-    expect(screen.getByText(/elegibilidade do evento desta conta não foi provada/i)).toBeTruthy();
-    // E validar continua aberto: é ela que produz a prova que falta.
+    fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
+    fireEvent.change(screen.getByLabelText('Endereço da página'), { target: { value: 'https://exemplo.com/materia' } });
     ir('revisao');
-    expect(screen.getByRole('button', { name: /validar na meta/i })).toBeTruthy();
+    expect(screen.getAllByText(/Escolha o pixel ou dataset da conta/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Informe uma URL de destino HTTPS/)).toBeNull();
+    expect(api.validarPlanoMetaV2).not.toHaveBeenCalled();
+  });
+
+  it('catálogo legado sem capacidade não converte evidência histórica em autorização', async () => {
+    await comConta('campanha');
+    fireEvent.click(screen.getByRole('radio', { name: /Vendas no site/i }));
+    expect(screen.getByText(/O catálogo não confirmou a disponibilidade da criação pausada/i)).toBeTruthy();
+    expect(screen.getByText(/elegibilidade do evento desta conta não foi provada/i)).toBeTruthy();
+    // A conferência automática não transforma um catálogo histórico em
+    // capacidade operacional e não expõe um botão manual para contornar isso.
+    ir('revisao');
+    expect(screen.queryByRole('button', { name: /validar na meta/i })).toBeNull();
+    expect(api.validarPlanoMetaV2).not.toHaveBeenCalled();
+  });
+
+  it('fluxo pausado implementado não aparece fechado por falta de prova histórica', async () => {
+    api.receitasCriacaoMetaV2.mockResolvedValue({
+      ...CATALOGO,
+      receitas: CATALOGO.receitas.map((item) => ({ ...item,
+        capacidade_pausada: CAPACIDADE_PAUSADA,
+        modos_de_orcamento: item.modos_de_orcamento.map((modo) => ({ ...modo,
+          capacidade_pausada: CAPACIDADE_PAUSADA,
+        })),
+      })),
+    });
+    await comConta('campanha');
+    fireEvent.click(screen.getByRole('radio', { name: /Vendas no site/i }));
+    expect(screen.getByText('fluxo pausado disponível')).toBeTruthy();
+    expect(screen.getByText(/elegibilidade do evento desta conta não foi provada/i)).toBeTruthy();
+    expect(screen.queryByText(/criar fechado|criar liberado/i)).toBeNull();
+    expect(screen.queryByText(/catálogo não confirmou/i)).toBeNull();
+    ir('orcamento');
+    trocarOrcamento(/na campanha \(CBO\)/i);
+    expect(screen.queryByText(/Confira a disponibilidade deste modo de orçamento/i)).toBeNull();
+    ir('revisao');
+    expect((screen.getByRole('button', { name: /criar campanha PAUSED/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(api.aprovarCriacaoMeta).not.toHaveBeenCalled();
+    expect(api.criarCampanhaPausadaMeta).not.toHaveBeenCalled();
+  });
+
+  it('capacidade explicitamente indisponível prevalece sobre criar_liberado legado', async () => {
+    api.receitasCriacaoMetaV2.mockResolvedValue({
+      ...CATALOGO,
+      receitas: CATALOGO.receitas.map((item) => ({ ...item, criar_liberado: true,
+        capacidade_pausada: { ...CAPACIDADE_PAUSADA, implementada: false },
+      })),
+    });
+    await comConta('campanha');
+    expect(screen.getByText('conferir disponibilidade')).toBeTruthy();
+    expect(screen.queryByText('fluxo pausado disponível')).toBeNull();
+    expect(screen.queryByText('criar liberado')).toBeNull();
   });
 
   it('mudar um campo depois de validar derruba a prova e o resumo do servidor', async () => {
@@ -870,9 +1082,9 @@ describe('Receita e revisão', () => {
     confirmarDeclaracoes();
     trocarOrcamento(/na campanha \(CBO\)/i);
     await compilarV2();
-    fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
     await waitFor(() => expect(api.validarPlanoMetaV2).toHaveBeenCalled());
     expect(await screen.findByText(/Resultado da validação remota/i)).toBeTruthy();
+    expect(screen.getByText(/Validação concluída nas operações independentes/)).toBeTruthy();
     expect(screen.getAllByTestId('linha-do-mapa').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: /^Destino$/i }));
@@ -883,8 +1095,9 @@ describe('Receita e revisão', () => {
 
     // ⚠️ `A33`: o resumo descrevia o plano anterior. Ele cai com a validação.
     expect(screen.queryByText(/Resultado da validação remota/i)).toBeNull();
+    expect(screen.getByText(/O plano mudou. Confira e valide novamente/)).toBeTruthy();
     expect(screen.queryAllByTestId('linha-do-mapa')).toHaveLength(0);
-    expect(screen.getByText(/Confira o plano antes de falar com a Meta/i)).toBeTruthy();
+    expect(screen.getByText(/O plano mudou. Confira e valide novamente/i)).toBeTruthy();
   });
 
   it('a revisão diz por que este plano usa o contrato V2', async () => {
@@ -898,22 +1111,20 @@ describe('Receita e revisão', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// A regra de ouro: nenhum botão cria, nenhum botão ativa
+// A regra de ouro: sem aprovação durável não cria; nenhum botão ativa
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('Nenhum nascimento pelo contrato V2', () => {
-  it('nem com a criação liberada no servidor um plano V2 ganha botão que cria', async () => {
+describe('Nascimento V2 condicionado à aprovação durável', () => {
+  it('capacidade e validação sozinhas não habilitam criação', async () => {
     await comConta('orcamento');
     confirmarDeclaracoes();
     trocarOrcamento(/na campanha \(CBO\)/i);
     await compilarV2();
-    fireEvent.click(screen.getByRole('button', { name: /validar na meta/i }));
     await waitFor(() => expect(api.validarPlanoMetaV2).toHaveBeenCalled());
 
-    expect(screen.queryByRole('button', { name: /criar campanha/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /aprovar plano/i })).toBeNull();
-    expect(screen.queryByRole('checkbox', { name: /Confirmo a criação real/i })).toBeNull();
-    expect(screen.getByText(/Este plano não pode nascer nesta bancada/i)).toBeTruthy();
+    const criar = screen.getByRole('button', { name: /criar campanha PAUSED/i });
+    expect((criar as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(criar);
     expect(api.aprovarCriacaoMeta).not.toHaveBeenCalled();
     expect(api.criarCampanhaPausadaMeta).not.toHaveBeenCalled();
   });

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gera o workflow n8n de leitura diaria de insights Meta Ads (campanha-dia, D-1).
+"""Gera o workflow n8n de leitura diaria de insights Meta Ads (conjunto-dia, D-1).
 
 Este gerador e irmao de `n8n/gerar_flows_gads_ledger_v12.py` e copia o desenho
 dele de proposito: mesmos nos de defesa, mesma ordem, mesmos ids deterministicos
@@ -1938,7 +1938,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
     # pesadas no mesmo minuto competem por recurso do mesmo host.
     cron = "0 7 * * *"
     passos = "07"
-    nome = "VOLC · Meta Ads insights campanha-dia · D-1 (fuso da conta)"
+    nome = "VOLC · Meta Ads insights conjunto-dia · D-1 (fuso da conta)"
 
     config = [
         ("SUPABASE_URL", SUPABASE),

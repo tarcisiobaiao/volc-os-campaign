@@ -1,0 +1,9 @@
+{
+  "scope": "UX and durable draft consistency in Meta campaign wizard",
+  "question": "Review autosave/recovery and asynchronous pack/plan transitions. Find concrete data-loss/race or misleading UI risks. Keep final human plan approval and PAUSED only; eliminate redundant work but not required checks. Propose regression tests. Search official Meta validation/create docs narrowly, not generic design blogs. Missing caller code is a limitation, not proof of a bug.",
+  "excerpts": [
+    {"path":"src/hooks/useMetaCampaignDraft.ts","start":1,"end":121},
+    {"path":"src/pages/trafego/MetaCriacaoPage.tsx","start":967,"end":1028},
+    {"path":"src/pages/trafego/MetaCriacaoPage.tsx","start":1115,"end":1260}
+  ]
+}

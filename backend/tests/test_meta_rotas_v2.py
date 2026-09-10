@@ -179,6 +179,13 @@ def test_catalogo_de_receitas_expoe_o_nivel_de_prova(monkeypatch) -> None:
     for identificador in ("WEB_SALES_CONVERSION", "WEB_LEADS_CONVERSION"):
         assert por_id[identificador]["criar_liberado"] is False
         assert por_id[identificador]["motivo_sem_prova"]
+        assert all(modo["prova"] == "FIELD_SHAPE_ONLY" for modo in por_id[identificador]["modos_de_orcamento"])
+        capability = por_id[identificador]["capacidade_pausada"]
+        assert capability["implementada"] is True
+        assert capability["exige_recibo_exato_do_plano"] is True
+        assert capability["dependentes_validados_antes_de_criar"] is True
+        assert capability["exige_prova_de_destino"] is True
+        assert capability["autoriza_ativacao"] is False
     # Modos de orçamento carregam prova PRÓPRIA: o ABO diário foi aceito, os
     # outros três não.
     modos = {m["id"]: m for m in por_id["TRAFFIC_WEBSITE_LPV_STATIC"]["modos_de_orcamento"]}

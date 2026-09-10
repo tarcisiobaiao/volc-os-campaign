@@ -79,16 +79,16 @@ export function FotografiaReal({
     <section className="studio-surface">
       <div className="studio-section-label">
         <Camera aria-hidden className="h-4 w-4" />
-        <h2>Fotografia real</h2>
+        <h2>Imagem de referência ou fotografia</h2>
         <span className="ml-auto normal-case tracking-normal text-muted-foreground">
           opcional
         </span>
       </div>
 
       <p className="mt-3 max-w-[70ch] text-sm text-muted-foreground">
-        Sem fotografia, o modelo compõe a arte inteira. Com uma, você escolhe se
-        ela entra nos pixels finais ou se serve de referência para o modelo
-        redesenhar a cena.
+        Tem um criativo que quer usar como inspiração? Envie a imagem e escolha
+        como usá-la. Você também pode preservar uma fotografia na arte final.
+        Sem anexo, o briefing é suficiente para gerar.
       </p>
 
       {!comFoto && (
@@ -112,7 +112,7 @@ export function FotografiaReal({
             ) : (
               <IconeImagem className="h-4 w-4" aria-hidden />
             )}
-            {enviando ? 'Enviando…' : 'Escolher uma fotografia'}
+            {enviando ? 'Enviando…' : 'Escolher imagem'}
           </Button>
           <p className="mt-2 max-w-[70ch] text-xs text-muted-foreground">
             PNG, JPEG ou WebP, até 25 MB e no mínimo 320 px no menor lado. Ao
@@ -148,7 +148,7 @@ export function FotografiaReal({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground">
-                Fotografia recebida
+                Imagem recebida
               </p>
               <p className="mt-1 text-xs tabular-nums text-muted-foreground">
                 {anexo.largura} × {anexo.altura} px · {tamanho(anexo.bytes_totais)}
@@ -175,7 +175,8 @@ export function FotografiaReal({
           </div>
 
           <fieldset className="mt-4">
-            <legend className="studio-field-label">Como a fotografia entra</legend>
+            <legend className="studio-field-label">Como usar esta imagem?</legend>
+            {!modo && <p role="status" className="mt-2 text-sm text-primary">Escolha uma opção antes de conferir a geração. Nada foi selecionado automaticamente.</p>}
             <div className="mt-2 space-y-2">
               {modosComFoto.map((m) => (
                 <label
@@ -196,7 +197,7 @@ export function FotografiaReal({
                     <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
                       {m.descricao}
                     </span>
-                    {!m.preserva_pixels_da_foto && (
+                    {!m.preserva_pixels_da_foto && m.id !== 'referencia_visual' && (
                       <span className="mt-1 flex items-center gap-1.5 text-xs font-medium text-warning">
                         <AlertCircle className="h-3.5 w-3.5" aria-hidden />
                         A pessoa e os detalhes da foto podem mudar.

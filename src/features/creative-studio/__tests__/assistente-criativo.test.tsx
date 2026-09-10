@@ -222,6 +222,9 @@ describe('o briefing mostra a consequência antes da ação', () => {
     fireEvent.change(screen.getByLabelText(/Nome do trabalho/i), {
       target: { value: 'Operação de teste' },
     });
+    fireEvent.change(screen.getByLabelText(/Assunto principal/i), {
+      target: { value: 'Como consultar informações da prova' },
+    });
     fireEvent.change(screen.getByLabelText(/Público e momento/i), {
       target: { value: 'Pessoa buscando entender o processo.' },
     });
@@ -241,7 +244,8 @@ describe('o briefing mostra a consequência antes da ação', () => {
     await abrirPagina('/trafego/meta/assistente-criativo?view=briefing');
     expect(screen.queryByLabelText(/^Destino$/i)).toBeNull();
     expect(screen.queryByText(/referência do destino cadastrado/i)).toBeNull();
-    expect(screen.getByLabelText(/Objetivo da campanha/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/Objetivo da campanha/i)).toBeNull();
+    expect(screen.getByLabelText(/Qual página você quer divulgar/i)).toBeTruthy();
   });
 
   it('o operador informa fatos, sem referências técnicas expostas', async () => {
@@ -251,6 +255,6 @@ describe('o briefing mostra a consequência antes da ação', () => {
     });
     expect(screen.queryByText(/fact_/)).toBeNull();
     // não existe campo pedindo a ref
-    expect(screen.queryByLabelText(/^ref/i)).toBeNull();
+    expect(screen.queryByLabelText(/^ref(?:erência técnica)?$/i)).toBeNull();
   });
 });

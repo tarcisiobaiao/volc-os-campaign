@@ -40,6 +40,7 @@ from .contrato import (
     PedidoDeGeracao,
     PlanoDeGeracao,
 )
+from .spec_visual import especificar
 
 
 def texto_na_arte(peca: PecaCriativa) -> str:
@@ -99,6 +100,9 @@ def montar_plano(
     objetivo: str,
     motor: Any = None,
     anexo: dict[str, Any] | None = None,
+    # A família cromática do assunto, confirmada no briefing. Opcional para que
+    # todo chamador histórico continue montando plano sem alteração.
+    familia_cromatica: list[str] | None = None,
 ) -> PlanoDeGeracao:
     """Expande a seleção em N×M briefings, ou explica por que não expande.
 
@@ -181,8 +185,8 @@ def montar_plano(
 
     # (3c) O motor precisa saber receber a foto. Um motor que ignorasse o anexo
     #      entregaria uma peça diferente da pedida e cobraria por ela.
-    if pedido.modo_de_composicao == "reinterpretado" and motor is not None:
-        if not getattr(motor, "aceita_referencia", True):
+    if pedido.modo_de_composicao in {"reinterpretado", "referencia_visual"} and motor is not None:
+        if not getattr(motor, "aceita_referencia", False):
             bloqueios.append(
                 Bloqueio(
                     codigo="CRIATIVO_STUDIO_MOTOR_SEM_REFERENCIA",
@@ -246,6 +250,7 @@ def montar_plano(
                             state_ref=peca.estado_mental_ref,
                             project_ref=saida.project_ref,
                             run_ref=pedido.run_ref,
+                            geracao_ref=pedido.geracao_ref,
                             fato_refs=list(peca.fato_refs),
                             rule_refs=list(peca.rule_refs),
                         ),
@@ -254,6 +259,8 @@ def montar_plano(
                         texto_na_arte=arte,
                         contexto_do_publico=contexto_do_publico,
                         objetivo=objetivo,
+                        creative_spec=especificar(peca, copy, slot, pedido.modo_de_composicao,
+                                  familia_cromatica=familia_cromatica),
                     )
                 )
 
@@ -302,6 +309,7 @@ def pedido_de_job(
         # Gravar `full_llm` numa peça composta apagaria essa distinção no banco.
         "modo": "photo_preserved" if modo_de_composicao == "hibrido" else "full_llm",
         "slots": [b.formato_slot for b in briefings],
+        "creative_specs": [b.creative_spec.model_dump(mode="json") for b in briefings if b.creative_spec],
         # Origem e o dominio chamador, conforme criativo_projeto_origem_valida
         # (v11_01), nao o nome da ferramenta. A identificacao do Assistente
         # permanece na ponte project/run/creative -> job, sem ampliar o enum SQL.
@@ -314,6 +322,7 @@ def pedido_de_job(
         # recebia 2, sem nenhuma recusa.
         "creative_ref": primeiro.linhagem.creative_ref,
         "run_ref": primeiro.linhagem.run_ref,
+        "geracao_ref": primeiro.linhagem.geracao_ref,
         "modo_de_composicao": modo_de_composicao,
         "anexo_ref": (anexo or {}).get("anexo_ref"),
         "anexo_sha256": (anexo or {}).get("content_sha256"),

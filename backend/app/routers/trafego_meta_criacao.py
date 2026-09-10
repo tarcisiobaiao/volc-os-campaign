@@ -55,6 +55,7 @@ uma aba antiga não consegue criar um plano diferente do que foi aprovado: o
 hash recompilado teria que bater com o hash gravado, e não bate.
 """
 from __future__ import annotations
+from app.trafego.meta.business_credentials import credencial_operacional
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
@@ -68,6 +69,10 @@ from app.routers.meta_local import _credencial_salva, _exigir_host_local
 from app.routers.trafego_meta_validacao import (
     SEM_CAMPO_DESCONHECIDO,
     PedidoPlanoMetaPausado,
+    PedidoPlanoMetaV2,
+    _plano_v2_do_pedido,
+    _declaracoes_de_politica_v2,
+    _compilar_v2,
     _compilar,
     _declaracoes_de_politica,
     _plano,
@@ -104,6 +109,7 @@ from app.trafego.meta_execucao.reconciliacao import (
     ReconciliadorMetaSomenteLeitura,
 )
 from app.trafego.meta_execucao.registro import RegistroSagaMetaSupabase
+from app.trafego.meta_execucao.orcamento_aprovado import manifesto_orcamentario, conferir_orcamento
 
 
 router = APIRouter(prefix="/api/trafego/meta/local/criacao", tags=["meta-create-paused"])
@@ -152,7 +158,7 @@ class PedidoAprovarCriacaoMeta(BaseModel):
 
     model_config = SEM_CAMPO_DESCONHECIDO
 
-    plano: PedidoPlanoMetaPausado
+    plano: PedidoPlanoMetaPausado | PedidoPlanoMetaV2
     #: O hash que a tela exibiu ao operador. Se a recompilação no servidor der
     #: outro, alguma coisa mudou entre a conferência e o clique — e a aprovação
     #: descreveria um plano que ninguém leu.
@@ -217,12 +223,14 @@ def _exigir_capacidade_do_ledger() -> None:
 
 
 def _erro(exc: Exception, *, recibo: Mapping[str, Any] | None = None) -> HTTPException:
-    """Três status, três significados distintos — e a diferença importa.
+    """Status distintos para recusa, incerteza e validação sem resposta.
 
     409  uma guarda local ou durável recusou; nada foi despachado.
     422  a Meta olhou o pedido e o reprovou; está provado que nada nasceu.
     502  houve despacho e o resultado é DESCONHECIDO. Não é recusa, não é
          timeout retentável: é o estado que exige reconciliação por leitura.
+    504  validate_only expirou antes do despacho deste passo; a mesma
+         aprovação pode ser retomada pelo ledger, sem inventar ambiguidade.
 
     ⚠️ `objetos_criados` viaja no corpo do 502 e do 422. Sem esse campo o
     operador não descobre que a saga parou com uma campanha já criada, e a
@@ -256,7 +264,7 @@ def _erro(exc: Exception, *, recibo: Mapping[str, Any] | None = None) -> HTTPExc
             "META_READBACK_NOT_DURABLE",
         }
         return HTTPException(
-            status_code=502 if ambiguo else 422,
+            status_code=502 if ambiguo else 504 if exc.codigo == "META_VALIDATE_TIMEOUT" else 422,
             detail={
                 "codigo": exc.codigo,
                 "mensagem": str(exc),
@@ -553,15 +561,15 @@ def _exigir_validacao_utilizavel(
         raise ErroDeNascimentoMeta(
             "META_VALIDATION_NOT_ACCEPTED",
             "este recibo não registra uma validação aceita")
-    if int(recibo.get("objects_created") or 0) != 0:
+    if type(recibo.get("objects_created")) is not int or recibo["objects_created"] != 0:
         raise ErroDeNascimentoMeta(
             "META_VALIDATION_NOT_CLEAN",
             "este recibo registra objetos criados; não é um recibo de validação")
-    if recibo.get("ja_consumido") is True:
+    if recibo.get("ja_consumido") is not False:
         raise ErroDeNascimentoMeta(
             "META_VALIDATION_RECEIPT_ALREADY_USED",
             "este recibo já autorizou uma aprovação; valide de novo")
-    if int(recibo.get("idade_s") or 0) > JANELA_DA_VALIDACAO_S:
+    if type(recibo.get("idade_s")) is not int or not 0 <= recibo["idade_s"] <= JANELA_DA_VALIDACAO_S:
         raise ErroDeNascimentoMeta(
             "META_VALIDATION_RECEIPT_STALE",
             "esta validação é antiga demais; valide de novo antes de aprovar")
@@ -610,10 +618,17 @@ async def aprovar(
         )
         # O contrato do plano é puro e julga primeiro: uma receita recusável
         # para aqui sem que o Keychain seja aberto.
-        pedido = _plano(payload.plano)
-        _declaracoes_de_politica(payload.plano)
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
-        compilado = await _compilar(payload.plano, pedido, segredo, ator=quem.sub)
+        v2 = isinstance(payload.plano, PedidoPlanoMetaV2)
+        pedido = _plano_v2_do_pedido(payload.plano) if v2 else _plano(payload.plano)
+        if v2:
+            if len(payload.plano.ads) > 10:
+                raise ErroDeNascimentoMeta("META_APPROVAL_OPERATION_LIMIT", "a criação aceita até dez anúncios por aprovação")
+            _declaracoes_de_politica_v2(payload.plano)
+        else:
+            _declaracoes_de_politica(payload.plano)
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
+        compilar = _compilar_v2 if v2 else _compilar
+        compilado = await compilar(payload.plano, pedido, segredo, ator=quem.sub)
         if compilado.plano_sha256 != payload.plano_sha256_esperado:
             raise ErroDeNascimentoMeta(
                 "META_APPROVED_PLAN_DIVERGED",
@@ -624,11 +639,12 @@ async def aprovar(
         # ⚠️ A validade da aprovação é limitada pela prova que a sustenta.
         expira_em = _validade_da_aprovacao(
             compilado, agora=contrato_meta.agora_utc())
+        budget_manifest = manifesto_orcamentario(compilado.congelar())
         aprovacao = await registro.aprovar(
             plano_sha256=compilado.plano_sha256,
             account_ref=compilado.account_ref,
             ator=quem.sub,
-            daily_budget_minor=_orcamento_do_plano(compilado),
+            daily_budget_minor=budget_manifest["daily_total_minor"],
             moeda="BRL",
             expires_at=expira_em,
             passos_esperados=compilado.manifesto_de_passos,
@@ -662,7 +678,8 @@ async def aprovar(
                 "expires_at": aprovacao.get("expires_at"),
                 "operacoes": len(compilado.manifesto_de_passos),
                 "manifesto": list(compilado.manifesto_de_passos),
-                "orcamento_diario_minor": _orcamento_do_plano(compilado),
+                "orcamento_diario_minor": budget_manifest["daily_total_minor"],
+                "budget_manifest": budget_manifest,
                 "moeda": "BRL",
                 "nascimento_pausado_confirmado": True,
             },
@@ -712,10 +729,7 @@ async def criar_pausada(
         compilado = _plano_congelado_da_aprovacao(manifesto)
         _plano_bate_com_a_aprovacao(
             compilado, manifesto, esperado_pela_tela=payload.plano_sha256_esperado)
-        if _orcamento_do_plano(compilado) != int(manifesto.get("daily_budget_minor") or -1):
-            raise ErroDeNascimentoMeta(
-                "META_BUDGET_DIVERGED",
-                "o orçamento do conjunto não é o orçamento aprovado")
+        conferir_orcamento(compilado.congelar(), manifesto)
         # ⚠️ A PROVA DA PEÇA, ANTES DO SEGREDO. A atestação de direitos vale uma
         # hora; a aprovação, quinze minutos. Quando a aprovação é dada no
         # minuto 59 da atestação, existe uma faixa em que a aprovação está viva
@@ -734,14 +748,14 @@ async def criar_pausada(
         #
         # A ordem é deliberada: a validade da prova é propriedade do PRÓPRIO
         # plano; a revogação é propriedade da CONTA.
-        if not capacidades_meta.destino_website_liberado(compilado.account_ref):
+        if not compilado.opt_out_website_explicito and not capacidades_meta.destino_website_liberado(compilado.account_ref):
             raise ErroDeNascimentoMeta(
                 "META_SHOP_REDIRECT_REVOKED",
                 "a conferência de destino desta conta foi revogada depois da aprovação; "
                 "aprove de novo depois de conferir a conta",
             )
 
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
 
         autorizacao = AutorizacaoMeta(
             plano_sha256=compilado.plano_sha256,
@@ -929,7 +943,7 @@ async def reconciliar(
         # Ler não precisa de nenhuma dessas perguntas. Precisa do plano que foi
         # despachado, e ele está congelado.
         compilado = _plano_congelado_da_aprovacao(manifesto)
-        segredo = SegredoEfemero(_credencial_salva(quem).token)
+        segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
 
         async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
             conclusoes = await ReconciliadorMetaSomenteLeitura(cliente).conciliar(

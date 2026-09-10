@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "round": 2,
+  "created_at": "2026-09-10T10:42:55.002288+00:00",
+  "requested_model": "gemini-3.8-flash",
+  "thinking_level": "high",
+  "google_search_requested": true,
+  "concurrency_limit": 2,
+  "round_call_limit": 3,
+  "total_authorized_rounds_limit": 2,
+  "calls_attempted": 1,
+  "status": "partial",
+  "lanes": [
+    {
+      "lane": "arbitrage_measurement",
+      "attempted": true,
+      "request_sha256": "cfefd08cc27da8e46444146ea6a110c015e0e663bfc0f4d0f964e7b51089f9df",
+      "modelVersion": "gemini-3.8-flash",
+      "model_verified": true,
+      "usage": {
+        "promptTokenCount": 3469,
+        "candidatesTokenCount": 2147,
+        "thoughtsTokenCount": 10101,
+        "totalTokenCount": 15717
+      },
+      "grounding": {
+        "webSearchQueries": [],
+        "groundingChunks": [],
+        "groundingSupports": []
+      },
+      "grounding_verified": false,
+      "finishReason": "STOP",
+      "official_source_policy_ok": true,
+      "status": "ungrounded",
+      "review": {
+        "status": "partial",
+        "lane": "arbitrage_measurement",
+        "findings": [
+          {
+            "id": "AM-BID-OPT-ENFORCEMENT-01",
+            "severity": "high",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "Editorial arbitrage monetizes traffic through offsite publisher ad impressions aggregated at the ad-set level rather than e-commerce purchase transactions. Ad sets cannot use VALUE optimization or minimum ROAS bidding without purchase event history, and synthesizing purchase conversion values from modeled publisher ad revenue violates Meta measurement policy. The preflight compiler must disallow optimization_goal VALUE and bid_strategy LOWEST_COST_WITH_MIN_ROAS.",
+            "current_contract": "Paragraph 6 states publisher revenue remains at ad-set granularity and dynamic tracking uses ad-set IDs in utm_campaign/utm_term. Paragraph 7 states ABO is used to explore and CBO to expand, with no automatic profitability thresholds or bid changes authorized, but the compilation schema does not formally constrain optimization_goal or bid_strategy against unentitled ROAS configurations.",
+            "proposal": "Enforce explicit preflight validation rules restricting ad-set bidding and optimization: allow only OFFSITE_CONVERSIONS (paired with custom_event_type VIEW_CONTENT or eligible custom conversions), LANDING_PAGE_VIEWS, or LINK_CLICKS, with bid_strategy defaulting to LOWEST_COST_WITHOUT_CAP (or COST_CAP when an explicit bid_amount is specified). Reject drafts configured with optimization_goal VALUE or bid_strategy LOWEST_COST_WITH_MIN_ROAS before remote calls.",
+            "acceptance_test": "Compile an ad set draft containing optimization_goal: 'VALUE' or bid_strategy: 'LOWEST_COST_WITH_MIN_ROAS' and verify preflight rejects the plan with error INVALID_ARBITRAGE_OPTIMIZATION_GOAL without emitting POST requests. Compile an ad set with optimization_goal: 'OFFSITE_CONVERSIONS', custom_event_type: 'VIEW_CONTENT', and bid_strategy: 'LOWEST_COST_WITHOUT_CAP', and verify preflight succeeds and compiles to a PAUSED creation payload.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/advantage-plus-shopping-campaigns/",
+                "title": "Advantage+ Shopping Campaigns - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/bidding/overview",
+                "title": "Bidding overview - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          },
+          {
+            "id": "AM-CAPI-DEDUP-BOUNDARY-02",
+            "severity": "high",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "Meta Conversions API requires exact parity between event_name and event_id across browser Meta Pixel and server CAPI events within a 48-hour window to deduplicate redundant events. In an editorial arbitrage model, publisher monetization data must not be multiplexed into CAPI conversion payloads as purchase values, and redundant landing events (such as ViewContent) must share a deterministic event_id to prevent double-counting traffic.",
+            "current_contract": "Paragraph 6 states measurement distinguishes standard pixel events (such as ViewContent), custom conversions, and dataset/pixel sources, while publisher revenue remains at ad-set granularity. It notes CAPI delivery and deduplication need separate proofs and must not be assumed to exist, leaving the deduplication schema undefined.",
+            "proposal": "Formalize the CAPI event boundary: if server-side CAPI telemetry is enabled for web engagement, ensure every server event sent to /{DATASET_ID}/events specifies event_name, event_time, event_source_url, user_data, and an event_id matching the eventID passed to fbq('track', event_name, data, {eventID: event_id}). Prohibit passing publisher CPM or RPM revenue figures into custom_data.value or custom_data.currency, keeping ad monetization telemetry strictly confined to off-platform attribution keyed by UTM parameters.",
+            "acceptance_test": "Simulate a web session firing ViewContent through both browser Pixel and CAPI; verify the payload sent to /{DATASET_ID}/events contains an event_id identical to the client-side eventID, contains no synthetic value field, and is recognized as deduplicated without errors in the Meta Events Manager test stream.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/conversions-api/deduplicate-pixel-and-server-events",
+                "title": "Handling Duplicate Pixel and Conversions API Events - Meta for Developers",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/conversions-api/parameters/server-event",
+                "title": "Server Event Parameters - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          },
+          {
+            "id": "AM-ABO-TO-CBO-REUSE-03",
+            "severity": "medium",
+            "confidence": "high",
+            "support": "evidence_based",
+            "claim": "Flexible ads utilizing creative_asset_groups_spec dynamically assemble combinations of copy and media, producing no stable standalone page post reference that can be reused via object_story_id in a CBO campaign. Reusing an existing post to retain social proof (likes and comments) is valid exclusively for STATIC single-creative ads via effective_object_story_id. Reusing a flexible ad requires replicating its asset pool specifications rather than referencing a post ID.",
+            "current_contract": "Paragraph 2 states STATIC images and existing-post modes are distinct from FLEXIBLE_IMAGES, with the flexible contract forbidding existing-post refs. Paragraph 3 states creative readback includes effective_object_story_id and creative_asset_groups_spec. Paragraph 7 states reuse from ABO to CBO should preserve eligible post/social proof without implying transfer of historical ad metrics, without detailing how the UI handles flexible versus static reuse.",
+            "proposal": "Implement a bifurcated ABO-to-CBO reuse flow in the guided UI: (1) For STATIC ads, expose a 'Reuse Social Proof' option that queries effective_object_story_id from the source ad creative and compiles the new CBO ad using object_story_id without re-uploading assets; (2) For FLEXIBLE ads, disable the 'Reuse Social Proof' toggle, display an informative banner that flexible ads cannot retain unified social proof, and offer an 'Export Asset Pool to CBO' action that re-emits the identical creative_asset_groups_spec into the new PAUSED CBO ad set.",
+            "acceptance_test": "Execute ABO-to-CBO promotion on an ad set containing creative_asset_groups_spec; verify the compiler emits a new AdCreative with creative_asset_groups_spec matching the source text and media pools, omitting object_story_id. Execute promotion on a STATIC ad; verify the compiled AdCreative sets object_story_id equal to the readback effective_object_story_id without creating duplicate image hashes.",
+            "sources": [
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative-asset-groups-spec/",
+                "title": "Graph API Referência v26.0: Ad Creative Asset Groups Spec - Meta for Developers",
+                "retrieved_on": "2026-09-10"
+              },
+              {
+                "url": "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/",
+                "title": "Ad Creative - Meta for Developers - Facebook",
+                "retrieved_on": "2026-09-10"
+              }
+            ]
+          }
+        ],
+        "contradictions": [
+          "Paragraph 7 states ABO-to-CBO creative reuse should preserve eligible post/social proof, whereas Paragraphs 2 and 3 establish that flexible ads (creative_asset_groups_spec) cannot use existing-post references (object_story_id), making social proof preservation structurally impossible for the flexible ad format."
+        ],
+        "missing_inputs": [
+          "Verification of the target ad account's configured standard events and custom conversions in Events Manager to confirm whether ViewContent or custom conversions are actively mapped to the selected dataset.",
+          "Confirmation of whether server-side CAPI telemetry is currently operational for the publisher domain or planned for subsequent releases."
+        ],
+        "minimal_next_steps": [
+          "Add compile-time preflight assertions rejecting optimization_goal: 'VALUE' and bid_strategy: 'LOWEST_COST_WITH_MIN_ROAS' for editorial arbitrage campaigns.",
+          "Codify client-server event_id pairing for ViewContent events if CAPI is enabled, guaranteeing deduplication without transmitting publisher revenue data.",
+          "Update the ABO-to-CBO promotion UI to bifurcate static ad social-proof reuse (via effective_object_story_id) and flexible ad asset-pool replication (via creative_asset_groups_spec)."
+        ]
+      }
+    }
+  ],
+  "feedback_sha256": "4398c4afc66ac86b24c9975168bff1cae6d889f5192ecb4b359acccf9d639f18"
+}

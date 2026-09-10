@@ -3,15 +3,18 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ShieldAlert, Settings } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMetaCapiSites, type MetaCapiSite } from "@/hooks/useMetaCapiSites";
 import { SiteList } from "@/components/settings/meta-capi/SiteList";
 import { MetaCapiWizard } from "@/components/settings/meta-capi/MetaCapiWizard";
 import { PainelGoogleAds } from "@/components/settings/google-ads/PainelGoogleAds";
+import { MetaBusinessConnections } from "@/components/settings/MetaBusinessConnections";
+import { useSearchParams } from "react-router-dom";
 
 export default function IntegrationsSettings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const { userProfile } = useAuth();
   const { sites, loading, saving, error, saveSite, removeSite, recordCheck } = useMetaCapiSites();
@@ -72,15 +75,17 @@ export default function IntegrationsSettings() {
         {/* Google Ads é a aba padrão porque é para cá que o cockpit do Hub de
             Tráfego manda quem tem projeto sem conta vinculada — e ele é a única
             tela que aponta para esta URL. */}
-        <Tabs defaultValue="google-ads" className="space-y-4">
+        <Tabs value={['google-ads', 'meta-ads', 'meta-capi'].includes(searchParams.get('tab') || '') ? searchParams.get('tab')! : 'google-ads'} onValueChange={tab => setSearchParams(previous => { const next = new URLSearchParams(previous); next.set('tab', tab); return next; })} className="space-y-4">
           <TabsList className="h-10 w-full justify-start gap-1 rounded-lg bg-muted/40 p-1">
             <TabsTrigger value="google-ads">Google Ads</TabsTrigger>
+            <TabsTrigger value="meta-ads">Meta Ads</TabsTrigger>
             <TabsTrigger value="meta-capi">Meta CAPI</TabsTrigger>
           </TabsList>
 
           <TabsContent value="google-ads">
             <PainelGoogleAds />
           </TabsContent>
+          <TabsContent value="meta-ads"><MetaBusinessConnections /></TabsContent>
 
           <TabsContent value="meta-capi" className="space-y-6">
             <p className="text-sm text-muted-foreground">

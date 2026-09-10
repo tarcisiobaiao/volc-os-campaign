@@ -184,6 +184,7 @@ def resposta_lida(nome: str, identificador: str) -> dict[str, object]:
     elif nome == "creative":
         comum.update({
             "url_tags": TRACKING_GAM_ADSET_ID,
+            "destination_spec": {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"},
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
             "object_story_spec": {
@@ -247,11 +248,8 @@ def test_compilador_produz_receita_estreita_pausada_e_sem_vazamento() -> None:
     assert conjunto.payload["targeting"]["publisher_platforms"] == ["facebook"]
     assert "promoted_object" not in conjunto.payload
     assert "status" not in criativo.payload
-    # ⚠️ NENHUM `destination_spec` no payload: a legibilidade e a escrita do
-    # campo estão `RESEARCH_REQUIRED` na evidência oficial desta lane, e C01
-    # manda não enviar o que não foi provado. A garantia de destino é o
-    # portão `shop_redirect_proof`, cobrado antes do despacho.
-    assert "destination_spec" not in criativo.payload
+    # Official v26 opt-out confirmed 2026-09-09, not account eligibility.
+    assert criativo.payload["destination_spec"] == {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"}
     assert anuncio.payload["status"] == "PAUSED"
     assert saida.plano_sha256 == compilado().plano_sha256
     publico = json.dumps(saida.publico(), ensure_ascii=False)
@@ -466,17 +464,14 @@ def test_executor_recusa_host_e_versao_nao_fixados() -> None:
 # `create_paused`. As provas abaixo cobrem as duas metades.
 # ---------------------------------------------------------------------------
 
-def test_nenhum_criativo_carrega_campo_de_destino_nao_provado() -> None:
-    """CONTRAPROVA C01-a: nada de `destination_spec`/`destination_type` sai daqui.
-
-    A evidência oficial desta lane marca `creative.destination_spec` como
-    `RESEARCH_REQUIRED` e `remote_behavior_proven: false`. Enviar o campo seria
-    apostar em qual leitura está certa e descobrir no lote — depois de a
-    campanha já ter nascido.
-    """
+def test_opt_out_oficial_so_e_emitido_no_criativo_proprio() -> None:
+    """The v26 destination field belongs to Creative, not campaign/adset/ad."""
     saida = compilado()
     for operacao in saida.operacoes:
-        assert "destination_spec" not in operacao.payload
+        if operacao.tipo_objeto == "creative":
+            assert operacao.payload["destination_spec"] == {"destination_type": "WEBSITE_AND_SHOP_OPT_OUT"}
+        else:
+            assert "destination_spec" not in operacao.payload
         assert "destination_type" not in operacao.payload
 
 
@@ -491,7 +486,7 @@ def test_sem_prova_de_destino_a_saga_recusa_antes_de_qualquer_post() -> None:
         asset_supply_manifests=referencias().asset_supply_manifests,
     )
     assert referencias_sem_prova.shop_redirect_proof == "UNPROVEN"
-    compilado_sem_prova = compilar_plano_pausado(plano(), referencias_sem_prova)
+    compilado_sem_prova = replace(compilar_plano_pausado(plano(), referencias_sem_prova), shop_redirect_proof="UNPROVEN")
     assert compilado_sem_prova.destino_website_provado is False
 
     class _NuncaChamado:
@@ -532,7 +527,14 @@ def test_a_prova_de_destino_participa_do_selo_do_plano() -> None:
             asset_supply_manifests=referencias().asset_supply_manifests,
         ),
     )
-    assert com_prova.plano_sha256 != sem_prova.plano_sha256
+    # New own creatives carry an explicit opt-out regardless of legacy account
+    # assertions. A changed frozen control must still invalidate its identity.
+    assert com_prova.plano_sha256 == sem_prova.plano_sha256
+    from app.trafego.meta_execucao.compilador import descongelar_plano, SnapshotMetaInvalido
+    snapshot = com_prova.congelar()
+    snapshot["shop_redirect_proof"] = "UNPROVEN"
+    with pytest.raises(SnapshotMetaInvalido):
+        descongelar_plano(snapshot)
 
 
 def test_leitura_que_revela_desvio_para_shop_e_divergencia() -> None:
@@ -559,14 +561,8 @@ def test_leitura_que_revela_desvio_para_shop_e_divergencia() -> None:
     assert "destination_spec.destination_type" in str(erro.value)
 
 
-def test_leitura_sem_o_campo_de_destino_nao_e_divergencia() -> None:
-    """A ausência do campo é o caso NORMAL: não pedimos, a Meta não devolve.
-
-    ⚠️ E por isso o read-back NÃO É a garantia de destino — ele não pede o
-    campo e aceita a ausência. Quem garante é `shop_redirect_proof`, cobrado
-    antes do primeiro POST. A verificação acima é ganho quando a Meta devolve o
-    campo por conta própria, nunca prova de que não há desvio.
-    """
+def test_leitura_legada_sem_o_campo_de_destino_nao_e_divergencia() -> None:
+    """Payload legado não exige o campo novo; novos planos exigem opt-out."""
     ExecutorMetaPausado._validar_read_back(
         "creative",
         {

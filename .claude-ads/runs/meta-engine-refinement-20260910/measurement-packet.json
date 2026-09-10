@@ -1,0 +1,9 @@
+{
+  "scope": "Meta measurement source resolution, V2 ABO/CBO compilation and GAM revenue attribution by adset; read-only adversarial code review, no account mutation.",
+  "question": "Review these bounded implementation excerpts against current official Meta Marketing API documentation. Distinguish a standard event used in promoted_object.custom_event_type from custom_conversion_id; examine account/source binding, REPORT_ONLY versus OPTIMIZE, and campaign-versus-adset budget/bid_strategy placement. This implementation intentionally supports LOWEST_COST_WITHOUT_CAP recipes only; do not demand arbitrary bid caps or universal budget thresholds. Revenue is measured independently in GAM at utm_campaign_value=adset_id, joined within confirmed project/GAM account/currency/timezone; the campaign sums its adsets and no revenue is allocated to ads. Find concrete functional defects, unsafe assumptions or missing evidence, with exact source ranges, minimal remediation and official URLs. Do not treat local code as proof of remote account eligibility, live conversion delivery, or causal ROAS. The excerpts omit surrounding validators; identify any proposed issue requiring inspection of those validators instead of assuming they are absent.",
+  "excerpts": [
+    {"path": "backend/app/trafego/meta_execucao/publicos.py", "start": 136, "end": 242},
+    {"path": "backend/app/trafego/meta_execucao/compilador.py", "start": 594, "end": 723},
+    {"path": "backend/app/trafego/meta/financeiro.py", "start": 207, "end": 393}
+  ]
+}

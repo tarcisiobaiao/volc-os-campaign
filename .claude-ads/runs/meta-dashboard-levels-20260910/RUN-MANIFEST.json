@@ -1,0 +1,11 @@
+{
+  "run_id": "meta-dashboard-levels-20260910",
+  "status": "local_verified_production_partial",
+  "evidence": "docs/closure/meta-dashboard-levels-20260910/HANDOFF.md",
+  "roadmap_task": "P11-T06",
+  "external_mutations": 0,
+  "objective": "Campaign, adset, ad and creative dashboard views using shared real/demo contracts",
+  "scope": ["dashboard UI", "read model metrics", "existing contextual action flows", "hermetic verification"],
+  "excluded": ["live campaign mutations", "paid image generation", "Webgo", "fabricated revenue attribution"],
+  "data_lifecycle": {"classification": "sanitized engineering evidence and synthetic fixtures", "retention": "repository evidence, no account exports", "access_roles": ["operator", "implementing agents"], "incident_owner": "operator"}
+}

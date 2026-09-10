@@ -1,11 +1,15 @@
-"""Configuracao provisoria e leitura minima da Meta, somente em localhost.
+"""Leitura Meta local ADMIN com credencial operacional selecionada no cofre.
 
-Estas rotas nao substituem o Cofre oficial. Elas existem para destravar a
-integracao no Mac do operador, exigem papel ADMIN e nunca oferecem mutate.
+O prefixo local e sua guarda de host são preservados. Com o rollout oficial
+ativo, cadastro/desconexão ficam no router meta_business. Keychain só atende
+ambientes legados em que o rollout está desligado, nunca fallback de erro.
 """
 from __future__ import annotations
+from app.trafego.meta.business_credentials import credencial_operacional
 
 import sys
+import asyncio
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -41,6 +45,45 @@ GRAPH_BASE = "https://graph.facebook.com/v26.0"
 TIMEOUT_META = 15.0
 HOSTS_LOCAIS = {"127.0.0.1", "::1", "localhost", "testclient"}
 _REPOSITORIO_PREVIEW = RepositorioMetaEmMemoria()
+
+
+async def _ler_insights_dos_niveis(cliente, conta, segredo, hoje, dias):
+    """Mesmo intervalo nos três grãos, sem somá-los entre si.
+
+    Orçamento total de 100 páginas (não 100 por nível) e 90s para insights;
+    cada request mantém o timeout HTTP de 15s. Parcialidade é conservadora:
+    uma falha/truncamento torna o recibo completo=false para todos os grãos.
+    """
+    niveis = ("campaign", "adset", "ad")
+    restantes, prazo = 100, time.monotonic() + 90
+    insights, motivos = [], []
+    for indice, nivel in enumerate(niveis):
+        # Reserva páginas para os próximos níveis mesmo em contas grandes.
+        limite = max(1, restantes // (len(niveis) - indice))
+        adaptador = AdaptadorMetaSomenteLeitura(
+            cliente, limite_por_pagina=100, max_paginas_por_edge=limite)
+        pedido = dom.PedidoDeInsights(
+            conta_externa=conta.id_externo, nivel=nivel,
+            periodo_inicio=hoje - timedelta(days=int(dias) - 1),
+            periodo_fim=hoje, fuso_da_conta=conta.fuso or "", time_increment="1")
+        tempo = prazo - time.monotonic()
+        if tempo <= 0:
+            motivos.append("INSIGHTS_TEMPO_TOTAL_EXCEDIDO")
+            break
+        try:
+            resultado = await asyncio.wait_for(adaptador.ler_insights(pedido, segredo), timeout=tempo)
+        except asyncio.TimeoutError:
+            motivos.append("INSIGHTS_TEMPO_TOTAL_EXCEDIDO")
+            break
+        except ErroDeLeituraMeta:
+            motivos.append(f"INSIGHTS_{nivel.upper()}_LEITURA_INDISPONIVEL")
+            restantes -= limite  # chamadas realizadas não podem ser contadas de novo
+            continue
+        insights.extend(resultado.insights)
+        restantes -= resultado.paginas_lidas
+        if not resultado.completo:
+            motivos.append(f"INSIGHTS_{nivel.upper()}_LEITURA_INCOMPLETA")
+    return tuple(insights), not motivos, ";".join(motivos) if motivos else None
 
 
 class PedidoDeToken(BaseModel):
@@ -137,18 +180,8 @@ async def _preparar_snapshot_com_token(
             hoje = dom.hoje_na_conta(conta.fuso)
         except dom.ContratoMetaInvalido as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
-        resultado = await adaptador.ler_insights(
-            dom.PedidoDeInsights(
-                conta_externa=conta.id_externo,
-                nivel="campaign",
-                periodo_inicio=hoje - timedelta(days=int(dias_de_insight) - 1),
-                periodo_fim=hoje,
-                fuso_da_conta=conta.fuso or "",
-                time_increment="1",
-            ),
-            segredo,
-        )
-        insights = resultado.insights
+        insights, insights_completos, motivo_incompleto = await _ler_insights_dos_niveis(
+            cliente, conta, segredo, hoje, dias_de_insight)
         preflight = await adaptador.preflight_conta(referencia_opaca, segredo)
         mensuracao = {
             "pixels_ou_datasets": preflight.get("mensuracao", {}).get("pixels_ou_datasets") if isinstance(preflight.get("mensuracao"), dict) else None,
@@ -165,8 +198,8 @@ async def _preparar_snapshot_com_token(
             # calculava que a janela tinha sido truncada, o resultado carregava
             # o motivo, e a fronteira jogava os dois fora — o recibo afirmava
             # "completo" sobre uma leitura que parou no teto de paginas.
-            insights_completos=resultado.completo,
-            motivo_incompleto=resultado.motivo_incompleto,
+            insights_completos=insights_completos,
+            motivo_incompleto=motivo_incompleto,
         )
 
 
@@ -226,6 +259,15 @@ async def estado_da_configuracao(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
+    if get_settings().meta_business_credentials_enabled:
+        from app.trafego.meta import business_credentials as store
+        try:
+            repo = store.repository()
+            selected = await repo.select(store.SELECTION, {"select": "credential_id", "owner_id": f"eq.{quem.sub}", "limit": 1})
+            row = await store.owned(repo, quem.sub, selected[0]["credential_id"]) if selected else None
+            return {"configurado": bool(row and row["enabled"]), "armazenamento": "Cofre oficial", "api_version": "v26.0"}
+        except httpx.HTTPError:
+            raise HTTPException(503, "Não foi possível consultar o cofre oficial.") from None
     try:
         credencial = CredencialLocal.de(_chaveiro().ler(nome_da_conta_local(quem.sub)))
     except SegredoLocalNaoEncontrado:
@@ -245,6 +287,8 @@ async def salvar_e_testar(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
+    if get_settings().meta_business_credentials_enabled:
+        raise HTTPException(409, "Cadastre o token em Integrações › Meta Ads.")
     token = payload.token.get_secret_value().strip()
     if not token or any(char.isspace() for char in token):
         raise HTTPException(status_code=422, detail="Token Meta malformado.")
@@ -264,7 +308,7 @@ async def testar_salvo(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    credencial = _credencial_salva(quem)
+    credencial = (await credencial_operacional(quem, legado=_credencial_salva))
     return await _testar_token(credencial.token)
 
 
@@ -274,7 +318,7 @@ async def descobrir_contas(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    credencial = _credencial_salva(quem)
+    credencial = (await credencial_operacional(quem, legado=_credencial_salva))
     try:
         contas = await _descobrir_contas_com_token(credencial.token)
     except ErroDeLeituraMeta as exc:
@@ -282,7 +326,7 @@ async def descobrir_contas(
     return {
         "ok": True,
         "api_version": "v26.0",
-        "armazenamento": "macOS Keychain",
+        "armazenamento": "Cofre oficial" if get_settings().meta_business_credentials_enabled else "macOS Keychain",
         "contas": [dict(conta.publico()) for conta in contas],
         "contas_acessiveis": len(contas),
         "proxima_acao": "preflight_somente_leitura",
@@ -296,7 +340,7 @@ async def preflight_somente_leitura(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    credencial = _credencial_salva(quem)
+    credencial = (await credencial_operacional(quem, legado=_credencial_salva))
     return await _preflight_com_token(credencial.token, payload.referencia_opaca)
 
 
@@ -307,7 +351,7 @@ async def preparar_sincronizacao(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    credencial = _credencial_salva(quem)
+    credencial = (await credencial_operacional(quem, legado=_credencial_salva))
     contas = await _descobrir_contas_com_token(credencial.token)
     try:
         conta = AdaptadorMetaSomenteLeitura.resolver_referencia_opaca(tuple(contas), payload.referencia_opaca)
@@ -374,7 +418,7 @@ async def persistir_snapshot(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, Any]:
     _exigir_host_local(request)
-    credencial = _credencial_salva(quem)
+    credencial = (await credencial_operacional(quem, legado=_credencial_salva))
     snapshot = await _preparar_snapshot_com_token(
         credencial.token, payload.referencia_opaca, janela=payload.janela)
     try:
@@ -468,6 +512,8 @@ async def remover_configuracao(
     quem: Identidade = Depends(exigir_admin),
 ) -> dict[str, bool]:
     _exigir_host_local(request)
+    if get_settings().meta_business_credentials_enabled:
+        raise HTTPException(409, "Desconecte o negócio em Integrações › Meta Ads.")
     try:
         removido = _chaveiro().remover(nome_da_conta_local(quem.sub))
     except ConfiguracaoLocalIndisponivel as exc:
@@ -513,7 +559,7 @@ async def _catalogo(quem: Identidade, metodo: str, *args: Any, **kwargs: Any) ->
     obsoleto — cinco estados diferentes que uma rota "simplificadora" achataria
     em "nenhum resultado", que é exatamente o defeito que `A11` proíbe.
     """
-    segredo = SegredoEfemero(_credencial_salva(quem).token)
+    segredo = SegredoEfemero((await credencial_operacional(quem, legado=_credencial_salva)).token)
     async with httpx.AsyncClient(timeout=TIMEOUT_META, follow_redirects=False) as cliente:
         adaptador = AdaptadorMetaSomenteLeitura(cliente)
         try:

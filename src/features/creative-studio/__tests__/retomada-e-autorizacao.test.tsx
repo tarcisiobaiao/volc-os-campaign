@@ -72,7 +72,8 @@ const PECA = {
 
 const SAIDA = {
   project_ref: PROJECT_REF,
-  diagnostico: { resumo: 'Diagnóstico do lote.' },
+  diagnostico: { resumo: 'Diagnóstico do lote.', desconhecidos: [] },
+  recibo: { valido: true, avisos: [], codigos: [] },
   jornada: [],
   grupos: [],
   copies_compartilhadas: [],
@@ -225,7 +226,7 @@ describe('espera da geração', () => {
     const botao = screen.getByRole('button', { name: /Gerar 1 imagem/i });
     fireEvent.click(botao);
     fireEvent.click(botao);
-    await screen.findByRole('heading', { name: 'Geração solicitada' });
+    await screen.findByRole('heading', { name: 'Suas ideias estão ganhando forma' });
   }
 
   function respostaPendente() {
@@ -248,23 +249,22 @@ describe('espera da geração', () => {
     await abrirProducao();
     await autorizarEGerar();
 
-    const painel = screen.getByRole('region', { name: 'Geração solicitada' });
+    const painel = screen.getByRole('region', { name: 'Progresso da geração' });
     expect(document.activeElement).toBe(painel);
-    expect(within(painel).getByRole('status').textContent).toContain('Aguardando resposta');
-    expect(within(painel).getByText(MODELO)).toBeTruthy();
-    expect(within(painel).getByText('medium')).toBeTruthy();
-    expect(within(painel).getByText('1')).toBeTruthy();
+    expect(within(painel).getByRole('status').textContent).toContain('0 de 1 prontas');
+    expect(within(painel).getByText(`${MODELO} · medium`)).toBeTruthy();
     expect(painel.textContent).not.toMatch(/\d+%|\d+ segundos|renderizando|finalizando/i);
-    expect(painel.querySelectorAll('[class*="motion-reduce:animate-none"]').length).toBeGreaterThan(0);
+    expect(painel.querySelectorAll('[class*="motion-safe:animate-spin"]').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /Conferir antes de gerar/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Gerar 1 imagem/i })).toBeNull();
     expect(screen.queryByText('Fotografia real')).toBeNull();
     expect(screen.queryByRole('checkbox', { name: /Hook que interrompe/i })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Criativos' }));
-    expect(await screen.findByText('Uma geração desta operação está aguardando resposta.')).toBeTruthy();
+    expect(screen.getByText('Preparando imagem')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Estratégia' }));
+    expect(await screen.findByText('As imagens desta operação estão em produção.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Acompanhar geração' }));
-    expect(await screen.findByRole('region', { name: 'Geração solicitada' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Progresso da geração' })).toBeTruthy();
     expect(chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'POST')).toHaveLength(1);
 
     await act(async () => pendente.concluir());
@@ -281,7 +281,10 @@ describe('espera da geração', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain('Confira a aba Criativos antes de solicitar outra geração');
     expect(screen.queryByRole('heading', { name: 'Geração solicitada' })).toBeNull();
-    expect((screen.getByRole('button', { name: /Gerar 1 imagem/i }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Produção' }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Hook que interrompe/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Conferir antes de gerar/i }));
+    expect((await screen.findByRole('button', { name: /Gerar 1 imagem/i }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('checkbox', { name: /Autorizo produzir/i }) as HTMLInputElement).checked).toBe(false);
     expect(chamadas.filter((c) => c.url.endsWith('/geracoes') && c.metodo === 'POST')).toHaveLength(1);
   });

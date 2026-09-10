@@ -34,12 +34,11 @@
  * ---------------------------------------------------------------------------
  *
  * O endpoint financeiro resolve a campanha e filtra os Insights no servidor,
- * onde o identificador bruto permanece. Receita GAM usa campaign_id, projeto
- * e conta GAM confirmados. Os insights genéricos abaixo continuam rotulados
+ * onde o identificador bruto permanece. Receita GAM usa o ID do conjunto,
+ * projeto e conta GAM confirmados; a campanha soma os conjuntos. Os insights genéricos abaixo continuam rotulados
  * como inventário da conta; nunca são somados pelo navegador.
  */
 import React from 'react';
-import { AcoesDaHierarquia, type EscopoDaHierarquia } from './AcoesDaHierarquia';
 import { useMetaCampaignApi, useMetaCampaignDemo } from './MetaCampaignData';
 import { PeriodoFinanceiroMeta, useFinanceiroMeta } from './MetaFinanceiro';
 import {
@@ -74,9 +73,10 @@ import {
   type PaginaMetaReadModel,
 } from '@/lib/pautadorApi';
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
-import { useDensidade, type Densidade } from '@/components/trafego/inventario/densidade';
-import { ConjuntosFinanceiros } from './ConjuntosFinanceiros';
+import { useDensidade } from '@/components/trafego/inventario/densidade';
 import { GestaoDaCampanha } from './GestaoDaCampanha';
+import { ConjuntosFinanceiros } from './ConjuntosFinanceiros';
+import { MetaCampaignExplorer } from './MetaCampaignExplorer';
 import { MetaFrescorBadge } from '@/components/campaign/MetaDemoStatus';
 import {
   AvisoDeLeituraParcial,
@@ -390,85 +390,80 @@ export function usePaginaDoReadModel(
   ativo = true,
 ): PaginaEmLeitura {
   const api = useMetaCampaignApi();
-  const [leitura, setLeitura] = React.useState<Leitura<PaginaMetaReadModel>>({ fase: 'lendo' });
-  const [carregandoMais, setCarregandoMais] = React.useState(false);
   const [tentativa, setTentativa] = React.useState(0);
+  const chave = React.useMemo(() => ({}), [entidade, contaRef, ativo, tentativa, api]);
+  const vigente = React.useRef(chave);
+  vigente.current = chave;
+  const [resultado, setResultado] = React.useState<{
+    chave: object; leitura: Leitura<PaginaMetaReadModel>;
+  }>({ chave, leitura: { fase: 'lendo' } });
+  const paginaEmVoo = React.useRef<{ chave: object; cursor: string } | null>(null);
+  const [paginando, setPaginando] = React.useState<object | null>(null);
+  const montado = React.useRef(false);
+
+  const semEscopo: Leitura<PaginaMetaReadModel> = {
+    fase: 'respondeu',
+    resposta: {
+      ok: true, has_snapshot: false, estado: 'ESCOPO_OBRIGATORIO', entidade,
+      conta_ref: null, items: [], completo: false, has_more: false, proximo_cursor: null,
+      motivo: ENTIDADES_META_QUE_EXIGEM_CONTA.has(entidade)
+        ? 'esta entidade exige conta_ref explicita'
+        : 'sem conta escolhida a leitura misturaria contas diferentes',
+    },
+  };
+  // Hide the previous scope during render, before passive effects can run.
+  const leitura: Leitura<PaginaMetaReadModel> = !ativo || !contaRef
+    ? semEscopo : resultado.chave === chave ? resultado.leitura : { fase: 'lendo' };
 
   React.useEffect(() => {
-    // ⚠️ SEM CONTA, NENHUMA ENTIDADE É PEDIDA — nem as que o servidor
-    // responderia.
-    //
-    // `criativos` e `insights` têm coluna de conta própria e, sem `conta_ref`,
-    // o servidor devolve as linhas de TODAS as contas persistidas. Numa tela
-    // que fala de UMA campanha, isso seria misturar contas de clientes
-    // diferentes na mesma tabela. As que exigem conta responderiam
-    // `ESCOPO_OBRIGATORIO`, e gastar a viagem para ouvir uma recusa previsível
-    // é fazer o operador esperar por nada. Os dois casos param aqui.
-    if (!ativo || !contaRef) {
-      setLeitura({
-        fase: 'respondeu',
-        resposta: {
-          ok: true,
-          has_snapshot: false,
-          estado: 'ESCOPO_OBRIGATORIO',
-          entidade,
-          conta_ref: null,
-          items: [],
-          completo: false,
-          has_more: false,
-          proximo_cursor: null,
-          motivo: ENTIDADES_META_QUE_EXIGEM_CONTA.has(entidade)
-            ? 'esta entidade exige conta_ref explicita'
-            : 'sem conta escolhida a leitura misturaria contas diferentes',
-        },
-      });
-      return undefined;
-    }
+    montado.current = true;
     let vivo = true;
-    setLeitura({ fase: 'lendo' });
-    api
-      .inventarioMetaReadModel(entidade, { contaRef })
-      .then((resposta) => {
-        if (vivo) setLeitura({ fase: 'respondeu', resposta });
-      })
-      .catch((erro) => {
-        const ocorrencia = usarFalha(erro);
-        if (vivo) setLeitura({ fase: 'falhou', ocorrencia });
+    paginaEmVoo.current = null;
+    setPaginando(null);
+    setResultado({ chave, leitura: { fase: 'lendo' } });
+    if (ativo && contaRef) {
+      api.inventarioMetaReadModel(entidade, { contaRef }).then(resposta => {
+        if (vivo && vigente.current === chave) setResultado({ chave, leitura: { fase: 'respondeu', resposta } });
+      }).catch(erro => {
+        if (vivo && vigente.current === chave) setResultado({ chave, leitura: { fase: 'falhou', ocorrencia: usarFalha(erro) } });
       });
-    return () => {
-      vivo = false;
-    };
-  }, [entidade, contaRef, ativo, tentativa, api]);
+    }
+    return () => { vivo = false; montado.current = false; };
+  }, [chave, entidade, contaRef, ativo, api]);
 
-  const cursor =
-    leitura.fase === 'respondeu' && leitura.resposta.has_more
-      ? leitura.resposta.proximo_cursor
-      : null;
-
+  const cursor = leitura.fase === 'respondeu' && leitura.resposta.has_more
+    ? leitura.resposta.proximo_cursor : null;
+  const cursorVigente = React.useRef(cursor);
+  cursorVigente.current = cursor;
   const carregarMais = React.useCallback(() => {
-    if (!cursor) return;
-    setCarregandoMais(true);
-    api
-      .inventarioMetaReadModel(entidade, { contaRef, cursor })
-      .then((proxima) => {
-        setLeitura((antes) =>
-          antes.fase === 'respondeu'
-            ? {
-                fase: 'respondeu',
-                resposta: { ...proxima, items: [...antes.resposta.items, ...proxima.items] },
-              }
-            : { fase: 'respondeu', resposta: proxima },
-        );
-      })
-      .catch((erro) => setLeitura({ fase: 'falhou', ocorrencia: usarFalha(erro) }))
-      .finally(() => setCarregandoMais(false));
-  }, [entidade, contaRef, cursor, api]);
+    if (!cursor || !contaRef || !ativo || !montado.current || vigente.current !== chave || cursorVigente.current !== cursor) return;
+    // Synchronous lock catches two clicks before the next render. A consumed
+    // cursor stays locked until another cursor or a fresh scope is available.
+    const anterior = paginaEmVoo.current;
+    if (anterior?.chave === chave && anterior.cursor === cursor) return;
+    const requisicao = { chave, cursor };
+    paginaEmVoo.current = requisicao;
+    setPaginando(chave);
+    api.inventarioMetaReadModel(entidade, { contaRef, cursor }).then(proxima => {
+      if (!montado.current || vigente.current !== chave || paginaEmVoo.current !== requisicao) return;
+      setResultado(antes => antes.chave === chave && antes.leitura.fase === 'respondeu'
+        ? { chave, leitura: { fase: 'respondeu', resposta: {
+          ...proxima, items: [...antes.leitura.resposta.items, ...proxima.items],
+        } } } : antes);
+    }).catch(erro => {
+      if (montado.current && vigente.current === chave && paginaEmVoo.current === requisicao) {
+        setResultado({ chave, leitura: { fase: 'falhou', ocorrencia: usarFalha(erro) } });
+      }
+    }).finally(() => {
+      if (montado.current && vigente.current === chave && paginaEmVoo.current === requisicao) setPaginando(null);
+    });
+  }, [entidade, contaRef, ativo, cursor, chave, api]);
 
   return {
     leitura,
-    carregandoMais,
+    carregandoMais: paginando === chave,
     carregarMais: cursor ? carregarMais : null,
-    recarregar: () => setTentativa((n) => n + 1),
+    recarregar: () => setTentativa(n => n + 1),
   };
 }
 
@@ -479,40 +474,31 @@ export function useDetalheDoReadModel(
   contaRef: string | null,
 ): { leitura: Leitura<DetalheMetaReadModel>; recarregar: () => void } {
   const api = useMetaCampaignApi();
-  const [leitura, setLeitura] = React.useState<Leitura<DetalheMetaReadModel>>({ fase: 'lendo' });
   const [tentativa, setTentativa] = React.useState(0);
+  const chave = React.useMemo(() => ({}), [entidade, referencia, contaRef, tentativa, api]);
+  const vigente = React.useRef(chave);
+  vigente.current = chave;
+  const [resultado, setResultado] = React.useState<{
+    chave: object; leitura: Leitura<DetalheMetaReadModel>;
+  }>({ chave, leitura: { fase: 'lendo' } });
 
   React.useEffect(() => {
-    if (!contaRef) {
-      setLeitura({
-        fase: 'respondeu',
-        resposta: {
-          ok: true,
-          has_snapshot: false,
-          estado: 'ESCOPO_OBRIGATORIO',
-          entidade,
-          item: null,
-        },
-      });
-      return undefined;
-    }
     let vivo = true;
-    setLeitura({ fase: 'lendo' });
-    api
-      .detalheMetaReadModel(entidade, referencia, contaRef)
-      .then((resposta) => {
-        if (vivo) setLeitura({ fase: 'respondeu', resposta });
-      })
-      .catch((erro) => {
-        const ocorrencia = usarFalha(erro);
-        if (vivo) setLeitura({ fase: 'falhou', ocorrencia });
+    setResultado({ chave, leitura: { fase: 'lendo' } });
+    if (contaRef) {
+      api.detalheMetaReadModel(entidade, referencia, contaRef).then(resposta => {
+        if (vivo && vigente.current === chave) setResultado({ chave, leitura: { fase: 'respondeu', resposta } });
+      }).catch(erro => {
+        if (vivo && vigente.current === chave) setResultado({ chave, leitura: { fase: 'falhou', ocorrencia: usarFalha(erro) } });
       });
-    return () => {
-      vivo = false;
-    };
-  }, [entidade, referencia, contaRef, tentativa, api]);
+    }
+    return () => { vivo = false; };
+  }, [chave, entidade, referencia, contaRef, api]);
 
-  return { leitura, recarregar: () => setTentativa((n) => n + 1) };
+  const leitura: Leitura<DetalheMetaReadModel> = !contaRef
+    ? { fase: 'respondeu', resposta: { ok: true, has_snapshot: false, estado: 'ESCOPO_OBRIGATORIO', entidade, item: null } }
+    : resultado.chave === chave ? resultado.leitura : { fase: 'lendo' };
+  return { leitura, recarregar: () => setTentativa(n => n + 1) };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -817,31 +803,6 @@ const chave = (item: ItemMetaReadModel, i: number): string =>
       i,
   );
 
-const Peca: React.FC<{ criativo: ItemMetaReadModel | null }> = ({ criativo }) => {
-  if (!criativo) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
-        <ImageIcon className="h-3 w-3 shrink-0" aria-hidden />
-        {AUSENTE} sem peça vinculada nesta leitura
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex min-w-0 max-w-full items-start gap-1.5 text-[12px]">
-      <ImageIcon className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="min-w-0">
-        {/* Nome de criativo e `object_story_id` são livres e longos. `break-words`
-            impede que a coluna estoure a tabela e force rolagem lateral da página. */}
-        <span className="block break-words font-medium">{textoOuAusente(criativo.nome)}</span>
-        {criativo.object_story_id && (
-          <span className="mt-0.5 block break-all text-[11px] text-muted-foreground">
-            {String(criativo.object_story_id)}
-          </span>
-        )}
-      </span>
-    </span>
-  );
-};
 
 interface Arvore {
   conjunto: ItemMetaReadModel;
@@ -879,161 +840,6 @@ function montarArvore(
   });
 }
 
-const LinhaDeAnuncio: React.FC<{
-  anuncio: ItemMetaReadModel;
-  criativo: ItemMetaReadModel | null;
-  densidade: Densidade;
-  escopo?: EscopoDaHierarquia;
-}> = ({ anuncio, criativo, densidade, escopo }) => {
-  const acoes = escopo && anuncio.entity_ref ? <AcoesDaHierarquia {...escopo} entidade="anuncio" referencia={String(anuncio.entity_ref)} nome={String(anuncio.nome ?? 'Anúncio')} /> : null;
-  if (densidade === 'compacta') {
-    return (
-      <li className="border-t border-border/60 px-3 py-2.5">
-        <p className="break-words text-[13px] font-medium">{textoOuAusente(anuncio.nome)}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <SeloDeEstadoMeta estado={anuncio.effective_status} />
-          <span className="tabular text-[11px] text-muted-foreground">
-            {textoOuAusente(anuncio.id_mascarado)}
-          </span>
-        </div>
-        <div className="mt-1.5">
-          <Peca criativo={criativo} />
-          {acoes}
-        </div>
-      </li>
-    );
-  }
-  return (
-    <tr className="border-t border-border/60 align-top">
-      <td className="px-3 py-2.5">
-        <SeloDeEstadoMeta estado={anuncio.effective_status} />
-      </td>
-      <td className="px-3 py-2.5">
-        <span className="block max-w-[42ch] break-words text-[13px] font-medium">
-          {textoOuAusente(anuncio.nome)}
-        </span>
-        <span className="tabular text-[11px] text-muted-foreground">
-          {textoOuAusente(anuncio.id_mascarado)}
-        </span>
-      </td>
-      <td className="px-3 py-2.5">
-        <div className="max-w-[46ch]">
-          <Peca criativo={criativo} />
-          {acoes}
-        </div>
-      </td>
-    </tr>
-  );
-};
-
-const Hierarquia: React.FC<{
-  arvore: Arvore[];
-  densidade: Densidade;
-  temCampanha: boolean;
-  escopo?: EscopoDaHierarquia;
-}> = ({ arvore, densidade, temCampanha, escopo }) => {
-  if (!temCampanha) return null;
-  if (arvore.length === 0) {
-    return (
-      <p className="rounded-md border border-dashed border-border bg-card px-4 py-6 text-[13px] text-muted-foreground">
-        Nenhum conjunto desta campanha apareceu no que foi lido. Isso é o que o snapshot
-        contém — não uma afirmação de que a campanha não tem conjuntos na Meta.
-      </p>
-    );
-  }
-  if (densidade === 'compacta') {
-    return (
-      <div className="rounded-md border border-border bg-card">
-        {arvore.map(({ conjunto, anuncios }, i) => (
-          <section key={chave(conjunto, i)} className="border-b border-border last:border-b-0">
-            <div className="px-3 py-3">
-              {escopo && conjunto.entity_ref && <AcoesDaHierarquia {...escopo} entidade="conjunto" referencia={String(conjunto.entity_ref)} nome={String(conjunto.nome ?? 'Conjunto')} />}
-              <p className="break-words font-display text-[15px] font-semibold">
-                {textoOuAusente(conjunto.nome)}
-              </p>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <SeloDeEstadoMeta estado={conjunto.effective_status} />
-                <span className="text-[11px] text-muted-foreground">
-                  otimização: {textoOuAusente(conjunto.optimization_goal)}
-                </span>
-              </div>
-            </div>
-            {anuncios.length === 0 ? (
-              <p className="border-t border-border/60 px-3 py-2.5 text-[12px] text-muted-foreground">
-                {AUSENTE} nenhum anúncio deste conjunto veio nesta leitura
-              </p>
-            ) : (
-              <ul className="list-none">
-                {anuncios.map(({ anuncio, criativo }, j) => (
-                  <LinhaDeAnuncio
-                    key={chave(anuncio, j)}
-                    anuncio={anuncio}
-                    criativo={criativo}
-                    densidade={densidade}
-                    escopo={escopo}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
-      </div>
-    );
-  }
-  return (
-    // A largura mora AQUI e não no `body`: uma tabela larga rola dentro da
-    // própria caixa, e a página nunca ganha rolagem lateral.
-    <div className="overflow-x-auto rounded-md border border-border bg-card">
-      <table className="w-full min-w-[46rem] text-left text-sm">
-        <thead className="bg-muted/60 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-          <tr>
-            <th scope="col" className="px-3 py-2.5 font-semibold">Estado</th>
-            <th scope="col" className="px-3 py-2.5 font-semibold">Anúncio</th>
-            <th scope="col" className="px-3 py-2.5 font-semibold">Peça vinculada</th>
-          </tr>
-        </thead>
-        {arvore.map(({ conjunto, anuncios }, i) => (
-          <tbody key={chave(conjunto, i)} className="border-b border-border last:border-b-0">
-            <tr>
-              <th scope="rowgroup" colSpan={3} className="px-3 py-3 text-left font-normal">
-                {escopo && conjunto.entity_ref && <AcoesDaHierarquia {...escopo} entidade="conjunto" referencia={String(conjunto.entity_ref)} nome={String(conjunto.nome ?? 'Conjunto')} />}
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  conjunto
-                </span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <span className="break-words font-display text-[15px] font-semibold">
-                    {textoOuAusente(conjunto.nome)}
-                  </span>
-                  <SeloDeEstadoMeta estado={conjunto.effective_status} />
-                  <span className="text-[11px] text-muted-foreground">
-                    otimização: {textoOuAusente(conjunto.optimization_goal)}
-                  </span>
-                </span>
-              </th>
-            </tr>
-            {anuncios.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-3 py-2.5 text-[12px] text-muted-foreground">
-                  {AUSENTE} nenhum anúncio deste conjunto veio nesta leitura
-                </td>
-              </tr>
-            ) : (
-              anuncios.map(({ anuncio, criativo }, j) => (
-                <LinhaDeAnuncio
-                  key={chave(anuncio, j)}
-                  anuncio={anuncio}
-                  criativo={criativo}
-                  densidade={densidade}
-                  escopo={escopo}
-                />
-              ))
-            )}
-          </tbody>
-        ))}
-      </table>
-    </div>
-  );
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INSIGHTS DA CONTA
@@ -1111,6 +917,14 @@ export interface MetaCampaignReadViewProps {
   aoVoltar?: () => void;
 }
 
+function ConferenciaFinanceira({ financeiro }: { financeiro: React.ComponentProps<typeof ConjuntosFinanceiros>['financeiro'] }) {
+  const [aberto, setAberto] = React.useState(false);
+  return <details className="rounded-xl border border-border bg-card p-4" onToggle={event => setAberto(event.currentTarget.open)}>
+    <summary className="cursor-pointer text-sm font-medium">Conferir soma dos conjuntos e conciliação</summary>
+    {aberto && <div className="mt-4"><ConjuntosFinanceiros financeiro={financeiro} /></div>}
+  </details>;
+}
+
 export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
   referencia,
   contaRef: contaPreferida = null,
@@ -1175,7 +989,6 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
   const espinha = (
     <>
       <Kicker>Métricas principais</Kicker>
-      <PeriodoFinanceiroMeta financeiro={financeiro} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <CartaoDeMedida
           rotulo="Investimento Total"
@@ -1246,20 +1059,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
           ordem={10}
         />
       </div>
-      {/* ⚠️ "Dias ativos" NÃO entra aqui. O read model real não expõe data de
-          criação: `observado_em` e `ultima_vez_visto_em` são carimbos de
-          LEITURA, e usá-los como proxy inventaria a métrica. Ela existe só na
-          demonstração, onde o dado é declaradamente fictício. */}
-      <p className="text-xs text-muted-foreground">
-        Dias ativos não é exibido: o read model guarda quando a campanha foi LIDA,
-        não quando ela começou a veicular. Derivar uma coisa da outra seria inventar.
-      </p>
-      <ConjuntosFinanceiros financeiro={financeiro.dados} aoAbrirConjunto={(ref) => {
-        const ramo = arvore.find(({ conjunto }) => conjunto.entity_ref === ref || conjunto.meta_adset_id === ref);
-        return ramo
-          ? <Hierarquia arvore={[ramo]} densidade={densidade} temCampanha={Boolean(itemCampanha)} escopo={contaRef ? { contaRef, campanhaRef: referencia } : undefined} />
-          : <p className="p-3 text-sm text-muted-foreground">Os anúncios deste conjunto ainda não estão disponíveis nesta leitura. Carregue as próximas páginas da hierarquia abaixo.</p>;
-      }} />
+      <ConferenciaFinanceira financeiro={financeiro.dados} />
     </>
   );
 
@@ -1353,16 +1153,20 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
           <AvisoDeLeituraParcial faltou={faltouDe(paginas, identificacaoDaConta)} />
         )}
 
-        {espinha}
-
-        {itemCampanha && contaRef && <GestaoDaCampanha
+        <PeriodoFinanceiroMeta financeiro={financeiro} />
+        {itemCampanha && contaRef && <MetaCampaignExplorer
           key={`${contaRef}:${referencia}`}
-          contaRef={contaRef} campanhaRef={referencia} campanha={itemCampanha}
-          conjuntos={arvore.map(r => r.conjunto)}
-          completo={paginaDe(conjuntos)?.estado === 'COM_SNAPSHOT' && paginaDe(conjuntos)?.completo === true}
+          arvore={arvore} financeiro={financeiro.dados}
+          escopo={{ contaRef, campanhaRef: referencia }}
+          loading={financeiro.carregando || [conjuntos, anuncios, criativos, vinculos].some(p => p.leitura.fase === 'lendo')}
+          partial={parcial || [conjuntos, anuncios, criativos, vinculos].some(p => p.leitura.fase === 'falhou')}
+          overview={<div className="space-y-6">{espinha}<GestaoDaCampanha
+            contaRef={contaRef} campanhaRef={referencia} campanha={itemCampanha}
+            conjuntos={arvore.map(r => r.conjunto)}
+            completo={paginaDe(conjuntos)?.estado === 'COM_SNAPSHOT' && paginaDe(conjuntos)?.completo === true}
+          /></div>}
         />}
 
-        <Kicker>Campanha → conjuntos → anúncios → peça</Kicker>
         {[conjuntos, anuncios, criativos, vinculos].some((p) => p.leitura.fase === 'lendo') ? (
           <EsqueletoDoInventario contas={1} linhas={4} />
         ) : (
@@ -1383,7 +1187,6 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
                   aoTentarDeNovo={conjuntos.recarregar}
                 />
               )}
-            <Hierarquia arvore={arvore} densidade={densidade} temCampanha={Boolean(itemCampanha)} escopo={contaRef ? { contaRef, campanhaRef: referencia } : undefined} />
             {paginaDe(conjuntos) && (
               <Continuacao
                 pagina={paginaDe(conjuntos)!}
@@ -1408,9 +1211,13 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
                 carregarMais={criativos.carregarMais}
               />
             )}
+            {paginaDe(vinculos) && <Continuacao pagina={paginaDe(vinculos)!} quePagina="vínculos de criativos"
+              carregandoMais={vinculos.carregandoMais} carregarMais={vinculos.carregarMais} />}
           </>
         )}
 
+        <details className="border-t border-border pt-3">
+        <summary className="cursor-pointer py-3 text-sm font-medium text-muted-foreground">Diagnóstico e leituras da conta</summary>
         <Kicker>Insights da conta</Kicker>
         <p className="max-w-[80ch] text-[13px] leading-relaxed text-muted-foreground">
           Estas linhas pertencem à conta{' '}
@@ -1443,6 +1250,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
               aoTentarDeNovo={insights.recarregar}
             />
           ))}
+        </details>
       </div>
     );
   }
@@ -1476,7 +1284,7 @@ export const MetaCampaignReadView: React.FC<MetaCampaignReadViewProps> = ({
             Identidade: {referencia}
           </p>
           <p className="mt-1 max-w-[80ch] text-sm text-muted-foreground">
-            Acompanhe receita e gasto por conjunto. Em Gestão da campanha, prepare alterações para revisão; a aplicação na Meta ainda está indisponível.
+            Compare a campanha, explore conjuntos e descubra como cada anúncio e criativo participa dos resultados.
           </p>
         </div>
       </div>

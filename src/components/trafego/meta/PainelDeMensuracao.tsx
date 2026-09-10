@@ -54,7 +54,7 @@ export const PainelDeMensuracao: React.FC<{
   resumoDoConjunto: ResumoDoPlanoMetaV2['conjuntos'][number] | null;
   onDestino: (url: string) => void;
   onConjunto: (chave: string, patch: Partial<ConjuntoDraft>) => void;
-  /** Leitura REAL da conta, e por isso só por clique explícito. */
+  /** Leitura REAL iniciada automaticamente ao entrar; depois serve como retry. */
   onLerConversoes: () => void;
 }> = ({
   draft, conjunto, propositosDaReceita, motivoDaReceita, catalogoDeFontes,
@@ -135,6 +135,23 @@ export const PainelDeMensuracao: React.FC<{
       </div>
 
       </details>
+      {m.proposito === 'OPTIMIZE' && <Campo
+        id={`meta-evento-padrao-${conjunto.key}`}
+        rotulo="Evento padrão do site"
+        ajuda="Escolha o evento enviado pelo seu pixel ou pela Conversions API. ViewContent não é uma conversão personalizada. A disponibilidade para otimização será conferida ao validar o plano na Meta."
+      >
+        <select id={`meta-evento-padrao-${conjunto.key}`} className={campo}
+          value={m.eventoPadrao}
+          onChange={e => mudarMensuracao({ eventoPadrao: e.target.value, ...(e.target.value ? { conversaoRef: '' } : {}) })}>
+          <option value="">Escolher evento padrão (ou uma conversão personalizada abaixo)</option>
+          <option value="CONTENT_VIEW">ViewContent · Visualização de conteúdo</option>
+          <option value="LEAD">Lead · Cadastro de contato</option>
+          <option value="COMPLETE_REGISTRATION">CompleteRegistration · Registro concluído</option>
+          <option value="PURCHASE">Purchase · Compra</option>
+          <option value="ADD_TO_CART">AddToCart · Adição ao carrinho</option>
+          <option value="INITIATED_CHECKOUT">InitiateCheckout · Início da finalização</option>
+        </select>
+      </Campo>}
       {/* ── Os dois catálogos, lidos por UM clique e mostrados SEPARADOS ──── */}
       <CatalogoDaConta
         titulo="Conversões personalizadas desta conta"
@@ -144,6 +161,7 @@ export const PainelDeMensuracao: React.FC<{
         erro={erroDasConversoes}
         podeLer={Boolean(draft.accountRef)}
         onLer={onLerConversoes}
+        automatico
       >
         {conversoes.length > 0 && (
           <>
@@ -218,6 +236,15 @@ export const PainelDeMensuracao: React.FC<{
         )}
       </CatalogoDaConta>
 
+      <details className="rounded-lg border p-3 text-sm">
+        <summary className="cursor-pointer py-1 font-medium">Meu pixel não aparece. O que conferir?</summary>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground">
+          <li>No Business Manager, escolha o portfólio correto e abra Usuários → Usuários do sistema. Selecione o usuário do token e atribua o dataset/pixel em Adicionar ativos.</li>
+          <li>Em Fontes de dados → Conjuntos de dados, selecione a fonte. Em Ativos conectados, vincule a mesma conta de anúncios escolhida nesta campanha.</li>
+          <li>Confira se o token cadastrado pertence a esse usuário. Depois, releia o catálogo abaixo. ViewContent é um evento padrão, não uma conversão personalizada.</li>
+        </ol>
+        <p className="mt-2 text-xs text-muted-foreground">Os nomes dos menus podem variar. Uma fonte indisponível aparece com sua causa; conceder acesso não comprova elegibilidade para otimização.</p>
+      </details>
       {/* ⚠️ ENVELOPE PRÓPRIO. Pixel/dataset e conversão personalizada chegam
           separados do backend de propósito, e são mostrados separados pelo
           mesmo motivo: achatá-los numa lista faria o seletor de otimização
@@ -230,6 +257,7 @@ export const PainelDeMensuracao: React.FC<{
         erro={erroDasConversoes}
         podeLer={Boolean(draft.accountRef)}
         onLer={onLerConversoes}
+        automatico
       >
         {fontes.length > 0 && (
           <>
@@ -362,7 +390,7 @@ export const PainelDeMensuracao: React.FC<{
         />
         <LinhaDeFato
           rotulo="Conversão declarada"
-          valor={escolhida ? `${escolhida.nome} · ${lerConversao(escolhida.estado).palavra}` : null}
+          valor={m.eventoPadrao || (escolhida ? `${escolhida.nome} · ${lerConversao(escolhida.estado).palavra}` : null)}
           fonte="você, agora"
           ausencia="nenhuma"
         />

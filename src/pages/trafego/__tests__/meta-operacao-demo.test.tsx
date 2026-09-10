@@ -83,22 +83,18 @@ describe('Meta demonstrativa navegável', () => {
     expect(screen.getByText(/ativar continua sendo outro ato/i)).toBeTruthy();
   });
 
-  it('expõe lote estático explícito e não finge criativo flexível', () => {
+  it('monta anúncios explicitamente no conjunto e não oferece criativo flexível não suportado', () => {
     render(
       <MemoryRouter initialEntries={['/trafego/meta/nova?modo=demo&etapa=criativo']}>
         <MetaCriacaoPage />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('radiogroup', { name: 'Modo de criativo' })).toBeTruthy();
-    expect(screen.getByRole('radio', { name: /lote controlado/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole('radio', { name: /flexível/i }));
-    expect(screen.getByText('Criativo flexível não emite payload')).toBeTruthy();
-    expect(screen.getByText('Vendas e Promoção de app. Não inclui Tráfego.')).toBeTruthy();
-    expect(screen.queryByText('Obrigatórias neste objetivo, até 5')).toBeNull();
-    expect(screen.queryByRole('button', { name: /adicionar outro anúncio ao lote/i })).toBeNull();
-    fireEvent.click(screen.getByRole('radio', { name: /lote controlado/i }));
-    fireEvent.click(screen.getByRole('button', { name: /adicionar outro anúncio ao lote/i }));
-    expect(screen.getByText('2 de 10')).toBeTruthy();
-    expect(screen.getByText('Anúncio 2')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Escolher conjunto dos anúncios' })).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Origem dos criativos' })).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: /flexível/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar anúncio neste conjunto' }));
+    expect(screen.getByText('2 / 10 anúncios na campanha')).toBeTruthy();
+    expect(screen.getAllByTestId('variacao-chave')).toHaveLength(2);
+    expect(screen.getAllByTestId('variacao-conjunto').map(element => element.textContent)).toEqual(['adset-001', 'adset-001']);
   });
 });

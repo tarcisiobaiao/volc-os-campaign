@@ -3,13 +3,14 @@ import { BookmarkPlus, Copy, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { useMetaCampaignApi, useMetaCampaignDemo } from './MetaCampaignData';
 import { salvarPackMeta } from '@/features/creative-studio/api';
 import type { PropostaGestaoMeta } from '@/types/metaOperacao';
 
 export interface EscopoDaHierarquia { contaRef: string; campanhaRef: string }
-export function AcoesDaHierarquia({ contaRef, campanhaRef, referencia, nome, entidade }: EscopoDaHierarquia & {
-  referencia: string; nome: string; entidade: 'conjunto' | 'anuncio';
+export function AcoesDaHierarquia({ contaRef, campanhaRef, referencia, nome, entidade, compacto = false }: EscopoDaHierarquia & {
+  referencia: string; nome: string; entidade: 'conjunto' | 'anuncio'; compacto?: boolean;
 }) {
   const api = useMetaCampaignApi(); const demo = useMetaCampaignDemo();
   const [acao, setAcao] = useState<'pausar' | 'duplicar' | 'pack' | null>(null);
@@ -21,7 +22,7 @@ export function AcoesDaHierarquia({ contaRef, campanhaRef, referencia, nome, ent
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
   function abrir(a: typeof acao) { setProposta(null); setErro(''); setAviso(''); setNovoNome(`${nome} · ${a === 'pack' ? 'pack' : 'cópia'}`.slice(0, 120)); setAcao(a); }
   async function conferir() {
-    if (trava.current || !acao) return;
+    if (trava.current || !acao || (acao === 'pack' && entidade !== 'anuncio')) return;
     trava.current = true; setOcupado(true); setErro('');
     try {
       if (acao === 'pack') {
@@ -42,10 +43,13 @@ export function AcoesDaHierarquia({ contaRef, campanhaRef, referencia, nome, ent
     } catch (e) { if (vivo.current) setErro(e instanceof Error ? e.message : 'Não foi possível conferir este item.'); }
     finally { trava.current = false; if (vivo.current) setOcupado(false); }
   }
-  return <div className="mt-2 flex items-center gap-1" aria-label={`Ações de ${nome}`}>
-    <Button size="sm" variant="ghost" aria-label={`Preparar pausa: ${nome}`} title="Preparar pausa" onClick={() => abrir('pausar')}><Pause className="h-4 w-4" aria-hidden /><span className="sr-only">Pausar</span></Button>
-    <Button size="sm" variant="ghost" aria-label={`Preparar duplicação: ${nome}`} title="Preparar duplicação" onClick={() => abrir('duplicar')}><Copy className="h-4 w-4" aria-hidden /><span className="sr-only">Duplicar</span></Button>
-    <Button size="sm" variant="ghost" aria-label={`Salvar pack: ${nome}`} title="Salvar em pack" onClick={() => abrir('pack')}><BookmarkPlus className="h-4 w-4" aria-hidden /><span className="sr-only">Salvar pack</span></Button>
+  const classeAcao = compacto
+    ? 'h-11 w-11 shrink-0 gap-0 p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary md:h-10 md:w-10'
+    : 'min-h-11 gap-2 text-xs';
+  return <div role="group" className={compacto ? 'inline-flex shrink-0 items-center gap-1' : 'mt-3 flex flex-wrap items-center gap-2'} aria-label={`Ações de ${nome}`}>
+    <Button type="button" size={compacto ? 'icon' : 'sm'} variant={compacto ? 'ghost' : 'outline'} className={classeAcao} disabled={ocupado} aria-label={`Preparar pausa: ${nome}`} title="Conferir proposta de pausa" onClick={() => abrir('pausar')}><Pause className="h-4 w-4" aria-hidden /><span className={compacto ? 'sr-only' : undefined}>Preparar pausa</span></Button>
+    <Button type="button" size={compacto ? 'icon' : 'sm'} variant={compacto ? 'ghost' : 'outline'} className={classeAcao} disabled={ocupado} aria-label={`Preparar duplicação: ${nome}`} title="Conferir proposta de duplicação" onClick={() => abrir('duplicar')}><Copy className="h-4 w-4" aria-hidden /><span className={compacto ? 'sr-only' : undefined}>Preparar cópia</span></Button>
+    {entidade === 'anuncio' && <Button type="button" size={compacto ? 'icon' : 'sm'} variant={compacto ? 'ghost' : 'outline'} className={cn(classeAcao, !compacto && 'text-primary')} disabled={ocupado} aria-label={`Salvar pack: ${nome}`} title="Guardar criativo e copy para reutilizar" onClick={() => abrir('pack')}><BookmarkPlus className="h-4 w-4" aria-hidden /><span className={compacto ? 'sr-only' : undefined}>Salvar no pack</span></Button>}
     <Dialog open={acao !== null} onOpenChange={open => { if (!open && !ocupado) setAcao(null); }}><DialogContent>
       <DialogTitle>{acao === 'pack' ? 'Salvar em pack' : acao === 'pausar' ? 'Preparar pausa' : 'Preparar duplicação'}</DialogTitle>
       <DialogDescription>{nome} · {entidade === 'conjunto' ? 'Conjunto de anúncios' : 'Anúncio'}</DialogDescription>

@@ -88,7 +88,9 @@ describe('Os cinco estados de um catálogo', () => {
     });
     expect(screen.getByText(/A Meta não entregou públicos desta conta/i)).toBeTruthy();
     expect(screen.getAllByText(/META_PERMISSION_DENIED/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/alguém precisa liberar a permissão/i)).toBeTruthy();
+    expect(screen.getByText(/os campos solicitados. Após corrigir, releia a lista/i)).toBeTruthy();
+    expect(screen.getByText('Quantidade não confirmada')).toBeTruthy();
+    expect(screen.queryByText('leitura vigente')).toBeNull();
     expect(screen.queryByText(/A conta respondeu e não tem nenhum item/i)).toBeNull();
   });
 

@@ -395,6 +395,12 @@ export const criativosApi = {
     return ler<CreativeJob>(endereco(`/jobs/${encodeURIComponent(id)}`));
   },
 
+  arquivarAsset(id: string): Promise<{
+    assetId: string; estado: 'arquivado'; historicoPreservado: true;
+  }> {
+    return ler(endereco(`/assets/${encodeURIComponent(id)}`), { method: 'DELETE' });
+  },
+
   retentarJob(id: string): Promise<CreativeJob> {
     return ler<CreativeJob>(endereco(`/jobs/${encodeURIComponent(id)}/retry`), { method: 'POST' });
   },

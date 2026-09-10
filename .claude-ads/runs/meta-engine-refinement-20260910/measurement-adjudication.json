@@ -1,0 +1,50 @@
+{
+  "status": "local_verified_remote_unverified",
+  "scope": "Measurement metadata preflight only; no budget, revenue-grain, credential, DDL or public DTO changes",
+  "gemini_adjudication": [
+    {
+      "id": "promoted-object-custom-conversion-pixel-conflict",
+      "decision": "not_applied_pending_specific_remote_contract_evidence",
+      "reason": "The source_ref=None crash scenario cannot pass MensuracaoMeta.__post_init__ (contrato_v2.py). SDK fields alone do not establish pixel_id/custom_conversion_id mutual exclusion; the cited campaign page does not prove this adset restriction. Do not alter previously compiled/approved payload semantics from this excerpt alone. Instead check an explicit conversion-to-source mismatch before compilation."
+    },
+    {
+      "id": "cbo-abo-budget-sharing-bid-strategy-misplacement",
+      "decision": "not_reachable_as_claimed",
+      "reason": "PlanoMetaV2 rejects is_adset_budget_sharing_enabled=True in every current recipe. ABO sharing is not silently enabled. Existing false flag and approved ABO/CBO bid placement remain unchanged."
+    },
+    {
+      "id": "missing-return-on-incomplete-insights-blocker",
+      "decision": "rejected_proposed_fix",
+      "reason": "Financial code deliberately preserves observed partial values with incomplete flags. atribuicao.totalizar checks homogeneous currency/timezone and propagates spend_completo/revenue_completo; early return would hide known expense. No evidence authorizes changing measurement grain or interpreting missing rows as zero."
+    }
+  ],
+  "implemented": [
+    "Selected pixels with explicit is_unavailable=true and selected custom conversions with explicit is_archived=true or is_unavailable=true are rejected during reference resolution.",
+    "Custom conversion event_source_id, when valid and present, must equal the selected resolved source ID for each optimizing adset.",
+    "Missing/invalid optional metadata does not manufacture a negative state, firing threshold or local eligibility proof; remote validation remains required.",
+    "Unselected unavailable items cannot block selected valid items. Account-scoped opaque references are still recalculated; no raw IDs are added to public responses.",
+    "Metadata uses the existing edge requests, not additional requests or persistent caches. Adapter read errors become domain errors understood by compilation routes."
+  ],
+  "sources_checked": [
+    "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/customconversion.py",
+    "https://raw.githubusercontent.com/facebook/facebook-python-business-sdk/main/facebook_business/adobjects/adpromotedobject.py"
+  ],
+  "source_limitations": "developers.facebook.com custom-conversion reference returned HTTP429; SDK fields were checked directly, but remote account eligibility and delivery were not exercised.",
+  "tests": {
+    "result": "161 passed, 17 skipped",
+    "diff_check": "clean",
+    "command": "backend/.venv/bin/pytest -q backend/tests/test_meta_measurement_preflight.py backend/tests/test_meta_contrato_v2.py backend/tests/test_meta_catalogos_selecionaveis.py backend/tests/test_meta_insights_contrato.py backend/tests/test_meta_financeiro_sql_conjunto_dia.py backend/tests/test_meta_rotas_v2.py",
+    "coverage": "Explicit pixel/conversion unavailability, archived conversion, matching/mismatching/absent/malformed source metadata, unselected archived item, request counts and domain-error translation; existing contract/catalog/insights/V2-route regressions.",
+    "remote_calls": false,
+    "sql_skips": "SQL integration tests require separate infrastructure and were not enabled."
+  },
+  "remaining": [
+    "Arbitrary uppercase standard_event is still accepted by backend regex. No undocumented restrictive allowlist was introduced; this needs a separately versioned supported-event contract.",
+    "Live Meta read/validate/create not run by this worker; operator plan approval and PAUSED-only creation remain unchanged."
+  ],
+  "files": [
+    "backend/app/trafego/meta/adaptador.py",
+    "backend/app/trafego/meta_execucao/publicos.py",
+    "backend/tests/test_meta_measurement_preflight.py"
+  ]
+}

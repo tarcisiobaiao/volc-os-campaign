@@ -318,7 +318,7 @@ export function PainelDeProducao({
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Fotografia</dt>
+              <dt className="text-muted-foreground">Uso da imagem anexada</dt>
               <dd className="mt-0.5 flex items-center gap-1.5 text-foreground">
                 {anexo ? (
                   <>
