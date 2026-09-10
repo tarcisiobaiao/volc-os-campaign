@@ -1,0 +1,30 @@
+# Subir a PRENSA localmente:  docker compose up -d --build
+# Conferir:                   curl localhost:8020/saude
+services:
+  prensa:
+    platform: linux/amd64
+    build: .
+    image: volc-prensa:1.0.0
+    container_name: volc-prensa
+    ports: ["8020:8020"]
+    restart: unless-stopped
+    # ⚠️ O Chrome precisa de mais que os 64 MB padrão de /dev/shm: abaixo disso
+    # ele derruba a aba no meio do screenshot e o erro sai como "Target closed",
+    # que não parece falta de memória compartilhada e custa horas para achar.
+    shm_size: 1gb
+    # Envelope sem estado: nada é escrito fora do tmpfs de trabalho.
+    read_only: true
+    tmpfs:
+      # ⚠️ uid/gid explícitos: o tmpfs monta como root e o serviço roda sem
+      # privilégio, então sem isto o motor não consegue escrever a spec
+      # resolvida nem o PNG — e o erro sai como PermissionError, que não
+      # parece um problema de mount.
+      - /tmp:uid=1000,gid=1000
+      - /prensa/motor/out:uid=1000,gid=1000
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8020/saude').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

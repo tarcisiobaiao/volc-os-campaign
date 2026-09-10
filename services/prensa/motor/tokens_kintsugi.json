@@ -1,0 +1,111 @@
+{
+  "$schema": "prensa-tokens/0.1",
+  "skin": "VOS:kintsugi",
+  "versao": "4.0.0-poc",
+  "fonte_dna": "bancada-n8n/personas/vos-kintsugi-v4.0.md + fluxo viral-images-wow-v3 (AI Agent5)",
+  "fonts": [
+    {
+      "role": "display",
+      "family": "Inter",
+      "weight": 800,
+      "weight_range": "100 900",
+      "file": "fonts/Inter-Variable.ttf",
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+    },
+    {
+      "role": "serifa",
+      "family": "Instrument Serif",
+      "weight": 400,
+      "style": "italic",
+      "file": "fonts/InstrumentSerif-Italic.ttf",
+      "sha256": "08939b8bdf534afec24ae0ef5e03f948940cd9a8fe08e7fecbad040e62327385"
+    }
+  ],
+  "color": {
+    "surface": {
+      "base": "#0a0a0f",
+      "container": "#1a0a2e"
+    },
+    "text": {
+      "primary": "#F4F1FA",
+      "secondary": "#C9BEDC",
+      "muted": "#8B7FA6",
+      "nota": "#A99BC4",
+      "on_accent": "#0a0a0f"
+    },
+    "accent": {
+      "text": "#FFD700",
+      "graphic": "#FFD700",
+      "dim": "#BF00FF"
+    },
+    "ghost": "#BF00FF",
+    "dots": {
+      "ativa": "#FFD700",
+      "inativa": "#3A2A55"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "Inter",
+      "weight": 800,
+      "line_height": 1.06,
+      "wrap": "balance",
+      "tracking": "-0.015em",
+      "ink_padding": "0.03em 0.05em 0.04em 0.05em"
+    },
+    "kicker": {
+      "family": "Inter",
+      "weight": 600,
+      "tracking": "0.24em",
+      "transform": "uppercase",
+      "line_height": 1
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 450,
+      "line_height": 1.45
+    },
+    "serifa": {
+      "family": "Instrument Serif",
+      "weight": 400,
+      "style": "italic",
+      "line_height": 1.3,
+      "hang": "-0.26em"
+    },
+    "label": {
+      "family": "Inter",
+      "weight": 600,
+      "tracking": "0.10em",
+      "line_height": 1
+    }
+  },
+  "efeitos": {
+    "grao": {
+      "opacity": 0.42,
+      "blend": "overlay",
+      "escala": 420,
+      "piso": -0.7,
+      "amplitude": 3.2
+    },
+    "vinheta": {
+      "cor": "rgba(5,4,10,0.50)",
+      "raio": "84% 76%",
+      "centro": "58% 42%"
+    },
+    "halacao_accent": {
+      "passes": [
+        [
+          10,
+          0.46
+        ],
+        [
+          30,
+          0.24
+        ]
+      ]
+    }
+  },
+  "textura": {
+    "grain_opacity": 0.42
+  }
+}

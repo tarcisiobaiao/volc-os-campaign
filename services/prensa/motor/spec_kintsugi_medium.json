@@ -1,0 +1,230 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "kintsugi_medium",
+  "seed": 11,
+  "skin": {
+    "id": "VOS:kintsugi",
+    "versao": "4.0.0-poc",
+    "tokens_file": "tokens_kintsugi.json"
+  },
+  "brand": {
+    "cliente": "volc-filosofia",
+    "handle": "@volc.estoico"
+  },
+  "pauta": {
+    "tema": "gentileza estoica",
+    "nicho": "filosofia",
+    "idioma": "pt-BR"
+  },
+  "artboard": {
+    "base": {
+      "w": 1088,
+      "h": 1360,
+      "formato": "feed_4x5_ig",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 88,
+      "bottom": 88,
+      "left": 88,
+      "right": 88
+    }
+  },
+  "assets": [
+    {
+      "id": "kintsugi",
+      "kind": "photo_ia",
+      "file": "out/bg_kintsugi_medium.png",
+      "provider": "gpt-image-2",
+      "ia_gerada": true,
+      "regras": [
+        "REGRA:sem-texto-em-imagem-ia",
+        "REGRA:posicao-descoberta-por-medicao"
+      ],
+      "quality": "medium"
+    }
+  ],
+  "colocacao": {
+    "modo": "auto",
+    "asset": "kintsugi",
+    "frame": "conteudo",
+    "alvo_contraste": 4.5,
+    "exigir_confianca": "baixa"
+  },
+  "gates": {
+    "accent_budget": {
+      "max_palavras": 2
+    },
+    "contrast_min": 4.5,
+    "contrast_min_large": 3.0,
+    "clearance_decorativo_px": 16
+  },
+  "slides": [
+    {
+      "id": "unico",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "bg",
+          "type": "image",
+          "asset": "kintsugi",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": "100%",
+            "h": "100%"
+          },
+          "object_fit": "cover",
+          "object_position": "center center"
+        },
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 88,
+            "y": 88
+          },
+          "max_width": 900,
+          "layout": {
+            "mode": "vertical",
+            "gap": 26
+          },
+          "children": [
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "ESTOICISMO DIÁRIO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 22,
+                "max_lines": 2,
+                "overflow": "fail"
+              },
+              "efeitos": {
+                "sombra": {
+                  "raio": 18,
+                  "dy": 2,
+                  "cor": "rgba(0,0,0,0.80)"
+                }
+              }
+            },
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "O que te quebrou virou seu "
+                },
+                {
+                  "text": "ouro.",
+                  "accent": true
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary",
+                "accent_color": "$color.accent.text"
+              },
+              "efeitos": {
+                "halacao": "$?efeitos.halacao_accent",
+                "sombra": {
+                  "raio": 18,
+                  "dy": 2,
+                  "cor": "rgba(0,0,0,0.80)"
+                }
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 38,
+                "max": 86,
+                "max_lines": 8,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "serifa",
+              "type": "text",
+              "slot": "serifa",
+              "runs": [
+                {
+                  "text": "— a rachadura não é o fim: é por onde a luz entra."
+                }
+              ],
+              "style": {
+                "font": "$type.serifa",
+                "color": "$color.text.nota"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 26,
+                "max_lines": 3,
+                "overflow": "fail"
+              },
+              "efeitos": {
+                "sombra": {
+                  "raio": 18,
+                  "dy": 2,
+                  "cor": "rgba(0,0,0,0.80)"
+                }
+              }
+            },
+            {
+              "id": "handle",
+              "type": "text",
+              "slot": "label",
+              "runs": [
+                {
+                  "text": "@volc.estoico"
+                }
+              ],
+              "style": {
+                "font": "$type.label",
+                "color": "$color.text.muted"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 20,
+                "max_lines": 1
+              },
+              "efeitos": {
+                "sombra": {
+                  "raio": 18,
+                  "dy": 2,
+                  "cor": "rgba(0,0,0,0.80)"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    }
+  ]
+}

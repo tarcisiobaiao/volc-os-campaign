@@ -1,0 +1,98 @@
+{
+  "$schema": "prensa-tokens/0.1",
+  "skin": "VOS:volc-news",
+  "versao": "1.1.0-poc",
+  "fonte_dna": "engine VOLC NEWS v1.1 (n8n AI Agent5) — Bloomberg/Economist/Monocle",
+  "fonts": [
+    {
+      "role": "display",
+      "family": "Archivo",
+      "weight": 700,
+      "weight_range": "100 900",
+      "file": "fonts/Archivo-Variable.ttf",
+      "sha256": "0e094a7d3c7c4c25cf1310c4b30014f1dae9332220b1c2c88f4fa996f0b05053"
+    },
+    {
+      "role": "accent_serif",
+      "family": "Bodoni Moda",
+      "weight": 500,
+      "style": "italic",
+      "weight_range": "400 900",
+      "file": "fonts/BodoniModa-Italic.ttf",
+      "sha256": "dfff1619f8f6871c6372f8855b67211f9a73b4e93d45aca868cd8f46a48622de"
+    },
+    {
+      "role": "mono",
+      "family": "IBM Plex Mono",
+      "weight": 300,
+      "file": "fonts/IBMPlexMono-Light.ttf",
+      "sha256": "780bcf65509d72a35ec114b57bcbe220dc6b77d8ea2e9b25e294be3c570c5025"
+    }
+  ],
+  "color": {
+    "surface": {
+      "base": "#000000"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "categoria": "rgba(255,255,255,0.56)",
+      "handle": "rgba(255,255,255,0.48)",
+      "regua": "rgba(255,255,255,0.40)"
+    },
+    "accent": {
+      "text": "#FFFFFF",
+      "graphic": "rgba(255,255,255,0.40)"
+    },
+    "dots": {
+      "ativa": "rgba(255,255,255,0.8)",
+      "inativa": "rgba(255,255,255,0.25)"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "Archivo",
+      "weight": 700,
+      "line_height": 1.07,
+      "wrap": "balance",
+      "tracking": "-0.02em",
+      "variacao": "'wdth' 100, 'wght' 700",
+      "ink_padding": "0.03em 0.04em 0.04em 0.04em"
+    },
+    "accent_serif": {
+      "family": "Bodoni Moda",
+      "weight": 500,
+      "style": "italic",
+      "escala": 1.06,
+      "tracking": "0.005em",
+      "variacao": "'opsz' 96"
+    },
+    "kicker": {
+      "family": "IBM Plex Mono",
+      "weight": 300,
+      "tracking": "0.25em",
+      "transform": "uppercase",
+      "line_height": 1
+    },
+    "label": {
+      "family": "IBM Plex Mono",
+      "weight": 300,
+      "tracking": "0.08em",
+      "line_height": 1
+    }
+  },
+  "efeitos": {
+    "grao": {
+      "opacity": 0.34,
+      "blend": "overlay",
+      "escala": 420,
+      "piso": -0.7,
+      "amplitude": 3.2
+    },
+    "vinheta": {
+      "cor": "rgba(0,0,0,0.42)",
+      "raio": "86% 78%",
+      "centro": "50% 40%"
+    }
+  },
+  "_licao_gate": "marca especifica handle a 35% — medido 4,12:1, abaixo do piso 4,5. Mínimo que passa: 46%. Adotado 48% para margem. A intenção de sussurro é preservada; a ilegibilidade não."
+}

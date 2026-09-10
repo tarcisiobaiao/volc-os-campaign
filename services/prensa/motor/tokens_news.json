@@ -1,0 +1,97 @@
+{
+  "$schema": "prensa-tokens/0.1",
+  "skin": "VOS:prime-editorial",
+  "versao": "3.2.0-poc",
+  "fonte_dna": "bancada-n8n/personas/vos-prime-editorial-master-v2.3.md",
+  "_licao_contrato": "v3.2.1: as fontes moraram no spec_news.json até aqui — contaminação da classe nº 1 (marca vivendo fora do brand package). A skin é dona das fontes; o spec só as usa. Movidas para cá com o mesmo sha256, sem trocar arquivo nem peso.",
+  "fonts": [
+    {
+      "role": "display",
+      "family": "Inter",
+      "weight": 800,
+      "weight_range": "100 900",
+      "file": "fonts/Inter-Variable.ttf",
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+    }
+  ],
+  "color": {
+    "text": {
+      "primary": "#FFFFFF",
+      "muted": "rgba(255,255,255,0.92)"
+    },
+    "scrim": {
+      "auto": true,
+      "direcao": "to top",
+      "faixa_texto": [
+        0.6,
+        0.92
+      ],
+      "contraste_alvo": 7.0,
+      "curva": [
+        [
+          0,
+          1.0
+        ],
+        [
+          38,
+          0.95
+        ],
+        [
+          55,
+          0.45
+        ],
+        [
+          70,
+          0.0
+        ]
+      ]
+    },
+    "shadow": {
+      "text": "none"
+    }
+  },
+  "_licoes_pixel_gate": "kicker 0.50→0.78 e scrim 0.40→0.55@32%: contraste medido no PNG deu 2.03<3.0 sobre foto clara; shadow removido: tinta do blur caía fora do box declarado (plano descreve TINTA)",
+  "type": {
+    "display": {
+      "family": "Inter",
+      "weight": 800,
+      "line_height": 1.08,
+      "wrap": "balance"
+    },
+    "kicker": {
+      "family": "Inter",
+      "weight": 500,
+      "tracking": "0.25em",
+      "transform": "uppercase"
+    }
+  },
+  "layout": {
+    "anchor_left_pct": 8,
+    "anchor_bottom_pct": 8,
+    "max_text_width_pct": 84,
+    "gap_kicker_headline_px": 20,
+    "hero_zone_top_pct": 55,
+    "gradient_zone_bottom_pct": 45
+  },
+  "_licoes_juri_visual": "v3.0: a foto passa a ser gerada em 4:5 NATIVO (1024x1280, zero crop) com a queda de luz compondo o espaço do texto — a correção é na origem, não no overlay. O scrim virou selo ADAPTATIVO: o resolve mede o p95 de luminância na faixa do texto e calcula o alpha mínimo para o contraste alvo. Foto escura recebe selo quase zero.",
+  "efeitos": {
+    "grao": {
+      "opacity": 0.42,
+      "blend": "overlay",
+      "escala": 420,
+      "piso": -0.7,
+      "amplitude": 3.2
+    },
+    "vinheta": {
+      "cor": "rgba(0,0,0,0.42)",
+      "raio": "80% 70%",
+      "centro": "50% 38%"
+    },
+    "vazamento": {
+      "cor": "rgba(255,214,170,0.50)",
+      "origem": "6% 14%",
+      "raio": "46% 34%",
+      "opacity": 0.16
+    }
+  }
+}

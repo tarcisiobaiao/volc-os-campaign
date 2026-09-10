@@ -1,0 +1,197 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "food_marmita",
+  "seed": 4,
+  "skin": {
+    "id": "VOS:food-viral",
+    "versao": "1.0.0-poc",
+    "tokens_file": "tokens_food.json"
+  },
+  "brand": {
+    "cliente": "volc-cozinha",
+    "handle": "@volc.cozinha"
+  },
+  "pauta": {
+    "tema": "marmita da semana barata",
+    "nicho": "receitas",
+    "idioma": "pt-BR"
+  },
+  "artboard": {
+    "base": {
+      "w": 1088,
+      "h": 1360,
+      "formato": "feed_4x5_ig",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 88,
+      "bottom": 88,
+      "left": 88,
+      "right": 88
+    }
+  },
+  "assets": [
+    {
+      "id": "hero",
+      "kind": "photo_ia",
+      "file": "out/bg_food.png",
+      "provider": "gpt-image-2",
+      "quality": "low",
+      "ia_gerada": true,
+      "plano_composicao": "faixa_inferior_clara (contenção 1.0)",
+      "regras": [
+        "REGRA:sem-texto-em-imagem-ia"
+      ]
+    }
+  ],
+  "colocacao": {
+    "modo": "auto",
+    "asset": "hero",
+    "frame": "conteudo",
+    "alvo_contraste": 4.5,
+    "respiro": 14,
+    "reserva_rodape": 48,
+    "exigir_confianca": "alta"
+  },
+  "gates": {
+    "accent_budget": {
+      "max_palavras": 3
+    },
+    "contrast_min": 4.5,
+    "contrast_min_large": 3.0,
+    "clearance_decorativo_px": 14
+  },
+  "slides": [
+    {
+      "id": "unico",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "bg",
+          "type": "image",
+          "asset": "hero",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": "100%",
+            "h": "100%"
+          },
+          "object_fit": "cover",
+          "object_position": "center center"
+        },
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 88,
+            "y": 88
+          },
+          "max_width": 880,
+          "layout": {
+            "mode": "vertical",
+            "gap": 18
+          },
+          "children": [
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "MARMITA DA SEMANA"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.text.categoria"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 22,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "Cinco marmitas prontas por "
+                },
+                {
+                  "text": "R$ 3 cada",
+                  "tratamento": {
+                    "tipo": "marcador",
+                    "cor": "$color.highlight.economia",
+                    "blend": "normal",
+                    "cor_texto": "auto",
+                    "padding": "0.03em 0.14em 0.09em",
+                    "radius": "0.05em"
+                  }
+                },
+                {
+                  "text": " e a semana resolvida"
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 46,
+                "max": 92,
+                "max_lines": 4,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 88,
+            "y": 92
+          },
+          "runs": [
+            {
+              "text": "@volc.cozinha"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.handle"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 20,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "$schema": "prensa-tokens/0.1",
+  "skin": "VOS:dossier-cream",
+  "versao": "1.4.0-poc",
+  "fonte_dna": "dace/config/presets/dossier_cream/DESIGN.md",
+  "_licoes_juri_visual": "v1.1: body Inter→Source Serif 4 (o DNA Aeon/Atlantic pedia serifada de texto, não sans tech); ghost com 'lnum' (algarismos old-style mudavam de altura a cada lâmina) e menor, resolvendo a colisão com a headline do s01; ink_padding cobre a tinta do Cormorant | v1.3: relevo (offset) trocado por sangria de tinta (sopro da própria cor): offset em display grande lê como sombra de template, não como prensa.",
+  "fonts": [
+    {
+      "role": "display",
+      "family": "Cormorant Garamond",
+      "weight": 700,
+      "weight_range": "300 700",
+      "file": "fonts/CormorantGaramond-Variable.ttf",
+      "sha256": "b20b7d9626dd956b2c5e558692ad328b1f19e3275e2782db4fa07670d83f35e0"
+    },
+    {
+      "role": "body",
+      "family": "Source Serif 4",
+      "weight": 400,
+      "weight_range": "200 900",
+      "file": "fonts/SourceSerif4-Variable.ttf",
+      "sha256": "97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b"
+    },
+    {
+      "role": "kicker",
+      "family": "Inter",
+      "weight": 600,
+      "weight_range": "100 900",
+      "file": "fonts/Inter-Variable.ttf",
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+    },
+    {
+      "role": "serifa",
+      "family": "Instrument Serif",
+      "weight": 400,
+      "style": "italic",
+      "file": "fonts/InstrumentSerif-Italic.ttf",
+      "sha256": "08939b8bdf534afec24ae0ef5e03f948940cd9a8fe08e7fecbad040e62327385"
+    }
+  ],
+  "color": {
+    "surface": {
+      "base": "#FAF9F7",
+      "container": "#F0ECE3"
+    },
+    "text": {
+      "primary": "#1A1A1A",
+      "secondary": "#3D3A34",
+      "muted": "#5C574E",
+      "nota": "#6B655A",
+      "on_accent": "#1A1A1A"
+    },
+    "accent": {
+      "text": "#6E5A28",
+      "graphic": "#C9A84C",
+      "dim": "#E0BB6A"
+    },
+    "ghost": "#1A1A1A",
+    "dots": {
+      "ativa": "#C9A84C",
+      "inativa": "#D5CFC1"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "Cormorant Garamond",
+      "weight": 700,
+      "line_height": 1.02,
+      "wrap": "balance",
+      "tracking": "0",
+      "ink_padding": "0.06em 0 0.16em 0"
+    },
+    "kicker": {
+      "family": "Inter",
+      "weight": 600,
+      "tracking": "0.22em",
+      "transform": "uppercase",
+      "line_height": 1
+    },
+    "body": {
+      "family": "Source Serif 4",
+      "weight": 400,
+      "line_height": 1.48
+    },
+    "serifa": {
+      "family": "Instrument Serif",
+      "weight": 400,
+      "style": "italic",
+      "line_height": 1.25,
+      "hang": "-0.26em"
+    },
+    "label": {
+      "family": "Inter",
+      "weight": 500,
+      "tracking": "0.08em",
+      "line_height": 1
+    },
+    "chip": {
+      "family": "Inter",
+      "weight": 600,
+      "tracking": "0.14em",
+      "transform": "uppercase",
+      "line_height": 1
+    },
+    "ghost": {
+      "family": "Cormorant Garamond",
+      "weight": 700,
+      "line_height": 0.8,
+      "features": "'lnum' 1"
+    }
+  },
+  "ghost": {
+    "size_capa": 265,
+    "size_regra": 270,
+    "opacidade": 0.07,
+    "y": 40,
+    "x": -14
+  },
+  "serifa_size": 32,
+  "textura": {
+    "grain_opacity": 0.04
+  },
+  "efeitos": {
+    "grao": {
+      "opacity": 0.34,
+      "blend": "multiply",
+      "escala": 420,
+      "piso": -0.85,
+      "amplitude": 4.0
+    },
+    "vinheta": {
+      "cor": "rgba(90,78,55,0.16)",
+      "raio": "82% 74%",
+      "centro": "50% 44%"
+    },
+    "verniz": {
+      "angulo": 104,
+      "brilho": "rgba(255,255,255,0.60)",
+      "pico": 36,
+      "borda": "rgba(255,255,255,0)"
+    },
+    "sangria": {
+      "raio": "0.014em",
+      "cor": "rgba(26,26,26,0.55)"
+    }
+  }
+}

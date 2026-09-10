@@ -1,0 +1,300 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "falso_traco",
+  "seed": 13,
+  "skin": {
+    "id": "VOS:anderson-navy",
+    "versao": "1.0.0-poc",
+    "tokens_file": "tokens_anderson.json"
+  },
+  "brand": {
+    "cliente": "dr-anderson",
+    "handle": "@dr.andersonramos",
+    "crm": "CRM 30986-PR"
+  },
+  "pauta": {
+    "tema": "referência vs ótimo — evidência visual",
+    "nicho": "saude-longevidade",
+    "idioma": "pt-BR"
+  },
+  "compliance": {
+    "perfil": "cfm_rules.yaml",
+    "auditado": true,
+    "regras": 54
+  },
+  "artboard": {
+    "base": {
+      "w": 1088,
+      "h": 1360,
+      "formato": "feed_4x5_ig",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 88,
+      "bottom": 88,
+      "left": 88,
+      "right": 88
+    }
+  },
+  "gates": {
+    "accent_budget": {
+      "max_palavras": 2
+    },
+    "contrast_min": 4.5,
+    "contrast_min_large": 3.0,
+    "clearance_decorativo_px": 16
+  },
+  "slides": [
+    {
+      "id": "curva",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "EVIDÊNCIA 01 · DISTRIBUIÇÃO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Onde o laudo libera. Onde a "
+            },
+            {
+              "text": "biologia",
+              "accent": true
+            },
+            {
+              "text": " agradece."
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 104,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 1,
+          "atual": 0,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "g",
+          "type": "grafico",
+          "kind": "curva_normal",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102
+          },
+          "w": 884,
+          "voce": 0.22,
+          "faixa_lab": [
+            0.08,
+            0.7
+          ],
+          "faixa_otima": [
+            0.74,
+            0.96
+          ],
+          "cor_curva": "$color.text.muted",
+          "cor_lab": "$color.linha.fio",
+          "cor_otima": "$color.accent.text",
+          "cor_texto": "$color.text.primary",
+          "cor_fio": "$color.linha.fio",
+          "cor_marca": "#1B3050"
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— a faixa larga não é saúde. É tolerância estatística."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ],
+      "composicao": {
+        "classe": "miolo",
+        "campo": {
+          "rail_topo": "kicker_row",
+          "rail_base": "handle"
+        },
+        "pilha": [
+          {
+            "ref": "headline"
+          },
+          {
+            "ref": "g",
+            "flex": {
+              "param": "h"
+            }
+          },
+          {
+            "ref": "nota"
+          }
+        ],
+        "vinculos": [
+          {
+            "entre": [
+              "kicker_row",
+              "headline"
+            ],
+            "laco": "relacionado"
+          },
+          {
+            "entre": [
+              "headline",
+              "g"
+            ],
+            "laco": "articulacao"
+          },
+          {
+            "entre": [
+              "g",
+              "nota"
+            ],
+            "laco": "mesma_unidade"
+          },
+          {
+            "entre": [
+              "nota",
+              "handle"
+            ],
+            "laco": "separado"
+          }
+        ],
+        "folga_de_borda": "base",
+        "nao_cabe": [
+          "demover_costura",
+          "ceder_linhas",
+          "novo_modulo"
+        ]
+      }
+    }
+  ]
+}

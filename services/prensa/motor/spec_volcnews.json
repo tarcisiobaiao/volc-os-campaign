@@ -1,0 +1,205 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "volcnews_iphone_laranja",
+  "seed": 3,
+  "skin": {
+    "id": "VOS:volc-news",
+    "versao": "1.1.0-poc",
+    "tokens_file": "tokens_volcnews.json"
+  },
+  "brand": {
+    "cliente": "volc-news",
+    "handle": "@tarcisiobely"
+  },
+  "pauta": {
+    "tema": "cor laranja do iPhone 17 Pro Max",
+    "nicho": "tecnologia",
+    "idioma": "pt-BR"
+  },
+  "artboard": {
+    "base": {
+      "w": 1088,
+      "h": 1360,
+      "formato": "feed_4x5_ig",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 88,
+      "bottom": 88,
+      "left": 88,
+      "right": 88
+    }
+  },
+  "assets": [
+    {
+      "id": "hero",
+      "kind": "photo_ia",
+      "file": "out/bg_volcnews.png",
+      "provider": "gpt-image-2",
+      "quality": "low",
+      "ia_gerada": true,
+      "plano_composicao": "faixa_inferior (pedido e conferido: contenção 1.0)",
+      "regras": [
+        "REGRA:sem-texto-em-imagem-ia"
+      ]
+    }
+  ],
+  "colocacao": {
+    "modo": "auto",
+    "asset": "hero",
+    "frame": "conteudo",
+    "alvo_contraste": 4.5,
+    "respiro": 14,
+    "reserva_rodape": 54,
+    "exigir_confianca": "alta"
+  },
+  "gates": {
+    "accent_budget": {
+      "max_palavras": 2
+    },
+    "contrast_min": 4.5,
+    "contrast_min_large": 3.0,
+    "clearance_decorativo_px": 14
+  },
+  "slides": [
+    {
+      "id": "unico",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "bg",
+          "type": "image",
+          "asset": "hero",
+          "box": {
+            "x": 0,
+            "y": 0,
+            "w": "100%",
+            "h": "100%"
+          },
+          "object_fit": "cover",
+          "object_position": "center center"
+        },
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 88,
+            "y": 88
+          },
+          "max_width": 900,
+          "layout": {
+            "mode": "vertical",
+            "gap": 13
+          },
+          "children": [
+            {
+              "id": "regua",
+              "type": "rect",
+              "w": 60,
+              "h": 1,
+              "fill": "$color.text.regua",
+              "radius": 0
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "TECNOLOGIA"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.text.categoria"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 21,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "O Que Ninguém Entendeu Sobre o "
+                },
+                {
+                  "text": "Laranja",
+                  "fonte": "$type.accent_serif"
+                },
+                {
+                  "text": " do iPhone 17"
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary"
+              },
+              "efeitos": {
+                "sombra": {
+                  "raio": 16,
+                  "dy": 2,
+                  "cor": "rgba(0,0,0,0.55)"
+                }
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 52,
+                "max": 96,
+                "max_lines": 3,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 88,
+            "y": 92
+          },
+          "runs": [
+            {
+              "text": "@tarcisiobely"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.handle"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 19,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    }
+  ]
+}

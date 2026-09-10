@@ -1,0 +1,81 @@
+{
+  "$schema": "prensa-tokens/0.1",
+  "skin": "VOS:food-viral",
+  "versao": "1.0.0-poc",
+  "fonte_dna": "bancada-n8n/personas/vos-food-viral-v1.0.md (rota 'Cozinha, receita')",
+  "fonts": [
+    {
+      "role": "display",
+      "family": "Archivo",
+      "weight": 900,
+      "weight_range": "100 900",
+      "file": "fonts/Archivo-Variable.ttf",
+      "sha256": "0e094a7d3c7c4c25cf1310c4b30014f1dae9332220b1c2c88f4fa996f0b05053"
+    }
+  ],
+  "color": {
+    "surface": {
+      "base": "#F5F1EA"
+    },
+    "text": {
+      "primary": "#141210",
+      "secondary": "#3A352E",
+      "categoria": "rgba(20,18,16,0.78)",
+      "handle": "rgba(20,18,16,0.90)"
+    },
+    "highlight": {
+      "economia": "#FFE135",
+      "rapido": "#4ADE80",
+      "dica": "#FB923C",
+      "quantidade": "#22D3D2",
+      "alerta": "#F472B6"
+    },
+    "accent": {
+      "text": "#141210",
+      "graphic": "#FFE135"
+    },
+    "dots": {
+      "ativa": "#141210",
+      "inativa": "rgba(20,18,16,0.25)"
+    }
+  },
+  "type": {
+    "display": {
+      "family": "Archivo",
+      "weight": 900,
+      "line_height": 1.1,
+      "wrap": "balance",
+      "tracking": "-0.02em",
+      "variacao": "'wdth' 100, 'wght' 900",
+      "ink_padding": "0.04em 0.05em 0.05em 0.05em"
+    },
+    "kicker": {
+      "family": "Archivo",
+      "weight": 700,
+      "tracking": "0.20em",
+      "transform": "uppercase",
+      "line_height": 1
+    },
+    "label": {
+      "family": "Archivo",
+      "weight": 600,
+      "tracking": "0.06em",
+      "line_height": 1
+    }
+  },
+  "efeitos": {
+    "grao": {
+      "opacity": 0.3,
+      "blend": "multiply",
+      "escala": 420,
+      "piso": -0.85,
+      "amplitude": 4.0
+    },
+    "vinheta": {
+      "cor": "rgba(60,50,35,0.20)",
+      "raio": "88% 80%",
+      "centro": "50% 40%"
+    }
+  },
+  "_licao_gate": "handle e categoria por opacidade escolhida no olho reprovaram (2,83:1). Sobre zona CLARA a tinta escura precisa de opacidade bem maior que sobre escura — a intuição de 50-60% vem do caso branco-sobre-preto e não transfere."
+}

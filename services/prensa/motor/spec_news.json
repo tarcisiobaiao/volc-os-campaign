@@ -1,0 +1,201 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "post_2026-08-15_inss-13o_news_poc",
+  "seed": 20260815,
+  "pauta": {
+    "tema": "13º do INSS antecipado",
+    "nicho": "beneficios",
+    "idioma": "pt-BR"
+  },
+  "skin": {
+    "id": "VOS:prime-editorial",
+    "versao": "2.3.0-poc",
+    "tokens_file": "tokens_news.json"
+  },
+  "brand": {
+    "cliente": "volc-news",
+    "handle": "@volc.news"
+  },
+  "fonts": [
+    {
+      "role": "display",
+      "family": "Inter",
+      "weight": 800,
+      "weight_range": "100 900",
+      "file": "fonts/Inter-Variable.ttf",
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+    }
+  ],
+  "artboard": {
+    "base": {
+      "w": 1080,
+      "h": 1350,
+      "formato": "feed_4x5",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 86,
+      "bottom": 86,
+      "left": 86,
+      "right": 86
+    }
+  },
+  "assets": [
+    {
+      "id": "bg_news",
+      "kind": "photo_ia",
+      "file": "out/bg_news.png",
+      "provider": "gpt-image-2",
+      "quality": "medium",
+      "ia_gerada": true,
+      "regras": [
+        "REGRA:sem-texto-em-imagem-ia",
+        "REGRA:scrim-e-do-engine"
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "id": "bg",
+      "type": "image",
+      "asset": "bg_news",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": "100%",
+        "h": "100%"
+      },
+      "object_fit": "cover",
+      "object_position": "center center"
+    },
+    {
+      "id": "scrim",
+      "type": "scrim",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": "100%",
+        "h": "100%"
+      },
+      "style": {
+        "gradient": "$color.scrim"
+      },
+      "asset_ref": "bg_news"
+    },
+    {
+      "id": "vazamento",
+      "type": "vazamento",
+      "cor": "$efeitos.vazamento.cor",
+      "origem": "$efeitos.vazamento.origem",
+      "raio": "$efeitos.vazamento.raio",
+      "opacity": "$efeitos.vazamento.opacity"
+    },
+    {
+      "id": "vinheta",
+      "type": "vinheta",
+      "cor": "$efeitos.vinheta.cor",
+      "raio": "$efeitos.vinheta.raio",
+      "centro": "$efeitos.vinheta.centro"
+    },
+    {
+      "id": "texto",
+      "type": "frame",
+      "pos": {
+        "anchor": "bottom_left",
+        "x": 86,
+        "y": 170
+      },
+      "max_width": 907,
+      "layout": {
+        "mode": "vertical",
+        "gap": "$layout.gap_kicker_headline_px"
+      },
+      "children": [
+        {
+          "id": "kicker",
+          "type": "text",
+          "slot": "kicker",
+          "runs": [
+            {
+              "text": "BENEFÍCIOS · INSS"
+            }
+          ],
+          "style": {
+            "font": "$type.kicker",
+            "color": "$color.text.muted",
+            "shadow": "$color.shadow.text"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 26,
+            "max_lines": 1,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "runs": [
+            {
+              "text": "13º do INSS antecipado:\nveja quem recebe\njá em setembro"
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "shadow": "$color.shadow.text"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 56,
+            "max": 92,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "handle",
+      "type": "text",
+      "slot": "label",
+      "pos": {
+        "anchor": "bottom_right",
+        "x": 86,
+        "y": 92
+      },
+      "runs": [
+        {
+          "text": "@volc.news"
+        }
+      ],
+      "style": {
+        "font": "$type.kicker",
+        "color": "$color.text.muted"
+      },
+      "fit": {
+        "mode": "fixed",
+        "size": 22,
+        "max_lines": 1
+      }
+    },
+    {
+      "id": "grain",
+      "type": "texture",
+      "opacity": "$efeitos.grao.opacity",
+      "blend": "$efeitos.grao.blend",
+      "escala": "$efeitos.grao.escala"
+    }
+  ],
+  "gates": {
+    "verify_dom": {
+      "max_lines_estrito": true,
+      "sem_clip": true,
+      "dentro_da_safe_area": true
+    },
+    "golden_policy": "bytes_mesma_maquina",
+    "clearance_decorativo_px": 20
+  }
+}

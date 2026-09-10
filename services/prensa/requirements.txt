@@ -1,0 +1,9 @@
+# O motor: numpy para a medição de pixel, Pillow para os gates, playwright para
+# dirigir o Chrome do sistema (o navegador NÃO vem daqui — vem do apt).
+numpy==2.1.3
+Pillow==11.0.0
+playwright==1.49.0
+# O envelope HTTP.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4

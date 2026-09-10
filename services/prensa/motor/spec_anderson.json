@@ -1,0 +1,997 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "anderson_sono",
+  "seed": 9,
+  "skin": {
+    "id": "VOS:titanium-protocol",
+    "versao": "1.5.0-poc",
+    "tokens_file": "tokens_titanium.json"
+  },
+  "brand": {
+    "cliente": "dr-anderson",
+    "handle": "@dr.andersonramos",
+    "crm": "CRM 30986-PR"
+  },
+  "pauta": {
+    "tema": "sono e performance celular",
+    "nicho": "saude-longevidade",
+    "idioma": "pt-BR"
+  },
+  "compliance": {
+    "perfil": "cfm_rules.yaml",
+    "auditado": true,
+    "regras": 54
+  },
+  "artboard": {
+    "base": {
+      "w": 1088,
+      "h": 1360,
+      "formato": "feed_4x5_ig",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 88,
+      "bottom": 88,
+      "left": 88,
+      "right": 88
+    }
+  },
+  "gates": {
+    "accent_budget": {
+      "max_palavras": 2
+    },
+    "contrast_min": 4.5,
+    "contrast_min_large": 3.0,
+    "clearance_decorativo_px": 18
+  },
+  "slides": [
+    {
+      "id": "capa",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 96,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 6,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "LONGEVIDADE · SONO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 26,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 220
+          },
+          "max_width": 888,
+          "layout": {
+            "mode": "vertical",
+            "gap": 30
+          },
+          "children": [
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "Você dorme 8 horas e acorda "
+                },
+                {
+                  "text": "destruído.",
+                  "accent": true
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary",
+                "accent_color": "$color.accent.text"
+              },
+              "efeitos": {
+                "halacao": "$?efeitos.halacao_accent"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 58,
+                "max": 132,
+                "max_lines": 4,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "body",
+              "type": "text",
+              "slot": "body",
+              "runs": [
+                {
+                  "text": "A conta não fecha no relógio. Fecha na mitocôndria."
+                }
+              ],
+              "style": {
+                "font": "$type.body",
+                "color": "$color.text.secondary"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 26,
+                "max": 33,
+                "max_lines": 5,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 96,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos · CRM 30986-PR"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 22,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 5,
+          "atual": 0,
+          "size": 10,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 96,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    },
+    {
+      "id": "regra01",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 96,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 6,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 01 · TEMPERATURA"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 26,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 220
+          },
+          "max_width": 888,
+          "layout": {
+            "mode": "vertical",
+            "gap": 30
+          },
+          "children": [
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "Seu corpo precisa "
+                },
+                {
+                  "text": "esfriar",
+                  "accent": true
+                },
+                {
+                  "text": " para dormir"
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary",
+                "accent_color": "$color.accent.text"
+              },
+              "efeitos": {
+                "halacao": "$?efeitos.halacao_accent"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 58,
+                "max": 132,
+                "max_lines": 4,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "body",
+              "type": "text",
+              "slot": "body",
+              "runs": [
+                {
+                  "text": "A queda de um grau na temperatura central é o gatilho do sono profundo. Quarto a 19°C não é frescura: é bioquímica."
+                }
+              ],
+              "style": {
+                "font": "$type.body",
+                "color": "$color.text.secondary"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 26,
+                "max": 33,
+                "max_lines": 5,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "serifa",
+              "type": "text",
+              "slot": "serifa",
+              "runs": [
+                {
+                  "text": "— o pico de melatonina segue a queda térmica, não o horário."
+                }
+              ],
+              "style": {
+                "font": "$type.serifa",
+                "color": "$color.text.nota"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": "$serifa_size",
+                "max_lines": 2,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 96,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 22,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 5,
+          "atual": 1,
+          "size": 10,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 96,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    },
+    {
+      "id": "regra02",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 96,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 6,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 02 · LUZ"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 26,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 220
+          },
+          "max_width": 888,
+          "layout": {
+            "mode": "vertical",
+            "gap": 30
+          },
+          "children": [
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "A luz das 7h decide o sono das "
+                },
+                {
+                  "text": "23h.",
+                  "accent": true
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary",
+                "accent_color": "$color.accent.text"
+              },
+              "efeitos": {
+                "halacao": "$?efeitos.halacao_accent"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 58,
+                "max": 132,
+                "max_lines": 4,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "body",
+              "type": "text",
+              "slot": "body",
+              "runs": [
+                {
+                  "text": "Dez minutos de luz solar direta ao acordar ancoram o ritmo circadiano. Sem esse marcador, o corpo dorme sem saber que horas são."
+                }
+              ],
+              "style": {
+                "font": "$type.body",
+                "color": "$color.text.secondary"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 26,
+                "max": 33,
+                "max_lines": 5,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "serifa",
+              "type": "text",
+              "slot": "serifa",
+              "runs": [
+                {
+                  "text": "— fotorreceptores de melanopsina: só a luz externa os satura."
+                }
+              ],
+              "style": {
+                "font": "$type.serifa",
+                "color": "$color.text.nota"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": "$serifa_size",
+                "max_lines": 2,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 96,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 22,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 5,
+          "atual": 2,
+          "size": 10,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 96,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    },
+    {
+      "id": "regra03",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 96,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 6,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 03 · GLICOSE"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 26,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 220
+          },
+          "max_width": 888,
+          "layout": {
+            "mode": "vertical",
+            "gap": 30
+          },
+          "children": [
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "Jantar tarde rouba seu "
+                },
+                {
+                  "text": "sono profundo.",
+                  "accent": true
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary",
+                "accent_color": "$color.accent.text"
+              },
+              "efeitos": {
+                "halacao": "$?efeitos.halacao_accent"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 58,
+                "max": 132,
+                "max_lines": 4,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "body",
+              "type": "text",
+              "slot": "body",
+              "runs": [
+                {
+                  "text": "Digestão ativa mantém a temperatura central alta e fragmenta o estágio N3 — justamente o da reparação celular."
+                }
+              ],
+              "style": {
+                "font": "$type.body",
+                "color": "$color.text.secondary"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 26,
+                "max": 33,
+                "max_lines": 5,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "serifa",
+              "type": "text",
+              "slot": "serifa",
+              "runs": [
+                {
+                  "text": "— três horas entre a última refeição e a cama."
+                }
+              ],
+              "style": {
+                "font": "$type.serifa",
+                "color": "$color.text.nota"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": "$serifa_size",
+                "max_lines": 2,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 96,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 22,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 5,
+          "atual": 3,
+          "size": 10,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 96,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 96,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 6,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "PROTOCOLO INDIVIDUALIZADO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 26,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "conteudo",
+          "type": "frame",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 220
+          },
+          "max_width": 888,
+          "layout": {
+            "mode": "vertical",
+            "gap": 30
+          },
+          "children": [
+            {
+              "id": "headline",
+              "type": "text",
+              "slot": "headline",
+              "runs": [
+                {
+                  "text": "Sono não se resolve com "
+                },
+                {
+                  "text": "disciplina.",
+                  "accent": true
+                }
+              ],
+              "style": {
+                "font": "$type.display",
+                "color": "$color.text.primary",
+                "accent_color": "$color.accent.text"
+              },
+              "efeitos": {
+                "halacao": "$?efeitos.halacao_accent"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 58,
+                "max": 132,
+                "max_lines": 4,
+                "hyphenate": false,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "body",
+              "type": "text",
+              "slot": "body",
+              "runs": [
+                {
+                  "text": "Se os três sinais acima já estão certos e você segue acordando quebrado, o problema está nos biomarcadores. CRM 30986-PR"
+                }
+              ],
+              "style": {
+                "font": "$type.body",
+                "color": "$color.text.secondary"
+              },
+              "fit": {
+                "mode": "auto",
+                "min": 26,
+                "max": 33,
+                "max_lines": 5,
+                "overflow": "fail"
+              }
+            },
+            {
+              "id": "serifa",
+              "type": "text",
+              "slot": "serifa",
+              "runs": [
+                {
+                  "text": "— conteúdo educativo. Não substitui consulta médica."
+                }
+              ],
+              "style": {
+                "font": "$type.serifa",
+                "color": "$color.text.nota"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": "$serifa_size",
+                "max_lines": 2,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 96,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos · CRM 30986-PR"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 22,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 5,
+          "atual": 4,
+          "size": 10,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 96,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# Segredo nunca entra no versionamento — nem por acidente de `git add -A`.
+.env
+.env.*
+!.env.exemplo
+*.pem
+*.key
+
+__pycache__/
+*.pyc
+.venv/
+out/

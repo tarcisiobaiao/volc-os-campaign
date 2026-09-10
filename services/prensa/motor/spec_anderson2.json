@@ -1,0 +1,1280 @@
+{
+  "schema_version": "post.spec/1.0.0-poc",
+  "spec_id": "anderson_vitrine",
+  "seed": 11,
+  "skin": {
+    "id": "VOS:anderson-navy",
+    "versao": "1.0.0-poc",
+    "tokens_file": "tokens_anderson.json"
+  },
+  "brand": {
+    "cliente": "dr-anderson",
+    "handle": "@dr.andersonramos",
+    "crm": "CRM 30986-PR"
+  },
+  "pauta": {
+    "tema": "faixa de referência vs faixa ótima",
+    "nicho": "saude-longevidade",
+    "idioma": "pt-BR"
+  },
+  "compliance": {
+    "perfil": "cfm_rules.yaml",
+    "auditado": true,
+    "regras": 54
+  },
+  "artboard": {
+    "base": {
+      "w": 1088,
+      "h": 1360,
+      "formato": "feed_4x5_ig",
+      "color_profile": "srgb"
+    },
+    "safe_area": {
+      "top": 88,
+      "bottom": 88,
+      "left": 88,
+      "right": 88
+    }
+  },
+  "gates": {
+    "accent_budget": {
+      "max_palavras": 2
+    },
+    "contrast_min": 4.5,
+    "contrast_min_large": 3.0,
+    "clearance_decorativo_px": 16
+  },
+  "slides": [
+    {
+      "id": "capa",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "LONGEVIDADE · BIOMARCADORES"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 470
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Seu exame veio normal. Sua biologia, "
+            },
+            {
+              "text": "não",
+              "fonte": "$type.accent_serif"
+            },
+            {
+              "text": "."
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 118,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos · CRM 30986-PR"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 6,
+          "atual": 0,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108,
+            "y": 260
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— faixa de referência é estatística de população doente."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ledger",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 01 · A TABELA"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 186
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Normal e "
+            },
+            {
+              "text": "ótimo",
+              "accent": true
+            },
+            {
+              "text": " não são a mesma faixa"
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 104,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 6,
+          "atual": 1,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "tabela",
+          "type": "tabela",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 486
+          },
+          "w": 884,
+          "tam_rotulo": 24,
+          "tam_valor": 32,
+          "style": {
+            "font_rotulo": "$type.kicker",
+            "font_valor": "$type.body",
+            "cor_rotulo": "$color.text.secondary",
+            "cor_valor": "$color.text.primary",
+            "cor_destaque": "$color.accent.text",
+            "cor_regua": "$color.linha.regua"
+          },
+          "linhas": [
+            {
+              "rotulo": "VITAMINA D",
+              "valor": "30 → 60 ng/mL",
+              "destaque": true
+            },
+            {
+              "rotulo": "FERRITINA",
+              "valor": "15 → 100 ng/mL",
+              "destaque": true
+            },
+            {
+              "rotulo": "TSH",
+              "valor": "4,5 → 2,0 mUI/L",
+              "destaque": true
+            },
+            {
+              "rotulo": "HOMOCISTEÍNA",
+              "valor": "15 → 7 µmol/L",
+              "destaque": true
+            },
+            {
+              "rotulo": "PCR ULTRA-SENSÍVEL",
+              "valor": "3,0 → 0,5 mg/L",
+              "destaque": true
+            }
+          ]
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108,
+            "y": 210
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— à esquerda o laboratório libera; à direita a biologia agradece."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "colunas",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 02 · A COMPARAÇÃO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 186
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Mesmo número. Conduta "
+            },
+            {
+              "text": "oposta.",
+              "accent": true
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 104,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 6,
+          "atual": 2,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "colunas_bloco",
+          "type": "colunas",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 500
+          },
+          "w": 884,
+          "gap": 40,
+          "tam_titulo": 24,
+          "tam_corpo": 27,
+          "style": {
+            "font_titulo": "$type.kicker",
+            "font_corpo": "$type.body",
+            "cor_titulo": "$color.text.secondary",
+            "cor_corpo": "$color.text.secondary",
+            "cor_fio": "$color.linha.fio"
+          },
+          "colunas": [
+            {
+              "titulo": "LAUDO A",
+              "cor": "$color.text.muted",
+              "texto": "Ferritina 18. Dentro da referência. Cansaço atribuído à rotina. Sem conduta."
+            },
+            {
+              "titulo": "LAUDO B",
+              "cor": "$color.accent.text",
+              "texto": "Ferritina 18. Fora do ótimo. Investigação de perda oculta e reposição dirigida."
+            }
+          ]
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108,
+            "y": 230
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— o exame não mudou. A leitura mudou."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "medidor",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 03 · A ESCALA"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 186
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Você vive no "
+            },
+            {
+              "text": "piso",
+              "accent": true
+            },
+            {
+              "text": " do aceitável"
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 104,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 6,
+          "atual": 3,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "medidor_barra",
+          "type": "medidor",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 520
+          },
+          "w": 884,
+          "h": 18,
+          "valor_frac": 0.17,
+          "faixa_segura": [
+            0.55,
+            0.9
+          ],
+          "style": {
+            "cor_trilho": "$color.linha.trilho",
+            "cor_preenchido": "$color.accent.dim",
+            "cor_faixa": "$color.accent.text",
+            "cor_marcador": "$color.accent.text"
+          }
+        },
+        {
+          "id": "legenda",
+          "type": "colunas",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 578
+          },
+          "w": 884,
+          "gap": 40,
+          "tam_titulo": 22,
+          "tam_corpo": 25,
+          "style": {
+            "font_titulo": "$type.kicker",
+            "font_corpo": "$type.body",
+            "cor_titulo": "$color.text.secondary",
+            "cor_corpo": "$color.text.secondary",
+            "cor_fio": "$color.linha.fio"
+          },
+          "colunas": [
+            {
+              "titulo": "ONDE VOCÊ ESTÁ",
+              "texto": "Liberado pelo laudo. Sintomático na prática."
+            },
+            {
+              "titulo": "FAIXA ÓTIMA",
+              "cor": "$color.accent.text",
+              "texto": "Onde a performance celular deixa de ser gargalo."
+            }
+          ]
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108,
+            "y": 220
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— a barra clara é onde a biologia trabalha sem esforço."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "carimbo",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "SINAL 04 · A DECISÃO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 430
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Não é "
+            },
+            {
+              "text": "sorte",
+              "tratamento": {
+                "tipo": "contorno",
+                "cor": "#C9A84C",
+                "espessura": "3px"
+              }
+            },
+            {
+              "text": ". É "
+            },
+            {
+              "text": "método",
+              "accent": true,
+              "tratamento": {
+                "tipo": "verniz"
+              }
+            },
+            {
+              "text": "."
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 126,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 6,
+          "atual": 4,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "selo",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 700
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "5 anos de",
+              "tratamento": {
+                "tipo": "knockout",
+                "cor": "#C9A84C",
+                "cor_texto": "auto"
+              }
+            },
+            {
+              "text": " biomarcador não mente"
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 40,
+            "max": 62,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108,
+            "y": 230
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— o corpo registra a média, não a intenção."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cta",
+      "background": "$color.surface.base",
+      "layers": [
+        {
+          "id": "vinheta",
+          "type": "vinheta",
+          "cor": "$efeitos.vinheta.cor",
+          "raio": "$efeitos.vinheta.raio",
+          "centro": "$efeitos.vinheta.centro"
+        },
+        {
+          "id": "kicker_row",
+          "type": "frame",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 100
+          },
+          "layout": {
+            "mode": "horizontal",
+            "gap": 18,
+            "align": "center"
+          },
+          "children": [
+            {
+              "id": "kicker_rule",
+              "type": "rect",
+              "w": 48,
+              "h": 5,
+              "fill": "$color.accent.graphic",
+              "radius": 0,
+              "verniz": "$efeitos.verniz"
+            },
+            {
+              "id": "kicker",
+              "type": "text",
+              "slot": "kicker",
+              "runs": [
+                {
+                  "text": "PROTOCOLO INDIVIDUALIZADO"
+                }
+              ],
+              "style": {
+                "font": "$type.kicker",
+                "color": "$color.accent.text"
+              },
+              "fit": {
+                "mode": "fixed",
+                "size": 25,
+                "max_lines": 1,
+                "overflow": "fail"
+              }
+            }
+          ]
+        },
+        {
+          "id": "headline",
+          "type": "text",
+          "slot": "headline",
+          "pos": {
+            "anchor": "top_left",
+            "x": 102,
+            "y": 430
+          },
+          "max_width": 884,
+          "runs": [
+            {
+              "text": "Ler o laudo é fácil. Ler a "
+            },
+            {
+              "text": "biologia",
+              "fonte": "$type.accent_serif"
+            },
+            {
+              "text": " é outra coisa."
+            }
+          ],
+          "style": {
+            "font": "$type.display",
+            "color": "$color.text.primary",
+            "accent_color": "$color.accent.text"
+          },
+          "efeitos": {
+            "halacao": "$?efeitos.halacao_accent"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 50,
+            "max": 112,
+            "max_lines": 3,
+            "hyphenate": false,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "handle",
+          "type": "text",
+          "slot": "label",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 96
+          },
+          "runs": [
+            {
+              "text": "@dr.andersonramos · CRM 30986-PR"
+            }
+          ],
+          "style": {
+            "font": "$type.label",
+            "color": "$color.text.muted"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 21,
+            "max_lines": 1
+          }
+        },
+        {
+          "id": "dots",
+          "type": "dots",
+          "total": 6,
+          "atual": 5,
+          "size": 9,
+          "gap": 10,
+          "cor_ativa": "$color.dots.ativa",
+          "cor_inativa": "$color.dots.inativa",
+          "pos": {
+            "anchor": "bottom_right",
+            "x": 102,
+            "y": 100
+          }
+        },
+        {
+          "id": "grain",
+          "type": "texture",
+          "opacity": "$efeitos.grao.opacity",
+          "blend": "$efeitos.grao.blend",
+          "escala": "$efeitos.grao.escala",
+          "piso": "$efeitos.grao.piso",
+          "amplitude": "$efeitos.grao.amplitude"
+        },
+        {
+          "id": "fecho",
+          "type": "text",
+          "slot": "body",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 102,
+            "y": 240
+          },
+          "max_width": 860,
+          "runs": [
+            {
+              "text": "Consulta de Performance · Curitiba · drandersonramos.com.br"
+            }
+          ],
+          "style": {
+            "font": "$type.body",
+            "color": "$color.text.secondary"
+          },
+          "fit": {
+            "mode": "auto",
+            "min": 24,
+            "max": 31,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        },
+        {
+          "id": "nota",
+          "type": "text",
+          "slot": "serifa",
+          "pos": {
+            "anchor": "bottom_left",
+            "x": 108,
+            "y": 168
+          },
+          "max_width": 850,
+          "runs": [
+            {
+              "text": "— conteúdo educativo. Não substitui consulta médica."
+            }
+          ],
+          "style": {
+            "font": "$type.serifa",
+            "color": "$color.text.nota"
+          },
+          "fit": {
+            "mode": "fixed",
+            "size": 29,
+            "max_lines": 2,
+            "overflow": "fail"
+          }
+        }
+      ]
+    }
+  ]
+}

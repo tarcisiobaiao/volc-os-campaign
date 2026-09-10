@@ -1,0 +1,7 @@
+# Fundos gerados por IA, recuperados do acervo em motor-imagem/compartilhado/
+# prensa-poc/out/. São 20 MB de PNG de FIXTURE — necessários para renderizar as
+# specs que referenciam foto, e desnecessários no histórico do repositório.
+#
+# Para restaurar:
+#   cp "<acervo>/motor-imagem/compartilhado/prensa-poc/out"/bg_*.png motor/assets_bg/
+motor/assets_bg/*.png
