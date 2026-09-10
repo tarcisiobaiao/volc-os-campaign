@@ -433,3 +433,269 @@ def test_com_foto_o_plano_volta_a_governar():
 
     assert frame["pos"]["anchor"] == "top_left"
     assert frame["pos"]["y"] == round(0.58 * 1350)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. A cena: uma imagem de IA paga uma vez, servindo N formatos
+# ─────────────────────────────────────────────────────────────────────────────
+
+CENA = {"id": "cena", "file": "out/bg_plano_faixa_inferior.png"}
+
+
+def test_com_cena_a_spec_usa_layers_de_topo_e_nao_slides():
+    """⚠️ `scrim.gradient.auto` e `colocacao.modo=auto` são MUTUAMENTE EXCLUSIVOS.
+
+    `resolve.py` mede o scrim varrendo `resolvido.get("layers")` — as camadas de
+    TOPO — e resolve a colocação automática varrendo `resolvido.get("slides")`.
+    Uma spec com `slides` nunca tem o scrim medido; uma com `layers` nunca tem a
+    colocação medida. Havendo cena escolhemos o scrim, porque é ele que SELA o
+    contraste do texto sobre a foto — a colocação só o desvia.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350), asset=CENA)
+
+    assert "layers" in post
+    assert "slides" not in post
+
+
+def test_sem_cena_nao_ha_scrim_nem_grao():
+    """Scrim sobre nada é uma chapa preta por cima de um campo de cor."""
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350))
+
+    assert not [c for c in tradutor.camadas_de(post) if c["type"] in ("scrim", "image")]
+
+
+def test_cena_empilha_imagem_scrim_vinheta_e_grao_nessa_ordem():
+    """Empilhamento é a ordem do array (`render.py` não tem z-index).
+
+    Foto embaixo; scrim selando o contraste; vinheta fechando a borda; o texto;
+    e o grão POR CIMA de tudo, que é o que costura a letra de código à foto de
+    IA e tira o aspecto de adesivo colado.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350), asset=CENA)
+    tipos = [c["type"] for c in tradutor.camadas_de(post)]
+
+    assert tipos == ["image", "scrim", "vinheta", "frame", "texture"]
+
+
+def test_faixa_medida_pelo_scrim_e_derivada_da_zona_do_texto():
+    """Não se declara à mão onde o texto vai estar — o código já sabe.
+
+    `resolve.scrim_auto` mede a luminância da foto DENTRO de `faixa_texto` e
+    devolve o alpha mínimo para o contraste alvo. Se essa faixa for digitada
+    solta, ela e a zona do texto divergem na primeira mudança de plano, e o
+    engine passa a selar contraste num lugar onde não há letra.
+    """
+    spec = _spec(
+        margem_segura={"esquerda": 76, "direita": 76, "topo": 76, "base": 76},
+        plano_de_composicao={"nome": "faixa_inferior", "pedido": "…",
+                             "zona": [0.05, 0.58, 0.95, 0.94]},
+    )
+    post = tradutor.traduzir(spec, artboard=(1080, 1350), asset=CENA)
+    scrim = next(c for c in tradutor.camadas_de(post) if c["type"] == "scrim")
+
+    assert scrim["style"]["gradient"]["auto"] is True
+    assert scrim["style"]["gradient"]["faixa_texto"] == [0.58, 0.94]
+    assert scrim["asset_ref"] == CENA["id"]
+
+
+def test_faixa_medida_segue_a_zona_RECORTADA_e_nao_a_pedida():
+    """Quem manda é onde a letra ficou, não onde o plano pediu que ficasse.
+
+    Com base segura de 243 px num canvas de 1350, a zona `faixa_inferior` é
+    cortada em 0.82 e não vai até 0.94. Medir o scrim na faixa pedida selaria
+    contraste num trecho de foto que o texto nunca ocupa — e deixaria de selar
+    onde ele ocupa.
+    """
+    spec = _spec(
+        margem_segura={"esquerda": 76, "direita": 76, "topo": 76, "base": 243},
+        plano_de_composicao={"nome": "faixa_inferior", "pedido": "…",
+                             "zona": [0.05, 0.58, 0.95, 0.94]},
+    )
+    post = tradutor.traduzir(spec, artboard=(1080, 1350), asset=CENA)
+    scrim = next(c for c in tradutor.camadas_de(post) if c["type"] == "scrim")
+
+    assert scrim["style"]["gradient"]["faixa_texto"] == [0.58, 0.82]
+
+
+def test_cta_vira_botao_de_verdade_e_nao_uma_linha_de_texto():
+    """Arbitragem quer botão: alvo de clique aparente, não um link tipográfico.
+
+    O motor já tem a peça — um `frame` com `style.fill` vira container pintado
+    (`render.py`), e ganha `data-mask` justamente por ser vizinho declarado e
+    não tinta de texto, que é o que faz o gate de clearance julgá-lo certo.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350), asset=CENA, botao=True)
+    botao = tradutor.botao_de(post)
+
+    assert botao["style"]["fill"] == "$color.accent.text"
+    assert botao["style"]["radius"] > 0
+    assert botao["children"][0]["style"]["color"] == "$color.text.on_accent"
+    assert botao["children"][0]["runs"][0]["text"] == "Ver orientações"
+
+
+def test_sem_cta_nao_se_desenha_botao_vazio():
+    spec = _spec(texto_exato={"headline": "Vai consultar o Pé-de-Meia no app?",
+                              "complemento": "Entenda como usar.", "cta": ""})
+    post = tradutor.traduzir(spec, artboard=(1080, 1350), asset=CENA, botao=True)
+
+    assert tradutor.botao_de(post) is None
+
+
+def test_skin_traz_grao_e_vinheta_porque_a_camada_os_referencia_por_token():
+    """`$efeitos.grao.opacity` num spec sem `efeitos` na skin é ref não resolvida."""
+    efeitos = tradutor.skin_da_familia(FAMILIA)["efeitos"]
+
+    assert efeitos["grao"]["opacity"] > 0
+    assert efeitos["vinheta"]["cor"]
+
+
+def test_botao_e_camada_de_topo_porque_frame_aninhado_escapa_do_fluxo():
+    """⚠️ `frame` NÃO se aninha. `_pos_css` (`render.py:65`) emite
+    `position:absolute` para TODO frame, e sem `pos` isso vira `left:0;top:0`.
+
+    Medido: o botão declarado como filho do bloco de conteúdo saltou para a
+    origem do canvas e reprovou as quatro peças com
+    `colisão de texto: headline × cta (185×29px)`. Nenhuma spec do acervo aninha
+    frame em frame — todas põem no topo, com `pos` próprio. O botão segue a
+    mesma regra.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350), asset=CENA, botao=True)
+    botao = tradutor.botao_de(post)
+
+    assert botao in tradutor.camadas_de(post)
+    assert botao not in tradutor.frame_de(post)["children"]
+    assert botao["pos"]["anchor"] == "bottom_left"
+
+
+def test_sem_foto_o_bloco_SOBE_para_abrir_espaco_ao_botao():
+    """Âncora inferior: a reserva de rodapé levanta o bloco inteiro.
+
+    A altura do botão é contável AQUI porque é o tradutor quem escolhe corpo,
+    padding e raio do CTA — não é fato para perguntar a ninguém.
+    """
+    spec = _spec(margem_segura={"esquerda": 76, "direita": 76, "topo": 76, "base": 76})
+    com = tradutor.frame_de(tradutor.traduzir(spec, artboard=(1080, 1350), botao=True))
+    sem = tradutor.frame_de(tradutor.traduzir(spec, artboard=(1080, 1350), botao=False))
+
+    assert com["pos"]["y"] - sem["pos"]["y"] == (
+        tradutor.ALTURA_DO_BOTAO + tradutor.RESPIRO_DO_BOTAO)
+
+
+def test_com_foto_a_reserva_ENCOLHE_o_orcamento_de_altura():
+    """Âncora superior: o topo do bloco é o plano, então quem cede é a base.
+
+    Levantar o `y` aqui moveria o texto para fora da zona calma que a foto
+    abriu — a reserva tira altura do orçamento, não posição do bloco.
+    """
+    spec = _spec(margem_segura={"esquerda": 76, "direita": 76, "topo": 76, "base": 76})
+    com = tradutor.frame_de(tradutor.traduzir(spec, artboard=(1080, 1350),
+                                              asset=CENA, botao=True))
+    sem = tradutor.frame_de(tradutor.traduzir(spec, artboard=(1080, 1350),
+                                              asset=CENA, botao=False))
+
+    assert com["pos"]["y"] == sem["pos"]["y"]
+    assert com["zona_h"] < sem["zona_h"]
+    # o invariante que importa: a base do bloco não invade a faixa do botão
+    piso = 1350 - 76 - tradutor.ALTURA_DO_BOTAO - tradutor.RESPIRO_DO_BOTAO
+    assert com["pos"]["y"] + com["zona_h"] <= piso
+
+
+def test_corte_da_foto_ancora_no_lado_oposto_a_zona_do_texto():
+    """A única alavanca de enquadramento que a spec tem, e ela é derivável.
+
+    `object-fit:cover` é fixo no motor, mas `object_position` é honrado
+    (`render.py`, ramo `image`). Medido: a mesma foto 4:5 num artboard 1.91:1
+    com corte centrado DECAPITA o sujeito — sobrou barba e ombro. O plano já
+    diz onde o sujeito está, porque reservou o lado contrário para o texto:
+    `faixa_inferior` pede o sujeito na metade de CIMA, logo o corte ancora no
+    topo. Ninguém precisa declarar isso.
+    """
+    spec = _spec(plano_de_composicao={"nome": "faixa_inferior", "pedido": "…",
+                                      "zona": [0.05, 0.58, 0.95, 0.94]})
+    post = tradutor.traduzir(spec, artboard=(1200, 628), asset=CENA)
+    imagem = next(c for c in tradutor.camadas_de(post) if c["type"] == "image")
+
+    assert imagem["object_position"] == "center top"
+
+
+def test_plano_de_faixa_superior_inverte_a_ancora_do_corte():
+    """Sujeito embaixo, texto em cima: o corte tem de segurar a base."""
+    spec = _spec(plano_de_composicao={"nome": "faixa_superior", "pedido": "…",
+                                      "zona": [0.05, 0.06, 0.95, 0.42]})
+    post = tradutor.traduzir(spec, artboard=(1200, 628), asset=CENA)
+    imagem = next(c for c in tradutor.camadas_de(post) if c["type"] == "image")
+
+    assert imagem["object_position"] == "center bottom"
+
+
+def test_plano_de_coluna_ancora_o_corte_no_eixo_horizontal():
+    """`coluna_direita` reserva a direita para o texto — o sujeito está à esquerda."""
+    spec = _spec(plano_de_composicao={"nome": "coluna_direita", "pedido": "…",
+                                      "zona": [0.48, 0.20, 0.95, 0.92]})
+    post = tradutor.traduzir(spec, artboard=(1200, 628), asset=CENA)
+    imagem = next(c for c in tradutor.camadas_de(post) if c["type"] == "image")
+
+    assert imagem["object_position"] == "left center"
+
+
+def test_ancora_declarada_pelo_operador_vence_a_derivada():
+    """Derivar é o padrão; a foto que foge da regra ainda pode ser dirigida."""
+    post = tradutor.traduzir(_spec(), artboard=(1200, 628),
+                             asset={**CENA, "object_position": "right bottom"})
+    imagem = next(c for c in tradutor.camadas_de(post) if c["type"] == "image")
+
+    assert imagem["object_position"] == "right bottom"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. A faixa medida tem de ser a faixa VISTA
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_faixa_do_scrim_e_convertida_para_o_espaco_da_FOTO():
+    """⚠️ `resolve.scrim_auto` mede o ARQUIVO, não a área visível.
+
+    Ele abre o asset e fatia pela fração da altura DELE (`resolve.py:76`),
+    ignorando o artboard e o corte — recebe a spec e nunca a usa. Fora do 4:5
+    nativo, a faixa em coordenadas de artboard aponta para pixels que ninguém
+    vê: numa entrega 1.91:1 com corte ancorado no topo, a faixa 0.58→0.73 do
+    quadro cai em 0.24→0.31 da foto, onde está o rosto claro e não o fundo
+    escuro. Medir errado devolve selo otimista, e selo otimista é texto ilegível
+    aprovado por um número.
+    """
+    convertida = tradutor.faixa_na_foto(
+        faixa=[0.58, 0.73], artboard=(1200, 628), foto=(1088, 1360),
+        object_position="center top",
+    )
+
+    assert convertida == [0.2428, 0.3056]
+
+
+def test_conversao_e_identidade_quando_a_proporcao_bate():
+    """Foto 4:5 num artboard 4:5: não há corte, logo não há o que converter."""
+    assert tradutor.faixa_na_foto(
+        faixa=[0.58, 0.94], artboard=(1088, 1360), foto=(1088, 1360),
+        object_position="center center",
+    ) == [0.58, 0.94]
+
+
+def test_sem_dimensao_declarada_a_faixa_passa_intacta():
+    """O tradutor não lê disco. Sem `w`/`h` no asset, não há conversão possível.
+
+    Passar a faixa crua é o comportamento honesto: o selo sai como sempre saiu,
+    e quem quiser a medição certa declara o tamanho da foto.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1200, 628), asset=CENA)
+    scrim = next(c for c in tradutor.camadas_de(post) if c["type"] == "scrim")
+
+    assert scrim["style"]["gradient"]["faixa_texto"] == scrim["style"]["gradient"]["faixa_no_quadro"]
+
+
+def test_com_dimensao_declarada_a_faixa_medida_muda():
+    spec = _spec(margem_segura={"esquerda": 84, "direita": 84, "topo": 84, "base": 84})
+    post = tradutor.traduzir(spec, artboard=(1200, 628),
+                             asset={**CENA, "w": 1088, "h": 1360})
+    grad = next(c for c in tradutor.camadas_de(post) if c["type"] == "scrim")["style"]["gradient"]
+
+    assert grad["faixa_texto"] != grad["faixa_no_quadro"]
+    # o corte ancorou no topo, então a faixa medida sobe na foto
+    assert grad["faixa_texto"][0] < grad["faixa_no_quadro"][0]

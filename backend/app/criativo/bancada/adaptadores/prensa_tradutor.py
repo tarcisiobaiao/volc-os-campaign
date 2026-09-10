@@ -69,6 +69,21 @@ MINIMO_DA_FAMILIA = 2
 #: `resolve.py:100` — accent budget. Acima disto a peça é recusada antes do custo.
 ACCENT_MAX_PALAVRAS = 2
 
+#: Corpo, padding e raio do botão de CTA. São daqui, e é por isso que a altura
+#: dele é CONTÁVEL em vez de medida no navegador: nada disto vem de fora.
+CTA_CORPO_PX = 24
+CTA_PADDING_V = 16
+CTA_PADDING_H = 28
+CTA_RAIO = 8
+#: padding em cima e embaixo + corpo + o respiro de tinta do próprio rótulo.
+ALTURA_DO_BOTAO = 2 * CTA_PADDING_V + CTA_CORPO_PX + 4
+#: distância entre o botão e a base do bloco de texto.
+RESPIRO_DO_BOTAO = 24
+
+#: Acima desta fração de um eixo a zona deixa de ser "faixa reservada" e passa a
+#: atravessar o quadro — e então não diz nada sobre onde o sujeito está.
+FAIXA_MAXIMA = 0.6
+
 #: Cores que aparecem em briefing brasileiro de programa público e social. É um
 #: atalho, não uma autoridade: o operador pode sempre declarar o hex junto do
 #: nome ("azul royal #1D3FBB") e é o hex declarado que vence.
@@ -221,6 +236,16 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -
             },
             "accent": {"text": acento, "graphic": acento, "dim": acento},
         },
+        # As camadas `texture` e `vinheta` referenciam estes tokens por `$`; uma
+        # skin sem `efeitos` deixa a ref sem resolver e a camada sai quebrada.
+        # Grão é o que costura letra de código a foto de IA: sem ele a
+        # tipografia lê como adesivo colado por cima da fotografia.
+        "efeitos": {
+            "grao": {"opacity": 0.30, "blend": "overlay", "escala": 420,
+                     "piso": -0.7, "amplitude": 3.2},
+            "vinheta": {"cor": "rgba(0,0,0,0.40)", "raio": "82% 72%",
+                        "centro": "50% 38%"},
+        },
         "type": {
             # ⚠️ `ink_padding` não é enfeite: `render.py:611` mede a TINTA, não a
             # caixa, e o glifo pinta fora do layout box. Toda skin do acervo
@@ -296,6 +321,64 @@ def _runs_com_ancora(headline: str, ancoras: list[str]) -> list[dict]:
     return runs
 
 
+def ancora_do_corte(zona: list | None) -> str:
+    """Onde firmar o corte da foto, deduzido de onde o texto vai ficar.
+
+    `object-fit:cover` é fixo no motor, então servir N artboards com uma imagem
+    só é sempre um corte — e a única coisa que a spec controla é POR ONDE ele
+    corta. Medido: uma foto 4:5 num 1.91:1 com corte centrado decapita o
+    sujeito, sobrando barba e ombro.
+
+    O plano já sabe a resposta sem que ninguém a declare: ele reservou uma faixa
+    para o texto justamente porque o sujeito está do lado contrário.
+
+    Só se inclina o eixo em que o plano de fato reserva uma FAIXA.
+    `coluna_direita` ocupa 47% da largura — é faixa — e 72% da altura, que não
+    é: inclinar o vertical ali seria ler intenção onde o plano não declarou
+    nenhuma. Daí o piso de `FAIXA_MAXIMA`: acima disso a zona atravessa o quadro
+    e aquele eixo fica centrado.
+    """
+    if not zona:
+        return "center center"
+    x0, y0, x1, y1 = zona
+
+    def eixo(ini: float, fim: float, antes: str, depois: str) -> str:
+        if (fim - ini) > FAIXA_MAXIMA:
+            return "center"
+        return antes if (ini + fim) / 2 < 0.5 else depois
+
+    return f"{eixo(x0, x1, 'right', 'left')} {eixo(y0, y1, 'bottom', 'top')}"
+
+
+def faixa_na_foto(
+    faixa: list, artboard: tuple[int, int], foto: tuple[int, int],
+    object_position: str,
+) -> list:
+    """Converte uma faixa em fração do QUADRO para fração da FOTO.
+
+    Existe porque `resolve.scrim_auto` mede o arquivo de origem fatiado pela
+    fração da altura dele — recebe a spec e nunca a usa, então não sabe do
+    artboard nem do corte. Enquanto a foto e o quadro têm a mesma proporção isso
+    é indistinguível; fora dali o engine mede pixels que ninguém vê. Numa
+    entrega 1.91:1 com corte no topo, a faixa 0.58→0.73 do quadro cai em
+    0.24→0.31 da foto: o rosto claro, e não o fundo escuro. O selo sairia
+    otimista, que é o pior erro possível num portão de contraste.
+
+    A conta é a do `object-fit: cover`: escala pelo maior fator, e o resto do
+    lado que sobra é cortado conforme o `object-position`.
+    """
+    largura_q, altura_q = artboard
+    largura_f, altura_f = foto
+    if not (largura_f and altura_f):
+        return faixa
+    escala = max(largura_q / largura_f, altura_q / altura_f)
+    janela = altura_q / escala          # altura da foto que cabe no quadro, em px da foto
+    sobra = max(0.0, altura_f - janela)
+    vertical = object_position.split()[-1] if object_position else "center"
+    topo = {"top": 0.0, "bottom": sobra}.get(vertical, sobra / 2)
+    return [round((topo + f * janela) / altura_f, 4) for f in faixa]
+
+
 def _nome_do_formato(largura: int, altura: int) -> str:
     razao = largura / altura
     if abs(razao - 0.8) < 0.02:
@@ -316,6 +399,7 @@ def traduzir(
     ancora: str | None = None,
     ancoras_aceitas: list[str] | None = None,
     asset: dict | None = None,
+    botao: bool = False,
     tokens_file: str = "",
 ) -> dict:
     """Uma `CreativeSpec` e um artboard viram uma `post.spec/1.0.0`.
@@ -329,6 +413,8 @@ def traduzir(
     margem = spec.margem_segura
     plano = spec.plano_de_composicao or {}
     zona = plano.get("zona")
+    tem_botao = botao and bool(str(spec.texto_exato.get("cta") or "").strip())
+    reserva_de_rodape = (ALTURA_DO_BOTAO + RESPIRO_DO_BOTAO) if tem_botao else 0
 
     if zona and asset:
         # `planos.PLANOS[*]["zona"]` é (x0,y0,x1,y1) em FRAÇÃO do canvas, e é
@@ -351,7 +437,7 @@ def traduzir(
         x = max(round(zona[0] * largura), margem["esquerda"])
         y = max(round(zona[1] * altura), margem["topo"])
         direita = min(round(zona[2] * largura), largura - margem["direita"])
-        base = min(round(zona[3] * altura), altura - margem["base"])
+        base = min(round(zona[3] * altura), altura - margem["base"] - reserva_de_rodape)
         largura_da_zona = max(1, direita - x)
         altura_da_zona = max(1, base - y)
     else:
@@ -360,9 +446,18 @@ def traduzir(
         # editorial — texto pendurado no topo com o resto vazio lê como erro.
         ancora_do_frame = "bottom_left"
         x = margem["esquerda"]
-        y = margem["base"]
+        y = margem["base"] + reserva_de_rodape
         largura_da_zona = largura - margem["esquerda"] - margem["direita"]
         altura_da_zona = altura - margem["topo"] - margem["base"]
+
+    # A faixa onde a letra realmente vive, em fração da altura — é ela que o
+    # scrim vai medir. Com âncora inferior o bloco cresce para cima a partir da
+    # base, então a faixa é o trecho de baixo do canvas.
+    if ancora_do_frame == "bottom_left":
+        faixa_texto = [round(1 - (y + altura_da_zona) / altura, 4),
+                       round(1 - y / altura, 4)]
+    else:
+        faixa_texto = [round(y / altura, 4), round((y + altura_da_zona) / altura, 4)]
 
     filhos: list[dict] = []
     if "headline" in textos:
@@ -394,7 +489,9 @@ def traduzir(
             "fit": {"mode": "auto", "min": 20, "max": 38,
                     "max_lines": 4, "overflow": "fail"},
         })
-    if "cta" in textos:
+    if "cta" in textos and botao:
+        pass  # o botão é camada de TOPO — montado abaixo, fora do bloco
+    if "cta" in textos and not botao:
         filhos.append({
             "id": "cta",
             "type": "text",
@@ -406,13 +503,52 @@ def traduzir(
 
     camadas: list[dict] = []
     if asset:
+        corte = asset.get("object_position") or ancora_do_corte(zona)
+        # ⚠️ `object_fit`/`box` do spec são IGNORADOS — `render.py` fixa
+        # `object-fit:cover` e `inset:0`. Uma foto 4:5 num artboard 9:16 é
+        # CORTADA pelo motor, e é por isso que servir N formatos com uma
+        # imagem só é economia real na letra e aposta no enquadramento.
         camadas.append({
-            "id": "cena",
+            "id": asset["id"] + "_bg",
             "type": "image",
             "asset": asset["id"],
-            "box": {"x": 0, "y": 0, "w": "100%", "h": "100%"},
-            "object_fit": "cover",
-            "object_position": "center center",
+            # derivada do plano; o operador ainda pode dirigir a foto que foge à regra
+            "object_position": corte,
+        })
+        # O SELO. `resolve.scrim_auto` mede a luminância da foto dentro de
+        # `faixa_texto` (p95 Rec.709) e devolve o alpha MÍNIMO que garante o
+        # contraste alvo. É a doutrina inteira num campo: a IA compõe a luz, o
+        # engine sela o contraste. Gradiente cozido no prompt varia a cada run e
+        # não re-resolve para outro formato; este re-mede em cada artboard.
+        camadas.append({
+            "id": "selo",
+            "type": "scrim",
+            "asset_ref": asset["id"],
+            "style": {"gradient": {
+                "auto": True,
+                "direcao": "to top" if faixa_texto[0] > 0.4 else "to bottom",
+                # derivada da zona do texto, nunca digitada solta: faixa e zona
+                # divergiriam na primeira troca de plano e o engine passaria a
+                # selar contraste onde não há letra. E convertida para o espaço
+                # da FOTO, que é o que o `scrim_auto` de fato fatia — sem a foto
+                # declarar seu tamanho, não há conversão possível e a faixa
+                # passa crua, que é como o motor sempre a recebeu.
+                "faixa_texto": faixa_na_foto(
+                    faixa_texto, (largura, altura),
+                    (asset.get("w", 0), asset.get("h", 0)), corte),
+                # guardada para o recibo: é a faixa onde a letra vive NO QUADRO,
+                # e a diferença entre as duas é o tamanho do corte.
+                "faixa_no_quadro": faixa_texto,
+                "contraste_alvo": 7.0,
+                "curva": [[0, 1.0], [38, 0.95], [55, 0.45], [70, 0.0]],
+            }},
+        })
+        camadas.append({
+            "id": "vinheta",
+            "type": "vinheta",
+            "cor": "$efeitos.vinheta.cor",
+            "raio": "$efeitos.vinheta.raio",
+            "centro": "$efeitos.vinheta.centro",
         })
     camadas.append({
         "id": "conteudo",
@@ -430,6 +566,49 @@ def traduzir(
         "layout": {"mode": "vertical", "gap": 22},
         "children": filhos,
     })
+
+    if tem_botao:
+        # ⚠️ CAMADA DE TOPO, com `pos` próprio. `_pos_css` (`render.py:65`) emite
+        # `position:absolute` para todo frame, então um frame ANINHADO sem `pos`
+        # cai em `left:0;top:0` e escapa do fluxo do pai. Medido: o botão como
+        # filho do bloco saltou para a origem do canvas e reprovou as quatro
+        # peças com `colisão de texto: headline × cta`. Nenhuma spec do acervo
+        # aninha frame em frame.
+        #
+        # `style.fill` é o que dá `data-mask` ao frame — é assim que o gate de
+        # clearance o julga como vizinho declarado e não como tinta vazando.
+        camadas.append({
+            "id": "botao",
+            "type": "frame",
+            "pos": {"anchor": "bottom_left", "x": margem["esquerda"],
+                    "y": margem["base"]},
+            "style": {"fill": "$color.accent.text", "radius": CTA_RAIO,
+                      "padding": f"{CTA_PADDING_V}px {CTA_PADDING_H}px"},
+            "layout": {"mode": "horizontal", "gap": 0, "align": "center"},
+            "children": [{
+                "id": "cta",
+                "type": "text",
+                "slot": "label",
+                "runs": [{"text": textos["cta"]}],
+                "style": {"font": "$type.label", "color": "$color.text.on_accent"},
+                "fit": {"mode": "fixed", "size": CTA_CORPO_PX,
+                        "max_lines": 1, "overflow": "fail"},
+            }],
+        })
+
+    if asset:
+        # Por CIMA de tudo, inclusive da letra: é o grão que costura tipografia
+        # de código a fotografia de IA. Embaixo do texto ele granula só a foto e
+        # a letra continua lendo como adesivo.
+        camadas.append({
+            "id": "grao",
+            "type": "texture",
+            "opacity": "$efeitos.grao.opacity",
+            "blend": "$efeitos.grao.blend",
+            "escala": "$efeitos.grao.escala",
+            "piso": "$efeitos.grao.piso",
+            "amplitude": "$efeitos.grao.amplitude",
+        })
 
     post: dict = {
         "schema_version": "post.spec/1.0.0",
@@ -462,28 +641,30 @@ def traduzir(
             "contrast_min_large": 3.0,
             "clearance_decorativo_px": 16,
         },
-        "slides": [{
-            "id": "unico",
-            "background": "$color.surface.base",
-            "layers": camadas,
-        }],
     }
     if asset:
+        # ⚠️ CAMADAS DE TOPO, e não `slides`, e a escolha não é estilística.
+        # `resolve.py` mede o scrim varrendo `resolvido.get("layers")` e resolve
+        # a colocação automática varrendo `resolvido.get("slides")`. Os dois
+        # caminhos NUNCA se encontram: uma spec com `slides` jamais tem o scrim
+        # medido. Havendo cena, o scrim vence — ele SELA o contraste do texto
+        # sobre a foto, enquanto a colocação apenas o desvia. `render.py:774`
+        # trata `layers` de topo como lâmina única.
+        post["background"] = "$color.surface.base"
+        post["layers"] = camadas
         post["assets"] = [{
             "id": asset["id"],
             "kind": asset.get("kind", "photo_ia"),
             "file": asset["file"],
             "ia_gerada": asset.get("ia_gerada", True),
+            "regras": ["REGRA:sem-texto-em-imagem-ia", "REGRA:scrim-e-do-engine"],
         }]
-        # colocação auto: o motor MEDE a foto e escolhe a zona, em vez de
-        # confiar que o modelo obedeceu ao plano. `resolve.py` sobrescreve a
-        # `pos` do frame com a medida — a zona acima é a hipótese, não a lei.
-        post["colocacao"] = {
-            "modo": "auto",
-            "asset": asset["id"],
-            "frame": "conteudo",
-            "alvo_contraste": 4.5,
-        }
+    else:
+        post["slides"] = [{
+            "id": "unico",
+            "background": "$color.surface.base",
+            "layers": camadas,
+        }]
     return post
 
 
@@ -516,8 +697,19 @@ def traduzir_lote(
 # Existem para que o teste (e quem depurar um lote) leiam a spec pelo mesmo
 # caminho, em vez de cada um decorar o aninhamento de `slides[0].layers`.
 
+def camadas_de(post: dict) -> list[dict]:
+    """As camadas da lâmina, venha ela em `layers` de topo ou em `slides`."""
+    if "layers" in post:
+        return post["layers"]
+    return post["slides"][0]["layers"]
+
+
 def frame_de(post: dict) -> dict:
-    return next(c for c in post["slides"][0]["layers"] if c["id"] == "conteudo")
+    return next(c for c in camadas_de(post) if c["id"] == "conteudo")
+
+
+def botao_de(post: dict) -> dict | None:
+    return next((c for c in camadas_de(post) if c["id"] == "botao"), None)
 
 
 #: alias interno, para os leitores abaixo lerem melhor
@@ -525,7 +717,12 @@ _frame = frame_de
 
 
 def camadas_de_texto(post: dict) -> list[dict]:
-    return [c for c in _frame(post)["children"] if c["type"] == "text"]
+    """Os nós de texto da peça: os do bloco e o rótulo do botão, se houver."""
+    achadas = [c for c in _frame(post)["children"] if c["type"] == "text"]
+    alvo = botao_de(post)
+    if alvo:
+        achadas += [f for f in alvo["children"] if f["type"] == "text"]
+    return achadas
 
 
 def runs_da_headline(post: dict) -> list[dict]:
