@@ -430,14 +430,21 @@ class Host:
             query=safe(args.get("query", ""))[:160],
         )
 
-    def after_tool(self, tool: Any, args: dict[str, Any], tool_context: Any, response: Any) -> None:
-        if isinstance(response, dict):
+    def after_tool(
+        self,
+        tool: Any,
+        args: dict[str, Any],
+        tool_context: Any,
+        tool_response: Any,
+    ) -> None:
+        """Record an ADK 2.x tool result without changing the response."""
+        if isinstance(tool_response, dict):
             self.record(
                 "tool_result",
                 agent=tool_context.agent_name,
                 name=tool.name,
-                error=safe(response.get("error", "")),
-                count=len(response.get("files", response.get("matches", []))),
+                error=safe(tool_response.get("error", "")),
+                count=len(tool_response.get("files", tool_response.get("matches", []))),
             )
 
     def evaluate_critic(self, raw: str, max_rounds: int) -> str:

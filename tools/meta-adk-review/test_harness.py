@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import os
 from pathlib import Path
@@ -63,6 +64,11 @@ class HarnessTests(unittest.TestCase):
     def test_exact_model_and_high_are_immutable(self):
         self.assertEqual(MODEL, "gemini-3.8-flash")
         self.assertEqual(THINKING, "HIGH")
+
+    def test_after_tool_callback_uses_adk_2_keyword_contract(self):
+        parameters = inspect.signature(Host.after_tool).parameters
+        self.assertIn("tool_response", parameters)
+        self.assertNotIn("response", parameters)
 
     def test_four_focused_lanes_have_disjoint_names(self):
         self.assertEqual(set(LANES), {"wizard_ux", "creative_system", "publishing_contract", "measurement_ops"})
