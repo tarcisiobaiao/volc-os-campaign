@@ -1759,6 +1759,14 @@
       "evidence": "docs/closure/meta-creative-closure-20260909/HANDOFF.md e EVIDENCE.json; docs/closure/meta-parallel-creative-20260909/HANDOFF.md e browser-qa.md. Migration anterior com backup/readback; nova rodada sem migration, com testes de concorrência, cancelamento, prompt efetivo e galeria hermética. Canário de quatro imagens e QA autenticado pendentes de sessão autorizada. P11-T17 partial; Webgo intocado. Sprint de congruência: docs/closure/meta-topic-congruence-20260909/HANDOFF.md; âncora de assunto revisável, referências editoriais e validação antes da imagem. 194 testes backend e 69 frontend; sem canário pago; P11-T17 partial. Sprint cor: docs/closure/meta-color-direction-20260909/HANDOFF.md; briefing de presença cromática, referências preservadas, 201 testes backend; sem geração paga e sem paleta oficial verificada. Sprint big ideas: docs/closure/meta-big-ideas-20260909/HANDOFF.md; motivações vinculadas a fatos revisados, planejamento de ideia/pergunta/entrega/cena e UI progressiva. QA Chrome hermético mobile/desktop claro/escuro, sem geração paga ou prova de CTR. Em 10/09/2026, banco de textos flexíveis por conjunto (até5 por tipo), imagens combináveis, revisão integral e isolamento entre pais implementados. Migration 20260910075813 aplicada no Supabase oficial com ensaio revertido/readback/CAS/grants; fixtures revertidas, sem publicação Meta. 65 testes frontend focais +7 de retomada passaram, 124 backend + teste adicional; build/Chrome quatro vistas aprovados. Suites antigas de páginas têm 56 falhas de navegação e canário remoto não executado; P11-T17 partial. Evidência: docs/closure/meta-flexible-texts-20260910/HANDOFF.md."
     },
     {
+      "id": "doc:prensa-direcao-v2",
+      "label": "PRENSA: direção tipográfica v2 e replay controlado",
+      "cluster": "production",
+      "documenta": "system:prensa",
+      "summary": "P11-T22 partial: registros tipográficos, contraste local medido e comparação com as mesmas cenas/copy. Melhora de legibilidade, sem declarar vitória estética sobre IA.",
+      "evidence": "docs/architecture/ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md; tools/prensa/replay_direcao.py. Oito peças renderizadas no Chrome original em staging isolado; caminho antigo preservado por opt-in. Sem geração paga, publicação ou implantação de novo container. Aceite visual e integração automática pendentes; medição de zona não equivale a pixel gate."
+    },
+    {
       "id": "doc:creative-engines-inventory",
       "label": "Inventário dos motores de imagem VOLC",
       "cluster": "production",

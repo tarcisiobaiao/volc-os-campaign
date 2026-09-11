@@ -1676,6 +1676,14 @@
           "gaps": "Fluxo autenticado com histórico real da conta, retomada ponta a ponta e qualidade comercial ainda dependem do teste do operador. Testes SQL concorrentes locais não iniciaram por SHMMNI; prova oficial foi transacional sequencial. Nenhuma escrita Meta ou mudança Webgo nesta rodada. Não promete sequência sem lacunas nem coordena nomes criados fora do VOLC."
         },
         {
+          "id": "P11-T22",
+          "title": "Direção tipográfica PRENSA v2 com replay visual controlado",
+          "status": "partial",
+          "acceptance": "Oito peças com mesmos fundos e copy, sem geração paga; contraste e composição conferidos; direção v2 preferida visualmente pelo operador sem regressão do caminho legado.",
+          "proof": "10/09/2026: diagnóstico contra base2cb33f2 e cenas reais; direção versionada opt-in, registros tipográficos, catálogo completo de fontes, apoio protegido no fitter, eixo óptico aplicado ao papel principal, recusa de tratamento desconhecido, sombras compostas e colunas verificadas. Dois replays locais de oito peças passaram no DOM; comparação aponta melhora de leitura, mas não superioridade estética demonstrada. ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md e tools/prensa/replay_direcao.py. Sem chamada paga ou mudança de container de produção.",
+          "gaps": "Aceite visual permanece pendente. Medição de contraste é percentil da zona, não pixel gate dos glifos. Posicionamento de sujeito não é inferido automaticamente; PRENSA não oferece oclusão/perspectiva física. Direção v2 ainda opt-in, não habilitada no fluxo automático de produção."
+        },
+        {
           "id": "P11-T17",
           "title": "Contexto LP, spec visual explícita e montagem criativa Meta",
           "status": "partial",
