@@ -4611,8 +4611,8 @@
       "state": "reference",
       "state_label": "Referência",
       "tier": 3,
-      "summary": "Workflow graph ADK 2.8 com quatro lanes, Gemini 3.8 Flash HIGH, grounding comprovado, worktrees isoladas, escrita por SHA e testes sem rede.",
-      "evidence": "P11-T21 partial. Harness ativo reconstruído em tools/meta-adk-review; piloto antigo preservado apenas como histórico. 16/16 testes, três probes com modelo exato e grounding, 135 chamadas/1.258.240 tokens totais observados, zero patches aceitos e zero efeitos Meta, DB, deploy ou merge. Hipóteses contraditas pelo código foram recusadas; identidade Instagram permanece risco focal sem prova upstream. Fechamento em docs/closure/meta-adk-review-20260911/HANDOFF.md.",
+      "summary": "Workflow ADK 2.8 por tickets: Gemini exato HIGH/grounding propõe patch estruturado; host aplica por SHA e roda testes; crítico pode exigir revisão. Dois refinamentos de UX integrados, refino global parcial.",
+      "evidence": "P11-T21 partial; P11-T23 done local. 24 testes do harness, dois patches de copy/foco com 38 testes focais e build aprovados. Ciclos produtivos: 8 chamadas/145306 tokens; rodada completa inclui tentativas frustradas: 38 chamadas/710858 tokens. Zero efeitos Meta/DB/deploy. Prompts em tools/meta-adk-review/EXECUTION.md e tasks.py; próximas áreas em REFINEMENT-QUEUE.md. docs/closure/meta-adk-execution-tickets-20260911/HANDOFF.md. QA autenticado e refino global de API/mensuração não encerrados.",
       "source": "Curadoria humana, atualizada em 2026-09-09"
     },
     {

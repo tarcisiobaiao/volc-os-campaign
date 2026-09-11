@@ -49,7 +49,8 @@ export function VarinhaDeCopy({ draft, draftRef, adsetKey, save, onApply, demo }
     if (flight.current || demo) return;
     const controller = new AbortController(); flight.current = controller;
     const initial = latest.current;
-    setBusy(true); setError(''); setResult(null); setNotice('');
+    setBusy(true); setError(''); setNotice('');
+    if (stale) setResult(null);
     try {
       if (!await save()) throw new Error('Salve o rascunho antes de pedir sugestões.');
       const saved = await readMetaCampaignDraft(draftRef);
@@ -60,11 +61,16 @@ export function VarinhaDeCopy({ draft, draftRef, adsetKey, save, onApply, demo }
       if (controller.signal.aborted) return;
       if (initial !== latest.current) throw new Error('O contexto mudou durante a geração. Seus textos foram preservados.');
       generatedFor.current = initial; setResult(response);
-    } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Não foi possível gerar sugestões.'); }
+    } catch (e) {
+      if (!controller.signal.aborted) {
+        if (latest.current !== generatedFor.current) setResult(null);
+        setError(e instanceof Error ? e.message : 'Não foi possível gerar sugestões.');
+      }
+    }
     finally { flight.current = null; if (!controller.signal.aborted) setBusy(false); }
   }
   function apply(append: boolean) {
-    if (!result || stale) return;
+    if (busy || !result || stale) return;
     onApply(append ? combined! : { primary_text: result.primary_text, headline: result.headline, description: result.description });
     setResult(null); setNotice('Sugestões aplicadas. Revise os textos antes da aprovação final.');
   }
@@ -96,7 +102,7 @@ export function VarinhaDeCopy({ draft, draftRef, adsetKey, save, onApply, demo }
         {(['primary_text','headline','description'] as const).map(k => result[k].length > 0 && <div key={k}><p className="text-sm font-semibold">{k === 'primary_text' ? 'Textos principais' : k === 'headline' ? 'Títulos' : 'Descrições'}</p><ol className="mt-2 list-decimal space-y-2 pl-5 text-sm">{result[k].map((t,i) => <li key={i} className="break-words">{t}</li>)}</ol></div>)}
         {stale && <p role="alert" className="text-sm text-warning">O contexto mudou. Gere novas sugestões antes de aplicar.</p>}
         {!fits && <p className="text-sm text-muted-foreground">Acrescentar ultrapassaria cinco opções. Você pode substituir o banco atual.</p>}
-        <div className="flex flex-wrap gap-2"><Button type="button" disabled={stale || !fits} onClick={() => apply(true)}>Acrescentar ao banco</Button><Button type="button" variant="outline" disabled={stale} onClick={() => apply(false)}>Substituir textos atuais</Button><Button type="button" variant="ghost" onClick={() => setResult(null)}>Descartar</Button></div>
+        <div className="flex flex-wrap gap-2"><Button type="button" disabled={busy || stale || !fits} onClick={() => apply(true)}>Acrescentar ao banco</Button><Button type="button" variant="outline" disabled={busy || stale} onClick={() => apply(false)}>Substituir textos atuais</Button><Button type="button" variant="ghost" disabled={busy} onClick={() => setResult(null)}>Descartar</Button></div>
       </div>}
     </div>}
     {notice && <p role="status" className="text-sm text-success">{notice}</p>}

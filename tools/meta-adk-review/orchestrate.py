@@ -12,6 +12,7 @@ import sys
 from typing import Any
 
 from config import LANES, MODEL, THINKING
+from tasks import TICKETS
 
 
 def git(source: Path, *args: str) -> str:
@@ -20,7 +21,7 @@ def git(source: Path, *args: str) -> str:
 
 def require_committed_harness(source: Path, base: str) -> None:
     subprocess.check_call(
-        ["git", "-C", str(source), "cat-file", "-e", f"{base}:tools/meta-adk-review/run_lane.py"],
+        ["git", "-C", str(source), "cat-file", "-e", f"{base}:tools/meta-adk-review/ticket_workflow.py"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -58,12 +59,14 @@ async def stream_lane(
     lane_run.parent.mkdir(parents=True, exist_ok=True)
     log_path = root / "logs" / f"{lane_name}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    ticket = TICKETS[lane_name]
     command = [
         str(runtime), str(workspace / "tools/meta-adk-review/run_lane.py"),
         "--workspace", str(workspace),
         "--run-dir", str(lane_run),
         "--credential-root", str(source),
-        "--lane", lane_name,
+        "--lane", ticket.lane_name,
+        "--task", lane_name,
         "--rounds", str(args.rounds),
         "--max-calls", str(args.max_calls),
         "--max-tokens", str(args.max_tokens),
@@ -136,15 +139,16 @@ async def main(args: argparse.Namespace) -> int:
         "--credential-root", str(source),
         "--receipt", str(root / "PROBE.json"),
     ]
-    probe = await asyncio.create_subprocess_exec(*probe_command, cwd=source)
-    if await probe.wait() != 0:
-        manifest["status"] = "probe_failed"
-        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
-        print(json.dumps({"status": "probe_failed", "root": str(root)}))
-        return 2
+    if not args.prepare_only:
+        probe = await asyncio.create_subprocess_exec(*probe_command, cwd=source)
+        if await probe.wait() != 0:
+            manifest["status"] = "probe_failed"
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+            print(json.dumps({"status": "probe_failed", "root": str(root)}))
+            return 2
 
     prepared: dict[str, Path] = {}
-    for lane_name in sorted(LANES):
+    for lane_name in sorted(set(args.tasks)):
         workspace, branch = prepare_worktree(source, root, lane_name, base, run_id)
         prepared[lane_name] = workspace
         manifest["lanes"][lane_name] = {"workspace": str(workspace), "branch": branch}
@@ -169,6 +173,8 @@ async def main(args: argparse.Namespace) -> int:
             if item["report"].get("status") == "candidate_requires_lead_review"
         ],
     }
+    if not manifest['totals']['candidate_lanes']:
+        manifest['status'] = 'partial_no_candidate'
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
     print(json.dumps({
         "status": manifest["status"],
@@ -184,9 +190,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--runtime", type=Path, required=True)
     result.add_argument("--output-root", type=Path, default=Path("/private/tmp"))
     result.add_argument("--base")
+    result.add_argument("--tasks", nargs='+', choices=sorted(TICKETS), default=sorted(TICKETS))
     result.add_argument("--rounds", type=int, choices=(1, 2, 3), default=2)
-    result.add_argument("--max-calls", type=int, default=20)
-    result.add_argument("--max-tokens", type=int, default=120_000)
+    result.add_argument("--max-calls", type=int, default=6)
+    result.add_argument("--max-tokens", type=int, default=100_000)
     result.add_argument("--max-edits", type=int, default=12)
     result.add_argument("--timeout", type=int, default=1_800)
     result.add_argument("--prepare-only", action="store_true")

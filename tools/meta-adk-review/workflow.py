@@ -14,9 +14,10 @@ from google.genai import types
 
 from config import MODEL, THINKING, Lane
 from host import Host
+from tasks import Ticket, preload
 
 
-def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
+def build_workflow(host: Host, api: Any, lane: Lane, rounds: int, ticket: Ticket | None = None) -> Workflow:
     mission = Path(__file__).with_name("MISSION.md").read_text()
     lane_contract = (
         f"\n\n## Lane atual: {lane.title}\n"
@@ -25,6 +26,9 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
         "Entrypoints obrigatórios:\n- " + "\n- ".join(lane.entrypoints)
     )
     base_instruction = mission + lane_contract
+    context_packet = preload(host, ticket) if ticket else ''
+    if ticket:
+        base_instruction = mission + '\n' + Path(__file__).with_name('EXECUTION.md').read_text() + '\n' + ticket.contract()
 
     def model() -> Gemini:
         return Gemini(
@@ -58,9 +62,9 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
         model=model(),
         include_contents="none",
         instruction=(
-            base_instruction
+            (ticket.research if ticket else base_instruction)
             + "\n\nVocê é o pesquisador de contrato da API. Use Google Search agora. Consulte apenas "
-              "developers.facebook.com, facebook.com/business/help ou documentação Google necessária "
+              "developers.facebook.com, facebook.com/business/help, react.dev, w3.org ou documentação Google necessária "
               "para interpretar a integração. Entregue URLs diretas, data/versão quando disponível, "
               "campos/requisitos/limites e incertezas. Não envie código ou identificadores internos na busca. "
               "Máximo 900 palavras."
@@ -93,7 +97,10 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
             for key in ("api_research", "code_map", "implementation", "verdict"):
                 value = str(context.state.get(key, ""))
                 state[key] = value[-8_000:]
-            return base_instruction + f"\n\n## Seu papel\n{role}\n\n## Estado da lane\n" + json.dumps(
+            packet = ('\n## Fontes iniciais seguras (hash vale até editar)\n' + context_packet) if ticket else ''
+            if ticket and 'revisor' in role:
+                packet = '\n## Diff e testes atuais do host\n' + json.dumps(host.show_diff(), ensure_ascii=False)
+            return base_instruction + packet + f"\n\n## Seu papel\n{role}\n\n## Estado da lane\n" + json.dumps(
                 state, ensure_ascii=False
             )
         return render
@@ -103,7 +110,7 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
         model=model(),
         include_contents="none",
         instruction=iterative_instruction(
-            "Você é o executor, não um consultor. Parta do único defeito mapeado. Não liste arquivos amplamente "
+            "Você é o executor, não um consultor. Parta da missão curada ou do único defeito mapeado. Não liste arquivos amplamente "
             "e não rode diff antes de editar. Confirme o símbolo com busca e uma leitura focal; então aplique no "
             "máximo uma correção coesa usando hash, crie/ajuste regressão e rode "
             "o gate focal depois da última edição. Se o crítico anterior apontou regressão, resolva-a antes de "
@@ -151,6 +158,11 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
 
     decision = FunctionNode(func=decide, name="route_after_critic")
     terminal = FunctionNode(func=finalize, name="lane_terminal")
+    if ticket:
+        def seed(ctx: Context) -> dict[str, str]:
+            ctx.state['code_map'] = ticket.contract()
+            return {'ticket': ticket.slug}
+        mapper = FunctionNode(func=seed, name='curated_code_map')
     return Workflow(
         name=f"meta_{lane.slug}_workflow",
         description="Parallel reconnaissance followed by a bounded routed implementation/review graph.",

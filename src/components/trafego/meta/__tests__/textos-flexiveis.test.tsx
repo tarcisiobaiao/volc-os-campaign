@@ -103,3 +103,126 @@ it('revisão STATIC mantém cópia legada; descrição vazia no flexível não r
   expect(screen.getByText('Legado descrição oculta')).toBeTruthy();
   expect(screen.queryByText('Argumento B')).toBeNull();
 });
+
+it('adiciona opção e foca o novo campo (textarea/input), inclusive a 5ª opção', () => {
+  render(<Editor />);
+  const addTexto = screen.getByRole('button', { name: 'Adicionar texto principal' });
+  fireEvent.click(addTexto);
+  const novoTexto2 = screen.getByLabelText('Texto principal 2');
+  expect(document.activeElement).toBe(novoTexto2);
+
+  const addTitulo = screen.getByRole('button', { name: 'Adicionar título' });
+  fireEvent.click(addTitulo);
+  const novoTitulo2 = screen.getByLabelText('Título 2');
+  expect(document.activeElement).toBe(novoTitulo2);
+
+  fireEvent.click(addTitulo);
+  expect(document.activeElement).toBe(screen.getByLabelText('Título 3'));
+  fireEvent.click(addTitulo);
+  expect(document.activeElement).toBe(screen.getByLabelText('Título 4'));
+  fireEvent.click(addTitulo);
+  expect((addTitulo as HTMLButtonElement).disabled).toBe(true);
+  expect(document.activeElement).toBe(screen.getByLabelText('Título 5'));
+});
+
+it('remover opção foca o campo seguinte no mesmo grupo', () => {
+  const comTres: TextosFlexiveisDraft = {
+    primary_text: ['Texto 1'],
+    headline: ['Título 1', 'Título 2', 'Título 3'],
+    description: [],
+  };
+  render(<Editor value={comTres} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Remover título 1' }));
+  const novoPrimeiro = screen.getByLabelText('Título 1') as HTMLInputElement;
+  expect(novoPrimeiro.value).toBe('Título 2');
+  expect(document.activeElement).toBe(novoPrimeiro);
+});
+
+it('remover a última opção foca o campo anterior no mesmo grupo', () => {
+  const comTres: TextosFlexiveisDraft = {
+    primary_text: ['Texto 1'],
+    headline: ['Título 1', 'Título 2', 'Título 3'],
+    description: [],
+  };
+  render(<Editor value={comTres} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Remover título 3' }));
+  const segundo = screen.getByLabelText('Título 2') as HTMLInputElement;
+  expect(segundo.value).toBe('Título 2');
+  expect(document.activeElement).toBe(segundo);
+});
+
+it('remover a única opção de descrição foca o botão Adicionar descrição', () => {
+  const comDesc: TextosFlexiveisDraft = {
+    primary_text: ['Texto 1'],
+    headline: ['Título 1'],
+    description: ['Descrição 1'],
+  };
+  render(<Editor value={comDesc} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Remover descrição 1' }));
+  expect(screen.queryByLabelText('Descrição 1')).toBeNull();
+  const btnAddDesc = screen.getByRole('button', { name: 'Adicionar descrição' });
+  expect(document.activeElement).toBe(btnAddDesc);
+});
+
+it('render externo não rouba foco e disabled impede mutação', () => {
+  function EditorComControleExterno() {
+    const [textos, setTextos] = useState(inicial);
+    const [contador, setContador] = useState(0);
+    return (
+      <div>
+        <button type="button" onClick={() => setContador(c => c + 1)}>Disparar render externo ({contador})</button>
+        <TextosDoAnuncioFlexivel value={textos} onChange={setTextos} conjunto="Conjunto A" imagens={3} />
+      </div>
+    );
+  }
+  render(<EditorComControleExterno />);
+  const inputTexto = screen.getByLabelText('Texto principal 1');
+  inputTexto.focus();
+  expect(document.activeElement).toBe(inputTexto);
+
+  fireEvent.click(screen.getByRole('button', { name: /Disparar render externo/ }));
+  expect(document.activeElement).toBe(inputTexto);
+
+  cleanup();
+  const onChange = vi.fn();
+  render(<TextosDoAnuncioFlexivel value={inicial} onChange={onChange} conjunto="Conjunto A" imagens={3} disabled />);
+  const btnAdd = screen.getByRole('button', { name: 'Adicionar texto principal' });
+  fireEvent.click(btnAdd);
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+it('mantém isolamento estrito de foco entre dois editores independentes', () => {
+  function DoisEditores() {
+    const [valA, setValA] = useState<TextosFlexiveisDraft>({ primary_text: ['Txt A'], headline: ['Tit A'], description: [] });
+    const [valB, setValB] = useState<TextosFlexiveisDraft>({ primary_text: ['Txt B'], headline: ['Tit B'], description: [] });
+    return (
+      <div>
+        <TextosDoAnuncioFlexivel value={valA} onChange={setValA} conjunto="Alpha" imagens={2} />
+        <TextosDoAnuncioFlexivel value={valB} onChange={setValB} conjunto="Beta" imagens={2} />
+      </div>
+    );
+  }
+  render(<DoisEditores />);
+  const secA = screen.getByText('1 anúncio flexível · Alpha').closest('section')!;
+  const secB = screen.getByText('1 anúncio flexível · Beta').closest('section')!;
+
+  const btnAddA = within(secA).getByRole('button', { name: 'Adicionar texto principal' });
+  fireEvent.click(btnAddA);
+  const campoA2 = within(secA).getByLabelText('Texto principal 2');
+  expect(document.activeElement).toBe(campoA2);
+  expect(within(secB).queryByLabelText('Texto principal 2')).toBeNull();
+
+  const btnAddB = within(secB).getByRole('button', { name: 'Adicionar título' });
+  fireEvent.click(btnAddB);
+  const campoB2 = within(secB).getByLabelText('Título 2');
+  expect(document.activeElement).toBe(campoB2);
+  expect(within(secA).queryByLabelText('Título 2')).toBeNull();
+
+  const campoA1 = within(secA).getByLabelText('Texto principal 1');
+  campoA1.focus();
+  expect(document.activeElement).toBe(campoA1);
+
+  const campoB1 = within(secB).getByLabelText('Título 1');
+  fireEvent.change(campoB1, { target: { value: 'Alteração em Beta' } });
+  expect(document.activeElement).toBe(campoA1);
+});

@@ -62,13 +62,20 @@ describe('nenhuma tela Meta usa a fórmula legada de ROAS', () => {
     // `ROAS` sozinho é ambíguo entre razão (2) e excedente (100). O rótulo da
     // tela precisa dizer qual dos dois está ali.
     for (const caminho of [
-      'src/pages/MetaCampaignInsightPage.tsx',
       'src/pages/settings/MetaCampaignsSettingsDemo.tsx',
       'src/components/trafego/meta/MetaCampaignReadView.tsx',
     ]) {
       const codigo = semComentarios(readFileSync(resolve(raiz, caminho), 'utf-8'));
       expect(codigo).toContain('Retorno excedente (%)');
     }
+  });
+
+  it('a rota canônica delega o número e o rótulo à view auditada, tanto em demo como no real', () => {
+    // O wrapper deixou de renderizar KPIs. Exigir nele o texto do rótulo
+    // duplicaria apresentação; o contrato é encaminhar ambos os ramos à view.
+    const codigo = semComentarios(readFileSync(resolve(raiz, 'src/pages/MetaCampaignInsightPage.tsx'), 'utf-8'));
+    expect(codigo).toContain("import { MetaCampaignReadView } from '@/components/trafego/meta/MetaCampaignReadView'");
+    expect(codigo.match(/<MetaCampaignReadView\b/g)).toHaveLength(2);
   });
 
   it('o que a fórmula legada inventa é exatamente o que as novas recusam', () => {

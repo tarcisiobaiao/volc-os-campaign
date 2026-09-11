@@ -8,14 +8,19 @@ shell livre ou ativação de campanhas.
 
 Cada lane usa o `Workflow`/graph API atual do ADK 2.x:
 
-1. `START` faz fan-out para pesquisador de API e cartógrafo do código.
-2. `JoinNode` espera as duas branches paralelas.
-3. executor → crítico → `FunctionNode` decide `revise` ou `done`.
-4. a aresta `revise` fecha o ciclo por até duas rodadas controladas pelo host.
+1. O lead converte achados comprovados em tickets de `tasks.py`, com aceite, arquivos e teste.
+2. Pesquisador usa Google Search; recebe só a pergunta pública, nunca o código.
+3. Executor recebe fontes atuais sanitizadas e devolve `PatchProposal` estruturado.
+4. `FunctionNode` valida hashes/âncoras, aplica via `apply_patch` e executa o teste obrigatório e `git diff --check`.
+5. Crítico recebe diff REAL e gates, não apenas a narrativa do executor.
+6. A aresta `revise` fecha o ciclo por até duas rodadas; o lead integra somente candidatos verificados.
 
-Quatro lanes rodam simultaneamente, cada uma em branch/worktree própria:
-`wizard_ux`, `creative_system`, `publishing_contract` e `measurement_ops`.
-Isso evita agentes concorrentes editando os mesmos arquivos. O lead revisa cada diff
+Tickets independentes rodam simultaneamente, cada um em branch/worktree própria.
+As quatro áreas de cobertura continuam definidas em `config.py`, mas não são missões
+executáveis genéricas. Inicialmente: `copy_retry` e `flexible_focus`.
+O caminho legado de exploração com function calling fica disponível em `run_lane.py`
+sem `--task`, mas não é disparado pelo orquestrador: ele consumiu orçamento sem editar.
+Tickets atuais não compartilham arquivos de escrita. O lead revisa cada diff
 e integra manualmente; nenhuma lane pode editar roadmap, grafo ou harness.
 
 O modelo é fixo em `gemini-3.8-flash`; cada resposta confere `model_version` e falha
@@ -45,22 +50,24 @@ O harness precisa estar commitado porque as worktrees partem do `HEAD`:
 /private/tmp/volc-meta-adk-v2-runtime/bin/python tools/meta-adk-review/orchestrate.py \
   --source /private/tmp/volc-os-operacao-80-20 \
   --runtime /private/tmp/volc-meta-adk-v2-runtime/bin/python \
-  --rounds 2 --max-calls 20 --max-tokens 120000 --timeout 1800
+  --tasks copy_retry flexible_focus \
+  --rounds 2 --max-calls 6 --max-tokens 100000 --timeout 900
 ```
 
 O orquestrador faz um probe pago; se modelo ou grounding divergirem, nenhuma lane
-começa. Em seguida cria quatro branches `sprint/meta-adk-v2-*` e dispara processos
+começa. Em seguida cria uma branch `sprint/meta-adk-v2-*` por ticket e dispara processos
 paralelos. O teto de tokens é observado entre respostas: uma resposta em voo pode
-ultrapassá-lo. Não existe retry pago automático.
+ultrapassá-lo. Não existe retry pago automático. `--prepare-only` não faz chamada paga.
 
 Cada root em `/private/tmp/volc-meta-adk-v2-<timestamp>/` guarda `MANIFEST.json`,
 `PROBE.json`, logs por lane, `events.jsonl`, `REPORT.json` e `candidate.diff`.
 O custo monetário permanece `null` quando o provider não devolve valor faturado;
 tokens de entrada, saída, pensamento e total ficam registrados.
 
-O cartógrafo é obrigado a encerrar com um único defeito demonstrável. Pedidos de
-ferramenta idênticos são recusados, e o executor não pode fazer exploração ampla nem
-usar o gate de diff antes de editar. Isso reserva o orçamento para correção e crítica.
+O executor estruturado não fica escolhendo ferramentas: deve entregar código e
+testes na resposta. O host recusa relatório sem patch e não aceita âncoras inexistentes.
+No caminho legado, chamadas iguais só são recusadas na MESMA revisão; depois de editar,
+reler e repetir o teste são permitidos. Testes novos entram no diff sem staging.
 O harness não força patch: se a hipótese grounded contradiz o código, o resultado
 correto é `partial_no_progress`/`blocked`, nunca uma mudança fabricada.
 
@@ -80,7 +87,7 @@ diff e somente então integra um lane por vez.
 
 Referências:
 
-- https://google.github.io/adk-docs/agents/workflow-agents/parallel-agents/
-- https://google.github.io/adk-docs/agents/workflow-agents/loop-agents/
+- https://adk.dev/workflows/graph-routes/
+- https://github.com/google/adk-python/blob/main/docs/guides/workflow/function_node/index.md
 - https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
 - https://ai.google.dev/gemini-api/docs/google-search

@@ -14,7 +14,7 @@ function draft():Draft {
   const d:Draft={accountRef:'account-A',pageRef:'page-A',instagramActorRef:'',campaignName:'CNH do Brasil',destinationUrl:'https://www.technews.com.br/r/renovacao',recipeId:'TRAFFIC_WEBSITE_LPV_STATIC',nivelDeOrcamento:'ADSET',periodoDeOrcamento:'DAILY',budgetBrl:'10',categoryConfirmed:true,creativeMode:'flexible',conjuntos:[conjuntoInicial('A','ABO',''),conjuntoInicial('B','CBO','')],variations:[variacaoInicial('a',1,'A'),variacaoInicial('b',2,'A'),variacaoInicial('c',3,'B')]};
   d.variations[0].assetRef='asset-A';d.naming={...novaNomenclatura(d),topicSourceUrl:d.destinationUrl,campaignNumber:37,accountRef:d.accountRef};return d;
 }
-const deferred=<T,>()=>{let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>{resolve=r;});return {promise,resolve};};
+const deferred=<T,>()=>{let resolve!:(value:T)=>void,reject!:(reason?:unknown)=>void;const promise=new Promise<T>((r,rej)=>{resolve=r;reject=rej;});return {promise,resolve,reject};};
 const suggestions={primary_text:['Nova abordagem'],headline:['Novo título'],description:['Nova descrição'],model:'hermetic-model',context_sha256:'fixture'};
 
 it('reserva números por identidade, mantendo ordem e exclusões sem reciclar números',()=>{
@@ -234,5 +234,88 @@ it('desabilita acrescentar quando há sexta opção substantivamente distinta e 
     primary_text:['TEXTO UM','Genuinamente Sexta Opção'],
     headline:['Título Original'],
     description:[],
+  });
+});
+
+it('retry no mesmo contexto mantém preview e desabilita botões em voo; erro preserva e reabilita preview anterior', async () => {
+  const d = draft(), save = vi.fn().mockResolvedValue(true), apply = vi.fn();
+  api.readMetaCampaignDraft.mockResolvedValue({ draft: d, version: 1 });
+  api.suggestMetaCopy.mockResolvedValue(suggestions);
+  render(<VarinhaDeCopy draft={d} draftRef="ref" adsetKey="A" save={save} onApply={apply} demo={false} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sugerir copies com IA' }));
+  await screen.findByText('Sugestões para revisar');
+  expect(screen.getByText('Nova abordagem')).toBeTruthy();
+
+  const appendBtn = screen.getByRole('button', { name: 'Acrescentar ao banco' }) as HTMLButtonElement;
+  const replaceBtn = screen.getByRole('button', { name: 'Substituir textos atuais' }) as HTMLButtonElement;
+  expect(appendBtn.disabled).toBe(false);
+  expect(replaceBtn.disabled).toBe(false);
+
+  const pending = deferred<typeof suggestions>();
+  api.suggestMetaCopy.mockReturnValue(pending.promise);
+  fireEvent.click(screen.getByRole('button', { name: 'Sugerir copies com IA' }));
+
+  await waitFor(() => expect(api.suggestMetaCopy).toHaveBeenCalledTimes(2));
+
+  expect(screen.getByText('Nova abordagem')).toBeTruthy();
+  expect(appendBtn.disabled).toBe(true);
+  expect(replaceBtn.disabled).toBe(true);
+  expect(screen.getByRole('status')).toBeTruthy();
+
+  fireEvent.click(appendBtn);
+  fireEvent.click(replaceBtn);
+  expect(apply).not.toHaveBeenCalled();
+
+  await act(async () => pending.reject(new Error('Instabilidade temporária na geração')));
+
+  expect(screen.getByText('Nova abordagem')).toBeTruthy();
+  expect(screen.getByRole('alert').textContent).toContain('Instabilidade temporária na geração');
+  expect(appendBtn.disabled).toBe(false);
+  expect(replaceBtn.disabled).toBe(false);
+  expect(apply).not.toHaveBeenCalled();
+
+  fireEvent.click(replaceBtn);
+  expect(apply).toHaveBeenCalledWith({
+    primary_text: suggestions.primary_text,
+    headline: suggestions.headline,
+    description: suggestions.description,
+  });
+});
+
+it('retry no mesmo contexto substitui atomicamente a sugestão anterior quando obtém sucesso', async () => {
+  const d = draft(), save = vi.fn().mockResolvedValue(true), apply = vi.fn();
+  api.readMetaCampaignDraft.mockResolvedValue({ draft: d, version: 1 });
+  api.suggestMetaCopy.mockResolvedValue(suggestions);
+  render(<VarinhaDeCopy draft={d} draftRef="ref" adsetKey="A" save={save} onApply={apply} demo={false} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sugerir copies com IA' }));
+  await screen.findByText('Nova abordagem');
+
+  const pending = deferred<typeof suggestions>();
+  const novasSugestoes = {
+    primary_text: ['Segunda abordagem'],
+    headline: ['Segundo título'],
+    description: ['Segunda descrição'],
+    model: 'hermetic-model',
+    context_sha256: 'fixture-2',
+  };
+  api.suggestMetaCopy.mockReturnValue(pending.promise);
+  fireEvent.click(screen.getByRole('button', { name: 'Sugerir copies com IA' }));
+
+  await waitFor(() => expect(api.suggestMetaCopy).toHaveBeenCalledTimes(2));
+  expect(screen.getByText('Nova abordagem')).toBeTruthy();
+
+  await act(async () => pending.resolve(novasSugestoes));
+
+  expect(screen.queryByText('Nova abordagem')).toBeNull();
+  expect(screen.getByText('Segunda abordagem')).toBeTruthy();
+  expect(apply).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Substituir textos atuais' }));
+  expect(apply).toHaveBeenCalledWith({
+    primary_text: novasSugestoes.primary_text,
+    headline: novasSugestoes.headline,
+    description: novasSugestoes.description,
   });
 });

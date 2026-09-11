@@ -46,8 +46,8 @@ class Host:
     role_limits = {
         "meta_api_researcher": 1,
         "meta_code_mapper": 4,
-        "meta_engineer": 7,
-        "meta_critic": 3,
+        "meta_engineer": 12,
+        "meta_critic": 4,
     }
 
     def __init__(self, args: Any, lane: Lane):
@@ -72,6 +72,7 @@ class Host:
         self.role_calls: dict[str, int] = {}
         self.tool_calls: dict[str, set[str]] = {}
         self.read_hashes: dict[str, str] = {}
+        self.created: set[str] = set()
         self.gates: dict[str, dict[str, Any]] = {}
         self.status = "running"
         self.tracked = set(
@@ -119,7 +120,7 @@ class Host:
         lowered = relative.name.lower()
         if any(word in lowered for word in PROTECTED_NAMES) or lowered.startswith(".env"):
             raise ValueError("sensitive or generated artifact")
-        if not write and path not in self.tracked:
+        if not write and path not in self.tracked and path not in self.created:
             raise ValueError("untracked file")
         if write and not path.startswith(self.lane.write_prefixes):
             raise ValueError("outside this lane's write scope")
@@ -249,18 +250,34 @@ class Host:
             with self.lock:
                 self.edits += 1
                 self.gates.clear()
+                self.created.add(path)
+                self.read_hashes[path] = digest(target.read_text())
             self.record("edit", kind="create_test", path=path, after_sha256=digest(target.read_text()))
             return {"ok": True, "path": path, "sha256": digest(target.read_text())}
         except (OSError, subprocess.SubprocessError, ValueError) as exc:
             return {"error": safe(exc)}
 
-    def show_diff(self) -> dict[str, Any]:
-        """Return the current candidate diff and most recent test evidence."""
+    def candidate_diff(self) -> str:
+        """Include host-created tests without staging or committing the candidate."""
         output = subprocess.check_output(
             ["git", "diff", "--no-ext-diff", "--", ":(exclude)graphify-out"],
             cwd=self.root,
             text=True,
         )
+        for path in sorted(self.created):
+            target = self._path(path)
+            added = subprocess.run(
+                ["git", "diff", "--no-index", "--no-ext-diff", "--", "/dev/null", path],
+                cwd=self.root, text=True, capture_output=True,
+            )
+            if added.returncode not in (0, 1):
+                raise RuntimeError("cannot export created test diff")
+            output += added.stdout
+        return output
+
+    def show_diff(self) -> dict[str, Any]:
+        """Return the current candidate diff and most recent test evidence."""
+        output = self.candidate_diff()
         return {
             "diff": safe(output[:42_000]),
             "truncated": len(output) > 42_000,
@@ -279,10 +296,7 @@ class Host:
             try:
                 self._path(target)
             except ValueError:
-                # A newly created lane test is intentionally untracked until lead integration.
-                candidate = self.root / target
-                if not candidate.is_file() or not target.startswith(self.lane.test_prefixes):
-                    return {"error": "invalid test target"}
+                return {"error": "invalid test target"}
             if gate == "backend" and target.endswith(".py") and target.startswith("backend/tests/"):
                 argv = [
                     str(dependency_root / "backend/.venv/bin/python"),
@@ -424,13 +438,16 @@ class Host:
             usage=usage.model_dump(mode="json", exclude_none=True) if usage else {},
             grounding=grounding.model_dump(mode="json", exclude_none=True) if grounding else {},
             visible_text=safe(visible),
+            finish_reason=str(getattr(llm_response, 'finish_reason', 'unknown')),
         )
 
     def before_tool(
         self, tool: Any, args: dict[str, Any], tool_context: Any
     ) -> dict[str, Any] | None:
         agent = tool_context.agent_name
-        signature = tool.name + ":" + json.dumps(args, ensure_ascii=False, sort_keys=True)
+        # A patch invalidates retrieval/test evidence. The same test must be runnable
+        # again after the fix; blocking it was preventing the red→green cycle.
+        signature = str(self.edits) + ":" + tool.name + ":" + json.dumps(args, ensure_ascii=False, sort_keys=True)
         seen = self.tool_calls.setdefault(agent, set())
         if signature in seen:
             return {"error": "identical tool request refused; use the evidence already returned"}
@@ -516,12 +533,13 @@ class Host:
     def finish(self) -> dict[str, Any]:
         if self.status == "running":
             self.status = "partial_iteration_limit"
-        diff = subprocess.check_output(["git", "diff", "--no-ext-diff"], cwd=self.root, text=True)
+        diff = self.candidate_diff()
         untracked = subprocess.check_output(
             ["git", "ls-files", "--others", "--exclude-standard"], cwd=self.root, text=True
         ).splitlines()
         report = {
             "status": self.status,
+            "task": getattr(self.args, 'task', None),
             "lane": self.lane.slug,
             "base": self.base,
             "requested_model": MODEL,
