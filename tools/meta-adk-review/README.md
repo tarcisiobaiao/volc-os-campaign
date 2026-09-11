@@ -45,7 +45,7 @@ O harness precisa estar commitado porque as worktrees partem do `HEAD`:
 /private/tmp/volc-meta-adk-v2-runtime/bin/python tools/meta-adk-review/orchestrate.py \
   --source /private/tmp/volc-os-operacao-80-20 \
   --runtime /private/tmp/volc-meta-adk-v2-runtime/bin/python \
-  --rounds 2 --max-calls 26 --max-tokens 180000 --timeout 1800
+  --rounds 2 --max-calls 20 --max-tokens 120000 --timeout 1800
 ```
 
 O orquestrador faz um probe pago; se modelo ou grounding divergirem, nenhuma lane
@@ -57,6 +57,12 @@ Cada root em `/private/tmp/volc-meta-adk-v2-<timestamp>/` guarda `MANIFEST.json`
 `PROBE.json`, logs por lane, `events.jsonl`, `REPORT.json` e `candidate.diff`.
 O custo monetário permanece `null` quando o provider não devolve valor faturado;
 tokens de entrada, saída, pensamento e total ficam registrados.
+
+O cartógrafo é obrigado a encerrar com um único defeito demonstrável. Pedidos de
+ferramenta idênticos são recusados, e o executor não pode fazer exploração ampla nem
+usar o gate de diff antes de editar. Isso reserva o orçamento para correção e crítica.
+O harness não força patch: se a hipótese grounded contradiz o código, o resultado
+correto é `partial_no_progress`/`blocked`, nunca uma mudança fabricada.
 
 Consultar sem consumir API:
 

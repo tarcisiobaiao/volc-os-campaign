@@ -4603,6 +4603,19 @@
       "source": "Curadoria humana, atualizada em 2026-09-09"
     },
     {
+      "id": "doc:meta_adk_refinement_loop",
+      "label": "Loop de refino Meta com Google ADK",
+      "type": "document",
+      "cluster": "acquisition",
+      "cluster_label": "Aquisição & campanhas",
+      "state": "reference",
+      "state_label": "Referência",
+      "tier": 3,
+      "summary": "Workflow graph ADK 2.8 com quatro lanes, Gemini 3.8 Flash HIGH, grounding comprovado, worktrees isoladas, escrita por SHA e testes sem rede.",
+      "evidence": "P11-T21 partial. Harness ativo reconstruído em tools/meta-adk-review; piloto antigo preservado apenas como histórico. 16/16 testes, três probes com modelo exato e grounding, 135 chamadas/1.258.240 tokens totais observados, zero patches aceitos e zero efeitos Meta, DB, deploy ou merge. Hipóteses contraditas pelo código foram recusadas; identidade Instagram permanece risco focal sem prova upstream. Fechamento em docs/closure/meta-adk-review-20260911/HANDOFF.md.",
+      "source": "Curadoria humana, atualizada em 2026-09-09"
+    },
+    {
       "id": "doc:meta_operator_go_live_v1",
       "label": "Meta Operator Go Live v1",
       "type": "document",
@@ -7688,6 +7701,19 @@
       "tier": 3,
       "summary": "Catálogo estratégico de perfis, pilares editoriais e adaptação por canal; não é inventário de ativos possuídos.",
       "evidence": "Analisado em 26/08/2026; handles, quantidades, metas e projeções foram mantidos como hipóteses.",
+      "source": "Curadoria humana, atualizada em 2026-09-09"
+    },
+    {
+      "id": "doc:prensa-direcao-v2",
+      "label": "PRENSA: direção tipográfica v2 e replay controlado",
+      "type": "document",
+      "cluster": "production",
+      "cluster_label": "Conteúdo & publicação",
+      "state": "reference",
+      "state_label": "Referência",
+      "tier": 3,
+      "summary": "P11-T22 partial: registros tipográficos, contraste local medido e comparação com as mesmas cenas/copy. Melhora de legibilidade, sem declarar vitória estética sobre IA.",
+      "evidence": "docs/architecture/ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md; docs/closure/prensa-refino-20260911/HANDOFF.md. Em11/09: recorte medido deriva da imagem, máscara com borda contínua, peso variável no recibo, fontes usadas podadas. 92 testes focais; shrink real e pixels da máscara provados no Chrome153/x86_64; oito peças+spec_news aprovados no DOM. Suíte criativa1204 passed/62 skipped/4 falhas herdadas. Sem geração paga, publicação, banco ou implantação. Opt-in preservado; aceite visual e integração automática pendentes. Medição de zona não é pixel gate de glifos; opsz não existe nos displays Archivo/Barlow.",
       "source": "Curadoria humana, atualizada em 2026-09-09"
     },
     {
@@ -11653,6 +11679,13 @@
       "confidence": "curated"
     },
     {
+      "source": "doc:meta_adk_refinement_loop",
+      "target": "cap_meta_ads",
+      "relation": "documenta",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
       "source": "doc:meta_dashboard_levels",
       "target": "cap_meta_ads",
       "relation": "documenta",
@@ -11808,6 +11841,13 @@
     },
     {
       "source": "doc:prensa-catalog",
+      "target": "system:prensa",
+      "relation": "documenta",
+      "evidence": "",
+      "confidence": "curated"
+    },
+    {
+      "source": "doc:prensa-direcao-v2",
       "target": "system:prensa",
       "relation": "documenta",
       "evidence": "",

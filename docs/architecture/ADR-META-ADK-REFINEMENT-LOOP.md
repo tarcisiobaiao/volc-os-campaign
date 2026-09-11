@@ -52,6 +52,12 @@ Uma resposta em voo pode ultrapassar o teto observado; a API não devolve fatura
 em dólares, portanto o recibo registra tokens e custo monetário `null`. Eventos são
 gravados antes do despacho e cada lane produz diff e relatório próprios.
 
+Depois da primeira execução real, o host passou a reservar chamadas para execução e
+crítica: o cartógrafo entrega um defeito único em uma chamada final sem tools, leituras
+idênticas são recusadas, exploração ampla pelo executor é bloqueada e o gate frontend
+reutiliza as dependências do checkout sem copiá-las. Hipótese não confirmada não é
+convertida em patch apenas para satisfazer uma métrica de edição.
+
 O runtime fica em `/private/tmp` e não entra nas dependências do backend. Worktrees e
 relatórios também ficam fora do checkout operacional. Interrupção preserva o que já
 foi escrito; retomada automática e merge automático não existem nesta versão.
@@ -63,3 +69,4 @@ foi escrito; retomada automática e merge automático não existem nesta versão
 - [Grounding com Google Search](https://ai.google.dev/gemini-api/docs/google-search)
 - [Harness executável](../../tools/meta-adk-review/README.md)
 - [Histórico do piloto](../closure/meta-adk-loop-20260910/HANDOFF.md)
+- [Fechamento da reconstrução v2](../closure/meta-adk-review-20260911/HANDOFF.md)

@@ -1975,6 +1975,14 @@
       "evidence": "docs/closure/meta-webgo-mirror-20260909/HANDOFF.md; tarefa P11-T14. Build aprovado, PostgreSQL/PostgREST real provados, RLS nas 63 tabelas novas, sem cópia de dados ou permissões da origem."
     },
     {
+      "id": "doc:meta_adk_refinement_loop",
+      "label": "Loop de refino Meta com Google ADK",
+      "cluster": "acquisition",
+      "documenta": "cap_meta_ads",
+      "summary": "Workflow graph ADK 2.8 com quatro lanes, Gemini 3.8 Flash HIGH, grounding comprovado, worktrees isoladas, escrita por SHA e testes sem rede.",
+      "evidence": "P11-T21 partial. Harness ativo reconstruído em tools/meta-adk-review; piloto antigo preservado apenas como histórico. 16/16 testes, três probes com modelo exato e grounding, 135 chamadas/1.258.240 tokens totais observados, zero patches aceitos e zero efeitos Meta, DB, deploy ou merge. Hipóteses contraditas pelo código foram recusadas; identidade Instagram permanece risco focal sem prova upstream. Fechamento em docs/closure/meta-adk-review-20260911/HANDOFF.md."
+    },
+    {
       "id": "doc:meta_gam_adset_grain_router",
       "label": "Roteador GAM por grão Google/Meta",
       "cluster": "acquisition",

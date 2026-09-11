@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-11",
+  "status": "partial",
+  "model": "gemini-3.8-flash",
+  "thinking": "HIGH",
+  "google_search_grounding_verified": true,
+  "runtime": {
+    "google_adk": "2.8.0",
+    "google_genai": "2.22.0"
+  },
+  "runs": [
+    {"root": "/private/tmp/volc-meta-adk-v2-20260911T151406Z", "calls": 8, "lane_tokens": 8287, "probe_tokens": 1441, "edits": 0},
+    {"root": "/private/tmp/volc-meta-adk-v2-20260911T152115Z", "calls": 72, "lane_tokens": 737843, "probe_tokens": 1916, "edits": 0},
+    {"root": "/private/tmp/volc-meta-adk-v2-20260911T153356Z", "calls": 55, "lane_tokens": 506823, "probe_tokens": 1930, "edits": 0}
+  ],
+  "totals": {
+    "calls": 135,
+    "lane_tokens": 1252953,
+    "probe_tokens": 5287,
+    "all_tokens": 1258240,
+    "edits": 0,
+    "cost_usd": null
+  },
+  "external_effects": {
+    "meta_mutations": 0,
+    "database_mutations": 0,
+    "deploys": 0,
+    "automatic_merges": 0
+  }
+}
