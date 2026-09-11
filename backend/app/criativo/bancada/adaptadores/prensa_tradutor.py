@@ -80,6 +80,29 @@ ALTURA_DO_BOTAO = 2 * CTA_PADDING_V + CTA_CORPO_PX + 4
 #: distância entre o botão e a base do bloco de texto.
 RESPIRO_DO_BOTAO = 24
 
+#: A sobrancelha, pelo mesmo raciocínio: corpo fixo e respiro de tinta escolhidos
+#: aqui, logo altura contável. Reservar o espaço dela e NÃO descontá-lo do
+#: orçamento do bloco é reservar no papel — o bloco sobe por cima assim mesmo.
+ALTURA_DO_KICKER = 24 + 16
+RESPIRO_DO_KICKER = 32
+
+#: Teto do corpo da headline, em fração da LARGURA do artboard. Largura e não
+#: altura porque é ela que governa quantos caracteres cabem na linha — e é a
+#: linha, não a altura do quadro, que decide se a headline respira.
+#:
+#: ⚠️ Era constante 96 px, e o sintoma foi óbvio quando a campanha inteira saiu
+#: com 95 px de headline em 1080x1080, 1080x1920 e 1200x628: três proporções
+#: diferentes batendo no mesmo teto é um teto que não decidiu nada.
+TETO_DA_HEADLINE = 0.11
+#: `tipografia_protagonista` e `cartaz_beneficio` existem para a letra dominar o
+#: quadro. Com o teto do editorial a peça sai com a headline no rodapé e dois
+#: terços de campo vazio — a rota negada pela própria escala.
+TETO_PROTAGONISTA = 0.165
+PISO_DA_HEADLINE = 0.035
+
+#: Rotas e registros em que a tipografia é o assunto, e não o veículo dele.
+PROTAGONISTAS = frozenset({"tipografia_protagonista", "cartaz_beneficio"})
+
 #: Acima desta fração de um eixo a zona deixa de ser "faixa reservada" e passa a
 #: atravessar o quadro — e então não diz nada sobre onde o sujeito está.
 FAIXA_MAXIMA = 0.6
@@ -187,6 +210,20 @@ def _croma(cor_hex: str) -> float:
     return max(r, g, b) - min(r, g, b)
 
 
+def _mistura(frente: str, fundo: str, fracao: float) -> str:
+    """Uma cor a `fracao` do caminho entre o fundo e a frente.
+
+    Réguas, fios e trilhos precisam ficar ENTRE o papel e a tinta: em cima do
+    papel somem, na cor da tinta competem com a letra. Derivar da própria
+    família mantém a peça numa paleta só sem inventar um cinza de fora dela.
+    """
+    def canais(c):
+        return [int(c[i:i + 2], 16) for i in (1, 3, 5)]
+
+    f, b = canais(frente), canais(fundo)
+    return "#" + "".join(f"{round(bb + (ff - bb) * fracao):02X}" for ff, bb in zip(f, b))
+
+
 def contraste(a: str, b: str) -> float:
     la, lb = _luminancia(a), _luminancia(b)
     claro, escuro = max(la, lb), min(la, lb)
@@ -235,6 +272,14 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -
                 "on_accent": superficie,
             },
             "accent": {"text": acento, "graphic": acento, "dim": acento},
+            # `tabela` pede a régua, `colunas` pede o fio, `dots` pede o par.
+            # Nenhum tem default no motor: ref não resolvida vira `$...` literal
+            # no CSS e a camada sai muda, sem erro nenhum.
+            "linha": {"regua": _mistura(texto, superficie, 0.22),
+                      "fio": _mistura(texto, superficie, 0.30),
+                      "trilho": _mistura(texto, superficie, 0.18)},
+            "dots": {"ativa": acento, "inativa": _mistura(texto, superficie, 0.28)},
+            "ghost": acento,
         },
         # As camadas `texture` e `vinheta` referenciam estes tokens por `$`; uma
         # skin sem `efeitos` deixa a ref sem resolver e a camada sai quebrada.
@@ -245,6 +290,9 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -
                      "piso": -0.7, "amplitude": 3.2},
             "vinheta": {"cor": "rgba(0,0,0,0.40)", "raio": "82% 72%",
                         "centro": "50% 38%"},
+            # halação: o halo que só o run ACENTUADO pinta. É o que faz a
+            # âncora de desejo brilhar sem precisar de corpo maior.
+            "halacao_accent": {"passes": [[12, 0.44], [34, 0.22]]},
         },
         "type": {
             # ⚠️ `ink_padding` não é enfeite: `render.py:611` mede a TINTA, não a
@@ -275,19 +323,46 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -
                 "line_height": 1.4,
                 "ink_padding": "0.05em 0.04em 0.05em 0.04em",
             },
+            # o numeral gigante ao fundo; peso alto e entrelinha 1 porque ele é
+            # mancha, não leitura.
+            "ghost": {"family": "Inter", "weight": 900, "line_height": 1,
+                      "tracking": "-0.04em"},
+            # ⚠️ respiro MAIOR que o do display, e por conta e não por gosto: o
+            # déficit de meia-entrelinha é (1,21 − line_height)/2, e com
+            # line_height 1 ele vai a 0,105em contra os 0,075em do display.
+            # Copiar o número do display reprovou as 21 peças da campanha com a
+            # tinta 2 px acima do limite.
+            "kicker": {"family": "Inter", "weight": 700, "tracking": "0.22em",
+                       "transform": "uppercase", "line_height": 1,
+                       "ink_padding": "0.16em 0.04em 0.16em 0.04em"},
             "label": {
                 "family": "Inter",
                 "weight": 700,
                 "tracking": "0.08em",
                 "transform": "uppercase",
                 "line_height": 1,
-                "ink_padding": "0.06em 0.04em 0.06em 0.04em",
+                "ink_padding": "0.16em 0.04em 0.16em 0.04em",
             },
         },
     }
 
 
-def _runs_com_ancora(headline: str, ancoras: list[str]) -> list[dict]:
+#: Tratamento tipográfico do run acentuado, por REGISTRO. O registro é decisão
+#: criativa já aprovada; qual bisturi ele usa é consequência mecânica dela — a
+#: mesma lógica que faz a rota decidir quem compõe a letra (`planos.py`).
+TRATAMENTO_POR_REGISTRO: dict[str, dict] = {
+    # vernáculo de anúncio de programa: chapa de cor e letra vazada.
+    "cartaz_beneficio": {"tipo": "knockout", "cor": "$color.accent.text",
+                         "cor_texto": "auto", "padding": "0.02em 0.12em 0.07em"},
+    # grifo de marca-texto, para quando a peça é gráfica e a cor já trabalha.
+    "grafico": {"tipo": "marcador", "cor": "$color.accent.text", "blend": "normal",
+                "cor_texto": "auto", "padding": "0.03em 0.14em 0.09em",
+                "radius": "0.05em"},
+}
+
+
+def _runs_com_ancora(headline: str, ancoras: list[str],
+                     registro: str = "") -> list[dict]:
     """Parte a headline em runs, acentuando a âncora — no máximo 2 palavras.
 
     Casamento literal e sem diacrítico, para que "Pé-de-Meia" case com
@@ -312,10 +387,14 @@ def _runs_com_ancora(headline: str, ancoras: list[str]) -> list[dict]:
         return [{"text": headline}]
 
     i, j = achado.span()
+    destacado = {"text": headline[i:j], "accent": True}
+    tratamento = TRATAMENTO_POR_REGISTRO.get(registro)
+    if tratamento:
+        destacado["tratamento"] = dict(tratamento)
     runs = []
     if headline[:i]:
         runs.append({"text": headline[:i]})
-    runs.append({"text": headline[i:j], "accent": True})
+    runs.append(destacado)
     if headline[j:]:
         runs.append({"text": headline[j:]})
     return runs
@@ -379,6 +458,12 @@ def faixa_na_foto(
     return [round((topo + f * janela) / altura_f, 4) for f in faixa]
 
 
+def _tem_chapa(runs: list[dict]) -> bool:
+    """Algum run já está vazado ou grifado sobre uma superfície de cor?"""
+    return any((r.get("tratamento") or {}).get("tipo") in {"knockout", "marcador"}
+               for r in runs)
+
+
 def _nome_do_formato(largura: int, altura: int) -> str:
     razao = largura / altura
     if abs(razao - 0.8) < 0.02:
@@ -400,6 +485,8 @@ def traduzir(
     ancoras_aceitas: list[str] | None = None,
     asset: dict | None = None,
     botao: bool = False,
+    kicker: str | None = None,
+    ghost: str | None = None,
     tokens_file: str = "",
 ) -> dict:
     """Uma `CreativeSpec` e um artboard viram uma `post.spec/1.0.0`.
@@ -414,7 +501,13 @@ def traduzir(
     plano = spec.plano_de_composicao or {}
     zona = plano.get("zona")
     tem_botao = botao and bool(str(spec.texto_exato.get("cta") or "").strip())
+    protagonista = PROTAGONISTAS & {
+        str(spec.direcao_de_arte.get("rota_de_texto") or ""),
+        str(spec.direcao_de_arte.get("registro") or ""),
+    }
+    teto = TETO_PROTAGONISTA if protagonista else TETO_DA_HEADLINE
     reserva_de_rodape = (ALTURA_DO_BOTAO + RESPIRO_DO_BOTAO) if tem_botao else 0
+    reserva_de_topo = (ALTURA_DO_KICKER + RESPIRO_DO_KICKER) if kicker else 0
 
     if zona and asset:
         # `planos.PLANOS[*]["zona"]` é (x0,y0,x1,y1) em FRAÇÃO do canvas, e é
@@ -435,7 +528,7 @@ def traduzir(
         # hipótese.
         ancora_do_frame = "top_left"
         x = max(round(zona[0] * largura), margem["esquerda"])
-        y = max(round(zona[1] * altura), margem["topo"])
+        y = max(round(zona[1] * altura), margem["topo"] + reserva_de_topo)
         direita = min(round(zona[2] * largura), largura - margem["direita"])
         base = min(round(zona[3] * altura), altura - margem["base"] - reserva_de_rodape)
         largura_da_zona = max(1, direita - x)
@@ -448,7 +541,8 @@ def traduzir(
         x = margem["esquerda"]
         y = margem["base"] + reserva_de_rodape
         largura_da_zona = largura - margem["esquerda"] - margem["direita"]
-        altura_da_zona = altura - margem["topo"] - margem["base"]
+        altura_da_zona = (altura - margem["topo"] - margem["base"]
+                          - reserva_de_rodape - reserva_de_topo)
 
     # A faixa onde a letra realmente vive, em fração da altura — é ela que o
     # scrim vai medir. Com âncora inferior o bloco cresce para cima a partir da
@@ -459,24 +553,37 @@ def traduzir(
     else:
         faixa_texto = [round(y / altura, 4), round((y + altura_da_zona) / altura, 4)]
 
+    runs_da_headline = _runs_com_ancora(
+        str(textos.get("headline", "")),
+        [a for a in [ancora, *(ancoras_aceitas or [])] if a],
+        registro=str(spec.direcao_de_arte.get("registro") or ""),
+    )
+
     filhos: list[dict] = []
     if "headline" in textos:
         filhos.append({
             "id": "headline",
             "type": "text",
             "slot": "headline",
-            "runs": _runs_com_ancora(
-                textos["headline"],
-                [a for a in [ancora, *(ancoras_aceitas or [])] if a],
-            ),
+            "runs": runs_da_headline,
             "style": {
                 "font": "$type.display",
                 "color": "$color.text.primary",
                 "accent_color": "$color.accent.text",
             },
+            # ⚠️ Só quando o acento é letra SOLTA. `halacao` sopra a cor do
+            # acento para fora do glifo; com o acento já vazado de uma chapa
+            # (`knockout`) ou grifado (`marcador`), o sopro cai DENTRO da chapa
+            # e embarra a letra em vez de destacá-la — visto em `quem fica de
+            # fora`, que saiu com fumaça marrom por cima do ouro. Só um dos dois
+            # pode ganhar aquele pixel.
+            **({} if _tem_chapa(runs_da_headline) else
+               {"efeitos": {"halacao": "$efeitos.halacao_accent"}}),
             # ⚠️ `auto` EXIGE overflow=fail (`resolve.py:97`): o motor prefere
             # recusar a peça a entregar headline cortada.
-            "fit": {"mode": "auto", "min": 34, "max": 96,
+            "fit": {"mode": "auto",
+                    "min": round(largura * PISO_DA_HEADLINE),
+                    "max": round(largura * teto),
                     "max_lines": 5, "hyphenate": False, "overflow": "fail"},
         })
     if "complemento" in textos:
@@ -566,6 +673,68 @@ def traduzir(
         "layout": {"mode": "vertical", "gap": 22},
         "children": filhos,
     })
+
+    itens = [str(i) for i in (spec.direcao_de_arte.get("checklist") or []) if str(i).strip()]
+    if itens:
+        # `direcao_de_arte.checklist` já existe e já é lista — vira layout de
+        # verdade. Despejado dentro do complemento viraria prosa corrida, e um
+        # checklist existe justamente para ser lido item a item em meio segundo.
+        camadas.append({
+            "id": "checklist",
+            "type": "colunas",
+            "pos": {"anchor": "top_left", "x": margem["esquerda"],
+                    "y": margem["topo"] + (92 if kicker else 0)},
+            "w": largura - margem["esquerda"] - margem["direita"],
+            "gap": 34,
+            "tam_titulo": 22,
+            "tam_corpo": 25,
+            "style": {"font_titulo": "$type.kicker", "font_corpo": "$type.body",
+                      "cor_titulo": "$color.accent.text",
+                      "cor_corpo": "$color.text.secondary",
+                      "cor_fio": "$color.linha.fio"},
+            "colunas": [{"titulo": f"{n:02d}", "texto": item}
+                        for n, item in enumerate(itens, 1)],
+        })
+
+    if kicker:
+        # A sobrancelha editorial: filete de acento + rótulo em caixa alta. É a
+        # mesma construção das quatro skins do acervo, e é o que dá à peça
+        # registro de publicação em vez de post avulso.
+        camadas.append({
+            "id": "kicker_row",
+            "type": "frame",
+            "pos": {"anchor": "top_left", "x": margem["esquerda"],
+                    "y": margem["topo"]},
+            "layout": {"mode": "horizontal", "gap": 18, "align": "center"},
+            "children": [
+                {"id": "kicker_rule", "type": "rect", "w": 48, "h": 6,
+                 "fill": "$color.accent.graphic", "radius": 0},
+                {"id": "kicker", "type": "text", "slot": "kicker",
+                 "runs": [{"text": kicker}],
+                 "style": {"font": "$type.kicker", "color": "$color.accent.text"},
+                 "fit": {"mode": "fixed", "size": 24, "max_lines": 1,
+                         "overflow": "fail"}},
+            ],
+        })
+
+    if ghost:
+        # ⚠️ `decorative` é o que vira `data-mask` no motor. Sem a marca, o gate
+        # de colisão lê o numeral como texto e reprova toda peça que tem um
+        # algarismo de 400 px atrás da headline — ele é mancha, não leitura.
+        camadas.append({
+            "id": "ghost",
+            "type": "text",
+            "decorative": True,
+                        # abaixo da sobrancelha quando ela existe: `clearance_decorativo_px`
+            # reprova decorativo encostado em texto, e no carrossel o numeral
+            # invadiu o kicker por 13 px. Quem cede é a mancha.
+            "pos": {"anchor": "top_right", "x": -16,
+                    "y": margem["topo"] + (96 if kicker else 0)},
+            "runs": [{"text": ghost}],
+            "style": {"font": "$type.ghost", "color": "$color.ghost",
+                      "opacity": 0.09},
+            "fit": {"mode": "fixed", "size": round(altura * 0.30), "max_lines": 1},
+        })
 
     if tem_botao:
         # ⚠️ CAMADA DE TOPO, com `pos` próprio. `_pos_css` (`render.py:65`) emite
@@ -668,6 +837,63 @@ def traduzir(
     return post
 
 
+def traduzir_carrossel(
+    laminas: list,
+    *,
+    artboard: tuple[int, int],
+    ancora: str | None = None,
+    ancoras_aceitas: list[str] | None = None,
+    kicker: str | None = None,
+    tokens_file: str = "",
+) -> dict:
+    """N `CreativeSpec` viram UMA spec com N lâminas — e N PNGs.
+
+    ⚠️ Não confundir com `traduzir_lote`. Carrossel é o eixo `slides`, que o
+    motor de fato tem: uma spec, um artboard, N arquivos `_sNN`
+    (`render.py:879`). Multi-formato é o oposto — N specs, um PNG cada. Foi
+    justamente essa confusão que o campo `variants` induziu: ele parecia dizer
+    que o motor multiplicava por PROPORÇÃO, quando o que ele multiplica é
+    LÂMINA.
+
+    A paginação é contada aqui, não declarada: `dots.total` é o tamanho da
+    lista e `atual` é o índice. Pedir esses dois números a quem escreve a spec
+    é pedir um fato que o código já tem.
+    """
+    if not laminas:
+        raise ValueError("carrossel sem lâmina")
+
+    slides = []
+    for indice, lamina in enumerate(laminas):
+        parcial = traduzir(lamina, artboard=artboard, ancora=ancora,
+                           ancoras_aceitas=ancoras_aceitas,
+                           kicker=kicker if indice == 0 else None,
+                           ghost=f"{indice + 1:02d}",
+                           tokens_file=tokens_file)
+        camadas = parcial["slides"][0]["layers"]
+        camadas.append({
+            "id": "dots",
+            "type": "dots",
+            "total": len(laminas),
+            "atual": indice,
+            "size": 10,
+            "gap": 10,
+            "cor_ativa": "$color.dots.ativa",
+            "cor_inativa": "$color.dots.inativa",
+            "pos": {"anchor": "bottom_right",
+                    "x": parcial["artboard"]["safe_area"]["right"],
+                    "y": parcial["artboard"]["safe_area"]["bottom"]},
+        })
+        slides.append({"id": f"s{indice + 1:02d}",
+                       "background": "$color.surface.base",
+                       "layers": camadas})
+
+    post = traduzir(laminas[0], artboard=artboard, ancora=ancora,
+                    ancoras_aceitas=ancoras_aceitas, tokens_file=tokens_file)
+    post["spec_id"] = f"{laminas[0].creative_ref}_carrossel"
+    post["slides"] = slides
+    return post
+
+
 def traduzir_lote(
     spec: CreativeSpec,
     formatos: list[tuple[int, int]],
@@ -723,6 +949,10 @@ def camadas_de_texto(post: dict) -> list[dict]:
     if alvo:
         achadas += [f for f in alvo["children"] if f["type"] == "text"]
     return achadas
+
+
+def runs_e_fit(post: dict) -> dict:
+    return next(c["fit"] for c in camadas_de_texto(post) if c["id"] == "headline")
 
 
 def runs_da_headline(post: dict) -> list[dict]:

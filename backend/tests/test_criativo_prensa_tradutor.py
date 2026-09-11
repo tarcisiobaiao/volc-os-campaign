@@ -699,3 +699,244 @@ def test_com_dimensao_declarada_a_faixa_medida_muda():
     assert grad["faixa_texto"] != grad["faixa_no_quadro"]
     # o corte ancorou no topo, então a faixa medida sobe na foto
     assert grad["faixa_texto"][0] < grad["faixa_no_quadro"][0]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 9. O vocabulário de campanha: kicker, lista, ghost, knockout, carrossel
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_skin_traz_os_tokens_que_as_camadas_ricas_referenciam():
+    """Ref não resolvida vira string `$...` literal no CSS e a camada sai muda.
+
+    `tabela` pede `$color.linha.regua`, `colunas` pede `$color.linha.fio`,
+    `dots` pede `$color.dots.*`, a régua do kicker pede `$color.accent.graphic`
+    e o ghost pede `$type.ghost`. Nada disso tem default no motor.
+    """
+    skin = tradutor.skin_da_familia(FAMILIA)
+
+    assert skin["color"]["linha"]["regua"]
+    assert skin["color"]["linha"]["fio"]
+    assert skin["color"]["dots"]["ativa"] != skin["color"]["dots"]["inativa"]
+    assert skin["color"]["accent"]["graphic"]
+    assert skin["type"]["ghost"]["family"]
+    assert skin["efeitos"]["halacao_accent"]["passes"]
+
+
+def test_kicker_entra_como_regua_mais_texto_no_topo_da_area_segura():
+    """A sobrancelha editorial: filete de acento + rótulo em caixa alta.
+
+    É `frame` horizontal com um `rect` e um `text` — a mesma construção que as
+    quatro skins do acervo usam, e a que dá à peça o registro de publicação em
+    vez de post avulso.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350),
+                             kicker="BENEFÍCIOS · ENSINO MÉDIO")
+    linha = next(c for c in tradutor.camadas_de(post) if c["id"] == "kicker_row")
+
+    assert linha["pos"]["anchor"] == "top_left"
+    assert [f["type"] for f in linha["children"]] == ["rect", "text"]
+    assert linha["children"][1]["runs"][0]["text"] == "BENEFÍCIOS · ENSINO MÉDIO"
+
+
+def test_sem_kicker_nao_ha_camada_de_sobrancelha():
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350))
+
+    assert not [c for c in tradutor.camadas_de(post) if c["id"] == "kicker_row"]
+
+
+def test_checklist_da_direcao_de_arte_vira_camada_colunas():
+    """`direcao_de_arte.checklist` já existe e já é lista — vira layout real.
+
+    Despejar os itens dentro do complemento os transformaria em prosa corrida;
+    a camada `colunas` mantém cada um como unidade lida em meio segundo, que é
+    o que um checklist é para.
+    """
+    spec = _spec(direcao_de_arte={**_spec().direcao_de_arte,
+                                  "checklist": ["Matrícula ativa", "CPF regular",
+                                                "CadÚnico atualizado"]})
+    post = tradutor.traduzir(spec, artboard=(1080, 1350))
+    col = next(c for c in tradutor.camadas_de(post) if c["type"] == "colunas")
+
+    assert [c["titulo"] for c in col["colunas"]] == ["01", "02", "03"]
+    assert col["colunas"][1]["texto"] == "CPF regular"
+
+
+def test_registro_de_cartaz_poe_knockout_no_acento():
+    """`cartaz_beneficio` é o vernáculo de anúncio de programa — chapa e vazado.
+
+    O tratamento cai só no run acentuado, que é o da âncora de desejo: o
+    knockout vira mais um jeito de a cor forte pertencer ao dinheiro.
+    """
+    spec = _spec(direcao_de_arte={**_spec().direcao_de_arte,
+                                  "registro": "cartaz_beneficio"})
+    post = tradutor.traduzir(spec, artboard=(1080, 1350), ancora="Pé-de-Meia")
+    acentuado = next(r for r in tradutor.runs_da_headline(post) if r.get("accent"))
+
+    assert acentuado["tratamento"]["tipo"] == "knockout"
+    assert acentuado["tratamento"]["cor_texto"] == "auto"
+
+
+def test_registro_editorial_nao_recebe_tratamento_nenhum():
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350), ancora="Pé-de-Meia")
+    acentuado = next(r for r in tradutor.runs_da_headline(post) if r.get("accent"))
+
+    assert "tratamento" not in acentuado
+
+
+def test_ghost_e_decorativo_e_por_isso_nao_conta_como_tinta_de_texto():
+    """O numeral gigante ao fundo. `decorative` é o que o faz virar `data-mask`.
+
+    Sem a marca, o gate de colisão o leria como texto e reprovaria toda peça
+    que tem um algarismo de 400 px atrás da headline.
+    """
+    post = tradutor.traduzir(_spec(), artboard=(1080, 1350), ghost="02")
+    fantasma = next(c for c in tradutor.camadas_de(post) if c["id"] == "ghost")
+
+    assert fantasma["decorative"] is True
+    assert fantasma["runs"][0]["text"] == "02"
+
+
+def test_carrossel_emite_uma_spec_com_n_laminas_e_paginacao():
+    """`slides` é o eixo de multiplicidade REAL do motor (`render.py:879`).
+
+    Um carrossel é uma spec só e N PNGs — o oposto de multi-formato, que é N
+    specs e um PNG cada. Confundir os dois é o erro que `variants` induz.
+    """
+    laminas = [_spec(creative_ref=f"lamina_{i}") for i in range(3)]
+    post = tradutor.traduzir_carrossel(laminas, artboard=(1080, 1350),
+                                       kicker="GUIA · 2 MINUTOS")
+
+    assert len(post["slides"]) == 3
+    pontos = [c for c in post["slides"][0]["layers"] if c["type"] == "dots"]
+    assert pontos[0]["total"] == 3
+    assert [s["layers"][-1]["atual"] if False else
+            next(c["atual"] for c in s["layers"] if c["type"] == "dots")
+            for s in post["slides"]] == [0, 1, 2]
+
+
+def test_ink_padding_do_kicker_e_maior_que_o_do_display():
+    """Entrelinha mais apertada = déficit maior, logo respiro maior.
+
+    O déficit é (área de conteúdo − line_height)/2. O display roda em 1.06 e
+    deve 0,075em; o kicker roda em 1.0 e deve 0,105em — 40% a mais. Copiar o
+    respiro do display para o kicker reprovou as 21 peças da campanha com a
+    tinta 2 px acima do limite.
+    """
+    tipo = tradutor.skin_da_familia(FAMILIA)["type"]
+    so_topo = lambda t: float(t["ink_padding"].split()[0].removesuffix("em"))
+
+    assert so_topo(tipo["kicker"]) > so_topo(tipo["display"])
+    assert so_topo(tipo["kicker"]) >= 0.105
+
+
+def test_ghost_desce_abaixo_da_sobrancelha_quando_ela_existe():
+    """`clearance_decorativo_px` reprova decorativo encostado em texto.
+
+    Medido no carrossel: o numeral ancorado no alto à direita invadiu o kicker
+    e o gate cobrou 13 px. Decorativo grande e sobrancelha disputam a mesma
+    faixa do topo — quem cede é o decorativo, porque ele é mancha.
+    """
+    com = tradutor.traduzir(_spec(), artboard=(1080, 1350), ghost="02",
+                            kicker="GUIA · CHECKLIST")
+    sem = tradutor.traduzir(_spec(), artboard=(1080, 1350), ghost="02")
+    y = lambda p: next(c for c in tradutor.camadas_de(p) if c["id"] == "ghost")["pos"]["y"]
+
+    assert y(com) > y(sem)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. A escala tipográfica sai do artboard, não de uma constante
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_teto_do_corpo_da_headline_cresce_com_a_largura_do_artboard():
+    """Teto fixo faz o fitter bater no mesmo número em todo formato.
+
+    Medido na campanha: 95 px de headline em 1080×1080, 1080×1920 e 1200×628 —
+    as três no teto, que é o sintoma de um teto que não é decisão nenhuma. Corpo
+    de letra é proporção do quadro; uma constante trata um banner de 628 px de
+    altura como se fosse um story.
+    """
+    estreito = tradutor.traduzir(_spec(), artboard=(1080, 1350))
+    largo = tradutor.traduzir(_spec(), artboard=(1200, 628))
+    teto = lambda p: tradutor.runs_e_fit(p)["max"]
+
+    assert teto(largo) > teto(estreito)
+
+
+def test_registro_protagonista_ganha_teto_maior_que_o_editorial():
+    """`tipografia_protagonista` só existe se a letra puder dominar o quadro.
+
+    Com o mesmo teto do editorial, a peça saiu com a headline no rodapé e dois
+    terços de campo cromático vazio — a rota negada pela própria escala.
+    """
+    editorial = tradutor.traduzir(_spec(), artboard=(1080, 1350))
+    protagonista = tradutor.traduzir(
+        _spec(direcao_de_arte={**_spec().direcao_de_arte,
+                               "rota_de_texto": "tipografia_protagonista"}),
+        artboard=(1080, 1350))
+
+    assert tradutor.runs_e_fit(protagonista)["max"] > tradutor.runs_e_fit(editorial)["max"]
+
+
+def test_piso_do_corpo_nunca_encosta_no_teto():
+    """`fit.auto` precisa de faixa para encolher — piso igual ao teto é fit sem saída."""
+    for artboard in [(1080, 1350), (1080, 1920), (1080, 1080), (1200, 628)]:
+        fit = tradutor.runs_e_fit(tradutor.traduzir(_spec(), artboard=artboard))
+        assert fit["min"] < fit["max"], artboard
+
+
+def test_halacao_desliga_quando_o_acento_ganha_chapa():
+    """Halo e chapa disputam o mesmo pixel, e o halo perde.
+
+    `halacao` existe para dar presença a letra SOLTA sobre fundo — ela sopra a
+    cor do acento para fora do glifo. Quando o acento já está vazado de uma
+    chapa (`knockout`) ou grifado (`marcador`), o sopro cai dentro da chapa e
+    embarra a letra em vez de destacá-la. Visto na peça `quem fica de fora`: o
+    vazado saiu com fumaça marrom por cima do ouro.
+    """
+    editorial = tradutor.traduzir(_spec(), artboard=(1080, 1350), ancora="Pé-de-Meia")
+    cartaz = tradutor.traduzir(
+        _spec(direcao_de_arte={**_spec().direcao_de_arte, "registro": "cartaz_beneficio"}),
+        artboard=(1080, 1350), ancora="Pé-de-Meia")
+
+    camada = lambda p: next(c for c in tradutor.camadas_de_texto(p) if c["id"] == "headline")
+    assert "halacao" in camada(editorial).get("efeitos", {})
+    assert "efeitos" not in camada(cartaz) or "halacao" not in camada(cartaz)["efeitos"]
+
+
+def test_sem_ancora_casada_a_halacao_continua_ligada():
+    """Não há chapa se não há run acentuado — o halo segue valendo."""
+    post = tradutor.traduzir(
+        _spec(direcao_de_arte={**_spec().direcao_de_arte, "registro": "cartaz_beneficio"}),
+        artboard=(1080, 1350), ancora="Bolsa Família")
+    camada = next(c for c in tradutor.camadas_de_texto(post) if c["id"] == "headline")
+
+    assert "halacao" in camada["efeitos"]
+
+
+def test_orcamento_de_altura_desconta_o_botao_e_a_sobrancelha():
+    """O bloco só pode ocupar o que sobra DEPOIS de reservar topo e rodapé.
+
+    Medido quando a escala tipográfica cresceu: com o orçamento cheio, o bloco
+    ancorado no rodapé subiu por cima do kicker e passou da borda superior —
+    `headline: tinta fora da safe area (t:22)` num canvas de 1080 com topo 76,
+    mais `colisão de texto: headline × kicker`. Reservar espaço e não descontá-lo
+    do orçamento é reservar no papel.
+    """
+    spec = _spec(margem_segura={"esquerda": 76, "direita": 76, "topo": 76, "base": 76})
+    frame = tradutor.frame_de(tradutor.traduzir(
+        spec, artboard=(1080, 1080), botao=True, kicker="O QUE TRAVA"))
+
+    util = 1080 - 76 - 76
+    reservado = (tradutor.ALTURA_DO_BOTAO + tradutor.RESPIRO_DO_BOTAO
+                 + tradutor.ALTURA_DO_KICKER + tradutor.RESPIRO_DO_KICKER)
+    assert frame["zona_h"] == util - reservado
+
+
+def test_sem_sobrancelha_nao_se_reserva_topo():
+    spec = _spec(margem_segura={"esquerda": 76, "direita": 76, "topo": 76, "base": 76})
+    com = tradutor.frame_de(tradutor.traduzir(spec, artboard=(1080, 1080), kicker="X"))
+    sem = tradutor.frame_de(tradutor.traduzir(spec, artboard=(1080, 1080)))
+
+    assert sem["zona_h"] - com["zona_h"] == (
+        tradutor.ALTURA_DO_KICKER + tradutor.RESPIRO_DO_KICKER)
