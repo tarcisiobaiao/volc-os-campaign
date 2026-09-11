@@ -230,7 +230,7 @@ def contraste(a: str, b: str) -> float:
     return (claro + 0.05) / (escuro + 0.05)
 
 
-def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -> dict:
+def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia", versao_direcao: str = "2") -> dict:
     """A família cromática declarada vira um `tokens_*.json` da PRENSA.
 
     Os papéis são atribuídos por MEDIÇÃO, não por ordem de declaração: a cor
@@ -256,7 +256,7 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -
     if texto == superficie:
         texto = "#FFFFFF" if _luminancia(superficie) < 0.4 else "#0B0B0F"
 
-    return {
+    skin = {
         "$schema": "prensa-tokens/0.1",
         "skin": identificador,
         "versao": "1.0.0",
@@ -345,6 +345,14 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia") -
             },
         },
     }
+
+
+    if versao_direcao == '1':
+        return skin
+    if versao_direcao != '2':
+        raise ValueError('versão de direção desconhecida')
+    from .prensa_direcao import completar_skin
+    return completar_skin(skin)
 
 
 #: Tratamento tipográfico do run acentuado, por REGISTRO. O registro é decisão
@@ -488,6 +496,7 @@ def traduzir(
     kicker: str | None = None,
     ghost: str | None = None,
     tokens_file: str = "",
+    versao_direcao: str | None = None,
 ) -> dict:
     """Uma `CreativeSpec` e um artboard viram uma `post.spec/1.0.0`.
 
@@ -834,7 +843,13 @@ def traduzir(
             "background": "$color.surface.base",
             "layers": camadas,
         }]
-    return post
+    versao_direcao = versao_direcao or str(spec.direcao_de_arte.get('prensa_direcao_version', '1'))
+    if versao_direcao == '1':
+        return post
+    if versao_direcao != '2':
+        raise ValueError('versão de direção desconhecida')
+    from .prensa_direcao import aplicar
+    return aplicar(post, spec)
 
 
 def traduzir_carrossel(
