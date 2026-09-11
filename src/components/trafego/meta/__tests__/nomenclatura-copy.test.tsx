@@ -189,3 +189,50 @@ it('varinha recusa conta ou Página persistida diferente antes da chamada de tex
     render(<VarinhaDeCopy draft={d} draftRef="ref" adsetKey="A" save={vi.fn().mockResolvedValue(true)} onApply={vi.fn()} demo={false}/>);fireEvent.click(screen.getByRole('button',{name:'Sugerir copies com IA'}));await screen.findByRole('alert');expect(api.suggestMetaCopy).not.toHaveBeenCalled();cleanup();
   }
 });
+
+it('deduplica opções equivalentes por whitespace e caixa alta no banco cheio preservando texto original',async()=>{
+  const d=draft(),apply=vi.fn();
+  const existingPrimary=['Texto Um','Texto Dois','Texto Três','Texto Quatro','Texto Cinco'];
+  d.conjuntos[0].flexibleTexts={primary_text:[...existingPrimary],headline:['Título Original'],description:['Descrição Original']};
+  api.readMetaCampaignDraft.mockResolvedValue({draft:d,version:2});
+  api.suggestMetaCopy.mockResolvedValue({
+    primary_text:['  texto   um  ','TEXTO DOIS'],
+    headline:['  TÍTULO   ORIGINAL  '],
+    description:['descrição original'],
+    model:'hermetic-model',context_sha256:'fixture-equiv'
+  });
+  render(<VarinhaDeCopy draft={d} draftRef="ref" adsetKey="A" save={vi.fn().mockResolvedValue(true)} onApply={apply} demo={false}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Sugerir copies com IA'}));
+  await screen.findByText('Sugestões para revisar');
+  const appendBtn=screen.getByRole('button',{name:'Acrescentar ao banco'}) as HTMLButtonElement;
+  expect(appendBtn.disabled).toBe(false);
+  fireEvent.click(appendBtn);
+  expect(apply).toHaveBeenCalledWith({
+    primary_text:existingPrimary,
+    headline:['Título Original'],
+    description:['Descrição Original'],
+  });
+});
+
+it('desabilita acrescentar quando há sexta opção substantivamente distinta e preserva novo texto',async()=>{
+  const d=draft(),apply=vi.fn();
+  const existingPrimary=['Texto Um','Texto Dois','Texto Três','Texto Quatro','Texto Cinco'];
+  d.conjuntos[0].flexibleTexts={primary_text:[...existingPrimary],headline:['Título Original'],description:[]};
+  api.readMetaCampaignDraft.mockResolvedValue({draft:d,version:3});
+  api.suggestMetaCopy.mockResolvedValue({
+    primary_text:['TEXTO UM','Genuinamente Sexta Opção'],
+    headline:['Título Original'],
+    description:[],
+    model:'hermetic-model',context_sha256:'fixture-distinct'
+  });
+  render(<VarinhaDeCopy draft={d} draftRef="ref" adsetKey="A" save={vi.fn().mockResolvedValue(true)} onApply={apply} demo={false}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Sugerir copies com IA'}));
+  await screen.findByText('Sugestões para revisar');
+  expect((screen.getByRole('button',{name:'Acrescentar ao banco'}) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button',{name:'Substituir textos atuais'}));
+  expect(apply).toHaveBeenCalledWith({
+    primary_text:['TEXTO UM','Genuinamente Sexta Opção'],
+    headline:['Título Original'],
+    description:[],
+  });
+});

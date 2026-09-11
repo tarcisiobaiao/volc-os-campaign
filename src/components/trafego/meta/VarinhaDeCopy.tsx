@@ -10,6 +10,21 @@ function copyContextFingerprint(draft: Draft, draftRef: string, adsetKey: string
     draft.variations.filter(v => v.adsetKey === adsetKey).map(v => [v.assetRef, v.cta, v.packOrigin])]);
 }
 
+function dedupeCanonicalTexts(texts: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const text of texts) {
+    const trimmed = text.trim();
+    if (!trimmed) continue;
+    const key = trimmed.replace(/\s+/g, ' ').toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(text);
+    }
+  }
+  return out;
+}
+
 export function VarinhaDeCopy({ draft, draftRef, adsetKey, save, onApply, demo }: {
   draft: Draft; draftRef: string; adsetKey: string; save: () => Promise<boolean>;
   onApply: (value: TextosFlexiveisDraft) => void; demo: boolean;
@@ -25,7 +40,7 @@ export function VarinhaDeCopy({ draft, draftRef, adsetKey, save, onApply, demo }
   const generatedFor = useRef('');
   useEffect(() => () => flight.current?.abort(), []);
   const stale = result !== null && generatedFor.current !== context;
-  const merge = (key: keyof TextosFlexiveisDraft) => [...new Set([...pool[key].filter(t => t.trim()), ...result![key]])];
+  const merge = (key: keyof TextosFlexiveisDraft) => dedupeCanonicalTexts([...pool[key], ...result![key]]);
   const combined: TextosFlexiveisDraft | null = result ? {
     primary_text: merge('primary_text'), headline: merge('headline'), description: merge('description'),
   } : null;
