@@ -22,11 +22,25 @@ def medir(arquivo, artboard, box, object_position, cores, cor_veu, alvo):
     if w<=0 or h<=0 or bw<=0 or bh<=0 or x<0 or y<0 or x+bw>w or y+bh>h:
         raise ValueError('zona local inválida')
     if not cores or not 1<alvo<=21: raise ValueError('contraste local inválido')
-    horizontal,vertical=object_position.split()
-    centros={'left':0,'top':0,'center':0.5,'right':1,'bottom':1}
+    pos = object_position.split()
+    if len(pos) == 1:
+        pos = ['center', pos[0]] if pos[0] in ('top', 'bottom') else [pos[0], 'center']
+    if len(pos) != 2:
+        raise ValueError('object-position não suportado pela medição local')
+    def centro(valor, horizontal):
+        termos = {'left':0, 'center':.5, 'right':1} if horizontal else {'top':0,'center':.5,'bottom':1}
+        if valor in termos: return termos[valor]
+        if valor.endswith('%'):
+            n = float(valor[:-1]) / 100
+            if 0 <= n <= 1: return n
+        raise ValueError('object-position não suportado pela medição local')
+    centros = (centro(pos[0], True), centro(pos[1], False))
     with Image.open(arquivo) as origem:
+        origem = ImageOps.exif_transpose(origem)
+        if origem.convert('RGBA').getchannel('A').getextrema() != (255, 255):
+            raise ValueError('imagem transparente exige medir a composição, não a foto isolada')
         cena=ImageOps.fit(origem.convert('RGB'),(w,h),method=Image.Resampling.LANCZOS,
-                         centering=(centros[horizontal],centros[vertical]))
+                         centering=centros)
     pixels=np.asarray(cena.crop((x,y,x+bw,y+bh)),dtype=float)/255
     # Uma malha regular de até ~16k amostras; não muda o enquadramento medido.
     pixels=pixels[::max(1,bh//128),::max(1,bw//128)]

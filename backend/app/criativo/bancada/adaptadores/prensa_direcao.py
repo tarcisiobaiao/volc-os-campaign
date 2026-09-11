@@ -76,7 +76,7 @@ def aplicar(post, spec):
     escala=min(w,h)/1080
     # Piso legível por menor eixo; o banner não herda corpos de um story.
     apoio=max(24,round(32*escala))
-    cta=max(24,round(36*escala))
+    cta=max(32,round(36*escala))
     frame=next(c for c in camadas if c['id']=='conteudo')
     if registro=='cartaz_beneficio' and h>=w:
         # Coluna de 68% (CTA ocupa64%): reduz a medição de pixels sem texto
@@ -127,8 +127,8 @@ def aplicar(post, spec):
             cores.append('$color.accent.text')
         selo['style']['gradient']={'auto_local':True,'cores_texto':cores,
             'cor_veu':'#FFFFFF' if claro else '#000000','contraste_alvo':7.0}
-        selo['feather']=gap*2
-        selo['object_position']=next(c for c in camadas if c['type']=='image')['object_position']
+        selo['feather']=gap*4
+        selo['borda']='dissolver'
     camadas[:]=[c for c in camadas if c['type'] not in ('vinheta','texture')]
     # O cartaz tem rubrica compacta, o documento mantém a linha de classificação.
     kicker=next((c for c in camadas if c['id']=='kicker_row'),None)

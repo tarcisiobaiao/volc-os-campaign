@@ -126,6 +126,68 @@ def valida(spec: dict, tokens: dict) -> list:
         valida_camadas(spec.get("layers") or err("spec sem layers nem slides"), budget)
     return fontes
 
+
+def fontes_usadas(camadas: list, fontes: list) -> list:
+    """Seleciona faces por família/peso/estilo, incluindo runs e papéis auxiliares."""
+    pedidos = set()
+    def visita(no):
+        if isinstance(no, dict):
+            if 'family' in no:
+                pedidos.add((no['family'], no.get('weight', 400), no.get('style', 'normal')))
+            for chave, valor in no.items():
+                # html_runs tem defaults próprios para a segunda voz do run.
+                if chave == 'fonte' and isinstance(valor, dict):
+                    visita({'weight':500, 'style':'italic', **valor})
+                else:
+                    visita(valor)
+        elif isinstance(no, list):
+            for valor in no: visita(valor)
+    visita(camadas)
+    indices = set()
+    for familia, peso, estilo in sorted(pedidos):
+        candidatas = []
+        for i, f in enumerate(fontes):
+            faixa = str(f.get('weight_range', f.get('weight', 400))).split()
+            if (f['family'] == familia and f.get('style', 'normal') == estilo
+                    and float(faixa[0]) <= float(peso) <= float(faixa[-1])):
+                candidatas.append(i)
+        if not candidatas:
+            raise ValueError(f'face não declarada: {familia} {peso} {estilo}')
+        # Uma fonte variável pode estar declarada para dois papéis no catálogo.
+        indices.add(candidatas[0])
+    return [f for i, f in enumerate(fontes) if i in indices]
+
+
+def resolver_selo_local(spec: dict, camadas: list, selo: dict) -> None:
+    """Mede a mesma imagem full-bleed cover pintada por html_layer.
+
+    Não aceita cópia de object_position no scrim como autoridade. Filtros,
+    múltiplas imagens ou outra pintura interposta precisam de medição composta
+    no Chrome; não recebem aqui um recibo estatístico da foto original.
+    """
+    from contraste_local import medir
+    imagens = [c for c in camadas if c.get('type') == 'image']
+    if len(imagens) != 1 or imagens[0].get('asset') != selo['asset_ref']:
+        raise ValueError('selo local exige uma única imagem de origem inequívoca')
+    imagem = imagens[0]
+    if imagem.get('filtro') not in (None, '', 'none'):
+        raise ValueError('selo local não mede imagem com filtro CSS')
+    if camadas.index(selo) != camadas.index(imagem) + 1:
+        raise ValueError('selo local deve estar imediatamente acima da imagem medida')
+    assets = [a for a in spec['assets'] if a['id'] == imagem['asset']]
+    if len(assets) != 1:
+        raise ValueError('asset de origem ausente ou ambíguo')
+    grad = selo['style']['gradient']
+    base = spec['artboard']['base']
+    posicao = imagem.get('object_position', 'center')
+    medicao = medir(AQUI / assets[0]['file'], (base['w'], base['h']), selo['box'],
+                   posicao, grad['cores_texto'], grad['cor_veu'], grad['contraste_alvo'])
+    medicao.update(image_layer=imagem['id'], object_position=posicao, object_fit='cover')
+    cor = grad['cor_veu']
+    canais = ','.join(str(int(cor[i:i+2], 16)) for i in (1, 3, 5))
+    selo['fill_local'] = f'rgba({canais},{medicao["alpha"]})'
+    selo['contraste_local'] = medicao
+
 def main() -> None:
     if len(sys.argv) < 2:
         err("uso: resolve.py <spec.json> [tokens_override.json]")
@@ -212,20 +274,12 @@ def main() -> None:
     for camada in resolvido.get("layers", []):
         grad = (camada.get("style") or {}).get("gradient") or {}
         if camada.get('type') == 'scrim' and grad.get('auto_local'):
-            from contraste_local import medir
-            asset = next(a for a in resolvido['assets'] if a['id'] == camada['asset_ref'])
-            base = resolvido['artboard']['base']
             try:
-                medicao = medir(AQUI / asset['file'], (base['w'],base['h']), camada['box'],
-                                camada.get('object_position','center center'),
-                                grad['cores_texto'],grad['cor_veu'],grad['contraste_alvo'])
+                resolver_selo_local(resolvido, resolvido['layers'], camada)
             except (ValueError, OSError, KeyError) as exc:
                 err(f"contraste local: {exc}")
-            cor=grad['cor_veu']; alpha=medicao['alpha']
-            canais=','.join(str(int(cor[i:i+2],16)) for i in (1,3,5))
-            camada['fill_local']=f'rgba({canais},{alpha})'
-            camada['contraste_local']=medicao
-            print(f"   selo local: alpha {alpha}, contraste p05 {medicao['contraste_p05']}")
+            medicao = camada['contraste_local']
+            print(f"   selo local: alpha {medicao['alpha']}, contraste p05 {medicao['contraste_p05']}")
             continue
         if camada.get("type") == "scrim" and grad.get("auto"):
             asset = next(a for a in resolvido["assets"] if a["id"] == camada["asset_ref"])
@@ -235,6 +289,12 @@ def main() -> None:
                              for p, f in grad["curva"]]
             grad["alpha_medido"] = alpha
             print(f"   selo auto: alpha {alpha} (asset {asset['file']})")
+    if (resolvido.get('direcao_resolvida') or {}).get('versao') == '2':
+        camadas = resolvido.get('layers') or [s['layers'] for s in resolvido.get('slides', [])]
+        try:
+            fontes = fontes_usadas(camadas, fontes)
+        except ValueError as exc:
+            err(str(exc))
     resolvido["fonts"] = fontes
     resolvido["skin"]["id_resolvido"] = tokens.get("skin", spec["skin"]["id"])
     resolvido["skin"]["tokens_resolvidos_de"] = tokens_file

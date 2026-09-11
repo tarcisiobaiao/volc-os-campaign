@@ -1764,7 +1764,7 @@
       "cluster": "production",
       "documenta": "system:prensa",
       "summary": "P11-T22 partial: registros tipográficos, contraste local medido e comparação com as mesmas cenas/copy. Melhora de legibilidade, sem declarar vitória estética sobre IA.",
-      "evidence": "docs/architecture/ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md; tools/prensa/replay_direcao.py. Oito peças renderizadas no Chrome original em staging isolado; caminho antigo preservado por opt-in. Sem geração paga, publicação ou implantação de novo container. Aceite visual e integração automática pendentes; medição de zona não equivale a pixel gate."
+      "evidence": "docs/architecture/ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md; docs/closure/prensa-refino-20260911/HANDOFF.md. Em11/09: recorte medido deriva da imagem, máscara com borda contínua, peso variável no recibo, fontes usadas podadas. 92 testes focais; shrink real e pixels da máscara provados no Chrome153/x86_64; oito peças+spec_news aprovados no DOM. Suíte criativa1204 passed/62 skipped/4 falhas herdadas. Sem geração paga, publicação, banco ou implantação. Opt-in preservado; aceite visual e integração automática pendentes. Medição de zona não é pixel gate de glifos; opsz não existe nos displays Archivo/Barlow."
     },
     {
       "id": "doc:creative-engines-inventory",

@@ -23,7 +23,7 @@ def test_sangria_nao_apaga_sombra():
     html=html_texto(dict(id='h',runs=[{'text':'Teste'}],fit={'mode':'fixed','size':96},
         style={'color':'#fff','shadow':'1px 0 0 red','font':{'family':'Inter'}},
         efeitos={'sombra':{'raio':8,'dy':2,'cor':'black'},'sangria':{'raio':'0.01em'}}))
-    assert 'text-shadow:1px 0 0 red,0 2px 8px black,0 0 0.01em currentColor' in html
+    assert 'text-shadow:0 0 0.01em currentColor,1px 0 0 red,0 2px 8px black' in html
     assert html.count('text-shadow:')==1
 
 

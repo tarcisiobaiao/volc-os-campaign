@@ -104,3 +104,13 @@ def test_versao_desconhecida_diz_qual_valor_recusou():
     import pytest as _pytest
     with _pytest.raises(ValueError, match="7"):
         T.skin_da_familia(["azul royal", "branco"], versao_direcao="7")
+
+
+def test_banner_tem_piso_de_cta_distinto_e_selo_nao_duplica_recorte():
+    p=T.traduzir(_spec(),artboard=(1200,628),versao_direcao='2',
+                 asset={'id':'cena','file':'out/cena.png','w':1200,'h':628})
+    d=p['direcao_resolvida']
+    assert d['cta_px'] > d['apoio_min_px']
+    selo=next(c for c in T.camadas_de(p) if c['id']=='selo')
+    assert 'object_position' not in selo
+    assert selo['borda']=='dissolver'

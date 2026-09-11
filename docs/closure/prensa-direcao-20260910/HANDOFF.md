@@ -8,12 +8,14 @@ Base `2cb33f2`, worktree de operação preservado. Sem nova geração de imagem,
 
 ## O que mudou
 
-- §2.1–2.3: registros Archivo/Source Serif/Mono e Barlow/Inter; catálogo dos dez arquivos existente disponível; métricas hhea fundamentam padding. Eixo óptico do papel principal agora aplicado. Nenhuma necessidade de usar dez fontes simultaneamente.
+- §2.1–2.3: registros Archivo/Source Serif/Mono e Barlow/Inter; catálogo dos dez arquivos existente disponível; métricas hhea fundamentam padding. Renderer respeita variações no papel principal; os displays Archivo/Barlow não têm opsz (correção de precisão após revisão do Claude). Nenhuma necessidade de usar dez fontes simultaneamente.
 - §2.3–2.4: piso do apoio protegido por prioridade de shrink; CTA maior; ritmo derivado da escala; âncora composta não quebra no hífen.
 - §2.5–2.8: cartaz tem coluna e checklist lateral; documento mantém grade editorial. Tinta escura no plano claro, clara no escuro; véu só na zona medida, com simulação sRGB e target7:1. Vignette e ruído globais não são obrigatórios.
 - §3: tratamento desconhecido falha; sombra e sangria compõem sem uma apagar a outra; as letras das colunas v2 passam pela verificação DOM.
 
 ## Prova e limites
+
+Atualização em 11/09: [refino pós-Claude](../prensa-refino-20260911/HANDOFF.md), com contraste vinculado ao recorte real, prova comportamental de Chrome e regressão do acervo. A prova abaixo é histórica; foi preservada também em `/Users/mac/Desktop/RUN-REAL-PEDEMEIA/6-direcao-v2/`.
 
 Comparação final local:
 `/private/var/folders/n_/pq8ng_k14vsfx82xb9b8b3980000gp/T/volc-prensa-direcao-x89y8jlo/comparacao.html`

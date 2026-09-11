@@ -311,7 +311,8 @@ def html_texto(camada: dict) -> str:
         # dela (borda infinitamente nítida) é o que denuncia render digital.
         # Um sopro da PRÓPRIA cor, nunca offset: offset vira sombra de template.
         s = fx["sangria"]
-        sombras.append(f'0 0 {s.get("raio", "0.012em")} {s.get("cor", "currentColor")}')
+        # CSS pinta a PRIMEIRA sombra por cima: a fibra fica acima da difusão.
+        sombras.insert(0, f'0 0 {s.get("raio", "0.012em")} {s.get("cor", "currentColor")}')
     css.append('text-shadow:' + (','.join(sombras) if sombras else 'none'))
     if "pos" in camada:
         css.append(_pos_css(camada, 0, 0))
@@ -378,6 +379,23 @@ def html_layer(c: dict, spec: dict) -> str:
         if local:
             if 'fill_local' not in c: err('scrim local não resolvido')
             b=c['box']; fill=c['fill_local']; feather=c.get('feather',0)
+            if c.get('borda') == 'dissolver' and feather > 0:
+                # O miolo mantém EXATAMENTE o alpha medido. Só a área externa
+                # dissolve: mascarar dentro do box invalidaria o contraste.
+                # Smoothstep amostrado evita o salto na borda da cartela e o
+                # empilhamento de alpha que ocorria com background+box-shadow.
+                def mascara(eixo, tamanho):
+                    stops=[]
+                    for t, a in [(0,0),(.25,.15625),(.5,.5),(.75,.84375),(1,1)]:
+                        stops.append(f'rgba(0,0,0,{a}) {feather*t}px')
+                    for t, a in [(0,1),(.25,.84375),(.5,.5),(.75,.15625),(1,0)]:
+                        stops.append(f'rgba(0,0,0,{a}) {feather+tamanho+feather*t}px')
+                    return f'linear-gradient(to {eixo},{",".join(stops)})'
+                mask=mascara('right',b['w'])+','+mascara('bottom',b['h'])
+                return (f'<div id="{c["id"]}" data-scrim data-mask style="position:absolute;'
+                        f'left:{b["x"]-feather}px;top:{b["y"]-feather}px;'
+                        f'width:{b["w"]+2*feather}px;height:{b["h"]+2*feather}px;'
+                        f'background:{fill};mask-image:{mask};mask-composite:intersect;"></div>')
             return (f'<div id="{c["id"]}" data-scrim data-mask style="position:absolute;'
                     f'left:{b["x"]}px;top:{b["y"]}px;width:{b["w"]}px;height:{b["h"]}px;'
                     f'background:{fill};box-shadow:0 0 {feather}px {feather/2}px {fill};"></div>')
@@ -565,11 +583,11 @@ def monta_html(slide: dict, spec: dict) -> str:
 FIT_E_VERIFY_JS = """
 async (args) => {
   const safe = args.safe, fontes = args.fontes;
-  for (const f of fontes) await document.fonts.load(`${f.peso} 20px '${f.familia}'`);
+  for (const f of fontes) await document.fonts.load(`${f.estilo || 'normal'} ${f.peso} 20px '${f.familia}'`);
   await document.fonts.ready;
   const problemas = [];
   for (const f of fontes)
-    if (!document.fonts.check(`${f.peso} 20px '${f.familia}'`))
+    if (!document.fonts.check(`${f.estilo || 'normal'} ${f.peso} 20px '${f.familia}'`))
       problemas.push(`fonte nao carregou: ${f.familia} ${f.peso}`);
 
   const linhas = (el) => {
@@ -583,6 +601,12 @@ async (args) => {
   const paraHex = (rgb) => {
     const m = rgb.match(/\\d+(\\.\\d+)?/g);
     return '#' + [0,1,2].map(i => Math.round(+m[i]).toString(16).padStart(2,'0')).join('');
+  };
+  // font-variation-settings pode sobrescrever font-weight sem alterar seu
+  // computed value. O recibo precisa do eixo usado na pintura.
+  const pesoPintado = cs => {
+    const eixo = /["']wght["']\\s+([0-9.]+)/.exec(cs.fontVariationSettings || '');
+    return eixo ? +eixo[1] : (parseFloat(cs.fontWeight) || 400);
   };
 
   // PASSADA 1 — resolver TODOS os fits. Nenhuma medição aqui: o fit de um
@@ -654,7 +678,8 @@ async (args) => {
     const cs = getComputedStyle(el);
     evidencia[el.id] = { font_size_px: tam, linhas: n,
       bbox: { x: b.left|0, y: b.top|0, w: b.width|0, h: b.height|0 },
-      cor: paraHex(cs.color), peso: +el.dataset.weight, role: el.dataset.role,
+      cor: paraHex(cs.color), peso: pesoPintado(cs), role: el.dataset.role,
+      variacao: cs.fontVariationSettings,
       line_height: parseFloat(cs.lineHeight) / tam || 1.2 };
   }
   // EVIDÊNCIA POR RUN: um run com cor/tratamento próprio é uma unidade de
@@ -672,7 +697,7 @@ async (args) => {
       runs.push({ id: el.id + '/' + (sp.dataset.trat !== undefined ? 'trat' :
                    sp.dataset.accent !== undefined ? 'accent' : 'dual') + ':' + runs.length,
         bbox: { x: x0|0, y: y0|0, w: Math.ceil(x1-x0), h: Math.ceil(y1-y0) },
-        cor: paraHex(cs.color), peso: parseInt(cs.fontWeight) || 400,
+        cor: paraHex(cs.color), peso: pesoPintado(cs), variacao: cs.fontVariationSettings,
         font_size_px: parseFloat(cs.fontSize) || parseFloat(cs0.fontSize),
         texto: sp.textContent.slice(0, 40) });
     }
@@ -759,7 +784,7 @@ async (args) => {
         problemas.push(`clearance: decorativo ${el.id} invade ${c.id} (falta ${Math.ceil(Math.min(ov, oy))}px)`);
     }
   }
-  return { ok: problemas.length === 0, problemas, evidencia, extras };
+  return { ok: problemas.length === 0, problemas, evidencia, extras, runs };
 }
 """
 
@@ -811,7 +836,8 @@ def main() -> None:
     sufixo = sys.argv[sys.argv.index("--sufixo") + 1] if "--sufixo" in sys.argv else ""
     base = spec["artboard"]["base"]
     safe = spec["artboard"]["safe_area"]
-    fontes_js = [{"familia": f["family"], "peso": f.get("weight", 400)} for f in spec["fonts"]]
+    fontes_js = [{"familia": f["family"], "peso": f.get("weight", 400),
+                  "estilo": f.get("style", "normal")} for f in spec["fonts"]]
     slides = spec.get("slides") or [{"id": "s1", "background": spec.get("background", "#000"),
                                      "layers": spec["layers"]}]
     with sync_playwright() as p:
