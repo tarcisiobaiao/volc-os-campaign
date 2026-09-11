@@ -192,7 +192,7 @@ def _tratamento_css(t: dict, camada: dict) -> str:
         # é a mesma voz falando mais alto, não outra voz.
         return (f'font-variation-settings:\'wght\' {t.get("wght", 900)};'
                 f'font-weight:{t.get("wght", 900)}')
-    return ""
+    err(f"tratamento tipográfico desconhecido: {k}")
 
 def _spans(camada: dict, so_accent: bool = False) -> str:
     """so_accent=True: mantém o texto ocupando o mesmo espaço, mas só o acento
@@ -201,6 +201,8 @@ def _spans(camada: dict, so_accent: bool = False) -> str:
     out = []
     for r in camada["runs"]:
         texto = r["text"].replace("\n", "<br>")
+        if r.get('nowrap'):
+            texto = '<span style="white-space:nowrap">'+texto+'</span>'
         # TIPOGRAFIA DUAL: um run pode trocar de FAMÍLIA no meio da frase — a
         # palavra emocional em serifada itálica dentro da grotesca bold. É ênfase
         # por VOZ, não por cor: a frase muda de timbre, não de destaque.
@@ -271,7 +273,6 @@ def html_texto(camada: dict) -> str:
         f'letter-spacing:{fonte.get("tracking", "normal")}',
         f'text-transform:{fonte.get("transform", "none")}',
         f'text-wrap:{"balance" if fonte.get("wrap") == "balance" else "normal"}',
-        f'text-shadow:{estilo.get("shadow", "none")}',
         f'font-style:{fonte.get("style", "normal")}',
         "hyphens:none", "overflow-wrap:normal",
         # hang: pontuação inicial (travessão, aspas) pendurada à esquerda da coluna.
@@ -282,6 +283,9 @@ def html_texto(camada: dict) -> str:
         # old-style — sem isso o ghost numeral muda de altura a cada lâmina)
         f'font-feature-settings:{fonte.get("features", "normal")}',
     ]
+    if fonte.get('variacao'):
+        css.append(f'font-variation-settings:{fonte["variacao"]}')
+    sombras = [estilo['shadow']] if estilo.get('shadow') not in (None, 'none') else []
     if "opacity" in estilo:
         css.append(f'opacity:{estilo["opacity"]}')
     fx = camada.get("efeitos") or {}
@@ -297,7 +301,7 @@ def html_texto(camada: dict) -> str:
         # densidade do fundo e não como camada de template.
         s = fx["sombra"]
         raio, dy = s.get("raio", 16), s.get("dy", 2)
-        css.append(f'text-shadow:0 {dy}px {raio}px {s.get("cor", "rgba(0,0,0,0.78)")}')
+        sombras.append(f'0 {dy}px {raio}px {s.get("cor", "rgba(0,0,0,0.78)")}')
         orcamento = max(orcamento, raio + dy)
     if orcamento:
         css += ["position:relative", f"padding:{orcamento}px", f"margin:-{orcamento}px"]
@@ -307,13 +311,14 @@ def html_texto(camada: dict) -> str:
         # dela (borda infinitamente nítida) é o que denuncia render digital.
         # Um sopro da PRÓPRIA cor, nunca offset: offset vira sombra de template.
         s = fx["sangria"]
-        css.append(f'text-shadow:0 0 {s.get("raio", "0.012em")} '
-                   f'{s.get("cor", "currentColor")}')
+        sombras.append(f'0 0 {s.get("raio", "0.012em")} {s.get("cor", "currentColor")}')
+    css.append('text-shadow:' + (','.join(sombras) if sombras else 'none'))
     if "pos" in camada:
         css.append(_pos_css(camada, 0, 0))
     return (
         f'<div id="{camada["id"]}"{decorativo} data-fit-mode="{fit["mode"]}" '
         f'data-fit-min="{fit.get("min", tam_ini)}" data-fit-max="{fit.get("max", tam_ini)}" '
+        f'data-shrink-priority="{fit.get("shrink_priority",0)}" '
         f'data-max-lines="{fit.get("max_lines", 99)}" data-role="{camada.get("slot", "text")}" '
         f'data-weight="{peso}" style="{";".join(css)}">{html_runs(camada)}</div>'
     )
@@ -356,6 +361,12 @@ def html_layer(c: dict, spec: dict) -> str:
                 f'width:100%;height:100%;object-fit:cover;{filtro}'
                 f'object-position:{c.get("object_position", "center")};" />')
     if t == "scrim":
+        if 'box' in c:
+            if 'fill_local' not in c: err('scrim local não resolvido')
+            b=c['box']; fill=c['fill_local']; feather=c.get('feather',0)
+            return (f'<div id="{c["id"]}" data-scrim data-mask style="position:absolute;'
+                    f'left:{b["x"]}px;top:{b["y"]}px;width:{b["w"]}px;height:{b["h"]}px;'
+                    f'background:{fill};box-shadow:0 0 {feather}px {feather/2}px {fill};"></div>')
         return (f'<div id="{c["id"]}" data-scrim data-mask style="position:absolute;inset:0;'
                 f'background:{css_gradient(c["style"]["gradient"])};"></div>')
     if t == "texture":
@@ -417,6 +428,17 @@ def html_layer(c: dict, spec: dict) -> str:
         for i, col in enumerate(c["colunas"]):
             borda = (f'border-left:1px solid {est["cor_fio"]};padding-left:{c.get("gap",34)}px;'
                      if i else "")
+            vertical=c.get('orientacao')=='vertical'
+            if vertical: borda=f'display:grid;grid-template-columns:auto 1fr;gap:{c.get("gap",16)}px;'
+            if c.get('verificar'):
+                titulo=html_texto(dict(id=f'{c["id"]}_{i}_titulo',runs=[{'text':col['titulo']}],
+                    fit={'mode':'fixed','size':c.get('tam_titulo',25)},
+                    style={'font':ft,'color':col.get('cor') or est['cor_titulo']}))
+                corpo=html_texto(dict(id=f'{c["id"]}_{i}_corpo',runs=[{'text':col['texto']}],
+                    fit={'mode':'fixed','size':c.get('tam_corpo',27)},
+                    style={'font':fc,'color':est['cor_corpo']}))
+                cols.append(f'<div style="flex:1;min-width:0;{borda}">{titulo}{corpo}</div>')
+                continue
             cols.append(
                 f'<div style="flex:1;{borda}">'
                 f'<div style="font-family:\'{ft["family"]}\';font-weight:{ft.get("weight",700)};'
@@ -428,6 +450,9 @@ def html_layer(c: dict, spec: dict) -> str:
                 f'color:{est["cor_corpo"]};">{col["texto"]}</div></div>')
         css = [_pos_css(c, 0, 0), f'width:{c.get("w",888)}px', "display:flex",
                f'gap:{c.get("gap",34)}px']
+        if c.get('orientacao')=='vertical': css.append('flex-direction:column')
+        if est.get('fill'):
+            css.extend([f'background:{est["fill"]}',f'padding:{c.get("padding",0)}px','box-sizing:border-box'])
         return f'<div id="{c["id"]}" data-mask style="{";".join(css)}">{"".join(cols)}</div>'
     if t == "medidor":
         # MEDIDOR: barra com faixa segura e marcador na posição medida. O
@@ -574,7 +599,9 @@ async (args) => {
     let guarda = 0;
     while (fr.getBoundingClientRect().height > maxH && guarda++ < 80) {
       let mudou = false;
-      for (const el of flex) {
+      const elegiveis = flex.filter(el => tamanhos[el.id] !== null && tamanhos[el.id] > +el.dataset.fitMin);
+      const prioridade = Math.min(...elegiveis.map(el => +el.dataset.shrinkPriority));
+      for (const el of elegiveis.filter(el => +el.dataset.shrinkPriority === prioridade)) {
         const min = +el.dataset.fitMin, atual = tamanhos[el.id];
         if (atual !== null && atual > min) {
           tamanhos[el.id] = Math.max(min, atual - 2);

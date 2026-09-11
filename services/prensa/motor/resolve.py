@@ -211,6 +211,22 @@ def main() -> None:
     # selo adaptativo: medido no asset, não escolhido por gosto
     for camada in resolvido.get("layers", []):
         grad = (camada.get("style") or {}).get("gradient") or {}
+        if camada.get('type') == 'scrim' and grad.get('auto_local'):
+            from contraste_local import medir
+            asset = next(a for a in resolvido['assets'] if a['id'] == camada['asset_ref'])
+            base = resolvido['artboard']['base']
+            try:
+                medicao = medir(AQUI / asset['file'], (base['w'],base['h']), camada['box'],
+                                camada.get('object_position','center center'),
+                                grad['cores_texto'],grad['cor_veu'],grad['contraste_alvo'])
+            except (ValueError, OSError, KeyError) as exc:
+                err(f"contraste local: {exc}")
+            cor=grad['cor_veu']; alpha=medicao['alpha']
+            canais=','.join(str(int(cor[i:i+2],16)) for i in (1,3,5))
+            camada['fill_local']=f'rgba({canais},{alpha})'
+            camada['contraste_local']=medicao
+            print(f"   selo local: alpha {alpha}, contraste p05 {medicao['contraste_p05']}")
+            continue
         if camada.get("type") == "scrim" and grad.get("auto"):
             asset = next(a for a in resolvido["assets"] if a["id"] == camada["asset_ref"])
             alpha = scrim_auto(resolvido, asset["file"],
