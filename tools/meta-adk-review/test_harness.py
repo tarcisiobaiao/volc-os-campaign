@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 from google import genai
 
@@ -69,6 +70,25 @@ class HarnessTests(unittest.TestCase):
         parameters = inspect.signature(Host.after_tool).parameters
         self.assertIn("tool_response", parameters)
         self.assertNotIn("response", parameters)
+
+    def test_repeated_tool_and_premature_engineer_diff_are_refused(self):
+        context = SimpleNamespace(agent_name="meta_engineer")
+        gate = SimpleNamespace(name="run_gate")
+        first = self.host.before_tool(gate, {"gate": "diff", "target": ""}, context)
+        self.assertIn("error", first)
+        repeated = self.host.before_tool(gate, {"gate": "diff", "target": ""}, context)
+        self.assertIn("identical", repeated["error"])
+
+    def test_mapper_final_call_is_forced_tool_free(self):
+        request = MagicMock()
+        request.config.tools = ["tool"]
+        request.config.tool_config = "config"
+        request.contents = []
+        self.host.role_calls["meta_code_mapper"] = self.host.role_limits["meta_code_mapper"] - 1
+        self.host.before_model(MagicMock(agent_name="meta_code_mapper"), request)
+        self.assertEqual(request.config.tools, [])
+        self.assertIsNone(request.config.tool_config)
+        self.assertIn("highest-confidence defect", request.contents[-1].parts[0].text)
 
     def test_four_focused_lanes_have_disjoint_names(self):
         self.assertEqual(set(LANES), {"wizard_ux", "creative_system", "publishing_contract", "measurement_ops"})

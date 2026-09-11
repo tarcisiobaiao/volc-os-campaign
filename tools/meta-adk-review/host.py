@@ -45,9 +45,9 @@ class Host:
 
     role_limits = {
         "meta_api_researcher": 1,
-        "meta_code_mapper": 5,
-        "meta_engineer": 9,
-        "meta_critic": 5,
+        "meta_code_mapper": 4,
+        "meta_engineer": 7,
+        "meta_critic": 3,
     }
 
     def __init__(self, args: Any, lane: Lane):
@@ -70,6 +70,7 @@ class Host:
         self.grounded = False
         self.effective_models: set[str] = set()
         self.role_calls: dict[str, int] = {}
+        self.tool_calls: dict[str, set[str]] = {}
         self.read_hashes: dict[str, str] = {}
         self.gates: dict[str, dict[str, Any]] = {}
         self.status = "running"
@@ -141,7 +142,7 @@ class Host:
             files.append(name)
         return {"files": files[:160], "total": len(files), "truncated": len(files) > 160}
 
-    def read_file(self, path: str, start: int = 1, count: int = 180) -> dict[str, Any]:
+    def read_file(self, path: str, start: int = 1, count: int = 320) -> dict[str, Any]:
         """Read tracked source lines and return the hash required for a guarded edit."""
         try:
             target = self._path(path)
@@ -150,7 +151,7 @@ class Host:
                 raise ValueError("file too large; use source search")
             lines = content.splitlines()
             start = max(1, start)
-            count = min(250, max(1, count))
+            count = min(400, max(1, count))
             sha = digest(content)
             with self.lock:
                 self.read_hashes[path] = sha
@@ -371,13 +372,17 @@ class Host:
             self.role_calls[name] = count + 1
             self.calls += 1
             call_number = self.calls
-        if name in {"meta_engineer", "meta_critic"} and count == limit - 1:
+        if name in {"meta_code_mapper", "meta_engineer", "meta_critic"} and count == limit - 1:
             llm_request.config.tools = []
             llm_request.config.tool_config = None
             ending = (
                 "Return the required strict verdict JSON now."
                 if name == "meta_critic"
-                else "Return changed files, current gates and remaining work now."
+                else (
+                    "Return the one highest-confidence defect with path:line, exact evidence and focal test now."
+                    if name == "meta_code_mapper"
+                    else "Return changed files, current gates and remaining work now."
+                )
             )
             llm_request.contents.append(
                 types.Content(
@@ -421,14 +426,32 @@ class Host:
             visible_text=safe(visible),
         )
 
-    def before_tool(self, tool: Any, args: dict[str, Any], tool_context: Any) -> None:
+    def before_tool(
+        self, tool: Any, args: dict[str, Any], tool_context: Any
+    ) -> dict[str, Any] | None:
+        agent = tool_context.agent_name
+        signature = tool.name + ":" + json.dumps(args, ensure_ascii=False, sort_keys=True)
+        seen = self.tool_calls.setdefault(agent, set())
+        if signature in seen:
+            return {"error": "identical tool request refused; use the evidence already returned"}
+        seen.add(signature)
+        if agent == "meta_engineer" and tool.name == "list_files":
+            return {"error": "broad listing refused; use the mapped entrypoint or a literal source search"}
+        if (
+            agent == "meta_engineer"
+            and tool.name == "run_gate"
+            and args.get("gate") == "diff"
+            and self.edits == 0
+        ):
+            return {"error": "diff gate before an edit is refused; identify and patch the proven defect first"}
         self.record(
             "tool",
-            agent=tool_context.agent_name,
+            agent=agent,
             name=tool.name,
             path=args.get("path") or args.get("target"),
             query=safe(args.get("query", ""))[:160],
         )
+        return None
 
     def after_tool(
         self,
@@ -522,6 +545,7 @@ class Host:
             "production_verified": False,
             "cost_usd": None,
             "billing_note": "Provider usage recorded; billed dollar amount is not returned by the API.",
+            "stop_reason": getattr(self, "stop_reason", None),
         }
         (self.run_dir / "REPORT.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
         (self.run_dir / "candidate.diff").write_text(diff)

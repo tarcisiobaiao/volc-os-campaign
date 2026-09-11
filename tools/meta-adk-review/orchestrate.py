@@ -40,6 +40,9 @@ def prepare_worktree(source: Path, root: Path, lane_name: str, base: str, run_id
     subprocess.check_call(
         ["git", "-C", str(source), "worktree", "add", "-b", branch, str(workspace), base]
     )
+    dependencies = source / "node_modules"
+    if dependencies.is_dir():
+        (workspace / "node_modules").symlink_to(dependencies, target_is_directory=True)
     return workspace, branch
 
 
@@ -182,8 +185,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--output-root", type=Path, default=Path("/private/tmp"))
     result.add_argument("--base")
     result.add_argument("--rounds", type=int, choices=(1, 2, 3), default=2)
-    result.add_argument("--max-calls", type=int, default=26)
-    result.add_argument("--max-tokens", type=int, default=180_000)
+    result.add_argument("--max-calls", type=int, default=20)
+    result.add_argument("--max-tokens", type=int, default=120_000)
     result.add_argument("--max-edits", type=int, default=12)
     result.add_argument("--timeout", type=int, default=1_800)
     result.add_argument("--prepare-only", action="store_true")

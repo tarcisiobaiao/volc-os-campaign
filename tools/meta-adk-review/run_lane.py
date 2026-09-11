@@ -35,6 +35,7 @@ async def execute(args: argparse.Namespace) -> int:
     except Exception as exc:
         if host:
             host.status = "stopped_" + type(exc).__name__
+            host.stop_reason = safe(str(exc))[:1800]
             host.record("error", error_type=type(exc).__name__, message=safe(str(exc))[:1800])
         else:
             print(json.dumps({"status": "host_initialization_failed", "error": safe(exc)}))
@@ -65,8 +66,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--credential-root", type=Path, required=True)
     result.add_argument("--lane", choices=sorted(LANES), required=True)
     result.add_argument("--rounds", type=int, choices=range(1, 4), default=2)
-    result.add_argument("--max-calls", type=int, default=26)
-    result.add_argument("--max-tokens", type=int, default=180_000)
+    result.add_argument("--max-calls", type=int, default=20)
+    result.add_argument("--max-tokens", type=int, default=120_000)
     result.add_argument("--max-edits", type=int, default=12)
     result.add_argument("--timeout", type=int, default=1_800)
     return result

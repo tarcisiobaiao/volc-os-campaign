@@ -38,7 +38,7 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
             thinking_level=types.ThinkingLevel.HIGH,
             include_thoughts=False,
         ),
-        max_output_tokens=16_000,
+        max_output_tokens=10_000,
     )
 
     common = {
@@ -50,7 +50,8 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
         "disallow_transfer_to_parent": True,
         "disallow_transfer_to_peers": True,
     }
-    read_tools = [host.list_files, host.read_file, host.search_source, host.show_diff]
+    mapper_tools = [host.read_file, host.search_source]
+    review_tools = [host.read_file, host.search_source, host.show_diff]
 
     researcher = LlmAgent(
         name="meta_api_researcher",
@@ -76,11 +77,12 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
         instruction=(
             base_instruction
             + "\n\nVocê é o cartógrafo do código. Em paralelo ao pesquisador, leia todos os entrypoints, "
-              "trace chamadores e testes, e identifique no máximo três defeitos demonstráveis da lane. "
-              "Não edite. Cite path:line, comportamento atual, risco e menor teste capaz de provar cada defeito. "
-              "Não explore outras lanes."
+              "use busca literal e no máximo duas leituras focais de até 400 linhas. Identifique exatamente um "
+              "defeito demonstrável de maior impacto — não faça inventário geral. Não edite. Cite path:line, "
+              "comportamento atual, risco, mudança mínima e o teste focal que deve provar a correção. "
+              "Na sua última chamada entregue o mapa, sem pedir mais ferramentas e sem explorar outras lanes."
         ),
-        tools=read_tools,
+        tools=mapper_tools,
         output_key="code_map",
         **common,
     )
@@ -90,7 +92,7 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
             state = {}
             for key in ("api_research", "code_map", "implementation", "verdict"):
                 value = str(context.state.get(key, ""))
-                state[key] = value[-18_000:]
+                state[key] = value[-8_000:]
             return base_instruction + f"\n\n## Seu papel\n{role}\n\n## Estado da lane\n" + json.dumps(
                 state, ensure_ascii=False
             )
@@ -101,12 +103,14 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
         model=model(),
         include_contents="none",
         instruction=iterative_instruction(
-            "Você é o executor. Escolha o defeito de maior impacto que cabe nesta rodada. Leia produção e teste, "
-            "reproduza a falha, aplique no máximo uma correção coesa usando hash, crie/ajuste regressão e rode "
+            "Você é o executor, não um consultor. Parta do único defeito mapeado. Não liste arquivos amplamente "
+            "e não rode diff antes de editar. Confirme o símbolo com busca e uma leitura focal; então aplique no "
+            "máximo uma correção coesa usando hash, crie/ajuste regressão e rode "
             "o gate focal depois da última edição. Se o crítico anterior apontou regressão, resolva-a antes de "
-            "abrir novo escopo. Finalize com arquivos, prova antes/depois e pendências reais."
+            "abrir novo escopo. Se não houver defeito comprovável, declare BLOCKED com a evidência exata — não "
+            "consuma o orçamento em exploração aberta. Finalize com arquivos, prova antes/depois e pendências reais."
         ),
-        tools=read_tools + [host.replace_text, host.create_test_file, host.run_gate],
+        tools=review_tools + [host.replace_text, host.create_test_file, host.run_gate],
         output_key="implementation",
         **common,
     )
@@ -121,7 +125,7 @@ def build_workflow(host: Host, api: Any, lane: Lane, rounds: int) -> Workflow:
             "e regressão de acessibilidade. Não edite. Candidate só com patch não vazio e gate focal pós-edição. "
             "Devolva exclusivamente JSON estrito no schema exigido pela missão."
         ),
-        tools=read_tools,
+        tools=review_tools,
         output_key="verdict",
         **common,
     )
