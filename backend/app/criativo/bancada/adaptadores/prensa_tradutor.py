@@ -230,7 +230,15 @@ def contraste(a: str, b: str) -> float:
     return (claro + 0.05) / (escuro + 0.05)
 
 
-def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia", versao_direcao: str = "2") -> dict:
+def skin_da_familia(
+    familia: list[str], *, identificador: str = "VOS:familia",
+    # ⚠️ v1 por padrão, como em `traduzir`. Ativação deliberada vale para as
+    # DUAS portas ou não vale para nenhuma: com o padrão em "2", a chamada
+    # natural devolvia skin nova com layout velho — combinação que nenhum dos
+    # dois conjuntos de teste exercita — e um lote aprovado voltava com outros
+    # bytes sem ninguém ter pedido.
+    versao_direcao: str = "1",
+) -> dict:
     """A família cromática declarada vira um `tokens_*.json` da PRENSA.
 
     Os papéis são atribuídos por MEDIÇÃO, não por ordem de declaração: a cor
@@ -347,11 +355,12 @@ def skin_da_familia(familia: list[str], *, identificador: str = "VOS:familia", v
     }
 
 
-    if versao_direcao == '1':
+    if versao_direcao == "1":
         return skin
-    if versao_direcao != '2':
-        raise ValueError('versão de direção desconhecida')
-    from .prensa_direcao import completar_skin
+    if versao_direcao != "2":
+        raise ValueError(f"versão de direção desconhecida: {versao_direcao!r}")
+    from .prensa_direcao import completar_skin  # noqa: PLC0415
+
     return completar_skin(skin)
 
 
@@ -843,12 +852,14 @@ def traduzir(
             "background": "$color.surface.base",
             "layers": camadas,
         }]
-    versao_direcao = versao_direcao or str(spec.direcao_de_arte.get('prensa_direcao_version', '1'))
-    if versao_direcao == '1':
+    versao_direcao = versao_direcao or str(
+        spec.direcao_de_arte.get("prensa_direcao_version", "1"))
+    if versao_direcao == "1":
         return post
-    if versao_direcao != '2':
-        raise ValueError('versão de direção desconhecida')
-    from .prensa_direcao import aplicar
+    if versao_direcao != "2":
+        raise ValueError(f"versão de direção desconhecida: {versao_direcao!r}")
+    from .prensa_direcao import aplicar  # noqa: PLC0415
+
     return aplicar(post, spec)
 
 

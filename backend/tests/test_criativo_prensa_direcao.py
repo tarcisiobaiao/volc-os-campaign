@@ -18,7 +18,7 @@ def post(registro='documento', claro=False):
 
 
 def test_registros_tem_vozes_distintas_com_fontes_empacotadas():
-    skin = T.skin_da_familia(FAMILIA)
+    skin = T.skin_da_familia(FAMILIA, versao_direcao="2")
     regs = skin['type']['registros']
     assert regs['cartaz_beneficio']['display']['family'] == 'Barlow Condensed'
     assert regs['documento']['body']['family'] == 'Source Serif 4'
@@ -65,10 +65,42 @@ def test_legado_e_versao_desconhecida():
 
 def test_tinta_do_botao_mede_a_cor_de_fundo():
     for familia in (FAMILIA,['branco','azul royal'],['preto','vermelho']):
-        skin=T.skin_da_familia(familia)
+        skin=T.skin_da_familia(familia, versao_direcao="2")
         assert T.contraste(skin['color']['ink']['on_accent'],skin['color']['accent']['text'])>=4.5
 
 
 def test_cartaz_tem_coluna_propria_nao_o_mesmo_esqueleto():
     frame=lambda p: next(c for c in T.camadas_de(p) if c['id']=='conteudo')
     assert frame(post('cartaz_beneficio'))['max_width'] < frame(post('documento'))['max_width']
+
+
+def test_skin_sem_versao_declarada_continua_sendo_a_v1():
+    """⚠️ Ativação deliberada vale para as DUAS portas, ou não vale para nenhuma.
+
+    `traduzir()` faz certo: sem versão declarada ele devolve v1. Mas
+    `skin_da_familia()` nasceu com `versao_direcao="2"` como padrão, então a
+    chamada natural — a que todo script existente faz — passou a devolver a skin
+    nova de oito famílias.
+
+    O efeito é pior que trocar as duas: quem chama o par sem argumento recebe
+    SKIN v2 com LAYOUT v1, uma combinação que nenhum dos dois conjuntos de teste
+    exercita. E um lote aprovado, regerado, volta com outros bytes sem ninguém
+    ter pedido — que é exatamente o que a ativação deliberada existe para impedir.
+    """
+    from app.criativo.bancada.adaptadores import prensa_tradutor as T
+
+    familia = ["azul royal", "amarelo ouro", "verde bandeira", "branco"]
+    padrao = T.skin_da_familia(familia)
+    v1 = T.skin_da_familia(familia, versao_direcao="1")
+
+    assert padrao == v1
+    assert {f["family"] for f in padrao["fonts"]} == {"Inter"}
+
+
+def test_versao_desconhecida_diz_qual_valor_recusou():
+    """Erro que não nomeia o valor recusado obriga quem depura a adivinhar."""
+    from app.criativo.bancada.adaptadores import prensa_tradutor as T
+
+    import pytest as _pytest
+    with _pytest.raises(ValueError, match="7"):
+        T.skin_da_familia(["azul royal", "branco"], versao_direcao="7")
