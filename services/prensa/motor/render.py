@@ -361,7 +361,21 @@ def html_layer(c: dict, spec: dict) -> str:
                 f'width:100%;height:100%;object-fit:cover;{filtro}'
                 f'object-position:{c.get("object_position", "center")};" />')
     if t == "scrim":
-        if 'box' in c:
+        # ⚠️ `box` só significa região LOCAL quando tem medida em px. O acervo
+        # declara scrim de tela cheia como `{"x":0,"y":0,"w":"100%","h":"100%"}`
+        # desde `7b80a70`, e o render antigo simplesmente ignorava o box e
+        # pintava `inset:0`. Exigir `fill_local` também nesse caso derrubou
+        # `spec_news.json` — a única spec do acervo com scrim+box — com
+        # "scrim local não resolvido", exit 1, zero PNG. Fail-closed, mas é peça
+        # fora do ar sem ninguém ter pedido, e `varredura.sh` varre `spec_*.json`.
+        #
+        # E a porcentagem não sobreviveria à interpolação de qualquer jeito:
+        # `width:{b["w"]}px` com `w="100%"` emite `width:100%px`, que o CSS
+        # descarta em silêncio.
+        caixa = c.get("box") or {}
+        local = any(isinstance(caixa.get(eixo), (int, float))
+                    for eixo in ("w", "h"))
+        if local:
             if 'fill_local' not in c: err('scrim local não resolvido')
             b=c['box']; fill=c['fill_local']; feather=c.get('feather',0)
             return (f'<div id="{c["id"]}" data-scrim data-mask style="position:absolute;'

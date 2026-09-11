@@ -37,3 +37,33 @@ def test_colunas_v2_medem_todos_os_textos():
     assert 'background:#ffff00' in html
     c['orientacao']='vertical'
     assert 'flex-direction:column' in html_layer(c,{'artboard':{'base':{'w':1080,'h':1350}}})
+
+
+def test_scrim_de_tela_cheia_nao_exige_fill_local():
+    """⚠️ Regressão de acervo: `spec_news.json` parou de renderizar.
+
+    A guarda de scrim LOCAL passou a exigir `fill_local` sempre que a camada tem
+    `box`. Mas `spec_news.json` declara `box` de TELA CHEIA
+    (`{"x":0,"y":0,"w":"100%","h":"100%"}`) desde `7b80a70`, e o render antigo
+    simplesmente o ignorava e pintava `inset:0`. Quem escreve `fill_local` é o
+    resolve, e só quando o gradiente tem `auto_local` — que `tokens_news.json`
+    não tem.
+
+    Resultado: `err('scrim local não resolvido')`, exit 1, zero PNG. É
+    fail-closed, mas é peça do acervo fora do ar sem ninguém ter pedido — e
+    `varredura.sh` roda `for spec in spec_*.json`.
+
+    Box em porcentagem não é região local: é a declaração legada de tela cheia.
+    """
+    import render
+
+    camada = {
+        "id": "scrim", "type": "scrim",
+        "box": {"x": 0, "y": 0, "w": "100%", "h": "100%"},
+        "style": {"gradient": {"direcao": "to top",
+                               "stops": [{"cor": "rgba(0,0,0,0.5)", "at": "0%"}]}},
+    }
+    html = render.html_layer(camada, {"assets": []})
+
+    assert "inset:0" in html
+    assert "100%px" not in html
