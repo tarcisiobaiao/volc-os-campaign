@@ -568,12 +568,24 @@ def _instrucao(
         if com_referencia
         else ""
     )
-    texto = (
+    # ⚠️ Esta linha CALA quando a tipografia é do código, e a razão custou uma
+    # imagem paga. `compilar_prompt` já emite "Não escreva NENHUM texto…" para
+    # peça com plano de composição — é assim que a cena chega limpa e a PRENSA
+    # escreve a letra com fonte real, medida no DOM. Mandar as duas coisas no
+    # mesmo prompt é pedir ao modelo que escreva e não escreva: em 10/09/2026 o
+    # `gpt-image-2` obedeceu a esta e devolveu a headline desenhada, com o
+    # caderno da cena cheio de rabisco ilegível no lugar da escrita à mão.
+    #
+    # A política NÃO cala junto: logotipo e marca d'água viajam com os pixels
+    # nos dois caminhos, porque são restrição de conteúdo e não de tipografia.
+    politica = "Sem logotipos ou marcas d'água copiados.\n"
+    por_codigo = pedido.contexto.get("tipografia") == "codigo"
+    texto = politica if por_codigo else (
         "O texto explicitamente aprovado no briefing deve aparecer na arte final, "
         "com todas as palavras e acentos, em hierarquia legível. "
         "Não invente texto quando não foi solicitado. "
         "Use apenas o texto na arte aprovado no briefing, nunca o texto da referência. "
-        "Sem logotipos ou marcas d'água copiados.\n"
+        + politica
     )
     # A única coisa que ESTA camada sabe e o blueprint não é a geometria. Onde o
     # texto vive, se há área chapada e qual a ordem de leitura são decisões de

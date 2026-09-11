@@ -646,3 +646,55 @@ def test_a_transformacao_final_publicada_diz_o_SENTIDO_certo():
         assert _mesma_razao(canvas, formato) is preserva, formato.slot
         # E o canvas e MENOR que o alvo nas duas bordas: e ampliacao mesmo.
         assert canvas.largura <= formato.largura and canvas.altura <= formato.altura
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# N. QUEM ESCREVE A LETRA — e a ordem contraditória que custou uma imagem paga
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_com_tipografia_por_codigo_a_instrucao_para_de_mandar_escrever_texto():
+    """⚠️ Duas ordens opostas no mesmo prompt, e o modelo obedece uma ao acaso.
+
+    `compilar_prompt` emite "Não escreva NENHUM texto…" quando a peça tem plano
+    de composição — é assim que a cena chega limpa para a PRENSA escrever a
+    letra com fonte real. Mas `_instrucao` acrescentava, INCONDICIONALMENTE, "O
+    texto explicitamente aprovado no briefing deve aparecer na arte final".
+
+    Medido em 10/09/2026 com uma chamada paga de verdade: o `gpt-image-2`
+    obedeceu à segunda e devolveu a headline desenhada, com o caderno da cena
+    cheio de rabisco ilegível no lugar da escrita à mão. Pagou-se por uma imagem
+    que o caminho da prensa não pode usar.
+
+    O contexto `tipografia=codigo` é a única coisa que esta camada precisa saber
+    para calar: onde o texto vive já viaja em `pedido.insumo`.
+    """
+    transporte = TransporteFalso()
+    pedido = _pedido()
+    pedido.contexto = {"tipografia": "codigo"}
+    _rodar(MotorOpenAIImagem(chave="x", transporte=transporte), pedido)
+
+    prompt = transporte.chamadas[0]["payload"]["prompt"]
+    assert "deve aparecer na arte final" not in prompt
+    assert "hierarquia legível" not in prompt
+
+
+def test_sem_tipografia_por_codigo_a_instrucao_de_texto_continua_intacta():
+    """O caminho `modelo` não muda: lá a letra É do modelo, e ele precisa ouvir."""
+    transporte = TransporteFalso()
+    _rodar(MotorOpenAIImagem(chave="x", transporte=transporte), _pedido())
+
+    prompt = transporte.chamadas[0]["payload"]["prompt"]
+    assert "deve aparecer na arte final" in prompt
+
+
+def test_a_proibicao_de_logotipo_sobrevive_nos_dois_caminhos():
+    """Calar o pedido de texto não pode calar a política que viaja junto dele."""
+    for contexto in ({}, {"tipografia": "codigo"}):
+        transporte = TransporteFalso()
+        pedido = _pedido()
+        pedido.contexto = dict(contexto)
+        _rodar(MotorOpenAIImagem(chave="x", transporte=transporte), pedido)
+
+        prompt = transporte.chamadas[0]["payload"]["prompt"]
+        assert "Sem logotipos ou marcas d'água copiados" in prompt, contexto
