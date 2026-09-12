@@ -31,6 +31,12 @@ COPY = 'src/components/trafego/meta/VarinhaDeCopy.tsx'
 COPY_TEST = 'src/components/trafego/meta/__tests__/nomenclatura-copy.test.tsx'
 TEXTS = 'src/components/trafego/meta/TextosDoAnuncioFlexivel.tsx'
 TEXTS_TEST = 'src/components/trafego/meta/__tests__/textos-flexiveis.test.tsx'
+ATTRIBUTION = 'backend/app/trafego/meta/atribuicao.py'
+FINANCIAL = 'backend/app/trafego/meta/financeiro.py'
+FINANCIAL_TEST = 'backend/tests/test_meta_financial_lineage.py'
+API_TYPES = 'src/lib/pautadorApi.ts'
+FINANCIAL_VIEW = 'src/components/trafego/meta/ConjuntosFinanceiros.tsx'
+FINANCIAL_VIEW_TEST = 'src/components/trafego/meta/__tests__/conjuntos-financeiros.test.tsx'
 
 TICKETS = {
     "copy_retry": Ticket(
@@ -65,6 +71,54 @@ TICKETS = {
         ((TEXTS, 1, 180), (TEXTS_TEST, 1, 400)), (TEXTS, TEXTS_TEST), TEXTS_TEST,
         "Consulte W3C WAI sobre foco de teclado ao remover controles dinâmicos, react.dev refs/focus, "
         "e documentação Meta flexible ad format para distinguir pools de teste A/B. Não mude limites do produto.",
+    ),
+    "funnel_evidence_contract": Ticket(
+        "funnel_evidence_contract", "measurement_ops",
+        "Preservar o percurso clique no link → chegada à LP → monetização e qualificar a evidência",
+        "O coletor e a view latest já guardam inline_link_clicks e landing_page_views, mas "
+        "linha_de_conjunto_dia descarta ambos. O financeiro já leva GAM impressions/clicks, receita, "
+        "completude, provisionalidade e reconciliação, porém não publica um estado de evidência nem explicita "
+        "que profit_gross desconta somente mídia.",
+        (
+            "LinhaAtribuicao e Total preservam inline_link_clicks e landing_page_views como int|null; total do período "
+            "é null se qualquer linha do grão não mediu a etapa, e zero medido continua zero.",
+            "Publicar landing_page_load_rate_pct = LPV/link clicks*100, cost_per_landing_page_view = spend/LPV e "
+            "gam_impressions_per_landing_page_view = GAM impressions/LPV somente com denominador positivo; nunca dividir por zero.",
+            "O financeiro vazio e preenchido expõem os campos no total e por conjunto, sem alterar o grão adset/dia, "
+            "a atribuição de receita, o mascaramento ou a reconciliação campaign-level.",
+            "Publicar contribution_observed como alias honesto de revenue_brl - Meta spend e evidence_state determinístico: "
+            "INCOMPLETE quando gasto/receita incompletos, PROVISIONAL quando inclui hoje, UNRECONCILED quando a leitura "
+            "campaign-level diverge, OBSERVED_COMPLETE apenas quando nenhuma dessas condições existe. Incluir reasons e "
+            "economic_basis='gam_revenue_brl_minus_meta_spend'; custos além de mídia ficam explicitamente NOT_MODELED.",
+            "O estado é informativo e não autoriza pausa, escala, publicação ou gasto. Não criar score/threshold arbitrário.",
+            "Testes cobrem soma, ausência, zero, denominadores, estado de evidência e preservam os testes atuais.",
+        ),
+        ((ATTRIBUTION, 120, 400), (FINANCIAL, 100, 400), (FINANCIAL_TEST, 1, 400)),
+        (ATTRIBUTION, FINANCIAL, FINANCIAL_TEST), FINANCIAL_TEST,
+        "Consulte a documentação oficial Meta Insights para inline_link_clicks, landing_page_view e action metrics. "
+        "A pesquisa só valida semântica de campo; não mude janela, atribuição ou política com base em fonte secundária.",
+    ),
+    "funnel_evidence_ui": Ticket(
+        "funnel_evidence_ui", "measurement_ops",
+        "Tornar o percurso e a confiança da contribuição visíveis no dashboard Meta",
+        "ConjuntosFinanceiros mostra gasto/receita/ROAS e prova da soma, mas oculta os campos de clique no link e "
+        "chegada à LP já coletados. O operador não enxerga em qual ponte há perda nem que lucro bruto é somente "
+        "receita GAM menos mídia Meta.",
+        (
+            "Estender os tipos sem afrouxar campos existentes e renderizar, antes da tabela, uma única superfície densa "
+            "'Percurso até a monetização' com cliques no link, LPV, impressões GAM e receita, preservando null como travessão.",
+            "Mostrar as pontes LPV/clique no link, custo por LPV e impressões GAM/LPV somente quando o servidor as fornecer; "
+            "explicar que impressões GAM podem incluir múltiplos slots/refresh e não são pessoas ou retenção.",
+            "Mostrar 'Contribuição observada' com a base receita GAM menos mídia Meta e um estado textual para "
+            "INCOMPLETE, PROVISIONAL, UNRECONCILED ou OBSERVED_COMPLETE; nunca chamar de lucro líquido nem usar score inventado.",
+            "Estados desconhecidos/ausentes ensinam o que falta. Layout é lista no mobile e grade/divisores no desktop, "
+            "sem nested cards, raw hex, gradiente decorativo ou nova dependência; foco/semântica WCAG preservados.",
+            "Testes cobrem campos completos, ausência sem zero inventado, explicação GAM e todos os estados de evidência.",
+        ),
+        ((API_TYPES, 500, 150), (FINANCIAL_VIEW, 1, 400), (FINANCIAL_VIEW_TEST, 1, 240)),
+        (API_TYPES, FINANCIAL_VIEW, FINANCIAL_VIEW_TEST), FINANCIAL_VIEW_TEST,
+        "Consulte apenas documentação oficial Meta para os nomes das métricas e W3C/WAI para descrição de grupos de dados. "
+        "Não invente benchmark, cor de performance ou recomendação automática.",
     ),
 }
 
