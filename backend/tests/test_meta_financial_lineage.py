@@ -122,6 +122,85 @@ def test_receita_vem_pelo_conjunto_e_a_campanha_soma_os_conjuntos(monkeypatch):
     assert 'external_id' not in json.dumps(r, default=str)
 
 
+def test_percurso_preserva_clique_no_link_lpv_e_pontes_sem_mudar_o_grao(monkeypatch):
+    banco = preparar(monkeypatch)
+    banco.tabelas['vw_trafego_meta_insight_latest'][0].update(
+        inline_link_clicks=10, landing_page_views=8)
+    banco.tabelas['vw_trafego_meta_insight_latest'][1].update(
+        inline_link_clicks=15, landing_page_views=12)
+    banco.tabelas['gam_metrics'][0].update(impressions=24, clicks=2)
+    banco.tabelas['gam_metrics'][1].update(impressions=36, clicks=3)
+
+    r = ler(banco)
+
+    assert r['grao'] == 'adset'
+    assert r['inline_link_clicks'] == 25
+    assert r['landing_page_views'] == 20
+    assert r['landing_page_load_rate_pct'] == 80
+    assert r['cost_per_landing_page_view'] == 0.5
+    assert r['gam_impressions_per_landing_page_view'] == 3
+    assert r['contribution_observed'] == r['profit_gross'] == 15
+    assert [c['landing_page_views'] for c in r['conjuntos']] == [8, 12]
+
+
+def test_percurso_incompleto_nao_vira_zero_e_denominador_zero_nao_divide(monkeypatch):
+    banco = preparar(monkeypatch)
+    banco.tabelas['vw_trafego_meta_insight_latest'][0].update(
+        inline_link_clicks=0, landing_page_views=0)
+    banco.tabelas['vw_trafego_meta_insight_latest'][1].update(
+        inline_link_clicks=None, landing_page_views=None)
+
+    r = ler(banco)
+
+    assert r['inline_link_clicks'] is None
+    assert r['landing_page_views'] is None
+    assert r['landing_page_load_rate_pct'] is None
+    assert r['cost_per_landing_page_view'] is None
+    assert r['gam_impressions_per_landing_page_view'] is None
+    primeiro = next(c for c in r['conjuntos'] if c['inline_link_clicks'] == 0)
+    assert primeiro['landing_page_views'] == 0
+    assert primeiro['landing_page_load_rate_pct'] is None
+
+
+def test_densidade_gam_nao_transforma_soma_parcial_em_total(monkeypatch):
+    banco = preparar(monkeypatch)
+    banco.tabelas['vw_trafego_meta_insight_latest'][0].update(
+        inline_link_clicks=10, landing_page_views=8)
+    banco.tabelas['vw_trafego_meta_insight_latest'][1].update(
+        inline_link_clicks=15, landing_page_views=12)
+    banco.tabelas['gam_metrics'][0].update(impressions=24)
+    banco.tabelas['gam_metrics'][1].update(impressions=None)
+
+    r = ler(banco)
+
+    assert r['gam_impressions'] == 24
+    assert r['gam_impressions_per_landing_page_view'] is None
+
+
+def test_estado_de_evidencia_e_formula_sao_deterministicos_e_informativos(monkeypatch):
+    banco = preparar(monkeypatch)
+    completo = ler(banco)
+    assert completo['evidence'] == {
+        'state': 'OBSERVED_COMPLETE',
+        'reasons': [],
+        'economic_basis': 'gam_revenue_brl_minus_meta_spend',
+        'other_costs': 'NOT_MODELED',
+        'informational_only': True,
+    }
+
+    banco.tabelas['vw_trafego_meta_insight_latest'].append(
+        _insight('11', '99', nivel='campaign', meta_insight_daily_id='i-camp'))
+    divergente = ler(banco)
+    assert divergente['evidence']['state'] == 'UNRECONCILED'
+    assert 'META_LEVELS_UNRECONCILED' in divergente['evidence']['reasons']
+
+    banco = preparar(monkeypatch)
+    banco.tabelas['gam_metrics'] = [_receita(CONJUNTO_1, '15')]
+    incompleto = ler(banco)
+    assert incompleto['evidence']['state'] == 'INCOMPLETE'
+    assert 'GAM_REVENUE_INCOMPLETE' in incompleto['evidence']['reasons']
+
+
 def test_o_total_prova_matematicamente_a_soma_dos_conjuntos(monkeypatch):
     r = ler(preparar(monkeypatch))
     assert len(r['conjuntos']) == 2

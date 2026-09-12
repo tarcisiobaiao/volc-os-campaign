@@ -109,7 +109,12 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
         "spend": None, "revenue": None, "revenue_original": None,
         "profit_gross": None, "roas_ratio": None, "retorno_excedente_pct": None,
         "impressions": None, "clicks": None, "ctr": None, "cpc": None,
+        "inline_link_clicks": None, "landing_page_views": None,
+        "landing_page_load_rate_pct": None,
+        "cost_per_landing_page_view": None,
+        "gam_impressions_per_landing_page_view": None,
         "gam_impressions": None, "gam_clicks": None,
+        "contribution_observed": None, "evidence": None,
         "spend_completo": False, "revenue_completo": False,
         "conjuntos": [], "razao": None, "reconciliacao": None,
         "fontes": {"spend": "Meta Insights · adset · latest",
@@ -368,7 +373,13 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
         retorno_excedente_pct=total.retorno_excedente_pct,
         impressions=total.impressions, clicks=total.clicks,
         ctr=total.ctr, cpc=total.cpc,
+        inline_link_clicks=total.inline_link_clicks,
+        landing_page_views=total.landing_page_views,
+        landing_page_load_rate_pct=total.landing_page_load_rate_pct,
+        cost_per_landing_page_view=total.cost_per_landing_page_view,
+        gam_impressions_per_landing_page_view=total.gam_impressions_per_landing_page_view,
         gam_impressions=total.gam_impressions, gam_clicks=total.gam_clicks,
+        contribution_observed=total.profit_gross,
         spend_completo=total.razao.spend_completo,
         revenue_completo=total.razao.revenue_completo,
         razao=total.razao.publico(),
@@ -405,4 +416,28 @@ async def ler_financeiro(repo: Any, referencia: str, conta_ref: str,
         if soma is not None:
             leitura_campanha = {"spend": soma}
     vazio["reconciliacao"] = atr.reconciliar_com_campaign_level(total, leitura_campanha)
+    motivos: list[str] = []
+    if not total.razao.spend_completo:
+        motivos.append("META_SPEND_INCOMPLETE")
+    if not total.razao.revenue_completo:
+        motivos.append("GAM_REVENUE_INCOMPLETE")
+    if vazio["reconciliacao"].get("reconciliado") is False:
+        motivos.append("META_LEVELS_UNRECONCILED")
+    if vazio["provisorio"]:
+        motivos.append("CURRENT_DAY_PROVISIONAL")
+    if not total.razao.spend_completo or not total.razao.revenue_completo:
+        estado_evidencia = "INCOMPLETE"
+    elif vazio["reconciliacao"].get("reconciliado") is False:
+        estado_evidencia = "UNRECONCILED"
+    elif vazio["provisorio"]:
+        estado_evidencia = "PROVISIONAL"
+    else:
+        estado_evidencia = "OBSERVED_COMPLETE"
+    vazio["evidence"] = {
+        "state": estado_evidencia,
+        "reasons": motivos,
+        "economic_basis": "gam_revenue_brl_minus_meta_spend",
+        "other_costs": "NOT_MODELED",
+        "informational_only": True,
+    }
     return vazio

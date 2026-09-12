@@ -155,6 +155,11 @@ class LinhaAtribuicao:
     spend: Decimal | None = None
     impressions: int | None = None
     clicks: int | None = None
+    #: Etapas distintas do percurso. `inline_link_clicks` vem como campo de
+    #: Insight; LPV é a ação `landing_page_view`. Ausência em qualquer dia
+    #: continua ausência no total do período, nunca zero presumido.
+    inline_link_clicks: int | None = None
+    landing_page_views: int | None = None
     #: ⚠️ NÃO SOMÁVEL entre linhas: alcance é gente, e a mesma pessoa aparece em
     #: dois dias. Viaja para ser exibido no grão em que foi medido, e
     #: `agregar_*` devolve `None` para ele — não a soma.
@@ -270,6 +275,8 @@ def linha_de_conjunto_dia(
         spend=_decimal(insight.get("spend")),
         impressions=_inteiro(insight.get("impressions")),
         clicks=_inteiro(insight.get("clicks")),
+        inline_link_clicks=_inteiro(insight.get("inline_link_clicks")),
+        landing_page_views=_inteiro(insight.get("landing_page_views")),
         reach=_inteiro(insight.get("reach")),
         gam_revenue_original=bruta,
         gam_revenue_brl=convertida,
@@ -409,12 +416,17 @@ class Total:
     revenue_brl: Decimal | None
     impressions: int | None
     clicks: int | None
+    inline_link_clicks: int | None
+    landing_page_views: int | None
     gam_impressions: int | None
     gam_clicks: int | None
     #: `None` de propósito: alcance não soma. Ver `LinhaAtribuicao.reach`.
     reach: None
     ctr: Decimal | None
     cpc: Decimal | None
+    landing_page_load_rate_pct: Decimal | None
+    cost_per_landing_page_view: Decimal | None
+    gam_impressions_per_landing_page_view: Decimal | None
     roas_ratio: Decimal | None
     profit_gross: Decimal | None
     retorno_excedente_pct: Decimal | None
@@ -431,11 +443,16 @@ class Total:
             "revenue_brl": self.revenue_brl,
             "impressions": self.impressions,
             "clicks": self.clicks,
+            "inline_link_clicks": self.inline_link_clicks,
+            "landing_page_views": self.landing_page_views,
             "gam_impressions": self.gam_impressions,
             "gam_clicks": self.gam_clicks,
             "reach": None,
             "ctr": self.ctr,
             "cpc": self.cpc,
+            "landing_page_load_rate_pct": self.landing_page_load_rate_pct,
+            "cost_per_landing_page_view": self.cost_per_landing_page_view,
+            "gam_impressions_per_landing_page_view": self.gam_impressions_per_landing_page_view,
             "roas_ratio": self.roas_ratio,
             "profit_gross": self.profit_gross,
             "retorno_excedente_pct": self.retorno_excedente_pct,
@@ -463,8 +480,12 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
     if not linhas:
         return Total(
             spend=None, revenue_original=None, revenue_brl=None, impressions=None,
-            clicks=None, gam_impressions=None, gam_clicks=None, reach=None,
-            ctr=None, cpc=None, roas_ratio=None, profit_gross=None,
+            clicks=None, inline_link_clicks=None, landing_page_views=None,
+            gam_impressions=None, gam_clicks=None, reach=None,
+            ctr=None, cpc=None, landing_page_load_rate_pct=None,
+            cost_per_landing_page_view=None,
+            gam_impressions_per_landing_page_view=None,
+            roas_ratio=None, profit_gross=None,
             retorno_excedente_pct=None, currency=None, timezone=None,
             razao=RazaoDaSoma(0, 0, 0, 0, 0, 0, 0, 0, 0, False, False),
             source_freshness=None, revenue_freshness=None)
@@ -475,6 +496,8 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
     spend = _somar(l.spend for l in linhas)
     impressions = _somar(l.impressions for l in linhas)
     clicks = _somar(l.clicks for l in linhas)
+    inline_link_clicks = _somar(l.inline_link_clicks for l in linhas)
+    landing_page_views = _somar(l.landing_page_views for l in linhas)
     revenue_brl = _somar_ignorando_ausentes(l.gam_revenue_brl for l in linhas)
     revenue_orig = _somar_ignorando_ausentes(l.gam_revenue_original for l in linhas)
     gam_imp = _somar_ignorando_ausentes(l.gam_impressions for l in linhas)
@@ -520,6 +543,20 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
     ctr = (Decimal(clicks) / Decimal(impressions) * 100
            if impressions and clicks is not None else None)
     cpc = Decimal(spend) / Decimal(clicks) if clicks and spend is not None else None
+    landing_page_load_rate = (
+        Decimal(landing_page_views) / Decimal(inline_link_clicks) * 100
+        if inline_link_clicks and landing_page_views is not None else None)
+    cost_per_landing_page_view = (
+        Decimal(spend) / Decimal(landing_page_views)
+        if landing_page_views and spend is not None else None)
+    gam_impressions_per_landing_page_view = (
+        Decimal(gam_imp) / Decimal(landing_page_views)
+        if (
+            landing_page_views
+            and gam_imp is not None
+            and all(l.gam_impressions is not None for l in linhas)
+        )
+        else None)
     roas = profit = excedente = None
     if revenue_brl is not None and spend is not None:
         profit = revenue_brl - spend
@@ -534,9 +571,17 @@ def totalizar(linhas: Sequence[LinhaAtribuicao]) -> Total:
         spend=spend, revenue_original=revenue_orig, revenue_brl=revenue_brl,
         impressions=int(impressions) if impressions is not None else None,
         clicks=int(clicks) if clicks is not None else None,
+        inline_link_clicks=(int(inline_link_clicks)
+                            if inline_link_clicks is not None else None),
+        landing_page_views=(int(landing_page_views)
+                            if landing_page_views is not None else None),
         gam_impressions=int(gam_imp) if gam_imp is not None else None,
         gam_clicks=int(gam_clk) if gam_clk is not None else None,
-        reach=None, ctr=ctr, cpc=cpc, roas_ratio=roas, profit_gross=profit,
+        reach=None, ctr=ctr, cpc=cpc,
+        landing_page_load_rate_pct=landing_page_load_rate,
+        cost_per_landing_page_view=cost_per_landing_page_view,
+        gam_impressions_per_landing_page_view=gam_impressions_per_landing_page_view,
+        roas_ratio=roas, profit_gross=profit,
         retorno_excedente_pct=excedente,
         currency=next((l.currency for l in linhas if l.currency), None),
         timezone=next((l.timezone for l in linhas if l.timezone), None),

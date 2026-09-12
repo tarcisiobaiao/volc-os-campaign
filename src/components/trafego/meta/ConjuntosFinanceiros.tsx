@@ -79,6 +79,86 @@ const FraseDaRazao: React.FC<{ razao: ConjuntoFinanceiroMeta['razao'] | null | u
   );
 };
 
+const ESTADO_DA_EVIDENCIA = {
+  OBSERVED_COMPLETE: ['Evidência completa', 'Gasto e receita do período estão completos.'],
+  PROVISIONAL: ['Dados provisórios', 'O período inclui o dia corrente e ainda pode consolidar.'],
+  UNRECONCILED: ['Leituras divergentes', 'A soma dos conjuntos diverge da leitura da campanha.'],
+  INCOMPLETE: ['Evidência incompleta', 'Falta gasto ou receita em parte do período.'],
+} as const;
+
+const PercursoAteMonetizacao: React.FC<{ financeiro: FinanceiroMeta }> = ({ financeiro }) => {
+  const moeda = financeiro.currency ?? null;
+  const evidencia = financeiro.evidence;
+  const estado = evidencia ? ESTADO_DA_EVIDENCIA[evidencia.state] : null;
+  const etapas = [
+    ['Cliques no link', contagemMeta(financeiro.inline_link_clicks ?? null)],
+    ['Chegadas à página', contagemMeta(financeiro.landing_page_views ?? null)],
+    ['Impressões GAM', contagemMeta(financeiro.gam_impressions ?? null)],
+    ['Receita GAM', dinheiroMeta(financeiro.revenue, moeda)],
+  ];
+  const pontes = [
+    ['Página carregada / clique no link', decimalMeta(financeiro.landing_page_load_rate_pct ?? null, 2, '%')],
+    ['Custo por chegada à página', dinheiroMeta(financeiro.cost_per_landing_page_view ?? null, moeda)],
+    ['Impressões GAM / chegada', decimalMeta(financeiro.gam_impressions_per_landing_page_view ?? null, 2, '×')],
+  ];
+  const percursoIncompleto = etapas.some(([, valor]) => valor === '—');
+
+  return (
+    <section
+      aria-labelledby="percurso-ate-monetizacao"
+      className="rounded-lg border border-border bg-card p-4 shadow-card"
+      data-testid="percurso-ate-monetizacao"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 id="percurso-ate-monetizacao" className="font-display text-base font-semibold">
+            Percurso até a monetização
+          </h4>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Compra de tráfego → chegada à página → inventário publicitário → receita.
+          </p>
+        </div>
+        <div className="text-left sm:text-right">
+          <p className="text-xs text-muted-foreground">Contribuição observada</p>
+          <p className="tabular text-lg font-semibold">
+            {dinheiroMeta(financeiro.contribution_observed ?? financeiro.profit_gross, moeda)}
+          </p>
+          <p className="text-xs text-muted-foreground">Receita GAM menos mídia Meta; outros custos não modelados.</p>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:gap-y-3 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
+        {etapas.map(([rotulo, valor], indice) => (
+          <div key={rotulo} className="flex items-baseline justify-between gap-3 py-2 sm:block sm:px-3 sm:py-0 first:sm:pl-0 last:lg:pr-0">
+            <dt className="text-xs text-muted-foreground">{indice + 1}. {rotulo}</dt>
+            <dd className="tabular text-base font-semibold">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 border-t border-border pt-3 text-xs sm:grid-cols-3">
+        {pontes.map(([rotulo, valor]) => (
+          <div key={rotulo} className="flex items-baseline justify-between gap-3 py-1">
+            <dt className="text-muted-foreground">{rotulo}</dt>
+            <dd className="tabular font-medium">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+        <p>
+          Impressões GAM podem incluir múltiplos slots e refresh; não representam pessoas nem retenção.
+        </p>
+        <p className="mt-1" data-testid="estado-da-evidencia">
+          <strong className="text-foreground">{estado?.[0] ?? 'Estado de evidência não informado'}.</strong>{' '}
+          {estado?.[1] ?? 'Atualize a leitura antes de decidir.'}
+          {percursoIncompleto ? ' Há etapas do percurso ainda sem medida.' : ''}
+        </p>
+      </div>
+    </section>
+  );
+};
+
 export const ConjuntosFinanceiros: React.FC<{
   financeiro: FinanceiroMeta | null;
   /** Render do drill-down de um conjunto: anúncios e criativos daquele conjunto. */
@@ -177,6 +257,7 @@ export const ConjuntosFinanceiros: React.FC<{
 
   return (
     <section aria-labelledby="conjuntos-financeiros" className="space-y-3">
+      <PercursoAteMonetizacao financeiro={financeiro} />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id="conjuntos-financeiros" className="kicker">
           Conjuntos de anúncios ({conjuntos.length})

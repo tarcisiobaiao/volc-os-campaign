@@ -65,6 +65,68 @@ describe('ConjuntosFinanceiros — a campanha soma os conjuntos', () => {
     expect(screen.getByText('Total da campanha')).toBeTruthy();
   });
 
+  it('mostra o percurso de compra até monetização sem chamar impressão GAM de pessoa', () => {
+    render(<ConjuntosFinanceiros financeiro={financeiro({
+      inline_link_clicks: 25,
+      landing_page_views: 20,
+      landing_page_load_rate_pct: '80',
+      cost_per_landing_page_view: '0.5',
+      gam_impressions: 60,
+      gam_impressions_per_landing_page_view: '3',
+      contribution_observed: '15',
+      evidence: {
+        state: 'OBSERVED_COMPLETE', reasons: [],
+        economic_basis: 'gam_revenue_brl_minus_meta_spend',
+        other_costs: 'NOT_MODELED', informational_only: true,
+      },
+    })} />);
+    const percurso = screen.getByTestId('percurso-ate-monetizacao');
+    expect(percurso.textContent).toContain('Cliques no link');
+    expect(percurso.textContent).toContain('Chegadas à página');
+    expect(percurso.textContent).toContain('80,00%');
+    expect(percurso.textContent).toContain('R$ 0,50');
+    expect(percurso.textContent).toContain('3,00×');
+    expect(percurso.textContent).toContain('múltiplos slots e refresh');
+    expect(percurso.textContent).toContain('não representam pessoas nem retenção');
+    expect(percurso.textContent).toContain('Evidência completa');
+  });
+
+  it('não transforma etapas ausentes em zero e explica a cobertura econômica', () => {
+    render(<ConjuntosFinanceiros financeiro={financeiro({
+      inline_link_clicks: null,
+      landing_page_views: null,
+      landing_page_load_rate_pct: null,
+      cost_per_landing_page_view: null,
+      gam_impressions: null,
+      gam_impressions_per_landing_page_view: null,
+      contribution_observed: null,
+      evidence: {
+        state: 'INCOMPLETE', reasons: ['GAM_REVENUE_INCOMPLETE'],
+        economic_basis: 'gam_revenue_brl_minus_meta_spend',
+        other_costs: 'NOT_MODELED', informational_only: true,
+      },
+    })} />);
+    const percurso = screen.getByTestId('percurso-ate-monetizacao');
+    expect(percurso.textContent).toContain('—');
+    expect(percurso.textContent).not.toContain('R$ 0,00');
+    expect(percurso.textContent).toContain('outros custos não modelados');
+    expect(percurso.textContent).toContain('Evidência incompleta');
+    expect(percurso.textContent).toContain('etapas do percurso ainda sem medida');
+  });
+
+  it.each([
+    ['PROVISIONAL', 'Dados provisórios'],
+    ['UNRECONCILED', 'Leituras divergentes'],
+  ] as const)('traduz o estado %s para uma decisão legível', (state, rotulo) => {
+    render(<ConjuntosFinanceiros financeiro={financeiro({
+      evidence: {
+        state, reasons: [], economic_basis: 'gam_revenue_brl_minus_meta_spend',
+        other_costs: 'NOT_MODELED', informational_only: true,
+      },
+    })} />);
+    expect(screen.getByTestId('estado-da-evidencia').textContent).toContain(rotulo);
+  });
+
   it('PROVA na tela que o total é a soma dos conjuntos', () => {
     render(<ConjuntosFinanceiros financeiro={financeiro()} />);
     const prova = screen.getByTestId('prova-da-soma');

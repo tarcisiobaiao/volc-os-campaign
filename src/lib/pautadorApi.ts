@@ -530,12 +530,17 @@ export type ConjuntoFinanceiroMeta = {
   revenue_brl: string | number | null;
   impressions: number | null;
   clicks: number | null;
+  inline_link_clicks?: number | null;
+  landing_page_views?: number | null;
   gam_impressions: number | null;
   gam_clicks: number | null;
   /** Sempre null: alcance não soma entre linhas. */
   reach: null;
   ctr: string | number | null;
   cpc: string | number | null;
+  landing_page_load_rate_pct?: string | number | null;
+  cost_per_landing_page_view?: string | number | null;
+  gam_impressions_per_landing_page_view?: string | number | null;
   roas_ratio: string | number | null;
   profit_gross: string | number | null;
   retorno_excedente_pct: string | number | null;
@@ -554,6 +559,14 @@ export type ReconciliacaoMeta = {
   spend_conjuntos: string | number | null;
   spend_campanha: string | number | null;
   diferenca: string | number | null;
+};
+
+export type EvidenciaFinanceiraMeta = {
+  state: 'INCOMPLETE' | 'PROVISIONAL' | 'UNRECONCILED' | 'OBSERVED_COMPLETE';
+  reasons: string[];
+  economic_basis: 'gam_revenue_brl_minus_meta_spend';
+  other_costs: 'NOT_MODELED';
+  informational_only: true;
 };
 
 /** Insights do anúncio no mesmo período, sem atribuição de receita GAM. */
@@ -593,10 +606,17 @@ export type FinanceiroMeta = {
   /** Já eram calculados no servidor e não tinham onde aparecer. */
   impressions?: number | null;
   clicks?: number | null;
+  inline_link_clicks?: number | null;
+  landing_page_views?: number | null;
   ctr?: string | number | null;
   cpc?: string | number | null;
+  landing_page_load_rate_pct?: string | number | null;
+  cost_per_landing_page_view?: string | number | null;
+  gam_impressions_per_landing_page_view?: string | number | null;
   gam_impressions?: number | null;
   gam_clicks?: number | null;
+  contribution_observed?: string | number | null;
+  evidence?: EvidenciaFinanceiraMeta | null;
   spend_completo: boolean;
   revenue_completo: boolean;
   conjuntos_conhecidos?: number;

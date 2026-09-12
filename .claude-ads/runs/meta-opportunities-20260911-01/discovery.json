@@ -1,0 +1,289 @@
+{
+  "schema_version": "volc.ads.discovery.v1",
+  "status": "provisional_no_account_data",
+  "thesis": "Para publishers de performance que compram tráfego na Meta e monetizam via Google Ad Manager (GAM), a verdadeira alavanca econômica reside na contribuição líquida (receita GAM estimada ajustada por risco de IVT menos custos totais de mídia com impostos), e não no CTR de anúncios ou na geração descontrolada de criativos panfletários. Como a receita GAM é mensurável exclusivamente no nível de conjunto de anúncios/dia, qualquer tentativa de ratear receita para anúncios individuais, placements ou assets criativos constitui distorção analítica. A infraestrutura de produto deve priorizar o diagnóstico da perda no funil (outbound clicks -> LPV -> requisições GAM), a sinalização de tráfego comprado com governança contra tráfego inválido, a maturação temporal dos dados contábeis e a organização do aprendizado por famílias criativas e fluxos de aprovação humana estritamente controlados em estado PAUSED.",
+  "opportunities": [
+    {
+      "id": "funnel_loss_diagnosis",
+      "title": "Diagnóstico de Perda no Funil Clique-LP-Monetização (Outbound Clicks vs LPV vs Requisições GAM)",
+      "priority": "P0",
+      "confidence": "high",
+      "current_evidence": [
+        "desempenho_anuncios.py monitora clicks genéricos, spend, ctr e cpc via enumeração fixa de métricas, sem coletar outbound_clicks ou landing_page_views",
+        "financeiro.py reconcilia gasto adset/dia com receita GAM agregada por utm_campaign_value, sem visibilidade das perdas de tráfego entre o clique na plataforma e a renderização do bloco de anúncio",
+        "Atualmente não há diagnóstico de evasão de tráfego (Drop-off Rate) para identificar criativos com alto clique acidental ou LPs com bloqueios técnicos de monetização"
+      ],
+      "mechanism_and_delta": "Estender a ingestão de insights da Meta Marketing API para coletar 'outbound_clicks' e 'actions:landing_page_view' (quando disponível) no nível de conjunto de anúncios, correlacionando-os com as requisições de anúncios registradas no GAM (ad requests por adset_id). O sistema calcula as taxas de perda intermediárias (Perda Clique->Outbound, Perda Outbound->LPV, Perda LPV->GAM Request) no grão de conjunto/dia, permitindo isolar fuga de usuários antes que o conjunto consuma orçamento em sessões não monetizáveis.",
+      "frontend": "Incorporar no dashboard de campanha e na MetaCampaignReadView um funil visual de 4 etapas por conjunto: Cliques Brutos, Cliques de Saída (Outbound), Visualizações de Página (LPV) e Requisições GAM. Exibir indicador visual de alerta em conjuntos com evasão crítica (>35% de perda entre Outbound e GAM Requests).",
+      "engine_and_data": "Atualizar backend/app/trafego/meta/desempenho_anuncios.py para requisitar outbound_clicks e action_type=landing_page_view. Criar modelo de dados FunnelLossSnapshot associando adset_id, data, outbound_clicks, lpv e total_ad_requests do GAM, tratando ausências como nulos em vez de zero para manter fidelidade estatística.",
+      "meta_sources": [
+        "https://developers.facebook.com/docs/marketing-api/insights/breakdowns/",
+        "https://developers.facebook.com/docs/marketing-api/reference/adgroup/insights/"
+      ],
+      "prerequisites_and_unknowns": [
+        "Verificar se o token de acesso da conta possui escopo para extrair detailed action_types no nível de conjunto",
+        "Confirmar se as landing pages possuem o Pixel da Meta disparando landing_page_view ou se a análise se apoiará inicialmente na relação Outbound Clicks versus Requisições GAM",
+        "Incógnita sobre a discrepância de consolidação temporal entre a janela de clique da Meta e o registro de ad requests no GAM"
+      ],
+      "experiment_and_metrics": "Testar em 5 conjuntos ativos a correlação entre a taxa de retenção Outbound->GAM Request e o RPM obtido. Métrica primária: Discrepância Outbound Clicks vs GAM Ad Requests (Drop Ratio); Métrica secundária: Custo Efetivo por Requisição GAM (Spend Meta / GAM Requests).",
+      "confounders_and_stop_condition": "Confundidores: Lentidão de CDN/hospedagem da página de destino, bloqueadores de anúncios (AdBlock) do usuário final, diferenças de fuso horário entre relatórios. Condição de parada: Se outbound_clicks retornar consistentemente vazio por restrição da API ou se a correlação com cliques totais for indistinguível (<2% de variação) após 7 dias.",
+      "effort": "medium",
+      "first_ticket": "TKT-DIAG-01: Adicionar outbound_clicks ao schema de métricas do sincronizador e criar migração para tabela de funil por adset/dia.",
+      "acceptance": "Pipeline de sincronização armazena outbound_clicks e LPV por adset/dia sem interrupção de jobs existentes; endpoint do dashboard entrega as etapas de perda calculadas com tratamento seguro de nulos."
+    },
+    {
+      "id": "net_contribution_cost_model",
+      "title": "Modelo de Contribuição Econômica Líquida (IOF, Impostos de Mídia e Provisão de Tráfego Inválido)",
+      "priority": "P0",
+      "confidence": "high",
+      "current_evidence": [
+        "financeiro.py calcula spread operacional direto: receita GAM adset/dia menos spend Meta adset/dia",
+        "O pacote técnico destaca que não há evidência fornecida de lucro líquido após revshare, impostos sobre compra de mídia e custos operacionais totais",
+        "A receita GAM observada diariamente é estimada (Yield group / Ad server revenue) e sujeita a deduções posteriores de tráfego inválido (IVT) no fechamento contábil"
+      ],
+      "mechanism_and_delta": "Implementar uma camada de cálculo de contribuição econômica líquida parametrizável sobre a reconciliação existente. A fórmula aplica fatores de ajuste definidos pelo publisher: dedução de alíquota tributária sobre o gasto da Meta (ex.: IOF/impostos sobre faturas de anúncios internacionais) e fator de segurança provisório para IVT sobre a receita estimada do GAM. Preserva estritamente o grão de conjunto/dia, permitindo alternar entre visão de margem bruta operacional e contribuição líquida conservadora.",
+      "frontend": "Incluir seletores na barra financeira da MetaCampaignReadView permitindo chavear entre 'Margem Operacional Bruta' e 'Contribuição Líquida Estimada'. Exibir tooltip explicativo com as alíquotas aplicadas (imposto de mídia e buffer de IVT) e indicação de status contábil dos valores.",
+      "engine_and_data": "Refatorar backend/app/trafego/meta/financeiro.py para suportar a estrutura CostModelConfig. Expor campos net_revenue_est, net_spend e net_contribution no payload dos endpoints financeiros, mantendo retrocompatibilidade com a receita e gasto brutos existentes.",
+      "meta_sources": [
+        "https://support.google.com/admanager/answer/12958957?hl=en",
+        "https://support.google.com/admanager/answer/6053295?hl=en"
+      ],
+      "prerequisites_and_unknowns": [
+        "Obter do publisher a estrutura tributária efetiva incidente sobre os pagamentos de mídia da Meta",
+        "Consultar histórico dos últimos 3 meses na aba de Faturamento/Transações do GAM para calibrar a taxa média de dedução de tráfego inválido pós-fechamento",
+        "Incógnita sobre a existência de contratos de intermediação de ad network com taxas adicionais variáveis por milhar de impressões"
+      ],
+      "experiment_and_metrics": "Recalcular o histórico dos últimos 14 dias com a visão de contribuição líquida. Métrica primária: Percentual de conjuntos que apresentavam margem bruta positiva, mas demonstram contribuição líquida negativa (falsos positivos de escala).",
+      "confounders_and_stop_condition": "Confundidores: Flutuação cambial quando spend e receita são apurados em moedas distintas. Condição de parada: Se o publisher operar com faturamento local isento de tributos adicionais e o histórico do GAM comprovar taxa de dedução de IVT inferior a 0.2%, desativar os fatores de ajuste adicionais.",
+      "effort": "small",
+      "first_ticket": "TKT-FIN-01: Implementar estrutura CostModelConfig em financeiro.py e expor métricas líquidas ajustadas com testes unitários.",
+      "acceptance": "Endpoints financeiros retornam valores brutos e líquidos auditáveis; suíte de testes valida que fatores nulos preservam valores originais e fatores positivos calculam as deduções com precisão decimal."
+    },
+    {
+      "id": "adset_maturity_window_evaluator",
+      "title": "Avaliador de Maturidade de Dados e Janela de Consolidação para Apoio à Decisão",
+      "priority": "P0",
+      "confidence": "high",
+      "current_evidence": [
+        "financeiro.py reconcilia dados diários imediatamente após a consulta, sem diferenciar dados do dia corrente (D0) de dados consolidados de dias anteriores",
+        "Meta Insights possui latência na consolidação de cliques/atribuições e o GAM opera com estimativas diárias que se estabilizam progressivamente",
+        "Decisões precipitadas de pausa ou escala de orçamento tomadas sobre dados intraday não maduros levam a volatilidade e desperdício de mídia"
+      ],
+      "mechanism_and_delta": "Criar um avaliador de maturidade que rotula cada registro de desempenho por conjunto/data em três estados: 'Intraday Aberto' (D0), 'Em Consolidação' (D+1 a D+2) e 'Maduro' (>= D+3). O sistema bloqueia a emissão de sugestões de escala de orçamento para registros D0 ou com menos de 48 horas de estabilidade, condicionando alertas e propostas a conjuntos que já atingiram maturidade contábil mínima.",
+      "frontend": "Inserir badges visuais de maturidade ('Intraday', 'Consolidando', 'Maduro') nas tabelas e cards da MetaCampaignReadView. Bloquear o acionamento de propostas de escala de orçamento quando o filtro de período incluir o dia corrente, exibindo aviso de latência de consolidação.",
+      "engine_and_data": "Implementar módulo maturity_evaluator.py acoplado ao pipeline de reconciliação de dados. Adicionar atributo is_data_mature no schema de resposta da reconciliação financeira e registrar carimbos de data/hora da última coleta para aferição do frescor da informação.",
+      "meta_sources": [
+        "https://developers.facebook.com/docs/marketing-api/insights/",
+        "https://support.google.com/admanager/answer/7352224"
+      ],
+      "prerequisites_and_unknowns": [
+        "Mapear a diferença de fusos horários configurados entre a conta da Meta Ads e a rede do Google Ad Manager",
+        "Analisar a curva histórica de variação percentual do spend e da receita estimada entre o fechamento de D0 e D+2 na conta do publisher",
+        "Incógnita sobre a periodicidade ideal do job de coleta sem atingir limites de taxa (rate limits) da Marketing API"
+      ],
+      "experiment_and_metrics": "Comparar a taxa de reversão de decisões (conjuntos considerados viáveis no D0 que se tornam deficitários após D+3) antes e depois da exigência do selo de maturidade. Métrica primária: Taxa de reversão de decisão de escala; Métrica secundária: Desvio médio de margem entre D0 e D+3.",
+      "confounders_and_stop_condition": "Confundidores: Sazonalidade de final de semana e oscilações atípicas de tráfego orgânico que alteram a monetização da página exogenamente. Condição de parada: Se a variação média de margem entre D0 e D+3 for inferior a 2% em 14 dias contínuos, reduzir a janela de maturidade para 24 horas.",
+      "effort": "small",
+      "first_ticket": "TKT-MAT-01: Implementar função de classificação de maturidade temporal em financeiro.py e expor campo no DTO de leitura de campanhas.",
+      "acceptance": "Testes unitários cobrem as classificações D0, D+1, D+2 e D+3; interface destaca registros não maduros e impede propostas de escala com base exclusiva em dados D0."
+    },
+    {
+      "id": "gpt_purchased_traffic_tagging",
+      "title": "Sinalização de Tráfego Comprado no GPT e Telemetria de Coortes de Monetização",
+      "priority": "P1",
+      "confidence": "medium",
+      "current_evidence": [
+        "A documentação oficial do Google Publisher Tag (GPT) confirma que googletag.pubads().setPrivacySettings({ trafficSource: googletag.enums.TrafficSource.PURCHASED }) é opcional e alimenta a dimensão Traffic source no GAM",
+        "Atualmente os templates de landing page do publisher não condicionam o parâmetro trafficSource à detecção de parâmetros de campanha paga na URL",
+        "Não há segregação analítica no GAM entre tráfego pago da Meta e tráfego orgânico/direto para fins de monitoramento de eCPM e viewability"
+      ],
+      "mechanism_and_delta": "Instrumentar o script do GPT na página de destino para disparar setPrivacySettings com trafficSource: PURCHASED exclusivamente quando forem identificados parâmetros de tráfego pago da Meta (ex.: utm_source=meta ou presença de adset_id). Viabiliza o cruzamento futuro no GAM entre a coorte de tráfego comprado e o inventário orgânico, permitindo avaliar a sustentabilidade do tráfego sem inferir punição automática pela ausência da tag.",
+      "frontend": "Adicionar na tela de configuração e teste de LPs uma verificação visual do status de disparo da tag GPT, indicando se a sinalização de tráfego comprado foi devidamente identificada em simulações de URL parametrizada.",
+      "engine_and_data": "Atualizar o gerador de template de LP em backend/app/criativo/contexto_pagina.py para incluir lógica client-side que detecta UTMs de campanha paga e executa a chamada do GPT antes da inicialização dos ad slots. Criar teste automatizado de renderização da tag.",
+      "meta_sources": [
+        "https://developers.google.com/publisher-tag/reference#googletag.PrivacySettingsConfig.trafficSource",
+        "https://support.google.com/admanager/answer/2483507"
+      ],
+      "prerequisites_and_unknowns": [
+        "Acesso à infraestrutura de código e publicação das landing pages para inserção da lógica no script do GPT",
+        "Habilitação prévia da dimensão 'Traffic source' no gerador de relatórios do GAM pelo administrador da rede",
+        "Incógnita sobre a resposta das regras de precificação (pricing rules) e compradores do Open Bidding ao identificarem a flag PURCHASED na requisição"
+      ],
+      "experiment_and_metrics": "Executar teste pareado de template de LP em 50% das visitas originadas de campanhas da Meta ao longo de 14 dias. Métrica primária: eCPM e Fill Rate da coorte PURCHASED vs Indefinida no GAM; Métrica de guarda: Taxa de carregamento e renderização de blocos de anúncio.",
+      "confounders_and_stop_condition": "Confundidores: Variações sazonais de inventário publicitário no início ou final de mês. Condição de parada: Redução estatisticamente relevante (>15%) no eCPM da coorte com a tag ativa sem qualquer ganho perceptível na retenção ou conformidade de conta.",
+      "effort": "medium",
+      "first_ticket": "TKT-GPT-01: Injetar verificação de UTMs pagas e chamada de trafficSource PURCHASED no template client-side do GPT da landing page.",
+      "acceptance": "Navegação na LP com utm_source=meta executa googletag.pubads().setPrivacySettings com enum PURCHASED validado no console; navegação direta sem parâmetros mantém configuração padrão."
+    },
+    {
+      "id": "creative_family_learning_ledger",
+      "title": "Ledger de Aprendizado por Famílias Criativas e Ângulos de Copy sem Rateio de Receita",
+      "priority": "P1",
+      "confidence": "high",
+      "current_evidence": [
+        "copy_context.py resolve pack, master, run, fatos, desejos, motivações, ângulo, big idea e cena, estruturando briefings sem retrabalho",
+        "Não existe histórico estruturado conectando as hipóteses criativas (famílias e ângulos) aos resultados econômicos agregados dos conjuntos que as veicularam",
+        "Regra de decisão do projeto veda a fabricação de receita por rateio para anúncios individuais ou assets criativos isolados"
+      ],
+      "mechanism_and_delta": "Associar taxonomias padronizadas de família criativa e ângulo de abordagem ao conjunto de anúncios no momento de sua compilação. O ledger agrega métricas econômicas e de mídia estritamente no grão de conjunto/dia: somando os gastos totais e a receita GAM dos conjuntos inteiros pertencentes àquela família. Elimina suposições sobre qual imagem ou texto específico gerou a receita dentro do conjunto, acumulando histórico empírico de quais ângulos produzem conjuntos rentáveis.",
+      "frontend": "Adicionar aba 'Famílias Criativas & Ângulos' no módulo de leitura de campanhas. Exibir tabela consolidando conjuntos por família: total de adsets veiculados, gasto agregado, receita GAM agregada somada, margem líquida da família e CTR outbound médio. Incluir filtro por ângulo para orientar a seleção de novos briefings.",
+      "engine_and_data": "Modelar as tabelas CreativeFamily e CreativeAngle no banco de dados. No compilador.py, gravar os identificadores de família e ângulo nos metadados estruturados do conjunto gerado. Criar serviço de consulta agregada que consolida o desempenho dos adsets filhos a partir dos dados do sincronizador e do financeiro.py.",
+      "meta_sources": [
+        "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/",
+        "https://developers.facebook.com/docs/marketing-api/reference/adgroup/"
+      ],
+      "prerequisites_and_unknowns": [
+        "Garantir que novos adsets criados pelo sistema gravem deterministicamente a tag da família criativa nos metadados locais",
+        "Definir política de agrupamento para conjuntos legados que não possuem identificadores de família gravados (classificados como 'Sem Família Atribuída')",
+        "Incógnita sobre a taxa de canibalização de audiência entre conjuntos com famílias criativas distintas disputando o mesmo público"
+      ],
+      "experiment_and_metrics": "Comparar o tempo despendido pelo operador na seleção de ângulos e mensurar a taxa de sobrevivência econômica (conjuntos que permanecem lucrativos após 7 dias) entre famílias com histórico favorável e novos ângulos sem histórico. Métrica primária: Taxa de adsets lucrativos por família de abordagem.",
+      "confounders_and_stop_condition": "Confundidores: Fadiga geral da conta ou alterações na concorrência de leilão no nicho de conteúdo. Condição de parada: Se menos de 25% dos adsets forem mapeados em famílias ativas após 30 dias de uso da funcionalidade.",
+      "effort": "medium",
+      "first_ticket": "TKT-FAM-01: Criar schema de CreativeFamily no banco de dados e persistir o vínculo família/adset durante a compilação do plano.",
+      "acceptance": "Ao compilar conjuntos pela MetaCriacaoPage, o identificador de família é persistido no banco; endpoint de relatório agrupa gasto e receita GAM por família sem rateio individual por anúncio."
+    },
+    {
+      "id": "abo_to_cbo_graduator_workbench",
+      "title": "Workbench de Graduação Controlada ABO para CBO com Reúso de Publicação Estática",
+      "priority": "P1",
+      "confidence": "medium",
+      "current_evidence": [
+        "compilador.py (linhas 765-822) possui validação funcional para reuso de post estático via object_story_id checando Página, imagem, destino e copy",
+        "Não existe fluxo assistido para promover conjuntos validados em ABO (orçamento a nível de conjunto) para uma campanha consolidada CBO (Advantage Campaign Budget)",
+        "A recriação manual de campanhas fragmenta a prova social e gera retrabalho operacional de parametrização de UTMs"
+      ],
+      "mechanism_and_delta": "Construir um workbench de graduação: o sistema detecta adsets ABO que cumpriram critérios de maturidade e contribuição líquida estável, gerando uma proposta de campanha CBO espelhada. Os anúncios dentro dos novos conjuntos reutilizam estritamente os posts existentes via object_story_id validado, preservando comentários e engajamento. A campanha CBO gerada é gravada com status PAUSED no banco e na Meta, exigindo revisão e aprovação explícita do operador antes da ativação.",
+      "frontend": "Disponibilizar botão 'Propor Graduação CBO' na MetaCampaignReadView quando um ou mais adsets ABO maduros forem selecionados. O modal exibe os anúncios com object_story_id elegível, permite definir o orçamento diário inicial da CBO e apresenta aviso explícito de que a criação ocorrerá em estado PAUSED.",
+      "engine_and_data": "Desenvolver o serviço cbo_graduator.py, que valida a compatibilidade dos criativos selecionados (recusando formatos dinâmicos incompatíveis com object_story_id), gera a estrutura de campanha com Advantage Campaign Budget e invoca o executor.py com validação de status PAUSED e registro no ledger.",
+      "meta_sources": [
+        "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/",
+        "https://developers.facebook.com/docs/marketing-api/reference/ad-campaign-group/"
+      ],
+      "prerequisites_and_unknowns": [
+        "Confirmar permissões de escrita na Página vinculada para reuso dos unpublished page posts existentes",
+        "Verificar se a conta de anúncios possui permissão para criação de campanhas CBO no objetivo de campanha adotado",
+        "Incógnita sobre a distribuição interna de orçamento pelo algoritmo da Meta ao agrupar múltiplos conjuntos maduros sob um único orçamento CBO"
+      ],
+      "experiment_and_metrics": "Graduar 3 conjuntos ABO lucrativos para 1 campanha CBO em paralelo. Métrica primária: Contribuição líquida agregada da campanha CBO comparada ao somatório dos conjuntos ABO originais em 7 dias; Métrica de guarda: Estabilidade do CPC e do Outbound CTR dos posts reutilizados.",
+      "confounders_and_stop_condition": "Confundidores: Competição interna (auction overlap) entre a campanha ABO de origem (caso não pausada) e a nova CBO. Condição de parada: Se a campanha CBO concentrar mais de 85% do orçamento em um único anúncio que apresente RPM decrescente no GAM por 48h consecutivas.",
+      "effort": "large",
+      "first_ticket": "TKT-CBO-01: Implementar módulo de montagem de payload de campanha CBO no compilador reutilizando object_story_id de anúncios validados.",
+      "acceptance": "Testes automatizados asseguram que apenas criativos estáticos com object_story_id são elegíveis, a campanha CBO resultante é gerada como PAUSED e nenhuma requisição remota é disparada sem confirmação humana."
+    },
+    {
+      "id": "placement_breakdown_margin_explorer",
+      "title": "Explorador de Desempenho por Placement da Meta e Discrepância de Tráfego",
+      "priority": "P1",
+      "confidence": "medium",
+      "current_evidence": [
+        "desempenho_anuncios.py executa requisições de insights agregados sem solicitar quebras (breakdowns) por canal de distribuição",
+        "Publishers correm risco de veiculação em posicionamentos com elevado índice de cliques acidentais (ex.: determinadas redes de Audience Network) que não geram ad requests monetizáveis na página",
+        "A receita GAM não pode ser rateada por placement, mas métricas de custo e evasão de saída podem ser avaliadas por plataforma"
+      ],
+      "mechanism_and_delta": "Adicionar consulta periódica de insights com breakdown por 'publisher_platform' e 'platform_position' na Marketing API para métricas de custo e saída (spend, impressions, clicks, outbound_clicks, cpc). O sistema calcula a razão entre outbound_clicks e cliques brutos por placement no nível de conjunto. Identifica posicionamentos com alto consumo de orçamento (>15% do spend do adset) e baixa taxa de saída efetiva, municiando o operador com evidências para restringir placements ineficientes em novos lotes de criação.",
+      "frontend": "Criar aba 'Posicionamentos' no detalhamento do conjunto na MetaCampaignReadView, exibindo gráficos de distribuição de spend por plataforma (Facebook, Instagram, Audience Network) e tabela comparativa de CPC versus Razão de Outbound Clicks. Destacar visualmente placements com discrepância crítica.",
+      "engine_and_data": "Estender o coletor de insights em desempenho_anuncios.py para suportar chamadas com parâmetro breakdowns=['publisher_platform', 'platform_position']. Salvar registros na tabela adset_placement_insights com chave composta (adset_id, data, platform, position), tratando campos omitidos por regras de privacidade da Meta como 'unknown'.",
+      "meta_sources": [
+        "https://developers.facebook.com/docs/marketing-api/insights/breakdowns/",
+        "https://developers.facebook.com/docs/marketing-api/reference/adgroup/insights/"
+      ],
+      "prerequisites_and_unknowns": [
+        "Avaliar o impacto no consumo de cotas de requisição da Marketing API ao incluir chamadas com breakdowns dimensionais",
+        "Verificar se as regras de privacidade da Meta agregam ou suprimem dados de placements com baixo volume de impressões na conta",
+        "Incógnita sobre a viabilidade de editar posicionamentos em conjuntos de anúncios ativos sem reiniciar o aprendizado do algoritmo"
+      ],
+      "experiment_and_metrics": "Identificar conjuntos com gasto representativo em Audience Network ou posicionamentos de baixa retenção e comparar o Outbound Ratio entre feeds e demais posições. Métrica primária: Razão Outbound Clicks / Clicks Totais por placement; Métrica secundária: Custo por Outbound Click por posicionamento.",
+      "confounders_and_stop_condition": "Confundidores: Diferenças intrínsecas de navegação entre tráfego desktop e mobile. Condição de parada: Se as chamadas com breakdown acionarem erros frequentes de rate limit (código 17 da Meta) ou se mais de 80% das linhas retornarem valores agregados suprimidos.",
+      "effort": "medium",
+      "first_ticket": "TKT-PLC-01: Adicionar rotina de coleta de insights por publisher_platform e persistência em schema desacoplado adset_placement_insights.",
+      "acceptance": "Serviço armazena métricas de spend e outbound clicks por placement para conjuntos monitorados; interface lista distribuição de custo por canal sem extrapolar receita GAM para nível de posicionamento."
+    },
+    {
+      "id": "congruence_guard_briefing_validator",
+      "title": "Validador Automatizado de Congruência Anúncio-LP para Prevenção de IVT e Rejeição",
+      "priority": "P1",
+      "confidence": "medium",
+      "current_evidence": [
+        "contexto_pagina.py e copy_context.py extraem fatos, temas e desejos da LP para apoiar o gerador de copy",
+        "Não existe verificação determinística para garantir que o criativo final não extrapole as promessas da LP ou inclua termos de alto risco editorial",
+        "Cliques gerados por promessas sensacionalistas ou não fundamentadas aumentam a taxa de rejeição imediata, degradam a qualidade do tráfego e atraem sanções de IVT no GAM"
+      ],
+      "mechanism_and_delta": "Construir um validador de congruência editorial executado durante a compilação do rascunho. O módulo confronta o copy gerado com as afirmações factuais extraídas da LP em contexto_pagina.py e aplica um filtro de termos de risco regulatório e clickbait (ex.: simulação de órgãos oficiais, botões falsos, promessas irreais). Copies com alta discrepância ou termos vedados são marcados com status 'Bloqueado', impedindo a inclusão automática no rascunho até que o operador revise ou reescreva o texto.",
+      "frontend": "Exibir no editor de criativos da MetaCriacaoPage um painel de 'Auditoria de Congruência e Risco Editorial' com checklist visual: congruência temática com a LP, ausência de termos de risco regulatório e status de conformidade ('Aprovado', 'Alerta', 'Bloqueado').",
+      "engine_and_data": "Implementar módulo congruence_validator.py que recebe o texto do anúncio e a entidade ContextoPagina. Executa correspondência de entidades-chave, validação léxica contra lista configurável de termos vedados e pontua a fidelidade da promessa à LP. Retorna relatório de auditoria anexado aos metadados do criativo.",
+      "meta_sources": [
+        "https://support.google.com/admanager/answer/2483507",
+        "https://developers.facebook.com/docs/marketing-api/reference/ad-creative/"
+      ],
+      "prerequisites_and_unknowns": [
+        "Definir lista curada de termos sensíveis e gatilhos de clickbait proibidos para o nicho editorial do publisher",
+        "Calibrar os limiares de sensibilidade semântica para evitar bloqueio indevido de chamadas emotivas ou criativas legítimas",
+        "Incógnita sobre a correlação direta entre o índice de congruência interna e a redução efetiva de descontos de tráfego inválido no GAM"
+      ],
+      "experiment_and_metrics": "Submeter 40 variações de copy ao validador e acompanhar a taxa de aprovação na Meta e o tempo de permanência (dwell time) na LP. Métrica primária: Taxa de aprovação de primeira tentativa na moderação da Meta; Métrica de guarda: Dwell time e taxa de rejeição na LP.",
+      "confounders_and_stop_condition": "Confundidores: Atualizações não documentadas nas regras de moderação automatizada de anúncios da Meta. Condição de parada: Se o validador gerar mais de 35% de falsos positivos em copies que historicamente tiveram boa monetização e tráfego limpo.",
+      "effort": "small",
+      "first_ticket": "TKT-VAL-01: Criar classe CongruenceValidator com testes unitários cobrindo termos de risco e checagem de fatos ancorados na LP.",
+      "acceptance": "Copies contendo termos restritos ou promessas ausentes na LP recebem status 'Bloqueado' com justificativa; compilador impede criação de rascunhos para criativos bloqueados."
+    },
+    {
+      "id": "creative_signals_capability_probe",
+      "title": "Sonda de Capacidades da Conta para Sinais de Fadiga e Recomendações Meta",
+      "priority": "P2",
+      "confidence": "low",
+      "current_evidence": [
+        "A consulta ao grafo e código não localizou referências a creative_fatigue ou ad_recommendations na base existente",
+        "Pesquisas externas mencionam webhooks de ad_account para fadiga criativa e recomendações, mas não há evidência empírica de sua ativação, permissões ou schemas para a conta em questão",
+        "Revisão técnica pontuou que notificações assíncronas são sinais informativos que não dispensam reconciliação periódica nem autorizam ações automáticas de alteração de orçamento"
+      ],
+      "mechanism_and_delta": "Desenvolver uma sonda de capacidades (capability probe) que verifica programaticamente o suporte da conta de anúncios para webhooks de ad_account (`creative_fatigue`, `ad_recommendations`) e testa consultas aos endpoints de recomendações oficiais da Marketing API. Os eventos recebidos são gravados em um ledger de telemetria sem qualquer execução autônoma de mutação remota, exibindo alertas consultivos para que o operador decida se convém renovar criativos em adsets fatigados.",
+      "frontend": "Inserir aba 'Diagnóstico de Conta & Sinais' nas configurações de tráfego, listando as capacidades ativas da API e exibindo histórico de recomendações e alertas de fadiga recebidos como sugestões informativas com indicação de que requerem validação humana.",
+      "engine_and_data": "Construir endpoint webhook receiver com verificação de assinatura HMAC (app secret proof). Criar tabela account_signals_ledger para registrar payloads brutos de fadiga e recomendações com timestamp. Implementar rotina assíncrona que correlaciona alertas de fadiga com o histórico recente de CPC do adset.",
+      "meta_sources": [
+        "https://developers.facebook.com/docs/graph-api/webhooks/reference/ad-account/",
+        "https://developers.facebook.com/docs/marketing-api/reference/ad-account/"
+      ],
+      "prerequisites_and_unknowns": [
+        "Disponibilidade de URL pública segura (HTTPS) para recebimento de webhooks e configuração do app no Meta for Developers",
+        "Confirmação de que o aplicativo possui permissões aprovadas para leitura de webhooks de ad_account",
+        "Incógnita sobre a consistência e frequência dos disparos de creative_fatigue em contas operando campanhas de tráfego para publisher"
+      ],
+      "experiment_and_metrics": "Manter o listener ativo em modo somente-leitura por 21 dias. Métrica primária: Coincidência entre alertas de fadiga criativa e elevações reais de CPC (>25%) observadas no adset em D+2; Métrica secundária: Frequência média do conjunto no momento do alerta.",
+      "confounders_and_stop_condition": "Confundidores: Oscilação de leilão decorrente de competidores que simula fadiga sem relação com o criativo. Condição de parada: Se o endpoint não receber nenhum evento durante 30 dias contínuos ou se o payload apresentar inconsistência técnica que inviabilize o parsing seguro.",
+      "effort": "medium",
+      "first_ticket": "TKT-PRB-01: Construir endpoint de recepção e validação de desafio (challenge) de webhook da Meta e tabela de persistência de sinais brutos.",
+      "acceptance": "Endpoint responde com sucesso à verificação de webhook da Meta; notificações recebidas são armazenadas em JSON bruto no ledger sem interromper outros processos."
+    }
+  ],
+  "rejected_ideas": [
+    "Rateio proporcional de receita GAM por anúncio individual baseado em cliques: Rejeitado porque anúncios dentro de um mesmo conjunto possuem taxas de retenção, tempos de sessão e visualizações de anúncios GAM distintos; forçar divisão proporcional cria falsas certezas de ROAS por anúncio e induz a erros graves de desligamento de criativos.",
+    "Otimização por Valor (VO / Min ROAS) enviando receita GAM estimada via Conversions API (CAPI) como evento Purchase: Rejeitado porque a monetização de publisher em páginas com múltiplos blocos GAM não constitui transação comercial individual; fabricar eventos Purchase com receita estimada corrompe o modelo de lances da Meta e viola diretrizes de integridade de dados.",
+    "Ativação indiscriminada de criativos flexíveis com pooling dinâmico para objetivo de Tráfego: Rejeitado porque a elegibilidade de creative_asset_groups_spec para campanhas com objetivo Tráfego não foi confirmada para a versão e conta atuais, além de impedir o controle estrito de congruência entre promessa e landing page, elevando o risco de tráfego inválido.",
+    "Regras autônomas de pausa ou aumento de orçamento sem aprovação humana (ex.: pausar se CPA > X ou subir Y% ao dia): Rejeitado porque regras universais e descontextualizadas ignoram a latência de consolidação contábil do GAM, deduções mensais de IVT e sazonalidades horárias de RPM, contrariando o princípio de aprovação humana e criação PAUSED.",
+    "Distribuição uniforme de ajustes de tráfego inválido (IVT) do faturamento mensal do GAM entre todos os adsets: Rejeitado porque o Google não detalha a origem das deduções por adset nos relatórios finais de pagamento; ratear linearmente penaliza conjuntos saudáveis e mascara adsets problemáticos que injetaram tráfego de baixa qualidade."
+  ],
+  "critique_changes": [
+    "Retração categórica da afirmação de que formatos flexíveis são universalmente suportados no objetivo Tráfego; a funcionalidade foi classificada como hipótese dependente de teste de capacidade (probe) em versões específicas da API.",
+    "Eliminação de regras e métricas universais de elegibilidade de lances por valor (VALUE/ROAS), removendo referências a limites fixos não comprovados de eventos de conversão e proibindo taxativamente a criação de eventos fictícios de compra.",
+    "Abandono da suposição de que webhooks de creative_fatigue disparam apenas no estado ACTIVE ou possuem schemas rígidos; rebaixamento da funcionalidade para sonda de capacidades informativa (P2), tratando sinais como não confiáveis sem reconciliação prévia.",
+    "Separação conceitual e técnica estrita entre cliques brutos, outbound_clicks, landing_page_views, sessões medidas no site e requisições/impressões do GAM, descartando presunções de funil com conversão unitária.",
+    "Adequação técnica da diretiva googletag.pubads().setPrivacySettings com trafficSource: PURCHASED: reconhecida como opcional e sem penalidade automática punitiva demonstrada na documentação oficial.",
+    "Reconhecimento formal de que a receita diária do GAM é estimada (Yield group / Ad server revenue) e que deduções contábeis de tráfego inválido ocorrem a posteriori, inviabilizando alocações exatas de descontos a nível de conjunto de anúncios.",
+    "Vedação definitiva a qualquer cálculo de taxa de retorno, ROAS ou lucro por anúncio individual, asset ou posicionamento via rateio de receita GAM, preservando o grão adset/dia.",
+    "Reconhecimento de que a função financeira básica e o resolvedor de contexto de briefing já estão codificados (financeiro.py e copy_context.py), redirecionando o esforço de produto para maturidade contábil, custos líquidos reais e ferramentas de suporte à decisão humana."
+  ],
+  "first_three": [
+    "funnel_loss_diagnosis",
+    "net_contribution_cost_model",
+    "adset_maturity_window_evaluator"
+  ],
+  "missing_inputs": [
+    "Amostra de dados reais de veiculação e monetização (Meta Insights e GAM Historical Reports) cobrindo ao menos 30 dias de operação conjunta.",
+    "Versão exata da Marketing API em operação e inventário de permissões concedidas no token de acesso da conta de anúncios.",
+    "Detalhamento dos tributos incidentes sobre compra de mídia (alíquotas de IOF, impostos sobre remessas internacionais) e eventuais comissões de intermediação de ad networks.",
+    "Histórico dos últimos 3 a 6 meses da aba Transações/Faturamento da rede GAM para quantificar a taxa histórica média de deduções de tráfego inválido (IVT).",
+    "Configuração atual das tags do Google Publisher Tag (GPT) nas LPs e catálogo de key-values/dimensões personalizadas já cadastradas na rede GAM.",
+    "Métricas de performance e carregamento técnico das landing pages (Core Web Vitals e tempo até a primeira requisição GAM) por tipo de dispositivo."
+  ]
+}

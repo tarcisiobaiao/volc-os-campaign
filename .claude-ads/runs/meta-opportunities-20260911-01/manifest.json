@@ -1,0 +1,37 @@
+{
+  "schema_version": "volc.ads.discovery.v1",
+  "run_id": "meta-opportunities-20260911-01",
+  "status": "provisional_no_account_data",
+  "intent": "Unscored product opportunity discovery, not an account health audit or implementation",
+  "objective": "Maximize publisher arbitrage contribution after media and operating costs; CTR is a diagnostic, not the outcome",
+  "platform": "Meta Ads",
+  "geography": "Brazil, inferred from supplied operating context",
+  "model": "gemini-3.8-flash",
+  "thinking": "HIGH",
+  "search_grounding": true,
+  "max_calls": 3,
+  "timeout_seconds": 900,
+  "authority": "Paid analysis of sanitized technical context authorized; no Meta writes, database changes, activation or automatic implementation",
+  "missing_inputs": [
+    "current account performance export",
+    "budget and owner margin targets",
+    "revenue maturity and cost model",
+    "live capability eligibility"
+  ],
+  "privacy": "No credentials, environment files, personal data, raw account identifiers or account exports are sent",
+  "source_base": "0f48c25",
+  "graph_current_before_run": true,
+  "cost_usd": null,
+  "error": null,
+  "calls": 3,
+  "tokens_total": 36883,
+  "completed_at": "2026-09-11T18:51:40.848088+00:00",
+  "packet_sha256": "fe72b7975004c1b24ca8b2f50e67bd3f67a54bd9c38e7ab928bc084edebe0f87",
+  "effective_models": [
+    "gemini-3.8-flash"
+  ],
+  "cost_note": "Provider did not supply invoiced cost; token usage only",
+  "implementation_performed": false,
+  "recovery_attempted": true,
+  "initial_error": "400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Request contains an invalid argument.', 'status': 'INVALID_ARGUMENT'}}"
+}

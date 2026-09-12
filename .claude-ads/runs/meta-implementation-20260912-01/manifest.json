@@ -1,0 +1,58 @@
+{
+  "run_id": "meta-implementation-20260912-01",
+  "status": "implemented_locally_requires_authenticated_visual_qa",
+  "objective": "Implementar e provar as prioridades OP01, OP02 e, se o contrato existente permitir sem atribuição inventada, o primeiro incremento de OP03 no engine Meta.",
+  "authority": {
+    "code_changes": true,
+    "paid_gemini_harness": true,
+    "database_schema_changes": "only_if_proven_necessary",
+    "external_meta_mutations": false,
+    "campaign_activation": false
+  },
+  "guardrails": [
+    "Toda criação Meta permanece PAUSED e dependente de aprovação humana por plano.",
+    "Receita GAM não será atribuída ao anúncio sem evidência compatível.",
+    "Ausência, desconhecido e zero permanecem estados distintos.",
+    "Credenciais, tokens, arquivos .env e dados pessoais não serão enviados ao Gemini."
+  ],
+  "priorities": [
+    "OP01 — painel de gargalos entre compra de tráfego, chegada à LP e monetização",
+    "OP02 — contribuição observada com cobertura e confiança explícitas",
+    "OP03 — memória de hipóteses criativas ligada a evidência, sem causalidade inventada"
+  ],
+  "pre_manifest_checks": [
+    "Consulta preliminar ao grafo e busca de landing_page_views confirmaram que o campo já existe no schema; nenhum arquivo foi alterado antes deste manifesto."
+  ],
+  "harness": {
+    "run_root": "/private/tmp/volc-meta-adk-v2-20260912T125512Z",
+    "status": "partial_no_candidate",
+    "requested_model": "gemini-3.8-flash",
+    "effective_model": "gemini-3.8-flash",
+    "thinking": "HIGH",
+    "grounding": true,
+    "calls": 6,
+    "tokens_reported": 111959,
+    "cost_usd": null,
+    "adjudication": "O ticket de backend expirou em HTTP 504 antes de editar. O ticket de interface produziu uma proposta útil e 18 testes verdes na worktree isolada, mas não chegou ao crítico final. O lead não copiou o patch cegamente: reteve a ideia de percurso e implementou um vocabulário canônico menor no produto."
+  },
+  "implementation": {
+    "OP01": "done_local",
+    "OP02": "partial_first_slice",
+    "OP03": "not_implemented_insufficient_lineage",
+    "database_migration": "not_required_existing_columns_and_read_model_confirmed",
+    "external_effects": "none"
+  },
+  "verification": {
+    "backend_financial_lineage": "31 passed",
+    "backend_related_meta": "88 passed before final density guard; focused suite rerun green afterward",
+    "frontend_financial": "16 passed",
+    "frontend_related_meta": "29 files / 264 passed",
+    "harness_contract": "30 passed",
+    "frontend_build": "passed with inherited warnings",
+    "typescript": "global baseline remains red outside changed files; no changed file appeared in diagnostics",
+    "diff_check": "passed",
+    "authenticated_visual_qa": "not_run; isolated browser reached login rather than the protected dashboard"
+  },
+  "base_commit": "0f48c2568826026e4f8ce6882a749ae6eb7772f0",
+  "worktree": "/private/tmp/volc-os-operacao-80-20"
+}

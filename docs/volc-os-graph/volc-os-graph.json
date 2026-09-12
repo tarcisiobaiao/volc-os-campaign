@@ -4611,8 +4611,8 @@
       "state": "reference",
       "state_label": "Referência",
       "tier": 3,
-      "summary": "Workflow ADK 2.8 por tickets: Gemini exato HIGH/grounding propõe patch estruturado; host aplica por SHA e roda testes; crítico pode exigir revisão. Dois refinamentos de UX integrados, refino global parcial.",
-      "evidence": "P11-T21 partial; P11-T23 done local. 24 testes do harness, dois patches de copy/foco com 38 testes focais e build aprovados. Ciclos produtivos: 8 chamadas/145306 tokens; rodada completa inclui tentativas frustradas: 38 chamadas/710858 tokens. Zero efeitos Meta/DB/deploy. Prompts em tools/meta-adk-review/EXECUTION.md e tasks.py; próximas áreas em REFINEMENT-QUEUE.md. docs/closure/meta-adk-execution-tickets-20260911/HANDOFF.md. QA autenticado e refino global de API/mensuração não encerrados.",
+      "summary": "Workflow ADK 2.8 por tickets: Gemini exato HIGH/grounding propõe patch e o host adjudica, aplica e testa. Além de dois refinamentos UX, a descoberta publisher já originou a implementação local do percurso Meta até monetização e da primeira camada de confiança financeira; refino global permanece parcial.",
+      "evidence": "P11-T21/P11-T25 partial; P11-T23 done local. Descoberta P11-T24 entregou nove oportunidades. Em 12/09, nova execução no modelo efetivo gemini-3.8-flash HIGH/grounding fez 6 chamadas e informou 111959 tokens; terminou partial_no_candidate após HTTP504 no backend e orçamento esgotado antes do crítico UI. O lead não integrou patch sem crítica: implementou contrato canônico próprio para OP01 e primeira fatia de OP02, com 31 testes financeiros, 16 UI focais, 264 UI Meta ampliados e build verdes. Evidência: docs/closure/meta-implementation-20260912/HANDOFF.md. Sem migration, efeitos Meta/DB/ativação ou QA autenticado; custo monetário não retornado.",
       "source": "Curadoria humana, atualizada em 2026-09-09"
     },
     {
@@ -4689,8 +4689,8 @@
       "state": "reference",
       "state_label": "Referência",
       "tier": 3,
-      "summary": "Separa o legado Google campanha/dia da atribuição Meta conjunto/dia; Meta sobe para campanha somente pela soma dos filhos e chaves ambíguas falham fechadas.",
-      "evidence": "P11-T20 partial; docs/closure/meta-gam-adset-grain-20260910/HANDOFF.md. Migration oficial aplicada após backup: views financeiras e classificador presentes, 99 linhas legadas preservadas e zero grants de browser. 144 testes integrados passaram; o validador n8n isolado teve 279 aprovações, 0 falhas e 1 integração pulada por PYTHONPATH. Faltam reconciliar o workflow remoto 9jOsfVPGrFOQAcUR e provar a primeira linha real Meta+GAM.",
+      "summary": "Separa o legado Google campanha/dia da atribuição Meta conjunto/dia; Meta sobe para campanha somente pela soma dos filhos e chaves ambíguas falham fechadas. O read model agora também transporta o percurso clique→LPV→impressão GAM→receita com incompletude explícita.",
+      "evidence": "P11-T20/P11-T25 partial; docs/closure/meta-gam-adset-grain-20260910/HANDOFF.md e docs/closure/meta-implementation-20260912/HANDOFF.md. Migration oficial anterior aplicada após backup: views financeiras e classificador presentes, 99 linhas legadas preservadas e zero grants de browser. Incremento local preserva campos Meta já existentes, deriva pontes sem migration e recusa densidade GAM sobre soma parcial. 31 testes financeiros, 264 UI Meta e build passaram. Faltam reconciliar o workflow remoto 9jOsfVPGrFOQAcUR, provar a primeira linha real Meta+GAM e fazer QA autenticado.",
       "source": "Curadoria humana, atualizada em 2026-09-09"
     },
     {

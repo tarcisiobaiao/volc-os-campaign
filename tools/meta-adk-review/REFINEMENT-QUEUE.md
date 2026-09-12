@@ -4,6 +4,17 @@
 define o roteiro das próximas missões. Roteiro não significa feature implementada.
 Nenhum ticket novo é disparado só porque outra run terminou.
 
+## Descoberta de oportunidades para publishers
+
+`OPPORTUNITIES.md` + `discover.py` executam uma rodada read-only de pesquisa,
+estratégia e crítica, limitada a três chamadas. Não usar o executor de patches para
+pedir exploração de negócio indefinida. A pesquisa bruta não é autorização de mudança.
+Resultado revisado de 11/09: `docs/closure/meta-opportunities-20260911/OPPORTUNITIES.json`.
+Prioridades: OP01 diagnóstico do funil, OP02 contribuição/confiança, OP03 memória de
+hipóteses. Antes de despachar, inventariar código e derivar um ticket de até quatro
+arquivos com provas; demais ideias dependem de dados e elegibilidade. P11-T24 registra
+a descoberta, não implementação; P11-T21 continua parcial.
+
 ## Despacho do lead
 
 Para cada área abaixo, consultar o grafo, o código operacional e testes. Selecionar
