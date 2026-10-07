@@ -3,6 +3,13 @@
 Branch: `integration/qg-real-20261007` · worktree `volc-os-campaign-qg-real-20261007`.
 Backup externo (refs Git, estado dos worktrees, hashes dos arquivos sujos): `backups-integracao/qg-real-20261007-20261007-110513/`, fora do repositório.
 
+Arquivos desta pasta:
+
+- `EVIDENCE-LEDGER.md` — este registro.
+- `QG-RECIBO.md` — prova local do QG e da API que o alimenta.
+- `BRANCHES-CANDIDATAS-ARQUIVO.md` — as 316 branches locais agrupadas para arquivamento.
+- `checklist_itens.py` e `gerar_checklist_docx.py` — fonte e gerador do checklist do sprint. O gerador confere cada item contra o roadmap e escreve `entregaveis/VOLC-OS-CHECKLIST-REAL-2026-10-07.{json,docx}` (a pasta `entregaveis/` é ignorada pelo Git).
+
 ## Por que a base não é o `main`
 
 O repositório tinha duas histórias sem ancestral comum:
@@ -28,8 +35,8 @@ Provas usadas para escolher `90833f2` como base:
 | `e7ce157` | código | cherry-pick de `e386724` (`feat/dashboard-kpi-no-slop-v1`) |
 | `2ddb3b1` | código | porte do Editorial V2 (`08de1c9`) por arquivo, com merge a três vias |
 | `e166675` | testes e ajustes | ajustes mínimos para as duas linhas rodarem juntas |
-| (seguinte) | roadmap | reconciliação do `ROADMAP-VIVO.json` e este ledger |
-| (seguinte) | curadoria e grafo | curadoria, grafo regenerado e checklist |
+| `5778e7b` | roadmap | reconciliação do `ROADMAP-VIVO.json` e este ledger |
+| `acaac92` e o seguinte | curadoria, grafo e entregáveis | curadoria, Mapa Vivo regenerado, gerador do checklist, recibo do QG e lista de branches |
 
 ## Classificação das origens
 
@@ -94,7 +101,7 @@ As provas com mais de 1.200 caracteres foram reduzidas ao estado atual. O texto 
 | Recorte | Resultado na branch | Base de comparação | Falhas herdadas |
 |---|---|---|---|
 | Motor FunnelForge (`funnelforge-migracao/engine/tests`) | 1147 passando, 3 falhas | v2 `90833f2`+merges e Editorial V2: as mesmas 3 | `test_flexibilizacao_factual` (3) |
-| Backend (`backend/tests`, suíte inteira) | ver relatório final | export de `e7ce157` | `test_canario_pedido_aprovado` (2), `test_schema_perfil_meta` (9), `test_creative_reuse_packs`, `test_criativo_contexto_pagina`, `test_criativo_storage_verificado`, `test_google_inteligencia_persistente`, `test_meta_real_read_model`, `test_meta_recovery_durable`, `test_meta_v2_approval_budget` |
+| Backend (`backend/tests`, suíte inteira) | 5673 passando, 18 falhas, todas presentes na base | export de `e7ce157` | `test_canario_pedido_aprovado` (2), `test_schema_perfil_meta` (9), `test_creative_reuse_packs`, `test_criativo_contexto_pagina`, `test_criativo_storage_verificado`, `test_google_inteligencia_persistente`, `test_meta_real_read_model`, `test_meta_recovery_durable`, `test_meta_v2_approval_budget` |
 | Frontend focado (tráfego, Work Road, settings, redator, dashboard) | 22 arquivos falhando, todos já falhando em `90833f2` | export de `90833f2` | inclui `qg-logic.test.ts`, que espera `P05-T11` como próxima tarefa embora ela já esteja `done` |
 | `tsc -p tsconfig.app.json` | 76 erros | 76 erros em `90833f2`, mesmos arquivos | — |
 
