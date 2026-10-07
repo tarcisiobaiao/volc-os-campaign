@@ -79,6 +79,60 @@ bloqueia com `certamente`; com `possivelmente` vira CTA secundário e condiciona
 | Print oficial | `steps.proveniencia_do_print` | URL, data, título, trecho que comprova, legenda ("Reprodução... pertence ao site de origem"), alt, recorte, sha256 e estado; sem isso não é embutido | zero |
 | Metadados | `pipeline/metadados.py`, `state.metadados`, `metadados_pN.json` | title, description, canonical (previsto/publicado), robots, OG, Twitter, breadcrumb, autor, datas, fontes, tipo; JSON-LD só com o que o texto mostra (FAQPage com perguntas visíveis, HowTo com passos reais, ItemList com checklist) | zero |
 
+## Dossiê factual pré-redação (`run.dossie_factual`)
+
+Com jornada e grafo aprovado, ANTES de qualquer briefing ou redação:
+
+1. uma pesquisa do funil inteiro (`steps.dossie`, modelo exato, sem fallback;
+   com `gemini/gemini-3.8-flash` + Google Search via `GEMINI_API_KEY`,
+   `auth_mode api_key`). Modelo servido diferente do pedido bloqueia o funil;
+2. fontes = SÓ as citações do `groundingMetadata` do provedor, com
+   redirecionamento resolvido; URL que o modelo digitou sem a busca ter
+   aberto é `unverified`;
+3. verificação ao vivo de cada fonte (`url_verifier`); número, prazo, data e
+   mudança exigem `valor` e `vigente_desde`; duas fontes com valor diferente
+   para o mesmo requisito viram `conflict` e nenhuma das duas sustenta texto;
+4. portão de cobertura determinístico por página: cada `RequisitoFactual`
+   (`JornadaDaPagina.requisitos`, ou um derivado da resposta principal) com
+   fato `verified`; saída oficial exigida com canal verificado; cálculo com
+   fato numérico; ferramenta com a fonte da regra no lastro;
+5. até 2 rodadas de complementação, dirigidas só ao que faltou;
+6. `dossie_factual.json` (`domain/dossie.py`: FunnelDossier → PageDossier →
+   fatos → CoverageResult), congelado por SHA-256 do conteúdo. Página sem
+   cobertura fica `dossie_pN`/`blocked_pN` FAILED e não gasta nada depois.
+   Um resume reaproveita o mesmo dossiê; hash divergente bloqueia tudo.
+
+O redator, o juiz, o briefing e o revisor recebem a MESMA projeção da página
+(`projecao_para_o_prompt`), só com fatos verificados dela. O grounding é
+cobrado por consulta: o orçamento debita tokens + consultas × preço de tabela
+do LiteLLM (teto conservador), e a telemetria registra as duas parcelas.
+
+## Redação paralela segura (`run.page_workers`, 1 a 3)
+
+`1` é o laço serial de sempre (`_processar_pagina`, byte a byte). `>1` exige
+`dossie_factual` (erro de configuração sem ele) e só roda com o dossiê
+congelado — a pesquisa faturada já aconteceu, serial. Duas fases, ambas com
+`ThreadPoolExecutor`, consolidação serial em ordem de página entre elas:
+
+- **A — redação:** portão, briefing, redação. Cada worker tem cópia profunda
+  do estado, `RunnerDaPagina` (orçamento da página, `checkpoint` sem efeito,
+  log e prompts em `<run>/paginas/pN/`), e devolve um `DeltaDaPagina` com o
+  que mudou nas chaves DELE; mudança fora da página é violação, não é
+  aplicada e bloqueia a página. Depois, a unicidade entre as páginas do lote
+  é conferida como no serial (cada uma contra as anteriores).
+- **B — acabamento:** SEO, widget, revisor, build e gate, cada revisor já
+  vendo os rascunhos das páginas de origem (o rótulo que o botão de lá
+  prometeu — `_rotulo_publicado`).
+
+Logs e prompts das páginas entram no run no fim, em ordem de página; os passos
+novos ficam na ordem do serial. A publicação continua serial, depois da
+revisão global. Diferença conhecida: no serial a unicidade reprova DENTRO da
+redação (validador com rascunhos anteriores, com retentativa); no paralelo, na
+consolidação, sem retentativa. A condenação é a mesma (teste
+`test_15_unicidade_*`). Browser e sitemap ficam atrás de uma trava única.
+Limite honesto: com N workers o teto do run pode ser ultrapassado em até N-1
+chamadas que já estavam no ar — por isso o gasto faturado (pesquisa) é serial.
+
 ## Contrato de medição
 
 `jornada/medicao.py` → `medicao.json`. Todo sinal nasce `nao_implantada`:
@@ -88,6 +142,7 @@ de nova versão exige aprovação humana por literal.
 ## O que não foi feito
 
 Sem UI, sem tracking, sem coletor, sem passagem extra de humanização (só a
-revisão existente), sem envio do JSON-LD ao WordPress, sem cache por hash e sem
-paralelização de páginas (registrados como pendência). CTA condicional por
-visita exige estado de sessão: fora do contrato.
+revisão existente), sem envio do JSON-LD ao WordPress e sem cache por hash
+(registrados como pendência). Sem ADC/Vertex na pesquisa do dossiê (exigiria
+projeto GCP que não se presume). CTA condicional por visita exige estado de
+sessão: fora do contrato.

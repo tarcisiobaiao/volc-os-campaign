@@ -535,3 +535,62 @@ def test_procedencia_sobrevive_aos_passos_que_remontam_o_resultado():
     total = StepResult(step="revisor_p1", status=StepStatus.OK)
     _somar(total, pago)
     assert (total.auth_mode, total.reasoning_effort) == ("chatgpt_plan", "high")
+
+
+# ---------------------------------------------------------------------------
+# Fase 6 da missão do dossiê: autenticação segura para concorrência
+# ---------------------------------------------------------------------------
+
+def test_stream_sem_response_completed_falha_fechado(tmp_path):
+    from funnelforge.adapters.openai_responses import FalhaDoPlano
+    parcial = RespostaHTTP(200, _sse({"type": "response.output_text.delta", "delta": "meio texto"}), {})
+    cli, _ = _cliente(tmp_path, [parcial])
+    with pytest.raises(FalhaDoPlano, match="response.completed"):
+        cli.complete("chatgpt/gpt-6.1-sol", [], [{"role": "user", "content": "x"}], 0.0)
+
+
+def test_refresh_envia_o_mesmo_resource_da_troca_de_codigo(tmp_path):
+    enviados = []
+
+    def post(url, form):
+        enviados.append(dict(form))
+        return 200, {"access_token": "N", "refresh_token": "R2", "expires_in": 3600,
+                     "scope": ESCOPO_OK}
+    _provedor(tmp_path, _token(expires_at=time.time() + 10), post=post).access_token()
+    assert enviados[0]["resource"] == oa.RECURSO == "https://api.openai.com/v1"
+
+
+def test_refresh_simultaneo_em_threads_renova_uma_vez_so(tmp_path):
+    import concurrent.futures
+    chamadas = []
+
+    def post(url, form):
+        chamadas.append(form["refresh_token"])
+        time.sleep(0.05)
+        return 200, {"access_token": "NOVO", "refresh_token": f"R{len(chamadas)}",
+                     "expires_in": 3600, "scope": ESCOPO_OK}
+    prov = _provedor(tmp_path, _token(expires_at=time.time() + 10), post=post)
+    with concurrent.futures.ThreadPoolExecutor(8) as ex:
+        tokens = list(ex.map(lambda _: prov.access_token(), range(8)))
+    assert set(tokens) == {"NOVO"} and len(chamadas) == 1
+    assert prov.armazem.dados["refresh_token"] == "R1"
+
+
+def test_contador_de_chamadas_e_exato_sob_concorrencia():
+    import concurrent.futures
+    rot = RoteadorDeLLM(_LiteLLMFalso(), None, max_chamadas=50)
+
+    def chamar(_):
+        try:
+            rot.complete("gpt-4.1", [], [], 0.0)
+            return 1
+        except TetoDeChamadas:
+            return 0
+    with concurrent.futures.ThreadPoolExecutor(16) as ex:
+        feitas = sum(ex.map(chamar, range(200)))
+    assert feitas == 50 and rot.chamadas == 50
+
+
+def test_dependencias_diretas_da_autenticacao_estao_declaradas():
+    texto = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+    assert "pyjwt" in texto.lower() and "httpx" in texto

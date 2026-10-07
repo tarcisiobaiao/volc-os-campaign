@@ -283,9 +283,10 @@ def renovar(token: TokenSet, *, post: Post = _post_httpx,
     """Refresh rotativo: a resposta traz um refresh_token NOVO; o antigo deixa
     de valer. Quem chama grava o resultado atomicamente."""
     status, corpo = post(TOKEN_URL, {
-        # Só os parâmetros padrão do refresh: a doc não lista `resource` aqui.
+        # O MESMO `resource` da troca de código: o token renovado precisa
+        # continuar valendo para a Responses API (RFC 8707).
         "grant_type": "refresh_token", "client_id": token.client_id,
-        "refresh_token": token.refresh_token})
+        "refresh_token": token.refresh_token, "resource": RECURSO})
     if status != 200:
         raise _erro_de_token(status, corpo)
     return _token_set(corpo, token.client_id, agora())

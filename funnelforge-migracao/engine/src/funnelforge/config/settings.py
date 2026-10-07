@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 import yaml
 from dotenv import dotenv_values
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Secrets(BaseModel):
@@ -31,6 +31,11 @@ class RunConfig(BaseModel):
     # Imagens (prompt + geração + revisão). Desligado, nenhuma etapa de imagem
     # roda — o canário textual marca a etapa como "não exercitada".
     imagens_habilitadas: bool = True
+    # DOSSIÊ FACTUAL pré-redação (só com jornada): uma pesquisa do funil
+    # (passo `steps.dossie`), portão de cobertura e fatos congelados por hash.
+    dossie_factual: bool = False
+    # Páginas em paralelo depois do dossiê. 1 = o laço serial de sempre.
+    page_workers: int = Field(default=1, ge=1, le=3)
     # RETENTATIVA DA PESQUISA (Frente 3). Antes disto a pesquisa tinha ZERO
     # retentativa: um 429 do provedor devolvia `sparse=True`, o gate factual
     # reprovava e a página inteira morria — depois de o briefing/extract já
@@ -129,6 +134,14 @@ class RunConfig(BaseModel):
     # O perfil do run liga por funil (`tema.editorial_v2`, ver
     # config/perfil.py) e a arquitetura do card também pode ligar.
     editorial_v2: bool = False
+
+    @model_validator(mode="after")
+    def _paralelo_exige_dossie(self) -> "RunConfig":
+        # A pesquisa é o gasto faturado e só o dossiê a tira de dentro do laço:
+        # páginas em paralelo sem ele pesquisariam em paralelo.
+        if self.page_workers > 1 and not self.dossie_factual:
+            raise ValueError("run.page_workers > 1 exige run.dossie_factual: true")
+        return self
 
 
 class AuthorConfig(BaseModel):

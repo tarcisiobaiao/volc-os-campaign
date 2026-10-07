@@ -456,7 +456,7 @@ def step_briefing(state: RunState, page: Page, deps: Any) -> None:
                 "estrutura": list(page.main_content_structure),
                 "keywords": ", ".join(page.target_keywords)},
         editorial=page.editorial.model_dump() if page.editorial else {},
-        jornada=contexto_de_jornada(plano, page),
+        jornada=contexto_de_jornada(plano, page, state.dossie),
         arquiteto={"tone_voice": plano.tone_voice if plano else "",
                    "avatar_summary": plano.avatar_summary if plano else ""},
         inventario_texto=inventario_para_o_briefing(inventario),

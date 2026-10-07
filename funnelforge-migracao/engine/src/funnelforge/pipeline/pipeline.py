@@ -5,6 +5,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from funnelforge.config.settings import Settings
 from funnelforge.domain.models import (
@@ -272,11 +273,19 @@ def run_pipeline(
     v2 = editorial_v2_do_run(state, deps.settings)
     state.editorial_v2 = v2
 
+
     if state.run_id.startswith("_pending") and state.plan and state.plan.pages:
         old = state.run_id
         state.run_id = f"{state.plan.pages[0].slug}-{timestamp}"
         deps.runner.finalize_run_id(old, state.run_id)
     _checkpoint(state, deps)
+    # DOSSIÊ FACTUAL antes de qualquer briefing/redação: pesquisa única do
+    # funil, portão de cobertura, fatos congelados. Página sem lastro fica
+    # bloqueada aqui e o laço abaixo não gasta nada com ela.
+    if (getattr(deps.settings.run, "dossie_factual", False) and tem_jornada(state.plan)
+            and not _falhou(state, "funnel_graph")):
+        _preparar_dossie(state, deps)
+        _checkpoint(state, deps)
 
     pages = _select_pages(state, only)
 
@@ -306,229 +315,15 @@ def run_pipeline(
     com_jornada = tem_jornada(state.plan)
     a_publicar: list[Page] = []
 
-    for page in pages:
-        # Zera o contador da PÁGINA: o teto por página existe para que uma
-        # página patológica não coma o orçamento das outras.
-        if orcamento is not None:
-            orcamento.entrar_na_pagina(f"p{page.page_number}")
-        try:
-            if not _done(state, f"research_p{page.page_number}"):
-                st.step_research(state, page, deps)
-                # Escolhe, UMA VEZ e com browser, quais URLs externas esta
-                # página pode usar (proveniência + verificação ao vivo + sonda
-                # anti-anúncio) -> state.official_links. Redator, gate final e
-                # screenshot leem daí, então os três nunca discordam do canal.
-                st.registrar_canais_oficiais(state, page, deps)
-                _checkpoint(state, deps)
-
-            # RAMO NOVO: o briefing-v1 desta página, entre a pesquisa e a
-            # redação — só para página ainda não escrita (num run antigo
-            # retomado com a flag, o que já foi escrito não ganha briefing).
-            # Falhou -> `step_write` recusa sem gastar (briefing_indisponivel).
-            if (v2 and not _done(state, f"write_p{page.page_number}")
-                    and (not _done(state, f"briefing_p{page.page_number}")
-                         or page.page_number not in state.briefings)):
-                st.step_briefing(state, page, deps)
-                _checkpoint(state, deps)
-
-            if not _done(state, f"write_p{page.page_number}"):
-                st.step_write(state, page, deps)
-                st.uniqueness_state_guard(state, page, deps)
-                # CARD-0009: structural-distinction net across the 3 presell
-                # hubs (materially-identical body or non-neutral hero -> write
-                # fails). No-op for non-presell pages.
-                st.presell_hub_distinction_guard(state, page, deps)
-                _checkpoint(state, deps)
-
-            # ── PÁGINA CONDENADA NÃO GASTA MAIS ───────────────────────
-            #
-            # Se a redação falhou, esta página não vai existir: o gate final e
-            # o `_page_blocked` já garantem que build e publish são pulados.
-            # Mas SEO, prompt de imagem e a geração da imagem continuavam
-            # rodando e cobrando por um artigo que ninguém vai ler.
-            #
-            # Medido no primeiro run real (17/08/2026): a p1 morreu no
-            # `research_p1` e mesmo assim gastou US$ 0,0018 de seo + US$ 0,0028
-            # de prompt de imagem + US$ 0,0422 de geração — US$ 0,047 numa
-            # página já condenada, 2,3% do custo de um funil.
-            #
-            # `continue` e não `break`: as outras páginas seguem normalmente.
-            # Uma página morta não derruba o funil — isso é desenho antigo e
-            # continua valendo.
-            if (_falhou(state, f"write_p{page.page_number}")
-                    or _falhou(state, f"judge_p{page.page_number}")):
-                # ⚠️ MARCA ANTES DE SAIR. A primeira versão deste atalho só
-                # dava `continue`, e a página ficava condenada SEM o
-                # `blocked_pN` — que é o marcador que o gate, o relatório e a
-                # tela usam para saber que ela não existe. Pular o gasto e
-                # perder a marcação seria trocar um defeito de US$ 0,047 por
-                # um defeito de estado, que é bem pior.
-                state.step_status[f"blocked_p{page.page_number}"] = StepResult(
-                    step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
-                    issues=[Issue(
-                        code="fail_closed",
-                        message="write/judge FAILED — seo/imagem/build/publish pulados "
-                                "para não gastar em página condenada")])
-                _checkpoint(state, deps)
-                continue
-
-            if not _done(state, f"seo_p{page.page_number}"):
-                st.step_seo(state, page, deps)
-                _checkpoint(state, deps)
-
-            # RAMO NOVO (B5): o REVISOR CONTEXTUAL vem DEPOIS do SEO e do
-            # widget — o título SEO é o H1 visível das internas e o texto do
-            # widget vai ao ar; os dois são revisados e cobertos pelo recibo.
-            # TODA página escrita a partir de briefing passa por aqui (LP sem
-            # contrato editorial inclusive). A escrita antiga (página sem
-            # briefing num run retomado) já foi julgada dentro do `step_write`.
-            if v2 and page.page_number in state.briefings:
-                # O widget roda UMA vez, antes da revisão: se ele fosse gerado
-                # depois, entraria no ar texto que ninguém revisou (V12).
-                if (getattr(deps.settings.run, "widgets_enabled", False)
-                        and f"widget_p{page.page_number}" not in state.step_status):
-                    st.step_widget(state, page, deps)
-                    _checkpoint(state, deps)
-                # O próprio revisor decide se roda: decisão humana gravada
-                # manda, e página já aprovada ou em revisão humana com o MESMO
-                # conteúdo não é revisada de novo (o resume não re-rola).
-                st.revisar_pagina_v2(state, page, deps)
-                _checkpoint(state, deps)
-                if not st.revisao_liberada(state, page):
-                    state.step_status[f"blocked_p{page.page_number}"] = StepResult(
-                        step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
-                        issues=[Issue(
-                            code="fail_closed",
-                            message="revisão sem aprovação (revisão humana pendente, "
-                                    "rejeitada ou conteúdo mudado depois da decisão) — "
-                                    "imagem/build/publish pulados; ver revisor_p"
-                                    f"{page.page_number} e `funnelforge decidir`")])
-                    _checkpoint(state, deps)
-                    continue
-
-            # LP always crafts its hero prompt (generation still gated on
-            # run.hero_image inside step_image); interior /rec posts run the
-            # image step only when run.featured_image is on. `image_wanted`
-            # inside step_image is the single source of the generate/skip
-            # decision, so the two never disagree.
-            _wants_image = (page.page_type == "LANDING PAGE" or getattr(
-                deps.settings.run, "featured_image", False)) and getattr(
-                deps.settings.run, "imagens_habilitadas", True)
-            if _wants_image and not _done(state, f"image_p{page.page_number}"):
-                st.step_image(state, page, deps)
-                _checkpoint(state, deps)
-
-            # Official-page screenshots (CARD-0005): only when a provider is
-            # wired (flag on + playwright installed). NON-blocking -- like
-            # step_image, any failure is swallowed inside step_screenshot and
-            # `_page_blocked` deliberately ignores it, so a good page always
-            # builds/publishes.
-            if deps.screenshot is not None and not _done(
-                state, f"screenshot_p{page.page_number}"
-            ):
-                st.step_screenshot(state, page, deps)
-                _checkpoint(state, deps)
-
-            if _page_blocked(state, page, antes_do_build=True):
-                state.step_status[f"blocked_p{page.page_number}"] = StepResult(
-                    step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
-                    issues=[Issue(
-                        code="fail_closed",
-                        message="write/judge FAILED or funnel_graph FAILED — "
-                                "build & publish skipped")])
-                _checkpoint(state, deps)
-                continue
-
-            if not _done(state, f"build_p{page.page_number}"):
-                st.step_build(state, page, deps)
-                _checkpoint(state, deps)
-
-            # Interactive SOLUTION widget (CARD-0013): AFTER build (final,
-            # normalized draft), BEFORE publish. Gated on run.widgets_enabled so
-            # the step is never even called when off -> flag-off runs are
-            # byte-for-byte the current pipeline. A falha fica SKIPPED no passo,
-            # mas o content_gate abaixo bloqueia a publicação quando a página
-            # semanticamente exige um widget.
-            if getattr(deps.settings.run, "widgets_enabled", False) and not _done(
-                state, f"widget_p{page.page_number}"
-            ) and not (v2 and page.page_number in state.briefings):
-                st.step_widget(state, page, deps)
-                _checkpoint(state, deps)
-
-            # Validate the exact post-normalize/post-widget draft.  This gate is
-            # deterministic and cannot be disabled by an empty step validator
-            # list; if it fails, REST publication is skipped.
-            if not _done(state, f"content_gate_p{page.page_number}"):
-                st.step_content_gate(state, page, deps)
-                _checkpoint(state, deps)
-
-            if _page_blocked(state, page):
-                state.step_status[f"blocked_p{page.page_number}"] = StepResult(
-                    step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
-                    issues=[Issue(
-                        code="fail_closed",
-                        message="Gate factual/editorial final FAILED — publish pulado")])
-                _checkpoint(state, deps)
-                continue
-
-            # ⚠️ A condenação ANTIGA tem de sair do estado quando a página passa.
-            #
-            # `blocked_pN` só era escrito, nunca apagado. Depois da retomada de
-            # 19/08/2026 a p3 estava com `widget_p3: OK` e `content_gate_p3: OK`
-            # — e ainda carregava `blocked_p3: FAILED` da rodada anterior. O
-            # relatório lê o estado e diria "bloqueada" sobre uma página pronta
-            # para publicar. Estado que guarda veredito vencido mente para quem
-            # o lê depois, e é a partir dele que o operador decide.
-            state.step_status.pop(f"blocked_p{page.page_number}", None)
-            _registrar_metadados(state, page, deps)
-
-            if publish and deps.publisher is not None and not _done(
-                state, f"publish_p{page.page_number}"
-            ):
-                if com_jornada:
-                    a_publicar.append(page)
-                else:
-                    st.step_publish(state, page, deps)
-                    _checkpoint(state, deps)
-        except OrcamentoEstourado as exc:
-            # Teto de custo. Aborta com mensagem clara em vez de continuar
-            # gastando: se o teto do RUN acabou, as próximas páginas gastariam
-            # para bater na mesma parede -> encerra o laço e escreve o relatório.
-            key = f"budget_p{page.page_number}"
-            state.step_status[key] = StepResult(
-                step=key, status=StepStatus.FAILED,
-                issues=[Issue(code="orcamento_estourado", message=str(exc))])
-            _checkpoint(state, deps)
-            if exc.escopo == "run":
+    laco = _Laco(v2=v2, publish=publish, com_jornada=com_jornada,
+                 orcamento=orcamento, a_publicar=a_publicar)
+    workers = int(getattr(deps.settings.run, "page_workers", 1) or 1)
+    if workers > 1 and len(pages) > 1:
+        _paginas_em_paralelo(state, pages, deps, laco, workers)
+    else:
+        for page in pages:
+            if _processar_pagina(state, page, deps, laco) == "break":
                 break
-            continue
-        except LLMStepError as exc:
-            # Falha definitiva de um passo de LLM. O custo das tentativas que
-            # morreram viaja na exceção e é PRESERVADO no ledger -- antes ele
-            # sumia junto com o traceback e o relatório mentia para menos.
-            key = f"page_{page.page_number}"
-            pago = exc.step_result
-            state.step_status[key] = StepResult(
-                step=key,
-                status=StepStatus.FAILED,
-                attempts=pago.attempts,
-                issues=[Issue(code="exception", message=str(exc))],
-                prompt_tokens=pago.prompt_tokens,
-                completion_tokens=pago.completion_tokens,
-                cost_usd=pago.cost_usd,
-                latency_ms=pago.latency_ms,
-            )
-            _checkpoint(state, deps)
-            continue
-        except Exception as exc:  # noqa: BLE001 - one page's failure must not abort the rest
-            key = f"page_{page.page_number}"
-            state.step_status[key] = StepResult(
-                step=key,
-                status=StepStatus.FAILED,
-                issues=[Issue(code="exception", message=str(exc))],
-            )
-            _checkpoint(state, deps)
-            continue
 
     # REVISÃO GLOBAL do funil pronto (só com jornada), ANTES de qualquer
     # publicação e só sobre páginas estruturalmente aprovadas. Uma passada
@@ -569,6 +364,501 @@ def run_pipeline(
     _write_report(state, deps)
     _checkpoint(state, deps)
     return state
+
+
+
+@dataclass
+class _Laco:
+    """O que o laço de páginas compartilha entre uma página e a próxima."""
+    v2: bool
+    publish: bool
+    com_jornada: bool
+    orcamento: Any
+    a_publicar: list
+    # "tudo" (serial) | "redacao" (para depois do portão de página condenada)
+    # | "acabamento" (retoma do SEO; a redação já está consolidada)
+    fase: str = "tudo"
+
+
+def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _Laco,
+                         workers: int) -> None:
+    """As páginas em até `workers` (máx. 3) workers isolados, depois do dossiê
+    congelado, em DUAS fases com consolidação serial entre elas:
+
+    A. portão, briefing e redação em paralelo; os rascunhos entram no estado em
+       ordem de página e a unicidade entre eles é conferida como no serial
+       (cada página contra as anteriores) — a repetida falha ANTES de gastar
+       com SEO, revisão ou imagem;
+    B. do SEO ao build em paralelo, cada revisor já vendo os rascunhos das
+       páginas de origem (o rótulo que o botão de lá prometeu).
+
+    Logs e prompts das páginas entram no run no fim, em ordem de página — a
+    mesma ordem do serial. Ver `pipeline/paralelo.py`."""
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from dataclasses import replace
+
+    from funnelforge.pipeline import paralelo as par
+
+    if not state.dossie_sha256:
+        # Sem dossiê congelado a pesquisa ainda está por fazer, e ela é o
+        # gasto faturado: não roda em paralelo. Fica registrado, não é silêncio.
+        state.step_status["paginas_paralelas"] = StepResult(
+            step="paginas_paralelas", status=StepStatus.SKIPPED,
+            issues=[Issue(code="sem_dossie", message="page_workers>1 sem dossiê congelado: "
+                          "páginas processadas em série")])
+        for page in pages:
+            if _processar_pagina(state, page, deps, laco) == "break":
+                break
+        return
+
+    workers = min(workers, par.MAX_PAGE_WORKERS)
+    contador = par.ContadorDeChamadas(deps.llm)
+    trava = threading.Lock()
+    screenshot = par.Serializado(deps.screenshot, trava) if deps.screenshot is not None else None
+    sitemap = par.Serializado(deps.sitemap, trava) if deps.sitemap is not None else None
+    parar = threading.Event()
+    # O orçamento da página vale para as duas fases (o teto por página não
+    # dobra porque a página foi processada em duas vezes).
+    orcamentos = {p.page_number: (laco.orcamento.para_pagina(f"p{p.page_number}")
+                                  if laco.orcamento is not None else None) for p in pages}
+    duracao: dict[int, float] = {}
+
+    def fase(nome: str, alvo: list[Page]) -> list[par.DeltaDaPagina]:
+        copias = {p.page_number: state.model_copy(deep=True) for p in alvo}
+
+        def worker(page: Page) -> par.DeltaDaPagina:
+            n = page.page_number
+            if parar.is_set():
+                return par.DeltaDaPagina(page_number=n, rodou=False)
+            copia = copias[n]
+            pagina = next(p for p in copia.plan.pages if p.page_number == n)
+            orc = orcamentos[n]
+            if orc is not None and nome == "redacao":
+                orc.entrar_na_pagina(f"p{n}")
+            runner = par.RunnerDaPagina(deps.runner, n, contador, orc)
+            deps_pg = replace(deps, llm=contador, runner=runner, screenshot=screenshot,
+                              sitemap=sitemap)
+            local = _Laco(v2=laco.v2, publish=laco.publish, com_jornada=laco.com_jornada,
+                          orcamento=orc, a_publicar=[], fase=nome)
+            inicio = time.monotonic()
+            try:
+                sinal = _processar_pagina(copia, pagina, deps_pg, local)
+            except Exception as exc:  # noqa: BLE001 - um worker não derruba os outros
+                sinal = None
+                copia.step_status[f"page_{n}"] = StepResult(
+                    step=f"page_{n}", status=StepStatus.FAILED,
+                    issues=[Issue(code="exception",
+                                  message=f"{type(exc).__name__}: {exc}"[:400])])
+            if sinal == "break":
+                parar.set()
+            gasto = round(time.monotonic() - inicio, 3)
+            return par.extrair_delta(state, copia, pagina, sinal=sinal,
+                                     publicar=bool(local.a_publicar), duracao_s=gasto)
+
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="pagina") as pool:
+            deltas = list(pool.map(worker, alvo))
+        aplicados = []
+        for delta in sorted(deltas, key=lambda d: d.page_number):
+            if not delta.rodou:
+                continue
+            n = delta.page_number
+            duracao[n] = duracao.get(n, 0.0) + delta.duracao_s
+            if delta.violacoes:
+                state.step_status[f"page_{n}"] = StepResult(
+                    step=f"page_{n}", status=StepStatus.FAILED,
+                    issues=[Issue(code="delta_fora_da_pagina",
+                                  message="worker mudou estado de fora da página (não "
+                                          "aplicado): " + ", ".join(delta.violacoes[:10]))])
+                state.step_status[f"blocked_p{n}"] = StepResult(
+                    step=f"blocked_p{n}", status=StepStatus.FAILED,
+                    issues=[Issue(code="fail_closed", message="delta fora da página")])
+                continue
+            par.aplicar_delta(state, delta)
+            aplicados.append(delta)
+        return aplicados
+
+    antes = list(state.step_status)
+    inicio = time.monotonic()
+    redigidas = [d for d in fase("redacao", pages) if d.sinal == "redigida"]
+
+    # UNICIDADE ENTRE AS PÁGINAS DO LOTE — a mesma regra do serial: cada página
+    # contra as escritas antes dela. A repetida tem `write_pN` reprovado e a
+    # fase B a trata como página condenada (blocked, sem gasto).
+    lote = sorted(d.page_number for d in redigidas)
+    todos = dict(state.drafts)
+    for n in lote:
+        page = next(p for p in state.plan.pages if p.page_number == n)
+        state.drafts = {k: v for k, v in todos.items() if k not in lote or k <= n}
+        try:
+            st.uniqueness_state_guard(state, page, deps)
+            st.presell_hub_distinction_guard(state, page, deps)
+        finally:
+            state.drafts = todos
+    _checkpoint(state, deps)
+
+    por_numero = {p.page_number: p for p in state.plan.pages}
+    acabadas = fase("acabamento", [por_numero[n] for n in lote]) if not parar.is_set() else []
+    for delta in acabadas:
+        if delta.publicar:
+            laco.a_publicar.append(por_numero[delta.page_number] if delta.pagina is None
+                                   else next(p for p in state.plan.pages
+                                             if p.page_number == delta.page_number))
+    parede_s = round(time.monotonic() - inicio, 3)
+    for page in pages:
+        par.fundir_artefatos(deps.runner.runs_dir, state.run_id, page.page_number)
+    # Os passos novos na ordem do serial (página a página), não na das fases:
+    # o estado e o relatório de um run paralelo leem como os de um serial.
+    state.step_status = par.ordem_serial(state.step_status, antes)
+
+    state.step_status["paginas_paralelas"] = StepResult(
+        step="paginas_paralelas", status=StepStatus.OK, latency_ms=int(parede_s * 1000),
+        issues=[Issue(code="paralelo", message=(
+            f"workers={workers}; páginas={len(duracao)}; redigidas={len(lote)}; "
+            f"acabadas={len(acabadas)}; chamadas={contador.total}; "
+            f"pico_de_chamadas_em_voo={contador.pico}; parede_s={parede_s}; "
+            f"soma_das_paginas_s={round(sum(duracao.values()), 3)}; "
+            f"teto_do_run={'atingido' if parar.is_set() else 'não'}; "
+            f"dossie={state.dossie_sha256[:12]}"))])
+    _checkpoint(state, deps)
+
+def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") -> str | None:
+    """Uma página do laço, do portão do dossiê ao publish (ou ao adiamento do
+    publish). Devolve "break" quando o teto do RUN acabou — o chamador para de
+    abrir páginas novas; qualquer outra falha fica na própria página."""
+    v2, publish, com_jornada = laco.v2, laco.publish, laco.com_jornada
+    orcamento, a_publicar = laco.orcamento, laco.a_publicar
+    if _falhou(state, f"dossie_p{page.page_number}"):
+        return None          # portão do dossiê: blocked_pN já gravado
+    # Zera o contador da PÁGINA: o teto por página existe para que uma
+    # página patológica não coma o orçamento das outras.
+    if orcamento is not None and laco.fase != "acabamento":
+        orcamento.entrar_na_pagina(f"p{page.page_number}")
+    try:
+        if not _done(state, f"research_p{page.page_number}"):
+            st.step_research(state, page, deps)
+            # Escolhe, UMA VEZ e com browser, quais URLs externas esta
+            # página pode usar (proveniência + verificação ao vivo + sonda
+            # anti-anúncio) -> state.official_links. Redator, gate final e
+            # screenshot leem daí, então os três nunca discordam do canal.
+            st.registrar_canais_oficiais(state, page, deps)
+            _checkpoint(state, deps)
+
+        # RAMO NOVO: o briefing-v1 desta página, entre a pesquisa e a
+        # redação — só para página ainda não escrita (num run antigo
+        # retomado com a flag, o que já foi escrito não ganha briefing).
+        # Falhou -> `step_write` recusa sem gastar (briefing_indisponivel).
+        if (v2 and not _done(state, f"write_p{page.page_number}")
+                and (not _done(state, f"briefing_p{page.page_number}")
+                     or page.page_number not in state.briefings)):
+            st.step_briefing(state, page, deps)
+            _checkpoint(state, deps)
+
+        if not _done(state, f"write_p{page.page_number}"):
+            st.step_write(state, page, deps)
+            st.uniqueness_state_guard(state, page, deps)
+            # CARD-0009: structural-distinction net across the 3 presell
+            # hubs (materially-identical body or non-neutral hero -> write
+            # fails). No-op for non-presell pages.
+            st.presell_hub_distinction_guard(state, page, deps)
+            _checkpoint(state, deps)
+
+        # ── PÁGINA CONDENADA NÃO GASTA MAIS ───────────────────────
+        #
+        # Se a redação falhou, esta página não vai existir: o gate final e
+        # o `_page_blocked` já garantem que build e publish são pulados.
+        # Mas SEO, prompt de imagem e a geração da imagem continuavam
+        # rodando e cobrando por um artigo que ninguém vai ler.
+        #
+        # Medido no primeiro run real (17/08/2026): a p1 morreu no
+        # `research_p1` e mesmo assim gastou US$ 0,0018 de seo + US$ 0,0028
+        # de prompt de imagem + US$ 0,0422 de geração — US$ 0,047 numa
+        # página já condenada, 2,3% do custo de um funil.
+        #
+        # `continue` e não `break`: as outras páginas seguem normalmente.
+        # Uma página morta não derruba o funil — isso é desenho antigo e
+        # continua valendo.
+        if (_falhou(state, f"write_p{page.page_number}")
+                or _falhou(state, f"judge_p{page.page_number}")):
+            # ⚠️ MARCA ANTES DE SAIR. A primeira versão deste atalho só
+            # dava `continue`, e a página ficava condenada SEM o
+            # `blocked_pN` — que é o marcador que o gate, o relatório e a
+            # tela usam para saber que ela não existe. Pular o gasto e
+            # perder a marcação seria trocar um defeito de US$ 0,047 por
+            # um defeito de estado, que é bem pior.
+            state.step_status[f"blocked_p{page.page_number}"] = StepResult(
+                step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
+                issues=[Issue(
+                    code="fail_closed",
+                    message="write/judge FAILED — seo/imagem/build/publish pulados "
+                            "para não gastar em página condenada")])
+            _checkpoint(state, deps)
+            return None
+
+        if laco.fase == "redacao":
+            return "redigida"     # a consolidação decide se a página segue
+
+        if not _done(state, f"seo_p{page.page_number}"):
+            st.step_seo(state, page, deps)
+            _checkpoint(state, deps)
+
+        # RAMO NOVO (B5): o REVISOR CONTEXTUAL vem DEPOIS do SEO e do
+        # widget — o título SEO é o H1 visível das internas e o texto do
+        # widget vai ao ar; os dois são revisados e cobertos pelo recibo.
+        # TODA página escrita a partir de briefing passa por aqui (LP sem
+        # contrato editorial inclusive). A escrita antiga (página sem
+        # briefing num run retomado) já foi julgada dentro do `step_write`.
+        if v2 and page.page_number in state.briefings:
+            # O widget roda UMA vez, antes da revisão: se ele fosse gerado
+            # depois, entraria no ar texto que ninguém revisou (V12).
+            if (getattr(deps.settings.run, "widgets_enabled", False)
+                    and f"widget_p{page.page_number}" not in state.step_status):
+                st.step_widget(state, page, deps)
+                _checkpoint(state, deps)
+            # O próprio revisor decide se roda: decisão humana gravada
+            # manda, e página já aprovada ou em revisão humana com o MESMO
+            # conteúdo não é revisada de novo (o resume não re-rola).
+            st.revisar_pagina_v2(state, page, deps)
+            _checkpoint(state, deps)
+            if not st.revisao_liberada(state, page):
+                state.step_status[f"blocked_p{page.page_number}"] = StepResult(
+                    step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
+                    issues=[Issue(
+                        code="fail_closed",
+                        message="revisão sem aprovação (revisão humana pendente, "
+                                "rejeitada ou conteúdo mudado depois da decisão) — "
+                                "imagem/build/publish pulados; ver revisor_p"
+                                f"{page.page_number} e `funnelforge decidir`")])
+                _checkpoint(state, deps)
+                return None
+
+        # LP always crafts its hero prompt (generation still gated on
+        # run.hero_image inside step_image); interior /rec posts run the
+        # image step only when run.featured_image is on. `image_wanted`
+        # inside step_image is the single source of the generate/skip
+        # decision, so the two never disagree.
+        _wants_image = (page.page_type == "LANDING PAGE" or getattr(
+            deps.settings.run, "featured_image", False)) and getattr(
+            deps.settings.run, "imagens_habilitadas", True)
+        if _wants_image and not _done(state, f"image_p{page.page_number}"):
+            st.step_image(state, page, deps)
+            _checkpoint(state, deps)
+
+        # Official-page screenshots (CARD-0005): only when a provider is
+        # wired (flag on + playwright installed). NON-blocking -- like
+        # step_image, any failure is swallowed inside step_screenshot and
+        # `_page_blocked` deliberately ignores it, so a good page always
+        # builds/publishes.
+        if deps.screenshot is not None and not _done(
+            state, f"screenshot_p{page.page_number}"
+        ):
+            st.step_screenshot(state, page, deps)
+            _checkpoint(state, deps)
+
+        if _page_blocked(state, page, antes_do_build=True):
+            state.step_status[f"blocked_p{page.page_number}"] = StepResult(
+                step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
+                issues=[Issue(
+                    code="fail_closed",
+                    message="write/judge FAILED or funnel_graph FAILED — "
+                            "build & publish skipped")])
+            _checkpoint(state, deps)
+            return None
+
+        if not _done(state, f"build_p{page.page_number}"):
+            st.step_build(state, page, deps)
+            _checkpoint(state, deps)
+
+        # Interactive SOLUTION widget (CARD-0013): AFTER build (final,
+        # normalized draft), BEFORE publish. Gated on run.widgets_enabled so
+        # the step is never even called when off -> flag-off runs are
+        # byte-for-byte the current pipeline. A falha fica SKIPPED no passo,
+        # mas o content_gate abaixo bloqueia a publicação quando a página
+        # semanticamente exige um widget.
+        if getattr(deps.settings.run, "widgets_enabled", False) and not _done(
+            state, f"widget_p{page.page_number}"
+        ) and not (v2 and page.page_number in state.briefings):
+            st.step_widget(state, page, deps)
+            _checkpoint(state, deps)
+
+        # Validate the exact post-normalize/post-widget draft.  This gate is
+        # deterministic and cannot be disabled by an empty step validator
+        # list; if it fails, REST publication is skipped.
+        if not _done(state, f"content_gate_p{page.page_number}"):
+            st.step_content_gate(state, page, deps)
+            _checkpoint(state, deps)
+
+        if _page_blocked(state, page):
+            state.step_status[f"blocked_p{page.page_number}"] = StepResult(
+                step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
+                issues=[Issue(
+                    code="fail_closed",
+                    message="Gate factual/editorial final FAILED — publish pulado")])
+            _checkpoint(state, deps)
+            return None
+
+        # ⚠️ A condenação ANTIGA tem de sair do estado quando a página passa.
+        #
+        # `blocked_pN` só era escrito, nunca apagado. Depois da retomada de
+        # 19/08/2026 a p3 estava com `widget_p3: OK` e `content_gate_p3: OK`
+        # — e ainda carregava `blocked_p3: FAILED` da rodada anterior. O
+        # relatório lê o estado e diria "bloqueada" sobre uma página pronta
+        # para publicar. Estado que guarda veredito vencido mente para quem
+        # o lê depois, e é a partir dele que o operador decide.
+        state.step_status.pop(f"blocked_p{page.page_number}", None)
+        _registrar_metadados(state, page, deps)
+
+        if publish and deps.publisher is not None and not _done(
+            state, f"publish_p{page.page_number}"
+        ):
+            if com_jornada:
+                a_publicar.append(page)
+            else:
+                st.step_publish(state, page, deps)
+                _checkpoint(state, deps)
+    except OrcamentoEstourado as exc:
+        # Teto de custo. Aborta com mensagem clara em vez de continuar
+        # gastando: se o teto do RUN acabou, as próximas páginas gastariam
+        # para bater na mesma parede -> encerra o laço e escreve o relatório.
+        key = f"budget_p{page.page_number}"
+        state.step_status[key] = StepResult(
+            step=key, status=StepStatus.FAILED,
+            issues=[Issue(code="orcamento_estourado", message=str(exc))])
+        _checkpoint(state, deps)
+        if exc.escopo == "run":
+            return "break"
+        return None
+    except LLMStepError as exc:
+        # Falha definitiva de um passo de LLM. O custo das tentativas que
+        # morreram viaja na exceção e é PRESERVADO no ledger -- antes ele
+        # sumia junto com o traceback e o relatório mentia para menos.
+        key = f"page_{page.page_number}"
+        pago = exc.step_result
+        state.step_status[key] = StepResult(
+            step=key,
+            status=StepStatus.FAILED,
+            attempts=pago.attempts,
+            issues=[Issue(code="exception", message=str(exc))],
+            prompt_tokens=pago.prompt_tokens,
+            completion_tokens=pago.completion_tokens,
+            cost_usd=pago.cost_usd,
+            latency_ms=pago.latency_ms,
+        )
+        _checkpoint(state, deps)
+        return None
+    except Exception as exc:  # noqa: BLE001 - one page's failure must not abort the rest
+        key = f"page_{page.page_number}"
+        state.step_status[key] = StepResult(
+            step=key,
+            status=StepStatus.FAILED,
+            issues=[Issue(code="exception", message=str(exc))],
+        )
+        _checkpoint(state, deps)
+        return None
+    return None
+
+def _base_do_modelo(nome: str) -> str:
+    return re.sub(r"-\d{4}-\d{2}-\d{2}$", "", (nome or "").split("/")[-1].lower())
+
+
+def _preco_da_consulta_de_busca(modelo: str) -> float:
+    """Preço de tabela de UMA consulta de grounding (LiteLLM). 0 = desconhecido."""
+    try:
+        from litellm import model_cost
+    except Exception:  # noqa: BLE001
+        return 0.0
+    preco = (model_cost.get(modelo) or {}).get("search_context_cost_per_query") or {}
+    return float(preco.get("search_context_size_medium") or 0.0) if isinstance(preco, dict) else 0.0
+
+
+def _preparar_dossie(state: RunState, deps: Deps) -> None:
+    """Compila (ou, num resume, REAPROVEITA) o dossiê e aplica o portão."""
+    from funnelforge.adapters.research_perplexity import pesquisar_funil
+    from funnelforge.domain.dossie import DossieDoFunil
+    from funnelforge.pipeline.dossie import aplicar_portao, compilar_dossie, hash_do_dossie
+
+    paginas = [p for p in state.plan.pages if p.jornada is not None]
+
+    def bloquear_tudo(motivo: str, base: StepResult) -> None:
+        state.step_status["dossie"] = base
+        for p in paginas:
+            state.step_status[f"dossie_p{p.page_number}"] = StepResult(
+                step=f"dossie_p{p.page_number}", status=StepStatus.FAILED,
+                issues=[Issue(code="dossie_indisponivel", message=motivo)])
+            state.step_status[f"blocked_p{p.page_number}"] = StepResult(
+                step=f"blocked_p{p.page_number}", status=StepStatus.FAILED,
+                issues=[Issue(code="fail_closed", message=motivo)])
+
+    if state.dossie:
+        dossie = DossieDoFunil.model_validate(state.dossie)
+        if hash_do_dossie(dossie) != state.dossie_sha256:
+            bloquear_tudo("dossiê do estado não confere com o hash congelado: nada é escrito",
+                          StepResult(step="dossie", status=StepStatus.FAILED))
+            return
+        aplicar_portao(state, dossie)
+        return
+    cfg = deps.settings.steps.get("dossie")
+    if cfg is None:
+        bloquear_tudo("run.dossie_factual ligado sem steps.dossie na config",
+                      StepResult(step="dossie", status=StepStatus.FAILED))
+        return
+    orcamento = getattr(deps.runner, "budget", None)
+    respostas = []
+
+    preco_da_busca = _preco_da_consulta_de_busca(cfg.model)
+    buscas: list[float] = []
+
+    def pesquisar(assunto, spec, faltantes):
+        if orcamento is not None:
+            orcamento.exigir_saldo("dossie")
+        resp = pesquisar_funil(deps.llm, cfg, assunto, spec, faltantes)
+        # O grounding cobra por consulta e `completion_cost` pode não somar
+        # isso: o orçamento debita tokens + consultas × preço de tabela (teto
+        # conservador; se o LiteLLM já incluiu, superestima — nunca o contrário).
+        buscas.append(round(resp.consultas_de_busca * preco_da_busca, 6))
+        if orcamento is not None:
+            orcamento.registrar("dossie", resp.custo_usd + buscas[-1])
+        respostas.append(resp)
+        if _base_do_modelo(resp.modelo_servido) != _base_do_modelo(cfg.model):
+            raise RuntimeError(f"pesquisa do dossiê pediu {cfg.model} e recebeu "
+                               f"{resp.modelo_servido}: troca de modelo não é aceita")
+        return resp
+
+    def telemetria(status: StepStatus, issues: list[Issue]) -> StepResult:
+        ultima = respostas[-1] if respostas else None
+        return StepResult(
+            step="dossie", status=status, model_requested=cfg.model,
+            model_used=ultima.modelo_servido if ultima else "",
+            auth_mode=ultima.auth_mode if ultima else "", attempts=len(respostas),
+            prompt_tokens=sum(r.prompt_tokens for r in respostas),
+            completion_tokens=sum(r.completion_tokens for r in respostas),
+            cost_usd=round(sum(r.custo_usd for r in respostas) + sum(buscas), 6),
+            latency_ms=sum(r.latencia_ms for r in respostas), issues=issues)
+
+    try:
+        dossie = compilar_dossie(state, deps, pesquisar,
+                                 registrar_canais=st.registrar_canais_oficiais)
+    except Exception as exc:  # noqa: BLE001 - sem dossiê, nenhuma página é escrita
+        motivo = f"pesquisa do dossiê falhou: {type(exc).__name__}: {str(exc)[:300]}"
+        bloquear_tudo(motivo, telemetria(StepStatus.FAILED,
+                                         [Issue(code="dossie_falhou", message=motivo)]))
+        return
+    state.dossie = dossie.model_dump(mode="json")
+    state.dossie_sha256 = dossie.sha256
+    pasta = deps.runner.runs_dir / state.run_id
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / "dossie_factual.json").write_text(dossie.model_dump_json(indent=2),
+                                               encoding="utf-8")
+    resultado = aplicar_portao(state, dossie)
+    state.step_status["dossie"] = telemetria(StepStatus.OK, [
+        Issue(code="dossie_portao", message=f"{len(resultado.prontas)} página(s) liberada(s), "
+              f"{len(resultado.bloqueadas)} bloqueada(s); {len(dossie.fatos)} fato(s), "
+              f"{len(dossie.pesquisa)} rodada(s), "
+              f"{sum(t.consultas_de_busca for t in dossie.pesquisa)} consulta(s) de busca do "
+              f"grounding; custo = tokens US$ {sum(r.custo_usd for r in respostas):.4f} + "
+              f"busca estimada US$ {sum(buscas):.4f} (US$ {preco_da_busca}/consulta); "
+              f"sha256 {dossie.sha256[:12]}")])
 
 
 def _registrar_metadados(state: RunState, page: Page, deps: Deps) -> None:

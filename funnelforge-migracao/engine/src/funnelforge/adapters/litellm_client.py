@@ -4,6 +4,21 @@ from litellm import completion, completion_cost
 from funnelforge.ports.llm import LLMResult
 
 
+def _consultas_do_grounding(resp) -> list[str]:
+    """As consultas que a busca do Google rodou (`webSearchQueries`). O
+    grounding é cobrado POR CONSULTA e `completion_cost` só mede tokens: a
+    contagem vai para a telemetria para o custo real ser declarado, não
+    presumido."""
+    meta = (getattr(resp, "_hidden_params", None) or {}).get("vertex_ai_grounding_metadata")
+    achadas: list[str] = []
+    for item in (meta if isinstance(meta, list) else [meta] if meta else []):
+        if isinstance(item, dict):
+            for q in item.get("webSearchQueries") or []:
+                if isinstance(q, str) and q not in achadas:
+                    achadas.append(q)
+    return achadas
+
+
 def _uris_do_grounding(resp) -> list[str]:
     """As URIs que a busca do provedor de fato abriu.
 
@@ -83,5 +98,7 @@ class LiteLLMClient:
             completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             cost_usd=cost, latency_ms=int((t1 - t0) * 1000),
             auth_mode="api_key", reasoning_effort=reasoning_effort or "",
+            consultas_de_busca=len(_consultas_do_grounding(resp)) if web_search else 0,
+            finish_reason=str(getattr(resp.choices[0], "finish_reason", "") or ""),
             response_id=str(getattr(resp, "id", "") or ""),
         )

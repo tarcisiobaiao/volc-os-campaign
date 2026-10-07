@@ -20,6 +20,8 @@ Deliberadamente conservador em dois pontos:
 """
 from __future__ import annotations
 
+import threading
+
 
 class OrcamentoEstourado(RuntimeError):
     """Levantada ANTES de gastar. Carrega os números para a mensagem do relatório."""
@@ -52,6 +54,8 @@ class Orcamento:
         self.pagina: str | None = None
         # Gasto por página já encerrada, para o relatório final.
         self.gasto_por_pagina: dict[str, float] = {}
+        # Páginas em paralelo debitam o MESMO total do run (ver `para_pagina`).
+        self.trava = threading.RLock()
 
     # -- ciclo de vida --------------------------------------------------------
 
@@ -85,6 +89,11 @@ class Orcamento:
         if self.pagina is not None:
             self.gasto_pagina_usd += custo
 
+    def para_pagina(self, rotulo: str) -> "OrcamentoDaPagina":
+        """Visão de UMA página para um worker paralelo: teto e gasto da página
+        são dela; o teto e o gasto do RUN são os deste objeto, sob trava."""
+        return OrcamentoDaPagina(self, rotulo)
+
     def relatorio(self) -> dict:
         self._fechar_pagina()
         return {
@@ -109,3 +118,48 @@ def preco_declarado_da_imagem(settings) -> float:
     qualidade = str(getattr(getattr(settings, "run", None), "image_quality", "") or "")
     tabela = cfg.image_price_usd or {}
     return float(tabela.get(qualidade, cfg.image_price_fallback_usd))
+
+
+class OrcamentoDaPagina:
+    """O orçamento visto por um worker de página. Conferir o saldo e debitar o
+    gasto do run acontecem sob a trava do `Orcamento` compartilhado; o
+    contador da página é só deste worker, então não há "página corrente"
+    global para duas threads disputarem.
+
+    Limite honesto: conferir e chamar não são atômicos entre workers — com N
+    páginas em paralelo, o run pode passar do teto em até N-1 chamadas que já
+    estavam no ar. Por isso a pesquisa (o gasto faturado) roda serial, antes
+    dos workers."""
+
+    def __init__(self, base: Orcamento, rotulo: str) -> None:
+        self.base, self.pagina = base, rotulo
+        self.gasto_pagina_usd = 0.0
+        self.teto_pagina_usd = base.teto_pagina_usd
+        self.teto_run_usd = base.teto_run_usd
+
+    def entrar_na_pagina(self, rotulo: str) -> None:
+        self.pagina, self.gasto_pagina_usd = rotulo, 0.0
+
+    def exigir_saldo(self, passo: str, estimativa_usd: float = 0.0) -> None:
+        with self.base.trava:
+            if self.base.teto_run_usd > 0 and (
+                    self.base.gasto_run_usd + estimativa_usd >= self.base.teto_run_usd):
+                raise OrcamentoEstourado("run", passo, self.base.gasto_run_usd,
+                                         self.base.teto_run_usd)
+        if self.teto_pagina_usd > 0 and (
+                self.gasto_pagina_usd + estimativa_usd >= self.teto_pagina_usd):
+            raise OrcamentoEstourado("pagina", passo, self.gasto_pagina_usd,
+                                     self.teto_pagina_usd)
+
+    def registrar(self, passo: str, custo_usd: float) -> None:
+        custo = float(custo_usd or 0.0)
+        if custo <= 0:
+            return
+        self.gasto_pagina_usd += custo
+        with self.base.trava:
+            self.base.gasto_run_usd += custo
+            self.base.gasto_por_pagina[self.pagina] = round(
+                self.base.gasto_por_pagina.get(self.pagina, 0.0) + custo, 6)
+
+    def relatorio(self) -> dict:
+        return self.base.relatorio()

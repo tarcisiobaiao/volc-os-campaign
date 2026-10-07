@@ -947,7 +947,7 @@ def _judge_page(state: RunState, page: Page, content: str, deps: Any) -> None:
         keywords=", ".join(page.target_keywords),
         facts=base_para_o_redator(facts),
         editorial=page.editorial.model_dump() if page.editorial else {},
-        jornada=contexto_de_jornada(state.plan, page),
+        jornada=contexto_de_jornada(state.plan, page, state.dossie),
         destination_contracts=[
             {"slug": p.slug, "title": p.h1_title,
              "delivery": p.editorial.useful_delivery if p.editorial else p.emotional_objective,
@@ -1525,7 +1525,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             facts=base_para_o_redator(facts, destino_pago=True),
             lp_destinations=lp_destinations,
             editorial=page.editorial.model_dump() if page.editorial else {},
-            jornada=contexto_de_jornada(plan, page),
+            jornada=contexto_de_jornada(plan, page, state.dossie),
             today=date.today().strftime("%d/%m/%Y"),
             **extras_v2,
         )
@@ -1646,7 +1646,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         cross_funnel_label=cross_funnel_label,
         headline=page.h1_title,
         editorial=page.editorial.model_dump() if page.editorial else {},
-        jornada=contexto_de_jornada(plan, page),
+        jornada=contexto_de_jornada(plan, page, state.dossie),
         objective=page.emotional_objective,
         skeleton="\n".join(page.main_content_structure),
         keywords=", ".join(page.target_keywords),
@@ -1916,7 +1916,7 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> Co
         politicas=pacote_para_o_revisor(pacote), localizadores=localizadores,
         referencias=refs, numeros_permitidos=numeros_ok,
         revalidar=revalidar, normalizar=normalizar, pacote_vencido=pacote.vencido,
-        jornada=contexto_de_jornada(state.plan, page),
+        jornada=contexto_de_jornada(state.plan, page, state.dossie),
     )
 
 
@@ -2839,6 +2839,20 @@ def inject_widget(content: str, block: str) -> str:
     return content.rstrip() + "\n\n" + b + "\n"
 
 
+def _somar_pago(total: StepResult, parcial: StepResult | None) -> None:
+    if parcial is None:
+        return
+    total.attempts += parcial.attempts
+    total.prompt_tokens += parcial.prompt_tokens
+    total.completion_tokens += parcial.completion_tokens
+    total.cost_usd += parcial.cost_usd
+    total.latency_ms += parcial.latency_ms
+    if parcial.model_used:
+        total.model_used = parcial.model_used
+    for campo, valor in procedencia(parcial).items():
+        setattr(total, campo, valor)
+
+
 def _widget_skip(page: Page, *issues: Issue, pago: StepResult | None = None) -> StepResult:
     """A SKIPPED widget result: the article remains intact (no widget).
 
@@ -3106,6 +3120,9 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
         res = None
         block = None
         issues: list[Issue] = []
+        # TUDO o que foi pago nas tentativas — a recusada inclusive. Todo
+        # caminho de saída grava isto, não só a última chamada.
+        pago = StepResult(step=key, status=StepStatus.SKIPPED)
 
         for tentativa in range(1, tentativas_widget + 1):
             prompt = render(
@@ -3125,6 +3142,7 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
             text, res = deps.runner.run_llm_step(
                 key, cfg, [{"role": "user", "content": prompt}], ctx={},
                 run_id=state.run_id)
+            _somar_pago(pago, res)
             if res.status is StepStatus.FAILED:
                 break
             raw_t = (text or "").strip()
@@ -3186,34 +3204,34 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
         if res is not None and res.status is StepStatus.FAILED:
             state.step_status[key] = _widget_skip(
                 page, Issue(code="widget_llm_error",
-                            message="Geração do widget falhou; publicação será reavaliada."))
+                            message="Geração do widget falhou; publicação será reavaliada."), pago=pago)
             return
         raw = (text or "").strip()
         if not raw:
             state.step_status[key] = _widget_skip(
-                page, Issue(code="widget_empty", message="Gerador retornou vazio."))
+                page, Issue(code="widget_empty", message="Gerador retornou vazio."), pago=pago)
             return
         if raw.upper() == "NONE":
             state.step_status[key] = _widget_skip(
                 page, Issue(code="widget_none",
-                            message="Gerador decidiu que nenhum widget agrega (NONE)."))
+                            message="Gerador decidiu que nenhum widget agrega (NONE)."), pago=pago)
             return
         if block is None:
             state.step_status[key] = _widget_skip(
                 page, *(issues or [Issue(code="widget_conteudo_invalido",
                                          message="O JSON do widget não descreve uma peça publicável.")]),
-                pago=res)
+                pago=pago)
             return
         if issues:
             # Rejected: publish the article WITHOUT the widget. Surface every
             # sanitization label as the widget_error(s).
-            state.step_status[key] = _widget_skip(page, *issues, pago=res)
+            state.step_status[key] = _widget_skip(page, *issues, pago=pago)
             return
         draft.content = inject_widget(draft.content, block)
         state.step_status[key] = StepResult(
-            step=key, status=StepStatus.OK, model_used=res.model_used, attempts=res.attempts,
-            prompt_tokens=res.prompt_tokens, completion_tokens=res.completion_tokens,
-            cost_usd=res.cost_usd, latency_ms=res.latency_ms, **procedencia(res))
+            step=key, status=StepStatus.OK, model_used=res.model_used, attempts=pago.attempts,
+            prompt_tokens=pago.prompt_tokens, completion_tokens=pago.completion_tokens,
+            cost_usd=pago.cost_usd, latency_ms=pago.latency_ms, **procedencia(res))
     except Exception as exc:  # noqa: BLE001 - turn exception into a deterministic gate result
         state.step_status[key] = _widget_skip(
             page, Issue(code="widget_exception",

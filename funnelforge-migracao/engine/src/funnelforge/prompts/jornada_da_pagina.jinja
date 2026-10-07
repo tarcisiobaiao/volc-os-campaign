@@ -14,5 +14,7 @@ Monetização: papel {{ jornada.monetizacao.papel }}{% for r in jornada.monetiza
 {% endif %}{% for b in jornada.plano_visual %}- bloco na seção "{{ b.secao }}": {{ b.intencao }} → {{ b.padrao }}; função: {{ b.funcao }}{% if b.padrao in ("html", "image") %} (entra por etapa própria; não escreva este bloco){% endif %}
 {% endfor %}{% if jornada.plano_visual %}Nenhum bloco entre a pergunta e a resposta; os três primeiros parágrafos ficam em texto corrido (os anúncios automáticos dependem deles).
 {% endif %}{% for a in jornada.ativos %}- ferramenta planejada: "{{ a.pergunta }}" (entradas: {{ a.entradas | join(", ") }}; resultado: {{ a.resultado }}; regra: {{ a.fonte_da_regra }}). Ela entra por etapa própria; o texto explica o resultado sem depender dela.
-{% endfor %}Profundidade e estrutura seguem a pergunta: sem meta de palavras, sem formato obrigatório. Imagem, print oficial ou widget só quando ajudam a resolver a tarefa.
+{% endfor %}{% if jornada.dossie %}DOSSIÊ FACTUAL CONGELADO desta página ({{ jornada.dossie.sha256[:12] }}): toda afirmação factual vem daqui; o que não está nesta lista não entra no texto, e nada aqui pode ser alterado, arredondado ou generalizado.
+{% for f in jornada.dossie.fatos %}- [{{ f.id }}] {{ f.afirmacao }}{% if f.valor %} ({{ f.valor }} {{ f.unidade }}){% endif %} — fonte: {{ f.fonte }}{% if f.vigente_desde %}; vigente desde {{ f.vigente_desde }}{% endif %}
+{% endfor %}{% endif %}Profundidade e estrutura seguem a pergunta: sem meta de palavras, sem formato obrigatório. Imagem, print oficial ou widget só quando ajudam a resolver a tarefa.
 </jornada_do_leitor>

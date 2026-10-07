@@ -159,7 +159,18 @@
               "resposta_direta",
               "decisao_pratica"
             ]
-          }
+          },
+          "requisitos": [
+            {
+              "id": "psg.quem_atende",
+              "descricao": "quem o Programa Senac de Gratuidade atende (público e critério geral)",
+              "tipos": [
+                "condicao",
+                "fonte_legal",
+                "orgao"
+              ]
+            }
+          ]
         }
       }
     },
@@ -244,6 +255,16 @@
               "evento_de_medicao": "calculo_renda_concluido",
               "custo_estimado_usd": 0.04
             }
+          ],
+          "requisitos": [
+            {
+              "id": "renda.limite_per_capita",
+              "descricao": "limite de renda familiar per capita para a vaga gratuita do PSG",
+              "tipos": [
+                "numero",
+                "condicao"
+              ]
+            }
           ]
         }
       }
@@ -308,6 +329,17 @@
               "intencao": "comparar",
               "padrao": "table",
               "funcao": "Comparar modalidades lado a lado"
+            }
+          ],
+          "requisitos": [
+            {
+              "id": "curso.tipos_ofertados",
+              "descricao": "que tipos de curso o PSG oferece de graça",
+              "tipos": [
+                "condicao",
+                "processo",
+                "fonte_legal"
+              ]
             }
           ]
         }
@@ -386,6 +418,16 @@
               "padrao": "image",
               "funcao": "Mostrar onde fica o PSG na página oficial"
             }
+          ],
+          "requisitos": [
+            {
+              "id": "estado.canal_regional",
+              "descricao": "onde cada estado publica as vagas gratuitas do Senac (portal da regional)",
+              "tipos": [
+                "processo",
+                "orgao"
+              ]
+            }
           ]
         }
       }
@@ -448,6 +490,23 @@
               "intencao": "checklist",
               "padrao": "list",
               "funcao": "Separar os documentos antes de abrir o site"
+            }
+          ],
+          "requisitos": [
+            {
+              "id": "inscricao.como_se_inscrever",
+              "descricao": "como se faz a inscrição numa vaga gratuita",
+              "tipos": [
+                "processo"
+              ]
+            },
+            {
+              "id": "inscricao.documentos",
+              "descricao": "o que o candidato declara ou apresenta na inscrição (renda, documentos)",
+              "tipos": [
+                "condicao",
+                "processo"
+              ]
             }
           ]
         }

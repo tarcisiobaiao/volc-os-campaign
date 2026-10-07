@@ -31,6 +31,8 @@ para furar o bloqueio.
 """
 from __future__ import annotations
 
+import threading
+
 import re
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
@@ -92,18 +94,23 @@ class HttpUrlVerifier:
         self._max_body = max_body_bytes
         self._cache: dict[str, bool] = {}
         self.stats = VerifierStats()
+        # Páginas em paralelo dividem cache e estatística. Uma trava só: o
+        # dossiê já verificou as URLs antes dos workers, então quase tudo aqui
+        # é acerto de cache, e a mesma URL nunca é visitada duas vezes.
+        self._trava = threading.RLock()
 
     def verify_url(self, url: str) -> bool:
         """True somente quando a URL respondeu como página viva e válida."""
         key = (url or "").strip()
         if not key:
             return False
-        if key in self._cache:
-            self.stats.cache_hits += 1
-            return self._cache[key]
-        result = self._check(key)
-        self._cache[key] = result
-        return result
+        with self._trava:
+            if key in self._cache:
+                self.stats.cache_hits += 1
+                return self._cache[key]
+            result = self._check(key)
+            self._cache[key] = result
+            return result
 
     def bloqueada(self, url: str) -> bool:
         """A URL foi RECUSADA ou apenas não deu para checar?

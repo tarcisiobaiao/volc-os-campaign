@@ -277,6 +277,22 @@ class AtivoInterativo(BaseModel):
     custo_estimado_usd: float | None = None
 
 
+class RequisitoFactual(BaseModel):
+    """O que a promessa da página EXIGE provar antes de alguém escrever (ex.:
+    `renda.limite_per_capita`, aceito como `numero` ou `condicao`). O dossiê
+    só libera a página quando cada requisito crítico tem fato verificado."""
+    id: str = Field(min_length=1, pattern=r"^[a-z0-9_.]+$")
+    descricao: str = Field(min_length=1)
+    tipos: list[str] = ["numero", "prazo", "data", "mudanca", "condicao", "orgao",
+                        "fonte_legal", "processo"]
+    critico: bool = True
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value) if isinstance(value, str) else value
+
+
 def _ids(value: object) -> object:
     return [canon_rotulo(v) for v in value] if isinstance(value, list) else value
 
@@ -308,6 +324,7 @@ class JornadaDaPagina(BaseModel):
     valor: ValorDaPagina | None = None
     plano_visual: list[BlocoVisual] = []
     ativos: list[AtivoInterativo] = []
+    requisitos: list[RequisitoFactual] = []
 
     @field_validator("duvida_id", "proxima_duvida", "entrada_direta", mode="before")
     @classmethod
@@ -848,6 +865,10 @@ class RunState(BaseModel):
     # METADADOS E JSON-LD por página (`pipeline/metadados.py`), calculados sem
     # LLM depois do portão final. Ainda não são enviados ao WordPress.
     metadados: dict[int, dict] = {}
+    # DOSSIÊ FACTUAL congelado (`domain/dossie.py`) e o hash do conteúdo. Um
+    # resume usa este mesmo dossiê; nada muda os fatos durante a redação.
+    dossie: dict = {}
+    dossie_sha256: str = ""
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

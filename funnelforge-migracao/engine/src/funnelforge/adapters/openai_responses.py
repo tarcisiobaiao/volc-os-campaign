@@ -249,6 +249,11 @@ class OpenAIResponsesClient:
                 r = evento.get("response") or evento
                 raise erro_do_plano(500, {"error": r.get("error") or r.get("incomplete_details")
                                           or {"code": tipo}}, slug)
+        if not final:
+            # Stream que acabou sem `response.completed` é resposta truncada:
+            # sem modelo servido e sem uso confirmados, nada dela é aceito.
+            raise FalhaDoPlano(f"stream de '{slug}' terminou sem response.completed "
+                               "(resposta truncada descartada).", "stream_incompleto")
         texto = "".join(partes)
         servido = str(final.get("model") or slug)
         if _base(servido) != _base(slug):
@@ -290,11 +295,15 @@ class RoteadorDeLLM:
         self.litellm, self.plano = litellm, plano
         self.allow_api_key_fallback, self.max_chamadas = allow_api_key_fallback, max_chamadas
         self.chamadas = 0
+        # Páginas em paralelo dividem este contador: conferir e somar é atômico.
+        self._trava = threading.Lock()
 
     def _contar(self, modelo: str) -> None:
-        if self.max_chamadas and self.chamadas >= self.max_chamadas:
-            raise TetoDeChamadas("run", modelo, float(self.chamadas), float(self.max_chamadas))
-        self.chamadas += 1
+        with self._trava:
+            if self.max_chamadas and self.chamadas >= self.max_chamadas:
+                raise TetoDeChamadas("run", modelo, float(self.chamadas),
+                                     float(self.max_chamadas))
+            self.chamadas += 1
 
     def complete(self, model: str, fallbacks: list[str], messages: list[dict],
                  temperature: float, response_schema: type | None = None,

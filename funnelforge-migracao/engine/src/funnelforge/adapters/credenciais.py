@@ -24,6 +24,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -136,11 +137,16 @@ def armazem_padrao(tipo: str = "keychain") -> Armazem:
     return ArmazemEmArquivo()
 
 
+#: Trava ENTRE THREADS do mesmo processo (páginas em paralelo). O `flock`
+#: abaixo cobre outros processos; os dois juntos são o contrato.
+_TRAVA_DO_PROCESSO = threading.Lock()
+
+
 @contextlib.contextmanager
 def trava_de_renovacao(pasta: Path | None = None) -> Iterator[None]:
     pasta = _garantir_diretorio(pasta or diretorio_padrao())
     caminho = pasta / "renovacao.lock"
-    with open(caminho, "a", encoding="utf-8") as f:
+    with _TRAVA_DO_PROCESSO, open(caminho, "a", encoding="utf-8") as f:
         os.chmod(caminho, 0o600)
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         try:

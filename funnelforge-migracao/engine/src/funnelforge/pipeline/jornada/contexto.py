@@ -60,7 +60,8 @@ def politica_da_saida_oficial(page: Page) -> PoliticaDaSaidaOficial | None:
     return PoliticaDaSaidaOficial(exige=exige, classe=classe, primeiro=classe == "boa")
 
 
-def contexto_de_jornada(plan: FunnelPlan | None, page: Page) -> dict[str, Any]:
+def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
+                        dossie: dict | None = None) -> dict[str, Any]:
     """O contrato da jornada desta página, pronto para o prompt. `{}` quando a
     página não tem jornada — e aí os templates não mudam um byte."""
     if plan is None or page.jornada is None:
@@ -111,4 +112,14 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page) -> dict[str, Any]:
         "valor": valor,
         "plano_visual": [b.model_dump() for b in j.plano_visual],
         "ativos": [a.model_dump() for a in ativos_validos(page)],
+        # O PageDossier CONGELADO (vazio sem dossiê): a mesma projeção para
+        # briefing, redator, juiz e revisor.
+        "dossie": _projecao(dossie, page.page_number),
     }
+
+
+def _projecao(dossie: dict | None, numero: int) -> dict:
+    if not dossie:
+        return {}
+    from funnelforge.pipeline.dossie import projecao_para_o_prompt
+    return projecao_para_o_prompt(dossie, numero)

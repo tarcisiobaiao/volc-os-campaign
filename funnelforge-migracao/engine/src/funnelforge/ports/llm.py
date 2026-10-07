@@ -30,6 +30,11 @@ class LLMResult(BaseModel):
     response_id: str = ""
     auth_mode: str = ""
     reasoning_effort: str = ""
+    # Consultas de busca que o grounding rodou (cobradas à parte dos tokens).
+    consultas_de_busca: int = 0
+    # Por que o provedor parou (stop, length, content_filter...). Resposta vazia
+    # sem isto é indiagnosticável.
+    finish_reason: str = ""
 
 
 class LLMClient(Protocol):

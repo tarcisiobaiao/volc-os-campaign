@@ -274,3 +274,77 @@ class PerplexityResearch:
         if not facts.fontes:
             facts.sparse = True
         return facts
+
+
+# ---------------------------------------------------------------------------
+# PESQUISA ÚNICA DO FUNIL (dossiê factual pré-redação)
+# ---------------------------------------------------------------------------
+
+def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | None) -> str:
+    """Um prompt para o funil INTEIRO (ou, na complementação, só para o que
+    falta). Cada fato diz a quais páginas e a quais requisitos ele serve."""
+    hoje = date.today().strftime("%d/%m/%Y")
+    mapa = json.dumps(paginas, ensure_ascii=False, indent=1)
+    alvo = ""
+    if faltantes:
+        lista = "\n".join(f"- pagina {f['duvida_id']}: requisito {f['requisito']} "
+                          f"({f['descricao']}; tipos aceitos: {', '.join(f['tipos'])})"
+                          for f in faltantes)
+        alvo = ("\n\nCOMPLEMENTACAO DIRIGIDA: a rodada anterior nao trouxe lastro para os "
+                f"requisitos abaixo. Pesquise SOMENTE eles:\n{lista}\n")
+    tipos = ", ".join(t for t, _ in _VOCABULARIO_DE_TIPOS)
+    return (
+        f"Hoje e {hoje}. Voce prepara o DOSSIE FACTUAL de um funil editorial antes de qualquer "
+        "redacao. Pesquise na web e devolva SOMENTE um objeto JSON (sem markdown):\n"
+        '{"fatos": [{"afirmacao": "...", "tipo": "...", "valor": "...", "unidade": "...", '
+        '"fonte": "https://pagina-que-a-busca-abriu", "vigente_desde": "AAAA-MM-DD", '
+        '"dispositivo": "...", "evidencia": "trecho curto copiado da fonte", '
+        '"paginas": ["duvida_id"], "requisitos": ["id_do_requisito"]}]}\n\n'
+        f"Assunto do funil: {assunto}\n"
+        f"Paginas, perguntas, promessas e requisitos que cada uma precisa provar:\n{mapa}\n\n"
+        f"tipo (vocabulario fechado): {tipos}.\n"
+        "REGRAS:\n"
+        "- fonte = URL de uma pagina que a sua busca realmente abriu. URL de memoria nao vale.\n"
+        "- numero, prazo, data e mudanca exigem valor, unidade e vigente_desde (a vigencia que "
+        "a fonte declara). Sem isso, nao inclua o fato.\n"
+        "- regra, elegibilidade e obrigacao exigem fonte oficial ou primaria.\n"
+        "- evidencia: no maximo 300 caracteres copiados da fonte; nada de parafrase.\n"
+        "- paginas: os duvida_id que o fato sustenta; requisitos: os ids que ele cobre.\n"
+        "- nao transforme inferencia em fato; nao complete lacuna por plausibilidade. Se nao "
+        "achar, nao invente: deixe o requisito sem fato.\n"
+        "- se fontes divergirem, traga as duas versoes como fatos separados."
+        + alvo
+    )
+
+
+def pesquisar_funil(llm: LLMClient, cfg: StepConfig, assunto: str, paginas: list[dict],
+                    faltantes: list[dict] | None = None):
+    """Uma rodada de pesquisa do funil com grounding. As citações do PROVEDOR
+    (canonizadas, redirects resolvidos) são a lista de fontes candidatas; o
+    texto do modelo nunca acrescenta URL a ela."""
+    from funnelforge.pipeline.dossie import RespostaDaPesquisa
+    mensagem = [{"role": "user", "content": _prompt_do_funil(assunto, paginas, faltantes)}]
+    resultado = llm.complete(cfg.model, cfg.fallbacks, mensagem, cfg.temperature,
+                             web_search=getattr(cfg, "web_search", False))
+    with httpx.Client(timeout=12.0, follow_redirects=True, headers={"User-Agent": _UA}) as c:
+        citacoes = list(dict.fromkeys(_canonica(u, c) for u in (resultado.citations or [])))
+    # Resposta vazia ou ilegível NÃO é "zero fatos": é defeito da chamada, e
+    # complementar às cegas só paga de novo pelo mesmo vazio.
+    fim = getattr(resultado, "finish_reason", "") or "não informado"
+    defeito = ""
+    if not (resultado.text or "").strip():
+        defeito = f"provedor devolveu texto vazio (finish_reason={fim})"
+        dados = {"fatos": []}
+    else:
+        try:
+            dados = _tolerant_json(resultado.text)
+        except (ValueError, json.JSONDecodeError):
+            dados = {"fatos": []}
+            defeito = f"resposta sem JSON legível (finish_reason={fim})"
+    return RespostaDaPesquisa(
+        dados=dados, citacoes=citacoes, modelo_pedido=cfg.model,
+        modelo_servido=resultado.model_used, auth_mode=getattr(resultado, "auth_mode", "") or "",
+        prompt_tokens=resultado.prompt_tokens, completion_tokens=resultado.completion_tokens,
+        custo_usd=resultado.cost_usd, latencia_ms=resultado.latency_ms,
+        consultas_de_busca=getattr(resultado, "consultas_de_busca", 0) or 0,
+        finish_reason=getattr(resultado, "finish_reason", "") or "", defeito=defeito)
