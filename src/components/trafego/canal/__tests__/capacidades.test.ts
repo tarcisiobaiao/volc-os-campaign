@@ -21,6 +21,7 @@ const manifesto = (over: Partial<ManifestoDeCanal> = {}): ManifestoDeCanal => ({
   capacidades: ['ler', 'propor'],
   provas_obrigatorias: ['validate_only'],
   indisponibilidades: [],
+  sabe_provar: true,
   sabe_criar: true,
   ...over,
 });

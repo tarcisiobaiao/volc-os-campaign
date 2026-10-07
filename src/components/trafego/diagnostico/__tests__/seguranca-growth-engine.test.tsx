@@ -152,6 +152,7 @@ const SUPERFICIES: [string, () => JSX.Element][] = [
             capacidades: ['ler'],
             provas_obrigatorias: [],
             indisponibilidades: [],
+            sabe_provar: true,
             sabe_criar: true,
           },
           respostas: {},

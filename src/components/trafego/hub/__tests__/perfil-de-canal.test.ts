@@ -32,6 +32,7 @@ const manifesto = (troca: Partial<ManifestoDeCanal> = {}): ManifestoDeCanal => (
   capacidades: ['ler', 'propor'],
   provas_obrigatorias: ['politica', 'duplicidade', 'selo'],
   indisponibilidades: [],
+  sabe_provar: true,
   sabe_criar: true,
   ...troca,
 });

@@ -207,7 +207,7 @@ describe.runIf(LIGADO)('retratos das superfícies', () => {
             plataforma: 'GOOGLE_ADS', canal: 'SEARCH', rotulo: 'Search',
             hierarquia: ['campanha'], paineis: [], campos_do_pedido: ['keywords'],
             capacidades: ['ler', 'propor'], provas_obrigatorias: [],
-            indisponibilidades: [], sabe_criar: false,
+            indisponibilidades: [], sabe_provar: true, sabe_criar: false,
           }}
         />
         <EstruturaDoCanal
@@ -218,7 +218,7 @@ describe.runIf(LIGADO)('retratos das superfícies', () => {
             plataforma: 'GOOGLE_ADS', canal: 'DISPLAY', rotulo: 'Display',
             hierarquia: ['campanha'], paineis: [], campos_do_pedido: ['copy'],
             capacidades: ['ler', 'propor'], provas_obrigatorias: [],
-            indisponibilidades: [], sabe_criar: true,
+            indisponibilidades: [], sabe_provar: true, sabe_criar: true,
           }}
         />
         <EstruturaDoCanal rede="google" canal="VIDEO" aba="desempenho" manifesto={null} />
@@ -237,7 +237,7 @@ describe.runIf(LIGADO)('retratos das superfícies', () => {
         campos_do_pedido: ['grupos', 'keywords', 'negativas', 'copy', 'url_final',
                            'verba_diaria', 'estrategia_de_lance'],
         capacidades: ['ler', 'propor'], provas_obrigatorias: ['politica', 'duplicidade', 'selo'],
-        indisponibilidades: [], sabe_criar: true,
+        indisponibilidades: [], sabe_provar: true, sabe_criar: true,
       },
       {
         plataforma: 'GOOGLE_ADS' as const, canal: 'DISPLAY', rotulo: 'Display',
@@ -249,6 +249,7 @@ describe.runIf(LIGADO)('retratos das superfícies', () => {
           'a primeira fatia de Display não monta segmentação: a campanha nasce em inventário aberto, escolhido pelo lance.',
           'Display não aceita lance manual: a tabela oficial de estratégias não declara compatibilidade do CPC manual com este canal.',
         ],
+        sabe_provar: true,
         sabe_criar: true,
       },
       {
@@ -258,6 +259,7 @@ describe.runIf(LIGADO)('retratos das superfícies', () => {
         indisponibilidades: [
           'não há construtor de campanha para Performance Max — o engine levanta exceção. O canal existe no inventário porque a conta pode ter campanhas dele, e escondê-las seria mentir sobre o que está gastando.',
         ],
+        sabe_provar: false,
         sabe_criar: false,
       },
     ];

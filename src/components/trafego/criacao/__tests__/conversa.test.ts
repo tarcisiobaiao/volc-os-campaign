@@ -28,6 +28,7 @@ const manifestoSearch: ManifestoDeCanal = {
   capacidades: ['ler', 'propor'],
   provas_obrigatorias: ['validate_only'],
   indisponibilidades: [],
+  sabe_provar: true,
   sabe_criar: true,
 };
 
@@ -55,6 +56,7 @@ describe('a conversa é derivada do manifesto', () => {
       ...base,
       manifesto: {
         ...manifestoSearch,
+        sabe_provar: false,
         sabe_criar: false,
         indisponibilidades: ['Performance Max não tem construtor aprovado (ADR-11).'],
       },

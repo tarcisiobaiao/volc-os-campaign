@@ -1,0 +1,122 @@
+{
+  "sprint": "traffic-operating-cockpit-v2",
+  "escopo": "Os estados que a superfície redesenhada (aba Criar: escada de portões + as treze etapas) sabe representar, e como cada um foi provado.",
+  "regra_que_governa": "Zero não é ausência. Ausência não é recusa. Recusa não é ignorância. Cada par abaixo pede um ato diferente do operador, e colapsá-los é o defeito que esta matriz existe para impedir.",
+  "estados": [
+    {
+      "estado": "carregando",
+      "representado": true,
+      "como": "frase própria — 'Lendo o que este canal permite agora…' — em região viva (role=status, aria-live=polite, aria-atomic).",
+      "nao_confunde_com": "vazio. Nenhum portão é desenhado enquanto a leitura não chega.",
+      "prova": "jornada-do-canal.test.tsx :: 'lendo não afirma veredito'",
+      "cena": "/qa/trafego/jornada/carregando"
+    },
+    {
+      "estado": "ausencia_de_leitura (falha total, sem dado anterior)",
+      "representado": true,
+      "como": "role=alert dizendo que a falha NÃO afirma bloqueio, mais caminho de releitura.",
+      "nao_confunde_com": "bloqueado. A frase nega explicitamente a leitura como veredito.",
+      "prova": "jornada-do-canal.test.tsx :: 'falha SEM leitura anterior'",
+      "cena": "/qa/trafego/jornada/leitura-falhou"
+    },
+    {
+      "estado": "stale (releitura falhou, com dado anterior bom)",
+      "representado": true,
+      "como": "a escada PERMANECE, com aviso âmbar: 'última leitura que deu certo… ninguém os confirmou agora'.",
+      "nao_confunde_com": "ausência de leitura. Apagar o contrato colapsava 'conhecido porém velho' em 'não sei nada'.",
+      "prova": "jornada-do-canal.test.tsx :: 'falha COM leitura anterior preserva o veredito' + 'o aviso não vira veredito novo' (compara os quatro estados com e sem falha)",
+      "origem": "achado da revisão adversarial, lente 3"
+    },
+    {
+      "estado": "contrato_ausente (o servidor não devolveu este canal)",
+      "representado": true,
+      "como": "declarado como defeito do servidor, não como recusa dirigida ao operador.",
+      "nao_confunde_com": "canal não operado, que é afirmação do manifesto.",
+      "prova": "jornada-do-canal.test.tsx :: 'contrato ausente é dito como defeito do servidor'",
+      "cena": "/qa/trafego/jornada/contrato-ausente"
+    },
+    {
+      "estado": "portao_ausente (veio contrato, faltou um portão)",
+      "representado": true,
+      "como": "a linha diz 'não veio'. O contrato manda os quatro sempre.",
+      "nao_confunde_com": "portão fechado. Desenhar recusa afirmaria um veredito que ninguém deu.",
+      "prova": "jornada-do-canal.test.tsx :: 'portão ausente não vira portão fechado'",
+      "cena": "/qa/trafego/jornada/contrato-parcial"
+    },
+    {
+      "estado": "INDETERMINADO (não apurado)",
+      "representado": true,
+      "como": "tom âmbar, palavra 'não apurado', descrição 'ninguém olhou. Não é um não, é uma leitura que falta'.",
+      "nao_confunde_com": "BLOQUEADO. Pintar ignorância de vermelho ensina o operador a ignorar o vermelho.",
+      "prova": "jornada-do-canal.test.tsx :: 'INDETERMINADO não é desenhado como bloqueado'",
+      "cena": "/qa/trafego/jornada/nao-apurado"
+    },
+    {
+      "estado": "BLOQUEADO com causa",
+      "representado": true,
+      "como": "causa como o servidor a escreveu + chip de origem + 'a quem pedir' + revalidação + data de observação quando o bloqueio vem de leitura e não de regra.",
+      "nao_confunde_com": "botão cinza. A origem decide a quem o operador vai pedir.",
+      "prova": "jornada-do-canal.test.tsx :: 'traz a causa do servidor E a quem pedir' e 'a causa aparece como o servidor a escreveu'",
+      "cenas": ["/qa/trafego/jornada/display-politica", "/qa/trafego/jornada/pmax-retido", "/qa/trafego/jornada/demand-gen-porta-estreita"]
+    },
+    {
+      "estado": "BLOQUEADO sem bloqueador",
+      "representado": true,
+      "como": "declarado como LACUNA DO CONTRATO.",
+      "nao_confunde_com": "permissão. Lista de bloqueadores vazia nunca é autorização.",
+      "prova": "jornada-do-canal.test.tsx :: 'bloqueado sem bloqueador declara a lacuna'",
+      "cena": "/qa/trafego/jornada/fechado-sem-causa"
+    },
+    {
+      "estado": "NAO_APLICAVEL / não se aplica",
+      "representado": true,
+      "como": "no portão, 'não cabe'. Na etapa, riscado, com a frase 'não é uma etapa pulada, é uma pergunta que não existe aqui'.",
+      "nao_confunde_com": "pendente. Display não pede conversão; inventar a pergunta produziria resposta que ninguém sabe usar.",
+      "cena": "/qa/trafego/conversa/sem-conversao"
+    },
+    {
+      "estado": "sem_permissao (papel da sessão)",
+      "representado": true,
+      "como": "a etapa de aprovação fecha com o motivo e NÃO some da lista.",
+      "prova": "jornada-do-canal.test.tsx :: 'sem papel para aprovar'",
+      "cena": "/qa/trafego/jornada/sem-papel"
+    },
+    {
+      "estado": "canal_nao_operado",
+      "representado": true,
+      "como": "as treze etapas saem bloqueadas com a dependência nomeada, dita UMA vez.",
+      "nao_confunde_com": "canal operado sem capacidade — 'não é conosco' e 'é conosco e está travado' levam a portas diferentes.",
+      "cena": "/qa/trafego/conversa/canal-nao-operado"
+    },
+    {
+      "estado": "ativacao_impossivel",
+      "representado": true,
+      "como": "degrau visível, fechado pela causa do servidor. NENHUM controle de ativar em lugar nenhum.",
+      "nao_confunde_com": "degrau alcançável. Fechava por sequência e reabriria ao responder a criação.",
+      "prova": "três casos: 'com o portão fechado', 'nem respondendo a criação', 'sem portão lido a regra local não abre'",
+      "origem": "achado que bloqueava o aceite, revisão adversarial, lente 1"
+    },
+    {
+      "estado": "estado_desconhecido (o servidor mandou um valor que esta versão não conhece)",
+      "representado": true,
+      "como": "tom neutro, palavra 'estado desconhecido', descrição explícita.",
+      "nao_confunde_com": "permitido. Fail-closed por construção."
+    }
+  ],
+  "estados_do_briefing_NAO_representados_nesta_superficie": [
+    {
+      "estado": "prova em andamento / prova recusada / prova verde",
+      "por_que": "esta sprint não construiu a superfície de prova. POST /provar é UMA requisição sem sub-fases observáveis; ver MOTION-MAP.md e REMAINING-RISKS.md §6.",
+      "onde_existe_hoje": "Lancamento.tsx, no cockpit de lançamento, que esta sprint não reescreveu."
+    },
+    {
+      "estado": "criação PAUSED / recibo disponível / discrepância pós-ato",
+      "por_que": "vivem no cockpit e na tela canônica, fora do escopo desta sprint.",
+      "onde_existe_hoje": "Lancamento.tsx, recibos/CartaoDeRecibo.tsx, CampanhaCanonPage.tsx"
+    },
+    {
+      "estado": "erro parcial de leitura de conjunto (parcial + faltou[])",
+      "por_que": "é do inventário, e o inventário já o representa em onze estados provados. Esta sprint não o tocou."
+    }
+  ]
+}

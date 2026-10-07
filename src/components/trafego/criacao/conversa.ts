@@ -66,9 +66,51 @@ export const ROTULO_DA_ETAPA: Record<EtapaDaCriacao, string> = {
   ativacao: 'Ativação',
 };
 
+/**
+ * Os portões que o SERVIDOR decidiu, para as etapas que ele decide.
+ *
+ * ⚠️ Sem isto, três etapas desta conversa eram elegibilidade RECALCULADA no
+ * navegador — e uma delas mentia. `ativacao` fechava com "não há campanha criada
+ * para ligar", que é uma dependência de SEQUÊNCIA: bastava responder `criacao`
+ * para a etapa abrir. Só que ela não abre nunca. `_portao_ativavel` devolve
+ * BLOQUEADO em todos os ramos, para os quatro canais, em todos os perfis de
+ * sessão, e não existe rota de ativação entre os 32 endpoints. Prometer o
+ * degrau seguinte de um caminho que termina ali é a promessa falsa mais cara
+ * desta tela.
+ *
+ * Quando estes portões chegam, eles MANDAM nas três etapas finais. A regra
+ * local continua valendo apenas para ordenar o que o servidor permitiu — nunca
+ * para abrir o que ele fechou.
+ */
+export interface PortaoAutoritativo {
+  estado: 'PERMITIDO' | 'BLOQUEADO' | 'INDETERMINADO' | 'NAO_APLICAVEL';
+  /** A causa como o servidor a escreveu. A tela não a reescreve. */
+  causa: string | null;
+}
+
+export interface PortoesDaConversa {
+  validavel?: PortaoAutoritativo | null;
+  criavel_pausada?: PortaoAutoritativo | null;
+  ativavel?: PortaoAutoritativo | null;
+}
+
+/** Qual portão responde por qual etapa. Fora daqui, ninguém manda. */
+const PORTAO_DA_ETAPA: Partial<Record<EtapaDaCriacao, keyof PortoesDaConversa>> = {
+  prova: 'validavel',
+  criacao: 'criavel_pausada',
+  ativacao: 'ativavel',
+};
+
 export interface EntradaDaConversa {
   /** `null` = o Hub não opera este canal. A conversa inteira não existe. */
   manifesto: ManifestoDeCanal | null;
+  /**
+   * O veredito do servidor para prova, criação e ativação.
+   *
+   * Ausente = não foi lido. As etapas caem na regra local, que é conservadora
+   * e nunca abre a ativação — ver `travaDaEtapa`.
+   */
+  portoes?: PortoesDaConversa | null;
   /** As respostas já dadas, já legíveis. */
   respostas: Partial<Record<EtapaDaCriacao, string>>;
   /**
@@ -123,7 +165,7 @@ const DEP: Record<string, DependenciaDeAplicacao> = {
  * aqui, que é informação e não ruído.
  */
 export function montarConversa(entrada: EntradaDaConversa): PassoDaCriacao[] {
-  const { manifesto, respostas, travaAberta, podeAprovar } = entrada;
+  const { manifesto, respostas, travaAberta, podeAprovar, portoes } = entrada;
 
   if (manifesto == null) {
     return ETAPAS_DA_CRIACAO.map((etapa) => ({
@@ -160,7 +202,7 @@ export function montarConversa(entrada: EntradaDaConversa): PassoDaCriacao[] {
       return { ...base, estado: 'nao_se_aplica' as const, resposta: null, dependencia: null };
     }
 
-    const trava = travaDaEtapa(etapa, { travaAberta, podeAprovar, respostas });
+    const trava = travaDaEtapa(etapa, { travaAberta, podeAprovar, respostas, portoes });
     if (trava) {
       return { ...base, estado: 'bloqueada' as const, dependencia: trava };
     }
@@ -196,8 +238,31 @@ function travaDaEtapa(
     travaAberta: boolean | null;
     podeAprovar: boolean;
     respostas: Partial<Record<EtapaDaCriacao, string>>;
+    portoes?: PortoesDaConversa | null;
   },
 ): DependenciaDeAplicacao | null {
+  // ⚠️ O SERVIDOR PRIMEIRO, e ele não é apelável.
+  //
+  // Quando o portão correspondente chegou fechado, a etapa fecha com a causa
+  // que ele escreveu — e nenhuma resposta do operador a reabre. Era exatamente
+  // isso que faltava: `ativacao` fechava por sequência ("não há campanha criada
+  // para ligar") e reabria ao responder `criacao`, prometendo um degrau que não
+  // existe em canal nenhum.
+  const nomeDoPortao = PORTAO_DA_ETAPA[etapa];
+  if (nomeDoPortao) {
+    const portao = ctx.portoes?.[nomeDoPortao] ?? null;
+    if (portao && portao.estado !== 'PERMITIDO') {
+      return {
+        dependencia:
+          portao.causa ??
+          (portao.estado === 'INDETERMINADO'
+            ? 'o servidor não apurou este portão. Enquanto ninguém olhou, esta etapa não abre.'
+            : 'o servidor fechou este portão e não nomeou a causa nesta resposta.'),
+        destrava: 'endpoint',
+      };
+    }
+  }
+
   if (etapa === 'aprovacao' && !ctx.podeAprovar) return DEP.semPapel;
   if (etapa === 'criacao') {
     if (ctx.respostas.prova == null) return DEP.semProva;

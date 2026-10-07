@@ -119,6 +119,28 @@ describe('os outros canais não copiam o Search', () => {
     expect(screen.getByText('Anúncio responsivo de display')).toBeTruthy();
     expect(screen.getByText('imagens de marketing')).toBeTruthy();
     expect(screen.getByText('long headline')).toBeTruthy();
+    // ⚠️ Este caso fixava `'Começar campanha'` para Display, e com isso fixava
+    // uma PROMESSA FALSA (achado da revisão adversarial, lente 4). A porta é uma
+    // só e ela monta Search: `NovaCampanhaPage` envia `canal: 'SEARCH'` fixo.
+    // Display responde `sabe_criar: true` no manifesto — o que é verdade sobre o
+    // CANAL — e o convite fazia o operador atravessar a porta para montar outro
+    // canal, descobrindo a troca dentro de um formulário que pede keywords.
+    expect(screen.getByRole('link', { name: 'Preparar por Search' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Começar campanha' })).toBeNull();
+  });
+
+  it('só Search é convidado a "Começar campanha"; os outros dizem a porta real', () => {
+    // Contraprova do mesmo achado, feita canal a canal em vez de num só.
+    for (const canal of ['DISPLAY', 'DEMAND_GEN', 'PERFORMANCE_MAX'] as const) {
+      cleanup();
+      montar(canal);
+      expect(
+        screen.queryByRole('link', { name: 'Começar campanha' }),
+        `${canal} não pode convidar a começar campanha: o cockpit monta Search`,
+      ).toBeNull();
+    }
+    cleanup();
+    montar('SEARCH');
     expect(screen.getByRole('link', { name: 'Começar campanha' })).toBeTruthy();
   });
 

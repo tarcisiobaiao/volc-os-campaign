@@ -563,7 +563,13 @@ const GRAMATICA: Record<Canal, GramaticaDoCanal> = {
   PERFORMANCE_MAX: {
     rotulo: 'Performance Max',
     papelBase: 'planejado',
-    frase: 'Performance Max se organiza em asset groups. Sem construtor no VOLC e sem os mínimos de assets, não há criação.',
+    // ⚠️ Dizia 'Sem construtor no VOLC'. Era a MESMA afirmação falsa que o
+    // manifesto do backend carregava, e ela sobrevivia aqui depois de
+    // corrigida lá — duas frases contraditórias na mesma superfície.
+    // `volc_ads/campanha/pmax.py` monta o grafo e serializa os protos v25;
+    // `perfil.PERFORMANCE_MAX` o referencia em `planejador=pmax.planejar`.
+    // O que retém a criação é o registro do executor — decisão registrada.
+    frase: 'Performance Max se organiza em asset groups. O plano é montado offline; a criação está retida no registro do executor, por decisão.',
     apiCria: true,
     etapas: ETAPAS_PMAX,
     fontes: [FONTES_OFICIAIS.pmax],
@@ -792,6 +798,7 @@ function ctaDe(
   intersecao: IntersecaoDeAcao,
   gramatica: GramaticaDoCanal,
   manifesto: ManifestoDeCanal | null,
+  canal: Canal,
 ): CtaDoCanal {
   if (papel === 'somente_leitura') {
     return {
@@ -810,6 +817,26 @@ function ctaDe(
     };
   }
   if (intersecao.cockpitLiberado) {
+    // ⚠️ A PORTA É UMA SÓ, E ELA MONTA SEARCH.
+    //
+    // `destino` leva a Preparar, e de Preparar sai `NovaCampanhaPage`, que envia
+    // `canal: 'SEARCH'` fixo. Rotular a porta de "Começar campanha" para Display
+    // — que responde `sabe_criar: true` no manifesto — convidava o operador a
+    // atravessá-la para montar um pedido de OUTRO canal. Ele descobriria a
+    // troca dentro de um formulário que pede keywords.
+    //
+    // O manifesto continua dizendo a verdade sobre o canal; o que muda aqui é a
+    // promessa da PORTA, que é outra coisa.
+    if (canal !== 'SEARCH') {
+      return {
+        tipo: 'cockpit',
+        rotulo: 'Preparar por Search',
+        destino: '/trafego?aba=preparar',
+        porque:
+          `o cockpit desta versão monta pedido de Search. ${manifesto?.rotulo ?? 'Este canal'} ` +
+          'é planejado e provado pelo motor, e ainda não tem formulário próprio nesta tela.',
+      };
+    }
     return {
       tipo: 'cockpit',
       rotulo: manifesto?.sabe_criar ? 'Começar campanha' : 'Montar e provar',
@@ -848,7 +875,7 @@ export function apresentarCanal(
     frase: gramatica.frase,
     etapas: gramatica.etapas,
     etapasComoFormulario: intersecao.cockpitLiberado,
-    cta: ctaDe(papel, intersecao, gramatica, manifesto),
+    cta: ctaDe(papel, intersecao, gramatica, manifesto, canal),
     alternativas: gramatica.alternativas ?? [],
     provas: (manifesto?.provas_obrigatorias ?? []).map(provaLegivel),
     limites: manifesto && (manifesto.sabe_provar ?? manifesto.sabe_criar)

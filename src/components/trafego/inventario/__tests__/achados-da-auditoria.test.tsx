@@ -41,6 +41,18 @@ import {
   quadroDeAlertasDeProva,
 } from '@/components/trafego/inventario/fixtureDeProvas';
 
+// ⚠️ `{ wrapper: MemoryRouter }` nas montagens avulsas.
+//
+// As linhas do inventário navegam com `<Link>` para rotas DESTE aplicativo
+// (`/trafego/campanhas/:id`, `/dashboard/campaign/:id`), e `<Link>` fora de um
+// roteador lança. Antes eram `<a href>`: renderizavam em qualquer lugar e
+// cobravam ao operador uma recarga de documento inteiro — o teste passava
+// justamente porque a navegação era a errada.
+//
+// As montagens que já têm a própria moldura (`montar()`) continuam sem o
+// wrapper: dois roteadores aninhados lançam igual.
+
+
 // ── dublês ──────────────────────────────────────────────────────────────────
 
 const leituraBase: LeituraDoInventario = {
@@ -330,7 +342,7 @@ describe('LinhaDeCampanha:223 — o aria-label substituía o nome calculado', ()
   }
 
   function botao() {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     return screen.getByRole('button', { name: /^BR - Maquininha de Cartão/ });
   }
 
@@ -364,7 +376,7 @@ describe('LinhaDeCampanha:223 — o aria-label substituía o nome calculado', ()
 
   it('no telefone, onde não há coluna de estado, ele volta para dentro do nome', () => {
     largura(390);
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const nome = computeAccessibleName(
       screen.getByRole('button', { name: /^BR - Maquininha de Cartão,/ }),
     );
@@ -388,7 +400,7 @@ describe('LinhaDeCampanha:223 — o aria-label substituía o nome calculado', ()
         faltou: [],
       }),
     };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     const alvo = screen.getByRole('button', { name: /^BR - Maquininha de Cartão/ });
     expect(alvo.closest('tr')!.textContent).toContain('estado não lido');
   });
@@ -410,6 +422,7 @@ describe('LinhaDeCampanha:249 — "1 instância" era um chute, não uma contagem
           />
         </tbody>
       </table>,
+      { wrapper: MemoryRouter },
     );
   }
 
@@ -445,7 +458,7 @@ describe('formato:149 — PRESENCA.presente era código morto e contraditório',
   });
 
   it('a palavra antiga não sobrou em selo nenhum da tela', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     // Consulta por nó de texto exato, e não por trecho do container: "na conta
     // de anúncio" é prosa legítima em outros lugares, e o que não pode voltar é
     // um SELO com essa palavra.
@@ -549,14 +562,14 @@ describe('useInventario:115 — o frescor vinha de uma página e a data de outra
 describe('a releitura em curso chega à tela', () => {
   it('diz que está conferindo, em vez de parecer parada', () => {
     leitura = { ...leituraBase, atualizando: true };
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     // Sem isto, quem clica em "ler esta conta agora" e vê a tela imóvel conclui
     // que não funcionou e clica de novo — e cada clique custa cota da conta.
     expect(screen.getByText('conferindo o registro…')).toBeTruthy();
   });
 
   it('e fica calada quando não há nada em curso', () => {
-    render(<InventarioDeCampanhas />);
+    render(<InventarioDeCampanhas />, { wrapper: MemoryRouter });
     expect(screen.queryByText('conferindo o registro…')).toBeNull();
   });
 });

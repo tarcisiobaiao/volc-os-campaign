@@ -44,6 +44,26 @@ export const ConversaDeCriacao: React.FC<ConversaDeCriacaoProps> = ({
   const atual = passos.find((p) => p.estado === 'atual') ?? null;
   const primeiraBloqueada = passos.find((p) => p.estado === 'bloqueada') ?? null;
 
+  /**
+   * A dependência que segura TODAS as etapas bloqueadas, quando é uma só.
+   *
+   * ⚠️ Medido ao ver este componente montado pela primeira vez: um canal sem
+   * construtor devolve treze etapas bloqueadas pela MESMA frase, e a lista
+   * repetia a frase treze vezes. Não é redundância decorativa — são treze
+   * parágrafos idênticos empurrando para fora da tela a única informação nova
+   * de cada linha, que é o nome da etapa.
+   *
+   * Quando a causa é uma só, ela é dita UMA vez, no lugar em que o olho já
+   * está. Quando as causas diferem — que é o caso interessante —, cada linha
+   * volta a carregar a sua, porque aí a diferença é a informação.
+   */
+  const bloqueadas = passos.filter((p) => p.estado === 'bloqueada');
+  const causas = new Set(bloqueadas.map((p) => p.dependencia?.dependencia ?? ''));
+  const dependenciaUnica =
+    bloqueadas.length > 1 && causas.size === 1
+      ? (primeiraBloqueada?.dependencia?.dependencia ?? null)
+      : null;
+
   return (
     <section aria-labelledby="conversa-titulo" className={cn('max-w-[78ch]', className)}>
       <p className="kicker">nova campanha</p>
@@ -61,9 +81,25 @@ export const ConversaDeCriacao: React.FC<ConversaDeCriacaoProps> = ({
             : 'todas as etapas aplicáveis foram respondidas.'}
       </p>
 
+      {dependenciaUnica && !atual && (
+        <p className="mt-2 max-w-[70ch] text-[12px] leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">
+            As {bloqueadas.length} etapas abaixo estão fechadas pelo mesmo motivo.
+          </span>{' '}
+          Elas continuam na lista porque o caminho é este — o que falta é a
+          autorização, não uma etapa.
+        </p>
+      )}
+
       <ol className="mt-5 border-t border-border" role="list">
         {passos.map((p, i) => (
-          <Passo key={p.etapa} passo={p} posicao={i + 1} aoAbrir={aoAbrir} />
+          <Passo
+            key={p.etapa}
+            passo={p}
+            posicao={i + 1}
+            aoAbrir={aoAbrir}
+            omitirDependencia={dependenciaUnica != null}
+          />
         ))}
       </ol>
 
@@ -80,7 +116,9 @@ const Passo: React.FC<{
   passo: PassoDaCriacao;
   posicao: number;
   aoAbrir?: (etapa: EtapaDaCriacao) => void;
-}> = ({ passo, posicao, aoAbrir }) => {
+  /** A causa já foi dita uma vez acima, para todas. Ver o ⚠️ do cabeçalho. */
+  omitirDependencia?: boolean;
+}> = ({ passo, posicao, aoAbrir, omitirDependencia = false }) => {
   const visual = VISUAL[passo.estado] ?? VISUAL.pendente;
   const Glifo = visual.glifo;
   const clicavel = aoAbrir != null && (passo.estado === 'respondida' || passo.estado === 'atual');
@@ -119,7 +157,7 @@ const Passo: React.FC<{
             {passo.pergunta}
           </span>
         )}
-        {passo.estado === 'bloqueada' && passo.dependencia && (
+        {passo.estado === 'bloqueada' && passo.dependencia && !omitirDependencia && (
           <span className="mt-0.5 block max-w-[64ch] text-[12px] leading-relaxed text-muted-foreground">
             {passo.dependencia.dependencia}
           </span>

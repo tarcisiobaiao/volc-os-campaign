@@ -1,0 +1,54 @@
+{
+  "sprint": "traffic-operating-cockpit-v2",
+  "branch": "sprint/traffic-operating-cockpit-v2",
+  "base_sha": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+  "por_que_isto_e_um_handoff_e_nao_uma_edicao": [
+    "AGENTS.md — 'Parallel workers must not all edit these shared authorities. They emit a curation handoff; the single integrating/curating agent performs steps 1-5 once after integration.'",
+    "CLAUDE.md — 'Trabalho que só existe numa branch/worktree não pode marcar a fonte compartilhada como concluída.'",
+    "Portanto: NADA foi editado em docs/volc-os-graph/curadoria-operacional.json, em volc-os-workbook/ROADMAP-VIVO.json, nem no grafo. O integrador aplica e reconstrói UMA vez após o merge."
+  ],
+  "frescor_do_grafo": {
+    "estado": "DEFASADO, e presente apenas fora desta worktree",
+    "built_at_commit": "a539dbd7d7cb395ebc14986f0e1944d94f0aad26",
+    "base_desta_sprint": "207e91f1da290130e8d02b78c3ba1c8e9a761111",
+    "observacao": "graphify-out/ é gerado e não versionado; dentro desta worktree o diretório não existe. O UPDATE_STATUS.json lido veio do checkout principal.",
+    "acao_do_integrador": "python3 scripts/atualizar_grafo_volc_os.py && python3 scripts/atualizar_grafo_volc_os.py --check"
+  },
+  "deltas_propostos": [
+    {
+      "alvo": "docs/volc-os-graph/curadoria-operacional.json",
+      "no": "channel:PERFORMANCE_MAX",
+      "campo": "evidence",
+      "texto_atual": "NÃO EXISTE: comum.py levanta ValueError. O front declara PMAX, a taxonomia declara PERFORMANCE_MAX (E-21).",
+      "problema": "A afirmação 'NÃO EXISTE' é falsa e é a MESMA que esta sprint corrigiu no manifesto do backend e na gramática do frontend. volc_ads/campanha/pmax.py monta o grafo completo e serializa os protos v25; perfil.PERFORMANCE_MAX o referencia em planejador=pmax.planejar com acoes_permitidas=('inventariar','planejar').",
+      "texto_proposto": "PLANEJA E NÃO PROVA. volc_ads/campanha/pmax.py monta o grafo e serializa os protos v25; perfil.PERFORMANCE_MAX referencia planejador=pmax.planejar (acoes_permitidas: inventariar, planejar). construtor e validador seguem None por DECISÃO registrada — plano.PMAX_FORA_DO_EXECUTOR —, não por ausência de código: preencher construtor sem mudar subir.py, backend e plataforma.py derrubaria a rota HTTP dos quatro canais. Portões medidos em 03/09/2026 (contrato_canais, quatro perfis de sessão): planejavel=PERMITIDO, validavel=BLOQUEADO (PMAX_FORA_DO_EXECUTOR/produto), criavel_pausada=BLOQUEADO (PMAX_FORA_DO_EXECUTOR/produto + pmax_observabilidade_nao_provada/observabilidade), ativavel=BLOQUEADO.",
+      "estado_sugerido": "partial",
+      "justificativa_do_estado": "'todo' descreve ausência de trabalho. Há planejador funcional, coletor read-only e contrato de portões medido. O que falta é decisão de produto e prova de observabilidade — que é 'partial', não 'todo'."
+    },
+    {
+      "alvo": "volc-os-workbook/ROADMAP-VIVO.json",
+      "tarefa": "P04-T07",
+      "acao": "registrar evidência, NÃO promover",
+      "evidencia_a_registrar": "03/09/2026, branch sprint/traffic-operating-cockpit-v2: o manifesto de PMax parou de afirmar ausência de construtor (backend/app/trafego/plataforma.py) e a gramática do frontend também (src/components/trafego/canal/jornada.ts). Duas contraprovas por AST em backend/tests/test_trafego_plataforma.py impedem a reintrodução. A capacidade do canal NÃO mudou: PMax continua fora do executor e sem observabilidade provada.",
+      "estado_sugerido": "inalterado",
+      "justificativa": "Nenhum critério de aceite de P04-T07 foi satisfeito. O que mudou foi a HONESTIDADE da declaração, não a capacidade. Promover aqui seria exatamente o que o protocolo de fechamento proíbe."
+    },
+    {
+      "alvo": "docs/volc-os-graph/curadoria-operacional.json",
+      "no": "channel:DISPLAY",
+      "campo": "evidence",
+      "acao": "conferir e, se aplicável, anotar",
+      "nota": "Não inspecionei este nó. Anoto porque a mesma classe de defeito — declaração envelhecida em relação ao perfil do engine — pode existir nele: Display tem construtor admitido em subir.CONSTRUTORES_POR_CANAL e é recusado apenas pela janela do canário (política), não por ausência.",
+      "estado_sugerido": null
+    }
+  ],
+  "nos_do_grafo_afetados": [
+    "channel:PERFORMANCE_MAX",
+    "channel:DISPLAY (a conferir)"
+  ],
+  "o_que_o_integrador_NAO_deve_concluir": [
+    "Que Performance Max ficou criável. Não ficou: criavel_pausada continua BLOQUEADO por dois bloqueadores independentes.",
+    "Que a superfície de tráfego foi aceita. Esta sprint fecha como PARCIAL; ver REMAINING-RISKS.md.",
+    "Que houve leitura viva de conta. Nenhuma: o ambiente subiu fail-closed, sem credencial do Google Ads, e o backend respondeu engine=mock."
+  ]
+}
