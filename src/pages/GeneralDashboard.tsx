@@ -70,7 +70,7 @@ import { taxHistoryService } from "@/services/taxHistoryService";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBrlCurrency, formatCostCurrency, getCachedExchangeRate, preloadExchangeRate } from "@/utils/currencyUtils";
-import { calculateROAS, getROASColorStyles, getROASBadgeColor, getROASColorCategory } from "@/utils/roasCalculations";
+import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,20 +89,11 @@ const integrationStatus = [
 
 const COLORS = ['hsl(var(--success))', 'hsl(var(--info))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
 
-// Componente SVG decorativo para cards
-const CardDecoration = ({ color }: { color: string }) => (
-  <svg
-    className="absolute right-0 top-0 h-full w-2/3 pointer-events-none opacity-10"
-    viewBox="0 0 300 200"
-    fill="none"
-    style={{ zIndex: 0 }}
-  >
-    <circle cx="220" cy="100" r="90" fill={color} />
-    <circle cx="260" cy="60" r="60" fill={color} />
-    <circle cx="200" cy="160" r="50" fill={color} />
-    <circle cx="270" cy="150" r="30" fill={color} />
-  </svg>
-);
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4
+ * Single-page redesign · genre: modern-minimal · tone: austere
+ * Metric cards use semantic hairlines and compact icon wells, never decorative blobs.
+ * Non-interactive metrics stay physically still so hover does not imply clickability. */
+const KPI_CARD_CLASS = "relative overflow-hidden border-border/90 bg-card shadow-card";
 
 export default function GeneralDashboard() {
   const navigate = useNavigate();
@@ -556,11 +547,6 @@ export default function GeneralDashboard() {
     return getROASColorStyles(roasExcess);
   };
 
-  // Using centralized ROAS badge color
-  const getROIBadgeColor = (roasExcess: number) => {
-    return getROASBadgeColor(roasExcess);
-  };
-
   const handleRefresh = async () => {
     
     // Check if we need to force revenue conversion
@@ -908,12 +894,11 @@ export default function GeneralDashboard() {
 
         {/* KPI Overview - Cards Resumo */}
         <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 transition-volc duration-200">
-          <Card className="relative overflow-hidden group reveal hover-lift" style={{ ['--i' as any]: 1 }}>
+          <Card className={KPI_CARD_CLASS}>
             <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-info" />
-            <CardDecoration color="hsl(var(--info))" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <span className="kicker">Investimento total</span>
-              <span className="rounded-md bg-info/10 text-info p-1.5"><Coins className="h-4 w-4" /></span>
+              <span className="rounded-md border border-info/20 bg-info/10 p-1.5 text-info"><Coins className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="font-display text-3xl font-bold tabular tracking-tight">{formatCurrency(summary?.totalInvestment || 0)}</div>
@@ -925,12 +910,11 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden group reveal hover-lift" style={{ ['--i' as any]: 2 }}>
+          <Card className={KPI_CARD_CLASS}>
             <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-success" />
-            <CardDecoration color="rgb(34, 197, 94)" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <span className="kicker">Revenue total</span>
-              <span className="rounded-md bg-success/10 text-success p-1.5"><TrendingUp className="h-4 w-4" /></span>
+              <span className="rounded-md border border-success/20 bg-success/10 p-1.5 text-success"><TrendingUp className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
               <RevenueTooltip
@@ -948,11 +932,11 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden group reveal hover-lift" style={{ ['--i' as any]: 3 }}>
-            <CardDecoration color="hsl(var(--info))" />
+          <Card className={KPI_CARD_CLASS}>
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-border" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <span className="kicker">ROAS geral</span>
-              <span className="rounded-md bg-primary/10 text-primary p-1.5"><BarChart3 className="h-4 w-4" /></span>
+              <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><BarChart3 className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="font-display text-3xl font-bold tabular tracking-tight">{summary?.generalRoas || 0}%</div>
@@ -960,9 +944,8 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden group reveal hover-lift" style={{ ['--i' as any]: 4 }}>
+          <Card className={KPI_CARD_CLASS}>
             <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-success" />
-            <CardDecoration color="hsl(var(--success))" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <div className="flex items-center gap-2">
                 <span className="kicker">Lucro líquido</span>
@@ -1021,7 +1004,7 @@ export default function GeneralDashboard() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <span className="rounded-md bg-success/10 text-success p-1.5"><DollarSign className="h-4 w-4" /></span>
+              <span className="rounded-md border border-success/20 bg-success/10 p-1.5 text-success"><DollarSign className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="font-display text-3xl font-bold tabular tracking-tight">
@@ -1052,16 +1035,12 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card style={{ ['--i' as any]: 5 }} className={`relative overflow-hidden group reveal hover-lift ${
+          <Card className={`${KPI_CARD_CLASS} ${
             (() => {
               const finalRoi = calculateFinalROI(summary?.totalRevenue || 0, summary?.totalInvestment || 0, currentTaxRate);
               return getROIColor(finalRoi);
             })()
           }`}>
-            <CardDecoration color={(() => {
-              const finalRoi = calculateFinalROI(summary?.totalRevenue || 0, summary?.totalInvestment || 0, currentTaxRate);
-              return getROIBadgeColor(finalRoi);
-            })()} />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <div className="flex items-center gap-2">
                 <span className="kicker">ROI final</span>
@@ -1132,7 +1111,7 @@ export default function GeneralDashboard() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <span className="rounded-md bg-primary/10 text-primary p-1.5"><Target className="h-4 w-4" /></span>
+              <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><Target className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="font-display text-3xl font-bold tabular tracking-tight">
@@ -1147,11 +1126,11 @@ export default function GeneralDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden group reveal hover-lift" style={{ ['--i' as any]: 6 }}>
-            <CardDecoration color="rgb(147, 51, 234)" />
+          <Card className={KPI_CARD_CLASS}>
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-border" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
               <span className="kicker">Campanhas</span>
-              <span className="rounded-md bg-primary/10 text-primary p-1.5"><Users className="h-4 w-4" /></span>
+              <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><Users className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
               <div className="font-display text-3xl font-bold tabular tracking-tight">{campaigns.length} <span className="text-base font-medium text-muted-foreground">Total</span></div>
