@@ -4,10 +4,15 @@ import re
 import time
 from pathlib import Path
 from funnelforge.config.settings import StepConfig
-from funnelforge.domain.models import StepResult, StepStatus
+from funnelforge.domain.models import Issue, StepResult, StepStatus
 from funnelforge.ports.llm import LLMClient
 from funnelforge.pipeline.budget import Orcamento, OrcamentoEstourado
-from funnelforge.pipeline.retry_policy import Veredito, classificar_excecao, classificar_issues
+from funnelforge.pipeline.retry_policy import (
+    Veredito,
+    classificar_excecao,
+    classificar_issues,
+    separar_para_o_revisor,
+)
 from funnelforge.pipeline.validators.checks import run_validators
 
 # A returned `model_used` often echoes back a provider-versioned/dated
@@ -127,6 +132,12 @@ class Runner:
             if self.budget is not None:
                 self.budget.registrar(name, res.cost_usd)
             last_issues = run_validators(cfg.validators, text, ctx)
+            # RAMO EDITORIAL NOVO (B5): julgamento por palavra/regex não reprova
+            # nem pede o texto inteiro de novo; vira localizador para o revisor
+            # contextual. Sem a flag no ctx, a lista fica como sempre foi.
+            localizadores: list = []
+            if ctx.get("editorial_v2"):
+                last_issues, localizadores = separar_para_o_revisor(last_issues)
             veredito = classificar_issues(last_issues, ctx)
             self.log(run_id, {"ts": ts, "step": name, "attempt": attempts,
                               "model": model_used,
@@ -142,6 +153,8 @@ class Runner:
                     status = StepStatus.FALLBACK
                 return text, StepResult(
                     step=name, status=status, model_used=model_used, attempts=attempts,
+                    issues=[Issue(code=f"localizador:{i.code}", message=i.message)
+                            for i in localizadores],
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
                     cost_usd=cost_usd, latency_ms=latency_ms)
             # Reprovação que NÃO depende do texto (rotas do pagespec, ausência

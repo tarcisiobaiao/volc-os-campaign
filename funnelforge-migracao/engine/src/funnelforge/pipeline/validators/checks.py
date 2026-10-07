@@ -1,12 +1,15 @@
 from __future__ import annotations
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from html.parser import HTMLParser
 import json
 import re
 import unicodedata
 from collections.abc import Callable
-from urllib.parse import urlparse
-from funnelforge.domain.models import Issue, PageRole
+from urllib.parse import urljoin, urlparse
+from funnelforge.domain.models import (
+    TIPOS_DE_FATO, Issue, PageRole, canon_escopo, canon_tipo_de_fato, escopo_valido,
+)
 from funnelforge.pipeline.doctrine import (
     BANNED_CTA_FIRST_PERSON, BANNED_FEAR, BANNED_OFFICIAL, banned_cta_execution_hit,
 )
@@ -170,7 +173,7 @@ def cta_style(content: str, ctx: dict) -> list[Issue]:
     # Word-boundary anchored (doctrine.banned_cta_execution_hit): "Solicite" is
     # still caught, but "demitido" is NOT (the stem "emit" no longer fires
     # mid-word) -- see _cta_execution_regex for why that false positive mattered.
-    if banned_cta_execution_hit(joined):
+    if any(banned_cta_execution_hit(label) for label in _cta_texts(content)):
         issues.append(Issue(code="cta_execution",
                             message="CTA com verbo de execução de serviço (proibido)."))
     if _ctx_role(ctx) == PageRole.LP and any(p in joined for p in BANNED_CTA_FIRST_PERSON):
@@ -605,8 +608,37 @@ def _valid_https_url(value: str) -> bool:
     return parsed.scheme == "https" and bool(parsed.netloc)
 
 
+def _issues_de_tipagem(onde: str, item) -> list[Issue]:
+    """Tipo e escopo de UM fato contra o vocabulário fechado do contrato.
+
+    Ausente passa (fato de run antigo, ou pesquisa que não soube): quem trata a
+    ausência é a regra de legado da ponte. Presente e fora da lista reprova —
+    e a mensagem é a correção que a retentativa leva à próxima chamada."""
+    issues: list[Issue] = []
+    tipo = canon_tipo_de_fato(_field(item, "tipo", None))
+    if tipo is not None and tipo not in TIPOS_DE_FATO:
+        issues.append(Issue(
+            code="fato_tipo_invalido",
+            message=(f"{onde}: tipo '{tipo}' fora do vocabulário fechado. Use um de: "
+                     f"{', '.join(TIPOS_DE_FATO)}."),
+        ))
+    escopo = canon_escopo(_field(item, "escopo", None))
+    if not escopo_valido(escopo):
+        issues.append(Issue(
+            code="fato_escopo_invalido",
+            message=(f"{onde}: escopo '{escopo}' inválido. Use \"nacional\", "
+                     "\"unidade\" ou \"regional:UF\" (ex.: \"regional:SP\"), ou omita "
+                     "o campo se não souber."),
+        ))
+    return issues
+
+
 def research_facts_contract(content: str, ctx: dict) -> list[Issue]:
-    """Validate freshness and provenance of publication-grade facts."""
+    """Validate freshness and provenance of publication-grade facts.
+
+    Também confere a TIPAGEM (tipo/escopo) de `fatos_verificados` e de
+    `dados_validados`: vocabulário fechado, recusado por código, nunca por
+    interpretação."""
     parsed = ctx.get("parsed")
     if parsed is None:
         return []
@@ -615,7 +647,11 @@ def research_facts_contract(content: str, ctx: dict) -> list[Issue]:
     today = ctx.get("today") or date.today()
     max_age = int(ctx.get("max_age_days") or 45)
     issues: list[Issue] = []
+    for index, dado in enumerate(_field(parsed, "dados_validados", []) or [], start=1):
+        if isinstance(dado, dict):
+            issues.extend(_issues_de_tipagem(f"dados_validados[{index}]", dado))
     for index, fact in enumerate(facts, start=1):
+        issues.extend(_issues_de_tipagem(f"fatos_verificados[{index}]", fact))
         source = str(_field(fact, "fonte_primaria", "") or "")
         verified = _field(fact, "verificado_em", None)
         active = _field(fact, "vigente_desde", None)
@@ -820,6 +856,16 @@ def same_domain(content: str, ctx: dict) -> list[Issue]:
     return []
 
 
+class _AnchorTargets(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if tag == "a":
+            self.hrefs.extend(value or "" for key, value in attrs if key == "href")
+
+
 def official_link_density(content: str, ctx: dict) -> list[Issue]:
     """Require research-derived official links, never allow-list membership.
 
@@ -836,10 +882,19 @@ def official_link_density(content: str, ctx: dict) -> list[Issue]:
     # The TERMINAL solution recirculates via cross_funnel only -- it has no
     # external_official route and its writer branch is told not to cite an
     # official channel, so it is exempt from the deep-link density requirement.
-    if _ctx_role(ctx) is not PageRole.SOLUTION or ctx.get("is_terminal"):
+    if _ctx_role(ctx) is not PageRole.SOLUTION or (
+            ctx.get("is_terminal") and not ctx.get("terminal_official")):
         return []
     verified = set(ctx.get("official_links") or [])
-    linked = {m.group(1) for m in _HREF_SRC_RE.finditer(content)}
+    anchors = _AnchorTargets()
+    anchors.feed(content)
+    linked = set(anchors.hrefs)
+    if ctx.get("is_terminal") and ctx.get("terminal_official"):
+        if linked - verified:
+            return [Issue(
+                code="terminal_exit_not_authorized",
+                message="Terminal oficial contem link fora dos destinos verificados desta pagina.",
+            )]
     official = linked & verified
     if len(verified) >= 2:
         # Rich mode -- the research surfaced >=2 VERIFIED deep links (a
@@ -1353,6 +1408,237 @@ def visual_contract(content: str, ctx: dict) -> list[Issue]:
             ))
     return issues
 
+# ---------------------------------------------------------------------------
+# PORTÃO DE COMPOSIÇÃO (D2, só no ramo editorial_v2)
+# ---------------------------------------------------------------------------
+# Régua da diretriz 2 do operador (item 8): BLOQUEIA só a dependência técnica
+# comprovada -- os slots do Ad Inserter lidos no servidor (bloco 1 ANTES do 1º
+# <p>, bloco 2 APÓS o 3º <p>; conta só <p>, não conta dentro de blockquote).
+# Paredão de texto, repetição visual, bloco semanticamente inadequado e plano
+# visual não cumprido são LOCALIZADORES para o revisor (classe `patchavel` em
+# `retry_policy`): apontam o trecho, não reprovam.
+_PAREDAO_MIN_PARAGRAFOS = 6       # parágrafos top-level seguidos sem quebra estrutural
+_PAGINA_LONGA_MIN_PALAVRAS = 700  # abaixo disso a página não chega a ser um paredão
+_SEM_QUEBRA = frozenset({"spacer"})  # um espaçador não quebra a leitura
+_REPETICAO_SUSPEITA = frozenset({"group", "columns", "table", "pullquote", "quote",
+                                 "html", "media-text"})
+_FORA_DO_FLUXO = frozenset({"details", "table", "ul", "ol"})
+_CAIXAS_DIV = ("wp-block-column", "wp-block-group", "wp-block-media-text")
+_WP_TABLE_RE = re.compile(r"<!--\s*wp:table\b[\s\S]*?<!--\s*/wp:table\s*-->", re.I)
+_DETAILS_RE = re.compile(r"<details\b[^>]*>([\s\S]*?)</details>", re.I)
+_SUMMARY_RE = re.compile(r"<summary\b[^>]*>([\s\S]*?)</summary>", re.I)
+_WP_PULLQUOTE_RE = re.compile(
+    r"<!--\s*wp:pullquote\b[\s\S]*?<!--\s*/wp:pullquote\s*-->", re.I)
+
+
+class _ParagrafosDoAdInserter(HTMLParser):
+    """Cada <p> que o Ad Inserter CONTA (fora de blockquote), em ordem, com a
+    marca de estar ou não no fluxo principal (fora de details, tabela, lista,
+    coluna ou caixa -- ver `enhancers.gutenberg._flatten_leading_boxes`)."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.abertos: dict[str, int] = {}
+        self.divs: list[bool] = []
+        self.contaveis: list[bool] = []   # True = no fluxo principal
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if tag == "div":
+            classe = dict(attrs).get("class") or ""
+            self.divs.append(any(c in classe.split() for c in _CAIXAS_DIV))
+        elif tag in _FORA_DO_FLUXO or tag == "blockquote":
+            self.abertos[tag] = self.abertos.get(tag, 0) + 1
+        elif tag == "p" and not self.abertos.get("blockquote"):
+            fora = any(self.abertos.get(t) for t in _FORA_DO_FLUXO) or any(self.divs)
+            self.contaveis.append(not fora)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "div" and self.divs:
+            self.divs.pop()
+        elif self.abertos.get(tag):
+            self.abertos[tag] -= 1
+
+
+def _slots_do_ad_inserter(content: str, ctx: dict) -> list[Issue]:
+    ancoras = sorted({int(n) for n in (ctx.get("ad_paragraph_anchors") or []) if int(n) > 0})
+    if not ancoras:
+        return []
+    leitor = _ParagrafosDoAdInserter()
+    leitor.feed(content)
+    leitor.close()
+    contaveis = leitor.contaveis
+    issues: list[Issue] = []
+    if len(contaveis) < ancoras[-1]:
+        issues.append(Issue(
+            code="ad_slot_inseguro",
+            message=(f"O Ad Inserter conta {len(contaveis)} <p> nesta página (fora de "
+                     f"blockquote) e o slot configurado precisa do {ancoras[-1]}º. Escreva "
+                     "parágrafos <p> no fluxo principal na abertura."),
+        ))
+    for n in ancoras:
+        if n <= len(contaveis) and not contaveis[n - 1]:
+            issues.append(Issue(
+                code="ad_slot_inseguro",
+                message=(f"O {n}º <p> contado pelo Ad Inserter está dentro de pergunta "
+                         "expansível, tabela, lista, coluna ou caixa: o anúncio cairia "
+                         "dentro do bloco. Deixe esse parágrafo no fluxo principal."),
+            ))
+    return issues
+
+
+def _canon_texto(texto: str) -> str:
+    return re.sub(r"[^\w]+", " ", _INNER_TAG_RE.sub(" ", texto).lower()).strip()
+
+
+def _trecho(texto: str, limite: int = 80) -> str:
+    return re.sub(r"\s+", " ", _INNER_TAG_RE.sub(" ", texto)).strip()[:limite].replace("'", "’")
+
+
+_WP_COMENTARIO_RE = re.compile(r"<!--\s*/?wp:", re.I)
+
+
+def _estrutura_gutenberg(html: str) -> list[Issue]:
+    """Ramo novo: o HTML é SÓ blocos Gutenberg, cada um fechado, com espaço entre
+    eles. Dependência técnica: o editor e o Ad Inserter leem blocos; texto solto
+    ou bloco aberto vira página quebrada. Não conserta nada, só reprova.
+
+    Medido no canário de 30/09 (p5): resposta truncada com raciocínio em inglês
+    fora dos blocos e um `wp:group` cortado no meio dos atributos. O `unbalanced`
+    não via nada, porque a abertura cortada não tem `-->`."""
+    from funnelforge.pipeline.editorial_safety import NOTICE_ID
+    from funnelforge.pipeline.enhancers.gutenberg import _WP_TOKEN, _top_level_blocks
+
+    issues: list[Issue] = []
+    tokens = list(_WP_TOKEN.finditer(html))
+    if len(_WP_COMENTARIO_RE.findall(html)) != len(tokens):
+        issues.append(Issue(
+            code="bloco_malformado",
+            message="Há comentário de bloco Gutenberg sem o fechamento '-->' (saída cortada?). "
+                    "Todo <!-- wp:* --> precisa estar completo."))
+    pilha: list[str] = []
+    for m in tokens:
+        nome = m.group(2).lower()
+        if m.group(4) == "/":
+            continue
+        if m.group(1) != "/":
+            pilha.append(nome)
+        elif pilha and pilha[-1] == nome:
+            pilha.pop()
+        else:
+            issues.append(Issue(
+                code="bloco_sem_fechamento",
+                message=f"<!-- /wp:{nome} --> fecha um bloco que não está aberto ali."))
+            break
+    if pilha:
+        issues.append(Issue(
+            code="bloco_sem_fechamento",
+            message=f"<!-- wp:{pilha[-1]} --> abre e não fecha. Todo comentário <!-- wp:* --> "
+                    "precisa do fechamento <!-- /wp:* --> correspondente."))
+    sobra: list[str] = []
+    fim = 0
+    for ini, fim_bloco, _nome in _top_level_blocks(html):
+        sobra.append(html[fim:ini])
+        fim = fim_bloco
+    sobra.append(html[fim:])
+    # A única marcação fora de bloco que o próprio motor põe é o aviso de
+    # identidade canônico (`notice_html`, decoração registrada da publicação).
+    aviso = re.compile(r'<aside id="' + re.escape(NOTICE_ID) + r'"[^>]*>[\s\S]*?</aside>', re.I)
+    texto = " ".join(aviso.sub("", t).strip() for t in sobra if aviso.sub("", t).strip())
+    if texto:
+        issues.append(Issue(
+            code="texto_fora_dos_blocos",
+            message=f"Texto fora de bloco Gutenberg: '{_trecho(texto, 120)}'. A saída é só blocos, "
+                    "sem comentário, explicação ou markdown entre eles."))
+    return issues
+
+
+def estrutura_da_redacao(content: str, ctx: dict) -> list[Issue]:
+    """Gate do ramo novo IMEDIATAMENTE depois da redação, antes de SEO, widget,
+    revisão e imagem: estrutura sobre a resposta do modelo (só sem a cerca de
+    código, que a normalização sempre tirou) e slots do Ad Inserter sobre o HTML
+    normalizado, que é o que fica gravado."""
+    from funnelforge.pipeline.enhancers.gutenberg import _FENCE, normalize_gutenberg
+
+    bruto = content.replace("\ufeff", "").replace(_FENCE + "html", "").replace(_FENCE, "").strip()
+    issues = _estrutura_gutenberg(bruto)
+    normalizado = normalize_gutenberg(bruto, ad_paragraph_anchors=ctx.get("ad_paragraph_anchors"))
+    return issues + _slots_do_ad_inserter(normalizado, ctx)
+
+
+def composicao_editorial(content: str, ctx: dict) -> list[Issue]:
+    """Portão de composição do ramo novo. Ver o bloco de comentário acima."""
+    from funnelforge.pipeline.enhancers.gutenberg import _top_level_blocks
+
+    # Gate final: a composição (widget, screenshot, build) nunca pode quebrar a
+    # estrutura que passou na redação.
+    issues = _estrutura_gutenberg(content) + _slots_do_ad_inserter(content, ctx)
+    blocos = [(content[a:b], nome) for a, b, nome in _top_level_blocks(content)]
+
+    if len(_INNER_TAG_RE.sub(" ", content).split()) >= _PAGINA_LONGA_MIN_PALAVRAS:
+        seguidos: list[str] = []
+        pior: list[str] = []
+        for bloco, nome in blocos:
+            if nome == "paragraph":
+                seguidos.append(bloco)
+                if len(seguidos) > len(pior):
+                    pior = list(seguidos)
+            elif nome not in _SEM_QUEBRA:
+                seguidos = []
+        if len(pior) >= _PAREDAO_MIN_PARAGRAFOS:
+            issues.append(Issue(
+                code="composicao_paredao_de_texto",
+                message=(f"{len(pior)} parágrafos seguidos sem título, lista, tabela ou caixa "
+                         f"a partir de '{_trecho(pior[0])}' — verificar se a seção pede o "
+                         "formato que o plano visual previu."),
+            ))
+
+    anterior = ""
+    for bloco, nome in blocos:
+        if nome in _SEM_QUEBRA or nome == "separator":
+            continue
+        if nome == anterior and nome in _REPETICAO_SUSPEITA:
+            issues.append(Issue(
+                code="composicao_repeticao_visual",
+                message=(f"Dois blocos wp:{nome} em sequência, sem texto entre eles, em "
+                         f"'{_trecho(bloco)}' — verificar se a repetição tem motivo."),
+            ))
+        anterior = nome
+
+    for tabela in _WP_TABLE_RE.findall(content):
+        if not re.search(r"<th\b", tabela, re.I):
+            issues.append(Issue(
+                code="bloco_tabela_sem_cabecalho",
+                message=(f"Tabela sem cabeçalho (<thead>/<th>) em '{_trecho(tabela)}': o "
+                         "leitor de tela não associa os dados às colunas."),
+            ))
+    for corpo in _DETAILS_RE.findall(content):
+        resumo = _SUMMARY_RE.search(corpo)
+        if not resumo or not _INNER_TAG_RE.sub("", resumo.group(1)).strip():
+            issues.append(Issue(
+                code="bloco_details_sem_summary",
+                message=(f"Pergunta expansível sem <summary> em '{_trecho(corpo)}': o "
+                         "leitor não vê o que abre."),
+            ))
+    for pull in _WP_PULLQUOTE_RE.findall(content):
+        frase = _canon_texto(pull)
+        resto = _canon_texto(content.replace(pull, " "))
+        if len(frase) >= 20 and frase in resto:
+            issues.append(Issue(
+                code="bloco_pullquote_duplicado",
+                message=(f"O pullquote '{_trecho(pull)}' repete uma frase que já está no "
+                         "texto: o destaque deve MOVER a frase, não duplicá-la."),
+            ))
+
+    for padrao in ctx.get("exigencia_visual") or []:
+        if not re.search(rf"<!--\s*wp:{re.escape(padrao)}\b", content, re.I):
+            issues.append(Issue(
+                code="plano_visual_nao_cumprido",
+                message=(f"O plano visual do briefing previu wp:{padrao} e a página não "
+                         "tem esse bloco — verificar se a seção planejada ficou em parágrafos."),
+            ))
+    return issues
+
+
 _JSON_FENCE_RE = re.compile(r"^```[a-zA-Z]*\n?|```\s*$")
 
 
@@ -1555,7 +1841,10 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
         )]
     strict = _field(facts_obj, "fatos_verificados", []) or []
     resolved = set(_field(facts_obj, "fontes_resolvidas", []) or [])
-    trusted = [f for f in strict if str(_field(f, "fonte_primaria", "")) in resolved]
+    # `citavel: false` (pesquisa tipada): a fonte é contraditória ou instável
+    # sobre o fato — ele não ancora afirmação nenhuma, mesmo com fonte viva.
+    trusted = [f for f in strict if str(_field(f, "fonte_primaria", "")) in resolved
+               and _field(f, "citavel", None) is not False]
     visible = _visible_fact_text(content)
     issues: list[Issue] = []
     seen: set[str] = set()
@@ -1687,8 +1976,48 @@ VALIDATORS: dict[str, Callable[[str, dict], list[Issue]]] = {
     "raw_html_contract": raw_html_contract,
     "ad_interaction": ad_interaction,
     "visual_contract": visual_contract,
+    "composicao_editorial": composicao_editorial,
+    "estrutura_da_redacao": estrutura_da_redacao,
     "lp_json_contract": lp_json_contract,
 }
+
+
+def contextual_links(content: str, ctx: dict) -> list[Issue]:
+    """The writer may change prose, not invent internal destinations."""
+    if not ctx.get("contextual_editorial"):
+        return []
+    domain = ctx.get("domain", "")
+    origin = urlparse(domain).netloc.lower()
+    allowed = {u.rstrip("/") for u in ctx.get("resolved_internal_routes", [])}
+    issues: list[Issue] = []
+
+    class Links(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag != "a":
+                return
+            href = dict(attrs).get("href") or ""
+            if href.startswith("#"):
+                return
+            absolute = urljoin(domain.rstrip("/") + "/", href)
+            parsed = urlparse(absolute)
+            if parsed.netloc.lower() == origin:
+                without_fragment = parsed._replace(fragment="").geturl().rstrip("/")
+                if without_fragment not in allowed:
+                    issues.append(Issue(code="unplanned_internal_link",
+                                        message=f"Destino interno fora do plano: {href}"))
+    Links(convert_charrefs=True).feed(content)
+    return issues
+
+
+VALIDATORS["contextual_links"] = contextual_links
+
+# Contrato do briefing-v1 (ramo editorial novo). Só opina com `briefing_ref` no
+# ctx, que só o passo do briefing monta; em qualquer outro passo é inerte.
+from funnelforge.pipeline.validators.briefing_contract import (  # noqa: E402
+    briefing_contract,
+)
+
+VALIDATORS["briefing_contract"] = briefing_contract
 
 
 def run_validators(
@@ -1698,6 +2027,14 @@ def run_validators(
 ) -> list[Issue]:
     out: list[Issue] = []
     for name in names:
+        # These proxies cannot establish reader value or link relevance. For a
+        # contextual plan those decisions belong to the existing semantic judge.
+        if ctx.get("contextual_editorial") and name in {
+            "interior_min_length", "no_trailing_buttons", "no_leading_buttons",
+            "short_intro", "min_headings", "opening_line_unique", "forward_only",
+            "cta_destination_congruent", "bridge_before_cta", "visual_contract",
+        }:
+            continue
         out.extend(VALIDATORS[name](content, ctx))
     return out
 
@@ -1747,8 +2084,9 @@ _ATTR_NAME_RE = re.compile(r"([a-zA-Z_:][-a-zA-Z0-9_:]*)\s*=")
 _ATTR_VALUE_RE = re.compile(r"\"[^\"]*\"|'[^']*'")
 # Script-body blockers (checked against the concatenated inline <script> bodies).
 _UNSAFE_JS_API_RE = re.compile(
-    r"\b(?:fetch|XMLHttpRequest|WebSocket|eval|alert|prompt|confirm)\s*\("
-    r"|\bnew\s+Function\b|\bFunction\s*\(")
+    r"\b(?:fetch|XMLHttpRequest|WebSocket|sendBeacon|eval|alert|prompt|confirm)\s*\("
+    r"|\bnew\s+Function\b|\bFunction\s*\("
+    r"|\blocation\s*(?:[.\[]|=)|\b(?:window|top|parent)\s*\.\s*open\s*\(")
 _STORAGE_RE = re.compile(r"localStorage|sessionStorage|document\.cookie")
 _DYNAMIC_HTML_RE = re.compile(
     r"innerHTML|outerHTML|insertAdjacentHTML|document\.write|createElement")

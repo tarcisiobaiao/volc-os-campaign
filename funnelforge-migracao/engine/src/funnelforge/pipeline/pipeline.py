@@ -75,6 +75,21 @@ class Deps:
     tema_termos: list[str] = field(default_factory=list)
 
 
+def editorial_v2_do_run(state: RunState, settings: Settings) -> bool:
+    """O run está no RAMO EDITORIAL NOVO?
+
+    Três fontes podem LIGAR (nenhuma desliga a outra): o `run.editorial_v2`
+    das settings (config.yaml ou o perfil do funil), o `editorial_v2` da
+    arquitetura do card (`FunnelPlan.editorial_v2`) e o próprio estado — um
+    run que nasceu no ramo novo continua nele quando é retomado sem o perfil.
+    Rebaixar no meio escreveria parte do funil com um contrato e parte com
+    outro, e a revisão da B5 não saberia qual régua aplicar."""
+    plano = state.plan
+    return bool(state.editorial_v2
+                or getattr(settings.run, "editorial_v2", False)
+                or (plano is not None and plano.editorial_v2))
+
+
 def _falhou(state: RunState, key: str) -> bool:
     """O passo existe e terminou em FAILED. Ausente NÃO conta como falha —
     um passo que ainda não rodou é pendente, não condenado."""
@@ -123,7 +138,7 @@ def _populate_routes(state: RunState, deps: Deps) -> None:
     if plan is None or not plan.pages:
         return
     cross_targets = None
-    if deps.sitemap is not None:
+    if deps.sitemap is not None and deps.settings.run.terminal_exit_policy == "cross_funnel":
         try:
             lp = next((p for p in plan.pages if effective_role(p) is PageRole.LP), None)
             theme = lp.h1_title if lp else plan.pages[0].h1_title
@@ -133,7 +148,7 @@ def _populate_routes(state: RunState, deps: Deps) -> None:
             cross_targets = None
     try:
         build_funnel_routes(plan, deps.settings, cross_funnel_targets=cross_targets)
-        graph_issues = validate_funnel_graph(plan, deps.settings)
+        graph_issues = validate_funnel_graph(plan, deps.settings, research_pending=True)
     except ValueError as exc:
         # Página sem rota válida (slug vazio, cross-funnel fora do domínio) é
         # falha de grafo: reprova fechado, como qualquer outro problema de
@@ -230,6 +245,12 @@ def run_pipeline(
         st.declarar_engajamento(state, deps)
         _populate_routes(state, deps)
 
+    # RAMO EDITORIAL NOVO: decidido UMA vez por execução e gravado no estado
+    # (pegajoso: um run que nasceu no ramo novo continua nele). Desligado, o
+    # laço abaixo é o de sempre, passo a passo e prompt a prompt.
+    v2 = editorial_v2_do_run(state, deps.settings)
+    state.editorial_v2 = v2
+
     if state.run_id.startswith("_pending") and state.plan and state.plan.pages:
         old = state.run_id
         state.run_id = f"{state.plan.pages[0].slug}-{timestamp}"
@@ -275,6 +296,16 @@ def run_pipeline(
                 st.registrar_canais_oficiais(state, page, deps)
                 _checkpoint(state, deps)
 
+            # RAMO NOVO: o briefing-v1 desta página, entre a pesquisa e a
+            # redação — só para página ainda não escrita (num run antigo
+            # retomado com a flag, o que já foi escrito não ganha briefing).
+            # Falhou -> `step_write` recusa sem gastar (briefing_indisponivel).
+            if (v2 and not _done(state, f"write_p{page.page_number}")
+                    and (not _done(state, f"briefing_p{page.page_number}")
+                         or page.page_number not in state.briefings)):
+                st.step_briefing(state, page, deps)
+                _checkpoint(state, deps)
+
             if not _done(state, f"write_p{page.page_number}"):
                 st.step_write(state, page, deps)
                 st.uniqueness_state_guard(state, page, deps)
@@ -299,7 +330,8 @@ def run_pipeline(
             # `continue` e não `break`: as outras páginas seguem normalmente.
             # Uma página morta não derruba o funil — isso é desenho antigo e
             # continua valendo.
-            if _falhou(state, f"write_p{page.page_number}"):
+            if (_falhou(state, f"write_p{page.page_number}")
+                    or _falhou(state, f"judge_p{page.page_number}")):
                 # ⚠️ MARCA ANTES DE SAIR. A primeira versão deste atalho só
                 # dava `continue`, e a página ficava condenada SEM o
                 # `blocked_pN` — que é o marcador que o gate, o relatório e a
@@ -310,7 +342,7 @@ def run_pipeline(
                     step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
                     issues=[Issue(
                         code="fail_closed",
-                        message="write FAILED — seo/imagem/build/publish pulados "
+                        message="write/judge FAILED — seo/imagem/build/publish pulados "
                                 "para não gastar em página condenada")])
                 _checkpoint(state, deps)
                 continue
@@ -318,6 +350,36 @@ def run_pipeline(
             if not _done(state, f"seo_p{page.page_number}"):
                 st.step_seo(state, page, deps)
                 _checkpoint(state, deps)
+
+            # RAMO NOVO (B5): o REVISOR CONTEXTUAL vem DEPOIS do SEO e do
+            # widget — o título SEO é o H1 visível das internas e o texto do
+            # widget vai ao ar; os dois são revisados e cobertos pelo recibo.
+            # TODA página escrita a partir de briefing passa por aqui (LP sem
+            # contrato editorial inclusive). A escrita antiga (página sem
+            # briefing num run retomado) já foi julgada dentro do `step_write`.
+            if v2 and page.page_number in state.briefings:
+                # O widget roda UMA vez, antes da revisão: se ele fosse gerado
+                # depois, entraria no ar texto que ninguém revisou (V12).
+                if (getattr(deps.settings.run, "widgets_enabled", False)
+                        and f"widget_p{page.page_number}" not in state.step_status):
+                    st.step_widget(state, page, deps)
+                    _checkpoint(state, deps)
+                # O próprio revisor decide se roda: decisão humana gravada
+                # manda, e página já aprovada ou em revisão humana com o MESMO
+                # conteúdo não é revisada de novo (o resume não re-rola).
+                st.revisar_pagina_v2(state, page, deps)
+                _checkpoint(state, deps)
+                if not st.revisao_liberada(state, page):
+                    state.step_status[f"blocked_p{page.page_number}"] = StepResult(
+                        step=f"blocked_p{page.page_number}", status=StepStatus.FAILED,
+                        issues=[Issue(
+                            code="fail_closed",
+                            message="revisão sem aprovação (revisão humana pendente, "
+                                    "rejeitada ou conteúdo mudado depois da decisão) — "
+                                    "imagem/build/publish pulados; ver revisor_p"
+                                    f"{page.page_number} e `funnelforge decidir`")])
+                    _checkpoint(state, deps)
+                    continue
 
             # LP always crafts its hero prompt (generation still gated on
             # run.hero_image inside step_image); interior /rec posts run the
@@ -363,7 +425,7 @@ def run_pipeline(
             # semanticamente exige um widget.
             if getattr(deps.settings.run, "widgets_enabled", False) and not _done(
                 state, f"widget_p{page.page_number}"
-            ):
+            ) and not (v2 and page.page_number in state.briefings):
                 st.step_widget(state, page, deps)
                 _checkpoint(state, deps)
 
@@ -492,6 +554,8 @@ def _page_blocked(state: RunState, page: Page, *, antes_do_build: bool = False) 
         f"research_p{page.page_number}",
         f"write_p{page.page_number}",
         f"judge_p{page.page_number}",
+        # B5: revisor contextual do ramo novo (ausente no ramo antigo).
+        f"revisor_p{page.page_number}",
     ]
     if not antes_do_build:
         chaves.append(f"content_gate_p{page.page_number}")
@@ -502,16 +566,8 @@ def _page_blocked(state: RunState, page: Page, *, antes_do_build: bool = False) 
     return False
 
 
-def _pv_per_session(plan: FunnelPlan | None) -> int:
-    """Expected page views per session = number of pages reachable from the
-    LP entry via the SAME `page.routes` funnel graph `build_funnel_routes`
-    assigns and `validate_funnel_graph` walks (see `routing.reachable_slugs`).
-
-    T2H fix: this used to walk `next_page_slug` -- a separate, LLM-authored
-    field that only encodes a single forward hop and can drift from the
-    actual routed graph (e.g. a SOLUTION ring where every page also links to
-    its neighbours) -- which could undercount pv/session relative to the
-    funnel that actually ships. Deterministic: same BFS, no randomness."""
+def _reachable_page_count(plan: FunnelPlan | None) -> int:
+    """Structural reachability, not observed or predicted session page views."""
     if not plan or not plan.pages:
         return 0
     return len(reachable_slugs(plan))
@@ -583,7 +639,8 @@ def _profit_ledger(state: RunState, orcamento=None) -> dict:
     wasted = sum(b["cost_usd"] for b in per_page.values() if b["blocked"])
     uteis = sum(1 for b in per_page.values() if not b["blocked"])
     return {"cost_usd": round(cost, 6), "prompt_tokens": pt,
-            "completion_tokens": ct, "pv_per_session": _pv_per_session(state.plan),
+            "completion_tokens": ct, "reachable_pages": _reachable_page_count(state.plan),
+            "pv_per_session": None, "measurement_status": "not_collected",
             # O gasto que o TETO contabilizou, para poder ser confrontado com a
             # soma dos passos. Duas contagens independentes que precisam bater:
             # se divergirem, alguma chamada paga está fora do ledger — que foi
@@ -650,7 +707,8 @@ def _write_report(state: RunState, deps: Deps) -> None:
     lines.append(
         f"- Tokens prompt/completion: {led['prompt_tokens']}/{led['completion_tokens']}"
     )
-    lines.append(f"- Páginas por sessão (funil): {led['pv_per_session']}")
+    lines.append(f"- Páginas alcançáveis no grafo: {led['reachable_pages']}")
+    lines.append("- Páginas por sessão: não medidas (nenhum evento de sessão neste relatório).")
     lines.extend(_cost_summary_lines(led, state, deps))
     lines.append("")
     lines.append("| Passo | Prompt tok | Completion tok | Custo USD | Latência ms |")

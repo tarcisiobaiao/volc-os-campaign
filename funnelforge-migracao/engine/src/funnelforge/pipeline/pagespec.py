@@ -40,13 +40,34 @@ def _anchor_congruent(anchor: str, target_h1: str, target_slug: str = "") -> boo
     return bool(_sig_tokens(anchor) & referencia)
 
 
-def pagespec_for(settings: Settings, role: PageRole, *, terminal: bool = False) -> PageTypeSpec:
+def pagespec_for(settings: Settings, role: PageRole, *, terminal: bool = False,
+                 contextual: bool = False, page_count: int = 0) -> PageTypeSpec:
     """Convert settings.routing[role.value] -> PageTypeSpec. Missing key is a
     ValueError (fail-closed: no spec means no build).
 
     `terminal=True` (only meaningful for SOLUTION) swaps in the
     `SOLUTION_TERMINAL` routing key: the last solution in the forward chain
-    stops advancing and must recirculate cross-funnel instead."""
+    stops advancing. Official mode requires a verified external exit instead
+    of the legacy cross-funnel destination."""
+    if contextual:
+        return PageTypeSpec(
+            role=role, allowed_targets=["funnel", "external_official"],
+            required_targets=(["external_official"] if role is PageRole.SOLUTION else []),
+            forbidden_targets=["self", "bare_rec", "cross_funnel"],
+            cta_min=1 if role is PageRole.LP else 0,
+            cta_max=3 if role is PageRole.LP else max(0, page_count - 1),
+            requires_external_official=role is PageRole.SOLUTION,
+            distinct_targets=True, anchor_congruent=False,
+        )
+    if terminal and role is PageRole.SOLUTION and settings.run.terminal_exit_policy == "official":
+        return PageTypeSpec(
+            role=role, allowed_targets=["external_official"],
+            required_targets=["external_official"],
+            forbidden_targets=["self", "funnel", "cross_funnel", "bare_rec"],
+            # cta_min/max count internal recirculation routes, not inline citations.
+            cta_min=0, cta_max=0, requires_external_official=True,
+            requires_cross_funnel_exit=False, anchor_congruent=True,
+        )
     key = "SOLUTION_TERMINAL" if terminal else role.value
     cfg = settings.routing.get(key)
     if cfg is None:

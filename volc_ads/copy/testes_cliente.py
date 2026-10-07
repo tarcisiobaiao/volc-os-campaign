@@ -155,15 +155,20 @@ def prova_render_usa_a_fonte() -> str:
     prompt = montar(enc)
     lim = carregar_limites()
 
-    for termo in lim["politica"]["proibidos"]:
-        assert termo in prompt, f"termo travado {termo!r} não chegou à seção 8"
+    # ⚠️ Alterado em 30/09/2026 (B6). Exigia cada termo de `politica.proibidos`
+    # na seção 8 (TRAVA 0). O inventário da frente A (ADS-05/06: remover) tirou a
+    # TRAVA 0 do prompt: a lista não reprovava nada no construtor e fazia o
+    # modelo descartar fatos úteis pela "trava do conceito". O limites.yaml a
+    # mantém só como localizador (`validacao.checar_politica` → aviso).
+    assert "TRAVA 0" not in prompt and "{termos_travados}" not in prompt, (
+        "a trava por palavra voltou ao prompt")
     for header in lim["snippet_headers_pt"]:
         assert header in prompt, f"header {header!r} do limites.yaml não chegou à seção 7"
     assert "14848295" in prompt, "número de política do spec.json não chegou à seção 8"
     # A sigla do FATO tem de entrar na união da seção 8 — sem isso, o modelo
     # escreveria 'Conselho Curador do FGTS' por extenso num título de 30 chars.
     assert "CCFGTS" in prompt, "sigla vinda do campo `fonte` de um fato ficou de fora"
-    return (f"{len(lim['politica']['proibidos'])} termos travados · "
+    return (f"0 termos travados (TRAVA 0 removida) · "
             f"{len(lim['snippet_headers_pt'])} headers · siglas do fato incluídas")
 
 

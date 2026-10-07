@@ -195,6 +195,17 @@ class Settings(BaseSettings):
     postiz_api_token: Optional[str] = None
     postiz_permitir_rede_interna: bool = False
 
+    # ---- WordPress: referencias SSH locais, sem material de chave ------------
+    # O helper operacional carrega somente estas referencias do .env.local da
+    # raiz; isso nao muda a precedencia de configuracao do servidor FastAPI.
+    creditoup_domain: Optional[str] = None
+    creditoup_ssh_alias: Optional[str] = None
+    creditoup_ssh_host: Optional[str] = None
+    creditoup_ssh_user: Optional[str] = None
+    creditoup_ssh_identity_file: Optional[str] = None
+    creditoup_remote_root: Optional[str] = None
+    creditoup_wp_config: Optional[str] = None
+
     # ---- ClickUp (entrega do briefing ao mover o card p/ "Pronto") ------------
     # Ao mover um card para "Pronto", o backend gera o DOCX do funil e abre uma
     # TASK no ClickUp (nome "Entidade - País"), anexa o DOCX e comenta.

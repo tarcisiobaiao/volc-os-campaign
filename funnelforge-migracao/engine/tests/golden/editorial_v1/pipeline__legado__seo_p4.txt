@@ -1,0 +1,107 @@
+[user]
+<contrato_editorial_independente>
+Este site publica informação. Não é banco, correspondente bancário, órgão público
+nem plataforma de solicitação. Não atribua a ele atendimento oficial, autorização,
+parceria, aprovação de crédito, liberação de benefício ou acesso ao cadastro do leitor.
+Mencionar uma instituição como fonte não torna o portal representante dela.
+Mantenha o assunto verdadeiro do guia, inclusive o nome do serviço e seus riscos.
+Não substitua o tema por eufemismos e não esconda custos, juros ou condições relevantes.
+Botões internos abrem conteúdo: descreva o guia, comparação, requisitos ou passo a passo.
+Nunca prometa solicitar, contratar, sacar ou liberar recursos ao abrir um guia interno.
+Links externos de serviço devem identificar claramente o site de destino.
+Não gere formulários, logins, coleta de CPF, senha, cartão ou dados bancários.
+Widgets só orientam; não consultam cadastros nem confirmam elegibilidade ou aprovação.
+O sistema insere a identidade editorial antes do conteúdo. Não invente identidade,
+CNPJ, selos, depoimentos, parcerias ou endossos para produzir credibilidade.
+Nenhum disclaimer corrige uma promessa enganosa: o conteúdo inteiro deve ser coerente.
+</contrato_editorial_independente>
+
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 30/09/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: <!-- wp:paragraph -->
+<p>Conteúdo de utilidade pública sobre Como pedir a tarifa social na distribuidora, com orientações claras e verificadas para o leitor. exclusivocomopediratarifasocialnadistribuidora000 exclusivocomopediratarifasocialnadistribuidora001 exclusivocomopediratarifasocialnadistribuidora002 exclusivocomopediratarifasocialnadistribuidora003 exclusivocomopediratarifasocialnadistribuidora004 exclusivocomopediratarifasocialnadistribuidora005 exclusivocomopediratarifasocialnadistribuidora006 exclusivocomopediratarifasocialnadistribuidora007 exclusivocomopediratarifasocialnadistribuidora008 exclusivocomopediratarifasocialnadistribuidora009 exclusivocomopediratarifasocialnadistribuidora010 exclusivocomopediratarifasocialnadistribuidora011 exclusivocomopediratarifasocialnadistribuidora012 exclusivocomopediratarifasocialnadistribuidora013 exclusivocomopediratarifasocialnadistribuidora014 exclusivocomopediratarifasocialnadistribuidora015 exclusivocomopediratarifasocialnadistribuidora016 exclusivocomopediratarifasocialnadistribuidora017 exclusivocomopediratarifasocialnadistribuidora018 exclusivocomopediratarifasocialnadistribuidora019 exclusivocomopediratarifasocialnadistribuidora020 exclusivocomopediratarifasocialnadistribuidora021 exclusivocomopediratarifasocialnadistribuidora022 exclusivocomopediratarifasocialnadistribuidora023 exclusivocomopediratarifasocialnadistribuidora024 exclusivocomopediratarifasocialnadistribuidora025 exclusivocomopediratarifasocialnadistribuidora026 exclusivocomopediratarifasocialnadistribuidora027 exclusivocomopediratarifasocialnadistribuidora028 exclusivocomopediratarifasocialnadistribuidora029 exclusivocomopediratarifasocialnadistribuidora030 exclusivocomopediratarifasocialnadistribuidora031 exclusivocomopediratarifasocialnadistribuidora032 exclusivocomopediratarifasocialnadistribuidora033 exclusivocomopediratarifasocialnadistribuidora034 exclusivocomopediratarifasocialnadistribuidora035 exclusivocomopediratarifasocialnadistribuidora036 exclusivocomopediratarifasocialnadistribuidora037 exclusivocomopediratarifasocialnadistribuidora038 exclusivocomopediratarifasocialnadistribuidora039 exclusivocomopediratarifasocialnadistribuidora040 exclusivocomopediratarifasocialnadistribuidora041 exclusivocomopediratarifasocialnadistribuidora042 exclusivocomopediratarifasocialnadistribuidora043 exclusivocomopediratarifasocialnadistribuidora044 exclusivocomopediratarifasocialnadistribuidora045 exclusivocomopediratarifasocialnadistribuidora046 exclusivocomopediratarifasocialnadistribuidora047 exclusivocomopediratarifasocialnadistribuidora048 exclusivocomopediratarifasocialnadistribuidora049 exclusivocomopediratarifasocialnadistribuidora050 exclusivocomopediratarifasocialnadistribuidora051 exclusivocomopediratarifasocialnadistribuidora052 exclusivocomopediratarifasocialnadistribuidora053 exclusivocomopediratarifasocialnadistribuidora054 exclusivocomopediratarifasocialnadistribuidora055 exclusivocomopediratarifasocialnadistribuidora056 exclusivocomopediratarifasocialnadistribuidora057 exclusivocomopediratarifasocialnadistribuidora058 exclusivocomopediratarifasocialnadistribuidora059</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list"><!-- wp:list-item -->
+<li>Primeiro passo sobre como pedir a tarifa social na distribuidora.</li>
+<!-- /wp:list-item --><!-- wp:list-item -->
+<li>Segundo passo sobre como pedir a tarifa social na distribuidora.</li>
+<!-- /wp:list-item --></ul>
+<!-- /wp:list -->
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

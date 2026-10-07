@@ -60,7 +60,7 @@ def test_hook_to_next_page_is_structural_not_reader_cta():
     assert "closing_section" in prompt
     # regra explícita de que hook_to_next_page/next_page_slug são metadado
     # estrutural e não podem viver dentro do closing_section
-    assert "metadado" in prompt.lower() and "estrutural" in prompt.lower()
+    assert "metadados; não são o fechamento" in prompt.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ def test_per_field_language_rule_present():
     intro_section, closing_section, funnel_strategy.avatar_summary/tone_voice)
     é SEMPRE pt-BR."""
     prompt = _full_prompt()
-    assert "IDIOMA POR CAMPO" in prompt
+    assert "<idioma_por_campo>" in prompt
     assert "h1_title" in prompt and "PT-BR" in prompt
     for field in (
         "emotional_objective",
@@ -115,7 +115,8 @@ def test_no_year_token_in_h1_templates():
 
 def test_r5_inviolable_rule_present():
     prompt = _full_prompt()
-    assert "PROIBIDO incluir ano ou data em qualquer" in prompt
+    assert "Não coloque ano em títulos por hábito" in prompt
+    assert "sustentada nos insumos" in prompt
     assert "h1_title" in prompt
 
 
@@ -125,14 +126,14 @@ def test_r5_inviolable_rule_present():
 
 def test_banned_phrases_present():
     sys = fb.FUNNEL_ARCHITECT_SYSTEM_MESSAGE
-    assert "PROIBIDO" in sys
+    assert "Não fabrique urgência, escassez" in sys
 
 
 def test_tom_prohibitions_block_present():
     sys = fb.FUNNEL_ARCHITECT_SYSTEM_MESSAGE
-    assert "TOM (PROIBIÇÕES)" in sys
-    assert "em X segundos" in sys
-    assert "garantido" in sys.lower()
+    assert "não realiza matrícula ou contratação" in sys
+    assert "Não fabrique urgência" in sys
+    assert "garantias" in sys
 
 
 def test_no_alarmist_core_remains_anywhere_in_prompt():
@@ -173,13 +174,14 @@ def test_exaggerated_stats_removed():
 
 def test_minimum_h2_depth_rule_present():
     prompt = _full_prompt()
-    assert "4 H2" in prompt or "mínimo de 4" in prompt.lower() or "MÍNIMO DE 4" in prompt
+    assert "não de uma cota" in prompt
+    assert "Não obrigue quatro H2" in prompt
 
 
 def test_anti_padding_and_self_check_present():
     prompt = _full_prompt()
-    assert "linguiça" in prompt.lower()
-    assert "esta página é necessária" in prompt.lower()
+    assert "elimine redundância" in prompt.lower()
+    assert "não crie uma página só para encaminhar tráfego" in prompt.lower()
 
 
 # ---------------------------------------------------------------------------

@@ -58,20 +58,80 @@ def _bloco_de_fontes_reprovadas(reprovadas: list[str] | None) -> str:
     )
 
 
+def _bloco_de_correcoes(correcoes: list[str] | None) -> str:
+    """A reprovação ESTRUTURAL da tentativa anterior (tipo ou escopo fora do
+    vocabulário fechado), dita com o valor errado e a lista válida.
+
+    Mesmo princípio de `_bloco_de_fontes_reprovadas`: retentar sem dizer o que
+    falhou é repetir a mesma resposta pagando de novo."""
+    if not correcoes:
+        return ""
+    lista = "\n".join(f"  - {c}" for c in correcoes[:10])
+    return (
+        "\n\nATENCAO -- TENTATIVA ANTERIOR RECUSADA pelo contrato de tipagem:\n"
+        f"{lista}\n"
+        "Devolva o JSON inteiro de novo, corrigindo exatamente isso. Nao mude o que "
+        "estava certo.\n"
+    )
+
+
+# O vocabulário fechado dos tipos, com a semântica que o contrato entre as
+# trilhas fixou. Mesma ordem de `domain.models.TIPOS_DE_FATO` (o teste confere).
+_VOCABULARIO_DE_TIPOS = (
+    ("numero", "quantidade, valor, percentual ou limite numerico"),
+    ("prazo", "duracao ou data-limite para agir (ex.: dias para responder)"),
+    ("data", "data de um evento, de inicio ou de fim"),
+    ("mudanca", "algo que mudou ou vai mudar na regra"),
+    ("condicao", "requisito ou criterio que decide quem pode (ex.: limite de renda)"),
+    ("orgao", "instituicao responsavel, quem faz o que"),
+    ("fonte_legal", "a propria lei, decreto, portaria ou artigo como referencia"),
+    ("processo", "etapa ou canal de um procedimento"),
+    ("contexto", "fato descritivo que situa o tema; nunca sustenta numero, prazo ou condicao"),
+)
+
+
+def _bloco_de_tipagem() -> str:
+    linhas = "\n".join(f"- {tipo}: {sentido}" for tipo, sentido in _VOCABULARIO_DE_TIPOS)
+    return (
+        "TIPO DE CADA FATO (obrigatorio em dados_validados e em fatos_verificados; "
+        "vocabulario FECHADO, nenhum outro valor e aceito):\n"
+        f"{linhas}\n"
+        "Escolha o tipo pelo que o fato AFIRMA, nao pelo campo em que ele esta.\n"
+        'ESCOPO (quando souber): "nacional", "regional:UF" (ex.: "regional:SP") ou '
+        '"unidade" (vale so para uma unidade, escola ou agencia). Se nao souber, omita.\n'
+        "CITAVEL (quando souber): false se a fonte e contraditoria ou instavel sobre o "
+        "fato (ex.: a mesma pagina traz dois numeros diferentes); true se o fato pode "
+        "ser citado como esta. Se nao souber, omita.\n\n"
+    )
+
+
 def _research_prompt(topic: str, structure: str,
-                     reprovadas: list[str] | None = None) -> str:
+                     reprovadas: list[str] | None = None,
+                     correcoes: list[str] | None = None) -> str:
     today = date.today().strftime("%d/%m/%Y")
     return (
-        f"CRITICO: hoje e {today} (ano corrente {date.today().year}). Pesquise dados "
-        "VIGENTES nesta data e use SEMPRE o ano corrente; nunca cite anos passados "
-        "(ex.: 2024, 2025) como se fossem os valores/regras atuais.\n\n"
+        # VIGÊNCIA × DATA HISTÓRICA. O texto antigo mandava "use SEMPRE o ano
+        # corrente", e isso empurrava ANO para dentro do conteúdo: um decreto de
+        # 2008 em vigor é fato VIGENTE com data histórica, não "ano passado".
+        f"Hoje e {today}. VIGENCIA E DATA HISTORICA SAO COISAS DIFERENTES:\n"
+        "- vigencia = a regra, o valor ou o prazo vale HOJE? So entra como atual o que "
+        "esta em vigor nesta data; regra revogada, valor antigo ou edital encerrado "
+        "nunca entra como se fosse atual.\n"
+        "- data historica = quando a regra nasceu ou o fato aconteceu (ex.: uma lei "
+        "antiga que continua em vigor). Ela vai em vigente_desde, com o ano verdadeiro; "
+        "nao a troque pelo ano de hoje e nao acrescente ano onde a fonte nao poe.\n"
+        "Se nao conseguir confirmar que um valor ainda vale hoje, nao o ponha em "
+        "fatos_verificados.\n\n"
         "Pesquise e retorne SOMENTE um objeto JSON (UTF-8, sem markdown) com fatos "
-        "verificaveis e atualizados sobre o tema abaixo, no schema exato:\n"
-        '{"resumo": "...", "dados_validados": [{"fato": "...", "fonte": "..."}], '
+        "verificaveis e vigentes sobre o tema abaixo, no schema exato:\n"
+        '{"resumo": "...", "dados_validados": [{"fato": "...", "fonte": "...", '
+        '"tipo": "...", "escopo": "...", "citavel": true}], '
         '"fatos_verificados": [{"valor": "...", "unidade": "...", '
         '"fonte_primaria": "https://...", "dispositivo": "... ou nao se aplica", '
-        '"vigente_desde": "AAAA-MM-DD", "verificado_em": "AAAA-MM-DD"}], '
+        '"vigente_desde": "AAAA-MM-DD", "verificado_em": "AAAA-MM-DD", '
+        '"tipo": "...", "escopo": "...", "citavel": true}], '
         '"passo_a_passo": ["..."], "fontes": ["https://..."]}\n\n'
+        + _bloco_de_tipagem() +
         f"Tema: {topic}\n"
         f"Estrutura do conteudo que sera escrito: {structure}\n\n"
         "Todo numero, percentual, prazo, limite ou dispositivo legal IMPORTANTE deve "
@@ -91,6 +151,7 @@ def _research_prompt(topic: str, structure: str,
         "citada no passo a passo ou nas tabelas, inclua a URL EXATA do site oficial "
         "dela em 'fontes' e associe o nome dela a essa URL em dados_validados[].fonte."
         + _bloco_de_fontes_reprovadas(reprovadas)
+        + _bloco_de_correcoes(correcoes)
     )
 
 
@@ -180,7 +241,8 @@ class PerplexityResearch:
         self.last_latency_ms = 0
 
     def research(self, topic: str, structure: str,
-                 fontes_reprovadas: list[str] | None = None) -> ResearchFacts:
+                 fontes_reprovadas: list[str] | None = None,
+                 correcoes: list[str] | None = None) -> ResearchFacts:
         # Zera a telemetria ANTES de tentar. `last_*` é estado de instância e o
         # mesmo adapter atende todas as páginas: quando uma chamada morria, os
         # números da página ANTERIOR ficavam pendurados e `step_research` os
@@ -193,7 +255,8 @@ class PerplexityResearch:
         if self._cfg is None:
             return ResearchFacts(sparse=True)
         messages = [{"role": "user",
-                     "content": _research_prompt(topic, structure, fontes_reprovadas)}]
+                     "content": _research_prompt(topic, structure, fontes_reprovadas,
+                                                 correcoes)}]
         try:
             result = self._llm.complete(
                 self._cfg.model, self._cfg.fallbacks, messages, self._cfg.temperature,

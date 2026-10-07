@@ -97,6 +97,12 @@ export interface RunDoRedator {
   paginas_geradas?: number | null;
   erro?: string | null;
   criado_em?: string | null;
+  /**
+   * Com que fluxo este run foi disparado. `true` = fluxo editorial v2 (briefing,
+   * revisor, recibo); ausente ou `false` = o fluxo atual. Vem da coluna
+   * `pautador_funnel_runs.editorial_v2` (migração 06).
+   */
+  editorial_v2?: boolean;
 }
 
 export interface DisparoDoRedator {

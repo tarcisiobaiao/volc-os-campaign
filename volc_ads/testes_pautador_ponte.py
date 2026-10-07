@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import copy as _copy
 import traceback
+from pathlib import Path
 from typing import Any, get_type_hints
 
 from .campanha.brief import Copy
@@ -367,15 +368,222 @@ def teste_run_que_nao_esta_no_disco() -> None:
 
 
 def teste_fatos_no_formato_do_prompt() -> None:
+    # ⚠️ Até 30/09/2026 este teste exigia {"afirmacao", "numero"}: o tipo era
+    # deduzido do CAMPO de origem, e `afirmacao` não existe na seção 2 do
+    # PROMPT.md — a copy descartava todo `dados_validados` (P5: 3 de 7 fatos no
+    # run Senac). O contrato entre as trilhas (decisão 2) trocou isso pela regra
+    # de legado declarada: `dados_validados` sem tipo → `contexto`.
     c = montar_cockpit(_linhas())
     assert c.origem is not None
     fatos = c.origem.fatos
     assert len(fatos) == 2, fatos
-    assert {f.tipo for f in fatos} == {"afirmacao", "numero"}
+    assert {f.tipo for f in fatos} == {"contexto", "numero"}
+    assert {f.tipo_origem for f in fatos} == {"regra_legado"}
     numero = next(f for f in fatos if f.tipo == "numero")
     assert "Medida Provisória nº 1.355/2026" in numero.texto
     assert numero.fonte == "https://www.gov.br/"
     assert all(f.id and f.texto and f.fonte for f in fatos)
+
+
+# ── fatos tipados (contrato entre as trilhas, 30/09/2026) ────────────────────
+#
+# RECORTE FIEL dos fatos da página 1 do run Senac
+# `funnelforge-migracao/engine/runs/guia-cursos-senac-20260917-220001/state.json`
+# (sha256 a911104b…9ee7, lido em 30/09/2026). O `state.json` NÃO é versionado,
+# então o recorte mora aqui para o teste rodar em qualquer checkout; o teste
+# `test_recorte_senac_e_fiel_ao_state_json` confere o recorte contra o arquivo
+# quando ele existe.
+_SENAC_P1: dict[str, Any] = {
+    "dados_validados": [
+        {"fato": "O Senac é estruturado de forma descentralizada, composto por um "
+                 "Departamento Nacional e 27 Departamentos Regionais autônomos "
+                 "vinculados às federações do comércio de cada estado.",
+         "fonte": "https://www.senac.br"},
+        {"fato": "O portfólio do Senac abrange cursos Livres, Técnicos, Graduação, "
+                 "Pós-graduação, Extensão Universitária e Aprendizagem Profissional.",
+         "fonte": "https://www.ead.senac.br"},
+        {"fato": "A Confederação Nacional do Comércio de Bens, Serviços e Turismo "
+                 "(CNC) é a entidade responsável por administrar o Senac.",
+         "fonte": "https://www.cnc.org.br"},
+    ],
+    "fatos_verificados": [
+        {"valor": "66,67%",
+         "unidade": "percentual da Receita de Contribuição Compulsória Líquida "
+                    "destinada ao Programa Senac de Gratuidade (PSG)",
+         "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+         "dispositivo": "Art. 1º do Decreto nº 6.633, de 5 de novembro de 2008 (que "
+                        "altera o Regulamento do Senac, Art. 3º, parágrafo único)",
+         "vigente_desde": "2008-11-05", "verificado_em": "2026-09-17"},
+        {"valor": "2",
+         "unidade": "salários mínimos federais per capita como limite de renda "
+                    "familiar mensal para o Programa Senac de Gratuidade (PSG)",
+         "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+         "dispositivo": "Art. 1º do Decreto nº 6.633, de 5 de novembro de 2008 (que "
+                        "altera o Regulamento do Senac, Art. 3º, alínea m)",
+         "vigente_desde": "2008-11-05", "verificado_em": "2026-09-17"},
+        {"valor": "160",
+         "unidade": "horas de carga horária mínima para cursos de formação inicial "
+                    "oferecidos no programa de gratuidade",
+         "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+         "dispositivo": "Art. 1º do Decreto nº 6.633, de 5 de novembro de 2008 (que "
+                        "altera o Regulamento do Senac, Art. 3º, alínea i)",
+         "vigente_desde": "2008-11-05", "verificado_em": "2026-09-17"},
+        {"valor": "8.621",
+         "unidade": "número do Decreto-Lei que autorizou a criação do Senac",
+         "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/decreto-lei/1937-1946/del8621.htm",
+         "dispositivo": "Art. 1º do Decreto-Lei nº 8.621, de 10 de janeiro de 1946",
+         "vigente_desde": "1946-01-10", "verificado_em": "2026-09-17"},
+    ],
+}
+_STATE_SENAC = (Path(__file__).resolve().parents[1] / "funnelforge-migracao" / "engine"
+                / "runs" / "guia-cursos-senac-20260917-220001" / "state.json")
+
+
+def _fatos_de(p1: dict[str, Any]) -> tuple[Any, ...]:
+    from .pautador_ponte import _fatos
+
+    return _fatos({"facts": {"1": p1}}, 1)[1]
+
+
+def test_senac_legado_sete_fatos_tipos_esperados() -> None:
+    """P5 + V8 + V10: 7 emitidos, tipos pela regra de legado declarada."""
+    fatos = _fatos_de(_SENAC_P1)
+    assert [(f.id, f.tipo) for f in fatos] == [
+        ("f1", "contexto"), ("f2", "contexto"), ("f3", "contexto"),
+        ("n1", "numero"), ("n2", "numero"), ("n3", "numero"), ("n4", "fonte_legal")]
+    assert {f.tipo_origem for f in fatos} == {"regra_legado"}
+    assert all(f.escopo is None and f.citavel is None for f in fatos)
+
+
+def test_senac_legado_nenhum_fato_cai_na_encomenda() -> None:
+    from types import SimpleNamespace
+
+    from .copy import encomendar as em
+
+    origem = SimpleNamespace(nicho="Cursos Senac", url_final="https://x.com.br/r/senac/",
+                             pais="BR", idioma="pt", vertical="informativo",
+                             fatos=_fatos_de(_SENAC_P1))
+    enc, descartados = em.encomendar(SimpleNamespace(origem=origem),
+                                     keywords=["cursos senac"])
+    assert len(enc.fatos) == 7
+    assert not [d for d in descartados if d.startswith(("f", "n"))], descartados
+
+
+def test_valor_e_unidade_com_espaco() -> None:
+    """V8: "2salários mínimos" chegava assim ao prompt e ao juiz."""
+    textos = {f.id: f.texto for f in _fatos_de(_SENAC_P1)}
+    assert textos["n2"].startswith("2 salários mínimos federais per capita")
+    assert textos["n3"].startswith("160 horas de carga horária")
+    assert textos["n4"].startswith("8.621 número do Decreto-Lei")
+    # Unidade que começa por "%" cola no número, como se escreve: "40%", não "40 %".
+    pct = _fatos_de({"fatos_verificados": [dict(_SENAC_P1["fatos_verificados"][0],
+                                                valor="40", unidade="% do CDI")]})
+    assert pct[0].texto.startswith("40% do CDI")
+
+
+def test_fonte_legal_pela_unidade_nunca_pelo_dispositivo() -> None:
+    """V10.5: `dispositivo` é obrigatório e cita a norma que FUNDAMENTA o valor
+    em todo fato; uma regra sobre ele marcaria os 4 fatos Senac como
+    `fonte_legal`. Só a UNIDADE diz que o valor é a própria norma."""
+    base = dict(_SENAC_P1["fatos_verificados"][1])
+    casos = {
+        "Lei Ordinária": "fonte_legal",
+        "Lei Complementar": "fonte_legal",
+        "Dispositivo Legal": "fonte_legal",
+        "dispositivo legal de instituição": "fonte_legal",
+        "Portaria": "fonte_legal",
+        "Decreto-Lei": "fonte_legal",
+        "Lei Federal (LDB)": "fonte_legal",
+        "número do Decreto-Lei que autorizou a criação do Senac": "fonte_legal",
+        "horas de leitura obrigatória": "numero",       # "lei" dentro de palavra
+        "salários mínimos (conforme a Lei 8.213)": "numero",  # a lei FUNDAMENTA
+        "%": "numero",
+        "Data Limite": "numero",
+    }
+    for unidade, esperado in casos.items():
+        f = _fatos_de({"fatos_verificados": [dict(base, unidade=unidade)]})[0]
+        assert f.tipo == esperado, (unidade, f.tipo)
+        assert f.tipo_origem == "regra_legado"
+
+
+def test_tipo_declarado_e_copiado_com_escopo_e_citavel() -> None:
+    p1 = {
+        "dados_validados": [
+            {"fato": "Cada estado tem um Departamento Regional.", "fonte": "https://s",
+             "tipo": "Contexto", "escopo": "nacional", "citavel": True},
+            {"fato": "Inscrições de 1º a 15 de outubro.", "fonte": "https://s",
+             "tipo": "prazo", "escopo": "Regional: sp", "citavel": "não"},
+        ],
+        "fatos_verificados": [
+            dict(_SENAC_P1["fatos_verificados"][1], tipo="Condição", escopo="nacional"),
+            dict(_SENAC_P1["fatos_verificados"][3], tipo="fonte legal"),
+        ],
+    }
+    fatos = {f.id: f for f in _fatos_de(p1)}
+    assert (fatos["f1"].tipo, fatos["f1"].escopo, fatos["f1"].citavel) == (
+        "contexto", "nacional", True)
+    assert (fatos["f2"].tipo, fatos["f2"].escopo, fatos["f2"].citavel) == (
+        "prazo", "regional:SP", False)
+    assert fatos["n1"].tipo == "condicao" and fatos["n2"].tipo == "fonte_legal"
+    assert {f.tipo_origem for f in fatos.values()} == {"pesquisa"}
+
+
+def test_tipo_desconhecido_continua_relatado() -> None:
+    """Copiar o tipo não é aceitar qualquer tipo: o desconhecido chega à
+    encomenda e é descartado COM o motivo, nunca remapeado."""
+    from types import SimpleNamespace
+
+    from .copy import encomendar as em
+
+    fatos = _fatos_de({"dados_validados": [
+        {"fato": "Algo.", "fonte": "https://s", "tipo": "valor"}]})
+    assert fatos[0].tipo == "valor" and fatos[0].tipo_origem == "pesquisa"
+    origem = SimpleNamespace(nicho="X", url_final="https://x.com.br/a", pais="BR",
+                             idioma="pt", vertical="informativo", fatos=fatos)
+    enc, descartados = em.encomendar(SimpleNamespace(origem=origem), keywords=["x"])
+    assert enc.fatos == ()
+    assert any("f1" in d and "valor" in d for d in descartados), descartados
+
+
+def test_fato_nao_citavel_nao_ancora_anuncio_e_e_relatado() -> None:
+    from types import SimpleNamespace
+
+    from .copy import encomendar as em
+
+    fatos = _fatos_de({"dados_validados": [
+        {"fato": "Dado contraditório.", "fonte": "https://s", "tipo": "numero",
+         "citavel": False},
+        {"fato": "Dado bom.", "fonte": "https://s", "tipo": "contexto",
+         "escopo": "regional:SP"}]})
+    origem = SimpleNamespace(nicho="X", url_final="https://x.com.br/a", pais="BR",
+                             idioma="pt", vertical="informativo", fatos=fatos)
+    enc, descartados = em.encomendar(SimpleNamespace(origem=origem), keywords=["x"])
+    assert [f.id for f in enc.fatos] == ["f2"]
+    assert enc.fatos[0].escopo == "regional:SP"
+    assert any("f1" in d and "citável" in d for d in descartados), descartados
+
+
+def test_docstring_do_fato_nao_mente_sobre_quem_preenche() -> None:
+    from .pautador_ponte import Fato
+
+    doc = Fato.__doc__ or ""
+    assert "não é preenchido por nenhum módulo" not in doc
+    assert "encomendar" in doc
+
+
+def test_recorte_senac_e_fiel_ao_state_json() -> None:
+    """Confere o recorte contra o arquivo real, quando ele está no disco
+    (somente leitura). Sem o arquivo, o teste diz que não conferiu."""
+    import json
+
+    if not _STATE_SENAC.exists():
+        print(f"        (não conferido: {_STATE_SENAC} ausente neste checkout)")
+        return
+    real = json.loads(_STATE_SENAC.read_text(encoding="utf-8"))["facts"]["1"]
+    for chave in ("dados_validados", "fatos_verificados"):
+        assert real[chave] == _SENAC_P1[chave], chave
+    fatos = _fatos_de(real)
+    assert len(fatos) == 7 and [f.tipo for f in fatos].count("contexto") == 3
 
 
 def teste_lp_em_rascunho_e_url_provisoria() -> None:

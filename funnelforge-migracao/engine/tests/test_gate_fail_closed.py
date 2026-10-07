@@ -147,6 +147,8 @@ def test_blocking_judge_skips_interior_build(tmp_path: Path, config_files):
         n = p.page_number
         assert state.step_status[f"judge_p{n}"].status is StepStatus.FAILED
         assert f"blocked_p{n}" in state.step_status
+        for downstream in ("seo", "image", "build", "publish"):
+            assert f"{downstream}_p{n}" not in state.step_status
     assert not list(run_dir.glob("p2.*.gutenberg.html"))
 
 

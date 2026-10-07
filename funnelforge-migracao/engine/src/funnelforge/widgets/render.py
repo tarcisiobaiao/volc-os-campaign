@@ -174,6 +174,8 @@ def renderizar(w: Widget) -> str:
         f'<div class="vw-top">'
         f'<span class="vw-olho">{_esc(eyebrow)}</span>'
         f'<h3 class="vw-tit">{_esc(w.titulo)}</h3>{sub}'
+        '<div class="vw-sub">Orientação informativa: não consulta cadastros nem '
+        'confirma elegibilidade, aprovação ou contratação.</div>'
         f'</div>'
         f'{_controles(w)}'
         f'<div class="vw-out" aria-live="polite">{cenarios}</div>'

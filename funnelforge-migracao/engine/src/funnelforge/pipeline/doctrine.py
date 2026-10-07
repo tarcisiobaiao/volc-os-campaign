@@ -66,22 +66,7 @@ BANNED_CTA_FIRST_PERSON: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 BANNED_CTA_EXECUTION: tuple[str, ...] = (
     "agendar",
-    # ⚠️ `solicitar` SAIU desta lista por decisão do operador, em 17/08/2026.
-    #
-    # O motivo: o radical stemizado (`solicit`) reprovava o próprio exemplar
-    # APROVADO desta mesma doutrina — "Como fazer a solicitação pelo app >>>" —,
-    # e a contradição derrubava a LP por um CTA que a casa considera correto.
-    # Medido rodando `banned_cta_execution_hit` sobre `APPROVED_CTA_EXEMPLARS`.
-    #
-    # O QUE ISSO LIBERA, medido antes da remoção: além do exemplar pretendido,
-    # passam a ser aceitos "Solicitar agora »" e "Solicite seu cartão »" — que
-    # SÃO promessa de executar o serviço pelo leitor, e é o que a regra existia
-    # para pegar. A troca foi feita de olhos abertos: a contradição custava
-    # página reprovada hoje; o risco de política é de política de anúncio.
-    #
-    # Se um dia isso doer, a correção cirúrgica é distinguir o SUBSTANTIVO
-    # ("a solicitação", informacional) do VERBO ("solicitar", execução) em vez
-    # de banir o radical — hoje o stem `solicit` não sabe a diferença.
+    # Request verbs are checked with their informational frame below, not by stem.
     "emitir",
     "cadastrar",
     "consultar meu cpf",
@@ -119,7 +104,16 @@ def banned_cta_execution_hit(text: str) -> str | None:
     Callers MUST pass only CTA button/anchor text (never body/compliance
     prose, which legitimately says "sem solicitar dados" etc.). Word-boundary
     anchored (see `_cta_execution_regex`)."""
-    m = _CTA_EXECUTION_RE.search(text or "")
+    # An informational frame changes the promise: explain a request, not execute it.
+    text = text or ""
+    frame = re.search(r"\b(?:como|quando|onde|guia|passo a passo)\b", text, re.I)
+    direct = re.search(r"\b(?:solicitar|solicite|contratar|contrate|pedir|peça|"
+                       r"resgatar|resgate|liberar|libere)\b", text, re.I)
+    if direct and not (frame and frame.start() < direct.start()):
+        return direct.group(0)
+    m = _CTA_EXECUTION_RE.search(text)
+    if m and frame and frame.start() < m.start():
+        return None
     return m.group(0) if m else None
 
 # ---------------------------------------------------------------------------

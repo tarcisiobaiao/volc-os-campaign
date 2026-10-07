@@ -243,3 +243,198 @@ def metrica_de_dict(
         recurso_tipo, recurso_externo, nome, EstadoValor.MEDIDO,
         valor_texto=str(atual), unidade=unidade, moeda=moeda,
     )
+
+
+# ── termos de busca: o que o leitor DIGITOU, em três estados ─────────────────
+#
+# Contrato entre as trilhas (30/09/2026): o mesmo JSON que o motor valida em
+# `funnelforge.domain.models.TermosDeBusca`. Cada lado valida o seu.
+#
+#   presente          consulta feita na janela, com termos
+#   vazio_confirmado  consulta feita na janela, zero termos — É informação
+#   ausente           ninguém coletou; NUNCA vira lista (nem vazia)
+#
+# Antes disto a encomenda da copy fixava `termos_de_busca=()` e o prompt dizia
+# "vazia — nenhum termo colhido": uma ausência apresentada como medição.
+
+ESTADOS_TERMOS = ("presente", "vazio_confirmado", "ausente")
+FUSO_PADRAO = "America/Sao_Paulo"
+# Mesmo teto do motor (`pipeline/inventario.LIMITE_DE_TERMOS`). É corte de
+# prompt declarado, não amostra estatística.
+LIMITE_TERMOS_PADRAO = 25
+_FONTE_TERMOS = re.compile(r"^(search_term_view|arquivo:[0-9a-f]{64})$")
+
+# O que parece dado pessoal num termo digitado. Os mesmos padrões do motor:
+# um termo descartado de um lado e aceito do outro seria dado pessoal chegando
+# a um prompt por uma das portas.
+_DADO_PESSOAL = (
+    re.compile(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b"),          # CPF
+    re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b"),     # CNPJ
+    re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"),                      # e-mail
+    re.compile(r"(?:\d[\s.\-]?){10,}"),                          # telefone, cartão
+)
+
+
+def tem_dado_pessoal(termo: str) -> bool:
+    return any(r.search(termo or "") for r in _DADO_PESSOAL)
+
+
+@dataclass(frozen=True)
+class JanelaDeTermos:
+    inicio: date
+    fim: date
+    fuso: str = FUSO_PADRAO
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.inicio, date) or not isinstance(self.fim, date):
+            raise ValueError("janela precisa de datas")
+        if self.fim < self.inicio:
+            raise ValueError("janela com fim antes do início")
+
+    def para_json(self) -> dict[str, str]:
+        return {"inicio": self.inicio.isoformat(), "fim": self.fim.isoformat(),
+                "fuso": self.fuso}
+
+    def rotulo(self) -> str:
+        return f"{self.inicio.isoformat()} a {self.fim.isoformat()} ({self.fuso})"
+
+
+@dataclass(frozen=True)
+class TermoDeBusca:
+    termo: str
+    impressoes: int
+    cliques: int
+    custo: float | None = None
+
+    def __post_init__(self) -> None:
+        if not str(self.termo or "").strip():
+            raise ValueError("termo vazio")
+        if self.impressoes < 0 or self.cliques < 0:
+            raise ValueError("contagem negativa")
+
+
+@dataclass(frozen=True)
+class TermosDeBusca:
+    """Ver o bloco acima. `para_json()` emite SÓ as chaves do contrato.
+
+    `total_na_fonte` (termos distintos lidos), `descartados_por_dado_pessoal` e
+    `limite` (top-N aplicado) são a declaração do corte: ficam no objeto para o
+    prompt dizer quanto viu, e não viajam no JSON do contrato.
+    """
+
+    estado: str
+    janela: JanelaDeTermos | None = None
+    coletado_em: str | None = None
+    fonte: str | None = None
+    termos: tuple[TermoDeBusca, ...] = ()
+    motivo_ausencia: str | None = None
+    total_na_fonte: int = 0
+    descartados_por_dado_pessoal: int = 0
+    limite: int | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "termos", tuple(self.termos))
+        if self.estado not in ESTADOS_TERMOS:
+            raise ValueError(f"estado {self.estado!r} fora de {ESTADOS_TERMOS}")
+        if self.estado in ("ausente", "vazio_confirmado") and self.termos:
+            raise ValueError(f"estado '{self.estado}' não pode trazer termos")
+        if self.estado == "ausente":
+            if not str(self.motivo_ausencia or "").strip():
+                raise ValueError("'ausente' precisa dizer por quê (motivo_ausencia)")
+            return
+        if self.estado == "presente" and not self.termos:
+            raise ValueError("estado 'presente' sem nenhum termo")
+        faltando = [n for n in ("janela", "coletado_em", "fonte") if not getattr(self, n)]
+        if faltando:
+            raise ValueError(f"estado '{self.estado}' sem {', '.join(faltando)}")
+        if not _FONTE_TERMOS.match(self.fonte or ""):
+            raise ValueError("fonte deve ser 'search_term_view' ou 'arquivo:<sha256>'")
+
+    def para_json(self) -> dict[str, Any]:
+        return {
+            "estado": self.estado,
+            "janela": self.janela.para_json() if self.janela else None,
+            "coletado_em": self.coletado_em,
+            "fonte": self.fonte,
+            "termos": [{"termo": t.termo, "impressoes": t.impressoes,
+                        "cliques": t.cliques, "custo": t.custo} for t in self.termos],
+            "motivo_ausencia": self.motivo_ausencia,
+        }
+
+    @classmethod
+    def de_json(cls, dados: dict[str, Any]) -> "TermosDeBusca":
+        j = dados.get("janela")
+        janela = (JanelaDeTermos(date.fromisoformat(j["inicio"]),
+                                 date.fromisoformat(j["fim"]),
+                                 j.get("fuso") or FUSO_PADRAO) if j else None)
+        return cls(
+            estado=dados.get("estado", ""), janela=janela,
+            coletado_em=dados.get("coletado_em"), fonte=dados.get("fonte"),
+            termos=tuple(TermoDeBusca(str(t["termo"]), int(t["impressoes"]),
+                                      int(t["cliques"]),
+                                      None if t.get("custo") is None else float(t["custo"]))
+                         for t in (dados.get("termos") or [])),
+            motivo_ausencia=dados.get("motivo_ausencia"),
+        )
+
+
+def termos_ausentes(motivo: str) -> TermosDeBusca:
+    return TermosDeBusca(estado="ausente", motivo_ausencia=motivo)
+
+
+def _inteiro(valor: Any) -> int:
+    try:
+        return int(str(valor))
+    except (TypeError, ValueError):
+        return 0
+
+
+def agregar_linhas_gaql(linhas: list[dict[str, Any]]) -> dict[str, TermoDeBusca]:
+    """Linhas de `search_term_view` (uma por termo × dia × grupo) → UM termo.
+
+    Métrica que não veio na linha é o zero do proto3 (o campo foi pedido; a API
+    não o imprime quando vale zero). Custo sem `cost_micros` em NENHUMA linha do
+    termo fica `None`: não foi medido, e zero seria um custo inventado.
+    """
+    somas: dict[str, list[Any]] = {}
+    for linha in linhas:
+        termo = str(((linha.get("search_term_view") or {}).get("search_term")) or "").strip()
+        if not termo:
+            continue
+        m = linha.get("metrics") or {}
+        acc = somas.setdefault(termo, [0, 0, None])
+        acc[0] += _inteiro(m.get("impressions"))
+        acc[1] += _inteiro(m.get("clicks"))
+        if m.get("cost_micros") is not None:
+            acc[2] = (acc[2] or 0) + _inteiro(m.get("cost_micros"))
+    return {
+        t: TermoDeBusca(t, imp, cli, None if micros is None else round(micros / 1_000_000, 2))
+        for t, (imp, cli, micros) in somas.items()
+    }
+
+
+def termos_de_linhas(
+    linhas: list[dict[str, Any]], *, fonte: str, janela: JanelaDeTermos,
+    coletado_em: str, limite: int = LIMITE_TERMOS_PADRAO,
+) -> TermosDeBusca:
+    """Agrega, tira dado pessoal, ordena (cliques, impressões) e corta no top-N.
+
+    Zero linha na janela é `vazio_confirmado`. Linhas que só traziam dado
+    pessoal NÃO são vazio (houve busca) nem lista: são `ausente`, com o motivo.
+    """
+    agregados = agregar_linhas_gaql(linhas)
+    if not agregados:
+        return TermosDeBusca(estado="vazio_confirmado", janela=janela,
+                             coletado_em=coletado_em, fonte=fonte, limite=limite)
+    limpos = [t for t in agregados.values() if not tem_dado_pessoal(t.termo)]
+    descartados = len(agregados) - len(limpos)
+    if not limpos:
+        return termos_ausentes(
+            f"os {len(agregados)} termos colhidos em {janela.rotulo()} pareciam dado "
+            f"pessoal e foram descartados antes do prompt")
+    ordenados = sorted(limpos, key=lambda t: (-t.cliques, -t.impressoes, t.termo))
+    return TermosDeBusca(
+        estado="presente", janela=janela, coletado_em=coletado_em, fonte=fonte,
+        termos=tuple(ordenados[:limite]), total_na_fonte=len(agregados),
+        descartados_por_dado_pessoal=descartados, limite=limite,
+    )

@@ -1,0 +1,1397 @@
+{
+  "run_id": "guia-cursos-senac-20260917-220001",
+  "briefing_text": "",
+  "plan": {
+    "avatar_summary": "Adulto brasileiro que quer se qualificar para comercio, servicos ou turismo, pesquisa pelo celular e se perde entre curso livre, tecnico e superior, sem saber que cada estado tem um Senac proprio.",
+    "tone_voice": "Jornalismo de servico: direto, calmo, explicativo, sem promessa e sem alarme.",
+    "total_pages": 5,
+    "pages": [
+      {
+        "page_number": 1,
+        "page_type": "LANDING PAGE",
+        "h1_title": "Cursos Senac: entenda a estrutura antes de procurar o seu",
+        "slug": "guia-cursos-senac",
+        "emotional_objective": "Voce ouviu falar do Senac e nao sabe por onde comecar, porque cada estado tem um Senac proprio",
+        "main_content_structure": [
+          "Por que existe mais de um Senac no Brasil",
+          "Os tipos de curso que convivem no mesmo catalogo",
+          "O que costuma mudar de um estado para outro",
+          "Como este guia esta organizado"
+        ],
+        "hook_to_next_page": "Ver por onde comecar",
+        "next_page_slug": "por-onde-comecar-senac-pr",
+        "target_keywords": [
+          "cursos senac",
+          "senac como funciona",
+          "guia senac",
+          "senac departamento regional"
+        ],
+        "role": "LP",
+        "ordinal": 0,
+        "routes": [
+          {
+            "placement": "hero",
+            "kind": "funnel",
+            "target": "por-onde-comecar-senac-pr",
+            "anchor": "Ver o guia de comecar >>>"
+          },
+          {
+            "placement": "inline",
+            "kind": "funnel",
+            "target": "tipos-de-curso-senac-p1",
+            "anchor": "Ver o guia de curso >>>"
+          },
+          {
+            "placement": "footer",
+            "kind": "funnel",
+            "target": "bolsas-de-estudo-senac-p2",
+            "anchor": "Ver o guia de bolsas >>>"
+          }
+        ],
+        "engajamento": ""
+      },
+      {
+        "page_number": 2,
+        "page_type": "HUB",
+        "h1_title": "Por onde comecar no Senac: qual e a sua situacao hoje",
+        "slug": "por-onde-comecar-senac-pr",
+        "emotional_objective": "Voce quer achar rapido o guia que responde a sua duvida de hoje",
+        "main_content_structure": [
+          "Quem ainda nao decidiu o tipo de curso",
+          "Quem quer saber onde as vagas sem mensalidade sao anunciadas",
+          "Quem so quer confirmar se o site e mesmo do Senac"
+        ],
+        "hook_to_next_page": "Comparar os tipos de curso",
+        "next_page_slug": "tipos-de-curso-senac-p1",
+        "target_keywords": [
+          "qual curso senac fazer",
+          "comparar cursos senac",
+          "senac por onde comecar"
+        ],
+        "role": "PRESELL",
+        "ordinal": 0,
+        "routes": [
+          {
+            "placement": "hero",
+            "kind": "funnel",
+            "target": "tipos-de-curso-senac-p1",
+            "anchor": "Ver o guia de curso >>>"
+          },
+          {
+            "placement": "inline",
+            "kind": "funnel",
+            "target": "bolsas-de-estudo-senac-p2",
+            "anchor": "Ver o guia de bolsas >>>"
+          },
+          {
+            "placement": "footer",
+            "kind": "funnel",
+            "target": "portal-do-senac-do-seu-estado-p3",
+            "anchor": "Ver o guia de certo >>>"
+          }
+        ],
+        "engajamento": ""
+      },
+      {
+        "page_number": 3,
+        "page_type": "SOLUTION",
+        "h1_title": "Tipos de curso do Senac: livre, tecnico e superior no mesmo portal",
+        "slug": "tipos-de-curso-senac-p1",
+        "emotional_objective": "Voce ainda mistura curso livre, curso tecnico e curso superior e nao sabe qual serve para o seu objetivo",
+        "main_content_structure": [
+          "Curso livre de qualificacao profissional",
+          "Curso tecnico de nivel medio",
+          "Graduacao, tecnologo e pos-graduacao",
+          "Presencial, a distancia e as formas mistas",
+          "Como o catalogo do regional sinaliza cada nivel"
+        ],
+        "hook_to_next_page": "Entender as condicoes de gratuidade",
+        "next_page_slug": "bolsas-de-estudo-senac-p2",
+        "target_keywords": [
+          "tipos de curso senac",
+          "curso livre senac",
+          "curso tecnico senac",
+          "senac ead",
+          "catalogo senac"
+        ],
+        "role": "SOLUTION",
+        "ordinal": 1,
+        "routes": [
+          {
+            "placement": "inline",
+            "kind": "funnel",
+            "target": "bolsas-de-estudo-senac-p2",
+            "anchor": "Ver o guia de bolsas >>>"
+          },
+          {
+            "placement": "inline",
+            "kind": "funnel",
+            "target": "portal-do-senac-do-seu-estado-p3",
+            "anchor": "Ver o guia de certo >>>"
+          },
+          {
+            "placement": "inline",
+            "kind": "external_official",
+            "target": "https://www.sp.senac.br",
+            "anchor": "Consultar no canal oficial >>>"
+          }
+        ],
+        "engajamento": "dado_unico"
+      },
+      {
+        "page_number": 4,
+        "page_type": "SOLUTION",
+        "h1_title": "Bolsas de estudo do Senac: onde cada estado publica as vagas sem mensalidade",
+        "slug": "bolsas-de-estudo-senac-p2",
+        "emotional_objective": "Voce quer uma vaga sem mensalidade e nao sabe em que pagina ela e realmente anunciada",
+        "main_content_structure": [
+          "Como o Senac chama as vagas sem mensalidade",
+          "Por que a lista de bolsas fica no site de cada estado",
+          "O que a pagina de bolsas costuma informar",
+          "O que o Senac pede de quem se candidata",
+          "Como chegar a pagina de bolsas do Senac do seu estado"
+        ],
+        "hook_to_next_page": "Ver como confirmar o portal do seu estado",
+        "next_page_slug": "portal-do-senac-do-seu-estado-p3",
+        "target_keywords": [
+          "bolsas de estudo senac",
+          "senac bolsa de estudo",
+          "vagas sem mensalidade senac",
+          "como conseguir bolsa no senac",
+          "senac bolsas inscricoes"
+        ],
+        "role": "SOLUTION",
+        "ordinal": 2,
+        "routes": [
+          {
+            "placement": "inline",
+            "kind": "funnel",
+            "target": "portal-do-senac-do-seu-estado-p3",
+            "anchor": "Ver o guia de certo >>>"
+          },
+          {
+            "placement": "inline",
+            "kind": "external_official",
+            "target": "https://www.sp.senac.br/programa-senac-de-gratuidade",
+            "anchor": "Consultar no canal oficial >>>"
+          }
+        ],
+        "engajamento": "dado_unico"
+      },
+      {
+        "page_number": 5,
+        "page_type": "SOLUTION",
+        "h1_title": "Portal do Senac do seu estado: como confirmar que voce esta no lugar certo",
+        "slug": "portal-do-senac-do-seu-estado-p3",
+        "emotional_objective": "Voce encontrou um site que diz ser do Senac e quer ter certeza de que e o do seu estado",
+        "main_content_structure": [
+          "Por que nao existe um endereco unico para todos os estados",
+          "Como chegar ao portal do Senac do seu estado",
+          "O que a pagina de um curso costuma informar",
+          "Cuidados com paginas que copiam a marca",
+          "O que o Senac costuma exigir de quem conclui um curso"
+        ],
+        "hook_to_next_page": "Ver outro guia de cursos gratuitos",
+        "next_page_slug": "",
+        "target_keywords": [
+          "portal senac",
+          "site do senac",
+          "senac do meu estado",
+          "certificado senac",
+          "senac e confiavel"
+        ],
+        "role": "SOLUTION",
+        "ordinal": 3,
+        "routes": [
+          {
+            "placement": "footer",
+            "kind": "cross_funnel",
+            "target": "https://creditoup.com.br/credito-do-trabalhador-o-que-perguntar-antes-de-aceitar-a-oferta-no-app/",
+            "anchor": "Ver outro guia completo >>>"
+          }
+        ],
+        "engajamento": "sequencial"
+      }
+    ]
+  },
+  "facts": {
+    "1": {
+      "resumo": "Este guia explica a estrutura do Senac no Brasil, detalhando por que a instituição é descentralizada em 27 Departamentos Regionais autônomos sob a Confederação Nacional do Comércio (CNC), o que permite adaptar o portfólio às demandas locais de mercado. O catálogo unificado engloba cursos Livres, Técnicos, Graduação, Pós-graduação, Extensão e Aprendizagem Profissional. Entre os estados, variam a oferta de cursos, valores e editais do Programa Senac de Gratuidade (PSG) — que destina 66,67% da receita líquida a bolsas para pessoas com renda per capita de até 2 salários mínimos. O guia está organizado para orientar o estudante desde a compreensão institucional até o passo a passo para inscrição.",
+      "dados_validados": [
+        {
+          "fato": "O Senac é estruturado de forma descentralizada, composto por um Departamento Nacional e 27 Departamentos Regionais autônomos vinculados às federações do comércio de cada estado.",
+          "fonte": "https://www.senac.br"
+        },
+        {
+          "fato": "O portfólio do Senac abrange cursos Livres, Técnicos, Graduação, Pós-graduação, Extensão Universitária e Aprendizagem Profissional.",
+          "fonte": "https://www.ead.senac.br"
+        },
+        {
+          "fato": "A Confederação Nacional do Comércio de Bens, Serviços e Turismo (CNC) é a entidade responsável por administrar o Senac.",
+          "fonte": "https://www.cnc.org.br"
+        }
+      ],
+      "fatos_verificados": [
+        {
+          "valor": "66,67%",
+          "unidade": "percentual da Receita de Contribuição Compulsória Líquida destinada ao Programa Senac de Gratuidade (PSG)",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+          "dispositivo": "Art. 1º do Decreto nº 6.633, de 5 de novembro de 2008 (que altera o Regulamento do Senac, Art. 3º, parágrafo único)",
+          "vigente_desde": "2008-11-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "2",
+          "unidade": "salários mínimos federais per capita como limite de renda familiar mensal para o Programa Senac de Gratuidade (PSG)",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+          "dispositivo": "Art. 1º do Decreto nº 6.633, de 5 de novembro de 2008 (que altera o Regulamento do Senac, Art. 3º, alínea m)",
+          "vigente_desde": "2008-11-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "160",
+          "unidade": "horas de carga horária mínima para cursos de formação inicial oferecidos no programa de gratuidade",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+          "dispositivo": "Art. 1º do Decreto nº 6.633, de 5 de novembro de 2008 (que altera o Regulamento do Senac, Art. 3º, alínea i)",
+          "vigente_desde": "2008-11-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "8.621",
+          "unidade": "número do Decreto-Lei que autorizou a criação do Senac",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/decreto-lei/1937-1946/del8621.htm",
+          "dispositivo": "Art. 1º do Decreto-Lei nº 8.621, de 10 de janeiro de 1946",
+          "vigente_desde": "1946-01-10",
+          "verificado_em": "2026-09-17"
+        }
+      ],
+      "passo_a_passo": [
+        "Acesse o portal oficial do Senac Nacional (https://www.senac.br) ou o portal do Senac EAD (https://www.ead.senac.br) para visualizar as opções gerais.",
+        "Selecione o seu estado para ser redirecionado ao site do respectivo Departamento Regional (DR), pois cada estado possui autonomia sobre seu catálogo e calendário.",
+        "Navegue pelas categorias de cursos disponíveis no menu: Livres (formação rápida), Técnicos (nível médio), Graduação, Pós-graduação, Extensão ou Aprendizagem Profissional.",
+        "Verifique os pré-requisitos específicos do curso escolhido, como idade mínima e nível de escolaridade exigido.",
+        "Caso tenha renda familiar per capita de até 2 salários mínimos, consulte a aba 'Programa Senac de Gratuidade' (PSG) no site do DR do seu estado para verificar editais de bolsas abertos.",
+        "Realize a pré-inscrição ou matrícula diretamente pelo site regional ou compareça a uma unidade física portando os documentos solicitados (RG, CPF, comprovante de residência e escolaridade)."
+      ],
+      "fontes": [
+        "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+        "https://www.planalto.gov.br/ccivil_03/decreto-lei/1937-1946/del8621.htm",
+        "https://www.senac.br",
+        "https://www.ead.senac.br",
+        "https://www.cnc.org.br"
+      ],
+      "fontes_resolvidas": [],
+      "sparse": false
+    },
+    "2": {
+      "resumo": "Guia prático e atualizado para quem deseja iniciar sua jornada educacional no Senac em 2026. O conteúdo orienta candidatos que ainda não escolheram o tipo de curso ideal, explica o funcionamento e os critérios de elegibilidade do Programa Senac de Gratuidade (PSG) para vagas sem mensalidade, e ensina como verificar a autenticidade dos canais oficiais e certificados da instituição.",
+      "dados_validados": [
+        {
+          "fato": "O Senac (Serviço Nacional de Aprendizagem Comercial) é a principal instituição de educação profissional voltada para o setor de comércio de bens, serviços e turismo no Brasil.",
+          "fonte": "https://www.senac.br/"
+        },
+        {
+          "fato": "O Senac EAD oferece cursos livres, técnicos, graduação, pós-graduação e extensão totalmente a distância.",
+          "fonte": "https://www.ead.senac.br/"
+        },
+        {
+          "fato": "O Programa Senac de Gratuidade (PSG) disponibiliza vagas gratuitas para pessoas de baixa renda em todo o território nacional.",
+          "fonte": "https://www.dn.senac.br/portalpsg/"
+        },
+        {
+          "fato": "O Senac São Paulo disponibiliza uma ferramenta de consulta pública para verificação de autenticidade de diplomas e certificados.",
+          "fonte": "https://www.sp.senac.br/consulta-publica"
+        }
+      ],
+      "fatos_verificados": [
+        {
+          "valor": "1621.00",
+          "unidade": "R$",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm",
+          "dispositivo": "Art. 1º do Decreto nº 12.797, de 23 de dezembro de 2025",
+          "vigente_desde": "2026-01-01",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "3242.00",
+          "unidade": "R$",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+          "dispositivo": "Art. 1º (alínea 'm') do Decreto nº 6.633, de 5 de novembro de 2008",
+          "vigente_desde": "2026-01-01",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "66.67",
+          "unidade": "%",
+          "fonte_primaria": "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm",
+          "dispositivo": "Art. 1º (parágrafo único) do Decreto nº 6.633, de 5 de novembro de 2008",
+          "vigente_desde": "2008-11-06",
+          "verificado_em": "2026-09-17"
+        }
+      ],
+      "passo_a_passo": [
+        "Quem ainda não decidiu o tipo de curso: Acesse o portal oficial do Senac EAD (https://www.ead.senac.br/) ou o portal nacional (https://www.senac.br/) para explorar as opções disponíveis. Os Cursos Livres (Formação Inicial e Continuada) são ideais para rápida qualificação, com duração média de 20 a 60 horas (podendo chegar a 240 horas) e idade mínima geral de 15 anos. Se busca formação técnica de nível médio ou nível superior, consulte os pré-requisitos específicos de escolaridade exigidos pelo Ministério da Educação na página de cada curso.",
+        "Quem quer saber onde as vagas sem mensalidade são anunciadas: Verifique se você atende ao critério de renda familiar per capita de até 2 salários mínimos federais (R$ 3.242,00 em 2026, considerando o salário mínimo de R$ 1.621,00 estabelecido pelo Decreto nº 12.797/2025). Acesse o Portal PSG do Departamento Nacional (https://www.dn.senac.br/portalpsg/) ou o site do Departamento Regional do seu estado para consultar os editais abertos. As inscrições são feitas de forma 100% online e as vagas são preenchidas por ordem de inscrição, conforme as regras do Decreto nº 6.633/2008.",
+        "Quem só quer confirmar se o site é mesmo do Senac: Certifique-se de que o endereço eletrônico termina obrigatoriamente com o domínio oficial '.senac.br' (como www.senac.br ou www.ead.senac.br). Desconfie de páginas com outras extensões ou que cobrem taxas para inscrição em programas gratuitos. Para validar a autenticidade de um diploma ou certificado emitido, utilize a ferramenta de Consulta Pública oficial (por exemplo, para o Senac SP, acesse https://www.sp.senac.br/consulta-publica) inserindo o CPF ou código do documento."
+      ],
+      "fontes": [
+        "https://www.senac.br/",
+        "https://www.ead.senac.br/",
+        "https://www.dn.senac.br/portalpsg/",
+        "https://www.sp.senac.br/consulta-publica",
+        "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm",
+        "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm"
+      ],
+      "fontes_resolvidas": [],
+      "sparse": false
+    },
+    "3": {
+      "resumo": "O portal do Senac unifica a oferta de diferentes níveis de ensino, abrangendo cursos livres de qualificação profissional (curta duração para inserção ou atualização no mercado), cursos técnicos de nível médio (focados na prática profissional com carga horária mínima de 800 horas), e educação superior, que engloba graduação (bacharelado, licenciatura e tecnólogo) e pós-graduação (especializações). Essas formações são disponibilizadas nas modalidades presencial, a distância (EAD) e mista (híbrida/flexível). No catálogo dos portais regionais e nacional, cada nível e modalidade é sinalizado de forma clara por meio de etiquetas visuais nos cards dos cursos (como 'Livre | Presencial' ou 'Técnico | EAD') e filtros de navegação que facilitam a escolha do estudante.",
+      "dados_validados": [
+        {
+          "fato": "O Senac EAD oferece em seu portal unificado cursos livres, técnicos, de graduação, pós-graduação e extensão universitária.",
+          "fonte": "https://www.ead.senac.br"
+        },
+        {
+          "fato": "O Centro Universitário Senac é credenciado com nota máxima pelo Ministério da Educação (MEC).",
+          "fonte": "https://www.ead.senac.br"
+        },
+        {
+          "fato": "Os cursos técnicos do Senac EAD possuem carga horária padrão de 800 horas, com duração média de 10 a 12 meses.",
+          "fonte": "https://www.ead.senac.br"
+        },
+        {
+          "fato": "O portal do Senac São Paulo organiza seu catálogo utilizando etiquetas visuais como 'Livre | Presencial' ou 'Livre | Presencial + EAD' para identificar o nível e a modalidade de cada curso.",
+          "fonte": "https://www.sp.senac.br"
+        }
+      ],
+      "fatos_verificados": [
+        {
+          "valor": "800",
+          "unidade": "horas",
+          "fonte_primaria": "https://www.ead.senac.br",
+          "dispositivo": "Catálogo Nacional de Cursos Técnicos (CNCT) do Ministério da Educação (MEC)",
+          "vigente_desde": "2021-01-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "80",
+          "unidade": "%",
+          "fonte_primaria": "https://www.ead.senac.br",
+          "dispositivo": "Resolução CNE/CP nº 1, de 5 de janeiro de 2021",
+          "vigente_desde": "2021-01-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "5",
+          "unidade": "conceito",
+          "fonte_primaria": "https://www.ead.senac.br",
+          "dispositivo": "Avaliação de Recredenciamento Institucional do Ministério da Educação (MEC)",
+          "vigente_desde": "2026-09-04",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "160",
+          "unidade": "horas",
+          "fonte_primaria": "https://www.senac.br",
+          "dispositivo": "Diretrizes da Educação Profissional e Tecnológica do Senac",
+          "vigente_desde": "2021-01-01",
+          "verificado_em": "2026-09-17"
+        }
+      ],
+      "passo_a_passo": [
+        "Acesse o portal oficial do Senac EAD (https://www.ead.senac.br) ou o portal regional do seu estado (como https://www.sp.senac.br).",
+        "No menu superior ou lateral, clique na opção 'Cursos' para abrir as categorias disponíveis.",
+        "Selecione o nível de ensino desejado no menu de navegação: 'Cursos Livres', 'Cursos Técnicos', 'Graduação' ou 'Pós-graduação'.",
+        "Utilize os filtros laterais para refinar a busca por área de conhecimento (ex: TI, Gestão, Saúde) ou por modalidade de ensino (Presencial, EAD ou Misto).",
+        "Analise os cards de cursos exibidos no catálogo, observando a sinalização textual e visual que indica o nível e o formato de oferta (ex: 'Livre | Presencial' ou 'Técnico | EAD').",
+        "Clique no curso escolhido para acessar a página de detalhes, verificar os pré-requisitos, carga horária, valores e realizar a inscrição online."
+      ],
+      "fontes": [
+        "https://www.ead.senac.br",
+        "https://www.sp.senac.br",
+        "https://www.senac.br"
+      ],
+      "fontes_resolvidas": [],
+      "sparse": false
+    },
+    "4": {
+      "resumo": "O Senac oferece vagas de estudo sem mensalidade por meio do Programa Senac de Gratuidade (PSG). A lista de bolsas é publicada individualmente no site de cada estado porque o Senac possui uma estrutura descentralizada, na qual cada Departamento Regional (DR) gerencia de forma autônoma seus próprios recursos, editais, cronogramas e oferta de cursos conforme a demanda do mercado de trabalho local. As páginas de bolsas de cada regional costumam informar os editais vigentes, a relação de cursos com vagas abertas, os pré-requisitos específicos, o cronograma de inscrição e seleção, além do link para inscrição. Para se candidatar, o Senac exige que o interessado comprove renda familiar mensal per capita de até 2 salários mínimos federais (por meio de autodeclaração de baixa renda), atenda aos pré-requisitos do curso (como idade e escolaridade) e seja aluno ou egresso da educação básica, ou trabalhador (empregado ou desempregado). Para chegar à página de bolsas do seu estado, o candidato deve acessar o portal nacional do Senac e selecionar a sua unidade federativa, ou acessar diretamente o site do Senac regional buscando pelas seções 'Programa Senac de Gratuidade' ou 'Bolsas de Estudo'.",
+      "dados_validados": [
+        {
+          "fato": "O Senac São Paulo disponibiliza vagas gratuitas por meio do Programa Senac de Gratuidade (PSG) em seu portal oficial.",
+          "fonte": "https://www.sp.senac.br/programa-senac-de-gratuidade"
+        },
+        {
+          "fato": "O Senac Rio de Janeiro publica seus editais e vagas sem mensalidade do PSG em sua página dedicada.",
+          "fonte": "https://www.rj.senac.br/programa-senac-de-gratuidade/"
+        },
+        {
+          "fato": "O Senac Minas Gerais gerencia as inscrições e divulgação de cursos gratuitos do PSG em seu site regional.",
+          "fonte": "https://www.mg.senac.br/programasenacdegratuidade/"
+        },
+        {
+          "fato": "O Senac Rio Grande do Sul centraliza as informações de bolsas de estudo e vagas do PSG em seu hotsite.",
+          "fonte": "https://www.senacrs.com.br/hotsite/psg/"
+        }
+      ],
+      "fatos_verificados": [
+        {
+          "valor": "2",
+          "unidade": "salários mínimos federais",
+          "fonte_primaria": "https://www.senac.br",
+          "dispositivo": "Decreto Federal nº 6.633, de 5 de novembro de 2008",
+          "vigente_desde": "2008-11-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "66,67",
+          "unidade": "%",
+          "fonte_primaria": "https://www.sp.senac.br/programa-senac-de-gratuidade",
+          "dispositivo": "Decreto Federal nº 6.633, de 5 de novembro de 2008",
+          "vigente_desde": "2014-01-01",
+          "verificado_em": "2026-09-17"
+        }
+      ],
+      "passo_a_passo": [
+        "Acesse o portal oficial do Senac do seu estado (por exemplo, https://www.sp.senac.br/programa-senac-de-gratuidade para São Paulo, https://www.rj.senac.br/programa-senac-de-gratuidade/ para o Rio de Janeiro, https://www.mg.senac.br/programasenacdegratuidade/ para Minas Gerais ou https://www.senacrs.com.br/hotsite/psg/ para o Rio Grande do Sul).",
+        "Navegue até a seção dedicada ao 'Programa Senac de Gratuidade' (PSG) ou 'Bolsas de Estudo'.",
+        "Consulte o edital vigente do processo seletivo para entender as regras, cronogramas e documentação exigida.",
+        "Verifique a lista de cursos disponíveis e certifique-se de que você atende aos pré-requisitos de idade e escolaridade do curso desejado.",
+        "Calcule a renda familiar mensal per capita (soma da renda bruta de todos os moradores da casa dividida pelo número de moradores) para garantir que ela não ultrapasse o limite de 2 salários mínimos federais.",
+        "Realize o cadastro no portal, preencha a ficha de inscrição do PSG, anexe os documentos solicitados e assine a autodeclaração de baixa renda.",
+        "Acompanhe a divulgação do resultado no próprio site regional na data prevista pelo cronograma do edital para realizar a matrícula."
+      ],
+      "fontes": [
+        "https://www.senac.br",
+        "https://www.sp.senac.br/programa-senac-de-gratuidade",
+        "https://www.rj.senac.br/programa-senac-de-gratuidade/",
+        "https://www.mg.senac.br/programasenacdegratuidade/",
+        "https://www.senacrs.com.br/hotsite/psg/"
+      ],
+      "fontes_resolvidas": [
+        "https://www.sp.senac.br/programa-senac-de-gratuidade"
+      ],
+      "sparse": false
+    },
+    "5": {
+      "resumo": "O Senac é estruturado de forma descentralizada em Departamentos Regionais autônomos por estado, o que explica a inexistência de um portal único de matrículas. Para acessar o site correto com segurança e evitar fraudes de páginas clonadas, o usuário deve utilizar o portal nacional oficial para ser redirecionado ao site do seu estado, sempre verificando se o domínio termina em '.senac.br'. A conclusão de qualquer curso exige o cumprimento de requisitos acadêmicos padronizados, como a frequência mínima de 75% e, quando aplicável, média mínima de 6,0.",
+      "dados_validados": [
+        {
+          "fato": "O Senac foi criado pelo Decreto-lei nº 8.621 de 10 de janeiro de 1946 como uma entidade privada sem fins lucrativos voltada para a educação profissional.",
+          "fonte": "https://www.dn.senac.br"
+        },
+        {
+          "fato": "O portal nacional do Senac centraliza o redirecionamento seguro para todos os Departamentos Regionais do país.",
+          "fonte": "https://www.senac.br"
+        },
+        {
+          "fato": "O Programa Senac de Gratuidade (PSG) oferece vagas gratuitas para pessoas de baixa renda.",
+          "fonte": "https://www.senac.br"
+        }
+      ],
+      "fatos_verificados": [
+        {
+          "valor": "75",
+          "unidade": "%",
+          "fonte_primaria": "https://www.dn.senac.br",
+          "dispositivo": "Resolução Senac nº 1.201/2022 (Regimento do Senac)",
+          "vigente_desde": "2022-04-19",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "2",
+          "unidade": "salários-mínimos",
+          "fonte_primaria": "https://www.senac.br",
+          "dispositivo": "Decreto nº 6.633 de 5 de novembro de 2008",
+          "vigente_desde": "2008-11-05",
+          "verificado_em": "2026-09-17"
+        },
+        {
+          "valor": "6,0",
+          "unidade": "pontos",
+          "fonte_primaria": "https://www.dn.senac.br",
+          "dispositivo": "Regimento do Senac e Manuais de Aluno Regionais",
+          "vigente_desde": "2022-04-19",
+          "verificado_em": "2026-09-17"
+        }
+      ],
+      "passo_a_passo": [
+        "Acesse o portal nacional oficial do Senac pelo endereço seguro 'https://www.senac.br'.",
+        "Navegue pela página inicial ou utilize o menu de seleção regional para identificar o seu estado.",
+        "Clique sobre o nome do seu estado para ser redirecionado de forma totalmente segura ao portal do Departamento Regional correspondente.",
+        "Ao carregar a nova página, verifique na barra de endereços do seu navegador se o domínio termina estritamente com '.senac.br' (por exemplo, 'sp.senac.br' ou 'rj.senac.br').",
+        "Na página do curso desejado, confira atentamente as informações obrigatórias: pré-requisitos, carga horária, conteúdo programático, modalidade e documentos exigidos para matrícula.",
+        "Caso o curso seja pago, realize transações financeiras apenas dentro do ambiente seguro do portal oficial, desconfiando de cobranças de taxas de inscrição via Pix ou boletos enviados por canais informais como WhatsApp."
+      ],
+      "fontes": [
+        "https://www.senac.br",
+        "https://www.dn.senac.br",
+        "https://www.ead.senac.br"
+      ],
+      "fontes_resolvidas": [],
+      "sparse": false
+    }
+  },
+  "drafts": {
+    "1": {
+      "page_number": 1,
+      "page_type": "LANDING PAGE",
+      "format": "lp_json",
+      "content": "{\"hero_title\": \"Cursos Senac em 2026\", \"hero_subtitle\": \"Estrutura, modalidades e vagas gratuitas em 2026 — toque abaixo e veja como escolher por onde começar\", \"article_title\": \"Guia de Cursos Senac: Entenda Como Funciona a Estrutura em 2026\", \"intro\": \"<p>Encontrar a qualificação ideal em uma instituição tão grande pode parecer complexo, pois cada região possui regras próprias de seleção. Este guia explica a estrutura dos <strong>cursos Senac</strong> de forma simplificada para que você saiba exatamente onde procurar a sua vaga em 2026.</p>\", \"sections\": [{\"title\": \"Por que existe mais de um Senac no Brasil?\", \"body\": \"<p>O Senac é estruturado de forma descentralizada para atender às demandas específicas do mercado de trabalho de cada região. A instituição é administrada pela <strong>Confederação Nacional do Comércio de Bens, Serviços e Turismo (CNC)</strong> e se divide em unidades autônomas.</p><p>Na prática, o sistema conta com um <strong>Departamento Nacional</strong> e diversos <strong>Departamentos Regionais</strong>. Essa divisão permite que cada estado adapte o seu portfólio de cursos de acordo com as necessidades locais.</p>\"}, {\"title\": \"Os tipos de curso que convivem no mesmo catálogo\", \"body\": \"<p>1️⃣ Os <strong>cursos Livres</strong> são focados em formação rápida e qualificação profissional para quem deseja se atualizar.</p><p>2️⃣ Os <strong>cursos Técnicos</strong> de nível médio preparam o estudante para profissões específicas com foco prático.</p><p>3️⃣ As opções de <strong>Graduação, Pós-graduação e Extensão</strong> atendem ao ensino superior, além das vagas de Aprendizagem Profissional.</p>\"}, {\"title\": \"Quem tem direito às vagas sem mensalidade?\", \"body\": \"<ul><li><strong>Renda familiar</strong>: O candidato deve possuir renda familiar per capita compatível com as regras de baixa renda da instituição.</li><li><strong>Edital ativo</strong>: É necessário acompanhar as publicações do <strong>Programa Senac de Gratuidade (PSG)</strong> do respectivo estado.</li></ul><p>Para concorrer, basta comprovar os requisitos de seleção e apresentar a documentação básica exigida pelo <strong>Departamento Regional</strong> correspondente.</p>\"}, {\"title\": \"O que costuma mudar de um estado para outro\", \"body\": \"<ul><li><strong>Calendário de inscrições</strong>: As datas de abertura de turmas variam de acordo com a região.</li><li><strong>Oferta de vagas</strong>: Nem todo curso disponível em um estado estará ativo em outro.</li></ul><p>Toda essa gestão descentralizada é coordenada sob a supervisão da <strong>Confederação Nacional do Comércio de Bens, Serviços e Turismo (CNC)</strong>, garantindo a qualidade do ensino nacional.</p>\"}], \"faq\": [{\"q\": \"O Senac é igual em todos os estados?\", \"a\": \"Não. O Senac funciona de forma descentralizada por meio de Departamentos Regionais autônomos, o que significa que cada estado define seu próprio calendário, valores e portfólio de cursos.\"}, {\"q\": \"Como funciona o Programa Senac de Gratuidade?\", \"a\": \"Depende. O programa, conhecido como PSG, oferece bolsas de estudo para pessoas que atendem aos critérios de baixa renda, mas as vagas e os editais de seleção variam conforme o estado.\"}, {\"q\": \"É possível fazer cursos do Senac pela internet?\", \"a\": \"Sim. O estudante pode optar pelos cursos oferecidos pelo Senac EAD, que disponibiliza opções em nível livre, técnico, graduação e pós-graduação de forma online.\"}, {\"q\": \"Os cursos técnicos do Senac exigem ensino médio completo?\", \"a\": \"Depende. Cada curso técnico possui pré-requisitos específicos de escolaridade e idade mínima, que devem ser consultados diretamente no edital da unidade de interesse.\"}, {\"q\": \"Como fazer a inscrição em um curso?\", \"a\": \"Depende. A inscrição pode ser feita de forma online pelo site do Departamento Regional do seu estado ou presencialmente em uma unidade física, apresentando os documentos exigidos.\"}], \"transition\": \"<p>Agora que você entende a estrutura do Senac, o próximo passo é identificar o melhor caminho para o seu objetivo atual. Veja as opções de guias detalhados nos botões abaixo.</p>\", \"cta_texts\": [\"Como escolher por onde começar no Senac »\", \"Ver a diferença entre os tipos de curso do Senac »\", \"Onde encontrar bolsas de estudo do Senac sem mensalidade »\"]}",
+      "word_count": 614
+    },
+    "2": {
+      "page_number": 2,
+      "page_type": "HUB",
+      "format": "gutenberg",
+      "content": "<!-- wp:paragraph --><p><strong>Toque na opção certa e encontre o caminho ideal para iniciar seus estudos no Senac em 2026 ✅</strong></p><!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#008353\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/tipos-de-curso-senac-p1\" style=\"border-radius:10px;background-color:#008353\"><strong>📚 Entender a diferença entre os tipos de curso do Senac »</strong></a></div>\n<!-- /wp:button -->\n<!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#ea580c\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/bolsas-de-estudo-senac-p2\" style=\"border-radius:10px;background-color:#ea580c\"><strong>🎓 Onde encontrar as bolsas de estudo do Senac por estado »</strong></a></div>\n<!-- /wp:button -->\n<!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#2563eb\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/portal-do-senac-do-seu-estado-p3\" style=\"border-radius:10px;background-color:#2563eb\"><strong>💻 Como confirmar que você está no portal do Senac do seu estado certo »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\nO Serviço Nacional de Aprendizagem Comercial (Senac) é a principal referência em formação voltada ao comércio de bens, serviços e turismo no Brasil. Mas, com tantas opções de qualificação e diferentes portais regionais, a dúvida mais comum para quem quer estudar é: <strong>qual é a sua situação hoje?</strong>\n\nSe o seu caso é que você ainda mistura curso livre, curso técnico e curso superior e não sabe qual serve para o seu objetivo, toque no caminho de Tipos de curso do Senac: livre, técnico e superior no mesmo portal.\n\nSe o seu caso é que você quer uma vaga sem mensalidade e não sabe em que página ela é realmente anunciada, toque no caminho de Bolsas de estudo do Senac: onde cada estado publica as vagas sem mensalidade.\n\nSe o seu caso é que você encontrou um site que diz ser do Senac e quer ter certeza de que é o do seu estado, toque no caminho de Portal do Senac do seu estado: como confirmar que você está no lugar certo.\n\n<!-- wp:heading -->\n<h2>Quem ainda não decidiu o tipo de curso</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>O primeiro passo para ingressar na instituição é entender qual modalidade de ensino se alinha com seus objetivos profissionais.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>O Senac oferece desde cursos rápidos de qualificação até formações mais longas e profundas, tanto na modalidade presencial quanto por meio do Senac EAD (Educação a Distância).</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Os Cursos Livres, também conhecidos como Formação Inicial e Continuada, são voltados para uma rápida inserção ou atualização no mercado de trabalho.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Já os cursos técnicos de nível médio e os cursos de nível superior exigem requisitos específicos de escolaridade que são determinados pelas diretrizes do Ministério da Educação (MEC).</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:pullquote {\"style\":{\"spacing\":{\"margin\":{\"top\":\"28px\",\"bottom\":\"28px\"}}}} -->\n<figure class=\"wp-block-pullquote\" style=\"margin:28px 0\"><blockquote><p>Compreender as exigências de escolaridade de cada nível evita que você faça uma inscrição incompatível com seu histórico escolar.</p></blockquote></figure>\n<!-- /wp:pullquote -->\n\n<!-- wp:paragraph -->\n<p>Se você quer entender detalhadamente a diferença de duração, foco profissional e requisitos de cada modalidade antes de escolher a sua formação:</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#008353\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/tipos-de-curso-senac-p1\" style=\"border-radius:10px;background-color:#008353\"><strong>📚 Ver o guia completo de tipos de curso do Senac »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n\n<!-- wp:heading -->\n<h2>Quem quer saber onde as vagas sem mensalidade são anunciadas</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Para quem busca estudar sem custo, o Programa Senac de Gratuidade (PSG) é a principal iniciativa de inclusão da instituição. Ele é destinado exclusivamente a pessoas de baixa renda que atendam aos critérios de elegibilidade estabelecidos pelo programa.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>O principal critério de seleção é a renda familiar per capita do candidato. Como o Senac é descentralizado, cada Departamento Regional gerencia as suas próprias vagas e publica os editais de seleção de forma independente.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:html -->\n<ul style=\"list-style:none;padding:0;margin:24px 0\">\n<li style=\"padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px\">✔️ Comprovar renda familiar per capita compatível com as regras do PSG</li>\n<li style=\"padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px\">✔️ Acompanhar as publicações de editais no portal do seu estado</li>\n</ul>\n<!-- /wp:html -->\n\n<!-- wp:paragraph -->\n<p>Para descobrir onde os editais de gratuidade do seu estado são publicados e como funciona o preenchimento de vagas por ordem de inscrição:</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#ea580c\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/bolsas-de-estudo-senac-p2\" style=\"border-radius:10px;background-color:#ea580c\"><strong>🎓 Ver o guia de bolsas de estudo do Senac por estado »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n\n<!-- wp:heading -->\n<h2>Quem só quer confirmar se o site é mesmo do Senac</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Com o aumento de páginas informativas e canais de terceiros na internet, é fundamental saber identificar os canais oficiais de atendimento do Senac para evitar páginas enganosas que cobram taxas por inscrições que deveriam ser gratuitas.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Os endereços eletrônicos institucionais terminam obrigatoriamente com o domínio oficial da instituição.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Além disso, para quem já concluiu uma formação e precisa atestar a validade do seu documento, existem ferramentas de verificação pública disponibilizadas pelos departamentos regionais, como ocorre no Senac SP.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:table {\"className\":\"is-style-stripes\"} -->\n<figure class=\"wp-block-table is-style-stripes\"><table><thead><tr><th>Canal Seguro</th><th>Sinal de Alerta</th></tr></thead><tbody><tr><td>Endereço terminado em .senac.br</td><td>Páginas com finais genéricos que pedem pagamentos de taxas</td></tr><tr><td>Consulta pública de certificados oficial</td><td>Validação de documentos fora do ambiente institucional</td></tr></tbody></table></figure>\n<!-- /wp:table -->\n\n<!-- wp:paragraph -->\n<p>Para evitar fraudes e garantir que as suas informações estão protegidas, o passo mais importante é validar o endereço eletrônico do portal regional antes de preencher qualquer cadastro.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#2563eb\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/portal-do-senac-do-seu-estado-p3\" style=\"border-radius:10px;background-color:#2563eb\"><strong>💻 Como confirmar que você está no portal do Senac do seu estado certo »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n\n<!-- wp:paragraph -->\n<p>Tomar a decisão correta e acessar o ambiente virtual adequado para o seu caso é o melhor caminho para garantir sua qualificação profissional em 2026 de forma segura.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>👉 <a href=\"https://creditoup.com.br/rec/tipos-de-curso-senac-p1\">Como descobrir qual tipo de curso do Senac melhor atende ao seu objetivo profissional »</a></p>\n<!-- /wp:paragraph -->\n\nAviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.",
+      "word_count": 764
+    },
+    "3": {
+      "page_number": 3,
+      "page_type": "SOLUTION",
+      "format": "gutenberg",
+      "content": "<!-- wp:paragraph -->\n<p>Muitos estudantes entram no portal de ensino sem entender a diferença entre as modalidades e acabam escolhendo a formação errada para seu momento de carreira.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Este guia prático descomplica o catálogo do <strong>Serviço Nacional de Aprendizagem Comercial (Senac)</strong> para você identificar o curso ideal e alcançar seus objetivos profissionais.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#008353\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/bolsas-de-estudo-senac-p2\" style=\"border-radius:10px;background-color:#008353\"><strong>Ver o guia de Bolsas de estudo do Senac »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">Curso livre de qualificação profissional</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Os <strong>cursos livres</strong> são focados em quem precisa de rápida inserção ou atualização no mercado de trabalho. Eles possuem curta duração e abordam competências bem específicas do cotidiano das empresas, sem a necessidade de comprovação de escolaridade complexa na maioria das vezes.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:pullquote {\"style\":{\"spacing\":{\"margin\":{\"top\":\"28px\",\"bottom\":\"28px\"}}}} -->\n<figure class=\"wp-block-pullquote\" style=\"margin:28px 0\"><blockquote><p>A qualificação rápida é a porta de entrada mais dinâmica para o setor de comércio e serviços.</p></blockquote></figure>\n<!-- /wp:pullquote -->\n\n<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">Curso tecnico de nivel medio</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Para quem busca uma formação profissionalizante mais robusta, o <strong>curso técnico</strong> é o caminho ideal. Ele tem um foco extremamente prático e é estruturado para atender às demandas reais das indústrias e empresas regionais.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Diferente das qualificações rápidas, as formações técnicas exigem que o aluno esteja cursando ou já tenha concluído o ensino médio, garantindo uma habilitação profissional reconhecida pelo <strong>Ministério da Educação (MEC)</strong>.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:table {\"className\":\"is-style-stripes\"} -->\n<figure class=\"wp-block-table is-style-stripes\"><table><thead><tr><th>Tipo de Curso</th><th>Foco e Estrutura</th></tr></thead><tbody><tr><td>Curso Livre</td><td>Rápido, pontual e voltado para atualização imediata.</td></tr><tr><td>Curso Técnico</td><td>Profissionalizante, prático e focado no mercado de trabalho.</td></tr></tbody></table></figure>\n<!-- /wp:table -->\n\n<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">Graduacao, tecnologo e pos-graduacao</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>A educação superior da instituição é composta por cursos de bacharelado, licenciatura e tecnólogo, além de especializações na pós-graduação. O <strong>Centro Universitário Senac</strong> destaca-se pela excelência acadêmica e é credenciado com nota máxima pelo órgão federal de educação.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:group {\"style\":{\"color\":{\"background\":\"#f1f5f9\"},\"spacing\":{\"padding\":{\"top\":\"24px\",\"right\":\"26px\",\"bottom\":\"24px\",\"left\":\"26px\"},\"margin\":{\"top\":\"24px\",\"bottom\":\"24px\"}},\"border\":{\"radius\":\"12px\"}},\"layout\":{\"type\":\"constrained\"}} -->\n<div class=\"wp-block-group has-background\" style=\"border-radius:12px;background-color:#f1f5f9;margin:24px 0;padding:24px 26px\">\n<!-- wp:heading {\"level\":3} -->\n<h3 class=\"wp-block-heading\">Níveis Superiores Oferecidos</h3>\n<!-- /wp:heading -->\n<!-- wp:list -->\n<ul class=\"wp-block-list\">\n<!-- wp:list-item -->\n<li><strong>Tecnólogo:</strong> formação superior rápida focada na prática do mercado.</li>\n<!-- /wp:list-item -->\n<!-- wp:list-item -->\n<li><strong>Bacharelado e Licenciatura:</strong> formação ampla para diferentes áreas de atuação.</li>\n<!-- /wp:list-item -->\n<!-- wp:list-item -->\n<li><strong>Pós-graduação:</strong> especializações para profissionais graduados que buscam destaque.</li>\n<!-- /wp:list-item -->\n</ul>\n<!-- /wp:list -->\n</div>\n<!-- /wp:group -->\n\n<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">Presencial, a distancia e as formas mistas</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>As formações do catálogo estão disponíveis em diferentes modalidades para se adaptar à rotina de cada estudante: presencial, a distância (EAD) e mista (híbrida ou flexível).</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Para navegar pelo catálogo de cursos e encontrar o formato ideal, siga o passo a passo estruturado abaixo:</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:html -->\n<div style=\"margin:24px 0\">\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">1</div>\n<div><div style=\"margin:0;font-weight:700\">Acesse o portal oficial</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Abra o site do Senac EAD ou o 👉 <a href=\"https://www.sp.senac.br\">portal oficial do Senac São Paulo</a> para iniciar sua busca.</div></div>\n</div>\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">2</div>\n<div><div style=\"margin:0;font-weight:700\">Abra a categoria de cursos</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">No menu superior ou lateral, clique na opção 'Cursos' para visualizar os níveis de ensino disponíveis.</div></div>\n</div>\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">3</div>\n<div><div style=\"margin:0;font-weight:700\">Filtre a sua busca</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Selecione o nível de ensino desejado e utilize os filtros de área de conhecimento ou modalidade.</div></div>\n</div>\n</div>\n<!-- /wp:html -->\n\n<!-- wp:paragraph -->\n<p>Como cada regional possui autonomia para gerenciar suas próprias turmas, é muito comum que os estudantes fiquem em dúvida se estão no endereço correto da sua região.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Se você encontrou um site e quer ter certeza de que é o Portal do Senac do seu estado para confirmar que você está no lugar certo, o próximo passo ensina como validar o endereço eletrônico com segurança.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#ea580c\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/portal-do-senac-do-seu-estado-p3\" style=\"border-radius:10px;background-color:#ea580c\"><strong>Como confirmar o Portal do Senac do seu estado »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">Como o catalogo do regional sinaliza cada nivel</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>No catálogo dos portais regionais e nacional, cada nível e modalidade é sinalizado de forma clara por meio de etiquetas visuais nos cards dos cursos (como 'Livre | Presencial' ou 'Técnico | EAD') e filtros de navegação que facilitam a escolha do estudante.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:group {\"style\":{\"color\":{\"background\":\"#eff6ff\"},\"spacing\":{\"padding\":{\"top\":\"20px\",\"right\":\"22px\",\"bottom\":\"20px\",\"left\":\"22px\"},\"margin\":{\"top\":\"24px\",\"bottom\":\"24px\"}},\"border\":{\"radius\":\"10px\",\"left\":{\"color\":\"#2563eb\",\"width\":\"5px\"}}},\"layout\":{\"type\":\"constrained\"}} -->\n<div class=\"wp-block-group has-background\" style=\"border-left-color:#2563eb;border-left-width:5px;border-radius:10px;background-color:#eff6ff;margin:24px 0;padding:20px 22px\">\n<!-- wp:paragraph --><p><strong>💡 Dica:</strong> Sempre confira as etiquetas de modalidade antes de realizar a matrícula para garantir que o formato de aulas se adequa à sua rotina semanal.</p><!-- /wp:paragraph -->\n</div>\n<!-- /wp:group -->\n\n<!-- wp:details -->\n<details class=\"wp-block-details\"><summary>Os cursos do Senac EAD são reconhecidos pelo MEC?</summary><!-- wp:paragraph -->\n<p>Sim. O Centro Universitário Senac possui credenciamento e nota máxima de avaliação junto ao Ministério da Educação para suas ofertas de ensino superior e técnico.</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->\n\n<!-- wp:details -->\n<details class=\"wp-block-details\"><summary>O que significa a etiqueta mista nos cursos?</summary><!-- wp:paragraph -->\n<p>Depende. A sinalização mista indica que o curso possui atividades a distância combinadas com encontros presenciais obrigatórios na unidade de ensino escolhida.</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->\n\n<!-- wp:paragraph -->\n<p>Se você deseja encontrar oportunidades de formação sem mensalidade na sua região, confira também o nosso guia prático sobre como funcionam os processos de seleção locais. 👉 <a href=\"https://creditoup.com.br/rec/bolsas-de-estudo-senac-p2\">Como ver as vagas sem mensalidade »</a></p>\n<!-- /wp:paragraph -->\n\n<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</p>",
+      "word_count": 695
+    },
+    "4": {
+      "page_number": 4,
+      "page_type": "SOLUTION",
+      "format": "gutenberg",
+      "content": "<!-- wp:paragraph -->\n<p>Conseguir uma vaga de estudo gratuita no Senac pode parecer um desafio quando você não sabe em qual página ela é realmente anunciada.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Este guia prático revela onde cada estado publica suas vagas sem mensalidade e como acessar o <strong>Portal do Senac do seu estado: como confirmar que voce esta no lugar certo</strong>.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#008353\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/portal-do-senac-do-seu-estado-p3\" style=\"border-radius:10px;background-color:#008353\"><strong>Ver o guia do Portal do Senac do seu estado »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2>Como o Senac chama as vagas sem mensalidade</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>O Serviço Nacional de Aprendizagem Comercial (SENAC) centraliza suas ofertas de capacitação gratuita sob uma iniciativa específica chamada <strong>Programa Senac de Gratuidade (PSG)</strong>.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Por força de lei, o equivalente a <a href=\"https://www.sp.senac.br/programa-senac-de-gratuidade\">66,67 %</a> da receita de contribuição compulsória líquida da instituição é revertido em vagas gratuitas desde 2014.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:pullquote {\"style\":{\"spacing\":{\"margin\":{\"top\":\"28px\",\"bottom\":\"28px\"}}}} -->\n<figure class=\"wp-block-pullquote\" style=\"margin:28px 0\"><blockquote><p>O PSG não é um sorteio, mas sim um processo seletivo baseado em critérios socioeconômicos claros e regras estaduais.</p></blockquote></figure>\n<!-- /wp:pullquote -->\n\n<!-- wp:heading -->\n<h2>Por que a lista de bolsas fica no site de cada estado</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Embora o Senac seja uma marca de alcance nacional, a sua administração é descentralizada. Cada unidade federativa possui o seu próprio <strong>Departamento Regional (DR)</strong>, que atua de forma autônoma para gerenciar os recursos e definir os cursos oferecidos.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Isso significa que não existe um sistema nacional unificado para se inscrever. Cada DR avalia a demanda do mercado de trabalho local e publica os seus editais de forma independente, com datas e vagas específicas para a sua região.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:table {\"className\":\"is-style-stripes\"} -->\n<figure class=\"wp-block-table is-style-stripes\"><table><thead><tr><th>Modelo de Gestão</th><th>Como Funciona no Senac</th></tr></thead><tbody><tr><td>Administração Regional</td><td>Cada estado publica seus próprios editais e cronogramas.</td></tr><tr><td>Foco no Mercado Local</td><td>Os cursos oferecidos dependem das necessidades de emprego de cada região.</td></tr></tbody></table></figure>\n<!-- /wp:table -->\n\n<!-- wp:heading -->\n<h2>O que a pagina de bolsas costuma informar</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Ao acessar o portal correto da sua região, você encontrará todas as regras do processo seletivo. Essas páginas são essenciais para que o candidato entenda o funcionamento das inscrições em 2026.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:html -->\n<ul style=\"list-style:none;padding:0;margin:24px 0\">\n<li style=\"padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px\">✔️ Editais vigentes e cronograma completo de seleção</li>\n<li style=\"padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px\">✔️ Relação de cursos com vagas abertas e carga horária</li>\n<li style=\"padding:10px 14px;margin:6px 0;background:#f8fafc;border-radius:8px\">✔️ Pré-requisitos específicos de idade e escolaridade</li>\n</ul>\n<!-- /wp:html -->\n\n<!-- wp:heading -->\n<h2>O que o Senac pede de quem se candidata</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Para concorrer a uma das vagas sem custo, o interessado deve cumprir os requisitos estabelecidos pelo programa de gratuidade. O principal critério é a comprovação de baixa renda.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Os candidatos precisam declarar que possuem renda familiar mensal per capita de até dois salários mínimos federais. Além disso, é necessário comprovar a escolaridade mínima exigida para o curso escolhido.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:details -->\n<details class=\"wp-block-details\"><summary>Posso me inscrever em mais de um curso ao mesmo tempo?</summary><!-- wp:paragraph -->\n<p>Não. Para garantir que mais pessoas tenham acesso ao benefício, a maioria dos editais impede a matrícula simultânea em dois cursos gratuitos.</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->\n\n<!-- wp:details -->\n<details class=\"wp-block-details\"><summary>O material didático está incluso na bolsa de estudos?</summary><!-- wp:paragraph -->\n<p>Sim. Os cursos oferecidos pelo Programa Senac de Gratuidade garantem todo o material necessário para as aulas sem qualquer custo adicional para o aluno selecionado.</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->\n\n<!-- wp:heading -->\n<h2>Como chegar a pagina de bolsas do Senac do seu estado</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>O caminho mais seguro para garantir sua inscrição é utilizar os canais digitais oficiais de cada regional. Evite intermediários ou sites que cobram por cadastros, pois o processo é totalmente gratuito.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:html -->\n<div style=\"margin:24px 0\">\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">1</div>\n<div><div style=\"margin:0;font-weight:700\">Acesse o portal oficial da sua região</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Utilize o <a href=\"https://www.senacrs.com.br/hotsite/psg/\">hotsite oficial do Programa Senac de Gratuidade do Rio Grande do Sul</a> ou o portal correspondente ao seu estado.</div></div>\n</div>\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">2</div>\n<div><div style=\"margin:0;font-weight:700\">Consulte o edital vigente</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Leia atentamente as regras de seleção e os prazos de inscrição estabelecidos para a sua localidade.</div></div>\n</div>\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">3</div>\n<div><div style=\"margin:0;font-weight:700\">Preencha a autodeclaração de renda</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Faça o cálculo da renda per capita da sua residência e anexe os documentos solicitados no formulário de inscrição.</div></div>\n</div>\n</div>\n<!-- /wp:html -->\n\n<!-- wp:paragraph -->\n<p>Para evitar cair em páginas falsas ou clonadas que tentam se passar pela instituição, preparamos um passo a passo detalhado para você navegar em segurança.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Se você encontrou um site que diz ser do Senac e quer ter certeza absoluta, o próximo passo lógico é acessar o nosso material explicativo sobre o <strong>Portal do Senac do seu estado: como confirmar que voce esta no lugar certo</strong>.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#ea580c\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/rec/portal-do-senac-do-seu-estado-p3\" style=\"border-radius:10px;background-color:#ea580c\"><strong>Como confirmar o Portal do Senac do seu estado »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Se você deseja consultar mais informações diretamente com a instituição, recomendamos acessar a 👉 <a href=\"https://www.sp.senac.br/programa-senac-de-gratuidade\">página de consulta do canal oficial</a> para verificar as vagas disponíveis na sua região.</p>\n<!-- /wp:paragraph -->\n\n<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</p>",
+      "word_count": 719
+    },
+    "5": {
+      "page_number": 5,
+      "page_type": "SOLUTION",
+      "format": "gutenberg",
+      "content": "<!-- wp:paragraph -->\n<p>Encontrar o curso ideal para mudar de carreira é excelente, mas deparar-se com páginas confusas na internet que imitam instituições conhecidas gera insegurança.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Se você quer garantir que está acessando o portal oficial do seu estado com total segurança, este guia rápido ajuda a confirmar a autenticidade do endereço antes de preencher qualquer cadastro.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#008353\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/credito-do-trabalhador-o-que-perguntar-antes-de-aceitar-a-oferta-no-app/\" style=\"border-radius:10px;background-color:#008353\"><strong>Ver o guia de crédito do trabalhador no aplicativo »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2>Por que não existe um endereço único para todos os estados</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>O <strong>Serviço Nacional de Aprendizagem Comercial (SENAC)</strong> opera sob um modelo de gestão descentralizado em todo o território nacional.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Essa autonomia administrativa significa que cada unidade federativa possui o seu próprio Departamento Regional (DR), responsável por gerenciar as matrículas, os cursos disponíveis e as parcerias locais.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Como consequência dessa estrutura, não há uma plataforma única de matrículas para o país inteiro.</p>\n<!-- /wp:paragraph -->\n<!-- wp:paragraph -->\n<p>Cada estado mantém um portal independente, adaptado às necessidades da economia local e alinhado com as diretrizes da Confederação Nacional do Comércio de Bens, Serviços e Turismo (CNC) e do Ministério da Educação (MEC).</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:list -->\n<ul>\n<!-- wp:list-item -->\n<li><strong>Autonomia regional:</strong> Cada estado define seu próprio calendário de turmas e ofertas de cursos.</li>\n<!-- /wp:list-item -->\n<!-- wp:list-item -->\n<li><strong>Foco local:</strong> As vagas são distribuídas conforme as demandas do comércio de cada região.</li>\n<!-- /wp:list-item -->\n</ul>\n<!-- /wp:list -->\n\n<!-- wp:pullquote {\"style\":{\"spacing\":{\"margin\":{\"top\":\"28px\",\"bottom\":\"28px\"}}}} -->\n<figure class=\"wp-block-pullquote\" style=\"margin:28px 0\"><blockquote><p>A descentralização administrativa garante que cada região atenda de forma direta às demandas profissionais do comércio local.</p></blockquote></figure>\n<!-- /wp:pullquote -->\n\n<!-- wp:heading -->\n<h2>Como chegar ao portal do Senac do seu estado</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>O caminho mais seguro para encontrar o endereço correto do seu estado é iniciar a navegação pela página central nacional, que serve como um redirecionador verificado para todas as regionais do país.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Para evitar intermediários ou portais falsos, siga o procedimento recomendado de navegação direta pelo sistema de redirecionamento:</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:html -->\n<div style=\"margin:24px 0\">\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">1</div>\n<div><div style=\"margin:0;font-weight:700\">Acesse o portal nacional</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Abra o site central seguro da instituição pelo endereço principal.</div></div>\n</div>\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">2</div>\n<div><div style=\"margin:0;font-weight:700\">Selecione sua região</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Use o mapa ou o menu de seleção de estados para encontrar a sua localidade.</div></div>\n</div>\n<div style=\"display:flex;gap:14px;align-items:flex-start;margin-bottom:16px\">\n<div style=\"flex:0 0 34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center\">3</div>\n<div><div style=\"margin:0;font-weight:700\">Verifique o redirecionamento</div><div style=\"margin:3px 0 0;color:#475569;font-size:0.95em\">Confirme se o novo endereço no navegador termina estritamente em \".senac.br\".</div></div>\n</div>\n</div>\n<!-- /wp:html -->\n\n<!-- wp:html -->\n<style>.vw{--vw-tinta:#111;--vw-corpo:#46494c;--vw-fraca:#6b7074;--vw-linha:#e3e6e8;\n--vw-papel:#f6f8f9;--vw-marca:#077793;--vw-marca-fraca:#e6f1f4;--vw-raio:12px;\nbox-sizing:border-box;margin:2em 0;padding:0;border:1px solid var(--vw-linha);\nborder-radius:var(--vw-raio);background:#fff;color:var(--vw-corpo);\nfont-family:inherit;font-size:.95em;line-height:1.6;overflow:hidden;\nbox-shadow:0 1px 2px rgba(17,17,17,.04),0 4px 16px rgba(17,17,17,.05)}\n.vw *,.vw *::before,.vw *::after{box-sizing:border-box}\n.vw h3,.vw h4{margin:0;color:var(--vw-tinta);font-family:inherit;font-weight:600;\nletter-spacing:normal}\n.vw ul{margin:0;padding:0;list-style:none}\n\n/* cabeçalho — o sobrolho é a MESMA face em caixa alta, não uma face de fora */\n.vw-top{padding:1.15em 1.15em 1em;border-bottom:1px solid var(--vw-linha)}\n.vw-olho{display:block;margin:0 0 .5em;font-size:.66em;font-weight:700;line-height:1;\nletter-spacing:.09em;text-transform:uppercase;color:var(--vw-marca)}\n.vw-tit{font-size:1.14em;line-height:1.3}\n.vw-sub{margin:.4em 0 0;font-size:.85em;color:var(--vw-fraca)}\n\n/* controles */\n.vw-ctls{padding:1.15em;display:grid;gap:.9em}\n.vw-rot{display:block;margin:0 0 .4em;font-size:.8em;font-weight:600;color:var(--vw-corpo)}\n.vw-sel{display:block;width:100%;min-height:48px;padding:0 2.4em 0 .85em;\nborder:1px solid var(--vw-linha);border-radius:8px;background:#fff;color:var(--vw-corpo);\nfont:inherit;font-size:.95em;-webkit-appearance:none;appearance:none;cursor:pointer;\nbackground-image:linear-gradient(45deg,transparent 50%,var(--vw-fraca) 50%),\nlinear-gradient(135deg,var(--vw-fraca) 50%,transparent 50%);\nbackground-position:calc(100% - 20px) 21px,calc(100% - 14px) 21px;\nbackground-size:6px 6px,6px 6px;background-repeat:no-repeat}\n.vw-sel:hover{border-color:var(--vw-marca)}\n.vw-bts{display:flex;flex-wrap:wrap;gap:.5em}\n.vw-bt{min-height:48px;padding:0 1em;border:1px solid var(--vw-linha);border-radius:8px;\nbackground:#fff;color:var(--vw-corpo);font:inherit;font-size:.9em;font-weight:600;\ncursor:pointer;transition:border-color .16s ease,background-color .16s ease}\n.vw-bt:hover{border-color:var(--vw-marca)}\n.vw-bt[aria-pressed=\"true\"]{border-color:var(--vw-marca);background:var(--vw-marca-fraca);\ncolor:var(--vw-marca)}\n/* o anel de foco NUNCA sai — é o único caminho de quem navega por teclado */\n.vw-sel:focus-visible,.vw-bt:focus-visible{outline:2px solid var(--vw-marca);outline-offset:2px}\n\n/* resultado — todos os cenários na MESMA célula do grid: nada reflui */\n.vw-out{display:grid;padding:0 1.15em 1.15em}\n.vw-cen{grid-area:1/1;visibility:hidden;opacity:0;transition:opacity .16s ease}\n.vw-cen[style*=\"visible\"]{opacity:1}\n.vw-caixa{padding:1em;border:1px solid var(--vw-linha);border-left:3px solid var(--vw-marca);\nborder-radius:8px;background:var(--vw-papel)}\n.vw-chip{display:inline-block;margin:0 0 .6em;padding:.25em .6em;border-radius:999px;\nfont-size:.7em;font-weight:700;line-height:1.5;letter-spacing:.05em;text-transform:uppercase}\n.vw-ctit{font-size:1em;line-height:1.35}\n.vw-corpo{margin:.5em 0 0;font-size:.92em}\n\n/* tons — chip tonal (Material), e o rótulo diz em TEXTO o que a cor diz em cor */\n.vw-t-neutro .vw-caixa{border-left-color:var(--vw-marca)}\n.vw-t-neutro .vw-chip{color:#0b5f75;background:var(--vw-marca-fraca)}\n.vw-t-ok .vw-caixa{border-left-color:#12724a;background:#f0f8f4}\n.vw-t-ok .vw-chip{color:#0f5c3c;background:#dff0e7}\n.vw-t-atencao .vw-caixa{border-left-color:#8a5300;background:#fdf7ec}\n.vw-t-atencao .vw-chip{color:#7a4a00;background:#f7e9cd}\n.vw-t-risco .vw-caixa{border-left-color:#a32b2b;background:#fdf2f1}\n.vw-t-risco .vw-chip{color:#8f2222;background:#f7dcda}\n\n/* trilha de passos — numerada porque a ordem É informação aqui */\n.vw-passos{margin:.9em 0 0;display:grid;gap:.5em;counter-reset:vwp}\n.vw ul.vw-passos li.vw-passo{position:relative;padding-left:2em;font-size:.92em;margin:0}\n/* ⚠️ SELETOR LONGO DE PROPÓSITO — o tema do site disputa este pseudo-elemento.\n   Medido em 19/08/2026 na página no ar: `.content ul li::before{content:\"•\"}`,\n   especificidade (0,1,2), vencia `.vw-passo::before` (0,1,1). O resultado era\n   uma bolinha no lugar do número — a trilha \"1, 2, 3\" virava três marcadores\n   iguais, e a ORDEM, que é a informação inteira de um passo a passo, sumia.\n   `.vw ul.vw-passos li.vw-passo` dá (0,3,2) e ganha sem `!important`. */\n.vw ul.vw-passos li.vw-passo::before{counter-increment:vwp;content:counter(vwp);\nposition:absolute;left:0;top:.15em;width:1.5em;height:1.5em;min-width:1.5em;\nborder-radius:50%;background:var(--vw-marca);color:#fff;padding:0;\nfont-size:.75em;font-weight:700;line-height:1.5em;text-align:center}\n\n/* listas nomeadas — prós, contras, cuidados */\n.vw-listas{margin:.9em 0 0;display:grid;gap:.8em}\n.vw-lrot{margin:0 0 .35em;font-size:.68em;font-weight:700;letter-spacing:.08em;\ntext-transform:uppercase;color:var(--vw-fraca)}\n.vw ul li.vw-litem{position:relative;padding-left:1em;font-size:.88em;margin:.25em 0 0}\n/* mesma disputa do `.vw-passo`: sem esta especificidade o tema devolve \"•\" */\n.vw ul li.vw-litem::before{content:\"\";position:absolute;left:0;top:.62em;\nwidth:6px;min-width:6px;height:1.5px;padding:0;background:var(--vw-fraca)}\n\n.vw-pe{padding:.8em 1.15em;border-top:1px solid var(--vw-linha);background:var(--vw-papel);\nfont-size:.78em;line-height:1.5;color:var(--vw-fraca)}\n\n@media (min-width:640px){\n.vw-ctls{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}\n.vw-listas{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}\n}\n/* quem pediu menos movimento recebe menos movimento */\n@media (prefers-reduced-motion:reduce){\n.vw-cen,.vw-bt{transition:none}\n}</style>\n<section class=\"vw\" id=\"vw-ee1c4acf0a\"><div class=\"vw-top\"><span class=\"vw-olho\">em que etapa você está</span><h3 class=\"vw-tit\">Confirme se você está no portal oficial do Senac do seu estado</h3><div class=\"vw-sub\">Selecione seu objetivo atual para ver as orientações de segurança e os próximos passos.</div><div class=\"vw-sub\">Orientação informativa: não consulta cadastros nem confirma elegibilidade, aprovação ou contratação.</div></div><div class=\"vw-ctls\"><div data-vw-ctl=\"etapa\" data-vw-valor=\"buscar\"><label class=\"vw-rot\" for=\"vw-ee1c4acf0a-etapa\">O que você precisa fazer agora?</label><select class=\"vw-sel\" id=\"vw-ee1c4acf0a-etapa\"><option value=\"buscar\" selected>Quero encontrar o site oficial do meu estado</option><option value=\"verificar\">Já estou em um site e quero conferir se é seguro</option><option value=\"gratuidade\">Quero me matricular em um curso gratuito</option></select></div></div><div class=\"vw-out\" aria-live=\"polite\"><div class=\"vw-cen vw-t-neutro\" data-vw-cen=\"1\" data-vw-quando=\"etapa=buscar\" style=\"visibility:visible\"><div class=\"vw-caixa\"><span class=\"vw-chip\">redirecionamento seguro</span><h4 class=\"vw-ctit\">Como acessar o portal correto do seu estado</h4><div class=\"vw-corpo\">O Senac é descentralizado e cada estado tem seu próprio portal. Para evitar páginas falsas, comece sempre pelo portal nacional oficial para ser redirecionado de forma segura.</div><ul class=\"vw-passos\"><li class=\"vw-passo\">Acesse o portal nacional oficial do Senac na internet.</li><li class=\"vw-passo\">Use o mapa ou o menu de seleção para encontrar o seu estado.</li><li class=\"vw-passo\">Toque no nome do estado para ir ao portal regional correspondente.</li></ul></div></div><div class=\"vw-cen vw-t-atencao\" data-vw-cen=\"1\" data-vw-quando=\"etapa=verificar\"><div class=\"vw-caixa\"><span class=\"vw-chip\">verificação de segurança</span><h4 class=\"vw-ctit\">Como confirmar a autenticidade da página</h4><div class=\"vw-corpo\">Páginas falsas costumam clonar a marca para aplicar golpes. Antes de preencher dados ou fazer pagamentos, verifique os detalhes do endereço e as informações do curso.</div><ul class=\"vw-passos\"><li class=\"vw-passo\">Olhe a barra de endereços e veja se o final é estritamente .senac.br.</li><li class=\"vw-passo\">Confira se a página detalha a carga horária, requisitos e conteúdo.</li><li class=\"vw-passo\">Evite pagar taxas por Pix ou boletos enviados por redes sociais.</li></ul></div></div><div class=\"vw-cen vw-t-ok\" data-vw-cen=\"1\" data-vw-quando=\"etapa=gratuidade\"><div class=\"vw-caixa\"><span class=\"vw-chip\">vagas gratuitas</span><h4 class=\"vw-ctit\">Como funciona o Programa Senac de Gratuidade</h4><div class=\"vw-corpo\">O programa oferece vagas para pessoas de baixa renda. O processo de inscrição é feito diretamente nos canais oficiais de cada Departamento Regional, sem intermediários.</div><ul class=\"vw-passos\"><li class=\"vw-passo\">Acesse o portal do Senac do seu estado seguindo o caminho seguro.</li><li class=\"vw-passo\">Procure pela seção do Programa Senac de Gratuidade na página.</li><li class=\"vw-passo\">Confira os requisitos de renda e escolaridade antes de se inscrever.</li></ul></div></div></div><div class=\"vw-pe\">Informações baseadas nas diretrizes de segurança e navegação do portal nacional do Senac.</div></section>\n<script>(function(){\nvar r=document.getElementById(\"vw-ee1c4acf0a\");\nif(!r){return;}\nvar ctl=r.querySelectorAll(\"[data-vw-ctl]\");\nvar cen=r.querySelectorAll(\"[data-vw-cen]\");\nfunction chave(){\nvar p=[];\nfor(var i=0;i<ctl.length;i++){\np.push(ctl[i].getAttribute(\"data-vw-ctl\")+\"=\"+ctl[i].getAttribute(\"data-vw-valor\"));\n}\nreturn p.join(\"|\");\n}\nfunction alvo(){\nvar k=chave();\nfor(var i=0;i<cen.length;i++){\nif(cen[i].getAttribute(\"data-vw-quando\")===k){return cen[i];}\n}\nfor(var j=0;j<cen.length;j++){\nif(cen[j].getAttribute(\"data-vw-padrao\")===\"1\"){return cen[j];}\n}\nreturn cen[0];\n}\nfunction pintar(){\nvar a=alvo();\nfor(var i=0;i<cen.length;i++){\ncen[i].style.visibility=(cen[i]===a)?\"visible\":\"hidden\";\n}\n}\nfor(var i=0;i<ctl.length;i++){\n(function(c){\nvar s=c.querySelector(\"select\");\nif(s){\ns.addEventListener(\"change\",function(){\nc.setAttribute(\"data-vw-valor\",s.value);\npintar();\n});\n}\nvar bs=c.querySelectorAll(\"button[data-vw-opt]\");\nfor(var k=0;k<bs.length;k++){\n(function(b){\nb.addEventListener(\"click\",function(){\nc.setAttribute(\"data-vw-valor\",b.getAttribute(\"data-vw-opt\"));\nfor(var m=0;m<bs.length;m++){\nbs[m].setAttribute(\"aria-pressed\",(bs[m]===b)?\"true\":\"false\");\n}\npintar();\n});\n})(bs[k]);\n}\n})(ctl[i]);\n}\npintar();\n})();</script>\n<!-- /wp:html -->\n\n<!-- wp:heading -->\n<h2>O que a página de um curso costuma informar</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>Ao acessar a página de uma modalidade de ensino legítima, o usuário deve encontrar informações detalhadas e transparentes sobre a formação. Portais oficiais prezam pela clareza pedagógica e estrutural de suas turmas.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>As informações básicas servem como um termômetro de autenticidade para o estudante identificar se está de fato em uma página oficial de ensino.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:columns {\"style\":{\"spacing\":{\"margin\":{\"top\":\"24px\",\"bottom\":\"24px\"}}}} -->\n<div class=\"wp-block-columns\"><!-- wp:column -->\n<div class=\"wp-block-column\"><!-- wp:paragraph --><p><strong>Dados do Curso:</strong> As páginas legítimas detalham a carga horária completa, a modalidade de ensino (presencial ou EAD) e o conteúdo programático de cada disciplina.</p><!-- /wp:paragraph --></div>\n<!-- /wp:column --><!-- wp:column -->\n<div class=\"wp-block-column\"><!-- wp:paragraph --><p><strong>Requisitos e Matrícula:</strong> Você encontra a lista clara de documentos exigidos e os pré-requisitos de escolaridade mínima para ingressar na turma.</p><!-- /wp:paragraph --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns -->\n\n<!-- wp:heading -->\n<h2>Cuidados com páginas que copiam a marca</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>O prestígio da instituição, que foi criada por decreto federal de 10 de janeiro de 1946 como uma entidade privada sem fins lucrativos voltada para a educação profissional, atrai a ação de páginas clonadas que tentam se passar pelo portal oficial.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Esses sites paralelos muitas vezes tentam vender vagas ou cobrar taxas de inscrição inexistentes, inclusive utilizando o nome de iniciativas legítimas de inclusão, como o <strong>Programa Senac de Gratuidade (PSG)</strong>, que oferece vagas gratuitas para pessoas de baixa renda sem cobrança de taxas.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>👉 <a href=\"https://creditoup.com.br/credito-do-trabalhador-o-que-perguntar-antes-de-aceitar-a-oferta-no-app/\">Como avaliar ofertas de crédito no aplicativo com segurança »</a></p>\n<!-- /wp:paragraph -->\n\n<!-- wp:group {\"style\":{\"color\":{\"background\":\"#fef2f2\",\"text\":\"#7f1d1d\"},\"spacing\":{\"padding\":{\"top\":\"22px\",\"right\":\"24px\",\"bottom\":\"22px\",\"left\":\"24px\"},\"margin\":{\"top\":\"24px\",\"bottom\":\"24px\"}},\"border\":{\"radius\":\"12px\",\"left\":{\"color\":\"#dc2626\",\"width\":\"5px\"}}},\"layout\":{\"type\":\"constrained\"}} -->\n<div class=\"wp-block-group has-text-color has-background\" style=\"border-left-color:#dc2626;border-left-width:5px;border-radius:12px;color:#7f1d1d;background-color:#fef2f2;margin:24px 0;padding:22px 24px\">\n<!-- wp:heading {\"level\":3} --><h3 class=\"wp-block-heading\">⚠️ Atenção</h3><!-- /wp:heading -->\n<!-- wp:paragraph --><p>Realize transações financeiras apenas dentro do ambiente seguro do portal oficial do seu estado. Desconfie imediatamente de cobranças de taxas de inscrição via Pix ou boletos enviados por canais informais de mensagens.</p><!-- /wp:paragraph -->\n</div>\n<!-- /wp:group -->\n\n<!-- wp:heading -->\n<h2>O que o Senac costuma exigir de quem conclui um curso</h2>\n<!-- /wp:heading -->\n\n<!-- wp:paragraph -->\n<p>A conclusão de qualquer curso e a respectiva emissão do certificado exigem o cumprimento de requisitos acadêmicos padronizados, independentemente do estado em que a formação foi realizada.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Esses critérios garantem a qualidade e a validade nacional do documento emitido para o mercado de trabalho.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:details -->\n<details class=\"wp-block-details\"><summary>Existe exigência de frequência para receber o certificado?</summary><!-- wp:paragraph -->\n<p>Sim. A instituição exige o cumprimento de uma frequência mínima obrigatória sobre a carga horária total das aulas para que o estudante tenha direito ao documento de conclusão.</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->\n\n<!-- wp:details -->\n<details class=\"wp-block-details\"><summary>Como funciona a avaliação de aprendizagem?</summary><!-- wp:paragraph -->\n<p>Depende do curso. Geralmente, o aluno precisa alcançar o aproveitamento pedagógico mínimo e a média mínima de 6,0 estabelecida nas avaliações teóricas ou práticas propostas pelos docentes.</p>\n<!-- /wp:paragraph --></details>\n<!-- /wp:details -->\n\n<!-- wp:paragraph -->\n<p>Para quem busca organizar as finanças de forma segura enquanto planeja novos passos profissionais ou investimentos em educação, entender o funcionamento de propostas financeiras em canais digitais é fundamental para evitar ciladas e garantir a segurança do orçamento doméstico.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button {\"width\":100,\"style\":{\"border\":{\"radius\":\"10px\"},\"color\":{\"background\":\"#ea580c\"}}} -->\n<div class=\"wp-block-button has-custom-width wp-block-button__width-100\"><a class=\"wp-block-button__link has-background wp-element-button\" href=\"https://creditoup.com.br/credito-do-trabalhador-o-que-perguntar-antes-de-aceitar-a-oferta-no-app/\" style=\"border-radius:10px;background-color:#ea580c\"><strong>Quero o passo a passo de crédito do trabalhador no app »</strong></a></div>\n<!-- /wp:button --></div><!-- /wp:buttons -->\n<!-- wp:paragraph {\"align\":\"center\"} --><p class=\"has-text-align-center\"><small><em>* Você permanece neste mesmo site *</em></small></p><!-- /wp:paragraph -->\n\n<!-- wp:paragraph -->\n<p>Manter a atenção ao navegar por portais educacionais e financeiros garante que seu esforço e investimento sejam aplicados em ambientes seguros e oficiais. Continue acompanhando nossas análises independentes para proteger suas decisões e dados no ambiente digital.</p>\n<!-- /wp:paragraph -->\n\n<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.</p>",
+      "word_count": 818
+    }
+  },
+  "seo": {
+    "1": {
+      "seotitle": "Cursos Senac 2026: Guia Completo de Estrutura e Vagas Gratuitas",
+      "metadescription": "Cursos Senac 2026: descubra como funciona a estrutura, tipos de curso e como conseguir vaga gratuita. Veja o passo a passo e escolha seu caminho!",
+      "keywordfocus": "cursos Senac 2026",
+      "slug": "cursos-senac-2026-guia-estrutura"
+    },
+    "2": {
+      "seotitle": "Cursos Senac 2026: Como Escolher, Bolsas e Portal Oficial",
+      "metadescription": "Descubra como escolher o curso Senac ideal em 2026, onde achar bolsas e como acessar o portal oficial. Veja o guia completo e evite erros!",
+      "keywordfocus": "cursos Senac 2026",
+      "slug": "cursos-senac-2026-como-escolher"
+    },
+    "3": {
+      "seotitle": "Cursos Senac 2026: Como Escolher a Modalidade Ideal para Você",
+      "metadescription": "Cursos Senac 2026: entenda diferenças entre técnico, livre e graduação. Descubra qual curso combina com seu objetivo. Veja o guia completo!",
+      "keywordfocus": "cursos Senac 2026",
+      "slug": "cursos-senac-2026-modalidades"
+    },
+    "4": {
+      "seotitle": "Vagas Gratuitas Senac 2026: Como Encontrar Bolsas no Seu Estado",
+      "metadescription": "Vagas gratuitas Senac 2026: descubra onde consultar bolsas no seu estado e como garantir sua inscrição. Veja o passo a passo completo agora!",
+      "keywordfocus": "vagas gratuitas Senac 2026",
+      "slug": "vagas-gratuitas-senac-2026"
+    },
+    "5": {
+      "seotitle": "Portal Senac Oficial: Como Identificar Site Seguro em 2026",
+      "metadescription": "Portal Senac oficial: aprenda a identificar o site verdadeiro do seu estado em 2026 e evite fraudes. Veja o passo a passo e proteja seus dados!",
+      "keywordfocus": "portal senac oficial",
+      "slug": "portal-senac-oficial-site-seguro"
+    }
+  },
+  "images": {
+    "1": "runs/guia-cursos-senac-20260917-220001/p1.webp",
+    "2": "runs/guia-cursos-senac-20260917-220001/p2.webp",
+    "3": "runs/guia-cursos-senac-20260917-220001/p3.webp",
+    "4": "runs/guia-cursos-senac-20260917-220001/p4.webp",
+    "5": "runs/guia-cursos-senac-20260917-220001/p5.webp"
+  },
+  "image_reviews": {
+    "1": {
+      "policy": "editorial-2026-09-17",
+      "sha256": "8289e5970cb929e2b7c446f2b840c787eba769aa917c13622cb22c3b4822de5b",
+      "accepted": true,
+      "review": {
+        "third_party_branding": false,
+        "official_document_or_interface": false,
+        "personal_data_or_qr": false,
+        "implied_approval_or_outcome": false,
+        "uncertain": false,
+        "evidence": "The image shows a woman studying at a desk with books, a notebook, a mug, and a tablet. There are no visible logos, wordmarks, official documents, personal data, QR codes, or any interface suggesting approval or completion of a service. All items are generic and unbranded."
+      }
+    },
+    "2": {
+      "policy": "editorial-2026-09-17",
+      "sha256": "f3c4c0d9738c33497f7948268201e48a4185c1d08231503d6a92f6079fcdc950",
+      "accepted": true,
+      "review": {
+        "third_party_branding": false,
+        "official_document_or_interface": false,
+        "personal_data_or_qr": false,
+        "implied_approval_or_outcome": false,
+        "uncertain": false,
+        "evidence": "The image shows a person sitting at a table with a notebook, pen, tablet, and a mug. There are no visible logos, wordmarks, official documents, QR codes, or personal data. The scene is a generic home or office setting with plants and kitchen items in the background. There is no indication of approval, payment, or eligibility, and all items are unbranded and generic."
+      }
+    },
+    "3": {
+      "policy": "editorial-2026-09-17",
+      "sha256": "248ffd08937637e7ee220cb41a36fdaf9ad66ffcda5320d10559f5ae041b801e",
+      "accepted": true,
+      "review": {
+        "third_party_branding": false,
+        "official_document_or_interface": false,
+        "personal_data_or_qr": false,
+        "implied_approval_or_outcome": false,
+        "uncertain": false,
+        "evidence": "The image shows a man working at a desk with generic documents, a notebook, a tablet, and a coffee mug. The documents contain colored charts and text blocks but no visible logos, wordmarks, official insignia, or personal data. There are no QR codes or any indication of approval, payment, or eligibility. All items are generic and unbranded."
+      }
+    },
+    "4": {
+      "policy": "editorial-2026-09-17",
+      "sha256": "e5ecb2673daa2b51888e6440a7d0a869a39c24cb1a29f37108bd594d8117e3a2",
+      "accepted": true,
+      "review": {
+        "third_party_branding": false,
+        "official_document_or_interface": false,
+        "personal_data_or_qr": false,
+        "implied_approval_or_outcome": false,
+        "uncertain": false,
+        "evidence": "The image shows a person sitting at a desk with a notebook, pen, tablet, book, coffee mug, and some stationery. There are no visible logos, wordmarks, official documents, personal data, QR codes, or any interface implying approval or outcome. All items are generic and unbranded."
+      }
+    },
+    "5": {
+      "policy": "editorial-2026-09-17",
+      "sha256": "796e5d0dee32f7678ad700ec2039796ffe36429e96657f2ceedafc8e649a64dd",
+      "accepted": true,
+      "review": {
+        "third_party_branding": false,
+        "official_document_or_interface": false,
+        "personal_data_or_qr": false,
+        "implied_approval_or_outcome": false,
+        "uncertain": false,
+        "evidence": "The image shows a woman sitting at a table in a kitchen, writing in a notebook while looking at a tablet. There are books, pens, and sticky notes on the table. No visible logos, wordmarks, official documents, personal data, QR codes, or any elements implying approval or a completed service are present. All items are generic and unbranded."
+      }
+    }
+  },
+  "screenshots": {},
+  "official_links": {
+    "3": [
+      "https://www.sp.senac.br"
+    ],
+    "4": [
+      "https://www.sp.senac.br/programa-senac-de-gratuidade",
+      "https://www.senacrs.com.br/hotsite/psg/"
+    ],
+    "5": []
+  },
+  "published": {
+    "1": {
+      "page_number": 1,
+      "role": "LP",
+      "post_type": "r",
+      "post_id": 2306,
+      "slug": "guia-cursos-senac",
+      "url_wp": "https://creditoup.com.br/?post_type=r&p=2306",
+      "status_wp": "draft",
+      "publicado_em": "2026-09-17T22:58:41.527278+00:00"
+    },
+    "2": {
+      "page_number": 2,
+      "role": "PRESELL",
+      "post_type": "rec",
+      "post_id": 2309,
+      "slug": "por-onde-comecar-senac-pr",
+      "url_wp": "https://creditoup.com.br/?post_type=rec&p=2309",
+      "status_wp": "draft",
+      "publicado_em": "2026-09-17T22:58:43.522019+00:00"
+    },
+    "3": {
+      "page_number": 3,
+      "role": "SOLUTION",
+      "post_type": "rec",
+      "post_id": 2312,
+      "slug": "tipos-de-curso-senac-p1",
+      "url_wp": "https://creditoup.com.br/?post_type=rec&p=2312",
+      "status_wp": "draft",
+      "publicado_em": "2026-09-17T22:58:47.341261+00:00"
+    },
+    "4": {
+      "page_number": 4,
+      "role": "SOLUTION",
+      "post_type": "rec",
+      "post_id": 2315,
+      "slug": "bolsas-de-estudo-senac-p2",
+      "url_wp": "https://creditoup.com.br/?post_type=rec&p=2315",
+      "status_wp": "draft",
+      "publicado_em": "2026-09-17T22:58:50.951977+00:00"
+    },
+    "5": {
+      "page_number": 5,
+      "role": "SOLUTION",
+      "post_type": "rec",
+      "post_id": 2318,
+      "slug": "portal-do-senac-do-seu-estado-p3",
+      "url_wp": "https://creditoup.com.br/?post_type=rec&p=2318",
+      "status_wp": "draft",
+      "publicado_em": "2026-09-17T22:58:53.219889+00:00"
+    }
+  },
+  "step_status": {
+    "engajamento": {
+      "step": "engajamento",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1041,
+      "completion_tokens": 222,
+      "cost_usd": 0.0038580000000000003,
+      "latency_ms": 1692
+    },
+    "research_p1": {
+      "step": "research_p1",
+      "status": "OK",
+      "model_used": "external-research",
+      "attempts": 1,
+      "issues": [
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (falha de rede: ReadError): https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        },
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (falha de rede: ReadError): https://www.planalto.gov.br/ccivil_03/decreto-lei/1937-1946/del8621.htm. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        }
+      ],
+      "artifact_path": null,
+      "prompt_tokens": 2017,
+      "completion_tokens": 8443,
+      "cost_usd": 0.0780432,
+      "latency_ms": 36454
+    },
+    "write_p1": {
+      "step": "write_p1",
+      "status": "OK",
+      "model_used": "gemini-3.5-flash",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 4488,
+      "completion_tokens": 6164,
+      "cost_usd": 0.062208000000000006,
+      "latency_ms": 24947
+    },
+    "seo_p1": {
+      "step": "seo_p1",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1824,
+      "completion_tokens": 96,
+      "cost_usd": 0.004416,
+      "latency_ms": 1010
+    },
+    "image_p1": {
+      "step": "image_p1",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 537,
+      "completion_tokens": 186,
+      "cost_usd": 0.002562,
+      "latency_ms": 1719
+    },
+    "image_gen_p1": {
+      "step": "image_gen_p1",
+      "status": "OK",
+      "model_used": "gpt-image-2 medium 1024x1536",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 429,
+      "completion_tokens": 1372,
+      "cost_usd": 0.043305,
+      "latency_ms": 26763
+    },
+    "image_review_p1": {
+      "step": "image_review_p1",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1297,
+      "completion_tokens": 108,
+      "cost_usd": 0.003458,
+      "latency_ms": 1534
+    },
+    "build_p1": {
+      "step": "build_p1",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "content_gate_p1": {
+      "step": "content_gate_p1",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "research_p2": {
+      "step": "research_p2",
+      "status": "OK",
+      "model_used": "external-research",
+      "attempts": 1,
+      "issues": [
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (falha de rede: ReadError): https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        },
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (falha de rede: ReadError): https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        }
+      ],
+      "artifact_path": null,
+      "prompt_tokens": 3653,
+      "completion_tokens": 7353,
+      "cost_usd": 0.068268,
+      "latency_ms": 39085
+    },
+    "write_p2": {
+      "step": "write_p2",
+      "status": "RETRIED",
+      "model_used": "gemini-3.5-flash",
+      "attempts": 2,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 21634,
+      "completion_tokens": 11299,
+      "cost_usd": 0.12311925,
+      "latency_ms": 46469
+    },
+    "judge_p2": {
+      "step": "judge_p2",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 8704,
+      "completion_tokens": 178,
+      "cost_usd": 0.018832,
+      "latency_ms": 1684
+    },
+    "seo_p2": {
+      "step": "seo_p2",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 3097,
+      "completion_tokens": 95,
+      "cost_usd": 0.006954,
+      "latency_ms": 1577
+    },
+    "image_p2": {
+      "step": "image_p2",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 569,
+      "completion_tokens": 124,
+      "cost_usd": 0.00213,
+      "latency_ms": 1430
+    },
+    "image_gen_p2": {
+      "step": "image_gen_p2",
+      "status": "OK",
+      "model_used": "gpt-image-2 medium 1536x1024",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 367,
+      "completion_tokens": 1372,
+      "cost_usd": 0.042995,
+      "latency_ms": 29963
+    },
+    "image_review_p2": {
+      "step": "image_review_p2",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1297,
+      "completion_tokens": 135,
+      "cost_usd": 0.003674,
+      "latency_ms": 2322
+    },
+    "build_p2": {
+      "step": "build_p2",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "content_gate_p2": {
+      "step": "content_gate_p2",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "research_p3": {
+      "step": "research_p3",
+      "status": "OK",
+      "model_used": "external-research",
+      "attempts": 1,
+      "issues": [
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (falha de rede: ConnectError): https://www.ead.senac.br. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        },
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (bloqueado/indisponível para verificação (HTTP 403)): https://www.senac.br. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        }
+      ],
+      "artifact_path": null,
+      "prompt_tokens": 2142,
+      "completion_tokens": 8003,
+      "cost_usd": 0.07403850000000001,
+      "latency_ms": 34889
+    },
+    "write_p3": {
+      "step": "write_p3",
+      "status": "RETRIED",
+      "model_used": "gemini-3.5-flash",
+      "attempts": 2,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 24861,
+      "completion_tokens": 14181,
+      "cost_usd": 0.1649205,
+      "latency_ms": 52811
+    },
+    "judge_p3": {
+      "step": "judge_p3",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 9358,
+      "completion_tokens": 137,
+      "cost_usd": 0.019812,
+      "latency_ms": 1799
+    },
+    "seo_p3": {
+      "step": "seo_p3",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 3392,
+      "completion_tokens": 90,
+      "cost_usd": 0.007504,
+      "latency_ms": 1020
+    },
+    "image_p3": {
+      "step": "image_p3",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 575,
+      "completion_tokens": 147,
+      "cost_usd": 0.002326,
+      "latency_ms": 1458
+    },
+    "image_gen_p3": {
+      "step": "image_gen_p3",
+      "status": "OK",
+      "model_used": "gpt-image-2 medium 1536x1024",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 390,
+      "completion_tokens": 1372,
+      "cost_usd": 0.04311,
+      "latency_ms": 31360
+    },
+    "image_review_p3": {
+      "step": "image_review_p3",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1297,
+      "completion_tokens": 128,
+      "cost_usd": 0.0036179999999999997,
+      "latency_ms": 1819
+    },
+    "build_p3": {
+      "step": "build_p3",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "content_gate_p3": {
+      "step": "content_gate_p3",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "research_p4": {
+      "step": "research_p4",
+      "status": "OK",
+      "model_used": "external-research",
+      "attempts": 1,
+      "issues": [
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (bloqueado/indisponível para verificação (HTTP 403)): https://www.senac.br. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        }
+      ],
+      "artifact_path": null,
+      "prompt_tokens": 1312,
+      "completion_tokens": 7465,
+      "cost_usd": 0.06864945000000001,
+      "latency_ms": 30975
+    },
+    "write_p4": {
+      "step": "write_p4",
+      "status": "RETRIED",
+      "model_used": "gemini-3.5-flash",
+      "attempts": 2,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 24934,
+      "completion_tokens": 15234,
+      "cost_usd": 0.16348020000000002,
+      "latency_ms": 61073
+    },
+    "judge_p4": {
+      "step": "judge_p4",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 9276,
+      "completion_tokens": 158,
+      "cost_usd": 0.019816,
+      "latency_ms": 1787
+    },
+    "seo_p4": {
+      "step": "seo_p4",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 3132,
+      "completion_tokens": 94,
+      "cost_usd": 0.007016,
+      "latency_ms": 1107
+    },
+    "image_p4": {
+      "step": "image_p4",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 574,
+      "completion_tokens": 144,
+      "cost_usd": 0.0023,
+      "latency_ms": 1470
+    },
+    "image_gen_p4": {
+      "step": "image_gen_p4",
+      "status": "OK",
+      "model_used": "gpt-image-2 medium 1536x1024",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 387,
+      "completion_tokens": 1372,
+      "cost_usd": 0.043095,
+      "latency_ms": 32263
+    },
+    "image_review_p4": {
+      "step": "image_review_p4",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1297,
+      "completion_tokens": 116,
+      "cost_usd": 0.003522,
+      "latency_ms": 1765
+    },
+    "build_p4": {
+      "step": "build_p4",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "content_gate_p4": {
+      "step": "content_gate_p4",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "research_p5": {
+      "step": "research_p5",
+      "status": "OK",
+      "model_used": "external-research",
+      "attempts": 1,
+      "issues": [
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (bloqueado/indisponível para verificação (HTTP 403)): https://www.dn.senac.br. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        },
+        {
+          "code": "fact_source_unverifiable",
+          "message": "Fonte não pôde ser verificada (bloqueado/indisponível para verificação (HTTP 403)): https://www.senac.br. O fato foi mantido na pesquisa, mas nenhuma cifra dele pode ser publicada."
+        }
+      ],
+      "artifact_path": null,
+      "prompt_tokens": 2079,
+      "completion_tokens": 5672,
+      "cost_usd": 0.0536967,
+      "latency_ms": 27135
+    },
+    "write_p5": {
+      "step": "write_p5",
+      "status": "RETRIED",
+      "model_used": "gemini-3.5-flash",
+      "attempts": 3,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 37034,
+      "completion_tokens": 29208,
+      "cost_usd": 0.29637615,
+      "latency_ms": 119782
+    },
+    "judge_p5": {
+      "step": "judge_p5",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 9354,
+      "completion_tokens": 163,
+      "cost_usd": 0.020012,
+      "latency_ms": 1761
+    },
+    "seo_p5": {
+      "step": "seo_p5",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 3492,
+      "completion_tokens": 90,
+      "cost_usd": 0.007704,
+      "latency_ms": 1370
+    },
+    "image_p5": {
+      "step": "image_p5",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 576,
+      "completion_tokens": 150,
+      "cost_usd": 0.002352,
+      "latency_ms": 1806
+    },
+    "image_gen_p5": {
+      "step": "image_gen_p5",
+      "status": "OK",
+      "model_used": "gpt-image-2 medium 1536x1024",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 393,
+      "completion_tokens": 1372,
+      "cost_usd": 0.043125,
+      "latency_ms": 32583
+    },
+    "image_review_p5": {
+      "step": "image_review_p5",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1297,
+      "completion_tokens": 121,
+      "cost_usd": 0.003562,
+      "latency_ms": 1836
+    },
+    "build_p5": {
+      "step": "build_p5",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "widget_p5": {
+      "step": "widget_p5",
+      "status": "OK",
+      "model_used": "gemini-3.5-flash",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 5791,
+      "completion_tokens": 3226,
+      "cost_usd": 0.037720500000000004,
+      "latency_ms": 12868
+    },
+    "content_gate_p5": {
+      "step": "content_gate_p5",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "publish_p1": {
+      "step": "publish_p1",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "publish_p2": {
+      "step": "publish_p2",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "publish_p3": {
+      "step": "publish_p3",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "publish_p4": {
+      "step": "publish_p4",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    },
+    "publish_p5": {
+      "step": "publish_p5",
+      "status": "OK",
+      "model_used": "",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0.0,
+      "latency_ms": 0
+    }
+  }
+}

@@ -9,21 +9,6 @@ from funnelforge.domain.models import (
 from funnelforge.pipeline.doctrine import APPROVED_CTA_EXEMPLARS
 from funnelforge.pipeline.pagespec import _STOP, _sig_tokens, pagespec_for
 
-# The trailing `-prN` index of a presell hub slug, used to rotate its fan-out
-# order NEUTRALLY (offset=(N-1)%n) so no solution is privileged in the hero.
-_PRESELL_INDEX_RE = re.compile(r"-pr(\d+)$")
-
-
-def presell_rotation_offset(slug: str, n: int) -> int:
-    """Neutral rotation offset for a presell hub: (N-1) % n where N is the
-    `-prN` suffix index (1-based). A hub with no numeric suffix (the raw
-    pre-expansion mapper slug) rotates from 0."""
-    if n <= 0:
-        return 0
-    m = _PRESELL_INDEX_RE.search(slug)
-    idx = int(m.group(1)) if m else 1
-    return (idx - 1) % n
-
 
 def _placement(i: int, n: int) -> str:
     if i == 0:
@@ -106,10 +91,48 @@ def _anchor_for(target_h1: str, i: int, target_slug: str = "") -> str:
     return base
 
 
+def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
+    if not any(p.editorial is not None for p in plan.pages):
+        return False
+    by_slug = {p.slug: p for p in plan.pages}
+    if len(by_slug) != len(plan.pages):
+        raise ValueError("contextual plan has duplicate slugs")
+    pending: dict[str, list[Route]] = {}
+    for page in plan.pages:
+        contract = page.editorial
+        if contract is None:
+            raise ValueError(f"missing editorial contract: {page.slug}")
+        if not all(s.strip() for s in (
+                contract.reader_question, contract.useful_delivery, contract.cta_label)):
+            raise ValueError(f"empty editorial contract: {page.slug}")
+        if effective_role(page) is PageRole.LP and not 1 <= len(contract.links) <= 3:
+            raise ValueError("current LP template supports one to three destinations")
+        routes: list[Route] = []
+        targets: set[str] = set()
+        for link in contract.links:
+            target = by_slug.get(link.target)
+            if (target is None or target.editorial is None or target is page
+                    or link.target in targets or not link.reason.strip()):
+                raise ValueError(f"invalid contextual link: {page.slug} -> {link.target}")
+            # Funnel URLs currently resolve under the interior post type, not /r/.
+            if effective_role(target) is PageRole.LP:
+                raise ValueError("contextual links to LP require a typed LP URL resolver")
+            targets.add(link.target)
+            routes.append(Route(
+                placement=_placement(len(routes), len(contract.links)), kind="funnel",
+                target=target.slug, anchor=target.editorial.cta_label, reason=link.reason))
+        for route in routes:
+            resolve_route(route, domain=settings.site.domain, post_type=settings.site.post_type)
+        pending[page.slug] = routes
+    for page in plan.pages:
+        page.routes = pending[page.slug]
+    return True
+
+
 def is_terminal_solution(page: Page, solutions: list[Page]) -> bool:
     """The terminal SOLUTION is the highest-`ordinal` page in the funnel: it
-    stops advancing (no forward funnel edge) and recirculates cross-funnel
-    instead. Same rule `validate_funnel_graph` uses for `terminal_no_exit`."""
+    stops advancing (no forward funnel edge); its exit follows the run policy.
+    Same rule `validate_funnel_graph` uses for `terminal_no_exit`."""
     if not solutions:
         return False
     return page.ordinal == max(s.ordinal for s in solutions)
@@ -135,6 +158,8 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
     never an invented slug. Fallback: config `cross_funnel_lps` slugs, built as
     absolute URLs under `lp_post_type` (so they too resolve as real URLs)."""
     pages = plan.pages
+    if _contextual_routes(plan, settings):
+        return
     presells = sorted((p for p in pages if effective_role(p) is PageRole.PRESELL),
                       key=lambda p: (p.ordinal, p.slug))
     solutions = sorted((p for p in pages if effective_role(p) is PageRole.SOLUTION),
@@ -181,9 +206,7 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
             # start at different offsets, every solution keeps an inbound edge
             # so reachability survives the cap regardless of how many solutions.
             if solutions:
-                n = len(solutions)
-                offset = presell_rotation_offset(page.slug, n)
-                ordered = [solutions[(offset + k) % n] for k in range(n)]
+                ordered = list(solutions)
                 if len(ordered) > spec.cta_max:
                     ordered = ordered[:spec.cta_max]
                 routes = [Route(placement=_placement(i, len(ordered)), kind="funnel",
@@ -195,8 +218,8 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
                             anchor=_anchor_for("", 0, page.next_page_slug))]
         else:  # SOLUTION
             if is_terminal_solution(page, solutions):
-                # Terminal: stop advancing, recirculate cross-funnel ONLY.
-                if cross:
+                # Official mode waits for research; legacy mode recirculates.
+                if cross and settings.run.terminal_exit_policy == "cross_funnel":
                     routes = [Route(placement="footer", kind="cross_funnel",
                                     target=cross[page.ordinal % len(cross)],
                                     anchor="Ver outro guia completo >>>")]
@@ -235,7 +258,8 @@ ANCORA_CANAL_OFICIAL = "Consultar no canal oficial >>>"
 
 
 def bind_official_route(page: Page, official_links: list[str], *,
-                        role: PageRole, is_terminal: bool) -> None:
+                        role: PageRole, is_terminal: bool,
+                        terminal_official: bool = False) -> None:
     """Liga (tarde) a aresta `external_official` desta página, com a URL que a
     PESQUISA dela trouxe.
 
@@ -254,8 +278,11 @@ def bind_official_route(page: Page, official_links: list[str], *,
     comportamento correto: publicar uma solução que manda o leitor a lugar
     nenhum é pior do que não publicar."""
     page.routes = [r for r in page.routes if r.kind != "external_official"]
-    if role is not PageRole.SOLUTION or is_terminal:
-        return  # a terminal só recircula cross-funnel; LP/PRESELL nunca citam canal
+    if role is not PageRole.SOLUTION or (is_terminal and not terminal_official):
+        return  # LP/PRESELL and legacy terminals never bind an official route.
+    if is_terminal and terminal_official:
+        # A resumed legacy plan must not retain its old cross-funnel exit.
+        page.routes = [r for r in page.routes if r.kind != "cross_funnel"]
     if not official_links:
         return
     page.routes = [*page.routes,
@@ -275,6 +302,7 @@ def resolve_page_links(page: Page, settings: Settings, *,
     # rota `external_official` não resolve -- e é assim que deve ser.
     return [{"kind": r.kind,
              "anchor": r.anchor,
+             "reason": r.reason,
              "href": resolve_route(r, domain=settings.site.domain,
                                    post_type=settings.site.post_type,
                                    authorized_external=authorized_external)}
@@ -285,10 +313,8 @@ def reachable_slugs(plan: FunnelPlan) -> set[str]:
     """BFS the `funnel`-kind edges of `page.routes` (the winning graph
     `build_funnel_routes` assigns) from every LP entry page. This is THE
     graph reachability walk -- `validate_funnel_graph` uses it to flag
-    orphan pages, and `pipeline._pv_per_session` reuses it verbatim so the
-    two can never disagree about what counts as "reachable" (T2H fix: pv/
-    session used to walk `next_page_slug`, a separate chain that can drift
-    from the actual routed funnel)."""
+    orphan pages; `pipeline._reachable_page_count` reports the same structural
+    measure. Reachability is not observed pages per session."""
     pages = plan.pages
     if not pages:
         return set()
@@ -306,7 +332,8 @@ def reachable_slugs(plan: FunnelPlan) -> set[str]:
     return reached
 
 
-def validate_funnel_graph(plan: FunnelPlan, settings: Settings) -> list[Issue]:
+def validate_funnel_graph(plan: FunnelPlan, settings: Settings, *,
+                          research_pending: bool = False) -> list[Issue]:
     issues: list[Issue] = []
     pages = plan.pages
     if not pages:
@@ -318,12 +345,15 @@ def validate_funnel_graph(plan: FunnelPlan, settings: Settings) -> list[Issue]:
                                 message=f"Pagina '{p.slug}' nao alcancavel a partir da LP."))
     solutions = sorted((p for p in pages if effective_role(p) is PageRole.SOLUTION),
                        key=lambda p: p.ordinal)
-    if solutions and not any(r.kind == "cross_funnel" for r in solutions[-1].routes):
+    exit_kind = ("external_official" if (any(p.editorial for p in pages)
+                 or settings.run.terminal_exit_policy == "official")
+                 else "cross_funnel")
+    # Before research there is deliberately no guessed official URL.
+    pending_official = research_pending and exit_kind == "external_official"
+    if solutions and not pending_official and not any(
+            r.kind == exit_kind for r in solutions[-1].routes):
         issues.append(Issue(
             code="terminal_no_exit",
-            message=f"Pagina terminal '{solutions[-1].slug}' sem saida cross-funnel."))
-    # NOTE: the old I9 checks (lead_not_distinct / lead_unresolved) were removed
-    # with the angle subsystem (CARD-0009). Presell hubs no longer carry a
-    # privileged lead field; neutral rotation by -prN index + fan-out
-    # completeness are enforced by build_funnel_routes and contract_advisories.
+            message=f"Pagina terminal '{solutions[-1].slug}' sem saida {exit_kind}."))
+    # Destination priority belongs to the editorial contract, not hub rotation.
     return issues

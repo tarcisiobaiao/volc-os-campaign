@@ -1910,6 +1910,8 @@ export const pautadorApi = {
   dispararRedator(payload: {
     opportunity_id: number;
     project_id: number;
+    // Fluxo editorial v2 neste funil. Omitido = desligado (o padrão).
+    editorial_v2?: boolean;
   }): Promise<DisparoDoRedator> {
     return request('/api/publicacao/redator/disparar', {
       method: 'POST',

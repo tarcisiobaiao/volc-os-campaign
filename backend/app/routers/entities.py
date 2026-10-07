@@ -1484,6 +1484,15 @@ async def entity_funnel(opp_id: int, body: Optional[EntityFunnelRequest] = Body(
                 "pages": result.get("pages") or [],
                 "writing_jobs": result.get("writing_jobs") or [],
             }
+            # Chaves NOVAS e opcionais do contrato entre trilhas (30/09/2026):
+            # o que a validação mediu sobre o leitor, como dado, e o registro do
+            # revisor da arquitetura (o que mudou e o que apontou sem mudar). O
+            # disparo manda a arquitetura inteira ao motor; leitores antigos só
+            # usam `pages`/`writing_jobs`/`funnel_strategy` e as ignoram.
+            if result.get("contexto_de_leitura"):
+                architecture["contexto_de_leitura"] = result["contexto_de_leitura"]
+            if result.get("revisao_arquitetura") is not None:
+                architecture["revisao_arquitetura"] = result["revisao_arquitetura"]
             await supa.update_entity_opportunity(
                 opp_id,
                 {"status": "funnel", "kanban_stage": "funnel", "funnel_architecture": architecture},

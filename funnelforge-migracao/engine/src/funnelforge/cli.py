@@ -240,6 +240,80 @@ def resume(run_id: str, publish: bool = False, only: str | None = None,
     )
 
 
+def _cliente_do_revisor():
+    """O cliente de LLM do `revisar` (isolado para o teste trocar por um falso)."""
+    from funnelforge.adapters.litellm_client import LiteLLMClient
+
+    return LiteLLMClient()
+
+
+@app.command()
+def decidir(
+    run_id: str,
+    pagina: int = typer.Option(..., "--pagina", help="número da página no run"),
+    decisao: str = typer.Option(..., "--decisao", help="aprovar | rejeitar"),
+    sha256: str = typer.Option(..., "--sha256", help="sha256 do conteúdo lido (revisao.json)"),
+    nota: str = typer.Option("", "--nota"),
+    quem: str = typer.Option("operador", "--quem"),
+    runs_dir: Path = typer.Option(Path("runs"), "--runs-dir"),
+) -> None:
+    """SAÍDA DA REVISÃO HUMANA (ramo editorial novo): grava no `state.json` a
+    decisão da pessoa sobre uma página, PRESA ao sha256 do conteúdo que ela leu.
+
+    Não publica nada. O próximo `resume` aplica a decisão: `aprovar` com o hash
+    igual ao conteúdo atual gera o recibo e libera a publicação (como rascunho);
+    `rejeitar` fecha a página. Hash diferente do conteúdo atual é recusado aqui
+    mesmo — a pessoa aprova o que leu, não outra versão."""
+    from funnelforge.domain.models import RunState
+    from funnelforge.pipeline.revisao import decidir_pagina
+
+    caminho = runs_dir / run_id / "state.json"
+    state = RunState.from_json(caminho.read_text(encoding="utf-8"))
+    try:
+        registro = decidir_pagina(state, pagina, decisao=decisao, sha256=sha256,
+                                  nota=nota, quem=quem)
+    except ValueError as exc:
+        typer.echo(f"decisão recusada: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    temporario = caminho.with_name("state.json.tmp")
+    temporario.write_text(state.to_json(), encoding="utf-8")
+    temporario.replace(caminho)
+    typer.echo(json.dumps({"run": run_id, "pagina": pagina, **registro}, ensure_ascii=False))
+
+
+@app.command()
+def revisar(
+    conteudo: Path,
+    briefing: Path = typer.Option(..., "--briefing", help="briefing-v1 (JSON) da página"),
+    contexto: Path | None = typer.Option(None, "--contexto",
+                                         help="fatos, destinos, origem, termos (JSON)"),
+    saida: Path | None = typer.Option(None, "--saida"),
+    config: Path = typer.Option(Path("config.yaml"), "--config"),
+    env: Path = typer.Option(Path(".env"), "--env"),
+) -> None:
+    """Revisa conteúdo JÁ PUBLICADO exportado em arquivo (.html ou .json), com o
+    mesmo revisor e as mesmas travas do pipeline. Grava revisao.json e
+    patches.json. NÃO fala com o WordPress e NÃO publica: os patches são um
+    lote para aprovação humana. Faz chamada paga ao modelo do passo `revisor`
+    (no máximo 2), sob o teto por página do config."""
+    from funnelforge.pipeline.budget import Orcamento
+    from funnelforge.pipeline.revisao_avulsa import revisar_arquivo
+
+    settings = load_settings(env, config)
+    cfg = settings.steps.get("revisor")
+    if cfg is None:
+        typer.echo("passo 'revisor' ausente no config (steps.revisor)", err=True)
+        raise typer.Exit(code=2)
+    _export_secrets(settings.secrets)
+    destino = saida or conteudo.with_name(f"{conteudo.stem}_revisao")
+    runner = Runner(llm=_cliente_do_revisor(), max_retries=settings.run.max_retries,
+                    runs_dir=destino,
+                    budget=Orcamento(teto_run_usd=settings.budget.max_usd_per_page,
+                                     teto_pagina_usd=settings.budget.max_usd_per_page))
+    resumo = revisar_arquivo(conteudo, briefing, contexto, destino, runner=runner, cfg=cfg)
+    typer.echo(json.dumps(resumo, ensure_ascii=False))
+
+
 @app.command("print-url")
 def print_url(url: str, destino: Path, mode: str = "desktop",
               full_page: bool = True, settle_ms: int = 2500) -> None:

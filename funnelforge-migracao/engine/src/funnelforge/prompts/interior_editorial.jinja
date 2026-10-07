@@ -1,0 +1,67 @@
+<dados>
+Data: {{ today | default("") }}
+Tema/headline: {{ headline }}
+Objetivo: {{ objective }}
+Estrutura de referência: {{ skeleton }}
+Keywords: {{ keywords }}
+BASE FACTUAL:
+{{ facts | default("FATOS VERIFICADOS: NENHUM.") }}
+</dados>
+<fontes>
+Número, percentual, prazo, limite ou dispositivo legal só sai de FATOS VERIFICADOS.
+Reproduza valor e unidade e cite a fonte indicada na mesma frase. Se algo foi removido como
+número não verificado, não o reconstrua de memória. Se não há número, entregue orientação sem ele.
+Não invente disponibilidade atual, CNPJ, pré-requisito, inscrição aberta ou vínculo institucional.
+Use somente URLs fornecidas, copiadas exatamente; não invente caminhos em domínios legítimos.
+{% for url in official_links | default([]) %}Fonte/canal oficial verificado: {{ url }}
+{% endfor %}
+{% for link in platform_links | default([]) %}Plataforma verificada: {{ link | tojson }}
+{% endfor %}
+Nas páginas SOLUTION, cite as fontes oficiais que sustentam a orientação; a rota oficial é inline.
+Quando uma etapa depender de um canal oficial específico, ponha o hyperlink real nessa etapa.
+Identifique o canal por nome, como orientação externa, sem simular execução de serviço aqui.
+</fontes>
+<conexoes>
+Links disponíveis, na ordem editorial de relevância:
+{% for r in routes | default([]) %}- {{ r.kind }}: {{ r.anchor }} → {{ r.href }}
+  Motivo: {{ r.reason | default("") }}
+{% endfor %}
+Não invente destinos. Inclua as conexões planejadas onde ajudam uma dúvida, sem obrigar uma
+sequência de cliques. Rótulos como "Ver requisitos", "Escolher um curso" ou "Guia de inscrição"
+são exemplos, não palavras obrigatórias: a página de destino precisa entregar o prometido.
+Não mude um rótulo só para não repetir. Não coloque botão após todo H2 por obrigação.
+Para links internos, informe "Você permanece neste site" perto do bloco quando necessário
+para não confundir guia com serviço. Links externos precisam ser identificados como externos.
+Não ofereça "Inscreva-se" quando o clique apenas abre outra página editorial.
+</conexoes>
+<entregas_dos_destinos>
+{% for p in next_solutions | default([]) %}- {{ p.h1 }}: {{ p.objective }}
+{% endfor %}
+</entregas_dos_destinos>
+<apresentacao>
+Português claro, parágrafos curtos e títulos informativos. Comece com contexto e resposta útil,
+não com uma ordem de clicar. Dê destaque à informação, sem cotas de blocos ou cores alternadas.
+Use listas para etapas; tabela só para comparação real. FAQ é opcional e sem número obrigatório.
+Não use <u>. Não inclua H1, article, section, script, iframe, formulário ou campos de dados.
+Segurança de anúncios: os primeiros parágrafos são top-level, fora de caixas e colunas.
+Não aninhe os pontos de inserção de anúncio em blocos interativos ou com aparência de botão.
+Não instrua o leitor a clicar em publicidade. Nenhuma caixa deve simular um anúncio ou vice-versa.
+Saída: apenas HTML Gutenberg balanceado, sem markdown ou explicações.
+</apresentacao>
+<botao>
+Exemplo estrutural, sem impor quantidade, cor por índice ou texto diferente:
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="[HREF]">[RÓTULO]</a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+</botao>
+{% include "blocks_gutenberg.jinja" %}
+<identidade>
+Portal editorial independente, sem falsa oficialidade, promessas garantidas, urgência inventada
+ou execução de serviço. Gere uma vez em um parágrafo simples: "{{ compliance_notice_text }}".
+O sistema controla posição e deduplicação do aviso. Não fabrique CNPJ, rodapé ou byline.
+Exemplos proibidos de medo fabricado e execução simulada:
+{% for f in banned_fear %}- {{ f }}
+{% endfor %}
+{% for f in banned_cta_execution %}- {{ f }}
+{% endfor %}
+</identidade>

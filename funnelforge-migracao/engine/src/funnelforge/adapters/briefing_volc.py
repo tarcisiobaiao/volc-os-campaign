@@ -62,7 +62,17 @@ import re
 from pathlib import Path
 from typing import Any
 
-from funnelforge.domain.models import FunnelPlan, Page, PageRole, derive_role
+from pydantic import ValidationError
+
+from funnelforge.domain.models import (
+    ContextoDeAnuncio,
+    ContextoDeLeitura,
+    FunnelPlan,
+    Page,
+    PageRole,
+    TermosDeBusca,
+    derive_role,
+)
 
 # O `page_type` que vem do VOLC é texto livre do arquiteto — "SOLUÇÃO"
 # acentuado, "PRÉ-SELL", "Hub", "LANDING PAGE". E o engine compara
@@ -177,6 +187,63 @@ def _arquitetura(dados: dict[str, Any]) -> dict[str, Any]:
     return interno if isinstance(interno, dict) else dados
 
 
+def _primeiro_erro(exc: ValidationError) -> str:
+    erros = exc.errors()
+    if not erros:
+        return str(exc)[:160]
+    local = ".".join(str(p) for p in erros[0].get("loc", ()))
+    return f"{local}: {erros[0].get('msg', '')}".strip(": ")[:160]
+
+
+def _contexto_de_busca(arq: dict[str, Any]) -> TermosDeBusca | None:
+    """`contexto_de_busca` (TermosDeBusca, o mesmo JSON do backend).
+
+    Ausente na arquitetura -> None (o inventário diz "não coletado"). Presente
+    mas quebrado -> `ausente` COM o motivo escrito. Nunca uma lista que o
+    contrato não garante: `ausente` não vira lista, e um `presente` sem janela
+    ou sem fonte não prova que alguém consultou nada."""
+    if "contexto_de_busca" not in arq or arq.get("contexto_de_busca") is None:
+        return None
+    bruto = arq.get("contexto_de_busca")
+    try:
+        if not isinstance(bruto, dict):
+            raise TypeError(f"esperava objeto, veio {type(bruto).__name__}")
+        return TermosDeBusca.model_validate(bruto)
+    except (ValidationError, TypeError) as exc:
+        motivo = _primeiro_erro(exc) if isinstance(exc, ValidationError) else str(exc)
+        return TermosDeBusca(
+            estado="ausente",
+            motivo_ausencia=f"contexto_de_busca inválido na arquitetura ({motivo})")
+
+
+def _contexto_de_anuncio(arq: dict[str, Any]) -> ContextoDeAnuncio | None:
+    if "contexto_de_anuncio" not in arq or arq.get("contexto_de_anuncio") is None:
+        return None
+    bruto = arq.get("contexto_de_anuncio")
+    try:
+        if not isinstance(bruto, dict):
+            raise TypeError(f"esperava objeto, veio {type(bruto).__name__}")
+        return ContextoDeAnuncio.model_validate(bruto)
+    except (ValidationError, TypeError) as exc:
+        motivo = _primeiro_erro(exc) if isinstance(exc, ValidationError) else str(exc)
+        return ContextoDeAnuncio(
+            estado="ausente",
+            motivo_ausencia=f"contexto_de_anuncio inválido na arquitetura ({motivo})")
+
+
+def _contexto_de_leitura(arq: dict[str, Any]) -> ContextoDeLeitura | None:
+    """PAA + tensão da validação, como DADO. Quebrado -> None (o inventário
+    diz ausente): uma tensão que não se sustenta não vira instrução."""
+    bruto = arq.get("contexto_de_leitura")
+    if not isinstance(bruto, dict):
+        return None
+    try:
+        leitura = ContextoDeLeitura.model_validate(bruto)
+    except ValidationError:
+        return None
+    return leitura if (leitura.perguntas_paa or leitura.tensao) else None
+
+
 def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
     """Converte o `funnel_architecture` de um card do Pautador em `FunnelPlan`.
 
@@ -235,6 +302,7 @@ def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
                                     or _lista_de_texto(wb.get("skeleton"))),
             hook_to_next_page=_texto(wb.get("cta_text")),
             target_keywords=_keywords(wb.get("keywords")),
+            editorial=wb.get("editorial") or canonica.get("editorial"),
             # `next_page_slug` só é resolvido depois, quando todos os slugs
             # do funil já existem — ver o segundo passo abaixo.
             next_page_slug="",
@@ -268,6 +336,14 @@ def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
         # deve divergir do plano nem do relatório.
         total_pages=len(paginas),
         pages=paginas,
+        # Chaves NOVAS do contrato entre as trilhas (30/09). O tom e o avatar
+        # acima já viajavam até aqui e morriam: nenhum prompt os lia. No ramo
+        # editorial novo eles entram no briefing como `briefing_do_arquiteto`,
+        # junto com a leitura (PAA + tensão), os termos de busca e o anúncio.
+        editorial_v2=arq.get("editorial_v2") is True,
+        contexto_de_leitura=_contexto_de_leitura(arq),
+        contexto_de_busca=_contexto_de_busca(arq),
+        contexto_de_anuncio=_contexto_de_anuncio(arq),
     )
 
 

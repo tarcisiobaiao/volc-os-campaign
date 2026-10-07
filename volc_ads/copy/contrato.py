@@ -233,6 +233,10 @@ class Classe(Enum):
     CONTAGEM_FALTA = "contagem_falta"        # regenera só o déficit
     ANCORAGEM_MENTIU = "ancoragem_mentiu"    # C4: refaz a passada 1 inteira
     COTA = "cota"                            # C6: fora de faixa após troca
+    # O juiz de SENTIDO não respondeu. Não há asset a regenerar e não é mentira
+    # do modelo: é julgamento que faltou — a copy não é aceita e o motivo fica
+    # escrito (contrato entre as trilhas, decisão 2).
+    JUIZ_INDISPONIVEL = "juiz_indisponivel"
 
 
 @dataclass(frozen=True)
@@ -279,6 +283,13 @@ class Pedido:
     pais: str = "BR"
     vertical: str = "informativo"
     fatos: tuple[str, ...] = ()          # ids válidos: ("F1", "F2", ...)
+    # O TIPO de cada fato, por id: (("f1", "contexto"), ("n2", "numero"), ...).
+    # Vazio = pedido antigo, e as checagens de tipo ficam caladas (nada muda
+    # para quem não sabe o tipo). Ver `_c5_tipo_do_fato` e `_c7_lastro_tipado`.
+    tipos_dos_fatos: tuple[tuple[str, str], ...] = ()
+    # O `{ano}` do prompt — o único número que a seção 2 libera sem fato. 0 =
+    # desconhecido, e aí nenhum ano é tratado como livre.
+    ano: int = 0
     headers_snippet: tuple[str, ...] = ()
     max_dki: int = 1
 
@@ -381,6 +392,9 @@ class Pedido:
     # your headlines." E: "Try including more keywords in your descriptions."
     # A C9 olhava só títulos; metade do pedido passava sem ninguém olhar.
     fracao_descricoes_com_termo: float = 0.5
+
+    def tipo_do_fato(self, fid: str) -> str | None:
+        return dict(self.tipos_dos_fatos).get(fid)
 
     def alvos_texto(self) -> list[tuple[str, str, int]]:
         return [
@@ -601,6 +615,24 @@ MECANICAS_VERIFICAVEIS = {
 # Marcadores de afirmação concreta — o que a checagem 7 exige lastrear.
 RX_CONCRETO = r"(\d|\bate\b|\bhasta\b|\bnovo\b|\bnova\b|\bmudou\b|\bmuda\b)"
 
+# ── lastro TIPADO (contrato entre as trilhas, decisão 2, 30/09/2026) ────────
+#
+# "Cada mecânica nasce de um TIPO de fato" (seção 5 do PROMPT.md). Estas três
+# são as de NÚMERO, PRAZO e CONDIÇÃO — as que o contrato manda conferir sempre.
+# M5 e M2 ficam de fora de propósito: um título carrega duas mecânicas e a
+# ancoragem declara uma só, então "M5 citando [numero]" é legítimo ("Salário
+# Mínimo 2026: R$ 1.518") e cobrar o tipo ali seria falso positivo.
+HABILITA_MECANICA: dict[str, frozenset[str]] = {
+    "M6": frozenset({"numero"}),
+    "M9": frozenset({"prazo", "data"}),
+    "M10": frozenset({"condicao"}),
+}
+# Sustenta relevância e nomeação; NUNCA número, prazo ou condição.
+SO_NOMEIA: frozenset[str] = frozenset({"contexto"})
+# Número ou prazo no texto: dígito (menos o `{ano}`) ou "até"/"hasta". Condição
+# não tem marca de texto confiável — ela é conferida pela mecânica (M10).
+RX_NUMERO_OU_PRAZO = r"(\d|\bate\b|\bhasta\b)"
+
 
 # ── as 7 checagens ──────────────────────────────────────────────────────────
 
@@ -640,6 +672,11 @@ def checar(dados: dict, pedido: Pedido, *, semantico_ativo: bool = False) -> lis
     achados += _c3_ancoragem(dados, pedido)
     achados += _c4_chars(dados, pedido)
     achados += _c5_mecanica(dados, pedido)
+    # ⚠️ SEMPRE LIGADAS, com ou sem juiz de sentido: cruzam a mecânica declarada
+    # e o dígito do texto com o TIPO do fato citado — o que é exato. O que
+    # depende de sentido (o dígito é nome ou alegação?) continua no `_c7_fato`.
+    achados += _c5_tipo_do_fato(dados, pedido)
+    achados += _c7_lastro_tipado(dados, pedido)
     achados += _c6_contagem_final(dados, pedido)
     if not semantico_ativo:
         achados += _c8_faixa_medida(dados, pedido)
@@ -1173,11 +1210,139 @@ def _c6_contagem_final(dados: dict, pedido: Pedido) -> list[Achado]:
     return fora
 
 
+def lastro_sem_juiz(dados: dict, pedido: Pedido) -> list[Achado]:
+    """A parte da C7 que o juiz de sentido substitui — religada pela cascata
+    na rodada em que ele não responde (verificação adversarial V11). A C8 NÃO
+    volta: a faixa foi medida em outro domínio (ver `checar`)."""
+    return _c7_fato(dados, pedido)
+
+
+def _ids_declarados(valor) -> list[str]:
+    """`"n1"`, `["n1", "f2"]` ou `"n1, f2"` → ids; `"-"` e vazio → nenhum."""
+    brutos = valor if isinstance(valor, (list, tuple)) else re.split(r"[,;\s]+", str(valor or ""))
+    return [str(x).strip() for x in brutos if str(x).strip() not in ("", "-")]
+
+
+def _afirma_numero_ou_prazo(texto: str, pedido: Pedido) -> bool:
+    t = sem_acento(str(texto or "").lower())
+    if pedido.ano:
+        t = re.sub(rf"\b{pedido.ano}\b", " ", t)
+    return bool(re.search(RX_NUMERO_OU_PRAZO, t))
+
+
+def _c5_tipo_do_fato(dados: dict, pedido: Pedido) -> list[Achado]:
+    """A mecânica de número, prazo ou condição declarada nasce do TIPO certo.
+
+    Exato: a mecânica é a que o modelo declarou, o fato é o que ele citou, e o
+    tipo é o do brief. M6 citando [condicao], M9 citando [numero], M10 citando
+    [contexto] — a mecânica está desabilitada para aquele fato (seção 5).
+    Calada quando o pedido não sabe os tipos.
+    """
+    if not pedido.tipos_dos_fatos:
+        return []
+    fora: list[Achado] = []
+    n = len(dados.get("headlines") or [])
+    for e in (dados.get("ancoragem") or {}).get("headlines") or []:
+        if not isinstance(e, dict):
+            continue
+        mec = str(e.get("mecanica", "")).upper().strip()
+        # Índice fora da lista não vira alvo: `Alvo("headline", -1)` reescreveria
+        # o ÚLTIMO título na regeneração. Ancoragem desalinhada é a C3.
+        if mec not in HABILITA_MECANICA or not 0 <= int(e.get("i", -1)) < n:
+            continue
+        tipos = {i: pedido.tipo_do_fato(i) for i in _ids_declarados(e.get("fato"))}
+        tipos = {i: t for i, t in tipos.items() if t}
+        if tipos and not set(tipos.values()) & HABILITA_MECANICA[mec]:
+            exigidos = " ou ".join(f"[{t}]" for t in sorted(HABILITA_MECANICA[mec]))
+            citados = ", ".join(f"{i} [{t}]" for i, t in tipos.items())
+            fora.append(Achado(
+                "C5.tipo_do_fato", Classe.ANCORAGEM_MENTIU,
+                f"declarou {mec} citando {citados}; {mec} nasce de {exigidos} "
+                f"(seção 5). Cite um fato desse tipo ou troque a mecânica.",
+                Alvo("headline", int(e.get("i", -1)))))
+    return fora
+
+
+def _c7_lastro_tipado(dados: dict, pedido: Pedido) -> list[Achado]:
+    """A parte EXATA do lastro — roda sempre, com ou sem juiz de sentido.
+
+    1. `C7.fato_inexistente`: o recurso com número ou prazo cita um id que o
+       brief não tem. (Nos títulos vale para toda afirmação concreta, como
+       sempre valeu.)
+    2. `C7.tipo_incompativel`: o recurso afirma número ou prazo — dígito que não
+       é o `{ano}`, ou "até" — e TODOS os fatos que ele cita são `[contexto]`.
+       `[contexto]` sustenta relevância e nomeação, nunca número, prazo ou
+       condição. Um nome de produto com dígito ancorado num [contexto] também
+       cai: nome não precisa de fato ("-"), e o juiz decide se é nome.
+    """
+    fora: list[Achado] = []
+    anc = dados.get("ancoragem") or {}
+    tipado = bool(pedido.tipos_dos_fatos)
+
+    def conferir(ids: list[str], texto: str, alvo: Alvo, *, concreto: bool) -> None:
+        if pedido.fatos and concreto:
+            for fid in ids:
+                if fid not in pedido.fatos:
+                    fora.append(Achado(
+                        "C7.fato_inexistente", Classe.ANCORAGEM_MENTIU,
+                        f"declara fato {fid!r}, que não existe no brief", alvo))
+                    return
+        if not tipado or not _afirma_numero_ou_prazo(texto, pedido):
+            return
+        tipos = [pedido.tipo_do_fato(i) for i in ids]
+        tipos = [t for t in tipos if t]
+        if tipos and set(tipos) <= SO_NOMEIA:
+            fora.append(Achado(
+                "C7.tipo_incompativel", Classe.FORMA_REESCREVER,
+                f"afirma número ou prazo apoiado só em [contexto] ({', '.join(ids)}): "
+                f"[contexto] sustenta relevância e nomeação, nunca número, prazo "
+                f"nem condição. Cite um fato [numero]/[prazo]/[data]/[condicao] "
+                f"ou tire o número: {texto!r}", alvo))
+
+    hs = dados.get("headlines") or []
+    for e in anc.get("headlines") or []:
+        if not isinstance(e, dict) or not 0 <= int(e.get("i", -1)) < len(hs):
+            continue
+        i = int(e["i"])
+        conferir(_ids_declarados(e.get("fato")), str(hs[i]), Alvo("headline", i),
+                 concreto=_casa(str(hs[i]), RX_CONCRETO))
+
+    for chave, tipo, campo in (("descriptions", "description", "fatos"),
+                               ("callouts", "callout", "fato")):
+        itens = dados.get(chave) or []
+        for e in anc.get(chave) or []:
+            if not isinstance(e, dict) or not 0 <= int(e.get("i", -1)) < len(itens):
+                continue
+            i = int(e["i"])
+            texto = str(itens[i] or "")
+            conferir(_ids_declarados(e.get(campo)), texto, Alvo(tipo, i),
+                     concreto=_afirma_numero_ou_prazo(texto, pedido))
+
+    sls = dados.get("sitelinks") or []
+    for e in anc.get("sitelinks") or []:
+        if not isinstance(e, dict) or not 0 <= int(e.get("i", -1)) < len(sls):
+            continue
+        i = int(e["i"])
+        s = sls[i] if isinstance(sls[i], dict) else {}
+        for sub in ("title", "description1", "description2"):
+            texto = str(s.get(sub) or "")
+            if _afirma_numero_ou_prazo(texto, pedido):
+                conferir(_ids_declarados(e.get("fato")), texto, Alvo("sitelink", i, sub),
+                         concreto=True)
+                break
+    return fora
+
+
 def _c7_fato(dados: dict, pedido: Pedido) -> list[Achado]:
-    """Toda afirmação concreta aponta um `fato` que EXISTE.
+    """Toda afirmação concreta aponta um `fato` — a parte que depende de SENTIDO.
 
     Existência, não suficiência — ver o aviso no topo do arquivo. Um título
     que transforma "até 5 parcelas" em "5 parcelas" passa aqui.
+
+    ⚠️ Desde 30/09/2026 esta é só a parte HEURÍSTICA ("tem dígito, então é
+    alegação") — a que confunde `Point Pro 3` com número e por isso é
+    desligada quando o juiz de sentido está ligado. A existência do id e o
+    tipo do fato citado rodam sempre, em `_c7_lastro_tipado`.
     """
     fora: list[Achado] = []
     hs = dados.get("headlines") or []
@@ -1194,11 +1359,8 @@ def _c7_fato(dados: dict, pedido: Pedido) -> list[Achado]:
                 "C7.sem_lastro", Classe.FORMA_REESCREVER,
                 f"afirmação concreta sem fato declarado: {h!r}",
                 Alvo("headline", i)))
-        elif pedido.fatos and fid not in pedido.fatos:
-            fora.append(Achado(
-                "C7.fato_inexistente", Classe.ANCORAGEM_MENTIU,
-                f"declara fato {fid!r}, que não existe no brief",
-                Alvo("headline", i)))
+        # `C7.fato_inexistente` saiu daqui em 30/09/2026: existência é exata e
+        # passou a rodar SEMPRE, em `_c7_lastro_tipado`.
 
     for e in (dados.get("ancoragem") or {}).get("descriptions") or []:
         if not isinstance(e, dict):

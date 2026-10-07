@@ -73,4 +73,4 @@ def test_prompts_nao_repetem_a_frase_do_aviso_a_mao():
     for nome in ("redator_pages.jinja", "redator_presell.jinja", "judge.jinja"):
         fonte = resources.files("funnelforge.prompts").joinpath(nome).read_text("utf-8")
         assert COMPLIANCE_NOTICE_TEXT not in fonte, f"{nome} repete o aviso a mao"
-        assert "compliance_notice_text" in fonte, f"{nome} nao interpola o aviso"
+        assert ("compliance_notice_text" in fonte or 'include "interior_editorial.jinja"' in fonte)

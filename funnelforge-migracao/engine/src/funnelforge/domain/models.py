@@ -2,7 +2,8 @@ from __future__ import annotations
 from datetime import date
 import re
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
+from typing import Literal
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PageRole(str, Enum):
@@ -31,6 +32,19 @@ class Route(BaseModel):
     kind: str
     target: str
     anchor: str = ""
+    reason: str = ""
+
+
+class EditorialLink(BaseModel):
+    target: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+
+
+class EditorialIntent(BaseModel):
+    reader_question: str = Field(min_length=1)
+    useful_delivery: str = Field(min_length=1)
+    cta_label: str = Field(min_length=1)
+    links: list[EditorialLink] = Field(default_factory=list)
 
 
 def _url_normalizada(url: str) -> str:
@@ -116,6 +130,8 @@ class Page(BaseModel):
     role: PageRole | None = None
     ordinal: int = 0
     routes: list[Route] = []
+    # None preserves old checkpoints; new plans carry an explicit reader contract.
+    editorial: EditorialIntent | None = None
     # A FORMA DA PERGUNTA que esta página responde, no vocabulário do eixo
     # `engajamento` do motor de pautas: condicional | sequencial | comparativo |
     # diagnostico | dado_unico. Vazio = desconhecido (o motor não opinou), e aí
@@ -135,11 +151,192 @@ def role_matches_slug(page: Page) -> bool:
     return page.role is None or page.role == derive_role(page.slug)
 
 
+# ---------------------------------------------------------------------------
+# CONTEXTOS DO FUNIL que vêm do backend no `funnel_architecture` (contrato
+# entre as trilhas, 30/09). Todos OPCIONAIS e aditivos: um card antigo não os
+# tem, e ausência é dita como ausência — nunca preenchida por suposição.
+# ---------------------------------------------------------------------------
+
+class TermoDeBusca(BaseModel):
+    termo: str = Field(min_length=1)
+    impressoes: int = Field(ge=0)
+    cliques: int = Field(ge=0)
+    custo: float | None = None
+
+
+class JanelaDeColeta(BaseModel):
+    inicio: date
+    fim: date
+    fuso: str = "America/Sao_Paulo"
+
+    @model_validator(mode="after")
+    def _fim_depois_do_inicio(self) -> "JanelaDeColeta":
+        if self.fim < self.inicio:
+            raise ValueError("janela com fim antes do início")
+        return self
+
+
+_FONTE_DE_TERMOS_RE = re.compile(r"^(search_term_view|arquivo:[0-9a-f]{64})$")
+
+
+class TermosDeBusca(BaseModel):
+    """O que o leitor digitou, em TRÊS estados — o mesmo JSON dos dois lados.
+
+    `presente`         -> consulta feita na janela, com termos.
+    `vazio_confirmado` -> consulta feita na janela, zero termos (é informação).
+    `ausente`          -> ninguém coletou (funil novo, sem credencial...). NUNCA
+                          vira lista: `termos` tem de vir vazio.
+    """
+    estado: Literal["presente", "vazio_confirmado", "ausente"]
+    janela: JanelaDeColeta | None = None
+    coletado_em: str | None = None
+    fonte: str | None = None
+    termos: list[TermoDeBusca] = []
+    motivo_ausencia: str | None = None
+
+    @model_validator(mode="after")
+    def _coerente_com_o_estado(self) -> "TermosDeBusca":
+        if self.estado in ("ausente", "vazio_confirmado") and self.termos:
+            raise ValueError(f"estado '{self.estado}' não pode trazer termos")
+        if self.estado == "presente" and not self.termos:
+            raise ValueError("estado 'presente' sem nenhum termo")
+        if self.estado != "ausente":
+            faltando = [nome for nome in ("janela", "coletado_em", "fonte")
+                        if not getattr(self, nome)]
+            if faltando:
+                raise ValueError(f"estado '{self.estado}' sem {', '.join(faltando)}")
+            if not _FONTE_DE_TERMOS_RE.match(self.fonte or ""):
+                raise ValueError("fonte deve ser 'search_term_view' ou 'arquivo:<sha256>'")
+        return self
+
+
+class Tensao(BaseModel):
+    frase: str = Field(min_length=1)
+    evidencia: str = ""
+
+
+class ContextoDeLeitura(BaseModel):
+    """Perguntas reais dos leitores (PAA) e a tensão medida na validação.
+
+    É DADO, não instrução: o briefing trata a tensão como hipótese com a
+    evidência que a sustenta."""
+    perguntas_paa: list[str] = []
+    tensao: Tensao | None = None
+
+    @field_validator("perguntas_paa", mode="after")
+    @classmethod
+    def _sem_vazias(cls, value: list[str]) -> list[str]:
+        return [p.strip() for p in value if isinstance(p, str) and p.strip()]
+
+
+class ContextoDeAnuncio(BaseModel):
+    """A promessa do anúncio que traz o leitor à LP (títulos e descrições)."""
+    estado: Literal["presente", "ausente"]
+    titulos: list[str] = []
+    descricoes: list[str] = []
+    fonte: str = ""
+    motivo_ausencia: str | None = None
+
+    @model_validator(mode="after")
+    def _coerente_com_o_estado(self) -> "ContextoDeAnuncio":
+        if self.estado == "presente" and not (self.titulos or self.descricoes):
+            raise ValueError("anúncio 'presente' sem título nem descrição")
+        if self.estado == "ausente" and (self.titulos or self.descricoes):
+            raise ValueError("anúncio 'ausente' não pode trazer texto")
+        return self
+
+
 class FunnelPlan(BaseModel):
     avatar_summary: str = ""
     tone_voice: str = ""
     total_pages: int = 0
     pages: list[Page] = []
+    # Ramo editorial novo pedido pela ARQUITETURA do card (o perfil do run
+    # também pode ligar; ver `pipeline.editorial_v2_do_run`).
+    editorial_v2: bool = False
+    contexto_de_leitura: ContextoDeLeitura | None = None
+    contexto_de_busca: TermosDeBusca | None = None
+    contexto_de_anuncio: ContextoDeAnuncio | None = None
+
+
+# ---------------------------------------------------------------------------
+# FATOS TIPADOS — o vocabulário fechado do contrato entre as trilhas (30/09).
+#
+# O tipo diz o que o fato AFIRMA, não de que campo da pesquisa ele veio. Antes
+# desta reforma a ponte do backend deduzia o tipo pelo campo de origem
+# (`dados_validados` -> "afirmacao", `fatos_verificados` -> "numero") e o motor
+# jogava fora qualquer `tipo` que a pesquisa mandasse. No run Senac isso custou
+# 3 de 7 fatos na copy e transformou o número de um decreto em "numero".
+#
+# `contexto` sustenta relevância e nomeação; NUNCA sustenta número, prazo ou
+# condição. A mesma lista vale no backend (`volc_ads`): mudar aqui exige mudar
+# lá, e o teste de contrato da integração compara as duas.
+# ---------------------------------------------------------------------------
+TIPOS_DE_FATO: tuple[str, ...] = (
+    "numero", "prazo", "data", "mudanca", "condicao",
+    "orgao", "fonte_legal", "processo", "contexto",
+)
+
+#: Unidades da federação aceitas em `escopo = "regional:UF"`.
+UFS: frozenset[str] = frozenset({
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
+    "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+})
+
+
+def _sem_acento(texto: str) -> str:
+    import unicodedata
+    normal = unicodedata.normalize("NFKD", texto)
+    return "".join(ch for ch in normal if not unicodedata.combining(ch))
+
+
+def canon_tipo_de_fato(valor: object) -> str | None:
+    """Grafia canônica de um tipo: minúsculas, sem acento, `_` no lugar de
+    espaço/hífen ("Fonte legal" -> "fonte_legal", "Condição" -> "condicao").
+
+    NÃO decide se o tipo é válido: um valor fora do vocabulário sai canonizado
+    e intacto, para o validador `research_facts_contract` recusá-lo com o nome
+    certo. Trocar por None aqui esconderia o erro da pesquisa."""
+    if valor is None:
+        return None
+    texto = _sem_acento(str(valor)).strip().lower()
+    texto = re.sub(r"[\s\-]+", "_", texto)
+    return texto or None
+
+
+def canon_escopo(valor: object) -> str | None:
+    """`nacional` | `unidade` | `regional:UF` (UF em maiúsculas). Fora disso,
+    sai minúsculo e intacto para o validador recusar."""
+    if valor is None:
+        return None
+    texto = _sem_acento(str(valor)).strip().lower()
+    if not texto:
+        return None
+    texto = re.sub(r"\s*:\s*", ":", texto)
+    if texto.startswith("regional:"):
+        uf = texto.split(":", 1)[1].strip()
+        return f"regional:{uf.upper()}"
+    return texto
+
+
+def canon_citavel(valor: object) -> bool | None:
+    """Booleano tolerante ("sim"/"não" também). Desconhecido = não declarado."""
+    if isinstance(valor, bool) or valor is None:
+        return valor
+    texto = _sem_acento(str(valor)).strip().lower()
+    if texto in {"sim", "true", "1", "yes", "verdadeiro"}:
+        return True
+    if texto in {"nao", "false", "0", "no", "falso"}:
+        return False
+    return None
+
+
+def escopo_valido(escopo: str | None) -> bool:
+    if escopo is None:
+        return True
+    if escopo in ("nacional", "unidade"):
+        return True
+    return escopo.startswith("regional:") and escopo.split(":", 1)[1] in UFS
 
 
 class VerifiedFact(BaseModel):
@@ -149,6 +346,11 @@ class VerifiedFact(BaseModel):
     backwards-compatible qualitative notes.  Numbers, deadlines and legal
     claims, however, are only publishable when represented by this stricter
     shape and later accepted by the research/content gates.
+
+    `tipo`, `escopo` e `citavel` são ADITIVOS e opcionais: um `state.json`
+    anterior à reforma não os tem e continua carregando (None = não declarado;
+    a ponte aplica a regra de legado). O vocabulário é conferido pelo validador
+    `research_facts_contract`, não aqui — ver `canon_tipo_de_fato`.
     """
 
     valor: str = Field(min_length=1)
@@ -157,6 +359,9 @@ class VerifiedFact(BaseModel):
     dispositivo: str = Field(min_length=1)
     vigente_desde: date
     verificado_em: date
+    tipo: str | None = None
+    escopo: str | None = None
+    citavel: bool | None = None
 
     @field_validator("fonte_primaria")
     @classmethod
@@ -165,6 +370,21 @@ class VerifiedFact(BaseModel):
         if not value.startswith("https://"):
             raise ValueError("fonte_primaria deve ser uma URL HTTPS absoluta")
         return value
+
+    @field_validator("tipo", mode="before")
+    @classmethod
+    def _tipo_canonico(cls, value: object) -> str | None:
+        return canon_tipo_de_fato(value)
+
+    @field_validator("escopo", mode="before")
+    @classmethod
+    def _escopo_canonico(cls, value: object) -> str | None:
+        return canon_escopo(value)
+
+    @field_validator("citavel", mode="before")
+    @classmethod
+    def _citavel_tolerante(cls, value: object) -> bool | None:
+        return canon_citavel(value)
 
 
 class ResearchFacts(BaseModel):
@@ -178,6 +398,24 @@ class ResearchFacts(BaseModel):
     # validation trusts this set rather than the model-authored ``fontes``.
     fontes_resolvidas: list[str] = []
     sparse: bool = False
+
+    @field_validator("dados_validados", mode="after")
+    @classmethod
+    def _dados_tipados_canonicos(cls, value: list[dict]) -> list[dict]:
+        """Mesma grafia canônica dos fatos verificados, só onde a chave existe:
+        um dado antigo sem `tipo` continua sem `tipo` (a ponte decide)."""
+        saida: list[dict] = []
+        for item in value:
+            if isinstance(item, dict):
+                item = dict(item)
+                if "tipo" in item:
+                    item["tipo"] = canon_tipo_de_fato(item["tipo"])
+                if "escopo" in item:
+                    item["escopo"] = canon_escopo(item["escopo"])
+                if "citavel" in item:
+                    item["citavel"] = canon_citavel(item["citavel"])
+            saida.append(item)
+        return saida
 
 
 class PageDraft(BaseModel):
@@ -272,6 +510,7 @@ class RunState(BaseModel):
     drafts: dict[int, PageDraft] = {}
     seo: dict[int, dict] = {}
     images: dict[int, str] = {}
+    image_reviews: dict[int, dict] = {}
     # Official-destination screenshots per SOLUTION page (CARD-0005): each value
     # is a list of {"url": <official_link>, "path": <local webp>} dicts captured
     # best-effort by step_screenshot and embedded after the matching link at
@@ -305,6 +544,29 @@ class RunState(BaseModel):
     # `status_wp` viaja junto, e não se deve derivar URL final de rascunho.
     published: dict[int, dict] = {}
     step_status: dict[str, StepResult] = {}
+    # RAMO EDITORIAL NOVO (B4). Gravado no estado para ser PEGAJOSO: um run que
+    # nasceu no ramo novo continua nele quando retomado sem o perfil, em vez
+    # de escrever metade do funil com um prompt e metade com outro.
+    editorial_v2: bool = False
+    # O briefing-v1 VALIDADO de cada página escrita no ramo novo. Página com
+    # briefing aqui = página escrita a partir dele (a B5 usa isso para exigir
+    # revisão e recibo só onde o ramo novo escreveu).
+    briefings: dict[int, dict] = {}
+    # REVISOR CONTEXTUAL (B5), só no ramo novo. `revisoes[n]` é o registro
+    # revisao-v1 da página (rodadas, achados, patches aplicados e recusados,
+    # decisão, erro, sha256 de entrada e de saída); `recibos[n]` só existe com
+    # decisão `aprovado` (do revisor ou da pessoa) e carrega o sha256 que o
+    # `step_publish` confere; `decisoes_humanas[n]` é a saída da revisão humana
+    # (`funnelforge decidir`), presa ao sha256 do conteúdo.
+    revisoes: dict[int, dict] = {}
+    recibos: dict[int, dict] = {}
+    decisoes_humanas: dict[int, dict] = {}
+    # O que as normalizações determinísticas mudaram no texto (normalize do
+    # Gutenberg, aviso canônico, template da LP) e as decorações estruturais
+    # que a publicação acrescentou DEPOIS do recibo (aviso de identidade,
+    # imagem, prints). Nada mais pode mudar o texto depois do recibo.
+    normalizacoes: dict[int, list[dict]] = {}
+    decoracoes: dict[int, list[dict]] = {}
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

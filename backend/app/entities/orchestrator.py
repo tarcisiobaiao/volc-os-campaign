@@ -425,64 +425,83 @@ class EntityMineOrchestrator(BaseAgent):
         return {"pains": pains, "seed_queries": seed_queries, "services_used": services, "engine": engine, "warnings": warnings}
 
 
-def _com_tensao(admin_direction: Optional[str],
-                validacao: Optional[Dict[str, Any]]) -> Optional[str]:
-    """Acrescenta a TENSÃO à direção do arquiteto — como observação, não regra.
+def _tensao_medida(ficha: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    """A tensão dominante da validação, como `{"frase", "evidencia"}`.
 
     ## O que sobe, e por que só isto
 
     A tensão é o eixo mais confiável da validação: AC1 de Gwet 0,76 com input
     fixo, contra 0,64 dos eixos de forma. E é o único que diz com que AFLIÇÃO a
-    pessoa chega, que é matéria-prima do `emotional_objective` — hoje inferido
+    pessoa chega, que é matéria-prima do `emotional_objective` — antes inferido
     pelo arquiteto sem nenhum dado.
 
     Sobe a FRASE EM PRIMEIRA PESSOA da tabela (`psique.TENSOES[t]["pergunta"]`),
     não o nome técnico. "tem dinheiro meu parado que eu não sei sacar?" é o que
     a pessoa sentiria ao digitar; `dinheiro_esquecido` é jargão nosso e não
-    ajuda quem escreve.
-
-    ## O tom é decisão, não descuido
-
-    O bloco diz "observação" e "você decide se e como usar", e NÃO diz nada como
-    "explore a urgência". O arquiteto já teve o núcleo alarmista reescrito para
-    um frame informacional/benefício (ver o cabeçalho de `n8n_prompts/
-    funnel_builder.py`); mandar intensidade emocional por aqui reintroduziria,
-    pela porta dos fundos, exatamente o que aquela reescrita tirou.
+    ajuda quem escreve. A evidência diz em quantas das perguntas medidas ela
+    apareceu (`validacao:n/total`).
 
     ## O que NÃO sobe
 
     A `intensidade` da tabela (0,64 a 0,84). Ela é PRIOR COM DÍVIDA — veio de um
     desfecho contaminado por `spend` — e já viaja marcada assim no card. Um
-    número desses no prompt vira régua de ênfase sem ter sido medido para isso.
+    número desses num prompt vira régua de ênfase sem ter sido medido para isso.
 
-    Sem tensão reconhecida, devolve a direção original intacta. Entidade que
-    chega fria é informação, não falha — e o prompt não muda de tamanho à toa.
+    Sem tensão reconhecida, `None`: entidade que chega fria é informação, não
+    falha.
     """
-    ent = (validacao or {}).get("ficha") or {}
-    tensao = ent.get("tensao_dominante")
+    tensao = ficha.get("tensao_dominante")
     if not tensao or tensao == "nenhuma":
-        return admin_direction
+        return None
 
     from app.motor_pautas.psique import TENSOES
     frase = (TENSOES.get(tensao) or {}).get("pergunta")
     if not frase:
-        return admin_direction
+        return None
 
-    n = ent.get("distribuicao_de_tensao", {}).get(tensao)
-    total = ent.get("n_perguntas")
-    quantas = f" ({n} de {total} perguntas)" if n and total else ""
+    n = (ficha.get("distribuicao_de_tensao") or {}).get(tensao)
+    total = ficha.get("n_perguntas")
+    evidencia = f"validacao:{n}/{total}" if n and total else "validacao"
+    return {"frase": frase, "evidencia": evidencia}
 
-    bloco = (
-        "\n\n<observacao_de_leitura>\n"
-        "Medição da coluna de validação, sobre as perguntas reais que as pessoas "
-        f"fazem sobre este tema{quantas}. É CONTEXTO, não instrução:\n\n"
-        f'A pessoa chega perguntando, em silêncio: "{frase}"\n\n'
-        "Você decide se e como isso entra na arquitetura. Mantenha o tom "
-        "informacional e útil que este briefing já pede — a observação existe "
-        "para você acertar o ângulo, nunca para aumentar a temperatura do texto."
-        "\n</observacao_de_leitura>"
-    )
-    return (admin_direction or "") + bloco
+
+def contexto_de_leitura(validacao: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """O que a validação MEDIU sobre quem lê, como DADO — nunca como instrução.
+
+    Formato do contrato entre trilhas (`funnel_architecture.contexto_de_leitura`):
+
+        {"perguntas_paa": [str], "tensao": {"frase": str, "evidencia": str}}
+
+    `tensao` só existe quando uma tensão foi reconhecida.
+
+    ## Por que deixou de ser instrução (30/09/2026)
+
+    Antes, a tensão descia colada ao direcionamento do admin, num bloco que
+    terminava em "Mantenha o tom informacional e útil que este briefing já pede
+    — a observação existe para você acertar o ângulo, nunca para aumentar a
+    temperatura do texto." Era achatamento por regra, e não por fato — e, pelo
+    canal do admin, a observação ainda disputava o corte de 4.000 caracteres
+    dele. Agora ela é uma linha de dado em `<supporting_data>` e fica gravada na
+    arquitetura, para o motor levar ao briefing como hipótese com evidência. O
+    que o texto pode prometer quem decide são os fatos e o revisor, não um
+    termostato no prompt do arquiteto.
+
+    Sem validação (card que pulou a coluna), `None`: o arquiteto recebe o que
+    recebia antes, e a arquitetura não ganha a chave.
+    """
+    ficha = (validacao or {}).get("ficha") or {}
+    if not ficha:
+        return None
+    perguntas = [str((q or {}).get("pergunta") or "").strip()
+                 for q in (ficha.get("perguntas") or []) if isinstance(q, dict)]
+    perguntas = [p for p in perguntas if p]
+    tensao = _tensao_medida(ficha)
+    if not perguntas and not tensao:
+        return None
+    contexto: Dict[str, Any] = {"perguntas_paa": perguntas}
+    if tensao:
+        contexto["tensao"] = tensao
+    return contexto
 
 
 class EntityFunnelOrchestrator(BaseAgent):
@@ -575,38 +594,51 @@ class EntityFunnelOrchestrator(BaseAgent):
             "production_ads_queue": [],
         }
 
-        # ── A TENSÃO, como CONTEXTO e nunca como ordem ──────────────────────
+        # ── A LEITURA MEDIDA, como DADO ─────────────────────────────────────
         #
-        # Ela é a peça mais confiável do motor de validação (AC1 de Gwet 0,76
-        # com input fixo, contra 0,64 dos eixos de forma) e é a única que diz
-        # com que ALFLIÇÃO a pessoa chega. Isso alimenta o `emotional_objective`
-        # do arquiteto, que hoje ele infere sozinho.
+        # A tensão é a peça mais confiável do motor de validação (AC1 de Gwet
+        # 0,76 com input fixo) e a única que diz com que AFLIÇÃO a pessoa chega
+        # — matéria-prima do `emotional_objective`.
         #
-        # Desce pelo `admin_direction` — o canal que já existe para "o que o
-        # operador quer nesta pauta" — e vai EXPLICITAMENTE marcada como
-        # observação, não como regra. O tom é preservado de propósito: o
-        # arquiteto já tem um frame informacional/benefício (a versão alarmista
-        # foi reescrita), e mandar "a pessoa está desesperada" convidaria de
-        # volta o terrorismo que aquela reescrita tirou.
-        direcao = _com_tensao(admin_direction, validacao)
+        # Ela entra no `opp_like` e o arquiteto a recebe como UMA LINHA DE DADO
+        # em `<supporting_data>` (ver `FunnelProOrchestrator._supporting_data`),
+        # ao lado das keywords e da descrição da entidade. Não vai mais pelo
+        # `admin_direction`: aquele canal é do operador, é cortado em 4.000
+        # caracteres, e o bloco antigo carregava uma instrução de tom ("nunca
+        # para aumentar a temperatura do texto") que achatava o funil por regra
+        # em vez de por fato. O MESMO conteúdo sai no resultado para ser gravado
+        # em `funnel_architecture.contexto_de_leitura`, e o motor o leva adiante.
+        leitura = contexto_de_leitura(validacao)
+        if leitura:
+            opp_like["contexto_de_leitura"] = leitura
 
         architect = FunnelProOrchestrator(
             self.ctx,
             model_override=self.ctx.settings.pautador_entity_funnel_model,
             forced_language=forced_language,
-            admin_direction=direcao,
+            admin_direction=admin_direction,
         )
         built = await architect.run(opp_like, cluster=cluster_like)
 
         # R7: revisor (backstop determinístico) roda ANTES de apply_roles_and_slugs.
-        # Invisível (só logs, nunca no payload de resposta) e fail-open: qualquer
-        # falha inesperada aqui (além do fail-open já garantido dentro do próprio
-        # agente) preserva o funil ORIGINAL do arquiteto — um funil deve SEMPRE
-        # ser entregue. Quando o revisor devolve páginas, pages/writing_jobs
-        # canônicos são REGENERADOS a partir da saída revisada, pra ficarem em
-        # sincronia caso páginas tenham sido fundidas/derrubadas/reordenadas.
+        # Fail-open: qualquer falha inesperada aqui (além do fail-open já
+        # garantido dentro do próprio agente) preserva o funil ORIGINAL do
+        # arquiteto — um funil deve SEMPRE ser entregue. Quando o revisor devolve
+        # páginas, pages/writing_jobs canônicos são REGENERADOS a partir da saída
+        # revisada, pra ficarem em sincronia caso páginas tenham sido
+        # fundidas/derrubadas/reordenadas.
+        #
+        # Deixou de ser invisível (30/09/2026): o que o revisor MUDOU (`changes`)
+        # e o que ele APONTOU sem mudar (`achados`) voltam em
+        # `revisao_arquitetura`, que a rota grava na arquitetura do card. Fora da
+        # resposta HTTP, como antes; dentro do dado que o motor e o operador leem.
         from app.agents.funnel_pro.page_factory import architect_pages_to_funnel_pages, page_factory
         from app.agents.funnel_pro.reviewer import FunnelReviewer
+
+        revisao_arquitetura: Dict[str, Any] = {
+            "changes": [], "achados": [], "estado": "nao_revisado",
+            "motivo": "o revisor não chegou a responder",
+        }
 
         entity_facts = {
             "canonical_name": entity.get("canonical_name"),
@@ -647,8 +679,22 @@ class EntityFunnelOrchestrator(BaseAgent):
                     f"Revisor aplicou {len(reviewed['changes'])} correção(ões).",
                     step="funnel", level="debug",
                 )
+            revisao_arquitetura = {
+                "changes": list(reviewed.get("changes") or []),
+                "achados": list(reviewed.get("achados") or []),
+                "estado": reviewed.get("estado") or "revisado",
+            }
+            if reviewed.get("motivo"):
+                revisao_arquitetura["motivo"] = reviewed["motivo"]
         except Exception as exc:  # noqa: BLE001 — belt-and-suspenders: revisor nunca deve quebrar a entrega
             self.log(f"Revisor ignorado (falha inesperada): {exc}", step="funnel", level="warning")
+            # Só o TIPO da exceção vai para o dado gravado: a mensagem crua do
+            # cliente Gemini traz a URL da chamada — com a chave na query string.
+            revisao_arquitetura = {
+                "changes": [], "achados": [], "estado": "nao_revisado",
+                "motivo": f"falha inesperada no revisor ({type(exc).__name__}); "
+                          "funil original do arquiteto mantido",
+            }
 
         strategy = built.get("funnel_strategy") or {}
         # papéis (LP/Pre-sell/Solução) + sufixos de slug (-pr/-p1/-p2…), com as
@@ -672,6 +718,10 @@ class EntityFunnelOrchestrator(BaseAgent):
             "pages": pages,
             "writing_jobs": writing_jobs,
             "funnel_strategy": strategy,
+            # Gravados pela rota em `funnel_architecture` (contrato entre
+            # trilhas): a leitura medida e o registro da revisão.
+            "contexto_de_leitura": leitura,
+            "revisao_arquitetura": revisao_arquitetura,
             "services_used": built.get("services_used") or [],
             "engine": engine,
             "warnings": built.get("warnings") or [],

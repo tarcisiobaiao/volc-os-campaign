@@ -65,8 +65,21 @@ def _fatos_confiaveis(facts: ResearchFacts) -> list[Any]:
     munição que o gate vai recusar depois.
     """
     resolvidas = set(facts.fontes_resolvidas or [])
+    # `citavel: false` (pesquisa tipada, 30/09) = a fonte é contraditória ou
+    # instável sobre o fato. Mesma régua do `critical_fact_grounding`: o que o
+    # portão não aceita, o redator não vê.
     return [f for f in (facts.fatos_verificados or [])
-            if str(getattr(f, "fonte_primaria", "")) in resolvidas]
+            if str(getattr(f, "fonte_primaria", "")) in resolvidas
+            and getattr(f, "citavel", None) is not False]
+
+
+def _nao_citaveis(facts: ResearchFacts) -> int:
+    """Quantos fatos a pesquisa marcou como NÃO citáveis (e foram retirados)."""
+    verificados = sum(1 for f in (facts.fatos_verificados or [])
+                      if getattr(f, "citavel", None) is False)
+    qualitativos = sum(1 for d in (facts.dados_validados or [])
+                       if isinstance(d, dict) and d.get("citavel") is False)
+    return verificados + qualitativos
 
 
 def nome_da_fonte(url: str) -> str:
@@ -150,12 +163,20 @@ def base_para_o_redator(facts: ResearchFacts | None, *,
 
     qualitativos = []
     for d in (facts.dados_validados or []):
+        if isinstance(d, dict) and d.get("citavel") is False:
+            continue                     # a pesquisa disse: não citável
         fato = _podar(str((d or {}).get("fato", ""))).strip() if isinstance(d, dict) else ""
         if fato:
             qualitativos.append(fato)
     if qualitativos:
         partes.append("OBSERVAÇÕES QUALITATIVAS (NÃO autorizam cifra):\n"
                       + "\n".join(f"  - {q}" for q in qualitativos))
+
+    retirados = _nao_citaveis(facts)
+    if retirados:
+        partes.append(f"FATOS RETIRADOS: {retirados} marcado(s) pela pesquisa como não "
+                      "citável(is) (fonte contraditória ou instável). Não os use nem os "
+                      "reconstrua de memória.")
 
     resolvidas = list(facts.fontes_resolvidas or [])
     if resolvidas and destino_pago:

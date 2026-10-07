@@ -1,6 +1,6 @@
 # funnel-forge/tests/test_pipeline.py
 from pathlib import Path
-from funnelforge.pipeline.pipeline import run_pipeline, Deps, _profit_ledger, _pv_per_session
+from funnelforge.pipeline.pipeline import run_pipeline, Deps, _profit_ledger, _reachable_page_count
 from funnelforge.pipeline.runner import Runner
 from funnelforge.config.settings import load_settings
 from funnelforge.adapters.briefing_docx import DocxBriefingLoader
@@ -163,7 +163,7 @@ def test_run_id_is_slug_timestamp_and_staging_renamed(tmp_path, config_files):
     assert (tmp_path / "runs" / state.run_id / "state.json").exists()
 
 
-def test_pv_per_session_counts_pages_reachable_via_routes_graph():
+def test_reachable_page_count_counts_pages_reachable_via_routes_graph():
     """T2H fix: pv/session now walks the SAME `page.routes` funnel graph
     `build_funnel_routes`/`validate_funnel_graph` use (via
     `routing.reachable_slugs`), not a separate `next_page_slug` chain."""
@@ -177,11 +177,11 @@ def test_pv_per_session_counts_pages_reachable_via_routes_graph():
         _Page(page_number=3, page_type="SOLUTION", h1_title="c", slug="p1",
               role=_PageRole.SOLUTION, routes=[]),
     ]
-    assert _pv_per_session(FunnelPlan(pages=pages, total_pages=3)) == 3
-    assert _pv_per_session(None) == 0
+    assert _reachable_page_count(FunnelPlan(pages=pages, total_pages=3)) == 3
+    assert _reachable_page_count(None) == 0
 
 
-def test_pv_per_session_is_cycle_safe():
+def test_reachable_page_count_is_cycle_safe():
     pages = [
         _Page(page_number=1, page_type="LANDING PAGE", h1_title="a", slug="lp",
               role=_PageRole.LP,
@@ -190,10 +190,10 @@ def test_pv_per_session_is_cycle_safe():
               role=_PageRole.PRESELL,
               routes=[_Route(placement="hero", kind="funnel", target="lp")]),  # loops back
     ]
-    assert _pv_per_session(FunnelPlan(pages=pages, total_pages=2)) == 2
+    assert _reachable_page_count(FunnelPlan(pages=pages, total_pages=2)) == 2
 
 
-def test_pv_per_session_ignores_stale_next_page_slug_and_counts_full_routes_graph():
+def test_reachable_page_count_ignores_stale_next_page_slug_and_counts_full_routes_graph():
     """Regression for the bug this fix closes: a page whose `next_page_slug`
     is stale/empty (e.g. left over from a plan edit, or a SOLUTION page that
     fans out to several siblings instead of a single forward hop) must still
@@ -212,7 +212,7 @@ def test_pv_per_session_ignores_stale_next_page_slug_and_counts_full_routes_grap
         _Page(page_number=4, page_type="SOLUTION", h1_title="d", slug="s2",
               role=_PageRole.SOLUTION, routes=[]),
     ]
-    assert _pv_per_session(FunnelPlan(pages=pages, total_pages=4)) == 4
+    assert _reachable_page_count(FunnelPlan(pages=pages, total_pages=4)) == 4
 
 
 def test_multi_page_prompt_snapshots_are_distinct_per_page(tmp_path: Path, config_files):

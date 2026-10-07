@@ -17,7 +17,13 @@ class CaptureResult:
 
 
 class ResearchProvider(Protocol):
-    def research(self, topic: str, structure: str) -> ResearchFacts: ...
+    """`fontes_reprovadas` e `correcoes` são o feedback da tentativa anterior
+    (URL que não resolveu; tipo/escopo fora do vocabulário fechado). São
+    OPCIONAIS: `step_research` só os passa a quem aceita, e cai na chamada
+    simples quando o provedor tem a assinatura antiga."""
+    def research(self, topic: str, structure: str,
+                 fontes_reprovadas: list[str] | None = None,
+                 correcoes: list[str] | None = None) -> ResearchFacts: ...
 
 
 class ImageGenerator(Protocol):

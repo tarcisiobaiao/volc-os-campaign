@@ -1,0 +1,10 @@
+[user]
+Pesquise e retorne SOMENTE um objeto JSON (UTF-8, sem markdown) com fatos verificáveis para o tema abaixo, no schema:
+{"resumo": "...", "dados_validados": [], "fatos_verificados": [{"valor":"...","unidade":"...","fonte_primaria":"https://...","dispositivo":"... ou não se aplica","vigente_desde":"AAAA-MM-DD","verificado_em":"AAAA-MM-DD"}], "passo_a_passo": [], "fontes": []}
+
+Tema: Por onde comecar na tarifa social
+Estrutura: Qual e a sua situacao
+Qual guia resolve a sua duvida
+Keywords: tarifa social como pedir
+
+URL EXATA (nunca o portal genérico): quando um passo acontece numa página oficial de serviço/consulta, retorne em 'fontes' a URL EXATA daquela página de serviço (ex.: a consulta de situação cadastral do CPF, não o gov.br/receitafederal genérico). PLATAFORMAS: para cada plataforma/app/fintech citada, inclua a URL EXATA do site oficial dela em 'fontes'.

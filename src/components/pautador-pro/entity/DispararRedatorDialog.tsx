@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import {
@@ -53,6 +54,10 @@ export const DispararRedatorDialog: React.FC<Props> = ({ card, aberto, aoFechar 
   const [carregando, setCarregando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [runs, setRuns] = useState<RunDoRedator[]>([]);
+  // Fluxo editorial v2 POR FUNIL. Nasce desligado; reabre com a escolha do
+  // último run deste card (a linha do run guarda), para o operador não ter de
+  // lembrar em qual fluxo este funil vinha sendo escrito.
+  const [editorialV2, setEditorialV2] = useState(false);
 
   // A contagem de páginas NÃO vem do card: `funnel_architecture` não está
   // exposto no tipo do front (o card carrega só `funnel_hypotheses`). Quem tem
@@ -70,6 +75,7 @@ export const DispararRedatorDialog: React.FC<Props> = ({ card, aberto, aoFechar 
       ]);
       setDestinos(d);
       setRuns(r);
+      setEditorialV2(r[0]?.editorial_v2 === true);
       // Pré-seleciona o único apto, quando há exatamente um: escolher entre uma
       // opção só não é escolha. Com dois ou mais, o operador decide.
       const aptos = d.filter((x) => x.apto);
@@ -99,6 +105,8 @@ export const DispararRedatorDialog: React.FC<Props> = ({ card, aberto, aoFechar 
       const r = await pautadorApi.dispararRedator({
         opportunity_id: card.id,
         project_id: escolhido,
+        // Só vai quando ligado: desligado, o pedido é o de sempre.
+        ...(editorialV2 ? { editorial_v2: true } : {}),
       });
       toast({
         title: r.aviso?.startsWith('Já existe') ? 'Já estava na fila' : 'Escrita enfileirada',
@@ -196,6 +204,27 @@ export const DispararRedatorDialog: React.FC<Props> = ({ card, aberto, aoFechar 
               Nada fica visível para o público até você publicar no WordPress.
             </div>
 
+            {/* ── fluxo editorial ── */}
+            <div className="flex items-start justify-between gap-3 border border-border p-2.5">
+              <div className="space-y-0.5">
+                <Label htmlFor="editorial-v2" className="text-xs uppercase tracking-wider">
+                  Fluxo editorial v2
+                </Label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Briefing por página, revisão contextual e recibo antes de subir.
+                  Continua subindo só como rascunho. Desligado, o funil é escrito
+                  pelo fluxo atual.
+                </p>
+              </div>
+              <Switch
+                id="editorial-v2"
+                checked={editorialV2}
+                onCheckedChange={(v) => setEditorialV2(v === true)}
+                disabled={enviando}
+                aria-label="Ligar o fluxo editorial v2 neste funil"
+              />
+            </div>
+
             {/* ── histórico ── */}
             {runs.length > 0 && (
               <div className="space-y-1.5">
@@ -208,6 +237,7 @@ export const DispararRedatorDialog: React.FC<Props> = ({ card, aberto, aoFechar 
                         <span className="truncate">{site?.nome || `projeto ${r.project_id}`}</span>
                         <span className="opacity-60">·</span>
                         <span>{ROTULO_STATUS_RUN[r.status]}</span>
+                        {r.editorial_v2 && <><span className="opacity-60">·</span><span>v2</span></>}
                         {r.custo_usd != null && <><span className="opacity-60">·</span><span>US$ {r.custo_usd.toFixed(2)}</span></>}
                         {r.criado_em && (
                           <span className="ml-auto shrink-0 opacity-70">

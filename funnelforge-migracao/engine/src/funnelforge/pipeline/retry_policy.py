@@ -28,6 +28,18 @@ Duas classificações, nenhuma delas com IA:
 
 Regra do conjunto: basta UMA issue terminal para selar o resultado. Se o passo
 vai reprovar de qualquer jeito, escrever de novo é dinheiro no lixo.
+
+3) (reforma editorial, B5) a classe `patchavel` — só no ramo `editorial_v2`.
+   Julgamento SEMÂNTICO por palavra ou regex (lista de medo, de falsa
+   oficialidade, de verbo de execução, de expressão jurídica, de idioma...) não
+   reprova nem manda reescrever a página inteira: vira LOCALIZADOR entregue ao
+   revisor contextual, que decide pelo sentido e, se for o caso, propõe o menor
+   ajuste. A régua é a do inventário da Frente A (decisões `converter_em_aviso`
+   e `contextualizar`) e da diretriz 8 do operador: erro/bloqueio só para
+   dependência técnica comprovada, exigência objetiva da plataforma, segurança
+   ou escopo. As regras de decisão `remover` (1ª pessoa na LP, cota de blocos
+   visuais) saem do ramo novo. Tudo o que é objetivo continua `estrutural`.
+   Sem a flag, nada disto é consultado: o ramo antigo fica byte a byte igual.
 """
 from __future__ import annotations
 
@@ -146,12 +158,87 @@ _CODIGOS_TERMINAIS: frozenset[str] = frozenset({
 })
 
 
+# --- 3) a régua do ramo editorial novo (B5) ------------------------------------
+
+# Julgamento semântico por palavra/regex -> LOCALIZADOR para o revisor. Entre
+# parênteses, a regra do inventário da Frente A (`inventario-regras.json`).
+CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
+    "fear_language",             # FF-01 lista de medo/escassez (converter_em_aviso)
+    "official_impersonation",    # FF-02 lista de falsa oficialidade (contextualizar)
+    "cta_execution",             # FF-03 radical de verbo no botão (contextualizar)
+    "cta_destination_mismatch",  # FF-05 regex rótulo × href (contextualizar)
+    "no_compliance",             # FF-08 presença de "utilidade pública" (contextualizar)
+    "language_pt",               # FF-12 lista de vazamento de idioma (converter_em_aviso)
+    "ungrounded_legal_claim",    # FF-18 expressão de força legal (converter_em_aviso)
+    "anchor_incongruent",        # FF-26 congruência âncora × H1 por token (contextualizar)
+    "cta_incongruent",           # FF-26 idem, no texto do botão (validador opcional)
+    "missing_bridge",            # ponte antes do CTA por posição (heurística opcional)
+    # D2 — portão de composição (`checks.composicao_editorial`): achados para o
+    # revisor. O slot do Ad Inserter (`ad_slot_inseguro`) fica `estrutural`.
+    "composicao_paredao_de_texto",
+    "composicao_repeticao_visual",
+    "bloco_tabela_sem_cabecalho",
+    "bloco_details_sem_summary",
+    "bloco_pullquote_duplicado",
+    "plano_visual_nao_cumprido",
+})
+# Regras com decisão `remover` no inventário: saem do ramo novo.
+CODIGOS_REMOVIDOS_NO_V2: frozenset[str] = frozenset({
+    "cta_first_person",          # FF-04 1ª pessoa na LP (nenhuma política; NE-03)
+    "missing_semantic_block",    # FF-16 cota de blocos visuais por forma de pergunta
+})
+
+
+def classe_da_issue(issue: Any) -> str:
+    """`estrutural` (bloqueia/retenta como hoje), `patchavel` (localizador para o
+    revisor) ou `removido` (não vale no ramo novo).
+
+    Dois códigos dependem da MENSAGEM porque o mesmo código cobre um caso
+    objetivo e um heurístico:
+    - `critical_claim_without_citation`: número sem a fonte citada é objetivo
+      (FF-17, fica); afirmação JURÍDICA sem a fonte é o ramo de FF-18.
+    - `directional_copy_outside_widget`: dentro da zona das âncoras de anúncio
+      é dependência técnica comprovada (FF-15/PUB-11, fica); fora dela é aviso.
+    """
+    code = getattr(issue, "code", "")
+    mensagem = str(getattr(issue, "message", "") or "")
+    if code in CODIGOS_REMOVIDOS_NO_V2:
+        return "removido"
+    if code in CODIGOS_PATCHAVEIS:
+        return "patchavel"
+    if code == "critical_claim_without_citation" and mensagem.startswith("Afirmação legal"):
+        return "patchavel"
+    if code == "directional_copy_outside_widget" and "zona de anúncio" not in mensagem:
+        return "patchavel"
+    return "estrutural"
+
+
+def separar_para_o_revisor(issues: Iterable[Any]) -> tuple[list[Any], list[Any]]:
+    """(bloqueantes, localizadores) no ramo novo; as removidas somem."""
+    bloqueantes: list[Any] = []
+    localizadores: list[Any] = []
+    for issue in issues:
+        classe = classe_da_issue(issue)
+        if classe == "estrutural":
+            bloqueantes.append(issue)
+        elif classe == "patchavel":
+            localizadores.append(issue)
+    return bloqueantes, localizadores
+
+
 def classificar_issues(issues: Iterable[Any], ctx: dict | None = None) -> Veredito:
     """Decide se vale reescrever o texto depois destas reprovações."""
     ctx = ctx or {}
     lista = list(issues)
     if not lista:
         return Veredito(False, "aprovado", "sem reprovações")
+    if ctx.get("editorial_v2"):
+        lista, localizadores = separar_para_o_revisor(lista)
+        if not lista:
+            return Veredito(
+                False, "patchavel",
+                f"{len(localizadores)} localizador(es) por palavra: vão ao revisor "
+                "contextual, sem reescrita integral")
     for issue in lista:
         code = getattr(issue, "code", "")
         if code in _CODIGOS_TERMINAIS:

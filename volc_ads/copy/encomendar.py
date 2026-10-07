@@ -8,19 +8,23 @@ país, idioma, vertical, keywords triadas e os fatos verificados do funil. O
 `pautador_ponte.Fato` declarava isso no comentário: "quem os injetar será o
 Estágio 3". É este arquivo.
 
-## ⚠️ O tipo de fato do Pautador NÃO é o tipo de fato do prompt
+## ⚠️ O tipo de fato do Pautador NÃO é o tipo de fato do prompt — era
 
 Medido em 18/08/2026 no card 73: dos 6 fatos que o cockpit devolve, **4 têm
-`tipo: "afirmacao"`** — e a seção 2 do `PROMPT.md` só conhece
-`numero, prazo, data, mudanca, condicao, orgao, fonte_legal, processo`.
+`tipo: "afirmacao"`** — e a seção 2 do `PROMPT.md` não conhece esse tipo.
 `Encomenda` recusa o desconhecido com `ErroDeRender`, e faz bem: o tipo é o que
 liga a seção 2 às mecânicas da seção 5, então um tipo inventado desabilitaria
 mecânica em silêncio.
 
-Aqui o fato de tipo desconhecido é **descartado e RELATADO**, nunca remapeado.
-Remapear `afirmacao` para `condicao` seria eu escolhendo o que o texto afirma —
-inventar, com cara de conserto. A tela mostra quantos caíram e por quê; quem
-resolve de verdade é o Pautador passar a emitir tipos do inventário.
+Desde 30/09/2026 (contrato entre as trilhas) a ponte copia o tipo DECLARADO
+pela pesquisa e, em estado antigo, aplica a regra de legado declarada
+(`dados_validados` → `[contexto]`, marcado `regra_legado`). `[contexto]` entrou
+na seção 2 com a semântica escrita: sustenta relevância e nomeação, nunca
+número, prazo ou condição — e o contrato confere isso em código, sempre.
+
+Continua valendo: o fato de tipo DESCONHECIDO é **descartado e RELATADO**,
+nunca remapeado. E o fato marcado `citavel=False` (contraditório na pesquisa)
+também cai, com o motivo: ele não ancora anúncio.
 
 ## Esta ponte não chama o Google, e isso é escolha
 
@@ -106,6 +110,11 @@ def encomendar(
     # payload provado com as de outra: o operador marcava `informativo` no
     # portão e recebia texto restrito de `financeiro`.
     vertical: str | None = None,
+    # O que o leitor DIGITOU, em três estados (`inteligencia_google.modelo.
+    # TermosDeBusca`): de `coletor.coletar_termos_de_busca` (search_term_view)
+    # ou de `coletor.carregar_termos_de_arquivo` (export do integrador).
+    # `None` NÃO é lista vazia: vira `ausente`, com o motivo escrito no prompt.
+    termos_de_busca: Any = None,
 ) -> tuple[Encomenda, list[str]]:
     """Cockpit + keywords escolhidas → `Encomenda`, e o que caiu no caminho.
 
@@ -124,7 +133,19 @@ def encomendar(
             descartados.append(
                 f"{f.id} (tipo '{f.tipo}' não existe na seção 2 do PROMPT.md)")
             continue
-        fatos.append(Fato(id=f.id, tipo=f.tipo, texto=f.texto, fonte=f.fonte))
+        if getattr(f, "citavel", None) is False:
+            descartados.append(
+                f"{f.id} (marcado não citável na pesquisa: não ancora anúncio)")
+            continue
+        fatos.append(Fato(id=f.id, tipo=f.tipo, texto=f.texto, fonte=f.fonte,
+                          escopo=str(getattr(f, "escopo", None) or "")))
+
+    if termos_de_busca is None:
+        from ..inteligencia_google.modelo import termos_ausentes  # noqa: PLC0415
+
+        termos_de_busca = termos_ausentes(
+            "nenhuma coleta de termos de busca (search_term_view ou arquivo) foi "
+            "entregue a esta encomenda")
 
     # A amostra do corpus é o que ancora o TOM na operação real — 6.651
     # headlines aprovados e servindo. Ausência dela não impede escrever, então
@@ -141,10 +162,10 @@ def encomendar(
         url=url_final or o.url_final,
         keywords=tuple(dict.fromkeys(k for k in keywords if k)),
         fatos=tuple(fatos),
-        # `termos_de_busca` sai do `search_term_view` da conta, e não existe
-        # camada de métrica no engine (`metrics.` = 0 ocorrências). Vazio é a
-        # verdade, e a seção 10 do PROMPT.md tem o caminho para lista vazia.
-        termos_de_busca=(),
+        # Três estados, nunca `()` fixo: até 30/09/2026 aqui ia uma tupla vazia
+        # e o prompt dizia "nenhum termo colhido" de uma campanha que NUNCA foi
+        # consultada — ausência apresentada como medição.
+        termos_de_busca=termos_de_busca,
         pais=o.pais or "BR",
         idioma=o.idioma or "",
         vertical=vertical or o.vertical or "informativo",
@@ -169,14 +190,19 @@ def escrever(
     # parâmetro só em `encomendar()` fez a rota estourar com
     # `escrever() got an unexpected keyword argument 'vertical'`.
     vertical: str | None = None,
+    # Repassado a `encomendar()`: um `TermosDeBusca` (presente |
+    # vazio_confirmado | ausente). `None` = não coletado, e o prompt diz isso.
+    termos_de_busca: Any = None,
     # ⚠️ O modelo é escolhível para PODER COMPARAR. Não existe modelo medido
     # para copy nesta operação — declarar um como "o certo" seria inventar
     # benchmark. `None` usa o do ambiente (`VOLC_ADS_COPY_MODELO` ou o do
     # backend). Passar um nome permite rodar o mesmo card em modelos diferentes
     # e olhar o resultado lado a lado, que é a única forma honesta de escolher.
     modelo: str | None = None,
-    # O juiz de sentido. Ligado, desliga C7 e C8 determinísticos — ver
-    # `contrato.checar` e `juiz_semantico.py`.
+    # O juiz de sentido. Ligado, desliga a C7 heurística e a C8 — ver
+    # `contrato.checar` e `juiz_semantico.py`. O lastro TIPADO (existência do
+    # fato e tipo compatível) roda sempre; e se o juiz cair, a copy não é
+    # aceita (pendência `JS.indisponivel`).
     com_juiz_semantico: bool = True,
 ) -> Escrita:
     """Roda a cascata inteira e devolve a copy com a medição colada.
@@ -188,7 +214,8 @@ def escrever(
 
     enc, descartados = encomendar(
         cockpit, keywords=keywords, certificacoes=certificacoes,
-        match_type=match_type, url_final=url_final, vertical=vertical)
+        match_type=match_type, url_final=url_final, vertical=vertical,
+        termos_de_busca=termos_de_busca)
 
     c = cliente if cliente is not None else criar(modelo=modelo)
 
@@ -198,17 +225,21 @@ def escrever(
     juiz_sem = None
     if com_juiz_semantico:
         from . import juiz_semantico as _js
-        from ..policy import spec as _spec
 
-        _regras = [r for r in (_spec.carregar().get("estruturais") or [])
-                   if r.get("id") in _js.REGRAS_DE_SENTIDO]
-        _nicho = getattr(getattr(cockpit, "origem", None), "nicho", "") or ""
-        # POR EXTENSO — ver `_fatos_para_juiz` para o defeito que isto conserta.
-        _fatos = _fatos_para_juiz(enc)
-
-        def juiz_sem(dados: dict):  # noqa: F811
-            return _js.como_achados(_js.julgar(
-                c, dados, fatos_texto=_fatos, nicho=_nicho, regras=_regras))
+        # O juiz é EDITOR (B6, 30/09/2026): recebe os fatos POR EXTENSO e
+        # tipados (ver `_fatos_para_juiz`), os termos de busca com o estado da
+        # coleta, o destino do clique e os trechos que as listas de palavras
+        # marcaram — que não reprovam sozinhos.
+        juiz_sem = _js.montar_juiz(
+            c, fatos_texto=_fatos_para_juiz(enc),
+            nicho=getattr(getattr(cockpit, "origem", None), "nicho", "") or "",
+            termos_texto=render._bloco_termos(enc.termos_de_busca),
+            destino=_destino_para_juiz(enc),
+            # O que a LP promete (título, subtítulo, CTA), da ponte. Sem ela, o
+            # bloco diz AUSENTE com o motivo, ou "não entregue".
+            promessa_lp=_js.bloco_promessa_da_lp(getattr(
+                getattr(cockpit, "origem", None), "promessa_da_lp", None)),
+            pais=enc.pais, idioma=enc.idioma or "pt", vertical=enc.vertical)
     t0 = time.monotonic()
     r = ciclo.gerar(
         cliente=c,
@@ -266,8 +297,20 @@ def _fatos_para_juiz(enc: Encomenda) -> str:
     linhas = []
     for f in enc.fatos:
         fonte = f" (fonte: {f.fonte})" if getattr(f, "fonte", "") else ""
-        linhas.append(f"  {f.id} [{f.tipo}] {f.texto}{fonte}")
+        escopo = getattr(f, "escopo", "") or ""
+        escopo = f" · escopo: {escopo}" if escopo else ""
+        linhas.append(f"  {f.id} [{f.tipo}] {f.texto}{fonte}{escopo}")
     return "\n".join(linhas)
+
+
+def _destino_para_juiz(enc: Encomenda) -> str:
+    """Para onde o clique leva. Todo sitelink aponta para a URL final do anúncio
+    (`campanha/search.py`: uma landing page só), e é isso que se declara."""
+    if not enc.url:
+        return ""
+    return (f"  anúncio → {enc.url}\n"
+            f"  sitelink[*] → {enc.url} (todo sitelink desta campanha aponta para a "
+            f"URL final do anúncio)")
 
 
 def _texto_do_achado(a: Achado) -> dict:

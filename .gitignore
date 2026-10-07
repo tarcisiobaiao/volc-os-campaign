@@ -28,6 +28,13 @@ dist-ssr
 !.env.server.example
 .env.production
 .env.*.local
+# Credenciais do WEBGO: o arquivo mora FORA do repositório, em
+# ~/.config/volc/env_webgo (dir 700, arquivo 600; caminho canônico na
+# variável VOLC_ENV_WEBGO). Nenhum código do repo o lê. Estas linhas
+# impedem que uma cópia devolvida à raiz volte a ser rastreável.
+.env_webgo
+env_webgo
+.env_webgo.*
 backend/.env
 backend/.env.local
 

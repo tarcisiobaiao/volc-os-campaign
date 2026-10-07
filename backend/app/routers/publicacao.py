@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 
 from app.config import get_settings
 from app.seguranca import (
@@ -473,6 +473,10 @@ class DispararEntrada(BaseModel):
     # funil de 5 páginas, ~US$ 0,45 por página.
     teto_usd: Optional[float] = None
     teto_pagina_usd: Optional[float] = None
+    # O FLUXO EDITORIAL V2 neste funil (briefing, revisor, recibo). Padrão
+    # desligado. `StrictBool`: "true" em texto é 422, não um fluxo ligado por
+    # engano de serialização — ele muda prompts e passos do motor.
+    editorial_v2: StrictBool = False
 
 
 class RunDoRedator(BaseModel):
@@ -487,6 +491,10 @@ class RunDoRedator(BaseModel):
     paginas_geradas: Optional[int] = None
     erro: Optional[str] = None
     criado_em: Optional[str] = None
+    # Com que fluxo ESTE run foi disparado. Coluna `editorial_v2` de
+    # `pautador_funnel_runs` (src/sql/pautador/06_run_editorial_v2.sql); linha
+    # anterior à coluna lê `False`, que é o que ela foi.
+    editorial_v2: bool = False
 
 
 class DispararSaida(BaseModel):
@@ -514,6 +522,7 @@ def _run_para_saida(r: Dict[str, Any]) -> RunDoRedator:
         paginas_geradas=r.get("paginas_geradas"),
         erro=r.get("erro"),
         criado_em=r.get("criado_em"),
+        editorial_v2=r.get("editorial_v2") is True,
     )
 
 
@@ -669,20 +678,34 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
             aviso="Já existe uma execução na fila para este card neste site.",
         )
 
-    criado = await supa.insert(TABELA_RUNS, [{
-        "opportunity_id": body.opportunity_id,
-        "project_id": body.project_id,
-        "status": "queued",
-        # Único modo hoje. A coluna fica porque um run é registro histórico do
-        # que ELE fez — se um dia existir "publicar no ar", o espaço já existe.
-        "modo": "publicado",
-        "paginas_planejadas": len(paginas),
-        # Os tetos DESTE run ficam na linha. Sem eles a régua de custo da tela
-        # não teria contra o que comparar o gasto — e "US$ 1,87" sozinho não diz
-        # se está tranquilo ou a um passo de ser cortado.
-        "teto_usd": body.teto_usd,
-        "teto_pagina_usd": body.teto_pagina_usd,
-    }])
+    # `editorial_v2` só vai à linha quando LIGADO: o disparo de sempre continua
+    # com o INSERT byte a byte igual, e funciona mesmo antes da migração 06.
+    try:
+        criado = await supa.insert(TABELA_RUNS, [{
+            "opportunity_id": body.opportunity_id,
+            "project_id": body.project_id,
+            "status": "queued",
+            # Único modo hoje. A coluna fica porque um run é registro histórico do
+            # que ELE fez — se um dia existir "publicar no ar", o espaço já existe.
+            "modo": "publicado",
+            "paginas_planejadas": len(paginas),
+            # Os tetos DESTE run ficam na linha. Sem eles a régua de custo da tela
+            # não teria contra o que comparar o gasto — e "US$ 1,87" sozinho não diz
+            # se está tranquilo ou a um passo de ser cortado.
+            "teto_usd": body.teto_usd,
+            "teto_pagina_usd": body.teto_pagina_usd,
+            **({"editorial_v2": True} if body.editorial_v2 else {}),
+        }])
+    except httpx.HTTPStatusError as exc:
+        if not body.editorial_v2:
+            raise
+        # Coluna ausente (migração 06 não aplicada): recusa CLARA, antes de
+        # gastar, em vez de um run v2 que o banco não saberia registrar.
+        raise HTTPException(
+            status_code=409,
+            detail="O banco ainda não registra o fluxo editorial v2 "
+                   "(aplique src/sql/pautador/06_run_editorial_v2.sql). "
+                   "Dispare com o fluxo atual ou aplique a migração.") from exc
     if not criado:
         raise HTTPException(status_code=500, detail="Não consegui gravar a execução.")
 
@@ -704,7 +727,8 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     try:
         perfil_do_run = montar_perfil(
             perfil_wp=perfil, arquitetura=arq, entidade=entidade,
-            teto_usd=body.teto_usd, teto_pagina_usd=body.teto_pagina_usd)
+            teto_usd=body.teto_usd, teto_pagina_usd=body.teto_pagina_usd,
+            editorial_v2=body.editorial_v2)
     except PerfilIncompleto as exc:
         await supa.patch(TABELA_RUNS, {"id": f"eq.{criado[0]['id']}"},
                          {"status": "failed", "erro": str(exc)})
@@ -713,9 +737,16 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     # `create_task` e não `BackgroundTasks`: um run dura ~45 min e não pode ficar
     # amarrado ao ciclo de vida de uma requisição. A referência é guardada porque
     # o asyncio descarta task sem referência forte no meio do caminho.
+    # O que a CAMPANHA já mediu do leitor (termos de busca) e o que o ANÚNCIO
+    # promete (RSA ativa) vão na arquitetura que o motor lê. Sem campanha
+    # vinculada, os dois vão `ausente` com o motivo — nunca lista vazia calada.
+    from app.redator.contexto import anexar_contextos, contextos_do_funil
+
+    arq_do_run = anexar_contextos(arq, await contextos_do_funil(supa, body.opportunity_id))
+
     tarefa = asyncio.create_task(w.executar(
         supa=supa, run_row_id=int(criado[0]["id"]),
-        arquitetura=arq, perfil=perfil_do_run, publicar=True,
+        arquitetura=arq_do_run, perfil=perfil_do_run, publicar=True,
         # A prova de que este disparo passou pelo portão do plano. Sem ela o
         # worker recusa montar `--publish` e o run termina `failed` sem publicar
         # nada — ver `worker._disparar_motor`.
@@ -1889,10 +1920,15 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
     # defeito, uma linha adiante.
     arq: Dict[str, Any] = {}
     entidade = None
-    opps = await supa.select(
-        "pautador_entity_opportunities",
-        {"id": f"eq.{run.get('opportunity_id')}",
-         "select": "id,entity_id,funnel_architecture", "limit": 1})
+    # ⚠️ O card é `pautador_entity_opportunities` (S2 · item 7, 30/09/2026).
+    # Aqui se lia `pautador_opportunities`, a tabela do pautador antigo: ela não
+    # tem `entity_id` nem `funnel_architecture` (v7_01 × v7_06), e a FK de
+    # `pautador_funnel_runs.opportunity_id` aponta para a entity-first
+    # (02_publicacao_por_projeto.sql). O efeito era silencioso: a retomada
+    # sempre caía no esqueleto e publicava sem os termos e o canal da entidade.
+    opps = await supa.select("pautador_entity_opportunities",
+                             {"id": f"eq.{run.get('opportunity_id')}",
+                              "select": "id,entity_id,funnel_architecture", "limit": 1})
     if opps:
         arq = opps[0].get("funnel_architecture") or {}
         if opps[0].get("entity_id"):
@@ -1913,8 +1949,12 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
     from app.redator import PerfilIncompleto, montar_perfil
 
     try:
-        perfil_do_run = montar_perfil(perfil_wp=perfil_wp, arquitetura=arq,
-                                      entidade=entidade)
+        # O fluxo com que o run NASCEU: a linha diz, e o estado confirma. Um
+        # run v2 retomado sem a flag publicaria sem conferir o recibo.
+        perfil_do_run = montar_perfil(
+            perfil_wp=perfil_wp, arquitetura=arq, entidade=entidade,
+            editorial_v2=(run.get("editorial_v2") is True
+                          or estado.get("editorial_v2") is True))
     except PerfilIncompleto as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

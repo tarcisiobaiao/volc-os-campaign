@@ -70,8 +70,17 @@ def apply_roles_and_slugs(
             return text
         return pat.sub(lambda m: "/" + slug_map[m.group(1)], text)
 
+    def map_editorial(owner: Dict[str, Any]) -> None:
+        contract = owner.get("editorial")
+        if isinstance(contract, dict):
+            for link in contract.get("links") or []:
+                if isinstance(link, dict):
+                    target = link.get("target")
+                    link["target"] = slug_map.get(target, target)
+
     # páginas: role/label + reescreve refs em H2s (subtitles) e links internos
     for p in pages:
+        map_editorial(p)
         try:
             role, label, _ = role_for_position(int(p.get("position")))
             p["role"], p["role_label"] = role, label
@@ -84,6 +93,7 @@ def apply_roles_and_slugs(
     for j in writing_jobs:
         wb = j.get("writer_briefing") or {}
         old = (wb.get("current_url") or "").strip().lstrip("/")
+        map_editorial(wb)
         if old in slug_map:
             wb["current_url"] = slug_map[old]
         if wb.get("cta_link"):

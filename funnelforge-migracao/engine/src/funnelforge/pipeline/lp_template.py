@@ -18,9 +18,11 @@ import copy
 import hashlib
 import json
 import re
+from html import escape
 from importlib import resources
 
 from funnelforge.domain.models import Issue
+from funnelforge.pipeline.editorial_safety import html_issues, notice_html, valid_web_url
 from funnelforge.pipeline.doctrine import (
     BANNED_CTA_FIRST_PERSON,
     BANNED_FEAR,
@@ -33,22 +35,39 @@ _REQUIRED_LP_SLOTS = (
     "sections", "faq", "transition", "cta_texts",
 )
 
-# Tactile mobile-first invite ("toque abaixo e veja como...") the gravata
-# (hero_subtitle) must close with, congruent with the hero CTAs right below it.
-_GRAVATA_TACTILE_RE = re.compile(r"toque", re.IGNORECASE)
-
-
 def validate_lp_content(content: dict) -> list[Issue]:
     """Validate the redator_p1 JSON that feeds the LP template.
 
     Checks the slot schema (all fields present, 4 sections, >=3 CTAs), the
-    LP-specific shape rules (intro is a single paragraph, the gravata closes
-    with a tactile CTA invite) AND the middle-ground compliance guards on the
+    LP-specific shape rules (intro is a single paragraph) AND the compliance guards on the
     copy: no service-execution verbs in the CTAs, no false-officiality, no
     fabricated scarcity anywhere. Grounding (a real number/authority fact) is
     instructed in the prompt but not machine-verified here.
     """
     issues: list[Issue] = []
+    if not isinstance(content, dict):
+        return [Issue(code="lp_schema", message="A LP deve ser um objeto JSON.")]
+    for name in _REQUIRED_LP_SLOTS:
+        if not content.get(name):
+            issues.append(Issue(code="lp_missing_slot", message=f"Campo obrigatório ausente: {name}"))
+    for name in ("hero_title", "hero_subtitle", "article_title", "intro", "transition"):
+        if not isinstance(content.get(name), str):
+            issues.append(Issue(code="lp_schema", message=f"{name} deve ser texto."))
+    for name, fields in (("sections", ("title", "body")), ("faq", ("q", "a"))):
+        items = content.get(name)
+        if not isinstance(items, list) or any(
+            not isinstance(item, dict) or any(not isinstance(item.get(k), str) for k in fields)
+            for item in items
+        ):
+            issues.append(Issue(code="lp_schema", message=f"Estrutura inválida: {name}"))
+    ctas = content.get("cta_texts")
+    if not isinstance(ctas, list) or any(not isinstance(c, str) for c in ctas):
+        issues.append(Issue(code="lp_schema", message="cta_texts deve ser uma lista de textos."))
+    if issues:
+        return issues
+    for value in (content["intro"], content["transition"],
+                  *(s["body"] for s in content["sections"])):
+        issues.extend(html_issues(value, rich_only=True))
     for k in _REQUIRED_LP_SLOTS:
         if not content.get(k):
             issues.append(Issue(code="lp_missing_slot",
@@ -73,14 +92,9 @@ def validate_lp_content(content: dict) -> list[Issue]:
         issues.append(Issue(code="lp_intro_long",
                             message="Intro deve ter EXATAMENTE 1 parágrafo (<p>); veio "
                                     "mais de um -- remova o parágrafo de roadmap."))
-    subtitle = content.get("hero_subtitle") or ""
-    if not _GRAVATA_TACTILE_RE.search(subtitle):
-        issues.append(Issue(code="lp_gravata_no_cta",
-                            message="Gravata (hero_subtitle) sem convite tátil "
-                                    "('toque...') congruente com os cta_texts."))
 
     cta_text = " ".join(str(c) for c in ctas)
-    hit = banned_cta_execution_hit(cta_text)
+    hit = next((hit for c in ctas if (hit := banned_cta_execution_hit(c))), None)
     if hit:
         issues.append(Issue(code="cta_execution",
                             message=f"CTA com verbo de execução de serviço: '{hit}'."))
@@ -247,7 +261,9 @@ def _su_accordion(faq: list) -> str:
     parts = []
     for i, item in enumerate(faq or []):
         op = "yes" if i == 0 else "no"
-        q, a = item.get("q", ""), item.get("a", "")
+        # Questions/answers are text, not a way to inject HTML or WP shortcodes.
+        q, a = (escape(item.get(k, "")).replace("[", "&#91;").replace("]", "&#93;")
+                for k in ("q", "a"))
         parts.append(
             f'[su_spoiler title="{q}" open="{op}" style="fancy" icon="plus"]{a}[/su_spoiler]'
         )
@@ -327,7 +343,7 @@ def _href_for_button(funnel_hrefs: list[str], button_ordinal: int) -> str:
 
 def render_lp(
     template: dict, content: dict, funnel_hrefs: list[str],
-    hero_image_url: str = "", id_seed: str = "",
+    hero_image_url: str = "", id_seed: str = "", site_domain: str = "",
 ) -> tuple[list, dict]:
     """Return `(elementor_content_array, page_settings)` for the LP.
 
@@ -350,9 +366,12 @@ def render_lp(
         kind, ref = spec
         s = w.setdefault("settings", {})
         if kind == "heading":
-            s["title"] = _slot_value(content, ref)
+            s["title"] = escape(_slot_value(content, ref))
         elif kind == "text":
-            s["editor"] = _numbered_to_emoji(_slot_value(content, ref))
+            value = _slot_value(content, ref)
+            if html_issues(value, rich_only=True):
+                raise ValueError("HTML inseguro no texto da LP")
+            s["editor"] = _numbered_to_emoji(value)
         elif kind == "faq":
             s["editor"] = _su_accordion(content.get("faq") or [])
         elif kind == "button":
@@ -365,10 +384,77 @@ def render_lp(
                 # trailing »/>> the writer appends is redundant -- strip it.
                 if _has_arrow_icon(s):
                     label = _strip_trailing_arrows(label)
-                s["text"] = label
-            s.setdefault("link", {})["url"] = _href_for_button(funnel_hrefs, button_ordinal)
+                s["text"] = escape(label)
+            href = _href_for_button(funnel_hrefs, button_ordinal)
+            if not valid_web_url(href):
+                raise ValueError("Destino inválido no botão da LP")
+            s.setdefault("link", {})["url"] = href
             button_ordinal += 1
 
     _fix_image_and_hrefs(cont, hero_image_url)
     _drop_conflicting_global_typography(cont)
+    # Canvas can omit theme chrome. Identity belongs to the page, before both heroes.
+    cont.insert(0, {
+        "id": "editorial", "elType": "container",
+        "settings": {"content_width": "full", "background_background": "classic",
+                     "background_color": "#ffffff"},
+        "elements": [{"id": "notice", "elType": "widget", "widgetType": "html",
+                      "settings": {"html": notice_html(site_domain)}, "elements": []}],
+    })
+    _regen_ids(cont, [start])
     return cont, tpl.get("page_settings", {})
+
+
+def transformacoes_do_template(content: dict, template: dict | None = None) -> list[dict]:
+    """O que `render_lp` faz com o texto APROVADO ao montar o Elementor, para o
+    registro no state.json (ramo editorial novo, B5). Não muda o render: repete
+    o mesmo percurso por `_SLOT_MAP` e só anota o que muda — escape de HTML nos
+    títulos, enumeração "1)" virando emoji, seta final tirada do rótulo do
+    botão, FAQ virando shortcode escapado, slot do template sem texto e o aviso
+    de identidade inserido no topo."""
+    tpl = template if template is not None else load_lp_template()
+    saida: list[dict] = []
+    vistos: set[tuple[str, str]] = set()
+
+    def anota(tipo: str, campo: str, **extra: object) -> None:
+        if (tipo, campo) not in vistos:
+            vistos.add((tipo, campo))
+            saida.append({"tipo": tipo, "campo": campo, **extra})
+
+    def nome(ref: object) -> str:
+        if isinstance(ref, tuple):
+            return f"{ref[0]}[{ref[1]}].{ref[2]}"
+        if isinstance(ref, list):
+            return str(ref[-1])
+        return str(ref)
+
+    textos = content.get("cta_texts") or []
+    for i, w in enumerate(_fillable(copy.deepcopy(tpl).get("content", []))):
+        spec = _SLOT_MAP.get(i)
+        if spec is None:
+            continue
+        kind, ref = spec
+        s = w.get("settings", {}) or {}
+        if kind == "heading":
+            valor = _slot_value(content, ref)
+            if not valor:
+                anota("slot_vazio", nome(ref))
+            elif escape(valor) != valor:
+                anota("escape_html", nome(ref))
+        elif kind == "text":
+            valor = _slot_value(content, ref)
+            if _numbered_to_emoji(valor) != valor:
+                anota("enumeracao_para_emoji", nome(ref), antes=valor[:200],
+                      depois=_numbered_to_emoji(valor)[:200])
+        elif kind == "faq":
+            anota("faq_em_shortcode", "faq", itens=len(content.get("faq") or []))
+        elif kind == "button" and isinstance(ref, int) and textos:
+            idx = ref % len(textos)
+            rotulo = str(textos[idx])
+            if _has_arrow_icon(s) and _strip_trailing_arrows(rotulo) != rotulo:
+                anota("seta_final_removida", f"cta_texts[{idx}]", antes=rotulo,
+                      depois=_strip_trailing_arrows(rotulo))
+            if escape(rotulo) != rotulo:
+                anota("escape_html", f"cta_texts[{idx}]")
+    anota("aviso_identidade_no_topo", "template")
+    return saida

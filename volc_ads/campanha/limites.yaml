@@ -98,8 +98,11 @@ snippet_headers_es:
   - Hoteles destacados
   - Modelos
 
-# Termos que reprovam o texto ANTES de ir para a API. Não substituem a
-# revisão do Google — antecipam a reprovação e evitam o strike na conta.
+# LOCALIZADORES, não proibições (30/09/2026, inventário da frente A, ADS-05:
+# classe D, sem fundamento). Até essa data a lista reprovava por substring e o
+# prompt da copy a ensinava como "TRAVA 0"; os dois saíram. `validacao.
+# checar_politica` só MARCA o trecho (aviso) para quem julga o sentido, e o
+# construtor de Search não a executa (o portão é `policy/spec.json`).
 politica:
   proibidos:
     - empréstimo

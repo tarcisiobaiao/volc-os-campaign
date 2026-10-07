@@ -1,0 +1,97 @@
+[user]
+<contrato_editorial_independente>
+Este site publica informação. Não é banco, correspondente bancário, órgão público
+nem plataforma de solicitação. Não atribua a ele atendimento oficial, autorização,
+parceria, aprovação de crédito, liberação de benefício ou acesso ao cadastro do leitor.
+Mencionar uma instituição como fonte não torna o portal representante dela.
+Mantenha o assunto verdadeiro do guia, inclusive o nome do serviço e seus riscos.
+Não substitua o tema por eufemismos e não esconda custos, juros ou condições relevantes.
+Botões internos abrem conteúdo: descreva o guia, comparação, requisitos ou passo a passo.
+Nunca prometa solicitar, contratar, sacar ou liberar recursos ao abrir um guia interno.
+Links externos de serviço devem identificar claramente o site de destino.
+Não gere formulários, logins, coleta de CPF, senha, cartão ou dados bancários.
+Widgets só orientam; não consultam cadastros nem confirmam elegibilidade ou aprovação.
+O sistema insere a identidade editorial antes do conteúdo. Não invente identidade,
+CNPJ, selos, depoimentos, parcerias ou endossos para produzir credibilidade.
+Nenhum disclaimer corrige uma promessa enganosa: o conteúdo inteiro deve ser coerente.
+</contrato_editorial_independente>
+
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 30/09/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: {"hero_title": "Tarifa social de energia", "hero_subtitle": "O que a regra exige, onde pedir e como conferir o desconto na conta", "article_title": "Tarifa social de energia: quem tem direito e onde pedir", "intro": "<p>A conta de luz pesa no orcamento. Esta pagina mostra quem tem direito ao <strong>desconto</strong> e onde pedir.</p>", "sections": [{"title": "Quem pode ter o desconto", "body": "<p>A regra olha a inscricao no cadastro social.</p>"}, {"title": "Como o desconto aparece", "body": "<p>O desconto aparece na propria conta de luz.</p>"}, {"title": "Onde pedir", "body": "<p>O pedido e feito na distribuidora da regiao.</p>"}, {"title": "O que conferir antes", "body": "<p>Tenha a conta e o cadastro atualizados.</p>"}], "faq": [{"q": "Preciso pagar para pedir?", "a": "Nao. O pedido e gratuito na distribuidora."}, {"q": "Onde pedir?", "a": "Na distribuidora de energia da sua regiao."}], "transition": "<p>O proximo guia mostra qual caminho serve para o seu caso.</p>", "cta_texts": ["Ver o caminho do seu caso", "Ver quem tem direito", "Ver o passo a passo do pedido"]}
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

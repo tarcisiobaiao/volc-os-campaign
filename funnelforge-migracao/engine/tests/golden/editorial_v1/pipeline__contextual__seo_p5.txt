@@ -1,0 +1,107 @@
+[user]
+<contrato_editorial_independente>
+Este site publica informação. Não é banco, correspondente bancário, órgão público
+nem plataforma de solicitação. Não atribua a ele atendimento oficial, autorização,
+parceria, aprovação de crédito, liberação de benefício ou acesso ao cadastro do leitor.
+Mencionar uma instituição como fonte não torna o portal representante dela.
+Mantenha o assunto verdadeiro do guia, inclusive o nome do serviço e seus riscos.
+Não substitua o tema por eufemismos e não esconda custos, juros ou condições relevantes.
+Botões internos abrem conteúdo: descreva o guia, comparação, requisitos ou passo a passo.
+Nunca prometa solicitar, contratar, sacar ou liberar recursos ao abrir um guia interno.
+Links externos de serviço devem identificar claramente o site de destino.
+Não gere formulários, logins, coleta de CPF, senha, cartão ou dados bancários.
+Widgets só orientam; não consultam cadastros nem confirmam elegibilidade ou aprovação.
+O sistema insere a identidade editorial antes do conteúdo. Não invente identidade,
+CNPJ, selos, depoimentos, parcerias ou endossos para produzir credibilidade.
+Nenhum disclaimer corrige uma promessa enganosa: o conteúdo inteiro deve ser coerente.
+</contrato_editorial_independente>
+
+=<FUNÇÃO>
+
+Especialista SEO de classe mundial e cofundador do YOAST SEO, especializado em Google Organic Search para mercado brasileiro.
+
+</FUNÇÃO>
+
+<TAREFA>
+
+Gere três campos YOAST SEO para WordPress:
+
+1. SEO Title
+2. Meta Description  
+3. Focus Keyword
+
+</TAREFA>
+
+<CONTEXTO>
+
+Hoje é 30/09/2026. Use o ANO CORRENTE em títulos e descrições; NUNCA escreva anos passados (2024, 2025) como se fossem o ano atual.
+
+Conteúdo: <!-- wp:paragraph -->
+<p>Conteúdo de utilidade pública sobre Como conferir o desconto na conta de luz, com orientações claras e verificadas para o leitor. exclusivocomoconferirodescontonacontadeluz000 exclusivocomoconferirodescontonacontadeluz001 exclusivocomoconferirodescontonacontadeluz002 exclusivocomoconferirodescontonacontadeluz003 exclusivocomoconferirodescontonacontadeluz004 exclusivocomoconferirodescontonacontadeluz005 exclusivocomoconferirodescontonacontadeluz006 exclusivocomoconferirodescontonacontadeluz007 exclusivocomoconferirodescontonacontadeluz008 exclusivocomoconferirodescontonacontadeluz009 exclusivocomoconferirodescontonacontadeluz010 exclusivocomoconferirodescontonacontadeluz011 exclusivocomoconferirodescontonacontadeluz012 exclusivocomoconferirodescontonacontadeluz013 exclusivocomoconferirodescontonacontadeluz014 exclusivocomoconferirodescontonacontadeluz015 exclusivocomoconferirodescontonacontadeluz016 exclusivocomoconferirodescontonacontadeluz017 exclusivocomoconferirodescontonacontadeluz018 exclusivocomoconferirodescontonacontadeluz019 exclusivocomoconferirodescontonacontadeluz020 exclusivocomoconferirodescontonacontadeluz021 exclusivocomoconferirodescontonacontadeluz022 exclusivocomoconferirodescontonacontadeluz023 exclusivocomoconferirodescontonacontadeluz024 exclusivocomoconferirodescontonacontadeluz025 exclusivocomoconferirodescontonacontadeluz026 exclusivocomoconferirodescontonacontadeluz027 exclusivocomoconferirodescontonacontadeluz028 exclusivocomoconferirodescontonacontadeluz029 exclusivocomoconferirodescontonacontadeluz030 exclusivocomoconferirodescontonacontadeluz031 exclusivocomoconferirodescontonacontadeluz032 exclusivocomoconferirodescontonacontadeluz033 exclusivocomoconferirodescontonacontadeluz034 exclusivocomoconferirodescontonacontadeluz035 exclusivocomoconferirodescontonacontadeluz036 exclusivocomoconferirodescontonacontadeluz037 exclusivocomoconferirodescontonacontadeluz038 exclusivocomoconferirodescontonacontadeluz039 exclusivocomoconferirodescontonacontadeluz040 exclusivocomoconferirodescontonacontadeluz041 exclusivocomoconferirodescontonacontadeluz042 exclusivocomoconferirodescontonacontadeluz043 exclusivocomoconferirodescontonacontadeluz044 exclusivocomoconferirodescontonacontadeluz045 exclusivocomoconferirodescontonacontadeluz046 exclusivocomoconferirodescontonacontadeluz047 exclusivocomoconferirodescontonacontadeluz048 exclusivocomoconferirodescontonacontadeluz049 exclusivocomoconferirodescontonacontadeluz050 exclusivocomoconferirodescontonacontadeluz051 exclusivocomoconferirodescontonacontadeluz052 exclusivocomoconferirodescontonacontadeluz053 exclusivocomoconferirodescontonacontadeluz054 exclusivocomoconferirodescontonacontadeluz055 exclusivocomoconferirodescontonacontadeluz056 exclusivocomoconferirodescontonacontadeluz057 exclusivocomoconferirodescontonacontadeluz058 exclusivocomoconferirodescontonacontadeluz059</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul class="wp-block-list"><!-- wp:list-item -->
+<li>Primeiro passo sobre como conferir o desconto na conta de luz.</li>
+<!-- /wp:list-item --><!-- wp:list-item -->
+<li>Segundo passo sobre como conferir o desconto na conta de luz.</li>
+<!-- /wp:list-item --></ul>
+<!-- /wp:list -->
+
+</CONTEXTO>
+
+<REGRAS_SEO>
+
+Requisitos do SEO Title:
+• Máximo 60 caracteres incluindo espaços
+• CRÍTICO: palavra-chave foco DEVE estar no início da frase
+• Engajador e atrativo para cliques
+• Seguir capitalização padrão em português
+• Usar técnicas de copywriting para Google Search (SERP)
+• Incluir ano quando relevante 
+• Considerar intenção de busca do usuário brasileiro
+
+Requisitos da Meta Description:
+• Máximo 155 caracteres incluindo espaços
+• Incluir palavra-chave foco naturalmente
+• Criar curiosidade sem revelar tudo
+• Terminar com call to action claro
+• Convincente e focada em conversão
+• Responder à dúvida principal do buscador
+
+Requisitos da Focus Keyword:
+• Relevante para o tópico do artigo
+• Alta intenção de busca
+• Se encaixa naturalmente no conteúdo
+• Baseada em volume de busca real no Brasil
+• Long-tail quando apropriado
+• Considerar variações que brasileiros usam
+
+Requisitos do Slug:
+• Versão URL-friendly do título
+• Apenas letras minúsculas
+• Palavras separadas por hífen
+• Sem acentos ou caracteres especiais
+• Máximo 5-6 palavras
+• Palavra-chave incluída
+
+</REGRAS_SEO>
+
+<FORMATO_DE_OUTPUT>
+
+CRÍTICO: OUTPUT DEVE SER APENAS CÓDIGO JSON. NÃO COLOQUE NENHUM CARACTERE QUE NÃO FAÇA PARTE DO CÓDIGO JSON.
+
+CRÍTICO: Não use aspas extras ou a palavra json.
+
+O output deve ser APENAS o código JSON:
+
+{
+"seotitle": "<coloque o seo title aqui>",
+"metadescription": "<coloque a metadescription aqui>",
+"keywordfocus": "<coloque a focus keyword aqui>",
+"slug": "<coloque o slug aqui>"
+}
+
+</FORMATO_DE_OUTPUT>
+
+OUTPUT OBRIGATÓRIO EM PORTUGUÊS BRASILEIRO

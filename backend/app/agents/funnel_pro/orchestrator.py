@@ -87,7 +87,32 @@ class FunnelProOrchestrator(BaseAgent):
         if not lines:
             lines.append(f"- {opportunity.get('main_keyword') or opportunity.get('keyword')}")
 
+        # Depois do recuo acima, de propósito: sem leitura medida, o bloco sai
+        # byte a byte igual ao de antes.
+        leitura = FunnelProOrchestrator._linha_de_leitura(opportunity)
+        if leitura:
+            lines.append(leitura)
+
         return "\n".join(lines)
+
+    @staticmethod
+    def _linha_de_leitura(opportunity: Dict[str, Any]) -> Optional[str]:
+        """A tensão medida na validação, como UMA linha de dado.
+
+        Vem de `contexto_de_leitura` (montado em `entities/orchestrator.py`) e
+        diz o que foi medido e com que evidência — sem dizer ao arquiteto o que
+        fazer com isso nem em que tom escrever. As perguntas reais (PAA) já
+        chegam por `<user_questions>`; aqui só entra a tensão.
+        """
+        leitura = opportunity.get("contexto_de_leitura")
+        tensao = leitura.get("tensao") if isinstance(leitura, dict) else None
+        if not isinstance(tensao, dict):
+            return None
+        frase = str(tensao.get("frase") or "").strip()
+        if not frase:
+            return None
+        evidencia = str(tensao.get("evidencia") or "").strip() or "validação"
+        return f'- Tensão de leitura medida ({evidencia}): a pessoa chega perguntando "{frase}"'
 
     @staticmethod
     def _user_questions(cluster: Optional[Dict[str, Any]], opportunity: Dict[str, Any]) -> str:

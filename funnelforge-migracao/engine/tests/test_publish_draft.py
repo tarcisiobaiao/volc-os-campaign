@@ -3,7 +3,9 @@ from types import SimpleNamespace
 
 from funnelforge.config.settings import load_settings
 from funnelforge.domain.models import Page, PageDraft, RunState
-from funnelforge.pipeline.steps import step_publish
+from funnelforge.pipeline.steps import step_publish, step_build
+from funnelforge.pipeline.editorial_safety import ImageReview, image_receipt
+from tests.test_editorial_safety import CONTENT, REVIEW
 
 from tests.lp_conforme import conteudo_da_lp
 
@@ -92,6 +94,7 @@ def test_interior_post_gets_featured_image_and_midcontent(tmp_path, config_files
     state.drafts[2] = PageDraft(page_number=2, page_type="SOLUTION",
                                 format="gutenberg", content=content)
     state.images[2] = str(img)
+    state.image_reviews[2] = image_receipt(img, ImageReview(**REVIEW))
     state.seo[2] = {"seotitle": "Titulo", "keywordfocus": "consultar fgts"}
     page = Page(page_number=2, page_type="SOLUTION", h1_title="T", slug="x-p1")
     step_publish(state, page, deps)
@@ -159,12 +162,16 @@ def test_lp_published_as_draft_with_hero_uploaded_and_rewritten(tmp_path, config
                                 format="lp_json",
                                 content=json.dumps(conteudo_da_lp(), ensure_ascii=False))
     state.images[1] = str(hero)
-    page = Page(page_number=1, page_type="LANDING PAGE", h1_title="T", slug="antecipacao")
+    state.image_reviews[1] = image_receipt(hero, ImageReview(**REVIEW))
+    page = Page(page_number=1, page_type="LANDING PAGE", h1_title="T", slug="antecipacao",
+                next_page_slug="antecipacao-pr")
+    step_build(state, page, deps)
     step_publish(state, page, deps)
     assert pub.page_call["status"] == "draft"
     assert pub.uploaded == ["p1.webp"]
-    img_url = pub.page_call["elementor"][0]["elements"][0]["settings"]["image"]["url"]
-    assert img_url == "https://creditoup.com.br/wp-content/uploads/hero.webp"
+    blob = json.dumps(pub.page_call["elementor"])
+    assert "https://creditoup.com.br/wp-content/uploads/hero.webp" in blob
+    assert str(hero) not in blob
     # the LAST write pins the status (guards against meta-write publish flips)
     assert pub.status_pin["status"] == "draft"
     assert pub.status_pin["post_type"] == deps.settings.site.lp_post_type
@@ -192,7 +199,9 @@ def test_lp_publish_survives_missing_hero(tmp_path, config_files):
     state.drafts[1] = PageDraft(page_number=1, page_type="LANDING PAGE",
                                 format="lp_json",
                                 content=json.dumps(conteudo_da_lp(), ensure_ascii=False))
-    page = Page(page_number=1, page_type="LANDING PAGE", h1_title="T", slug="antecipacao")
+    page = Page(page_number=1, page_type="LANDING PAGE", h1_title="T", slug="antecipacao",
+                next_page_slug="antecipacao-pr")
+    step_build(state, page, deps)
     step_publish(state, page, deps)
     assert pub.page_call["status"] == "draft"
     assert pub.uploaded == []

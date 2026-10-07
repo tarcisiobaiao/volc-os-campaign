@@ -233,16 +233,16 @@ def test_redator_pages_renders_verified_platform_links_block():
                  author_credential="c", cnpj="00.000.000/0001-00",
                  platform_links=plats, **doctrine_context())
     assert "https://jeitto.com.br/emprestimo" in out
-    assert "nofollow sponsored" in out
+    assert "Plataforma verificada" in out
     low = out.lower()
-    assert "acesse a plataforma da instituição parceira" in low  # named as the BANNED example
+    assert "sem simular execução de serviço" in low
     # without platform links -> the "name only, never invent a URL" guidance
     out_empty = render("redator_pages", role="SOLUTION", headline="Empréstimo Pix",
                        objective="o", skeleton="- H2: a", keywords="pix", facts="{}",
                        domain="https://creditoup.com.br", author_name="Equipe",
                        author_credential="c", cnpj="00.000.000/0001-00",
                        platform_links=[], **doctrine_context())
-    assert "nunca invente urls comerciais" in out_empty.lower()
+    assert "não invente caminhos" in out_empty.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -269,9 +269,9 @@ def test_redator_pages_renders_official_deep_links_when_present():
     assert "https://meu.inss.gov.br/atualizacao-cadastral" in out
     assert "https://www.caixa.gov.br/fgts" in out
     # inline-text CTA with a nominal descriptive anchor, never a button
-    assert "descrição nominal" in low
-    assert "nunca botões" in low
-    assert "2 a 4 links oficiais" in low
+    assert "identifique o canal por nome" in low
+    assert "a rota oficial é inline" in low
+    assert "2 a 4 links oficiais" not in low
     # official links do NOT replace the graph's external_official route
     assert "external_official" in out
 
@@ -280,11 +280,11 @@ def test_redator_pages_official_links_empty_keeps_current_behavior():
     out_empty = render("redator_pages", official_links=[],
                        **_SOLUTION_RENDER_COMMON, **doctrine_context())
     low_empty = out_empty.lower()
-    assert "sem deep links oficiais" in low_empty
+    assert "fonte/canal oficial verificado:" not in low_empty
     assert "congruência oficial" not in low_empty
     # omitted entirely (jinja default []) behaves like an explicit empty list
     out_missing = render("redator_pages", **_SOLUTION_RENDER_COMMON, **doctrine_context())
-    assert "sem deep links oficiais" in out_missing.lower()
+    assert out_missing == out_empty
 
 
 # ---------------------------------------------------------------------------
@@ -304,12 +304,12 @@ def test_redator_pages_demands_pain_resolving_step_carries_exact_deep_link():
                  **_SOLUTION_RENDER_COMMON, **doctrine_context())
     low = out.lower()
     # the concrete "certeiro" doctrine: WHAT to do + WHERE to do it, together
-    assert "passo certeiro" in low
-    assert "o que fazer" in low
-    assert "onde fazer" in low
+    assert "canal oficial específico" in low
+    assert "etapa" in low
+    assert "hyperlink real nessa etapa" in low
     # nominal, substantive-first anchors stay intact, now also banning "clique aqui"
-    assert "substantivo primeiro" in low
-    assert "clique aqui" in low
+    assert "sem simular execução de serviço" in low
+    assert "identifique o canal por nome" in low
 
 
 def test_redator_pages_official_anchor_is_nominal_and_bans_execution_verbs():
@@ -322,9 +322,9 @@ def test_redator_pages_official_anchor_is_nominal_and_bans_execution_verbs():
                  official_links=["https://meu.inss.gov.br/atualizacao-cadastral"],
                  **_SOLUTION_RENDER_COMMON, **doctrine_context())
     low = out.lower()
-    assert "verbo de execução" in low
-    assert "descrição nominal" in low
-    assert "substantivo primeiro" in low
+    assert "execução de serviço" in low
+    assert "identifique o canal por nome" in low
+    assert "sem simular execução de serviço" in low
 
 
 def test_redator_pages_requires_minimum_three_h2_sections():
@@ -333,7 +333,8 @@ def test_redator_pages_requires_minimum_three_h2_sections():
     out = render("redator_pages", official_links=[],
                  **_SOLUTION_RENDER_COMMON, **doctrine_context())
     low = out.lower()
-    assert "no mínimo 3 seções h2" in low
+    assert "no mínimo 3 seções h2" not in low
+    assert "sem cotas de blocos" in low
 
 
 # ---------------------------------------------------------------------------
@@ -428,7 +429,7 @@ def test_presell_write_receives_qualifier_lens_and_questions_not_angle(
     assert "angle" not in kw
     assert "lead_solution" not in kw
     # neutral qualifier lens fixed by index (-pr1 -> first lens)
-    assert kw["qualifier_lens"] == "qual é a sua situação hoje?"
+    assert kw["qualifier_lens"] == presell.h1_title
     # qualifier questions derived from the solutions, in the hub's route order
     questions = kw["qualifier_questions"]
     assert [q["solucao"] for q in questions] == [
@@ -650,7 +651,7 @@ def test_presell_hub_distinction_guard_honors_hub_threshold(config_files: Path) 
     assert state2.step_status["write_p4"].status is StepStatus.FAILED
 
 
-def test_presell_hub_distinction_guard_fails_when_same_solution_opens_all(
+def test_presell_hub_distinction_guard_accepts_same_relevant_first_solution(
         config_files: Path) -> None:
     """Distinct bodies, but EVERY hub opens its choice block with a-p1 -> hero
     is not neutral -> the write fails."""
@@ -671,8 +672,8 @@ def test_presell_hub_distinction_guard_fails_when_same_solution_opens_all(
     st.presell_hub_distinction_guard(state, plan.pages[3], deps)
 
     res = state.step_status["write_p4"]
-    assert res.status is StepStatus.FAILED
-    assert "hub_hero_not_neutral" in {i.code for i in res.issues}
+    assert res.status is StepStatus.OK
+    assert "hub_hero_not_neutral" not in {i.code for i in res.issues}
 
 
 # ---------------------------------------------------------------------------
@@ -900,9 +901,9 @@ def test_redator_pages_demands_bridge_and_destination_announce(config_files: Pat
     assert "saque-rescisao apos demissao" in low
     assert "saque-aniversario antecipado" in low
     # bridge + announce doctrine present
-    assert "ponte" in low
-    assert "anuncia" in low
-    assert "termo distintivo" in low
+    assert "sem obrigar uma" in low
+    assert "a página de destino precisa entregar o prometido" in low
+    assert "termo distintivo" not in low
     # the incongruent open-loop exemplar is GONE (it framed the CURRENT page)
     assert "quase todo mundo pula" not in low
 
@@ -914,9 +915,9 @@ def test_redator_pages_terminal_frames_cross_funnel_bridge(config_files: Path) -
         official_links=[], **_SOLUTION_RENDER_COMMON, **doctrine_context())
     low = out.lower()
     # terminal gets an honest bridge that frames a DIVERSE guide, not a funnel step
-    assert "ponte" in low
-    assert "cross_funnel" in low
-    assert "diverso" in low
+    assert "leituras relacionadas são atalhos opcionais" in low
+    assert "só recircula" not in low
+    assert "sem obrigar uma" in low
 
 
 def test_step_write_lp_passa_os_destinos_reais_ao_prompt(

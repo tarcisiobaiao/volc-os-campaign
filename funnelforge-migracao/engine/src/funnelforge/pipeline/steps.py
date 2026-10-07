@@ -2,23 +2,45 @@
 from __future__ import annotations
 
 import json
+import base64
+import hashlib
+import difflib
 import re
 import time
 import unicodedata
+from dataclasses import replace as _substituir
 from datetime import date, datetime, timezone
 from pathlib import Path
+from html import escape
 from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import ValidationError
 
 from funnelforge.adapters import landing_policy_gate as lp_gate
-from funnelforge.config.settings import ScreenshotConfig
+from funnelforge.config.settings import ScreenshotConfig, StepConfig
+from funnelforge.pipeline.editorial_safety import (
+    EDITORIAL_NOTICE, IMAGE_RULES, ImageReview, html_issues, image_receipt, notice_html,
+    reviewed_image_issues,
+)
 from funnelforge.pipeline.admanifest import build_ad_manifest, vignette_meta
 from funnelforge.pipeline.base_factual import base_para_o_redator
 from funnelforge.pipeline.budget import preco_declarado_da_imagem
+from funnelforge.pipeline.inventario import montar_inventario
 from funnelforge.pipeline.preflight import preflight_issues
-from funnelforge.pipeline.retry_policy import classificar_issues
+from funnelforge.pipeline.retry_policy import classificar_issues, separar_para_o_revisor
+from funnelforge.pipeline.revisao import (
+    ContextoDaRevisao,
+    Referencias,
+    conferir_recibo,
+    documento_de,
+    executar_revisao,
+    gerar_recibo,
+    VERSAO_DA_TRAVA,
+    hash_do_conteudo,
+    posicionar_aviso_canonico,
+    reconferir_notas_da_revisao,
+)
 from funnelforge.pipeline.runner import LLMStepError
 from funnelforge.domain.models import (
     EXISTENTIAL_CRITERIA,
@@ -38,15 +60,26 @@ from funnelforge.domain.models import (
     effective_role,
     resolve_route,
 )
-from funnelforge.pipeline.doctrine import doctrine_context
+from funnelforge.pipeline.doctrine import (
+    BANNED_FEAR,
+    BANNED_OFFICIAL,
+    banned_cta_execution_hit,
+    doctrine_context,
+)
 from funnelforge.pipeline.engajamento import canon_engajamento
 from funnelforge.pipeline.enhancers.gutenberg import (
     finalize_compliance_notice,
     formatar_moeda_em_estrutura,
     normalize_gutenberg,
+    resumo_da_normalizacao,
 )
 from funnelforge.pipeline import canal_profundo
-from funnelforge.pipeline.lp_template import load_lp_template, render_lp, validate_lp_content
+from funnelforge.pipeline.lp_template import (
+    load_lp_template,
+    render_lp,
+    transformacoes_do_template,
+    validate_lp_content,
+)
 from funnelforge.pipeline.pagespec import pagespec_for
 from funnelforge.pipeline.phrase_registry import load_lines, record as record_phrase
 from funnelforge.pipeline.routing import (
@@ -58,7 +91,13 @@ from funnelforge.pipeline.routing import (
 )
 from funnelforge.pipeline.taxonomy import contract_advisories
 from funnelforge.pipeline.uniqueness import jaccard
+from funnelforge.pipeline.validators.briefing_contract import (
+    canon_padrao,
+    exigencia_visual_do_plano,
+    numeros,
+)
 from funnelforge.pipeline.validators.checks import (
+    _cta_links,
     SIGNATURE_BLOCK_BY_ENGAGEMENT,
     VISUAL_BLOCKS_BY_ENGAGEMENT,
     host_matches_preference,
@@ -68,7 +107,15 @@ from funnelforge.pipeline.validators.checks import (
     tolerant_json_object,
     url_host,
 )
-from funnelforge.prompts import render
+from funnelforge.prompts import nome_do_prompt, render
+from funnelforge.pipeline.briefing import (  # noqa: F401 - step_briefing é API do módulo
+    briefing_para_o_redator,
+    destinos_da_pagina,
+    inventario_para_o_briefing,
+    passos_por_destino,
+    step_briefing,
+)
+from funnelforge.politicas import carregar_pacote, pacote_para_o_revisor
 from funnelforge.widgets import WidgetInvalido, chave_por_nome, ler, renderizar
 
 # ---------------------------------------------------------------------------
@@ -230,6 +277,11 @@ def expand_presell_hubs(state: RunState, deps: Any) -> None:
     uma terminal), então a trava de >=3 só vale para o modo de 3 hubs."""
     plan = state.plan or FunnelPlan()
     solutions = [p for p in plan.pages if effective_role(p) is PageRole.SOLUTION]
+    if any(p.editorial is not None for p in plan.pages):
+        # Authored intentions must not be cloned or renamed by a slug convention.
+        plan.total_pages = len(plan.pages)
+        assign_solution_ordinals(plan)
+        return
     n_hubs = deps.settings.run.presell_hubs
 
     if n_hubs <= 1:
@@ -378,24 +430,11 @@ def _fail_hub(state: RunState, page: Page, code: str, message: str) -> None:
 
 
 def presell_hub_distinction_guard(state: RunState, page: Page, deps: Any) -> None:
-    """Funnel-level STRUCTURAL-distinction state hook for the presell hubs
-    (CARD-0009 / OVERRIDE-2). Invoked per-page right after `step_write` (next
-    to `uniqueness_state_guard`); it compares this hub's draft against the
-    other presell drafts already written in the SAME run and fails this page's
-    `write_p{n}` step (fail-closed) when either:
+    """Reject materially duplicated hub bodies, not repeated useful links.
 
-      (1) two hubs are MATERIALLY IDENTICAL in their qualifier+preview body --
-          the WHOLE draft is compared (not just the opening CTA line), so a hub
-          that copies the substantive body but varies only line 1 is still
-          caught; OR
-      (2) the SAME solution opens the choice block of EVERY hub (hero not
-          neutral) -- checked once all presell hubs have a draft.
-
-    `uniqueness_state_guard` (whole-run duplicate content) and
-    `opening_line_unique` (cross-run first line) stay active ON TOP of this;
-    this guard adds the hub-specific hero-neutrality net that a per-page
-    validator cannot see (the comparison is across the presell drafts of the
-    same run) plus a clearer presell-scoped distinctness error."""
+    Compare the whole draft so changing only the opening line cannot disguise
+    a duplicate. Reusing the most relevant destination is explicitly allowed.
+    """
     if effective_role(page) is not PageRole.PRESELL:
         return
     current = state.drafts.get(page.page_number)
@@ -408,10 +447,7 @@ def presell_hub_distinction_guard(state: RunState, page: Page, deps: Any) -> Non
     others = [(p, d) for p, d in others if d is not None]
     if not others:
         return
-    # Hub-vs-hub uses the LENIENT hub_distinction_threshold: the 3 neutral hubs
-    # preview the SAME solutions, so they share that vocabulary by design -- only
-    # a near-identical (copy-paste) hub is a real doorway. Hero-neutrality (2) is
-    # the separate anti-bias net and is UNAFFECTED by this threshold.
+    # Shared topic vocabulary is expected; use the more lenient hub threshold.
     threshold = deps.settings.uniqueness.hub_distinction_threshold
     # (1) material equality of the qualifier+preview body between two hubs
     # (whole draft compared, so copying the body while varying only line 1 is
@@ -422,19 +458,7 @@ def presell_hub_distinction_guard(state: RunState, page: Page, deps: Any) -> Non
                       f"Hub '{page.slug}' materialmente igual ao hub "
                       f"'{other_page.slug}' (bloco qualificador + previews).")
             return
-    # (2) hero neutrality -- only once EVERY hub is written: fail if the same
-    # solution opens the choice block of all of them.
-    if len(others) + 1 == len(presells):
-        solution_slugs = {p.slug for p in plan.pages
-                          if effective_role(p) is PageRole.SOLUTION}
-        openers = [_presell_opening_solution(d.content, solution_slugs)
-                   for _, d in others]
-        openers.append(_presell_opening_solution(current.content, solution_slugs))
-        determinate = [o for o in openers if o]
-        if len(determinate) == len(openers) and len(set(determinate)) == 1:
-            _fail_hub(state, page, "hub_hero_not_neutral",
-                      f"Todos os hubs abrem a escolha com a mesma solução "
-                      f"'{determinate[0]}' (hero não neutro).")
+    # Reusing the most relevant first destination is not a quality defect.
 
 
 # ---------------------------------------------------------------------------
@@ -472,7 +496,8 @@ def step_extract(state: RunState, deps: Any) -> None:
     # Pull REAL cross-funnel exit URLs from the site sitemap (a diverse-but-
     # related guide for the terminal SOLUTION). None-safe + best-effort.
     cross_targets = None
-    if getattr(deps, "sitemap", None) is not None:
+    if (getattr(deps, "sitemap", None) is not None
+            and deps.settings.run.terminal_exit_policy == "cross_funnel"):
         try:
             lp = next((p for p in plan.pages if effective_role(p) is PageRole.LP), None)
             # O TEMA, para o sitemap decidir o que é redundante, é o funil
@@ -489,7 +514,7 @@ def step_extract(state: RunState, deps: Any) -> None:
             cross_targets = None
     try:
         build_funnel_routes(state.plan, deps.settings, cross_funnel_targets=cross_targets)
-        graph_issues = validate_funnel_graph(state.plan, deps.settings)
+        graph_issues = validate_funnel_graph(state.plan, deps.settings, research_pending=True)
     except ValueError as exc:
         graph_issues = [Issue(code="bare_rec", message=str(exc))]
     if graph_issues:
@@ -497,7 +522,10 @@ def step_extract(state: RunState, deps: Any) -> None:
             step="funnel_graph", status=StepStatus.FAILED, issues=graph_issues)
     # Advisory (non-blocking): cross-check the built graph against the funnel
     # taxonomy contract (presell fan-out, terminal cross-funnel, no self-loop).
-    advisories = contract_advisories(state.plan)
+    advisories = contract_advisories(
+        state.plan, terminal_official=deps.settings.run.terminal_exit_policy == "official",
+        research_pending=True,
+    )
     if advisories:
         state.step_status["contract_advisory"] = StepResult(
             step="contract_advisory", status=StepStatus.OK,
@@ -511,7 +539,8 @@ def step_extract(state: RunState, deps: Any) -> None:
 
 
 def _uma_pesquisa(state: RunState, page: Page, deps: Any, key: str,
-                  fontes_reprovadas: list[str] | None = None
+                  fontes_reprovadas: list[str] | None = None,
+                  correcoes: list[str] | None = None,
                   ) -> tuple[ResearchFacts, StepResult]:
     """UMA tentativa de pesquisa, já com o gate factual aplicado.
 
@@ -528,10 +557,14 @@ def _uma_pesquisa(state: RunState, page: Page, deps: Any, key: str,
         if orcamento is not None:
             orcamento.exigir_saldo(key)
         # O feedback só é passado quando o provedor sabe recebê-lo: um fake de
-        # teste com assinatura antiga continua funcionando.
+        # teste com assinatura antiga continua funcionando. A correção de
+        # tipagem só entra quando existe, para não mudar a chamada comum.
+        extras: dict[str, Any] = {"fontes_reprovadas": fontes_reprovadas or []}
+        if correcoes:
+            extras["correcoes"] = list(correcoes)
         try:
             facts = deps.research.research(topic=page.h1_title, structure=structure,
-                                           fontes_reprovadas=fontes_reprovadas or [])
+                                           **extras)
         except TypeError:
             facts = deps.research.research(topic=page.h1_title, structure=structure)
         # FIX 5 (smoke): research goes through `deps.research` (not
@@ -567,6 +600,11 @@ def _uma_pesquisa(state: RunState, page: Page, deps: Any, key: str,
         "receitafederal genérico). PLATAFORMAS: para cada plataforma/app/fintech "
         "citada, inclua a URL EXATA do site oficial dela em 'fontes'."
     )
+    if correcoes:
+        # Só na retentativa: a primeira chamada fica byte a byte a de sempre.
+        prompt += ("\n\nATENÇÃO — TENTATIVA ANTERIOR RECUSADA pelo contrato de tipagem:\n"
+                   + "\n".join(f"  - {c}" for c in correcoes[:10])
+                   + "\nDevolva o JSON inteiro de novo, corrigindo exatamente isso.\n")
     cfg = deps.settings.steps["research"]
     text, res = deps.runner.run_llm_step(
         key, cfg, [{"role": "user", "content": prompt}], ctx={},
@@ -621,10 +659,14 @@ def step_research(state: RunState, page: Page, deps: Any) -> None:
     # mesmas, a busca não trocou de fonte e retentar é gasto sem chance de
     # desfecho diferente — ver a checagem no fim do laço.
     fatais_anteriores: frozenset[str] = frozenset()
+    # A reprovação ESTRUTURAL da tipagem (tipo/escopo fora do vocabulário
+    # fechado). Vai por extenso para a próxima tentativa: é a única informação
+    # nova que ela tem para não repetir o mesmo tipo torto.
+    correcoes: list[str] = []
 
     for n in range(1, tentativas + 1):
         try:
-            facts, res = _uma_pesquisa(state, page, deps, key, reprovadas)
+            facts, res = _uma_pesquisa(state, page, deps, key, reprovadas, correcoes)
             terminal_de_provedor = False
         except LLMStepError as exc:
             # O passo de LLM morreu, mas o que já foi pago vem junto na exceção.
@@ -652,6 +694,8 @@ def step_research(state: RunState, page: Page, deps: Any) -> None:
                 url = str(issue.message).rsplit(": ", 1)[-1].rstrip(".").strip()
                 if url.startswith("http") and url not in reprovadas:
                     reprovadas.append(url)
+        correcoes = [str(i.message) for i in res.issues
+                     if i.code in ("fato_tipo_invalido", "fato_escopo_invalido")]
 
         # ── TELEMETRIA POR TENTATIVA ──────────────────────────────────────
         #
@@ -849,6 +893,13 @@ def _gate_research(facts: ResearchFacts, res: StepResult, deps: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
+# O conjunto existencial de TODA página com contrato editorial (o ramo
+# `if page.editorial` de `_judge_page`). Uma lista só: o revisor V2
+# (`revisao.criterios_existenciais`) lê esta mesma constante.
+EDITORIAL_EXISTENTIAL_CRITERIA: tuple[str, ...] = (
+    "compliance", "cta_discipline", "useful_delivery", "destination_relevance")
+
+
 def _existential_criteria_for(role: PageRole) -> tuple[str, ...]:
     """Role-aware existential-criteria set for the judge's fail-closed gate.
 
@@ -888,6 +939,13 @@ def _judge_page(state: RunState, page: Page, content: str, deps: Any) -> None:
         cta_link=_cta_link(page),
         keywords=", ".join(page.target_keywords),
         facts=base_para_o_redator(facts),
+        editorial=page.editorial.model_dump() if page.editorial else {},
+        destination_contracts=[
+            {"slug": p.slug, "title": p.h1_title,
+             "delivery": p.editorial.useful_delivery if p.editorial else p.emotional_objective,
+             "label": r.anchor, "reason": r.reason}
+            for r in page.routes for p in (state.plan.pages if state.plan else [])
+            if r.kind == "funnel" and p.slug == r.target],
         **doctrine_context(),
     )
     cfg = deps.settings.steps["judge"]
@@ -910,6 +968,8 @@ def _judge_page(state: RunState, page: Page, content: str, deps: Any) -> None:
     # against the pass bar; a missing score counts as 0 (fail-closed
     # default) rather than being silently ignored.
     criteria = _existential_criteria_for(effective_role(page))
+    if page.editorial:
+        criteria = EDITORIAL_EXISTENTIAL_CRITERIA
     blocked = verdict.blocking or any(
         verdict.scores.get(criterion, 0) < 7 for criterion in criteria)
     if blocked:
@@ -1222,7 +1282,10 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     # a pesquisa trouxe -- efeito colateral deliberado, porque o `pagespec`
     # montado logo abaixo precisa enxergar a rota final. Idempotente: chamar de
     # novo no gate de conteúdo recoloca exatamente a MESMA rota.
-    bind_official_route(page, official_links, role=role, is_terminal=is_terminal)
+    terminal_official = is_terminal and (
+        page.editorial is not None or deps.settings.run.terminal_exit_policy == "official")
+    bind_official_route(page, official_links, role=role, is_terminal=is_terminal,
+                        terminal_official=terminal_official)
     # FIX-3c: commercial PLATFORM deep links for SOLUTION pages -- the fintechs/
     # services the path names, from the research, each confirmed LIVE by a
     # chromium visit (fail-closed). Feeds the writer prompt AND same_domain
@@ -1242,6 +1305,11 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     # visual nem widget, e inventar rótulo para elas mudaria o prompt à toa.
     engajamento = engajamento_declarado(page) if role is PageRole.SOLUTION else ""
     return {
+        "contextual_editorial": page.editorial is not None,
+        "resolved_internal_routes": [
+            resolve_route(r, domain=deps.settings.site.domain,
+                          post_type=deps.settings.site.post_type)
+            for r in page.routes if r.kind == "funnel"],
         "parsed": {"role": role.value, "slug": page.slug,
                    "next_page_slug": page.next_page_slug,
                    "routes": [r.model_dump() for r in page.routes]},
@@ -1275,9 +1343,12 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         "visual_required_blocks": list(
             VISUAL_BLOCKS_BY_ENGAGEMENT.get(engajamento, ())),
         "ad_paragraph_anchors": deps.settings.ads.paragraph_anchors,
-        "pagespec": pagespec_for(deps.settings, role, terminal=is_terminal).model_dump(),
+        "pagespec": pagespec_for(deps.settings, role, terminal=is_terminal,
+                                contextual=page.editorial is not None,
+                                page_count=len(plan.pages)).model_dump(),
         "solution_order": solution_order,
         "is_terminal": is_terminal,
+        "terminal_official": terminal_official,
         "h1_by_slug": {p.slug: p.h1_title for p in plan.pages},
         # CARD-0011 REQ-2: H1 of ALL solutions of the funnel, so
         # `cta_destination_congruent` can compute each destination's DISTINCTIVE
@@ -1339,8 +1410,34 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             )],
         )
         return
+    # RAMO EDITORIAL NOVO: escreve A PARTIR do briefing-v1 desta página. Sem
+    # briefing válido não se escreve — falha fechada, ANTES de qualquer gasto
+    # (nem o verificador de URL do `_write_ctx` roda).
+    v2 = bool(getattr(state, "editorial_v2", False))
+    briefing = state.briefings.get(page.page_number) if v2 else None
+    if v2 and briefing is None:
+        state.step_status[f"write_p{page.page_number}"] = StepResult(
+            step=f"write_p{page.page_number}", status=StepStatus.FAILED, attempts=0,
+            issues=[Issue(
+                code="briefing_indisponivel",
+                message=("Redação não iniciada: o ramo editorial novo exige o briefing "
+                         "válido desta página (ver briefing_p"
+                         f"{page.page_number}). Nada foi gasto com redação."),
+            )],
+        )
+        return
+    extras_v2: dict[str, Any] = {}
+    passos: dict[str, dict] = {}
+    if v2:
+        extras_v2["briefing_texto"] = briefing_para_o_redator(briefing)
+        passos = passos_por_destino(briefing)
     domain = deps.settings.site.domain
     route_ctx = _write_ctx(state, page, deps)
+    if v2:
+        # B5: no ramo novo o julgamento por palavra/regex vira localizador para
+        # o revisor contextual (retry_policy: classe `patchavel`), sem reescrita
+        # integral. O runner lê esta chave; sem ela, nada muda.
+        route_ctx["editorial_v2"] = True
     plan = state.plan or FunnelPlan()
 
     # PRÉ-VOO (Frente 3): as reprovações que já estavam decididas antes da
@@ -1356,6 +1453,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         "write_p1" if page.page_type == "LANDING PAGE" else "write_page")
     reprovas_de_insumo = preflight_issues(
         list(getattr(cfg_write, "validators", []) or []), route_ctx)
+    if v2:
+        # congruência âncora × H1 por token (FF-26) é proxy: vai ao revisor.
+        reprovas_de_insumo = separar_para_o_revisor(reprovas_de_insumo)[0]
     if reprovas_de_insumo:
         state.step_status[f"write_p{page.page_number}"] = StepResult(
             step=f"write_p{page.page_number}", status=StepStatus.FAILED,
@@ -1382,6 +1482,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
                 "slug": alvo.slug,
                 "h1": alvo.h1_title,
                 "objective": alvo.emotional_objective,
+                "cta_label": route.anchor,
+                "delivery": alvo.editorial.useful_delivery if alvo.editorial else "",
                 "role": papel.value,
                 "role_label": (
                     "hub qualificador (pré-sell neutra: ajuda o leitor a achar "
@@ -1390,8 +1492,12 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
                     else "página de solução (entrega o passo a passo de UM caminho)"
                 ),
             })
+            if v2:
+                # O próximo passo que o BRIEFING planejou para este destino:
+                # rótulo com a intenção do leitor e o que ele encontra lá.
+                lp_destinations[-1]["passo"] = passos.get(alvo.slug.rstrip("/"))
         prompt = render(
-            "redator_p1",
+            nome_do_prompt("redator_p1", v2=v2),
             headline=page.h1_title,
             objective=page.emotional_objective,
             skeleton="\n".join(page.main_content_structure),
@@ -1403,7 +1509,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             # produziu na página que foi ao ar.
             facts=base_para_o_redator(facts, destino_pago=True),
             lp_destinations=lp_destinations,
+            editorial=page.editorial.model_dump() if page.editorial else {},
             today=date.today().strftime("%d/%m/%Y"),
+            **extras_v2,
         )
         cfg = deps.settings.steps["write_p1"]
         text, res = deps.runner.run_llm_step(
@@ -1439,6 +1547,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         if "critical_fact_grounding" not in configurados:
             lp_issues.extend(run_validators(
                 ["critical_fact_grounding"], content, route_ctx))
+        if v2:
+            lp_issues = separar_para_o_revisor(lp_issues)[0]
         if lp_issues:
             res.issues = list(res.issues) + lp_issues
             res.status = StepStatus.FAILED
@@ -1446,6 +1556,10 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         state.drafts[page.page_number] = PageDraft(
             page_number=page.page_number, page_type=page.page_type,
             format="lp_json", content=content, word_count=_word_count(content))
+        # No ramo novo a revisão roda DEPOIS do SEO (pipeline ->
+        # `revisar_depois_do_seo`): o título SEO também vai à revisão.
+        if not v2 and page.editorial and res.status is not StepStatus.FAILED:
+            _judge_page(state, page, content, deps)
         return
 
     # `plan` já foi resolvido acima (o ramo da LP também precisa dele).
@@ -1461,7 +1575,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
     # 'caso -> caminho' criteria in the hub's rotated route order -- NEVER an
     # angle or a privileged lead solution. Empty for non-presell prompts.
     if effective_role(page) is PageRole.PRESELL:
-        qualifier_lens = _hub_lens(page.slug)[0]
+        qualifier_lens = (page.editorial.reader_question if page.editorial
+                          else page.emotional_objective or page.h1_title)
         qualifier_questions = _qualifier_questions_for(page, plan)
     else:
         qualifier_lens = ""
@@ -1486,24 +1601,40 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
     if is_terminal:
         cross_funnel_label = next(
             (r.anchor for r in page.routes if r.kind == "cross_funnel"), "")
+    rotas = resolve_page_links(page, deps.settings,
+                               authorized_external=route_ctx["official_links"])
+    if v2:
+        # Cada rota leva o próximo passo que o BRIEFING planejou para ela, e o
+        # portão visual (quando ele vai conferir esta página) vira requisito
+        # declarado no prompt, em vez de reprovação surpresa no fim.
+        rotas = [{**link, "passo": passos.get(str(rota.target).rstrip("/"))}
+                 for rota, link in zip(page.routes, rotas)]
+        # D2: a cota cega por forma de pergunta (FF-16) continua fora do ramo
+        # novo; a exigência visual vem do `visual_plan` que o BRIEFING declarou
+        # por seção (vazio quando o briefing não planejou forma nenhuma).
+        extras_v2["exigencia_visual"] = exigencia_visual_do_plano(briefing)
+        extras_v2["plano_visual"] = [
+            item for item in (briefing.get("visual_plan") or [])
+            if isinstance(item, dict) and canon_padrao(item.get("padrao"))]
     prompt = render(
-        _prompt_name_for(page),
+        nome_do_prompt(_prompt_name_for(page), v2=v2),
         role=effective_role(page).value,
         page_num=page.page_number,
         total_pages=plan.total_pages,
         is_terminal=is_terminal,
+        terminal_official=route_ctx["terminal_official"],
         qualifier_lens=qualifier_lens,
         qualifier_questions=qualifier_questions,
         next_solutions=next_solutions,
         cross_funnel_label=cross_funnel_label,
         headline=page.h1_title,
+        editorial=page.editorial.model_dump() if page.editorial else {},
         objective=page.emotional_objective,
         skeleton="\n".join(page.main_content_structure),
         keywords=", ".join(page.target_keywords),
         facts=base_para_o_redator(facts),
         domain=domain,
-        routes=resolve_page_links(page, deps.settings,
-                                  authorized_external=route_ctx["official_links"]),
+        routes=rotas,
         official_links=route_ctx["official_links"],
         platform_links=route_ctx.get("platform_links", []),
         engajamento=page.engajamento,
@@ -1517,14 +1648,26 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         cnpj=deps.settings.site.cnpj,
         today=date.today().strftime("%d/%m/%Y"),
         **doctrine_context(),
+        **extras_v2,
     )
     cfg = deps.settings.steps["write_page"]
+    if v2:
+        # Gate estrutural ANTES de SEO, widget, revisão e imagem (canário p5,
+        # 30/09): só blocos Gutenberg fechados e os slots do Ad Inserter no fluxo
+        # principal. Vale mesmo que alguém o tire do config; com retentativa, o
+        # modelo recebe o motivo.
+        cfg = cfg.model_copy(update={"validators": list(dict.fromkeys(
+            [*(cfg.validators or []), "estrutura_da_redacao"]))})
     text, res = deps.runner.run_llm_step(
         f"write_p{page.page_number}", cfg, [{"role": "user", "content": prompt}],
         ctx=route_ctx, run_id=state.run_id,
     )
     content = normalize_gutenberg(
         text, ad_paragraph_anchors=deps.settings.ads.paragraph_anchors)
+    if v2:
+        # A normalização deixa de ser reescrita silenciosa: o que ela mudou fica
+        # registrado no estado (e o revisor lê a versão normalizada).
+        _registrar_normalizacao(state, page.page_number, resumo_da_normalizacao(text, content))
 
     state.step_status[f"write_p{page.page_number}"] = res
     state.drafts[page.page_number] = PageDraft(
@@ -1535,7 +1678,402 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         word_count=_word_count(content),
     )
 
-    _judge_page(state, page, content, deps)
+    # No ramo novo a revisão roda DEPOIS do SEO (ver `revisar_depois_do_seo`).
+    if not v2:
+        _judge_page(state, page, content, deps)
+
+
+def revisar_depois_do_seo(state: RunState, page: Page, deps: Any) -> None:
+    """RAMO NOVO: a revisão da página roda DEPOIS do SEO (e do widget).
+
+    Motivo (verificação adversarial V12): o `seotitle` é o `post_title` — o H1
+    visível das páginas internas — e era gerado depois do juiz, sem revisão
+    nenhuma. B4 pôs a revisão depois do SEO; B5 trocou o juiz pelo revisor
+    contextual com microajustes, para TODA página (LP sem contrato editorial
+    inclusive). Mantido com este nome por compatibilidade."""
+    _revisar_pagina(state, page, deps)
+
+
+# ---------------------------------------------------------------------------
+# REVISOR CONTEXTUAL (B5): contexto, localizadores, decisão humana, recibo
+# ---------------------------------------------------------------------------
+
+
+def _pagina_v2(state: RunState, page: Page) -> bool:
+    """Página escrita no ramo novo (a partir de briefing): é nela que revisão e
+    recibo são exigidos. Página antiga retomada com a flag segue como antes."""
+    return bool(getattr(state, "editorial_v2", False)) and page.page_number in state.briefings
+
+
+def _registrar_normalizacao(state: RunState, numero: int, registro: dict) -> None:
+    state.normalizacoes.setdefault(numero, []).append(registro)
+
+
+def _gravar_artefato(deps: Any, state: RunState, page: Page, nome: str, conteudo: str) -> None:
+    try:
+        pasta = deps.runner.runs_dir / state.run_id
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / f"p{page.page_number}.{nome}").write_text(conteudo, encoding="utf-8")
+    except OSError:
+        pass  # artefato de auditoria nunca derruba a página
+
+
+def _rotulo_publicado(state: RunState, origem: Page, destino: Page) -> str:
+    """O rótulo que a página de ORIGEM escreveu no botão que leva a `destino`."""
+    draft = state.drafts.get(origem.page_number)
+    if draft is None:
+        return ""
+    alvo = destino.slug.strip("/")
+    if draft.format == "lp_json":
+        try:
+            ctas = json.loads(draft.content).get("cta_texts") or []
+        except (ValueError, TypeError, AttributeError):
+            return ""
+        funil = [r for r in origem.routes if r.kind == "funnel"]
+        pos = next((k for k, r in enumerate(funil) if r.target.strip("/") == alvo), None)
+        return str(ctas[pos]) if pos is not None and pos < len(ctas) else ""
+    for rotulo, href in _cta_links(draft.content):
+        if href.rstrip("/").endswith("/" + alvo):
+            return rotulo
+    return ""
+
+
+def _rotas_de_chegada(state: RunState, page: Page) -> list[dict]:
+    """De onde o leitor vem: as rotas do funil que apontam para esta página."""
+    plano = state.plan
+    saida: list[dict] = []
+    for origem in (plano.pages if plano else []):
+        if origem.page_number == page.page_number:
+            continue
+        for rota in origem.routes:
+            if rota.kind == "funnel" and rota.target.strip("/") == page.slug.strip("/"):
+                saida.append({"de": origem.slug, "h1_de": origem.h1_title,
+                              "rotulo_planejado": rota.anchor, "motivo": rota.reason,
+                              "rotulo_publicado": _rotulo_publicado(state, origem, page)})
+    return saida
+
+
+def _ctas_da_pagina(page: Page, doc: Any, destinos: list[dict]) -> list[dict]:
+    """Os botões ESCRITOS na página, cada um com o destino planejado."""
+    por_destino = {str(d["destino"]).rstrip("/"): d for d in destinos}
+
+    def _id(destino: str) -> str:
+        chave = str(destino or "").rstrip("/")
+        if chave in por_destino:
+            return por_destino[chave]["id"]
+        for alvo, d in por_destino.items():
+            if not alvo.startswith("http") and chave.endswith("/" + alvo.strip("/")):
+                return d["id"]
+        return ""
+
+    if doc.formato == "lp_json":
+        try:
+            ctas = json.loads(doc.corpo).get("cta_texts") or []
+        except (ValueError, TypeError, AttributeError):
+            return []
+        funil = [r for r in page.routes if r.kind == "funnel"]
+        saida = []
+        for i, rotulo in enumerate(ctas):
+            rota = funil[min(i, len(funil) - 1)] if funil else None
+            destino = rota.target if rota else ""
+            saida.append({"rotulo": str(rotulo), "destino": destino,
+                          "destino_id": _id(destino) if destino else ""})
+        return saida
+    return [{"rotulo": rotulo, "href": href, "destino_id": _id(href)}
+            for rotulo, href in _cta_links(doc.corpo)]
+
+
+def _trecho_do_localizador(issue: Issue, doc: Any) -> str:
+    """O trecho que a heurística apontou (para o revisor conferir o sentido)."""
+    texto = "\n".join(doc.campos().values()).lower()
+    listas = {"fear_language": BANNED_FEAR, "official_impersonation": BANNED_OFFICIAL}
+    for termo in listas.get(issue.code, ()):
+        if termo in texto:
+            return termo
+    if issue.code == "cta_execution":
+        rotulos = ([str(v) for k, v in doc.campos().items() if k.startswith("cta_texts[")]
+                   if doc.formato == "lp_json" else [r for r, _h in _cta_links(doc.corpo)])
+        return next((r for r in rotulos if banned_cta_execution_hit(r)), "")
+    m = re.search(r"'([^']{2,160})'", issue.message) or re.search(r'"([^"]{2,160})"',
+                                                                  issue.message)
+    return m.group(1) if m else ""
+
+
+def _issues_da_pagina(state: RunState, page: Page, deps: Any, doc: Any) -> list[Issue]:
+    """TODOS os validadores do passo de escrita e do portão final sobre `doc`.
+    O revisor recebe os heurísticos como localizadores; os objetivos são a
+    revalidação depois dos patches."""
+    ctx = _write_ctx(state, page, deps)
+    ctx["allow_sanitized_widget_script"] = True
+    ctx["editorial_v2"] = True
+    issues: list[Issue] = []
+    if doc.formato == "lp_json":
+        try:
+            obj = json.loads(doc.corpo)
+        except (ValueError, TypeError):
+            return [Issue(code="lp_schema", message="LP JSON ilegível.")]
+        issues += validate_lp_content(obj)
+        issues += run_validators(["identity", "calm_utility", "critical_fact_grounding",
+                                  "language_pt"], doc.corpo, ctx)
+    else:
+        cfg_write = deps.settings.steps.get("write_page")
+        nomes = list(dict.fromkeys([*(getattr(cfg_write, "validators", None) or []),
+                                    *_FINAL_CONTENT_VALIDATORS]))
+        issues += run_validators(nomes, doc.corpo, ctx)
+        issues += html_issues(doc.corpo)
+        issues += _composicao_v2(state, page, doc.corpo, ctx)
+    issues += run_validators(["calm_utility", "language_pt"],
+                             f"{doc.seotitle}\n{doc.metadescription}", {})
+    issues += run_validators(["seo_limits"], "", {"parsed": {
+        "metadescription": doc.metadescription, "seotitle": doc.seotitle}})
+    return issues
+
+
+def numeros_permitidos_no_patch(fatos: Any) -> set[str]:
+    """Números que um patch do revisor pode trazer (B8/R6, contrato decisão 2):
+    só de fato citável cujo tipo sustenta número — `contexto` NUNCA sustenta.
+    O `dispositivo` só conta em `fonte_legal` e a vigência só em data/prazo/mudança."""
+    ok: set[str] = set()
+    for f in fatos:
+        tipo = getattr(f, "tipo", "") or ""
+        if f.citavel is False or tipo == "contexto":
+            continue
+        partes = [f.texto]
+        if tipo == "fonte_legal":
+            partes.append(f.dispositivo or "")
+        if tipo in ("data", "prazo", "mudanca"):
+            partes.append(str(f.vigente_desde or ""))
+        ok |= numeros(" ".join(partes))
+    return ok
+
+
+def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> ContextoDaRevisao:
+    n = page.page_number
+    inv = montar_inventario(state, page)
+    pacote = carregar_pacote(hoje=date.today())
+    destinos = destinos_da_pagina(state, page)
+    briefing = state.briefings.get(n)
+    numeros_ok = numeros_permitidos_no_patch(inv.fatos)
+    tb = inv.termos_de_busca
+    anuncio = inv.anuncio
+    refs = Referencias(
+        fatos={f.id for f in inv.fatos},
+        fatos_nao_citaveis={f.id for f in inv.fatos if f.citavel is False},
+        fontes={s.id: s.url for s in inv.fontes},
+        politicas_bloqueantes=pacote.ids_bloqueantes(), politicas_nota=pacote.ids_de_nota(),
+        destinos={d["id"]: str(d["destino"]) for d in destinos},
+        termos=set(tb.amostra) if tb.estado == "presente" else set(),
+        paa=len(inv.leitura.perguntas_paa),
+        anuncio=(len(anuncio.titulos) + len(anuncio.descricoes)
+                 if anuncio.estado == "presente" else 0),
+    )
+    _bloq, heuristicos = separar_para_o_revisor(_issues_da_pagina(state, page, deps, doc))
+    localizadores = [{"codigo": i.code, "mensagem": i.message,
+                      "trecho": _trecho_do_localizador(i, doc)} for i in heuristicos]
+
+    def revalidar(d: Any) -> list[Issue]:
+        return separar_para_o_revisor(_issues_da_pagina(state, page, deps, d))[0]
+
+    normalizar = None
+    if doc.formato != "lp_json":
+        def normalizar(d: Any) -> tuple[Any, dict]:
+            corpo = normalize_gutenberg(d.corpo,
+                                        ad_paragraph_anchors=deps.settings.ads.paragraph_anchors)
+            return (_substituir(d, corpo=corpo),
+                    resumo_da_normalizacao(d.corpo, corpo, etapa="normalize_pos_patch"))
+
+    return ContextoDaRevisao(
+        pagina=_pagina_da_revisao(page),
+        briefing_texto=(briefing_para_o_redator(briefing) if briefing else
+                        "BRIEFING AUSENTE: esta página foi escrita sem briefing."),
+        inventario_texto=inventario_para_o_briefing(inv),
+        origem={"rotas": _rotas_de_chegada(state, page), "anuncio": anuncio.model_dump()},
+        destinos=destinos, ctas=_ctas_da_pagina(page, doc, destinos),
+        termos={"estado": tb.estado, "janela": tb.janela, "amostra": list(tb.amostra),
+                "motivo_ausencia": tb.motivo_ausencia},
+        identidade={"dominio": deps.settings.site.domain,
+                    "autor": deps.settings.site.author_name,
+                    "credencial": deps.settings.site.author_credential,
+                    "aviso_editorial": EDITORIAL_NOTICE},
+        politicas=pacote_para_o_revisor(pacote), localizadores=localizadores,
+        referencias=refs, numeros_permitidos=numeros_ok,
+        revalidar=revalidar, normalizar=normalizar, pacote_vencido=pacote.vencido,
+    )
+
+
+def _pagina_da_revisao(page: Page) -> dict:
+    return {"numero": page.page_number, "slug": page.slug, "papel": effective_role(page).value,
+            "h1": page.h1_title,
+            # decide o conjunto de notas existenciais, como em `_judge_page`
+            "editorial": page.editorial is not None}
+
+
+def _reconferir_aprovacao_anterior(state: RunState, page: Page, deps: Any,
+                                   anterior: dict) -> None:
+    """Retomada de página já `aprovado` com o MESMO conteúdo: a aprovação é
+    reconferida pela trava das notas com as notas GRAVADAS na revisão (sem nova
+    chamada ao modelo). Aprovação de antes da trava com nota insuficiente vira
+    `revisao_humana` e perde o recibo; a que passa ganha o recibo com a marca."""
+    n = page.page_number
+    key = f"revisor_p{n}"
+    avaliacao = reconferir_notas_da_revisao(anterior, _pagina_da_revisao(page))
+    recibo = state.recibos.get(n) or {}
+    if not avaliacao["insuficientes"]:
+        if (recibo.get("origem") == "revisor" and recibo.get("sha256") == anterior.get("sha256")
+                and recibo.get("trava_de_notas") != VERSAO_DA_TRAVA):
+            doc = documento_de(state.drafts[n], state.seo.get(n))
+            state.recibos[n] = gerar_recibo(doc, "revisor", trava_de_notas=VERSAO_DA_TRAVA,
+                                            notas_existenciais=avaliacao,
+                                            reconferido_na_retomada=True)
+        return
+    registro = dict(anterior)
+    registro["decisao"] = "revisao_humana"
+    registro["motivos"] = list(dict.fromkeys(list(registro.get("motivos") or [])
+                                             + avaliacao["insuficientes"]))
+    registro["reconferencia_da_trava"] = {
+        "decisao_anterior": anterior.get("decisao"), "trava": VERSAO_DA_TRAVA,
+        "notas_existenciais": avaliacao, "recibo_anterior": recibo or None}
+    state.revisoes[n] = registro
+    if recibo.get("origem") != "humano":
+        state.recibos.pop(n, None)
+    state.step_status[key] = StepResult(
+        step=key, status=StepStatus.FAILED, issues=[Issue(
+            code="revisao_humana",
+            message=("Aprovação anterior reprovada pela trava das notas existenciais ("
+                     + ", ".join(avaliacao["insuficientes"]) + "). A página espera a decisão "
+                     f"humana: funnelforge decidir <run> --pagina {n} --decisao "
+                     f"aprovar|rejeitar --sha256 {registro.get('sha256')}"))],
+        **_telemetria_anterior(state, key))
+    _gravar_artefato(deps, state, page, "revisao.json",
+                     json.dumps(registro, ensure_ascii=False, indent=2))
+
+
+def _telemetria_anterior(state: RunState, key: str) -> dict:
+    r = state.step_status.get(key)
+    if r is None:
+        return {}
+    return {"model_used": r.model_used, "attempts": r.attempts,
+            "prompt_tokens": r.prompt_tokens, "completion_tokens": r.completion_tokens,
+            "cost_usd": r.cost_usd, "latency_ms": r.latency_ms}
+
+
+def _aplicar_decisao_humana(state: RunState, page: Page, decisao: dict) -> None:
+    """A decisão humana vale só para o conteúdo que a pessoa leu (mesmo sha256)."""
+    n = page.page_number
+    key = f"revisor_p{n}"
+    base = _telemetria_anterior(state, key)
+    atual = hash_do_conteudo(state, n)
+    nota = str(decisao.get("nota") or "")
+    if decisao.get("sha256") != atual:
+        state.recibos.pop(n, None)
+        state.step_status[key] = StepResult(step=key, status=StepStatus.FAILED, issues=[Issue(
+            code="decisao_humana_de_outro_conteudo",
+            message=(f"A decisão humana foi dada para o sha256 {decisao.get('sha256')}, mas o "
+                     f"conteúdo atual é {atual}: nada é publicado sem nova decisão."))], **base)
+        return
+    if decisao.get("decisao") == "aprovar":
+        doc = documento_de(state.drafts[n], state.seo.get(n))
+        state.recibos[n] = gerar_recibo(doc, "humano", quem=decisao.get("quem", ""),
+                                        nota=nota, decidido_em=decisao.get("quando", ""))
+        state.step_status[key] = StepResult(step=key, status=StepStatus.OK, issues=[Issue(
+            code="aprovado_por_humano", message=nota or "aprovado por decisão humana")], **base)
+        return
+    state.recibos.pop(n, None)
+    state.step_status[key] = StepResult(step=key, status=StepStatus.FAILED, issues=[Issue(
+        code="rejeitado_por_humano", message=nota or "rejeitado por decisão humana")], **base)
+
+
+def _revisao_humana_sem_modelo(state: RunState, page: Page, deps: Any, motivo: str,
+                               erro: str) -> None:
+    n = page.page_number
+    key = f"revisor_p{n}"
+    atual = hash_do_conteudo(state, n)
+    draft = state.drafts[n]
+    state.revisoes[n] = {"versao": "revisao-v1", "pagina": n, "decisao": "revisao_humana",
+                         "motivos": [motivo], "erro": erro, "sha256_entrada": atual,
+                         "sha256": atual, "rodadas": [], "conteudo_de_entrada": draft.content}
+    state.recibos.pop(n, None)
+    state.step_status[key] = StepResult(step=key, status=StepStatus.FAILED, attempts=0, issues=[
+        Issue(code="revisao_humana", message=f"{erro} A página espera decisão humana.")])
+    _gravar_artefato(deps, state, page, "revisao.json",
+                     json.dumps(state.revisoes[n], ensure_ascii=False, indent=2))
+
+
+def _revisar_pagina(state: RunState, page: Page, deps: Any) -> None:
+    """O revisor contextual desta página (só no ramo novo). Ver `pipeline/revisao.py`.
+
+    Ordem: (1) decisão humana gravada manda; (2) o aviso canônico vai para o
+    rodapé pela frase exata (estrutural, registrado), ANTES do hash; (3) o
+    `resume` não repete a revisão de página já aprovada ou em revisão humana com
+    o MESMO conteúdo — sem "rolar o dado até aprovar"; (4) UMA revisão e no
+    máximo UMA rodada de microajuste; aprovado gera o recibo."""
+    n = page.page_number
+    key = f"revisor_p{n}"
+    draft = state.drafts.get(n)
+    if draft is None:
+        return
+    decisao = state.decisoes_humanas.get(n)
+    if decisao:
+        _aplicar_decisao_humana(state, page, decisao)
+        return
+    if draft.format != "lp_json":
+        novo, registro = posicionar_aviso_canonico(draft.content)
+        if registro["alterou"]:
+            draft.content = novo
+            draft.word_count = _word_count(novo)
+            _registrar_normalizacao(state, n, registro)
+    atual = hash_do_conteudo(state, n)
+    anterior = state.revisoes.get(n)
+    if (anterior and anterior.get("sha256") == atual
+            and anterior.get("decisao") in ("aprovado", "revisao_humana")):
+        if anterior.get("decisao") == "aprovado":
+            _reconferir_aprovacao_anterior(state, page, deps, anterior)
+        return
+    cfg = deps.settings.steps.get("revisor")
+    if cfg is None:
+        _revisao_humana_sem_modelo(state, page, deps, "passo_revisor_ausente",
+                                   "Passo 'revisor' ausente na configuração (steps.revisor).")
+        return
+    doc = documento_de(draft, state.seo.get(n))
+    try:
+        ctx = _contexto_da_revisao(state, page, deps, doc)
+    except Exception as exc:  # noqa: BLE001 - contexto quebrado fecha, não derruba o funil
+        _revisao_humana_sem_modelo(state, page, deps, "contexto_indisponivel",
+                                   f"Contexto da revisão indisponível: {type(exc).__name__}.")
+        return
+    resultado = executar_revisao(doc, ctx, runner=deps.runner, cfg=cfg,
+                                 run_id=state.run_id, numero=n)
+    final = resultado.documento
+    if final != doc:
+        draft.content = final.corpo
+        draft.word_count = _word_count(final.corpo)
+        seo = dict(state.seo.get(n) or {})
+        seo["seotitle"], seo["metadescription"] = final.seotitle, final.metadescription
+        state.seo[n] = seo
+    for rodada in resultado.registro.get("rodadas", []):
+        reg = rodada.get("normalizacao")
+        if rodada.get("mantida") and reg and reg.get("alterou"):
+            _registrar_normalizacao(state, n, reg)
+    state.revisoes[n] = resultado.registro
+    if resultado.decisao == "aprovado":
+        rodadas = resultado.registro.get("rodadas") or [{}]
+        state.recibos[n] = gerar_recibo(final, "revisor", trava_de_notas=VERSAO_DA_TRAVA,
+                                        notas_existenciais=rodadas[0].get("notas_existenciais"))
+    else:
+        state.recibos.pop(n, None)
+    state.step_status[key] = resultado.telemetria
+    _gravar_artefato(deps, state, page, "revisao.json",
+                     json.dumps(resultado.registro, ensure_ascii=False, indent=2))
+
+
+def revisar_pagina_v2(state: RunState, page: Page, deps: Any) -> None:
+    """API do pipeline para o revisor contextual."""
+    _revisar_pagina(state, page, deps)
+
+
+def revisao_liberada(state: RunState, page: Page) -> bool:
+    """Recibo aprovado (revisor ou pessoa) que bate com o conteúdo atual."""
+    return conferir_recibo(state, page.page_number) is None
 
 
 # ---------------------------------------------------------------------------
@@ -1543,10 +2081,40 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _prompt_seo_v2(state: RunState, page: Page, content: str) -> str:
+    """O SEO do ramo novo: título que nomeia a entrega REAL (é o H1 visível das
+    internas), sem ano e sem "curiosidade sem revelar tudo", a partir do
+    briefing quando a página tem um."""
+    briefing = state.briefings.get(page.page_number) or {}
+    promessa = str((briefing.get("promessa_da_pagina") or {}).get("texto") or "")
+    entrega = briefing.get("entrega_concreta") or {}
+    itens = "; ".join(str(i.get("texto") or "") for i in entrega.get("itens") or []
+                      if isinstance(i, dict))
+    intencao = str(((briefing.get("intencao") or {}).get("intencao_real_da_busca") or {})
+                   .get("texto") or "")
+    if briefing:
+        termos_obs = (briefing.get("intencao") or {}).get("termos_observados") or {}
+        termos = (", ".join(termos_obs.get("amostra") or [])
+                  if termos_obs.get("estado") == "presente" else "")
+    else:
+        tb = montar_inventario(state, page).termos_de_busca
+        termos = ", ".join(tb.amostra) if tb.estado == "presente" else ""
+    return render(
+        "seo_v2", content=content, papel=effective_role(page).value, h1=page.h1_title,
+        promessa=promessa,
+        entrega=(f"{entrega.get('formato', '')}: {itens}".strip(": ") if itens else ""),
+        intencao=intencao, termos=termos,
+        facts=base_para_o_redator(state.facts.get(page.page_number)),
+    )
+
+
 def step_seo(state: RunState, page: Page, deps: Any) -> None:
     draft = state.drafts.get(page.page_number)
     content = draft.content if draft else ""
-    prompt = render("seo", content=content, today=date.today().strftime("%d/%m/%Y"))
+    if getattr(state, "editorial_v2", False):
+        prompt = _prompt_seo_v2(state, page, content)
+    else:
+        prompt = render("seo", content=content, today=date.today().strftime("%d/%m/%Y"))
     cfg = deps.settings.steps["seo"]
     text, res = deps.runner.run_llm_step(
         f"seo_p{page.page_number}", cfg, [{"role": "user", "content": prompt}], ctx={},
@@ -1616,15 +2184,24 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
     only to stop the exception from escaping this function.)"""
     key = f"image_p{page.page_number}"
     is_lp = page.page_type == "LANDING PAGE"
+    state.images.pop(page.page_number, None)
+    state.image_reviews.pop(page.page_number, None)
     try:
         # LP hero -> VERTICAL 9:16 briefing (subject up top, black-gradient
         # bottom for the title/buttons overlay); interior /rec -> LANDSCAPE
         # editorial featured image. Different prompt AND different size.
-        prompt_name = "image_prompt_lp" if is_lp else "image_prompt"
+        prompt_name = nome_do_prompt("image_prompt_lp" if is_lp else "image_prompt",
+                                     v2=bool(getattr(state, "editorial_v2", False)))
         img_size = (deps.settings.run.image_size_lp if is_lp
                     else deps.settings.run.image_size_post)
         prompt_text = render(
-            prompt_name, headline=page.h1_title, objective=page.emotional_objective
+            prompt_name, headline=page.h1_title, objective=page.emotional_objective,
+            keywords=page.target_keywords, page_number=page.page_number,
+            previous_scenes=[
+                receipt.get("review", {}).get("evidence", "")[:700]
+                for _, receipt in sorted(state.image_reviews.items())
+                if receipt.get("accepted")
+            ],
         )
         cfg = deps.settings.steps["image"]
         text, res = deps.runner.run_llm_step(
@@ -1632,6 +2209,8 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
             run_id=state.run_id,
         )
         state.step_status[key] = res
+        if res.status is StepStatus.FAILED:
+            return
 
         if deps.image_gen is None or deps.image_proc is None or not image_wanted(
                 deps.settings, page):
@@ -1653,7 +2232,8 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
         if orcamento is not None:
             orcamento.exigir_saldo(f"image_gen_p{page.page_number}",
                                    estimativa_usd=preco_declarado_da_imagem(deps.settings))
-        data = deps.image_gen.generate(text, size=img_size)
+        data = deps.image_gen.generate(IMAGE_RULES + "\n\nScene proposal:\n" + text
+                                      + "\n\n" + IMAGE_RULES, size=img_size)
         _record_image_generation(state, page, deps, img_size)
         if orcamento is not None:
             # o que ENTRA no orçamento é o custo medido que a telemetria acabou
@@ -1666,8 +2246,36 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
         run_dir.mkdir(parents=True, exist_ok=True)
         out_path = run_dir / f"p{page.page_number}.webp"
         saved = deps.image_proc.to_webp(data, out_path)
+        review_key = f"image_review_p{page.page_number}"
+        cfg_review = deps.settings.steps.get("image_review") or StepConfig(
+            model="gpt-4.1", temperature=0.0)
+        review_text, review_result = deps.runner.run_llm_step(
+            review_key, cfg_review,
+            [{"role": "user", "content": [
+                {"type": "text", "text": render(
+                    "image_review", headline=page.h1_title,
+                    objective=page.emotional_objective, keywords=page.target_keywords)},
+                {"type": "image_url", "image_url": {
+                    "url": "data:image/webp;base64," + base64.b64encode(
+                        Path(saved).read_bytes()).decode("ascii"), "detail": "high"}},
+            ]}], ctx={}, run_id=state.run_id)
+        state.step_status[review_key] = review_result
+        review = ImageReview.model_validate(_tolerant_json(review_text))
+        state.image_reviews[page.page_number] = image_receipt(saved, review)
+        if not review.accepted or review_result.status is StepStatus.FAILED:
+            review_result.status = StepStatus.FAILED
+            review_result.issues.append(Issue(
+                code="image_editorial_rejected", message=review.evidence))
+            return
         state.images[page.page_number] = str(saved)
     except Exception as exc:  # noqa: BLE001 - image is non-essential; must never fail a good page
+        if isinstance(exc, LLMStepError):
+            earlier = state.step_status.get(exc.step_result.step)
+            if earlier is not None:
+                for field in ("cost_usd", "prompt_tokens", "completion_tokens", "latency_ms"):
+                    setattr(exc.step_result, field,
+                            getattr(exc.step_result, field) + getattr(earlier, field))
+            state.step_status[exc.step_result.step] = exc.step_result
         # PRESERVA a telemetria já paga: o SKIPPED antes SOBRESCREVIA o
         # StepResult da chamada de texto que escreveu o prompt, apagando do
         # relatório um custo que a fatura ia cobrar de qualquer jeito.
@@ -1938,6 +2546,8 @@ def _preview_html(
                 parts.append(f"<{size}>{s.get('title', '')}</{size}>")
             elif wtype == "text-editor":
                 parts.append(s.get("editor", ""))
+            elif wtype == "html":
+                parts.append(s.get("html", ""))
             elif wtype == "image":
                 url = s.get("image", {}).get("url", "")
                 if url:
@@ -1961,7 +2571,7 @@ def _preview_html(
         )
     return (
         '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
-        f"<title>{page.h1_title}</title>{index_head}{head_extra}</head>"
+        f"<title>{escape(page.h1_title)}</title>{index_head}{head_extra}</head>"
         '<body style="max-width:720px;margin:40px auto;font-family:sans-serif;'
         f'line-height:1.5">\n{body}\n</body></html>'
     )
@@ -2038,7 +2648,13 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
         # Replaces the old marker -> build_elementor path for the LP.
         elementor, page_settings = render_lp(
             load_lp_template(), content_obj, funnel_hrefs=hrefs,
-            hero_image_url=image_url, id_seed=state.run_id)
+            hero_image_url=image_url, id_seed=state.run_id,
+            site_domain=deps.settings.site.domain)
+        if _pagina_v2(state, page):
+            # O que o template faz com o texto aprovado fica REGISTRADO (B5).
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "template_lp",
+                "transformacoes": transformacoes_do_template(content_obj)})
         (run_dir / "p1.elementor.json").write_text(
             json.dumps(elementor, ensure_ascii=False, indent=2), encoding="utf-8"
         )
@@ -2485,7 +3101,7 @@ _FINAL_CONTENT_VALIDATORS: tuple[str, ...] = (
     "critical_fact_grounding", "raw_html_contract", "ad_interaction", "visual_contract",
     # O clique comprado não vaza por botão: destino externo só no canal que a
     # pesquisa desta página escolheu (citação em prosa continua livre).
-    "external_cta_authorized",
+    "external_cta_authorized", "contextual_links",
 )
 
 
@@ -2493,6 +3109,7 @@ def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) 
     ctx = _write_ctx(state, page, deps)
     ctx["allow_sanitized_widget_script"] = True
     issues = run_validators(list(_FINAL_CONTENT_VALIDATORS), content, ctx)
+    issues.extend(html_issues(content))
 
     # ⚠️ O WIDGET DEIXOU DE SER CONDIÇÃO DE PUBLICAÇÃO.
     #
@@ -2529,6 +3146,12 @@ def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) 
                     message="A página comportava widget e ele não saiu. Publicada sem "
                             "ele: um artigo sem widget vale mais que artigo nenhum.")],
             )
+    if _pagina_v2(state, page):
+        # B5: no ramo novo, julgamento por palavra/regex já foi entregue ao
+        # revisor como localizador; o portão final bloqueia só o objetivo.
+        # D2: do portão de composição, só o slot do Ad Inserter bloqueia aqui.
+        issues += _composicao_v2(state, page, content, ctx)
+        issues = separar_para_o_revisor(issues)[0]
     return issues
 
 
@@ -2633,6 +3256,47 @@ def _portao_da_lp(state: RunState, page: Page, deps: Any, *,
         return lp_gate.indisponivel(exc)
 
 
+def _composicao_v2(state: RunState, page: Page, content: str, ctx: dict) -> list[Issue]:
+    """Portão de composição do ramo novo (D2), com a exigência do `visual_plan`
+    do briefing desta página. Fora do ramo novo não roda (ouro v1 intacto)."""
+    exigencia = exigencia_visual_do_plano(state.briefings.get(page.page_number))
+    return run_validators(["composicao_editorial"], content,
+                          {**ctx, "exigencia_visual": exigencia})
+
+
+def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
+    """Check the persisted Elementor payload, including resumed/manual publish paths."""
+    try:
+        v2 = _pagina_v2(state, page)
+        content = json.loads(state.drafts[page.page_number].content)
+        issues = validate_lp_content(content)
+        if v2:
+            issues = separar_para_o_revisor(issues)[0]
+        if issues:
+            return issues
+        extra = run_validators(
+            ["identity", "calm_utility", "critical_fact_grounding"],
+            json.dumps(content, ensure_ascii=False), _write_ctx(state, page, deps))
+        issues.extend(separar_para_o_revisor(extra)[0] if v2 else extra)
+        routes = page.routes or [Route(placement="hero", kind="funnel",
+                                     target=page.next_page_slug, anchor=page.hook_to_next_page)]
+        hrefs = [resolve_route(r, domain=deps.settings.site.domain,
+                              post_type=deps.settings.site.post_type) for r in routes]
+        expected, settings = render_lp(
+            load_lp_template(), content, funnel_hrefs=hrefs,
+            hero_image_url=state.images.get(page.page_number, ""),
+            id_seed=state.run_id, site_domain=deps.settings.site.domain)
+        run_dir = deps.runner.runs_dir / state.run_id
+        actual = json.loads((run_dir / "p1.elementor.json").read_text(encoding="utf-8"))
+        actual_settings = json.loads((run_dir / "p1.page_settings.json").read_text(encoding="utf-8"))
+        if actual != expected or actual_settings != settings:
+            issues.append(Issue(code="lp_artifact_mismatch",
+                                message="LP difere do template editorial validado; refaça o build."))
+        return issues
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        return [Issue(code="lp_final_invalid", message=f"LP final inválida: {type(exc).__name__}")]
+
+
 def step_content_gate(state: RunState, page: Page, deps: Any) -> None:
     """Validate the exact Gutenberg draft that may be handed to WordPress.
 
@@ -2647,16 +3311,21 @@ def step_content_gate(state: RunState, page: Page, deps: Any) -> None:
     """
     key = f"content_gate_p{page.page_number}"
     if page.page_type == "LANDING PAGE":
+        # Dois portões independentes, e a LP só passa nos dois: o do destino
+        # pago (linha v2) e o da integridade do template editorial com as
+        # imagens revisadas (editorial v2).
         resultado = _portao_da_lp(state, page, deps)
+        issues = (list(resultado.issues) + _lp_final_issues(state, page, deps)
+                  + reviewed_image_issues(state, page.page_number))
         state.step_status[key] = StepResult(
             step=key,
             # ⚠️ O predicado é `paid_destination_ready`, nunca `if bloqueios`.
             # Testar só bloqueios ignora DESCONHECIDO (verificação exigida que
             # não pôde ser concluída) e transforma varredura quebrada em página
             # limpa.
-            status=StepStatus.OK if resultado.pronto else StepStatus.FAILED,
+            status=StepStatus.OK if resultado.pronto and not issues else StepStatus.FAILED,
             attempts=1,
-            issues=resultado.issues,
+            issues=issues,
         )
         return
     draft = state.drafts.get(page.page_number)
@@ -2928,6 +3597,36 @@ def _registrar_recusa_de_publicacao(state: RunState, page: Page, deps: Any,
     lp_gate.gravar_recibo_de_recusa(Path(run_dir) / state.run_id, numero, portao.recibo)
 
 
+def _insercoes(antes: str, depois: str) -> list[dict] | None:
+    """As inserções PURAS que levam `antes` a `depois` (posição relativa ao texto
+    no momento de cada inserção, na ordem em que desfazê-las ao contrário
+    reconstrói `antes`). None quando houve remoção ou troca de texto."""
+    if antes == depois:
+        return []
+    k = len(depois) - len(antes)
+    if k <= 0:
+        return None
+    p = 0
+    limite = min(len(antes), len(depois))
+    while p < limite and antes[p] == depois[p]:
+        p += 1
+    if depois[p + k:] == antes[p:]:
+        fragmento = depois[p:p + k]
+        return [{"posicao": p, "fragmento": fragmento,
+                 "sha256": hashlib.sha256(fragmento.encode("utf-8")).hexdigest()}]
+    saida: list[dict] = []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, antes, depois,
+                                                      autojunk=False).get_opcodes():
+        if tag == "equal":
+            continue
+        if tag != "insert":
+            return None
+        fragmento = depois[j1:j2]
+        saida.append({"posicao": j1, "fragmento": fragmento,
+                      "sha256": hashlib.sha256(fragmento.encode("utf-8")).hexdigest()})
+    return saida
+
+
 def step_publish(state: RunState, page: Page, deps: Any) -> None:
     """Publish the page via `deps.publisher`. No-op if publisher is None --
     callers should only invoke this when `publish=True` AND a publisher was
@@ -2956,6 +3655,35 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
 
     seo = state.seo.get(page.page_number, {})
     status = deps.settings.run.publish_status
+    v2 = _pagina_v2(state, page)
+    if v2:
+        # RAMO NOVO (B5): o motor só grava RASCUNHO, e só o conteúdo com recibo
+        # `aprovado` (revisor ou pessoa) cujo sha256 bate com o que vai subir.
+        # Conferido ANTES de qualquer upload ou mutação no WordPress.
+        recusas: list[Issue] = []
+        if status != "draft":
+            recusas.append(Issue(
+                code="publish_status_nao_draft",
+                message=(f"No ramo editorial novo o motor só grava rascunho; "
+                         f"run.publish_status={status!r} recusado. Quem publica é a pessoa.")))
+        problema = conferir_recibo(state, page.page_number)
+        if problema is not None:
+            recusas.append(problema)
+        if recusas:
+            state.step_status[f"publish_p{page.page_number}"] = StepResult(
+                step=f"publish_p{page.page_number}", status=StepStatus.FAILED, issues=recusas)
+            return
+    # Check before ANY media upload or post mutation, also when called by retry CLI.
+    safety_issues = reviewed_image_issues(state, page.page_number)
+    if page.page_type == "LANDING PAGE":
+        safety_issues += _lp_final_issues(state, page, deps)
+    else:
+        safety_issues += _final_content_issues(state, page, deps, draft.content)
+    if safety_issues:
+        state.step_status[f"publish_p{page.page_number}"] = StepResult(
+            step=f"publish_p{page.page_number}", status=StepStatus.FAILED,
+            issues=safety_issues)
+        return
 
     # WP title uses the CALM copy, never the raw briefing h1 (which can carry
     # fear/officialidade like "Liberado pelo Governo"): the LP uses its own
@@ -2964,6 +3692,14 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
         run_dir = deps.runner.runs_dir / state.run_id
         elementor = json.loads((run_dir / "p1.elementor.json").read_text(encoding="utf-8"))
         _upload_hero_and_rewrite(state, page, deps, elementor)
+        if v2:
+            # Decorações da LP (estruturais, fora do texto aprovado): o aviso de
+            # identidade é o 1º container do template e a imagem do herói troca
+            # de URL local para a do WordPress. Nenhuma toca o texto.
+            state.decoracoes[page.page_number] = [
+                {"tipo": "aviso_identidade", "onde": "primeiro container do template"},
+                {"tipo": "imagem_hero", "origem": state.images.get(page.page_number, "")},
+            ]
         page_settings = {}
         ps_path = run_dir / "p1.page_settings.json"
         if ps_path.exists():
@@ -2988,15 +3724,41 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
         # image just leaves the post text-only.
         alt = seo.get("keywordfocus") or seo.get("seotitle") or page.h1_title
         featured_media, media_url = _upload_featured(state, page, deps, alt)
-        # Publish-time decorations (not in the draft that uniqueness compares):
-        # move the compliance aviso to a discreet footnote at the end, then drop
-        # the mid-content image after the first heading.
-        content = finalize_compliance_notice(draft.content)
-        content = _insert_midcontent_image(content, media_url, alt)
-        # Official-page screenshots (CARD-0005): upload each capture and embed
-        # it after the paragraph that links to that official URL. Best-effort/
-        # non-fatal -- a missing or failed screenshot just leaves the text as-is.
-        content = _embed_official_screenshots(state, page, deps, content)
+        if v2:
+            # RAMO NOVO (B5): depois do recibo só entram DECORAÇÕES ESTRUTURAIS,
+            # cada uma uma inserção pura registrada no estado. Nenhuma remoção
+            # de texto por regex: o aviso canônico já foi posicionado antes da
+            # revisão, pela frase exata.
+            decoracoes: list[dict] = []
+            content = draft.content
+            for tipo, decorado in (
+                    ("aviso_identidade",
+                     lambda c: notice_html(deps.settings.site.domain) + "\n" + c),
+                    ("imagem_meio", lambda c: _insert_midcontent_image(c, media_url, alt)),
+                    ("print_oficial", lambda c: _embed_official_screenshots(state, page, deps, c))):
+                novo = decorado(content)
+                insercoes = _insercoes(content, novo)
+                if insercoes is None:
+                    state.step_status[f"publish_p{page.page_number}"] = StepResult(
+                        step=f"publish_p{page.page_number}", status=StepStatus.FAILED,
+                        attempts=1, issues=[Issue(
+                            code="decoracao_nao_estrutural",
+                            message=f"A decoração {tipo!r} alterou o texto aprovado.")])
+                    return
+                decoracoes += [{"tipo": tipo, **i} for i in insercoes]
+                content = novo
+            state.decoracoes[page.page_number] = decoracoes
+        else:
+            # Publish-time decorations (not in the draft that uniqueness compares):
+            # move the compliance aviso to a discreet footnote at the end, then drop
+            # the mid-content image after the first heading.
+            content = (notice_html(deps.settings.site.domain) + "\n"
+                       + finalize_compliance_notice(draft.content))
+            content = _insert_midcontent_image(content, media_url, alt)
+            # Official-page screenshots (CARD-0005): upload each capture and embed
+            # it after the paragraph that links to that official URL. Best-effort/
+            # non-fatal -- a missing or failed screenshot just leaves the text as-is.
+            content = _embed_official_screenshots(state, page, deps, content)
         # Re-run against the EXACT artifact handed to REST.  Publish-time image,
         # screenshot and compliance transforms occur after step_content_gate;
         # none of them gets an unvalidated path to WordPress.

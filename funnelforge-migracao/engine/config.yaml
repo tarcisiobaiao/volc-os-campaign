@@ -20,8 +20,8 @@ run:
   #   solucoes. Medido em campo: >80% dos cliques da LP ficam no PRIMEIRO botao,
   #   entao os outros dois hubs recebiam pouco trafego e custavam tres paginas
   #   com a MESMA main_content_structure (eram clones, por construcao).
-  # presell_hubs=3 -> desenho antigo: expand_presell_hubs clona a pre-sell em
-  #   -pr1/-pr2/-pr3 com rotacao neutra de fan-out. Caminho intacto e testado.
+  # presell_hubs=3 -> compatibilidade legada: expande em -pr1/-pr2/-pr3,
+  #   sem rodizio dos destinos. Planos com editorial ignoram a clonagem.
   presell_hubs: 1
   lp_direct_solutions: 2         # solucoes com botao DIRETO na LP, depois do hub -> [hub, p1, p2]. 0 restaura LP -> so hubs.
   publish_status: draft          # WP status quando publish=true: sobe o funil inteiro como RASCUNHO p/ revisar
@@ -32,6 +32,12 @@ run:
   official_screenshots: true     # prints reais das paginas oficiais (desktop) via Playwright, ancorados ao passo nas SOLUCOES (requer extra .[screenshots] + playwright install chromium)
   screenshots_max_per_page: 2    # /rec SOLUTION: cap de prints oficiais por pagina (sobre os official_links)
   widgets_enabled: true          # CARD-0013: widgets interativos nas SOLUCOES (bloco wp:html gerado + sanitizado + injetado antes do 3o H2). DESLIGADO por padrao: e codigo executavel em pagina publicada, rollout e decisao do humano. Off => pipeline identico ao atual.
+  # RAMO EDITORIAL NOVO (reforma de 30/09/2026): briefing persuasivo por pagina
+  # (passo `briefing` abaixo), redacao v2 a partir dele e SEO antes da revisao.
+  # DESLIGADO durante a implementacao: com false, prompts e ordem de passos sao
+  # identicos aos de antes (teste de ouro). O perfil do run liga POR FUNIL
+  # (tema.editorial_v2 no --perfil); a arquitetura do card tambem pode ligar.
+  editorial_v2: false
 site:
   domain: https://creditoup.com.br
   post_type: rec
@@ -199,6 +205,10 @@ steps:
   # seriam portao que sempre passa. `lp_json_contract` parseia o JSON e aplica
   # o MESMO validate_lp_content do step_write, so que dentro do runner: a
   # reprovacao vira feedback + nova tentativa em vez de morte no primeiro tiro.
+  # Juiz da LP: no ramo antigo ela e julgada so quando traz `editorial` (o
+  # criterio 6 julga hrefs e o roteamento da LP e deterministico,
+  # lp_template._BUTTON_HREF). No ramo editorial novo TODA pagina, a LP
+  # inclusive, passa pelo passo `revisor` abaixo.
   # A LP segue SEM judge de proposito: o criterio 6 dele julga hrefs, e o
   # roteamento da LP e deterministico (lp_template._BUTTON_HREF) -- nao ha href
   # no que o modelo escreve.
@@ -209,10 +219,24 @@ steps:
   # plano, decidida antes da primeira palavra. So roda porque o nome esta
   # nesta lista -- validador fora da lista do passo simplesmente nao roda.
   write_p1:   { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [plano_de_destino_pago, lp_json_contract, calm_utility, language_pt, critical_fact_grounding] }
-  write_page: { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [gutenberg_blocks, cta_style, pagespec, calm_utility, compliance, interior_min_length, no_trailing_buttons, no_leading_buttons, short_intro, min_headings, language_pt, same_domain, official_link_density, external_cta_authorized, no_bare_rec, no_self_loop, identity, uniqueness, opening_line_unique, forward_only, cta_destination_congruent, bridge_before_cta, critical_fact_grounding, raw_html_contract, ad_interaction, visual_contract] }
+  write_page: { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.7, validators: [gutenberg_blocks, cta_style, pagespec, contextual_links, calm_utility, compliance, language_pt, same_domain, official_link_density, external_cta_authorized, no_bare_rec, no_self_loop, identity, uniqueness, critical_fact_grounding, raw_html_contract, ad_interaction] }
   judge:      { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.0, validators: [] }
+  # Ramo editorial novo (so roda com run.editorial_v2): o briefing-v1 de cada
+  # pagina, de outro provedor que o redator, temperatura baixa (e planejamento
+  # com contrato, nao redacao). `briefing_contract` e o contrato deterministico:
+  # reprovado depois das retentativas -> pagina FAILED (briefing_indisponivel),
+  # sem gasto de redacao. Sem busca na web: os fatos vem da pesquisa da pagina.
+  briefing:   { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.2, validators: [briefing_contract] }
+  # REVISOR CONTEXTUAL (B5, so com run.editorial_v2): revisa TODA pagina (LP
+  # inclusive) depois do SEO e do widget, com microajustes que o CODIGO confere.
+  # Outro provedor que o redator, temperatura zero, sem busca na web e sem
+  # validador de runner (o JSON e conferido em pipeline/revisao.py; ilegivel ->
+  # revisao humana, nunca retentativa ate aprovar). UMA chamada de revisao e no
+  # maximo UMA rodada de microajuste conferida por codigo (sem 2a chamada).
+  revisor:    { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.0, validators: [] }
   seo:        { model: gpt-4.1, fallbacks: [], temperature: 0.4, validators: [seo_limits] }
   image:      { model: gpt-4.1, fallbacks: [], temperature: 1.0, validators: [] }
+  image_review: { model: gpt-4.1, fallbacks: [], temperature: 0.0, validators: [] }
   # CARD-0013: gerador de widget (Product Designer editorial + micro front-end). So roda quando run.widgets_enabled=true.
   # validators: [] de proposito -- a sanitizacao e o gate real (checks.py sanitize_widget_block, consumido direto pelo step_widget pos-write), NAO um validator do runner.
   widget:     { model: gemini/gemini-3.5-flash, fallbacks: [gpt-4.1], temperature: 0.5, validators: [] }

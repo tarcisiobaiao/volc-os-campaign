@@ -1,6 +1,7 @@
 # funnel-forge/src/funnelforge/config/settings.py
 from __future__ import annotations
 from pathlib import Path
+from typing import Literal
 import yaml
 from dotenv import dotenv_values
 from pydantic import BaseModel, field_validator
@@ -17,6 +18,8 @@ class Secrets(BaseModel):
 
 
 class RunConfig(BaseModel):
+    # Opt-in per funnel; the URL still requires page-specific research evidence.
+    terminal_exit_policy: Literal["cross_funnel", "official"] = "cross_funnel"
     max_retries: int = 2
     publish: bool = False
     # A fact verified before this window is stale for a new publication.  The
@@ -86,7 +89,11 @@ class RunConfig(BaseModel):
     # the whole funnel lands in WP as reviewable drafts (the n8n-style flow:
     # generate -> draft -> human reviews and clicks publish), never straight
     # to "publish". Set to "publish" here only for a fully-automated go-live.
-    publish_status: str = "draft"
+    #
+    # VOCABULÁRIO FECHADO (B5): os status que o WordPress aceita num post. Um
+    # valor fora dele era gravado verbatim no "pino" final do status e ninguém
+    # conferia. No ramo editorial novo, só `draft` é aceito (step_publish).
+    publish_status: Literal["draft", "pending", "private", "future", "publish"] = "draft"
     # SCREENSHOTS of the official destination pages (CARD-0005). Opt-in feature
     # flag (default OFF) for staged rollout: when true AND the optional
     # `screenshots` extra (playwright) is installed, cli.build_deps wires a
@@ -109,6 +116,13 @@ class RunConfig(BaseModel):
     # failure leaves the article intact, never fails the page). Flag OFF -> the
     # step never runs and the pipeline behaves exactly as before.
     widgets_enabled: bool = False
+    # RAMO EDITORIAL NOVO (reforma de 30/09/2026): briefing persuasivo por
+    # página, prompts de redação v2 a partir dele, SEO antes da revisão. Padrão
+    # DESLIGADO: com false, prompts renderizados e ordem de passos ficam
+    # idênticos aos de antes (tests/test_editorial_v2_flag_off_identico.py).
+    # O perfil do run liga por funil (`tema.editorial_v2`, ver
+    # config/perfil.py) e a arquitetura do card também pode ligar.
+    editorial_v2: bool = False
 
 
 class AuthorConfig(BaseModel):

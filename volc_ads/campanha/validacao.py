@@ -92,10 +92,20 @@ def _normalizar(s: str) -> str:
 
 
 def checar_politica(texto: str, campo: str, r: Resultado) -> None:
+    """Lista de palavras de `limites.yaml`: LOCALIZADOR, nunca reprovação.
+
+    ⚠️ Até 30/09/2026 cada termo de `proibidos` virava `erro` por substring e sem
+    acento ("cura" dentro de "procura"; "garantido" em "não é garantido"). O
+    inventário da frente A (ADS-05, classe D, sem fundamento) mandou remover o
+    bloqueio: a medição da operação derrubou a lista ("crédito" 54× em 6.651
+    aprovados) e o construtor de Search já não a executava. O trecho continua
+    marcado, como aviso, para quem julga o sentido.
+    """
     alvo = _normalizar(texto)
     for termo in _LIM["politica"]["proibidos"]:
         if _normalizar(termo) in alvo:
-            r.erro(campo, texto, f"termo proibido: {termo!r}")
+            r.aviso(campo, texto, f"localizador (não reprova): contém {termo!r} — "
+                                  f"julgar a promessa no contexto")
     for termo in _LIM["politica"]["suspeitos_execucao"]:
         if _normalizar(termo) in alvo:
             r.aviso(campo, texto, f"sugere execução de serviço: {termo!r}")

@@ -68,18 +68,59 @@ O_QUE_GOVERNA: Dict[str, Dict[str, str]] = {
 
 # Quais passos do pipeline leem cada prompt. É o que responde "se eu mexer
 # aqui, o que muda?" antes de mexer.
+#
+# ⚠️ Todo `.jinja` do motor tem de ter dono aqui — `test_configuracao` reprova
+# prompt sem rótulo. Os do fluxo editorial v2 (`briefing`, `revisor` e os
+# `*_v2`) só rodam com `run.editorial_v2` ligado (config ou perfil do funil).
 QUEM_USA_O_PROMPT: Dict[str, str] = {
     "redator_p1.jinja": "a landing page (o JSON de slots)",
     "redator_pages.jinja": "as páginas de solução",
     "redator_presell.jinja": "os hubs de pré-venda",
     "redator_widget.jinja": "o widget interativo das soluções",
-    "judge.jinja": "o juiz que reprova a redação",
-    "seo.jinja": "o título e a meta description",
-    "extractor.jinja": "a leitura do briefing e o plano do funil",
+    "judge.jinja": "o juiz que reprova a redação (as interiores sempre; a landing "
+                   "page só quando traz `editorial`)",
+    "seo.jinja": "o título SEO (que vira o H1 visível das páginas interiores) e a "
+                 "meta description",
+    "extractor.jinja": "legado: só o comando `funnelforge run` (briefing em DOCX ou "
+                       "texto). O disparo do VOLC O.S. usa `run-volc`, que chega com o "
+                       "plano pronto e não passa por este prompt",
     "image_prompt.jinja": "a imagem das páginas interiores",
     "image_prompt_lp.jinja": "a imagem da landing page",
     "declarador_engajamento.jinja": "o arquétipo de engajamento de cada página",
     "blocks_gutenberg.jinja": "a montagem dos blocos do WordPress",
+    # 17–18/09/2026
+    "editorial_identity.jinja": "a identidade do publisher independente (não é "
+                                "banco, órgão nem canal oficial), no topo dos prompts "
+                                "dos redatores, do juiz, do SEO e do widget",
+    "reader_contract.jinja": "o contrato editorial de cada página (dúvida do leitor, "
+                             "entrega útil, rótulo do CTA e conexões), incluído nos "
+                             "redatores da landing page, das soluções e dos hubs",
+    "interior_editorial.jinja": "os dados e as regras de redação das páginas "
+                                "interiores (base factual, links, anúncios), incluído "
+                                "nos redatores das soluções e dos hubs",
+    "image_review.jinja": "a revisão da imagem gerada (logos, insígnias oficiais, "
+                          "dados pessoais, qualidade) antes de ela entrar na página",
+    # fluxo editorial v2 — só roda com `run.editorial_v2` (config ou perfil do funil)
+    "briefing.jinja": "o briefing de cada página no fluxo editorial v2 (intenção, "
+                      "leitor, promessa e limites, com fato separado de hipótese), "
+                      "antes da redação",
+    "revisor.jinja": "o revisor contextual do fluxo editorial v2, que aponta e ajusta "
+                     "com evidência (substitui o juiz)",
+    "redator_p1_v2.jinja": "a landing page no fluxo editorial v2, escrita a partir do "
+                           "briefing",
+    "redator_pages_v2.jinja": "as páginas de solução no fluxo editorial v2",
+    "redator_presell_v2.jinja": "os hubs de pré-venda no fluxo editorial v2",
+    "reader_contract_v2.jinja": "o briefing da página e como escrever a partir dele, "
+                                "incluído nos redatores do fluxo v2",
+    "interior_editorial_v2.jinja": "os dados e as regras de redação das páginas "
+                                   "interiores no fluxo v2 (base factual, links, "
+                                   "anúncios), incluído nos redatores v2",
+    "blocks_gutenberg_v2.jinja": "a biblioteca de blocos do WordPress no fluxo v2, sem "
+                                 "cota de blocos",
+    "seo_v2.jinja": "o título SEO (H1 visível das interiores) e a meta description no "
+                    "fluxo v2, antes da revisão",
+    "image_prompt_v2.jinja": "a imagem das páginas interiores no fluxo v2",
+    "image_prompt_lp_v2.jinja": "a imagem da landing page no fluxo v2",
 }
 
 

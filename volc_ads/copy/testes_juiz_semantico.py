@@ -43,10 +43,19 @@ def _resp(*obs) -> str:
     return json.dumps({"observacoes": list(obs)})
 
 
-# ── o juiz não pode derrubar a geração ──────────────────────────────────────
+# ── o juiz não pode derrubar a geração — nem ficar calado quando cai ────────
 #
 # Quando ele roda, os ~140 s de cascata já estão pagos. Um juiz que explode e
 # leva a copy junto é pior que juiz nenhum.
+#
+# ⚠️ ATÉ 30/09/2026 A FALHA VIRAVA LISTA VAZIA — "nenhuma objeção". Com o juiz
+# ligado, a C7 e a C8 ficam desligadas, então uma queda dele deixava a rodada
+# SEM checagem de lastro e a copy saía aceita (verificação adversarial V11). O
+# contrato entre as trilhas (decisão 2) fechou isso: indisponível é
+# `JuizIndisponivel`, com o motivo; a cascata a transforma em pendência
+# explícita, religa a C7 e não aceita. A propriedade "não derruba a geração"
+# continua valendo — agora ela é provada na cascata
+# (`testes_lastro_tipado.test_juiz_que_levanta_qualquer_erro_nao_derruba_a_geracao`).
 
 @pytest.mark.parametrize("resposta", [
     "isto não é JSON",
@@ -55,17 +64,19 @@ def _resp(*obs) -> str:
     '{"observacoes": "não é lista"}',
     "```json\n{quebrado\n```",
 ])
-def test_resposta_ruim_do_juiz_nao_derruba(resposta):
-    assert js.julgar(_Dubl(resposta), ANUNCIO,
-                     fatos_texto="", nicho="x", regras=[]) == []
+def test_resposta_ruim_do_juiz_e_indisponibilidade_explicita(resposta):
+    with pytest.raises(js.JuizIndisponivel):
+        js.julgar(_Dubl(resposta), ANUNCIO, fatos_texto="", nicho="x", regras=[])
 
 
-def test_transporte_que_explode_vira_lista_vazia():
+def test_transporte_que_explode_vira_indisponibilidade_explicita():
     class _Explode:
         def gerar(self, sistema, usuario):
             raise RuntimeError("rede caiu")
 
-    assert js.julgar(_Explode(), ANUNCIO, fatos_texto="", nicho="x", regras=[]) == []
+    with pytest.raises(js.JuizIndisponivel) as exc:
+        js.julgar(_Explode(), ANUNCIO, fatos_texto="", nicho="x", regras=[])
+    assert "RuntimeError" in exc.value.motivo
 
 
 def test_cerca_de_markdown_e_tolerada():
@@ -581,15 +592,25 @@ def test_o_prompt_ensina_a_mesma_excecao_que_o_contrato_aplica():
     """⚠️ O motor já brigou consigo mesmo uma vez: o prompt ensinava uma frase
     que o sanitizador proibia. Se o contrato abre exceção para a raiz e o prompt
     não conta isso ao modelo, ele continua evitando repetir o termo — e a
-    cobertura que o Google cobra nunca chega."""
-    from volc_ads.copy import prompt as _p
-    import inspect
+    cobertura que o Google cobra nunca chega.
 
-    fonte = inspect.getsource(_p)
-    i = fonte.index("política 14848296")
-    trecho = fonte[i:i + 400].lower()
-    assert "exceção" in trecho or "excecao" in trecho, (
+    ⚠️ ATÉ 30/09/2026 ESTE TESTE LIA `copy/prompt.py` — que nenhum código de
+    runtime importa (V4 da verificação adversarial). Ficava verde vigiando o
+    arquivo errado, enquanto o `PROMPT.md` que o modelo LÊ dizia o contrário
+    ("as palavras do nicho são as que esse teto morde primeiro"). Agora ele lê
+    o CORPO do `PROMPT.md`, o mesmo texto que `render.montar` envia."""
+    import re
+
+    from volc_ads.copy import render
+
+    corpo = render.corpo()
+    m = re.search(r"política\s+14848296", corpo)
+    assert m, "o teto de repetição sumiu da seção 7 do PROMPT.md"
+    trecho = corpo[m.start():m.start() + 600]
+    assert "exceção" in trecho.lower(), (
         "o prompt ensina o teto de repetição sem contar a exceção da raiz")
+    assert "{raizes_fora_do_teto}" in trecho, (
+        "a exceção precisa nomear as MESMAS raízes que o contrato isenta")
 
 
 # ── C10: o portão do lançamento, rodado dentro da cascata ───────────────────
@@ -608,13 +629,38 @@ def test_o_prompt_ensina_a_mesma_excecao_que_o_contrato_aplica():
 # de a geração estar paga — sem ninguém para consertar, porque a cascata já
 # tinha terminado.
 
-def test_c10_pega_a_descricao_que_o_provar_reprovou():
-    """O caso real, palavra por palavra: 'sobre' duas vezes no mesmo texto."""
+def test_c10_e_o_portao_usam_a_mesma_regua_no_caso_do_card_65():
+    """O caso real, palavra por palavra: 'sobre' duas vezes no mesmo texto.
+
+    ⚠️ Alterado em 30/09/2026 (B6). Era `test_c10_pega_a_descricao_que_o_provar_
+    reprovou` e exigia um achado da C10. O inventário da frente A (ADS-15,
+    converter_em_aviso) rebaixou `editorial.repeticao.no_item` a localizador: a
+    política veta repetição "fora do padrão, gimmicky ou desnecessária", e duas
+    ocorrências numa descrição de 90 caracteres nem sempre são isso. O que o
+    card 65 ensinou continua provado: C10 e `/provar` usam a MESMA régua — aqui,
+    nenhum dos dois barra, e o portão mostra o aviso.
+    """
+    from volc_ads.campanha import conteudo, validacao
+    from volc_ads.copy.contrato import Pedido, _c10_portao_do_lancamento
+    from volc_ads.policy import spec as policy
+
+    texto = ("Guia completo sobre o FGTS Saque-Aniversário. "
+             "Tire suas dúvidas sobre as regras de 2026.")
+    d = {"headlines": ["FGTS: Como Sacar"], "descriptions": [texto]}
+    p = Pedido(n_headlines=1, n_descriptions=1,
+               raizes_do_termo=("fgts", "saque", "aniversario"))
+    assert _c10_portao_do_lancamento(d, p) == []
+    r = validacao.Resultado()
+    conteudo.politica(policy.Validador(), [texto], "description_rsa", r)
+    assert r.erros == [] and any("14848296" in a.motivo for a in r.achados), r.resumo()
+
+
+def test_c10_pega_a_descricao_que_o_provar_barra():
+    """A C10 continua pegando o que o portão BARRA, no alvo certo."""
     from volc_ads.copy.contrato import Pedido, _c10_portao_do_lancamento
 
     d = {"headlines": ["FGTS: Como Sacar"],
-         "descriptions": ["Guia completo sobre o FGTS Saque-Aniversário. "
-                          "Tire suas dúvidas sobre as regras de 2026."]}
+         "descriptions": ["Guia do FGTS: você não vai acreditar nas regras de 2026."]}
     p = Pedido(n_headlines=1, n_descriptions=1,
                raizes_do_termo=("fgts", "saque", "aniversario"))
     achados = _c10_portao_do_lancamento(d, p)
@@ -629,7 +675,10 @@ def test_c10_esta_no_caminho_do_checar():
     from volc_ads.copy.contrato import Pedido, checar
 
     d = {"headlines": ["FGTS: Como Sacar"],
-         "descriptions": ["Guia completo sobre o FGTS. Tire dúvidas sobre regras."],
+         # ⚠️ 30/09/2026 (B6): era 'sobre' 2× (ADS-15, agora localizador). A
+         # prova é a mesma — a C10 está no caminho do `checar()` — com uma regra
+         # que o portão ainda barra (clickbait do exemplo da política).
+         "descriptions": ["Guia do FGTS: você não vai acreditar nas regras."],
          "sitelinks": [{"title": "Consulta", "description1": "Veja aqui",
                         "description2": "Passo a passo"}],
          "callouts": ["Gratuito"], "snippet": {"header": "Modelos", "values": ["Anual"]},
@@ -808,3 +857,38 @@ def test_o_corte_do_vocabulario_chega_da_configuracao():
                     min_keywords_por_palavra=2, keywords_por_titulo=0.0)
     assert _c11_variedade_de_keywords(d, apertado)
     assert _c11_variedade_de_keywords(d, frouxo) == []
+
+
+# ── B8/R2: rótulo ou severidade fora do combinado não faz o erro sumir ───────
+
+@pytest.mark.parametrize("regra", ["Promessa", "promessa_falsa", "JS.promessa", "", "sentido"])
+def test_r2_erro_com_regra_fora_do_conjunto_nao_some(regra):
+    """Antes da B6 todo `erro` regenerava. Um rótulo errado do modelo não pode
+    deixar "Saque Assegurado na Hora" passar: vira `JS.sentido`, acionável."""
+    obs = js.julgar(_Dubl(_resp(
+        {"campo": "headline[0]", "regra": regra, "severidade": "erro",
+         "motivo": "promete saque garantido", "trecho": "Saque Assegurado na Hora"},
+    )), ANUNCIO, fatos_texto="", nicho="x", regras=[])
+    achados = js.como_achados(obs, regras_validas={"promessa", "ancoragem"})
+    assert len(achados) == 1, achados
+    assert achados[0].classe is Classe.FORMA_REESCREVER
+    assert achados[0].codigo in {"JS.promessa", "JS.sentido"}
+
+
+@pytest.mark.parametrize("sev", ["Erro", "ERRO", " erro ", "bloqueante", "Bloqueante"])
+def test_r2_severidade_de_erro_em_outra_grafia_continua_erro(sev):
+    obs = js.julgar(_Dubl(_resp(
+        {"campo": "headline[0]", "regra": "promessa", "severidade": sev,
+         "motivo": "promete saque garantido", "trecho": "Saque Assegurado na Hora"},
+    )), ANUNCIO, fatos_texto="", nicho="x", regras=[])
+    assert obs[0].severidade == "erro"
+    assert len(js.como_achados(obs, regras_validas={"promessa"})) == 1
+
+
+@pytest.mark.parametrize("regra", ["estilo", "Estilo", "oportunidade"])
+def test_r2_controle_estilo_continua_sem_regenerar(regra):
+    obs = js.julgar(_Dubl(_resp(
+        {"campo": "headline[0]", "regra": regra, "severidade": "erro",
+         "motivo": "poderia ser mais forte", "trecho": "x"},
+    )), ANUNCIO, fatos_texto="", nicho="x", regras=[])
+    assert js.como_achados(obs, regras_validas={"promessa"}) == []

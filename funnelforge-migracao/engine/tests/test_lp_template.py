@@ -227,10 +227,10 @@ def test_validate_lp_content_accepts_single_paragraph_intro():
     assert "lp_intro_long" not in codes
 
 
-def test_validate_lp_content_flags_gravata_without_tactile_cta():
+def test_validate_lp_content_accepts_subtitle_without_forced_toque():
     content = _lp_content(hero_subtitle="Antecipação e regras em 2026")
     codes = {i.code for i in validate_lp_content(content)}
-    assert "lp_gravata_no_cta" in codes
+    assert "lp_gravata_no_cta" not in codes
 
 
 def test_validate_lp_content_accepts_gravata_with_tactile_cta():

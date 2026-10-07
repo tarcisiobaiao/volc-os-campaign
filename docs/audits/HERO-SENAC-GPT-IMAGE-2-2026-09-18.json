@@ -1,0 +1,81 @@
+{
+  "post_id": 2306,
+  "status": "draft",
+  "media": {
+    "id": 2371,
+    "url": "https://creditoup.com.br/wp-content/uploads/2026/09/senac-aula-pratica-hero-gpt-image-2.webp",
+    "sha256": "38635733928a8fa317c00caa81ced063b7dd48051e06463ec058a1c573417863"
+  },
+  "changed_fields": [
+    [
+      "00600a83",
+      "background_image_mobile"
+    ]
+  ],
+  "elementor_before_sha256": "7e3537a5cba9037cd6c2b387f0b66502c08b7a04c50a7d15e809d04b63dca68f",
+  "elementor_after_sha256": "eb4bf9a2fa3ef759de4b240fe5a3c825c6953ec970b51688c3cb46850b5b3cc1",
+  "private_backup": "/Users/mac/Downloads/CreditoUp-revisao-rascunhos-2026-09-18-private/hero-v3-035817",
+  "verified": true,
+  "run_id": "senac-hero-engine-v3-20260918-035616",
+  "model": "gpt-image-2",
+  "engine_cost_usd": 0.053557,
+  "quality": "medium",
+  "dimensions": "1024x1536",
+  "pipeline": "step_image",
+  "review": {
+    "policy": "editorial-visual-v2",
+    "sha256": "38635733928a8fa317c00caa81ced063b7dd48051e06463ec058a1c573417863",
+    "accepted": true,
+    "review": {
+      "third_party_branding": false,
+      "official_document_or_interface": false,
+      "personal_data_or_qr": false,
+      "implied_approval_or_outcome": false,
+      "anatomy_or_physics_error": false,
+      "topic_mismatch": false,
+      "uncertain": false,
+      "evidence": "The image shows a young adult woman in a coral blouse sitting at a desk in a contemporary learning lab. She is facing a desktop computer, with creative materials (color swatches, pen tablet) on the desk, and blurred workstations and design sketches in the background. The palette is vibrant with blue and coral tones, and the scene is well-lit with natural light. The lower part of the image is intentionally darkened for editorial copy space.",
+      "anatomy_evidence": "The woman's right arm is visible from shoulder to hand, resting naturally on a computer mouse. Her left arm is visible from shoulder to hand, resting relaxed on the desk. Both hands are anatomically coherent, with no extra or fused limbs, and no impossible grips or object intersections.",
+      "topic_evidence": "The visible cues—such as the creative workspace, computer, color swatches, and design sketches—directly support the topic of professional training in technology and digital creation, matching the headline and keywords."
+    }
+  },
+  "steps": {
+    "image_p1": {
+      "step": "image_p1",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 954,
+      "completion_tokens": 234,
+      "cost_usd": 0.00378,
+      "latency_ms": 4700
+    },
+    "image_gen_p1": {
+      "step": "image_gen_p1",
+      "status": "OK",
+      "model_used": "gpt-image-2 medium 1024x1536",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 571,
+      "completion_tokens": 1372,
+      "cost_usd": 0.044015,
+      "latency_ms": 32241
+    },
+    "image_review_p1": {
+      "step": "image_review_p1",
+      "status": "OK",
+      "model_used": "gpt-4.1-2025-04-14",
+      "attempts": 1,
+      "issues": [],
+      "artifact_path": null,
+      "prompt_tokens": 1821,
+      "completion_tokens": 265,
+      "cost_usd": 0.005762,
+      "latency_ms": 2644
+    }
+  },
+  "manual_visual_review": "Anatomia observada com dois bracos e duas maos; cena de aprendizagem digital, sem marcas visiveis. Aprovada para substituir a hero rejeitada, sem aprovar a publicacao do funil."
+}

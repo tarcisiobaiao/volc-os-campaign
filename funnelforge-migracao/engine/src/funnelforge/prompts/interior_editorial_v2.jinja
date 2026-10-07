@@ -1,0 +1,69 @@
+<dados>
+Data: {{ today | default("") }}
+Tema/headline: {{ headline }}
+Objetivo: {{ objective }}
+Estrutura de referência: {{ skeleton }}
+Keywords: {{ keywords }}
+BASE FACTUAL:
+{{ facts | default("FATOS VERIFICADOS: NENHUM.") }}
+</dados>
+<fontes>
+Número, percentual, prazo, limite ou dispositivo legal só sai de FATOS VERIFICADOS.
+Reproduza valor e unidade e cite a fonte indicada na mesma frase. Se algo foi removido como
+número não verificado, não o reconstrua de memória. Se não há número, entregue orientação sem ele.
+Não apresente regra, valor ou prazo antigo como atual; ano no texto só quando um fato o tornar relevante para a decisão do leitor.
+Não invente disponibilidade atual, CNPJ, pré-requisito, inscrição aberta ou vínculo institucional.
+Use somente URLs fornecidas, copiadas exatamente; não invente caminhos em domínios legítimos.
+{% for url in official_links | default([]) %}Fonte/canal oficial verificado: {{ url }}
+{% endfor %}
+{% for link in platform_links | default([]) %}Plataforma verificada: {{ link | tojson }}
+{% endfor %}
+Quando uma etapa depender de um canal oficial específico, ponha o hyperlink real nessa etapa e
+identifique o canal por nome, como orientação externa, sem simular execução de serviço aqui.
+</fontes>
+<conexoes>
+Links disponíveis, na ordem editorial de relevância:
+{% for r in routes | default([]) %}- {{ r.kind }}: {{ r.anchor }} → {{ r.href }}
+  Motivo: {{ r.reason | default("") }}{% if r.passo %}
+  No briefing: rótulo "{{ r.passo.rotulo }}"; intenção do leitor: {{ r.passo.intencao }}; o que encontra lá: {{ r.passo.o_que_encontra }}{% endif %}
+{% endfor %}
+Não invente destinos. Inclua as conexões onde elas ajudam a próxima dúvida real do leitor, sem obrigar uma sequência de cliques.
+O rótulo do botão expressa a intenção ou o avanço do leitor naquele clique (o que ele ganha), não o formato editorial, e o destino entrega exatamente isso. Se o destino só explica como consultar em outro site, o rótulo diz isso e não promete a lista, a vaga ou o resultado em si.
+A frase antes de um botão diz o ganho concreto do próximo passo para este leitor; sem fórmula pronta.
+Não mude um rótulo só para não repetir. Não coloque botão após todo H2 por obrigação.
+Links externos são identificados como externos. Para links internos, diga que o leitor continua neste site quando isso evitar confundir guia com serviço.
+Não ofereça "Inscreva-se" quando o clique apenas abre outra página editorial.
+</conexoes>
+<entregas_dos_destinos>
+{% for p in next_solutions | default([]) %}- {{ p.h1 }}: {{ p.objective }}
+{% endfor %}
+</entregas_dos_destinos>
+{% if exigencia_visual | default([]) %}<formato_exigido>
+O plano visual do briefing pede estes blocos nativos (é o formato que a entrega pede, não cota de estilo; o portão de composição confere e aponta ao revisor o que faltar): {% for b in exigencia_visual %}wp:{{ b }}{% if not loop.last %}, {% endif %}{% endfor %}. Use cada um na seção planejada, com o HTML da biblioteca de blocos.
+{% for item in plano_visual | default([]) %}- {{ item.secao }}: {{ item.intencao }} → {{ item.padrao }} ({{ item.motivo }})
+{% endfor %}</formato_exigido>
+{% endif %}<apresentacao>
+Português claro, parágrafos curtos e títulos que nomeiam o que a seção entrega. Comece pelo que o leitor quer resolver e pela resposta útil, não por uma ordem de clicar.
+Use o formato que a entrega pede: etapas em lista, comparação em tabela só quando houver atributos comparáveis, perguntas do leitor quando elas existirem. Nenhuma cota de blocos, de perguntas ou de botões.
+Não use <u>. Não inclua H1, article, section, script, iframe, formulário ou campos de dados.
+Anúncios (dependência técnica do site, não regra de estilo): os slots configurados do Ad Inserter contam só os parágrafos <p> do fluxo principal.
+Abra a página com pelo menos 3 blocos wp:paragraph substantivos no fluxo principal, antes de qualquer columns, group, details, table, widget ou pullquote;
+o 1º e o 3º ficam fora de caixa, coluna, tabela, lista ou pergunta expansível. Não aninhe esses pontos em blocos interativos ou com aparência de botão.
+Não instrua o leitor a clicar em publicidade. Nenhuma caixa deve simular um anúncio ou vice-versa.
+Saída: apenas blocos Gutenberg, cada <!-- wp:* --> com seu <!-- /wp:* -->, e nada fora deles: sem markdown, comentário, raciocínio ou explicação.
+</apresentacao>
+<botao>
+Exemplo estrutural, sem impor quantidade, cor por índice ou texto diferente:
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="[HREF]">[RÓTULO]</a></div>
+<!-- /wp:button --></div><!-- /wp:buttons -->
+</botao>
+{% include "blocks_gutenberg_v2.jinja" %}
+<identidade_do_publisher>
+Guia editorial independente: sem falsa oficialidade, promessa garantida, urgência inventada ou execução de serviço.
+Deixe claro quem publica onde isso muda a decisão do leitor (um passo que acontece em outro site, um botão externo); não repita aviso em cada seção.
+Gere UMA vez, em um parágrafo simples, o aviso: "{{ compliance_notice_text }}". O sistema controla posição e deduplicação do aviso. Não fabrique CNPJ, rodapé ou byline.
+Antes de publicar, o revisor confere pelo SENTIDO estas expressões de pressão fabricada e de execução simulada (use só quando forem fato da base, como um prazo real de edital, nunca como pressão):
+{% for f in banned_fear %}- {{ f }}
+{% endfor %}{% for f in banned_cta_execution %}- {{ f }}
+{% endfor %}</identidade_do_publisher>

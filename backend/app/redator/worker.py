@@ -50,6 +50,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import tempfile
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -80,16 +81,98 @@ def raiz_do_motor() -> Path:
 
 
 class MotorIndisponivel(RuntimeError):
-    """O motor não está instalado onde deveria, ou o venv dele não existe."""
+    """O motor não está instalado onde deveria, o venv dele não existe, ou o
+    pacote não importa com o ambiente que o disparo daria a ele."""
+
+
+def _env_do_motor(raiz: Optional[Path] = None) -> Dict[str, str]:
+    """O ambiente do processo do motor: o do backend, com `<motor>/src` NA FRENTE.
+
+    ## Por que o caminho do código vai explícito (pista P2, 30/09/2026)
+
+    O `pip install -e` põe `engine/src` no caminho por um `.pth` dentro do
+    `site-packages` do venv. Em 17/09 as entradas desse `site-packages`
+    ganharam a flag `hidden` do macOS, e o `site.py` do CPython 3.14 PULA `.pth`
+    oculto ("Skipping hidden .pth file"). Resultado: `No module named
+    'funnelforge'` em todo disparo, sem nada ter mudado no código.
+
+    Dizer onde o código está não depende do `.pth` — nem desta flag, nem da
+    próxima coisa que tocar no venv. O `PYTHONPATH` que o backend já tinha
+    continua, atrás: trocar um defeito por outro não é conserto.
+    """
+    raiz = raiz or raiz_do_motor()
+    src = str(raiz / "src")
+    herdado = [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep)
+               if p and p != src]
+    return {**os.environ, "PYTHONUNBUFFERED": "1",
+            "PYTHONPATH": os.pathsep.join([src, *herdado])}
+
+
+# Motores cuja importação já foi PROVADA neste processo (chave: a raiz). Só o
+# sucesso fica guardado: consertado o venv, o disparo seguinte passa sem
+# reiniciar a API. Falha não entra aqui.
+_IMPORTACAO_PROVADA: set[str] = set()
+
+# Um `import funnelforge` leva décimos de segundo. O teto existe para um
+# interpretador pendurado (disco em sincronização, venv corrompido) não segurar
+# o disparo — não para medir desempenho.
+TEMPO_PROVA_IMPORTACAO_S = 60
+
+
+def _provar_importacao(raiz: Path) -> None:
+    """Prova, UMA vez por processo, que o motor importa com o ambiente do disparo.
+
+    Roda o `python` do venv do motor com `-c 'import funnelforge'`, no mesmo
+    diretório e com o mesmo `_env_do_motor` do processo de verdade. Se falhar,
+    levanta `MotorIndisponivel` com a CAUSA (a última linha do erro do Python)
+    — a linha do run mostra "No module named 'funnelforge'" em vez de um
+    `failed` com o fim de uma saída que ninguém entende.
+
+    Não conserta nada sozinho: tirar a flag `hidden` do venv ou recriá-lo é
+    decisão do operador (comando no handoff B3a e na mensagem).
+    """
+    chave = str(raiz)
+    if chave in _IMPORTACAO_PROVADA:
+        return
+    python = raiz / ".venv" / "bin" / "python"
+    prova = f"{python} -c 'import funnelforge'"
+    try:
+        r = subprocess.run(
+            [str(python), "-c", "import funnelforge"],
+            cwd=str(raiz), env=_env_do_motor(raiz),
+            capture_output=True, text=True, timeout=TEMPO_PROVA_IMPORTACAO_S,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise MotorIndisponivel(
+            f"O motor não respondeu à prova de importação ({prova}) em "
+            f"{TEMPO_PROVA_IMPORTACAO_S} s. Nada foi disparado.") from exc
+    except OSError as exc:
+        raise MotorIndisponivel(
+            f"Não consegui rodar a prova de importação do motor ({prova}): "
+            f"{type(exc).__name__}. Nada foi disparado.") from exc
+    if r.returncode != 0:
+        linhas = [ln.strip() for ln in (r.stderr or r.stdout or "").splitlines() if ln.strip()]
+        causa = linhas[-1][:300] if linhas else f"código de saída {r.returncode}"
+        raise MotorIndisponivel(
+            f"O motor não importa: {prova} falhou com PYTHONPATH={raiz / 'src'} "
+            f"— {causa}. Nada foi disparado. Se o venv do motor estiver com a flag "
+            f"oculta do macOS, rode: chflags -R nohidden {raiz / '.venv'} ; ou "
+            f"recrie o venv: cd {raiz} && python3 -m venv .venv && "
+            f".venv/bin/pip install -e '.[dev,screenshots]'")
+    _IMPORTACAO_PROVADA.add(chave)
 
 
 def _executavel() -> Path:
-    """O SCRIPT DE CONSOLE do motor, não o interpretador.
+    """O SCRIPT DE CONSOLE do motor, não o interpretador — depois de provar que
+    o pacote importa (`_provar_importacao`).
 
     ⚠️ Não use `python -m funnelforge`: o pacote não tem `__main__.py` e o
     Python recusa com "'funnelforge' is a package and cannot be directly
     executed". O ponto de entrada é o console script que o `pip install -e`
     cria a partir do `[project.scripts]` do pyproject.
+
+    ⚠️ Chamada SÍNCRONA (a prova roda um subprocesso). Dentro de corrotina, use
+    `await asyncio.to_thread(_executavel)` para não travar o event loop.
     """
     raiz = raiz_do_motor()
     exe = raiz / ".venv" / "bin" / "funnelforge"
@@ -100,6 +183,7 @@ def _executavel() -> Path:
         )
     if not (raiz / "config.yaml").exists():
         raise MotorIndisponivel(f"config.yaml não encontrado em {raiz}")
+    _provar_importacao(raiz)
     return exe
 
 
@@ -155,7 +239,7 @@ async def _disparar_motor(
     comando — o motor não a lê — e existe para duas coisas: obrigar quem publica
     a ter passado por um portão, e deixar no log qual foi.
     """
-    exe = _executavel()
+    exe = await asyncio.to_thread(_executavel)
     cmd = [str(exe), *[str(a) for a in argumentos]]
     if publicar:
         if not str(autorizacao or "").strip():
@@ -170,7 +254,7 @@ async def _disparar_motor(
         cwd=str(raiz),                       # o motor depende do diretório atual
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
-        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+        env=_env_do_motor(raiz),             # com <motor>/src no caminho (P2)
     )
 
 
@@ -299,7 +383,9 @@ async def executar(
         try:
             # A checagem do motor vem ANTES de a senha decifrada tocar o disco:
             # motor ausente não justifica credencial em /tmp nem por um instante.
-            _executavel()
+            # Fora do event loop: a prova de importação roda um subprocesso.
+            await asyncio.to_thread(_executavel)
+            flags = _flags_do_run(raiz, publicar, perfil)
 
             caminho_perfil.write_text(json.dumps(perfil, ensure_ascii=False), encoding="utf-8")
             os.chmod(caminho_perfil, 0o600)
@@ -326,7 +412,7 @@ async def executar(
                 "artefatos": {"pid": proc.pid, "carimbo": carimbo}})
 
             acompanhar = asyncio.create_task(
-                _acompanhar(supa, run_row_id, raiz, carimbo, proc, publicar))
+                _acompanhar(supa, run_row_id, raiz, carimbo, proc, publicar, flags=flags))
             try:
                 saida, _ = await asyncio.wait_for(proc.communicate(), timeout=TIMEOUT_S)
             except asyncio.TimeoutError:
@@ -345,7 +431,7 @@ async def executar(
                 (run_dir / "worker.log").write_text(texto, encoding="utf-8")
 
             estado = _ler_estado(run_dir) if run_dir else None
-            final = resumo_do_estado(estado, _flags(raiz, publicar)) if estado else {}
+            final = resumo_do_estado(estado, flags) if estado else {}
 
             if proc.returncode != 0:
                 await _atualizar(supa, run_row_id, {
@@ -408,14 +494,30 @@ def _flags(raiz: Path, publicar: bool) -> Dict[str, Any]:
     return {**mz.flags_do_motor(raiz), "publish": bool(publicar)}
 
 
+def _flags_do_run(raiz: Path, publicar: bool, perfil: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """As flags do motor MAIS a do perfil deste funil.
+
+    O fluxo editorial v2 pode ser ligado por funil (`perfil["editorial_v2"]`,
+    contrato entre trilhas). Como o `--publish`, o perfil é a verdade de runtime:
+    se ele ligou, a matriz nasce com as colunas `briefing`/`revisor` em vez de
+    trocá-las no meio do run, quando o primeiro passo v2 aparecer no estado.
+    """
+    flags = dict(_flags(raiz, publicar))
+    if (perfil or {}).get("editorial_v2") is True:
+        flags["editorial_v2"] = True
+    return flags
+
+
 async def _acompanhar(supa, run_row_id: int, raiz: Path, carimbo: str,
                       proc: asyncio.subprocess.Process,
-                      publicar: bool = True) -> None:
+                      publicar: bool = True, *,
+                      flags: Optional[Dict[str, Any]] = None) -> None:
     """Enquanto o motor roda, traduz o `state.json` para a linha do run.
 
     Cadência de 3s: uma etapa do motor leva de 30s a 3 min, então isso é folga
     de sobra e não custa nada — é leitura de um arquivo local.
     """
+    flags = flags if flags is not None else _flags(raiz, publicar)
     ultimo: Dict[str, Any] = {}
     while proc.returncode is None:
         await asyncio.sleep(3)
@@ -425,7 +527,7 @@ async def _acompanhar(supa, run_row_id: int, raiz: Path, carimbo: str,
         estado = _ler_estado(run_dir)
         if not estado:
             continue
-        resumo = resumo_do_estado(estado, _flags(raiz, publicar))
+        resumo = resumo_do_estado(estado, flags)
         valores = {k: v for k, v in resumo.items() if k in _COLUNAS and v is not None}
         # Só grava quando MUDOU: um UPDATE a cada 3s por 45 min seriam 900
         # escritas por run, quase todas idênticas.
@@ -615,8 +717,9 @@ async def publicar_pagina(
 
     try:
         # Mesma ordem do `executar`: confere o motor antes de a senha decifrada
-        # tocar o disco.
-        _executavel()
+        # tocar o disco. Fora do event loop: a prova de importação roda um
+        # subprocesso.
+        await asyncio.to_thread(_executavel)
         caminho_perfil.write_text(json.dumps(perfil, ensure_ascii=False), encoding="utf-8")
         os.chmod(caminho_perfil, 0o600)
 

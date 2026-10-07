@@ -31,7 +31,9 @@ INTERLINK_RULES = {
                  "(p_i -> {p_i+1..p_n}, OVERRIDE-1) + 1 saída OFICIAL externa; "
                  "sem aresta para trás, sem cross-funnel no miolo. A terminal "
                  "(maior ordinal) para de avançar e recircula CROSS-FUNNEL apenas "
-                 "(URL real do sitemap, relacionado-mas-diverso)."),
+                 "(URL real do sitemap, relacionado-mas-diverso). Opt-in "
+                 "run.terminal_exit_policy=official troca essa recirculacao "
+                 "por canal oficial verificado depois da pesquisa."),
 }
 
 
@@ -42,7 +44,8 @@ def load_contract() -> dict:
     return json.loads(raw)
 
 
-def contract_advisories(plan: FunnelPlan) -> list[str]:
+def contract_advisories(plan: FunnelPlan, *, terminal_official: bool = False,
+                       research_pending: bool = False) -> list[str]:
     """ADVISORY (non-blocking) checks of a built plan against the interlink
     contract: EVERY presell must FAN OUT to every solution; the terminal solution
     must have a cross-funnel exit; no page may route to itself."""
@@ -59,8 +62,11 @@ def contract_advisories(plan: FunnelPlan) -> list[str]:
             if missing:
                 notes.append(f"presell '{presell.slug}' não faz fan-out para todas "
                             f"as soluções; faltam: {missing}")
-    if solutions and not any(r.kind == "cross_funnel" for r in solutions[-1].routes):
-        notes.append(f"solução terminal '{solutions[-1].slug}' sem saída cross-funnel.")
+    exit_kind = "external_official" if terminal_official else "cross_funnel"
+    if solutions and not (terminal_official and research_pending) and not any(
+            r.kind == exit_kind for r in solutions[-1].routes):
+        label = "oficial" if terminal_official else "cross-funnel"
+        notes.append(f"solução terminal '{solutions[-1].slug}' sem saída {label}.")
     for p in plan.pages:
         if any(r.kind == "funnel" and r.target == p.slug for r in p.routes):
             notes.append(f"página '{p.slug}' tem CTA para si mesma (self-loop).")

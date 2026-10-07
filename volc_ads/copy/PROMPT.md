@@ -6,8 +6,9 @@ callouts e structured snippet — a partir de um brief com FATOS da página de
 destino. Ele carrega a doutrina medida da operação (o que reprova, o que fica
 morno, o que a conta de fato publica) como gramática, não como conselho.
 
-**Quem consome.** `forge.copy.prompt.montar` — que lê este arquivo, substitui os
-placeholders e devolve a string enviada ao modelo. O prompt e o validador são
+**Quem consome.** `volc_ads/copy/render.py` (`montar`) — que lê este arquivo,
+substitui os placeholders e devolve a string enviada ao modelo. (O antigo
+`copy/prompt.py` não é importado por nenhum código de runtime.) O prompt e o validador são
 duas metades do mesmo contrato: as travas, restrições e limites vêm de
 `policy/spec.json` e de `forge/campanha/limites.yaml`, nunca escritos à mão aqui.
 
@@ -22,12 +23,12 @@ chaves de JSON):
 | `{certificacoes_da_conta}` | `spec['habilitacao']` × conta × país — lista de certificações **satisfeitas**, ou `nenhuma` |
 | `{aviso_habilitacao}` | resolvido por `{tema_regulado}` + `{pais}`, nomeando certificação e país |
 | `{cobertura_semantica}` | `spec.cobertura_semantica(idioma, pais, vertical)` — `completa` só se houver regra da vertical **e** do país |
-| `{fatos}` `{nao_fatos}` | brief — cada fato com `id`, `tipo`, texto e `fonte` |
-| `{keywords}` `{termos_de_busca}` `{match_type}` | brief e `search_term_view` (`{termos_de_busca}` pode vir vazio) |
+| `{fatos}` `{nao_fatos}` | brief — cada fato com `id`, `tipo`, texto, `fonte` e, quando declarado, `escopo` |
+| `{keywords}` `{termos_de_busca}` `{match_type}` | brief e `search_term_view` — `{termos_de_busca}` em três estados: presente, vazio confirmado na janela, ou NÃO COLETADO com o motivo (nunca lista inventada) |
+| `{raizes_fora_do_teto}` | as raízes que o contrato tira do teto de repetição (`Encomenda.raizes_do_termo()`), ou "nenhuma" |
 | `{n_headlines}` `{n_descriptions}` `{n_sitelinks}` `{n_callouts}` `{n_snippet}` | brief |
 | `{snippet_headers}` | `limites.yaml`, já filtrado por `{idioma}` **e** por `{vertical}` |
-| `{termos_travados}` | `limites.yaml → politica.proibidos` |
-| `{restricoes_erro}` `{restricoes_aviso}` `{restricoes_observado}` | `spec` por severidade |
+| `{restricoes_erro}` `{restricoes_aviso}` `{restricoes_observado}` | `spec` por severidade; regra `localizador` cai sempre em OBSERVADO |
 | `{siglas_permitidas}` | união da lista fixa do país com toda sigla que apareça em `fonte`, órgão ou programa de um fato |
 | `{max_dki}` `{dki_permitido}` | política de DKI da campanha |
 | `{amostra_aprovados}` `{origem_amostra}` | corpus de aprovados; `{origem_amostra}` declara idioma e país da amostra |
@@ -83,7 +84,17 @@ que a passada 2 tem de apertar, não relaxar.
 2 · FATOS DA PÁGINA DE DESTINO — sua única fonte de afirmação
 ════════════════════════════════════════════════════════════════════════════
 Cada fato tem id, tipo e fonte. O tipo é o que alimenta as mecânicas da seção 5:
-[numero] [prazo] [data] [mudanca] [condicao] [orgao] [fonte_legal] [processo].
+[numero] [prazo] [data] [mudanca] [condicao] [orgao] [fonte_legal] [processo] [contexto].
+
+[contexto] é fato descritivo com fonte: sustenta relevância e nomeação — o
+órgão, o programa, a estrutura, a oferta como OBJETO da frase. Ele NUNCA
+sustenta número, prazo nem condição, mesmo quando traz um número escrito dentro
+dele: não habilita M6, M9 nem M10, e um dígito ou um "até" ancorado só em
+[contexto] é A2. Use-o para nomear e situar, sem o número. A esteira confere
+isto em código, em todo recurso.
+
+Um fato com `escopo` vale só nele: `regional:UF` não vira regra nacional,
+`unidade` não vira regra do órgão inteiro. Generalizar o escopo é A2.
 
 {fatos}
 
@@ -120,10 +131,6 @@ de quem tem ou não tem direito, consequência, e as palavras "novo", "mudou",
     de quantidade ("quanto", "qual o valor", "quantos dias") só é permitido se
     algum fato traz o número que responde. Curiosidade que a página não resolve
     é a definição de clickbait.
-
-FATO INESCREVÍVEL: se o SUJEITO de um fato é um conceito bloqueado pela seção 8
-(TRAVA 0), o fato inteiro é inescrevível. Escolha OUTRO FATO — nunca outro
-sujeito para o mesmo fato. Registre o descarte em `lacunas`.
 
 MODO SEM LASTRO: se a lista de fatos vier vazia, irrelevante ou insuficiente,
 está proibido qualquer número que não seja {ano}, qualquer valor, prazo,
@@ -402,7 +409,8 @@ COTA POR FATO
   · nenhum fato ancora mais de 2 títulos — 3 apenas no MODO LASTRO ESCASSO;
   · todo fato da seção 2 aparece em pelo menos UM recurso (título, descrição,
     sitelink ou callout). Se houver mais fatos que vagas, priorize [numero],
-    [data], [prazo] e [condicao], e registre os que sobraram em `lacunas`.
+    [data], [prazo] e [condicao], e registre os que sobraram em `lacunas`. Um
+    [contexto] entra pelo que ele NOMEIA, nunca pelo número que traz.
 
 VARIEDADE DE KEYWORDS — exigência da régua do Google, NÃO medição do corpus.
 
@@ -550,23 +558,23 @@ títulos assim num conjunto de {n_headlines} é o desenho que já falhou aqui.
     Frase normal nas descrições, em qualquer idioma.
   · nenhum recurso duplica outro, nem ignorando acento e caixa.
   · nenhuma palavra de 4+ letras pode aparecer em mais de 4 títulos (política
-    14848296 — repetição entre recursos derruba Ad Strength). O contador da
-    esteira NÃO filtra palavra funcional: preposição, pronome e advérbio de 4+
+    14848296 — repetição entre recursos derruba Ad Strength), com UMA exceção:
+    as raízes do termo buscado — {raizes_fora_do_teto} — não contam para este
+    teto. A esteira as tira da conta, porque repeti-las é relevância, não
+    repetição à toa; a exceção não é licença para repetir a mesma construção
+    (seção 6, VARIEDADE). O contador da esteira NÃO filtra palavra funcional: preposição, pronome e advérbio de 4+
     letras ("para", "este", "sobre", "como") consomem a cota igual ao nome do
     nicho. Conte-as. Mas quando uma funcional estourar o teto, a saída é
     reescrever a regência e manter o título — nunca derrubar um bom título para
-    salvar uma preposição. ATENÇÃO: as duas ou três palavras do nome do nicho
-    são as que o leitor digita, e são as que esse teto morde primeiro. Se o nome
+    salvar uma preposição. ATENÇÃO: as palavras do nome do nicho que NÃO estão
+    entre as raízes acima são as que esse teto morde primeiro. Se o nome
     do tema tem duas palavras longas, encontre as outras entradas no assunto —
     nome da lei, do órgão, do programa, número, data, pergunta, comparação,
     corte de público. É aqui que a copy fica boa ou fica repetitiva.
-  · nenhuma palavra de 4+ letras se repete DENTRO do mesmo texto. Reduplicação
-    idiomática da língua ("passo a passo", "paso a paso") é uso padrão e não
-    conta.
-  · a esteira casa termo travado por SUBSTRING e sem acento: um nome próprio
-    legítimo que contenha uma literal da TRAVA 0 será reprovado localmente
-    (`cura` dentro de `Procuraduría`). Não force — reformule e registre em
-    `lacunas`.
+  · evite repetir palavra de 4+ letras DENTRO do mesmo texto quando a repetição
+    não acrescenta nada. Reduplicação idiomática ("passo a passo", "paso a
+    paso") é uso padrão. A esteira MARCA a repetição e o juiz de sentido decide:
+    "cursos gratuitos e cursos pagos" contrasta, não repete à toa.
 
 DESCRIÇÕES
   · dois fatos distintos por descrição, JUSTAPOSTOS — nunca subordinados um ao
@@ -608,7 +616,7 @@ SNIPPET
   informativa, header de prestação de serviço está fora mesmo que a API o aceite.
 
 ════════════════════════════════════════════════════════════════════════════
-8 · POLÍTICA — um piso universal e quatro faixas
+8 · POLÍTICA — um piso universal e três faixas
 ════════════════════════════════════════════════════════════════════════════
 PISO UNIVERSAL — vale em todo idioma, todo país e toda vertical, exista ou não
 lista que o detecte. Cinco afirmações que NUNCA se fazem, e elas não dependem de
@@ -616,23 +624,19 @@ a seção abaixo ter renderizado uma linha sequer:
   1. que o site executa, processa, envia, libera ou intermedeia o serviço;
   2. garantia, aprovação, certeza ou resultado assegurado;
   3. vínculo, parceria, autorização, credenciamento ou endosso de órgão, banco
-     ou marca — inclusive as palavras oficial, parceiro, autorizado,
-     credenciado e homologado, PROIBIDAS em qualquer recurso: o leitor
-     transfere o adjetivo do documento para o anunciante;
+     ou marca. O veto é à afiliação do ANUNCIANTE, não à palavra: "oficial",
+     "parceiro", "autorizado", "credenciado" e "homologado" nunca qualificam
+     este site nem o que ele oferece; qualificando o canal ou o documento do
+     órgão, quando um fato o sustenta, são fato ("a inscrição ocorre no
+     canal oficial do Senac");
   4. qualquer coisa sobre a situação financeira do leitor — dinheiro parado,
      dívida, saldo esquecido, score;
   5. taxa, percentual, custo, APR, prazo de liberação ou valor a receber de
      produto financeiro.
 
-TRAVA 0 · LITERAIS BLOQUEADAS NA NOSSA PRÓPRIA ESTEIRA
-Estas strings reprovam o texto antes de ele chegar ao Google. Sem exceção, nem
-em citação, nem dentro de outra palavra, nem sem acento:
-{termos_travados}
-E a trava é do CONCEITO, não da string: nem sinônimo, nem flexão, nem
-nominalização, nem paráfrase do mesmo conceito. Se "antecipação" está travada,
-"adiantamento" e "antecipe" também estão; se "garantido" está travada,
-"garantia" e "garantida" também. A saída nunca é reescrever o termo — é escolher
-OUTRO FATO, pela regra do FATO INESCREVÍVEL da seção 2.
+PALAVRA NÃO É PROMESSA. Nenhuma palavra isolada reprova o texto. O que o piso
+acima veda é o SENTIDO: "o acesso não é garantido a todos" nega a garantia e é
+fato; "vaga assegurada" promete sem usar palavra de lista nenhuma e cai.
 
 PROIBIDO — erro ou bloqueio pela política oficial. Uma ocorrência reprova:
 {restricoes_erro}
@@ -644,8 +648,10 @@ declarada ali, o termo é tratado como PROIBIDO — default fechado, sem exceç�
 sem inferência a partir dos fatos ou das keywords:
 {restricoes_aviso}
 
-OBSERVADO — não reprova, degrada entrega ou Ad Strength. É o que as cotas da
-seção 6 já estão resolvendo:
+OBSERVADO — não reprova sozinho. Ou degrada entrega e Ad Strength (o que as
+cotas da seção 6 já resolvem), ou é LOCALIZADOR: uma lista de palavras que
+MARCA o trecho para o juiz de sentido, que decide pela promessa no contexto e
+diante do destino. Palavra marcada usada para negar, explicar ou nomear passa:
 {restricoes_observado}
 
 Em qualquer idioma e sempre: nada de emoji, pontuação repetida, símbolo
@@ -696,12 +702,13 @@ antes. Moldura interrogativa quebra por concordância pela mesma razão.
 TESTE OBRIGATÓRIO antes de usar DKI — contra os TERMOS DE BUSCA, não contra as
 keywords, porque é a busca que renderiza:
 {termos_de_busca}
-Se essa lista vier vazia, teste contra cada keyword da seção 9 acrescida de cada
-verbo de execução e de cada termo regulado do nicho — é a variante próxima que
-{match_type} deixa entrar. Substitua a tag por cada candidato, um por vez. O
+Se não houver termo para testar — consulta com 0 termos na janela, ou termos
+NÃO COLETADOS —, teste contra cada keyword da seção 9 acrescida de cada verbo de
+execução e de cada termo regulado do nicho — é a variante próxima que
+{match_type} deixa entrar. "Não coletado" não quer dizer que ninguém buscou. Substitua a tag por cada candidato, um por vez. O
 título cai se qualquer substituição produzir (a) mais de 30 caracteres, (b) uma
-frase que afirma que o site executa, (c) um termo da TRAVA 0 ou da faixa
-REGULADO, (d) {idioma} quebrado, ou (e) quebra de concordância com a moldura.
+frase que afirma que o site executa, (c) uma promessa que o PISO UNIVERSAL veda
+ou um termo da faixa REGULADO, (d) {idioma} quebrado, ou (e) quebra de concordância com a moldura.
 O fallback precisa ser, sozinho, um título válido por todas as regras deste
 documento — e a tag precisa estar íntegra: chave aberta e não fechada quebra a
 API.
@@ -724,9 +731,9 @@ AUTO A — POLÍTICA E LASTRO. Um item cai se:
        oferta (15937063). Derrubar um enunciado exato e neutro de prazo por A3 é
        a mornidão voltando com credencial de política, e está proibido;
   A4 · faz pergunta de quantidade cuja resposta não está em fato nenhum;
-  A5 · dispara TRAVA 0 — literal, sinônimo, flexão ou nominalização —, uma regra
-       PROIBIDA, o PISO UNIVERSAL, ou um termo REGULADO cuja certificação não
-       consta em {certificacoes_da_conta};
+  A5 · dispara uma regra PROIBIDA, o PISO UNIVERSAL (pelo sentido, não pela
+       palavra), ou um termo REGULADO cuja certificação não consta em
+       {certificacoes_da_conta};
   A6 · usa marca ou órgão fora da permissão da seção 8, insinua vínculo oficial,
        ou põe órgão, banco ou programa à esquerda do dois-pontos;
   A7 · combina verbo de execução OU nome de ação com qualificador de canal na
@@ -739,11 +746,11 @@ AUTO A — POLÍTICA E LASTRO. Um item cai se:
        es, também o `¿` de abertura, M9 exige data, janela ou prazo, M12 exige o
        operador de contraste. Rótulo errado corrói exatamente a auditoria que a
        ancoragem existe para permitir;
-  A10 · DÚVIDA RESOLVE CONTRA O TEXTO. Se você fica na dúvida sobre vínculo
-       oficial, sobre a situação financeira do leitor, sobre oferta de produto
-       regulado ou sobre coleta de dado pessoal, o item CAI e o motivo é A10. O
-       catálogo A1-A9 é finito e a política do Google não é; a troca lateral do
-       C2 devolve a ambição perdida;
+  A10 · no SENTIDO (não pela palavra), sugere vínculo oficial do anunciante,
+       fala da situação financeira do leitor, oferece produto regulado ou pede
+       dado pessoal. Palavra de lista usada para negar, explicar ou nomear não
+       é A10; na dúvida real, registre em `lacunas` com o motivo — o juiz de
+       sentido decide com o destino na mão;
   A11 · capitaliza palavra funcional em idioma de norma sentence-case (seção 7).
 
 AUTO B — MORNIDÃO. Este é o auto que nenhum gerador abre, e é o que está
@@ -767,9 +774,9 @@ COMO REESCREVER — e como não destruir a copy nesta passada:
        eixos (mecânica, fato, verbo, pergunta, dígito) quanto o original.
        Trocar um título ousado por um vago é perder duas vezes;
   C3 · MOTIVO CITÁVEL, obrigatório. Toda queda cita o código: "A2", "A5 política
-       15936857", "B2". Desconforto vago não é motivo — mas desconforto sobre
-       um dos quatro temas do A10 É motivo, e chama-se A10. Fora desses quatro,
-       se você não consegue nomear a regra, o título FICA;
+       15936857", "B2". Desconforto vago não é motivo, nem sobre os temas do
+       A10: A10 exige o sentido, não a sensação. Se você não consegue nomear a
+       regra e o trecho, o título FICA;
   C4 · GATILHO DE REFAZER: se mais de um terço dos títulos cai por AUTO A ou por
        AUTO B, o problema é a passada 1. REFAÇA a passada 1 inteira com melhor
        pontaria. Nunca pare de derrubar para caber num teto — o teto media a

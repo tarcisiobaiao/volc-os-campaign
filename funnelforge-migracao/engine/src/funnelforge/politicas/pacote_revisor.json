@@ -1,0 +1,2084 @@
+{
+ "versao": "pacote-revisor-v1",
+ "gerado_em": "2026-09-30",
+ "valido_ate": "2026-10-30",
+ "refresh_dias": 30,
+ "dono": "operador VOLC (Frente A · políticas oficiais); refresh pelo integrador da reforma editorial",
+ "fonte": {
+  "arquivo": ".claude-ads/runs/editorial-refactor-20260930/frente-a-politicas/ledger.json",
+  "sha256": "f4e85106f5cc43257f63b8c1fe6e0a69a7737e16fab86ecf09fd45c0d68b1dc2"
+ },
+ "superficies": [
+  "search_ads",
+  "landing_page",
+  "monetizacao_publisher"
+ ],
+ "regra_de_classes": "A e B podem sustentar bloqueio (com id e url); C é nota e nunca bloqueia; D não entra.",
+ "regras": [
+  {
+   "id": "ADS-MIS-00#A1",
+   "classe": "A",
+   "texto": "Anúncio e destino claros e honestos sobre quem anuncia e o que é oferecido.",
+   "regra": "ADS-MIS-00",
+   "url": "https://support.google.com/adspolicy/answer/6020955?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Misrepresentation — visão geral (pt-BR: Deturpação)"
+  },
+  {
+   "id": "ADS-MIS-00#A2",
+   "classe": "A",
+   "texto": "A lista atual NÃO contém mais 'Government documents and official services': esse tema vive hoje em 'Other restricted businesses' (ver ADS-ORB-GOV).",
+   "regra": "ADS-MIS-00",
+   "url": "https://support.google.com/adspolicy/answer/6020955?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Misrepresentation — visão geral (pt-BR: Deturpação)"
+  },
+  {
+   "id": "ADS-MIS-00#B1",
+   "classe": "B",
+   "texto": "A página de visão geral usa redação ligeiramente diferente da subpágina ('supported by' × 'affiliated with'); a subpágina é a mais específica.",
+   "regra": "ADS-MIS-00",
+   "url": "https://support.google.com/adspolicy/answer/6020955?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Misrepresentation — visão geral (pt-BR: Deturpação)"
+  },
+  {
+   "id": "ADS-MIS-01#A1",
+   "classe": "A",
+   "texto": "Não sugerir vínculo com o Senac, a CNC ou governo (o Crédito Up não é parceiro nem autorizado).",
+   "regra": "ADS-MIS-01",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unacceptable business practices (pt-BR: Práticas comerciais inaceitáveis)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe enganar escondendo ou deturpando informação sobre o negócio: fazer parecer afiliação com outra marca, organização ou entidade governamental; oferecer o que não se tem/não se pode entregar; per…"
+  },
+  {
+   "id": "ADS-MIS-01#A2",
+   "classe": "A",
+   "texto": "Não oferecer matrícula, inscrição ou vaga — o site não entrega isso.",
+   "regra": "ADS-MIS-01",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unacceptable business practices (pt-BR: Práticas comerciais inaceitáveis)"
+  },
+  {
+   "id": "ADS-MIS-01#A3",
+   "classe": "A",
+   "texto": "Não usar identidade do Senac (nome como se fosse o anunciante, logotipo, cores) de modo a esconder a própria identidade.",
+   "regra": "ADS-MIS-01",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unacceptable business practices (pt-BR: Práticas comerciais inaceitáveis)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe enganar escondendo ou deturpando informação sobre o negócio: fazer parecer afiliação com outra marca, organização ou entidade governamental; oferecer o que não se tem/não se pode entregar; per…"
+  },
+  {
+   "id": "ADS-MIS-01#B1",
+   "classe": "B",
+   "texto": "Boa prática (não exigência): se referencia outra marca sem ser parceiro, 'consider a disclaimer' no site e nos anúncios.",
+   "regra": "ADS-MIS-01",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unacceptable business practices (pt-BR: Práticas comerciais inaceitáveis)"
+  },
+  {
+   "id": "ADS-MIS-01#B2",
+   "classe": "B",
+   "texto": "Boa prática: página 'Sobre' com contato e explicação do que a empresa faz; usar a própria marca.",
+   "regra": "ADS-MIS-01",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unacceptable business practices (pt-BR: Práticas comerciais inaceitáveis)"
+  },
+  {
+   "id": "ADS-MIS-02#A1",
+   "classe": "A",
+   "texto": "Não omitir que o Crédito Up é editorial e não oferece os cursos.",
+   "regra": "ADS-MIS-02",
+   "url": "https://support.google.com/adspolicy/answer/15936666?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Misleading representation (pt-BR: Declarações enganosas)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe declarações enganosas, ocultação ou omissão de informação material sobre identidade, afiliações ou qualificações; e nome de empresa impreciso ou que não represente claramente o anunciante."
+  },
+  {
+   "id": "ADS-MIS-02#A2",
+   "classe": "A",
+   "texto": "Nome de empresa (quando o formato pedir) deve representar o anunciante (ver ADS-EDI-06).",
+   "regra": "ADS-MIS-02",
+   "url": "https://support.google.com/adspolicy/answer/15936666?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Misleading representation (pt-BR: Declarações enganosas)"
+  },
+  {
+   "id": "ADS-MIS-02#B1",
+   "classe": "B",
+   "texto": "Por analogia com o exemplo oficial do afiliado de serviços jurídicos: anúncio de 'cursos Senac' que não deixa claro que o anunciante não presta o serviço.",
+   "regra": "ADS-MIS-02",
+   "url": "https://support.google.com/adspolicy/answer/15936666?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Misleading representation (pt-BR: Declarações enganosas)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe declarações enganosas, ocultação ou omissão de informação material sobre identidade, afiliações ou qualificações; e nome de empresa impreciso ou que não represente claramente o anunciante."
+  },
+  {
+   "id": "ADS-MIS-03#A1",
+   "classe": "A",
+   "texto": "Nada de 'segredo', 'o que ninguém conta', 'você não vai acreditar', 'clique e descubra'.",
+   "regra": "ADS-MIS-03",
+   "url": "https://support.google.com/adspolicy/answer/15936667?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Clickbait ads (pt-BR: Deturpação: Anúncios clickbait)"
+  },
+  {
+   "id": "ADS-MIS-03#A2",
+   "classe": "A",
+   "texto": "Nada de medo/culpa com evento negativo de vida para forçar o clique (ex.: desemprego como ameaça).",
+   "regra": "ADS-MIS-03",
+   "url": "https://support.google.com/adspolicy/answer/15936667?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Clickbait ads (pt-BR: Deturpação: Anúncios clickbait)"
+  },
+  {
+   "id": "ADS-MIS-03#B1",
+   "classe": "B",
+   "texto": "Pergunta que retém a resposta para forçar o clique se aproxima do exemplo 'to encourage the user to click on the Ad in order to understand the full context'.",
+   "regra": "ADS-MIS-03",
+   "url": "https://support.google.com/adspolicy/answer/15936667?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Clickbait ads (pt-BR: Deturpação: Anúncios clickbait)"
+  },
+  {
+   "id": "ADS-MIS-03#B2",
+   "classe": "B",
+   "texto": "'Poucos sabem' se aproxima de 'claim to reveal secrets'.",
+   "regra": "ADS-MIS-03",
+   "url": "https://support.google.com/adspolicy/answer/15936667?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Clickbait ads (pt-BR: Deturpação: Anúncios clickbait)"
+  },
+  {
+   "id": "ADS-MIS-04#A1",
+   "classe": "A",
+   "texto": "Não prometer vaga, aprovação, gratuidade universal ou certificado como desfecho provável.",
+   "regra": "ADS-MIS-04",
+   "url": "https://support.google.com/adspolicy/answer/15936857?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unreliable claims (pt-BR: Deturpação: declarações não confiáveis)"
+  },
+  {
+   "id": "ADS-MIS-04#A2",
+   "classe": "A",
+   "texto": "Afirmações factuais (renda, requisitos) precisam ser corretas.",
+   "regra": "ADS-MIS-04",
+   "url": "https://support.google.com/adspolicy/answer/15936857?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unreliable claims (pt-BR: Deturpação: declarações não confiáveis)"
+  },
+  {
+   "id": "ADS-MIS-04#B1",
+   "classe": "B",
+   "texto": "Educação/cursos não aparece nos exemplos oficiais: aplicar ao Senac é interpretação pelo princípio geral.",
+   "regra": "ADS-MIS-04",
+   "url": "https://support.google.com/adspolicy/answer/15936857?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unreliable claims (pt-BR: Deturpação: declarações não confiáveis)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe afirmações imprecisas ou que atraiam com resultado improvável (mesmo que possível) apresentado como o resultado provável. Exemplos oficiais concentram-se em saúde/peso, finanças e política; o…"
+  },
+  {
+   "id": "ADS-MIS-04#B2",
+   "classe": "B",
+   "texto": "Em saúde, a página exige política de reembolso para garantias e aviso em depoimentos — não se transpõe automaticamente para cursos.",
+   "regra": "ADS-MIS-04",
+   "url": "https://support.google.com/adspolicy/answer/15936857?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unreliable claims (pt-BR: Deturpação: declarações não confiáveis)"
+  },
+  {
+   "id": "ADS-MIS-05#A1",
+   "classe": "A",
+   "texto": "Cada título/descrição precisa descrever o que a página de destino de fato contém.",
+   "regra": "ADS-MIS-05",
+   "url": "https://support.google.com/adspolicy/answer/15936964?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unclear relevance (pt-BR: Deturpação: relevância pouco clara)"
+  },
+  {
+   "id": "ADS-MIS-05#A2",
+   "classe": "A",
+   "texto": "Se usar DKI ({KeyWord:...}), o texto padrão precisa ser relevante.",
+   "regra": "ADS-MIS-05",
+   "url": "https://support.google.com/adspolicy/answer/15936964?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unclear relevance (pt-BR: Deturpação: relevância pouco clara)"
+  },
+  {
+   "id": "ADS-MIS-05#B1",
+   "classe": "B",
+   "texto": "Termos de busca reais incluem cursos específicos ('manicure', 'operador de caixa', 'libras'); títulos sobre cursos específicos exigem que a LP/interna trate deles.",
+   "regra": "ADS-MIS-05",
+   "url": "https://support.google.com/adspolicy/answer/15936964?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unclear relevance (pt-BR: Deturpação: relevância pouco clara)"
+  },
+  {
+   "id": "ADS-MIS-06#A1",
+   "classe": "A",
+   "texto": "O que o anúncio promete (ex.: 'requisitos', 'como consultar por estado') precisa estar fácil de achar na LP.",
+   "regra": "ADS-MIS-06",
+   "url": "https://support.google.com/adspolicy/answer/15937063?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unavailable offers (pt-BR: Deturpação: ofertas indisponíveis)"
+  },
+  {
+   "id": "ADS-MIS-06#A2",
+   "classe": "A",
+   "texto": "CTA do anúncio precisa existir no destino: 'Inscreva-se' não existe no creditoup.",
+   "regra": "ADS-MIS-06",
+   "url": "https://support.google.com/adspolicy/answer/15937063?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unavailable offers (pt-BR: Deturpação: ofertas indisponíveis)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe prometer no anúncio produto, serviço ou oferta indisponível ou difícil de encontrar a partir do destino, incluindo chamada para ação que não está facilmente disponível no destino."
+  },
+  {
+   "id": "ADS-MIS-06#B1",
+   "classe": "B",
+   "texto": "Promessa satisfeita só depois de várias páginas internas pode ser lida como 'not easily found from the destination' (interpretação).",
+   "regra": "ADS-MIS-06",
+   "url": "https://support.google.com/adspolicy/answer/15937063?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unavailable offers (pt-BR: Deturpação: ofertas indisponíveis)"
+  },
+  {
+   "id": "ADS-MIS-07#A1",
+   "classe": "A",
+   "texto": "'Grátis/gratuito' só quando verdadeiro para o que se anuncia; o Crédito Up não cobra nada, mas a gratuidade dos cursos é do Senac e tem critério.",
+   "regra": "ADS-MIS-07",
+   "url": "https://support.google.com/adspolicy/answer/15938375?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Dishonest pricing practices (pt-BR: Práticas desonestas de preço)",
+   "caso_especifico": true,
+   "regra_geral": "Exige divulgar com clareza modelo de pagamento e custo total; proíbe práticas que criem impressão falsa de custo (ex.: isca-e-troca, apresentar app como gratuito quando é pago, teste grátis sem infor…"
+  },
+  {
+   "id": "ADS-MIS-07#B1",
+   "classe": "B",
+   "texto": "A política mira o preço do que o anunciante vende; aplicá-la a afirmação sobre gratuidade de terceiro é interpretação — o enquadramento mais direto é ADS-MIS-04/06.",
+   "regra": "ADS-MIS-07",
+   "url": "https://support.google.com/adspolicy/answer/15938375?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Dishonest pricing practices (pt-BR: Práticas desonestas de preço)"
+  },
+  {
+   "id": "ADS-MIS-07#B2",
+   "classe": "B",
+   "texto": "Se alguma oferta gratuita tiver custos acessórios (material, taxa), 'grátis' sem ressalva vira risco — não verificado para o PSG.",
+   "regra": "ADS-MIS-07",
+   "url": "https://support.google.com/adspolicy/answer/15938375?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Dishonest pricing practices (pt-BR: Práticas desonestas de preço)",
+   "caso_especifico": true,
+   "regra_geral": "Exige divulgar com clareza modelo de pagamento e custo total; proíbe práticas que criem impressão falsa de custo (ex.: isca-e-troca, apresentar app como gratuito quando é pago, teste grátis sem infor…"
+  },
+  {
+   "id": "ADS-MIS-08#A1",
+   "classe": "A",
+   "texto": "Para Search texto, o ponto aplicável é a consistência anúncio ↔ LP.",
+   "regra": "ADS-MIS-08",
+   "url": "https://support.google.com/adspolicy/answer/15937463?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Misleading ad design (pt-BR: Deturpação: design enganoso do anúncio)"
+  },
+  {
+   "id": "ADS-MIS-08#B1",
+   "classe": "B",
+   "texto": "A maior parte dos exemplos é de anúncios de imagem; relevância para RSA é baixa.",
+   "regra": "ADS-MIS-08",
+   "url": "https://support.google.com/adspolicy/answer/15937463?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Misleading ad design (pt-BR: Deturpação: design enganoso do anúncio)"
+  },
+  {
+   "id": "ADS-EDI-00#A1",
+   "classe": "A",
+   "texto": "Cumprir as subpolíticas ADS-EDI-01 a ADS-EDI-08.",
+   "regra": "ADS-EDI-00",
+   "url": "https://support.google.com/adspolicy/answer/6021546?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Editorial — visão geral"
+  },
+  {
+   "id": "ADS-EDI-01#A1",
+   "classe": "A",
+   "texto": "Sem '!!', '??', emoji, 'C.U.R.S.O.S', letras trocadas por números/símbolos ('f1owers', 'fl@wers'), superscrito fora do padrão, marcadores ou asteriscos decorativos ('*flowers*').",
+   "regra": "ADS-EDI-01",
+   "url": "https://support.google.com/adspolicy/answer/14847994?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Punctuation and symbols (pt-BR: Pontuação e símbolos)"
+  },
+  {
+   "id": "ADS-EDI-01#A2",
+   "classe": "A",
+   "texto": "Asterisco permitido para condições legalmente exigidas e para nota de avaliação ('5* hotel').",
+   "regra": "ADS-EDI-01",
+   "url": "https://support.google.com/adspolicy/answer/14847994?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Punctuation and symbols (pt-BR: Pontuação e símbolos)"
+  },
+  {
+   "id": "ADS-EDI-01#B1",
+   "classe": "B",
+   "texto": "Símbolos não listados (ex.: '|' como separador) não aparecem na página — risco de leitura como 'non-standard symbol', não regra explícita.",
+   "regra": "ADS-EDI-01",
+   "url": "https://support.google.com/adspolicy/answer/14847994?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Punctuation and symbols (pt-BR: Pontuação e símbolos)"
+  },
+  {
+   "id": "ADS-EDI-01#B2",
+   "classe": "B",
+   "texto": "'★' e o 'visto verde' NÃO aparecem no texto da página (consultada 30/09/2026): vetá-los é leitura de 'non-standard symbols' ou de 'Emoji' (listado em 'Invalid or unsupported characters'), não citação.",
+   "regra": "ADS-EDI-01",
+   "url": "https://support.google.com/adspolicy/answer/14847994?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Punctuation and symbols (pt-BR: Pontuação e símbolos)"
+  },
+  {
+   "id": "ADS-EDI-02#A1",
+   "classe": "A",
+   "texto": "Sem palavra comum em caixa alta ('GRÁTIS', 'SENAC CURSOS') nem caixa alternada.",
+   "regra": "ADS-EDI-02",
+   "url": "https://support.google.com/adspolicy/answer/14848295?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Capitalization (pt-BR: Requisitos editoriais: letras maiúsculas)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe capitalização incorreta ou fora do propósito — exemplos: 'FLOWERS', 'FlOwErS', 'F.L.O.W.E.R.S'. Permite abreviações comuns, códigos de cupom e marcas com capitalização própria (sujeito a revis…"
+  },
+  {
+   "id": "ADS-EDI-02#B1",
+   "classe": "B",
+   "texto": "Title Case não é mencionado (nem exigido nem vetado) — ver NE-08.",
+   "regra": "ADS-EDI-02",
+   "url": "https://support.google.com/adspolicy/answer/14848295?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Capitalization (pt-BR: Requisitos editoriais: letras maiúsculas)"
+  },
+  {
+   "id": "ADS-EDI-03#A1",
+   "classe": "A",
+   "texto": "Callout/sitelink não pode repetir texto de título, descrição ou outro asset.",
+   "regra": "ADS-EDI-03",
+   "url": "https://support.google.com/adspolicy/answer/14848296?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Repetition (pt-BR: Requisitos editoriais: repetição)"
+  },
+  {
+   "id": "ADS-EDI-03#A2",
+   "classe": "A",
+   "texto": "Nada de 'Senac Senac', 'Cursos Senac Cursos Grátis Senac'.",
+   "regra": "ADS-EDI-03",
+   "url": "https://support.google.com/adspolicy/answer/14848296?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Repetition (pt-BR: Requisitos editoriais: repetição)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe repetição não padrão, 'gimmicky' ou desnecessária de nomes, palavras ou frases (inclusive assets que repetem texto já presente no anúncio) e texto de asset que repete palavras/frases no mesmo…"
+  },
+  {
+   "id": "ADS-EDI-03#A3",
+   "classe": "A",
+   "texto": "Repetir palavra ou frase DENTRO do mesmo asset está no texto sem qualificador ('Asset text that repeats words or phrases within the same asset...'); exemplos oficiais: repetir o nome do anunciante ou do produto. Base de ADS-15 (classe A).",
+   "regra": "ADS-EDI-03",
+   "url": "https://support.google.com/adspolicy/answer/14848296?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Repetition (pt-BR: Requisitos editoriais: repetição)"
+  },
+  {
+   "id": "ADS-EDI-03#B1",
+   "classe": "B",
+   "texto": "A política não fixa limiar numérico; o limite interno 'palavra de 4+ letras em no máximo 4 títulos' é preferência (ver NE-10).",
+   "regra": "ADS-EDI-03",
+   "url": "https://support.google.com/adspolicy/answer/14848296?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Repetition (pt-BR: Requisitos editoriais: repetição)"
+  },
+  {
+   "id": "ADS-EDI-03#B2",
+   "classe": "B",
+   "texto": "Sobreposição parcial (callout 'Guia Independente' × título 'Guia Editorial Independente') passou na revisão atual — aprovação passada não garante as próximas.",
+   "regra": "ADS-EDI-03",
+   "url": "https://support.google.com/adspolicy/answer/14848296?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Repetition (pt-BR: Requisitos editoriais: repetição)"
+  },
+  {
+   "id": "ADS-EDI-04#A1",
+   "classe": "A",
+   "texto": "Sem 'Clique aqui' e equivalentes genéricos.",
+   "regra": "ADS-EDI-04",
+   "url": "https://support.google.com/adspolicy/answer/14848297?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Style and spelling (pt-BR: Requisitos editoriais: estilo e ortografia)"
+  },
+  {
+   "id": "ADS-EDI-04#A2",
+   "classe": "A",
+   "texto": "Sem listas numeradas/marcadores no texto do anúncio.",
+   "regra": "ADS-EDI-04",
+   "url": "https://support.google.com/adspolicy/answer/14848297?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Style and spelling (pt-BR: Requisitos editoriais: estilo e ortografia)"
+  },
+  {
+   "id": "ADS-EDI-04#A3",
+   "classe": "A",
+   "texto": "Sem texto truncado ou genérico ('Cursos, vagas e mais').",
+   "regra": "ADS-EDI-04",
+   "url": "https://support.google.com/adspolicy/answer/14848297?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Style and spelling (pt-BR: Requisitos editoriais: estilo e ortografia)"
+  },
+  {
+   "id": "ADS-EDI-04#B1",
+   "classe": "B",
+   "texto": "'Saiba mais' isolado é CTA genérico em espírito; não está listado literalmente.",
+   "regra": "ADS-EDI-04",
+   "url": "https://support.google.com/adspolicy/answer/14848297?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Style and spelling (pt-BR: Requisitos editoriais: estilo e ortografia)"
+  },
+  {
+   "id": "ADS-EDI-05#A1",
+   "classe": "A",
+   "texto": "O destino precisa identificar o Crédito Up como publicador (hoje atendido pelo aviso no topo da LP).",
+   "regra": "ADS-EDI-05",
+   "url": "https://support.google.com/adspolicy/answer/14848399?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unidentified business (pt-BR: Requisitos editoriais: empresa não identificada)",
+   "caso_especifico": true,
+   "regra_geral": "Anúncios ou destinos precisam nomear o produto, serviço ou entidade que promovem (nome de produto, empresa ou URL de exibição)."
+  },
+  {
+   "id": "ADS-EDI-05#B1",
+   "classe": "B",
+   "texto": "Pelo exemplo oficial ('product name, company name, or display URL') o domínio exibido do RSA tende a satisfazer o anúncio; ter a marca num título é recomendação de Limited ad serving (ADS-LAS-01), não exigência desta política.",
+   "regra": "ADS-EDI-05",
+   "url": "https://support.google.com/adspolicy/answer/14848399?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Unidentified business (pt-BR: Requisitos editoriais: empresa não identificada)"
+  },
+  {
+   "id": "ADS-EDI-06#A1",
+   "classe": "A",
+   "texto": "Nome da empresa = 'Crédito Up' (ou o domínio), nunca 'Cursos Senac' ou 'Guia Senac'.",
+   "regra": "ADS-EDI-06",
+   "url": "https://support.google.com/adspolicy/answer/14847993?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Business name requirements (Editorial)",
+   "caso_especifico": true,
+   "regra_geral": "Nos formatos com campo de nome da empresa, o nome deve ser o domínio, o nome reconhecido do anunciante ou o app promovido; proíbe linguagem promocional e nomes genéricos/geográficos."
+  },
+  {
+   "id": "ADS-EDI-06#A2",
+   "classe": "A",
+   "texto": "Com Advertiser Verification concluída, o nome precisa bater com o domínio ou com o nome verificado.",
+   "regra": "ADS-EDI-06",
+   "url": "https://support.google.com/adspolicy/answer/14847993?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Business name requirements (Editorial)"
+  },
+  {
+   "id": "ADS-EDI-07#A1",
+   "classe": "A",
+   "texto": "path1/path2 descrevem o caminho do conteúdo, não fazem chamada promocional.",
+   "regra": "ADS-EDI-07",
+   "url": "https://support.google.com/adspolicy/answer/14847686?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Misuse of ad features (Editorial)"
+  },
+  {
+   "id": "ADS-EDI-07#B1",
+   "classe": "B",
+   "texto": "Path como 'inscricao/gratis' tende a ser lido como texto promocional no campo de URL (interpretação).",
+   "regra": "ADS-EDI-07",
+   "url": "https://support.google.com/adspolicy/answer/14847686?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Misuse of ad features (Editorial)"
+  },
+  {
+   "id": "ADS-EDI-08#A1",
+   "classe": "A",
+   "texto": "Sem 'C u r s o s', sem espaço duplo, sem 'Senac,cursos'.",
+   "regra": "ADS-EDI-08",
+   "url": "https://support.google.com/adspolicy/answer/14848500?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Unacceptable spacing (Editorial)",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe omitir espaço, adicionar espaços extras ou usar espaçamento excessivo/'gimmicky' (ex.: 'f l o w e r s')."
+  },
+  {
+   "id": "ADS-DST-00#A1",
+   "classe": "A",
+   "texto": "LP e internas respondendo 200 ao AdsBot (desktop e mobile) no Brasil.",
+   "regra": "ADS-DST-00",
+   "url": "https://support.google.com/adspolicy/answer/6368661?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination requirements — funcionamento, rastreabilidade e acesso"
+  },
+  {
+   "id": "ADS-DST-00#A2",
+   "classe": "A",
+   "texto": "Nada de bloqueio de AdsBot por plugin de segurança/cache ou robots.",
+   "regra": "ADS-DST-00",
+   "url": "https://support.google.com/adspolicy/answer/6368661?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination requirements — funcionamento, rastreabilidade e acesso"
+  },
+  {
+   "id": "ADS-DST-00#B1",
+   "classe": "B",
+   "texto": "WP Rocket, Ad Inserter e 'join ads loader' ativos (baseline) — não verificado se algum altera resposta ao AdsBot.",
+   "regra": "ADS-DST-00",
+   "url": "https://support.google.com/adspolicy/answer/6368661?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination requirements — funcionamento, rastreabilidade e acesso"
+  },
+  {
+   "id": "ADS-DST-01#A1",
+   "classe": "A",
+   "texto": "/r/guia-cursos-senac/ não pode redirecionar para senac.br.",
+   "regra": "ADS-DST-01",
+   "url": "https://support.google.com/adspolicy/answer/16428020?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination mismatch (pt-BR: Destino não correspondente)",
+   "caso_especifico": true,
+   "regra_geral": "URL de exibição, final e mobile precisam ser do mesmo domínio; redirecionar a URL final para outro domínio é proibido (salvo exceção pré-aprovada); tracking template/URL expandida deve levar ao mesmo…"
+  },
+  {
+   "id": "ADS-DST-01#A2",
+   "classe": "A",
+   "texto": "O final_url_suffix com UTMs e vc_* não pode mudar o conteúdo servido.",
+   "regra": "ADS-DST-01",
+   "url": "https://support.google.com/adspolicy/answer/16428020?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination mismatch (pt-BR: Destino não correspondente)"
+  },
+  {
+   "id": "ADS-DST-01#B1",
+   "classe": "B",
+   "texto": "Parâmetros de rastreamento na URL final podem causar mismatch; a página recomenda {ignore} antes do parâmetro.",
+   "regra": "ADS-DST-01",
+   "url": "https://support.google.com/adspolicy/answer/16428020?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination mismatch (pt-BR: Destino não correspondente)"
+  },
+  {
+   "id": "ADS-DST-02#A1",
+   "classe": "A",
+   "texto": "Conteúdo da LP visível ao chegar do anúncio; nada de interstitial que bloqueie o conteúdo pedido.",
+   "regra": "ADS-DST-02",
+   "url": "https://support.google.com/adspolicy/answer/16427615?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination experience (pt-BR: Experiência de destino)"
+  },
+  {
+   "id": "ADS-DST-02#A2",
+   "classe": "A",
+   "texto": "Botão Voltar funcionando; nenhum elemento de navegação ('Próximo', 'Ver requisitos') levando a anúncio.",
+   "regra": "ADS-DST-02",
+   "url": "https://support.google.com/adspolicy/answer/16427615?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination experience (pt-BR: Experiência de destino)"
+  },
+  {
+   "id": "ADS-DST-02#A3",
+   "classe": "A",
+   "texto": "Conformidade com Better Ads Standards (ex.: sem prestitial com contagem regressiva, sem sticky grande).",
+   "regra": "ADS-DST-02",
+   "url": "https://support.google.com/adspolicy/answer/16427615?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination experience (pt-BR: Experiência de destino)"
+  },
+  {
+   "id": "ADS-DST-02#B1",
+   "classe": "B",
+   "texto": "Interstitial disparado no clique em link interno é o formato oficial do GAM/AdSense; o risco é a frequência e o bloqueio — cadência não verificada nesta etapa.",
+   "regra": "ADS-DST-02",
+   "url": "https://support.google.com/adspolicy/answer/16427615?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination experience (pt-BR: Experiência de destino)"
+  },
+  {
+   "id": "ADS-DST-02#B2",
+   "classe": "B",
+   "texto": "Cloaking: pop-up/interstitial que impede o Google de acessar a maior parte do conteúdo é 'Circumventing systems' (egregious) — ver ADS-ABU-02.",
+   "regra": "ADS-DST-02",
+   "url": "https://support.google.com/adspolicy/answer/16427615?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Destination experience (pt-BR: Experiência de destino)"
+  },
+  {
+   "id": "ADS-DST-03#A1",
+   "classe": "A",
+   "texto": "LP com conteúdo original que responda à dúvida por si (requisitos, como achar a oferta, o que fazer depois).",
+   "regra": "ADS-DST-03",
+   "url": "https://support.google.com/adspolicy/answer/16427718?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Insufficient original content (pt-BR: Conteúdo original insuficiente)"
+  },
+  {
+   "id": "ADS-DST-03#A2",
+   "classe": "A",
+   "texto": "Anúncios em quantidade menor que o conteúdo; nada de LP que é só um menu de botões para as internas.",
+   "regra": "ADS-DST-03",
+   "url": "https://support.google.com/adspolicy/answer/16427718?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Insufficient original content (pt-BR: Conteúdo original insuficiente)"
+  },
+  {
+   "id": "ADS-DST-03#A3",
+   "classe": "A",
+   "texto": "Nada de reproduzir o texto de senac.br sem acréscimo.",
+   "regra": "ADS-DST-03",
+   "url": "https://support.google.com/adspolicy/answer/16427718?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Insufficient original content (pt-BR: Conteúdo original insuficiente)",
+   "caso_especifico": true,
+   "regra_geral": "O destino precisa oferecer valor único: proíbe conteúdo feito com o propósito principal de exibir anúncios (inclui tráfego via 'arbitragem' para páginas com mais anúncios que conteúdo, pouco conteúdo…"
+  },
+  {
+   "id": "ADS-DST-03#B1",
+   "classe": "B",
+   "texto": "A LP 2306 termina com 'Escolha o guia que responde à sua dúvida agora' e distribui o leitor por 4 internas — aceitável enquanto a LP entregar resposta própria; a proporção anúncio/conteúdo não foi medida nesta etapa.",
+   "regra": "ADS-DST-03",
+   "url": "https://support.google.com/adspolicy/answer/16427718?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Insufficient original content (pt-BR: Conteúdo original insuficiente)"
+  },
+  {
+   "id": "ADS-TM-01#A1",
+   "classe": "A",
+   "texto": "Uso de 'Senac' no texto não pode ser confuso ou enganoso sobre quem anuncia.",
+   "regra": "ADS-TM-01",
+   "url": "https://support.google.com/adspolicy/answer/6118?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Trademarks (pt-BR: Marcas registradas)",
+   "caso_especifico": true,
+   "regra_geral": "O Google só restringe uso de marca após reclamação do titular, analisando o uso no texto do anúncio. Não restringe marca como palavra-chave; restringe uso por concorrente direto e uso confuso, engano…"
+  },
+  {
+   "id": "ADS-TM-01#B1",
+   "classe": "B",
+   "texto": "O Senac pode registrar reclamação a qualquer momento — não verificado se existe.",
+   "regra": "ADS-TM-01",
+   "url": "https://support.google.com/adspolicy/answer/6118?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Trademarks (pt-BR: Marcas registradas)",
+   "caso_especifico": true,
+   "regra_geral": "O Google só restringe uso de marca após reclamação do titular, analisando o uso no texto do anúncio. Não restringe marca como palavra-chave; restringe uso por concorrente direto e uso confuso, engano…"
+  },
+  {
+   "id": "ADS-TM-01#B2",
+   "classe": "B",
+   "texto": "Legislação brasileira de marcas e concorrência desleal: fora do escopo, não verificada.",
+   "regra": "ADS-TM-01",
+   "url": "https://support.google.com/adspolicy/answer/6118?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Trademarks (pt-BR: Marcas registradas)"
+  },
+  {
+   "id": "ADS-ORB-GOV#A1",
+   "classe": "A",
+   "texto": "NÃO SE APLICA LITERALMENTE ao caso: cursos do Senac não estão na lista abrangente e o Senac não é governo — o Regulamento do Senac diz que é 'uma instituição de direito privado' (FATO-01).",
+   "regra": "ADS-ORB-GOV",
+   "url": "https://support.google.com/adspolicy/answer/13156083?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Government documents and (official) services — Other restricted businesses (pt-BR: Documentos e serviços do governo)",
+   "caso_especifico": true,
+   "regra_geral": "Só governos certificados e provedores autorizados podem anunciar aquisição direta de documentos e serviços específicos de governo da lista abrangente (identificação, certidões, mudança de nome/endere…"
+  },
+  {
+   "id": "ADS-ORB-GOV#A2",
+   "classe": "A",
+   "texto": "Se aplicaria se a copy promovesse aquisição de documento/benefício de governo da lista (não é o caso).",
+   "regra": "ADS-ORB-GOV",
+   "url": "https://support.google.com/adspolicy/answer/13156083?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Government documents and (official) services — Other restricted businesses (pt-BR: Documentos e serviços do governo)"
+  },
+  {
+   "id": "ADS-ORB-GOV#B1",
+   "classe": "B",
+   "texto": "Classificação automática: a página prevê formulário de exclusão para quem é afetado sem promover documentos/serviços de governo; a página 'Other restricted businesses' cita exclusão para serviços 'purely editorial, educational, or consultancy-based'.",
+   "regra": "ADS-ORB-GOV",
+   "url": "https://support.google.com/adspolicy/answer/13156083?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Government documents and (official) services — Other restricted businesses (pt-BR: Documentos e serviços do governo)"
+  },
+  {
+   "id": "ADS-ORB-GOV#B2",
+   "classe": "B",
+   "texto": "Copy que chame o curso de 'benefício do governo' ou 'programa do governo' seria falsa (Misrepresentation) e aproximaria o anúncio da categoria de benefícios.",
+   "regra": "ADS-ORB-GOV",
+   "url": "https://support.google.com/adspolicy/answer/13156083?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Government documents and (official) services — Other restricted businesses (pt-BR: Documentos e serviços do governo)"
+  },
+  {
+   "id": "ADS-LAS-01#A1",
+   "classe": "A",
+   "texto": "Mecanismo existe e é da plataforma (limitação de impressões, não reprovação).",
+   "regra": "ADS-LAS-01",
+   "url": "https://support.google.com/adspolicy/answer/13889491?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Limited ad serving (pt-BR: Veiculação limitada de anúncios)"
+  },
+  {
+   "id": "ADS-LAS-01#B1",
+   "classe": "B",
+   "texto": "Boas práticas (não exigências): marca própria visível no anúncio e na LP; clareza sobre a relação com marcas citadas; evitar copy genérica; fixar o domínio no início do título, especialmente para anunciante novo.",
+   "regra": "ADS-LAS-01",
+   "url": "https://support.google.com/adspolicy/answer/13889491?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Limited ad serving (pt-BR: Veiculação limitada de anúncios)"
+  },
+  {
+   "id": "ADS-LAS-01#B2",
+   "classe": "B",
+   "texto": "Anúncios que citam a marca de terceiro 'Senac' em buscas que contêm a marca são o cenário descrito; não verificados a maturidade/qualificação da conta nem se ela está limitada (nenhuma notificação consta no baseline).",
+   "regra": "ADS-LAS-01",
+   "url": "https://support.google.com/adspolicy/answer/13889491?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Limited ad serving (pt-BR: Veiculação limitada de anúncios)",
+   "caso_especifico": true,
+   "regra_geral": "O Google limita impressões de anunciantes 'não qualificados' em cenários com maior potencial de experiência negativa. Em Search, anúncios que citam outras marcas e anúncios genéricos sem marca podem…"
+  },
+  {
+   "id": "ADS-ABU-01#A1",
+   "classe": "A",
+   "texto": "Manter creditoup.com.br livre de ação manual por spam (scaled content, doorway etc.).",
+   "regra": "ADS-ABU-01",
+   "url": "https://support.google.com/adspolicy/answer/15936769?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "search_organico"
+   ],
+   "titulo": "Abusing the ad network: Spam policies for Google Web Search",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe práticas que violem as políticas de spam da Pesquisa (keyword stuffing, cloaking, redirecionamento enganoso, doorway pages). Anúncios para destinos removidos da Pesquisa por ação manual são re…"
+  },
+  {
+   "id": "ADS-ABU-01#B1",
+   "classe": "B",
+   "texto": "Liga diretamente o risco orgânico (SEO-01/02) à veiculação paga.",
+   "regra": "ADS-ABU-01",
+   "url": "https://support.google.com/adspolicy/answer/15936769?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "search_organico"
+   ],
+   "titulo": "Abusing the ad network: Spam policies for Google Web Search"
+  },
+  {
+   "id": "ADS-ABU-02#A1",
+   "classe": "A",
+   "texto": "AdsBot e usuário recebem a mesma página e o mesmo produto.",
+   "regra": "ADS-ABU-02",
+   "url": "https://support.google.com/adspolicy/answer/15938075?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Abusing the ad network: Circumventing systems (cloaking)"
+  },
+  {
+   "id": "ADS-ABU-02#A2",
+   "classe": "A",
+   "texto": "Nenhum overlay/interstitial cobrindo a maior parte da LP de modo que o Google não consiga avaliá-la.",
+   "regra": "ADS-ABU-02",
+   "url": "https://support.google.com/adspolicy/answer/15938075?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Abusing the ad network: Circumventing systems (cloaking)"
+  },
+  {
+   "id": "ADS-ABU-02#A3",
+   "classe": "A",
+   "texto": "Não criar variações de anúncio/domínio para contornar reprovação.",
+   "regra": "ADS-ABU-02",
+   "url": "https://support.google.com/adspolicy/answer/15938075?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Abusing the ad network: Circumventing systems (cloaking)"
+  },
+  {
+   "id": "ADS-ABU-02#B1",
+   "classe": "B",
+   "texto": "Esconder blocos de anúncio ou o interstitial do AdsBot (detecção de user agent) seria cloaking — não há indício disso no HTML salvo; não verificado.",
+   "regra": "ADS-ABU-02",
+   "url": "https://support.google.com/adspolicy/answer/15938075?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "landing_page"
+   ],
+   "titulo": "Abusing the ad network: Circumventing systems (cloaking)"
+  },
+  {
+   "id": "ADS-ABU-03#A1",
+   "classe": "A",
+   "texto": "Uma campanha/um domínio por intenção; nada de domínios-espelho para a mesma busca 'cursos senac'.",
+   "regra": "ADS-ABU-03",
+   "url": "https://support.google.com/adspolicy/answer/15936768?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Abusing the ad network: Unfair advantage",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe ganhar vantagem de tráfego injusta no leilão, p.ex. tentar mostrar mais de um anúncio do mesmo negócio/site no mesmo espaço; cada site promovido deve oferecer valor distinto."
+  },
+  {
+   "id": "ADS-ABU-03#B1",
+   "classe": "B",
+   "texto": "Multiplicar funis quase iguais sobre o mesmo tema em domínios distintos.",
+   "regra": "ADS-ABU-03",
+   "url": "https://support.google.com/adspolicy/answer/15936768?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Abusing the ad network: Unfair advantage"
+  },
+  {
+   "id": "ADS-FMT-01#A1",
+   "classe": "A",
+   "texto": "Todos os sitelinks para creditoup.com.br.",
+   "regra": "ADS-FMT-01",
+   "url": "https://support.google.com/adspolicy/answer/1054210?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Sitelink asset requirements (pt-BR: Requisitos do recurso de sitelink)",
+   "caso_especifico": true,
+   "regra_geral": "Sitelinks: não repetir texto do link; URLs do mesmo domínio da URL final (exceções limitadas, com domínio no texto); sem pontuação/símbolo só para chamar atenção (ex.: exclamação, ►); texto do link d…"
+  },
+  {
+   "id": "ADS-FMT-01#A2",
+   "classe": "A",
+   "texto": "Texto do sitelink descreve a página de destino.",
+   "regra": "ADS-FMT-01",
+   "url": "https://support.google.com/adspolicy/answer/1054210?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Sitelink asset requirements (pt-BR: Requisitos do recurso de sitelink)"
+  },
+  {
+   "id": "ADS-FMT-01#A3",
+   "classe": "A",
+   "texto": "Sem '!' e sem símbolos decorativos.",
+   "regra": "ADS-FMT-01",
+   "url": "https://support.google.com/adspolicy/answer/1054210?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Sitelink asset requirements (pt-BR: Requisitos do recurso de sitelink)"
+  },
+  {
+   "id": "ADS-FMT-01#B1",
+   "classe": "B",
+   "texto": "Link para senac.br via sitelink é exceção não prevista para este caso (exemplos oficiais: varejistas, redes sociais).",
+   "regra": "ADS-FMT-01",
+   "url": "https://support.google.com/adspolicy/answer/1054210?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Sitelink asset requirements (pt-BR: Requisitos do recurso de sitelink)",
+   "caso_especifico": true,
+   "regra_geral": "Sitelinks: não repetir texto do link; URLs do mesmo domínio da URL final (exceções limitadas, com domínio no texto); sem pontuação/símbolo só para chamar atenção (ex.: exclamação, ►); texto do link d…"
+  },
+  {
+   "id": "ADS-FMT-02#A1",
+   "classe": "A",
+   "texto": "Callout não repete título/descrição/sitelink (exemplo oficial: 'Free shipping' repetido).",
+   "regra": "ADS-FMT-02",
+   "url": "https://support.google.com/adspolicy/answer/6084196?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Callout asset requirements (pt-BR: Requisitos do recurso de frase de destaque)"
+  },
+  {
+   "id": "ADS-FMT-02#B1",
+   "classe": "B",
+   "texto": "Sobreposição parcial de palavras é zona cinzenta; hoje 'Guia Independente' convive com 'Guia Editorial Independente' e está APPROVED.",
+   "regra": "ADS-FMT-02",
+   "url": "https://support.google.com/adspolicy/answer/6084196?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Callout asset requirements (pt-BR: Requisitos do recurso de frase de destaque)"
+  },
+  {
+   "id": "ADS-FMT-03#A1",
+   "classe": "A",
+   "texto": "Não usar o cabeçalho 'Cursos' listando cursos do Senac: o Crédito Up não é provedor educacional.",
+   "regra": "ADS-FMT-03",
+   "url": "https://support.google.com/adspolicy/answer/6283300?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Structured snippet requirements (pt-BR: Requisitos para snippets estruturados)",
+   "caso_especifico": true,
+   "regra_geral": "Snippets: sem pontuação para chamar atenção; valores não se repetem; um item por valor; sem texto promocional; o valor precisa corresponder ao cabeçalho. No cabeçalho 'Cursos', só aulas específicas q…"
+  },
+  {
+   "id": "ADS-FMT-03#A2",
+   "classe": "A",
+   "texto": "Não usar 'Grátis' como valor (texto promocional).",
+   "regra": "ADS-FMT-03",
+   "url": "https://support.google.com/adspolicy/answer/6283300?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Structured snippet requirements (pt-BR: Requisitos para snippets estruturados)"
+  },
+  {
+   "id": "ADS-FMT-03#B1",
+   "classe": "B",
+   "texto": "Cabeçalho 'Tipos' com tipos de guia (ex.: 'Guia de requisitos') parece compatível com 'variações de uma categoria de produto', mas não foi verificado em revisão.",
+   "regra": "ADS-FMT-03",
+   "url": "https://support.google.com/adspolicy/answer/6283300?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Structured snippet requirements (pt-BR: Requisitos para snippets estruturados)"
+  },
+  {
+   "id": "ADS-REV-01#A1",
+   "classe": "A",
+   "texto": "Tratar toda edição do RSA 825455438614 como nova revisão (inclusive do destino).",
+   "regra": "ADS-REV-01",
+   "url": "https://support.google.com/adspolicy/answer/1722120?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "api"
+   ],
+   "titulo": "About the ad review process"
+  },
+  {
+   "id": "ADS-REV-01#B1",
+   "classe": "B",
+   "texto": "Aprovação atual não se transfere: um texto novo pode ser reprovado mesmo parecido com o anterior.",
+   "regra": "ADS-REV-01",
+   "url": "https://support.google.com/adspolicy/answer/1722120?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads",
+    "api"
+   ],
+   "titulo": "About the ad review process"
+  },
+  {
+   "id": "ADS-PERS-01#A1",
+   "classe": "A",
+   "texto": "Só relevante se a campanha usar públicos do anunciante; a campanha 24278665189 não tem critério de público (baseline: idioma, local, dispositivos).",
+   "regra": "ADS-PERS-01",
+   "url": "https://support.google.com/adspolicy/answer/16700443?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Restricted targeting in Personalized advertising — negative financial status / imposing negativity"
+  },
+  {
+   "id": "ADS-PERS-01#B1",
+   "classe": "B",
+   "texto": "Copy centrada em 'baixa renda'/'desemprego' + remarketing restringiria a segmentação.",
+   "regra": "ADS-PERS-01",
+   "url": "https://support.google.com/adspolicy/answer/16700443?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Restricted targeting in Personalized advertising — negative financial status / imposing negativity"
+  },
+  {
+   "id": "ADS-FIN-01#A1",
+   "classe": "A",
+   "texto": "Divulgações no destino (prazo, APR máxima, exemplo de custo total) para quem promove empréstimo pessoal.",
+   "regra": "ADS-FIN-01",
+   "url": "https://support.google.com/adspolicy/answer/15188216?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Personal loans (Financial products and services)"
+  },
+  {
+   "id": "ADS-FIN-01#B1",
+   "classe": "B",
+   "texto": "Usar o 15188216 como fonte de veto por palavra em portal informativo (spec.json 'termo_em_portal_informativo') é interpretação: o texto regula divulgação, não vocabulário.",
+   "regra": "ADS-FIN-01",
+   "url": "https://support.google.com/adspolicy/answer/15188216?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Personal loans (Financial products and services)"
+  },
+  {
+   "id": "ADS-FIN-01#B2",
+   "classe": "B",
+   "texto": "A definição exclui financiamento de bem durável e de educação ('not for the purpose of financing the purchase of a fixed asset or education').",
+   "regra": "ADS-FIN-01",
+   "url": "https://support.google.com/adspolicy/answer/15188216?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Personal loans (Financial products and services)"
+  },
+  {
+   "id": "ADS-FIN-BR#A1",
+   "classe": "A",
+   "texto": "Verificação de serviços financeiros para anunciar ou segmentar público que busca serviços financeiros no Brasil.",
+   "regra": "ADS-FIN-BR",
+   "url": "https://support.google.com/adspolicy/answer/15332527?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Financial Services Verification - Brazil"
+  },
+  {
+   "id": "ADS-FIN-BR#B1",
+   "classe": "B",
+   "texto": "Quando um anúncio de portal informativo é classificado como 'serviço financeiro' depende da revisão do Google; a palavra ('empréstimo', 'antecipação', 'crédito') é só sinal, não gatilho documentado.",
+   "regra": "ADS-FIN-BR",
+   "url": "https://support.google.com/adspolicy/answer/15332527?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Financial Services Verification - Brazil"
+  },
+  {
+   "id": "ADS-FIN-BR#B2",
+   "classe": "B",
+   "texto": "O domínio creditoup.com.br pode aproximar anúncios de outros temas da categoria financeira — não verificado.",
+   "regra": "ADS-FIN-BR",
+   "url": "https://support.google.com/adspolicy/answer/15332527?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Financial Services Verification - Brazil",
+   "caso_especifico": true,
+   "regra_geral": "Para mostrar anúncios de serviços financeiros no Brasil — inclusive a usuários brasileiros que parecem buscar serviços financeiros — o anunciante precisa ser verificado pelo Google. A obrigação alcan…"
+  },
+  {
+   "id": "PUB-01#A1",
+   "classe": "A",
+   "texto": "Páginas do funil sem aparência de site do Senac; propósito editorial explícito.",
+   "regra": "PUB-01",
+   "url": "https://support.google.com/publisherpolicies/answer/11185754?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Misleading representation",
+   "caso_especifico": true,
+   "regra_geral": "Não monetizar conteúdo que deturpe, omita ou esconda informação sobre o publisher, o autor, o propósito ou o próprio conteúdo, nem que implique falsamente afiliação/endosso de terceiro."
+  },
+  {
+   "id": "PUB-01#B1",
+   "classe": "B",
+   "texto": "Mau uso de logotipo de terceiros é exemplo oficial.",
+   "regra": "PUB-01",
+   "url": "https://support.google.com/publisherpolicies/answer/11185754?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Misleading representation"
+  },
+  {
+   "id": "PUB-02#A1",
+   "classe": "A",
+   "texto": "Rótulo de botão/link interno promete exatamente o que a página seguinte entrega.",
+   "regra": "PUB-02",
+   "url": "https://support.google.com/publisherpolicies/answer/11185755?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Deceptive practices"
+  },
+  {
+   "id": "PUB-02#B1",
+   "classe": "B",
+   "texto": "Botão 'Ver lista de cursos gratuitos' que leva a página sem lista — pretexto falso para mais uma pageview (e mais uma vinheta).",
+   "regra": "PUB-02",
+   "url": "https://support.google.com/publisherpolicies/answer/11185755?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Deceptive practices"
+  },
+  {
+   "id": "PUB-03#A1",
+   "classe": "A",
+   "texto": "Nenhum bloco de anúncio colado aos botões 'Escolher um curso', 'Ver requisitos', 'Encontrar oferta no estado'.",
+   "regra": "PUB-03",
+   "url": "https://support.google.com/publisherpolicies/answer/11035030?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Ads interfering (conteúdo e interação)"
+  },
+  {
+   "id": "PUB-03#B1",
+   "classe": "B",
+   "texto": "Mesmo sem intenção, layout que gera clique acidental pode gerar notificação (AdSense).",
+   "regra": "PUB-03",
+   "url": "https://support.google.com/publisherpolicies/answer/11035030?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Ads interfering (conteúdo e interação)"
+  },
+  {
+   "id": "PUB-04#A1",
+   "classe": "A",
+   "texto": "LP e internas precisam ser páginas de conteúdo, não 'hub' de navegação com anúncios.",
+   "regra": "PUB-04",
+   "url": "https://support.google.com/publisherpolicies/answer/11112688?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Inventory value: telas sem conteúdo do publisher / baixo valor"
+  },
+  {
+   "id": "PUB-04#A2",
+   "classe": "A",
+   "texto": "Conteúdo gerado pelo motor (FunnelForge) precisa de revisão/curadoria humana antes de receber anúncios.",
+   "regra": "PUB-04",
+   "url": "https://support.google.com/publisherpolicies/answer/11112688?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Inventory value: telas sem conteúdo do publisher / baixo valor"
+  },
+  {
+   "id": "PUB-04#B1",
+   "classe": "B",
+   "texto": "LP cuja função principal é distribuir o leitor para as internas se aproxima de 'screen used for navigation'.",
+   "regra": "PUB-04",
+   "url": "https://support.google.com/publisherpolicies/answer/11112688?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Inventory value: telas sem conteúdo do publisher / baixo valor"
+  },
+  {
+   "id": "PUB-05#A1",
+   "classe": "A",
+   "texto": "Na conta de proporção, botões/links para as internas e o bloco 'Notícias Relacionadas' não contam como conteúdo.",
+   "regra": "PUB-05",
+   "url": "https://support.google.com/publisherpolicies/answer/11169917?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Mais anúncios que conteúdo do publisher"
+  },
+  {
+   "id": "PUB-05#B1",
+   "classe": "B",
+   "texto": "Proporção real das páginas 2306–2318 não medida nesta etapa (15 ocorrências de 'adsbygoogle' e 16–22 de 'joinads' no HTML salvo não equivalem a 15 blocos visíveis).",
+   "regra": "PUB-05",
+   "url": "https://support.google.com/publisherpolicies/answer/11169917?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Mais anúncios que conteúdo do publisher"
+  },
+  {
+   "id": "PUB-06#A1",
+   "classe": "A",
+   "texto": "Guias do Senac não podem ser paráfrase automatizada das páginas do senac.br.",
+   "regra": "PUB-06",
+   "url": "https://support.google.com/publisherpolicies/answer/11190248?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Conteúdo replicado",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe anúncios em telas com conteúdo copiado/incorporado sem comentário, curadoria ou valor; inclui reescrita com sinônimos ou técnicas automatizadas e conteúdo gerado automaticamente sem revisão."
+  },
+  {
+   "id": "PUB-06#B1",
+   "classe": "B",
+   "texto": "Motor com LLM reescrevendo fontes oficiais é exatamente o padrão descrito se não houver acréscimo (comparação, checklist, diferenças regionais, fontes).",
+   "regra": "PUB-06",
+   "url": "https://support.google.com/publisherpolicies/answer/11190248?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Policies — Conteúdo replicado"
+  },
+  {
+   "id": "PUB-07#A1",
+   "classe": "A",
+   "texto": "Funil sem doorway/cookie-cutter/keyword stuffing (ver SEO-01/02).",
+   "regra": "PUB-07",
+   "url": "https://support.google.com/publisherpolicies/answer/11035931?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "search_organico"
+   ],
+   "titulo": "Google Publisher Policies — Spam policies for Google web search"
+  },
+  {
+   "id": "PUB-07#B1",
+   "classe": "B",
+   "texto": "O risco de spam orgânico vira risco de monetização e de Ads (ADS-ABU-01).",
+   "regra": "PUB-07",
+   "url": "https://support.google.com/publisherpolicies/answer/11035931?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "search_organico"
+   ],
+   "titulo": "Google Publisher Policies — Spam policies for Google web search"
+  },
+  {
+   "id": "PUB-08#A1",
+   "classe": "A",
+   "texto": "Nenhum 'Próximo >>>' ou link de navegação que leve a anúncio.",
+   "regra": "PUB-08",
+   "url": "https://support.google.com/publisherpolicies/answer/11128079?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Google Publisher Policies — Abusive experiences"
+  },
+  {
+   "id": "PUB-08#A2",
+   "classe": "A",
+   "texto": "Botão Voltar sem manipulação.",
+   "regra": "PUB-08",
+   "url": "https://support.google.com/publisherpolicies/answer/11128079?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Google Publisher Policies — Abusive experiences"
+  },
+  {
+   "id": "PUB-08#B1",
+   "classe": "B",
+   "texto": "CTAs com '>>>' (exemplares aprovados no repo: funnelforge-migracao/engine/src/funnelforge/pipeline/doctrine.py:146-153) só são seguros se levarem a conteúdo, nunca a anúncio.",
+   "regra": "PUB-08",
+   "url": "https://support.google.com/publisherpolicies/answer/11128079?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Google Publisher Policies — Abusive experiences"
+  },
+  {
+   "id": "PUB-09#A1",
+   "classe": "A",
+   "texto": "Mobile: densidade de anúncios ≤30% da página; sem prestitial; sem sticky grande.",
+   "regra": "PUB-09",
+   "url": "https://support.google.com/publisherpolicies/answer/11127848?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Better Ads Standards (referenciado por Google Ads e Publisher Policies)"
+  },
+  {
+   "id": "PUB-09#B1",
+   "classe": "B",
+   "texto": "Densidade real das páginas do funil não medida nesta etapa; 93% das impressões e 96% dos cliques da campanha foram em mobile (google-ads/daily_network_device.json, 21–30/09).",
+   "regra": "PUB-09",
+   "url": "https://support.google.com/publisherpolicies/answer/11127848?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Better Ads Standards (referenciado por Google Ads e Publisher Policies)"
+  },
+  {
+   "id": "PUB-10#A1",
+   "classe": "A",
+   "texto": "Rótulo 'Publicidade' (ou 'Anúncios'/'Links Patrocinados'); nunca 'Cursos recomendados', 'Veja também', 'Links úteis' sobre um bloco de anúncio.",
+   "regra": "PUB-10",
+   "url": "https://support.google.com/adsense/answer/1346295?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "AdSense — rótulos de anúncio e incentivo a cliques"
+  },
+  {
+   "id": "PUB-10#A2",
+   "classe": "A",
+   "texto": "Nenhum 'apoie o site clicando nos anúncios'.",
+   "regra": "PUB-10",
+   "url": "https://support.google.com/adsense/answer/1346295?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "AdSense — rótulos de anúncio e incentivo a cliques"
+  },
+  {
+   "id": "PUB-10#B1",
+   "classe": "B",
+   "texto": "Rótulo exibido pelos blocos JoinAds/AdSense não aparece no HTML estático salvo — não verificado.",
+   "regra": "PUB-10",
+   "url": "https://support.google.com/adsense/answer/1346295?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "AdSense — rótulos de anúncio e incentivo a cliques"
+  },
+  {
+   "id": "PUB-11#A1",
+   "classe": "A",
+   "texto": "Nenhum anúncio no lugar onde o leitor espera o botão do próximo guia.",
+   "regra": "PUB-11",
+   "url": "https://support.google.com/adsense/answer/48182?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "AdSense — navegação enganosa e cliques acidentais"
+  },
+  {
+   "id": "PUB-11#B1",
+   "classe": "B",
+   "texto": "Formatar anúncio nativo com a mesma aparência dos cards de 'Notícias Relacionadas' = conteúdo indistinguível de anúncio.",
+   "regra": "PUB-11",
+   "url": "https://support.google.com/adsense/answer/48182?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "AdSense — navegação enganosa e cliques acidentais"
+  },
+  {
+   "id": "PUB-12#A1",
+   "classe": "A",
+   "texto": "O que o anúncio do Google Ads promete precisa estar fácil de achar na LP (mesma exigência de ADS-MIS-06).",
+   "regra": "PUB-12",
+   "url": "https://support.google.com/adsense/answer/48182?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "AdSense — fontes de tráfego (tráfego pago) e páginas feitas para anúncios"
+  },
+  {
+   "id": "PUB-12#B1",
+   "classe": "B",
+   "texto": "Arbitragem é compatível com o AdSense só se a página não for 'feita para mostrar anúncios'.",
+   "regra": "PUB-12",
+   "url": "https://support.google.com/adsense/answer/48182?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "AdSense — fontes de tráfego (tráfego pago) e páginas feitas para anúncios"
+  },
+  {
+   "id": "PUB-13#A1",
+   "classe": "A",
+   "texto": "Nenhum texto que peça clique em anúncio ou prometa algo para gerar pageview/impressão.",
+   "regra": "PUB-13",
+   "url": "https://support.google.com/adsense/answer/16737?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Tráfego inválido / atividade inválida (AdSense e Platforms program policies)"
+  },
+  {
+   "id": "PUB-13#A2",
+   "classe": "A",
+   "texto": "Responsabilidade do publisher mesmo quando o tráfego inválido vem de terceiros.",
+   "regra": "PUB-13",
+   "url": "https://support.google.com/adsense/answer/16737?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Tráfego inválido / atividade inválida (AdSense e Platforms program policies)"
+  },
+  {
+   "id": "PUB-13#B1",
+   "classe": "B",
+   "texto": "Otimizar o Google Ads por 'adViewInterstitial' (impressão visível) não aparece como proibido nas páginas consultadas; o risco está no desenho que força pageviews/impressões por pretexto falso (interpretação).",
+   "regra": "PUB-13",
+   "url": "https://support.google.com/adsense/answer/16737?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Tráfego inválido / atividade inválida (AdSense e Platforms program policies)"
+  },
+  {
+   "id": "PUB-14#A1",
+   "classe": "A",
+   "texto": "Usar só o formato Google (GPT OutOfPageFormat.INTERSTITIAL ou vinheta do AdSense), nunca overlay próprio.",
+   "regra": "PUB-14",
+   "url": "https://support.google.com/admanager/answer/9840201?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Interstitials web (Ad Manager 'Traffic web interstitials') e vinhetas (AdSense)"
+  },
+  {
+   "id": "PUB-14#A2",
+   "classe": "A",
+   "texto": "Permitir fechar (vinheta 'can be skipped by users at any time', AdSense 16531962).",
+   "regra": "PUB-14",
+   "url": "https://support.google.com/admanager/answer/9840201?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Interstitials web (Ad Manager 'Traffic web interstitials') e vinhetas (AdSense)"
+  },
+  {
+   "id": "PUB-14#B1",
+   "classe": "B",
+   "texto": "Cada clique entre LP e internas é oportunidade de vinheta: dividir a resposta em várias páginas para multiplicar vinhetas cruza com PUB-02, PUB-04, SEO-02 e ADS-DST-03 (interpretação).",
+   "regra": "PUB-14",
+   "url": "https://support.google.com/admanager/answer/9840201?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Interstitials web (Ad Manager 'Traffic web interstitials') e vinhetas (AdSense)"
+  },
+  {
+   "id": "PUB-14#B2",
+   "classe": "B",
+   "texto": "O gatilho opcional 'Continuar' com conteúdo borrado exige que o conteúdo prometido esteja de fato abaixo.",
+   "regra": "PUB-14",
+   "url": "https://support.google.com/admanager/answer/9840201?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Interstitials web (Ad Manager 'Traffic web interstitials') e vinhetas (AdSense)"
+  },
+  {
+   "id": "PUB-14#B3",
+   "classe": "B",
+   "texto": "A página 9840201 é documentação de produto do Ad Manager: o teto de 1 impressão a cada 10 minutos é o PADRÃO aplicado pelo Google (o publisher pode reduzir até 1 por minuto); não é obrigação do publisher e não fala de altura mínima de slot (ver FF-80).",
+   "regra": "PUB-14",
+   "url": "https://support.google.com/admanager/answer/9840201?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher",
+    "landing_page"
+   ],
+   "titulo": "Interstitials web (Ad Manager 'Traffic web interstitials') e vinhetas (AdSense)"
+  },
+  {
+   "id": "PUB-15#A1",
+   "classe": "A",
+   "texto": "Se houver rewarded no funil: conteúdo do guia acessível sem assistir ao anúncio.",
+   "regra": "PUB-15",
+   "url": "https://support.google.com/admanager/answer/7496282?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Ad Manager — Policies for ad units that offer rewards (rewarded)"
+  },
+  {
+   "id": "PUB-15#B1",
+   "classe": "B",
+   "texto": "Trancar a resposta do guia atrás de rewarded tende a colidir com 'normal usage' e com PUB-02 — interpretação; não verificado se o funil Senac exibe rewarded (o GTM publicado tem a conversão 'adViewRewarded', disparada em impressão Rewarded — baseline).",
+   "regra": "PUB-15",
+   "url": "https://support.google.com/admanager/answer/7496282?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Ad Manager — Policies for ad units that offer rewards (rewarded)",
+   "caso_especifico": true,
+   "regra_geral": "Rewarded exige opt-in afirmativo, divulgação clara da ação e da recompensa, possibilidade de pular/dispensar; pular não pode atrapalhar o uso normal do site; sem texto que induza ('assista para apoia…"
+  },
+  {
+   "id": "PUB-16#A1",
+   "classe": "A",
+   "texto": "Mesmas exigências de PUB-03/05/10/11 para o inventário GAM (JoinAds).",
+   "regra": "PUB-16",
+   "url": "https://support.google.com/admanager/answer/9059370?hl=en&ref_topic=28145&rd=1",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Ad Manager Partner Guidelines (Open Auction)"
+  },
+  {
+   "id": "PUB-16#B1",
+   "classe": "B",
+   "texto": "Não verificado se o creditoup opera por MCM (parceiro) ou conta própria — no MCM o 'Child' e o 'Parent' respondem pelas violações.",
+   "regra": "PUB-16",
+   "url": "https://support.google.com/admanager/answer/9059370?hl=en&ref_topic=28145&rd=1",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Ad Manager Partner Guidelines (Open Auction)",
+   "caso_especifico": true,
+   "regra_geral": "No Open Auction, anúncios não podem ficar sob ou ao lado de botões/objetos a ponto de interferir na interação típica; anúncios e material pago não podem exceder o conteúdo do site; quem exibe demanda…"
+  },
+  {
+   "id": "PUB-17#A1",
+   "classe": "A",
+   "texto": "Nenhuma categoria de conteúdo restrito se aplica ao tema Senac/cursos.",
+   "regra": "PUB-17",
+   "url": "https://support.google.com/publisherpolicies/answer/10437795?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Restrictions (restrições de conteúdo e comportamento)",
+   "caso_especifico": true,
+   "regra_geral": "Restrições não proíbem monetizar, mas reduzem as fontes de anúncio; anúncios do Google Ads não servem em conteúdo restrito. Conteúdo: sexual, chocante, explosivos, armas, tabaco, drogas recreativas,…"
+  },
+  {
+   "id": "PUB-17#A2",
+   "classe": "A",
+   "texto": "Anúncio servido pelo Google não pode cobrir conteúdo, 'for any period of time' (restrição de comportamento).",
+   "regra": "PUB-17",
+   "url": "https://support.google.com/publisherpolicies/answer/10437795?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Restrictions (restrições de conteúdo e comportamento)"
+  },
+  {
+   "id": "PUB-17#B1",
+   "classe": "B",
+   "texto": "Overlay/sticky próprio do carregador de anúncios cobrindo texto do guia reduziria demanda (inclusive Google Ads) nas páginas.",
+   "regra": "PUB-17",
+   "url": "https://support.google.com/publisherpolicies/answer/10437795?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "monetizacao_publisher"
+   ],
+   "titulo": "Google Publisher Restrictions (restrições de conteúdo e comportamento)"
+  },
+  {
+   "id": "SEO-03#A1",
+   "classe": "A",
+   "texto": "Widget/calculadora do funil (ex.: 'veja se você se enquadra no PSG') precisa funcionar de verdade.",
+   "regra": "SEO-03",
+   "url": "https://developers.google.com/search/docs/essentials/spam-policies",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_organico",
+    "landing_page"
+   ],
+   "titulo": "Spam policies for Google web search — Misleading functionality / Scam and fraud",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe sites que prometem funcionalidade (calculadora, dicionário etc.) e levam a anúncios enganosos em vez de entregá-la; e imitação de empresa/serviço oficial por sites impostores."
+  },
+  {
+   "id": "SEO-03#B1",
+   "classe": "B",
+   "texto": "O próprio senac.br oferece calculadora de renda do PSG; replicar a promessa sem entregar é o caso descrito.",
+   "regra": "SEO-03",
+   "url": "https://developers.google.com/search/docs/essentials/spam-policies",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_organico",
+    "landing_page"
+   ],
+   "titulo": "Spam policies for Google web search — Misleading functionality / Scam and fraud",
+   "caso_especifico": true,
+   "regra_geral": "Proíbe sites que prometem funcionalidade (calculadora, dicionário etc.) e levam a anúncios enganosos em vez de entregá-la; e imitação de empresa/serviço oficial por sites impostores."
+  },
+  {
+   "id": "NE-02#B1",
+   "classe": "B",
+   "texto": "Não encontrado na página vigente de Punctuation and symbols para títulos/descrições (só a repetição '!!' e o uso 'gimmicky'). Em sitelinks, callouts e snippets, exclamação que só chama atenção é exemplo explícito de proibido. A política 'Text ad requirements' foi descontinuada e…",
+   "regra": "NE-02",
+   "url": "https://support.google.com/adspolicy/answer/1054210?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: ponto de exclamação único é proibido em título/descrição"
+  }
+ ],
+ "notas_c": [
+  {
+   "id": "NE-03",
+   "classe": "C",
+   "texto": "Nenhuma página consultada (Editorial, Misrepresentation, Destination, Publisher, AdSense) menciona primeira pessoa. É preferência editorial interna.",
+   "regra": "NE-03",
+   "url": "https://support.google.com/adspolicy/answer/14848297?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Crença: CTA em primeira pessoa ('quero ver', 'e se eu') viola política"
+  },
+  {
+   "id": "NE-04",
+   "classe": "C",
+   "texto": "A política veta CTA genérico ('click here') e clickbait ('Click here to find out'), não o modo imperativo. O RSA atual usa 'Veja', 'Conheça', 'Entenda', 'Leia' e está APPROVED. O risco real é semântico: imperativo de execução ('Inscreva-se', 'Emita') num site que não executa → A…",
+   "regra": "NE-04",
+   "url": "https://support.google.com/adspolicy/answer/14848297?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: imperativo ('Veja', 'Confira', 'Consulte') é proibido ou arriscado por si"
+  },
+  {
+   "id": "NE-07",
+   "classe": "C",
+   "texto": "O veto é à afiliação implícita, não à palavra. A descrição atual 'A inscrição ocorre no canal oficial.' está APPROVED. 'Oficial' qualificando o anunciante/site é violação grave; qualificando o canal do Senac, claramente de terceiro, é uso factual (risco residual B).",
+   "regra": "NE-07",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: a palavra 'oficial' (e 'parceiro', 'autorizado') é proibida em qualquer asset"
+  },
+  {
+   "id": "NE-08",
+   "classe": "C",
+   "texto": "A política veta caixa alta excessiva ou alternada ('FLOWERS', 'FlOwErS'); não menciona Title Case. Os 8 títulos atuais em Title Case estão APPROVED.",
+   "regra": "NE-08",
+   "url": "https://support.google.com/adspolicy/answer/14848295?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: Title Case é obrigatório ('REGRA ABSOLUTA') — ou proibido"
+  },
+  {
+   "id": "NE-09",
+   "classe": "C",
+   "texto": "Nenhuma das duas páginas trata de sintaxe; vetam a implicação de afiliação. 'Cursos Senac: Guia Informativo' está APPROVED. A política de documentos de governo (13156083) não se aplica ao Senac (ADS-ORB-GOV). O risco depende do lado direito: 'Senac: Inscrições Abertas' implica q…",
+   "regra": "NE-09",
+   "url": "https://support.google.com/adspolicy/answer/15936666?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: o formato '<Marca/Órgão>: <promessa>' é 'o template literal de afiliação oficial falsa' (atribuído a 6020955 +…"
+  },
+  {
+   "id": "NE-10",
+   "classe": "C",
+   "texto": "A política não tem limiar numérico nem fala de Ad Strength; o Ad Strength não define elegibilidade (NE-11). O limite '4 em 4' é heurística interna.",
+   "regra": "NE-10",
+   "url": "https://support.google.com/adspolicy/answer/14848296?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: 'nenhuma palavra de 4+ letras em mais de 4 títulos' é a política de repetição (14848296)"
+  },
+  {
+   "id": "NE-13",
+   "classe": "C",
+   "texto": "Prazo verdadeiro não é vetado. Vetados: pressão por medo com evento negativo (A) e promessa/urgência falsa (Unreliable claims, B). O modal ('pode expirar') não torna a frase segura se o prazo não existir na oferta.",
+   "regra": "NE-13",
+   "url": "https://support.google.com/adspolicy/answer/15936667?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: urgência/prazo é proibido — ou 'seguro por hedge' ('prazo pode expirar', 'use agressivamente')"
+  },
+  {
+   "id": "NE-14",
+   "classe": "C",
+   "texto": "O aviso de não afiliação é recomendado ('consider'), não exigido; o exigido é não implicar afiliação. As âncoras sobre AdSense/Google/Facebook não vêm de política consultada; o que o Publisher Policies exige é política de privacidade que divulgue cookies/beacons de terceiros.",
+   "regra": "NE-14",
+   "url": "https://support.google.com/adspolicy/answer/15938071?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Crença: aviso 'sem vínculo' + âncoras 'google adsense' / 'não temos relação com facebook ou google' são exigidos pela p…"
+  },
+  {
+   "id": "NE-15",
+   "classe": "C",
+   "texto": "A exigência literal de link oficial existe só em Government documents, para quem cobra por serviço de governo — não se aplica ao Senac. Para o caso é boa prática (ajuda ADS-MIS-05/06 e confiança).",
+   "regra": "NE-15",
+   "url": "https://support.google.com/adspolicy/answer/6368711?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "landing_page"
+   ],
+   "titulo": "Crença: link para o site oficial é exigido pela política"
+  },
+  {
+   "id": "NE-20",
+   "classe": "C",
+   "texto": "O pipe não é citado; a regra geral de símbolo fora do propósito pode alcançá-lo. Não encontrado ≠ permitido.",
+   "regra": "NE-20",
+   "url": "https://support.google.com/adspolicy/answer/14847994?hl=en",
+   "consultado_em": "2026-09-30",
+   "aplica_a": [
+    "search_ads"
+   ],
+   "titulo": "Crença: o separador '|' é proibido"
+  }
+ ],
+ "excluidos": {
+  "classe_d": [
+   "NE-01",
+   "NE-05",
+   "NE-06",
+   "NE-11",
+   "NE-12",
+   "NE-16",
+   "NE-17",
+   "NE-19"
+  ],
+  "fora_de_superficie": [
+   "API-00",
+   "API-01",
+   "API-02",
+   "API-03",
+   "API-04",
+   "API-05",
+   "API-06",
+   "API-07",
+   "API-08",
+   "SEO-01",
+   "SEO-02",
+   "SEO-04",
+   "NE-18",
+   "NE-21",
+   "NE-22"
+  ],
+  "sem_classe": []
+ }
+}

@@ -25,7 +25,19 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.setuptools.package-data]
-funnelforge = ["prompts/*.jinja", "templates/*.json"]
+funnelforge = ["prompts/*.jinja", "templates/*.json", "politicas/*.json"]
+[tool.pytest.ini_options]
+# `src` entra no sys.path pelo próprio pytest. Sem isto a suíte dependia do
+# `__editable__.funnelforge-1.0.0.pth` do venv, que o Python 3.14 ignora quando
+# o arquivo tem a flag oculta do macOS (UF_HIDDEN): 76 erros de coleta com
+# "No module named 'funnelforge'" sempre que PYTHONPATH=src faltava.
+# Esta seção passa a ser o configfile do motor (antes era o pytest.ini da raiz);
+# os padrões de coleta da raiz estão repetidos para a coleta não mudar.
+pythonpath = ["src"]
+testpaths = ["tests"]
+python_files = ["test_*.py", "testes_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*", "prova_*"]
 [tool.ruff]
 line-length = 100
 [tool.ruff.lint]

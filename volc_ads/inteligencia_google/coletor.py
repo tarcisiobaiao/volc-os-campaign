@@ -7,6 +7,8 @@ mesmo quando volta vazia ou falha, para que silencio nunca pareca sucesso.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import statistics
 from collections import defaultdict
@@ -25,7 +27,9 @@ from .alvo import (
     simulacao_elegivel,
 )
 from .modelo import (
-    DocumentoColeta, EstadoColeta, EstadoValor, Item, Metrica, metrica_de_dict,
+    FUSO_PADRAO, LIMITE_TERMOS_PADRAO, DocumentoColeta, EstadoColeta, EstadoValor,
+    Item, JanelaDeTermos, Metrica, TermosDeBusca, metrica_de_dict, termos_ausentes,
+    termos_de_linhas,
 )
 from .persistencia import CampanhaAtiva, SupabaseGoogleIntelligence
 from . import pmax as pmax_dominio
@@ -1131,3 +1135,110 @@ def executar_coleta_pmax(
         campaign_id=campaign_id,
     )
     return ColetorGoogleInteligencia().executar_alvo_pmax(alvo, modo=modo)
+
+
+# ── termos de busca (search_term_view), para a copy e para o funil ───────────
+#
+# Campos conferidos em 30/09/2026: o export v25 do integrador (1.867 linhas da
+# campanha Senac) traz `search_term_view.search_term`, `segments.date` e
+# `metrics.impressions/clicks/cost_micros` na mesma linha, e a documentação
+# oficial lista `campaign` como recurso atribuído do `search_term_view` (a GAQL
+# de `docs/growth-engine/diagnostico/consultas/rodar.py` já seleciona
+# `campaign.id` dele). O `search_term_view` NÃO cobre Performance Max.
+GAQL_TERMOS_DE_BUSCA = """
+  SELECT search_term_view.search_term, segments.date,
+         metrics.impressions, metrics.clicks, metrics.cost_micros
+  FROM search_term_view
+  WHERE campaign.id = {campaign_id}
+    AND segments.date BETWEEN '{inicio}' AND '{fim}'
+"""
+
+
+def _janela(janela: Any) -> JanelaDeTermos:
+    if isinstance(janela, JanelaDeTermos):
+        return janela
+    inicio, fim = janela
+    return JanelaDeTermos(inicio, fim)
+
+
+def coletar_termos_de_busca(
+    cliente: Any, customer_id: str, campaign_id: str, janela: Any, *,
+    limite: int = LIMITE_TERMOS_PADRAO, agora: datetime | None = None,
+) -> TermosDeBusca:
+    """Os termos que dispararam a campanha na janela. SOMENTE LEITURA.
+
+    `cliente` executa GAQL e devolve linhas como dict (o formato de
+    `MessageToDict(preserving_proto_field_name=True)`): um callable
+    `(customer_id, gaql) -> list[dict]`, ou um `ColetorGoogleInteligencia`, de
+    quem se usa o `_query` (que só aceita SELECT, e cujo construtor recusa rodar
+    com a trava de escrita aberta).
+
+    Nunca levanta por causa da API: id inválido, falha de rede ou de permissão
+    viram `ausente` com o motivo — só o código e a classe do erro, nunca a
+    mensagem crua, que pode carregar credencial.
+    """
+    j = _janela(janela)
+    cid = str(customer_id or "").replace("-", "").strip()
+    camp = str(campaign_id or "").strip()
+    if not cid.isdigit():
+        return termos_ausentes("conta (customer_id) ausente ou inválida")
+    if not camp.isdigit():
+        return termos_ausentes("campanha sem id (ou id inválido)")
+    consultar = getattr(cliente, "_query", cliente)
+    gaql = GAQL_TERMOS_DE_BUSCA.format(campaign_id=camp, inicio=j.inicio.isoformat(),
+                                       fim=j.fim.isoformat())
+    try:
+        linhas = list(consultar(cid, gaql))
+    except Exception as exc:  # noqa: BLE001 — ausência dita, nunca silêncio
+        codigo, classe, _detalhe, _ids = _erro(exc)
+        return termos_ausentes(
+            f"a consulta ao search_term_view falhou ({classe}: {codigo})")
+    instante = agora or datetime.now(timezone.utc)
+    return termos_de_linhas(linhas, fonte="search_term_view", janela=j,
+                            coletado_em=instante.isoformat(), limite=limite)
+
+
+def carregar_termos_de_arquivo(
+    caminho: Any, *, janela: Any = None, fuso: str = FUSO_PADRAO,
+    limite: int = LIMITE_TERMOS_PADRAO, coletado_em: str | None = None,
+) -> TermosDeBusca:
+    """O export do integrador (linhas GAQL de `search_term_view` em JSON).
+
+    Só leitura do arquivo. A fonte é `arquivo:<sha256 dos bytes>` — o mesmo
+    arquivo dá o mesmo recibo. Com `janela` declarada, as linhas fora dela saem;
+    sem ela, a janela é a das datas das linhas. Arquivo vazio SEM janela não
+    confirma vazio nenhum: é `ausente`. Arquivo ilegível levanta `ValueError`:
+    quem entrega o arquivo precisa saber na hora.
+    """
+    from pathlib import Path  # noqa: PLC0415
+
+    p = Path(caminho)
+    bruto = p.read_bytes()
+    sha = hashlib.sha256(bruto).hexdigest()
+    try:
+        linhas = json.loads(bruto.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{p.name}: JSON ilegível ({exc.__class__.__name__})") from None
+    if not isinstance(linhas, list):
+        raise ValueError(f"{p.name}: esperava uma LISTA de linhas GAQL")
+
+    def _dia(linha: Any) -> date | None:
+        try:
+            return date.fromisoformat(str(((linha or {}).get("segments") or {}).get("date")))
+        except (TypeError, ValueError, AttributeError):
+            return None
+
+    datadas = [(d, linha) for linha in linhas if (d := _dia(linha)) is not None]
+    if janela is not None:
+        j = _janela(janela)
+        datadas = [(d, linha) for d, linha in datadas if j.inicio <= d <= j.fim]
+    elif datadas:
+        dias = [d for d, _ in datadas]
+        j = JanelaDeTermos(min(dias), max(dias), fuso)
+    else:
+        return termos_ausentes(
+            f"{p.name} não tem linhas nem janela declarada: não dá para afirmar vazio")
+    if coletado_em is None:
+        coletado_em = datetime.fromtimestamp(p.stat().st_mtime, timezone.utc).isoformat()
+    return termos_de_linhas([linha for _, linha in datadas], fonte=f"arquivo:{sha}",
+                            janela=j, coletado_em=coletado_em, limite=limite)

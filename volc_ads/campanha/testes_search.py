@@ -329,23 +329,31 @@ def test_o_validador_antigo_deixava_o_espanhol_passar():
     assert r.achados == []
 
 
-def test_o_construtor_novo_barra_o_mesmo_texto_em_espanhol():
+def test_o_construtor_novo_enxerga_o_mesmo_texto_em_espanhol():
+    """⚠️ Alterado em 30/09/2026 (B6). Era `..._barra_o_mesmo_texto_...` e exigia
+    ERRO. O inventário da frente A (ADS-08, classe C, converter_em_aviso) tirou o
+    bloqueio por palavra: o risco é o sujeito (o site executa?), não o termo, e
+    quem decide é o juiz de sentido. O que este teste protege continua: o
+    validador NÃO é cego ao espanhol — o termo é localizado, como aviso."""
     b = _brief(
         pais="MX", idioma="es", vertical="informativo",
         copy=_copy(headlines=["Anticipo de tu dinero hoy", "Reglas del retiro",
                               "Quien tiene derecho", "La tabla oficial"]),
     )
     _, r = search.construir(CID, b, login_customer_id="x")
-    assert not r.ok
-    assert any("15188216" in a.motivo for a in r.erros), r.resumo()
+    assert r.ok, r.resumo()
+    assert any("15188216" in a.motivo for a in r.achados), r.resumo()
 
 
-def test_a_vertical_decide_se_o_termo_e_erro_ou_aviso():
+def test_a_vertical_decide_qual_regra_marca_o_termo():
     """O critério que substituiu a blocklist: o PAPEL DO SITE, não a palavra.
 
-    A mesma palavra é deturpação num portal que só explica e produto REGULADO
-    em quem de fato empresta. `limites.yaml` não sabia dessa diferença: proibia
-    "antecipação" nos dois casos.
+    ⚠️ Alterado em 30/09/2026 (B6). Era `..._se_o_termo_e_erro_ou_aviso` e exigia
+    que o informativo NÃO subisse. Pelo inventário da frente A (ADS-08) a palavra
+    num portal informativo é LOCALIZADOR — marca "linguagem de prestador" para o
+    juiz de sentido — e não reprova sozinha. A vertical continua decidindo QUAL
+    regra marca: deturpação no portal que explica, divulgação obrigatória em
+    quem empresta.
     """
     hl = ["Antecipacao do saque anual", "Regras de 2026", "Quem tem direito",
           "A tabela oficial por faixa"]
@@ -356,9 +364,12 @@ def test_a_vertical_decide_se_o_termo_e_erro_ou_aviso():
         CID, _brief(vertical="financeiro", copy=_copy(headlines=hl),
                     certificacoes={"verificacao_servicos_financeiros"}),
         login_customer_id="x")
-    assert not informativo.ok
+    assert informativo.ok, informativo.resumo()
+    assert any("linguagem de prestador" in a.motivo for a in informativo.achados)
+    assert not any("exigem divulga" in a.motivo for a in informativo.achados)
     assert financeiro.ok, financeiro.resumo()
-    assert any("15188216" in a.motivo for a in financeiro.achados)
+    assert any("15188216" in a.motivo and "exigem divulga" in a.motivo
+               for a in financeiro.achados)
 
 
 def test_habilitacao_barra_vertical_financeira_sem_certificacao():

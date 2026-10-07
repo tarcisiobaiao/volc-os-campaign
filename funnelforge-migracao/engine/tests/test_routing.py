@@ -148,7 +148,7 @@ def test_presell_rotates_neutrally_by_prN_index_and_covers_all_solutions():
     for pr_idx in (1, 2, 3):
         pr = f"saque-fgts-pr{pr_idx}"
         routes = by[pr].routes
-        offset = (pr_idx - 1) % n
+        offset = 0  # Legacy fallback preserves authored order, never rotates.
         expected_order = [all_solutions[(offset + k) % n] for k in range(n)]
         assert [r.target for r in routes] == expected_order, (pr, routes)
         assert routes[0].placement == "hero"
@@ -164,7 +164,7 @@ def test_presell_hero_is_neutral_no_solution_always_first():
     build_funnel_routes(plan, s)
     by = {p.slug: p for p in plan.pages}
     openers = [by[f"saque-fgts-pr{i}"].routes[0].target for i in (1, 2, 3)]
-    assert len(set(openers)) > 1, openers          # no single hero solution
+    assert len(set(openers)) == 1, openers  # Relevance may justify the same first route.
     # zero dependency on lead_solution_slug: the field no longer exists at all
     assert "lead_solution_slug" not in Page.model_fields
 

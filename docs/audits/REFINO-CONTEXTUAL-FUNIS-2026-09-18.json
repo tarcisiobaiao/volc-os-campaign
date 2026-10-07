@@ -1,0 +1,81 @@
+{
+  "pages": [
+    {
+      "id": 2309,
+      "status": "draft",
+      "slug": "por-onde-comecar-senac-pr",
+      "before_sha256": "ab61cc39a5137c4e1c5e8264e0618f147c61f8cf68ceec84c9801cd2b2fe25ad",
+      "after_sha256": "7de46654de4f0c6a5af63fe1387c84725d2a2257d57200d0be5830812e65d6b7",
+      "modified_gmt": "2026-09-18T03:35:28",
+      "verified": true
+    },
+    {
+      "id": 2312,
+      "status": "draft",
+      "slug": "tipos-de-curso-senac-p1",
+      "before_sha256": "761431dbb818452dddb8ee1bdc0ccd585917de52b5e8e25570d2848863af2084",
+      "after_sha256": "7fc45e95afb6076cbc94c6190d4b26307dc485470d6d551483d16bff9843fa3f",
+      "modified_gmt": "2026-09-18T03:35:29",
+      "verified": true
+    },
+    {
+      "id": 2315,
+      "status": "draft",
+      "slug": "bolsas-de-estudo-senac-p2",
+      "before_sha256": "e6e5e7795b7c15dc99be2acbff44623fa0c36cea1b5ca554743cda2d6d9dbe12",
+      "after_sha256": "c1b6c067f40afe6330bc71338e3b623b4a3f64e9bebac2ab5a4bf10e4a84e93b",
+      "modified_gmt": "2026-09-18T03:35:30",
+      "verified": true
+    },
+    {
+      "id": 2318,
+      "status": "draft",
+      "slug": "portal-do-senac-do-seu-estado-p3",
+      "before_sha256": "4f7ddfca8d38ecb362b3e8422f57c151cc8486a542bf8cd8093be3be278d19df",
+      "after_sha256": "f9477f00a833da7df026cc31cbabb07f4a8879de452c68f5f3f9709efd56fd0c",
+      "modified_gmt": "2026-09-18T03:35:30",
+      "verified": true
+    },
+    {
+      "id": 2306,
+      "status": "draft",
+      "slug": "guia-cursos-senac",
+      "before_sha256": "0a119774295f31c5c4cad40b191b6421c95d8f5485a35626f0e8cd4d6da89f84",
+      "after_sha256": "ede444b38da6f47d29688edc90c340d1b3e1c8e91329c263b55a6bc18240b9e6",
+      "modified_gmt": "2026-09-18T03:35:31",
+      "verified": true
+    }
+  ],
+  "image": {
+    "id": 2365,
+    "source_url": "https://creditoup.com.br/wp-content/uploads/2026/09/senac-guia-formacao-ilustrativa.jpg",
+    "sha256": "b5f31470ceed1097730ead4278aea5e1e252cbf48bf227e087584d5583550b8a"
+  },
+  "sources": {
+    "national": "https://www.senac.br/",
+    "sp": "https://www.sp.senac.br/bolsas-de-estudo",
+    "units": "https://www.sp.senac.br/unidades",
+    "ms": "https://ms.senac.br/cursos/gratuitos/como-se-inscrever",
+    "ac": "https://portal.ac.senac.br/psg/editais"
+  },
+  "method": "supervised editor, existing IDs, draft only",
+  "review_status": "DRAFT_WITH_GAPS",
+  "published": false,
+  "engine_tests_passed": 795,
+  "backend_tests_passed": 39,
+  "renderer_verification": {
+    "global_notice": 1,
+    "engine_notice_when_global_present": 0,
+    "new_copy": true,
+    "new_image_reference": true,
+    "cache_invalidated_post_ids": [
+      2306
+    ],
+    "authenticated_browser_preview": false
+  },
+  "remaining": [
+    "Preview autenticado desktop/mobile",
+    "Aplicar arquitetura contextual a SENAI e MEC",
+    "Instrumentacao e benchmark com eventos reais"
+  ]
+}

@@ -77,6 +77,7 @@ from .campanha.conteudo import SEVERIDADE_BARRA
 from .campanha.criterio import Criterio, Evidencia, de_lista, deduplicar
 from .policy import spec as _policy
 from .referencia import geo as _geo
+from .tipagem_de_fatos import tipo_pela_regra_de_legado
 
 # ⚠️ A RÉGUA DE SEVERIDADE É UMA SÓ, E ELA MORA EM `campanha/conteudo.py`.
 #
@@ -243,17 +244,31 @@ class Descartada:
 @dataclass(frozen=True)
 class Fato:
     """Fato verificado do funil, no formato que o `{fatos}` do `copy/PROMPT.md`
-    especifica (id, tipo, texto, fonte).
+    especifica (id, tipo, texto, fonte). O cockpit os mostra, e
+    `copy/encomendar.py` os injeta no prompt da copy (via `render.Fato`) e no
+    juiz de sentido.
 
-    ⚠️ `copy/prompt.py` ainda monta o prompt sem estes fatos — o placeholder
-    `{fatos}` do `PROMPT.md` não é preenchido por nenhum módulo hoje. Aqui eles
-    existem porque o cockpit os mostra; quem os injetar será o Estágio 3.
+    `tipo` diz o que o fato AFIRMA, no vocabulário fechado do contrato entre as
+    trilhas: numero | prazo | data | mudanca | condicao | orgao | fonte_legal |
+    processo | contexto. `[contexto]` sustenta relevância e nomeação; NUNCA
+    número, prazo ou condição (o contrato da copy confere isso em código).
+
+    `tipo_origem` diz de onde veio o tipo: `pesquisa` (declarado no
+    `state.json`) ou `regra_legado` (estado antigo sem tipo; ver `_fatos`).
+    Um tipo declarado fora do vocabulário é COPIADO como veio: a encomenda o
+    descarta e o relata — remapear seria escolher o que o fato afirma.
+
+    `escopo` (nacional | regional:UF | unidade) e `citavel` só existem quando o
+    estado os traz; `None` = não declarado. `citavel=False` não ancora anúncio.
     """
 
     id: str
-    tipo: str  # afirmacao | numero
+    tipo: str
     texto: str
     fonte: str
+    tipo_origem: str = ""
+    escopo: str | None = None
+    citavel: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -278,6 +293,10 @@ class Origem:
     resumo_da_pesquisa: str
     fatos: tuple[Fato, ...]
     texto_da_lp: str
+    # O que a LP PROMETE (título, subtítulo e CTAs), para o juiz de sentido da
+    # copy Search conferir anúncio ↔ destino. Sempre um dict com `estado`
+    # (`presente` | `ausente` + motivo); ver `_promessa_da_lp`.
+    promessa_da_lp: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -795,6 +814,42 @@ def _grupos_do_funil(
     return tuple(grupos), descartadas
 
 
+def _promessa_da_lp(estado: dict[str, Any] | None, pagina: int | None) -> dict[str, Any]:
+    """A PROMESSA da LP — `hero_title`, `hero_subtitle` e `cta_texts` do JSON de
+    slots que o motor escreveu (`lp_template._REQUIRED_LP_SLOTS`).
+
+    É o que o leitor encontra ao clicar: o juiz de sentido da copy Search só
+    julga congruência anúncio ↔ destino com isto na mão (S2 · item 4). Até
+    30/09/2026 o prompt do juiz dizia "a promessa da página de destino NÃO foi
+    entregue". Ausência é dita com o motivo, nunca preenchida.
+    """
+    def ausente(motivo: str) -> dict[str, Any]:
+        return {"estado": "ausente", "motivo_ausencia": motivo}
+
+    if estado is None:
+        return ausente("o state.json do run não está no disco deste servidor")
+    if pagina is None:
+        return ausente("o run não identifica a página da LP")
+    d = (estado.get("drafts") or {}).get(str(pagina)) or (estado.get("drafts") or {}).get(pagina) or {}
+    bruto = d.get("content")
+    if not isinstance(bruto, str) or not bruto.strip():
+        return ausente(f"a LP (página {pagina}) não tem rascunho no state.json")
+    try:
+        dados = json.loads(bruto)
+    except (json.JSONDecodeError, TypeError):
+        dados = None
+    if not isinstance(dados, dict):
+        return ausente(f"o rascunho da LP (página {pagina}) não é o JSON de slots (lp_json)")
+    titulo = _TAGS_HTML.sub(" ", str(dados.get("hero_title") or "")).strip()
+    subtitulo = _TAGS_HTML.sub(" ", str(dados.get("hero_subtitle") or "")).strip()
+    ctas = [str(c).strip() for c in (dados.get("cta_texts") or [])
+            if isinstance(c, str) and c.strip()]
+    if not (titulo or subtitulo or ctas):
+        return ausente(f"a LP (página {pagina}) não tem título, subtítulo nem CTA")
+    return {"estado": "presente", "titulo": titulo, "subtitulo": subtitulo, "ctas": ctas,
+            "fonte": f"state.json drafts[{pagina}] (lp_json)"}
+
+
 def _texto_da_lp(estado: dict[str, Any] | None, pagina: int | None) -> str:
     """O texto da LP em uma string, para cruzar com as negativas.
 
@@ -829,24 +884,115 @@ def _texto_da_lp(estado: dict[str, Any] | None, pagina: int | None) -> str:
     return _TAGS_HTML.sub(" ", bruto)
 
 
+# ── fatos tipados ────────────────────────────────────────────────────────────
+#
+# A REGRA DE LEGADO (fato sem `tipo` declarado) mora em UM lugar, o mesmo arquivo
+# que o motor usa: `funnelforge/domain/tipagem_de_fatos.py`, carregado por
+# `volc_ads/tipagem_de_fatos.py` (S2 · item 5, 30/09/2026). Antes havia duas
+# regras e o mesmo fato saía `numero` no motor e `fonte_legal` aqui. O teste de
+# contrato (`copy/testes_contrato_motor.py`) prova a igualdade.
+TIPO_ORIGEM = ("pesquisa", "regra_legado")
+
+
+def _sem_acento_minusculo(texto: Any) -> str:
+    normal = unicodedata.normalize("NFKD", str(texto or ""))
+    return "".join(c for c in normal if not unicodedata.combining(c)).strip().lower()
+
+
+def _canon_tipo(valor: Any) -> str | None:
+    """Mesma grafia canônica do motor (`domain.models.canon_tipo_de_fato`):
+    "Fonte legal" → "fonte_legal", "Condição" → "condicao". Não valida."""
+    if valor is None:
+        return None
+    texto = re.sub(r"[\s\-]+", "_", _sem_acento_minusculo(valor))
+    return texto or None
+
+
+def _canon_escopo(valor: Any) -> str | None:
+    """`nacional` | `unidade` | `regional:UF` — como `canon_escopo` do motor."""
+    texto = _sem_acento_minusculo(valor) if valor is not None else ""
+    if not texto:
+        return None
+    texto = re.sub(r"\s*:\s*", ":", texto)
+    if texto.startswith("regional:"):
+        return f"regional:{texto.split(':', 1)[1].strip().upper()}"
+    return texto
+
+
+def _canon_citavel(valor: Any) -> bool | None:
+    """Booleano tolerante ("sim"/"não"), como `canon_citavel` do motor."""
+    if isinstance(valor, bool) or valor is None:
+        return valor
+    texto = _sem_acento_minusculo(valor)
+    if texto in {"sim", "true", "1", "yes", "verdadeiro"}:
+        return True
+    if texto in {"nao", "false", "0", "no", "falso"}:
+        return False
+    return None
+
+
+def _texto_do_numero(valor: Any, unidade: Any) -> str:
+    """Valor e unidade COM espaço (V8): "2salários mínimos" chegava assim ao
+    prompt e ao juiz, que confere "mesmo valor e mesma unidade". A exceção é a
+    unidade que começa por "%": escreve-se "40%", não "40 %"."""
+    v, u = str(valor or "").strip(), str(unidade or "").strip()
+    if not v or not u:
+        return v or u
+    return f"{v}{'' if u[0] in '%‰' else ' '}{u}"
+
+
+def _tipado(d: dict[str, Any], *, legado: str) -> tuple[str, str]:
+    """(tipo, tipo_origem). Declarado → copiado; ausente → regra de legado."""
+    declarado = _canon_tipo(d.get("tipo"))
+    if declarado:
+        origem = str(d.get("tipo_origem") or "").strip()
+        return declarado, (origem if origem in TIPO_ORIGEM else "pesquisa")
+    return legado, "regra_legado"
+
+
 def _fatos(estado: dict[str, Any] | None, pagina: int | None) -> tuple[str, tuple[Fato, ...]]:
     """Normaliza a pesquisa do funil para o contrato `{fatos}` do `PROMPT.md`:
-    cada fato com id, tipo, texto e fonte."""
+    cada fato com id, tipo, texto e fonte — e, quando o estado os traz, escopo e
+    citável.
+
+    O tipo vem do que a pesquisa DECLAROU (`tipo`). Estado anterior à pesquisa
+    tipada (todo run até 30/09/2026) não declara nada, e aí vale a regra de
+    legado, sempre sobre campo ESTRUTURADO e marcada `regra_legado`:
+
+      · `dados_validados` → `contexto` (descritivo com fonte: sustenta relevância
+        e nomeação, não número). Antes virava `afirmacao`, tipo que a seção 2 do
+        PROMPT.md não conhece, e a copy perdia todos (P5: 3 de 7 no run Senac);
+      · `fatos_verificados` → `fonte_legal` quando a UNIDADE diz que o valor é a
+        própria norma; o resto → `numero`.
+
+    Os ids (`f{i}`, `n{i}`) seguem a posição na lista de origem, como sempre:
+    a ancoragem de copy já gravada aponta para eles.
+    """
     if not estado or pagina is None:
         return "", ()
     f = (estado.get("facts") or {}).get(str(pagina)) or (estado.get("facts") or {}).get(pagina) or {}
     saida: list[Fato] = []
     for i, d in enumerate(f.get("dados_validados") or [], 1):
-        if d.get("fato"):
-            saida.append(Fato(f"f{i}", "afirmacao", str(d["fato"]), str(d.get("fonte") or "")))
+        if not isinstance(d, dict) or not d.get("fato"):
+            continue
+        tipo, origem = _tipado(d, legado=tipo_pela_regra_de_legado("dados_validados"))
+        saida.append(Fato(f"f{i}", tipo, str(d["fato"]), str(d.get("fonte") or ""),
+                          origem, _canon_escopo(d.get("escopo")),
+                          _canon_citavel(d.get("citavel"))))
     for i, d in enumerate(f.get("fatos_verificados") or [], 1):
-        texto = f"{d.get('valor','')}{d.get('unidade','')}".strip()
+        if not isinstance(d, dict):
+            continue
+        texto = _texto_do_numero(d.get("valor"), d.get("unidade"))
         if d.get("dispositivo"):
             texto = f"{texto} — {d['dispositivo']}"
         if d.get("vigente_desde"):
             texto = f"{texto} (vigente desde {d['vigente_desde']})"
         if texto:
-            saida.append(Fato(f"n{i}", "numero", texto, str(d.get("fonte_primaria") or "")))
+            tipo, origem = _tipado(d, legado=tipo_pela_regra_de_legado(
+                "fatos_verificados", d.get("unidade")))
+            saida.append(Fato(f"n{i}", tipo, texto, str(d.get("fonte_primaria") or ""),
+                              origem, _canon_escopo(d.get("escopo")),
+                              _canon_citavel(d.get("citavel"))))
     return str(f.get("resumo") or ""), tuple(saida)
 
 
@@ -975,6 +1121,7 @@ def _origem(linhas: Linhas, cluster: dict[str, Any] | None, avisos: list[Aviso])
         resumo_da_pesquisa=resumo,
         fatos=fatos,
         texto_da_lp=_texto_da_lp(linhas.estado_do_run, pagina),
+        promessa_da_lp=_promessa_da_lp(linhas.estado_do_run, pagina),
     )
 
 

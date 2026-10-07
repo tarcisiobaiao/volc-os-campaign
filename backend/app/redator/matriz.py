@@ -23,6 +23,14 @@ pode ser: não se aplica (LP não tem widget), a flag está desligada, ainda nã
 chegou, ou a página morreu antes. A tela não tem como desambiguar sozinha — e
 pintar tudo de "pendente" mentiria. Por isso a máscara `aplicaveis` é calculada
 AQUI, no servidor, onde os papéis e as flags do run são conhecidos.
+
+## O fluxo editorial v2 tem outra grade
+
+Com `run.editorial_v2` (config do motor ou perfil do funil), cada página ganha
+`briefing` antes da redação e `revisor` no lugar do juiz — e o SEO roda ANTES do
+revisor, para o título que vira H1 também ser revisado (contrato entre trilhas,
+30/09/2026). Um run é v2 quando a flag diz, ou quando um passo v2 já está no
+estado. Run antigo continua com as mesmas 11 colunas de sempre.
 """
 from __future__ import annotations
 
@@ -47,7 +55,29 @@ COLUNAS: List[Dict[str, Any]] = [
     {"chave": "content_gate", "rotulo": "portão",    "paga": False},
     {"chave": "publish",      "rotulo": "publicar",  "paga": False},
 ]
-CHAVES_DE_COLUNA = {c["chave"] for c in COLUNAS}
+
+# A grade do fluxo editorial v2. O `revisor` substitui o `judge` e vem DEPOIS do
+# `seo` (o título SEO é o H1 visível das interiores e passa pela revisão).
+_POR_CHAVE = {c["chave"]: c for c in COLUNAS}
+COLUNAS_EDITORIAL_V2: List[Dict[str, Any]] = [
+    _POR_CHAVE["research"],
+    {"chave": "briefing",     "rotulo": "briefing",  "paga": True},
+    _POR_CHAVE["write"],
+    _POR_CHAVE["seo"],
+    {"chave": "revisor",      "rotulo": "revisor",   "paga": True},
+    *(_POR_CHAVE[c] for c in ("image", "image_gen", "screenshot", "build",
+                              "widget", "content_gate", "publish")),
+]
+ETAPAS_EDITORIAL_V2 = ("briefing", "revisor")
+
+# Toda etapa que é coluna em ALGUMA grade vira célula da página — nunca faixa
+# do run. Sem isto, `briefing_p3` cairia na faixa como se fosse passo do run.
+CHAVES_DE_COLUNA = {c["chave"] for c in COLUNAS} | {c["chave"] for c in COLUNAS_EDITORIAL_V2}
+
+# Sinônimos de etapa, normalizados antes de tudo. `revisao_pN` é aceito enquanto
+# a trilha do motor não fixa o nome do passo (o combinado é `revisor_pN`, como
+# `judge_pN`); a célula sai sempre sob a chave da coluna, que é a que a tela lê.
+ALIASES_DE_ETAPA = {"revisao": "revisor"}
 
 # Passos que valem para o RUN, não para uma página. Vão numa faixa acima da
 # grade — pô-los como coluna criaria 5 colunas vazias em toda linha.
@@ -74,12 +104,44 @@ def parse_chave(chave: str) -> tuple[str, Optional[int]]:
     return chave, None
 
 
+def colunas_do_run(editorial_v2: bool = False) -> List[Dict[str, Any]]:
+    """A grade deste run: a de sempre, ou a do fluxo editorial v2."""
+    return COLUNAS_EDITORIAL_V2 if editorial_v2 else COLUNAS
+
+
+def _normalizar_passos(passos: Dict[str, Any]) -> Dict[str, Any]:
+    """`revisao_p3` -> `revisor_p3`. Se as duas existirem, a canônica vence."""
+    saida: Dict[str, Any] = {}
+    sinonimos: Dict[str, Any] = {}
+    for chave, r in passos.items():
+        etapa, n = parse_chave(chave)
+        if n is not None and etapa in ALIASES_DE_ETAPA:
+            sinonimos[f"{ALIASES_DE_ETAPA[etapa]}_p{n}"] = r
+        else:
+            saida[chave] = r
+    for chave, r in sinonimos.items():
+        saida.setdefault(chave, r)
+    return saida
+
+
+def eh_editorial_v2(passos: Dict[str, Any], flags: Optional[Dict[str, Any]] = None) -> bool:
+    """O run é do fluxo editorial v2? A flag diz; um passo v2 no estado prova."""
+    if (flags or {}).get("editorial_v2") is True:
+        return True
+    for chave in passos:
+        etapa, n = parse_chave(chave)
+        if n is not None and etapa in ETAPAS_EDITORIAL_V2:
+            return True
+    return False
+
+
 def aplicaveis_da_pagina(
     papel: str, *, engajamento: str = "", featured_image: bool = True,
     tem_screenshot: bool = False, widgets_ligados: bool = False,
     publica: bool = True, gera_imagem: bool = True,
+    tem_editorial: bool = False, editorial_v2: bool = False,
 ) -> List[str]:
-    """Quais das 11 colunas fazem sentido NESTA página.
+    """Quais colunas da grade deste run fazem sentido NESTA página.
 
     Sem esta máscara a tela não distingue "vazio verdadeiro" de "ainda não
     chegou". No run de referência são 9 ausências estruturais de 63 posições —
@@ -88,8 +150,15 @@ def aplicaveis_da_pagina(
     p = (papel or "").upper()
     ok = ["research", "write", "seo", "build", "content_gate"]
 
-    # A LP dá `return` antes do juiz: ela é JSON de slots, não prosa Gutenberg.
-    if p != "LP":
+    if editorial_v2:
+        # Toda página tem briefing e é revisada — a LP inclusive, com ou sem
+        # `editorial` (contrato entre trilhas, decisão 5). O revisor substitui
+        # o juiz.
+        ok += ["briefing", "revisor"]
+    elif p != "LP" or tem_editorial:
+        # A LP só é julgada quando traz `editorial` (`steps.py`:
+        # `if page.editorial: _judge_page`). Sem ele, ela dá `return` antes do
+        # juiz: é JSON de slots, não prosa Gutenberg.
         ok.append("judge")
 
     quer_imagem = (p == "LP") or featured_image
@@ -107,7 +176,7 @@ def aplicaveis_da_pagina(
     if publica:
         ok.append("publish")
 
-    ordem = {c["chave"]: i for i, c in enumerate(COLUNAS)}
+    ordem = {c["chave"]: i for i, c in enumerate(colunas_do_run(editorial_v2))}
     return sorted(set(ok), key=lambda c: ordem[c])
 
 
@@ -129,7 +198,8 @@ def _papel(pagina: Dict[str, Any]) -> str:
     return "LP"
 
 
-def _onde_morreu(passos: Dict[str, Any], n: Any) -> Optional[str]:
+def _onde_morreu(passos: Dict[str, Any], n: Any,
+                 colunas: Optional[List[Dict[str, Any]]] = None) -> Optional[str]:
     """A coluna em que a página parou — a PRIMEIRA que falhou, na ordem real.
 
     Ordem do pipeline e não ordem de dicionário: em `research_p4` FAILED, tudo
@@ -139,7 +209,7 @@ def _onde_morreu(passos: Dict[str, Any], n: Any) -> Optional[str]:
     """
     if f"blocked_p{n}" not in passos:
         return None
-    for c in COLUNAS:
+    for c in (colunas or COLUNAS):
         r = passos.get(f"{c['chave']}_p{n}") or {}
         if r.get("status") in ("FAILED", "BLOCKED"):
             return c["chave"]
@@ -150,30 +220,39 @@ def montar(estado: Dict[str, Any], *, flags: Optional[Dict[str, Any]] = None
            ) -> Dict[str, Any]:
     """O payload que a tela consome. Não inventa nada que o motor não gravou."""
     flags = flags or {}
-    passos: Dict[str, Any] = estado.get("step_status") or {}
+    passos: Dict[str, Any] = _normalizar_passos(estado.get("step_status") or {})
     plano = estado.get("plan") or {}
     paginas_plano = plano.get("pages") or []
     screenshots = estado.get("screenshots") or {}
     publicadas = estado.get("published") or {}
+    editorial_v2 = eh_editorial_v2(passos, flags)
+    colunas = colunas_do_run(editorial_v2)
+    ordem = [c["chave"] for c in colunas]
 
     linhas: List[Dict[str, Any]] = []
     for pg in paginas_plano:
         n = pg.get("page_number")
         papel = _papel(pg)
+        regra = aplicaveis_da_pagina(
+            papel,
+            engajamento=pg.get("engajamento") or "",
+            featured_image=bool(flags.get("featured_image", True)),
+            tem_screenshot=bool(flags.get("official_screenshots", False)),
+            widgets_ligados=bool(flags.get("widgets_enabled", False)),
+            publica=bool(flags.get("publish", True)),
+            tem_editorial=bool(pg.get("editorial")),
+            editorial_v2=editorial_v2,
+        )
+        # A máscara explica AUSÊNCIA; ela nunca esconde uma célula que existe.
+        # Passo gravado é passo que rodou — e pode ter custado.
+        visiveis = set(regra) | {c for c in ordem if f"{c}_p{n}" in passos}
         linhas.append({
             "page_number": n,
             "papel": papel,
             "slug": pg.get("slug") or "",
             "h1": pg.get("h1_title") or "",
             "engajamento": pg.get("engajamento") or "",
-            "aplicaveis": aplicaveis_da_pagina(
-                papel,
-                engajamento=pg.get("engajamento") or "",
-                featured_image=bool(flags.get("featured_image", True)),
-                tem_screenshot=bool(flags.get("official_screenshots", False)),
-                widgets_ligados=bool(flags.get("widgets_enabled", False)),
-                publica=bool(flags.get("publish", True)),
-            ),
+            "aplicaveis": [c for c in ordem if c in visiveis],
             # `screenshot OK` não significa "tem print": o motor grava o OK fora
             # do `if shots`. A célula mostra a CONTAGEM, não só o status.
             "prints": len((screenshots.get(str(n)) or screenshots.get(n) or [])),
@@ -189,7 +268,7 @@ def montar(estado: Dict[str, Any], *, flags: Optional[Dict[str, Any]] = None
             # posições órfãs; a 3 morreu em `content_gate` e deixou só o
             # `publish`. Pintar as duas caudas de "pendente" mostraria um funil
             # eternamente a meio caminho.
-            "bloqueada_em": _onde_morreu(passos, n),
+            "bloqueada_em": _onde_morreu(passos, n, colunas),
         })
 
     celulas: Dict[str, Any] = {}
@@ -209,7 +288,7 @@ def montar(estado: Dict[str, Any], *, flags: Optional[Dict[str, Any]] = None
 
     custos = [c["custo_usd"] for c in celulas.values() if c["custo_usd"] > 0]
     return {
-        "colunas": COLUNAS,
+        "colunas": colunas,
         "paginas": linhas,
         "celulas": celulas,
         "faixa": faixa,

@@ -16,13 +16,14 @@ Este módulo é a metade que preenche. A outra metade — conferir a saída — 
 ## O que este módulo NÃO faz
 
 Não escreve regra nova, não valida copy, não fala com modelo nenhum e não filtra
-o que as fontes dizem. Em particular: a §8 renderiza a TRAVA 0 de
-`limites.yaml → politica.proibidos` porque `campanha/validacao.py:checar_politica`
-DE FATO reprova esses termos por substring e sem acento, antes de a copy chegar
-ao Google. Medido nos 6.651 aprovados: `crédito` aparece 54× e em nenhum punido —
-ou seja, a lista custa caro e não protege. Mas quem a mata é quem edita a fonte;
-filtrar aqui faria o prompt MENTIR sobre o que a nossa esteira faz, e o modelo
-escreveria texto que `search.construir()` recusa localmente.
+o que as fontes dizem. Até 30/09/2026 a §8 renderizava a TRAVA 0 de
+`limites.yaml → politica.proibidos` e dizia ao modelo que ela "reprova o texto
+antes de chegar ao Google". Não reprovava: o construtor (`search.construir`) não
+a executa, e a medição nos 6.651 aprovados (`crédito` 54×, nenhum punido) a
+derrubou. O modelo se autocensurava por uma regra morta e descartava fatos úteis
+pela "trava do conceito". Saiu (inventário da frente A, ADS-05/06: remover).
+Palavra de lista agora é LOCALIZADOR do `spec.json` (`localizador: true`): marca
+o trecho para o juiz de sentido e não reprova sozinha.
 
 ## A regra de preenchimento, e por que ela é literal
 
@@ -51,6 +52,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -201,12 +203,18 @@ class Fato:
     tipo: str
     texto: str
     fonte: str = ""
+    # `nacional` | `regional:UF` | `unidade`. Vazio = não declarado. Um fato
+    # regional apresentado como nacional é troca de escopo (A2 da seção 11).
+    escopo: str = ""
 
     def linha(self) -> str:
         fonte = self.fonte.strip() or (
             "não declarada — este fato NÃO pode ser citado como fonte"
         )
-        return f"{self.id} [{self.tipo}] {self.texto.strip()}\n        fonte: {fonte}"
+        linha = f"{self.id} [{self.tipo}] {self.texto.strip()}\n        fonte: {fonte}"
+        if self.escopo.strip():
+            linha += f"\n        escopo: {self.escopo.strip()}"
+        return linha
 
 
 @dataclass(frozen=True)
@@ -222,7 +230,11 @@ class Encomenda:
     keywords: tuple[str, ...]
     fatos: tuple[Fato, ...] = ()
     nao_fatos: tuple[str, ...] = ()
-    termos_de_busca: tuple[str, ...] = ()
+    # Um `inteligencia_google.modelo.TermosDeBusca` (presente | vazio_confirmado |
+    # ausente). `None` = ninguém coletou, e o prompt diz isso com todas as
+    # letras. Lista crua de strings é RECUSADA: não diz janela, fonte nem estado,
+    # e foi assim que "nunca coletado" virou "lista vazia" no prompt.
+    termos_de_busca: Any = None
 
     pais: str = "BR"
     idioma: str = ""            # vazio = deriva do país pelo spec
@@ -296,6 +308,17 @@ class Encomenda:
                     f"{faixa['min_itens']}..{faixa['max_itens']} (limites.yaml)"
                 )
 
+        termos = self.termos_de_busca
+        if isinstance(termos, (tuple, list)):
+            if termos:
+                raise ErroDeRender(
+                    "termos_de_busca veio como lista crua: passe um TermosDeBusca "
+                    "(inteligencia_google.modelo), que diz estado, janela e fonte")
+            sub(self, "termos_de_busca", None)
+        elif termos is not None and getattr(termos, "estado", None) not in _ESTADOS_TERMOS:
+            raise ErroDeRender(
+                f"termos_de_busca sem estado válido ({', '.join(_ESTADOS_TERMOS)})")
+
         validos = tipos_de_fato()
         vistos: set[str] = set()
         for f in self.fatos:
@@ -334,6 +357,11 @@ class Encomenda:
             n_snippet=self.n_snippet,
             idioma=self.idioma,
             fatos=tuple(f.id for f in self.fatos),
+            # O TIPO de cada fato viaja junto: é com ele que o contrato confere,
+            # sempre, que número, prazo e condição só se apoiam em fato de tipo
+            # compatível — e que `[contexto]` nunca sustenta nenhum dos três.
+            tipos_dos_fatos=tuple((f.id, f.tipo) for f in self.fatos),
+            ano=self.ano,
             headers_snippet=headers_snippet(self.idioma),
             max_dki=self.max_dki or 0,
             raiz_do_termo=self.raiz_do_termo(),
@@ -462,6 +490,57 @@ def _bloco(itens, vazio: str) -> str:
     return "\n".join("  - " + i for i in linhas) if linhas else vazio
 
 
+_ESTADOS_TERMOS = ("presente", "vazio_confirmado", "ausente")
+_MOTIVO_SEM_TERMOS = ("nenhuma coleta de termos de busca (search_term_view ou arquivo) "
+                      "foi entregue a esta encomenda")
+
+
+def _parece_dado_pessoal(termo: str) -> bool:
+    """Cinto e suspensório: o `TermosDeBusca` já filtra na construção, mas
+    nada de dado pessoal chega ao prompt mesmo que o objeto venha sujo."""
+    from ..inteligencia_google.modelo import tem_dado_pessoal  # noqa: PLC0415
+
+    return tem_dado_pessoal(termo)
+
+
+def _bloco_termos(termos: Any) -> str:
+    """Os três estados do contrato, cada um com o seu texto — nunca o mesmo.
+
+    `ausente` NUNCA vira lista, nem lista vazia: "não coletado" é
+    desconhecimento, e o modelo que lê "vazia" conclui que ninguém buscou.
+    """
+    estado = getattr(termos, "estado", None) if termos is not None else "ausente"
+    janela = getattr(termos, "janela", None)
+    rotulo = janela.rotulo() if janela is not None and hasattr(janela, "rotulo") else "?"
+    fonte = getattr(termos, "fonte", None) or "?"
+    if estado == "presente":
+        itens = [t for t in (getattr(termos, "termos", ()) or ())
+                 if not _parece_dado_pessoal(getattr(t, "termo", ""))]
+        if itens:
+            total = getattr(termos, "total_na_fonte", 0) or len(itens)
+            corte = (f"os {len(itens)} de mais cliques e impressões entre {total} termos "
+                     f"distintos da fonte")
+            pii = getattr(termos, "descartados_por_dado_pessoal", 0) or 0
+            if pii:
+                corte += f"; {pii} descartados por parecerem dado pessoal"
+            linhas = [f"  (buscas REAIS que dispararam o anúncio — fonte {fonte}, "
+                      f"janela {rotulo}: {corte})"]
+            linhas += [f"  - {t.termo}  ({t.cliques} cliques · {t.impressoes} impressões)"
+                       for t in itens]
+            return "\n".join(linhas)
+        estado, motivo = "ausente", "os termos colhidos pareciam dado pessoal"
+    elif estado == "vazio_confirmado":
+        return (f"  (consulta feita na janela {rotulo}, fonte {fonte}: 0 termos — nenhuma "
+                f"busca real disparou o anúncio nessa janela. Não há termo para o teste "
+                f"de DKI: siga o caminho das keywords abaixo.)")
+    else:
+        motivo = (getattr(termos, "motivo_ausencia", None) if termos is not None
+                  else None) or _MOTIVO_SEM_TERMOS
+    return (f"  NÃO COLETADO ({motivo}) — não presuma quais são as buscas reais: "
+            f"isto é desconhecimento, não ausência de buscas. Siga o caminho das "
+            f"keywords abaixo.")
+
+
 def _restricoes(spec: dict, enc: Encomenda) -> dict[str, str]:
     """As três faixas da seção 8, derivadas da severidade do spec.
 
@@ -474,6 +553,12 @@ def _restricoes(spec: dict, enc: Encomenda) -> dict[str, str]:
       PROIBIDO   severidade erro ou bloqueio
       REGULADO   severidade aviso E com vertical declarada (→ tem certificação)
       OBSERVADO  severidade aviso sem vertical (degrada, não reprova)
+
+    ⚠️ LOCALIZADOR (`localizador: true`, B6) vai para OBSERVADO mesmo quando
+    declara vertical: `financeiro.termo_em_portal_informativo` tem vertical
+    `informativo` e não é termo regulado nenhum — cair em REGULADO o faria ser
+    "tratado como PROIBIDO", que é exatamente a proibição por palavra que o
+    inventário da frente A (ADS-07/08/09/15) retirou.
     """
     regras = list(spec["estruturais"]) + spec["semanticas"].get(enc.idioma, [])
     faixas: dict[str, list[str]] = {"erro": [], "aviso": [], "observado": []}
@@ -486,6 +571,9 @@ def _restricoes(spec: dict, enc: Encomenda) -> dict[str, str]:
         exemplos = (r.get("proibidos") or r["deteccao"].get("frases") or [])[:6]
         amostra = "; ".join(repr(e) for e in exemplos)
         linha = f"{r['titulo']}  [política {r['fonte']}]"
+        if r.get("localizador"):
+            linha = (f"LOCALIZADOR (não reprova sozinho; o juiz de sentido decide "
+                     f"pela promessa no contexto) — {linha}")
         if r.get("nota"):
             linha += f"\n      {r['nota']}"
         if amostra:
@@ -493,6 +581,8 @@ def _restricoes(spec: dict, enc: Encomenda) -> dict[str, str]:
 
         if r["severidade"] in ("erro", "bloqueio"):
             faixas["erro"].append(linha)
+        elif r.get("localizador"):
+            faixas["observado"].append(linha)
         elif verticais:
             exige = ", ".join(
                 hab[v]["exige"] for v in verticais if v in hab and "exige" in hab[v]
@@ -669,7 +759,6 @@ def valores(enc: Encomenda) -> dict[str, str]:
     ONDE veio cada valor, sem ter de ler o prompt de 700 linhas renderizado.
     """
     spec = carregar_spec()
-    lim = carregar_limites()
     certificacoes, aviso_hab = _habilitacao(spec, enc)
     restricoes = _restricoes(spec, enc)
 
@@ -695,10 +784,7 @@ def valores(enc: Encomenda) -> dict[str, str]:
             "FATOS sustentam)",
         ),
         "{keywords}": _bloco(enc.keywords, "  (sem keywords)"),
-        "{termos_de_busca}": _bloco(
-            enc.termos_de_busca,
-            "  (vazia — nenhum termo de busca colhido ainda nesta campanha)",
-        ),
+        "{termos_de_busca}": _bloco_termos(enc.termos_de_busca),
         "{match_type}": enc.match_type,
         "{n_headlines}": str(enc.n_headlines),
         "{n_descriptions}": str(enc.n_descriptions),
@@ -721,14 +807,15 @@ def valores(enc: Encomenda) -> dict[str, str]:
         # raiz não move a nota do Google, e gasta o título dizendo o que já foi
         # dito. Quem cobra cobertura agora é a variedade, não a raiz.
         "{raizes_do_termo}": ", ".join(enc.raizes_do_termo()) or enc.nicho,
+        # A exceção do teto de repetição (seção 7) nomeia EXATAMENTE as raízes
+        # que `contrato._forma` e a C10 tiram da conta — as de `pedido()`. Sem
+        # termo dominante não há exceção, e o prompt não pode inventar uma
+        # com o nome do nicho (que é o fallback de `{raizes_do_termo}`).
+        "{raizes_fora_do_teto}": ", ".join(enc.raizes_do_termo()) or (
+            "nenhuma — as keywords não têm termo dominante, então toda palavra "
+            "conta para o teto"),
         "{snippet_headers}": ", ".join(headers_snippet(enc.idioma)),
-        # A TRAVA 0 é da NOSSA esteira (`campanha/validacao.py`), não do Google —
-        # ver o cabeçalho deste módulo sobre por que ela é renderizada mesmo
-        # sabendo que a medição a derrubou.
-        "{termos_travados}": _bloco(
-            lim["politica"]["proibidos"],
-            "  (nenhum termo travado em campanha/limites.yaml)",
-        ),
+        # `{termos_travados}` (TRAVA 0) saiu em 30/09/2026 — ver o cabeçalho.
         "{restricoes_erro}": restricoes["erro"],
         "{restricoes_aviso}": restricoes["aviso"],
         "{restricoes_observado}": restricoes["observado"],

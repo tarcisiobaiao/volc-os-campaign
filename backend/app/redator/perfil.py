@@ -105,12 +105,18 @@ def montar_perfil(
     entidade: Dict[str, Any] | None = None,
     teto_usd: float | None = None,
     teto_pagina_usd: float | None = None,
+    editorial_v2: bool = False,
 ) -> Dict[str, Any]:
     """O dicionário que o motor recebe em `--perfil`.
 
     `perfil_wp` é a linha de `project_wordpress` (com o token AINDA cifrado).
     `arquitetura` é o `funnel_architecture` do card. `entidade` é opcional e
     entra só para enriquecer tema e canal oficial.
+
+    `editorial_v2` liga o fluxo editorial novo NESTE funil (briefing, revisor,
+    recibo — contrato entre trilhas, decisão 1). Vai na raiz do perfil, como
+    `teto_usd`, e só quando é `True` de verdade: não enviar é o padrão, e o
+    motor segue no fluxo atual com o perfil byte a byte igual ao de antes.
     """
     wp_url = (perfil_wp.get("wp_url") or "").rstrip("/")
     wp_user = (perfil_wp.get("wp_username") or "").strip()
@@ -147,6 +153,8 @@ def montar_perfil(
         perfil["teto_usd"] = float(teto_usd)
     if teto_pagina_usd:
         perfil["teto_pagina_usd"] = float(teto_pagina_usd)
+    if editorial_v2 is True:
+        perfil["editorial_v2"] = True
     return perfil
 
 

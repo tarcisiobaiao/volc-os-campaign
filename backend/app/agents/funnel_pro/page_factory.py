@@ -67,6 +67,7 @@ def page_factory(ai_output: Dict[str, Any]) -> Dict[str, Any]:
                     "cta_link": next_link,
                     "skeleton": f"- {structure_text}",
                     "keywords": keywords_text,
+                    "editorial": page.get("editorial"),
                     # R4: intro/fechamento (Task 6) propagados para o briefing do
                     # writer. Default "" p/ compat com páginas mock/fallback que
                     # ainda não têm esses campos.
@@ -107,6 +108,7 @@ def architect_pages_to_funnel_pages(ai_output: Dict[str, Any], persona_fallback:
                 "emotional_goal": p.get("emotional_objective") or "",
                 "subtitles": subtitles,
                 "internal_links": links,
+                "editorial": p.get("editorial"),
                 # R4: intro/fechamento (Task 6) propagados para a FunnelPage
                 # canônica. Default "" p/ compat com páginas mock/fallback que
                 # ainda não têm esses campos.

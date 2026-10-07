@@ -98,8 +98,32 @@ def test_a_regex_nao_atravessa_para_a_tupla_seguinte(tmp_path):
 
 # ── prompts e modelos ──────────────────────────────────────────────────────
 
-def test_os_onze_prompts_aparecem_com_conteudo(lido: dict):
-    assert len(lido["prompts"]) == 11
+# Os prompts que o motor tem HOJE (30/09/2026). Era "os onze" até 17–18/09,
+# quando entraram `editorial_identity`, `image_review`, `interior_editorial` e
+# `reader_contract` — e o número fixo virou falha sem dizer o que mudou.
+# Conjunto e não contagem: um prompt que SOME daqui é um prompt que a tela
+# deixou de mostrar (ou que o motor perdeu); um que APARECE é pego pelo teste
+# de dono logo abaixo, com o nome dele na mensagem.
+PROMPTS_DE_HOJE = {
+    "blocks_gutenberg.jinja", "declarador_engajamento.jinja", "editorial_identity.jinja",
+    "extractor.jinja", "image_prompt.jinja", "image_prompt_lp.jinja", "image_review.jinja",
+    "interior_editorial.jinja", "judge.jinja", "reader_contract.jinja", "redator_p1.jinja",
+    "redator_pages.jinja", "redator_presell.jinja", "redator_widget.jinja", "seo.jinja",
+    # fluxo editorial v2 (30/09/2026) — reconciliado na B8: os previstos pelo
+    # contrato entre trilhas (`briefing`, `revisor`) existem, com os 9 `*_v2`
+    "briefing.jinja", "revisor.jinja", "blocks_gutenberg_v2.jinja",
+    "image_prompt_lp_v2.jinja", "image_prompt_v2.jinja", "interior_editorial_v2.jinja",
+    "reader_contract_v2.jinja", "redator_p1_v2.jinja", "redator_pages_v2.jinja",
+    "redator_presell_v2.jinja", "seo_v2.jinja",
+}
+
+
+def test_todo_prompt_do_motor_aparece_com_conteudo(lido: dict):
+    nomes = {p["arquivo"] for p in lido["prompts"]}
+    no_disco = {p.name for p in (MOTOR / "src" / "funnelforge" / "prompts").glob("*.jinja")}
+    assert nomes == no_disco, "a tela lista prompts diferentes dos que o motor tem"
+    sumiram = sorted(PROMPTS_DE_HOJE - nomes)
+    assert sumiram == [], f"prompt sumiu da tela (ou do motor): {sumiram}"
     for p in lido["prompts"]:
         assert p["conteudo"].strip()
         assert p["linhas"] > 5
@@ -110,6 +134,42 @@ def test_todo_prompt_diz_que_parte_do_funil_governa(lido: dict):
     muda?" — e a resposta (a landing page) não é adivinhável pelo nome."""
     sem_rotulo = [p["arquivo"] for p in lido["prompts"] if not p["usado_por"]]
     assert sem_rotulo == [], f"prompt sem dono declarado: {sem_rotulo}"
+
+
+def test_os_prompts_novos_e_os_previstos_tem_dono():
+    """Independe do disco: os quatro de 17–18/09 e os dois que a trilha do motor
+    vai criar já nascem com dono — o teste acima não pode ficar vermelho no
+    minuto em que `briefing.jinja` aparecer."""
+    novos = ("editorial_identity.jinja", "image_review.jinja",
+             "interior_editorial.jinja", "reader_contract.jinja",
+             # fluxo editorial v2 (B8): o dono de cada um diz que só roda no v2
+             "briefing.jinja", "revisor.jinja", "blocks_gutenberg_v2.jinja",
+             "image_prompt_lp_v2.jinja", "image_prompt_v2.jinja",
+             "interior_editorial_v2.jinja", "reader_contract_v2.jinja",
+             "redator_p1_v2.jinja", "redator_pages_v2.jinja", "redator_presell_v2.jinja",
+             "seo_v2.jinja")
+    for nome in novos:
+        assert cfg.QUEM_USA_O_PROMPT.get(nome), f"{nome} sem dono declarado"
+        if nome.endswith("_v2.jinja") or nome in ("briefing.jinja", "revisor.jinja"):
+            assert "v2" in cfg.QUEM_USA_O_PROMPT[nome], nome
+
+
+def test_nenhum_dono_declarado_para_prompt_que_nao_existe(lido: dict):
+    """O registro não pode acumular rótulo de arquivo que ninguém tem: todo dono
+    declarado corresponde a um prompt no disco."""
+    no_disco = {p["arquivo"] for p in lido["prompts"]}
+    fantasmas = set(cfg.QUEM_USA_O_PROMPT) - no_disco
+    assert fantasmas == set(), f"dono declarado para prompt inexistente: {sorted(fantasmas)}"
+
+
+def test_o_extractor_e_declarado_como_legado():
+    """O disparo do VOLC O.S. roda `run-volc`, que chega com o plano pronto: o
+    `extractor.jinja` só roda no comando legado `run`. A tela dizia que ele
+    fazia "a leitura do briefing e o plano do funil" — e quem lia acreditava
+    que mexer nele mudava os funis de hoje."""
+    rotulo = cfg.QUEM_USA_O_PROMPT["extractor.jinja"]
+    assert "legado" in rotulo.lower()
+    assert "run-volc" in rotulo
 
 
 def test_os_passos_trazem_modelo_e_temperatura(lido: dict):

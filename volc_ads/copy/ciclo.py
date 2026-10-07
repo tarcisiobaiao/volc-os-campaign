@@ -51,6 +51,7 @@ from .contrato import (
     comprimento_efetivo,
     cortar_excesso,
     faixas,
+    lastro_sem_juiz,
     medir,
     orcamento_restante,
     sanear,
@@ -77,7 +78,19 @@ Juiz = Callable[[dict], FalhaGads | None]
 # decide o que regex não decide (nome próprio × alegação, marca × grito).
 # `None` mantém o comportamento antigo: C7 e C8 determinísticos ligados.
 # Ver `copy/juiz_semantico.py` para por que essa fronteira existe.
+#
+# ⚠️ Se ele LEVANTA (`juiz_semantico.JuizIndisponivel`, ou qualquer erro), a
+# rodada não fica sem lastro nem é aceita: vira a pendência `JS.indisponivel`
+# e a C7 completa volta naquela rodada (contrato entre as trilhas, decisão 2).
 JuizSemantico = Callable[[dict], list[Achado]]
+
+
+def _motivo_do_juiz(exc: Exception) -> str:
+    """O motivo que a pendência mostra. `JuizIndisponivel` já traz um motivo
+    limpo; de qualquer outro erro sai só o TIPO — a mensagem crua de erro de
+    transporte pode carregar URL com chave."""
+    motivo = str(getattr(exc, "motivo", "") or "").strip()
+    return motivo or f"falha no juiz de sentido ({type(exc).__name__})"
 
 
 @dataclass
@@ -198,7 +211,20 @@ def gerar(
         # LLM para descobrir que o JSON está quebrado.
         if juiz_semantico is not None and not any(
                 a.classe is Classe.ESTRUTURA for a in achados):
-            achados += juiz_semantico(dados)
+            try:
+                achados += juiz_semantico(dados)
+            except Exception as exc:  # noqa: BLE001 — o juiz nunca derruba a geração
+                motivo = _motivo_do_juiz(exc)
+                estado.anotar(
+                    f"  ✗ juiz de sentido indisponível: {motivo} — C7 completa "
+                    f"religada nesta rodada; sem ele a copy não é aceita")
+                achados += lastro_sem_juiz(dados, pedido)
+                achados.append(Achado(
+                    "JS.indisponivel", Classe.JUIZ_INDISPONIVEL,
+                    f"juiz de sentido indisponível ({motivo}): a copy NÃO foi "
+                    f"aceita, porque ninguém julgou nome × alegação nem se os "
+                    f"fatos sustentam o que o anúncio afirma. Reescreva quando o "
+                    f"juiz voltar."))
         falha = juiz(dados)
         if falha is not None:
             achados += _achados_do_google(falha, dados, estado)

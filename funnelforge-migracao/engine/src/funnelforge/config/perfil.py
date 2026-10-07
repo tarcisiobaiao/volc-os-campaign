@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from funnelforge.config.settings import Secrets, Settings, SiteConfig
+from funnelforge.config.settings import RunConfig, Secrets, Settings, SiteConfig
 
 
 def _texto(valor: Any) -> str:
@@ -85,6 +85,21 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
 
     novo = settings.model_copy(deep=True)
     novo.site = SiteConfig(**site_atual)
+    # Only this typed routing choice is overridable, never the gate definitions.
+    if "terminal_exit_policy" in tema_in:
+        novo.run = RunConfig(**{
+            **novo.run.model_dump(),
+            "terminal_exit_policy": tema_in["terminal_exit_policy"],
+        })
+    # O RAMO EDITORIAL NOVO é escolha POR FUNIL (contrato entre as trilhas,
+    # decisão 1): o backend liga no perfil do card, sem tocar no config.yaml.
+    # Aceita `tema.editorial_v2` (o mesmo lugar do `terminal_exit_policy`) e
+    # `editorial_v2` na raiz; o tema vence, por ser o mais específico. Só um
+    # booleano DE VERDADE conta — "true" em texto não liga nada, porque ligar o
+    # ramo por engano de serialização mudaria prompts e gasto sem ninguém ver.
+    escolha = tema_in.get("editorial_v2", perfil.get("editorial_v2"))
+    if isinstance(escolha, bool):
+        novo.run = RunConfig(**{**novo.run.model_dump(), "editorial_v2": escolha})
 
     # A credencial do WordPress vem do PROJETO, não do `.env` do motor. É o que
     # torna o motor multi-site: dois projetos, dois destinos, um processo. As

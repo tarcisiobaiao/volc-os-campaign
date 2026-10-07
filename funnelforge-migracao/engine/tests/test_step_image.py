@@ -7,6 +7,7 @@ real gpt-image call generating a hero image that will never be used.
 real run. The creative-prompt LLM call still runs either way (dry runs must
 still exercise that step)."""
 from pathlib import Path
+import json
 
 from funnelforge.config.settings import RunConfig, Secrets, Settings, SiteConfig, StepConfig
 from funnelforge.domain.models import Page, RunState, StepStatus
@@ -14,6 +15,7 @@ from funnelforge.pipeline import steps as st
 from funnelforge.pipeline.pipeline import Deps
 from funnelforge.pipeline.runner import Runner
 from tests.fakes import FakeLLM
+from tests.test_editorial_safety import REVIEW
 
 
 class _CountingImageGen:
@@ -84,7 +86,8 @@ def test_lp_uses_vertical_size_interior_uses_landscape(tmp_path: Path) -> None:
     (run.image_size_post)."""
     settings = _settings(hero_image=True)
     settings.run.featured_image = True  # so the interior page also generates
-    runner = Runner(llm=FakeLLM(responses=["lp prompt", "post prompt"]), max_retries=0,
+    runner = Runner(llm=FakeLLM(responses=["lp prompt", json.dumps(REVIEW),
+                                         "post prompt", json.dumps(REVIEW)]), max_retries=0,
                     runs_dir=tmp_path / "runs")
     gen = _CapturingImageGen()
     deps = Deps(llm=runner.llm, research=None, image_gen=gen, image_proc=_CountingImageProc(),
@@ -102,7 +105,7 @@ def test_lp_uses_vertical_size_interior_uses_landscape(tmp_path: Path) -> None:
 
 def test_step_image_generates_when_hero_image_on(tmp_path: Path) -> None:
     settings = _settings(hero_image=True)
-    runner = Runner(llm=FakeLLM(responses=["a photo prompt"]), max_retries=0,
+    runner = Runner(llm=FakeLLM(responses=["a photo prompt", json.dumps(REVIEW)]), max_retries=0,
                     runs_dir=tmp_path / "runs")
     image_gen, image_proc = _CountingImageGen(), _CountingImageProc()
     deps = Deps(llm=runner.llm, research=None, image_gen=image_gen, image_proc=image_proc,

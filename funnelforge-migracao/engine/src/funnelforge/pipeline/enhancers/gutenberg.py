@@ -44,6 +44,10 @@ _AVISO_BLOCK = (
     'font-style:italic"><em>' + _AVISO_TEXT + "</em></p>\n"
     "<!-- /wp:paragraph -->"
 )
+# Nome público do rodapé canônico: o ramo editorial novo (B5) o posiciona ANTES
+# da revisão (`pipeline/revisao.posicionar_aviso_canonico`), pela frase exata,
+# em vez de apagar por regex depois do recibo.
+AVISO_CANONICO_BLOCK = _AVISO_BLOCK
 # ONE paragraph block (leaf: no nested paragraph close inside it).
 _PARA_BLOCK_RE = re.compile(
     r"<!--\s*wp:paragraph\b[^>]*-->[\s\S]*?<!--\s*/wp:paragraph\s*-->", re.I
@@ -353,3 +357,34 @@ def normalize_gutenberg(html: str, *, ad_paragraph_anchors: list[int] | None = N
     min_flat = (max(ad_paragraph_anchors) + 1) if ad_paragraph_anchors else _LEADING_FLAT_PARAS
     result = _flatten_leading_boxes(result, min_flat)  # ad-anchor zone must be plain
     return _strip_separators_around_buttons(result)
+
+
+def resumo_da_normalizacao(antes: str, depois: str, *, etapa: str = "normalize_gutenberg") -> dict:
+    """O que `normalize_gutenberg` transformou, para o registro no state.json
+    (ramo editorial novo, B5). Não muda o comportamento da normalização: só
+    conta, antes e depois, o que ela mexe — cercas de código, itens de lista
+    embrulhados, parágrafos quebrados, caixas desfeitas na zona de anúncio e
+    separadores colados em botões."""
+    import hashlib
+
+    def _conta(padrao: str, texto: str) -> int:
+        return len(re.findall(padrao, texto or "", re.I))
+
+    paragrafos = (_conta(r"<!--\s*wp:paragraph\b", antes), _conta(r"<!--\s*wp:paragraph\b", depois))
+    caixas = (_conta(r"<!--\s*wp:(?:group|pullquote|media-text)\b", antes),
+              _conta(r"<!--\s*wp:(?:group|pullquote|media-text)\b", depois))
+    return {
+        "etapa": etapa,
+        "alterou": antes != depois,
+        "sha256_antes": hashlib.sha256((antes or "").encode("utf-8")).hexdigest(),
+        "sha256_depois": hashlib.sha256((depois or "").encode("utf-8")).hexdigest(),
+        "caracteres": [len(antes or ""), len(depois or "")],
+        "cercas_de_codigo_removidas": (antes or "").count(_FENCE),
+        "itens_de_lista_embrulhados": max(0, _conta(r"<!--\s*wp:list-item\b", depois)
+                                          - _conta(r"<!--\s*wp:list-item\b", antes)),
+        "blocos_de_paragrafo": list(paragrafos),
+        "paragrafos_quebrados": max(0, paragrafos[1] - paragrafos[0]),
+        "caixas_desfeitas": max(0, caixas[0] - caixas[1]),
+        "separadores_removidos": max(0, _conta(r"<!--\s*wp:separator\b", antes)
+                                     - _conta(r"<!--\s*wp:separator\b", depois)),
+    }

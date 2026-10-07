@@ -258,7 +258,7 @@
       "fonte": "14848296",
       "titulo": "Repetição de palavra dentro do mesmo texto",
       "url": "https://support.google.com/adspolicy/answer/14848296",
-      "severidade": "erro",
+      "severidade": "aviso",
       "aplica_a": [
         "headline",
         "description",
@@ -329,11 +329,13 @@
         "Flores Flores Baratas",
         "FGTS FGTS Antecipação FGTS"
       ],
-      "nota": "A política proíbe repetição 'fora do padrão, em excesso ou sem necessidade'. Reduplicação idiomática ('passo a passo') é padrão e não conta — daí a lista de exceções por idioma.",
+      "nota": "A política proíbe repetição 'fora do padrão, em excesso ou sem necessidade'. Reduplicação idiomática ('passo a passo') é padrão e não conta — daí a lista de exceções por idioma. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. Duas ocorrências numa descrição de 90 caracteres nem sempre são repetição gratuita.",
       "permitidos": [
         "Passo A Passo Atualizado",
         "Guia Passo A Passo"
-      ]
+      ],
+      "localizador": true,
+      "decisao_inventario": "ADS-15 converter_em_aviso (frente A, inventario-regras.json)"
     }
   ],
   "destino": [
@@ -411,22 +413,44 @@
             "o que acontece a seguir",
             "isso vai mudar sua vida",
             "medicos odeiam",
-            "veja o que aconteceu",
             "o segredo que ninguem conta",
-            "numero 7 vai te chocar",
+            "numero 7 vai te chocar"
+          ]
+        },
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
+        "idioma": "pt",
+        "decisao_inventario": "ADS-09 contextualizar (frente A): as frases que espelham os exemplos da política seguem barrando; a palavra solta saiu para deturpacao.clickbait.palavra_isolada"
+      },
+      {
+        "id": "deturpacao.clickbait.palavra_isolada",
+        "fonte": "15936667",
+        "titulo": "Anúncios clickbait — palavra solta ou fórmula ambígua",
+        "url": "https://support.google.com/adspolicy/answer/15936667",
+        "severidade": "aviso",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
+            "veja o que aconteceu",
             "chocante",
             "inacreditavel"
           ]
         },
-        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
-        "idioma": "pt"
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. 'Veja o que aconteceu com o PSG em 2026' pode ser notícia legítima.",
+        "idioma": "pt",
+        "localizador": true,
+        "decisao_inventario": "ADS-09 contextualizar (frente A, inventario-regras.json)"
       },
       {
         "id": "deturpacao.declaracoes_nao_confiaveis",
         "fonte": "15936857",
         "titulo": "Declarações não confiáveis / promessas absolutas",
         "url": "https://support.google.com/adspolicy/answer/15936857",
-        "severidade": "erro",
+        "severidade": "aviso",
         "aplica_a": [
           "headline",
           "description",
@@ -448,7 +472,10 @@
             "dinheiro na hora garantido"
           ]
         },
-        "idioma": "pt"
+        "idioma": "pt",
+        "localizador": true,
+        "decisao_inventario": "ADS-07 converter_em_aviso (frente A, inventario-regras.json)",
+        "nota": "LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino."
       },
       {
         "id": "financeiro.emprestimo_pessoal.divulgacao",
@@ -473,7 +500,7 @@
             "financiamento"
           ]
         },
-        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é erro, porque o site não presta o serviço.",
+        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é LOCALIZADOR (financeiro.termo_em_portal_informativo): o juiz de sentido decide se o texto fala como quem presta o serviço.",
         "idioma": "pt"
       },
       {
@@ -481,7 +508,7 @@
         "fonte": "15188216",
         "titulo": "Portal informativo usando linguagem de prestador",
         "url": "https://support.google.com/adspolicy/answer/15188216",
-        "severidade": "erro",
+        "severidade": "aviso",
         "aplica_a": [
           "headline",
           "description",
@@ -504,8 +531,10 @@
             "libere seu dinheiro"
           ]
         },
-        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação.",
-        "idioma": "pt"
+        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. O risco é o SUJEITO (o site executa?), não a palavra: 'Antecipação da matrícula? Veja o calendário' explica, não oferta.",
+        "idioma": "pt",
+        "localizador": true,
+        "decisao_inventario": "ADS-08 converter_em_aviso (frente A, inventario-regras.json)"
       }
     ],
     "es": [
@@ -529,21 +558,43 @@
             "lo que pasa despues",
             "esto cambiara tu vida",
             "los medicos odian",
+            "el secreto que nadie"
+          ]
+        },
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
+        "idioma": "es",
+        "decisao_inventario": "ADS-09 contextualizar (frente A): as frases que espelham os exemplos da política seguem barrando; a palavra solta saiu para deturpacao.clickbait.palavra_isolada"
+      },
+      {
+        "id": "deturpacao.clickbait.palavra_isolada",
+        "fonte": "15936667",
+        "titulo": "Anúncios clickbait — palavra solta ou fórmula ambígua",
+        "url": "https://support.google.com/adspolicy/answer/15936667",
+        "severidade": "aviso",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
             "mira lo que paso",
-            "el secreto que nadie",
             "impactante",
             "increible"
           ]
         },
-        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
-        "idioma": "es"
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. 'Veja o que aconteceu com o PSG em 2026' pode ser notícia legítima.",
+        "idioma": "es",
+        "localizador": true,
+        "decisao_inventario": "ADS-09 contextualizar (frente A, inventario-regras.json)"
       },
       {
         "id": "deturpacao.declaracoes_nao_confiaveis",
         "fonte": "15936857",
         "titulo": "Declarações não confiáveis / promessas absolutas",
         "url": "https://support.google.com/adspolicy/answer/15936857",
-        "severidade": "erro",
+        "severidade": "aviso",
         "aplica_a": [
           "headline",
           "description",
@@ -563,7 +614,10 @@
             "resultado inmediato garantizado"
           ]
         },
-        "idioma": "es"
+        "idioma": "es",
+        "localizador": true,
+        "decisao_inventario": "ADS-07 converter_em_aviso (frente A, inventario-regras.json)",
+        "nota": "LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino."
       },
       {
         "id": "financeiro.emprestimo_pessoal.divulgacao",
@@ -588,7 +642,7 @@
             "financiamiento"
           ]
         },
-        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é erro, porque o site não presta o serviço.",
+        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é LOCALIZADOR (financeiro.termo_em_portal_informativo): o juiz de sentido decide se o texto fala como quem presta o serviço.",
         "idioma": "es"
       },
       {
@@ -596,7 +650,7 @@
         "fonte": "15188216",
         "titulo": "Portal informativo usando linguagem de prestador",
         "url": "https://support.google.com/adspolicy/answer/15188216",
-        "severidade": "erro",
+        "severidade": "aviso",
         "aplica_a": [
           "headline",
           "description",
@@ -619,8 +673,10 @@
             "libera tu dinero"
           ]
         },
-        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação.",
-        "idioma": "es"
+        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. O risco é o SUJEITO (o site executa?), não a palavra: 'Antecipação da matrícula? Veja o calendário' explica, não oferta.",
+        "idioma": "es",
+        "localizador": true,
+        "decisao_inventario": "ADS-08 converter_em_aviso (frente A, inventario-regras.json)"
       }
     ],
     "en": [
@@ -644,21 +700,43 @@
             "what happens next",
             "this will change your life",
             "doctors hate",
+            "the secret nobody"
+          ]
+        },
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
+        "idioma": "en",
+        "decisao_inventario": "ADS-09 contextualizar (frente A): as frases que espelham os exemplos da política seguem barrando; a palavra solta saiu para deturpacao.clickbait.palavra_isolada"
+      },
+      {
+        "id": "deturpacao.clickbait.palavra_isolada",
+        "fonte": "15936667",
+        "titulo": "Anúncios clickbait — palavra solta ou fórmula ambígua",
+        "url": "https://support.google.com/adspolicy/answer/15936667",
+        "severidade": "aviso",
+        "aplica_a": [
+          "headline",
+          "description",
+          "long_headline"
+        ],
+        "deteccao": {
+          "tipo": "frase",
+          "frases": [
             "see what happened",
-            "the secret nobody",
             "shocking",
             "unbelievable"
           ]
         },
-        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não.",
-        "idioma": "en"
+        "nota": "Curiosidade legítima (\"Veja se você tem direito\") é permitida; sensacionalismo vazio não. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. 'Veja o que aconteceu com o PSG em 2026' pode ser notícia legítima.",
+        "idioma": "en",
+        "localizador": true,
+        "decisao_inventario": "ADS-09 contextualizar (frente A, inventario-regras.json)"
       },
       {
         "id": "deturpacao.declaracoes_nao_confiaveis",
         "fonte": "15936857",
         "titulo": "Declarações não confiáveis / promessas absolutas",
         "url": "https://support.google.com/adspolicy/answer/15936857",
-        "severidade": "erro",
+        "severidade": "aviso",
         "aplica_a": [
           "headline",
           "description",
@@ -677,7 +755,10 @@
             "instant guaranteed result"
           ]
         },
-        "idioma": "en"
+        "idioma": "en",
+        "localizador": true,
+        "decisao_inventario": "ADS-07 converter_em_aviso (frente A, inventario-regras.json)",
+        "nota": "LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino."
       },
       {
         "id": "financeiro.emprestimo_pessoal.divulgacao",
@@ -702,7 +783,7 @@
             "financing"
           ]
         },
-        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é erro, porque o site não presta o serviço.",
+        "nota": "Não é proibido — é REGULADO. Exige divulgação de APR mín/máx, prazo mín/máx, custo total e identificação do credor no destino, além de verificação de serviços financeiros no país. Em vertical 'informativo' o mesmo termo é LOCALIZADOR (financeiro.termo_em_portal_informativo): o juiz de sentido decide se o texto fala como quem presta o serviço.",
         "idioma": "en"
       },
       {
@@ -710,7 +791,7 @@
         "fonte": "15188216",
         "titulo": "Portal informativo usando linguagem de prestador",
         "url": "https://support.google.com/adspolicy/answer/15188216",
-        "severidade": "erro",
+        "severidade": "aviso",
         "aplica_a": [
           "headline",
           "description",
@@ -732,8 +813,10 @@
             "release your money"
           ]
         },
-        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação.",
-        "idioma": "en"
+        "nota": "Portal informativo que fala como se executasse o serviço cai em deturpação. LOCALIZADOR (B6, 30/09/2026): marca o trecho e o entrega ao juiz de sentido; não reprova sozinho. Substring sem fronteira de palavra erra dos dois lados ('cura' dentro de 'procura'; 'garantido' em 'não é garantido'). Quem decide é a promessa no contexto e diante do destino. O risco é o SUJEITO (o site executa?), não a palavra: 'Antecipação da matrícula? Veja o calendário' explica, não oferta.",
+        "idioma": "en",
+        "localizador": true,
+        "decisao_inventario": "ADS-08 converter_em_aviso (frente A, inventario-regras.json)"
       }
     ]
   },
