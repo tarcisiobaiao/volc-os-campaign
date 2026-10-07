@@ -90,7 +90,8 @@ export function compacto(n: number | null): string {
 
 export interface EstadoDoCandidato {
   pronto: boolean;
-  jaNoAr: number;
+  /** ⚠️ `null` = não apurado. Nulo não é zero — zero afirmaria "não há campanha". */
+  jaNoAr: number | null;
   chip: { palavra: string; descricao: string; tom: Tom; glifo: React.ComponentType<{ className?: string }> };
 }
 
@@ -103,7 +104,11 @@ export interface EstadoDoCandidato {
  * diz o que existe ANTES de convidar.
  */
 export function estadoDoCandidato(p: CandidatoNoQuadro): EstadoDoCandidato {
-  const jaNoAr = p.campanhas_lancadas ?? 0;
+  // ⚠️ Era `?? 0`, e o contrato diz o contrário (`types/trafego.ts`): "`null`
+  // quando a prova não pôde ser feita. Nulo não é zero: zero afirmaria 'não há
+  // campanha', que é exatamente o que não foi apurado." Com o `??`, ausência
+  // caía no `jaNoAr > 0` falso e a função devolvia o chip VERDE `pronto`.
+  const jaNoAr = p.campanhas_lancadas ?? null;
   const pronto = p.tem_cluster && p.keywords_para_anuncio > 0;
   if (!pronto) {
     return {
@@ -114,6 +119,20 @@ export function estadoDoCandidato(p: CandidatoNoQuadro): EstadoDoCandidato {
         descricao:
           'este funil não tem cluster de keywords triadas; passe-o pela mineração no ' +
           'Pautador antes de anunciar',
+        tom: 'atencao',
+        glifo: CircleAlert,
+      },
+    };
+  }
+  if (jaNoAr === null) {
+    return {
+      pronto,
+      jaNoAr,
+      chip: {
+        palavra: 'lançamentos não apurados',
+        descricao:
+          'a reconciliação não conseguiu contar as campanhas deste funil. Enquanto ela ' +
+          'não voltar, não dá para afirmar que este funil está livre para um lançamento',
         tom: 'atencao',
         glifo: CircleAlert,
       },

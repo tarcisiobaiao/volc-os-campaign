@@ -175,13 +175,26 @@ export function fraseDoVeredito(v: VereditoDaEscada): {
         tom: 'atencao',
       };
     case 'sem_impedimento':
-    default:
       return {
         titulo: 'Nenhum impedimento medido',
         descricao:
           'todos os degraus foram apurados e nenhum impede ou limita a entrega ' +
           'nesta janela.',
         tom: 'bom',
+      };
+    default:
+      // ⚠️ Nunca `bom`, pelo mesmo motivo escrito trinta linhas acima em
+      // `estadoLegivel`. `VereditoDaEscada` é união fechada em COMPILAÇÃO; o
+      // `tipo` chega do servidor em runtime, e um valor que esta versão não
+      // conhece caía junto com `sem_impedimento` — virando o título verde da
+      // tela inteira. O fato é real; o que falta é a frase.
+      return {
+        titulo: 'Veredito não reconhecido',
+        descricao:
+          `o sistema informou "${(v as { tipo: string }).tipo}", que esta versão da ` +
+          'tela não sabe traduzir. Isto não afirma que a entrega está livre: afirma ' +
+          'que o veredito não pôde ser lido aqui.',
+        tom: 'atencao',
       };
   }
 }

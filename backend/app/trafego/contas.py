@@ -191,32 +191,97 @@ def meta_de_conversao(customer_id: str, *, login_customer_id: str) -> Dict[str, 
     Conta sem ação primária devolve `primaria: None`, e aí a campanha nasce
     otimizando para nada: é o pior desfecho possível e ele precisa ser visível
     ANTES do lançamento, não depois do orçamento gasto.
+
+    ## ⚠️ DOIS DEFEITOS CONSERTADOS EM 02/09/2026
+
+    **1. `bool(a.primary_for_goal)` colapsava presence — e INVERTIA o veredito.**
+    `conversion_action.primary_for_goal` tem presence no proto (conferido contra
+    o descritor real do SDK v25), e a doc oficial é literal: *"By default,
+    `primary_for_goal` will be true if not set."* Lido com `bool(...)`, um campo
+    AUSENTE virava `False` — e uma ação que o Google trata como PRIMÁRIA saía
+    daqui como secundária. Numa conta em que TODAS as ações têm o campo ausente,
+    a resposta era `primaria: None` e o cockpit anunciava "esta conta não tem
+    ação de conversão primária" sobre uma conta que tem. É o mesmo defeito que
+    `plano_mensuracao.AcaoDeConversao.primaria_efetiva` já consertava do outro
+    lado; aqui ele sobrevivia numa GAQL que roda a cada `/provar`.
+
+    Agora `primaria` é TRI-ESTADO (`None` = a API não declarou) e
+    `primaria_efetiva` aplica o default documentado — a mesma dupla que
+    `plano_mensuracao` e o contrato de canais já expõem.
+
+    **2. "a primeira primária da LISTA" escolhia por ordem de resultado.**
+    `next((a for a in acoes if ...), None)` devolvia o que a GAQL trouxesse
+    primeiro, sem `ORDER BY`: a "meta da conta" mostrada na tela podia mudar
+    entre duas leituras idênticas. E medido na Portal Mundo Mais em 01/09/2026:
+    NOVE ações ENABLED, OITO primárias — dizer "a ação primária" no singular
+    apagava sete. Agora o desempate é o **id numérico**, o mesmo critério de
+    `plano_mensuracao.eleger_acao_canonica` (ordenar por nome faria a escolha
+    mudar quando alguém renomeasse a ação no painel), a lista inteira sai em
+    `primarias`, e `por_que` diz quantas são.
+
+    ⚠️ O que este leitor NÃO virou: ele continua sendo uma GAQL sobre
+    `conversion_action`, e isso NÃO é a meta EFETIVA. O efetivo exige
+    `customer_conversion_goal`, `campaign_conversion_goal` e
+    `conversion_goal_campaign_config.goal_config_level` — os três que
+    `metas_efetivas.ler_plano` consulta. Com plano presente, é o plano que
+    manda (`prontidao.avaliar`, ramo do plano). Este caminho continua vivo por
+    três consumidores: o cockpit (`routers/trafego.py:856`), o `/provar`
+    (`:2758`) e `scripts/dossie_canario_v10.py:191`.
     """
-    from volc_ads.gads.client import buscar
+    from app.trafego import metas_efetivas as mef  # noqa: PLC0415
+    from volc_ads.gads.client import buscar  # noqa: PLC0415
 
     acoes: List[Dict[str, Any]] = []
     for l in buscar(str(customer_id), GAQL_METAS,
                     login_customer_id=str(login_customer_id)):
         a = l.conversion_action
+        # ⚠️ `bool_ou_none`, e não `bool`. Ver os dois defeitos na docstring.
+        declarada = mef.bool_ou_none(a, "primary_for_goal")
         acoes.append({
             "id": str(a.id),
             "nome": _texto(a.name),
             "categoria": a.category.name,
             "tipo": a.type_.name,
-            "primaria": bool(a.primary_for_goal),
+            # O que a API DECLAROU: `None` significa "não veio", nunca "não é".
+            "primaria": declarada,
+            # O default documentado — "ausente = true" —, aplicado num campo
+            # PRÓPRIO para que a declaração continue legível ao lado dele.
+            "primaria_efetiva": True if declarada is None else declarada,
         })
 
-    primaria = next((a for a in acoes if a["primaria"]), None)
+    primarias = [a for a in acoes if a["primaria_efetiva"]]
+    # Desempate por id numérico, estável entre leituras. `str` no fallback
+    # porque um id não numérico (não deveria existir) não pode derrubar a rota.
+    primarias.sort(key=lambda a: (0, int(a["id"]))
+                   if str(a["id"]).isdigit() else (1, 0))
+    primaria = primarias[0] if primarias else None
+    if not primaria:
+        por_que = (
+            "⚠️ Esta conta não tem ação de conversão primária. Uma campanha em "
+            "`maximize_conversions` sem meta otimiza para nada e gasta o "
+            "orçamento sem sinal.")
+    elif len(primarias) > 1:
+        por_que = (
+            f"A campanha nasce em `maximize_conversions`. Esta conta tem "
+            f"{len(primarias)} ações primárias efetivas; a mostrada é a de "
+            "menor id numérico — critério estável, e NÃO a ordem em que a "
+            "consulta as devolveu. Qual delas o lance persegue depende da meta "
+            "EFETIVA (`customer_conversion_goal` + `goal_config_level`), que "
+            "esta leitura não consulta. O cockpit não escolhe meta.")
+    else:
+        por_que = (
+            "A campanha nasce em `maximize_conversions` e persegue a ação "
+            "PRIMÁRIA da conta. O cockpit não escolhe meta — o campo que "
+            "prometia isso não é lido por ninguém.")
     return {
         "acoes": acoes,
         "primaria": primaria,
-        "por_que": (
-            "A campanha nasce em `maximize_conversions` e persegue a ação "
-            "PRIMÁRIA da conta. O cockpit não escolhe meta — o campo que "
-            "prometia isso não é lido por ninguém."
-        ) if primaria else (
-            "⚠️ Esta conta não tem ação de conversão primária. Uma campanha em "
-            "`maximize_conversions` sem meta otimiza para nada e gasta o "
-            "orçamento sem sinal."
-        ),
+        # ⚠️ A LISTA INTEIRA, e não só a escolhida. "A ação primária" no
+        # singular apagava sete das oito medidas na Portal Mundo Mais.
+        "primarias": primarias,
+        "primarias_efetivas": len(primarias),
+        #: Quantas o Google DECLAROU primárias — separado de quantas o são por
+        #: default. As duas contagens diferentes são a evidência do defeito.
+        "primarias_declaradas": sum(1 for a in acoes if a["primaria"] is True),
+        "por_que": por_que,
     }

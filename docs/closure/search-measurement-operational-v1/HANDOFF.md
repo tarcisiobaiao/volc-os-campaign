@@ -17,7 +17,25 @@ Pacote de aplicação pronto. Produção NÃO foi alterada.**
 - ✅ nenhum `mutate` no Google Ads, Data Manager ou GTM
 - ✅ nenhum push, merge, deploy ou ativação
 - ✅ nenhuma meta ou ação de conversão alterada
-- ✅ a v12_02 **continua não aplicada** — e por isso **P05-T12 continua `partial`**
+- ⚠️ **CORREÇÃO DE 02/09/2026:** esta linha dizia "a v12_02 **continua não
+  aplicada**". **Ela está aplicada** desde `2026-09-01T18:32:16Z` — depois do
+  fechamento desta missão, e por isso o texto original envelheceu em vez de
+  mentir de propósito. Ver `RECIBO-APLICACAO-V12-02.md` (exit 0, sha256 do
+  arquivo aplicado idêntico ao do repositório).
+
+  **Procedência da reconferência**: inventário read-only do Supabase oficial
+  (`database.agenciavolc.com.br`, via `ssh` + `docker exec supabase-db psql`,
+  somente `SELECT` e catálogo) executado em 02/09/2026 durante a missão
+  `sprint/traffic-production-last-mile-v1`. Resultado: tabela presente com 43
+  colunas, 6 índices, trigger append-only, 1 RPC `SECURITY DEFINER`, 28 CHECKs,
+  RLS habilitada e forçada — e **0 linhas**. Quem quiser reconferir roda o mesmo
+  caminho; este parágrafo não é observação de quem escreveu o texto, é registro
+  de uma medição feita naquela missão e citada aqui.
+- ⚠️ **P05-T12 continua `partial` — por outro motivo, e ele é o que importa.**
+  Não é mais "a migration não foi aplicada"; é que a tabela tem **0 linhas**
+  contra **85** campanhas em `trafego_campanha`. Schema no ar não é capacidade
+  exercida: o caminho `/subir → registrar_plano → mutate` foi provado contra
+  dublê em memória e cluster descartável, e **nunca correu em produção**.
 
 ---
 
@@ -204,8 +222,9 @@ executável, e é por isso que **nenhuma migration precisou de correção**.
 
 | item | estado | por quê |
 |---|---|---|
-| v12_02 em produção | **não aplicada** | exige autorização de dono — ver `APLICACAO-V12-02.md` |
-| P05-T12 | **partial** | o primeiro critério de aceite é "persistido no Supabase oficial" |
+| v12_02 em produção | **aplicada em `2026-09-01T18:32:16Z`, com 0 linhas** | corrigido em 02/09/2026 — esta linha dizia “não aplicada”. O schema está no ar (`RECIBO-APLICACAO-V12-02.md`); o que continua aberto é a **capacidade nunca exercida**: nenhum plano gravado em produção |
+| persistência de plano exercida em produção | **nunca** | 0 linhas em `trafego_campanha_plano_de_mensuracao` contra 85 campanhas em `trafego_campanha` — medido no inventário read-only do Supabase oficial em 02/09/2026 (missão `sprint/traffic-production-last-mile-v1`), não observado por quem redigiu esta linha |
+| P05-T12 | **partial** | o primeiro critério de aceite é "persistido no Supabase oficial" — e ele continua não atendido, agora por ausência de LINHA e não por ausência de TABELA |
 | Data Manager | **não provado em operação** | nenhum evento, nem `validateOnly`, nesta missão |
 | coleta PMax | **não implementada** | fora de escopo; os dois bloqueios seguem independentes |
 | Smart Bidding no caminho de escrita | **sem portão** | `search.py:57` permite `MAXIMIZE_CONVERSIONS`; G3 só é avaliado por `/provar`. Risco baixo porque a campanha nasce PAUSED por literal e não existe função de ativação. Declarado para decisão do dono — ver `delta-curadoria.json` |

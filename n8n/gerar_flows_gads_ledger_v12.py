@@ -601,11 +601,32 @@ if (lidas !== Number(ctx.linhas_enviadas)) {
 }
 
 const antes = ctx.acumulado || {};
+
+// ⚠️ A RECUSA LOCAL NAO ENTRA NO TRIPLO QUE O BANCO RECONCILIA.
+//
+// `Validar semanticamente` recusa linhas ANTES de enviar (moeda ausente, data
+// fora da janela, taxa fora de 0..1, duplicata na pagina, id invalido) e manda
+// so as boas. Essas linhas NUNCA chegaram a RPC. Mas o acumulador somava-as em
+// `linhas_rejeitadas`, e o fechamento declarava esse total — enquanto a RPC
+// conta em `linhas_rejeitadas` SO o que ela mesma recusou.
+//
+// Medido contra a RPC v12_04 real:
+//   ERROR: RECONCILIACAO_DIVERGENTE: declarado 1/0/1 e o ledger soma 1/0/0
+//
+// E o estrago nao para no erro: `RPC: fechar recibo` nao tem onError continue,
+// entao a execucao ABORTA ali, os nos seguintes nunca rodam e o ALERTA nunca e
+// gravado. Ou seja: qualquer execucao com uma unica recusa local ficava sem
+// fechar E sem avisar. A falha morria no log do n8n.
+//
+// A recusa local continua existindo — em campo PROPRIO, que o fechamento leva
+// para o `motivo` e para o resumo. O que ela nao faz mais e se passar por
+// rejeicao do banco.
 const acumulado = {
-  linhas_lidas: Number(antes.linhas_lidas || 0) + lidas + Number(ctx.linhas_recusadas_localmente || 0),
+  linhas_lidas: Number(antes.linhas_lidas || 0) + lidas,
   linhas_aceitas: Number(antes.linhas_aceitas || 0) + aceitas,
   linhas_preteridas: Number(antes.linhas_preteridas || 0) + preteridas,
-  linhas_rejeitadas: Number(antes.linhas_rejeitadas || 0) + rejeitadas
+  linhas_rejeitadas: Number(antes.linhas_rejeitadas || 0) + rejeitadas,
+  linhas_recusadas_localmente: Number(antes.linhas_recusadas_localmente || 0)
     + Number(ctx.linhas_recusadas_localmente || 0),
   projecao_linhas: Number(antes.projecao_linhas || 0) + Number(recibo.projecao_linhas || 0),
   paginas: Number(antes.paginas || 0) + 1,
@@ -732,6 +753,8 @@ const base = itens[0];
 
 let aceitas = 0; let preteridas = 0; let rejeitadas = 0;
 let lidas = 0; let projetadas = 0; let paginas = 0;
+// Recusa local: contada, nomeada no motivo, e FORA do triplo declarado ao banco.
+let recusadasLocalmente = 0;
 const contasAceitas = [];
 const contasRecusadas = [];
 const projecoes = [];
@@ -741,6 +764,7 @@ for (const it of itens) {
   aceitas += Number(a.linhas_aceitas || 0);
   preteridas += Number(a.linhas_preteridas || 0);
   rejeitadas += Number(a.linhas_rejeitadas || 0);
+  recusadasLocalmente += Number(a.linhas_recusadas_localmente || 0);
   lidas += Number(a.linhas_lidas || 0);
   projetadas += Number(a.projecao_linhas || 0);
   paginas += Number(a.paginas || 0);
@@ -760,18 +784,28 @@ for (const it of itens) {
 // Uma falha de conta nao pode virar vazio nem sumir. Ela decide o desfecho.
 let resultado;
 let motivo = null;
-if (contasRecusadas.length === 0 && rejeitadas === 0) {
+if (contasRecusadas.length === 0 && rejeitadas === 0 && recusadasLocalmente === 0) {
   resultado = 'ok';
+} else if (contasRecusadas.length === 0 && rejeitadas === 0) {
+  // So houve recusa LOCAL. O banco nao viu nenhuma dessas linhas, entao o triplo
+  // declarado continua sendo exatamente o do ledger — mas o desfecho nao pode
+  // ser 'ok': linha descartada antes do envio e linha que nao chegou.
+  resultado = aceitas > 0 ? 'parcial' : 'falhou';
+  motivo = `${recusadasLocalmente} linhas recusadas na validacao local, antes do envio`
+    + '; nenhuma delas chegou ao ledger';
 } else if (contasRecusadas.length === 0) {
   resultado = aceitas > 0 ? 'parcial' : 'falhou';
-  motivo = `${rejeitadas} linhas rejeitadas semanticamente; nenhuma recusa pode virar ok`;
+  motivo = `${rejeitadas} linhas rejeitadas semanticamente; nenhuma recusa pode virar ok`
+    + (recusadasLocalmente > 0 ? `; +${recusadasLocalmente} recusadas localmente antes do envio` : '');
 } else if (contasAceitas.length > 0 || aceitas > 0) {
   resultado = 'parcial';
-  motivo = `${contasRecusadas.length} de ${itens.length} contas falharam; ${rejeitadas} linhas rejeitadas: `
+  motivo = `${contasRecusadas.length} de ${itens.length} contas falharam; ${rejeitadas} linhas rejeitadas`
+    + (recusadasLocalmente > 0 ? `; +${recusadasLocalmente} recusadas localmente` : '') + ': '
     + contasRecusadas.map((c) => `${c.customer_id}/${c.classe}`).join(', ');
 } else {
   resultado = 'falhou';
-  motivo = `todas as ${contasRecusadas.length} contas falharam; ${rejeitadas} linhas rejeitadas: `
+  motivo = `todas as ${contasRecusadas.length} contas falharam; ${rejeitadas} linhas rejeitadas`
+    + (recusadasLocalmente > 0 ? `; +${recusadasLocalmente} recusadas localmente` : '') + ': '
     + contasRecusadas.map((c) => `${c.customer_id}/${c.classe}`).join(', ');
 }
 
@@ -1104,7 +1138,16 @@ def construir(papel: str, contrato_sha: str) -> dict:
                 {"name": "Accept", "value": "application/json"},
             ]},
             "options": {"timeout": 30000, "response": {"response": {"neverError": False}}},
-        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000),
+        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000,
+           # ⚠️ alwaysOutputData NAO e decoracao AQUI: e o que torna o alerta
+           # alcancavel. O PostgREST devolve `[]` quando o recibo nao pousou —
+           # e `[]` faz este no emitir ZERO itens, o que faz o n8n PULAR o
+           # `Batimento e saude` inteiro. O Code node tem o ramo `lido === null`
+           # -> INDETERMINADO + alerta escrito e testado, e ele nunca rodava
+           # justamente no unico caso que ele existe para pegar: o recibo
+           # sumido. Com o flag, `[]` vira um item vazio, o filtro o descarta,
+           # `lido` fica null, e o alerta acontece.
+           alwaysOutputData=True),
         _code("Batimento e saude", [1980, -220], JS_BATIMENTO),
         _se_booleano("Falha real?", [2200, -220], "={{ $json.alerta }}"),
         _no("Alerta de rotina parada", "n8n-nodes-base.httpRequest", 4.2, [2420, -220], {
@@ -1121,12 +1164,17 @@ def construir(papel: str, contrato_sha: str) -> dict:
             ]},
             "sendBody": True,
             "specifyBody": "json",
-            "jsonBody": "={{ JSON.stringify({ key: 'gads_dia_' + $json.job + '_ultimo_alerta',"
+            # `job` ja e `gads_dia_d0`/`gads_dia_d1`; prefixar de novo produzia
+            # a chave `gads_dia_gads_dia_d0_ultimo_alerta`.
+            "jsonBody": "={{ JSON.stringify({ key: $json.job + '_ultimo_alerta',"
                         " value: $json.execucao_chave + ' | ' + $json.estado_saude + ' | '"
                         " + ($json.motivo_alerta || 'sem motivo declarado'),"
                         " updated_at: new Date().toISOString() }) }}",
             "options": {"timeout": 30000},
-        }, credentials=CRED_SUPABASE),
+        # ⚠️ Este no era o UNICO do fluxo sem retry — ou seja, o caminho de aviso
+        # era o menos confiavel de todos. Um alerta que se perde por um 5xx
+        # transitorio e um alerta que nao existe.
+        }, credentials=CRED_SUPABASE, retryOnFail=True, maxTries=3, waitBetweenTries=3000),
         _no("Sticky Note", "n8n-nodes-base.stickyNote", 1, [-660, -420], {
             "width": 900, "height": 260,
             "content": (

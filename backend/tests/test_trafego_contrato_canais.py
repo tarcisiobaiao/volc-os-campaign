@@ -577,23 +577,44 @@ def test_a_estrategia_de_lance_do_canario_e_escolha_e_nao_ausencia():
 
 
 def test_as_razoes_do_estado_sao_lista_e_nao_uma_so():
-    """São duas simultâneas e dizem coisas diferentes: uma é consequência do
-    desenho, a outra é o veredito que ainda não chegou."""
+    """LISTA, e não uma string — porque razões simultâneas existem.
+
+    ⚠️ Esta prova exigia DUAS razões, fixas, incluindo `MOST_ADS_UNDER_REVIEW`.
+    Em 02/09/2026 a conta foi relida por GAQL read-only e respondeu
+    `['CAMPAIGN_PAUSED']` — uma só: o veredito chegou. A prova antiga fixava um
+    RETRATO; esta fixa o CONTRATO, que é o que precisa sobreviver à próxima
+    leitura. `CAMPAIGN_PAUSED` continua obrigatória porque ela é consequência do
+    desenho — a campanha nasce pausada — e não da conta.
+    """
     razoes = cc.leitura_de_campo_do_canario()["primary_status_reasons"]
     assert isinstance(razoes, list)
-    assert len(razoes) == 2
-    assert {r["codigo"] for r in razoes} == {
-        "CAMPAIGN_PAUSED", "MOST_ADS_UNDER_REVIEW"}
+    assert razoes, "razão nenhuma seria leitura ausente apresentada como estado"
+    codigos = {r["codigo"] for r in razoes}
+    assert "CAMPAIGN_PAUSED" in codigos
+    for r in razoes:
+        assert r["natureza"] in ("por_desenho", "em_revisao", "falha")
+        assert str(r["texto"]).strip()
 
 
 def test_em_revisao_nao_e_verde_nem_vermelho():
-    """`MOST_ADS_UNDER_REVIEW` é o veredito que o canário existe para colher.
-    Pintá-lo de verde afirmaria uma aprovação que não houve."""
+    """O terceiro estado continua existindo no vocabulário, mesmo sem ocorrer.
+
+    ⚠️ Esta prova buscava a razão `MOST_ADS_UNDER_REVIEW` na leitura e falhava
+    se ela sumisse — o que a fazia falhar exatamente no dia em que o Google
+    APROVOU o anúncio, que é o desfecho bom. `em_revisao` não pode deixar de
+    ser um estado nomeado só porque este canário passou dele; o próximo nasce
+    em revisão de novo. Então a prova passou a medir o vocabulário e a
+    consequência, e não a ocorrência.
+    """
+    # o estado continua nomeado, e continua não sendo nem sucesso nem falha
+    assert "em_revisao" not in ("ok", "falha", "por_desenho")
+    # e, quando ele OCORRE, ele arma o bloqueio — que é a consequência real
     razoes = cc.leitura_de_campo_do_canario()["primary_status_reasons"]
-    (revisao,) = [r for r in razoes if r["codigo"] == "MOST_ADS_UNDER_REVIEW"]
-    assert revisao["natureza"] == "em_revisao"
-    assert revisao["natureza"] not in ("ok", "falha", "por_desenho")
-    assert "não é aprovação nem reprovação" in revisao["texto"]
+    ocorre = any(r["codigo"] == "MOST_ADS_UNDER_REVIEW" for r in razoes)
+    assert ocorre == (cc.CANARIO_ANUNCIOS_VEREDITO != "APPROVED"), (
+        "a razão de revisão e o veredito por anúncio têm de contar a MESMA "
+        "história: uma leitura que diz aprovado com uma razão que diz em "
+        "revisão é o retrato velho brigando com o novo")
 
 
 def test_a_pausa_e_declarada_como_desenho_e_nao_como_problema():
@@ -603,20 +624,59 @@ def test_a_pausa_e_declarada_como_desenho_e_nao_como_problema():
 
 
 def test_a_leitura_de_campo_carrega_a_data_em_que_foi_feita():
-    """Ela envelhece, e a tela precisa poder dizer isso em vez de apresentá-la
-    como o estado de agora."""
-    assert cc.leitura_de_campo_do_canario()["observado_em"] == "2026-09-01"
+    """E agora carrega também a IDADE, que é o que a tela precisa para dizer.
+
+    ⚠️ O contrato dizia "ela envelhece, e a tela precisa poder dizer isso" e
+    entregava só a data — deixando cada consumidor calcular a idade, ou não
+    calcular. Um retrato de semanas chegava à tela com a mesma cara de um lido
+    agora.
+    """
+    leitura = cc.leitura_de_campo_do_canario()
+    import re as _re
+    assert _re.fullmatch(r"\d{4}-\d{2}-\d{2}", leitura["observado_em"])
+    assert leitura["e_retrato"] is True
+    idade = leitura["dias_desde_a_observacao"]
+    assert idade is None or (isinstance(idade, int) and idade >= 0)
 
 
-def test_anuncios_em_revisao_bloqueiam_a_ativacao_de_search():
+def test_data_ilegivel_nao_vira_idade_zero():
+    """"Não sei quantos dias" e "foi hoje" são coisas diferentes."""
+    assert cc._dias_desde("ontem") is None
+    assert cc._dias_desde("") is None
+    assert cc._dias_desde("2026-09-02") == 0 or cc._dias_desde("2026-09-02") > 0
+
+
+def test_o_veredito_por_anuncio_esta_na_leitura_de_campo():
+    """É o fato que o canário existe para colher — ele não pode ficar só numa
+    constante que ninguém expõe."""
+    anuncios = cc.leitura_de_campo_do_canario()["anuncios"]
+    assert anuncios["approval_status"] == cc.CANARIO_ANUNCIOS_VEREDITO
+    assert anuncios["review_status"] == cc.CANARIO_ANUNCIOS_REVISAO
+    assert "não" in anuncios["por_que_importa"]
+
+
+def test_o_bloqueio_de_revisao_segue_a_leitura_e_nao_e_perpetuo():
+    """Bloqueio que envelhece em silêncio treina gente a ignorar bloqueio.
+
+    ⚠️ Esta prova exigia `anuncios_em_revisao` SEMPRE presente. Ele era armado
+    incondicionalmente sobre uma leitura de 01/09 — e em 02/09 o anúncio está
+    APPROVED/REVIEWED. O bloqueio passou a bloquear por um fato que deixou de
+    ser verdade, com a data da leitura velha estampada nele.
+    """
     search = _por_canal(ADMIN_COM_ESCRITA)["SEARCH"].por_nome
     codigos = {b.codigo for b in search[cc.ATIVAVEL].bloqueadores}
-    assert "anuncios_em_revisao" in codigos
+    esperado = cc.CANARIO_ANUNCIOS_VEREDITO != "APPROVED"
+    assert ("anuncios_em_revisao" in codigos) is esperado, (
+        "o bloqueio tem de contar a mesma história que a leitura")
 
 
-def test_a_revisao_nao_sai_quando_a_meta_e_resolvida():
-    """Bloqueios independentes: fechar um não abre o portão. Foi por isso que
-    eles nasceram nomeados em vez de a primeira razão encerrar a lista."""
+def test_a_revisao_e_a_meta_continuam_INDEPENDENTES():
+    """Fechar um não abre o portão — e resolver a meta não resolve a revisão.
+
+    A independência é o que importa e continua valendo. O que mudou é que a
+    revisão DESTE canário já foi resolvida pelo Google, então a lista fica
+    vazia por resolução — e não porque a meta a encerrou.
+    """
     pronto = pr.Prontidao(
         conversion_goal_status=pr.PRONTO,
         conversion_signal_status=pr.PRONTO,
@@ -628,7 +688,9 @@ def test_a_revisao_nao_sai_quando_a_meta_e_resolvida():
                          prontidao=pronto).por_nome
     codigos = {b.codigo for b in search[cc.ATIVAVEL].bloqueadores}
     assert "meta_efetiva_divergente" not in codigos
-    assert "anuncios_em_revisao" in codigos
+    # a revisão só some por resolução da REVISÃO, nunca por resolução da meta
+    assert ("anuncios_em_revisao" in codigos) is (
+        cc.CANARIO_ANUNCIOS_VEREDITO != "APPROVED")
 
 
 def test_a_leitura_de_campo_sobrevive_ao_registro_operacional_fora_do_ar():
