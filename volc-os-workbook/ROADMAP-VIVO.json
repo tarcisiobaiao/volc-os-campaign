@@ -312,15 +312,20 @@
         {
           "id": "P01-T12",
           "title": "Levar a branch consolidada ao main e aposentar a linha antiga",
-          "status": "todo",
-          "proof": "Em 07/10/2026 o main local (314c3e4) era da linha anterior à v2 e não tinha ancestral comum com origin/volc-os-v2. A branch integration/qg-real-20261007 reúne a linha v2, as sprints de tráfego que tinham ficado fora e o Editorial V2. Nada foi mesclado no main nem enviado ao remoto.",
+          "status": "done",
+          "proof": "Em 07/10/2026 a consolidação integration/qg-real-20261007 foi revisada e promovida para a única linha oficial. Antes do corte, o snapshot remoto antigo foi preservado em origin/archive/main-before-qg-real-20261007 e o worktree principal sujo foi movido, sem alterar status, índice ou diff, para wip/original-worktree-pre-qg-real-20261007. O main local, o origin/main e a branch padrão do GitHub passaram a apontar para 41e33969669bc611f3270b63299807790da87a34 por force-with-lease preso ao SHA remoto anterior. Gates: build Vite verde, QG 32/32, diff check limpo, secret scan limpo e grafo current:true. A Vercel publicou o deploy de produção dpl_7Dz4FohjYpPz8dwvnhHLGNurNeQr como Ready, com os aliases de produção e git-main. As demais branches históricas continuam preservadas conforme a decisão explícita em BRANCHES-CANDIDATAS-ARQUIVO.md; nenhuma delas é linha oficial ou fonte de deploy.",
           "acceptance": [
             "Revisão humana da branch integration/qg-real-20261007 concluída",
             "main aponta para a linha consolidada sem perder o worktree principal",
             "origin recebe a branch por push autorizado",
             "Branches antigas listadas em docs/operations/qg-reconciliation-20261007/BRANCHES-CANDIDATAS-ARQUIVO.md arquivadas ou mantidas por decisão"
           ],
-          "dependencies": []
+          "dependencies": [],
+          "graph_nodes": [
+            "cap_work_road",
+            "cap_knowledge_graph"
+          ],
+          "updated_at": "2026-10-07"
         }
       ]
     },

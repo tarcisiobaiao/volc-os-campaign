@@ -248,7 +248,7 @@
       "cluster": "governance",
       "state": "partial",
       "summary": "Sala de comando que lê a fonte versionada do Work Road, mostra prioridades, ondas, tarefas, provas e progresso, e falha fechado se a fonte não puder ser validada.",
-      "evidence": "Integração Codex em 29/08/2026: /settings/qg-agentico tem Agora, Timeline, Kanban, Lista, Grafo, Execuções e Inbox; cada tarefa tem URL própria; exporta JSON/HTML/PDF selecionável. O Inbox é serializado entre processos, append-only por recibo e separado do percentual; reordenação ADMIN usa hash esperado e recusa sobrescrever uma fonte nova. Commits d2ed5cb, 5445c5e, 230214c, 28b7b50, 81f9f69, e4699a9 e 0f3bf60. A edição completa de conteúdo das tarefas pela interface e o heartbeat unificado de todos os provedores continuam pendentes; por isso permanece partial."
+      "evidence": "Integração Codex em 29/08/2026: /settings/qg-agentico tem Agora, Timeline, Kanban, Lista, Grafo, Execuções e Inbox; cada tarefa tem URL própria; exporta JSON/HTML/PDF selecionável. O Inbox é serializado entre processos, append-only por recibo e separado do percentual; reordenação ADMIN usa hash esperado e recusa sobrescrever uma fonte nova. Commits d2ed5cb, 5445c5e, 230214c, 28b7b50, 81f9f69, e4699a9 e 0f3bf60. Em 07/10/2026 a consolidação do QG foi promovida para main e origin/main no commit 41e3396, com backup recuperável da linha remota anterior e deploy Vercel de produção Ready. A edição completa de conteúdo das tarefas pela interface e o heartbeat unificado de todos os provedores continuam pendentes; por isso permanece partial."
     },
     {
       "id": "cap_knowledge_graph",

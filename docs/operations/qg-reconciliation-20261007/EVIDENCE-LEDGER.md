@@ -73,7 +73,7 @@ Provas usadas para escolher `90833f2` como base:
 3. **Attention Engine.** A sessão de origem precisa commitar o trabalho numa branch própria; só então ele pode ser integrado.
 4. **Âncoras legadas.** A âncora H1+slug da v2 gera textos como "Ver o guia de social >>>" no cenário de teste. O editorial preferia o H1 inteiro. As duas regras nasceram do mesmo defeito; ficou a da v2 porque ela alimenta o portão do destino pago.
 5. **Exportação DOCX do QG.** `GET /api/work-road/export?format=docx` devolve o arquivo estático `entregaveis/Workbook_VOLC_OS_Livro_Vivo_v1.0.docx`, não o roadmap vivo. O checklist desta consolidação foi gerado à parte.
-6. **Levar a branch ao `main`.** Registrado como P01-T12.
+6. **Levar a branch ao `main`.** Concluído em 07/10/2026: `main`, `origin/main` e a branch padrão do GitHub apontam para a consolidação; a Vercel publicou o novo `main` em produção. A linha remota anterior foi preservada em `archive/main-before-qg-real-20261007`, e o worktree sujo anterior permanece em `wip/original-worktree-pre-qg-real-20261007` sem alteração de conteúdo.
 
 ## Mapeamento de IDs
 
@@ -88,7 +88,7 @@ O Editorial V2 criou `P10-T17` ("Reforçar identidade editorial e artefatos do R
 | P12-T02 | todo | reserved | duplicata de P03-T02 |
 | P10-T18, P10-T19 | — | done, partial | vieram do Editorial V2 |
 | P10-T20 | — | partial | era `P10-T17` no Editorial V2 |
-| P01-T12 | — | todo | levar a branch consolidada ao `main` |
+| P01-T12 | — | done | consolidação promovida ao `main`, backup recuperável preservado e deploy Vercel confirmado |
 | P05-T10, P06-T03 | — | — | versões do principal (30/09 e 06/10) |
 | P04-T07, P05-T05, P09-T14, P10-T16, P10-T19 | — | — | evidência da integração acrescentada, status mantido |
 
