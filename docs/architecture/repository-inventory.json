@@ -1,32 +1,32 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-10T14:48:07-03:00",
+  "generated_at": "2026-10-07T11:51:27-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 761,
-    "markdown": 549,
-    "sql": 212,
-    "tracked": 761,
+    "files": 804,
+    "markdown": 591,
+    "sql": 213,
+    "tracked": 804,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 24,
-      "documentation": 398,
+      "audit": 32,
+      "documentation": 430,
       "generated": 2,
-      "module-guide": 38,
+      "module-guide": 40,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
       "runtime-contract": 20,
       "sql-diagnostic": 5,
-      "sql-migration-line": 41,
+      "sql-migration-line": 42,
       "sql-needs-lineage": 50,
       "sql-needs-review": 99,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 139,
+      "high": 140,
       "medium": 55,
       "read-only-or-ddl-free": 18
     }
@@ -38,6 +38,66 @@
     ]
   ],
   "files": [
+    {
+      "path": ".claude-ads/runs/editorial-refactor-20260930/frente-a-politicas/ledger.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 165133,
+      "lines": 2230,
+      "sha256": "3101e3c35c0b220c15b417573fbb3b51b571bd73ed2e0d9ae97356399723c2a1",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/editorial-refactor-20260930/frente-a-politicas/mapa-regras.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 98051,
+      "lines": 456,
+      "sha256": "d7da0729fce7aea7459bc7c700146558f72614909ffa13f8255625f8110e19b1",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/editorial-refactor-20260930/frente-a-politicas/verificacao-adversarial.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 23682,
+      "lines": 186,
+      "sha256": "86c22c6f9dcf91319d552492483c8697d1cc7e95d6c12416fd5122e6075220a9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/meta-opportunities-20260911-01/capabilities.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3876,
+      "lines": 55,
+      "sha256": "fe72b7975004c1b24ca8b2f50e67bd3f67a54bd9c38e7ab928bc084edebe0f87",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/meta-opportunities-20260911-01/lead-notes.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2808,
+      "lines": 36,
+      "sha256": "1ed078de98c169bf0b8ec34ad1b2d0494c81e247942048b35daec9823f8503d8",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
     {
       "path": ".claude/agents/README.md",
       "extension": ".md",
@@ -783,6 +843,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/ADR-EDITORIAL-V2.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 17379,
+      "lines": 224,
+      "sha256": "dd3dafd29f93e4e40e02c7b8055b648c666dcd2bfe6325a27a162524f888df6e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/ADR-GOOGLE-DEMAND-GEN-PROVA-VALIDATE-ONLY.md",
       "extension": ".md",
       "classification": "documentation",
@@ -790,6 +862,18 @@
       "bytes": 6603,
       "lines": 130,
       "sha256": "2ad7669b057423af767507901f9675076795ad7ddfd05543019345e040b0a225",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/ADR-META-ADK-REFINEMENT-LOOP.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3857,
+      "lines": 73,
+      "sha256": "034ecd46809a9df6b2cb30f82ee3f4323ddcf54666d9eb49c91ecf79276755ff",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -826,6 +910,18 @@
       "bytes": 2418,
       "lines": 43,
       "sha256": "01dfd783a6961a00b1d03d843b2ad26a86799321cb4fbd9a9388984e86140cac",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/ADR-PRENSA-DIRECAO-TIPOGRAFICA-V2.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4863,
+      "lines": 38,
+      "sha256": "6038741241a634bb6c83b635bea86bae56c76e04044cfc85c0d6c00e1d9b0639",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1147,9 +1243,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 24023,
+      "bytes": 24022,
       "lines": 311,
-      "sha256": "7f82c7cac3275347fef7e8393036d4a56e494d8871f6fb852b4093c96787ba31",
+      "sha256": "68e4f51d0d2b69e1d48cdffadf4b24b0cc6838fe15497152fa9d6a1339149ba2",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1594,6 +1690,102 @@
       "bytes": 5546,
       "lines": 125,
       "sha256": "8c2d8eb1d4c9630f788a3edfbd9296180d75f9440dc156a0d5ad0fead260a305",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/CAMPANHA-3-FUNIS-ACHADOS-MOTOR-2026-09-17.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 15576,
+      "lines": 265,
+      "sha256": "b4fb0457c28612219016fa22933b80d176bbc57d766221e98f7d162e810e290d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/CAMPANHA-3-FUNIS-EDUCACAO-2026-09-17.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 18418,
+      "lines": 249,
+      "sha256": "33e160693e2265d712be3547f550214f0d26a9e2c4f1f34ea90f84722875cacd",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/CORRECAO-3-FUNIS-HANDOFF-2026-09-18.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 16018,
+      "lines": 249,
+      "sha256": "626268f1fc430132b7eb28e14412a052ae61ed017c5ef7d963129862dec7c7c6",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/CORRECAO-3-FUNIS-PREFLIGHT-2026-09-18.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 9932,
+      "lines": 163,
+      "sha256": "c96cc011c5a3b33401d3e4a3f6cabe1876a91833f6e3208e867404d272a60dca",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 7240,
+      "lines": 134,
+      "sha256": "81832648e79e435de304e55fd79154ef2ca46510d6194a63b5b05d50ca2bdd11",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/REDATOR-IDENTIDADE-EDITORIAL-2026-09-17.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 4820,
+      "lines": 45,
+      "sha256": "c09d93a3d4d106c32ef37751ca71dc15004115fe75750f8e5e0213746bb77a8e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/REFINO-CONTEXTUAL-FUNIS-2026-09-18.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 11050,
+      "lines": 189,
+      "sha256": "01f970001068bdb6e45bae540cefd7a9d03e947ed30e51d24e2d255e89328851",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/REFINO-VISUAL-AVISOS-2026-09-18.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 6036,
+      "lines": 111,
+      "sha256": "545c2e5ce606a233e65ea5e935a12335d4d9e72956cc6fc130307234daa35bd3",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -3123,6 +3315,42 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/meta-adk-execution-tickets-20260911/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5108,
+      "lines": 87,
+      "sha256": "fd0b3513684dfcfcc710d178867e67ef1f99c670364e65180d6ad823a2bd8e0a",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-adk-loop-20260910/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4306,
+      "lines": 76,
+      "sha256": "7125c0575d652b5dfef329294e711751078734398dce571bd37352d26ba99e1f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-adk-review-20260911/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3000,
+      "lines": 58,
+      "sha256": "4496de3c442e690149fc5f8c901689a0ae3b44bebcc409df5205e75010923650",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/meta-big-ideas-20260909/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3567,6 +3795,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/meta-implementation-20260912/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3919,
+      "lines": 84,
+      "sha256": "08464496d5e79fab091f2d1dac89097844ae77a81407e055405fc59337b3d613",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/meta-operations-v1-final-local/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
@@ -3586,6 +3826,18 @@
       "bytes": 13774,
       "lines": 256,
       "sha256": "1de607d28bca6cfabce7409833285da1119e0a0339e78bb1983d921ba6fa8a21",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/meta-opportunities-20260911/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5937,
+      "lines": 86,
+      "sha256": "b3a436a42944b574a77ec9450d11a962e4b50ecf9fc55d53ed053900404147e0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4203,6 +4455,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/prensa-direcao-20260910/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4338,
+      "lines": 46,
+      "sha256": "7e5f50b9592ecfe7b5aa404485fffdefc655224cb116825349e6c77c4009fd69",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/prensa-refino-20260911/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5167,
+      "lines": 55,
+      "sha256": "e845178b0b920d986ae0ed63b623faa0f669a2be58d0781d12ec39b27fc154a6",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/qg-canary-reconciliation-2026-09-03/ADJUDICACAO.md",
       "extension": ".md",
       "classification": "documentation",
@@ -4279,9 +4555,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 15018,
-      "lines": 246,
-      "sha256": "044ae4831546405f24f70b3cb5e14f002c4f5d3ff3e66d3da259c8cd11a51a3c",
+      "bytes": 16927,
+      "lines": 265,
+      "sha256": "24262565871ba97f78939c00e8dc7991e6997bc1f7547a194095e6b79d7047ef",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -4587,6 +4863,114 @@
       "sql_risk": null
     },
     {
+      "path": "docs/closure/traffic-operating-cockpit-v2/AUDIT-BEFORE.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4902,
+      "lines": 65,
+      "sha256": "86f1a6290011e10d8023294f60beccb6cff1ec473e7e52f3c8d128bbdb87f425",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/BEFORE-AFTER.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7281,
+      "lines": 91,
+      "sha256": "a832a65bea713c1a6c7f68df818f93b0037c0c1a903ae8fb7327fd2a223bb10e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/CONTRAPROVAS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6998,
+      "lines": 114,
+      "sha256": "a8783a9017c6335b4493bbd6992d5c0ed46921ac449bd5649737a16fe4055b61",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/GATES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5217,
+      "lines": 102,
+      "sha256": "a9c3ad9922f26bf022654d1803a864d16396c9e048dcf0178117ea022be628b9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5827,
+      "lines": 117,
+      "sha256": "356801b7dd9d41a30235583542ba0eba8b2df087cae64a52463792f05285c479",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/MOTION-MAP.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3273,
+      "lines": 63,
+      "sha256": "d3ea2bbb00020fc2276c0a0a080c9d1361099e366d757374570cfb6c57e788e3",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/REMAINING-RISKS.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5278,
+      "lines": 102,
+      "sha256": "3c49644cfd886ff968ad61147f51eb0b07bcaaf1f9f518632529af2337103528",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/UX-ARCHITECTURE.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7005,
+      "lines": 127,
+      "sha256": "84e1fab022fcd339ac7cee7d45bb3c38391a709c915f02872079d30fa3041220",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-operating-cockpit-v2/VISUAL-QA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4244,
+      "lines": 84,
+      "sha256": "04285a6f2e90600de9edfe4eea27762332dd05b89482277a4f9395aa36e6992d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/closure/traffic-operational-closure-v2/HANDOFF.md",
       "extension": ".md",
       "classification": "documentation",
@@ -4642,6 +5026,18 @@
       "bytes": 4912,
       "lines": 84,
       "sha256": "c63382dac8947028e00b698f334453f37e3d3cf226c6f57cc0e3c91aa0c40df7",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/closure/traffic-production-last-mile-v1/PACOTE-DE-AUTORIZACAO-EXTERNA.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 9628,
+      "lines": 207,
+      "sha256": "11d3a79593189ce9606684c3e06e60c2982e8f322f0eab26905be49bece0b9b0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5182,6 +5578,30 @@
       "bytes": 14546,
       "lines": 268,
       "sha256": "725b1d0440276cb1d56234c1455e78e5204edcb8b1129365eba929cc27039292",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/creditoup-ssh.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2544,
+      "lines": 57,
+      "sha256": "be3c1f6b704bc8467f5e522a0c162083f1ed623d7c21cf9097393c6b06ac23d3",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/qg-reconciliation-20261007/EVIDENCE-LEDGER.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 111199,
+      "lines": 205,
+      "sha256": "4c4c34d822ffc32f248ff13605368e6bd7347fab1e41d7acc103d14fec365590",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5817,7 +6237,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "845f415f5553b0d21751c4ec2efe6a3da8851021a38f751924a50d7492b85684",
+      "sha256": "4e0aa2871bd6a12ea4f1f3d2a5af8c2f695007d3a96cfd825d64c8bb97c437a3",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6039,6 +6459,18 @@
       "sql_risk": null
     },
     {
+      "path": "funnelforge-migracao/referencia/hardening-wordpress/EDITORIAL-NOTICE.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 1743,
+      "lines": 35,
+      "sha256": "6917f2bf028e8eec157de68e0a4387de0516d3a269abb71baacfe4cfd7d4fb40",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "funnelforge-migracao/referencia/hardening-wordpress/README.md",
       "extension": ".md",
       "classification": "module-guide",
@@ -6250,6 +6682,18 @@
       "bytes": 5456,
       "lines": 93,
       "sha256": "5b4359390d1add4fa221d6e44b5533f4fab0324e440f2d628d17c5e95d3e912b",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "services/prensa/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 1472,
+      "lines": 34,
+      "sha256": "2f310bff4bd439f6d6d6f753afa9e8618e67a912ba91a9630a4929f165ef8d91",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7006,6 +7450,18 @@
       "bytes": 2299,
       "lines": 38,
       "sha256": "5ae764b028ab4a771decdec0d7d59a5fc842310de8c619be2f5cc51cc04b0c15",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "src/sql/pautador/06_run_editorial_v2.sql",
+      "extension": ".sql",
+      "classification": "sql-migration-line",
+      "tracked": true,
+      "bytes": 2175,
+      "lines": 37,
+      "sha256": "12ff8e659d2872233eaa4123fb0bc8a308b07fbe97b14580e576393f19166c0f",
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"
@@ -8943,6 +9399,66 @@
       "sql_risk": null
     },
     {
+      "path": "tools/meta-adk-review/EXECUTION.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2150,
+      "lines": 34,
+      "sha256": "01c8dabd54bcd3abc5e54a0b6796f831e0feb207884d60157a67c553a06310c8",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "tools/meta-adk-review/MISSION.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2875,
+      "lines": 54,
+      "sha256": "3a1cbf74a178a3d3453cf13e7d99da4462a1ca6d91b30f9572ee7f81dacc8208",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "tools/meta-adk-review/OPPORTUNITIES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3543,
+      "lines": 49,
+      "sha256": "0901a6a8c1bb2ec371c069dffb96d36e9a1ba5b2daff06e9b60dd792ca7d0a25",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "tools/meta-adk-review/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 4412,
+      "lines": 94,
+      "sha256": "74c354469462294c34fad3dc993aa6004f7e5f3c50e1fcc5ab409fcca9a187b9",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "tools/meta-adk-review/REFINEMENT-QUEUE.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4331,
+      "lines": 78,
+      "sha256": "26b603250286572679e15ac2cb0a92d327985e4e5759dd003b4d4725fe5f2325",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "tools/onepassword-smoke/README.md",
       "extension": ".md",
       "classification": "module-guide",
@@ -9031,9 +9547,9 @@
       "extension": ".md",
       "classification": "runtime-contract",
       "tracked": true,
-      "bytes": 56853,
-      "lines": 852,
-      "sha256": "c5c8b407f3214621f03ce557c0eb80a9f2f1d1d71451082756014be64455dfee",
+      "bytes": 57887,
+      "lines": 859,
+      "sha256": "a995745a565d70d49bce9427783f0d5ecac5f4b371b4784310a6df9b3bbac910",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

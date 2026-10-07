@@ -1,31 +1,31 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-09-10T14:48:07-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-07T11:51:27-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 761 arquivos: 549 Markdown e 212 SQL;
-- 761 versionados e 0 ainda não versionados;
+- 804 arquivos: 591 Markdown e 213 SQL;
+- 804 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 139 SQL com palavras de mutação de alto risco.
+- 140 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 24 |
-| `documentation` | 398 |
+| `audit` | 32 |
+| `documentation` | 430 |
 | `generated` | 2 |
-| `module-guide` | 38 |
+| `module-guide` | 40 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
 | `runtime-contract` | 20 |
 | `sql-diagnostic` | 5 |
-| `sql-migration-line` | 41 |
+| `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
 | `sql-needs-review` | 99 |
 | `sql-validation` | 12 |
@@ -84,6 +84,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/pautador/02_publicacao_por_projeto.sql` | `sql-migration-line` | 1 | 0 |
 | `src/sql/pautador/03_perfil_enxuto.sql` | `sql-migration-line` | 1 | 0 |
 | `src/sql/pautador/05_campanha_aponta_para_o_run.sql` | `sql-migration-line` | 1 | 0 |
+| `src/sql/pautador/06_run_editorial_v2.sql` | `sql-migration-line` | 1 | 0 |
 | `src/sql/production-maintenance.sql` | `sql-needs-lineage` | 1 | 0 |
 | `src/sql/refresh_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 28 |
 | `src/sql/refresh_campaign_highlights_v3.sql` | `sql-needs-lineage` | 2 | 16 |
@@ -194,6 +195,14 @@ estejam errados, mas impede aplicação automática.
 | `backend/app/motor_pautas/AUDITORIA-GEMINI-R6-BUG.md` | `audit` | — | 0 | 0 |
 | `backend/app/motor_pautas/REVISAO-CODEX.md` | `audit` | — | 0 | 0 |
 | `backend/app/motor_pautas/REVISAO-EXTERNA.md` | `audit` | — | 0 | 0 |
+| `docs/audits/CAMPANHA-3-FUNIS-ACHADOS-MOTOR-2026-09-17.md` | `audit` | — | 0 | 0 |
+| `docs/audits/CAMPANHA-3-FUNIS-EDUCACAO-2026-09-17.md` | `audit` | — | 0 | 0 |
+| `docs/audits/CORRECAO-3-FUNIS-HANDOFF-2026-09-18.md` | `audit` | — | 0 | 0 |
+| `docs/audits/CORRECAO-3-FUNIS-PREFLIGHT-2026-09-18.md` | `audit` | — | 0 | 0 |
+| `docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md` | `audit` | — | 0 | 0 |
+| `docs/audits/REDATOR-IDENTIDADE-EDITORIAL-2026-09-17.md` | `audit` | — | 0 | 0 |
+| `docs/audits/REFINO-CONTEXTUAL-FUNIS-2026-09-18.md` | `audit` | — | 0 | 0 |
+| `docs/audits/REFINO-VISUAL-AVISOS-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/AUDITORIA-EXTERNA.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/AUDITORIA-GEMINI-DNA-R2.md` | `audit` | — | 0 | 0 |
 | `docs/audits/motor-pautas/AUDITORIA-GEMINI-DNA-R3.md` | `audit` | — | 0 | 0 |
@@ -297,14 +306,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260909070930_meta_draft_media_authorization.sql` | `sql-needs-review` | medium | 3 | 4 |
 | `supabase/migrations/20260909073845_meta_draft_archive.sql` | `sql-needs-review` | high | 8 | 15 |
 | `supabase/migrations/20260909080926_meta_media_ledger_install.sql` | `sql-needs-review` | medium | 11 | 20 |
-| `supabase/migrations/20260909112458_meta_draft_regulatory_identity.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
-| `supabase/migrations/20260909114432_meta_account_draft_upload_authority.sql` | `sql-needs-review` | medium | 3 | 4 |
-| `supabase/migrations/20260909215941_creative_pack_append_revisions.sql` | `sql-needs-review` | high | 6 | 12 |
-| `supabase/migrations/20260909221222_meta_existing_post_draft.sql` | `sql-needs-review` | medium | 2 | 2 |
-| `supabase/migrations/20260909234342_creative_generation_versions.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/20260910075813_meta_flexible_texts_draft.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
-| `supabase/migrations/20260910081646_meta_campaign_naming_reservations.sql` | `sql-needs-review` | medium | 5 | 9 |
-| `supabase/migrations/20260910143000_gam_attribution_grain_router.sql` | `sql-needs-review` | high | 5 | 20 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
