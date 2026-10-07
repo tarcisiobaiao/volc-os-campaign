@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-07T15:14:40-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-07T16:20:43-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 806 arquivos: 593 Markdown e 213 SQL;
-- 806 versionados e 0 ainda não versionados;
+- 808 arquivos: 595 Markdown e 213 SQL;
+- 808 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 140 SQL com palavras de mutação de alto risco.
 
@@ -16,8 +16,8 @@ Gerado em `2026-10-07T15:14:40-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 32 |
-| `documentation` | 432 |
+| `audit` | 33 |
+| `documentation` | 433 |
 | `generated` | 2 |
 | `module-guide` | 40 |
 | `product-document` | 23 |
@@ -200,6 +200,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/CORRECAO-3-FUNIS-HANDOFF-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-3-FUNIS-PREFLIGHT-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md` | `audit` | — | 0 | 0 |
+| `docs/audits/MODELOS-FUNIL-2026-10-07.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REDATOR-IDENTIDADE-EDITORIAL-2026-09-17.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REFINO-CONTEXTUAL-FUNIS-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REFINO-VISUAL-AVISOS-2026-09-18.md` | `audit` | — | 0 | 0 |
@@ -305,7 +306,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260909013856_meta_campaign_draft_list.sql` | `sql-needs-review` | medium | 3 | 4 |
 | `supabase/migrations/20260909070930_meta_draft_media_authorization.sql` | `sql-needs-review` | medium | 3 | 4 |
 | `supabase/migrations/20260909073845_meta_draft_archive.sql` | `sql-needs-review` | high | 8 | 15 |
-| `supabase/migrations/20260909080926_meta_media_ledger_install.sql` | `sql-needs-review` | medium | 11 | 20 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

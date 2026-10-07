@@ -41,7 +41,8 @@ Estrutura planejada:
 {% endfor %}Keywords do plano: {{ pagina.keywords or "nenhuma" }}
 {% if editorial %}Contrato editorial do arquiteto: dúvida "{{ editorial.reader_question }}"; entrega "{{ editorial.useful_delivery }}"; rótulo de entrada "{{ editorial.cta_label }}".
 {% else %}Sem contrato editorial do arquiteto: derive a dúvida e a entrega do H1, do objetivo, da estrutura e do inventário, e marque a procedência.
-{% endif %}</pagina>
+{% endif %}</pagina>{% if jornada | default({}) %}
+{% include "jornada_da_pagina.jinja" %}{% endif %}
 
 <briefing_do_arquiteto>
 Tom e voz pedidos para o funil: {{ arquiteto.tone_voice or "não definido" }}

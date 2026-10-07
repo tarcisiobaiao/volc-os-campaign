@@ -1,0 +1,184 @@
+{
+  "_nota": "Fixture hermética do funil Creditoup/SENAC com a JORNADA coerente. Slugs como no funil auditado pelo relatório MiroFish (simulação qualitativa, 0/29 entrevistas transcritas): os achados dele entram aqui como hipóteses e casos de teste, nunca como métrica observada. Cada teste muta uma cópia para provar uma falha.",
+  "funnel_strategy": {
+    "avatar_summary": "Pessoa que procura curso gratuito no Senac e não sabe se a renda da família se enquadra nem onde se inscrever",
+    "tone_voice": "Direto e acolhedor, com a regra explicada em linguagem simples",
+    "total_pages": 5,
+    "jornada": {
+      "intencao_principal": "Conseguir vaga gratuita em curso do Senac",
+      "solucao_principal": "estado",
+      "checkpoint": "estado",
+      "hipotese_de_medicao": "Busca paga de alta intenção escolhe estado ou renda na LP; tráfego frio precisa da resposta na primeira dobra antes de qualquer escolha.",
+      "coortes": [
+        {"canal": "paid_search", "entrada": "senac_gratuito",
+         "promessa": "Veja se a renda da sua família dá direito ao curso gratuito e onde se inscrever no seu estado",
+         "profundidade": "guiada", "proximo_passo": "renda"},
+        {"canal": "discover", "entrada": "senac_gratuito",
+         "promessa": "Curso gratuito no Senac: a regra de renda em uma frase",
+         "profundidade": "resposta_direta", "proximo_passo": "estado"},
+        {"canal": "organic_search", "entrada": "renda",
+         "promessa": "Faça a conta da renda por pessoa do Programa Senac de Gratuidade",
+         "profundidade": "resposta_direta", "proximo_passo": "curso"},
+        {"canal": "social", "entrada": "estado",
+         "promessa": "O link oficial do Senac do seu estado",
+         "profundidade": "resposta_direta", "proximo_passo": "inscricao"}
+      ],
+      "evidencias": [
+        {"natureza": "simulacao", "afirmacao": "Par renda ↔ curso recicla leitores sem avanço quando o CTA de renda se repete",
+         "fonte": "simulacao:mirofish-creditoup-senac-2026-10-01", "confianca": "media"},
+        {"natureza": "hipotese", "afirmacao": "A página do estado é o checkpoint com a saída oficial mais qualificada",
+         "fonte": "arquiteto"}
+      ]
+    }
+  },
+  "pages": [
+    {"position": 1, "page_title": "Curso gratuito no Senac: quem tem direito e como se inscrever", "subtitles": ["Quem tem direito à vaga gratuita", "Onde fica a inscrição"]},
+    {"position": 2, "page_title": "A renda da sua família se enquadra no PSG?", "subtitles": ["Como fazer a conta", "Exemplo prático"]},
+    {"position": 3, "page_title": "Tipos de curso do Senac e como escolher o seu", "subtitles": ["Áreas e modalidades", "Presencial ou EAD"]},
+    {"position": 4, "page_title": "Senac do seu estado: o caminho oficial das 27 UFs", "subtitles": ["Regionais por região", "PSG e bolsas por estado"]},
+    {"position": 5, "page_title": "Inscrição no Senac passo a passo", "subtitles": ["Antes de se inscrever", "Documentos", "Depois da inscrição"]}
+  ],
+  "writing_jobs": [
+    {"job_id": "write_p1", "writer_briefing": {
+      "page_num": 1, "headline": "Curso gratuito no Senac: quem tem direito e como se inscrever",
+      "objective": "Leitor quer saber se consegue curso gratuito e por onde começar",
+      "current_url": "curso-gratuito-senac", "cta_text": "Fazer a conta da renda",
+      "keywords": "curso gratuito senac, senac gratuito",
+      "editorial": {
+        "reader_question": "Como conseguir um curso gratuito no Senac?",
+        "useful_delivery": "A regra de renda do PSG em uma frase e onde a inscrição acontece",
+        "cta_label": "Ver quem tem direito ao curso gratuito",
+        "links": [
+          {"target": "tipos-de-curso-senac-p1", "reason": "Quem já sabe que se enquadra e quer escolher o curso"},
+          {"target": "por-onde-comecar-senac-pr", "reason": "Quem ainda não sabe se a renda se enquadra"},
+          {"target": "bolsas-de-estudo-senac-p2", "reason": "Quem já escolheu e quer o Senac do estado"}
+        ]
+      },
+      "jornada": {
+        "duvida_id": "senac_gratuito",
+        "pergunta_principal": "Como conseguir um curso gratuito no Senac?",
+        "trabalho_do_leitor": "Descobrir se tem direito e qual é o primeiro passo",
+        "resposta_imediata": "O Programa Senac de Gratuidade reserva vagas para famílias com renda de até dois salários mínimos por pessoa; a inscrição é feita na regional do seu estado.",
+        "coortes_de_entrada": ["paid_search", "discover"],
+        "ja_resolvido": [],
+        "proxima_duvida": "renda",
+        "entrada_direta": "autocontida",
+        "saida_oficial": {"esperada": false, "classificacao": "nao_aplicavel"},
+        "monetizacao": {"papel": "secundario", "restricoes": ["nenhum anúncio antes da resposta imediata"]},
+        "hipotese_de_medicao": "A maior parte da busca paga escolhe renda ou estado; curiosidade sai satisfeita com a resposta"
+      }
+    }},
+    {"job_id": "write_p2", "writer_briefing": {
+      "page_num": 2, "headline": "A renda da sua família se enquadra no PSG?",
+      "objective": "Leitor quer saber se a renda da família se enquadra",
+      "current_url": "por-onde-comecar-senac-pr", "cta_text": "Ver como achar o meu curso",
+      "keywords": "renda psg senac",
+      "editorial": {
+        "reader_question": "Minha renda se enquadra no Programa Senac de Gratuidade?",
+        "useful_delivery": "A conta da renda por pessoa com exemplo prático",
+        "cta_label": "Fazer a conta da renda",
+        "links": [
+          {"target": "bolsas-de-estudo-senac-p2", "reason": "Quem se enquadra e já sabe o curso vai direto ao estado"},
+          {"target": "tipos-de-curso-senac-p1", "reason": "Quem se enquadra precisa escolher o curso"}
+        ]
+      },
+      "jornada": {
+        "duvida_id": "renda",
+        "pergunta_principal": "Minha renda se enquadra no Programa Senac de Gratuidade?",
+        "trabalho_do_leitor": "Fazer a conta da renda por pessoa",
+        "resposta_imediata": "Some a renda bruta da família e divida pelo número de moradores: até dois salários mínimos por pessoa se enquadra.",
+        "coortes_de_entrada": ["organic_search", "social"],
+        "ja_resolvido": [],
+        "proxima_duvida": "curso",
+        "entrada_direta": "autocontida",
+        "saida_oficial": {"esperada": false, "classificacao": "nao_aplicavel"},
+        "monetizacao": {"papel": "secundario", "restricoes": []},
+        "hipotese_de_medicao": "Quem fez a conta segue para curso; quem não se enquadra sai com a resposta"
+      }
+    }},
+    {"job_id": "write_p3", "writer_briefing": {
+      "page_num": 3, "headline": "Tipos de curso do Senac e como escolher o seu",
+      "objective": "Leitor quer escolher o tipo de curso",
+      "current_url": "tipos-de-curso-senac-p1", "cta_text": "Achar o Senac do meu estado",
+      "keywords": "tipos de curso senac",
+      "editorial": {
+        "reader_question": "Qual curso do Senac eu posso fazer?",
+        "useful_delivery": "As áreas, modalidades e como escolher entre presencial e EAD",
+        "cta_label": "Ver como achar o meu curso",
+        "links": [
+          {"target": "bolsas-de-estudo-senac-p2", "reason": "Escolha de curso depende da oferta regional"}
+        ]
+      },
+      "jornada": {
+        "duvida_id": "curso",
+        "pergunta_principal": "Qual curso do Senac eu posso fazer?",
+        "trabalho_do_leitor": "Escolher área e modalidade",
+        "resposta_imediata": "O Senac oferece cursos livres, técnicos e de qualificação, presenciais e EAD; a oferta gratuita varia por estado.",
+        "coortes_de_entrada": ["organic_search"],
+        "ja_resolvido": ["renda"],
+        "proxima_duvida": "estado",
+        "entrada_direta": "autocontida",
+        "saida_oficial": {"esperada": true, "classificacao": "prematura",
+                          "condicao": "Depois de localizar o Senac do estado, quando a oferta regional já é conhecida"},
+        "monetizacao": {"papel": "secundario", "restricoes": []},
+        "hipotese_de_medicao": "Quem escolheu o curso segue para o estado"
+      }
+    }},
+    {"job_id": "write_p4", "writer_briefing": {
+      "page_num": 4, "headline": "Senac do seu estado: o caminho oficial das 27 UFs",
+      "objective": "Leitor quer o Senac do estado",
+      "current_url": "bolsas-de-estudo-senac-p2", "cta_text": "Ver o passo a passo da inscrição",
+      "keywords": "senac do meu estado",
+      "editorial": {
+        "reader_question": "Onde fica o Senac do meu estado?",
+        "useful_delivery": "As regionais e páginas de PSG das 27 UFs organizadas por região",
+        "cta_label": "Achar o Senac do meu estado",
+        "links": [
+          {"target": "portal-do-senac-do-seu-estado-p3", "reason": "Estado encontrado; a inscrição é a próxima pergunta"}
+        ]
+      },
+      "jornada": {
+        "duvida_id": "estado",
+        "pergunta_principal": "Onde fica o Senac do meu estado?",
+        "trabalho_do_leitor": "Encontrar a regional e o PSG da UF",
+        "resposta_imediata": "Cada estado tem a própria regional do Senac com as vagas gratuitas; escolha a sua UF na lista por região.",
+        "coortes_de_entrada": ["paid_search", "social"],
+        "ja_resolvido": ["renda", "curso"],
+        "proxima_duvida": "inscricao",
+        "condicao_terminal": "Leitor localizou a regional e a página de PSG do seu estado",
+        "entrada_direta": "autocontida",
+        "saida_oficial": {"esperada": true, "classificacao": "boa",
+                          "condicao": "Regional do estado localizada; a tarefa do leitor está resolvida"},
+        "monetizacao": {"papel": "secundario", "restricoes": ["nenhum anúncio entre a lista de UFs e o link oficial"]},
+        "hipotese_de_medicao": "Checkpoint: a saída oficial daqui é a boa saída do funil"
+      }
+    }},
+    {"job_id": "write_p5", "writer_briefing": {
+      "page_num": 5, "headline": "Inscrição no Senac passo a passo",
+      "objective": "Leitor quer se inscrever",
+      "current_url": "portal-do-senac-do-seu-estado-p3", "cta_text": "Consultar no canal oficial",
+      "keywords": "inscrição senac",
+      "editorial": {
+        "reader_question": "Como faço a inscrição no Senac?",
+        "useful_delivery": "Os passos, documentos e regras regionais da inscrição",
+        "cta_label": "Ver o passo a passo da inscrição",
+        "links": []
+      },
+      "jornada": {
+        "duvida_id": "inscricao",
+        "pergunta_principal": "Como faço a inscrição no Senac?",
+        "trabalho_do_leitor": "Saber os passos e documentos da inscrição",
+        "resposta_imediata": "A inscrição gratuita é feita no site da regional do seu estado, com documento, comprovante de renda e de escolaridade.",
+        "coortes_de_entrada": ["organic_search"],
+        "ja_resolvido": ["renda", "curso", "estado"],
+        "proxima_duvida": "",
+        "condicao_terminal": "Leitor sabe os passos e documentos e segue para a regional",
+        "entrada_direta": "autocontida",
+        "saida_oficial": {"esperada": true, "classificacao": "boa",
+                          "condicao": "Passos e documentos explicados"},
+        "monetizacao": {"papel": "secundario", "restricoes": []},
+        "hipotese_de_medicao": "Quem chega aqui sai pela regional oficial"
+      }
+    }}
+  ]
+}

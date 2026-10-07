@@ -775,6 +775,8 @@ class ContextoDaRevisao:
     revalidar: Callable[[Documento], list[Issue]] | None = None
     normalizar: Callable[[Documento], tuple[Documento, dict | None]] | None = None
     pacote_vencido: bool = False
+    # A jornada da página (`jornada.contexto_de_jornada`); vazia sem contrato.
+    jornada: dict = field(default_factory=dict)
 
 
 _MARCA_DE_DADO_RE = re.compile(r"<\s*(/?)\s*dados_nao_confiaveis", re.I)
@@ -873,6 +875,7 @@ def montar_prompt_do_revisor(doc: Documento, ctx: ContextoDaRevisao, *,
         exemplo_de_notas="{" + ", ".join(f'"{c}": <0-10>' for c in criterios) + "}",
         blocos=blocos, campos=list(doc.campos()), tem_widget=bool(doc.widget_texto()),
         identidade=ctx.identidade or {},
+        jornada=ctx.jornada or {},
         regras=politicas.get("regras") or [], notas_c=politicas.get("notas_c") or [],
         pacote=politicas.get("resumo") or {}, max_patches=MAX_PATCHES_POR_RODADA,
         compliance_notice_text=COMPLIANCE_NOTICE_TEXT,

@@ -1,0 +1,26 @@
+# PREÇOS OFICIAIS por 1M de tokens (USD), consultados em 2026-10-07 nas páginas
+# dos provedores. Só documentação oficial; nenhum número aqui é estimativa.
+# O ledger do run usa `litellm.completion_cost`, cuja tabela pode divergir desta:
+# o benchmark recalcula com ESTE arquivo e mostra as duas contas lado a lado.
+consultado_em: "2026-10-07"
+fontes:
+  google: https://ai.google.dev/gemini-api/docs/pricing
+  openai: https://developers.openai.com/api/docs/pricing
+modelos:
+  gemini-3.5-flash:      {entrada: 1.50, saida: 9.00, fonte: google}
+  gemini-3.5-flash-lite: {entrada: 0.30, saida: 2.50, fonte: google, nota: "Google Search indisponível no tier pago"}
+  gemini-3.8-flash:      {entrada: 0.75, saida: 3.75, fonte: google, nota: "preço promocional até 2026-12-31; 1.50/7.50 a partir de 2027-01-01"}
+  gemini-3.1-pro-preview: {entrada: 2.00, saida: 12.00, fonte: google, nota: "prompts <=200k tokens; preview"}
+  gemini-2.5-flash:      {entrada: 0.30, saida: 2.50, fonte: google}
+  gpt-4.1:               {entrada: 2.00, saida: 8.00, fonte: openai}
+  gpt-4.1-mini:          {entrada: 0.40, saida: 1.60, fonte: openai}
+  gpt-4o-mini:           {entrada: 0.15, saida: 0.60, fonte: openai}
+  gpt-5:                 {entrada: 1.25, saida: 10.00, fonte: openai}
+  gpt-5-mini:            {entrada: 0.25, saida: 2.00, fonte: openai}
+  gpt-5.1:               {entrada: 1.25, saida: 10.00, fonte: openai}
+  gpt-5.2:               {entrada: 1.75, saida: 14.00, fonte: openai}
+# Busca do Google (Gemini 3.x): 5.000 requisições/mês grátis, depois US$ 14 por 1.000.
+busca_google_usd_por_1000: 14.0
+# gemini-2.0-flash (default de `pautador_gemini_model` no backend) NÃO aparece na
+# página oficial consultada: tratar como indisponível até prova em contrário.
+nao_listados: [gemini-2.0-flash]

@@ -48,8 +48,15 @@ def test_ida_e_volta_pelo_checkpoint_nao_perde_nada_do_que_existia():
     original = json.loads(FIXTURE.read_text(encoding="utf-8"))
     de_volta = json.loads(RunState.from_json(_carregar().to_json()).to_json())
     for chave in ("run_id", "briefing_text", "drafts", "seo", "images", "image_reviews",
-                  "screenshots", "official_links", "published", "step_status"):
+                  "screenshots", "official_links", "published"):
         assert de_volta[chave] == original[chave], chave
+    # `model_requested` (07/10/2026) é aditivo: os campos antigos de cada passo
+    # ficam intactos e o novo nasce vazio num estado anterior a ele.
+    assert de_volta["step_status"].keys() == original["step_status"].keys()
+    for passo, antigo in original["step_status"].items():
+        novo = de_volta["step_status"][passo]
+        assert {k: novo[k] for k in antigo} == antigo, passo
+        assert novo["model_requested"] == ""
     assert [p["slug"] for p in de_volta["plan"]["pages"]] == [
         p["slug"] for p in original["plan"]["pages"]]
     for n, facts in original["facts"].items():

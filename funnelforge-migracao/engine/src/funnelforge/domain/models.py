@@ -104,6 +104,112 @@ def resolve_route(route: Route, *, domain: str, post_type: str,
     raise ValueError(f"unknown route kind: {kind}")
 
 
+# ---------------------------------------------------------------------------
+# A JORNADA DO LEITOR (07/10/2026). Contrato OPCIONAL e aditivo, irmão do
+# `editorial`: o `editorial` diz o que a página entrega e para onde ela liga; a
+# `jornada` diz EM QUE PONTO do caminho o leitor está — o que ele já resolveu,
+# qual a próxima dúvida ainda aberta, quando a tarefa acaba e se a saída para a
+# fonte oficial ali é boa ou prematura.
+#
+# ⚠️ Fica FORA do `EditorialIntent` de propósito: `editorial.model_dump()` vai
+# cru para os prompts do ramo antigo, cujo ouro é byte a byte. Um campo novo lá
+# dentro mudaria o prompt de todo card que já tem `editorial`.
+#
+# Toda referência entre páginas usa `duvida_id`, nunca slug: o slug ganha
+# sufixo de posição no backend e na ponte; a dúvida não muda de nome.
+# ---------------------------------------------------------------------------
+
+#: De onde o leitor chega. Vocabulário fechado: canal, não pessoa — o contrato
+#: não carrega estado pessoal nem identificador de sessão.
+CANAIS_DE_ENTRADA: tuple[str, ...] = (
+    "paid_search", "organic_search", "discover", "social", "display", "direct",
+)
+#: Canais de tráfego FRIO (sem tarefa declarada na busca). Paid Search de alta
+#: intenção e estes não recebem a mesma promessa por padrão.
+CANAIS_FRIOS: frozenset[str] = frozenset({"discover", "social", "display"})
+
+Canal = Literal["paid_search", "organic_search", "discover", "social", "display", "direct"]
+ClassificacaoDeSaida = Literal["boa", "prematura", "nao_aplicavel"]
+NaturezaDoDado = Literal["hipotese", "simulacao", "observacao_real"]
+
+
+class EvidenciaDaJornada(BaseModel):
+    """Uma premissa do desenho, com a NATUREZA dita: hipótese do arquiteto,
+    simulação (ex.: MiroFish) ou observação real. Lista vazia é ausência
+    explícita de evidência — nunca é preenchida por suposição."""
+    natureza: NaturezaDoDado
+    afirmacao: str = Field(min_length=1)
+    fonte: str = ""
+    confianca: Literal["baixa", "media", "alta"] | None = None
+
+    @model_validator(mode="after")
+    def _fonte_quando_nao_e_hipotese(self) -> "EvidenciaDaJornada":
+        if self.natureza != "hipotese" and not self.fonte.strip():
+            raise ValueError(f"evidência de natureza '{self.natureza}' sem fonte")
+        if self.natureza == "simulacao" and not self.fonte.startswith("simulacao:"):
+            raise ValueError("simulação precisa de fonte 'simulacao:<origem>'")
+        if self.natureza == "observacao_real" and self.fonte.startswith(
+                ("simulacao:", "hipotese:")):
+            raise ValueError("observação real não pode vir de simulação nem de hipótese")
+        return self
+
+
+class SaidaOficialPrevista(BaseModel):
+    """A saída para a fonte oficial NESTA página. `classificacao` é o que o
+    arquiteto declarou; a régua determinística (`jornada.classificar_saida_
+    oficial`) recalcula e a divergência vira achado."""
+    esperada: bool = False
+    classificacao: ClassificacaoDeSaida = "nao_aplicavel"
+    condicao: str = ""
+    justificativa: str = ""
+
+
+class MonetizacaoDaPagina(BaseModel):
+    """O papel do anúncio no desenho da página e o que ele não pode fazer."""
+    papel: Literal["nenhum", "secundario", "principal"] = "secundario"
+    restricoes: list[str] = []
+
+
+class JornadaDaPagina(BaseModel):
+    duvida_id: str = Field(min_length=1, pattern=r"^[a-z0-9_]+$")
+    pergunta_principal: str = Field(min_length=1)
+    trabalho_do_leitor: str = ""
+    # A promessa da primeira dobra. Vazio é permitido no MODELO para que o
+    # revisor de esqueleto reprove com o nome certo (`lp_so_roteia`,
+    # `resposta_imediata_ausente`) em vez de um erro de schema.
+    resposta_imediata: str = ""
+    coortes_de_entrada: list[Canal] = []
+    ja_resolvido: list[str] = []
+    proxima_duvida: str = ""
+    condicao_terminal: str = ""
+    entrada_direta: Literal["autocontida", "depende_de_contexto"] = "autocontida"
+    saida_oficial: SaidaOficialPrevista = SaidaOficialPrevista()
+    monetizacao: MonetizacaoDaPagina = MonetizacaoDaPagina()
+    # duvida_id do destino -> por que este link de volta tem ganho real (ex.:
+    # "quem entrou direto pela busca ainda não fez a conta"). Sem isto, um
+    # link que fecha ciclo ou reoferece dúvida resolvida é falha estrutural.
+    retornos_justificados: dict[str, str] = {}
+    hipotese_de_medicao: str = ""
+    evidencias: list[EvidenciaDaJornada] = []
+
+
+class CoorteDeEntrada(BaseModel):
+    canal: Canal
+    entrada: str = Field(min_length=1)          # duvida_id da página de entrada
+    promessa: str = Field(min_length=1)
+    profundidade: Literal["resposta_direta", "guiada"] = "guiada"
+    proximo_passo: str = ""                     # duvida_id ("" = resolve ali)
+
+
+class JornadaDoFunil(BaseModel):
+    intencao_principal: str = Field(min_length=1)
+    solucao_principal: str = ""                 # duvida_id
+    checkpoint: str = ""                        # duvida_id
+    coortes: list[CoorteDeEntrada] = []
+    hipotese_de_medicao: str = ""
+    evidencias: list[EvidenciaDaJornada] = []
+
+
 class PageTypeSpec(BaseModel):
     role: PageRole
     allowed_targets: list[str]
@@ -141,6 +247,9 @@ class Page(BaseModel):
     # superfície possível entre os dois projetos -- uma string por página, sem
     # acoplar modelos. Ver `ENGAJAMENTO_PARA_ARQUETIPO` em pipeline/steps.py.
     engajamento: str = ""
+    # Ver `JornadaDaPagina`. None = card anterior à jornada (roteamento e
+    # prompts exatamente como antes).
+    jornada: JornadaDaPagina | None = None
 
 
 def effective_role(page: Page) -> PageRole:
@@ -257,6 +366,7 @@ class FunnelPlan(BaseModel):
     contexto_de_leitura: ContextoDeLeitura | None = None
     contexto_de_busca: TermosDeBusca | None = None
     contexto_de_anuncio: ContextoDeAnuncio | None = None
+    jornada: JornadaDoFunil | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -466,6 +576,9 @@ class StepResult(BaseModel):
     step: str
     status: StepStatus
     model_used: str = ""
+    # O modelo que a config PEDIU. Com `model_used` diferente, o status é
+    # FALLBACK — e os dois nomes ficam lado a lado no estado e no relatório.
+    model_requested: str = ""
     attempts: int = 0
     issues: list[Issue] = []
     artifact_path: str | None = None
@@ -567,6 +680,10 @@ class RunState(BaseModel):
     # imagem, prints). Nada mais pode mudar o texto depois do recibo.
     normalizacoes: dict[int, list[dict]] = {}
     decoracoes: dict[int, list[dict]] = {}
+    # REVISÃO GLOBAL do funil pronto (só com `jornada`): uma verificação
+    # consolidada depois da redação, com achados localizados e PROPOSTAS para
+    # decisão humana. Não reescreve nada. Vazio = não rodou.
+    revisao_global: dict = {}
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

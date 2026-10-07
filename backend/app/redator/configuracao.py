@@ -98,6 +98,12 @@ QUEM_USA_O_PROMPT: Dict[str, str] = {
     "interior_editorial.jinja": "os dados e as regras de redação das páginas "
                                 "interiores (base factual, links, anúncios), incluído "
                                 "nos redatores das soluções e dos hubs",
+    # 07/10/2026 (P10-T22)
+    "jornada_da_pagina.jinja": "a jornada do leitor na página (pergunta, resposta da "
+                               "primeira dobra, o que já foi resolvido, próxima dúvida, "
+                               "saída oficial boa ou prematura, limites de anúncio), "
+                               "incluída só quando o card traz `jornada` no contrato do "
+                               "leitor, no juiz, no briefing e no revisor",
     "image_review.jinja": "a revisão da imagem gerada (logos, insígnias oficiais, "
                           "dados pessoais, qualidade) antes de ela entrar na página",
     # fluxo editorial v2 — só roda com `run.editorial_v2` (config ou perfil do funil)

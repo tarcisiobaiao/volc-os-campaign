@@ -68,6 +68,10 @@ def page_factory(ai_output: Dict[str, Any]) -> Dict[str, Any]:
                     "skeleton": f"- {structure_text}",
                     "keywords": keywords_text,
                     "editorial": page.get("editorial"),
+                    # Jornada do leitor (07/10/2026): viaja crua até a ponte do
+                    # motor, que a valida (`briefing_volc._jornada`). Referências
+                    # por duvida_id, então o sufixo de slug não a afeta.
+                    "jornada": page.get("jornada"),
                     # R4: intro/fechamento (Task 6) propagados para o briefing do
                     # writer. Default "" p/ compat com páginas mock/fallback que
                     # ainda não têm esses campos.
@@ -109,6 +113,7 @@ def architect_pages_to_funnel_pages(ai_output: Dict[str, Any], persona_fallback:
                 "subtitles": subtitles,
                 "internal_links": links,
                 "editorial": p.get("editorial"),
+                "jornada": p.get("jornada"),
                 # R4: intro/fechamento (Task 6) propagados para a FunnelPage
                 # canônica. Default "" p/ compat com páginas mock/fallback que
                 # ainda não têm esses campos.

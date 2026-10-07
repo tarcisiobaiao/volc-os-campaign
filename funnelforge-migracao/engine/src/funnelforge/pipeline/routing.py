@@ -7,6 +7,7 @@ from funnelforge.domain.models import (
     FunnelPlan, Issue, Page, PageRole, Route, effective_role, resolve_route,
 )
 from funnelforge.pipeline.doctrine import APPROVED_CTA_EXEMPLARS
+from funnelforge.pipeline.jornada import alvo_da_proxima_duvida, revisar_esqueleto
 from funnelforge.pipeline.pagespec import _STOP, _sig_tokens, pagespec_for
 
 
@@ -121,6 +122,14 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
             routes.append(Route(
                 placement=_placement(len(routes), len(contract.links)), kind="funnel",
                 target=target.slug, anchor=target.editorial.cta_label, reason=link.reason))
+        principal = alvo_da_proxima_duvida(plan, page)
+        if principal is not None:
+            # PROGRESSO, não ordem do card: com jornada, o CTA principal (hero)
+            # é o destino que resolve a PRÓXIMA dúvida ainda aberta. Os demais
+            # mantêm a ordem de relevância do arquiteto.
+            routes.sort(key=lambda r: r.target != principal)
+            routes = [r.model_copy(update={"placement": _placement(i, len(routes))})
+                      for i, r in enumerate(routes)]
         for route in routes:
             resolve_route(route, domain=settings.site.domain, post_type=settings.site.post_type)
         pending[page.slug] = routes
@@ -356,4 +365,9 @@ def validate_funnel_graph(plan: FunnelPlan, settings: Settings, *,
             code="terminal_no_exit",
             message=f"Pagina terminal '{solutions[-1].slug}' sem saida {exit_kind}."))
     # Destination priority belongs to the editorial contract, not hub rotation.
+    # JORNADA: os bloqueantes do revisor de esqueleto (loop sem ganho, CTA de
+    # dúvida já resolvida, LP que só roteia, beco sem saída...) são falha de
+    # GRAFO — entram aqui para cair no mesmo portão que aborta o run antes da
+    # pesquisa. Sem jornada no plano, a lista abaixo é vazia.
+    issues.extend(revisar_esqueleto(plan).bloqueantes)
     return issues

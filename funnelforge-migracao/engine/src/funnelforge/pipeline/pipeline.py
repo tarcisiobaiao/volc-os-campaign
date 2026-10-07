@@ -1,6 +1,7 @@
 # funnel-forge/src/funnelforge/pipeline/pipeline.py
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,6 +19,12 @@ from funnelforge.domain.models import (
 )
 from funnelforge.pipeline import steps as st
 from funnelforge.pipeline.budget import OrcamentoEstourado
+from funnelforge.pipeline.jornada import (
+    contrato_de_medicao,
+    revisar_esqueleto,
+    revisar_funil_pronto,
+    tem_jornada,
+)
 from funnelforge.pipeline.routing import (
     build_funnel_routes,
     reachable_slugs,
@@ -158,6 +165,13 @@ def _populate_routes(state: RunState, deps: Deps) -> None:
     if graph_issues:
         state.step_status["funnel_graph"] = StepResult(
             step="funnel_graph", status=StepStatus.FAILED, issues=graph_issues)
+    if tem_jornada(plan):
+        # Os BLOQUEANTES do revisor de esqueleto já estão no `funnel_graph`
+        # (via validate_funnel_graph). Aqui ficam os AVISOS, para o relatório
+        # e para o operador: a prova de que o mapa foi revisado antes do gasto.
+        state.step_status["revisao_esqueleto"] = StepResult(
+            step="revisao_esqueleto", status=StepStatus.OK,
+            issues=revisar_esqueleto(plan).avisos)
 
 
 def run_pipeline(
@@ -237,13 +251,18 @@ def run_pipeline(
                 step="expand_presell_hubs", status=StepStatus.FAILED,
                 issues=[Issue(code="expand_error", message=str(exc))])
         st.dedupe_slugs(state.plan)
+        # O GRAFO ANTES DA PRIMEIRA CHAMADA PAGA. O roteamento não depende do
+        # `engajamento`; o classificador abaixo é uma chamada de LLM, e um
+        # funil estruturalmente quebrado (grafo ou jornada) não deve pagar nem
+        # ela — o portão logo adiante aborta o run de qualquer jeito.
+        _populate_routes(state, deps)
         # Classifica a FORMA DA PERGUNTA de cada solução -> `page.engajamento`,
         # que decide qual ferramenta interativa a página recebe. Roda aqui
         # porque precisa do plano já expandido e com slugs finais, e antes do
         # checkpoint, para que um resume não reclassifique. 100% fail-safe:
         # qualquer problema usa inferência semântica sobre H1/estrutura.
-        st.declarar_engajamento(state, deps)
-        _populate_routes(state, deps)
+        if not _falhou(state, "funnel_graph"):
+            st.declarar_engajamento(state, deps)
 
     # RAMO EDITORIAL NOVO: decidido UMA vez por execução e gravado no estado
     # (pegajoso: um run que nasceu no ramo novo continua nele). Desligado, o
@@ -500,6 +519,23 @@ def run_pipeline(
             _checkpoint(state, deps)
             continue
 
+    # REVISÃO GLOBAL do funil pronto (só com jornada): UMA passada
+    # determinística sobre todos os rascunhos — message match, CTA repetido,
+    # loop, saída oficial cedo/tarde, promessa fora da primeira dobra, órfã,
+    # beco. Não reescreve nada e não custa chamada: os achados são propostas
+    # localizadas para a decisão humana (draft por padrão, aprovação humana).
+    if tem_jornada(state.plan):
+        revisao = revisar_funil_pronto(state, deps.settings)
+        if revisao:
+            state.revisao_global = revisao
+            state.step_status["revisao_global"] = StepResult(
+                step="revisao_global", status=StepStatus.OK,
+                issues=[Issue(code=a["regra"],
+                              message=(f"[p{a['pagina']} {a['duvida_id']}] "
+                                       f"({a['severidade']}) {a['localizador']}: "
+                                       f"{a['evidencia']} → {a['proposta']}"))
+                        for a in revisao["achados"]])
+
     _write_report(state, deps)
     _checkpoint(state, deps)
     return state
@@ -686,8 +722,10 @@ def _write_report(state: RunState, deps: Deps) -> None:
     lines.append("")
     lines.append("## Detalhe dos passos")
     for key, res in state.step_status.items():
+        pedido = (f", pedido={res.model_requested}"
+                  if res.model_requested and res.status is StepStatus.FALLBACK else "")
         lines.append(f"- `{key}`: {res.status.value} (tentativas={res.attempts}, "
-                     f"modelo={res.model_used or 'n/a'})")
+                     f"modelo={res.model_used or 'n/a'}{pedido})")
         for issue in res.issues:
             lines.append(f"  - [{issue.code}] {issue.message}")
 
@@ -716,7 +754,42 @@ def _write_report(state: RunState, deps: Deps) -> None:
     for key, ptok, ctok, cst, lat in led["per_step"]:
         lines.append(f"| {key} | {ptok} | {ctok} | {cst:.6f} | {lat} |")
 
+    lines.extend(_jornada_no_relatorio(state, run_dir))
     (run_dir / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _jornada_no_relatorio(state: RunState, run_dir: Path) -> list[str]:
+    """Artefatos da jornada: `revisao_global.json` e `medicao.json`.
+
+    O contrato de medição só sai de um mapa que passou no portão: medir um
+    funil estruturalmente quebrado seria medir o que não vai existir. Nenhum
+    tracking é implantado — o arquivo diz o que medir, de onde, e com que
+    natureza (hipótese, simulação, observação real)."""
+    plan = state.plan
+    if not tem_jornada(plan) or _falhou(state, "funnel_graph"):
+        return []
+    assert plan is not None
+    achados = list((state.revisao_global or {}).get("achados") or [])
+    contrato = contrato_de_medicao(plan, state.run_id, achados=achados)
+    (run_dir / "medicao.json").write_text(contrato.model_dump_json(indent=2), encoding="utf-8")
+    if state.revisao_global:
+        (run_dir / "revisao_global.json").write_text(
+            json.dumps(state.revisao_global, ensure_ascii=False, indent=2), encoding="utf-8")
+    avisos = state.step_status.get("revisao_esqueleto")
+    materiais = [a for a in achados if a.get("severidade") == "material"]
+    linhas = ["", "## Jornada do leitor", "",
+              f"- Revisão do esqueleto (antes do gasto): aprovada, "
+              f"{len(avisos.issues) if avisos else 0} aviso(s).",
+              f"- Revisão global do funil pronto: "
+              f"{(state.revisao_global or {}).get('decisao', 'não rodou')} — "
+              f"{len(materiais)} achado(s) material(is), {len(achados) - len(materiais)} aviso(s). "
+              "Nenhum texto alterado.",
+              f"- Saídas oficiais: " + ", ".join(
+                  f"{k}={v}" for k, v in contrato.saidas_oficiais.items()),
+              f"- Contrato de medição: medicao.json ({len(contrato.sinais)} sinais previstos, "
+              f"{len(contrato.observadas())} observação(ões) real(is)). Proposta de nova "
+              "versão exige aprovação humana; nada é publicado ou reescrito por código."]
+    return linhas
 
 
 def _cost_summary_lines(led: dict, state: RunState, deps: Deps) -> list[str]:

@@ -68,6 +68,8 @@ from funnelforge.domain.models import (
     ContextoDeAnuncio,
     ContextoDeLeitura,
     FunnelPlan,
+    JornadaDaPagina,
+    JornadaDoFunil,
     Page,
     PageRole,
     TermosDeBusca,
@@ -244,6 +246,23 @@ def _contexto_de_leitura(arq: dict[str, Any]) -> ContextoDeLeitura | None:
     return leitura if (leitura.perguntas_paa or leitura.tensao) else None
 
 
+def _jornada(bruto: Any, onde: str, modelo: type) -> Any:
+    """A jornada (da página ou do funil). Ausente -> None (card anterior ao
+    contrato). Presente e quebrada -> ValueError com o campo: diferente dos
+    contextos acima, a jornada DECIDE rota e portão, e rebaixá-la em silêncio
+    para "sem jornada" trocaria o roteamento do funil sem ninguém saber."""
+    if bruto is None:
+        return None
+    try:
+        if not isinstance(bruto, dict):
+            raise TypeError(f"esperava objeto, veio {type(bruto).__name__}")
+        return modelo.model_validate(bruto)
+    except ValidationError as exc:
+        raise ValueError(f"{onde}: jornada inválida ({_primeiro_erro(exc)})") from exc
+    except TypeError as exc:
+        raise ValueError(f"{onde}: jornada inválida ({exc})") from exc
+
+
 def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
     """Converte o `funnel_architecture` de um card do Pautador em `FunnelPlan`.
 
@@ -303,6 +322,8 @@ def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
             hook_to_next_page=_texto(wb.get("cta_text")),
             target_keywords=_keywords(wb.get("keywords")),
             editorial=wb.get("editorial") or canonica.get("editorial"),
+            jornada=_jornada(wb.get("jornada") or canonica.get("jornada"),
+                             f"Página {posicao}", JornadaDaPagina),
             # `next_page_slug` só é resolvido depois, quando todos os slugs
             # do funil já existem — ver o segundo passo abaixo.
             next_page_slug="",
@@ -344,6 +365,8 @@ def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
         contexto_de_leitura=_contexto_de_leitura(arq),
         contexto_de_busca=_contexto_de_busca(arq),
         contexto_de_anuncio=_contexto_de_anuncio(arq),
+        jornada=_jornada(estrategia.get("jornada") if isinstance(estrategia, dict) else None,
+                         "funnel_strategy", JornadaDoFunil),
     )
 
 

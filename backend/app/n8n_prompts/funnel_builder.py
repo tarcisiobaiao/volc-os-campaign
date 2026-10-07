@@ -40,7 +40,7 @@ Conteúdo PUBLICÁVEL em __LINGUA__: h1_title, main_content_structure, slug, nex
 target_keywords, hook_to_next_page e editorial.cta_label.
 Diretrizes para o redator em PT-BR: emotional_objective, intro_section, closing_section,
 funnel_strategy.avatar_summary, funnel_strategy.tone_voice, editorial.reader_question,
-editorial.useful_delivery e editorial.links[].reason.
+editorial.useful_delivery, editorial.links[].reason e todos os campos de jornada.
 intro_section e closing_section são arrays de bullets de orientação, não prosa pronta.
 </idioma_por_campo>
 <arquitetura>
@@ -62,10 +62,44 @@ Uma solução pode não precisar de outro guia interno. O canal oficial será li
 Não presuma que o leitor percorra todas as páginas. Medição real requer eventos e sessões,
 não uma inferência a partir do grafo.
 </arquitetura>
+<jornada>
+O funil é uma jornada, não um conjunto de páginas: intenção → entrada → resposta imediata →
+qualificação → próxima dúvida ainda aberta → solução ou saída oficial. Cada página declara
+jornada, o estado do leitor naquele ponto. Referências entre páginas usam duvida_id, nunca slug:
+- duvida_id: chave curta e estável da pergunta principal, em snake_case (ex.: renda, estado).
+- pergunta_principal e trabalho_do_leitor: UMA pergunta principal por página.
+- resposta_imediata: o que a primeira dobra responde antes de qualquer clique. A LP também
+  responde algo por si; uma LP que só lista destinos não serve a quem chega sem tarefa.
+- coortes_de_entrada: canais que chegam a esta página (paid_search, organic_search, discover,
+  social, display, direct). Página interna pode ser entrada direta: entrada_direta "autocontida".
+- ja_resolvido: duvida_ids que o leitor já resolveu ao chegar pelo caminho planejado. Não
+  ofereça CTA para elas; repetir o mesmo CTA em todas as páginas convida a circular.
+- proxima_duvida: a dúvida ainda aberta que o CTA principal resolve ("" se a tarefa termina aqui).
+- condicao_terminal: quando a tarefa do leitor está resolvida nesta página.
+- saida_oficial: esperada, classificacao (boa | prematura | nao_aplicavel), condicao e justificativa.
+  É boa só quando a tarefa está resolvida; direto na LP é prematura salvo justificativa explícita.
+- monetizacao: papel (nenhum | secundario | principal) e restricoes. Anúncio nunca separa a
+  pergunta da resposta.
+- retornos_justificados: {duvida_id: motivo} só para link de volta com ganho real. Ciclo sem
+  ganho de informação (ex.: renda ↔ curso) é falha estrutural e bloqueia a redação.
+- hipotese_de_medicao: o comportamento real que validaria ou derrubaria esta página.
+- evidencias: [{natureza: hipotese | simulacao | observacao_real, afirmacao, fonte}]. Simulação
+  nunca é observação real; sem dado real, declare hipótese.
+funnel_strategy.jornada declara intencao_principal, solucao_principal e checkpoint (duvida_ids),
+hipotese_de_medicao, evidencias e coortes [{canal, entrada, promessa, profundidade
+(resposta_direta | guiada), proximo_passo}]. Busca paga de alta intenção e tráfego frio
+(discover, social, display) não recebem a mesma promessa, profundidade e próximo passo por padrão.
+Mais páginas, mais links ou mais texto não fazem um funil melhor: escolha a próxima ação pelo
+que o leitor já resolveu. A hipótese deste desenho pode estar errada; a medição decide depois.
+</jornada>
 <output_rules>
 Somente JSON válido, preservando TODAS as chaves da integração:
 {
-  "funnel_strategy": {"avatar_summary": "...", "tone_voice": "...", "total_pages": 5},
+  "funnel_strategy": {"avatar_summary": "...", "tone_voice": "...", "total_pages": 5,
+    "jornada": {"intencao_principal": "...", "solucao_principal": "duvida_id",
+                "checkpoint": "duvida_id", "hipotese_de_medicao": "...", "evidencias": [],
+                "coortes": [{"canal": "paid_search", "entrada": "duvida_id", "promessa": "...",
+                             "profundidade": "guiada", "proximo_passo": "duvida_id"}]}},
   "pages": [
     {
       "page_number": 1,
@@ -84,6 +118,16 @@ Somente JSON válido, preservando TODAS as chaves da integração:
         "useful_delivery": "...",
         "cta_label": "...",
         "links": [{"target": "slug-do-destino", "reason": "..."}]
+      },
+      "jornada": {
+        "duvida_id": "tema", "pergunta_principal": "...", "trabalho_do_leitor": "...",
+        "resposta_imediata": "...", "coortes_de_entrada": ["paid_search"],
+        "ja_resolvido": [], "proxima_duvida": "duvida_id", "condicao_terminal": "",
+        "entrada_direta": "autocontida",
+        "saida_oficial": {"esperada": false, "classificacao": "nao_aplicavel",
+                          "condicao": "", "justificativa": ""},
+        "monetizacao": {"papel": "secundario", "restricoes": []},
+        "retornos_justificados": {}, "hipotese_de_medicao": "...", "evidencias": []
       }
     }
   ]

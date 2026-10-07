@@ -97,6 +97,7 @@ class Runner:
             descartadas. Nenhuma saída deste método pode perder telemetria."""
             return StepResult(
                 step=name, status=StepStatus.FAILED, model_used=model_used,
+                model_requested=cfg.model,
                 attempts=attempts, issues=last_issues, prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens, cost_usd=cost_usd,
                 latency_ms=latency_ms)
@@ -116,6 +117,7 @@ class Runner:
                 veredito = classificar_excecao(exc)
                 ultima = attempts > self.max_retries
                 self.log(run_id, {"ts": ts, "step": name, "attempt": attempts,
+                                  "model_requested": cfg.model,
                                   "erro": f"{type(exc).__name__}: {exc}"[:400],
                                   "classe": veredito.classe, "motivo": veredito.motivo,
                                   "retentar": bool(veredito.retentar and not ultima)})
@@ -139,8 +141,14 @@ class Runner:
             if ctx.get("editorial_v2"):
                 last_issues, localizadores = separar_para_o_revisor(last_issues)
             veredito = classificar_issues(last_issues, ctx)
+            # FALLBACK NUNCA SILENCIOSO: pedido e servido lado a lado em cada
+            # tentativa. O motivo exato da troca o LiteLLM não devolve; a
+            # tentativa anterior que caiu fica no log com `erro` e `classe`.
             self.log(run_id, {"ts": ts, "step": name, "attempt": attempts,
                               "model": model_used,
+                              "model_requested": cfg.model,
+                              "fallback": _normalize_model_base(model_used)
+                              != _normalize_model_base(cfg.model),
                               "prompt_tokens": res.prompt_tokens,
                               "completion_tokens": res.completion_tokens,
                               "cost_usd": res.cost_usd, "latency_ms": res.latency_ms,
@@ -152,7 +160,8 @@ class Runner:
                 if _normalize_model_base(model_used) != _normalize_model_base(cfg.model):
                     status = StepStatus.FALLBACK
                 return text, StepResult(
-                    step=name, status=status, model_used=model_used, attempts=attempts,
+                    step=name, status=status, model_used=model_used,
+                    model_requested=cfg.model, attempts=attempts,
                     issues=[Issue(code=f"localizador:{i.code}", message=i.message)
                             for i in localizadores],
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,

@@ -1042,7 +1042,7 @@
           "id": "P08-T07",
           "title": "Versionar a telemetria comportamental e fechar o agregador do funil",
           "status": "partial",
-          "proof": "Sensor, fatos e parte das RPCs existem; o flow GHMVIgFAv6oytKuj está inativo, duplica orquestração e ainda contém datas fixas.",
+          "proof": "Sensor, fatos e parte das RPCs existem; o flow GHMVIgFAv6oytKuj está inativo, duplica orquestração e ainda contém datas fixas. · 07/10/2026 (P10-T22): o motor emite `medicao.json` por run com jornada, listando os sinais que dependem desta telemetria (CTA, scroll/engagement, saída oficial) e separando hipótese, simulação e observação real. Nenhum evento novo foi implantado; segue partial.",
           "explanation": "Manter o que mede scroll, engagement, viewability, CTA e dead/rage click, mas transformar suas heurísticas em políticas auditáveis.",
           "acceptance": "Schema de evento, host/path e agregações reproduzíveis no Supabase oficial; zero data fixa; owner, heartbeat, watermark, replay e run datado com contagens; cada alerta cita política, amostra, janela, fonte e lido_em.",
           "dependencies": [
@@ -1069,7 +1069,7 @@
           "id": "P08-T09",
           "title": "Consolidar o recomendador semântico no Redator e FunnelForge",
           "status": "partial",
-          "proof": "O subflow NlDpiKPIqHCDblto está ativo declarado, porém quebrado no caminho de match e duplica capacidades mais maduras do Redator/FunnelForge.",
+          "proof": "O subflow NlDpiKPIqHCDblto está ativo declarado, porém quebrado no caminho de match e duplica capacidades mais maduras do Redator/FunnelForge. · 07/10/2026 (P10-T22): o roteamento contextual do FunnelForge passou a eleger o CTA principal pela próxima dúvida da jornada e o portão recusa CTA para dúvida já resolvida e ciclo sem ganho; fan-out genérico só como fallback de card sem editorial. Não toca o subflow n8n nem o sitemap; segue partial.",
           "acceptance": "Sitemap real same-domain; exclui self e redundância; rota e LazyBlock determinísticos; preview e aprovação; publicação e clique medidos; nenhum domínio ou índice de array hardcoded; segundo recomendador aposentado com recibo.",
           "dependencies": [
             "P08-T02",
@@ -1745,6 +1745,41 @@
             "backend/app/agents/mining/orchestrator.py",
             "backend/app/services/leitura_compartilhada.py",
             "backend/tests/test_pautador_mining_concorrencia_cache.py"
+          ]
+        },
+        {
+          "id": "P10-T22",
+          "title": "Jornada tipada do funil: arquiteto, portão de esqueleto, redator orientado à próxima dúvida, revisão global e contrato de medição",
+          "status": "partial",
+          "priority": 1,
+          "proof": "2026-10-07, main ad2e44e+1, só teste hermético, US$ 0 em API. Contrato `Page.jornada`/`FunnelPlan.jornada` (duvida_id, pergunta, resposta imediata, coortes, ja_resolvido, próxima dúvida, condição terminal, entrada direta, saída oficial boa/prematura, monetização, retornos justificados, hipótese, evidências com natureza) do prompt do arquiteto ao motor (page_factory -> writer_briefing.jornada -> ponte; jornada inválida falha na carga). Revisor de esqueleto determinístico alimenta o `funnel_graph`, que aborta antes da primeira chamada paga; o classificador de engajamento passou a rodar depois do portão. CTA principal = destino da próxima dúvida; fan-out genérico só para card sem editorial. Bloco `jornada_da_pagina.jinja` no contrato do leitor V1/V2, juiz, briefing e revisor, condicional: ouro V1 byte a byte intacto. Revisão global pós-redação (uma passada, zero microajuste, propostas para humano) e `medicao.json` separando hipótese/simulação/observação real (simulação recusada como observação; proposta exige aprovação humana por literal). Fallback com modelo pedido x servido no estado e no log. Benchmark offline (`python -m funnelforge.benchmark`) pontua o run real SENAC 220001: ledger US$ 1,5516, tabela oficial US$ 1,5957, redação 52% do custo com 10 tentativas para 5 páginas. Motor: 1186 passed / 3 failed herdados (test_flexibilizacao_factual). Backend recorte do arquiteto: 95 passed.",
+          "explanation": "Fontes: apresentação Pubx 2026 (doutrina) e relatório MiroFish SENAC (simulação qualitativa, 0/29 entrevistas transcritas; achados viraram casos de teste C1–C12, nunca métrica). Ver docs/architecture/JORNADA-DO-FUNIL.md e docs/audits/MODELOS-FUNIL-2026-10-07.md.",
+          "acceptance": "Arquiteto real devolve jornada válida num card; canário real com jornada passa o portão de esqueleto e emite revisão global e medicao.json com custo registrado; rodada real autorizada da matriz de modelos com 3 repetições por configuração; leitura real de pelo menos um sinal previsto (P08-T07) entra como observacao_real.",
+          "pending": [
+            "Nenhum arquiteto real (Gemini) foi chamado com o prompt novo: aderência do modelo ao schema da jornada não medida",
+            "Canário real com jornada (custo registrado) — depende do canário pendente de P10-T19",
+            "Rodada real autorizada da matriz de modelos (benchmarks/matriz-modelos-v1.yaml)",
+            "Custo/latência do arquiteto e do revisor do arquiteto não entram no recibo do run",
+            "CTA condicional por visita (recomendação MiroFish) exige estado de sessão: fora do contrato atual",
+            "Coleta real de loop/revisita e Core Web Vitals não implantada (sinais marcados nao_implantada)"
+          ],
+          "dependencies": [
+            "P10-T19",
+            "P08-T07",
+            "P08-T09"
+          ],
+          "graph_nodes": [
+            "cap_funnel"
+          ],
+          "links": [
+            "docs/architecture/JORNADA-DO-FUNIL.md",
+            "docs/audits/MODELOS-FUNIL-2026-10-07.md",
+            "funnelforge-migracao/engine/src/funnelforge/pipeline/jornada.py",
+            "funnelforge-migracao/engine/src/funnelforge/domain/medicao.py",
+            "funnelforge-migracao/engine/src/funnelforge/benchmark.py",
+            "funnelforge-migracao/engine/tests/test_jornada_senac.py",
+            "funnelforge-migracao/engine/tests/test_jornada_redator.py",
+            "backend/tests/test_jornada_arquiteto.py"
           ]
         }
       ]

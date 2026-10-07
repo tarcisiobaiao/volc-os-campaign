@@ -8,7 +8,8 @@ Cite trechos concretos para cada problema; não invente defeitos nem suponha ren
 <contexto>
 Tipo: {{ page_type }}. Domínio: {{ domain | default("") }}.
 Intenção e entrega: {{ editorial | default({}) | tojson }}
-Destinos e suas entregas: {{ destination_contracts | default([]) | tojson }}
+Destinos e suas entregas: {{ destination_contracts | default([]) | tojson }}{% if jornada | default({}) %}
+{% include "jornada_da_pagina.jinja" %}Avalie também contra a jornada: a primeira dobra cumpre a resposta imediata; o CTA principal leva à próxima dúvida; nenhum CTA reoferece dúvida já resolvida; a saída oficial está onde a classificação manda. Desvio material reduz cta_discipline ou destination_relevance.{% endif %}
 Keywords: {{ keywords | default("") }}
 Base factual verificada (respeite escopo regional, vigência e limites; não estenda a conclusão):
 {{ facts | default("") }}

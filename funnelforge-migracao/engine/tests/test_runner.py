@@ -166,3 +166,25 @@ def test_snapshot_prompt_writes_rendered_prompt(tmp_path):
     r.snapshot_prompt("run1", "extract", [{"role": "user", "content": "BRIEFING X"}])
     txt = (tmp_path / "run1" / "prompts" / "extract.txt").read_text(encoding="utf-8")
     assert "BRIEFING X" in txt
+
+
+def test_fallback_nunca_e_silencioso_modelo_pedido_e_servido_lado_a_lado(tmp_path):
+    """Missão 07/10/2026: o estado e o log dizem o modelo PEDIDO e o SERVIDO."""
+    import json
+
+    def responder(model, messages):
+        if model == "primary":
+            raise RuntimeError("primary down")
+        return "Consulte seu saldo do FGTS em 2026"
+    r = Runner(llm=FakeLLM(responses=responder), max_retries=1, runs_dir=tmp_path)
+    cfg = StepConfig(model="primary", fallbacks=["backup"], temperature=0.0,
+                     validators=["language_pt"])
+    _, res = r.run_llm_step("w", cfg, [{"role": "user", "content": "go"}], ctx={},
+                            run_id="test-run")
+    assert (res.model_requested, res.model_used) == ("primary", "backup")
+    linhas = [json.loads(l) for l in
+              (tmp_path / "test-run" / "log.jsonl").read_text().splitlines()]
+    tentativa = next(l for l in linhas if l.get("model"))
+    assert tentativa["model_requested"] == "primary"
+    assert tentativa["model"] == "backup"
+    assert tentativa["fallback"] is True

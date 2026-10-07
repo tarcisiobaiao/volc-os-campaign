@@ -46,6 +46,7 @@ from funnelforge.domain.models import (
     effective_role,
 )
 from funnelforge.pipeline.inventario import InventarioFactual, montar_inventario
+from funnelforge.pipeline.jornada import contexto_de_jornada
 from funnelforge.pipeline.runner import LLMStepError
 from funnelforge.pipeline.validators.briefing_contract import (
     VERSAO,
@@ -455,6 +456,7 @@ def step_briefing(state: RunState, page: Page, deps: Any) -> None:
                 "estrutura": list(page.main_content_structure),
                 "keywords": ", ".join(page.target_keywords)},
         editorial=page.editorial.model_dump() if page.editorial else {},
+        jornada=contexto_de_jornada(plano, page),
         arquiteto={"tone_voice": plano.tone_voice if plano else "",
                    "avatar_summary": plano.avatar_summary if plano else ""},
         inventario_texto=inventario_para_o_briefing(inventario),

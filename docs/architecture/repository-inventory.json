@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-07T15:14:40-03:00",
+  "generated_at": "2026-10-07T16:20:43-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 806,
-    "markdown": 593,
+    "files": 808,
+    "markdown": 595,
     "sql": 213,
-    "tracked": 806,
+    "tracked": 808,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 32,
-      "documentation": 432,
+      "audit": 33,
+      "documentation": 433,
       "generated": 2,
       "module-guide": 40,
       "product-document": 23,
@@ -1119,6 +1119,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/JORNADA-DO-FUNIL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6179,
+      "lines": 93,
+      "sha256": "a9b57c5afebefeaa6bda3167623bd21dff15ee1e30d704eb5d3ccae57a958e57",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/OPENAPI-CRIATIVOS-BANCADA.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1243,9 +1255,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23825,
+      "bytes": 23784,
       "lines": 312,
-      "sha256": "721332c820ebf186d7c77628bc5ccc9f83c7499f9cb0b95c805abb8c0732992f",
+      "sha256": "2c891ccb063dbe5ca468df31177447b2ab63c8da2b25dec36fec39ab8a9e5bba",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1750,6 +1762,18 @@
       "bytes": 7240,
       "lines": 134,
       "sha256": "81832648e79e435de304e55fd79154ef2ca46510d6194a63b5b05d50ca2bdd11",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/MODELOS-FUNIL-2026-10-07.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 5168,
+      "lines": 80,
+      "sha256": "66f66ee8ca118892931a2c2978507316112585b732cdd4431fbb0550cb07e22b",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

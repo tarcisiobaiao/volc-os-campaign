@@ -109,6 +109,15 @@ páginas existentes quando necessário.
    Não esconda a resposta em FAQ ou fragmente conteúdo só para gerar mais cliques.
    Campos ausentes devem ser preenchidos a partir da intenção, não de fatos inventados.
 
+7. **Jornada do leitor**
+   Preserve e revise `jornada` em TODAS as páginas e `funnel_strategy.jornada`. Mantenha os
+   duvida_id. Se fundir ou remover páginas, atualize ja_resolvido, proxima_duvida,
+   retornos_justificados, coortes, checkpoint e solucao_principal para dúvidas que existem.
+   Aponte em `achados` (sem reescrever) CTA para dúvida já resolvida, ciclo sem ganho de
+   informação, LP que só roteia, página interna que depende da anterior, saída oficial antes
+   de a tarefa estar resolvida e coortes quente e fria com a mesma promessa. Nunca troque
+   natureza "hipotese" ou "simulacao" por "observacao_real".
+
 Ao final, você pode ter fundido, derrubado ou reordenado páginas — o que
 importa é que o funil final seja factualmente correto, no idioma certo, sem
 datas por hábito e relevante/profundo, com a voz do Arquiteto preservada e
@@ -138,7 +147,10 @@ lista de mudanças aplicadas):
       "next_page_slug": "...",
       "target_keywords": ["..."],
       "editorial": {"reader_question": "...", "useful_delivery": "...", "cta_label": "...",
-                    "links": [{"target": "slug-existente", "reason": "..."}]}
+                    "links": [{"target": "slug-existente", "reason": "..."}]},
+      "jornada": {"duvida_id": "...", "pergunta_principal": "...", "resposta_imediata": "...",
+                  "ja_resolvido": [], "proxima_duvida": "...", "condicao_terminal": "",
+                  "saida_oficial": {"esperada": false, "classificacao": "nao_aplicavel"}}
     }
   ],
   "changes": [

@@ -27,6 +27,7 @@ from funnelforge.pipeline.admanifest import build_ad_manifest, vignette_meta
 from funnelforge.pipeline.base_factual import base_para_o_redator
 from funnelforge.pipeline.budget import preco_declarado_da_imagem
 from funnelforge.pipeline.inventario import montar_inventario
+from funnelforge.pipeline.jornada import contexto_de_jornada
 from funnelforge.pipeline.preflight import preflight_issues
 from funnelforge.pipeline.retry_policy import classificar_issues, separar_para_o_revisor
 from funnelforge.pipeline.revisao import (
@@ -940,6 +941,7 @@ def _judge_page(state: RunState, page: Page, content: str, deps: Any) -> None:
         keywords=", ".join(page.target_keywords),
         facts=base_para_o_redator(facts),
         editorial=page.editorial.model_dump() if page.editorial else {},
+        jornada=contexto_de_jornada(state.plan, page),
         destination_contracts=[
             {"slug": p.slug, "title": p.h1_title,
              "delivery": p.editorial.useful_delivery if p.editorial else p.emotional_objective,
@@ -1510,6 +1512,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             facts=base_para_o_redator(facts, destino_pago=True),
             lp_destinations=lp_destinations,
             editorial=page.editorial.model_dump() if page.editorial else {},
+            jornada=contexto_de_jornada(plan, page),
             today=date.today().strftime("%d/%m/%Y"),
             **extras_v2,
         )
@@ -1629,6 +1632,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         cross_funnel_label=cross_funnel_label,
         headline=page.h1_title,
         editorial=page.editorial.model_dump() if page.editorial else {},
+        jornada=contexto_de_jornada(plan, page),
         objective=page.emotional_objective,
         skeleton="\n".join(page.main_content_structure),
         keywords=", ".join(page.target_keywords),
@@ -1898,6 +1902,7 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> Co
         politicas=pacote_para_o_revisor(pacote), localizadores=localizadores,
         referencias=refs, numeros_permitidos=numeros_ok,
         revalidar=revalidar, normalizar=normalizar, pacote_vencido=pacote.vencido,
+        jornada=contexto_de_jornada(state.plan, page),
     )
 
 
