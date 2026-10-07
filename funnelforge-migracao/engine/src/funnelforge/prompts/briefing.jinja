@@ -27,7 +27,7 @@ Fato marcado NÃO CITÁVEL não sustenta nada. Nenhum destino fora de DESTINOS D
 - Hipóteses que o redator deve tratar como hipótese, com como confirmá-las.
 - Tom: registro e intensidade proporcionais à intenção do leitor e aos fatos, com a justificativa. Não há tom padrão; o tom pedido pelo arquiteto é um dado a considerar.
 - Plano visual ("visual_plan"): para cada seção cuja entrega fica mais clara com um bloco do que com parágrafos, a intenção e o padrão Gutenberg que a servem, com o motivo. Não é cota: só seções que pedem forma. Vocabulário fechado — intenção → padrão usual:
-  comparar → table ou columns; passo_a_passo → list (numerada) ou group; checklist → list; fato_chave → group ou pullquote (a frase sai do texto, não é repetida); navegacao_por_regiao → table, details ou list; atencao → group; faq → details; exemplos_numericos → table ou columns (só com números da base factual).
+  comparar → table ou columns; passo_a_passo → list (numerada) ou group; checklist → list; fato_chave → group ou pullquote (a frase sai do texto, não é repetida); navegacao_por_regiao → table, details ou list; atencao → group; faq → details; exemplos_numericos → table ou columns (só com números da base factual); cards_factuais → columns ou group; timeline → list ou table; decisao → list, buttons ou details; proximos_passos → group, list ou buttons; citacao_util → pullquote (só uma frase realmente útil); calculo → html ou table; ferramenta → html; prova_oficial → image; imagem_editorial → image. html e image não são escritos pelo redator: vêm do widget especificado pelo arquiteto, do print oficial e da imagem editorial.
 </o_que_decidir>
 
 <pagina>
@@ -84,7 +84,7 @@ Responda SOMENTE com um objeto JSON (UTF-8, sem markdown, sem texto antes ou dep
  "limites": [{"texto": "...", "base": "fato|hipotese|briefing_do_arquiteto|identidade", "ref": ["..."], "evidencia": ["..."]}],
  "hipoteses": [{"id": "h1", "sobre": "leitor|intencao|objecao|tom", "texto": "...", "como_confirmar": "..."}],
  "tom": {"registro": "...", "intensidade": "...", "justificativa": "...", "base": "hipotese|briefing_do_arquiteto|fato", "evidencia": ["..."], "ref": ["..."]},
- "visual_plan": [{"secao": "título da seção", "intencao": "comparar|passo_a_passo|checklist|fato_chave|navegacao_por_regiao|atencao|faq|exemplos_numericos", "padrao": "table|columns|list|group|details|pullquote", "motivo": "por que esta forma entrega melhor que parágrafos"}]
+ "visual_plan": [{"secao": "título da seção", "intencao": "comparar|passo_a_passo|checklist|fato_chave|navegacao_por_regiao|atencao|faq|exemplos_numericos|cards_factuais|timeline|decisao|proximos_passos|citacao_util|calculo|ferramenta|prova_oficial|imagem_editorial", "padrao": "table|columns|list|group|details|pullquote|buttons|image|html", "motivo": "por que esta forma entrega melhor que parágrafos"}]
 }
 Use "ref" com base "fato" ou "briefing_do_arquiteto" e "evidencia" com base "hipotese".
 Em "o_que_encontra": com base briefing_do_arquiteto, use destino:<destino> com o destino exato do próprio próximo passo; com base fato, use somente o id real do fato. Nenhuma explicação vai dentro do valor de "ref".

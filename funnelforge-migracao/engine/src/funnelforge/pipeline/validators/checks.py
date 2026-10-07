@@ -885,6 +885,10 @@ def official_link_density(content: str, ctx: dict) -> list[Issue]:
     if _ctx_role(ctx) is not PageRole.SOLUTION or (
             ctx.get("is_terminal") and not ctx.get("terminal_official")):
         return []
+    # JORNADA: saída oficial `nao_aplicavel` desobriga a página (ver
+    # `jornada.politica_da_saida_oficial`). Chave ausente = regra por papel.
+    if ctx.get("saida_oficial_exigida") is False:
+        return []
     verified = set(ctx.get("official_links") or [])
     anchors = _AnchorTargets()
     anchors.feed(content)

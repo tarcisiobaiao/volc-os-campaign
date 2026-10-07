@@ -266,8 +266,8 @@ def test_step_screenshot_retry_recovers_blank(tmp_path: Path) -> None:
     from tests.fakes import blank_png, content_png
 
     provider = FakeScreenshotProvider(results=[
-        CaptureResult(png=blank_png(), status=200, is_error_page=False),
-        CaptureResult(png=content_png(), status=200, is_error_page=False),
+        CaptureResult(png=blank_png(), status=200, is_error_page=False, title="Página oficial"),
+        CaptureResult(png=content_png(), status=200, is_error_page=False, title="Página oficial"),
     ])
     deps = _deps(tmp_path, _settings(cap=1), provider)
     state = RunState(run_id="r")
@@ -687,7 +687,9 @@ def test_publish_uploads_and_embeds_official_screenshot(tmp_path: Path, config_f
     state.drafts[2] = PageDraft(page_number=2, page_type="SOLUTION",
                                 format="gutenberg", content=content)
     state.facts[2] = ResearchFacts(fontes=["https://meu.inss.gov.br/atualizacao"])
-    state.screenshots[2] = [{"url": "https://meu.inss.gov.br/atualizacao", "path": str(shot)}]
+    state.screenshots[2] = [st.proveniencia_do_print(
+        "https://meu.inss.gov.br/atualizacao", shot, ResearchFacts(),
+        titulo="Meu INSS", crop="desktop")]
     page = Page(page_number=2, page_type="SOLUTION", h1_title="T",
                 slug="atualizar-cadastro-p1")
 
@@ -729,7 +731,9 @@ def test_publish_survives_screenshot_upload_failure(tmp_path: Path, config_files
     state.drafts[2] = PageDraft(page_number=2, page_type="SOLUTION",
                                 format="gutenberg", content=content)
     state.facts[2] = ResearchFacts(fontes=["https://meu.inss.gov.br/atualizacao"])
-    state.screenshots[2] = [{"url": "https://meu.inss.gov.br/atualizacao", "path": str(shot)}]
+    state.screenshots[2] = [st.proveniencia_do_print(
+        "https://meu.inss.gov.br/atualizacao", shot, ResearchFacts(),
+        titulo="Meu INSS", crop="desktop")]
     page = Page(page_number=2, page_type="SOLUTION", h1_title="T", slug="x-p1")
 
     st.step_publish(state, page, deps)  # must not raise

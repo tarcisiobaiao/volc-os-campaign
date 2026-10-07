@@ -9,7 +9,7 @@ import copy
 import json
 
 from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
-from funnelforge.domain.models import PageDraft, RunState
+from funnelforge.domain.models import PageDraft, RunState, StepResult, StepStatus
 from funnelforge.pipeline.jornada import revisar_funil_pronto
 from funnelforge.pipeline.routing import build_funnel_routes
 from tests.cenario_editorial import (
@@ -65,7 +65,7 @@ def test_run_com_jornada_emite_revisao_global_e_contrato_de_medicao(tmp_path, mo
     settings = settings_do_cenario(tmp_path)
     state, deps, _ = rodar_cenario(tmp_path, arquitetura(), settings)
     assert state.step_status["revisao_esqueleto"].status.value == "OK"
-    assert state.revisao_global["versao"] == "revisao-global-v1"
+    assert state.revisao_global["versao"] == "revisao-global-v2"
     assert state.revisao_global["microajustes_aplicados"] == 0
     pasta = deps.runner.runs_dir / state.run_id
     medicao = json.loads((pasta / "medicao.json").read_text(encoding="utf-8"))
@@ -104,7 +104,13 @@ def _html(*paragrafos: str) -> str:
 
 def _estado_pronto(tmp_path) -> tuple[RunState, object]:
     settings = settings_do_cenario(tmp_path)
-    plano = plano_do_funnel_architecture(copy.deepcopy(arquitetura()))
+    arq = arquitetura()
+    # A inscrição só é alcançada pelo estado: quem chega a ela resolveu o
+    # estado em TODO caminho — a reoferta é prova estrutural.
+    for job in arq["writing_jobs"]:
+        if job["writer_briefing"]["jornada"]["duvida_id"] == "inscricao":
+            job["writer_briefing"]["jornada"]["coortes_de_entrada"] = []
+    plano = plano_do_funnel_architecture(arq)
     build_funnel_routes(plano, settings)
     state = RunState(run_id="r", plan=plano)
     n = {p.slug: p.page_number for p in plano.pages}
@@ -133,19 +139,34 @@ def _estado_pronto(tmp_path) -> tuple[RunState, object]:
         num = n[SLUG[duvida]]
         state.drafts[num] = PageDraft(page_number=num, page_type="SOLUTION",
                                       format="gutenberg", content=corpo)
+    for num in state.drafts:
+        state.step_status[f"content_gate_p{num}"] = StepResult(
+            step=f"content_gate_p{num}", status=StepStatus.OK)
     return state, settings
 
 
 def test_revisao_global_aponta_falhas_localizadas_sem_reescrever(tmp_path):
     state, settings = _estado_pronto(tmp_path)
+    n = {p.slug: p.page_number for p in state.plan.pages}
+    num = n[SLUG["inscricao"]]
+    state.drafts[num] = PageDraft(
+        page_number=num, page_type="SOLUTION", format="gutenberg",
+        content=_html("A inscrição gratuita é feita no site da regional do seu estado.",
+                      f'<a href="{_href(SLUG["estado"])}">Achar o Senac do meu estado</a>',
+                      '<a href="https://www.sp.senac.br/inscricao">Inscrição</a>'))
     antes = {k: v.content for k, v in state.drafts.items()}
     rev = revisar_funil_pronto(state, settings)
-    regras = {(a["duvida_id"], a["regra"]) for a in rev["achados"]}
-    assert ("estado", "cta_repetido_apos_resolvido") in regras
-    assert ("curso", "resposta_fora_da_primeira_dobra") in regras
-    assert ("curso", "saida_oficial_antes_da_proxima_duvida") in regras
-    assert ("estado", "loop_sem_ganho") in regras or ("renda", "loop_sem_ganho") in regras
-    assert rev["decisao"] == "revisao_humana"
+    sev = {(a["duvida_id"], a["regra"]): a["severidade"] for a in rev["achados"]}
+    # prova estrutural -> bloqueio
+    assert sev[("inscricao", "cta_repetido_apos_resolvido")] == "bloqueio"
+    assert sev[("curso", "saida_oficial_antes_da_proxima_duvida")] == "bloqueio"
+    assert any(r == "loop_sem_ganho" and v == "bloqueio" for (_, r), v in sev.items())
+    # proxy de palavras -> aviso
+    assert sev[("curso", "resposta_fora_da_primeira_dobra")] == "aviso"
+    # o estado tem entrada direta: o link para a renda NÃO é reoferta provada
+    assert ("estado", "cta_repetido_apos_resolvido") not in sev
+    assert rev["decisao"] == "bloqueio_estrutural"
+    assert set(rev["paginas_bloqueadas"]) >= {num, n[SLUG["curso"]]}
     assert rev["microajustes_aplicados"] == 0
     assert all(a["localizador"] and a["proposta"] for a in rev["achados"])
     assert {k: v.content for k, v in state.drafts.items()} == antes
@@ -165,6 +186,6 @@ def test_revisao_global_do_funil_coerente_nao_tem_achado_material(tmp_path):
                       f'<a href="{_href(SLUG["inscricao"])}">Ver o passo a passo</a>',
                       '<a href="https://www.sp.senac.br/psg">Senac SP</a>'))
     rev = revisar_funil_pronto(state, settings)
-    materiais = [a for a in rev["achados"] if a["severidade"] == "material"]
-    assert materiais == [], materiais
-    assert rev["decisao"] == "sem_achados"
+    bloqueios = [a for a in rev["achados"] if a["severidade"] == "bloqueio"]
+    assert bloqueios == [], bloqueios
+    assert rev["decisao"] in ("sem_achados", "avisos_para_humano")

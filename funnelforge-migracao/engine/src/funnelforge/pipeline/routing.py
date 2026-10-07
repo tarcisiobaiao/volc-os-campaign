@@ -7,7 +7,11 @@ from funnelforge.domain.models import (
     FunnelPlan, Issue, Page, PageRole, Route, effective_role, resolve_route,
 )
 from funnelforge.pipeline.doctrine import APPROVED_CTA_EXEMPLARS
-from funnelforge.pipeline.jornada import alvo_da_proxima_duvida, revisar_esqueleto
+from funnelforge.pipeline.jornada import (
+    PoliticaDaSaidaOficial,
+    alvo_da_proxima_duvida,
+    revisar_esqueleto,
+)
 from funnelforge.pipeline.pagespec import _STOP, _sig_tokens, pagespec_for
 
 
@@ -268,7 +272,8 @@ ANCORA_CANAL_OFICIAL = "Consultar no canal oficial >>>"
 
 def bind_official_route(page: Page, official_links: list[str], *,
                         role: PageRole, is_terminal: bool,
-                        terminal_official: bool = False) -> None:
+                        terminal_official: bool = False,
+                        politica: PoliticaDaSaidaOficial | None = None) -> None:
     """Liga (tarde) a aresta `external_official` desta página, com a URL que a
     PESQUISA dela trouxe.
 
@@ -287,6 +292,19 @@ def bind_official_route(page: Page, official_links: list[str], *,
     comportamento correto: publicar uma solução que manda o leitor a lugar
     nenhum é pior do que não publicar."""
     page.routes = [r for r in page.routes if r.kind != "external_official"]
+    if politica is not None:
+        # JORNADA MANDA: a rota oficial existe só quando a saída é esperada
+        # (`nao_aplicavel` nunca é obrigada), `boa` vem antes dos CTAs internos
+        # e `prematura` depois deles (nunca antes da próxima dúvida). Sem fonte
+        # comprovada não há rota — e o `pagespec`, que a exige, falha fechado.
+        page.routes = [r for r in page.routes if r.kind != "cross_funnel"]
+        if not politica.exige or not official_links:
+            return
+        rota = Route(placement="hero" if politica.primeiro else "footer",
+                     kind="external_official", target=official_links[0],
+                     anchor=ANCORA_CANAL_OFICIAL)
+        page.routes = [rota, *page.routes] if politica.primeiro else [*page.routes, rota]
+        return
     if role is not PageRole.SOLUTION or (is_terminal and not terminal_official):
         return  # LP/PRESELL and legacy terminals never bind an official route.
     if is_terminal and terminal_official:
@@ -359,7 +377,8 @@ def validate_funnel_graph(plan: FunnelPlan, settings: Settings, *,
                  else "cross_funnel")
     # Before research there is deliberately no guessed official URL.
     pending_official = research_pending and exit_kind == "external_official"
-    if solutions and not pending_official and not any(
+    com_jornada = any(p.jornada is not None for p in pages)
+    if solutions and not pending_official and not com_jornada and not any(
             r.kind == exit_kind for r in solutions[-1].routes):
         issues.append(Issue(
             code="terminal_no_exit",

@@ -99,6 +99,9 @@ QUEM_USA_O_PROMPT: Dict[str, str] = {
                                 "interiores (base factual, links, anúncios), incluído "
                                 "nos redatores das soluções e dos hubs",
     # 07/10/2026 (P10-T22)
+    "escrita_natural.jinja": "a doutrina de escrita natural (Humanizer): resposta cedo, sem "
+                             "frase inflada nem conclusão vazia, preservando fatos, números, "
+                             "links e SEO; incluída no redator e no revisor do fluxo v2",
     "jornada_da_pagina.jinja": "a jornada do leitor na página (pergunta, resposta da "
                                "primeira dobra, o que já foi resolvido, próxima dúvida, "
                                "saída oficial boa ou prematura, limites de anúncio), "

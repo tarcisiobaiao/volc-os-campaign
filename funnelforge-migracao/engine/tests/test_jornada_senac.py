@@ -21,7 +21,9 @@ from funnelforge.domain.medicao import ContratoDeMedicao, LeituraDoFunil
 from funnelforge.domain.models import PageRole, effective_role
 from funnelforge.pipeline.jornada import (
     classificar_saida_oficial,
+    contexto_de_jornada,
     contrato_de_medicao,
+    estado_do_leitor,
     revisar_esqueleto,
 )
 from funnelforge.pipeline.routing import build_funnel_routes, validate_funnel_graph
@@ -110,14 +112,49 @@ def test_funil_coerente_passa_no_revisor_de_esqueleto(settings_minimas):
 # [C1] CTA de renda repetido depois de a renda já estar resolvida
 # ---------------------------------------------------------------------------
 
-def test_c1_cta_de_renda_repetido_depois_de_resolvida_bloqueia():
+def _curso_so_depois_da_renda(arq: dict) -> None:
+    """Variante em que TODO caminho até `curso` passa por `renda`: a LP não
+    liga direto ao curso e o curso não é entrada direta de nenhuma coorte."""
+    lp = _wb(arq, "senac_gratuito")["editorial"]
+    lp["links"] = [l for l in lp["links"] if l["target"] != SLUG["curso"]]
+    _wb(arq, "curso")["jornada"]["coortes_de_entrada"] = []
+
+
+def test_c1_cta_de_renda_repetido_quando_resolvida_em_todo_caminho_bloqueia():
     arq = arquitetura()
-    _link(arq, "estado", "renda", "Refazer a conta da renda")
-    revisao = revisar_esqueleto(_plano(arq))
+    _curso_so_depois_da_renda(arq)
+    _link(arq, "curso", "renda", "Refazer a conta da renda")
+    plano = _plano(arq)
+    curso = next(p for p in plano.pages if p.slug == SLUG["curso"])
+    assert estado_do_leitor(plano, curso).certamente == {"renda"}
+    revisao = revisar_esqueleto(plano)
     assert "cta_repetido_apos_resolvido" in _codigos(revisao.bloqueantes)
     msg = next(i.message for i in revisao.bloqueantes
                if i.code == "cta_repetido_apos_resolvido")
-    assert "estado" in msg and "renda" in msg
+    assert "curso" in msg and "renda" in msg
+
+
+def test_pagina_com_entradas_multiplas_nao_assume_duvidas_resolvidas():
+    """[obrigatório 5] Quem chega direto à página do estado (coorte social) não
+    resolveu renda nem curso, mesmo que o caminho planejado passe por eles."""
+    arq = arquitetura()
+    _link(arq, "estado", "curso", "Quem entrou direto e ainda não escolheu o curso")
+    _wb(arq, "estado")["jornada"]["retornos_justificados"] = {
+        "curso": "a coorte social entra direto no estado sem ter escolhido o curso"}
+    plano = _plano(arq)
+    estado = next(p for p in plano.pages if p.slug == SLUG["estado"])
+    leitor = estado_do_leitor(plano, estado)
+    assert leitor.certamente == set()
+    assert {"renda", "curso"} <= leitor.possivelmente
+    assert leitor.por_entrada["social:estado"] == set()
+    revisao = revisar_esqueleto(plano)
+    assert not any(i.code == "cta_repetido_apos_resolvido" and "[estado]" in i.message
+                   for i in revisao.bloqueantes)
+    assert "cta_contextual" in _codigos(revisao.avisos)
+    contexto = contexto_de_jornada(plano, estado)
+    destino = next(d for d in contexto["destinos"] if d["slug"] == SLUG["curso"])
+    assert destino["contextual"] is True and destino["principal"] is False
+    assert contexto["resolvido_em_todo_caminho"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +377,8 @@ def test_proxima_duvida_sem_destino_que_a_resolva_bloqueia():
 
 def test_c12_falha_estrutural_antes_da_redacao_nao_faz_chamada_paga(tmp_path):
     arq = arquitetura()
-    _link(arq, "estado", "renda", "Refazer a conta da renda")
+    _curso_so_depois_da_renda(arq)
+    _link(arq, "curso", "renda", "Refazer a conta da renda")
     settings = settings_do_cenario(tmp_path)
     state, _deps, llm = rodar_cenario(tmp_path, arq, settings)
     assert llm.calls == [], [c["model"] for c in llm.calls]
@@ -348,6 +386,9 @@ def test_c12_falha_estrutural_antes_da_redacao_nao_faz_chamada_paga(tmp_path):
     assert grafo.status.value == "FAILED"
     assert "cta_repetido_apos_resolvido" in _codigos(grafo.issues)
     assert not state.drafts
+    esqueleto = state.step_status["revisao_esqueleto"]
+    assert esqueleto.status.value == "FAILED"
+    assert "cta_repetido_apos_resolvido" in _codigos(esqueleto.issues)
 
 
 @pytest.fixture

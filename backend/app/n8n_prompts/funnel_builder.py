@@ -83,8 +83,32 @@ jornada, o estado do leitor naquele ponto. Referências entre páginas usam duvi
 - retornos_justificados: {duvida_id: motivo} só para link de volta com ganho real. Ciclo sem
   ganho de informação (ex.: renda ↔ curso) é falha estrutural e bloqueia a redação.
 - hipotese_de_medicao: o comportamento real que validaria ou derrubaria esta página.
-- evidencias: [{natureza: hipotese | simulacao | observacao_real, afirmacao, fonte}]. Simulação
-  nunca é observação real; sem dado real, declare hipótese.
+- evidencias: [{natureza, afirmacao, fonte, confianca}]. natureza: hipotese | simulacao |
+  observacao_real. Simulação usa fonte "simulacao:<origem>" (ex.: "simulacao:mirofish") e nunca
+  é observação real. observacao_real exige fonte verificável, coletado_em (AAAA-MM-DD) e
+  referencia (id do relatório ou consulta); sem isso, declare hipotese. confianca: baixa | media | alta.
+- valor (obrigatório): problema que a página resolve, informacao_nova que só ela entrega,
+  evidencia que sustenta a resposta, capacidade_do_leitor (o que ele consegue FAZER depois),
+  por_que_nao_fundir com outra página e entregas (uma ou mais de: resposta_direta, passo_a_passo,
+  comparacao, exemplo, checklist, calculo, tabela, fonte_oficial_explicada, ferramenta,
+  decisao_pratica, proximo_passo_concreto). Duas páginas com a mesma informação nova são uma só.
+- plano_visual: [{secao, intencao, padrao, funcao, posicao}] só para seções em que um bloco
+  entrega melhor que parágrafo. intencao → padrao: comparar → table|columns; passo_a_passo →
+  list|group; checklist → list; fato_chave → group|pullquote; navegacao_por_regiao →
+  table|details|list; atencao → group; faq → details; exemplos_numericos → table|columns;
+  cards_factuais → columns|group; timeline → list|table; decisao → list|buttons|details;
+  proximos_passos → group|list|buttons; citacao_util → pullquote; calculo → html|table;
+  ferramenta → html; prova_oficial → image; imagem_editorial → image. funcao diz o que o bloco
+  resolve; a intenção tem de corresponder a uma das entregas. posicao: apos_resposta | secao |
+  fechamento (nunca entre a pergunta e a resposta).
+- ativos: ferramenta interativa só quando reduz esforço (ex.: conta da renda por pessoa,
+  checklist de documentos, seletor por estado). Cada um declara pergunta, entradas, logica,
+  resultado, fonte_da_regra (URL https da regra), fallback_sem_js, acessibilidade,
+  evento_de_medicao e custo_estimado_usd. Sem fonte factual, o ativo não é gerado. Nunca peça
+  dado pessoal.
+Vocabulários fechados: canal paid_search | organic_search | discover | social | display | direct;
+entrada_direta autocontida | depende_de_contexto; classificacao boa | prematura | nao_aplicavel;
+profundidade resposta_direta | guiada; monetizacao.papel nenhum | secundario | principal.
 funnel_strategy.jornada declara intencao_principal, solucao_principal e checkpoint (duvida_ids),
 hipotese_de_medicao, evidencias e coortes [{canal, entrada, promessa, profundidade
 (resposta_direta | guiada), proximo_passo}]. Busca paga de alta intenção e tráfego frio
@@ -127,7 +151,14 @@ Somente JSON válido, preservando TODAS as chaves da integração:
         "saida_oficial": {"esperada": false, "classificacao": "nao_aplicavel",
                           "condicao": "", "justificativa": ""},
         "monetizacao": {"papel": "secundario", "restricoes": []},
-        "retornos_justificados": {}, "hipotese_de_medicao": "...", "evidencias": []
+        "retornos_justificados": {}, "hipotese_de_medicao": "...",
+        "evidencias": [{"natureza": "hipotese", "afirmacao": "...", "fonte": "arquiteto"}],
+        "valor": {"problema": "...", "informacao_nova": "...", "evidencia": "...",
+                  "capacidade_do_leitor": "...", "por_que_nao_fundir": "...",
+                  "entregas": ["resposta_direta"]},
+        "plano_visual": [{"secao": "...", "intencao": "checklist", "padrao": "list",
+                          "funcao": "...", "posicao": "secao"}],
+        "ativos": []
       }
     }
   ]

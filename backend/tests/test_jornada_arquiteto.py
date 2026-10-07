@@ -73,3 +73,68 @@ def test_card_sem_jornada_continua_sem_jornada():
         del p["jornada"]
     jobs = page_factory(arq)["writingJobs"]
     assert all(j["writer_briefing"]["jornada"] is None for j in jobs)
+
+
+# ---------------------------------------------------------------------------
+# 2ª rodada (07/10/2026): merge protegido no revisor real, normalização
+# ---------------------------------------------------------------------------
+
+import asyncio  # noqa: E402
+
+from app.agents.base import AgentContext  # noqa: E402
+from app.agents.funnel_pro.jornada_contrato import normalizar_arquitetura  # noqa: E402
+from app.agents.funnel_pro.reviewer import FunnelReviewer  # noqa: E402
+from app.config import Settings  # noqa: E402
+from app.llm.mock import MockEngine  # noqa: E402
+
+JORNADA_COMPLETA = {
+    **JORNADA_RENDA,
+    "coortes_de_entrada": ["organic_search"],
+    "condicao_terminal": "Leitor sabe se se enquadra",
+    "monetizacao": {"papel": "secundario", "restricoes": ["nada antes da resposta"]},
+    "retornos_justificados": {"senac_gratuito": "quem entrou direto"},
+    "hipotese_de_medicao": "quem fez a conta segue",
+    "evidencias": [{"natureza": "hipotese", "afirmacao": "x", "fonte": "arquiteto"}],
+    "valor": {"problema": "p", "informacao_nova": "i", "capacidade_do_leitor": "c",
+              "entregas": ["calculo"]},
+}
+
+
+def test_revisor_real_com_saida_parcial_preserva_a_jornada(monkeypatch):
+    arq = copy.deepcopy(ARQUITETO)
+    arq["pages"][1]["jornada"] = copy.deepcopy(JORNADA_COMPLETA)
+    parcial = copy.deepcopy(arq)
+    parcial["pages"][1]["jornada"] = {"duvida_id": "renda", "pergunta_principal": "Minha renda se enquadra?",
+                                      "resposta_imediata": "Até dois salários mínimos por pessoa.",
+                                      "ja_resolvido": [], "proxima_duvida": "estado",
+                                      "condicao_terminal": "",
+                                      "saida_oficial": {"esperada": False, "classificacao": "nao_aplicavel"}}
+    del parcial["funnel_strategy"]["jornada"]
+
+    class _Cliente:
+        ultimo_uso = {"modelo_solicitado": "gemini-3.5-flash", "modelo_servido": "gemini-3.5-flash",
+                      "entrada": 100, "saida": 200, "latencia_ms": 900}
+
+        async def complete_json(self, system, user):
+            return {**parcial, "changes": [], "achados": []}
+
+    monkeypatch.setattr(FunnelReviewer, "_gemini", lambda self: _Cliente())
+    ctx = AgentContext(settings=Settings(gemini_api_key="k", google_api_key=None,
+                                         supabase_url=None, supabase_service_role_key=None),
+                       engine=MockEngine(), grounding=None)
+    res = asyncio.run(FunnelReviewer(ctx).review(arq, entity_facts={}, forced_language="pt-BR"))
+    assert res["pages"][1]["jornada"] == JORNADA_COMPLETA
+    assert res["funnel_strategy"]["jornada"] == ARQUITETO["funnel_strategy"]["jornada"]
+    assert res["jornada_preservada"]
+    assert res["telemetria"][0]["etapa"] == "revisor_do_arquiteto"
+
+
+def test_normalizacao_logo_apos_o_arquiteto_nomeia_campo_e_motivo():
+    arq = copy.deepcopy(ARQUITETO)
+    arq["pages"][1]["jornada"]["saida_oficial"]["classificacao"] = "Boa"
+    arq["pages"][1]["jornada"]["entrada_direta"] = "talvez"
+    normal, rel = normalizar_arquitetura(arq)
+    assert normal["pages"][1]["jornada"]["saida_oficial"]["classificacao"] == "boa"
+    assert rel["estado"] == "invalida"
+    assert {"campo": "pagina[renda-senac].jornada.entrada_direta",
+            "motivo": "'talvez' fora do vocabulário (autocontida, depende_de_contexto)"} in rel["erros"]

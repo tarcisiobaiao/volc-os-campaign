@@ -41,7 +41,8 @@ def _anchor_congruent(anchor: str, target_h1: str, target_slug: str = "") -> boo
 
 
 def pagespec_for(settings: Settings, role: PageRole, *, terminal: bool = False,
-                 contextual: bool = False, page_count: int = 0) -> PageTypeSpec:
+                 contextual: bool = False, page_count: int = 0,
+                 exige_oficial: bool | None = None) -> PageTypeSpec:
     """Convert settings.routing[role.value] -> PageTypeSpec. Missing key is a
     ValueError (fail-closed: no spec means no build).
 
@@ -50,13 +51,16 @@ def pagespec_for(settings: Settings, role: PageRole, *, terminal: bool = False,
     stops advancing. Official mode requires a verified external exit instead
     of the legacy cross-funnel destination."""
     if contextual:
+        # `exige_oficial` vem da JORNADA (`politica_da_saida_oficial`) e vence o
+        # papel: saída `nao_aplicavel` não é obrigada nem numa SOLUTION.
+        oficial = (role is PageRole.SOLUTION) if exige_oficial is None else exige_oficial
         return PageTypeSpec(
             role=role, allowed_targets=["funnel", "external_official"],
-            required_targets=(["external_official"] if role is PageRole.SOLUTION else []),
+            required_targets=(["external_official"] if oficial else []),
             forbidden_targets=["self", "bare_rec", "cross_funnel"],
             cta_min=1 if role is PageRole.LP else 0,
             cta_max=3 if role is PageRole.LP else max(0, page_count - 1),
-            requires_external_official=role is PageRole.SOLUTION,
+            requires_external_official=oficial,
             distinct_targets=True, anchor_congruent=False,
         )
     if terminal and role is PageRole.SOLUTION and settings.run.terminal_exit_policy == "official":

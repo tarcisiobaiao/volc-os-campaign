@@ -29,6 +29,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from app.agents.base import AgentContext, BaseAgent
+from app.agents.funnel_pro.jornada_contrato import preservar_jornada
 
 # ---- system prompt do revisor (PT-BR) -----------------------------------------
 REVIEWER_SYSTEM_PROMPT = """<identity>
@@ -116,7 +117,9 @@ páginas existentes quando necessário.
    Aponte em `achados` (sem reescrever) CTA para dúvida já resolvida, ciclo sem ganho de
    informação, LP que só roteia, página interna que depende da anterior, saída oficial antes
    de a tarefa estar resolvida e coortes quente e fria com a mesma promessa. Nunca troque
-   natureza "hipotese" ou "simulacao" por "observacao_real".
+   natureza "hipotese" ou "simulacao" por "observacao_real". Devolva a jornada COMPLETA de cada
+   página (valor, plano_visual, ativos, evidências, coortes, monetização): o código preserva o que
+   você omitir, mas mudança só vale quando escrita por inteiro.
 
 Ao final, você pode ter fundido, derrubado ou reordenado páginas — o que
 importa é que o funil final seja factualmente correto, no idioma certo, sem
@@ -318,14 +321,23 @@ class FunnelReviewer(BaseAgent):
 
         changes = candidate.get("changes")
         achados = _achados(candidate.get("achados"))
+        # A JORNADA é do arquiteto: o revisor só muda o que muda EXPLICITAMENTE.
+        # O merge por campo é código, não pedido no prompt (o exemplo de saída
+        # do revisor traz uma jornada resumida, e omitir não pode apagar).
+        mesclado, preservados = preservar_jornada(
+            architect_output, {"funnel_strategy": candidate.get("funnel_strategy") or {},
+                               "pages": candidate["pages"]})
         result = {
             "funnel_strategy": _estrategia_preservada(
                 architect_output.get("funnel_strategy") or {},
-                candidate.get("funnel_strategy"), achados),
-            "pages": candidate["pages"],
+                mesclado.get("funnel_strategy"), achados),
+            "pages": mesclado["pages"],
             "changes": changes if isinstance(changes, list) else [],
             "achados": achados,
             "estado": "revisado",
+            "jornada_preservada": preservados,
+            "telemetria": [{"etapa": "revisor_do_arquiteto", **getattr(client, "ultimo_uso", None)}]
+            if isinstance(getattr(client, "ultimo_uso", None), dict) else [],
         }
         self.log(
             f"Revisor aplicou {len(result['changes'])} correção(ões) e apontou "

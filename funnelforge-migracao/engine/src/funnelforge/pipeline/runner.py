@@ -153,6 +153,10 @@ class Runner:
                               "completion_tokens": res.completion_tokens,
                               "cost_usd": res.cost_usd, "latency_ms": res.latency_ms,
                               "n_issues": len(last_issues),
+                              # A CAUSA da retentativa: os códigos que reprovaram
+                              # esta tentativa. É o que diz se o problema é de
+                              # contrato, de modelo ou de insumo.
+                              "causas": sorted({i.code for i in last_issues}),
                               "classe": veredito.classe,
                               "retentar": veredito.retentar})
             if not last_issues:

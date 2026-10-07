@@ -632,6 +632,7 @@ class EntityFunnelOrchestrator(BaseAgent):
         # e o que ele APONTOU sem mudar (`achados`) voltam em
         # `revisao_arquitetura`, que a rota grava na arquitetura do card. Fora da
         # resposta HTTP, como antes; dentro do dado que o motor e o operador leem.
+        from app.agents.funnel_pro.jornada_contrato import normalizar_arquitetura
         from app.agents.funnel_pro.page_factory import architect_pages_to_funnel_pages, page_factory
         from app.agents.funnel_pro.reviewer import FunnelReviewer
 
@@ -658,6 +659,11 @@ class EntityFunnelOrchestrator(BaseAgent):
                 "pages": reviewed.get("pages") or [],
             }
             if reviewed_arch["pages"]:
+                # JORNADA de novo, DEPOIS do revisor e ANTES do motor: o merge
+                # protegido já devolveu o que o revisor omitiu; aqui a forma é
+                # conferida (campo + motivo) e o relatório vai para o card.
+                reviewed_arch, jornada_revisada = normalizar_arquitetura(reviewed_arch)
+                built["jornada"] = jornada_revisada
                 # R8: o revisor pode fundir/derrubar páginas, deixando
                 # `page_number` não-contíguo (ex.: 1,3,4,5). `apply_roles_and_slugs`
                 # (via `architect_pages_to_funnel_pages`/`page_factory`) atribui
@@ -683,6 +689,9 @@ class EntityFunnelOrchestrator(BaseAgent):
                 "changes": list(reviewed.get("changes") or []),
                 "achados": list(reviewed.get("achados") or []),
                 "estado": reviewed.get("estado") or "revisado",
+                "jornada_preservada": list(reviewed.get("jornada_preservada") or []),
+                "telemetria": [*(built.get("telemetria") or []),
+                               *(reviewed.get("telemetria") or [])],
             }
             if reviewed.get("motivo"):
                 revisao_arquitetura["motivo"] = reviewed["motivo"]
@@ -695,6 +704,16 @@ class EntityFunnelOrchestrator(BaseAgent):
                 "motivo": f"falha inesperada no revisor ({type(exc).__name__}); "
                           "funil original do arquiteto mantido",
             }
+
+        # O relatório da jornada (normalizações, avisos e ERROS com campo e
+        # motivo) e a telemetria do arquiteto viajam no card: o operador vê o
+        # erro estrutural antes do disparo e o recibo do run tem o custo dele.
+        revisao_arquitetura["jornada"] = built.get("jornada") or {"estado": "ausente"}
+        revisao_arquitetura.setdefault("telemetria", list(built.get("telemetria") or []))
+        for erro in (built.get("jornada") or {}).get("erros") or []:
+            msg = f"Jornada inválida em {erro['campo']}: {erro['motivo']}"
+            if msg not in (built.get("warnings") or []):
+                built.setdefault("warnings", []).append(msg)
 
         strategy = built.get("funnel_strategy") or {}
         # papéis (LP/Pre-sell/Solução) + sufixos de slug (-pr/-p1/-p2…), com as

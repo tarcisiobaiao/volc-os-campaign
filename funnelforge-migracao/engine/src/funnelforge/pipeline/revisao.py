@@ -72,9 +72,19 @@ VERSAO = "revisao-v1"
 DECISOES: tuple[str, ...] = ("aprovado", "ajustar", "revisao_humana")
 SEVERIDADES: tuple[str, ...] = ("bloqueante", "ajuste", "nota")
 CATEGORIAS: tuple[str, ...] = ("erro_factual", "risco_politica", "congruencia_destino",
-                               "identidade", "estilo", "oportunidade")
+                               "identidade", "estilo", "oportunidade", "naturalidade")
 TIPOS_DE_EVIDENCIA: tuple[str, ...] = ("fato", "fonte", "politica", "identidade", "briefing",
-                                       "intencao", "destino")
+                                       "intencao", "destino", "escrita")
+# NATURALIDADE (doutrina Humanizer, 07/10/2026): padrão de escrita artificial
+# MATERIAL vira microajuste na MESMA chamada de revisão — nunca bloqueio, nunca
+# chamada extra. A evidência é o padrão nomeado; o código confere que o patch
+# não perde número nem toca link (`_checar_naturalidade`).
+PADROES_DE_ESCRITA: tuple[str, ...] = (
+    "abertura_generica", "frase_inflada", "linguagem_de_vendas", "fonte_vaga",
+    "gerundio_raso", "nao_x_mas_y", "trinca_forcada", "repeticao",
+    "anuncio_do_proximo_ponto", "verbo_rebuscado", "qualificadores_em_excesso",
+    "conclusao_vazia", "frase_de_efeito", "travessao_em_serie", "negrito_em_excesso",
+)
 CATEGORIAS_SO_NOTA = frozenset({"estilo", "oportunidade"})
 MAX_PATCHES_POR_RODADA = 8
 # Uma chamada de revisão por página (diretriz do operador, 30/09/2026).
@@ -382,6 +392,8 @@ def _ref_valida(tipo: str, ref: str, refs: Referencias) -> tuple[bool, str | Non
     if tipo == "destino":
         alvos = {v.strip("/") for v in refs.destinos.values()}
         return (sem_prefixo in refs.destinos or ref.strip("/") in alvos), None
+    if tipo == "escrita":
+        return ref.startswith("padrao:") and ref[len("padrao:"):].strip() in PADROES_DE_ESCRITA, None
     if tipo == "intencao":
         if ref.startswith("termo:"):
             return ref[len("termo:"):].strip() in refs.termos, None
@@ -455,10 +467,25 @@ def validar_achados(achados: Any, doc: Documento, refs: Referencias) -> list[dic
         if (a["invalido"] is None and a["categoria"] in CATEGORIAS_SO_NOTA
                 and a["severidade"] != "nota"):
             a["rebaixado"] = "estilo_nunca_bloqueia"
+        if (a["invalido"] is None and a["categoria"] == "naturalidade"
+                and a["severidade"] == "bloqueante"):
+            # Naturalidade é ajuste, nunca bloqueio: texto artificial correto
+            # não impede a página de ir ao ar.
+            a["severidade"] = "ajuste"
         if a["invalido"] or a["rebaixado"]:
             a["severidade"] = "nota"
         saida.append(a)
     return saida
+
+
+def _checar_naturalidade(antes: str, depois: str) -> str | None:
+    """Humanizer: mudar a forma, nunca o que o texto diz. Patch de naturalidade
+    que some com um número ou mexe num trecho com link é recusado."""
+    if "href" in antes.lower() or "<a" in antes.lower():
+        return "naturalidade_nao_toca_link"
+    if set(numeros(antes)) - set(numeros(depois)):
+        return "naturalidade_perderia_numero"
+    return None
 
 
 def _patchavel(achado: dict | None) -> bool:
@@ -635,6 +662,8 @@ def aplicar_patches(doc: Documento, patches: Any, achados: dict[str, dict],
             continue
         ini = texto.index(antes)
         motivo = _regiao(novo, campo, texto, ini, ini + len(antes))
+        if motivo is None and achado["categoria"] == "naturalidade":
+            motivo = _checar_naturalidade(antes, depois)
         if motivo is None:
             motivo = _checar_depois(antes, depois, novo.eh_rico(campo), regras)
         if motivo is not None:

@@ -11,11 +11,38 @@ página inteira.
 """
 from __future__ import annotations
 
+import pytest
 
 from funnelforge.adapters.url_verifier_http import HttpUrlVerifier
 from funnelforge.domain.models import ResearchFacts, StepResult, StepStatus
 from funnelforge.pipeline.steps import _gate_research
 from funnelforge.pipeline.validators.checks import critical_fact_grounding
+from datetime import date
+
+from funnelforge.pipeline import steps as _steps
+
+
+class _MesmoTipoDeData(type):
+    """`isinstance(x, _Hoje)` continua verdadeiro para qualquer `date`: o gate
+    usa `isinstance(f.vigente_desde, date)` com o MESMO nome que o relógio."""
+
+    def __instancecheck__(cls, obj):
+        return isinstance(obj, date)
+
+
+class _Hoje(date, metaclass=_MesmoTipoDeData):
+    @classmethod
+    def today(cls):  # type: ignore[override]
+        return date(2026, 9, 30)
+
+
+@pytest.fixture(autouse=True)
+def _relogio_fixo(monkeypatch):
+    """As fixtures datam `verificado_em` em 17 e 19/08/2026 e a janela é de 45
+    dias: sem relógio fixo os testes envelhecem e passam a medir a idade da
+    fixture, não a regra. 30/09/2026 fica dentro da janela e antes de
+    01/11/2026 (a vigência "futura" das fixtures)."""
+    monkeypatch.setattr(_steps, "date", _Hoje)
 
 
 # ── 1 · bloqueado não é inexistente ────────────────────────────────────────

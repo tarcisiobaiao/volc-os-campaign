@@ -23,13 +23,15 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from funnelforge.domain.models import (
     ClassificacaoDeSaida,
     EvidenciaDaJornada,
     JanelaDeColeta,
     NaturezaDoDado,
+    canon_rotulo,
+    fonte_nao_observada,
 )
 
 SINAIS: tuple[str, ...] = (
@@ -64,20 +66,31 @@ class LeituraDoFunil(BaseModel):
     fonte: str = Field(min_length=1)
     janela: JanelaDeColeta | None = None
     amostra: int | None = None
+    # O identificador que alguém consegue reabrir: id do relatório, da consulta
+    # GAQL, do export. Sem ele uma "observação" não é auditável.
+    referencia: str = ""
+
+    @field_validator("natureza", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
 
     @model_validator(mode="after")
     def _natureza_coerente(self) -> "LeituraDoFunil":
-        fonte = self.fonte.strip().lower()
         if self.natureza == "observacao_real":
-            if fonte.startswith(("simulacao:", "hipotese:", "mirofish")):
+            # A MESMA guarda da evidência da jornada (`fonte_nao_observada`).
+            if fonte_nao_observada(self.fonte):
                 raise ValueError("observação real não pode vir de simulação ou hipótese")
-            if self.valor is None or self.janela is None or not self.amostra:
-                raise ValueError("observação real exige valor, janela e amostra > 0")
+            if (self.valor is None or self.janela is None or not self.amostra
+                    or not self.referencia.strip()):
+                raise ValueError(
+                    "observação real exige valor, janela, amostra > 0 e referencia")
             return self
         if self.valor is not None:
             raise ValueError(
                 f"leitura de natureza '{self.natureza}' não carrega número: use `faixa`")
-        if self.natureza == "simulacao" and not fonte.startswith("simulacao:"):
+        if self.natureza == "simulacao" and not self.fonte.strip().lower().startswith(
+                "simulacao:"):
             raise ValueError("simulação precisa de fonte 'simulacao:<origem>'")
         return self
 

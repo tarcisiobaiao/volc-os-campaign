@@ -38,42 +38,50 @@ tentativa do `log.jsonl`, `model_requested`, `model` (servido) e `fallback`. O
 motivo exato da troca o LiteLLM não devolve; a tentativa que caiu fica no log
 com `erro` e `classe`.
 
-## Recomendação
+## Recomendação (revisada na 2ª rodada, 07/10/2026)
 
-**Agora (sem trocar modelo padrão):** manter a configuração atual. O ganho
-demonstrado nesta rodada vem de não pagar por funil estruturalmente quebrado
-(portão de esqueleto antes de qualquer chamada, inclusive o `engajamento`) e de
-atacar a retentativa da redação (5 das 36 chamadas, todas em `write`).
+Consulta adicional à documentação oficial em 07/10/2026:
+https://developers.openai.com/api/docs/deprecations — **gpt-5.1 está deprecated**
+(desligamento 01/04/2027; substituto oficial `gpt-6-sol`); gpt-4.1-nano desliga em
+23/10/2026. gpt-4.1 e gpt-4.1-mini não constam como deprecados. Preços de
+gpt-6-sol (US$ 2,00/10,00) e gpt-6-luna (US$ 0,10/0,50) na página de preços.
 
-**Candidatas a benchmark** (matriz `engine/benchmarks/matriz-modelos-v1.yaml`):
+**Agora (sem trocar padrão):** manter a configuração. A alavanca é a
+retentativa: 10 tentativas de redação para 5 páginas no run 220001 (5 extras).
+O que esta rodada fez para reduzi-la sem trocar modelo: contrato da jornada
+validado e normalizado antes da escrita, portão de esqueleto antes de qualquer
+chamada, saída oficial que não exige link onde não cabe (`nao_aplicavel`),
+ativo sem fonte que não gera chamada, uma revisão só (naturalidade no mesmo
+call) e a causa de cada retentativa registrada no log para atacar a próxima.
 
-- `redacao_flash_3_8`: gemini-3.8-flash na redação e no widget. Estimativa pelo
-  perfil do run 220001: US$ 1,10 contra 1,60 por funil (−32%). Preço
-  promocional até 31/12/2026 (US$ 0,75/3,75); a partir de 2027, 1,50/7,50 —
-  ainda abaixo do 3.5-flash na saída. Precisa provar qualidade, aderência
-  factual e taxa de retentativa iguais ou melhores.
-- `estruturados_mini`: gpt-4.1-mini em SEO, prompt visual e engajamento. Ganho
-  pequeno (≈ −2%); só vale se não aumentar reprovação do `seo_limits`.
-- `juiz_gpt_5_1`: gpt-5.1 como juiz/revisor (outro provedor que o redator).
-  Custo semelhante (≈ −2% na estimativa); só entra se o julgamento melhorar de
-  forma medida (concordância com decisão humana).
+**Candidatas a benchmark** (`engine/benchmarks/matriz-modelos-v1.yaml`,
+estimativa pelo perfil do run 220001):
 
-**Não recomendadas:** gemini-3.5-flash-lite na pesquisa (Google Search não
-disponível no tier pago); gpt-5-pro/gpt-5.2-pro (10× o custo sem ganho
-demonstrado); trocar qualquer padrão sem a rodada real da matriz; o default
-`gemini-2.0-flash` do `GeminiClient` no backend, que não aparece na página
-oficial consultada.
+| Configuração | O que muda | Custo estimado por funil |
+|---|---|---|
+| `atual` | referência | US$ 1,60 |
+| `redacao_flash_3_8` | gemini-3.8-flash na LP, internas e widget (promocional até 31/12/2026) | US$ 1,10 |
+| `estruturados_luna` | gpt-6-luna em SEO, prompt visual e engajamento | US$ 1,56 |
+| `juiz_gpt_6_sol` | gpt-6-sol no juiz e no revisor | US$ 1,60 |
 
-## Como rodar o benchmark real (decisão humana, custo real)
+**Não recomendadas:** gpt-5.1 (deprecated); gemini-3.5-flash-lite na pesquisa
+(sem Google Search no tier pago); gpt-5-pro/gpt-5.2-pro/gpt-6-astra (5–10× o
+custo sem ganho demonstrado); o default `gemini-2.0-flash` do `GeminiClient`
+(ausente da página oficial); trocar padrão sem a rodada real.
 
-```bash
-cd funnelforge-migracao/engine
-PYTHONPATH=src python -m funnelforge.benchmark estimar tests/fixtures/state_run_220001.json
-PYTHONPATH=src python -m funnelforge.benchmark preparar /tmp/bench-funil   # só escreve configs e imprime comandos
-# rodar os comandos impressos (publish: false), depois:
-PYTHONPATH=src python -m funnelforge.benchmark pontuar /caminho/runs/*/state.json
-```
+## Benchmark (custo zero até a aprovação)
 
-Comparar medianas de 3 repetições por configuração: custo pela tabela oficial,
-latência, retentativas, fallbacks, páginas prontas/bloqueadas, achados
-materiais da revisão global e reprovação de portões factuais/compliance.
+`PYTHONPATH=src python -m funnelforge.benchmark pontuar|estimar|preparar`.
+`pontuar` mede por run: custo pela tabela oficial e do ledger, custo do
+arquiteto e do revisor do arquiteto (telemetria do card), escrita da LP e das
+internas separadas, retentativas por passo com a causa (log), modelo pedido ×
+servido, fallbacks, páginas prontas/bloqueadas, bloqueios da revisão global e
+**custo por funil aprovado** (todo o gasto, inclusive dos runs reprovados,
+dividido pelos funis aprovados). `preparar` escreve um config por configuração
+(com `editorial_v2`, `publish: false` e tetos de custo) e imprime os comandos.
+
+Condições de parada da rodada real: teto do motor US$ 4,00 por run e US$ 1,20
+por página (config gerado; o motor para sozinho); teto total US$ 45,00 (12 runs:
+4 configurações × 3 repetições), conferido pelo operador com `pontuar` depois de
+cada run. Parar também se a configuração `atual` não aprovar o funil em 2 das 3
+repetições (o problema não é de modelo).

@@ -7,6 +7,11 @@
 # (custo real), sobre a MESMA arquitetura, com `publish: false`.
 fixture: tests/fixtures/jornada_senac/arquitetura.json
 repeticoes: 3            # variância de LLM: compare medianas, não um run
+editorial_v2: true       # a linha que vai a produção: briefing + revisor + escrita natural
+# CONDIÇÕES DE PARADA (custo real). Por run e por página o motor para sozinho
+# (budget do config gerado). O total é do operador: some `custo_total_usd` de
+# `pontuar` depois de cada run e pare ao passar de `max_usd_total`.
+orcamento: {max_usd_por_run: 4.00, max_usd_por_pagina: 1.20, max_usd_total: 45.00}
 configuracoes:
   atual: {}
   redacao_flash_3_8:
@@ -14,12 +19,14 @@ configuracoes:
     write_p1:   {model: gemini/gemini-3.8-flash, fallbacks: [gpt-4.1]}
     write_page: {model: gemini/gemini-3.8-flash, fallbacks: [gpt-4.1]}
     widget:     {model: gemini/gemini-3.8-flash, fallbacks: [gpt-4.1]}
-  estruturados_mini:
-    # candidata: passos de rótulo/JSON simples num modelo econômico.
-    seo:         {model: gpt-4.1-mini, fallbacks: [gpt-4.1]}
-    image:       {model: gpt-4.1-mini, fallbacks: [gpt-4.1]}
-    engajamento: {model: gpt-4.1-mini, fallbacks: [gpt-4.1]}
-  juiz_gpt_5_1:
-    # candidata: juiz/revisor de outro provedor que o redator, mais forte.
-    judge:   {model: gpt-5.1, fallbacks: [gpt-4.1]}
-    revisor: {model: gpt-5.1, fallbacks: [gpt-4.1]}
+  estruturados_luna:
+    # candidata: passos de rótulo/JSON simples no modelo econômico atual.
+    seo:         {model: gpt-6-luna, fallbacks: [gpt-4.1]}
+    image:       {model: gpt-6-luna, fallbacks: [gpt-4.1]}
+    engajamento: {model: gpt-6-luna, fallbacks: [gpt-4.1]}
+  juiz_gpt_6_sol:
+    # candidata: juiz/revisor de outro provedor que o redator. gpt-5.1 saiu da
+    # matriz: deprecated (desligamento 2027-04-01); gpt-6-sol é o substituto
+    # oficial.
+    judge:   {model: gpt-6-sol, fallbacks: [gpt-4.1]}
+    revisor: {model: gpt-6-sol, fallbacks: [gpt-4.1]}

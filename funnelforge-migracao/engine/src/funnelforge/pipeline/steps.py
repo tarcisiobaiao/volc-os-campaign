@@ -27,7 +27,11 @@ from funnelforge.pipeline.admanifest import build_ad_manifest, vignette_meta
 from funnelforge.pipeline.base_factual import base_para_o_redator
 from funnelforge.pipeline.budget import preco_declarado_da_imagem
 from funnelforge.pipeline.inventario import montar_inventario
-from funnelforge.pipeline.jornada import contexto_de_jornada
+from funnelforge.pipeline.jornada import (
+    ativos_validos,
+    contexto_de_jornada,
+    politica_da_saida_oficial,
+)
 from funnelforge.pipeline.preflight import preflight_issues
 from funnelforge.pipeline.retry_policy import classificar_issues, separar_para_o_revisor
 from funnelforge.pipeline.revisao import (
@@ -93,6 +97,7 @@ from funnelforge.pipeline.routing import (
 from funnelforge.pipeline.taxonomy import contract_advisories
 from funnelforge.pipeline.uniqueness import jaccard
 from funnelforge.pipeline.validators.briefing_contract import (
+    PADROES_FORA_DA_REDACAO,
     canon_padrao,
     exigencia_visual_do_plano,
     numeros,
@@ -1286,8 +1291,11 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     # novo no gate de conteúdo recoloca exatamente a MESMA rota.
     terminal_official = is_terminal and (
         page.editorial is not None or deps.settings.run.terminal_exit_policy == "official")
+    # Com JORNADA, a saída oficial da página manda na rota (existe? vem antes
+    # ou depois dos CTAs internos?). Sem jornada, a regra de papel/posição.
+    politica = politica_da_saida_oficial(page)
     bind_official_route(page, official_links, role=role, is_terminal=is_terminal,
-                        terminal_official=terminal_official)
+                        terminal_official=terminal_official, politica=politica)
     # FIX-3c: commercial PLATFORM deep links for SOLUTION pages -- the fintechs/
     # services the path names, from the research, each confirmed LIVE by a
     # chromium visit (fail-closed). Feeds the writer prompt AND same_domain
@@ -1347,7 +1355,11 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         "ad_paragraph_anchors": deps.settings.ads.paragraph_anchors,
         "pagespec": pagespec_for(deps.settings, role, terminal=is_terminal,
                                 contextual=page.editorial is not None,
-                                page_count=len(plan.pages)).model_dump(),
+                                page_count=len(plan.pages),
+                                exige_oficial=politica.exige if politica else None).model_dump(),
+        # A jornada desobriga a página de link oficial (`nao_aplicavel`): o
+        # `official_link_density` lê daqui. Ausente = regra antiga por papel.
+        **({"saida_oficial_exigida": politica.exige} if politica else {}),
         "solution_order": solution_order,
         "is_terminal": is_terminal,
         "terminal_official": terminal_official,
@@ -1618,7 +1630,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         extras_v2["exigencia_visual"] = exigencia_visual_do_plano(briefing)
         extras_v2["plano_visual"] = [
             item for item in (briefing.get("visual_plan") or [])
-            if isinstance(item, dict) and canon_padrao(item.get("padrao"))]
+            if isinstance(item, dict) and canon_padrao(item.get("padrao"))
+            and canon_padrao(item.get("padrao")) not in PADROES_FORA_DA_REDACAO]
     prompt = render(
         nome_do_prompt(_prompt_name_for(page), v2=v2),
         role=effective_role(page).value,
@@ -2409,6 +2422,68 @@ def _screenshot_rejected_by_status(result: Any) -> bool:
         status is not None and status != 200)
 
 
+CAMPOS_DE_PROVENIENCIA = ("url", "capturado_em", "sha256", "legenda", "alt", "crop")
+
+
+def _sha256_do_arquivo(caminho: Path) -> str:
+    try:
+        return hashlib.sha256(caminho.read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
+def _trecho_que_comprova(url: str, facts: ResearchFacts) -> str:
+    """O trecho da PESQUISA que esta URL sustenta: o fato verificado ou o dado
+    validado cuja fonte é ela. Sem trecho, o print não prova nada."""
+    alvo = url.rstrip("/")
+    for f in facts.fatos_verificados or []:
+        if str(f.fonte_primaria).rstrip("/") == alvo:
+            return f"{f.valor} {f.unidade} ({f.dispositivo})".strip()
+    for d in facts.dados_validados or []:
+        if isinstance(d, dict) and str(d.get("fonte") or "").rstrip("/") == alvo:
+            return str(d.get("fato") or d.get("dado") or "").strip()
+    return ""
+
+
+def proveniencia_do_print(url: str, arquivo: Path, facts: ResearchFacts, *,
+                          titulo: str, crop: str) -> dict:
+    """O registro de um print oficial: de onde, quando, o que prova, legenda,
+    texto alternativo, recorte, hash do arquivo e estado. A legenda diz que é
+    REPRODUÇÃO de outro site — o print nunca se passa por interface do VOLC
+    nem do órgão."""
+    host = urlparse(url).netloc.lower()
+    agora = datetime.now(timezone.utc)
+    trecho = _trecho_que_comprova(url, facts)
+    elemento = trecho or titulo
+    return {
+        "url": url, "path": str(arquivo),
+        "capturado_em": agora.isoformat(timespec="seconds"),
+        "titulo": titulo, "trecho": trecho,
+        "legenda": (f"Reprodução de tela de {host}, capturada em "
+                    f"{agora.strftime('%d/%m/%Y')}. A página pertence ao site de origem."
+                    + (f" Mostra: {elemento}." if elemento else "")),
+        "alt": f"Reprodução: {host} — tela oficial de {_link_theme(url)}",
+        "crop": crop, "sha256": _sha256_do_arquivo(arquivo), "estado": "atual",
+    }
+
+
+def print_sem_proveniencia(shot: dict) -> list[str]:
+    """Os campos de proveniência que faltam (lista vazia = print utilizável)."""
+    faltam = [c for c in CAMPOS_DE_PROVENIENCIA if not str(shot.get(c) or "").strip()]
+    if not str(shot.get("url") or "").startswith("https://"):
+        faltam.append("url_https")
+    if not (str(shot.get("trecho") or "").strip() or str(shot.get("titulo") or "").strip()):
+        faltam.append("trecho_ou_titulo")
+    return faltam
+
+
+def _quando_capturado(capturado_em: str) -> str:
+    try:
+        return f", capturada em {datetime.fromisoformat(capturado_em).strftime('%d/%m/%Y')}"
+    except (TypeError, ValueError):
+        return ""
+
+
 def step_screenshot(state: RunState, page: Page, deps: Any) -> None:
     """Capture STATIC screenshots of a SOLUTION page's OFFICIAL destination
     links and save them as compressed webp assets in the run dir, for
@@ -2474,6 +2549,7 @@ def step_screenshot(state: RunState, page: Page, deps: Any) -> None:
         run_dir.mkdir(parents=True, exist_ok=True)
 
         shots: list[dict] = []
+        rejeitados: list[Issue] = []
         for k, url in enumerate(links[:cap], start=1):
             result = deps.screenshot.capture(url, mode=sc.mode)
             # Guard 1 (status/error): drop non-200 or error/404 pages outright.
@@ -2497,10 +2573,22 @@ def step_screenshot(state: RunState, page: Page, deps: Any) -> None:
             host_slug = host.replace(".", "")
             out_path = run_dir / f"p{page.page_number}-oficial-{host_slug}-{k}.webp"
             saved = deps.image_proc.screenshot_to_webp(png, out_path, profile=sc.crop_profile)
-            shots.append({"url": url, "path": str(saved)})
+            shot = proveniencia_do_print(url, Path(saved), facts,
+                                         titulo=getattr(result, "title", "") or "",
+                                         crop=sc.crop_profile)
+            faltam = print_sem_proveniencia(shot)
+            if faltam:
+                # Print que não prova nada não entra: sem um trecho da pesquisa
+                # ou o título da página, ele vira decoração.
+                rejeitados.append(Issue(
+                    code="print_sem_proveniencia",
+                    message=f"{url}: print descartado, falta {', '.join(faltam)}."))
+                continue
+            shots.append(shot)
         if shots:
             state.screenshots[page.page_number] = shots
-        state.step_status[key] = StepResult(step=key, status=StepStatus.OK, attempts=1)
+        state.step_status[key] = StepResult(step=key, status=StepStatus.OK, attempts=1,
+                                            issues=rejeitados)
     except Exception as exc:  # noqa: BLE001 - screenshots are non-essential; must never fail a good page
         state.step_status[key] = StepResult(
             step=key, status=StepStatus.SKIPPED,
@@ -2916,6 +3004,20 @@ def widget_archetype_for(state: RunState, page: Page) -> str | None:
     return ENGAJAMENTO_PARA_ARQUETIPO[engajamento_efetivo(page)]
 
 
+def _lastro_da_pagina(state: RunState, page: Page) -> set[str]:
+    facts = state.facts.get(page.page_number, ResearchFacts(sparse=True))
+    urls = set(facts.fontes_resolvidas or []) | set(state.official_links.get(page.page_number) or [])
+    return {u.rstrip("/") for u in urls}
+
+
+def _fonte_no_lastro(fonte: str, lastro: set[str]) -> bool:
+    """A regra do ativo aponta para uma URL que a pesquisa desta página
+    verificou (mesma URL, ou uma página dentro dela)."""
+    fonte = (fonte or "").strip().rstrip("/")
+    return bool(fonte) and fonte.startswith("https://") and any(
+        fonte == u or fonte.startswith(u + "/") or u.startswith(fonte + "/") for u in lastro)
+
+
 def step_widget(state: RunState, page: Page, deps: Any) -> None:
     """Generate + sanitize + inject an interactive wp:html widget for a SOLUTION
     page. GATED and isolated from the article body:
@@ -2952,6 +3054,22 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
         return
 
     key = f"widget_p{page.page_number}"
+    # ATIVO PEDIDO PELO ARQUITETO (jornada): só é gerado com a regra lastreada
+    # na pesquisa DESTA página. Sem fonte factual não há widget — e não se paga
+    # a chamada para descobrir isso.
+    ativo = None
+    if page.jornada is not None and page.jornada.ativos:
+        lastro = _lastro_da_pagina(state, page)
+        candidatos = [a for a in ativos_validos(page)
+                      if _fonte_no_lastro(a.fonte_da_regra, lastro)]
+        if not candidatos:
+            state.step_status[key] = _widget_skip(page, Issue(
+                code="ativo_sem_fonte_factual",
+                message=("Ativo interativo não gerado: nenhuma especificação completa tem "
+                         "a fonte da regra entre as fontes verificadas da pesquisa desta "
+                         "página.")))
+            return
+        ativo = candidatos[0].model_dump()
     try:
         cfg = deps.settings.steps.get("widget")
         if cfg is None:
@@ -3000,6 +3118,7 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
                 # (17/08/2026): a p3 passou em tudo e caiu por um "30 a 60 dias"
                 # que o widget inventou.
                 facts=base_para_o_redator(state.facts.get(page.page_number)),
+                ativo=ativo or {},
             ) + correcao
             text, res = deps.runner.run_llm_step(
                 key, cfg, [{"role": "user", "content": prompt}], ctx={},
@@ -3495,7 +3614,7 @@ def _link_theme(url: str) -> str:
 
 
 def _insert_official_screenshot(html: str, image_url: str, href: str, host: str,
-                                alt: str) -> str:
+                                alt: str, *, capturado_em: str = "") -> str:
     """Insert a Gutenberg wp:image (with a 'Reprodução: site oficial (host)'
     figcaption) right after the block that contains `href`; fallback anchor is
     after the SECOND heading. No-op when there's no image URL or neither anchor
@@ -3513,6 +3632,7 @@ def _insert_official_screenshot(html: str, image_url: str, href: str, host: str,
         '<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->\n'
         f'<figure class="wp-block-image size-large"><img src="{image_url}" alt="{alt}"/>'
         f'<figcaption class="wp-element-caption">Reprodução: site oficial ({host})'
+        f"{_quando_capturado(capturado_em)}"
         "</figcaption></figure>\n"
         "<!-- /wp:image -->\n"
         f"{_SCREENSHOT_SPACER}"
@@ -3536,15 +3656,20 @@ def _embed_official_screenshots(state: RunState, page: Page, deps: Any, html: st
             href = shot.get("url") or ""
             if not local or not Path(local).exists():
                 continue
+            # PROVENIÊNCIA OU NADA: print sem URL/data/hash/trecho/legenda (ou
+            # cujo arquivo mudou depois da captura) não vai ao ar.
+            if print_sem_proveniencia(shot) or shot.get("sha256") != _sha256_do_arquivo(Path(local)):
+                continue
             host = urlparse(href).netloc.lower()
-            alt = f"Reprodução: {host} — tela oficial de {_link_theme(href)}"
+            alt = shot.get("alt") or f"Reprodução: {host} — tela oficial de {_link_theme(href)}"
             data = Path(local).read_bytes()
             media = deps.publisher.upload_media(
                 data, filename=Path(local).name, mime="image/webp", alt=alt)
             url = media.get("source_url") or media.get("guid", {}).get("rendered") or ""
             if not url:
                 continue
-            html = _insert_official_screenshot(html, url, href, host, alt)
+            html = _insert_official_screenshot(html, url, href, host, alt,
+                                               capturado_em=shot.get("capturado_em", ""))
         except Exception:  # noqa: BLE001 - official screenshot embed is non-essential; never fail publish
             continue
     return html

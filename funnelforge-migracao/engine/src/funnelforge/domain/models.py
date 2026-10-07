@@ -132,42 +132,153 @@ Canal = Literal["paid_search", "organic_search", "discover", "social", "display"
 ClassificacaoDeSaida = Literal["boa", "prematura", "nao_aplicavel"]
 NaturezaDoDado = Literal["hipotese", "simulacao", "observacao_real"]
 
+#: O que uma página entrega de útil. Toda página com jornada declara ao menos
+#: uma; página que só recircula tráfego não tem o que pôr aqui.
+ENTREGAS: tuple[str, ...] = (
+    "resposta_direta", "passo_a_passo", "comparacao", "exemplo", "checklist",
+    "calculo", "tabela", "fonte_oficial_explicada", "ferramenta",
+    "decisao_pratica", "proximo_passo_concreto",
+)
+Entrega = Literal[
+    "resposta_direta", "passo_a_passo", "comparacao", "exemplo", "checklist",
+    "calculo", "tabela", "fonte_oficial_explicada", "ferramenta",
+    "decisao_pratica", "proximo_passo_concreto",
+]
+
+
+def canon_rotulo(valor: object) -> object:
+    """Variação COSMÉTICA de um valor de vocabulário fechado: caixa, acento,
+    espaço e hífen ("Observação real" -> "observacao_real", "paid-search" ->
+    "paid_search"). Não traduz sinônimo: alias semântico é decisão do backend,
+    logo depois do arquiteto. Valor fora do vocabulário sai canonizado e o
+    schema o recusa com o nome do campo."""
+    if not isinstance(valor, str):
+        return valor
+    texto = _sem_acento(valor).strip().lower()
+    return re.sub(r"[\s\-]+", "_", texto)
+
+
+_MARCAS_DE_NAO_OBSERVACAO = ("simulacao", "simulation", "simulad", "mirofish",
+                             "hipotese", "hypothesis")
+
+
+def fonte_nao_observada(fonte: str) -> bool:
+    """A guarda ÚNICA de "isto não é dado observado". Vale para a evidência da
+    jornada e para a leitura do contrato de medição: "MiroFish", "simulação:x",
+    " SIMULACAO : x" e "hipótese" caem aqui com qualquer caixa, acento ou
+    espaço."""
+    bruto = re.sub(r"\s+", "", _sem_acento(fonte or "").lower())
+    return any(m in bruto for m in _MARCAS_DE_NAO_OBSERVACAO)
+
 
 class EvidenciaDaJornada(BaseModel):
     """Uma premissa do desenho, com a NATUREZA dita: hipótese do arquiteto,
     simulação (ex.: MiroFish) ou observação real. Lista vazia é ausência
-    explícita de evidência — nunca é preenchida por suposição."""
+    explícita de evidência — nunca é preenchida por suposição.
+
+    Observação real exige fonte verificável, data de coleta e um identificador
+    (relatório, consulta, export) que alguém consiga reabrir."""
     natureza: NaturezaDoDado
     afirmacao: str = Field(min_length=1)
     fonte: str = ""
     confianca: Literal["baixa", "media", "alta"] | None = None
+    coletado_em: date | None = None
+    referencia: str = ""
+
+    @field_validator("natureza", "confianca", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
 
     @model_validator(mode="after")
-    def _fonte_quando_nao_e_hipotese(self) -> "EvidenciaDaJornada":
+    def _fonte_coerente_com_a_natureza(self) -> "EvidenciaDaJornada":
         if self.natureza != "hipotese" and not self.fonte.strip():
             raise ValueError(f"evidência de natureza '{self.natureza}' sem fonte")
         if self.natureza == "simulacao" and not self.fonte.startswith("simulacao:"):
             raise ValueError("simulação precisa de fonte 'simulacao:<origem>'")
-        if self.natureza == "observacao_real" and self.fonte.startswith(
-                ("simulacao:", "hipotese:")):
-            raise ValueError("observação real não pode vir de simulação nem de hipótese")
+        if self.natureza == "observacao_real":
+            if fonte_nao_observada(self.fonte):
+                raise ValueError("observação real não pode vir de simulação nem de hipótese")
+            if self.coletado_em is None or not self.referencia.strip():
+                raise ValueError("observação real exige coletado_em e referencia verificável")
         return self
 
 
 class SaidaOficialPrevista(BaseModel):
-    """A saída para a fonte oficial NESTA página. `classificacao` é o que o
-    arquiteto declarou; a régua determinística (`jornada.classificar_saida_
-    oficial`) recalcula e a divergência vira achado."""
+    """A saída para a fonte oficial NESTA página — e a AUTORIDADE sobre a rota
+    oficial: `esperada=False` não ganha link oficial obrigatório; `boa` vem
+    primeiro; `prematura` vem depois do CTA da próxima dúvida. `classificacao`
+    é o que o arquiteto declarou; a régua (`jornada.classificar_saida_oficial`)
+    recalcula e a divergência vira achado."""
     esperada: bool = False
     classificacao: ClassificacaoDeSaida = "nao_aplicavel"
     condicao: str = ""
     justificativa: str = ""
+
+    @field_validator("classificacao", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
 
 
 class MonetizacaoDaPagina(BaseModel):
     """O papel do anúncio no desenho da página e o que ele não pode fazer."""
     papel: Literal["nenhum", "secundario", "principal"] = "secundario"
     restricoes: list[str] = []
+
+    @field_validator("papel", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
+
+
+class ValorDaPagina(BaseModel):
+    """Por que a página existe. Sem isto declarado, ela não vai à redação."""
+    problema: str = ""
+    informacao_nova: str = ""
+    evidencia: str = ""
+    capacidade_do_leitor: str = ""        # o que ele consegue FAZER depois
+    por_que_nao_fundir: str = ""
+    entregas: list[Entrega] = []
+
+    @field_validator("entregas", mode="before")
+    @classmethod
+    def _rotulos(cls, value: object) -> object:
+        return [canon_rotulo(v) for v in value] if isinstance(value, list) else value
+
+
+class BlocoVisual(BaseModel):
+    """Um item do `visual_plan` declarado já pelo arquiteto, no MESMO
+    vocabulário do briefing (`validators.briefing_contract.INTENCOES_VISUAIS`).
+    O revisor de esqueleto confere padrão × intenção × entregas da página."""
+    secao: str = Field(min_length=1)
+    intencao: str = Field(min_length=1)
+    padrao: str = Field(min_length=1)
+    funcao: str = ""                      # a função editorial, em uma frase
+    posicao: Literal["apos_resposta", "secao", "fechamento"] = "secao"
+
+    @field_validator("intencao", "padrao", "posicao", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
+
+
+class AtivoInterativo(BaseModel):
+    """Um widget pedido pelo arquiteto. Só é gerado quando `fonte_da_regra`
+    aparece na pesquisa daquela página (ver `steps.step_widget`)."""
+    pergunta: str = Field(min_length=1)
+    entradas: list[str] = []
+    logica: str = ""
+    resultado: str = ""
+    fonte_da_regra: str = ""
+    fallback_sem_js: str = ""
+    acessibilidade: str = ""
+    evento_de_medicao: str = ""
+    custo_estimado_usd: float | None = None
+
+
+def _ids(value: object) -> object:
+    return [canon_rotulo(v) for v in value] if isinstance(value, list) else value
 
 
 class JornadaDaPagina(BaseModel):
@@ -179,6 +290,9 @@ class JornadaDaPagina(BaseModel):
     # `resposta_imediata_ausente`) em vez de um erro de schema.
     resposta_imediata: str = ""
     coortes_de_entrada: list[Canal] = []
+    # O que o leitor resolveu no caminho PLANEJADO pelo arquiteto. É o
+    # "possivelmente resolvido": quem entra direto não passou por ele. O que é
+    # CERTO em todos os caminhos o motor calcula (`jornada.estado_do_leitor`).
     ja_resolvido: list[str] = []
     proxima_duvida: str = ""
     condicao_terminal: str = ""
@@ -191,6 +305,26 @@ class JornadaDaPagina(BaseModel):
     retornos_justificados: dict[str, str] = {}
     hipotese_de_medicao: str = ""
     evidencias: list[EvidenciaDaJornada] = []
+    valor: ValorDaPagina | None = None
+    plano_visual: list[BlocoVisual] = []
+    ativos: list[AtivoInterativo] = []
+
+    @field_validator("duvida_id", "proxima_duvida", "entrada_direta", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
+
+    @field_validator("ja_resolvido", "coortes_de_entrada", mode="before")
+    @classmethod
+    def _rotulos(cls, value: object) -> object:
+        return _ids(value)
+
+    @field_validator("retornos_justificados", mode="before")
+    @classmethod
+    def _chaves(cls, value: object) -> object:
+        if isinstance(value, dict):
+            return {canon_rotulo(k): v for k, v in value.items()}
+        return value
 
 
 class CoorteDeEntrada(BaseModel):
@@ -200,6 +334,11 @@ class CoorteDeEntrada(BaseModel):
     profundidade: Literal["resposta_direta", "guiada"] = "guiada"
     proximo_passo: str = ""                     # duvida_id ("" = resolve ali)
 
+    @field_validator("canal", "entrada", "profundidade", "proximo_passo", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
+
 
 class JornadaDoFunil(BaseModel):
     intencao_principal: str = Field(min_length=1)
@@ -208,6 +347,11 @@ class JornadaDoFunil(BaseModel):
     coortes: list[CoorteDeEntrada] = []
     hipotese_de_medicao: str = ""
     evidencias: list[EvidenciaDaJornada] = []
+
+    @field_validator("solucao_principal", "checkpoint", mode="before")
+    @classmethod
+    def _rotulo(cls, value: object) -> object:
+        return canon_rotulo(value)
 
 
 class PageTypeSpec(BaseModel):
@@ -684,6 +828,9 @@ class RunState(BaseModel):
     # consolidada depois da redação, com achados localizados e PROPOSTAS para
     # decisão humana. Não reescreve nada. Vazio = não rodou.
     revisao_global: dict = {}
+    # METADADOS E JSON-LD por página (`pipeline/metadados.py`), calculados sem
+    # LLM depois do portão final. Ainda não são enviados ao WordPress.
+    metadados: dict[int, dict] = {}
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

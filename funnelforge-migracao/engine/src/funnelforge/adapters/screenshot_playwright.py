@@ -131,7 +131,12 @@ class PlaywrightScreenshotProvider:
                 self._dismiss_cookies(page)
                 is_error = self._looks_like_error_page(page)
                 png = page.screenshot(full_page=full_page, type="png")
-                return CaptureResult(png=png, status=status, is_error_page=is_error)
+                try:
+                    title = (page.title() or "").strip()
+                except Exception:  # noqa: BLE001 - título é proveniência best-effort
+                    title = ""
+                return CaptureResult(png=png, status=status, is_error_page=is_error,
+                                     title=title)
             finally:
                 browser.close()
 

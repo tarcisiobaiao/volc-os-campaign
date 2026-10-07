@@ -166,12 +166,14 @@ def _populate_routes(state: RunState, deps: Deps) -> None:
         state.step_status["funnel_graph"] = StepResult(
             step="funnel_graph", status=StepStatus.FAILED, issues=graph_issues)
     if tem_jornada(plan):
-        # Os BLOQUEANTES do revisor de esqueleto já estão no `funnel_graph`
-        # (via validate_funnel_graph). Aqui ficam os AVISOS, para o relatório
-        # e para o operador: a prova de que o mapa foi revisado antes do gasto.
+        # A prova de que o mapa foi revisado antes do gasto. Os bloqueantes
+        # também estão no `funnel_graph` (é ele o portão); aqui o passo fica
+        # FAILED quando o esqueleto reprova, com bloqueantes e avisos juntos.
+        revisao = revisar_esqueleto(plan)
         state.step_status["revisao_esqueleto"] = StepResult(
-            step="revisao_esqueleto", status=StepStatus.OK,
-            issues=revisar_esqueleto(plan).avisos)
+            step="revisao_esqueleto",
+            status=StepStatus.FAILED if revisao.bloqueantes else StepStatus.OK,
+            issues=[*revisao.bloqueantes, *revisao.avisos])
 
 
 def run_pipeline(
@@ -299,6 +301,10 @@ def run_pipeline(
         return state
 
     orcamento = getattr(deps.runner, "budget", None)
+    # Com JORNADA a publicação espera a revisão global do funil pronto: nada
+    # vai ao rascunho do WordPress antes de o funil inteiro ser conferido.
+    com_jornada = tem_jornada(state.plan)
+    a_publicar: list[Page] = []
 
     for page in pages:
         # Zera o contador da PÁGINA: o teto por página existe para que uma
@@ -473,12 +479,16 @@ def run_pipeline(
             # para publicar. Estado que guarda veredito vencido mente para quem
             # o lê depois, e é a partir dele que o operador decide.
             state.step_status.pop(f"blocked_p{page.page_number}", None)
+            _registrar_metadados(state, page, deps)
 
             if publish and deps.publisher is not None and not _done(
                 state, f"publish_p{page.page_number}"
             ):
-                st.step_publish(state, page, deps)
-                _checkpoint(state, deps)
+                if com_jornada:
+                    a_publicar.append(page)
+                else:
+                    st.step_publish(state, page, deps)
+                    _checkpoint(state, deps)
         except OrcamentoEstourado as exc:
             # Teto de custo. Aborta com mensagem clara em vez de continuar
             # gastando: se o teto do RUN acabou, as próximas páginas gastariam
@@ -519,26 +529,64 @@ def run_pipeline(
             _checkpoint(state, deps)
             continue
 
-    # REVISÃO GLOBAL do funil pronto (só com jornada): UMA passada
-    # determinística sobre todos os rascunhos — message match, CTA repetido,
-    # loop, saída oficial cedo/tarde, promessa fora da primeira dobra, órfã,
-    # beco. Não reescreve nada e não custa chamada: os achados são propostas
-    # localizadas para a decisão humana (draft por padrão, aprovação humana).
-    if tem_jornada(state.plan):
+    # REVISÃO GLOBAL do funil pronto (só com jornada), ANTES de qualquer
+    # publicação e só sobre páginas estruturalmente aprovadas. Uma passada
+    # determinística, sem chamada e sem reescrita. Prova estrutural (CTA para
+    # dúvida resolvida em todo caminho, loop real, saída oficial fora de
+    # lugar, beco) bloqueia a página; proxy de termo é aviso para a pessoa.
+    if com_jornada:
         revisao = revisar_funil_pronto(state, deps.settings)
         if revisao:
             state.revisao_global = revisao
+            bloqueio = bool(revisao["paginas_bloqueadas"])
             state.step_status["revisao_global"] = StepResult(
-                step="revisao_global", status=StepStatus.OK,
+                step="revisao_global",
+                status=StepStatus.FAILED if bloqueio else StepStatus.OK,
                 issues=[Issue(code=a["regra"],
                               message=(f"[p{a['pagina']} {a['duvida_id']}] "
                                        f"({a['severidade']}) {a['localizador']}: "
                                        f"{a['evidencia']} → {a['proposta']}"))
                         for a in revisao["achados"]])
+            for n in revisao["paginas_bloqueadas"]:
+                state.step_status[f"blocked_p{n}"] = StepResult(
+                    step=f"blocked_p{n}", status=StepStatus.FAILED,
+                    issues=[Issue(code="revisao_global",
+                                  message="revisão global do funil pronto achou prova "
+                                          "estrutural nesta página; publish pulado")])
+            _checkpoint(state, deps)
+        for page in a_publicar:
+            if f"blocked_p{page.page_number}" in state.step_status:
+                continue
+            try:
+                st.step_publish(state, page, deps)
+            except Exception as exc:  # noqa: BLE001 - uma página não derruba as outras
+                state.step_status[f"page_{page.page_number}"] = StepResult(
+                    step=f"page_{page.page_number}", status=StepStatus.FAILED,
+                    issues=[Issue(code="exception", message=str(exc))])
+            _checkpoint(state, deps)
 
     _write_report(state, deps)
     _checkpoint(state, deps)
     return state
+
+
+def _registrar_metadados(state: RunState, page: Page, deps: Deps) -> None:
+    """Metadados e JSON-LD da página aprovada: determinístico, sem chamada.
+    Nunca derruba a página — falha vira registro, não exceção."""
+    from datetime import date as _data
+
+    from funnelforge.pipeline.metadados import metadados_da_pagina
+    try:
+        meta = metadados_da_pagina(
+            state, page, deps.settings, hoje=_data.today(),
+            robots=st.index_decision_for(deps.settings, page).robots)
+        state.metadados[page.page_number] = meta.model_dump()
+        pasta = deps.runner.runs_dir / state.run_id
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / f"metadados_p{page.page_number}.json").write_text(
+            meta.model_dump_json(indent=2), encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001 - metadado não pode matar página aprovada
+        state.metadados[page.page_number] = {"erro": f"{type(exc).__name__}: {exc}"[:300]}
 
 
 def _done(state: RunState, key: str) -> bool:

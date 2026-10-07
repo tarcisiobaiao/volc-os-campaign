@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from app.agents.base import AgentContext, BaseAgent
+from app.agents.funnel_pro.jornada_contrato import normalizar_arquitetura
 from app.agents.funnel_pro.page_factory import architect_pages_to_funnel_pages, page_factory
 from app.n8n_prompts import FUNNEL_ARCHITECT_SYSTEM_MESSAGE, build_funnel_architect_user
 
@@ -42,6 +43,8 @@ class FunnelProOrchestrator(BaseAgent):
         self.admin_direction = admin_direction
         self.services_used: List[str] = []
         self.warnings: List[str] = []
+        # Tokens, latência e modelo pedido/servido de cada chamada do arquiteto.
+        self.telemetria: List[Dict[str, Any]] = []
 
     def _gemini(self):
         if not self.settings.resolved_gemini_key:
@@ -177,6 +180,13 @@ class FunnelProOrchestrator(BaseAgent):
                 self.services_used.append("funnel_architect:fallback")
                 architect = self._fallback_architect(tema, opportunity)
 
+        # JORNADA: normaliza e valida LOGO depois do arquiteto, antes de qualquer
+        # gasto do motor. Erro estrutural não é engolido: vai como aviso para o
+        # operador (campo + motivo) e o motor recusa o card na carga.
+        architect, jornada = normalizar_arquitetura(architect)
+        for erro in jornada["erros"]:
+            self.warnings.append(f"Jornada inválida em {erro['campo']}: {erro['motivo']}")
+
         factory = page_factory(architect)
         pages = architect_pages_to_funnel_pages(architect, persona_fallback=opportunity.get("persona") or "")
         strategy = architect.get("funnel_strategy") or {}
@@ -200,6 +210,8 @@ class FunnelProOrchestrator(BaseAgent):
             "raw_output": architect,
             "services_used": self.services_used,
             "warnings": self.warnings,
+            "jornada": jornada,
+            "telemetria": self.telemetria,
         }
 
     async def _call_architect_with_retry(
@@ -231,6 +243,11 @@ class FunnelProOrchestrator(BaseAgent):
                 candidate = await client.complete_json(FUNNEL_ARCHITECT_SYSTEM_MESSAGE, user)
             except Exception as exc:  # noqa: BLE001
                 return None, exc
+            finally:
+                uso = getattr(client, "ultimo_uso", None)
+                if isinstance(uso, dict):
+                    self.telemetria.append({"etapa": "arquiteto" if attempt == 0
+                                            else "arquiteto_retry", **uso})
             if isinstance(candidate.get("pages"), list) and candidate["pages"]:
                 self.services_used.append(
                     "gemini:funnel_architect" if attempt == 0 else "gemini:funnel_architect_retry"

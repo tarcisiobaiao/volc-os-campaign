@@ -67,9 +67,24 @@ INTENCOES_VISUAIS: dict[str, tuple[str, ...]] = {
     "atencao": ("group",),
     "faq": ("details",),
     "exemplos_numericos": ("table", "columns"),
+    # 07/10/2026 (P10-T22): o arquiteto declara o plano visual já na jornada,
+    # no MESMO vocabulário. `html` e `image` não são escritos pelo redator:
+    # vêm do widget, do print oficial e da imagem editorial.
+    "cards_factuais": ("columns", "group"),
+    "timeline": ("list", "table"),
+    "decisao": ("list", "buttons", "details"),
+    "proximos_passos": ("group", "list", "buttons"),
+    "citacao_util": ("pullquote",),
+    "calculo": ("html", "table"),
+    "ferramenta": ("html",),
+    "prova_oficial": ("image",),
+    "imagem_editorial": ("image",),
 }
 PADROES_VISUAIS: tuple[str, ...] = ("table", "columns", "list", "group", "details",
-                                    "pullquote")
+                                    "pullquote", "buttons", "image", "html")
+#: Padrões que o REDATOR não escreve (widget, print, imagem editorial):
+#: nunca viram exigência de bloco no texto.
+PADROES_FORA_DA_REDACAO: frozenset[str] = frozenset({"image", "html"})
 
 
 def canon_padrao(valor: object) -> str:
@@ -89,6 +104,8 @@ def exigencia_visual_do_plano(briefing: Any) -> list[str]:
     saida: list[str] = []
     for item in plano if isinstance(plano, list) else []:
         padrao = canon_padrao(item.get("padrao")) if isinstance(item, dict) else ""
+        if padrao in PADROES_FORA_DA_REDACAO:
+            continue
         if padrao and padrao not in saida:
             saida.append(padrao)
     return saida

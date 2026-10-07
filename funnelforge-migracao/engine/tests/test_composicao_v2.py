@@ -94,7 +94,10 @@ def test_padrao_valido_mas_atipico_para_a_intencao_e_so_aviso():
 def test_vocabulario_fechado_mapeia_toda_intencao_para_padrao_do_catalogo():
     assert set(INTENCOES_VISUAIS) == {
         "comparar", "passo_a_passo", "checklist", "fato_chave",
-        "navegacao_por_regiao", "atencao", "faq", "exemplos_numericos"}
+        "navegacao_por_regiao", "atencao", "faq", "exemplos_numericos",
+        # 07/10/2026 (P10-T22): o plano visual do arquiteto, mesmo vocabulário
+        "cards_factuais", "timeline", "decisao", "proximos_passos", "citacao_util",
+        "calculo", "ferramenta", "prova_oficial", "imagem_editorial"}
     for intencao, padroes in INTENCOES_VISUAIS.items():
         assert padroes and set(padroes) <= set(PADROES_VISUAIS), intencao
 

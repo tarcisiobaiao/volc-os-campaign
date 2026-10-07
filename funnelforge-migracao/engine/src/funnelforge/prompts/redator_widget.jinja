@@ -154,7 +154,15 @@ Quem chega nestas páginas costuma estar travado, não curioso. Escreva como que
 - Nada de urgência fabricada, promessa de valor ou chamada para tocar em coisa alguma.
 - Quem lê isto está no celular: se precisar nomear a ação física, é **toque**/**tocar** — nunca o verbo de mouse de computador.
 
-# SAÍDA
+{% if ativo | default({}) %}# A FERRAMENTA QUE O ARQUITETO ESPECIFICOU
+Pergunta que ela resolve: {{ ativo.pergunta }}
+Entradas: {{ ativo.entradas | join("; ") }}
+Lógica: {{ ativo.logica }} (regra em {{ ativo.fonte_da_regra }}; não use número que não esteja na base factual)
+Resultado: {{ ativo.resultado }}
+Sem JavaScript, o artigo já mostra: {{ ativo.fallback_sem_js }}
+Acessibilidade: {{ ativo.acessibilidade }}. Não peça nome, CPF, telefone, e-mail ou outro dado pessoal.
+
+{% endif %}# SAÍDA
 Devolva **apenas o objeto JSON**. Sem cercas de código, sem comentário, sem texto antes ou depois.
 
 Se — e só se — uma peça interativa não agregar nada a este artigo, devolva exatamente `NONE` (quatro letras, sozinhas).

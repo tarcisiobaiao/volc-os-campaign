@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-07T16:20:43-03:00",
+  "generated_at": "2026-10-07T17:25:28-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 808,
@@ -1123,9 +1123,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 6179,
-      "lines": 93,
-      "sha256": "a9b57c5afebefeaa6bda3167623bd21dff15ee1e30d704eb5d3ccae57a958e57",
+      "bytes": 6930,
+      "lines": 94,
+      "sha256": "ee0b58944ff7629ca1091270a0c6dda61cf88a6a497ad9cd2ae7ab85b8fa31e6",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1257,7 +1257,7 @@
       "tracked": true,
       "bytes": 23784,
       "lines": 312,
-      "sha256": "2c891ccb063dbe5ca468df31177447b2ab63c8da2b25dec36fec39ab8a9e5bba",
+      "sha256": "3166beb52d77ddd7b8678aeedf98664541161eee8b8e9360753cb0fc99b750e2",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1771,9 +1771,9 @@
       "extension": ".md",
       "classification": "audit",
       "tracked": true,
-      "bytes": 5168,
-      "lines": 80,
-      "sha256": "66f66ee8ca118892931a2c2978507316112585b732cdd4431fbb0550cb07e22b",
+      "bytes": 5827,
+      "lines": 88,
+      "sha256": "1190abf51d2966d7ad41e00cd2215c7d09a6cb5ba26a47dd7e6bb4ef8c0ac1e1",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

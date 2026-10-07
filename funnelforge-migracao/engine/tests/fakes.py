@@ -54,7 +54,10 @@ class FakeScreenshotProvider:
 
     def __init__(self, data: bytes | None = None, fail: bool = False,
                  status: int | None = 200, is_error_page: bool = False,
-                 results: list[CaptureResult] | None = None) -> None:
+                 results: list[CaptureResult] | None = None,
+                 title: str = "Página oficial de teste") -> None:
+        # O adapter real lê o título da página (proveniência do print).
+        self._title = title
         self._data = data if data is not None else content_png()
         self._fail = fail
         self._status = status
@@ -78,7 +81,8 @@ class FakeScreenshotProvider:
             self._i += 1
             return res
         return CaptureResult(png=self._data, status=self._status,
-                             is_error_page=self._is_error_page)
+                             is_error_page=self._is_error_page,
+                             title=self._title)
 
 
 class FakeLLM:

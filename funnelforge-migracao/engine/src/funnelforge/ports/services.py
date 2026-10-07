@@ -14,6 +14,9 @@ class CaptureResult:
     png: bytes
     status: int | None
     is_error_page: bool
+    # Título da página capturada: parte da PROVENIÊNCIA do print (o elemento
+    # que mostra de onde a imagem saiu). Vazio quando o adapter não leu.
+    title: str = ""
 
 
 class ResearchProvider(Protocol):
