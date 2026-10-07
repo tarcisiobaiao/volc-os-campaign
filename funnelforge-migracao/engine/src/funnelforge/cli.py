@@ -60,7 +60,7 @@ def build_deps(settings: Settings) -> Deps:
 
     from funnelforge.pipeline.budget import Orcamento
 
-    llm = LiteLLMClient()
+    llm = construir_llm(settings, LiteLLMClient())
     # Freio de gasto (Frente 3): o teto vem do `config.yaml` e é conferido ANTES
     # de cada chamada paga. Só a execução REAL ganha orçamento -- um Runner
     # montado à mão em teste continua sem teto (budget=None), como antes.
@@ -134,6 +134,61 @@ def build_deps(settings: Settings) -> Deps:
     )
 
 
+class _LiteLLMProibido:
+    """`somente_plano`: o LiteLLM nem existe no run. Qualquer tentativa de
+    chamada faturada é erro, não cobrança."""
+
+    def complete(self, model, *a, **kw):
+        raise RuntimeError(f"chamada faturada a '{model}' bloqueada (openai.somente_plano).")
+
+
+def construir_llm(settings: Settings, litellm):
+    """O cliente de LLM do motor. Modo `api_key`: o LiteLLM de sempre, por
+    trás do roteador (que só desvia `chatgpt/<modelo>`). Modo `chatgpt_plan`:
+    o roteador ganha o cliente da Responses API com a credencial do plano —
+    e o run NÃO começa se a configuração permitir cobrança acidental."""
+    from funnelforge.adapters.openai_responses import OpenAIResponsesClient, RoteadorDeLLM
+    from funnelforge.config.settings import problemas_do_modo_openai
+
+    if settings.openai.auth_mode == "chatgpt_plan" and not settings.openai.client_id:
+        from funnelforge.adapters.credenciais import client_id_do_host
+        settings.openai.client_id = client_id_do_host()
+    problemas = problemas_do_modo_openai(settings)
+    if problemas:
+        raise typer.BadParameter("configuração OpenAI recusada:\n- " + "\n- ".join(problemas))
+    plano = None
+    if settings.openai.auth_mode == "chatgpt_plan":
+        from funnelforge.adapters.credenciais import (
+            ChatGPTPlanCredentialProvider,
+            armazem_padrao,
+        )
+        plano = OpenAIResponsesClient(
+            ChatGPTPlanCredentialProvider(armazem_padrao(settings.openai.armazenamento)))
+    if settings.openai.auth_mode == "chatgpt_plan" and settings.openai.somente_plano:
+        litellm = _LiteLLMProibido()
+    return RoteadorDeLLM(litellm, plano,
+                         allow_api_key_fallback=settings.openai.allow_api_key_fallback,
+                         max_chamadas=settings.run.max_chamadas_llm)
+
+
+def conferir_modelos_do_plano(settings: Settings, llm) -> None:
+    """Antes de QUALQUER chamada paga: todo modelo `chatgpt/*` dos passos tem
+    de estar na lista de modelos da conta conectada. Falta um -> o run para,
+    dizendo qual, e nenhum outro modelo é usado no lugar."""
+    from funnelforge.config.settings import PREFIXO_DO_PLANO
+    plano = getattr(llm, "plano", None)
+    if plano is None:
+        return
+    pedidos = sorted({p.model.removeprefix(PREFIXO_DO_PLANO) for p in settings.steps.values()
+                      if p.model.startswith(PREFIXO_DO_PLANO)})
+    disponiveis = set(plano.modelos_disponiveis())
+    faltando = [m for m in pedidos if m not in disponiveis]
+    if faltando:
+        raise typer.BadParameter(
+            f"modelo(s) {faltando} indisponível(is) para a conta ChatGPT conectada. "
+            f"Disponíveis: {sorted(disponiveis) or 'nenhum listado'}. Nada foi chamado.")
+
+
 @app.command()
 def run(briefing: Path, publish: bool = False, only: str | None = None) -> None:
     """LEGADO: roda o pipeline a partir de um briefing em texto (.docx/.txt).
@@ -150,7 +205,14 @@ def run(briefing: Path, publish: bool = False, only: str | None = None) -> None:
 
 @app.command("run-volc")
 def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = False,
-             only: str | None = None, timestamp: str | None = None) -> None:
+             only: str | None = None, timestamp: str | None = None,
+             canario: bool = typer.Option(False, "--canario",
+                                          help="Sem publicação, sem publisher, sem imagem, "
+                                               "teto de chamadas e recibo em runs-canario/."),
+             fatos_de: Path | None = typer.Option(
+                 None, "--fatos-de", help="Só com --canario: state.json de um run anterior "
+                                          "cujo inventário factual substitui a pesquisa.")
+             ) -> None:
     """Roda o funil a partir do `funnel_architecture` de um card do Pautador.
 
     `arquitetura` é o JSON da coluna `funnel_architecture` (ou a linha inteira
@@ -176,16 +238,39 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
 
     dados_perfil = json.loads(perfil.read_text(encoding="utf-8")) if perfil else None
     settings = aplicar_perfil(load_settings(), dados_perfil)
+    if canario:
+        if publish:
+            raise typer.BadParameter("--canario não publica: tire --publish.")
+        settings.run.publish = False
+        settings.run.publish_status = "draft"
+        settings.run.imagens_habilitadas = False
+        settings.run.max_chamadas_llm = settings.run.max_chamadas_llm or 40
     dados = carregar_arquitetura(arquitetura)
     plan = plano_do_funnel_architecture(dados)
     deps = build_deps(settings)
+    if canario:
+        # Trava dupla: mesmo com credencial WP no ambiente, nada publica.
+        deps.publisher = None
+        deps.image_gen = None
+        deps.runner.runs_dir = Path("runs-canario")
+    conferir_modelos_do_plano(settings, deps.llm)
+    estado_inicial = None
+    if fatos_de is not None:
+        if not canario:
+            raise typer.BadParameter("--fatos-de só vale com --canario.")
+        from funnelforge.domain.models import RunState
+        from funnelforge.pipeline.recibo_canario import pre_carregar_fatos
+        timestamp = timestamp or datetime.now().strftime("%Y%m%d-%H%M%S")
+        estado_inicial = pre_carregar_fatos(
+            plan, deps, RunState.from_json(fatos_de.read_text(encoding="utf-8")), timestamp)
     # Campo declarado em `Deps` — não atributo improvisado, para não sumir numa
     # refatoração. Alimenta o desempate do cross-funnel no sitemap, que sem isto
     # teria só o H1 da landing page para representar o funil inteiro.
     deps.tema_termos = termos_do_tema(dados_perfil)
     state = run_pipeline(
         None, deps, only=only, publish=publish or settings.run.publish,
-        plan=plan, timestamp=timestamp or datetime.now().strftime("%Y%m%d-%H%M%S"))
+        plan=plan, resume_state=estado_inicial,
+        timestamp=timestamp or datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     # PROCEDÊNCIA: a arquitetura de ORIGEM fica ao lado do `funnel_plan.json`
     # gerado. É também onde `intro_section`/`closing_section` continuam
@@ -195,6 +280,15 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
     destino.mkdir(parents=True, exist_ok=True)
     (destino / "funnel_architecture.json").write_text(
         json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+    if canario:
+        from funnelforge.pipeline.recibo_canario import recibo_do_canario
+        recibo = recibo_do_canario(state, settings, publisher_ligado=deps.publisher is not None,
+                                   image_gen_ligado=deps.image_gen is not None,
+                                   chamadas=getattr(deps.llm, "chamadas", 0))
+        (destino / "recibo_canario.json").write_text(
+            json.dumps(recibo, ensure_ascii=False, indent=2), encoding="utf-8")
+        typer.echo(f"recibo: {destino / 'recibo_canario.json'} — nada publicado: "
+                   f"{recibo['publicacao']['nada_publicado']}")
     typer.echo(f"run: {state.run_id} — {len(plan.pages)} páginas vindas do card")
 
 
@@ -353,3 +447,119 @@ def models() -> None:
     settings = load_settings()
     for name, cfg in settings.steps.items():
         typer.echo(f"{name}: {cfg.model}  fallbacks={cfg.fallbacks}")
+
+
+# ---------------------------------------------------------------------------
+# AUTENTICAÇÃO — "Sign in with ChatGPT" (OAuth oficial, perfil próprio do VOLC)
+# ---------------------------------------------------------------------------
+
+auth_app = typer.Typer(add_completion=False, help="Conectar o motor ao plano ChatGPT.")
+app.add_typer(auth_app, name="auth")
+
+_COMO_OBTER_CLIENT_ID = (
+    "Sem client_id do VOLC configurado (openai.client_id no config.yaml).\n"
+    "Caminhos oficiais (https://developers.openai.com/siwc):\n"
+    "  1. App pago ou hospedado remotamente: formulário de interesse\n"
+    "     https://openai.com/form/sign-in-with-chatgpt-interest/\n"
+    "  2. App open-source/hospedado localmente: registro dinâmico no primeiro login\n"
+    "     (funnelforge auth login --provider chatgpt --registrar-dinamico), que emite o\n"
+    "     client_id próprio deste app (oaiapp_...). Use só se o VOLC se enquadrar.\n"
+    "Configure apenas o client_id PÚBLICO; não há client_secret neste fluxo.")
+
+
+def _settings_sem_segredos() -> Settings:
+    # Os comandos de autenticação não precisam de nenhuma chave do `.env`.
+    return load_settings(env_path=Path(os.devnull))
+
+
+@auth_app.command("login")
+def auth_login(provider: str = typer.Option("chatgpt", "--provider"),
+               client_id: str = typer.Option("", "--client-id"),
+               registrar_dinamico: bool = typer.Option(False, "--registrar-dinamico"),
+               porta: int = typer.Option(1455, "--porta"),
+               timeout_s: int = typer.Option(300, "--timeout"),
+               sem_navegador: bool = typer.Option(False, "--sem-navegador")) -> None:
+    """Abre o consentimento no navegador e guarda a sessão deste host."""
+    import webbrowser
+
+    from funnelforge.adapters import chatgpt_oauth as oa
+    from funnelforge.adapters.credenciais import (
+        ChatGPTPlanCredentialProvider,
+        armazem_padrao,
+        client_id_do_host,
+        gravar_client_id_do_host,
+        id_do_host,
+    )
+
+    if provider != "chatgpt":
+        raise typer.BadParameter("único provedor suportado: chatgpt")
+    settings = _settings_sem_segredos()
+    cid = client_id or settings.openai.client_id or client_id_do_host()
+    if registrar_dinamico and cid:
+        raise typer.BadParameter("registro dinâmico é só para o PRIMEIRO login, sem client_id.")
+    if not cid and not registrar_dinamico:
+        typer.echo(_COMO_OBTER_CLIENT_ID)
+        raise typer.Exit(2)
+    host = id_do_host() if registrar_dinamico else None
+    verifier, challenge = oa.gerar_pkce()
+    state, nonce = oa.gerar_state(), oa.gerar_state()
+    redirect = oa.redirect_uri(porta)
+    url = oa.url_de_autorizacao(client_id=cid, redirect=redirect, state=state, nonce=nonce,
+                                challenge=challenge, host_id=host)
+    typer.echo("Conclua o consentimento no navegador. Se ele não abrir, use esta URL:")
+    typer.echo(url)
+    if not sem_navegador:
+        webbrowser.open(url)
+    try:
+        cb = oa.esperar_callback(porta, state, registrando=bool(host), timeout_s=timeout_s)
+        emitido = cb["client_id"] or cid
+        if host and emitido:
+            # Público e emitido UMA vez para este host: guardado já, para não se
+            # perder se a troca de código ou a validação falharem depois.
+            gravar_client_id_do_host(emitido)
+        typer.echo("Callback recebido; trocando o código e validando o ID token...")
+        token = oa.trocar_codigo(client_id=emitido, code=cb["code"], verifier=verifier,
+                                 redirect=redirect)
+        claims = oa.validar_id_token(token.id_token, client_id=emitido, nonce=nonce)
+        token.conta = oa.mascarar_conta(str(claims.get("email") or ""), str(claims.get("sub") or ""))
+    except oa.ErroDeAutenticacao as exc:
+        typer.echo(f"Login não concluído [{exc.codigo}]: {exc}")
+        raise typer.Exit(1)
+    armazem = armazem_padrao(settings.openai.armazenamento)
+    armazem.gravar(token.to_dict())
+    typer.echo(json.dumps(ChatGPTPlanCredentialProvider(armazem).status(), ensure_ascii=False,
+                          indent=2))
+    if host:
+        typer.echo(f"client_id emitido para o VOLC: {emitido[:12]}… — guardado neste host "
+                   "(fora do repositório); é público, não é segredo.")
+
+
+@auth_app.command("status")
+def auth_status() -> None:
+    """Mostra o modo e a sessão, nunca o token."""
+    from funnelforge.adapters.credenciais import (
+        ApiKeyCredentialProvider,
+        ChatGPTPlanCredentialProvider,
+        armazem_padrao,
+    )
+    settings = _settings_sem_segredos()
+    # O modo CONFIGURADO e, separado, a sessão ChatGPT deste host: uma não
+    # implica a outra (dá para estar conectado e o motor seguir em api_key).
+    info = {
+        "modo_configurado": settings.openai.auth_mode,
+        # Só a PRESENÇA da variável no ambiente; o `.env` não é lido aqui.
+        "api_key": ApiKeyCredentialProvider().status(),
+        "sessao_chatgpt": ChatGPTPlanCredentialProvider(
+            armazem_padrao(settings.openai.armazenamento)).status(),
+    }
+    typer.echo(json.dumps(info, ensure_ascii=False, indent=2))
+
+
+@auth_app.command("logout")
+def auth_logout() -> None:
+    """Apaga a sessão LOCAL do ChatGPT neste host."""
+    from funnelforge.adapters.credenciais import ChatGPTPlanCredentialProvider, armazem_padrao
+    settings = _settings_sem_segredos()
+    ChatGPTPlanCredentialProvider(armazem_padrao(settings.openai.armazenamento)).logout()
+    typer.echo("Sessão local removida. Para desconectar o app da conta, use as "
+               "configurações do ChatGPT (a revogação remota não é documentada).")

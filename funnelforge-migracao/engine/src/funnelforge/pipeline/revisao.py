@@ -51,6 +51,7 @@ from typing import Any, Callable
 
 from funnelforge.config.settings import StepConfig
 from funnelforge.domain.models import (
+    procedencia,
     Issue,
     PageRole,
     StepResult,
@@ -952,6 +953,8 @@ def _somar(total: StepResult, parcial: StepResult | None) -> None:
     total.latency_ms += parcial.latency_ms
     if parcial.model_used:
         total.model_used = parcial.model_used
+    for campo, valor in procedencia(parcial).items():
+        setattr(total, campo, valor)
 
 
 def _chave_da_issue(issue: Issue) -> tuple[str, str]:

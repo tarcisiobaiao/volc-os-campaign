@@ -411,8 +411,9 @@ def run_pipeline(
             # image step only when run.featured_image is on. `image_wanted`
             # inside step_image is the single source of the generate/skip
             # decision, so the two never disagree.
-            _wants_image = page.page_type == "LANDING PAGE" or getattr(
-                deps.settings.run, "featured_image", False)
+            _wants_image = (page.page_type == "LANDING PAGE" or getattr(
+                deps.settings.run, "featured_image", False)) and getattr(
+                deps.settings.run, "imagens_habilitadas", True)
             if _wants_image and not _done(state, f"image_p{page.page_number}"):
                 st.step_image(state, page, deps)
                 _checkpoint(state, deps)
@@ -795,6 +796,10 @@ def _write_report(state: RunState, deps: Deps) -> None:
     )
     lines.append(f"- Páginas alcançáveis no grafo: {led['reachable_pages']}")
     lines.append("- Páginas por sessão: não medidas (nenhum evento de sessão neste relatório).")
+    do_plano = [k for k, r in state.step_status.items() if r.auth_mode == "chatgpt_plan"]
+    if do_plano:
+        lines.append(f"- Passos no plano ChatGPT (uso do plano, sem custo de API): "
+                     f"{len(do_plano)} — o custo em USD acima é só o faturado por API.")
     lines.extend(_cost_summary_lines(led, state, deps))
     lines.append("")
     lines.append("| Passo | Prompt tok | Completion tok | Custo USD | Latência ms |")

@@ -25,6 +25,12 @@ class RunConfig(BaseModel):
     # A fact verified before this window is stale for a new publication.  The
     # research contract compares ``verificado_em`` against the run date.
     research_max_age_days: int = 45
+    # TETO RÍGIDO de chamadas de LLM por run (0 = sem teto). O canário usa:
+    # ao atingir, o run para com mensagem clara em vez de seguir chamando.
+    max_chamadas_llm: int = 0
+    # Imagens (prompt + geração + revisão). Desligado, nenhuma etapa de imagem
+    # roda — o canário textual marca a etapa como "não exercitada".
+    imagens_habilitadas: bool = True
     # RETENTATIVA DA PESQUISA (Frente 3). Antes disto a pesquisa tinha ZERO
     # retentativa: um 429 do provedor devolvia `sparse=True`, o gate factual
     # reprovava e a página inteira morria — depois de o briefing/extract já
@@ -207,6 +213,37 @@ class StepConfig(BaseModel):
     temperature: float = 0.7
     validators: list[str] = []
     web_search: bool = False
+    # Esforço de raciocínio pedido ao modelo (Responses API). None = não envia.
+    reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+
+
+#: Prefixo de modelo que roteia o passo para a Responses API com o token do
+#: PLANO ChatGPT ("Sign in with ChatGPT"). Sem o prefixo, o passo segue no
+#: LiteLLM com API key, como sempre.
+PREFIXO_DO_PLANO = "chatgpt/"
+
+
+class OpenAIConfig(BaseModel):
+    """AUTENTICAÇÃO OpenAI do motor. `api_key` é o comportamento de sempre.
+
+    `chatgpt_plan` usa o OAuth oficial "Sign in with ChatGPT" e a Responses
+    API com o token do plano. `client_id` é o identificador PÚBLICO do VOLC
+    (`oaiapp_...`), nunca um segredo; sem ele não há login. Os modelos abaixo,
+    quando preenchidos com `chatgpt_plan`, viram `chatgpt/<modelo>` nos passos
+    correspondentes — a troca fica escrita no `config_snapshot.json`.
+    `allow_api_key_fallback=false` proíbe qualquer passo do plano de cair para
+    um modelo faturado por API."""
+    auth_mode: Literal["api_key", "chatgpt_plan"] = "api_key"
+    client_id: str = ""
+    writer_model: str = ""
+    judge_model: str = ""
+    reviewer_model: str = ""
+    reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+    allow_api_key_fallback: bool = False
+    armazenamento: Literal["keychain", "arquivo"] = "keychain"
+    # Exige que TODO passo de LLM use o plano: um passo faturado por API
+    # impede o run de começar (canário sem cobrança acidental).
+    somente_plano: bool = False
 
 
 class RoutingSpecConfig(BaseModel):
@@ -319,6 +356,63 @@ class Settings(BaseModel):
     uniqueness: UniquenessConfig = UniquenessConfig()
     screenshot: ScreenshotConfig = ScreenshotConfig()
     budget: BudgetConfig = BudgetConfig()
+    openai: OpenAIConfig = OpenAIConfig()
+
+
+_PASSOS_POR_PAPEL = {
+    "writer_model": ("write_p1", "write_page", "widget"),
+    "judge_model": ("judge",),
+    "reviewer_model": ("revisor",),
+}
+
+
+def aplicar_modo_openai(settings: Settings) -> Settings:
+    """Com `auth_mode: chatgpt_plan`, troca EXPLICITAMENTE o modelo dos passos
+    de redação/juiz/revisor pelos declarados em `openai.*_model` (com o
+    prefixo do plano e o esforço de raciocínio). Sem fallback faturado quando
+    `allow_api_key_fallback` é falso. Com `api_key`, nada muda."""
+    oa = settings.openai
+    if oa.auth_mode != "chatgpt_plan":
+        return settings
+    passos = dict(settings.steps)
+    for campo, chaves in _PASSOS_POR_PAPEL.items():
+        modelo = getattr(oa, campo).strip()
+        if not modelo:
+            continue
+        alvo = modelo if modelo.startswith(PREFIXO_DO_PLANO) else PREFIXO_DO_PLANO + modelo
+        for chave in chaves:
+            if chave not in passos:
+                continue
+            atual = passos[chave]
+            passos[chave] = atual.model_copy(update={
+                "model": alvo,
+                "fallbacks": [f for f in atual.fallbacks
+                              if oa.allow_api_key_fallback or f.startswith(PREFIXO_DO_PLANO)],
+                "reasoning_effort": (oa.reasoning_effort if campo != "writer_model"
+                                     else atual.reasoning_effort),
+            })
+    return settings.model_copy(update={"steps": passos})
+
+
+def problemas_do_modo_openai(settings: Settings) -> list[str]:
+    """O que impede o run de começar no modo escolhido. Lista vazia = ok."""
+    oa = settings.openai
+    problemas: list[str] = []
+    for nome, passo in settings.steps.items():
+        no_plano = passo.model.startswith(PREFIXO_DO_PLANO)
+        if no_plano and oa.auth_mode != "chatgpt_plan":
+            problemas.append(f"steps.{nome} usa {passo.model} mas openai.auth_mode é api_key")
+        if no_plano and not oa.allow_api_key_fallback:
+            faturados = [f for f in passo.fallbacks if not f.startswith(PREFIXO_DO_PLANO)]
+            if faturados:
+                problemas.append(f"steps.{nome}: fallback faturado {faturados} proibido "
+                                 "(openai.allow_api_key_fallback=false)")
+        if oa.auth_mode == "chatgpt_plan" and oa.somente_plano and not no_plano:
+            problemas.append(f"steps.{nome} usa {passo.model}, faturado por API "
+                             "(openai.somente_plano=true)")
+    if oa.auth_mode == "chatgpt_plan" and not oa.client_id.strip():
+        problemas.append("openai.client_id vazio: registre o client_id do VOLC antes do login")
+    return problemas
 
 
 def load_settings(env_path: Path | None = None, config_path: Path | None = None) -> Settings:
@@ -328,7 +422,7 @@ def load_settings(env_path: Path | None = None, config_path: Path | None = None)
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     site_raw = dict(raw.get("site", {}))
     author = site_raw.pop("author", {}) or {}
-    return Settings(
+    return aplicar_modo_openai(Settings(
         secrets=Secrets(**env),
         run=RunConfig(**(raw.get("run", {}))),
         site=SiteConfig(
@@ -343,4 +437,5 @@ def load_settings(env_path: Path | None = None, config_path: Path | None = None)
         uniqueness=UniquenessConfig(**(raw.get("uniqueness", {}))),
         screenshot=ScreenshotConfig(**(raw.get("screenshot", {}))),
         budget=BudgetConfig(**(raw.get("budget", {}))),
-    )
+        openai=OpenAIConfig(**(raw.get("openai", {}) or {})),
+    ))

@@ -55,9 +55,11 @@ class LiteLLMClient:
     TIMEOUT_S = 120
 
     def complete(self, model, fallbacks, messages, temperature,
-                 response_schema=None, web_search=False):
+                 response_schema=None, web_search=False, reasoning_effort=None):
         kwargs = {"model": model, "messages": messages, "temperature": temperature,
                   "num_retries": self.NUM_RETRIES, "timeout": self.TIMEOUT_S}
+        if reasoning_effort:
+            kwargs["reasoning_effort"] = reasoning_effort
         if fallbacks:
             kwargs["fallbacks"] = fallbacks
         if web_search:
@@ -80,4 +82,6 @@ class LiteLLMClient:
             prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
             completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             cost_usd=cost, latency_ms=int((t1 - t0) * 1000),
+            auth_mode="api_key", reasoning_effort=reasoning_effort or "",
+            response_id=str(getattr(resp, "id", "") or ""),
         )

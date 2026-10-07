@@ -723,6 +723,11 @@ class StepResult(BaseModel):
     # O modelo que a config PEDIU. Com `model_used` diferente, o status é
     # FALLBACK — e os dois nomes ficam lado a lado no estado e no relatório.
     model_requested: str = ""
+    # Procedência da última tentativa: modo de autenticação (`api_key` |
+    # `chatgpt_plan`), esforço de raciocínio pedido e id da resposta.
+    auth_mode: str = ""
+    reasoning_effort: str = ""
+    response_id: str = ""
     attempts: int = 0
     issues: list[Issue] = []
     artifact_path: str | None = None
@@ -731,6 +736,18 @@ class StepResult(BaseModel):
     completion_tokens: int = 0
     cost_usd: float = 0.0
     latency_ms: int = 0
+
+
+#: Campos de PROCEDÊNCIA de uma chamada (quem pediu o quê, a quem, como).
+CAMPOS_DE_PROCEDENCIA = ("model_requested", "auth_mode", "reasoning_effort", "response_id")
+
+
+def procedencia(res: "StepResult | None") -> dict[str, str]:
+    """A procedência de um `StepResult` do runner, para quem monta OUTRO
+    `StepResult` a partir dele (widget, engajamento, revisor) não a perder."""
+    if res is None:
+        return {}
+    return {c: getattr(res, c) for c in CAMPOS_DE_PROCEDENCIA if getattr(res, c, "")}
 
 
 class AdSlot(BaseModel):

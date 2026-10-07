@@ -1782,6 +1782,35 @@
             "funnelforge-migracao/engine/tests/test_jornada_redator.py",
             "backend/tests/test_jornada_arquiteto.py"
           ]
+        },
+        {
+          "id": "P10-T23",
+          "title": "Autenticação 'Sign in with ChatGPT' no motor redator (auth_mode chatgpt_plan) e canário real sem publicação",
+          "status": "done",
+          "priority": 1,
+          "proof": "2026-10-07, só teste hermético, nenhum login real, nenhuma chamada paga. Modo aditivo `openai.auth_mode` (api_key padrão intacto | chatgpt_plan): OAuth Authorization Code + PKCE S256 com endpoints/escopo da doc oficial, state aleatório comparado em tempo constante, callback só em http://127.0.0.1:<porta>/auth/callback com timeout, tokens opacos, refresh rotativo com trava de arquivo e releitura, gravação atômica (Keychain do macOS ou arquivo 600/700 fora do repo), logout local; cliente da Responses API (store:false, stream:true, reasoning.effort, json_schema opcional, uso, response_id, auth_mode) no contrato LLMClient, atrás de um roteador que mantém o LiteLLM para o modo api_key; erro do plano nunca cai para API key, fallback faturado proibido, modelo servido diferente do pedido é erro, preflight confere o modelo em /v1/models antes da 1ª chamada; erros do plano terminais (só 503 retentável); run-volc --canario sem publisher, sem imagem, teto rígido de chamadas e recibo_canario.json. Motor 1244 passed / 0 failed (26 novos em test_auth_chatgpt.py). · 07/10/2026 PROVA REAL: registro dinâmico oficial (dynamic_agent_client, agent_name_hint 'VOLC FunnelForge', ext_agent_host_id urn:uuid estável — o formato volc-<hex> foi recusado com invalid_authorize_request e corrigido), callback 127.0.0.1:1455, PKCE S256, state/nonce novos; client_id próprio emitido (oaiapp_HiCdd…, fora do repo); ID token validado (RS256 via JWKS do emissor, iss, aud, nonce, exp); escopos reais com chatgpt.tokens.use.direct; tokens no Keychain. Catálogo real: gpt-6.1-sol, gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna. Inferência mínima store:false: gpt-6.1-sol/high e gpt-6-sol/medium, servido = pedido. Canário real SENAC (editorial_v2, sem pesquisa paga: inventário do run 220001 re-verificado ao vivo; sem imagem) em canarios/chatgpt-plan-20261007 fora do repo: 26 chamadas (teto 40), todas chatgpt_plan no log, redator gpt-6-sol/medium, revisor gpt-6.1-sol/high, 184.434/36.668 tokens, 802 s, 3 retentativas (briefing_p1 ref_do_arquiteto_inexistente, write_p5 official_links_few, widget_p5 ReadTimeout), custo de API faturada US$ 0,00, publisher e gerador de imagem nunca montados, nada publicado, nenhum token nos artefatos. Resultado editorial: o revisor mandou as 5 páginas para decisão humana (useful_delivery 3-6; achados de congruência e afirmações sem lastro), consequência da base factual sem pesquisa (fontes do Planalto não re-verificáveis hoje: p1/p2 sem números; p4 com só 2 de 27 UFs) — fail-closed correto, não falha de integração. Achado corrigido depois do canário: engajamento, widget e revisor remontavam o StepResult sem auth_mode (8 etapas com '?' no recibo real; o log tem chatgpt_plan nas 26) — `procedencia()` agora preserva os campos, com teste; não re-exercitado em run real. Motor 1247 passed / 0 failed.",
+          "explanation": "Docs oficiais: siwc/quickstart, cookbook sign-in-with-chatgpt, token-sharing-open-source (sign-in, models-and-inference, errors-and-recovery, token-reference), codex-app-server, request-client-id, models/gpt-6.1-sol. Integração direta com a Responses API (app-server é orientado a turnos de agente). Ver docs/operations/FUNNELFORGE-AUTH-CHATGPT.md.",
+          "acceptance": "client_id próprio do VOLC configurado; login real concluído com escopo chatgpt.tokens.use.direct; gpt-6.1-sol presente em /v1/models para o token; um canário real de funil com publish=false e recibo sem segredo, comparado ao último canário válido.",
+          "pending": [
+            "Pesquisa com busca na web e revisão/geração de imagem não são documentadas no fluxo do plano: seguem no provedor faturado ou ficam fora do canário",
+            "Qualidade editorial do canário: 5/5 páginas para decisão humana por base factual fraca sem pesquisa (pertence a P10-T22/P10-T19)",
+            "Revogação remota: a doc não descreve (o metadado OIDC expõe um endpoint de revoke); logout segue só local",
+            "Recibo do canário real com auth_mode '?' em 8 etapas (corrigido no código, não re-exercitado em run real)"
+          ],
+          "dependencies": [
+            "P10-T22",
+            "P10-T19"
+          ],
+          "graph_nodes": [
+            "cap_funnel"
+          ],
+          "links": [
+            "docs/operations/FUNNELFORGE-AUTH-CHATGPT.md",
+            "funnelforge-migracao/engine/src/funnelforge/adapters/chatgpt_oauth.py",
+            "funnelforge-migracao/engine/src/funnelforge/adapters/credenciais.py",
+            "funnelforge-migracao/engine/src/funnelforge/adapters/openai_responses.py",
+            "funnelforge-migracao/engine/tests/test_auth_chatgpt.py"
+          ]
         }
       ]
     },

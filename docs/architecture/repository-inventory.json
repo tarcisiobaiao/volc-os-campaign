@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-07T17:25:28-03:00",
+  "generated_at": "2026-10-07T19:11:54-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 808,
-    "markdown": 595,
+    "files": 809,
+    "markdown": 596,
     "sql": 213,
-    "tracked": 808,
+    "tracked": 809,
     "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 33,
-      "documentation": 433,
+      "documentation": 434,
       "generated": 2,
       "module-guide": 40,
       "product-document": 23,
@@ -1257,7 +1257,7 @@
       "tracked": true,
       "bytes": 23784,
       "lines": 312,
-      "sha256": "3166beb52d77ddd7b8678aeedf98664541161eee8b8e9360753cb0fc99b750e2",
+      "sha256": "f4dd1643120af561d320370090ecd68d03a2b72b9e48a7ea810fa1963451b3ae",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5602,6 +5602,18 @@
       "bytes": 14546,
       "lines": 268,
       "sha256": "725b1d0440276cb1d56234c1455e78e5204edcb8b1129365eba929cc27039292",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/operations/FUNNELFORGE-AUTH-CHATGPT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5220,
+      "lines": 94,
+      "sha256": "fe4b40b87a2794366f3db2db75cedca2b55385af6e08696b436e7d6024d73f9a",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

@@ -108,9 +108,13 @@ class Runner:
             # pipeline, que aborta com mensagem clara em vez de seguir gastando.
             if self.budget is not None:
                 self.budget.exigir_saldo(name)
+            # Esforço de raciocínio só quando o passo pede: cliente antigo
+            # (e os dublês de teste) continuam com a assinatura de sempre.
+            extra = ({"reasoning_effort": cfg.reasoning_effort}
+                     if getattr(cfg, "reasoning_effort", None) else {})
             try:
                 res = self.llm.complete(cfg.model, cfg.fallbacks, msgs, cfg.temperature,
-                                        response_schema)
+                                        response_schema, **extra)
             except OrcamentoEstourado:
                 raise
             except Exception as exc:  # noqa: BLE001 - classificado logo abaixo
@@ -127,6 +131,9 @@ class Runner:
                 continue
 
             text, model_used = res.text, res.model_used
+            procedencia = {"auth_mode": getattr(res, "auth_mode", "") or "",
+                           "reasoning_effort": getattr(res, "reasoning_effort", "") or "",
+                           "response_id": getattr(res, "response_id", "") or ""}
             prompt_tokens += res.prompt_tokens
             completion_tokens += res.completion_tokens
             cost_usd += res.cost_usd
@@ -157,6 +164,7 @@ class Runner:
                               # esta tentativa. É o que diz se o problema é de
                               # contrato, de modelo ou de insumo.
                               "causas": sorted({i.code for i in last_issues}),
+                              **{k: v for k, v in procedencia.items() if v},
                               "classe": veredito.classe,
                               "retentar": veredito.retentar})
             if not last_issues:
@@ -165,7 +173,7 @@ class Runner:
                     status = StepStatus.FALLBACK
                 return text, StepResult(
                     step=name, status=status, model_used=model_used,
-                    model_requested=cfg.model, attempts=attempts,
+                    model_requested=cfg.model, attempts=attempts, **procedencia,
                     issues=[Issue(code=f"localizador:{i.code}", message=i.message)
                             for i in localizadores],
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,

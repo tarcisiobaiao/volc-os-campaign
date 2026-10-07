@@ -111,6 +111,13 @@ def classificar_excecao(exc: BaseException) -> Veredito:
     """
     if isinstance(exc, AssertionError):
         return Veredito(False, "terminal", "AssertionError: defeito de contrato, não do provedor")
+    # Erros do plano ChatGPT dizem se repetir adianta (só o 503 documentado):
+    # plano inelegível, limite, sessão, escopo e modelo indisponível não mudam
+    # na próxima tentativa e não podem virar laço.
+    retentavel = getattr(exc, "retentavel", None)
+    if isinstance(retentavel, bool):
+        return Veredito(retentavel, "transitorio" if retentavel else "terminal",
+                        f"{type(exc).__name__}: {getattr(exc, 'codigo', '')}")
     texto = f"{type(exc).__name__} {exc}".lower()
     for agulha, motivo in _TERMINAIS_EXCECAO:
         if agulha in texto:

@@ -246,3 +246,17 @@ steps:
   # vocabulario fechado, nao criacao. Se o classificador falhar, H1/objetivo/
   # estrutura alimentam um fallback semantico deterministico (nunca sorteio).
   engajamento: { model: gpt-4.1, fallbacks: [gemini/gemini-3.5-flash], temperature: 0.1, validators: [] }
+# AUTENTICAÇÃO OpenAI (07/10/2026). Padrão: api_key, o comportamento de sempre.
+# chatgpt_plan = "Sign in with ChatGPT" (OAuth oficial + Responses API com o
+# plano). Só o client_id PÚBLICO do VOLC (oaiapp_...) vai aqui; o token fica no
+# Keychain do macOS (ou em ~/Library/Application Support/volc-funnelforge, 600).
+# Login: `funnelforge auth login --provider chatgpt`. Sem fallback faturado.
+openai:
+  auth_mode: api_key
+  # client_id: oaiapp_...            # emitido para o VOLC; nunca reutilize o de outro app
+  # judge_model: gpt-6.1-sol         # só se aparecer em `GET /v1/models` com o token
+  # reviewer_model: gpt-6.1-sol
+  # reasoning_effort: high
+  # writer_model: <modelo listado para a conta>
+  # allow_api_key_fallback: false
+  # somente_plano: true              # canário: nenhum passo faturado por API

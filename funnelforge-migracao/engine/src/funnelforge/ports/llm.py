@@ -25,6 +25,11 @@ class LLMResult(BaseModel):
     completion_tokens: int = 0
     cost_usd: float = 0.0
     latency_ms: int = 0
+    # Procedência da chamada: id da resposta, modo de autenticação (`api_key`
+    # ou `chatgpt_plan`) e esforço de raciocínio. Vazio = cliente antigo/teste.
+    response_id: str = ""
+    auth_mode: str = ""
+    reasoning_effort: str = ""
 
 
 class LLMClient(Protocol):

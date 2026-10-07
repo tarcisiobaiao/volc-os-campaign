@@ -63,6 +63,7 @@ from funnelforge.domain.models import (
     Verdict,
     derive_role,
     effective_role,
+    procedencia,
     resolve_route,
 )
 from funnelforge.pipeline.doctrine import (
@@ -2862,6 +2863,7 @@ def _widget_skip(page: Page, *issues: Issue, pago: StepResult | None = None) -> 
                       message="Widget não injetado; o gate final decidirá a publicação.")]
         + list(issues),
         model_used=pago.model_used if pago else "",
+        **procedencia(pago),
         attempts=pago.attempts if pago else 0,
         prompt_tokens=pago.prompt_tokens if pago else 0,
         completion_tokens=pago.completion_tokens if pago else 0,
@@ -3211,7 +3213,7 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
         state.step_status[key] = StepResult(
             step=key, status=StepStatus.OK, model_used=res.model_used, attempts=res.attempts,
             prompt_tokens=res.prompt_tokens, completion_tokens=res.completion_tokens,
-            cost_usd=res.cost_usd, latency_ms=res.latency_ms)
+            cost_usd=res.cost_usd, latency_ms=res.latency_ms, **procedencia(res))
     except Exception as exc:  # noqa: BLE001 - turn exception into a deterministic gate result
         state.step_status[key] = _widget_skip(
             page, Issue(code="widget_exception",
@@ -4037,7 +4039,7 @@ def declarar_engajamento(state: RunState, deps: Any) -> None:
                               message="Declaração falhou; aplicada inferência semântica.")],
                 model_used=res.model_used, attempts=res.attempts,
                 prompt_tokens=res.prompt_tokens, completion_tokens=res.completion_tokens,
-                cost_usd=res.cost_usd, latency_ms=res.latency_ms)
+                cost_usd=res.cost_usd, latency_ms=res.latency_ms, **procedencia(res))
             return
 
         dados = _tolerant_json(text)
@@ -4068,7 +4070,7 @@ def declarar_engajamento(state: RunState, deps: Any) -> None:
             issues=issues,
             model_used=res.model_used, attempts=res.attempts,
             prompt_tokens=res.prompt_tokens, completion_tokens=res.completion_tokens,
-            cost_usd=res.cost_usd, latency_ms=res.latency_ms)
+            cost_usd=res.cost_usd, latency_ms=res.latency_ms, **procedencia(res))
     except Exception as exc:                                  # noqa: BLE001
         for p in alvo:
             p.engajamento = infer_engajamento(p)
