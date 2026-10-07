@@ -117,6 +117,12 @@ def _split_long_paragraphs(content: str) -> str:
         if not inner:
             return block
         attrs, text = inner.group(1), inner.group(2)
+        # O aviso canônico passou de 300 caracteres quando ganhou a divulgação
+        # de monetização. Partido em dois, ele deixa de ser reconhecido como o
+        # aviso (posicionar_aviso_canonico compara o parágrafo inteiro) e a
+        # página sai com ele duplicado. Ele é um bloco só, sempre.
+        if " ".join(re.sub(r"<[^>]+>", "", text).split()) == " ".join(_AVISO_TEXT.split()):
+            return block
         sentences = _split_sentences(text.strip())
         if len(sentences) < 3 and len(text) <= 300:
             return block

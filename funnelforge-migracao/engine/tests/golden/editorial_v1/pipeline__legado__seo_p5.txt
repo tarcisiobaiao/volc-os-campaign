@@ -48,6 +48,10 @@ Conteúdo: <!-- wp:paragraph -->
 <!-- /wp:list-item --></ul>
 <!-- /wp:list -->
 
+<!-- wp:paragraph -->
+<p>Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos. Este conteúdo é gratuito e financiado por blocos de anúncios em parceria com o Google Adsense; não temos relação com os anunciantes.</p>
+<!-- /wp:paragraph -->
+
 </CONTEXTO>
 
 <REGRAS_SEO>

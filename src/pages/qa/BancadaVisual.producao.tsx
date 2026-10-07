@@ -19,7 +19,7 @@ import React from 'react';
 /** Mantido para a prova de bundle ter o que procurar — e não achar. */
 export const MARCADOR_DA_BANCADA = 'bancada-ausente-em-producao';
 
-export const CENAS_DA_BANCADA: ReadonlyArray<never> = [];
+export const CENAS_DA_BANCADA: ReadonlyArray<never> = [] as never[];
 
 export const BancadaVisual: React.FC = () => null;
 

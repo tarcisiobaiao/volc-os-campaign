@@ -16,6 +16,7 @@ from funnelforge.pipeline.lp_template import load_lp_template, render_lp, valida
 from funnelforge.pipeline.runner import Runner
 from funnelforge.prompts import render
 from tests.fakes import FakeLLM
+from tests.lp_conforme import RODAPE_INSTITUCIONAL, conteudo_da_lp
 
 
 CONTENT = {
@@ -131,10 +132,15 @@ def _lp_deps(tmp_path):
 
 def test_final_lp_gate_and_manual_publish_refuse_missing_notice(tmp_path):
     deps = _lp_deps(tmp_path)
+    # O content_gate da LP também roda o portão do destino pago: a LP precisa
+    # do rodapé declarado e do piso de conteúdo para começar verde.
+    deps.settings.site.rodape_institucional = RODAPE_INSTITUCIONAL
     page = Page(page_number=1, page_type="LANDING PAGE", h1_title="Guia",
                 slug="guia", next_page_slug="guia-pr")
+    conteudo = conteudo_da_lp(cta_texts=CONTENT["cta_texts"])
     state = RunState(run_id="example", drafts={1: PageDraft(
-        page_number=1, page_type="LANDING PAGE", format="lp_json", content=json.dumps(CONTENT))})
+        page_number=1, page_type="LANDING PAGE", format="lp_json",
+        content=json.dumps(conteudo, ensure_ascii=False))})
     steps.step_build(state, page, deps)
     steps.step_content_gate(state, page, deps)
     assert state.step_status["content_gate_p1"].status is StepStatus.OK

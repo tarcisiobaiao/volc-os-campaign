@@ -32,7 +32,7 @@ from funnelforge.domain.models import (
     StepStatus,
 )
 from funnelforge.pipeline.preflight import preflight_issues
-from funnelforge.pipeline.steps import step_content_gate, step_publish
+from funnelforge.pipeline.steps import step_build, step_content_gate, step_publish
 
 from tests.lp_conforme import RODAPE_INSTITUCIONAL as RODAPE, conteudo_da_lp
 
@@ -74,6 +74,16 @@ def _estado(conteudo: dict) -> RunState:
                                 format="lp_json",
                                 content=json.dumps(conteudo, ensure_ascii=False))
     return state
+
+
+def _construir(state: RunState, deps) -> None:
+    """Grava o Elementor da LP como o pipeline faz antes do portão.
+
+    O content_gate da LP também confere a integridade do artefato renderizado
+    contra o template editorial (Editorial V2): sem o build, não há o que
+    conferir e o portão reprova com `lp_final_invalid` — como deve."""
+    (deps.runner.runs_dir / state.run_id).mkdir(parents=True, exist_ok=True)
+    step_build(state, _pagina_lp(), deps)
 
 
 class _PublisherSentinela:
@@ -123,6 +133,7 @@ def test_lp_util_e_interna_alcanca_verde(tmp_path, config_files):
     state = _estado(conteudo_da_lp())
     deps = _deps(tmp_path, config_files)
 
+    _construir(state, deps)
     step_content_gate(state, _pagina_lp(), deps)
 
     resultado = state.step_status["content_gate_p1"]
@@ -184,6 +195,7 @@ def test_gate_da_lp_e_hermetico(tmp_path, config_files, monkeypatch):
     state = _estado(conteudo_da_lp())
     deps = _deps(tmp_path, config_files)
 
+    _construir(state, deps)
     step_content_gate(state, _pagina_lp(), deps)
 
     assert state.step_status["content_gate_p1"].status is StepStatus.OK
@@ -297,11 +309,9 @@ def test_publicacao_aceita_grava_recibo_e_impressao(tmp_path, config_files):
     preservados. O recibo entra em `state.published[n]`, que
     `worker.resumo_do_estado` já leva verbatim para o Supabase."""
     state = _estado(conteudo_da_lp())
-    run_dir = tmp_path / "runs" / "r1"
-    run_dir.mkdir(parents=True)
-    (run_dir / "p1.elementor.json").write_text("[]", encoding="utf-8")
     pub = _PublisherAceito()
     deps = _deps(tmp_path, config_files, pub)
+    _construir(state, deps)
 
     step_publish(state, _pagina_lp(), deps)
 
@@ -466,13 +476,17 @@ def test_moeda_malformada_na_lp_e_corrigida_antes_do_portao(tmp_path, config_fil
     assert "R$ 2.900,00" in corpo
     assert "2900.00 R$" not in corpo
 
-    # E o artefato corrigido continua verde no portão: a correção não introduz
-    # um defeito novo enquanto conserta o antigo.
+    # E o artefato corrigido continua verde no portão DO DESTINO PAGO: a
+    # correção não introduz um defeito novo enquanto conserta o antigo. O
+    # content_gate completo também roda o portão editorial, que reprova estes
+    # números por não terem fato verificado — e isso não é assunto deste teste.
+    from funnelforge.pipeline.steps import _portao_da_lp
+
     state = _estado(corrigido)
     deps = _deps(tmp_path, config_files)
-    step_content_gate(state, _pagina_lp(), deps)
-    assert state.step_status["content_gate_p1"].status is StepStatus.OK, \
-        [i.code for i in state.step_status["content_gate_p1"].issues]
+    _construir(state, deps)
+    resultado = _portao_da_lp(state, _pagina_lp(), deps)
+    assert resultado.pronto, [i.code for i in resultado.issues]
 
 
 def test_ancora_da_rota_nasce_congruente_com_o_caminho_do_destino():

@@ -286,7 +286,7 @@ ATENÇÃO (vermelho #fef2f2 / texto #7f1d1d) — consequência REAL do fato (nun
 
 <identidade>
 Portal editorial independente, sem falsa oficialidade, promessas garantidas, urgência inventada
-ou execução de serviço. Gere uma vez em um parágrafo simples: "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.".
+ou execução de serviço. Gere uma vez em um parágrafo simples: "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos. Este conteúdo é gratuito e financiado por blocos de anúncios em parceria com o Google Adsense; não temos relação com os anunciantes.".
 O sistema controla posição e deduplicação do aviso. Não fabrique CNPJ, rodapé ou byline.
 Exemplos proibidos de medo fabricado e execução simulada:
 - muitos perdem

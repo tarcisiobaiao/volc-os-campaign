@@ -150,7 +150,7 @@ FATOS VERIFICADOS — os ÚNICOS números que você pode usar (1):
   1. 65% de desconto na faixa de consumo mais baixa
      onde está escrito: Lei de exemplo, art. 1
      vigente desde 2010-01-20 · conferido em 2026-09-29
-     AO USAR ESTE NÚMERO, inclua este link na MESMA frase: https://servicos.exemplo.gov.br/tarifa-social/consulta
+     AO USAR ESTE NÚMERO, cite a fonte em PROSA, com âncora descritiva ("segundo o site da servicos.exemplo.gov.br"). NÃO escreva a URL e NÃO crie link.
 
 
 CONTEXTO QUALITATIVO (sem cifra: os números que havia aqui não
@@ -165,8 +165,9 @@ OBSERVAÇÕES QUALITATIVAS (NÃO autorizam cifra):
   - O desconto e aplicado pela distribuidora de energia da regiao.
   - A inscricao no cadastro social e condicao para o desconto.
 
-FONTES CONFIRMADAS (responderam a uma visita real):
-  - https://servicos.exemplo.gov.br/tarifa-social/consulta
+FONTES CONFIRMADAS — cite pelo NOME, em prosa (a URL fica no dossiê
+de evidência, fora da página; nesta página nenhuma vira link):
+  - servicos.exemplo.gov.br
 </DADOS_DA_PÁGINA>
 
 <FORMATO_DE_SAIDA_JSON>

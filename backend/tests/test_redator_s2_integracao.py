@@ -383,6 +383,10 @@ def test_publicacao_avulsa_le_o_card_na_tabela_entity_first(monkeypatch, com_cha
     monkeypatch.setattr(w, "_ler_estado", lambda _d: {
         "step_status": {}, "drafts": {"2": {"content": "<p>x</p>"}}})
     monkeypatch.setattr(w, "publicar_pagina", publicar_falso)
+    # O portão de política do artefato tem testes próprios; aqui o que se mede
+    # é de qual tabela o card é lido.
+    monkeypatch.setattr(publicacao, "_portao_de_politica",
+                        lambda **_kw: ({"schema": "teste"}, "portao-de-teste"))
 
     saida = asyncio.run(publicacao.publicar_pagina_do_run(5, 2))
     assert saida.ok is True

@@ -89,11 +89,11 @@ Identifique o canal por nome, como orientação externa, sem simular execução 
 </fontes>
 <conexoes>
 Links disponíveis, na ordem editorial de relevância:
-- funnel: Quem tem direito a tarifa social → https://site.exemplo.com.br/rec/quem-tem-direito-tarifa-social-p1
+- funnel: Ver o guia de direito >>> → https://site.exemplo.com.br/rec/quem-tem-direito-tarifa-social-p1
   Motivo: 
-- funnel: Como pedir a tarifa social na distribuidora → https://site.exemplo.com.br/rec/como-pedir-tarifa-social-p2
+- funnel: Ver o guia de social >>> → https://site.exemplo.com.br/rec/como-pedir-tarifa-social-p2
   Motivo: 
-- funnel: Como conferir o desconto na conta de luz → https://site.exemplo.com.br/rec/conferir-desconto-conta-de-luz-p3
+- funnel: Ver o guia de conferir >>> → https://site.exemplo.com.br/rec/conferir-desconto-conta-de-luz-p3
   Motivo: 
 
 Não invente destinos. Inclua as conexões planejadas onde ajudam uma dúvida, sem obrigar uma
@@ -281,7 +281,7 @@ ATENÇÃO (vermelho #fef2f2 / texto #7f1d1d) — consequência REAL do fato (nun
 
 <identidade>
 Portal editorial independente, sem falsa oficialidade, promessas garantidas, urgência inventada
-ou execução de serviço. Gere uma vez em um parágrafo simples: "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.".
+ou execução de serviço. Gere uma vez em um parágrafo simples: "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos. Este conteúdo é gratuito e financiado por blocos de anúncios em parceria com o Google Adsense; não temos relação com os anunciantes.".
 O sistema controla posição e deduplicação do aviso. Não fabrique CNPJ, rodapé ou byline.
 Exemplos proibidos de medo fabricado e execução simulada:
 - muitos perdem

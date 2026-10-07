@@ -30,9 +30,11 @@ from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
 from funnelforge.adapters.images_pillow import PillowImageProcessor
 from funnelforge.config.settings import load_settings
 from funnelforge.domain.models import RunState
+from funnelforge.pipeline.doctrine import COMPLIANCE_NOTICE_TEXT
 from funnelforge.pipeline.pipeline import Deps, run_pipeline
 from funnelforge.pipeline.runner import Runner
 from tests.fakes import FakeLLM, png_bytes
+from tests.lp_conforme import RODAPE_INSTITUCIONAL, corpo_com_palavras
 
 HOJE = date(2026, 9, 30)
 
@@ -71,6 +73,9 @@ site:
   post_type: rec
   lp_post_type: r
   cnpj: "42.724.548/0001-24"
+  # O rodapé que o tema renderiza: sem ele o portão do destino pago reprova
+  # toda LP por identidade, aviso e monetização ausentes (ver tests/conftest.py).
+  rodape_institucional: "{RODAPE}"
   author: {name: Equipe Exemplo, credential: Redacao de jornalismo de servico.}
   official_preference: []
   cross_funnel_lps: [outro-guia-completo]
@@ -113,6 +118,7 @@ steps:
   widget:     {model: gemini/gemini-3.5-flash, fallbacks: [], temperature: 0.5, validators: []}
   engajamento: {model: gpt-4.1, fallbacks: [], temperature: 0.1, validators: []}
 """
+_CONFIG = _CONFIG.replace("{RODAPE}", RODAPE_INSTITUCIONAL)
 
 # Os passos do ramo novo. Entram só quando o teste pede (`passos_v2=True`), para
 # que o ouro do ramo desligado continue vendo exatamente a configuração antiga.
@@ -264,10 +270,10 @@ LP_JSON = json.dumps({
     "intro": "<p>A conta de luz pesa no orcamento. Esta pagina mostra quem tem direito ao "
              "<strong>desconto</strong> e onde pedir.</p>",
     "sections": [
-        {"title": "Quem pode ter o desconto", "body": "<p>A regra olha a inscricao no cadastro social.</p>"},
-        {"title": "Como o desconto aparece", "body": "<p>O desconto aparece na propria conta de luz.</p>"},
-        {"title": "Onde pedir", "body": "<p>O pedido e feito na distribuidora da regiao.</p>"},
-        {"title": "O que conferir antes", "body": "<p>Tenha a conta e o cadastro atualizados.</p>"},
+        {"title": "Quem pode ter o desconto", "body": "<p>A regra olha a inscricao no cadastro social.</p>" + corpo_com_palavras("quempode")},
+        {"title": "Como o desconto aparece", "body": "<p>O desconto aparece na propria conta de luz.</p>" + corpo_com_palavras("comoaparece")},
+        {"title": "Onde pedir", "body": "<p>O pedido e feito na distribuidora da regiao.</p>" + corpo_com_palavras("ondepedir")},
+        {"title": "O que conferir antes", "body": "<p>Tenha a conta e o cadastro atualizados.</p>" + corpo_com_palavras("conferir")},
     ],
     "faq": [
         {"q": "Preciso pagar para pedir?", "a": "Nao. O pedido e gratuito na distribuidora."},
@@ -331,7 +337,12 @@ def html_interno(prompt: str) -> str:
         "<!-- wp:list -->\n"
         f'<ul class="wp-block-list"><li>Primeiro passo sobre {headline.lower()}.</li>'
         f"<li>Segundo passo sobre {headline.lower()}.</li></ul>\n"
-        "<!-- /wp:list -->\n"
+        "<!-- /wp:list -->\n\n"
+        # O aviso canônico, como o prompt manda gerar: o `compliance` exige a
+        # divulgação de monetização E o não-vínculo no corpo.
+        "<!-- wp:paragraph -->\n"
+        f"<p>{COMPLIANCE_NOTICE_TEXT}</p>\n"
+        "<!-- /wp:paragraph -->\n"
     )
 
 

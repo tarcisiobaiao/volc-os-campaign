@@ -103,6 +103,16 @@ const base = (over: Partial<ContratoDeCanal>): ContratoDeCanal => ({
   mensuracao: { lida: false } as ContratoDeCanal['mensuracao'],
   observabilidade: {} as ContratoDeCanal['observabilidade'],
   operacional: {},
+  // Eixos que a linha v2 tornou obrigatórios depois desta sprint (T13).
+  economia: {
+    teto_diario_brl: null, cpc_maximo_brl: null, lances_permitidos: [],
+    minimo_diario_medido: null, causa: null,
+  },
+  destino: null,
+  automacoes_travadas: [],
+  prova: { estado: 'PERMITIDO', flag: null, causa: null },
+  conta: { customer_id: '', rotulo: '' },
+  proximo_ato: null,
   ...over,
 });
 

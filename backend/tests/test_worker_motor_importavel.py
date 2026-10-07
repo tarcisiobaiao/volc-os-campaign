@@ -228,7 +228,10 @@ def test_o_processo_do_motor_recebe_o_pythonpath_do_motor(motor_falso: Path, mon
     monkeypatch.setattr(worker.asyncio, "create_subprocess_exec", sobe)
     supa = _SupaFalso()
 
-    asyncio.run(worker.executar(supa=supa, run_row_id=32, arquitetura=ARQ, perfil=PERFIL))
+    # `executar` publica por padrão, e `--publish` só sai com a autorização
+    # de um portão (worker._disparar_motor). Sem ela o motor nem sobe.
+    asyncio.run(worker.executar(supa=supa, run_row_id=32, arquitetura=ARQ, perfil=PERFIL,
+                                autorizacao="portao-de-teste"))
 
     assert visto, "o motor nem foi disparado"
     assert visto["cwd"] == str(motor_falso)
@@ -251,7 +254,7 @@ def test_publicar_pagina_tambem_leva_o_pythonpath(motor_falso: Path, monkeypatch
 
     r = asyncio.run(worker.publicar_pagina(
         supa=_SupaFalso(), run_row_id=33, run_id="funil-20260930-101010",
-        page_number=2, perfil=PERFIL))
+        page_number=2, perfil=PERFIL, autorizacao="portao-de-teste"))
 
     assert visto["env"]["PYTHONPATH"].split(os.pathsep)[0] == str(motor_falso / "src")
     # sem state.json no disco, o desfecho é honesto: não publicou

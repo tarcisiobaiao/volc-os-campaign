@@ -62,7 +62,16 @@ function canal(mensuracao: Record<string, unknown> = {}): ContratoDeCanal {
       estado: 'PERMITIDO', coletor: 'varredura', causa: null,
       campanhas_no_espelho: 3, contagem_truncada: false,
     },
-    operacional: {},
+    operacional: {},    // Eixos que a linha v2 tornou obrigatórios depois desta prova (T13).
+    economia: {
+      teto_diario_brl: null, cpc_maximo_brl: null, lances_permitidos: [],
+      minimo_diario_medido: null, causa: null,
+    },
+    destino: null,
+    automacoes_travadas: [],
+    prova: { estado: 'PERMITIDO', flag: null, causa: null },
+    conta: { customer_id: '', rotulo: '' },
+    proximo_ato: null,
   };
   return {
     ...base,
@@ -78,6 +87,7 @@ function resposta(canais: ContratoDeCanal[]): RespostaDosCanais {
     operador: {
       is_admin: true, lab_mode: false, google_read: true, google_validate_only: true,
       google_mutate: false, google_demand_gen_validate_only: false,
+      google_pmax_validate_only: false,
       porque_sem_mutacao: 'a permissão está fechada neste servidor.',
     },
     politica_canario: {},

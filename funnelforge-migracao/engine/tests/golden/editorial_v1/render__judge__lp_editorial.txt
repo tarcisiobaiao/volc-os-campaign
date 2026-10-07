@@ -64,7 +64,7 @@ Dê notas inteiras de 0 a 10:
 - proof_and_authority: afirmações sustentadas pelas fontes e pelo seu escopo, sem falsa generalização.
   Não exija quantidade de órgãos, siglas ou números. Uma contradição factual material bloqueia.
 - compliance: identidade editorial independente, sem falsa afiliação, coleta sensível ou contratação
-  simulada. Nas internas o aviso canônico é "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos.".
+  simulada. Nas internas o aviso canônico é "Aviso de Utilidade Pública: portal informativo independente, sem vínculo com os órgãos citados, não realizamos solicitações e não solicitamos dados pessoais nem pagamentos. Este conteúdo é gratuito e financiado por blocos de anúncios em parceria com o Google Adsense; não temos relação com os anunciantes.".
   Na LP JSON o aviso é inserido pelo renderer, não exija esse campo no JSON.
   Não trate um aviso como compensação para uma promessa enganosa no restante do texto.
 - tone_e_e_a_t: linguagem acessível, prática e sem medo ou escassez fabricados.
