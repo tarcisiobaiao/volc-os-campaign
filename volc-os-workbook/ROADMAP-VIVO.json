@@ -795,7 +795,7 @@
           "title": "Fechar o plano canônico de mensuração no nascimento Search",
           "status": "partial",
           "priority": 1,
-          "proof": "Zero MEDIDO continua NAO_PRONTA e INDETERMINADA recusa igual: nada foi afrouxado. E a causa de cada leitura passou a explicar a SUA leitura — a falha da GAQL de ACOES era explicada com a frase do FRESCOR ('nenhuma acao foi eleita'), mandando o operador consertar a coisa errada. DIVIDA REGISTRADA: a causa de transporte real de `ler_acoes` continua descartada em `metas_efetivas.ler_plano`; propaga-la exige campo novo em `PlanoDeMensuracao`, que entra na impressao — fica para uma rodada que possa mexer no schema do plano. Continua `partial`: nenhuma leitura real nova. [Histórico completo: docs/operations/qg-reconciliation-20261007/EVIDENCE-LEDGER.md#p05-t12]",
+          "proof": "2026-10-07: a leitura do plano no /provar deixou de multiplicar threads — singleflight + cache de 45 s só de plano lido por inteiro; /subir continua fresco. Ganho provado só em teste hermético: nenhuma leitura real nova, então segue `partial`. Zero MEDIDO continua NAO_PRONTA e INDETERMINADA recusa igual: nada foi afrouxado. E a causa de cada leitura passou a explicar a SUA leitura — a falha da GAQL de ACOES era explicada com a frase do FRESCOR ('nenhuma acao foi eleita'), mandando o operador consertar a coisa errada. DIVIDA REGISTRADA: a causa de transporte real de `ler_acoes` continua descartada em `metas_efetivas.ler_plano`; propaga-la exige campo novo em `PlanoDeMensuracao`, que entra na impressao — fica para uma rodada que possa mexer no schema do plano. Continua `partial`: nenhuma leitura real nova. [Histórico completo: docs/operations/qg-reconciliation-20261007/EVIDENCE-LEDGER.md#p05-t12]",
           "explanation": "Uma campanha que nasce sem plano de mensuração declarado é uma campanha que ninguém consegue ativar com segurança depois. O plano precisa dizer, ANTES do nascimento, qual ação de conversão a campanha persegue, de quem é essa ação, por onde o sinal chega e quão fresco ele é — e precisa impedir ativação e Smart Bidding enquanto isso não estiver provado.",
           "acceptance": [
             "campaign_measurement_plan persistido no Supabase oficial, com migration e rollback provados",
@@ -813,7 +813,8 @@
             "2026-09-01 · 349e1a9..70e1382 (sprint/campaign-birth-readiness-v1): `plano_mensuracao.py`, `metas_efetivas.py`, `prontidao.py`, persistência, router e front foram integrados. Gates: 220 focais; 7/7 mutações mortas; 2682 testes Python; ciclo v12_02 com 55 provas; 1158 Vitest; build verde; TypeScript no baseline de 76 e zero erro no ownership.",
             "A prontidão agora separa `fontes_de_sinal_observadas` de `caminhos_de_sinal_declarados`: auto-tagging, tag configurada e destino endereçável não provam chegada de conversão. `smart_bidding_eligible=true` com bloqueador material tornou-se estado impossível de construir.",
             "A v12_02 permanece somente versionada e provada em Postgres descartável. Leitura no Supabase oficial confirmou ausência da tabela e da função; por isso o estado não foi promovido a done.",
-            "2026-09-01 · 57028f2..48fd4d1 (sprint/search-measurement-operational-v1 → volc-os-v2 por fast-forward): a costura produtiva do plano de mensuração. RepositorioDePlanoDeMensuracao tinha ZERO chamadores de produção; agora /subir o chama entre ledger.despachar e sb.subir, e falha de gravação impede o mutate. Seis commits: domínio (vincular_ao_nascimento, do_json), persistência (erro tipado, por_intencao), rota, front, os quatro achados da revisão adversarial Codex Sol, e o conserto da invariante 6 no plano de ignorância — este último encontrado pela prova transacional contra o banco OFICIAL, não em cluster descartável. Gates: pytest 2736/30/0 (baseline 2682), Vitest 1173/3/0 (baseline 1156/5), TypeScript 76 no baseline com zero erro no ownership, ciclo v12_02 55/0, build verde, gate de zero mutação Google 3/3, secret scan limpo. 54 contraprovas em backend/tests/test_trafego_plano_persistido.py. ZERO Google mutate, ZERO Data Manager/GTM/n8n, ZERO deploy."
+            "2026-09-01 · 57028f2..48fd4d1 (sprint/search-measurement-operational-v1 → volc-os-v2 por fast-forward): a costura produtiva do plano de mensuração. RepositorioDePlanoDeMensuracao tinha ZERO chamadores de produção; agora /subir o chama entre ledger.despachar e sb.subir, e falha de gravação impede o mutate. Seis commits: domínio (vincular_ao_nascimento, do_json), persistência (erro tipado, por_intencao), rota, front, os quatro achados da revisão adversarial Codex Sol, e o conserto da invariante 6 no plano de ignorância — este último encontrado pela prova transacional contra o banco OFICIAL, não em cluster descartável. Gates: pytest 2736/30/0 (baseline 2682), Vitest 1173/3/0 (baseline 1156/5), TypeScript 76 no baseline com zero erro no ownership, ciclo v12_02 55/0, build verde, gate de zero mutação Google 3/3, secret scan limpo. 54 contraprovas em backend/tests/test_trafego_plano_persistido.py. ZERO Google mutate, ZERO Data Manager/GTM/n8n, ZERO deploy.",
+            "2026-10-07 · perf(engines) no main: `_plano_de_mensuracao` ganhou singleflight + cache curto em memória (`app/services/leitura_compartilhada.py`), chave (cid, mid, campaign_id, chave_intencao, versão), TTL default 45 s recortado a [0, 60]. Só `/provar` pede `reaproveitar=True`; o default é FRESCO e `/subir` relê antes de escrever, sem carona em leitura em voo. Guarda só plano com as seis leituras concluídas (nenhuma `falhou`/`parcial`); `None`, exceção e timeout nunca entram; `vazio_confirmado` com `completo=False` entra, porque é conclusão medida. Depois de um timeout HTTP a leitura única termina e preenche o cache, e novos cliques pegam carona em vez de abrir thread igual. Prova hermética (backend/tests/test_trafego_leituras_compartilhadas.py): 5 cliques simultâneos → 1 `mef.ler_plano` (antes 5); +5 cliques → 0 (antes 5); `/subir` com cache quente → 1 leitura fresca. Mutações mortas: /subir reaproveitando, plano com falha guardado, sem shield, sem checagem de laço. Mesma entrega: pré-checagens remotas de /subir em paralelo fail-closed (2×50 ms: 0,101 s → 0,051 s nos fakes) e montagem única `_montar_e_preparar_plano` para /provar e a reprova de /subir, com impressão Search caracterizada antes da refatoração e idêntica depois. Suíte backend: 5760 passaram / 18 falhas / 192 skips, conjunto de falhas idêntico à baseline (5696/18/192). ZERO chamada real, ZERO mutate, ZERO deploy."
           ],
           "dependencies": [
             "P06-T07",
@@ -826,7 +827,8 @@
           "links": [
             "docs/closure/campaign-birth-readiness-v1/delta-curadoria-campaign-birth-readiness.json",
             "docs/closure/campaign-birth-readiness-v1/PROVA-SDK-V25.md",
-            "supabase/migrations/v12_02_plano_de_mensuracao.sql"
+            "supabase/migrations/v12_02_plano_de_mensuracao.sql",
+            "backend/app/services/leitura_compartilhada.py"
           ]
         },
         {
@@ -1715,6 +1717,34 @@
             "docs/audits/REFINO-VISUAL-AVISOS-2026-09-18.md",
             "docs/audits/REFINO-CONTEXTUAL-FUNIS-2026-09-18.md",
             "docs/audits/REFINO-CONTEXTUAL-FUNIS-2026-09-18.json"
+          ]
+        },
+        {
+          "id": "P10-T21",
+          "title": "Reduzir leituras externas repetidas no mining do Pautador",
+          "status": "partial",
+          "priority": 2,
+          "proof": "2026-10-07: implementado e provado só em teste hermético — nenhuma chamada real a Keyword Planner ou DataForSEO foi feita, então o ganho em API real NÃO está medido. Branches de seed concorrem sob `asyncio.Semaphore` (default 2, teto 3, `PAUTADOR_KW_CONCORRENCIA_SEEDS`), com laço interno sequencial, ordem final = ordem de entrada e avisos consolidados por seed. Autocomplete e related correm juntos com o fallback de sempre. Respostas LIVE bem-sucedidas vão para cache em memória (TTL 24 h, `PAUTADOR_KW_CACHE_TTL_S`, 512 entradas, chave SHA-256 sem segredo); mock, erro, None e tarefa DataForSEO com status != 20000 não entram. Filas vazias depois do Gold Miner pulam o Funnel Prospector com código `FUNNEL_PROSPECTOR_SEM_MATERIAL`. Fakes de 50 ms: 4 seeds × 2 laços 0,41 s → 0,205 s (pico 1 → 2, 8 chamadas nos dois); DataForSEO 0,103 s → 0,051 s; segunda mineração igual: 8+2 chamadas → 0 (10 hits). Saída do KP idêntica ao código anterior.",
+          "explanation": "O mining relia as mesmas fontes externas a cada rodada e percorria as seeds uma a uma. O ganho é de latência e quota, sem mudar o resultado: mesmas chamadas na primeira rodada, mesma ordem, mesmos avisos e fallback, e nenhuma resposta inventada no cache.",
+          "acceptance": [
+            "concorrência só entre seeds, limitada a 3, sem aumentar o total de chamadas",
+            "ordem final e avisos determinísticos, independentes da ordem de conclusão",
+            "cache só de leitura live bem-sucedida, em memória, com TTL, teto e chave sem segredo",
+            "erro, timeout, None, resposta parcial e mock nunca entram no cache",
+            "Funnel Prospector não é chamado quando as duas filas saem vazias",
+            "ganho medido numa mineração real, sem custo extra (PENDENTE)"
+          ],
+          "evidencia": [
+            "2026-10-07 · main: backend/app/agents/mining/orchestrator.py, backend/app/services/leitura_compartilhada.py; 28 provas em backend/tests/test_pautador_mining_concorrencia_cache.py e 7 em backend/tests/test_leitura_compartilhada.py; mutações mortas: teto 1, cache aceitando tudo, avisos na ordem de conclusão, DataForSEO sequencial."
+          ],
+          "dependencies": [],
+          "graph_nodes": [
+            "cap_keyword_mining"
+          ],
+          "links": [
+            "backend/app/agents/mining/orchestrator.py",
+            "backend/app/services/leitura_compartilhada.py",
+            "backend/tests/test_pautador_mining_concorrencia_cache.py"
           ]
         }
       ]

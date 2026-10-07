@@ -52,6 +52,7 @@ from pydantic import (BaseModel, ConfigDict, Field, field_validator,
                       model_validator)
 
 from app.services.supabase_service import SupabaseService
+from app.services import leitura_compartilhada as lcomp
 from app.config import get_settings
 # ⚠️ No topo, pelo MESMO motivo de `prontidao` logo abaixo: desde 03/09/2026 as
 # duas rotas dependem da política de destino para RECUSAR, e um `ImportError`
@@ -84,6 +85,9 @@ from app.trafego import (canario, capacidades as cap,
                          # nem com o Supabase —, então subir o import não custa
                          # nada no boot.
                          prontidao as pr)
+# O vocabulário dos ESTADOS de leitura, para decidir o que pode ser guardado.
+# Domínio puro (dataclasses + json), sem rede no import.
+from app.trafego import plano_mensuracao as pm
 # ⚠️ A autoridade única de prontidão de mensuração. Stdlib pura — não arrasta o
 # SDK do Google para o boot —, e é ela quem `prontidao.exigir_para_criacao`
 # consulta. O import direto existe para esta rota poder TIPAR o veredito que
@@ -3838,6 +3842,175 @@ def _recusa_do_destino(destino: DestinoDeCampanha) -> str:
             f"paga: {cabeca}{resto}.")
 
 
+@dataclasses.dataclass(frozen=True)
+class PlanoPreparado:
+    """O que a montagem devolve às duas rotas — e nada que autorize escrita.
+
+    `preparo.selo` é a prova do `validate_only`; ele NÃO é autorização. Quem
+    compara com a impressão aprovada, relê o destino, abre o ledger e chama o
+    mutate é a rota, cada uma no seu momento.
+    """
+
+    plano: Any
+    preparo: Any
+    #: As `Linhas` ficam à mão: é `run.paginas_publicadas` que carrega o recibo
+    #: de aprovação da URL, e sem ele o portão do destino não tem contra o que
+    #: comparar o ar.
+    linhas: Any
+    #: A identidade do SUPRIMENTO aprovado (peça, bytes e recibo). `None` =
+    #: este canal não carrega peça sob o portão de política — NÃO "passou".
+    supply_sha256: Optional[str]
+
+
+def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
+                             canal_resolvido: str, cid: str, mid: str,
+                             prefixo_nome: str) -> PlanoPreparado:
+    """A montagem ÚNICA do plano aprovável, chamada por `/provar` e por `/subir`.
+
+    ## Por que uma função, e duas chamadas
+
+    `/subir` PRECISA provar de novo: o `Selo` é do payload, não da sessão, e
+    remontar fecha a janela entre provar e subir. O que não precisava existir
+    era a montagem escrita duas vezes — duas cópias que "fazem quase o mesmo"
+    são exatamente como o plano que `/subir` sela deixa de ser o plano que
+    `/provar` aprovou, e a divergência só aparece na conta.
+
+    As diferenças legítimas entram por parâmetro nomeado:
+
+      * `canal_resolvido` — `/provar` resolve pelo provador, `/subir` pelo
+        construtor; a montagem não decide qual;
+      * `prefixo_nome` — `/provar` usa o prefixo operacional, `/subir` usa a
+        marca que o canário acabou de exigir.
+
+    ## O que esta função NÃO faz, e não pode passar a fazer
+
+    Autorização humana, comparação de `plano_impressao`, releitura do destino,
+    pré-checagem remota, plano de mensuração, ledger, mutate, readback e o
+    tratamento HTTP de cada recusa ficam NAS ROTAS. Ela roda numa thread e só
+    levanta: `PortaoDoConjuntoPago`, `PonteIncompleta`, `PoliticaCriativaRecusou`,
+    `ValueError` e a `HTTPException(422)` de `_criterios_do_corpo` sobem como
+    subiam — cada rota as traduz como sempre traduziu.
+    """
+    linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
+    # ⚠️ O PORTÃO DO CONJUNTO PAGO, ANTES DE MONTAR E ANTES DA REDE.
+    #
+    # As keywords POSITIVAS desta rota nasciam do cockpit, e o cockpit as
+    # tira de `production_ads_queue` — a fila BRUTA da mineração. O motor
+    # de elegibilidade existia AO LADO do nascimento da campanha, não no
+    # caminho dele: `para_criterios_de_campanha()` não tinha chamador de
+    # produção nenhum.
+    #
+    # Daqui em diante o critério positivo nasce EXCLUSIVAMENTE do conjunto
+    # aprovado. Conjunto ausente, não aprovado, com hash divergente ou com
+    # bloqueador em aberto recusa AQUI — antes de `preparar()`, portanto
+    # antes de qualquer `validate_only`, que é leitura mas ainda é rede e
+    # ainda é conta real.
+    #
+    # ⚠️ E ELE É DE SEARCH, E SÓ DELE. Ele nasce das keywords aprovadas pelo
+    # motor de elegibilidade paga, e Display, Demand Gen e PMax não têm keyword
+    # nenhuma. Cobrá-lo de todo canal fazia `/subir` recusar, com
+    # `PonteIncompleta`, exatamente o pedido Display que `/provar` tinha acabado
+    # de aprovar — a divergência que T02 existe para fechar.
+    cockpit = pp.montar_cockpit(linhas)
+    conjunto = None
+    criterios_do_conjunto: tuple = ()
+    selecao_aprovada: dict = {}
+    if canal_resolvido == "SEARCH":
+        conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
+            getattr(linhas, "cluster", None)
+        )
+        selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
+    # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
+    # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
+    # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
+    # e `set()` sobre um dict devolve as CHAVES. A seleção do operador era
+    # descartada aqui, em silêncio, e o builder montava o grupo inteiro.
+    # Medido contra a conta real: duas keywords escolhidas viraram oito no
+    # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
+    # com DKI na primeira headline isso vira texto de anúncio.
+    # A seleção desce do CONJUNTO APROVADO, não do corpo do pedido.
+    #
+    # `grupos_usar_todas` fica VAZIO de propósito: "usar todas" significa
+    # "monte o grupo inteiro do cockpit", que é justamente promover a fila
+    # bruta a conjunto de campanha. Depois do portão isso deixa de existir
+    # — não há mais "todas", há o que foi aprovado.
+    escolha = pp.Escolha(
+        grupos=tuple(selecao_aprovada.keys()),
+        keywords_por_grupo=selecao_aprovada,
+        grupos_usar_todas=frozenset(),
+        rede=_rede_do_corpo(body),
+        # Recusa fechada: depois da impressão emitida, retirar keyword
+        # mudaria o conjunto sem mudar o selo.
+        keywords_fora=(
+            portao_pago.recusar_keywords_fora(body.keywords_fora, conjunto)
+            if canal_resolvido == "SEARCH" else frozenset()
+        ),
+        budget_diario=body.budget_diario,
+        cpc_inicial=body.cpc_inicial,
+        cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
+                       if g.cpc_inicial is not None},
+        match_type=body.match_type,
+        # POSITIVAS: só do conjunto aprovado, e ele vem primeiro — vence o
+        # legado que repetir a mesma identidade. Do corpo, só NEGATIVAS:
+        # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
+        # uma quarta positiva entrava e trocava o match type aprovado.
+        criterios=(
+            tuple(criterios_do_conjunto) + tuple(
+                portao_pago.somente_negativas_do_corpo(
+                    _criterios_do_corpo(body, pp)
+                )
+            )
+            if canal_resolvido == "SEARCH" else ()
+        ),
+        negativas_campanha=(),
+        negativas_adgroup=(),
+        vertical=body.vertical,
+        certificacoes=set(body.certificacoes),
+        url_final=body.url_final,
+        prefixo_nome=prefixo_nome,
+        carimbo_nome=body.carimbo_nome,
+        conversao=body.conversao,
+        estrategia_lance=body.estrategia_lance,
+        tcpa=body.tcpa,
+        # A doutrina P7 é do sistema, não do chamador: um conjunto, sempre.
+        # A sub-intenção continua servindo à triagem no cockpit.
+        conjunto_unico=True,
+    )
+    # ⚠️ OS MONTADORES POR CANAL, um por canal no arquivo inteiro.
+    # `_montar_plano_display` aplica país de origem, idioma, vertical, filtro
+    # de bloqueadores do cockpit e a recusa dos campos que Display não opera;
+    # remontar por `montar_brief` e remendar depois reproduzia parte disso e
+    # perdia o resto. O ramo PMax só é alcançável em `/subir` quando o canal
+    # tiver canário aceito — `canario.exigir` recusa antes —, mas o montador
+    # já é o mesmo, e é isso que torna a paridade estrutural.
+    copy = _copy_do_corpo(body.texto_do_anuncio)
+    supply: Optional[str] = None
+    if canal_resolvido == "DEMAND_GEN":
+        plano, supply = _montar_plano_demand_gen(pp, cockpit, escolha, copy, body)
+    elif canal_resolvido == "DISPLAY":
+        plano, supply = _montar_plano_display(pp, cockpit, escolha, copy, body)
+    elif canal_resolvido == "PERFORMANCE_MAX":
+        plano, supply = _montar_plano_pmax(
+            pp, cockpit, escolha, copy, body, cid=cid, mid=mid)
+    else:
+        plano = pp.montar_brief(cockpit, escolha, copy=copy)
+    # A PÓS-CONDIÇÃO, sobre o artefato que de fato vai ao Google — o brief
+    # final, depois de todo adaptador. Conferir a entrada não basta, e
+    # `/subir` remonta, então reconfere o que remontou. Multiconjunto, não
+    # conjunto: cardinalidade é o que o defeito alterava.
+    if canal_resolvido == "SEARCH":
+        portao_pago.conferir_positivas_do_brief(
+            plano.brief, criterios_do_conjunto, grupo_colapsado=True)
+    # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
+    # id colado do painel do Google vem `801-785-1692`, com hífen.
+    preparo = sb.preparar(
+        cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
+        ai_max=body.ai_max,
+    )
+    return PlanoPreparado(plano=plano, preparo=preparo, linhas=linhas,
+                          supply_sha256=supply)
+
+
 @router.post("/provar")
 async def provar(
     body: ProvarEntrada = Body(...),
@@ -3943,136 +4116,16 @@ async def provar(
         raise HTTPException(
             status_code=422, detail=_recusa_de_canal(body.canal, exc)) from exc
 
-    # ⚠️ Uma lista, e não uma variável: `_preparar` roda numa thread e o
-    # fechamento sobre uma lista é a forma de o valor sair de lá sem `global`.
-    # Vazia = este canal não carrega peça sob o portão de política. Vazia NÃO é
-    # "o portão passou": Search não tem asset, e dizer que ele foi aprovado
-    # seria inventar uma prova que ninguém fez.
-    suprimento: list = []
-
-    def _preparar():
-        # ⚠️ As `Linhas` ficam AQUI em vez de serem descartadas dentro da
-        # composição. É nelas que mora `run.paginas_publicadas`, e é lá dentro
-        # que o recibo de aprovação da barreira 2 foi pendurado — sem elas, o
-        # portão do destino não tem contra o que comparar o que está no ar.
-        linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
-        # ⚠️ O PORTÃO DO CONJUNTO PAGO, ANTES DE MONTAR E ANTES DA REDE.
-        #
-        # As keywords POSITIVAS desta rota nasciam do cockpit, e o cockpit as
-        # tira de `production_ads_queue` — a fila BRUTA da mineração. O motor
-        # de elegibilidade existia AO LADO do nascimento da campanha, não no
-        # caminho dele: `para_criterios_de_campanha()` não tinha chamador de
-        # produção nenhum.
-        #
-        # Daqui em diante o critério positivo nasce EXCLUSIVAMENTE do conjunto
-        # aprovado. Conjunto ausente, não aprovado, com hash divergente ou com
-        # bloqueador em aberto recusa AQUI — antes de `preparar()`, portanto
-        # antes de qualquer `validate_only`, que é leitura mas ainda é rede e
-        # ainda é conta real.
-        cockpit = pp.montar_cockpit(linhas)
-        conjunto = None
-        criterios_do_conjunto = ()
-        selecao_aprovada = {}
-        if canal_resolvido == "SEARCH":
-            conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
-                getattr(linhas, "cluster", None)
-            )
-            selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
-        # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
-        # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
-        # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
-        # e `set()` sobre um dict devolve as CHAVES. A seleção do operador era
-        # descartada aqui, em silêncio, e o builder montava o grupo inteiro.
-        # Medido contra a conta real: duas keywords escolhidas viraram oito no
-        # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
-        # com DKI na primeira headline isso vira texto de anúncio.
-        # A seleção desce do CONJUNTO APROVADO, não do corpo do pedido.
-        #
-        # `grupos_usar_todas` fica VAZIO de propósito: "usar todas" significa
-        # "monte o grupo inteiro do cockpit", que é justamente promover a fila
-        # bruta a conjunto de campanha. Depois do portão isso deixa de existir
-        # — não há mais "todas", há o que foi aprovado.
-        escolha = pp.Escolha(
-            grupos=tuple(selecao_aprovada.keys()),
-            keywords_por_grupo=selecao_aprovada,
-            grupos_usar_todas=frozenset(),
-            rede=_rede_do_corpo(body),
-            # Recusa fechada: depois da impressão emitida, retirar keyword
-            # mudaria o conjunto sem mudar o selo.
-            keywords_fora=(
-                portao_pago.recusar_keywords_fora(body.keywords_fora, conjunto)
-                if conjunto is not None else frozenset()
-            ),
-            budget_diario=body.budget_diario,
-            cpc_inicial=body.cpc_inicial,
-            cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
-                           if g.cpc_inicial is not None},
-            match_type=body.match_type,
-            # O adaptador da fronteira reúne os dois contratos num só. Vazio
-            # significa que o pedido não declarou negativa nenhuma, e aí as
-            # listas antigas seguem o caminho de sempre.
-            # Positivos do CONJUNTO APROVADO + negativas declaradas no corpo.
-            # A ordem importa: o conjunto foi declarado primeiro e por isso
-            # vence o legado que repetir a mesma identidade.
-            # POSITIVAS: só do conjunto aprovado. Do corpo, só NEGATIVAS —
-            # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
-            # uma quarta positiva entrava e trocava o match type aprovado.
-            criterios=(
-                tuple(criterios_do_conjunto) + tuple(
-                    portao_pago.somente_negativas_do_corpo(
-                        _criterios_do_corpo(body, pp)
-                    )
-                )
-                if canal_resolvido == "SEARCH" else ()
-            ),
-            negativas_campanha=(),
-            negativas_adgroup=(),
-            vertical=body.vertical,
-            certificacoes=set(body.certificacoes),
-            url_final=body.url_final,
-            prefixo_nome=_prefixo_operacional(body, impressao=chave_intencao),
-            carimbo_nome=body.carimbo_nome,
-            conversao=body.conversao,
-            estrategia_lance=body.estrategia_lance,
-            tcpa=body.tcpa,
-            # A doutrina P7 é do sistema, não do chamador: um conjunto, sempre.
-            # A sub-intenção continua servindo à triagem no cockpit.
-            conjunto_unico=True,
-        )
-        copy = _copy_do_corpo(body.texto_do_anuncio)
-        if canal_resolvido == "DEMAND_GEN":
-            plano, supply = _montar_plano_demand_gen(
-                pp, cockpit, escolha, copy, body
-            )
-            suprimento.append(supply)
-        elif canal_resolvido == "DISPLAY":
-            plano, supply = _montar_plano_display(
-                pp, cockpit, escolha, copy, body)
-            suprimento.append(supply)
-        elif canal_resolvido == "PERFORMANCE_MAX":
-            plano, supply = _montar_plano_pmax(
-                pp, cockpit, escolha, copy, body, cid=cid, mid=mid)
-            suprimento.append(supply)
-        else:
-            plano = pp.montar_brief(cockpit, escolha, copy=copy)
-        # A PÓS-CONDIÇÃO, sobre o artefato que de fato vai ao Google.
-        # Conferir a entrada que a rota montou não basta: o que importa é o
-        # brief final, depois de todo adaptador. Multiconjunto, não conjunto —
-        # cardinalidade é o que o defeito alterava.
-        if canal_resolvido == "SEARCH":
-            portao_pago.conferir_positivas_do_brief(
-                plano.brief, criterios_do_conjunto, grupo_colapsado=True)
-        # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
-        # id colado do painel do Google vem `801-785-1692`, com hífen.
-        preparo = sb.preparar(
-            cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
-            ai_max=body.ai_max,
-        )
-        return plano, preparo, linhas
+    def _preparar() -> PlanoPreparado:
+        # A MESMA montagem de `/subir`; aqui o prefixo é o operacional.
+        return _montar_e_preparar_plano(
+            pp, sb, body, canal_resolvido=canal_resolvido, cid=cid, mid=mid,
+            prefixo_nome=_prefixo_operacional(body, impressao=chave_intencao))
 
     try:
-        plano, preparo, linhas = await asyncio.wait_for(
+        montado = await asyncio.wait_for(
             asyncio.to_thread(_preparar), timeout=TIMEOUT_PROVA_S)
+        plano, preparo, linhas = montado.plano, montado.preparo, montado.linhas
     except asyncio.TimeoutError:
         # A distinção que a tela precisa fazer: passou do teto NÃO significa que
         # algo foi criado. `validate_only` não cria nada, em nenhum desfecho.
@@ -4229,7 +4282,7 @@ async def provar(
             # A identidade do SUPRIMENTO aprovado: peça, bytes inspecionados e
             # recibo que os liberou. `null` = este canal não carrega peça —
             # NÃO "o portão passou".
-            "supply_sha256": (suprimento[0] if suprimento else None),
+            "supply_sha256": montado.supply_sha256,
             "budget_diario": body.budget_diario,
             "cpc_inicial": body.cpc_inicial,
             "ativacao_incluida": False,
@@ -4288,10 +4341,64 @@ TIMEOUT_METAS_S = 15.0
 #: um plano ausente com causa, nunca um plano pela metade com cara de completo.
 TIMEOUT_PLANO_S = 30.0
 
+#: A leitura do plano compartilhada entre cliques de `/provar`. Memória do
+#: processo, nada além. `/subir` não lê daqui — ver `_plano_de_mensuracao`.
+_LEITURA_DO_PLANO = lcomp.LeituraCompartilhada(
+    "trafego:plano_de_mensuracao", max_entradas=256)
+#: Sobe quando a forma da leitura (`mef.ler_plano`) ou do plano mudar.
+VERSAO_CHAVE_DO_PLANO = 1
+#: O frescor máximo aceitável para um plano mostrado ao operador. Um setting
+#: maior que isto é recortado: o plano decide o portão do lance.
+TTL_PLANO_MAXIMO_S = 60.0
+#: Estados de leitura que impedem guardar o plano: ele não foi lido por inteiro.
+_ESTADOS_QUE_NAO_SE_GUARDAM = frozenset({pm.FALHOU, pm.PARCIAL})
+
+
+def _chave_do_plano(cid: str, mid: str, *, campaign_id: Optional[str],
+                    chave_intencao: Optional[str]) -> str:
+    return lcomp.chave_canonica("plano_de_mensuracao", VERSAO_CHAVE_DO_PLANO,
+                                  str(cid), str(mid), campaign_id, chave_intencao)
+
+
+def _ttl_do_plano_s() -> float:
+    bruto = getattr(get_settings(), "trafego_plano_mensuracao_cache_ttl_s", 0.0)
+    try:
+        valor = float(bruto or 0.0)
+    except (TypeError, ValueError):
+        valor = 0.0
+    return min(max(valor, 0.0), TTL_PLANO_MAXIMO_S)
+
+
+def _plano_lido_por_inteiro(plano: Any) -> bool:
+    """O plano pode ser guardado? Só se TODA leitura chegou a uma conclusão.
+
+    ⚠️ NÃO é `plano.completo`. `completo` é o veredito de negócio (meta
+    resolvida, ação eleita, sinal recente) e pode ser `False` com todas as
+    leituras certas — uma conta sem ação de conversão é um `vazio_confirmado`
+    medido, e ele se guarda. O que não se guarda é o plano em que alguma das
+    leituras `falhou` ou veio `parcial`: guardá-lo faria uma instabilidade de
+    rede durar o TTL inteiro.
+    """
+    if plano is None:
+        return False
+    meta = getattr(plano, "meta_efetiva", None)
+    estados = (
+        getattr(meta, "nivel_estado", None),
+        getattr(meta, "metas_da_conta_estado", None),
+        getattr(meta, "metas_da_campanha_estado", None),
+        getattr(plano, "acoes_estado", None),
+        getattr(getattr(plano, "frescor", None), "estado", None),
+        getattr(getattr(plano, "marcacao", None), "estado", None),
+    )
+    if any(e is None for e in estados):
+        return False
+    return not any(e in _ESTADOS_QUE_NAO_SE_GUARDAM for e in estados)
+
 
 async def _plano_de_mensuracao(cid: str, mid: str, *,
                                campaign_id: Optional[str] = None,
-                               chave_intencao: Optional[str] = None):
+                               chave_intencao: Optional[str] = None,
+                               reaproveitar: bool = False):
     """O plano canônico de mensuração, lido da conta. `None` quando não deu.
 
     ⚠️ LEITURA SEPARADA da de metas, e não um campo a mais nela. As duas
@@ -4320,21 +4427,42 @@ async def _plano_de_mensuracao(cid: str, mid: str, *,
     devolvem dez `plano=None` em 30s cada e deixam dez threads órfãs gastando
     quota. O teto protege o operador, não a cota do cliente.
 
-    Isso é um custo NOVO e ele não foi mitigado nesta entrega: o caminho óbvio é
-    um cache curto por conta, e ele exige decidir qual frescor é aceitável — uma
-    decisão de dono, não de implementação.
+    ## A mitigação, e o limite dela
+
+    `reaproveitar=True` — e só `/provar` o pede — põe a leitura atrás de
+    `_LEITURA_DO_PLANO`: uma única thread por chave enquanto houver leitura em
+    voo, e o plano LIDO POR INTEIRO guardado por poucos segundos. Um timeout
+    deste consumidor para de esperar, mas a leitura compartilhada segue, e o
+    próximo clique pega carona nela em vez de abrir a décima thread igual.
+
+    ⚠️ O DEFAULT É FRESCO, e é de propósito. `/subir` chama sem o parâmetro e
+    lê de novo antes de escrever — nunca um plano guardado, nunca carona numa
+    leitura que começou antes do pedido dele. Um chamador novo que esqueça o
+    parâmetro cai no caminho seguro, não no cache.
     """
     from app.trafego import metas_efetivas as mef
 
+    def _ler():
+        # ⚠️ `hoje` NÃO é passado. Ele sai do fuso da CONTA, lido em
+        # `customer.time_zone` — a data da última conversão é escrita
+        # naquele fuso, e o relógio deste servidor não é ele.
+        return asyncio.to_thread(mef.ler_plano, cid, login_customer_id=mid,
+                                 campaign_id=campaign_id,
+                                 chave_intencao=chave_intencao)
+
     try:
-        return await asyncio.wait_for(
-            # ⚠️ `hoje` NÃO é passado. Ele sai do fuso da CONTA, lido em
-            # `customer.time_zone` — a data da última conversão é escrita
-            # naquele fuso, e o relógio deste servidor não é ele.
-            asyncio.to_thread(mef.ler_plano, cid, login_customer_id=mid,
-                              campaign_id=campaign_id,
-                              chave_intencao=chave_intencao),
-            timeout=TIMEOUT_PLANO_S)
+        plano, recibo = await _LEITURA_DO_PLANO.obter(
+            _chave_do_plano(cid, mid, campaign_id=campaign_id,
+                            chave_intencao=chave_intencao),
+            _ler,
+            ttl_s=_ttl_do_plano_s(),
+            aceitavel=_plano_lido_por_inteiro,
+            fresco=not reaproveitar,
+            timeout_s=TIMEOUT_PLANO_S)
+        if recibo.origem != lcomp.MISS:
+            log.info("plano de mensuração da conta %s: %s%s", cid, recibo.origem,
+                     "" if recibo.idade_s is None else f" ({recibo.idade_s:.0f}s)")
+        return plano
     except asyncio.TimeoutError:
         log.warning("leitura do plano de mensuração da conta %s passou de %.0fs",
                     cid, TIMEOUT_PLANO_S)
@@ -4386,8 +4514,12 @@ async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
     # as intenções diferentes da mesma conta passavam a compartilhar a mesma
     # impressão. A chave real é calculada por `_impressao_aprovavel` na própria
     # rota, e é ela que chega aqui.
+    # `reaproveitar=True`: `/provar` é leitura e mostra; ele pode pegar carona
+    # numa leitura em voo ou usar o plano lido há poucos segundos. É o ÚNICO
+    # chamador que pede isso.
     plano = await _plano_de_mensuracao(
-        cid, mid, campaign_id=None, chave_intencao=chave_intencao)
+        cid, mid, campaign_id=None, chave_intencao=chave_intencao,
+        reaproveitar=True)
     return pr.avaliar(
         plano_valido=plano_valido,
         recibo_registrado=False,   # /provar não abre recibo, e não finge que abre
@@ -4615,132 +4747,24 @@ async def subir(
     except escopo.ForaDoEscopo as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
-    def _provar_de_novo():
-        # ⚠️ As `Linhas` ficam à mão pelo mesmo motivo de `/provar`: é
-        # `run.paginas_publicadas` que carrega o recibo de aprovação da URL, e
-        # sem ele o portão do destino não tem contra o que comparar o ar.
-        linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
-        # O MESMO portão de `/provar`, pelo mesmo motivo e antes da mesma rede.
+    def _provar_de_novo() -> PlanoPreparado:
+        # ⚠️ A REPROVA É OBRIGATÓRIA; a montagem duplicada é que não era.
         #
-        # `subir()` reprova o plano antes de escrever, e se esta rota montasse
-        # a `Escolha` pelo caminho antigo ela ultrapassaria, por reconstrução,
-        # uma recusa que `/provar` já tinha dado. A recusa precisa ser herdada
-        # estruturalmente — não por disciplina de quem chama na ordem certa.
-        # ⚠️ O PORTÃO DO CONJUNTO PAGO É DE SEARCH, E SÓ DELE — como em
-        # `/provar`. Ele nasce das keywords aprovadas pelo motor de
-        # elegibilidade paga, e Display, Demand Gen e PMax não têm keyword
-        # nenhuma. Cobrá-lo de todo canal fazia `/subir` recusar, com
-        # `PonteIncompleta`, exatamente o pedido Display que `/provar` tinha
-        # acabado de aprovar — a divergência que T02 existe para fechar.
-        cockpit = pp.montar_cockpit(linhas)
-        conjunto = None
-        criterios_do_conjunto: tuple = ()
-        selecao_aprovada: dict = {}
-        # Uma lista e não uma variável: `_provar_de_novo` roda numa thread, e o
-        # fechamento sobre uma lista é a forma de o valor sair dela sem `global`.
-        suprimento: list = []
-        if canal_resolvido == "SEARCH":
-            conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
-                getattr(linhas, "cluster", None)
-            )
-            selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
-        # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
-        # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
-        # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
-        # e `set()` sobre um dict devolve as CHAVES. A seleção do operador era
-        # descartada aqui, em silêncio, e o builder montava o grupo inteiro.
-        # Medido contra a conta real: duas keywords escolhidas viraram oito no
-        # plano que o `validate_only` aprovou, cinco delas de concorrentes — e
-        # com DKI na primeira headline isso vira texto de anúncio.
-        escolha = pp.Escolha(
-            grupos=tuple(selecao_aprovada.keys()),
-            keywords_por_grupo=selecao_aprovada,
-            grupos_usar_todas=frozenset(),
-            rede=_rede_do_corpo(body),
-            # Recusa fechada: depois da impressão emitida, retirar keyword
-            # mudaria o conjunto sem mudar o selo.
-            keywords_fora=(
-                portao_pago.recusar_keywords_fora(body.keywords_fora, conjunto)
-                if canal_resolvido == "SEARCH" else ()
-            ),
-            budget_diario=body.budget_diario,
-            cpc_inicial=body.cpc_inicial,
-            cpc_por_grupo={g.tipo: g.cpc_inicial for g in body.grupos
-                           if g.cpc_inicial is not None},
-            match_type=body.match_type,
-            # O adaptador da fronteira reúne os dois contratos num só. Vazio
-            # significa que o pedido não declarou negativa nenhuma, e aí as
-            # listas antigas seguem o caminho de sempre.
-            # POSITIVAS: só do conjunto aprovado. Do corpo, só NEGATIVAS —
-            # `_criterios_do_corpo` aceita `negativa=False`, e era por aí que
-            # uma quarta positiva entrava e trocava o match type aprovado.
-            criterios=(
-                tuple(criterios_do_conjunto) + tuple(
-                    portao_pago.somente_negativas_do_corpo(
-                        _criterios_do_corpo(body, pp)))
-                if canal_resolvido == "SEARCH" else ()
-            ),
-            negativas_campanha=(),
-            negativas_adgroup=(),
-            vertical=body.vertical,
-            certificacoes=set(body.certificacoes),
-            url_final=body.url_final,
-            prefixo_nome=marca,
-            carimbo_nome=body.carimbo_nome,
-            conversao=body.conversao,
-            estrategia_lance=body.estrategia_lance,
-            tcpa=body.tcpa,
-            # A doutrina P7 é do sistema, não do chamador: um conjunto, sempre.
-            # A sub-intenção continua servindo à triagem no cockpit.
-            conjunto_unico=True,
-        )
-        # ⚠️ AS MESMAS FUNÇÕES DE `/provar`, e não uma segunda montagem que
-        # "faz quase o mesmo". `_montar_plano_display` aplica país de origem,
-        # idioma, vertical, filtro de bloqueadores do cockpit e a recusa dos
-        # campos que Display não opera; remontar por `montar_brief` e depois
-        # remendar `imagens_display` reproduzia parte disso e perdia o resto —
-        # então o plano que `/subir` selava não era o plano que `/provar`
-        # aprovou, e a divergência só apareceria na conta.
-        copy = _copy_do_corpo(body.texto_do_anuncio)
-        if canal_resolvido == "DEMAND_GEN":
-            plano, supply = _montar_plano_demand_gen(pp, cockpit, escolha, copy, body)
-            suprimento.append(supply)
-        elif canal_resolvido == "DISPLAY":
-            plano, supply = _montar_plano_display(pp, cockpit, escolha, copy, body)
-            suprimento.append(supply)
-        elif canal_resolvido == "PERFORMANCE_MAX":
-            # ⚠️ A MESMA função de `/provar`, e a paridade é o assunto de T02.
-            # Um segundo montador "que faz quase o mesmo" faria o plano que
-            # `/subir` sela deixar de ser o plano que `/provar` aprovou — e a
-            # divergência só apareceria na conta.
-            #
-            # ⚠️ Este ramo NÃO é alcançável enquanto PMax não tiver canário
-            # aceito: `canario.exigir` já recusou lá em cima. Ele existe porque
-            # a paridade tem de ser ESTRUTURAL, e não uma promessa: quando a
-            # autorização chegar, o builder já é o mesmo, e
-            # `test_provar_e_subir_usam_o_mesmo_construtor_por_canal` prova isso
-            # por leitura de árvore sintática.
-            plano, supply = _montar_plano_pmax(
-                pp, cockpit, escolha, copy, body, cid=cid, mid=mid)
-            suprimento.append(supply)
-        else:
-            plano = pp.montar_brief(cockpit, escolha, copy=copy)
-        # A MESMA pós-condição de `/provar`, sobre o brief que vai ser ESCRITO.
-        # `/subir` remonta o plano, então precisa reconferir o que remontou —
-        # herdar a recusa da entrada não prova nada sobre a saída. Só Search
-        # tem positivas a conferir.
-        if canal_resolvido == "SEARCH":
-            portao_pago.conferir_positivas_do_brief(
-                plano.brief, criterios_do_conjunto, grupo_colapsado=True)
-        preparo = sb.preparar(
-            cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
-            ai_max=body.ai_max,
-        )
-        return plano, preparo, linhas, (suprimento[0] if suprimento else None)
+        # O MESMO montador de `/provar`, com o mesmo portão do conjunto pago e
+        # antes da mesma rede: se esta rota montasse a `Escolha` por conta
+        # própria, ela ultrapassaria, por reconstrução, uma recusa que `/provar`
+        # já tinha dado. A recusa é herdada estruturalmente — não por disciplina
+        # de quem chama na ordem certa. O prefixo aqui é a MARCA exigida pelo
+        # canário logo acima.
+        return _montar_e_preparar_plano(
+            pp, sb, body, canal_resolvido=canal_resolvido, cid=cid, mid=mid,
+            prefixo_nome=marca)
 
     try:
-        plano, preparo, linhas, supply_sha256 = await asyncio.to_thread(
-            _provar_de_novo)
+        montado = await asyncio.to_thread(_provar_de_novo)
+        plano, preparo, linhas, supply_sha256 = (
+            montado.plano, montado.preparo, montado.linhas,
+            montado.supply_sha256)
     except portao_pago.PortaoDoConjuntoPago as exc:
         # A recusa do portão é HERDADA por `/subir`: sem esta cláusula ela
         # cairia no genérico e viraria 500, e um 500 é indistinguível de uma
@@ -4838,14 +4862,20 @@ async def subir(
     # repetir o mesmo plano não aposta que nada foi criado: procura a marca
     # estável na conta e para. Falha de leitura também para — ausência de prova
     # nunca libera uma segunda campanha.
-    try:
-        existentes_marca = await asyncio.to_thread(
+    #
+    # ⚠️ As duas leituras são independentes e correm JUNTAS — duas, e só duas:
+    # nenhuma escrita entra neste grupo. `return_exceptions=True` é a parte que
+    # importa: com ele, a falha de uma NÃO abandona a outra no meio da consulta,
+    # e a decisão só é tomada depois de as duas terminarem. Qualquer falha
+    # continua sendo 503 e nada é criado.
+    leituras_remotas = await asyncio.gather(
+        asyncio.to_thread(
             canario.campanhas_com_marca,
             customer_id=cid,
             login_customer_id=mid,
             marca=marca,
-        )
-        existentes_destino = await asyncio.to_thread(
+        ),
+        asyncio.to_thread(
             canario.campanhas_com_destino,
             customer_id=cid,
             login_customer_id=mid,
@@ -4856,7 +4886,14 @@ async def subir(
             # dizia "SEARCH".
             canal=preparo.canal,
             url_final=plano.brief.url_final,
-        )
+        ),
+        return_exceptions=True,
+    )
+    try:
+        for lida in leituras_remotas:
+            if isinstance(lida, BaseException):
+                raise lida
+        existentes_marca, existentes_destino = leituras_remotas
     except Exception as exc:  # noqa: BLE001
         log.exception("pré-checagem remota do canário %s falhou", marca)
         raise HTTPException(
@@ -4899,6 +4936,10 @@ async def subir(
     # ⚠️ `campaign_id=None` porque a campanha ainda não existe — é esse o ponto
     # inteiro de P05-T12. A `chave_intencao` é a mesma que `/provar` calculou
     # para este corpo, e é ela que vai unir esta linha à do pós-nascimento.
+    #
+    # ⚠️ LEITURA FRESCA, sem `reaproveitar`: o ato de escrita nunca confia num
+    # plano guardado por `/provar` nem pega carona numa leitura que começou
+    # antes deste pedido. `lido_em` só é verdade se a leitura é desta hora.
     lido_em_do_plano = _agora_iso()
     plano_de_mensuracao = await _plano_de_mensuracao(
         cid, mid, campaign_id=None, chave_intencao=chave_intencao)

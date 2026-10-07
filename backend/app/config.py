@@ -156,6 +156,19 @@ class Settings(BaseSettings):
     pautador_kw_engine: str = "auto"
     pautador_kw_max_loops: int = 5
     pautador_kw_min_volume_gold: int = 10
+    # Branches de seed do Keyword Planner que podem correr ao mesmo tempo. O
+    # laço INTERNO de cada seed continua sequencial; o orquestrador limita o
+    # valor a [1, 3], porque é a mesma conta Google Ads respondendo a todos.
+    pautador_kw_concorrencia_seeds: int = 2
+    # Cache em memória das leituras LIVE bem-sucedidas de Keyword Planner e
+    # DataForSEO. As fontes mudam no ritmo do dia; 0 desliga o cache e mantém
+    # só o singleflight. Mock e fallback nunca entram.
+    pautador_kw_cache_ttl_s: float = 86400.0
+
+    # Plano de mensuração lido por `/provar`: cache curto + singleflight por
+    # (conta, MCC, campanha, intenção). O router limita a [0, 60] s; `/subir`
+    # nunca usa este cache — ele relê antes de escrever.
+    trafego_plano_mensuracao_cache_ttl_s: float = 45.0
 
     # ---- Supabase (service-role; server-side ONLY, never shipped to client) ---
     supabase_url: Optional[str] = None

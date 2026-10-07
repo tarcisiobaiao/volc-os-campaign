@@ -36,12 +36,75 @@ from app.n8n_prompts import (
     build_funnel_prospector_user,
     build_seed_optimizer_user,
 )
+from app.services import google_ads as _google_ads
 from app.services.dataforseo import (
     DataForSeoClient,
     extract_autocomplete,
     extract_related,
 )
 from app.services.google_ads import GoogleAdsKeywordPlannerClient
+from app.services.leitura_compartilhada import LeituraCompartilhada, chave_canonica
+
+# ---- leituras live compartilhadas ---------------------------------------------
+#
+# ⚠️ Só respostas LIVE e bem-sucedidas entram. Mock e fallback nunca passam por
+# aqui: o caminho mock nem chama o cache, então ele não pode servir dado
+# inventado a uma mineração real.
+_LEITURA_KEYWORD_PLANNER = LeituraCompartilhada("pautador:keyword_planner",
+                                                max_entradas=512)
+_LEITURA_DATAFORSEO = LeituraCompartilhada("pautador:dataforseo",
+                                           max_entradas=512)
+#: Sobe quando a forma do pedido muda (página, rede, janela, flags do corpo).
+_VERSAO_CHAVE_MINING = 1
+#: Teto da concorrência entre seeds: é a MESMA conta Google Ads atendendo a
+#: todas, e a quota é dela.
+_TETO_CONCORRENCIA_SEEDS = 3
+#: Pausa entre laços de expansão de UMA seed contra a API real.
+_PAUSA_ENTRE_LOOPS_S = 1.0
+#: Código estável do Funnel Prospector pulado por falta de material.
+PROSPECTOR_SEM_MATERIAL = "FUNNEL_PROSPECTOR_SEM_MATERIAL"
+
+
+def _termo_normalizado(termo: Any) -> str:
+    """Caixa e espaços não mudam a resposta das duas fontes; não abrem leitura."""
+    return " ".join(str(termo or "").split()).casefold()
+
+
+def _chave_keyword_planner(client: Any, *, seed: str, geo_target: int,
+                           language_constant: int) -> str:
+    # A conta entra porque o CPC vem na moeda dela; a janela de 12 meses entra
+    # porque muda de mês em mês. Nenhum segredo entra — e a chave é um hash.
+    return chave_canonica(
+        "keyword_planner", _VERSAO_CHAVE_MINING, _google_ads._API_VERSION,
+        str(getattr(client, "customer_id", "") or ""),
+        _termo_normalizado(seed), geo_target, language_constant,
+        "GOOGLE_SEARCH_AND_PARTNERS", 100,
+        _google_ads.GoogleAdsKeywordPlannerClient._year_month_range(),
+    )
+
+
+def _chave_dataforseo(endpoint: str, *, termo: str, location_code: int,
+                      idioma: str) -> str:
+    return chave_canonica("dataforseo", endpoint, _VERSAO_CHAVE_MINING,
+                          _termo_normalizado(termo), location_code, idioma)
+
+
+def _resultados_do_planner(valor: Any) -> bool:
+    """Uma lista é resposta medida — inclusive vazia. `None` não é."""
+    return isinstance(valor, list)
+
+
+def _dataforseo_integra(valor: Any) -> bool:
+    """HTTP 200 com tarefa em erro é resposta PARCIAL, e parcial não se guarda.
+
+    A DataForSEO devolve 200 mesmo quando a tarefa falhou; o veredito mora em
+    `status_code` (20000 = ok), no topo e em cada tarefa.
+    """
+    if not isinstance(valor, dict) or valor.get("status_code") != 20000:
+        return False
+    tarefas = valor.get("tasks")
+    return bool(tarefas) and all(
+        isinstance(t, dict) and t.get("status_code") == 20000 for t in tarefas)
 
 # country -> ad-account currency (best-effort, for cluster display)
 _CURRENCY_BY_CODE = {
@@ -263,8 +326,27 @@ class MiningOrchestrator(BaseAgent):
             "max_loops": max_loops, "min_volume_gold": min_vol,
         }
 
-        runs: List[Dict[str, Any]] = []
-        for seed_entry in seeds:
+        ttl_s = self._ttl_do_cache_s()
+
+        async def _ideias(seed: str) -> List[Dict[str, Any]]:
+            if not use_live:
+                return mock_keyword_ideas(seed, geo_target, language_constant)
+            chave = _chave_keyword_planner(
+                client, seed=seed, geo_target=geo_target,
+                language_constant=language_constant)
+            valor, _recibo = await _LEITURA_KEYWORD_PLANNER.obter(
+                chave,
+                lambda: client.generate_keyword_ideas(
+                    seed_keyword=seed, geo_target=geo_target,
+                    language_constant=language_constant),
+                ttl_s=ttl_s, aceitavel=_resultados_do_planner)
+            return valor
+
+        async def _branch(seed_entry: Dict[str, Any], avisos: List[str]) -> Dict[str, Any]:
+            # ⚠️ O laço INTERNO continua sequencial: cada volta escolhe a próxima
+            # seed a partir do banco da volta anterior. Só branches DIFERENTES
+            # correm juntas, e cada uma tem o próprio estado e a própria lista
+            # de avisos — consolidados depois, na ordem de entrada.
             initial_seed = seed_entry["seed_keyword"]
             seed = initial_seed
             master_bank: List[Dict[str, Any]] = []
@@ -273,14 +355,9 @@ class MiningOrchestrator(BaseAgent):
             loop_iteration = 0
             while True:
                 try:
-                    if use_live:
-                        results = await client.generate_keyword_ideas(
-                            seed_keyword=seed, geo_target=geo_target, language_constant=language_constant
-                        )
-                    else:
-                        results = mock_keyword_ideas(seed, geo_target, language_constant)
+                    results = await _ideias(seed)
                 except Exception as exc:  # noqa: BLE001
-                    self.warnings.append(f"Keyword Planner falhou para '{seed}': {exc}")
+                    avisos.append(f"Keyword Planner falhou para '{seed}': {exc}")
                     results = []
                 out = extract_gold(
                     {
@@ -297,12 +374,40 @@ class MiningOrchestrator(BaseAgent):
                     seed = out["loop"]["next_seed"]
                     loop_iteration += 1
                     if use_live:
-                        await asyncio.sleep(1.0)  # be gentle with the real API
+                        await asyncio.sleep(_PAUSA_ENTRE_LOOPS_S)  # be gentle with the real API
                     continue
                 break
-            runs.append({**base, "seed_keyword": initial_seed, "loop_iteration": loop_iteration, "master_bank": master_bank})
+            return {**base, "seed_keyword": initial_seed, "loop_iteration": loop_iteration, "master_bank": master_bank}
+
+        teto = asyncio.Semaphore(self._concorrencia_de_seeds())
+
+        async def _limitada(seed_entry: Dict[str, Any], avisos: List[str]) -> Dict[str, Any]:
+            async with teto:
+                return await _branch(seed_entry, avisos)
+
+        avisos_por_seed: List[List[str]] = [[] for _ in seeds]
+        # `return_exceptions=True`: uma exceção fora do `try` de uma branch não
+        # cancela as outras no meio de uma leitura. Depois de todas terminarem,
+        # a primeira exceção NA ORDEM DAS SEEDS sobe — o mesmo desfecho que o
+        # laço sequencial tinha, sem deixar tarefa órfã.
+        saidas = await asyncio.gather(
+            *(_limitada(s, avisos) for s, avisos in zip(seeds, avisos_por_seed)),
+            return_exceptions=True)
+        for avisos in avisos_por_seed:
+            self.warnings.extend(avisos)
+        for saida in saidas:
+            if isinstance(saida, BaseException):
+                raise saida
+        runs: List[Dict[str, Any]] = list(saidas)
         self.log(f"Keyword Planner: {len(runs)} branches processados.", step="planner")
         return runs
+
+    def _concorrencia_de_seeds(self) -> int:
+        pedido = int(getattr(self.settings, "pautador_kw_concorrencia_seeds", 2) or 1)
+        return max(1, min(pedido, _TETO_CONCORRENCIA_SEEDS))
+
+    def _ttl_do_cache_s(self) -> float:
+        return max(0.0, float(getattr(self.settings, "pautador_kw_cache_ttl_s", 0.0) or 0.0))
 
     async def _dataforseo(self, *, nicho, location_code, language_code, language_short, engine):
         client = DataForSeoClient(self.settings)
@@ -313,8 +418,29 @@ class MiningOrchestrator(BaseAgent):
 
         try:
             if use_live:
-                ac_raw = await client.autocomplete(nicho, location_code, language_code)
-                rel_raw = await client.related_keywords(nicho, location_code, language_short)
+                ttl_s = self._ttl_do_cache_s()
+
+                async def _ler(endpoint, idioma, leitor):
+                    chave = _chave_dataforseo(endpoint, termo=nicho,
+                                              location_code=location_code, idioma=idioma)
+                    valor, _recibo = await _LEITURA_DATAFORSEO.obter(
+                        chave, leitor, ttl_s=ttl_s, aceitavel=_dataforseo_integra)
+                    return valor
+
+                # As duas leituras são independentes e correm juntas. A posição
+                # do retorno é a de sempre — autocomplete, depois related — e
+                # `return_exceptions=True` deixa a outra terminar em vez de ficar
+                # órfã. Falha em qualquer uma mantém o fallback de antes: as duas
+                # listas vazias e um aviso com a PRIMEIRA falha, na mesma ordem.
+                ac_raw, rel_raw = await asyncio.gather(
+                    _ler("autocomplete", language_code,
+                         lambda: client.autocomplete(nicho, location_code, language_code)),
+                    _ler("related_keywords", language_short,
+                         lambda: client.related_keywords(nicho, location_code, language_short)),
+                    return_exceptions=True)
+                for lido in (ac_raw, rel_raw):
+                    if isinstance(lido, BaseException):
+                        raise lido
             else:
                 ac_raw = mock_autocomplete(nicho, location_code, language_code)
                 rel_raw = mock_related(nicho, location_code, language_short)
@@ -329,6 +455,31 @@ class MiningOrchestrator(BaseAgent):
             "production_ads_queue": gold_miner["production_ads_queue"],
             "content_seo_queue": gold_miner["content_seo_queue"],
         }
+        if not gold_miner["production_ads_queue"] and not gold_miner["content_seo_queue"]:
+            # ⚠️ Sem keyword em NENHUMA das duas filas não há o que agrupar em
+            # funil: chamar o LLM aqui é pagar para ele inventar a partir de
+            # nada. O critério é só esse — as duas filas vazias —, sem score
+            # nem limiar. Métricas, cluster e filas seguem na saída da rodada
+            # para o humano ver por que nada saiu.
+            self.warnings.append(
+                f"{PROSPECTOR_SEM_MATERIAL}: o Gold Miner não aprovou keyword para "
+                "anúncio nem para conteúdo; o Funnel Prospector não foi chamado.")
+            self.services_used.append("funnel_prospector:sem_material")
+            return {
+                "codigo": PROSPECTOR_SEM_MATERIAL,
+                "resumo": {
+                    "total_keywords": 0,
+                    "temas_pai_identificados": 0,
+                    "funis_sugeridos": 0,
+                    "keywords_descartadas": 0,
+                },
+                "funis_sugeridos": [],
+                "priorizacao": None,
+                "observacoes": [
+                    "Material insuficiente: as filas de anúncio e de conteúdo "
+                    "saíram vazias do Gold Miner."],
+                "alertas_anti_canibalizacao": [],
+            }
         client = self._gemini()
         if client is None:
             self.services_used.append("funnel_prospector:fallback")

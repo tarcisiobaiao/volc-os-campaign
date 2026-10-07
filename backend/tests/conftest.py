@@ -255,3 +255,21 @@ def portao_real_quando_pedido(request):
         yield
     finally:
         app.dependency_overrides.update(guardados)
+
+
+@pytest.fixture(autouse=True)
+def leituras_compartilhadas_limpas():
+    """Cada teste começa sem cache de leitura externa.
+
+    `app.services.leitura_compartilhada` guarda Keyword Planner, DataForSEO e o
+    plano de mensuração na memória do PROCESSO. Sem esta limpeza, o dublê de um
+    teste viraria hit no seguinte, e um teste passaria pelo valor de outro.
+    """
+    try:
+        from app.services.leitura_compartilhada import limpar_todas
+    except Exception:  # noqa: BLE001
+        yield
+        return
+    limpar_todas()
+    yield
+    limpar_todas()

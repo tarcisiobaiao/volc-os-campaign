@@ -301,10 +301,21 @@ def test_7_subir_herda_a_recusa_de_provar():
     from app.routers import trafego
 
     fonte = inspect.getsource(trafego)
-    assert fonte.count("portao_pago.criterios_do_cluster(") == 2, (
-        "as duas rotas precisam passar pelo portão"
+    # ⚠️ Até 07/10/2026 este teste contava DUAS chamadas ao portão — uma por
+    # rota, porque cada rota tinha a sua cópia da montagem. Hoje a montagem é
+    # UMA (`_montar_e_preparar_plano`), e a propriedade que importa continua a
+    # mesma, só que mais forte: o portão existe uma vez, mora na montagem, e as
+    # DUAS rotas passam por ela. Uma terceira cópia ao lado faria a contagem
+    # voltar a 2 e este teste cair.
+    montagem = inspect.getsource(trafego._montar_e_preparar_plano)
+    assert fonte.count("portao_pago.criterios_do_cluster(") == 1
+    assert "portao_pago.criterios_do_cluster(" in montagem, (
+        "o portão precisa morar na montagem comum"
     )
-    assert fonte.count("portao_pago.keywords_por_grupo(") == 2
+    assert fonte.count("portao_pago.keywords_por_grupo(") == 1
+    assert "portao_pago.keywords_por_grupo(" in montagem
+    _as_duas_rotas_montam_pela_montagem_comum(trafego)
+    # A TRADUÇÃO HTTP da recusa continua sendo de cada rota.
     assert fonte.count("except portao_pago.PortaoDoConjuntoPago as exc:") == 2
     # e nenhuma delas pode voltar a montar o grupo inteiro do cockpit
     assert "grupos_usar_todas=frozenset(g.tipo for g in body.grupos if g.usar_todas)" not in fonte
@@ -509,31 +520,71 @@ def test_M9_as_duas_rotas_aplicam_as_tres_guardas():
     from app.routers import trafego
 
     fonte = inspect.getsource(trafego)
-    assert fonte.count("portao_pago.somente_negativas_do_corpo(") == 2
-    assert fonte.count("portao_pago.recusar_keywords_fora(") == 2
-    assert fonte.count("portao_pago.conferir_positivas_do_brief(") == 2
-    assert fonte.count("grupo_colapsado=True") == 2
+    montagem = inspect.getsource(trafego._montar_e_preparar_plano)
+    # Uma vez no arquivo, dentro da montagem comum — e as duas rotas a chamam.
+    for guarda in ("portao_pago.somente_negativas_do_corpo(",
+                   "portao_pago.recusar_keywords_fora(",
+                   "portao_pago.conferir_positivas_do_brief(",
+                   "grupo_colapsado=True"):
+        assert fonte.count(guarda) == 1, guarda
+        assert guarda in montagem, guarda
+    _as_duas_rotas_montam_pela_montagem_comum(trafego)
     # e o caminho antigo, que somava o corpo cru, não existe mais
     assert "tuple(criterios_do_conjunto) + tuple(_criterios_do_corpo(body, pp))" not in fonte
     assert "keywords_fora=list(body.keywords_fora)" not in fonte
 
 
 def test_M10_as_recusas_acontecem_antes_da_rede():
-    """As três guardas rodam antes de `sb.preparar()`, em ambas as rotas."""
+    """As três guardas rodam antes de `sb.preparar()`, para as duas rotas.
+
+    Há UM `sb.preparar(` no arquivo, dentro da montagem comum, e as três
+    guardas vêm antes dele ali dentro. Como as duas rotas montam por ela,
+    a ordem vale para as duas — e uma rota que chamasse `sb.preparar` por
+    conta própria faria a contagem subir e este teste cair.
+    """
     import inspect
 
     from app.routers import trafego
 
     fonte = inspect.getsource(trafego)
-    preparar = [i for i in range(len(fonte)) if fonte.startswith("sb.preparar(", i)]
-    assert len(preparar) == 2
+    assert fonte.count("sb.preparar(") == 1
+    montagem = inspect.getsource(trafego._montar_e_preparar_plano)
+    rede = montagem.index("sb.preparar(")
     for marca in ("portao_pago.somente_negativas_do_corpo(",
                   "portao_pago.recusar_keywords_fora(",
                   "portao_pago.conferir_positivas_do_brief("):
-        ocorrencias = [i for i in range(len(fonte)) if fonte.startswith(marca, i)]
-        assert len(ocorrencias) == 2, marca
-        for guarda, rede in zip(ocorrencias, preparar):
-            assert guarda < rede, f"{marca} depois da rede"
+        assert montagem.count(marca) == 1, marca
+        assert montagem.index(marca) < rede, f"{marca} depois da rede"
+    _as_duas_rotas_montam_pela_montagem_comum(trafego)
+
+
+def _as_duas_rotas_montam_pela_montagem_comum(trafego) -> None:
+    """`/provar` e `/subir` chamam `_montar_e_preparar_plano`, e só ela monta.
+
+    Lido na ÁRVORE das rotas (inclusive as funções aninhadas que rodam na
+    thread): nenhuma delas pode montar `Escolha`, chamar o builder ou o
+    `preparar` por conta própria ao lado da montagem comum.
+    """
+    import ast
+    import inspect
+
+    arvore = ast.parse(inspect.getsource(trafego))
+    rotas = {no.name: no for no in ast.walk(arvore)
+             if isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef))
+             and no.name in ("provar", "subir")}
+    assert set(rotas) == {"provar", "subir"}
+    for nome, no in rotas.items():
+        chamadas = {
+            (c.func.attr if isinstance(c.func, ast.Attribute)
+             else getattr(c.func, "id", ""))
+            for c in ast.walk(no) if isinstance(c, ast.Call)
+        }
+        assert "_montar_e_preparar_plano" in chamadas, (
+            f"/{nome} não monta pela montagem comum")
+        for proibida in ("Escolha", "montar_brief", "preparar",
+                         "criterios_do_cluster"):
+            assert proibida not in chamadas, (
+                f"/{nome} chama {proibida} por conta própria")
 
 
 def test_M11_o_bloqueante_original_nao_reproduz_mais():

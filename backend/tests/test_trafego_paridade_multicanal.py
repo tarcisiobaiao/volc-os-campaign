@@ -54,6 +54,10 @@ def _chamadas(no: ast.AST) -> list[str]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+#: A montagem ÚNICA que as duas rotas chamam. Os montadores por canal moram
+#: dentro dela — e não mais repetidos em cada rota.
+MONTAGEM_COMUM = "_montar_e_preparar_plano"
+
 MONTADOR_POR_CANAL = {
     "DEMAND_GEN": "_montar_plano_demand_gen",
     "DISPLAY": "_montar_plano_display",
@@ -73,8 +77,17 @@ def test_provar_e_subir_chamam_o_mesmo_montador(canal: str, montador: str):
     """
     provar = set(_chamadas(_funcao("provar")))
     subir = set(_chamadas(_funcao("subir")))
-    assert montador in provar, f"/provar não monta {canal} pelo montador comum"
-    assert montador in subir, f"/subir não monta {canal} pelo montador comum"
+    # ⚠️ Desde 07/10/2026 as duas rotas não chamam o montador do canal
+    # diretamente: chamam a MONTAGEM COMUM, que o chama. A propriedade ficou
+    # mais forte, não mais fraca — antes eram duas cópias da montagem que
+    # precisavam concordar; agora é uma, e nenhuma rota pode montar o canal
+    # por fora dela.
+    assert MONTAGEM_COMUM in provar, "/provar não monta pela montagem comum"
+    assert MONTAGEM_COMUM in subir, "/subir não monta pela montagem comum"
+    assert montador in set(_chamadas(_funcao(MONTAGEM_COMUM))), (
+        f"a montagem comum não monta {canal} pelo montador do canal")
+    assert montador not in provar and montador not in subir, (
+        f"uma rota monta {canal} por fora da montagem comum")
 
 
 def test_nenhuma_rota_monta_canal_por_um_caminho_proprio():
@@ -128,8 +141,8 @@ def test_o_portao_criativo_roda_antes_da_ponte_em_todo_canal(montador: str):
 def test_o_portao_criativo_roda_antes_do_ledger_e_da_rede_em_subir():
     """Em `/subir`, a ordem é: portão → mensuração → ledger → mutate.
 
-    ⚠️ O portão vive dentro do montador, que roda em `_provar_de_novo`, que roda
-    ANTES de `ledger.abrir` e antes de `sb.subir`. Um recibo aberto para uma
+    ⚠️ O portão vive dentro do montador, que roda na montagem comum, chamada
+    por `_provar_de_novo` ANTES de `ledger.abrir` e antes de `sb.subir`. Um recibo aberto para uma
     chamada que nunca sai fica `em_voo` órfão, e a camada 4 passa a bloquear o
     item até alguém reconciliar uma tentativa que não existiu.
     """
@@ -140,7 +153,10 @@ def test_o_portao_criativo_roda_antes_do_ledger_e_da_rede_em_subir():
         assert nome in ordem, f"/subir não chama {nome}"
         return ordem.index(nome)
 
-    montagem = min(_primeiro(m) for m in MONTADOR_POR_CANAL.values())
+    # O portão mora no montador do canal, que roda DENTRO da montagem comum.
+    montagem = _primeiro(MONTAGEM_COMUM)
+    assert set(MONTADOR_POR_CANAL.values()) <= set(
+        _chamadas(_funcao(MONTAGEM_COMUM)))
     medicao = _primeiro("exigir_para_criacao")
     abertura = _primeiro("abrir")
 
