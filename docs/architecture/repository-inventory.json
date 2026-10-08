@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T17:46:45-03:00",
+  "generated_at": "2026-10-08T18:26:32-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 819,
-    "markdown": 606,
+    "files": 821,
+    "markdown": 608,
     "sql": 213,
     "tracked": 810,
-    "untracked": 9,
+    "untracked": 11,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 34,
-      "documentation": 443,
+      "audit": 35,
+      "documentation": 444,
       "generated": 2,
       "module-guide": 40,
       "product-document": 23,
@@ -1257,7 +1257,7 @@
       "tracked": true,
       "bytes": 23763,
       "lines": 312,
-      "sha256": "ad96cb97cda99f3022f2dd7b3ff0804b911143f02b3c4016145399c5ac452f04",
+      "sha256": "20e698077cab6154e589b84bccac4cc9c388c679bcc8a1433f5a66eecc19a213",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1774,6 +1774,18 @@
       "bytes": 13268,
       "lines": 215,
       "sha256": "4bb04634a9116e232538b65db944df27dee5bc73db10f26c89f5fd3e238aee85",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-WRITER-AB-2026-10-08.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": false,
+      "bytes": 3285,
+      "lines": 67,
+      "sha256": "049f67b89b44bd1877b6c6b80afef94978f8ae7cbd4bb8fdf9de7994d6a6e421",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6442,6 +6454,18 @@
       "bytes": 1924,
       "lines": 53,
       "sha256": "7b5f7c497d52f363df1a87cae0364dcd1ac0f7f9cd4ba9ba8ff4c51b2c1a1024",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/ab-writer-gas-20261008/REPORT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 3931,
+      "lines": 54,
+      "sha256": "072bd4a1c266e737b7670a4963900863e1bc56623617c5fe4a261f979a4f164f",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
