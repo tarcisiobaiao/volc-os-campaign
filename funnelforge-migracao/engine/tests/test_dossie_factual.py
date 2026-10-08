@@ -36,7 +36,8 @@ SP = "https://www.sp.senac.br/programa-senac-de-gratuidade"
 EAD = "https://www.ead.senac.br"
 INSCR = "https://www.sp.senac.br/inscricao"
 RO = "https://www.ro.senac.br/edital-de-selecao-no-02-2026"
-CITADAS = [PSG, SP, EAD, INSCR, RO]
+DECRETO_SM = "https://planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm"
+CITADAS = [PSG, SP, EAD, INSCR, RO, DECRETO_SM]
 
 
 def _fato(afirmacao, fonte, paginas, requisitos=(), tipo="processo", valor="", unidade="",
@@ -64,6 +65,9 @@ FATOS_COMPLETOS = [
     _fato("Em 2026 o limite equivale a R$ 3.242,00 por pessoa (edital do Senac-RO)", RO,
           ["renda"], ["renda.valor_vigente"], tipo="numero", valor="3.242,00", unidade="R$",
           vigente="2026-01-14"),
+    _fato("O salário mínimo é de R$ 1.621,00 a partir de 1º de janeiro de 2026", DECRETO_SM,
+          ["renda"], ["salario_minimo.vigente"], tipo="numero", valor="1.621,00", unidade="R$",
+          vigente="2026-01-01"),
 ]
 
 
@@ -443,8 +447,21 @@ def test_edital_regional_nao_vira_fonte_universal_da_regra():
     assert "fonte NACIONAL oficial" in pedido[0]["descricao"]
 
 
+def _sem_derivacao():
+    arq = _arq_com_requisito_de_renda()
+    for job in arq["writing_jobs"]:
+        j = job["writer_briefing"]["jornada"]
+        if j["duvida_id"] == "renda":
+            j["requisitos"] = [dict(r, derivacao=None) for r in j["requisitos"]
+                               if r["id"] != "salario_minimo.vigente"]
+    return arq
+
+
 def test_fonte_nacional_prova_a_regra_e_edital_atual_prova_o_valor_vigente():
-    state, dossie, _ = _compilar_com(_so_renda(REGRA_MA, REGRA_NACIONAL, VALOR_RO))
+    state = _estado(_sem_derivacao())
+    citadas = CITADAS + [MA, PLANALTO]
+    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_MA, REGRA_NACIONAL, VALOR_RO),
+                                        citacoes=citadas), _Verificador(vivas=citadas))
     renda = dossie.pagina(_n(state, "renda"))
     assert renda.cobertura.ready_to_write, renda.cobertura.blockers
     v = {x["papel"]: x for x in renda.cobertura.vinculos}
@@ -456,7 +473,10 @@ def test_fonte_nacional_prova_a_regra_e_edital_atual_prova_o_valor_vigente():
 
 def test_valor_de_outro_ano_nao_vale_como_vigente():
     antigo = dict(VALOR_RO, vigente_desde="2025-01-10")
-    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, antigo), [], [])
+    state = _estado(_sem_derivacao())
+    citadas = CITADAS + [MA, PLANALTO]
+    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_NACIONAL, antigo), [], [],
+                                        citacoes=citadas), _Verificador(vivas=citadas))
     blockers = dossie.pagina(_n(state, "renda")).cobertura.blockers
     assert any("valor_vigente ('renda.valor_vigente') sem valor em reais vigente em 2026" in b
                for b in blockers)
@@ -512,7 +532,10 @@ def test_esqueleto_recusa_ativo_que_aponta_requisito_inexistente():
 
 def test_prompt_mostra_a_abrangencia_e_o_vinculo_do_ativo():
     from funnelforge.prompts import render
-    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, VALOR_RO))
+    state = _estado(_sem_derivacao())
+    citadas = CITADAS + [MA, PLANALTO]
+    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_NACIONAL, VALOR_RO), citacoes=citadas),
+                       _Verificador(vivas=citadas))
     state.dossie = dossie.model_dump(mode="json")
     renda = next(p for p in state.plan.pages if p.jornada.duvida_id == "renda")
     ctx = contexto_de_jornada(state.plan, renda, state.dossie)

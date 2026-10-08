@@ -46,6 +46,9 @@ class FatoDoDossie(BaseModel):
     requisitos: list[str] = []         # ids de RequisitoFactual que ele cobre
     evidencia: str = ""                # trecho curto ou referência verificável
     dispositivo: str = ""
+    origem: Literal["pesquisa", "hint_do_operador", "derivado"] = "pesquisa"
+    derivacao: dict = {}               # linhagem do derivado (fórmula, premissas...)
+    proveniencia: dict = {}            # emissor, escopo, versão, sha256 do conteúdo
 
 
 class CoberturaDoRequisito(BaseModel):
@@ -95,6 +98,7 @@ class FonteDoDossie(BaseModel):
     citada_pelo_grounding: bool
     verificada: bool
     motivo: str = ""
+    proveniencia: dict = {}
 
 
 class TelemetriaDaPesquisa(BaseModel):

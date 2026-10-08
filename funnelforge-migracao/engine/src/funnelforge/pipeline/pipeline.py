@@ -81,6 +81,11 @@ class Deps:
     # cross-funnel. Vazio é o normal: o motor então usa só o H1 da LP e as
     # keywords que a ponte trouxe do card.
     tema_termos: list[str] = field(default_factory=list)
+    # Dossiê: hints do operador (URL + afirmação a CONFERIR, nunca fato pronto)
+    # e o leitor de documento que registra a proveniência das fontes. None/[]
+    # em teste: o escopo da fonte vem do host.
+    hints_do_operador: list[dict] = field(default_factory=list)
+    ler_documento: Any = None
 
 
 def editorial_v2_do_run(state: RunState, settings: Settings) -> bool:
@@ -862,7 +867,9 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
 
     try:
         dossie = compilar_dossie(state, deps, pesquisar,
-                                 registrar_canais=st.registrar_canais_oficiais)
+                                 registrar_canais=st.registrar_canais_oficiais,
+                                 hints=list(getattr(deps, "hints_do_operador", []) or []),
+                                 ler_documento=getattr(deps, "ler_documento", None))
     except Exception as exc:  # noqa: BLE001 - sem dossiê, nenhuma página é escrita
         motivo = f"pesquisa do dossiê falhou: {type(exc).__name__}: {str(exc)[:300]}"
         bloquear_tudo(motivo, telemetria(StepStatus.FAILED,

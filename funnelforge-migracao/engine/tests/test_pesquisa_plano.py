@@ -315,3 +315,33 @@ def test_estruturacao_pede_data_convertida_para_iso():
 ])
 def test_vigencia_exige_a_data_inteira_no_trecho(iso, trecho, esperado):
     assert pp.data_no_trecho(iso, trecho) is esperado
+
+
+def test_leitura_de_documento_usa_o_ua_honesto_e_o_charset_da_pagina(monkeypatch):
+    import httpx
+    from funnelforge.adapters.url_verifier_http import USER_AGENT
+    vistos = {}
+    html = '<html><head><meta charset="windows-1252"><title>Decreto</title></head>' \
+           '<body>Art. 1º O salário mínimo será de R$ 1.621,00.</body></html>'
+
+    def get(url, headers=None, **kw):
+        vistos["ua"] = headers["User-Agent"]
+        return httpx.Response(200, content=html.encode("cp1252"),
+                              headers={"content-type": "text/html"},
+                              request=httpx.Request("GET", url))
+    monkeypatch.setattr(httpx, "get", get)
+    doc = pp.ler_documento("https://planalto.gov.br/x.htm")
+    assert vistos["ua"] == USER_AGENT and "Mozilla" not in vistos["ua"]
+    assert "Art. 1º O salário mínimo" in doc["texto"] and doc["titulo"] == "Decreto"
+
+
+def test_bloqueio_do_site_e_leitura_falha_nao_identidade_trocada(monkeypatch):
+    import httpx
+    tentativas = []
+
+    def get(url, headers=None, **kw):
+        tentativas.append(headers["User-Agent"])
+        raise httpx.ReadError("Connection reset by peer")
+    monkeypatch.setattr(httpx, "get", get)
+    doc = pp.ler_documento("https://planalto.gov.br/x.htm")
+    assert doc == {"ok": False, "motivo": "página não lida (ReadError)"} and len(tentativas) == 1

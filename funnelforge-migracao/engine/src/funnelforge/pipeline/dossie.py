@@ -163,6 +163,12 @@ def fatos_da_resposta(resp: RespostaDaPesquisa) -> list[FatoDoDossie]:
                         if isinstance(r, str)],
             evidencia=str(bruto.get("evidencia_resumida") or bruto.get("evidencia") or "")[:300],
             dispositivo=str(bruto.get("dispositivo") or "")[:200])
+        if resp.auth_mode == "hint_do_operador":
+            # Só a rodada de hints (código, sem modelo) marca a origem e traz a
+            # proveniência lida no documento. Resposta de modelo nunca escolhe
+            # a própria origem nem se declara derivada.
+            fato.origem = "hint_do_operador"
+            fato.proveniencia = dict(bruto.get("proveniencia") or {})
         if bruto.get("motivo_nao_verificado"):
             # O provedor já conferiu e reprovou (ex.: a página citada não
             # confirma o valor): o fato fica com o motivo dele.
@@ -237,14 +243,17 @@ def _research_facts(fatos: list[FatoDoDossie]) -> ResearchFacts:
     verificados = [f for f in fatos if f.status == "verified"]
     fatos_verificados, dados = [], []
     for f in verificados:
+        url = f.source_url or f.derivacao.get("fonte_base", "")
         if f.tipo in TIPOS_TEMPORAIS and f.valor and f.vigente_desde:
             fatos_verificados.append({
-                "valor": f.valor, "unidade": f.unidade or "-", "fonte_primaria": f.source_url,
+                "valor": f.valor, "unidade": f.unidade or "-", "fonte_primaria": url,
                 "dispositivo": f.dispositivo or f.afirmacao[:160],
                 "vigente_desde": f.vigente_desde, "verificado_em": f.verificado_em, "tipo": f.tipo})
         else:
-            dados.append({"fato": f.afirmacao, "fonte": f.source_url, "tipo": f.tipo})
-    fontes = list(dict.fromkeys(f.source_url for f in verificados))
+            dados.append({"fato": f.afirmacao, "fonte": url, "tipo": f.tipo})
+    fontes = list(dict.fromkeys(f.source_url or f.derivacao.get("fonte_base", "")
+                                for f in verificados))
+    fontes = [u for u in fontes if u]
     return ResearchFacts(resumo="", dados_validados=dados, fatos_verificados=fatos_verificados,
                          fontes=fontes, fontes_resolvidas=fontes, sparse=not verificados)
 
@@ -277,14 +286,36 @@ def _fonte_oficial(url: str, oficiais: list[str]) -> bool:
     return _dominio(host) in {_dominio(urlparse(o).hostname or "") for o in oficiais}
 
 
+def _ordem(f: FatoDoDossie) -> tuple:
+    """Versão canônica primeiro (dn.senac.br, norma federal), depois a vigência
+    mais recente, depois o id (determinístico)."""
+    return (0 if (f.proveniencia or {}).get("canonica") else 1,
+            -(f.vigente_desde.toordinal() if f.vigente_desde else 0), f.fact_id)
+
+
 def _melhor_fonte(candidatos: list[FatoDoDossie], niveis: list[tuple[str, Callable]]):
+    from funnelforge.pipeline.proveniencia import escopo_do_fato
     for nivel, aceita in niveis:
-        dele = [f for f in candidatos if aceita(*abrangencia_da_fonte(f.source_url))]
+        dele = [f for f in candidatos if aceita(*escopo_do_fato(f))]
         if dele:
-            dele.sort(key=lambda f: (-(f.vigente_desde.toordinal() if f.vigente_desde else 0),
-                                     f.fact_id))
-            return dele[0], nivel
+            return sorted(dele, key=_ordem)[0], nivel
     return None, ""
+
+
+def _melhor_por_escopo(candidatos: list[FatoDoDossie]) -> FatoDoDossie | None:
+    """Premissa de derivado: nacional antes de regional; canônica antes."""
+    from funnelforge.pipeline.proveniencia import escopo_do_fato
+    if not candidatos:
+        return None
+    return sorted(candidatos, key=lambda f: (escopo_do_fato(f)[0] != "nacional",) + _ordem(f))[0]
+
+
+def _fato_oficial(f: FatoDoDossie, oficiais: list[str]) -> bool:
+    if f.origem == "derivado":
+        return bool(f.derivacao.get("oficial"))
+    if (f.proveniencia or {}).get("issuer_scope") in ("national", "regional"):
+        return True
+    return _fonte_oficial(f.source_url, oficiais)
 
 
 def vincular_ativo(ativo: Any, page: Page, verificados: list[FatoDoDossie],
@@ -309,7 +340,7 @@ def vincular_ativo(ativo: Any, page: Page, verificados: list[FatoDoDossie],
             continue
         r = reqs.get(req_id)
         candidatos = [f for f in verificados
-                      if req_id in f.requisitos and _fonte_oficial(f.source_url, oficiais)
+                      if req_id in f.requisitos and _fato_oficial(f, oficiais)
                       and (r is None or f.tipo in r.tipos)]
         if papel == "valor_vigente":
             candidatos = [f for f in candidatos if f.valor and f.vigente_desde
@@ -328,9 +359,14 @@ def vincular_ativo(ativo: Any, page: Page, verificados: list[FatoDoDossie],
                            "descricao": f"{r.descricao if r else req_id} — {exige}",
                            "tipos": list(r.tipos) if r else []})
             continue
-        abrangencia, uf = abrangencia_da_fonte(fato.source_url)
+        from funnelforge.pipeline.proveniencia import escopo_do_fato
+        abrangencia, uf = escopo_do_fato(fato)
         vinculos.append({"ativo": ativo.pergunta, "papel": papel, "requisito": req_id,
                          "fact_id": fato.fact_id, "url": fato.source_url, "nivel": nivel,
+                         "origem": fato.origem,
+                         "formula": fato.derivacao.get("formula", ""),
+                         "premissas": list(fato.derivacao.get("premissas", [])),
+                         "emissor": (fato.proveniencia or {}).get("issuer", ""),
                          "abrangencia": abrangencia, "uf": uf.upper(), "valor": fato.valor,
                          "unidade": fato.unidade,
                          "vigente_desde": fato.vigente_desde.isoformat()
@@ -402,9 +438,17 @@ def _faltantes(paginas: dict[int, CoberturaDaPagina], pages: list[Page]) -> list
 
 def compilar_dossie(state: RunState, deps: Any, pesquisar: Pesquisar, *,
                     registrar_canais: Callable[[RunState, Page, Any], None],
-                    hoje: date | None = None) -> DossieDoFunil:
+                    hoje: date | None = None, hints: list[dict] | None = None,
+                    ler_documento: Callable[[str], dict] | None = None) -> DossieDoFunil:
     """Pesquisa única + até duas complementações dirigidas → dossiê fechado.
-    Escreve `state.facts[n]` e `state.official_links[n]` das páginas da jornada."""
+    Escreve `state.facts[n]` e `state.official_links[n]` das páginas da jornada.
+
+    `hints` (do operador) entram como rodada 0, sem modelo: o código lê o
+    documento e confere a afirmação. `ler_documento` lê o conteúdo das fontes
+    verificadas para registrar a PROVENIÊNCIA (emissor e escopo) — sem ele, o
+    escopo vem do host, como antes."""
+    from funnelforge.pipeline.proveniencia import (
+        derivar_fatos, proveniencia_do_documento, verificar_hints)
     hoje = hoje or date.today()
     pages = [p for p in (state.plan.pages if state.plan else []) if p.jornada is not None]
     assunto = (state.plan.jornada.intencao_principal if state.plan and state.plan.jornada
@@ -416,8 +460,11 @@ def compilar_dossie(state: RunState, deps: Any, pesquisar: Pesquisar, *,
     faltantes: list[dict] | None = None
     coberturas: dict[int, CoberturaDaPagina] = {}
     conflitos: list[str] = []
-    for rodada in range(1, MAX_RODADAS_DE_COMPLEMENTO + 2):
-        resp = pesquisar(assunto, spec, faltantes)
+    documentos: dict[str, dict] = {}
+    recusas: list[dict] = []
+
+    def absorver(resp: RespostaDaPesquisa, rodada: int, faltantes: list[dict] | None) -> None:
+        nonlocal conflitos, recusas
         telemetria.append(TelemetriaDaPesquisa(
             rodada=rodada, modelo_pedido=resp.modelo_pedido, modelo_servido=resp.modelo_servido,
             auth_mode=resp.auth_mode, citacoes=len(resp.citacoes),
@@ -429,22 +476,55 @@ def compilar_dossie(state: RunState, deps: Any, pesquisar: Pesquisar, *,
             faltantes_pedidos=[f"{f['duvida_id']}:{f['requisito']}" for f in (faltantes or [])]))
         if getattr(resp, "defeito", ""):
             raise PesquisaSemResposta(f"rodada {rodada}: {resp.defeito}")
-        citacoes |= {_norm_url(c) for c in resp.citacoes}
+        citacoes.update(_norm_url(c) for c in resp.citacoes)
         novos = [f for f in fatos_da_resposta(resp) if f.fact_id not in fatos]
         verificar_ao_vivo(novos, getattr(deps, "url_verifier", None), hoje)
         for f in novos:
             fatos[f.fact_id] = f
+            if ler_documento is not None and f.status == "verified" and not f.proveniencia:
+                if f.source_url not in documentos:
+                    documentos[f.source_url] = ler_documento(f.source_url)
+                doc = documentos[f.source_url]
+                if doc.get("ok"):
+                    f.proveniencia = proveniencia_do_documento(f.source_url, doc)
+        for fid in [k for k, f in fatos.items() if f.origem == "derivado"]:
+            del fatos[fid]                       # derivado é recalculado do zero
         for f in fatos.values():                 # conflito é recalculado do zero
+            if f.status == "conflict":
+                f.status, f.motivo_do_status = "verified", ""
+        marcar_conflitos(list(fatos.values()))
+        # Canais oficiais a partir dos fatos LITERAIS; depois o derivado (que
+        # precisa saber o que é oficial); depois a cobertura com tudo.
+        for page in pages:
+            state.facts[page.page_number] = _research_facts(
+                _fatos_para_a_pagina(list(fatos.values()), page))
+            state.official_links.pop(page.page_number, None)
+            registrar_canais(state, page, deps)
+        oficiais_agora = [u for p in pages for u in (state.official_links.get(p.page_number)
+                                                       or [])]
+        derivados, recusas = derivar_fatos(list(fatos.values()), pages, hoje,
+                                           lambda f: _fato_oficial(f, oficiais_agora))
+        for f in derivados:
+            fatos[f.fact_id] = f
+        for f in fatos.values():
             if f.status == "conflict":
                 f.status, f.motivo_do_status = "verified", ""
         conflitos = marcar_conflitos(list(fatos.values()))
         for page in pages:
             state.facts[page.page_number] = _research_facts(
                 _fatos_para_a_pagina(list(fatos.values()), page))
-            state.official_links.pop(page.page_number, None)
-            registrar_canais(state, page, deps)
             coberturas[page.page_number] = cobertura_da_pagina(
                 state, page, _fatos_para_a_pagina(list(fatos.values()), page), hoje)
+            for rec in recusas:
+                if rec["pagina"] == page.page_number:
+                    coberturas[page.page_number].blockers.append(
+                        f"derivado '{rec['requisito']}' recusado: {rec['motivo']}")
+                    coberturas[page.page_number].ready_to_write = False
+
+    if hints:
+        absorver(verificar_hints(hints, ler_documento), 0, None)
+    for rodada in range(1, MAX_RODADAS_DE_COMPLEMENTO + 2):
+        absorver(pesquisar(assunto, spec, faltantes), rodada, faltantes)
         faltantes = _faltantes(coberturas, pages)
         if not faltantes:
             break
@@ -496,9 +576,10 @@ def montar_dossie(state: RunState, pages: list[Page], fatos: list[FatoDoDossie],
                                 "motivo": c.motivo})
     oficiais = {u for p in paginas for u in p.urls_oficiais}
     fontes = []
-    for url in sorted({f.source_url for f in fatos}):
+    for url in sorted({f.source_url for f in fatos if f.source_url}):
         dos = [f for f in fatos if f.source_url == url]
         fontes.append(FonteDoDossie(
+            proveniencia=next((f.proveniencia for f in dos if f.proveniencia), {}),
             url=url, tipo_da_fonte=_tipo_da_fonte(url, oficiais),
             citada_pelo_grounding=_norm_url(url) in citacoes,
             verificada=any(f.status in ("verified", "conflict") for f in dos),
@@ -542,8 +623,9 @@ def invalidar_paginas(state: RunState, paginas: list[int]) -> None:
         state.step_status.pop(f"page_{n}", None)
 
 
-def _abrangencia_legivel(url: str) -> str:
-    a, uf = abrangencia_da_fonte(url)
+def _abrangencia_do_fato(f: dict) -> str:
+    from funnelforge.pipeline.proveniencia import escopo_do_fato
+    a, uf = escopo_do_fato(FatoDoDossie.model_validate(f))
     return f"regional {uf.upper()}" if a == "regional" else ("nacional" if a == "nacional" else "")
 
 
@@ -559,7 +641,10 @@ def projecao_para_o_prompt(dossie: dict, numero: int) -> dict:
         "fatos": [{"id": i, "afirmacao": por_id[i]["afirmacao"], "tipo": por_id[i]["tipo"],
                    "valor": por_id[i].get("valor", ""), "unidade": por_id[i].get("unidade", ""),
                    "fonte": por_id[i]["source_url"],
-                   "abrangencia": _abrangencia_legivel(por_id[i]["source_url"]),
+                   "abrangencia": _abrangencia_do_fato(por_id[i]),
+                   "derivacao": (por_id[i].get("derivacao") or {}).get("formula", ""),
+                   "premissas": list((por_id[i].get("derivacao") or {}).get("premissas", [])),
+                   "emissor": (por_id[i].get("proveniencia") or {}).get("issuer", ""),
                    "vigente_desde": por_id[i].get("vigente_desde") or ""}
                   for i in pagina.get("fatos_verificados", []) if i in por_id],
         "urls_oficiais": list(pagina.get("urls_oficiais") or []),

@@ -129,6 +129,18 @@ Com jornada e grafo aprovado, ANTES de qualquer briefing ou redação:
    pede exatamente a prova que falta. `fonte_da_regra` (URL) é legado: só vale
    em card sem os ids. Conflito compara números pelo valor dentro da mesma
    dimensão de unidade ("até 2" = "02 (dois)" salários mínimos);
+   PROVENIÊNCIA (`pipeline/proveniencia.py`): o escopo da fonte vem do
+   EMISSOR lido no documento (issuer, issuer_scope, versão, jurisdição,
+   effective_from, content_sha256, trecho de autoria), não só do host: espelho
+   regional só é nacional se o cabeçalho do próprio documento for do
+   Departamento/Conselho Nacional, e a versão `dn.senac.br`/norma federal é a
+   preferida. HINT DO OPERADOR (`run-volc --canario --hints-de`): URL +
+   afirmação a conferir — mesmo fetch (UA honesto, sem se passar por
+   navegador), trecho localizado pelo código, verificação ao vivo e recibo;
+   nunca vira fato por ter sido dado. DERIVADO: só a operação declarada em
+   `RequisitoFactual.derivacao` (hoje `multiplicacao`), premissas verificadas e
+   oficiais, mesma jurisdição, premissa em vigor na data, `Decimal` sem
+   arredondamento, linhagem no fato, recalculado a cada compilação;
 5. até 2 rodadas de complementação, dirigidas só ao que faltou;
 6. `dossie_factual.json` (`domain/dossie.py`: FunnelDossier → PageDossier →
    fatos → CoverageResult), congelado por SHA-256 do conteúdo. Página sem

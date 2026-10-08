@@ -217,7 +217,11 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
                                                  "cobertura do dossiê (nenhuma redação)."),
              dossie_de: Path | None = typer.Option(
                  None, "--dossie-de", help="Só com --canario: state.json de um run com dossiê "
-                                           "congelado; retoma a redação SEM pesquisar de novo.")
+                                           "congelado; retoma a redação SEM pesquisar de novo."),
+             hints_de: Path | None = typer.Option(
+                 None, "--hints-de", help="Só com --canario: JSON de hints do operador (URL + "
+                                          "afirmação), conferidos no documento, nunca aceitos "
+                                          "como fato pronto.")
              ) -> None:
     """Roda o funil a partir do `funnel_architecture` de um card do Pautador.
 
@@ -260,9 +264,13 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
         deps.image_gen = None
         deps.runner.runs_dir = Path("runs-canario")
     conferir_modelos_do_plano(settings, deps.llm)
+    from funnelforge.adapters.pesquisa_plano import ler_documento
+    deps.ler_documento = ler_documento
+    if hints_de is not None:
+        deps.hints_do_operador = json.loads(hints_de.read_text(encoding="utf-8"))
     estado_inicial = None
-    if (somente_dossie or dossie_de is not None) and not canario:
-        raise typer.BadParameter("--somente-dossie/--dossie-de só valem com --canario.")
+    if (somente_dossie or dossie_de is not None or hints_de is not None) and not canario:
+        raise typer.BadParameter("--somente-dossie/--dossie-de/--hints-de só valem com --canario.")
     if dossie_de is not None:
         from funnelforge.domain.models import RunState
         estado_inicial = RunState.from_json(dossie_de.read_text(encoding="utf-8"))

@@ -290,6 +290,19 @@ class AtivoInterativo(BaseModel):
         return canon_rotulo(value) if value else ""
 
 
+class FatorDaDerivacao(BaseModel):
+    requisito: str = Field(min_length=1)
+    unidade: str = Field(min_length=1)       # núcleo da unidade esperado ("salarios", "r$")
+
+
+class DerivacaoDeclarada(BaseModel):
+    """Um valor que o CÓDIGO calcula a partir de dois fatos verificados. Só a
+    operação permitida; fórmula livre não existe."""
+    operacao: Literal["multiplicacao"]
+    fatores: list[FatorDaDerivacao] = Field(min_length=2, max_length=2)
+    unidade_resultado: str = Field(min_length=1)
+
+
 class RequisitoFactual(BaseModel):
     """O que a promessa da página EXIGE provar antes de alguém escrever (ex.:
     `renda.limite_per_capita`, aceito como `numero` ou `condicao`). O dossiê
@@ -299,6 +312,7 @@ class RequisitoFactual(BaseModel):
     tipos: list[str] = ["numero", "prazo", "data", "mudanca", "condicao", "orgao",
                         "fonte_legal", "processo"]
     critico: bool = True
+    derivacao: DerivacaoDeclarada | None = None
 
     @field_validator("id", mode="before")
     @classmethod

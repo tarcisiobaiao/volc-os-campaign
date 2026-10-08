@@ -267,11 +267,32 @@
               ]
             },
             {
-              "id": "renda.valor_vigente",
-              "descricao": "equivalente em reais do limite de renda per capita no ano corrente, com data e abrangência",
+              "id": "salario_minimo.vigente",
+              "descricao": "salário mínimo federal vigente no ano corrente, com a data de início",
               "tipos": [
                 "numero"
               ]
+            },
+            {
+              "id": "renda.valor_vigente",
+              "descricao": "equivalente em reais do limite de renda per capita no ano corrente",
+              "tipos": [
+                "numero"
+              ],
+              "derivacao": {
+                "operacao": "multiplicacao",
+                "fatores": [
+                  {
+                    "requisito": "renda.limite_per_capita",
+                    "unidade": "salarios"
+                  },
+                  {
+                    "requisito": "salario_minimo.vigente",
+                    "unidade": "r$"
+                  }
+                ],
+                "unidade_resultado": "R$"
+              }
             }
           ]
         }

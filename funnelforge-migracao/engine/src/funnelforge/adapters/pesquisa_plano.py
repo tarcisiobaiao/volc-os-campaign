@@ -384,29 +384,66 @@ def _prompt_da_estruturacao(texto: str, evs: list[Evidencia], fontes: list[dict]
 # leitura da página citada (conferência de conteúdo)
 # ---------------------------------------------------------------------------
 
-def ler_pagina(url: str, timeout_s: float = 20.0) -> tuple[str, str]:
-    """(texto, motivo) — texto vazio + motivo quando não dá para conferir."""
+def _decodificar(r: Any) -> str:
+    """HTML pelo charset que a PÁGINA declara (<meta charset>) quando o
+    cabeçalho não declara — páginas do governo vêm em windows-1252 sem charset
+    no header, e o texto saía com '�' no lugar de 'º' e 'á'."""
+    if "charset=" in (r.headers.get("content-type") or "").lower():
+        return r.text
+    meta = re.search(rb"<meta[^>]+charset=[\"']?([A-Za-z0-9_-]+)", r.content[:4096], re.I)
+    for cod in ([meta.group(1).decode("ascii")] if meta else []) + ["utf-8", "cp1252"]:
+        try:
+            return r.content.decode(cod)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return r.text
+
+
+def ler_documento(url: str, timeout_s: float = 20.0) -> dict:
+    """GET read-only do documento -> {ok, motivo, status, content_type, sha256,
+    titulo, texto}. PDF pelo pypdf; HTML sem tags."""
+    import hashlib
+
     import httpx
-    ua = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-          "(KHTML, like Gecko) Chrome/128.0 Safari/537.36")
+
+    from funnelforge.adapters.url_verifier_http import USER_AGENT
+    # O MESMO UA honesto do verificador de links: nada de se passar por
+    # navegador. Site com antibot que recusa (Planalto reseta a conexão para
+    # UA declarado, medido em 07/10/2026) fica sem leitura — fail-closed, nunca
+    # identidade inventada para furar bloqueio.
     try:
-        r = httpx.get(url, headers={"User-Agent": ua}, timeout=timeout_s, follow_redirects=True)
+        r = httpx.get(url, headers={"User-Agent": USER_AGENT}, timeout=timeout_s,
+                      follow_redirects=True)
     except Exception as exc:  # noqa: BLE001
-        return "", f"página não lida ({type(exc).__name__})"
+        return {"ok": False, "motivo": f"página não lida ({type(exc).__name__})"}
+    base = {"status": r.status_code, "content_type": r.headers.get("content-type", ""),
+            "sha256": hashlib.sha256(r.content).hexdigest()}
     if r.status_code != 200:
-        return "", f"página respondeu HTTP {r.status_code}"
-    tipo = r.headers.get("content-type", "").lower()
+        return dict(base, ok=False, motivo=f"página respondeu HTTP {r.status_code}")
+    tipo = base["content_type"].lower()
     if "pdf" in tipo or url.lower().split("?")[0].endswith(".pdf"):
         try:
             import io
 
             from pypdf import PdfReader
             leitor = PdfReader(io.BytesIO(r.content))
-            return " ".join((p.extract_text() or "") for p in leitor.pages[:30]), ""
+            meta = leitor.metadata or {}
+            return dict(base, ok=True, motivo="", titulo=str(meta.get("/Title") or ""),
+                        texto=" ".join((p.extract_text() or "") for p in leitor.pages[:40]))
         except Exception as exc:  # noqa: BLE001
-            return "", f"PDF não legível ({type(exc).__name__})"
-    texto = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", r.text, flags=re.S | re.I)
-    return _html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", texto))), ""
+            return dict(base, ok=False, motivo=f"PDF não legível ({type(exc).__name__})")
+    bruto = _decodificar(r)
+    titulo = re.search(r"<title[^>]*>(.*?)</title>", bruto, flags=re.S | re.I)
+    texto = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", bruto, flags=re.S | re.I)
+    return dict(base, ok=True, motivo="",
+                titulo=_html.unescape(titulo.group(1).strip()) if titulo else "",
+                texto=_html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", texto))))
+
+
+def ler_pagina(url: str, timeout_s: float = 20.0) -> tuple[str, str]:
+    """(texto, motivo) — texto vazio + motivo quando não dá para conferir."""
+    doc = ler_documento(url, timeout_s)
+    return (doc.get("texto", ""), "") if doc.get("ok") else ("", doc.get("motivo", ""))
 
 
 # ---------------------------------------------------------------------------
