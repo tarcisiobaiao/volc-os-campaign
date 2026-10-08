@@ -3,8 +3,12 @@
  *
  * Aceita somente o identificador interno. 404 é "não encontrada"; qualquer
  * outro erro é indisponibilidade. O manifesto do backend define o que oferecer;
- * `null` continua `null`. Zero Google Ads, zero escrita, zero varredura da
+ * `null` continua `null`. Zero Google Ads no render, zero varredura da
  * listagem paginada.
+ *
+ * "Gerir campanha" (GADS-GESTAO v1) fala com `/api/trafego/gestao` pelo
+ * cliente próprio (`lib/trafego/gestaoApi.ts`): propor não escreve no Google;
+ * a escrita só sai por `aplicar`, de admin, sobre uma aprovação humana gravada.
  */
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -43,7 +47,14 @@ import { FaixaDeLaboratorio } from '@/components/trafego/laboratorio/SeloDeProto
 import { useCapacidades } from '@/hooks/useCapacidades';
 import { useCampanhaCanonica } from '@/hooks/useCampanhaCanonica';
 import { useDiagnosticoDeEntrega } from '@/hooks/useDiagnosticoDeEntrega';
+import { GerirCampanha } from '@/components/trafego/gestao/GerirCampanha';
+import {
+  caixaLigadaAGestao,
+  preenchimentoDaCaixa,
+  type Preenchimento,
+} from '@/lib/trafego/gestao/fila';
 import type { CampanhaCanonica } from '@/types/trafego';
+import type { Proposta as PropostaDoDiagnostico } from '@/types/diagnostico';
 
 const CampanhaCanonPage: React.FC = () => {
   const { volcCampaignId = '' } = useParams();
@@ -149,6 +160,19 @@ const EstadoIndisponivel: React.FC<{
 const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
   const { campanha, identidade, conta, manifesto } = detalhe;
   const c = campanha;
+  const customerId = identidade.conta_externa ?? conta.customer_id ?? null;
+  // A gestão (GADS-GESTAO v1) é só Google Ads, e precisa saber a conta.
+  const gerivel = identidade.plataforma === 'GOOGLE_ADS' && Boolean(customerId);
+  const [preenchimento, setPreenchimento] = React.useState<
+    (Preenchimento & { nonce: number }) | null
+  >(null);
+  const aoSubmeterDaCaixa = React.useCallback(
+    (p: PropostaDoDiagnostico) => {
+      const pre = preenchimentoDaCaixa(p, c.estrategia);
+      if (pre) setPreenchimento({ ...pre, nonce: Date.now() });
+    },
+    [c.estrategia],
+  );
 
   return (
     <article className="campaign-cockpit">
@@ -273,8 +297,35 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
 
           {/* ── 4 · DIAGNÓSTICO ─────────────────────────────────────────── */}
           <div className="campaign-cockpit-panel campaign-cockpit-diagnostic">
-            <Diagnostico volcCampaignId={identidade.volc_campaign_id} />
+            <Diagnostico
+              volcCampaignId={identidade.volc_campaign_id}
+              estrategia={c.estrategia}
+              aoSubmeterProposta={gerivel ? aoSubmeterDaCaixa : undefined}
+            />
           </div>
+
+          {/* ── 4b · GERIR CAMPANHA ─────────────────────────────────────────
+              Propor → aprovar (admin) → aplicar → verificar → reverter, sobre
+              /api/trafego/gestao. A escrita no Google só sai depois de uma
+              aprovação humana gravada, e quem aplica é o servidor. */}
+          {identidade.plataforma === 'GOOGLE_ADS' && (
+            <Secao titulo="Gerir campanha" kicker="propostas de mudança" id="gerir">
+              <GerirCampanha
+                customerId={customerId}
+                campaignId={identidade.id_externo}
+                volcCampaignId={identidade.volc_campaign_id}
+                canal={c.canal}
+                procedencia={c.procedencia}
+                leitura={{
+                  estadoExterno: c.estado_externo,
+                  verbaDiariaMicros: c.verba_diaria_micros,
+                  estrategia: c.estrategia,
+                  moeda: c.entrega?.moeda ?? null,
+                }}
+                preenchimento={preenchimento}
+              />
+            </Secao>
+          )}
 
           {/* ── 5 · VÍNCULO E LINHAGEM ──────────────────────────────────── */}
           <section className="campaign-cockpit-panel" aria-label="vínculo com o funil">
@@ -426,7 +477,12 @@ const IdentificadorEmLinha: React.FC<{
  * diagnóstico lê-se como "não há nada de errado", que é a conclusão mais cara
  * que esta tela pode induzir por omissão.
  */
-const Diagnostico: React.FC<{ volcCampaignId: string }> = ({ volcCampaignId }) => {
+const Diagnostico: React.FC<{
+  volcCampaignId: string;
+  estrategia?: string | null;
+  /** Presente só quando a gestão opera esta campanha: liga o botão da caixa. */
+  aoSubmeterProposta?: (p: PropostaDoDiagnostico) => void;
+}> = ({ volcCampaignId, estrategia = null, aoSubmeterProposta }) => {
   const leitura = useDiagnosticoDeEntrega(volcCampaignId);
 
   if (leitura.carregando) {
@@ -535,7 +591,16 @@ const Diagnostico: React.FC<{ volcCampaignId: string }> = ({ volcCampaignId }) =
       </div>
       {leitura.propostas && (
         <div className="mt-10 border-t border-border pt-6">
-          <CaixaDePropostas caixa={leitura.propostas} />
+          {/* A caixa sai ligada à gestão: o que ela realiza abre o formulário
+              de "Gerir campanha" já no grupo certo; o resto diz por que não. */}
+          <CaixaDePropostas
+            caixa={
+              aoSubmeterProposta
+                ? caixaLigadaAGestao(leitura.propostas, estrategia)
+                : leitura.propostas
+            }
+            aoSubmeter={aoSubmeterProposta}
+          />
         </div>
       )}
     </>
