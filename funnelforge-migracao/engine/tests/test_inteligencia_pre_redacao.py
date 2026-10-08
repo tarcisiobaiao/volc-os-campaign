@@ -147,10 +147,68 @@ def test_jev_failsoft_sem_retry_segredo(falha):
 
 def test_jev_recibo_hermetico():
     def responder(req):
-        assert json.loads(req.content)['questions']['q0']['type']=='choice'
-        return httpx.Response(200,json={'model':'jev-fixture','answers':{'q0':{'type':'choice','choice':'faq','confidence':0.9}}})
-    j=JevDeIntencao(enabled=True,key='fixture',transport=httpx.MockTransport(responder)); r=j.classificar(['Qual o telefone?'])
+        payload = json.loads(req.content)
+        assert payload['state']['pais'] == 'BR'
+        assert payload['state']['perguntas'][0]['duvida_id'] == 'q_telefone'
+        assert payload['questions']['familia_0']['type'] == 'choice'
+        answers = {}
+        for chave, questao in payload['questions'].items():
+            if chave.startswith('formato_'):
+                answers[chave] = {'type':'choice','choice':'faq','confidence':0.91}
+            elif chave.startswith('familia_'):
+                answers[chave] = {'type':'choice','choice':'incerteza','confidence':0.88,
+                                   'probabilities':{'incerteza':0.8,'necessidade_de_acao':0.2}}
+            elif chave.startswith('entrega_'):
+                answers[chave] = {'type':'choice','choice':'confirmacao','confidence':0.84}
+            elif chave.startswith('momento_'):
+                answers[chave] = {'type':'choice','choice':'qualificacao','confidence':0.86}
+            else:
+                answers[chave] = {'type':'score','score':3,'confidence':0.9}
+        return httpx.Response(200,json={'model':'jev-fixture','answers':answers,
+                                        'usage':{'cost_usd':0.001}})
+    j=JevDeIntencao(enabled=True,key='fixture',transport=httpx.MockTransport(responder))
+    r=j.classificar(['Qual o telefone?'], contexto={'tema':'benefício','pais':'BR',
+        'idioma':'pt-BR','duvida_ids':['q_telefone']})
     assert r['requested_model']=='jev-latest' and r['served_model']=='jev-fixture' and not r['fallback']
+    perfil = r['perfil_emocional']
+    assert perfil['familia_dominante'] == 'incerteza'
+    assert perfil['climax_duvida_id'] == 'q_telefone'
+    assert perfil['sinais'][0]['intensidade'] == 75.0
+    assert perfil['sinais'][0]['direcao_cta']
+    assert r['custo_usd'] == 0.001 and j.chamadas == 1
+
+
+def test_brief_propaga_avatar_comportamental_sem_duplicar():
+    class Provider:
+        def classificar(self, perguntas, *, contexto=None):
+            assert {k: contexto[k] for k in ('tema','pais','idioma')} == {
+                'tema':'curso gratuito Senac','pais':'BR','idioma':'pt-BR'}
+            assert len(contexto['duvida_ids']) == 1
+            sinal = {'pergunta': perguntas[0], 'duvida_id':contexto['duvida_ids'][0],
+                     'familia':'oportunidade',
+                     'correspondencia':{'oportunidade':82.0,'incerteza':18.0},
+                     'confianca':91.0,'intensidade':75.0,'autorrelevancia':50.0,
+                     'potencial_continuacao':100.0,'urgencia_de_acao':25.0,
+                     'entrega':'criterios','momento':'qualificacao','formato':'avaliar',
+                     'direcao_cta':'mostrar o critério concreto','limite_cta':'sem promessa'}
+            perfil = {'schema_version':1,'estado':'presente','provider':'typesafe_jev',
+                      'modelo_pedido':'jev-latest','modelo_servido':'jev-fixture',
+                      'familia_dominante':'oportunidade','distribuicao':{'oportunidade':82.0},
+                      'resumo':'Busca uma possibilidade concreta.','sinais':[sinal],
+                      'correlacoes':[],'climax_pergunta':0,
+                      'climax_duvida_id':contexto['duvida_ids'][0],
+                      'hipotese':'Hipótese a calibrar.'}
+            return {'formatos':['avaliar'],'provider':'typesafe_jev',
+                    'requested_model':'jev-latest','served_model':'jev-fixture',
+                    'fallback':False,'perfil_emocional':perfil}
+    b = compilar_brief(CARD, {'perguntas':['Quem tem direito?'],'origem':'fixture'},
+                       provider=Provider())
+    assert b.perfil_emocional.familia_dominante == 'oportunidade'
+    assert b.duvidas[0].sinal_emocional.entrega == 'criterios'
+    assert 'perfil_emocional' not in b.contexto['decisao_intencao']
+    prompt = mensagens_do_arquiteto(b)[1]['content']
+    assert prompt.count('"perfil_emocional"') == 1
+    assert 'não uma pessoa inventada' in prompt
 
 def test_lacuna_compartilhada_complementada_uma_vez():
     from funnelforge.domain.models import RequisitoFactual

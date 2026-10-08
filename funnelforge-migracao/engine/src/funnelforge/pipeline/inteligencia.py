@@ -10,7 +10,7 @@ from datetime import date
 from funnelforge.domain.dossie import sha256_canonico, texto_normal
 from funnelforge.domain.models import (
     BriefDoFunil, DuvidaDoBrief, JornadaDaPagina, RequisitoFactual,
-    Issue, StepResult, StepStatus,
+    Issue, SinalEmocional, StepResult, StepStatus,
 )
 
 
@@ -50,9 +50,15 @@ def compilar_brief(card: dict, paa: dict, pesquisa: dict | None = None, *, provi
     duvidas.sort(key=lambda d: (-d.prioridade, d.jornada.duvida_id))
     from funnelforge.adapters.decisao_intencao import HeuristicaDeIntencao
     decisoes = (provider or HeuristicaDeIntencao()).classificar(
-        [d.jornada.pergunta_principal for d in duvidas])
-    for d, formato in zip(duvidas, decisoes["formatos"]):
+        [d.jornada.pergunta_principal for d in duvidas],
+        contexto={"tema": tema, "pais": card.get("country") or "",
+                  "idioma": card.get("native_language") or "",
+                  "duvida_ids": [d.jornada.duvida_id for d in duvidas]})
+    sinais_emocionais = (decisoes.get("perfil_emocional") or {}).get("sinais") or []
+    for indice, (d, formato) in enumerate(zip(duvidas, decisoes["formatos"])):
         d.formato = formato
+        if indice < len(sinais_emocionais):
+            d.sinal_emocional = SinalEmocional.model_validate(sinais_emocionais[indice])
     dados = pesquisa or {}
     citadas = set(dados.get("citacoes") or [])
     fatos = [dict(f, estado="a_conferir") for f in (dados.get("dados") or {}).get("fatos", [])
@@ -71,12 +77,15 @@ def compilar_brief(card: dict, paa: dict, pesquisa: dict | None = None, *, provi
                 "duvida_id", "pergunta_principal", "resposta_imediata", "proxima_duvida",
                 "ja_resolvido", "valor", "saida_oficial")}}
             for p in arq.get("pages", [])]
+    recibo_decisao = {k: v for k, v in decisoes.items() if k != "perfil_emocional"}
     brief = BriefDoFunil(
         intencao_principal=tema, trabalho_do_leitor=card.get("trabalho_do_leitor") or tema,
         consciencia=card.get("consciencia") or "nao_observada",
         entidade=str(card.get("entidade") or tema), pais=card.get("country") or "",
         idioma=card.get("native_language") or "", duvidas=duvidas, sinais=sinais,
-        contexto={**contexto, "decisao_intencao": decisoes, "fontes_encontradas": sorted(citadas)},
+        perfil_emocional=decisoes.get("perfil_emocional"),
+        contexto={**contexto, "decisao_intencao": recibo_decisao,
+                  "fontes_encontradas": sorted(citadas)},
         dores_observadas=leitura.get("dores_observadas") or [],
         desejos_observados=leitura.get("desejos_observados") or [], fatos_existentes=fatos,
         lacunas=(["PAA ausente; não impede arquitetura"] if not paa["perguntas"] else [])

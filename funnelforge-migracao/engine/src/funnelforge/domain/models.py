@@ -559,6 +559,67 @@ class ContextoDeAnuncio(BaseModel):
         return self
 
 
+FamiliaEmocional = Literal[
+    "oportunidade",
+    "incerteza",
+    "medo_de_perder",
+    "desejo_de_controle",
+    "prevencao_de_erro",
+    "necessidade_de_acao",
+    "ambigua",
+]
+
+
+class SinalEmocional(BaseModel):
+    """Leitura consultiva de UMA pergunta real da demanda.
+
+    Não é demografia, fato nem diagnóstico psicológico. As notas são sinais
+    para o arquiteto escolher ordem, entrega e direção do CTA; nunca bloqueiam
+    uma página ou autorizam uma promessa pessoal.
+    """
+    pergunta: str = Field(min_length=1)
+    duvida_id: str = ""
+    familia: FamiliaEmocional = "ambigua"
+    correspondencia: dict[str, float] = {}
+    confianca: float = Field(default=0.0, ge=0.0, le=100.0)
+    intensidade: float = Field(default=0.0, ge=0.0, le=100.0)
+    autorrelevancia: float = Field(default=0.0, ge=0.0, le=100.0)
+    potencial_continuacao: float = Field(default=0.0, ge=0.0, le=100.0)
+    urgencia_de_acao: float = Field(default=0.0, ge=0.0, le=100.0)
+    entrega: str = "explicacao"
+    momento: str = "reconhecimento"
+    formato: Literal["pagina", "secao", "faq", "ferramenta", "avaliar"] = "avaliar"
+    direcao_cta: str = ""
+    limite_cta: str = ""
+
+
+class CorrelacaoEmocional(BaseModel):
+    origem: int = Field(ge=0)
+    destino: int = Field(ge=0)
+    origem_duvida_id: str = ""
+    destino_duvida_id: str = ""
+    nota: float = Field(ge=0.0, le=100.0)
+    relacao: Literal["progressao", "complementar", "possivel_redundancia"]
+    motivo: str
+
+
+class PerfilEmocionalDoFunil(BaseModel):
+    """Avatar comportamental derivado da demanda, sem inventar uma pessoa."""
+    schema_version: int = 1
+    estado: Literal["presente", "fallback", "ausente"] = "ausente"
+    provider: str = ""
+    modelo_pedido: str = ""
+    modelo_servido: str = ""
+    familia_dominante: FamiliaEmocional = "ambigua"
+    distribuicao: dict[str, float] = {}
+    resumo: str = ""
+    sinais: list[SinalEmocional] = []
+    correlacoes: list[CorrelacaoEmocional] = []
+    climax_pergunta: int | None = None
+    climax_duvida_id: str | None = None
+    hipotese: str = "Leitura comportamental consultiva; precisa ser calibrada com dados reais."
+
+
 class DuvidaDoBrief(BaseModel):
     """Candidata, nunca uma página aprovada nem evidência factual."""
     jornada: JornadaDaPagina
@@ -567,6 +628,7 @@ class DuvidaDoBrief(BaseModel):
     evidencia_demanda: list[dict] = []
     formato: Literal["pagina", "secao", "faq", "ferramenta", "avaliar"] = "avaliar"
     confianca: Literal["baixa", "media", "alta"] = "baixa"
+    sinal_emocional: SinalEmocional | None = None
 
 
 class BriefDoFunil(BaseModel):
@@ -580,6 +642,7 @@ class BriefDoFunil(BaseModel):
     contexto: dict = {}
     dores_observadas: list[str] = []
     desejos_observados: list[str] = []
+    perfil_emocional: PerfilEmocionalDoFunil | None = None
     duvidas: list[DuvidaDoBrief] = []
     sinais: list[dict] = []
     fatos_existentes: list[dict] = []

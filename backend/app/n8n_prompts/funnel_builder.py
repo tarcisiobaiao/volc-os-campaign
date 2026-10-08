@@ -234,7 +234,14 @@ def build_funnel_architect_user(
              "uma lacuna compartilhada. Declare jornada.plano_visual, jornada.ativos, "
              "jornada.screenshot_necessario (boolean), jornada.imagem_necessaria (boolean) e "
              "jornada.schema_tipos (lista). "
-             "CTA concreto orienta a próxima dúvida; sem rótulos genéricos ou falsa oficialidade.\n"
+             "O perfil_emocional é uma HIPÓTESE comportamental derivada da linguagem de busca, "
+             "não uma pessoa inventada, demografia, fato ou autorização para exagero. Use cada "
+             "sinal_emocional para decidir ordem, entrega e direção do CTA; traduza direcao_cta "
+             "para uma promessa específica do tema e respeite limite_cta. Use as correlações para "
+             "progressão ou fusão de dúvidas, não como causalidade. O clímax é a entrega de maior "
+             "valor informacional ou decisório, nunca urgência falsa. CTA concreto orienta a "
+             "próxima dúvida e corresponde ao destino; sem rótulos genéricos, falsa oficialidade, "
+             "promessa de elegibilidade, saldo, aprovação ou resultado pessoal.\n"
              if brief_pre_arquitetura else "")
     return (
         _FUNNEL_ARCHITECT_USER_TEMPLATE.replace("__PAIS__", str(pais or ""))
