@@ -96,11 +96,18 @@ interface Props {
   onDesfechoDeclarado?: (
     d: (SubidaIndeterminada | RecusaDeclarada) & { marca: string | null },
   ) => void;
+  /** A resposta da prova, ENTREGUE PARA FORA: a Revisão mostra os avisos que
+   *  o servidor devolveu (VIDEO_SEM_PORTAO_DE_POLITICA, display_expansion…)
+   *  depois que este modal fecha. */
+  onProva?: (r: RespostaDaProva) => void;
+  /** O erro da prova, ENTREGUE PARA FORA: um 422 de configuração tem `loc`, e
+   *  é a página — não este modal — que sabe em qual campo mostrá-lo. */
+  onErroDaProva?: (e: unknown) => void;
 }
 
 export const Lancamento: React.FC<Props> = ({
   pedido, trava, titulo, destino, resumoDaCopy, onFechar, onCriada, onRecibo,
-  onDesfechoDeclarado,
+  onDesfechoDeclarado, onProva, onErroDaProva,
 }) => {
   // ⚠️ O estado INICIAL já é o do destino. Nascer em `provando` e só depois
   // recuar exibiria por um instante uma escada correndo para um destino
@@ -153,6 +160,13 @@ export const Lancamento: React.FC<Props> = ({
    *  criaria um caminho para reenviar de dentro de um estado que declarou que
    *  não se reenvia. */
   const escrevendoAgora = useRef(false);
+  // ⚠️ REFS, e não deps do `provar`: um callback novo da página a cada render
+  // daria identidade nova ao `provar` e re-dispararia `/provar` — o defeito
+  // que o `useMemo` do pedido existe para impedir.
+  const onProvaRef = useRef(onProva);
+  const onErroRef = useRef(onErroDaProva);
+  onProvaRef.current = onProva;
+  onErroRef.current = onErroDaProva;
 
   // Fechar no meio da PROVA é seguro — `validate_only` não cria nada em desfecho
   // nenhum. Fechar no meio da ESCRITA não é, e por isso ali não há saída.
@@ -190,6 +204,7 @@ export const Lancamento: React.FC<Props> = ({
     try {
       const r = await pautadorApi.provarCampanha(pedido);
       setProva(r);
+      onProvaRef.current?.(r);
       if (!r.preparo.aprovado) {
         setPreparoDaRecusa(r.preparo);
         setEstado('reprovada');
@@ -215,7 +230,13 @@ export const Lancamento: React.FC<Props> = ({
       // trava estiver mesmo fechada ele devolve 409 com a mensagem exata.
       setEstado(trava?.env_presente ? 'aguardando_escrita' : 'travada');
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'A prova falhou.');
+      onErroRef.current?.(e);
+      // ⚠️ 422 é FORMA: o campo errado é marcado na tela de trás, e aqui a
+      // frase manda o operador até ele em vez de colar o JSON do `detail`.
+      const ehForma = e instanceof PautadorApiError && e.status === 422;
+      setErro(ehForma
+        ? 'O servidor recusou a forma do pedido. Feche esta escada: o campo errado está marcado na parada onde ele foi decidido, e a lista completa está na Revisão.'
+        : e instanceof Error ? e.message : 'A prova falhou.');
       setEstado('erro');
     }
   }, [pedido, trava, destino]);

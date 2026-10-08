@@ -32,7 +32,7 @@
  */
 import React from 'react';
 import { ArrowUpRight, RefreshCw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +62,21 @@ import {
   type EstadoDoCandidato,
 } from './linguagem';
 import { useOportunidades } from './useOportunidades';
+import {
+  CANAIS_DA_BANCADA, ROTULO_DO_CANAL_NA_BANCADA, canalDaBancadaOuNulo, hrefDaBancada,
+} from '@/lib/trafego/configuracao/links';
+import type { CanalComManifesto } from '@/types/trafego';
+
+/**
+ * O canal em que a bancada vai abrir. Mora na URL (`?canal=`), que é o mesmo
+ * eixo que a Visão Multicanal e o Hub usam — então quem chega de "Montar numa
+ * oportunidade de Display" já encontra Display escolhido aqui.
+ *
+ * ⚠️ Até 08/10/2026 nenhum link desta tela punha o canal: a bancada abria
+ * sempre em Search, e Display, Demand Gen e PMax só existiam para quem
+ * digitasse a URL.
+ */
+const CanalDaBancada = React.createContext<CanalComManifesto>('SEARCH');
 
 // ── o quadro ────────────────────────────────────────────────────────────────
 
@@ -86,8 +101,16 @@ export const QuadroDeOportunidades: React.FC = () => {
 
   const segundos = idadeDaLeitura(leitura.lidoEm, agora);
   const portaoLegivel = fraseDoPortao(portao);
+  const [params, setParams] = useSearchParams();
+  const canal = canalDaBancadaOuNulo(params.get('canal')) ?? 'SEARCH';
+  const escolherCanal = (c: CanalComManifesto) => {
+    const q = new URLSearchParams(params);
+    q.set('canal', c);
+    setParams(q, { replace: true });
+  };
 
   return (
+    <CanalDaBancada.Provider value={canal}>
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <p className="max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
@@ -155,6 +178,27 @@ export const QuadroDeOportunidades: React.FC = () => {
           </p>
         </div>
       </section>
+
+      <fieldset className="flex flex-wrap items-center gap-2">
+        <legend className="sr-only">canal em que a campanha será montada</legend>
+        <span className="kicker mr-1 text-muted-foreground">montar como</span>
+        {CANAIS_DA_BANCADA.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-pressed={canal === c}
+            onClick={() => escolherCanal(c)}
+            className={cn(
+              'min-h-9 rounded-full border px-3 text-xs transition-colors',
+              canal === c
+                ? 'border-primary/45 bg-primary/[0.08] font-semibold text-foreground'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/25',
+            )}
+          >
+            {ROTULO_DO_CANAL_NA_BANCADA[c]}
+          </button>
+        ))}
+      </fieldset>
 
       {leitura.carregando && <Esqueleto />}
 
@@ -261,6 +305,7 @@ export const QuadroDeOportunidades: React.FC = () => {
         </>
       )}
     </div>
+    </CanalDaBancada.Provider>
   );
 };
 
@@ -277,6 +322,7 @@ const Acao: React.FC<{ candidato: CandidatoNoQuadro; estado: EstadoDoCandidato }
   estado,
 }) => {
   const frase = fraseDeReconciliacao(comoPreparar(p));
+  const canal = React.useContext(CanalDaBancada);
 
   if (frase.estado === 'conflito') {
     return (
@@ -308,7 +354,7 @@ const Acao: React.FC<{ candidato: CandidatoNoQuadro; estado: EstadoDoCandidato }
 
   if (frase.podeRelancar) {
     return (
-      <Link to={`/trafego/nova/${p.opportunity_id}?run=${p.run_id}&relancar=1`} className={linkDaAcao}>
+      <Link to={hrefDaBancada(p.opportunity_id, canal, { runId: p.run_id, relancar: true })} className={linkDaAcao}>
         {frase.acao}
         <ArrowUpRight className="h-3 w-3" aria-hidden />
       </Link>
@@ -336,7 +382,7 @@ const Acao: React.FC<{ candidato: CandidatoNoQuadro; estado: EstadoDoCandidato }
 
   if (frase.estado === 'vinculada') {
     return (
-      <Link to={`/trafego/nova/${p.opportunity_id}?run=${p.run_id}`} className={linkDaAcao}>
+      <Link to={hrefDaBancada(p.opportunity_id, canal, { runId: p.run_id })} className={linkDaAcao}>
         abrir o que existe
         <ArrowUpRight className="h-3 w-3" aria-hidden />
       </Link>
@@ -351,8 +397,9 @@ const Acao: React.FC<{ candidato: CandidatoNoQuadro; estado: EstadoDoCandidato }
 
   return (
     <span className="block max-w-[36ch] text-right">
-      <Link to={`/trafego/nova/${p.opportunity_id}?run=${p.run_id}`} className={linkDaAcao}>
-        montar campanha
+      <Link to={hrefDaBancada(p.opportunity_id, canal, { runId: p.run_id })} className={linkDaAcao}>
+        montar campanha <span className="sr-only">em</span>
+        <span className="text-muted-foreground">· {ROTULO_DO_CANAL_NA_BANCADA[canal]}</span>
         <ArrowUpRight className="h-3 w-3" aria-hidden />
       </Link>
       {p.reconciliacao?.exige_confirmacao_humana === true && (

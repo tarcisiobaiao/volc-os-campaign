@@ -40,6 +40,7 @@ export const ROTULO_DA_PARADA: Record<ParadaDaBancada, string> = {
   politica: 'Política',
   termos: 'Termos',
   anuncio: 'Anúncio',
+  alcance: 'Alcance',
   economia: 'Economia',
   revisao: 'Revisão',
   display_destino: 'Objetivo e destino',
@@ -71,14 +72,15 @@ export const PERGUNTA_DA_PARADA: Record<ParadaDaBancada, string> = {
   politica: 'Esta vertical pode anunciar neste país?',
   termos: 'Quais termos a campanha vai comprar?',
   anuncio: 'O que o anúncio vai dizer?',
+  alcance: 'Onde, quando e com qual automação o anúncio aparece?',
   economia: 'Quanto isto pode gastar por dia?',
   revisao: 'É isto que você quer criar?',
   display_destino: 'Qual a conta, o objetivo e o destino aprovado?',
-  display_geografia: 'Onde, em qual idioma e em quais redes o anúncio aparece?',
-  display_audiencia: 'Como o engine trata audiência nesta versão?',
+  display_geografia: 'Onde, quando e em quais dispositivos o anúncio aparece?',
+  display_audiencia: 'Para quem e em que contexto o anúncio aparece?',
   display_criativo: 'Quais imagens e textos formam o criativo responsivo?',
-  display_inventario: 'Que proteção de inventário o engine realmente aplica?',
-  display_economia: 'Qual o orçamento e a conversão observada?',
+  display_inventario: 'Onde o anúncio NÃO pode aparecer?',
+  display_economia: 'Como a campanha compra e com que frequência?',
   display_revisao: 'O criativo e as segmentações estão prontos?',
   demand_resultado: 'Qual o resultado, a conta e o destino?',
   demand_superficies: 'Em quais superfícies este anúncio vai rodar?',
@@ -121,6 +123,17 @@ export interface FatosDaBancada {
   /** As habilitações que o operador declarou. Elas SATISFAZEM o portão da
    *  vertical — sem elas aqui, a Bancada criaria um bloqueio sem saída. */
   certificacoes: string[];
+  /**
+   * ⚠️ `false` quando a estratégia escolhida não tem lance por clique (tCPA,
+   * tROAS, teto, parcela de impressões). Ausente = `true`: o contrato de antes,
+   * em que todo Search nascia com CPC. Sem isto, a Economia exigia "o lance
+   * inicial" de quem escolheu Maximizar conversões — e era por esse buraco que
+   * o CPA alvo entrava como `cpc_inicial`.
+   */
+  lanceExigido?: boolean;
+  /** Decisões que faltam na configuração de cada canal
+   *  (`lib/trafego/configuracao/montagem.ts`). Somam-se às faltas da parada. */
+  extras?: Partial<Record<ParadaDaBancada, string[]>>;
   /** Completude dos contratos verticais. Cada booleano é calculado a partir
    *  dos mesmos campos que compõem o pedido; não é um segundo contrato. */
   multicanal?: {
@@ -266,9 +279,12 @@ export function faltasDaParada(
     case 'economia': {
       if (!f.cockpit?.conta?.vinculada) add('vincular a conta de anúncio ao projeto');
       if (f.orcamento == null || f.orcamento <= 0) add('declarar o orçamento diário');
-      if (f.lance == null || f.lance <= 0) add('declarar o lance inicial');
+      if (f.lanceExigido !== false && (f.lance == null || f.lance <= 0)) add('declarar o lance inicial');
       break;
     }
+    case 'alcance':
+      // As decisões desta parada vêm inteiras de `extras` (rede, AI Max).
+      break;
     case 'revisao': {
       // Revisão nunca adiciona faltas próprias, ela é o agregado final das outras.
       break;
@@ -287,8 +303,8 @@ export function faltasDaParada(
       break;
     case 'display_audiencia':
     case 'display_inventario':
-      // Não operados nesta fatia: a tela explica a ausência e não exige um
-      // campo que o payload descartaria.
+      // Segmentação vazia é inventário aberto (avisado pelo servidor), e as
+      // exclusões nascem com a doutrina padrão marcada: nenhuma falta própria.
       break;
     case 'display_criativo':
       if (!f.multicanal?.displayCriativo) add('completar texto e imagens obrigatórias do anúncio Display');
@@ -352,6 +368,7 @@ export function faltasDaParada(
     case 'pmax_revisao':
       break;
   }
+  for (const texto of f.extras?.[parada] ?? []) add(texto);
   return faltas;
 }
 /**

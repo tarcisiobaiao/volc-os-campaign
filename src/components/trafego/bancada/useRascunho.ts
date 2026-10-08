@@ -30,6 +30,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   CanalSelecionavelDemandGen, CriterioDeKeyword, EstrategiaDeCanaisDemandGen,
 } from '@/types/trafego';
+import {
+  FORM_DEMAND_GEN_VAZIO, FORM_DISPLAY_VAZIO, FORM_PMAX_VAZIO, FORM_SEARCH_VAZIO, mesclarFormulario,
+  type FormDemandGen, type FormDisplay, type FormPMax, type FormSearch,
+} from '@/lib/trafego/configuracao/formularios';
 
 /** Só o que o operador digitou. Nada lido da conta entra neste tipo. */
 export interface RascunhoDaBancada {
@@ -92,6 +96,14 @@ export interface RascunhoDaBancada {
   pmaxVideosYoutube: string;
   pmaxEstrategia: 'MAXIMIZE_CONVERSIONS' | 'MAXIMIZE_CONVERSION_VALUE';
   pmaxMeta: string;
+
+  // ── configuração de cada canal (GADS-CRIACAO-CANAIS-v1) ─────────────────
+  // O FORMULÁRIO, não o contrato: `lib/trafego/configuracao/montagem.ts`
+  // converte. Um objeto por canal, como o envelope.
+  cfgSearch: FormSearch;
+  cfgDisplay: FormDisplay;
+  cfgDemand: FormDemandGen;
+  cfgPMax: FormPMax;
 }
 
 export const RASCUNHO_VAZIO: RascunhoDaBancada = {
@@ -136,6 +148,10 @@ export const RASCUNHO_VAZIO: RascunhoDaBancada = {
   pmaxVideosYoutube: '',
   pmaxEstrategia: 'MAXIMIZE_CONVERSIONS',
   pmaxMeta: '',
+  cfgSearch: FORM_SEARCH_VAZIO,
+  cfgDisplay: FORM_DISPLAY_VAZIO,
+  cfgDemand: FORM_DEMAND_GEN_VAZIO,
+  cfgPMax: FORM_PMAX_VAZIO,
 };
 
 const PREFIXO = 'volc.bancada.rascunho';
@@ -152,7 +168,16 @@ function ler(chave: string): RascunhoDaBancada | null {
     if (typeof o !== 'object' || o === null) return null;
     // Mescla sobre o vazio: um rascunho gravado por uma versão anterior do
     // formulário não pode derrubar a tela por falta de campo.
-    return { ...RASCUNHO_VAZIO, ...o };
+    // Os formulários de canal são objetos aninhados: a mescla rasa os
+    // trocaria inteiros por uma versão sem os campos novos.
+    return {
+      ...RASCUNHO_VAZIO,
+      ...o,
+      cfgSearch: mesclarFormulario(FORM_SEARCH_VAZIO, o.cfgSearch),
+      cfgDisplay: mesclarFormulario(FORM_DISPLAY_VAZIO, o.cfgDisplay),
+      cfgDemand: mesclarFormulario(FORM_DEMAND_GEN_VAZIO, o.cfgDemand),
+      cfgPMax: mesclarFormulario(FORM_PMAX_VAZIO, o.cfgPMax),
+    };
   } catch {
     // `sessionStorage` levanta em aba privada de alguns navegadores e quando o
     // usuário bloqueia dados de site. Perder o rascunho é aceitável; derrubar a

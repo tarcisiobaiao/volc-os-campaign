@@ -82,20 +82,41 @@ import {
   ParadaPMaxObjetivo, ParadaPMaxRevisao, ParadaPMaxSinais,
 } from '@/components/trafego/bancada/paradas/PMaxParadas';
 import { itensDoTexto } from '@/components/trafego/bancada/paradas/ControlesMulticanal';
+import { ParadaAlcanceSearch, SecaoRsaSearch } from '@/components/trafego/bancada/paradas/SearchConfiguracao';
+import { ProvedorDeErros } from '@/components/trafego/bancada/campos/Campos';
+import { completudeMulticanal } from '@/lib/trafego/configuracao/completude';
+import {
+  SEM_ERROS, errosDo422, juntarErros, type ErrosDoServidor,
+} from '@/lib/trafego/configuracao/erros422';
+import { conferirForma, esquemaDoCanal } from '@/lib/trafego/configuracao/esquema';
+import type {
+  FormDemandGen, FormDisplay, FormPMax, FormSearch,
+} from '@/lib/trafego/configuracao/formularios';
+import {
+  configuracaoDemandGen, configuracaoDisplay, configuracaoPMax, configuracaoSearch,
+  faltasDeDemandGen, faltasDeDisplay, faltasDePMax, faltasDeSearch, juntarFaltas,
+  lancePorConversao, matchPadraoDaEstrategia, matchPorKeywordDoPedido, montarPedidoDemandGen,
+  montarPedidoDisplay, montarPedidoPMax, montarPedidoSearch, type BaseDoPedido,
+} from '@/lib/trafego/configuracao/montagem';
+import {
+  avisosDaProva, avisosPrevistosDeDemandGen, avisosPrevistosDeDisplay, avisosPrevistosDePMax,
+  avisosPrevistosDeSearch, resumoDeDemandGen, resumoDeDisplay, resumoDePMax, resumoDeSearch,
+  rotuloDaEstrategia,
+} from '@/lib/trafego/configuracao/revisao';
+import { useEsquemaDosCanais } from '@/lib/trafego/configuracao/useEsquemaDosCanais';
+import type { EstrategiaSearch } from '@/types/trafegoCanais';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { idExternoDaCampanha } from '@/lib/trafego/lancamento';
 import type { PlanoVigenteResposta } from '@/lib/trafego/portoes';
 import {
-  CANAIS_COM_MANIFESTO, canalCanonico, DECORRE_DA_ESTRATEGIA,
-  PARADAS_DA_BANCADA,
+  CANAIS_COM_MANIFESTO, canalCanonico, PARADAS_DA_BANCADA,
 } from '@/types/trafego';
 import type {
   AssetDemandGen, CanalComManifesto, Cockpit, CopyGerada, CopyPersistida, CriterioDeKeyword, EstadoDaTrava,
-  EstrategiaDeLance, LinhaDoPedido, MatchType, ParadaDaBancada,
-  PedidoDeProva, PedidoDeProvaDemandGen, PedidoDeProvaDisplay,
-  PedidoDePlanejamentoPMax,
-  PedidoDeProvaSearch, ReciboDeLancamento, RevisaoDoConjuntoPago, VerticalDePolitica,
+  LinhaDoPedido, MatchType, ParadaDaBancada,
+  PedidoDeProvaDeCanal, PedidoDePlanejamentoPMax,
+  PedidoDeProvaSearch, ReciboDeLancamento, RespostaDaProva, RevisaoDoConjuntoPago, VerticalDePolitica,
 } from '@/types/trafego';
 
 /** A etapa pedida na URL, quando ela é uma parada que existe. */
@@ -171,6 +192,15 @@ const NovaCampanhaPage: React.FC = () => {
     'ociosa' | 'provando' | 'aprovada' | 'recusada'
   >('ociosa');
   const [mensagemDoPlanoPMax, setMensagemDoPlanoPMax] = useState<string | null>(null);
+  /** As imagens dos asset groups ADICIONAIS de PMax, por id do grupo. Bytes:
+   *  ficam nesta montagem, como os do grupo principal. */
+  const [imagensDosGruposPMax, setImagensDosGruposPMax] = useState<Record<string, AssetDemandGen[]>>({});
+  /** O 422 da última prova, já posicionado por caminho. `null` = nenhum. */
+  const [errosDoServidor, setErrosDoServidor] = useState<ErrosDoServidor | null>(null);
+  /** A última resposta de `/provar` deste canal — os avisos que o servidor
+   *  devolveu, mostrados na Revisão. */
+  const [respostaDaProva, setRespostaDaProva] = useState<RespostaDaProva | null>(null);
+  const { esquemas, indisponivel: esquemaIndisponivel } = useEsquemaDosCanais();
 
   // ── carga ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -276,7 +306,19 @@ const NovaCampanhaPage: React.FC = () => {
 
   const orcamento = numeroDigitado(rascunho.orcamento);
   const lance = numeroDigitado(rascunho.lance);
-  const estrategia = rascunho.estrategia as EstrategiaDeLance;
+  const estrategia = rascunho.estrategia as EstrategiaSearch;
+  const cfgSearch = rascunho.cfgSearch;
+  const cfgDisplay = rascunho.cfgDisplay;
+  const cfgDemand = rascunho.cfgDemand;
+  const cfgPMax = rascunho.cfgPMax;
+  const alterarSearch = useCallback(<K extends keyof FormSearch>(k: K, v: FormSearch[K]) =>
+    alterar('cfgSearch', { ...cfgSearch, [k]: v }), [alterar, cfgSearch]);
+  const alterarDisplay = useCallback(<K extends keyof FormDisplay>(k: K, v: FormDisplay[K]) =>
+    alterar('cfgDisplay', { ...cfgDisplay, [k]: v }), [alterar, cfgDisplay]);
+  const alterarDemand = useCallback(<K extends keyof FormDemandGen>(k: K, v: FormDemandGen[K]) =>
+    alterar('cfgDemand', { ...cfgDemand, [k]: v }), [alterar, cfgDemand]);
+  const alterarPMax = useCallback(<K extends keyof FormPMax>(k: K, v: FormPMax[K]) =>
+    alterar('cfgPMax', { ...cfgPMax, [k]: v }), [alterar, cfgPMax]);
 
   const copyDisplay = useMemo<CopyGerada>(() => ({
     headlines: itensDoTexto(rascunho.displayTitulos),
@@ -302,61 +344,86 @@ const NovaCampanhaPage: React.FC = () => {
   }), [rascunho.pmaxTitulos, rascunho.pmaxTitulosLongos,
       rascunho.pmaxDescricoes, rascunho.pmaxNomeEmpresa]);
 
-  const multicanal = useMemo(() => {
-    const displayTitulos = copyDisplay.headlines;
-    const displayDescricoes = copyDisplay.descriptions;
-    const demandTitulos = copyDemand.headlines;
-    const demandDescricoes = copyDemand.descriptions;
-    const demandSelecionadosOk = rascunho.demandEstrategiaCanais !== 'SELECTED_CHANNELS'
-      || rascunho.demandCanaisSelecionados.length > 0;
-    const pmaxTitulos = itensDoTexto(rascunho.pmaxTitulos);
-    const pmaxLongos = itensDoTexto(rascunho.pmaxTitulosLongos);
-    const pmaxDescricoes = itensDoTexto(rascunho.pmaxDescricoes);
-    const valido = (itens: string[], min: number, max: number, chars: number) =>
-      itens.length >= min && itens.length <= max && itens.every((item) => item.length <= chars);
-    return {
-      displayCriativo:
-        valido(displayTitulos, 1, 5, 30)
-        && valido(displayDescricoes, 1, 5, 90)
-        && Boolean(copyDisplay.long_headlines?.[0])
-        && (copyDisplay.long_headlines?.[0]?.length ?? 0) <= 90
-        && Boolean(copyDisplay.business_name) && (copyDisplay.business_name?.length ?? 0) <= 25
-        && assetsDisplay.some((a) => a.tipo === 'imagem_marketing')
-        && assetsDisplay.some((a) => a.tipo === 'imagem_marketing_quadrada'),
-      displayEconomia: orcamento != null && orcamento > 0
-        && (rascunho.displayTcpa.trim() === '' || (numeroDigitado(rascunho.displayTcpa) ?? 0) > 0),
-      demandSuperficies: Boolean(rascunho.demandEstrategiaCanais) && demandSelecionadosOk,
-      demandAudiencia: rascunho.demandUpgradedTargeting != null && rascunho.demandAudienciasConfirmadas,
-      demandKit: assetsDemand.some((a) => a.tipo.startsWith('imagem_marketing'))
-        && assetsDemand.some((a) => a.tipo === 'logo_quadrado'),
-      demandMensagem: valido(demandTitulos, 1, 5, 30)
-        && valido(demandDescricoes, 1, 5, 90)
-        && Boolean(copyDemand.business_name) && (copyDemand.business_name?.length ?? 0) <= 25,
-      demandEconomia: orcamento != null && orcamento > 0,
-      pmaxObjetivo: Boolean(cockpit?.conta?.meta_conversao?.primaria),
-      pmaxAssetGroup: rascunho.pmaxNomeAssetGroup.length <= 128
-        && valido(pmaxTitulos, 3, 15, 30)
-        && valido(pmaxLongos, 1, 5, 90)
-        && valido(pmaxDescricoes, 2, 5, 90)
-        && pmaxDescricoes.some((item) => item.length <= 60)
-        && Boolean(rascunho.pmaxNomeEmpresa.trim()) && rascunho.pmaxNomeEmpresa.trim().length <= 25
-        && assetsPMax.some((a) => a.tipo === 'imagem_marketing')
-        && assetsPMax.some((a) => a.tipo === 'imagem_marketing_quadrada')
-        && assetsPMax.some((a) => a.tipo === 'logo_quadrado'),
-      pmaxSinais: rascunho.pmaxSinaisConfirmados && rascunho.pmaxNegativasConfirmadas,
-      pmaxMarca: rascunho.pmaxBrandGuidelines != null,
-      pmaxEconomia: orcamento != null && orcamento > 0
-        && (rascunho.pmaxMeta.trim() === '' || (numeroDigitado(rascunho.pmaxMeta) ?? 0) > 0),
-    };
-  }, [copyDisplay, copyDemand, assetsDisplay, assetsDemand, assetsPMax, orcamento,
-    cockpit?.conta?.meta_conversao?.primaria, rascunho]);
+  // A completude dos canais visuais mora em `lib/trafego/configuracao`.
+  const multicanal = useMemo(() => completudeMulticanal({
+    orcamento,
+    copyDisplay, assetsDisplay, displayTcpa: cfgDisplay.tcpa,
+    copyDemand, assetsDemand, formDemand: cfgDemand,
+    demandEstrategiaCanais: rascunho.demandEstrategiaCanais,
+    demandCanaisSelecionados: rascunho.demandCanaisSelecionados,
+    demandUpgradedTargeting: rascunho.demandUpgradedTargeting,
+    demandAudienciasConfirmadas: rascunho.demandAudienciasConfirmadas,
+    temMetaPrimaria: Boolean(cockpit?.conta?.meta_conversao?.primaria),
+    pmaxNomeAssetGroup: rascunho.pmaxNomeAssetGroup,
+    pmaxTitulos: rascunho.pmaxTitulos,
+    pmaxTitulosLongos: rascunho.pmaxTitulosLongos,
+    pmaxDescricoes: rascunho.pmaxDescricoes,
+    pmaxNomeEmpresa: rascunho.pmaxNomeEmpresa,
+    assetsPMax,
+    pmaxSinaisConfirmados: rascunho.pmaxSinaisConfirmados,
+    pmaxNegativasConfirmadas: rascunho.pmaxNegativasConfirmadas,
+    pmaxBrandGuidelines: rascunho.pmaxBrandGuidelines,
+    pmaxMeta: rascunho.pmaxMeta,
+  }), [copyDisplay, copyDemand, assetsDisplay, assetsDemand, assetsPMax, orcamento,
+    cockpit?.conta?.meta_conversao?.primaria, rascunho, cfgDisplay.tcpa, cfgDemand]);
+
+  // ── a configuração de cada canal, montada do formulário ───────────────────
+  const configuracaoDoCanal = useMemo(() => {
+    switch (canal) {
+      case 'DISPLAY': return configuracaoDisplay(cfgDisplay, rascunho.displayVideosYoutube);
+      case 'DEMAND_GEN': return configuracaoDemandGen(cfgDemand);
+      case 'PERFORMANCE_MAX':
+        return configuracaoPMax(cfgPMax, imagensDosGruposPMax, Boolean(rascunho.pmaxBrandGuidelines));
+      default: return configuracaoSearch(cfgSearch, estrategia);
+    }
+  }, [canal, cfgSearch, estrategia, cfgDisplay, rascunho.displayVideosYoutube, cfgDemand, cfgPMax,
+    imagensDosGruposPMax, rascunho.pmaxBrandGuidelines]);
+
+  const campoHttp = canal === 'DISPLAY' ? 'configuracao_display'
+    : canal === 'DEMAND_GEN' ? 'configuracao_demand_gen'
+      : canal === 'PERFORMANCE_MAX' ? 'configuracao_pmax' : 'configuracao_search';
+  const esquemaAtual = useMemo(() => esquemaDoCanal(esquemas, canal), [esquemas, canal]);
+
+  /** A conferência PRÉVIA pelo esquema vivo — o mesmo caminho do 422. */
+  const errosDoEsquema: ErrosDoServidor = useMemo(() => ({
+    campos: conferirForma(configuracaoDoCanal, esquemaAtual, campoHttp)
+      // As imagens dos grupos PMax são envelopes de asset, julgados pela ponte
+      // criativa no servidor; o esquema publicado não os descreve.
+      .filter((e) => !/\.imagens(\[|$)/.test(e.caminho)),
+    gerais: [],
+  }), [configuracaoDoCanal, esquemaAtual, campoHttp]);
+
+  const errosVisiveis = useMemo(
+    () => juntarErros(errosDoEsquema, errosDoServidor ?? SEM_ERROS),
+    [errosDoEsquema, errosDoServidor],
+  );
+
+  const matchDoPedido = useMemo(
+    () => matchPorKeywordDoPedido(rascunho.matchPorKeyword, conjunto),
+    [rascunho.matchPorKeyword, conjunto],
+  );
+
+  const extras = useMemo(() => {
+    const doCanal = canal === 'DISPLAY' ? faltasDeDisplay(cfgDisplay)
+      : canal === 'DEMAND_GEN' ? faltasDeDemandGen(cfgDemand, assetsDemand)
+        : canal === 'PERFORMANCE_MAX' ? faltasDePMax(cfgPMax)
+          : faltasDeSearch(cfgSearch, estrategia, rascunho.matchPorKeyword, conjunto);
+    const paradaDaForma: ParadaDaBancada = canal === 'DISPLAY' ? 'display_economia'
+      : canal === 'DEMAND_GEN' ? 'demand_economia'
+        : canal === 'PERFORMANCE_MAX' ? 'pmax_economia' : 'economia';
+    const forma = errosDoEsquema.campos.length
+      ? { [paradaDaForma]: [`corrigir ${errosDoEsquema.campos.length} campo(s) fora do esquema do canal`] }
+      : {};
+    return juntarFaltas(doCanal, forma);
+  }, [canal, cfgDisplay, cfgDemand, assetsDemand, cfgPMax, cfgSearch, estrategia,
+    rascunho.matchPorKeyword, conjunto, errosDoEsquema]);
 
   const paradasDoCanal: readonly ParadaDaBancada[] = useMemo(() => {
     switch (canal) {
       case 'DISPLAY': return ['display_destino', 'politica', 'display_geografia', 'display_audiencia', 'display_criativo', 'display_inventario', 'display_economia', 'display_revisao'];
       case 'DEMAND_GEN': return ['demand_resultado', 'politica', 'demand_superficies', 'demand_audiencia', 'demand_kit', 'demand_mensagem', 'demand_economia', 'demand_revisao'];
       case 'PERFORMANCE_MAX': return ['pmax_objetivo', 'pmax_lp', 'politica', 'pmax_asset_group', 'pmax_sinais', 'pmax_marca', 'pmax_economia', 'pmax_revisao'];
-      default: return ['destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao'];
+      default: return ['destino', 'politica', 'termos', 'anuncio', 'alcance', 'economia', 'revisao'];
     }
   }, [canal]);
 
@@ -364,8 +431,12 @@ const NovaCampanhaPage: React.FC = () => {
     cockpit, destino, conjunto, copy, verticais, orcamento, lance,
     certificacoes: rascunho.certificacoes,
     multicanal,
+    // ⚠️ Só CPC manual tem lance por clique a declarar. Nas outras quatro, o
+    // número é tCPA/tROAS/teto/parcela e mora na configuração.
+    lanceExigido: canal !== 'SEARCH' || estrategia === 'MANUAL_CPC',
+    extras,
   }), [cockpit, destino, conjunto, copy, verticais, orcamento, lance,
-       rascunho.certificacoes, multicanal]);
+       rascunho.certificacoes, multicanal, canal, estrategia, extras]);
 
   const faltas = useMemo(() => faltasDaBancada(fatos, paradasDoCanal), [fatos, paradasDoCanal]);
   const bloqueios = useMemo(() => bloqueiosDoCockpit(cockpit), [cockpit]);
@@ -458,8 +529,8 @@ const NovaCampanhaPage: React.FC = () => {
       if (canal === 'DISPLAY') {
         linhas.splice(4, 0,
           { rotulo: 'mensagem', valor: `${copyDisplay.headlines.length} títulos · ${copyDisplay.descriptions.length} descrições`, fonte: 'você, agora' },
-          { rotulo: 'estratégia', valor: 'MAXIMIZE_CONVERSIONS', fonte: 'contrato Display' },
-          { rotulo: 'CPA-alvo', valor: brl(numeroDigitado(rascunho.displayTcpa)), fonte: 'opcional; você, agora' },
+          { rotulo: 'estratégia', valor: rotuloDaEstrategia(cfgDisplay.estrategia), fonte: 'você, agora' },
+          { rotulo: 'exclusões', valor: `${cfgDisplay.excTodosOsApps ? 'todos os apps · ' : ''}${cfgDisplay.excRotulos.length} rótulo(s)`, fonte: 'doutrina de nascimento' },
         );
       }
       if (canal === 'DEMAND_GEN') {
@@ -467,19 +538,24 @@ const NovaCampanhaPage: React.FC = () => {
           { rotulo: 'superfícies', valor: rascunho.demandEstrategiaCanais, fonte: 'você, agora' },
           { rotulo: 'audiências', valor: rascunho.demandAudienciasConfirmadas ? String(itensDoTexto(rascunho.demandAudiencias).length) : null, fonte: 'lista confirmada' },
           { rotulo: 'mensagem', valor: `${copyDemand.headlines.length} títulos · ${copyDemand.descriptions.length} descrições`, fonte: 'você, agora' },
+          { rotulo: 'formato', valor: cfgDemand.formato, fonte: 'você, agora' },
+          { rotulo: 'estratégia', valor: rotuloDaEstrategia(cfgDemand.estrategia), fonte: 'você, agora' },
           { rotulo: 'mutação real', valor: 'FECHADA', fonte: 'contrato Demand Gen v1' },
         );
       }
       if (canal === 'PERFORMANCE_MAX') {
         linhas.splice(3, 0, {
-          rotulo: 'expansão da URL final', valor: 'DESLIGADA', fonte: 'trava do contrato PMax',
+          rotulo: 'expansão da URL final',
+          valor: cfgPMax.automacoes.includes('FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION') ? 'LIGADA' : 'DESLIGADA',
+          fonte: 'automações optadas',
         });
         linhas.splice(5, 0,
           { rotulo: 'asset group', valor: rascunho.pmaxNomeAssetGroup || null, fonte: 'você, agora' },
           { rotulo: 'sinais', valor: rascunho.pmaxSinaisConfirmados ? `${itensDoTexto(rascunho.pmaxAudiencias).length} audiências · ${itensDoTexto(rascunho.pmaxSearchThemes).length} temas` : null, fonte: 'lista confirmada' },
           { rotulo: 'estratégia', valor: rascunho.pmaxEstrategia, fonte: 'você, agora' },
-          { rotulo: rascunho.pmaxEstrategia === 'MAXIMIZE_CONVERSION_VALUE' ? 'ROAS-alvo' : 'CPA-alvo', valor: rascunho.pmaxMeta || null, fonte: 'opcional; você, agora' },
-          { rotulo: 'ponte HTTP', valor: 'AINDA FECHADA', fonte: 'contrato PMax v1' },
+          { rotulo: rascunho.pmaxEstrategia === 'MAXIMIZE_CONVERSION_VALUE' ? 'ROAS-alvo (%)' : 'CPA-alvo', valor: rascunho.pmaxMeta || null, fonte: 'opcional; você, agora' },
+          { rotulo: 'asset groups', valor: String(1 + cfgPMax.grupos.length), fonte: 'você, agora' },
+          { rotulo: 'criação real', valor: 'FECHADA', fonte: 'contrato PMax v1' },
         );
       }
       return linhas;
@@ -506,8 +582,18 @@ const NovaCampanhaPage: React.FC = () => {
         valor: orcamento == null ? null : `R$ ${(orcamento * 2).toFixed(2).replace('.', ',')} no dia`,
         fonte: 'regra do Google, não teto garantido',
       },
-      { rotulo: 'lance inicial', valor: brl(lance), fonte: 'você, agora' },
-      { rotulo: 'estratégia', valor: estrategia, fonte: 'você, agora' },
+      {
+        rotulo: 'lance inicial',
+        valor: estrategia === 'MANUAL_CPC' ? brl(lance) : 'não se aplica',
+        fonte: estrategia === 'MANUAL_CPC' ? 'você, agora' : 'a estratégia decide o lance',
+      },
+      { rotulo: 'estratégia', valor: rotuloDaEstrategia(estrategia), fonte: 'você, agora' },
+      {
+        rotulo: 'rede',
+        valor: cfgSearch.parceiros == null || cfgSearch.expansaoDisplay == null ? null
+          : `Search${cfgSearch.parceiros ? ' + parceiros' : ''}${cfgSearch.expansaoDisplay ? ' + Display' : ''}`,
+        fonte: 'você, agora',
+      },
       { rotulo: 'estado ao nascer', valor: 'PAUSED', fonte: 'a política do canário' },
       // ⚠️ O fato que impede um lançamento duplicado. Medido em 19/08/2026: a
       // campanha existia no Google Ads e as duas telas seguiam oferecendo
@@ -525,13 +611,13 @@ const NovaCampanhaPage: React.FC = () => {
     ];
   }, [cockpit, canal, conjunto, copy, orcamento, lance, estrategia,
     assetsDisplay.length, assetsDemand.length, assetsPMax.length, copyDisplay,
-    copyDemand, rascunho]);
+    copyDemand, rascunho, cfgDisplay, cfgDemand, cfgPMax, cfgSearch]);
 
   const proximoAto = useMemo(() => {
     if (faltas.length > 0) return `Resolver: ${faltas[0].texto}.`;
     if (canal === 'DISPLAY') return 'Conferir o contrato local; validate_only e criação pausada são atos separados.';
     if (canal === 'DEMAND_GEN') return 'Conferir o contrato local; validate_only e criação real seguem separados.';
-    if (canal === 'PERFORMANCE_MAX') return 'Completar o asset group e a ponte tipada; criação real segue fechada.';
+    if (canal === 'PERFORMANCE_MAX') return 'Provar no Google (validate_only); criação real segue fechada.';
     return 'Provar o pedido contra a conta. A prova não cria nada.';
   }, [faltas, canal]);
 
@@ -577,27 +663,16 @@ const NovaCampanhaPage: React.FC = () => {
    * inteiro: ele muda por releitura e não mudaria o pedido.
    */
   const temCockpit = cockpit !== null;
-  const pedido: PedidoDeProvaSearch | null = useMemo(() => (
-    (canal === 'SEARCH' && cockpit && oid && orcamento != null && lance != null)
+  const metaPrimariaId = cockpit?.conta?.meta_conversao?.primaria?.id;
+  /** O que todo pedido de canal leva. Só primitivos nas deps: identidade estável. */
+  const base: BaseDoPedido | null = useMemo(() => (
+    cockpit && oid && orcamento != null
       ? {
         opportunity_id: oid,
         run_id: runId ?? null,
         customer_id: cockpit.conta?.customer_id ?? '',
         login_customer_id: cockpit.conta?.login_customer_id ?? '',
-        // ⚠️ Vazio de propósito: as positivas vêm do conjunto aprovado, no
-        // servidor. `keywords_por_grupo(<conjunto aprovado>)` é quem as monta.
-        grupos: [],
-        copy: copy?.copy ?? null,
         budget_diario: orcamento,
-        cpc_inicial: lance,
-        rede: { google_search: true, search_partners: false, display_expansion: false },
-        match_type: DECORRE_DA_ESTRATEGIA[estrategia].match_type,
-        criterios: negativas,
-        keywords_fora: rascunho.keywordsFora,
-        canal: 'SEARCH' as const,
-        estrategia_lance: estrategia,
-        graduacao_em_conversoes: estrategia === 'MANUAL_CPC' ? rascunho.graduacao : 0,
-        meta_conversao_id: cockpit.conta?.meta_conversao?.primaria?.id ?? null,
         vertical: rascunho.vertical || cockpit.origem?.vertical,
         certificacoes: rascunho.certificacoes,
         url_final: cockpit.origem?.url_final,
@@ -611,58 +686,61 @@ const NovaCampanhaPage: React.FC = () => {
     // pedido e re-dispararia `/provar` justamente no instante em que a campanha
     // acabou de nascer, apagando o recibo da tela. Só os campos que o payload
     // de fato usa entram, e todos são primitivos: identidade estável.
-    canal, temCockpit,
-    cockpit?.conta?.customer_id, cockpit?.conta?.login_customer_id,
-    cockpit?.conta?.meta_conversao?.primaria?.id, cockpit?.origem?.vertical,
-    cockpit?.origem?.url_final, oid, runId, orcamento, lance,
-    copy?.copy, negativas, estrategia, rascunho.keywordsFora, rascunho.graduacao,
+    temCockpit, cockpit?.conta?.customer_id, cockpit?.conta?.login_customer_id,
+    cockpit?.origem?.vertical, cockpit?.origem?.url_final, oid, runId, orcamento,
     rascunho.vertical, rascunho.certificacoes,
+  ]);
+
+  const pedido: PedidoDeProvaSearch | null = useMemo(() => (
+    // CPC manual exige o lance por clique; as outras estratégias, não — o
+    // número delas mora em `configuracao_search.lance`.
+    (canal === 'SEARCH' && base && (estrategia !== 'MANUAL_CPC' || lance != null))
+      ? montarPedidoSearch({
+        base,
+        // ⚠️ As positivas vêm do conjunto aprovado, no servidor; daqui saem só
+        // as negativas que o operador declarou.
+        copy: copy?.copy ?? null,
+        negativas,
+        keywordsFora: rascunho.keywordsFora,
+        estrategia,
+        cpcManual: lance,
+        graduacao: rascunho.graduacao,
+        metaConversaoId: metaPrimariaId ?? null,
+        form: cfgSearch,
+        matchEscolhido: rascunho.matchPorKeyword,
+        conjunto,
+      })
+      : null
+  ), [
+    canal, base, copy?.copy, negativas, estrategia, lance, rascunho.keywordsFora,
+    rascunho.graduacao, metaPrimariaId, cfgSearch, rascunho.matchPorKeyword, conjunto,
   ]);
 
   /** Payloads tipados dos canais visuais. Eles são montados pelos mesmos
    * campos que a bancada exibe; nenhum valor decisório nasce escondido. A
    * chamada `validate_only` continua um ato separado e não é disparada por
    * montagem, navegação ou render. */
-  const pedidoDisplay: PedidoDeProvaDisplay | null = useMemo(() => (
-    (canal === 'DISPLAY' && cockpit && oid && orcamento != null
-      && multicanal.displayCriativo && multicanal.displayEconomia)
-      ? {
-        opportunity_id: oid,
-        run_id: runId ?? null,
-        customer_id: cockpit.conta?.customer_id ?? '',
-        login_customer_id: cockpit.conta?.login_customer_id ?? '',
-        copy: copyDisplay,
-        budget_diario: orcamento,
-        canal: 'DISPLAY',
-        estrategia_lance: 'MAXIMIZE_CONVERSIONS',
-        assets_display: assetsDisplay,
-        tcpa: numeroDigitado(rascunho.displayTcpa),
-        vertical: rascunho.vertical || cockpit.origem?.vertical,
-        certificacoes: rascunho.certificacoes,
-        url_final: cockpit.origem?.url_final,
-      }
+  const pedidoDisplay = useMemo(() => (
+    (canal === 'DISPLAY' && base && multicanal.displayCriativo && multicanal.displayEconomia)
+      ? montarPedidoDisplay({
+        base, copy: copyDisplay, assets: assetsDisplay, form: cfgDisplay,
+        videosYoutube: rascunho.displayVideosYoutube,
+      })
       : null
-  ), [canal, cockpit, oid, runId, orcamento, multicanal.displayCriativo,
-    multicanal.displayEconomia, copyDisplay, assetsDisplay, rascunho.displayTcpa,
-    rascunho.vertical, rascunho.certificacoes]);
+  ), [canal, base, multicanal.displayCriativo, multicanal.displayEconomia, copyDisplay,
+    assetsDisplay, cfgDisplay, rascunho.displayVideosYoutube]);
 
-  const pedidoDemand: PedidoDeProvaDemandGen | null = useMemo(() => {
-    if (canal !== 'DEMAND_GEN' || !cockpit || !oid || orcamento == null
+  const pedidoDemand = useMemo(() => {
+    if (canal !== 'DEMAND_GEN' || !base
         || !multicanal.demandSuperficies || !multicanal.demandAudiencia
         || !multicanal.demandKit || !multicanal.demandMensagem
         || !multicanal.demandEconomia) return null;
     const estrategiaCanais = rascunho.demandEstrategiaCanais;
     if (!estrategiaCanais || rascunho.demandUpgradedTargeting == null) return null;
-    return {
-      opportunity_id: oid,
-      run_id: runId ?? null,
-      customer_id: cockpit.conta?.customer_id ?? '',
-      login_customer_id: cockpit.conta?.login_customer_id ?? '',
+    return montarPedidoDemandGen({
+      base,
       copy: copyDemand,
-      budget_diario: orcamento,
-      canal: 'DEMAND_GEN',
-      estrategia_lance: 'MAXIMIZE_CONVERSIONS',
-      demand_gen: {
+      demandGen: {
         upgraded_targeting: rascunho.demandUpgradedTargeting,
         controles_de_canal: {
           estrategia: estrategiaCanais,
@@ -674,20 +752,39 @@ const NovaCampanhaPage: React.FC = () => {
         intencoes: [],
         exclusoes_de_audiencia: [],
       },
-      assets_demand_gen: assetsDemand,
-      vertical: rascunho.vertical || cockpit.origem?.vertical,
-      certificacoes: rascunho.certificacoes,
-      url_final: cockpit.origem?.url_final,
-    };
-  }, [canal, cockpit, oid, runId, orcamento, multicanal, rascunho,
-    copyDemand, assetsDemand]);
+      assets: assetsDemand,
+      form: cfgDemand,
+    });
+  }, [canal, base, multicanal, rascunho, copyDemand, assetsDemand, cfgDemand]);
+
+  /** PMax em `/provar`, com a configuração v25 — o contrato GADS-CRIACAO-CANAIS-v1. */
+  const pedidoPMaxProva = useMemo(() => {
+    if (canal !== 'PERFORMANCE_MAX' || !base
+        || !multicanal.pmaxAssetGroup || !multicanal.pmaxSinais
+        || !multicanal.pmaxMarca || !multicanal.pmaxEconomia
+        || rascunho.pmaxBrandGuidelines == null) return null;
+    return montarPedidoPMax({
+      base,
+      copy: copyPMax,
+      estrategia: rascunho.pmaxEstrategia,
+      meta: rascunho.pmaxMeta,
+      brandGuidelines: rascunho.pmaxBrandGuidelines,
+      audiencias: itensDoTexto(rascunho.pmaxAudiencias),
+      temas: itensDoTexto(rascunho.pmaxSearchThemes),
+      negativas: itensDoTexto(rascunho.pmaxNegativas),
+      nomeDoAssetGroup: rascunho.pmaxNomeAssetGroup,
+      assets: assetsPMax,
+      form: cfgPMax,
+      imagensDosGrupos: imagensDosGruposPMax,
+    });
+  }, [canal, base, multicanal, rascunho, copyPMax, assetsPMax, cfgPMax, imagensDosGruposPMax]);
 
   const pedidoPMax: PedidoDePlanejamentoPMax | null = useMemo(() => {
     if (canal !== 'PERFORMANCE_MAX' || !cockpit || !oid || orcamento == null
         || !multicanal.pmaxAssetGroup || !multicanal.pmaxSinais
         || !multicanal.pmaxMarca || !multicanal.pmaxEconomia
         || rascunho.pmaxBrandGuidelines == null) return null;
-    const meta = numeroDigitado(rascunho.pmaxMeta);
+    const meta = pedidoPMaxProva?.tcpa ?? pedidoPMaxProva?.target_roas ?? null;
     return {
       opportunity_id: oid,
       run_id: runId ?? null,
@@ -707,15 +804,19 @@ const NovaCampanhaPage: React.FC = () => {
         search_themes: itensDoTexto(rascunho.pmaxSearchThemes),
         negativas: itensDoTexto(rascunho.pmaxNegativas),
         nome_do_asset_group: rascunho.pmaxNomeAssetGroup.trim(),
-        videos_youtube: itensDoTexto(rascunho.pmaxVideosYoutube),
+        // Vídeo agora entra por id em `configuracao_pmax.videos`, que o plano
+        // local não aceita: aqui vai vazio, e o plano diz só da base.
+        videos_youtube: [],
       },
       assets_pmax: assetsPMax,
     };
   }, [canal, cockpit, oid, runId, orcamento, multicanal, rascunho,
-    copyPMax, assetsPMax]);
+    copyPMax, assetsPMax, pedidoPMaxProva]);
 
   const prepararProvaMulticanal = async () => {
-    const montado = canal === 'DISPLAY' ? pedidoDisplay : pedidoDemand;
+    const montado: PedidoDeProvaDeCanal | null = canal === 'DISPLAY' ? pedidoDisplay
+      : canal === 'DEMAND_GEN' ? pedidoDemand
+        : canal === 'PERFORMANCE_MAX' ? pedidoPMaxProva : null;
     if (!montado) {
       setEstadoDaProvaMulticanal('recusada');
       setMensagemDaProvaMulticanal('O pedido ainda tem campos obrigatórios incompletos.');
@@ -724,8 +825,10 @@ const NovaCampanhaPage: React.FC = () => {
     if (estadoDaProvaMulticanal === 'provando') return;
     setEstadoDaProvaMulticanal('provando');
     setMensagemDaProvaMulticanal(null);
+    setErrosDoServidor(null);
     try {
       const resposta = await pautadorApi.provarCampanha(montado);
+      setRespostaDaProva(resposta);
       if (resposta.preparo.aprovado && resposta.preparo.selo) {
         setEstadoDaProvaMulticanal('aprovada');
         setMensagemDaProvaMulticanal(
@@ -739,7 +842,15 @@ const NovaCampanhaPage: React.FC = () => {
       setEstadoDaProvaMulticanal('recusada');
       setMensagemDaProvaMulticanal(motivo);
     } catch (e) {
+      const erros = errosDo422(e);
       setEstadoDaProvaMulticanal('recusada');
+      if (erros) {
+        setErrosDoServidor(erros);
+        setMensagemDaProvaMulticanal(
+          `O servidor recusou a forma do pedido (${erros.campos.length + erros.gerais.length} erro(s)). Cada um está marcado no campo dele.`,
+        );
+        return;
+      }
       setMensagemDaProvaMulticanal(
         e instanceof PautadorApiError ? e.message : 'Não foi possível concluir o validate_only.',
       );
@@ -804,7 +915,7 @@ const NovaCampanhaPage: React.FC = () => {
         // As keywords da copy saem do conjunto aprovado — a mesma fonte do
         // pedido. Duas listas produziriam um anúncio ancorado noutros termos.
         keywords: conjunto.selecionadas.map((k) => k.termo),
-        match_type: DECORRE_DA_ESTRATEGIA[estrategia].match_type,
+        match_type: matchPadraoDaEstrategia(estrategia),
         vertical: rascunho.vertical || cockpit?.origem?.vertical || null,
         certificacoes: rascunho.certificacoes,
         modelo: rascunho.modeloDaCopy || null,
@@ -825,6 +936,39 @@ const NovaCampanhaPage: React.FC = () => {
       await pautadorApi.salvarCopyEditada({ opportunity_id: oid, run_id: runId ?? null, copy: c });
     } catch { await lerCopy(); }
   };
+
+  // ── o que a Revisão mostra: resumo, avisos e erros de forma ────────────────
+  const revisaoDoCanal = useMemo(() => {
+    const doServidor = respostaDaProva ? avisosDaProva(respostaDaProva) : null;
+    switch (canal) {
+      case 'DISPLAY': {
+        const c = configuracaoDoCanal as ReturnType<typeof configuracaoDisplay>;
+        return { resumo: resumoDeDisplay(c), previstos: avisosPrevistosDeDisplay(c), doServidor };
+      }
+      case 'DEMAND_GEN': {
+        const c = configuracaoDoCanal as ReturnType<typeof configuracaoDemandGen>;
+        return { resumo: resumoDeDemandGen(c), previstos: avisosPrevistosDeDemandGen(c), doServidor };
+      }
+      case 'PERFORMANCE_MAX': {
+        const c = configuracaoDoCanal as ReturnType<typeof configuracaoPMax>;
+        return { resumo: resumoDePMax(c), previstos: avisosPrevistosDePMax(c), doServidor };
+      }
+      default: {
+        const c = configuracaoDoCanal as ReturnType<typeof configuracaoSearch>;
+        return {
+          resumo: resumoDeSearch(c, matchDoPedido),
+          previstos: avisosPrevistosDeSearch(c, matchDoPedido),
+          doServidor,
+        };
+      }
+    }
+  }, [canal, configuracaoDoCanal, matchDoPedido, respostaDaProva]);
+
+  // Trocar de canal troca de pedido: o 422 e os avisos do anterior não valem.
+  useEffect(() => {
+    setErrosDoServidor(null);
+    setRespostaDaProva(null);
+  }, [canal]);
 
   // ── render ────────────────────────────────────────────────────────────────
   const titulo = cockpit?.origem?.nicho || (oid ? `oportunidade ${oid}` : 'oportunidade');
@@ -896,7 +1040,13 @@ const NovaCampanhaPage: React.FC = () => {
               </p>
             </header>
 
+            <ProvedorDeErros erros={errosVisiveis}>
             <div className="space-y-5 p-4 md:p-6">
+            {esquemaIndisponivel && (
+              <p role="status" className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                {esquemaIndisponivel}
+              </p>
+            )}
 
             {/* Os bloqueios do servidor ficam PERTO da decisão, e não no rodapé.
                 Fora da Revisão, que já os desenha por dentro. */}
@@ -909,9 +1059,9 @@ const NovaCampanhaPage: React.FC = () => {
             ) : etapa === 'display_destino' ? (
               <ParadaDisplayDestino cockpit={cockpit} destino={destino} />
             ) : etapa === 'display_geografia' ? (
-              <ParadaDisplayGeografia cockpit={cockpit} />
+              <ParadaDisplayGeografia cockpit={cockpit} form={cfgDisplay} alterar={alterarDisplay} esquema={esquemaAtual} />
             ) : etapa === 'display_audiencia' ? (
-              <ParadaDisplayAudiencia />
+              <ParadaDisplayAudiencia form={cfgDisplay} alterar={alterarDisplay} />
             ) : etapa === 'display_criativo' ? (
               <ParadaDisplayCriativo
                 nomeEmpresa={rascunho.displayNomeEmpresa}
@@ -926,17 +1076,21 @@ const NovaCampanhaPage: React.FC = () => {
                 onVideos={(v) => alterar('displayVideosYoutube', v)}
                 assets={assetsDisplay}
                 onAssets={setAssetsDisplay}
+                form={cfgDisplay}
+                alterar={alterarDisplay}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'display_inventario' ? (
-              <ParadaDisplayInventario />
+              <ParadaDisplayInventario form={cfgDisplay} alterar={alterarDisplay} esquema={esquemaAtual} />
             ) : etapa === 'display_economia' ? (
               <ParadaDisplayEconomia
                 cockpit={cockpit}
                 orcamento={orcamento}
                 orcamentoBruto={rascunho.orcamento}
                 onOrcamento={(v) => alterar('orcamento', v)}
-                tcpa={rascunho.displayTcpa}
-                onTcpa={(v) => alterar('displayTcpa', v)}
+                form={cfgDisplay}
+                alterar={alterarDisplay}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'display_revisao' ? (
               <ParadaDisplayRevisao
@@ -945,6 +1099,10 @@ const NovaCampanhaPage: React.FC = () => {
                 estadoDaProva={estadoDaProvaMulticanal}
                 mensagemDaProva={mensagemDaProvaMulticanal}
                 onProvar={() => void prepararProvaMulticanal()}
+                resumo={revisaoDoCanal.resumo}
+                avisosPrevistos={revisaoDoCanal.previstos}
+                avisosDoServidor={revisaoDoCanal.doServidor}
+                erros={errosVisiveis}
               />
             ) : etapa === 'demand_resultado' ? (
               <ParadaDemandResultado cockpit={cockpit} destino={destino} />
@@ -963,9 +1121,13 @@ const NovaCampanhaPage: React.FC = () => {
                 onAudiencias={(v) => alterar('demandAudiencias', v)}
                 audienciasConfirmadas={rascunho.demandAudienciasConfirmadas}
                 onAudienciasConfirmadas={(v) => alterar('demandAudienciasConfirmadas', v)}
+                form={cfgDemand}
+                alterar={alterarDemand}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'demand_kit' ? (
-              <ParadaDemandKit assets={assetsDemand} onAssets={setAssetsDemand} />
+              <ParadaDemandKit assets={assetsDemand} onAssets={setAssetsDemand}
+                               form={cfgDemand} alterar={alterarDemand} esquema={esquemaAtual} />
             ) : etapa === 'demand_mensagem' ? (
               <ParadaDemandMensagem
                 nomeEmpresa={rascunho.demandNomeEmpresa}
@@ -974,6 +1136,9 @@ const NovaCampanhaPage: React.FC = () => {
                 onTitulos={(v) => alterar('demandTitulos', v)}
                 descricoes={rascunho.demandDescricoes}
                 onDescricoes={(v) => alterar('demandDescricoes', v)}
+                form={cfgDemand}
+                alterar={alterarDemand}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'demand_economia' ? (
               <ParadaDemandEconomia
@@ -981,6 +1146,9 @@ const NovaCampanhaPage: React.FC = () => {
                 orcamento={orcamento}
                 orcamentoBruto={rascunho.orcamento}
                 onOrcamento={(v) => alterar('orcamento', v)}
+                form={cfgDemand}
+                alterar={alterarDemand}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'demand_revisao' ? (
               <ParadaDemandRevisao
@@ -989,11 +1157,15 @@ const NovaCampanhaPage: React.FC = () => {
                 estadoDaProva={estadoDaProvaMulticanal}
                 mensagemDaProva={mensagemDaProvaMulticanal}
                 onProvar={() => void prepararProvaMulticanal()}
+                resumo={revisaoDoCanal.resumo}
+                avisosPrevistos={revisaoDoCanal.previstos}
+                avisosDoServidor={revisaoDoCanal.doServidor}
+                erros={errosVisiveis}
               />
             ) : etapa === 'pmax_objetivo' ? (
-              <ParadaPMaxObjetivo cockpit={cockpit} />
+              <ParadaPMaxObjetivo cockpit={cockpit} form={cfgPMax} alterar={alterarPMax} esquema={esquemaAtual} />
             ) : etapa === 'pmax_lp' ? (
-              <ParadaPMaxLp cockpit={cockpit} destino={destino} />
+              <ParadaPMaxLp cockpit={cockpit} destino={destino} form={cfgPMax} alterar={alterarPMax} esquema={esquemaAtual} />
             ) : etapa === 'pmax_asset_group' ? (
               <ParadaPMaxAssetGroup
                 nomeAssetGroup={rascunho.pmaxNomeAssetGroup}
@@ -1010,6 +1182,11 @@ const NovaCampanhaPage: React.FC = () => {
                 onVideos={(v) => alterar('pmaxVideosYoutube', v)}
                 assets={assetsPMax}
                 onAssets={setAssetsPMax}
+                form={cfgPMax}
+                alterar={alterarPMax}
+                brandGuidelines={rascunho.pmaxBrandGuidelines}
+                imagensDosGrupos={imagensDosGruposPMax}
+                onImagensDoGrupo={(id, a) => setImagensDosGruposPMax((m) => ({ ...m, [id]: a }))}
               />
             ) : etapa === 'pmax_sinais' ? (
               <ParadaPMaxSinais
@@ -1023,11 +1200,17 @@ const NovaCampanhaPage: React.FC = () => {
                 onNegativas={(v) => alterar('pmaxNegativas', v)}
                 negativasConfirmadas={rascunho.pmaxNegativasConfirmadas}
                 onNegativasConfirmadas={(v) => alterar('pmaxNegativasConfirmadas', v)}
+                form={cfgPMax}
+                alterar={alterarPMax}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'pmax_marca' ? (
               <ParadaPMaxMarca
                 brandGuidelines={rascunho.pmaxBrandGuidelines}
                 onBrandGuidelines={(v) => alterar('pmaxBrandGuidelines', v)}
+                form={cfgPMax}
+                alterar={alterarPMax}
+                esquema={esquemaAtual}
               />
             ) : etapa === 'pmax_economia' ? (
               <ParadaPMaxEconomia
@@ -1047,6 +1230,14 @@ const NovaCampanhaPage: React.FC = () => {
                 estadoDoPlano={estadoDoPlanoPMax}
                 mensagemDoPlano={mensagemDoPlanoPMax}
                 onPlanejar={() => void montarPlanoPMax()}
+                estadoDaProva={estadoDaProvaMulticanal}
+                mensagemDaProva={mensagemDaProvaMulticanal}
+                onProvar={() => void prepararProvaMulticanal()}
+                resumo={revisaoDoCanal.resumo}
+                avisosPrevistos={revisaoDoCanal.previstos}
+                avisosDoServidor={revisaoDoCanal.doServidor}
+                erros={errosVisiveis}
+                expansaoDeUrl={cfgPMax.automacoes.includes('FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION')}
               />
             ) : etapa === 'destino' ? (
               <ParadaDestino cockpit={cockpit} destino={destino} />
@@ -1064,10 +1255,12 @@ const NovaCampanhaPage: React.FC = () => {
                 erroDoConjunto={erroDoConjunto}
                 aprovando={aprovando}
                 onAprovar={aprovarConjunto}
-                matchPadrao={DECORRE_DA_ESTRATEGIA[estrategia].match_type as MatchType}
-                permitirBroadPositivo={estrategia === 'MAXIMIZE_CONVERSIONS'}
+                matchPadrao={matchPadraoDaEstrategia(estrategia) as MatchType}
+                // BROAD só com lance por CONVERSÃO (contrato §3).
+                permitirBroadPositivo={lancePorConversao(estrategia)}
                 matchPorKeyword={rascunho.matchPorKeyword as Record<string, MatchType>}
                 onMatchPorKeyword={(m) => alterar('matchPorKeyword', m)}
+                correspondenciaEditavel
                 negativas={negativas}
                 // Guarda o que a mesa devolveu, INTEIRO. Reconstruir aqui é o
                 // que perdia correspondência e motivo — ver o ⚠️ de `negativas`.
@@ -1083,9 +1276,13 @@ const NovaCampanhaPage: React.FC = () => {
                   : 'Aprove o conjunto positivo antes de escrever: a copy ancora nos termos.'}
                 onEscrever={() => void escreverCopy()}
                 onEditar={(c) => void salvarCopyEditada(c)}
+                extra={<SecaoRsaSearch form={cfgSearch} alterar={alterarSearch} copy={copy?.copy ?? null} />}
                 modelo={rascunho.modeloDaCopy}
                 onModelo={(m) => alterar('modeloDaCopy', m)}
               />
+            ) : etapa === 'alcance' ? (
+              <ParadaAlcanceSearch form={cfgSearch} alterar={alterarSearch} esquema={esquemaAtual}
+                                   idiomaDoBrief={cockpit.origem?.idioma ?? null} />
             ) : etapa === 'economia' ? (
               <ParadaEconomia
                 cockpit={cockpit}
@@ -1101,6 +1298,9 @@ const NovaCampanhaPage: React.FC = () => {
                 onEstrategia={(e) => alterar('estrategia', e)}
                 graduacao={rascunho.graduacao}
                 onGraduacao={(g) => alterar('graduacao', g)}
+                formSearch={cfgSearch}
+                alterarSearch={alterarSearch}
+                esquema={esquemaAtual}
               />
             ) : (
               <ParadaRevisao
@@ -1110,7 +1310,11 @@ const NovaCampanhaPage: React.FC = () => {
                 lidoEm={cockpit.lido_em ?? null}
                 travaFechada={!trava?.env_presente}
                 explicacaoDaTrava={trava?.explicacao ?? null}
-                onProvar={() => setLancando(true)}
+                onProvar={() => { setErrosDoServidor(null); setLancando(true); }}
+                resumo={revisaoDoCanal.resumo}
+                avisosPrevistos={revisaoDoCanal.previstos}
+                avisosDoServidor={revisaoDoCanal.doServidor}
+                erros={errosVisiveis}
               />
             )}
 
@@ -1166,6 +1370,7 @@ const NovaCampanhaPage: React.FC = () => {
               />
             )}
             </div>
+            </ProvedorDeErros>
           </main>
 
           <Pedido
@@ -1192,6 +1397,8 @@ const NovaCampanhaPage: React.FC = () => {
             if (oid) void pautadorApi.cockpitDeTrafego(oid, { runId }).then(setCockpit).catch(() => {});
           }}
           onRecibo={setRecibo}
+          onProva={setRespostaDaProva}
+          onErroDaProva={(e) => setErrosDoServidor(errosDo422(e))}
           onDesfechoDeclarado={(d) => setDeclarado({
             estado: d.estado === 'recusado' ? 'recusado' : 'indeterminado',
             mensagem: d.mensagem,

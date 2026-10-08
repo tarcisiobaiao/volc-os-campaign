@@ -97,6 +97,7 @@ import type {
   PublicacaoDePagina,
 } from '@/types/publicacao';
 import type { RespostaDosCanais } from '@/lib/trafego/canais';
+import type { EsquemaDosCanais } from '@/types/trafegoCanais';
 import type { PlanoVigenteResposta } from '@/lib/trafego/portoes';
 import type { MatrizDoRun, RespostaDaMatriz } from '@/types/redator';
 import type { FunilEscrito } from '@/types/redatorPaginas';
@@ -106,7 +107,7 @@ import type {
   RevisaoDeCorrespondencia, VocabularioDoInventario,
   Cockpit, EscopoDeContas, EscritaDaCopy, EstadoDaTrava, PedidoDeCopy,
   CopyGerada, CopyPersistida, VereditoDePolitica, VerticalDePolitica,
-  PedidoDeProva, PedidoDeProvaSearch, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
+  PedidoDeProvaDeCanal, PedidoDeProvaSearch, ProjetoComConta, QuadroDeAlertas, QuadroDeTrafego,
   RespostaDaCopy, RespostaDaProva, ReciboDeLancamento,
   PedidoDePlanejamentoPMax, RespostaDoPlanejamentoPMax,
   RevisaoDoConjuntoPago, AprovacaoDoConjuntoPago,
@@ -2282,8 +2283,19 @@ export const pautadorApi = {
 
   // `validate_only` contra a conta real. É LEITURA: a API valida o payload e
   // descarta, sem criar nada. Pode demorar — o backend corta em 120s.
-  provarCampanha(pedido: PedidoDeProva): Promise<RespostaDaProva> {
+  //
+  // ⚠️ Um 422 de configuração (`configuracao_<canal>`, `match_por_keyword`)
+  // chega em `PautadorApiError.corpo` como o `detail[]` do FastAPI, com `loc`
+  // exato — `lib/trafego/configuracao/erros422.ts` o leva ao campo da tela.
+  provarCampanha(pedido: PedidoDeProvaDeCanal): Promise<RespostaDaProva> {
     return request('/api/trafego/provar', { method: 'POST', body: JSON.stringify(pedido) });
+  },
+
+  // O JSON Schema da configuração de cada canal (GADS-CRIACAO-CANAIS-v1),
+  // gerado dos MESMOS dataclasses que julgam `/provar` e `/subir`. A tela lê
+  // enums, limites e defaults daqui; não fala com o Google nem com o banco.
+  esquemaDosCanais(): Promise<EsquemaDosCanais> {
+    return request('/api/trafego/canais/esquema');
   },
 
   // PMax fica fora de `/provar`: este ato só projeta o contrato local e torna

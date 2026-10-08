@@ -20,6 +20,11 @@
 import type { PlanoDeMensuracao } from '@/lib/trafego/canais';
 import type { PerfilDeMensuracao } from '@/lib/trafego/portoes';
 
+import type {
+  ConfiguracaoDemandGenV25, ConfiguracaoDisplay, ConfiguracaoPMaxV25, ConfiguracaoSearch,
+  EstrategiaDemandGen, EstrategiaSearch, MatchPorKeyword,
+} from './trafegoCanais';
+
 export interface Cpc {
   /**
    * ⚠️ `null` É AUSÊNCIA, E AUSÊNCIA NÃO É ZERO.
@@ -261,7 +266,7 @@ export interface Cockpit {
  */
 export type ParadaDaBancada =
   // Search
-  | 'destino' | 'politica' | 'termos' | 'anuncio' | 'economia' | 'revisao'
+  | 'destino' | 'politica' | 'termos' | 'anuncio' | 'alcance' | 'economia' | 'revisao'
   // Display
   | 'display_destino' | 'display_geografia' | 'display_audiencia' | 'display_criativo' | 'display_inventario' | 'display_economia' | 'display_revisao'
   // Demand Gen
@@ -270,7 +275,7 @@ export type ParadaDaBancada =
   | 'pmax_objetivo' | 'pmax_lp' | 'pmax_asset_group' | 'pmax_sinais' | 'pmax_marca' | 'pmax_economia' | 'pmax_revisao';
 
 export const PARADAS_DA_BANCADA: readonly ParadaDaBancada[] = [
-  'destino', 'politica', 'termos', 'anuncio', 'economia', 'revisao',
+  'destino', 'politica', 'termos', 'anuncio', 'alcance', 'economia', 'revisao',
   'display_destino', 'display_geografia', 'display_audiencia', 'display_criativo', 'display_inventario', 'display_economia', 'display_revisao',
   'demand_resultado', 'demand_superficies', 'demand_audiencia', 'demand_kit', 'demand_mensagem', 'demand_economia', 'demand_revisao',
   'pmax_objetivo', 'pmax_lp', 'pmax_asset_group', 'pmax_sinais', 'pmax_marca', 'pmax_economia', 'pmax_revisao'
@@ -1172,19 +1177,36 @@ export interface PedidoDeProvaSearch extends PedidoDeProvaBase {
    * `ManifestoDeCanal.sabe_criar`, e o backend recusa com a lista do que existe.
    */
   canal?: CanalLegadoDeProva;
-  estrategia_lance?: EstrategiaDeLance;
+  /** Com `configuracao_search.lance`, a estratégia efetiva é a da
+   *  configuração; a Bancada manda as duas IGUAIS (contrato §3). */
+  estrategia_lance?: EstrategiaDeLance | EstrategiaSearch;
   /** Em quantas conversões trocar de estratégia. `0` desliga. O lançamento
    *  REGISTRA a regra; quem executa é o motor de gestão. */
   graduacao_em_conversoes?: number;
   meta_conversao_id?: string | null;
+  /** GADS-CRIACAO-CANAIS-v1 §6.1. Ausente = o comportamento de antes. */
+  configuracao_search?: ConfiguracaoSearch | null;
+  /** A correspondência que o operador escolheu, por keyword APROVADA (§4). */
+  match_por_keyword?: MatchPorKeyword | null;
   demand_gen?: never;
   assets_demand_gen?: never;
 }
 
-export interface PedidoDeProvaDemandGen extends PedidoDeProvaBase {
+/**
+ * ⚠️ GENÉRICO, e o default é o contrato de antes. Sem
+ * `configuracao_demand_gen.lance`, o envelope só aceita MAXIMIZE_CONVERSIONS;
+ * com ela, `estrategia_lance` precisa ser IGUAL a `lance.estrategia` (422 se
+ * divergir). `PedidoDeProva` continua no default — quem monta a configuração
+ * v25 usa `PedidoDeProvaDemandGen<EstrategiaDemandGen>`.
+ */
+export interface PedidoDeProvaDemandGen<
+  E extends EstrategiaDemandGen = 'MAXIMIZE_CONVERSIONS',
+> extends PedidoDeProvaBase {
   /** Demand Gen não herda a fronteira Search nem seus defaults. */
   canal: 'DEMAND_GEN';
-  estrategia_lance: 'MAXIMIZE_CONVERSIONS';
+  estrategia_lance: E;
+  /** GADS-CRIACAO-CANAIS-v1 §6.3 — só a parte v25; a base segue em `demand_gen`. */
+  configuracao_demand_gen?: ConfiguracaoDemandGenV25 | null;
   /** Contrato exclusivo de Demand Gen. Cada lista vazia interna é uma
    *  confirmação explícita de que a superfície não carrega itens nesta prova. */
   demand_gen: ConfiguracaoDemandGen;
@@ -1199,11 +1221,19 @@ export interface PedidoDeProvaDemandGen extends PedidoDeProvaBase {
 
 export interface PedidoDeProvaDisplay extends PedidoDeProvaBase {
   canal: 'DISPLAY';
-  estrategia_lance: 'MAXIMIZE_CONVERSIONS';
+  /** Pelo envelope: MaxConv, MaxConvValue e TARGET_SPEND. MANUAL_CPC/MANUAL_CPM
+   *  só via `configuracao_display.lance` (o envelope fica em MANUAL_CPC). */
+  estrategia_lance: 'MAXIMIZE_CONVERSIONS' | 'MAXIMIZE_CONVERSION_VALUE' | 'TARGET_SPEND' | 'MANUAL_CPC';
   assets_display: AssetDemandGen[];
   /** Ausente = Maximize Conversions puro; presente = tCPA dentro da mesma estratégia. */
   tcpa?: number | null;
-  cpc_inicial?: never;
+  /** tROAS (razão) em MAXIMIZE_CONVERSION_VALUE. */
+  target_roas?: number | null;
+  /** GADS-CRIACAO-CANAIS-v1 §6.2. Objeto presente = doutrina de nascimento. */
+  configuracao_display?: ConfiguracaoDisplay | null;
+  /** ⚠️ SÓ com `configuracao_display.lance = MANUAL_CPC`: aí ele É o lance do
+   *  grupo e é obrigatório. Em qualquer outra estratégia o servidor o recusa. */
+  cpc_inicial?: number;
   match_type?: never;
   demand_gen?: never;
   assets_demand_gen?: never;
@@ -1240,6 +1270,45 @@ export interface PedidoDePlanejamentoPMax {
   };
   assets_pmax: AssetDemandGen[];
 }
+
+/**
+ * PMax em `/provar` (validate_only), com a configuração v25. É um envelope
+ * PRÓPRIO, fora de `PedidoDeProva`, pela mesma razão do planejamento: o
+ * servidor proíbe aqui `cpc_inicial`, `match_type`, `rede` e `keywords_fora`
+ * — até como chave presente. A prova é fechada por flag de servidor (403).
+ */
+export interface PedidoDeProvaPMax {
+  opportunity_id: number;
+  customer_id: string;
+  login_customer_id: string;
+  run_id?: number | null;
+  canal: 'PERFORMANCE_MAX';
+  copy: CopyGerada;
+  budget_diario: number;
+  estrategia_lance: 'MAXIMIZE_CONVERSIONS' | 'MAXIMIZE_CONVERSION_VALUE';
+  tcpa?: number | null;
+  target_roas?: number | null;
+  vertical?: string | null;
+  certificacoes?: string[];
+  url_final?: string | null;
+  /** A base. `videos_youtube` (resource names) continua recusado em `/provar`:
+   *  vídeo entra por id em `configuracao_pmax.videos`. */
+  pmax: {
+    brand_guidelines_enabled: boolean;
+    audiencias: string[];
+    search_themes: string[];
+    negativas: string[];
+    nome_do_asset_group: string;
+  };
+  assets_pmax: AssetDemandGen[];
+  configuracao_pmax?: ConfiguracaoPMaxV25 | null;
+}
+
+/** Tudo que a Bancada pode mandar a `/provar`. */
+export type PedidoDeProvaDeCanal =
+  | PedidoDeProva
+  | PedidoDeProvaDemandGen<EstrategiaDemandGen>
+  | PedidoDeProvaPMax;
 
 export interface AchadoDoPlanoPMax {
   codigo: string;

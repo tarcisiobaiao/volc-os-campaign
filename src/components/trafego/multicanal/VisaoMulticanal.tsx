@@ -46,7 +46,7 @@
  * `motion-reduce`/`@media (hover:hover)`.
  */
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   CircleAlert,
   CircleCheck,
@@ -78,6 +78,7 @@ import { useCanais } from '@/components/trafego/canais/useCanais';
 import { ChipDeEstado } from '@/components/trafego/bancada/ChipDeEstado';
 import { AcaoDominante } from '@/components/trafego/bancada/AcaoDominante';
 import { Eixo } from '@/components/trafego/multicanal/Eixo';
+import { canalDaBancadaOuNulo, hrefDasOportunidadesDoCanal } from '@/lib/trafego/configuracao/links';
 
 /** O poço padrão de um bloco interno. Sem sombra, sempre (`design.md`). */
 const POCO = 'rounded-md border border-border bg-muted/20 p-3';
@@ -564,6 +565,18 @@ function CartaoDoCanal({ c }: { c: ContratoDeCanal }) {
             Ver as campanhas de {c.rotulo}
           </AcaoDominante>
         </div>
+        {/* O caminho até a bancada DESTE canal: ela exige uma oportunidade, e a
+            escolha dela é na aba Preparar — que recebe o canal na URL e o
+            repassa a cada link `/trafego/nova/:id?canal=`. Link, e não botão:
+            a CTA dominante do cartão continua uma só. */}
+        {canalDaBancadaOuNulo(c.canal) && (
+          <Link
+            to={hrefDasOportunidadesDoCanal(canalDaBancadaOuNulo(c.canal)!)}
+            className="mt-2 inline-flex min-h-10 items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Montar a partir de uma oportunidade em {c.rotulo}
+          </Link>
+        )}
         <p className="mt-2 max-w-[70ch] text-sm leading-6 text-muted-foreground text-pretty">
           Esta tela não monta pedido, não cria e não ativa nada — ela mostra o
           que cada canal pode fazer. O pedido nasce na bancada de uma

@@ -1,0 +1,2308 @@
+{
+ "versao": "GADS-CRIACAO-CANAIS-v1",
+ "documento": "docs/contracts/GADS-CRIACAO-CANAIS-v1.md",
+ "canais": {
+  "SEARCH": {
+   "campo_http": "configuracao_search",
+   "entra_no_motor_como": "search.construir(configuracao=ConfiguracaoSearch)",
+   "esquema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ConfiguracaoSearch",
+    "type": "object",
+    "properties": {
+     "lance": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/LanceSearch"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "rede": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/RedeSearch"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "ai_max": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/AiMaxSearch"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "anuncio": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/AnuncioSearch"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "programacao": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/FaixaDeHorario"
+      },
+      "description": "até 6 faixas por dia, sem sobreposição",
+      "default": []
+     },
+     "dispositivos": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/AjusteDeDispositivo"
+      },
+      "default": []
+     },
+     "geo": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/SegmentacaoGeo"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "inicio": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "fim": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "meta_de_conversao": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/MetaDeConversao"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     }
+    },
+    "additionalProperties": false,
+    "description": "Tudo que Search decide além do `Brief`. Cada campo `None`/vazio preserva o comportamento de antes desta entrega — exceto a rede, que deixa de ter default quando a configuração existe (`resolver_rede`).",
+    "$defs": {
+     "AiMaxSearch": {
+      "type": "object",
+      "properties": {
+       "correspondencia_de_termos": {
+        "type": "boolean"
+       },
+       "personalizacao_de_texto": {
+        "type": "boolean"
+       },
+       "expansao_de_url_final": {
+        "type": "boolean"
+       },
+       "grupos_sem_correspondencia": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "default": []
+       },
+       "exclusoes_de_url": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1,
+         "pattern": "^\\S+$"
+        },
+        "default": []
+       },
+       "listas_de_marca_incluidas": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^customers/(\\d+)/sharedSets/(-?\\d+)$"
+        },
+        "default": []
+       },
+       "listas_de_marca_excluidas": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^customers/(\\d+)/sharedSets/(-?\\d+)$"
+        },
+        "default": []
+       },
+       "termos_excluidos": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 30
+        },
+        "maxItems": 25,
+        "default": []
+       },
+       "restricoes_de_mensagem": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 300
+        },
+        "maxItems": 40,
+        "default": []
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "correspondencia_de_termos",
+       "personalizacao_de_texto",
+       "expansao_de_url_final"
+      ],
+      "description": "AI Max para Search, com cada automação declarada — nunca herdada."
+     },
+     "AjusteDeDispositivo": {
+      "type": "object",
+      "properties": {
+       "dispositivo": {
+        "type": "string",
+        "enum": [
+         "MOBILE",
+         "TABLET",
+         "DESKTOP"
+        ]
+       },
+       "fator": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 10.0,
+        "description": "0 exclui o dispositivo; senão entre 0.1 e 10.0"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "dispositivo",
+       "fator"
+      ],
+      "description": "`CampaignCriterion.device` + `bid_modifier`. `fator=0` exclui o dispositivo."
+     },
+     "AnuncioSearch": {
+      "type": "object",
+      "properties": {
+       "path1": {
+        "type": "string",
+        "maxLength": 15,
+        "pattern": "^[^/\\n]*$",
+        "default": ""
+       },
+       "path2": {
+        "type": "string",
+        "maxLength": 15,
+        "pattern": "^[^/\\n]*$",
+        "description": "exige path1",
+        "default": ""
+       },
+       "fixacoes": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/Fixacao"
+        },
+        "default": []
+       }
+      },
+      "additionalProperties": false,
+      "description": "Caminho exibido e fixações do RSA."
+     },
+     "FaixaDeHorario": {
+      "type": "object",
+      "properties": {
+       "dia": {
+        "type": "string",
+        "enum": [
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY",
+         "SUNDAY"
+        ]
+       },
+       "inicio": {
+        "type": "string",
+        "pattern": "^([01]\\d|2[0-4]):(00|15|30|45)$",
+        "description": "HH:MM, minutos 00/15/30/45"
+       },
+       "fim": {
+        "type": "string",
+        "pattern": "^([01]\\d|2[0-4]):(00|15|30|45)$",
+        "description": "HH:MM (24:00 = fim do dia)"
+       },
+       "ajuste": {
+        "anyOf": [
+         {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10.0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "bid_modifier (1.2 = +20%); só em MANUAL_CPC/TARGET_SPEND",
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "dia",
+       "inicio",
+       "fim"
+      ],
+      "description": "Um `AdScheduleInfo`: dia, início, fim e ajuste opcional de lance."
+     },
+     "Fixacao": {
+      "type": "object",
+      "properties": {
+       "texto": {
+        "type": "string",
+        "minLength": 1
+       },
+       "posicao": {
+        "type": "string",
+        "enum": [
+         "HEADLINE_1",
+         "HEADLINE_2",
+         "HEADLINE_3",
+         "DESCRIPTION_1",
+         "DESCRIPTION_2"
+        ]
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "texto",
+       "posicao"
+      ],
+      "description": "Um texto da copy preso a uma posição (`AdTextAsset.pinned_field`)."
+     },
+     "LanceSearch": {
+      "type": "object",
+      "properties": {
+       "estrategia": {
+        "type": "string",
+        "enum": [
+         "MANUAL_CPC",
+         "TARGET_SPEND",
+         "MAXIMIZE_CONVERSIONS",
+         "MAXIMIZE_CONVERSION_VALUE",
+         "TARGET_IMPRESSION_SHARE"
+        ]
+       },
+       "target_cpa": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "tCPA em moeda da conta; só em MAXIMIZE_CONVERSIONS",
+        "default": null
+       },
+       "target_roas": {
+        "anyOf": [
+         {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 1000.0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "razão (4.0 = 400%); só em MAXIMIZE_CONVERSION_VALUE",
+        "default": null
+       },
+       "teto_cpc": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "teto de CPC em moeda da conta; TARGET_SPEND (opcional) e TARGET_IMPRESSION_SHARE (obrigatório)",
+        "default": null
+       },
+       "local_impressao": {
+        "anyOf": [
+         {
+          "type": "string",
+          "enum": [
+           "ANYWHERE_ON_PAGE",
+           "TOP_OF_PAGE",
+           "ABSOLUTE_TOP_OF_PAGE"
+          ]
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "obrigatório em TARGET_IMPRESSION_SHARE",
+        "default": null
+       },
+       "fracao_impressao": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "obrigatório em TARGET_IMPRESSION_SHARE (0.6 = 60%)",
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "estrategia"
+      ],
+      "description": "Estratégia de lance da campanha, com só os campos que ELA tem."
+     },
+     "MetaDeCategoria": {
+      "type": "object",
+      "properties": {
+       "categoria": {
+        "type": "string",
+        "enum": [
+         "DEFAULT",
+         "PAGE_VIEW",
+         "PURCHASE",
+         "SIGNUP",
+         "DOWNLOAD",
+         "ADD_TO_CART",
+         "BEGIN_CHECKOUT",
+         "SUBSCRIBE_PAID",
+         "PHONE_CALL_LEAD",
+         "IMPORTED_LEAD",
+         "SUBMIT_LEAD_FORM",
+         "BOOK_APPOINTMENT",
+         "REQUEST_QUOTE",
+         "GET_DIRECTIONS",
+         "OUTBOUND_CLICK",
+         "CONTACT",
+         "ENGAGEMENT",
+         "STORE_VISIT",
+         "STORE_SALE",
+         "QUALIFIED_LEAD",
+         "CONVERTED_LEAD",
+         "YOUTUBE_FOLLOW_ON_VIEWS",
+         "IN_APP_AD_REVENUE"
+        ]
+       },
+       "origem": {
+        "type": "string",
+        "enum": [
+         "WEBSITE",
+         "GOOGLE_HOSTED",
+         "APP",
+         "CALL_FROM_ADS",
+         "STORE",
+         "YOUTUBE_HOSTED",
+         "LOCAL_SERVICES_ADS"
+        ]
+       },
+       "lance": {
+        "type": "boolean"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "categoria",
+       "origem",
+       "lance"
+      ],
+      "description": "Um `CampaignConversionGoal` (categoria × origem) e se ele entra no lance."
+     },
+     "MetaDeConversao": {
+      "type": "object",
+      "properties": {
+       "meta_personalizada": {
+        "anyOf": [
+         {
+          "type": "string",
+          "pattern": "^customers/(\\d+)/customConversionGoals/(\\d+)$"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "acoes_de_conversao": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^customers/(\\d+)/conversionActions/(\\d+)$"
+        },
+        "default": []
+       },
+       "categorias": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/MetaDeCategoria"
+        },
+        "default": []
+       }
+      },
+      "additionalProperties": false,
+      "description": "Para qual conversão ESTA campanha otimiza — o mecanismo certo da v25."
+     },
+     "RedeSearch": {
+      "type": "object",
+      "properties": {
+       "google_search": {
+        "type": "boolean",
+        "const": true
+       },
+       "parceiros": {
+        "type": "boolean"
+       },
+       "display_expansion": {
+        "type": "boolean"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "google_search",
+       "parceiros",
+       "display_expansion"
+      ],
+      "description": "As três chaves de `network_settings`, todas sem default."
+     },
+     "SegmentacaoGeo": {
+      "type": "object",
+      "properties": {
+       "tipo_positivo": {
+        "type": "string",
+        "enum": [
+         "PRESENCE",
+         "PRESENCE_OR_INTEREST",
+         "SEARCH_INTEREST"
+        ]
+       },
+       "tipo_negativo": {
+        "type": "string",
+        "enum": [
+         "PRESENCE",
+         "PRESENCE_OR_INTEREST"
+        ]
+       },
+       "locais": {
+        "type": "array",
+        "items": {
+         "type": "integer",
+         "minimum": 1
+        },
+        "description": "ids de geoTargetConstant do país do brief; vazio = o país",
+        "default": []
+       },
+       "locais_excluidos": {
+        "type": "array",
+        "items": {
+         "type": "integer",
+         "minimum": 1
+        },
+        "default": []
+       },
+       "idiomas": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "description": "códigos de idioma; precisa conter o idioma do brief",
+        "default": []
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "tipo_positivo",
+       "tipo_negativo"
+      ],
+      "description": "`geo_target_type_setting` + locais e idiomas múltiplos."
+     }
+    }
+   }
+  },
+  "DISPLAY": {
+   "campo_http": "configuracao_display",
+   "entra_no_motor_como": "display.construir(configuracao=ConfiguracaoDisplay)",
+   "esquema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ConfiguracaoDisplay",
+    "type": "object",
+    "properties": {
+     "lance": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/LanceDisplay"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "segmentacao": {
+      "$ref": "#/$defs/SegmentacaoDisplay",
+      "default": {
+       "listas_de_usuarios": [],
+       "publicos_personalizados": [],
+       "publicos_combinados": [],
+       "interesses": [],
+       "topicos": [],
+       "placements": [],
+       "palavras_chave": [],
+       "publicos_em_observacao": false,
+       "segmentacao_otimizada": false
+      }
+     },
+     "exclusoes": {
+      "$ref": "#/$defs/ExclusoesDisplay",
+      "default": {
+       "placements": [],
+       "apps": [],
+       "categorias_de_app": [],
+       "excluir_todos_os_apps": true,
+       "rotulos_de_conteudo": [
+        "PARKED_DOMAIN",
+        "SEXUALLY_SUGGESTIVE",
+        "PROFANITY",
+        "TRAGEDY",
+        "SOCIAL_ISSUES",
+        "JUVENILE"
+       ],
+       "topicos": [],
+       "listas_existentes": [],
+       "lista_nova": null
+      }
+     },
+     "frequencia": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/FrequenciaMaxima"
+      },
+      "default": []
+     },
+     "agenda": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/JanelaDeVeiculacao"
+      },
+      "description": "até 6 janelas por dia, sem sobreposição",
+      "default": []
+     },
+     "dispositivos_excluidos": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "enum": [
+        "MOBILE",
+        "TABLET",
+        "DESKTOP"
+       ]
+      },
+      "default": []
+     },
+     "presenca_geo": {
+      "type": "string",
+      "enum": [
+       "PRESENCE",
+       "PRESENCE_OR_INTEREST"
+      ],
+      "description": "`geo_target_type_setting.positive_geo_target_type`. ⚠️ Default PRESENCE: o RPM do GAM é por país, e \"interesse no local\" compra clique de fora. O negativo é sempre PRESENCE.",
+      "default": "PRESENCE"
+     },
+     "anuncio": {
+      "$ref": "#/$defs/AnuncioDisplay",
+      "default": {
+       "chamada_para_acao": null,
+       "cor_principal": null,
+       "cor_destaque": null,
+       "cores_flexiveis": true,
+       "formato": "ALL_FORMATS",
+       "videos_youtube": [],
+       "melhorias_de_asset": false,
+       "video_automatico": false
+      }
+     }
+    },
+    "additionalProperties": false,
+    "description": "Tudo o que Display decide além do brief. Ver docstring do módulo.",
+    "$defs": {
+     "AnuncioDisplay": {
+      "type": "object",
+      "properties": {
+       "chamada_para_acao": {
+        "anyOf": [
+         {
+          "type": "string",
+          "maxLength": 30
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "`call_to_action_text`, largura máxima 30.",
+        "default": null
+       },
+       "cor_principal": {
+        "anyOf": [
+         {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "`main_color`/`accent_color` \"#RRGGBB\" — os dois ou nenhum (field_error.REQUIRED medido).",
+        "default": null
+       },
+       "cor_destaque": {
+        "anyOf": [
+         {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "cores_flexiveis": {
+        "type": "boolean",
+        "description": "`allow_flexible_color`. Precisa ser True quando não há cores.",
+        "default": true
+       },
+       "formato": {
+        "type": "string",
+        "enum": [
+         "ALL_FORMATS",
+         "NATIVE",
+         "NON_NATIVE"
+        ],
+        "description": "`format_setting`: ALL_FORMATS | NATIVE | NON_NATIVE.",
+        "default": "ALL_FORMATS"
+       },
+       "videos_youtube": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^[A-Za-z0-9_-]{11}$"
+        },
+        "maxItems": 5,
+        "description": "IDs do YouTube (11 chars). Viram `YoutubeVideoAsset` no MESMO mutate.",
+        "default": []
+       },
+       "melhorias_de_asset": {
+        "type": "boolean",
+        "description": "`control_spec.enable_asset_enhancements` — default DESLIGADO (peça aprovada = peça servida).",
+        "default": false
+       },
+       "video_automatico": {
+        "type": "boolean",
+        "description": "`control_spec.enable_autogen_video` — default DESLIGADO.",
+        "default": false
+       }
+      },
+      "additionalProperties": false,
+      "description": "Campos do RDA além de texto e imagem."
+     },
+     "ExclusoesDisplay": {
+      "type": "object",
+      "properties": {
+       "placements": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "description": "Sites (CampaignCriterion.placement, negative=True).",
+        "default": []
+       },
+       "apps": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(?:1-\\d+|2-[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)$"
+        },
+        "description": "Apps: \"1-<id App Store>\" ou \"2-<pacote Android>\" (mobile_application).",
+        "default": []
+       },
+       "categorias_de_app": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|mobileAppCategoryConstants/\\d+)$"
+        },
+        "description": "`mobileAppCategoryConstants/<id>` (mobile_app_category, negativo).",
+        "default": []
+       },
+       "excluir_todos_os_apps": {
+        "type": "boolean",
+        "description": "⚠️ Default LIGADO: clique em app é acidental demais e a sessão não cai no portal monetizado. Exclui `CATEGORIA_TODOS_OS_APPS`.",
+        "default": true
+       },
+       "rotulos_de_conteudo": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "SEXUALLY_SUGGESTIVE",
+          "BELOW_THE_FOLD",
+          "PARKED_DOMAIN",
+          "JUVENILE",
+          "PROFANITY",
+          "TRAGEDY",
+          "VIDEO",
+          "VIDEO_RATING_DV_G",
+          "VIDEO_RATING_DV_PG",
+          "VIDEO_RATING_DV_T",
+          "VIDEO_RATING_DV_MA",
+          "VIDEO_NOT_YET_RATED",
+          "EMBEDDED_VIDEO",
+          "LIVE_STREAMING_VIDEO",
+          "SOCIAL_ISSUES",
+          "BRAND_SUITABILITY_CONTENT_FOR_FAMILIES"
+         ]
+        },
+        "description": "`content_label` negativos. Default = `ROTULOS_PADRAO`.",
+        "default": [
+         "PARKED_DOMAIN",
+         "SEXUALLY_SUGGESTIVE",
+         "PROFANITY",
+         "TRAGEDY",
+         "SOCIAL_ISSUES",
+         "JUVENILE"
+        ]
+       },
+       "topicos": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|topicConstants/\\d+)$"
+        },
+        "description": "Tópicos negativos (`topicConstants/<id>`).",
+        "default": []
+       },
+       "listas_existentes": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|customers/\\d+/sharedSets/\\d+)$"
+        },
+        "description": "Listas NEGATIVE_PLACEMENTS já existentes: `customers/<cid>/sharedSets/<id>`.",
+        "default": []
+       },
+       "lista_nova": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/ListaDeExclusaoNova"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "Lista nova, criada no mesmo mutate atômico.",
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "description": "Exclusões de campanha. Os defaults SÃO o padrão de nascimento."
+     },
+     "FrequenciaMaxima": {
+      "type": "object",
+      "properties": {
+       "impressoes": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "unidade": {
+        "type": "string",
+        "enum": [
+         "DAY",
+         "WEEK",
+         "MONTH"
+        ],
+        "default": "DAY"
+       },
+       "nivel": {
+        "type": "string",
+        "enum": [
+         "AD_GROUP_AD",
+         "AD_GROUP",
+         "CAMPAIGN"
+        ],
+        "default": "AD_GROUP_AD"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "impressoes"
+      ],
+      "description": "`campaign.frequency_caps[]` — evento IMPRESSION, `time_length` 1."
+     },
+     "JanelaDeVeiculacao": {
+      "type": "object",
+      "properties": {
+       "dia": {
+        "type": "string",
+        "enum": [
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY",
+         "SUNDAY"
+        ]
+       },
+       "inicio_hora": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 23
+       },
+       "fim_hora": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 24
+       },
+       "inicio_minuto": {
+        "type": "integer",
+        "enum": [
+         0,
+         15,
+         30,
+         45
+        ],
+        "default": 0
+       },
+       "fim_minuto": {
+        "type": "integer",
+        "enum": [
+         0,
+         15,
+         30,
+         45
+        ],
+        "default": 0
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "dia",
+       "inicio_hora",
+       "fim_hora"
+      ],
+      "description": "`CampaignCriterion.ad_schedule`. Fim exclusivo; 24:00 é o fim do dia."
+     },
+     "LanceDisplay": {
+      "type": "object",
+      "properties": {
+       "estrategia": {
+        "type": "string",
+        "enum": [
+         "MAXIMIZE_CONVERSIONS",
+         "MAXIMIZE_CONVERSION_VALUE",
+         "TARGET_SPEND",
+         "MANUAL_CPC",
+         "MANUAL_CPM"
+        ]
+       },
+       "teto_cpc": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "TARGET_SPEND: `cpc_bid_ceiling_micros`, em moeda da conta. `None` = sem teto.",
+        "default": null
+       },
+       "cpm_visivel": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "lance vCPM do grupo; obrigatório em MANUAL_CPM",
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "estrategia"
+      ],
+      "description": "A estratégia de Display, quando ela não cabe em `brief.estrategia_lance`."
+     },
+     "ListaDeExclusaoNova": {
+      "type": "object",
+      "properties": {
+       "nome": {
+        "type": "string",
+        "minLength": 1
+       },
+       "placements": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "default": []
+       },
+       "apps": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(?:1-\\d+|2-[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)+)$"
+        },
+        "default": []
+       },
+       "categorias_de_app": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "default": []
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "nome"
+      ],
+      "description": "`SharedSet` NEGATIVE_PLACEMENTS criado no MESMO mutate e ligado à campanha."
+     },
+     "SegmentacaoDisplay": {
+      "type": "object",
+      "properties": {
+       "listas_de_usuarios": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|customers/\\d+/userLists/\\d+)$"
+        },
+        "description": "`customers/<cid>/userLists/<id>` — remarketing (AdGroupCriterion.user_list).",
+        "default": []
+       },
+       "publicos_personalizados": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|customers/\\d+/customAudiences/\\d+)$"
+        },
+        "description": "`customers/<cid>/customAudiences/<id>` (AdGroupCriterion.custom_audience).",
+        "default": []
+       },
+       "publicos_combinados": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|customers/\\d+/combinedAudiences/\\d+)$"
+        },
+        "description": "`customers/<cid>/combinedAudiences/<id>` (AdGroupCriterion.combined_audience).",
+        "default": []
+       },
+       "interesses": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|customers/\\d+/userInterests/\\d+)$"
+        },
+        "description": "Afinidade e in-market: `customers/<cid>/userInterests/<id>` (AdGroupCriterion.user_interest). Ex.: 92000 \"Avid News Readers\" (AFFINITY), 80226 \"Education\" (IN_MARKET).",
+        "default": []
+       },
+       "topicos": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^(\\d+|topicConstants/\\d+)$"
+        },
+        "description": "`topicConstants/<id>` (TopicInfo). Ex.: 369 \"Vocational & Continuing Education\".",
+        "default": []
+       },
+       "placements": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "description": "Site onde o anúncio PODE aparecer (PlacementInfo.url, positivo). A contradição das duas fontes oficiais foi resolvida pela API: aceito.",
+        "default": []
+       },
+       "palavras_chave": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 80
+        },
+        "description": "Palavras-chave de CONTEÚDO (KeywordInfo, BROAD — Display não casa termo de busca; o match type não tem efeito de consulta aqui).",
+        "default": []
+       },
+       "publicos_em_observacao": {
+        "type": "boolean",
+        "description": "`True` = públicos em OBSERVAÇÃO (bid_only, não restringem); `False` = SEGMENTAÇÃO (restringem). `ad_group.targeting_setting` AUDIENCE.",
+        "default": false
+       },
+       "segmentacao_otimizada": {
+        "type": "boolean",
+        "description": "`ad_group.optimized_targeting_enabled`. ⚠️ Default DESLIGADO e escrito sempre: ligado, o Google expande para além dos critérios acima, que é o oposto do controle de inventário que a arbitragem precisa.",
+        "default": false
+       }
+      },
+      "additionalProperties": false,
+      "description": "Critérios POSITIVOS do ad group. Vazio = inventário aberto (e avisado)."
+     }
+    }
+   }
+  },
+  "DEMAND_GEN": {
+   "campo_http": "configuracao_demand_gen",
+   "entra_no_motor_como": "brief.demand_gen = ConfiguracaoDemandGenV25 (base = objeto `demand_gen`)",
+   "esquema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ConfiguracaoDemandGenV25",
+    "type": "object",
+    "properties": {
+     "formato": {
+      "type": "string",
+      "enum": [
+       "MULTI_ASSET",
+       "VIDEO_RESPONSIVO",
+       "CARROSSEL"
+      ],
+      "default": "MULTI_ASSET"
+     },
+     "lance": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/LanceDemandGen"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "call_to_action": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "Saiba Mais",
+         "Inscreva-se",
+         "Inscrever-se",
+         "Reservar",
+         "Fale conosco",
+         "Visitar site",
+         "Comprar agora",
+         "Ver mais",
+         "Learn more",
+         "Learn More",
+         "Apply now",
+         "Book now",
+         "Contact us",
+         "Download",
+         "Visit site",
+         "Shop now",
+         "Sign up",
+         "Get quote",
+         "Subscribe",
+         "See more",
+         "Get offer",
+         "Call now"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "multi-asset e carrossel; no vídeo o CTA é `video.call_to_action`",
+      "default": null
+     },
+     "video": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/VideoDemandGen"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "carrossel": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/CarrosselDemandGen"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "publico": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/PublicoDemandGen"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "segmentacao_otimizada": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "optimized targeting do ad group; null = não emitido",
+      "default": null
+     },
+     "automacoes": {
+      "type": "object",
+      "propertyNames": {
+       "enum": [
+        "GENERATE_DESIGN_VERSIONS_FOR_IMAGES",
+        "GENERATE_VIDEOS_FROM_OTHER_ASSETS",
+        "GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS",
+        "GENERATE_LANDING_PAGE_PREVIEW",
+        "GENERATE_LANDING_PAGE_TEXT",
+        "GENERATE_SHORTER_YOUTUBE_VIDEOS",
+        "GENERATE_VERTICAL_YOUTUBE_VIDEOS"
+       ]
+      },
+      "additionalProperties": {
+       "enum": [
+        "OPTED_IN",
+        "OPTED_OUT"
+       ]
+      },
+      "default": [],
+      "description": "tipo → OPTED_IN/OPTED_OUT; tipo ausente viaja OPTED_OUT. Só os tipos do formato escolhido: MULTI_ASSET: GENERATE_DESIGN_VERSIONS_FOR_IMAGES, GENERATE_VIDEOS_FROM_OTHER_ASSETS, GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS; VIDEO_RESPONSIVO: GENERATE_LANDING_PAGE_PREVIEW, GENERATE_LANDING_PAGE_TEXT, GENERATE_SHORTER_YOUTUBE_VIDEOS, GENERATE_VERTICAL_YOUTUBE_VIDEOS; CARROSSEL: nenhuma"
+     },
+     "agenda": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/FaixaDeAgendaDemandGen"
+      },
+      "description": "até 6 faixas por dia, sem sobreposição",
+      "default": []
+     }
+    },
+    "additionalProperties": false,
+    "description": "`ConfiguracaoDemandGen` + as decisões v25.2. Todo campo novo defaultado.",
+    "$defs": {
+     "CarrosselDemandGen": {
+      "type": "object",
+      "properties": {
+       "cartoes": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/CartaoCarrosselDemandGen"
+        },
+        "minItems": 2,
+        "maxItems": 10
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "cartoes"
+      ],
+      "description": "2..10 cartões, mesmas orientações em todos (Help Center: proporção consistente). Headline/description do anúncio vêm de `brief.copy`, com EXATAMENTE um item cada; logo é `imagens_demand_gen.logo_quadrado` (1)."
+     },
+     "CartaoCarrosselDemandGen": {
+      "type": "object",
+      "properties": {
+       "headline": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+       },
+       "marketing": {
+        "anyOf": [
+         {
+          "not": {},
+          "description": "imagem de cartão de carrossel precisa ser asset JÁ NA CONTA com recibo de aprovação (o cartão não resolve id temporário — medido em validate_only). A fronteira HTTP ainda não transporta asset remoto aprovado; o carrossel fica disponível só para chamadores do motor",
+          "x-volc-indisponivel-por-http": true
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "marketing_quadrada": {
+        "anyOf": [
+         {
+          "not": {},
+          "description": "imagem de cartão de carrossel precisa ser asset JÁ NA CONTA com recibo de aprovação (o cartão não resolve id temporário — medido em validate_only). A fronteira HTTP ainda não transporta asset remoto aprovado; o carrossel fica disponível só para chamadores do motor",
+          "x-volc-indisponivel-por-http": true
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "marketing_retrato": {
+        "anyOf": [
+         {
+          "not": {},
+          "description": "imagem de cartão de carrossel precisa ser asset JÁ NA CONTA com recibo de aprovação (o cartão não resolve id temporário — medido em validate_only). A fronteira HTTP ainda não transporta asset remoto aprovado; o carrossel fica disponível só para chamadores do motor",
+          "x-volc-indisponivel-por-http": true
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "url_final": {
+        "anyOf": [
+         {
+          "type": "string",
+          "pattern": "^https://"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "call_to_action": {
+        "anyOf": [
+         {
+          "type": "string",
+          "enum": [
+           "Saiba Mais",
+           "Inscreva-se",
+           "Inscrever-se",
+           "Reservar",
+           "Fale conosco",
+           "Visitar site",
+           "Comprar agora",
+           "Ver mais",
+           "Learn more",
+           "Learn More",
+           "Apply now",
+           "Book now",
+           "Contact us",
+           "Download",
+           "Visit site",
+           "Shop now",
+           "Sign up",
+           "Get quote",
+           "Subscribe",
+           "See more",
+           "Get offer",
+           "Call now"
+          ]
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "headline"
+      ],
+      "description": "Um cartão. Imagens por papel; ao menos paisagem ou quadrada."
+     },
+     "FaixaDeAgendaDemandGen": {
+      "type": "object",
+      "properties": {
+       "dia": {
+        "type": "string",
+        "enum": [
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY",
+         "SUNDAY"
+        ]
+       },
+       "inicio": {
+        "type": "string",
+        "pattern": "^([01]\\d|2[0-4]):(00|15|30|45)$"
+       },
+       "fim": {
+        "type": "string",
+        "pattern": "^([01]\\d|2[0-4]):(00|15|30|45)$"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "dia",
+       "inicio",
+       "fim"
+      ],
+      "description": "Uma janela de veiculação: dia + \"HH:MM\" de início e fim (fuso da conta)."
+     },
+     "LanceDemandGen": {
+      "type": "object",
+      "properties": {
+       "estrategia": {
+        "type": "string",
+        "enum": [
+         "MAXIMIZE_CONVERSIONS",
+         "MAXIMIZE_CONVERSION_VALUE",
+         "TARGET_SPEND",
+         "TARGET_CPC"
+        ]
+       },
+       "target_cpa": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "só em MAXIMIZE_CONVERSIONS (vira `target_cpa` avulso)",
+        "default": null
+       },
+       "target_roas": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso)",
+        "default": null
+       },
+       "target_cpc": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "obrigatório em TARGET_CPC",
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "estrategia"
+      ],
+      "description": "A estratégia de lance, com a meta que a acompanha — e só ela."
+     },
+     "LookalikeDemandGen": {
+      "type": "object",
+      "properties": {
+       "nome": {
+        "type": "string",
+        "minLength": 1
+       },
+       "sementes": {
+        "type": "array",
+        "items": {
+         "type": "integer",
+         "minimum": 1
+        },
+        "minItems": 1
+       },
+       "expansao": {
+        "type": "string",
+        "enum": [
+         "NARROW",
+         "BALANCED",
+         "BROAD"
+        ]
+       },
+       "paises": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^[A-Z]{2}$"
+        },
+        "minItems": 1
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "nome",
+       "sementes",
+       "expansao",
+       "paises"
+      ],
+      "description": "Segmento semelhante criado NO MESMO mutate (`UserList.lookalike_user_list`)."
+     },
+     "PublicoDemandGen": {
+      "type": "object",
+      "properties": {
+       "nome": {
+        "type": "string",
+        "minLength": 1
+       },
+       "user_lists": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^customers/(\\d+)/userLists/(\\d+)$"
+        },
+        "maxItems": 20,
+        "default": []
+       },
+       "lookalikes": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/LookalikeDemandGen"
+        },
+        "maxItems": 10,
+        "default": []
+       },
+       "exclusoes_user_list": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^customers/(\\d+)/userLists/(\\d+)$"
+        },
+        "maxItems": 20,
+        "default": []
+       },
+       "idades": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "18-24",
+          "25-34",
+          "35-44",
+          "45-54",
+          "55-64",
+          "65+"
+         ]
+        },
+        "default": []
+       },
+       "incluir_idade_indeterminada": {
+        "type": "boolean",
+        "default": true
+       },
+       "generos": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "MALE",
+          "FEMALE"
+         ]
+        },
+        "default": []
+       },
+       "incluir_genero_indeterminado": {
+        "type": "boolean",
+        "default": true
+       },
+       "rendas": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "INCOME_RANGE_0_50",
+          "INCOME_RANGE_50_60",
+          "INCOME_RANGE_60_70",
+          "INCOME_RANGE_70_80",
+          "INCOME_RANGE_80_90",
+          "INCOME_RANGE_90_UP"
+         ]
+        },
+        "default": []
+       },
+       "incluir_renda_indeterminada": {
+        "type": "boolean",
+        "default": true
+       },
+       "status_parentais": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "PARENT",
+          "NOT_A_PARENT"
+         ]
+        },
+        "default": []
+       },
+       "incluir_status_parental_indeterminado": {
+        "type": "boolean",
+        "default": true
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "nome"
+      ],
+      "description": "Uma `Audience` composta no mesmo mutate e anexada ao ad group."
+     },
+     "VideoDemandGen": {
+      "type": "object",
+      "properties": {
+       "youtube_ids": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "pattern": "^[A-Za-z0-9_-]{11}$"
+        },
+        "minItems": 1,
+        "maxItems": 5
+       },
+       "call_to_action": {
+        "anyOf": [
+         {
+          "type": "string",
+          "enum": [
+           "LEARN_MORE",
+           "GET_QUOTE",
+           "APPLY_NOW",
+           "SIGN_UP",
+           "CONTACT_US",
+           "SUBSCRIBE",
+           "DOWNLOAD",
+           "BOOK_NOW",
+           "SHOP_NOW",
+           "BUY_NOW",
+           "DONATE_NOW",
+           "ORDER_NOW",
+           "PLAY_NOW",
+           "SEE_MORE",
+           "START_NOW",
+           "VISIT_SITE",
+           "WATCH_NOW"
+          ]
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "breadcrumb1": {
+        "anyOf": [
+         {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 15
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "breadcrumb2": {
+        "anyOf": [
+         {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 15
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "exige breadcrumb1",
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "youtube_ids"
+      ],
+      "description": "O que só o vídeo responsivo tem. Textos vêm de `brief.copy`."
+     }
+    }
+   }
+  },
+  "PERFORMANCE_MAX": {
+   "campo_http": "configuracao_pmax",
+   "entra_no_motor_como": "brief.pmax = ConfiguracaoPMaxV25 (base = objeto `pmax`)",
+   "esquema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ConfiguracaoPMaxV25",
+    "type": "object",
+    "properties": {
+     "path1": {
+      "type": "string",
+      "maxLength": 15,
+      "pattern": "^[^/ ]*$",
+      "default": ""
+     },
+     "path2": {
+      "type": "string",
+      "maxLength": 15,
+      "pattern": "^[^/ ]*$",
+      "description": "exige path1",
+      "default": ""
+     },
+     "opcoes_de_url": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/OpcoesDeUrl"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     },
+     "videos": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/VideoYouTube"
+      },
+      "maxItems": 15,
+      "default": []
+     },
+     "grupos_adicionais": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/AssetGroupPMax"
+      },
+      "maxItems": 99,
+      "description": "asset groups 1..N; o grupo 0 nasce do brief (copy, assets_pmax, url_final, pmax.sinais)",
+      "default": []
+     },
+     "automacoes_optadas": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "enum": [
+        "FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",
+        "TEXT_ASSET_AUTOMATION",
+        "GENERATE_IMAGE_ENHANCEMENT",
+        "GENERATE_ENHANCED_YOUTUBE_VIDEOS",
+        "GENERATE_IMAGE_EXTRACTION",
+        "AUTOMATED_VIDEO_CRAWL",
+        "GENERATE_DESIGN_VERSIONS_FOR_IMAGES"
+       ]
+      },
+      "uniqueItems": true,
+      "description": "automações OPTED_IN; as ausentes viajam OPTED_OUT. FINAL_URL_EXPANSION exige TEXT_ASSET_AUTOMATION junto; AUTOMATED_VIDEO_CRAWL exige video_crawl + direitos declarados",
+      "default": []
+     },
+     "video_crawl": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/FonteDeVideoCrawl"
+      },
+      "default": []
+     },
+     "video_crawl_direitos_declarados": {
+      "type": "boolean",
+      "description": "declaração do dono de que tem direito sobre os vídeos encontrados; obrigatória com AUTOMATED_VIDEO_CRAWL",
+      "default": false
+     },
+     "exclusoes_de_url": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/ExclusaoDeUrl"
+      },
+      "default": []
+     },
+     "termos_excluidos": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 30
+      },
+      "maxItems": 25,
+      "default": []
+     },
+     "restricoes_de_mensagem": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 300
+      },
+      "maxItems": 40,
+      "default": []
+     },
+     "diretrizes_de_marca": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/DiretrizesDeMarca"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "só com pmax.brand_guidelines_enabled=true",
+      "default": null
+     },
+     "negativas_tipadas": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/NegativaPMax"
+      },
+      "default": []
+     },
+     "listas_de_negativas": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^customers/(\\d+)/sharedSets/(\\d+)$"
+      },
+      "default": []
+     },
+     "marcas_excluidas": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/MarcaExcluida"
+      },
+      "default": []
+     },
+     "listas_de_marcas_excluidas": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^customers/(\\d+)/sharedSets/(\\d+)$"
+      },
+      "default": []
+     },
+     "metas_de_conversao": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/MetaDeConversao"
+      },
+      "default": []
+     },
+     "meta_cliente_novo": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/MetaClienteNovo"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null
+     }
+    },
+    "additionalProperties": false,
+    "description": "`ConfiguracaoPMax` + as decisões da v25.2. Todo campo novo tem default que reproduz o payload de antes (exceto as correções medidas, ver pmax.py).",
+    "$defs": {
+     "AssetGroupPMax": {
+      "type": "object",
+      "properties": {
+       "nome": {
+        "type": "string",
+        "minLength": 1
+       },
+       "url_final": {
+        "type": "string",
+        "pattern": "^https://"
+       },
+       "textos": {
+        "$ref": "#/$defs/TextosPMax"
+       },
+       "imagens": {
+        "type": "array",
+        "items": {
+         "type": "object"
+        },
+        "description": "envelopes de asset, no MESMO formato de `assets_pmax`: cada item passa pelo portão de política e pela ponte criativa, que decide o papel pelo `tipo`"
+       },
+       "sinais": {
+        "anyOf": [
+         {
+          "type": "array",
+          "items": {
+           "$ref": "#/$defs/SinalDeAudiencia"
+          }
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "description": "[] = sem dica (escolha); null = ninguém escolheu (recusado)"
+       },
+       "videos": {
+        "type": "array",
+        "items": {
+         "$ref": "#/$defs/VideoYouTube"
+        },
+        "maxItems": 15,
+        "default": []
+       },
+       "path1": {
+        "type": "string",
+        "maxLength": 15,
+        "pattern": "^[^/ ]*$",
+        "default": ""
+       },
+       "path2": {
+        "type": "string",
+        "maxLength": 15,
+        "pattern": "^[^/ ]*$",
+        "default": ""
+       },
+       "opcoes_de_url": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/OpcoesDeUrl"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "nome",
+       "url_final",
+       "textos",
+       "imagens",
+       "sinais"
+      ],
+      "description": "Um asset group ADICIONAL, com tudo que é dele — e nada herdado."
+     },
+     "DiretrizesDeMarca": {
+      "type": "object",
+      "properties": {
+       "cor_principal": {
+        "type": "string",
+        "pattern": "^(#[0-9A-Fa-f]{6})?$",
+        "default": ""
+       },
+       "cor_destaque": {
+        "type": "string",
+        "pattern": "^(#[0-9A-Fa-f]{6})?$",
+        "default": ""
+       },
+       "fonte": {
+        "type": "string",
+        "enum": [
+         "",
+         "Open Sans",
+         "Roboto",
+         "Montserrat",
+         "Poppins",
+         "Lato",
+         "Oswald",
+         "Playfair Display",
+         "Roboto Slab"
+        ],
+        "default": ""
+       }
+      },
+      "additionalProperties": false,
+      "description": "`Campaign.brand_guidelines` — só com `brand_guidelines_enabled=True`."
+     },
+     "ExclusaoDeUrl": {
+      "type": "object",
+      "properties": {
+       "nome": {
+        "type": "string",
+        "minLength": 1
+       },
+       "argumento": {
+        "type": "string",
+        "minLength": 1
+       },
+       "operando": {
+        "type": "string",
+        "enum": [
+         "URL",
+         "PAGE_TITLE",
+         "PAGE_CONTENT"
+        ],
+        "default": "URL"
+       },
+       "operador": {
+        "type": "string",
+        "enum": [
+         "CONTAINS",
+         "EQUALS"
+        ],
+        "default": "CONTAINS"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "nome",
+       "argumento"
+      ],
+      "description": "`CampaignCriterion.webpage` NEGATIVO — só morde com a expansão de URL ligada."
+     },
+     "FonteDeVideoCrawl": {
+      "type": "object",
+      "properties": {
+       "url": {
+        "type": "string",
+        "pattern": "^https://"
+       },
+       "plataforma": {
+        "type": "string",
+        "enum": [
+         "LANDING_PAGE",
+         "SOCIAL",
+         "YOUTUBE"
+        ]
+       },
+       "habilitada": {
+        "type": "boolean",
+        "default": true
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "url",
+       "plataforma"
+      ],
+      "description": "`AutomatedVideoCrawlInfo` (v25.2): uma URL onde o Google pode buscar vídeo."
+     },
+     "MarcaExcluida": {
+      "type": "object",
+      "properties": {
+       "entity_id": {
+        "type": "string",
+        "pattern": "^/[gm]/[A-Za-z0-9_]+$"
+       },
+       "nome": {
+        "type": "string",
+        "default": ""
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "entity_id"
+      ],
+      "description": "Uma marca do catálogo do Google (`BrandSuggestionService`), por entidade."
+     },
+     "MetaClienteNovo": {
+      "type": "object",
+      "properties": {
+       "goal": {
+        "type": "string",
+        "pattern": "^customers/(\\d+)/goals/(\\d+)$",
+        "description": "`customers/<cid>/goals/<id>` — o Goal NEW_CUSTOMER_ACQUISITION da conta."
+       },
+       "modo": {
+        "type": "string",
+        "enum": [
+         "TARGET_ALL",
+         "TARGET_SPECIFIC"
+        ],
+        "description": "TARGET_ALL = todos, com ajuste de valor para cliente novo; TARGET_SPECIFIC = só cliente novo."
+       },
+       "valor_adicional": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       },
+       "multiplicador_de_valor": {
+        "anyOf": [
+         {
+          "type": "number",
+          "exclusiveMinimum": 0
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "goal",
+       "modo"
+      ],
+      "description": "Aquisição de cliente novo no esquema UNIFICADO da v25."
+     },
+     "MetaDeConversao": {
+      "type": "object",
+      "properties": {
+       "categoria": {
+        "type": "string",
+        "enum": [
+         "DEFAULT",
+         "PAGE_VIEW",
+         "PURCHASE",
+         "SIGNUP",
+         "DOWNLOAD",
+         "ADD_TO_CART",
+         "BEGIN_CHECKOUT",
+         "SUBSCRIBE_PAID",
+         "PHONE_CALL_LEAD",
+         "IMPORTED_LEAD",
+         "SUBMIT_LEAD_FORM",
+         "BOOK_APPOINTMENT",
+         "REQUEST_QUOTE",
+         "GET_DIRECTIONS",
+         "OUTBOUND_CLICK",
+         "CONTACT",
+         "ENGAGEMENT",
+         "STORE_VISIT",
+         "STORE_SALE",
+         "QUALIFIED_LEAD",
+         "CONVERTED_LEAD",
+         "YOUTUBE_FOLLOW_ON_VIEWS",
+         "IN_APP_AD_REVENUE"
+        ]
+       },
+       "origem": {
+        "type": "string",
+        "enum": [
+         "WEBSITE",
+         "GOOGLE_HOSTED",
+         "APP",
+         "CALL_FROM_ADS",
+         "STORE",
+         "YOUTUBE_HOSTED",
+         "LOCAL_SERVICES_ADS"
+        ]
+       },
+       "biddable": {
+        "type": "boolean"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "categoria",
+       "origem",
+       "biddable"
+      ],
+      "description": "`CampaignConversionGoal` — sobrescreve, NESTA campanha, o biddable da conta."
+     },
+     "NegativaPMax": {
+      "type": "object",
+      "properties": {
+       "texto": {
+        "type": "string",
+        "minLength": 1
+       },
+       "match_type": {
+        "type": "string",
+        "enum": [
+         "BROAD",
+         "PHRASE",
+         "EXACT"
+        ],
+        "default": "BROAD"
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "texto"
+      ]
+     },
+     "OpcoesDeUrl": {
+      "type": "object",
+      "properties": {
+       "sufixo_extra": {
+        "type": "array",
+        "items": {
+         "type": "array",
+         "prefixItems": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "string"
+          }
+         ],
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "description": "pares [chave, valor] acrescentados ao sufixo da campanha neste grupo",
+        "default": []
+       },
+       "tracking_url_template": {
+        "type": "string",
+        "description": "começa com {lpurl} ou https:// e carrega {lpurl}",
+        "default": ""
+       },
+       "parametros_personalizados": {
+        "type": "array",
+        "items": {
+         "type": "array",
+         "prefixItems": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "string"
+          }
+         ],
+         "minItems": 2,
+         "maxItems": 2
+        },
+        "maxItems": 8,
+        "description": "pares [chave, valor]; chave alfanumérica 1..16, usada como {_chave}",
+        "default": []
+       }
+      },
+      "additionalProperties": false,
+      "description": "URL options do ASSET GROUP (v25.2) — a marcação por grupo sem duplicar campanha."
+     },
+     "SinalDeAudiencia": {
+      "type": "object",
+      "properties": {
+       "tipo": {
+        "type": "string",
+        "enum": [
+         "audience",
+         "search_theme"
+        ]
+       },
+       "valor": {
+        "type": "string",
+        "minLength": 1
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "tipo",
+       "valor"
+      ],
+      "description": "`AssetGroupSignal` — a dica que substitui targeting positivo em PMax."
+     },
+     "TextosPMax": {
+      "type": "object",
+      "properties": {
+       "headlines": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "long_headlines": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "descriptions": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "headlines",
+       "long_headlines",
+       "descriptions"
+      ]
+     },
+     "VideoYouTube": {
+      "type": "object",
+      "properties": {
+       "video_id": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{11}$"
+       },
+       "nome": {
+        "type": "string",
+        "default": ""
+       }
+      },
+      "additionalProperties": false,
+      "required": [
+       "video_id"
+      ],
+      "description": "`YOUTUBE_VIDEO` CRIADO no mesmo mutate a partir do id público do vídeo."
+     }
+    }
+   }
+  }
+ },
+ "regras": [
+  "um objeto por canal, e só o do `canal` do pedido (outro canal → 422)",
+  "chave desconhecida → 422 com o caminho do campo (nunca descarte)",
+  "tipo errado → 422; não há coerção ('3' não vira 3, 1 não vira true)",
+  "omitir o objeto = comportamento de antes desta versão (payload idêntico)",
+  "objeto presente entra na impressão aprovável do plano"
+ ]
+}

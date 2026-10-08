@@ -34,6 +34,12 @@ import {
 } from '@/lib/trafego/portoes';
 import { GLIFO_DO_ESTADO, TOM_DO_ESTADO } from './portoesVisual';
 import type { Cockpit, EstrategiaDeLance } from '@/types/trafego';
+import type { EsquemaJson, EstrategiaSearch } from '@/types/trafegoCanais';
+import type { FormSearch } from '@/lib/trafego/configuracao/formularios';
+import { opcoesDoEsquema } from '@/lib/trafego/configuracao/esquema';
+import { rotuloDaEstrategia } from '@/lib/trafego/configuracao/revisao';
+import { LOCAIS_DE_IMPRESSAO } from '@/types/trafegoCanais';
+import { SecaoMetaDeConversaoSearch } from './SearchConfiguracao';
 
 /** A moeda em que a régua do canário trabalha nesta primeira versão. */
 export const MOEDA_DA_REGUA = 'BRL';
@@ -46,18 +52,23 @@ export const ParadaEconomia: React.FC<{
   planoIndisponivel: string | null;
   orcamento: number | null;
   lance: number | null;
-  estrategia: EstrategiaDeLance;
+  estrategia: EstrategiaDeLance | EstrategiaSearch;
   // Os controles continuam no componente que já os conhece.
   orcamentoBruto: string;
   onOrcamento: (v: string) => void;
   lanceBruto: string;
   onLance: (v: string) => void;
-  onEstrategia: (e: EstrategiaDeLance) => void;
+  onEstrategia: (e: EstrategiaSearch) => void;
   graduacao: number;
   onGraduacao: (g: number) => void;
+  /** `configuracao_search`: os números de cada estratégia e a meta de conversão. */
+  formSearch?: FormSearch;
+  alterarSearch?: <K extends keyof FormSearch>(campo: K, valor: FormSearch[K]) => void;
+  esquema?: EsquemaJson | null;
 }> = ({
   cockpit, plano, planoIndisponivel, orcamento, lance, estrategia,
   orcamentoBruto, onOrcamento, lanceBruto, onLance, onEstrategia, graduacao, onGraduacao,
+  formSearch, alterarSearch, esquema = null,
 }) => {
   const conta = cockpit.conta;
   const moedaDaConta = conta?.moeda ?? null;
@@ -125,7 +136,14 @@ export const ParadaEconomia: React.FC<{
         onBudget={onOrcamento}
         graduacao={graduacao}
         onGraduacao={onGraduacao}
+        formLance={formSearch?.lance}
+        onFormLance={alterarSearch ? (f) => alterarSearch('lance', f) : undefined}
+        locaisDeImpressao={opcoesDoEsquema(esquema, 'lance.local_impressao', LOCAIS_DE_IMPRESSAO)}
       />
+
+      {formSearch && alterarSearch && (
+        <SecaoMetaDeConversaoSearch form={formSearch} alterar={alterarSearch} esquema={esquema} />
+      )}
 
       <BlocoDeEvidencia titulo="A consequência do orçamento" tom="atencao">
         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -142,13 +160,15 @@ export const ParadaEconomia: React.FC<{
           />
           <LinhaDeFato
             rotulo="lance inicial"
-            valor={lance == null ? null : <span className="tabular">{brl(lance)}</span>}
+            valor={estrategia !== 'MANUAL_CPC'
+              ? 'não se aplica: a estratégia decide o lance'
+              : lance == null ? null : <span className="tabular">{brl(lance)}</span>}
             fonte="você, agora"
             ausencia="você ainda não declarou"
           />
           <LinhaDeFato
             rotulo="estratégia"
-            valor={estrategia}
+            valor={rotuloDaEstrategia(estrategia)}
             fonte="você, agora"
           />
         </dl>

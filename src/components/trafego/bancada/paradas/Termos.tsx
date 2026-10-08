@@ -112,10 +112,17 @@ export const ParadaTermos: React.FC<{
   onMatchPorKeyword: (m: Record<string, MatchType>) => void;
   negativas: CriterioDeKeyword[];
   onNegativas: (n: CriterioDeKeyword[]) => void;
+  /**
+   * ⚠️ Desde o contrato GADS-CRIACAO-CANAIS-v1 (§4) a correspondência por
+   * keyword CHEGA ao servidor (`match_por_keyword`) e troca a do conjunto
+   * aprovado — então o seletor volta a ser um controle que controla. Ausente =
+   * o comportamento de antes (somente leitura).
+   */
+  correspondenciaEditavel?: boolean;
 }> = ({
   cockpit, conjunto, erroDoConjunto, aprovando, onAprovar,
   matchPadrao, permitirBroadPositivo, matchPorKeyword, onMatchPorKeyword,
-  negativas, onNegativas,
+  negativas, onNegativas, correspondenciaEditavel = false,
 }) => {
   const densidade = useDensidade();
   // ⚠️ NASCE VAZIO. É o mesmo motivo do motivo de lançamento: um default de
@@ -147,6 +154,15 @@ export const ParadaTermos: React.FC<{
     }
     return [...por].map(([tipo, keywords]) => ({ tipo, keywords }));
   }, [conjunto]);
+
+  // A correspondência mostrada parte da APROVADA de cada keyword; a escolha do
+  // operador por cima. Sem isto, a mesa exibiria o padrão do pedido no lugar
+  // do que a mineração aprovou.
+  const matchExibido = useMemo(() => {
+    const m: Record<string, MatchType> = {};
+    for (const k of conjunto?.selecionadas ?? []) m[chave(k.termo)] = k.match_type as MatchType;
+    return { ...m, ...matchPorKeyword };
+  }, [conjunto, matchPorKeyword]);
 
   const faltasParaAprovar: string[] = [];
   if (!conjunto) faltasParaAprovar.push('carregar o conjunto pago');
@@ -310,12 +326,19 @@ export const ParadaTermos: React.FC<{
         volumePorKeyword={volumePorKeyword}
         matchPadrao={matchPadrao}
         permitirBroadPositivo={permitirBroadPositivo}
-        matchPorKeyword={matchPorKeyword}
+        matchPorKeyword={matchExibido}
         onMatchPorKeyword={onMatchPorKeyword}
         negativas={negativas}
         onNegativas={onNegativas}
-        positivasSomenteLeitura
+        positivasSomenteLeitura={!correspondenciaEditavel}
       />
+      {correspondenciaEditavel && (
+        <p className="max-w-[74ch] text-sm leading-relaxed text-muted-foreground">
+          Trocar a correspondência de uma positiva aprovada viaja no pedido como
+          <code className="mx-1">match_por_keyword</code>: não acrescenta nem retira keyword, só troca a
+          correspondência — e a troca aparece no plano e entra na impressão aprovável.
+        </p>
+      )}
     </div>
   );
 };

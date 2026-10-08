@@ -22,6 +22,9 @@ import { BlocoDeEvidencia, LinhaDeFato } from '../BlocoDeEvidencia';
 import { AcaoDominante } from '../AcaoDominante';
 import { PainelDeBloqueio } from '../PainelDeBloqueio';
 import type { AvisoDoCockpit, LinhaDoPedido } from '@/types/trafego';
+import type { ErrosDoServidor } from '@/lib/trafego/configuracao/erros422';
+import type { AvisoDaRevisao, LinhaDoResumo } from '@/lib/trafego/configuracao/revisao';
+import { AvisosDaRevisao, ErrosDeForma, ResumoDoCanal } from './RevisaoDoCanal';
 
 /** A frase normativa que antecede a prova. Ela não pode prometer aprovação. */
 export const FRASE_DA_PROVA =
@@ -35,7 +38,15 @@ export const ParadaRevisao: React.FC<{
   travaFechada: boolean;
   explicacaoDaTrava: string | null;
   onProvar: () => void;
-}> = ({ linhas, faltas, bloqueios, lidoEm, travaFechada, explicacaoDaTrava, onProvar }) => (
+  /** As escolhas de `configuracao_search`, os avisos e os erros de forma. */
+  resumo?: LinhaDoResumo[];
+  avisosPrevistos?: AvisoDaRevisao[];
+  avisosDoServidor?: AvisoDaRevisao[] | null;
+  erros?: ErrosDoServidor;
+}> = ({
+  linhas, faltas, bloqueios, lidoEm, travaFechada, explicacaoDaTrava, onProvar,
+  resumo, avisosPrevistos = [], avisosDoServidor = null, erros,
+}) => (
   <div className="space-y-4">
     <PainelDeBloqueio bloqueios={bloqueios} lidoEm={lidoEm} />
 
@@ -53,6 +64,10 @@ export const ParadaRevisao: React.FC<{
         ))}
       </dl>
     </BlocoDeEvidencia>
+
+    {resumo && <ResumoDoCanal titulo="Suas escolhas de Search" linhas={resumo} />}
+    {resumo && <AvisosDaRevisao previstos={avisosPrevistos} doServidor={avisosDoServidor} />}
+    {erros && <ErrosDeForma erros={erros} />}
 
     <BlocoDeEvidencia titulo="Provar contra a conta">
       <p className="max-w-[70ch] text-sm leading-6 text-foreground text-pretty">

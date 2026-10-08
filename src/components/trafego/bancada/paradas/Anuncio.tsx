@@ -63,9 +63,11 @@ export const ParadaAnuncio: React.FC<{
   onModelo: (m: string) => void;
   /** `true` quando os termos mudaram depois da escrita. */
   desatualizada?: boolean;
+  /** O que o RSA decide além do texto (caminho exibido, fixações). */
+  extra?: React.ReactNode;
 }> = ({
   copy, escrevendo, podeEscrever, motivoBloqueio, onEscrever, onEditar,
-  modelo, onModelo, desatualizada,
+  modelo, onModelo, desatualizada, extra,
 }) => {
   const e = copy ? (ESTADO[copy.status] ?? {
     palavra: copy.status,
@@ -164,6 +166,7 @@ export const ParadaAnuncio: React.FC<{
         modelo={modelo}
         onModelo={onModelo}
       />
+      {extra}
     </div>
   );
 };

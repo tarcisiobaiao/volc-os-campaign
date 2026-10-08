@@ -163,11 +163,20 @@ function cockpitLimpo(): Cockpit {
   } as unknown as Cockpit;
 }
 
+/**
+ * A rede DECIDIDA. Desde o contrato GADS-CRIACAO-CANAIS-v1 a Bancada manda
+ * `configuracao_search`, e com ela a rede deixa de ter default: parceiros e
+ * expansão para Display são escolha explícita (parada Alcance). Antes a página
+ * fixava `search_partners:false, display_expansion:false` sem controle.
+ */
+const REDE_DECIDIDA = { parceiros: false, expansaoDisplay: false };
+
 /** Orçamento e lance declarados: sem eles a Economia barra, e é correto. */
 function comEconomiaDeclarada() {
   window.sessionStorage.setItem('volc.bancada.rascunho.73.sem-run', JSON.stringify({
     orcamento: '10', lance: '0,12', estrategia: 'MANUAL_CPC', graduacao: 30,
     certificacoes: [],     matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
+    cfgSearch: REDE_DECIDIDA,
   }));
 }
 
@@ -256,6 +265,7 @@ describe('o pedido que a Bancada monta', () => {
         evidencia: null, observado_em: null, aprovado_por: null,
       }],
       matchPorKeyword: {}, keywordsFora: [], vertical: null, modeloDaCopy: '',
+      cfgSearch: REDE_DECIDIDA,
     }));
     cockpitDeTrafego.mockResolvedValue(cockpitLimpo());
     renderizar('revisao');

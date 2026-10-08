@@ -329,3 +329,20 @@ describe('a visão multicanal', () => {
     expect(within(container).queryAllByText(/BLOQUEADO/)).toHaveLength(0);
   });
 });
+
+// ── 08/10/2026 · o caminho até a bancada DESTE canal ───────────────────────
+//
+// Antes nenhum link punha `?canal=`: Display, Demand Gen e PMax só abriam na
+// bancada digitando a URL. Cada cartão agora leva à aba Preparar com o canal
+// na URL, e o Quadro repassa o canal a cada `/trafego/nova/:id?canal=`.
+describe('a visão multicanal leva à bancada já com o canal', () => {
+  it('cada cartão tem um link para as oportunidades daquele canal — e a CTA continua uma só', () => {
+    const { container } = montar();
+    const links = within(container).getAllByRole('link', { name: /Montar a partir de uma oportunidade/ });
+    expect(links.map((l) => l.getAttribute('href'))).toEqual([
+      '/trafego?aba=preparar&canal=PERFORMANCE_MAX',
+      '/trafego?aba=preparar&canal=DISPLAY',
+      '/trafego?aba=preparar&canal=DEMAND_GEN',
+    ]);
+  });
+});

@@ -216,11 +216,13 @@ describe('3 · tudo que a tela fazia, ela continua fazendo', () => {
     expect(screen.getAllByText('—').length).toBe(2);
   });
 
-  it('leva a /trafego/nova/:opportunityId com o run no endereço', async () => {
+  it('leva a /trafego/nova/:opportunityId com o run e o canal no endereço', async () => {
     montar();
     await screen.findByText('Maquininha de cartão para MEI');
     const link = screen.getByRole('link', { name: /montar campanha/ });
-    expect(link.getAttribute('href')).toBe('/trafego/nova/63?run=7');
+    // ⚠️ `canal` entrou em 08/10/2026: sem ele a bancada abria sempre em
+    // Search, e os outros três canais só existiam digitando a URL.
+    expect(link.getAttribute('href')).toBe('/trafego/nova/63?run=7&canal=SEARCH');
   });
 
   it('funil que já tem campanha no ar não é convidado a lançar outra igual', async () => {
@@ -229,7 +231,7 @@ describe('3 · tudo que a tela fazia, ela continua fazendo', () => {
     montar();
     await screen.findByText('Consignado INSS');
     const link = screen.getByRole('link', { name: /abrir o que existe/ });
-    expect(link.getAttribute('href')).toBe('/trafego/nova/81?run=11');
+    expect(link.getAttribute('href')).toBe('/trafego/nova/81?run=11&canal=SEARCH');
     expect(screen.getByText('2 campanhas no ar')).toBeTruthy();
   });
 
@@ -310,5 +312,44 @@ describe('5 · o vazio ensina e a falha tem código copiável', () => {
     montar();
     await waitFor(() => expect(screen.getByText('Maquininha de cartão para MEI')).toBeTruthy());
     expect(screen.getByText('permissão não verificada')).toBeTruthy();
+  });
+});
+
+// ── 08/10/2026 · os links levam o canal ─────────────────────────────────────
+
+describe('4 · a bancada abre no canal escolhido', () => {
+  function montarEm(url: string) {
+    const cliente = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    return render(
+      <QueryClientProvider client={cliente}>
+        <MemoryRouter initialEntries={[url]}><QuadroDeOportunidades /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('o canal que chegou na URL (da Visão Multicanal) vai em todos os links da bancada', async () => {
+    montarEm('/trafego?aba=preparar&canal=DISPLAY');
+    await screen.findByText('Maquininha de cartão para MEI');
+    expect(screen.getByRole('link', { name: /montar campanha/ }).getAttribute('href'))
+      .toBe('/trafego/nova/63?run=7&canal=DISPLAY');
+    expect(screen.getByRole('link', { name: /abrir o que existe/ }).getAttribute('href'))
+      .toBe('/trafego/nova/81?run=11&canal=DISPLAY');
+  });
+
+  it('o apelido PMAX da URL vira o canal canônico', async () => {
+    montarEm('/trafego?canal=PMAX');
+    await screen.findByText('Maquininha de cartão para MEI');
+    expect(screen.getByRole('link', { name: /montar campanha/ }).getAttribute('href'))
+      .toBe('/trafego/nova/63?run=7&canal=PERFORMANCE_MAX');
+  });
+
+  it('escolher outro canal no quadro troca o destino dos links', async () => {
+    montarEm('/trafego?aba=preparar');
+    await screen.findByText('Maquininha de cartão para MEI');
+    const { fireEvent } = await import('@testing-library/react');
+    fireEvent.click(screen.getByRole('button', { name: 'Demand Gen' }));
+    await waitFor(() => expect(screen.getByRole('link', { name: /montar campanha/ }).getAttribute('href'))
+      .toBe('/trafego/nova/63?run=7&canal=DEMAND_GEN'));
+    expect(screen.getByRole('button', { name: 'Demand Gen' }).getAttribute('aria-pressed')).toBe('true');
   });
 });
