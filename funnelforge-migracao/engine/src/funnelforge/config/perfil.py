@@ -101,16 +101,22 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
     # Preset fechado e versionado para ChatGPT + concorrência entre páginas.
     # IMPORTANTE: o preset não escolhe um motor editorial reduzido. Há um único
     # pipeline de qualidade; velocidade vem de `page_workers`, cache e execução
-    # concorrente de passos independentes. O nome público foi mantido para não
-    # quebrar cards já gravados, mas `perfil=rapido` não é mais ativado.
+    # concorrente de passos independentes. `rapido_chatgpt` e apenas o alias
+    # legado para cards ja gravados; disparos novos usam `completo_chatgpt`.
     preset = _texto(perfil.get("preset"))
     if preset:
-        if preset != "rapido_chatgpt":
+        if preset not in {"completo_chatgpt", "rapido_chatgpt"}:
             raise ValueError(f"preset de execução desconhecido: {preset}")
         novo.run = RunConfig(**{
             **novo.run.model_dump(),
-            "max_retries": 1,
-            "max_chamadas_llm": 40,
+            # O motor completo conserva as duas tentativas da doutrina. A
+            # aceleracao vem de page_workers, nunca de retirar a chance de SEO,
+            # briefing ou redacao corrigirem um gate objetivo.
+            "max_retries": novo.run.max_retries,
+            # Dossie orientado por requisitos + imagens/revisoes das cinco
+            # paginas pode legitimamente passar de 40 chamadas. Continua
+            # finito, mas sem cortar um funil saudavel na ultima etapa.
+            "max_chamadas_llm": 60,
             # A LP sem hero não é um funil pronto. O build rápido agora falha
             # fechado quando o provider/ativo não entrega a imagem, em vez de
             # publicar silenciosamente um template incompleto.
@@ -139,6 +145,14 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
             model="chatgpt/gpt-6.1-sol", fallbacks=[], temperature=0.2,
             validators=[], web_search=True, reasoning_effort="low",
         )
+        # A sessão ChatGPT usada para texto não aceita entrada de imagem. A
+        # revisão visual é, portanto, a única etapa textual explicitamente
+        # roteada à API Gemini multimodal. Isto não é fallback: o modelo é
+        # fixo, auditável e a ausência da chave falha apenas essa etapa.
+        passos["image_review"] = StepConfig(
+            model="gemini/gemini-3.5-flash", fallbacks=[], temperature=0.0,
+            validators=[],
+        )
         novo.steps = passos
         novo.openai = OpenAIConfig(
             auth_mode="chatgpt_plan",
@@ -147,7 +161,9 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
             reviewer_model="gpt-6.1-sol",
             reasoning_effort="high",
             allow_api_key_fallback=False,
-            somente_plano=True,
+            # `False` permite somente o passo Gemini declarado acima. Todos os
+            # passos `chatgpt/*` continuam sem fallback faturado.
+            somente_plano=False,
             armazenamento="keychain",
         )
         novo = aplicar_modo_openai(novo)

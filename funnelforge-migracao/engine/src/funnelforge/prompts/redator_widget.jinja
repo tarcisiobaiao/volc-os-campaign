@@ -120,7 +120,18 @@ FIM_DO_ARTIGO>>>
 - `quando` mapeia o `id` de cada controle ao `valor` escolhido. **Toda combinação possível de respostas precisa levar a algum cenário.** Se você não quiser escrever todas, marque UM cenário com `"padrao": true` — ele responde pelas que sobrarem.
 - Cada cenário precisa de `chip`, `titulo` e pelo menos um entre `corpo`, `passos` e `listas`. Cenário só com título é recusado.
 - `passos` quando a ordem importa (faça isto, depois aquilo). `listas` quando são grupos nomeados (prós / contras / cuidados). Use o que couber; não force os dois.
+{%- if editorial_v2 | default(false) %}
+- Respeite os limites sem cortar palavras: título 90, subtítulo 160, chip 28, corpo 420, cada opção 60, cada passo 140, cada item de lista 120 e rodapé 240 caracteres. Se precisar encurtar, reescreva a frase inteira.
+{%- endif %}
 - Mínimo de 2 cenários. Com um só, responder não muda nada na tela.
+
+{%- if editorial_v2 | default(false) %}
+## ⚠️ NÃO INTERPRETE A AUSÊNCIA DE UM SINAL
+
+Só diga que um aplicativo, mensagem ou canal **mostra**, **não mostra**, **confirma** ou **não confirma** uma situação quando isso estiver literalmente nos FATOS AUTORIZADOS. A ausência de menu, aviso, código ou confirmação não permite concluir elegibilidade, seleção ou exclusão. Quando a base não trouxer essa relação, limite-se a explicar o que o canal comprovadamente permite consultar ou acompanhar.
+
+A existência de um canal oficial para conferir algo também **não prova** que marca, distribuidora, aplicativo, documento ou outro sinal "não basta". Não compare sinais sem um fato que faça essa comparação. Escreva positivamente: qual é o canal ou procedimento comprovado e como usá-lo.
+{%- endif %}
 
 ## ⚠️ NENHUMA URL DENTRO DO WIDGET
 

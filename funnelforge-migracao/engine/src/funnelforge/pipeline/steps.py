@@ -3363,6 +3363,10 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
                 # que o widget inventou.
                 facts=base_para_o_redator(state.facts.get(page.page_number)),
                 ativo=ativo or {},
+                # As guardas editoriais novas não podem alterar o ouro do V1.
+                # O motor é único; a flag escolhe apenas o contrato de qualidade
+                # do run, como já acontece nos demais prompts do Editorial V2.
+                editorial_v2=bool(getattr(state, "editorial_v2", False)),
             ) + correcao
             text, res = deps.runner.run_llm_step(
                 key, cfg, [{"role": "user", "content": prompt}], ctx={},

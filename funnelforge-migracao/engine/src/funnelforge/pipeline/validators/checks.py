@@ -827,13 +827,25 @@ def _extract_hosts(content: str) -> list[str]:
             if pattern is _BARE_HOST_RE:
                 clean = raw.strip().lower()
                 if "/" not in clean and not clean.startswith("www."):
-                    window = _normalized_claim(
-                        content[max(0, m.start() - 220):m.end() + 220])
+                    original_window = content[max(0, m.start() - 220):m.end() + 220]
+                    window = _normalized_claim(original_window)
                     negated_channel = any(marker in window for marker in (
                         "nao confirma", "nao foi confirmado", "nenhum procedimento",
                         "sem confirmacao", "nao ha instrucoes", "nao orienta",
                     ))
-                    if negated_channel:
+                    # Some official services have a dot in their BRAND NAME
+                    # (for example ``Fala.BR``).  Plain prose such as "o canal
+                    # Fala.BR" is not a link and must not be treated as an
+                    # invented destination.  This exception is deliberately
+                    # narrow: mixed-case brand, named as a channel/service,
+                    # without an imperative to visit it.  Actual href/src,
+                    # paths and ordinary lowercase bare domains still pass
+                    # through the evidence-derived authorization below.
+                    # Um token de marca com caixa distintiva (``Fala.BR``) em
+                    # prosa não é URL. A exceção não alcança href/src, URL com
+                    # esquema, caminho nem domínio comum em minúsculas.
+                    branded_channel = raw != raw.lower()
+                    if negated_channel or branded_channel:
                         continue
             host = _url_host(raw)
             if host:
@@ -1898,8 +1910,30 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
                      "chegaram a este portão — não deu para conferir nada. "
                      "Fiação quebrada no chamador, não conteúdo ruim."),
         )]
-    strict = _field(facts_obj, "fatos_verificados", []) or []
+    strict = list(_field(facts_obj, "fatos_verificados", []) or [])
     resolved = set(_field(facts_obj, "fontes_resolvidas", []) or [])
+    # ``dados_validados`` are the qualitative, typed facts returned by the
+    # same research step.  Until now the inventory correctly exposed them to
+    # the writer, but this final gate trusted only ``fatos_verificados``.  A
+    # sentence such as "CadÚnico atualizado há até 24 meses" was therefore
+    # rejected even when its typed datum and live-resolved source were in the
+    # very same ResearchFacts object.  Normalize both collections into the
+    # small interface consumed below; source resolution and ``citavel`` remain
+    # mandatory, so this does not weaken the evidence contract.
+    for datum in (_field(facts_obj, "dados_validados", []) or []):
+        if not isinstance(datum, dict):
+            continue
+        source = str(datum.get("fonte") or datum.get("fonte_primaria") or "")
+        value = str(datum.get("fato") or datum.get("texto") or datum.get("valor") or "")
+        if not source or not value or not datum.get("tipo"):
+            continue
+        strict.append({
+            "valor": value,
+            "unidade": str(datum.get("unidade") or ""),
+            "dispositivo": str(datum.get("dispositivo") or ""),
+            "fonte_primaria": source,
+            "citavel": datum.get("citavel"),
+        })
     # `citavel: false` (pesquisa tipada): a fonte é contraditória ou instável
     # sobre o fato — ele não ancora afirmação nenhuma, mesmo com fonte viva.
     trusted = [f for f in strict if str(_field(f, "fonte_primaria", "")) in resolved

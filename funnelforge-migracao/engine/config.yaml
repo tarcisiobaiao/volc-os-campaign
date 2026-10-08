@@ -27,7 +27,9 @@ run:
   publish_status: draft          # WP status quando publish=true: sobe o funil inteiro como RASCUNHO p/ revisar
   hero_image: true
   featured_image: true           # /rec: gera imagem, sobe como featured_media + wp:image no meio (fluxo n8n)
-  image_model: gpt-image-2
+  # O texto usa a sessao ChatGPT; a ferramenta de imagem nao e liberada nessa
+  # sessao. A imagem sai pelo SDK oficial Gemini no MESMO pipeline completo.
+  image_model: gemini-3.1-flash-image-preview
   image_quality: medium
   official_screenshots: true     # prints reais das paginas oficiais (desktop) via Playwright, ancorados ao passo nas SOLUCOES (requer extra .[screenshots] + playwright install chromium)
   screenshots_max_per_page: 2    # /rec SOLUTION: cap de prints oficiais por pagina (sobre os official_links)

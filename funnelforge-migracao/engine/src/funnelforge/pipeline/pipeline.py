@@ -331,6 +331,21 @@ def run_pipeline(
     laco = _Laco(v2=v2, publish=publish, com_jornada=com_jornada,
                  orcamento=orcamento, a_publicar=a_publicar, dossie_vivo=dossie_vivo)
     workers = int(getattr(deps.settings.run, "page_workers", 1) or 1)
+    if dossie_vivo is not None:
+        # A pesquisa sob demanda pode continuar paralela, mas a REDAÇÃO só
+        # começa depois de as evidências de todas as páginas serem
+        # reconciliadas. Antes, cada worker congelava uma fotografia diferente
+        # do dossiê: uma fonte oficial reconhecida pela p5 podia fortalecer a
+        # p2 depois que a p2 já tinha escrito e sido revisada com inventário
+        # vazio. O resultado era uma contradição impossível de resolver no
+        # revisor (dossiê final com fatos, inventário da página sem eles).
+        #
+        # Isso não cria um segundo caminho "rápido": é o mesmo pipeline
+        # canônico. Só separa corretamente as fases — evidência estável;
+        # depois briefing/redação paralelos.
+        _complementar_dossie_antes_da_redacao(
+            state, pages, deps, dossie_vivo, workers=workers)
+        _consolidar_dossie(state, deps, dossie_vivo)
     if workers > 1 and len(pages) > 1:
         _paginas_em_paralelo(state, pages, deps, laco, workers)
     else:
@@ -736,7 +751,11 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
             state.step_status[f"evidencia_p{page.page_number}"] = StepResult(
                 step=f"evidencia_p{page.page_number}", status=StepStatus.SKIPPED,
                 issues=[Issue(code="revisao_humana_por_evidencia", message=revisao)])
-        if publish and deps.publisher is not None and not revisao and not _done(
+        # No V2, ``step_publish`` só pode gravar ``draft``. Uma página que pede
+        # revisão factual precisa chegar ao WordPress justamente COMO rascunho
+        # para a pessoa revisar; status público continua fail-closed.
+        pode_gravar_para_revisao = deps.settings.run.publish_status == "draft"
+        if publish and deps.publisher is not None and (not revisao or pode_gravar_para_revisao) and not _done(
             state, f"publish_p{page.page_number}"
         ):
             if com_jornada:
@@ -940,13 +959,66 @@ def _complementar_pagina(state: RunState, page: Page, deps: Deps, vivo: Any) -> 
             resumo, ensure_ascii=False)[:600])])
 
 
+def _complementar_dossie_antes_da_redacao(
+        state: RunState, pages: list[Page], deps: Deps, vivo: Any, *, workers: int) -> None:
+    """Resolve lacunas em paralelo e congela UMA base para todos os redatores.
+
+    Cada busca trabalha numa cópia do estado, como os workers de página. O
+    compilador factual é compartilhado e já serializa a absorção/deduplicação.
+    No fim, apenas os recibos locais voltam ao estado principal; fatos,
+    cobertura e canais são recalculados de uma vez por ``_consolidar_dossie``.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    alvos = [p for p in pages if p.page_number in vivo.coberturas and vivo.lacunas(
+        p.page_number)]
+    if not alvos:
+        return
+
+    def pesquisar(page: Page) -> tuple[int, StepResult]:
+        copia = state.model_copy(deep=True)
+        pagina = next(p for p in copia.plan.pages if p.page_number == page.page_number)
+        chave = f"dossie_complemento_p{page.page_number}"
+        try:
+            _complementar_pagina(copia, pagina, deps, vivo)
+            return page.page_number, copia.step_status[chave]
+        except Exception as exc:  # a falha degrada a página; não derruba as demais
+            return page.page_number, StepResult(
+                step=chave, status=StepStatus.FAILED,
+                issues=[Issue(code="complemento_falhou",
+                              message=f"{type(exc).__name__}: {str(exc)[:300]}")])
+
+    limite = max(1, min(int(workers or 1), len(alvos)))
+    if limite == 1:
+        resultados = [pesquisar(p) for p in alvos]
+    else:
+        with ThreadPoolExecutor(max_workers=limite, thread_name_prefix="evidencia") as pool:
+            resultados = list(pool.map(pesquisar, alvos))
+    for n, recibo in sorted(resultados):
+        state.step_status[f"dossie_complemento_p{n}"] = recibo
+
+
 def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
     """Depois das páginas: o dossiê do run é o cache consolidado (fatos por
     fact_id, coberturas como cada página as viu), com SHA novo."""
+    from funnelforge.pipeline.dossie import aplicar_portao
+
     with vivo.trava:
+        # Reprojeta TODOS os fatos no estado principal depois de todas as
+        # pesquisas. Sem isto o JSON final podia estar correto, mas briefing,
+        # widget e revisor continuavam lendo a fotografia antiga de cada
+        # worker.
+        paginas = [p for p in state.plan.pages if p.jornada is not None]
+        vivo.recalcular(state, paginas)
         final = vivo.montar(state)
     state.dossie = final.model_dump(mode="json")
     state.dossie_sha256 = final.sha256
+    # O portão inicial descreve a cobertura ANTES das complementações sob
+    # demanda. Depois que o snapshot final é congelado, regrave o veredito de
+    # cada página; senão uma lacuna já resolvida continua pedindo revisão
+    # humana e impede a publicação do rascunho (o run 27 provou esse estado
+    # vencido na p2).
+    aplicar_portao(state, final)
     pasta = deps.runner.runs_dir / state.run_id
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "dossie_factual.json").write_text(final.model_dump_json(indent=2), encoding="utf-8")

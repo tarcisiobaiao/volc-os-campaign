@@ -105,6 +105,8 @@ páginas existentes quando necessário.
 6. **Contrato de intenção e navegação**
    Preserve e revise `editorial` em TODAS as páginas: reader_question, useful_delivery,
    cta_label e links (target + reason). Rótulos são no idioma publicável; diretrizes em PT-BR.
+   CTA para saída externa nomeia o serviço, órgão, aplicativo ou site exato; rótulo genérico
+   como "canal oficial" ou "site oficial" é incongruente e deve ser apontado em `achados`.
    Se fundir, remover ou renomear páginas, atualize TODOS os targets para slugs existentes.
    Não rotacione soluções nem varie rótulos por obrigação. Priorize a dúvida relevante.
    Não esconda a resposta em FAQ ou fragmente conteúdo só para gerar mais cliques.

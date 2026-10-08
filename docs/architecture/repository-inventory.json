@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T11:22:07-03:00",
+  "generated_at": "2026-10-08T14:03:08-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 809,
-    "markdown": 596,
+    "files": 815,
+    "markdown": 602,
     "sql": 213,
     "tracked": 809,
-    "untracked": 0,
+    "untracked": 6,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 33,
-      "documentation": 434,
+      "documentation": 440,
       "generated": 2,
       "module-guide": 40,
       "product-document": 23,
@@ -1257,7 +1257,7 @@
       "tracked": true,
       "bytes": 23784,
       "lines": 312,
-      "sha256": "beda45441c49f89505033b54042302c0648f3fa59b3a23ed42d9d04bb7d945cd",
+      "sha256": "fe96b48cbc07e01726892b98dedbd948e5c2abcf1365aeedf9e55e94e8b84106",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6423,6 +6423,78 @@
       "sql_risk": null
     },
     {
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v2/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 7371,
+      "lines": 106,
+      "sha256": "95515cc3c2fdfbbcbec951e6a807617f28171d97a01cbd12f88e1112ab909183",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v6/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 3160,
+      "lines": 62,
+      "sha256": "f94a9e73b60ac6d6eae1a4b56e3cc8f18e19ac5159308f61e2b053af0493e0a6",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v7/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 7634,
+      "lines": 106,
+      "sha256": "26a48b566645f3f1bda2e63eb8e91cac7e6034b706ee169e837eeccdce5aefe3",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v3/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 2181,
+      "lines": 53,
+      "sha256": "ef9afa9eabec09c12105d14a2259645675c294b8cb3d5e2dd5602cc434466098",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v4/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 2181,
+      "lines": 53,
+      "sha256": "2f0d1420706b0f31f5091780bb3887f9577cf4f811c258c1b0a64544c0d6f52e",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v5/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 4520,
+      "lines": 64,
+      "sha256": "116da2b780d511ce903741225ede5789bd7bc9ba3fe8068caaa2dddf66bb1518",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "funnelforge-migracao/referencia/funil-no-ar/INVENTARIO.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7199,7 +7271,7 @@
       "lines": 101,
       "sha256": "79119459eeaa1058e9e61941119bf9c32b8f792cb2be5b30ef2e99fd073a2642",
       "graph_nodes": 2,
-      "graph_degree": 3,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {
@@ -7211,7 +7283,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 7,
+      "graph_degree": 8,
       "sql_risk": "high"
     },
     {
@@ -7391,7 +7463,7 @@
       "lines": 269,
       "sha256": "42df7bc0e9adf143231847157943c8057635d7be17f6149c032f0cc839a18df5",
       "graph_nodes": 3,
-      "graph_degree": 5,
+      "graph_degree": 6,
       "sql_risk": "high"
     },
     {
@@ -7403,7 +7475,7 @@
       "lines": 239,
       "sha256": "8dba7a8bfdb08e4db45a522a14da15ed4679ff1dddfc6c296ab50801753dd3d0",
       "graph_nodes": 2,
-      "graph_degree": 3,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {

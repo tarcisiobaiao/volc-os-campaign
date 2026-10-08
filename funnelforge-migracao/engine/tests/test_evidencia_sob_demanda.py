@@ -53,6 +53,8 @@ def test_pesquisa_sob_demanda_com_citacao_valida_entra_no_dossie(tmp_path, monke
     assert [t.pagina for t in dossie.pesquisa] == [0, n]       # global + a da p2
     assert "renda.limite_per_capita" in state.step_status[f"dossie_complemento_p{n}"] \
         .issues[0].message
+    assert not any(i.code == "revisao_humana_por_evidencia"
+                   for i in state.step_status[f"dossie_p{n}"].issues)
 
 
 def test_pesquisa_sem_citacao_nao_entra_no_dossie(tmp_path, monkeypatch):
@@ -168,8 +170,10 @@ def test_regressao_senac_valor_indisponivel_degrada_so_o_detalhe(tmp_path, monke
         f"widget_p{n}" in state.step_status else True
 
 
-def test_nenhuma_pagina_em_revisao_por_evidencia_e_publicada(tmp_path, monkeypatch):
+def test_pagina_em_revisao_por_evidencia_e_gravada_como_draft(tmp_path, monkeypatch):
     congelar_data(monkeypatch)
+    from funnelforge.pipeline import pipeline as pipeline_mod
+    monkeypatch.setattr(pipeline_mod, "revisar_funil_pronto", lambda *_: {})
     _ligar_pesquisa(monkeypatch, _Pesquisa(SEM_RENDA, []))
     publicadas = []
     monkeypatch.setattr(st, "step_publish", lambda state, page, deps: publicadas.append(
@@ -182,13 +186,33 @@ def test_nenhuma_pagina_em_revisao_por_evidencia_e_publicada(tmp_path, monkeypat
                          timestamp="20261007-120000")
     n = _n(state, "renda")
     assert _dossie(state).pagina(n).cobertura.estado == "review" and n in state.drafts
-    assert n not in publicadas
+    assert n in publicadas
     assert state.step_status[f"evidencia_p{n}"].issues[0].code == "revisao_humana_por_evidencia"
+
+
+def test_pagina_em_revisao_por_evidencia_nao_avanca_para_status_publico(tmp_path, monkeypatch):
+    congelar_data(monkeypatch)
+    from funnelforge.pipeline import pipeline as pipeline_mod
+    monkeypatch.setattr(pipeline_mod, "revisar_funil_pronto", lambda *_: {})
+    _ligar_pesquisa(monkeypatch, _Pesquisa(SEM_RENDA, []))
+    publicadas = []
+    monkeypatch.setattr(st, "step_publish", lambda state, page, deps: publicadas.append(
+        page.page_number))
+    settings = _settings_com_dossie(tmp_path)
+    settings.run.publish_status = "publish"
+    llm, deps = montar_deps(tmp_path, settings, responder_v1)
+    deps.publisher = object()
+    state = run_pipeline(None, deps, only=None, publish=True,
+                         plan=plano_do_funnel_architecture(_arq_com_requisito_de_renda()),
+                         timestamp="20261007-120001")
+    n = _n(state, "renda")
+    assert n not in publicadas
 
 
 # --- paralelismo -----------------------------------------------------------------
 
-def test_paginas_independentes_sao_escritas_enquanto_outra_pesquisa(tmp_path, monkeypatch):
+def test_evidencia_de_todas_as_paginas_e_consolidada_antes_da_primeira_redacao(
+        tmp_path, monkeypatch):
     congelar_data(monkeypatch)
     linha_do_tempo: list[tuple[str, float]] = []
     trava = threading.Lock()
@@ -221,7 +245,8 @@ def test_paginas_independentes_sao_escritas_enquanto_outra_pesquisa(tmp_path, mo
     inicio = next(t for e, t in linha_do_tempo if e == "pesquisa_inicio")
     fim = next(t for e, t in linha_do_tempo if e == "pesquisa_fim")
     durante = [t for e, t in linha_do_tempo if e == "chamada" and inicio < t < fim]
-    assert durante, "nenhuma página escreveu enquanto a p2 pesquisava"
+    assert not durante, "a redação começou sobre um dossiê ainda mutável"
+    assert any(t >= fim for e, t in linha_do_tempo if e == "chamada")
     assert all(p.page_number in state.drafts for p in state.plan.pages)
     assert _dossie(state).pagina(_n(state, "renda")).cobertura.estado in ("ready", "degraded")
 
@@ -267,6 +292,16 @@ def test_resposta_principal_de_paginas_diferentes_nao_e_deduplicada():
     # cada página pesquisa a PRÓPRIA pergunta; ninguém espera a busca alheia
     assert [set(p) for p in pedidos[1:]] == [{duvidas[0]}, {duvidas[1]}]
     assert comp.deduplicadas == 0
+
+
+def test_entrega_visual_generica_de_paginas_diferentes_nao_e_deduplicada():
+    """O nome do slot é genérico; a entrega visual continua sendo da página."""
+    assert CompiladorDeDossie._chave({
+        "duvida_id": "renda", "requisito": "entrega_visual_1"
+    }) == "renda:entrega_visual_1"
+    assert CompiladorDeDossie._chave({
+        "duvida_id": "revenda", "requisito": "entrega_visual_1"
+    }) == "revenda:entrega_visual_1"
 
 
 def test_pre_voo_respeita_a_saida_oficial_desativada_pelo_dossie():

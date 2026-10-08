@@ -73,6 +73,25 @@ def _fatos_confiaveis(facts: ResearchFacts) -> list[Any]:
             and getattr(f, "citavel", None) is not False]
 
 
+def _dados_confiaveis(facts: ResearchFacts) -> list[dict]:
+    """Dados tipados, citáveis e comprovados pela mesma visita ao vivo.
+
+    Condições e processos são representados como ``dados_validados``. Escondê-los
+    do redator enquanto o gate final os aceita cria uma contradição: a prova está
+    congelada, mas a página recebe ``FATOS VERIFICADOS: NENHUM``.
+    """
+    resolvidas = set(facts.fontes_resolvidas or [])
+    saida: list[dict] = []
+    for dado in facts.dados_validados or []:
+        if not isinstance(dado, dict) or not str(dado.get("tipo") or "").strip():
+            continue
+        fonte = str(dado.get("fonte") or dado.get("source_url") or "").strip()
+        fato = str(dado.get("fato") or dado.get("afirmacao") or "").strip()
+        if fonte in resolvidas and fato and dado.get("citavel") is not False:
+            saida.append({**dado, "fonte": fonte, "fato": fato})
+    return saida
+
+
 def _nao_citaveis(facts: ResearchFacts) -> int:
     """Quantos fatos a pesquisa marcou como NÃO citáveis (e foram retirados)."""
     verificados = sum(1 for f in (facts.fatos_verificados or [])
@@ -93,8 +112,11 @@ def nome_da_fonte(url: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
-def _bloco_de_fatos(confiaveis: list[Any], destino_pago: bool = False) -> str:
+def _bloco_de_fatos(confiaveis: list[Any], destino_pago: bool = False,
+                    *, ha_dados_tipados: bool = False) -> str:
     if not confiaveis:
+        if ha_dados_tipados:
+            return ""
         return (
             "FATOS VERIFICADOS: NENHUM.\n"
             "  Nenhuma fonte numérica resolveu na verificação ao vivo desta página.\n"
@@ -131,6 +153,30 @@ def _bloco_de_fatos(confiaveis: list[Any], destino_pago: bool = False) -> str:
     return "\n".join(linhas) + "\n"
 
 
+def _bloco_de_dados(confiaveis: list[dict], destino_pago: bool = False) -> str:
+    if not confiaveis:
+        return ""
+    linhas = [
+        "CONDIÇÕES E PROCESSOS VERIFICADOS — use exatamente como escritos;",
+        "números presentes nestas frases estão autorizados pela fonte:",
+    ]
+    for i, dado in enumerate(confiaveis, 1):
+        fonte = dado["fonte"]
+        linhas.append(f"  {i}. {dado['fato']}")
+        if destino_pago:
+            linhas.append(
+                "     Cite a fonte em prosa, com âncora descritiva "
+                f"(\"segundo o site da {nome_da_fonte(fonte)}\"). "
+                "NÃO escreva a URL e NÃO crie link."
+            )
+        else:
+            linhas.append(
+                "     Ao usar esta condição ou processo, inclua este link na "
+                f"MESMA frase: {fonte}"
+            )
+    return "\n".join(linhas) + "\n"
+
+
 def base_para_o_redator(facts: ResearchFacts | None, *,
                        destino_pago: bool = False) -> str:
     """A base factual como o redator deve recebê-la.
@@ -148,7 +194,12 @@ def base_para_o_redator(facts: ResearchFacts | None, *,
         return _bloco_de_fatos([], destino_pago)
 
     confiaveis = _fatos_confiaveis(facts)
-    partes = [_bloco_de_fatos(confiaveis, destino_pago)]
+    dados_confiaveis = _dados_confiaveis(facts)
+    partes = [
+        _bloco_de_fatos(confiaveis, destino_pago,
+                        ha_dados_tipados=bool(dados_confiaveis)),
+        _bloco_de_dados(dados_confiaveis, destino_pago),
+    ]
 
     resumo = _podar(facts.resumo or "")
     if resumo.strip():
@@ -163,6 +214,13 @@ def base_para_o_redator(facts: ResearchFacts | None, *,
 
     qualitativos = []
     for d in (facts.dados_validados or []):
+        if isinstance(d, dict) and any(
+            str(d.get("fato") or d.get("afirmacao") or "").strip() == c["fato"]
+            and str(d.get("fonte") or d.get("source_url") or "").strip() == c["fonte"]
+            and str(d.get("tipo") or "") == str(c.get("tipo") or "")
+            for c in dados_confiaveis
+        ):
+            continue
         if isinstance(d, dict) and d.get("citavel") is False:
             continue                     # a pesquisa disse: não citável
         fato = _podar(str((d or {}).get("fato", ""))).strip() if isinstance(d, dict) else ""
@@ -193,9 +251,13 @@ def base_para_o_redator(facts: ResearchFacts | None, *,
         partes.append("FONTES CONFIRMADAS (responderam a uma visita real):\n"
                       + "\n".join(f"  - {u}" for u in resolvidas))
 
-    return "\n\n".join(partes)
+    return "\n\n".join(p for p in partes if p)
 
 
 def tem_numero_publicavel(facts: ResearchFacts | None) -> bool:
     """Esta página pode usar cifra? Serve para o prompt mudar de tom."""
-    return bool(facts is not None and _fatos_confiaveis(facts))
+    if facts is None:
+        return False
+    return bool(_fatos_confiaveis(facts) or any(
+        _CRITICAL_CLAIM_RE.search(d["fato"]) for d in _dados_confiaveis(facts)
+    ))

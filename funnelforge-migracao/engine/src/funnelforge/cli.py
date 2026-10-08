@@ -50,7 +50,6 @@ def build_deps(settings: Settings) -> Deps:
     _export_secrets(settings.secrets)
 
     from funnelforge.adapters.briefing_docx import DocxBriefingLoader
-    from funnelforge.adapters.image_openai import OpenAIImageGenerator
     from funnelforge.adapters.images_pillow import PillowImageProcessor
     from funnelforge.adapters.litellm_client import LiteLLMClient
     from funnelforge.adapters.research_perplexity import PerplexityResearch
@@ -77,14 +76,26 @@ def build_deps(settings: Settings) -> Deps:
         )
 
     image_gen = None
-    if settings.secrets.openai_api_key:
+    image_model = settings.run.image_model
+    if image_model.startswith("gemini/") or image_model.startswith("gemini-"):
+        if settings.secrets.gemini_api_key:
+            from funnelforge.adapters.image_gemini import GeminiImageGenerator
+
+            image_gen = GeminiImageGenerator(
+                settings.secrets.gemini_api_key,
+                model=image_model,
+                quality=settings.run.image_quality,
+            )
+    elif settings.secrets.openai_api_key:
+        from funnelforge.adapters.image_openai import OpenAIImageGenerator
+
         # IMAGE-GENERATION model/quality come from `run.image_model` /
         # `run.image_quality` -- NOT `steps["image"].model`, which is the
         # TEXT model that crafts the English image prompt (see
         # steps.py's step_image / RunConfig in config/settings.py).
         image_gen = OpenAIImageGenerator(
             settings.secrets.openai_api_key,
-            model=settings.run.image_model,
+            model=image_model,
             quality=settings.run.image_quality,
         )
 

@@ -96,6 +96,7 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
     projecao = _projecao(dossie, page.page_number)
     desativados = {(d.get("tipo"), d.get("nome")) for d in projecao.get("desativados", [])}
     return {
+        "papel": effective_role(page).value,
         "duvida_id": j.duvida_id,
         "pergunta": j.pergunta_principal,
         "trabalho": j.trabalho_do_leitor,

@@ -33,6 +33,24 @@ def test_same_domain_does_not_treat_channel_name_as_a_link():
     assert run_validators(["same_domain"], txt, ctx) == []
 
 
+def test_same_domain_does_not_treat_mixed_case_service_brand_as_link():
+    txt = "Se a retirada for recusada, registre a situação no canal Fala.BR."
+    ctx = {**CTX, "research_hosts": ["gov.br"]}
+    assert run_validators(["same_domain"], txt, ctx) == []
+
+
+def test_same_domain_does_not_treat_mixed_case_service_after_preposition_as_link():
+    txt = "A orientação indica a ANP pelo telefone ou pelo Fala.BR."
+    ctx = {**CTX, "research_hosts": ["gov.br"]}
+    assert run_validators(["same_domain"], txt, ctx) == []
+
+
+def test_same_domain_nao_chama_marca_mixed_case_sem_link_de_url():
+    txt = "Acesse Fala.BR para continuar."
+    ctx = {**CTX, "research_hosts": ["gov.br"]}
+    assert run_validators(["same_domain"], txt, ctx) == []
+
+
 def test_same_domain_still_rejects_bare_unresearched_path():
     txt = "Consulte o procedimento em gov.br/servico-nao-pesquisado."
     ctx = {**CTX, "research_hosts": ["caixa.gov.br"]}

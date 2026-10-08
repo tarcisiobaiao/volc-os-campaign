@@ -24,13 +24,17 @@ def test_preset_rapido_chatgpt_e_fechado_sem_fallback_faturado():
     assert novo.run.perfil == "completo"
     assert novo.run.editorial_v2 is True
     assert novo.run.page_workers == 3 and novo.run.dossie_factual is True
+    assert novo.run.max_retries == 2
+    assert novo.run.max_chamadas_llm == 60
     assert novo.run.publish_status == "draft"
     assert novo.run.imagens_habilitadas is True
     assert novo.run.official_screenshots is True
     assert novo.openai.auth_mode == "chatgpt_plan"
-    assert novo.openai.somente_plano is True
+    assert novo.openai.somente_plano is False
     assert novo.steps["dossie"].web_search is True
-    assert all(p.model.startswith("chatgpt/") for p in novo.steps.values())
+    assert novo.steps["image_review"].model == "gemini/gemini-3.5-flash"
+    assert all(p.model.startswith("chatgpt/")
+               for nome, p in novo.steps.items() if nome != "image_review")
     assert all(not p.fallbacks for p in novo.steps.values())
     # O client_id público vem do Keychain/host em runtime; não é defeito do
     # preset nem deve ser persistido no perfil do run.
@@ -43,3 +47,17 @@ def test_preset_desconhecido_falha_cedo():
     settings = load_settings(config_path=Path("config.yaml"))
     with pytest.raises(ValueError, match="preset de execução desconhecido"):
         aplicar_perfil(settings, {"preset": "talvez"})
+
+
+def test_preset_completo_chatgpt_usa_o_mesmo_motor_canonico():
+    settings = load_settings(config_path=Path("config.yaml"))
+    novo = aplicar_perfil(settings, {"preset": "completo_chatgpt"})
+
+    assert novo.run.perfil == "completo"
+    assert novo.run.page_workers == 3
+    assert novo.run.max_retries == 2
+    assert novo.run.max_chamadas_llm == 60
+    assert novo.run.widgets_enabled is True
+    assert novo.run.official_screenshots is True
+    assert novo.run.imagens_habilitadas is True
+    assert novo.openai.auth_mode == "chatgpt_plan"

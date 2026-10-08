@@ -57,6 +57,10 @@ Cada página declara editorial com:
 - reader_question: pergunta principal de entrada.
 - useful_delivery: resposta/artefato concreto que o leitor leva desta página.
 - cta_label: texto curto de um botão que leva A ESTA página.
+- Quando o botão levar a uma saída oficial externa, cta_label nomeia o serviço,
+  órgão, aplicativo ou site exato (ex.: "Abrir o CadÚnico no site do MDS").
+  Nunca use rótulo genérico como "canal oficial", "site oficial" ou
+  "conferir canais oficiais".
 - links: destinos pertinentes, em ordem de relevância, com target=slug exato e reason explícito.
 Uma solução pode não precisar de outro guia interno. O canal oficial será ligado pela pesquisa.
 Não presuma que o leitor percorra todas as páginas. Medição real requer eventos e sessões,

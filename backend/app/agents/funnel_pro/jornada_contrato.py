@@ -121,6 +121,14 @@ def _mesclar(original: Dict[str, Any], revisado: Dict[str, Any], protegidos: Tup
             if not _vazio(antigo):
                 registro.append({"campo": f"{onde}.{chave}", "motivo": "revisor apagou; mantido"})
             continue
+        if chave == "retornos_justificados" and isinstance(valor, dict):
+            # As chaves deste mapa são IDs de dúvida. Quando o revisor corrige
+            # explicitamente um ID inválido, mesclar chave a chave ressuscita a
+            # referência errada do arquiteto e deixa a jornada inválida. Um mapa
+            # não vazio é uma substituição deliberada; só vazio/omissão continua
+            # protegido pelo bloco acima.
+            saida[chave] = copy.deepcopy(valor)
+            continue
         if isinstance(valor, dict) and isinstance(antigo, dict):
             saida[chave] = _mesclar(antigo, valor, tuple(antigo), f"{onde}.{chave}", registro)
         else:

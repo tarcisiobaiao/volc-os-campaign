@@ -42,6 +42,24 @@ def test_sem_pesquisa_nenhuma_o_contrato_continua_explicito():
     assert "NENHUM" in saida and "sem cifra" in saida.lower()
 
 
+def test_dado_tipado_resolvido_chega_inteiro_e_nao_e_redigido():
+    fonte = "https://www.gov.br/mds/gas-do-povo"
+    frase = ("A família deve ter ao menos 2 integrantes, renda por pessoa de até meio "
+             "salário mínimo e CadÚnico atualizado há no máximo 24 meses.")
+    f = ResearchFacts(
+        resumo=frase,
+        dados_validados=[{"tipo": "condicao", "fato": frase,
+                          "fonte": fonte, "citavel": True}],
+        fontes_resolvidas=[fonte],
+    )
+    saida = base_para_o_redator(f)
+    assert frase in saida
+    assert "FATOS VERIFICADOS: NENHUM" not in saida
+    assert "[número não verificado" in saida  # só a cópia não tipada do resumo
+    assert f"MESMA frase: {fonte}" in saida
+    assert tem_numero_publicavel(f)
+
+
 def test_no_destino_pago_a_fonte_e_citada_em_prosa_e_nunca_como_link():
     """CONTRAPROVA 28, na ORIGEM: o redator deixa de receber a URL para embutir.
 

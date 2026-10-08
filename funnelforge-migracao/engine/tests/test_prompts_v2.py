@@ -81,6 +81,12 @@ def _render(nome: str, ctx: dict) -> str:
     return render(nome, **ctx)
 
 
+def test_lp_pede_profundidade_util_compativel_com_o_gate_de_destino_pago():
+    prompt = _render("redator_p1_v2", REDATORES_V2["redator_p1_v2"])
+    assert "pelo menos 650 palavras visíveis úteis" in prompt
+    assert "nunca infle com repetição" in prompt
+
+
 @pytest.mark.parametrize("nome", sorted({**REDATORES_V2, **OUTROS_V2}))
 def test_prompt_v2_sem_achatamento_sem_caso_senac_sem_proibicao_por_palavra(nome):
     ctx = {**REDATORES_V2, **OUTROS_V2}[nome]
@@ -97,6 +103,8 @@ def test_redator_v2_escreve_a_partir_do_briefing(nome):
     for trecho in ("escreva a partir do briefing", "especificidade", "desejo real",
                    "razão concreta para começar", "dúvidas bem escolhidas",
                    "benefício demonstrável", "qualificador", "hipótese é hipótese",
+                   "resposta central completa", "ausência de evidência",
+                   "procedimento positivamente comprovado",
                    "não retenha informação básica", "não existe tom padrão",
                    "intenção ou o avanço do leitor", "ganho", "independente"):
         assert trecho in low, f"{nome}: falta '{trecho}'"

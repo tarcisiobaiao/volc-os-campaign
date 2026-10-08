@@ -96,11 +96,12 @@ _PAPEIS_DO_MOTOR = ("LP", "PRESELL", "SOLUTION")
 _SLUG_PRESELL_RE = re.compile(r"-pr\d*$")
 _SLUG_SOLUTION_RE = re.compile(r"-p\d+$")
 
-# Basta UM destes para a página coletar dado do visitante, e aí o papel sobe
-# para `conversion_page` — o regime mais duro do contrato. É detecção do
-# ARTEFATO, não campo declarado: a única direção em que um falso positivo pode
-# errar é subindo o rigor, e essa é a direção segura.
-_COLETA_RE = re.compile(r"(?is)<\s*(form|input|textarea|select)\b")
+# Formulário/campo de entrada pode coletar dado do visitante e sobe o papel para
+# `conversion_page`. ``select`` sozinho NÃO: os widgets editoriais do motor usam
+# um seletor local, sem ``name``, formulário, envio ou rede, apenas para trocar
+# a orientação exibida. Chamamos esse componente de coleta no run 28 e o
+# bloqueamos como página de conversão, embora nenhum dado saísse do navegador.
+_COLETA_RE = re.compile(r"(?is)<\s*(form|input|textarea)\b")
 
 
 def papel_do_motor_no_disco(pagina_do_plano: Dict[str, Any]) -> str:

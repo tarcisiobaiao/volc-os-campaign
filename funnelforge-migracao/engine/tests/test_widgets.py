@@ -175,6 +175,16 @@ def test_json_quebrado_diz_onde_quebrou():
     assert "linha" in str(e.value)
 
 
+def test_texto_longo_e_recusado_em_vez_de_ser_cortado_no_meio() -> None:
+    cenarios = json.loads(_cru())["cenarios"]
+    cenarios[0]["passos"][0] = "palavra " * 30
+    with pytest.raises(WidgetInvalido) as e:
+        ler(_cru(cenarios=cenarios))
+    motivo = " ".join(e.value.motivos)
+    assert "máximo é 140" in motivo
+    assert "sem cortar palavra" in motivo
+
+
 def test_resposta_sem_json_nenhum_e_recusada():
     with pytest.raises(WidgetInvalido) as e:
         ler("Desculpe, não consigo montar esse widget.")
@@ -318,7 +328,8 @@ def test_o_prompt_pede_cenarios_do_mesmo_tamanho():
     from funnelforge.prompts import render
 
     p = render("redator_widget", country="Brasil", year=2026, title="T",
-               article="<p>x</p>", arquetipo="diagnostico", facts="")
+               article="<p>x</p>", arquetipo="diagnostico", facts="",
+               editorial_v2=True)
     assert "MESMO TAMANHO" in p
     assert "Mesma forma" in p and "Mesmo volume" in p
 
@@ -332,6 +343,17 @@ def test_o_prompt_avisa_que_a_primeira_opcao_ja_vem_escolhida():
                article="<p>x</p>", arquetipo="diagnostico", facts="")
     assert "JÁ VEM ESCOLHIDA" in p
     assert "mais neutra" in p
+
+
+def test_prompt_nao_transforma_ausencia_ou_canal_em_conclusao() -> None:
+    from funnelforge.prompts import render
+
+    p = render("redator_widget", country="Brasil", year=2026, title="T",
+               article="<p>x</p>", arquetipo="diagnostico", facts="",
+               editorial_v2=True)
+    assert "ausência de menu" in p
+    assert "não prova" in p
+    assert "Escreva positivamente" in p
 
 
 # ── URL dentro do widget vira texto cru ─────────────────────────────────────

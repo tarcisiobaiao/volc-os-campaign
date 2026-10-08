@@ -48,6 +48,8 @@ def test_prompt_do_arquiteto_pede_a_jornada_tipada():
                   "retornos_justificados", "hipotese_de_medicao", "coortes"):
         assert f'"{chave}"' in prompt, chave
     assert "observacao_real" in prompt and "simulacao" in prompt
+    assert "Abrir o CadÚnico no site do MDS" in prompt
+    assert 'Nunca use rótulo genérico como "canal oficial"' in prompt
 
 
 def test_page_factory_leva_a_jornada_ao_writer_briefing_e_a_pagina_canonica():
@@ -127,6 +129,32 @@ def test_revisor_real_com_saida_parcial_preserva_a_jornada(monkeypatch):
     assert res["funnel_strategy"]["jornada"] == ARQUITETO["funnel_strategy"]["jornada"]
     assert res["jornada_preservada"]
     assert res["telemetria"][0]["etapa"] == "revisor_do_arquiteto"
+
+
+def test_revisor_substitui_mapa_de_retornos_quando_corrige_id_invalido(monkeypatch):
+    arq = copy.deepcopy(ARQUITETO)
+    arq["pages"][1]["jornada"] = copy.deepcopy(JORNADA_COMPLETA)
+    arq["pages"][1]["jornada"]["retornos_justificados"] = {
+        "slug_antigo_invalido": "voltar para conferir"
+    }
+    revisado = copy.deepcopy(arq)
+    revisado["pages"][1]["jornada"]["retornos_justificados"] = {
+        "senac_gratuito": "voltar para conferir"
+    }
+
+    class _Cliente:
+        async def complete_json(self, system, user):
+            return {**revisado, "changes": ["ID do retorno corrigido"], "achados": []}
+
+    monkeypatch.setattr(FunnelReviewer, "_gemini", lambda self: _Cliente())
+    ctx = AgentContext(settings=Settings(gemini_api_key="k", google_api_key=None,
+                                         supabase_url=None, supabase_service_role_key=None),
+                       engine=MockEngine(), grounding=None)
+    res = asyncio.run(FunnelReviewer(ctx).review(arq, entity_facts={}, forced_language="pt-BR"))
+
+    assert res["pages"][1]["jornada"]["retornos_justificados"] == {
+        "senac_gratuito": "voltar para conferir"
+    }
 
 
 def test_normalizacao_logo_apos_o_arquiteto_nomeia_campo_e_motivo():
