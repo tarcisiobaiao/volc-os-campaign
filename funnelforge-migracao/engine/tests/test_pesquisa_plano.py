@@ -13,7 +13,11 @@ from funnelforge.adapters import pesquisa_plano as pp
 from funnelforge.adapters.openai_responses import (
     NaoSuportadoNoPlano, OpenAIResponsesClient, RespostaHTTP)
 from funnelforge.config.settings import StepConfig
-from funnelforge.pipeline.dossie import fatos_da_resposta, verificar_ao_vivo
+from funnelforge.pipeline.dossie import (
+    RespostaDaPesquisa,
+    fatos_da_resposta,
+    verificar_ao_vivo,
+)
 
 PB = "https://pb.senac.br/programa-senac-de-gratuidade/"
 MG = "https://programasenacdegratuidade.mg.senac.br/faq.aspx"
@@ -206,6 +210,44 @@ def test_estruturador_nao_cria_url_nem_fato():
 def test_vigencia_que_o_trecho_nao_traz_e_descartada():
     resp, _, _ = _rodar(_grounded(), _estruturado([dict(FATO_OK, vigente_desde="2019-01-01")]))
     assert resp.dados["fatos"][0]["vigente_desde"] == ""
+
+
+def test_formula_com_exemplo_numerico_e_metodo_nao_valor_temporal():
+    """Canário FGTS: saldo × alíquota + adicional é processo, enquanto
+    R$ 450 é apenas o exemplo oficial — não uma cotação sem vigência."""
+    resp = RespostaDaPesquisa(
+        dados={"fatos": [{
+            "afirmacao": ("O valor anual é calculado multiplicando o saldo pela alíquota "
+                          "da faixa e somando a parcela adicional; no exemplo, "
+                          "R$ 1.000 × 40% + R$ 50 = R$ 450."),
+            "tipo": "numero", "valor": "450,00", "unidade": "R$",
+            "fonte": "https://www.fgts.gov.br/saque-aniversario",
+            "vigente_desde": "", "paginas": ["valor"], "requisitos": ["valor.formula"],
+            "evidencia_resumida": ("saldo total multiplicado pela alíquota da faixa, "
+                                    "mais parcela adicional: 1.000 × 40% + 50 = 450"),
+        }]},
+        citacoes=["https://www.fgts.gov.br/saque-aniversario"],
+        modelo_pedido="chatgpt/gpt-6.1-sol", modelo_servido="gpt-6.1-sol")
+    fato = fatos_da_resposta(resp)[0]
+    assert fato.tipo == "processo"
+    assert fato.valor == "450,00"
+    assert fato.motivo_do_status == ""
+
+
+def test_valor_comum_sem_vigencia_continua_reprovado():
+    resp = RespostaDaPesquisa(
+        dados={"fatos": [{
+            "afirmacao": "O benefício paga R$ 450 por mês.",
+            "tipo": "numero", "valor": "450,00", "unidade": "R$",
+            "fonte": "https://gov.example/beneficio", "vigente_desde": "",
+            "paginas": ["valor"], "requisitos": ["valor.atual"],
+            "evidencia_resumida": "O benefício paga R$ 450 por mês.",
+        }]},
+        citacoes=["https://gov.example/beneficio"],
+        modelo_pedido="m", modelo_servido="m")
+    fato = fatos_da_resposta(resp)[0]
+    assert fato.tipo == "numero"
+    assert fato.motivo_do_status == "número/data sem valor ou sem referência temporal"
 
 
 def test_pagina_citada_que_nao_confirma_o_valor_nao_verifica():

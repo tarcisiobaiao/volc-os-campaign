@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
+import re
 from typing import Any, Callable
 from urllib.parse import urlparse
 
@@ -140,6 +141,35 @@ def _data(valor: Any) -> date | None:
         return None
 
 
+_SINAIS_DE_METODO_DE_CALCULO = re.compile(
+    r"(?:\bcalcul\w*|\bmultiplic\w*|\bsom\w*|\badicion\w*|\bal[ií]quot\w*|"
+    r"\bpercent\w*|\bfaixa\w*|\bf[oó]rmula\w*|\bcalculation\w*|\bmultipl\w*|"
+    r"\bpercentage\w*|\bformula\w*|\bc[aá]lculo\w*|\bporcentaje\w*|\btasa\w*)",
+    re.IGNORECASE,
+)
+
+
+def _tipo_semantico(tipo: str, afirmacao: str, evidencia: str, valor: str,
+                    vigente_desde: date | None) -> str:
+    """Distingue um valor temporal de um método de cálculo com exemplo.
+
+    Um exemplo numérico não transforma a regra de cálculo em cotação vigente.
+    O canário real do FGTS trouxe, na página oficial, ``saldo × alíquota +
+    parcela adicional`` e o exemplo de R$ 450. O estruturador marcou tudo como
+    ``numero``; exigir uma data para o exemplo descartou a própria fórmula.
+
+    A correção é estreita: só reclassifica ``numero`` sem vigência quando há
+    valor *e* linguagem inequívoca de cálculo. Um benefício de R$ X, um limite
+    percentual ou qualquer número comum continua temporal e fail-closed.
+    """
+    if tipo != "numero" or not valor or vigente_desde is not None:
+        return tipo
+    texto = f"{afirmacao} {evidencia}"
+    tem_operacao = bool(re.search(r"(?:[×*+]\s*\d|\d\s*[×*+]|\bmais\b|\bplus\b)",
+                                  texto, re.IGNORECASE))
+    return "processo" if tem_operacao and _SINAIS_DE_METODO_DE_CALCULO.search(texto) else tipo
+
+
 def fatos_da_resposta(resp: RespostaDaPesquisa) -> list[FatoDoDossie]:
     """Converte a saída do modelo em fatos com status INICIAL. Só a citação do
     provedor torna uma URL candidata a fonte; o resto nasce `unverified`."""
@@ -154,10 +184,15 @@ def fatos_da_resposta(resp: RespostaDaPesquisa) -> list[FatoDoDossie]:
         if not afirmacao or not url:
             continue
         valor, unidade = str(bruto.get("valor") or "").strip(), str(bruto.get("unidade") or "").strip()
+        vigente_desde = _data(bruto.get("vigente_desde"))
+        tipo = _tipo_semantico(
+            tipo, afirmacao,
+            str(bruto.get("evidencia_resumida") or bruto.get("evidencia") or ""),
+            valor, vigente_desde)
         fato = FatoDoDossie(
             fact_id=id_do_fato(url, tipo, afirmacao, valor), afirmacao=afirmacao, tipo=tipo,
             valor=valor, unidade=unidade, source_url=url,
-            vigente_desde=_data(bruto.get("vigente_desde")),
+            vigente_desde=vigente_desde,
             paginas=[canon_rotulo(p) for p in (bruto.get("paginas") or []) if isinstance(p, str)],
             requisitos=[canon_rotulo(r) for r in (bruto.get("requisitos") or [])
                         if isinstance(r, str)],
@@ -754,6 +789,42 @@ class CompiladorDeDossie:
                     "restantes": sorted(depois), "defeito": getattr(resp, "defeito", "")
                     if resp is not None else "",
                     "estado": self.coberturas[n].estado}
+
+    def complementar_lote(self, pages: list[Page], state: RunState) -> dict:
+        """Uma única complementação para todas as lacunas do perfil rápido.
+
+        O perfil completo continua pesquisando por página e pode sobrepor a
+        escrita das páginas prontas. No perfil rápido, uma busca consolidada
+        evita o padrão medido de 5 páginas × (busca + estruturação) sem abrir
+        mão do dossiê global nem inventar evidência.
+        """
+        alvo = [p for p in pages if p.page_number in self.coberturas]
+        with self.trava:
+            self.recalcular(state, alvo)
+            faltam = _faltantes(
+                {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
+            unicas: dict[str, dict] = {}
+            for lacuna in faltam:
+                chave = self._chave(lacuna)
+                if chave not in self.pesquisados:
+                    unicas.setdefault(chave, lacuna)
+            minhas = list(unicas.values())
+        resp = self._pesquisar(minhas) if minhas else None
+        with self.trava:
+            if resp is not None:
+                self.absorver(resp, 90, minhas, state=state, pages=alvo, pagina=-1)
+                self.pesquisados.update(unicas)
+            else:
+                self.recalcular(state, alvo)
+            restantes = _faltantes(
+                {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
+            return {
+                "lacunas": len(faltam),
+                "pesquisadas": len(minhas),
+                "resolvidas": len(faltam) - len(restantes),
+                "restantes": len(restantes),
+                "defeito": getattr(resp, "defeito", "") if resp is not None else "",
+            }
 
     def montar(self, state: RunState) -> DossieDoFunil:
         oficiais = {u for p in self.pages for u in (state.official_links.get(p.page_number) or [])}

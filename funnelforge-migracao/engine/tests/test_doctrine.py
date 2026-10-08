@@ -74,3 +74,11 @@ def test_prompts_nao_repetem_a_frase_do_aviso_a_mao():
         fonte = resources.files("funnelforge.prompts").joinpath(nome).read_text("utf-8")
         assert COMPLIANCE_NOTICE_TEXT not in fonte, f"{nome} repete o aviso a mao"
         assert ("compliance_notice_text" in fonte or 'include "interior_editorial.jinja"' in fonte)
+
+
+def test_perfil_rapido_expoe_falsa_oficialidade_ao_redator():
+    from importlib import resources
+    fonte = resources.files("funnelforge.prompts").joinpath(
+        "escrita_natural.jinja").read_text("utf-8")
+    assert "banned_official" in fonte
+    assert "Não repita uma expressão proibida" in fonte

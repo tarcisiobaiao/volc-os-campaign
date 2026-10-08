@@ -1310,6 +1310,34 @@ def test_critical_claim_requires_resolved_typed_fact_and_citation() -> None:
     assert run_validators(["critical_fact_grounding"], cited, {"facts": trusted}) == []
 
 
+def test_paid_lp_may_cite_exact_source_host_without_outbound_link() -> None:
+    source = "https://caixanoticias.caixa.gov.br/Paginas/FGTS.aspx"
+    fact = VerifiedFact(
+        valor="3", unidade="meses", fonte_primaria=source,
+        dispositivo="janela anual", vigente_desde=date.today() - timedelta(days=30),
+        verificado_em=date.today())
+    facts = ResearchFacts(fontes=[source], fontes_resolvidas=[source],
+                          fatos_verificados=[fact])
+    body = ('{"intro":"Segundo a CAIXA, no site caixanoticias.caixa.gov.br, '
+            'a janela anual dura 3 meses."}')
+    ctx = {"facts": facts, "role": PageRole.LP}
+    assert run_validators(["critical_fact_grounding"], body, ctx) == []
+
+
+def test_paid_lp_does_not_accept_generic_issuer_as_source_citation() -> None:
+    source = "https://caixanoticias.caixa.gov.br/Paginas/FGTS.aspx"
+    fact = VerifiedFact(
+        valor="3", unidade="meses", fonte_primaria=source,
+        dispositivo="janela anual", vigente_desde=date.today() - timedelta(days=30),
+        verificado_em=date.today())
+    facts = ResearchFacts(fontes=[source], fontes_resolvidas=[source],
+                          fatos_verificados=[fact])
+    body = '{"intro":"Segundo a CAIXA, a janela anual dura 3 meses."}'
+    ctx = {"facts": facts, "role": PageRole.LP}
+    codes = {i.code for i in run_validators(["critical_fact_grounding"], body, ctx)}
+    assert "critical_claim_without_citation" in codes
+
+
 def test_legal_force_without_resolved_device_is_rejected() -> None:
     body = "<p>O trabalhador tem direito ao saque nesta situação.</p>"
     issues = run_validators(["critical_fact_grounding"], body,

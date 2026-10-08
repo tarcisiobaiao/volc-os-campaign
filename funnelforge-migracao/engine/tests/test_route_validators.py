@@ -26,6 +26,19 @@ def test_same_domain_flags_bare_text_url():
     assert any(i.code == "cross_domain" for i in run_validators(["same_domain"], txt, CTX))
 
 
+def test_same_domain_does_not_treat_channel_name_as_a_link():
+    txt = ("A fonte consultada não confirmou um procedimento equivalente pelo "
+           "gov.br; por isso este guia não orienta o uso desse canal.")
+    ctx = {**CTX, "research_hosts": ["caixa.gov.br"]}
+    assert run_validators(["same_domain"], txt, ctx) == []
+
+
+def test_same_domain_still_rejects_bare_unresearched_path():
+    txt = "Consulte o procedimento em gov.br/servico-nao-pesquisado."
+    ctx = {**CTX, "research_hosts": ["caixa.gov.br"]}
+    assert any(i.code == "cross_domain" for i in run_validators(["same_domain"], txt, ctx))
+
+
 def test_same_domain_flags_markdown_link():
     txt = "Veja mais detalhes em [Saiba mais](https://portalmundomais.com) sobre o tema."
     assert any(i.code == "cross_domain" for i in run_validators(["same_domain"], txt, CTX))

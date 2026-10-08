@@ -326,6 +326,8 @@ def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | 
         "- fonte = URL de uma pagina que a sua busca realmente abriu. URL de memoria nao vale.\n"
         "- numero, prazo, data e mudanca exigem valor, unidade e vigente_desde (a vigencia que "
         "a fonte declara). Sem isso, nao inclua o fato.\n"
+        "- formula, regra ou metodo de calculo e tipo processo, mesmo quando a fonte traz um "
+        "exemplo numerico; numero fica para valor, limite ou percentual que muda no tempo.\n"
         "- regra, elegibilidade e obrigacao exigem fonte oficial ou primaria.\n"
         f"- {EVIDENCIA_RESUMIDA}\n"
         "- paginas: os duvida_id que o fato sustenta; requisitos: os ids que ele cobre.\n"

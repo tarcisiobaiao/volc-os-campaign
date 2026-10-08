@@ -814,6 +814,22 @@ def _extract_hosts(content: str) -> list[str]:
     for pattern in (_HREF_SRC_RE, _MD_LINK_RE, _SCHEME_URL_RE, _BARE_HOST_RE):
         for m in pattern.finditer(content):
             raw = m.group(1) if pattern.groups else m.group(0)
+            # A bare host can be the NAME of a channel in a negative comparison
+            # ("não há procedimento confirmado pelo gov.br"), not a destination.
+            # Ignore only that narrow, explicit non-recommendation. Ordinary
+            # naked domains, lookalikes, paths and every actual href/src still
+            # go through the research-derived authorization below.
+            if pattern is _BARE_HOST_RE:
+                clean = raw.strip().lower()
+                if "/" not in clean and not clean.startswith("www."):
+                    window = _normalized_claim(
+                        content[max(0, m.start() - 220):m.end() + 220])
+                    negated_channel = any(marker in window for marker in (
+                        "nao confirma", "nao foi confirmado", "nenhum procedimento",
+                        "sem confirmacao", "nao ha instrucoes", "nao orienta",
+                    ))
+                    if negated_channel:
+                        continue
             host = _url_host(raw)
             if host:
                 hosts[host] = None
@@ -1813,6 +1829,29 @@ def _claim_terms(value: str) -> set[str]:
             if w not in _CLAIM_STOPWORDS}
 
 
+def _source_is_cited(content: str, source: str, ctx: dict) -> bool:
+    """Citation contract with one deliberate exception for paid LPs.
+
+    Interior pages can link the primary source and therefore keep the strict
+    exact-URL rule. The paid landing page intentionally receives source NAMES,
+    never outbound URLs; there, naming the exact source host is the strongest
+    citation the page is allowed to render. This does not let an issuer name or
+    a generic apex stand in for another source: the complete hostname must be
+    present in the copy.
+    """
+    if source in content:
+        return True
+    role = ctx.get("role")
+    role_value = getattr(role, "value", role)
+    if str(role_value).lower() != "lp":
+        return False
+    host = _url_host(source).removeprefix("www.")
+    if not host:
+        return False
+    return bool(re.search(rf"(?<![\w.-])(?:www\.)?{re.escape(host)}(?![\w.-])",
+                          content, re.I))
+
+
 def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
     """Every critical numeric/legal claim must map to a resolved typed fact.
 
@@ -1900,7 +1939,7 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
             ))
             continue
         source = str(_field(grounding, "fonte_primaria", ""))
-        if source not in content:
+        if not _source_is_cited(content, source, ctx):
             issues.append(Issue(
                 code="critical_claim_without_citation",
                 message=f"Afirmação crítica {raw!r} não cita sua fonte primária no conteúdo.",
@@ -1938,7 +1977,7 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
             ))
         else:
             source = str(_field(grounding, "fonte_primaria", ""))
-            if source not in content:
+            if not _source_is_cited(content, source, ctx):
                 issues.append(Issue(
                     code="critical_claim_without_citation",
                     message=f"Afirmação legal não cita sua fonte primária: {raw_sentence!r}.",

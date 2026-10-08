@@ -330,6 +330,9 @@ def run_pipeline(
 
     laco = _Laco(v2=v2, publish=publish, com_jornada=com_jornada,
                  orcamento=orcamento, a_publicar=a_publicar, dossie_vivo=dossie_vivo)
+    if dossie_vivo is not None and st.perfil_rapido(deps):
+        _complementar_lote_rapido(state, pages, deps, dossie_vivo)
+        _checkpoint(state, deps)
     workers = int(getattr(deps.settings.run, "page_workers", 1) or 1)
     if workers > 1 and len(pages) > 1:
         _paginas_em_paralelo(state, pages, deps, laco, workers)
@@ -550,7 +553,8 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
     abrir páginas novas; qualquer outra falha fica na própria página."""
     v2, publish, com_jornada = laco.v2, laco.publish, laco.com_jornada
     orcamento, a_publicar = laco.orcamento, laco.a_publicar
-    if (laco.dossie_vivo is not None and laco.fase != "acabamento"
+    if (laco.dossie_vivo is not None and not st.perfil_rapido(deps)
+            and laco.fase != "acabamento"
             and not _done(state, f"write_p{page.page_number}")):
         _complementar_pagina(state, page, deps, laco.dossie_vivo)
     if _falhou(state, f"dossie_p{page.page_number}"):
@@ -941,6 +945,26 @@ def _complementar_pagina(state: RunState, page: Page, deps: Deps, vivo: Any) -> 
     state.step_status[f"dossie_complemento_p{n}"] = StepResult(
         step=f"dossie_complemento_p{n}", status=StepStatus.OK,
         issues=[Issue(code="complemento_sob_demanda", message=json.dumps(
+            resumo, ensure_ascii=False)[:600])])
+
+
+def _complementar_lote_rapido(state: RunState, pages: list[Page], deps: Deps, vivo: Any) -> None:
+    """No perfil rápido, fecha todas as lacunas em uma rodada consolidada.
+
+    A saída continua sendo o mesmo dossiê tipado e o mesmo portão por página;
+    só muda a granularidade da pesquisa. Falha de fonte degrada o requisito e
+    as páginas seguem para a revisão global, conforme o contrato já existente.
+    """
+    from funnelforge.pipeline.dossie import aplicar_portao
+    resumo = vivo.complementar_lote(pages, state)
+    with vivo.trava:
+        parcial = vivo.montar(state)
+    state.dossie = parcial.model_dump(mode="json")
+    state.dossie_sha256 = parcial.sha256
+    aplicar_portao(state, parcial)
+    state.step_status["dossie_complemento_lote"] = StepResult(
+        step="dossie_complemento_lote", status=StepStatus.OK,
+        issues=[Issue(code="complemento_em_lote", message=json.dumps(
             resumo, ensure_ascii=False)[:600])])
 
 

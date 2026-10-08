@@ -172,6 +172,22 @@ gate; só o que continua `block` vai à revisão humana consolidada
 (`revisao_global_rapida.json`). Lacuna de evidência é aviso para o revisor
 global, não manda página a humano.
 
+No perfil rápido, as lacunas de todas as páginas são pesquisadas em uma única
+complementação em lote antes dos workers. O portão por requisito e a
+verificação de fonte continuam iguais; muda apenas a granularidade da chamada.
+Fórmula de cálculo com exemplo numérico é classificada como `processo`, e não
+como valor temporal sem vigência, somente quando há operação e linguagem
+inequívoca de cálculo. Valores, limites e percentuais comuns seguem fail-closed.
+
+Canário real de 08/10/2026, card #65 (FGTS), sem publicação: 6/6 páginas
+acabadas, todos os content gates `OK`, revisão global com 0 `block` e nenhuma
+página para decisão humana; 13 chamadas do motor (4 dossiê, 8 redação — duas
+retentativas recuperadas — e 1 revisão), pico de 3 chamadas simultâneas e cerca
+de 5m45s. O run anterior consumia 22 chamadas e deixava duas páginas para
+decisão. A meta histórica de ~8 chamadas não é um mínimo seguro para seis
+páginas: pesquisa grounded em duas etapas + 6 redações + revisão já exige 11
+chamadas quando não há retentativa.
+
 ## Contrato de medição
 
 `jornada/medicao.py` → `medicao.json`. Todo sinal nasce `nao_implantada`:

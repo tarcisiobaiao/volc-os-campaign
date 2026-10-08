@@ -395,7 +395,10 @@ def _prompt_da_estruturacao(texto: str, evs: list[Evidencia], fontes: list[dict]
             "órgão ou organização que publica a fonte, escrito como aparece nela; "
             "tipo_de_emissor, escopo e jurisdicao (ISO 3166, ex.: 'BR', 'PT', 'MX-JAL') da "
             "fonte, ou 'desconhecido'/vazio quando a evidência não diz; paginas e requisitos só dos ids listados. Não crie fato, número ou "
-            "fonte. Evidência que não sustenta requisito nenhum fica de fora.\n\n"
+            "fonte. Fórmula, regra ou método de cálculo é tipo processo mesmo quando a fonte "
+            "traz um exemplo numérico; tipo numero fica para valor, limite ou percentual que "
+            "pode mudar no tempo. "
+            "Evidência que não sustenta requisito nenhum fica de fora.\n\n"
             f"EVIDÊNCIAS:\n{lista}\n\nREQUISITOS:\n{reqs}\n\n"
             f"PÁGINAS CONSULTADAS (contexto; não são evidência):\n{consultadas}\n\n"
             f"TEXTO PESQUISADO:\n{texto}")

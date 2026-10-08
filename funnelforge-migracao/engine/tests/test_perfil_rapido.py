@@ -123,3 +123,23 @@ def test_no_perfil_rapido_lacuna_de_evidencia_nao_manda_pagina_para_humano(tmp_p
     revisao = json.loads((deps.runner.runs_dir / state.run_id / "revisao_global_rapida.json")
                          .read_text())
     assert revisao["revisao_humana"] == []
+
+
+def test_perfil_rapido_complementa_todas_as_paginas_em_um_unico_lote(tmp_path, monkeypatch):
+    """Várias lacunas viram uma rodada consolidada, não uma por página."""
+    congelar_data(monkeypatch)
+    pesquisa = _Pesquisa([], FATOS_COMPLETOS)
+    _ligar_pesquisa(monkeypatch, pesquisa)
+    settings = _settings_com_dossie(tmp_path)
+    settings.run.perfil = "rapido"
+    settings.run.page_workers = 3
+    llm, deps = montar_deps(tmp_path, settings, _revisor(_todos_pass))
+    state = run_pipeline(None, deps, only=None, publish=False,
+                         plan=plano_do_funnel_architecture(_arq_com_requisito_de_renda()),
+                         timestamp="20261007-120000")
+    assert len(pesquisa.pedidos) == 2                    # global + UM lote
+    assert pesquisa.pedidos[0] is None
+    assert len(pesquisa.pedidos[1]) >= len(state.plan.pages)
+    assert "dossie_complemento_lote" in state.step_status
+    assert not any(k.startswith("dossie_complemento_p") for k in state.step_status)
+    assert all(p.page_number in state.drafts for p in state.plan.pages)
