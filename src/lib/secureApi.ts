@@ -229,6 +229,16 @@ class SecureApiClient {
    * `rpc_set_dollar_exchange_rate` atualiza a taxa e reconverte as receitas do
    * mês junto. Por isso `dollar_exchange_rate` é recusada em `setSettings`.
    */
+  /**
+   * `POST /api/atualizar?alvo=…` — pede ao servidor que dispare a coleta no n8n.
+   *
+   * O navegador não conhece mais a URL do webhook: ela mora no servidor, que
+   * exige sessão e repassa com o segredo que o n8n confere.
+   */
+  async dispararAtualizacao(alvo: 'google-ads' | 'gam'): Promise<{ disparado: boolean; alvo: string }> {
+    return this.request(`/api/atualizar?alvo=${encodeURIComponent(alvo)}`, { method: 'POST' });
+  }
+
   async setExchangeRate(taxa: number): Promise<{ rate: number; last_currency_update: string | null }> {
     return this.request('/api/settings/exchange-rate', {
       method: 'PUT',

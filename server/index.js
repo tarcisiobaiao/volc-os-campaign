@@ -109,6 +109,10 @@ const handlerConfiguracoes = criarHandlerExpress(
 app.get('/api/settings', handlerConfiguracoes);
 app.put('/api/settings', handlerConfiguracoes);
 
+// Disparo autenticado das coletas no n8n (substitui os webhooks públicos do
+// GeneralDashboard, 08/10/2026). Regra em `api/_lib/atualizacoes.js`.
+app.post('/api/atualizar', criarHandlerExpress(despacharAtualizacao, { metodos: 'POST', nome: 'atualizar' }));
+
 app.put(
   '/api/settings/exchange-rate',
   criarHandlerExpress(
@@ -140,6 +144,7 @@ import { criarHandlerExpress } from '../api/_lib/host.js';
 import { despacharPerfil } from '../api/_lib/perfil.js';
 import { despacharUsuarios } from '../api/_lib/usuarios.js';
 import { despacharConfiguracoes } from '../api/_lib/configuracoes.js';
+import { despacharAtualizacao } from '../api/_lib/atualizacoes.js';
 
 /**
  * Adapta uma rota Express para a `dispatch()` compartilhada.

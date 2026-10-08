@@ -1,3 +1,4 @@
+import { secureApi } from '@/lib/secureApi';
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -559,75 +560,26 @@ export default function GeneralDashboard() {
     refresh(filters);
   };
 
-  const handleUpdateGAM = async () => {
+  // Os dois botões pedem ao NOSSO servidor, autenticado (POST /api/atualizar).
+  // Antes chamavam o webhook do n8n direto do navegador, por GET e sem
+  // credencial, com a URL dentro do bundle (medido em 08/10/2026).
+  const dispararAtualizacao = async (alvo: 'gam' | 'google-ads') => {
     setWebhookStatus('loading');
-
     try {
-      const response = await fetch('https://fluxos.agenciavolc.com.br/webhook/e8c5cc2a-4154-4527-a5e3-f2cf84fae469', {
-        method: 'GET'
-      });
-      
-      if (response.ok) {
-        setWebhookStatus('success');
-        
-        // Reset status after 3 seconds
-        setTimeout(() => {
-          setWebhookStatus('idle');
-        }, 3000);
-      } else {
-        console.error('❌ N8N webhook failed:', response.status, response.statusText);
-        setWebhookStatus('error');
-        
-        // Reset status after 3 seconds
-        setTimeout(() => {
-          setWebhookStatus('idle');
-        }, 3000);
-      }
+      await secureApi.dispararAtualizacao(alvo);
+      setWebhookStatus('success');
     } catch (error) {
-      console.error('❌ Error triggering N8N webhook:', error);
+      console.error(`❌ Disparo da atualização (${alvo}) falhou:`, error);
       setWebhookStatus('error');
-      
-      // Reset status after 3 seconds
-      setTimeout(() => {
-        setWebhookStatus('idle');
-      }, 3000);
     }
+    setTimeout(() => {
+      setWebhookStatus('idle');
+    }, 3000);
   };
 
-  const handleUpdateGoogleAds = async () => {
-    setWebhookStatus('loading');
+  const handleUpdateGAM = () => dispararAtualizacao('gam');
 
-    try {
-      const response = await fetch('https://fluxos.agenciavolc.com.br/webhook/43dd1321-07a0-42f0-a119-65c531ef73fc', {
-        method: 'GET'
-      });
-
-      if (response.ok) {
-        setWebhookStatus('success');
-
-        // Reset status after 3 seconds
-        setTimeout(() => {
-          setWebhookStatus('idle');
-        }, 3000);
-      } else {
-        console.error('❌ N8N Google Ads webhook failed:', response.status, response.statusText);
-        setWebhookStatus('error');
-
-        // Reset status after 3 seconds
-        setTimeout(() => {
-          setWebhookStatus('idle');
-        }, 3000);
-      }
-    } catch (error) {
-      console.error('❌ Error triggering N8N Google Ads webhook:', error);
-      setWebhookStatus('error');
-
-      // Reset status after 3 seconds
-      setTimeout(() => {
-        setWebhookStatus('idle');
-      }, 3000);
-    }
-  };
+  const handleUpdateGoogleAds = () => dispararAtualizacao('google-ads');
 
   if (loading) {
     return (
