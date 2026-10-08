@@ -295,7 +295,9 @@ JS_PREPARAR_PAGINA = r"""
 // `googleAds:search` e POR CLIENTE: um lote com N contas exigiria abrir o lote
 // de novo dentro do laco, e o retorno do laco passaria a disparar mais de uma
 // vez por iteracao — que e exatamente como um `SplitInBatches` pula lote. O
-// lote de VOLUME e a pagina (PAGE_SIZE linhas por chamada e por RPC).
+// lote de VOLUME e a pagina da API (ate 10.000 linhas, fixo desde a v21: o
+// `pageSize` foi removido do SearchGoogleAdsRequest e a v25 recusa o campo
+// com 400, medido em 08/10/2026).
 const itens = $input.all();
 if (itens.length === 0) {
   throw new Error('LOTE_VAZIO: o laco entregou zero item');
@@ -326,7 +328,6 @@ return [{
     ...ctx,
     pagina,
     page_token: String(ctx.proximo_page_token || ''),
-    page_size: Math.max(1, Number(cfg.PAGE_SIZE) || 1000),
     gaql,
     url_google: `${cfg.GOOGLEADS_BASE}/${ctx.api_versao}/customers/${ctx.customer_id}`
       + '/googleAds:search',
@@ -1005,7 +1006,6 @@ def construir(papel: str, contrato_sha: str) -> dict:
         ("PASSOS", passos),
         ("PASSO_FORCADO", ""),
         ("TZ", "America/Sao_Paulo"),
-        ("PAGE_SIZE", "1000"),
         ("MAX_PAGINAS", "50"),
         # Vazio de proposito: preencher no n8n antes de ativar. Numero de MCC
         # nao e segredo, mas tambem nao e constante de repositorio.
@@ -1073,7 +1073,7 @@ def construir(papel: str, contrato_sha: str) -> dict:
             ]},
             "sendBody": True,
             "specifyBody": "json",
-            "jsonBody": "={{ JSON.stringify({ query: $json.gaql, pageSize: $json.page_size,"
+            "jsonBody": "={{ JSON.stringify({ query: $json.gaql,"
                         " pageToken: $json.page_token }) }}",
             "options": {"timeout": 120000, "response": {"response": {"neverError": False}}},
         }, credentials=CRED_GOOGLEADS, retryOnFail=True, maxTries=3, waitBetweenTries=5000,

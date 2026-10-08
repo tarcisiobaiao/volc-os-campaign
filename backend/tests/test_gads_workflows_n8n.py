@@ -91,6 +91,26 @@ def test_nenhum_destino_fora_da_autoridade_oficial():
         assert hosts <= {"database.agenciavolc.com.br", "googleads.googleapis.com"}, hosts
 
 
+def test_a_busca_nao_manda_page_size():
+    """`page_size` saiu do `SearchGoogleAdsRequest` na v21; a v25 recusa o campo.
+
+    Medido em 08/10/2026: `POST v25/customers/{cid}/googleAds:search` com
+    `pageSize` no corpo → 400 INVALID_ARGUMENT. Os dois workflows nasceram com
+    ele e quebrariam na primeira execução real. A página é de 10.000 linhas e
+    o laço segue `nextPageToken`.
+    """
+    for caminho in (D0, D1):
+        corpos = [
+            no["parameters"].get("jsonBody", "")
+            for no in _wf(caminho)["nodes"]
+            if "query: $json.gaql" in no["parameters"].get("jsonBody", "")
+        ]
+        assert corpos, f"{caminho.name}: nó de busca não encontrado"
+        for corpo in corpos:
+            assert "pageSize" not in corpo, f"{caminho.name}: {corpo}"
+            assert "pageToken" in corpo
+
+
 def test_nenhuma_mutacao_google_alcancavel():
     for caminho in (D0, D1):
         bruto = caminho.read_text(encoding="utf-8")

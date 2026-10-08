@@ -86,42 +86,36 @@
             },
             {
               "id": "c9",
-              "name": "PAGE_SIZE",
-              "type": "string",
-              "value": "1000"
-            },
-            {
-              "id": "c10",
               "name": "MAX_PAGINAS",
               "type": "string",
               "value": "50"
             },
             {
-              "id": "c11",
+              "id": "c10",
               "name": "LOGIN_CUSTOMER_ID",
               "type": "string",
               "value": ""
             },
             {
-              "id": "c12",
+              "id": "c11",
               "name": "CONTAS_PERMITIDAS",
               "type": "string",
               "value": ""
             },
             {
-              "id": "c13",
+              "id": "c12",
               "name": "CONTRATO_VERSAO",
               "type": "string",
               "value": "gads-campanha-dia-v1"
             },
             {
-              "id": "c14",
+              "id": "c13",
               "name": "CONTRATO_SHA256",
               "type": "string",
               "value": "9566b7b3a609c40439fb57413c1f0d888222a4c4e4479268ff0cfb03addbf413"
             },
             {
-              "id": "c15",
+              "id": "c14",
               "name": "GAQL_CAMPOS",
               "type": "string",
               "value": "customer.id,customer.currency_code,campaign.id,campaign.name,campaign.status,campaign.advertising_channel_type,segments.date,metrics.impressions,metrics.clicks,metrics.interactions,metrics.cost_micros,metrics.conversions,metrics.all_conversions,metrics.conversions_value,metrics.all_conversions_value,metrics.ctr,metrics.average_cpc,metrics.cost_per_conversion,metrics.search_impression_share,metrics.search_budget_lost_impression_share,metrics.search_rank_lost_impression_share,metrics.search_top_impression_share,metrics.search_absolute_top_impression_share,metrics.search_click_share,metrics.search_exact_match_impression_share,metrics.top_impression_percentage,metrics.absolute_top_impression_percentage"
@@ -282,7 +276,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// ── PEDIDO DE UMA PAGINA ────────────────────────────────────────────────────\n//\n// ⚠️ UMA CONTA POR ITERACAO, e isso e uma decisao, nao um descuido. O endpoint\n// `googleAds:search` e POR CLIENTE: um lote com N contas exigiria abrir o lote\n// de novo dentro do laco, e o retorno do laco passaria a disparar mais de uma\n// vez por iteracao — que e exatamente como um `SplitInBatches` pula lote. O\n// lote de VOLUME e a pagina (PAGE_SIZE linhas por chamada e por RPC).\nconst itens = $input.all();\nif (itens.length === 0) {\n  throw new Error('LOTE_VAZIO: o laco entregou zero item');\n}\nif (itens.length > 1) {\n  throw new Error(`LOTE_CONTAS_MAIOR_QUE_UM: ${itens.length} contas na mesma iteracao;`\n    + ' o batchSize do laco precisa continuar 1 enquanto a chamada for por cliente');\n}\nconst ctx = itens[0].json;\nconst cfg = $('Config').first().json;\n\nconst pagina = Number(ctx.pagina || 0) + 1;\nconst teto = Math.max(1, Number(cfg.MAX_PAGINAS) || 50);\n// Truncar em silencio seria descartar linha lida. Estourar o teto e erro.\nif (pagina > teto) {\n  throw new Error(`PAGINACAO_ACIMA_DO_TETO: conta ${ctx.customer_id} passou de ${teto}`\n    + ' paginas; nenhuma linha foi descartada, a execucao parou');\n}\n\nconst campos = String(cfg.GAQL_CAMPOS || '').split(',').map((s) => s.trim()).filter(Boolean);\nif (campos.length === 0) throw new Error('GAQL_SEM_CAMPOS');\nconst gaql = `SELECT ${campos.join(', ')} FROM campaign`\n  + ` WHERE segments.date BETWEEN '${ctx.janela_inicio}' AND '${ctx.janela_fim}'`\n  + ` ORDER BY campaign.id`;\n\nreturn [{\n  json: {\n    ...ctx,\n    pagina,\n    page_token: String(ctx.proximo_page_token || ''),\n    page_size: Math.max(1, Number(cfg.PAGE_SIZE) || 1000),\n    gaql,\n    url_google: `${cfg.GOOGLEADS_BASE}/${ctx.api_versao}/customers/${ctx.customer_id}`\n      + '/googleAds:search',\n    login_customer_id: String(cfg.LOGIN_CUSTOMER_ID || ''),\n    acumulado: ctx.acumulado || {\n      linhas_lidas: 0, linhas_aceitas: 0, linhas_preteridas: 0,\n      linhas_rejeitadas: 0, projecao_linhas: 0, paginas: 0,\n    },\n  },\n}];\n"
+        "jsCode": "// ── PEDIDO DE UMA PAGINA ────────────────────────────────────────────────────\n//\n// ⚠️ UMA CONTA POR ITERACAO, e isso e uma decisao, nao um descuido. O endpoint\n// `googleAds:search` e POR CLIENTE: um lote com N contas exigiria abrir o lote\n// de novo dentro do laco, e o retorno do laco passaria a disparar mais de uma\n// vez por iteracao — que e exatamente como um `SplitInBatches` pula lote. O\n// lote de VOLUME e a pagina da API (ate 10.000 linhas, fixo desde a v21: o\n// `pageSize` foi removido do SearchGoogleAdsRequest e a v25 recusa o campo\n// com 400, medido em 08/10/2026).\nconst itens = $input.all();\nif (itens.length === 0) {\n  throw new Error('LOTE_VAZIO: o laco entregou zero item');\n}\nif (itens.length > 1) {\n  throw new Error(`LOTE_CONTAS_MAIOR_QUE_UM: ${itens.length} contas na mesma iteracao;`\n    + ' o batchSize do laco precisa continuar 1 enquanto a chamada for por cliente');\n}\nconst ctx = itens[0].json;\nconst cfg = $('Config').first().json;\n\nconst pagina = Number(ctx.pagina || 0) + 1;\nconst teto = Math.max(1, Number(cfg.MAX_PAGINAS) || 50);\n// Truncar em silencio seria descartar linha lida. Estourar o teto e erro.\nif (pagina > teto) {\n  throw new Error(`PAGINACAO_ACIMA_DO_TETO: conta ${ctx.customer_id} passou de ${teto}`\n    + ' paginas; nenhuma linha foi descartada, a execucao parou');\n}\n\nconst campos = String(cfg.GAQL_CAMPOS || '').split(',').map((s) => s.trim()).filter(Boolean);\nif (campos.length === 0) throw new Error('GAQL_SEM_CAMPOS');\nconst gaql = `SELECT ${campos.join(', ')} FROM campaign`\n  + ` WHERE segments.date BETWEEN '${ctx.janela_inicio}' AND '${ctx.janela_fim}'`\n  + ` ORDER BY campaign.id`;\n\nreturn [{\n  json: {\n    ...ctx,\n    pagina,\n    page_token: String(ctx.proximo_page_token || ''),\n    gaql,\n    url_google: `${cfg.GOOGLEADS_BASE}/${ctx.api_versao}/customers/${ctx.customer_id}`\n      + '/googleAds:search',\n    login_customer_id: String(cfg.LOGIN_CUSTOMER_ID || ''),\n    acumulado: ctx.acumulado || {\n      linhas_lidas: 0, linhas_aceitas: 0, linhas_preteridas: 0,\n      linhas_rejeitadas: 0, projecao_linhas: 0, paginas: 0,\n    },\n  },\n}];\n"
       },
       "id": "9bf79b57-227b-5b68-aa9e-9bc6b1aa3ba9",
       "name": "Pagina: preparar pedido",
@@ -318,7 +312,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ query: $json.gaql, pageSize: $json.page_size, pageToken: $json.page_token }) }}",
+        "jsonBody": "={{ JSON.stringify({ query: $json.gaql, pageToken: $json.page_token }) }}",
         "options": {
           "timeout": 120000,
           "response": {
