@@ -990,7 +990,13 @@ def test_o_plano_declara_as_ausencias_em_vez_de_escondê_las() -> None:
 
 
 def test_as_automacoes_de_pmax_viajam_todas_desligadas():
-    """CONTRAPROVA T09 + achado B5: as 5, todas OPTED_OUT, em ordem estável."""
+    """CONTRAPROVA T09 + achado B5 + v25.2: as 7, todas OPTED_OUT, em ordem estável.
+
+    As cinco primeiras são as de sempre, na mesma ordem (o selo cobre a lista).
+    As duas novas entram no FIM: `AUTOMATED_VIDEO_CRAWL` (v25.2) e
+    `GENERATE_DESIGN_VERSIONS_FOR_IMAGES`, que a API aceita em PMax
+    (validate_only, 08/10/2026) embora o guia só a cite em Demand Gen.
+    """
     ops, r = pmax.construir(CID, _brief(), login_customer_id=MCC)
     camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
 
@@ -1007,23 +1013,35 @@ def test_as_automacoes_de_pmax_viajam_todas_desligadas():
         # landing page para o pool visual, e uma peça que entra por aí não
         # passou pelo portão de política nem está no `supply_sha256` do plano.
         ("GENERATE_IMAGE_EXTRACTION", "OPTED_OUT"),
+        ("AUTOMATED_VIDEO_CRAWL", "OPTED_OUT"),
+        ("GENERATE_DESIGN_VERSIONS_FOR_IMAGES", "OPTED_OUT"),
     ]
+    # As cinco de `automacoes.py` são prefixo exato — a tela as lê de lá.
+    from volc_ads import automacoes
+    assert tuple(t for t, _ in lidas[:5]) == automacoes.AUTOMACOES_PMAX_RECUSADAS
     # Nenhuma delas pode viajar LIGADA, nem por acidente de ordem.
     assert all(estado == "OPTED_OUT" for _, estado in lidas)
 
 
-def test_pmax_exclui_page_feed_da_campanha():
-    """CONTRAPROVA T09: PAGE_FEED excluído, não apenas "não anexado".
+def test_pmax_nao_emite_page_feed_que_a_api_recusa():
+    """⚠️ INVERTIDO em 08/10/2026, por medição — não por gosto.
 
-    Não anexar é um estado; excluir é uma regra. O feed pode ser anexado depois
-    por outra rota — a exclusão continua valendo, e é ela que fecha a porta
-    lateral para a expansão de URL.
+    O teste anterior exigia `excluded_parent_asset_set_types == [PAGE_FEED]`. O
+    primeiro validate_only de PMax em conta real (Crédito Up) recusou o mutate
+    INTEIRO por isso: `CampaignError.INVALID_EXCLUDED_PARENT_ASSET_SET_TYPE`,
+    "The asset set type is invalid to be set in excluded_parent_asset_set_types
+    field" — e cada outra operação voltou como RESOURCE_NOT_FOUND em cascata.
+
+    A trava que ele pretendia continua de pé por outro caminho: page feed só é
+    consumido pela expansão de URL final, que viaja OPTED_OUT.
     """
-    ops, _ = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    ops, r = pmax.construir(CID, _brief(), login_customer_id=MCC)
+    assert r.ok, _erros(r)
     camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
-
-    excluidos = [t.name for t in camp.excluded_parent_asset_set_types]
-    assert excluidos == ["PAGE_FEED"]
+    assert list(camp.excluded_parent_asset_set_types) == []
+    fue = {s.asset_automation_type.name: s.asset_automation_status.name
+           for s in camp.asset_automation_settings}
+    assert fue["FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION"] == "OPTED_OUT"
 
 
 def test_pmax_nao_emite_o_campo_que_nao_existe_na_v25():
@@ -1083,3 +1101,500 @@ def test_nenhum_objeto_pmax_nasce_ligado():
         nome = getattr(estado, "name", None)
         if nome is not None:
             assert nome != "ENABLED", f"{qual} nasceu ENABLED"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# v25.2 — múltiplos asset groups, URL options, video crawl, sinais, metas
+#
+# Tudo aqui é offline, com os protos v25 reais. As decisões que dependem do
+# que a API ACEITA foram medidas por validate_only na Crédito Up em 08/10/2026
+# (ver `pmax_config.py`); estes testes guardam o PAYLOAD que reproduz a prova.
+# ═══════════════════════════════════════════════════════════════════════════
+
+from volc_ads.campanha import pmax_config as pc  # noqa: E402
+from volc_ads.campanha import pmax_grafo  # noqa: E402
+
+
+def _v25(**troca) -> pc.ConfiguracaoPMaxV25:
+    base = dict(
+        brand_guidelines_enabled=False,
+        mensuracao=_mensuracao(),
+        sinais=(SinalDeAudiencia("search_theme", "saque anual fgts"),),
+        negativas=("emprestimo consignado",),
+    )
+    base.update(troca)
+    return pc.ConfiguracaoPMaxV25(**base)
+
+
+def _grupo(nome="Grupo B", **troca) -> pc.AssetGroupPMax:
+    base = dict(
+        nome=nome,
+        url_final="https://creditoup.com.br/r/saque-anual/?secao=b",
+        textos=pc.TextosPMax(
+            headlines=("Calendario do Saque", "Quem Pode Sacar", "Regras Oficiais"),
+            long_headlines=("Calendario oficial e regras do saque anual",),
+            descriptions=("Calendario e regras, com fonte.",
+                          "Guia informativo com o calendario oficial do saque."),
+        ),
+        imagens=_imagens(
+            marketing=[_imagem("bmkt", "marketing", 1200, 628)],
+            marketing_quadrada=[_imagem("bsq", "marketing_quadrada", 1200, 1200)],
+            logo=[_imagem("blogo", "logo", 1200, 1200)],
+        ),
+        sinais=(SinalDeAudiencia("search_theme", "calendario saque"),),
+    )
+    base.update(troca)
+    return pc.AssetGroupPMax(**base)
+
+
+def _campanha_de(ops):
+    return _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+
+
+def _enum_nomes(nome: str) -> set[str]:
+    return set(_Enums().__getattr__(nome).__members__) - {"UNSPECIFIED", "UNKNOWN"}
+
+
+def test_vocabulario_de_pmax_config_bate_com_o_proto_v25() -> None:
+    """`pmax_config` não importa o SDK (a tela o lê); o proto é quem o confere."""
+    automacoes = _enum_nomes("AssetAutomationTypeEnum")
+    assert set(pc.AUTOMACOES_PMAX_V25) <= automacoes
+    assert set(pc.AUTOMACOES_RECUSADAS_PELA_API_EM_PMAX) <= automacoes
+    assert not set(pc.AUTOMACOES_PMAX_V25) & set(pc.AUTOMACOES_RECUSADAS_PELA_API_EM_PMAX)
+    assert set(pc.PLATAFORMAS_DE_VIDEO_CRAWL) == _enum_nomes("VideoCrawlSourcePlatformEnum")
+    assert set(pc.CATEGORIAS_DE_CONVERSAO) == _enum_nomes("ConversionActionCategoryEnum")
+    assert set(pc.ORIGENS_DE_CONVERSAO) == _enum_nomes("ConversionOriginEnum")
+    assert set(pc.MATCH_TYPES_NEGATIVOS) == _enum_nomes("KeywordMatchTypeEnum")
+    assert set(pc.MODOS_CLIENTE_NOVO) == _enum_nomes("CustomerLifecycleOptimizationModeEnum")
+    assert set(pc.OPERADORES_DE_URL) == _enum_nomes("WebpageConditionOperatorEnum")
+    assert set(pc.OPERANDOS_DE_URL) <= _enum_nomes("WebpageConditionOperandEnum")
+
+
+def test_configuracao_antiga_e_a_v25_com_defaults_geram_o_mesmo_payload() -> None:
+    """Defaults preservam o comportamento: promover não decide nada."""
+    antiga = _brief(carimbo_nome="20261008_120000")
+    nova = _brief(carimbo_nome="20261008_120000",
+                  pmax=pc.estender(antiga.pmax))
+    ops_a, ra = pmax.construir(CID, antiga, login_customer_id=MCC)
+    ops_b, rb = pmax.construir(CID, nova, login_customer_id=MCC)
+    assert ra.ok and rb.ok, _erros(ra) + _erros(rb)
+    assert ([o._pb.SerializeToString(deterministic=True) for o in ops_a]
+            == [o._pb.SerializeToString(deterministic=True) for o in ops_b])
+    assert len(_por_tipo(ops_a, "asset_group_operation")) == 1
+
+
+def test_dois_asset_groups_cada_um_com_o_que_e_seu() -> None:
+    cfg = _v25(grupos_adicionais=(_grupo(),))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+
+    grupos = [o.asset_group_operation.create
+              for o in _por_tipo(ops, "asset_group_operation")]
+    assert [g.resource_name for g in grupos] == [
+        f"customers/{CID}/assetGroups/-300", f"customers/{CID}/assetGroups/-301"]
+    assert all(g.status.name == "PAUSED" for g in grupos)
+    assert list(grupos[1].final_urls) == ["https://creditoup.com.br/r/saque-anual/?secao=b"]
+
+    por_grupo: dict[str, set[str]] = {}
+    for o in _por_tipo(ops, "asset_group_asset_operation"):
+        v = o.asset_group_asset_operation.create
+        por_grupo.setdefault(v.asset_group, set()).add(v.field_type.name)
+    # Brand guidelines DESLIGADO: os dois grupos têm BUSINESS_NAME e LOGO próprios.
+    for rn in (g.resource_name for g in grupos):
+        assert {"HEADLINE", "LONG_HEADLINE", "DESCRIPTION", "BUSINESS_NAME",
+                "LOGO", "MARKETING_IMAGE", "SQUARE_MARKETING_IMAGE"} <= por_grupo[rn]
+
+    sinais = {(o.asset_group_signal_operation.create.asset_group,
+               o.asset_group_signal_operation.create.search_theme.text)
+              for o in _por_tipo(ops, "asset_group_signal_operation")}
+    assert sinais == {(grupos[0].resource_name, "saque anual fgts"),
+                      (grupos[1].resource_name, "calendario saque")}
+
+    # Ordem: todo asset antes do primeiro grupo; cada vínculo depois do SEU grupo.
+    tipos = [o._pb.WhichOneof("operation") for o in ops]
+    assert max(i for i, t in enumerate(tipos) if t == "asset_operation") < tipos.index(
+        "asset_group_operation")
+    posicao = {g.resource_name: tipos.index("asset_group_operation") for g in grupos[:1]}
+    posicao[grupos[1].resource_name] = [
+        i for i, t in enumerate(tipos) if t == "asset_group_operation"][1]
+    for i, o in enumerate(ops):
+        if tipos[i] == "asset_group_asset_operation":
+            assert i > posicao[o.asset_group_asset_operation.create.asset_group]
+
+
+def test_texto_e_imagem_iguais_em_dois_grupos_viram_um_asset() -> None:
+    """A faixa de id é finita: o mesmo conteúdo é UM asset ligado duas vezes."""
+    g = _grupo(textos=pc.TextosPMax(
+        headlines=("Regras do Saque Anual", "Quem Pode Sacar", "Regras Oficiais"),
+        long_headlines=("Prazos, limites e quem tem direito ao saque anual",),
+        descriptions=("Prazos e limites, com fonte citada.",
+                      "Guia informativo com o calendario oficial do saque.")),
+        imagens=_imagens())
+    ops, r = pmax.construir(CID, _brief(pmax=_v25(grupos_adicionais=(g,))),
+                            login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    textos = [o.asset_operation.create.text_asset.text
+              for o in _por_tipo(ops, "asset_operation")
+              if o.asset_operation.create.text_asset.text]
+    assert len(textos) == len(set(textos))
+    dados = [bytes(o.asset_operation.create.image_asset.data)
+             for o in _por_tipo(ops, "asset_operation")
+             if o.asset_operation.create.image_asset.data]
+    assert len(dados) == len(set(dados)) == 3
+
+
+def test_url_options_do_asset_group_acrescentam_ao_sufixo_da_campanha() -> None:
+    """v25.2: o sufixo do grupo SUBSTITUI o da campanha — por isso ele o contém."""
+    opcoes = pc.OpcoesDeUrl(
+        sufixo_extra=(("vc_ag", "b"), ("vc_tema", "{_tema}")),
+        tracking_url_template="{lpurl}?vc_tpl={_tema}",
+        parametros_personalizados=(("tema", "calendario"),))
+    cfg = _v25(path1="saque", path2="anual",
+               grupos_adicionais=(_grupo(opcoes_de_url=opcoes, path1="saque"),))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    camp = _campanha_de(ops)
+    g0, g1 = [o.asset_group_operation.create
+              for o in _por_tipo(ops, "asset_group_operation")]
+    assert (g0.path1, g0.path2) == ("saque", "anual")
+    assert g0.final_url_suffix == "" and g0.tracking_url_template == ""
+    assert g1.final_url_suffix.startswith(camp.final_url_suffix + "&")
+    assert g1.final_url_suffix.endswith("vc_ag=b&vc_tema={_tema}")
+    assert g1.tracking_url_template == "{lpurl}?vc_tpl={_tema}"
+    assert [(p.key, p.value) for p in g1.url_custom_parameters] == [("tema", "calendario")]
+
+
+@pytest.mark.parametrize("opcoes,trecho", [
+    (pc.OpcoesDeUrl(sufixo_extra=(("vc_x", "{_naodeclarado}"),)), "macro personalizada"),
+    (pc.OpcoesDeUrl(tracking_url_template="https://rastreio.example/x"), "{lpurl}"),
+    (pc.OpcoesDeUrl(parametros_personalizados=(("com_underscore", "v"),)), "alfanumérica"),
+    (pc.OpcoesDeUrl(sufixo_extra=(("vc_x", "{inexistente}"),)), "macro inexistente"),
+])
+def test_url_options_invalidas_falham_local(opcoes, trecho) -> None:
+    cfg = _v25(opcoes_de_url=opcoes)
+    _, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert not r.ok
+    assert trecho in _erros(r)
+
+
+@pytest.mark.parametrize("p1,p2,trecho", [
+    ("a" * 16, "", "15"), ("", "anual", "sem `path1`"), ("com/barra", "", "barra")])
+def test_caminho_de_exibicao_tem_regua(p1, p2, trecho) -> None:
+    _, r = pmax.construir(CID, _brief(pmax=_v25(path1=p1, path2=p2)),
+                          login_customer_id=MCC)
+    assert trecho in _erros(r)
+
+
+def test_automacao_optada_viaja_opted_in_e_as_outras_continuam_fora() -> None:
+    cfg = _v25(automacoes_optadas=("FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",
+                                   "TEXT_ASSET_AUTOMATION"))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    estado = {s.asset_automation_type.name: s.asset_automation_status.name
+              for s in _campanha_de(ops).asset_automation_settings}
+    assert list(estado) == list(pc.AUTOMACOES_PMAX_V25)
+    assert estado["FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION"] == "OPTED_IN"
+    assert estado["TEXT_ASSET_AUTOMATION"] == "OPTED_IN"
+    assert {k for k, v in estado.items() if v == "OPTED_OUT"} == set(
+        pc.AUTOMACOES_PMAX_V25) - {"FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",
+                                   "TEXT_ASSET_AUTOMATION"}
+
+
+@pytest.mark.parametrize("troca,trecho", [
+    # medido: DYNAMIC_TEXT_ASSET_CANNOT_OPT_OUT_WITH_FINAL_URL_EXPANSION_OPT_IN
+    (dict(automacoes_optadas=("FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",)),
+     "TEXT_ASSET_AUTOMATION"),
+    # medido: ENUM_VALUE_NOT_PERMITTED
+    (dict(automacoes_optadas=("GENERATE_VERTICAL_YOUTUBE_VIDEOS",)),
+     "ENUM_VALUE_NOT_PERMITTED"),
+    (dict(automacoes_optadas=("AUTOMATED_VIDEO_CRAWL",),
+          video_crawl_direitos_declarados=True), "sem nenhuma fonte"),
+    (dict(automacoes_optadas=("AUTOMATED_VIDEO_CRAWL",),
+          video_crawl=(pc.FonteDeVideoCrawl("https://creditoup.com.br/", "LANDING_PAGE"),)),
+     "direitos"),
+    (dict(video_crawl=(pc.FonteDeVideoCrawl("https://creditoup.com.br/", "LANDING_PAGE"),)),
+     "não viajariam"),
+    (dict(automacoes_optadas=("AUTOMATED_VIDEO_CRAWL",), video_crawl_direitos_declarados=True,
+          video_crawl=(pc.FonteDeVideoCrawl("https://vimeo.com/x", "YOUTUBE"),)),
+     "youtube.com"),
+])
+def test_automacoes_tem_regua_local(troca, trecho) -> None:
+    _, r = pmax.construir(CID, _brief(pmax=_v25(**troca)), login_customer_id=MCC)
+    assert not r.ok
+    assert trecho in _erros(r)
+
+
+def test_video_crawl_v252_viaja_no_oneof_da_automacao() -> None:
+    fontes = (pc.FonteDeVideoCrawl("https://creditoup.com.br/r/saque-anual/", "LANDING_PAGE"),
+              pc.FonteDeVideoCrawl("https://www.youtube.com/@exemplo", "YOUTUBE"),
+              pc.FonteDeVideoCrawl("https://www.instagram.com/exemplo/", "SOCIAL", False))
+    cfg = _v25(automacoes_optadas=("AUTOMATED_VIDEO_CRAWL",), video_crawl=fontes,
+               video_crawl_direitos_declarados=True)
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    crawl = next(s for s in _campanha_de(ops).asset_automation_settings
+                 if s.asset_automation_type.name == "AUTOMATED_VIDEO_CRAWL")
+    assert crawl.asset_automation_status.name == "OPTED_IN"
+    assert crawl._pb.WhichOneof("setting") == "automated_video_crawl_setting"
+    infos = [(i.url, i.source_platform.name, i.enabled)
+             for i in crawl.automated_video_crawl_setting.automated_video_crawl_infos]
+    assert infos == [(f.url, f.plataforma, f.habilitada) for f in fontes]
+    # E desligado não carrega fonte nenhuma.
+    ops2, _ = pmax.construir(CID, _brief(pmax=_v25()), login_customer_id=MCC)
+    off = next(s for s in _campanha_de(ops2).asset_automation_settings
+               if s.asset_automation_type.name == "AUTOMATED_VIDEO_CRAWL")
+    assert off.asset_automation_status.name == "OPTED_OUT"
+    assert off._pb.WhichOneof("setting") is None
+
+
+def test_negativas_com_match_type_e_a_legada_continua_broad() -> None:
+    cfg = _v25(negativas_tipadas=(pc.NegativaPMax("saque emergencial", "PHRASE"),
+                                  pc.NegativaPMax("fgts login", "EXACT")))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    kws = [(o.campaign_criterion_operation.create.keyword.text,
+            o.campaign_criterion_operation.create.keyword.match_type.name,
+            o.campaign_criterion_operation.create.negative)
+           for o in _por_tipo(ops, "campaign_criterion_operation")
+           if o.campaign_criterion_operation.create._pb.WhichOneof("criterion") == "keyword"]
+    assert kws == [("emprestimo consignado", "BROAD", True),
+                   ("saque emergencial", "PHRASE", True), ("fgts login", "EXACT", True)]
+
+    _, r2 = pmax.construir(CID, _brief(pmax=_v25(negativas_tipadas=(
+        pc.NegativaPMax("emprestimo consignado", "BROAD"),))), login_customer_id=MCC)
+    assert "repetida" in _erros(r2)
+
+
+def test_exclusao_de_marca_cria_a_lista_no_mesmo_mutate() -> None:
+    cfg = _v25(marcas_excluidas=(pc.MarcaExcluida("/g/11trqcwsy6", "Coursera"),
+                                 pc.MarcaExcluida("/g/11k9cpgffz", "Udemy")))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    tipos = [o._pb.WhichOneof("operation") for o in ops]
+    ss = _por_tipo(ops, "shared_set_operation")[0].shared_set_operation.create
+    assert ss.type_.name == "BRANDS"
+    assert ss.resource_name == f"customers/{CID}/sharedSets/-500"
+    assert [o.shared_criterion_operation.create.brand.entity_id
+            for o in _por_tipo(ops, "shared_criterion_operation")] == [
+        "/g/11trqcwsy6", "/g/11k9cpgffz"]
+    crit = [o.campaign_criterion_operation.create
+            for o in _por_tipo(ops, "campaign_criterion_operation")
+            if o.campaign_criterion_operation.create._pb.WhichOneof("criterion") == "brand_list"]
+    assert len(crit) == 1 and crit[0].negative is True
+    assert crit[0].brand_list.shared_set == ss.resource_name
+    # A lista nasce ANTES do critério que a referencia.
+    assert tipos.index("shared_set_operation") < max(
+        i for i, o in enumerate(ops) if tipos[i] == "campaign_criterion_operation")
+
+    _, r2 = pmax.construir(CID, _brief(pmax=_v25(
+        marcas_excluidas=(pc.MarcaExcluida("Coursera"),))), login_customer_id=MCC)
+    assert "entity_id" in _erros(r2)
+
+
+def test_exclusao_de_url_e_negativa_e_avisa_quando_a_expansao_esta_desligada() -> None:
+    cfg = _v25(exclusoes_de_url=(pc.ExclusaoDeUrl("sem blog", "/blog/"),))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    w = next(o.campaign_criterion_operation.create
+             for o in _por_tipo(ops, "campaign_criterion_operation")
+             if o.campaign_criterion_operation.create._pb.WhichOneof("criterion") == "webpage")
+    assert w.negative is True and w.webpage.criterion_name == "sem blog"
+    cond = w.webpage.conditions[0]
+    assert (cond.operand.name, cond.operator.name, cond.argument) == ("URL", "CONTAINS", "/blog/")
+    assert any(a.campo == "pmax.exclusoes_de_url" and a.severidade == "aviso"
+               for a in r.achados)
+
+
+def test_metas_de_conversao_viajam_como_update_no_id_temporario() -> None:
+    """Medido: a API aceita UPDATE em `campaignConversionGoals/-2~CAT~ORIGEM`."""
+    cfg = _v25(metas_de_conversao=(pc.MetaDeConversao("PURCHASE", "WEBSITE", True),
+                                   pc.MetaDeConversao("DOWNLOAD", "APP", False)))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    metas = [o.campaign_conversion_goal_operation
+             for o in _por_tipo(ops, "campaign_conversion_goal_operation")]
+    assert [(m.update.resource_name, m.update.biddable, list(m.update_mask.paths))
+            for m in metas] == [
+        (f"customers/{CID}/campaignConversionGoals/-2~PURCHASE~WEBSITE", True, ["biddable"]),
+        (f"customers/{CID}/campaignConversionGoals/-2~DOWNLOAD~APP", False, ["biddable"]),
+    ]
+    tipos = [o._pb.WhichOneof("operation") for o in ops]
+    assert tipos.index("campaign_operation") < tipos.index("campaign_conversion_goal_operation")
+
+    _, r2 = pmax.construir(CID, _brief(pmax=_v25(metas_de_conversao=(
+        pc.MetaDeConversao("COMPRA", "WEBSITE", True),))), login_customer_id=MCC)
+    assert "ConversionActionCategory" in _erros(r2)
+
+
+def test_meta_de_cliente_novo_e_fase_2_e_nao_entra_no_mutate() -> None:
+    """v25 removeu `CampaignLifecycleGoal`; o mecanismo é `CampaignGoalConfig`."""
+    nc = pc.MetaClienteNovo(goal=f"customers/{CID}/goals/77", modo="TARGET_SPECIFIC",
+                            valor_adicional=10.0)
+    cfg = _v25(meta_cliente_novo=nc)
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    assert any(a.campo == "pmax.meta_cliente_novo" and a.severidade == "aviso"
+               for a in r.achados)
+    assert "campaign_goal_config_operation" not in pmax.CAMPOS_DE_OPERACAO_V25
+
+    c = _cliente_sem_rede()
+    pos = pmax_grafo.operacoes_pos_criacao(
+        c, CID, f"customers/{CID}/campaigns/123", cfg)
+    assert len(pos) == 1
+    g = pos[0].create
+    assert g.campaign == f"customers/{CID}/campaigns/123"
+    assert g.goal == nc.goal
+    s = g.campaign_new_customer_acquisition_settings
+    assert s.target_option.name == "TARGET_SPECIFIC"
+    assert s.value_settings_override.additional_value == 10.0
+    assert pos[0]._pb.SerializeToString(deterministic=True)
+
+    for ruim, trecho in (
+        (pc.MetaClienteNovo(goal="customers/1/goals/2", modo="TARGET_ALL"), "outra conta"),
+        (pc.MetaClienteNovo(goal=nc.goal, modo="BID_HIGHER"), "modo"),
+        (pc.MetaClienteNovo(goal=nc.goal, modo="TARGET_ALL", valor_adicional=1.0,
+                            multiplicador_de_valor=1.5), "oneof"),
+    ):
+        _, rr = pmax.construir(CID, _brief(pmax=_v25(meta_cliente_novo=ruim)),
+                               login_customer_id=MCC)
+        assert trecho in _erros(rr), trecho
+
+
+def test_video_do_youtube_nasce_no_mesmo_mutate_por_id() -> None:
+    cfg = _v25(videos=(pc.VideoYouTube("M7lc1UVf-VE"),),
+               grupos_adicionais=(_grupo(videos=(pc.VideoYouTube("M7lc1UVf-VE"),)),))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    videos = [o.asset_operation.create for o in _por_tipo(ops, "asset_operation")
+              if o.asset_operation.create.type_.name == "YOUTUBE_VIDEO"]
+    assert len(videos) == 1, "o mesmo vídeo em dois grupos é um asset só"
+    assert videos[0].youtube_video_asset.youtube_video_id == "M7lc1UVf-VE"
+    assert videos[0].resource_name == f"customers/{CID}/assets/-400"
+    links = [o.asset_group_asset_operation.create
+             for o in _por_tipo(ops, "asset_group_asset_operation")
+             if o.asset_group_asset_operation.create.field_type.name == "YOUTUBE_VIDEO"]
+    assert {v.asset_group for v in links} == {
+        f"customers/{CID}/assetGroups/-300", f"customers/{CID}/assetGroups/-301"}
+
+    with pytest.raises(ValueError, match="11"):
+        pc.VideoYouTube("https://youtu.be/M7lc1UVf-VE")
+    muitos = tuple(pc.VideoYouTube(f"video{i:06d}") for i in range(16))
+    _, r2 = pmax.construir(CID, _brief(pmax=_v25(videos=muitos)), login_customer_id=MCC)
+    assert "YOUTUBE_VIDEO aceita até 15" in _erros(r2)
+
+
+def test_brand_guidelines_leva_o_logo_PAISAGEM_para_a_campanha_tambem() -> None:
+    """Medido: LANDSCAPE_LOGO no asset group com brand guidelines ligado responde
+    BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL. Até 08/10 só LOGO subia."""
+    imagens = _imagens(logo_paisagem=[_imagem("lp", "logo_paisagem", 1200, 300)])
+    ops, r = pmax.construir(
+        CID, _brief(imagens_pmax=imagens, pmax=_v25(brand_guidelines_enabled=True)),
+        login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    campanha = {o.campaign_asset_operation.create.field_type.name
+                for o in _por_tipo(ops, "campaign_asset_operation")}
+    grupo = {o.asset_group_asset_operation.create.field_type.name
+             for o in _por_tipo(ops, "asset_group_asset_operation")}
+    assert {"BUSINESS_NAME", "LOGO", "LANDSCAPE_LOGO"} <= campanha
+    assert not {"BUSINESS_NAME", "LOGO", "LANDSCAPE_LOGO"} & grupo
+
+    _, r2 = pmax.construir(CID, _brief(pmax=_v25(
+        brand_guidelines_enabled=True, grupos_adicionais=(_grupo(),))),
+        login_customer_id=MCC)
+    assert "BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL" in _erros(r2)
+
+
+def test_guias_de_texto_e_de_marca_viajam_na_campanha() -> None:
+    cfg = _v25(brand_guidelines_enabled=True,
+               termos_excluidos=("gratis",),
+               restricoes_de_mensagem=("Nao prometer aprovacao.",),
+               diretrizes_de_marca=pc.DiretrizesDeMarca("#0B3D91", "#F2A900", "Roboto"))
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    camp = _campanha_de(ops)
+    assert list(camp.text_guidelines.term_exclusions) == ["gratis"]
+    m = camp.text_guidelines.messaging_restrictions[0]
+    assert m.restriction_type.name == "RESTRICTION_BASED_EXCLUSION"
+    assert (camp.brand_guidelines.main_color, camp.brand_guidelines.accent_color,
+            camp.brand_guidelines.predefined_font_family) == ("#0B3D91", "#F2A900", "Roboto")
+
+    for troca, trecho in (
+        (dict(diretrizes_de_marca=pc.DiretrizesDeMarca(fonte="Arial")), "brand_guidelines_enabled=True"),
+        (dict(brand_guidelines_enabled=True,
+              diretrizes_de_marca=pc.DiretrizesDeMarca("#0B3D91")), "andam juntas"),
+        (dict(termos_excluidos=("x" * 31,)), "30"),
+    ):
+        _, rr = pmax.construir(CID, _brief(pmax=_v25(**troca)), login_customer_id=MCC)
+        assert trecho in _erros(rr), trecho
+
+
+@pytest.mark.parametrize("estrategia,meta,ramo,campo,valor", [
+    ("MAXIMIZE_CONVERSIONS", {}, "maximize_conversions", "target_cpa_micros", 0),
+    ("MAXIMIZE_CONVERSIONS", {"tcpa": 3.5}, "maximize_conversions", "target_cpa_micros", 3_500_000),
+    ("MAXIMIZE_CONVERSION_VALUE", {}, "maximize_conversion_value", "target_roas", 0.0),
+    ("MAXIMIZE_CONVERSION_VALUE", {"target_roas": 4.0}, "maximize_conversion_value", "target_roas", 4.0),
+])
+def test_os_quatro_lances_provados_ocupam_o_ramo_certo(estrategia, meta, ramo, campo, valor) -> None:
+    ops, r = pmax.construir(CID, _brief(estrategia_lance=estrategia, **meta,
+                                        pmax=_v25(grupos_adicionais=(_grupo(),))),
+                            login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    camp = _campanha_de(ops)
+    assert camp._pb.WhichOneof("campaign_bidding_strategy") == ramo
+    assert getattr(getattr(camp, ramo), campo) == valor
+
+
+def test_grupos_adicionais_tem_a_mesma_regua_do_grupo_zero() -> None:
+    sem_imagem = _grupo(imagens=_imagens(marketing=[]))
+    p = pmax.planejar(CID, _brief(pmax=_v25(grupos_adicionais=(sem_imagem,))),
+                      login_customer_id=MCC)
+    lacunas = [b for b in p.bloqueios if b.campo == "asset_group.cobertura"]
+    assert lacunas and all(b.valor == "Grupo B" for b in lacunas)
+
+    for troca, trecho in (
+        (dict(grupos_adicionais=(_grupo(nome="AG"), _grupo(nome="ag"))), "repetido"),
+        (dict(grupos_adicionais=(_grupo(sinais=None),)), "sinais do grupo"),
+        (dict(sinais=tuple(SinalDeAudiencia("search_theme", f"tema {i}")
+                           for i in range(51))), "até 50 search themes"),
+        (dict(grupos_adicionais=(_grupo(url_final="http://creditoup.com.br/x"),)), "https"),
+    ):
+        _, r = pmax.construir(CID, _brief(pmax=_v25(**troca)), login_customer_id=MCC)
+        assert trecho in _erros(r), trecho
+
+
+def test_payload_maximo_serializa_e_nada_nasce_ligado() -> None:
+    """O payload que a prova validate_only usou, inteiro, contra o proto real."""
+    cfg = _v25(
+        brand_guidelines_enabled=True,
+        path1="saque", path2="anual",
+        opcoes_de_url=pc.OpcoesDeUrl(sufixo_extra=(("vc_ag", "a"),)),
+        videos=(pc.VideoYouTube("M7lc1UVf-VE"),),
+        grupos_adicionais=(_grupo(imagens=_imagens(logo=[])),),
+        automacoes_optadas=("FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION",
+                            "TEXT_ASSET_AUTOMATION", "AUTOMATED_VIDEO_CRAWL"),
+        video_crawl=(pc.FonteDeVideoCrawl("https://creditoup.com.br/", "LANDING_PAGE"),),
+        video_crawl_direitos_declarados=True,
+        exclusoes_de_url=(pc.ExclusaoDeUrl("sem blog", "/blog/"),),
+        termos_excluidos=("gratis",),
+        diretrizes_de_marca=pc.DiretrizesDeMarca("#0B3D91", "#F2A900", "Roboto"),
+        negativas_tipadas=(pc.NegativaPMax("fgts login", "EXACT"),),
+        listas_de_negativas=(f"customers/{CID}/sharedSets/123",),
+        marcas_excluidas=(pc.MarcaExcluida("/g/11trqcwsy6"),),
+        listas_de_marcas_excluidas=(f"customers/{CID}/sharedSets/456",),
+        metas_de_conversao=(pc.MetaDeConversao("PURCHASE", "WEBSITE", True),),
+    )
+    p = pmax.planejar(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert p.prontidao.monta is True, [b.causa for b in p.bloqueios]
+    assert sum(1 for u in p.unidades if u.tipo == "asset_group") == 2
+    ops, r = pmax.construir(CID, _brief(pmax=cfg), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    tipos = {o._pb.WhichOneof("operation") for o in ops}
+    assert tipos <= pmax.CAMPOS_DE_OPERACAO_V25
+    for o in ops:
+        assert o._pb.SerializeToString(deterministic=True)
+        qual = o._pb.WhichOneof("operation")
+        criado = getattr(getattr(o, qual), "create", None)
+        nome = getattr(getattr(criado, "status", None), "name", None)
+        assert nome != "ENABLED", f"{qual} nasceu ENABLED"
+    assert _por_tipo(ops, "campaign_shared_set_operation")[0] \
+        .campaign_shared_set_operation.create.shared_set == f"customers/{CID}/sharedSets/123"

@@ -23,15 +23,26 @@ E **`partial_failure` não é suportado**. Ou seja, a atomicidade aqui não é u
 preferência de desenho deste projeto: é a única forma que a API aceita.
 
     CampaignBudget (DAILY, não compartilhado)
-    └── Campaign (PERFORMANCE_MAX, PAUSED, brand_guidelines IMUTÁVEL)
-        ├── CampaignCriterion   geo, idioma, keyword NEGATIVA
+    └── Campaign (PERFORMANCE_MAX, PAUSED, brand_guidelines IMUTÁVEL,
+        │         7 asset_automation_settings declaradas, text/brand guidelines)
+        ├── CampaignConversionGoal  UPDATE biddable por (categoria, origem)
+        ├── CampaignCriterion   geo, idioma, keyword NEGATIVA (BROAD/PHRASE/EXACT),
+        │                       webpage NEGATIVO (exclusão de URL),
+        │                       brand_list NEGATIVA (SharedSet BRANDS no mesmo mutate)
+        ├── CampaignSharedSet   lista de negativas já existente na conta
         ├── CampaignAsset       BUSINESS_NAME + LOGO  ← só com brand guidelines LIGADO
-        └── AssetGroup (PAUSED)
+        └── AssetGroup ×N (PAUSED, final_url, path1/path2, URL options v25.2)
             ├── AssetGroupAsset  HEADLINE, LONG_HEADLINE, DESCRIPTION,
             │                    [BUSINESS_NAME, LOGO ← só com brand guidelines DESLIGADO],
             │                    MARKETING_IMAGE, SQUARE_MARKETING_IMAGE,
-            │                    PORTRAIT_MARKETING_IMAGE, LANDSCAPE_LOGO, YOUTUBE_VIDEO
+            │                    PORTRAIT_MARKETING_IMAGE, LANDSCAPE_LOGO,
+            │                    YOUTUBE_VIDEO (Asset criado por id no mesmo mutate)
             └── AssetGroupSignal  audience | search_theme
+
+    Fase 2 (fora do mutate): CampaignGoalConfig → Goal NEW_CUSTOMER_ACQUISITION.
+
+O que é novo na v25.2 e as provas de cada decisão estão em `pmax_config.py`;
+as operações novas, em `pmax_grafo.py`.
 
 ## As contagens obrigatórias NÃO são declaradas aqui
 
@@ -67,21 +78,24 @@ de Demand Gen encontrou.
 - **O módulo sabe validar diretamente**, mas a rota HTTP genérica permanece
   fechada até transportar o brief tipado sem reconstrução divergente.
 - **Não monta retail** (`ShoppingSetting`, `AssetGroupListingGroupFilter`),
-  nem `CampaignConversionGoal`, nem `text_guidelines`, nem `TRAVEL_GOALS`.
-  A automação de expansão de URL final é a exceção deliberada: nasce com
-  `FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION` em `OPTED_OUT`, porque PMax só é
-  elegível se o clique permanecer na LP declarada. Cada ausência restante é
-  declarada em `NAO_OPERADO`, e chega ao plano — ausência declarada, não lacuna.
+  nem `TRAVEL_GOALS`, nem exclusão de placement (a API recusa em campanha PMax).
+  A expansão de URL final nasce `OPTED_OUT` e só liga por escolha explícita do
+  dono (`automacoes_optadas`), porque PMax só é elegível se o clique
+  permanecer na LP declarada. Cada ausência restante é declarada em
+  `NAO_OPERADO`, e chega ao plano — ausência declarada, não lacuna.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import enum
+import hashlib
 import pathlib
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from importlib import import_module
+from urllib.parse import urlparse
 
 import yaml
 
@@ -99,7 +113,7 @@ from ..observabilidade_pmax import (
     evaluate_asset_group_coverage,
 )
 from ..observabilidade_pmax.types import PMaxAdStrength, PMaxAssetGroupPrimaryStatus
-from . import comum, conteudo, plano, taxonomia, validacao
+from . import comum, conteudo, marcacao, plano, pmax_config, pmax_grafo, taxonomia, validacao
 from .brief import (
     PAPEIS_DE_ASSET_PMAX,
     AcaoDeConversao,
@@ -121,6 +135,18 @@ LANCES_PERMITIDOS: tuple[str, ...] = (
     "MAXIMIZE_CONVERSIONS",
     "MAXIMIZE_CONVERSION_VALUE",
 )
+
+#: Os ramos de `MutateOperation` que este builder PODE emitir — lista fechada.
+#: `campaign_goal_config_operation` não está aqui porque não existe em
+#: `MutateOperation`: a meta de cliente novo é fase 2 (`validar_pos_criacao`).
+CAMPOS_DE_OPERACAO_V25: frozenset[str] = frozenset({
+    "campaign_budget_operation", "campaign_operation",
+    "campaign_conversion_goal_operation", "campaign_criterion_operation",
+    "campaign_shared_set_operation", "shared_set_operation",
+    "shared_criterion_operation", "asset_operation", "campaign_asset_operation",
+    "asset_group_operation", "asset_group_asset_operation",
+    "asset_group_signal_operation",
+})
 
 #: Nenhuma opção de construção além do brief. `ai_max` é de Search.
 OPCOES: frozenset[str] = frozenset()
@@ -158,26 +184,34 @@ NAO_OPERADO: tuple[str, ...] = (
     "montados. PMax retail tem um estado a mais (asset group vazio OU completo, "
     "§2) e uma árvore de listing group com profundidade máxima própria; montar "
     "por analogia subiria um asset group que a API aceita e que não veicula.",
-    "CampaignConversionGoal: a campanha usa os `CustomerConversionGoal` da "
-    "conta, que é o default da API (§7). Restringir por campanha exige copiar "
-    "cada goal e ajustar `biddable`, e é uma decisão de negócio que o brief "
-    "ainda não expressa — herdar a conta é o comportamento previsível.",
-    "text_guidelines (`term_exclusions`, `messaging_restrictions`): campos "
-    "reais do proto (§9), sem campo correspondente no brief. Inventá-los aqui "
-    "seria decidir a política editorial do cliente pelo cliente.",
+    "CampaignConversionGoal: sem `pmax.metas_de_conversao` a campanha herda o "
+    "`biddable` de cada `CustomerConversionGoal` da conta, que é o default da "
+    "API (§7). Declarado, cada par (categoria, origem) vira UPDATE no mesmo "
+    "mutate — nunca criação, porque a API cria um por par junto com a campanha.",
+    "exclusão de placement: a API RECUSA em campanha PMax, por "
+    "`CampaignCriterion.placement` e por `CampaignSharedSet` NEGATIVE_PLACEMENTS "
+    "(`ContextError.OPERATION_NOT_PERMITTED_FOR_CONTEXT`, validate_only "
+    "08/10/2026). O único caminho é a exclusão de CONTA "
+    "(`CustomerNegativeCriterion`), que vale para todas as campanhas e por isso "
+    "não é decisão de um builder de campanha.",
+    "inclusão de marca e de URL: `brand_list` positiva responde "
+    "`ONLY_EXCLUSION_BRAND_LIST_ALLOWED_FOR_CAMPAIGN_TYPE` e `webpage` positivo "
+    "responde `FIELD_INCOMPATIBLE_WITH_NEGATIVE_TARGETING` em PMax (medidos). "
+    "Só a exclusão existe, e só ela é operada.",
+    "meta de cliente novo: `CampaignGoalConfig` não está em `MutateOperation`; "
+    "ela é aplicada depois do mutate, com o id real da campanha "
+    "(`pmax_grafo.operacoes_pos_criacao`), e exige um `Goal` "
+    "NEW_CUSTOMER_ACQUISITION na conta.",
     "TRAVEL_GOALS: é `advertising_channel_sub_type`, imutável, e muda os "
     "requisitos do canal inteiro. A campanha padrão sai SEM sub_type (§0).",
     "Local Services PMax: exige ao menos um sinal por asset group e ao menos "
     "um critério de localização positivo (§8). O builder padrão não garante "
     "nenhuma das duas, e prometer o subtipo sem elas seria prometer errado.",
-    "`brand`, `webpage`, `ad_schedule`, `device`, `age_range` e "
-    "`location_group` como critério de campanha: suportados pela API (§8) e "
-    "sem campo no brief. Keyword e brand, quando entrarem, só podem entrar "
-    "como NEGATIVOS — em PMax o positivo não existe para os dois.",
-    "múltiplos asset groups: a API aceita 1..100 por campanha (§10) e este "
-    "builder emite exatamente 1. Cada asset group tem público e criativo "
-    "próprios; emitir N cópias do mesmo conteúdo repartiria a verba por "
-    "sorteio, que é o mesmo motivo pelo qual Display monta um ad group só.",
+    "`ad_schedule`, `device`, `age_range` e `location_group` como critério de "
+    "campanha: suportados pela API (§8) e sem campo no brief.",
+    "asset groups adicionais NÃO herdam criativo do brief: cada um declara "
+    "textos, imagens, sinais e URL próprios. Herdar repetiria o grupo 0 e "
+    "repartiria a verba por sorteio.",
 )
 
 
@@ -274,7 +308,13 @@ def sondar_proto_v25() -> SuporteProtoV25:
             "campaign_budget", "status", "name")
         _exigir_campos(CampaignBudget, "amount_micros", "explicitly_shared",
                        "period", "delivery_method", "name")
-        _exigir_campos(AssetGroup, "name", "campaign", "final_urls", "status")
+        _exigir_campos(AssetGroup, "name", "campaign", "final_urls", "status",
+                       "path1", "path2", "tracking_url_template",
+                       "final_url_suffix", "url_custom_parameters")
+        _exigir_campos(Campaign, "asset_automation_settings", "text_guidelines",
+                       "brand_guidelines")
+        _exigir_campos(Campaign.AssetAutomationSetting,
+                       "automated_video_crawl_setting")
         _exigir_campos(AssetGroupAsset, "asset", "asset_group", "field_type")
         _exigir_campos(AssetGroupSignal, "asset_group", "audience",
                        "search_theme")
@@ -286,6 +326,10 @@ def sondar_proto_v25() -> SuporteProtoV25:
         if not hasattr(canal_enum, "PERFORMANCE_MAX"):
             raise AttributeError("AdvertisingChannelTypeEnum sem PERFORMANCE_MAX")
         campo_enum = _classe_enum(enums, "AssetFieldTypeEnum")
+        automacao_enum = _classe_enum(enums, "AssetAutomationTypeEnum")
+        for exigido in pmax_config.AUTOMACOES_PMAX_V25:
+            if not hasattr(automacao_enum, exigido):
+                raise AttributeError(f"AssetAutomationTypeEnum sem {exigido}")
         for exigido in ("HEADLINE", "LONG_HEADLINE", "DESCRIPTION",
                         "BUSINESS_NAME", "MARKETING_IMAGE",
                         "SQUARE_MARKETING_IMAGE", "PORTRAIT_MARKETING_IMAGE",
@@ -468,8 +512,8 @@ def _recusar_o_que_nao_e_de_pmax(brief: Brief, r: validacao.Resultado) -> None:
         r.erro("sub_intencoes", f"{len(brief.sub_intencoes)} grupos",
                "PMax NÃO TEM ad group (matriz §1) — `sub_intencoes` particiona "
                "keywords em grupos e não há grupo para receber. A partição "
-               "equivalente aqui é um asset group por público/criativo, que "
-               "esta onda ainda não monta",
+               "equivalente aqui é um asset group por público/criativo: "
+               "`pmax.grupos_adicionais`",
                plano.CAMPO_NAO_OPERADO)
 
     positivas = [c for c in brief.criterios if not c.negativa]
@@ -519,7 +563,7 @@ def _recusar_o_que_nao_e_de_pmax(brief: Brief, r: validacao.Resultado) -> None:
                plano.CAMPO_NAO_OPERADO)
 
 
-def _checar_contrato(brief: Brief, r: validacao.Resultado):
+def _checar_contrato(brief: Brief, r: validacao.Resultado, cid: str = ""):
     """A configuração de PMax existe e tomou as decisões que não têm default."""
     cfg = brief.pmax
     if cfg is None:
@@ -565,7 +609,19 @@ def _checar_contrato(brief: Brief, r: validacao.Resultado):
                f"`AssetGroup.name` aceita 1..{limite_nome} caracteres",
                plano.CONFIGURACAO_AUSENTE)
 
-    return cfg
+    # ── v25.2: a configuração antiga é promovida, nunca reinterpretada ──────
+    v = pmax_config.estender(cfg)
+    pmax_config.checar(
+        v, cid=cid, brand_guidelines_enabled=v.brand_guidelines_enabled, r=r,
+        codigos={k: getattr(plano, k) for k in (
+            "CONFIGURACAO_AUSENTE", "CAMPO_NAO_OPERADO",
+            "ASSET_ACIMA_DO_TETO", "RESOURCE_NAME_INVALIDO")})
+    total_negativas = len(v.negativas or ()) + len(v.negativas_tipadas)
+    if total_negativas > teto:
+        r.erro("pmax.negativas_tipadas", f"{total_negativas} termos no total",
+               f"`negativas` + `negativas_tipadas` somam acima do teto de {teto} "
+               f"por campanha PMax (matriz §10)", plano.ASSET_ACIMA_DO_TETO)
+    return v
 
 
 def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
@@ -727,12 +783,21 @@ def _checar_assets(cid: str, brief: Brief, cfg,
                "desligado. Um plano de PMax sem asset não é um plano de PMax",
                plano.ASSET_OBRIGATORIO_AUSENTE)
         return ImagensPMax()
+    return _checar_imagens(cid, imagens, r)
 
+
+def _checar_imagens(cid: str, imagens: ImagensPMax, r: validacao.Resultado,
+                    prefixo: str = "imagens_pmax") -> ImagensPMax:
+    """A régua de `_checar_assets`, reusada por todo asset group.
+
+    `prefixo` só muda o NOME do campo no achado (`imagens_pmax.logo` no grupo 0,
+    `pmax.grupos_adicionais[1].imagens.logo` nos outros) — a régua é a mesma.
+    """
     peso_max = _LIM["pmax_asset"]["peso_maximo_bytes"]
     for papel in ImagensPMax.PAPEIS:
         for item in getattr(imagens, papel):
             if isinstance(item, str):
-                r.erro(f"imagens_pmax.{papel}", item,
+                r.erro(f"{prefixo}.{papel}", item,
                        "PMax NÃO aceita resource name solto. A tabela oficial "
                        "de requisitos (§4) impõe proporção, dimensão mínima e "
                        "peso por papel, e sem os bytes nada disso pode ser "
@@ -741,7 +806,7 @@ def _checar_assets(cid: str, brief: Brief, cfg,
                        plano.ASSET_SEM_RECIBO)
                 continue
             if not isinstance(item, (ImagemParaSubir, AssetRemotoAprovado)):
-                r.erro(f"imagens_pmax.{papel}", type(item).__name__,
+                r.erro(f"{prefixo}.{papel}", type(item).__name__,
                        "forma de asset não suportada em PMax",
                        plano.ASSET_SEM_RECIBO)
                 continue
@@ -749,11 +814,11 @@ def _checar_assets(cid: str, brief: Brief, cfg,
             for erro in conferir_asset_aprovado(
                 item, papel=papel, customer_id=str(cid), canal=CANAL
             ):
-                r.erro(f"imagens_pmax.{papel}", getattr(item, "nome", "?"), erro)
+                r.erro(f"{prefixo}.{papel}", getattr(item, "nome", "?"), erro)
 
             dados = getattr(item, "dados", b"")
             if len(dados) > peso_max:
-                r.erro(f"imagens_pmax.{papel}", getattr(item, "nome", "?"),
+                r.erro(f"{prefixo}.{papel}", getattr(item, "nome", "?"),
                        f"{len(dados)} bytes acima do máximo {peso_max} "
                        f"(5120 KB, matriz §4) — a API responde "
                        f"MediaUploadError e recusa o mutate inteiro",
@@ -761,7 +826,7 @@ def _checar_assets(cid: str, brief: Brief, cfg,
 
             if isinstance(item, AssetRemotoAprovado):
                 if not _RESOURCE_ASSET.fullmatch(item.resource_name):
-                    r.erro(f"imagens_pmax.{papel}", item.resource_name,
+                    r.erro(f"{prefixo}.{papel}", item.resource_name,
                            "resource name fora da forma canônica "
                            "`customers/<cid>/assets/<id>`; id negativo é "
                            "temporário e invadiria a faixa de outro canal",
@@ -769,14 +834,14 @@ def _checar_assets(cid: str, brief: Brief, cfg,
 
     for rn in imagens.videos_youtube:
         if not isinstance(rn, str) or not _RESOURCE_ASSET.fullmatch(rn):
-            r.erro("imagens_pmax.videos_youtube", str(rn),
+            r.erro(f"{prefixo}.videos_youtube", str(rn),
                    "vídeo entra por resource name de Asset já criado, na forma "
                    "`customers/<cid>/assets/<id>` — `YouTubeVideoAsset` não "
                    "carrega bytes para conferir aqui",
                    plano.RESOURCE_NAME_INVALIDO)
             continue
         if _RESOURCE_ASSET.fullmatch(rn).group(1) != str(cid):
-            r.erro("imagens_pmax.videos_youtube", rn,
+            r.erro(f"{prefixo}.videos_youtube", rn,
                    f"o vídeo não está na conta {cid}",
                    plano.RESOURCE_NAME_INVALIDO)
 
@@ -786,6 +851,194 @@ def _checar_assets(cid: str, brief: Brief, cfg,
 # ═══════════════════════════════════════════════════════════════════════════
 # O CONSTRUTOR
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+#: Os campos que mudam de NÍVEL com brand guidelines. ⚠️ São TRÊS, e não dois:
+#: `LANDSCAPE_LOGO` também. Até 08/10/2026 só LOGO subia para a campanha, e o
+#: primeiro validate_only com brand guidelines ligado e logo paisagem recusou
+#: o mutate: `AssetLinkError.BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL`,
+#: gatilho 'LANDSCAPE_LOGO' ("must link business name and logo assets as
+#: CampaignAssets").
+_CAMPOS_DE_MARCA = frozenset({PMaxAssetFieldType.LOGO,
+                              PMaxAssetFieldType.LANDSCAPE_LOGO})
+
+
+@dataclass(frozen=True)
+class _Grupo:
+    """Um asset group RESOLVIDO: o grupo 0 (do brief) e os adicionais na mesma forma."""
+
+    indice: int
+    rotulo: str
+    nome: str
+    url: str
+    path1: str
+    path2: str
+    opcoes: pmax_config.OpcoesDeUrl | None
+    headlines: tuple[str, ...]
+    longas: tuple[str, ...]
+    descriptions: tuple[str, ...]
+    imagens: ImagensPMax
+    videos: tuple[pmax_config.VideoYouTube, ...]
+    sinais: tuple
+    sufixo: str = ""
+
+
+def _sufixo_do_grupo(brief: Brief, g_url: str, opcoes, rotulo: str,
+                     r: validacao.Resultado) -> str:
+    """O sufixo do GRUPO é o da campanha + os extras do grupo. Nunca outro.
+
+    `AssetGroup.final_url_suffix` substitui o da campanha (o nível mais
+    específico vence). Montar a partir do mesmo `marcacao.montar` é o que
+    mantém o join custo × receita vivo dentro do grupo.
+    """
+    if opcoes is None or not opcoes.sufixo_extra:
+        return ""
+    extras = dict(brief.marcacao_extra)
+    extras.update({str(k): str(v) for k, v in opcoes.sufixo_extra})
+    sufixo = marcacao.montar(CANAL, incluir_gclid=brief.marcacao_gclid,
+                             extras=extras)
+    # `{_chave}` é macro de parâmetro PERSONALIZADO, declarada no próprio grupo
+    # (`checar_opcoes_de_url` já confere que existe). O validador de marcação
+    # conhece só as ValueTrack — então ela é trocada por literal para a régua.
+    validavel = re.sub(r"\{_([A-Za-z0-9]+)\}", r"\1", sufixo)
+    res = marcacao.validar(validavel, canal=CANAL, url_final=g_url,
+                           auto_tagging=not brief.marcacao_gclid)
+    for a in res.erros:
+        r.erro(f"{rotulo}.opcoes_de_url.sufixo_extra", a.campo,
+               f"final_url_suffix do grupo inválido: {a.motivo}",
+               plano.CONFIGURACAO_AUSENTE)
+    return sufixo
+
+
+def _resolver_grupos(cid: str, brief: Brief, cfg, ts: str, imagens0: ImagensPMax,
+                     textos0: tuple[list, list, list], pol,
+                     r: validacao.Resultado) -> list[_Grupo]:
+    """Grupo 0 do brief + adicionais, todos pela MESMA régua."""
+    grupos: list[_Grupo] = []
+    limite_nome = _LIM["pmax_limites"]["nome_asset_group_max_chars"]
+    teto_grupos = _LIM["pmax_limites"]["asset_groups_max"]
+    host_principal = urlparse(brief.url_final).netloc
+
+    total = 1 + len(cfg.grupos_adicionais)
+    if total > teto_grupos:
+        r.erro("pmax.grupos_adicionais", f"{total} grupos",
+               f"o teto da API é {teto_grupos} asset groups por campanha "
+               f"(matriz §10)", plano.ASSET_ACIMA_DO_TETO)
+
+    headlines, longas, descriptions = textos0
+    grupos.append(_Grupo(
+        indice=0, rotulo="pmax", nome=cfg.nome_do_asset_group or f"AssetGroup_{ts}",
+        url=comum.url_destino(brief), path1=cfg.path1, path2=cfg.path2,
+        opcoes=cfg.opcoes_de_url, headlines=tuple(headlines),
+        longas=tuple(longas), descriptions=tuple(descriptions),
+        imagens=imagens0, videos=cfg.videos, sinais=cfg.sinais or ()))
+
+    for i, g in enumerate(cfg.grupos_adicionais, start=1):
+        rotulo = f"pmax.grupos_adicionais[{i}]"
+        if g.sinais is None:
+            r.erro(f"{rotulo}.sinais", "ausente",
+                   "declare a tupla de sinais do grupo, ainda que vazia — "
+                   "'()' é não dar dica, None é ninguém ter escolhido",
+                   plano.CONFIGURACAO_AUSENTE)
+        h = conteudo.forma(list(g.textos.headlines), "headline_pmax", r,
+                           explicacao_dki=_EXPLICACAO_DKI)
+        lh = conteudo.forma(list(g.textos.long_headlines), "long_headline_pmax",
+                            r, explicacao_dki=_EXPLICACAO_DKI)
+        d = conteudo.forma(list(g.textos.descriptions), "description_pmax", r,
+                           explicacao_dki=_EXPLICACAO_DKI)
+        conteudo.politica(pol, h, "headline_pmax", r)
+        conteudo.politica(pol, lh, "long_headline_pmax", r)
+        conteudo.politica(pol, d, "description_pmax", r)
+        imagens = _checar_imagens(cid, g.imagens, r, prefixo=f"{rotulo}.imagens")
+        for papel in ("logo", "logo_paisagem"):
+            if cfg.brand_guidelines_enabled and getattr(g.imagens, papel):
+                r.erro(f"{rotulo}.imagens.{papel}",
+                       f"{len(getattr(g.imagens, papel))} logos",
+                       "com brand guidelines LIGADO os logos (LOGO e "
+                       "LANDSCAPE_LOGO) são da CAMPANHA (§5) e vêm do grupo 0; "
+                       "logo no asset group responde "
+                       "BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL",
+                       plano.CAMPO_NAO_OPERADO)
+        grupos.append(_Grupo(
+            indice=i, rotulo=rotulo, nome=g.nome, url=g.url_final,
+            path1=g.path1, path2=g.path2, opcoes=g.opcoes_de_url,
+            headlines=tuple(h), longas=tuple(lh), descriptions=tuple(d),
+            imagens=imagens, videos=g.videos, sinais=g.sinais or ()))
+
+    vistos: set[str] = set()
+    resolvidos: list[_Grupo] = []
+    for g in grupos:
+        chave = g.nome.strip().casefold()
+        if not chave or len(g.nome) > limite_nome:
+            r.erro(f"{g.rotulo}.nome", g.nome,
+                   f"`AssetGroup.name` é obrigatório, 1..{limite_nome} caracteres",
+                   plano.CONFIGURACAO_AUSENTE)
+        if chave in vistos:
+            r.erro(f"{g.rotulo}.nome", g.nome,
+                   "nome de asset group repetido — a API exige nome único "
+                   "dentro da campanha", plano.CONFIGURACAO_AUSENTE)
+        vistos.add(chave)
+        if not pmax_config._https(g.url):
+            r.erro(f"{g.rotulo}.url_final", g.url, "URL final precisa ser https",
+                   plano.CONFIGURACAO_AUSENTE)
+        elif urlparse(g.url).netloc != host_principal:
+            r.aviso(f"{g.rotulo}.url_final", g.url,
+                    f"domínio diferente do da campanha ({host_principal}) — a "
+                    "API aceita, e o asset group passa a mandar o clique para "
+                    "outro site", plano.CONFIGURACAO_AUSENTE)
+        pmax_config.checar_caminho(g.path1, g.path2, g.rotulo, r,
+                                   plano.CONFIGURACAO_AUSENTE)
+        pmax_config.checar_opcoes_de_url(g.opcoes, f"{g.rotulo}.opcoes_de_url",
+                                         r, plano.CONFIGURACAO_AUSENTE)
+        temas = [s for s in g.sinais if s.tipo == "search_theme"]
+        if len(temas) > pmax_config.TEMAS_DE_BUSCA_POR_GRUPO_MAX:
+            r.erro(f"{g.rotulo}.sinais", f"{len(temas)} temas de busca",
+                   f"até {pmax_config.TEMAS_DE_BUSCA_POR_GRUPO_MAX} search "
+                   f"themes por asset group", plano.ASSET_ACIMA_DO_TETO)
+        n_videos = len(g.videos) + len(g.imagens.videos_youtube)
+        if n_videos > pmax_config.VIDEOS_POR_GRUPO_MAX:
+            r.erro(f"{g.rotulo}.videos", n_videos,
+                   f"YOUTUBE_VIDEO aceita até {pmax_config.VIDEOS_POR_GRUPO_MAX} "
+                   f"por asset group", plano.ASSET_ACIMA_DO_TETO)
+        ids = [v.video_id for v in g.videos]
+        if len(set(ids)) != len(ids):
+            r.erro(f"{g.rotulo}.videos", "repetido",
+                   "o mesmo vídeo duas vezes no grupo", plano.CONFIGURACAO_AUSENTE)
+        sufixo = _sufixo_do_grupo(brief, g.url, g.opcoes, g.rotulo, r)
+        resolvidos.append(dataclasses.replace(g, sufixo=sufixo))
+    return resolvidos
+
+
+def _chave_de_imagem(item: ImagemParaSubir) -> str:
+    """Identidade de conteúdo: a mesma imagem em dois grupos é UM asset."""
+    return "sha256:" + hashlib.sha256(bytes(item.dados)).hexdigest()
+
+
+def _checar_faixas(grupos: list[_Grupo], r: validacao.Resultado) -> None:
+    """As faixas de id temporário cabem no grafo? Recusa local, e não ValueError.
+
+    `comum.temp_asset`/`temp_imagem` levantam quando a faixa estoura — certo
+    como última trava, ruim como mensagem. Com N asset groups a conta precisa
+    ser feita ANTES, sobre os itens já deduplicados.
+    """
+    textos = {t for g in grupos for t in (*g.headlines, *g.longas, *g.descriptions)}
+    imagens = {
+        _chave_de_imagem(item)
+        for g in grupos for papel in ImagensPMax.PAPEIS
+        for item in getattr(g.imagens, papel)
+        if isinstance(item, ImagemParaSubir)
+    }
+    videos = {v.video_id for g in grupos for v in g.videos}
+    for nome, n, teto in (
+        ("textos", len(textos) + 1, comum.T_ASSET_MAX),
+        ("imagens", len(imagens), comum.T_IMAGEM_MAX),
+        ("videos", len(videos), pmax_grafo.T_VIDEO_MAX),
+    ):
+        if n > teto:
+            r.erro(f"pmax.{nome}", f"{n} assets únicos",
+                   f"a faixa de id temporário de {nome} comporta {teto} por "
+                   f"mutate; reparta os asset groups em campanhas",
+                   plano.ASSET_ACIMA_DO_TETO)
 
 
 def construir(cid: str, brief: Brief, *, login_customer_id: str):
@@ -805,7 +1058,7 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
         return [], r
 
     _recusar_o_que_nao_e_de_pmax(brief, r)
-    cfg = _checar_contrato(brief, r)
+    cfg = _checar_contrato(brief, r, cid)
     _checar_mensuracao(cid, brief, cfg, r, login_customer_id=login_customer_id)
 
     pol = conteudo.abrir_portao(brief, r)
@@ -832,10 +1085,17 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
 
     imagens = _checar_assets(cid, brief, cfg, r)
 
-    if not r.ok or cfg is None:
+    if cfg is None:
         return [], r
 
     ts = brief.carimbo_nome or comum.carimbo()
+    grupos = _resolver_grupos(cid, brief, cfg, ts, imagens,
+                              (headlines, longas, descriptions), pol, r)
+    _checar_faixas(grupos, r)
+
+    if not r.ok:
+        return [], r
+
     base = conteudo.nome_da_campanha(
         brief, ts, marcador=taxonomia.MODIFICADOR[CANAL])
 
@@ -844,32 +1104,52 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     # viraria "contrato incompleto" — a mesma razão documentada em display.py.
     c = cliente(login_customer_id)
 
+    op_campanha = comum.op_campanha(c, cid, brief, base, CANAL)
+    pmax_grafo.ajustar_campanha(c, op_campanha.campaign_operation.create, cfg)
     ops = [
         comum.op_budget(c, cid, brief, f"Budget_{ts}", periodo="DAILY"),
-        comum.op_campanha(c, cid, brief, base, CANAL),
+        op_campanha,
         comum.op_geo(c, cid, brief),
         comum.op_idioma(c, cid, brief),
     ]
+    for meta in cfg.metas_de_conversao:
+        ops.append(pmax_grafo.op_meta_de_conversao(c, cid, meta))
 
     for termo in cfg.negativas or ():
         ops.append(_op_keyword_negativa(c, cid, termo))
-
-    grupo_rn = comum.temp_asset_group(cid, 0)
-    nome_grupo = cfg.nome_do_asset_group or f"AssetGroup_{ts}"
-    url = comum.url_destino(brief)
+    for negativa in cfg.negativas_tipadas:
+        ops.append(pmax_grafo.op_negativa(c, cid, negativa))
+    for lista in cfg.listas_de_negativas:
+        ops.append(pmax_grafo.op_anexar_lista(c, cid, lista))
+    for exclusao in cfg.exclusoes_de_url:
+        ops.append(pmax_grafo.op_exclusao_de_url(c, cid, exclusao))
+    if cfg.marcas_excluidas:
+        rn_lista, ops_lista = pmax_grafo.ops_lista_de_marcas(
+            c, cid, f"Marcas excluídas / {base}"[:255], cfg.marcas_excluidas)
+        ops.extend(ops_lista)
+        ops.append(pmax_grafo.op_exclusao_de_marcas(c, cid, rn_lista))
+    for lista in cfg.listas_de_marcas_excluidas:
+        ops.append(pmax_grafo.op_exclusao_de_marcas(c, cid, lista))
 
     # ⚠️ ORDEM. A API resolve id temporário só DEPOIS de ele ser definido, e
-    # `AssetGroupAsset` referencia o asset E o grupo. Por isso: assets primeiro,
-    # grupo depois, vínculos por último. Inserir os vínculos antes faria a API
-    # recusar o mutate inteiro com um erro sobre o VÍNCULO — e o defeito
-    # estaria na ordem da lista.
+    # `AssetGroupAsset` referencia o asset E o grupo. Por isso: TODOS os assets
+    # primeiro, depois cada grupo seguido dos seus vínculos e sinais. Inserir
+    # um vínculo antes faria a API recusar o mutate inteiro com um erro sobre o
+    # VÍNCULO — e o defeito estaria na ordem da lista.
     ops_de_asset: list = []
-    vinculos: list[tuple[str, PMaxAssetFieldType]] = []
     contador_texto = 0
     contador_imagem = 0
+    contador_video = 0
+    texto_rn: dict[str, str] = {}
+    imagem_rn: dict[str, str] = {}
+    video_rn: dict[str, str] = {}
 
-    def _texto(valor: str, campo: PMaxAssetFieldType) -> None:
+    def _texto(valor: str, campo: PMaxAssetFieldType) -> str:
+        # Mesmo texto em dois grupos é UM asset ligado duas vezes: a faixa de
+        # id é finita, e dois assets idênticos só dividiriam a estatística.
         nonlocal contador_texto
+        if valor in texto_rn:
+            return texto_rn[valor]
         rn = comum.temp_asset(cid, contador_texto)
         contador_texto += 1
         o = c.get_type("MutateOperation")
@@ -878,67 +1158,115 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
         cria.name = f"{campo.value}_{ts}_{contador_texto}"
         cria.text_asset.text = valor
         ops_de_asset.append(o)
-        vinculos.append((rn, campo))
+        texto_rn[valor] = rn
+        return rn
 
-    for t in headlines:
-        _texto(t, PMaxAssetFieldType.HEADLINE)
-    for t in longas:
-        _texto(t, PMaxAssetFieldType.LONG_HEADLINE)
-    for t in descriptions:
-        _texto(t, PMaxAssetFieldType.DESCRIPTION)
+    def _imagem(item) -> str:
+        nonlocal contador_imagem
+        if isinstance(item, AssetRemotoAprovado):
+            return item.resource_name
+        chave = _chave_de_imagem(item)
+        if chave in imagem_rn:
+            return imagem_rn[chave]
+        rn = comum.temp_imagem(cid, contador_imagem)
+        contador_imagem += 1
+        o = c.get_type("MutateOperation")
+        cria = o.asset_operation.create
+        cria.resource_name = rn
+        cria.name = item.nome
+        cria.type_ = c.enums.AssetTypeEnum.IMAGE
+        cria.image_asset.data = item.dados
+        ops_de_asset.append(o)
+        imagem_rn[chave] = rn
+        return rn
 
-    # BUSINESS_NAME e LOGO mudam de NÍVEL conforme brand guidelines (§5). Não é
-    # uma variação cosmética: com ele ligado, deixá-los no asset group responde
-    # `AssetLinkError.BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL`; com ele
-    # desligado, deixá-los na campanha responde
-    # `CampaignError.REQUIRED_BUSINESS_NAME_ASSET_NOT_LINKED`.
+    def _video(v: pmax_config.VideoYouTube) -> str:
+        nonlocal contador_video
+        if v.video_id in video_rn:
+            return video_rn[v.video_id]
+        rn = pmax_grafo.temp_video(cid, contador_video)
+        contador_video += 1
+        ops_de_asset.append(pmax_grafo.op_video(
+            c, cid, rn, v, f"YOUTUBE_VIDEO_{ts}_{v.video_id}"))
+        video_rn[v.video_id] = rn
+        return rn
+
+    vinculos_por_grupo: list[list[tuple[str, PMaxAssetFieldType]]] = []
     marca: list[tuple[str, PMaxAssetFieldType]] = []
-    rn_nome = comum.temp_asset(cid, contador_texto)
-    contador_texto += 1
-    o_nome = c.get_type("MutateOperation")
-    cria_nome = o_nome.asset_operation.create
-    cria_nome.resource_name = rn_nome
-    cria_nome.name = f"BUSINESS_NAME_{ts}"
-    cria_nome.text_asset.text = nomes[0]
-    ops_de_asset.append(o_nome)
-    marca.append((rn_nome, PMaxAssetFieldType.BUSINESS_NAME))
+    for g in grupos:
+        vinculos: list[tuple[str, PMaxAssetFieldType]] = []
+        for t in g.headlines:
+            vinculos.append((_texto(t, PMaxAssetFieldType.HEADLINE),
+                             PMaxAssetFieldType.HEADLINE))
+        for t in g.longas:
+            vinculos.append((_texto(t, PMaxAssetFieldType.LONG_HEADLINE),
+                             PMaxAssetFieldType.LONG_HEADLINE))
+        for t in g.descriptions:
+            vinculos.append((_texto(t, PMaxAssetFieldType.DESCRIPTION),
+                             PMaxAssetFieldType.DESCRIPTION))
 
-    for papel in ImagensPMax.PAPEIS:
-        campo = CAMPO_DE_ASSET[papel]
-        for item in getattr(imagens, papel):
-            if isinstance(item, AssetRemotoAprovado):
-                rn = item.resource_name
-            else:
-                rn = comum.temp_imagem(cid, contador_imagem)
-                contador_imagem += 1
-                o = c.get_type("MutateOperation")
-                cria = o.asset_operation.create
-                cria.resource_name = rn
-                cria.name = item.nome
-                cria.type_ = c.enums.AssetTypeEnum.IMAGE
-                cria.image_asset.data = item.dados
-                ops_de_asset.append(o)
-            if campo is PMaxAssetFieldType.LOGO:
-                marca.append((rn, campo))
-            else:
-                vinculos.append((rn, campo))
+        if g.indice == 0:
+            # BUSINESS_NAME e LOGO mudam de NÍVEL conforme brand guidelines
+            # (§5). Com ele ligado, deixá-los no asset group responde
+            # `AssetLinkError.BRAND_ASSETS_NOT_LINKED_AT_CAMPAIGN_LEVEL`; com
+            # ele desligado, deixá-los na campanha responde
+            # `CampaignError.REQUIRED_BUSINESS_NAME_ASSET_NOT_LINKED`.
+            rn_nome = comum.temp_asset(cid, contador_texto)
+            contador_texto += 1
+            o_nome = c.get_type("MutateOperation")
+            cria_nome = o_nome.asset_operation.create
+            cria_nome.resource_name = rn_nome
+            cria_nome.name = f"BUSINESS_NAME_{ts}"
+            cria_nome.text_asset.text = nomes[0]
+            ops_de_asset.append(o_nome)
+            marca.append((rn_nome, PMaxAssetFieldType.BUSINESS_NAME))
 
-    for rn in imagens.videos_youtube:
-        vinculos.append((rn, PMaxAssetFieldType.YOUTUBE_VIDEO))
+        logos_do_grupo: list[tuple[str, PMaxAssetFieldType]] = []
+        for papel in ImagensPMax.PAPEIS:
+            campo = CAMPO_DE_ASSET[papel]
+            for item in getattr(g.imagens, papel):
+                rn = _imagem(item)
+                if campo in _CAMPOS_DE_MARCA:
+                    logos_do_grupo.append((rn, campo))
+                else:
+                    vinculos.append((rn, campo))
+        if g.indice == 0:
+            marca.extend(logos_do_grupo)
+        else:
+            vinculos.extend(logos_do_grupo)
+
+        for rn in g.imagens.videos_youtube:
+            vinculos.append((rn, PMaxAssetFieldType.YOUTUBE_VIDEO))
+        for v in g.videos:
+            vinculos.append((_video(v), PMaxAssetFieldType.YOUTUBE_VIDEO))
+        vinculos_por_grupo.append(vinculos)
 
     ops.extend(ops_de_asset)
 
+    nome_do_negocio = marca[0]
     if cfg.brand_guidelines_enabled:
         for rn, campo in marca:
             ops.append(_op_campaign_asset(c, cid, rn, campo))
     else:
-        vinculos.extend(marca)
+        # Desligado: o grupo 0 leva nome + logos; os adicionais levam o MESMO
+        # BUSINESS_NAME (é um negócio só) e os logos que eles próprios trouxeram.
+        vinculos_por_grupo[0].extend(marca)
+        for vinculos in vinculos_por_grupo[1:]:
+            vinculos.append(nome_do_negocio)
 
-    ops.append(_op_asset_group(c, cid, grupo_rn, nome_grupo, url))
-    for rn, campo in vinculos:
-        ops.append(_op_asset_group_asset(c, grupo_rn, rn, campo))
-    for sinal in cfg.sinais or ():
-        ops.append(_op_sinal(c, grupo_rn, sinal))
+    for g, vinculos in zip(grupos, vinculos_por_grupo):
+        grupo_rn = comum.temp_asset_group(cid, g.indice)
+        opcoes = g.opcoes
+        ops.append(pmax_grafo.op_asset_group(
+            c, cid, grupo_rn, g.nome, g.url, path1=g.path1, path2=g.path2,
+            sufixo=g.sufixo,
+            tracking_url_template=(opcoes.tracking_url_template.strip()
+                                   if opcoes else ""),
+            parametros=opcoes.parametros_personalizados if opcoes else ()))
+        for rn, campo in vinculos:
+            ops.append(_op_asset_group_asset(c, grupo_rn, rn, campo))
+        for sinal in g.sinais:
+            ops.append(_op_sinal(c, grupo_rn, sinal))
 
     return ops, r
 
@@ -952,20 +1280,6 @@ def _op_keyword_negativa(c, cid: str, termo: str):
     # BROAD como negativa é o alcance mais largo, e é o que Search já usa para
     # negativa de campanha. Em PMax não há match type positivo com que comparar.
     cr.keyword.match_type = c.enums.KeywordMatchTypeEnum.BROAD
-    return o
-
-
-def _op_asset_group(c, cid: str, rn: str, nome: str, url: str):
-    o = c.get_type("MutateOperation")
-    ag = o.asset_group_operation.create
-    ag.resource_name = rn
-    ag.name = nome
-    ag.campaign = comum.temp(cid, "campaigns", comum.T_CAMPANHA)
-    ag.final_urls.append(url)
-    # PAUSED como a campanha. Um asset group ENABLED numa campanha PAUSED não
-    # veicula, mas despausar a campanha o acordaria junto — e a decisão de
-    # veicular tem de ser um ato só, explícito.
-    ag.status = c.enums.AssetGroupStatusEnum.PAUSED
     return o
 
 
@@ -1004,7 +1318,7 @@ def _op_sinal(c, grupo_rn: str, sinal):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def _dto_do_plano(p: plano.PlanoDeCanal, cfg) -> PMaxAssetGroupDTO:
+def _dto_do_plano(p: plano.PlanoDeCanal, cfg, indice: int = 0) -> PMaxAssetGroupDTO:
     """Projeta o plano num `PMaxAssetGroupDTO` para reusar o avaliador real.
 
     Não é um dublê: é o mesmo tipo que `observabilidade_pmax` monta ao LER uma
@@ -1013,7 +1327,8 @@ def _dto_do_plano(p: plano.PlanoDeCanal, cfg) -> PMaxAssetGroupDTO:
     depois de criada — o que é criado passa a não poder ser reprovado pelo
     próprio sistema no dia seguinte.
     """
-    unidade = next((u for u in p.unidades if u.tipo == "asset_group"), None)
+    grupos = [u for u in p.unidades if u.tipo == "asset_group"]
+    unidade = grupos[indice] if indice < len(grupos) else None
     vinculos: list[PMaxAssetGroupAssetDTO] = []
     itens = list(unidade.assets) if unidade else []
     itens.extend(p.assets_de_campanha)
@@ -1055,7 +1370,7 @@ def _dto_do_plano(p: plano.PlanoDeCanal, cfg) -> PMaxAssetGroupDTO:
             ),
         ))
     return PMaxAssetGroupDTO(
-        resource_name="planejado/assetGroups/0",
+        resource_name=f"planejado/assetGroups/{indice}",
         id="planejado",
         campaign_id="planejado",
         name=unidade.nome if unidade else "",
@@ -1066,11 +1381,11 @@ def _dto_do_plano(p: plano.PlanoDeCanal, cfg) -> PMaxAssetGroupDTO:
         asset_coverage=ObservedValue.not_applicable("plano: nada foi criado"),
         final_urls=unidade.urls_finais if unidade else (),
         final_mobile_urls=(),
-        # `path1`/`path2` são o caminho de exibição da URL. Este builder não os
-        # emite, e `not_applicable` diz isso — não `""`, que afirmaria um
-        # caminho vazio escolhido.
-        path1=ObservedValue.not_applicable("plano: builder não emite path"),
-        path2=ObservedValue.not_applicable("plano: builder não emite path"),
+        # `path1`/`path2` só existem por escolha do dono, e o plano não os
+        # projeta por unidade: `not_applicable` diz isso — não `""`, que
+        # afirmaria um caminho vazio escolhido. A régua de cobertura não os lê.
+        path1=ObservedValue.not_applicable("plano: path não projetado"),
+        path2=ObservedValue.not_applicable("plano: path não projetado"),
         assets=tuple(vinculos),
         signals=(),
     )
@@ -1160,35 +1475,40 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDe
     ))
 
     if ops:
-        relatorio = evaluate_asset_group_coverage(
-            _dto_do_plano(p, cfg),
-            brand_guidelines_enabled=(
-                cfg.brand_guidelines_enabled if cfg is not None else None),
-        )
-        for lacuna in relatorio.structural_gaps:
-            bloqueios.append(plano.Achado(
-                codigo=plano.ASSET_OBRIGATORIO_AUSENTE
-                if "minimum required" in lacuna or "60 characters" in lacuna
-                else plano.ASSET_ACIMA_DO_TETO,
-                campo="asset_group.cobertura",
-                causa=f"{lacuna} [PMAX_FIELD_REQUIREMENTS, "
-                      f"veredito {relatorio.verdict.value}]",
-                valor=relatorio.asset_group_name,
-            ))
         avisos = list(p.avisos)
-        for a in relatorio.warnings:
-            avisos.append(plano.Achado(
-                codigo=plano.BLOQUEIO_NAO_CLASSIFICADO,
-                campo="asset_group.cobertura", causa=a,
-                valor=relatorio.verdict.value))
-        if relatorio.verdict is CoverageVerdict.INDETERMINATE:
-            avisos.append(plano.Achado(
-                codigo=plano.BLOQUEIO_NAO_CLASSIFICADO,
-                campo="asset_group.cobertura",
-                causa="a cobertura ficou INDETERMINADA — falta evidência para "
-                      "afirmar completude, e isso não é o mesmo que faltar "
-                      "asset",
-                valor=relatorio.verdict.value))
+        n_grupos = sum(1 for u in p.unidades if u.tipo == "asset_group")
+        # Cada asset group é julgado SOZINHO pela régua do observador: o grupo
+        # 1 completo não empresta asset ao grupo 2 incompleto, e a API também
+        # não empresta.
+        for indice in range(n_grupos):
+            relatorio = evaluate_asset_group_coverage(
+                _dto_do_plano(p, cfg, indice),
+                brand_guidelines_enabled=(
+                    cfg.brand_guidelines_enabled if cfg is not None else None),
+            )
+            for lacuna in relatorio.structural_gaps:
+                bloqueios.append(plano.Achado(
+                    codigo=plano.ASSET_OBRIGATORIO_AUSENTE
+                    if "minimum required" in lacuna or "60 characters" in lacuna
+                    else plano.ASSET_ACIMA_DO_TETO,
+                    campo="asset_group.cobertura",
+                    causa=f"{lacuna} [PMAX_FIELD_REQUIREMENTS, "
+                          f"veredito {relatorio.verdict.value}]",
+                    valor=relatorio.asset_group_name,
+                ))
+            for a in relatorio.warnings:
+                avisos.append(plano.Achado(
+                    codigo=plano.BLOQUEIO_NAO_CLASSIFICADO,
+                    campo="asset_group.cobertura", causa=a,
+                    valor=relatorio.verdict.value))
+            if relatorio.verdict is CoverageVerdict.INDETERMINATE:
+                avisos.append(plano.Achado(
+                    codigo=plano.BLOQUEIO_NAO_CLASSIFICADO,
+                    campo="asset_group.cobertura",
+                    causa="a cobertura ficou INDETERMINADA — falta evidência para "
+                          "afirmar completude, e isso não é o mesmo que faltar "
+                          "asset",
+                    valor=relatorio.verdict.value))
         p = _com(p, bloqueios=tuple(bloqueios), avisos=tuple(avisos))
     else:
         p = _com(p, bloqueios=tuple(bloqueios))
@@ -1213,3 +1533,33 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str):
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)
     return r, falha, len(ops)
+
+
+def validar_pos_criacao(cid: str, campanha_rn: str, brief: Brief, *,
+                        login_customer_id: str):
+    """`validate_only` da FASE 2 — a meta de cliente novo. **Nunca cria.**
+
+    `CampaignGoalConfig` não cabe no mutate atômico (não existe em
+    `MutateOperation`), então ela é provada à parte, contra o resource name
+    REAL da campanha. Devolve `None` quando não há meta declarada ou quando a
+    API aceita; senão, a `FalhaGads` classificada.
+    """
+    if brief.pmax is None:
+        return None
+    cfg = pmax_config.estender(brief.pmax)
+    c = cliente(login_customer_id)
+    ops = pmax_grafo.operacoes_pos_criacao(c, str(cid), campanha_rn, cfg)
+    if not ops:
+        return None
+    from ..gads.errors import classificar
+
+    req = c.get_type("MutateCampaignGoalConfigsRequest")
+    req.customer_id = str(cid)
+    req.operations.extend(ops)
+    req.validate_only = True
+    try:
+        c.get_service("CampaignGoalConfigService").mutate_campaign_goal_configs(
+            request=req)
+    except Exception as exc:  # noqa: BLE001
+        return classificar(exc)
+    return None
