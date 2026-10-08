@@ -1295,6 +1295,12 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     # Com JORNADA, a saída oficial da página manda na rota (existe? vem antes
     # ou depois dos CTAs internos?). Sem jornada, a regra de papel/posição.
     politica = politica_da_saida_oficial(page)
+    if politica is not None and politica.exige and not official_links and \
+            _saida_oficial_desativada(state, page):
+        # Degradação segura decidida pelo dossiê: sem canal oficial verificado,
+        # a página não é obrigada a um link que não existe (e nem pode tê-lo).
+        from dataclasses import replace as _replace
+        politica = _replace(politica, exige=False)
     bind_official_route(page, official_links, role=role, is_terminal=is_terminal,
                         terminal_official=terminal_official, politica=politica)
     # FIX-3c: commercial PLATFORM deep links for SOLUTION pages -- the fintechs/
@@ -3024,6 +3030,13 @@ def _lastro_da_pagina(state: RunState, page: Page) -> set[str]:
     facts = state.facts.get(page.page_number, ResearchFacts(sparse=True))
     urls = set(facts.fontes_resolvidas or []) | set(state.official_links.get(page.page_number) or [])
     return {u.rstrip("/") for u in urls}
+
+
+def _saida_oficial_desativada(state: RunState, page: Page) -> bool:
+    pagina = next((p for p in (state.dossie or {}).get("paginas", [])
+                   if p.get("page_number") == page.page_number), None)
+    return any(d.get("tipo") == "saida_oficial"
+               for d in ((pagina or {}).get("cobertura") or {}).get("desativados") or [])
 
 
 def _vinculos_do_dossie(state: RunState, page: Page) -> dict[tuple[str, str], dict]:

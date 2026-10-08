@@ -23,7 +23,13 @@ from pydantic import BaseModel, Field
 
 VERSAO_DO_DOSSIE = "dossie-factual-v1"
 
-StatusDoFato = Literal["verified", "unverified", "conflict"]
+# `unavailable`: a fonte ou o transporte falhou (WAF, timeout, 5xx). NÃO quer
+# dizer que o fato é falso — só que não deu para conferir.
+StatusDoFato = Literal["verified", "unverified", "unavailable", "conflict"]
+#: Estado final de cada requisito factual de uma página.
+EstadoDoRequisito = Literal["verified", "derived", "unavailable", "unsupported", "conflicting"]
+#: O que a página faz com a evidência que tem.
+EstadoDaPagina = Literal["ready", "degraded", "review", "blocked"]
 TipoDaFonte = Literal["oficial", "canal_oficial", "secundaria"]
 
 #: Tipos de fato que exigem referência temporal (vigência e data de verificação).
@@ -47,6 +53,9 @@ class FatoDoDossie(BaseModel):
     evidencia: str = ""                # trecho curto ou referência verificável
     dispositivo: str = ""
     origem: Literal["pesquisa", "hint_do_operador", "derivado"] = "pesquisa"
+    # Como a fonte foi conferida: leitura direta (padrão), citação ancorada do
+    # provedor quando a fonte oficial recusa o nosso UA, hint conferido, derivado.
+    nivel_de_evidencia: str = "leitura_direta"
     derivacao: dict = {}               # linhagem do derivado (fórmula, premissas...)
     proveniencia: dict = {}            # emissor, escopo, versão, sha256 do conteúdo
 
@@ -56,13 +65,24 @@ class CoberturaDoRequisito(BaseModel):
     coberto: bool
     fatos: list[str] = []
     motivo: str = ""
+    estado: EstadoDoRequisito = "unsupported"
+    central: bool = True               # sustenta a promessa central da página
+    risco: Literal["alto", "baixo"] = "alto"
 
 
 class CoberturaDaPagina(BaseModel):
-    """O CoverageResult de uma página: cada requisito, e o veredito."""
+    """O CoverageResult de uma página: cada requisito, e o veredito.
+
+    `ready_to_write` é False SÓ para `blocked` (conflito material na promessa
+    central). Lacuna vira DEGRADAÇÃO (a afirmação sai ou é generalizada) ou
+    REVISÃO (a página é escrita e não publica sem decisão humana)."""
     ready_to_write: bool = False
+    estado: EstadoDaPagina = "ready"
     requisitos: list[CoberturaDoRequisito] = []
     blockers: list[str] = []
+    degradacoes: list[dict] = []       # {requisito, estado, risco, instrucao}
+    desativados: list[dict] = []       # {tipo: bloco|ativo, nome, motivo}
+    requer_revisao: bool = False
     # Ativo -> fato que prova cada necessidade declarada (regra, valor vigente),
     # com a abrangência da fonte. E o que não achou fonte aceitável.
     vinculos: list[dict] = []
@@ -114,6 +134,8 @@ class TelemetriaDaPesquisa(BaseModel):
     consultas_de_busca: int = 0        # grounding: cobrado por consulta, fora do custo
     finish_reason: str = ""
     chamadas: list[dict] = []          # metadados sanitizados de cada chamada
+    pagina: int = 0                    # 0 = global; N = complementação sob demanda da pN
+    defeito: str = ""
     faltantes_pedidos: list[str] = []
 
 

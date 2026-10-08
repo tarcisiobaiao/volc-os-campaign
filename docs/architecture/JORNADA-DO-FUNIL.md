@@ -79,84 +79,65 @@ bloqueia com `certamente`; com `possivelmente` vira CTA secundário e condiciona
 | Print oficial | `steps.proveniencia_do_print` | URL, data, título, trecho que comprova, legenda ("Reprodução... pertence ao site de origem"), alt, recorte, sha256 e estado; sem isso não é embutido | zero |
 | Metadados | `pipeline/metadados.py`, `state.metadados`, `metadados_pN.json` | title, description, canonical (previsto/publicado), robots, OG, Twitter, breadcrumb, autor, datas, fontes, tipo; JSON-LD só com o que o texto mostra (FAQPage com perguntas visíveis, HowTo com passos reais, ItemList com checklist) | zero |
 
-## Dossiê factual pré-redação (`run.dossie_factual`)
+## Dossiê factual: memória compartilhada, não portão global (`run.dossie_factual`)
 
-Com jornada e grafo aprovado, ANTES de qualquer briefing ou redação:
+O dossiê (`pipeline/dossie.py`, `CompiladorDeDossie`) é o CACHE factual do
+funil. Vale para qualquer tema, nicho, idioma e país: nenhuma lista fixa de
+domínios decide autoridade.
 
-1. uma pesquisa do funil inteiro (`steps.dossie`, modelo exato, sem fallback;
-   com `gemini/gemini-3.8-flash` + Google Search via `GEMINI_API_KEY`,
-   `auth_mode api_key`). Modelo servido diferente do pedido bloqueia o funil.
-   Provider principal: `chatgpt_plan_web_search` (`adapters/pesquisa_plano.py`,
-   `steps.dossie.model: chatgpt/gpt-6.1-sol` + `web_search: true`, filtro
-   `dominios_permitidos`), só para o dossiê — o `OpenAIResponsesClient`
-   genérico continua recusando web_search (`NaoSuportadoNoPlano`). Duas
-   chamadas por rodada: pesquisa grounded (web_search obrigatório, resposta
-   montada DOS EVENTOS do stream — `response.completed.output` chega vazio) e
-   estruturação sem busca em schema estrito SEM campo de URL, cada fato
-   apontando um `evidencia_id`. `sources` (consultadas) ≠ `url_citation`
-   (sustenta um trecho) ≠ URL verificada ao vivo ≠ fato aprovado: o código
-   confere evidência, valor (pelo número), ano da vigência no trecho e o
-   conteúdo da página citada; custo fica NÃO informado (quota do plano).
-   Gemini só por configuração explícita, nunca como fallback automático:
-   Gemini com busca vai pelo SDK oficial `google-genai`
-   (`adapters/pesquisa_gemini.py`: `google_search` + Structured Output com
-   schema de `FatosDoDossie`); só este passo — o resto segue no LiteLLM. Cada
-   chamada grava em `pesquisa_dossie.json` finishReason/finishMessage,
-   promptFeedback, safetyRatings, consultas, groundingChunks/Supports, campos
-   presentes do groundingMetadata, tokens e o texto devolvido (truncado).
-   Não-STOP, sem busca, sem chunk ou fora do schema é defeito: aborta. Desvio
-   único só para RECITATION com busca feita (ou Structured Output incompatível):
-   prosa grounded parafraseada e estruturação sem busca, limitada às fontes
-   dela. O prompt não pede trecho literal (`evidencia_resumida`);
-2. fontes = SÓ as citações do `groundingMetadata` do provedor, com
-   redirecionamento resolvido; URL que o modelo digitou sem a busca ter
-   aberto é `unverified`;
-3. verificação ao vivo de cada fonte (`url_verifier`); número, prazo, data e
-   mudança exigem `valor` e `vigente_desde`; duas fontes com valor diferente
-   para o mesmo requisito viram `conflict` e nenhuma das duas sustenta texto;
-4. portão de cobertura determinístico por página: cada `RequisitoFactual`
-   (`JornadaDaPagina.requisitos`, ou um derivado da resposta principal) com
-   fato `verified`; saída oficial exigida com canal verificado; cálculo com
-   fato numérico; ferramenta com a fonte da regra no lastro;
-   Ativo interativo: o arquiteto declara a NECESSIDADE por requisito
-   (`rule_source_fact_id`, e `current_value_source_fact_id` quando o ativo
-   mostra valor em reais), nunca a URL da prova. O dossiê vincula cada uma ao
-   melhor fato citado, verificado e de fonte oficial: regra = fonte nacional
-   (host `senac.br` ou `*.gov.br` federal) ou regional da UF declarada em
-   `FunnelPlan.jornada.ufs`; valor vigente = nacional, regional da UF ou edital
-   oficial do ano corrente, com UF e data explícitas. Fonte regional nunca
-   prova regra universal; sem vínculo, a página bloqueia e a complementação
-   pede exatamente a prova que falta. `fonte_da_regra` (URL) é legado: só vale
-   em card sem os ids. Conflito compara números pelo valor dentro da mesma
-   dimensão de unidade ("até 2" = "02 (dois)" salários mínimos);
-   PROVENIÊNCIA (`pipeline/proveniencia.py`): o escopo da fonte vem do
-   EMISSOR lido no documento (issuer, issuer_scope, versão, jurisdição,
-   effective_from, content_sha256, trecho de autoria), não só do host: espelho
-   regional só é nacional se o cabeçalho do próprio documento for do
-   Departamento/Conselho Nacional, e a versão `dn.senac.br`/norma federal é a
-   preferida. HINT DO OPERADOR (`run-volc --canario --hints-de`): URL +
-   afirmação a conferir — mesmo fetch (UA honesto, sem se passar por
-   navegador), trecho localizado pelo código, verificação ao vivo e recibo;
-   nunca vira fato por ter sido dado. DERIVADO: só a operação declarada em
-   `RequisitoFactual.derivacao` (hoje `multiplicacao`), premissas verificadas e
-   oficiais, mesma jurisdição, premissa em vigor na data, `Decimal` sem
-   arredondamento, linhagem no fato, recalculado a cada compilação;
-5. até 2 rodadas de complementação, dirigidas só ao que faltou;
-6. `dossie_factual.json` (`domain/dossie.py`: FunnelDossier → PageDossier →
-   fatos → CoverageResult), congelado por SHA-256 do conteúdo. Página sem
-   cobertura fica `dossie_pN`/`blocked_pN` FAILED e não gasta nada depois.
-   Um resume reaproveita o mesmo dossiê; hash divergente bloqueia tudo.
+**Estado de cada requisito** (`CoberturaDoRequisito.estado`):
 
-O redator, o juiz, o briefing e o revisor recebem a MESMA projeção da página
-(`projecao_para_o_prompt`), só com fatos verificados dela. O grounding é
-cobrado por consulta: o orçamento debita tokens + consultas × preço de tabela
-do LiteLLM (teto conservador), e a telemetria registra as duas parcelas.
+| Estado | Quando | O que a página faz |
+|---|---|---|
+| `verified` | evidência suficiente e coerente | usa |
+| `derived` | conta determinística de premissas verificadas | usa, como conta |
+| `unavailable` | fonte ou transporte falhou (WAF, timeout, UA recusado) — não é falso | tenta alternativa; senão retira/generaliza |
+| `unsupported` | pesquisa feita, evidência insuficiente | omite; se é a promessa central, revisão |
+| `conflicting` | fontes confiáveis divergem | bloqueia a afirmação; na promessa central, bloqueia SÓ a página |
+
+**Estado da página**: `ready`, `degraded` (detalhe omitido, bloco ou ferramenta
+desativados, canal oficial ausente → sem link oficial), `review` (promessa
+central sem evidência: escrita, não publica sem decisão humana) e `blocked`
+(só conflito material na promessa central). Nada bloqueia o funil inteiro;
+pesquisa que falha não entra fato e deixa os requisitos `unavailable`.
+
+**Fluxo**: uma pesquisa GLOBAL (`steps.dossie`, modelo exato, sem fallback);
+cada página `ready` escreve logo; página com lacuna faz UMA busca dirigida por
+lacuna no próprio worker (`complementar_pagina`), deduplicada entre páginas
+(a segunda espera a primeira), registrada no cache sob trava e validada antes
+de qualquer prosa. No fim, consolidação determinística (fatos por `fact_id`,
+SHA novo); revisão global e publicação continuam esperando o conjunto.
+
+**Evidência**: fonte só da citação do provedor (`url_citation` ancorada) ou de
+hint do operador conferido no documento; verificação ao vivo com UA honesto
+(nunca se passa por navegador). Risco alto (dinheiro, elegibilidade, prazo,
+data, direito, legislação) exige evidência FORTE: emissor oficial comprovado,
+canal oficial da jornada, derivado, ou duas fontes reputadas independentes
+(publicadores diferentes) que concordam. Recuperação de `unavailable`: leitura
+direta → outra publicação oficial equivalente → citação ancorada do provedor
+de fonte do canal oficial (registrada como `citacao_do_provedor`) → duas
+fontes independentes → remoção ou generalização.
+
+**Proveniência genérica** (`pipeline/proveniencia.py`): a estruturação declara
+emissor, tipo de emissor, escopo e jurisdição (ISO 3166); só valem quando a
+frase do emissor está no cabeçalho ou título do documento. Escopo do país
+prova regra do país e de suas partes; escopo de subdivisão, só dela
+(`FunnelPlan.jornada.jurisdicao`). Ferramenta (`AtivoInterativo`) declara a
+necessidade por requisito (`rule_source_fact_id`, `current_value_source_fact_id`);
+sem vínculo, SÓ a ferramenta sai. Derivado só pela operação declarada no
+requisito (`multiplicacao`), premissas oficiais verificadas, mesma
+jurisdição, `Decimal` sem arredondamento, linhagem e recálculo a cada
+compilação.
+
+**Degradação no texto**: o redator recebe "O QUE NÃO PODE SER AFIRMADO" com a
+instrução por requisito (sem valor, prazo ou precisão; formulação perene;
+onde o leitor confere), e blocos/ferramentas desativados saem do pedido.
 
 ## Redação paralela segura (`run.page_workers`, 1 a 3)
 
 `1` é o laço serial de sempre (`_processar_pagina`, byte a byte). `>1` exige
-`dossie_factual` (erro de configuração sem ele) e só roda com o dossiê
-congelado — a pesquisa faturada já aconteceu, serial. Duas fases, ambas com
+`dossie_factual` (erro de configuração sem ele): a pesquisa global acontece
+antes, e cada worker só complementa as lacunas da própria página. Duas fases, ambas com
 `ThreadPoolExecutor`, consolidação serial em ordem de página entre elas:
 
 - **A — redação:** portão, briefing, redação. Cada worker tem cópia profunda

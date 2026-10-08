@@ -2,10 +2,11 @@
 dossiê precisa para não decidir AUTORIDADE só pelo hostname e para aceitar um
 valor matematicamente derivável sem exigir que ele apareça literalmente.
 
-* PROVENIÊNCIA: a autoridade emissora é lida no DOCUMENTO. Espelho regional
-  só vira nacional se o próprio documento se identificar, no cabeçalho, como do
-  Departamento/Conselho Nacional; a versão em `dn.senac.br` (ou norma federal)
-  é a canônica e é preferida.
+* PROVENIÊNCIA (qualquer país, idioma e nicho): o emissor DECLARADO pela
+  estruturação ou pelo hint só vale quando a frase dele aparece no cabeçalho ou
+  no título do próprio DOCUMENTO; só então escopo, jurisdição (ISO 3166) e tipo
+  de emissor contam. Cópia em outro host é aceita se o documento se identifica
+  como do emissor; página que só CITA o emissor, não. Nenhuma lista de domínios.
 * HINT DO OPERADOR: uma URL + a afirmação esperada. Não é fato: passa pelo
   mesmo fetch, o código localiza no documento o trecho com o valor (e a data,
   quando há vigência), confere a afirmação contra esse trecho, registra a
@@ -35,81 +36,55 @@ from funnelforge.domain.dossie import (
 
 #: Operações que o CÓDIGO sabe fazer. Fórmula livre não existe.
 METODOS = {"multiplicacao": "deterministic_multiplication"}
-_MESES = ("janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto",
-          "setembro", "outubro", "novembro", "dezembro")
 _CABECALHO = 3000
-_UFS = frozenset("ac al ap am ba ce df es go ma mt ms mg pa pb pr pe pi rj rn rs ro rr sc sp se "
-                 "to".split())
 
 
 # ---------------------------------------------------------------------------
 # proveniência
 # ---------------------------------------------------------------------------
 
-def _uf_do_host(host: str) -> str:
-    return next((r for r in host.split(".")[:-2] if r in _UFS), "")
+#: O que a pesquisa (ou o hint) DECLARA sobre a fonte. Só vale depois de
+#: conferido no documento.
+CAMPOS_DECLARADOS = ("emissor", "tipo_de_emissor", "escopo", "jurisdicao")
 
 
-def _data_por_extenso(t: str) -> str:
-    m = re.search(r"a partir de (\d{1,2})o? de (" + "|".join(_MESES) + r") de (\d{4})", t)
-    if not m:
-        return ""
-    return f"{m.group(3)}-{_MESES.index(m.group(2)) + 1:02d}-{int(m.group(1)):02d}"
+def proveniencia_do_documento(url: str, doc: dict, declarado: dict | None = None) -> dict:
+    """A proveniência de uma fonte, genérica para qualquer país, idioma e nicho.
 
-
-def proveniencia_do_documento(url: str, doc: dict) -> dict:
-    """Quem emite, com que escopo, em que versão e desde quando — lido no
-    documento. `doc` = saída de `ler_documento` (texto, titulo, sha256)."""
-    host = (urlparse(url).hostname or "").lower()
-    publicador = host.removeprefix("www.")
+    O emissor DECLARADO (pela estruturação ou pelo hint) só é comprovado quando
+    a frase do emissor aparece, contígua, no cabeçalho ou no título do próprio
+    documento. Sem isso, escopo e jurisdição declarados não valem: a fonte fica
+    com escopo desconhecido. O hostname não decide autoridade."""
+    d = {k: str((declarado or {}).get(k) or "").strip() for k in CAMPOS_DECLARADOS}
+    publicador = (urlparse(url).hostname or "").lower().removeprefix("www.")
     t = texto_normal(doc.get("texto") or "")
+    titulo = texto_normal(doc.get("titulo") or "")
     cabeca = t[:_CABECALHO]
-    uf = _uf_do_host(publicador)
-    federal = (publicador == "gov.br" or publicador.endswith(".gov.br")) and not uf
-    nacional = re.search(r"(departamento nacional|conselho nacional)", cabeca)
-    regional = re.search(r"departamento regional", cabeca)
-    prov = {"issuer": publicador, "issuer_scope": "", "publisher_domain": publicador,
-            "canonical_url": url, "document_title": str(doc.get("titulo") or "")[:160],
-            "document_version": "", "jurisdiction": "", "effective_from": _data_por_extenso(t),
-            "content_sha256": doc.get("sha256", ""), "trecho_de_autoria": "",
-            "canonica": False, "espelho": False}
-    versao = re.search(r"vers[a]o\s*:?\s*(\d+(?:\.\d+)?)", t)
-    if versao:
-        prov["document_version"] = versao.group(1)
-    if federal and ("presidente da republica" in t or "decreto" in cabeca):
-        inicio = t.find("presidente da republica")
-        prov.update(issuer="Presidência da República" if inicio >= 0 else "Governo Federal",
-                    issuer_scope="national", jurisdiction="BR", canonica=True,
-                    trecho_de_autoria=t[max(0, inicio - 60):inicio + 120].strip()
-                    if inicio >= 0 else cabeca[:180].strip())
-    elif nacional and "senac" in cabeca and (not regional or nacional.start() < regional.start()):
-        prov.update(issuer="Senac — " + ("Departamento Nacional"
-                                         if "departamento nacional" in nacional.group(1)
-                                         else "Conselho Nacional"),
-                    issuer_scope="national", jurisdiction="BR",
-                    canonica=publicador == "dn.senac.br", espelho=publicador != "dn.senac.br",
-                    trecho_de_autoria=cabeca[max(0, nacional.start() - 80):
-                                             nacional.end() + 80].strip())
-    elif uf:
-        prov.update(issuer=f"Senac {uf.upper()}" if "senac" in publicador else publicador,
-                    issuer_scope="regional", jurisdiction=uf.upper(),
-                    trecho_de_autoria=(cabeca[max(0, regional.start() - 60):regional.end() + 80]
-                                       .strip() if regional else ""))
-    return prov
+    frase = " ".join(texto_normal(d["emissor"]).split())
+    achado = -1
+    if len(frase) >= 3:
+        achado = cabeca.find(frase)
+        if achado < 0 and frase in titulo:
+            achado = 0
+    verificado = achado >= 0
+    versao = re.search(r"\b(?:versao|version|versione|versión)\s*:?\s*(\d+(?:\.\d+)?)", t)
+    return {
+        "issuer": d["emissor"], "emissor_verificado": verificado,
+        "tipo_de_emissor": d["tipo_de_emissor"] if verificado else "",
+        "escopo": d["escopo"] if verificado else "desconhecido",
+        "jurisdicao": d["jurisdicao"].upper() if verificado else "",
+        "declarado": d, "publisher_domain": publicador, "canonical_url": url,
+        "document_title": str(doc.get("titulo") or "")[:160],
+        "document_version": versao.group(1) if versao else "",
+        "content_sha256": doc.get("sha256", ""),
+        "trecho_de_autoria": (cabeca[max(0, achado - 60):achado + len(frase) + 60].strip()
+                              if achado > 0 else (titulo[:160] if verificado else "")),
+    }
 
 
 def escopo_do_fato(f: FatoDoDossie) -> tuple[str, str]:
-    """('nacional' | 'regional' | 'outra', uf) do fato: derivado pelas
-    premissas; com proveniência, pelo emissor; sem ela, pelo host."""
-    if f.origem == "derivado":
-        return f.derivacao.get("escopo", "outra"), f.derivacao.get("uf", "")
-    escopo = (f.proveniencia or {}).get("issuer_scope")
-    if escopo == "national":
-        return "nacional", ""
-    if escopo == "regional":
-        return "regional", str(f.proveniencia.get("jurisdiction", "")).lower()
-    from funnelforge.pipeline.dossie import abrangencia_da_fonte
-    return abrangencia_da_fonte(f.source_url)
+    from funnelforge.pipeline.dossie import escopo_do_fato as _e
+    return _e(f)
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +134,7 @@ def verificar_hints(hints: list[dict], ler_documento: Callable[[str], dict] | No
     fatos, recibos, sustentadas = [], [], []
     for h in hints:
         url = canonica(h.get("url"))
+        declarado = {k: h.get(k, "") for k in CAMPOS_DECLARADOS}
         fato = {"afirmacao": h.get("afirmacao", ""), "tipo": h.get("tipo", ""),
                 "valor": h.get("valor", ""), "unidade": h.get("unidade", ""), "fonte": url,
                 "vigente_desde": h.get("vigente_desde", ""),
@@ -168,10 +144,13 @@ def verificar_hints(hints: list[dict], ler_documento: Callable[[str], dict] | No
         doc = ler_documento(url) if ler_documento else {"ok": False, "motivo": "sem leitor"}
         recibo.update(http=doc.get("status"), content_type=doc.get("content_type"),
                       content_sha256=doc.get("sha256", ""), leitura=doc.get("motivo") or "ok")
+        fato["declarado"] = declarado
         if not doc.get("ok"):
+            # Fonte inacessível ao nosso UA = INDISPONÍVEL, não falsa.
             fato["motivo_nao_verificado"] = f"hint não lido: {doc.get('motivo')}"
+            fato["indisponivel"] = True
         else:
-            fato["proveniencia"] = proveniencia_do_documento(url, doc)
+            fato["proveniencia"] = proveniencia_do_documento(url, doc, declarado)
             recibo["proveniencia"] = fato["proveniencia"]
             trecho = trecho_com_valor(doc["texto"], fato["valor"], fato["afirmacao"],
                                       fato["vigente_desde"])
@@ -260,8 +239,11 @@ def derivar_fatos(fatos: list[FatoDoDossie], pages: list, hoje: date,
             if len(premissas) != 2:
                 continue
             escopos = {escopo_do_fato(p) for p in premissas}
-            if len(escopos) != 1 or next(iter(escopos))[0] not in ("nacional", "regional"):
-                recusa(f"jurisdição divergente entre as premissas: {sorted(escopos)}")
+            jurisdicoes = {j for _, j in escopos}
+            if (len(jurisdicoes) != 1 or "" in jurisdicoes
+                    or any(e == "desconhecido" for e, _ in escopos)):
+                recusa(f"jurisdição divergente ou não comprovada entre as premissas: "
+                       f"{sorted(escopos)}")
                 continue
             # Vigências compatíveis = todas as premissas em vigor na data do
             # derivado (a mais recente delas). Premissa que ainda não vigora em
@@ -280,7 +262,9 @@ def derivar_fatos(fatos: list[FatoDoDossie], pages: list, hoje: date,
             formula = " × ".join(_operando(v) for v in valores)
             valor = _brl(resultado)
             vigencia = max(datas) if datas else None
-            escopo, uf = next(iter(escopos))
+            jurisdicao_comum = next(iter(jurisdicoes))
+            escopo = ("nacional" if all(e in ("internacional", "nacional") for e, _ in escopos)
+                      else "subnacional")
             ids = [p.fact_id for p in premissas]
             derivados.append(FatoDoDossie(
                 fact_id=id_do_fato("derivado:" + "|".join(ids), "numero", formula, valor),
@@ -303,7 +287,6 @@ def derivar_fatos(fatos: list[FatoDoDossie], pages: list, hoje: date,
                                                == nucleo_da_unidade(d.unidade_resultado)),
                                               premissas[0].source_url),
                            "vigente_desde": vigencia.isoformat() if vigencia else "",
-                           "escopo": escopo, "uf": uf,
-                           "jurisdicao": "BR" if escopo == "nacional" else uf.upper(),
+                           "escopo": escopo, "jurisdicao": jurisdicao_comum,
                            "oficial": True}))
     return derivados, recusas

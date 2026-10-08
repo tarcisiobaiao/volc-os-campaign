@@ -312,6 +312,8 @@ def test_estruturacao_pede_data_convertida_para_iso():
     ("2026-01-01", "equivalente a R$ 3.242,00 em 2026", False),       # canário real
     ("2026-07-01", "para cursos de julho de 2026", False),
     ("2008-11-05", "Decreto 6.633 de 5 de novembro de 2008", True),
+    ("2026-04-01", "a entrega vai de 1 de abril a 30 de junho de 2026", True),   # canário PT
+    ("2026-04-01", "a entrega vai de 1 de abril a 30 de junho", False),          # sem o ano
 ])
 def test_vigencia_exige_a_data_inteira_no_trecho(iso, trecho, esperado):
     assert pp.data_no_trecho(iso, trecho) is esperado

@@ -245,11 +245,12 @@ def test_16_chamadas_e_custo_batem_exatamente_no_paralelo(tmp_path, monkeypatch)
                          if k not in ("dossie", "paginas_paralelas")
                          and not any(par.chave_da_pagina(k, p.page_number)
                                      for p in state.plan.pages)), 6)
+        pesquisas = len(state.dossie["pesquisa"])           # global + sob demanda
         resultados[workers] = (caro.chamadas, round(orc.gasto_run_usd, 6), ledger, fora,
-                               dict(sorted(orc.gasto_por_pagina.items())))
-    chamadas, gasto, ledger, fora, por_pagina = resultados[3]
+                               dict(sorted(orc.gasto_por_pagina.items())), pesquisas)
+    chamadas, gasto, ledger, fora, por_pagina, pesquisas = resultados[3]
     assert resultados[1] == resultados[3]
-    assert gasto == pytest.approx(0.01 * chamadas + 0.002)          # + a pesquisa do dossiê
+    assert gasto == pytest.approx(0.01 * chamadas + 0.002 * pesquisas)  # + as pesquisas
     assert ledger == pytest.approx(0.01 * chamadas)                  # nenhuma chamada sem dono
     assert fora == pytest.approx(0.01)                               # engajamento, antes do laço
     assert sum(por_pagina.values()) + fora == pytest.approx(ledger, abs=1e-6)

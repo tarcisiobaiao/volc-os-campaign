@@ -42,8 +42,12 @@ CAMPOS_POR_PAGINA = (
     "decisoes_humanas", "normalizacoes", "decoracoes", "metadados",
 )
 #: O que nenhum worker pode mudar (é do run, não da página).
+# `dossie`/`dossie_sha256`: o worker recebe o SNAPSHOT do dossiê com a própria
+# página reavaliada; o dossiê do run é consolidado do cache compartilhado
+# (`CompiladorDeDossie`), não aplicado por delta.
 _CAMPOS_DO_RUN = tuple(c for c in RunState.model_fields
-                       if c not in CAMPOS_POR_PAGINA + ("step_status", "plan"))
+                       if c not in CAMPOS_POR_PAGINA + ("step_status", "plan", "dossie",
+                                                         "dossie_sha256"))
 
 
 def chave_da_pagina(chave: str, numero: int) -> bool:

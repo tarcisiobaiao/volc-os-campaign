@@ -271,7 +271,8 @@
               "descricao": "salário mínimo federal vigente no ano corrente, com a data de início",
               "tipos": [
                 "numero"
-              ]
+              ],
+              "critico": false
             },
             {
               "id": "renda.valor_vigente",
@@ -292,7 +293,8 @@
                   }
                 ],
                 "unidade_resultado": "R$"
-              }
+              },
+              "critico": false
             }
           ]
         }

@@ -311,6 +311,9 @@ class RequisitoFactual(BaseModel):
     descricao: str = Field(min_length=1)
     tipos: list[str] = ["numero", "prazo", "data", "mudanca", "condicao", "orgao",
                         "fonte_legal", "processo"]
+    # `critico`: o requisito sustenta a PROMESSA CENTRAL da página. Conflito nele
+    # bloqueia a página; lacuna nele manda a página para revisão. Requisito não
+    # crítico (detalhe) que falta só some do texto.
     critico: bool = True
     derivacao: DerivacaoDeclarada | None = None
 
@@ -391,14 +394,15 @@ class JornadaDoFunil(BaseModel):
     coortes: list[CoorteDeEntrada] = []
     hipotese_de_medicao: str = ""
     evidencias: list[EvidenciaDaJornada] = []
-    # Abrangência geográfica do conteúdo (siglas de UF). Vazio = nacional: fonte
-    # regional não vale como prova universal de regra.
-    ufs: list[str] = []
+    # Jurisdição do CONTEÚDO, em ISO 3166 ("BR", "PT", "MX", ou subdivisão
+    # "BR-MA", "US-CA"). Vazio = país inteiro, sem restringir. Uma fonte de
+    # subdivisão não prova regra do país.
+    jurisdicao: list[str] = []
 
-    @field_validator("ufs", mode="before")
+    @field_validator("jurisdicao", mode="before")
     @classmethod
-    def _ufs(cls, value: object) -> object:
-        return [str(u).strip().lower() for u in (value or []) if str(u).strip()]
+    def _jurisdicao(cls, value: object) -> object:
+        return [str(u).strip().upper() for u in (value or []) if str(u).strip()]
 
 
     @field_validator("solucao_principal", "checkpoint", mode="before")

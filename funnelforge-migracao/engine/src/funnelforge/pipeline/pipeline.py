@@ -288,9 +288,10 @@ def run_pipeline(
     # DOSSIÊ FACTUAL antes de qualquer briefing/redação: pesquisa única do
     # funil, portão de cobertura, fatos congelados. Página sem lastro fica
     # bloqueada aqui e o laço abaixo não gasta nada com ela.
+    dossie_vivo = None
     if (getattr(deps.settings.run, "dossie_factual", False) and tem_jornada(state.plan)
             and not _falhou(state, "funnel_graph")):
-        _preparar_dossie(state, deps)
+        dossie_vivo = _preparar_dossie(state, deps)
         _checkpoint(state, deps)
     if ate_o_dossie:
         # Só esqueleto -> pesquisa -> dossiê -> verificação -> cobertura.
@@ -328,7 +329,7 @@ def run_pipeline(
     a_publicar: list[Page] = []
 
     laco = _Laco(v2=v2, publish=publish, com_jornada=com_jornada,
-                 orcamento=orcamento, a_publicar=a_publicar)
+                 orcamento=orcamento, a_publicar=a_publicar, dossie_vivo=dossie_vivo)
     workers = int(getattr(deps.settings.run, "page_workers", 1) or 1)
     if workers > 1 and len(pages) > 1:
         _paginas_em_paralelo(state, pages, deps, laco, workers)
@@ -336,6 +337,8 @@ def run_pipeline(
         for page in pages:
             if _processar_pagina(state, page, deps, laco) == "break":
                 break
+    if dossie_vivo is not None:
+        _consolidar_dossie(state, deps, dossie_vivo)
 
     # REVISÃO GLOBAL do funil pronto (só com jornada), ANTES de qualquer
     # publicação e só sobre páginas estruturalmente aprovadas. Uma passada
@@ -390,6 +393,9 @@ class _Laco:
     # "tudo" (serial) | "redacao" (para depois do portão de página condenada)
     # | "acabamento" (retoma do SEO; a redação já está consolidada)
     fase: str = "tudo"
+    # O dossiê como CACHE compartilhado (`CompiladorDeDossie`): a página com
+    # lacuna pesquisa sob demanda antes de escrever. None = sem dossiê.
+    dossie_vivo: Any = None
 
 
 def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _Laco,
@@ -453,7 +459,8 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
             deps_pg = replace(deps, llm=contador, runner=runner, screenshot=screenshot,
                               sitemap=sitemap)
             local = _Laco(v2=laco.v2, publish=laco.publish, com_jornada=laco.com_jornada,
-                          orcamento=orc, a_publicar=[], fase=nome)
+                          orcamento=orc, a_publicar=[], fase=nome,
+                          dossie_vivo=laco.dossie_vivo)
             inicio = time.monotonic()
             try:
                 sinal = _processar_pagina(copia, pagina, deps_pg, local)
@@ -541,8 +548,11 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
     abrir páginas novas; qualquer outra falha fica na própria página."""
     v2, publish, com_jornada = laco.v2, laco.publish, laco.com_jornada
     orcamento, a_publicar = laco.orcamento, laco.a_publicar
+    if (laco.dossie_vivo is not None and laco.fase != "acabamento"
+            and not _done(state, f"write_p{page.page_number}")):
+        _complementar_pagina(state, page, deps, laco.dossie_vivo)
     if _falhou(state, f"dossie_p{page.page_number}"):
-        return None          # portão do dossiê: blocked_pN já gravado
+        return None          # conflito na promessa central: só ESTA página para
     # Zera o contador da PÁGINA: o teto por página existe para que uma
     # página patológica não coma o orçamento das outras.
     if orcamento is not None and laco.fase != "acabamento":
@@ -721,7 +731,12 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
         state.step_status.pop(f"blocked_p{page.page_number}", None)
         _registrar_metadados(state, page, deps)
 
-        if publish and deps.publisher is not None and not _done(
+        revisao = _revisao_por_evidencia(state, page)
+        if revisao:
+            state.step_status[f"evidencia_p{page.page_number}"] = StepResult(
+                step=f"evidencia_p{page.page_number}", status=StepStatus.SKIPPED,
+                issues=[Issue(code="revisao_humana_por_evidencia", message=revisao)])
+        if publish and deps.publisher is not None and not revisao and not _done(
             state, f"publish_p{page.page_number}"
         ):
             if com_jornada:
@@ -830,7 +845,7 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
         # conservador; se o LiteLLM já incluiu, superestima — nunca o contrário).
         buscas.append(round(resp.consultas_de_busca * preco_da_busca, 6))
         if orcamento is not None:
-            orcamento.registrar("dossie", resp.custo_usd + buscas[-1])
+            orcamento.registrar_fora_de_pagina("dossie", resp.custo_usd + buscas[-1])
         respostas.append(resp)
         if _base_do_modelo(resp.modelo_servido) != _base_do_modelo(cfg.model):
             raise RuntimeError(f"pesquisa do dossiê pediu {cfg.model} e recebeu "
@@ -865,17 +880,23 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
             for i, r in enumerate(respostas, 1)], ensure_ascii=False, indent=2),
             encoding="utf-8")
 
+    from funnelforge.pipeline.dossie import CompiladorDeDossie
+    vivo = CompiladorDeDossie(state, deps, pesquisar,
+                              registrar_canais=st.registrar_canais_oficiais,
+                              ler_documento=getattr(deps, "ler_documento", None))
+    vivo.respostas, vivo.gravar_chamadas, vivo.telemetria_do_passo = (
+        respostas, gravar_chamadas, telemetria)
     try:
-        dossie = compilar_dossie(state, deps, pesquisar,
-                                 registrar_canais=st.registrar_canais_oficiais,
-                                 hints=list(getattr(deps, "hints_do_operador", []) or []),
-                                 ler_documento=getattr(deps, "ler_documento", None))
-    except Exception as exc:  # noqa: BLE001 - sem dossiê, nenhuma página é escrita
+        # Só a pesquisa GLOBAL aqui: a complementação é por lacuna, sob demanda,
+        # no worker de cada página (`_complementar_pagina`).
+        dossie = vivo.compilar(hints=list(getattr(deps, "hints_do_operador", []) or []),
+                               complementos=0)
+    except Exception as exc:  # noqa: BLE001 - defeito do motor, não da fonte
         motivo = f"pesquisa do dossiê falhou: {type(exc).__name__}: {str(exc)[:300]}"
         bloquear_tudo(motivo, telemetria(StepStatus.FAILED,
                                          [Issue(code="dossie_falhou", message=motivo)]))
         gravar_chamadas()
-        return
+        return None
     gravar_chamadas()
     state.dossie = dossie.model_dump(mode="json")
     state.dossie_sha256 = dossie.sha256
@@ -894,6 +915,62 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
                   f"auth_mode {respostas[-1].auth_mode if respostas else '?'}: custo NÃO "
                   "informado pelo servidor (quota do plano)") +
               f"; sha256 {dossie.sha256[:12]}")])
+    return vivo
+
+
+def _complementar_pagina(state: RunState, page: Page, deps: Deps, vivo: Any) -> None:
+    """A página com lacuna pesquisa sob demanda (uma busca por lacuna,
+    deduplicada entre páginas), registra no cache, e é reavaliada — o snapshot
+    do dossiê do worker passa a ter a própria página atualizada."""
+    from funnelforge.pipeline.dossie import aplicar_portao
+    n = page.page_number
+    if n not in vivo.coberturas or not vivo.lacunas(n):
+        return
+    resumo = vivo.complementar_pagina(page, state)
+    with vivo.trava:
+        parcial = vivo.montar(state)
+    state.dossie = parcial.model_dump(mode="json")
+    state.dossie_sha256 = parcial.sha256
+    pagina = parcial.pagina(n)
+    if pagina is not None:
+        aplicar_portao(state, parcial.model_copy(update={"paginas": [pagina]}))
+    state.step_status[f"dossie_complemento_p{n}"] = StepResult(
+        step=f"dossie_complemento_p{n}", status=StepStatus.OK,
+        issues=[Issue(code="complemento_sob_demanda", message=json.dumps(
+            resumo, ensure_ascii=False)[:600])])
+
+
+def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
+    """Depois das páginas: o dossiê do run é o cache consolidado (fatos por
+    fact_id, coberturas como cada página as viu), com SHA novo."""
+    with vivo.trava:
+        final = vivo.montar(state)
+    state.dossie = final.model_dump(mode="json")
+    state.dossie_sha256 = final.sha256
+    pasta = deps.runner.runs_dir / state.run_id
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / "dossie_factual.json").write_text(final.model_dump_json(indent=2), encoding="utf-8")
+    vivo.gravar_chamadas()
+    estados = {}
+    for p in final.paginas:
+        estados[p.cobertura.estado] = estados.get(p.cobertura.estado, 0) + 1
+    base = vivo.telemetria_do_passo(StepStatus.OK, [])
+    base.issues = [Issue(code="dossie_consolidado", message=(
+        f"páginas {estados}; {len(final.fatos)} fato(s); "
+        f"{sum(1 for t in final.pesquisa if t.pagina)} complementação(ões) sob demanda; "
+        f"{vivo.deduplicadas} lacuna(s) deduplicada(s); {vivo.reaproveitadas} reaproveitada(s) "
+        f"do cache; {len(final.conflitos)} conflito(s); sha256 {final.sha256[:12]}"))]
+    state.step_status["dossie"] = base
+    _checkpoint(state, deps)
+
+
+def _revisao_por_evidencia(state: RunState, page: Page) -> str:
+    """Página escrita com a promessa central sem evidência não publica sem
+    decisão humana."""
+    r = state.step_status.get(f"dossie_p{page.page_number}")
+    if r is None:
+        return ""
+    return next((i.message for i in r.issues if i.code == "revisao_humana_por_evidencia"), "")
 
 
 def _registrar_metadados(state: RunState, page: Page, deps: Deps) -> None:

@@ -157,7 +157,7 @@ Quem chega nestas páginas costuma estar travado, não curioso. Escreva como que
 {% if ativo | default({}) %}# A FERRAMENTA QUE O ARQUITETO ESPECIFICOU
 Pergunta que ela resolve: {{ ativo.pergunta }}
 Entradas: {{ ativo.entradas | join("; ") }}
-Lógica: {{ ativo.logica }} (regra em {{ ativo.fonte_da_regra }}{% if ativo.valor_vigente %}; valor vigente {{ ativo.valor_vigente.valor }} {{ ativo.valor_vigente.unidade }} desde {{ ativo.valor_vigente.vigente_desde }}, abrangência {{ ativo.valor_vigente.abrangencia }}{% if ativo.valor_vigente.uf %} {{ ativo.valor_vigente.uf }}{% endif %} ({{ ativo.valor_vigente.url }}){% endif %}; não use número que não esteja na base factual)
+Lógica: {{ ativo.logica }} (regra em {{ ativo.fonte_da_regra }}{% if ativo.valor_vigente %}; valor vigente {{ ativo.valor_vigente.valor }} {{ ativo.valor_vigente.unidade }} desde {{ ativo.valor_vigente.vigente_desde }}, abrangência {{ ativo.valor_vigente.abrangencia }}{% if ativo.valor_vigente.jurisdicao %} {{ ativo.valor_vigente.jurisdicao }}{% endif %} ({{ ativo.valor_vigente.url }}){% endif %}; não use número que não esteja na base factual)
 Resultado: {{ ativo.resultado }}
 Sem JavaScript, o artigo já mostra: {{ ativo.fallback_sem_js }}
 Acessibilidade: {{ ativo.acessibilidade }}. Não peça nome, CPF, telefone, e-mail ou outro dado pessoal.

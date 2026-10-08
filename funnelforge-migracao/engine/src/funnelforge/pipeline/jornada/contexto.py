@@ -93,6 +93,8 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
         })
     destinos.sort(key=lambda d: not d["principal"])
     valor = j.valor.model_dump() if j.valor else {}
+    projecao = _projecao(dossie, page.page_number)
+    desativados = {(d.get("tipo"), d.get("nome")) for d in projecao.get("desativados", [])}
     return {
         "duvida_id": j.duvida_id,
         "pergunta": j.pergunta_principal,
@@ -110,11 +112,15 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
                           "justificativa": j.saida_oficial.justificativa},
         "monetizacao": j.monetizacao.model_dump(),
         "valor": valor,
-        "plano_visual": [b.model_dump() for b in j.plano_visual],
-        "ativos": [a.model_dump() for a in ativos_validos(page)],
-        # O PageDossier CONGELADO (vazio sem dossiê): a mesma projeção para
-        # briefing, redator, juiz e revisor.
-        "dossie": _projecao(dossie, page.page_number),
+        # Bloco ou ferramenta que dependia de dado sem evidência sai do pedido
+        # (degradação segura): o resto da página segue.
+        "plano_visual": [b.model_dump() for b in j.plano_visual
+                         if ("bloco", b.secao) not in desativados],
+        "ativos": [a.model_dump() for a in ativos_validos(page)
+                   if ("ativo", a.pergunta) not in desativados],
+        # O PageDossier (vazio sem dossiê): a mesma projeção para briefing,
+        # redator, juiz e revisor.
+        "dossie": projecao,
     }
 
 

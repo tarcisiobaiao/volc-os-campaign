@@ -311,7 +311,13 @@ def data_no_trecho(iso: str, trecho: str) -> bool:
     d, mm = int(dia), int(mes)
     padroes = [rf"\b0?{d}[/.-]0?{mm}[/.-]{ano}\b", rf"\b{ano}-{mes}-{dia}\b",
                rf"\b0?{d}o? de {_MESES[mm - 1]} de {ano}\b"]
-    return any(re.search(p, t) for p in padroes)
+    if any(re.search(p, t) for p in padroes):
+        return True
+    # Intervalo ("de 1 de abril a 30 de junho de 2026"): dia e mês JUNTOS e o
+    # ano no mesmo trecho. Só o ano ("em 2026") continua não valendo.
+    dia_e_mes = re.search(rf"\b0?{d}o? de {_MESES[mm - 1]}\b", t) or re.search(
+        rf"\b0?{d}[/.-]0?{mm}\b(?![/.-]\d)", t)
+    return bool(dia_e_mes) and re.search(rf"\b{ano}\b", t) is not None
 
 
 def sustentado(afirmacao: str, valor: str, trecho: str,
@@ -329,6 +335,12 @@ def sustentado(afirmacao: str, valor: str, trecho: str,
 # 3. estruturação (schema estrito, sem URL)
 # ---------------------------------------------------------------------------
 
+TIPOS_DE_EMISSOR = ("governo", "regulador", "orgao_publico", "banco_central", "tribunal",
+                    "legislativo", "instituicao_oficial", "academico", "editorial", "fabricante",
+                    "documentacao_tecnica", "associacao_profissional", "outro")
+ESCOPOS = ("internacional", "nacional", "subnacional", "local", "desconhecido")
+
+
 def schema_da_estruturacao(tipos: list[str]) -> dict:
     texto = {"type": "string"}
     lista = {"type": "array", "items": {"type": "string"}}
@@ -336,7 +348,13 @@ def schema_da_estruturacao(tipos: list[str]) -> dict:
             "properties": {"evidencia_id": texto, "afirmacao": texto,
                            "tipo": {"type": "string", "enum": list(tipos)}, "valor": texto,
                            "unidade": texto, "vigente_desde": texto, "dispositivo": texto,
-                           "paginas": lista, "requisitos": lista}}
+                           "paginas": lista, "requisitos": lista,
+                           # DECLARAÇÕES sobre a fonte: o código só aceita depois
+                           # de achar o emissor no próprio documento.
+                           "emissor": texto,
+                           "tipo_de_emissor": {"type": "string", "enum": list(TIPOS_DE_EMISSOR)},
+                           "escopo": {"type": "string", "enum": list(ESCOPOS)},
+                           "jurisdicao": texto}}
     fato["required"] = list(fato["properties"])
     return {"type": "object", "additionalProperties": False, "required": ["fatos"],
             "properties": {"fatos": {"type": "array", "items": fato}}}
@@ -373,7 +391,10 @@ def _prompt_da_estruturacao(texto: str, evs: list[Evidencia], fontes: list[dict]
             "parafraseia aquele trecho e não acrescenta nada; valor e unidade só se estiverem "
             "no trecho; vigente_desde só com a data que está no trecho, convertida para "
             "AAAA-MM-DD (ex.: '14/01/2026' -> '2026-01-14'; '19 de março de 2026' -> "
-            "'2026-03-19'); trecho só com mês/ano ou sem data -> vazio; paginas e requisitos só dos ids listados. Não crie fato, número ou "
+            "'2026-03-19'); trecho só com mês/ano ou sem data -> vazio; emissor = o nome do "
+            "órgão ou organização que publica a fonte, escrito como aparece nela; "
+            "tipo_de_emissor, escopo e jurisdicao (ISO 3166, ex.: 'BR', 'PT', 'MX-JAL') da "
+            "fonte, ou 'desconhecido'/vazio quando a evidência não diz; paginas e requisitos só dos ids listados. Não crie fato, número ou "
             "fonte. Evidência que não sustenta requisito nenhum fica de fora.\n\n"
             f"EVIDÊNCIAS:\n{lista}\n\nREQUISITOS:\n{reqs}\n\n"
             f"PÁGINAS CONSULTADAS (contexto; não são evidência):\n{consultadas}\n\n"
@@ -609,12 +630,15 @@ def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: lis
                 "fonte": url, "vigente_desde": vigencia, "dispositivo": f.get("dispositivo") or "",
                 "evidencia_resumida": ev.trecho[:300], "evidencia_id": ev.id,
                 "paginas": [p for p in f.get("paginas") or [] if p in paginas_validas],
-                "requisitos": [r for r in f.get("requisitos") or [] if r in requisitos_validos]}
+                "requisitos": [r for r in f.get("requisitos") or [] if r in requisitos_validos],
+                "emissor": f.get("emissor") or "", "tipo_de_emissor": f.get("tipo_de_emissor") or "",
+                "escopo": f.get("escopo") or "", "jurisdicao": f.get("jurisdicao") or ""}
         if url not in paginas_lidas:
             paginas_lidas[url] = ler(url)
         conteudo, falha_leitura = paginas_lidas[url]
         if falha_leitura:
             fato["motivo_nao_verificado"] = f"conteúdo da fonte não conferido: {falha_leitura}"
+            fato["indisponivel"] = True      # fonte fora/recusou o UA: não é refutação
         else:
             conf = sustentado(str(fato["afirmacao"]), str(fato["valor"]), conteudo,
                               minimo=SOBREPOSICAO_NA_PAGINA)

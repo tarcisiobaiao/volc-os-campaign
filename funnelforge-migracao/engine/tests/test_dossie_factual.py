@@ -37,15 +37,39 @@ EAD = "https://www.ead.senac.br"
 INSCR = "https://www.sp.senac.br/inscricao"
 RO = "https://www.ro.senac.br/edital-de-selecao-no-02-2026"
 DECRETO_SM = "https://planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12797.htm"
+MA = "https://ma.senac.br/wp-content/uploads/2026/03/EDITAL-PSG-No-56.2026.pdf"
+PLANALTO = "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm"
 CITADAS = [PSG, SP, EAD, INSCR, RO, DECRETO_SM]
+
+#: O emissor que cada fonte de teste DECLARA — e que o documento falso traz no
+#: cabeçalho, para a proveniência genérica comprová-lo.
+EMISSORES = {
+    PSG: ("Departamento Nacional do Senac", "instituicao_oficial", "nacional", "BR"),
+    SP: ("Senac São Paulo", "instituicao_oficial", "subnacional", "BR-SP"),
+    INSCR: ("Senac São Paulo", "instituicao_oficial", "subnacional", "BR-SP"),
+    EAD: ("Senac EAD", "instituicao_oficial", "nacional", "BR"),
+    RO: ("Senac Rondônia", "instituicao_oficial", "subnacional", "BR-RO"),
+    DECRETO_SM: ("Presidência da República", "governo", "nacional", "BR"),
+    MA: ("Senac Maranhão", "instituicao_oficial", "subnacional", "BR-MA"),
+    PLANALTO: ("Presidência da República", "governo", "nacional", "BR"),
+}
+
+
+def _ler(url):
+    if url not in EMISSORES:
+        return {"ok": False, "motivo": "HTTP 404", "status": 404}
+    return {"ok": True, "motivo": "", "status": 200, "sha256": "x", "titulo": "",
+            "texto": f"{EMISSORES[url][0]}. Documento de teste."}
 
 
 def _fato(afirmacao, fonte, paginas, requisitos=(), tipo="processo", valor="", unidade="",
           vigente="2008-07-21"):
+    emissor, tipo_de_emissor, escopo, jurisdicao = EMISSORES.get(fonte, ("", "", "", ""))
     return {"afirmacao": afirmacao, "tipo": tipo, "valor": valor, "unidade": unidade,
             "fonte": fonte, "vigente_desde": vigente if valor else "",
             "evidencia": afirmacao[:60], "paginas": list(paginas),
-            "requisitos": list(requisitos)}
+            "requisitos": list(requisitos), "emissor": emissor,
+            "tipo_de_emissor": tipo_de_emissor, "escopo": escopo, "jurisdicao": jurisdicao}
 
 
 RENDA = "renda.limite_per_capita"
@@ -119,9 +143,10 @@ def _estado(arq=None):
     return RunState(run_id="r1", plan=plano_do_funnel_architecture(arq or _arq_com_requisito_de_renda()))
 
 
-def _compilar(state, pesquisa, verificador=None):
+def _compilar(state, pesquisa, verificador=None, **kw):
     return compilar_dossie(state, _Deps(verificador), pesquisa,
-                           registrar_canais=_registrar_canais, hoje=HOJE)
+                           registrar_canais=_registrar_canais, hoje=HOJE, ler_documento=_ler,
+                           **kw)
 
 
 def _n(state, duvida):
@@ -144,17 +169,19 @@ def test_1_dossie_completo_libera_todas_as_paginas():
 
 # [2] ------------------------------------------------------------------------
 
-def test_2_fato_obrigatorio_ausente_bloqueia_antes_do_redator():
+def test_2_lacuna_na_promessa_central_vai_para_revisao_e_nao_bloqueia():
     state = _estado()
     sem_limite = [f for f in FATOS_COMPLETOS if RENDA not in f["requisitos"]]
     dossie = _compilar(state, _Pesquisa(sem_limite, [], []))
-    renda = dossie.pagina(_n(state, "renda"))
-    assert not renda.cobertura.ready_to_write
-    assert any("renda.limite_per_capita" in b for b in renda.cobertura.blockers)
+    cob = dossie.pagina(_n(state, "renda")).cobertura
+    assert cob.estado == "review" and cob.ready_to_write and cob.requer_revisao
+    req = next(r for r in cob.requisitos if r.requisito_id == RENDA)
+    assert req.estado == "unsupported" and req.central and req.risco == "alto"
+    assert any(d["requisito"] == RENDA and "omita" in d["instrucao"] for d in cob.degradacoes)
+    n = _n(state, "renda")
     portao = aplicar_portao(state, dossie)
-    assert _n(state, "renda") in portao.bloqueadas
-    assert state.step_status[f"blocked_p{_n(state, 'renda')}"].status.value == "FAILED"
-
+    assert n in portao.prontas and f"blocked_p{n}" not in state.step_status
+    assert state.step_status[f"dossie_p{n}"].issues[0].code == "revisao_humana_por_evidencia"
 
 # [3] [4] [5] ---------------------------------------------------------------
 
@@ -175,7 +202,7 @@ def test_3_url_nao_citada_ou_que_nao_responde_nao_vira_fonte():
     assert "https://www.sp.senac.br/morta" not in fontes_do_curso
 
 
-def test_4_numero_sem_data_de_vigencia_bloqueia():
+def test_4_numero_sem_data_de_vigencia_nao_vira_fato_e_a_pagina_vai_para_revisao():
     state = _estado()
     sem_data = [dict(f) for f in FATOS_COMPLETOS]
     for f in sem_data:
@@ -184,8 +211,7 @@ def test_4_numero_sem_data_de_vigencia_bloqueia():
     dossie = _compilar(state, _Pesquisa(sem_data, [], []))
     fato = next(f for f in dossie.fatos if RENDA in f.requisitos)
     assert fato.status == "unverified" and "referência temporal" in fato.motivo_do_status
-    assert not dossie.pagina(_n(state, "renda")).cobertura.ready_to_write
-
+    assert dossie.pagina(_n(state, "renda")).cobertura.estado == "review"
 
 def test_5_conflito_entre_fontes_bloqueia_o_fato():
     state = _estado()
@@ -209,10 +235,9 @@ def test_6_no_maximo_duas_rodadas_de_complementacao_so_para_o_que_falta():
     dossie = _compilar(state, pesquisa)
     assert len(pesquisa.pedidos) == 1 + MAX_RODADAS_DE_COMPLEMENTO == 3
     assert pesquisa.pedidos[0] is None
-    assert [f["requisito"] for f in pesquisa.pedidos[1]] == ["renda.limite_per_capita"]
+    assert [f["requisito"] for f in pesquisa.pedidos[1]] == [RENDA]
     assert len(dossie.pesquisa) == 3
-    assert dossie.pesquisa[1].faltantes_pedidos == ["renda:renda.limite_per_capita"]
-
+    assert dossie.pesquisa[1].faltantes_pedidos == [f"renda:{RENDA}"]
 
 def test_6_complementacao_que_acha_o_fato_libera_e_para():
     state = _estado()
@@ -266,30 +291,38 @@ def _ligar_pesquisa(monkeypatch, pesquisa):
                         lambda llm, cfg, assunto, spec, faltantes=None: pesquisa(assunto, spec, faltantes))
     from funnelforge.pipeline import steps as st
     monkeypatch.setattr(st, "registrar_canais_oficiais", _registrar_canais)
+    from funnelforge.pipeline import dossie as pd
+    original = pd.CompiladorDeDossie.__init__
+
+    def com_leitor(self, *a, ler_documento=None, **kw):
+        original(self, *a, ler_documento=ler_documento or _ler, **kw)
+    monkeypatch.setattr(pd.CompiladorDeDossie, "__init__", com_leitor)
 
 
-def test_9_e_2_pipeline_congela_o_dossie_e_nao_chama_nada_para_pagina_bloqueada(tmp_path, monkeypatch):
+def test_9_e_2_pipeline_lacuna_central_pesquisa_sob_demanda_escreve_e_nao_publica(tmp_path, monkeypatch):
     congelar_data(monkeypatch)
     sem_limite = [f for f in FATOS_COMPLETOS if RENDA not in f["requisitos"]]
-    _ligar_pesquisa(monkeypatch, _Pesquisa(sem_limite, [], []))
+    pesquisa = _Pesquisa(sem_limite, [])
+    _ligar_pesquisa(monkeypatch, pesquisa)
     settings = _settings_com_dossie(tmp_path)
-    arq = _arq_com_requisito_de_renda()
-    state, deps, llm = rodar_cenario(tmp_path, arq, settings)
+    state, deps, llm = rodar_cenario(tmp_path, _arq_com_requisito_de_renda(), settings)
     n = _n(state, "renda")
-    assert state.step_status[f"dossie_p{n}"].status.value == "FAILED"
-    assert not any(k.endswith(f"_p{n}") and k.split("_p")[0] in
-                   ("briefing", "write", "seo", "widget", "revisor", "judge", "image",
-                    "screenshot", "build", "publish", "content_gate") for k in state.step_status)
+    # a pesquisa global e UMA complementação sob demanda, só da lacuna da p2
+    assert pesquisa.pedidos[0] is None and [f["requisito"] for f in pesquisa.pedidos[1]] == [RENDA]
+    assert len(pesquisa.pedidos) == 2 and f"dossie_complemento_p{n}" in state.step_status
+    # a página é escrita (degradada, para revisão) e as outras também
+    assert all(p.page_number in state.drafts for p in state.plan.pages)
+    assert state.step_status[f"dossie_p{n}"].status.value == "OK"
+    # nenhuma página parada PELO DOSSIÊ (a revisão global do texto pronto é outra coisa)
+    assert all(state.step_status[f"dossie_p{p.page_number}"].status.value == "OK"
+               for p in state.plan.pages)
     pasta = deps.runner.runs_dir / state.run_id
-    assert all(f"_p{n}" not in json.loads(l).get("step", "") for l in
-               (pasta / "log.jsonl").read_text().splitlines())
     dossie = DossieDoFunil.model_validate(state.dossie)
-    assert hash_do_dossie(dossie) == state.dossie_sha256           # [9] intacto
+    assert hash_do_dossie(dossie) == state.dossie_sha256           # [9] consolidado e íntegro
     assert json.loads((pasta / "dossie_factual.json").read_text())["sha256"] == state.dossie_sha256
-    assert state.step_status["dossie"].model_requested == "gemini/gemini-3.8-flash"
-    outras = [p.page_number for p in state.plan.pages if p.page_number != n]
-    assert all(k in state.drafts for k in outras)                  # as outras escreveram
-
+    assert dossie.pagina(n).cobertura.estado == "review"
+    prompt = (pasta / "prompts" / f"write_p{n}.txt").read_text()
+    assert "O QUE NÃO PODE SER AFIRMADO" in prompt
 
 def test_10_resume_reaproveita_o_mesmo_dossie_sem_pesquisar(tmp_path, monkeypatch):
     congelar_data(monkeypatch)
@@ -338,8 +371,9 @@ def test_11_mudanca_factual_invalida_so_as_paginas_afetadas():
     assert f"write_p{afetadas[0]}" not in state2.step_status
 
 
-def test_modelo_servido_diferente_do_pedido_bloqueia_o_funil_inteiro(tmp_path, monkeypatch):
-    """Sem troca silenciosa: pediu gemini-3.8-flash e veio outro -> nada é escrito."""
+def test_modelo_trocado_nao_entra_no_dossie_e_nao_bloqueia_o_funil(tmp_path, monkeypatch):
+    """Sem troca silenciosa: pediu gemini-3.8-flash e veio outro -> nenhum fato
+    da resposta entra; as páginas seguem degradadas/para revisão."""
     congelar_data(monkeypatch)
 
     class _Trocado(_Pesquisa):
@@ -349,20 +383,24 @@ def test_modelo_servido_diferente_do_pedido_bloqueia_o_funil_inteiro(tmp_path, m
             return resp
 
     _ligar_pesquisa(monkeypatch, _Trocado(FATOS_COMPLETOS))
-    state, _, llm = rodar_cenario(tmp_path, _arq_com_requisito_de_renda(),
-                                  _settings_com_dossie(tmp_path))
-    assert all(state.step_status[f"dossie_p{p.page_number}"].status.value == "FAILED"
+    state, _, _ = rodar_cenario(tmp_path, _arq_com_requisito_de_renda(),
+                                _settings_com_dossie(tmp_path))
+    dossie = DossieDoFunil.model_validate(state.dossie)
+    assert dossie.fatos == []
+    assert all("troca de modelo" in t.defeito for t in dossie.pesquisa)
+    # nenhuma página parada PELO DOSSIÊ (a revisão global do texto pronto é outra coisa)
+    assert all(state.step_status[f"dossie_p{p.page_number}"].status.value == "OK"
                for p in state.plan.pages)
-    motivo = state.step_status["dossie"].issues[0].message
-    assert "gemini-2.5-flash" in motivo and "troca de modelo" in motivo
-    assert state.step_status["dossie"].model_requested == "gemini/gemini-3.8-flash"
-    assert state.drafts == {} and not state.dossie
+    estados = {p.cobertura.estado for p in dossie.paginas}
+    assert estados <= {"review", "degraded"}
+    req = next(r for p in dossie.paginas for r in p.cobertura.requisitos)
+    assert req.estado == "unavailable"
 
-
-def test_resposta_vazia_do_provedor_aborta_sem_complementar_e_guarda_o_custo(tmp_path, monkeypatch):
-    """Canário real de 07/10: gemini-3.8-flash devolveu texto vazio 3 vezes e o
-    motor tratou como "zero fatos", pagando duas complementações às cegas."""
+def test_resposta_vazia_do_provedor_e_falha_de_pesquisa_que_nao_derruba_o_funil(tmp_path, monkeypatch):
+    """Canário real de 07/10: gemini-3.8-flash devolveu texto vazio. Agora:
+    defeito registrado com o custo, nenhum fato, página segue degradada."""
     from funnelforge.adapters import research_perplexity as rp
+    from funnelforge.config.settings import StepConfig
     from funnelforge.ports.llm import LLMResult
 
     class _LLMVazio:
@@ -373,26 +411,22 @@ def test_resposta_vazia_do_provedor_aborta_sem_complementar_e_guarda_o_custo(tmp
             return LLMResult(text="", model_used="gemini-3.8-flash", prompt_tokens=2083,
                              cost_usd=0.0016, finish_reason="content_filter")
 
-    from funnelforge.config.settings import StepConfig
     cfg = StepConfig(model="gemini/gemini-3.8-flash", web_search=True)
     resp = pesquisar_original(_LLMVazio(), cfg, "Senac", [], None)
     assert resp.defeito == "provedor devolveu texto vazio (finish_reason=content_filter)"
 
     congelar_data(monkeypatch)
-    monkeypatch.setattr(rp, "pesquisar_funil",
-                        lambda llm, c, assunto, spec, faltantes=None: pesquisar_original(
-                            _LLMVazio(), c, assunto, spec, faltantes))
+    _ligar_pesquisa(monkeypatch, lambda assunto, spec, faltantes: pesquisar_original(
+        _LLMVazio(), cfg, assunto, spec, faltantes))
     _LLMVazio.chamadas = 0
     state, _, _ = rodar_cenario(tmp_path, _arq_com_requisito_de_renda(),
                                 _settings_com_dossie(tmp_path))
-    assert _LLMVazio.chamadas == 1                                   # nenhuma complementação
     dossie = state.step_status["dossie"]
-    assert dossie.status.value == "FAILED" and dossie.cost_usd == pytest.approx(0.0016)
-    assert "finish_reason=content_filter" in dossie.issues[0].message
-    assert all(state.step_status[f"blocked_p{p.page_number}"].status.value == "FAILED"
+    assert dossie.status.value == "OK" and dossie.cost_usd >= 0.0016
+    # nenhuma página parada PELO DOSSIÊ (a revisão global do texto pronto é outra coisa)
+    assert all(state.step_status[f"dossie_p{p.page_number}"].status.value == "OK"
                for p in state.plan.pages)
-
-
+    assert all(p.page_number in state.drafts for p in state.plan.pages)
 
 # ---------------------------------------------------------------------------
 # contrato de evidência do ativo: necessidade por requisito, vínculo por fonte
@@ -402,17 +436,18 @@ MA = "https://ma.senac.br/wp-content/uploads/2026/03/EDITAL-PSG-No-56.2026.pdf"
 PLANALTO = "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm"
 
 
-def test_abrangencia_da_fonte_pelo_host():
-    from funnelforge.pipeline.dossie import abrangencia_da_fonte as ab
-    assert ab("https://www.senac.br/psg") == ("nacional", "")
-    assert ab(PLANALTO) == ("nacional", "")
-    assert ab(MA) == ("regional", "ma")
-    assert ab("https://programasenacdegratuidade.mg.senac.br/faq.aspx") == ("regional", "mg")
-    assert ab("https://www.sp.gov.br/x") == ("regional", "sp")
-    assert ab("https://ead.senac.br") == ("outra", "")
+def test_host_nao_decide_autoridade_e_publicador_decide_independencia():
+    from funnelforge.domain.dossie import FatoDoDossie
+    from funnelforge.pipeline.dossie import escopo_do_fato, publicador
+    sem_prov = FatoDoDossie(fact_id="f_" + "a" * 12, afirmacao="x", tipo="condicao",
+                            source_url="https://www.gov.br/algo")
+    assert escopo_do_fato(sem_prov) == ("desconhecido", "")        # gov.br não basta
+    assert publicador("https://www.bcb.gov.br/x") == "bcb.gov.br"
+    assert publicador("https://news.bbc.co.uk/a") == "bbc.co.uk"
+    assert publicador("https://docs.python.org/3/") == "python.org"
 
 
-def _so_renda(*fatos_extras, sem=("renda.limite_per_capita", "renda.valor_vigente")):
+def _so_renda(*fatos_extras, sem=(RENDA, "renda.valor_vigente", "salario_minimo.vigente")):
     base = [f for f in FATOS_COMPLETOS if not set(f["requisitos"]) & set(sem)]
     return base + list(fatos_extras)
 
@@ -425,26 +460,42 @@ REGRA_NACIONAL = _fato("Renda per capita de até 2 salários mínimos (Decreto 6
 VALOR_RO = _fato("Em 2026 o limite equivale a R$ 3.242,00 por pessoa", RO, ["renda"],
                  ["renda.valor_vigente"], tipo="numero", valor="3.242,00", unidade="R$",
                  vigente="2026-01-14")
+SM_2026 = _fato("O salário mínimo é de R$ 1.621,00 a partir de 1º de janeiro de 2026",
+                DECRETO_SM, ["renda"], ["salario_minimo.vigente"], tipo="numero",
+                valor="1.621,00", unidade="R$", vigente="2026-01-01")
 
 
-def _compilar_com(fatos, *rodadas, citacoes=None):
-    citadas = CITADAS + [MA, PLANALTO]
-    state = _estado()
-    pesquisa = _Pesquisa(fatos, *rodadas, citacoes=citacoes or citadas)
-    dossie = _compilar(state, pesquisa, _Verificador(vivas=citadas))
+def _compilar_com(fatos, *rodadas, citacoes=None, arq=None, vivas=None):
+    citadas = citacoes or (CITADAS + [MA, PLANALTO])
+    state = _estado(arq)
+    pesquisa = _Pesquisa(fatos, *rodadas, citacoes=citadas)
+    dossie = _compilar(state, pesquisa, _Verificador(vivas=vivas or citadas))
     return state, dossie, pesquisa
 
 
-def test_edital_regional_nao_vira_fonte_universal_da_regra():
-    state, dossie, pesquisa = _compilar_com(_so_renda(REGRA_MA, VALOR_RO), [], [])
-    renda = dossie.pagina(_n(state, "renda"))
-    assert not renda.cobertura.ready_to_write
-    assert any("regra ('renda.limite_per_capita') sem fonte NACIONAL oficial" in b
-               for b in renda.cobertura.blockers)
-    # a complementação pede EXATAMENTE a prova nacional que falta
+def _renda(state, dossie):
+    return dossie.pagina(_n(state, "renda"))
+
+
+def test_fonte_de_subdivisao_nao_prova_regra_do_pais_e_a_ferramenta_e_desativada():
+    state, dossie, pesquisa = _compilar_com(_so_renda(REGRA_MA, VALOR_RO, SM_2026), [], [])
+    cob = _renda(state, dossie).cobertura
+    assert cob.ready_to_write                                    # a página segue
+    assert any(d["tipo"] == "ativo" and "regra" in d["motivo"] for d in cob.desativados)
+    assert not [v for v in cob.vinculos if v["papel"] == "regra"]
+    # a complementação pede EXATAMENTE a prova de escopo nacional que falta
     pedido = pesquisa.pedidos[1]
     assert [f["requisito"] for f in pedido] == [RENDA]
-    assert "fonte NACIONAL oficial" in pedido[0]["descricao"]
+    assert "não prova regra do país" in pedido[0]["descricao"]
+
+
+def test_regra_do_pais_e_valor_derivado_ligam_a_ferramenta():
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_MA, REGRA_NACIONAL, VALOR_RO, SM_2026))
+    cob = _renda(state, dossie).cobertura
+    assert cob.estado == "ready", (cob.degradacoes, cob.desativados)
+    v = {x["papel"]: x for x in cob.vinculos}
+    assert v["regra"]["url"] == PLANALTO and v["regra"]["abrangencia"] == "nacional"
+    assert v["valor_vigente"]["origem"] == "derivado" and v["valor_vigente"]["formula"] == "2 × 1621"
 
 
 def _sem_derivacao():
@@ -457,58 +508,45 @@ def _sem_derivacao():
     return arq
 
 
-def test_fonte_nacional_prova_a_regra_e_edital_atual_prova_o_valor_vigente():
-    state = _estado(_sem_derivacao())
-    citadas = CITADAS + [MA, PLANALTO]
-    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_MA, REGRA_NACIONAL, VALOR_RO),
-                                        citacoes=citadas), _Verificador(vivas=citadas))
-    renda = dossie.pagina(_n(state, "renda"))
-    assert renda.cobertura.ready_to_write, renda.cobertura.blockers
-    v = {x["papel"]: x for x in renda.cobertura.vinculos}
-    assert v["regra"]["url"] == PLANALTO and v["regra"]["abrangencia"] == "nacional"
-    assert v["valor_vigente"]["url"] == RO and v["valor_vigente"]["uf"] == "RO"
-    assert v["valor_vigente"]["vigente_desde"] == "2026-01-14"
-    assert v["valor_vigente"]["nivel"].startswith("edital oficial atual")
+def test_sem_derivacao_publicacao_oficial_atual_de_subdivisao_prova_o_valor():
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, VALOR_RO), arq=_sem_derivacao())
+    v = {x["papel"]: x for x in _renda(state, dossie).cobertura.vinculos}
+    assert v["valor_vigente"]["url"] == RO and v["valor_vigente"]["jurisdicao"] == "BR-RO"
+    assert v["valor_vigente"]["nivel"].startswith("publicação oficial atual de subjurisdição")
 
 
-def test_valor_de_outro_ano_nao_vale_como_vigente():
+def test_valor_de_outro_ano_nao_vale_como_vigente_e_so_desativa_a_ferramenta():
     antigo = dict(VALOR_RO, vigente_desde="2025-01-10")
-    state = _estado(_sem_derivacao())
-    citadas = CITADAS + [MA, PLANALTO]
-    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_NACIONAL, antigo), [], [],
-                                        citacoes=citadas), _Verificador(vivas=citadas))
-    blockers = dossie.pagina(_n(state, "renda")).cobertura.blockers
-    assert any("valor_vigente ('renda.valor_vigente') sem valor em reais vigente em 2026" in b
-               for b in blockers)
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, antigo), [], [],
+                                     arq=_sem_derivacao())
+    cob = _renda(state, dossie).cobertura
+    assert cob.ready_to_write
+    assert any("valor vigente em 2026" in d["motivo"] for d in cob.desativados)
 
 
-def test_fonte_regional_da_geografia_do_conteudo_prova_a_regra():
+def test_fonte_da_subdivisao_do_conteudo_prova_a_regra():
     arq = _arq_com_requisito_de_renda()
-    arq["funnel_strategy"]["jornada"]["ufs"] = ["MA"]
-    state = _estado(arq)
-    citadas = CITADAS + [MA]
-    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_MA, VALOR_RO), citacoes=citadas),
-                       _Verificador(vivas=citadas))
-    v = {x["papel"]: x for x in dossie.pagina(_n(state, "renda")).cobertura.vinculos}
-    assert v["regra"]["url"] == MA
-    assert v["regra"]["nivel"] == "fonte oficial regional da geografia do conteúdo"
+    arq["funnel_strategy"]["jornada"]["jurisdicao"] = ["BR-MA"]
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_MA, VALOR_RO, SM_2026), arq=arq)
+    v = {x["papel"]: x for x in _renda(state, dossie).cobertura.vinculos}
+    assert v["regra"]["url"] == MA and v["regra"]["jurisdicao"] == "BR-MA"
 
 
-def test_sem_rebind_arbitrario_fato_nao_verificado_ou_fonte_nao_oficial():
+def test_sem_rebind_arbitrario_fato_nao_verificado_ou_emissor_nao_comprovado():
     blog = _fato("Renda de até 2 salários mínimos", "https://blog.exemplo.com.br/psg", ["renda"],
                  [RENDA], tipo="condicao", valor="2", unidade="salários mínimos")
-    morta = dict(REGRA_NACIONAL)                             # citada, mas não responde
-    state = _estado()
+    blog.update(emissor="Governo Federal", tipo_de_emissor="governo", escopo="nacional",
+                jurisdicao="BR")                       # declarado, mas o documento não diz
     citadas = CITADAS + ["https://blog.exemplo.com.br/psg", PLANALTO]
-    dossie = _compilar(state, _Pesquisa(_so_renda(blog, morta, VALOR_RO), [], [],
-                                        citacoes=citadas),
-                       _Verificador(vivas=[u for u in citadas if u != PLANALTO]))
-    renda = dossie.pagina(_n(state, "renda"))
-    assert not [x for x in renda.cobertura.vinculos if x["papel"] == "regra"]
-    assert not renda.cobertura.ready_to_write
+    state, dossie, _ = _compilar_com(_so_renda(blog, REGRA_NACIONAL, VALOR_RO, SM_2026), [], [],
+                                     citacoes=citadas,
+                                     vivas=[u for u in citadas if u != PLANALTO])
+    cob = _renda(state, dossie).cobertura
+    assert not [x for x in cob.vinculos if x["papel"] == "regra"]
+    assert any(d["tipo"] == "ativo" for d in cob.desativados)
 
 
-def test_ativo_legado_com_url_continua_exigindo_a_url_verificada():
+def test_ativo_legado_com_url_nao_verificada_e_desativado_sem_bloquear():
     arq = _arq_com_requisito_de_renda()
     for job in arq["writing_jobs"]:
         for a in job["writer_briefing"]["jornada"].get("ativos", []):
@@ -516,8 +554,10 @@ def test_ativo_legado_com_url_continua_exigindo_a_url_verificada():
             a["fonte_da_regra"] = "https://www.senac.br/url-presumida"
     state = _estado(arq)
     dossie = _compilar(state, _Pesquisa(FATOS_COMPLETOS))
-    assert any("fonte da regra fora das fontes verificadas" in b
-               for b in dossie.pagina(_n(state, "renda")).cobertura.blockers)
+    cob = dossie.pagina(_n(state, "renda")).cobertura
+    assert cob.ready_to_write
+    assert any("fonte da regra fora das fontes verificadas" in d["motivo"]
+               for d in cob.desativados)
 
 
 def test_esqueleto_recusa_ativo_que_aponta_requisito_inexistente():
@@ -530,17 +570,14 @@ def test_esqueleto_recusa_ativo_que_aponta_requisito_inexistente():
     assert any(i.code == "ativo_requisito_inexistente" for i in rev.bloqueantes)
 
 
-def test_prompt_mostra_a_abrangencia_e_o_vinculo_do_ativo():
+def test_prompt_mostra_a_abrangencia_o_vinculo_e_o_que_nao_pode_ser_afirmado():
     from funnelforge.prompts import render
-    state = _estado(_sem_derivacao())
-    citadas = CITADAS + [MA, PLANALTO]
-    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_NACIONAL, VALOR_RO), citacoes=citadas),
-                       _Verificador(vivas=citadas))
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, VALOR_RO), arq=_sem_derivacao())
     state.dossie = dossie.model_dump(mode="json")
     renda = next(p for p in state.plan.pages if p.jornada.duvida_id == "renda")
-    ctx = contexto_de_jornada(state.plan, renda, state.dossie)
-    texto = render("jornada_da_pagina", jornada=ctx)
-    assert "(regional RO)" in texto and "vale para RO; não apresente como regra nacional" in texto
+    texto = render("jornada_da_pagina", jornada=contexto_de_jornada(state.plan, renda, state.dossie))
+    assert "(subnacional BR-RO)" in texto
+    assert "vale para BR-RO; não apresente como regra do país" in texto
     assert "requisito renda.limite_per_capita do dossiê" in texto
 
 

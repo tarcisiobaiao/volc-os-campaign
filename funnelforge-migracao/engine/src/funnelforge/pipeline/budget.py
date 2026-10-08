@@ -89,6 +89,16 @@ class Orcamento:
         if self.pagina is not None:
             self.gasto_pagina_usd += custo
 
+    def registrar_fora_de_pagina(self, passo: str, custo_usd: float) -> None:
+        """Gasto do RUN que não é de página nenhuma (a pesquisa do dossiê, global
+        ou sob demanda): entra no teto do run, nunca no contador de uma página —
+        senão ia para a página que estivesse "aberta" naquele instante."""
+        custo = float(custo_usd or 0.0)
+        if custo <= 0:
+            return
+        with self.trava:
+            self.gasto_run_usd += custo
+
     def para_pagina(self, rotulo: str) -> "OrcamentoDaPagina":
         """Visão de UMA página para um worker paralelo: teto e gasto da página
         são dela; o teto e o gasto do RUN são os deste objeto, sob trava."""
