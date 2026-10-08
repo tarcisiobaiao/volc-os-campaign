@@ -87,11 +87,24 @@ def compilar_brief(card: dict, paa: dict, pesquisa: dict | None = None, *, provi
             evidencia_demanda=grupo, confianca="media"))
     duvidas.sort(key=lambda d: (-d.prioridade, d.jornada.duvida_id))
     from funnelforge.adapters.decisao_intencao import HeuristicaDeIntencao
+    contexto_medido = card.get("contexto_de_busca") or {}
+    contexto_jev = {
+        "tema": tema,
+        "pais": card.get("country") or "",
+        "idioma": card.get("native_language") or "",
+        "duvida_ids": [d.jornada.duvida_id for d in duvidas],
+        "contexto_medido": contexto_medido,
+        "duvidas": [
+            {
+                "duvida_id": d.jornada.duvida_id,
+                "prioridade": d.prioridade,
+                "evidencia_demanda": d.evidencia_demanda,
+            }
+            for d in duvidas
+        ],
+    }
     decisoes = (provider or HeuristicaDeIntencao()).classificar(
-        [d.jornada.pergunta_principal for d in duvidas],
-        contexto={"tema": tema, "pais": card.get("country") or "",
-                  "idioma": card.get("native_language") or "",
-                  "duvida_ids": [d.jornada.duvida_id for d in duvidas]})
+        [d.jornada.pergunta_principal for d in duvidas], contexto=contexto_jev)
     sinais_emocionais = (decisoes.get("perfil_emocional") or {}).get("sinais") or []
     for indice, (d, formato) in enumerate(zip(duvidas, decisoes["formatos"])):
         d.formato = formato
@@ -181,6 +194,61 @@ def mensagens_do_arquiteto(brief):
                 brief_pre_arquitetura=brief.model_dump())}]
 
 
+def revisar_arquitetura_jev(state, deps, card, *, provider=None):
+    """Lint semântico pós-arquitetura: uma chamada, consultivo e fail-soft."""
+    from funnelforge.adapters.decisao_intencao import JevDeIntencao
+
+    if state.plan is None or not getattr(deps.settings.run, "jev_enabled", False):
+        return
+    contexto = {
+        "tema": card.get("main_keyword") or card.get("keyword") or card.get("entidade") or "",
+        "pais": card.get("country") or "",
+        "idioma": card.get("native_language") or "",
+        "contexto_medido": card.get("contexto_de_busca") or {},
+    }
+    resultado = (provider or JevDeIntencao(enabled=True)).verificar_jornada(
+        state.plan, contexto=contexto)
+    state.revisao_semantica_jev = resultado
+    issues = []
+    for aresta in resultado.get("arestas") or []:
+        if aresta.get("decisao") == "usar":
+            continue
+        issues.append(Issue(
+            code="jev_cta_" + str(aresta.get("decisao") or "revisar"),
+            message=json.dumps({
+                "origem": aresta.get("origem_slug"),
+                "destino": aresta.get("destino_slug"),
+                "cta": aresta.get("cta"),
+                "problemas": aresta.get("problemas") or [],
+                "motivacao": aresta.get("motivacao"),
+                "congruencia": aresta.get("congruencia"),
+            }, ensure_ascii=False),
+        ))
+    if resultado.get("custo_estimado_usd") is not None:
+        issues.append(Issue(
+            code="jev_custo_estimado",
+            message=("Estimativa pela tabela Jev 1.13; não é custo faturado: US$ "
+                     f"{resultado['custo_estimado_usd']:.9f}"),
+        ))
+    usage = resultado.get("usage") or {}
+    state.step_status["jev_pos_arquitetura"] = StepResult(
+        step="jev_pos_arquitetura",
+        status=StepStatus.FALLBACK if resultado.get("fallback") else StepStatus.OK,
+        model_requested=resultado.get("requested_model") or "",
+        model_used=resultado.get("served_model") or "",
+        attempts=1 if resultado.get("served_model") else 0,
+        prompt_tokens=int(usage.get("input_tokens") or 0),
+        completion_tokens=int(usage.get("output_tokens") or 0),
+        cost_usd=float(resultado.get("custo_usd") or 0.0),
+        latency_ms=int(resultado.get("latencia_ms") or 0),
+        issues=issues,
+    )
+    pasta = deps.runner.runs_dir / state.run_id
+    pasta.mkdir(parents=True, exist_ok=True)
+    (pasta / "revisao_semantica_jev.json").write_text(
+        json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def congelar_pacotes(state, deps):
     from funnelforge.pipeline.jornada import contexto_de_jornada
     from funnelforge.pipeline.dossie import projecao_para_o_prompt
@@ -220,6 +288,15 @@ def congelar_pacotes(state, deps):
                   "restricoes": ["Não redesenhar a jornada ou pesquisar. Não inventar fatos, "
                                   "ferramentas, URLs ou trocar a próxima dúvida.",
                                   "Use somente fatos permitidos; remova blocos desativados."]}
+        if state.revisao_semantica_jev:
+            pacote["semantica_jev"] = {
+                "estado": "presente",
+                "consultivo": True,
+                "arestas": [
+                    a for a in (state.revisao_semantica_jev.get("arestas") or [])
+                    if a.get("origem_pagina") == p.page_number
+                ],
+            }
         # Reusa o fallback textual do ativo; nunca inventa ferramenta no writer.
         dossier = next((d for d in state.dossie.get("paginas", [])
                         if d["page_number"] == p.page_number), {})

@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T20:23:14-03:00",
+  "generated_at": "2026-10-08T20:47:34-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 824,
-    "markdown": 611,
+    "files": 825,
+    "markdown": 612,
     "sql": 213,
-    "tracked": 813,
-    "untracked": 11,
+    "tracked": 815,
+    "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 37,
+      "audit": 38,
       "documentation": 445,
       "generated": 2,
       "module-guide": 40,
@@ -1015,9 +1015,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 7570,
-      "lines": 121,
-      "sha256": "a22991df4f37b5667c31a4da4824f2094fb9f09027ea9a6b537fb2f5c59f6409",
+      "bytes": 9084,
+      "lines": 152,
+      "sha256": "cf7b638d19a0b88e80d188f56e27beae9f107013a873050709dbb9287a0f49f3",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1267,9 +1267,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23708,
+      "bytes": 23648,
       "lines": 312,
-      "sha256": "59ca441fcbfa17cb4741de1873a1fc5a5d92ea4bc63d4339cc4ce313b019ccc8",
+      "sha256": "0a823a495805a4191030048fa9741d8ed2c299df5714cb8c77e18ef0e385c1aa",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1782,10 +1782,22 @@
       "path": "docs/audits/FUNNELFORGE-JEV-ATTENTION-AB-2026-10-08.md",
       "extension": ".md",
       "classification": "audit",
-      "tracked": false,
+      "tracked": true,
       "bytes": 4704,
       "lines": 98,
       "sha256": "684ddf0b6c3ff8eeb97032698d75e0851e2ae25f668abc5f373cb2bc2e411aa6",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 6300,
+      "lines": 136,
+      "sha256": "97901fe9501f9e5b7060457b2b1bfb7f59f53c1f6be0588464f7d637dd4a8e61",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7379,7 +7391,7 @@
       "lines": 101,
       "sha256": "79119459eeaa1058e9e61941119bf9c32b8f792cb2be5b30ef2e99fd073a2642",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
@@ -7391,7 +7403,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 8,
+      "graph_degree": 7,
       "sql_risk": "high"
     },
     {
@@ -7583,7 +7595,7 @@
       "lines": 239,
       "sha256": "8dba7a8bfdb08e4db45a522a14da15ed4679ff1dddfc6c296ab50801753dd3d0",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
@@ -7595,7 +7607,7 @@
       "lines": 249,
       "sha256": "9f03fc7f9d0551d3d1720391fe2efb783b11b093848d456344dea438f248a5db",
       "graph_nodes": 2,
-      "graph_degree": 3,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {

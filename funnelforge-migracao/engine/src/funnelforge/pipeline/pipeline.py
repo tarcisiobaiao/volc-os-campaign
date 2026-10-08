@@ -285,6 +285,14 @@ def run_pipeline(
         # funil estruturalmente quebrado (grafo ou jornada) não deve pagar nem
         # ela — o portão logo adiante aborta o run de qualquer jeito.
         _populate_routes(state, deps)
+        # Segunda e última passagem JEV. Ela depende do esqueleto pronto e
+        # verifica páginas, arestas e CTAs em lote; é consultiva, fail-soft e
+        # nunca altera o plano nem bloqueia o dossiê/writer.
+        if (card_pre_arquitetura is not None
+                and not _falhou(state, "funnel_graph")
+                and getattr(deps.settings.run, "jev_enabled", False)):
+            from funnelforge.pipeline.inteligencia import revisar_arquitetura_jev
+            revisar_arquitetura_jev(state, deps, card_pre_arquitetura)
         # Classifica a FORMA DA PERGUNTA de cada solução -> `page.engajamento`,
         # que decide qual ferramenta interativa a página recebe. Roda aqui
         # porque precisa do plano já expandido e com slugs finais, e antes do

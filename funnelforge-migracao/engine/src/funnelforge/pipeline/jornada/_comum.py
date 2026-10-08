@@ -27,12 +27,29 @@ def sem_acento(texto: str) -> str:
     return "".join(ch for ch in normal if not unicodedata.combining(ch)).lower()
 
 
+def _palavras_unicode(texto: str) -> list[str]:
+    """Palavras em qualquer escrita, sem voltar ao bug ASCII do tailandês.
+
+    NFKD continua tornando o português tolerante a acentos; letras e números
+    de outros alfabetos permanecem. Marcas combinantes são ignoradas somente
+    para comparação, nunca para conteúdo ou `duvida_id`.
+    """
+    normal = unicodedata.normalize("NFKD", texto or "").casefold()
+    partes = []
+    for ch in normal:
+        if unicodedata.combining(ch):
+            continue
+        partes.append(ch if unicodedata.category(ch)[:1] in {"L", "N"} else " ")
+    limpo = "".join(partes)
+    return limpo.split()
+
+
 def tokens(texto: str) -> set[str]:
-    return {t for t in re.findall(r"[a-z0-9]{4,}", sem_acento(texto)) if t not in _STOP}
+    return {t for t in _palavras_unicode(texto) if len(t) >= 4 and t not in _STOP}
 
 
 def norm(texto: str) -> str:
-    return " ".join(re.findall(r"[a-z0-9]+", sem_acento(texto)))
+    return " ".join(_palavras_unicode(texto))
 
 
 def tem_jornada(plan: FunnelPlan | None) -> bool:

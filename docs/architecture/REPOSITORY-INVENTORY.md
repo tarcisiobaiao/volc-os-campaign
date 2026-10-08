@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-08T20:23:14-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-08T20:47:34-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 824 arquivos: 611 Markdown e 213 SQL;
-- 813 versionados e 11 ainda não versionados;
+- 825 arquivos: 612 Markdown e 213 SQL;
+- 815 versionados e 10 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 140 SQL com palavras de mutação de alto risco.
 
@@ -16,7 +16,7 @@ Gerado em `2026-10-08T20:23:14-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 37 |
+| `audit` | 38 |
 | `documentation` | 445 |
 | `generated` | 2 |
 | `module-guide` | 40 |
@@ -65,8 +65,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 18 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 2 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 8 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 3 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 4 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 6 |
@@ -78,8 +78,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/joinads/01_joinads_metrics.sql` | `sql-migration-line` | 4 | 7 |
 | `src/sql/joinads/03_limpa_ingestao_ruim.sql` | `sql-migration-line` | 1 | 0 |
 | `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 5 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 2 |
-| `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | 2 | 3 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 3 |
+| `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/pautador/02_publicacao_por_projeto.sql` | `sql-migration-line` | 1 | 0 |
 | `src/sql/pautador/03_perfil_enxuto.sql` | `sql-migration-line` | 1 | 0 |
@@ -201,6 +201,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/CORRECAO-3-FUNIS-PREFLIGHT-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-ATTENTION-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-WRITER-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
@@ -252,8 +253,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | high | 5 | 14 |
 | `src/sql/cron_campaign_highlights.sql` | `sql-needs-lineage` | medium | 2 | 2 |
 | `src/sql/cron_campaign_highlights_fixed.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | high | 2 | 2 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | high | 3 | 8 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | high | 2 | 3 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | high | 3 | 7 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | high | 3 | 4 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/force_recalculate_commissions_today.sql` | `sql-needs-lineage` | medium | 1 | 0 |
@@ -265,8 +266,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | high | 3 | 8 |
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | high | 3 | 10 |
 | `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 5 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 2 |
-| `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | high | 2 | 3 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 3 |
+| `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/n8n_insert_examples.sql` | `sql-needs-lineage` | medium | 1 | 0 |
 | `src/sql/operational_costs_real_structure.sql` | `sql-needs-lineage` | medium | 1 | 0 |
@@ -305,7 +306,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260908220817_meta_business_credentials.sql` | `sql-needs-review` | medium | 1 | 0 |
 | `supabase/migrations/20260908224044_meta_reference_visual.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/20260908230430_meta_creative_draft_pack_selection.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/20260908234824_meta_v2_approval_budget_manifest.sql` | `sql-needs-review` | high | 8 | 14 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

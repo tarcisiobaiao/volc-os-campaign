@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Any, Protocol
 
 import httpx
@@ -38,6 +39,26 @@ ENTREGAS = (
 )
 MOMENTOS = ("reconhecimento", "qualificacao", "decisao", "preparacao", "acao", "confirmacao")
 NIVEIS = ("ausente ou irrelevante", "baixo", "moderado", "alto", "muito alto")
+INTENCOES = (
+    "elegibilidade",
+    "prazo",
+    "valor",
+    "procedimento",
+    "status_pessoal",
+    "problema",
+    "comparacao",
+    "acesso_oficial",
+    "outra",
+)
+
+_EMOCOES: dict[str, str] = {
+    "oportunidade": "access to a concrete benefit, gain or useful possibility",
+    "incerteza": "uncertainty about whether, who, which rule or how something applies",
+    "medo_de_perder": "fear of missing a real deadline, payment, right or opportunity",
+    "desejo_de_controle": "desire to calculate, verify, compare, track or regain control",
+    "prevencao_de_erro": "desire to avoid fraud, rejection, rework or a wrong decision",
+    "necessidade_de_acao": "need to execute a concrete next step now",
+}
 
 
 class ProviderDeDecisao(Protocol):
@@ -119,6 +140,26 @@ def _nota(answer: dict, campo: str = "score") -> float:
     return round(max(0.0, min(teto, valor)) * (100 / teto), 1)
 
 
+def _noul(answer: dict) -> float:
+    """Noul é P(sim), não intensidade nem booleano já decidido."""
+    try:
+        valor = float(answer["noul"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("noul_invalido") from exc
+    if not 0.0 <= valor <= 1.0:
+        raise ValueError("noul_fora_da_faixa")
+    return round(valor * 100, 1)
+
+
+def _custo_estimado(usage: dict | None) -> float | None:
+    """Estimativa separada do faturado: Jev 1.13 = US$42/B input, output grátis."""
+    try:
+        tokens = int((usage or {}).get("input_tokens") or 0)
+    except (TypeError, ValueError):
+        return None
+    return round(tokens * 42 / 1_000_000_000, 9) if tokens else None
+
+
 def _probabilidades(answer: dict) -> dict[str, float]:
     probs = answer.get("probabilities") or {}
     if not isinstance(probs, dict):
@@ -146,6 +187,14 @@ def _sinal_fallback(pergunta: str, duvida_id: str = "") -> dict:
         "autorrelevancia": 0.0,
         "potencial_continuacao": 0.0,
         "urgencia_de_acao": 0.0,
+        "ganho_informacional": 0.0,
+        "sinal_observavel": 0.0,
+        "sensibilidade_temporal": 0.0,
+        "consulta_pessoal": 0.0,
+        "canal_oficial_necessario": 0.0,
+        "respondavel_editorialmente": 0.0,
+        "proximo_passo_concreto": 0.0,
+        "intencao": "outra",
         "entrega": "explicacao",
         "momento": "reconhecimento",
         "formato": _formato_heuristico(pergunta),
@@ -236,7 +285,7 @@ def _perfil(
         else "Demanda insuficiente para formar avatar comportamental."
     )
     return {
-        "schema_version": 1,
+        "schema_version": 2 if provider == "typesafe_jev" else 1,
         "estado": estado,
         "provider": provider,
         "modelo_pedido": pedido,
@@ -270,7 +319,7 @@ class HeuristicaDeIntencao:
 
 class JevDeIntencao:
     def __init__(
-        self, *, enabled=False, key=None, model="jev-latest", timeout=10.0, transport=None
+        self, *, enabled=False, key=None, model="jev-1.13.0", timeout=10.0, transport=None
     ):
         self.enabled = enabled
         self.key = key or os.environ.get("TYPESAFE_API_KEY") or os.environ.get("JEV_API_KEY")
@@ -289,26 +338,28 @@ class JevDeIntencao:
                 ),
                 "criteria": {f: f for f in FORMATOS},
             }
-            questions[f"familia_{i}"] = {
-                "type": "choice",
-                "instructions": (
-                    "Qual tensão comportamental é mais visível na linguagem de "
-                    f"{alvo}? Use ambigua se não houver sinal claro."
-                ),
-                "criteria": {
-                    "oportunidade": "busca por ganho, acesso, benefício ou possibilidade",
-                    "incerteza": "não sabe se, quem, qual ou como algo se aplica",
-                    "medo_de_perder": "receio de perder prazo, dinheiro, direito ou ocasião",
-                    "desejo_de_controle": (
-                        "quer calcular, acompanhar, comparar ou dominar a situação"
+            # Emoções coexistem. Seis Nouls preservam essa realidade; um Choice
+            # exclusivo obrigava incerteza, controle e ação a competirem.
+            for familia, descricao in _EMOCOES.items():
+                questions[f"emocao_{familia}_{i}"] = {
+                    "type": "noul",
+                    "instructions": (
+                        f"Does {alvo} express {descricao}? Judge observed language and measured "
+                        "context only; do not invent demographics or personal circumstances."
                     ),
-                    "prevencao_de_erro": (
-                        "quer evitar fraude, rejeição, retrabalho ou decisão errada"
-                    ),
-                    "necessidade_de_acao": "quer executar um próximo passo concreto agora",
-                    "ambigua": "o texto não permite distinguir com segurança",
-                },
-            }
+                }
+            for nome, instrucao in {
+                "sinal_observavel": "Does the query contain a clear behavioral need rather than an ambiguous topic mention?",
+                "sensibilidade_temporal": "Is the query meaningfully time-sensitive in the measured context?",
+                "consulta_pessoal": "Does fully resolving the query require the reader's personal status or account data?",
+                "canal_oficial": "Does the final action require an official service, tool or channel?",
+                "respondavel_editorialmente": "Can editorial content answer the query substantially before any official action?",
+                "proximo_passo": "Does a concrete next action remain after the query is fully answered?",
+            }.items():
+                questions[f"{nome}_{i}"] = {
+                    "type": "noul",
+                    "instructions": f"{instrucao} Evaluate {alvo} against the supplied state.",
+                }
             for nome, instrucao in {
                 "intensidade": "Quão forte é a tensão emocional explicitamente observável",
                 "autorrelevancia": (
@@ -318,6 +369,7 @@ class JevDeIntencao:
                     "Quanto a resposta tende a abrir uma próxima dúvida útil e relacionada"
                 ),
                 "acao": "Quanto a pessoa parece precisar executar um próximo passo concreto",
+                "ganho_informacional": "Quanto uma resposta completa acrescenta informação nova e útil",
             }.items():
                 questions[f"{nome}_{i}"] = {
                     "type": "score",
@@ -336,6 +388,11 @@ class JevDeIntencao:
                 "instructions": f"Em qual momento de decisão {alvo} aparece?",
                 "criteria": {m: m for m in MOMENTOS},
             }
+            questions[f"intencao_{i}"] = {
+                "type": "choice",
+                "instructions": f"Which single reader job best describes {alvo}?",
+                "criteria": {x: x.replace("_", " ") for x in INTENCOES},
+            }
         return questions
 
     def classificar(self, perguntas: list[str], *, contexto: dict | None = None) -> dict:
@@ -343,9 +400,11 @@ class JevDeIntencao:
         if not self.enabled or not self.key:
             return {**fallback, "motivo": "desligado" if not self.enabled else "sem_credencial"}
         state = {
+            "fase": "pre_arquitetura",
             "tema": (contexto or {}).get("tema", ""),
             "pais": (contexto or {}).get("pais", ""),
             "idioma": (contexto or {}).get("idioma", ""),
+            "contexto_medido": (contexto or {}).get("contexto_medido") or {},
             "perguntas": [
                 {
                     "indice": i,
@@ -353,6 +412,10 @@ class JevDeIntencao:
                     if i < len((contexto or {}).get("duvida_ids") or [])
                     else "",
                     "texto": q,
+                    "prioridade": (((contexto or {}).get("duvidas") or [{}] * len(perguntas))[i]
+                                   if i < len((contexto or {}).get("duvidas") or []) else {}).get("prioridade", 0),
+                    "evidencia_demanda": (((contexto or {}).get("duvidas") or [{}] * len(perguntas))[i]
+                                          if i < len((contexto or {}).get("duvidas") or []) else {}).get("evidencia_demanda", []),
                 }
                 for i, q in enumerate(perguntas)
             ],
@@ -363,10 +426,11 @@ class JevDeIntencao:
         # embora a requisição continue pequena para o endpoint (dezenas de KB,
         # não MB). Mantemos UMA chamada e um teto rígido, apenas dimensionado
         # para o lote real medido; acima dele o fail-soft continua intacto.
-        if self.chamadas or len(json.dumps(payload, ensure_ascii=False)) > 60000 or not perguntas:
+        if self.chamadas or len(json.dumps(payload, ensure_ascii=False)) > 180000 or not perguntas:
             return {**fallback, "fallback": True, "motivo": "orcamento"}
         self.chamadas += 1
         try:
+            inicio = time.perf_counter()
             with httpx.Client(timeout=self.timeout, transport=self.transport) as cliente:
                 resp = cliente.post(
                     "https://api.typesafe.ai/v1/systemone",
@@ -375,22 +439,35 @@ class JevDeIntencao:
                 )
                 resp.raise_for_status()
                 dados = resp.json()
+            latencia_ms = round((time.perf_counter() - inicio) * 1000)
             answers, servido = dados["answers"], str(dados.get("model") or "")
             if not servido:
                 raise ValueError("modelo_ausente")
             sinais = []
             for i, pergunta in enumerate(perguntas):
-                familia_a = answers[f"familia_{i}"]
-                familia, formato = familia_a["choice"], answers[f"formato_{i}"]["choice"]
+                correspondencia = {
+                    familia: _noul(answers[f"emocao_{familia}_{i}"])
+                    for familia in _EMOCOES
+                }
+                sinal_observavel = _noul(answers[f"sinal_observavel_{i}"])
+                familia_candidata = max(correspondencia, key=correspondencia.get)
+                familia = (
+                    familia_candidata
+                    if sinal_observavel >= 60 and correspondencia[familia_candidata] >= 60
+                    else "ambigua"
+                )
+                formato = answers[f"formato_{i}"]["choice"]
                 entrega, momento = (
                     answers[f"entrega_{i}"]["choice"],
                     answers[f"momento_{i}"]["choice"],
                 )
+                intencao = answers[f"intencao_{i}"]["choice"]
                 if (
                     familia not in FAMILIAS
                     or formato not in FORMATOS
                     or entrega not in ENTREGAS
                     or momento not in MOMENTOS
+                    or intencao not in INTENCOES
                 ):
                     raise ValueError("contrato")
                 sinais.append(
@@ -398,12 +475,22 @@ class JevDeIntencao:
                         "pergunta": pergunta,
                         "duvida_id": state["perguntas"][i]["duvida_id"],
                         "familia": familia,
-                        "correspondencia": _probabilidades(familia_a),
-                        "confianca": _nota(familia_a, "confidence"),
+                        "correspondencia": correspondencia,
+                        # Noul não tem confidence separado. Esta é a distância
+                        # da decisão de "há sinal observável" ao ponto 50/50.
+                        "confianca": round(abs(sinal_observavel - 50) * 2, 1),
                         "intensidade": _nota(answers[f"intensidade_{i}"]),
                         "autorrelevancia": _nota(answers[f"autorrelevancia_{i}"]),
                         "potencial_continuacao": _nota(answers[f"continuacao_{i}"]),
                         "urgencia_de_acao": _nota(answers[f"acao_{i}"]),
+                        "ganho_informacional": _nota(answers[f"ganho_informacional_{i}"]),
+                        "sinal_observavel": sinal_observavel,
+                        "sensibilidade_temporal": _noul(answers[f"sensibilidade_temporal_{i}"]),
+                        "consulta_pessoal": _noul(answers[f"consulta_pessoal_{i}"]),
+                        "canal_oficial_necessario": _noul(answers[f"canal_oficial_{i}"]),
+                        "respondavel_editorialmente": _noul(answers[f"respondavel_editorialmente_{i}"]),
+                        "proximo_passo_concreto": _noul(answers[f"proximo_passo_{i}"]),
+                        "intencao": intencao,
                         "entrega": entrega,
                         "momento": momento,
                         "formato": formato,
@@ -426,6 +513,8 @@ class JevDeIntencao:
                 "fallback": False,
                 "usage": dados.get("usage"),
                 "custo_usd": (dados.get("usage") or {}).get("cost_usd"),
+                "custo_estimado_usd": _custo_estimado(dados.get("usage")),
+                "latencia_ms": latencia_ms,
                 "perfil_emocional": perfil,
             }
         except Exception as exc:
@@ -439,3 +528,162 @@ class JevDeIntencao:
                 "motivo": type(exc).__name__,
                 "perfil_emocional": perfil,
             }
+
+    @staticmethod
+    def _estado_da_jornada(plan: Any, contexto: dict | None = None) -> dict:
+        paginas = []
+        por_slug = {p.slug: p for p in plan.pages}
+        arestas = []
+        for pagina in plan.pages:
+            jornada = pagina.jornada
+            editorial = pagina.editorial
+            paginas.append({
+                "pagina": pagina.page_number,
+                "slug": pagina.slug,
+                "h1": pagina.h1_title,
+                "pergunta": jornada.pergunta_principal if jornada else "",
+                "resposta_imediata": jornada.resposta_imediata if jornada else "",
+                "tensao_residual": jornada.tensao_residual if jornada else "",
+                "informacao_nova": jornada.valor.informacao_nova if jornada and jornada.valor else "",
+                "entregas": list(jornada.valor.entregas) if jornada and jornada.valor else [],
+            })
+            for link in editorial.links if editorial else []:
+                destino = por_slug.get(link.target)
+                if destino is None:
+                    continue
+                dj = destino.jornada
+                arestas.append({
+                    "indice": len(arestas),
+                    "origem_pagina": pagina.page_number,
+                    "origem_slug": pagina.slug,
+                    "origem_pergunta": jornada.pergunta_principal if jornada else "",
+                    "origem_resposta": jornada.resposta_imediata if jornada else "",
+                    "origem_tensao_residual": jornada.tensao_residual if jornada else "",
+                    "cta": link.cta or destino.editorial.cta_label if destino.editorial else link.cta,
+                    "motivo": link.reason,
+                    "destino_pagina": destino.page_number,
+                    "destino_slug": destino.slug,
+                    "destino_pergunta": dj.pergunta_principal if dj else "",
+                    "destino_entrega": destino.editorial.useful_delivery if destino.editorial else "",
+                    "destino_informacao_nova": dj.valor.informacao_nova if dj and dj.valor else "",
+                })
+        return {
+            "fase": "pos_arquitetura",
+            "tema": (contexto or {}).get("tema", ""),
+            "pais": (contexto or {}).get("pais", ""),
+            "idioma": (contexto or {}).get("idioma", ""),
+            "contexto_medido": (contexto or {}).get("contexto_medido") or {},
+            "paginas": paginas,
+            "arestas": arestas,
+        }
+
+    @staticmethod
+    def _questions_jornada(arestas: list[dict]) -> dict:
+        questions: dict[str, dict[str, Any]] = {}
+        for i, _ in enumerate(arestas):
+            alvo = f"`arestas[{i}]`"
+            for nome, instrucao in {
+                "resposta_origem": "Does the source page fully answer its own question before asking for this click?",
+                "destino_entrega": "Does the destination deliver exactly what this CTA promises?",
+                "valor_novo": "Does the destination add distinct useful value instead of repeating the source?",
+                "cta_generico": "Is the CTA generic or understandable only with surrounding context?",
+                "resultado_pessoal": "Does the CTA imply a personal result, approval or account data the editorial site cannot know?",
+            }.items():
+                questions[f"{nome}_{i}"] = {
+                    "type": "noul",
+                    "instructions": f"{instrucao} Evaluate {alvo} only.",
+                }
+            for nome, instrucao in {
+                "motivacao": "How compelling is the CTA after the source has delivered its answer?",
+                "congruencia": "How precisely does the CTA match the destination's question and delivery?",
+            }.items():
+                questions[f"{nome}_{i}"] = {
+                    "type": "score",
+                    "instructions": f"{instrucao} Evaluate {alvo} only.",
+                    "criteria": list(NIVEIS),
+                }
+        return questions
+
+    def verificar_jornada(self, plan: Any, *, contexto: dict | None = None) -> dict:
+        """Segunda chamada, dependente do esqueleto: lint semântico, nunca rewrite."""
+        estado = self._estado_da_jornada(plan, contexto)
+        if not estado["arestas"]:
+            return {"provider": "typesafe_jev", "fallback": False, "arestas": [],
+                    "resumo": {"usar": 0, "revisar": 0, "recusar": 0},
+                    "motivo": "sem_arestas"}
+        if not self.enabled or not self.key:
+            return {"provider": "deterministico_fallback", "fallback": True,
+                    "arestas": [], "resumo": {"usar": 0, "revisar": 0, "recusar": 0},
+                    "motivo": "desligado" if not self.enabled else "sem_credencial"}
+        payload = {"model": self.model, "state": estado,
+                   "questions": self._questions_jornada(estado["arestas"])}
+        if self.chamadas or len(json.dumps(payload, ensure_ascii=False)) > 180000:
+            return {"provider": "deterministico_fallback", "fallback": True,
+                    "arestas": [], "resumo": {"usar": 0, "revisar": 0, "recusar": 0},
+                    "motivo": "orcamento"}
+        self.chamadas += 1
+        try:
+            inicio = time.perf_counter()
+            with httpx.Client(timeout=self.timeout, transport=self.transport) as cliente:
+                resp = cliente.post(
+                    "https://api.typesafe.ai/v1/systemone", json=payload,
+                    headers={"Authorization": "Bearer " + self.key})
+                resp.raise_for_status()
+                dados = resp.json()
+            latencia_ms = round((time.perf_counter() - inicio) * 1000)
+            answers = dados["answers"]
+            servido = str(dados.get("model") or "")
+            if not servido:
+                raise ValueError("modelo_ausente")
+            saidas = []
+            contagem = {"usar": 0, "revisar": 0, "recusar": 0}
+            for i, aresta in enumerate(estado["arestas"]):
+                valores = {
+                    "resposta_origem": _noul(answers[f"resposta_origem_{i}"]),
+                    "destino_entrega": _noul(answers[f"destino_entrega_{i}"]),
+                    "valor_novo": _noul(answers[f"valor_novo_{i}"]),
+                    "cta_generico": _noul(answers[f"cta_generico_{i}"]),
+                    "resultado_pessoal": _noul(answers[f"resultado_pessoal_{i}"]),
+                    "motivacao": _nota(answers[f"motivacao_{i}"]),
+                    "congruencia": _nota(answers[f"congruencia_{i}"]),
+                }
+                problemas = []
+                # Noul perto de 50 é inconclusivo, não um "não" moderado. Só
+                # extremos governam código nesta camada consultiva; o meio fica
+                # como telemetria para calibração, sem criar fila humana.
+                if valores["destino_entrega"] <= 20:
+                    problemas.append("cta_destino_incongruente")
+                if valores["valor_novo"] <= 20:
+                    problemas.append("destino_redundante")
+                if valores["resultado_pessoal"] > 85:
+                    problemas.append("promessa_de_resultado_pessoal")
+                decisao = "recusar" if problemas else "usar"
+                if decisao == "usar" and (
+                    valores["resposta_origem"] <= 20
+                    or valores["cta_generico"] >= 80
+                    or valores["motivacao"] < 50
+                    or valores["congruencia"] < 50
+                ):
+                    decisao = "revisar"
+                contagem[decisao] += 1
+                saidas.append({**aresta, **valores, "decisao": decisao,
+                               "problemas": problemas})
+            usage = dados.get("usage") or {}
+            return {
+                "schema_version": 1,
+                "provider": "typesafe_jev",
+                "requested_model": self.model,
+                "served_model": servido,
+                "fallback": False,
+                "usage": usage,
+                "custo_usd": usage.get("cost_usd"),
+                "custo_estimado_usd": _custo_estimado(usage),
+                "latencia_ms": latencia_ms,
+                "arestas": saidas,
+                "resumo": contagem,
+            }
+        except Exception as exc:
+            return {"provider": "deterministico_fallback", "fallback": True,
+                    "requested_model": self.model, "served_model": "", "arestas": [],
+                    "resumo": {"usar": 0, "revisar": 0, "recusar": 0},
+                    "motivo": type(exc).__name__}

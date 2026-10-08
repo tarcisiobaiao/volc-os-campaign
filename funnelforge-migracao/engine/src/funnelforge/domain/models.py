@@ -597,6 +597,14 @@ class SinalEmocional(BaseModel):
     autorrelevancia: float = Field(default=0.0, ge=0.0, le=100.0)
     potencial_continuacao: float = Field(default=0.0, ge=0.0, le=100.0)
     urgencia_de_acao: float = Field(default=0.0, ge=0.0, le=100.0)
+    ganho_informacional: float = Field(default=0.0, ge=0.0, le=100.0)
+    sinal_observavel: float = Field(default=0.0, ge=0.0, le=100.0)
+    sensibilidade_temporal: float = Field(default=0.0, ge=0.0, le=100.0)
+    consulta_pessoal: float = Field(default=0.0, ge=0.0, le=100.0)
+    canal_oficial_necessario: float = Field(default=0.0, ge=0.0, le=100.0)
+    respondavel_editorialmente: float = Field(default=0.0, ge=0.0, le=100.0)
+    proximo_passo_concreto: float = Field(default=0.0, ge=0.0, le=100.0)
+    intencao: str = "outra"
     entrega: str = "explicacao"
     momento: str = "reconhecimento"
     formato: Literal["pagina", "secao", "faq", "ferramenta", "avaliar"] = "avaliar"
@@ -1017,6 +1025,10 @@ class RunState(BaseModel):
     dossie_sha256: str = ""
     brief_pre_arquitetura: BriefDoFunil | None = None
     pesquisa_pre_arquitetura: dict = {}
+    # Segunda passagem JEV, depois do grafo: verificação consultiva de cada
+    # aresta/CTA. Não reescreve nem bloqueia; o código guarda probabilidades,
+    # thresholds e problemas para o pacote do writer e o recibo do run.
+    revisao_semantica_jev: dict = {}
     pacotes: dict[int, dict] = {}
 
     def to_json(self) -> str:

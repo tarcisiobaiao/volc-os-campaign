@@ -4,16 +4,22 @@
 
 Transformar perguntas reais de busca, PAA e autocomplete em um **avatar comportamental do momento**, antes de o arquiteto desenhar as páginas. Ele descreve a tensão visível na demanda — não inventa idade, renda, personalidade ou história de vida.
 
-O JEV é consultivo. Uma única chamada classifica todas as perguntas do funil. Se estiver desligado, sem chave, indisponível ou fora do contrato, o FunnelForge usa o fallback determinístico e continua. O perfil nunca prova fatos, nunca escreve a copy e nunca bloqueia uma página.
+O JEV é consultivo. Quando habilitado, uma chamada classifica todas as perguntas
+do funil e uma segunda chamada, depois da arquitetura, revisa em lote as arestas
+e os CTAs. Se estiver desligado, sem chave, indisponível ou fora do contrato, o
+FunnelForge usa o fallback determinístico e continua. O perfil nunca prova
+fatos, nunca escreve copy, nunca escolhe a quantidade de páginas e nunca publica.
 
 ```text
 PAA/termos reais
       ↓
-JEV: família + força + entrega + momento (1 chamada)
+JEV: presença independente das 6 famílias + intenção + entrega (1 chamada)
       ↓
 brief_pre_arquitetura.json (SHA-256)
       ↓
 arquiteto: ordem, clímax, entregas e direção dos CTAs
+      ↓
+JEV: revisão consultiva das arestas e dos CTAs (1 chamada)
       ↓
 dossiê factual → redação paralela → revisão global
 ```
@@ -33,17 +39,24 @@ dossiê factual → redação paralela → revisão global
 
 ## Checkpoints do contrato
 
-### 1. Correspondência
+### 1. Correspondência multi-label
 
-Cada pergunta recebe uma distribuição entre as famílias. A família vencedora orienta o desenho, mas a distribuição preserva ambiguidades úteis. Não se converte confiança do modelo em “verdade sobre o usuário”.
+Cada pergunta recebe seis probabilidades independentes por `Noul` (P(sim)). As
+famílias não competem nem precisam somar 100%: oportunidade, incerteza e medo de
+perder podem coexistir. A família de conveniência só é declarada quando há sinal
+observável suficiente; caso contrário, fica `ambigua`. Não se converte
+probabilidade do modelo em “verdade sobre o usuário”. A faixa intermediária é
+inconclusiva, não reprovação.
 Sinais, correlações e clímax também carregam o `duvida_id` estável do brief; índices existem apenas para inspeção humana e não devem governar links.
 
-### 2. Quatro notas, de 0 a 100
+### 2. Cinco notas, de 0 a 100
 
 - **Intensidade:** força explícita da tensão na frase.
 - **Autorrelevância:** consequência pessoal sugerida pela pergunta.
 - **Potencial de continuação:** chance de a resposta abrir outra dúvida útil, sem circular.
 - **Urgência de ação:** necessidade aparente de executar um próximo passo.
+- **Ganho informacional:** quanto a resposta pode reduzir incerteza ou melhorar
+  a próxima decisão sem fabricar suspense.
 
 Leitura operacional: 0–39 é sinal fraco; 40–69 é hipótese útil; 70–100 é candidato forte. A medição real pode contrariar qualquer faixa.
 
@@ -80,6 +93,14 @@ Exemplos:
 
 O CTA precisa corresponder à página de destino. Curiosidade sem entrega, urgência fabricada, falsa oficialidade e promessa individual são falhas.
 
+### 7. Verificação pós-arquitetura
+
+Cada aresta recebe probabilidades independentes de a origem já responder a
+dúvida, o destino entregar o prometido, existir valor novo, o CTA ser genérico e
+haver promessa indevida de resultado pessoal, além de notas de motivação e
+congruência. Só extremos materiais geram `revisar` ou `recusar`; probabilidade
+intermediária é incerteza. A saída não altera o grafo nem a copy automaticamente.
+
 ## Validação que importa
 
 O perfil só merece promoção depois de comparar, por país e idioma:
@@ -95,7 +116,8 @@ Confiança do JEV é telemetria, não KPI de negócio. Idiomas e países devem s
 
 ## Canário real, sem publicar
 
-O endpoint e o modelo seguem o contrato oficial do TypeSafe System One. A chave fica apenas na sessão do processo:
+O endpoint e o modelo `jev-1.13.0` seguem o contrato oficial do TypeSafe System
+One. A chave fica apenas na sessão do processo:
 
 ```bash
 export TYPESAFE_API_KEY='sua-chave'
@@ -114,6 +136,15 @@ O comando faz no máximo uma chamada, não lê `.env`, não publica e retorna c�
 ### Primeiro canário real
 
 Em 08/10/2026, “Gás do Povo” foi avaliado em uma chamada: 688 ms, 4.446 tokens de entrada, 1.588 de saída, `jev-latest` servido como `jev-1.13.0` e nenhum fallback. A leitura apontou incerteza como família dominante, seguida de necessidade de ação e medo de perder; o clímax foi a dúvida sobre o que fazer quando o benefício não aparece. O provedor não informou custo. O resultado prova a integração, não a superioridade da jornada: isso depende do comparativo com/sem JEV e de sinal comportamental real.
+
+### Canário multi-label e pós-arquitetura
+
+Em 08/10/2026, o pacote congelado da Tailândia foi reexecutado com o contrato
+novo. O caminho candidato usou duas chamadas JEV em cerca de 0,88 s, com custo
+estimado de US$ 0,00070. Contra o controle, melhorou entrega do destino
+(75,9→83,1), valor novo (86,0→88,4), motivação (77,1→80,0) e congruência
+(94,4→96,4). Não há prova de ROI ou CTR; o relatório completo está em
+`docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md`.
 
 ## Critério de adoção
 

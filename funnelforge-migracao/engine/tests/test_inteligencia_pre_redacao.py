@@ -8,8 +8,16 @@ from funnelforge.adapters.decisao_intencao import HeuristicaDeIntencao, JevDeInt
 from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
 from funnelforge.config.settings import StepConfig
 from funnelforge.domain.models import RunState
-from funnelforge.pipeline.inteligencia import chave_da_pergunta, compilar_brief, congelar_pacotes, mensagens_do_arquiteto, pacote_conferido, prompt_do_pacote
+from funnelforge.pipeline.inteligencia import (
+    chave_da_pergunta,
+    compilar_brief,
+    congelar_pacotes,
+    mensagens_do_arquiteto,
+    pacote_conferido,
+    prompt_do_pacote,
+)
 from funnelforge.pipeline.jornada import revisar_esqueleto
+from funnelforge.pipeline.jornada._comum import norm, tokens
 from funnelforge.pipeline.pipeline import run_pipeline, _populate_routes
 from tests.cenario_editorial import montar_deps, settings_do_cenario, responder_v2, REVISOR_APROVA
 from tests.test_dossie_factual import _Pesquisa, _ligar_pesquisa, _compilar, FATOS_COMPLETOS, arquitetura
@@ -60,6 +68,15 @@ def test_demanda_unicode_nao_apaga_nem_colapsa_tailandes():
     )
     assert len(brief.duvidas) == 5
     assert {d.jornada.pergunta_principal for d in brief.duvidas} == set(perguntas)
+
+
+def test_validadores_de_jornada_nao_transformam_tailandes_em_string_vazia():
+    cta = 'ดูวันโอนแต่ละเดือนในปี 2569 เพื่อวางแผน'
+    h1 = 'ปฏิทินเงินอุดหนุนบุตร 2569: วันโอนแต่ละเดือน'
+    assert norm(cta)
+    assert norm(h1)
+    assert norm(cta) != norm(h1)
+    assert tokens(cta)
 
 def test_brief_arquiteto_e_requisitos():
     b=brief()
@@ -178,32 +195,53 @@ def test_jev_recibo_hermetico():
         payload = json.loads(req.content)
         assert payload['state']['pais'] == 'BR'
         assert payload['state']['perguntas'][0]['duvida_id'] == 'q_telefone'
-        assert payload['questions']['familia_0']['type'] == 'choice'
+        assert payload['model'] == 'jev-1.13.0'
+        assert payload['questions']['emocao_incerteza_0']['type'] == 'noul'
+        assert payload['questions']['emocao_oportunidade_0']['type'] == 'noul'
+        assert payload['questions']['ganho_informacional_0']['type'] == 'score'
+        assert payload['questions']['intencao_0']['type'] == 'choice'
+        assert payload['state']['contexto_medido']['monthly_searches'] == 1200
         answers = {}
         for chave, questao in payload['questions'].items():
             if chave.startswith('formato_'):
                 answers[chave] = {'type':'choice','choice':'faq','confidence':0.91}
-            elif chave.startswith('familia_'):
-                answers[chave] = {'type':'choice','choice':'incerteza','confidence':0.88,
-                                   'probabilities':{'incerteza':0.8,'necessidade_de_acao':0.2}}
+            elif chave.startswith('emocao_incerteza_'):
+                answers[chave] = {'type':'noul','noul':0.92}
+            elif chave.startswith('emocao_necessidade_de_acao_'):
+                answers[chave] = {'type':'noul','noul':0.78}
+            elif chave.startswith('emocao_'):
+                answers[chave] = {'type':'noul','noul':0.12}
+            elif chave.startswith(('sinal_observavel_', 'respondavel_editorialmente_')):
+                answers[chave] = {'type':'noul','noul':0.94}
+            elif questao['type'] == 'noul':
+                answers[chave] = {'type':'noul','noul':0.73}
             elif chave.startswith('entrega_'):
                 answers[chave] = {'type':'choice','choice':'confirmacao','confidence':0.84}
             elif chave.startswith('momento_'):
                 answers[chave] = {'type':'choice','choice':'qualificacao','confidence':0.86}
+            elif chave.startswith('intencao_'):
+                answers[chave] = {'type':'choice','choice':'acesso_oficial','confidence':0.89}
             else:
                 answers[chave] = {'type':'score','score':3,'confidence':0.9}
         return httpx.Response(200,json={'model':'jev-fixture','answers':answers,
-                                        'usage':{'cost_usd':0.001}})
+                                        'usage':{'input_tokens':1000,'output_tokens':300}})
     j=JevDeIntencao(enabled=True,key='fixture',transport=httpx.MockTransport(responder))
     r=j.classificar(['Qual o telefone?'], contexto={'tema':'benefício','pais':'BR',
-        'idioma':'pt-BR','duvida_ids':['q_telefone']})
-    assert r['requested_model']=='jev-latest' and r['served_model']=='jev-fixture' and not r['fallback']
+        'idioma':'pt-BR','duvida_ids':['q_telefone'],
+        'contexto_medido':{'monthly_searches':1200}})
+    assert r['requested_model']=='jev-1.13.0' and r['served_model']=='jev-fixture' and not r['fallback']
     perfil = r['perfil_emocional']
     assert perfil['familia_dominante'] == 'incerteza'
     assert perfil['climax_duvida_id'] == 'q_telefone'
     assert perfil['sinais'][0]['intensidade'] == 75.0
+    assert perfil['sinais'][0]['correspondencia']['incerteza'] == 92.0
+    assert perfil['sinais'][0]['correspondencia']['necessidade_de_acao'] == 78.0
+    assert perfil['sinais'][0]['sensibilidade_temporal'] == 73.0
+    assert perfil['sinais'][0]['intencao'] == 'acesso_oficial'
     assert perfil['sinais'][0]['direcao_cta']
-    assert r['custo_usd'] == 0.001 and j.chamadas == 1
+    assert r['custo_usd'] is None
+    assert r['custo_estimado_usd'] == pytest.approx(0.000042)
+    assert j.chamadas == 1
 
 
 def test_jev_um_lote_com_vinte_sinais_nao_cai_na_heuristica():
@@ -212,13 +250,18 @@ def test_jev_um_lote_com_vinte_sinais_nao_cai_na_heuristica():
         for chave, questao in payload['questions'].items():
             if chave.startswith('formato_'):
                 answers[chave]={'type':'choice','choice':'avaliar','confidence':.9}
-            elif chave.startswith('familia_'):
-                answers[chave]={'type':'choice','choice':'incerteza','confidence':.9,
-                                'probabilities':{'incerteza':1.0}}
+            elif chave.startswith('emocao_incerteza_'):
+                answers[chave]={'type':'noul','noul':.91}
+            elif chave.startswith('emocao_'):
+                answers[chave]={'type':'noul','noul':.1}
+            elif questao['type']=='noul':
+                answers[chave]={'type':'noul','noul':.9}
             elif chave.startswith('entrega_'):
                 answers[chave]={'type':'choice','choice':'criterios','confidence':.9}
             elif chave.startswith('momento_'):
                 answers[chave]={'type':'choice','choice':'qualificacao','confidence':.9}
+            elif chave.startswith('intencao_'):
+                answers[chave]={'type':'choice','choice':'elegibilidade','confidence':.9}
             else:
                 answers[chave]={'type':'score','score':3,'confidence':.9}
         return httpx.Response(200,json={'model':'jev-fixture','answers':answers})
@@ -227,6 +270,54 @@ def test_jev_um_lote_com_vinte_sinais_nao_cai_na_heuristica():
     r=j.classificar(perguntas,contexto={'duvida_ids':[f'q{n}' for n in range(20)]})
     assert not r['fallback'] and len(r['perfil_emocional']['sinais'])==20
     assert j.chamadas==1
+
+
+def test_jev_pos_arquitetura_verifica_arestas_sem_reescrever_plano():
+    plan=plano_do_funnel_architecture(arquitetura())
+    antes=plan.model_dump(mode='json')
+    def responder(req):
+        payload=json.loads(req.content)
+        assert payload['state']['fase']=='pos_arquitetura'
+        assert payload['state']['arestas']
+        answers={}
+        for chave, questao in payload['questions'].items():
+            if questao['type']=='noul':
+                if chave.startswith(('cta_generico_','resposta_origem_')):
+                    valor=.50  # inconclusivo: não cria revisão humana
+                elif chave.startswith('resultado_pessoal_'):
+                    valor=.08
+                else:
+                    valor=.94
+                answers[chave]={'type':'noul','noul':valor}
+            else:
+                answers[chave]={'type':'score','score':4,'confidence':.93}
+        return httpx.Response(200,json={'model':'jev-1.13.0','answers':answers,
+                                       'usage':{'input_tokens':1500,'output_tokens':400}})
+    j=JevDeIntencao(enabled=True,key='fixture',transport=httpx.MockTransport(responder))
+    resultado=j.verificar_jornada(plan, contexto={'tema':'Senac','pais':'BR','idioma':'pt-BR'})
+    assert not resultado['fallback']
+    assert resultado['arestas'] and all(a['decisao']=='usar' for a in resultado['arestas'])
+    assert resultado['resumo']['usar']==len(resultado['arestas'])
+    assert resultado['custo_estimado_usd']==pytest.approx(.000063)
+    assert plan.model_dump(mode='json')==antes
+    assert j.chamadas==1
+
+
+def test_brief_entrega_contexto_medido_e_proveniencia_ao_jev():
+    visto={}
+    class Provider:
+        def classificar(self, perguntas, *, contexto=None):
+            visto.update(contexto)
+            return HeuristicaDeIntencao().classificar(perguntas, contexto=contexto)
+    card={**CARD,
+          'volumes':{'Quem tem direito?':3210},
+          'contexto_de_busca':{'monthly_searches':3210,'cpc_usd':.17,
+                               'radar_state':'em_janela'},
+          'search_terms':[{'termo':'quem pode fazer curso gratuito'}]}
+    compilar_brief(card,{'perguntas':['Quem tem direito?'],'origem':'dataforseo'},provider=Provider())
+    assert visto['contexto_medido']['monthly_searches']==3210
+    assert visto['duvidas'][0]['prioridade']==3210
+    assert {e['tipo'] for e in visto['duvidas'][0]['evidencia_demanda']}=={'paa'}
 
 
 def test_brief_propaga_avatar_comportamental_sem_duplicar():
