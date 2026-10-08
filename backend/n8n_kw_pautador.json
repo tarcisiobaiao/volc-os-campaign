@@ -7,19 +7,19 @@
               {
                 "id": "cfg-mcc",
                 "name": "mcc_id",
-                "value": "=8696453882",
+                "value": "={{ $env.GOOGLE_ADS_MCC_ID }}",
                 "type": "string"
               },
               {
                 "id": "cfg-customer",
                 "name": "customer_id",
-                "value": "=2932743754",
+                "value": "={{ $env.GOOGLE_ADS_CUSTOMER_ID }}",
                 "type": "string"
               },
               {
                 "id": "cfg-token",
                 "name": "developer_token",
-                "value": "=YZqd52Hwq9XGsMgdo1_6Hw",
+                "value": "={{ $env.GOOGLE_ADS_DEVELOPER_TOKEN }}",
                 "type": "string"
               },
               {

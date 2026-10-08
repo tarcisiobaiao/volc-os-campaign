@@ -216,7 +216,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://googleads.googleapis.com/v21/customers/{{ $json.customer_id }}:generateKeywordIdeas",
+        "url": "=https://googleads.googleapis.com/v25/customers/{{ $json.customer_id }}:generateKeywordIdeas",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleAdsOAuth2Api",
         "sendHeaders": true,
