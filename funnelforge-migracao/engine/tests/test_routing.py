@@ -132,6 +132,43 @@ def test_lp_routes_to_three_distinct_presells():
     assert all(r.kind == "funnel" for r in lp.routes)
 
 
+def test_lp_contextual_preserva_presell_primeiro_e_duas_solucoes_diretas():
+    """O link linear do arquiteto não pode colapsar os três botões da LP."""
+    s = _settings()
+    s.run.perfil = "rapido"
+    s.run.presell_hubs = 1
+    s.run.lp_direct_solutions = 2
+
+    def pagina(n, role, slug, ordinal=0, links=None):
+        return Page(
+            page_number=n, page_type=role.value, role=role, slug=slug,
+            h1_title=slug.replace("-", " "), ordinal=ordinal,
+            editorial={
+                "reader_question": f"dúvida {n}",
+                "useful_delivery": f"entrega {n}",
+                "cta_label": f"avançar {n}",
+                "links": links or [],
+            },
+        )
+
+    plan = FunnelPlan(total_pages=5, pages=[
+        pagina(1, PageRole.LP, "tema", links=[{
+            "target": "tema-pr", "reason": "qualificar primeiro"}]),
+        pagina(2, PageRole.PRESELL, "tema-pr", links=[{
+            "target": "tema-p1", "reason": "primeira solução"}]),
+        pagina(3, PageRole.SOLUTION, "tema-p1", 1, [{
+            "target": "tema-p2", "reason": "segunda solução"}]),
+        pagina(4, PageRole.SOLUTION, "tema-p2", 2, [{
+            "target": "tema-p3", "reason": "terceira solução"}]),
+        pagina(5, PageRole.SOLUTION, "tema-p3", 3),
+    ])
+
+    build_funnel_routes(plan, s)
+    assert [r.target for r in plan.pages[0].routes] == [
+        "tema-pr", "tema-p1", "tema-p2"]
+    assert [r.placement for r in plan.pages[0].routes] == ["hero", "inline", "footer"]
+
+
 def test_presell_rotates_neutrally_by_prN_index_and_covers_all_solutions():
     """CARD-0009 (OVERRIDE-6): the presell fan-out order is a NEUTRAL rotation
     keyed on the `-prN` slug suffix -- offset=(N-1)%n -- NOT a privileged

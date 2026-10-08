@@ -102,6 +102,14 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
     by_slug = {p.slug: p for p in plan.pages}
     if len(by_slug) != len(plan.pages):
         raise ValueError("contextual plan has duplicate slugs")
+    presells = sorted(
+        (p for p in plan.pages if effective_role(p) is PageRole.PRESELL),
+        key=lambda p: (p.ordinal, p.page_number, p.slug),
+    )
+    solutions = sorted(
+        (p for p in plan.pages if effective_role(p) is PageRole.SOLUTION),
+        key=lambda p: (p.ordinal, p.page_number, p.slug),
+    )
     pending: dict[str, list[Route]] = {}
     for page in plan.pages:
         contract = page.editorial
@@ -126,6 +134,34 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
             routes.append(Route(
                 placement=_placement(len(routes), len(contract.links)), kind="funnel",
                 target=target.slug, anchor=target.editorial.cta_label, reason=link.reason))
+        if effective_role(page) is PageRole.LP and settings.run.perfil == "rapido":
+            # O contrato editorial descreve a progressão principal, mas não é
+            # dono da quantidade de entradas da LP. Com o preset de produção
+            # (1 presell + 2 soluções diretas), deixar o único link escrito pelo
+            # arquiteto vencer reduzia os três botões do template ao mesmo
+            # destino. A topologia é determinística: qualificador primeiro;
+            # depois, atalhos para as primeiras soluções autocontidas.
+            desejados = [
+                *presells[:max(0, settings.run.presell_hubs)],
+                *solutions[:max(0, settings.run.lp_direct_solutions)],
+            ]
+            existentes = {r.target: r for r in routes}
+            expandidas: list[Route] = []
+            for alvo in desejados:
+                rota = existentes.get(alvo.slug)
+                if rota is None:
+                    rota = Route(
+                        placement="inline", kind="funnel", target=alvo.slug,
+                        anchor=_anchor_for(alvo.h1_title, len(expandidas), alvo.slug),
+                        reason="Atalho direto para uma entrega autocontida do funil.",
+                    )
+                if rota.target not in {r.target for r in expandidas}:
+                    expandidas.append(rota)
+            if expandidas:
+                routes = [
+                    r.model_copy(update={"placement": _placement(i, len(expandidas))})
+                    for i, r in enumerate(expandidas)
+                ]
         principal = alvo_da_proxima_duvida(plan, page)
         if principal is not None:
             # PROGRESSO, não ordem do card: com jornada, o CTA principal (hero)

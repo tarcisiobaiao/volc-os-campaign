@@ -303,6 +303,24 @@ def test_step_screenshot_accepts_content_capture_without_retry(tmp_path: Path) -
     assert provider.captured == ["https://meu.inss.gov.br/x"]  # no retry
 
 
+def test_blank_guard_accepts_legitimate_distributed_whitespace() -> None:
+    """Espaço branco entre seções não é tela vazia quando não forma um grande
+    trecho contínuo. Reproduz a geometria observada numa página real gov.br.
+    """
+    import io
+
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGB", (800, 1000), "white")
+    draw = ImageDraw.Draw(image)
+    for y in (80, 210, 390, 560, 740, 900):
+        draw.rectangle((40, y, 760, y + 65), fill=(20, 82, 160))
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+
+    assert not st._screenshot_is_blank(output.getvalue())
+
+
 # --------------------------------------------------------------------------- #
 # adapter guards (no playwright needed -- checks run before the lazy import)
 # --------------------------------------------------------------------------- #

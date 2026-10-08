@@ -22,7 +22,7 @@ def test_preset_rapido_chatgpt_e_fechado_sem_fallback_faturado():
     assert novo.run.perfil == "rapido"
     assert novo.run.page_workers == 3 and novo.run.dossie_factual is True
     assert novo.run.publish_status == "draft"
-    assert novo.run.imagens_habilitadas is False
+    assert novo.run.imagens_habilitadas is True
     assert novo.run.official_screenshots is True
     assert novo.openai.auth_mode == "chatgpt_plan"
     assert novo.openai.somente_plano is True

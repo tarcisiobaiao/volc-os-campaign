@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import re
+from types import SimpleNamespace
 
 from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
+from funnelforge.domain.models import Page, PageDraft, PageRole, Route, RunState, StepStatus
 from funnelforge.pipeline.pipeline import run_pipeline
+from funnelforge.pipeline import steps as st
 from tests.cenario_editorial import congelar_data, montar_deps, responder_v1, texto_da_mensagem
 from tests.test_dossie_factual import (
     FATOS_COMPLETOS,
@@ -32,6 +35,9 @@ def _rodar(tmp_path, monkeypatch, responder):
     settings = _settings_com_dossie(tmp_path)
     settings.run.perfil = "rapido"
     settings.run.page_workers = 3
+    # Estes testes isolam copy/revisão. O preset real liga a imagem e o teste
+    # específico do build cobre o fail-closed do hero ausente.
+    settings.run.imagens_habilitadas = False
     llm, deps = montar_deps(tmp_path, settings, responder)
     state = run_pipeline(None, deps, only=None, publish=False,
                          plan=plano_do_funnel_architecture(_arq_com_requisito_de_renda()),
@@ -75,6 +81,59 @@ def test_titulo_seo_deterministico_nao_termina_em_conectivo():
     assert _cortar(
         "Onde Retirar o Gás do Povo: Revendedoras Credenciadas e Regras", 60
     ) == "Onde Retirar o Gás do Povo: Revendedoras Credenciadas"
+
+
+def test_cta_de_navegacao_vai_ao_topo_depois_dos_tres_paragrafos():
+    href = "https://creditoup.com.br/rec/proxima-solucao"
+    bloco = (
+        '<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button -->'
+        f'<div class="wp-block-button"><a href="{href}" '
+        'class="wp-block-button__link wp-element-button">Resolver a próxima dúvida</a></div>'
+        '<!-- /wp:button --></div><!-- /wp:buttons -->'
+    )
+    paragrafos = "\n".join(
+        f"<!-- wp:paragraph --><p>Introdução {n}</p><!-- /wp:paragraph -->"
+        for n in range(1, 4)
+    )
+    html = paragrafos + "\n<!-- wp:heading --><h2>Resposta</h2><!-- /wp:heading -->\n" + bloco
+    page = Page(
+        page_number=2, page_type="PRESELL", role=PageRole.PRESELL,
+        slug="presell", h1_title="Presell",
+        routes=[Route(placement="hero", kind="funnel", target="proxima-solucao",
+                      anchor="Resolver a próxima dúvida")],
+    )
+    state = RunState(run_id="cta-topo")
+    deps = SimpleNamespace(settings=SimpleNamespace(site=SimpleNamespace(
+        domain="https://creditoup.com.br", post_type="rec")))
+
+    saida = st.ensure_top_navigation_cta(state, page, deps, html)
+    assert saida.count(bloco) == 2
+    assert saida.index(bloco) < saida.index("<!-- wp:heading")
+    assert saida.index(bloco) > saida.index("Introdução 3")
+
+
+def test_build_rapido_recusa_lp_sem_imagem(tmp_path):
+    settings = _settings_com_dossie(tmp_path)
+    settings.run.perfil = "rapido"
+    settings.run.imagens_habilitadas = True
+    settings.run.hero_image = True
+    _, deps = montar_deps(tmp_path, settings, responder_v1)
+    page = Page(
+        page_number=1, page_type="LANDING PAGE", role=PageRole.LP,
+        slug="gas-do-povo", h1_title="Gás do Povo",
+        routes=[Route(placement="hero", kind="funnel", target="proxima-pagina",
+                      anchor="Ver a próxima página")],
+    )
+    state = RunState(run_id="gas-do-povo-sem-imagem")
+    state.drafts[1] = PageDraft(
+        page_number=1, page_type="LANDING PAGE", format="lp_json",
+        content="{}", word_count=0)
+
+    st.step_build(state, page, deps)
+
+    resultado = state.step_status["build_p1"]
+    assert resultado.status is StepStatus.FAILED
+    assert {i.code for i in resultado.issues} == {"lp_hero_obrigatorio"}
 
 
 def test_humanizacao_vai_no_prompt_do_redator_so_no_perfil_rapido(tmp_path, monkeypatch):

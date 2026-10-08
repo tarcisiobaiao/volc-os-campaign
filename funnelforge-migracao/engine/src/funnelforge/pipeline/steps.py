@@ -2425,8 +2425,10 @@ def _record_image_generation(state: RunState, page: Page, deps: Any, size: str) 
 # ---------------------------------------------------------------------------
 
 # Blank/under-render guard thresholds (Parte B / B3). A capture is rejected when
-# either a large share of horizontal bands are near-flat OR there is one big
-# CONTIGUOUS flat run (the tell-tale empty box of a spinner / lazy-load). Pure
+# both a large share of horizontal bands are near-flat AND there is one big
+# CONTIGUOUS flat run (the tell-tale empty box of a spinner / lazy-load). Using
+# OR produced a real false positive on gov.br: normal whitespace was spread
+# between a fully rendered header, title and accordion, with no empty run. Pure
 # Pillow (per-band grayscale std-dev), no OCR/ML -- see scratchpad/validate_shot.
 # These module defaults mirror ScreenshotConfig's fields; step_screenshot reads
 # the live limiares/retry settle from `settings.screenshot` (Task 9 / B5). The
@@ -2476,7 +2478,7 @@ def _screenshot_is_blank(png: bytes, frac_max: float = _BLANK_FRAC_MAX,
     """True when a capture looks blank/under-rendered by the B3 thresholds
     (defaults mirror config; step_screenshot passes the config limiares)."""
     frac, contig = _screenshot_blank_metrics(png)
-    return frac >= frac_max or contig >= contig_max
+    return frac >= frac_max and contig >= contig_max
 
 
 def _screenshot_rejected_by_status(result: Any) -> bool:
@@ -2811,6 +2813,17 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
                 issues=[Issue(code="bare_rec", message=str(exc))])
             return
         image_url = state.images.get(page.page_number) or ""
+        if (perfil_rapido(deps)
+                and getattr(deps.settings.run, "imagens_habilitadas", True)
+                and getattr(deps.settings.run, "hero_image", True)
+                and not image_url):
+            state.step_status[f"build_p{page.page_number}"] = StepResult(
+                step=f"build_p{page.page_number}", status=StepStatus.FAILED,
+                issues=[Issue(
+                    code="lp_hero_obrigatorio",
+                    message=("Perfil rápido exige imagem real no hero da LP; "
+                             "configure o gerador ou forneça o ativo antes do build."))])
+            return
         try:
             content_obj = json.loads(draft.content)
         except (ValueError, json.JSONDecodeError):
@@ -2847,8 +2860,12 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
             draft.content, encoding="utf-8"
         )
     else:
+        content_to_build = (
+            ensure_top_navigation_cta(state, page, deps, draft.content)
+            if perfil_rapido(deps) else draft.content
+        )
         (run_dir / f"p{page.page_number}.{page.slug}.gutenberg.html").write_text(
-            draft.content, encoding="utf-8"
+            content_to_build, encoding="utf-8"
         )
 
     (run_dir / f"p{page.page_number}.meta.json").write_text(
@@ -2864,6 +2881,10 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
 # ---------------------------------------------------------------------------
 
 _WIDGET_BLOCK_RE = re.compile(r"<!--\s*wp:html\s*-->.*?<!--\s*/wp:html\s*-->", re.S | re.I)
+_BUTTONS_BLOCK_RE = re.compile(
+    r"<!--\s*wp:buttons\b.*?<!--\s*/wp:buttons\s*-->", re.S | re.I)
+_PARAGRAPH_BLOCK_RE = re.compile(
+    r"<!--\s*wp:paragraph\b.*?<!--\s*/wp:paragraph\s*-->", re.S | re.I)
 # One heading block, scoped to its OWN open..close (non-greedy) so a later FAQ
 # heading never bleeds into an earlier heading's window.
 _WIDGET_HEADING_BLOCK_RE = re.compile(
@@ -2919,6 +2940,60 @@ def inject_widget(content: str, block: str) -> str:
     if positions:
         return _widget_insert_at(content, positions[-1], b)
     return content.rstrip() + "\n\n" + b + "\n"
+
+
+def ensure_top_navigation_cta(
+    state: RunState, page: Page, deps: Any, content: str,
+) -> str:
+    """Garante um CTA útil no topo sem ocupar os slots do Ad Inserter.
+
+    A navegação interna vence a saída oficial. O bloco entra depois dos três
+    primeiros parágrafos top-level e antes do primeiro H2. Quando o redator já
+    escreveu o mesmo destino ali, não duplica; quando o escreveu só no fim,
+    clona o bloco aprovado, preservando copy e URL.
+    """
+    rotas = [r for r in page.routes if r.kind == "funnel"] or [
+        r for r in page.routes if r.kind == "external_official"
+    ] or [r for r in page.routes if r.kind == "cross_funnel"]
+    if not rotas:
+        return content
+    rota = rotas[0]
+    try:
+        href = resolve_route(
+            rota,
+            domain=deps.settings.site.domain,
+            post_type=deps.settings.site.post_type,
+            authorized_external=list(state.official_links.get(page.page_number) or []),
+        )
+    except ValueError:
+        return content
+
+    primeiro_h2 = content.find("<!-- wp:heading")
+    limite_topo = primeiro_h2 if primeiro_h2 >= 0 else len(content)
+    bloco = next(
+        (m.group(0) for m in _BUTTONS_BLOCK_RE.finditer(content) if href in m.group(0)),
+        "",
+    )
+    if bloco and content.find(bloco) < limite_topo:
+        return content
+    if not bloco:
+        rotulo = rota.anchor.rstrip(" >»")
+        if rota.kind == "external_official" and page.editorial is not None:
+            rotulo = page.editorial.cta_label.rstrip(" >»")
+        if not rotulo:
+            return content
+        bloco = (
+            '<!-- wp:buttons --><div class="wp-block-buttons">'
+            '<!-- wp:button --><div class="wp-block-button">'
+            f'<a class="wp-block-button__link wp-element-button" href="{href}">{rotulo}</a>'
+            '</div><!-- /wp:button --></div><!-- /wp:buttons -->'
+        )
+
+    paragrafos = [m for m in _PARAGRAPH_BLOCK_RE.finditer(content[:limite_topo])]
+    if len(paragrafos) < 3:
+        return content
+    corte = paragrafos[2].end()
+    return content[:corte].rstrip() + "\n\n" + bloco + "\n\n" + content[corte:].lstrip()
 
 
 def _somar_pago(total: StepResult, parcial: StepResult | None) -> None:
@@ -3151,11 +3226,12 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
     the FINAL draft content (post-normalize) that step_publish reads, so the
     published SOLUTION post carries the widget."""
     if perfil_rapido(deps):
-        # A necessidade do ativo vai no pacote da página; o widget gerado por
-        # modelo fica para depois. Widget desligado NÃO é bloqueio.
+        # O perfil rápido não paga uma chamada exclusiva para o widget. Ativos
+        # determinísticos ou editoriais podem ser anexados no pacote final sem
+        # atrasar a redação paralela nem invalidar o recibo da copy.
         state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, Issue(
             code="widget_desligado_perfil_rapido",
-            message="Perfil rápido: ativo registrado no pacote da página, sem geração."))
+            message="Perfil rápido: ativo registrado no pacote da página, sem geração por LLM."))
         return
     # Gates -> silent no-op (nothing recorded), so flag-off is byte-for-byte the
     # current pipeline. Each short-circuits before any LLM call.
@@ -3375,7 +3451,7 @@ def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) 
         from funnelforge.pipeline.copy_contract import disclosure_issues
         issues.extend(disclosure_issues(content, ctx))
 
-    # ⚠️ O WIDGET DEIXOU DE SER CONDIÇÃO DE PUBLICAÇÃO.
+    # Fora do perfil rápido, o widget continua enriquecimento não bloqueante.
     #
     # Até 19/08/2026 a ausência do widget virava `required_widget_missing`, que
     # é uma issue, e uma issue reprova o gate — então a página inteira caía.
@@ -4021,11 +4097,19 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
             # revisão, pela frase exata.
             decoracoes: list[dict] = []
             content = draft.content
-            for tipo, decorado in (
-                    ("aviso_identidade",
-                     lambda c: notice_html(deps.settings.site.domain) + "\n" + c),
-                    ("imagem_meio", lambda c: _insert_midcontent_image(c, media_url, alt)),
-                    ("print_oficial", lambda c: _embed_official_screenshots(state, page, deps, c))):
+            decoradores = []
+            if perfil_rapido(deps):
+                decoradores.append((
+                    "cta_topo",
+                    lambda c: ensure_top_navigation_cta(state, page, deps, c),
+                ))
+            decoradores.extend((
+                ("aviso_identidade",
+                 lambda c: notice_html(deps.settings.site.domain) + "\n" + c),
+                ("imagem_meio", lambda c: _insert_midcontent_image(c, media_url, alt)),
+                ("print_oficial", lambda c: _embed_official_screenshots(state, page, deps, c)),
+            ))
+            for tipo, decorado in decoradores:
                 novo = decorado(content)
                 insercoes = _insercoes(content, novo)
                 if insercoes is None:
@@ -4048,6 +4132,8 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
             else:
                 content = (notice_html(deps.settings.site.domain) + "\n"
                            + finalize_compliance_notice(draft.content))
+            if perfil_rapido(deps):
+                content = ensure_top_navigation_cta(state, page, deps, content)
             content = _insert_midcontent_image(content, media_url, alt)
             # Official-page screenshots (CARD-0005): upload each capture and embed
             # it after the paragraph that links to that official URL. Best-effort/

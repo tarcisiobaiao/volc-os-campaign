@@ -110,7 +110,10 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
             **novo.run.model_dump(),
             "max_retries": 1,
             "max_chamadas_llm": 40,
-            "imagens_habilitadas": False,
+            # A LP sem hero não é um funil pronto. O build rápido agora falha
+            # fechado quando o provider/ativo não entrega a imagem, em vez de
+            # publicar silenciosamente um template incompleto.
+            "imagens_habilitadas": True,
             "dossie_factual": True,
             "page_workers": 3,
             "perfil": "rapido",
