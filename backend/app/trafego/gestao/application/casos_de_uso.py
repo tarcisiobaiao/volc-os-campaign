@@ -45,7 +45,7 @@ from app.trafego import escopo, intencao
 from volc_ads.gestao import ledger as motor_ledger
 from volc_ads.gestao.acoes import AcaoRecusada
 
-from . import autonomia
+from . import autonomia, sem_delta
 from .efeito import conferir_efeito
 from .erros import (AcaoInvalida, AntesDivergiu, BancoRecusou, CampanhaNaoImportada,
                     ConflitoDeEstado, EmCarencia, ErroDeGestao, EscritaBloqueada,
@@ -132,10 +132,12 @@ def conferir_contra_regra(linha: Mapping[str, Any], regra: Mapping[str, Any],
                           *, agora: datetime) -> None:
     """Espelho de `trafego_proposta_respeita_regra` (travas 2–5). Levanta `ForaDaRegra`.
 
-    ⚠️ A trava 4a é a que mais recusa: regra com limite de alteração + ação SEM
-    número (pausa, negativa, lista, exclusão, agenda, ajuste, recomendação) =
-    proposta recusada pela v10_02. Não é defeito daqui, é o schema — e
-    inventar um delta 0 para passar seria exatamente o furo que a trava fecha.
+    ⚠️ A trava 4a: regra com limite de alteração + ação SEM número (pausa,
+    negativa, lista, exclusão, agenda, ajuste, recomendação) = recusa
+    `regra_exige_delta`, como na v10_02 — A MENOS QUE a regra liste a operação
+    em `operacoes_sem_delta` (v17_03). Listada, a proposta passa pelo teto
+    próprio da operação (`teto_sem_delta` se não couber). Inventar um delta 0
+    para passar continua sendo o furo que a trava fecha, e não é feito aqui.
     """
     chave = regra.get("chave")
     lido = _quando(linha.get("valor_atual_lido_em"))
@@ -144,18 +146,37 @@ def conferir_contra_regra(linha: Mapping[str, Any], regra: Mapping[str, Any],
                           f"(frescor da regra {chave})", codigo="antes_velho")
     pct, absoluto = regra.get("limite_alteracao_pct"), regra.get("limite_alteracao_absoluto_micros")
     dpct, dabs = linha.get("delta_pct"), linha.get("delta_absoluto_micros")
-    sem_delta = (
-        (pct is not None and absoluto is not None and dpct is None and dabs is None)
-        or (pct is not None and absoluto is None and dpct is None)
-        or (absoluto is not None and pct is None and dabs is None))
-    if sem_delta:
+    operacao = str(linha.get("operacao") or "")
+    tetos = sem_delta.declaradas(regra)
+    if dpct is None and dabs is None and operacao in tetos:
+        # O ramo IF da trava 4a da v17_03: a regra autoriza esta operação sem delta.
+        motivo = sem_delta.defeito(tetos[operacao], operacao, linha.get("alvo_nivel"),
+                                   linha.get("valor_atual"), linha.get("valor_proposto"))
+        if motivo:
+            raise ForaDaRegra(
+                f"a regra {chave} autoriza {operacao} sem delta, mas esta proposta passa do "
+                f"teto declarado: {motivo}",
+                codigo="teto_sem_delta",
+                detalhe={"operacao": operacao, "classe": sem_delta.classe(operacao),
+                         "regra": chave, "teto": tetos[operacao], "motivo": motivo})
+    elif ((pct is not None and absoluto is not None and dpct is None and dabs is None)
+          or (pct is not None and absoluto is None and dpct is None)
+          or (absoluto is not None and pct is None and dabs is None)):
+        # O ELSE: a trava 4a da v10_02 como sempre.
+        if operacao in sem_delta.MONETARIAS:
+            porque = ("operação monetária exige delta e limite de alteração; nenhuma "
+                      "declaração de regra a dispensa")
+        else:
+            porque = (f"a regra não lista {operacao} em `operacoes_sem_delta` (v17_03). "
+                      "Para propor esta operação, o dono publica a versão seguinte da regra "
+                      "declarando-a, com o teto próprio dela")
         raise ForaDaRegra(
-            f"a regra {chave} declara limite de alteração e a operação "
-            f"{linha.get('operacao')} não tem tamanho numérico. A v10_02 recusa proposta "
-            "sem delta (trava 4a de `trafego_proposta_respeita_regra`); esta operação "
-            "precisa de uma decisão de schema antes de poder ser proposta.",
+            f"a regra {chave} declara limite de alteração e a operação {operacao} não tem "
+            f"tamanho numérico (trava 4a de `trafego_proposta_respeita_regra`): {porque}.",
             codigo="regra_exige_delta",
-            detalhe={"operacao": linha.get("operacao"), "regra": chave})
+            detalhe={"operacao": operacao, "regra": chave,
+                     "classe": sem_delta.classe(operacao),
+                     "operacoes_sem_delta_da_regra": sorted(tetos)})
     if dpct is not None and pct is not None and abs(float(dpct)) > float(pct):
         raise ForaDaRegra(f"alteração de {dpct}% estoura o limite de {pct}% da regra {chave}",
                           codigo="limite_pct", detalhe={"delta_pct": dpct, "limite": pct})

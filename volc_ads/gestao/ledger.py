@@ -50,8 +50,11 @@ def _delta(acao: Acao, antes: dict) -> tuple[float | None, int | None]:
     """(delta_pct, delta_absoluto_micros) quando a ação é numérica.
 
     Só orçamento e alvo de lance em micros têm delta absoluto; tROAS é razão e
-    só tem percentual. Ação sem número (pausa, negativa) não tem delta — e a
-    regra que declarar limite de alteração recusará a proposta, que é o certo.
+    só tem percentual. Ação sem número (pausa, negativa) não tem delta, e NÃO
+    se inventa um: a proposta só nasce se a regra listar a operação em
+    `operacoes_sem_delta` (v17_03), com o teto próprio dela; senão a trava 4a
+    da v10_02 a recusa, que é o certo. `operacao` = `acao.tipo` é o vocabulário
+    de `trafego_operacao_sem_delta_classe()`.
     """
     if isinstance(acao, AlterarOrcamento):
         antes_v, novo = antes.get("verba_diaria_micros"), acao.amount_micros

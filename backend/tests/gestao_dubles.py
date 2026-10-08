@@ -56,6 +56,36 @@ def regra_padrao(**sobre: Any) -> Dict[str, Any]:
     return r
 
 
+#: A declaração `operacoes_sem_delta` da regra de REFERÊNCIA (v17_03): os 13
+#: tipos sem delta, com tetos conservadores de exemplo. É a mesma que está em
+#: comentário no fim da migration e no contrato (§4) — um teste confere as três.
+OPERACOES_SEM_DELTA_REFERENCIA: Dict[str, Any] = {
+    "status": {"status_permitidos": ["PAUSED", "ENABLED"],
+               "niveis": ["campanha", "grupo", "anuncio", "asset_group"]},
+    "lance.estrategia": {"estrategias": ["MANUAL_CPC", "TARGET_SPEND", "MAXIMIZE_CONVERSIONS",
+                                         "MAXIMIZE_CONVERSION_VALUE"],
+                         "teto_micros": 50_000_000},
+    "ajuste.dispositivo": {"modificador_min": 0.5, "modificador_max": 1.5},
+    "ajuste.horario": {"modificador_min": 0.5, "modificador_max": 1.5},
+    "negativa.keyword": {"max_itens": 50, "escopos": ["campanha", "grupo"]},
+    "exclusao.placement": {"max_itens": 50, "escopos": ["campanha", "conta"]},
+    "exclusao.ip": {"max_itens": 20, "escopos": ["campanha", "conta"]},
+    "programacao.anuncios": {"max_itens": 42, "modificador_min": 0.5, "modificador_max": 1.5},
+    "lista.criar": {"max_itens": 100, "max_campanhas": 10},
+    "lista.adicionar": {"max_itens": 100},
+    "lista.anexar": {"max_itens": 10},
+    "recomendacao.aplicar": {"tipos_permitidos": ["SITELINK_ASSET", "CALLOUT_ASSET", "CALL_ASSET",
+                                                  "RESPONSIVE_SEARCH_AD_ASSET"]},
+    "recomendacao.dispensar": {},
+}
+
+
+def regra_referencia(**sobre: Any) -> Dict[str, Any]:
+    """`gestao_manual_google` como a v17_03 a propõe: os 15 tipos cobertos."""
+    return regra_padrao(operacoes_sem_delta=copy.deepcopy(OPERACOES_SEM_DELTA_REFERENCIA),
+                        **sobre)
+
+
 def _sem_none(linha: Mapping[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in linha.items() if v is not None}
 

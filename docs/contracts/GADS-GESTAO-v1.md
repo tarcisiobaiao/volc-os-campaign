@@ -3,7 +3,8 @@
 Contrato HTTP de `/api/trafego/gestao`, para quem faz o front. Backend:
 `backend/app/routers/trafego_gestao.py` → casos de uso em
 `backend/app/trafego/gestao/application/` → ledger v10_02
-(`supabase/migrations/v10_02_autogestao.sql`) + motor `volc_ads/gestao/`.
+(`supabase/migrations/v10_02_autogestao.sql`, com a exceção declarada da
+`v17_03_gestao_operacoes_sem_delta.sql`) + motor `volc_ads/gestao/`.
 
 Ciclo: **propor → aprovar (humano) → aplicar → verificar → (reverter)**.
 Nada é escrito no Google sem uma aprovação humana gravada (T1). Autonomia
@@ -55,7 +56,8 @@ Decida pela `codigo`, nunca pela `mensagem`. `detalhe` é opcional e serve a tel
 | 409 | `regra_ausente` | não há versão vigente da regra pedida (ver §4) |
 | 409 | `campanha_nao_importada` | proposta de nível campanha sem identidade — chame `POST /campanhas/importar` |
 | 409 | `evidencia_insuficiente` | métricas da janela da regra não cobrem os `dados_obrigatorios`; `detalhe.faltantes` |
-| 409 | `regra_exige_delta` | ação sem tamanho numérico sob regra com limite de alteração (§5.1) |
+| 409 | `regra_exige_delta` | ação sem tamanho numérico que a regra **não lista** em `operacoes_sem_delta`, ou operação monetária sem delta (§5.1); `detalhe.operacao`, `classe`, `operacoes_sem_delta_da_regra` |
+| 409 | `teto_sem_delta` | a regra lista a operação, mas a proposta passa do teto próprio dela (itens, escopo, status, estratégia, modificador, tipo de recomendação); `detalhe.teto`, `motivo`, `classe` |
 | 409 | `limite_pct`, `limite_absoluto`, `teto_orcamento`, `moeda_do_teto`, `antes_velho` | a proposta estoura a regra |
 | 409 | `diff_divergente` | o diff que a tela mostrou não é o gravado — recarregue |
 | 409 | `ja_decidida` | a proposta já tem decisão (única, imutável) |
@@ -67,7 +69,7 @@ Decida pela `codigo`, nunca pela `mensagem`. `detalhe` é opcional e serve a tel
 | 409 | `aplicacao_em_andamento` | outra requisição acabou de abrir a aplicação |
 | 409 | `escrita_bloqueada` | trava de escrita fechada no servidor (FORGE_PERMITIR_ESCRITA); nada enviado |
 | 409 | `nada_a_reverter`, `irreversivel`, `estado_mudou_depois`, `reversao_ja_existe` | ver §3.7 |
-| 409 | `banco_recusou` | um gatilho/CHECK da v10_02 recusou; `detalhe.sqlstate` |
+| 409 | `banco_recusou` | um gatilho/CHECK da v10_02/v17_03 recusou; `detalhe.sqlstate` |
 | 409 | `estado_invalido`, `campanha_removida`, `regra_invalida`, `plataforma` | estado não permite o pedido |
 | 503 | `indisponivel`, `escopo_indisponivel`, `sdk_ausente`, `motor_ausente` | banco/Google/motor não responderam — **não** é recusa |
 | 503 | `sem_resposta` | a escrita saiu e não voltou: a conta PODE ter mudado; vá para verificar |
@@ -243,8 +245,40 @@ com o valor recomendado: há validate_only e reverso exato.
 
 Toda proposta cita uma regra vigente de `trafego_regra_otimizacao` — os limites
 são dela, e o gatilho `trafego_proposta_respeita_regra` os impõe. **Não existe
-regra publicada hoje**; publicá-la é decisão do dono (responsável, teto, limite).
-Formato de referência (o usado nas provas; os números são EXEMPLO):
+regra publicada hoje**; publicá-la é decisão do dono (responsável, teto, limite
+e cada teto por operação).
+
+A regra limita as ações de dois jeitos:
+
+- **Monetárias** (`orcamento.diario`, `lance.alvo`): pelas colunas da v10_02 —
+  `limite_alteracao_pct`/`_absoluto_micros` sobre o delta e
+  `teto_orcamento_micros` sobre a verba. Sempre exigem delta; nenhuma
+  declaração as dispensa (a CHECK recusa listá-las abaixo).
+- **Sem delta** (os outros 13): pela coluna `operacoes_sem_delta` (v17_03),
+  `{operacao: {tetos}}`. **Operação ausente = não autorizada** (409
+  `regra_exige_delta`). Listada, a proposta tem de caber no teto dela (senão 409
+  `teto_sem_delta`). A coluna é imutável: para mudar, publica-se a versão
+  seguinte da regra.
+
+| classe | operação | tetos (`*` = obrigatório) |
+|---|---|---|
+| status | `status` | `*status_permitidos` ⊆ {ENABLED, PAUSED} (REMOVED nunca), `niveis` |
+| estrategia | `lance.estrategia` | `*estrategias`, `teto_micros` (tCPA/teto de CPC que vier junto) |
+| ajuste | `ajuste.dispositivo`, `ajuste.horario` | `*modificador_min`, `*modificador_max` (0 ≤ min ≤ max ≤ 10) |
+| segmentacao | `negativa.keyword` | `*max_itens`, `escopos` ⊆ {campanha, grupo} |
+| segmentacao | `exclusao.placement`, `exclusao.ip` | `*max_itens`, `escopos` ⊆ {campanha, conta} |
+| segmentacao | `programacao.anuncios` | `*max_itens` (criar + remover), `modificador_min`/`_max` das janelas |
+| estrutura | `lista.criar` | `*max_itens`, `max_campanhas` |
+| estrutura | `lista.adicionar`, `lista.anexar` | `*max_itens` (no anexar, campanhas) |
+| recomendacao | `recomendacao.aplicar` | `*tipos_permitidos` — nenhum tipo monetário (`*BUDGET*`, `*TARGET_CPA*`, `*TARGET_ROAS*`, `MAXIMIZE_*`, `ENHANCED_CPC*`, tarifas) |
+| recomendacao | `recomendacao.dispensar` | `tipos_permitidos` (opcional) |
+
+`max_itens` vai de 1 a 1000. Chave desconhecida é recusada pela CHECK (teto com
+nome errado é teto que não vale). Recomendação monetária é recusada mesmo que
+alguém tente listá-la: para ela, monte `orcamento.diario`/`lance.alvo`.
+
+Regra de referência cobrindo os 15 tipos (o usado nas provas; os números são
+EXEMPLO conservador — quem decide é o dono):
 
 ```sql
 INSERT INTO public.trafego_regra_otimizacao
@@ -253,15 +287,37 @@ INSERT INTO public.trafego_regra_otimizacao
    dados_obrigatorios, teto_orcamento_micros, teto_orcamento_moeda,
    limite_alteracao_pct, cooldown_horas, confianca_minima, condicao_rollback,
    rollback_janela_horas, responsavel, nivel_autonomia, deteccao, acao,
-   declarada_por, fonte, vigente_desde)
+   declarada_por, fonte, vigente_desde, operacoes_sem_delta)
 VALUES
   ('gestao_manual_google', 1, 'Gestão manual de campanhas Google Ads',
    'Limitar e registrar ajustes pedidos por humano em campanhas no ar',
    ARRAY['GOOGLE_ADS'], ARRAY['*'], 7, 0, 6, 0,
-   ARRAY['impressoes','custo_micros'], 500000000, 'BRL',
+   ARRAY['impressoes', 'custo_micros'], 500000000, 'BRL',
    30, 24, 0.5, 'o operador declara piora no acompanhamento',
-   72, '<dono>', 'T1', '{"tipo":"pedido_humano"}', '{"tipo":"gestao_manual"}',
-   '<quem publica>', 'humano', now());
+   72, '<dono>', 'T1', '{"tipo": "pedido_humano"}', '{"tipo": "gestao_manual"}',
+   '<quem publica>', 'humano', now(),
+   '{
+     "status":                 {"status_permitidos": ["PAUSED", "ENABLED"],
+                                "niveis": ["campanha", "grupo", "anuncio", "asset_group"]},
+     "lance.estrategia":       {"estrategias": ["MANUAL_CPC", "TARGET_SPEND",
+                                                "MAXIMIZE_CONVERSIONS",
+                                                "MAXIMIZE_CONVERSION_VALUE"],
+                                "teto_micros": 50000000},
+     "ajuste.dispositivo":     {"modificador_min": 0.5, "modificador_max": 1.5},
+     "ajuste.horario":         {"modificador_min": 0.5, "modificador_max": 1.5},
+     "negativa.keyword":       {"max_itens": 50, "escopos": ["campanha", "grupo"]},
+     "exclusao.placement":     {"max_itens": 50, "escopos": ["campanha", "conta"]},
+     "exclusao.ip":            {"max_itens": 20, "escopos": ["campanha", "conta"]},
+     "programacao.anuncios":   {"max_itens": 42, "modificador_min": 0.5,
+                                "modificador_max": 1.5},
+     "lista.criar":            {"max_itens": 100, "max_campanhas": 10},
+     "lista.adicionar":        {"max_itens": 100},
+     "lista.anexar":           {"max_itens": 10},
+     "recomendacao.aplicar":   {"tipos_permitidos": ["SITELINK_ASSET", "CALLOUT_ASSET",
+                                                     "CALL_ASSET",
+                                                     "RESPONSIVE_SEARCH_AD_ASSET"]},
+     "recomendacao.dispensar": {}
+   }'::jsonb);
 ```
 
 A evidência de uma proposta humana é a métrica real da janela da regra
@@ -275,18 +331,22 @@ medida no nível do alvo (conta, campanha, grupo, anúncio ou asset group).
 `acao.tipo` é `trafego_proposta.operacao`. IDs podem ir como número ou string
 de dígitos. Dinheiro sempre em **micros inteiros** múltiplos de 10.000 (0,01).
 
-### 5.1 O que a v10_02 deixa propor hoje
+### 5.1 O que a regra deixa propor
 
 A regra precisa declarar limite de alteração (CHECK da v10_02), e o gatilho
-recusa proposta **sem delta** quando há limite (trava 4a). Logo, sob a v10_02
-como está, só nascem propostas de tipos com tamanho numérico:
+recusa proposta **sem delta** (trava 4a) — a menos que a regra liste a
+operação em `operacoes_sem_delta` (v17_03, §4):
 
-| Propõe hoje | Tipos |
+| Tipos | Propõe quando |
 |---|---|
-| ✅ | `orcamento.diario`; `lance.alvo` (`tcpa`/`teto_cpc` com delta % e absoluto; `troas` só %) |
-| ⛔ 409 `regra_exige_delta` | todos os outros 13 — precisam de decisão de schema (ex.: regra declarar operações sem delta) |
+| `orcamento.diario`; `lance.alvo` (`tcpa`/`teto_cpc` com delta % e absoluto; `troas` só %) | sempre que o delta couber em `limite_alteracao_*` e a verba no teto |
+| os outros 13 | a regra vigente lista a operação **e** a proposta cabe no teto dela |
+| qualquer um dos 13 não listado | ⛔ 409 `regra_exige_delta` |
 
-O contrato abaixo vale para os 15; a tela pode montar todos e mostrar a recusa.
+O backend confere a mesma coisa antes da primeira escrita
+(`application/sem_delta.py`, espelho de `trafego_proposta_sem_delta_defeito`),
+para a recusa sair com `codigo` estável em vez de linha órfã. Regra sem a
+coluna (v17_03 não aplicada) vale como `{}`: nada sem delta passa.
 
 ### 5.2 Payloads
 
@@ -355,3 +415,9 @@ necessária está proposta, **não aplicada**, em
 `supabase/migrations/v17_02_autonomia_gestao.PROPOSTA.sql` (T2 por operação,
 `trafego_aprovacao.decisor_tipo`, suspensão por conta). Até a decisão do dono,
 todo `aplicar` exige aprovação humana.
+
+A v17_03 é compatível com a v17_02 nas duas ordens: a v17_02 não reescreve
+`trafego_proposta_respeita_regra`, e a v17_03 não toca `trafego_aprovacao` nem
+`nivel_autonomia`. Uma operação sem delta só pode ser autônoma (`acao->
+'operacoes_autonomas'`) se a regra também a listar em `operacoes_sem_delta` —
+sem isso a proposta nem nasce.

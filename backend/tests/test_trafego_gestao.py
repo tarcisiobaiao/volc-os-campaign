@@ -733,3 +733,226 @@ def test_router_registrado_no_main():
               "/propostas/{proposta_id}/aplicar", "/aplicacoes/{aplicacao_id}/verificar",
               "/aplicacoes/{aplicacao_id}/reverter", "/campanhas/importar", "/recomendacoes"):
         assert BASE + c in caminhos, c
+
+
+# ═══ v17_03: operações sem delta que a regra declara ════════════════════════
+
+from app.trafego.gestao.application import sem_delta as SD  # noqa: E402
+
+_MIGRATION_V17_03 = os.path.join(_RAIZ, "supabase", "migrations",
+                                 "v17_03_gestao_operacoes_sem_delta.sql")
+_CONTRATO = os.path.join(_RAIZ, "docs", "contracts", "GADS-GESTAO-v1.md")
+
+_LANCE_ANTES = {"existe": True, "campaign_id": int(CAMP), "canal": "SEARCH",
+                "estrategia": "MAXIMIZE_CONVERSIONS", "portfolio": None, "moeda": "BRL",
+                "teto_cpc_micros": 0, "tcpa_micros": 20_000_000, "troas": 0.0}
+_REC_ANTES = {"existe": True, "tipo": "SITELINK_ASSET", "dispensada": False,
+              "campanha": None, "orcamento": None, "grupo": None}
+#: O "antes" que a conta falsa devolve por tipo, para `propor` (que confere a ação).
+_ANTES_PARA_PROPOR = {
+    "lance.alvo": _LANCE_ANTES,
+    "lance.estrategia": {**_LANCE_ANTES, "estrategia": "MANUAL_CPC", "tcpa_micros": 0},
+    "recomendacao.aplicar": _REC_ANTES, "recomendacao.dispensar": _REC_ANTES,
+}
+
+
+def _um_caso_por_tipo():
+    vistos, saida = set(), []
+    for payload, antes in _CASOS:
+        if payload["tipo"] in vistos or (payload["tipo"] == "lance.alvo"
+                                         and payload.get("alvo") != "tcpa"):
+            continue
+        vistos.add(payload["tipo"])
+        saida.append((payload, _ANTES_PARA_PROPOR.get(payload["tipo"], antes)))
+    return saida
+
+
+def _no_mundo(conta, payload, antes):
+    acao = P.pedido_do_payload(payload).acao
+    conta.mundo[(acao.tipo, str(acao.alvo_id))] = json.loads(json.dumps(antes))
+    return acao
+
+
+def _ler(caminho: str) -> str:
+    with open(caminho, encoding="utf-8") as f:
+        return f.read()
+
+
+def _sql_da_classe():
+    sql = _ler(_MIGRATION_V17_03)
+    corpo = sql.split("CREATE FUNCTION public.trafego_operacao_sem_delta_classe", 1)[1]
+    corpo = corpo.split("$funcao$;", 1)[0]
+    import re
+    return dict(re.findall(r"WHEN '([a-z.]+)'\s+THEN '([a-z]+)'", corpo)), sql
+
+
+def _json_de_referencia(texto: str):
+    """O objeto `operacoes_sem_delta` do INSERT de referência (migration ou contrato)."""
+    import re
+    linhas = [re.sub(r"^-- ?", "", ln) for ln in texto.splitlines()]
+    bruto = "\n".join(linhas)
+    ini = bruto.index("'{\n", bruto.index("('gestao_manual_google'"))
+    fim = bruto.index("}'::jsonb", ini)
+    return json.loads(bruto[ini + 1:fim + 1])
+
+
+def test_vocabulario_sem_delta_e_o_da_migration_e_cobre_os_13():
+    classes_sql, sql = _sql_da_classe()
+    assert classes_sql == SD.CLASSES and len(SD.CLASSES) == 13
+    assert set(SD.CLASSES) | set(SD.MONETARIAS) == set(P.TIPOS)
+    assert not set(SD.CLASSES) & set(SD.MONETARIAS)
+    assert SD._REC_MONETARIA.pattern in sql  # o mesmo padrão nos dois lados
+
+
+def test_regra_de_referencia_e_a_mesma_na_migration_no_contrato_e_nos_dubles():
+    mig = _json_de_referencia(_ler(_MIGRATION_V17_03))
+    contrato = _json_de_referencia(_ler(_CONTRATO))
+    assert mig == contrato == D.OPERACOES_SEM_DELTA_REFERENCIA
+    assert set(mig) == set(SD.CLASSES)
+
+
+@pytest.mark.parametrize("tipo", ["CAMPAIGN_BUDGET", "MOVE_UNUSED_BUDGET", "SET_TARGET_CPA",
+                                  "LOWER_TARGET_ROAS", "MAXIMIZE_CLICKS_OPT_IN",
+                                  "ENHANCED_CPC_OPT_IN", "UK_DST_FEE",
+                                  "SPAIN_REGULATORY_OPERATING_COST", "OPERATING_CHARGES"])
+def test_recomendacao_monetaria_pelo_padrao(tipo):
+    assert SD.recomendacao_monetaria(tipo)
+
+
+@pytest.mark.parametrize("tipo", ["SITELINK_ASSET", "KEYWORD", "PERFORMANCE_MAX_OPT_IN",
+                                  "UPGRADE_LOCAL_CAMPAIGN_TO_PERFORMANCE_MAX", None])
+def test_recomendacao_nao_monetaria(tipo):
+    assert not SD.recomendacao_monetaria(tipo)
+
+
+_REF = D.OPERACOES_SEM_DELTA_REFERENCIA
+
+
+@pytest.mark.parametrize("operacao,nivel,atual,proposto,trecho", [
+    ("status", "campanha", {}, {"status": "REMOVED"}, "REMOVED"),
+    ("status", "campanha", {}, {}, "ausente"),
+    ("status", "keyword", {}, {"status": "PAUSED"}, "nível"),
+    ("lance.estrategia", "campanha", {}, {"estrategia": "PORTFOLIO"}, "fora de estrategias"),
+    ("lance.estrategia", "campanha", {}, {"estrategia": "TARGET_SPEND",
+                                          "teto_cpc_micros": 60_000_000}, "teto_micros"),
+    ("ajuste.dispositivo", "campanha", {}, {"dispositivo": "MOBILE", "modificador": 0},
+     "fora de"),
+    ("ajuste.horario", "campanha", {}, {"criterion_id": 1}, "ausente"),
+    ("negativa.keyword", "grupo", {}, {"escopo": "grupo", "adicionar": [{"texto": "x"}] * 51},
+     "max_itens"),
+    ("negativa.keyword", "grupo", {}, {"escopo": "grupo"}, "sem contagem"),
+    ("negativa.keyword", "grupo", {}, {"escopo": "grupo", "adicionar": []}, "item nenhum"),
+    ("exclusao.ip", "conta", {}, {"escopo": "loja", "excluir_ips": ["1.2.3.4"]}, "escopo"),
+    ("exclusao.ip", "conta", {}, {"excluir_ips": ["1.2.3.4"]}, "escopo"),
+    ("lista.criar", "conta", {}, {"itens": [{}], "campanhas": list(range(11))},
+     "max_campanhas"),
+    ("lista.anexar", "conta", {}, {"anexar": list(range(11))}, "max_itens"),
+    ("programacao.anuncios", "campanha", {}, {"criar": [{"modificador": 2.0}], "remover": []},
+     "janela"),
+    ("programacao.anuncios", "campanha", {}, {"criar": []}, "criar/remover"),
+    ("recomendacao.aplicar", "conta", {"tipo": "CAMPAIGN_BUDGET"}, {"aplicar": "r"}, "verba"),
+    ("recomendacao.aplicar", "conta", {}, {"aplicar": "r"}, "tipo ausente"),
+    ("recomendacao.aplicar", "conta", {"tipo": "KEYWORD"}, {"aplicar": "r"}, "tipos_permitidos"),
+])
+def test_teto_proprio_recusa(operacao, nivel, atual, proposto, trecho):
+    motivo = SD.defeito(_REF[operacao], operacao, nivel, atual, proposto)
+    assert motivo and trecho in motivo, motivo
+
+
+def test_teto_proprio_aceita_o_que_cabe():
+    assert SD.defeito(_REF["programacao.anuncios"], "programacao.anuncios", "campanha", {},
+                      {"criar": [{"modificador": None}, {"modificador": 1.5}],
+                       "remover": [1]}) is None
+    assert SD.defeito(_REF["recomendacao.dispensar"], "recomendacao.dispensar", "conta",
+                      {"tipo": "CAMPAIGN_BUDGET"}, {"dispensar": "r"}) is None
+    assert SD.defeito(_REF["exclusao.ip"], "exclusao.ip", "campanha", {},
+                      {"escopo": "campanha", "excluir_ips": ["1.2.3.4"] * 20}) is None
+
+
+async def test_regra_de_referencia_transforma_os_15_tipos_em_proposta():
+    g, led, conta = D.gestao_de_teste(regras=[D.regra_referencia()])
+    casos = _um_caso_por_tipo()
+    assert {p["tipo"] for p, _ in casos} == set(P.TIPOS)
+    for payload, antes in casos:
+        _no_mundo(conta, payload, antes)
+        r = await g.propor(CID, payload, motivo=f"teste {payload['tipo']}", autor="op@volc")
+        p = r["proposta"]
+        assert not r["ja_existia"] and p["operacao"] == payload["tipo"]
+        if payload["tipo"] in SD.MONETARIAS:
+            assert p["delta_pct"] is not None
+        else:
+            assert p.get("delta_pct") is None and p.get("delta_absoluto_micros") is None
+    assert len(led.propostas) == 15
+
+
+async def test_operacao_fora_da_lista_continua_regra_exige_delta():
+    tetos = {k: v for k, v in _REF.items() if k != "exclusao.ip"}
+    g, led, conta = D.gestao_de_teste(regras=[D.regra_padrao(operacoes_sem_delta=tetos)])
+    payload = next(p for p, _ in _CASOS if p["tipo"] == "exclusao.ip")
+    _no_mundo(conta, payload, {"ips_existentes": []})
+    with pytest.raises(E.ForaDaRegra) as exc:
+        await g.propor(CID, payload, motivo="bots", autor="op")
+    assert exc.value.codigo == "regra_exige_delta" and not led.ops
+    assert "exclusao.ip" not in exc.value.detalhe["operacoes_sem_delta_da_regra"]
+    assert exc.value.detalhe["classe"] == "segmentacao"
+
+
+async def test_teto_sem_delta_recusa_antes_de_gravar():
+    g, led, conta = D.gestao_de_teste(regras=[D.regra_referencia()])
+    payload = {"tipo": "exclusao.ip", "escopo": "campanha", "campaign_id": CAMP,
+               "ips": [f"203.0.113.{i}" for i in range(1, 22)]}
+    _no_mundo(conta, payload, {"ips_existentes": []})
+    with pytest.raises(E.ForaDaRegra) as exc:
+        await g.propor(CID, payload, motivo="bots", autor="op")
+    assert exc.value.codigo == "teto_sem_delta" and not led.ops
+    assert exc.value.detalhe["teto"] == {"max_itens": 20, "escopos": ["campanha", "conta"]}
+    conta.mundo[("recomendacao.aplicar", "abc123")] = {**_REC_ANTES, "tipo": "CAMPAIGN_BUDGET"}
+    with pytest.raises(E.ForaDaRegra) as exc2:
+        await g.propor(CID, {"tipo": "recomendacao.aplicar", "recurso": _RN_REC},
+                       motivo="o Google sugeriu", autor="op")
+    assert exc2.value.codigo == "teto_sem_delta" and "verba" in str(exc2.value)
+
+
+def test_monetaria_continua_exigindo_delta_e_limite():
+    regra = D.regra_referencia()
+    agora = datetime.now(timezone.utc)
+    sem = {"operacao": "orcamento.diario", "delta_pct": None, "delta_absoluto_micros": None,
+           "valor_proposto": {"verba_diaria_micros": 1}}
+    with pytest.raises(E.ForaDaRegra) as exc:
+        conferir_contra_regra(sem, regra, agora=agora)
+    assert exc.value.codigo == "regra_exige_delta" and "monetária" in str(exc.value)
+    with pytest.raises(E.ForaDaRegra) as exc2:
+        conferir_contra_regra({"operacao": "orcamento.diario", "delta_pct": 80.0,
+                               "delta_absoluto_micros": 24_000_000}, regra, agora=agora)
+    assert exc2.value.codigo == "limite_pct"
+    # nem uma regra adulterada (que o banco recusaria pela CHECK) abre a monetária
+    torta = D.regra_padrao(operacoes_sem_delta={"orcamento.diario": {}})
+    with pytest.raises(E.ForaDaRegra):
+        conferir_contra_regra(sem, torta, agora=agora)
+
+
+async def test_ciclo_completo_de_uma_pausa_sob_a_regra_de_referencia():
+    g, _led, conta = D.gestao_de_teste(regras=[D.regra_referencia()])
+    pausa = {"tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"}
+    p = (await g.propor(CID, pausa, motivo="sem conversão há 21 dias", autor="op"))["proposta"]
+    await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
+                    diff_apresentado=_diff(p))
+    ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
+    assert ap["desfecho"] == "sucesso" and conta.mundo[("status", CAMP)]["status"] == "PAUSED"
+    assert (await g.verificar(ap["aplicacao_id"], observador="op"))["confere"] is True
+    r = await g.reverter(ap["aplicacao_id"], motivo="voltou a converter", autor="adm")
+    assert r["proposta"]["estado"] == "revertida"
+    assert conta.mundo[("status", CAMP)]["status"] == "ENABLED"
+
+
+def test_rota_pausa_vira_proposta_com_a_regra_de_referencia():
+    g, _led, conta = D.gestao_de_teste(regras=[D.regra_referencia()])
+    c = _app(g)
+    pausa = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m", "acao": {
+        "tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"}})
+    assert pausa.status_code == 201, pausa.text
+    assert pausa.json()["proposta"]["operacao"] == "status"
+    conta.mundo[("recomendacao.aplicar", "abc123")] = {**_REC_ANTES, "tipo": "CAMPAIGN_BUDGET"}
+    teto = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m", "acao": {
+        "tipo": "recomendacao.aplicar", "recurso": _RN_REC}})
+    assert teto.status_code == 409 and teto.json()["detail"]["codigo"] == "teto_sem_delta"
