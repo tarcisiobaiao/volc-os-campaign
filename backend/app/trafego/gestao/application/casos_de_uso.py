@@ -1,6 +1,7 @@
 """Os casos de uso da gestão sobre o ledger v10_02. Sem HTTP, sem PostgREST, sem SDK.
 
-    propor     lê o "antes" na conta → evidência → diagnóstico → proposta
+    propor     lê o "antes" na conta → evidência → diagnóstico → proposta.
+               Idempotente só enquanto a anterior do mesmo conteúdo está viva
     aprovar    a decisão humana, com o diff que a tela MOSTROU
     aplicar    relê o "antes"; diverge → recusa. Igual → aplicação `em_voo` →
                validate_only → escrita pela trava → desfecho. Idempotente.
@@ -61,6 +62,19 @@ ORIGEM_DA_EVIDENCIA = "gestao:gaql_metricas"
 #: esperando o Google). A verificação não a fecha antes: fechá-la faria a
 #: requisição viva falhar ao gravar o desfecho de uma escrita que deu certo.
 EM_VOO_ORFA_APOS = timedelta(minutes=5)
+
+#: Os estados em que uma proposta ainda está NO CICLO (v10_02,
+#: `trafego_proposta_estado_conhecido`). Só eles seguram a idempotência de
+#: `propor`: repetir o pedido devolve a mesma. `recusada`, `expirada`,
+#: `cancelada`, `revertida` e `aplicada` fecharam o ciclo — o mesmo pedido sobre
+#: o mesmo "antes" vira proposta NOVA (`ledger.chave_da_tentativa`). `aplicada`
+#: está fora de propósito: ler de novo o "antes" que ela mudou quer dizer que a
+#: conta voltou a ele por outro caminho, e reaplicar exige outra decisão humana.
+ESTADOS_VIVOS = ("aguardando_aprovacao", "aprovada")
+
+#: Teto de repropostas do mesmo conteúdo. Não é regra de negócio: é o freio de
+#: um laço que lê o banco. Cem recusas do mesmo diff é defeito de quem propõe.
+MAX_TENTATIVAS_DE_PROPOSTA = 100
 
 
 class GoogleRecusou(ErroDeGestao):
@@ -317,9 +331,9 @@ class Gestao:
                 raise AcaoInvalida(str(exc), codigo="estado_nao_permite") from exc
 
         linha = motor_ledger.proposta(acao, customer_id, antes.dados, antes.lido_em)
-        ja = await self.ledger.proposta_por_chave(linha["idempotency_key"])
+        ja, linha["idempotency_key"] = await self._viva_ou_chave_livre(linha["idempotency_key"])
         if ja:
-            return {"proposta": ja, "ja_existia": True}
+            return await self._ja_existia(ja)
 
         volc_campaign_id = None
         if acao.alvo_nivel == "campanha":
@@ -378,13 +392,66 @@ class Gestao:
             })
         except BancoRecusou as exc:
             # Corrida: outra requisição gravou a MESMA proposta (chave do conteúdo).
+            # A chave é determinística (base + tentativa): quem perdeu a corrida
+            # calculou a MESMA `base:tN` e devolve a que ganhou.
             if (exc.detalhe or {}).get("sqlstate") == "23505":
                 ja = await self.ledger.proposta_por_chave(linha["idempotency_key"])
                 if ja:
-                    return {"proposta": ja, "ja_existia": True}
+                    return await self._ja_existia(ja)
             raise
         return {"proposta": gravada, "evidencia_id": evidencia["evidencia_id"],
                 "diagnostico_id": diagnostico["diagnostico_id"], "ja_existia": False}
+
+    async def _viva_ou_chave_livre(self, base: str) -> tuple[Optional[Dict[str, Any]], str]:
+        """(proposta viva do mesmo conteúdo, None) ou (None, a chave da próxima tentativa).
+
+        Percorre `base`, `base:t2`, … até a primeira chave livre. Só a ÚLTIMA
+        tentativa pode estar viva (os estados de fim não voltam), mas cada uma é
+        conferida: custa uma leitura por tentativa e não depende disso.
+        """
+        for n in range(1, MAX_TENTATIVAS_DE_PROPOSTA + 1):
+            chave = motor_ledger.chave_da_tentativa(base, n)
+            p = await self.ledger.proposta_por_chave(chave)
+            if p is None:
+                return None, chave
+            if await self._ainda_viva(p):
+                return p, chave
+        raise ConflitoDeEstado(
+            f"o mesmo pedido já foi proposto {MAX_TENTATIVAS_DE_PROPOSTA} vezes sobre o mesmo "
+            "'antes' e nenhuma proposta seguiu viva; algo está repropondo em laço.",
+            codigo="repropostas_demais", detalhe={"chave_base": base})
+
+    async def _ainda_viva(self, p: Mapping[str, Any]) -> bool:
+        """A proposta ainda segura a idempotência? (ver `ESTADOS_VIVOS`)
+
+        Vencida em `aguardando_aprovacao`/`aprovada` é marcada `expirada` aqui —
+        é o que `aprovar`/`aplicar` fariam ao tocá-la —, MENOS a que tem
+        tentativa em voo ou sem resposta não verificada: essa pode estar na
+        conta agora, e uma segunda proposta do mesmo diff seria a porta para
+        aplicar duas vezes. Ela segue viva até alguém verificar.
+        """
+        if p.get("estado") not in ESTADOS_VIVOS:
+            return False
+        if p.get("estado") == "aprovada":
+            aplicacoes = await self.ledger.aplicacoes_da_proposta(p["proposta_id"])
+            if await self._tentativa_pendente(aplicacoes):
+                return True
+        expira = _quando(p.get("expira_em"))
+        if expira is None or expira > self.agora():
+            return True
+        marcada = await self.ledger.atualizar_estado_proposta(
+            p["proposta_id"], list(ESTADOS_VIVOS), "expirada")
+        if marcada is None:  # outra requisição mudou o estado no meio: vale o de agora
+            atual = await self.ledger.proposta(p["proposta_id"]) or {}
+            return atual.get("estado") in ESTADOS_VIVOS
+        return False
+
+    async def _ja_existia(self, p: Mapping[str, Any]) -> Dict[str, Any]:
+        """A resposta de "já existia" no MESMO formato da proposta nova (contrato §3.2)."""
+        diagnostico_id = p.get("diagnostico_id")
+        diag = await self.ledger.diagnostico(diagnostico_id) if diagnostico_id else None
+        return {"proposta": dict(p), "evidencia_id": (diag or {}).get("evidencia_id"),
+                "diagnostico_id": diagnostico_id, "ja_existia": True}
 
     # ── aprovar / recusar ───────────────────────────────────────────────────
 
@@ -456,6 +523,21 @@ class Gestao:
         verif = [a for a in linhas if a.get("momento") == "verificacao"]
         return max(verif, key=lambda a: str(a.get("observado_em") or "")) if verif else None
 
+    async def _tentativa_pendente(self, aplicacoes: Sequence[Mapping[str, Any]]
+                                  ) -> Optional[Mapping[str, Any]]:
+        """A tentativa que pode ter entrado na conta sem sabermos, se houver.
+
+        `em_voo` bloqueia SEMPRE: pode estar no ar agora. Só `sem_resposta`
+        verificado como "não entrou" libera a tentativa seguinte.
+        """
+        for a in aplicacoes:
+            if a.get("desfecho") in ("em_voo", "sem_resposta"):
+                verif = await self._ultima_verificacao(a["aplicacao_id"])
+                if (a.get("desfecho") == "em_voo" or verif is None
+                        or verif.get("confere") is not False):
+                    return a
+        return None
+
     async def aplicar(self, proposta_id: str, *, executor: str) -> Dict[str, Any]:
         p = await self._proposta(proposta_id)
         customer_id = await self._no_escopo(customer_id_da_proposta(p))
@@ -469,19 +551,14 @@ class Gestao:
                                     default=None)
             return {"aplicacao": ultima, "proposta": p, "desfecho": "sucesso",
                     "ja_aplicada": True}
-        for a in aplicacoes:
-            if a.get("desfecho") in ("em_voo", "sem_resposta"):
-                # `em_voo` bloqueia SEMPRE: pode estar no ar agora. Só `sem_resposta`
-                # verificado como "não entrou" libera a tentativa seguinte.
-                verif = await self._ultima_verificacao(a["aplicacao_id"])
-                if (a.get("desfecho") == "em_voo" or verif is None
-                        or verif.get("confere") is not False):
-                    raise ConflitoDeEstado(
-                        f"a tentativa {a.get('tentativa')} está {a.get('desfecho')}: a "
-                        "chamada pode ter entrado. Verifique antes (POST /aplicacoes/{id}/"
-                        "verificar); reenviar poderia aplicar duas vezes.",
-                        codigo="verificar_antes",
-                        detalhe={"aplicacao_id": a["aplicacao_id"]})
+        pendente = await self._tentativa_pendente(aplicacoes)
+        if pendente:
+            raise ConflitoDeEstado(
+                f"a tentativa {pendente.get('tentativa')} está {pendente.get('desfecho')}: a "
+                "chamada pode ter entrado. Verifique antes (POST /aplicacoes/{id}/"
+                "verificar); reenviar poderia aplicar duas vezes.",
+                codigo="verificar_antes",
+                detalhe={"aplicacao_id": pendente["aplicacao_id"]})
 
         regra = await self.ledger.regra(p["regra_id"]) or {}
         aprovacao = await self.ledger.aprovacao_da_proposta(proposta_id)

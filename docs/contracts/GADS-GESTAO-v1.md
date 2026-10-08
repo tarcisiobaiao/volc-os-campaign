@@ -1,5 +1,13 @@
 # GADS-GESTAO v1 — gestão de campanhas no ar (Google Ads)
 
+**Versão 1.1 — 08/10/2026.** Mudanças compatíveis com o front da 1.0 (campos
+novos, nenhum removido; nenhum `codigo` mudou de sentido).
+
+| Versão | Data | O que mudou |
+|---|---|---|
+| 1.1 | 08/10/2026 | **§3.2 idempotência por estado:** o mesmo pedido sobre o mesmo "antes" só devolve a proposta existente (200) enquanto ela está **viva** (`aguardando_aprovacao`/`aprovada`, ou com tentativa em voo/sem resposta não verificada). Recusada, expirada, cancelada, revertida ou aplicada → nasce outra (201), chave `<base>:t<n>`. Antes, a recusada voltava para sempre e o operador não conseguia repropor. **§3.2 resposta "já existia"** passa a trazer `evidencia_id` e `diagnostico_id` (antes só `proposta` e `ja_existia`). **§2** documenta `proposta_ilegivel` (422, já emitido pelo backend) e o novo `repropostas_demais` (409). |
+| 1.0 | 08/10/2026 | Primeira versão. |
+
 Contrato HTTP de `/api/trafego/gestao`, para quem faz o front. Backend:
 `backend/app/routers/trafego_gestao.py` → casos de uso em
 `backend/app/trafego/gestao/application/` → ledger v10_02
@@ -53,6 +61,7 @@ Decida pela `codigo`, nunca pela `mensagem`. `detalhe` é opcional e serve a tel
 | 422 | `estado_nao_permite` | a conta lida agora não permite (orçamento compartilhado sem ciência, já está no valor, estratégia mudou, recomendação expirou…) |
 | 422 | `sem_motivo`, `recusa_sem_motivo`, `sem_diff_apresentado` | campo obrigatório de decisão ausente |
 | 422 | `google_recusou` | o Google recusou no validate_only ou na escrita; a aplicação foi registrada como `erro` |
+| 422 | `proposta_ilegivel` | a proposta **gravada** não reconstrói uma ação do motor (operação fora dos 15 tipos, `valor_proposto` sem um campo que o tipo exige, `alvo_chave` fora de `google_ads:<conta>:<nivel>:<alvo>`). Sai de aprovar/recusar (só o caso `alvo_chave`), aplicar, verificar e reverter — nunca de `POST /propostas`, que monta a linha pelo próprio motor. É linha escrita por outro produtor ou por versão anterior do motor, não erro do operador; **nada foi gravado nem enviado**. Tela: "A proposta gravada não reconstrói uma ação." + recusar e propor de novo (a reproposta nasce, §3.2). Se a própria recusa devolver `proposta_ilegivel` (`alvo_chave` ilegível), a API não consegue decidi-la: mostre o `proposta_id` e peça a quem mantém o backend; ela não aplica nunca (aplicar também recusa) |
 | 409 | `regra_ausente` | não há versão vigente da regra pedida (ver §4) |
 | 409 | `campanha_nao_importada` | proposta de nível campanha sem identidade — chame `POST /campanhas/importar` |
 | 409 | `evidencia_insuficiente` | métricas da janela da regra não cobrem os `dados_obrigatorios`; `detalhe.faltantes` |
@@ -62,6 +71,7 @@ Decida pela `codigo`, nunca pela `mensagem`. `detalhe` é opcional e serve a tel
 | 409 | `diff_divergente` | o diff que a tela mostrou não é o gravado — recarregue |
 | 409 | `ja_decidida` | a proposta já tem decisão (única, imutável) |
 | 409 | `proposta_expirada` | passou de `expira_em`; proponha de novo |
+| 409 | `repropostas_demais` | o mesmo pedido sobre o mesmo "antes" já gerou 100 propostas, nenhuma viva — algo repropõe em laço; `detalhe.chave_base` |
 | 409 | `exige_aprovacao_humana` | aplicar sem aprovação `aprovada` |
 | 409 | `em_carencia` | a regra está em cooldown sobre o alvo; `detalhe.ate` |
 | 409 | `antes_divergiu` | a conta mudou desde a proposta; `detalhe.campos`, `aprovado`, `lido_agora`; **nada foi enviado** |
@@ -134,8 +144,39 @@ suficiência) → `trafego_diagnostico` (explicação = `motivo`) → `trafego_p
  "evidencia_id": "uuid", "diagnostico_id": "uuid", "ja_existia": false}
 ```
 
-Idempotência: a chave deriva de (tipo, alvo, antes, proposto). O mesmo pedido
-sobre o mesmo estado devolve a proposta existente com `ja_existia: true` (200).
+Mesmo pedido de novo (200, `ja_existia: true`) — **mesmo formato**, com os ids
+da evidência e do diagnóstico que sustentam a proposta existente (não os de
+agora: nada novo é gravado):
+
+```json
+{"proposta": {"proposta_id": "uuid", "estado": "aguardando_aprovacao", "...": "..."},
+ "evidencia_id": "uuid", "diagnostico_id": "uuid", "ja_existia": true}
+```
+
+`evidencia_id` só vem `null` se o diagnóstico não puder ser lido (não acontece
+com proposta criada por esta API).
+
+**Idempotência — vale só enquanto a proposta anterior está viva.** A chave
+base deriva de (tipo, alvo, antes, proposto): `gestao:<tipo>:<sha256[:40]>`.
+O servidor percorre `<base>`, `<base>:t2`, `<base>:t3`… e:
+
+| a proposta da chave está | resposta |
+|---|---|
+| `aguardando_aprovacao` ou `aprovada`, dentro do prazo | 200, a mesma proposta (`ja_existia: true`) |
+| `aprovada` com tentativa `em_voo`/`sem_resposta` não verificada — **mesmo vencida** | 200, a mesma: a mudança pode estar na conta; verifique (§3.6) antes de qualquer outra |
+| `aguardando_aprovacao`/`aprovada` vencida (`expira_em` passou) | é marcada `expirada` e passa à linha de baixo |
+| `recusada`, `expirada`, `cancelada`, `revertida`, `aplicada` | segue para a próxima chave; a primeira livre vira a proposta **nova** (201) |
+
+`aplicada` não segura o pedido de propósito: reler o mesmo "antes" quer dizer
+que a conta voltou a ele por outro caminho, e reaplicar exige outra decisão
+humana. Em `aplicada` com a conta no valor novo, o mesmo pedido cai em 422
+`estado_nao_permite` (já está no valor) antes de chegar aqui.
+
+Nunca há duas propostas vivas do mesmo conteúdo: só a última tentativa pode
+estar viva, e duas requisições que repropõem juntas calculam a mesma
+`<base>:tN` — a UNIQUE `trafego_proposta_chave_ux` deixa uma nascer e a outra
+recebe a vencedora (200). A tela pode exibir a reproposta normalmente; o
+histórico das anteriores continua no painel (§3.1) com o estado de cada uma.
 
 ### 3.3 `POST /propostas/{id}/aprovar` (admin)
 
@@ -397,7 +438,9 @@ aguardando_aprovacao ──aprovar──▶ aprovada ──aplicar (sucesso)─�
         └─expira_em passou──▶ expirada
 ```
 
-`cancelada` existe no schema e não é produzida por esta API.
+`cancelada` existe no schema e não é produzida por esta API. Além de
+aprovar/aplicar, `POST /propostas` também marca `expirada` a proposta vencida
+do mesmo conteúdo que encontra (§3.2).
 
 **Aplicação** (`trafego_aplicacao.desfecho`): `em_voo` (gravada antes da chamada)
 → `sucesso` | `erro` | `sem_resposta`. Fecha uma vez; nova tentativa = linha nova.

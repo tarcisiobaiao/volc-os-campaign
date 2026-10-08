@@ -72,6 +72,10 @@ const FRASES: Record<
     proximo:
       'A regra vigente não lista esta operação entre as que dispensam tamanho numérico. Incluí-la é decisão de quem publica a regra (nova versão).',
   },
+  repropostas_demais: {
+    titulo: 'Este mesmo pedido já foi proposto e encerrado vezes demais.',
+    proximo: 'Revise o motivo das recusas anteriores na fila antes de propor de novo; o limite existe para impedir laço automático.',
+  },
   teto_sem_delta: {
     titulo: 'A proposta passa do teto que a regra fixa para esta operação.',
     proximo: 'Reduza o pedido (itens, escopo, status, estratégia ou ajuste) para caber no teto.',

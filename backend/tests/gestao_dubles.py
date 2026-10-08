@@ -162,6 +162,9 @@ class LedgerEmMemoria:
     async def inserir_diagnostico(self, linha):
         return self._ins("trafego_diagnostico", "diagnostico_id", self.diagnosticos, linha, {})
 
+    async def diagnostico(self, diagnostico_id):
+        return copy.deepcopy(self.diagnosticos.get(diagnostico_id))
+
     async def inserir_proposta(self, linha):
         if any(p["idempotency_key"] == linha["idempotency_key"] for p in self.propostas.values()):
             raise BancoRecusou("duplicate key trafego_proposta_chave_ux",

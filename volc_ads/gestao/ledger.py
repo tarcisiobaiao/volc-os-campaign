@@ -46,6 +46,26 @@ def chave_idempotencia(acao: Acao, customer_id: str, antes: dict) -> str:
     return f"gestao:{acao.tipo}:{hashlib.sha256(corpo.encode()).hexdigest()[:40]}"
 
 
+def chave_da_tentativa(base: str, tentativa: int) -> str:
+    """A chave da N-ésima proposta do MESMO conteúdo: `base`, `base:t2`, `base:t3`…
+
+    A chave do conteúdo sozinha prendia o operador: proposta recusada, expirada
+    ou revertida sobre o mesmo "antes" devolvia a velha para sempre, e a UNIQUE
+    `trafego_proposta_chave_ux` não deixava nascer outra. A tentativa entra na
+    chave — e não um uuid — para a chave continuar DETERMINÍSTICA: duas
+    requisições que repropõem ao mesmo tempo calculam a mesma `base:tN` e a
+    UNIQUE deixa só uma nascer. É isso que impede duas propostas vivas para o
+    mesmo conteúdo sem gatilho novo (quem decide se a anterior está viva é o
+    caso de uso). A aplicação herda esta chave, então `trafego_aplicacao_
+    sucesso_unico_ux` continua valendo por proposta.
+
+    `base:t100` tem ~75 caracteres: cabe na CHECK com folga.
+    """
+    if tentativa < 1:
+        raise ValueError("a tentativa começa em 1")
+    return base if tentativa == 1 else f"{base}:t{tentativa}"
+
+
 def _delta(acao: Acao, antes: dict) -> tuple[float | None, int | None]:
     """(delta_pct, delta_absoluto_micros) quando a ação é numérica.
 

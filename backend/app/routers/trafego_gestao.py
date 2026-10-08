@@ -140,7 +140,9 @@ async def propor(response: Response, corpo: PedidoDeProposta = Body(...),
                  gestao: Any = Depends(obter_gestao)) -> Dict[str, Any]:
     """Lê o "antes" na conta e grava evidência → diagnóstico → proposta. Não escreve no Google.
 
-    201 quando nasce; 200 quando a MESMA proposta (mesma chave de conteúdo) já existia.
+    201 quando nasce; 200 quando a MESMA proposta (mesmo conteúdo sobre o mesmo
+    "antes") já existia e ainda está viva. Anterior recusada/expirada/revertida/
+    aplicada não segura o pedido: nasce outra (201). O corpo é o mesmo nos dois.
     """
     saida = await _rodar(gestao.propor(
         corpo.customer_id, corpo.acao, motivo=corpo.motivo, autor=_quem(identidade),

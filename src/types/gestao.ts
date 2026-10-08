@@ -302,7 +302,7 @@ export interface RespostaDaProposta {
     estado: string;
     idempotency_key?: string;
   };
-  /** Ausentes quando `ja_existia` (o backend devolve só a proposta). */
+  /** Presentes também quando `ja_existia` (contrato de gestão v1.1, §3.2). */
   evidencia_id?: string;
   diagnostico_id?: string;
   ja_existia: boolean;
@@ -445,6 +445,7 @@ export type CodigoDeErroDaGestao =
   | 'campanha_nao_importada'
   | 'evidencia_insuficiente'
   | 'regra_exige_delta'
+  | 'repropostas_demais'
   | 'teto_sem_delta'
   | 'limite_pct'
   | 'limite_absoluto'

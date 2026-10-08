@@ -156,6 +156,119 @@ async def test_propor_e_idempotente_pela_chave_do_conteudo():
     b = await g.propor(CID, ORC, motivo="m2", autor="outro")
     assert b["ja_existia"] and b["proposta"]["proposta_id"] == a["proposta"]["proposta_id"]
     assert len(led.propostas) == 1 and len(led.evidencias) == 1
+    # Contrato §3.2: "já existia" tem o MESMO formato da proposta nova.
+    assert set(b) == set(a) == {"proposta", "evidencia_id", "diagnostico_id", "ja_existia"}
+    assert (b["evidencia_id"], b["diagnostico_id"]) == (a["evidencia_id"], a["diagnostico_id"])
+
+
+def _vivas(led):
+    return [p for p in led.propostas.values()
+            if p["estado"] in ("aguardando_aprovacao", "aprovada")]
+
+
+def test_chave_da_tentativa_e_deterministica_e_cabe_na_check():
+    import re
+
+    base = "gestao:recomendacao.dispensar:" + "f" * 40
+    assert motor.chave_da_tentativa(base, 1) == base
+    assert motor.chave_da_tentativa(base, 2) == f"{base}:t2"
+    check = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
+    assert check.match(motor.chave_da_tentativa(base, 100))
+    with pytest.raises(ValueError):
+        motor.chave_da_tentativa(base, 0)
+
+
+async def test_proposta_recusada_nao_prende_o_operador():
+    """A divergência 1: recusada sobre o mesmo "antes" devolvia a velha para sempre."""
+    g, led, _ = D.gestao_de_teste()
+    a = await g.propor(CID, ORC, motivo="m1", autor="op")
+    pa = a["proposta"]
+    await g.aprovar(pa["proposta_id"], "recusada", motivo="caro agora", aprovador="adm",
+                    diff_apresentado=_diff(pa))
+    b = await g.propor(CID, ORC, motivo="m2", autor="op")
+    pb = b["proposta"]
+    assert not b["ja_existia"] and pb["proposta_id"] != pa["proposta_id"]
+    assert pb["idempotency_key"] == f"{pa['idempotency_key']}:t2"
+    assert pb["estado"] == "aguardando_aprovacao" and b["evidencia_id"] != a["evidencia_id"]
+    # A nova está viva: repetir devolve ELA (não a recusada, não uma terceira).
+    c = await g.propor(CID, ORC, motivo="m3", autor="op")
+    assert c["ja_existia"] and c["proposta"]["proposta_id"] == pb["proposta_id"]
+    assert (c["evidencia_id"], c["diagnostico_id"]) == (b["evidencia_id"], b["diagnostico_id"])
+    assert len(led.propostas) == 2 and len(_vivas(led)) == 1
+    # Recusada de novo → terceira tentativa.
+    await g.aprovar(pb["proposta_id"], "recusada", motivo="ainda caro", aprovador="adm",
+                    diff_apresentado=_diff(pb))
+    d = await g.propor(CID, ORC, motivo="m4", autor="op")
+    assert not d["ja_existia"]
+    assert d["proposta"]["idempotency_key"] == f"{pa['idempotency_key']}:t3"
+
+
+async def test_proposta_vencida_e_marcada_expirada_e_nasce_outra():
+    g, led, _ = D.gestao_de_teste()
+    pa = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    led.propostas[pa["proposta_id"]]["expira_em"] = (
+        datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    b = await g.propor(CID, ORC, motivo="m", autor="op")
+    assert not b["ja_existia"] and b["proposta"]["idempotency_key"].endswith(":t2")
+    assert led.propostas[pa["proposta_id"]]["estado"] == "expirada"
+    assert len(_vivas(led)) == 1
+
+
+async def test_aprovada_com_tentativa_sem_resposta_segue_viva_mesmo_vencida():
+    """Em voo/sem resposta não verificado: a conta pode ter a mudança. Nada de 2ª proposta."""
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    conta.explodir_na_escrita = True
+    with pytest.raises(E.Indisponivel):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    led.propostas[p["proposta_id"]]["expira_em"] = (
+        datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    r = await g.propor(CID, ORC, motivo="de novo", autor="op")
+    assert r["ja_existia"] and r["proposta"]["proposta_id"] == p["proposta_id"]
+    assert led.propostas[p["proposta_id"]]["estado"] == "aprovada"
+    assert len(led.propostas) == 1
+
+
+async def test_revertida_e_aplicada_nao_seguram_a_idempotencia():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
+    await g.reverter(ap["aplicacao_id"], motivo="CPA subiu", autor="adm")
+    assert led.propostas[p["proposta_id"]]["estado"] == "revertida"
+    b = await g.propor(CID, ORC, motivo="tentar de novo", autor="op")  # mesmo "antes": 30M
+    assert not b["ja_existia"] and b["proposta"]["idempotency_key"] == \
+        f"{p['idempotency_key']}:t2"
+
+    # `aplicada` e a conta voltou ao "antes" por fora: nova decisão humana, nova chave.
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    await g.aplicar(p["proposta_id"], executor="adm")
+    conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 30_000_000
+    c = await g.propor(CID, ORC, motivo="alguém voltou a verba", autor="op")
+    assert not c["ja_existia"] and c["proposta"]["idempotency_key"].endswith(":t2")
+
+
+async def test_corrida_na_reproposta_deixa_uma_viva():
+    """Dois repropõem juntos: os dois calculam `base:t2` e a UNIQUE escolhe um."""
+    g, led, _ = D.gestao_de_teste()
+    pa = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    await g.aprovar(pa["proposta_id"], "recusada", motivo="não", aprovador="adm",
+                    diff_apresentado=_diff(pa))
+    t2 = f"{pa['idempotency_key']}:t2"
+    original = led.proposta_por_chave
+    rival = {"proposta_id": "rival", "idempotency_key": t2, "estado": "aguardando_aprovacao",
+             "diagnostico_id": None, "alvo_chave": pa["alvo_chave"]}
+
+    async def le_antes_do_rival(chave):
+        achou = await original(chave)
+        if chave == t2 and achou is None and "rival" not in led.propostas:
+            led.propostas["rival"] = dict(rival)  # o outro gravou entre a leitura e o INSERT
+        return achou
+
+    led.proposta_por_chave = le_antes_do_rival
+    r = await g.propor(CID, ORC, motivo="m", autor="op")
+    assert r["ja_existia"] and r["proposta"]["proposta_id"] == "rival"
+    assert len(_vivas(led)) == 1
 
 
 async def test_propor_campanha_nao_importada_e_recusada_sem_gravar():
@@ -575,7 +688,10 @@ async def test_repositorio_monta_as_requisicoes_certas(monkeypatch):
     await repo.inserir_aplicacao({"proposta_id": "p1", "request_id": None})
     await repo.fechar_aplicacao("a1", {"desfecho": "sucesso"})
     await repo.painel(CID, estado="aprovada", limite=10)
-    ins, fecha, painel = feitas
+    await repo.diagnostico("d1")
+    ins, fecha, painel, diag = feitas
+    assert diag[:2] == ("GET", "trafego_diagnostico")
+    assert diag[2]["params"]["diagnostico_id"] == "eq.d1"
     assert ins[0] == "POST" and ins[2]["json"] == {"proposta_id": "p1"}
     assert ins[2]["headers"]["Prefer"] == "return=representation"
     assert fecha[0] == "PATCH" and fecha[2]["params"]["desfecho"] == "eq.em_voo"
@@ -653,6 +769,23 @@ def test_rota_recusar_e_erros_mapeados():
     ruim = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m",
                                              "acao": {"tipo": "x"}})
     assert ruim.status_code == 422
+
+
+def test_rota_repropor_depois_da_recusa_e_201_e_repetir_e_200_com_os_ids():
+    g, led, conta = D.gestao_de_teste()
+    c = _app(g)
+    corpo = {"customer_id": CID, "acao": ORC, "motivo": "m"}
+    p = c.post(f"{BASE}/propostas", json=corpo).json()["proposta"]
+    assert c.post(f"{BASE}/propostas/{p['proposta_id']}/recusar",
+                  json={"motivo": "caro"}).status_code == 200
+    nova = c.post(f"{BASE}/propostas", json=corpo)
+    assert nova.status_code == 201, nova.text
+    assert nova.json()["proposta"]["proposta_id"] != p["proposta_id"]
+    de_novo = c.post(f"{BASE}/propostas", json=corpo)
+    assert de_novo.status_code == 200 and de_novo.json()["ja_existia"]
+    assert {k: de_novo.json()[k] for k in ("evidencia_id", "diagnostico_id")} == \
+        {k: nova.json()[k] for k in ("evidencia_id", "diagnostico_id")}
+    assert de_novo.json()["evidencia_id"]
 
 
 def test_rota_divergencia_do_antes_e_409():

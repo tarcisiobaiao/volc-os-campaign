@@ -152,6 +152,9 @@ class RepositorioGestaoPostgrest(_Cliente):
     async def inserir_diagnostico(self, linha: Mapping[str, Any]) -> Dict[str, Any]:
         return await self._inserir(T_DIAGNOSTICO, linha)
 
+    async def diagnostico(self, diagnostico_id: str) -> Optional[Dict[str, Any]]:
+        return await self._primeira(T_DIAGNOSTICO, {"diagnostico_id": f"eq.{diagnostico_id}"})
+
     async def inserir_proposta(self, linha: Mapping[str, Any]) -> Dict[str, Any]:
         return await self._inserir(T_PROPOSTA, linha)
 
