@@ -76,6 +76,26 @@ def test_estado_vazio_nao_inventa_numero():
     assert r["custo_usd"] is None
 
 
+def test_cli_zero_com_todas_as_paginas_bloqueadas_nao_vira_done():
+    status, erro = worker._desfecho_controlado({
+        "paginas_geradas": None,
+        "etapas_falhadas": ["funnel_graph", "write_p1"],
+    })
+
+    assert status == "failed"
+    assert erro is not None and "funnel_graph" in erro
+
+
+def test_cli_zero_com_pagina_gerada_preserva_desfecho_done():
+    status, erro = worker._desfecho_controlado({
+        "paginas_geradas": 1,
+        "etapas_falhadas": ["write_p2"],
+    })
+
+    assert status == "done"
+    assert erro is None
+
+
 def test_achar_run_dir_prefere_a_pasta_definitiva(tmp_path: Path):
     """O motor cria `_pending-<carimbo>` e renomeia para `<slug>-<carimbo>`.
     Se as duas existirem no momento da leitura, a definitiva é a certa."""

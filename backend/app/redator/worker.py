@@ -340,6 +340,24 @@ def resumo_do_estado(estado: dict, flags: Optional[Dict[str, Any]] = None) -> Di
     }
 
 
+def _desfecho_controlado(final: Dict[str, Any]) -> tuple[str, Optional[str]]:
+    """Distingue processo concluído de funil concluído.
+
+    O CLI usa código zero também quando um portão estrutural encerra o run de
+    forma limpa. Se nenhuma página chegou ao build, esse resultado precisa ser
+    ``failed`` na fila — ``done`` com 0/N páginas esconderia o bloqueio.
+    """
+    falhas = list(final.get("etapas_falhadas") or [])
+    geradas = int(final.get("paginas_geradas") or 0)
+    if falhas and geradas == 0:
+        return (
+            "failed",
+            "O motor encerrou com todas as páginas bloqueadas: "
+            + ", ".join(falhas[:8]),
+        )
+    return "done", None
+
+
 async def _atualizar(supa, run_row_id: int, valores: Dict[str, Any]) -> None:
     from datetime import datetime as _dt
     valores = {**valores, "atualizado_em": _dt.now(timezone.utc).isoformat()}
@@ -441,8 +459,14 @@ async def executar(
                 })
                 return
 
+            # O CLI retorna 0 quando o pipeline terminou de forma controlada,
+            # inclusive se um gate estrutural bloqueou TODAS as páginas. Isso é
+            # sucesso do processo, não sucesso do funil. Sem esta distinção a UI
+            # mostrava `done` com 0/5 páginas e nenhum rascunho.
+            status_final, erro_final = _desfecho_controlado(final)
             await _atualizar(supa, run_row_id, {
-                "status": "done",
+                "status": status_final,
+                "erro": erro_final,
                 "artefatos": _artefatos(run_dir) if run_dir else {},
                 **{k: v for k, v in final.items() if k in _COLUNAS},
             })
