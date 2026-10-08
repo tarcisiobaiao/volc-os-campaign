@@ -668,8 +668,10 @@ def _extrair_minimo_diario(err) -> MinimoDiario | None:
     if bruto is None:
         return MinimoDiario()
     micros = None
-    for nome in ("min_daily_budget_micros", "minimum_micros", "micros",
-                 "amount_micros"):
+    # Nomes de `BudgetPerDayMinimumErrorDetails` na v25. O POR DIA vem
+    # primeiro: é o piso de orçamento diário. `minimum_budget_amount_micros`
+    # só vem quando a recusa é sobre o campo `amount`.
+    for nome in ("budget_per_day_minimum_micros", "minimum_budget_amount_micros"):
         candidato = getattr(bruto, nome, None)
         if candidato:
             micros = int(candidato)
