@@ -50,6 +50,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime
@@ -714,23 +715,27 @@ def caso_recibo_alimenta_isencao(c) -> tuple[bool, str]:
     return ok, plano.relatorio().splitlines()[0] + " · relatório diz o que significa"
 
 
-def caso_nada_pede_sozinho(c) -> tuple[bool, str]:
-    """`subir.py` não importa `isencao`: pedir isenção nunca é efeito colateral.
+def caso_isencao_so_pela_allowlist(c) -> tuple[bool, str]:
+    """A isenção é automática, mas só pelo caminho de `politica_auto`.
 
-    A checagem é sobre IMPORT e sobre os campos de isenção — citar `isencao.py`
-    numa docstring é o contrário do problema, é o aviso de onde a decisão mora.
+    Decisão de 08/10/2026 (Tarcísio): subir sem aprovação humana. Isso não
+    abre a porta para qualquer isenção. A única entrada é `decisao.isentar`,
+    que vem de `politica_auto.decidir`, e ela só isenta o que está em
+    `ISENTAR_SOZINHO`, uma lista nascida de recusa medida. O resto é removido
+    ou fica sem remédio (`testes_politica_auto.py` prova a decisão; este caso
+    prova que `subir.py` não tem outro caminho até `exempt_policy_violation_keys`).
     """
-    fonte = (Path(__file__).resolve().parent / "subir.py").read_text(encoding="utf-8")
-    importa = [
-        ln for ln in fonte.splitlines()
-        if ln.lstrip().startswith(("import ", "from ")) and "isencao" in ln
-    ]
-    campos = [campo for campo in ("exempt_policy", "ignorable_policy")
-              if campo in fonte]
-    ok = not importa and not campos
-    return ok, (f"imports de isencao: {len(importa)} · "
-                f"campos de isenção citados: {campos or 'nenhum'}")
+    from volc_ads import politica_auto
 
+    fonte = (Path(__file__).resolve().parent / "subir.py").read_text(encoding="utf-8")
+    campos = [campo for campo in ("exempt_policy", "ignorable_policy") if campo in fonte]
+    chamadas = re.findall(r"(?<!def )_com_isencoes\(\s*[^,]+,\s*([^,\)]+)", fonte)
+    so_da_decisao = bool(chamadas) and all(a.strip() == "decisao.isentar" for a in chamadas)
+    decide_pela_auto = "politica_auto.decidir(" in fonte
+    allowlist = sorted(politica_auto.ISENTAR_SOZINHO)
+    ok = not campos and so_da_decisao and decide_pela_auto and bool(allowlist)
+    return ok, (f"campos de isenção escritos à mão em subir.py: {campos or 'nenhum'} · "
+                f"chamadas de _com_isencoes: {chamadas} · allowlist: {allowlist}")
 
 
 def _linhagem_de_prova():
@@ -862,7 +867,7 @@ CASOS = [
     ("remédios conflitantes", caso_remedios_conflitantes),
     ("alvo trocado", caso_alvo_trocado),
     ("recibo → isenção", caso_recibo_alimenta_isencao),
-    ("nada pede sozinho", caso_nada_pede_sozinho),
+    ("isenção só pela allowlist", caso_isencao_so_pela_allowlist),
     ("linhagem no pré-recibo", caso_linhagem_no_pre_recibo),
     ("linhagem serializa", caso_linhagem_serializa_sem_default),
 ]
@@ -949,6 +954,24 @@ def prova_cli_sem_dry_e_sem_subir_recusa():
             sb.main()
         finally:
             sys.argv = old
+
+
+def prova_harness_subir_inteiro_passa(monkeypatch):
+    """Os casos de `CASOS` rodam no pytest, não só em `python -m`.
+
+    Medido em 08/10/2026: o harness reprovava 1/24 e a suíte dava 924/924,
+    porque `CASOS` só era executado pelo `main()`. Um caso que só roda à mão
+    não guarda nada.
+    """
+    monkeypatch.delenv("FORGE_PERMITIR_ESCRITA", raising=False)
+    c = cliente_offline()
+    reprovados = []
+    for nome, fabrica in CASOS:
+        ok, detalhe = fabrica(c)
+        if not ok:
+            reprovados.append(f"{nome}: {detalhe}")
+    assert not reprovados, "\n".join(reprovados)
+    assert not modo.escrita_permitida()
 
 
 def main() -> int:

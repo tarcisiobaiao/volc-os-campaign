@@ -31,8 +31,9 @@ Com os resource names guardados, a consulta ao `policy_summary` é direta.
 
 ## O que ele NÃO faz
 
-Não despausa. Não pede isenção de política — isso é `isencao.py`, e a decisão é
-humana. Não consulta `policy_summary`: a revisão do Google leva tempo e essa
+Não despausa. Isenção de política só sai pela allowlist medida de
+`politica_auto` (decisão de 08/10/2026: subir sem aprovação humana); o resto da
+violação é removido do brief ou fica sem remédio. Não consulta `policy_summary`: a revisão do Google leva tempo e essa
 leitura é de outro momento. O que este módulo garante é que ela seja POSSÍVEL.
 
 Uso:
