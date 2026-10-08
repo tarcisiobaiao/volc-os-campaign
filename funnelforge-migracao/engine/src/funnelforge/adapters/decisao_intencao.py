@@ -358,7 +358,12 @@ class JevDeIntencao:
             ],
         }
         payload = {"model": self.model, "state": state, "questions": self._questions(perguntas)}
-        if self.chamadas or len(json.dumps(payload, ensure_ascii=False)) > 30000 or not perguntas:
+        # Um funil real combina PAA, termos e dores e costuma chegar a 15–20
+        # sinais. O teto antigo de 30 kB desligava o JEV exatamente nesses runs,
+        # embora a requisição continue pequena para o endpoint (dezenas de KB,
+        # não MB). Mantemos UMA chamada e um teto rígido, apenas dimensionado
+        # para o lote real medido; acima dele o fail-soft continua intacto.
+        if self.chamadas or len(json.dumps(payload, ensure_ascii=False)) > 60000 or not perguntas:
             return {**fallback, "fallback": True, "motivo": "orcamento"}
         self.chamadas += 1
         try:

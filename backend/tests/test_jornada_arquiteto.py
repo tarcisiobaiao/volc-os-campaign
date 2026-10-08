@@ -175,6 +175,8 @@ def test_prompt_pre_redacao_explicita_schema_factual_e_visual():
     for chave in ('"id":"entidade.regra"', '"descricao"', '"tipos"', '"critico"',
                   'jornada.screenshot_necessario', 'jornada.imagem_necessaria', 'jornada.schema_tipos'):
         assert chave in p
+    assert "cálculo determinístico que poupa trabalho manual" in p
+    assert "sem lastro verificável, não gere a ferramenta" in p
 
 
 def test_normalizacao_requisitos_aceita_alias_real_e_descarta_contexto_nao_factual():

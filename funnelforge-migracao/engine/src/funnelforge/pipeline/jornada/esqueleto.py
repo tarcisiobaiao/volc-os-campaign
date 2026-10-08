@@ -313,7 +313,7 @@ def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
             # regra, número, prazo ou procedimento. Exigir um requisito factual
             # nele força o arquiteto a inventar uma pesquisa para um menu. LPs e
             # SOLUTIONs continuam fail-closed: elas fazem a entrega substantiva.
-            if not j.requisitos:
+            if not j.requisitos and papel is not PageRole.PRESELL:
                 b(Issue(code="requisitos_previsiveis_ausentes", message=f"[{j.duvida_id}] "
                         "o arquiteto precisa declarar requisitos antes da redação."))
             if j.proxima_duvida and j.proxima_duvida in j.ja_resolvido:

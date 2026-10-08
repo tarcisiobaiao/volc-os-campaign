@@ -58,6 +58,15 @@ def test_defeitos_pre_writer(defeito):
     else: p.editorial.cta_label='Saiba mais'
     assert revisar_esqueleto(plan).bloqueantes
 
+
+def test_hub_decisional_sem_requisito_factual_nao_inventa_pesquisa():
+    plan=plano_do_funnel_architecture(arquitetura()); plan.brief_pre_arquitetura=brief()
+    hub=next(p for p in plan.pages if p.role.value=='PRESELL')
+    hub.jornada.requisitos=[]
+    assert 'requisitos_previsiveis_ausentes' not in {
+        i.code for i in revisar_esqueleto(plan).bloqueantes
+        if f'[{hub.jornada.duvida_id}]' in i.message}
+
 def test_sha_estavel_copia_isolada_prompt(tmp_path):
     s=settings_do_cenario(tmp_path,editorial_v2=True,passos_v2=True)
     _,deps=montar_deps(tmp_path,s,responder_v2)
@@ -176,6 +185,29 @@ def test_jev_recibo_hermetico():
     assert perfil['sinais'][0]['intensidade'] == 75.0
     assert perfil['sinais'][0]['direcao_cta']
     assert r['custo_usd'] == 0.001 and j.chamadas == 1
+
+
+def test_jev_um_lote_com_vinte_sinais_nao_cai_na_heuristica():
+    def responder(req):
+        payload=json.loads(req.content); answers={}
+        for chave, questao in payload['questions'].items():
+            if chave.startswith('formato_'):
+                answers[chave]={'type':'choice','choice':'avaliar','confidence':.9}
+            elif chave.startswith('familia_'):
+                answers[chave]={'type':'choice','choice':'incerteza','confidence':.9,
+                                'probabilities':{'incerteza':1.0}}
+            elif chave.startswith('entrega_'):
+                answers[chave]={'type':'choice','choice':'criterios','confidence':.9}
+            elif chave.startswith('momento_'):
+                answers[chave]={'type':'choice','choice':'qualificacao','confidence':.9}
+            else:
+                answers[chave]={'type':'score','score':3,'confidence':.9}
+        return httpx.Response(200,json={'model':'jev-fixture','answers':answers})
+    perguntas=[f'Eu tenho direito no caso {n}?' for n in range(20)]
+    j=JevDeIntencao(enabled=True,key='fixture',transport=httpx.MockTransport(responder))
+    r=j.classificar(perguntas,contexto={'duvida_ids':[f'q{n}' for n in range(20)]})
+    assert not r['fallback'] and len(r['perfil_emocional']['sinais'])==20
+    assert j.chamadas==1
 
 
 def test_brief_propaga_avatar_comportamental_sem_duplicar():

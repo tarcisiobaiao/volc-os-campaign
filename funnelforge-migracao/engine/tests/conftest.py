@@ -61,6 +61,7 @@ def config_files(tmp_path: Path) -> Path:
         # comportamento correto para um site cujo rodapé ninguém mediu, e por
         # isso o teste que prova a falha fechada limpa este campo de propósito.
         f'  rodape_institucional: "{RODAPE_INSTITUCIONAL}"\n'
+        "  rodape_institucional_persistente: true\n"
         "  author: {name: Equipe Credito Up, credential: Redacao de jornalismo de servico.}\n"
         "  authors:\n"
         "    - {name: Equipe Credito Up, credential: Redacao, profile_slug: equipe}\n"

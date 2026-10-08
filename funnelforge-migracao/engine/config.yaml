@@ -73,6 +73,10 @@ site:
     governamentais. O site é financiado por blocos de anúncios em parceria com
     o Google Adsense e não tem relação nenhuma com os anunciantes.
     Sobre Nós - Contato - Política de Privacidade - Termos.
+  # Medido no HTML público do CreditUp e renderizado pelo tema em todas as
+  # páginas. Sem esta flag, o motor trata corretamente o texto acima apenas
+  # como uma referência e volta a exigir os dois avisos dentro de cada artigo.
+  rodape_institucional_persistente: true
   author: { name: "Equipe Crédito Up", credential: "Redação de jornalismo de serviço." }
   authors:
     - { name: "Equipe Crédito Up", credential: "Redação de jornalismo de serviço.", profile_slug: equipe }

@@ -16,6 +16,11 @@ Also inspect visual quality, not just compliance:
   or purely generic study scene with no meaningful connection to this topic.
   Plain learning devices can be relevant to distance learning; do not require
   logos, official facilities or readable interfaces to prove relevance.
+{% if no_generated_text -%}
+- Synthetic editorial images must not carry readable words, letters, numeric labels
+  or labeled charts. Typography and factual visualization belong to code. If any
+  are visible, set topic_mismatch=true and quote them in topic_evidence.
+{% endif -%}
 If anatomy, a small mark or relevance cannot be judged, set uncertain=true.
 Do not approve because the generation prompt sounds safe. Describe setting,
 activity, palette and framing in evidence for subsequent scene planning.

@@ -12,6 +12,10 @@ class Secrets(BaseModel):
     gemini_api_key: str | None = None
     anthropic_api_key: str | None = None
     perplexity_api_key: str | None = None
+    dataforseo_login: str | None = None
+    dataforseo_password: str | None = None
+    # Compatibilidade com o nome antigo usado pelo sensor da Attention Matrix.
+    dataforseo_senha: str | None = None
     wp_url: str | None = None
     wp_user: str | None = None
     wp_app_token: str | None = None

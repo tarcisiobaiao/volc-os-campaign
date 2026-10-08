@@ -174,6 +174,7 @@ def test_actual_image_review_controls_image_admission(tmp_path, flag):
 
     deps.image_proc = SimpleNamespace(to_webp=save)
     state = RunState(run_id="image")
+    state.editorial_v2 = True
     page = Page(page_number=1, page_type="LANDING PAGE", h1_title="Guia", slug="guia")
     steps.step_image(state, page, deps)
     assert IMAGE_RULES in prompts[0]
@@ -182,6 +183,7 @@ def test_actual_image_review_controls_image_admission(tmp_path, flag):
     review_prompt = llm.calls[1]["messages"][0]["content"][0]["text"]
     assert "Headline: Guia" in review_prompt
     assert "Trace each person's visible arms" in review_prompt
+    assert "must not carry readable words" in review_prompt
     image_message = llm.calls[1]["messages"][0]["content"][1]
     assert image_message["image_url"]["url"].startswith("data:image/webp;base64,")
 
@@ -198,6 +200,13 @@ def test_old_compliance_only_image_review_cannot_approve_anatomy(tmp_path):
     ):
         receipt["review"].pop(field)
     assert reviewed_image_issues(state, 1)
+
+
+def test_prompt_visual_v2_reserva_tipografia_e_numeros_para_codigo():
+    prompt = render("image_prompt_v2", headline="Entenda a conta",
+                    objective="Ler o consumo", keywords=["80 kWh"], page_number=4)
+    assert "NO GENERATED TYPOGRAPHY" in prompt
+    assert "numbers, labeled charts" in prompt
 
 
 @pytest.mark.parametrize("field", ["evidence", "anatomy_evidence", "topic_evidence"])

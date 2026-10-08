@@ -2590,7 +2590,8 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
             [{"role": "user", "content": [
                 {"type": "text", "text": render(
                     "image_review", headline=page.h1_title,
-                    objective=page.emotional_objective, keywords=page.target_keywords)},
+                    objective=page.emotional_objective, keywords=page.target_keywords,
+                    no_generated_text=bool(getattr(state, "editorial_v2", False)))},
                 {"type": "image_url", "image_url": {
                     "url": "data:image/webp;base64," + base64.b64encode(
                         Path(saved).read_bytes()).decode("ascii"), "detail": "high"}},

@@ -139,6 +139,11 @@ jornada, o estado do leitor naquele ponto. Referências entre páginas usam duvi
   Não escreva URL de fonte: o dossiê vincula cada requisito à fonte citada e verificada. Sem
   fonte factual, o ativo não é gerado. Nunca peça
   dado pessoal.
+  Se a página ensinar um cálculo determinístico que o leitor teria de fazer à mão e os
+  requisitos factuais puderem provar entradas e regra, declare o ativo e o bloco
+  plano_visual correspondente (ferramenta → html). Se entradas ou regra não puderem ser
+  verificadas, não improvise a ferramenta: mantenha a explicação textual e declare os
+  requisitos ausentes para o dossiê.
 Vocabulários fechados: canal paid_search | organic_search | discover | social | display | direct;
 entrada_direta autocontida | depende_de_contexto; classificacao boa | prematura | nao_aplicavel;
 profundidade resposta_direta | guiada; monetizacao.papel nenhum | secundario | principal.
@@ -264,6 +269,9 @@ def build_funnel_architect_user(
              "uma lacuna compartilhada. Declare jornada.plano_visual, jornada.ativos, "
              "jornada.screenshot_necessario (boolean), jornada.imagem_necessaria (boolean) e "
              "jornada.schema_tipos (lista). "
+             "Quando a página ensinar um cálculo determinístico que poupa trabalho manual e "
+             "seus requisitos puderem provar regra e entradas, declare o ativo HTML e seu "
+             "plano_visual; sem lastro verificável, não gere a ferramenta. "
              "O perfil_emocional é uma HIPÓTESE comportamental derivada da linguagem de busca, "
              "não uma pessoa inventada, demografia, fato ou autorização para exagero. Use cada "
              "sinal_emocional para decidir ordem, entrega e direção do CTA; traduza direcao_cta "

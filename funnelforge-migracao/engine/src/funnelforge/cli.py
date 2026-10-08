@@ -24,6 +24,8 @@ def _export_secrets(secrets: Secrets) -> None:
         "GEMINI_API_KEY": secrets.gemini_api_key,
         "ANTHROPIC_API_KEY": secrets.anthropic_api_key,
         "PERPLEXITY_API_KEY": secrets.perplexity_api_key,
+        "DATAFORSEO_LOGIN": secrets.dataforseo_login,
+        "DATAFORSEO_PASSWORD": secrets.dataforseo_password or secrets.dataforseo_senha,
     }
     for name, value in env_map.items():
         if value:
@@ -134,7 +136,11 @@ def build_deps(settings: Settings) -> Deps:
     if settings.run.inteligencia_pre_redacao:
         from funnelforge.adapters.attention_matrix import modulo_do_repo
         attention_matrix = modulo_do_repo(
-            "backend/app/motor_pautas/sensores/dataforseo.py").Cliente()
+            "backend/app/motor_pautas/sensores/dataforseo.py").Cliente(
+                login=settings.secrets.dataforseo_login,
+                senha=(settings.secrets.dataforseo_password
+                       or settings.secrets.dataforseo_senha),
+            )
 
     return Deps(
         llm=llm,

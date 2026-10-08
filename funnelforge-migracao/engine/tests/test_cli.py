@@ -49,10 +49,14 @@ def test_resume_missing_run_id_fails_cleanly(tmp_path, monkeypatch, config_files
 def test_export_secrets_populates_environ(monkeypatch):
     from funnelforge.cli import _export_secrets
     from funnelforge.config.settings import Secrets
-    for k in ["OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "PERPLEXITY_API_KEY"]:
+    for k in ["OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "PERPLEXITY_API_KEY",
+              "DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"]:
         monkeypatch.delenv(k, raising=False)
-    _export_secrets(Secrets(openai_api_key="sk-x", perplexity_api_key="pk-y"))
+    _export_secrets(Secrets(openai_api_key="sk-x", perplexity_api_key="pk-y",
+                            dataforseo_login="login-x", dataforseo_password="senha-y"))
     import os
     assert os.environ["OPENAI_API_KEY"] == "sk-x"
     assert os.environ["PERPLEXITY_API_KEY"] == "pk-y"
+    assert os.environ["DATAFORSEO_LOGIN"] == "login-x"
+    assert os.environ["DATAFORSEO_PASSWORD"] == "senha-y"
     assert "GEMINI_API_KEY" not in os.environ  # None secrets are not exported

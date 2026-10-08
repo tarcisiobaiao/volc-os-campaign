@@ -171,6 +171,58 @@ def test_lp_contextual_preserva_presell_primeiro_e_duas_solucoes_diretas():
         "avançar 2", "avançar 3", "avançar 4"]
 
 
+def test_contextual_com_brief_remove_retorno_entre_solucoes():
+    """O esqueleto novo preserva copy contextual, mas nasce acíclico."""
+    s = _settings(); s.run.editorial_v2 = True
+
+    def pagina(n, role, slug, ordinal=0, links=None):
+        return Page(page_number=n, page_type=role.value, role=role, slug=slug,
+                    h1_title=slug, ordinal=ordinal,
+                    editorial={"reader_question":f"q{n}","useful_delivery":f"e{n}",
+                               "cta_label":f"cta {n}","links":links or []})
+    plan = FunnelPlan(total_pages=4, pages=[
+        pagina(1, PageRole.LP, "tema", links=[{"target":"tema-pr","reason":"hub"}]),
+        pagina(2, PageRole.PRESELL, "tema-pr", links=[
+            {"target":"tema-p1","reason":"um"},{"target":"tema-p2","reason":"dois"}]),
+        pagina(3, PageRole.SOLUTION, "tema-p1", 1, [{"target":"tema-p2","reason":"avançar"}]),
+        pagina(4, PageRole.SOLUTION, "tema-p2", 2, [{"target":"tema-p1","reason":"voltar"}]),
+    ])
+    plan.brief_pre_arquitetura = {"intencao_principal":"tema"}
+    build_funnel_routes(plan, s)
+    assert [r.target for r in plan.pages[2].routes] == ["tema-p2"]
+    assert plan.pages[3].routes == []
+
+
+def test_lp_com_brief_preserva_tres_destinos_escolhidos_pela_jornada():
+    s = _settings(); s.run.editorial_v2 = True
+    s.run.presell_hubs = 1; s.run.lp_direct_solutions = 2
+
+    def pagina(n, role, slug, ordinal=0, links=None):
+        return Page(page_number=n, page_type=role.value, role=role, slug=slug,
+                    h1_title=slug, ordinal=ordinal,
+                    editorial={"reader_question":f"q{n}","useful_delivery":f"e{n}",
+                               "cta_label":f"cta {n}","links":links or []})
+    plan = FunnelPlan(total_pages=6, pages=[
+        pagina(1, PageRole.LP, "tema", links=[
+            {"target":"tema-pr","reason":"qualificar","cta":"Escolher minha situação"},
+            {"target":"tema-p3","reason":"dor direta","cta":"Desconto não apareceu"},
+            {"target":"tema-p4","reason":"perda direta","cta":"Desconto sumiu"},
+        ]),
+        pagina(2, PageRole.PRESELL, "tema-pr"),
+        pagina(3, PageRole.SOLUTION, "tema-p1", 1),
+        pagina(4, PageRole.SOLUTION, "tema-p2", 2),
+        pagina(5, PageRole.SOLUTION, "tema-p3", 3),
+        pagina(6, PageRole.SOLUTION, "tema-p4", 4),
+    ])
+    plan.brief_pre_arquitetura = {"intencao_principal":"tema"}
+    build_funnel_routes(plan, s)
+    assert [(r.target, r.anchor) for r in plan.pages[0].routes] == [
+        ("tema-pr", "Escolher minha situação"),
+        ("tema-p3", "Desconto não apareceu"),
+        ("tema-p4", "Desconto sumiu"),
+    ]
+
+
 def test_bind_official_route_usa_rotulo_concreto_fornecido_pelo_dossie():
     page = Page(page_number=3, page_type="SOLUTION", role=PageRole.SOLUTION,
                 slug="tema-p1", h1_title="Tema")

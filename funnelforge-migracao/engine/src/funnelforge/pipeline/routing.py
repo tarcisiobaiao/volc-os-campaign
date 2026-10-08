@@ -135,10 +135,38 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
             routes.append(Route(
                 placement=_placement(len(routes), len(contract.links)), kind="funnel",
                 target=target.slug, anchor=cta_do_link(link, target), reason=link.reason))
+        # No contrato novo, as soluções formam uma progressão e o revisor de
+        # jornada proíbe loops sem ganho. O arquiteto ainda pode sugerir links
+        # condicionais de retorno ("se sua dúvida era outra..."); mantê-los como
+        # CTA navegável cria ciclos que barram o funil inteiro. Para runs com
+        # brief pré-arquitetura, a topologia é determinística: SOLUTION só aponta
+        # para soluções posteriores. A copy contextual do link aprovado é
+        # preservada; apenas a aresta regressiva é descartada.
+        if (plan.brief_pre_arquitetura is not None
+                and effective_role(page) is PageRole.SOLUTION):
+            ordinal = page.ordinal
+            routes = [
+                rota for rota in routes
+                if (effective_role(by_slug[rota.target]) is PageRole.SOLUTION
+                    and by_slug[rota.target].ordinal > ordinal)
+            ]
         lp_expandida = bool(
             effective_role(page) is PageRole.LP
             and settings.run.editorial_v2
             and (settings.run.presell_hubs or settings.run.lp_direct_solutions)
+            # O arquiteto novo já escolhe os três destinos com base na
+            # jornada. Sobrescrevê-los pelas primeiras páginas em ordem do
+            # card separava copy e href (o revisor real da Tarifa Social pegou
+            # exatamente isso). A expansão continua sendo o fallback para o
+            # contrato antigo ou para um plano que trouxe destinos de menos.
+            and not (
+                plan.brief_pre_arquitetura is not None
+                and len(routes) >= min(
+                    3,
+                    max(0, settings.run.presell_hubs)
+                    + max(0, settings.run.lp_direct_solutions),
+                )
+            )
         )
         if lp_expandida:
             # O contrato editorial descreve a progressão principal, mas não é
