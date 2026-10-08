@@ -77,7 +77,7 @@ def raw_arquiteto():
         pages.append({'page_number':w['page_num'],'page_type':('LANDING PAGE' if w['page_num']==1 else 'SOLUÇÃO'),'slug':w['current_url'],'h1_title':w['headline'],'emotional_objective':w['objective'],'main_content_structure':p['subtitles'],'target_keywords':[],'hook_to_next_page':w['cta_text'],'editorial':w['editorial'],'jornada':w['jornada']})
     return {'funnel_strategy':a['funnel_strategy'],'pages':pages}
 
-def cenario(tmp_path,monkeypatch,invalida=False):
+def cenario(tmp_path,monkeypatch,invalida=False,aliases_conflitantes=False):
     pesquisa=_Pesquisa([],FATOS_COMPLETOS); _ligar_pesquisa(monkeypatch,pesquisa)
     s=settings_do_cenario(tmp_path,editorial_v2=True,passos_v2=True)
     s.run.dossie_factual=True; s.run.page_workers=3; s.run.imagens_habilitadas=False; s.run.max_retries=0
@@ -90,6 +90,11 @@ def cenario(tmp_path,monkeypatch,invalida=False):
         if len(messages)==2 and 'brief_pre_arquitetura' in text:
             a=raw_arquiteto()
             if invalida: a['pages'][1]['jornada']['valor']=None
+            if aliases_conflitantes:
+                a['pages'][0]['jornada']['requisitos'] = [{
+                    'id': 'regra.correta', 'fact_id': 'regra.diferente',
+                    'descricao': 'Regra correta', 'afirmacao': 'Outra afirmação',
+                }]
             return json.dumps(a)
         return responder_v2(model,messages)
     llm,deps=montar_deps(tmp_path,s,responder)
@@ -101,6 +106,14 @@ def cenario(tmp_path,monkeypatch,invalida=False):
 
 def test_invalida_zero_writer(tmp_path,monkeypatch):
     state,llm,pesquisa=cenario(tmp_path,monkeypatch,True)
+    assert state.step_status['funnel_graph'].status.value=='FAILED'
+    assert not any(k.startswith('write_') for k in state.step_status)
+    assert len(llm.calls)==1 and len(pesquisa.pedidos)==1
+
+
+def test_alias_conflitante_recusado_antes_do_writer(tmp_path,monkeypatch):
+    state,llm,pesquisa=cenario(tmp_path,monkeypatch,aliases_conflitantes=True)
+    assert state.step_status['extract'].status.value=='FAILED'
     assert state.step_status['funnel_graph'].status.value=='FAILED'
     assert not any(k.startswith('write_') for k in state.step_status)
     assert len(llm.calls)==1 and len(pesquisa.pedidos)==1
@@ -189,3 +202,79 @@ def test_contexto_historico_compacto_sem_duplicacao_no_prompt():
     assert len(b.contexto['historico']['paginas_anteriores'])==5
     prompt=mensagens_do_arquiteto(b)[1]['content']
     assert prompt.count('"paginas_anteriores"')==1
+
+
+def test_resposta_real_do_arquiteto_normaliza_aliases_de_requisito():
+    """Regressão do canário real de 08/10: alias seguro não derruba o funil."""
+    contrato = modulo_do_repo("backend/app/agents/funnel_pro/jornada_contrato.py")
+    factory = modulo_do_repo("backend/app/agents/funnel_pro/page_factory.py")
+    raw = raw_arquiteto()
+    for numero, pagina in enumerate(raw["pages"], 1):
+        pagina["jornada"]["requisitos"] = [{
+            "fact_id": f"p{numero}_r1",
+            "afirmacao": "Confirmar a regra oficial antes de publicar.",
+            "base_disponivel": "pesquisa oficial adicional necessária",
+        }]
+    normalizada, recibo = contrato.normalizar_arquitetura(raw)
+    assert recibo["estado"] == "valida"
+    assert len(recibo["normalizacoes"]) == len(raw["pages"]) * 2
+    assert len(recibo["avisos"]) == len(raw["pages"])
+    for pagina in normalizada["pages"]:
+        requisito = pagina["jornada"]["requisitos"][0]
+        assert set(requisito) == {"id", "descricao"}
+    canonica = {
+        "funnel_strategy": normalizada["funnel_strategy"],
+        "pages": factory.architect_pages_to_funnel_pages(normalizada),
+        "writing_jobs": factory.page_factory(normalizada)["writingJobs"],
+    }
+    plano = plano_do_funnel_architecture(canonica)
+    assert len(plano.pages) == 5
+    assert all(p.jornada.requisitos[0].id.startswith("p") for p in plano.pages)
+
+
+def test_aliases_conflitantes_de_requisito_falham_fechado():
+    contrato = modulo_do_repo("backend/app/agents/funnel_pro/jornada_contrato.py")
+    raw = raw_arquiteto()
+    raw["pages"][0]["jornada"]["requisitos"] = [{
+        "id": "regra.correta",
+        "fact_id": "regra.diferente",
+        "descricao": "Regra correta",
+        "afirmacao": "Outra afirmação",
+    }]
+    _, recibo = contrato.normalizar_arquitetura(raw)
+    assert recibo["estado"] == "invalida"
+    assert {e["motivo"] for e in recibo["erros"]} == {
+        "id e fact_id conflitantes", "descricao e afirmacao conflitantes"
+    }
+
+
+def test_saida_direta_do_arquiteto_aplica_papeis_e_reescreve_links():
+    """Regressão do 2º canário: a saída crua ainda não tem sufixos de papel."""
+    contrato = modulo_do_repo("backend/app/agents/funnel_pro/jornada_contrato.py")
+    factory = modulo_do_repo("backend/app/agents/funnel_pro/page_factory.py")
+    roles = modulo_do_repo("backend/app/entities/funnel_roles.py")
+    raw = raw_arquiteto()
+    mapa = {
+        "por-onde-comecar-senac-pr": "por-onde-comecar-senac",
+        "tipos-de-curso-senac-p1": "tipos-de-curso-senac",
+        "bolsas-de-estudo-senac-p2": "bolsas-de-estudo-senac",
+        "portal-do-senac-do-seu-estado-p3": "portal-do-senac-do-seu-estado",
+    }
+    for pagina in raw["pages"]:
+        pagina["slug"] = mapa.get(pagina["slug"], pagina["slug"])
+        for link in pagina["editorial"]["links"]:
+            link["target"] = mapa.get(link["target"], link["target"])
+    normalizada, recibo = contrato.normalizar_arquitetura(raw)
+    assert recibo["estado"] == "valida"
+    paginas = factory.architect_pages_to_funnel_pages(normalizada)
+    jobs = factory.page_factory(normalizada)["writingJobs"]
+    paginas, jobs = roles.apply_roles_and_slugs(paginas, jobs)
+    canonica = {"funnel_strategy": normalizada["funnel_strategy"],
+                "pages": paginas, "writing_jobs": jobs}
+    plano = plano_do_funnel_architecture(canonica)
+    slugs = {p.slug for p in plano.pages}
+    assert "por-onde-comecar-senac-pr" in slugs
+    assert "tipos-de-curso-senac-p1" in slugs
+    assert [p.ordinal for p in plano.pages if p.role.value == "SOLUTION"] == [1, 2, 3]
+    assert all(link.target in slugs for p in plano.pages
+               if p.editorial for link in p.editorial.links)

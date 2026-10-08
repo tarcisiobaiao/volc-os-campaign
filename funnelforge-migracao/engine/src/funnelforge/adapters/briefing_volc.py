@@ -313,6 +313,11 @@ def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
             page_number=posicao,
             page_type=_PAGE_TYPE_POR_PAPEL[papel],
             role=papel,
+            # O contrato do backend já fixa LP=1, PRESELL=2 e soluções a
+            # partir de 3. Carregar o ordinal aqui torna o plano coerente
+            # mesmo antes do pós-processamento do pipeline (por exemplo numa
+            # retomada): sem isso todas as soluções pareciam terminais.
+            ordinal=max(0, posicao - 2) if papel is PageRole.SOLUTION else 0,
             h1_title=_texto(wb.get("headline")) or _texto(canonica.get("page_title")),
             slug=slug,
             emotional_objective=(_texto(wb.get("objective"))

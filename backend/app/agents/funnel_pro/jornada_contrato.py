@@ -300,6 +300,62 @@ def _normalizar_pagina(j: Dict[str, Any], onde: str, rel: _Relatorio) -> None:
             if "entrega" in item:
                 ok.append(item["entrega"])
         valor["entregas"] = ok
+    requisitos = j.get("requisitos")
+    if requisitos is not None:
+        if not isinstance(requisitos, list):
+            rel.erro(f"{onde}.requisitos", "requisitos deve ser lista")
+        else:
+            for i, requisito in enumerate(requisitos):
+                local = f"{onde}.requisitos[{i}]"
+                if not isinstance(requisito, dict):
+                    rel.erro(local, "requisito deve ser objeto")
+                    continue
+                # O arquiteto descreve o que a página ainda precisa provar.
+                # Alguns modelos chamam esse identificador de `fact_id` e a
+                # descrição de `afirmacao`, embora ainda não exista um fato.
+                # A fronteira aceita somente esses aliases inequívocos, deixa
+                # recibo da normalização e continua estrita em caso de conflito.
+                for canonico, alias in (("id", "fact_id"),
+                                        ("descricao", "afirmacao")):
+                    principal = requisito.get(canonico)
+                    alternativo = requisito.get(alias)
+                    if _vazio(principal) and not _vazio(alternativo):
+                        requisito[canonico] = alternativo
+                        rel.normalizacoes.append({
+                            "campo": f"{local}.{canonico}",
+                            "de": alias,
+                            "para": canonico,
+                        })
+                    elif not _vazio(principal) and not _vazio(alternativo):
+                        iguais = (canon(principal) == canon(alternativo)
+                                  if canonico == "id"
+                                  else str(principal).strip() == str(alternativo).strip())
+                        if not iguais:
+                            rel.erro(local, f"{canonico} e {alias} conflitantes")
+                    requisito.pop(alias, None)
+                if not _vazio(requisito.get("id")):
+                    bruto = requisito["id"]
+                    valor_id = canon(bruto)
+                    if valor_id != bruto:
+                        rel.normalizacoes.append({
+                            "campo": f"{local}.id", "de": bruto, "para": valor_id,
+                        })
+                        requisito["id"] = valor_id
+                    if not re.match(r"^[a-z0-9_.]+$", valor_id):
+                        rel.erro(f"{local}.id", f"'{bruto}' não é um id factual válido")
+                else:
+                    rel.erro(f"{local}.id", "obrigatório")
+                if not str(requisito.get("descricao") or "").strip():
+                    rel.erro(f"{local}.descricao", "obrigatória")
+                # `base_disponivel` é contexto de pesquisa, não parte do
+                # contrato factual. Preservá-lo tornaria a arquitetura uma
+                # falsa fonte; descartá-lo explicitamente é seguro e auditável.
+                if "base_disponivel" in requisito:
+                    requisito.pop("base_disponivel", None)
+                    rel.avisos.append({
+                        "campo": f"{local}.base_disponivel",
+                        "motivo": "contexto não factual descartado; o dossiê fará a verificação",
+                    })
     _evidencias(j.get("evidencias"), f"{onde}.evidencias", rel)
 
 

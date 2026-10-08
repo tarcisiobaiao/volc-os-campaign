@@ -167,6 +167,18 @@ def test_lp_contextual_preserva_presell_primeiro_e_duas_solucoes_diretas():
     assert [r.target for r in plan.pages[0].routes] == [
         "tema-pr", "tema-p1", "tema-p2"]
     assert [r.placement for r in plan.pages[0].routes] == ["hero", "inline", "footer"]
+    assert [r.anchor for r in plan.pages[0].routes] == [
+        "avançar 2", "avançar 3", "avançar 4"]
+
+
+def test_bind_official_route_usa_rotulo_concreto_fornecido_pelo_dossie():
+    page = Page(page_number=3, page_type="SOLUTION", role=PageRole.SOLUTION,
+                slug="tema-p1", h1_title="Tema")
+    bind_official_route(
+        page, ["https://gov.example/servico"], role=PageRole.SOLUTION,
+        is_terminal=False, official_anchor="Ver orientação no site externo de Agência X >>>",
+    )
+    assert page.routes[0].anchor == "Ver orientação no site externo de Agência X >>>"
 
 
 def test_presell_rotates_neutrally_by_prN_index_and_covers_all_solutions():

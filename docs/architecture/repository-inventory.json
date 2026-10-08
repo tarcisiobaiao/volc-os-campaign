@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T15:31:56-03:00",
+  "generated_at": "2026-10-08T17:46:45-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 817,
-    "markdown": 604,
+    "files": 819,
+    "markdown": 606,
     "sql": 213,
     "tracked": 810,
-    "untracked": 7,
+    "untracked": 9,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 34,
-      "documentation": 441,
+      "documentation": 443,
       "generated": 2,
       "module-guide": 40,
       "product-document": 23,
@@ -1257,7 +1257,7 @@
       "tracked": true,
       "bytes": 23763,
       "lines": 312,
-      "sha256": "5e3956d1dfa889468dc519a7f313bee7c4c7a3d67aeb3b22578e47e5c5718088",
+      "sha256": "ad96cb97cda99f3022f2dd7b3ff0804b911143f02b3c4016145399c5ac452f04",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1771,9 +1771,9 @@
       "extension": ".md",
       "classification": "audit",
       "tracked": true,
-      "bytes": 11107,
-      "lines": 180,
-      "sha256": "0f82bd87853a10c3fb7849c11fe2215a2862c2ea501b953c4103e2c6d753fecb",
+      "bytes": 13268,
+      "lines": 215,
+      "sha256": "4bb04634a9116e232538b65db944df27dee5bc73db10f26c89f5fd3e238aee85",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6447,6 +6447,18 @@
       "sql_risk": null
     },
     {
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-20261008-pre-redacao-pos-fix-final-20261008/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 12746,
+      "lines": 201,
+      "sha256": "cb74a3adaa0a66c056c7da3ab41f92adeb115bd87d34383d3d5bdbb5abfa803b",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v2/report.md",
       "extension": ".md",
       "classification": "documentation",
@@ -6478,6 +6490,18 @@
       "bytes": 7634,
       "lines": 106,
       "sha256": "26a48b566645f3f1bda2e63eb8e91cac7e6034b706ee169e837eeccdce5aefe3",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-guia-20261008-pre-redacao-validacao-final-20261008/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 12071,
+      "lines": 167,
+      "sha256": "16da2cd6e2e0d2c609408a3162611a2224c383ecfe57e50bc2ec2bbfaa285a57",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

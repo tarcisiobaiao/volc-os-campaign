@@ -33,6 +33,47 @@ def _strip_separators_around_buttons(content: str) -> str:
     return content
 
 
+_BUTTON_GROUP_RE = (
+    r"<!--\s*wp:buttons(?P<attrs>(?:(?!-->)[\s\S])*?)-->\s*"
+    r"(?P<open><div\b[^>]*\bwp-block-buttons\b[^>]*>)"
+    r"(?P<body>[\s\S]*?)</div>\s*<!--\s*/wp:buttons\s*-->"
+)
+_BUTTON_DECORATION = (
+    r"(?:\s*|"
+    r"<!--\s*wp:(?:spacer|separator)(?![\w-])(?:(?!-->)[\s\S])*?-->"
+    r"[\s\S]*?<!--\s*/wp:(?:spacer|separator)\s*-->\s*)*"
+)
+_ADJACENT_BUTTON_GROUPS_RE = re.compile(
+    "(?P<first>" + _BUTTON_GROUP_RE + ")" + _BUTTON_DECORATION
+    + "(?P<second>" + _BUTTON_GROUP_RE.replace("?P<", "?P<second_") + ")",
+    re.I,
+)
+
+
+def _merge_adjacent_button_groups(content: str) -> str:
+    """Funde pilhas de CTA consecutivas sem alterar rótulos ou destinos.
+
+    Gutenberg representa vários botões irmãos dentro de um único
+    ``wp:buttons``. Modelos às vezes repetem o contêiner para cada botão; isso
+    cria saturação visual e o gate corretamente recusa. A correção é puramente
+    estrutural e determinística, portanto pertence à normalização anterior ao
+    gate — não a uma nova chamada de modelo.
+    """
+    anterior = None
+    while content != anterior:
+        anterior = content
+
+        def juntar(m: re.Match) -> str:
+            return (
+                f"<!-- wp:buttons{m.group('attrs')}-->"
+                f"{m.group('open')}{m.group('body').rstrip()}\n"
+                f"{m.group('second_body').lstrip()}</div><!-- /wp:buttons -->"
+            )
+
+        content = _ADJACENT_BUTTON_GROUPS_RE.sub(juntar, content)
+    return content
+
+
 # Canonical compliance footnote: identical text (keeps the `compliance`
 # validator's "utilidade pública" anchor), but discreet -- centered, 12px,
 # italic, muted -- and always at the END, not a body-font banner up top.
@@ -362,7 +403,8 @@ def normalize_gutenberg(html: str, *, ad_paragraph_anchors: list[int] | None = N
     # now an explicit project input rather than a hidden enhancer constant.
     min_flat = (max(ad_paragraph_anchors) + 1) if ad_paragraph_anchors else _LEADING_FLAT_PARAS
     result = _flatten_leading_boxes(result, min_flat)  # ad-anchor zone must be plain
-    return _strip_separators_around_buttons(result)
+    result = _strip_separators_around_buttons(result)
+    return _merge_adjacent_button_groups(result)
 
 
 def resumo_da_normalizacao(antes: str, depois: str, *, etapa: str = "normalize_gutenberg") -> dict:

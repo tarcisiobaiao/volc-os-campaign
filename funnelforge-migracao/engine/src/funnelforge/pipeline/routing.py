@@ -155,9 +155,19 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
             for alvo in desejados:
                 rota = existentes.get(alvo.slug)
                 if rota is None:
+                    # A página de destino já traz o rótulo aprovado pelo
+                    # arquiteto. Recriar a copy a partir do slug/H1 aqui
+                    # produzia CTAs genéricos como "Ver o guia de revenda",
+                    # embora o contrato dissesse "Conferir revenda e
+                    # cobranças". A expansão da LP decide TOPOLOGIA, não copy.
+                    rotulo = (
+                        alvo.editorial.cta_label.strip()
+                        if alvo.editorial and alvo.editorial.cta_label.strip()
+                        else _anchor_for(alvo.h1_title, len(expandidas), alvo.slug)
+                    )
                     rota = Route(
                         placement="inline", kind="funnel", target=alvo.slug,
-                        anchor=_anchor_for(alvo.h1_title, len(expandidas), alvo.slug),
+                        anchor=rotulo,
                         reason="Atalho direto para uma entrega autocontida do funil.",
                     )
                 if rota.target not in {r.target for r in expandidas}:
@@ -308,13 +318,16 @@ def build_funnel_routes(plan: FunnelPlan, settings: Settings,
         page.routes = routes
 
 
+# Compatibilidade do V1: o ramo V2 sempre fornece um rótulo concreto por
+# `official_anchor`; o legado mantém seu texto histórico byte a byte.
 ANCORA_CANAL_OFICIAL = "Consultar no canal oficial >>>"
 
 
 def bind_official_route(page: Page, official_links: list[str], *,
                         role: PageRole, is_terminal: bool,
                         terminal_official: bool = False,
-                        politica: PoliticaDaSaidaOficial | None = None) -> None:
+                        politica: PoliticaDaSaidaOficial | None = None,
+                        official_anchor: str = "") -> None:
     """Liga (tarde) a aresta `external_official` desta página, com a URL que a
     PESQUISA dela trouxe.
 
@@ -333,6 +346,7 @@ def bind_official_route(page: Page, official_links: list[str], *,
     comportamento correto: publicar uma solução que manda o leitor a lugar
     nenhum é pior do que não publicar."""
     page.routes = [r for r in page.routes if r.kind != "external_official"]
+    anchor = official_anchor.strip() or ANCORA_CANAL_OFICIAL
     if politica is not None:
         # JORNADA MANDA: a rota oficial existe só quando a saída é esperada
         # (`nao_aplicavel` nunca é obrigada), `boa` vem antes dos CTAs internos
@@ -343,7 +357,7 @@ def bind_official_route(page: Page, official_links: list[str], *,
             return
         rota = Route(placement="hero" if politica.primeiro else "footer",
                      kind="external_official", target=official_links[0],
-                     anchor=ANCORA_CANAL_OFICIAL)
+                     anchor=anchor)
         page.routes = [rota, *page.routes] if politica.primeiro else [*page.routes, rota]
         return
     if role is not PageRole.SOLUTION or (is_terminal and not terminal_official):
@@ -355,7 +369,7 @@ def bind_official_route(page: Page, official_links: list[str], *,
         return
     page.routes = [*page.routes,
                    Route(placement="inline", kind="external_official",
-                         target=official_links[0], anchor=ANCORA_CANAL_OFICIAL)]
+                         target=official_links[0], anchor=anchor)]
 
 
 def resolve_page_links(page: Page, settings: Settings, *,

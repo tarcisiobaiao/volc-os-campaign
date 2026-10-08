@@ -175,3 +175,44 @@ def test_prompt_pre_redacao_explicita_schema_factual_e_visual():
     for chave in ('"id":"entidade.regra"', '"descricao"', '"tipos"', '"critico"',
                   'jornada.screenshot_necessario', 'jornada.imagem_necessaria', 'jornada.schema_tipos'):
         assert chave in p
+
+
+def test_normalizacao_requisitos_aceita_alias_real_e_descarta_contexto_nao_factual():
+    arq = copy.deepcopy(ARQUITETO)
+    arq["funnel_strategy"]["jornada"]["checkpoint"] = "renda"
+    arq["pages"][1]["jornada"]["proxima_duvida"] = ""
+    arq["pages"][1]["jornada"]["requisitos"] = [{
+        "fact_id": "renda.limite",
+        "afirmacao": "Confirmar o limite de renda vigente.",
+        "base_disponivel": "fonte ainda a conferir",
+    }]
+    normal, rel = normalizar_arquitetura(arq)
+    requisito = normal["pages"][1]["jornada"]["requisitos"][0]
+    assert rel["estado"] == "valida"
+    assert requisito == {
+        "id": "renda.limite",
+        "descricao": "Confirmar o limite de renda vigente.",
+    }
+    assert len(rel["normalizacoes"]) == 2
+    assert rel["avisos"] == [{
+        "campo": "pagina[renda-senac].jornada.requisitos[0].base_disponivel",
+        "motivo": "contexto não factual descartado; o dossiê fará a verificação",
+    }]
+
+
+def test_normalizacao_requisitos_recusa_alias_conflitante():
+    arq = copy.deepcopy(ARQUITETO)
+    arq["funnel_strategy"]["jornada"]["checkpoint"] = "renda"
+    arq["pages"][1]["jornada"]["proxima_duvida"] = ""
+    arq["pages"][1]["jornada"]["requisitos"] = [{
+        "id": "renda.limite",
+        "fact_id": "renda.outro",
+        "descricao": "Confirmar o limite.",
+        "afirmacao": "Confirmar outro fato.",
+    }]
+    _, rel = normalizar_arquitetura(arq)
+    assert rel["estado"] == "invalida"
+    assert {erro["motivo"] for erro in rel["erros"]} == {
+        "id e fact_id conflitantes",
+        "descricao e afirmacao conflitantes",
+    }

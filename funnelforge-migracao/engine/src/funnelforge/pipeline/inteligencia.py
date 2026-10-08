@@ -228,8 +228,14 @@ def prompt_do_pacote(state, page):
         signature_block="", author_name=pacote["autor"], author_credential=pacote["credencial"],
         cnpj=pacote["cnpj"], today=pacote["data"], escrita_natural=True,
         briefing_texto=json.dumps(pacote, ensure_ascii=False))
+    regra_lp = (
+        " Na LP, cite o nome da fonte em prosa, mas não gere hyperlink externo "
+        "clicável no corpo; o destino pago deve manter a sessão no funil."
+        if lp else ""
+    )
     return prompt + "\nPacote congelado prevalece: preserve destinos e rótulos aprovados. " \
-        "Não pesquise, não invente ferramentas. Blocos dependentes de lacuna devem ser omitidos."
+        "Não pesquise, não invente ferramentas. Blocos dependentes de lacuna devem ser omitidos." \
+        + regra_lp
 
 
 def revisar_lote(state, pages, deps):

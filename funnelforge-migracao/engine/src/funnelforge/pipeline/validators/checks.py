@@ -927,7 +927,15 @@ def official_link_density(content: str, ctx: dict) -> list[Issue]:
     anchors.feed(content)
     linked = set(anchors.hrefs)
     if ctx.get("is_terminal") and ctx.get("terminal_official"):
-        if linked - verified:
+        # A página terminal pode manter recirculação interna. O contrato da
+        # saída oficial só governa destinos EXTERNOS; comparar todo href com a
+        # lista oficial fazia um link legítimo do próprio funil parecer vazamento.
+        site = urlparse(ctx.get("domain", "")).netloc.lower()
+        externos = {
+            href for href in linked
+            if (host := _url_host(href)) and not (site and _host_matches(host, site))
+        }
+        if externos - verified:
             return [Issue(
                 code="terminal_exit_not_authorized",
                 message="Terminal oficial contem link fora dos destinos verificados desta pagina.",

@@ -177,3 +177,38 @@ contrato congelado (hoje fallback textual + revisão), inspeção visual autenti
 e os demais critérios já pendentes em P10-T22. Nenhuma dessas lacunas autoriza
 um segundo canário nesta missão. P10-T22 permanece partial; cap_funnel conserva
 o estado de negócio anterior.
+
+## Correção e validação final
+
+Uma rodada posterior corrigiu as lacunas reveladas pelo primeiro canário sem
+criar outro motor ou um caminho rápido paralelo. O contrato passa a normalizar
+os aliases reais `fact_id`/`afirmacao` para `id`/`descricao`, mas falha fechado
+se alias e campo canônico divergirem. A extração também aplica papéis, slugs e
+ordinais antes da ponte; a retomada preserva a ordem das páginas; o CTA usa o
+rótulo tipado do destino; uma saída oficial desativada pelo dossiê não reaparece
+por fallback; e grupos Gutenberg de botões adjacentes são consolidados antes do
+gate. O ouro V1 permaneceu intacto.
+
+O canário seco pós-correção
+`gas-do-povo-20261008-pre-redacao-pos-fix-final-20261008` chegou à redação
+paralela com 5/5 writers aprovados, 10 chamadas no plano ChatGPT, duração total
+de 555,455 s e zero publicação. O gate final da LP encontrou uma nova regressão:
+seis fontes oficiais externas tinham sido transformadas em links clicáveis no
+corpo da página paga. O histórico desse canário permanece imutável e registra a
+reprovação corretamente.
+
+A correção final tornou explícito no pacote que fontes externas da LP são
+referências em prosa e adicionou uma sanitização determinística recursiva que
+remove apenas o link externo, preservando texto e links internos. O artefato
+exato reprovado foi recomposto sem nova chamada a modelo: 6 links externos
+foram convertidos em prosa e `content_gate_p1` passou com status `OK` e zero
+issues. A suíte integral terminou com **1.466 passed / 7 skipped / 0 failed**;
+o recorte afetado do backend terminou com **10 passed / 0 failed** e
+`git diff --check` passou.
+
+Veredito honesto: o caminho pré-redação está tecnicamente validado pela suíte,
+pelo canário real até os writers e pelo replay exato do único gate final que
+falhou. Não houve um terceiro canário pago depois da sanitização, publicação,
+deploy ou escrita em WordPress/Supabase/Ads. P10-T22 permanece `partial` pelos
+critérios amplos já existentes (matriz real de modelos, sinal real e inspeção
+visual autenticada), não por uma falha conhecida deste fluxo pré-redação.
