@@ -63,7 +63,7 @@ ENTREGAS_POR_INTENCAO: dict[str, frozenset[str]] = {
 }
 
 #: Campos sem os quais um ativo interativo não é gerado.
-CAMPOS_DO_ATIVO = ("logica", "resultado", "fonte_da_regra", "fallback_sem_js",
+CAMPOS_DO_ATIVO = ("logica", "resultado", "fallback_sem_js",
                    "acessibilidade", "evento_de_medicao")
 
 
@@ -76,6 +76,9 @@ class RevisaoDoEsqueleto:
 def ativo_completo(ativo) -> list[str]:
     """Os campos que faltam num ativo (lista vazia = completo)."""
     faltam = [c for c in CAMPOS_DO_ATIVO if not str(getattr(ativo, c, "") or "").strip()]
+    if not (getattr(ativo, "rule_source_fact_id", "")
+            or str(getattr(ativo, "fonte_da_regra", "") or "").strip()):
+        faltam.append("rule_source_fact_id")
     if not ativo.entradas:
         faltam.append("entradas")
     return faltam
@@ -169,7 +172,14 @@ def _plano_visual(p: Page, b, a) -> None:
         if padrao == "html" and not j.ativos:
             b(Issue(code="ferramenta_sem_ativo",
                     message=f"{onde}: bloco de ferramenta sem `ativos` que a especifique."))
+    declarados = {r.id for r in j.requisitos}
     for k, ativo in enumerate(j.ativos):
+        for campo in ("rule_source_fact_id", "current_value_source_fact_id"):
+            alvo = getattr(ativo, campo, "")
+            if alvo and alvo not in declarados:
+                b(Issue(code="ativo_requisito_inexistente",
+                        message=f"[{j.duvida_id}] ativos[{k}].{campo} = '{alvo}' não é um "
+                                "requisito factual declarado desta página."))
         faltam = ativo_completo(ativo)
         if faltam:
             a(Issue(code="ativo_rejeitado",

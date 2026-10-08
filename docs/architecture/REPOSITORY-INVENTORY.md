@@ -1,6 +1,6 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-07T21:53:34-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-07T22:21:30-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
@@ -65,8 +65,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/adsense_funnel_aggregation.sql` | `sql-needs-lineage` | 6 | 18 |
 | `src/sql/auto_create_projects_trigger.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 3 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 2 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 8 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 4 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 6 |
@@ -77,8 +77,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | 3 | 10 |
 | `src/sql/joinads/01_joinads_metrics.sql` | `sql-migration-line` | 4 | 7 |
 | `src/sql/joinads/03_limpa_ingestao_ruim.sql` | `sql-migration-line` | 1 | 0 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 5 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 3 |
+| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 6 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/pautador/02_publicacao_por_projeto.sql` | `sql-migration-line` | 1 | 0 |
@@ -248,8 +248,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | high | 5 | 14 |
 | `src/sql/cron_campaign_highlights.sql` | `sql-needs-lineage` | medium | 2 | 2 |
 | `src/sql/cron_campaign_highlights_fixed.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
-| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | high | 2 | 3 |
-| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | high | 3 | 7 |
+| `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | high | 2 | 2 |
+| `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | high | 3 | 8 |
 | `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | high | 3 | 4 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/force_recalculate_commissions_today.sql` | `sql-needs-lineage` | medium | 1 | 0 |
@@ -260,8 +260,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | high | 2 | 6 |
 | `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | high | 3 | 8 |
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | high | 3 | 10 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 5 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 3 |
+| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 6 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/n8n_insert_examples.sql` | `sql-needs-lineage` | medium | 1 | 0 |

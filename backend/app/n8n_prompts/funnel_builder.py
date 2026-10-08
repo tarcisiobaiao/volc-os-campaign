@@ -103,8 +103,11 @@ jornada, o estado do leitor naquele ponto. Referências entre páginas usam duvi
   fechamento (nunca entre a pergunta e a resposta).
 - ativos: ferramenta interativa só quando reduz esforço (ex.: conta da renda por pessoa,
   checklist de documentos, seletor por estado). Cada um declara pergunta, entradas, logica,
-  resultado, fonte_da_regra (URL https da regra), fallback_sem_js, acessibilidade,
-  evento_de_medicao e custo_estimado_usd. Sem fonte factual, o ativo não é gerado. Nunca peça
+  resultado, rule_source_fact_id (o id do requisito factual DESTA página que prova a regra)
+  e, se o resultado mostrar valor em reais, current_value_source_fact_id (o id do requisito
+  do valor vigente), fallback_sem_js, acessibilidade, evento_de_medicao e custo_estimado_usd.
+  Não escreva URL de fonte: o dossiê vincula cada requisito à fonte citada e verificada. Sem
+  fonte factual, o ativo não é gerado. Nunca peça
   dado pessoal.
 Vocabulários fechados: canal paid_search | organic_search | discover | social | display | direct;
 entrada_direta autocontida | depende_de_contexto; classificacao boa | prematura | nao_aplicavel;

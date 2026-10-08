@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import unicodedata
 from datetime import date
 from typing import Literal
 
@@ -58,6 +60,10 @@ class CoberturaDaPagina(BaseModel):
     ready_to_write: bool = False
     requisitos: list[CoberturaDoRequisito] = []
     blockers: list[str] = []
+    # Ativo -> fato que prova cada necessidade declarada (regra, valor vigente),
+    # com a abrangência da fonte. E o que não achou fonte aceitável.
+    vinculos: list[dict] = []
+    vinculos_faltantes: list[dict] = []
 
 
 class DossieDaPagina(BaseModel):
@@ -131,6 +137,39 @@ class DossieDoFunil(BaseModel):
         ids = set(pg.fatos_verificados) if so_verificados else (
             set(pg.fatos_verificados) | set(pg.fatos_nao_confirmados) | set(pg.conflitos))
         return [f for f in self.fatos if f.fact_id in ids]
+
+
+_PALAVRAS_NUMERO = {"um": 1.0, "uma": 1.0, "dois": 2.0, "duas": 2.0, "tres": 3.0, "quatro": 4.0,
+                    "cinco": 5.0, "seis": 6.0, "sete": 7.0, "oito": 8.0, "nove": 9.0, "dez": 10.0}
+
+
+def texto_normal(texto: str) -> str:
+    t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9,.$ ]+", " ", t)
+
+
+def numeros_do_texto(texto: str) -> set[float]:
+    """Os números de um texto pelo VALOR: '02' = '2' = 'dois'; '1,5' = '1.5';
+    '3.242,00' = 3242."""
+    alvo = texto_normal(texto)
+    achados = set()
+    for n in re.findall(r"\d+(?:[.,]\d+)*", alvo):
+        if re.fullmatch(r"\d{1,3}(\.\d{3})+(,\d+)?", n):
+            n = n.replace(".", "").replace(",", ".")
+        else:
+            n = n.replace(",", ".")
+        try:
+            achados.add(float(n))
+        except ValueError:
+            continue
+    achados |= {v for p, v in _PALAVRAS_NUMERO.items() if re.search(rf"\b{p}\b", alvo)}
+    return achados
+
+
+def nucleo_da_unidade(unidade: str) -> str:
+    """A dimensão da unidade: 'salários mínimos federais por pessoa' -> 'salarios'."""
+    partes = texto_normal(unidade).split()
+    return partes[0] if partes else ""
 
 
 def json_canonico(dados: object) -> str:

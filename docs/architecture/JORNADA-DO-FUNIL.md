@@ -118,6 +118,17 @@ Com jornada e grafo aprovado, ANTES de qualquer briefing ou redação:
    (`JornadaDaPagina.requisitos`, ou um derivado da resposta principal) com
    fato `verified`; saída oficial exigida com canal verificado; cálculo com
    fato numérico; ferramenta com a fonte da regra no lastro;
+   Ativo interativo: o arquiteto declara a NECESSIDADE por requisito
+   (`rule_source_fact_id`, e `current_value_source_fact_id` quando o ativo
+   mostra valor em reais), nunca a URL da prova. O dossiê vincula cada uma ao
+   melhor fato citado, verificado e de fonte oficial: regra = fonte nacional
+   (host `senac.br` ou `*.gov.br` federal) ou regional da UF declarada em
+   `FunnelPlan.jornada.ufs`; valor vigente = nacional, regional da UF ou edital
+   oficial do ano corrente, com UF e data explícitas. Fonte regional nunca
+   prova regra universal; sem vínculo, a página bloqueia e a complementação
+   pede exatamente a prova que falta. `fonte_da_regra` (URL) é legado: só vale
+   em card sem os ids. Conflito compara números pelo valor dentro da mesma
+   dimensão de unidade ("até 2" = "02 (dois)" salários mínimos);
 5. até 2 rodadas de complementação, dirigidas só ao que faltou;
 6. `dossie_factual.json` (`domain/dossie.py`: FunnelDossier → PageDossier →
    fatos → CoverageResult), congelado por SHA-256 do conteúdo. Página sem

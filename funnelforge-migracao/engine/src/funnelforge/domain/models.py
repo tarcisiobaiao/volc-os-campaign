@@ -264,17 +264,30 @@ class BlocoVisual(BaseModel):
 
 
 class AtivoInterativo(BaseModel):
-    """Um widget pedido pelo arquiteto. Só é gerado quando `fonte_da_regra`
-    aparece na pesquisa daquela página (ver `steps.step_widget`)."""
+    """Um widget pedido pelo arquiteto. O arquiteto declara a NECESSIDADE
+    semântica da prova — `rule_source_fact_id` (o requisito factual da página
+    que prova a regra) e, se o ativo mostra valor em reais,
+    `current_value_source_fact_id` — e o dossiê vincula cada uma à melhor fonte
+    citada e verificada. A URL da prova não é escolhida de antemão.
+
+    `fonte_da_regra` é LEGADO (cards anteriores ao contrato): sem os ids, a URL
+    tem de estar entre as fontes verificadas, como antes."""
     pergunta: str = Field(min_length=1)
     entradas: list[str] = []
     logica: str = ""
     resultado: str = ""
+    rule_source_fact_id: str = ""
+    current_value_source_fact_id: str = ""
     fonte_da_regra: str = ""
     fallback_sem_js: str = ""
     acessibilidade: str = ""
     evento_de_medicao: str = ""
     custo_estimado_usd: float | None = None
+
+    @field_validator("rule_source_fact_id", "current_value_source_fact_id", mode="before")
+    @classmethod
+    def _requisito(cls, value: object) -> object:
+        return canon_rotulo(value) if value else ""
 
 
 class RequisitoFactual(BaseModel):
@@ -364,6 +377,15 @@ class JornadaDoFunil(BaseModel):
     coortes: list[CoorteDeEntrada] = []
     hipotese_de_medicao: str = ""
     evidencias: list[EvidenciaDaJornada] = []
+    # Abrangência geográfica do conteúdo (siglas de UF). Vazio = nacional: fonte
+    # regional não vale como prova universal de regra.
+    ufs: list[str] = []
+
+    @field_validator("ufs", mode="before")
+    @classmethod
+    def _ufs(cls, value: object) -> object:
+        return [str(u).strip().lower() for u in (value or []) if str(u).strip()]
+
 
     @field_validator("solucao_principal", "checkpoint", mode="before")
     @classmethod

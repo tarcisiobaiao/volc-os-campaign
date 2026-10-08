@@ -35,7 +35,8 @@ PSG = "https://www.senac.br/psg"
 SP = "https://www.sp.senac.br/programa-senac-de-gratuidade"
 EAD = "https://www.ead.senac.br"
 INSCR = "https://www.sp.senac.br/inscricao"
-CITADAS = [PSG, SP, EAD, INSCR]
+RO = "https://www.ro.senac.br/edital-de-selecao-no-02-2026"
+CITADAS = [PSG, SP, EAD, INSCR, RO]
 
 
 def _fato(afirmacao, fonte, paginas, requisitos=(), tipo="processo", valor="", unidade="",
@@ -60,6 +61,9 @@ FATOS_COMPLETOS = [
           ["inscricao.como_se_inscrever"], tipo="processo"),
     _fato("Na inscrição o candidato autodeclara a renda familiar", INSCR, ["inscricao"],
           ["inscricao.documentos"], tipo="condicao"),
+    _fato("Em 2026 o limite equivale a R$ 3.242,00 por pessoa (edital do Senac-RO)", RO,
+          ["renda"], ["renda.valor_vigente"], tipo="numero", valor="3.242,00", unidade="R$",
+          vigente="2026-01-14"),
 ]
 
 
@@ -101,17 +105,10 @@ class _Pesquisa:
 
 
 def _arq_com_requisito_de_renda():
-    arq = arquitetura()
-    for job in arq["writing_jobs"]:
-        j = job["writer_briefing"]["jornada"]
-        if j["duvida_id"] == "renda":
-            j["requisitos"] = [{"id": "renda.limite_per_capita",
-                                "descricao": "limite de renda per capita do PSG",
-                                "tipos": ["numero", "condicao"]}]
-        # o ativo da renda aponta para a fonte da regra que a pesquisa cita
-        for a in j.get("ativos", []):
-            a["fonte_da_regra"] = PSG
-    return arq
+    """A arquitetura SENAC como a fixture declara: o ativo da renda pede a regra
+    (`renda.limite_per_capita`) e o valor vigente (`renda.valor_vigente`) por
+    requisito, sem URL presumida."""
+    return arquitetura()
 
 
 def _estado(arq=None):
@@ -391,3 +388,151 @@ def test_resposta_vazia_do_provedor_aborta_sem_complementar_e_guarda_o_custo(tmp
     assert all(state.step_status[f"blocked_p{p.page_number}"].status.value == "FAILED"
                for p in state.plan.pages)
 
+
+
+# ---------------------------------------------------------------------------
+# contrato de evidência do ativo: necessidade por requisito, vínculo por fonte
+# ---------------------------------------------------------------------------
+
+MA = "https://ma.senac.br/wp-content/uploads/2026/03/EDITAL-PSG-No-56.2026.pdf"
+PLANALTO = "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2008/decreto/d6633.htm"
+
+
+def test_abrangencia_da_fonte_pelo_host():
+    from funnelforge.pipeline.dossie import abrangencia_da_fonte as ab
+    assert ab("https://www.senac.br/psg") == ("nacional", "")
+    assert ab(PLANALTO) == ("nacional", "")
+    assert ab(MA) == ("regional", "ma")
+    assert ab("https://programasenacdegratuidade.mg.senac.br/faq.aspx") == ("regional", "mg")
+    assert ab("https://www.sp.gov.br/x") == ("regional", "sp")
+    assert ab("https://ead.senac.br") == ("outra", "")
+
+
+def _so_renda(*fatos_extras, sem=("renda.limite_per_capita", "renda.valor_vigente")):
+    base = [f for f in FATOS_COMPLETOS if not set(f["requisitos"]) & set(sem)]
+    return base + list(fatos_extras)
+
+
+REGRA_MA = _fato("Renda per capita de até 2 salários mínimos (edital Senac-MA nº 56/2026)", MA,
+                 ["renda"], [RENDA], tipo="condicao", valor="até 2", unidade="salários mínimos")
+REGRA_NACIONAL = _fato("Renda per capita de até 2 salários mínimos (Decreto 6.633/2008)",
+                       PLANALTO, ["renda"], [RENDA], tipo="condicao", valor="2",
+                       unidade="salários mínimos")
+VALOR_RO = _fato("Em 2026 o limite equivale a R$ 3.242,00 por pessoa", RO, ["renda"],
+                 ["renda.valor_vigente"], tipo="numero", valor="3.242,00", unidade="R$",
+                 vigente="2026-01-14")
+
+
+def _compilar_com(fatos, *rodadas, citacoes=None):
+    citadas = CITADAS + [MA, PLANALTO]
+    state = _estado()
+    pesquisa = _Pesquisa(fatos, *rodadas, citacoes=citacoes or citadas)
+    dossie = _compilar(state, pesquisa, _Verificador(vivas=citadas))
+    return state, dossie, pesquisa
+
+
+def test_edital_regional_nao_vira_fonte_universal_da_regra():
+    state, dossie, pesquisa = _compilar_com(_so_renda(REGRA_MA, VALOR_RO), [], [])
+    renda = dossie.pagina(_n(state, "renda"))
+    assert not renda.cobertura.ready_to_write
+    assert any("regra ('renda.limite_per_capita') sem fonte NACIONAL oficial" in b
+               for b in renda.cobertura.blockers)
+    # a complementação pede EXATAMENTE a prova nacional que falta
+    pedido = pesquisa.pedidos[1]
+    assert [f["requisito"] for f in pedido] == [RENDA]
+    assert "fonte NACIONAL oficial" in pedido[0]["descricao"]
+
+
+def test_fonte_nacional_prova_a_regra_e_edital_atual_prova_o_valor_vigente():
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_MA, REGRA_NACIONAL, VALOR_RO))
+    renda = dossie.pagina(_n(state, "renda"))
+    assert renda.cobertura.ready_to_write, renda.cobertura.blockers
+    v = {x["papel"]: x for x in renda.cobertura.vinculos}
+    assert v["regra"]["url"] == PLANALTO and v["regra"]["abrangencia"] == "nacional"
+    assert v["valor_vigente"]["url"] == RO and v["valor_vigente"]["uf"] == "RO"
+    assert v["valor_vigente"]["vigente_desde"] == "2026-01-14"
+    assert v["valor_vigente"]["nivel"].startswith("edital oficial atual")
+
+
+def test_valor_de_outro_ano_nao_vale_como_vigente():
+    antigo = dict(VALOR_RO, vigente_desde="2025-01-10")
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, antigo), [], [])
+    blockers = dossie.pagina(_n(state, "renda")).cobertura.blockers
+    assert any("valor_vigente ('renda.valor_vigente') sem valor em reais vigente em 2026" in b
+               for b in blockers)
+
+
+def test_fonte_regional_da_geografia_do_conteudo_prova_a_regra():
+    arq = _arq_com_requisito_de_renda()
+    arq["funnel_strategy"]["jornada"]["ufs"] = ["MA"]
+    state = _estado(arq)
+    citadas = CITADAS + [MA]
+    dossie = _compilar(state, _Pesquisa(_so_renda(REGRA_MA, VALOR_RO), citacoes=citadas),
+                       _Verificador(vivas=citadas))
+    v = {x["papel"]: x for x in dossie.pagina(_n(state, "renda")).cobertura.vinculos}
+    assert v["regra"]["url"] == MA
+    assert v["regra"]["nivel"] == "fonte oficial regional da geografia do conteúdo"
+
+
+def test_sem_rebind_arbitrario_fato_nao_verificado_ou_fonte_nao_oficial():
+    blog = _fato("Renda de até 2 salários mínimos", "https://blog.exemplo.com.br/psg", ["renda"],
+                 [RENDA], tipo="condicao", valor="2", unidade="salários mínimos")
+    morta = dict(REGRA_NACIONAL)                             # citada, mas não responde
+    state = _estado()
+    citadas = CITADAS + ["https://blog.exemplo.com.br/psg", PLANALTO]
+    dossie = _compilar(state, _Pesquisa(_so_renda(blog, morta, VALOR_RO), [], [],
+                                        citacoes=citadas),
+                       _Verificador(vivas=[u for u in citadas if u != PLANALTO]))
+    renda = dossie.pagina(_n(state, "renda"))
+    assert not [x for x in renda.cobertura.vinculos if x["papel"] == "regra"]
+    assert not renda.cobertura.ready_to_write
+
+
+def test_ativo_legado_com_url_continua_exigindo_a_url_verificada():
+    arq = _arq_com_requisito_de_renda()
+    for job in arq["writing_jobs"]:
+        for a in job["writer_briefing"]["jornada"].get("ativos", []):
+            a.pop("rule_source_fact_id"), a.pop("current_value_source_fact_id")
+            a["fonte_da_regra"] = "https://www.senac.br/url-presumida"
+    state = _estado(arq)
+    dossie = _compilar(state, _Pesquisa(FATOS_COMPLETOS))
+    assert any("fonte da regra fora das fontes verificadas" in b
+               for b in dossie.pagina(_n(state, "renda")).cobertura.blockers)
+
+
+def test_esqueleto_recusa_ativo_que_aponta_requisito_inexistente():
+    from funnelforge.pipeline.jornada.esqueleto import revisar_esqueleto
+    arq = _arq_com_requisito_de_renda()
+    for job in arq["writing_jobs"]:
+        for a in job["writer_briefing"]["jornada"].get("ativos", []):
+            a["current_value_source_fact_id"] = "renda.inventado"
+    rev = revisar_esqueleto(plano_do_funnel_architecture(arq))
+    assert any(i.code == "ativo_requisito_inexistente" for i in rev.bloqueantes)
+
+
+def test_prompt_mostra_a_abrangencia_e_o_vinculo_do_ativo():
+    from funnelforge.prompts import render
+    state, dossie, _ = _compilar_com(_so_renda(REGRA_NACIONAL, VALOR_RO))
+    state.dossie = dossie.model_dump(mode="json")
+    renda = next(p for p in state.plan.pages if p.jornada.duvida_id == "renda")
+    ctx = contexto_de_jornada(state.plan, renda, state.dossie)
+    texto = render("jornada_da_pagina", jornada=ctx)
+    assert "(regional RO)" in texto and "vale para RO; não apresente como regra nacional" in texto
+    assert "requisito renda.limite_per_capita do dossiê" in texto
+
+
+def test_mesmo_valor_com_redacao_diferente_nao_e_conflito_e_dimensao_diferente_tambem_nao():
+    from funnelforge.pipeline.dossie import marcar_conflitos
+    from funnelforge.domain.dossie import FatoDoDossie
+
+    def fato(i, valor, unidade):
+        return FatoDoDossie(fact_id=f"f_{i:012x}", afirmacao="x", tipo="condicao", valor=valor,
+                            unidade=unidade, source_url=PSG, status="verified",
+                            requisitos=[RENDA])
+    grupo = [fato(1, "até 2", "salários mínimos federais"),
+             fato(2, "2", "salários mínimos federais por pessoa por mês"),
+             fato(3, "02 (dois)", "salários mínimos"),
+             fato(4, "3.242,00", "R$")]
+    assert marcar_conflitos(grupo) == []
+    divergente = fato(5, "1,5", "salários mínimos")
+    assert len(marcar_conflitos(grupo + [divergente])) == 4      # só a dimensão "salários"

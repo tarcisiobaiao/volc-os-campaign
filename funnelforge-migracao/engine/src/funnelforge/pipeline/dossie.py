@@ -36,6 +36,9 @@ from funnelforge.domain.dossie import (
     TelemetriaDaPesquisa,
     id_do_fato,
     sha256_canonico,
+    nucleo_da_unidade,
+    numeros_do_texto,
+    texto_normal,
 )
 from funnelforge.domain.models import (
     TIPOS_DE_FATO,
@@ -207,12 +210,20 @@ def marcar_conflitos(fatos: list[FatoDoDossie]) -> list[str]:
                 grupos.setdefault(r, []).append(f)
     conflitos: list[str] = []
     for grupo in grupos.values():
-        valores = {(" ".join(f.valor.lower().split()), f.unidade.lower().strip()) for f in grupo}
-        if len(valores) > 1:
-            for f in grupo:
-                f.status = "conflict"
-                f.motivo_do_status = "fontes divergem sobre o mesmo requisito"
-                conflitos.append(f.fact_id)
+        # Mesma DIMENSÃO (núcleo da unidade) e números diferentes = conflito.
+        # "até 2" e "2" salários mínimos concordam; "2 salários" e "R$ 3.242"
+        # são grandezas diferentes, não divergência.
+        por_dimensao: dict[str, list[FatoDoDossie]] = {}
+        for f in grupo:
+            por_dimensao.setdefault(nucleo_da_unidade(f.unidade), []).append(f)
+        for fatos_da_dimensao in por_dimensao.values():
+            valores = {frozenset(numeros_do_texto(f.valor)) or texto_normal(f.valor).strip()
+                       for f in fatos_da_dimensao}
+            if len(valores) > 1:
+                for f in fatos_da_dimensao:
+                    f.status = "conflict"
+                    f.motivo_do_status = "fontes divergem sobre o mesmo requisito"
+                    conflitos.append(f.fact_id)
     return sorted(set(conflitos))
 
 
@@ -238,7 +249,97 @@ def _research_facts(fatos: list[FatoDoDossie]) -> ResearchFacts:
                          fontes=fontes, fontes_resolvidas=fontes, sparse=not verificados)
 
 
-def cobertura_da_pagina(state: RunState, page: Page, fatos: list[FatoDoDossie]) -> CoberturaDaPagina:
+UFS = frozenset("ac al ap am ba ce df es go ma mt ms mg pa pb pr pe pi rj rn rs ro rr sc sp se "
+                "to".split())
+
+
+def abrangencia_da_fonte(url: str) -> tuple[str, str]:
+    """('nacional' | 'regional' | 'outra', uf). Pelo host: `pb.senac.br` e
+    `sp.gov.br` são regionais; `senac.br` e `planalto.gov.br`, nacionais."""
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    rotulos = host.split(".")
+    uf = next((r for r in rotulos[:-2] if r in UFS), "")
+    if uf:
+        return "regional", uf
+    if host == "gov.br" or host.endswith(".gov.br") or len(rotulos) == 2:
+        return "nacional", ""
+    return "outra", ""
+
+
+def _dominio(host: str) -> str:
+    return ".".join((host or "").lower().split(".")[-2:])
+
+
+def _fonte_oficial(url: str, oficiais: list[str]) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    if host == "gov.br" or host.endswith(".gov.br") or host.endswith(_HOSTS_OFICIAIS):
+        return True
+    return _dominio(host) in {_dominio(urlparse(o).hostname or "") for o in oficiais}
+
+
+def _melhor_fonte(candidatos: list[FatoDoDossie], niveis: list[tuple[str, Callable]]):
+    for nivel, aceita in niveis:
+        dele = [f for f in candidatos if aceita(*abrangencia_da_fonte(f.source_url))]
+        if dele:
+            dele.sort(key=lambda f: (-(f.vigente_desde.toordinal() if f.vigente_desde else 0),
+                                     f.fact_id))
+            return dele[0], nivel
+    return None, ""
+
+
+def vincular_ativo(ativo: Any, page: Page, verificados: list[FatoDoDossie],
+                   oficiais: list[str], ufs: list[str], hoje: date
+                   ) -> tuple[list[dict], list[str], list[dict]]:
+    """Liga cada necessidade declarada do ativo ao melhor fato CITADO e
+    VERIFICADO, por prioridade: fonte nacional oficial; fonte oficial regional
+    da geografia do conteúdo; para valor vigente, edital oficial atual de
+    qualquer UF, com a abrangência explícita. Nada de rebind arbitrário: só
+    fato verificado, de fonte oficial, que cobre o requisito declarado."""
+    reqs = {r.id: r for r in requisitos_da_pagina(page)}
+    geo = set(ufs)
+    nacional = ("fonte nacional oficial", lambda a, uf: a == "nacional")
+    regional = ("fonte oficial regional da geografia do conteúdo",
+                lambda a, uf: a == "regional" and uf in geo)
+    edital = ("edital oficial atual (abrangência regional explícita)",
+              lambda a, uf: a == "regional")
+    vinculos, bloqueios, faltas = [], [], []
+    for papel, req_id in (("regra", ativo.rule_source_fact_id),
+                          ("valor_vigente", ativo.current_value_source_fact_id)):
+        if not req_id:
+            continue
+        r = reqs.get(req_id)
+        candidatos = [f for f in verificados
+                      if req_id in f.requisitos and _fonte_oficial(f.source_url, oficiais)
+                      and (r is None or f.tipo in r.tipos)]
+        if papel == "valor_vigente":
+            candidatos = [f for f in candidatos if f.valor and f.vigente_desde
+                          and f.vigente_desde.year == hoje.year]
+            niveis = [nacional, regional, edital]
+            exige = (f"valor em reais vigente em {hoje.year}, com data e abrangência "
+                     "explícitas, de fonte oficial")
+        else:
+            niveis = [nacional, regional]
+            exige = ("fonte NACIONAL oficial (ex.: Departamento Nacional ou norma federal "
+                     "em gov.br); edital ou página regional não prova regra universal")
+        fato, nivel = _melhor_fonte(candidatos, niveis)
+        if fato is None:
+            bloqueios.append(f"ativo '{ativo.pergunta}': {papel} ('{req_id}') sem {exige}")
+            faltas.append({"requisito": req_id, "papel": papel,
+                           "descricao": f"{r.descricao if r else req_id} — {exige}",
+                           "tipos": list(r.tipos) if r else []})
+            continue
+        abrangencia, uf = abrangencia_da_fonte(fato.source_url)
+        vinculos.append({"ativo": ativo.pergunta, "papel": papel, "requisito": req_id,
+                         "fact_id": fato.fact_id, "url": fato.source_url, "nivel": nivel,
+                         "abrangencia": abrangencia, "uf": uf.upper(), "valor": fato.valor,
+                         "unidade": fato.unidade,
+                         "vigente_desde": fato.vigente_desde.isoformat()
+                         if fato.vigente_desde else ""})
+    return vinculos, bloqueios, faltas
+
+
+def cobertura_da_pagina(state: RunState, page: Page, fatos: list[FatoDoDossie],
+                        hoje: date | None = None) -> CoberturaDaPagina:
     j = page.jornada
     cob = CoberturaDaPagina()
     verificados = [f for f in fatos if f.status == "verified"]
@@ -263,8 +364,17 @@ def cobertura_da_pagina(state: RunState, page: Page, fatos: list[FatoDoDossie]) 
         if bloco.intencao == "prova_oficial" and not oficiais:
             cob.blockers.append(f"bloco '{bloco.secao}' (prova_oficial) sem canal oficial verificado")
     lastro = {_norm_url(f.source_url) for f in verificados} | {_norm_url(o) for o in oficiais}
+    ufs = list(state.plan.jornada.ufs) if state.plan and state.plan.jornada else []
     for ativo in ativos_validos(page):
-        if _norm_url(ativo.fonte_da_regra) not in lastro:
+        if ativo.rule_source_fact_id:
+            vinculos, bloqueios, faltas = vincular_ativo(ativo, page, verificados, oficiais,
+                                                         ufs, hoje or date.today())
+            cob.vinculos += vinculos
+            cob.blockers += bloqueios
+            cob.vinculos_faltantes += faltas
+        elif _norm_url(ativo.fonte_da_regra) not in lastro:
+            # LEGADO: card sem o contrato semântico — a URL declarada tem de
+            # estar entre as fontes verificadas.
             cob.blockers.append(f"ativo '{ativo.pergunta}': fonte da regra fora das fontes "
                                 "verificadas desta página")
     cob.ready_to_write = not cob.blockers
@@ -281,6 +391,12 @@ def _faltantes(paginas: dict[int, CoberturaDaPagina], pages: list[Page]) -> list
                 r = reqs[c.requisito_id]
                 faltam.append({"duvida_id": por_numero[n].jornada.duvida_id,
                                "requisito": r.id, "descricao": r.descricao, "tipos": r.tipos})
+        for v in cob.vinculos_faltantes:
+            duvida = por_numero[n].jornada.duvida_id
+            faltam = [f for f in faltam
+                      if not (f["duvida_id"] == duvida and f["requisito"] == v["requisito"])]
+            faltam.append({"duvida_id": duvida, "requisito": v["requisito"],
+                           "descricao": v["descricao"], "tipos": v["tipos"]})
     return faltam
 
 
@@ -328,7 +444,7 @@ def compilar_dossie(state: RunState, deps: Any, pesquisar: Pesquisar, *,
             state.official_links.pop(page.page_number, None)
             registrar_canais(state, page, deps)
             coberturas[page.page_number] = cobertura_da_pagina(
-                state, page, _fatos_para_a_pagina(list(fatos.values()), page))
+                state, page, _fatos_para_a_pagina(list(fatos.values()), page), hoje)
         faltantes = _faltantes(coberturas, pages)
         if not faltantes:
             break
@@ -426,6 +542,11 @@ def invalidar_paginas(state: RunState, paginas: list[int]) -> None:
         state.step_status.pop(f"page_{n}", None)
 
 
+def _abrangencia_legivel(url: str) -> str:
+    a, uf = abrangencia_da_fonte(url)
+    return f"regional {uf.upper()}" if a == "regional" else ("nacional" if a == "nacional" else "")
+
+
 def projecao_para_o_prompt(dossie: dict, numero: int) -> dict:
     """O PageDossier congelado como o redator, o juiz e o revisor o recebem:
     curto — fatos verificados com id, fonte e vigência; nada de dump."""
@@ -438,9 +559,11 @@ def projecao_para_o_prompt(dossie: dict, numero: int) -> dict:
         "fatos": [{"id": i, "afirmacao": por_id[i]["afirmacao"], "tipo": por_id[i]["tipo"],
                    "valor": por_id[i].get("valor", ""), "unidade": por_id[i].get("unidade", ""),
                    "fonte": por_id[i]["source_url"],
+                   "abrangencia": _abrangencia_legivel(por_id[i]["source_url"]),
                    "vigente_desde": por_id[i].get("vigente_desde") or ""}
                   for i in pagina.get("fatos_verificados", []) if i in por_id],
         "urls_oficiais": list(pagina.get("urls_oficiais") or []),
+        "vinculos": list((pagina.get("cobertura") or {}).get("vinculos") or []),
     }
 
 

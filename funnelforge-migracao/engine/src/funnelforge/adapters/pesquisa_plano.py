@@ -279,12 +279,8 @@ _NUMERO = re.compile(r"\d+(?:[.,]\d+)?")
 
 
 def _numeros_de(texto: str) -> set[float]:
-    """Números do texto por VALOR ('02' = '2' = 'dois'; '1,5' = '1.5')."""
-    alvo = _normal(texto)
-    achados = {float(n.replace(".", "").replace(",", ".")) if re.fullmatch(r"\d{1,3}(\.\d{3})+(,\d+)?", n)
-               else float(n.replace(",", ".")) for n in _NUMERO.findall(alvo)}
-    achados |= {float(d) for p, d in _PALAVRAS_NUMERO.items() if re.search(rf"\b{p}\b", alvo)}
-    return achados
+    from funnelforge.domain.dossie import numeros_do_texto
+    return numeros_do_texto(texto)
 
 
 def _valor_presente(valor: str, texto: str) -> bool:
@@ -297,6 +293,25 @@ def _valor_presente(valor: str, texto: str) -> bool:
     if numeros:
         return numeros <= _numeros_de(texto)
     return _normal(valor).strip() in _normal(texto)
+
+
+_MESES = ("janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto",
+          "setembro", "outubro", "novembro", "dezembro")
+
+
+def data_no_trecho(iso: str, trecho: str) -> bool:
+    """A data ISO inteira (dia, mês e ano) está no trecho? '2026-01-14' casa com
+    '14/01/2026', '14.01.2026', '2026-01-14' ou '14 de janeiro de 2026'. Só o
+    ano no trecho NÃO vale: o canário real recebeu '2026-01-01' para "em 2026"."""
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", (iso or "").strip()[:10])
+    if not m:
+        return False
+    ano, mes, dia = m.groups()
+    t = unicodedata.normalize("NFKD", trecho or "").encode("ascii", "ignore").decode().lower()
+    d, mm = int(dia), int(mes)
+    padroes = [rf"\b0?{d}[/.-]0?{mm}[/.-]{ano}\b", rf"\b{ano}-{mes}-{dia}\b",
+               rf"\b0?{d}o? de {_MESES[mm - 1]} de {ano}\b"]
+    return any(re.search(p, t) for p in padroes)
 
 
 def sustentado(afirmacao: str, valor: str, trecho: str,
@@ -549,8 +564,7 @@ def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: lis
             rejeitados.append({"fato": f, "evidencia_id": ev.id, "motivo": motivo})
             continue
         vigencia = str(f.get("vigente_desde") or "")
-        ano = vigencia[:4]
-        if vigencia and not (ano.isdigit() and ano in ev.trecho):
+        if vigencia and not data_no_trecho(vigencia, ev.trecho):
             vigencia = ""             # data que o trecho não traz não entra
         url = next((u for u, ok in zip(ev.urls, ev.na_source) if ok), ev.urls[0])
         fato = {"afirmacao": f.get("afirmacao"), "tipo": f.get("tipo"),

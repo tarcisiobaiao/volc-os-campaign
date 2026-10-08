@@ -26,7 +26,7 @@ PAGINAS = [{"duvida_id": "renda", "pergunta": "Minha renda se enquadra?", "prome
                                             "tipos": ["numero", "condicao"]}]}]
 
 FRASE1 = ("[renda.limite_per_capita] O PSG aceita renda familiar mensal por pessoa de até "
-          "dois salários mínimos federais, regra do Decreto 6.633 de 2008. ")
+          "dois salários mínimos federais, regra do Decreto 6.633 de 5 de novembro de 2008. ")
 FRASE2 = "A renda é somada e dividida pelo número de pessoas da família. "
 
 
@@ -304,3 +304,14 @@ def test_valor_comparado_pelo_numero_e_nao_pela_string(valor, texto, esperado):
 def test_estruturacao_pede_data_convertida_para_iso():
     prompt = pp._prompt_da_estruturacao("t", [], [], PAGINAS)
     assert "'14/01/2026' -> '2026-01-14'" in prompt and "mês/ano ou sem data -> vazio" in prompt
+
+
+@pytest.mark.parametrize("iso, trecho, esperado", [
+    ("2026-01-14", "publicação do Senac/RO de 14/01/2026", True),
+    ("2026-03-19", "Edital Senac-MA nº 56, de 19 de março de 2026", True),
+    ("2026-01-01", "equivalente a R$ 3.242,00 em 2026", False),       # canário real
+    ("2026-07-01", "para cursos de julho de 2026", False),
+    ("2008-11-05", "Decreto 6.633 de 5 de novembro de 2008", True),
+])
+def test_vigencia_exige_a_data_inteira_no_trecho(iso, trecho, esperado):
+    assert pp.data_no_trecho(iso, trecho) is esperado

@@ -249,11 +249,12 @@
               ],
               "logica": "renda dividida pelo número de moradores, comparada ao teto do PSG",
               "resultado": "se enquadra ou não, com o valor por pessoa",
-              "fonte_da_regra": "https://www.senac.br/psg",
               "fallback_sem_js": "tabela com exemplos de renda por número de moradores",
               "acessibilidade": "campos com label e resultado anunciado em aria-live",
               "evento_de_medicao": "calculo_renda_concluido",
-              "custo_estimado_usd": 0.04
+              "custo_estimado_usd": 0.04,
+              "rule_source_fact_id": "renda.limite_per_capita",
+              "current_value_source_fact_id": "renda.valor_vigente"
             }
           ],
           "requisitos": [
@@ -263,6 +264,13 @@
               "tipos": [
                 "numero",
                 "condicao"
+              ]
+            },
+            {
+              "id": "renda.valor_vigente",
+              "descricao": "equivalente em reais do limite de renda per capita no ano corrente, com data e abrangência",
+              "tipos": [
+                "numero"
               ]
             }
           ]

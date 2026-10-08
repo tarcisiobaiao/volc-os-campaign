@@ -3026,6 +3026,14 @@ def _lastro_da_pagina(state: RunState, page: Page) -> set[str]:
     return {u.rstrip("/") for u in urls}
 
 
+def _vinculos_do_dossie(state: RunState, page: Page) -> dict[tuple[str, str], dict]:
+    """(pergunta do ativo, papel) -> vínculo gravado no dossiê congelado."""
+    pagina = next((p for p in (state.dossie or {}).get("paginas", [])
+                   if p.get("page_number") == page.page_number), None)
+    vinculos = ((pagina or {}).get("cobertura") or {}).get("vinculos") or []
+    return {(v["ativo"], v["papel"]): v for v in vinculos}
+
+
 def _fonte_no_lastro(fonte: str, lastro: set[str]) -> bool:
     """A regra do ativo aponta para uma URL que a pesquisa desta página
     verificou (mesma URL, ou uma página dentro dela)."""
@@ -3076,8 +3084,19 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
     ativo = None
     if page.jornada is not None and page.jornada.ativos:
         lastro = _lastro_da_pagina(state, page)
-        candidatos = [a for a in ativos_validos(page)
-                      if _fonte_no_lastro(a.fonte_da_regra, lastro)]
+        vinculos = _vinculos_do_dossie(state, page)
+        candidatos = []
+        for a in ativos_validos(page):
+            if a.rule_source_fact_id:
+                # Contrato semântico: a regra (e o valor vigente, se pedido)
+                # vem do VÍNCULO feito pelo dossiê, nunca de URL presumida.
+                regra = vinculos.get((a.pergunta, "regra"))
+                valor = vinculos.get((a.pergunta, "valor_vigente"))
+                if regra and (valor or not a.current_value_source_fact_id):
+                    candidatos.append((a.model_copy(update={"fonte_da_regra": regra["url"]}),
+                                       valor))
+            elif _fonte_no_lastro(a.fonte_da_regra, lastro):
+                candidatos.append((a, None))
         if not candidatos:
             state.step_status[key] = _widget_skip(page, Issue(
                 code="ativo_sem_fonte_factual",
@@ -3085,7 +3104,8 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
                          "a fonte da regra entre as fontes verificadas da pesquisa desta "
                          "página.")))
             return
-        ativo = candidatos[0].model_dump()
+        escolhido, valor_vigente = candidatos[0]
+        ativo = dict(escolhido.model_dump(), valor_vigente=valor_vigente)
     try:
         cfg = deps.settings.steps.get("widget")
         if cfg is None:
