@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import json
 import re
+import unicodedata
 from dataclasses import asdict
 from datetime import date
 
@@ -16,7 +17,18 @@ from funnelforge.domain.models import (
 
 def chave_da_pergunta(texto):
     # Conservador: agrupa flexões/ordem e sinônimos estreitos; não decide fatos.
-    t = texto_normal(texto)
+    # `texto_normal` é deliberadamente ASCII porque nasceu para comparar
+    # números e trechos factuais em português. Demanda, porém, é multilíngue:
+    # aplicá-lo aqui apagava tailandês por inteiro (e reduzia perguntas com
+    # ano ao mero "2569"), fazendo PAA/autocomplete distintos virarem uma só
+    # dúvida antes de o JEV ou o arquiteto recebê-los. Preserve letras,
+    # marcas combinantes e números de qualquer escrita; pontuação vira espaço.
+    t = unicodedata.normalize("NFKC", texto or "").casefold()
+    t = "".join(
+        ch if (unicodedata.category(ch)[:1] in {"L", "M", "N"} or ch.isspace()) else " "
+        for ch in t
+    )
+    t = re.sub(r"\s+", " ", t).strip()
     t = re.sub(r"\b(elegivel|elegibilidade)\b", "direito", t)
     return " ".join(sorted(set(t.split()) - {"o", "a", "os", "as", "de", "do", "da", "ao", "eu"}))
 

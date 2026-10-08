@@ -8,7 +8,7 @@ from funnelforge.adapters.decisao_intencao import HeuristicaDeIntencao, JevDeInt
 from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
 from funnelforge.config.settings import StepConfig
 from funnelforge.domain.models import RunState
-from funnelforge.pipeline.inteligencia import compilar_brief, congelar_pacotes, mensagens_do_arquiteto, pacote_conferido, prompt_do_pacote
+from funnelforge.pipeline.inteligencia import chave_da_pergunta, compilar_brief, congelar_pacotes, mensagens_do_arquiteto, pacote_conferido, prompt_do_pacote
 from funnelforge.pipeline.jornada import revisar_esqueleto
 from funnelforge.pipeline.pipeline import run_pipeline, _populate_routes
 from tests.cenario_editorial import montar_deps, settings_do_cenario, responder_v2, REVISOR_APROVA
@@ -41,6 +41,25 @@ def test_paa_ausente_duplicatas_sem_fatos(tmp_path):
     assert len(b.duvidas)==2 and not b.fatos_existentes
     assert all(not s['factual'] for s in b.sinais)
     assert sorted(d.jornada.duvida_id for d in b.duvidas)==sorted(d.jornada.duvida_id for d in compilar_brief(CARD,{**p,'perguntas':list(reversed(p['perguntas']))}).duvidas)
+
+
+def test_demanda_unicode_nao_apaga_nem_colapsa_tailandes():
+    perguntas = [
+        'เงินอุดหนุนบุตร',
+        'เงินอุดหนุนบุตร 2569',
+        'เงินอุดหนุนบุตรตุลาคม 2569',
+        'เงินอุดหนุนบุตรเข้าวันไหน',
+        'เงินอุดหนุนบุตรเดือนตุลาคม 2569',
+    ]
+    chaves = [chave_da_pergunta(q) for q in perguntas]
+    assert all(chaves)
+    assert len(set(chaves)) == len(perguntas)
+    brief = compilar_brief(
+        {"main_keyword": perguntas[0], "country": "TH", "native_language": "th-TH"},
+        {"perguntas": perguntas, "origem": "attention_matrix_fixture"},
+    )
+    assert len(brief.duvidas) == 5
+    assert {d.jornada.pergunta_principal for d in brief.duvidas} == set(perguntas)
 
 def test_brief_arquiteto_e_requisitos():
     b=brief()
