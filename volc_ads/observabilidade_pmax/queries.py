@@ -276,10 +276,10 @@ def build_pmax_asset_groups_query(
         "asset_group.primary_status, "
         "asset_group.primary_status_reasons, "
         "asset_group.ad_strength, "
-        "asset_group.asset_coverage.ad_strength_action_items.action_item_type, "
-        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_field_type, "
-        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.asset_count, "
-        "asset_group.asset_coverage.ad_strength_action_items.add_asset_details.video_aspect_ratio_requirement, "
+        # Mensagem INTEIRA: os subcampos (`.action_item_type`, `.add_asset_details.*`)
+        # existem no proto mas o servidor os recusa (UNRECOGNIZED_FIELD), e a
+        # consulta inteira cai. Medido com validate_only em 08/10/2026.
+        "asset_group.asset_coverage.ad_strength_action_items, "
         "asset_group.final_urls, "
         "asset_group.final_mobile_urls, "
         "asset_group.path1, "
@@ -337,9 +337,8 @@ def build_pmax_asset_group_assets_query(
         "asset_group_asset.status, "
         "asset_group_asset.primary_status, "
         "asset_group_asset.primary_status_reasons, "
-        "asset_group_asset.primary_status_details.status, "
-        "asset_group_asset.primary_status_details.reason, "
-        "asset_group_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons, "
+        # Mensagem inteira; `.status`/`.reason` sozinhos são recusados (08/10/2026).
+        "asset_group_asset.primary_status_details, "
         "asset_group_asset.source, "
         "asset_group_asset.policy_summary.approval_status, "
         "asset_group_asset.policy_summary.policy_topic_entries, "
@@ -444,10 +443,13 @@ def build_pmax_campaign_assets_query(
         "SELECT "
         "campaign_asset.resource_name, campaign_asset.campaign, campaign_asset.asset, "
         "campaign_asset.field_type, campaign_asset.status, campaign_asset.primary_status, "
-        "campaign_asset.primary_status_reasons, campaign_asset.primary_status_details.status, "
-        "campaign_asset.primary_status_details.reason, "
-        "campaign_asset.primary_status_details.asset_disapproved.offline_evaluation_error_reasons, "
-        "campaign_asset.source, campaign.id "
+        "campaign_asset.primary_status_reasons, "
+        # Mensagem inteira; `.status`/`.reason` sozinhos são recusados (08/10/2026).
+        "campaign_asset.primary_status_details, "
+        # `campaign.advertising_channel_type` está no WHERE, e em `campaign_asset`
+        # o servidor exige o campo também no SELECT ("must be present in SELECT
+        # clause"). Medido com validate_only em 08/10/2026.
+        "campaign_asset.source, campaign.id, campaign.advertising_channel_type "
         "FROM campaign_asset WHERE " + " AND ".join(clauses)
     )
     if limit is not None and limit > 0:

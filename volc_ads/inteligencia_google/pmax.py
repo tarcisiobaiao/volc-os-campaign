@@ -196,6 +196,13 @@ CAMPOS_NAO_COLETADOS: dict[str, str] = {
 #: endpoint os rejeita. Nenhum ganhou substituto: nada equivalente foi
 #: comprovado na v25 real, e inventar um fallback semantico seria pior que o
 #: buraco. Cada valor diz o que a coleta DEIXOU DE ENXERGAR.
+#:
+#: ⚠️ Atualizacao 08/10/2026: o substituto existe e esta provado no servidor
+#: (validacao sem execucao) — a MENSAGEM inteira (`asset_group.asset_coverage.
+#: ad_strength_action_items`, `asset_group_asset.primary_status_details`) e
+#: aceita; so os subcampos sao recusados. Os builders de
+#: `observabilidade_pmax/queries.py` ja pedem a mensagem inteira, e esta poda
+#: virou no-op para essas duas familias. Ver `volc_ads/gads/catalogo.py`.
 CAMPOS_RECUSADOS_POR_FAMILIA: dict[str, dict[str, str]] = {
     FAMILIA_ASSET_GROUPS: {
         "asset_group.asset_coverage.ad_strength_action_items.action_item_type": (
