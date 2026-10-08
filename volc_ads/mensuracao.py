@@ -117,6 +117,12 @@ OBJETIVOS: Tuple[str, ...] = (OBJETIVO_CLIQUE, OBJETIVO_CONVERSAO,
 #: exigência que se possa cumprir.
 OBJETIVO_POR_ESTRATEGIA: Mapping[str, str] = {
     "MANUAL_CPC": OBJETIVO_CLIQUE,
+    # Não aprendem por conversão: compram clique, posição ou impressão. Saem por
+    # NAO_APLICAVEL, como o CPC manual (passo 4 de `avaliar`).
+    "TARGET_SPEND": OBJETIVO_CLIQUE,
+    "TARGET_CPC": OBJETIVO_CLIQUE,
+    "TARGET_IMPRESSION_SHARE": OBJETIVO_CLIQUE,
+    "MANUAL_CPM": OBJETIVO_CLIQUE,
     "MAXIMIZE_CONVERSIONS": OBJETIVO_CONVERSAO,
     "TARGET_CPA": OBJETIVO_CONVERSAO,
     "MAXIMIZE_CONVERSION_VALUE": OBJETIVO_VALOR,

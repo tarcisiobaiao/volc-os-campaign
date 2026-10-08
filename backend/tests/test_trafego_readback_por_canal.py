@@ -498,7 +498,7 @@ def test_o_perfil_de_nascimento_bate_com_os_builders():
 
     raiz = _p.Path(__file__).resolve().parents[2] / "volc_ads" / "campanha"
 
-    def _status_por_enum(arquivo: str) -> dict[str, set[str]]:
+    def _status_por_enum(arquivo) -> dict[str, set[str]]:
         """`{EnumDeStatus: {VALORES}}` atribuídos a `.status` naquele builder.
 
         ⚠️ Agrupado POR ENUM, e não numa bolsa única. A primeira versão deste
@@ -507,9 +507,14 @@ def test_o_perfil_de_nascimento_bate_com_os_builders():
         sozinho satisfazia a asserção do ANÚNCIO. A verificação focal provou:
         quatro derivas independentes dos builders passavam verdes.
         """
-        arvore = ast.parse((raiz / arquivo).read_text(encoding="utf-8"))
+        # O builder de PMax mora em dois arquivos desde 08/10/2026 (pmax.py
+        # orquestra, pmax_grafo.py monta os asset groups): a varredura junta os
+        # dois e continua agrupando por enum.
+        arquivos = (arquivo,) if isinstance(arquivo, str) else tuple(arquivo)
+        nos = [n for a in arquivos
+               for n in ast.walk(ast.parse((raiz / a).read_text(encoding="utf-8")))]
         achados: dict[str, set[str]] = {}
-        for no in ast.walk(arvore):
+        for no in nos:
             if not isinstance(no, ast.Assign):
                 continue
             alvo = no.targets[0]
@@ -529,7 +534,7 @@ def test_o_perfil_de_nascimento_bate_com_os_builders():
         "display.py": {"AdGroupAdStatusEnum": ("DISPLAY", vrel.ANUNCIO)},
         "demand_gen.py": {"AdGroupAdStatusEnum": ("DEMAND_GEN", vrel.ANUNCIO),
                           "AdGroupStatusEnum": ("DEMAND_GEN", vrel.GRUPO)},
-        "pmax.py": {"AssetGroupStatusEnum": ("PERFORMANCE_MAX", vrel.ASSET_GROUP)},
+        ("pmax.py", "pmax_grafo.py"): {"AssetGroupStatusEnum": ("PERFORMANCE_MAX", vrel.ASSET_GROUP)},
     }
     for arquivo, mapa in esperado_dos_builders.items():
         por_enum = _status_por_enum(arquivo)

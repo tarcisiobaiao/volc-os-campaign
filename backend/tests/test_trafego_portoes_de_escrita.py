@@ -1094,14 +1094,18 @@ def test_a_autoridade_adjudica_CADA_canal_e_nao_todos_como_Search():
         "DEMAND_GEN": _lances_permitidos("demand_gen.py"),
         "PERFORMANCE_MAX": _lances_permitidos("pmax.py"),
     }
-    assert "MANUAL_CPC" in por_canal["SEARCH"]
+    # A sonda tem de existir num canal e faltar nos outros. Até 08/10/2026 era
+    # MANUAL_CPC; desde então o Display aceita CPC manual (medido com
+    # validate_only) e a estratégia exclusiva do Search é a parcela de impressões.
+    SONDA = "TARGET_IMPRESSION_SHARE"
+    assert SONDA in por_canal["SEARCH"]
     for canal in ("DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"):
-        assert "MANUAL_CPC" not in por_canal[canal], canal
+        assert SONDA not in por_canal[canal], canal
 
     desfechos = {}
     for canal, aceitos in por_canal.items():
         v = mens.avaliar(customer_id="1", canal=canal,
-                         estrategia_lance="MANUAL_CPC",
+                         estrategia_lance=SONDA,
                          lances_do_canal=aceitos)
         desfechos[canal] = (v.estado, v.codigos)
 
