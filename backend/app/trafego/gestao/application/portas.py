@@ -1,0 +1,103 @@
+"""As duas portas que os casos de uso pedem: o ledger e a conta.
+
+Protocolos, e não classes-base, porque os dublês dos testes não herdam nada —
+e porque a infraestrutura real (PostgREST, SDK do Google) não deve ser
+importada para alguém escrever um dublê.
+
+## Por que o repositório é assíncrono e a conta não
+
+O PostgREST é HTTP (httpx assíncrono, como `persistencia._Cliente`). O SDK do
+Google é síncrono e bloqueante (gRPC); os casos de uso o chamam por
+`asyncio.to_thread`, o mesmo arranjo de `routers/trafego.py`.
+"""
+from __future__ import annotations
+
+from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
+
+
+class Ledger(Protocol):
+    """As nove tabelas da v10_02 + a identidade da v9_01. Só transporte.
+
+    Toda escrita devolve a linha como o banco a gravou (com ids e DEFAULTs) —
+    o caso de uso nunca supõe o que o banco preencheu.
+    """
+
+    async def regra_vigente(self, chave: str) -> Optional[Dict[str, Any]]: ...
+
+    async def identidade_campanha(self, customer_id: str,
+                                  campaign_id: str) -> Optional[Dict[str, Any]]: ...
+
+    async def declarar_identidade(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def resolver_procedencia(self, volc_campaign_id: str,
+                                   patch: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def proposta_por_chave(self, idempotency_key: str) -> Optional[Dict[str, Any]]: ...
+
+    async def inserir_evidencia(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def inserir_diagnostico(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def inserir_proposta(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def proposta(self, proposta_id: str) -> Optional[Dict[str, Any]]: ...
+
+    async def regra(self, regra_id: str) -> Optional[Dict[str, Any]]: ...
+
+    async def atualizar_estado_proposta(self, proposta_id: str, de: Sequence[str],
+                                        para: str) -> Optional[Dict[str, Any]]: ...
+
+    async def aprovacao_da_proposta(self, proposta_id: str) -> Optional[Dict[str, Any]]: ...
+
+    async def inserir_aprovacao(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def aplicacoes_da_proposta(self, proposta_id: str) -> List[Dict[str, Any]]: ...
+
+    async def aplicacao(self, aplicacao_id: str) -> Optional[Dict[str, Any]]: ...
+
+    async def inserir_aplicacao(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def fechar_aplicacao(self, aplicacao_id: str,
+                               patch: Mapping[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    async def cooldown_ativo(self, regra_chave: str,
+                             alvo_chave: str) -> Optional[Dict[str, Any]]: ...
+
+    async def inserir_acompanhamento(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def acompanhamentos_da_aplicacao(self, aplicacao_id: str) -> List[Dict[str, Any]]: ...
+
+    async def reversao_da_aplicacao(self, aplicacao_id: str) -> Optional[Dict[str, Any]]: ...
+
+    async def inserir_reversao(self, linha: Mapping[str, Any]) -> Dict[str, Any]: ...
+
+    async def fechar_reversao(self, reversao_id: str,
+                              patch: Mapping[str, Any]) -> Optional[Dict[str, Any]]: ...
+
+    async def painel(self, customer_id: str, *, estado: Optional[str] = None,
+                     limite: int = 50) -> List[Dict[str, Any]]: ...
+
+
+class ContaGoogle(Protocol):
+    """A conta do Google Ads, vista pelo motor `volc_ads.gestao`. Síncrona.
+
+    `ler_antes` devolve `volc_ads.gestao.estado.Antes` (ou algo com `.dados` e
+    `.lido_em`). `validar`/`aplicar` devolvem `volc_ads.gestao.lote.ResultadoLote`.
+    """
+
+    def ler_antes(self, customer_id: str, acao: Any, *, conferir: bool) -> Any: ...
+
+    def ler_metricas(self, customer_id: str, nivel: str, alvo_id: str,
+                     inicio: str, fim: str) -> Dict[str, Any]: ...
+
+    def ler_campanha(self, customer_id: str, campaign_id: str) -> Optional[Dict[str, Any]]: ...
+
+    def validar(self, customer_id: str, acoes: Sequence[Any]) -> Any: ...
+
+    def aplicar(self, customer_id: str, acoes: Sequence[Any],
+                motivo: str) -> Tuple[Any, Any]: ...
+
+    def aplicar_recomendacoes(self, customer_id: str, acoes: Sequence[Any],
+                              motivo: str) -> Dict[str, Any]: ...
+
+    def recomendacoes(self, customer_id: str) -> List[Dict[str, Any]]: ...

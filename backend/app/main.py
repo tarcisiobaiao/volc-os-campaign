@@ -236,6 +236,12 @@ app.include_router(trafego_meta_ativos.router)
 # credencial muda o que a rota pode fazer, e misturá-los faria o portão de
 # serviço virar uma exceção dentro do portão de sessão.
 trafego_inventario.registrar(app)
+# Gestão de campanhas no ar sobre o ledger v10_02 (propor → aprovar → aplicar →
+# verificar → reverter). Router próprio: `routers/trafego.py` cria campanha, e
+# criar e gerir são ciclos que não se derrubam juntos. Importa o `volc_ads` tarde
+# (no provedor), pelo mesmo motivo do Hub. Escrita no Google exige ADMIN.
+from app.routers import trafego_gestao  # noqa: E402
+app.include_router(trafego_gestao.router)
 # Estúdio Criativo (C0+C1+C3). O router de produto mantém biblioteca, jobs e
 # observação; o router de execução conserva os mesmos paths `/bancada` numa
 # fronteira separada. Nenhum dos dois publica em plataforma.

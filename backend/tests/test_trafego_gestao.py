@@ -1,0 +1,735 @@
+"""Gestão de campanhas no ar sobre o ledger v10_02 — casos de uso, rotas e infraestrutura.
+
+Sem rede e sem banco: ledger em memória e conta Google de mentira
+(`gestao_dubles.py`). A prova de que as LINHAS montadas aqui passam nas CHECKs e
+gatilhos reais é feita à parte, reproduzindo `LedgerEmMemoria.ops` em SQL no
+banco descartável (ver o relatório da rodada).
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _RAIZ not in sys.path:
+    sys.path.insert(0, _RAIZ)
+
+import gestao_dubles as D  # noqa: E402
+from app.config import Settings, get_settings  # noqa: E402
+from app.routers import trafego_gestao as rota  # noqa: E402
+from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario  # noqa: E402
+from app.trafego.gestao.application import autonomia, erros as E  # noqa: E402
+from app.trafego.gestao.application import payload as P  # noqa: E402
+from app.trafego.gestao.application.casos_de_uso import (  # noqa: E402
+    GoogleRecusou, campos_divergentes, conferir_contra_regra, janela_da_regra)
+from app.trafego.gestao.application.efeito import conferir_efeito  # noqa: E402
+from app.trafego.gestao.infrastructure import conta_google as CG  # noqa: E402
+from app.trafego.gestao.infrastructure import repositorio_postgrest as RP  # noqa: E402
+from volc_ads.gestao import acoes as A, ledger as motor  # noqa: E402
+
+CID, CAMP = D.CASA, D.CAMPANHA
+ORC = {"tipo": "orcamento.diario", "campaign_id": CAMP, "amount_micros": 36_000_000}
+
+
+def _diff(p):
+    return {"valor_atual": p["valor_atual"], "valor_proposto": p["valor_proposto"]}
+
+
+async def _proposta_aprovada(g):
+    r = await g.propor(CID, ORC, motivo="CPA estável, verba limitando", autor="op@volc")
+    p = r["proposta"]
+    await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="admin@volc",
+                    diff_apresentado=_diff(p))
+    return p
+
+
+# ═══ payload: ida e volta para os 15 tipos ═════════════════════════════════
+
+_RN_REC = f"customers/{CID}/recommendations/abc123"
+_CASOS = [
+    ({"tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"},
+     {"existe": True, "status": "ENABLED"}),
+    ({"tipo": "status", "nivel": "anuncio", "ident": "190000000001~780000000001",
+      "status": "ENABLED"}, {"existe": True, "status": "PAUSED"}),
+    ({**ORC, "budget_id": D.BUDGET}, D.antes_orcamento()),
+    ({**ORC, "budget_id": D.BUDGET, "compartilhado_ciente": True},
+     D.antes_orcamento(compartilhado=True, campanhas_no_orcamento=3)),
+    ({"tipo": "lance.alvo", "campaign_id": CAMP, "estrategia": "MAXIMIZE_CONVERSIONS",
+      "alvo": "tcpa", "valor": 25_000_000}, {"tcpa_micros": 20_000_000, "moeda": "BRL"}),
+    ({"tipo": "lance.alvo", "campaign_id": CAMP, "estrategia": "TARGET_ROAS",
+      "alvo": "troas", "valor": 4.5}, {"troas": 4.0}),
+    ({"tipo": "lance.estrategia", "campaign_id": CAMP, "nova": "TARGET_SPEND",
+      "teto_cpc_micros": 2_000_000}, {"estrategia": "MANUAL_CPC"}),
+    ({"tipo": "negativa.keyword", "escopo": "grupo", "alvo": "193210441352",
+      "termos": [{"texto": "grátis", "correspondencia": "PHRASE"}, {"texto": "pdf"}]},
+     {"negativas_existentes": 0, "chaves": []}),
+    ({"tipo": "lista.criar", "tipo_lista": "NEGATIVE_PLACEMENTS", "nome": "Lixo display",
+      "itens": [{"tipo": "site", "valor": "exemplo.com.br"}], "campanhas": [int(CAMP)]},
+     {"listas_com_mesmo_nome": []}),
+    ({"tipo": "lista.adicionar", "shared_set_id": 777, "tipo_lista": "NEGATIVE_KEYWORDS",
+      "itens": [{"texto": "vagas", "correspondencia": "BROAD"}]},
+     {"existe": True, "tipo": "NEGATIVE_KEYWORDS", "status": "ENABLED", "chaves": []}),
+    ({"tipo": "lista.anexar", "shared_set_id": 777, "campanhas": [int(CAMP), 123]},
+     {"campanhas_vinculadas": []}),
+    ({"tipo": "exclusao.placement", "escopo": "conta",
+      "itens": [{"tipo": "youtube_video", "valor": "dQw4w9WgXcQ"}]}, {"chaves": []}),
+    ({"tipo": "exclusao.ip", "escopo": "campanha", "campaign_id": CAMP,
+      "ips": ["203.0.113.7", "198.51.100.0/24"]}, {"ips_existentes": []}),
+    ({"tipo": "programacao.anuncios", "campaign_id": CAMP,
+      "janelas": [{"dia": "MONDAY", "inicio": "08:00", "fim": "12:00", "modificador": 1.2}],
+      "remover": [111]}, {"janelas": [{"criterion_id": 111, "dia": "MONDAY", "inicio":
+                                        "00:00", "fim": "06:00", "modificador": None}]}),
+    ({"tipo": "ajuste.dispositivo", "campaign_id": CAMP, "dispositivo": "MOBILE",
+      "modificador": 1.3}, {"existe": True, "canal": "SEARCH", "modificador": None}),
+    ({"tipo": "ajuste.horario", "campaign_id": CAMP, "criterion_id": 555, "modificador": 0.8},
+     {"existe": True, "canal": "SEARCH", "modificador": 1.0}),
+    ({"tipo": "recomendacao.aplicar", "recurso": _RN_REC}, {"existe": True}),
+    ({"tipo": "recomendacao.dispensar", "recurso": _RN_REC}, {"existe": True}),
+]
+
+
+def test_os_15_tipos_do_contrato_estao_nos_9_grupos():
+    assert len(P.GRUPOS) == 9 and len(P.TIPOS) == 15 and len(set(P.TIPOS)) == 15
+    assert {c[0]["tipo"] for c in _CASOS} == set(P.TIPOS)
+
+
+@pytest.mark.parametrize("payload,antes", _CASOS, ids=[c[0]["tipo"] for c in _CASOS])
+def test_ida_e_volta_a_proposta_reconstroi_a_mesma_acao(payload, antes):
+    """O que se aplica sai do diff aprovado: acao_da_proposta(proposta(a)) == a."""
+    acao = P.pedido_do_payload(payload).acao
+    linha = json.loads(json.dumps(motor.proposta(acao, CID, antes,
+                                                 datetime.now(timezone.utc))))  # como o jsonb
+    assert P.acao_da_proposta(linha) == acao
+    assert P.customer_id_da_proposta(linha) == CID
+
+
+def test_payload_recusa_tipo_desconhecido_e_campo_faltando():
+    with pytest.raises(E.AcaoInvalida, match="desconhecido"):
+        P.pedido_do_payload({"tipo": "campanha.remover"})
+    with pytest.raises(E.AcaoInvalida, match="amount_micros"):
+        P.pedido_do_payload({"tipo": "orcamento.diario", "campaign_id": CAMP})
+    with pytest.raises(E.AcaoInvalida, match="REMOVED"):
+        P.pedido_do_payload({"tipo": "status", "nivel": "campanha", "ident": CAMP,
+                             "status": "REMOVED"})
+    with pytest.raises(E.AcaoInvalida, match="inteiro"):
+        P.pedido_do_payload({**ORC, "amount_micros": 36.5})
+
+
+def test_orcamento_sem_budget_id_e_completado_pelo_estado():
+    pedido = P.pedido_do_payload(ORC)
+    assert pedido.completar is not None
+    final = pedido.completar(D.antes_orcamento())
+    assert (final.budget_id, final.amount_micros) == (D.BUDGET, 36_000_000)
+
+
+# ═══ propor ═════════════════════════════════════════════════════════════════
+
+
+async def test_propor_le_o_antes_e_grava_evidencia_diagnostico_e_proposta():
+    g, led, conta = D.gestao_de_teste()
+    r = await g.propor(CID, ORC, motivo="CPA estável, verba limitando", autor="op@volc")
+    p = r["proposta"]
+    assert not r["ja_existia"] and p["estado"] == "aguardando_aprovacao"
+    assert p["operacao"] == "orcamento.diario" and p["delta_pct"] == 20.0
+    assert p["valor_atual"]["verba_diaria_micros"] == 30_000_000
+    assert p["valor_proposto"] == {"verba_diaria_micros": 36_000_000, "budget_id": D.BUDGET}
+    assert p["volc_campaign_id"] and p["criada_por"] == "humano:op@volc"
+    ev = led.evidencias[r["evidencia_id"]]
+    assert ev["suficiencia"] == "suficiente" and ev["moeda"] == "BRL"
+    assert ev["volc_campaign_id"] == p["volc_campaign_id"]
+    diag = led.diagnosticos[r["diagnostico_id"]]
+    assert diag["explicacao"] == "CPA estável, verba limitando"
+    assert [t for t, *_ in led.ops] == ["insert"] * 3
+
+
+async def test_propor_e_idempotente_pela_chave_do_conteudo():
+    g, led, _ = D.gestao_de_teste()
+    a = await g.propor(CID, ORC, motivo="m1", autor="op")
+    b = await g.propor(CID, ORC, motivo="m2", autor="outro")
+    assert b["ja_existia"] and b["proposta"]["proposta_id"] == a["proposta"]["proposta_id"]
+    assert len(led.propostas) == 1 and len(led.evidencias) == 1
+
+
+async def test_propor_campanha_nao_importada_e_recusada_sem_gravar():
+    g, led, _ = D.gestao_de_teste(importada=False)
+    with pytest.raises(E.CampanhaNaoImportada):
+        await g.propor(CID, ORC, motivo="m", autor="op")
+    assert not led.ops
+
+
+async def test_propor_sem_regra_vigente():
+    g, led, _ = D.gestao_de_teste(regras=[])
+    with pytest.raises(E.RegraAusente):
+        await g.propor(CID, ORC, motivo="m", autor="op")
+
+
+async def test_acao_sem_numero_esbarra_na_trava_4a_da_v10_02():
+    """Pausar não tem delta, e a regra declara limite: a v10_02 recusaria no INSERT."""
+    g, led, _ = D.gestao_de_teste()
+    with pytest.raises(E.ForaDaRegra) as exc:
+        await g.propor(CID, {"tipo": "status", "nivel": "campanha", "ident": CAMP,
+                             "status": "PAUSED"}, motivo="sem conversão", autor="op")
+    assert exc.value.codigo == "regra_exige_delta" and not led.ops
+
+
+async def test_limite_percentual_e_teto_da_regra():
+    g, led, _ = D.gestao_de_teste()
+    with pytest.raises(E.ForaDaRegra) as exc:
+        await g.propor(CID, {**ORC, "amount_micros": 60_000_000}, motivo="m", autor="op")
+    assert exc.value.codigo == "limite_pct"
+    g2, _, conta2 = D.gestao_de_teste(regras=[D.regra_padrao(teto_orcamento_micros=35_000_000)])
+    with pytest.raises(E.ForaDaRegra) as exc2:
+        await g2.propor(CID, ORC, motivo="m", autor="op")
+    assert exc2.value.codigo == "teto_orcamento" and not led.ops
+
+
+async def test_evidencia_insuficiente_fica_gravada_e_nao_nasce_proposta():
+    g, led, conta = D.gestao_de_teste()
+    conta.metricas["custo_micros"] = None
+    with pytest.raises(E.EvidenciaInsuficiente) as exc:
+        await g.propor(CID, ORC, motivo="m", autor="op")
+    ev = led.evidencias[exc.value.detalhe["evidencia_id"]]
+    assert ev["suficiencia"] == "insuficiente" and ev["faltantes"] == ["custo_micros"]
+    assert not led.propostas and not led.diagnosticos
+
+
+async def test_estado_que_nao_permite_vira_422():
+    g, _, conta = D.gestao_de_teste()
+    conta.mundo[("orcamento.diario", CAMP)]["compartilhado"] = True
+    with pytest.raises(E.AcaoInvalida, match="compartilhado"):
+        await g.propor(CID, ORC, motivo="m", autor="op")
+
+
+async def test_conta_fora_da_casa_e_403_antes_de_qualquer_leitura():
+    g, led, conta = D.gestao_de_teste()
+    with pytest.raises(E.ForaDaCasa):
+        await g.propor(D.FORA, ORC, motivo="m", autor="op")
+    with pytest.raises(E.ForaDaCasa):
+        await g.recomendacoes(D.FORA)
+    assert not conta.chamadas and not led.ops
+
+
+# ═══ aprovar / recusar ══════════════════════════════════════════════════════
+
+
+async def test_aprovar_exige_o_diff_que_a_tela_mostrou():
+    g, led, _ = D.gestao_de_teste()
+    p = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    errado = {**_diff(p), "valor_proposto": {"verba_diaria_micros": 99, "budget_id": 1}}
+    with pytest.raises(E.ConflitoDeEstado) as exc:
+        await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
+                        diff_apresentado=errado)
+    assert exc.value.codigo == "diff_divergente" and not led.aprovacoes
+    with pytest.raises(E.AcaoInvalida):
+        await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
+                        diff_apresentado=None)
+    r = await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
+                        diff_apresentado=_diff(p))
+    assert r["proposta"]["estado"] == "aprovada"
+    assert r["aprovacao"]["decidida_por"] == "humano:adm"
+    de_novo = await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
+                              diff_apresentado=_diff(p))
+    assert de_novo["ja_existia"] and len(led.aprovacoes) == 1
+    with pytest.raises(E.ConflitoDeEstado, match="já foi decidida"):
+        await g.aprovar(p["proposta_id"], "recusada", motivo="mudei de ideia",
+                        aprovador="adm", diff_apresentado={})
+
+
+async def test_recusa_exige_motivo_e_proposta_vencida_expira():
+    g, led, _ = D.gestao_de_teste()
+    p = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    with pytest.raises(E.AcaoInvalida):
+        await g.aprovar(p["proposta_id"], "recusada", motivo=" ", aprovador="a",
+                        diff_apresentado={})
+    led.propostas[p["proposta_id"]]["expira_em"] = (
+        datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    with pytest.raises(E.ConflitoDeEstado) as exc:
+        await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="a",
+                        diff_apresentado=_diff(p))
+    assert exc.value.codigo == "proposta_expirada"
+    assert led.propostas[p["proposta_id"]]["estado"] == "expirada"
+
+
+# ═══ aplicar ════════════════════════════════════════════════════════════════
+
+
+async def test_aplicar_sem_aprovacao_humana_e_recusado():
+    g, led, conta = D.gestao_de_teste()
+    p = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    with pytest.raises(E.ExigeAprovacaoHumana):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    assert not led.aplicacoes and not any(c[0] == "aplicar" for c in conta.chamadas)
+
+
+async def test_aplicar_recusa_quando_o_antes_divergiu_e_nada_sai():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 31_000_000  # alguém mexeu
+    with pytest.raises(E.AntesDivergiu) as exc:
+        await g.aplicar(p["proposta_id"], executor="adm")
+    assert exc.value.detalhe["campos"] == ["verba_diaria_micros"]
+    assert not led.aplicacoes
+    assert not any(c[0] in ("validar", "aplicar") for c in conta.chamadas)
+
+
+async def test_aplicar_grava_em_voo_ensaia_escreve_e_e_idempotente():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    r = await g.aplicar(p["proposta_id"], executor="adm")
+    ap = r["aplicacao"]
+    assert r["desfecho"] == "sucesso" and not r["ja_aplicada"]
+    assert ap["tentativa"] == 1 and ap["valor_anterior"]["verba_diaria_micros"] == 30_000_000
+    assert r["proposta"]["estado"] == "aplicada"
+    assert conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] == 36_000_000
+    # em_voo ANTES da chamada; depois o fechamento
+    ins = [o for o in led.ops if o[0] == "insert" and o[1] == "trafego_aplicacao"]
+    upd = [o for o in led.ops if o[0] == "update" and o[1] == "trafego_aplicacao"]
+    assert "desfecho" not in ins[0][2] and upd[0][5]["desfecho"] == "sucesso"
+    assert [c[0] for c in conta.chamadas].index("validar") < \
+        [c[0] for c in conta.chamadas].index("aplicar")
+    assert led.cooldowns  # o gatilho abre a carência
+    n = len(conta.chamadas)
+    de_novo = await g.aplicar(p["proposta_id"], executor="adm")
+    assert de_novo["ja_aplicada"] and len(led.aplicacoes) == 1 and len(conta.chamadas) == n
+
+
+async def test_aplicar_com_trava_fechada_nao_grava_nem_envia():
+    g, led, conta = D.gestao_de_teste(escrita=False)
+    p = await _proposta_aprovada(g)
+    with pytest.raises(E.EscritaBloqueada):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    assert not led.aplicacoes and not any(c[0] == "aplicar" for c in conta.chamadas)
+
+
+async def test_trava_de_codigo_fechada_fecha_a_aplicacao_como_erro():
+    g, led, conta = D.gestao_de_teste()
+    conta.trava_fechada = True
+    p = await _proposta_aprovada(g)
+    with pytest.raises(E.EscritaBloqueada):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    (ap,) = led.aplicacoes.values()
+    assert ap["desfecho"] == "erro" and ap["erro_codigo"] == "escrita_bloqueada"
+    assert ap["resposta_bruta"]["validate_only"]["desfecho"] == "ok"
+
+
+async def test_validate_only_recusado_fecha_erro_sem_escrita_real():
+    g, led, conta = D.gestao_de_teste()
+    conta.validacao_ok = False
+    p = await _proposta_aprovada(g)
+    with pytest.raises(GoogleRecusou):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    (ap,) = led.aplicacoes.values()
+    assert ap["desfecho"] == "erro" and ap["resposta_bruta"]["fase"] == "validate_only"
+    assert not any(c[0] == "aplicar" for c in conta.chamadas)
+    assert led.propostas[p["proposta_id"]]["estado"] == "aprovada"
+
+
+async def test_sem_resposta_bloqueia_reenvio_ate_a_verificacao():
+    g, led, conta = D.gestao_de_teste()
+    conta.explodir_na_escrita = True
+    p = await _proposta_aprovada(g)
+    with pytest.raises(E.Indisponivel) as exc:
+        await g.aplicar(p["proposta_id"], executor="adm")
+    assert exc.value.codigo == "sem_resposta"
+    (ap,) = led.aplicacoes.values()
+    assert ap["desfecho"] == "sem_resposta"
+    with pytest.raises(E.ConflitoDeEstado) as exc2:
+        await g.aplicar(p["proposta_id"], executor="adm")
+    assert exc2.value.codigo == "verificar_antes"
+    # A verificação diz que NÃO entrou → nova tentativa é permitida (linha nova).
+    v = await g.verificar(ap["aplicacao_id"], observador="op")
+    assert v["confere"] is False
+    conta.explodir_na_escrita = False
+    r = await g.aplicar(p["proposta_id"], executor="adm")
+    assert r["aplicacao"]["tentativa"] == 2 and r["desfecho"] == "sucesso"
+
+
+async def test_sem_resposta_que_entrou_vira_aplicada_sem_reenviar():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    conta.explodir_na_escrita = True
+    with pytest.raises(E.Indisponivel):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 36_000_000  # entrou
+    (ap,) = led.aplicacoes.values()
+    v = await g.verificar(ap["aplicacao_id"], observador="op")
+    assert v["confere"] is True and v["proposta"]["estado"] == "aplicada"
+    n = len([c for c in conta.chamadas if c[0] == "aplicar"])
+    r = await g.aplicar(p["proposta_id"], executor="adm")
+    assert r["ja_aplicada"] and len([c for c in conta.chamadas if c[0] == "aplicar"]) == n
+
+
+async def test_em_voo_orfao_e_fechado_pela_verificacao():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    aprov = await led.aprovacao_da_proposta(p["proposta_id"])
+    velho = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+    ap = await led.inserir_aplicacao({"proposta_id": p["proposta_id"],
+                                      "aprovacao_id": aprov["aprovacao_id"],
+                                      "idempotency_key": p["idempotency_key"], "tentativa": 1,
+                                      "enviado_em": velho, "valor_anterior": p["valor_atual"]})
+    conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 36_000_000
+    v = await g.verificar(ap["aplicacao_id"], observador="op")
+    assert v["aplicacao"]["desfecho"] == "sucesso"
+    assert v["aplicacao"]["resposta_bruta"]["fechada_por"] == "verificacao"
+
+
+# ═══ verificar e reverter ═══════════════════════════════════════════════════
+
+
+async def test_verificar_grava_acompanhamento_tri_estado():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
+    v = await g.verificar(ap["aplicacao_id"], observador="op")
+    ac = v["acompanhamento"]
+    assert v["confere"] is True and ac["momento"] == "verificacao"
+    assert ac["valor_observado"]["verba_diaria_micros"] == 36_000_000 and ac["motivo"]
+
+
+async def test_reverter_restaura_o_valor_anterior_e_e_idempotente():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
+    r = await g.reverter(ap["aplicacao_id"], motivo="CPA subiu 40%", autor="adm")
+    assert r["reversao"]["desfecho"] == "sucesso" and r["proposta"]["estado"] == "revertida"
+    vr = r["reversao"]["valor_restaurado"]
+    assert vr["reversivel"] and vr["passos"][0]["valor"]["verba_diaria_micros"] == 30_000_000
+    assert conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] == 30_000_000
+    de_novo = await g.reverter(ap["aplicacao_id"], motivo="de novo", autor="adm")
+    assert de_novo["ja_revertida"] and len(led.reversoes) == 1
+
+
+async def test_reverter_recusa_se_alguem_mexeu_depois():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
+    conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 50_000_000
+    with pytest.raises(E.ConflitoDeEstado) as exc:
+        await g.reverter(ap["aplicacao_id"], motivo="piorou", autor="adm")
+    assert exc.value.codigo == "estado_mudou_depois" and not led.reversoes
+
+
+async def test_reverter_sem_trava_nao_queima_a_unica_reversao():
+    g, led, conta = D.gestao_de_teste()
+    p = await _proposta_aprovada(g)
+    ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
+    g._escrita_habilitada = lambda: False
+    with pytest.raises(E.EscritaBloqueada):
+        await g.reverter(ap["aplicacao_id"], motivo="piorou", autor="adm")
+    assert not led.reversoes
+
+
+async def test_reverter_aplicacao_sem_sucesso_e_recusado():
+    g, led, conta = D.gestao_de_teste()
+    conta.validacao_ok = False
+    p = await _proposta_aprovada(g)
+    with pytest.raises(GoogleRecusou):
+        await g.aplicar(p["proposta_id"], executor="adm")
+    (ap,) = led.aplicacoes.values()
+    with pytest.raises(E.ConflitoDeEstado) as exc:
+        await g.reverter(ap["aplicacao_id"], motivo="x", autor="adm")
+    assert exc.value.codigo == "nada_a_reverter"
+
+
+# ═══ importar e recomendações ═══════════════════════════════════════════════
+
+
+async def test_importar_declara_descoberta_e_e_idempotente():
+    g, led, conta = D.gestao_de_teste(importada=False)
+    r = await g.importar_campanha_externa(CID, CAMP, autor="op@volc")
+    c = r["campanha"]
+    assert not r["ja_existia"] and c["procedencia"] == "descoberta"
+    assert c["procedencia_declarada_por"] == "humano:op@volc"
+    from app.trafego.sincronizador import volc_campaign_id
+    assert c["volc_campaign_id"] == volc_campaign_id(CID, CAMP)
+    assert (await g.importar_campanha_externa(CID, CAMP, autor="op"))["ja_existia"]
+    # agora a proposta de nível campanha passa
+    assert (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]["volc_campaign_id"]
+
+
+async def test_importar_resolve_procedencia_desconhecida_uma_vez():
+    g, led, _ = D.gestao_de_teste(importada=False)
+    from app.trafego.sincronizador import volc_campaign_id
+    vid = volc_campaign_id(CID, CAMP)
+    led.campanhas[vid] = {"volc_campaign_id": vid, "customer_id": CID, "campaign_id": CAMP,
+                          "procedencia": "desconhecida", "criada_por": "backend:varredura"}
+    r = await g.importar_campanha_externa(CID, CAMP, autor="op")
+    assert r["procedencia_resolvida"] and r["campanha"]["procedencia"] == "descoberta"
+
+
+async def test_importar_campanha_inexistente_ou_removida():
+    g, _, conta = D.gestao_de_teste(importada=False)
+    with pytest.raises(E.NaoEncontrado):
+        await g.importar_campanha_externa(CID, "999", autor="op")
+    conta.campanhas[CAMP]["status"] = "REMOVED"
+    with pytest.raises(E.ConflitoDeEstado):
+        await g.importar_campanha_externa(CID, CAMP, autor="op")
+
+
+async def test_recomendacao_vira_proposta_mas_a_regra_de_hoje_a_recusa():
+    g, _, conta = D.gestao_de_teste()
+    (rec,) = await g.recomendacoes(CID)
+    conta.mundo[("recomendacao.aplicar", "abc123")] = {"existe": True, "tipo": "CAMPAIGN_BUDGET",
+                                                       "dispensada": False}
+    with pytest.raises(E.ForaDaRegra) as exc:
+        await g.propor(CID, rec["acoes"][0], motivo="o Google sugeriu", autor="op")
+    assert exc.value.codigo == "regra_exige_delta"
+
+
+# ═══ puros ══════════════════════════════════════════════════════════════════
+
+
+def test_autonomia_e_vazia_por_decisao():
+    assert autonomia.NIVEIS_QUE_APLICAM_SEM_HUMANO == frozenset()
+    regra_t2 = {"nivel_autonomia": "T2", "acao": {"operacoes_autonomas": ["status"]}}
+    assert not autonomia.aplica_sem_humano(regra_t2, "status")
+
+
+def test_campos_divergentes_ignora_ida_e_volta_do_json():
+    assert campos_divergentes({"a": 1, "b": [1, 2]}, {"a": 1.0, "b": [1, 2]}) == []
+    assert campos_divergentes({"a": 1}, {"a": 2, "c": None}) == ["a"]
+
+
+def test_janela_cobre_o_atraso_de_conversao():
+    ini, fim = janela_da_regra({"janela_minima_dias": 7, "atraso_conversao_dias": 2},
+                               datetime(2026, 10, 8).date())
+    assert (ini.isoformat(), fim.isoformat()) == ("2026-09-29", "2026-10-05")
+
+
+def test_espelho_do_gatilho_de_delta():
+    regra = D.regra_padrao(limite_alteracao_pct=None, limite_alteracao_absoluto_micros=10)
+    with pytest.raises(E.ForaDaRegra):
+        conferir_contra_regra({"delta_pct": 5.0, "delta_absoluto_micros": None}, regra,
+                              agora=datetime.now(timezone.utc))
+
+
+def test_efeito_de_cada_familia():
+    assert conferir_efeito(A.AlterarStatus("campanha", CAMP, "PAUSED"),
+                           {"existe": True, "status": "PAUSED"})[0] is True
+    neg = A.AdicionarNegativas("campanha", CAMP, (A.Termo("grátis"),))
+    assert conferir_efeito(neg, {"chaves": [["grátis", "PHRASE"]]})[0] is True
+    assert conferir_efeito(neg, {"chaves": []})[0] is False
+    assert conferir_efeito(A.AplicarRecomendacao(_RN_REC), {"existe": False})[0] is None
+    aj = A.AjustarDispositivo.de(CAMP, "MOBILE", 1.0)
+    assert conferir_efeito(aj, {"existe": True, "modificador": None})[0] is True
+
+
+# ═══ infraestrutura ═════════════════════════════════════════════════════════
+
+
+def test_gaqls_do_adaptador_estao_no_catalogo_v25():
+    from volc_ads.gads import catalogo
+    for nivel, gaql in CG._GAQL_METRICAS.items():
+        catalogo.exigir_valida(gaql.format(alvo=1, grupo=1, anuncio=2, inicio="2026-10-01",
+                                           fim="2026-10-07"))
+    catalogo.exigir_valida(CG.GAQL_CAMPANHA.format(campanha=1))
+    catalogo.exigir_valida(CG.GAQL_RECOMENDACOES)
+
+
+def test_somar_metricas_distingue_zero_medido():
+    linha = SimpleNamespace(metrics=SimpleNamespace(impressions=10, clicks=2, cost_micros=5_000,
+                                                    conversions=1.5, conversions_value=2.0),
+                            customer=SimpleNamespace(currency_code="BRL"))
+    t = CG.somar_metricas([linha, linha])
+    assert (t["impressoes"], t["custo_micros"], t["conversoes"], t["moeda"]) == \
+        (20, 10_000, 3.0, "BRL")
+    assert t["valor_conversao_micros"] == 4_000_000 and not t["sem_linhas"]
+    vazio = CG.somar_metricas([])
+    assert vazio["impressoes"] == 0 and vazio["sem_linhas"]
+
+
+class _Resp:
+    def __init__(self, status, corpo):
+        self.status_code, self._corpo, self.text = status, corpo, str(corpo)
+
+    def json(self):
+        return self._corpo
+
+
+def test_traduzir_erro_do_postgrest():
+    gatilho = RP.traduzir_erro(SimpleNamespace(response=_Resp(400, {
+        "code": "23001", "message": "trafego_aplicacao: exige aprovação"})))
+    assert isinstance(gatilho, E.BancoRecusou) and gatilho.detalhe["sqlstate"] == "23001"
+    assert isinstance(RP.traduzir_erro(SimpleNamespace(response=_Resp(503, "x"))),
+                      E.Indisponivel)
+
+
+async def test_repositorio_monta_as_requisicoes_certas(monkeypatch):
+    feitas = []
+
+    async def _req(self, metodo, alvo, **kw):
+        feitas.append((metodo, alvo, kw))
+        return [{"aplicacao_id": "a1", "proposta_id": "p1"}]
+
+    monkeypatch.setattr(RP.RepositorioGestaoPostgrest, "_req", _req)
+    repo = RP.RepositorioGestaoPostgrest("http://banco", "chave")
+    await repo.inserir_aplicacao({"proposta_id": "p1", "request_id": None})
+    await repo.fechar_aplicacao("a1", {"desfecho": "sucesso"})
+    await repo.painel(CID, estado="aprovada", limite=10)
+    ins, fecha, painel = feitas
+    assert ins[0] == "POST" and ins[2]["json"] == {"proposta_id": "p1"}
+    assert ins[2]["headers"]["Prefer"] == "return=representation"
+    assert fecha[0] == "PATCH" and fecha[2]["params"]["desfecho"] == "eq.em_voo"
+    assert painel[1] == "trafego_proposta_painel"
+    assert painel[2]["params"]["alvo_chave"] == f"like.google_ads:{CID}:*"
+    with pytest.raises(E.Indisponivel):
+        await RP.RepositorioGestaoPostgrest("", "").proposta("x")
+
+
+# ═══ rotas ══════════════════════════════════════════════════════════════════
+
+_ADMIN = Identidade(sub="u1", email="adm@volc", papel="ADMIN", origem="sessao")
+_OPERADOR = Identidade(sub="u2", email="op@volc", papel="OPERATOR", origem="sessao")
+
+
+def _app(gestao, quem=_ADMIN, *, sem_identidade=False):
+    app = FastAPI()
+    app.include_router(rota.router)
+    app.dependency_overrides[rota.obter_gestao] = lambda: gestao
+    if sem_identidade:
+        app.dependency_overrides[get_settings] = lambda: Settings(
+            supabase_url="http://auth.invalido", supabase_service_role_key="k")
+    else:
+        app.dependency_overrides[exigir_usuario] = lambda: quem
+    return TestClient(app)
+
+
+BASE = "/api/trafego/gestao"
+
+
+def test_rotas_ciclo_completo():
+    g, led, conta = D.gestao_de_teste(importada=False)
+    c = _app(g)
+    imp = c.post(f"{BASE}/campanhas/importar", json={"customer_id": CID, "campaign_id": CAMP})
+    assert imp.status_code == 201 and imp.json()["campanha"]["procedencia"] == "descoberta"
+    assert c.post(f"{BASE}/campanhas/importar",
+                  json={"customer_id": CID, "campaign_id": CAMP}).status_code == 200
+    r = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC, "motivo": "m"})
+    assert r.status_code == 201, r.text
+    p = r.json()["proposta"]
+    assert c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
+                                             "motivo": "m"}).status_code == 200
+    painel = c.get(f"{BASE}/propostas", params={"customer_id": CID}).json()
+    assert painel["total"] == 1 and painel["propostas"][0]["proximo_passo"] == "aguardar_humano"
+    a = c.post(f"{BASE}/propostas/{p['proposta_id']}/aprovar",
+               json={"diff_apresentado": _diff(p)})
+    assert a.status_code == 200 and a.json()["proposta"]["estado"] == "aprovada"
+    ap = c.post(f"{BASE}/propostas/{p['proposta_id']}/aplicar")
+    assert ap.status_code == 200 and ap.json()["desfecho"] == "sucesso"
+    aid = ap.json()["aplicacao"]["aplicacao_id"]
+    assert c.post(f"{BASE}/propostas/{p['proposta_id']}/aplicar").json()["ja_aplicada"]
+    v = c.post(f"{BASE}/aplicacoes/{aid}/verificar")
+    assert v.status_code == 200 and v.json()["confere"] is True
+    rv = c.post(f"{BASE}/aplicacoes/{aid}/reverter", json={"motivo": "piorou"})
+    assert rv.status_code == 200 and rv.json()["reversao"]["desfecho"] == "sucesso"
+    rec = c.get(f"{BASE}/recomendacoes", params={"customer_id": CID})
+    assert rec.status_code == 200 and rec.json()["total"] == 1
+
+
+def test_rota_recusar_e_erros_mapeados():
+    g, led, conta = D.gestao_de_teste()
+    c = _app(g)
+    p = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
+                                          "motivo": "m"}).json()["proposta"]
+    sem = c.post(f"{BASE}/propostas/{p['proposta_id']}/recusar", json={})
+    assert sem.status_code == 422 and sem.json()["detail"]["codigo"] == "recusa_sem_motivo"
+    ok = c.post(f"{BASE}/propostas/{p['proposta_id']}/recusar", json={"motivo": "caro"})
+    assert ok.status_code == 200 and ok.json()["proposta"]["estado"] == "recusada"
+    ap = c.post(f"{BASE}/propostas/{p['proposta_id']}/aplicar")
+    assert ap.status_code == 409 and ap.json()["detail"]["codigo"] == "exige_aprovacao_humana"
+    assert c.post(f"{BASE}/propostas/nao-existe/aplicar").status_code == 404
+    pausa = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m", "acao": {
+        "tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"}})
+    assert pausa.status_code == 409 and pausa.json()["detail"]["codigo"] == "regra_exige_delta"
+    ruim = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m",
+                                             "acao": {"tipo": "x"}})
+    assert ruim.status_code == 422
+
+
+def test_rota_divergencia_do_antes_e_409():
+    g, led, conta = D.gestao_de_teste()
+    c = _app(g)
+    p = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
+                                          "motivo": "m"}).json()["proposta"]
+    c.post(f"{BASE}/propostas/{p['proposta_id']}/aprovar", json={"diff_apresentado": _diff(p)})
+    conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 33_000_000
+    r = c.post(f"{BASE}/propostas/{p['proposta_id']}/aplicar")
+    assert r.status_code == 409 and r.json()["detail"]["codigo"] == "antes_divergiu"
+    assert not led.aplicacoes
+
+
+@pytest.mark.parametrize("metodo,caminho,corpo", [
+    ("get", "/propostas", None), ("get", "/recomendacoes", None),
+    ("post", "/propostas", {"acao": ORC, "motivo": "m"}),
+    ("post", "/campanhas/importar", {"campaign_id": CAMP}),
+])
+def test_rota_conta_fora_da_casa_e_403(metodo, caminho, corpo):
+    g, led, conta = D.gestao_de_teste()
+    c = _app(g)
+    if metodo == "get":
+        r = c.get(BASE + caminho, params={"customer_id": D.FORA})
+    else:
+        r = c.post(BASE + caminho, json={**corpo, "customer_id": D.FORA})
+    assert r.status_code == 403 and r.json()["detail"]["codigo"] == "fora_do_escopo"
+    assert not conta.chamadas and not led.ops
+
+
+def test_rota_por_id_de_proposta_de_conta_fora_da_casa_e_403():
+    g, led, conta = D.gestao_de_teste()
+    c = _app(g)
+    p = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
+                                          "motivo": "m"}).json()["proposta"]
+    led.propostas[p["proposta_id"]]["alvo_chave"] = f"google_ads:{D.FORA}:campanha:{CAMP}"
+    r = c.post(f"{BASE}/propostas/{p['proposta_id']}/aprovar", json={"diff_apresentado": {}})
+    assert r.status_code == 403
+
+
+@pytest.mark.parametrize("metodo,caminho", [
+    ("get", "/propostas?customer_id=1"), ("post", "/propostas/x/aplicar"),
+    ("post", "/aplicacoes/x/verificar"), ("post", "/campanhas/importar"),
+])
+def test_rota_sem_credencial_e_401(metodo, caminho):
+    g, *_ = D.gestao_de_teste()
+    c = _app(g, sem_identidade=True)
+    r = getattr(c, metodo)(BASE + caminho)
+    assert r.status_code == 401
+
+
+@pytest.mark.parametrize("caminho,corpo", [
+    ("/propostas/x/aprovar", {"diff_apresentado": {}}),
+    ("/propostas/x/recusar", {"motivo": "m"}),
+    ("/propostas/x/aplicar", None),
+    ("/aplicacoes/x/reverter", {"motivo": "m"}),
+])
+def test_rota_de_escrita_sem_admin_e_403(caminho, corpo):
+    g, led, conta = D.gestao_de_teste()
+    c = _app(g, _OPERADOR)
+    r = c.post(BASE + caminho, json=corpo) if corpo else c.post(BASE + caminho)
+    assert r.status_code == 403 and "administrativo" in r.json()["detail"]
+    assert not conta.chamadas and not led.ops
+
+
+def test_operador_propoe_e_verifica_sem_admin():
+    g, *_ = D.gestao_de_teste()
+    c = _app(g, _OPERADOR)
+    r = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC, "motivo": "m"})
+    assert r.status_code == 201
+    assert r.json()["proposta"]["criada_por"] == "humano:op@volc"
+
+
+def test_router_registrado_no_main():
+    from app.main import app
+    caminhos = {getattr(r, "path", "") for r in app.routes}
+    for c in ("/propostas", "/propostas/{proposta_id}/aprovar", "/propostas/{proposta_id}/recusar",
+              "/propostas/{proposta_id}/aplicar", "/aplicacoes/{aplicacao_id}/verificar",
+              "/aplicacoes/{aplicacao_id}/reverter", "/campanhas/importar", "/recomendacoes"):
+        assert BASE + c in caminhos, c
