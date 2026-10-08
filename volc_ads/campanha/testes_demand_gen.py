@@ -1010,3 +1010,612 @@ def test_nenhum_objeto_demand_gen_nasce_ligado():
         nome = getattr(estado, "name", None)
         if nome is not None:
             assert nome != "ENABLED", f"{qual} nasceu ENABLED"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# v25.2 — formatos (vídeo responsivo, carrossel), lance, públicos, agenda,
+# automações por formato. Tudo hermético contra o proto v25 instalado; a prova
+# remota (validate_only na Crédito Up) está no relatório da onda de 08/10/2026.
+# ═══════════════════════════════════════════════════════════════════════════
+
+from volc_ads.campanha import demand_gen_config as dgc  # noqa: E402
+from volc_ads.campanha import demand_gen_ops  # noqa: E402
+from volc_ads.campanha.demand_gen_config import (  # noqa: E402
+    CarrosselDemandGen,
+    CartaoCarrosselDemandGen,
+    ConfiguracaoDemandGenV25,
+    FaixaDeAgendaDemandGen,
+    LanceDemandGen,
+    LookalikeDemandGen,
+    PublicoDemandGen,
+    VideoDemandGen,
+)
+
+_VIDEOS = ("M7lc1UVf-VE", "dQw4w9WgXcQ")
+
+
+def _v25(**troca) -> ConfiguracaoDemandGenV25:
+    base = {
+        "upgraded_targeting": True,
+        "controles_de_canal": ControlesDeCanalDemandGen(
+            estrategia="ALL_CHANNELS", selected_channels=None),
+        "audiencias": (),
+        "intencoes": (),
+        "exclusoes_de_audiencia": (),
+    }
+    base.update(troca)
+    return ConfiguracaoDemandGenV25(**base)
+
+
+def _so_logo() -> ImagensDemandGen:
+    return ImagensDemandGen(logo_quadrado=_imagens().logo_quadrado)
+
+
+def _brief_video(**troca_cfg) -> Brief:
+    cfg = _v25(formato="VIDEO_RESPONSIVO",
+               video=VideoDemandGen(youtube_ids=_VIDEOS,
+                                    call_to_action="LEARN_MORE",
+                                    breadcrumb1="cursos", breadcrumb2="senac"),
+               **troca_cfg)
+    return _brief(
+        copy=_copy(headlines=["Guia de cursos Senac: inscrições 2026"],
+                   long_headlines=["Conheça cursos Senac e saiba como se inscrever"]),
+        imagens_demand_gen=_so_logo(),
+        demand_gen=cfg,
+    )
+
+
+def _remota(semente: bytes, n: int, tipo=TipoDeAsset.IMAGEM_MARKETING_QUADRADA,
+            largura=300, altura=300):
+    """Imagem REMOTA com recibo, pela ponte do Estúdio (o único caminho)."""
+    img, dados = _asset(tipo, largura, altura, semente=semente,
+                        id_externo=f"customers/{CID}/assets/{9200 + n}")
+    logo, b_logo = _asset(TipoDeAsset.LOGO_QUADRADO, 144, 144, semente=b"logo-c")
+    entrega = criativo_ponte.imagens_de_demand_gen(
+        LoteDeAssets(canal="DEMAND_GEN", assets=(img, logo)),
+        {img.identidade: dados, logo.identidade: b_logo},
+    )
+    assert entrega.ok, entrega.resumo()
+    papel = {"imagem_marketing": "marketing",
+             "imagem_marketing_quadrada": "marketing_quadrada"}[tipo.value]
+    return getattr(entrega.imagens, papel)[0]
+
+
+def _cartoes(n: int = 2, **troca) -> tuple[CartaoCarrosselDemandGen, ...]:
+    return tuple(
+        CartaoCarrosselDemandGen(
+            headline=f"Curso Senac {i}",
+            marketing_quadrada=_remota(f"card{i}".encode(), i),
+            **troca)
+        for i in range(n))
+
+
+def _brief_carrossel(cartoes=None, copy=None, **troca_cfg) -> Brief:
+    cfg = _v25(formato="CARROSSEL",
+               carrossel=CarrosselDemandGen(cartoes or _cartoes()),
+               call_to_action="Saiba Mais", **troca_cfg)
+    return _brief(
+        copy=copy or _copy(headlines=["Guia de cursos Senac"],
+                           descriptions=["Cursos técnicos e livres do Senac."]),
+        imagens_demand_gen=_so_logo(),
+        demand_gen=cfg,
+    )
+
+
+def _anuncio(ops):
+    return _por_tipo(ops, "ad_group_ad_operation")[0].ad_group_ad_operation.create
+
+
+def _campanha(ops):
+    return _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+
+
+def _grupo(ops):
+    return _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+
+
+def _ramo(campanha) -> str:
+    return campanha._pb.WhichOneof("campaign_bidding_strategy")
+
+
+# ── compatibilidade: a configuração v25 vazia é o payload de antes ───────────
+
+
+def test_v25_com_defaults_e_byte_identica_ao_legado(monkeypatch) -> None:
+    monkeypatch.setattr(comum, "carimbo", lambda: "20261008_120000")
+    legado, r1 = demand_gen.construir(CID, _brief(), login_customer_id=MCC)
+    novo, r2 = demand_gen.construir(
+        CID, _brief(demand_gen=dgc.estender(_configuracao())),
+        login_customer_id=MCC)
+    assert r1.ok and r2.ok, _erros(r1) + _erros(r2)
+    assert [o._pb.SerializeToString(deterministic=True) for o in legado] == [
+        o._pb.SerializeToString(deterministic=True) for o in novo]
+
+
+def test_vocabulario_local_bate_com_o_proto_v25() -> None:
+    """As tuplas stdlib que a tela lê são conferidas contra o SDK instalado."""
+    e = _Enums()
+    nomes = lambda enum_: {m.name for m in enum_} - {"UNSPECIFIED", "UNKNOWN"}  # noqa: E731
+    assert set(dgc.CTAS_DE_VIDEO) == nomes(e.CallToActionTypeEnum)
+    assert set(dgc.GENEROS) <= nomes(e.GenderTypeEnum)
+    assert set(dgc.FAIXAS_DE_RENDA) <= nomes(e.IncomeRangeTypeEnum)
+    assert set(dgc.STATUS_PARENTAIS) <= nomes(e.ParentalStatusTypeEnum)
+    assert set(dgc.NIVEIS_DE_LOOKALIKE) == nomes(e.LookalikeExpansionLevelEnum)
+    assert set(dgc.DIAS_DA_SEMANA) == nomes(e.DayOfWeekEnum)
+    assert set(dgc.MINUTOS.values()) == nomes(e.MinuteOfHourEnum)
+    todas = {t for ts in dgc.AUTOMACOES_POR_FORMATO.values() for t in ts}
+    assert todas <= nomes(e.AssetAutomationTypeEnum)
+    # Channel controls cobrem TODA a v25.2: as duas estratégias do enum + o
+    # ramo SELECTED_CHANNELS, e os sete booleanos de DemandGenSelectedChannels.
+    from volc_ads.campanha.brief import ESTRATEGIAS_DE_CANAL_DEMAND_GEN
+    assert set(ESTRATEGIAS_DE_CANAL_DEMAND_GEN) == (
+        nomes(e.DemandGenChannelStrategyEnum) | {"SELECTED_CHANNELS"})
+    ag = import_module("google.ads.googleads.v25.resources.types.ad_group")
+    sel = ag.AdGroup.DemandGenAdGroupSettings.DemandGenChannelControls.DemandGenSelectedChannels
+    assert {f.name for f in sel.pb().DESCRIPTOR.fields} == set(
+        demand_gen.CANAIS_SELECIONAVEIS_DEMAND_GEN)
+    card = import_module("google.ads.googleads.v25.common.types.asset_types")
+    campos = {f.name for f in card.DemandGenCarouselCardAsset.pb().DESCRIPTOR.fields}
+    assert set(dgc.PAPEIS_DO_CARTAO.values()) <= campos
+    camp = import_module("google.ads.googleads.v25.resources.types.campaign")
+    oneof = {f.name for f in camp.Campaign.pb().DESCRIPTOR.oneofs_by_name[
+        "campaign_bidding_strategy"].fields}
+    for lance in (LanceDemandGen("MAXIMIZE_CONVERSIONS"),
+                  LanceDemandGen("MAXIMIZE_CONVERSIONS", target_cpa=1.0),
+                  LanceDemandGen("MAXIMIZE_CONVERSION_VALUE"),
+                  LanceDemandGen("MAXIMIZE_CONVERSION_VALUE", target_roas=2.0),
+                  LanceDemandGen("TARGET_SPEND"),
+                  LanceDemandGen("TARGET_CPC", target_cpc=1.0)):
+        assert lance.campo_do_proto in oneof
+    assert demand_gen.sondar_proto_v25().disponivel
+
+
+# ── lance ───────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("lance", "ramo", "campo", "valor"),
+    [
+        (LanceDemandGen("MAXIMIZE_CONVERSIONS"), "maximize_conversions", None, None),
+        (LanceDemandGen("MAXIMIZE_CONVERSIONS", target_cpa=12.5), "target_cpa",
+         "target_cpa_micros", 12_500_000),
+        (LanceDemandGen("MAXIMIZE_CONVERSION_VALUE"), "maximize_conversion_value",
+         None, None),
+        (LanceDemandGen("MAXIMIZE_CONVERSION_VALUE", target_roas=3.0), "target_roas",
+         "target_roas", 3.0),
+        (LanceDemandGen("TARGET_SPEND"), "target_spend", None, None),
+        (LanceDemandGen("TARGET_CPC", target_cpc=0.8), "target_cpc",
+         "target_cpc_micros", 800_000),
+    ],
+)
+def test_cada_lance_ocupa_um_ramo_do_oneof_e_meta_nunca_vira_zero(
+    lance, ramo, campo, valor
+) -> None:
+    ops, r = demand_gen.construir(
+        CID, _brief(estrategia_lance="MANUAL_CPC", demand_gen=_v25(lance=lance)),
+        login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    camp = _campanha(ops)
+    assert _ramo(camp) == ramo
+    lidos = {f.name: v for f, v in getattr(camp, ramo)._pb.ListFields()}
+    if campo is None:
+        assert lidos == {}, "estratégia sem meta ganhou campo (teto ou meta zero)"
+    else:
+        assert lidos == {campo: valor}
+
+
+def test_lance_declarado_e_brief_com_meta_ou_estrategia_divergente_recusam() -> None:
+    _, r = demand_gen.construir(
+        CID, _brief(tcpa=5.0, demand_gen=_v25(lance=LanceDemandGen("TARGET_SPEND"))),
+        login_customer_id=MCC)
+    assert {"tcpa", "estrategia_lance"} <= {a.campo for a in r.erros}
+    _, r2 = demand_gen.construir(
+        CID, _brief(estrategia_lance="MANUAL_CPC", target_roas=2.0,
+                    demand_gen=_v25(lance=LanceDemandGen("MAXIMIZE_CONVERSION_VALUE"))),
+        login_customer_id=MCC)
+    assert "target_roas" in {a.campo for a in r2.erros}
+
+
+def test_lance_de_valor_avisa_que_depende_de_historico_de_conversao() -> None:
+    _, r = demand_gen.construir(
+        CID, _brief(estrategia_lance="MAXIMIZE_CONVERSION_VALUE",
+                    demand_gen=_v25(lance=LanceDemandGen("MAXIMIZE_CONVERSION_VALUE"))),
+        login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    assert any("NOT_ENOUGH_CONVERSIONS" in a.motivo for a in r.achados if a.severidade == "aviso")
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"estrategia": "TARGET_CPM"},
+        {"estrategia": "TARGET_CPC"},
+        {"estrategia": "TARGET_SPEND", "target_cpa": 1.0},
+        {"estrategia": "MAXIMIZE_CONVERSIONS", "target_roas": 2.0},
+        {"estrategia": "MAXIMIZE_CONVERSIONS", "target_cpa": 0},
+    ],
+)
+def test_lance_invalido_morre_na_construcao(kwargs) -> None:
+    with pytest.raises(ValueError):
+        LanceDemandGen(**kwargs)
+
+
+# ── vídeo responsivo ────────────────────────────────────────────────────────
+
+
+def test_video_responsivo_cria_youtube_e_cta_no_mesmo_mutate() -> None:
+    ops, r = demand_gen.construir(CID, _brief_video(), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    assets = [o.asset_operation.create for o in _por_tipo(ops, "asset_operation")]
+    assert [(a.type_.name, a.resource_name) for a in assets] == [
+        ("IMAGE", comum.temp_imagem(CID, 0)),
+        ("YOUTUBE_VIDEO", demand_gen_ops.temp_asset_dg(CID, 0)),
+        ("YOUTUBE_VIDEO", demand_gen_ops.temp_asset_dg(CID, 1)),
+        ("CALL_TO_ACTION", demand_gen_ops.temp_asset_dg(CID, 2)),
+    ]
+    assert [a.youtube_video_asset.youtube_video_id for a in assets[1:3]] == list(_VIDEOS)
+    assert assets[3].call_to_action_asset.call_to_action.name == "LEARN_MORE"
+
+    ada = _anuncio(ops)
+    assert ada.status.name == "PAUSED"
+    assert ada.ad._pb.WhichOneof("ad_data") == "demand_gen_video_responsive_ad"
+    assert ada.ad.name, "ad.name é obrigatório no vídeo (REQUIRED, medido)"
+    info = ada.ad.demand_gen_video_responsive_ad
+    assert [v.asset for v in info.videos] == [a.resource_name for a in assets[1:3]]
+    assert [x.asset for x in info.logo_images] == [comum.temp_imagem(CID, 0)]
+    assert [x.asset for x in info.call_to_actions] == [assets[3].resource_name]
+    assert info.business_name.text == "Credito Up"
+    assert len(info.long_headlines) == 1 and info.breadcrumb1 == "cursos"
+    assert info.breadcrumb2 == "senac"
+    assert [(s.asset_automation_type.name, s.asset_automation_status.name)
+            for s in ada.ad_group_ad_asset_automation_settings] == [
+        (t, "OPTED_OUT") for t in dgc.AUTOMACOES_POR_FORMATO["VIDEO_RESPONSIVO"]]
+
+
+def test_video_com_imagem_de_marketing_ou_dois_logos_e_recusado() -> None:
+    b = _brief_video()
+    b.imagens_demand_gen = _imagens()          # traz marketing paisagem
+    _, r = demand_gen.construir(CID, b, login_customer_id=MCC)
+    assert "imagens_demand_gen.marketing" in {a.campo for a in r.erros}
+    b2 = _brief_video()
+    logo = b2.imagens_demand_gen.logo_quadrado[0]
+    b2.imagens_demand_gen = ImagensDemandGen(logo_quadrado=[logo, logo])
+    _, r2 = demand_gen.construir(CID, b2, login_customer_id=MCC)
+    assert "exatamente 1 logo" in _erros(r2)
+
+
+def test_video_textos_usam_a_regua_de_40_e_exigem_long_headline() -> None:
+    b = _brief_video()
+    b.copy = _copy(headlines=["x" * 41], long_headlines=[])
+    _, r = demand_gen.construir(CID, b, login_customer_id=MCC)
+    campos = {a.campo for a in r.erros}
+    assert {"headline_video", "long_headline_video"} <= campos
+    b.copy = _copy(headlines=["y" * 40], long_headlines=["Guia de cursos Senac"])
+    _, r2 = demand_gen.construir(CID, b, login_customer_id=MCC)
+    assert r2.ok, _erros(r2)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"youtube_ids": ()},
+        {"youtube_ids": tuple(f"abcdefghij{i}" for i in range(6))},
+        {"youtube_ids": ("https://youtu.be/M7lc1UVf-VE",)},
+        {"youtube_ids": ("M7lc1UVf-VE", "M7lc1UVf-VE")},
+        {"youtube_ids": _VIDEOS, "breadcrumb2": "senac"},
+        {"youtube_ids": _VIDEOS, "breadcrumb1": "x" * 16},
+        {"youtube_ids": _VIDEOS, "call_to_action": "SAIBA_MAIS"},
+    ],
+)
+def test_video_invalido_morre_na_construcao(kwargs) -> None:
+    with pytest.raises(ValueError):
+        VideoDemandGen(**kwargs)
+
+
+def test_brief_videos_continua_recusado_e_aponta_o_caminho_novo() -> None:
+    _, r = demand_gen.construir(
+        CID, _brief(videos=[f"customers/{CID}/assets/9001"]), login_customer_id=MCC)
+    assert "VideoDemandGen" in _erros(r)
+
+
+# ── carrossel ───────────────────────────────────────────────────────────────
+
+
+def test_carrossel_cartoes_referenciam_imagem_remota_e_url_propria() -> None:
+    cartoes = _cartoes(3, url_final="https://creditoup.com.br/r/saque-anual/?c=1",
+                       call_to_action="Inscreva-se")
+    ops, r = demand_gen.construir(
+        CID, _brief_carrossel(cartoes=cartoes), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    assets = [o.asset_operation.create for o in _por_tipo(ops, "asset_operation")]
+    assert [a.type_.name for a in assets] == ["IMAGE"] + ["DEMAND_GEN_CAROUSEL_CARD"] * 3
+    for i, a in enumerate(assets[1:]):
+        card = a.demand_gen_carousel_card_asset
+        assert card.square_marketing_image_asset == f"customers/{CID}/assets/{9200 + i}"
+        assert not card.marketing_image_asset
+        assert card.headline == f"Curso Senac {i}"
+        assert card.call_to_action_text == "Inscreva-se"
+        assert list(a.final_urls) == ["https://creditoup.com.br/r/saque-anual/?c=1"]
+    ada = _anuncio(ops)
+    info = ada.ad.demand_gen_carousel_ad
+    assert ada.ad._pb.WhichOneof("ad_data") == "demand_gen_carousel_ad"
+    assert [c.asset for c in info.carousel_cards] == [a.resource_name for a in assets[1:]]
+    assert info.logo_image.asset == comum.temp_imagem(CID, 0)
+    assert info.headline.text == "Guia de cursos Senac"
+    assert info.call_to_action_text == "Saiba Mais"
+    assert list(ada.ad_group_ad_asset_automation_settings) == []
+    assert any(a.campo.endswith("url_final") for a in r.achados if a.severidade == "aviso")
+
+
+def test_carrossel_recusa_imagem_nova_duplicata_e_dominio_estranho() -> None:
+    remota = _remota(b"unica", 0)
+    casos = [
+        ((CartaoCarrosselDemandGen(headline="A", marketing=_imagens().marketing[0]),
+          CartaoCarrosselDemandGen(headline="B", marketing=_imagens().marketing[0])),
+         "não resolve id temporário"),
+        ((CartaoCarrosselDemandGen(headline="A", marketing_quadrada=remota),
+          CartaoCarrosselDemandGen(headline="B", marketing_quadrada=remota)),
+         "DUPLICATE_IMAGE_ACROSS_CAROUSEL_CARDS"),
+        ((CartaoCarrosselDemandGen(headline="A", marketing_quadrada=remota,
+                                   url_final="https://outro.example.com/"),
+          CartaoCarrosselDemandGen(headline="B",
+                                   marketing_quadrada=_remota(b"outra", 1))),
+         "fora do domínio"),
+    ]
+    for cartoes, esperado in casos:
+        ops, r = demand_gen.construir(
+            CID, _brief_carrossel(cartoes=cartoes), login_customer_id=MCC)
+        assert ops == [] and esperado in _erros(r), (esperado, _erros(r))
+
+
+def test_carrossel_campo_singular_recusa_segunda_headline_em_vez_de_cortar() -> None:
+    ops, r = demand_gen.construir(
+        CID,
+        _brief_carrossel(copy=_copy(headlines=["Um", "Dois"],
+                                    descriptions=["Cursos do Senac."])),
+        login_customer_id=MCC)
+    assert ops == [] and "headline_carrossel" in {a.campo for a in r.erros}
+
+
+@pytest.mark.parametrize(
+    "fabricar",
+    [
+        lambda: CarrosselDemandGen(_cartoes(1)),
+        lambda: CarrosselDemandGen(_cartoes(11)),
+        lambda: CarrosselDemandGen((
+            CartaoCarrosselDemandGen(headline="A", marketing_quadrada=_remota(b"a", 0)),
+            CartaoCarrosselDemandGen(
+                headline="B",
+                marketing=_remota(b"b", 1, TipoDeAsset.IMAGEM_MARKETING, 600, 314)),
+        )),
+        lambda: CartaoCarrosselDemandGen(headline="A"),
+        lambda: CartaoCarrosselDemandGen(
+            headline="A", marketing_quadrada=_remota(b"c", 0),
+            call_to_action="Saiba mais"),
+    ],
+)
+def test_carrossel_invalido_morre_na_construcao(fabricar) -> None:
+    with pytest.raises(ValueError):
+        fabricar()
+
+
+# ── públicos, agenda, segmentação otimizada ─────────────────────────────────
+
+
+_PUBLICO = PublicoDemandGen(
+    nome="Público Senac",
+    user_lists=(f"customers/{CID}/userLists/501",),
+    lookalikes=(LookalikeDemandGen("LAL", (502,), "BALANCED", ("BR",)),),
+    exclusoes_user_list=(f"customers/{CID}/userLists/503",),
+    idades=("18-24", "65+"), generos=("FEMALE",),
+    rendas=("INCOME_RANGE_0_50",), status_parentais=("PARENT",),
+    incluir_genero_indeterminado=False,
+)
+
+
+def test_publico_composto_nasce_no_mesmo_mutate_e_agrupa_o_grupo() -> None:
+    ops, r = demand_gen.construir(
+        CID, _brief(demand_gen=_v25(publico=_PUBLICO, segmentacao_otimizada=False)),
+        login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    tipos = [o._pb.WhichOneof("operation") for o in ops]
+    i_ul, i_aud = tipos.index("user_list_operation"), tipos.index("audience_operation")
+    assert tipos.index("ad_group_operation") < i_ul < i_aud
+    criterio = ops[i_aud + 1].ad_group_criterion_operation.create
+    aud = ops[i_aud].audience_operation.create
+    assert criterio.audience.audience == aud.resource_name == (
+        demand_gen_ops.temp_audiencia(CID, 0))
+
+    lal = ops[i_ul].user_list_operation.create
+    assert lal.resource_name == demand_gen_ops.temp_user_list(CID, 0)
+    assert list(lal.lookalike_user_list.seed_user_list_ids) == [502]
+    assert lal.lookalike_user_list.expansion_level.name == "BALANCED"
+    assert list(lal.lookalike_user_list.country_codes) == ["BR"]
+
+    dims = [d._pb.WhichOneof("dimension") for d in aud.dimensions]
+    assert dims == ["age", "gender", "household_income", "parental_status",
+                    "audience_segments"]
+    idades = [(s.min_age, s._pb.HasField("max_age")) for s in aud.dimensions[0].age.age_ranges]
+    assert idades == [(18, True), (65, False)]
+    assert aud.dimensions[1].gender.include_undetermined is False
+    segmentos = [s.user_list.user_list for s in aud.dimensions[4].audience_segments.segments]
+    assert segmentos == [f"customers/{CID}/userLists/501", lal.resource_name]
+    assert [x.user_list.user_list for x in aud.exclusion_dimension.exclusions] == [
+        f"customers/{CID}/userLists/503"]
+
+    grupo = _grupo(ops)
+    assert grupo.audience_setting.use_audience_grouped is True
+    # bool proto3 SEM presença: False e ausência são os mesmos bytes, e o
+    # servidor lê os dois como desligado (aceito no validate_only).
+    assert grupo.optimized_targeting_enabled is False
+
+
+def test_segmentacao_otimizada_so_viaja_quando_escolhida() -> None:
+    ops, _ = demand_gen.construir(
+        CID, _brief(demand_gen=_v25(segmentacao_otimizada=True)), login_customer_id=MCC)
+    assert _grupo(ops).optimized_targeting_enabled is True
+    ops2, _ = demand_gen.construir(CID, _brief(demand_gen=_v25()), login_customer_id=MCC)
+    assert "audience_setting" not in {f.name for f, _ in _grupo(ops2)._pb.ListFields()}
+
+
+def test_audiencia_legada_tambem_agrupa_o_grupo() -> None:
+    ops, r = demand_gen.construir(CID, _brief(), login_customer_id=MCC)
+    assert r.ok and _grupo(ops).audience_setting.use_audience_grouped is True
+
+
+def test_publico_de_outra_conta_e_publico_vazio_sao_recusados() -> None:
+    outro = PublicoDemandGen(nome="X", user_lists=("customers/1234567890/userLists/9",))
+    _, r = demand_gen.construir(
+        CID, _brief(demand_gen=_v25(publico=outro)), login_customer_id=MCC)
+    assert "não da conta" in _erros(r)
+    with pytest.raises(ValueError):
+        PublicoDemandGen(nome="vazio")
+    with pytest.raises(ValueError):
+        PublicoDemandGen(nome="cruzado", user_lists=(f"customers/{CID}/userLists/1",),
+                         exclusoes_user_list=(f"customers/{CID}/userLists/1",))
+    with pytest.raises(ValueError):
+        PublicoDemandGen(nome="idade", idades=("18-30",))
+
+
+def test_exclusao_de_audience_inteira_continua_recusada_com_o_caminho_certo() -> None:
+    _, r = demand_gen.construir(
+        CID, _brief(demand_gen=_configuracao(
+            exclusoes_de_audiencia=(f"customers/{CID}/audiences/7002",))),
+        login_customer_id=MCC)
+    assert "exclusoes_user_list" in _erros(r)
+
+
+def test_agenda_vira_criterio_de_campanha() -> None:
+    agenda = (FaixaDeAgendaDemandGen("MONDAY", "08:00", "12:15"),
+              FaixaDeAgendaDemandGen("MONDAY", "13:00", "24:00"))
+    ops, r = demand_gen.construir(
+        CID, _brief(demand_gen=_v25(agenda=agenda)), login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    faixas = [o.campaign_criterion_operation.create
+              for o in _por_tipo(ops, "campaign_criterion_operation")]
+    lidas = [(f.campaign, f.ad_schedule.day_of_week.name, f.ad_schedule.start_hour,
+              f.ad_schedule.start_minute.name, f.ad_schedule.end_hour,
+              f.ad_schedule.end_minute.name) for f in faixas]
+    camp = comum.temp(CID, "campaigns", comum.T_CAMPANHA)
+    assert lidas == [(camp, "MONDAY", 8, "ZERO", 12, "FIFTEEN"),
+                     (camp, "MONDAY", 13, "ZERO", 24, "ZERO")]
+
+
+@pytest.mark.parametrize(
+    "agenda",
+    [
+        (FaixaDeAgendaDemandGen("MONDAY", "08:00", "12:00"),
+         FaixaDeAgendaDemandGen("MONDAY", "11:00", "13:00")),
+        tuple(FaixaDeAgendaDemandGen("MONDAY", f"{h:02d}:00", f"{h:02d}:30")
+              for h in range(7)),
+    ],
+)
+def test_agenda_sobreposta_ou_acima_do_teto_morre(agenda) -> None:
+    with pytest.raises(ValueError):
+        _v25(agenda=agenda)
+
+
+@pytest.mark.parametrize("inicio,fim", [("08:10", "09:00"), ("09:00", "08:00"),
+                                        ("24:15", "24:30"), ("8h", "9h")])
+def test_faixa_de_agenda_invalida_morre(inicio, fim) -> None:
+    with pytest.raises(ValueError):
+        FaixaDeAgendaDemandGen("MONDAY", inicio, fim)
+
+
+# ── automações: por formato, default OPTED_OUT, escolha explícita ───────────
+
+
+def test_automacao_escolhida_viaja_opted_in_e_o_resto_opted_out() -> None:
+    ops, r = demand_gen.construir(
+        CID, _brief_video(automacoes={"GENERATE_SHORTER_YOUTUBE_VIDEOS": "OPTED_IN"}),
+        login_customer_id=MCC)
+    assert r.ok, _erros(r)
+    lidas = dict((s.asset_automation_type.name, s.asset_automation_status.name)
+                 for s in _anuncio(ops).ad_group_ad_asset_automation_settings)
+    assert lidas == {
+        "GENERATE_LANDING_PAGE_PREVIEW": "OPTED_OUT",
+        "GENERATE_LANDING_PAGE_TEXT": "OPTED_OUT",
+        "GENERATE_SHORTER_YOUTUBE_VIDEOS": "OPTED_IN",
+        "GENERATE_VERTICAL_YOUTUBE_VIDEOS": "OPTED_OUT",
+    }
+
+
+@pytest.mark.parametrize(
+    ("formato", "automacoes"),
+    [
+        ("MULTI_ASSET", {"GENERATE_SHORTER_YOUTUBE_VIDEOS": "OPTED_OUT"}),
+        ("MULTI_ASSET", {"GENERATE_DESIGN_VERSIONS_FOR_IMAGES": "LIGADO"}),
+        ("MULTI_ASSET", {"TEXT_ASSET_AUTOMATION": "OPTED_OUT"}),
+    ],
+)
+def test_automacao_de_outro_formato_ou_status_invalido_morre(formato, automacoes) -> None:
+    with pytest.raises(ValueError):
+        _v25(formato=formato, automacoes=automacoes)
+
+
+def test_cta_de_texto_fora_da_lista_medida_morre_e_o_aceito_viaja() -> None:
+    with pytest.raises(ValueError):
+        _v25(call_to_action="Saiba mais")
+    ops, r = demand_gen.construir(
+        CID, _brief(demand_gen=_v25(call_to_action="Saiba Mais")), login_customer_id=MCC)
+    assert r.ok
+    assert _anuncio(ops).ad.demand_gen_multi_asset_ad.call_to_action_text == "Saiba Mais"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"formato": "PRODUTO"},
+        {"formato": "VIDEO_RESPONSIVO"},
+        {"formato": "MULTI_ASSET", "video": VideoDemandGen(youtube_ids=_VIDEOS)},
+        {"formato": "VIDEO_RESPONSIVO", "video": VideoDemandGen(youtube_ids=_VIDEOS),
+         "call_to_action": "Learn more"},
+    ],
+)
+def test_formato_e_bloco_precisam_concordar(kwargs) -> None:
+    with pytest.raises(ValueError):
+        _v25(**kwargs)
+
+
+# ── varreduras: nada nasce ligado, ids não colidem, plano monta ─────────────
+
+
+def test_nenhum_objeto_nasce_ligado_em_nenhum_formato() -> None:
+    for b in (_brief(demand_gen=_v25(publico=_PUBLICO)), _brief_video(),
+              _brief_carrossel()):
+        ops, r = demand_gen.construir(CID, b, login_customer_id=MCC)
+        assert r.ok, _erros(r)
+        for o in ops:
+            qual = o._pb.WhichOneof("operation")
+            estado = getattr(getattr(getattr(o, qual), "create", None), "status", None)
+            assert getattr(estado, "name", None) != "ENABLED", qual
+        assert all(op._pb.SerializeToString(deterministic=True) for op in ops)
+
+
+def test_faixas_temporarias_novas_nao_colidem_e_levantam_na_fronteira() -> None:
+    usados = {demand_gen_ops.temp_asset_dg(CID, i) for i in range(50)}
+    usados |= {demand_gen_ops.temp_user_list(CID, i) for i in range(10)}
+    usados |= {demand_gen_ops.temp_audiencia(CID, i) for i in range(10)}
+    ids = sorted(int(rn.rsplit("/", 1)[1]) for rn in usados)
+    assert ids[0] == -569 and ids[-1] == -500 and len(set(ids)) == 70
+    assert min(ids) > -600 and max(ids) < comum.T_ASSET_GROUP_BASE - 99
+    for fn, teto in ((demand_gen_ops.temp_asset_dg, 50),
+                     (demand_gen_ops.temp_user_list, 10),
+                     (demand_gen_ops.temp_audiencia, 10)):
+        with pytest.raises(ValueError):
+            fn(CID, teto)
+
+
+def test_plano_monta_video_e_carrossel_e_declara_o_nao_operado() -> None:
+    for b in (_brief_video(), _brief_carrossel()):
+        p = demand_gen.planejar(CID, b, login_customer_id=MCC)
+        assert p.prontidao.monta is True and p.prontidao.pode_criar is False
+    texto = " ".join(demand_gen.NAO_OPERADO)
+    assert "frequency cap" in texto and "Merchant Center" in texto
+
+
+def teste_lances_permitidos_espelham_a_configuracao():
+    """O literal lido pelo backend e a configuração do builder são a mesma lista."""
+    from volc_ads.campanha import demand_gen, demand_gen_config
+
+    assert set(demand_gen.LANCES_PERMITIDOS) == set(demand_gen_config.ESTRATEGIAS)
