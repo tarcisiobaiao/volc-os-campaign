@@ -22,7 +22,11 @@ pytest>=8.0
 #
 # Não está em `requirements.txt` de propósito: o backend na Vercel não fala com
 # o Google Ads — quem fala é o engine, que roda localmente e no worker.
-google-ads>=25.0
+# >=33.0.0: é a primeira com a v25.2 (URL options por asset group, video crawl,
+# GeneratePMaxDraftCampaign, migração AI Max). A 31.3.0 só tem v25.0, e o pip
+# com `>=25.0` instalava o que já estivesse no cache. <34: a próxima major pode
+# remover a v23 e mudar o default de versão — sobe à mão, com a suíte.
+google-ads>=33.0.0,<34
 
 # ⚠️ DEPENDÊNCIA DA SUÍTE, e ela faltava aqui — de novo.
 #
