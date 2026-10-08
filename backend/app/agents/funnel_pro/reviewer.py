@@ -284,6 +284,8 @@ class FunnelReviewer(BaseAgent):
     @staticmethod
     def _original(architect_output: Dict[str, Any], motivo: str) -> Dict[str, Any]:
         return {
+            **({"brief_pre_arquitetura": architect_output["brief_pre_arquitetura"]}
+               if architect_output.get("brief_pre_arquitetura") else {}),
             "funnel_strategy": architect_output.get("funnel_strategy") or {},
             "pages": architect_output.get("pages") or [],
             "changes": [],
@@ -337,6 +339,8 @@ class FunnelReviewer(BaseAgent):
             "changes": changes if isinstance(changes, list) else [],
             "achados": achados,
             "estado": "revisado",
+            **({"brief_pre_arquitetura": architect_output["brief_pre_arquitetura"]}
+               if architect_output.get("brief_pre_arquitetura") else {}),
             "jornada_preservada": preservados,
             "telemetria": [{"etapa": "revisor_do_arquiteto", **getattr(client, "ultimo_uso", None)}]
             if isinstance(getattr(client, "ultimo_uso", None), dict) else [],

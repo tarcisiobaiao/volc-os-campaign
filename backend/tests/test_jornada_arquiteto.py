@@ -166,3 +166,12 @@ def test_normalizacao_logo_apos_o_arquiteto_nomeia_campo_e_motivo():
     assert rel["estado"] == "invalida"
     assert {"campo": "pagina[renda-senac].jornada.entrada_direta",
             "motivo": "'talvez' fora do vocabulário (autocontida, depende_de_contexto)"} in rel["erros"]
+
+
+def test_prompt_pre_redacao_explicita_schema_factual_e_visual():
+    p = fb.build_funnel_architect_user(pais='Brasil', tema='Gás', lingua='pt-BR',
+        data_atual='08/10/2026', supporting_data='', user_questions='',
+        brief_pre_arquitetura={'sha256':'fixture'})
+    for chave in ('"id":"entidade.regra"', '"descricao"', '"tipos"', '"critico"',
+                  'jornada.screenshot_necessario', 'jornada.imagem_necessaria', 'jornada.schema_tipos'):
+        assert chave in p

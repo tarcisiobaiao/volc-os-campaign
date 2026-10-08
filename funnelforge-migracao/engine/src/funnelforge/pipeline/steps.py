@@ -175,6 +175,7 @@ def _plan_from_raw(raw: dict) -> FunnelPlan:
         # from the real plan or the report.
         total_pages=len(pages),
         pages=pages,
+        jornada=strategy.get("jornada"),
     )
 
 
@@ -504,14 +505,32 @@ def step_extract(state: RunState, deps: Any) -> None:
     if state.plan is not None:
         return
     prompt = render("extractor", briefing=state.briefing_text)
+    messages = [{"role": "user", "content": prompt}]
+    if state.brief_pre_arquitetura is not None:
+        from funnelforge.pipeline.inteligencia import mensagens_do_arquiteto
+        messages = mensagens_do_arquiteto(state.brief_pre_arquitetura)
     cfg = deps.settings.steps["extract"]
     text, res = deps.runner.run_llm_step(
-        "extract", cfg, [{"role": "user", "content": prompt}], ctx={},
+        "extract", cfg, messages, ctx={},
         run_id=state.run_id,
     )
     try:
         raw = _tolerant_json(text)
-        plan = _plan_from_raw(raw)
+        if state.brief_pre_arquitetura is not None:
+            pasta = deps.runner.runs_dir / state.run_id
+            pasta.mkdir(parents=True, exist_ok=True)
+            (pasta / "arquitetura_pre_redacao.json").write_text(json.dumps(raw, ensure_ascii=False, indent=2))
+            from funnelforge.adapters.attention_matrix import modulo_do_repo
+            from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
+            contrato = modulo_do_repo("backend/app/agents/funnel_pro/jornada_contrato.py")
+            factory = modulo_do_repo("backend/app/agents/funnel_pro/page_factory.py")
+            raw, _ = contrato.normalizar_arquitetura(raw)
+            canonica = {"funnel_strategy": raw.get("funnel_strategy") or {},
+                       "pages": factory.architect_pages_to_funnel_pages(raw),
+                       "writing_jobs": factory.page_factory(raw)["writingJobs"]}
+            plan = plano_do_funnel_architecture(canonica)
+        else:
+            plan = _plan_from_raw(raw)
     except (ValueError, json.JSONDecodeError, ValidationError) as exc:
         res.status = StepStatus.FAILED
         res.issues = list(res.issues) + [Issue(code="parse_error", message=str(exc))]
@@ -523,6 +542,9 @@ def step_extract(state: RunState, deps: Any) -> None:
         res.issues = list(res.issues) + extra
         res.status = StepStatus.FAILED
     state.plan = plan
+    if state.brief_pre_arquitetura is not None:
+        plan.brief_pre_arquitetura = state.brief_pre_arquitetura.model_copy(deep=True)
+        plan.editorial_v2 = True
     # Pull REAL cross-funnel exit URLs from the site sitemap (a diverse-but-
     # related guide for the terminal SOLUTION). None-safe + best-effort.
     cross_targets = None
@@ -1568,6 +1590,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             **extras_v2,
         )
         cfg = deps.settings.steps["write_p1"]
+        if state.pacotes:
+            from funnelforge.pipeline.inteligencia import prompt_do_pacote
+            prompt = prompt_do_pacote(state, page)
         text, res = deps.runner.run_llm_step(
             f"write_p{page.page_number}", cfg, [{"role": "user", "content": prompt}],
             ctx=route_ctx, run_id=state.run_id,
@@ -1710,6 +1735,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         **extras_v2,
     )
     cfg = deps.settings.steps["write_page"]
+    if state.pacotes:
+        from funnelforge.pipeline.inteligencia import prompt_do_pacote
+        prompt = prompt_do_pacote(state, page)
     if v2:
         # Gate estrutural ANTES de SEO, widget, revisão e imagem (canário p5,
         # 30/09): só blocos Gutenberg fechados e os slots do Ad Inserter no fluxo
@@ -2071,7 +2099,7 @@ def _revisao_humana_sem_modelo(state: RunState, page: Page, deps: Any, motivo: s
                      json.dumps(state.revisoes[n], ensure_ascii=False, indent=2))
 
 
-def _revisar_pagina(state: RunState, page: Page, deps: Any) -> None:
+def _revisar_pagina(state: RunState, page: Page, deps: Any, resposta_precalculada=None) -> None:
     """O revisor contextual desta página (só no ramo novo). Ver `pipeline/revisao.py`.
 
     Ordem: (1) decisão humana gravada manda; (2) o aviso canônico vai para o
@@ -2121,7 +2149,8 @@ def _revisar_pagina(state: RunState, page: Page, deps: Any) -> None:
                                    f"Contexto da revisão indisponível: {type(exc).__name__}.")
         return
     resultado = executar_revisao(doc, ctx, runner=deps.runner, cfg=cfg,
-                                 run_id=state.run_id, numero=n)
+                                 run_id=state.run_id, numero=n,
+                                 resposta_precalculada=resposta_precalculada)
     final = resultado.documento
     if final != doc:
         draft.content = final.corpo
@@ -2222,6 +2251,11 @@ def seo_deterministico(page: Page, draft: Any) -> dict:
 
 def step_seo(state: RunState, page: Page, deps: Any) -> None:
     draft = state.drafts.get(page.page_number)
+    if state.pacotes:
+        state.seo[page.page_number] = seo_deterministico(page, draft)
+        state.step_status[f"seo_p{page.page_number}"] = StepResult(
+            step=f"seo_p{page.page_number}", status=StepStatus.OK, attempts=0)
+        return
     content = draft.content if draft else ""
     if getattr(state, "editorial_v2", False):
         prompt = _prompt_seo_v2(state, page, content)

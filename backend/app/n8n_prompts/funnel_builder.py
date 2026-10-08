@@ -218,8 +218,24 @@ def build_funnel_architect_user(
     supporting_data: str,
     user_questions: str,
     admin_direction: Optional[str] = None,
+    brief_pre_arquitetura: Optional[dict] = None,
 ) -> str:
     """Render the Funnel Architect user/mission message with real values."""
+    import json
+    brief = ("\n<brief_pre_arquitetura>\n" + json.dumps(brief_pre_arquitetura, ensure_ascii=False)
+             + "\n</brief_pre_arquitetura>\n"
+             "Decida páginas apenas para entregas exclusivas. Agrupe dúvidas equivalentes; "
+             "as pequenas viram seção/FAQ. PAA prova intenção, nunca fatos. Declare requisitos "
+             "factuais previsíveis em jornada.requisitos. Contrato EXATO de cada requisito: "
+             '{"id":"entidade.regra","descricao":"O que deve ser confirmado",'
+             '"tipos":["condicao","processo"],"critico":true}. '
+             "id nomeia o REQUISITO, não um fato comprovado. Não use fact_id, requisito_id, "
+             "afirmacao ou base_disponivel em lugar dessas chaves. Reutilize o mesmo id para "
+             "uma lacuna compartilhada. Declare jornada.plano_visual, jornada.ativos, "
+             "jornada.screenshot_necessario (boolean), jornada.imagem_necessaria (boolean) e "
+             "jornada.schema_tipos (lista). "
+             "CTA concreto orienta a próxima dúvida; sem rótulos genéricos ou falsa oficialidade.\n"
+             if brief_pre_arquitetura else "")
     return (
         _FUNNEL_ARCHITECT_USER_TEMPLATE.replace("__PAIS__", str(pais or ""))
         .replace("__TEMA__", str(tema or ""))
@@ -227,4 +243,4 @@ def build_funnel_architect_user(
         .replace("__DATA_ATUAL__", str(data_atual or ""))
         .replace("__SUPPORTING_DATA__", str(supporting_data or "(sem dados de suporte)"))
         .replace("__USER_QUESTIONS__", str(user_questions or "(sem perguntas mapeadas)"))
-    ) + build_admin_direction_block(admin_direction)
+    ) + build_admin_direction_block(admin_direction) + brief

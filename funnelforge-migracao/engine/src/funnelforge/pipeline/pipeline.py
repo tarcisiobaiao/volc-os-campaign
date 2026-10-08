@@ -86,6 +86,7 @@ class Deps:
     # em teste: o escopo da fonte vem do host.
     hints_do_operador: list[dict] = field(default_factory=list)
     ler_documento: Any = None
+    attention_matrix: Any = None
 
 
 def editorial_v2_do_run(state: RunState, settings: Settings) -> bool:
@@ -191,6 +192,7 @@ def run_pipeline(
     timestamp: str = "",
     plan: FunnelPlan | None = None,
     ate_o_dossie: bool = False,
+    card_pre_arquitetura: dict | None = None,
 ) -> RunState:
     """Run the funnel pipeline end to end: load briefing -> extract plan ->
     per page (research -> write -> judge -> seo -> [image for P1] -> build
@@ -228,6 +230,15 @@ def run_pipeline(
     if briefing_path is not None:
         state.briefing_text = deps.loader.load(Path(briefing_path))
 
+    if card_pre_arquitetura is not None and state.plan is None:
+        if plan is not None:
+            raise ValueError("brief pré-arquitetura não pode chegar depois de plano injetado")
+        if not deps.settings.run.dossie_factual:
+            raise ValueError("inteligência pré-redação exige o dossiê existente")
+        from funnelforge.pipeline.inteligencia import preparar_inteligencia
+        preparar_inteligencia(state, deps, card_pre_arquitetura)
+        state.editorial_v2 = True
+
     # PLANO INJETADO (ponte VOLC). Só entra num state que ainda NÃO tem plano,
     # para que um `resume` jamais seja sobrescrito por engano.
     _plano_injetado = plan is not None and state.plan is None
@@ -249,6 +260,15 @@ def run_pipeline(
     # funil não é validado nenhuma vez.
     _fresh_extract = state.plan is None or _plano_injetado
     st.step_extract(state, deps)
+    if state.brief_pre_arquitetura is not None and not tem_jornada(state.plan):
+        state.step_status["funnel_graph"] = StepResult(
+            step="funnel_graph", status=StepStatus.FAILED,
+            issues=[Issue(code="arquitetura_invalida" if _falhou(state, "extract") else "jornada_ausente",
+                          message="Arquitetura recusada antes do writer; ver recibo extract."
+                          if _falhou(state, "extract") else "Arquiteto não declarou jornada.")])
+        _write_report(state, deps)
+        _checkpoint(state, deps)
+        return state
     if _fresh_extract:
         try:
             st.expand_presell_hubs(state, deps)
@@ -270,7 +290,7 @@ def run_pipeline(
         # porque precisa do plano já expandido e com slugs finais, e antes do
         # checkpoint, para que um resume não reclassifique. 100% fail-safe:
         # qualquer problema usa inferência semântica sobre H1/estrutura.
-        if not _falhou(state, "funnel_graph"):
+        if not _falhou(state, "funnel_graph") and state.brief_pre_arquitetura is None:
             st.declarar_engajamento(state, deps)
 
     # RAMO EDITORIAL NOVO: decidido UMA vez por execução e gravado no estado
@@ -346,7 +366,10 @@ def run_pipeline(
         _complementar_dossie_antes_da_redacao(
             state, pages, deps, dossie_vivo, workers=workers)
         _consolidar_dossie(state, deps, dossie_vivo)
-    if workers > 1 and len(pages) > 1:
+    if state.brief_pre_arquitetura is not None:
+        from funnelforge.pipeline.inteligencia import congelar_pacotes
+        congelar_pacotes(state, deps)
+    if (workers > 1 and len(pages) > 1) or state.pacotes:
         _paginas_em_paralelo(state, pages, deps, laco, workers)
     else:
         for page in pages:
@@ -533,6 +556,9 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
     _checkpoint(state, deps)
 
     por_numero = {p.page_number: p for p in state.plan.pages}
+    if state.pacotes and lote and not parar.is_set():
+        from funnelforge.pipeline.inteligencia import revisar_lote
+        revisar_lote(state, [por_numero[n] for n in lote], deps)
     acabadas = fase("acabamento", [por_numero[n] for n in lote]) if not parar.is_set() else []
     for delta in acabadas:
         if delta.publicar:
@@ -563,7 +589,7 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
     abrir páginas novas; qualquer outra falha fica na própria página."""
     v2, publish, com_jornada = laco.v2, laco.publish, laco.com_jornada
     orcamento, a_publicar = laco.orcamento, laco.a_publicar
-    if (laco.dossie_vivo is not None and laco.fase != "acabamento"
+    if (not state.pacotes and laco.dossie_vivo is not None and laco.fase != "acabamento"
             and not _done(state, f"write_p{page.page_number}")):
         _complementar_pagina(state, page, deps, laco.dossie_vivo)
     if _falhou(state, f"dossie_p{page.page_number}"):
@@ -649,14 +675,15 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
         if v2 and page.page_number in state.briefings:
             # O widget roda UMA vez, antes da revisão: se ele fosse gerado
             # depois, entraria no ar texto que ninguém revisou (V12).
-            if (getattr(deps.settings.run, "widgets_enabled", False)
+            if (not state.pacotes and getattr(deps.settings.run, "widgets_enabled", False)
                     and f"widget_p{page.page_number}" not in state.step_status):
                 st.step_widget(state, page, deps)
                 _checkpoint(state, deps)
             # O próprio revisor decide se roda: decisão humana gravada
             # manda, e página já aprovada ou em revisão humana com o MESMO
             # conteúdo não é revisada de novo (o resume não re-rola).
-            st.revisar_pagina_v2(state, page, deps)
+            if not state.pacotes:
+                st.revisar_pagina_v2(state, page, deps)
             _checkpoint(state, deps)
             if not st.revisao_liberada(state, page):
                 state.step_status[f"blocked_p{page.page_number}"] = StepResult(
@@ -856,6 +883,10 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
     buscas: list[float] = []
 
     def pesquisar(assunto, spec, faltantes):
+        if faltantes is None and state.pesquisa_pre_arquitetura:
+            from funnelforge.pipeline.dossie import RespostaDaPesquisa
+            # A pesquisa global já ocorreu ANTES do arquiteto. Absorver é local.
+            return RespostaDaPesquisa(**state.pesquisa_pre_arquitetura)
         if orcamento is not None:
             orcamento.exigir_saldo("dossie")
         resp = pesquisar_funil(deps.llm, cfg, assunto, spec, faltantes)
@@ -970,6 +1001,13 @@ def _complementar_dossie_antes_da_redacao(
     """
     from concurrent.futures import ThreadPoolExecutor
 
+    if state.brief_pre_arquitetura is not None:
+        resumo = vivo.complementar_lote(pages, state)
+        state.step_status["dossie_complemento_lote"] = StepResult(
+            step="dossie_complemento_lote", status=StepStatus.OK,
+            issues=[Issue(code="complemento_lote", message=json.dumps(resumo))])
+        return
+
     alvos = [p for p in pages if p.page_number in vivo.coberturas and vivo.lacunas(
         p.page_number)]
     if not alvos:
@@ -1039,6 +1077,9 @@ def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
 def _revisao_por_evidencia(state: RunState, page: Page) -> str:
     """Página escrita com a promessa central sem evidência não publica sem
     decisão humana."""
+    pacote = state.pacotes.get(page.page_number) or {}
+    if pacote.get("ferramenta", {}).get("estado") == "fallback_sem_js":
+        return "Ativo interativo usa fallback textual do arquiteto; revisão humana pendente."
     r = state.step_status.get(f"dossie_p{page.page_number}")
     if r is None:
         return ""

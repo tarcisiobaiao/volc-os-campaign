@@ -966,7 +966,7 @@ def _lista_de_dicts(valor: Any) -> list[dict]:
 
 
 def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg: StepConfig,
-                     run_id: str, numero: int) -> ResultadoDaRevisao:
+                     run_id: str, numero: int, resposta_precalculada=None) -> ResultadoDaRevisao:
     """UMA chamada do revisor sobre `doc` e, se ele pedir ajuste, no máximo UMA
     rodada de patches aplicada pelo código, conferida só por validadores
     determinísticos (não há segunda chamada ao modelo). Nunca levanta: qualquer
@@ -1015,8 +1015,11 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
         prompt = montar_prompt_do_revisor(doc, ctx)
         nome = f"revisor_p{numero}"
         try:
-            texto, res = runner.run_llm_step(
-                nome, cfg, [{"role": "user", "content": prompt}], ctx={}, run_id=run_id)
+            if resposta_precalculada is not None:
+                texto, res = resposta_precalculada
+            else:
+                texto, res = runner.run_llm_step(
+                    nome, cfg, [{"role": "user", "content": prompt}], ctx={}, run_id=run_id)
         except LLMStepError as exc:
             _somar(telemetria, exc.step_result)
             return fechar("revisao_humana", doc, ["falha_do_provedor"], erro=exc.motivo)

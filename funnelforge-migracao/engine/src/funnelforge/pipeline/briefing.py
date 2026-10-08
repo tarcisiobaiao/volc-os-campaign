@@ -291,6 +291,8 @@ def _t(obj: Any, chave: str = "texto") -> str:
 def briefing_para_o_redator(briefing: dict) -> str:
     """O briefing como o redator do ramo novo o lê: texto, cada ponto com a sua
     procedência. Hipótese aparece COMO hipótese — nunca como fato."""
+    if briefing.get("pacote"):
+        return json.dumps(briefing["pacote"], ensure_ascii=False)
     b = briefing
     intencao = b.get("intencao") or {}
     leitor = b.get("leitor") or {}
@@ -427,6 +429,14 @@ def _gravar(deps: Any, state: RunState, page: Page, nome: str, conteudo: str) ->
 def step_briefing(state: RunState, page: Page, deps: Any) -> None:
     """Gera, valida e guarda o briefing-v1 desta página. Falha fecha."""
     key = f"briefing_p{page.page_number}"
+    if state.pacotes:
+        from funnelforge.pipeline.inteligencia import pacote_conferido
+        pacote = pacote_conferido(state, page)
+        state.briefings[page.page_number] = {
+            "versao": "briefing-congelado-v1", "pacote": pacote,
+            "visual_plan": pacote["jornada"]["plano_visual"]}
+        state.step_status[key] = StepResult(step=key, status=StepStatus.OK, attempts=0)
+        return
     state.briefings.pop(page.page_number, None)
     pesquisa = state.step_status.get(f"research_p{page.page_number}")
     if pesquisa is not None and pesquisa.status is StepStatus.FAILED:

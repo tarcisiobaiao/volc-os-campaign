@@ -206,3 +206,16 @@ def test_reviewer_system_prompt_mentions_required_checks():
     assert "tom" in prompt_lower
     assert "relevância" in prompt_lower or "relevancia" in prompt_lower
     assert "automátic" in prompt_lower or "automatic" in prompt_lower  # sinal factual/processual
+
+
+def test_brief_pre_arquitetura_chega_ao_revisor_e_e_preservado(monkeypatch):
+    import json
+    original = _architect_output()
+    original['brief_pre_arquitetura'] = {'sha256': 'brief-fixture', 'sinais': [{'tipo': 'paa', 'factual': False}]}
+    class Cliente:
+        async def complete_json(self, system, user):
+            assert 'brief-fixture' in user and '"factual": false' in user
+            return {**original, 'changes': []}
+    monkeypatch.setattr(FunnelReviewer, '_gemini', lambda self: Cliente())
+    result = asyncio.run(FunnelReviewer(_ctx('fixture')).review(original, entity_facts={}, forced_language='pt-BR'))
+    assert result['brief_pre_arquitetura'] == original['brief_pre_arquitetura']

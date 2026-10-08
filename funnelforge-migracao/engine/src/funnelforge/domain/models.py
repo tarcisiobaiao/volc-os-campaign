@@ -355,6 +355,9 @@ class JornadaDaPagina(BaseModel):
     plano_visual: list[BlocoVisual] = []
     ativos: list[AtivoInterativo] = []
     requisitos: list[RequisitoFactual] = []
+    screenshot_necessario: bool = False
+    imagem_necessaria: bool = False
+    schema_tipos: list[str] = []
 
     @field_validator("duvida_id", "proxima_duvida", "entrada_direta", mode="before")
     @classmethod
@@ -556,6 +559,34 @@ class ContextoDeAnuncio(BaseModel):
         return self
 
 
+class DuvidaDoBrief(BaseModel):
+    """Candidata, nunca uma página aprovada nem evidência factual."""
+    jornada: JornadaDaPagina
+    variantes: list[str] = []
+    prioridade: int = 0
+    evidencia_demanda: list[dict] = []
+    formato: Literal["pagina", "secao", "faq", "ferramenta", "avaliar"] = "avaliar"
+    confianca: Literal["baixa", "media", "alta"] = "baixa"
+
+
+class BriefDoFunil(BaseModel):
+    """Extensão compacta da jornada: sinais antes de decidir páginas/rotas."""
+    intencao_principal: str
+    trabalho_do_leitor: str = ""
+    consciencia: str = "nao_observada"
+    entidade: str = ""
+    pais: str = ""
+    idioma: str = ""
+    contexto: dict = {}
+    dores_observadas: list[str] = []
+    desejos_observados: list[str] = []
+    duvidas: list[DuvidaDoBrief] = []
+    sinais: list[dict] = []
+    fatos_existentes: list[dict] = []
+    lacunas: list[str] = []
+    sha256: str = ""
+
+
 class FunnelPlan(BaseModel):
     avatar_summary: str = ""
     tone_voice: str = ""
@@ -568,6 +599,7 @@ class FunnelPlan(BaseModel):
     contexto_de_busca: TermosDeBusca | None = None
     contexto_de_anuncio: ContextoDeAnuncio | None = None
     jornada: JornadaDoFunil | None = None
+    brief_pre_arquitetura: BriefDoFunil | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -909,6 +941,9 @@ class RunState(BaseModel):
     # resume usa este mesmo dossiê; nada muda os fatos durante a redação.
     dossie: dict = {}
     dossie_sha256: str = ""
+    brief_pre_arquitetura: BriefDoFunil | None = None
+    pesquisa_pre_arquitetura: dict = {}
+    pacotes: dict[int, dict] = {}
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

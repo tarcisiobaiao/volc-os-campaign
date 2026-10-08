@@ -357,6 +357,7 @@ def plano_do_funnel_architecture(dados: dict[str, Any]) -> FunnelPlan:
         # deve divergir do plano nem do relatório.
         total_pages=len(paginas),
         pages=paginas,
+        brief_pre_arquitetura=arq.get("brief_pre_arquitetura"),
         # Chaves NOVAS do contrato entre as trilhas (30/09). O tom e o avatar
         # acima já viajavam até aqui e morriam: nenhum prompt os lia. No ramo
         # editorial novo eles entram no briefing como `briefing_do_arquiteto`,

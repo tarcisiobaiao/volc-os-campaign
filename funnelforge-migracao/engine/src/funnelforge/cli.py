@@ -130,6 +130,12 @@ def build_deps(settings: Settings) -> Deps:
     # URL de ser visitada 2-3x por página (write -> content_gate -> publish).
     url_verifier = HttpUrlVerifier()
 
+    attention_matrix = None
+    if settings.run.inteligencia_pre_redacao:
+        from funnelforge.adapters.attention_matrix import modulo_do_repo
+        attention_matrix = modulo_do_repo(
+            "backend/app/motor_pautas/sensores/dataforseo.py").Cliente()
+
     return Deps(
         llm=llm,
         research=research,
@@ -142,6 +148,7 @@ def build_deps(settings: Settings) -> Deps:
         sitemap=HttpSitemapProvider(settings.site.domain),
         screenshot=screenshot,
         url_verifier=url_verifier,
+        attention_matrix=attention_matrix,
     )
 
 
@@ -217,6 +224,9 @@ def run(briefing: Path, publish: bool = False, only: str | None = None) -> None:
 @app.command("run-volc")
 def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = False,
              only: str | None = None, timestamp: str | None = None,
+             card_pre_arquitetura: Path | None = typer.Option(
+                 None, "--card-pre-arquitetura", help="Card completo para pesquisar intenção "
+                 "antes de arquitetar, usando o mesmo motor. Não altera o card original."),
              canario: bool = typer.Option(False, "--canario",
                                           help="Sem publicação, sem publisher, sem imagem, "
                                                "teto de chamadas e recibo em runs-canario/."),
@@ -267,7 +277,13 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
         settings.run.imagens_habilitadas = False
         settings.run.max_chamadas_llm = settings.run.max_chamadas_llm or 40
     dados = carregar_arquitetura(arquitetura)
-    plan = plano_do_funnel_architecture(dados)
+    card = json.loads(card_pre_arquitetura.read_text()) if card_pre_arquitetura else None
+    if card is not None:
+        settings.run.dossie_factual = True
+        settings.run.inteligencia_pre_redacao = True
+        if fatos_de is not None or dossie_de is not None:
+            raise typer.BadParameter("card pré-arquitetura exige pesquisa anterior ao plano")
+    plan = None if card is not None else plano_do_funnel_architecture(dados)
     deps = build_deps(settings)
     if canario:
         # Trava dupla: mesmo com credencial WP no ambiente, nada publica.
@@ -302,6 +318,7 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
     state = run_pipeline(
         None, deps, only=only, publish=publish or settings.run.publish,
         plan=plan, resume_state=estado_inicial, ate_o_dossie=somente_dossie,
+        card_pre_arquitetura=card,
         timestamp=timestamp or datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     # PROCEDÊNCIA: a arquitetura de ORIGEM fica ao lado do `funnel_plan.json`
@@ -322,7 +339,7 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
             json.dumps(recibo, ensure_ascii=False, indent=2), encoding="utf-8")
         typer.echo(f"recibo: {destino / nome} — nada publicado: "
                    f"{recibo['publicacao']['nada_publicado']}")
-    typer.echo(f"run: {state.run_id} — {len(plan.pages)} páginas vindas do card")
+    typer.echo(f"run: {state.run_id} — {len(state.plan.pages) if state.plan else 0} páginas")
 
 
 @app.command()

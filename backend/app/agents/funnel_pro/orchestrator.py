@@ -45,6 +45,7 @@ class FunnelProOrchestrator(BaseAgent):
         self.warnings: List[str] = []
         # Tokens, latência e modelo pedido/servido de cada chamada do arquiteto.
         self.telemetria: List[Dict[str, Any]] = []
+        self.brief_pre_arquitetura: Optional[Dict[str, Any]] = None
 
     def _gemini(self):
         if not self.settings.resolved_gemini_key:
@@ -145,6 +146,7 @@ class FunnelProOrchestrator(BaseAgent):
 
     async def run(self, opportunity: Dict[str, Any], cluster: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         start = self._timer()
+        self.brief_pre_arquitetura = opportunity.get("brief_pre_arquitetura")
         pais = opportunity.get("country") or ""
         tema = opportunity.get("main_keyword") or opportunity.get("keyword") or "tema"
         # R3: idioma forçado (locale COMPLETO, ex.: "es-DO") tem prioridade sobre
@@ -183,6 +185,8 @@ class FunnelProOrchestrator(BaseAgent):
         # JORNADA: normaliza e valida LOGO depois do arquiteto, antes de qualquer
         # gasto do motor. Erro estrutural não é engolido: vai como aviso para o
         # operador (campo + motivo) e o motor recusa o card na carga.
+        if self.brief_pre_arquitetura:
+            architect["brief_pre_arquitetura"] = self.brief_pre_arquitetura
         architect, jornada = normalizar_arquitetura(architect)
         for erro in jornada["erros"]:
             self.warnings.append(f"Jornada inválida em {erro['campo']}: {erro['motivo']}")
@@ -212,6 +216,8 @@ class FunnelProOrchestrator(BaseAgent):
             "warnings": self.warnings,
             "jornada": jornada,
             "telemetria": self.telemetria,
+            **({"brief_pre_arquitetura": self.brief_pre_arquitetura}
+               if self.brief_pre_arquitetura else {}),
         }
 
     async def _call_architect_with_retry(
@@ -239,6 +245,7 @@ class FunnelProOrchestrator(BaseAgent):
                     pais=pais, tema=tema, lingua=lingua, data_atual=data_atual,
                     supporting_data=supporting, user_questions=questions,
                     admin_direction=self.admin_direction,
+                    brief_pre_arquitetura=self.brief_pre_arquitetura,
                 )
                 candidate = await client.complete_json(FUNNEL_ARCHITECT_SYSTEM_MESSAGE, user)
             except Exception as exc:  # noqa: BLE001

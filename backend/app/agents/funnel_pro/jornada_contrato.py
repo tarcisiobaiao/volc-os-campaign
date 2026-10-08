@@ -81,7 +81,8 @@ _MARCAS_DE_NAO_OBSERVACAO = ("simulacao", "simulation", "simulad", "mirofish",
 CAMPOS_PROTEGIDOS = ("retornos_justificados", "coortes_de_entrada", "evidencias",
                      "monetizacao", "hipotese_de_medicao", "condicao_terminal",
                      "saida_oficial", "valor", "plano_visual", "ativos",
-                     "resposta_imediata", "pergunta_principal", "duvida_id")
+                     "resposta_imediata", "pergunta_principal", "duvida_id", "requisitos",
+                     "screenshot_necessario", "imagem_necessaria", "schema_tipos")
 CAMPOS_PROTEGIDOS_DO_FUNIL = ("coortes", "evidencias", "hipotese_de_medicao",
                               "intencao_principal", "checkpoint", "solucao_principal")
 

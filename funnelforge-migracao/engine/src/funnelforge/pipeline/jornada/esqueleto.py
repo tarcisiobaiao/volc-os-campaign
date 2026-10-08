@@ -257,6 +257,21 @@ def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
     duvidas = por_duvida(plan)
     for p in plan.pages:
         j, papel = p.jornada, effective_role(p)
+        if plan.brief_pre_arquitetura is not None:
+            if not j.requisitos:
+                b(Issue(code="requisitos_previsiveis_ausentes", message=f"[{j.duvida_id}] "
+                        "o arquiteto precisa declarar requisitos antes da redação."))
+            if j.proxima_duvida and j.proxima_duvida in j.ja_resolvido:
+                b(Issue(code="cta_repetido_apos_resolvido", message=f"[{j.duvida_id}] "
+                        "CTA principal reoferece dúvida que o plano declara resolvida."))
+            for link in links(p):
+                alvo = slugs.get(link.target)
+                if alvo and alvo.jornada and alvo.jornada.duvida_id == j.proxima_duvida:
+                    label = norm(alvo.editorial.cta_label)
+                    if label in {"saiba mais", "veja o guia", "continuar", "clique aqui",
+                                 "ver informacoes", "ler o guia", norm(alvo.h1_title)}:
+                        b(Issue(code="cta_principal_generico", message=f"[{j.duvida_id}] "
+                                "rótulo principal não traduz o avanço concreto do leitor."))
         destinos = [slugs[l.target] for l in links(p) if l.target in slugs]
         ids_destino = {d.jornada.duvida_id for d in destinos}
         if papel is PageRole.LP:

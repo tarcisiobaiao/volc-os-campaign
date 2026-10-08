@@ -34,6 +34,8 @@ class RunConfig(BaseModel):
     # DOSSIÊ FACTUAL pré-redação (só com jornada): uma pesquisa do funil
     # (passo `steps.dossie`), portão de cobertura e fatos congelados por hash.
     dossie_factual: bool = False
+    inteligencia_pre_redacao: bool = False
+    jev_enabled: bool = False  # consultivo; nunca gate factual
     # Páginas em paralelo depois do dossiê. 1 = o laço serial de sempre.
     page_workers: int = Field(default=1, ge=1, le=3)
     # Compatibilidade com runs antigos. ``rapido`` não seleciona outro motor:

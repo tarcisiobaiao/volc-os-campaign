@@ -818,13 +818,7 @@ class CompiladorDeDossie:
                     "estado": self.coberturas[n].estado}
 
     def complementar_lote(self, pages: list[Page], state: RunState) -> dict:
-        """Uma única complementação para todas as lacunas do perfil rápido.
-
-        O perfil completo continua pesquisando por página e pode sobrepor a
-        escrita das páginas prontas. No perfil rápido, uma busca consolidada
-        evita o padrão medido de 5 páginas × (busca + estruturação) sem abrir
-        mão do dossiê global nem inventar evidência.
-        """
+        """Uma complementação deduplicada para todos os requisitos do esqueleto."""
         alvo = [p for p in pages if p.page_number in self.coberturas]
         with self.trava:
             self.recalcular(state, alvo)
