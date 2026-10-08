@@ -287,6 +287,20 @@ def test_render_lp_fewer_hrefs_falls_back_to_last():
     assert "{{FUNNEL_HREF}}" not in json.dumps(cont)
 
 
+def test_render_lp_rapido_remove_botoes_duplicados_no_heroi_linear():
+    """Funil linear não pode mostrar 2/3 botões idênticos acima da dobra."""
+    cont, _ = render_lp(
+        load_lp_template(), _CONTENT, funnel_hrefs=[_HREF], id_seed="linear",
+        copy_rapida=True,
+    )
+    mobile = next(n for n in cont if n.get("settings", {}).get("hide_desktop") == "hidden-desktop")
+    desktop = next(n for n in cont if n.get("settings", {}).get("hide_mobile") == "hidden-mobile")
+    assert len([w for w in _fillable([mobile]) if w.get("widgetType") == "button"]) == 1
+    assert len([w for w in _fillable([desktop]) if w.get("widgetType") == "button"]) == 1
+    # O CTA contextual no corpo continua existindo.
+    assert len([w for w in _fillable(cont) if w.get("widgetType") == "button"]) == 3
+
+
 def test_lp_tem_exatamente_um_h1_e_ele_esta_no_heroi_mobile():
     """As LPs no ar não tinham H1 NENHUM (medido em 10/08/2026 em
     /r/antecipacao-saque-aniversario-fgts e /r/emprestimo-consignado-inss-guia:

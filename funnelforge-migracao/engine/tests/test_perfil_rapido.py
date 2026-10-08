@@ -66,6 +66,17 @@ def test_uma_chamada_de_redacao_por_pagina_e_uma_revisao_global(tmp_path, monkey
     assert revisao["revisao_humana"] == []
 
 
+def test_titulo_seo_deterministico_nao_termina_em_conectivo():
+    from funnelforge.pipeline.steps import _cortar
+
+    assert _cortar(
+        "Quem Tem Direito ao Gás do Povo e Como Fazer a Consulta por CPF", 60
+    ) == "Quem Tem Direito ao Gás do Povo e Como Fazer a Consulta"
+    assert _cortar(
+        "Onde Retirar o Gás do Povo: Revendedoras Credenciadas e Regras", 60
+    ) == "Onde Retirar o Gás do Povo: Revendedoras Credenciadas"
+
+
 def test_humanizacao_vai_no_prompt_do_redator_so_no_perfil_rapido(tmp_path, monkeypatch):
     _, pasta, _ = _rodar(tmp_path, monkeypatch, _revisor(_todos_pass))
     prompt = (pasta / "prompts" / "write_p2.txt").read_text()

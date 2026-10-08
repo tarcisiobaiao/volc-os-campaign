@@ -2157,6 +2157,18 @@ def _cortar(texto: str, limite: int) -> str:
     if len(texto) <= limite:
         return texto
     corte = texto[:limite].rsplit(" ", 1)[0].rstrip(" ,;:-—")
+    # Evita títulos que terminam como frase interrompida: "... consulta por",
+    # "... revendedoras e" ou "... regularizar para". Removemos apenas
+    # conectivos finais; não reescrevemos nem inventamos promessa SEO.
+    conectivos = {
+        "a", "ao", "as", "com", "da", "das", "de", "do", "dos", "e",
+        "em", "na", "nas", "no", "nos", "o", "os", "para", "pela", "pelas",
+        "pelo", "pelos", "por",
+    }
+    partes = corte.split()
+    while partes and partes[-1].casefold().strip(".,;:-—") in conectivos:
+        partes.pop()
+    corte = " ".join(partes).rstrip(" ,;:-—")
     return corte or texto[:limite]
 
 

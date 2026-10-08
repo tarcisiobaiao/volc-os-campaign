@@ -21,7 +21,7 @@ Cada cta_texts[i] leva ao destino i (o sistema aplica o link; você escreve só 
 {% if lp_destinations %}
 {% for d in lp_destinations %}- cta_texts[{{ loop.index0 }}] -> {{ d.role_label }}: "{{ d.h1 }}". Entrega declarada: {{ d.delivery or d.objective }}.{% if d.passo %} No briefing: rótulo "{{ d.passo.rotulo }}"; intenção do leitor: {{ d.passo.intencao }}; o que encontra lá: {{ d.passo.o_que_encontra }}.{% endif %}
 {% endfor %}
-{% if lp_destinations | length < 3 %}São menos destinos que botões: o sistema repete o ÚLTIMO destino nos botões restantes (cta_texts[2] inclusive). Repita o rótulo desse destino; não invente uma entrega diferente.
+{% if lp_destinations | length < 3 %}São menos destinos que posições de texto. Todos os rótulos excedentes continuam levando ao último destino, mas não repita a mesma frase: use o primeiro rótulo como decisão imediata e o último como avanço depois da explicação, sempre prometendo apenas ganhos que essa mesma página realmente entrega. O render remove botões redundantes do herói.
 {% endif %}
 {% else %}
 Os 3 botões levam aos próximos passos do funil, na ordem em que o sistema resolveu os links. Escreva 3 rótulos, podendo repetir quando o destino se repetir; cada um diz o que o leitor ganha do outro lado.

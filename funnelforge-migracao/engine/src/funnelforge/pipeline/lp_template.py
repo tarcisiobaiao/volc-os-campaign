@@ -391,6 +391,34 @@ def _aplicar_visual_rapido(content: list, *, hero_image_url: str) -> None:
         headings[0].setdefault("settings", {})["header_size"] = "h1"
         headings[1].setdefault("settings", {})["header_size"] = "p"
 
+        # Um funil linear tem um único próximo destino. O template histórico
+        # possui 2 botões no herói mobile e 3 no desktop para funis em leque;
+        # reaproveitá-los por fallback produzia dois ou três botões idênticos
+        # acima da dobra. Preserve somente a primeira ocorrência de cada URL
+        # dentro de cada herói. O CTA do corpo fica intacto e pode avançar a
+        # mensagem depois que o leitor consumiu a explicação.
+        vistos: set[str] = set()
+
+        def remover_repetidos(elementos: list[dict]) -> list[dict]:
+            filtrados: list[dict] = []
+            for elemento in elementos:
+                if elemento.get("widgetType") == "button":
+                    href = str(
+                        (((elemento.get("settings") or {}).get("link") or {}).get("url"))
+                        or ""
+                    )
+                    if href and href in vistos:
+                        continue
+                    if href:
+                        vistos.add(href)
+                filhos = elemento.get("elements")
+                if isinstance(filhos, list):
+                    elemento["elements"] = remover_repetidos(filhos)
+                filtrados.append(elemento)
+            return filtrados
+
+        hero["elements"] = remover_repetidos(hero.get("elements", []) or [])
+
     mobile["settings"]["background_color"] = "#C9003B"
     if not hero_image_url:
         mobile["settings"]["min_height_mobile"] = {"unit": "px", "size": 0}
