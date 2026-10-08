@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T19:11:02-03:00",
+  "generated_at": "2026-10-08T19:43:45-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 822,
-    "markdown": 609,
+    "files": 823,
+    "markdown": 610,
     "sql": 213,
-    "tracked": 812,
+    "tracked": 813,
     "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 35,
+      "audit": 36,
       "documentation": 445,
       "generated": 2,
       "module-guide": 40,
@@ -1135,9 +1135,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 13861,
-      "lines": 204,
-      "sha256": "65a8d13de8aae8802fdf1f9de609ba6c0c5574a14e45320fb7c1f834d0a01512",
+      "bytes": 16750,
+      "lines": 247,
+      "sha256": "04f226246cd8086613ca5ce02fee153f05d61bb53945e9639bd79a6bd4a05f44",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1267,9 +1267,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23728,
+      "bytes": 23708,
       "lines": 312,
-      "sha256": "08c2c1ba423b52a3c03049a1bc74ec486ac6050aac96a553e67ec5f694207c70",
+      "sha256": "e5284349e013aea2b136a0985eab2b1e560512e8998c58fec562372c7d429b16",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1774,6 +1774,18 @@
       "bytes": 7240,
       "lines": 134,
       "sha256": "81832648e79e435de304e55fd79154ef2ca46510d6194a63b5b05d50ca2bdd11",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 6468,
+      "lines": 124,
+      "sha256": "483dde6fd1b9e995f2fc991fbeffb74819351c0bf0f561e5c182a9a61108186c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7355,7 +7367,7 @@
       "lines": 101,
       "sha256": "79119459eeaa1058e9e61941119bf9c32b8f792cb2be5b30ef2e99fd073a2642",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
@@ -7367,7 +7379,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 8,
+      "graph_degree": 7,
       "sql_risk": "high"
     },
     {
@@ -7547,7 +7559,7 @@
       "lines": 269,
       "sha256": "42df7bc0e9adf143231847157943c8057635d7be17f6149c032f0cc839a18df5",
       "graph_nodes": 3,
-      "graph_degree": 6,
+      "graph_degree": 5,
       "sql_risk": "high"
     },
     {
@@ -7559,7 +7571,7 @@
       "lines": 239,
       "sha256": "8dba7a8bfdb08e4db45a522a14da15ed4679ff1dddfc6c296ab50801753dd3d0",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {

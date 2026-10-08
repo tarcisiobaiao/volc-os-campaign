@@ -8,6 +8,7 @@ from typing import Any
 from funnelforge.domain.models import FunnelPlan, Page, PageRole, effective_role
 from funnelforge.pipeline.jornada._comum import (
     classificar_saida_oficial,
+    cta_do_link,
     estado_do_leitor,
     justificado,
     links,
@@ -43,7 +44,7 @@ class PoliticaDaSaidaOficial:
     """Quem manda na rota `external_official` quando a página tem jornada."""
     exige: bool            # a rota oficial é obrigatória (fail-closed sem fonte)
     classe: str            # boa | prematura | nao_aplicavel
-    primeiro: bool         # boa vem antes dos CTAs internos; prematura, depois
+    primeiro: bool         # boa no estágio de ação vem antes dos CTAs internos
 
 
 def politica_da_saida_oficial(page: Page) -> PoliticaDaSaidaOficial | None:
@@ -52,12 +53,19 @@ def politica_da_saida_oficial(page: Page) -> PoliticaDaSaidaOficial | None:
     Com jornada: só há rota oficial quando a saída é ESPERADA e a página não é
     a LP (o template da LP não renderiza link oficial). `nao_aplicavel` nunca é
     obrigada; `boa` e `prematura` exigem fonte comprovada — sem ela, a página
-    falha fechada como sempre (`target_missing`)."""
+    falha fechada como sempre (`target_missing`).
+
+    POSIÇÃO: a saída oficial `boa` só abre a página (hero) no estágio de
+    confirmar/agir, quando não resta dúvida interna declarada. Com
+    `proxima_duvida`, o CTA principal é a próxima dúvida e a saída oficial
+    continua obrigatória e visível, depois dele: o leitor não é empurrado para
+    fora enquanto ainda tem pergunta legítima, e a saída nunca some."""
     if page.jornada is None:
         return None
     classe = classificar_saida_oficial(page)
     exige = classe != "nao_aplicavel" and effective_role(page) is not PageRole.LP
-    return PoliticaDaSaidaOficial(exige=exige, classe=classe, primeiro=classe == "boa")
+    primeiro = classe == "boa" and not page.jornada.proxima_duvida
+    return PoliticaDaSaidaOficial(exige=exige, classe=classe, primeiro=primeiro)
 
 
 def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
@@ -82,7 +90,7 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
         duvida = alvo.jornada.duvida_id
         destinos.append({
             "slug": alvo.slug,
-            "cta": alvo.editorial.cta_label if alvo.editorial else "",
+            "cta": cta_do_link(link, alvo),
             "resolve": alvo.jornada.pergunta_principal,
             "motivo": link.reason,
             "principal": alvo.slug == principal,
@@ -105,6 +113,8 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
         "resolvido_em_todo_caminho": [pergunta(d) for d in sorted(estado.certamente)],
         "talvez_resolvido": [pergunta(d) for d in sorted(estado.possivelmente - estado.certamente)],
         "proxima_duvida": pergunta(j.proxima_duvida) if j.proxima_duvida else "",
+        # Só quando declarada: pacotes congelados antes do campo ficam iguais.
+        **({"tensao_residual": j.tensao_residual} if j.tensao_residual else {}),
         "destinos": destinos,
         "condicao_terminal": j.condicao_terminal,
         "entrada_direta": j.entrada_direta,

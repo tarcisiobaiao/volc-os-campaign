@@ -247,11 +247,24 @@ def test_6_saida_oficial_boa_prematura_e_nao_aplicavel_controlam_a_rota(tmp_path
     build_funnel_routes(plano, settings)
     oficial = ["https://www.senac.br/oficial"]
 
-    estado = _pagina(plano, "estado")             # boa -> primeiro
+    estado = _pagina(plano, "estado")
+    agir = estado.model_copy(deep=True)           # boa no estágio de agir -> primeiro
+    agir.jornada.proxima_duvida = ""
+    bind_official_route(agir, oficial, role=PageRole.SOLUTION, is_terminal=False,
+                        politica=politica_da_saida_oficial(agir))
+    assert agir.routes[0].kind == "external_official"
+    assert agir.routes[0].placement == "hero"
+
+    # boa, mas ainda com dúvida interna aberta: a saída continua obrigatória e
+    # visível, DEPOIS do CTA da próxima dúvida (não empurra o leitor para fora)
+    assert estado.jornada.proxima_duvida
+    pol = politica_da_saida_oficial(estado)
+    assert pol.exige and pol.classe == "boa" and not pol.primeiro
     bind_official_route(estado, oficial, role=PageRole.SOLUTION, is_terminal=False,
-                        politica=politica_da_saida_oficial(estado))
-    assert estado.routes[0].kind == "external_official"
-    assert estado.routes[0].placement == "hero"
+                        politica=pol)
+    assert estado.routes[0].kind == "funnel"
+    assert estado.routes[-1].kind == "external_official"
+    assert estado.routes[-1].placement == "footer"
 
     curso = _pagina(plano, "curso")               # prematura -> depois da próxima dúvida
     bind_official_route(curso, oficial, role=PageRole.SOLUTION, is_terminal=False,

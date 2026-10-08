@@ -21,11 +21,37 @@ def chave_da_pergunta(texto):
     return " ".join(sorted(set(t.split()) - {"o", "a", "os", "as", "de", "do", "da", "ao", "eu"}))
 
 
+def dores_da_demanda(card: dict) -> list[str]:
+    """A linguagem de dor que o Pautador JÁ mediu, como dado para o arquiteto:
+    a tensão da validação (com a evidência), as dores mineradas da entidade e a
+    dor concreta. Hipótese de demanda, nunca fato sobre o leitor."""
+    leitura = card.get("contexto_de_leitura") or {}
+    dores = [str(d).strip() for d in leitura.get("dores_observadas") or [] if str(d).strip()]
+    tensao = leitura.get("tensao") if isinstance(leitura.get("tensao"), dict) else {}
+    if str(tensao.get("frase") or "").strip():
+        evidencia = str(tensao.get("evidencia") or "").strip() or "validação"
+        dores.append(f'{tensao["frase"].strip()} (medido: {evidencia})')
+    for dor in card.get("pains") or []:
+        if isinstance(dor, dict) and str(dor.get("pain_name") or "").strip():
+            descricao = str(dor.get("pain_description") or "").strip()
+            dores.append(dor["pain_name"].strip() + (f": {descricao}" if descricao else ""))
+    if str(card.get("concrete_pain") or "").strip():
+        dores.append(card["concrete_pain"].strip())
+    return list(dict.fromkeys(dores))
+
+
 def compilar_brief(card: dict, paa: dict, pesquisa: dict | None = None, *, provider=None) -> BriefDoFunil:
     tema = card.get("main_keyword") or card.get("keyword") or card.get("entidade") or ""
     leitura = card.get("contexto_de_leitura") or {}
     sinais = [{"tipo": "paa", "texto": q, "origem": paa["origem"], "factual": False}
               for q in paa["perguntas"]]
+    # O contrato REAL da validação (`entities.orchestrator.contexto_de_leitura`)
+    # é {perguntas_paa, tensao{frase, evidencia}}: as perguntas medidas entram
+    # como demanda, como qualquer PAA.
+    for q in leitura.get("perguntas_paa") or []:
+        if isinstance(q, str) and q.strip():
+            sinais.append({"tipo": "paa", "texto": q.strip(),
+                           "origem": "card.contexto_de_leitura", "factual": False})
     for campo in ("search_terms", "autocomplete", "related_queries", "expansion_hooks"):
         for item in card.get(campo) or []:
             texto = item.get("termo") or item.get("keyword") if isinstance(item, dict) else item
@@ -86,7 +112,7 @@ def compilar_brief(card: dict, paa: dict, pesquisa: dict | None = None, *, provi
         perfil_emocional=decisoes.get("perfil_emocional"),
         contexto={**contexto, "decisao_intencao": recibo_decisao,
                   "fontes_encontradas": sorted(citadas)},
-        dores_observadas=leitura.get("dores_observadas") or [],
+        dores_observadas=dores_da_demanda(card),
         desejos_observados=leitura.get("desejos_observados") or [], fatos_existentes=fatos,
         lacunas=(["PAA ausente; não impede arquitetura"] if not paa["perguntas"] else [])
                 + (["pesquisa indisponível: " + dados["defeito"]] if dados.get("defeito") else []))

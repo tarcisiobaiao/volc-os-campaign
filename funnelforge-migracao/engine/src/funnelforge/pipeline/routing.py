@@ -10,6 +10,7 @@ from funnelforge.pipeline.doctrine import APPROVED_CTA_EXEMPLARS
 from funnelforge.pipeline.jornada import (
     PoliticaDaSaidaOficial,
     alvo_da_proxima_duvida,
+    cta_do_link,
     revisar_esqueleto,
 )
 from funnelforge.pipeline.pagespec import _STOP, _sig_tokens, pagespec_for
@@ -133,7 +134,7 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
             targets.add(link.target)
             routes.append(Route(
                 placement=_placement(len(routes), len(contract.links)), kind="funnel",
-                target=target.slug, anchor=target.editorial.cta_label, reason=link.reason))
+                target=target.slug, anchor=cta_do_link(link, target), reason=link.reason))
         lp_expandida = bool(
             effective_role(page) is PageRole.LP
             and settings.run.editorial_v2

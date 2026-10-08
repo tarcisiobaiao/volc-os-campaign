@@ -73,9 +73,12 @@ def test_notas_zeradas_copiadas_do_exemplo_nao_aprovam(tmp_path):
     assert r.decisao == "revisao_humana"
     motivos = _motivos_de_nota(r)
     assert f"{MOTIVO}:compliance=0" in motivos
-    assert f"{MOTIVO}:useful_delivery=0" in motivos
     assert f"{MOTIVO}:destination_relevance=0" in motivos
     assert f"{MOTIVO}:cta_discipline=ausente" in motivos
+    # nota baixa VÁLIDA em critério de preferência é aviso, não trava
+    assert f"{MOTIVO}:useful_delivery=0" not in motivos
+    assert "nota_baixa_so_aviso:useful_delivery=0" in (
+        r.registro["rodadas"][0]["notas_existenciais"]["avisos"])
     _intacto(r)
     assert r.telemetria.status.value == "FAILED"
 
@@ -83,7 +86,8 @@ def test_notas_zeradas_copiadas_do_exemplo_nao_aprovam(tmp_path):
 def test_todas_as_notas_zero_nao_aprovam(tmp_path):
     r, _ = _rodar([_resp(notas={c: 0 for c in EDITORIAIS})], tmp_path)
     assert r.decisao == "revisao_humana"
-    assert sorted(_motivos_de_nota(r)) == sorted(f"{MOTIVO}:{c}=0" for c in EDITORIAIS)
+    assert sorted(_motivos_de_nota(r)) == sorted(
+        f"{MOTIVO}:{c}=0" for c in EDITORIAIS if c not in revisao.CRITERIOS_SO_AVISO)
     _intacto(r)
 
 
@@ -96,11 +100,23 @@ def test_sem_notas_nao_aprova(tmp_path, notas):
     _intacto(r)
 
 
-def test_uma_nota_seis_nao_aprova(tmp_path):
-    r, _ = _rodar([_resp(notas=dict(BOAS, cta_discipline=6))], tmp_path)
-    assert r.decisao == "revisao_humana"
-    assert _motivos_de_nota(r) == [f"{MOTIVO}:cta_discipline=6"]
-    _intacto(r)
+def test_uma_nota_seis_em_politica_ou_destino_nao_aprova(tmp_path):
+    for criterio in ("compliance", "destination_relevance"):
+        r, _ = _rodar([_resp(notas=dict(BOAS, **{criterio: 6}))], tmp_path / criterio)
+        assert r.decisao == "revisao_humana"
+        assert _motivos_de_nota(r) == [f"{MOTIVO}:{criterio}=6"]
+        _intacto(r)
+
+
+@pytest.mark.parametrize("criterio", ["cta_discipline", "useful_delivery"])
+def test_nota_seis_em_preferencia_de_copy_aprova_com_aviso(tmp_path, criterio):
+    """CTA forte ou página que segura parte da resposta para o próximo passo é
+    preferência, não risco material: o revisor registra e não segura."""
+    r, _ = _rodar([_resp(notas=dict(BOAS, **{criterio: 6}))], tmp_path)
+    assert r.decisao == "aprovado", r.registro["motivos"]
+    avaliacao = r.registro["rodadas"][0]["notas_existenciais"]
+    assert avaliacao["insuficientes"] == []
+    assert avaliacao["avisos"] == [f"nota_baixa_so_aviso:{criterio}=6"]
 
 
 def test_canario_com_notas_boas_mas_sem_cta_discipline_nao_aprova(tmp_path):
@@ -137,13 +153,13 @@ def test_nota_nao_numerica_ou_fora_de_0_a_10_nao_aprova(tmp_path, valor, escrito
 
 
 def test_as_notas_avaliadas_ficam_no_registro_da_rodada(tmp_path):
-    r, _ = _rodar([_resp(notas=dict(BOAS, cta_discipline=6))], tmp_path)
+    r, _ = _rodar([_resp(notas=dict(BOAS, destination_relevance=6))], tmp_path)
     avaliacao = r.registro["rodadas"][0]["notas_existenciais"]
     assert tuple(avaliacao["criterios"]) == EDITORIAIS
     assert avaliacao["minima"] == 7
-    assert avaliacao["avaliadas"]["cta_discipline"] == 6
+    assert avaliacao["avaliadas"]["destination_relevance"] == 6
     assert avaliacao["avaliadas"]["compliance"] == 9
-    assert avaliacao["insuficientes"] == [f"{MOTIVO}:cta_discipline=6"]
+    assert avaliacao["insuficientes"] == [f"{MOTIVO}:destination_relevance=6"]
     r2, _ = _rodar([_resp(notas=BOAS)], tmp_path / "ok")
     assert r2.registro["rodadas"][0]["notas_existenciais"]["insuficientes"] == []
 

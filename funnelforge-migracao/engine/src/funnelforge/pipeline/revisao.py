@@ -97,6 +97,14 @@ ALERTA_PACOTE_VENCIDO = "policy_pack_stale"
 # impede a aprovação automática.
 NOTA_MINIMA_EXISTENCIAL = 7
 MOTIVO_NOTAS_INSUFICIENTES = "notas_existenciais_insuficientes"
+# AUTORIDADE DO REVISOR (08/10/2026, "performance first, policy safe"): nota
+# baixa VÁLIDA nestes critérios é preferência de copy (força do CTA, quanto a
+# página entrega antes do clique), não risco material. Fica no recibo como
+# aviso e não segura a página. O que bloqueia continua bloqueando: política e
+# congruência do destino pela nota, achados bloqueantes (fato, política,
+# destino, identidade), afirmação sem fato e nota ausente/fora do contrato.
+CRITERIOS_SO_AVISO = frozenset({"cta_discipline", "useful_delivery"})
+MOTIVO_NOTA_SO_AVISO = "nota_baixa_so_aviso"
 # A marca que o recibo do revisor carrega quando a trava foi aplicada. Recibo
 # do revisor SEM ela (emitido antes da trava) não libera publicação.
 VERSAO_DA_TRAVA = "trava-notas-v1"
@@ -743,6 +751,7 @@ def avaliar_notas_existenciais(notas: Any, criterios: tuple[str, ...]) -> dict:
     avaliadas: dict[str, Any] = {}
     ausentes: list[str] = []
     insuficientes: list[str] = []
+    avisos: list[str] = []
     for criterio in criterios:
         if criterio not in notas:
             avaliadas[criterio] = None
@@ -751,11 +760,17 @@ def avaliar_notas_existenciais(notas: Any, criterios: tuple[str, ...]) -> dict:
             continue
         valor = notas[criterio]
         avaliadas[criterio] = valor
-        if not _nota_valida(valor) or valor < NOTA_MINIMA_EXISTENCIAL:
+        if not _nota_valida(valor):
             insuficientes.append(
                 f"{MOTIVO_NOTAS_INSUFICIENTES}:{criterio}={_como_escrito(valor)}")
+        elif valor < NOTA_MINIMA_EXISTENCIAL:
+            alvo = avisos if criterio in CRITERIOS_SO_AVISO else insuficientes
+            prefixo = MOTIVO_NOTA_SO_AVISO if criterio in CRITERIOS_SO_AVISO \
+                else MOTIVO_NOTAS_INSUFICIENTES
+            alvo.append(f"{prefixo}:{criterio}={_como_escrito(valor)}")
     return {"criterios": list(criterios), "minima": NOTA_MINIMA_EXISTENCIAL,
-            "avaliadas": avaliadas, "ausentes": ausentes, "insuficientes": insuficientes}
+            "avaliadas": avaliadas, "ausentes": ausentes, "insuficientes": insuficientes,
+            "avisos": avisos}
 
 
 def _notas_que_impedem(rod: dict) -> list[str]:
@@ -901,6 +916,7 @@ def montar_prompt_do_revisor(doc: Documento, ctx: ContextoDaRevisao, *,
         "revisor",
         pagina=ctx.pagina,
         criterios=criterios, nota_minima=NOTA_MINIMA_EXISTENCIAL,
+        criterios_so_aviso=[c for c in criterios if c in CRITERIOS_SO_AVISO],
         # sem número copiável: no canário o modelo devolveu o 0 do exemplo
         exemplo_de_notas="{" + ", ".join(f'"{c}": <0-10>' for c in criterios) + "}",
         blocos=blocos, campos=list(doc.campos()), tem_widget=bool(doc.widget_texto()),

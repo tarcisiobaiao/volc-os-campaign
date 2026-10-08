@@ -1,6 +1,6 @@
 # Jornada do funil — contrato, portões e medição
 
-Atualizado em 07/10/2026 (2ª rodada, lapidação). O funil carrega a JORNADA do
+Atualizado em 08/10/2026 (lucro por visita); 2ª rodada de lapidação em 07/10/2026. O funil carrega a JORNADA do
 leitor: `intenção → entrada → resposta imediata → qualificação → próxima dúvida
 ainda aberta → solução/saída oficial → monetização → medição → nova versão`. A
 mudança estende o que existia (contrato `editorial`, portão de grafo, revisão
@@ -41,6 +41,66 @@ opcionais e aditivos. Referências entre páginas são por `duvida_id`.
   guarda `fonte_nao_observada` (a mesma em `domain/medicao.py`) recusa MiroFish
   e "simulação" com qualquer caixa, acento ou espaço.
 
+### Lucro por visita: o contrato mínimo da página (08/10/2026)
+
+Norte: **maior lucro esperado por visita** dentro de quatro limites — intenção,
+valor real em cada página, progressão honesta e congruente, política/fatos.
+Princípio da página: **entrega + tensão residual** (`promessa → resposta
+imediata → aprofundamento útil → consequência ou nova dúvida → CTA
+específico`). Só dois campos novos; o resto já existia:
+
+| Conceito | Campo |
+|---|---|
+| intenção de entrada | `jornada.coortes_de_entrada`, `trabalho_do_leitor` |
+| estado mental, dor/desejo predominante | `Page.emotional_objective` (estado ao chegar + ganho, não lista do que evitar) |
+| pergunta central / promessa / entrega imediata | `pergunta_principal`, `resposta_imediata` |
+| informação exclusiva | `valor.informacao_nova`, `valor.por_que_nao_fundir` |
+| **tensão residual legítima** | **`jornada.tensao_residual`** (novo) |
+| próxima pergunta / encerramento | `proxima_duvida`, `condicao_terminal` |
+| **CTA principal desta origem** | **`editorial.links[].cta`** (novo; vazio = `cta_label` do destino) |
+| destino / entrega prometida no destino | `links[].target` + `useful_delivery`/`resposta_imediata` do destino |
+| função na monetização | `jornada.monetizacao` |
+| condição de entrada direta | `entrada_direta` |
+
+Os dois campos novos saem do dump quando vazios (`exclude_if`): pacotes
+congelados e estados antigos conferem byte a byte. O Pautador chega ao
+arquiteto pelo contrato REAL da validação: `contexto_de_leitura.tensao`, as
+dores mineradas da entidade (`pains`) e `concrete_pain` viram
+`brief.dores_observadas`; `perguntas_paa` viram demanda (antes o motor lia
+chaves que ninguém escrevia e `dores_observadas` saía sempre vazio).
+
+O que mudou no motor existente (sem engine, revisor ou caminho novos):
+
+- **arquiteto** (`funnel_builder.py`): alvo de lucro por visita; página existe
+  quando tem intenção, entrega exclusiva, próxima pergunta e entrada direta (não
+  minimizar páginas); pré-sell existe quando ajuda a se reconhecer e escolher;
+  formas permitidas (hub por intenção, jornada progressiva, diagnóstico sem dado
+  sensível, sequencial); `cta` por link com a fórmula dor/desejo + próxima
+  resposta + consequência; caiu "rótulo igual para entrega igual é correto";
+- **redator** (`jornada_da_pagina.jinja`, `reader_contract_v2.jinja`): ordem
+  entrega + tensão, emoção permitida e proibida, todo parágrafo responde,
+  esclarece, exemplifica, antecipa objeção ou prepara o próximo passo; a
+  abertura responde e o corpo avança; caiu "um destino com a mesma entrega pode
+  manter o mesmo rótulo" (os templates V1 não mudaram);
+- **saída oficial**: `boa` só abre a página (hero) quando não resta
+  `proxima_duvida`; com dúvida aberta continua obrigatória e visível, depois do
+  CTA interno;
+- **esqueleto**: `ctas_iguais` (destinos diferentes com o mesmo texto) bloqueia;
+  `cta_generico` (lista única em `copy_contract.cta_generico`: saiba mais,
+  continuar, próximo, ver conteúdo, ver guia, clique aqui, acessar, confira…),
+  `cta_sem_correspondencia_no_destino`, `tensao_residual_ausente` e
+  `presell_sem_escolha` são aviso; o CTA principal genérico no caminho do brief
+  continua bloqueante;
+- **revisor V2**: nota baixa válida em `cta_discipline`/`useful_delivery` vira
+  `nota_baixa_so_aviso` no recibo e não segura a página. Continuam travando:
+  `compliance`, `destination_relevance`, nota ausente/fora do contrato, achado
+  bloqueante (fato, política, destino, identidade), afirmação sem fato, HTML
+  inválido. Uma revisão, um microajuste, sem laço.
+
+A/B enxuto real no Gás do Povo (10 chamadas, sem publicação): melhora
+estrutural clara, ganho percebido pequeno (juiz cego 73 × 70); ver
+`docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md`.
+
 ### Estado do leitor por caminho
 
 `ja_resolvido` não é verdade absoluta. `jornada.estado_do_leitor` calcula, no
@@ -70,8 +130,8 @@ bloqueia com `certamente`; com `possivelmente` vira CTA secundário e condiciona
 
 | Momento | Onde | O que | Custo |
 |---|---|---|---|
-| Antes da 1ª chamada paga | `jornada/esqueleto.py` → `routing.validate_funnel_graph` → `funnel_graph`; `revisao_esqueleto` FAILED quando reprova | jornada incompleta, dúvida duplicada, referência inexistente, `valor` ausente ou incompleto, fusão necessária, LP que só roteia, `/rec` dependente, próxima dúvida sem destino, reoferta de dúvida resolvida em todo caminho, ciclo sem ganho, beco, entrada sem conclusão, bloco visual fora da função ou sem entrega, ferramenta sem ativo | zero |
-| Roteamento | `routing` + `jornada/contexto.politica_da_saida_oficial` | CTA principal = próxima dúvida; saída oficial `nao_aplicavel` não é obrigada; `boa` vem primeiro; `prematura` depois dos CTAs internos; sem fonte comprovada, fail-closed | zero |
+| Antes da 1ª chamada paga | `jornada/esqueleto.py` → `routing.validate_funnel_graph` → `funnel_graph`; `revisao_esqueleto` FAILED quando reprova | jornada incompleta, dúvida duplicada, referência inexistente, `valor` ausente ou incompleto, fusão necessária, LP que só roteia, `/rec` dependente, próxima dúvida sem destino, reoferta de dúvida resolvida em todo caminho, ciclo sem ganho, beco, entrada sem conclusão, bloco visual fora da função, ferramenta sem ativo, dois destinos com o mesmo botão (`ctas_iguais`); avisos: CTA genérico, CTA sem eco no destino, tensão residual ausente, pré-sell sem escolha | zero |
+| Roteamento | `routing` + `jornada/contexto.politica_da_saida_oficial` | CTA principal = próxima dúvida, com o `cta` do link quando declarado; saída oficial `nao_aplicavel` não é obrigada; `boa` vem primeiro só sem `proxima_duvida` (estágio de agir), senão depois do CTA interno; `prematura` depois dos CTAs internos; sem fonte comprovada, fail-closed | zero |
 | Redação | `jornada_da_pagina.jinja` (V1 e V2, condicional), `escrita_natural.jinja` (V2) | pergunta, promessa, o que está certo e o que é talvez resolvido, destinos (principal/secundário), saída oficial, valor, plano visual, ativos; escrita natural sem perder fato, número, link ou SEO | — |
 | Revisão por página (V2) | `revisao.py` | categoria `naturalidade` (padrão Humanizer), sempre ajuste, patch na MESMA chamada; o código recusa patch que perde número ou toca link | — |
 | Funil pronto | `jornada/revisao_global.py`, antes de qualquer publicação, só páginas aprovadas | bloqueio só com prova estrutural (CTA para dúvida resolvida em todo caminho, ciclo real, link oficial na LP, saída prematura antes da próxima dúvida, beco); proxy de termo é aviso | zero |
@@ -159,34 +219,17 @@ consolidação, sem retentativa. A condenação é a mesma (teste
 Limite honesto: com N workers o teto do run pode ser ultrapassado em até N-1
 chamadas que já estavam no ar — por isso o gasto faturado (pesquisa) é serial.
 
-## Perfil de produção rápida (`run.perfil: rapido`)
+## Caminho de produção (após c168168)
 
-O redator de sempre, UMA chamada por página (com a doutrina de escrita
-natural e o pacote do dossiê no prompt); juiz por página, widget por modelo e
-classificador de engajamento desligados; SEO (`seotitle`/`metadescription`),
-fatos usados por `fact_id`, links, canais oficiais, plano Gutenberg, schema,
-screenshot e ativo necessários vêm do CÓDIGO (`pacotes.json`). No fim, UMA
-revisão global do funil por modelo (`revisao_rapida.py`): `pass`, `warning` ou
-`block`; patch mínimo de `block` aplicado uma vez por código, com rebuild e
-gate; só o que continua `block` vai à revisão humana consolidada
-(`revisao_global_rapida.json`). Lacuna de evidência é aviso para o revisor
-global, não manda página a humano.
+O caminho de qualidade é um só: editorial V2 com dossiê e até 3 workers
+(preset `completo_chatgpt`; `rapido_chatgpt` é alias legado de cards gravados). `run.perfil: rapido` ficou
+como rótulo inerte e `revisao_rapida.py` não existe mais. No caminho
+pré-redação (`--card-pre-arquitetura`), a revisão é UMA chamada em lote
+(`inteligencia.revisar_lote`) com as mesmas políticas, notas e patcher do
+revisor V2.
 
-No perfil rápido, as lacunas de todas as páginas são pesquisadas em uma única
-complementação em lote antes dos workers. O portão por requisito e a
-verificação de fonte continuam iguais; muda apenas a granularidade da chamada.
-Fórmula de cálculo com exemplo numérico é classificada como `processo`, e não
-como valor temporal sem vigência, somente quando há operação e linguagem
-inequívoca de cálculo. Valores, limites e percentuais comuns seguem fail-closed.
-
-Canário real de 08/10/2026, card #65 (FGTS), sem publicação: 6/6 páginas
-acabadas, todos os content gates `OK`, revisão global com 0 `block` e nenhuma
-página para decisão humana; 13 chamadas do motor (4 dossiê, 8 redação — duas
-retentativas recuperadas — e 1 revisão), pico de 3 chamadas simultâneas e cerca
-de 5m45s. O run anterior consumia 22 chamadas e deixava duas páginas para
-decisão. A meta histórica de ~8 chamadas não é um mínimo seguro para seis
-páginas: pesquisa grounded em duas etapas + 6 redações + revisão já exige 11
-chamadas quando não há retentativa.
+Histórico (commit 4575ea0, antes da unificação): canário de 08/10/2026, card
+#65 (FGTS), 6/6 páginas, 13 chamadas, pico de 3 simultâneas, cerca de 5m45s.
 
 ## Contrato de medição
 

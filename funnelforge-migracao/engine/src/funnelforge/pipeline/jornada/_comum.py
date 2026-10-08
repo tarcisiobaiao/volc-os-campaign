@@ -52,6 +52,15 @@ def links(page: Page) -> list:
     return list(page.editorial.links) if page.editorial is not None else []
 
 
+def cta_do_link(link, alvo: Page) -> str:
+    """O texto do botão DESTA origem para `alvo`: o `cta` do link quando o
+    arquiteto o declarou; senão, o rótulo de entrada do destino (como antes)."""
+    proprio = (getattr(link, "cta", "") or "").strip()
+    if proprio:
+        return proprio
+    return alvo.editorial.cta_label if alvo.editorial is not None else ""
+
+
 def rotulo(page: Page) -> str:
     return page.jornada.duvida_id if page.jornada else page.slug
 

@@ -38,6 +38,12 @@ class Route(BaseModel):
 class EditorialLink(BaseModel):
     target: str = Field(min_length=1)
     reason: str = Field(min_length=1)
+    # O botão DESTA origem para o destino: dor/desejo do leitor neste ponto +
+    # a próxima resposta concreta + a consequência útil. Vazio = o rótulo do
+    # destino (`editorial.cta_label`), como antes. O mesmo destino pode (e
+    # costuma) pedir rótulos diferentes em origens diferentes. Vazio fica fora
+    # do dump: pacotes congelados e estados antigos conferem byte a byte.
+    cta: str = Field(default="", exclude_if=lambda v: not v)
 
 
 class EditorialIntent(BaseModel):
@@ -341,6 +347,11 @@ class JornadaDaPagina(BaseModel):
     # CERTO em todos os caminhos o motor calcula (`jornada.estado_do_leitor`).
     ja_resolvido: list[str] = []
     proxima_duvida: str = ""
+    # A dúvida LEGÍTIMA que a entrega completa desta página abre (a
+    # consequência ou o "e agora?"), e que o CTA principal resolve. Não é
+    # informação retida: a resposta da página vem inteira antes dela. Vazio
+    # fica fora do dump (pacotes congelados antes do campo conferem igual).
+    tensao_residual: str = Field(default="", exclude_if=lambda v: not v)
     condicao_terminal: str = ""
     entrada_direta: Literal["autocontida", "depende_de_contexto"] = "autocontida"
     saida_oficial: SaidaOficialPrevista = SaidaOficialPrevista()

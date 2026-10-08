@@ -16,12 +16,14 @@ from funnelforge.domain.models import (
     PageRole,
     effective_role,
 )
+from funnelforge.pipeline.copy_contract import cta_generico
 from funnelforge.pipeline.jornada._comum import (
     adjacencia,
     ciclo_justificado,
     ciclos,
     classificar_saida_oficial,
     conclusiva,
+    cta_do_link,
     descreve_ciclo,
     estado_do_leitor,
     justificado,
@@ -96,10 +98,59 @@ def _lp_so_roteia(page: Page, slugs: dict[str, Page]) -> bool:
         alvo = slugs.get(link.target)
         if alvo is None:
             continue
-        do_menu |= tokens(link.reason) | tokens(alvo.h1_title)
+        do_menu |= tokens(link.reason) | tokens(alvo.h1_title) | tokens(cta_do_link(link, alvo))
         if alvo.editorial is not None:
             do_menu |= tokens(alvo.editorial.cta_label)
     return not (resposta - do_menu)
+
+
+def _ctas(p: Page, slugs: dict[str, Page], b, a, *, principal_ja_bloqueia: bool) -> None:
+    """Os botões da página como o leitor os vê, um a um.
+
+    Bloqueia só o que é prova estrutural: dois destinos diferentes com o MESMO
+    texto (um dos botões promete o que o destino dele não entrega). Rótulo
+    genérico, CTA sem nenhum termo do que o destino entrega e falta de tensão
+    residual são AVISO: proxy de termo nunca bloqueia."""
+    j = p.jornada
+    vistos: dict[str, str] = {}
+    for link in links(p):
+        alvo = slugs.get(link.target)
+        if alvo is None or alvo.jornada is None:
+            continue
+        texto = cta_do_link(link, alvo)
+        chave = norm(texto)
+        if chave and chave in vistos and vistos[chave] != alvo.slug:
+            b(Issue(code="ctas_iguais",
+                    message=f"[{j.duvida_id}] o botão '{texto}' leva a '{vistos[chave]}' e "
+                            f"a '{alvo.slug}': destinos diferentes pedem promessas "
+                            "diferentes. Declare `links[].cta` com a resposta de cada um."))
+        vistos.setdefault(chave, alvo.slug)
+        principal = alvo.jornada.duvida_id == j.proxima_duvida
+        if principal_ja_bloqueia and principal and (
+                cta_generico(texto) or chave == norm(alvo.h1_title)):
+            continue  # o bloqueante `cta_principal_generico` já nomeia este caso
+        if cta_generico(texto):
+            a(Issue(code="cta_generico",
+                    message=f"[{j.duvida_id}] '{texto}' serviria a qualquer destino: diga a "
+                            "dor/desejo do leitor, a próxima resposta e a consequência."))
+            continue
+        entrega = " ".join(filter(None, (
+            alvo.h1_title, alvo.jornada.pergunta_principal, alvo.jornada.resposta_imediata,
+            alvo.editorial.useful_delivery if alvo.editorial else "",
+            alvo.jornada.valor.informacao_nova if alvo.jornada.valor else "")))
+        if tokens(texto) and not (tokens(texto) & tokens(entrega)):
+            a(Issue(code="cta_sem_correspondencia_no_destino",
+                    message=f"[{j.duvida_id}] '{texto}' não ecoa nada do que "
+                            f"'{alvo.jornada.duvida_id}' entrega: confira se o destino "
+                            "cumpre a promessa do botão."))
+    if j.proxima_duvida and not j.tensao_residual.strip():
+        a(Issue(code="tensao_residual_ausente",
+                message=f"[{j.duvida_id}] tem próxima dúvida, mas não declara a "
+                        "tensão residual que a entrega abre: o CTA principal fica sem motivo."))
+    if effective_role(p) is PageRole.PRESELL and len(links(p)) < 2:
+        a(Issue(code="presell_sem_escolha",
+                message=f"[{j.duvida_id}] pré-sell com menos de dois caminhos não ajuda a "
+                        "escolher: dê a ela ramificação real ou funda-a na LP."))
 
 
 def _valor(plan: FunnelPlan, b, a) -> None:
@@ -258,6 +309,10 @@ def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
     for p in plan.pages:
         j, papel = p.jornada, effective_role(p)
         if plan.brief_pre_arquitetura is not None:
+            # Um HUB puramente decisional pode orientar a escolha sem afirmar
+            # regra, número, prazo ou procedimento. Exigir um requisito factual
+            # nele força o arquiteto a inventar uma pesquisa para um menu. LPs e
+            # SOLUTIONs continuam fail-closed: elas fazem a entrega substantiva.
             if not j.requisitos:
                 b(Issue(code="requisitos_previsiveis_ausentes", message=f"[{j.duvida_id}] "
                         "o arquiteto precisa declarar requisitos antes da redação."))
@@ -267,9 +322,8 @@ def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
             for link in links(p):
                 alvo = slugs.get(link.target)
                 if alvo and alvo.jornada and alvo.jornada.duvida_id == j.proxima_duvida:
-                    label = norm(alvo.editorial.cta_label)
-                    if label in {"saiba mais", "veja o guia", "continuar", "clique aqui",
-                                 "ver informacoes", "ler o guia", norm(alvo.h1_title)}:
+                    label = cta_do_link(link, alvo)
+                    if cta_generico(label) or norm(label) == norm(alvo.h1_title):
                         b(Issue(code="cta_principal_generico", message=f"[{j.duvida_id}] "
                                 "rótulo principal não traduz o avanço concreto do leitor."))
         destinos = [slugs[l.target] for l in links(p) if l.target in slugs]
@@ -336,6 +390,8 @@ def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
                             f"'{declarada}', a régua calcula '{calculada}' "
                             "(boa exige condição terminal ou justificativa)."))
         _plano_visual(p, b, a)
+        _ctas(p, slugs, b, a,
+              principal_ja_bloqueia=plan.brief_pre_arquitetura is not None)
     _valor(plan, b, a)
 
     adj = adjacencia(plan)
