@@ -657,3 +657,131 @@ def checar(cfg: ConfiguracaoPMaxV25, *, cid: str,
                 "(CampaignGoalConfigService) com o id REAL da campanha, depois "
                 "do mutate atômico. Ela não está no validate_only deste grafo",
                 nao_operado)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FRONTEIRA JSON — só a parte V25; a base vem do objeto `pmax` da rota
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# `brand_guidelines_enabled`, sinais e negativas BROAD continuam no objeto
+# `pmax` da rota, e a mensuração é lida no SERVIDOR (o recibo tem construtor
+# privado). O JSON `configuracao_pmax` carrega só o que `ConfiguracaoPMaxV25`
+# acrescenta.
+#
+# ⚠️ `AssetGroupPMax.imagens` é `ImagensPMax` — bytes + recibo da ponte. O JSON
+# não os representa: quem chama passa um resolvedor que leva cada envelope de
+# asset pelo MESMO portão de política e pela MESMA ponte do grupo 0. Sem
+# resolvedor, a recusa é explícita.
+
+_HEX_OU_VAZIO = r"^(#[0-9A-Fa-f]{6})?$"
+
+ESQUEMA_JSON: dict[str, dict] = {
+    "ConfiguracaoPMaxV25.path1": {"maxLength": PATH_MAX_CHARS, "pattern": r"^[^/ ]*$"},
+    "ConfiguracaoPMaxV25.path2": {"maxLength": PATH_MAX_CHARS, "pattern": r"^[^/ ]*$",
+                                  "description": "exige path1"},
+    "ConfiguracaoPMaxV25.videos": {"maxItems": VIDEOS_POR_GRUPO_MAX},
+    "ConfiguracaoPMaxV25.grupos_adicionais": {
+        "maxItems": 99,
+        "description": "asset groups 1..N; o grupo 0 nasce do brief (copy, assets_pmax, url_final, pmax.sinais)"},
+    "ConfiguracaoPMaxV25.automacoes_optadas": {
+        "uniqueItems": True, "items": {"enum": list(AUTOMACOES_PMAX_V25)},
+        "description": ("automações OPTED_IN; as ausentes viajam OPTED_OUT. "
+                        "FINAL_URL_EXPANSION exige TEXT_ASSET_AUTOMATION junto; "
+                        "AUTOMATED_VIDEO_CRAWL exige video_crawl + direitos declarados")},
+    "ConfiguracaoPMaxV25.video_crawl_direitos_declarados": {
+        "description": "declaração do dono de que tem direito sobre os vídeos encontrados; obrigatória com AUTOMATED_VIDEO_CRAWL"},
+    "ConfiguracaoPMaxV25.termos_excluidos": {
+        "maxItems": TERMOS_EXCLUIDOS_MAX,
+        "items": {"minLength": 1, "maxLength": TERMO_EXCLUIDO_MAX_CHARS}},
+    "ConfiguracaoPMaxV25.restricoes_de_mensagem": {
+        "maxItems": RESTRICOES_MAX,
+        "items": {"minLength": 1, "maxLength": RESTRICAO_MAX_CHARS}},
+    "ConfiguracaoPMaxV25.diretrizes_de_marca": {
+        "description": "só com pmax.brand_guidelines_enabled=true"},
+    "ConfiguracaoPMaxV25.listas_de_negativas": {"items": {"pattern": _SHARED_SET.pattern}},
+    "ConfiguracaoPMaxV25.listas_de_marcas_excluidas": {"items": {"pattern": _SHARED_SET.pattern}},
+    "AssetGroupPMax.nome": {"minLength": 1},
+    "AssetGroupPMax.url_final": {"pattern": r"^https://"},
+    "AssetGroupPMax.path1": {"maxLength": PATH_MAX_CHARS, "pattern": r"^[^/ ]*$"},
+    "AssetGroupPMax.path2": {"maxLength": PATH_MAX_CHARS, "pattern": r"^[^/ ]*$"},
+    "AssetGroupPMax.videos": {"maxItems": VIDEOS_POR_GRUPO_MAX},
+    "AssetGroupPMax.sinais": {
+        "description": "[] = sem dica (escolha); null = ninguém escolheu (recusado)"},
+    "OpcoesDeUrl.sufixo_extra": {"description": "pares [chave, valor] acrescentados ao sufixo da campanha neste grupo"},
+    "OpcoesDeUrl.parametros_personalizados": {
+        "maxItems": PARAMETROS_PERSONALIZADOS_MAX,
+        "description": "pares [chave, valor]; chave alfanumérica 1..16, usada como {_chave}"},
+    "OpcoesDeUrl.tracking_url_template": {"description": "começa com {lpurl} ou https:// e carrega {lpurl}"},
+    "VideoYouTube.video_id": {"pattern": _ID_YOUTUBE.pattern},
+    "FonteDeVideoCrawl.url": {"pattern": r"^https://"},
+    "FonteDeVideoCrawl.plataforma": {"enum": list(PLATAFORMAS_DE_VIDEO_CRAWL)},
+    "ExclusaoDeUrl.nome": {"minLength": 1},
+    "ExclusaoDeUrl.argumento": {"minLength": 1},
+    "ExclusaoDeUrl.operando": {"enum": list(OPERANDOS_DE_URL)},
+    "ExclusaoDeUrl.operador": {"enum": list(OPERADORES_DE_URL)},
+    "NegativaPMax.texto": {"minLength": 1},
+    "NegativaPMax.match_type": {"enum": list(MATCH_TYPES_NEGATIVOS)},
+    "MarcaExcluida.entity_id": {"pattern": _ENTIDADE_DE_MARCA.pattern},
+    "MetaDeConversao.categoria": {"enum": list(CATEGORIAS_DE_CONVERSAO)},
+    "MetaDeConversao.origem": {"enum": list(ORIGENS_DE_CONVERSAO)},
+    "MetaClienteNovo.goal": {"pattern": _GOAL.pattern},
+    "MetaClienteNovo.modo": {"enum": list(MODOS_CLIENTE_NOVO)},
+    "MetaClienteNovo.valor_adicional": {"exclusiveMinimum": 0},
+    "MetaClienteNovo.multiplicador_de_valor": {"exclusiveMinimum": 0},
+    "DiretrizesDeMarca.cor_principal": {"pattern": _HEX_OU_VAZIO},
+    "DiretrizesDeMarca.cor_destaque": {"pattern": _HEX_OU_VAZIO},
+    "DiretrizesDeMarca.fonte": {"enum": ["", *FONTES_DE_MARCA]},
+    "SinalDeAudiencia.tipo": {"enum": ["audience", "search_theme"]},
+    "SinalDeAudiencia.valor": {"minLength": 1},
+}
+
+_SEM_RESOLVEDOR_DE_IMAGENS = (
+    "imagens de asset group adicional são envelopes de asset (bytes + "
+    "procedência) e precisam do portão de política e da ponte criativa; esta "
+    "chamada não recebeu quem os julgue")
+
+#: O esquema padrão das imagens de um grupo adicional. A rota HTTP o troca pelo
+#: esquema real do envelope de asset (o mesmo de `assets_pmax`).
+ESQUEMA_IMAGENS_PADRAO = {
+    "type": "array",
+    "items": {"type": "object"},
+    "description": ("envelopes de asset, no MESMO formato de `assets_pmax`: "
+                    "cada item passa pelo portão de política e pela ponte "
+                    "criativa, que decide o papel pelo `tipo`"),
+}
+
+
+def campos_v25() -> tuple[str, ...]:
+    from . import config_json
+
+    return config_json.campos_proprios(ConfiguracaoPMaxV25, ConfiguracaoPMax)
+
+
+def de_json(dados: dict, base: ConfiguracaoPMax, *,
+            imagens_do_grupo=None,
+            caminho: str = "configuracao_pmax") -> ConfiguracaoPMaxV25:
+    """JSON da parte V25 + a base já montada → `ConfiguracaoPMaxV25`.
+
+    `imagens_do_grupo(lista_json, caminho) -> ImagensPMax` é quem transforma
+    os envelopes de asset de cada grupo adicional em imagens aprovadas.
+    """
+    from dataclasses import fields as _f
+
+    from . import config_json
+
+    def _sem_resolvedor(_valor, caminho_):
+        raise config_json.ConfiguracaoInvalida(caminho_, _SEM_RESOLVEDOR_DE_IMAGENS)
+
+    fixos = {f.name: getattr(base, f.name) for f in _f(ConfiguracaoPMax)}
+    return config_json.de_dict(
+        ConfiguracaoPMaxV25, dados, caminho, apenas=campos_v25(), fixos=fixos,
+        resolvedores={ImagensPMax: imagens_do_grupo or _sem_resolvedor})
+
+
+def esquema_json(*, esquema_de_imagens: dict | None = None) -> dict:
+    from . import config_json
+
+    return config_json.esquema(
+        ConfiguracaoPMaxV25, apenas=campos_v25(), metadados=ESQUEMA_JSON,
+        sobrescritas={ImagensPMax: esquema_de_imagens or ESQUEMA_IMAGENS_PADRAO},
+        titulo="ConfiguracaoPMaxV25")

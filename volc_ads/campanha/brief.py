@@ -32,10 +32,23 @@ from .criterio import Criterio, de_lista
 #: Search confiava neste portão para barrar o que não sabia montar. Sem essa
 #: conferência, um brief de Search com MaxConvValue cairia no `else` de
 #: `comum.op_campanha` e viraria MaxConv em silêncio.
+#:
+#: ⚠️ Desde 08/10/2026 a lista conhece também as estratégias que os quatro
+#: canais passaram a montar (`*_config.ESTRATEGIAS`), sempre pelo NOME DA API
+#: (`BiddingStrategyTypeEnum` v25): `TARGET_SPEND` é "maximizar cliques" — e
+#: `MAXIMIZE_CLICKS` não existe aqui de propósito, porque um apelido de tela no
+#: brief seria um segundo nome para a mesma estratégia, e o mesmo número
+#: chegaria ao payload por dois caminhos. Conhecer o nome NÃO autoriza: um
+#: brief de Demand Gen com `TARGET_SPEND` e sem `LanceDemandGen` continua
+#: recusado pelo builder, que só monta pelo brief o que sabe montar sem meta.
 ESTRATEGIAS_DE_LANCE: tuple[str, ...] = (
     "MANUAL_CPC",
     "MAXIMIZE_CONVERSIONS",
     "MAXIMIZE_CONVERSION_VALUE",
+    "TARGET_SPEND",
+    "TARGET_IMPRESSION_SHARE",
+    "MANUAL_CPM",
+    "TARGET_CPC",
 )
 
 
@@ -753,16 +766,19 @@ class RedeDePesquisa:
                 "uma campanha SEARCH sem `google_search` não é uma campanha "
                 "Search. Se a intenção é outro canal, escolha outro canal."
             )
-        if self.display_expansion:
-            # A expansão para Display muda o inventário sem mudar o tipo da
-            # campanha — é a forma mais silenciosa de sair da rede de pesquisa.
-            # Ela não é proibida para sempre; é proibida enquanto ninguém tiver
-            # escrito o que ela significa para verba, lance e medição.
-            raise ValueError(
-                "`display_expansion` ainda não tem contrato declarado no VOLC "
-                "O.S.: ela troca o inventário sem trocar o tipo da campanha. "
-                "Deixe False até existir decisão escrita."
-            )
+        for nome in ("search_partners", "display_expansion"):
+            if not isinstance(getattr(self, nome), bool):
+                raise TypeError(
+                    f"rede.{nome} precisa ser bool declarado, não "
+                    f"{getattr(self, nome)!r}")
+        # ⚠️ `display_expansion=True` deixou de ser recusado em 08/10/2026. A
+        # recusa dizia "enquanto ninguém tiver escrito o que ela significa
+        # para verba, lance e medição" — e isso foi escrito em
+        # `search_config.RedeSearch` (mesma verba, mesmo CPC, leitura por
+        # `ad_network_type=CONTENT`). Ligar continua sendo exceção: o builder
+        # emite AVISO toda vez (`search_config.resolver_rede`), e o canário de
+        # Search continua recusando a expansão (`canario.exigir`), porque ele
+        # mede o Google Search sozinho.
 
     def para_json(self) -> dict[str, bool]:
         return {

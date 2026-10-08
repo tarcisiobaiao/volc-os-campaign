@@ -29,6 +29,9 @@ from .display_config import (
 
 T_LISTA_EXCLUSAO = -400
 T_VIDEO_BASE = -450
+#: Teto do nome de `Asset` aceito pela API (o nome da campanha aceita 255; o
+#: do asset, não — medido com TOO_LONG num nome de ~140).
+NOME_DE_ASSET_MAX = 128
 
 
 def temp_video(cid: str, indice: int) -> str:
@@ -248,7 +251,13 @@ def ops_videos(c: Any, cid: str, ids: tuple[str, ...], nome_base: str) -> tuple[
         o = c.get_type("MutateOperation")
         a = o.asset_operation.create
         a.resource_name = rn
-        a.name = f"{nome_base} video {vid}"
+        # ⚠️ Cortado no teto do `Asset.name`: com a marca do canário no nome
+        # da campanha, `nome_base` passa de 120 caracteres e a API recusa o
+        # mutate inteiro (`string_length_error.TOO_LONG @asset_operation.
+        # create.name`, validate_only na Crédito Up, 08/10/2026). O id do
+        # vídeo fica — é ele que torna o nome único.
+        sufixo = f" video {vid}"
+        a.name = f"{nome_base[:NOME_DE_ASSET_MAX - len(sufixo)]}{sufixo}"
         a.type_ = c.enums.AssetTypeEnum.YOUTUBE_VIDEO
         a.youtube_video_asset.youtube_video_id = vid
         ops.append(o)

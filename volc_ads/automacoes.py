@@ -60,6 +60,45 @@ AUTOMACOES_PMAX_RECUSADAS: Tuple[str, ...] = (
     "GENERATE_IMAGE_EXTRACTION",
 )
 
+#: Demand Gen, formato VÍDEO RESPONSIVO — quatro, também no AD GROUP AD.
+#:
+#: ⚠️ Automação de criativo em Demand Gen é por TIPO DE ANÚNCIO: um tipo de
+#: multi-asset num anúncio de vídeo devolve `enum_error.ENUM_VALUE_NOT_PERMITTED`
+#: (medido em validate_only na Crédito Up, 08/10/2026). Por isso estas quatro
+#: são uma lista própria, e não um acréscimo às três de cima: cada formato
+#: declara as SUAS. Carrossel não tem automação ad-level na v25.
+AUTOMACOES_DEMAND_GEN_VIDEO_RECUSADAS: Tuple[str, ...] = (
+    "GENERATE_LANDING_PAGE_PREVIEW",
+    "GENERATE_LANDING_PAGE_TEXT",
+    "GENERATE_SHORTER_YOUTUBE_VIDEOS",
+    "GENERATE_VERTICAL_YOUTUBE_VIDEOS",
+)
+
+#: Performance Max v25.2 — as DUAS que a API passou a aceitar em PMax e que o
+#: builder declara OPTED_OUT depois das cinco históricas (`pmax_config.
+#: AUTOMACOES_PMAX_V25`, na mesma ordem: as cinco primeiro, estas no fim).
+#:
+#: ⚠️ Lista SEPARADA de `AUTOMACOES_PMAX_RECUSADAS`, e não acréscimo a ela: as
+#: cinco são o prefixo exato do que viaja e o selo de planos já aprovados cobre
+#: a ordem. Diferente das cinco, estas duas podem ser OPTADAS pelo dono
+#: (`ConfiguracaoPMaxV25.automacoes_optadas`); o default continua OPTED_OUT.
+AUTOMACOES_PMAX_V25_NOVAS: Tuple[str, ...] = (
+    "AUTOMATED_VIDEO_CRAWL",
+    "GENERATE_DESIGN_VERSIONS_FOR_IMAGES",
+)
+
+#: Todas as que o payload de PMax declara, na ordem em que viajam.
+AUTOMACOES_PMAX: Tuple[str, ...] = AUTOMACOES_PMAX_RECUSADAS + AUTOMACOES_PMAX_V25_NOVAS
+
+#: As automações de Demand Gen POR FORMATO de anúncio — a mesma tabela de
+#: `campanha/demand_gen_config.AUTOMACOES_POR_FORMATO` (teste confere), aqui
+#: em stdlib pura para a tela.
+AUTOMACOES_DEMAND_GEN_POR_FORMATO: Mapping[str, Tuple[str, ...]] = {
+    "MULTI_ASSET": AUTOMACOES_DEMAND_GEN_RECUSADAS,
+    "VIDEO_RESPONSIVO": AUTOMACOES_DEMAND_GEN_VIDEO_RECUSADAS,
+    "CARROSSEL": (),
+}
+
 #: Onde cada canal declara as automações — o campo do proto, por nome.
 #: A tela mostra isto para o operador saber que os dois canais travam a mesma
 #: coisa em lugares diferentes da árvore.
@@ -91,20 +130,52 @@ POR_QUE_RECUSADA: Mapping[str, str] = {
         "montaria vídeo a partir de outros assets da campanha.",
     "GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS":
         "geraria imagem animada a partir de outros assets da campanha.",
+    # ── Demand Gen, vídeo responsivo ───────────────────────────────────────
+    "GENERATE_LANDING_PAGE_PREVIEW":
+        "geraria imagem com prévia da landing page — peça sem portão de "
+        "política nem hash.",
+    "GENERATE_LANDING_PAGE_TEXT":
+        "geraria texto a partir da landing page. A copy aprovada deixaria de "
+        "ser a copy servida.",
+    "GENERATE_SHORTER_YOUTUBE_VIDEOS":
+        "cortaria o vídeo aprovado em versões mais curtas, escolhidas pelo "
+        "Google.",
+    "GENERATE_VERTICAL_YOUTUBE_VIDEOS":
+        "geraria versão vertical do vídeo aprovado, com enquadramento escolhido "
+        "pelo Google.",
+    # ── Performance Max v25.2 ──────────────────────────────────────────────
+    "AUTOMATED_VIDEO_CRAWL":
+        "buscaria vídeos nas URLs declaradas (landing page, rede social, canal "
+        "do YouTube) e os veicularia — peça que nunca passou pelo portão de "
+        "política. Ligar exige declarar as fontes e os direitos sobre os vídeos.",
+}
+
+#: Para a tela: em que formato de anúncio cada automação de Demand Gen vale.
+#: PMax não tem formato (a campanha inteira é uma combinação), e fica de fora.
+FORMATO_DA_AUTOMACAO: Mapping[str, str] = {
+    nome: formato
+    for formato, nomes in AUTOMACOES_DEMAND_GEN_POR_FORMATO.items()
+    for nome in nomes
 }
 
 #: O estado em que todas viajam. Uma constante e não um literal repetido: é ela
 #: que a tela mostra e que o read-back compara.
 OPTED_OUT = "OPTED_OUT"
 
+#: ⚠️ Demand Gen lista as SETE (três de multi-asset + quatro de vídeo): a tela
+#: mostra o que o canal trava, e cada anúncio leva só as do seu formato
+#: (`FORMATO_DA_AUTOMACAO` diz qual). PMax lista as SETE que o payload declara.
 _POR_CANAL: Dict[str, Tuple[str, ...]] = {
-    "DEMAND_GEN": AUTOMACOES_DEMAND_GEN_RECUSADAS,
-    "PERFORMANCE_MAX": AUTOMACOES_PMAX_RECUSADAS,
+    "DEMAND_GEN": AUTOMACOES_DEMAND_GEN_RECUSADAS + AUTOMACOES_DEMAND_GEN_VIDEO_RECUSADAS,
+    "PERFORMANCE_MAX": AUTOMACOES_PMAX,
 }
 
 
-def recusadas(canal: str) -> Tuple[str, ...]:
+def recusadas(canal: str, formato: str | None = None) -> Tuple[str, ...]:
     """As automações que ESTE canal desliga. Vazio = o canal não as declara.
+
+    `formato` (só Demand Gen) restringe às do tipo de anúncio — é a lista que
+    um anúncio daquele formato de fato carrega.
 
     ⚠️ Vazio NÃO é "o canal não tem automação": Search e Display não emitem
     `asset_automation_settings` nesta receita, e Display trava o equivalente por
@@ -113,4 +184,6 @@ def recusadas(canal: str) -> Tuple[str, ...]:
     """
     bruto = str(canal or "").strip().upper()
     nome = "PERFORMANCE_MAX" if bruto == "PMAX" else bruto
+    if formato is not None and nome == "DEMAND_GEN":
+        return AUTOMACOES_DEMAND_GEN_POR_FORMATO.get(str(formato).strip().upper(), ())
     return _POR_CANAL.get(nome, ())

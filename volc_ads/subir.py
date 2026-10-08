@@ -634,6 +634,7 @@ def preparar(
     login_customer_id: str,
     canal: str = "SEARCH",
     ai_max: bool = False,
+    configuracao: Any = None,
     autocorrigir: bool = True,
 ) -> Preparo:
     """Monta o grafo, valida local e roda `validate_only`. NADA é criado.
@@ -641,6 +642,13 @@ def preparar(
     É o mesmo caminho do `copy/provar.py`, com um acréscimo: quando tudo passa,
     emite o `Selo`. Sem esse selo `subir()` recusa — a prova deixa de ser uma
     etapa que alguém lembra de rodar e passa a ser pré-requisito estrutural.
+
+    `configuracao` é a configuração do CANAL (`ConfiguracaoSearch`,
+    `ConfiguracaoDisplay`, `ConfiguracaoDemandGenV25`, `ConfiguracaoPMaxV25`).
+    Quem decide por onde ela entra é o perfil (`perfil.montar`): opção do
+    construtor em Search/Display, campo do brief em Demand Gen/PMax. `None` é o
+    chamador antigo, e o payload dele não muda. Ela entra no selo pelo único
+    caminho que importa — as operações que ela produz.
     """
     p = perfil.exigir_prova(canal)
     canal_resolvido = p.canal
@@ -653,6 +661,7 @@ def preparar(
         ops, r = perfil.montar(
             canal_resolvido, customer_id, brief,
             login_customer_id=login_customer_id, ai_max=ai_max,
+            configuracao=configuracao,
         )
     except Exception as exc:  # noqa: BLE001 — construir() levanta ValueError de marcação
         return Preparo(
@@ -765,6 +774,7 @@ def preparar(
                 ops2, r2 = perfil.montar(
                     canal_resolvido, customer_id, novo_brief,
                     login_customer_id=login_customer_id, ai_max=ai_max,
+                    configuracao=configuracao,
                 )
             except Exception as exc:  # noqa: BLE001
                 ops2, r2 = None, None

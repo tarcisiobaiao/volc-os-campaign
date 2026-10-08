@@ -84,6 +84,37 @@ T_IMAGEM_BASE, T_IMAGEM_MAX = -200, 100
 # permite a recusa local dizer a mesma coisa que a remota diria.
 T_ASSET_GROUP_BASE, T_ASSET_GROUP_MAX = -300, 100
 
+# ── as faixas -400 e abaixo: POR CANAL, e declaradas aqui ──────────────────
+#
+# Até 08/10/2026 cada builder da onda v25 escolheu a sua faixa abaixo de -399
+# e a declarou no próprio módulo, com um pedido explícito para esta tabela
+# absorvê-las — para continuar existindo UM lugar que diz quem ocupa cada
+# número. Esta é a absorção. As constantes continuam no módulo de cada canal
+# (é ele que as consome); `testes_multichannel_birth_v1` confere que os números
+# abaixo são os mesmos de lá.
+#
+# ⚠️ As faixas de canais DIFERENTES podem coincidir (-400 é de três canais) e
+# isso é deliberado: um id temporário só precisa ser único DENTRO do mutate, e
+# um mutate carrega UMA campanha de UM canal. Dentro de um canal, nunca colidem.
+#
+#   canal         faixa            o que nasce ali                    dono da constante
+#   ────────────  ───────────────  ─────────────────────────────────  ──────────────────────────────
+#   SEARCH        -400             CustomConversionGoal (meta)        search_config.T_META_PERSONALIZADA
+#   DISPLAY       -400             SharedSet NEGATIVE_PLACEMENTS      display_ops.T_LISTA_EXCLUSAO
+#   DISPLAY       -450 .. -454     YoutubeVideoAsset do RDA (≤5)      display_ops.T_VIDEO_BASE
+#   DEMAND_GEN    -500 .. -549     assets não-imagem (vídeo, CTA)     demand_gen_ops.T_ASSET_DG_BASE
+#   DEMAND_GEN    -550 .. -559     UserList lookalike (≤10)           demand_gen_ops.T_USER_LIST_BASE
+#   DEMAND_GEN    -560 .. -569     Audience composta                  demand_gen_ops.T_AUDIENCIA_BASE
+#   PERFORMANCE_MAX -400 .. -499   YoutubeVideoAsset por id           pmax_grafo.T_VIDEO_BASE
+#   PERFORMANCE_MAX -500 .. -509   SharedSet (marcas excluídas)       pmax_grafo.T_SHARED_SET_BASE
+FAIXAS_POR_CANAL: dict[str, tuple[tuple[str, int, int], ...]] = {
+    "SEARCH": (("meta_personalizada", -400, -400),),
+    "DISPLAY": (("lista_de_exclusao", -400, -400), ("video", -450, -454)),
+    "DEMAND_GEN": (("asset_nao_imagem", -500, -549), ("lookalike", -550, -559),
+                   ("audiencia", -560, -569)),
+    "PERFORMANCE_MAX": (("video", -400, -499), ("shared_set", -500, -509)),
+}
+
 
 def temp_asset(cid: str, indice: int) -> str:
     """Resource name temporário do asset de TEXTO nº `indice` (0-based)."""
@@ -275,9 +306,20 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
         # apostar em qual das leituras está certa e descobrir no lote. O tCPA
         # não se perde: ele vive DENTRO do MaxConv, que é exatamente como
         # Search já o expressa três linhas acima.
-        camp.maximize_conversions.target_cpa_micros = (
-            brief.micros(brief.tcpa) if brief.tcpa else 0
-        )
+        #
+        # ⚠️ CORRIGIDO NA ORIGEM em 08/10/2026. O raciocínio acima foi refutado
+        # pela API: `maximize_conversions.target_cpa_micros` em campanha
+        # DISPLAY devolve `context_error.OPERATION_NOT_PERMITTED_FOR_CONTEXT`
+        # (validate_only na Crédito Up). A forma aceita é a estratégia
+        # `target_cpa` avulsa — e sem meta, `maximize_conversions` SELECIONADO
+        # sem valor (gravar 0 diria que alguém escolheu zero). `display_ops.
+        # aplicar_lance` continua reescrevendo o oneof a partir do lance
+        # resolvido; o payload final é byte a byte o mesmo, mas este bloco
+        # deixou de emitir uma forma que a API recusa.
+        if brief.tcpa:
+            camp.target_cpa.target_cpa_micros = brief.micros(brief.tcpa)
+        else:
+            _selecionar_ramo_vazio(camp.maximize_conversions, "MaximizeConversions")
         camp.network_settings.target_google_search = False
         camp.network_settings.target_search_network = False
         camp.network_settings.target_content_network = True
@@ -373,12 +415,14 @@ def op_campanha(c, cid: str, brief: Brief, nome: str, canal: str, *, ai_max: boo
                 "asset_automation_status": c.enums.AssetAutomationStatusEnum.OPTED_OUT,
             })
 
-        # Sem feed de páginas: um PAGE_FEED anexado à campanha reabre, por
-        # outra porta, exatamente a expansão de URL que as automações acima
-        # fecham. Declarar a exclusão é mais forte do que não anexar — o feed
-        # pode ser anexado depois, por outra rota, e a exclusão continua valendo.
-        camp.excluded_parent_asset_set_types.append(
-            c.enums.AssetSetTypeEnum.PAGE_FEED)
+        # ⚠️ SEM `excluded_parent_asset_set_types = [PAGE_FEED]` desde
+        # 08/10/2026. A exclusão pretendia impedir que um feed de páginas
+        # reabrisse a expansão de URL — e a API RECUSA o mutate inteiro com
+        # `CampaignError.INVALID_EXCLUDED_PARENT_ASSET_SET_TYPE` (validate_only
+        # na Crédito Up). `pmax_grafo.ajustar_campanha` já apagava o campo; a
+        # correção agora é na origem. A trava continua de pé por outro caminho:
+        # FINAL_URL_EXPANSION OPTED_OUT, que é o único consumidor de page feed
+        # em PMax, e o builder não cria feed nenhum.
     else:
         raise ValueError(f"canal desconhecido: {canal}")
 

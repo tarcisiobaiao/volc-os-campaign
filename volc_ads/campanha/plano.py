@@ -55,7 +55,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CÓDIGOS DE BLOQUEIO
@@ -87,6 +87,14 @@ RESOURCE_NAME_INVALIDO = "RESOURCE_NAME_INVALIDO"
 CAMPO_NAO_OPERADO = "CAMPO_NAO_OPERADO"
 #: Decisão obrigatória do canal não foi tomada (nem True nem False).
 CONFIGURACAO_AUSENTE = "CONFIGURACAO_AUSENTE"
+#: A configuração do canal FOI declarada e é incoerente: valor fora da lista,
+#: combinação que a API recusa, ou conflito com o que o brief já decide
+#: (agenda sobreposta, ajuste de lance num regime que o ignora, local de outro
+#: país, lista de outra conta). Separado de `CONFIGURACAO_AUSENTE` porque o
+#: ato é outro: lá o operador precisa ESCOLHER; aqui ele precisa CORRIGIR o
+#: que escolheu. Até 08/10/2026 esses achados viravam
+#: `BLOQUEIO_NAO_CLASSIFICADO`.
+CONFIGURACAO_INVALIDA = "CONFIGURACAO_INVALIDA"
 #: `estrategia_lance` fora da lista fechada do canal.
 LANCE_NAO_PERMITIDO = "LANCE_NAO_PERMITIDO"
 #: Não há conversão válida declarada — o canal não pode ser criado sem medir.
@@ -121,6 +129,7 @@ CODIGOS: tuple[str, ...] = (
     RESOURCE_NAME_INVALIDO,
     CAMPO_NAO_OPERADO,
     CONFIGURACAO_AUSENTE,
+    CONFIGURACAO_INVALIDA,
     LANCE_NAO_PERMITIDO,
     MENSURACAO_INADEQUADA,
     SINAL_OBRIGATORIO_AUSENTE,
@@ -146,6 +155,26 @@ _POR_PREFIXO: tuple[tuple[str, str], ...] = (
     ("imagens", ASSET_OBRIGATORIO_AUSENTE),
     ("assets", ASSET_OBRIGATORIO_AUSENTE),
     ("videos", ASSET_OBRIGATORIO_AUSENTE),
+    # ── as configurações de canal (search_config, display_config) ──────────
+    # Os campos que os `checar()`/`resolver()` de cada canal nomeiam. Um
+    # prefixo por raiz do campo; o motivo NÃO participa — o campo é estável.
+    ("lance", CONFIGURACAO_INVALIDA),
+    ("tcpa", LANCE_NAO_PERMITIDO),
+    ("target_roas", LANCE_NAO_PERMITIDO),
+    ("ai_max", CONFIGURACAO_INVALIDA),
+    ("anuncio", CONFIGURACAO_INVALIDA),
+    ("programacao", CONFIGURACAO_INVALIDA),
+    ("dispositivos", CONFIGURACAO_INVALIDA),
+    ("dispositivos_excluidos", CONFIGURACAO_INVALIDA),
+    ("geo", CONFIGURACAO_INVALIDA),
+    ("inicio", CONFIGURACAO_INVALIDA),
+    ("fim", CONFIGURACAO_INVALIDA),
+    ("meta_de_conversao", CONFIGURACAO_INVALIDA),
+    ("segmentacao", CONFIGURACAO_INVALIDA),
+    ("exclusoes", CONFIGURACAO_INVALIDA),
+    ("frequencia", CONFIGURACAO_INVALIDA),
+    ("agenda", CONFIGURACAO_INVALIDA),
+    ("presenca_geo", CONFIGURACAO_INVALIDA),
 )
 
 # Achados de asset chegam todos sob o mesmo prefixo de campo; o que separa
@@ -196,6 +225,15 @@ def classificar(campo: str, motivo: str) -> str:
     raiz = c.split(".", 1)[0]
 
     for prefixo, codigo in sorted(_POR_PREFIXO, key=lambda p: -len(p[0])):
+        exato = codigo in (CONFIGURACAO_INVALIDA, LANCE_NAO_PERMITIDO) \
+            and prefixo != "estrategia_lance"
+        if exato:
+            # Os prefixos de configuração são palavras curtas ("geo", "fim",
+            # "lance"): casar por `startswith` da raiz pegaria campos alheios.
+            # Aqui a raiz inteira tem de ser o prefixo.
+            if raiz == prefixo:
+                return codigo
+            continue
         if c == prefixo or c.startswith(prefixo + ".") or raiz.startswith(prefixo):
             if codigo is ASSET_OBRIGATORIO_AUSENTE:
                 for agulha, especifico in _MOTIVO_DE_ASSET:
@@ -210,6 +248,12 @@ def classificar(campo: str, motivo: str) -> str:
             return codigo
 
     if raiz in ("demand_gen", "pmax", "rede", "sub_intencoes"):
+        # ⚠️ "Ausente" só quando o motivo diz que faltou escolher; o resto de
+        # `demand_gen.*`/`pmax.*`/`rede` é configuração declarada e incoerente.
+        if any(a in m for a in ("ausente", "obrigatóri", "exige", "sem ")):
+            return CONFIGURACAO_AUSENTE
+        if raiz in ("demand_gen", "pmax", "rede"):
+            return CONFIGURACAO_INVALIDA
         return CONFIGURACAO_AUSENTE
     if any(c.startswith(t) for t in _TEXTO):
         if "termo proibido" in m or "política" in m or "politica" in m:
@@ -579,24 +623,71 @@ def _asset_do_proto(op_create: Any) -> Asset:
     )
 
 
+_MINUTO = {"ZERO": 0, "FIFTEEN": 15, "THIRTY": 30, "FORTY_FIVE": 45}
+
+
+def _hora(h: Any, m: Any) -> str:
+    return f"{int(h or 0):02d}:{_MINUTO.get(_nome_enum(m), 0):02d}"
+
+
+def _webpage(x: Any, _c: Any) -> str:
+    nome = str(getattr(x, "criterion_name", "") or "")
+    conds = [
+        f"{_nome_enum(getattr(k, 'operand', None))} {_nome_enum(getattr(k, 'operator', None))} "
+        f"{getattr(k, 'argument', '')}"
+        for k in (getattr(x, "conditions", ()) or ())
+    ]
+    return f"{nome}: {' | '.join(conds)}" if conds else nome
+
+
+#: (campo do oneof `criterion`, tipo no plano, leitor(interno, criterio)).
+#:
+#: ⚠️ A tabela cresceu em 08/10/2026 com o que as configurações de canal passaram
+#: a emitir — agenda, dispositivo, lista de marca, webpage, placement, app,
+#: rótulo de conteúdo, tópico, interesse, públicos e demografia. Antes eles
+#: caíam em `desconhecido` e a tela mostrava um critério sem nome; Display
+#: remendava por conta própria em `display._completar_plano`.
+_LEITORES_DE_CRITERIO: tuple[tuple[str, str, Callable[[Any, Any], str]], ...] = (
+    ("location", "location", lambda x, _c: str(getattr(x, "geo_target_constant", ""))),
+    ("language", "language", lambda x, _c: str(getattr(x, "language_constant", ""))),
+    ("keyword", "keyword", lambda x, _c: str(getattr(x, "text", ""))),
+    ("brand", "brand", lambda x, _c: str(getattr(x, "display_name", "") or
+                                         getattr(x, "entity_ids", ""))),
+    ("brand_list", "brand_list", lambda x, _c: str(getattr(x, "shared_set", ""))),
+    ("webpage", "webpage", _webpage),
+    ("user_list", "user_list", lambda x, _c: str(getattr(x, "user_list", ""))),
+    ("audience", "audience", lambda x, _c: str(getattr(x, "audience", ""))),
+    ("age_range", "age_range", lambda x, _c: _nome_enum(getattr(x, "type_", None))),
+    ("gender", "gender", lambda x, _c: _nome_enum(getattr(x, "type_", None))),
+    ("income_range", "income_range", lambda x, _c: _nome_enum(getattr(x, "type_", None))),
+    ("parental_status", "parental_status", lambda x, _c: _nome_enum(getattr(x, "type_", None))),
+    ("ad_schedule", "ad_schedule", lambda x, c: (
+        f"{_nome_enum(getattr(x, 'day_of_week', None))} "
+        f"{_hora(getattr(x, 'start_hour', 0), getattr(x, 'start_minute', None))}-"
+        f"{_hora(getattr(x, 'end_hour', 0), getattr(x, 'end_minute', None))}"
+        + (f" bid_modifier={c.bid_modifier}" if getattr(c, "bid_modifier", 0) else ""))),
+    ("device", "device", lambda x, c: (
+        f"{_nome_enum(getattr(x, 'type_', None))} "
+        f"bid_modifier={getattr(c, 'bid_modifier', '')}")),
+    ("placement", "placement", lambda x, _c: str(getattr(x, "url", ""))),
+    ("mobile_application", "mobile_application", lambda x, _c: str(getattr(x, "app_id", ""))),
+    ("mobile_app_category", "mobile_app_category",
+     lambda x, _c: str(getattr(x, "mobile_app_category_constant", ""))),
+    ("content_label", "content_label", lambda x, _c: _nome_enum(getattr(x, "type_", None))),
+    ("topic", "topic", lambda x, _c: str(getattr(x, "topic_constant", ""))),
+    ("user_interest", "user_interest", lambda x, _c: str(getattr(x, "user_interest_category", ""))),
+    ("custom_audience", "custom_audience", lambda x, _c: str(getattr(x, "custom_audience", ""))),
+    ("combined_audience", "combined_audience", lambda x, _c: str(getattr(x, "combined_audience", ""))),
+)
+
+
 def _criterio_de(create: Any, nivel: str) -> Criterio:
     """`CampaignCriterion`/`AdGroupCriterion` → tipo e valor legíveis."""
     negativo = getattr(create, "negative", None)
     if negativo is not None:
         negativo = bool(negativo)
 
-    for campo, tipo, leitor in (
-        ("location", "location", lambda x: str(getattr(x, "geo_target_constant", ""))),
-        ("language", "language", lambda x: str(getattr(x, "language_constant", ""))),
-        ("keyword", "keyword", lambda x: str(getattr(x, "text", ""))),
-        ("brand", "brand", lambda x: str(getattr(x, "display_name", "") or
-                                         getattr(x, "entity_ids", ""))),
-        ("webpage", "webpage", lambda x: str(getattr(x, "criterion_name", ""))),
-        ("user_list", "user_list", lambda x: str(getattr(x, "user_list", ""))),
-        ("audience", "audience", lambda x: str(getattr(x, "audience", ""))),
-        ("age_range", "age_range", lambda x: _nome_enum(getattr(x, "type_", None))),
-        ("gender", "gender", lambda x: _nome_enum(getattr(x, "type_", None))),
-    ):
+    for campo, tipo, leitor in _LEITORES_DE_CRITERIO:
         interno = getattr(create, campo, None)
         if interno is None:
             continue
@@ -609,7 +700,10 @@ def _criterio_de(create: Any, nivel: str) -> Criterio:
             ocupado = None
         if ocupado is not None and ocupado != campo:
             continue
-        valor = leitor(interno)
+        try:
+            valor = leitor(interno, create)
+        except Exception:  # noqa: BLE001 — dublê parcial; o tipo continua dito
+            valor = ""
         if ocupado is None and not valor:
             continue
         return Criterio(tipo=tipo, valor=valor, nivel=nivel, negativo=negativo)
@@ -627,6 +721,8 @@ def _anuncio_de(create: Any) -> Anuncio:
         ("responsive_search_ad", "responsive_search_ad"),
         ("responsive_display_ad", "responsive_display_ad"),
         ("demand_gen_multi_asset_ad", "demand_gen_multi_asset_ad"),
+        ("demand_gen_video_responsive_ad", "demand_gen_video_responsive_ad"),
+        ("demand_gen_carousel_ad", "demand_gen_carousel_ad"),
     ):
         pb = getattr(ad, "_pb", ad)
         try:
@@ -645,6 +741,18 @@ def _anuncio_de(create: Any) -> Anuncio:
         else:
             longas = _texto_dos(getattr(info, "long_headlines", ()) or ())
 
+        # Carrossel tem headline/description SINGULARES (um `AdTextAsset`
+        # cada), e o resto dos formatos tem listas. Ler só a lista fazia o
+        # carrossel aparecer sem texto nenhum.
+        if campo == "demand_gen_carousel_ad":
+            um = getattr(info, "headline", None)
+            headlines = (str(um.text),) if um is not None and str(getattr(um, "text", "")) else ()
+            uma = getattr(info, "description", None)
+            descriptions = (str(uma.text),) if uma is not None and str(getattr(uma, "text", "")) else ()
+        else:
+            headlines = _texto_dos(getattr(info, "headlines", ()) or ())
+            descriptions = _texto_dos(getattr(info, "descriptions", ()) or ())
+
         assets: list[Asset] = []
         for papel, atributo in (
             ("MARKETING_IMAGE", "marketing_images"),
@@ -654,18 +762,28 @@ def _anuncio_de(create: Any) -> Anuncio:
             ("LOGO", "logo_images"),
             ("SQUARE_LOGO", "square_logo_images"),
             ("YOUTUBE_VIDEO", "youtube_videos"),
+            # vídeo responsivo de Demand Gen
+            ("YOUTUBE_VIDEO", "videos"),
+            ("COMPANION_BANNER", "companion_banners"),
+            ("CALL_TO_ACTION", "call_to_actions"),
+            # carrossel: os cartões são assets próprios
+            ("DEMAND_GEN_CAROUSEL_CARD", "carousel_cards"),
         ):
             for item in getattr(info, atributo, ()) or ():
                 assets.append(Asset(
                     papel=papel, origem="resource_name",
                     identidade=str(getattr(item, "asset", "")),
                 ))
+        logo_unico = getattr(info, "logo_image", None)
+        if logo_unico is not None and str(getattr(logo_unico, "asset", "")):
+            assets.append(Asset(papel="LOGO", origem="resource_name",
+                                identidade=str(logo_unico.asset)))
 
         return Anuncio(
             tipo=tipo,
-            headlines=_texto_dos(getattr(info, "headlines", ()) or ()),
+            headlines=headlines,
             long_headlines=longas,
-            descriptions=_texto_dos(getattr(info, "descriptions", ()) or ()),
+            descriptions=descriptions,
             business_name=str(getattr(info, "business_name", "") or ""),
             urls_finais=urls,
             status=status,
@@ -776,9 +894,13 @@ def projetar(
             if lance == "maximize_conversions":
                 tcpa = _micros(getattr(
                     getattr(create, "maximize_conversions"), "target_cpa_micros", None))
-            elif lance == "maximize_conversion_value":
-                bruto = getattr(
-                    getattr(create, "maximize_conversion_value"), "target_roas", None)
+            elif lance == "target_cpa":
+                # Display e Demand Gen: tCPA é a estratégia AVULSA (a meta
+                # dentro de MaxConv é recusada pela API nesses canais).
+                tcpa = _micros(getattr(
+                    getattr(create, "target_cpa"), "target_cpa_micros", None))
+            elif lance in ("maximize_conversion_value", "target_roas"):
+                bruto = getattr(getattr(create, lance), "target_roas", None)
                 roas = float(bruto) if bruto else None
             orcamento = Orcamento(
                 diario_micros=orcamento.diario_micros,

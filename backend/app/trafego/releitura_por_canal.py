@@ -140,6 +140,15 @@ NASCE_COM_STATUS: Mapping[str, Mapping[str, str]] = {
 #: exigência.
 MINIMO_DE_FILHOS_DE_CAMPANHA_CRIADA = 1
 
+#: A chave de `esperado` que diz quantos asset groups o plano PMax criou.
+#:
+#: ⚠️ Desde `ConfiguracaoPMaxV25.grupos_adicionais` (08/10/2026) uma campanha
+#: PMax nasce com N asset groups — o grupo 0 do brief mais os adicionais. Com o
+#: mínimo fixo em 1, uma criação que deixasse só o primeiro grupo de pé saía
+#: CONGRUENTE: a mesma "criação pela metade" que o mínimo existe para pegar,
+#: um degrau abaixo. Ausente, vale o mínimo de sempre (1).
+ESPERADO_ASSET_GROUPS = "asset_groups"
+
 
 def canonizar(canal: Any) -> str:
     bruto = str(canal or "").strip().upper()
@@ -277,6 +286,17 @@ def _veredito_de_filho(canal: str, objeto: str, linhas: list,
                    f"encontrou zero. Campanha sem {objeto} não veicula — isto "
                    "não é ausência da campanha, é uma criação que ficou pela "
                    "metade."))
+    if len(linhas) < minimo:
+        # N asset groups no plano, menos na conta: criação pela metade, e
+        # divergência bloqueia — nunca reenvio (este módulo não escreve).
+        return VereditoDaReleitura(
+            **base, estado=EstadoDaReleitura.DIVERGENTE, quantidade=len(linhas),
+            lido={"quantidade": len(linhas),
+                  "ids": sorted(ident(l) for l in linhas)},
+            id_externo=ident(linhas[0]),
+            campos_divergentes=("quantidade",),
+            causa=(f"o plano criou {minimo} {objeto} e a leitura completa "
+                   f"encontrou {len(linhas)}. Faltam {minimo - len(linhas)}."))
     estados = {estado_de(l) for l in linhas}
     # ⚠️ O `esperado` DECIDE, e antes ele era decorativo: a comparação era
     # contra a constante do módulo, então passar `esperado={"status": "ENABLED"}`
@@ -298,6 +318,8 @@ def _veredito_de_filho(canal: str, objeto: str, linhas: list,
     aceitos = {alvo, NASCE_PAUSADO}
     fora_do_alvo = sorted(e for e in estados if e not in aceitos)
     lido = {"quantidade": len(linhas), "status": sorted(estados)}
+    if minimo > 1:
+        lido["ids"] = sorted(ident(l) for l in linhas)
     if fora_do_alvo:
         # ⚠️ NASCER COMO O BUILDER DAQUELE CANAL CRIA É CONTRATO, e um objeto
         # fora disso é DIVERGENTE — não um detalhe de um sucesso.
@@ -383,9 +405,12 @@ def reler_na_conta(
         # PAUSED, os outros três criam tudo PAUSED. O default é `NASCE_PAUSADO`,
         # que é o lado fail-closed de um canal ainda não declarado aqui.
         nasce = NASCE_COM_STATUS.get(nome, {}).get(objeto, NASCE_PAUSADO)
+        minimo = MINIMO_DE_FILHOS_DE_CAMPANHA_CRIADA
+        if objeto == ASSET_GROUP and alvo.get(ESPERADO_ASSET_GROUPS) is not None:
+            minimo = max(minimo, int(alvo[ESPERADO_ASSET_GROUPS]))
         alvo_filho: Mapping[str, Any] = {
             "status": nasce,
-            "quantidade_minima": MINIMO_DE_FILHOS_DE_CAMPANHA_CRIADA,
+            "quantidade_minima": minimo,
         }
         if objeto == GRUPO:
             consulta = GAQL_GRUPO.format(kid=int(id_da_campanha))

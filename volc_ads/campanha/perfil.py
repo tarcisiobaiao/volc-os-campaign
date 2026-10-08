@@ -48,10 +48,13 @@ sintática, justamente para continuar assim.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple
 
-from . import demand_gen, display, pmax, search
+from . import (demand_gen, demand_gen_config, display, display_config, pmax,
+               search, search_config)
+from .brief import ConfiguracaoDemandGen, ConfiguracaoPMax
 
 # ═══════════════════════════════════════════════════════════════════════════
 # VOCABULÁRIO
@@ -63,6 +66,8 @@ AD_GROUP = "ad_group"
 ANUNCIO_RSA = "responsive_search_ad"
 ANUNCIO_RDA = "responsive_display_ad"
 ANUNCIO_DEMAND_GEN_MULTI_ASSET = "demand_gen_multi_asset_ad"
+ANUNCIO_DEMAND_GEN_VIDEO = "demand_gen_video_responsive_ad"
+ANUNCIO_DEMAND_GEN_CARROSSEL = "demand_gen_carousel_ad"
 KEYWORD = "keyword"
 ASSET_DE_CAMPANHA = "campaign_asset"
 ASSET_DE_ANUNCIO = "ad_asset"
@@ -150,6 +155,17 @@ class PerfilDeCanal:
     #: `Brief.estrategia_lance` aceitos aqui.
     lances_permitidos: Tuple[str, ...] = ()
 
+    #: O subconjunto de `lances_permitidos` que o canal monta SÓ com o brief,
+    #: sem a configuração do canal. REFERÊNCIA ao `*_config` do canal — o
+    #: resto da lista só nasce com `configuracao_<canal>.lance` declarado.
+    lances_pelo_brief: Tuple[str, ...] = ()
+
+    #: Onde a configuração do canal viaja quando ela NÃO é opção do construtor:
+    #: Demand Gen e PMax a carregam no próprio brief (`brief.demand_gen`,
+    #: `brief.pmax`, como subclasse V25). Vazio = vai por `opcoes`
+    #: (`configuracao=`), como em Search e Display.
+    configuracao_no_brief: str = ""
+
     #: Opções de construção além do brief (ex.: `ai_max`).
     opcoes: FrozenSet[str] = frozenset()
 
@@ -223,7 +239,13 @@ SEARCH = PerfilDeCanal(
         "keywords", "sub_intencoes", "negativas_campanha", "negativas_adgroup",
         "match_type", "cpc_inicial", "tcpa", "copy.headlines",
         "copy.descriptions", "copy.sitelinks", "copy.callouts", "copy.snippet",
-        "url_final", "budget_diario", "estrategia_lance",
+        "url_final", "budget_diario", "estrategia_lance", "target_roas", "rede",
+        "ai_max", "criterios",
+        # `ConfiguracaoSearch` (opção `configuracao` do construtor)
+        "configuracao.lance", "configuracao.rede", "configuracao.ai_max",
+        "configuracao.anuncio", "configuracao.programacao",
+        "configuracao.dispositivos", "configuracao.geo", "configuracao.inicio",
+        "configuracao.fim", "configuracao.meta_de_conversao",
     ),
     construtor=search.construir,
     validador=search.validar,
@@ -231,6 +253,7 @@ SEARCH = PerfilDeCanal(
     coletor=_COLETOR,
     recursos_criativos=("texto", "sitelink", "callout", "structured_snippet"),
     lances_permitidos=search.LANCES_PERMITIDOS,
+    lances_pelo_brief=search_config.ESTRATEGIAS_PELO_BRIEF,
     opcoes=search.OPCOES,
     provas_obrigatorias=_PROVAS,
     autocorrige_keywords=True,
@@ -246,7 +269,13 @@ DISPLAY = PerfilDeCanal(
     campos_operados=(
         "copy.headlines", "copy.long_headlines", "copy.descriptions",
         "copy.business_name", "imagens_display", "videos", "url_final",
-        "budget_diario", "tcpa", "estrategia_lance",
+        "budget_diario", "tcpa", "target_roas", "cpc_inicial",
+        "estrategia_lance",
+        # `ConfiguracaoDisplay` (opção `configuracao` do construtor)
+        "configuracao.lance", "configuracao.segmentacao",
+        "configuracao.exclusoes", "configuracao.frequencia",
+        "configuracao.agenda", "configuracao.dispositivos_excluidos",
+        "configuracao.presenca_geo", "configuracao.anuncio",
     ),
     construtor=display.construir,
     validador=display.validar,
@@ -255,6 +284,7 @@ DISPLAY = PerfilDeCanal(
     recursos_criativos=("texto", "imagem_marketing", "imagem_marketing_quadrada",
                         "logo", "logo_quadrado", "video_youtube"),
     lances_permitidos=display.LANCES_PERMITIDOS,
+    lances_pelo_brief=display_config.ESTRATEGIAS_PELO_BRIEF,
     opcoes=display.OPCOES,
     provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
@@ -267,14 +297,22 @@ DEMAND_GEN = PerfilDeCanal(
     canal=demand_gen.CANAL,
     rotulo="Demand Gen",
     marcador="GD",
+    #: Um anúncio por campanha, num dos TRÊS formatos (`demand_gen.formato`).
     hierarquia=(CAMPANHA, AD_GROUP, ANUNCIO_DEMAND_GEN_MULTI_ASSET,
+                ANUNCIO_DEMAND_GEN_VIDEO, ANUNCIO_DEMAND_GEN_CARROSSEL,
                 ASSET_DE_ANUNCIO),
     campos_operados=(
-        "copy.headlines", "copy.descriptions", "copy.business_name",
+        "copy.headlines", "copy.long_headlines", "copy.descriptions",
+        "copy.business_name",
         "imagens_demand_gen", "demand_gen.upgraded_targeting",
         "demand_gen.controles_de_canal", "demand_gen.audiencias",
         "demand_gen.intencoes", "demand_gen.exclusoes_de_audiencia",
         "url_final", "budget_diario", "estrategia_lance",
+        # `ConfiguracaoDemandGenV25` (viaja em `brief.demand_gen`)
+        "demand_gen.formato", "demand_gen.lance", "demand_gen.call_to_action",
+        "demand_gen.video", "demand_gen.carrossel", "demand_gen.publico",
+        "demand_gen.segmentacao_otimizada", "demand_gen.automacoes",
+        "demand_gen.agenda",
     ),
     construtor=demand_gen.construir,
     validador=demand_gen.validar,
@@ -283,9 +321,11 @@ DEMAND_GEN = PerfilDeCanal(
     recursos_criativos=(
         "texto", "imagem_marketing", "imagem_marketing_quadrada",
         "imagem_marketing_retrato", "imagem_marketing_retrato_alto",
-        "logo_quadrado",
+        "logo_quadrado", "video_youtube",
     ),
     lances_permitidos=demand_gen.LANCES_PERMITIDOS,
+    lances_pelo_brief=demand_gen_config.ESTRATEGIAS_PELO_BRIEF,
+    configuracao_no_brief="demand_gen",
     opcoes=demand_gen.OPCOES,
     provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
@@ -323,6 +363,15 @@ PERFORMANCE_MAX = PerfilDeCanal(
         "pmax.mensuracao", "pmax.sinais", "pmax.negativas",
         "pmax.nome_do_asset_group", "url_final", "budget_diario", "tcpa",
         "target_roas", "estrategia_lance",
+        # `ConfiguracaoPMaxV25` (viaja em `brief.pmax`)
+        "pmax.path1", "pmax.path2", "pmax.opcoes_de_url", "pmax.videos",
+        "pmax.grupos_adicionais", "pmax.automacoes_optadas",
+        "pmax.video_crawl", "pmax.video_crawl_direitos_declarados",
+        "pmax.exclusoes_de_url", "pmax.termos_excluidos",
+        "pmax.restricoes_de_mensagem", "pmax.diretrizes_de_marca",
+        "pmax.negativas_tipadas", "pmax.listas_de_negativas",
+        "pmax.marcas_excluidas", "pmax.listas_de_marcas_excluidas",
+        "pmax.metas_de_conversao", "pmax.meta_cliente_novo",
     ),
     construtor=pmax.construir,
     validador=pmax.validar,
@@ -333,6 +382,10 @@ PERFORMANCE_MAX = PerfilDeCanal(
         "imagem_marketing_retrato", "logo", "logo_paisagem", "video_youtube",
     ),
     lances_permitidos=pmax.LANCES_PERMITIDOS,
+    # PMax não tem configuração de lance própria: as duas estratégias vêm do
+    # brief, com `tcpa`/`target_roas`. É a MESMA tupla, referenciada.
+    lances_pelo_brief=pmax.LANCES_PERMITIDOS,
+    configuracao_no_brief="pmax",
     opcoes=pmax.OPCOES,
     provas_obrigatorias=_PROVAS,
     autocorrige_keywords=False,
@@ -421,6 +474,7 @@ def montar(canal: Any, cid: str, brief: Any, *, login_customer_id: str, **opcoes
     ignorada: ignorar faria o operador marcar uma caixa que não faz nada.
     """
     p = exigir_prova(canal)
+    brief, opcoes = _configuracao_no_brief(p, brief, opcoes)
     pedidas = {k for k, v in opcoes.items() if v}
     faltantes = sorted(pedidas - set(p.opcoes))
     if faltantes:
@@ -458,6 +512,7 @@ def planejar(canal: Any, cid: str, brief: Any, *, login_customer_id: str,
     faz nada, e ver um plano que não corresponde ao que ele pediu.
     """
     p = exigir_planejador(canal)
+    brief, opcoes = _configuracao_no_brief(p, brief, opcoes)
     pedidas = {k for k, v in opcoes.items() if v}
     faltantes = sorted(pedidas - set(p.opcoes))
     if faltantes:
@@ -469,3 +524,47 @@ def planejar(canal: Any, cid: str, brief: Any, *, login_customer_id: str,
     aceitas = {k: v for k, v in opcoes.items() if k in p.opcoes}
     return p.planejador(cid, brief, login_customer_id=login_customer_id,
                         **aceitas)
+
+
+#: A família de configuração que cada campo do brief aceita.
+_FAMILIA_NO_BRIEF: Dict[str, type] = {
+    "demand_gen": ConfiguracaoDemandGen,
+    "pmax": ConfiguracaoPMax,
+}
+
+
+def _configuracao_no_brief(p: PerfilDeCanal, brief: Any, opcoes: dict):
+    """`configuracao=` para os canais que a carregam NO BRIEF.
+
+    `preparar()` e a rota passam `configuracao` sem saber o canal. Search e
+    Display a recebem como opção do construtor; Demand Gen e PMax a leem de
+    `brief.demand_gen`/`brief.pmax`. Aqui a opção vira o campo do brief — e
+    duas fontes DIFERENTES são recusadas, porque precedência silenciosa entre
+    a configuração passada e a que o brief já carrega é o defeito de sempre.
+    """
+    cfg = opcoes.get("configuracao")
+    if not p.configuracao_no_brief or "configuracao" not in opcoes:
+        return brief, opcoes
+    resto = {k: v for k, v in opcoes.items() if k != "configuracao"}
+    if cfg is None:
+        return brief, resto
+    campo = p.configuracao_no_brief
+    familia = _FAMILIA_NO_BRIEF[campo]
+    if not isinstance(cfg, familia):
+        raise OpcaoIndisponivel(
+            f"{p.rotulo} recebe a configuração como {familia.__name__} (ou a "
+            f"extensão V25), não {type(cfg).__name__}.")
+    atual = getattr(brief, campo, None)
+    if atual == cfg:
+        return brief, resto
+    # Promoção legítima: o brief traz a BASE (ex.: `ConfiguracaoDemandGen` da
+    # fronteira HTTP) e a configuração é a extensão V25 com a MESMA base.
+    mesma_base = atual is not None and type(atual) is familia and all(
+        getattr(atual, f.name) == getattr(cfg, f.name)
+        for f in dataclasses.fields(familia))
+    if atual is not None and not mesma_base:
+        raise OpcaoIndisponivel(
+            f"{p.rotulo}: o brief já carrega `{campo}` diferente da "
+            "configuração passada. Duas fontes para a mesma decisão não "
+            "escolhem uma em silêncio — monte o brief com a configuração final.")
+    return dataclasses.replace(brief, **{campo: cfg}), resto

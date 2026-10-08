@@ -84,6 +84,7 @@ from dataclasses import dataclass, fields
 from typing import Mapping
 from urllib.parse import urlsplit
 
+from .. import automacoes as _automacoes
 from .brief import (
     AssetRemotoAprovado,
     ConfiguracaoDemandGen,
@@ -128,6 +129,13 @@ ESTRATEGIAS: tuple[str, ...] = (
     "TARGET_CPC",
 )
 
+#: O que `Brief.estrategia_lance` monta SOZINHO, sem `LanceDemandGen`. Só
+#: MaxConv sem meta: é o único ramo que `comum.op_campanha` emite para Demand
+#: Gen. Qualquer outra estratégia vinda só do brief cairia nesse mesmo ramo em
+#: silêncio — e desde 08/10/2026 o brief conhece TARGET_SPEND/TARGET_CPC pelo
+#: nome, então a recusa deixou de ser garantida pelo portão de forma do brief.
+ESTRATEGIAS_PELO_BRIEF: tuple[str, ...] = ("MAXIMIZE_CONVERSIONS",)
+
 #: Estratégias cuja prova na Crédito Up parou na ELEGIBILIDADE da conta
 #: (`NOT_ENOUGH_CONVERSIONS`), não no contrato. O builder as monta; o plano
 #: avisa que a conta precisa de histórico de valor de conversão.
@@ -158,22 +166,12 @@ AUTOMACOES_POR_FORMATO: Mapping[str, tuple[str, ...]] = {
     "CARROSSEL": (),
 }
 
-#: O que cada automação de VÍDEO faria ligada. As de multi-asset já têm frase
-#: em `automacoes.POR_QUE_RECUSADA`; estas quatro ainda não (ver relatório:
-#: `automacoes.py` precisa recebê-las para a tela mostrar o chip).
+#: O que cada automação de VÍDEO faria ligada. A frase mora em
+#: `automacoes.POR_QUE_RECUSADA` (stdlib, lida pela tela) desde 08/10/2026;
+#: esta vista a REFERENCIA, para não haver duas redações divergindo.
 POR_QUE_RECUSADA_VIDEO: Mapping[str, str] = {
-    "GENERATE_LANDING_PAGE_PREVIEW":
-        "geraria imagem com prévia da landing page — peça sem portão de "
-        "política nem hash.",
-    "GENERATE_LANDING_PAGE_TEXT":
-        "geraria texto a partir da landing page. A copy aprovada deixaria de "
-        "ser a copy servida.",
-    "GENERATE_SHORTER_YOUTUBE_VIDEOS":
-        "cortaria o vídeo aprovado em versões mais curtas, escolhidas pelo "
-        "Google.",
-    "GENERATE_VERTICAL_YOUTUBE_VIDEOS":
-        "geraria versão vertical do vídeo aprovado, com enquadramento escolhido "
-        "pelo Google.",
+    nome: _automacoes.POR_QUE_RECUSADA[nome]
+    for nome in AUTOMACOES_POR_FORMATO["VIDEO_RESPONSIVO"]
 }
 
 STATUS_DE_AUTOMACAO: tuple[str, ...] = ("OPTED_IN", "OPTED_OUT")
@@ -718,3 +716,134 @@ def estender(cfg: ConfiguracaoDemandGen | None, **novos) -> ConfiguracaoDemandGe
 
 def mesmo_host(url_a: str, url_b: str) -> bool:
     return urlsplit(url_a).hostname == urlsplit(url_b).hostname
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FRONTEIRA JSON — só a parte V25; a base vem do objeto `demand_gen` da rota
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# A rota HTTP já transporta `ConfiguracaoDemandGen` (upgraded targeting,
+# channel controls, audiências) no objeto `demand_gen`. O JSON
+# `configuracao_demand_gen` carrega SÓ os campos que `ConfiguracaoDemandGenV25`
+# acrescenta — duas fontes para o mesmo campo seriam precedência silenciosa.
+
+_HORARIO = r"^([01]\d|2[0-4]):(00|15|30|45)$"
+
+#: Todas as automações de criativo de Demand Gen, na ordem dos formatos.
+_TODAS_AS_AUTOMACOES: tuple[str, ...] = tuple(
+    dict.fromkeys(t for f in FORMATOS for t in AUTOMACOES_POR_FORMATO[f]))
+
+ESQUEMA_JSON: dict[str, dict] = {
+    "ConfiguracaoDemandGenV25.formato": {"enum": list(FORMATOS)},
+    "ConfiguracaoDemandGenV25.call_to_action": {
+        "enum": list(TEXTOS_DE_CTA_ACEITOS),
+        "description": "multi-asset e carrossel; no vídeo o CTA é `video.call_to_action`"},
+    "ConfiguracaoDemandGenV25.segmentacao_otimizada": {
+        "description": "optimized targeting do ad group; null = não emitido"},
+    "ConfiguracaoDemandGenV25.automacoes": {"$substituir": {
+        "type": "object",
+        "propertyNames": {"enum": list(_TODAS_AS_AUTOMACOES)},
+        "additionalProperties": {"enum": list(STATUS_DE_AUTOMACAO)},
+        "default": {},
+        "description": (
+            "tipo → OPTED_IN/OPTED_OUT; tipo ausente viaja OPTED_OUT. Só os "
+            "tipos do formato escolhido: " + "; ".join(
+                f"{f}: {', '.join(AUTOMACOES_POR_FORMATO[f]) or 'nenhuma'}"
+                for f in FORMATOS)),
+    }},
+    "ConfiguracaoDemandGenV25.agenda": {
+        "description": f"até {FAIXAS_DE_AGENDA_POR_DIA_MAX} faixas por dia, sem sobreposição"},
+    "LanceDemandGen.estrategia": {"enum": list(ESTRATEGIAS)},
+    "LanceDemandGen.target_cpa": {"exclusiveMinimum": 0,
+                                  "description": "só em MAXIMIZE_CONVERSIONS (vira `target_cpa` avulso)"},
+    "LanceDemandGen.target_roas": {"exclusiveMinimum": 0,
+                                   "description": "só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso)"},
+    "LanceDemandGen.target_cpc": {"exclusiveMinimum": 0,
+                                  "description": "obrigatório em TARGET_CPC"},
+    "VideoDemandGen.youtube_ids": {"minItems": VIDEOS_MIN, "maxItems": VIDEOS_MAX,
+                                   "items": {"pattern": _ID_YOUTUBE.pattern}},
+    "VideoDemandGen.call_to_action": {"enum": list(CTAS_DE_VIDEO)},
+    "VideoDemandGen.breadcrumb1": {"minLength": 1, "maxLength": BREADCRUMB_MAX_CHARS},
+    "VideoDemandGen.breadcrumb2": {"minLength": 1, "maxLength": BREADCRUMB_MAX_CHARS,
+                                   "description": "exige breadcrumb1"},
+    "CarrosselDemandGen.cartoes": {"minItems": CARTOES_MIN, "maxItems": CARTOES_MAX},
+    "CartaoCarrosselDemandGen.headline": {
+        "minLength": 1, "maxLength": LIMITES_DE_TEXTO["headline_cartao"]["max_chars"]},
+    "CartaoCarrosselDemandGen.url_final": {"pattern": r"^https://"},
+    "CartaoCarrosselDemandGen.call_to_action": {"enum": list(TEXTOS_DE_CTA_ACEITOS)},
+    "LookalikeDemandGen.nome": {"minLength": 1},
+    "LookalikeDemandGen.sementes": {"minItems": 1, "items": {"minimum": 1}},
+    "LookalikeDemandGen.expansao": {"enum": list(NIVEIS_DE_LOOKALIKE)},
+    "LookalikeDemandGen.paises": {"minItems": 1, "items": {"pattern": _PAIS.pattern}},
+    "PublicoDemandGen.nome": {"minLength": 1},
+    "PublicoDemandGen.user_lists": {"maxItems": USER_LISTS_MAX,
+                                    "items": {"pattern": _USER_LIST.pattern}},
+    "PublicoDemandGen.exclusoes_user_list": {"maxItems": USER_LISTS_MAX,
+                                             "items": {"pattern": _USER_LIST.pattern}},
+    "PublicoDemandGen.lookalikes": {"maxItems": LOOKALIKES_MAX},
+    "PublicoDemandGen.idades": {"items": {"enum": list(FAIXAS_ETARIAS)}},
+    "PublicoDemandGen.generos": {"items": {"enum": list(GENEROS)}},
+    "PublicoDemandGen.rendas": {"items": {"enum": list(FAIXAS_DE_RENDA)}},
+    "PublicoDemandGen.status_parentais": {"items": {"enum": list(STATUS_PARENTAIS)}},
+    "FaixaDeAgendaDemandGen.dia": {"enum": list(DIAS_DA_SEMANA)},
+    "FaixaDeAgendaDemandGen.inicio": {"pattern": _HORARIO},
+    "FaixaDeAgendaDemandGen.fim": {"pattern": _HORARIO},
+}
+
+#: A imagem do CARTÃO de carrossel precisa ser asset JÁ NA CONTA com recibo
+#: (`AssetRemotoAprovado`) — o cartão não resolve id temporário (medido). Esse
+#: recibo só nasce na ponte criativa, e a fronteira HTTP ainda não transporta
+#: asset remoto aprovado. Recusar com o motivo é melhor que um 500 no proto.
+_IMAGEM_DE_CARTAO_INDISPONIVEL = (
+    "imagem de cartão de carrossel precisa ser asset JÁ NA CONTA com recibo de "
+    "aprovação (o cartão não resolve id temporário — medido em validate_only). "
+    "A fronteira HTTP ainda não transporta asset remoto aprovado; o carrossel "
+    "fica disponível só para chamadores do motor")
+
+
+def _recusar_imagem_de_cartao(_valor, caminho: str):
+    from .config_json import ConfiguracaoInvalida
+
+    raise ConfiguracaoInvalida(caminho, _IMAGEM_DE_CARTAO_INDISPONIVEL)
+
+
+#: Os tipos que o JSON não representa, e o que a fronteira faz com eles.
+RESOLVEDORES_JSON = {
+    ImagemParaSubir: _recusar_imagem_de_cartao,
+    AssetRemotoAprovado: _recusar_imagem_de_cartao,
+}
+
+_ESQUEMA_INDISPONIVEL = {
+    "not": {},
+    "description": _IMAGEM_DE_CARTAO_INDISPONIVEL,
+    "x-volc-indisponivel-por-http": True,
+}
+
+
+def campos_v25() -> tuple[str, ...]:
+    from . import config_json
+
+    return config_json.campos_proprios(ConfiguracaoDemandGenV25, ConfiguracaoDemandGen)
+
+
+def de_json(dados: dict, base: ConfiguracaoDemandGen,
+            caminho: str = "configuracao_demand_gen") -> ConfiguracaoDemandGenV25:
+    """JSON da parte V25 + a base já montada → `ConfiguracaoDemandGenV25`."""
+    from dataclasses import fields as _f
+
+    from . import config_json
+
+    fixos = {f.name: getattr(base, f.name) for f in _f(ConfiguracaoDemandGen)}
+    return config_json.de_dict(
+        ConfiguracaoDemandGenV25, dados, caminho, apenas=campos_v25(),
+        fixos=fixos, resolvedores=RESOLVEDORES_JSON)
+
+
+def esquema_json() -> dict:
+    from . import config_json
+
+    return config_json.esquema(
+        ConfiguracaoDemandGenV25, apenas=campos_v25(), metadados=ESQUEMA_JSON,
+        sobrescritas={ImagemParaSubir: _ESQUEMA_INDISPONIVEL,
+                      AssetRemotoAprovado: _ESQUEMA_INDISPONIVEL},
+        titulo="ConfiguracaoDemandGenV25")

@@ -24,7 +24,7 @@ antecipa a remota, com a mesma causa.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields
 from typing import Any, Iterable
 
 # ── códigos de plano (espelhados como string para não importar `plano`) ─────
@@ -65,12 +65,16 @@ ESTRATEGIAS: tuple[str, ...] = (
     "MANUAL_CPM",
 )
 
-#: O subconjunto que `Brief.estrategia_lance` consegue carregar hoje
-#: (`brief.ESTRATEGIAS_DE_LANCE`). MANUAL_CPC fica de fora porque é o DEFAULT
-#: do brief: vindo dali, ele é indistinguível de "ninguém escolheu".
+#: O que Display monta a partir de `Brief.estrategia_lance` SEM `LanceDisplay`.
+#: Desde 08/10/2026 o brief conhece TARGET_SPEND pelo nome da API, e ela entra
+#: aqui porque não tem parâmetro obrigatório (o teto de CPC é opcional e mora
+#: em `LanceDisplay`). MANUAL_CPC fica de fora porque é o DEFAULT do brief —
+#: vindo dali, é indistinguível de "ninguém escolheu" — e MANUAL_CPM porque
+#: exige o lance vCPM, que só `LanceDisplay.cpm_visivel` carrega.
 ESTRATEGIAS_PELO_BRIEF: tuple[str, ...] = (
     "MAXIMIZE_CONVERSIONS",
     "MAXIMIZE_CONVERSION_VALUE",
+    "TARGET_SPEND",
 )
 
 _RECUSADAS_PELA_API = {
@@ -434,12 +438,23 @@ class ConfiguracaoDisplay:
         _tuplas(self)
 
     @classmethod
-    def de_dict(cls, d: dict | None) -> "ConfiguracaoDisplay":
-        """JSON da rota → configuração. Chave desconhecida é ERRO, não descarte."""
-        return _de_dict(cls, d or {}, "configuracao")
+    def de_dict(cls, d: dict | None, caminho: str = "configuracao") -> "ConfiguracaoDisplay":
+        """JSON da rota → configuração. Chave desconhecida é ERRO, não descarte.
+
+        ⚠️ Delegado a `config_json.de_dict` desde 08/10/2026. A versão local
+        montava os aninhados por uma tabela à mão (`_ANINHADOS`) e não julgava
+        tipo nenhum: `"impressoes": "3"` atravessava como texto e só quebrava
+        no proto. Agora a forma é lida das anotações deste módulo — a mesma
+        régua dos outros três canais —, e o erro carrega o caminho do campo.
+        """
+        from . import config_json
+
+        return config_json.de_dict(cls, d or {}, caminho)
 
     def para_json(self) -> dict:
-        return _para_json(self)
+        from . import config_json
+
+        return config_json.para_json(self)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -733,36 +748,61 @@ def _tuplas(obj: Any) -> None:
             object.__setattr__(obj, f.name, tuple(v))
 
 
-_ANINHADOS = {
-    "lance": LanceDisplay, "segmentacao": SegmentacaoDisplay,
-    "exclusoes": ExclusoesDisplay, "anuncio": AnuncioDisplay,
-    "lista_nova": ListaDeExclusaoNova,
+# ═══════════════════════════════════════════════════════════════════════════
+# FRONTEIRA JSON — vocabulário do esquema que a tela lê
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Cada `enum` referencia a tupla fechada deste módulo (nada copiado), e cada
+# limite referencia a régua que `resolver()` aplica. O esquema em si é derivado
+# das anotações (`config_json.esquema`).
+
+_RN_OU_ID = r"^(\d+|customers/\d+/{colecao}/\d+)$"
+
+ESQUEMA_JSON: dict[str, dict] = {
+    "LanceDisplay.estrategia": {"enum": list(ESTRATEGIAS)},
+    "LanceDisplay.teto_cpc": {"exclusiveMinimum": 0},
+    "LanceDisplay.cpm_visivel": {"exclusiveMinimum": 0,
+                                 "description": "lance vCPM do grupo; obrigatório em MANUAL_CPM"},
+    "SegmentacaoDisplay.listas_de_usuarios": {"items": {"pattern": _RN_OU_ID.format(colecao="userLists")}},
+    "SegmentacaoDisplay.publicos_personalizados": {"items": {"pattern": _RN_OU_ID.format(colecao="customAudiences")}},
+    "SegmentacaoDisplay.publicos_combinados": {"items": {"pattern": _RN_OU_ID.format(colecao="combinedAudiences")}},
+    "SegmentacaoDisplay.interesses": {"items": {"pattern": _RN_OU_ID.format(colecao="userInterests")}},
+    "SegmentacaoDisplay.topicos": {"items": {"pattern": r"^(\d+|topicConstants/\d+)$"}},
+    "SegmentacaoDisplay.palavras_chave": {"items": {"minLength": 1, "maxLength": 80}},
+    "ExclusoesDisplay.rotulos_de_conteudo": {"items": {"enum": list(ROTULOS_ACEITOS)}},
+    "ExclusoesDisplay.apps": {"items": {"pattern": _APP.pattern}},
+    "ExclusoesDisplay.categorias_de_app": {"items": {"pattern": r"^(\d+|mobileAppCategoryConstants/\d+)$"}},
+    "ExclusoesDisplay.topicos": {"items": {"pattern": r"^(\d+|topicConstants/\d+)$"}},
+    "ExclusoesDisplay.listas_existentes": {"items": {"pattern": _RN_OU_ID.format(colecao="sharedSets")}},
+    "ListaDeExclusaoNova.nome": {"minLength": 1},
+    "ListaDeExclusaoNova.apps": {"items": {"pattern": _APP.pattern}},
+    "FrequenciaMaxima.impressoes": {"minimum": 1},
+    "FrequenciaMaxima.unidade": {"enum": list(UNIDADES_DE_FREQUENCIA)},
+    "FrequenciaMaxima.nivel": {"enum": list(NIVEIS_DE_FREQUENCIA)},
+    "JanelaDeVeiculacao.dia": {"enum": list(DIAS)},
+    "JanelaDeVeiculacao.inicio_hora": {"minimum": 0, "maximum": 23},
+    "JanelaDeVeiculacao.fim_hora": {"minimum": 0, "maximum": 24},
+    "JanelaDeVeiculacao.inicio_minuto": {"enum": sorted(MINUTOS)},
+    "JanelaDeVeiculacao.fim_minuto": {"enum": sorted(MINUTOS)},
+    "ConfiguracaoDisplay.agenda": {"description": "até 6 janelas por dia, sem sobreposição"},
+    "ConfiguracaoDisplay.dispositivos_excluidos": {"items": {"enum": list(DISPOSITIVOS)}},
+    "ConfiguracaoDisplay.presenca_geo": {"enum": list(PRESENCAS_GEO)},
+    "AnuncioDisplay.chamada_para_acao": {"maxLength": 30},
+    "AnuncioDisplay.cor_principal": {"pattern": _COR.pattern},
+    "AnuncioDisplay.cor_destaque": {"pattern": _COR.pattern},
+    "AnuncioDisplay.formato": {"enum": list(FORMATOS)},
+    "AnuncioDisplay.videos_youtube": {"maxItems": VIDEOS_MAX,
+                                      "items": {"pattern": _VIDEO_ID.pattern}},
 }
-_LISTAS_DE = {"frequencia": FrequenciaMaxima, "agenda": JanelaDeVeiculacao}
 
 
-def _de_dict(cls: type, d: dict, caminho: str):
-    if not isinstance(d, dict):
-        raise ValueError(f"{caminho}: esperado objeto, veio {type(d).__name__}")
-    conhecidos = {f.name for f in fields(cls)}
-    sobra = set(d) - conhecidos
-    if sobra:
-        raise ValueError(f"{caminho}: campo(s) desconhecido(s) {sorted(sobra)} — "
-                         f"aceitos: {sorted(conhecidos)}")
-    kw = {}
-    for k, v in d.items():
-        if k in _ANINHADOS and v is not None:
-            kw[k] = _de_dict(_ANINHADOS[k], v, f"{caminho}.{k}")
-        elif k in _LISTAS_DE:
-            kw[k] = tuple(_de_dict(_LISTAS_DE[k], x, f"{caminho}.{k}[{i}]") for i, x in enumerate(v or ()))
-        else:
-            kw[k] = v
-    return cls(**kw)
+def de_json(dados: dict, caminho: str = "configuracao_display") -> ConfiguracaoDisplay:
+    """JSON da rota → `ConfiguracaoDisplay` (mesmo caminho de `de_dict`)."""
+    return ConfiguracaoDisplay.de_dict(dados, caminho)
 
 
-def _para_json(obj: Any):
-    if is_dataclass(obj):
-        return {f.name: _para_json(getattr(obj, f.name)) for f in fields(obj)}
-    if isinstance(obj, (tuple, list)):
-        return [_para_json(x) for x in obj]
-    return obj
+def esquema_json() -> dict:
+    from . import config_json
+
+    return config_json.esquema(ConfiguracaoDisplay, metadados=ESQUEMA_JSON,
+                               titulo="ConfiguracaoDisplay")

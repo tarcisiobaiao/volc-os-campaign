@@ -61,6 +61,16 @@ ESTRATEGIAS: tuple[str, ...] = (
     "TARGET_IMPRESSION_SHARE",
 )
 
+#: O que Search monta só com `Brief.estrategia_lance` (+ `tcpa`/`target_roas`
+#: do brief), sem `LanceSearch`. TARGET_IMPRESSION_SHARE fica de fora porque
+#: exige local, fração e teto — que só `LanceSearch` carrega.
+ESTRATEGIAS_PELO_BRIEF: tuple[str, ...] = (
+    "MANUAL_CPC",
+    "TARGET_SPEND",
+    "MAXIMIZE_CONVERSIONS",
+    "MAXIMIZE_CONVERSION_VALUE",
+)
+
 #: Smart Bidding de verdade: o lance é decidido por conversão prevista. É o
 #: único regime em que keyword larga (BROAD, ou AI Max com correspondência de
 #: termos) tem sinal de leilão que filtre a consulta — a mesma doutrina de
@@ -739,6 +749,10 @@ def resolver_rede(brief: "Brief", cfg: ConfiguracaoSearch | None,
     declaradas precisam concordar.
     """
     if cfg is None:
+        # `brief.RedeDePesquisa` aceita a expansão desde 08/10/2026; o aviso
+        # vale nos dois caminhos, para a decisão aparecer no plano aprovado.
+        if brief.rede is not None and brief.rede.display_expansion:
+            r.aviso("rede", "display_expansion", _AVISO_DISPLAY_EXPANSION)
         return None
     do_brief = None
     if brief.rede is not None:
@@ -758,11 +772,14 @@ def resolver_rede(brief: "Brief", cfg: ConfiguracaoSearch | None,
         return None
     rede = cfg.rede or do_brief
     if rede.display_expansion:
-        r.aviso("rede", "display_expansion",
-                "Display expansion LIGADA: a mesma verba e o mesmo CPC passam a "
-                "comprar inventário de Display. Leia o RPM por "
-                "ad_network_type=CONTENT à parte.")
+        r.aviso("rede", "display_expansion", _AVISO_DISPLAY_EXPANSION)
     return rede
+
+
+_AVISO_DISPLAY_EXPANSION = (
+    "Display expansion LIGADA: a mesma verba e o mesmo CPC passam a "
+    "comprar inventário de Display. Leia o RPM por "
+    "ad_network_type=CONTENT à parte.")
 
 
 def resolver_ai_max(brief: "Brief", cfg: ConfiguracaoSearch | None,
@@ -944,3 +961,77 @@ def checar_rsa(anuncio: AnuncioSearch | None, headlines: Sequence[str],
                 "fixação reduz as combinações do RSA e a força do anúncio; "
                 "fixe só o que é exigência legal ou de marca")
     return saida
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FRONTEIRA JSON — a forma que a rota HTTP aceita e o esquema que a tela lê
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# O vocabulário abaixo não é uma segunda lista: cada `enum` REFERENCIA a tupla
+# fechada deste módulo, e cada limite referencia a constante. O esquema é
+# derivado das anotações de tipo dos dataclasses (`config_json.esquema`); estas
+# entradas só acrescentam o que a anotação não carrega.
+
+_HORARIO = r"^([01]\d|2[0-4]):(00|15|30|45)$"
+
+ESQUEMA_JSON: dict[str, dict] = {
+    "LanceSearch.estrategia": {"enum": list(ESTRATEGIAS)},
+    "LanceSearch.target_cpa": {"exclusiveMinimum": 0,
+                               "description": "tCPA em moeda da conta; só em MAXIMIZE_CONVERSIONS"},
+    "LanceSearch.target_roas": {"minimum": ROAS_MIN, "maximum": ROAS_MAX,
+                                "description": "razão (4.0 = 400%); só em MAXIMIZE_CONVERSION_VALUE"},
+    "LanceSearch.teto_cpc": {"exclusiveMinimum": 0,
+                             "description": "teto de CPC em moeda da conta; TARGET_SPEND (opcional) e TARGET_IMPRESSION_SHARE (obrigatório)"},
+    "LanceSearch.local_impressao": {"enum": list(LOCAIS_DE_IMPRESSAO),
+                                    "description": "obrigatório em TARGET_IMPRESSION_SHARE"},
+    "LanceSearch.fracao_impressao": {"exclusiveMinimum": 0, "maximum": 1,
+                                     "description": "obrigatório em TARGET_IMPRESSION_SHARE (0.6 = 60%)"},
+    "RedeSearch.google_search": {"const": True},
+    "AiMaxSearch.exclusoes_de_url": {"items": {"minLength": 1, "pattern": r"^\S+$"}},
+    "AiMaxSearch.listas_de_marca_incluidas": {"items": {"pattern": _RN_LISTA_DE_MARCA.pattern}},
+    "AiMaxSearch.listas_de_marca_excluidas": {"items": {"pattern": _RN_LISTA_DE_MARCA.pattern}},
+    "AiMaxSearch.termos_excluidos": {"maxItems": MAX_TERMOS_EXCLUIDOS,
+                                     "items": {"minLength": 1, "maxLength": MAX_CHARS_TERMO}},
+    "AiMaxSearch.restricoes_de_mensagem": {"maxItems": MAX_RESTRICOES,
+                                           "items": {"minLength": 1, "maxLength": MAX_CHARS_RESTRICAO}},
+    "Fixacao.posicao": {"enum": list(POSICOES_TITULO + POSICOES_DESCRICAO)},
+    "Fixacao.texto": {"minLength": 1},
+    "AnuncioSearch.path1": {"maxLength": MAX_PATH, "pattern": r"^[^/\n]*$"},
+    "AnuncioSearch.path2": {"maxLength": MAX_PATH, "pattern": r"^[^/\n]*$",
+                            "description": "exige path1"},
+    "FaixaDeHorario.dia": {"enum": list(DIAS)},
+    "FaixaDeHorario.inicio": {"pattern": _HORARIO, "description": "HH:MM, minutos 00/15/30/45"},
+    "FaixaDeHorario.fim": {"pattern": _HORARIO, "description": "HH:MM (24:00 = fim do dia)"},
+    "FaixaDeHorario.ajuste": {"minimum": AJUSTE_MIN, "maximum": AJUSTE_MAX,
+                              "description": "bid_modifier (1.2 = +20%); só em MANUAL_CPC/TARGET_SPEND"},
+    "AjusteDeDispositivo.dispositivo": {"enum": list(DISPOSITIVOS)},
+    "AjusteDeDispositivo.fator": {"minimum": 0, "maximum": AJUSTE_MAX,
+                                  "description": f"0 exclui o dispositivo; senão entre {AJUSTE_MIN} e {AJUSTE_MAX}"},
+    "SegmentacaoGeo.tipo_positivo": {"enum": list(GEO_POSITIVO)},
+    "SegmentacaoGeo.tipo_negativo": {"enum": list(GEO_NEGATIVO)},
+    "SegmentacaoGeo.locais": {"items": {"minimum": 1},
+                              "description": "ids de geoTargetConstant do país do brief; vazio = o país"},
+    "SegmentacaoGeo.locais_excluidos": {"items": {"minimum": 1}},
+    "SegmentacaoGeo.idiomas": {"description": "códigos de idioma; precisa conter o idioma do brief"},
+    "ConfiguracaoSearch.programacao": {"description": f"até {MAX_FAIXAS_POR_DIA} faixas por dia, sem sobreposição"},
+    "ConfiguracaoSearch.inicio": {"format": "date"},
+    "ConfiguracaoSearch.fim": {"format": "date"},
+    "MetaDeCategoria.categoria": {"enum": list(CATEGORIAS_DE_CONVERSAO)},
+    "MetaDeCategoria.origem": {"enum": list(ORIGENS_DE_CONVERSAO)},
+    "MetaDeConversao.meta_personalizada": {"pattern": _RN_META.pattern},
+    "MetaDeConversao.acoes_de_conversao": {"items": {"pattern": _RN_ACAO.pattern}},
+}
+
+
+def de_json(dados: dict, caminho: str = "configuracao_search") -> ConfiguracaoSearch:
+    """JSON da rota → `ConfiguracaoSearch`. Forma julgada pelo próprio dataclass."""
+    from . import config_json
+
+    return config_json.de_dict(ConfiguracaoSearch, dados, caminho)
+
+
+def esquema_json() -> dict:
+    from . import config_json
+
+    return config_json.esquema(ConfiguracaoSearch, metadados=ESQUEMA_JSON,
+                               titulo="ConfiguracaoSearch")

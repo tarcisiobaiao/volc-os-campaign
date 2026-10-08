@@ -725,12 +725,20 @@ def bloqueio_pmax_fora_do_executor() -> Bloqueador:
 #: A autoridade de URL por canal — o par (tabela, campo) em que a URL final é
 #: LIDA de volta. ⚠️ Projeção de `canario._AUTORIDADE_DE_URL`, e não uma segunda
 #: declaração: `test_trafego_contrato_canais.py` compara os dois.
+#:
+#: ⚠️ Corrigido em 08/10/2026 (contrato GADS-CRIACAO-CANAIS-v1):
+#:   * `excluded_parent_asset_set_types = [PAGE_FEED]` SAIU: a API recusa o
+#:     mutate inteiro com `INVALID_EXCLUDED_PARENT_ASSET_SET_TYPE` (medido) e o
+#:     builder deixou de emiti-lo. A trava do destino é a expansão de URL final
+#:     OPTED_OUT, que é o único consumidor de page feed em PMax.
+#:   * "sem path1/path2" virou DEFAULT: `configuracao_pmax.path1/path2` existe
+#:     e a API aceita (medido). Caminho de exibição não muda o destino.
 _TRAVAS_DE_DESTINO: Mapping[str, Tuple[str, ...]] = {
     "PERFORMANCE_MAX": (
-        "asset_group.final_urls com exatamente uma URL (a LP aprovada)",
+        "asset_group.final_urls com exatamente uma URL (a LP aprovada) por asset group",
         "final_mobile_urls vazio",
-        "sem path1/path2",
-        "excluded_parent_asset_set_types = [PAGE_FEED]",
+        "sem path1/path2 por padrão (só quando configuracao_pmax os declara)",
+        "FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION OPTED_OUT por padrão",
     ),
     "DISPLAY": (
         "control_spec.enable_asset_enhancements = false",

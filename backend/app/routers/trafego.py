@@ -71,6 +71,7 @@ from app.landing_policy import (
 )
 from app.publisher_quality import fetch as pqf
 from app.trafego import (canario, capacidades as cap,
+                         configuracao_canais as cfgcan,
                          contrato_canais as ccan, escopo,
                          plataforma as plat,
                          releitura_por_canal as rel,
@@ -1429,6 +1430,25 @@ CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM: tuple[str, ...] = (
     # 01/09/2026 — a fronteira HTTP de imagens de Display.
     "assets_display",
 )
+
+#: 08/10/2026 — a configuração por canal (GADS-CRIACAO-CANAIS-v1), na MESMA
+#: regra da tupla acima e numa tupla própria para a de cima continuar dizendo
+#: só o que dizia (há teste que a fixa). Ausente, o plano de antes mantém a
+#: MESMA impressão e a mesma chave de ledger; presente, ela é decisão humana e
+#: invalida a autorização se mudar.
+CONFIGURACOES_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM: tuple[str, ...] = (
+    "configuracao_search",
+    "configuracao_display",
+    "configuracao_demand_gen",
+    "configuracao_pmax",
+)
+
+#: Campos que só entram quando PREENCHIDOS: `{}` é tão ausência quanto `null`.
+#: `match_por_keyword` vazio é "nenhuma troca" — com ele na identidade, a tela
+#: que manda `{}` por padrão mudaria a chave de todo plano Search.
+CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_PREENCHIDOS: tuple[str, ...] = (
+    "match_por_keyword",
+)
 # Bytes: iguais aos de Demand Gen de propósito. Eles protegem a MEMÓRIA deste
 # processo, e a memória não sabe de que canal é o PNG.
 TETO_BYTES_ASSET_DISPLAY = TETO_BYTES_ASSET_DEMAND_GEN
@@ -1626,6 +1646,24 @@ class ProvarEntrada(BaseModel):
     assets_pmax: Optional[List[AssetDemandGenEntrada]] = Field(
         default=None, max_length=TETO_QUANTIDADE_ASSETS_PMAX)
 
+    # ── a configuração de CADA CANAL (contrato GADS-CRIACAO-CANAIS-v1) ──────
+    #
+    # Um objeto por canal, e só o do `canal` do pedido. A FORMA não é julgada
+    # por Pydantic: ela é a do dataclass do motor (`volc_ads/campanha/
+    # <canal>_config.py`), montado por `app/trafego/configuracao_canais.py` —
+    # um modelo espelho aqui seria um quinto contrato divergindo dos quatro.
+    # Ausente (`null`) = o comportamento de antes, byte a byte; presente =
+    # entra na impressão aprovável. Esquema: `GET /api/trafego/canais/esquema`.
+    configuracao_search: Optional[Dict[str, Any]] = None
+    configuracao_display: Optional[Dict[str, Any]] = None
+    configuracao_demand_gen: Optional[Dict[str, Any]] = None
+    configuracao_pmax: Optional[Dict[str, Any]] = None
+    #: A correspondência que o operador escolheu por keyword POSITIVA do
+    #: conjunto aprovado, chaveada pelo texto normalizado (`chave()` — o mesmo
+    #: `rascunho.matchPorKeyword` da tela). Só troca match de keyword aprovada;
+    #: ver `configuracao_canais.aplicar_match_por_keyword`. Só Search.
+    match_por_keyword: Optional[Dict[str, str]] = None
+
     @model_validator(mode="before")
     @classmethod
     def _demand_gen_tem_fronteira_estrita(cls, dados: Any) -> Any:
@@ -1644,6 +1682,17 @@ class ProvarEntrada(BaseModel):
             return dados
         classe = cls.__name__
         canal = str(dados.get("canal") or "SEARCH").strip().upper()
+        # ⚠️ Configuração de canal diferente do pedido: recusada AQUI, antes de
+        # qualquer projeção — senão ela seria aceita pelo modelo compartilhado
+        # e ignorada pelo builder do canal pedido.
+        try:
+            cfgcan.recusar_de_outro_canal(dados)
+        except cfgcan.ConfiguracaoRecusada as exc:
+            raise ValueError(str(exc)) from exc
+        if (dados.get("match_por_keyword") and canal != "SEARCH"):
+            raise ValueError(
+                "`match_por_keyword` é correspondência de keyword POSITIVA, que "
+                f"só Search opera; recebido canal {canal!r}. Nada foi projetado.")
         campos_demand_gen = [
             campo for campo in ("demand_gen", "assets_demand_gen")
             if campo in dados and dados[campo] is not None
@@ -1734,11 +1783,23 @@ class ProvarEntrada(BaseModel):
             return dados
 
         estrategia = str(dados.get("estrategia_lance") or "").strip().upper()
-        if estrategia != "MAXIMIZE_CONVERSIONS":
+        # Com `configuracao_demand_gen.lance` declarado, a estratégia é a DELE
+        # (TARGET_SPEND, TARGET_CPC, MaxConvValue…), e o envelope precisa dizer
+        # a mesma: duas estratégias no mesmo pedido não escolhem uma em
+        # silêncio. Sem ela, o contrato de antes: MaxConv sem meta.
+        lance_dg = cfgcan.lance_da_configuracao("DEMAND_GEN", dados)
+        if lance_dg is not None:
+            if estrategia != lance_dg:
+                raise ValueError(
+                    "canal DEMAND_GEN com `configuracao_demand_gen.lance."
+                    f"estrategia={lance_dg}` exige `estrategia_lance={lance_dg}` "
+                    f"no envelope; recebido {estrategia or 'ausente'!r}.")
+        elif estrategia != "MAXIMIZE_CONVERSIONS":
             raise ValueError(
                 "canal DEMAND_GEN exige `estrategia_lance="
                 "MAXIMIZE_CONVERSIONS`; ausência ou outro valor não herda o "
-                "contrato Search."
+                "contrato Search. Outras estratégias entram por "
+                "`configuracao_demand_gen.lance`."
             )
         ausentes = [
             campo for campo in ("demand_gen", "assets_demand_gen")
@@ -1878,8 +1939,12 @@ def _recusar_campos_nao_operados_demand_gen(body: ProvarEntrada) -> None:
             recusados.append(campo)
 
     copy = body.texto_do_anuncio
+    formato = str(((getattr(body, "configuracao_demand_gen", None) or {})
+                   .get("formato") or "MULTI_ASSET")).strip().upper()
     if copy is not None:
-        if copy.long_headlines:
+        # Long headline É do vídeo responsivo (1..5, ≤90): recusá-la ali seria
+        # recusar o formato inteiro. Nos outros formatos, continua recusada.
+        if copy.long_headlines and formato != "VIDEO_RESPONSIVO":
             recusados.append("copy.long_headlines")
         if copy.sitelinks:
             recusados.append("copy.sitelinks")
@@ -1897,11 +1962,31 @@ def _recusar_campos_nao_operados_demand_gen(body: ProvarEntrada) -> None:
         )
 
 
+def _display_em_cpc_manual(body: Any) -> bool:
+    """Display com `configuracao_display.lance = MANUAL_CPC`: o CPC é o lance."""
+    return cfgcan.lance_da_configuracao("DISPLAY", _corpo_cru(body)) == "MANUAL_CPC"
+
+
+def _cpc_manual_de_display(body: Any) -> Dict[str, Any]:
+    """`cpc_inicial` só chega ao brief de Display quando ELE É o lance."""
+    if _display_em_cpc_manual(body) and "cpc_inicial" in _campos_explicitos(body):
+        return {"cpc_inicial": body.cpc_inicial}
+    return {}
+
+
 def _recusar_campos_nao_operados_display(body: ProvarEntrada) -> None:
     """Impede Display de herdar decisões exclusivas da fronteira Search."""
     recusados: list[str] = []
     explicitos = _campos_explicitos(body)
+    manual = _display_em_cpc_manual(body)
+    if manual and "cpc_inicial" not in explicitos:
+        raise ValueError(
+            "DISPLAY com `configuracao_display.lance.estrategia=MANUAL_CPC` "
+            "exige `cpc_inicial` explícito: ele É o lance do grupo, e o "
+            "default do envelope (0,12) não é escolha de ninguém.")
     for campo in ("cpc_inicial", "match_type", "graduacao_em_conversoes"):
+        if campo == "cpc_inicial" and manual:
+            continue
         if campo in explicitos:
             recusados.append(campo)
     for campo in (
@@ -1915,6 +2000,8 @@ def _recusar_campos_nao_operados_display(body: ProvarEntrada) -> None:
             recusados.append(campo)
     if body.ai_max:
         recusados.append("ai_max")
+    if getattr(body, "match_por_keyword", None):
+        recusados.append("match_por_keyword")
     if body.demand_gen is not None or body.assets_demand_gen is not None:
         recusados.append("demand_gen/assets_demand_gen")
     if recusados:
@@ -2404,8 +2491,12 @@ def _plano_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> Dict[str, An
     # Quando ele EXISTE, ele entra na identidade e deve entrar: as imagens são
     # conteúdo aprovado por um humano, e trocar uma peça entre a prova e a
     # escrita precisa invalidar a autorização, como troca de headline invalida.
-    for campo in CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM:
+    for campo in (CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM
+                  + CONFIGURACOES_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_EXISTEM):
         if bruto.get(campo) is None:
+            bruto.pop(campo, None)
+    for campo in CAMPOS_QUE_SO_ENTRAM_NA_IDENTIDADE_QUANDO_PREENCHIDOS:
+        if not bruto.get(campo):
             bruto.pop(campo, None)
     bruto["customer_id"] = cid
     bruto["login_customer_id"] = mid
@@ -2513,6 +2604,16 @@ def plano_do_ledger(
     # de estar liberada.
     if supply_sha256:
         plano["supply_sha256"] = supply_sha256
+    # ⚠️ A CONFIGURAÇÃO DE CANAL CARREGA NÚMERO NÃO MONETÁRIO EM FLOAT — fração
+    # de parcela de impressões, ajuste de lance, tROAS, teto de CPC em reais.
+    # `lote._sem_float` recusaria o plano inteiro (com razão: float na chave
+    # faz a mesma campanha produzir duas chaves). A forma canônica é o decimal
+    # em texto, normalizado: `3`, `3.0` e `3.00` viram "3" — o mesmo número é a
+    # mesma chave em qualquer máquina.
+    for campo in ("configuracao_search", "configuracao_display",
+                  "configuracao_demand_gen", "configuracao_pmax"):
+        if plano.get(campo) is not None:
+            plano[campo] = _numeros_canonicos(plano[campo])
     grupos = []
     for i, grupo in enumerate(plano.get("grupos") or []):
         canonico = dict(grupo)
@@ -2525,6 +2626,23 @@ def plano_do_ledger(
     if grupos:
         plano["grupos"] = grupos
     return plano
+
+
+def _numeros_canonicos(valor: Any) -> Any:
+    """Número → decimal em texto normalizado; o resto atravessa igual."""
+    if isinstance(valor, bool) or valor is None or isinstance(valor, str):
+        return valor
+    if isinstance(valor, (int, float)):
+        numero = Decimal(str(valor))
+        if not numero.is_finite():
+            raise PlanoIrrepresentavel(f"número não finito na configuração: {valor!r}")
+        texto = format(numero.normalize(), "f")
+        return texto[:-2] if texto.endswith(".0") else texto
+    if isinstance(valor, Mapping):
+        return {k: _numeros_canonicos(v) for k, v in valor.items()}
+    if isinstance(valor, (list, tuple)):
+        return [_numeros_canonicos(v) for v in valor]
+    return valor
 
 
 def _impressao_aprovavel(body: ProvarEntrada, *, cid: str, mid: str) -> str:
@@ -2547,7 +2665,17 @@ def _rede_do_corpo(body: Any) -> Any:
     """
     r = getattr(body, "rede", None)
     if r is None:
-        return None
+        # ⚠️ A rede também pode vir em `configuracao_search.rede` (contrato
+        # v1). Sem esta leitura, o canário veria `None` e recusaria por
+        # ausência — ou, pior, julgaria uma rede que não é a do payload.
+        # Declarada nos dois lugares, o builder exige que sejam iguais.
+        da_cfg = cfgcan.rede_da_configuracao(_corpo_cru(body))
+        if da_cfg is None:
+            return None
+        _ponte()
+        from volc_ads.campanha.brief import RedeDePesquisa
+
+        return RedeDePesquisa(**da_cfg)
     _ponte()
     from volc_ads.campanha.brief import RedeDePesquisa
 
@@ -2556,6 +2684,52 @@ def _rede_do_corpo(body: Any) -> Any:
         search_partners=bool(r.search_partners),
         display_expansion=bool(r.display_expansion),
     )
+
+
+def _corpo_cru(body: Any) -> Dict[str, Any]:
+    """Os campos que o adaptador de configuração lê, como o JSON os trouxe."""
+    saida: Dict[str, Any] = {"canal": getattr(body, "canal", None)}
+    for campo in cfgcan.CAMPO_POR_CANAL.values():
+        saida[campo] = getattr(body, campo, None)
+    return saida
+
+
+def _validar_envelope_de_asset(item: Any, caminho: str) -> None:
+    """Um envelope de asset de grupo adicional PMax, com o MESMO modelo estrito
+    de `assets_demand_gen` (extra proibido, teto de base64 por item)."""
+    from pydantic import ValidationError as _VE
+
+    try:
+        _AssetDemandGenEstrito.model_validate(item)
+    except _VE as exc:
+        primeiro = exc.errors()[0]
+        sub = ".".join(str(x) for x in primeiro.get("loc", ()))
+        raise cfgcan.ErroDeForma(
+            f"{caminho}.{sub}" if sub else caminho,
+            str(primeiro.get("msg") or exc)) from exc
+
+
+def _configuracao_ou_422(body: Any) -> Dict[str, Any]:
+    """Julga a forma de toda configuração declarada; 422 com `loc` exato.
+
+    `RequestValidationError` e não `HTTPException`: é o MESMO formato de 422 que
+    o FastAPI devolve para erro de corpo (`detail[].loc`), então a tela aponta o
+    campo do formulário sem um segundo parser de erro.
+    """
+    from fastapi.exceptions import RequestValidationError
+
+    try:
+        return cfgcan.validar_forma(
+            _corpo_cru(body), validar_envelope=_validar_envelope_de_asset,
+            teto_por_grupo=TETO_QUANTIDADE_ASSETS_PMAX)
+    except cfgcan.ConfiguracaoRecusada as exc:
+        raise RequestValidationError([{
+            "type": exc.codigo.lower(),
+            "loc": exc.loc(),
+            "msg": exc.mensagem,
+            "input": None,
+            "ctx": {"codigo": exc.codigo, "caminho": exc.caminho},
+        }]) from exc
 
 
 def _criterios_do_corpo(body: Any, pp: Any) -> list:
@@ -2704,7 +2878,11 @@ def _montar_plano_display(
         idioma=idioma,
         budget_diario=body.budget_diario,
         tcpa=body.tcpa,
-        estrategia_lance=body.estrategia_lance,
+        # ⚠️ `target_roas` existia no envelope e NÃO chegava ao brief de
+        # Display: um MaxConvValue com tROAS 4,0 subia sem meta. Ausente
+        # continua `None` — o payload de quem não o manda não muda.
+        target_roas=getattr(body, "target_roas", None),
+        estrategia_lance=_estrategia_do_brief(body),
         vertical=vertical,
         certificacoes=set(escolha.certificacoes),
         prefixo_nome=escolha.prefixo_nome or "FORGE",
@@ -2716,6 +2894,7 @@ def _montar_plano_display(
         negativas_campanha=[],
         negativas_adgroup=[],
         imagens_display=imagens,
+        **_cpc_manual_de_display(body),
     )
     avisos = tuple(
         aviso
@@ -2858,6 +3037,12 @@ def _montar_plano_demand_gen(
             else tuple(entrada.exclusoes_de_audiencia)
         ),
     )
+    # A parte v25.2 (formato, lance, vídeo, público, agenda, automações) sobre
+    # a MESMA base: `ConfiguracaoDemandGenV25` herda os campos acima, e o
+    # builder lê a extensão do próprio `brief.demand_gen`.
+    if getattr(body, "configuracao_demand_gen", None) is not None:
+        configuracao = cfgcan.de_demand_gen(body.configuracao_demand_gen,
+                                            configuracao)
 
     assets = []
     conteudo_por_identidade: Dict[str, bytes] = {}
@@ -2905,8 +3090,13 @@ def _montar_plano_demand_gen(
         assets=tuple(assets),
         intencao=nicho,
     )
+    # Vídeo responsivo e carrossel usam SÓ o logo quadrado do lote: a régua
+    # multi-asset (imagem base obrigatória) recusaria o formato inteiro.
+    exigencia_do_formato = cfgcan.exigencia_de_imagens_demand_gen(
+        getattr(body, "configuracao_demand_gen", None))
     entrega = criativo_ponte.imagens_de_demand_gen(
-        lote, conteudo_por_identidade
+        lote, conteudo_por_identidade,
+        **({"exigencia": exigencia_do_formato} if exigencia_do_formato else {}),
     )
     if not entrega.ok:
         raise ValueError(
@@ -3076,53 +3266,65 @@ def _montar_plano_pmax(
             "existir recibo por vídeo, a receita PMax aceita somente as peças "
             "cujos bytes o servidor releu.")
 
-    assets = []
-    conteudo_por_identidade: Dict[str, bytes] = {}
-    pecas_para_o_portao: List[tuple] = []
-    for item, dados in _assets_decodificados_pmax(body.assets_pmax):
-        try:
-            quando = datetime.fromisoformat(
-                item.procedencia.quando.replace("Z", "+00:00"))
-            tipo = TipoDeAsset(item.tipo)
-            origem_asset = Origem(item.origem)
-        except ValueError as exc:
-            raise ValueError(
-                f"asset {item.nome!r}: contrato inválido — {exc}") from exc
-        medida = medir_imagem.medir(dados)
-        asset = Asset(
-            tipo=tipo,
-            procedencia=Procedencia(
-                motor=item.procedencia.motor,
-                versao_do_motor=item.procedencia.versao_do_motor,
-                insumo=item.procedencia.insumo,
-                quando=quando,
-                pedido=item.procedencia.pedido,
-                custo_usd=item.procedencia.custo_usd,
-            ),
-            conteudo_hash=item.conteudo_hash,
-            origem=origem_asset,
-            bytes_totais=medida.bytes_totais,
-            mime=medida.mime,
-            largura=medida.largura,
-            altura=medida.altura,
-            rotulo=item.nome,
-        )
-        assets.append(asset)
-        conteudo_por_identidade[asset.identidade] = dados
-        pecas_para_o_portao.append(
-            (asset.identidade, dados, item.nome, medida.mime, origem_asset))
-
     nicho = str(origem.nicho or "sem nicho declarado")
-    # ⚠️ O PORTÃO DE POLÍTICA VEM ANTES DA PONTE E ANTES DA REDE — o mesmo de
-    # Display e Demand Gen, no mesmo lugar do fluxo. Ele levanta
-    # `PoliticaCriativaRecusou` na primeira recusa.
-    recibos_de_politica = _recibos_de_politica_das_pecas(
-        pecas_para_o_portao, body=body, nicho=nicho, canal="PERFORMANCE_MAX")
-    entrega = criativo_ponte.imagens_de_pmax(
-        LoteDeAssets(canal="PERFORMANCE_MAX", assets=tuple(assets),
-                     intencao=nicho),
-        conteudo_por_identidade,
-    )
+
+    def _aprovar_lote(itens: List[Any], exigencia: Any = None) -> tuple:
+        """Envelopes → portão de política → ponte criativa → `ImagensPMax`.
+
+        UMA função para o grupo 0 (`assets_pmax`) e para cada grupo adicional
+        (`configuracao_pmax.grupos_adicionais[i].imagens`): a mesma régua, o
+        mesmo portão, na mesma ordem. Devolve (entrega, recibos de política).
+        """
+        assets = []
+        conteudo_por_identidade: Dict[str, bytes] = {}
+        pecas_para_o_portao: List[tuple] = []
+        for item, dados in _assets_decodificados_pmax(itens):
+            try:
+                quando = datetime.fromisoformat(
+                    item.procedencia.quando.replace("Z", "+00:00"))
+                tipo = TipoDeAsset(item.tipo)
+                origem_asset = Origem(item.origem)
+            except ValueError as exc:
+                raise ValueError(
+                    f"asset {item.nome!r}: contrato inválido — {exc}") from exc
+            medida = medir_imagem.medir(dados)
+            asset = Asset(
+                tipo=tipo,
+                procedencia=Procedencia(
+                    motor=item.procedencia.motor,
+                    versao_do_motor=item.procedencia.versao_do_motor,
+                    insumo=item.procedencia.insumo,
+                    quando=quando,
+                    pedido=item.procedencia.pedido,
+                    custo_usd=item.procedencia.custo_usd,
+                ),
+                conteudo_hash=item.conteudo_hash,
+                origem=origem_asset,
+                bytes_totais=medida.bytes_totais,
+                mime=medida.mime,
+                largura=medida.largura,
+                altura=medida.altura,
+                rotulo=item.nome,
+            )
+            assets.append(asset)
+            conteudo_por_identidade[asset.identidade] = dados
+            pecas_para_o_portao.append(
+                (asset.identidade, dados, item.nome, medida.mime, origem_asset))
+
+        # ⚠️ O PORTÃO DE POLÍTICA VEM ANTES DA PONTE E ANTES DA REDE — o mesmo
+        # de Display e Demand Gen, no mesmo lugar do fluxo. Ele levanta
+        # `PoliticaCriativaRecusou` na primeira recusa.
+        recibos = _recibos_de_politica_das_pecas(
+            pecas_para_o_portao, body=body, nicho=nicho, canal="PERFORMANCE_MAX")
+        entrega_ = criativo_ponte.imagens_de_pmax(
+            LoteDeAssets(canal="PERFORMANCE_MAX", assets=tuple(assets),
+                         intencao=nicho),
+            conteudo_por_identidade,
+            **({"exigencia": exigencia} if exigencia is not None else {}),
+        )
+        return entrega_, list(recibos)
+
+    entrega, recibos_de_politica = _aprovar_lote(body.assets_pmax)
     if not entrega.ok or entrega.imagens is None:
         raise ValueError(
             "assets PMax recusados pela fronteira do Estúdio:\n"
@@ -3158,6 +3360,24 @@ def _montar_plano_pmax(
         negativas=tuple(entrada.negativas),
         nome_do_asset_group=entrada.nome_do_asset_group,
     )
+    # A parte v25.2 sobre a MESMA base (com o recibo lido no servidor). As
+    # imagens de cada asset group adicional passam pelo MESMO `_aprovar_lote`
+    # do grupo 0 — e os recibos delas entram no `supply_sha256` do plano.
+    if getattr(body, "configuracao_pmax", None) is not None:
+        def _imagens_do_grupo(valor: Any, caminho: str):
+            itens = [AssetDemandGenEntrada.model_validate(x) for x in valor]
+            entrega_g, recibos_g = _aprovar_lote(
+                itens, cfgcan.exigencia_de_imagens_pmax_grupo_adicional(
+                    entrada.brand_guidelines_enabled))
+            if not entrega_g.ok or entrega_g.imagens is None:
+                raise cfgcan.ErroDeForma(
+                    caminho, "assets recusados pela fronteira do Estúdio: "
+                    + entrega_g.resumo())
+            recibos_de_politica.extend(recibos_g)
+            return entrega_g.imagens
+
+        configuracao = cfgcan.de_pmax(body.configuracao_pmax, configuracao,
+                                      imagens_do_grupo=_imagens_do_grupo)
     brief = Brief(
         nicho=nicho,
         slug=origem.slug or "",
@@ -3930,11 +4150,17 @@ def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
     conjunto = None
     criterios_do_conjunto: tuple = ()
     selecao_aprovada: dict = {}
+    trocas_de_match: tuple = ()
     if canal_resolvido == "SEARCH":
         conjunto, criterios_do_conjunto = portao_pago.criterios_do_cluster(
             getattr(linhas, "cluster", None)
         )
         selecao_aprovada = portao_pago.keywords_por_grupo(conjunto)
+        # A correspondência que o operador escolheu na tela, SÓ sobre keyword
+        # aprovada e sem mudar a cardinalidade. A lista trocada é a que vira
+        # critério E a que a pós-condição confere logo abaixo.
+        criterios_do_conjunto, trocas_de_match = cfgcan.aplicar_match_por_keyword(
+            criterios_do_conjunto, getattr(body, "match_por_keyword", None))
     # ⚠️ `grupos` são os TIPOS; a seleção keyword a keyword viaja em
     # `keywords_por_grupo`. Até 01/09/2026 esta linha passava um `dict` para
     # `grupos`, que é `tuple[str, ...]` — o dataclass aceitava sem reclamar,
@@ -3985,7 +4211,7 @@ def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
         prefixo_nome=prefixo_nome,
         carimbo_nome=body.carimbo_nome,
         conversao=body.conversao,
-        estrategia_lance=body.estrategia_lance,
+        estrategia_lance=_estrategia_do_brief(body),
         tcpa=body.tcpa,
         # A doutrina P7 é do sistema, não do chamador: um conjunto, sempre.
         # A sub-intenção continua servindo à triagem no cockpit.
@@ -4016,14 +4242,77 @@ def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
     if canal_resolvido == "SEARCH":
         portao_pago.conferir_positivas_do_brief(
             plano.brief, criterios_do_conjunto, grupo_colapsado=True)
+    # A configuração de Search/Display vai ao construtor como OPÇÃO (o perfil
+    # decide); a de Demand Gen e PMax já viaja dentro do brief (V25). Ausente,
+    # o kwarg nem é passado — o preparo de antes, literalmente.
+    opcoes_do_canal: Dict[str, Any] = {}
+    if canal_resolvido == "SEARCH" and getattr(body, "configuracao_search", None) is not None:
+        opcoes_do_canal["configuracao"] = cfgcan.de_search(body.configuracao_search)
+    elif canal_resolvido == "DISPLAY" and getattr(body, "configuracao_display", None) is not None:
+        opcoes_do_canal["configuracao"] = cfgcan.de_display(body.configuracao_display)
+    plano = _com_avisos_da_configuracao(pp, plano, body, canal_resolvido,
+                                        trocas_de_match)
     # `cid`/`mid` e não `body.*`: são os ids já normalizados pelo portão. O
     # id colado do painel do Google vem `801-785-1692`, com hífen.
     preparo = sb.preparar(
         cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
-        ai_max=body.ai_max,
+        ai_max=body.ai_max, **opcoes_do_canal,
     )
     return PlanoPreparado(plano=plano, preparo=preparo, linhas=linhas,
                           supply_sha256=supply)
+
+
+def _estrategia_efetiva(body: Any) -> str:
+    """A estratégia que vai ao Google — a do portão de mensuração e do registro.
+
+    Sem configuração de canal, é `estrategia_lance` como sempre foi (texto
+    idêntico ao de antes). Com `configuracao_<canal>.lance`, é a dela.
+    """
+    return cfgcan.estrategia_efetiva(getattr(body, "canal", None),
+                                     getattr(body, "estrategia_lance", None),
+                                     _corpo_cru(body))
+
+
+def _estrategia_do_brief(body: Any) -> str:
+    """A estratégia que o BRIEF carrega quando a configuração declara o lance.
+
+    `estrategia_lance` no default (MANUAL_CPC) com `configuracao_<canal>.lance`
+    declarado: o brief passa a carregar a estratégia da configuração. Sem isso,
+    a doutrina do `Brief` (BROAD só com lance por conversão) julgaria MANUAL_CPC
+    enquanto o payload sai em MaxConv. Declarado diferente nos dois lugares, o
+    valor do corpo fica — e o builder recusa a divergência com o nome dos dois.
+    """
+    bruta = str(getattr(body, "estrategia_lance", "") or "MANUAL_CPC").strip().upper()
+    declarada = cfgcan.lance_da_configuracao(getattr(body, "canal", None),
+                                             _corpo_cru(body))
+    if declarada and bruta == "MANUAL_CPC":
+        return declarada
+    return getattr(body, "estrategia_lance", None) or "MANUAL_CPC"
+
+
+def _com_avisos_da_configuracao(pp: Any, plano: Any, body: Any, canal: str,
+                                trocas_de_match: tuple) -> Any:
+    """Os dois fatos que a configuração introduz e que o operador precisa VER."""
+    extra: list = []
+    videos = cfgcan.tem_videos_sem_portao(canal, _corpo_cru(body))
+    if videos:
+        extra.append(pp.Aviso(
+            "VIDEO_SEM_PORTAO_DE_POLITICA", "atencao",
+            "Vídeo do YouTube fora do portão de política",
+            f"{len(videos)} vídeo(s) entram por id público ({', '.join(videos)}). "
+            "O portão criativo julga bytes, e o servidor não tem os bytes de um "
+            "vídeo do YouTube: não há hash, inspeção nem recibo. Os ids estão na "
+            "impressão aprovável — trocar um vídeo invalida a aprovação."))
+    if trocas_de_match:
+        extra.append(pp.Aviso(
+            "MATCH_TYPE_ESCOLHIDO_NA_TELA", "atencao",
+            "Correspondência trocada em keyword aprovada",
+            "; ".join(f"{t.texto!r}: {t.de} → {t.para}" for t in trocas_de_match)
+            + ". O conjunto aprovado continua sendo as mesmas keywords; a "
+              "correspondência escolhida entra na impressão do plano."))
+    if not extra:
+        return plano
+    return dataclasses.replace(plano, avisos=tuple(plano.avisos) + tuple(extra))
 
 
 @router.post("/provar")
@@ -4118,6 +4407,9 @@ async def provar(
                 ),
             )
 
+    # ⚠️ A FORMA da configuração de canal, antes do escopo e de qualquer rede:
+    # 422 com o caminho do campo, julgado pelo dataclass do próprio motor.
+    _configuracao_ou_422(body)
     cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     # A primeira prova cria; uma repetição ou a escrita reutiliza. O valor entra
     # no plano aprovável e impede que um carimbo novo altere o grafo entre as
@@ -4544,7 +4836,9 @@ async def _prontidao_do_lancamento(cid: str, mid: str, body: Any, *,
         # seria exatamente a mentira que o módulo existe para impedir.
         data_manager_operante=False,
         coleta_pos_criacao_provada=False,
-        estrategia_lance=str(getattr(body, "estrategia_lance", "MANUAL_CPC")),
+        # ⚠️ A estratégia EFETIVA: com `configuracao_<canal>.lance` declarado,
+        # é ela que vai ao Google, e o portão precisa julgar a mesma.
+        estrategia_lance=_estrategia_efetiva(body),
     )
 
 
@@ -4735,6 +5029,7 @@ async def subir(
             },
         ) from exc
 
+    _configuracao_ou_422(body)
     cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     chave_intencao = _impressao_aprovavel(body, cid=cid, mid=mid)
     try:
@@ -5000,7 +5295,7 @@ async def subir(
         # de `conversion_action` disputar com as três que decidem o efetivo.
         metas_da_conta=None,
         plano_de_mensuracao=plano_de_mensuracao,
-        estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
+        estrategia_lance=_estrategia_efetiva(body),
     )
     try:
         # ⚠️ CANAL E INSTANTE DA LEITURA VIAJAM — e o comentário anterior dava
@@ -5023,7 +5318,7 @@ async def subir(
         # Sem `lido_em`, a leitura das cinco GAQL entraria sem procedência
         # temporal.
         veredito_da_mensuracao = pr.exigir_para_criacao(
-            estrategia_lance=str(body.estrategia_lance or "MANUAL_CPC"),
+            estrategia_lance=_estrategia_efetiva(body),
             prontidao=portoes_do_lance,
             canal=preparo.canal,
             lido_em=lido_em_do_plano)
@@ -5484,6 +5779,9 @@ class ReconciliarEntrada(BaseModel):
     #: verificação e o ledger vence. O cliente não escolhe qual semântica de
     #: read-back se aplica ao lançamento dele.
     canal: Optional[str] = None
+    #: PMax com `configuracao_pmax.grupos_adicionais`: quantos asset groups o
+    #: plano criou (1 + adicionais). Ausente = o mínimo de sempre (1).
+    asset_groups_esperados: Optional[int] = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def _exige_um_criterio(self):
@@ -5902,7 +6200,9 @@ async def reconciliar_lancamento(
                 # quatro canais. Os filhos têm perfil próprio por canal, dentro
                 # de `releitura_por_canal`, porque Search os cria ENABLED.
                 esperado={"status": rel.NASCE_PAUSADO,
-                          "canal": canal_do_item})
+                          "canal": canal_do_item,
+                          **({rel.ESPERADO_ASSET_GROUPS: body.asset_groups_esperados}
+                             if body.asset_groups_esperados else {})})
             releitura = vrel.resumo(vereditos)
         except Exception as exc:  # noqa: BLE001
             # ⚠️ A falha do read-back NÃO derruba a reconciliação: o recibo
@@ -6762,7 +7062,7 @@ async def _registrar_campanha(
             # Canal resolvido pelo MESMO registry que construiu e provou o
             # payload. Nunca grave o texto cru recebido no request.
             "advertising_channel_type": canal,
-            "bidding_strategy": getattr(body, "estrategia_lance", "MANUAL_CPC"),
+            "bidding_strategy": _estrategia_efetiva(body),
             "budget_amount": body.budget_diario,
             "target_value": body.cpc_inicial,
             # É ESTA coluna que fecha a junta FUNIL→CAMPANHA. Sem ela ninguém
@@ -6986,6 +7286,23 @@ async def contrato_dos_canais(
             "por_que_sem_leitura_viva": ccan.SEM_LEITURA_VIVA,
         },
     }
+
+
+@router.get("/canais/esquema")
+async def esquema_das_configuracoes_de_canal() -> Any:
+    """O JSON Schema da configuração de cada canal — o formulário da tela nasce daqui.
+
+    ⚠️ DECLARADA ANTES de `/canais/{canal}` de propósito: o FastAPI casa rotas
+    na ordem de registro, e depois dela `esquema` seria lido como nome de
+    canal (404 "canal desconhecido").
+
+    Derivado dos dataclasses do motor (`volc_ads/campanha/*_config.py`) e do
+    vocabulário que cada módulo declara — enums, limites e defaults saem do
+    MESMO lugar que valida o pedido em `/provar` e `/subir`. Não fala com o
+    Google nem com o banco. Contrato: `docs/contracts/GADS-CRIACAO-CANAIS-v1.md`.
+    """
+    return cfgcan.esquemas(
+        esquema_de_asset=_AssetDemandGenEstrito.model_json_schema())
 
 
 @router.get("/canais/{canal}")

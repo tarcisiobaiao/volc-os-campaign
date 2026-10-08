@@ -46,6 +46,7 @@ from .brief import (
 from .demand_gen_config import (
     AUTOMACOES_POR_FORMATO,
     ESTRATEGIAS_DEPENDENTES_DE_CONVERSAO,
+    ESTRATEGIAS_PELO_BRIEF,
     LIMITES_DE_TEXTO,
     ConfiguracaoDemandGenV25,
     mesmo_host,
@@ -748,7 +749,11 @@ def _checar_lance(brief: Brief, r: validacao.Resultado) -> None:
     v25 = _v25(brief)
     lance = v25.lance if v25 is not None else None
     if lance is None:
-        if brief.estrategia_lance not in LANCES_PERMITIDOS:
+        # ⚠️ `ESTRATEGIAS_PELO_BRIEF`, e não `LANCES_PERMITIDOS`: sem
+        # `LanceDemandGen` o payload é sempre MaxConv vazio (`comum`), então
+        # aceitar aqui TARGET_SPEND/TARGET_CPC/MaxConvValue pelo brief seria
+        # subir outra estratégia sem ninguém saber.
+        if brief.estrategia_lance not in ESTRATEGIAS_PELO_BRIEF:
             r.erro(
                 "estrategia_lance",
                 brief.estrategia_lance,
