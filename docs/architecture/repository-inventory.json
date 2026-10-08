@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T07:47:53-03:00",
+  "generated_at": "2026-10-08T09:27:35-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 809,
@@ -1257,7 +1257,7 @@
       "tracked": true,
       "bytes": 23784,
       "lines": 312,
-      "sha256": "201923ba5f68b2d23c3c4e16f85bf3bf969e71dadbadfcbb7a6ae661aa07085b",
+      "sha256": "2e9b37baab5c225104dc57277e9902c40aa7a6ea94f91d83293b1d749c133440",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7199,7 +7199,7 @@
       "lines": 101,
       "sha256": "79119459eeaa1058e9e61941119bf9c32b8f792cb2be5b30ef2e99fd073a2642",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {
@@ -7211,7 +7211,7 @@
       "lines": 137,
       "sha256": "b76a5cf091a9c7e60ce36c9e9dce95e717b1ad2a0ed2e33b2e2c37ff2c5fd57e",
       "graph_nodes": 3,
-      "graph_degree": 8,
+      "graph_degree": 7,
       "sql_risk": "high"
     },
     {
@@ -7391,7 +7391,7 @@
       "lines": 269,
       "sha256": "42df7bc0e9adf143231847157943c8057635d7be17f6149c032f0cc839a18df5",
       "graph_nodes": 3,
-      "graph_degree": 6,
+      "graph_degree": 5,
       "sql_risk": "high"
     },
     {
@@ -7403,7 +7403,7 @@
       "lines": 239,
       "sha256": "8dba7a8bfdb08e4db45a522a14da15ed4679ff1dddfc6c296ab50801753dd3d0",
       "graph_nodes": 2,
-      "graph_degree": 2,
+      "graph_degree": 3,
       "sql_risk": "high"
     },
     {

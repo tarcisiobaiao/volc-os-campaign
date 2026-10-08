@@ -1351,6 +1351,11 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         # A identidade/divulgação que o TEMA renderiza. Declaração, não
         # observação — ver `SiteConfig.rodape_institucional`.
         "rodape_institucional": deps.settings.site.rodape_institucional,
+        "rodape_institucional_persistente": deps.settings.site.rodape_institucional_persistente,
+        "copy_rapida": perfil_rapido(deps),
+        "copy_lp_hrefs": [resolve_route(r, domain=deps.settings.site.domain,
+                                        post_type=deps.settings.site.post_type)
+                          for r in page.routes if r.kind == "funnel"],
         "facts": facts,
         # O rótulo DECLARADO, canonizado e com a escala binária já traduzida
         # (ver `engajamento_declarado`). Passar `page.engajamento` cru era o que
@@ -1691,6 +1696,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
     )
     content = normalize_gutenberg(
         text, ad_paragraph_anchors=deps.settings.ads.paragraph_anchors)
+    if perfil_rapido(deps):
+        from funnelforge.pipeline.copy_contract import clean_body_notice, footer_discloses
+        content = clean_body_notice(content, footer=footer_discloses(route_ctx))
     if v2:
         # A normalização deixa de ser reescrita silenciosa: o que ela mudou fica
         # registrado no estado (e o revisor lê a versão normalizada).
@@ -1833,6 +1841,7 @@ def _issues_da_pagina(state: RunState, page: Page, deps: Any, doc: Any) -> list[
     revalidação depois dos patches."""
     ctx = _write_ctx(state, page, deps)
     ctx["allow_sanitized_widget_script"] = True
+    ctx["final_identity"] = True
     ctx["editorial_v2"] = True
     issues: list[Issue] = []
     if doc.formato == "lp_json":
@@ -2661,7 +2670,7 @@ def _iter_widgets(nodes: list) -> list:
 
 def _preview_html(
     page: Page, elementor: list, decision: IndexDecision | None = None,
-    head_extra: str = "",
+    head_extra: str = "", copy_rapida: bool = False, footer: str = "",
 ) -> str:
     """Minimal HTML wrapper rendering the Elementor content for local
     visual review (not a pixel-accurate Elementor render, just enough to
@@ -2672,6 +2681,14 @@ def _preview_html(
     hygiene the real publish step will emit (noindex,follow + self-canonical
     -- see IndexDecision/index_decision_for). `head_extra` is appended
     verbatim after that (e.g. the vignette frequency-cap declaration)."""
+    if copy_rapida:
+        from funnelforge.adapters.preview import document, elementor_body
+        body, css = elementor_body(elementor)
+        head = head_extra
+        if decision:
+            head += (f'<meta name="robots" content="{decision.robots}">'
+                     f'<link rel="canonical" href="{decision.canonical}">')
+        return document(page.h1_title, body, css=css, head=head, footer=footer)
     parts: list[str] = []
     for container in [{"elements": _iter_widgets(elementor)}]:
         for el in container.get("elements", []):
@@ -2711,6 +2728,13 @@ def _preview_html(
         '<body style="max-width:720px;margin:40px auto;font-family:sans-serif;'
         f'line-height:1.5">\n{body}\n</body></html>'
     )
+
+
+def _footer_disclosure(deps: Any) -> bool:
+    from funnelforge.pipeline.copy_contract import footer_discloses
+    return footer_discloses({
+        "rodape_institucional": deps.settings.site.rodape_institucional,
+        "rodape_institucional_persistente": deps.settings.site.rodape_institucional_persistente})
 
 
 def step_build(state: RunState, page: Page, deps: Any) -> None:
@@ -2785,7 +2809,9 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
         elementor, page_settings = render_lp(
             load_lp_template(), content_obj, funnel_hrefs=hrefs,
             hero_image_url=image_url, id_seed=state.run_id,
-            site_domain=deps.settings.site.domain)
+            site_domain=deps.settings.site.domain,
+            copy_rapida=perfil_rapido(deps),
+            footer_disclosure=_footer_disclosure(deps))
         if _pagina_v2(state, page):
             # O que o template faz com o texto aprovado fica REGISTRADO (B5).
             _registrar_normalizacao(state, page.page_number, {
@@ -2800,7 +2826,9 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
         head = vignette_meta(manifest.vignette)
         (run_dir / "p1.head.html").write_text(head, encoding="utf-8")
         (run_dir / "p1.preview.html").write_text(
-            _preview_html(page, elementor, decision=decision, head_extra=head),
+            _preview_html(page, elementor, decision=decision, head_extra=head,
+                          copy_rapida=perfil_rapido(deps),
+                          footer=deps.settings.site.rodape_institucional if _footer_disclosure(deps) else ""),
             encoding="utf-8",
         )
         (run_dir / f"p{page.page_number}.{page.slug}.lp_content.json").write_text(
@@ -3328,8 +3356,12 @@ _FINAL_CONTENT_VALIDATORS: tuple[str, ...] = (
 def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) -> list[Issue]:
     ctx = _write_ctx(state, page, deps)
     ctx["allow_sanitized_widget_script"] = True
+    ctx["final_identity"] = True
     issues = run_validators(list(_FINAL_CONTENT_VALIDATORS), content, ctx)
     issues.extend(html_issues(content))
+    if perfil_rapido(deps):
+        from funnelforge.pipeline.copy_contract import disclosure_issues
+        issues.extend(disclosure_issues(content, ctx))
 
     # ⚠️ O WIDGET DEIXOU DE SER CONDIÇÃO DE PUBLICAÇÃO.
     #
@@ -3489,7 +3521,8 @@ def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
     try:
         v2 = _pagina_v2(state, page)
         content = json.loads(state.drafts[page.page_number].content)
-        issues = validate_lp_content(content)
+        issues = run_validators(["lp_json_contract"], json.dumps(content, ensure_ascii=False),
+                                _write_ctx(state, page, deps))
         if v2:
             issues = separar_para_o_revisor(issues)[0]
         if issues:
@@ -3505,10 +3538,15 @@ def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
         expected, settings = render_lp(
             load_lp_template(), content, funnel_hrefs=hrefs,
             hero_image_url=state.images.get(page.page_number, ""),
-            id_seed=state.run_id, site_domain=deps.settings.site.domain)
+            id_seed=state.run_id, site_domain=deps.settings.site.domain,
+            copy_rapida=perfil_rapido(deps),
+            footer_disclosure=_footer_disclosure(deps))
         run_dir = deps.runner.runs_dir / state.run_id
         actual = json.loads((run_dir / "p1.elementor.json").read_text(encoding="utf-8"))
         actual_settings = json.loads((run_dir / "p1.page_settings.json").read_text(encoding="utf-8"))
+        from funnelforge.pipeline.copy_contract import disclosure_issues
+        issues.extend(disclosure_issues(json.dumps(actual, ensure_ascii=False),
+                                        _write_ctx(state, page, deps)))
         if actual != expected or actual_settings != settings:
             issues.append(Issue(code="lp_artifact_mismatch",
                                 message="LP difere do template editorial validado; refaça o build."))
@@ -3978,8 +4016,12 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
             # Publish-time decorations (not in the draft that uniqueness compares):
             # move the compliance aviso to a discreet footnote at the end, then drop
             # the mid-content image after the first heading.
-            content = (notice_html(deps.settings.site.domain) + "\n"
-                       + finalize_compliance_notice(draft.content))
+            if perfil_rapido(deps):
+                from funnelforge.pipeline.copy_contract import clean_body_notice
+                content = clean_body_notice(draft.content, footer=_footer_disclosure(deps))
+            else:
+                content = (notice_html(deps.settings.site.domain) + "\n"
+                           + finalize_compliance_notice(draft.content))
             content = _insert_midcontent_image(content, media_url, alt)
             # Official-page screenshots (CARD-0005): upload each capture and embed
             # it after the paragraph that links to that official URL. Best-effort/

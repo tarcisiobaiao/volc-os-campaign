@@ -51,5 +51,12 @@ def render(name: str, **ctx) -> str:
         ctx = {**ctx, **doctrine_context()}
     text = _env.get_template(f"{name}.jinja").render(**ctx)
     if name in _PROMPTS_COM_DOUTRINA or name in _PROMPTS_COM_IDENTIDADE:
-        text = _env.get_template("editorial_identity.jinja").render() + "\n" + text
+        # O perfil rapido decide no proprio Jinja se o aviso deve ser escrito.
+        # Nunca injete um placeholder textual: modelos tendem a copia-lo para
+        # o HTML e um marcador entre colchetes parece shortcode ao gate.
+        identity = "editorial_identity_rapida.jinja" if ctx.get("escrita_natural") \
+            else "editorial_identity.jinja"
+        text = _env.get_template(identity).render(**ctx) + "\n" + text
+    if ctx.get("escrita_natural"):
+        text += "\n" + _env.get_template("copy_rapida.jinja").render(**ctx)
     return text

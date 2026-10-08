@@ -92,8 +92,8 @@ def pacote_da_pagina(state: RunState, page: Page) -> dict:
         "titulo": page.h1_title,
         "subtitulos": (re.findall(r"<h2[^>]*>(.*?)</h2>", conteudo, flags=re.S) if not lp
                        else [s for s in dados_lp.get("section_titles", []) if isinstance(s, str)]),
-        "cta_principal": funil[0].anchor if funil else (dados_lp.get("cta_texts") or [""])[0],
-        "ctas_secundarios": [r.anchor for r in funil[1:]],
+        "cta_principal": (dados_lp.get("cta_texts") or ancoras or [""])[0],
+        "ctas_secundarios": (dados_lp.get("cta_texts") or ancoras or [])[1:],
         "seo": state.seo.get(n, {}),
         "plano_gutenberg": dict(Counter(re.findall(r"<!-- wp:([a-z0-9/-]+)", conteudo))),
         "schema": [b.get("@type") for b in (meta.get("jsonld") or []) if isinstance(b, dict)],
@@ -145,6 +145,13 @@ def prompt_da_revisao(state: RunState) -> str:
         "o funil como um todo: congruência com o anúncio e a intenção, progressão da jornada, "
         "repetição entre páginas, utilidade, fatos críticos contra o dossiê, naturalidade, CTAs, "
         "compliance e consistência entre páginas.\n\n"
+        "Audite TODOS os rótulos contra o TEXTO REAL do destino, inclusive links em prosa. "
+        "CTA deve nomear a resposta/ganho, não o formato editorial ('Ler o guia', 'Saiba mais'). "
+        "Rótulo genérico é warning acionável com sugestão concreta; promessa de executar "
+        "consulta/cálculo em página que só explica é block com prova. Se o destino não "
+        "reproduz datas ou tabela, o CTA deve dizer COMO conferir, sem prometer vê-las aqui. "
+        "Links externos identificam o canal. Não reintroduza disclaimer longo no corpo: "
+        "a identidade é garantida pelo contrato de footer/aviso curto, não pela repetição.\n\n"
         f"Intenção do funil: {jornada.get('intencao_principal', '')}\n"
         f"Promessas dos anúncios: {promessas}\n\n"
         "VEREDITO por página: 'pass', 'warning' ou 'block'. Só é BLOCK:\n"

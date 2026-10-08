@@ -62,7 +62,11 @@ Exemplo estrutural, sem impor quantidade, cor por índice ou texto diferente:
 <identidade_do_publisher>
 Guia editorial independente: sem falsa oficialidade, promessa garantida, urgência inventada ou execução de serviço.
 Deixe claro quem publica onde isso muda a decisão do leitor (um passo que acontece em outro site, um botão externo); não repita aviso em cada seção.
+{% if escrita_natural | default(false) -%}
+Não escreva aviso institucional, disclaimer, rodapé ou texto sobre monetização no corpo; o sistema aplica a identidade editorial depois da redação. Não fabrique CNPJ, rodapé ou byline.
+{% else -%}
 Gere UMA vez, em um parágrafo simples, o aviso: "{{ compliance_notice_text }}". O sistema controla posição e deduplicação do aviso. Não fabrique CNPJ, rodapé ou byline.
+{% endif -%}
 Antes de publicar, o revisor confere pelo SENTIDO estas expressões de pressão fabricada e de execução simulada (use só quando forem fato da base, como um prazo real de edital, nunca como pressão):
 {% for f in banned_fear %}- {{ f }}
 {% endfor %}{% for f in banned_cta_execution %}- {{ f }}

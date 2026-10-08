@@ -183,6 +183,8 @@ class SiteConfig(BaseModel):
     # VAZIO (o padrão) é fail-closed de propósito: um site novo, cujo rodapé
     # ninguém mediu, reprova por identidade ausente — que é a verdade.
     rodape_institucional: str = ""
+    # Só declare true quando o template do site mantiver o footer em todas as páginas.
+    rodape_institucional_persistente: bool = False
     authors: list[AuthorConfig] = []
     # PREFERENCIA de canal oficial -- nunca autorizacao. Aceita dominio
     # ("caixa.gov.br") ou o NOME do orgao/empresa como vem do `official_source`

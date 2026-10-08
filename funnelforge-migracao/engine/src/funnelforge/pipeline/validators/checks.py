@@ -184,6 +184,8 @@ def cta_style(content: str, ctx: dict) -> list[Issue]:
     # is an internal article, the button does not do what it says.  Curiosity
     # framing ("Ver como consultar no App FGTS") remains valid because the
     # click truthfully opens an explanation.
+    from funnelforge.pipeline.copy_contract import cta_issues
+    issues += cta_issues(_cta_links(content), ctx)
     site = urlparse(ctx.get("domain", "")).netloc.lower()
     for label, href in _cta_links(content):
         parsed = urlparse(href)
@@ -270,6 +272,9 @@ def compliance(content: str, ctx: dict) -> list[Issue]:
     Ver o bloco de comentário acima para o `OU` que estava aqui e por que ele
     aprovava exatamente a página que a evidência mostra reprovada.
     """
+    from funnelforge.pipeline.copy_contract import footer_discloses
+    if ctx.get("copy_rapida") and footer_discloses(ctx):
+        return []
     issues: list[Issue] = []
     if not _DIVULGACAO_DE_ANUNCIO_RE.search(content):
         issues.append(Issue(
@@ -1021,6 +1026,11 @@ def identity(content: str, ctx: dict) -> list[Issue]:
     if "licenciado pelo sated" in low:
         issues.append(Issue(code="fake_credential",
                             message="Credencial fabricada 'licenciado pelo SATED' (proibido)."))
+    if ctx.get("copy_rapida") and ctx.get("final_identity"):
+        from funnelforge.pipeline.copy_contract import SHORT_NOTICE, footer_discloses
+        if not footer_discloses(ctx) and SHORT_NOTICE not in content and ctx.get("page_type") != "LANDING PAGE":
+            issues.append(Issue(code="independent_identity_missing",
+                                message="Sem footer persistente: falta a identificação curta única."))
     return issues
 
 
@@ -1701,7 +1711,13 @@ def lp_json_contract(content: str, ctx: dict) -> list[Issue]:
     if not isinstance(parsed, dict):
         return [Issue(code="parse_error",
                       message="Saída da LP não é um objeto JSON.")]
-    return validate_lp_content(parsed)
+    issues = validate_lp_content(parsed)
+    if ctx.get("copy_rapida"):
+        from funnelforge.pipeline.copy_contract import cta_issues
+        hrefs = ctx.get("copy_lp_hrefs") or []
+        issues += cta_issues([(label, hrefs[min(i, len(hrefs)-1)] if hrefs else "")
+                             for i, label in enumerate(parsed.get("cta_texts") or [])], ctx)
+    return issues
 
 
 def _normalized_claim(value: str) -> str:

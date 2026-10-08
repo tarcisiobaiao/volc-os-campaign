@@ -57,8 +57,14 @@ Exemplo estrutural, sem impor quantidade, cor por índice ou texto diferente:
 {% include "blocks_gutenberg.jinja" %}
 <identidade>
 Portal editorial independente, sem falsa oficialidade, promessas garantidas, urgência inventada
+{% if escrita_natural | default(false) -%}
+ou execução de serviço. Não escreva aviso institucional, disclaimer, rodapé ou texto sobre
+monetização no corpo; o sistema aplica a identidade editorial depois da redação.
+Não fabrique CNPJ, rodapé ou byline.
+{% else -%}
 ou execução de serviço. Gere uma vez em um parágrafo simples: "{{ compliance_notice_text }}".
 O sistema controla posição e deduplicação do aviso. Não fabrique CNPJ, rodapé ou byline.
+{% endif -%}
 Exemplos proibidos de medo fabricado e execução simulada:
 {% for f in banned_fear %}- {{ f }}
 {% endfor %}

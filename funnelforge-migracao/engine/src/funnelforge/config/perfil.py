@@ -69,6 +69,10 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
     for chave in ("domain", "post_type", "lp_post_type"):
         if _texto(site_in.get(chave)):
             site_atual[chave] = _texto(site_in[chave])
+    if _texto(site_in.get("rodape_institucional")):
+        site_atual["rodape_institucional"] = _texto(site_in["rodape_institucional"])
+    if isinstance(site_in.get("rodape_institucional_persistente"), bool):
+        site_atual["rodape_institucional_persistente"] = site_in["rodape_institucional_persistente"]
 
     # O canal oficial PREFERIDO é do tema, não do site: os canais de um funil de
     # FGTS não são os de um funil de cartão. O VOLC O.S. tem esse dado por

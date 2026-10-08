@@ -341,9 +341,73 @@ def _href_for_button(funnel_hrefs: list[str], button_ordinal: int) -> str:
     return funnel_hrefs[-1]
 
 
+def _container_por_breakpoint(content: list, chave: str, valor: str) -> dict | None:
+    """Localiza o heroi por semantica responsiva, nunca por posicao ou id exportado."""
+    encontrado = None
+
+    def walk(node: object) -> None:
+        nonlocal encontrado
+        if encontrado is not None:
+            return
+        if isinstance(node, dict):
+            if node.get("elType") == "container" and (node.get("settings") or {}).get(chave) == valor:
+                encontrado = node
+                return
+            for child in node.get("elements", []) or []:
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(content)
+    return encontrado
+
+
+def _aplicar_visual_rapido(content: list, *, hero_image_url: str) -> None:
+    """Corrige defeitos medidos sem depender dos ids ou indices do Elementor.
+
+    O template possui dois herois mutuamente exclusivos por breakpoint. Cada
+    viewport precisa de um H1 visivel; por isso os dois titulos recebem H1, mas
+    nunca aparecem juntos. Se a estrutura responsiva mudar, falhamos em vez de
+    estilizar silenciosamente o container errado.
+    """
+    mobile = _container_por_breakpoint(content, "hide_desktop", "hidden-desktop")
+    desktop = _container_por_breakpoint(content, "hide_mobile", "hidden-mobile")
+    if mobile is None or desktop is None:
+        raise ValueError("Template LP sem os herois responsivos esperados")
+
+    for widget in _fillable(content):
+        settings = widget.setdefault("settings", {})
+        if widget.get("widgetType") == "heading":
+            settings["header_size"] = "h2"
+        if widget.get("widgetType") == "button" and settings.get("background_color") in (
+                "#F9B200", "#3BD404", "#48952C"):
+            settings["button_text_color"] = "#171717"
+
+    for hero in (mobile, desktop):
+        headings = [w for w in _fillable([hero]) if w.get("widgetType") == "heading"]
+        if len(headings) < 2:
+            raise ValueError("Hero LP sem titulo e subtitulo esperados")
+        headings[0].setdefault("settings", {})["header_size"] = "h1"
+        headings[1].setdefault("settings", {})["header_size"] = "p"
+
+    mobile["settings"]["background_color"] = "#C9003B"
+    if not hero_image_url:
+        mobile["settings"]["min_height_mobile"] = {"unit": "px", "size": 0}
+        mobile["settings"]["flex_justify_content_mobile"] = "flex-start"
+        mobile["settings"]["padding_mobile"] = {
+            "unit": "px", "top": "24", "right": "16", "bottom": "24", "left": "16"}
+        for node in [mobile, *mobile.get("elements", []), *_fillable([mobile])]:
+            for key in ("margin_mobile", "_margin_mobile"):
+                if key in node.get("settings", {}):
+                    node["settings"][key] = {
+                        "unit": "px", "top": "0", "right": "0", "bottom": "0", "left": "0"}
+
+
 def render_lp(
     template: dict, content: dict, funnel_hrefs: list[str],
     hero_image_url: str = "", id_seed: str = "", site_domain: str = "",
+    copy_rapida: bool = False, footer_disclosure: bool = False,
 ) -> tuple[list, dict]:
     """Return `(elementor_content_array, page_settings)` for the LP.
 
@@ -393,14 +457,22 @@ def render_lp(
 
     _fix_image_and_hrefs(cont, hero_image_url)
     _drop_conflicting_global_typography(cont)
+    if copy_rapida:
+        _aplicar_visual_rapido(cont, hero_image_url=hero_image_url)
     # Canvas can omit theme chrome. Identity belongs to the page, before both heroes.
-    cont.insert(0, {
-        "id": "editorial", "elType": "container",
-        "settings": {"content_width": "full", "background_background": "classic",
+    if copy_rapida:
+        from funnelforge.pipeline.copy_contract import short_notice_html
+        identity_html = "" if footer_disclosure else short_notice_html(site_domain)
+    else:
+        identity_html = notice_html(site_domain)
+    if identity_html:
+        cont.insert(0, {
+            "id": "editorial", "elType": "container",
+            "settings": {"content_width": "full", "background_background": "classic",
                      "background_color": "#ffffff"},
-        "elements": [{"id": "notice", "elType": "widget", "widgetType": "html",
-                      "settings": {"html": notice_html(site_domain)}, "elements": []}],
-    })
+            "elements": [{"id": "notice", "elType": "widget", "widgetType": "html",
+                      "settings": {"html": identity_html}, "elements": []}],
+        })
     _regen_ids(cont, [start])
     return cont, tpl.get("page_settings", {})
 
