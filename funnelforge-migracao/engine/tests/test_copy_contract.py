@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pytest
+from types import SimpleNamespace
 
 from funnelforge.pipeline.copy_contract import (
     SHORT_NOTICE, clean_body_notice, cta_issues, disclosure_issues, footer_discloses,
@@ -74,6 +75,19 @@ def test_aviso_longo_removido_sem_apagar_alertas_contextuais():
     assert not disclosure_issues(short,{**CTX,'rodape_institucional_persistente':False})
     assert disclosure_issues(short+short,CTX)[0].code=='duplicate_disclosure'
     assert disclosure_issues(COMPLIANCE_NOTICE_TEXT,CTX)[0].code=='long_body_disclaimer'
+
+
+def test_pre_portao_rapido_nao_reintroduz_disclaimer_que_o_publish_remove():
+    from funnelforge.pipeline.steps import _conteudo_para_portao_de_publicacao
+    deps=SimpleNamespace(settings=SimpleNamespace(
+        run=SimpleNamespace(perfil='rapido'),
+        site=SimpleNamespace(
+            rodape_institucional_persistente=True,
+            rodape_institucional='Conteúdo informativo sem vínculo. Financiado por anúncios.')))
+    body='<!-- wp:paragraph --><p>Texto útil.</p><!-- /wp:paragraph -->'
+    pronto=_conteudo_para_portao_de_publicacao(body,deps)
+    assert COMPLIANCE_NOTICE_TEXT not in pronto
+    assert disclosure_issues(pronto,CTX)==[]
 
 
 def test_renderer_lp_disclosure_curto_ou_footer_sem_mudar_v1():

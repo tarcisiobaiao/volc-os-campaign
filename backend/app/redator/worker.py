@@ -349,11 +349,19 @@ def _desfecho_controlado(final: Dict[str, Any]) -> tuple[str, Optional[str]]:
     """
     falhas = list(final.get("etapas_falhadas") or [])
     geradas = int(final.get("paginas_geradas") or 0)
+    planejadas = int(final.get("paginas_planejadas") or 0)
+    publicadas = len(final.get("paginas_publicadas") or [])
     if falhas and geradas == 0:
         return (
             "failed",
             "O motor encerrou com todas as páginas bloqueadas: "
             + ", ".join(falhas[:8]),
+        )
+    if falhas and planejadas and publicadas < planejadas:
+        return (
+            "failed",
+            f"O motor gerou {geradas}/{planejadas}, mas gravou apenas "
+            f"{publicadas}/{planejadas} rascunhos; falhas: " + ", ".join(falhas[:8]),
         )
     return "done", None
 

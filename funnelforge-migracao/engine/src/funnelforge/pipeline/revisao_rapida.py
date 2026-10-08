@@ -189,9 +189,32 @@ def _substituir(draft: Any, original: str, novo: str) -> bool:
             return no.replace(original, novo) if isinstance(no, str) else no
         draft.content = json.dumps(trocar(dados), ensure_ascii=False)
         return True
-    if draft.content.count(original) != 1:
+    if draft.content.count(original) == 1:
+        draft.content = draft.content.replace(original, novo)
+        return True
+
+    # O texto entregue ao revisor transforma links HTML em Markdown para que o
+    # destino fique visível: ``[rótulo](URL)``. O patch volta sobre o HTML
+    # Gutenberg, onde essa mesma frase contém <a> e, às vezes, <strong>. Para
+    # um parágrafo/list-item cujo texto visível casa por inteiro, substituímos
+    # apenas o conteúdo da folha. Não tentamos aproximação nem substring:
+    # ambiguidade continua fail-closed.
+    def visivel(inner: str) -> str:
+        inner = re.sub(
+            r'<a [^>]*href="([^"]+)"[^>]*>(.*?)</a>', r'[\2](\1)', inner,
+            flags=re.S | re.I)
+        inner = _html.unescape(re.sub(r'<[^>]+>', '', inner))
+        return " ".join(inner.split())
+
+    esperado = " ".join(original.split())
+    folhas = list(re.finditer(r'<(p|li)\b[^>]*>(.*?)</\1>', draft.content,
+                              flags=re.S | re.I))
+    candidatas = [m for m in folhas if visivel(m.group(2)) == esperado]
+    if len(candidatas) != 1:
         return False
-    draft.content = draft.content.replace(original, novo)
+    m = candidatas[0]
+    seguro = _html.escape(novo, quote=False)
+    draft.content = draft.content[:m.start(2)] + seguro + draft.content[m.end(2):]
     return True
 
 
@@ -220,7 +243,13 @@ def revisar_funil_rapido(state: RunState, deps: Any) -> dict:
         aplicados, recusados = [], []
         draft = state.drafts.get(n)
         if veredito == "block" and draft is not None:
-            for patch in r.get("patches") or []:
+            # Trechos maiores primeiro: se um parágrafo e uma frase dentro dele
+            # vierem no mesmo lote, o patch de contexto não perde o alvo porque
+            # uma substituição curta rodou antes.
+            patches = sorted((r.get("patches") or []),
+                             key=lambda p: len(str(p.get("trecho_original") or "")),
+                             reverse=True)
+            for patch in patches:
                 ok = _substituir(draft, str(patch.get("trecho_original") or ""),
                                  str(patch.get("trecho_novo") or ""))
                 (aplicados if ok else recusados).append(patch)
@@ -246,6 +275,11 @@ def revisar_funil_rapido(state: RunState, deps: Any) -> dict:
                 issues=[Issue(code="revisao_global_block",
                               message="; ".join(a.get("motivo", "") for a in r.get("achados") or []
                                                 if a.get("severidade") == "block")[:500])])
+        else:
+            # Um resume pode trazer o bloqueio da rodada anterior. Se os
+            # patches desta revisão resolveram o block, o marcador vencido não
+            # pode continuar impedindo o rascunho.
+            state.step_status.pop(f"blocked_p{n}", None)
     res.issues = [Issue(code="revisao_global_rapida", message=(
         f"{sum(1 for p in resultado['paginas'] if p['veredito'] == 'pass')} pass, "
         f"{sum(1 for p in resultado['paginas'] if p['veredito'] == 'warning')} warning, "

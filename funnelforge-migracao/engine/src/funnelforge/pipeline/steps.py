@@ -3829,9 +3829,23 @@ def _portao_de_publicacao(state: RunState, page: Page,
             carimbo=datetime.now(timezone.utc).isoformat(),
         )
     draft = state.drafts.get(page.page_number)
-    conteudo = finalize_compliance_notice(draft.content) if draft else ""
+    conteudo = _conteudo_para_portao_de_publicacao(draft.content if draft else "", deps)
     issues = _final_content_issues(state, page, deps, conteudo)
     return lp_gate.ResultadoDoPortao(pronto=not issues, issues=issues)
+
+
+def _conteudo_para_portao_de_publicacao(content: str, deps: Any) -> str:
+    """Produz exatamente a política de disclosure que o publish aplicará.
+
+    O perfil rápido remove o aviso longo quando existe footer institucional.
+    O pré-portão não pode recolocar esse mesmo aviso e reprovar um artefato que
+    o passo de publicação limparia logo depois. O perfil completo preserva o
+    comportamento histórico.
+    """
+    if perfil_rapido(deps):
+        from funnelforge.pipeline.copy_contract import clean_body_notice
+        return clean_body_notice(content, footer=_footer_disclosure(deps))
+    return finalize_compliance_notice(content)
 
 
 def _registrar_recusa_de_publicacao(state: RunState, page: Page, deps: Any,

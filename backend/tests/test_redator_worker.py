@@ -96,6 +96,18 @@ def test_cli_zero_com_pagina_gerada_preserva_desfecho_done():
     assert erro is None
 
 
+def test_run_com_builds_mas_sem_todos_os_rascunhos_nao_vira_done():
+    status, erro = worker._desfecho_controlado({
+        "paginas_planejadas": 5,
+        "paginas_geradas": 5,
+        "paginas_publicadas": [{"post_id": 2430}],
+        "etapas_falhadas": ["blocked_p2", "publish_p3"],
+    })
+
+    assert status == "failed"
+    assert erro is not None and "1/5 rascunhos" in erro
+
+
 def test_achar_run_dir_prefere_a_pasta_definitiva(tmp_path: Path):
     """O motor cria `_pending-<carimbo>` e renomeia para `<slug>-<carimbo>`.
     Se as duas existirem no momento da leitura, a definitiva é a certa."""

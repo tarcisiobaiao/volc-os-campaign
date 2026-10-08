@@ -108,6 +108,19 @@ def test_patch_de_block_aplicado_uma_vez_libera_a_pagina_e_aviso_nao_vai_para_hu
     assert sum(1 for p in passos if p == "revisao_global_rapida") == 1     # sem 2ª chamada
 
 
+def test_patch_do_texto_visivel_consegue_corrigir_link_e_negrito_no_gutenberg():
+    from types import SimpleNamespace
+    from funnelforge.pipeline.revisao_rapida import _substituir
+    draft=SimpleNamespace(format='gutenberg', content=(
+        '<!-- wp:paragraph --><p>Para consultar, acesse a '
+        '<a href="https://oficial.example/servico">página oficial</a>.</p>'
+        '<!-- /wp:paragraph -->'))
+    original='Para consultar, acesse a [página oficial](https://oficial.example/servico).'
+    assert _substituir(draft, original, 'Procure o órgão responsável pelo nome.')
+    assert 'Procure o órgão responsável pelo nome.' in draft.content
+    assert 'https://oficial.example/servico' not in draft.content
+
+
 def test_no_perfil_rapido_lacuna_de_evidencia_nao_manda_pagina_para_humano(tmp_path, monkeypatch):
     from tests.test_dossie_factual import RENDA
     congelar_data(monkeypatch)
