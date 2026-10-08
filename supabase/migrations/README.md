@@ -2,6 +2,39 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Google Ads: v12_03, v10_02 e v12_04 — 08/10/2026
+
+Aplicadas e relidas no Supabase oficial (`database.agenciavolc.com.br`) pelo
+roteiro `scripts/aplicar-migrations-gads-20261008.sh`, sob autorização do
+operador. A comparação objeto a objeto do repo contra o banco vivo achou as três
+AUSENTES (v10_02 0/40 objetos, v12_04 0/15, v12_03 com o CHECK antigo).
+
+| migration | SHA-256 |
+|---|---|
+| `v12_03_pmax_observability_ledger.sql` | `f31dd1daf921de5c172f4a7d383476598c464181c4020a18f2d9d7289d6769c6` |
+| `v10_02_autogestao.sql` | `124eac489c9d3bb88eb6c79fed0b3c2a8e7256064279954b2023144e073e0846` |
+| `v12_04_gads_fato_canonico_dia.sql` | `3f40d05bb28f6019b8dbc1bb9bee88a53ce9cb471d8022e9d884b24c5b29d864` |
+
+Backup antes: `/root/backups/pre-gads-migrations-20261008-153257.dump` (2,5 MB,
+`-n public`). Postflight: CHECK com as seis famílias PMax; 9 tabelas de
+autogestão; `google_ads_campanha_dia`, `trafego_coleta_execucao` e a view de
+saúde; as RPCs `volc_registrar_gads_campanha_dia` e
+`volc_gads_projetar_daily_compat`; zero linhas novas; RLS forçada sem policy;
+PostgREST recarregado. Recibo:
+[RECEIPT-20261008-153257](../../docs/closure/gads-migrations-20261008/RECEIPT-20261008-153257.txt).
+
+Prova de comportamento antes de confiar: `scripts/provar-concorrencia-v12_04.py
+--image postgres:15-alpine` → 17/17 (precedência D0 < D-1 < backfill
+independente da ordem de commit, NULL ≠ 0, falha depois da escrita desfaz fato
+e recibo, contas distintas com o mesmo campaign_id não colidem, sem deadlock).
+Uma cópia local do schema vivo (imagem `supabase/postgres:15.8.1.085`) com as
+três aplicadas bate com produção objeto a objeto (166 tabelas e views).
+
+⚠️ O banco não tem tabela de controle de migrations; tudo foi aplicado à mão.
+Continuam AUSENTES no vivo, fora do escopo Google: `v8_03_users_rls_policies`,
+`v8_05_users_safe_view`, `v11_03`, `v11_04`, `v14_01` e
+`20260909114432_meta_account_draft_upload_authority`.
+
 ## Vínculo de pack por rascunho e conjunto — 08/09/2026
 
 `20260908230430_meta_creative_draft_pack_selection.sql` foi **aplicada e

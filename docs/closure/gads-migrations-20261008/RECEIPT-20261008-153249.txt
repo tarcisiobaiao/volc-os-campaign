@@ -1,0 +1,7 @@
+== preflight 20261008-153249
+sha ok  v12_03_pmax_observability_ledger  f31dd1daf921de5c172f4a7d383476598c464181c4020a18f2d9d7289d6769c6
+sha ok  v10_02_autogestao  124eac489c9d3bb88eb6c79fed0b3c2a8e7256064279954b2023144e073e0846
+sha ok  v12_04_gads_fato_canonico_dia  3f40d05bb28f6019b8dbc1bb9bee88a53ce9cb471d8022e9d884b24c5b29d864
+disco   /dev/sda1        75G   41G   32G  57% /
+estado   v12_03=f v10_02=f v12_04=f
+só preflight: nada aplicado
