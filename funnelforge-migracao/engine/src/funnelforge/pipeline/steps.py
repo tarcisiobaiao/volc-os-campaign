@@ -1533,6 +1533,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             editorial=page.editorial.model_dump() if page.editorial else {},
             jornada=contexto_de_jornada(plan, page, state.dossie),
             today=date.today().strftime("%d/%m/%Y"),
+            escrita_natural=perfil_rapido(deps),
             **extras_v2,
         )
         cfg = deps.settings.steps["write_p1"]
@@ -1580,7 +1581,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             format="lp_json", content=content, word_count=_word_count(content))
         # No ramo novo a revisão roda DEPOIS do SEO (pipeline ->
         # `revisar_depois_do_seo`): o título SEO também vai à revisão.
-        if not v2 and page.editorial and res.status is not StepStatus.FAILED:
+        if (not v2 and not perfil_rapido(deps) and page.editorial
+                and res.status is not StepStatus.FAILED):
             _judge_page(state, page, content, deps)
         return
 
@@ -1671,6 +1673,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         author_credential=deps.settings.site.author_credential,
         cnpj=deps.settings.site.cnpj,
         today=date.today().strftime("%d/%m/%Y"),
+        escrita_natural=perfil_rapido(deps),
         **doctrine_context(),
         **extras_v2,
     )
@@ -1703,7 +1706,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
     )
 
     # No ramo novo a revisão roda DEPOIS do SEO (ver `revisar_depois_do_seo`).
-    if not v2:
+    # No perfil rápido o juiz por página sai: a revisão é UMA, do funil.
+    if not v2 and not perfil_rapido(deps):
         _judge_page(state, page, content, deps)
 
 
@@ -2133,9 +2137,41 @@ def _prompt_seo_v2(state: RunState, page: Page, content: str) -> str:
     )
 
 
+def perfil_rapido(deps: Any) -> bool:
+    return getattr(getattr(getattr(deps, "settings", None), "run", None), "perfil",
+                   "completo") == "rapido"
+
+
+def _cortar(texto: str, limite: int) -> str:
+    """Corta em fronteira de palavra, sem reticências inventadas."""
+    texto = " ".join(str(texto or "").split())
+    if len(texto) <= limite:
+        return texto
+    corte = texto[:limite].rsplit(" ", 1)[0].rstrip(" ,;:-—")
+    return corte or texto[:limite]
+
+
+def seo_deterministico(page: Page, draft: Any) -> dict:
+    """SEO do perfil rápido, sem modelo: o H1 que o arquiteto aprovou e a
+    resposta imediata da jornada (ou o 1º parágrafo do texto escrito)."""
+    resposta = (page.jornada.resposta_imediata if page.jornada else "") or ""
+    if not resposta and draft is not None and draft.format != "lp_json":
+        m = re.search(r"<p[^>]*>(.*?)</p>", draft.content or "", flags=re.S)
+        resposta = re.sub(r"<[^>]+>", "", m.group(1)) if m else ""
+    return {"seotitle": _cortar(page.h1_title, 60), "metadescription": _cortar(resposta, 155),
+            "keywordfocus": (page.target_keywords or [page.h1_title])[0],
+            "slug": page.slug, "origem": "deterministico"}
+
+
 def step_seo(state: RunState, page: Page, deps: Any) -> None:
     draft = state.drafts.get(page.page_number)
     content = draft.content if draft else ""
+    if perfil_rapido(deps) and not getattr(state, "editorial_v2", False):
+        state.seo[page.page_number] = seo_deterministico(page, draft)
+        state.step_status[f"seo_p{page.page_number}"] = StepResult(
+            step=f"seo_p{page.page_number}", status=StepStatus.OK, model_used="deterministico",
+            attempts=0)
+        return
     if getattr(state, "editorial_v2", False):
         prompt = _prompt_seo_v2(state, page, content)
     else:
@@ -3074,6 +3110,13 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
     Runs AFTER step_build and BEFORE step_publish (see pipeline.py): it mutates
     the FINAL draft content (post-normalize) that step_publish reads, so the
     published SOLUTION post carries the widget."""
+    if perfil_rapido(deps):
+        # A necessidade do ativo vai no pacote da página; o widget gerado por
+        # modelo fica para depois. Widget desligado NÃO é bloqueio.
+        state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, Issue(
+            code="widget_desligado_perfil_rapido",
+            message="Perfil rápido: ativo registrado no pacote da página, sem geração."))
+        return
     # Gates -> silent no-op (nothing recorded), so flag-off is byte-for-byte the
     # current pipeline. Each short-circuits before any LLM call.
     if not getattr(deps.settings.run, "widgets_enabled", False):
@@ -4075,6 +4118,12 @@ def declarar_engajamento(state: RunState, deps: Any) -> None:
     cfg = deps.settings.steps.get("engajamento")
     if cfg is None:
         return                       # widget usa infer_engajamento quando precisar
+    if perfil_rapido(deps):
+        for p in alvo:               # tarefa mecânica: inferência, sem modelo
+            p.engajamento = infer_engajamento(p)
+        state.step_status["engajamento"] = StepResult(
+            step="engajamento", status=StepStatus.OK, model_used="inferencia", attempts=0)
+        return
 
     key = "engajamento"
     try:

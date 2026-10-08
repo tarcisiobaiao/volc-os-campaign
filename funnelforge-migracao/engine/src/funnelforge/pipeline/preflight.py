@@ -43,6 +43,12 @@ def _preflight_official_links(ctx: dict) -> list[Issue]:
     role = ctx.get("role")
     if role is not PageRole.SOLUTION or ctx.get("is_terminal"):
         return []
+    # A MESMA isenção do `official_link_density`: jornada que não exige saída
+    # oficial (ou dossiê que a desativou por falta de canal verificado) não
+    # reprova por falta de link. Sem isto o pré-voo derrubava a página que a
+    # degradação segura tinha liberado (card real #65, 08/10/2026).
+    if ctx.get("saida_oficial_exigida") is False:
+        return []
     if ctx.get("official_links"):
         return []
     return [Issue(

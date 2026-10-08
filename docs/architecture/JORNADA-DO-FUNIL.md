@@ -159,6 +159,19 @@ consolidação, sem retentativa. A condenação é a mesma (teste
 Limite honesto: com N workers o teto do run pode ser ultrapassado em até N-1
 chamadas que já estavam no ar — por isso o gasto faturado (pesquisa) é serial.
 
+## Perfil de produção rápida (`run.perfil: rapido`)
+
+O redator de sempre, UMA chamada por página (com a doutrina de escrita
+natural e o pacote do dossiê no prompt); juiz por página, widget por modelo e
+classificador de engajamento desligados; SEO (`seotitle`/`metadescription`),
+fatos usados por `fact_id`, links, canais oficiais, plano Gutenberg, schema,
+screenshot e ativo necessários vêm do CÓDIGO (`pacotes.json`). No fim, UMA
+revisão global do funil por modelo (`revisao_rapida.py`): `pass`, `warning` ou
+`block`; patch mínimo de `block` aplicado uma vez por código, com rebuild e
+gate; só o que continua `block` vai à revisão humana consolidada
+(`revisao_global_rapida.json`). Lacuna de evidência é aviso para o revisor
+global, não manda página a humano.
+
 ## Contrato de medição
 
 `jornada/medicao.py` → `medicao.json`. Todo sinal nasce `nao_implantada`:

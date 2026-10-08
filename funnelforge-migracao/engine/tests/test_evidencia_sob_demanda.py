@@ -241,3 +241,37 @@ def test_canal_oficial_verificado_em_outra_pagina_fortalece_a_evidencia_da_lp():
     assert cobertura_da_pagina(state, lp, [fato]).requisitos[0].estado == "unsupported"
     state.official_links[estado.page_number] = ["https://www.exemplo-oficial.gov/canal"]
     assert cobertura_da_pagina(state, lp, [fato]).requisitos[0].estado == "verified"
+
+
+def test_resposta_principal_de_paginas_diferentes_nao_e_deduplicada():
+    """Card real #65: sem requisitos declarados, toda página tem o requisito
+    derivado `resposta_principal` — que é a pergunta DELA. A p5 esperou a busca
+    da p4 e ficou sem pesquisa."""
+    arq = _arq_com_requisito_de_renda()
+    for job in arq["writing_jobs"]:
+        job["writer_briefing"]["jornada"]["requisitos"] = []
+    state = _estado(arq)
+    pedidos = []
+
+    def pesquisar(assunto, spec, faltantes):
+        pedidos.append([f["duvida_id"] for f in faltantes or []])
+        return RespostaDaPesquisa(dados={"fatos": []}, citacoes=[], modelo_pedido="m",
+                                  modelo_servido="m")
+
+    comp = CompiladorDeDossie(state, _Deps(_Verificador()), pesquisar,
+                              registrar_canais=_registrar_canais, ler_documento=_ler)
+    comp.compilar(complementos=0)
+    for p in state.plan.pages[:2]:
+        comp.complementar_pagina(p, state.model_copy(deep=True))
+    duvidas = [p.jornada.duvida_id for p in state.plan.pages[:2]]
+    # cada página pesquisa a PRÓPRIA pergunta; ninguém espera a busca alheia
+    assert [set(p) for p in pedidos[1:]] == [{duvidas[0]}, {duvidas[1]}]
+    assert comp.deduplicadas == 0
+
+
+def test_pre_voo_respeita_a_saida_oficial_desativada_pelo_dossie():
+    from funnelforge.domain.models import PageRole
+    from funnelforge.pipeline.preflight import _preflight_official_links
+    ctx = {"role": PageRole.SOLUTION, "is_terminal": False, "official_links": []}
+    assert [i.code for i in _preflight_official_links(ctx)] == ["official_links_none"]
+    assert _preflight_official_links(dict(ctx, saida_oficial_exigida=False)) == []

@@ -701,6 +701,16 @@ class CompiladorDeDossie:
         return self.montar(self.state)
 
     # -- sob demanda, por página -------------------------------------------------
+    @staticmethod
+    def _chave(lacuna: dict) -> str:
+        """A identidade de uma lacuna para deduplicar. `resposta_principal` é
+        o requisito DERIVADO de cada página (a pergunta dela): duas páginas
+        nunca compartilham essa lacuna — no card real #65 a p5 esperou a busca
+        da p4 e ficou sem pesquisa."""
+        if lacuna["requisito"] == "resposta_principal":
+            return f"{lacuna['duvida_id']}:resposta_principal"
+        return lacuna["requisito"]
+
     def lacunas(self, numero: int) -> list[dict]:
         page = next(p for p in self.pages if p.page_number == numero)
         return _faltantes({numero: self.coberturas[numero]}, [page])
@@ -715,12 +725,12 @@ class CompiladorDeDossie:
         with self.trava:
             self.recalcular(state, [page])
             faltam = self.lacunas(n)
-            chaves = [f["requisito"] for f in faltam]
+            chaves = [self._chave(f) for f in faltam]
             esperar = [self.em_voo[k] for k in chaves if k in self.em_voo]
-            minhas = [f for f in faltam if f["requisito"] not in self.em_voo
-                      and f["requisito"] not in self.pesquisados]
+            minhas = [f for f in faltam if self._chave(f) not in self.em_voo
+                      and self._chave(f) not in self.pesquisados]
             for f in minhas:
-                self.em_voo[f["requisito"]] = threading.Event()
+                self.em_voo[self._chave(f)] = threading.Event()
             self.deduplicadas += len(esperar)
         for ev in esperar:
             ev.wait(timeout=600)
@@ -731,8 +741,8 @@ class CompiladorDeDossie:
             if resp is not None:
                 self.absorver(resp, 100 + n, minhas, state=state, pages=[page], pagina=n)
                 for f in minhas:
-                    self.pesquisados.add(f["requisito"])
-                    self.em_voo.pop(f["requisito"]).set()
+                    self.pesquisados.add(self._chave(f))
+                    self.em_voo.pop(self._chave(f)).set()
             else:
                 self.recalcular(state, [page])
             antes = {f["requisito"] for f in faltam}

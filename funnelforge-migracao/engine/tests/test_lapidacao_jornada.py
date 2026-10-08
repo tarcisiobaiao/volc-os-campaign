@@ -443,9 +443,13 @@ def test_12_bloco_tem_de_servir_a_uma_entrega_declarada():
                 {"secao": "Docs", "intencao": "checklist", "padrao": "table", "funcao": "x"},
                 {"secao": "Ferramenta", "intencao": "ferramenta", "padrao": "html", "funcao": "x"},
                 {"secao": "Passos", "intencao": "passo_a_passo", "padrao": "list", "funcao": ""}]
-    codigos = _codigos(revisar_esqueleto(_plano(arq)).bloqueantes)
-    assert {"bloco_sem_entrega_correspondente", "bloco_incompativel_com_a_funcao",
-            "ferramenta_sem_ativo", "bloco_sem_funcao_editorial"} <= codigos
+    rev = revisar_esqueleto(_plano(arq))
+    codigos = _codigos(rev.bloqueantes)
+    assert {"bloco_incompativel_com_a_funcao", "ferramenta_sem_ativo",
+            "bloco_sem_funcao_editorial"} <= codigos
+    # bloco sem entrega declarada é oportunidade editorial: aviso, não bloqueio
+    assert "bloco_sem_entrega_correspondente" not in codigos
+    assert "bloco_sem_entrega_correspondente" in _codigos(rev.avisos)
     assert revisar_esqueleto(_plano()).bloqueantes == []
 
 

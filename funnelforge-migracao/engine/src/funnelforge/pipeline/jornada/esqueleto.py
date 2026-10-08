@@ -166,7 +166,11 @@ def _plano_visual(p: Page, b, a) -> None:
                     message=f"{onde}: declare a função editorial do bloco."))
         justifica = ENTREGAS_POR_INTENCAO.get(bloco.intencao, frozenset())
         if entregas and not (entregas & justifica):
-            b(Issue(code="bloco_sem_entrega_correspondente",
+            # AVISO, não bloqueio: um bloco a mais que nenhuma entrega declarou é
+            # oportunidade editorial, não erro de estrutura. Medido no card real
+            # #65 (08/10/2026): um "próximos passos" na LP abortava o funil
+            # inteiro antes da pesquisa.
+            a(Issue(code="bloco_sem_entrega_correspondente",
                     message=f"{onde}: '{bloco.intencao}' não corresponde a nenhuma entrega "
                             f"declarada ({', '.join(sorted(entregas))})."))
         if padrao == "html" and not j.ativos:
