@@ -14,6 +14,7 @@ import copy
 import json
 from pathlib import Path
 
+from funnelforge.domain.models import JornadaDaPagina, Page
 from funnelforge.pipeline import steps
 from funnelforge.pipeline.retry_policy import classe_da_issue
 from funnelforge.pipeline.validators.briefing_contract import (
@@ -185,6 +186,35 @@ def test_v2_sem_visual_plan_nao_inventa_exigencia(tmp_path, monkeypatch):
 def test_steps_nao_esvazia_mais_a_exigencia_visual_sem_condicao():
     fonte = Path(steps.__file__).read_text(encoding="utf-8")
     assert 'extras_v2["exigencia_visual"] = []' not in fonte
+
+
+def test_jornada_e_a_fonte_canonica_do_plano_visual():
+    page = Page(
+        page_number=3, page_type="SOLUTION", h1_title="Resposta", slug="resposta-p1",
+        jornada=JornadaDaPagina(
+            duvida_id="resposta", pergunta_principal="Como resolver?",
+            plano_visual=[
+                {"secao": "Etapas", "intencao": "passo_a_passo", "padrao": "list"},
+                {"secao": "Dúvidas", "intencao": "faq", "padrao": "details"},
+            ],
+        ),
+    )
+    briefing_conflitante = {"visual_plan": [
+        {"secao": "Legado", "intencao": "comparar", "padrao": "table", "motivo": "x"}
+    ]}
+
+    plano = steps.plano_visual_da_pagina(page, briefing_conflitante)
+    assert [item["secao"] for item in plano] == ["Etapas", "Dúvidas"]
+    assert steps.exigencia_visual_da_pagina(page, briefing_conflitante) == ["list", "details"]
+
+
+def test_briefing_visual_fica_apenas_como_fallback_para_card_legado():
+    page = Page(page_number=3, page_type="SOLUTION", h1_title="Resposta", slug="resposta-p1")
+    briefing = {"visual_plan": [
+        {"secao": "Comparativo", "intencao": "comparar", "padrao": "core/table",
+         "motivo": "comparar opções"}
+    ]}
+    assert steps.exigencia_visual_da_pagina(page, briefing) == ["table"]
 
 
 # --------------------------------------------------------------------------

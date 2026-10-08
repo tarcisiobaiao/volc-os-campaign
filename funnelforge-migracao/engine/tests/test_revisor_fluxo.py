@@ -96,7 +96,9 @@ def test_copy_legitima_com_palavras_antes_bloqueadas_chega_intacta_ao_artefato_f
         assert FRASE_VAGAS in corpo, slug                     # "vagas limitadas" (FF-01)
         assert FRASE_SISTEMA in corpo, slug                   # "sistema oficial" (FF-02)
         assert "Conteúdo de utilidade pública sobre" in corpo, slug   # regex da publicação
-        assert corpo.count(COMPLIANCE_NOTICE_TEXT) == 1, slug  # aviso uma vez só
+        from funnelforge.pipeline.copy_contract import SHORT_NOTICE
+        assert COMPLIANCE_NOTICE_TEXT not in corpo, slug
+        assert corpo.count(SHORT_NOTICE) == 1, slug             # identidade curta, uma vez
         assert post["status"] == "draft"
     assert ROTULO_CADASTRO in wp.posts[SLUG3]["content"]      # verbo de execução + guia
     lp = json.dumps(wp.paginas["tarifa-social-energia"]["elementor"], ensure_ascii=False)
@@ -454,7 +456,8 @@ def test_links_tracking_e_marcadores_preservados_e_so_decoracao_registrada(tmp_p
     # o artefato publicado = recibo + SÓ as decorações registradas
     publicado = wp.posts[SLUG3]["content"]
     decoracoes = state.decoracoes[3]
-    assert {d["tipo"] for d in decoracoes} >= {"aviso_identidade", "imagem_meio"}
+    assert {d["tipo"] for d in decoracoes} >= {"cta_topo", "imagem_meio"}
+    assert "aviso_identidade" not in {d["tipo"] for d in decoracoes}
     reconstruido = publicado
     for d in reversed(decoracoes):                       # desfaz na ordem inversa
         ini, fim = d["posicao"], d["posicao"] + len(d["fragmento"])
@@ -467,7 +470,7 @@ def test_links_tracking_e_marcadores_preservados_e_so_decoracao_registrada(tmp_p
 def test_normalizacoes_ficam_registradas_no_estado(tmp_path, monkeypatch):
     state, _deps, _llm, _wp = _rodar(tmp_path, monkeypatch)
     etapas3 = [r["etapa"] for r in state.normalizacoes[3]]
-    assert "normalize_gutenberg" in etapas3 and "aviso_canonico" in etapas3
+    assert "normalize_gutenberg" in etapas3 and "identidade_editorial_v2" in etapas3
     etapas1 = [r["etapa"] for r in state.normalizacoes[1]]
     assert "template_lp" in etapas1
     lp = next(r for r in state.normalizacoes[1] if r["etapa"] == "template_lp")

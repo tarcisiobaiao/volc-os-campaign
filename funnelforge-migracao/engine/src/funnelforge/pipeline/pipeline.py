@@ -276,7 +276,7 @@ def run_pipeline(
     # RAMO EDITORIAL NOVO: decidido UMA vez por execução e gravado no estado
     # (pegajoso: um run que nasceu no ramo novo continua nele). Desligado, o
     # laço abaixo é o de sempre, passo a passo e prompt a prompt.
-    v2 = editorial_v2_do_run(state, deps.settings) and not st.perfil_rapido(deps)
+    v2 = editorial_v2_do_run(state, deps.settings)
     state.editorial_v2 = v2
 
 
@@ -330,9 +330,6 @@ def run_pipeline(
 
     laco = _Laco(v2=v2, publish=publish, com_jornada=com_jornada,
                  orcamento=orcamento, a_publicar=a_publicar, dossie_vivo=dossie_vivo)
-    if dossie_vivo is not None and st.perfil_rapido(deps):
-        _complementar_lote_rapido(state, pages, deps, dossie_vivo)
-        _checkpoint(state, deps)
     workers = int(getattr(deps.settings.run, "page_workers", 1) or 1)
     if workers > 1 and len(pages) > 1:
         _paginas_em_paralelo(state, pages, deps, laco, workers)
@@ -368,8 +365,6 @@ def run_pipeline(
                                   message="revisão global do funil pronto achou prova "
                                           "estrutural nesta página; publish pulado")])
             _checkpoint(state, deps)
-        if st.perfil_rapido(deps):
-            _revisao_e_pacotes_rapidos(state, deps)
         for page in a_publicar:
             if f"blocked_p{page.page_number}" in state.step_status:
                 continue
@@ -553,8 +548,7 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
     abrir páginas novas; qualquer outra falha fica na própria página."""
     v2, publish, com_jornada = laco.v2, laco.publish, laco.com_jornada
     orcamento, a_publicar = laco.orcamento, laco.a_publicar
-    if (laco.dossie_vivo is not None and not st.perfil_rapido(deps)
-            and laco.fase != "acabamento"
+    if (laco.dossie_vivo is not None and laco.fase != "acabamento"
             and not _done(state, f"write_p{page.page_number}")):
         _complementar_pagina(state, page, deps, laco.dossie_vivo)
     if _falhou(state, f"dossie_p{page.page_number}"):
@@ -737,9 +731,7 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
         state.step_status.pop(f"blocked_p{page.page_number}", None)
         _registrar_metadados(state, page, deps)
 
-        # No perfil rápido só o `block` da revisão GLOBAL vai a humano; lacuna de
-        # evidência já foi degradada no texto e é aviso para o revisor global.
-        revisao = "" if st.perfil_rapido(deps) else _revisao_por_evidencia(state, page)
+        revisao = _revisao_por_evidencia(state, page)
         if revisao:
             state.step_status[f"evidencia_p{page.page_number}"] = StepResult(
                 step=f"evidencia_p{page.page_number}", status=StepStatus.SKIPPED,
@@ -948,26 +940,6 @@ def _complementar_pagina(state: RunState, page: Page, deps: Deps, vivo: Any) -> 
             resumo, ensure_ascii=False)[:600])])
 
 
-def _complementar_lote_rapido(state: RunState, pages: list[Page], deps: Deps, vivo: Any) -> None:
-    """No perfil rápido, fecha todas as lacunas em uma rodada consolidada.
-
-    A saída continua sendo o mesmo dossiê tipado e o mesmo portão por página;
-    só muda a granularidade da pesquisa. Falha de fonte degrada o requisito e
-    as páginas seguem para a revisão global, conforme o contrato já existente.
-    """
-    from funnelforge.pipeline.dossie import aplicar_portao
-    resumo = vivo.complementar_lote(pages, state)
-    with vivo.trava:
-        parcial = vivo.montar(state)
-    state.dossie = parcial.model_dump(mode="json")
-    state.dossie_sha256 = parcial.sha256
-    aplicar_portao(state, parcial)
-    state.step_status["dossie_complemento_lote"] = StepResult(
-        step="dossie_complemento_lote", status=StepStatus.OK,
-        issues=[Issue(code="complemento_em_lote", message=json.dumps(
-            resumo, ensure_ascii=False)[:600])])
-
-
 def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
     """Depois das páginas: o dossiê do run é o cache consolidado (fatos por
     fact_id, coberturas como cada página as viu), com SHA novo."""
@@ -989,29 +961,6 @@ def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
         f"{vivo.deduplicadas} lacuna(s) deduplicada(s); {vivo.reaproveitadas} reaproveitada(s) "
         f"do cache; {len(final.conflitos)} conflito(s); sha256 {final.sha256[:12]}"))]
     state.step_status["dossie"] = base
-    _checkpoint(state, deps)
-
-
-def _revisao_e_pacotes_rapidos(state: RunState, deps: Deps) -> None:
-    """Perfil rápido: UMA revisão global do funil pronto (patch mínimo de block
-    aplicado uma vez) e o pacote de cada página, gravados no run."""
-    from funnelforge.pipeline.revisao_rapida import pacote_da_pagina, revisar_funil_rapido
-    pasta = deps.runner.runs_dir / state.run_id
-    pasta.mkdir(parents=True, exist_ok=True)
-    try:
-        revisao = revisar_funil_rapido(state, deps)
-    except Exception as exc:  # noqa: BLE001 - revisão que falha vira bloqueio visível
-        revisao = {"versao": "revisao-global-rapida-v1", "erro": f"{type(exc).__name__}: {exc}"[:400],
-                   "paginas": [], "revisao_humana": [{"page_number": "funil",
-                                                      "motivo": "revisão global falhou"}]}
-        state.step_status["revisao_global_rapida"] = StepResult(
-            step="revisao_global_rapida", status=StepStatus.FAILED,
-            issues=[Issue(code="revisao_global_rapida_falhou", message=revisao["erro"])])
-    (pasta / "revisao_global_rapida.json").write_text(
-        json.dumps(revisao, ensure_ascii=False, indent=2), encoding="utf-8")
-    pacotes = [pacote_da_pagina(state, p) for p in state.plan.pages]
-    (pasta / "pacotes.json").write_text(json.dumps(pacotes, ensure_ascii=False, indent=2),
-                                        encoding="utf-8")
     _checkpoint(state, deps)
 
 

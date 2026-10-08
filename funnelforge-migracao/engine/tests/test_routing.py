@@ -135,7 +135,7 @@ def test_lp_routes_to_three_distinct_presells():
 def test_lp_contextual_preserva_presell_primeiro_e_duas_solucoes_diretas():
     """O link linear do arquiteto não pode colapsar os três botões da LP."""
     s = _settings()
-    s.run.perfil = "rapido"
+    s.run.editorial_v2 = True
     s.run.presell_hubs = 1
     s.run.lp_direct_solutions = 2
 

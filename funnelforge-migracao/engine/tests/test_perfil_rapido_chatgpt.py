@@ -19,7 +19,10 @@ def test_preset_rapido_chatgpt_e_fechado_sem_fallback_faturado():
         },
     })
 
-    assert novo.run.perfil == "rapido"
+    # O nome do preset é compatibilidade de API. Qualidade não tem mais ramo
+    # reduzido: a única aceleração é page_workers/cache.
+    assert novo.run.perfil == "completo"
+    assert novo.run.editorial_v2 is True
     assert novo.run.page_workers == 3 and novo.run.dossie_factual is True
     assert novo.run.publish_status == "draft"
     assert novo.run.imagens_habilitadas is True

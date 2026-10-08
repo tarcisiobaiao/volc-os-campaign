@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 from funnelforge.domain.models import ResearchFacts
@@ -17,6 +17,11 @@ class CaptureResult:
     # Título da página capturada: parte da PROVENIÊNCIA do print (o elemento
     # que mostra de onde a imagem saiu). Vazio quando o adapter não leu.
     title: str = ""
+    # Screenshot com consentimento/modal cobrindo a página nunca vira ativo do
+    # artigo. O adapter tenta fechar primeiro e devolve a prova da inspeção.
+    has_obstructive_overlay: bool = False
+    consent_action: str = ""
+    overlay_evidence: list[dict] = field(default_factory=list)
 
 
 class ResearchProvider(Protocol):

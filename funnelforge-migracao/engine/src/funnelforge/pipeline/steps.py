@@ -43,7 +43,6 @@ from funnelforge.pipeline.revisao import (
     gerar_recibo,
     VERSAO_DA_TRAVA,
     hash_do_conteudo,
-    posicionar_aviso_canonico,
     reconferir_notas_da_revisao,
 )
 from funnelforge.pipeline.runner import LLMStepError
@@ -138,6 +137,30 @@ def _tolerant_json(text: str) -> dict:
     delegação, para não existir uma terceira cópia do mesmo parser.
     """
     return tolerant_json_object(text)
+
+
+def plano_visual_da_pagina(page: Page, briefing: Any = None) -> list[dict]:
+    """Plano visual único da página.
+
+    O arquiteto já declara ``jornada.plano_visual`` antes da redação. Esse é o
+    contrato canônico: funciona tanto no serial quanto com page workers e não
+    depende de existir um segundo "perfil rápido". Briefings antigos continuam
+    compatíveis como fallback, mas não podem sobrescrever a arquitetura.
+    """
+    jornada = getattr(page, "jornada", None)
+    declarado = list(getattr(jornada, "plano_visual", None) or [])
+    if declarado:
+        return [
+            item.model_dump(mode="json") if hasattr(item, "model_dump") else dict(item)
+            for item in declarado
+        ]
+    if isinstance(briefing, dict) and isinstance(briefing.get("visual_plan"), list):
+        return [dict(item) for item in briefing["visual_plan"] if isinstance(item, dict)]
+    return []
+
+
+def exigencia_visual_da_pagina(page: Page, briefing: Any = None) -> list[str]:
+    return exigencia_visual_do_plano({"visual_plan": plano_visual_da_pagina(page, briefing)})
 
 
 def _plan_from_raw(raw: dict) -> FunnelPlan:
@@ -1352,7 +1375,10 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         # observação — ver `SiteConfig.rodape_institucional`.
         "rodape_institucional": deps.settings.site.rodape_institucional,
         "rodape_institucional_persistente": deps.settings.site.rodape_institucional_persistente,
-        "copy_rapida": perfil_rapido(deps),
+        # O nome da chave é legado dos primeiros canários. Ela representa o
+        # contrato editorial atual (v2), não um segundo motor reduzido. Runs V1
+        # arquivados preservam seu ouro byte a byte.
+        "copy_rapida": _pagina_v2(state, page),
         "copy_lp_hrefs": [resolve_route(r, domain=deps.settings.site.domain,
                                         post_type=deps.settings.site.post_type)
                           for r in page.routes if r.kind == "funnel"],
@@ -1538,7 +1564,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             editorial=page.editorial.model_dump() if page.editorial else {},
             jornada=contexto_de_jornada(plan, page, state.dossie),
             today=date.today().strftime("%d/%m/%Y"),
-            escrita_natural=perfil_rapido(deps),
+            escrita_natural=v2,
             **extras_v2,
         )
         cfg = deps.settings.steps["write_p1"]
@@ -1586,7 +1612,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             format="lp_json", content=content, word_count=_word_count(content))
         # No ramo novo a revisão roda DEPOIS do SEO (pipeline ->
         # `revisar_depois_do_seo`): o título SEO também vai à revisão.
-        if (not v2 and not perfil_rapido(deps) and page.editorial
+        if (not v2 and page.editorial
                 and res.status is not StepStatus.FAILED):
             _judge_page(state, page, content, deps)
         return
@@ -1641,9 +1667,10 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         # D2: a cota cega por forma de pergunta (FF-16) continua fora do ramo
         # novo; a exigência visual vem do `visual_plan` que o BRIEFING declarou
         # por seção (vazio quando o briefing não planejou forma nenhuma).
-        extras_v2["exigencia_visual"] = exigencia_visual_do_plano(briefing)
+        plano_visual = plano_visual_da_pagina(page, briefing)
+        extras_v2["exigencia_visual"] = exigencia_visual_da_pagina(page, briefing)
         extras_v2["plano_visual"] = [
-            item for item in (briefing.get("visual_plan") or [])
+            item for item in plano_visual
             if isinstance(item, dict) and canon_padrao(item.get("padrao"))
             and canon_padrao(item.get("padrao")) not in PADROES_FORA_DA_REDACAO]
     prompt = render(
@@ -1678,7 +1705,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         author_credential=deps.settings.site.author_credential,
         cnpj=deps.settings.site.cnpj,
         today=date.today().strftime("%d/%m/%Y"),
-        escrita_natural=perfil_rapido(deps),
+        escrita_natural=v2,
         **doctrine_context(),
         **extras_v2,
     )
@@ -1696,13 +1723,20 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
     )
     content = normalize_gutenberg(
         text, ad_paragraph_anchors=deps.settings.ads.paragraph_anchors)
-    if perfil_rapido(deps):
-        from funnelforge.pipeline.copy_contract import clean_body_notice, footer_discloses
-        content = clean_body_notice(content, footer=footer_discloses(route_ctx))
     if v2:
+        from funnelforge.pipeline.copy_contract import clean_body_notice, footer_discloses
         # A normalização deixa de ser reescrita silenciosa: o que ela mudou fica
         # registrado no estado (e o revisor lê a versão normalizada).
         _registrar_normalizacao(state, page.page_number, resumo_da_normalizacao(text, content))
+        anterior = content
+        content = clean_body_notice(content, footer=footer_discloses(route_ctx))
+        if content != anterior:
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "identidade_editorial_v2",
+                "alterou": True,
+                "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            })
 
     state.step_status[f"write_p{page.page_number}"] = res
     state.drafts[page.page_number] = PageDraft(
@@ -1715,7 +1749,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
 
     # No ramo novo a revisão roda DEPOIS do SEO (ver `revisar_depois_do_seo`).
     # No perfil rápido o juiz por página sai: a revisão é UMA, do funil.
-    if not v2 and not perfil_rapido(deps):
+    if not v2:
         _judge_page(state, page, content, deps)
 
 
@@ -2055,11 +2089,18 @@ def _revisar_pagina(state: RunState, page: Page, deps: Any) -> None:
         _aplicar_decisao_humana(state, page, decisao)
         return
     if draft.format != "lp_json":
-        novo, registro = posicionar_aviso_canonico(draft.content)
-        if registro["alterou"]:
+        from funnelforge.pipeline.copy_contract import clean_body_notice
+        anterior = draft.content
+        novo = clean_body_notice(anterior, footer=_footer_disclosure(deps))
+        if novo != anterior:
             draft.content = novo
             draft.word_count = _word_count(novo)
-            _registrar_normalizacao(state, n, registro)
+            _registrar_normalizacao(state, n, {
+                "etapa": "identidade_editorial_v2",
+                "alterou": True,
+                "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                "sha256_depois": hashlib.sha256(novo.encode("utf-8")).hexdigest(),
+            })
     atual = hash_do_conteudo(state, n)
     anterior = state.revisoes.get(n)
     if (anterior and anterior.get("sha256") == atual
@@ -2146,11 +2187,6 @@ def _prompt_seo_v2(state: RunState, page: Page, content: str) -> str:
     )
 
 
-def perfil_rapido(deps: Any) -> bool:
-    return getattr(getattr(getattr(deps, "settings", None), "run", None), "perfil",
-                   "completo") == "rapido"
-
-
 def _cortar(texto: str, limite: int) -> str:
     """Corta em fronteira de palavra, sem reticências inventadas."""
     texto = " ".join(str(texto or "").split())
@@ -2187,12 +2223,6 @@ def seo_deterministico(page: Page, draft: Any) -> dict:
 def step_seo(state: RunState, page: Page, deps: Any) -> None:
     draft = state.drafts.get(page.page_number)
     content = draft.content if draft else ""
-    if perfil_rapido(deps) and not getattr(state, "editorial_v2", False):
-        state.seo[page.page_number] = seo_deterministico(page, draft)
-        state.step_status[f"seo_p{page.page_number}"] = StepResult(
-            step=f"seo_p{page.page_number}", status=StepStatus.OK, model_used="deterministico",
-            attempts=0)
-        return
     if getattr(state, "editorial_v2", False):
         prompt = _prompt_seo_v2(state, page, content)
     else:
@@ -2622,17 +2652,25 @@ def step_screenshot(state: RunState, page: Page, deps: Any) -> None:
             if _screenshot_rejected_by_status(result):
                 continue
             png = result.png
-            # Guard 2 (blank/under-render): retry ONCE with a materially
-            # different capture -- scroll the page to KICK lazy-loaders +
-            # wait a LARGER settle (B3 "Retry 1x (scroll + settle maior)"),
-            # deliberately attacking the cause of the blank rather than
-            # re-shooting an identical frame. If the retry is still bad, give
-            # up on this URL (fail-open -- skip the print, keep the page).
-            if _screenshot_is_blank(png, sc.blank_frac_max, sc.blank_contig_max):
+            # Guard 2 (overlay) + Guard 3 (blank/under-render): retry ONCE with
+            # a materially different capture. Um popup persistente jamais vira
+            # imagem do artigo; a página continua sem o asset e com recibo.
+            overlay = bool(getattr(result, "has_obstructive_overlay", False))
+            blank = _screenshot_is_blank(png, sc.blank_frac_max, sc.blank_contig_max)
+            if overlay or blank:
                 result = deps.screenshot.capture(
                     url, mode=sc.mode, scroll=True, settle_ms=sc.retry_settle_ms)
-                if _screenshot_rejected_by_status(result) or _screenshot_is_blank(
-                        result.png, sc.blank_frac_max, sc.blank_contig_max):
+                overlay = bool(getattr(result, "has_obstructive_overlay", False))
+                blank = _screenshot_is_blank(
+                    result.png, sc.blank_frac_max, sc.blank_contig_max)
+                if _screenshot_rejected_by_status(result) or overlay or blank:
+                    if overlay:
+                        evidencia = getattr(result, "overlay_evidence", []) or []
+                        rejeitados.append(Issue(
+                            code="screenshot_overlay_rejeitado",
+                            message=(f"{url}: print descartado porque popup/consentimento "
+                                     f"permaneceu após tentativa segura; evidência "
+                                     f"{json.dumps(evidencia, ensure_ascii=False)[:300]}.")))
                     continue
                 png = result.png
             host = urlparse(url).netloc.lower()
@@ -2642,6 +2680,9 @@ def step_screenshot(state: RunState, page: Page, deps: Any) -> None:
             shot = proveniencia_do_print(url, Path(saved), facts,
                                          titulo=getattr(result, "title", "") or "",
                                          crop=sc.crop_profile)
+            shot["consent_action"] = getattr(result, "consent_action", "") or "nenhuma"
+            shot["overlay_limpo"] = not bool(
+                getattr(result, "has_obstructive_overlay", False))
             faltam = print_sem_proveniencia(shot)
             if faltam:
                 # Print que não prova nada não entra: sem um trecho da pesquisa
@@ -2813,7 +2854,7 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
                 issues=[Issue(code="bare_rec", message=str(exc))])
             return
         image_url = state.images.get(page.page_number) or ""
-        if (perfil_rapido(deps)
+        if (_pagina_v2(state, page)
                 and getattr(deps.settings.run, "imagens_habilitadas", True)
                 and getattr(deps.settings.run, "hero_image", True)
                 and not image_url):
@@ -2821,7 +2862,7 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
                 step=f"build_p{page.page_number}", status=StepStatus.FAILED,
                 issues=[Issue(
                     code="lp_hero_obrigatorio",
-                    message=("Perfil rápido exige imagem real no hero da LP; "
+                    message=("O motor exige imagem real no hero da LP; "
                              "configure o gerador ou forneça o ativo antes do build."))])
             return
         try:
@@ -2835,7 +2876,7 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
             load_lp_template(), content_obj, funnel_hrefs=hrefs,
             hero_image_url=image_url, id_seed=state.run_id,
             site_domain=deps.settings.site.domain,
-            copy_rapida=perfil_rapido(deps),
+            copy_rapida=_pagina_v2(state, page),
             footer_disclosure=_footer_disclosure(deps))
         if _pagina_v2(state, page):
             # O que o template faz com o texto aprovado fica REGISTRADO (B5).
@@ -2852,7 +2893,7 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
         (run_dir / "p1.head.html").write_text(head, encoding="utf-8")
         (run_dir / "p1.preview.html").write_text(
             _preview_html(page, elementor, decision=decision, head_extra=head,
-                          copy_rapida=perfil_rapido(deps),
+                          copy_rapida=_pagina_v2(state, page),
                           footer=deps.settings.site.rodape_institucional if _footer_disclosure(deps) else ""),
             encoding="utf-8",
         )
@@ -2862,7 +2903,7 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
     else:
         content_to_build = (
             ensure_top_navigation_cta(state, page, deps, draft.content)
-            if perfil_rapido(deps) else draft.content
+            if _pagina_v2(state, page) else draft.content
         )
         (run_dir / f"p{page.page_number}.{page.slug}.gutenberg.html").write_text(
             content_to_build, encoding="utf-8"
@@ -3225,14 +3266,6 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
     Runs AFTER step_build and BEFORE step_publish (see pipeline.py): it mutates
     the FINAL draft content (post-normalize) that step_publish reads, so the
     published SOLUTION post carries the widget."""
-    if perfil_rapido(deps):
-        # O perfil rápido não paga uma chamada exclusiva para o widget. Ativos
-        # determinísticos ou editoriais podem ser anexados no pacote final sem
-        # atrasar a redação paralela nem invalidar o recibo da copy.
-        state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, Issue(
-            code="widget_desligado_perfil_rapido",
-            message="Perfil rápido: ativo registrado no pacote da página, sem geração por LLM."))
-        return
     # Gates -> silent no-op (nothing recorded), so flag-off is byte-for-byte the
     # current pipeline. Each short-circuits before any LLM call.
     if not getattr(deps.settings.run, "widgets_enabled", False):
@@ -3447,12 +3480,10 @@ def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) 
     ctx["final_identity"] = True
     issues = run_validators(list(_FINAL_CONTENT_VALIDATORS), content, ctx)
     issues.extend(html_issues(content))
-    if perfil_rapido(deps):
+    if ctx.get("copy_rapida"):
         from funnelforge.pipeline.copy_contract import disclosure_issues
         issues.extend(disclosure_issues(content, ctx))
 
-    # Fora do perfil rápido, o widget continua enriquecimento não bloqueante.
-    #
     # Até 19/08/2026 a ausência do widget virava `required_widget_missing`, que
     # é uma issue, e uma issue reprova o gate — então a página inteira caía.
     # Medido na run 9: p3 e p4 morreram assim. Duas delas com o artigo pronto
@@ -3599,7 +3630,8 @@ def _portao_da_lp(state: RunState, page: Page, deps: Any, *,
 def _composicao_v2(state: RunState, page: Page, content: str, ctx: dict) -> list[Issue]:
     """Portão de composição do ramo novo (D2), com a exigência do `visual_plan`
     do briefing desta página. Fora do ramo novo não roda (ouro v1 intacto)."""
-    exigencia = exigencia_visual_do_plano(state.briefings.get(page.page_number))
+    exigencia = exigencia_visual_da_pagina(
+        page, state.briefings.get(page.page_number))
     return run_validators(["composicao_editorial"], content,
                           {**ctx, "exigencia_visual": exigencia})
 
@@ -3627,7 +3659,7 @@ def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
             load_lp_template(), content, funnel_hrefs=hrefs,
             hero_image_url=state.images.get(page.page_number, ""),
             id_seed=state.run_id, site_domain=deps.settings.site.domain,
-            copy_rapida=perfil_rapido(deps),
+            copy_rapida=v2,
             footer_disclosure=_footer_disclosure(deps))
         run_dir = deps.runner.runs_dir / state.run_id
         actual = json.loads((run_dir / "p1.elementor.json").read_text(encoding="utf-8"))
@@ -3917,20 +3949,23 @@ def _portao_de_publicacao(state: RunState, page: Page,
             carimbo=datetime.now(timezone.utc).isoformat(),
         )
     draft = state.drafts.get(page.page_number)
-    conteudo = _conteudo_para_portao_de_publicacao(draft.content if draft else "", deps)
+    conteudo = _conteudo_para_portao_de_publicacao(
+        draft.content if draft else "", deps, state=state, page=page)
     issues = _final_content_issues(state, page, deps, conteudo)
     return lp_gate.ResultadoDoPortao(pronto=not issues, issues=issues)
 
 
-def _conteudo_para_portao_de_publicacao(content: str, deps: Any) -> str:
+def _conteudo_para_portao_de_publicacao(
+        content: str, deps: Any, *, state: RunState | None = None,
+        page: Page | None = None) -> str:
     """Produz exatamente a política de disclosure que o publish aplicará.
 
-    O perfil rápido remove o aviso longo quando existe footer institucional.
-    O pré-portão não pode recolocar esse mesmo aviso e reprovar um artefato que
-    o passo de publicação limparia logo depois. O perfil completo preserva o
-    comportamento histórico.
+    O contrato v2 remove o aviso longo quando existe footer institucional. O
+    pré-portão não pode recolocar esse mesmo aviso e reprovar um artefato que
+    o passo de publicação limparia logo depois. Runs V1 preservam o artefato
+    histórico para retomadas reproduzíveis.
     """
-    if perfil_rapido(deps):
+    if state is not None and page is not None and _pagina_v2(state, page):
         from funnelforge.pipeline.copy_contract import clean_body_notice
         return clean_body_notice(content, footer=_footer_disclosure(deps))
     return finalize_compliance_notice(content)
@@ -4044,7 +4079,13 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
     if page.page_type == "LANDING PAGE":
         safety_issues += _lp_final_issues(state, page, deps)
     else:
-        safety_issues += _final_content_issues(state, page, deps, draft.content)
+        # O pré-portão e este segundo portão precisam validar o MESMO corpo.
+        # O contrato único normaliza a identificação editorial antes de
+        # qualquer upload; validar aqui o rascunho anterior à normalização
+        # reprovava uma página que o próprio publish corrigiria logo abaixo.
+        safety_issues += _final_content_issues(
+            state, page, deps, _conteudo_para_portao_de_publicacao(
+                draft.content, deps, state=state, page=page))
     if safety_issues:
         state.step_status[f"publish_p{page.page_number}"] = StepResult(
             step=f"publish_p{page.page_number}", status=StepStatus.FAILED,
@@ -4098,14 +4139,11 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
             decoracoes: list[dict] = []
             content = draft.content
             decoradores = []
-            if perfil_rapido(deps):
-                decoradores.append((
-                    "cta_topo",
-                    lambda c: ensure_top_navigation_cta(state, page, deps, c),
-                ))
+            decoradores.append((
+                "cta_topo",
+                lambda c: ensure_top_navigation_cta(state, page, deps, c),
+            ))
             decoradores.extend((
-                ("aviso_identidade",
-                 lambda c: notice_html(deps.settings.site.domain) + "\n" + c),
                 ("imagem_meio", lambda c: _insert_midcontent_image(c, media_url, alt)),
                 ("print_oficial", lambda c: _embed_official_screenshots(state, page, deps, c)),
             ))
@@ -4126,14 +4164,8 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
             # Publish-time decorations (not in the draft that uniqueness compares):
             # move the compliance aviso to a discreet footnote at the end, then drop
             # the mid-content image after the first heading.
-            if perfil_rapido(deps):
-                from funnelforge.pipeline.copy_contract import clean_body_notice
-                content = clean_body_notice(draft.content, footer=_footer_disclosure(deps))
-            else:
-                content = (notice_html(deps.settings.site.domain) + "\n"
-                           + finalize_compliance_notice(draft.content))
-            if perfil_rapido(deps):
-                content = ensure_top_navigation_cta(state, page, deps, content)
+            content = (notice_html(deps.settings.site.domain) + "\n"
+                       + finalize_compliance_notice(draft.content))
             content = _insert_midcontent_image(content, media_url, alt)
             # Official-page screenshots (CARD-0005): upload each capture and embed
             # it after the paragraph that links to that official URL. Best-effort/
@@ -4272,13 +4304,6 @@ def declarar_engajamento(state: RunState, deps: Any) -> None:
     cfg = deps.settings.steps.get("engajamento")
     if cfg is None:
         return                       # widget usa infer_engajamento quando precisar
-    if perfil_rapido(deps):
-        for p in alvo:               # tarefa mecânica: inferência, sem modelo
-            p.engajamento = infer_engajamento(p)
-        state.step_status["engajamento"] = StepResult(
-            step="engajamento", status=StepStatus.OK, model_used="inferencia", attempts=0)
-        return
-
     key = "engajamento"
     try:
         prompt = render("declarador_engajamento", country="Brasil", pages=alvo)

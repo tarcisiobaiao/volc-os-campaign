@@ -98,10 +98,11 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
     novo = settings.model_copy(deep=True)
     novo.site = SiteConfig(**site_atual)
 
-    # Preset fechado e versionado para a produção rápida validada nos canários.
-    # Não aceitamos overrides arbitrários vindos do card: um nome conhecido
-    # escolhe um pacote tipado; qualquer outro nome falha antes da primeira
-    # chamada. O caminho sem preset permanece byte a byte como antes.
+    # Preset fechado e versionado para ChatGPT + concorrência entre páginas.
+    # IMPORTANTE: o preset não escolhe um motor editorial reduzido. Há um único
+    # pipeline de qualidade; velocidade vem de `page_workers`, cache e execução
+    # concorrente de passos independentes. O nome público foi mantido para não
+    # quebrar cards já gravados, mas `perfil=rapido` não é mais ativado.
     preset = _texto(perfil.get("preset"))
     if preset:
         if preset != "rapido_chatgpt":
@@ -116,11 +117,11 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
             "imagens_habilitadas": True,
             "dossie_factual": True,
             "page_workers": 3,
-            "perfil": "rapido",
+            "perfil": "completo",
             "publish_status": "draft",
             "official_screenshots": True,
             "widgets_enabled": True,
-            "editorial_v2": False,
+            "editorial_v2": True,
         })
         passos = {
             nome: StepConfig(**{

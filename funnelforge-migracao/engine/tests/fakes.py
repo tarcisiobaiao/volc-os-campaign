@@ -55,13 +55,15 @@ class FakeScreenshotProvider:
     def __init__(self, data: bytes | None = None, fail: bool = False,
                  status: int | None = 200, is_error_page: bool = False,
                  results: list[CaptureResult] | None = None,
-                 title: str = "Página oficial de teste") -> None:
+                 title: str = "Página oficial de teste",
+                 has_obstructive_overlay: bool = False) -> None:
         # O adapter real lê o título da página (proveniência do print).
         self._title = title
         self._data = data if data is not None else content_png()
         self._fail = fail
         self._status = status
         self._is_error_page = is_error_page
+        self._has_obstructive_overlay = has_obstructive_overlay
         self._results = list(results) if results is not None else None
         self._i = 0
         self.captured: list[str] = []
@@ -82,7 +84,10 @@ class FakeScreenshotProvider:
             return res
         return CaptureResult(png=self._data, status=self._status,
                              is_error_page=self._is_error_page,
-                             title=self._title)
+                             title=self._title,
+                             has_obstructive_overlay=self._has_obstructive_overlay,
+                             overlay_evidence=([{"text": "cookies", "coverage": .4}]
+                                               if self._has_obstructive_overlay else []))
 
 
 class FakeLLM:

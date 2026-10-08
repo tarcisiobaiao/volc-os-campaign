@@ -1,5 +1,8 @@
-"""Perfil RÁPIDO de produção: uma chamada de redação por página, o mecânico por
-código e UMA revisão global do funil com patch mínimo."""
+"""Compatibilidade do antigo rótulo ``rapido`` com o motor canônico.
+
+O rótulo pode existir em runs salvos, mas não desliga qualidade. Velocidade é
+somente concorrência entre páginas e cache.
+"""
 from __future__ import annotations
 
 import json
@@ -53,23 +56,16 @@ def _todos_pass(prompt):
             for n in range(1, 6)]
 
 
-def test_uma_chamada_de_redacao_por_pagina_e_uma_revisao_global(tmp_path, monkeypatch):
+def test_rotulo_rapido_nao_reduz_etapas_do_motor(tmp_path, monkeypatch):
     state, pasta, passos = _rodar(tmp_path, monkeypatch, _revisor(_todos_pass))
     tipos = [re.sub(r"_p\d+$", "", p) for p in passos]
-    assert set(tipos) <= {"write", "revisao_global_rapida"}, tipos      # nada de briefing/juiz/seo
-    assert tipos.count("revisao_global_rapida") == 1
+    assert {"write", "judge", "seo", "widget"} <= set(tipos), tipos
+    assert "revisao_global_rapida" not in tipos
     escritas = [p for p in passos if p.startswith("write_p")]
     assert len(set(escritas)) == 5                                        # as 5 páginas
     assert state.editorial_v2 is False
-    for n in range(1, 6):
-        assert state.seo[n]["origem"] == "deterministico" and len(state.seo[n]["seotitle"]) <= 60
-        assert len(state.seo[n]["metadescription"]) <= 155
-    pacotes = json.loads((pasta / "pacotes.json").read_text())
-    assert [p["page_number"] for p in pacotes] == [1, 2, 3, 4, 5]
-    assert {"titulo", "subtitulos", "cta_principal", "seo", "plano_gutenberg", "schema",
-            "screenshot_oficial", "ativo", "fatos_usados", "links", "canais_oficiais"} <= set(pacotes[1])
-    revisao = json.loads((pasta / "revisao_global_rapida.json").read_text())
-    assert revisao["revisao_humana"] == []
+    assert not (pasta / "pacotes.json").exists()
+    assert not (pasta / "revisao_global_rapida.json").exists()
 
 
 def test_titulo_seo_deterministico_nao_termina_em_conectivo():
@@ -112,7 +108,7 @@ def test_cta_de_navegacao_vai_ao_topo_depois_dos_tres_paragrafos():
     assert saida.index(bloco) > saida.index("Introdução 3")
 
 
-def test_build_rapido_recusa_lp_sem_imagem(tmp_path):
+def test_motor_canonico_recusa_lp_sem_imagem_mesmo_com_rotulo_legado(tmp_path):
     settings = _settings_com_dossie(tmp_path)
     settings.run.perfil = "rapido"
     settings.run.imagens_habilitadas = True
@@ -125,6 +121,8 @@ def test_build_rapido_recusa_lp_sem_imagem(tmp_path):
                       anchor="Ver a próxima página")],
     )
     state = RunState(run_id="gas-do-povo-sem-imagem")
+    state.editorial_v2 = True
+    state.briefings[1] = {"contrato": "v2"}
     state.drafts[1] = PageDraft(
         page_number=1, page_type="LANDING PAGE", format="lp_json",
         content="{}", word_count=0)
@@ -136,62 +134,15 @@ def test_build_rapido_recusa_lp_sem_imagem(tmp_path):
     assert {i.code for i in resultado.issues} == {"lp_hero_obrigatorio"}
 
 
-def test_humanizacao_vai_no_prompt_do_redator_so_no_perfil_rapido(tmp_path, monkeypatch):
+def test_rotulo_legado_nao_ativa_prompt_alternativo(tmp_path, monkeypatch):
     _, pasta, _ = _rodar(tmp_path, monkeypatch, _revisor(_todos_pass))
     prompt = (pasta / "prompts" / "write_p2.txt").read_text()
-    assert "<escrita_natural>" in prompt
+    assert "<escrita_natural>" not in prompt
     from funnelforge.prompts import render
     assert "<escrita_natural>" not in render("reader_contract", editorial={})
 
 
-def test_patch_de_block_aplicado_uma_vez_libera_a_pagina_e_aviso_nao_vai_para_humano(
-        tmp_path, monkeypatch):
-    def vereditos(prompt):
-        texto2 = prompt.split("=== PÁGINA 2")[1].split("=== PÁGINA 3")[0].split("TEXTO:\n")[1]
-        frase = next(l.strip() for l in texto2.splitlines() if len(l.strip()) > 30
-                     and not l.startswith("#") and "[" not in l)
-        trecho = frase[:40]
-        return [
-            {"page_number": 1, "veredito": "pass", "achados": [], "patches": []},
-            {"page_number": 2, "veredito": "block",
-             "achados": [{"categoria": "fato", "severidade": "block", "motivo": "sem lastro"}],
-             "patches": [{"trecho_original": trecho, "trecho_novo": "Texto corrigido.",
-                          "motivo": "remove afirmação sem lastro"}]},
-            {"page_number": 3, "veredito": "warning",
-             "achados": [{"categoria": "estilo", "severidade": "warning", "motivo": "repetição"}],
-             "patches": []},
-            {"page_number": 4, "veredito": "block",
-             "achados": [{"categoria": "cta", "severidade": "block", "motivo": "destino quebrado"}],
-             "patches": [{"trecho_original": "TRECHO-QUE-NAO-EXISTE", "trecho_novo": "x"}]},
-            {"page_number": 5, "veredito": "pass", "achados": [], "patches": []}]
-
-    state, pasta, passos = _rodar(tmp_path, monkeypatch, _revisor(vereditos))
-    revisao = json.loads((pasta / "revisao_global_rapida.json").read_text())
-    por = {p["page_number"]: p for p in revisao["paginas"]}
-    assert por[2]["veredito"] == "warning" and len(por[2]["patches_aplicados"]) == 1
-    assert "Texto corrigido." in state.drafts[2].content
-    assert por[3]["veredito"] == "warning"                               # aviso não vai a humano
-    bloqueio3 = state.step_status.get("blocked_p3")
-    assert bloqueio3 is None or bloqueio3.issues[0].code != "revisao_global_block"
-    assert [p["page_number"] for p in revisao["revisao_humana"]] == [4]    # UMA revisão
-    assert state.step_status["blocked_p4"].issues[0].code == "revisao_global_block"
-    assert sum(1 for p in passos if p == "revisao_global_rapida") == 1     # sem 2ª chamada
-
-
-def test_patch_do_texto_visivel_consegue_corrigir_link_e_negrito_no_gutenberg():
-    from types import SimpleNamespace
-    from funnelforge.pipeline.revisao_rapida import _substituir
-    draft=SimpleNamespace(format='gutenberg', content=(
-        '<!-- wp:paragraph --><p>Para <strong>consultar</strong>, acesse a '
-        '<a href="https://oficial.example/servico">página oficial</a>.</p>'
-        '<!-- /wp:paragraph -->'))
-    original='Para consultar , acesse a [página oficial](https://oficial.example/servico).'
-    assert _substituir(draft, original, 'Procure o órgão responsável pelo nome.')
-    assert 'Procure o órgão responsável pelo nome.' in draft.content
-    assert 'https://oficial.example/servico' not in draft.content
-
-
-def test_no_perfil_rapido_lacuna_de_evidencia_nao_manda_pagina_para_humano(tmp_path, monkeypatch):
+def test_rotulo_rapido_nao_afrouxa_revisao_de_evidencia(tmp_path, monkeypatch):
     from tests.test_dossie_factual import RENDA
     congelar_data(monkeypatch)
     _ligar_pesquisa(monkeypatch, _Pesquisa([f for f in FATOS_COMPLETOS
@@ -202,14 +153,12 @@ def test_no_perfil_rapido_lacuna_de_evidencia_nao_manda_pagina_para_humano(tmp_p
     state = run_pipeline(None, deps, only=None, publish=False,
                          plan=plano_do_funnel_architecture(_arq_com_requisito_de_renda()),
                          timestamp="20261007-120000")
-    assert not any(k.startswith("evidencia_p") for k in state.step_status)
-    revisao = json.loads((deps.runner.runs_dir / state.run_id / "revisao_global_rapida.json")
-                         .read_text())
-    assert revisao["revisao_humana"] == []
+    assert any(k.startswith("evidencia_p") for k in state.step_status)
+    assert not (deps.runner.runs_dir / state.run_id / "revisao_global_rapida.json").exists()
 
 
-def test_perfil_rapido_complementa_todas_as_paginas_em_um_unico_lote(tmp_path, monkeypatch):
-    """Várias lacunas viram uma rodada consolidada, não uma por página."""
+def test_rotulo_rapido_preserva_complemento_tipado_por_pagina(tmp_path, monkeypatch):
+    """O alias legado não troca a pesquisa precisa por um lote reduzido."""
     congelar_data(monkeypatch)
     pesquisa = _Pesquisa([], FATOS_COMPLETOS)
     _ligar_pesquisa(monkeypatch, pesquisa)
@@ -220,9 +169,8 @@ def test_perfil_rapido_complementa_todas_as_paginas_em_um_unico_lote(tmp_path, m
     state = run_pipeline(None, deps, only=None, publish=False,
                          plan=plano_do_funnel_architecture(_arq_com_requisito_de_renda()),
                          timestamp="20261007-120000")
-    assert len(pesquisa.pedidos) == 2                    # global + UM lote
+    assert len(pesquisa.pedidos) >= 2
     assert pesquisa.pedidos[0] is None
-    assert len(pesquisa.pedidos[1]) >= len(state.plan.pages)
-    assert "dossie_complemento_lote" in state.step_status
-    assert not any(k.startswith("dossie_complemento_p") for k in state.step_status)
+    assert "dossie_complemento_lote" not in state.step_status
+    assert any(k.startswith("dossie_complemento_p") for k in state.step_status)
     assert all(p.page_number in state.drafts for p in state.plan.pages)

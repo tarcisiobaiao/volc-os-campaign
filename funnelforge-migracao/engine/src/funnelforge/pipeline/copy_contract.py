@@ -1,4 +1,4 @@
-"""Contrato pequeno de copy/disclosure do perfil rápido; V1 permanece opt-in."""
+"""Contrato canônico de copy e identificação editorial do motor."""
 from __future__ import annotations
 
 import re

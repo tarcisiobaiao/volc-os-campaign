@@ -36,10 +36,9 @@ class RunConfig(BaseModel):
     dossie_factual: bool = False
     # Páginas em paralelo depois do dossiê. 1 = o laço serial de sempre.
     page_workers: int = Field(default=1, ge=1, le=3)
-    # PRODUÇÃO RÁPIDA: uma chamada de redação por página (o redator de sempre,
-    # com a doutrina de escrita natural no prompt), SEO, fatos usados, links e
-    # pacote da página por CÓDIGO, sem juiz, sem widget por LLM, sem
-    # classificador de engajamento, e UMA revisão global do funil no fim.
+    # Compatibilidade com runs antigos. ``rapido`` não seleciona outro motor:
+    # qualidade, pesquisa, juiz, widgets e gates são os mesmos. Desempenho é
+    # controlado exclusivamente por concorrência/cache (`page_workers`).
     perfil: Literal["completo", "rapido"] = "completo"
     # RETENTATIVA DA PESQUISA (Frente 3). Antes disto a pesquisa tinha ZERO
     # retentativa: um 429 do provedor devolvia `sparse=True`, o gate factual

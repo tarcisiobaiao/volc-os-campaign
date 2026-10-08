@@ -107,6 +107,11 @@ def html_da_interna(prompt: str, *, extra: str = "", rotulo: str | None = None) 
             texto = rotulo                     # o rótulo sob teste vai no 1º botão
         elif tipo == "funnel":
             texto = f"{ROTULO_CADASTRO}, {ordinais[i]} parte" if i else ROTULO_CADASTRO
+        elif tipo == "external_official":
+            # O contrato atual exige que o leitor saiba que sairá do portal;
+            # o fixture não conhece o nome real do órgão, então declara o
+            # canal institucional sem prometer executar a consulta aqui.
+            texto = "Ver no site da instituição (externo)"
         else:
             texto = ancora.replace(">>>", "").strip() or "Ver no canal oficial"
         partes.append(_p(f"O proximo guia aprofunda a {ordinais[i]} parte do seu caso."))

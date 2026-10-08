@@ -40,7 +40,8 @@ from funnelforge.domain.models import (
 from funnelforge.pipeline import steps as st
 from funnelforge.pipeline.pipeline import Deps, run_pipeline
 from funnelforge.pipeline.runner import Runner
-from tests.fakes import FakeLLM, FakeScreenshotProvider, png_bytes
+from funnelforge.ports.services import CaptureResult
+from tests.fakes import FakeLLM, FakeScreenshotProvider, content_png, png_bytes
 
 
 # --------------------------------------------------------------------------- #
@@ -287,6 +288,47 @@ def test_step_screenshot_retry_recovers_blank(tmp_path: Path) -> None:
     assert retry["settle_ms"] > first["settle_ms"]
 
 
+def test_step_screenshot_rejeita_popup_persistente_sem_bloquear_pagina(tmp_path: Path) -> None:
+    """Consentimento cobrindo a tela não pode virar imagem editorial."""
+    provider = FakeScreenshotProvider(has_obstructive_overlay=True)
+    deps = _deps(tmp_path, _settings(cap=1), provider)
+    state = RunState(run_id="popup-persistente")
+    state.facts[3] = ResearchFacts(fontes=["https://www.gov.br/servico"])
+
+    st.step_screenshot(state, _solution_page(), deps)
+
+    assert 3 not in state.screenshots
+    assert len(provider.captured) == 2
+    resultado = state.step_status["screenshot_p3"]
+    assert resultado.status is StepStatus.OK
+    assert {i.code for i in resultado.issues} == {"screenshot_overlay_rejeitado"}
+
+
+def test_step_screenshot_retry_recupera_popup_e_registra_limpeza(tmp_path: Path) -> None:
+    provider = FakeScreenshotProvider(results=[
+        CaptureResult(
+            png=content_png(), status=200, is_error_page=False,
+            title="Página oficial", has_obstructive_overlay=True,
+            overlay_evidence=[{"text": "cookies", "coverage": .4}],
+        ),
+        CaptureResult(
+            png=content_png(), status=200, is_error_page=False,
+            title="Página oficial", has_obstructive_overlay=False,
+            consent_action="Rejeitar todos",
+        ),
+    ])
+    deps = _deps(tmp_path, _settings(cap=1), provider)
+    state = RunState(run_id="popup-recuperado")
+    state.facts[3] = ResearchFacts(fontes=["https://www.gov.br/servico"])
+
+    st.step_screenshot(state, _solution_page(), deps)
+
+    shot = state.screenshots[3][0]
+    assert shot["overlay_limpo"] is True
+    assert shot["consent_action"] == "Rejeitar todos"
+    assert len(provider.captured) == 2
+
+
 def test_step_screenshot_accepts_content_capture_without_retry(tmp_path: Path) -> None:
     """A well-rendered (non-blank) capture passes both guards on the first try:
     it is saved and no retry happens."""
@@ -480,7 +522,9 @@ def test_capture_default_settle_no_scroll(monkeypatch) -> None:
     provider.capture("https://meu.inss.gov.br/x")
 
     assert 1500 in rec["waits"]
-    assert "evaluate" not in rec  # no scroll kick on the first pass
+    # O detector de consentimento consulta o DOM por evaluate; o que não pode
+    # acontecer na primeira passagem é o script de scroll reservado ao retry.
+    assert not any("scrollTo" in script for script in rec.get("evaluate", []))
 
 
 def test_capture_retry_scrolls_and_uses_larger_settle(monkeypatch) -> None:

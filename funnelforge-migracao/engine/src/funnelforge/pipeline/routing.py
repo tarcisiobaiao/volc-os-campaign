@@ -134,7 +134,12 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
             routes.append(Route(
                 placement=_placement(len(routes), len(contract.links)), kind="funnel",
                 target=target.slug, anchor=target.editorial.cta_label, reason=link.reason))
-        if effective_role(page) is PageRole.LP and settings.run.perfil == "rapido":
+        lp_expandida = bool(
+            effective_role(page) is PageRole.LP
+            and settings.run.editorial_v2
+            and (settings.run.presell_hubs or settings.run.lp_direct_solutions)
+        )
+        if lp_expandida:
             # O contrato editorial descreve a progressão principal, mas não é
             # dono da quantidade de entradas da LP. Com o preset de produção
             # (1 presell + 2 soluções diretas), deixar o único link escrito pelo
@@ -163,7 +168,7 @@ def _contextual_routes(plan: FunnelPlan, settings: Settings) -> bool:
                     for i, r in enumerate(expandidas)
                 ]
         principal = alvo_da_proxima_duvida(plan, page)
-        if principal is not None:
+        if principal is not None and not lp_expandida:
             # PROGRESSO, não ordem do card: com jornada, o CTA principal (hero)
             # é o destino que resolve a PRÓXIMA dúvida ainda aberta. Os demais
             # mantêm a ordem de relevância do arquiteto.

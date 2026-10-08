@@ -65,9 +65,40 @@ _ERROR_MARKERS = (
     "not found", "erro 404", "página não", "pagina nao",
 )
 
-# Common pt-BR cookie/consent banner button labels. Dismissing the banner is
-# STRICTLY best-effort: any failure is swallowed and never blocks the capture.
-_COOKIE_BUTTON_TEXTS = ("Aceitar", "Aceito", "Concordo", "Continuar", "Entendi", "OK")
+# Consent actions in privacy-first order. The screenshot worker never needs a
+# tracking consent to work; reject/necessary/close is preferred over accept.
+_COOKIE_BUTTON_TEXTS = (
+    "Rejeitar todos", "Rejeitar", "Recusar todos", "Recusar",
+    "Continuar sem aceitar", "Somente necessários", "Apenas necessários",
+    "Fechar", "Agora não", "Não aceito",
+    "Aceitar todos", "Aceitar", "Aceito", "Concordo", "Continuar", "Entendi", "OK",
+)
+
+_OVERLAY_SCAN_JS = r"""() => {
+ const words = /(cookie|cookies|consent|consentimento|privacidade|privacy|prefer[eê]ncias|aceitar|accept|recusar|reject)/i;
+ const visible = e => {
+   const s=getComputedStyle(e), r=e.getBoundingClientRect();
+   return s.display!=='none' && s.visibility!=='hidden' && +s.opacity>0.05 && r.width>0 && r.height>0;
+ };
+ const candidates=[...document.querySelectorAll('dialog,[role="dialog"],[aria-modal="true"],body *')];
+ const seen=new Set(), out=[];
+ for(const e of candidates){
+   if(seen.has(e) || !visible(e)) continue; seen.add(e);
+   const s=getComputedStyle(e), r=e.getBoundingClientRect();
+   const signature=((e.id||'')+' '+(typeof e.className==='string'?e.className:'')+' '+(e.getAttribute('aria-label')||'')).slice(0,300);
+   const text=(e.innerText||e.textContent||'').replace(/\s+/g,' ').trim().slice(0,500);
+   const modal=e.tagName==='DIALOG'||e.getAttribute('role')==='dialog'||e.getAttribute('aria-modal')==='true';
+   const positioned=s.position==='fixed'||s.position==='sticky';
+   const named=words.test(signature);
+   const mentions=words.test(text);
+   const coverage=(r.width*r.height)/Math.max(1,innerWidth*innerHeight);
+   if((modal||positioned||named) && mentions && (coverage>=0.02 || r.width>=innerWidth*.55)){
+     out.push({tag:e.tagName.toLowerCase(),id:(e.id||'').slice(0,80),classes:signature.slice(0,160),
+       text:text.slice(0,180),coverage:+coverage.toFixed(3),zIndex:s.zIndex});
+   }
+ }
+ return out.sort((a,b)=>b.coverage-a.coverage).slice(0,5);
+}"""
 
 
 class PlaywrightScreenshotProvider:
@@ -128,15 +159,21 @@ class PlaywrightScreenshotProvider:
                 # passes a larger settle_ms -- then best-effort dismiss a
                 # cookie/consent banner so it doesn't cover the fold.
                 page.wait_for_timeout(settle_ms)
-                self._dismiss_cookies(page)
+                overlays_before = self._consent_overlays(page)
+                consent_action = self._dismiss_cookies(page) if overlays_before else ""
+                overlays_after = self._consent_overlays(page)
                 is_error = self._looks_like_error_page(page)
                 png = page.screenshot(full_page=full_page, type="png")
                 try:
                     title = (page.title() or "").strip()
                 except Exception:  # noqa: BLE001 - título é proveniência best-effort
                     title = ""
-                return CaptureResult(png=png, status=status, is_error_page=is_error,
-                                     title=title)
+                return CaptureResult(
+                    png=png, status=status, is_error_page=is_error, title=title,
+                    has_obstructive_overlay=bool(overlays_after),
+                    consent_action=consent_action,
+                    overlay_evidence=overlays_after or overlays_before,
+                )
             finally:
                 browser.close()
 
@@ -252,15 +289,30 @@ class PlaywrightScreenshotProvider:
         return any(m in title or m in body for m in _ERROR_MARKERS)
 
     @staticmethod
-    def _dismiss_cookies(page: object) -> None:
-        """Best-effort: click a visible consent-banner button if there is one.
-        NEVER fatal -- any exception is swallowed and the capture proceeds."""
+    def _consent_overlays(page: object) -> list[dict]:
+        """Visible consent/modal overlays that can contaminate the screenshot.
+
+        Failure to inspect is conservative: it returns a synthetic finding, so
+        an unverified frame is skipped instead of silently shipping a popup.
+        """
+        try:
+            result = page.evaluate(_OVERLAY_SCAN_JS)  # type: ignore[attr-defined]
+            return list(result or [])
+        except Exception as exc:  # noqa: BLE001 - evidence, never credentials
+            return [{"tag": "unknown", "text": "overlay inspection failed",
+                     "coverage": 1.0, "error": type(exc).__name__}]
+
+    @staticmethod
+    def _dismiss_cookies(page: object) -> str:
+        """Click one visible consent action and return the action used."""
         for label in _COOKIE_BUTTON_TEXTS:
-            try:
-                button = page.get_by_role("button", name=label, exact=False)  # type: ignore[attr-defined]
-                if button.count() and button.first.is_visible():
-                    button.first.click(timeout=1500)
-                    page.wait_for_timeout(400)  # type: ignore[attr-defined]
-                    return
-            except Exception:  # noqa: BLE001 - cookie dismissal is best-effort, never fatal
-                continue
+            for role in ("button", "link"):
+                try:
+                    control = page.get_by_role(role, name=label, exact=False)  # type: ignore[attr-defined]
+                    if control.count() and control.first.is_visible():
+                        control.first.click(timeout=1500)
+                        page.wait_for_timeout(700)  # type: ignore[attr-defined]
+                        return label
+                except Exception:  # noqa: BLE001 - try the next safe action
+                    continue
+        return ""

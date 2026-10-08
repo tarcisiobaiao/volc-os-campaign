@@ -77,7 +77,7 @@ def test_aviso_longo_removido_sem_apagar_alertas_contextuais():
     assert disclosure_issues(COMPLIANCE_NOTICE_TEXT,CTX)[0].code=='long_body_disclaimer'
 
 
-def test_pre_portao_rapido_nao_reintroduz_disclaimer_que_o_publish_remove():
+def test_pre_portao_v2_nao_reintroduz_disclaimer_que_o_publish_remove():
     from funnelforge.pipeline.steps import _conteudo_para_portao_de_publicacao
     deps=SimpleNamespace(settings=SimpleNamespace(
         run=SimpleNamespace(perfil='rapido'),
@@ -85,7 +85,10 @@ def test_pre_portao_rapido_nao_reintroduz_disclaimer_que_o_publish_remove():
             rodape_institucional_persistente=True,
             rodape_institucional='Conteúdo informativo sem vínculo. Financiado por anúncios.')))
     body='<!-- wp:paragraph --><p>Texto útil.</p><!-- /wp:paragraph -->'
-    pronto=_conteudo_para_portao_de_publicacao(body,deps)
+    from funnelforge.domain.models import Page, RunState
+    page=Page(page_number=2,page_type='SOLUTION',h1_title='Resposta',slug='resposta-p1')
+    state=RunState(run_id='v2',editorial_v2=True,briefings={2:{'ok':True}})
+    pronto=_conteudo_para_portao_de_publicacao(body,deps,state=state,page=page)
     assert COMPLIANCE_NOTICE_TEXT not in pronto
     assert disclosure_issues(pronto,CTX)==[]
 
@@ -143,7 +146,13 @@ def test_prompt_rapido_nunca_expoe_marcador_copiavel_ao_modelo(name):
 
 
 def test_funil_inteiro_com_identidade_curta_e_zero_disclaimer_longo(tmp_path,monkeypatch):
-    state,folder,_=_rodar(tmp_path,monkeypatch,_revisor(_todos_pass))
+    from tests.cenario_editorial import (
+        arquitetura_base, congelar_data, responder_v2, rodar_cenario, settings_do_cenario,
+    )
+    congelar_data(monkeypatch)
+    settings=settings_do_cenario(tmp_path,editorial_v2=True,passos_v2=True)
+    state,deps,_=rodar_cenario(tmp_path,arquitetura_base(),settings,responder=responder_v2)
+    folder=deps.runner.runs_dir/state.run_id
     for n,draft in state.drafts.items():
         assert COMPLIANCE_NOTICE_TEXT not in draft.content
         if n!=1: assert draft.content.count(SHORT_NOTICE)==1
