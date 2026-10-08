@@ -200,6 +200,21 @@ def _repositorio_de_plano() -> Any:
         str(getattr(cfg, "supabase_service_role_key", "") or ""))
 
 
+def _repositorio_de_eventos() -> Any:
+    """O diário append-only (`trafego_evento`), para operações sem desfazer.
+
+    Nasce com `habilitado=False` quando falta credencial; quem decide o que
+    isso significa é a rota — `/remover` recusa.
+    """
+    from app.config import get_settings as _cfg  # noqa: PLC0415
+    from app.trafego import persistencia  # noqa: PLC0415
+
+    cfg = _cfg()
+    return persistencia.RepositorioDeSnapshotSupabase(
+        str(getattr(cfg, "supabase_url", "") or ""),
+        str(getattr(cfg, "supabase_service_role_key", "") or ""))
+
+
 def _supa() -> SupabaseService:
     supa = SupabaseService(get_settings())
     if not supa.enabled:
@@ -7207,52 +7222,81 @@ async def remover_campanha(body: RemoverEntrada = Body(...)) -> Any:
     except escopo.ForaDoEscopo as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
-    from volc_ads.gads import modo
-    from volc_ads.gads.client import cliente
+    from datetime import datetime, timezone  # noqa: PLC0415
 
-    def _fazer() -> Dict[str, Any]:
-        c = cliente(mid)
-        busca = c.get_service("GoogleAdsService")
-        q = (f"SELECT campaign.id, campaign.name, campaign.status "
-             f"FROM campaign WHERE campaign.id = {int(body.campaign_id)}")
-        nome, status = "", ""
-        for lote in busca.search_stream(customer_id=cid, query=q):
-            for r in lote.results:
-                nome, status = r.campaign.name, r.campaign.status.name
-        if not nome:
-            raise HTTPException(
-                status_code=404,
-                detail=f"campanha {body.campaign_id} não existe na conta {cid}.")
-        if status == "REMOVED":
-            return {"ja_removida": True, "nome": nome, "status": status}
-        if status == "ENABLED" and not body.remover_ativa:
-            raise HTTPException(
-                status_code=409,
-                detail=(f"a campanha {nome!r} está ENABLED — está gastando agora. "
-                        f"Pause antes, ou mande `remover_ativa: true` se a "
-                        f"intenção é remover mesmo assim."))
+    from app.trafego import remocao  # noqa: PLC0415
+    from volc_ads.gads.modo import EscritaBloqueada  # noqa: PLC0415
 
-        svc = c.get_service("CampaignService")
-        op = c.get_type("CampaignOperation")
-        op.remove = f"customers/{cid}/campaigns/{int(body.campaign_id)}"
-        with modo.destravar(body.motivo):
-            r = svc.mutate_campaigns(customer_id=cid, operations=[op])
-        return {
-            "removida": True, "nome": nome, "status_antes": status,
-            "resource_name": r.results[0].resource_name,
-        }
+    nome, status = await asyncio.to_thread(
+        remocao.ler_campanha, mid, cid, body.campaign_id)
+    if not nome:
+        raise HTTPException(
+            status_code=404,
+            detail=f"campanha {body.campaign_id} não existe na conta {cid}.")
+    if status == "REMOVED":
+        return {"ja_removida": True, "nome": nome, "status": status}
+    if status == "ENABLED" and not body.remover_ativa:
+        raise HTTPException(
+            status_code=409,
+            detail=(f"a campanha {nome!r} está ENABLED — está gastando agora. "
+                    f"Pause antes, ou mande `remover_ativa: true` se a "
+                    f"intenção é remover mesmo assim."))
+
+    # Sem diário, não remove: `REMOVED` não tem desfazer, e uma remoção sem
+    # registro é uma campanha que some sem ninguém saber quem, quando ou por quê.
+    diario = _repositorio_de_eventos()
+    if not getattr(diario, "habilitado", False):
+        raise HTTPException(
+            status_code=503,
+            detail="sem credencial para o diário (trafego_evento); a remoção "
+                   "não roda sem registro.")
+    agora = datetime.now(timezone.utc)
+    chave = remocao.chave_de_remocao(cid, body.campaign_id, agora)
+    base = {"nome": nome, "status_antes": status, "motivo": body.motivo,
+            "remover_ativa": body.remover_ativa, "login_customer_id": mid}
+    try:
+        await diario.registrar_evento(remocao.evento(
+            remocao.TIPO_PEDIDA, chave=chave, customer_id=cid,
+            campaign_id=body.campaign_id, carga=base, quando=agora))
+    except Exception as exc:  # noqa: BLE001
+        log.exception("diário recusou a intenção de remover %s", body.campaign_id)
+        raise HTTPException(
+            status_code=503,
+            detail=f"o diário recusou a intenção; nada foi removido: {str(exc)[:200]}",
+        ) from exc
 
     try:
-        return await asyncio.to_thread(_fazer)
-    except HTTPException:
-        raise
+        resource_name = await asyncio.to_thread(
+            remocao.remover, mid, cid, body.campaign_id, body.motivo)
     except Exception as exc:  # noqa: BLE001
-        from volc_ads.gads.modo import EscritaBloqueada
-
+        try:
+            await diario.registrar_evento(remocao.evento(
+                remocao.TIPO_FALHOU, chave=chave, customer_id=cid,
+                campaign_id=body.campaign_id,
+                carga={**base, "erro": f"{type(exc).__name__}: {str(exc)[:400]}"}))
+        except Exception:  # noqa: BLE001
+            log.exception("diário recusou a falha da remoção de %s", body.campaign_id)
         if isinstance(exc, EscritaBloqueada):
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         log.exception("remoção da campanha %s explodiu", body.campaign_id)
         raise HTTPException(status_code=502, detail=str(exc)[:400]) from exc
+
+    resposta: Dict[str, Any] = {
+        "removida": True, "nome": nome, "status_antes": status,
+        "resource_name": resource_name, "chave_do_diario": chave,
+    }
+    try:
+        await diario.registrar_evento(remocao.evento(
+            remocao.TIPO_REMOVIDA, chave=chave, customer_id=cid,
+            campaign_id=body.campaign_id,
+            carga={**base, "resource_name": resource_name}))
+    except Exception as exc:  # noqa: BLE001
+        # A remoção JÁ aconteceu. Dizer que não seria mentir; o aviso diz o que falta.
+        log.exception("diário recusou o desfecho da remoção de %s", body.campaign_id)
+        resposta["aviso_registro"] = (
+            f"campanha removida, mas o desfecho não foi gravado no diário "
+            f"(a intenção está, chave {chave}): {str(exc)[:200]}")
+    return resposta
 
 
 # ---------------------------------------------------------------------------
