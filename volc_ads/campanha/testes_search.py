@@ -750,3 +750,742 @@ def test_search_continua_nascendo_com_o_ad_group_ligado():
     assert grupos, "Search precisa continuar montando ad group"
     for ag in grupos:
         assert ag.status.name == "ENABLED"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONFIGURAÇÃO DE SEARCH (v25.2) — 08/10/2026
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# `search_config.ConfiguracaoSearch` carrega o que o `Brief` ainda não tem:
+# cinco estratégias, rede com Display expansion, AI Max inteira, fixação e
+# path do RSA, programação, dispositivo, geo-tipo, datas e meta de conversão.
+# Cada bloco abaixo prova o payload contra o proto real da v25 e prova que a
+# combinação inválida morre ANTES do mutate.
+
+from datetime import date, timedelta  # noqa: E402
+
+from volc_ads.campanha import search_config as sc  # noqa: E402
+
+REDE_SO_GOOGLE = sc.RedeSearch(google_search=True, parceiros=False,
+                               display_expansion=False)
+FUTURO = (date.today() + timedelta(days=30)).isoformat()
+FUTURO_FIM = (date.today() + timedelta(days=90)).isoformat()
+
+
+def _cfg(**troca) -> sc.ConfiguracaoSearch:
+    base = dict(rede=REDE_SO_GOOGLE)
+    base.update(troca)
+    return sc.ConfiguracaoSearch(**base)
+
+
+def _montar(brief=None, **kw):
+    return search.construir(CID, brief or _brief(), login_customer_id="x", **kw)
+
+
+def _camp(ops):
+    return next(o.campaign_operation.create for o in ops
+                if o._pb.WhichOneof("operation") == "campaign_operation")
+
+
+def _criterios_de_campanha(ops, ramo: str):
+    saida = []
+    for o in _por_tipo(ops, "campaign_criterion_operation"):
+        cc = o.campaign_criterion_operation.create
+        if cc._pb.WhichOneof("criterion") == ramo:
+            saida.append(cc)
+    return saida
+
+
+def _mensagens(r) -> str:
+    return " | ".join(f"{a.campo}: {a.motivo}" for a in r.erros)
+
+
+# ── o vocabulário fechado é o da API ────────────────────────────────────────
+
+
+def _enum(nome: str) -> set[str]:
+    return {v.name for v in getattr(_Enums(), nome)} - {"UNSPECIFIED", "UNKNOWN"}
+
+
+@pytest.mark.parametrize("tupla, enum_v25", [
+    (sc.LOCAIS_DE_IMPRESSAO, "TargetImpressionShareLocationEnum"),
+    (sc.GEO_POSITIVO, "PositiveGeoTargetTypeEnum"),
+    (sc.GEO_NEGATIVO, "NegativeGeoTargetTypeEnum"),
+    (sc.DIAS, "DayOfWeekEnum"),
+    (tuple(sc.MINUTOS.values()), "MinuteOfHourEnum"),
+    (sc.DISPOSITIVOS, "DeviceEnum"),
+    (sc.POSICOES_TITULO + sc.POSICOES_DESCRICAO, "ServedAssetFieldTypeEnum"),
+    (sc.CATEGORIAS_DE_CONVERSAO, "ConversionActionCategoryEnum"),
+    (sc.ORIGENS_DE_CONVERSAO, "ConversionOriginEnum"),
+])
+def test_cada_tupla_fechada_e_subconjunto_do_enum_v25(tupla, enum_v25):
+    """`search_config` é stdlib pura; este teste é o que a amarra à API real."""
+    assert set(tupla) <= _enum(enum_v25), set(tupla) - _enum(enum_v25)
+
+
+def test_lances_permitidos_espelha_as_estrategias_do_contrato():
+    assert search.LANCES_PERMITIDOS == sc.ESTRATEGIAS
+    assert "configuracao" in search.OPCOES
+
+
+# ── 1. LANCE ────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("lance, ramo, campos", [
+    (sc.LanceSearch("MANUAL_CPC"), "manual_cpc", {}),
+    (sc.LanceSearch("TARGET_SPEND"), "target_spend", {}),
+    (sc.LanceSearch("TARGET_SPEND", teto_cpc=0.45), "target_spend",
+     {"cpc_bid_ceiling_micros": 450_000}),
+    (sc.LanceSearch("MAXIMIZE_CONVERSIONS"), "maximize_conversions",
+     {"target_cpa_micros": 0}),
+    (sc.LanceSearch("MAXIMIZE_CONVERSIONS", target_cpa=2.5), "maximize_conversions",
+     {"target_cpa_micros": 2_500_000}),
+    (sc.LanceSearch("MAXIMIZE_CONVERSION_VALUE"), "maximize_conversion_value",
+     {"target_roas": 0.0}),
+    (sc.LanceSearch("MAXIMIZE_CONVERSION_VALUE", target_roas=4.0),
+     "maximize_conversion_value", {"target_roas": 4.0}),
+    (sc.LanceSearch("TARGET_IMPRESSION_SHARE", teto_cpc=1.2,
+                    local_impressao="TOP_OF_PAGE", fracao_impressao=0.65),
+     "target_impression_share",
+     {"location_fraction_micros": 650_000, "cpc_bid_ceiling_micros": 1_200_000}),
+])
+def test_cada_estrategia_vira_o_ramo_certo_do_oneof(lance, ramo, campos):
+    b = _brief(match_type="PHRASE")
+    ops, r = _montar(b, configuracao=_cfg(lance=lance))
+    assert r.ok, _mensagens(r)
+    camp = _camp(ops)
+    assert camp._pb.WhichOneof("campaign_bidding_strategy") == ramo
+    for campo, valor in campos.items():
+        assert getattr(getattr(camp, ramo), campo) == valor
+    assert camp.status.name == "PAUSED"
+
+
+def test_tis_leva_o_local_como_enum():
+    lance = sc.LanceSearch("TARGET_IMPRESSION_SHARE", teto_cpc=1.0,
+                           local_impressao="ABSOLUTE_TOP_OF_PAGE", fracao_impressao=1)
+    ops, r = _montar(configuracao=_cfg(lance=lance))
+    assert r.ok
+    assert _camp(ops).target_impression_share.location.name == "ABSOLUTE_TOP_OF_PAGE"
+
+
+def test_maxconv_sem_meta_e_o_ramo_vazio_e_nao_um_zero_escrito():
+    """A semântica unificada com Demand Gen e PMax — e o selo antigo vale.
+
+    `target_cpa_micros` é escalar proto3 sem presença: `= 0` e `SetInParent`
+    serializam igual. A diferença é de CÓDIGO (ninguém "escolhe zero"), e o
+    teste prova que unificar não mudou um byte do payload legado.
+    """
+    legado = dataclasses.replace(_brief(), estrategia_lance="MAXIMIZE_CONVERSIONS",
+                                 carimbo_nome="20261008_120000")
+    ops, _ = _montar(legado)
+    camp = _camp(ops)
+    assert camp._pb.WhichOneof("campaign_bidding_strategy") == "maximize_conversions"
+    assert not camp.maximize_conversions._pb.ListFields()
+    ref = comum.op_campanha(_cliente_sem_rede(), CID, legado,
+                            conteudo.nome_da_campanha(legado, "20261008_120000"), "SEARCH")
+    assert (camp._pb.SerializeToString(deterministic=True)
+            == ref.campaign_operation.create._pb.SerializeToString(deterministic=True))
+
+
+@pytest.mark.parametrize("kw", [
+    {}, {"estrategia_lance": "MAXIMIZE_CONVERSIONS"},
+    {"estrategia_lance": "MAXIMIZE_CONVERSIONS", "tcpa": 3.5}, {"tcpa": 2.0},
+])
+def test_sem_configuracao_a_campanha_e_byte_a_byte_a_de_comum(kw):
+    """O selo de tudo que já subiu depende disto."""
+    b = dataclasses.replace(_brief(), carimbo_nome="20261008_120000", **kw)
+    ops, r = _montar(b)
+    assert r.ok
+    ref = comum.op_campanha(_cliente_sem_rede(), CID, b,
+                            conteudo.nome_da_campanha(b, "20261008_120000"), "SEARCH")
+    assert (_camp(ops)._pb.SerializeToString(deterministic=True)
+            == ref.campaign_operation.create._pb.SerializeToString(deterministic=True))
+
+
+def test_maximize_conversion_value_pelo_brief_agora_monta_em_search():
+    b = dataclasses.replace(_brief(), estrategia_lance="MAXIMIZE_CONVERSION_VALUE",
+                            target_roas=3.0)
+    ops, r = _montar(b)
+    assert r.ok, _mensagens(r)
+    camp = _camp(ops)
+    assert camp._pb.WhichOneof("campaign_bidding_strategy") == "maximize_conversion_value"
+    assert camp.maximize_conversion_value.target_roas == 3.0
+    assert any("valor" in a.motivo for a in r.achados if a.severidade == "aviso")
+
+
+@pytest.mark.parametrize("kw, trecho", [
+    ({"estrategia": "TARGET_CPA"}, "não existe"),
+    ({"estrategia": "TARGET_SPEND", "target_cpa": 2.0}, "target_cpa só existe"),
+    ({"estrategia": "MAXIMIZE_CONVERSIONS", "target_roas": 4.0}, "target_roas só existe"),
+    ({"estrategia": "MAXIMIZE_CONVERSIONS", "teto_cpc": 1.0}, "portfólio"),
+    ({"estrategia": "MAXIMIZE_CONVERSION_VALUE", "teto_cpc": 1.0}, "portfólio"),
+    ({"estrategia": "MANUAL_CPC", "teto_cpc": 1.0}, "não se aplica"),
+    ({"estrategia": "MAXIMIZE_CONVERSIONS", "target_cpa": 0}, "positivo"),
+    ({"estrategia": "MAXIMIZE_CONVERSION_VALUE", "target_roas": 0}, "fora de"),
+    ({"estrategia": "MAXIMIZE_CONVERSION_VALUE", "target_roas": 1500.0}, "fora de"),
+    ({"estrategia": "TARGET_IMPRESSION_SHARE", "local_impressao": "TOP_OF_PAGE",
+      "fracao_impressao": 0.5}, "exige teto_cpc"),
+    ({"estrategia": "TARGET_IMPRESSION_SHARE", "teto_cpc": 1.0,
+      "fracao_impressao": 0.5}, "local_impressao"),
+    ({"estrategia": "TARGET_IMPRESSION_SHARE", "teto_cpc": 1.0,
+      "local_impressao": "TOP_OF_PAGE"}, "fracao_impressao"),
+    ({"estrategia": "TARGET_IMPRESSION_SHARE", "teto_cpc": 1.0,
+      "local_impressao": "TOP_OF_PAGE", "fracao_impressao": 1.2}, "fracao_impressao"),
+    ({"estrategia": "TARGET_SPEND", "local_impressao": "TOP_OF_PAGE"}, "só existem"),
+])
+def test_combinacao_invalida_de_lance_morre_na_forma(kw, trecho):
+    with pytest.raises(ValueError, match=trecho):
+        sc.LanceSearch(**kw)
+
+
+def test_estrategia_do_brief_divergente_da_configuracao_e_erro():
+    b = dataclasses.replace(_brief(), estrategia_lance="MAXIMIZE_CONVERSIONS")
+    _, r = _montar(b, configuracao=_cfg(lance=sc.LanceSearch("TARGET_SPEND")))
+    assert "lugar só" in _mensagens(r)
+
+
+def test_tcpa_divergente_entre_brief_e_configuracao_e_erro():
+    b = dataclasses.replace(_brief(), estrategia_lance="MAXIMIZE_CONVERSIONS", tcpa=3.0)
+    lance = sc.LanceSearch("MAXIMIZE_CONVERSIONS", target_cpa=5.0)
+    _, r = _montar(b, configuracao=_cfg(lance=lance))
+    assert "divergem no tCPA" in _mensagens(r)
+
+
+def test_tcpa_de_grupo_fora_de_maxconv_e_erro_e_nao_decoracao():
+    subs = [SubIntencao("ACESSO", ["saque anual fgts"], tcpa=3.0),
+            SubIntencao("VALOR", ["quanto recebo no saque anual"])]
+    b = _brief(keywords=[], sub_intencoes=subs)
+    _, r = _montar(b, configuracao=_cfg(lance=sc.LanceSearch("TARGET_SPEND")))
+    assert "tCPA não existe em TARGET_SPEND" in _mensagens(r)
+
+
+def test_campanha_nasce_pausada_em_toda_estrategia_da_configuracao():
+    lances = [sc.LanceSearch("MANUAL_CPC"), sc.LanceSearch("TARGET_SPEND"),
+              sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+              sc.LanceSearch("MAXIMIZE_CONVERSION_VALUE"),
+              sc.LanceSearch("TARGET_IMPRESSION_SHARE", teto_cpc=1.0,
+                             local_impressao="TOP_OF_PAGE", fracao_impressao=0.5)]
+    for lance in lances:
+        ops, r = _montar(configuracao=_cfg(lance=lance))
+        assert r.ok, (lance, _mensagens(r))
+        assert _camp(ops).status.name == "PAUSED", lance
+
+
+# ── 2. REDE ─────────────────────────────────────────────────────────────────
+
+
+def test_com_configuracao_a_rede_deixa_de_ter_default():
+    """O legado com parceiros ligados não vale para quem declara configuração."""
+    _, r = _montar(configuracao=sc.ConfiguracaoSearch())
+    assert "rede é decisão obrigatória" in _mensagens(r)
+
+
+def test_rede_do_brief_satisfaz_a_configuracao():
+    b = _brief(rede=RedeDePesquisa(True, False, False))
+    ops, r = _montar(b, configuracao=sc.ConfiguracaoSearch())
+    assert r.ok, _mensagens(r)
+    assert _camp(ops).network_settings.target_search_network is False
+
+
+def test_rede_divergente_entre_brief_e_configuracao_e_erro():
+    b = _brief(rede=RedeDePesquisa(True, True, False))
+    _, r = _montar(b, configuracao=_cfg())
+    assert "divergente" in " ".join(a.valor for a in r.erros)
+
+
+def test_display_expansion_declarada_chega_ao_payload_com_aviso():
+    rede = sc.RedeSearch(google_search=True, parceiros=True, display_expansion=True)
+    ops, r = _montar(configuracao=_cfg(rede=rede))
+    assert r.ok
+    ns = _camp(ops).network_settings
+    assert (ns.target_google_search, ns.target_search_network,
+            ns.target_content_network) == (True, True, True)
+    assert any(a.campo == "rede" for a in r.achados if a.severidade == "aviso")
+
+
+def test_rede_search_sem_google_ou_sem_bool_morre_na_forma():
+    with pytest.raises(ValueError, match="não é uma campanha Search"):
+        sc.RedeSearch(google_search=False, parceiros=False, display_expansion=False)
+    with pytest.raises(ValueError, match="bool declarado"):
+        sc.RedeSearch(google_search=True, parceiros=None, display_expansion=False)
+
+
+# ── 3. AI MAX ───────────────────────────────────────────────────────────────
+
+LISTA_A = f"customers/{CID}/sharedSets/111"
+LISTA_B = f"customers/{CID}/sharedSets/222"
+
+
+def _aimax(**troca) -> sc.AiMaxSearch:
+    base = dict(correspondencia_de_termos=True, personalizacao_de_texto=True,
+                expansao_de_url_final=True)
+    base.update(troca)
+    return sc.AiMaxSearch(**base)
+
+
+def _automacoes(camp) -> dict[str, str]:
+    return {s.asset_automation_type.name: s.asset_automation_status.name
+            for s in camp.asset_automation_settings}
+
+
+def test_ai_max_completa_chega_inteira_ao_payload():
+    subs = [SubIntencao("ACESSO", ["saque anual fgts"]),
+            SubIntencao("MARCA", ["caixa saque anual"])]
+    b = _brief(keywords=[], sub_intencoes=subs)
+    aimax = _aimax(grupos_sem_correspondencia=("MARCA",),
+                   exclusoes_de_url=("/blog/", "/contato"),
+                   listas_de_marca_incluidas=(LISTA_A,),
+                   listas_de_marca_excluidas=(LISTA_B,),
+                   termos_excluidos=("garantido",),
+                   restricoes_de_mensagem=("Nao prometa aprovacao de credito",))
+    ops, r = _montar(b, configuracao=_cfg(
+        lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"), ai_max=aimax))
+    assert r.ok, _mensagens(r)
+    camp = _camp(ops)
+    assert camp.ai_max_setting.enable_ai_max is True
+    assert _automacoes(camp) == {
+        "TEXT_ASSET_AUTOMATION": "OPTED_IN",
+        "FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION": "OPTED_IN"}
+    assert list(camp.text_guidelines.term_exclusions) == ["garantido"]
+    rest = camp.text_guidelines.messaging_restrictions[0]
+    assert rest.restriction_type.name == "RESTRICTION_BASED_EXCLUSION"
+    grupos = {g.name.split("_")[0]: g.ai_max_ad_group_setting.disable_search_term_matching
+              for g in _adgroups(ops)}
+    assert grupos == {"ACESSO": False, "MARCA": True}
+    paginas = _criterios_de_campanha(ops, "webpage")
+    assert [p.webpage.conditions[0].argument for p in paginas] == ["/blog/", "/contato"]
+    assert all(p.negative for p in paginas)
+    assert all(p.webpage.conditions[0].operand.name == "URL" for p in paginas)
+    marcas = {cc.brand_list.shared_set: cc.negative
+              for cc in _criterios_de_campanha(ops, "brand_list")}
+    assert marcas == {LISTA_A: False, LISTA_B: True}
+
+
+def test_configuracao_sem_ai_max_desliga_tudo_em_voz_alta():
+    """Default remoto não aparece no plano — e já mudou uma vez (ACA)."""
+    ops, r = _montar(configuracao=_cfg())
+    assert r.ok
+    camp = _camp(ops)
+    assert camp.ai_max_setting._pb.HasField("enable_ai_max")
+    assert camp.ai_max_setting.enable_ai_max is False
+    assert set(_automacoes(camp).values()) == {"OPTED_OUT"}
+    assert all(not g.ai_max_ad_group_setting._pb.ListFields() for g in _adgroups(ops))
+
+
+def test_flag_antiga_vira_ai_max_legado_explicito():
+    b = dataclasses.replace(_brief(), estrategia_lance="MAXIMIZE_CONVERSIONS")
+    ops, r = _montar(b, ai_max=True)
+    assert r.ok, _mensagens(r)
+    camp = _camp(ops)
+    assert camp.ai_max_setting.enable_ai_max is True
+    assert set(_automacoes(camp).values()) == {"OPTED_OUT"}
+    assert [g.ai_max_ad_group_setting.disable_search_term_matching
+            for g in _adgroups(ops)] == [False]
+
+
+def test_brief_ai_max_deixou_de_ser_ignorado_em_search():
+    """`brief.ai_max=True` era descartado em silêncio por este construtor."""
+    b = dataclasses.replace(_brief(), estrategia_lance="MAXIMIZE_CONVERSIONS",
+                            ai_max=True)
+    ops, r = _montar(b)
+    assert r.ok
+    assert _camp(ops).ai_max_setting.enable_ai_max is True
+
+
+def test_correspondencia_de_termos_com_lance_cego_e_erro():
+    """AI Max trata toda keyword como broad: a doutrina do BROAD vale aqui."""
+    _, r = _montar(ai_max=True)          # MANUAL_CPC, o padrão da casa
+    assert "broad com lance cego" in _mensagens(r)
+    _, r = _montar(configuracao=_cfg(lance=sc.LanceSearch("TARGET_SPEND"),
+                                     ai_max=_aimax()))
+    assert "broad com lance cego" in _mensagens(r)
+
+
+def test_ai_max_so_com_texto_e_sem_correspondencia_aceita_lance_manual():
+    aimax = sc.AiMaxSearch(correspondencia_de_termos=False,
+                           personalizacao_de_texto=True, expansao_de_url_final=False)
+    ops, r = _montar(configuracao=_cfg(ai_max=aimax))
+    assert r.ok, _mensagens(r)
+    assert [g.ai_max_ad_group_setting.disable_search_term_matching
+            for g in _adgroups(ops)] == [True]
+
+
+def test_flag_solta_com_configuracao_declarada_e_erro():
+    _, r = _montar(ai_max=True, configuracao=_cfg(
+        lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS")))
+    assert "configuracao.ai_max" in _mensagens(r)
+
+
+def test_grupo_sem_correspondencia_inexistente_e_erro():
+    aimax = _aimax(grupos_sem_correspondencia=("FANTASMA",))
+    _, r = _montar(configuracao=_cfg(lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+                                     ai_max=aimax))
+    assert "grupo inexistente" in _mensagens(r)
+
+
+def test_lista_de_marca_de_outra_conta_e_erro():
+    aimax = _aimax(listas_de_marca_excluidas=("customers/999/sharedSets/1",))
+    _, r = _montar(configuracao=_cfg(lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+                                     ai_max=aimax))
+    assert "outra conta" in _mensagens(r)
+
+
+@pytest.mark.parametrize("kw, trecho", [
+    ({"personalizacao_de_texto": False}, "exige personalização"),
+    ({"expansao_de_url_final": False, "exclusoes_de_url": ("/blog/",)},
+     "não exclui nada"),
+    ({"personalizacao_de_texto": False, "expansao_de_url_final": False,
+      "termos_excluidos": ("x",)}, "só guiam texto"),
+    ({"termos_excluidos": tuple(f"t{i}" for i in range(26))}, "no máximo 25"),
+    ({"termos_excluidos": ("x" * 31,)}, "1 a 30"),
+    ({"restricoes_de_mensagem": ("y" * 301,)}, "1 a 300"),
+    ({"restricoes_de_mensagem": tuple(f"r{i}" for i in range(41))}, "no máximo 40"),
+    ({"termos_excluidos": ("Gratis", "gratis")}, "repetido"),
+    ({"exclusoes_de_url": ("/a b/",)}, "espaço"),
+    ({"listas_de_marca_incluidas": ("sharedSets/1",)}, "resource name"),
+    ({"listas_de_marca_incluidas": (LISTA_A,),
+      "listas_de_marca_excluidas": (LISTA_A,)}, "incluída E excluída"),
+    ({"correspondencia_de_termos": False, "grupos_sem_correspondencia": ("A",)},
+     "só faz sentido"),
+    ({"correspondencia_de_termos": None}, "bool declarado"),
+])
+def test_combinacao_invalida_de_ai_max_morre_na_forma(kw, trecho):
+    with pytest.raises(ValueError, match=trecho):
+        _aimax(**kw)
+
+
+# ── 4. RSA ──────────────────────────────────────────────────────────────────
+
+
+def test_fixacao_e_path_chegam_ao_rsa():
+    anuncio = sc.AnuncioSearch(path1="saque-anual", path2="regras", fixacoes=(
+        sc.Fixacao("Regras do Saque Anual", "HEADLINE_1"),
+        sc.Fixacao("Prazos, limites e quem tem direito, com fonte citada.",
+                   "DESCRIPTION_1"),
+    ))
+    ops, r = _montar(configuracao=_cfg(anuncio=anuncio))
+    assert r.ok, _mensagens(r)
+    rsa = _por_tipo(ops, "ad_group_ad_operation")[0].ad_group_ad_operation.create \
+        .ad.responsive_search_ad
+    assert (rsa.path1, rsa.path2) == ("saque-anual", "regras")
+    pinos = {h.text: h.pinned_field.name for h in rsa.headlines}
+    assert pinos["Regras do Saque Anual"] == "HEADLINE_1"
+    assert pinos["Quem Tem Direito em 2026"] == "UNSPECIFIED"
+    assert rsa.descriptions[0].pinned_field.name == "DESCRIPTION_1"
+    assert any(a.campo == "anuncio.fixacoes" for a in r.achados
+               if a.severidade == "aviso")
+
+
+def test_fixacao_de_texto_que_nao_esta_na_copy_e_erro():
+    anuncio = sc.AnuncioSearch(fixacoes=(sc.Fixacao("Titulo Inventado", "HEADLINE_1"),))
+    _, r = _montar(configuracao=_cfg(anuncio=anuncio))
+    assert "não está entre os títulos" in _mensagens(r)
+
+
+def test_fixar_tudo_numa_posicao_deixa_a_segunda_vazia_e_e_erro():
+    titulos = ["Regras do Saque Anual", "Quem Tem Direito em 2026",
+               "Tabela Oficial por Faixa", "O Prazo de 90 Dias"]
+    anuncio = sc.AnuncioSearch(fixacoes=tuple(sc.Fixacao(t, "HEADLINE_1") for t in titulos))
+    _, r = _montar(configuracao=_cfg(anuncio=anuncio))
+    assert "HEADLINE_2" in " ".join(a.valor for a in r.erros)
+
+
+@pytest.mark.parametrize("kw, trecho", [
+    ({"path2": "regras"}, "path2 exige path1"),
+    ({"path1": "x" * 16}, "máximo 15"),
+    ({"path1": "a/b"}, "sem barra"),
+    ({"fixacoes": (sc.Fixacao("A", "HEADLINE_1"), sc.Fixacao("A", "HEADLINE_2"))},
+     "repetido"),
+])
+def test_rsa_invalido_morre_na_forma(kw, trecho):
+    with pytest.raises(ValueError, match=trecho):
+        sc.AnuncioSearch(**kw)
+
+
+def test_posicao_de_fixacao_inexistente_morre_na_forma():
+    with pytest.raises(ValueError, match="posição"):
+        sc.Fixacao("A", "HEADLINE_4")
+
+
+# ── 5. PROGRAMAÇÃO E DISPOSITIVO ────────────────────────────────────────────
+
+
+def test_programacao_e_dispositivo_chegam_como_criterios_de_campanha():
+    cfg = _cfg(programacao=(
+        sc.FaixaDeHorario("MONDAY", "08:00", "12:30"),
+        sc.FaixaDeHorario("MONDAY", "14:00", "24:00", ajuste=1.2),
+    ), dispositivos=(sc.AjusteDeDispositivo("TABLET", 0.5),
+                     sc.AjusteDeDispositivo("DESKTOP", 0)))
+    ops, r = _montar(configuracao=cfg)
+    assert r.ok, _mensagens(r)
+    faixas = _criterios_de_campanha(ops, "ad_schedule")
+    a, b = (f.ad_schedule for f in faixas)
+    assert (a.day_of_week.name, a.start_hour, a.start_minute.name,
+            a.end_hour, a.end_minute.name) == ("MONDAY", 8, "ZERO", 12, "THIRTY")
+    assert (b.start_hour, b.end_hour, b.end_minute.name) == (14, 24, "ZERO")
+    assert faixas[1].bid_modifier == pytest.approx(1.2)
+    disp = {d.device.type_.name: d.bid_modifier
+            for d in _criterios_de_campanha(ops, "device")}
+    assert disp == {"TABLET": 0.5, "DESKTOP": 0.0}
+
+
+@pytest.mark.parametrize("faixas, trecho", [
+    ([sc.FaixaDeHorario("MONDAY", f"{h:02d}:00", f"{h:02d}:30") for h in range(7)],
+     "no máximo 6"),
+    ([sc.FaixaDeHorario("MONDAY", "08:00", "12:00"),
+      sc.FaixaDeHorario("MONDAY", "11:00", "13:00")], "se sobrepõem"),
+])
+def test_programacao_invalida_morre_na_forma(faixas, trecho):
+    with pytest.raises(ValueError, match=trecho):
+        sc.ConfiguracaoSearch(programacao=tuple(faixas))
+
+
+@pytest.mark.parametrize("kw, trecho", [
+    ({"dia": "MONDAY", "inicio": "08:10", "fim": "09:00"}, "minutos"),
+    ({"dia": "MONDAY", "inicio": "08:00", "fim": "24:15"}, "24 só como 24:00"),
+    ({"dia": "MONDAY", "inicio": "10:00", "fim": "09:00"}, "antes do fim"),
+    ({"dia": "SEGUNDA", "inicio": "08:00", "fim": "09:00"}, "dia"),
+    ({"dia": "MONDAY", "inicio": "08:00", "fim": "09:00", "ajuste": 11.0}, "fora de"),
+    ({"dia": "MONDAY", "inicio": "8h", "fim": "09:00"}, "HH:MM"),
+])
+def test_faixa_invalida_morre_na_forma(kw, trecho):
+    with pytest.raises(ValueError, match=trecho):
+        sc.FaixaDeHorario(**kw)
+
+
+def test_ajuste_de_lance_sob_smart_bidding_e_recusado():
+    """Smart Bidding ignora ajuste manual: aceitar seria caixa que não faz nada."""
+    lance = sc.LanceSearch("MAXIMIZE_CONVERSIONS")
+    cfg = _cfg(lance=lance,
+               programacao=(sc.FaixaDeHorario("MONDAY", "08:00", "12:00", ajuste=1.3),),
+               dispositivos=(sc.AjusteDeDispositivo("MOBILE", 1.4),))
+    _, r = _montar(configuracao=cfg)
+    campos = {a.campo for a in r.erros}
+    assert {"programacao.ajuste", "dispositivos"} <= campos
+
+
+def test_exclusao_de_dispositivo_vale_mesmo_sob_smart_bidding():
+    cfg = _cfg(lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+               programacao=(sc.FaixaDeHorario("MONDAY", "08:00", "12:00"),),
+               dispositivos=(sc.AjusteDeDispositivo("TABLET", 0),))
+    _, r = _montar(configuracao=cfg)
+    assert r.ok, _mensagens(r)
+
+
+def test_dispositivo_invalido_ou_todos_excluidos_morre_na_forma():
+    with pytest.raises(ValueError, match="dispositivo"):
+        sc.AjusteDeDispositivo("SMART_TV", 1.0)
+    with pytest.raises(ValueError, match="fator"):
+        sc.AjusteDeDispositivo("MOBILE", 0.05)
+    with pytest.raises(ValueError, match="lugar nenhum"):
+        sc.ConfiguracaoSearch(dispositivos=tuple(
+            sc.AjusteDeDispositivo(d, 0) for d in sc.DISPOSITIVOS))
+    with pytest.raises(ValueError, match="duas vezes"):
+        sc.ConfiguracaoSearch(dispositivos=(sc.AjusteDeDispositivo("MOBILE", 1.1),
+                                            sc.AjusteDeDispositivo("MOBILE", 0.9)))
+
+
+# ── 6. GEO, IDIOMA E DATAS ──────────────────────────────────────────────────
+
+SP_ESTADO, SP_CIDADE, RIO_ESTADO = 20106, 1001773, 20102
+
+
+def test_geo_tipo_multiplos_locais_exclusao_e_idiomas_chegam_ao_payload():
+    geo = sc.SegmentacaoGeo(tipo_positivo="PRESENCE", tipo_negativo="PRESENCE",
+                            locais=(SP_ESTADO, RIO_ESTADO),
+                            locais_excluidos=(SP_CIDADE,), idiomas=("pt", "es"))
+    ops, r = _montar(configuracao=_cfg(geo=geo, inicio=FUTURO, fim=FUTURO_FIM))
+    assert r.ok, _mensagens(r)
+    camp = _camp(ops)
+    assert camp.geo_target_type_setting.positive_geo_target_type.name == "PRESENCE"
+    assert camp.geo_target_type_setting.negative_geo_target_type.name == "PRESENCE"
+    assert camp.start_date_time == f"{FUTURO} 00:00:00"
+    assert camp.end_date_time == f"{FUTURO_FIM} 23:59:59"
+    locais = {(cc.location.geo_target_constant, cc.negative)
+              for cc in _criterios_de_campanha(ops, "location")}
+    assert locais == {(f"geoTargetConstants/{SP_ESTADO}", False),
+                      (f"geoTargetConstants/{RIO_ESTADO}", False),
+                      (f"geoTargetConstants/{SP_CIDADE}", True)}
+    assert len(_criterios_de_campanha(ops, "language")) == 2
+
+
+def test_geo_sem_locais_usa_o_pais_e_o_idioma_do_brief():
+    geo = sc.SegmentacaoGeo(tipo_positivo="PRESENCE_OR_INTEREST", tipo_negativo="PRESENCE")
+    ops, r = _montar(configuracao=_cfg(geo=geo))
+    assert r.ok
+    b = _brief()
+    assert [cc.location.geo_target_constant
+            for cc in _criterios_de_campanha(ops, "location")] == [
+        f"geoTargetConstants/{b.geo_id}"]
+    assert [cc.language.language_constant
+            for cc in _criterios_de_campanha(ops, "language")] == [
+        f"languageConstants/{b.idioma_id}"]
+
+
+def test_local_de_outro_pais_e_erro_porque_o_portao_so_julgou_um():
+    mexico = 2484
+    geo = sc.SegmentacaoGeo(tipo_positivo="PRESENCE", tipo_negativo="PRESENCE",
+                            locais=(mexico,))
+    _, r = _montar(configuracao=_cfg(geo=geo))
+    assert "portão país × vertical" in _mensagens(r)
+
+
+def test_idiomas_sem_o_idioma_do_brief_e_erro():
+    geo = sc.SegmentacaoGeo(tipo_positivo="PRESENCE", tipo_negativo="PRESENCE",
+                            idiomas=("es",))
+    _, r = _montar(configuracao=_cfg(geo=geo))
+    assert "idioma do brief" in _mensagens(r)
+
+
+def test_geo_invalido_morre_na_forma():
+    with pytest.raises(ValueError, match="tipo_positivo"):
+        sc.SegmentacaoGeo(tipo_positivo="LOCAL", tipo_negativo="PRESENCE")
+    with pytest.raises(ValueError, match="tipo_negativo"):
+        sc.SegmentacaoGeo(tipo_positivo="PRESENCE", tipo_negativo="SEARCH_INTEREST")
+    with pytest.raises(ValueError, match="incluído E excluído"):
+        sc.SegmentacaoGeo(tipo_positivo="PRESENCE", tipo_negativo="PRESENCE",
+                          locais=(1,), locais_excluidos=(1,))
+
+
+def test_datas_invalidas_sao_recusadas():
+    with pytest.raises(ValueError, match="antes do início"):
+        sc.ConfiguracaoSearch(inicio=FUTURO_FIM, fim=FUTURO)
+    with pytest.raises(ValueError, match="AAAA-MM-DD"):
+        sc.ConfiguracaoSearch(inicio="08/10/2026")
+    _, r = _montar(configuracao=_cfg(inicio="2020-01-01"))
+    assert "passado" in _mensagens(r)
+
+
+# ── 7. META DE CONVERSÃO ────────────────────────────────────────────────────
+
+ACAO = f"customers/{CID}/conversionActions/7467141090"
+META = f"customers/{CID}/customConversionGoals/6456286881"
+
+
+def _updates(ops, tipo):
+    return [getattr(o, tipo) for o in _por_tipo(ops, tipo)]
+
+
+def test_acao_especifica_cria_meta_personalizada_e_aponta_a_campanha_para_ela():
+    meta = sc.MetaDeConversao(acoes_de_conversao=(ACAO,), categorias=(
+        sc.MetaDeCategoria("PURCHASE", "WEBSITE", lance=False),))
+    ops, r = _montar(configuracao=_cfg(lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+                                       meta_de_conversao=meta))
+    assert r.ok, _mensagens(r)
+    tipos = [o._pb.WhichOneof("operation") for o in ops]
+    criada = _por_tipo(ops, "custom_conversion_goal_operation")[0] \
+        .custom_conversion_goal_operation.create
+    assert criada.resource_name == f"customers/{CID}/customConversionGoals/-400"
+    assert list(criada.conversion_actions) == [ACAO]
+    cfgop, = _updates(ops, "conversion_goal_campaign_config_operation")
+    assert cfgop.update.resource_name == \
+        f"customers/{CID}/conversionGoalCampaignConfigs/{comum.T_CAMPANHA}"
+    assert cfgop.update.custom_conversion_goal == criada.resource_name
+    assert list(cfgop.update_mask.paths) == ["custom_conversion_goal"]
+    goal, = _updates(ops, "campaign_conversion_goal_operation")
+    assert goal.update.resource_name.endswith(f"/{comum.T_CAMPANHA}~PURCHASE~WEBSITE")
+    assert goal.update.biddable is False
+    assert list(goal.update_mask.paths) == ["biddable"]
+    # a meta nasce antes de ser referenciada, e tudo depois da campanha
+    assert tipos.index("custom_conversion_goal_operation") < \
+        tipos.index("conversion_goal_campaign_config_operation")
+    assert tipos.index("campaign_operation") < tipos.index("custom_conversion_goal_operation")
+
+
+def test_meta_personalizada_existente_nao_cria_outra():
+    meta = sc.MetaDeConversao(meta_personalizada=META)
+    ops, r = _montar(configuracao=_cfg(lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+                                       meta_de_conversao=meta))
+    assert r.ok
+    assert not _por_tipo(ops, "custom_conversion_goal_operation")
+    cfgop, = _updates(ops, "conversion_goal_campaign_config_operation")
+    assert cfgop.update.custom_conversion_goal == META
+    # sem desligar as categorias herdadas, a meta SOMA — e isso é avisado
+    assert any(a.campo == "meta_de_conversao" for a in r.achados
+               if a.severidade == "aviso")
+
+
+def test_meta_de_outra_conta_e_erro():
+    meta = sc.MetaDeConversao(acoes_de_conversao=("customers/1/conversionActions/2",))
+    _, r = _montar(configuracao=_cfg(lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS"),
+                                     meta_de_conversao=meta))
+    assert "conta de conversão" in _mensagens(r)
+
+
+@pytest.mark.parametrize("kw, trecho", [
+    ({}, "vazia"),
+    ({"meta_personalizada": META, "acoes_de_conversao": (ACAO,)}, "OU"),
+    ({"meta_personalizada": "6456286881"}, "CustomConversionGoal"),
+    ({"acoes_de_conversao": ("conversionActions/1",)}, "ConversionAction"),
+    ({"categorias": (sc.MetaDeCategoria("PURCHASE", "WEBSITE", True),
+                     sc.MetaDeCategoria("PURCHASE", "WEBSITE", False))}, "repetido"),
+])
+def test_meta_invalida_morre_na_forma(kw, trecho):
+    with pytest.raises(ValueError, match=trecho):
+        sc.MetaDeConversao(**kw)
+
+
+def test_categoria_ou_origem_inexistente_morre_na_forma():
+    with pytest.raises(ValueError, match="categoria"):
+        sc.MetaDeCategoria("VENDA", "WEBSITE", True)
+    with pytest.raises(ValueError, match="origem"):
+        sc.MetaDeCategoria("PURCHASE", "SITE", True)
+
+
+# ── a integração com perfil, plano e selo ───────────────────────────────────
+
+
+def test_perfil_montar_entrega_a_configuracao_ao_construtor():
+    from volc_ads.campanha import perfil
+
+    lance = sc.LanceSearch("TARGET_SPEND", teto_cpc=0.3)
+    ops, r = perfil.montar("SEARCH", CID, _brief(), login_customer_id="x",
+                           configuracao=_cfg(lance=lance))
+    assert r.ok
+    assert _camp(ops)._pb.WhichOneof("campaign_bidding_strategy") == "target_spend"
+
+
+def test_planejar_aceita_o_payload_maximo_sem_quebrar_a_projecao():
+    p = search.planejar(CID, _brief(), login_customer_id="x", configuracao=_cfg_maxima())
+    assert p.prontidao.monta, p
+
+
+def test_configuracao_diferente_muda_a_impressao_do_payload():
+    from volc_ads import subir as sb
+
+    a, _ = _montar(configuracao=_cfg(lance=sc.LanceSearch("TARGET_SPEND")))
+    b, _ = _montar(configuracao=_cfg(lance=sc.LanceSearch("TARGET_SPEND", teto_cpc=0.5)))
+    assert sb._impressao(a) != sb._impressao(b)
+
+
+def _cfg_maxima() -> sc.ConfiguracaoSearch:
+    """Todos os recursos novos juntos — o mesmo formato do `validate_only` máximo."""
+    return sc.ConfiguracaoSearch(
+        lance=sc.LanceSearch("MAXIMIZE_CONVERSIONS", target_cpa=4.0),
+        rede=sc.RedeSearch(google_search=True, parceiros=False, display_expansion=True),
+        ai_max=_aimax(exclusoes_de_url=("/blog/",), listas_de_marca_excluidas=(LISTA_B,),
+                      termos_excluidos=("garantido",),
+                      restricoes_de_mensagem=("Nao prometa aprovacao",)),
+        anuncio=sc.AnuncioSearch(path1="saque", path2="regras", fixacoes=(
+            sc.Fixacao("Regras do Saque Anual", "HEADLINE_1"),)),
+        programacao=(sc.FaixaDeHorario("MONDAY", "08:00", "20:00"),),
+        dispositivos=(sc.AjusteDeDispositivo("TABLET", 0),),
+        geo=sc.SegmentacaoGeo(tipo_positivo="PRESENCE", tipo_negativo="PRESENCE",
+                              locais=(SP_ESTADO,), idiomas=("pt",)),
+        inicio=FUTURO, fim=FUTURO_FIM,
+        meta_de_conversao=sc.MetaDeConversao(acoes_de_conversao=(ACAO,), categorias=(
+            sc.MetaDeCategoria("PURCHASE", "WEBSITE", lance=False),)),
+    )
+
+
+def test_payload_maximo_monta_com_todos_os_recursos_juntos():
+    ops, r = _montar(configuracao=_cfg_maxima())
+    assert r.ok, _mensagens(r)
+    tipos = {o._pb.WhichOneof("operation") for o in ops}
+    assert {"custom_conversion_goal_operation",
+            "conversion_goal_campaign_config_operation",
+            "campaign_conversion_goal_operation"} <= tipos
+    ramos = {o.campaign_criterion_operation.create._pb.WhichOneof("criterion")
+             for o in _por_tipo(ops, "campaign_criterion_operation")}
+    assert {"location", "language", "ad_schedule", "device", "webpage",
+            "brand_list"} <= ramos

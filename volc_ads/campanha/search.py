@@ -41,6 +41,7 @@ import dataclasses
 
 from ..gads.client import cliente, validar_mutacoes
 from . import comum, conteudo, criterio, plano, validacao
+from . import search_config as sc
 from .brief import SEM_SUB_INTENCAO, Brief, SubIntencao
 from .criterio import Criterio
 from .taxonomia import MAX_NOME_ADGROUP
@@ -51,14 +52,25 @@ T_ASSET_BASE = comum.T_ASSET_BASE
 
 CANAL = "SEARCH"
 
-#: As estratégias de lance que ESTE canal aceita — as duas, e o padrão da casa
-#: é `MANUAL_CPC` (ver `Brief.estrategia_lance`). Declarado aqui, no módulo do
-#: canal, e lido por `campanha/perfil.py`.
-LANCES_PERMITIDOS: tuple[str, ...] = ("MANUAL_CPC", "MAXIMIZE_CONVERSIONS")
+#: As estratégias de lance que ESTE canal aceita; o padrão da casa continua
+#: `MANUAL_CPC` (ver `Brief.estrategia_lance`). Declarado aqui, no módulo do
+#: canal, e lido por `campanha/perfil.py` — e por árvore sintática no backend,
+#: por isso é literal. Espelha `search_config.ESTRATEGIAS` (teste garante).
+#:
+#: ⚠️ `TARGET_SPEND` e `TARGET_IMPRESSION_SHARE` só chegam pela
+#: `ConfiguracaoSearch`: `brief.ESTRATEGIAS_DE_LANCE` ainda não os conhece, e o
+#: portão de forma do brief é de outro dono.
+LANCES_PERMITIDOS: tuple[str, ...] = (
+    "MANUAL_CPC",
+    "TARGET_SPEND",
+    "MAXIMIZE_CONVERSIONS",
+    "MAXIMIZE_CONVERSION_VALUE",
+    "TARGET_IMPRESSION_SHARE",
+)
 
-#: Opções de construção além do brief. `ai_max` liga `campaign.ai_max_setting`,
-#: que só existe em Search.
-OPCOES: frozenset[str] = frozenset({"ai_max"})
+#: Opções de construção além do brief. `ai_max` é a flag antiga (vira
+#: `search_config.AI_MAX_LEGADO`); `configuracao` é a `ConfiguracaoSearch`.
+OPCOES: frozenset[str] = frozenset({"ai_max", "configuracao"})
 
 # ⚠️ Os limites numéricos, a tabela de campo→política, as severidades que
 # barram, a exceção da caixa alta, o nome da campanha e o portão país×vertical
@@ -78,14 +90,21 @@ _SEVERIDADE_BARRA = conteudo.SEVERIDADE_BARRA
 _SO_AVISO = conteudo.SO_AVISO
 
 
-def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = False):
+def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = False,
+              configuracao: sc.ConfiguracaoSearch | None = None):
     """Monta as operações e valida o conteúdo localmente.
 
     Devolve (operacoes, resultado_da_validacao). Se `resultado.ok` for False,
     NÃO envie: a validação local é mais barata que a da API, e a da API é
     mais barata que a reprovação de política.
+
+    `configuracao` é a `search_config.ConfiguracaoSearch` — lance além de
+    manual/MaxConv, rede com Display expansion, AI Max completa, fixação e
+    path do RSA, programação, dispositivo, tipo de geo, datas e meta de
+    conversão. `None` mantém o payload de antes desta entrega.
     """
     r = validacao.Resultado()
+    cfg = configuracao
 
     # ⚠️ Search passou a conferir a PRÓPRIA lista em 01/09/2026, e a razão é
     # que ele deixou de poder confiar no portão do brief.
@@ -99,8 +118,11 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
     #
     # Sem esta conferência, um brief de Search com `MAXIMIZE_CONVERSION_VALUE`
     # cairia no `else` de `comum.op_campanha` e nasceria em `maximize_conversions`
-    # com `target_cpa_micros = 0` — a campanha subiria, com outra estratégia, e
-    # ninguém saberia. É o descarte em silêncio que este projeto recusa.
+    # — a campanha subiria com outra estratégia e ninguém saberia. Desde
+    # 08/10/2026 Search MONTA MaxConvValue: `_ajustar_campanha` reescreve o
+    # oneof de lance a partir da estratégia resolvida, e o `else` de `comum`
+    # deixou de decidir. A conferência continua sendo o portão do que o
+    # canal sabe montar.
     #
     # A checagem vem ANTES de `cliente()` de propósito: autenticar para depois
     # recusar o brief faz um pedido já inválido renovar OAuth e transforma
@@ -108,9 +130,17 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
     if brief.estrategia_lance not in LANCES_PERMITIDOS:
         r.erro("estrategia_lance", brief.estrategia_lance,
                f"Search não monta {brief.estrategia_lance} — este canal aceita "
-               f"{', '.join(LANCES_PERMITIDOS)}. Maximizar VALOR de conversão "
-               f"é estratégia de Performance Max e exige conversão com valor "
-               f"declarado, que o RSA de busca não carrega")
+               f"{', '.join(LANCES_PERMITIDOS)}")
+        return [], r
+
+    # O contrato de Search resolvido e checado ANTES de `cliente()`, pela
+    # mesma razão da conferência acima: configuração incoerente é contrato
+    # incompleto, não motivo para renovar OAuth.
+    lance = sc.resolver_lance(brief, cfg, r)
+    rede = sc.resolver_rede(brief, cfg, r)
+    aimax = sc.resolver_ai_max(brief, cfg, ai_max, r)
+    sc.checar(cfg, brief, r, lance=lance, ai_max=aimax, customer_id=str(cid))
+    if not r.ok:
         return [], r
 
     c = cliente(login_customer_id)
@@ -166,6 +196,8 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
     conteudo.politica(pol, [d for _, ds in sitelinks for d in ds], "sitelink_desc", r)
     conteudo.politica(pol, snippet_vals, "snippet_valor", r)
 
+    fixacoes = sc.checar_rsa(cfg.anuncio if cfg else None, headlines, descriptions, r)
+
     grupos = _grupos(brief, ts, r)
 
     # As negativas, triadas com o `r` DE VERDADE. Na versão anterior os dois
@@ -200,24 +232,33 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
     if not r.ok:
         return [], r
 
-    ops = [
-        comum.op_budget(c, cid, brief, f"Budget_{ts}"),
-        comum.op_campanha(c, cid, brief, base, "SEARCH", ai_max=ai_max),
-        comum.op_geo(c, cid, brief),
-        comum.op_idioma(c, cid, brief),
-    ]
+    # `ai_max=False` para `comum` SEMPRE: a AI Max agora é aplicada inteira em
+    # `_ajustar_campanha`, com as automações explícitas — `comum` só sabia
+    # ligar a chave geral e deixava o resto no default remoto.
+    op_camp = comum.op_campanha(c, cid, brief, base, "SEARCH", ai_max=False)
+    _ajustar_campanha(c, op_camp.campaign_operation.create, cfg, lance, rede, aimax)
+    ops = [comum.op_budget(c, cid, brief, f"Budget_{ts}"), op_camp]
+    if cfg is not None and cfg.geo is not None:
+        ops.extend(_ops_geo(c, cid, brief, cfg.geo))
+    else:
+        ops += [comum.op_geo(c, cid, brief), comum.op_idioma(c, cid, brief)]
 
     # URL limpa. A marcação inteira vai no `final_url_suffix` da campanha, que
     # o Google aplica a esta URL e à de todo sitelink e asset — ver marcacao.py.
     url = comum.url_destino(brief)
 
     for i, (sub, kws, nome) in enumerate(grupos):
-        ops.append(
-            comum.op_adgroup(
-                c, cid, brief, nome, "SEARCH_STANDARD",
-                indice=i, cpc_inicial=sub.cpc_inicial, tcpa=sub.tcpa,
-            )
+        op_ag = comum.op_adgroup(
+            c, cid, brief, nome, "SEARCH_STANDARD",
+            indice=i, cpc_inicial=sub.cpc_inicial, tcpa=sub.tcpa,
         )
+        if aimax is not None:
+            # Explícito em TODO grupo, mesmo quando igual ao default remoto:
+            # é o que faz a correspondência de termos aparecer no plano e no
+            # selo, grupo a grupo.
+            op_ag.ad_group_operation.create.ai_max_ad_group_setting \
+                .disable_search_term_matching = not aimax.correspondencia_no_grupo(sub.nome)
+        ops.append(op_ag)
         ag = comum.temp_adgroup(cid, i)
 
         # keywords — cada uma com o match type QUE ELA declara. O default do
@@ -266,11 +307,22 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
         for t in headlines:
             a = c.get_type("AdTextAsset")
             a.text = t
+            if t.strip() in fixacoes:
+                a.pinned_field = getattr(c.enums.ServedAssetFieldTypeEnum,
+                                         fixacoes[t.strip()])
             ada.ad.responsive_search_ad.headlines.append(a)
         for t in descriptions:
             a = c.get_type("AdTextAsset")
             a.text = t
+            if t.strip() in fixacoes:
+                a.pinned_field = getattr(c.enums.ServedAssetFieldTypeEnum,
+                                         fixacoes[t.strip()])
             ada.ad.responsive_search_ad.descriptions.append(a)
+        if cfg is not None and cfg.anuncio is not None:
+            if cfg.anuncio.path1:
+                ada.ad.responsive_search_ad.path1 = cfg.anuncio.path1
+            if cfg.anuncio.path2:
+                ada.ad.responsive_search_ad.path2 = cfg.anuncio.path2
         ops.append(o)
 
     # negativas de campanha — valem para todos os ad groups, com o match type
@@ -283,6 +335,8 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
         cc.keyword.text = crit.texto
         cc.keyword.match_type = getattr(c.enums.KeywordMatchTypeEnum, crit.match_type)
         ops.append(o)
+
+    ops.extend(_ops_criterios_de_campanha(c, cid, cfg, aimax))
 
     # assets + vínculo com a campanha, no mesmo mutate. Vínculo de CAMPANHA e
     # não de ad group: sitelink e callout servem os N grupos de uma vez, e um
@@ -335,7 +389,222 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
         ops.append(o)
         ops.append(_vincular(c, cid, rn, "STRUCTURED_SNIPPET"))
 
+    # Meta de conversão por ÚLTIMO: os dois recursos são da campanha e só
+    # existem depois do `create` dela, endereçados pelo id temporário.
+    if cfg is not None and cfg.meta_de_conversao is not None:
+        ops.extend(_ops_meta_de_conversao(c, cid, brief, cfg.meta_de_conversao, ts))
+
     return ops, r
+
+
+# ── campanha: o que `comum.op_campanha` não sabe de Search ─────────────────
+
+
+def _ajustar_campanha(c, camp, cfg, lance, rede, aimax) -> None:
+    """Aplica lance, rede, AI Max, geo-tipo e datas sobre a campanha de `comum`.
+
+    ⚠️ O lance é REESCRITO, não complementado. `comum` já selecionou um ramo
+    do oneof `campaign_bidding_strategy`; limpar o oneof antes garante que
+    nenhum campo do ramo anterior sobreviva (o `target_cpa_micros` do brief,
+    por exemplo, num MaxConv que a configuração declarou sem meta).
+
+    Sem configuração e sem AI Max, a campanha sai byte a byte igual à de
+    `comum.op_campanha` — há teste para isso, porque o selo depende da
+    impressão do payload.
+    """
+    if lance is not None:
+        ramo = camp._pb.WhichOneof("campaign_bidding_strategy")
+        if ramo:
+            camp._pb.ClearField(ramo)
+        e = lance.estrategia
+        if e == "MANUAL_CPC":
+            camp.manual_cpc.enhanced_cpc_enabled = False
+        elif e == "TARGET_SPEND":
+            if lance.teto_cpc:
+                camp.target_spend.cpc_bid_ceiling_micros = _micros(lance.teto_cpc)
+            else:
+                comum._selecionar_ramo_vazio(camp.target_spend, "TargetSpend")
+        elif e == "MAXIMIZE_CONVERSIONS":
+            # "Sem meta" é o ramo VAZIO, como em Demand Gen e PMax — nunca
+            # `target_cpa_micros = 0`, que diria que alguém escolheu zero.
+            if lance.target_cpa:
+                camp.maximize_conversions.target_cpa_micros = _micros(lance.target_cpa)
+            else:
+                comum._selecionar_ramo_vazio(camp.maximize_conversions,
+                                             "MaximizeConversions")
+        elif e == "MAXIMIZE_CONVERSION_VALUE":
+            if lance.target_roas:
+                camp.maximize_conversion_value.target_roas = float(lance.target_roas)
+            else:
+                comum._selecionar_ramo_vazio(camp.maximize_conversion_value,
+                                             "MaximizeConversionValue")
+        elif e == "TARGET_IMPRESSION_SHARE":
+            t = camp.target_impression_share
+            t.location = getattr(c.enums.TargetImpressionShareLocationEnum,
+                                 lance.local_impressao)
+            t.location_fraction_micros = lance.fracao_micros
+            t.cpc_bid_ceiling_micros = _micros(lance.teto_cpc)
+        else:  # pragma: no cover — LanceSearch já recusa
+            raise ValueError(f"estratégia sem emissão: {e}")
+
+    if rede is not None:
+        camp.network_settings.target_google_search = rede.google_search
+        camp.network_settings.target_search_network = rede.parceiros
+        camp.network_settings.target_content_network = rede.display_expansion
+
+    opted = c.enums.AssetAutomationStatusEnum
+    if aimax is not None or cfg is not None:
+        # Com AI Max OU com configuração declarada, as duas automações de
+        # texto saem SEMPRE explícitas. O default de Search é OPTED_OUT — mas
+        # default remoto não aparece no plano aprovado, e já mudou uma vez
+        # (a migração de ACA ligou texto em campanhas que nunca pediram).
+        camp.ai_max_setting.enable_ai_max = aimax is not None
+        texto = bool(aimax and aimax.personalizacao_de_texto)
+        url = bool(aimax and aimax.expansao_de_url_final)
+        for tipo, ligado in (("TEXT_ASSET_AUTOMATION", texto),
+                             ("FINAL_URL_EXPANSION_TEXT_ASSET_AUTOMATION", url)):
+            camp.asset_automation_settings.append({
+                "asset_automation_type": getattr(c.enums.AssetAutomationTypeEnum, tipo),
+                "asset_automation_status": opted.OPTED_IN if ligado else opted.OPTED_OUT,
+            })
+        if aimax is not None:
+            camp.text_guidelines.term_exclusions.extend(aimax.termos_excluidos)
+            for txt in aimax.restricoes_de_mensagem:
+                m = c.get_type("Campaign").MessagingRestriction()
+                m.restriction_text = txt
+                m.restriction_type = (c.enums.MessagingRestrictionTypeEnum
+                                      .RESTRICTION_BASED_EXCLUSION)
+                camp.text_guidelines.messaging_restrictions.append(m)
+
+    if cfg is None:
+        return
+    if cfg.geo is not None:
+        g = camp.geo_target_type_setting
+        g.positive_geo_target_type = getattr(c.enums.PositiveGeoTargetTypeEnum,
+                                             cfg.geo.tipo_positivo)
+        g.negative_geo_target_type = getattr(c.enums.NegativeGeoTargetTypeEnum,
+                                             cfg.geo.tipo_negativo)
+    if cfg.start_date_time:
+        camp.start_date_time = cfg.start_date_time
+    if cfg.end_date_time:
+        camp.end_date_time = cfg.end_date_time
+
+
+def _micros(valor: float) -> int:
+    return int(round(valor * 1_000_000))
+
+
+def _criterio_de_campanha(c, cid: str):
+    o = c.get_type("MutateOperation")
+    cc = o.campaign_criterion_operation.create
+    cc.campaign = comum.temp(cid, "campaigns", comum.T_CAMPANHA)
+    return o, cc
+
+
+def _ops_geo(c, cid: str, brief: Brief, geo: sc.SegmentacaoGeo) -> list:
+    """Locais (ou o país do brief), exclusões e idiomas (ou o do brief)."""
+    ops = []
+    for gid in geo.locais or (brief.geo_id,):
+        o, cc = _criterio_de_campanha(c, cid)
+        cc.location.geo_target_constant = f"geoTargetConstants/{gid}"
+        ops.append(o)
+    for gid in geo.locais_excluidos:
+        o, cc = _criterio_de_campanha(c, cid)
+        cc.negative = True
+        cc.location.geo_target_constant = f"geoTargetConstants/{gid}"
+        ops.append(o)
+    if geo.idiomas:
+        from ..referencia import geo as _geo
+
+        ids = [_geo.idiomas()[cod].criterio_id for cod in geo.idiomas]
+    else:
+        ids = [brief.idioma_id]
+    for lid in ids:
+        o, cc = _criterio_de_campanha(c, cid)
+        cc.language.language_constant = f"languageConstants/{lid}"
+        ops.append(o)
+    return ops
+
+
+def _ops_criterios_de_campanha(c, cid: str, cfg, aimax) -> list:
+    """Programação, dispositivo, exclusão de URL e listas de marca."""
+    ops = []
+    if cfg is not None:
+        for f in cfg.programacao:
+            o, cc = _criterio_de_campanha(c, cid)
+            s = cc.ad_schedule
+            s.day_of_week = getattr(c.enums.DayOfWeekEnum, f.dia)
+            s.start_hour, mi = divmod(f.minutos_inicio, 60)
+            s.start_minute = getattr(c.enums.MinuteOfHourEnum, sc.MINUTOS[mi])
+            s.end_hour, mf = divmod(f.minutos_fim, 60)
+            s.end_minute = getattr(c.enums.MinuteOfHourEnum, sc.MINUTOS[mf])
+            if f.ajuste is not None:
+                cc.bid_modifier = float(f.ajuste)
+            ops.append(o)
+        for d in cfg.dispositivos:
+            o, cc = _criterio_de_campanha(c, cid)
+            cc.device.type_ = getattr(c.enums.DeviceEnum, d.dispositivo)
+            cc.bid_modifier = float(d.fator)
+            ops.append(o)
+    if aimax is not None:
+        for i, trecho in enumerate(aimax.exclusoes_de_url):
+            o, cc = _criterio_de_campanha(c, cid)
+            cc.negative = True
+            cc.webpage.criterion_name = f"Exclusao de URL {i + 1}: {trecho}"[:255]
+            cond = c.get_type("WebpageConditionInfo")
+            cond.operand = c.enums.WebpageConditionOperandEnum.URL
+            cond.operator = c.enums.WebpageConditionOperatorEnum.CONTAINS
+            cond.argument = trecho
+            cc.webpage.conditions.append(cond)
+            ops.append(o)
+        for negativa, listas in ((False, aimax.listas_de_marca_incluidas),
+                                 (True, aimax.listas_de_marca_excluidas)):
+            for rn in listas:
+                o, cc = _criterio_de_campanha(c, cid)
+                cc.negative = negativa
+                cc.brand_list.shared_set = rn
+                ops.append(o)
+    return ops
+
+
+def _ops_meta_de_conversao(c, cid: str, brief: Brief, meta: sc.MetaDeConversao,
+                           ts: str) -> list:
+    """Meta personalizada (criada ou reaproveitada) + biddable por categoria.
+
+    Os dois recursos de campanha são UPDATE — o Google os cria junto com a
+    campanha — e por isso levam `update_mask`. Sem a máscara, o update
+    zeraria campos que ninguém mencionou.
+    """
+    ops = []
+    camp_id = comum.T_CAMPANHA
+    alvo = meta.meta_personalizada
+    if meta.acoes_de_conversao:
+        alvo = comum.temp(cid, "customConversionGoals", sc.T_META_PERSONALIZADA)
+        o = c.get_type("MutateOperation")
+        g = o.custom_conversion_goal_operation.create
+        g.resource_name = alvo
+        # Nome único por rodada: o carimbo é o mesmo da campanha, então a
+        # meta e a campanha se acham uma pela outra no relatório.
+        g.name = f"Meta_{brief.slug}_{ts}"[:255]
+        g.conversion_actions.extend(meta.acoes_de_conversao)
+        g.status = c.enums.CustomConversionGoalStatusEnum.ENABLED
+        ops.append(o)
+    if alvo:
+        o = c.get_type("MutateOperation")
+        op = o.conversion_goal_campaign_config_operation
+        op.update.resource_name = f"customers/{cid}/conversionGoalCampaignConfigs/{camp_id}"
+        op.update.custom_conversion_goal = alvo
+        op.update_mask.paths.append("custom_conversion_goal")
+        ops.append(o)
+    for cat in meta.categorias:
+        o = c.get_type("MutateOperation")
+        op = o.campaign_conversion_goal_operation
+        op.update.resource_name = (f"customers/{cid}/campaignConversionGoals/"
+                                   f"{camp_id}~{cat.categoria}~{cat.origem}")
+        op.update.biddable = cat.lance
+        op.update_mask.paths.append("biddable")
+        ops.append(o)
+    return ops
 
 
 # ── ad groups ───────────────────────────────────────────────────────────────
@@ -454,9 +723,11 @@ def _vincular(c, cid: str, asset_rn: str, campo: str):
     return o
 
 
-def validar(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = False):
+def validar(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = False,
+            configuracao: sc.ConfiguracaoSearch | None = None):
     """Valida local + na API (`validate_only`). Nada é criado."""
-    ops, r = construir(cid, brief, login_customer_id=login_customer_id, ai_max=ai_max)
+    ops, r = construir(cid, brief, login_customer_id=login_customer_id, ai_max=ai_max,
+                       configuracao=configuracao)
     if not r.ok:
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)
@@ -474,13 +745,19 @@ NAO_OPERADO: tuple[str, ...] = (
     "audiência, demografia e lista de remarketing como critério: suportadas "
     "pela API em Search e sem campo no brief. A segmentação desta fatia é "
     "keyword, geo e idioma.",
-    "MAXIMIZE_CONVERSION_VALUE: é estratégia de Performance Max (e de Shopping) "
-    "e exige conversão com valor declarado; o RSA de busca não carrega valor.",
+    "estratégia de PORTFÓLIO (bidding_strategy compartilhada) e teto de CPC em "
+    "MaxConv/MaxConvValue, que só é mutável em portfólio.",
+    "criação de LISTA DE MARCA (SharedSet BRANDS + BrandSuggestionService): a "
+    "AI Max referencia listas existentes por resource name.",
+    "inclusão de URL por ad group (WEBPAGE positivo): exige page feed "
+    "(AssetSet PAGE_FEED) vinculado à campanha, que este construtor não cria.",
+    "local de interesse por ad group (AI Max) e customizers de RSA.",
 )
 
 
 def planejar(cid: str, brief: Brief, *, login_customer_id: str,
-             ai_max: bool = False) -> plano.PlanoDeCanal:
+             ai_max: bool = False,
+             configuracao: sc.ConfiguracaoSearch | None = None) -> plano.PlanoDeCanal:
     """Monta offline e projeta o payload em plano serializável.
 
     Não fala com o Google: `construir()` só instancia o cliente para usar
@@ -488,7 +765,7 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str,
     continua sendo `validar()`, à parte.
     """
     ops, r = construir(cid, brief, login_customer_id=login_customer_id,
-                       ai_max=ai_max)
+                       ai_max=ai_max, configuracao=configuracao)
     monta = bool(ops) and r.ok
     return plano.projetar(
         canal=CANAL,
