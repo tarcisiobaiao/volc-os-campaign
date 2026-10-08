@@ -199,14 +199,17 @@ def _substituir(draft: Any, original: str, novo: str) -> bool:
     # um parágrafo/list-item cujo texto visível casa por inteiro, substituímos
     # apenas o conteúdo da folha. Não tentamos aproximação nem substring:
     # ambiguidade continua fail-closed.
+    def canonico(texto: str) -> str:
+        return re.sub(r"\s+([,.;:!?])", r"\1", " ".join(texto.split()))
+
     def visivel(inner: str) -> str:
         inner = re.sub(
             r'<a [^>]*href="([^"]+)"[^>]*>(.*?)</a>', r'[\2](\1)', inner,
             flags=re.S | re.I)
         inner = _html.unescape(re.sub(r'<[^>]+>', '', inner))
-        return " ".join(inner.split())
+        return canonico(inner)
 
-    esperado = " ".join(original.split())
+    esperado = canonico(original)
     folhas = list(re.finditer(r'<(p|li)\b[^>]*>(.*?)</\1>', draft.content,
                               flags=re.S | re.I))
     candidatas = [m for m in folhas if visivel(m.group(2)) == esperado]

@@ -112,10 +112,10 @@ def test_patch_do_texto_visivel_consegue_corrigir_link_e_negrito_no_gutenberg():
     from types import SimpleNamespace
     from funnelforge.pipeline.revisao_rapida import _substituir
     draft=SimpleNamespace(format='gutenberg', content=(
-        '<!-- wp:paragraph --><p>Para consultar, acesse a '
+        '<!-- wp:paragraph --><p>Para <strong>consultar</strong>, acesse a '
         '<a href="https://oficial.example/servico">página oficial</a>.</p>'
         '<!-- /wp:paragraph -->'))
-    original='Para consultar, acesse a [página oficial](https://oficial.example/servico).'
+    original='Para consultar , acesse a [página oficial](https://oficial.example/servico).'
     assert _substituir(draft, original, 'Procure o órgão responsável pelo nome.')
     assert 'Procure o órgão responsável pelo nome.' in draft.content
     assert 'https://oficial.example/servico' not in draft.content
