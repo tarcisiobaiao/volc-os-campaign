@@ -31,7 +31,7 @@ import base64
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 import httpx
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
@@ -477,6 +477,10 @@ class DispararEntrada(BaseModel):
     # desligado. `StrictBool`: "true" em texto é 422, não um fluxo ligado por
     # engano de serialização — ele muda prompts e passos do motor.
     editorial_v2: StrictBool = False
+    # Opt-in explícito enquanto validamos o novo caminho em WordPress real.
+    # O default preserva o fluxo existente; `rapido_chatgpt` ativa dossiê,
+    # três workers, revisão global e plano ChatGPT sem fallback faturado.
+    perfil_execucao: Literal["completo", "rapido_chatgpt"] = "completo"
 
 
 class RunDoRedator(BaseModel):
@@ -728,7 +732,8 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
         perfil_do_run = montar_perfil(
             perfil_wp=perfil, arquitetura=arq, entidade=entidade,
             teto_usd=body.teto_usd, teto_pagina_usd=body.teto_pagina_usd,
-            editorial_v2=body.editorial_v2)
+            editorial_v2=body.editorial_v2,
+            preset=(body.perfil_execucao if body.perfil_execucao != "completo" else None))
     except PerfilIncompleto as exc:
         await supa.patch(TABELA_RUNS, {"id": f"eq.{criado[0]['id']}"},
                          {"status": "failed", "erro": str(exc)})

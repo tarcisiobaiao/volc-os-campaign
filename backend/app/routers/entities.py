@@ -630,12 +630,37 @@ async def enrich_manual_entity(req: EntityEnrichRequest) -> Dict[str, Any]:
             ent = await supa.insert_entity(ent_row)
         except Exception:  # noqa: BLE001 — UNIQUE(country_code,slug) race
             ent = await supa.get_entity_by_slug(code, slug)
+    else:
+        # `enrich` também é a saída para um card que nasceu em fallback/mock
+        # durante uma indisponibilidade do provedor. Antes, o agente real rodava
+        # e a API respondia sucesso, mas seus campos eram descartados porque o
+        # slug já existia. Atualizamos apenas os campos de enriquecimento; status,
+        # direção do operador e arquitetura continuam com seus donos.
+        ent = await supa.update_entity(entity_id := int(ent["id"]), {
+            "canonical_name": e["canonical_name"],
+            "full_name": e.get("full_name"),
+            "entity_type": e.get("entity_type"),
+            "entity_category": e.get("entity_category"),
+            "vertical": e.get("vertical"),
+            "official_source": e.get("official_source"),
+            "related_systems": e.get("related_systems") or [],
+            "aliases": e.get("aliases") or [],
+            "description": e.get("description"),
+            "language": e.get("language"),
+        }) or ent
     if not ent:
         raise HTTPException(status_code=502, detail="Não foi possível criar a entidade.")
     entity_id = ent["id"]
 
     opp = await supa.get_opportunity_by_entity(entity_id)
-    if not opp:
+    if opp:
+        enriquecimento = {k: item["opportunity"].get(k) for k in _OPP_COLS}
+        enriquecimento["notes"] = {
+            **(opp.get("notes") or {}),
+            "score_source": item["opportunity"].get("score_source"),
+        }
+        opp = await supa.update_entity_opportunity(opp["id"], enriquecimento) or opp
+    else:
         try:
             opp = await supa.insert_entity_opportunity(_opp_row(item["opportunity"], entity_id, None, code))
         except Exception:  # noqa: BLE001 — UNIQUE(entity_id) race

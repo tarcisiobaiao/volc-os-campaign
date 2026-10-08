@@ -60,7 +60,10 @@ class Settings(BaseSettings):
     criativo_storage_dir: Optional[str] = None
     volc_factory_raiz: Optional[str] = None
     google_api_key: Optional[str] = None  # alias accepted
-    pautador_gemini_model: str = "gemini-2.0-flash"
+    # 2.0-flash foi retirado do endpoint em 08/10/2026 e fazia o Pautador cair
+    # silenciosamente no mock. 3.8-flash foi provado em chamada real no mesmo
+    # endpoint antes desta promoção.
+    pautador_gemini_model: str = "gemini-3.8-flash"
     # Assistente estratégico de Criativos Meta. Separado do Pautador para que
     # trocar o modelo de descoberta não altere silenciosamente a memória
     # criativa e vice-versa. Sem chave, o router falha fechado — não cai em mock.
@@ -114,7 +117,7 @@ class Settings(BaseSettings):
     pautador_funnel_gemini_model: str = "models/gemini-3.1-pro-preview"
     # Entity Funil (Fase 3) — usa o agente ARQUITETO do FUNNEL.json ipsis litteris,
     # com gemini-3.5-flash (modelo do export). Roda no worker Python interno.
-    pautador_entity_funnel_model: str = "models/gemini-3.5-flash"
+    pautador_entity_funnel_model: str = "models/gemini-3.8-flash"
 
     # KW Mining via n8n: quando setado, o botão "Minerar" dispara um WEBHOOK para
     # este n8n (flow webhook->Supabase). Vazio = minerador interno (mock/gemini).

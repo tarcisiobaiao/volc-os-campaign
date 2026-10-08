@@ -54,6 +54,22 @@ def test_perfil_completo(com_chave):
     assert p["site"]["post_type"] == "rec" and p["site"]["lp_post_type"] == "r"
     assert p["wordpress"]["app_token"] == SENHA      # decifrada, é o que publica
     assert p["teto_usd"] == 3.0
+    assert p["site"]["rodape_institucional_persistente"] is True
+    assert "Crédito Up" not in p["site"]["rodape_institucional"]
+
+
+def test_creditoup_recebe_preset_rapido_sem_contaminar_outro_site(com_chave):
+    p = montar_perfil(perfil_wp=_wp(), arquitetura=ARQUITETURA,
+                      entidade=ENTIDADE, preset="rapido_chatgpt")
+    assert p["preset"] == "rapido_chatgpt"
+    assert p["site"]["rodape_institucional_persistente"] is True
+
+    outro = montar_perfil(
+        perfil_wp=_wp(wp_url="https://outro.example"),
+        arquitetura=ARQUITETURA, entidade=ENTIDADE,
+    )
+    assert "rodape_institucional" not in outro["site"]
+    assert "rodape_institucional_persistente" not in outro["site"]
 
 
 def test_canal_oficial_vem_da_entidade_nao_de_lista_fixa(com_chave):

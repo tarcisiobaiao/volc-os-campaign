@@ -63,7 +63,16 @@ class GeminiClient(LLMClient):
         inicio = time.perf_counter()
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(url, params={"key": self.api_key}, json=payload)
-            resp.raise_for_status()
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                # httpx inclui a URL completa na mensagem da exceção; como a
+                # chave do Gemini vive na query string, propagar `exc` para o
+                # warning do Pautador transformava um 404 de modelo em vazamento
+                # de credencial. O corpo também não é confiável para log.
+                raise RuntimeError(
+                    f"Gemini HTTP {resp.status_code} no modelo {self.model}"
+                ) from exc
             data = resp.json()
         uso = data.get("usageMetadata") or {}
         cands = data.get("candidates") or [{}]

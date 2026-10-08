@@ -45,6 +45,23 @@ class PerfilIncompleto(RuntimeError):
     """
 
 
+# Declaração medida no tema público do Crédito Up. Ela é do SITE, não do tema
+# do funil, e por isso entra no perfil apenas quando o destino é exatamente o
+# domínio medido. Um segundo WordPress continua fail-closed até ter a própria
+# declaração cadastrada — nunca herda a identidade do Crédito Up por acidente.
+_RODAPE_CREDITOUP = (
+    "Sobre o nosso site: o site se reserva unicamente a trazer conteúdos "
+    "informativos e notícias de interesse social. Em hipótese alguma o site faz "
+    "qualquer tipo de pedido de dados pessoais sem respeitar a LGPD e não solicita "
+    "qualquer valor para mediar recebimentos de benefícios sociais. Os conteúdos "
+    "aqui publicados são de caráter informativo e não possuem vínculo, parceria ou "
+    "qualquer ligação com órgãos públicos ou entidades governamentais. O site é "
+    "financiado por blocos de anúncios em parceria com o Google Adsense e não tem "
+    "relação nenhuma com os anunciantes. Sobre Nós - Contato - Política de "
+    "Privacidade - Termos."
+)
+
+
 def _termos_do_card(arquitetura: Dict[str, Any], entidade: Dict[str, Any] | None) -> List[str]:
     """Os termos que identificam esta pauta, para o desempate do cross-funnel.
 
@@ -106,6 +123,7 @@ def montar_perfil(
     teto_usd: float | None = None,
     teto_pagina_usd: float | None = None,
     editorial_v2: bool = False,
+    preset: str | None = None,
 ) -> Dict[str, Any]:
     """O dicionário que o motor recebe em `--perfil`.
 
@@ -149,6 +167,13 @@ def montar_perfil(
             "official_preference": _canal_oficial(entidade),
         },
     }
+    if wp_url == "https://creditoup.com.br":
+        perfil["site"].update({
+            "rodape_institucional": _RODAPE_CREDITOUP,
+            "rodape_institucional_persistente": True,
+        })
+    if preset:
+        perfil["preset"] = preset
     if teto_usd:
         perfil["teto_usd"] = float(teto_usd)
     if teto_pagina_usd:

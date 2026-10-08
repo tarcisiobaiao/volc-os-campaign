@@ -32,7 +32,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from funnelforge.config.settings import RunConfig, Secrets, Settings, SiteConfig
+from funnelforge.config.settings import (
+    OpenAIConfig,
+    RunConfig,
+    Secrets,
+    Settings,
+    SiteConfig,
+    StepConfig,
+    aplicar_modo_openai,
+)
 
 
 def _texto(valor: Any) -> str:
@@ -89,6 +97,56 @@ def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Setting
 
     novo = settings.model_copy(deep=True)
     novo.site = SiteConfig(**site_atual)
+
+    # Preset fechado e versionado para a produção rápida validada nos canários.
+    # Não aceitamos overrides arbitrários vindos do card: um nome conhecido
+    # escolhe um pacote tipado; qualquer outro nome falha antes da primeira
+    # chamada. O caminho sem preset permanece byte a byte como antes.
+    preset = _texto(perfil.get("preset"))
+    if preset:
+        if preset != "rapido_chatgpt":
+            raise ValueError(f"preset de execução desconhecido: {preset}")
+        novo.run = RunConfig(**{
+            **novo.run.model_dump(),
+            "max_retries": 1,
+            "max_chamadas_llm": 40,
+            "imagens_habilitadas": False,
+            "dossie_factual": True,
+            "page_workers": 3,
+            "perfil": "rapido",
+            "publish_status": "draft",
+            "official_screenshots": True,
+            "widgets_enabled": True,
+            "editorial_v2": False,
+        })
+        passos = {
+            nome: StepConfig(**{
+                **passo.model_dump(),
+                "model": ("chatgpt/gpt-6.1-sol"
+                          if nome in {"judge", "revisor", "dossie"}
+                          else "chatgpt/gpt-6-sol"),
+                "fallbacks": [],
+                **({"web_search": True, "reasoning_effort": "low"}
+                   if nome == "dossie" else {}),
+            })
+            for nome, passo in novo.steps.items()
+        }
+        passos["dossie"] = StepConfig(
+            model="chatgpt/gpt-6.1-sol", fallbacks=[], temperature=0.2,
+            validators=[], web_search=True, reasoning_effort="low",
+        )
+        novo.steps = passos
+        novo.openai = OpenAIConfig(
+            auth_mode="chatgpt_plan",
+            writer_model="gpt-6-sol",
+            judge_model="gpt-6.1-sol",
+            reviewer_model="gpt-6.1-sol",
+            reasoning_effort="high",
+            allow_api_key_fallback=False,
+            somente_plano=True,
+            armazenamento="keychain",
+        )
+        novo = aplicar_modo_openai(novo)
     # Only this typed routing choice is overridable, never the gate definitions.
     if "terminal_exit_policy" in tema_in:
         novo.run = RunConfig(**{
