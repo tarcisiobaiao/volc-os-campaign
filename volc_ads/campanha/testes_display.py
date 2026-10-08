@@ -177,19 +177,32 @@ def test_a_campanha_nasce_no_canal_display_pausada_e_em_maxconv():
     assert camp.network_settings.target_google_search is False
 
 
-def test_o_tcpa_viaja_dentro_do_maxconv_e_nao_como_estrategia_avulsa():
-    """⚠️ `TARGET_CPA` avulso NÃO aparece na tabela oficial de lances de Display.
+def test_o_tcpa_de_display_vira_target_cpa_porque_a_api_recusa_dentro_do_maxconv():
+    """⚠️ MEDIDO: `maximize_conversions.target_cpa_micros` é RECUSADO em Display.
 
-    `matriz-api/display.md` §8: `MAXIMIZE_CONVERSIONS` é a única estratégia
-    marcada `[alta]` para o canal. Emitir um esquema que a doc não declara é
-    apostar em qual leitura está certa e descobrir no lote — o tCPA vive
-    dentro do MaxConv, como em Search.
+    Este teste afirmava o contrário ("o tCPA viaja dentro do MaxConv") com base
+    na leitura da tabela de estratégias. `validate_only` na Crédito Up em
+    08/10/2026 devolveu `context_error.OPERATION_NOT_PERMITTED_FOR_CONTEXT
+    @campaign_operation.create.maximize_conversions.target_cpa_micros` — e o
+    mesmo payload com `target_cpa` foi aceito. Ou seja: Display com tCPA nunca
+    tinha montado um payload que a API aceita.
     """
     ops, _ = display.construir(CID, _brief(tcpa=3.5), login_customer_id="x")
     camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    ag = _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+
+    assert camp._pb.WhichOneof("campaign_bidding_strategy") == "target_cpa"
+    assert camp.target_cpa.target_cpa_micros == 3_500_000
+    assert ag.target_cpa_micros == 3_500_000
+
+
+def test_sem_meta_o_maxconv_e_selecionado_sem_gravar_zero():
+    """Ausência de meta é oneof selecionado vazio, não `target_cpa_micros = 0`."""
+    ops, _ = display.construir(CID, _brief(), login_customer_id="x")
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
 
     assert camp._pb.WhichOneof("campaign_bidding_strategy") == "maximize_conversions"
-    assert camp.maximize_conversions.target_cpa_micros == 3_500_000
+    assert camp.maximize_conversions._pb.ListFields() == []
 
 
 def test_o_nome_da_campanha_marca_o_canal_e_search_continua_sem_marcador():
@@ -653,12 +666,17 @@ def test_a_fatia_nao_emite_criterio_de_segmentacao_nenhum():
     assert not _por_tipo(ops, "ad_group_criterion_operation")
 
 
-def test_o_perfil_explica_por_que_placement_positivo_ficou_de_fora():
+def test_o_perfil_nao_declara_mais_placement_positivo_como_ausente():
+    """A contradição das fontes foi resolvida pela API (validate_only 08/10/2026).
+
+    Placement positivo no ad group foi ACEITO. O perfil não pode continuar
+    dizendo à tela que ele não existe — e o que segue ausente cita a prova.
+    """
     texto = " ".join(perfil.DISPLAY.acoes_indisponiveis)
 
-    assert "placement" in texto
-    assert "NÃO CONFIRMADO" in texto
+    assert "placement como positivo" not in texto
     assert "validate_only" in texto
+    assert "TARGET_CPM" in texto and "AudienceInfo" in texto
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1291,3 +1309,438 @@ def test_o_rda_declara_as_duas_automacoes_de_criativo_desligadas():
     # Presente de verdade no protobuf, não apenas "lido como false" por ser o
     # default de um campo ausente.
     assert rda._pb.HasField("control_spec")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONFIGURAÇÃO DISPLAY — segmentação, exclusões, lance, campanha e RDA
+#
+# Cada lista fechada de `display_config` foi provada por `validate_only` na
+# Crédito Up em 08/10/2026. Estes testes provam o PAYLOAD contra o proto v25
+# instalado; a prova remota está registrada nos docstrings do módulo.
+# ═══════════════════════════════════════════════════════════════════════════
+
+from volc_ads.campanha import display_config as dc  # noqa: E402
+from volc_ads.campanha import display_ops  # noqa: E402
+from volc_ads.campanha.display_config import (  # noqa: E402
+    AnuncioDisplay,
+    ConfiguracaoDisplay,
+    ExclusoesDisplay,
+    FrequenciaMaxima,
+    JanelaDeVeiculacao,
+    LanceDisplay,
+    ListaDeExclusaoNova,
+    SegmentacaoDisplay,
+)
+
+
+def _cfg_maxima(**troca) -> ConfiguracaoDisplay:
+    base = dict(
+        segmentacao=SegmentacaoDisplay(
+            listas_de_usuarios=["9304580046"],
+            publicos_personalizados=[f"customers/{CID}/customAudiences/77"],
+            publicos_combinados=["88"],
+            interesses=["92000", "80226"],
+            topicos=["369"],
+            placements=["https://www.G1.globo.com/educacao/"],
+            palavras_chave=["cursos senac", "Curso  Tecnico"],
+        ),
+        exclusoes=ExclusoesDisplay(
+            placements=["site-ruim.com"],
+            apps=["2-com.exemplo.jogo"],
+            topicos=["1493"],
+            listas_existentes=["555"],
+            lista_nova=ListaDeExclusaoNova(
+                nome="Exclusoes Display", placements=["outro-ruim.com"],
+                apps=["1-123456789"], categorias_de_app=["60005"]),
+        ),
+        frequencia=[FrequenciaMaxima(3, "DAY", "AD_GROUP_AD"),
+                    FrequenciaMaxima(10, "WEEK", "CAMPAIGN")],
+        agenda=[JanelaDeVeiculacao("MONDAY", 6, 24),
+                JanelaDeVeiculacao("TUESDAY", 6, 12, 15, 30)],
+        dispositivos_excluidos=["TABLET"],
+        anuncio=AnuncioDisplay(
+            chamada_para_acao="Saiba mais", cor_principal="#0a3d91",
+            cor_destaque="#F2A900", cores_flexiveis=False, formato="ALL_FORMATS",
+            videos_youtube=["jNQXAC9IVRw"]),
+    )
+    base.update(troca)
+    return ConfiguracaoDisplay(**base)
+
+
+def _montar(cfg, **brief):
+    # Com `lance` declarado na configuração, o brief fica no DEFAULT
+    # (MANUAL_CPC), que é o que a rota manda: duas estratégias declaradas que
+    # divergem são recusadas (ver `test_lance_incoerente_e_recusado_com_o_motivo`).
+    if cfg is not None and cfg.lance is not None:
+        brief.setdefault("estrategia_lance", "MANUAL_CPC")
+    return display.construir(CID, _brief(**brief), login_customer_id="x",
+                             configuracao=cfg)
+
+
+def _criterios(ops, tipo):
+    chave = f"{tipo}_criterion_operation"
+    return [getattr(o, chave).create for o in _por_tipo(ops, chave)]
+
+
+def _ramos(criterios):
+    return [c._pb.WhichOneof("criterion") for c in criterios]
+
+
+# ── grafo ──────────────────────────────────────────────────────────────────
+
+
+def test_configuracao_maxima_monta_o_grafo_na_ordem_que_resolve_ids():
+    ops, r = _montar(_cfg_maxima())
+    assert r.ok, _erros(r)
+    tipos = [o._pb.WhichOneof("operation") for o in ops]
+
+    i = tipos.index
+    assert tipos[:4] == ["campaign_budget_operation", "campaign_operation",
+                         "campaign_criterion_operation", "campaign_criterion_operation"]
+    # definido antes de referenciado: lista → membros → vínculo; grupo → critérios;
+    # assets → anúncio
+    assert i("shared_set_operation") < i("shared_criterion_operation") < i("campaign_shared_set_operation")
+    assert i("campaign_shared_set_operation") < i("ad_group_operation") < i("ad_group_criterion_operation")
+    assert tipos[-1] == "ad_group_ad_operation"
+    assert tipos.count("asset_operation") == 1        # o vídeo (imagens são resource name)
+    assert tipos.count("campaign_shared_set_operation") == 2   # a nova + a existente
+
+
+def test_sem_configuracao_o_grafo_e_o_de_antes():
+    ops, r = display.construir(CID, _brief(), login_customer_id="x")
+    assert r.ok
+    assert len(ops) == 6
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert not camp.frequency_caps
+    assert not camp._pb.HasField("geo_target_type_setting")
+
+
+# ── exclusões de nascimento ────────────────────────────────────────────────
+
+
+def test_configuracao_vazia_ja_nasce_com_as_exclusoes_padrao():
+    ops, r = _montar(ConfiguracaoDisplay())
+    assert r.ok, _erros(r)
+    negs = [c for c in _criterios(ops, "campaign") if c.negative]
+
+    rotulos = {c.content_label.type_.name for c in negs
+               if c._pb.WhichOneof("criterion") == "content_label"}
+    assert rotulos == set(dc.ROTULOS_PADRAO)
+    cats = [c.mobile_app_category.mobile_app_category_constant for c in negs
+            if c._pb.WhichOneof("criterion") == "mobile_app_category"]
+    assert cats == [dc.CATEGORIA_TODOS_OS_APPS]
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert camp.geo_target_type_setting.positive_geo_target_type.name == "PRESENCE"
+    assert camp.geo_target_type_setting.negative_geo_target_type.name == "PRESENCE"
+    assert "INVENTÁRIO ABERTO" in _avisos(r)
+
+
+def test_desligar_todos_os_apps_e_decisao_e_some_do_payload():
+    ops, r = _montar(ConfiguracaoDisplay(exclusoes=ExclusoesDisplay(
+        excluir_todos_os_apps=False, rotulos_de_conteudo=())))
+    assert r.ok, _erros(r)
+    assert _ramos(_criterios(ops, "campaign")) == ["location", "language"]
+
+
+def test_rotulo_de_brand_suitability_recusado_pela_api_e_recusado_aqui():
+    _, r = _montar(ConfiguracaoDisplay(exclusoes=ExclusoesDisplay(
+        rotulos_de_conteudo=("BRAND_SUITABILITY_NEWS_SENSITIVE",))))
+    assert not r.ok
+    assert "CANNOT_EXCLUDE_CRITERION" in _erros(r)
+
+
+def test_exclusoes_de_campanha_viram_criterios_negativos_tipados():
+    ops, r = _montar(_cfg_maxima())
+    assert r.ok, _erros(r)
+    cc = _criterios(ops, "campaign")
+    negs = {c._pb.WhichOneof("criterion"): c for c in cc if c.negative}
+    assert negs["placement"].placement.url == "site-ruim.com"
+    assert negs["mobile_application"].mobile_application.app_id == "2-com.exemplo.jogo"
+    assert negs["topic"].topic.topic_constant == "topicConstants/1493"
+    dev = [c for c in cc if c._pb.WhichOneof("criterion") == "device"][0]
+    assert dev.device.type_.name == "TABLET" and dev.bid_modifier == 0.0
+    assert not dev._pb.HasField("negative")
+
+
+def test_lista_nova_nasce_no_mesmo_mutate_e_e_ligada_a_campanha():
+    ops, r = _montar(_cfg_maxima())
+    assert r.ok, _erros(r)
+    ss = _por_tipo(ops, "shared_set_operation")[0].shared_set_operation.create
+    assert ss.resource_name == f"customers/{CID}/sharedSets/{display_ops.T_LISTA_EXCLUSAO}"
+    assert ss.type_.name == "NEGATIVE_PLACEMENTS"
+    membros = [o.shared_criterion_operation.create for o in _por_tipo(ops, "shared_criterion_operation")]
+    assert {m.shared_set for m in membros} == {ss.resource_name}
+    assert _ramos(membros) == ["placement", "mobile_application", "mobile_app_category"]
+    vinc = {o.campaign_shared_set_operation.create.shared_set
+            for o in _por_tipo(ops, "campaign_shared_set_operation")}
+    assert vinc == {ss.resource_name, f"customers/{CID}/sharedSets/555"}
+
+
+def test_lista_nova_vazia_e_lista_de_outra_conta_sao_recusadas():
+    _, r = _montar(ConfiguracaoDisplay(exclusoes=ExclusoesDisplay(
+        lista_nova=ListaDeExclusaoNova(nome="vazia"),
+        listas_existentes=("customers/999/sharedSets/1",))))
+    assert not r.ok
+    erros = _erros(r)
+    assert "sem nenhum membro" in erros and "conta 999" in erros
+
+
+# ── segmentação ────────────────────────────────────────────────────────────
+
+
+def test_segmentacao_positiva_vira_um_criterio_por_tipo_no_grupo():
+    ops, r = _montar(_cfg_maxima())
+    assert r.ok, _erros(r)
+    agc = _criterios(ops, "ad_group")
+    assert _ramos(agc) == [
+        "user_list", "custom_audience", "combined_audience",
+        "user_interest", "user_interest", "topic", "placement",
+        "keyword", "keyword"]
+    assert {c.ad_group for c in agc} == {comum.temp_adgroup(CID, 0)}
+    assert agc[0].user_list.user_list == f"customers/{CID}/userLists/9304580046"
+    assert agc[3].user_interest.user_interest_category == f"customers/{CID}/userInterests/92000"
+    # placement normalizado: sem esquema, sem www, host minúsculo, sem barra final
+    assert agc[6].placement.url == "g1.globo.com/educacao"
+    assert [c.keyword.text for c in agc[7:]] == ["cursos senac", "curso tecnico"]
+    assert {c.keyword.match_type.name for c in agc[7:]} == {"BROAD"}
+    assert not any(c._pb.HasField("negative") for c in agc)
+
+
+def test_optimized_targeting_e_o_modo_dos_publicos_sao_sempre_escritos():
+    ops, r = _montar(_cfg_maxima())
+    ag = _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+    assert ag.optimized_targeting_enabled is False
+    tr = list(ag.targeting_setting.target_restrictions)
+    assert [(t.targeting_dimension.name, t.bid_only) for t in tr] == [("AUDIENCE", False)]
+
+    seg = SegmentacaoDisplay(topicos=["369"], segmentacao_otimizada=True,
+                             publicos_em_observacao=True)
+    ops, r = _montar(ConfiguracaoDisplay(segmentacao=seg))
+    ag = _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+    assert ag.optimized_targeting_enabled is True
+    assert ag.targeting_setting.target_restrictions[0].bid_only is True
+    assert "segmentação otimizada LIGADA" in _avisos(r)
+
+
+@pytest.mark.parametrize("seg, trecho", [
+    (SegmentacaoDisplay(interesses=["customers/999/userInterests/1"]), "conta 999"),
+    (SegmentacaoDisplay(topicos=["topicConstants/-5"]), "temporário"),
+    (SegmentacaoDisplay(topicos=["Educação"]), "não é id numérico"),
+    (SegmentacaoDisplay(placements=["exemplo.com", "EXEMPLO.com"]), "duplicado"),
+    (SegmentacaoDisplay(placements=["não é site"]), "placement é um site"),
+    (SegmentacaoDisplay(palavras_chave=["x" * 81]), "80 caracteres"),
+])
+def test_segmentacao_torta_e_recusada_antes_da_api(seg, trecho):
+    ops, r = _montar(ConfiguracaoDisplay(segmentacao=seg))
+    assert not r.ok and ops == []
+    assert trecho in _erros(r)
+
+
+def test_o_mesmo_placement_positivo_e_negativo_e_contradicao():
+    _, r = _montar(ConfiguracaoDisplay(
+        segmentacao=SegmentacaoDisplay(placements=["exemplo.com"]),
+        exclusoes=ExclusoesDisplay(placements=["https://exemplo.com"])))
+    assert not r.ok and "a exclusão vence" in _erros(r)
+
+
+# ── lance ──────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("lance, brief, ramo", [
+    (None, dict(), "maximize_conversions"),
+    (None, dict(tcpa=3.5), "target_cpa"),
+    (None, dict(estrategia_lance="MAXIMIZE_CONVERSION_VALUE"), "maximize_conversion_value"),
+    (None, dict(estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=4.0), "maximize_conversion_value"),
+    (LanceDisplay("TARGET_SPEND"), dict(), "target_spend"),
+    (LanceDisplay("TARGET_SPEND", teto_cpc=0.30), dict(), "target_spend"),
+    (LanceDisplay("MANUAL_CPC"), dict(estrategia_lance="MANUAL_CPC"), "manual_cpc"),
+    (LanceDisplay("MANUAL_CPM", cpm_visivel=2.0), dict(), "manual_cpm"),
+])
+def test_cada_estrategia_aceita_vira_o_ramo_certo_do_oneof(lance, brief, ramo):
+    ops, r = _montar(ConfiguracaoDisplay(lance=lance), **brief)
+    assert r.ok, _erros(r)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert camp._pb.WhichOneof("campaign_bidding_strategy") == ramo
+
+
+def test_metas_ausentes_nao_viram_zero_e_metas_presentes_viajam_em_micros():
+    ops, _ = _montar(ConfiguracaoDisplay(lance=LanceDisplay("TARGET_SPEND")))
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert not camp.target_spend._pb.HasField("cpc_bid_ceiling_micros")
+
+    ops, _ = _montar(ConfiguracaoDisplay(lance=LanceDisplay("TARGET_SPEND", teto_cpc=0.3)))
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert camp.target_spend.cpc_bid_ceiling_micros == 300_000
+
+    ops, _ = _montar(None, estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=4.0)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    assert camp.maximize_conversion_value.target_roas == 4.0
+
+
+def test_manual_cpm_troca_o_lance_do_grupo_e_manual_cpc_usa_o_cpc_do_brief():
+    ops, _ = _montar(ConfiguracaoDisplay(lance=LanceDisplay("MANUAL_CPM", cpm_visivel=2.5)))
+    ag = _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+    assert ag.cpm_bid_micros == 2_500_000
+    assert not ag._pb.HasField("cpc_bid_micros")
+
+    ops, _ = _montar(ConfiguracaoDisplay(lance=LanceDisplay("MANUAL_CPC")), cpc_inicial=0.25)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    ag = _por_tipo(ops, "ad_group_operation")[0].ad_group_operation.create
+    assert camp.manual_cpc.enhanced_cpc_enabled is False
+    assert ag.cpc_bid_micros == 250_000
+
+
+@pytest.mark.parametrize("lance, brief, trecho", [
+    (LanceDisplay("TARGET_CPM"), dict(), "OPERATION_NOT_PERMITTED_FOR_CONTEXT"),
+    (LanceDisplay("TARGET_CPC"), dict(), "OPERATION_NOT_PERMITTED_FOR_CONTEXT"),
+    (LanceDisplay("MAXIMIZE_CLICKS"), dict(), "TARGET_SPEND"),
+    (LanceDisplay("MANUAL_CPM"), dict(), "vCPM"),
+    (LanceDisplay("TARGET_SPEND"), dict(tcpa=3.5), "tCPA só existe"),
+    (LanceDisplay("TARGET_SPEND", teto_cpc=0), dict(), "teto de CPC"),
+    (LanceDisplay("TARGET_SPEND", cpm_visivel=2.0), dict(), "CPM visível só"),
+    (LanceDisplay("TARGET_SPEND"), dict(estrategia_lance="MAXIMIZE_CONVERSION_VALUE"), "Duas fontes"),
+    (None, dict(estrategia_lance="MAXIMIZE_CONVERSIONS", target_roas=4.0), "tROAS só existe"),
+])
+def test_lance_incoerente_e_recusado_com_o_motivo(lance, brief, trecho):
+    ops, r = _montar(ConfiguracaoDisplay(lance=lance), **brief)
+    assert not r.ok and ops == []
+    assert trecho in _erros(r)
+
+
+def test_manual_cpc_do_brief_sem_configuracao_continua_recusado_e_ensina_o_caminho():
+    _, r = _montar(None, estrategia_lance="MANUAL_CPC")
+    assert not r.ok
+    assert "LanceDisplay('MANUAL_CPC')" in _erros(r)
+
+
+def test_lances_permitidos_e_a_lista_medida_e_nao_uma_copia():
+    # Igualdade e não identidade: o backend lê LANCES_PERMITIDOS por árvore
+    # sintática (test_trafego_portoes_de_escrita), então ela precisa ser um
+    # literal. A deriva entre as duas listas é o que este teste segura.
+    assert tuple(display.LANCES_PERMITIDOS) == tuple(dc.ESTRATEGIAS)
+    assert set(dc.ESTRATEGIAS_PELO_BRIEF) <= set(dc.ESTRATEGIAS)
+    assert "TARGET_CPM" not in display.LANCES_PERMITIDOS
+
+
+# ── campanha: frequência, agenda ───────────────────────────────────────────
+
+
+def test_frequencia_e_agenda_viram_os_campos_da_v25():
+    ops, r = _montar(_cfg_maxima())
+    assert r.ok, _erros(r)
+    camp = _por_tipo(ops, "campaign_operation")[0].campaign_operation.create
+    caps = [(f.key.level.name, f.key.event_type.name, f.key.time_unit.name,
+             f.key.time_length, f.cap) for f in camp.frequency_caps]
+    assert caps == [("AD_GROUP_AD", "IMPRESSION", "DAY", 1, 3),
+                    ("CAMPAIGN", "IMPRESSION", "WEEK", 1, 10)]
+    ags = [c.ad_schedule for c in _criterios(ops, "campaign")
+           if c._pb.WhichOneof("criterion") == "ad_schedule"]
+    assert [(a.day_of_week.name, a.start_hour, a.start_minute.name, a.end_hour,
+             a.end_minute.name) for a in ags] == [
+        ("MONDAY", 6, "ZERO", 24, "ZERO"), ("TUESDAY", 6, "FIFTEEN", 12, "THIRTY")]
+
+
+@pytest.mark.parametrize("cfg, trecho", [
+    (ConfiguracaoDisplay(agenda=[JanelaDeVeiculacao("MONDAY", 6, 12),
+                                 JanelaDeVeiculacao("MONDAY", 11, 14)]), "sobrepostas"),
+    (ConfiguracaoDisplay(agenda=[JanelaDeVeiculacao("SEGUNDA", 6, 12)]), "dia em inglês"),
+    (ConfiguracaoDisplay(agenda=[JanelaDeVeiculacao("MONDAY", 6, 12, 20)]), "minuto"),
+    (ConfiguracaoDisplay(agenda=[JanelaDeVeiculacao("MONDAY", 12, 6)]), "fim depois"),
+    (ConfiguracaoDisplay(frequencia=[FrequenciaMaxima(0)]), "≥ 1"),
+    (ConfiguracaoDisplay(frequencia=[FrequenciaMaxima(3), FrequenciaMaxima(5)]), "mesmo nível"),
+    (ConfiguracaoDisplay(frequencia=[FrequenciaMaxima(3, "HOUR")]), "unidade"),
+    (ConfiguracaoDisplay(dispositivos_excluidos=["MOBILE", "TABLET", "DESKTOP"]), "não veicula"),
+    (ConfiguracaoDisplay(dispositivos_excluidos=["CELULAR"]), "use MOBILE"),
+    (ConfiguracaoDisplay(presenca_geo="SEARCH_INTEREST"), "é de Search"),
+])
+def test_configuracao_de_campanha_torta_e_recusada(cfg, trecho):
+    ops, r = _montar(cfg)
+    assert not r.ok and ops == []
+    assert trecho in _erros(r)
+
+
+# ── responsive display ad ──────────────────────────────────────────────────
+
+
+def test_rda_completo_carrega_cores_cta_formato_e_video_criado_por_id():
+    ops, r = _montar(_cfg_maxima())
+    assert r.ok, _erros(r)
+    rda = _rda(ops)
+    assert rda.main_color == "#0A3D91" and rda.accent_color == "#F2A900"
+    assert rda.allow_flexible_color is False
+    assert rda.call_to_action_text == "Saiba mais"
+    assert rda.format_setting.name == "ALL_FORMATS"
+    assert rda.control_spec.enable_asset_enhancements is False
+    assert rda.control_spec.enable_autogen_video is False
+
+    vid = _por_tipo(ops, "asset_operation")[0].asset_operation.create
+    assert vid.type_.name == "YOUTUBE_VIDEO"
+    assert vid.youtube_video_asset.youtube_video_id == "jNQXAC9IVRw"
+    assert vid.resource_name == display_ops.temp_video(CID, 0)
+    assert [v.asset for v in rda.youtube_videos] == [vid.resource_name]
+
+
+@pytest.mark.parametrize("anuncio, trecho", [
+    (AnuncioDisplay(cor_principal="#000000"), "os dois ou nenhum"),
+    (AnuncioDisplay(cor_principal="azul", cor_destaque="#000000"), "#RRGGBB"),
+    (AnuncioDisplay(cores_flexiveis=False), "allow_flexible_color=True"),
+    (AnuncioDisplay(chamada_para_acao="x" * 31), "largura máxima 30"),
+    (AnuncioDisplay(formato="BANNER"), "NON_NATIVE"),
+    (AnuncioDisplay(videos_youtube=["https://youtu.be/jNQXAC9IVRw"]), "11 caracteres"),
+])
+def test_rda_torto_e_recusado_antes_da_api(anuncio, trecho):
+    ops, r = _montar(ConfiguracaoDisplay(anuncio=anuncio))
+    assert not r.ok and ops == []
+    assert trecho in _erros(r)
+
+
+def test_teto_de_5_videos_soma_resource_name_e_id():
+    cfg = ConfiguracaoDisplay(anuncio=AnuncioDisplay(
+        videos_youtube=[f"abcdefghij{i}" for i in range(3)]))
+    _, r = _montar(cfg, videos=[f"customers/{CID}/assets/{i}" for i in range(1, 4)])
+    assert not r.ok and "somando" in _erros(r)
+
+
+def test_a_faixa_de_video_nao_colide_com_imagem_nem_com_lista():
+    vids = {display_ops.temp_video(CID, i) for i in range(dc.VIDEOS_MAX)}
+    imgs = {comum.temp_imagem(CID, i) for i in range(comum.T_IMAGEM_MAX)}
+    assert not vids & imgs
+    assert display_ops.T_LISTA_EXCLUSAO < comum.T_ASSET_GROUP_BASE - comum.T_ASSET_GROUP_MAX + 1
+    with pytest.raises(ValueError):
+        display_ops.temp_video(CID, dc.VIDEOS_MAX)
+
+
+# ── contrato de entrada, perfil e plano ────────────────────────────────────
+
+
+def test_de_dict_e_para_json_sao_inversos_e_campo_desconhecido_e_erro():
+    cfg = _cfg_maxima(lance=LanceDisplay("TARGET_SPEND", teto_cpc=0.3))
+    assert ConfiguracaoDisplay.de_dict(cfg.para_json()) == cfg
+    with pytest.raises(ValueError, match="desconhecido"):
+        ConfiguracaoDisplay.de_dict({"exclusoes": {"placement": ["x.com"]}})
+
+
+def test_perfil_montar_repassa_a_configuracao_ao_construtor():
+    ops, r = perfil.montar("DISPLAY", CID, _brief(), login_customer_id="x",
+                           configuracao=_cfg_maxima())
+    assert r.ok, _erros(r)
+    assert _por_tipo(ops, "shared_set_operation")
+
+
+def test_o_plano_le_target_cpa_e_os_criterios_de_display_sem_desconhecido():
+    p = display.planejar(CID, _brief(tcpa=2.0), login_customer_id="x",
+                         configuracao=_cfg_maxima())
+    assert p.prontidao.monta
+    assert p.orcamento.estrategia_lance == "TARGET_CPA"
+    assert p.orcamento.tcpa_micros == 2_000_000
+    todos = list(p.segmentacao.criterios) + list(p.unidades[0].criterios)
+    assert all(c.tipo != "desconhecido" for c in todos)
+    assert any(c.nivel == "lista_compartilhada" for c in todos)
+    assert p.segmentacao.aberto_por_ausencia == ()
+
+
+def teste_lances_permitidos_espelham_a_configuracao():
+    """O literal lido pelo backend e a configuração do builder são a mesma lista."""
+    from volc_ads.campanha import display, display_config
+
+    assert set(display.LANCES_PERMITIDOS) == set(display_config.ESTRATEGIAS)

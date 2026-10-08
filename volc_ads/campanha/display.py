@@ -1,13 +1,24 @@
-"""Construtor de campanha de Display — a primeira fatia vertical do canal.
+"""Construtor de campanha de Display.
 
 Mesmo desenho de `search.py`: UMA transação atômica, nada de chamada
-encadeada. O grafo é
+encadeada. O grafo, com `ConfiguracaoDisplay`, é
 
-    budget → campanha (DISPLAY) → geo → idioma → ad group (DISPLAY_STANDARD)
-           → responsive display ad (títulos, título longo, descrições, nome do
-             negócio, imagens por papel e vídeos)
+    budget → campanha (DISPLAY: lance, frequência, geo por presença)
+           → geo → idioma
+           → exclusões de campanha (placement, app, categoria de app, rótulo
+             de conteúdo, tópico) → dispositivo −100% → agenda
+           → lista de exclusão nova (SharedSet + SharedCriterion) → vínculo
+             de toda lista à campanha (CampaignSharedSet)
+           → ad group (DISPLAY_STANDARD, optimized targeting declarado)
+           → critérios positivos do grupo (lista, público personalizado e
+             combinado, afinidade/in-market, tópico, placement, palavra-chave
+             de conteúdo)
+           → assets de imagem e de vídeo do YouTube (bytes/id no mesmo mutate)
+           → responsive display ad completo
 
-Tudo entra ou nada entra.
+Tudo entra ou nada entra. Sem configuração (`configuracao=None`) o grafo é o
+de antes — budget, campanha, geo, idioma, ad group, RDA — com uma correção de
+lance que é da API, não de gosto (abaixo).
 
 ## O que Display herda de Search, e o que ele recusa
 
@@ -17,92 +28,84 @@ comprimento contado como o Google conta, duplicata, o portão país × vertical 
 Herda também os blocos de operação de `campanha/comum.py`: orçamento, campanha,
 geo, idioma e ad group, com as MESMAS faixas de id temporário.
 
-Recusa três coisas que Search permite, e as três recusas são de leilão ou de
-formato, não de gosto:
+Recusa:
 
-1. **`estrategia_lance = "MANUAL_CPC"`.** É o padrão da casa e vale só para
-   Search. `matriz-api/display.md` §8 mediu a tabela oficial de estratégias e
-   `MANUAL_CPC` cai na linha `[NÃO CONFIRMADO]` — "compatibilidade específica
-   com DISPLAY não é declarada canal a canal". Além disso
-   `comum.op_campanha()` já não lê o campo no ramo DISPLAY: a campanha
-   nasceria em MaxConv de qualquer jeito. Ignorar em silêncio faria o número
-   que o operador digitou virar decoração, que é exatamente o defeito que o
-   `MANUAL_CPC` de Search existe para não ter.
+1. **`MANUAL_CPC` vindo do brief.** É o DEFAULT do `Brief`, então ali ele não
+   distingue escolha de omissão. CPC manual em Display existe (aceito por
+   `validate_only` em 08/10/2026) e entra por `ConfiguracaoDisplay.lance`.
 2. **DKI (`{KeyWord:…}`).** Display não casa keyword: a tag renderiza SEMPRE o
-   fallback. Aceitá-la seria deixar o operador escrever um texto que ele acha
-   dinâmico e não é.
-3. **`ai_max`.** `campaign.ai_max_setting` é campo de Search. Quem barra é o
-   perfil do canal (`campanha/perfil.py`), antes de o construtor rodar.
+   fallback.
+3. **`ai_max`.** Campo de Search; o perfil do canal barra antes.
 
-## O que a primeira fatia AINDA não monta, e por que isso é declarado
+## ⚠️ O tCPA de Display nunca tinha subido
 
-**Segmentação.** Um ad group de Display sem critério roda em inventário aberto,
-escolhido pelo lance. É o comportamento padrão da API e é uma campanha que
-veicula — mas não é a que a operação quer.
+`comum.op_campanha()` escreve `maximize_conversions.target_cpa_micros` no ramo
+DISPLAY. Com meta, a API RECUSA o mutate inteiro:
+`context_error.OPERATION_NOT_PERMITTED_FOR_CONTEXT @campaign_operation.create.
+maximize_conversions.target_cpa_micros` (validate_only na Crédito Up,
+08/10/2026). Sem meta passava porque o campo vale 0 e não chega ao fio. O
+construtor agora reescreve o oneof (`display_ops.aplicar_lance`): sem meta,
+`maximize_conversions` selecionado sem valor; com meta, `target_cpa`, que a
+API aceita. O 0 deixou de ser escrito em qualquer caminho.
 
-`matriz-api/display.md` §7 confirma como positivos e `[alta]` os critérios
-Topic, User list, Custom audience, Custom intent (só ad group), Custom affinity,
-Combined audience, faixa etária, gênero e faixa de renda. Eles entram na
-próxima fatia.
+## O que foi provado e o que não foi
 
-⚠️ **Placement positivo NÃO entra, e a razão é uma contradição de fonte, não
-falta de tempo.** A tabela oficial de critérios marca Placement como positivo
-❌ / negativo ✅ (conferido no HTML, não só no texto extraído), enquanto
-`Campaign.network_settings.target_content_network` descreve a rede como "ads
-served on **specified placements** … specified using the Placement criterion" —
-o que pressupõe o positivo. A matriz marca `[NÃO CONFIRMADO]` e recomenda
-provar por `validate_only`; essa prova não pode ser feita nesta rodada. Entre
-duas leituras oficiais que se contradizem, codificar uma é escolher no
-cara-ou-coroa e descobrir no lote. Exclusão por posicionamento (negativo) é
-onde as duas fontes concordam e é por onde a próxima fatia começa.
+`display_config.py` documenta cada lista fechada com a prova. Em resumo:
+aceitos por `validate_only` — os cinco lances de `LANCES_PERMITIDOS`, todos os
+critérios positivos (placement positivo incluído: a contradição das duas
+fontes oficiais foi resolvida pela API), as exclusões, a lista compartilhada
+nova, frequência, agenda, dispositivo, geo por presença e o RDA completo com
+vídeo criado por id. Custom e combined audience foram aceitos só na FORMA (não
+há nenhum na conta de prova). O que ficou de fora está em `NAO_OPERADO`.
 
-Enquanto isso, o construtor AVISA em voz alta em vez de fingir que segmentou.
+## Faixas de id temporário
 
-**Sitelink, callout e snippet.** São assets de campanha que Search monta. A
-matriz de Display não declara quais tipos servem neste canal nem em que
-`field_type` — §1 lista `CampaignAssetSet` (remarketing dinâmico) e nada de
-extensão de texto. Montar por analogia com Search subiria asset que não
-veicula.
-
-**Um ad group, não N.** `brief.sub_intencoes` particiona KEYWORDS, e Display
-não opera keyword nesta fatia. N ad groups com o mesmo anúncio e a mesma
-(ausência de) segmentação só repartiriam a verba por sorteio. Quando a
-segmentação entrar, cada grupo passa a ter público próprio e a partição volta a
-significar alguma coisa.
-
-## Faixas de id temporário: Display não abre família nova
-
-Budget `-1`, campanha `-2`, ad group `-3` — as mesmas de `comum.py`. A faixa de
-asset (`-100` para baixo) **fica intocada**: as imagens e os vídeos chegam como
-resource names de Asset JÁ CRIADO, vindos do motor de criativo, e resource name
-real não é id temporário. Por isso `_checar_imagens()` recusa id negativo: um
-`customers/123/assets/-100` no payload apontaria para o vão da faixa de Search e
-o sintoma apareceria em outro recurso.
+Budget `-1`, campanha `-2`, ad group `-3`, imagens `-200…` — as de `comum.py`.
+Display abre duas próprias em `display_ops.py`: lista de exclusão `-400` e
+vídeos `-450…-454`. `_checar_imagens()` recusa id negativo em resource name
+recebido: id temporário só é legítimo no que nasce NESTE mutate.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import re
 
 from ..gads.client import cliente, validar_mutacoes
-from . import comum, conteudo, plano, taxonomia, validacao
+from . import comum, conteudo, display_ops, plano, taxonomia, validacao
 from .brief import Brief, ImagemParaSubir, ImagensDisplay
+from .display_config import (
+    ESTRATEGIAS,
+    VIDEOS_MAX,
+    ConfiguracaoDisplay,
+    resolver,
+)
 
 CANAL = "DISPLAY"
 
-#: As estratégias de lance que ESTE canal aceita. Declarado aqui, no módulo do
+#: As estratégias de lance que ESTE canal EMITE. Declarado aqui, no módulo do
 #: canal, e lido por `campanha/perfil.py` — a dependência aponta canal → índice,
 #: nunca o contrário, e por isso não há ciclo de import.
 #:
-#: `MANUAL_CPC` fica de fora porque Display não tem CPC manual como opção
-#: razoável: sem termo de busca, o lance manual não tem sinal nenhum para
-#: filtrar inventário.
-LANCES_PERMITIDOS: tuple[str, ...] = ("MAXIMIZE_CONVERSIONS",)
+#: É a lista de `display_config.ESTRATEGIAS` (cada uma provada por
+#: `validate_only` em 08/10/2026). Duas portas de entrada: `brief.estrategia_lance`
+#: carrega MAXIMIZE_CONVERSIONS e MAXIMIZE_CONVERSION_VALUE; as outras três
+#: (TARGET_SPEND, MANUAL_CPC, MANUAL_CPM) só por `ConfiguracaoDisplay.lance`,
+#: porque o `Brief` ainda não as aceita e MANUAL_CPC é o default dele.
+# Literal (o backend lê por árvore sintática); espelha display_config.ESTRATEGIAS
+# — `teste_lances_permitidos_espelham_a_configuracao` cobra a igualdade.
+LANCES_PERMITIDOS: tuple[str, ...] = (
+    "MAXIMIZE_CONVERSIONS",
+    "MAXIMIZE_CONVERSION_VALUE",
+    "TARGET_SPEND",
+    "MANUAL_CPC",
+    "MANUAL_CPM",
+)
 
-#: Opções de construção que este canal aceita além do brief. Vazio: `ai_max` é
-#: de Search e não existe aqui.
-OPCOES: frozenset[str] = frozenset()
+#: Opções de construção que este canal aceita além do brief. `configuracao` é
+#: a `ConfiguracaoDisplay` — `perfil.montar(..., configuracao=cfg)` a repassa.
+OPCOES: frozenset[str] = frozenset({"configuracao"})
 
 #: Papel → campo do proto. Só a TRADUÇÃO mora aqui; a ORDEM mora em
 #: `ImagensDisplay.PAPEIS`, porque quem percorre as imagens fora deste módulo
@@ -131,12 +134,15 @@ _EXPLICACAO_DKI = (
 )
 
 
-def construir(cid: str, brief: Brief, *, login_customer_id: str):
+def construir(cid: str, brief: Brief, *, login_customer_id: str,
+              configuracao: ConfiguracaoDisplay | None = None):
     """Monta as operações e valida o conteúdo localmente.
 
     Devolve (operacoes, resultado_da_validacao). Mesma assinatura de
-    `search.construir`, menos o `ai_max` — que é campo de Search e por isso não
-    existe aqui. Se `resultado.ok` for False, NÃO envie.
+    `search.construir`, sem o `ai_max` (campo de Search) e com `configuracao`
+    — a `ConfiguracaoDisplay`. `None` mantém o grafo antigo; uma instância liga
+    segmentação, exclusões de nascimento, frequência, agenda, dispositivo, geo
+    por presença e o RDA completo. Se `resultado.ok` for False, NÃO envie.
     """
     r = validacao.Resultado()
     ts = comum.carimbo()
@@ -145,7 +151,8 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     )
 
     _recusar_o_que_e_de_search(brief, r)
-    _avisar_o_que_a_fatia_ainda_nao_monta(brief, r)
+    _avisar_o_que_a_fatia_ainda_nao_monta(brief, configuracao, r)
+    res = resolver(cid, brief, configuracao, r)
 
     # O mesmo portão país × vertical de Search. Display não tem desconto de
     # política: o anúncio de um portal informativo vendendo empréstimo é
@@ -179,7 +186,7 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
                "formato nativo — preencha `copy.business_name` (≤25 chars)")
 
     imagens = _checar_imagens(cid, brief, r)
-    videos = _checar_videos(cid, brief, r)
+    videos, videos_novos = _checar_videos(cid, brief, configuracao, r)
 
     # Política sobre o texto que sobreviveu à forma. Por LISTA, como em Search:
     # duas regras do spec só existem no conjunto.
@@ -187,8 +194,14 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     conteudo.politica(pol, descriptions, "description_display", r)
     conteudo.politica(pol, longas, "long_headline_display", r)
     conteudo.politica(pol, nomes, "business_name", r)
+    # A chamada para ação é texto servido: passa pelo mesmo portão de política,
+    # com a régua de título curto (mesma largura, 30). O comprimento já foi
+    # julgado em `display_config`.
+    if configuracao is not None and configuracao.anuncio.chamada_para_acao:
+        conteudo.politica(pol, [configuracao.anuncio.chamada_para_acao.strip()],
+                          "headline_display", r)
 
-    if not r.ok:
+    if not r.ok or res is None:
         return [], r
 
     # A autenticação é uma dependência de MONTAGEM, não de validação local.
@@ -198,23 +211,37 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     # respondeu" com "o contrato do anúncio está incompleto".
     c = cliente(login_customer_id)
 
-    ops = [
-        comum.op_budget(c, cid, brief, f"Budget_{ts}"),
-        comum.op_campanha(c, cid, brief, base, CANAL),
-        comum.op_geo(c, cid, brief),
-        comum.op_idioma(c, cid, brief),
-    ]
-
+    op_camp = comum.op_campanha(c, cid, brief, base, CANAL)
+    camp = op_camp.campaign_operation.create
     # UM ad group. `indice=0` mantém o id temporário -3, o mesmo primeiro id que
     # Search usa — a faixa é compartilhada e a disciplina também.
     # ⚠️ PAUSED, e explícito. Um ad group ENABLED dentro de campanha PAUSED não
     # veicula — mas basta alguém despausar a campanha no painel para que ele
     # passe a veicular sem que ninguém tenha decidido isso por objeto. O canário
     # Display existe para provar payload, não para deixar um gatilho armado.
-    ops.append(
-        comum.op_adgroup(c, cid, brief, f"AdGroup_{ts}", "DISPLAY_STANDARD",
-                         indice=0, status="PAUSED")
-    )
+    op_ag = comum.op_adgroup(c, cid, brief, f"AdGroup_{ts}", "DISPLAY_STANDARD",
+                             indice=0, status="PAUSED")
+    ag_create = op_ag.ad_group_operation.create
+
+    # O lance é reescrito SEMPRE, com ou sem configuração: é aqui que o
+    # `target_cpa_micros` que a API recusa em Display deixa de ser emitido, e
+    # que "sem meta" passa a ser oneof selecionado em vez de 0 gravado.
+    display_ops.aplicar_lance(c, camp, ag_create, res.lance)
+
+    ops = [
+        comum.op_budget(c, cid, brief, f"Budget_{ts}"),
+        op_camp,
+        comum.op_geo(c, cid, brief),
+        comum.op_idioma(c, cid, brief),
+    ]
+    if res.declarada:
+        display_ops.aplicar_campanha(c, camp, res)
+        ops.extend(display_ops.ops_criterios_de_campanha(c, cid, res))
+        ops.extend(display_ops.ops_listas_de_exclusao(c, cid, res))
+        display_ops.aplicar_adgroup(c, ag_create, res)
+    ops.append(op_ag)
+    if res.declarada:
+        ops.extend(display_ops.ops_criterios_de_adgroup(c, cid, res))
     ag = comum.temp_adgroup(cid, 0)
 
     # URL limpa. A marcação inteira vai no `final_url_suffix` da campanha, que
@@ -238,11 +265,13 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     # recorte, realce, vídeo gerado — e a peça que veicula deixa de ser a peça
     # que o operador aprovou e cujo `supply_sha256` entrou no selo.
     #
-    # Omitir não é neutro; declarar `false` é. Conferido no proto v25 instalado:
-    # `ResponsiveDisplayAdControlSpec` expõe `enable_asset_enhancements` e
-    # `enable_autogen_video`, e nada mais.
+    # Omitir não é neutro; declarar `false` é. Com configuração, os dois viram
+    # decisão (`AnuncioDisplay.melhorias_de_asset`/`video_automatico`, default
+    # False) e `display_ops.aplicar_rda` os reescreve.
     rda.control_spec.enable_asset_enhancements = False
     rda.control_spec.enable_autogen_video = False
+    if res.declarada:
+        display_ops.aplicar_rda(c, rda, res.anuncio)
 
     for t in headlines:
         a = c.get_type("AdTextAsset")
@@ -287,7 +316,10 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
             img.asset = rn
             destino.append(img)
 
-    for rn in videos:
+    # Vídeo do YouTube: o resource name que já existe (brief.videos) e o id
+    # que vira `YoutubeVideoAsset` aqui, na faixa própria de Display (-450…).
+    ops_de_video, rns_novos = display_ops.ops_videos(c, cid, videos_novos, base)
+    for rn in list(videos) + rns_novos:
         vid = c.get_type("AdVideoAsset")
         vid.asset = rn
         rda.youtube_videos.append(vid)
@@ -296,6 +328,7 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
     # sobre ordem, acima. Inserir depois faria a API recusar o mutate inteiro
     # com um erro sobre o ANÚNCIO, e o defeito estaria na ordem da lista.
     ops.extend(ops_de_asset)
+    ops.extend(ops_de_video)
     ops.append(o)
     return ops, r
 
@@ -306,27 +339,21 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
 def _recusar_o_que_e_de_search(brief: Brief, r: validacao.Resultado) -> None:
     """Campos que o brief multicanal carrega e que Display não pode honrar.
 
-    Recusar em vez de ignorar. `comum.op_campanha()` já não lê
-    `estrategia_lance` no ramo DISPLAY: sem esta checagem, um brief com
-    `MANUAL_CPC` subiria uma campanha em tCPA e o operador continuaria achando
-    que declarou o lance.
+    Recusar em vez de ignorar. A estratégia de lance saiu daqui: quem a julga
+    agora é `display_config.resolver_lance`, que conhece as duas portas de
+    entrada (brief e `ConfiguracaoDisplay.lance`) e recusa MANUAL_CPC vindo do
+    brief pelo motivo certo — ele é o default, não uma escolha.
     """
-    if brief.estrategia_lance not in LANCES_PERMITIDOS:
-        r.erro("estrategia_lance", brief.estrategia_lance,
-               f"Display não aceita {brief.estrategia_lance} — sem termo de "
-               f"busca o lance manual não tem sinal que filtre inventário. "
-               f"Declare estrategia_lance='MAXIMIZE_CONVERSIONS' no brief "
-               f"(com `tcpa` preenchido a campanha nasce em tCPA; sem ele, em "
-               f"MaxConv puro). Aceitos aqui: {', '.join(LANCES_PERMITIDOS)}")
-
     if brief.ai_max:
         r.erro("ai_max", "True",
                "`campaign.ai_max_setting` é campo de Search e a API recusa o "
                "mutate de Display com ele. Deixe `ai_max=False` no brief")
 
 
-def _avisar_o_que_a_fatia_ainda_nao_monta(brief: Brief, r: validacao.Resultado) -> None:
-    """O que o brief traz, esta fatia não usa, e o operador precisa saber.
+def _avisar_o_que_a_fatia_ainda_nao_monta(
+    brief: Brief, cfg: ConfiguracaoDisplay | None, r: validacao.Resultado
+) -> None:
+    """O que o brief traz, Display não usa, e o operador precisa saber.
 
     Aviso e não erro: nenhum destes campos torna o payload inválido. O que eles
     tornam inválido é a EXPECTATIVA — e descartar em silêncio é o defeito que
@@ -336,17 +363,24 @@ def _avisar_o_que_a_fatia_ainda_nao_monta(brief: Brief, r: validacao.Resultado) 
     kws = list(brief.keywords) + [k for s in brief.sub_intencoes for k in s.keywords]
     if kws:
         r.aviso("keywords", f"{len(kws)} termos",
-                "Display não opera keyword nesta fatia: a segmentação de "
-                "conteúdo (tópicos, listas e posicionamento) entra quando a "
-                "matriz de API do canal fixar campo e enum. As keywords do "
-                "brief NÃO viram critério — a campanha veicula em inventário "
-                "aberto, escolhido pelo lance")
+                "as keywords do brief são termos de BUSCA e não viram critério "
+                "de Display. Palavra-chave de conteúdo é decisão própria do "
+                "canal: declare `ConfiguracaoDisplay.segmentacao.palavras_chave`")
 
     if len(brief.sub_intencoes) > 1:
         r.aviso("sub_intencoes", f"{len(brief.sub_intencoes)} grupos",
-                "Display monta UM ad group nesta fatia. Sem segmentação por "
-                "grupo, N grupos com o mesmo anúncio repartiriam a verba por "
-                "sorteio em vez de por intenção")
+                "Display monta UM ad group. N grupos com o mesmo anúncio e a "
+                "mesma segmentação repartiriam a verba por sorteio em vez de "
+                "por intenção")
+
+    if cfg is not None and not cfg.segmentacao.tem_positivo:
+        r.aviso("segmentacao", "0 critérios positivos",
+                "o grupo nasce em INVENTÁRIO ABERTO, escolhido pelo lance — "
+                "só as exclusões restringem onde o anúncio aparece")
+    if cfg is not None and cfg.segmentacao.segmentacao_otimizada:
+        r.aviso("segmentacao.segmentacao_otimizada", "True",
+                "segmentação otimizada LIGADA: o Google expande para além dos "
+                "critérios declarados, inclusive para fora dos públicos")
 
     # ⚠️ Conta pelo CONTRATO RESOLVIDO, não pelos campos antigos.
     #
@@ -361,9 +395,10 @@ def _avisar_o_que_a_fatia_ainda_nao_monta(brief: Brief, r: validacao.Resultado) 
     negativas = [c for c in brief.criterios if c.negativa]
     if negativas:
         r.aviso("negativas", f"{len(negativas)}",
-                "as negativas do brief não entram no payload de Display nesta "
-                "fatia — a exclusão de inventário é outro recurso e depende da "
-                "matriz de API do canal")
+                "as negativas do brief são keywords negativas de BUSCA e não "
+                "entram no payload de Display. Exclusão de inventário aqui é "
+                "`ConfiguracaoDisplay.exclusoes` (placement, app, rótulo de "
+                "conteúdo, tópico, lista compartilhada)")
 
     if brief.imagens and brief.imagens_display is None:
         # O erro de imagem ausente sai em `_checar_imagens`; aqui só se aponta
@@ -576,8 +611,15 @@ def _checar_imagens(cid: str, brief: Brief, r: validacao.Resultado) -> ImagensDi
     return im
 
 
-def _checar_videos(cid: str, brief: Brief, r: validacao.Resultado) -> list[str]:
+def _checar_videos(
+    cid: str, brief: Brief, cfg: ConfiguracaoDisplay | None, r: validacao.Resultado
+) -> tuple[list[str], tuple[str, ...]]:
     """`youtube_videos` do RDA — opcional, teto de 5 (proto v25).
+
+    Duas formas, contadas JUNTAS no teto: `brief.videos` (resource name de
+    Asset já criado) e `ConfiguracaoDisplay.anuncio.videos_youtube` (id do
+    YouTube, que vira `YoutubeVideoAsset` no mesmo mutate — aceito por
+    `validate_only` em 08/10/2026).
 
     ⚠️ Duração mínima, proporção e resolução estão `[NÃO CONFIRMADO]` na
     matriz: o proto só declara a CONTAGEM. Os ≥10s e o 16:9/1:1/9:16 que
@@ -588,11 +630,15 @@ def _checar_videos(cid: str, brief: Brief, r: validacao.Resultado) -> list[str]:
     videos = [v for v in brief.videos if (v or "").strip()]
     for rn in videos:
         _checar_resource_name(cid, rn, "videos", "youtube_videos", r)
-    if len(videos) > lim["video_max"]:
-        r.erro("videos", f"{len(videos)}",
-               f"o RDA aceita no máximo {lim['video_max']} vídeos do YouTube")
-        return videos[: lim["video_max"]]
-    return videos
+    novos = tuple(dict.fromkeys(
+        str(v).strip() for v in (cfg.anuncio.videos_youtube if cfg else ()) if str(v).strip()))
+    teto = min(lim["video_max"], VIDEOS_MAX)
+    if len(videos) + len(novos) > teto:
+        r.erro("videos", f"{len(videos)} + {len(novos)}",
+               f"o RDA aceita no máximo {teto} vídeos do YouTube, somando "
+               f"`brief.videos` e `anuncio.videos_youtube`", plano.ASSET_ACIMA_DO_TETO)
+        return videos[:teto], ()
+    return videos, novos
 
 
 def _checar_resource_name(
@@ -632,13 +678,15 @@ def _checar_resource_name(
                f"({comum.T_ASSET_BASE} para baixo)")
 
 
-def validar(cid: str, brief: Brief, *, login_customer_id: str):
+def validar(cid: str, brief: Brief, *, login_customer_id: str,
+            configuracao: ConfiguracaoDisplay | None = None):
     """Valida local + na API (`validate_only`). Nada é criado.
 
     Mesma forma de `search.validar`: devolve (resultado_local, falha, n_ops). A
     falha é `None` quando a API aceitou o grafo.
     """
-    ops, r = construir(cid, brief, login_customer_id=login_customer_id)
+    ops, r = construir(cid, brief, login_customer_id=login_customer_id,
+                       configuracao=configuracao)
     if not r.ok:
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)
@@ -652,28 +700,35 @@ def validar(cid: str, brief: Brief, *, login_customer_id: str):
 #: referencia daqui em vez de repetir o texto, porque a doutrina do índice é
 #: "cada fato é declarado uma vez, no módulo do canal".
 NAO_OPERADO: tuple[str, ...] = (
-    "segmentar: topic, user list, custom audience, custom intent e "
-    "demografia estão confirmados `[alta]` em matriz-api/display.md §7 e "
-    "entram na próxima fatia. Nesta, a campanha nasce em inventário "
-    "aberto, escolhido pelo lance.",
-    "segmentação POSITIVA por placement não entra: a tabela oficial de "
-    "critérios marca placement como positivo ❌, e "
-    "`network_settings.target_content_network` descreve a rede como "
-    "'specified placements'. As duas fontes são oficiais e se contradizem; "
-    "a matriz marca `[NÃO CONFIRMADO]` e a prova por `validate_only` na "
-    "conta real ainda não foi autorizada. Exclusão por placement "
-    "(negativo) é onde as duas concordam e é por onde a próxima fatia "
-    "começa.",
+    "demografia (faixa etária, gênero, renda, status parental) e custom "
+    "intent/affinity legados: confirmados em matriz-api/display.md §7 e ainda "
+    "não montados. `custom_audience` cobre o caso de público por termo/URL.",
+    "`audience` (AudienceInfo) não é usado em Display: a API exige "
+    "`campaign.audience_setting.use_audience_grouped` e recusa com "
+    "AUDIENCE_NOT_ALLOWED_TO_ATTACH_WHEN_AUDIENCE_GROUPED_SET_TO_FALSE "
+    "(validate_only 08/10/2026). Afinidade e in-market entram por "
+    "`user_interest`.",
+    "custom audience e combined audience: aceitos na FORMA por validate_only "
+    "(a API respondeu 'não encontrado'/'id inválido' para id inventado, não "
+    "'campo não permitido'). Prova positiva pendente: a Crédito Up não tem "
+    "nenhum dos dois.",
+    "lances TARGET_CPM e TARGET_CPC: recusados pela API em Display "
+    "(OPERATION_NOT_PERMITTED_FOR_CONTEXT, validate_only 08/10/2026). O CPM "
+    "de Display é MANUAL_CPM (vCPM).",
+    "rótulos BRAND_SUITABILITY_* (exceto CONTENT_FOR_FAMILIES): recusados "
+    "pela API em Display com CANNOT_EXCLUDE_CRITERION.",
     "extensões de campanha: sitelink, callout e snippet não são montados — "
     "a matriz não declara tipo nem field_type para Display, e montá-los "
     "por analogia com Search subiria asset que não veicula.",
-    "lance manual: `MANUAL_CPC` está `[NÃO CONFIRMADO]` para Display na "
-    "tabela oficial de estratégias, e sem termo de busca ele não teria "
-    "sinal que filtrasse inventário. Só MaxConv (com tCPA dentro).",
+    "um ad group por campanha: a segmentação é do grupo único. N grupos com "
+    "públicos próprios ficam para quando o brief tiver partição de Display.",
+    "`price_prefix`/`promo_text` do RDA: só valem em formato dinâmico (feed), "
+    "que este construtor não monta.",
 )
 
 
-def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDeCanal:
+def planejar(cid: str, brief: Brief, *, login_customer_id: str,
+             configuracao: ConfiguracaoDisplay | None = None) -> plano.PlanoDeCanal:
     """Monta offline e projeta o payload em plano serializável.
 
     ⚠️ **Display sem imagem não produz plano feliz.** `_checar_imagens()`
@@ -683,10 +738,26 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDe
     (`backend/app/routers/trafego.py`, `ProvarEntrada` sem campo de imagem):
     enquanto essa rota não for corrigida, é ESTE bloqueio que impede um plano
     de Display vazio de parecer aprovado.
+
+    `plano.projetar` não conhece os critérios nem o `target_cpa` de Display;
+    `_completar_plano` os traduz aqui, no módulo do canal, a partir do MESMO
+    payload — o plano continua sendo derivado das operações, nunca do pedido.
     """
-    ops, r = construir(cid, brief, login_customer_id=login_customer_id)
+    ops, r = construir(cid, brief, login_customer_id=login_customer_id,
+                       configuracao=configuracao)
     monta = bool(ops) and r.ok
-    return plano.projetar(
+    aberto = (
+        "audiência e posicionamento: a campanha nasce em INVENTÁRIO "
+        "ABERTO, escolhido pelo lance. Não é 'segmentada com zero "
+        "audiências' — é uma campanha que pode aparecer em qualquer site "
+        "da rede de display.",
+    )
+    if configuracao is not None and configuracao.segmentacao.tem_positivo:
+        aberto = ()
+    if configuracao is not None and configuracao.segmentacao.segmentacao_otimizada:
+        aberto = ("segmentação otimizada LIGADA: o Google expande o alcance "
+                  "para além dos critérios positivos declarados.",)
+    p = plano.projetar(
         canal=CANAL,
         customer_id=cid,
         login_customer_id=login_customer_id,
@@ -701,11 +772,71 @@ def planejar(cid: str, brief: Brief, *, login_customer_id: str) -> plano.PlanoDe
                 else "o brief não passou na validação local; veja bloqueios"),
         ),
         nao_operado=NAO_OPERADO,
-        aberto_por_ausencia=(
-            "audiência e posicionamento: a campanha nasce em INVENTÁRIO "
-            "ABERTO, escolhido pelo lance. Não é 'segmentada com zero "
-            "audiências' — é uma campanha que pode aparecer em qualquer site "
-            "da rede de display.",
-        ),
+        aberto_por_ausencia=aberto,
         nivel_geo_idioma="campanha",
     )
+    return _completar_plano(p, ops) if ops else p
+
+
+def _criterio_display(create, nivel: str, negativo: bool | None = None) -> plano.Criterio:
+    """Critério de Display → (tipo, valor) legível. Cobre o que `plano` não cobre."""
+    pb = getattr(create, "_pb", create)
+    ramo = pb.WhichOneof("criterion") or ""
+    if negativo is None and pb.HasField("negative"):
+        negativo = bool(create.negative)
+    leitura = {
+        "location": lambda x: x.geo_target_constant,
+        "language": lambda x: x.language_constant,
+        "keyword": lambda x: x.text,
+        "placement": lambda x: x.url,
+        "topic": lambda x: x.topic_constant,
+        "user_list": lambda x: x.user_list,
+        "user_interest": lambda x: x.user_interest_category,
+        "custom_audience": lambda x: x.custom_audience,
+        "combined_audience": lambda x: x.combined_audience,
+        "mobile_app_category": lambda x: x.mobile_app_category_constant,
+        "mobile_application": lambda x: x.app_id,
+        "content_label": lambda x: x.type_.name,
+        "device": lambda x: f"{x.type_.name} bid_modifier={create.bid_modifier}",
+        "ad_schedule": lambda x: (
+            f"{x.day_of_week.name} {x.start_hour:02d}:{_MIN[x.start_minute.name]:02d}"
+            f"-{x.end_hour:02d}:{_MIN[x.end_minute.name]:02d}"),
+    }.get(ramo)
+    valor = str(leitura(getattr(create, ramo))) if leitura else ""
+    return plano.Criterio(tipo=ramo or "desconhecido", valor=valor,
+                          nivel=nivel, negativo=negativo)
+
+
+_MIN = {"ZERO": 0, "FIFTEEN": 15, "THIRTY": 30, "FORTY_FIVE": 45}
+
+
+def _completar_plano(p: plano.PlanoDeCanal, ops) -> plano.PlanoDeCanal:
+    """Lance e critérios de Display, lidos do payload, por cima da projeção."""
+    de_campanha, de_grupo = [], []
+    estrategia, tcpa, roas = p.orcamento.estrategia_lance, p.orcamento.tcpa_micros, p.orcamento.target_roas
+    for op in ops:
+        qual = op._pb.WhichOneof("operation")
+        if qual == "campaign_operation":
+            camp = op.campaign_operation.create
+            ramo = camp._pb.WhichOneof("campaign_bidding_strategy") or ""
+            estrategia = ramo.upper()
+            if ramo == "target_cpa":
+                tcpa = int(camp.target_cpa.target_cpa_micros) or None
+        elif qual == "campaign_criterion_operation":
+            de_campanha.append(_criterio_display(op.campaign_criterion_operation.create, "campanha"))
+        elif qual == "shared_criterion_operation":
+            de_campanha.append(_criterio_display(
+                op.shared_criterion_operation.create, "lista_compartilhada", negativo=True))
+        elif qual == "campaign_shared_set_operation":
+            de_campanha.append(plano.Criterio(
+                tipo="shared_set", valor=str(op.campaign_shared_set_operation.create.shared_set),
+                nivel="campanha", negativo=True))
+        elif qual == "ad_group_criterion_operation":
+            de_grupo.append(_criterio_display(op.ad_group_criterion_operation.create, "ad_group"))
+    orc = dataclasses.replace(p.orcamento, estrategia_lance=estrategia,
+                              tcpa_micros=tcpa, target_roas=roas)
+    seg = dataclasses.replace(p.segmentacao, criterios=tuple(de_campanha))
+    unidades = list(p.unidades)
+    if unidades and unidades[0].tipo == "ad_group":
+        unidades[0] = dataclasses.replace(unidades[0], criterios=tuple(de_grupo))
+    return dataclasses.replace(p, orcamento=orc, segmentacao=seg, unidades=tuple(unidades))
