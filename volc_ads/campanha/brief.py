@@ -1438,6 +1438,26 @@ class SubIntencao:
             raise ValueError("sub-intenção sem nome — o nome vira o do ad group")
 
 
+#: Faixa do tROAS nos QUATRO canais (Search, Display, Demand Gen, PMax). A
+#: unidade é a da API — RAZÃO, `4.0` = 400% — e nenhum builder converte: o
+#: número vai como está para `maximize_conversion_value.target_roas` (Search,
+#: Display, PMax) ou para a estratégia avulsa `target_roas.target_roas` (Demand
+#: Gen). Abaixo de 0,01 é meta que o leilão ignora; acima de 1000 (100.000%) é
+#: erro de digitação de quem pensou em porcentagem — o mesmo teto de
+#: `gestao.acoes.TROAS_MAXIMO`. Ausência de meta é `None`, nunca 0.
+ROAS_MIN, ROAS_MAX = 0.01, 1000.0
+
+
+def faixa_de_roas_invalida(valor: float | None) -> str | None:
+    """A frase da recusa quando `valor` está fora da faixa; None quando serve."""
+    if valor is None:
+        return None
+    if isinstance(valor, bool) or not (ROAS_MIN <= float(valor) <= ROAS_MAX):
+        return (f"target_roas {valor!r} fora de [{ROAS_MIN}, {ROAS_MAX}] — a "
+                "razão é 4.0 para 400%; ausência de meta é None")
+    return None
+
+
 @dataclass
 class Brief:
     nicho: str
@@ -1452,7 +1472,8 @@ class Brief:
     cpc_inicial: float = 0.12
     tcpa: float | None = None
     #: Meta de retorno sobre investimento em anúncio, para
-    #: `MAXIMIZE_CONVERSION_VALUE` — hoje só Performance Max. `None` é ausência
+    #: `MAXIMIZE_CONVERSION_VALUE` (Search, Display, PMax; Demand Gen declara a
+    #: meta em `LanceDemandGen`). Faixa `ROAS_MIN..ROAS_MAX`. `None` é ausência
     #: de meta, e nunca 0: um ROAS-alvo zero pediria ao Google que ignorasse o
     #: valor, que é o oposto de escolher esta estratégia. A razão é `4.0` para
     #: 400%, como a API a recebe.
@@ -1563,6 +1584,9 @@ class Brief:
         self._pais, self._idioma = _geo.resolver(self.pais, self.idioma)
         if self.budget_diario <= 0:
             raise ValueError("budget_diario precisa ser positivo")
+        recusa_roas = faixa_de_roas_invalida(self.target_roas)
+        if recusa_roas:
+            raise ValueError(recusa_roas)
         if not self.url_final.startswith("https://"):
             raise ValueError("url_final precisa ser https")
         if self.match_type not in ("EXACT", "PHRASE", "BROAD"):

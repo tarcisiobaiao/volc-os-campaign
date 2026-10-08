@@ -1,5 +1,5 @@
 {
- "versao": "GADS-CRIACAO-CANAIS-v1",
+ "versao": "GADS-CRIACAO-CANAIS-v1.1",
  "documento": "docs/contracts/GADS-CRIACAO-CANAIS-v1.md",
  "canais": {
   "SEARCH": {
@@ -1239,7 +1239,7 @@
         "OPTED_OUT"
        ]
       },
-      "default": [],
+      "default": {},
       "description": "tipo → OPTED_IN/OPTED_OUT; tipo ausente viaja OPTED_OUT. Só os tipos do formato escolhido: MULTI_ASSET: GENERATE_DESIGN_VERSIONS_FOR_IMAGES, GENERATE_VIDEOS_FROM_OTHER_ASSETS, GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS; VIDEO_RESPONSIVO: GENERATE_LANDING_PAGE_PREVIEW, GENERATE_LANDING_PAGE_TEXT, GENERATE_SHORTER_YOUTUBE_VIDEOS, GENERATE_VERTICAL_YOUTUBE_VIDEOS; CARROSSEL: nenhuma"
      },
      "agenda": {
@@ -1434,13 +1434,14 @@
         "anyOf": [
          {
           "type": "number",
-          "exclusiveMinimum": 0
+          "minimum": 0.01,
+          "maximum": 1000.0
          },
          {
           "type": "null"
          }
         ],
-        "description": "só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso)",
+        "description": "razão (4.0 = 400%); só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso)",
         "default": null
        },
        "target_cpc": {
@@ -2303,6 +2304,8 @@
   "chave desconhecida → 422 com o caminho do campo (nunca descarte)",
   "tipo errado → 422; não há coerção ('3' não vira 3, 1 não vira true)",
   "omitir o objeto = comportamento de antes desta versão (payload idêntico)",
-  "objeto presente entra na impressão aprovável do plano"
+  "objeto presente entra na impressão aprovável do plano",
+  "todo 422 de configuração: detail[] com loc do campo, msg sem prefixo e ctx.codigo em CAMPO_DESCONHECIDO, CAMPO_OBRIGATORIO, VALOR_INVALIDO, CANAL_DIFERENTE, CAMPO_NAO_OPERADO, ESTRATEGIA_DIVERGENTE, MATCH_FORA_DO_CONJUNTO",
+  "target_roas é razão (4.0 = 400%) em [0.01, 1000.0] nos quatro canais"
  ]
 }

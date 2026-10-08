@@ -86,9 +86,12 @@ from urllib.parse import urlsplit
 
 from .. import automacoes as _automacoes
 from .brief import (
+    ROAS_MAX,
+    ROAS_MIN,
     AssetRemotoAprovado,
     ConfiguracaoDemandGen,
     ImagemParaSubir,
+    faixa_de_roas_invalida,
 )
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -309,6 +312,10 @@ class LanceDemandGen:
                 raise ValueError(
                     f"LanceDemandGen.{campo}={valor!r}: meta ausente é None, "
                     "nunca 0 ou negativa")
+        # A MESMA faixa de tROAS dos outros três canais (razão, 4.0 = 400%).
+        recusa_roas = faixa_de_roas_invalida(self.target_roas)
+        if recusa_roas:
+            raise ValueError(f"LanceDemandGen.{recusa_roas}")
         permitidas = {
             "MAXIMIZE_CONVERSIONS": {"target_cpa"},
             "MAXIMIZE_CONVERSION_VALUE": {"target_roas"},
@@ -756,8 +763,8 @@ ESQUEMA_JSON: dict[str, dict] = {
     "LanceDemandGen.estrategia": {"enum": list(ESTRATEGIAS)},
     "LanceDemandGen.target_cpa": {"exclusiveMinimum": 0,
                                   "description": "só em MAXIMIZE_CONVERSIONS (vira `target_cpa` avulso)"},
-    "LanceDemandGen.target_roas": {"exclusiveMinimum": 0,
-                                   "description": "só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso)"},
+    "LanceDemandGen.target_roas": {"minimum": ROAS_MIN, "maximum": ROAS_MAX,
+                                   "description": "razão (4.0 = 400%); só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso)"},
     "LanceDemandGen.target_cpc": {"exclusiveMinimum": 0,
                                   "description": "obrigatório em TARGET_CPC"},
     "VideoDemandGen.youtube_ids": {"minItems": VIDEOS_MIN, "maxItems": VIDEOS_MAX,

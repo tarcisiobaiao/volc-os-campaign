@@ -32,6 +32,9 @@ _LANCE = "LANCE_NAO_PERMITIDO"
 _RN = "RESOURCE_NAME_INVALIDO"
 _AUSENTE = "CONFIGURACAO_AUSENTE"
 _TETO = "ASSET_ACIMA_DO_TETO"
+# A faixa de tROAS é UMA para os quatro canais, e mora no brief.
+from .brief import ROAS_MAX as _ROAS_MAX  # noqa: E402
+from .brief import ROAS_MIN as _ROAS_MIN  # noqa: E402
 
 # ═══════════════════════════════════════════════════════════════════════════
 # LANCE
@@ -174,9 +177,10 @@ def resolver_lance(brief: Any, cfg: "ConfiguracaoDisplay | None", r: Any) -> Lan
     if tcpa is not None and tcpa <= 0:
         r.erro("tcpa", str(tcpa), "meta ausente é None; zero ou negativo não é meta", _LANCE)
         ok = False
-    if troas is not None and troas <= 0:
+    if troas is not None and not (_ROAS_MIN <= troas <= _ROAS_MAX):
         r.erro("target_roas", str(troas),
-               "tROAS é razão (4.0 = 400%); ausente é None, nunca 0", _LANCE)
+               f"tROAS é razão (4.0 = 400%) em [{_ROAS_MIN}, {_ROAS_MAX}], a "
+               "mesma faixa dos quatro canais; ausente é None, nunca 0", _LANCE)
         ok = False
 
     teto = declarado.teto_cpc if declarado else None

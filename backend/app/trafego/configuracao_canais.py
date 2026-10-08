@@ -52,9 +52,12 @@ from volc_ads.campanha import (  # noqa: E402 — depois do sys.path, de propós
     search_config as sc,
 )
 from volc_ads.campanha.brief import (  # noqa: E402
+    ROAS_MAX,
+    ROAS_MIN,
     ConfiguracaoDemandGen,
     ConfiguracaoPMax,
     ImagensPMax,
+    faixa_de_roas_invalida,
 )
 
 #: Versão do contrato publicado. Mesma string de `config_json`.
@@ -78,10 +81,26 @@ ENTRADA_NO_MOTOR: Mapping[str, str] = {
     "PERFORMANCE_MAX": "brief.pmax = ConfiguracaoPMaxV25 (base = objeto `pmax`)",
 }
 
-#: Código estável das recusas desta fronteira.
-CONFIGURACAO_INVALIDA = "CONFIGURACAO_INVALIDA"
-CONFIGURACAO_DE_OUTRO_CANAL = "CONFIGURACAO_DE_OUTRO_CANAL"
+#: Códigos estáveis das recusas desta fronteira — `ctx.codigo` de TODO 422 de
+#: configuração (§2 do contrato). A tela pode ramificar por eles; o `msg` é
+#: para gente e pode mudar de redação.
+CAMPO_DESCONHECIDO = config_json.CAMPO_DESCONHECIDO
+CAMPO_OBRIGATORIO = config_json.CAMPO_OBRIGATORIO
+VALOR_INVALIDO = config_json.VALOR_INVALIDO
+#: Configuração (ou `match_por_keyword`) de um canal num pedido de outro.
+CANAL_DIFERENTE = "CANAL_DIFERENTE"
+#: Campo do envelope que o builder do canal pedido não materializa (ex.:
+#: `match_type` num pedido Display). Recusado, nunca descartado.
+CAMPO_NAO_OPERADO = "CAMPO_NAO_OPERADO"
+#: `estrategia_lance` do envelope diverge de `configuracao_<canal>.lance`.
+ESTRATEGIA_DIVERGENTE = "ESTRATEGIA_DIVERGENTE"
+#: `match_por_keyword` com chave fora do conjunto pago aprovado.
 MATCH_FORA_DO_CONJUNTO = "MATCH_FORA_DO_CONJUNTO"
+
+CODIGOS_DE_RECUSA: Tuple[str, ...] = (
+    CAMPO_DESCONHECIDO, CAMPO_OBRIGATORIO, VALOR_INVALIDO, CANAL_DIFERENTE,
+    CAMPO_NAO_OPERADO, ESTRATEGIA_DIVERGENTE, MATCH_FORA_DO_CONJUNTO,
+)
 
 MATCH_TYPES: Tuple[str, ...] = ("EXACT", "PHRASE", "BROAD")
 
@@ -91,31 +110,110 @@ MATCH_TYPES: Tuple[str, ...] = ("EXACT", "PHRASE", "BROAD")
 ErroDeForma = config_json.ConfiguracaoInvalida
 
 
+def _loc(caminho: str) -> Tuple[Any, ...]:
+    """`configuracao_display.frequencia[0].impressoes` → partes do `loc`."""
+    partes: List[Any] = []
+    for pedaco in caminho.split("."):
+        m = re.fullmatch(r"([^\[]+)((?:\[\d+\])*)", pedaco)
+        if not m:
+            partes.append(pedaco)
+            continue
+        partes.append(m.group(1))
+        partes.extend(int(i) for i in re.findall(r"\[(\d+)\]", m.group(2)))
+    return tuple(partes)
+
+
 class ConfiguracaoRecusada(ValueError):
-    """A configuração não tem a forma que o motor aceita. Vira 422 com caminho."""
+    """A configuração não tem a forma que o motor aceita. Vira 422 com caminho.
+
+    Carrega UMA ou MAIS recusas (`itens`): o pedido com três campos que o
+    builder não opera volta com os três, cada um no seu `loc` — a tela pinta
+    os três campos de uma vez em vez de o operador descobrir um por rodada.
+    `caminho`/`mensagem`/`codigo` são os do primeiro item.
+
+    `tipo` é o `type` do item no 422 — por padrão o código em minúsculas; a
+    projeção estrita de Demand Gen preserva o tipo nativo do pydantic
+    (`extra_forbidden`, `too_long`…). Quem ramifica lê `ctx.codigo`, sempre.
+    """
 
     def __init__(self, caminho: str, mensagem: str,
-                 codigo: str = CONFIGURACAO_INVALIDA) -> None:
+                 codigo: str = VALOR_INVALIDO, *, tipo: Optional[str] = None) -> None:
         self.caminho = caminho
         self.mensagem = mensagem
         self.codigo = codigo
+        self.tipo = tipo or codigo.lower()
+        self.itens: Tuple["ConfiguracaoRecusada", ...] = (self,)
         super().__init__(f"{caminho}: {mensagem}")
+
+    @classmethod
+    def varias(cls, recusas: Sequence["ConfiguracaoRecusada"]) -> "ConfiguracaoRecusada":
+        if not recusas:  # pragma: no cover — chamador sempre tem ao menos uma
+            raise ValueError("nenhuma recusa para levantar")
+        primeira = recusas[0]
+        exc = cls(primeira.caminho, primeira.mensagem, primeira.codigo,
+                  tipo=primeira.tipo)
+        exc.itens = tuple(recusas)
+        if len(recusas) > 1:
+            exc.args = (" | ".join(f"{r.caminho}: {r.mensagem}" for r in recusas),)
+        return exc
 
     def loc(self) -> Tuple[Any, ...]:
         """`configuracao_display.frequencia[0].impressoes` → loc do FastAPI."""
-        partes: List[Any] = ["body"]
-        for pedaco in self.caminho.split("."):
-            m = re.fullmatch(r"([^\[]+)((?:\[\d+\])*)", pedaco)
-            if not m:
-                partes.append(pedaco)
-                continue
-            partes.append(m.group(1))
-            partes.extend(int(i) for i in re.findall(r"\[(\d+)\]", m.group(2)))
-        return tuple(partes)
+        return ("body",) + _loc(self.caminho)
+
+    def erros(self, *, prefixo: Tuple[Any, ...] = ("body",)) -> List[Dict[str, Any]]:
+        """Os itens no formato de erro de corpo do FastAPI (§2 do contrato)."""
+        return [{
+            "type": r.tipo,
+            "loc": prefixo + _loc(r.caminho),
+            "msg": r.mensagem,
+            "input": None,
+            "ctx": {"codigo": r.codigo, "caminho": r.caminho},
+        } for r in self.itens]
+
+    def erro_de_validacao(self, titulo: str):
+        """A mesma recusa como `pydantic_core.ValidationError`, com `loc` exato.
+
+        Para o validador do ENVELOPE (`model_validator`): um `ValueError` solto
+        ali vira `loc: ["body"]` com `msg: "Value error, …"` e sem `ctx` — o
+        formato que o front encontrou e que este contrato não promete. Uma
+        `ValidationError` levantada dentro do validador atravessa o pydantic
+        com as linhas de erro intactas, e o FastAPI só acrescenta `body`.
+        """
+        from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
+
+        linhas = []
+        for r in self.itens:
+            # `{`/`}` no texto seriam lidos como marcador do template.
+            frase = r.mensagem.replace("{", "(").replace("}", ")")
+            linhas.append(InitErrorDetails(
+                type=PydanticCustomError(r.tipo, frase,
+                                         {"codigo": r.codigo, "caminho": r.caminho}),
+                loc=_loc(r.caminho),
+                input=None,
+            ))
+        return ValidationError.from_exception_data(titulo, linhas)
 
     def para_json(self) -> Dict[str, Any]:
         return {"codigo": self.codigo, "caminho": self.caminho,
                 "mensagem": self.mensagem}
+
+
+def exigir_target_roas(valor: Any) -> Any:
+    """`target_roas` do envelope: razão em `ROAS_MIN..ROAS_MAX`, nos 4 canais.
+
+    Levanta `PydanticCustomError` (para o `field_validator`): o 422 sai com
+    `loc: ["body", "target_roas"]`, frase em português e `ctx.codigo =
+    VALOR_INVALIDO` — o mesmo formato das recusas de configuração.
+    """
+    recusa = faixa_de_roas_invalida(valor)
+    if recusa:
+        from pydantic_core import PydanticCustomError
+
+        raise PydanticCustomError(
+            VALOR_INVALIDO.lower(), recusa.replace("{", "(").replace("}", ")"),
+            {"codigo": VALOR_INVALIDO, "caminho": "target_roas"})
+    return valor
 
 
 def canal_canonico(canal: Any) -> str:
@@ -134,21 +232,35 @@ def recusar_de_outro_canal(dados: Mapping[str, Any]) -> None:
 
     Ignorar seria o defeito clássico desta rota: o operador manda segmentação
     de Display num pedido Search e vê um plano sem ela, sem erro nenhum.
+
+    Uma recusa por campo (`loc` = o campo), todas de uma vez, código
+    `CANAL_DIFERENTE`. `match_por_keyword` entra aqui pela mesma razão: é
+    configuração de Search, e num pedido de outro canal seria descartada.
     """
     canal = canal_canonico(dados.get("canal"))
+    recusas: List[ConfiguracaoRecusada] = []
     for campo in campos_declarados(dados):
         dono = CANAL_POR_CAMPO[campo]
         if dono != canal:
-            raise ConfiguracaoRecusada(
+            recusas.append(ConfiguracaoRecusada(
                 campo,
                 f"`{campo}` é a configuração de {dono} e o pedido é "
-                f"canal={canal!r}. Nada foi projetado: configuração de outro "
+                f"canal={canal}. Nada foi projetado: configuração de outro "
                 "canal seria descartada em silêncio.",
-                CONFIGURACAO_DE_OUTRO_CANAL)
+                CANAL_DIFERENTE))
+    if dados.get("match_por_keyword") and canal != "SEARCH":
+        recusas.append(ConfiguracaoRecusada(
+            "match_por_keyword",
+            "`match_por_keyword` é correspondência de keyword POSITIVA, que só "
+            f"Search opera; o pedido é canal={canal}. Nada foi projetado.",
+            CANAL_DIFERENTE))
+    if recusas:
+        raise ConfiguracaoRecusada.varias(recusas)
 
 
 def _traduzir(exc: config_json.ConfiguracaoInvalida) -> ConfiguracaoRecusada:
-    return ConfiguracaoRecusada(exc.caminho, exc.mensagem)
+    return ConfiguracaoRecusada(exc.caminho, exc.mensagem,
+                                getattr(exc, "codigo", VALOR_INVALIDO))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -213,7 +325,7 @@ def validar_forma(corpo: Mapping[str, Any], *,
     for campo in campos_declarados(corpo):
         dados = corpo[campo]
         if not isinstance(dados, Mapping):
-            raise ConfiguracaoRecusada(campo, "esperado objeto JSON")
+            raise ConfiguracaoRecusada(campo, "esperado objeto JSON")  # VALOR_INVALIDO
         if campo == "configuracao_search":
             saida[campo] = de_search(dados)
         elif campo == "configuracao_display":
@@ -422,7 +534,7 @@ def aplicar_match_por_keyword(
         if mt not in MATCH_TYPES:
             raise ConfiguracaoRecusada(
                 f"match_por_keyword.{k}", f"correspondência {v!r} inválida — use "
-                f"{', '.join(MATCH_TYPES)}")
+                f"{', '.join(MATCH_TYPES)}", VALOR_INVALIDO)
         pedido[_chave(str(k))] = mt
     aprovadas = {c.chave for c in criterios_aprovados if not c.negativa}
     fora = sorted(set(pedido) - aprovadas)
@@ -487,5 +599,9 @@ def esquemas(*, esquema_de_asset: Optional[Mapping[str, Any]] = None) -> Dict[st
             "tipo errado → 422; não há coerção ('3' não vira 3, 1 não vira true)",
             "omitir o objeto = comportamento de antes desta versão (payload idêntico)",
             "objeto presente entra na impressão aprovável do plano",
+            "todo 422 de configuração: detail[] com loc do campo, msg sem "
+            "prefixo e ctx.codigo em " + ", ".join(CODIGOS_DE_RECUSA),
+            f"target_roas é razão (4.0 = 400%) em [{ROAS_MIN}, {ROAS_MAX}] "
+            "nos quatro canais",
         ],
     }

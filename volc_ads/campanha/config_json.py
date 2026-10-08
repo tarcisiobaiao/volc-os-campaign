@@ -42,23 +42,34 @@ from collections.abc import Mapping as _MappingABC
 from typing import Any, Callable, Iterable, Mapping
 
 #: Versão do contrato publicado em `docs/contracts/GADS-CRIACAO-CANAIS-v1.md`.
-VERSAO_DO_CONTRATO = "GADS-CRIACAO-CANAIS-v1"
+VERSAO_DO_CONTRATO = "GADS-CRIACAO-CANAIS-v1.1"
 
 Resolvedor = Callable[[Any, str], Any]
 
 _NADA = type(None)
 
 
+#: Códigos estáveis da recusa de FORMA (`ctx.codigo` do 422). A tela pode
+#: ramificar por eles; a frase (`msg`) é para gente e pode mudar.
+CAMPO_DESCONHECIDO = "CAMPO_DESCONHECIDO"  # chave que o dataclass não tem
+CAMPO_OBRIGATORIO = "CAMPO_OBRIGATORIO"    # campo sem default, ausente
+VALOR_INVALIDO = "VALOR_INVALIDO"          # tipo, enum, faixa ou combinação
+
+
 class ConfiguracaoInvalida(ValueError):
     """A configuração não tem a forma que o dataclass do motor aceita.
 
     `caminho` é o endereço do campo no JSON (`configuracao_search.lance.
-    estrategia`), e é ele que a fronteira HTTP devolve no 422.
+    estrategia`), e é ele que a fronteira HTTP devolve no 422. `codigo` é o
+    motivo estável (`CAMPO_DESCONHECIDO`, `CAMPO_OBRIGATORIO`,
+    `VALOR_INVALIDO`).
     """
 
-    def __init__(self, caminho: str, mensagem: str) -> None:
+    def __init__(self, caminho: str, mensagem: str,
+                 codigo: str = VALOR_INVALIDO) -> None:
         self.caminho = caminho
         self.mensagem = mensagem
+        self.codigo = codigo
         super().__init__(f"{caminho}: {mensagem}")
 
 
@@ -111,7 +122,7 @@ def de_dict(
             f"{caminho}.{sobra[0]}",
             f"campo(s) desconhecido(s) {sobra} — aceitos: {sorted(aceitos)}. "
             "Chave desconhecida é erro, não descarte: ela seria uma decisão "
-            "que não chega ao payload")
+            "que não chega ao payload", CAMPO_DESCONHECIDO)
 
     dicas = _dicas(cls)
     kw: dict[str, Any] = {}
@@ -123,7 +134,8 @@ def de_dict(
         if nome not in dados:
             if _obrigatorio(campo):
                 raise ConfiguracaoInvalida(
-                    sub, "campo obrigatório ausente — não há default seguro")
+                    sub, "campo obrigatório ausente — não há default seguro",
+                    CAMPO_OBRIGATORIO)
             continue
         kw[nome] = _converter(dicas[nome], dados[nome], sub, resolvedores)
     kw.update(dict(fixos or {}))
@@ -389,7 +401,8 @@ def _esquema_de_classe(cls: type, defs: dict, meta: dict, sobre: dict, *,
             continue
         s = _esquema_de_tipo(dicas[f.name], defs, meta, sobre)
         extra = meta.get(f"{cls.__name__}.{f.name}")
-        if extra and "$substituir" in extra:
+        substituido = bool(extra and "$substituir" in extra)
+        if substituido:
             # Campo cuja anotação é união de formas legadas (ex.: automações de
             # Demand Gen, `Mapping | tuple[par]`): o esquema publicado é a forma
             # CANÔNICA, e o vocabulário a declara inteira.
@@ -400,6 +413,13 @@ def _esquema_de_classe(cls: type, defs: dict, meta: dict, sobre: dict, *,
             s = {**s, "description": comentarios[f.name]}
         if _obrigatorio(f):
             obrigatorios.append(f.name)
+        elif substituido and "default" in s:
+            # ⚠️ A forma canônica declara o PRÓPRIO default, e ele vence o do
+            # dataclass. O default do dataclass está na forma interna (`()`,
+            # tupla de pares — hashável para o selo), e `para_json(())` é `[]`:
+            # publicar `type: object` com `default: []` mandava a tela montar
+            # uma lista onde o servidor exige objeto (achado do front, 08/10).
+            pass
         else:
             padrao = (f.default if f.default is not dataclasses.MISSING
                       else f.default_factory())

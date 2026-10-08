@@ -118,7 +118,7 @@ ORIGENS_DE_CONVERSAO: tuple[str, ...] = (
 MAX_PATH = 15                  # ResponsiveSearchAdInfo.path1/path2
 MAX_FAIXAS_POR_DIA = 6         # AdScheduleInfo: 6 por dia e por campanha
 AJUSTE_MIN, AJUSTE_MAX = 0.1, 10.0   # bid_modifier: -90% a +900%
-ROAS_MIN, ROAS_MAX = 0.01, 1000.0
+from .brief import ROAS_MAX, ROAS_MIN  # noqa: E402 — a faixa é dos 4 canais
 MAX_TERMOS_EXCLUIDOS, MAX_CHARS_TERMO = 25, 30          # text_guidelines
 MAX_RESTRICOES, MAX_CHARS_RESTRICAO = 40, 300
 

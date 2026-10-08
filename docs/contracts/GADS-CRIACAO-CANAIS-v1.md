@@ -1,4 +1,34 @@
-# GADS-CRIACAO-CANAIS v1 — a configuração de cada canal na criação (Google Ads)
+# GADS-CRIACAO-CANAIS v1.1 — a configuração de cada canal na criação (Google Ads)
+
+## Changelog
+
+**v1.1 (08/10/2026)** — fecha as cinco divergências que o front de criação
+encontrou entre a v1 e o comportamento real. Nenhum campo saiu; o que muda para
+quem consome está marcado com ⚠️.
+
+1. **Default de `configuracao_demand_gen.automacoes`** era `[]` num campo
+   `type: object` (o gerador de esquema publicava o default interno do
+   dataclass, uma tupla de pares). Corrigido NA ORIGEM (`config_json.esquema`:
+   a forma canônica declarada pelo canal traz o próprio default): agora `{}`.
+   O esquema inteiro passou a ser conferido em teste (nenhum `default` de tipo
+   diferente do `type`). Tabela §6.3 regenerada.
+2. ⚠️ **TODO 422 de configuração no formato do §2** — lista `detail[]`, um item
+   por campo, `loc` exato, `msg` sem prefixo técnico (`Value error, …`) e
+   `ctx.codigo` estável. Antes: Display/Demand Gen devolviam o campo que o
+   builder não trata como `detail` em FRASE, e a configuração de outro canal
+   como `loc: ["body"]` sem `ctx`. Os códigos `CONFIGURACAO_INVALIDA` e
+   `CONFIGURACAO_DE_OUTRO_CANAL` do 422 foram substituídos pelo vocabulário do
+   §2 (`VALOR_INVALIDO`, `CAMPO_DESCONHECIDO`, `CANAL_DIFERENTE`…). O código
+   `CONFIGURACAO_INVALIDA` de BLOQUEIO do plano (`preparo`) não mudou.
+3. **`POST /api/trafego/planejar-pmax` aceita `configuracao_pmax`** (§1): a
+   configuração PMax pode ser julgada e projetada localmente mesmo com a prova
+   PMax fechada por flag (`/provar` → 403).
+4. **`target_roas` declarado para os quatro canais** (§3, "Metas"): razão,
+   0,01–1000, `4.0` = 400%. Display, Demand Gen e PMax aceitavam qualquer
+   positivo (PMax, até negativo) e agora recusam fora da faixa, como Search.
+5. **Prova viva de Display `MANUAL_CPM`** (§7): `validate_only` real aceito.
+
+**v1 (08/10/2026)** — primeira versão.
 
 Contrato HTTP de `POST /api/trafego/provar` e `POST /api/trafego/subir` para os
 quatro canais (Search, Display, Demand Gen, Performance Max), para quem faz o
@@ -10,7 +40,8 @@ front. Backend: `backend/app/routers/trafego.py` (HTTP) →
 **Esquema vivo:** `GET /api/trafego/canais/esquema` devolve o JSON Schema
 (draft 2020-12) de cada configuração, gerado dos MESMOS dataclasses que validam
 o pedido — enums, limites e defaults vêm de lá. As tabelas do §6 foram geradas
-desse esquema em 08/10/2026; em caso de divergência, a rota vence.
+desse esquema em 08/10/2026 (regeneradas na v1.1); em caso de divergência, a
+rota vence. `versao` do esquema: `GADS-CRIACAO-CANAIS-v1.1`.
 
 ---
 
@@ -26,6 +57,25 @@ desse esquema em 08/10/2026; em caso de divergência, a rota vence.
 | `configuracao_pmax` | PERFORMANCE_MAX | só a parte **v25** de `ConfiguracaoPMaxV25` — path, URL options, vídeos, asset groups adicionais, automações, crawl, exclusões, guias, negativas tipadas, marcas, metas. A base continua no objeto `pmax` |
 | `match_por_keyword` | SEARCH | `{chave(texto): "EXACT"\|"PHRASE"\|"BROAD"}` — o `rascunho.matchPorKeyword` da tela (§4) |
 
+**`POST /api/trafego/planejar-pmax` (v1.1)** aceita o mesmo `configuracao_pmax`.
+É a projeção LOCAL de PMax — sem flag, sem leitura da conta, sem
+`validate_only`, sem mutate — e julga a configuração exatamente como `/provar`:
+mesma forma (422 do §2 antes do escopo), mesmo adaptador (`cfgcan.de_pmax`) e o
+mesmo portão de política nas imagens de `grupos_adicionais[i].imagens`. A única
+diferença é a base: a mensuração fica `None` (a rota não lê a conta), e o plano
+nomeia `MENSURACAO_INADEQUADA` + `PMAX_FORA_DO_EXECUTOR` em vez de fingir um
+recibo. Quando há vídeo por id, a resposta traz `videos_sem_portao_de_politica`
+(lista de ids) — o mesmo fato que `/provar` põe no aviso
+`VIDEO_SEM_PORTAO_DE_POLITICA`.
+
+**A dependência de flag, declarada:** a prova externa de PMax (`/provar` com
+`canal=PERFORMANCE_MAX`) continua atrás de `servidor_oferece_pmax_validate_only`
++ capacidade da sessão; com a flag fechada, `/provar` responde **403** antes de
+julgar qualquer coisa. Para validar a forma e ver o plano com a configuração,
+use `/planejar-pmax`, que não depende dela. O mesmo vale para Demand Gen
+(`servidor_oferece_demand_gen_validate_only`), que não tem rota de projeção
+local: com a flag fechada, a configuração DG não é julgada por HTTP.
+
 `ReconciliarEntrada` ganhou `asset_groups_esperados` (inteiro ≥ 1): PMax com
 grupos adicionais declara quantos asset groups o plano criou, e a releitura
 acusa DIVERGENTE se a conta tiver menos.
@@ -38,8 +88,11 @@ chave nenhuma.
 ## 2. Regras de fronteira
 
 1. **Um objeto por canal, e só o do `canal` do pedido.** `configuracao_display`
-   num pedido `canal=SEARCH` → **422** (o validador do envelope recusa antes de
-   qualquer projeção; mensagem cita `CONFIGURACAO_DE_OUTRO_CANAL`).
+   num pedido `canal=SEARCH` → **422** `CANAL_DIFERENTE` com `loc` no campo (o
+   validador do envelope recusa antes de qualquer projeção). Vale também para
+   `match_por_keyword` fora de Search e para os objetos verticais de outro
+   canal (`demand_gen`, `assets_demand_gen`, `assets_display`, `pmax`,
+   `assets_pmax`).
 2. **Chave desconhecida é 422, nunca descarte**, em qualquer nível.
 3. **Tipo errado é 422, sem coerção**: `"3"` não vira `3`, `0/1` não vira booleano.
 4. **Combinação impossível é 422** — é o `__post_init__` do dataclass do motor
@@ -54,21 +107,50 @@ chave nenhuma.
 
 ### Formato do 422 de configuração
 
-O mesmo de qualquer erro de corpo do FastAPI — `detail[]` com `loc` exato:
+O mesmo de qualquer erro de corpo do FastAPI — `detail[]`, **um item por campo
+recusado**, `loc` exato:
 
 ```json
 {"detail": [{
-  "type": "configuracao_invalida",
+  "type": "valor_invalido",
   "loc": ["body", "configuracao_display", "frequencia", 0, "impressoes"],
   "msg": "esperado inteiro, veio texto",
   "input": null,
-  "ctx": {"codigo": "CONFIGURACAO_INVALIDA",
+  "ctx": {"codigo": "VALOR_INVALIDO",
           "caminho": "configuracao_display.frequencia[0].impressoes"}
 }]}
 ```
 
+Garantias (v1.1, valem para TODO 422 de configuração, nas rotas `/provar`,
+`/subir` e `/planejar-pmax`, venha ele do validador do envelope, da guarda do
+canal ou da montagem):
+
+- `detail` é sempre **lista** — nunca uma frase solta;
+- `loc` começa em `"body"` e aponta o **campo** (nunca só `["body"]`);
+- `msg` é a frase para gente, **sem** o prefixo `Value error, …`;
+- `ctx.codigo` é um dos códigos abaixo — é por ele que a tela ramifica;
+- `ctx.caminho` é o mesmo endereço em notação de ponto;
+- `type` é informativo: o código em minúsculas, exceto na projeção estrita de
+  Demand Gen, que preserva o tipo nativo do pydantic (`extra_forbidden`,
+  `too_long`, `string_too_long`…) para não quebrar quem já o lia.
+
+| `ctx.codigo` | quando | exemplo de `loc` |
+|---|---|---|
+| `CAMPO_DESCONHECIDO` | chave que o dataclass do canal não tem (em qualquer nível), ou campo fora da projeção estrita de Demand Gen | `["body","configuracao_search","lance","teto"]`, `["body","campo_fantasma"]` |
+| `CAMPO_OBRIGATORIO` | campo sem default ausente; objeto vertical obrigatório ausente (`pmax`, `assets_pmax`, `demand_gen`, `assets_demand_gen`); `cpc_inicial` com Display `MANUAL_CPC` | `["body","cpc_inicial"]` |
+| `VALOR_INVALIDO` | tipo errado, enum fora da lista, faixa (ex.: `target_roas`), combinação impossível julgada pelo motor | `["body","target_roas"]`, `["body","configuracao_search","lance"]` |
+| `CANAL_DIFERENTE` | configuração / objeto vertical / `match_por_keyword` de outro canal | `["body","configuracao_display"]` |
+| `CAMPO_NAO_OPERADO` | campo do envelope que o builder do canal pedido não materializa (`match_type`, `keywords_fora`, `ai_max`, `cpc_inicial`… em Display/DG/PMax) | `["body","match_type"]` |
+| `ESTRATEGIA_DIVERGENTE` | Demand Gen: `estrategia_lance` do envelope ≠ `configuracao_demand_gen.lance.estrategia` | `["body","estrategia_lance"]` |
+| `MATCH_FORA_DO_CONJUNTO` | `match_por_keyword` com chave fora do conjunto pago aprovado (§4) | `["body","match_por_keyword","<chave>"]` |
+
 Quando o motor recusa a COMBINAÇÃO, o `loc` aponta o objeto que a contém
 (`["body", "configuracao_search", "lance"]`) e `msg` traz a frase do motor.
+
+Fora deste formato continuam só os 422 que **não são de configuração**: erro
+de forma nativo do pydantic no envelope de Search (campos legados), recusa da
+política criativa (`detail` objeto com `codigo POLICY_*`) e as recusas do
+`Brief` que não dependem de configuração (país, URL…), que seguem em frase.
 
 Recusas que dependem da conta ou do brief (lista de outra conta, local de outro
 país, ajuste de lance num regime que o ignora, agenda sobreposta no Display…)
@@ -100,7 +182,13 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
   `TARGET_SPEND`, `MANUAL_CPC`, `MANUAL_CPM` (exige `lance.cpm_visivel`). Pelo
   envelope sem configuração: MaxConv, MaxConvValue e TARGET_SPEND.
 - `MANUAL_CPC` na configuração **exige `cpc_inicial` explícito** no envelope (ele
-  é o lance do grupo); sem `MANUAL_CPC`, `cpc_inicial` explícito continua recusado.
+  é o lance do grupo; ausente → 422 `CAMPO_OBRIGATORIO`); sem `MANUAL_CPC`,
+  `cpc_inicial` explícito continua recusado (`CAMPO_NAO_OPERADO`).
+- `estrategia_lance` do envelope: igual a `configuracao_display.lance.estrategia`
+  ou no default `MANUAL_CPC`. Diferente das duas → o builder recusa (bloqueio
+  local do plano, `estrategia_lance: TARGET_SPEND × MANUAL_CPM`; nada vai ao
+  Google). `MANUAL_CPM` com envelope `MANUAL_CPM` foi provado vivo (§7):
+  `campaign.manual_cpm` + `ad_group.cpm_bid_micros` = `cpm_visivel` × 10⁶.
 - **Objeto presente = doutrina de nascimento**: `{}` já liga as exclusões padrão
   (todos os apps + rótulos `PARKED_DOMAIN`, `SEXUALLY_SUGGESTIVE`, `PROFANITY`,
   `TRAGEDY`, `SOCIAL_ISSUES`, `JUVENILE`) e presença geo `PRESENCE`. Ausente =
@@ -132,6 +220,9 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
 ### Performance Max
 - Lance continua no envelope (`estrategia_lance` MaxConv/MaxConvValue + `tcpa`/
   `target_roas`). Mensuração é lida no servidor e pode bloquear (§7).
+- A prova (`/provar`) depende da flag `servidor_oferece_pmax_validate_only`; a
+  projeção local (`/planejar-pmax`) aceita a mesma `configuracao_pmax` sem ela
+  (§1).
 - **Grupos adicionais**: `grupos_adicionais[i].imagens` é uma lista de
   **envelopes de asset, no mesmo formato de `assets_pmax`** — cada lote passa
   pelo MESMO portão de política e pela MESMA ponte do grupo 0, e os recibos
@@ -145,6 +236,23 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
   `video_crawl_direitos_declarados=true`.
 - `pmax.videos_youtube` (resource names) continua recusado; vídeo entra por id
   em `configuracao_pmax.videos` / `grupos_adicionais[i].videos`.
+
+### Metas: `target_roas` (os quatro canais)
+Medido no motor (v1.1): **nenhum builder converte** o número — ele vai ao proto
+como está. A unidade é a da API do Google: **razão**, `4.0` = 400%.
+
+| canal | onde se declara | vai ao proto como | faixa |
+|---|---|---|---|
+| SEARCH | `configuracao_search.lance.target_roas` (ou `target_roas` do envelope, que precisa ser igual quando vierem os dois) | `campaign.maximize_conversion_value.target_roas` | 0,01–1000 |
+| DISPLAY | `target_roas` do envelope, com `MAXIMIZE_CONVERSION_VALUE` | `campaign.maximize_conversion_value.target_roas` | 0,01–1000 |
+| DEMAND_GEN | `configuracao_demand_gen.lance.target_roas` (envelope recusado com lance declarado) | estratégia avulsa `campaign.target_roas.target_roas` | 0,01–1000 |
+| PERFORMANCE_MAX | `target_roas` do envelope, com `MAXIMIZE_CONVERSION_VALUE` | `campaign.maximize_conversion_value.target_roas` | 0,01–1000 |
+
+Fora da faixa → 422 `VALOR_INVALIDO` (`loc` `["body","target_roas"]` ou o
+objeto `lance` da configuração). Ausência de meta é `null`, nunca `0`. A faixa
+mora em `brief.ROAS_MIN/ROAS_MAX` e é a mesma da gestão
+(`gestao.acoes.TROAS_MAXIMO`). Até a v1, Display e Demand Gen aceitavam
+qualquer positivo e PMax qualquer número (inclusive negativo).
 
 ### Vídeo do YouTube (Display, Demand Gen, PMax)
 Vídeo entra por **id público** e o asset nasce no mesmo mutate. O portão de
@@ -161,7 +269,9 @@ colapsados, acento preservado — a mesma função dos dois lados).
 
 - Só **troca** a correspondência de keyword que já está no **conjunto pago
   aprovado**: não acrescenta, não retira, não duplica.
-- Chave fora do conjunto → **422** (`MATCH_FORA_DO_CONJUNTO`).
+- Chave fora do conjunto → **422** no formato do §2 (`ctx.codigo =
+  MATCH_FORA_DO_CONJUNTO`, `loc` `["body","match_por_keyword","<chave>"]`).
+  Ela é julgada na montagem (precisa do conjunto aprovado), depois do escopo.
 - BROAD continua exigindo lance por conversão (o `Brief` recusa sob CPC manual).
 - A troca aparece no plano (`MATCH_TYPE_ESCOLHIDO_NA_TELA`) e entra na
   impressão aprovável quando o mapa não é vazio (`{}` = ausência).
@@ -392,7 +502,7 @@ objeto que contém o campo é enviado.
 | `carrossel` | objeto `CarrosselDemandGen` \| null | `null` |  |  |
 | `publico` | objeto `PublicoDemandGen` \| null | `null` |  |  |
 | `segmentacao_otimizada` | booleano \| null | `null` |  | optimized targeting do ad group; null = não emitido |
-| `automacoes` | objeto (mapa) | `[]` | chaves: `GENERATE_DESIGN_VERSIONS_FOR_IMAGES`, `GENERATE_VIDEOS_FROM_OTHER_ASSETS`, `GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS`, `GENERATE_LANDING_PAGE_PREVIEW`, `GENERATE_LANDING_PAGE_TEXT`, `GENERATE_SHORTER_YOUTUBE_VIDEOS`, `GENERATE_VERTICAL_YOUTUBE_VIDEOS`; valores: `OPTED_IN`, `OPTED_OUT` | tipo → OPTED_IN/OPTED_OUT; tipo ausente viaja OPTED_OUT. Só os tipos do formato escolhido: MULTI_ASSET: GENERATE_DESIGN_VERSIONS_FOR_IMAGES, GENERATE_VIDEOS_FROM_OTHER_ASSETS, GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS; VIDEO_RESPONSIVO: GENERATE_LANDING_PAGE_PREVIEW, GENERATE_LANDING_PAGE_TEXT, GENERATE_SHORTER_YOUTUBE_VIDEOS, GENERATE_VERTICAL_YOUTUBE_VIDEOS; CARROSSEL: nenhuma |
+| `automacoes` | objeto (mapa) | `{}` | chaves: `GENERATE_DESIGN_VERSIONS_FOR_IMAGES`, `GENERATE_VIDEOS_FROM_OTHER_ASSETS`, `GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS`, `GENERATE_LANDING_PAGE_PREVIEW`, `GENERATE_LANDING_PAGE_TEXT`, `GENERATE_SHORTER_YOUTUBE_VIDEOS`, `GENERATE_VERTICAL_YOUTUBE_VIDEOS`; valores: `OPTED_IN`, `OPTED_OUT` | tipo → OPTED_IN/OPTED_OUT; tipo ausente viaja OPTED_OUT. Só os tipos do formato escolhido: MULTI_ASSET: GENERATE_DESIGN_VERSIONS_FOR_IMAGES, GENERATE_VIDEOS_FROM_OTHER_ASSETS, GENERATE_ANIMATED_IMAGES_FROM_OTHER_ASSETS; VIDEO_RESPONSIVO: GENERATE_LANDING_PAGE_PREVIEW, GENERATE_LANDING_PAGE_TEXT, GENERATE_SHORTER_YOUTUBE_VIDEOS, GENERATE_VERTICAL_YOUTUBE_VIDEOS; CARROSSEL: nenhuma |
 | `agenda` | lista de objeto `FaixaDeAgendaDemandGen` | `[]` |  | até 6 faixas por dia, sem sobreposição |
 
 **`CarrosselDemandGen`** — 2..10 cartões, mesmas orientações em todos (Help Center: proporção consistente). Headline/description do anúncio vêm de `brief.copy`, com EXATAMENTE um item cada; logo é `imagens_demand_gen.logo_quadrado` (1).
@@ -426,7 +536,7 @@ objeto que contém o campo é enviado.
 |---|---|---|---|---|
 | `estrategia` | texto | **obrigatório** | um de `MAXIMIZE_CONVERSIONS`, `MAXIMIZE_CONVERSION_VALUE`, `TARGET_SPEND`, `TARGET_CPC` |  |
 | `target_cpa` | número \| null | `null` | > 0 | só em MAXIMIZE_CONVERSIONS (vira `target_cpa` avulso) |
-| `target_roas` | número \| null | `null` | > 0 | só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso) |
+| `target_roas` | número \| null | `null` | ≥ 0.01; ≤ 1000.0 | razão (4.0 = 400%); só em MAXIMIZE_CONVERSION_VALUE (vira `target_roas` avulso) |
 | `target_cpc` | número \| null | `null` | > 0 | obrigatório em TARGET_CPC |
 
 **`LookalikeDemandGen`** — Segmento semelhante criado NO MESMO mutate (`UserList.lookalike_user_list`).
@@ -602,6 +712,8 @@ detector de pixel do portão e as flags experimentais de DG/PMax.
 | DISPLAY | 35 | aceito (selo emitido) |
 | DEMAND_GEN (vídeo responsivo) | 18 | aceito (selo emitido) |
 | PERFORMANCE_MAX (2 asset groups) | 63 | aceito com o portão de mensuração do builder desligado; com ele ligado, recusa local `MENSURACAO_INADEQUADA` (as 5 ações primárias da conta estão fora da métrica de conversões) |
+| DISPLAY `MANUAL_CPM` (v1.1) | 19 | aceito (selo emitido) — envelope `estrategia_lance=MANUAL_CPM` igual à configuração `lance={"estrategia":"MANUAL_CPM","cpm_visivel":4.5}`; o builder emitiu `campaign.manual_cpm` e `ad_group.cpm_bid_micros=4500000` (espião de leitura no `display.construir`) |
+| DISPLAY envelope `TARGET_SPEND` × configuração `MANUAL_CPM` (contraprova, v1.1) | 0 | recusa local `estrategia_lance: TARGET_SPEND × MANUAL_CPM` — nada foi ao Google |
 
 Nos quatro, o selo saiu **retido pelo portão de destino**: a LP
 `creditoup.com.br/r/guia-cursos-senac/` não está elegível como destino pago

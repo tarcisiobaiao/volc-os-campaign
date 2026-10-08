@@ -1484,6 +1484,7 @@ class PlanejarPMaxEntrada(BaseModel):
     budget_diario: float
     estrategia_lance: str
     tcpa: Optional[float] = None
+    #: Razão (4.0 = 400%) em `ROAS_MIN..ROAS_MAX` — a faixa dos quatro canais.
     target_roas: Optional[float] = None
     vertical: Optional[str] = None
     certificacoes: List[str] = Field(default_factory=list)
@@ -1495,8 +1496,19 @@ class PlanejarPMaxEntrada(BaseModel):
         default_factory=list,
         max_length=TETO_QUANTIDADE_ASSETS_PMAX,
     )
+    #: A MESMA `configuracao_pmax` de `/provar` (contrato v1.1 §1): a parte
+    #: v25 de `ConfiguracaoPMaxV25`, montada sobre a base `pmax` com a
+    #: mensuração `None` (projeção local). Imagens de grupo adicional passam
+    #: pelo MESMO portão de política do grupo 0. Sem ela, a única rota que
+    #: julgava a configuração PMax era `/provar` — fechada por flag (403).
+    configuracao_pmax: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    @field_validator("target_roas")
+    @classmethod
+    def _roas_na_faixa(cls, valor: Optional[float]) -> Optional[float]:
+        return cfgcan.exigir_target_roas(valor)
 
     @model_validator(mode="after")
     def _alvo_compativel_com_estrategia(self):
@@ -1642,9 +1654,19 @@ class ProvarEntrada(BaseModel):
     #: plano com tROAS 4,0 em `/planejar-pmax` (que exige o campo) e `/provar`
     #: conferia um payload diferente do que ele aprovou. Achado da revisão
     #: adversarial de 06/09/2026.
+    #:
+    #: Razão (4.0 = 400%) em `ROAS_MIN..ROAS_MAX` (0,01–1000), a MESMA faixa e
+    #: unidade em Search, Display e PMax (Demand Gen declara a meta em
+    #: `configuracao_demand_gen.lance.target_roas`, mesma faixa). Nenhum
+    #: builder converte: o número vai ao proto como está.
     target_roas: Optional[float] = None
     assets_pmax: Optional[List[AssetDemandGenEntrada]] = Field(
         default=None, max_length=TETO_QUANTIDADE_ASSETS_PMAX)
+
+    @field_validator("target_roas")
+    @classmethod
+    def _roas_na_faixa(cls, valor: Optional[float]) -> Optional[float]:
+        return cfgcan.exigir_target_roas(valor)
 
     # ── a configuração de CADA CANAL (contrato GADS-CRIACAO-CANAIS-v1) ──────
     #
@@ -1682,28 +1704,38 @@ class ProvarEntrada(BaseModel):
             return dados
         classe = cls.__name__
         canal = str(dados.get("canal") or "SEARCH").strip().upper()
+
+        # ⚠️ TODA recusa deste validador sai como `ValidationError` com o `loc`
+        # do campo, `msg` sem prefixo e `ctx.codigo` (contrato v1.1 §2). Um
+        # `ValueError` solto aqui virava `loc: ["body"]`, `msg: "Value error,
+        # …"` e nenhum `ctx` — a forma que o front encontrou e não conseguia
+        # levar ao campo. Um item POR CAMPO quando a regra nomeia vários.
+        def _recusar(campos: Any, mensagem: str, codigo: str) -> None:
+            nomes = [campos] if isinstance(campos, str) else list(campos)
+            raise cfgcan.ConfiguracaoRecusada.varias([
+                cfgcan.ConfiguracaoRecusada(nome, mensagem, codigo)
+                for nome in nomes
+            ]).erro_de_validacao(classe)
+
         # ⚠️ Configuração de canal diferente do pedido: recusada AQUI, antes de
         # qualquer projeção — senão ela seria aceita pelo modelo compartilhado
         # e ignorada pelo builder do canal pedido.
         try:
             cfgcan.recusar_de_outro_canal(dados)
         except cfgcan.ConfiguracaoRecusada as exc:
-            raise ValueError(str(exc)) from exc
-        if (dados.get("match_por_keyword") and canal != "SEARCH"):
-            raise ValueError(
-                "`match_por_keyword` é correspondência de keyword POSITIVA, que "
-                f"só Search opera; recebido canal {canal!r}. Nada foi projetado.")
+            raise exc.erro_de_validacao(classe) from exc
         campos_demand_gen = [
             campo for campo in ("demand_gen", "assets_demand_gen")
             if campo in dados and dados[campo] is not None
         ]
         if campos_demand_gen and canal != "DEMAND_GEN":
-            raise ValueError(
+            _recusar(
+                campos_demand_gen,
                 "Campos Demand Gen pertencem ao contrato vertical e exigem "
-                "`canal=DEMAND_GEN`; recebido canal "
-                f"{canal!r} com {', '.join(campos_demand_gen)}. "
-                "Nada foi projetado para Search."
-            )
+                f"`canal=DEMAND_GEN`; recebido canal {canal} com "
+                f"{', '.join(campos_demand_gen)}. Nada foi projetado"
+                + (" para Search." if canal == "SEARCH" else "."),
+                cfgcan.CANAL_DIFERENTE)
         # ⚠️ A mesma fronteira, na outra direção. `assets_display` num pedido
         # de Search seria aceito pelo Pydantic (o modelo é compartilhado e
         # permissivo por compatibilidade) e IGNORADO pelo builder — o operador
@@ -1711,11 +1743,12 @@ class ProvarEntrada(BaseModel):
         # aqui é a diferença entre um pedido errado e um pedido que some.
         if (dados.get("assets_display") is not None
                 and canal != "DISPLAY"):
-            raise ValueError(
+            _recusar(
+                "assets_display",
                 "`assets_display` pertence ao contrato de Display e exige "
-                f"`canal=DISPLAY`; recebido canal {canal!r}. Nada foi "
-                "projetado, e nenhuma imagem foi descartada em silêncio."
-            )
+                f"`canal=DISPLAY`; recebido canal {canal}. Nada foi "
+                "projetado, e nenhuma imagem foi descartada em silêncio.",
+                cfgcan.CANAL_DIFERENTE)
         # ⚠️ A MESMA FRONTEIRA, NAS DUAS DIREÇÕES, PARA PERFORMANCE MAX.
         #
         # Sem ela, um pedido `canal=SEARCH` com `pmax={...}` seria aceito pelo
@@ -1728,32 +1761,35 @@ class ProvarEntrada(BaseModel):
             if campo in dados and dados[campo] is not None
         ]
         if campos_pmax and canal != "PERFORMANCE_MAX":
-            raise ValueError(
+            _recusar(
+                campos_pmax,
                 "Campos Performance Max pertencem ao contrato vertical e "
-                "exigem `canal=PERFORMANCE_MAX`; recebido canal "
-                f"{canal!r} com {', '.join(campos_pmax)}. Nada foi projetado."
-            )
+                f"exigem `canal=PERFORMANCE_MAX`; recebido canal {canal} com "
+                f"{', '.join(campos_pmax)}. Nada foi projetado.",
+                cfgcan.CANAL_DIFERENTE)
         if canal == "PERFORMANCE_MAX" and classe in {"ProvarEntrada",
                                                      "SubirEntrada"}:
             estrategia_pmax = str(
                 dados.get("estrategia_lance") or "").strip().upper()
             if estrategia_pmax not in {"MAXIMIZE_CONVERSIONS",
                                        "MAXIMIZE_CONVERSION_VALUE"}:
-                raise ValueError(
+                _recusar(
+                    "estrategia_lance",
                     "canal PERFORMANCE_MAX exige `estrategia_lance` "
                     "MAXIMIZE_CONVERSIONS ou MAXIMIZE_CONVERSION_VALUE; "
-                    "ausência ou outro valor não herda o contrato Search."
-                )
+                    "ausência ou outro valor não herda o contrato Search.",
+                    cfgcan.VALOR_INVALIDO)
             ausentes_pmax = [
                 campo for campo in ("pmax", "assets_pmax")
                 if campo not in dados or dados[campo] is None
             ]
             if ausentes_pmax:
-                raise ValueError(
+                _recusar(
+                    ausentes_pmax,
                     "canal PERFORMANCE_MAX exige campos explícitos do "
                     f"contrato vertical: {', '.join(ausentes_pmax)}. "
-                    "`null` é ausência."
-                )
+                    "`null` é ausência.",
+                    cfgcan.CAMPO_OBRIGATORIO)
             # ⚠️ A MESMA COERÊNCIA DE `PlanejarPMaxEntrada`. Sem ela, `/provar`
             # aceitava `tcpa` numa estratégia por VALOR e `target_roas` numa por
             # contagem — os dois ignorados pelo builder, em silêncio, enquanto
@@ -1761,24 +1797,27 @@ class ProvarEntrada(BaseModel):
             # mesmo pedido é a divergência que T02 existe para fechar.
             if (estrategia_pmax == "MAXIMIZE_CONVERSIONS"
                     and dados.get("target_roas") is not None):
-                raise ValueError(
-                    "target_roas não pertence a MAXIMIZE_CONVERSIONS")
+                _recusar("target_roas",
+                         "target_roas não pertence a MAXIMIZE_CONVERSIONS",
+                         cfgcan.VALOR_INVALIDO)
             if (estrategia_pmax == "MAXIMIZE_CONVERSION_VALUE"
                     and dados.get("tcpa") is not None):
-                raise ValueError(
-                    "tcpa não pertence a MAXIMIZE_CONVERSION_VALUE")
+                _recusar("tcpa",
+                         "tcpa não pertence a MAXIMIZE_CONVERSION_VALUE",
+                         cfgcan.VALOR_INVALIDO)
             campos_search_pmax = [
                 campo for campo in ("cpc_inicial", "match_type", "rede",
                                     "keywords_fora")
                 if campo in dados
             ]
             if campos_search_pmax:
-                raise ValueError(
+                _recusar(
+                    campos_search_pmax,
                     "canal PERFORMANCE_MAX proíbe campos Search no envelope: "
                     + ", ".join(campos_search_pmax)
                     + ". PMax não tem keyword positiva, CPC nem controle de "
-                      "rede (matriz §13)."
-                )
+                      "rede (matriz §13).",
+                    cfgcan.CAMPO_NAO_OPERADO)
         if canal != "DEMAND_GEN" or classe not in {"ProvarEntrada", "SubirEntrada"}:
             return dados
 
@@ -1790,44 +1829,50 @@ class ProvarEntrada(BaseModel):
         lance_dg = cfgcan.lance_da_configuracao("DEMAND_GEN", dados)
         if lance_dg is not None:
             if estrategia != lance_dg:
-                raise ValueError(
+                _recusar(
+                    "estrategia_lance",
                     "canal DEMAND_GEN com `configuracao_demand_gen.lance."
                     f"estrategia={lance_dg}` exige `estrategia_lance={lance_dg}` "
-                    f"no envelope; recebido {estrategia or 'ausente'!r}.")
+                    f"no envelope; recebido {estrategia or 'ausente'}.",
+                    cfgcan.ESTRATEGIA_DIVERGENTE)
         elif estrategia != "MAXIMIZE_CONVERSIONS":
-            raise ValueError(
+            _recusar(
+                "estrategia_lance",
                 "canal DEMAND_GEN exige `estrategia_lance="
                 "MAXIMIZE_CONVERSIONS`; ausência ou outro valor não herda o "
                 "contrato Search. Outras estratégias entram por "
-                "`configuracao_demand_gen.lance`."
-            )
+                "`configuracao_demand_gen.lance`.",
+                cfgcan.VALOR_INVALIDO)
         ausentes = [
             campo for campo in ("demand_gen", "assets_demand_gen")
             if campo not in dados or dados[campo] is None
         ]
         if ausentes:
-            raise ValueError(
+            _recusar(
+                ausentes,
                 "canal DEMAND_GEN exige campos explícitos do contrato "
-                f"vertical: {', '.join(ausentes)}. `null` é ausência."
-            )
+                f"vertical: {', '.join(ausentes)}. `null` é ausência.",
+                cfgcan.CAMPO_OBRIGATORIO)
         campos_search = [
             campo for campo in ("cpc_inicial", "match_type")
             if campo in dados
         ]
         if campos_search:
-            raise ValueError(
+            _recusar(
+                campos_search,
                 "canal DEMAND_GEN proíbe campos Search no envelope: "
-                + ", ".join(campos_search)
-            )
+                + ", ".join(campos_search),
+                cfgcan.CAMPO_NAO_OPERADO)
         if (
             classe == "SubirEntrada"
             and isinstance(dados.get("assets_demand_gen"), (list, tuple))
             and len(dados["assets_demand_gen"]) == 0
         ):
-            raise ValueError(
+            _recusar(
+                "assets_demand_gen",
                 "canal DEMAND_GEN em /subir exige `assets_demand_gen` com ao "
-                "menos um item; lista vazia é ausência explícita."
-            )
+                "menos um item; lista vazia é ausência explícita.",
+                cfgcan.VALOR_INVALIDO)
 
         def _cru(valor: Any) -> Any:
             # Chamadas internas podem montar os submodelos antes do envelope. A
@@ -1854,8 +1899,45 @@ class ProvarEntrada(BaseModel):
                 "confirmar_criacao_pausada",
             ):
                 projetado.pop(campo, None)
-        ProvarEntradaDemandGenEstrita.model_validate(projetado)
+        from pydantic import ValidationError as _VE
+
+        try:
+            ProvarEntradaDemandGenEstrita.model_validate(projetado)
+        except _VE as exc:
+            # A projeção estrita (`extra='forbid'`) é o "campo que o builder
+            # não trata" de Demand Gen. O erro nativo do pydantic sai em inglês
+            # e sem `ctx.codigo`; aqui ele ganha o código do contrato e o `loc`
+            # é preservado.
+            raise cfgcan.ConfiguracaoRecusada.varias([
+                _recusa_da_projecao_estrita(erro) for erro in exc.errors()
+            ]).erro_de_validacao(classe) from exc
         return dados
+
+
+def _recusa_da_projecao_estrita(erro: Mapping[str, Any]) -> "cfgcan.ConfiguracaoRecusada":
+    """Um erro nativo do pydantic na projeção Demand Gen → recusa do contrato."""
+    partes = list(erro.get("loc") or ())
+    caminho = ""
+    for p in partes:
+        caminho += f"[{p}]" if isinstance(p, int) else (f".{p}" if caminho else str(p))
+    tipo = str(erro.get("type") or "")
+    # O `type` nativo fica (é o que já se lia); o código do contrato vai em
+    # `ctx.codigo`, e a frase perde o prefixo técnico do pydantic.
+    if tipo == "extra_forbidden":
+        return cfgcan.ConfiguracaoRecusada(
+            caminho, f"campo desconhecido no contrato DEMAND_GEN: `{caminho}` "
+            "não é tratado pelo builder e por isso é recusado, não descartado.",
+            cfgcan.CAMPO_DESCONHECIDO, tipo=tipo)
+    if tipo == "missing":
+        return cfgcan.ConfiguracaoRecusada(
+            caminho, "campo obrigatório ausente no contrato DEMAND_GEN.",
+            cfgcan.CAMPO_OBRIGATORIO, tipo=tipo)
+    frase = str(erro.get("msg") or "valor inválido")
+    for prefixo in ("Value error, ", "Assertion failed, "):
+        if frase.startswith(prefixo):
+            frase = frase[len(prefixo):]
+    codigo = str((erro.get("ctx") or {}).get("codigo") or cfgcan.VALOR_INVALIDO)
+    return cfgcan.ConfiguracaoRecusada(caminho, frase, codigo, tipo=tipo or None)
 
 
 class _CopyDemandGenEstrita(CopyEntrada):
@@ -1954,12 +2036,7 @@ def _recusar_campos_nao_operados_demand_gen(body: ProvarEntrada) -> None:
             recusados.append("copy.snippet")
 
     if recusados:
-        raise ValueError(
-            "DEMAND_GEN recebeu campos que esta onda não materializa em "
-            "MutateOperation e por isso não os descarta em silêncio: "
-            + ", ".join(sorted(set(recusados)))
-            + ". Remova-os do pedido ou use um canal que os opere."
-        )
+        raise _recusa_de_campos_nao_operados("DEMAND_GEN", recusados)
 
 
 def _display_em_cpc_manual(body: Any) -> bool:
@@ -1980,10 +2057,12 @@ def _recusar_campos_nao_operados_display(body: ProvarEntrada) -> None:
     explicitos = _campos_explicitos(body)
     manual = _display_em_cpc_manual(body)
     if manual and "cpc_inicial" not in explicitos:
-        raise ValueError(
+        raise cfgcan.ConfiguracaoRecusada(
+            "cpc_inicial",
             "DISPLAY com `configuracao_display.lance.estrategia=MANUAL_CPC` "
             "exige `cpc_inicial` explícito: ele É o lance do grupo, e o "
-            "default do envelope (0,12) não é escolha de ninguém.")
+            "default do envelope (0,12) não é escolha de ninguém.",
+            cfgcan.CAMPO_OBRIGATORIO)
     for campo in ("cpc_inicial", "match_type", "graduacao_em_conversoes"):
         if campo == "cpc_inicial" and manual:
             continue
@@ -2002,15 +2081,31 @@ def _recusar_campos_nao_operados_display(body: ProvarEntrada) -> None:
         recusados.append("ai_max")
     if getattr(body, "match_por_keyword", None):
         recusados.append("match_por_keyword")
-    if body.demand_gen is not None or body.assets_demand_gen is not None:
-        recusados.append("demand_gen/assets_demand_gen")
+    if body.demand_gen is not None:
+        recusados.append("demand_gen")
+    if body.assets_demand_gen is not None:
+        recusados.append("assets_demand_gen")
     if recusados:
-        raise ValueError(
-            "DISPLAY recebeu campos que o builder não materializa e por isso "
-            "não os descarta em silêncio: "
-            + ", ".join(sorted(set(recusados)))
-            + ". Remova-os do pedido ou use um canal que os opere."
-        )
+        raise _recusa_de_campos_nao_operados("DISPLAY", recusados)
+
+
+def _recusa_de_campos_nao_operados(canal: str, campos: List[str]):
+    """Um item de 422 POR CAMPO, no `loc` do campo, código `CAMPO_NAO_OPERADO`.
+
+    Até a v1.1 do contrato isto era um `HTTPException(422, detail=<frase>)`:
+    a tela recebia uma frase sem `loc` e só podia mostrá-la como erro geral,
+    longe do campo que o operador precisa apagar.
+    """
+    return cfgcan.ConfiguracaoRecusada.varias([
+        cfgcan.ConfiguracaoRecusada(
+            campo,
+            f"{canal} recebeu campos que o builder não materializa em "
+            "MutateOperation e por isso não os descarta em silêncio: "
+            f"`{campo}` é recusado. Remova-o do pedido ou use um canal que o "
+            "opere.",
+            cfgcan.CAMPO_NAO_OPERADO)
+        for campo in sorted(set(campos))
+    ])
 
 
 def _assets_decodificados(
@@ -2709,27 +2804,32 @@ def _validar_envelope_de_asset(item: Any, caminho: str) -> None:
             str(primeiro.get("msg") or exc)) from exc
 
 
-def _configuracao_ou_422(body: Any) -> Dict[str, Any]:
+def _configuracao_ou_422(body: Any, *,
+                         corpo: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Julga a forma de toda configuração declarada; 422 com `loc` exato.
 
     `RequestValidationError` e não `HTTPException`: é o MESMO formato de 422 que
     o FastAPI devolve para erro de corpo (`detail[].loc`), então a tela aponta o
     campo do formulário sem um segundo parser de erro.
     """
-    from fastapi.exceptions import RequestValidationError
-
     try:
         return cfgcan.validar_forma(
-            _corpo_cru(body), validar_envelope=_validar_envelope_de_asset,
+            corpo if corpo is not None else _corpo_cru(body),
+            validar_envelope=_validar_envelope_de_asset,
             teto_por_grupo=TETO_QUANTIDADE_ASSETS_PMAX)
     except cfgcan.ConfiguracaoRecusada as exc:
-        raise RequestValidationError([{
-            "type": exc.codigo.lower(),
-            "loc": exc.loc(),
-            "msg": exc.mensagem,
-            "input": None,
-            "ctx": {"codigo": exc.codigo, "caminho": exc.caminho},
-        }]) from exc
+        raise _422_de_configuracao(exc) from exc
+
+
+def _422_de_configuracao(exc: "cfgcan.ConfiguracaoRecusada"):
+    """O 422 de configuração no formato do contrato (§2): um item por recusa.
+
+    `RequestValidationError` e não `HTTPException`: é o MESMO formato que o
+    FastAPI devolve para erro de corpo, então a tela usa um parser só.
+    """
+    from fastapi.exceptions import RequestValidationError
+
+    return RequestValidationError(exc.erros())
 
 
 def _criterios_do_corpo(body: Any, pp: Any) -> list:
@@ -3462,44 +3562,6 @@ def _brief_pmax_offline(
     if not url.startswith("https://"):
         raise ValueError(f"destino PMax {url!r} não é https")
 
-    assets = []
-    conteudo_por_identidade: Dict[str, bytes] = {}
-    pecas_para_o_portao: List[tuple] = []
-    for item, dados in _assets_decodificados_pmax(body.assets_pmax):
-        try:
-            quando = datetime.fromisoformat(
-                item.procedencia.quando.replace("Z", "+00:00")
-            )
-            tipo = TipoDeAsset(item.tipo)
-            origem_asset = Origem(item.origem)
-        except ValueError as exc:
-            raise ValueError(
-                f"asset {item.nome!r}: contrato inválido — {exc}"
-            ) from exc
-        medida = medir_imagem.medir(dados)
-        asset = Asset(
-            tipo=tipo,
-            procedencia=Procedencia(
-                motor=item.procedencia.motor,
-                versao_do_motor=item.procedencia.versao_do_motor,
-                insumo=item.procedencia.insumo,
-                quando=quando,
-                pedido=item.procedencia.pedido,
-                custo_usd=item.procedencia.custo_usd,
-            ),
-            conteudo_hash=item.conteudo_hash,
-            origem=origem_asset,
-            bytes_totais=medida.bytes_totais,
-            mime=medida.mime,
-            largura=medida.largura,
-            altura=medida.altura,
-            rotulo=item.nome,
-        )
-        assets.append(asset)
-        conteudo_por_identidade[asset.identidade] = dados
-        pecas_para_o_portao.append(
-            (asset.identidade, dados, item.nome, medida.mime, origem_asset))
-
     # ⚠️ VÍDEO DO YOUTUBE NÃO ATRAVESSA O PORTÃO, ENTÃO NÃO ATRAVESSA.
     #
     # `videos_youtube` são resource names: o servidor nunca vê os bytes, então
@@ -3521,17 +3583,67 @@ def _brief_pmax_offline(
         )
 
     nicho = str(origem.nicho or "sem nicho declarado")
-    # O MESMO portão de Display e Demand Gen, antes da ponte e da rede.
-    recibos_de_politica = _recibos_de_politica_das_pecas(
-        pecas_para_o_portao, body=body, nicho=nicho, canal="PERFORMANCE_MAX")
-    entrega = criativo_ponte.imagens_de_pmax(
-        LoteDeAssets(
-            canal="PERFORMANCE_MAX",
-            assets=tuple(assets),
-            intencao=nicho,
-        ),
-        conteudo_por_identidade,
-    )
+
+    def _aprovar_lote(itens: List[Any], exigencia: Any = None) -> tuple:
+        """Envelopes → portão de política → ponte criativa → `ImagensPMax`.
+
+        UMA função para o grupo 0 (`assets_pmax`) e para cada grupo adicional
+        (`configuracao_pmax.grupos_adicionais[i].imagens`) — a mesma régua e a
+        mesma ordem do `_aprovar_lote` de `_montar_plano_pmax`.
+        """
+        assets = []
+        conteudo_por_identidade: Dict[str, bytes] = {}
+        pecas_para_o_portao: List[tuple] = []
+        for item, dados in _assets_decodificados_pmax(itens):
+            try:
+                quando = datetime.fromisoformat(
+                    item.procedencia.quando.replace("Z", "+00:00")
+                )
+                tipo = TipoDeAsset(item.tipo)
+                origem_asset = Origem(item.origem)
+            except ValueError as exc:
+                raise ValueError(
+                    f"asset {item.nome!r}: contrato inválido — {exc}"
+                ) from exc
+            medida = medir_imagem.medir(dados)
+            asset = Asset(
+                tipo=tipo,
+                procedencia=Procedencia(
+                    motor=item.procedencia.motor,
+                    versao_do_motor=item.procedencia.versao_do_motor,
+                    insumo=item.procedencia.insumo,
+                    quando=quando,
+                    pedido=item.procedencia.pedido,
+                    custo_usd=item.procedencia.custo_usd,
+                ),
+                conteudo_hash=item.conteudo_hash,
+                origem=origem_asset,
+                bytes_totais=medida.bytes_totais,
+                mime=medida.mime,
+                largura=medida.largura,
+                altura=medida.altura,
+                rotulo=item.nome,
+            )
+            assets.append(asset)
+            conteudo_por_identidade[asset.identidade] = dados
+            pecas_para_o_portao.append(
+                (asset.identidade, dados, item.nome, medida.mime, origem_asset))
+
+        # O MESMO portão de Display e Demand Gen, antes da ponte e da rede.
+        recibos = _recibos_de_politica_das_pecas(
+            pecas_para_o_portao, body=body, nicho=nicho, canal="PERFORMANCE_MAX")
+        entrega = criativo_ponte.imagens_de_pmax(
+            LoteDeAssets(
+                canal="PERFORMANCE_MAX",
+                assets=tuple(assets),
+                intencao=nicho,
+            ),
+            conteudo_por_identidade,
+            **({"exigencia": exigencia} if exigencia is not None else {}),
+        )
+        return entrega, list(recibos)
+
+    entrega, recibos_de_politica = _aprovar_lote(body.assets_pmax)
     if not entrega.ok or entrega.imagens is None:
         raise ValueError(
             "assets PMax recusados pela fronteira do Estúdio:\n"
@@ -3550,6 +3662,25 @@ def _brief_pmax_offline(
         negativas=tuple(body.pmax.negativas),
         nome_do_asset_group=body.pmax.nome_do_asset_group,
     )
+    # A parte v25.2, pelo MESMO adaptador de `/provar` (`cfgcan.de_pmax`) e
+    # com o MESMO portão nas imagens dos grupos adicionais. A única diferença
+    # é a base: mensuração `None`, porque esta rota não lê a conta — o plano
+    # nomeia `MENSURACAO_INADEQUADA` em vez de fingir um recibo.
+    if body.configuracao_pmax is not None:
+        def _imagens_do_grupo(valor: Any, caminho: str):
+            itens = [AssetDemandGenEntrada.model_validate(x) for x in valor]
+            entrega_g, recibos_g = _aprovar_lote(
+                itens, cfgcan.exigencia_de_imagens_pmax_grupo_adicional(
+                    body.pmax.brand_guidelines_enabled))
+            if not entrega_g.ok or entrega_g.imagens is None:
+                raise cfgcan.ErroDeForma(
+                    caminho, "assets recusados pela fronteira do Estúdio: "
+                    + entrega_g.resumo())
+            recibos_de_politica.extend(recibos_g)
+            return entrega_g.imagens
+
+        configuracao = cfgcan.de_pmax(body.configuracao_pmax, configuracao,
+                                      imagens_do_grupo=_imagens_do_grupo)
     return Brief(
         nicho=nicho,
         slug=origem.slug or "",
@@ -3580,7 +3711,19 @@ async def planejar_pmax(
     body: PlanejarPMaxEntrada = Body(...),
     _identidade: Identidade = Depends(exigir_usuario),
 ) -> Dict[str, Any]:
-    """Projeta PMax localmente; zero leitura Google, validate_only ou mutate."""
+    """Projeta PMax localmente; zero leitura Google, validate_only ou mutate.
+
+    Aceita `configuracao_pmax` (contrato v1.1 §1) — a MESMA de `/provar`, com
+    a mesma forma (422 com `loc` antes de qualquer coisa), o mesmo adaptador e
+    o mesmo portão de política nas imagens dos grupos adicionais. Assim a
+    configuração PMax pode ser julgada mesmo com a prova PMax fechada por flag
+    (`/provar` → 403): esta rota não tem flag porque não fala com o Google.
+    """
+    # A forma ANTES do escopo e de qualquer leitura — a mesma ordem de /provar.
+    _configuracao_ou_422(body, corpo={
+        "canal": "PERFORMANCE_MAX",
+        "configuracao_pmax": body.configuracao_pmax,
+    })
     cid, mid = _no_escopo(body.customer_id, body.login_customer_id)
     pp, _sb = _ponte()
     try:
@@ -3596,10 +3739,12 @@ async def planejar_pmax(
         )
     except pp.PonteIncompleta as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except cfgcan.ConfiguracaoRecusada as exc:
+        raise _422_de_configuracao(exc) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    return {
+    resposta: Dict[str, Any] = {
         "plano": plano_pmax.para_json(),
         "chamada_google": "nenhuma",
         "nada_foi_criado": True,
@@ -3609,6 +3754,13 @@ async def planejar_pmax(
             "qualquer prova externa de PMax."
         ),
     }
+    # O mesmo fato que `/provar` põe nos avisos do plano: vídeo por id público
+    # atravessa sem o portão de bytes. Só aparece quando há vídeo.
+    videos = cfgcan.tem_videos_sem_portao(
+        "PERFORMANCE_MAX", {"configuracao_pmax": body.configuracao_pmax})
+    if videos:
+        resposta["videos_sem_portao_de_politica"] = list(videos)
+    return resposta
 
 
 def _recusa_de_canal(canal: Any, exc: Exception) -> Dict[str, Any]:
@@ -4339,15 +4491,15 @@ async def provar(
     if canal_pedido == "DISPLAY":
         try:
             _recusar_campos_nao_operados_display(body)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except cfgcan.ConfiguracaoRecusada as exc:
+            raise _422_de_configuracao(exc) from exc
     if canal_pedido == "DEMAND_GEN":
         # O contrato é julgado antes do escopo, da ponte e de qualquer cliente.
         # A mesma guarda é repetida no adaptador para chamadas internas diretas.
         try:
             _recusar_campos_nao_operados_demand_gen(body)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except cfgcan.ConfiguracaoRecusada as exc:
+            raise _422_de_configuracao(exc) from exc
         # A flag é conferida primeiro: servidor fechado não precisa sequer
         # interpretar papel. Quando aberta, a mesma capacidade projetada para
         # a tela é cobrada aqui; não existe promessa de frontend sem portão.
@@ -4489,6 +4641,11 @@ async def provar(
         # ela caía no genérico abaixo e o operador recebia 500 "explodiu" no
         # lugar de "a data não é AAAA-MM-DD".
         raise
+    except cfgcan.ConfiguracaoRecusada as exc:
+        # Recusa de configuração que só aparece na montagem (campo que o builder
+        # não opera, configuração julgada contra a base real): o MESMO 422 com
+        # `loc` da validação de forma, e não a frase solta do `except` abaixo.
+        raise _422_de_configuracao(exc) from exc
     except ValueError as exc:
         # `Brief.__post_init__` e `montar_brief` levantam ValueError com
         # mensagem acionável (país inválido, url não-https, keywords e
@@ -5097,6 +5254,8 @@ async def subir(
         # ela caía no genérico abaixo e o operador recebia 500 "explodiu" no
         # lugar de "a data não é AAAA-MM-DD".
         raise
+    except cfgcan.ConfiguracaoRecusada as exc:
+        raise _422_de_configuracao(exc) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001

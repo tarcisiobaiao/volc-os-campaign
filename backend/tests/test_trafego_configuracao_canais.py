@@ -155,7 +155,7 @@ def test_chave_desconhecida_e_422_com_o_caminho_do_campo(cliente, payload, loc):
     erro = r.json()["detail"][0]
     assert erro["loc"] == loc
     assert "desconhecido" in erro["msg"]
-    assert erro["ctx"]["codigo"] == cfgcan.CONFIGURACAO_INVALIDA
+    assert erro["ctx"]["codigo"] == cfgcan.CAMPO_DESCONHECIDO
 
 
 @pytest.mark.parametrize("payload, loc", [
@@ -469,7 +469,7 @@ def test_rota_de_esquema_publica_os_quatro_canais(cliente):
     r = cliente.get("/api/trafego/canais/esquema")
     assert r.status_code == 200, r.text
     corpo = r.json()
-    assert corpo["versao"] == "GADS-CRIACAO-CANAIS-v1"
+    assert corpo["versao"] == "GADS-CRIACAO-CANAIS-v1.1"
     assert set(corpo["canais"]) == {"SEARCH", "DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"}
     s = corpo["canais"]["SEARCH"]
     assert s["campo_http"] == "configuracao_search"
@@ -520,3 +520,261 @@ def test_travas_de_destino_pmax_sem_page_feed_e_path_so_por_padrao():
     travas = ccan._TRAVAS_DE_DESTINO["PERFORMANCE_MAX"]
     assert not any("PAGE_FEED" in t for t in travas)
     assert any("path1/path2 por padrão" in t for t in travas)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# v1.1 — TODO 422 de configuração no formato do contrato (§2)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Achado do front (08/10/2026): em Display e Demand Gen o campo que o builder
+# não trata voltava `detail` em FRASE (sem `loc`), e a configuração de outro
+# canal voltava `loc: ["body"]` com "Value error, …" e sem `ctx.codigo`. A tela
+# só conseguia mostrar os dois como erro geral, longe do campo.
+
+
+def _itens_do_contrato(r) -> list:
+    """Confere a FORMA de cada item do 422 e devolve a lista."""
+    assert r.status_code == 422, r.text
+    detalhe = r.json()["detail"]
+    assert isinstance(detalhe, list) and detalhe, f"422 sem lista de erros: {detalhe!r}"
+    for item in detalhe:
+        assert item["loc"][0] == "body" and len(item["loc"]) >= 2, item
+        assert not item["msg"].lower().startswith(("value error", "assertion failed")), item
+        assert item["ctx"]["codigo"] in cfgcan.CODIGOS_DE_RECUSA, item
+        assert isinstance(item["ctx"]["caminho"], str) and item["ctx"]["caminho"], item
+    return detalhe
+
+
+@pytest.mark.parametrize("payload, esperado", [
+    # SEARCH: o envelope legado é permissivo; o que o builder não trata é a
+    # chave fora do dataclass de `configuracao_search`.
+    (_search(configuracao_search={"lance": {"estrategia": "MANUAL_CPC"}, "orcamento": 3}),
+     {(("body", "configuracao_search", "orcamento"), cfgcan.CAMPO_DESCONHECIDO)}),
+    # DISPLAY: campos Search no envelope — um item POR campo.
+    (_display(match_type="PHRASE", keywords_fora=["x"]),
+     {(("body", "keywords_fora"), cfgcan.CAMPO_NAO_OPERADO),
+      (("body", "match_type"), cfgcan.CAMPO_NAO_OPERADO)}),
+    # DEMAND_GEN pela guarda da rota…
+    (_dg(ai_max=True, keywords_fora=["x"]),
+     {(("body", "ai_max"), cfgcan.CAMPO_NAO_OPERADO),
+      (("body", "keywords_fora"), cfgcan.CAMPO_NAO_OPERADO)}),
+    # …pelo validador do envelope…
+    (_dg(cpc_inicial=0.3),
+     {(("body", "cpc_inicial"), cfgcan.CAMPO_NAO_OPERADO)}),
+    # …e pela projeção estrita (chave que nenhum modelo DG conhece).
+    (_dg(campo_fantasma=1),
+     {(("body", "campo_fantasma"), cfgcan.CAMPO_DESCONHECIDO)}),
+    # PERFORMANCE_MAX: campo Search no envelope.
+    (_pmax(match_type="EXACT"),
+     {(("body", "match_type"), cfgcan.CAMPO_NAO_OPERADO)}),
+])
+def test_campo_que_o_builder_nao_trata_e_422_com_loc_e_codigo(cliente, payload, esperado):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=payload))
+    assert {(tuple(i["loc"]), i["ctx"]["codigo"]) for i in itens} == esperado
+
+
+@pytest.mark.parametrize("payload, campo", [
+    (_search(configuracao_display={}), "configuracao_display"),
+    (_display(configuracao_search={"lance": {"estrategia": "MANUAL_CPC"}}), "configuracao_search"),
+    (_dg(configuracao_pmax={}), "configuracao_pmax"),
+    (_pmax(configuracao_demand_gen={}), "configuracao_demand_gen"),
+    (_display(match_por_keyword={"curso": "EXACT"}), "match_por_keyword"),
+])
+def test_configuracao_de_outro_canal_e_422_com_loc_e_codigo(cliente, payload, campo):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=payload))
+    assert [(i["loc"], i["ctx"]["codigo"]) for i in itens] == \
+        [(["body", campo], cfgcan.CANAL_DIFERENTE)]
+    assert itens[0]["type"] == "canal_diferente"
+
+
+def test_outro_canal_com_dois_campos_volta_os_dois(cliente):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=_search(
+        configuracao_display={}, configuracao_pmax={})))
+    assert sorted(i["ctx"]["caminho"] for i in itens) == \
+        ["configuracao_display", "configuracao_pmax"]
+
+
+def test_subir_recusa_outro_canal_no_mesmo_formato(cliente, monkeypatch):
+    monkeypatch.setattr(trafego.plat, "exigir_construtor", lambda *_: None)
+    itens = _itens_do_contrato(cliente.post("/api/trafego/subir", json=_search(
+        configuracao_display={}, motivo="prova de forma da configuração",
+        plano_impressao="x", confirmar_criacao_pausada=True)))
+    assert itens[0]["ctx"]["codigo"] == cfgcan.CANAL_DIFERENTE
+
+
+def test_estrategia_divergente_de_demand_gen_aponta_o_envelope(cliente):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=_dg(
+        configuracao_demand_gen={"lance": {"estrategia": "TARGET_SPEND"}})))
+    assert itens[0]["loc"] == ["body", "estrategia_lance"]
+    assert itens[0]["ctx"]["codigo"] == cfgcan.ESTRATEGIA_DIVERGENTE
+
+
+def test_display_cpc_manual_sem_cpc_e_422_no_campo(cliente):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=_display(
+        estrategia_lance="MANUAL_CPC",
+        configuracao_display={"lance": {"estrategia": "MANUAL_CPC"}})))
+    assert [(i["loc"], i["ctx"]["codigo"]) for i in itens] == \
+        [(["body", "cpc_inicial"], cfgcan.CAMPO_OBRIGATORIO)]
+
+
+def test_recusa_de_configuracao_na_montagem_sai_no_formato_do_contrato(cliente, monkeypatch):
+    """A recusa que só aparece DENTRO da montagem (base real, grupo adicional
+    recusado pela ponte) também sai com `loc`, e não como frase do `except
+    ValueError` genérico."""
+    monkeypatch.setattr(trafego, "_no_escopo", lambda *_: (CID, MCC))
+    monkeypatch.setattr(trafego.canario, "carimbo_do_nome", lambda c: c or "20261008_120000")
+    monkeypatch.setattr(trafego, "_impressao_aprovavel", lambda *a, **k: "0" * 64)
+    monkeypatch.setattr(trafego, "_ponte", lambda: (pautador_ponte, SimpleNamespace(
+        resolver_provador=lambda canal: (canal, None))))
+
+    def _recusa(*_a, **_k):
+        raise cfgcan.ConfiguracaoRecusada(
+            "configuracao_pmax.grupos_adicionais[0].imagens",
+            "assets recusados pela fronteira do Estúdio", cfgcan.VALOR_INVALIDO)
+    monkeypatch.setattr(trafego, "_montar_e_preparar_plano", _recusa)
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=_search()))
+    assert itens[0]["loc"] == ["body", "configuracao_pmax", "grupos_adicionais", 0, "imagens"]
+
+
+# ── o esquema: default coerente com o tipo (divergência 1) ──────────────────
+
+
+def _defaults_incoerentes(no, caminho="") -> list:
+    """Todo `default` precisa caber no `type` do mesmo nó."""
+    ruins = []
+    if isinstance(no, dict):
+        tipo, padrao = no.get("type"), no.get("default", ...)
+        if padrao is not ... and isinstance(tipo, str):
+            ok = {"object": dict, "array": list, "string": str, "boolean": bool,
+                  "integer": int, "number": (int, float), "null": type(None)}[tipo]
+            if not isinstance(padrao, ok) or (tipo in ("integer", "number")
+                                             and isinstance(padrao, bool)):
+                ruins.append((caminho, tipo, padrao))
+        for k, v in no.items():
+            ruins += _defaults_incoerentes(v, f"{caminho}.{k}")
+    elif isinstance(no, list):
+        for i, v in enumerate(no):
+            ruins += _defaults_incoerentes(v, f"{caminho}[{i}]")
+    return ruins
+
+
+def test_esquema_nao_publica_default_de_tipo_diferente():
+    esquemas = cfgcan.esquemas()
+    assert _defaults_incoerentes(esquemas) == []
+    autom = esquemas["canais"]["DEMAND_GEN"]["esquema"]["properties"]["automacoes"]
+    assert autom["type"] == "object" and autom["default"] == {}
+
+
+# ── /planejar-pmax aceita configuracao_pmax (divergência 3) ─────────────────
+
+
+def _planejar_pmax(**extra) -> dict:
+    return {
+        "opportunity_id": 1, "customer_id": CID, "login_customer_id": MCC,
+        "copy": {"headlines": ["Cursos Senac 2026", "Guia de Cursos", "Veja Áreas"],
+                 "long_headlines": ["Guia informativo com áreas e modalidades do Senac"],
+                 "descriptions": ["Conheça as áreas.", "Guia com modalidades e inscrição."],
+                 "business_name": "Credito Up"},
+        "budget_diario": 20, "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+        "pmax": {"brand_guidelines_enabled": True, "search_themes": ["cursos senac"]},
+        "assets_pmax": _assets_pmax("", 1), **extra}
+
+
+def test_planejar_pmax_julga_a_forma_da_configuracao_antes_do_escopo(cliente):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/planejar-pmax", json=_planejar_pmax(
+        configuracao_pmax={"path1": "cursos", "paht2": "x"})))
+    assert [(i["loc"], i["ctx"]["codigo"]) for i in itens] == \
+        [(["body", "configuracao_pmax", "paht2"], cfgcan.CAMPO_DESCONHECIDO)]
+
+
+def test_planejar_pmax_leva_a_configuracao_ao_plano_local(cliente, monkeypatch,
+                                                         com_inspecao_de_pixel):
+    """Sem flag e sem Google: a configuração é montada pelo MESMO adaptador de
+    `/provar`, os grupos adicionais passam pelo MESMO portão, e a mensuração
+    fica `None` (o plano nomeia MENSURACAO_INADEQUADA)."""
+    from volc_ads.campanha import pmax
+
+    monkeypatch.setattr(trafego, "_no_escopo", lambda *_: (CID, MCC))
+    pp = SimpleNamespace(
+        PonteIncompleta=pautador_ponte.PonteIncompleta,
+        carregar=lambda *_a, **_k: SimpleNamespace(cluster=None, run={}),
+        montar_cockpit=lambda _l: _cockpit())
+    monkeypatch.setattr(trafego, "_ponte", lambda: (pp, None))
+    monkeypatch.setattr(trafego.cap, "servidor_oferece_pmax_validate_only", lambda: False)
+    vistos = []
+    real = pmax.planejar
+
+    def _espiao(cid, brief, *, login_customer_id):
+        vistos.append(brief)
+        return real(cid, brief, login_customer_id=login_customer_id)
+    monkeypatch.setattr(pmax, "planejar", _espiao)
+    monkeypatch.setattr(pmax, "cliente", lambda *_a, **_k: pytest.fail("abriu cliente Google"))
+
+    r = cliente.post("/api/trafego/planejar-pmax", json=_planejar_pmax(configuracao_pmax={
+        "path1": "cursos",
+        "videos": [{"video_id": "M7lc1UVf-VE"}],
+        "grupos_adicionais": [{
+            "nome": "Senac livres", "url_final": URL + "?s=livres",
+            "textos": {"headlines": ["Cursos Livres"], "long_headlines": ["Guia dos cursos livres"],
+                       "descriptions": ["Veja áreas."]},
+            "imagens": _assets_pmax("_g2", 20, logos=False),
+            "sinais": [{"tipo": "search_theme", "valor": "cursos livres"}]}]}))
+    assert r.status_code == 200, r.text
+    cfg = vistos[0].pmax
+    assert isinstance(cfg, pc.ConfiguracaoPMaxV25) and cfg.path1 == "cursos"
+    assert cfg.mensuracao is None
+    assert len(cfg.grupos_adicionais[0].imagens.marketing) == 1
+    corpo = r.json()
+    assert corpo["chamada_google"] == "nenhuma"
+    assert "MENSURACAO_INADEQUADA" in corpo["plano"]["codigos_de_bloqueio"]
+    assert corpo["videos_sem_portao_de_politica"] == ["M7lc1UVf-VE"]
+
+
+# ── target_roas: razão 0,01–1000 nos quatro canais (divergência 4) ──────────
+
+
+@pytest.mark.parametrize("payload", [
+    _search(estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=4000),
+    _display(estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=1500.0),
+    _pmax(estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=0.0),
+])
+def test_target_roas_do_envelope_fora_da_faixa_e_422(cliente, payload):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=payload))
+    assert [(i["loc"], i["ctx"]["codigo"]) for i in itens] == \
+        [(["body", "target_roas"], cfgcan.VALOR_INVALIDO)]
+    assert "4.0 para 400%" in itens[0]["msg"]
+
+
+def test_target_roas_de_demand_gen_tem_a_mesma_faixa(cliente):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=_dg(
+        estrategia_lance="MAXIMIZE_CONVERSION_VALUE",
+        configuracao_demand_gen={"lance": {"estrategia": "MAXIMIZE_CONVERSION_VALUE",
+                                           "target_roas": 1500}})))
+    assert itens[0]["loc"] == ["body", "configuracao_demand_gen", "lance"]
+    assert "fora de [0.01, 1000.0]" in itens[0]["msg"]
+    esq = dgc.esquema_json()["$defs"]["LanceDemandGen"]["properties"]["target_roas"]
+    esq_s = sc.esquema_json()["$defs"]["LanceSearch"]["properties"]["target_roas"]
+    alvo = [x for x in esq["anyOf"] if x.get("type") == "number"][0]
+    alvo_s = [x for x in esq_s["anyOf"] if x.get("type") == "number"][0]
+    assert (alvo["minimum"], alvo["maximum"]) == (alvo_s["minimum"], alvo_s["maximum"]) == (0.01, 1000.0)
+
+
+def test_planejar_pmax_recusa_target_roas_fora_da_faixa(cliente):
+    itens = _itens_do_contrato(cliente.post("/api/trafego/planejar-pmax", json=_planejar_pmax(
+        estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=0.001)))
+    assert itens[0]["loc"] == ["body", "target_roas"]
+
+
+def test_brief_e_display_recusam_target_roas_fora_da_faixa():
+    from volc_ads.campanha.brief import Brief, Copy as _Copy
+
+    with pytest.raises(ValueError, match="fora de"):
+        Brief(nicho="n", slug="s", url_final=URL, keywords=["a"], copy=_Copy(),
+              estrategia_lance="MAXIMIZE_CONVERSION_VALUE", target_roas=-1.0)
+    from volc_ads.campanha import validacao
+
+    r = validacao.Resultado()
+    brief = SimpleNamespace(estrategia_lance="MAXIMIZE_CONVERSION_VALUE", tcpa=None,
+                            target_roas=2000.0, cpc_inicial=None)
+    assert dc.resolver_lance(brief, None, r) is None
+    assert any("target_roas" == e.campo for e in r.erros)
