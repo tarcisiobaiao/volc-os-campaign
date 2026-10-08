@@ -72,6 +72,9 @@ class RespostaDaPesquisa:
     consultas_de_busca: int = 0       # cobradas por consulta, fora de `custo_usd`
     finish_reason: str = ""
     defeito: str = ""                 # resposta vazia/ilegível: aborta o dossiê
+    # False quando o servidor não devolve preço (plano ChatGPT): o custo fica
+    # NÃO INFORMADO, nunca US$ 0,00 como cobrança comprovada.
+    custo_informado: bool = True
     # Metadados sanitizados de CADA chamada ao provedor nesta rodada
     # (finishReason, bloqueio, segurança, busca, grounding, tokens, texto).
     metadados: list[dict] = field(default_factory=list)
@@ -157,7 +160,11 @@ def fatos_da_resposta(resp: RespostaDaPesquisa) -> list[FatoDoDossie]:
                         if isinstance(r, str)],
             evidencia=str(bruto.get("evidencia_resumida") or bruto.get("evidencia") or "")[:300],
             dispositivo=str(bruto.get("dispositivo") or "")[:200])
-        if tipo not in TIPOS_DE_FATO:
+        if bruto.get("motivo_nao_verificado"):
+            # O provedor já conferiu e reprovou (ex.: a página citada não
+            # confirma o valor): o fato fica com o motivo dele.
+            fato.motivo_do_status = str(bruto["motivo_nao_verificado"])[:300]
+        elif tipo not in TIPOS_DE_FATO:
             fato.motivo_do_status = f"tipo '{bruto.get('tipo')}' fora do vocabulário"
         elif _norm_url(url) not in citadas:
             fato.motivo_do_status = "fonte não citada pelo grounding do provedor"

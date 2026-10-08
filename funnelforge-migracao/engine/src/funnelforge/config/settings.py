@@ -228,6 +228,9 @@ class StepConfig(BaseModel):
     web_search: bool = False
     # Esforço de raciocínio pedido ao modelo (Responses API). None = não envia.
     reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+    # Só a pesquisa do dossiê pelo plano (`chatgpt_plan_web_search`): filtro de
+    # domínios do web_search. Vazio = sem filtro.
+    dominios_permitidos: list[str] = []
 
 
 #: Prefixo de modelo que roteia o passo para a Responses API com o token do

@@ -86,6 +86,18 @@ Com jornada e grafo aprovado, ANTES de qualquer briefing ou redação:
 1. uma pesquisa do funil inteiro (`steps.dossie`, modelo exato, sem fallback;
    com `gemini/gemini-3.8-flash` + Google Search via `GEMINI_API_KEY`,
    `auth_mode api_key`). Modelo servido diferente do pedido bloqueia o funil.
+   Provider principal: `chatgpt_plan_web_search` (`adapters/pesquisa_plano.py`,
+   `steps.dossie.model: chatgpt/gpt-6.1-sol` + `web_search: true`, filtro
+   `dominios_permitidos`), só para o dossiê — o `OpenAIResponsesClient`
+   genérico continua recusando web_search (`NaoSuportadoNoPlano`). Duas
+   chamadas por rodada: pesquisa grounded (web_search obrigatório, resposta
+   montada DOS EVENTOS do stream — `response.completed.output` chega vazio) e
+   estruturação sem busca em schema estrito SEM campo de URL, cada fato
+   apontando um `evidencia_id`. `sources` (consultadas) ≠ `url_citation`
+   (sustenta um trecho) ≠ URL verificada ao vivo ≠ fato aprovado: o código
+   confere evidência, valor (pelo número), ano da vigência no trecho e o
+   conteúdo da página citada; custo fica NÃO informado (quota do plano).
+   Gemini só por configuração explícita, nunca como fallback automático:
    Gemini com busca vai pelo SDK oficial `google-genai`
    (`adapters/pesquisa_gemini.py`: `google_search` + Structured Output com
    schema de `FatosDoDossie`); só este passo — o resto segue no LiteLLM. Cada

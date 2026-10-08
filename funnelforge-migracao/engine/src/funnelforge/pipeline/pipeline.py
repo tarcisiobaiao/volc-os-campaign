@@ -853,7 +853,8 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
         (pasta / "pesquisa_dossie.json").write_text(json.dumps([
             {"rodada": i, "modelo_pedido": r.modelo_pedido, "modelo_servido": r.modelo_servido,
              "auth_mode": r.auth_mode, "defeito": r.defeito, "citacoes": len(r.citacoes),
-             "fatos": len((r.dados or {}).get("fatos") or []), "custo_tokens_usd": r.custo_usd,
+             "fatos": len((r.dados or {}).get("fatos") or []),
+             "custo_tokens_usd": r.custo_usd if r.custo_informado else None,
              "busca_estimada_usd": buscas[i - 1] if i <= len(buscas) else 0.0,
              "chamadas": r.metadados}
             for i, r in enumerate(respostas, 1)], ensure_ascii=False, indent=2),
@@ -879,9 +880,13 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
               f"{len(resultado.bloqueadas)} bloqueada(s); {len(dossie.fatos)} fato(s), "
               f"{len(dossie.pesquisa)} rodada(s), "
               f"{sum(t.consultas_de_busca for t in dossie.pesquisa)} consulta(s) de busca do "
-              f"grounding; custo = tokens US$ {sum(r.custo_usd for r in respostas):.4f} + "
-              f"busca estimada US$ {sum(buscas):.4f} (US$ {preco_da_busca}/consulta); "
-              f"sha256 {dossie.sha256[:12]}")])
+              f"grounding; " + (
+                  f"custo = tokens US$ {sum(r.custo_usd for r in respostas):.4f} + "
+                  f"busca estimada US$ {sum(buscas):.4f} (US$ {preco_da_busca}/consulta)"
+                  if all(r.custo_informado for r in respostas) else
+                  f"auth_mode {respostas[-1].auth_mode if respostas else '?'}: custo NÃO "
+                  "informado pelo servidor (quota do plano)") +
+              f"; sha256 {dossie.sha256[:12]}")])
 
 
 def _registrar_metadados(state: RunState, page: Page, deps: Deps) -> None:
