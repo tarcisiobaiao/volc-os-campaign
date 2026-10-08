@@ -2,6 +2,26 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Google Ads: v17_01 fatos granulares — 08/10/2026
+
+`v17_01_gads_fatos_granulares.sql` (SHA-256
+`7e4ef29bb719aaf84db2d075129c8dfcc238171ba238b26cb0a86c684dfb2631`) aplicada e
+relida no Supabase oficial por `scripts/aplicar-v17_01.sh`. Backup antes:
+`/root/backups/pre-v17_01-20261008-154701.dump`. Desenho:
+[GADS-FATOS-GRANULARES-v17](../../docs/architecture/GADS-FATOS-GRANULARES-v17.md).
+
+Postflight: 7 partições de `google_ads_fato_granular`, `google_ads_mudanca` e
+`google_ads_estado` (append-only), 4 views `vw_gads_*`, RPC
+`volc_registrar_gads_fatos`, RLS forçada, `anon` sem SELECT, `authenticated`
+sem EXECUTE, zero linhas, PostgREST recarregado (service_role lê as views: 200).
+
+Provada antes num espelho local idêntico ao vivo (imagem
+`supabase/postgres:15.8.1.085`, schema vivo restaurado, 166 objetos iguais):
+`scripts/provas-v17_01.sql` 12/12 em transação desfeita, recusa de isolamento
+REPEATABLE READ, rollback → reaplicação limpa. A prova expôs que os triggers
+legados convertem GAM e JoinAds com cotações diferentes no mesmo dia (5,50 ×
+5,20) — registrado no documento de desenho.
+
 ## Google Ads: v12_03, v10_02 e v12_04 — 08/10/2026
 
 Aplicadas e relidas no Supabase oficial (`database.agenciavolc.com.br`) pelo

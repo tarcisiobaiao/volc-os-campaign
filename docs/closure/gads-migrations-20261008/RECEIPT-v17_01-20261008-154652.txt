@@ -1,0 +1,4 @@
+== preflight 20261008-154652
+sha ok  v17_01  7e4ef29bb719aaf84db2d075129c8dfcc238171ba238b26cb0a86c684dfb2631
+estado  v17_01=f  v12_04_presente=t
+só preflight
