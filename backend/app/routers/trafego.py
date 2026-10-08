@@ -1722,6 +1722,12 @@ class ProvarEntrada(BaseModel):
         # e ignorada pelo builder do canal pedido.
         try:
             cfgcan.recusar_de_outro_canal(dados)
+            # A estratégia do envelope × a da configuração: a MESMA recusa nos
+            # canais com lance na configuração, antes de qualquer rede.
+            cfgcan.recusar_estrategia_divergente(
+                dados, envelope_obrigatorio=(
+                    canal == "DEMAND_GEN"
+                    and classe in {"ProvarEntrada", "SubirEntrada"}))
         except cfgcan.ConfiguracaoRecusada as exc:
             raise exc.erro_de_validacao(classe) from exc
         campos_demand_gen = [
@@ -1826,16 +1832,10 @@ class ProvarEntrada(BaseModel):
         # (TARGET_SPEND, TARGET_CPC, MaxConvValue…), e o envelope precisa dizer
         # a mesma: duas estratégias no mesmo pedido não escolhem uma em
         # silêncio. Sem ela, o contrato de antes: MaxConv sem meta.
+        # A divergência com `configuracao_demand_gen.lance` já foi recusada
+        # acima (`recusar_estrategia_divergente`, envelope obrigatório).
         lance_dg = cfgcan.lance_da_configuracao("DEMAND_GEN", dados)
-        if lance_dg is not None:
-            if estrategia != lance_dg:
-                _recusar(
-                    "estrategia_lance",
-                    "canal DEMAND_GEN com `configuracao_demand_gen.lance."
-                    f"estrategia={lance_dg}` exige `estrategia_lance={lance_dg}` "
-                    f"no envelope; recebido {estrategia or 'ausente'}.",
-                    cfgcan.ESTRATEGIA_DIVERGENTE)
-        elif estrategia != "MAXIMIZE_CONVERSIONS":
+        if lance_dg is None and estrategia != "MAXIMIZE_CONVERSIONS":
             _recusar(
                 "estrategia_lance",
                 "canal DEMAND_GEN exige `estrategia_lance="

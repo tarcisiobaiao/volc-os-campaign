@@ -1,5 +1,5 @@
 {
- "versao": "GADS-CRIACAO-CANAIS-v1.1",
+ "versao": "GADS-CRIACAO-CANAIS-v1.2",
  "documento": "docs/contracts/GADS-CRIACAO-CANAIS-v1.md",
  "canais": {
   "SEARCH": {
@@ -2306,6 +2306,7 @@
   "omitir o objeto = comportamento de antes desta versão (payload idêntico)",
   "objeto presente entra na impressão aprovável do plano",
   "todo 422 de configuração: detail[] com loc do campo, msg sem prefixo e ctx.codigo em CAMPO_DESCONHECIDO, CAMPO_OBRIGATORIO, VALOR_INVALIDO, CANAL_DIFERENTE, CAMPO_NAO_OPERADO, ESTRATEGIA_DIVERGENTE, MATCH_FORA_DO_CONJUNTO",
-  "target_roas é razão (4.0 = 400%) em [0.01, 1000.0] nos quatro canais"
+  "target_roas é razão (4.0 = 400%) em [0.01, 1000.0] nos quatro canais",
+  "estrategia_lance do envelope, quando presente, igual a configuracao_<canal>.lance.estrategia (422 ESTRATEGIA_DIVERGENTE) em SEARCH, DISPLAY, DEMAND_GEN; Demand Gen exige o envelope; PMax não tem lance na configuração"
  ]
 }

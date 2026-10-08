@@ -386,6 +386,67 @@ def lance_da_configuracao(canal: Any, corpo: Mapping[str, Any]) -> Optional[str]
     return None
 
 
+def _campos_de_entrada(cls: Any) -> Tuple[str, ...]:
+    from dataclasses import fields as _fields
+
+    return tuple(f.name for f in _fields(cls) if f.init)
+
+
+#: Os canais cuja CONFIGURAÇÃO declara estratégia de lance (`lance`) — derivado
+#: dos dataclasses, não escrito à mão. PMax fica de fora: a estratégia de PMax
+#: só existe no envelope (`estrategia_lance` + `tcpa`/`target_roas`), e
+#: `configuracao_pmax.lance` é chave desconhecida (422 `CAMPO_DESCONHECIDO`) —
+#: não há segunda fonte com que divergir.
+CANAIS_COM_LANCE_NA_CONFIGURACAO: Tuple[str, ...] = tuple(
+    canal for canal, campos in (
+        ("SEARCH", _campos_de_entrada(sc.ConfiguracaoSearch)),
+        ("DISPLAY", _campos_de_entrada(dc.ConfiguracaoDisplay)),
+        ("DEMAND_GEN", dgc.campos_v25()),
+        ("PERFORMANCE_MAX", pc.campos_v25()),
+    ) if "lance" in campos)
+
+
+def recusar_estrategia_divergente(dados: Mapping[str, Any], *,
+                                  envelope_obrigatorio: bool = False) -> None:
+    """`estrategia_lance` do envelope ≠ `configuracao_<canal>.lance.estrategia`.
+
+    A MESMA regra nos canais que têm lance na configuração, e julgada no
+    validador do envelope — antes do escopo, da ponte e de qualquer chamada ao
+    Google. Duas estratégias no mesmo pedido não escolhem uma em silêncio.
+
+    Até a v1.1 só Demand Gen recusava com 422; Search e Display deixavam a
+    divergência chegar ao builder, que a recusava como bloqueio LOCAL do plano
+    (HTTP 200 sem selo) — a mesma recusa, com outra forma em cada canal.
+
+    Envelope AUSENTE não é divergência: a estratégia efetiva é a da
+    configuração (`estrategia_efetiva`). Demand Gen exige o envelope
+    (`envelope_obrigatorio=True`) porque o contrato vertical dele não tem
+    default — ausência ali também é recusada, com o mesmo código.
+    """
+    canal = canal_canonico(dados.get("canal"))
+    if canal not in CANAIS_COM_LANCE_NA_CONFIGURACAO:
+        return
+    campo = CAMPO_POR_CANAL[canal]
+    cfg = dados.get(campo)
+    lance = cfg.get("lance") if isinstance(cfg, Mapping) else None
+    declarada = lance.get("estrategia") if isinstance(lance, Mapping) else None
+    if not isinstance(declarada, str) or not declarada.strip():
+        return  # sem lance, ou forma errada: quem julga é a validação de forma
+    declarada = declarada.strip().upper()
+    bruto = dados.get("estrategia_lance")
+    if bruto is None and not envelope_obrigatorio:
+        return
+    envelope = str(bruto or "").strip().upper()
+    if envelope != declarada:
+        raise ConfiguracaoRecusada(
+            "estrategia_lance",
+            f"canal {canal} com `{campo}.lance.estrategia={declarada}` exige "
+            f"`estrategia_lance={declarada}` no envelope; recebido "
+            f"{envelope or 'ausente'}. Duas estratégias no mesmo pedido não "
+            "escolhem uma em silêncio — nada foi enviado ao Google.",
+            ESTRATEGIA_DIVERGENTE)
+
+
 def rede_da_configuracao(corpo: Mapping[str, Any]) -> Optional[Dict[str, bool]]:
     """`configuracao_search.rede` no vocabulário de `brief.RedeDePesquisa`.
 
@@ -603,5 +664,9 @@ def esquemas(*, esquema_de_asset: Optional[Mapping[str, Any]] = None) -> Dict[st
             "prefixo e ctx.codigo em " + ", ".join(CODIGOS_DE_RECUSA),
             f"target_roas é razão (4.0 = 400%) em [{ROAS_MIN}, {ROAS_MAX}] "
             "nos quatro canais",
+            "estrategia_lance do envelope, quando presente, igual a "
+            "configuracao_<canal>.lance.estrategia (422 ESTRATEGIA_DIVERGENTE) "
+            "em " + ", ".join(CANAIS_COM_LANCE_NA_CONFIGURACAO)
+            + "; Demand Gen exige o envelope; PMax não tem lance na configuração",
         ],
     }

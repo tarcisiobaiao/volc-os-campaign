@@ -1,6 +1,20 @@
-# GADS-CRIACAO-CANAIS v1.1 — a configuração de cada canal na criação (Google Ads)
+# GADS-CRIACAO-CANAIS v1.2 — a configuração de cada canal na criação (Google Ads)
 
 ## Changelog
+
+**v1.2 (08/10/2026)** — ⚠️ **estratégia divergente é o MESMO 422 nos quatro
+canais.** `estrategia_lance` do envelope diferente de
+`configuracao_<canal>.lance.estrategia` → 422 `ESTRATEGIA_DIVERGENTE`,
+`loc ["body","estrategia_lance"]`, julgado no validador do envelope (antes do
+escopo, da ponte e de qualquer chamada ao Google), em `/provar` e `/subir`.
+Antes só Demand Gen fazia isso; Search e Display deixavam a divergência chegar
+ao builder, que a devolvia como bloqueio LOCAL do plano (HTTP 200 sem selo).
+Envelope ausente não é divergência em Search/Display (a efetiva é a da
+configuração); Demand Gen continua exigindo o envelope. PMax não tem lance na
+configuração (`configuracao_pmax.lance` → `CAMPO_DESCONHECIDO`): a única fonte é
+o envelope. Regra também publicada em `regras` do esquema; `versao` do esquema
+`GADS-CRIACAO-CANAIS-v1.2`. Detalhe no §3, "Estratégia: envelope ×
+configuração".
 
 **v1.1 (08/10/2026)** — fecha as cinco divergências que o front de criação
 encontrou entre a v1 e o comportamento real. Nenhum campo saiu; o que muda para
@@ -41,7 +55,7 @@ front. Backend: `backend/app/routers/trafego.py` (HTTP) →
 (draft 2020-12) de cada configuração, gerado dos MESMOS dataclasses que validam
 o pedido — enums, limites e defaults vêm de lá. As tabelas do §6 foram geradas
 desse esquema em 08/10/2026 (regeneradas na v1.1); em caso de divergência, a
-rota vence. `versao` do esquema: `GADS-CRIACAO-CANAIS-v1.1`.
+rota vence. `versao` do esquema: `GADS-CRIACAO-CANAIS-v1.2`.
 
 ---
 
@@ -141,7 +155,7 @@ canal ou da montagem):
 | `VALOR_INVALIDO` | tipo errado, enum fora da lista, faixa (ex.: `target_roas`), combinação impossível julgada pelo motor | `["body","target_roas"]`, `["body","configuracao_search","lance"]` |
 | `CANAL_DIFERENTE` | configuração / objeto vertical / `match_por_keyword` de outro canal | `["body","configuracao_display"]` |
 | `CAMPO_NAO_OPERADO` | campo do envelope que o builder do canal pedido não materializa (`match_type`, `keywords_fora`, `ai_max`, `cpc_inicial`… em Display/DG/PMax) | `["body","match_type"]` |
-| `ESTRATEGIA_DIVERGENTE` | Demand Gen: `estrategia_lance` do envelope ≠ `configuracao_demand_gen.lance.estrategia` | `["body","estrategia_lance"]` |
+| `ESTRATEGIA_DIVERGENTE` | `estrategia_lance` do envelope ≠ `configuracao_<canal>.lance.estrategia` — Search, Display e Demand Gen (v1.2); em DG também o envelope ausente | `["body","estrategia_lance"]` |
 | `MATCH_FORA_DO_CONJUNTO` | `match_por_keyword` com chave fora do conjunto pago aprovado (§4) | `["body","match_por_keyword","<chave>"]` |
 
 Quando o motor recusa a COMBINAÇÃO, o `loc` aponta o objeto que a contém
@@ -165,10 +179,11 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
   `MAXIMIZE_CONVERSIONS` (tCPA opcional), `MAXIMIZE_CONVERSION_VALUE` (tROAS
   opcional), `TARGET_IMPRESSION_SHARE` (local + fração + teto obrigatórios).
   `MAXIMIZE_CLICKS` não existe — o nome da API é `TARGET_SPEND`.
-- Com `configuracao_search.lance` declarado e `estrategia_lance` no default
-  (`MANUAL_CPC`), **a estratégia efetiva é a da configuração** — é ela que o
-  brief carrega, que o portão de mensuração julga e que fica registrada.
-  Declarar as duas diferentes (fora do default) é recusado pelo builder.
+- Com `configuracao_search.lance` declarado e `estrategia_lance` AUSENTE,
+  **a estratégia efetiva é a da configuração** — é ela que o brief carrega,
+  que o portão de mensuração julga e que fica registrada. Presente e
+  diferente (inclusive `MANUAL_CPC` explícito) → 422 `ESTRATEGIA_DIVERGENTE`
+  (v1.2; ver "Estratégia: envelope × configuração").
 - **Rede**: com configuração, a rede é decisão obrigatória (em `rede` do
   envelope OU em `configuracao_search.rede`; as duas iguais se vierem as
   duas). `display_expansion=true` é aceito e sempre gera aviso no plano. O
@@ -185,9 +200,9 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
   é o lance do grupo; ausente → 422 `CAMPO_OBRIGATORIO`); sem `MANUAL_CPC`,
   `cpc_inicial` explícito continua recusado (`CAMPO_NAO_OPERADO`).
 - `estrategia_lance` do envelope: igual a `configuracao_display.lance.estrategia`
-  ou no default `MANUAL_CPC`. Diferente das duas → o builder recusa (bloqueio
-  local do plano, `estrategia_lance: TARGET_SPEND × MANUAL_CPM`; nada vai ao
-  Google). `MANUAL_CPM` com envelope `MANUAL_CPM` foi provado vivo (§7):
+  ou ausente. Presente e diferente → 422 `ESTRATEGIA_DIVERGENTE` antes de
+  qualquer rede (v1.2; até a v1.1 era bloqueio local do plano com HTTP 200).
+  `MANUAL_CPM` com envelope `MANUAL_CPM` foi provado vivo (§7):
   `campaign.manual_cpm` + `ad_group.cpm_bid_micros` = `cpm_visivel` × 10⁶.
 - **Objeto presente = doutrina de nascimento**: `{}` já liga as exclusões padrão
   (todos os apps + rótulos `PARKED_DOMAIN`, `SEXUALLY_SUGGESTIVE`, `PROFANITY`,
@@ -199,7 +214,7 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
 ### Demand Gen
 - `estrategia_lance` do envelope: `MAXIMIZE_CONVERSIONS` sem configuração de
   lance; **com `configuracao_demand_gen.lance`, precisa ser igual a
-  `lance.estrategia`** (422 se divergir). Estratégias: MaxConv (tCPA → avulso),
+  `lance.estrategia`** (422 `ESTRATEGIA_DIVERGENTE` se divergir ou faltar). Estratégias: MaxConv (tCPA → avulso),
   MaxConvValue (tROAS → avulso; exige histórico de valor na conta), TARGET_SPEND,
   TARGET_CPC (alvo obrigatório).
 - **Formatos**: `MULTI_ASSET` (default), `VIDEO_RESPONSIVO`, `CARROSSEL`.
@@ -236,6 +251,31 @@ o código `CONFIGURACAO_INVALIDA` (novo em `plano.CODIGOS`; antes caíam em
   `video_crawl_direitos_declarados=true`.
 - `pmax.videos_youtube` (resource names) continua recusado; vídeo entra por id
   em `configuracao_pmax.videos` / `grupos_adicionais[i].videos`.
+
+### Estratégia: envelope × configuração (os quatro canais, v1.2)
+Uma estratégia por pedido. Quando a configuração do canal declara
+`lance.estrategia`, o `estrategia_lance` do envelope precisa dizer a mesma — ou
+faltar (Search/Display). A recusa é idêntica nos canais e acontece no
+validador do envelope, antes do escopo, da ponte e de qualquer chamada ao
+Google, em `/provar` e `/subir`:
+
+```json
+{"detail": [{"type": "estrategia_divergente",
+  "loc": ["body", "estrategia_lance"],
+  "msg": "canal DISPLAY com `configuracao_display.lance.estrategia=MANUAL_CPM` exige `estrategia_lance=MANUAL_CPM` no envelope; recebido TARGET_SPEND. …",
+  "input": null,
+  "ctx": {"codigo": "ESTRATEGIA_DIVERGENTE", "caminho": "estrategia_lance"}}]}
+```
+
+| canal | fonte da estratégia na configuração | envelope ausente | envelope diferente |
+|---|---|---|---|
+| SEARCH | `configuracao_search.lance.estrategia` | herda a da configuração | 422 `ESTRATEGIA_DIVERGENTE` |
+| DISPLAY | `configuracao_display.lance.estrategia` | herda a da configuração | 422 `ESTRATEGIA_DIVERGENTE` |
+| DEMAND_GEN | `configuracao_demand_gen.lance.estrategia` | 422 `ESTRATEGIA_DIVERGENTE` | 422 `ESTRATEGIA_DIVERGENTE` |
+| PERFORMANCE_MAX | — (não existe; `configuracao_pmax.lance` → 422 `CAMPO_DESCONHECIDO`) | envelope obrigatório (MaxConv/MaxConvValue, 422 `VALOR_INVALIDO`) | não há com o que divergir |
+
+O builder de cada canal continua recusando a divergência como bloqueio local —
+é a segunda trava, para chamadores do motor que não passam pela rota.
 
 ### Metas: `target_roas` (os quatro canais)
 Medido no motor (v1.1): **nenhum builder converte** o número — ele vai ao proto
@@ -713,7 +753,7 @@ detector de pixel do portão e as flags experimentais de DG/PMax.
 | DEMAND_GEN (vídeo responsivo) | 18 | aceito (selo emitido) |
 | PERFORMANCE_MAX (2 asset groups) | 63 | aceito com o portão de mensuração do builder desligado; com ele ligado, recusa local `MENSURACAO_INADEQUADA` (as 5 ações primárias da conta estão fora da métrica de conversões) |
 | DISPLAY `MANUAL_CPM` (v1.1) | 19 | aceito (selo emitido) — envelope `estrategia_lance=MANUAL_CPM` igual à configuração `lance={"estrategia":"MANUAL_CPM","cpm_visivel":4.5}`; o builder emitiu `campaign.manual_cpm` e `ad_group.cpm_bid_micros=4500000` (espião de leitura no `display.construir`) |
-| DISPLAY envelope `TARGET_SPEND` × configuração `MANUAL_CPM` (contraprova, v1.1) | 0 | recusa local `estrategia_lance: TARGET_SPEND × MANUAL_CPM` — nada foi ao Google |
+| DISPLAY envelope `TARGET_SPEND` × configuração `MANUAL_CPM` (contraprova) | 0 | v1.2: **422 `ESTRATEGIA_DIVERGENTE`** em 0,0 s, sem montagem nem rede (na v1.1 era recusa local do plano, HTTP 200). Nos dois casos, nada foi ao Google |
 
 Nos quatro, o selo saiu **retido pelo portão de destino**: a LP
 `creditoup.com.br/r/guia-cursos-senac/` não está elegível como destino pago

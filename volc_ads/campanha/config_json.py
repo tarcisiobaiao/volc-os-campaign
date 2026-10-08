@@ -42,7 +42,7 @@ from collections.abc import Mapping as _MappingABC
 from typing import Any, Callable, Iterable, Mapping
 
 #: Versão do contrato publicado em `docs/contracts/GADS-CRIACAO-CANAIS-v1.md`.
-VERSAO_DO_CONTRATO = "GADS-CRIACAO-CANAIS-v1.1"
+VERSAO_DO_CONTRATO = "GADS-CRIACAO-CANAIS-v1.2"
 
 Resolvedor = Callable[[Any, str], Any]
 

@@ -469,7 +469,7 @@ def test_rota_de_esquema_publica_os_quatro_canais(cliente):
     r = cliente.get("/api/trafego/canais/esquema")
     assert r.status_code == 200, r.text
     corpo = r.json()
-    assert corpo["versao"] == "GADS-CRIACAO-CANAIS-v1.1"
+    assert corpo["versao"] == "GADS-CRIACAO-CANAIS-v1.2"
     assert set(corpo["canais"]) == {"SEARCH", "DISPLAY", "DEMAND_GEN", "PERFORMANCE_MAX"}
     s = corpo["canais"]["SEARCH"]
     assert s["campo_http"] == "configuracao_search"
@@ -778,3 +778,61 @@ def test_brief_e_display_recusam_target_roas_fora_da_faixa():
                             target_roas=2000.0, cpc_inicial=None)
     assert dc.resolver_lance(brief, None, r) is None
     assert any("target_roas" == e.campo for e in r.erros)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# v1.2 — estratégia do envelope × configuração: o MESMO 422 nos quatro canais
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.parametrize("rota", ["/api/trafego/provar", "/api/trafego/subir"])
+@pytest.mark.parametrize("payload", [
+    _search(estrategia_lance="MANUAL_CPC",
+            configuracao_search={"lance": {"estrategia": "MAXIMIZE_CONVERSIONS"}}),
+    _display(estrategia_lance="TARGET_SPEND",
+             configuracao_display={"lance": {"estrategia": "MANUAL_CPM", "cpm_visivel": 4.5}}),
+    _dg(estrategia_lance="MAXIMIZE_CONVERSIONS",
+        configuracao_demand_gen={"lance": {"estrategia": "TARGET_SPEND"}}),
+], ids=["SEARCH", "DISPLAY", "DEMAND_GEN"])
+def test_estrategia_divergente_e_o_mesmo_422_antes_do_google(cliente, monkeypatch, rota, payload):
+    """`cliente` falha o teste se o escopo for tocado: a recusa vem antes de
+    escopo, ponte e qualquer chamada ao Google — em /provar e em /subir."""
+    monkeypatch.setattr(trafego.plat, "exigir_construtor", lambda *_: None)
+    monkeypatch.setattr(trafego, "_ponte", lambda: pytest.fail("a ponte foi tocada"))
+    extra = ({"motivo": "prova da divergência de estratégia", "plano_impressao": "x",
+              "confirmar_criacao_pausada": True} if rota.endswith("subir") else {})
+    itens = _itens_do_contrato(cliente.post(rota, json={**payload, **extra}))
+    assert [(i["loc"], i["ctx"]["codigo"]) for i in itens] == \
+        [(["body", "estrategia_lance"], cfgcan.ESTRATEGIA_DIVERGENTE)]
+    assert itens[0]["type"] == "estrategia_divergente"
+
+
+def test_pmax_nao_tem_segunda_fonte_de_estrategia(cliente):
+    """O mesmo critério em PMax: a estratégia só existe no envelope, e uma
+    tentativa de declará-la na configuração é chave desconhecida."""
+    assert "PERFORMANCE_MAX" not in cfgcan.CANAIS_COM_LANCE_NA_CONFIGURACAO
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=_pmax(
+        configuracao_pmax={"lance": {"estrategia": "MAXIMIZE_CONVERSION_VALUE"}})))
+    assert [(i["loc"], i["ctx"]["codigo"]) for i in itens] == \
+        [(["body", "configuracao_pmax", "lance"], cfgcan.CAMPO_DESCONHECIDO)]
+
+
+@pytest.mark.parametrize("payload", [
+    # envelope igual à configuração
+    _display(estrategia_lance="MANUAL_CPM",
+             configuracao_display={"lance": {"estrategia": "MANUAL_CPM", "cpm_visivel": 4.5}}),
+    # envelope ausente: herda a da configuração (não é divergência)
+    _search(configuracao_search={"lance": {"estrategia": "TARGET_SPEND"}}),
+], ids=["DISPLAY_igual", "SEARCH_ausente"])
+def test_estrategia_coerente_passa_da_validacao(cliente, payload):
+    # passar da validação = chegar ao escopo, que o fixture transforma em falha
+    with pytest.raises(pytest.fail.Exception, match="passou da validação de forma"):
+        cliente.post("/api/trafego/provar", json=payload)
+
+
+def test_demand_gen_sem_envelope_com_lance_e_a_mesma_recusa(cliente):
+    corpo = _dg(configuracao_demand_gen={"lance": {"estrategia": "TARGET_SPEND"}})
+    corpo.pop("estrategia_lance")
+    itens = _itens_do_contrato(cliente.post("/api/trafego/provar", json=corpo))
+    assert itens[0]["ctx"]["codigo"] == cfgcan.ESTRATEGIA_DIVERGENTE
+    assert "recebido ausente" in itens[0]["msg"]
