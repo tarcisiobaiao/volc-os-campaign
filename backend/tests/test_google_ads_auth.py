@@ -83,11 +83,23 @@ def test_explicit_mode_service_account_reports_missing():
 
 def test_missing_common_fields_block_ready():
     s = _settings(
+        google_ads_customer_id="",
+        google_ads_client_id="c", google_ads_client_secret="s", google_ads_refresh_token="r",
+    )
+    st = s.google_ads_auth_status()
+    assert st["ready"] is False and "GOOGLE_ADS_CUSTOMER_ID" in st["missing"]
+
+
+def test_developer_token_is_optional():
+    """O developer token saiu de uso em 09/09/2026: o nível de acesso agora é do
+    projeto Google Cloud. Medido em 08/10/2026: v25 sem o header devolve 200.
+    Exigi-lo deixaria a mineração em mock numa máquina que só tem OAuth."""
+    s = _settings(
         google_ads_developer_token="",
         google_ads_client_id="c", google_ads_client_secret="s", google_ads_refresh_token="r",
     )
     st = s.google_ads_auth_status()
-    assert st["ready"] is False and "GOOGLE_ADS_DEVELOPER_TOKEN" in st["missing"]
+    assert st["ready"] is True and st["missing"] == []
 
 
 # --- service-account JWT signing (real RS256, throwaway key) ------------------
@@ -135,3 +147,66 @@ def test_service_account_jwt_signs_and_verifies():
     # signature must verify with the public key
     signing_input = f"{parts[0]}.{parts[1]}".encode("ascii")
     key.public_key().verify(_b64d(parts[2]), signing_input, padding.PKCS1v15(), hashes.SHA256())
+
+
+# --- request: versão e headers -------------------------------------------------
+import httpx as _httpx
+
+_ASYNC_CLIENT_REAL = _httpx.AsyncClient
+
+
+class _Captura:
+    """Substitui httpx.AsyncClient e guarda as requisições, sem rede.
+
+    Guarda a classe real ANTES do monkeypatch: o patch troca o atributo do
+    próprio módulo httpx, e instanciar `httpx.AsyncClient` aqui dentro seria
+    instanciar a si mesma.
+    """
+
+    pedidos: list = []
+
+    def __init__(self, *a, **k):
+        httpx = _httpx
+
+        def responder(req):
+            _Captura.pedidos.append(req)
+            if req.url.host == "oauth2.googleapis.com":
+                return httpx.Response(200, json={"access_token": "tok"})
+            return httpx.Response(200, json={"results": [{"text": "x"}]})
+
+        self._c = _ASYNC_CLIENT_REAL(transport=httpx.MockTransport(responder))
+
+    async def __aenter__(self):
+        return self._c
+
+    async def __aexit__(self, *exc):
+        await self._c.aclose()
+
+
+def _rodar_ideias(monkeypatch, **over):
+    import asyncio
+
+    import app.services.google_ads as mod
+
+    _Captura.pedidos = []
+    monkeypatch.setattr(mod.httpx, "AsyncClient", _Captura)
+    s = _settings(google_ads_client_id="c", google_ads_client_secret="s",
+                  google_ads_refresh_token="r", **over)
+    cli = GoogleAdsKeywordPlannerClient(s)
+    out = asyncio.run(cli.generate_keyword_ideas(
+        seed_keyword="fgts", geo_target=2076, language_constant=1014))
+    return out, [p for p in _Captura.pedidos if p.url.host == "googleads.googleapis.com"]
+
+
+def test_keyword_ideas_usa_v25_e_nao_v21(monkeypatch):
+    """v21 devolve 404 desde set/2026 (medido em 08/10/2026)."""
+    out, pedidos = _rodar_ideias(monkeypatch)
+    assert out == [{"text": "x"}]
+    assert len(pedidos) == 1
+    assert pedidos[0].url.path == "/v25/customers/4445556666:generateKeywordIdeas"
+
+
+def test_keyword_ideas_sem_token_nao_manda_header(monkeypatch):
+    _, pedidos = _rodar_ideias(monkeypatch, google_ads_developer_token="")
+    assert "developer-token" not in pedidos[0].headers
+    assert pedidos[0].headers["login-customer-id"] == "1112223333"

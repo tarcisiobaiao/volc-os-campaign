@@ -2,8 +2,11 @@
 Google Ads Keyword Planner client — generateKeywordIdeas, with DUAL auth.
 
 Ported from n8n-peneirador-kw.json node "🔍 Keyword Planner API1":
-  POST https://googleads.googleapis.com/v21/customers/{customer_id}:generateKeywordIdeas
-  headers: developer-token, login-customer-id (MCC)
+  POST https://googleads.googleapis.com/v25/customers/{customer_id}:generateKeywordIdeas
+  headers: login-customer-id (MCC); developer-token only when configured
+
+⚠️ The n8n node used v21, which returns 404 since Sept/2026 (measured
+08/10/2026). The developer token stopped being required on 09/09/2026.
   body: geoTargetConstants, language, keywordSeed, historicalMetricsOptions
 
 Auth modes (GOOGLE_ADS_AUTH_MODE, resolved by Settings.google_ads_auth_status):
@@ -12,7 +15,7 @@ Auth modes (GOOGLE_ADS_AUTH_MODE, resolved by Settings.google_ads_auth_status):
                           optional impersonated subject (domain-wide delegation).
   - oauth_refresh_token : exchange a refresh token for an access token.
 
-Both modes require GOOGLE_ADS_DEVELOPER_TOKEN + LOGIN_CUSTOMER_ID + CUSTOMER_ID.
+Both modes require LOGIN_CUSTOMER_ID + CUSTOMER_ID.
 The n8n node had a hardcoded developer_token / mcc_id / customer_id; those are
 MIGRATED to env and never copied into code. When unconfigured, `enabled` is
 False and the mining pipeline uses a mock. Secrets are never logged.
@@ -34,7 +37,7 @@ _OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _DEFAULT_SA_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _ADWORDS_SCOPE = "https://www.googleapis.com/auth/adwords"
 _JWT_BEARER_GRANT = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-_API_VERSION = "v21"
+_API_VERSION = "v25"
 _MICROS = 1_000_000
 
 
@@ -180,9 +183,10 @@ class GoogleAdsKeywordPlannerClient:
             access = await self._access_token(client)
             headers = {
                 "Authorization": f"Bearer {access}",
-                "developer-token": self.developer_token,
                 "Content-Type": "application/json",
             }
+            if self.developer_token:
+                headers["developer-token"] = self.developer_token
             if self.login_customer_id:
                 headers["login-customer-id"] = self.login_customer_id
             resp = await client.post(url, headers=headers, json=body)

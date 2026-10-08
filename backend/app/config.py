@@ -281,8 +281,10 @@ class Settings(BaseSettings):
         (service_account | oauth_refresh_token | none); `missing` lists the
         env keys still needed for that mode.
         """
+        # O developer token NÃO entra: saiu de uso em 09/09/2026 (o nível de
+        # acesso passou a ser do projeto Google Cloud). Medido em 08/10/2026:
+        # v25 sem o header devolve 200. Quando presente, ainda é enviado.
         common = {
-            "GOOGLE_ADS_DEVELOPER_TOKEN": bool(self.google_ads_developer_token),
             "GOOGLE_ADS_LOGIN_CUSTOMER_ID": bool(self.google_ads_login_customer_id),
             "GOOGLE_ADS_CUSTOMER_ID": bool(self.google_ads_customer_id),
         }
