@@ -12,7 +12,7 @@ from datetime import date
 import pytest
 
 from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
-from funnelforge.adapters.research_perplexity import pesquisar_funil as pesquisar_original
+from funnelforge.adapters.research_perplexity import pesquisar_funil_litellm as pesquisar_original
 from funnelforge.domain.dossie import DossieDoFunil
 from funnelforge.domain.models import RunState
 from funnelforge.pipeline import pipeline as pl
@@ -374,7 +374,7 @@ def test_resposta_vazia_do_provedor_aborta_sem_complementar_e_guarda_o_custo(tmp
 
     from funnelforge.config.settings import StepConfig
     cfg = StepConfig(model="gemini/gemini-3.8-flash", web_search=True)
-    resp = rp.pesquisar_funil(_LLMVazio(), cfg, "Senac", [], None)
+    resp = pesquisar_original(_LLMVazio(), cfg, "Senac", [], None)
     assert resp.defeito == "provedor devolveu texto vazio (finish_reason=content_filter)"
 
     congelar_data(monkeypatch)

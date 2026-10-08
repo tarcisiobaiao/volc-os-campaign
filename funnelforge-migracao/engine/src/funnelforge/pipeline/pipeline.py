@@ -185,6 +185,7 @@ def run_pipeline(
     resume_state: RunState | None = None,
     timestamp: str = "",
     plan: FunnelPlan | None = None,
+    ate_o_dossie: bool = False,
 ) -> RunState:
     """Run the funnel pipeline end to end: load briefing -> extract plan ->
     per page (research -> write -> judge -> seo -> [image for P1] -> build
@@ -286,6 +287,12 @@ def run_pipeline(
             and not _falhou(state, "funnel_graph")):
         _preparar_dossie(state, deps)
         _checkpoint(state, deps)
+    if ate_o_dossie:
+        # Só esqueleto -> pesquisa -> dossiê -> verificação -> cobertura.
+        # Nenhum briefing, redação, SEO, widget, revisão, imagem ou build.
+        _write_report(state, deps)
+        _checkpoint(state, deps)
+        return state
 
     pages = _select_pages(state, only)
 
@@ -830,11 +837,27 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
         return StepResult(
             step="dossie", status=status, model_requested=cfg.model,
             model_used=ultima.modelo_servido if ultima else "",
-            auth_mode=ultima.auth_mode if ultima else "", attempts=len(respostas),
+            auth_mode=ultima.auth_mode if ultima else "",
+            attempts=sum(max(1, len(r.metadados)) for r in respostas),
             prompt_tokens=sum(r.prompt_tokens for r in respostas),
             completion_tokens=sum(r.completion_tokens for r in respostas),
             cost_usd=round(sum(r.custo_usd for r in respostas) + sum(buscas), 6),
             latency_ms=sum(r.latencia_ms for r in respostas), issues=issues)
+
+    pasta = deps.runner.runs_dir / state.run_id
+
+    def gravar_chamadas() -> None:
+        # O recibo de CADA chamada ao provedor, com sucesso ou não: o canário
+        # de 07/10 voltou vazio e não deixou como saber por quê.
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / "pesquisa_dossie.json").write_text(json.dumps([
+            {"rodada": i, "modelo_pedido": r.modelo_pedido, "modelo_servido": r.modelo_servido,
+             "auth_mode": r.auth_mode, "defeito": r.defeito, "citacoes": len(r.citacoes),
+             "fatos": len((r.dados or {}).get("fatos") or []), "custo_tokens_usd": r.custo_usd,
+             "busca_estimada_usd": buscas[i - 1] if i <= len(buscas) else 0.0,
+             "chamadas": r.metadados}
+            for i, r in enumerate(respostas, 1)], ensure_ascii=False, indent=2),
+            encoding="utf-8")
 
     try:
         dossie = compilar_dossie(state, deps, pesquisar,
@@ -843,11 +866,11 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
         motivo = f"pesquisa do dossiê falhou: {type(exc).__name__}: {str(exc)[:300]}"
         bloquear_tudo(motivo, telemetria(StepStatus.FAILED,
                                          [Issue(code="dossie_falhou", message=motivo)]))
+        gravar_chamadas()
         return
+    gravar_chamadas()
     state.dossie = dossie.model_dump(mode="json")
     state.dossie_sha256 = dossie.sha256
-    pasta = deps.runner.runs_dir / state.run_id
-    pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "dossie_factual.json").write_text(dossie.model_dump_json(indent=2),
                                                encoding="utf-8")
     resultado = aplicar_portao(state, dossie)

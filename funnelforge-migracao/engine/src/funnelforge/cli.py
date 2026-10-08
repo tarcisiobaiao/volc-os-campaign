@@ -211,7 +211,13 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
                                                "teto de chamadas e recibo em runs-canario/."),
              fatos_de: Path | None = typer.Option(
                  None, "--fatos-de", help="Só com --canario: state.json de um run anterior "
-                                          "cujo inventário factual substitui a pesquisa.")
+                                          "cujo inventário factual substitui a pesquisa."),
+             somente_dossie: bool = typer.Option(
+                 False, "--somente-dossie", help="Só com --canario: para depois do portão de "
+                                                 "cobertura do dossiê (nenhuma redação)."),
+             dossie_de: Path | None = typer.Option(
+                 None, "--dossie-de", help="Só com --canario: state.json de um run com dossiê "
+                                           "congelado; retoma a redação SEM pesquisar de novo.")
              ) -> None:
     """Roda o funil a partir do `funnel_architecture` de um card do Pautador.
 
@@ -255,6 +261,13 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
         deps.runner.runs_dir = Path("runs-canario")
     conferir_modelos_do_plano(settings, deps.llm)
     estado_inicial = None
+    if (somente_dossie or dossie_de is not None) and not canario:
+        raise typer.BadParameter("--somente-dossie/--dossie-de só valem com --canario.")
+    if dossie_de is not None:
+        from funnelforge.domain.models import RunState
+        estado_inicial = RunState.from_json(dossie_de.read_text(encoding="utf-8"))
+        if not (estado_inicial.dossie and estado_inicial.dossie_sha256):
+            raise typer.BadParameter("--dossie-de: o estado não tem dossiê congelado.")
     if fatos_de is not None:
         if not canario:
             raise typer.BadParameter("--fatos-de só vale com --canario.")
@@ -269,7 +282,7 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
     deps.tema_termos = termos_do_tema(dados_perfil)
     state = run_pipeline(
         None, deps, only=only, publish=publish or settings.run.publish,
-        plan=plan, resume_state=estado_inicial,
+        plan=plan, resume_state=estado_inicial, ate_o_dossie=somente_dossie,
         timestamp=timestamp or datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     # PROCEDÊNCIA: a arquitetura de ORIGEM fica ao lado do `funnel_plan.json`
@@ -285,9 +298,10 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
         recibo = recibo_do_canario(state, settings, publisher_ligado=deps.publisher is not None,
                                    image_gen_ligado=deps.image_gen is not None,
                                    chamadas=getattr(deps.llm, "chamadas", 0))
-        (destino / "recibo_canario.json").write_text(
+        nome = "recibo_canario_redacao.json" if dossie_de is not None else "recibo_canario.json"
+        (destino / nome).write_text(
             json.dumps(recibo, ensure_ascii=False, indent=2), encoding="utf-8")
-        typer.echo(f"recibo: {destino / 'recibo_canario.json'} — nada publicado: "
+        typer.echo(f"recibo: {destino / nome} — nada publicado: "
                    f"{recibo['publicacao']['nada_publicado']}")
     typer.echo(f"run: {state.run_id} — {len(plan.pages)} páginas vindas do card")
 

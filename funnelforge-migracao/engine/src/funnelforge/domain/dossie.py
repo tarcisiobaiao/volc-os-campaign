@@ -103,6 +103,7 @@ class TelemetriaDaPesquisa(BaseModel):
     latencia_ms: int = 0
     consultas_de_busca: int = 0        # grounding: cobrado por consulta, fora do custo
     finish_reason: str = ""
+    chamadas: list[dict] = []          # metadados sanitizados de cada chamada
     faltantes_pedidos: list[str] = []
 
 

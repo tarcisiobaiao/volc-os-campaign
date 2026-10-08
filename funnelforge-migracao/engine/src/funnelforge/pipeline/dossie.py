@@ -72,6 +72,9 @@ class RespostaDaPesquisa:
     consultas_de_busca: int = 0       # cobradas por consulta, fora de `custo_usd`
     finish_reason: str = ""
     defeito: str = ""                 # resposta vazia/ilegível: aborta o dossiê
+    # Metadados sanitizados de CADA chamada ao provedor nesta rodada
+    # (finishReason, bloqueio, segurança, busca, grounding, tokens, texto).
+    metadados: list[dict] = field(default_factory=list)
 
 
 class PesquisaSemResposta(RuntimeError):
@@ -152,7 +155,7 @@ def fatos_da_resposta(resp: RespostaDaPesquisa) -> list[FatoDoDossie]:
             paginas=[canon_rotulo(p) for p in (bruto.get("paginas") or []) if isinstance(p, str)],
             requisitos=[canon_rotulo(r) for r in (bruto.get("requisitos") or [])
                         if isinstance(r, str)],
-            evidencia=str(bruto.get("evidencia") or "")[:300],
+            evidencia=str(bruto.get("evidencia_resumida") or bruto.get("evidencia") or "")[:300],
             dispositivo=str(bruto.get("dispositivo") or "")[:200])
         if tipo not in TIPOS_DE_FATO:
             fato.motivo_do_status = f"tipo '{bruto.get('tipo')}' fora do vocabulário"
@@ -299,6 +302,7 @@ def compilar_dossie(state: RunState, deps: Any, pesquisar: Pesquisar, *,
             custo_usd=resp.custo_usd, latencia_ms=resp.latencia_ms,
             consultas_de_busca=getattr(resp, "consultas_de_busca", 0),
             finish_reason=getattr(resp, "finish_reason", ""),
+            chamadas=list(getattr(resp, "metadados", []) or []),
             faltantes_pedidos=[f"{f['duvida_id']}:{f['requisito']}" for f in (faltantes or [])]))
         if getattr(resp, "defeito", ""):
             raise PesquisaSemResposta(f"rodada {rodada}: {resp.defeito}")

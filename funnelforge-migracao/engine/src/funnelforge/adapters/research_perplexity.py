@@ -280,9 +280,22 @@ class PerplexityResearch:
 # PESQUISA ÚNICA DO FUNIL (dossiê factual pré-redação)
 # ---------------------------------------------------------------------------
 
-def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | None) -> str:
+EVIDENCIA_RESUMIDA = (
+    "evidencia_resumida: síntese curta, factual e escrita com palavras próprias. Não "
+    "reproduza trechos literais extensos. A proveniência será comprovada pelo "
+    "groundingMetadata e pela URL verificada.")
+
+
+def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | None,
+                     *, estruturado: bool = False) -> str:
     """Um prompt para o funil INTEIRO (ou, na complementação, só para o que
-    falta). Cada fato diz a quais páginas e a quais requisitos ele serve."""
+    falta). Cada fato diz a quais páginas e a quais requisitos ele serve.
+
+    Não pede trecho literal da fonte: o canário de 07/10/2026 voltou vazio 3/3
+    pedindo "trecho copiado, nada de paráfrase". A prova de origem é o
+    groundingMetadata + a URL verificada, nunca o texto do modelo.
+    `estruturado`: o formato vem do schema nativo (Structured Output), não do
+    texto do prompt."""
     hoje = date.today().strftime("%d/%m/%Y")
     mapa = json.dumps(paginas, ensure_ascii=False, indent=1)
     alvo = ""
@@ -293,13 +306,19 @@ def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | 
         alvo = ("\n\nCOMPLEMENTACAO DIRIGIDA: a rodada anterior nao trouxe lastro para os "
                 f"requisitos abaixo. Pesquise SOMENTE eles:\n{lista}\n")
     tipos = ", ".join(t for t, _ in _VOCABULARIO_DE_TIPOS)
+    if estruturado:
+        formato = ("redacao. Pesquise na web com a busca do Google; a resposta segue o schema "
+                   "JSON fornecido (lista `fatos`).\n\n")
+    else:
+        formato = (
+            "redacao. Pesquise na web e devolva SOMENTE um objeto JSON (sem markdown):\n"
+            '{"fatos": [{"afirmacao": "...", "tipo": "...", "valor": "...", "unidade": "...", '
+            '"fonte": "https://pagina-que-a-busca-abriu", "vigente_desde": "AAAA-MM-DD", '
+            '"dispositivo": "...", "evidencia_resumida": "...", '
+            '"paginas": ["duvida_id"], "requisitos": ["id_do_requisito"]}]}\n\n')
     return (
         f"Hoje e {hoje}. Voce prepara o DOSSIE FACTUAL de um funil editorial antes de qualquer "
-        "redacao. Pesquise na web e devolva SOMENTE um objeto JSON (sem markdown):\n"
-        '{"fatos": [{"afirmacao": "...", "tipo": "...", "valor": "...", "unidade": "...", '
-        '"fonte": "https://pagina-que-a-busca-abriu", "vigente_desde": "AAAA-MM-DD", '
-        '"dispositivo": "...", "evidencia": "trecho curto copiado da fonte", '
-        '"paginas": ["duvida_id"], "requisitos": ["id_do_requisito"]}]}\n\n'
+        + formato +
         f"Assunto do funil: {assunto}\n"
         f"Paginas, perguntas, promessas e requisitos que cada uma precisa provar:\n{mapa}\n\n"
         f"tipo (vocabulario fechado): {tipos}.\n"
@@ -308,7 +327,7 @@ def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | 
         "- numero, prazo, data e mudanca exigem valor, unidade e vigente_desde (a vigencia que "
         "a fonte declara). Sem isso, nao inclua o fato.\n"
         "- regra, elegibilidade e obrigacao exigem fonte oficial ou primaria.\n"
-        "- evidencia: no maximo 300 caracteres copiados da fonte; nada de parafrase.\n"
+        f"- {EVIDENCIA_RESUMIDA}\n"
         "- paginas: os duvida_id que o fato sustenta; requisitos: os ids que ele cobre.\n"
         "- nao transforme inferencia em fato; nao complete lacuna por plausibilidade. Se nao "
         "achar, nao invente: deixe o requisito sem fato.\n"
@@ -319,6 +338,17 @@ def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | 
 
 def pesquisar_funil(llm: LLMClient, cfg: StepConfig, assunto: str, paginas: list[dict],
                     faltantes: list[dict] | None = None):
+    """A pesquisa do dossiê. Gemini com busca vai pelo SDK nativo (Search +
+    Structured Output + telemetria completa); o resto, pelo LiteLLM. A escolha
+    é pelo modelo configurado — nunca um cai para o outro."""
+    if cfg.model.startswith("gemini/") and getattr(cfg, "web_search", False):
+        from funnelforge.adapters.pesquisa_gemini import pesquisar_dossie_nativo
+        return pesquisar_dossie_nativo(cfg, assunto, paginas, faltantes)
+    return pesquisar_funil_litellm(llm, cfg, assunto, paginas, faltantes)
+
+
+def pesquisar_funil_litellm(llm: LLMClient, cfg: StepConfig, assunto: str, paginas: list[dict],
+                            faltantes: list[dict] | None = None):
     """Uma rodada de pesquisa do funil com grounding. As citações do PROVEDOR
     (canonizadas, redirects resolvidos) são a lista de fontes candidatas; o
     texto do modelo nunca acrescenta URL a ela."""

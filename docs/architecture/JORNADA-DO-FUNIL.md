@@ -85,7 +85,17 @@ Com jornada e grafo aprovado, ANTES de qualquer briefing ou redação:
 
 1. uma pesquisa do funil inteiro (`steps.dossie`, modelo exato, sem fallback;
    com `gemini/gemini-3.8-flash` + Google Search via `GEMINI_API_KEY`,
-   `auth_mode api_key`). Modelo servido diferente do pedido bloqueia o funil;
+   `auth_mode api_key`). Modelo servido diferente do pedido bloqueia o funil.
+   Gemini com busca vai pelo SDK oficial `google-genai`
+   (`adapters/pesquisa_gemini.py`: `google_search` + Structured Output com
+   schema de `FatosDoDossie`); só este passo — o resto segue no LiteLLM. Cada
+   chamada grava em `pesquisa_dossie.json` finishReason/finishMessage,
+   promptFeedback, safetyRatings, consultas, groundingChunks/Supports, campos
+   presentes do groundingMetadata, tokens e o texto devolvido (truncado).
+   Não-STOP, sem busca, sem chunk ou fora do schema é defeito: aborta. Desvio
+   único só para RECITATION com busca feita (ou Structured Output incompatível):
+   prosa grounded parafraseada e estruturação sem busca, limitada às fontes
+   dela. O prompt não pede trecho literal (`evidencia_resumida`);
 2. fontes = SÓ as citações do `groundingMetadata` do provedor, com
    redirecionamento resolvido; URL que o modelo digitou sem a busca ter
    aberto é `unverified`;

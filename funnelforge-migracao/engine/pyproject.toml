@@ -13,6 +13,8 @@ dependencies = [
   "orjson>=3.10",
   # Sign in with ChatGPT: validação do ID token (RS256 pelo JWKS do emissor).
   "pyjwt[crypto]>=2.8",
+  # Pesquisa do dossiê factual: Google Search + Structured Output nativos.
+  "google-genai>=1.72",
 ]
 [project.optional-dependencies]
 dev = ["pytest>=8.2", "pytest-mock>=3.14", "ruff>=0.5"]
