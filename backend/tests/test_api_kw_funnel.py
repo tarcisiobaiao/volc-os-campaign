@@ -108,3 +108,56 @@ def test_health_reports_kw_readiness_without_secrets():
     assert ga["mode"] in {"none", "service_account", "oauth_refresh_token"}
     # health must NEVER leak secret VALUES — `missing` carries only key names
     assert all("=" not in m for m in ga["missing"])
+
+
+def _supa_de_entidade():
+    class FakeSupa:
+        def __init__(self, settings):
+            pass
+
+        enabled = True
+
+        async def get_opportunity(self, opp_id):
+            return None
+
+        async def get_entity_opportunity(self, opp_id):
+            return {"id": opp_id, "entity_id": 7, "run_id": None, "country_code": "BR",
+                    "gold_reason": "beneficiários buscando a regra", "concrete_pain": "não sei se tenho direito"}
+
+        async def get_entity(self, entity_id):
+            return {"id": entity_id, "canonical_name": "Gás do Povo", "country": "Brasil",
+                    "country_code": "BR"}
+
+        async def get_latest_cluster(self, opp_id):
+            return None
+
+    return FakeSupa
+
+
+def test_mine_aceita_card_de_entidade_pelo_motor_python(monkeypatch):
+    """Os cards reais do cockpit são de entidade; sem esta ponte a única
+    mineração deles era o n8n, sem `conjunto_pago` (medido em 09/10/2026)."""
+    monkeypatch.setattr("app.routers.pautador.SupabaseService", _supa_de_entidade())
+    vistos = []
+
+    class Orq:
+        def __init__(self, ctx):
+            pass
+
+        async def run(self, op):
+            vistos.append(op)
+            return {"cluster": {"cluster_name": "x", "main_keyword": op["main_keyword"], "keywords": []},
+                    "engine": "mock", "warnings": []}
+
+    monkeypatch.setattr("app.routers.pautador.MiningOrchestrator", Orq)
+    r = client.post("/api/pautador/opportunities/106/mine", json={"persist": False})
+    assert r.status_code == 200, r.text
+    assert vistos[0]["main_keyword"] == "Gás do Povo"
+    assert vistos[0]["country"] == "Brasil" and vistos[0]["origem_card"] == "entidade"
+    assert r.json()["opportunity_id"] == 106
+
+
+def test_funil_classico_nao_aceita_card_de_entidade(monkeypatch):
+    monkeypatch.setattr("app.routers.pautador.SupabaseService", _supa_de_entidade())
+    r = client.post("/api/pautador/opportunities/106/funnel", json={})
+    assert r.status_code == 404

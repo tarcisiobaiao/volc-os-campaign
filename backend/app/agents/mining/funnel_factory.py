@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from app.agents.mining.paid_eligibility import (
     CampaignKeywordSet,
@@ -137,6 +137,20 @@ def _fundir(velho: Dict[str, Any], novo: Dict[str, Any]) -> Dict[str, Any]:
     return fundido
 
 
+def _congruencia_do_termo(congruencia: Union[str, Mapping[str, str]], termo: Any) -> str:
+    """Um veredito para o funil inteiro, ou um por termo.
+
+    O veredito por termo existe porque congruência é termo × página, e os
+    termos só existem DEPOIS da mineração: medido em 09/10/2026 no card 106,
+    10 de 24 termos (calendário, valor) não tinham resposta na LP e 14 tinham.
+    Um veredito único para o funil seria falso nos dois sentidos. Termo sem
+    veredito continua `nao_avaliada`, e o conjunto continua bloqueado.
+    """
+    if isinstance(congruencia, Mapping):
+        return str(congruencia.get(normalizar_termo(termo), "nao_avaliada"))
+    return congruencia
+
+
 def funnel_factory_com_conjuntos(
     ai_output: Dict[str, Any],
     *,
@@ -144,7 +158,8 @@ def funnel_factory_com_conjuntos(
     teto_do_dono: Optional[float] = None,
     marcas_proprias: Sequence[str] = (),
     marcas_de_terceiro: Sequence[str] = (),
-    congruencia: str = "nao_avaliada",
+    congruencia: Union[str, Mapping[str, str]] = "nao_avaliada",
+    evidencia: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Dict[str, Any]], List[CampaignKeywordSet]]:
     """A fila de produção (JSON-safe) e os conjuntos pagos vivos, na mesma ordem.
 
@@ -276,7 +291,7 @@ def funnel_factory_com_conjuntos(
                     # destino é `landing_policy`. Recebê-lo como entrada é o
                     # que evita mutar a decisão depois de tomada só para
                     # limpar um bloqueador, que era como o teste fazia.
-                    congruencia=congruencia,
+                    congruencia=_congruencia_do_termo(congruencia, b.get("keyword")),
                 )
                 for b in deduped
             ]
@@ -324,6 +339,9 @@ def funnel_factory_com_conjuntos(
                 "tema": funnel.get("keyword_ancora"),
                 "processado_em": date.isoformat(),
                 "funil": funnel.get("nome_funil"),
+                "congruencia": congruencia if isinstance(congruencia, str) else "por_termo",
+                # De onde vieram teto e congruência: sem fonte, não entram (schema).
+                **dict(evidencia or {}),
             },
         )
         conjuntos.append(conjunto)
@@ -455,12 +473,13 @@ def funnel_factory(
     teto_do_dono: Optional[float] = None,
     marcas_proprias: Sequence[str] = (),
     marcas_de_terceiro: Sequence[str] = (),
-    congruencia: str = "nao_avaliada",
+    congruencia: Union[str, Mapping[str, str]] = "nao_avaliada",
+    evidencia: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """A fila de produção, JSON-safe — a assinatura que o orquestrador chama."""
     fila, _conjuntos = funnel_factory_com_conjuntos(
         ai_output, today=today, teto_do_dono=teto_do_dono,
         marcas_proprias=marcas_proprias, marcas_de_terceiro=marcas_de_terceiro,
-        congruencia=congruencia,
+        congruencia=congruencia, evidencia=evidencia,
     )
     return fila

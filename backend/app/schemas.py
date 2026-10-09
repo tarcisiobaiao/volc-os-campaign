@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # --- canonical enums (kept identical across SQL / TS / Python) ----------------
 Tier = Literal["S", "A", "B", "EXPERIMENTAL"]
@@ -202,6 +202,26 @@ class MineRequest(BaseModel):
     persist: Optional[bool] = None
     engine: Optional[str] = None
     model: Optional[str] = None
+    # Entradas DO DONO para a elegibilidade paga. Sem elas o conjunto nasce com
+    # `teto_economico_desconhecido` e `congruencia_nao_avaliada` — e é o certo:
+    # o motor não presume nenhuma das duas. Elas existem para que um conjunto
+    # minerado em Python possa, um dia, ser aprovado (até 09/10/2026 nenhum podia).
+    teto_cpc_do_dono: Optional[float] = Field(
+        default=None, gt=0, description="CPC máximo que o dono aceita, na moeda da conta")
+    teto_fonte: Optional[str] = Field(
+        default=None, description="quem declarou o teto e com base em quê")
+    congruencia: Optional[Literal["congruente", "incongruente"]] = Field(
+        default=None, description="veredito termo × anúncio × página, vindo de fora do motor")
+    congruencia_fonte: Optional[str] = Field(
+        default=None, description="quem avaliou a congruência e contra qual destino")
+
+    @model_validator(mode="after")
+    def _entrada_do_dono_tem_fonte(self) -> "MineRequest":
+        for valor, fonte, nome in ((self.teto_cpc_do_dono, self.teto_fonte, "teto_cpc_do_dono"),
+                                   (self.congruencia, self.congruencia_fonte, "congruencia")):
+            if valor is not None and len((fonte or "").strip()) < 20:
+                raise ValueError(f"`{nome}` exige a fonte (≥ 20 caracteres): quem declarou e com base em quê")
+        return self
 
 
 class FunnelRequest(MineRequest):

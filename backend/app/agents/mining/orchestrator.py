@@ -166,7 +166,14 @@ class MiningOrchestrator(BaseAgent):
         return GeminiClient(self.settings, model=self.settings.pautador_kw_gemini_model)
 
     # ---- pipeline -----------------------------------------------------------
-    async def run(self, opportunity: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(
+        self,
+        opportunity: Dict[str, Any],
+        *,
+        teto_do_dono: Optional[float] = None,
+        congruencia: str = "nao_avaliada",
+        evidencia: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         start = self._timer()
         country = opportunity.get("country")
         country_code = opportunity.get("country_code") or opportunity.get("country_code_iso")
@@ -252,7 +259,12 @@ class MiningOrchestrator(BaseAgent):
         )
 
         # 9) Funnel Factory
-        factory_output = funnel_factory({"funis_sugeridos": funis.get("funis_sugeridos") or []})
+        # Teto e congruência são do DONO e vêm de fora; sem eles o conjunto
+        # nasce bloqueado, que é o comportamento de sempre.
+        factory_output = funnel_factory(
+            {"funis_sugeridos": funis.get("funis_sugeridos") or []},
+            teto_do_dono=teto_do_dono, congruencia=congruencia, evidencia=evidencia,
+        )
         self.log(f"Funnel Factory: {len(factory_output)} funis preparados.", step="factory")
 
         cluster = self._build_cluster(opportunity, nicho, gm, geo)

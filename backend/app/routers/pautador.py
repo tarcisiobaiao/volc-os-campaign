@@ -301,14 +301,53 @@ async def update_status(opp_id: int, req: StatusUpdateRequest) -> Dict[str, Any]
     return {"opportunity": row}
 
 
+async def _oportunidade_de_entidade(supa: SupabaseService, opp_id: int) -> Optional[Dict[str, Any]]:
+    """O card de ENTIDADE no formato que o `MiningOrchestrator` lê.
+
+    ⚠️ Medido em 09/10/2026: `pautador_opportunities` está vazia em produção, e
+    os cards do cockpit (65, 73, 74, 106) são `pautador_entity_opportunities`.
+    A única mineração de keyword deles era o webhook n8n, que não produz
+    `conjunto_pago` — e o `/provar` recusa com N8N_PAID_ELIGIBILITY_CONTRACT_
+    UNSUPPORTED. Sem esta ponte, nenhum card real chegava à elegibilidade paga.
+    O cluster nasce sob o MESMO id (a FK foi retirada na v7_08), que é o id que
+    o cockpit consulta.
+    """
+    opp = await supa.get_entity_opportunity(opp_id)
+    if not opp:
+        return None
+    ent = await supa.get_entity(int(opp.get("entity_id") or 0)) or {}
+    nome = ent.get("canonical_name")
+    if not nome:
+        return None
+    return {
+        "id": opp_id,
+        "run_id": opp.get("run_id"),
+        "main_keyword": nome,
+        "country": ent.get("country"),
+        "country_code": opp.get("country_code") or ent.get("country_code"),
+        "reasoning": opp.get("gold_reason") or opp.get("concrete_pain") or ent.get("description"),
+        "pain_point": opp.get("concrete_pain"),
+        "origem_card": "entidade",
+    }
+
+
 async def _resolve_opportunity(
-    supa: SupabaseService, opp_id: int, body: Optional[MineRequest]
+    supa: SupabaseService, opp_id: int, body: Optional[MineRequest],
+    *, aceitar_entidade: bool = False,
 ) -> tuple[Dict[str, Any], bool]:
-    """Return (opportunity, from_db). from_db=False means the inline body was used (dry mode)."""
+    """Return (opportunity, from_db). from_db=False means the inline body was used (dry mode).
+
+    `aceitar_entidade` só vale para a mineração: o funil clássico desta rota não
+    é o funil de entidade, que tem rota própria.
+    """
     if supa.enabled:
         op = await supa.get_opportunity(opp_id)
         if op:
             return op, True
+        if aceitar_entidade:
+            op = await _oportunidade_de_entidade(supa, opp_id)
+            if op:
+                return op, True
     if body and body.opportunity:
         return {**body.opportunity, "id": opp_id}, False
     raise HTTPException(
@@ -323,9 +362,16 @@ async def mine(opp_id: int, body: Optional[MineRequest] = Body(default=None)) ->
     supa = SupabaseService(settings)
     ctx = _build_context(body.engine if body else None, body.model if body else None)
 
-    op, from_db = await _resolve_opportunity(supa, opp_id, body)
+    op, from_db = await _resolve_opportunity(supa, opp_id, body, aceitar_entidade=True)
+    entrada_do_dono: Dict[str, Any] = {}
+    if body and body.teto_cpc_do_dono is not None:
+        entrada_do_dono["teto_do_dono"] = body.teto_cpc_do_dono
+        entrada_do_dono.setdefault("evidencia", {})["teto_fonte"] = body.teto_fonte
+    if body and body.congruencia is not None:
+        entrada_do_dono["congruencia"] = body.congruencia
+        entrada_do_dono.setdefault("evidencia", {})["congruencia_fonte"] = body.congruencia_fonte
     try:
-        result = await MiningOrchestrator(ctx).run(op)
+        result = await MiningOrchestrator(ctx).run(op, **entrada_do_dono)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Falha no Minerador (Fase 2): {exc}")
 
@@ -362,7 +408,9 @@ async def mine(opp_id: int, body: Optional[MineRequest] = Body(default=None)) ->
                     "engine": result.get("engine"),
                 }
             )
-            await supa.update_opportunity(opp_id, {"status": "mining"})
+            if op.get("origem_card") != "entidade":
+                # O kanban do card de entidade é dele; minerar não o move.
+                await supa.update_opportunity(opp_id, {"status": "mining"})
             await supa.insert_logs(_logs_to_rows(ctx.logs, op.get("run_id")))
             persisted = bool(row)
         except Exception as exc:  # noqa: BLE001
@@ -505,7 +553,9 @@ from app.agents.mining.portao_conjunto_pago import (  # noqa: E402
 )
 from app.seguranca.identidade import Identidade  # noqa: E402
 
-from pydantic import BaseModel  # noqa: E402
+from typing import Literal  # noqa: E402
+
+from pydantic import BaseModel, Field  # noqa: E402
 
 #: Um motivo tem de dizer alguma coisa. "ok", "sim" e "." são assinatura sem
 #: declaração — e é a declaração que serve à auditoria depois, quando alguém
@@ -752,6 +802,77 @@ async def revisar_conjunto_pago(
             detail=f"O `conjunto_pago` gravado está ilegível: {exc}",
         ) from exc
     return _corpo_da_revisao(opportunity_id, cluster, conjunto)
+
+
+class ReavaliacaoConjuntoPagoRequest(BaseModel):
+    """Teto e congruência do dono sobre um conjunto JÁ minerado.
+
+    Os termos só existem depois da mineração, e congruência é termo × página:
+    por isso ela não pode ser declarada antes. A reavaliação refabrica o
+    conjunto a partir dos `funis_sugeridos` gravados — determinística, sem
+    chamada paga — e grava um cluster NOVO; o anterior fica como histórico.
+    """
+
+    run_id: Optional[int] = None
+    teto_cpc_do_dono: float = Field(..., gt=0)
+    teto_fonte: str = Field(..., min_length=20)
+    destino_url: str = Field(..., min_length=10)
+    congruencia_por_termo: Dict[str, Literal["congruente", "incongruente"]] = Field(..., min_length=1)
+    congruencia_fonte: str = Field(..., min_length=20)
+
+
+@router.post("/opportunities/{opportunity_id}/conjunto-pago/reavaliar")
+async def reavaliar_conjunto_pago(
+    opportunity_id: int = Path(..., ge=1),
+    body: ReavaliacaoConjuntoPagoRequest = Body(...),
+    identidade: Identidade = Depends(exigir_admin),
+) -> Dict[str, Any]:
+    from app.agents.mining.funnel_factory import funnel_factory
+    from app.agents.mining.paid_eligibility import normalizar_termo
+
+    settings = get_settings()
+    supa = SupabaseService(settings)
+    cluster = await _cluster_do_card(supa, opportunity_id, body.run_id)
+    if parece_produzido_fora_do_motor(cluster):
+        raise HTTPException(status_code=409, detail=(
+            f"{N8N_SEM_CONTRATO}: cluster do n8n não é refabricado — as métricas dele "
+            "não carregam o estado da medição. Minere pelo motor Python."))
+    funis = cluster.get("funis_sugeridos") or []
+    if not funis:
+        raise HTTPException(status_code=409, detail="O cluster não guarda `funis_sugeridos`; não há o que refabricar.")
+
+    mapa = {normalizar_termo(k): v for k, v in body.congruencia_por_termo.items()}
+    fila = funnel_factory(
+        {"funis_sugeridos": funis},
+        teto_do_dono=body.teto_cpc_do_dono,
+        congruencia=mapa,
+        evidencia={
+            "teto_fonte": body.teto_fonte,
+            "congruencia_fonte": body.congruencia_fonte,
+            "destino_url": body.destino_url,
+            "reavaliado_de_cluster": cluster.get("id"),
+            "reavaliado_por": identidade.email or identidade.sub,
+        },
+    )
+    novo = {k: v for k, v in cluster.items() if k not in ("id", "created_at", "updated_at")}
+    novo["factory_output"] = fila
+    novo["warnings"] = list(cluster.get("warnings") or []) + [
+        f"conjunto reavaliado a partir do cluster {cluster.get('id')} com teto e congruência do dono"]
+    row = await supa.insert_cluster(novo)
+
+    funis_resumo = []
+    for item in fila:
+        cp = (item.get("keywords_campanha") or {}).get("conjunto_pago") or {}
+        sel = [d.get("termo") for d in cp.get("selected_keywords") or []]
+        funis_resumo.append({
+            "funil": item.get("project_name"),
+            "selecionadas": len(sel),
+            "bloqueadores": cp.get("blockers") or [],
+            "sem_veredito": [t for t in (d.get("termo") for d in cp.get("candidates") or [])
+                             if normalizar_termo(t) not in mapa],
+        })
+    return {"opportunity_id": opportunity_id, "cluster_anterior": cluster.get("id"),
+            "cluster_novo": (row or {}).get("id"), "funis": funis_resumo}
 
 
 @router.post("/opportunities/{opportunity_id}/conjunto-pago/aprovar")
