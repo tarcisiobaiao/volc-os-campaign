@@ -67,7 +67,8 @@ def test_bloco_do_prompt_presente_ausente_e_nao_entregue():
 def _cockpit(promessa):
     origem = SimpleNamespace(
         nicho="Senac", url_final="https://exemplo.com.br/r/senac/", pais="BR", idioma="pt",
-        vertical="informativo", fatos=(), promessa_da_lp=promessa)
+        vertical="informativo", fatos=(), promessa_da_lp=promessa,
+        texto_da_lp="Os cursos gratuitos do Senac são publicados por Departamento Regional.")
     return SimpleNamespace(origem=origem)
 
 
@@ -92,12 +93,19 @@ def test_escrever_entrega_a_promessa_da_lp_ao_juiz():
     assert "NÃO ENTREGUE" not in u
 
 
-def test_escrever_sem_promessa_diz_a_ausencia_ao_juiz():
-    u = _prompt_do_juiz(_cockpit({"estado": "ausente",
-                                  "motivo_ausencia": "o state.json do run não está no disco"}))
-    assert "AUSENTE (o state.json do run não está no disco)" in u
-    u = _prompt_do_juiz(_cockpit(None))
-    assert "NÃO ENTREGUE a este juiz" in u
+def test_escrever_sem_promessa_nao_escreve_e_diz_por_que():
+    """Desde 09/10/2026 a ausência não vai mais ao juiz: a escrita é recusada
+    antes de qualquer chamada (card 106). O bloco de ausência continua dizendo
+    o motivo para quem o monta direto."""
+    import pytest
+
+    for promessa in ({"estado": "ausente", "motivo_ausencia": "o state.json do run não está no disco"},
+                     None):
+        with pytest.raises(em.LpForaDoBriefing, match="promessa da LP"):
+            em.escrever(_cockpit(promessa), keywords=["cursos senac gratuitos"],
+                        cliente=ClienteMock([]))
+    assert "AUSENTE (o state.json do run não está no disco)" in js.bloco_promessa_da_lp(
+        {"estado": "ausente", "motivo_ausencia": "o state.json do run não está no disco"})
 
 
 def test_cockpit_leva_a_promessa_da_lp_na_origem():

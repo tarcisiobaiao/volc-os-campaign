@@ -364,7 +364,10 @@ def _cockpit():
                                   ("F5", "prazo", "após aderir")))
     origem = SimpleNamespace(nicho="Saque-Aniversário FGTS",
                              url_final="https://exemplo.com.br/r/fgts/",
-                             pais="BR", idioma="pt", vertical="informativo", fatos=fatos)
+                             pais="BR", idioma="pt", vertical="informativo", fatos=fatos,
+                             # Desde 09/10/2026 a copy não é escrita sem a LP no briefing.
+                             texto_da_lp="Guia do saque-aniversário do FGTS: prazos e regras.",
+                             promessa_da_lp={"estado": "presente", "titulo": "Saque-Aniversário FGTS"})
     return SimpleNamespace(origem=origem)
 
 

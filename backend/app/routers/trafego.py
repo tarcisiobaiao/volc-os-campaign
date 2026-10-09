@@ -1208,6 +1208,22 @@ async def escrever_copy(body: CopyPedido = Body(...)) -> Any:
             detail="Sem keywords selecionadas não há o que ancorar: a copy é "
                    "escrita contra os termos que vão para o anúncio.")
 
+    # Antes de gravar a linha e de gastar token: a LP chegou ao briefing?
+    # Medido no card 106 (09/10/2026): sem ela, 29 chamadas pagas escreveram
+    # assunto e serviço que a página não tem.
+    pp_, _ = _ponte()
+    from volc_ads.copy.encomendar import faltas_da_lp_no_briefing
+    cockpit_ = await asyncio.to_thread(
+        lambda: pp_.montar_cockpit(pp_.carregar(body.opportunity_id, run_id=body.run_id)))
+    faltas = faltas_da_lp_no_briefing(cockpit_)
+    if faltas:
+        raise HTTPException(status_code=409, detail={
+            "codigo": "LP_FORA_DO_BRIEFING",
+            "mensagem": "A copy é escrita contra o que a página entrega, e isto não "
+                        "chegou ao briefing: " + "; ".join(faltas),
+            "faltas": faltas,
+            "nada_foi_gasto": True,
+        })
     supa = _supa()
     existente = await _linha_de_copy(supa, body.opportunity_id, body.run_id)
 

@@ -142,8 +142,13 @@ As três perguntas que só você responde:
    destino não entrega: "Ver vagas abertas" quando a página só explica como
    consultar no portal oficial. CTA bom nomeia o avanço que o leitor quer
    ("ver", "descobrir se tenho direito", "encontrar a turma") e o destino
-   entrega exatamente isso. Os TERMOS DE BUSCA dizem o que o leitor quer; se
-   vierem NÃO COLETADOS, não presuma a busca.
+   entrega exatamente isso. Também é erro (regra 'destino') anunciar ASSUNTO
+   que o CONTEÚDO ENTREGUE não trata ("Calendário" quando a página não traz
+   datas; "valor" quando não traz valor) e prometer SERVIÇO que o site não
+   executa quando o destino é guia: cadastrar, consultar, entregar, corrigir,
+   liberar ("Cadastro Grátis", "Consultar pelo CPF", "Entrega de Gás"). Os
+   TERMOS DE BUSCA dizem o que o leitor quer; se vierem NÃO COLETADOS, não
+   presuma a busca.
    Identidade (regra 'identidade'): só quando o texto faz o leitor supor que o
    anunciante É o órgão, o banco ou o programa, ou fala por ele. Não exija
    aviso de independência em todo recurso.
@@ -251,7 +256,13 @@ def regras_do_juiz(*, idioma: str = "pt", vertical: str = "informativo",
     return regras
 
 
-def bloco_promessa_da_lp(promessa: Any) -> str:
+#: Quanto do conteúdo da LP vai ao juiz. Trecho, não o artigo: o juiz precisa
+#: saber DE QUE a página trata para julgar assunto e serviço, e o tamanho
+#: declarado deixa claro quando ele viu só parte.
+LIMITE_CONTEUDO_LP = 3000
+
+
+def bloco_promessa_da_lp(promessa: Any, conteudo: str | None = None) -> str:
     """A promessa da LP (`pautador_ponte._promessa_da_lp`) como texto do prompt.
 
     `presente` → título, subtítulo e CTAs, com a fonte. `ausente` → a ausência
@@ -272,6 +283,17 @@ def bloco_promessa_da_lp(promessa: Any) -> str:
         linhas.append(f"  CTA[{i}]: {cta!r}")
     if promessa.get("fonte"):
         linhas.append(f"  (fonte: {promessa['fonte']})")
+    # ⚠️ Medido no card 106 em 09/10/2026: com só título/subtítulo/CTA o juiz
+    # não tinha como saber que a página não fala de calendário, e "Calendário
+    # Gás do Povo" passou. O assunto entregue vem do texto da LP.
+    texto = " ".join(str(conteudo or "").split())
+    if texto:
+        trecho = texto[:LIMITE_CONTEUDO_LP]
+        linhas.append(f"  CONTEÚDO ENTREGUE (trecho de {len(trecho)} de {len(texto)} caracteres; "
+                      f"assunto fora dele é assunto que a página não trata): {trecho!r}")
+    else:
+        linhas.append("  CONTEÚDO ENTREGUE: NÃO RECEBIDO — não presuma que a página trata "
+                      "de assunto além do título, do subtítulo e dos CTAs.")
     return "\n".join(linhas)
 
 

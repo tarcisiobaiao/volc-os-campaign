@@ -50,3 +50,31 @@ def test_ano_como_data_de_fato_ou_norma_nao_e_rotulo():
              "descriptions": ["Conteúdo apoiado na Resolução CCFGTS 1.130/2025."],
              "callouts": [], "sitelinks": []}
     assert _c12_ano_passado(dados, _pedido()) == []
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("texto", [
+    "Calendário de 2025", "Regras de 2024", "Valores de 2023", "Regras em 2024",
+    "Tabela do Gás do Povo 2025", "Gás do Povo de 2025", "Critérios para 2024",
+])
+def test_preposicao_nao_salva_ano_que_rotula_o_estado(texto):
+    dados = {"headlines": [texto], "descriptions": [], "callouts": [], "sitelinks": []}
+    assert [a.codigo for a in _c12_ano_passado(dados, _pedido())] == ["C12.ano_passado"]
+
+
+@pytest.mark.parametrize("texto", [
+    "A regra mudou em 2025", "Desde 2024 no CadÚnico", "Atualizado em março de 2025",
+    "Resolução CCFGTS 1.130/2025", "Lei 14.284 de 2021", "Orientação de 30/06/2025",
+    "MP nº 1.300/2025 criou o programa", "A partir de 2024 o cadastro mudou",
+])
+def test_data_de_fato_e_numero_de_norma_passam(texto):
+    dados = {"headlines": [], "descriptions": [texto], "callouts": [], "sitelinks": []}
+    assert _c12_ano_passado(dados, _pedido()) == []
+
+
+def test_o_achado_nunca_manda_trocar_pelo_ano_corrente_sem_lastro():
+    dados = {"headlines": ["Calendário de 2025"], "descriptions": [], "callouts": [], "sitelinks": []}
+    (a,) = _c12_ano_passado(dados, _pedido())
+    assert "não troque pelo ano corrente sem lastro" in a.detalhe

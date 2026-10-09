@@ -177,6 +177,37 @@ def encomendar(
     return enc, descartados
 
 
+class LpForaDoBriefing(ValueError):
+    """O conteúdo ou a entrega da LP não chegou ao briefing. Nada foi gasto."""
+
+
+def faltas_da_lp_no_briefing(cockpit: Any) -> list[str]:
+    """O que da LP não chegou ao briefing da copy — vazio quando chegou tudo.
+
+    ⚠️ Medido no card 106 em 09/10/2026: a ponte não achava o `state.json`, o
+    briefing saiu sem texto nem fatos da LP, e a cascata pagou 29 chamadas para
+    escrever "Calendário 2025" e "Cadastro Grátis" numa página que não trata de
+    nenhum dos dois. Sem o que a página entrega, não há contra o que ancorar.
+    """
+    origem = getattr(cockpit, "origem", None)
+    faltas: list[str] = []
+    if not str(getattr(origem, "texto_da_lp", "") or "").strip():
+        faltas.append("texto da LP (o conteúdo que a página entrega)")
+    promessa = getattr(origem, "promessa_da_lp", None)
+    if not isinstance(promessa, dict) or promessa.get("estado") != "presente":
+        motivo = (promessa or {}).get("motivo_ausencia") if isinstance(promessa, dict) else None
+        faltas.append("promessa da LP (título, subtítulo e CTAs)"
+                      + (f": {motivo}" if motivo else ""))
+    return faltas
+
+
+def exigir_lp_no_briefing(cockpit: Any) -> None:
+    faltas = faltas_da_lp_no_briefing(cockpit)
+    if faltas:
+        raise LpForaDoBriefing("a copy não é escrita sem a LP no briefing; faltam: "
+                               + "; ".join(faltas))
+
+
 def escrever(
     cockpit: Any,
     *,
@@ -212,6 +243,9 @@ def escrever(
     """
     from .cliente import criar
 
+    # Antes de qualquer token: a LP precisa ter chegado ao briefing.
+    exigir_lp_no_briefing(cockpit)
+
     enc, descartados = encomendar(
         cockpit, keywords=keywords, certificacoes=certificacoes,
         match_type=match_type, url_final=url_final, vertical=vertical,
@@ -237,8 +271,9 @@ def escrever(
             destino=_destino_para_juiz(enc),
             # O que a LP promete (título, subtítulo, CTA), da ponte. Sem ela, o
             # bloco diz AUSENTE com o motivo, ou "não entregue".
-            promessa_lp=_js.bloco_promessa_da_lp(getattr(
-                getattr(cockpit, "origem", None), "promessa_da_lp", None)),
+            promessa_lp=_js.bloco_promessa_da_lp(
+                getattr(getattr(cockpit, "origem", None), "promessa_da_lp", None),
+                getattr(getattr(cockpit, "origem", None), "texto_da_lp", None)),
             pais=enc.pais, idioma=enc.idioma or "pt", vertical=enc.vertical)
     t0 = time.monotonic()
     r = ciclo.gerar(

@@ -689,14 +689,37 @@ def checar(dados: dict, pedido: Pedido, *, semantico_ativo: bool = False) -> lis
     return achados
 
 
-def _c12_ano_passado(dados: dict, pedido: Pedido) -> list[Achado]:
-    """Ano anterior ao corrente em qualquer recurso — sempre, com ou sem fato.
+#: Ano como NÚMERO DE NORMA: "1.130/2025", "Lei 14.284 de 2021", "MP nº 1.300/2025".
+_NORMA_ANTES_DO_ANO = re.compile(
+    r"(?:/\s*$)|(?i:\b(?:lei|decreto|resolu[cç][aã]o|portaria|instru[cç][aã]o\s+normativa|"
+    r"medida\s+provis[oó]ria|mp|emenda)\b[^,;:!?]{0,24}?(?:\bde\s+)?$)")
+#: Ano como DATA DE UM FATO: "mudou em 2025", "desde 2024", "em março de 2025".
+_FATO_ANTES_DO_ANO = re.compile(
+    r"(?i)(?:\b(?:desde|mudou\s+em|mudaram\s+em|alterad[oa]s?\s+em|criad[oa]\s+em|"
+    r"institu[ií]d[oa]\s+em|lan[cç]ad[oa]\s+em|a\s+partir\s+de|em)\s*$)|"
+    r"(?:\b(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|"
+    r"novembro|dezembro)\s+de\s*$)")
+#: Substantivo que descreve o ESTADO ATUAL: com ele o ano é rótulo, qualquer que
+#: seja a preposição — "Calendário de 2025", "Regras em 2024".
+_ROTULO_ANTES_DO_ANO = re.compile(
+    r"(?i)\b(?:calend[aá]rios?|regras?|tabelas?|valor(?:es)?|cronogramas?|datas?|listas?|"
+    r"pagamentos?|edital|inscri[cç](?:[aã]o|[oõ]es)|parcelas?|reajustes?|pisos?|tetos?|"
+    r"crit[eé]rios?|requisitos?)\s+(?:(?:de|do|da|dos|das|em|para)\s+)?$")
 
-    Medido no card 106 em 09/10/2026: sem texto da LP o brief não tem fatos, e
+
+def _c12_ano_passado(dados: dict, pedido: Pedido) -> list[Achado]:
+    """Ano anterior ao corrente rotulando o estado atual — sempre, com ou sem fato.
+
+    Medido no card 106 em 09/10/2026: sem texto da LP o brief não tinha fatos, e
     `C7` só cobra lastro quando há fato. A cascata entregou "Gás do Povo
-    Calendário 2025" e "Regras do Gás do Povo 2024" em 2026. Anúncio que vende o
-    estado ATUAL de um programa com o ano passado é desatualização afirmada —
-    não depende de juiz de sentido para ser visto.
+    Calendário 2025" e "Regras do Gás do Povo 2024" em 2026.
+
+    ⚠️ Revisão do mesmo dia: a primeira versão deixava passar qualquer ano
+    precedido de preposição — e "Calendário de 2025" escapava pelo "de". Agora o
+    padrão é REPROVAR; só passa o ano que é claramente história (data de um
+    fato) ou número de norma, e mesmo a preposição não salva o ano depois de um
+    substantivo de estado ("Regras de 2024"). O achado nunca troca o ano: pede
+    para tirar ou para citar o fato que o sustenta.
     """
     import datetime as _dt
 
@@ -704,22 +727,20 @@ def _c12_ano_passado(dados: dict, pedido: Pedido) -> list[Achado]:
     fora: list[Achado] = []
 
     def conferir(texto: object, alvo: Alvo) -> None:
-        for m in re.finditer(RX_ANO, str(texto or "")):
+        bruto = str(texto or "")
+        for m in re.finditer(RX_ANO, bruto):
             ano = m.group(0)
             if int(ano) >= ref:
                 continue
-            # Ano como DATA de um fato ("mudou em 2025", "desde 2024") ou como
-            # número de norma ("Resolução 1.130/2025") é história, não rótulo.
-            # O defeito é o ano rotulando o estado atual: "Calendário 2025".
-            antes = str(texto)[:m.start()].rstrip()
-            if antes.endswith("/") or re.search(
-                    r"(?i)\b(em|desde|de|do|da|ate|até|no|na|lei|decreto|resolu[cç][aã]o|portaria|n[ºo°])\.?$",
-                    antes):
+            antes = bruto[:m.start()]
+            if not _ROTULO_ANTES_DO_ANO.search(antes) and (
+                    _NORMA_ANTES_DO_ANO.search(antes) or _FATO_ANTES_DO_ANO.search(antes)):
                 continue
             fora.append(Achado(
                 "C12.ano_passado", Classe.FORMA_REESCREVER,
-                f"cita {ano}, anterior a {ref}: troque pelo ano corrente ou tire o ano "
-                f"→ {texto!r}", alvo))
+                f"cita {ano} como se fosse o estado atual (estamos em {ref}): tire o ano "
+                f"ou cite o fato que sustenta {ano}; não troque pelo ano corrente sem "
+                f"lastro → {bruto!r}", alvo))
             return
 
     for tipo, chave in (("headline", "headlines"), ("description", "descriptions"),
