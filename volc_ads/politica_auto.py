@@ -35,6 +35,8 @@ de cobertura onde há palpite.
 """
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 
 from .gads.errors import ChavePolitica, FalhaGads
@@ -46,6 +48,28 @@ from .gads.errors import ChavePolitica, FalhaGads
 #: fundo de garantia. Não há leitura da frase em que ela seja imprópria para
 #: família. É ruído de classificador, e isenção é o remédio desenhado para isso.
 ISENTAR_SOZINHO: frozenset[str] = frozenset({"NON_FAMILY_SAFE"})
+
+#: O CONTEXTO em que cada política da allowlist é ruído medido.
+#:
+#: ⚠️ Revisão de 09/10/2026: o nome da política sozinho não basta. O caso que
+#: justificou `NON_FAMILY_SAFE` é saque de benefício público ("como sacar o
+#: fgts na caixa"); um texto marcado com a mesma política sem esse contexto não
+#: é o falso positivo conhecido, e pedir isenção seria afirmar ao Google algo
+#: que ninguém verificou. Fora do contexto, o texto é removido.
+#:
+#: A regra exige as DUAS metades: o ato de sacar E um benefício/órgão público.
+_SAQUE = r"\b(sac(ar|a|o|ou|ando|ado|ada)|saques?)\b"
+_BENEFICIO_PUBLICO = (r"\b(fgts|pis|pasep|inss|abono(\s+salarial)?|caixa|"
+                      r"seguro[\s-]desemprego|bolsa\s+fam[ií]lia|benef[ií]cio)\b")
+CONTEXTO_DO_FALSO_POSITIVO: dict[str, tuple[re.Pattern[str], ...]] = {
+    "NON_FAMILY_SAFE": (re.compile(_SAQUE, re.I), re.compile(_BENEFICIO_PUBLICO, re.I)),
+}
+
+
+def no_contexto_medido(politica: str, texto: str) -> bool:
+    """O texto tem TODAS as marcas do falso positivo medido para esta política?"""
+    padroes = CONTEXTO_DO_FALSO_POSITIVO.get(politica)
+    return bool(padroes) and all(p.search(texto or "") for p in padroes)
 
 
 @dataclass(frozen=True)
@@ -113,11 +137,17 @@ def decidir(falha: FalhaGads, *,
             diario.append(f"✂ {nome} sobre {texto!r}: não é isentável — removida")
             continue
 
-        if nome in isentar_sozinho:
+        if nome in isentar_sozinho and no_contexto_medido(nome, texto):
             if chave is not None:
                 isentar.append(chave)
                 diario.append(f"✓ {nome} sobre {texto!r}: isenção pedida "
-                              f"(ruído de classificador conhecido)")
+                              f"(ruído de classificador conhecido, no contexto medido)")
+            continue
+
+        if nome in isentar_sozinho:
+            remover.append(texto)
+            diario.append(f"✂ {nome} sobre {texto!r}: política da allowlist, mas fora do "
+                          f"contexto do falso positivo medido — removida em vez de isentada")
             continue
 
         # Isentável, mas fora da allowlist: o padrão seguro. Pedir isenção de

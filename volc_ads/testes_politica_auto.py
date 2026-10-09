@@ -86,7 +86,9 @@ def test_formato_achado_nao_e_tratado_aqui():
 def test_o_diario_diz_o_que_foi_feito_com_cada_uma():
     """Sem isto o operador vê a campanha subir e não sabe o que saiu."""
     d = decidir(FalhaGads(erros=(
-        _erro("NON_FAMILY_SAFE", "a"), _erro("PERSONAL_LOANS", "b"),
+        # O texto precisa estar no contexto medido: desde 09/10/2026 o nome da
+        # política sozinho não isenta.
+        _erro("NON_FAMILY_SAFE", "como sacar o fgts na caixa"), _erro("PERSONAL_LOANS", "b"),
     )))
     assert len(d.diario) == 2
     assert any("isenção pedida" in l for l in d.diario)
@@ -185,3 +187,30 @@ def test_a_isencao_encontra_a_operacao_pelo_TEXTO_e_nao_pelo_indice():
     fonte = inspect.getsource(subir._com_isencoes)
     assert "violating_text" in fonte
     assert "keyword.text" in fonte
+
+
+# ── NON_FAMILY_SAFE: isenção só no contexto medido (revisão 09/10/2026) ─────
+
+@pytest.mark.parametrize("texto", [
+    "como sacar o fgts na caixa",          # o caso medido em 19/08/2026
+    "saque do pis na caixa",
+    "como sacar o abono salarial",
+])
+def test_non_family_safe_no_contexto_medido_e_isentado(texto):
+    d = decidir(FalhaGads(erros=(_erro("NON_FAMILY_SAFE", texto),)))
+    assert [c.violating_text for c in d.isentar] == [texto]
+    assert d.remover == ()
+
+
+@pytest.mark.parametrize("texto", [
+    "conteudo adulto gratis",
+    "fgts",                                # benefício sem o ato de sacar
+    "sacar dinheiro rapido",               # saque sem benefício público
+])
+def test_non_family_safe_fora_do_contexto_e_removido_nao_isentado(texto):
+    """O nome da política sozinho não basta: sem o contexto do falso positivo
+    conhecido, isentar seria afirmar ao Google algo que ninguém verificou."""
+    d = decidir(FalhaGads(erros=(_erro("NON_FAMILY_SAFE", texto),)))
+    assert d.isentar == ()
+    assert d.remover == (texto,)
+    assert any("fora do contexto" in linha for linha in d.diario)
