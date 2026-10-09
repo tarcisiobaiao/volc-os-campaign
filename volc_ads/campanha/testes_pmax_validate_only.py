@@ -72,3 +72,42 @@ def test_porta_do_selo_continua_recusando_pmax_sem_mensuracao(monkeypatch):
     preparo = subir.preparar(CID, b, login_customer_id=MCC, canal='PERFORMANCE_MAX')
     assert preparo.selo is None
     assert preparo.recusa_local and 'mensuracao' in preparo.recusa_local
+
+
+# ── meta da campanha × campo depreciado (revisão 09/10/2026, doc v25) ───────
+
+def _achados_de_mensuracao(r):
+    return {(a.severidade, a.valor) for a in r.achados if a.campo == "pmax.mensuracao"}
+
+
+def _brief_compra(metas=()):
+    from volc_ads.campanha.pmax_config import MetaDeConversao  # noqa: F401
+    acao = _acao(categoria="PURCHASE", inclui_em_conversoes=False)
+    from volc_ads.campanha.testes_pmax import _v25
+    return _brief(pmax=_v25(mensuracao=_mensuracao(acao), metas_de_conversao=tuple(metas)))
+
+
+def test_sem_meta_da_campanha_a_recusa_continua_e_diz_que_e_heranca_da_conta():
+    _, r = pmax.construir(CID, _brief_compra(), login_customer_id=MCC)
+    assert ("erro", "FORA_DA_METRICA_DE_CONVERSOES") in _achados_de_mensuracao(r)
+    texto = " ".join(a.motivo for a in r.achados if a.valor == "FORA_DA_METRICA_DE_CONVERSOES")
+    assert "HERDA" in texto and "metas_de_conversao" in texto
+
+
+def test_meta_da_campanha_biddable_declarada_tira_o_campo_depreciado_do_veto():
+    from volc_ads.campanha.pmax_config import MetaDeConversao
+    _, r = pmax.construir(CID, _brief_compra([MetaDeConversao("PURCHASE", "WEBSITE", True)]),
+                          login_customer_id=MCC)
+    achados = _achados_de_mensuracao(r)
+    assert ("erro", "FORA_DA_METRICA_DE_CONVERSOES") not in achados
+    assert ("aviso", "CAMPO_DEPRECADO_DIVERGENTE") in achados
+
+
+def test_meta_da_campanha_declarada_nao_biddable_e_recusa_real():
+    from volc_ads.campanha.pmax_config import MetaDeConversao
+    acao = _acao(categoria="PURCHASE")
+    from volc_ads.campanha.testes_pmax import _v25
+    b = _brief(pmax=_v25(mensuracao=_mensuracao(acao),
+                         metas_de_conversao=(MetaDeConversao("PURCHASE", "WEBSITE", False),)))
+    _, r = pmax.construir(CID, b, login_customer_id=MCC)
+    assert ("erro", "META_NAO_BIDDABLE") in _achados_de_mensuracao(r)

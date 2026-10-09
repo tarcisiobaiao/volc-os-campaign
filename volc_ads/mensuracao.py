@@ -794,15 +794,30 @@ def avaliar(
     # `None` (campo não lido) NÃO recusa, porque não lido nunca foi um `False`.
     metrificadas = tuple(a for a in primarias
                          if a.incluida_em_metricas is not False)
+    # ⚠️ Revisão de 09/10/2026, pela documentação v25: o lance de uma campanha
+    # segue `primary_for_goal` + a meta DA CAMPANHA (que herda o padrão da conta
+    # na criação e pode ser declarada). `include_in_conversions_metric` é o campo
+    # de relatório que reflete o padrão da CONTA. Se a meta da campanha
+    # planejada está declarada biddable, o campo não recusa: vira aviso.
+    if not metrificadas and lida.meta_biddable is True:
+        avisos.append(Bloqueio(
+            CAMPO_DEPRECADO_DIVERGENTE,
+            f"as {len(primarias)} ações primárias estão com "
+            "include_in_conversions_metric=false (padrão da CONTA, campo de "
+            "relatório depreciado), mas a meta desta campanha está declarada "
+            "biddable — é ela que o lance segue.",
+            fonte=lida.procedencia))
+        metrificadas = primarias
     if not metrificadas:
         bloqueios.append(Bloqueio(
             FORA_DA_METRICA_DE_CONVERSOES,
             f"as {len(primarias)} ações primárias estão com "
-            "include_in_conversions_metric=false, e uma ação fora dessa métrica "
-            "não entra na contagem que o lance otimiza. ⚠️ Este campo está "
-            "DEPRECIADO em favor de primary_for_goal — a recusa vem dele, e "
-            "está dita em voz alta em vez de aparecer como 'nenhuma ação "
-            "válida'.",
+            "include_in_conversions_metric=false: o padrão da CONTA não as conta "
+            "(meta da categoria não-biddable). Sem meta da campanha declarada, a "
+            "campanha nova HERDA esse padrão e o lance não as persegue. Saídas: "
+            "declarar a meta da campanha (`metas_de_conversao`) ou mudar o padrão "
+            "da conta — decisão do dono. ⚠️ O campo é de relatório e depreciado; "
+            "ele só decide aqui porque nenhuma meta da campanha foi declarada.",
             fonte=lida.procedencia))
         return veredito(NAO_PRONTA)
     primarias = metrificadas

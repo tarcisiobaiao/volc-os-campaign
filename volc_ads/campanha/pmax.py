@@ -624,6 +624,34 @@ def _checar_contrato(brief: Brief, r: validacao.Resultado, cid: str = ""):
     return v
 
 
+def _com_meta_da_campanha(leitura, recibo, cfg):
+    """A meta EFETIVA desta campanha, quando o plano a declara.
+
+    Documentação v25: o lance segue `primary_for_goal` + a meta da campanha,
+    que herda o padrão da conta na criação e pode ser declarada
+    (`CampaignConversionGoal`, que o grafo já emite a partir de
+    `metas_de_conversao`). Sem declaração, `None` — o recibo não lê o padrão
+    da conta, e ausência não é "não é biddable". O casamento é por CATEGORIA:
+    a ação lida não traz a origem.
+    """
+    metas = tuple(getattr(cfg, "metas_de_conversao", ()) or ())
+    if not metas:
+        return leitura
+    primarias = {str(getattr(a, "categoria", "") or "").upper()
+                 for a in getattr(recibo, "acoes", ()) or ()
+                 if getattr(a, "primaria_para_meta", None) is not False}
+    sim = {str(m.categoria).upper() for m in metas if m.biddable}
+    nao = {str(m.categoria).upper() for m in metas if not m.biddable}
+    if primarias & sim:
+        valor = True
+    elif primarias and primarias <= nao:
+        valor = False
+    else:
+        return leitura
+    import dataclasses as _dc
+    return _dc.replace(leitura, meta_biddable=valor)
+
+
 def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
                        *, login_customer_id: str, somente_validacao: bool = False) -> None:
     """O portão que separa "monta o payload" de "pode existir gastando".
@@ -708,7 +736,7 @@ def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
         customer_id=str(cid),
         canal=CANAL,
         estrategia_lance=brief.estrategia_lance,
-        leitura=mensuracao.de_recibo(recibo),
+        leitura=_com_meta_da_campanha(mensuracao.de_recibo(recibo), recibo, cfg),
         lances_do_canal=LANCES_PERMITIDOS,
     )
     for bloqueio in veredito.bloqueios:

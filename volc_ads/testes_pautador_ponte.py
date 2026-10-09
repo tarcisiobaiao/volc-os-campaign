@@ -1208,7 +1208,8 @@ def test_cpc_estimado_alterado_nao_muda_brief_nem_payload_do_search() -> None:
 
     def payload(cluster):
         c = montar_cockpit(_linhas(cluster=cluster))
-        b = montar_brief(c, Escolha(cpc_inicial=0.40, budget_diario=15.0, vertical="informativo"),
+        b = montar_brief(c, Escolha(cpc_inicial=0.40, budget_diario=15.0, vertical="informativo",
+                                    carimbo_nome="20261009_120000"),
                          copy=copy_op).brief
         ops, _r = search.construir("5478096539", b, login_customer_id="6016739364")
         return dataclasses.asdict(b), [type(o).serialize(o) if hasattr(type(o), "serialize")
