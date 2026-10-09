@@ -27,6 +27,8 @@ nenhuma leitura no Google, saída 0. Saúde: `gads_campanha_dia` D-1 `ok`.
 2. **Uma única autoridade de agenda**: os workflows n8n D0/D-1 do fato
    campanha-dia existem (inativos). Ligar estas units e o n8n ao mesmo tempo
    duplicaria leituras; o ledger aceitaria, mas a agenda deixaria de ter dono.
+   O `scripts/gate_agenda_unica_gads.py` registra estes timers como alternativa
+   declarada e falha se alguma unit da família aparecer instalada.
 3. `conta.env` com `VOLC_GADS_CONTA=5478096539` e `VOLC_GADS_MCC=4904074301`.
 4. O ledger só aceita `fonte` em `n8n | python_oneshot | backfill_manual`; a
    agenda Python grava `python_oneshot` com `disparo='agenda'` (valor novo de

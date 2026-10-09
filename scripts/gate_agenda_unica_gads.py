@@ -51,6 +51,11 @@ UNITS = [
     "volc-google-intelligence-completa.timer",
     "volc-gads-dia-d0.timer",
     "volc-gads-dia-d1.timer",
+    # coletor de fatos (09/10/2026): alternativa ao n8n, versionada e não instalada
+    "volc-gads-coleta@d0.service",
+    "volc-gads-coleta@d1.service",
+    "volc-gads-coleta-d0.timer",
+    "volc-gads-coleta-d1.timer",
 ]
 
 ok = 0
@@ -161,6 +166,11 @@ ESPERADOS = {
     "n8n/joinads_day_before_simplificado.json",
     "deploy/google-intelligence/volc-google-intelligence-frequente.timer",
     "deploy/google-intelligence/volc-google-intelligence-completa.timer",
+    # Coletor de fatos v12_04/v17_01 (09/10/2026): outra ALTERNATIVA declarada.
+    # Ligar ela E os fluxos n8n do fato campanha-dia daria duas agendas; a
+    # escolha é do dono (deploy/gads-coleta/README.md).
+    "deploy/gads-coleta/volc-gads-coleta-d0.timer",
+    "deploy/gads-coleta/volc-gads-coleta-d1.timer",
 }
 inesperados = sorted(set(achados) - ESPERADOS)
 prova("nenhum artefato capaz de agendar apareceu fora do conjunto declarado",
