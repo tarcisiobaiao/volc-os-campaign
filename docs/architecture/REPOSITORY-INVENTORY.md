@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-08T20:47:34-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-08T21:12:30-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 825 arquivos: 612 Markdown e 213 SQL;
-- 815 versionados e 10 ainda não versionados;
+- 826 arquivos: 613 Markdown e 213 SQL;
+- 815 versionados e 11 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 140 SQL com palavras de mutação de alto risco.
 
@@ -16,7 +16,7 @@ Gerado em `2026-10-08T20:47:34-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 38 |
+| `audit` | 39 |
 | `documentation` | 445 |
 | `generated` | 2 |
 | `module-guide` | 40 |
@@ -201,6 +201,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/CORRECAO-3-FUNIS-PREFLIGHT-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-ATTENTION-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md` | `audit` | — | 0 | 0 |
@@ -305,7 +306,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260908205124_creative_reuse_packs.sql` | `sql-needs-review` | high | 3 | 5 |
 | `supabase/migrations/20260908220817_meta_business_credentials.sql` | `sql-needs-review` | medium | 1 | 0 |
 | `supabase/migrations/20260908224044_meta_reference_visual.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/20260908230430_meta_creative_draft_pack_selection.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

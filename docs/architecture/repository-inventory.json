@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T20:47:34-03:00",
+  "generated_at": "2026-10-08T21:12:30-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 825,
-    "markdown": 612,
+    "files": 826,
+    "markdown": 613,
     "sql": 213,
     "tracked": 815,
-    "untracked": 10,
+    "untracked": 11,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 38,
+      "audit": 39,
       "documentation": 445,
       "generated": 2,
       "module-guide": 40,
@@ -1269,7 +1269,7 @@
       "tracked": true,
       "bytes": 23648,
       "lines": 312,
-      "sha256": "0a823a495805a4191030048fa9741d8ed2c299df5714cb8c77e18ef0e385c1aa",
+      "sha256": "06147df9798d0bc3c1d0a9f711818502ea3cc618c02b950c8ff2b9b0b96e30e9",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1786,6 +1786,18 @@
       "bytes": 4704,
       "lines": 98,
       "sha256": "684ddf0b6c3ff8eeb97032698d75e0851e2ae25f668abc5f373cb2bc2e411aa6",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": false,
+      "bytes": 4615,
+      "lines": 71,
+      "sha256": "4b460d054792427c5fff458d0a53c580d4874c67d35665cdbe0d4c1d29a5ae01",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
