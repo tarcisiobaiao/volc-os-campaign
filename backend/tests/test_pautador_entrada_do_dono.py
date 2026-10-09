@@ -19,7 +19,8 @@ FONTE = "declarado por teste: teto do canário, conferido contra a LP"
 
 def test_sem_entrada_do_dono_o_conjunto_continua_bloqueado():
     _, conjuntos = funnel_factory_com_conjuntos(BPC_LOAS, today=HOJE)
-    assert {"teto_economico_desconhecido", "congruencia_nao_avaliada"} <= set(conjuntos[0].blockers)
+    assert "congruencia_nao_avaliada" in conjuntos[0].blockers
+    assert "teto_economico_desconhecido" not in conjuntos[0].blockers  # anotação desde 09/10
 
 
 def test_com_teto_e_congruencia_os_bloqueadores_saem_e_a_fonte_fica():
@@ -31,8 +32,9 @@ def test_com_teto_e_congruencia_os_bloqueadores_saem_e_a_fonte_fica():
     assert "congruencia_nao_avaliada" not in c.blockers
     assert c.owner_ceiling == 1.0
     assert c.evidence_snapshot["congruencia_fonte"] == FONTE
-    # o teto MUDA decisão: CPC medido acima dele não entra na seleção
-    assert all(d.cpc.valor <= 1.0 for d in c.selected_keywords if d.cpc.tem_numero)
+    # Desde 09/10/2026 o teto NÃO muda decisão: CPC estimado acima dele só anota.
+    acima = [d for d in c.selected_keywords if d.cpc.tem_numero and d.cpc.valor > 1.0]
+    assert acima and all("cpc_estimado_acima_do_teto_declarado" in d.alertas for d in acima)
 
 
 def test_incongruente_rejeita_os_termos():

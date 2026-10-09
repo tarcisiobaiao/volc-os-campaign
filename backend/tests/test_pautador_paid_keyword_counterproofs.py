@@ -509,11 +509,17 @@ def test_L_evidencia_pos_lancamento_nao_justifica_selecao_inicial():
 
 
 def test_M_desconhecido_nao_produz_ready_for_campaign_plan():
-    """M. Sem teto econômico do dono, o conjunto não fica pronto — fica bloqueado."""
+    """M. O conjunto continua NÃO pronto enquanto a congruência não foi avaliada.
+
+    Desde 09/10/2026 o teto ausente é anotação, não bloqueio: ele só servia
+    para comparar com CPC estimado, que não decide mais nada operacional.
+    """
     _item, conjunto = _item_e_conjunto(IPVA)  # owner_ceiling nunca declarado
     assert conjunto.owner_ceiling is None
     assert conjunto.ready_for_campaign_plan is False
-    assert "teto_economico_desconhecido" in conjunto.blockers
+    assert "teto_economico_desconhecido" not in conjunto.blockers
+    assert "teto_economico_do_dono_nao_declarado" in conjunto.alertas
+    assert "congruencia_nao_avaliada" in conjunto.blockers
 
 
 def test_M2_ready_for_campaign_plan_nao_autoriza_campanha():

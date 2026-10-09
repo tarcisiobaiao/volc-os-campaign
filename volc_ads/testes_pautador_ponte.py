@@ -1173,3 +1173,49 @@ def test_media_sai_quando_todas_as_moedas_batem() -> None:
     assert simples.valor == 2.0 and simples.moeda == "USD"
     _, simples, _ = _agregar((k(1.0, None), k(3.0, None)), "proc", None)
     assert simples.valor == 2.0 and simples.moeda is None
+
+
+# ── CPC estimado não chega ao payload (regra do operador, 09/10/2026) ───────
+
+def test_cpc_estimado_alterado_nao_muda_brief_nem_payload_do_search() -> None:
+    """Mesma seleção e mesma configuração do operador; o CPC da mineração
+    removido, multiplicado ou inventado. O Brief e as operações do Search
+    têm de sair idênticos."""
+    import dataclasses
+
+    from volc_ads.campanha import search
+    from volc_ads.campanha.brief import Copy, Sitelink
+
+    copy_op = Copy(
+        headlines=[f"Cartão Negativado {i}" for i in range(1, 9)],
+        descriptions=["Veja as opções para quem está negativado.",
+                      "Entenda limite garantido e requisitos."],
+        sitelinks=[Sitelink(texto="Requisitos", descricao1="Veja o que pedem", descricao2="Antes de pedir"),
+                   Sitelink(texto="Limite", descricao1="Como funciona", descricao2="Passo a passo")],
+        callouts=["Guia informativo", "Sem cadastro aqui"],
+    )
+
+    def cluster_com(f):
+        c = _copy.deepcopy(_CLUSTER)
+        for fila in ("production_ads_queue", "raw_keywords"):
+            for kw in c.get(fila) or []:
+                v = f(kw.get("cpc"))
+                if v is None:
+                    kw.pop("cpc", None)
+                else:
+                    kw["cpc"] = v
+        return c
+
+    def payload(cluster):
+        c = montar_cockpit(_linhas(cluster=cluster))
+        b = montar_brief(c, Escolha(cpc_inicial=0.40, budget_diario=15.0, vertical="informativo"),
+                         copy=copy_op).brief
+        ops, _r = search.construir("5478096539", b, login_customer_id="6016739364")
+        return dataclasses.asdict(b), [type(o).serialize(o) if hasattr(type(o), "serialize")
+                                       else o._pb.SerializeToString() for o in ops]
+
+    base = payload(cluster_com(lambda v: v))
+    for nome, f in {"removido": lambda v: None, "x10": lambda v: None if v is None else v * 10,
+                    "inventado": lambda v: 9.99}.items():
+        assert payload(cluster_com(f)) == base, nome
+    assert base[1], "o builder precisa ter produzido operações para a prova valer"

@@ -1024,27 +1024,24 @@ def decidir_keyword(
     if d.congruencia == "nao_avaliada":
         d.alertas.append("congruencia_termo_anuncio_pagina_nao_avaliada")
 
-    if d.cpc.tem_numero:
-        d.decisao = INCLUDE
-        d.confianca = "media" if d.congruencia == "congruente" else "baixa"
-        d.motivos.append("volume_e_cpc_medidos_com_intencao_compativel")
-        if d.viabilidade == "acima_do_teto":
-            d.decisao = EXPERIMENT
-            d.motivos.append("cpc_medido_acima_do_teto_declarado")
-    else:
-        d.decisao = EXPERIMENT
-        d.confianca = "baixa"
-        d.motivos.append("volume_medido_mas_cpc_sem_medicao")
-        d.bloqueadores.append(f"cpc_{d.cpc.estado}")
+    # ⚠️ REGRA DO OPERADOR (09/10/2026): CPC de Keyword Planner, DataForSEO ou
+    # qualquer fonte é ESTIMATIVA DE PESQUISA e não decide nada operacional —
+    # nem inclusão, nem exclusão, nem prioridade. Até aqui a presença do CPC
+    # separava INCLUDE de EXPERIMENT e o CPC acima do teto rebaixava o termo.
+    # Agora a estimativa só ANOTA; quem decide é intenção, risco, volume e
+    # congruência. CPC observado na conta é outro dado e mora na gestão.
+    d.decisao = INCLUDE
+    d.confianca = "media" if d.congruencia == "congruente" else "baixa"
+    d.motivos.append("volume_medido_com_intencao_compativel")
+    if not d.cpc.tem_numero:
+        d.alertas.append("cpc_estimado_ausente_na_pesquisa")
         motivo_cpc = bruto.get("cpc_motivo_de_ausencia")
         if motivo_cpc:
-            # `average_cpc_micros` só vem com `include_average_cpc=true`, então
-            # a ausência dele pode ser "não pedimos", não "não existe".
             d.alertas.append(str(motivo_cpc))
-        if not d.lance_topo.tem_numero:
-            # Faixa de lance ausente = histórico de leilão recente magro nos
-            # últimos 30 dias. NÃO quer dizer que a keyword é gratuita.
-            d.alertas.append("faixa_de_lance_ausente_indica_historico_de_leilao_magro")
+    if d.viabilidade == "acima_do_teto":
+        d.alertas.append("cpc_estimado_acima_do_teto_declarado")
+    if not d.lance_topo.tem_numero:
+        d.alertas.append("faixa_de_lance_ausente_indica_historico_de_leilao_magro")
 
     if d.amplitude == "ampla":
         d.alertas.append("termo_amplo_pode_puxar_intencao_alheia")
@@ -1433,8 +1430,10 @@ def montar_conjunto(
         else:
             conjunto.excluded_keywords.append(d)
 
+    # O teto do dono só servia para comparar com o CPC ESTIMADO, que não decide
+    # mais nada (regra do operador, 09/10/2026). Ausente, ele é anotação.
     if teto_do_dono is None:
-        conjunto.blockers.append("teto_economico_desconhecido")
+        conjunto.alertas.append("teto_economico_do_dono_nao_declarado")
     if not conjunto.selected_keywords:
         conjunto.blockers.append("nenhuma_keyword_elegivel_selecionada")
 

@@ -270,12 +270,12 @@ def test_6_cpc_e_volume_ausentes_sobrevivem_a_reidratacao():
     assert sem_dado.cpc.estado == AUSENTE and sem_dado.cpc.valor is None
 
 
-def test_6b_teto_nao_declarado_continua_bloqueador_nomeado():
-    """Nenhum valor é inventado para destravar: falta teto, o portão diz qual."""
-    with pytest.raises(portao.PortaoDoConjuntoPago) as e:
-        portao.criterios_do_cluster(_cluster(aprovado=True, teto=None))
-    assert e.value.codigo == portao.BLOQUEADO
-    assert "teto_economico_desconhecido" in e.value.bloqueadores
+def test_6b_teto_nao_declarado_nao_bloqueia_mais_o_conjunto():
+    """Regra do operador (09/10/2026): o teto só servia para comparar com o CPC
+    ESTIMADO, que não decide nada operacional. Ausente, ele é anotação — e
+    nenhum valor é inventado no lugar dele."""
+    _conjunto, criterios = portao.criterios_do_cluster(_cluster(aprovado=True, teto=None))
+    assert criterios
 
 
 def test_6c_congruencia_nao_avaliada_continua_bloqueador_nomeado():
@@ -635,6 +635,9 @@ def test_M12_rotas_reais_recusam_mutacao_antes_da_rede(
         "opportunity_id": 1,
         "customer_id": "5478096539",
         "login_customer_id": "6016739364",
+        # Declarados pelo operador desde 09/10/2026 (sem valor padrão).
+        "budget_diario": 10,
+        "cpc_inicial": 0.5,
     }
     if mutacao == "positiva":
         dados["criterios"] = [{

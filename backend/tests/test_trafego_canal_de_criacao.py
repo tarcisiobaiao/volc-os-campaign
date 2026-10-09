@@ -114,6 +114,7 @@ def _payload_demand_gen_minimo(**troca: object) -> dict:
         "login_customer_id": "6016739364",
         "canal": "DEMAND_GEN",
         "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+        "budget_diario": 30,
         "demand_gen": {},
         "assets_demand_gen": [],
     }
@@ -276,6 +277,7 @@ def test_plano_demand_gen_recusa_campos_search_em_vez_de_apaga_los() -> None:
         opportunity_id=1,
         customer_id="8017851692",
         login_customer_id="6016739364",
+        budget_diario=30,
         canal="DEMAND_GEN",
         estrategia_lance="MAXIMIZE_CONVERSIONS",
         grupos=[trafego.GrupoEscolhido(tipo="busca", keywords=["não converter"])],
@@ -577,6 +579,7 @@ def test_selected_channels_duplicado_na_forma_canonica_e_recusado() -> None:
         opportunity_id=1,
         customer_id="8017851692",
         login_customer_id="6016739364",
+        budget_diario=30,
         canal="DEMAND_GEN",
         estrategia_lance="MAXIMIZE_CONVERSIONS",
         demand_gen={
@@ -650,6 +653,7 @@ def test_plano_http_demand_gen_nao_depende_de_keyword_e_preserva_superficies(
         login_customer_id="6016739364",
         canal="DEMAND_GEN",
         estrategia_lance="MAXIMIZE_CONVERSIONS",
+        budget_diario=30,
         copy={
             "headlines": ["Entenda o Saque Anual"],
             "descriptions": ["Veja regras, prazos e limites."],
@@ -1049,6 +1053,8 @@ def test_subir_display_nao_consulta_o_portao_do_conjunto_pago(
                 customer_id="5478096539",
                 login_customer_id="6016739364",
                 canal="DISPLAY",
+                budget_diario=20,
+                cpc_inicial=0.5,
                 motivo="prova hermética da paridade de canal",
                 confirmar_criacao_pausada=True,
                 carimbo_nome="20260828_120000",

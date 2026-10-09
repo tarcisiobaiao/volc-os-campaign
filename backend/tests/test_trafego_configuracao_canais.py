@@ -112,17 +112,18 @@ def _envelope(tipo: str, nome: str, semente: int) -> dict:
 
 def _search(**extra) -> dict:
     return {"opportunity_id": 1, "customer_id": CID, "login_customer_id": MCC,
-            "canal": "SEARCH", **extra}
+            "canal": "SEARCH", "budget_diario": 10, "cpc_inicial": 0.5, **extra}
 
 
 def _display(**extra) -> dict:
     return {"opportunity_id": 1, "customer_id": CID, "login_customer_id": MCC,
-            "canal": "DISPLAY", "estrategia_lance": "MAXIMIZE_CONVERSIONS", **extra}
+            "canal": "DISPLAY", "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+            "budget_diario": 20, **extra}
 
 
 def _dg(**extra) -> dict:
     return {"opportunity_id": 1, "customer_id": CID, "login_customer_id": MCC,
-            "canal": "DEMAND_GEN", "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+            "canal": "DEMAND_GEN", "estrategia_lance": "MAXIMIZE_CONVERSIONS", "budget_diario": 30,
             "demand_gen": {"upgraded_targeting": False, "controles_de_canal": None,
                            "audiencias": [], "intencoes": [], "exclusoes_de_audiencia": []},
             "assets_demand_gen": [], **extra}
@@ -130,7 +131,7 @@ def _dg(**extra) -> dict:
 
 def _pmax(**extra) -> dict:
     return {"opportunity_id": 1, "customer_id": CID, "login_customer_id": MCC,
-            "canal": "PERFORMANCE_MAX", "estrategia_lance": "MAXIMIZE_CONVERSIONS",
+            "canal": "PERFORMANCE_MAX", "estrategia_lance": "MAXIMIZE_CONVERSIONS", "budget_diario": 20,
             "pmax": {"brand_guidelines_enabled": False}, "assets_pmax": [], **extra}
 
 

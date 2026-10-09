@@ -1563,8 +1563,13 @@ class ProvarEntrada(BaseModel):
 
     model_config = {"populate_by_name": True}
 
-    budget_diario: float = 10.0
-    cpc_inicial: float = 0.12
+    # ⚠️ SEM VALOR PADRÃO desde 09/10/2026 (regra do operador): 10,0 e 0,12
+    # eram palpites que entravam no payload quando ninguém declarava nada.
+    # Orçamento é sempre exigido; CPC inicial, quando a estratégia efetiva é
+    # MANUAL_CPC em Search/Display — ver `_exigir_parametros_do_operador`.
+    # Nunca derivados de CPC estimado (Keyword Planner, DataForSEO, SERP).
+    budget_diario: Optional[float] = Field(default=None, gt=0)
+    cpc_inicial: Optional[float] = Field(default=None, gt=0)
     # Display aceita Maximize Conversions puro ou com tCPA. Era campo do
     # engine sem ponte HTTP: a interface podia mostrá-lo, mas qualquer valor
     # desaparecia antes do Brief. Ausência continua sendo MaxConv puro.
@@ -2946,6 +2951,7 @@ def _montar_plano_display(
     body: ProvarEntrada,
 ) -> Any:
     """Monta Display sem transformar a mineração Search em pré-requisito."""
+    _exigir_parametros_do_operador(body, "DISPLAY")
     from volc_ads.campanha.brief import Brief, Copy
 
     _recusar_campos_nao_operados_display(body)
@@ -3052,6 +3058,7 @@ def _montar_plano_demand_gen(
     ``Brief`` e o mesmo ``Plano`` canônicos, herda destino/geo/política do
     cockpit e recusa qualquer campo Search em vez de descartá-lo.
     """
+    _exigir_parametros_do_operador(body, "DEMAND_GEN")
     from datetime import datetime
 
     from volc_ads import criativo_ponte
@@ -3305,6 +3312,7 @@ def _montar_plano_pmax(
     uma falha dela derruba a montagem em vez de virar recibo ausente — porque
     "não consegui ler" e "a conta não mede" pedem atos opostos.
     """
+    _exigir_parametros_do_operador(body, "PERFORMANCE_MAX")
     from datetime import datetime
 
     from volc_ads import criativo_ponte
@@ -3747,6 +3755,7 @@ async def planejar_pmax(
             pp.carregar, body.opportunity_id, run_id=body.run_id
         )
         cockpit = pp.montar_cockpit(linhas)
+        _exigir_parametros_do_operador(body, "PERFORMANCE_MAX")
         brief = _brief_pmax_offline(pp, cockpit, body)
         from volc_ads.campanha import pmax
 
@@ -4306,6 +4315,7 @@ def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
     `ValueError` e a `HTTPException(422)` de `_criterios_do_corpo` sobem como
     subiam — cada rota as traduz como sempre traduziu.
     """
+    _exigir_parametros_do_operador(body, canal_resolvido)
     linhas = pp.carregar(body.opportunity_id, run_id=body.run_id)
     # ⚠️ O PORTÃO DO CONJUNTO PAGO, ANTES DE MONTAR E ANTES DA REDE.
     #
@@ -4440,6 +4450,33 @@ def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
     )
     return PlanoPreparado(plano=plano, preparo=preparo, linhas=linhas,
                           supply_sha256=supply)
+
+
+def _exigir_parametros_do_operador(body: Any, canal: str) -> None:
+    """Parâmetros de campanha vêm do operador, ou o pedido volta com o que falta.
+
+    Nenhum é preenchido por estimativa, zero ou palpite. O CPC inicial só é
+    exigido onde ele vira lance: MANUAL_CPC em Search ou Display, e só quando
+    nem todo grupo trouxe o seu.
+    """
+    faltam: list[str] = []
+    if getattr(body, "budget_diario", None) is None:
+        faltam.append("budget_diario (orçamento diário da campanha, na moeda da conta)")
+    if canal in ("SEARCH", "DISPLAY") and _estrategia_efetiva(body).upper() == "MANUAL_CPC":
+        grupos = list(getattr(body, "grupos", None) or [])
+        todos_com_lance = bool(grupos) and all(
+            getattr(g, "cpc_inicial", None) is not None for g in grupos)
+        if getattr(body, "cpc_inicial", None) is None and not todos_com_lance:
+            faltam.append("cpc_inicial (lance MANUAL_CPC, na moeda da conta; ou "
+                          "`grupos[].cpc_inicial` em todos os grupos)")
+    if faltam:
+        raise HTTPException(status_code=422, detail={
+            "codigo": "PARAMETRO_DO_OPERADOR_AUSENTE",
+            "faltam": faltam,
+            "mensagem": "Declare o parâmetro: o engine não o preenche com estimativa "
+                        "de CPC, zero ou valor padrão.",
+            "nada_foi_criado": True,
+        })
 
 
 def _estrategia_efetiva(body: Any) -> str:
