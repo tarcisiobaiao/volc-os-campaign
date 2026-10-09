@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-09T15:32:18-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-09T16:32:54-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 843 arquivos: 621 Markdown e 222 SQL;
-- 833 versionados e 10 ainda não versionados;
+- 844 arquivos: 622 Markdown e 222 SQL;
+- 834 versionados e 10 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,7 +16,7 @@ Gerado em `2026-10-09T15:32:18-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 42 |
+| `audit` | 43 |
 | `documentation` | 449 |
 | `generated` | 2 |
 | `module-guide` | 41 |
@@ -206,6 +206,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/CORRECAO-3-FUNIS-HANDOFF-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-3-FUNIS-PREFLIGHT-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-ASSETS-PRE-REDACAO-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-ATTENTION-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md` | `audit` | — | 0 | 0 |
@@ -311,7 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql` | `sql-needs-review` | high | 2 | 3 |
 | `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 2 | 8 |
 | `supabase/migrations/20260908020000_meta_asset_registration.sql` | `sql-needs-review` | medium | 5 | 8 |
-| `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

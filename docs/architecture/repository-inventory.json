@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-09T15:32:18-03:00",
+  "generated_at": "2026-10-09T16:32:54-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 843,
-    "markdown": 621,
+    "files": 844,
+    "markdown": 622,
     "sql": 222,
-    "tracked": 833,
+    "tracked": 834,
     "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 42,
+      "audit": 43,
       "documentation": 449,
       "generated": 2,
       "module-guide": 41,
@@ -1303,9 +1303,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23985,
+      "bytes": 23958,
       "lines": 318,
-      "sha256": "fb476bcb4b83b963f97cce88201ed58cc634f013bc571318cbf1b93140f7fe85",
+      "sha256": "62645f8659c7913feeec516cc08de48bb9c1546bbc34cd4f3c0a0340291e9704",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1810,6 +1810,18 @@
       "bytes": 7240,
       "lines": 134,
       "sha256": "81832648e79e435de304e55fd79154ef2ca46510d6194a63b5b05d50ca2bdd11",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-ASSETS-PRE-REDACAO-2026-10-09.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 3742,
+      "lines": 64,
+      "sha256": "e45413bb241d24ffbe9a6f21385a7a1aed289d2e7812c819e623b0b52d79021f",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
