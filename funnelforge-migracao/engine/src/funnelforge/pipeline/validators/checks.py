@@ -1888,6 +1888,14 @@ def _source_is_cited(content: str, source: str, ctx: dict) -> bool:
                           content, re.I))
 
 
+def _rotulo_literal_citado(texto: str, inicio: int, fim: int) -> str:
+    """Rótulo entre aspas que contém esta ocorrência, não uma quantia solta."""
+    for trecho in re.finditer(r'["“]([^"“”\n]{1,160})["”]', texto):
+        if trecho.start(1) <= inicio and fim <= trecho.end(1):
+            return _normalized_claim(trecho.group(1))
+    return ""
+
+
 def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
     """Every critical numeric/legal claim must map to a resolved typed fact.
 
@@ -1941,6 +1949,7 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
             "dispositivo": str(datum.get("dispositivo") or ""),
             "fonte_primaria": source,
             "citavel": datum.get("citavel"),
+            "tipo": datum["tipo"],
         })
     # `citavel: false` (pesquisa tipada): a fonte é contraditória ou instável
     # sobre o fato — ele não ancora afirmação nenhuma, mesmo com fonte viva.
@@ -1948,13 +1957,15 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
                and _field(f, "citavel", None) is not False]
     visible = _visible_fact_text(content)
     issues: list[Issue] = []
-    seen: set[str] = set()
+    seen: set[tuple[str, str]] = set()
     for match in _CRITICAL_CLAIM_RE.finditer(visible):
         raw = re.sub(r"\s+", " ", match.group(0)).strip()
         claim = _normalized_claim(raw)
-        if claim in seen:
+        rotulo = _rotulo_literal_citado(visible, match.start(), match.end())
+        chave = (claim, rotulo)
+        if chave in seen:
             continue
-        seen.add(claim)
+        seen.add(chave)
         # ⚠️ QUANTIDADE CASA POR NÚMERO, NÃO POR SUBSTRING.
         #
         # A agulha antiga era `" ".join((valor, unidade, dispositivo))` e a
@@ -1979,6 +1990,15 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
             valor = str(_field(fact, "valor", ""))
             unidade = str(_field(fact, "unidade", ""))
             if numero is not None:
+                # Nome literal de comando do canal oficial, verificado como
+                # processo, não é taxa/rendimento. Exija o rótulo completo e
+                # a mesma fonte citada; ele não ancora outro percentual fora
+                # das aspas nem um rótulo inventado ("Receba 100% do saldo").
+                if (rotulo and _field(fact, "tipo", "") == "processo"
+                        and any(_normalized_claim(t.group(1)) == rotulo
+                                for t in re.finditer(r'["“]([^"“”\n]{1,160})["”]', valor))):
+                    grounding = fact
+                    break
                 if (_canon_numero(valor) == numero
                         and _unidade_compativel(claim, unidade)):
                     grounding = fact

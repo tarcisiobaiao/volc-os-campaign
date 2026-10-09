@@ -331,6 +331,16 @@ def prompt_do_pacote(state, page):
     from funnelforge.prompts import render
     pacote = pacote_conferido(state, page)
     p, j = pacote["pagina"], pacote["jornada"]
+    # `pacote_conferido` devolve uma cópia. O plano original preserva a
+    # proposta do arquiteto para auditoria; ao redator só chegam hrefs que o
+    # roteamento manteve. Slug descartado (por exemplo retorno regressivo)
+    # não pode reaparecer no JSON de briefing como instrução de navegação.
+    if p.get("editorial") is not None:
+        p["editorial"]["links"] = [
+            {"target": link["href"], "cta": link["anchor"],
+             "reason": link.get("reason", "")}
+            for link in pacote["links"] if link["kind"] == "funnel"
+        ]
     lp = p["page_type"] == "LANDING PAGE"
     nome = "redator_p1_v2" if lp else (
         "redator_presell_v2" if p["role"] == "PRESELL" else "redator_pages_v2")
@@ -358,6 +368,7 @@ def prompt_do_pacote(state, page):
         if lp else ""
     )
     return prompt + "\nPacote congelado prevalece: preserve destinos e rótulos aprovados. " \
+        "Slug e duvida_id são identificadores, nunca href; use somente os links resolvidos. " \
         "Não pesquise, não invente ferramentas. Blocos dependentes de lacuna devem ser omitidos." \
         + regra_lp
 
