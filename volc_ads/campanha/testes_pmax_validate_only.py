@@ -57,3 +57,18 @@ def test_validacao_tecnica_nao_promove_planejamento_operacional(monkeypatch, tro
     operacional = pmax.planejar(CID, b, login_customer_id=MCC)
     assert not operacional.prontidao.pode_criar
     assert any(b.codigo == 'MENSURACAO_INADEQUADA' for b in operacional.bloqueios)
+
+
+def test_porta_do_selo_continua_recusando_pmax_sem_mensuracao(monkeypatch):
+    """O selo só nasce em `subir.preparar`, que monta pelo construtor do perfil.
+    O ramo técnico de `pmax.validar` não pode alcançá-lo: sem ação na métrica,
+    nada vai ao Google e nenhum selo é emitido."""
+    from volc_ads import subir
+
+    b = _brief(pmax=_configuracao(mensuracao=_mensuracao(
+        _acao(inclui_em_conversoes=False))))
+    monkeypatch.setattr(subir, 'validar_mutacoes',
+                        lambda *a, **kw: pytest.fail('preparar chegou à API sem mensuração'))
+    preparo = subir.preparar(CID, b, login_customer_id=MCC, canal='PERFORMANCE_MAX')
+    assert preparo.selo is None
+    assert preparo.recusa_local and 'mensuracao' in preparo.recusa_local

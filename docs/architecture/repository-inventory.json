@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-09T15:13:48-03:00",
+  "generated_at": "2026-10-09T15:32:18-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 843,
@@ -1305,7 +1305,7 @@
       "tracked": true,
       "bytes": 23985,
       "lines": 318,
-      "sha256": "1e5d2cd39712f085a21acbc09eccdd664494919545829f34e5665b50114c3039",
+      "sha256": "fb476bcb4b83b963f97cce88201ed58cc634f013bc571318cbf1b93140f7fe85",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1915,9 +1915,9 @@
       "extension": ".md",
       "classification": "audit",
       "tracked": true,
-      "bytes": 5103,
-      "lines": 91,
-      "sha256": "042c7259bdc740e2db3264c2bfbeb4531cc703c7c39c13e68e184815feecad26",
+      "bytes": 7250,
+      "lines": 125,
+      "sha256": "c17ecbb8502de2db0a77a788f6b46b9a593e1f0bb911088198e9551a7be47361",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

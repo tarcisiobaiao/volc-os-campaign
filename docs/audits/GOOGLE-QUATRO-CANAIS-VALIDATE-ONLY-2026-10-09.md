@@ -88,3 +88,37 @@ ausência de builder/prova não representam esta rodada. Demand Gen passou de
 `todo` a `partial`; nenhum canal recebeu autorização de criação.
 
 Fonte do comportamento de validação: [Google Ads — bulk mutate](https://developers.google.com/google-ads/api/docs/mutating/bulk-mutate).
+
+## Revisão independente (09/10/2026, mesma data)
+
+**Recibos.** `resultado-google.json` traz uma chamada por canal com
+`validate_only=true`, `partial_failure=false`, gRPC `OK`, request ID lido dos
+metadados da resposta do Google e SHA-256 do request; as contagens (15/9/9/25)
+batem com as operações montadas. O interceptor chama a `continuation` real e
+falha se o pedido não for `validate_only`. As metas relidas confirmam
+PURCHASE/WEBSITE sem `biddable` e DOWNLOAD/APP `biddable=true`.
+
+**Separação do PMax.** `pmax.validar` só é chamado pela porta de prova
+(`perfil.PERFORMANCE_MAX.validador`), e nenhuma rota do backend o invoca:
+`trafego.py` usa `resolver_provador` só para resolver o canal. O selo nasce
+apenas em `subir.preparar`, que monta por `perfil.montar` → `pmax.construir`
+(estrito). Regressão nova:
+`testes_pmax_validate_only.py::test_porta_do_selo_continua_recusando_pmax_sem_mensuracao`
+(sem ação na métrica, `preparar` não chama a API e não emite selo).
+
+**Cadeia oportunidade → recibo no cockpit**, com o que falta:
+
+| elo | estado |
+|---|---|
+| oportunidade real | existe (65, 73, 74, 106) |
+| conjunto pago | **falta**: 106 sem cluster; 65/73/74 com cluster do n8n → 409 `N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED`. Nasce só da mineração Python (prospector LLM, chamada paga) + aprovação humana gravada (`POST /conjunto-pago/aprovar`) |
+| destino | LP Senac bloqueada só por exigências da casa (`basis` interna/interpretação) |
+| mídia | nenhuma aprovação criativa com finalidade Google (as 2 existentes são `meta_ads`) |
+| payload | builders aceitos (acima); cascata de copy gera 6 sitelinks; DG recebe copy estrita do corpo |
+| validate_only | provado nos builders; pelo `/provar` só chega após conjunto pago + destino |
+| recibo no cockpit | o selo volta na resposta do `/provar`; `/subir` o exige |
+
+Teste ajustado: `backend/tests/test_trafego.py::test_provar_sem_copy_reprova_e_diz_por_que`
+(ambiente real) esperava 200 e passou a receber o 409 do portão de elegibilidade
+paga, posterior ao teste. Aceita agora essa recusa nomeada, exigindo `codigo`,
+`autoridade` e `nada_foi_criado`.

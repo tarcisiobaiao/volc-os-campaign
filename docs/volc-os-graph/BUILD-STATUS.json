@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-10-09T15:13:48-03:00",
-  "built_at_commit": "96fe51fe6b17f6cc0aa621c84ab6299885d317be",
+  "generated_at": "2026-10-09T15:32:18-03:00",
+  "built_at_commit": "8bd5162e74089d4e61ca40c7f7c021636a923a4f",
   "working_tree_dirty_at_build": true,
-  "input_sha256": "0a9b59f98f2fe21be7f2bef223077f1cf8d489ae963bc294dd56837beb56dffb",
+  "input_sha256": "98bc045298e2ebd051c1eee7969c89f4ddf44cdbbaa032e400149d79b93523ed",
   "input_file_count": 2368,
   "graphify_version": "0.9.48",
   "live_sources_refreshed": false,
-  "technical_layer_reused": true,
+  "technical_layer_reused": false,
   "sources": {
     "operational": "docs/volc-os-graph/volc-os-graph.json",
     "technical": ".graphify-cache/code/graphify-out/graph.json",
@@ -16,8 +16,8 @@
   "counts": {
     "operational_nodes": 493,
     "operational_edges": 754,
-    "hybrid_nodes": 42585,
-    "hybrid_edges": 101324
+    "hybrid_nodes": 42588,
+    "hybrid_edges": 101332
   },
   "freshness_rule": "Execute scripts/atualizar_grafo_volc_os.py --check; mudanças no digest exigem reconstrução. Decisões de negócio novas ainda exigem curadoria humana.",
   "authority": "docs/volc-os-graph/BUILD-STATUS.json é a autoridade do frescor, porque é versionada e existe em qualquer clone. graphify-out/UPDATE_STATUS.json é espelho local e nunca decide.",

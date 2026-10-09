@@ -247,6 +247,14 @@ def test_provar_sem_copy_reprova_e_diz_por_que(cliente: TestClient):
     if r.status_code == 422:
         assert r.json()["detail"], "422 sem mensagem acionável"
         return
+    if r.status_code == 409:
+        # O portão de elegibilidade paga recusa antes do brief: o cluster do
+        # card 73 veio do n8n, sem `conjunto_pago` (medido em 09/10/2026). Também
+        # é reprovação que diz qual juiz — e nada foi ao Google.
+        detalhe = r.json()["detail"]
+        assert detalhe["codigo"] and detalhe["autoridade"], "409 sem juiz nomeado"
+        assert detalhe["nada_foi_criado"] is True
+        return
     d = _ok(r)
     p = d["preparo"]
     assert p["aprovado"] is False, "brief sem copy não pode receber selo"
