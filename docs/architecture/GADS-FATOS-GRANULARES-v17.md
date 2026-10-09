@@ -41,27 +41,51 @@ google_ads_estado   (status/política por entidade, nova linha só quando muda)
 - escrita só pela `volc_registrar_gads_fatos`;
 - RLS forçada, com `anon` e `authenticated` sem nenhum acesso.
 
-## Correlação com a receita (views, só leitura)
+## Correlação com a receita (views, só leitura) — revisada pela v17_04
 
-| view | custo (Google) | receita | chave |
+A v17_01 publicou três views que cruzavam custo e receita. A revisão de
+09/10/2026 achou cinco defeitos demonstrados; a v17_04
+(`supabase/migrations/v17_04_arbitragem_reconciliada.sql`, provada no espelho,
+**ainda não aplicada em produção**) os corrige.
+
+| view | custo | receita | regra |
 |---|---|---|---|
-| `vw_gads_arbitragem_campanha_dia` | `google_ads_campanha_dia` (linha `segmentos='{}'`) | `gam_metrics` + `joinads_metrics` (`revenue_converted`) | `campaign_id = utm_campaign_value`, data |
-| `vw_gads_arbitragem_placement_dia` | família `placement` (view `detail`) | `display_gam_placements` | campanha, data, `volc_dominio()` |
-| `vw_gads_arbitragem_hora` | família `hora_dispositivo` | `hourly_stats` | campanha, `(data + hora) AT TIME ZONE fuso` = `hour_bucket` |
+| `vw_gads_arbitragem_campanha_dia` | `google_ads_campanha_dia` (linha `segmentos='{}'`) | JoinAds (`utm_campaign_value = campaign_id`) e GAM **só** pela rota `GOOGLE_CAMPAIGN` do `vw_gam_attribution_route` | lucro, ROAS e receita por clique só com `receita_status = reconciliada_fonte_unica` |
+| `vw_gads_arbitragem_placement_dia` | família `placement` (view `detail`) | **nenhuma** | o placement de compra é o site de terceiro onde o anúncio rodou; não há ingestão no VOLC que atribua receita a ele |
+| `vw_gads_arbitragem_hora` | família `hora_dispositivo` | **nenhuma** | `hourly_stats` não declara moeda nem atribuição (e está vazia) |
 
-Lucro e ROAS só existem quando a conta é BRL: as receitas estão convertidas
-para BRL, e comparar com custo em outra moeda daria número falso.
+`receita_status` da view de campanha, avaliado nesta ordem:
 
-## Achados de qualidade de dado (para a próxima fatia)
+| status | quando | lucro? |
+|---|---|---|
+| `sem_receita_registrada` | nenhuma fonte para a chave | não |
+| `nao_reconciliada_atribuicao` | existe linha GAM da chave fora da rota `GOOGLE_CAMPAIGN` (Meta, ambígua ou sem campanha legada) | não |
+| `nao_reconciliada_sobreposicao` | GAM e JoinAds ao mesmo tempo: sem prova de que são receitas distintas | não |
+| `nao_reconciliada_projeto` | receita de mais de um projeto, ou projeto do vínculo ≠ projeto da receita | não |
+| `nao_reconciliada_moeda` | conta fora de BRL (receitas estão convertidas para BRL) | não |
+| `janela_aberta` | custo D0 (intradia) | não (receita parcial visível) |
+| `reconciliada_fonte_unica` | uma fonte atribuída, projeto coerente, BRL, janela fechada | **sim** |
 
-1. **Cotações divergentes.** O mesmo dia converte GAM a 5,50 e JoinAds a 5,20
-   (triggers legados distintos). O ROAS consolidado mistura duas cotações.
-2. **`utm_campaign_value` é ambíguo.** Em `gam_metrics`, ele pode ser campanha
-   Google **ou** adset Meta (`vw_gam_attribution_route` já classifica). A view
-   casa por igualdade de id; ids Meta e Google não colidem na prática, mas o
-   roteador é a autoridade.
-3. **Receita por URL não existe para GAM/JoinAds.** Só AdSense tem URL × dia.
-   A família `url` está pronta; a junção espera a receita por URL.
+Nos status `nao_reconciliada_*`, `receita_brl` é NULL e o rótulo é "receita
+não reconciliada"; os componentes (`receita_gam_brl`, `receita_joinads_brl`,
+`gam_linhas_nao_atribuidas`) seguem visíveis para a reconciliação manual.
+
+**Leitura real (09/10, consulta somente leitura com o corpo da v17_04):**
+Senac 24278665189 em 07/10 → `reconciliada_fonte_unica`, custo R$ 59,66,
+JoinAds R$ 4,515, lucro −R$ 55,15, ROAS 0,0757.
+
+## Fatos de receita medidos em produção (09/10/2026)
+
+- `gam_metrics`, `display_gam_placements` e `hourly_stats`: **0 linhas**.
+  `joinads_metrics`: 17 linhas (29/08–09/10, 3 campanhas) — a única receita viva.
+  `adsense_metrics`: só fevereiro.
+- GAM e JoinAds convertem pela **mesma** função
+  (`calculate_revenue_converted_by_date`, cotação da data; 5,25 em produção).
+  ⚠️ **Correção:** a "divergência de cotação 5,50 × 5,20" registrada em 08/10
+  foi medida no espelho, que tem schema sem dados em `system_settings`; não vale
+  para produção.
+- Receita por URL para GAM/JoinAds não existe; só AdSense tem URL × dia. A
+  família `url` está pronta, sem junção de receita.
 
 ## Próximo passo: o coletor
 
