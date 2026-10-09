@@ -107,7 +107,8 @@ def teste_o_fundamento_viaja_no_achado_serializado():
 def teste_piso_de_palavras_e_declarado_como_regua_da_casa():
     assert fundamento("CONTEUDO_ORIGINAL_INSUFICIENTE") == FUNDAMENTO_INTERPRETACAO
     av = elegibilidade_de_destino_de_campanha(_pagina("<p>Texto curto.</p>"))
-    (a,) = [x for x in av.bloqueios if x.codigo == "CONTEUDO_ORIGINAL_INSUFICIENTE"]
+    assert "CONTEUDO_ORIGINAL_INSUFICIENTE" not in {x.codigo for x in av.bloqueios}
+    (a,) = [x for x in av.riscos if x.codigo == "CONTEUDO_ORIGINAL_INSUFICIENTE"]
     assert "piso INTERNO" in a.mensagem and "sem número" in a.mensagem
 
 

@@ -237,7 +237,11 @@ def test_cp_q_valor_monetario_malformado_bloqueia_no_pago_e_e_risco_no_organico(
 
 
 def test_cp_r_conteudo_original_insuficiente():
-    assert "CONTEUDO_ORIGINAL_INSUFICIENTE" in bloqueios(montar(corpo="Texto muito curto."))
+    """Desde 09/10/2026: a contagem isolada é alerta interno, não bloqueio."""
+    pagina = montar(corpo="Texto muito curto.")
+    assert "CONTEUDO_ORIGINAL_INSUFICIENTE" not in bloqueios(pagina)
+    assert "CONTEUDO_ORIGINAL_INSUFICIENTE" in {
+        a.codigo for a in elegibilidade_de_destino_de_campanha(pagina).riscos}
 
 
 def test_cp_s_pagina_ponte_e_mais_botao_do_que_texto():
@@ -411,9 +415,12 @@ def test_brief_l_bridge_page_com_pouco_conteudo_original():
         f'<div class="wp-block-button"><a class="wp-block-button__link" href="/rec/{i}">Continuar</a></div>'
         for i in range(8)
     )
-    achados = bloqueios(montar(botoes, corpo=" ".join(["curto"] * 100)))
-    assert "CONTEUDO_ORIGINAL_INSUFICIENTE" in achados
+    pagina = montar(botoes, corpo=" ".join(["curto"] * 100))
+    achados = bloqueios(pagina)
+    # A ponte continua BLOQUEANDO; a contagem de palavras sozinha é alerta.
     assert "PAGINA_PONTE" in achados
+    assert "CONTEUDO_ORIGINAL_INSUFICIENTE" in {
+        a.codigo for a in elegibilidade_de_destino_de_campanha(pagina).riscos}
 
 
 def test_brief_m_pagina_gerada_diferente_para_googlebot():

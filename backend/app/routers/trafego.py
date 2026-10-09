@@ -3982,10 +3982,38 @@ def _pagina_recebida(url: str, leitura: dict[str, Any]) -> str | None:
     return None
 
 
+CAMPOS_DE_DECLARACAO = ("adtech_declarada", "chrome_declarado_pelo_site")
+
+
+def _declaracoes_do_projeto(wordpress: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """Adtech e chrome DECLARADOS pelo projeto, encaminhados ao portão de campanha.
+
+    Fonte: a linha `project_wordpress` que o `/provar` já carrega. Medido em
+    09/10/2026: ela não tem esses campos, nenhuma tabela tem, e nenhum arquivo
+    declara — então o resultado é vazio, e a AUSÊNCIA vai escrita no recibo. Não
+    há lista global nem declaração inventada: o que não foi declarado continua
+    sendo julgado como não declarado.
+    """
+    linha = wordpress or {}
+
+    def _lista(valor: Any) -> tuple[str, ...]:
+        if isinstance(valor, str):
+            valor = [v for v in valor.split(",")]
+        return tuple(sorted({str(v).strip().lower() for v in (valor or []) if str(v).strip()}))
+
+    presentes = [c for c in CAMPOS_DE_DECLARACAO if c in linha]
+    fonte = (f"project_wordpress (projeto {linha.get('project_id')})" if presentes else
+             "ausente: o projeto não tem declaração de adtech nem de chrome configurada")
+    return {"adtech": _lista(linha.get("adtech_declarada")),
+            "chrome": _lista(linha.get("chrome_declarado_pelo_site")),
+            "fonte": fonte}
+
+
 def _pagina_do_destino(url: str, leituras: dict[str, dict[str, Any]], *,
                        recibo: Optional[dict[str, Any]],
                        promessa: str, papel_declarado: str,
-                       agora: float) -> PaginaObservada:
+                       agora: float,
+                       declaracoes: Optional[dict[str, Any]] = None) -> PaginaObservada:
     """Monta a `PaginaObservada` a partir do que as leituras devolveram.
 
     `leituras` vazio é o caso da leitura que falhou, e ele NÃO é tratado à
@@ -4019,6 +4047,8 @@ def _pagina_do_destino(url: str, leituras: dict[str, dict[str, Any]], *,
     return PaginaObservada(
         url=url,
         html=html,
+        adtech_declarada=tuple((declaracoes or {}).get("adtech") or ()),
+        chrome_declarado_pelo_site=tuple((declaracoes or {}).get("chrome") or ()),
         status_http=int(principal.get("status") or 0) or None,
         # `None` é "não foi medido"; `[]` é "medido, sem salto". A diferença é o
         # que separa `unavailable` de `absent_confirmed` lá dentro.
@@ -4087,6 +4117,9 @@ class DestinoDeCampanha:
     #: Recusas que nascem AQUI, fora do contrato de política. Elas SOMAM rigor
     #: ao predicado do contrato; nunca o substituem e nunca o afrouxam.
     motivos_do_portao: tuple[str, ...] = ()
+    #: O que o projeto declarou de adtech/chrome e DE ONDE veio — inclusive a
+    #: ausência, dita por extenso.
+    declaracoes_do_projeto: dict = dataclasses.field(default_factory=dict)
 
     @property
     def elegivel(self) -> bool:
@@ -4144,6 +4177,7 @@ class DestinoDeCampanha:
                 "variantes": list(self.variantes),
             },
             "recibo_de_aprovacao": {"presente": self.recibo_presente},
+            "declaracoes_do_projeto": dict(self.declaracoes_do_projeto),
         }
 
 
@@ -4175,7 +4209,8 @@ def _recusas_do_recibo(recibo: Optional[dict[str, Any]]) -> tuple[str, ...]:
 
 def _avaliar_destino(url: str, *, recibo: Optional[dict[str, Any]],
                      promessa: str, papel_declarado: str,
-                     agora: float) -> DestinoDeCampanha:
+                     agora: float,
+                     declaracoes: Optional[dict[str, Any]] = None) -> DestinoDeCampanha:
     """Lê e avalia, num único ato síncrono. NUNCA levanta.
 
     ⚠️ O `except Exception` largo aqui é o oposto do permissivo: ele só consegue
@@ -4194,11 +4229,13 @@ def _avaliar_destino(url: str, *, recibo: Optional[dict[str, Any]],
         detalhe = (f"a leitura ao vivo do destino falhou "
                    f"({type(exc).__name__}: {str(exc)[:160]})")
 
+    declaracoes = declaracoes if declaracoes is not None else _declaracoes_do_projeto(None)
     pagina = _pagina_do_destino(
         url, leituras, recibo=recibo, promessa=promessa,
-        papel_declarado=papel_declarado, agora=agora)
+        papel_declarado=papel_declarado, agora=agora, declaracoes=declaracoes)
     return DestinoDeCampanha(
         url=url,
+        declaracoes_do_projeto=declaracoes,
         # O papel é FORÇADO aqui dentro: nenhum campo do chamador escolhe o
         # rigor com que a página é medida.
         avaliacao=elegibilidade_de_destino_de_campanha(pagina),
@@ -4230,7 +4267,8 @@ def _avaliar_destino(url: str, *, recibo: Optional[dict[str, Any]],
 async def _destino_de_campanha(url: str, *,
                                paginas_publicadas: List[Dict[str, Any]],
                                promessa: str = "",
-                               papel_declarado: str = "") -> DestinoDeCampanha:
+                               papel_declarado: str = "",
+                               wordpress: Optional[dict[str, Any]] = None) -> DestinoDeCampanha:
     """O portão da barreira 3, com teto e sem caminho de exceção para fora.
 
     O recibo é resolvido ANTES da leitura porque ele não depende dela: uma URL
@@ -4240,7 +4278,8 @@ async def _destino_de_campanha(url: str, *,
     recibo = recibo_da_url(paginas_publicadas, url)
     agora = time.time()
     argumentos = dict(recibo=recibo, promessa=promessa,
-                      papel_declarado=papel_declarado, agora=agora)
+                      papel_declarado=papel_declarado, agora=agora,
+                      declaracoes=_declaracoes_do_projeto(wordpress))
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(_avaliar_destino, url, **argumentos),
@@ -4250,6 +4289,7 @@ async def _destino_de_campanha(url: str, *,
         return DestinoDeCampanha(
             url=url,
             avaliacao=elegibilidade_de_destino_de_campanha(pagina),
+            declaracoes_do_projeto=argumentos["declaracoes"],
             recibo_presente=bool(recibo),
             motivos_do_portao=_recusas_do_recibo(recibo),
             detalhe_da_leitura=(
@@ -4763,6 +4803,7 @@ async def provar(
         plano.brief.url_final,
         paginas_publicadas=_paginas_publicadas(linhas),
         promessa=_promessa_do_anuncio(plano.brief),
+        wordpress=getattr(linhas, "wordpress", None),
     )
 
     elegivel, motivo_elegibilidade = canario.elegivel(
@@ -5404,6 +5445,7 @@ async def subir(
         plano.brief.url_final,
         paginas_publicadas=_paginas_publicadas(linhas),
         promessa=_promessa_do_anuncio(plano.brief),
+        wordpress=getattr(linhas, "wordpress", None),
     )
     if not destino.elegivel:
         # 409 e não 422, pelo mesmo motivo do portão do lance logo abaixo: o

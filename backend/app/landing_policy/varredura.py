@@ -1737,11 +1737,23 @@ def varrer_seguranca(pagina: PaginaObservada) -> Verificacao:
 
     for host, dados in sorted(externos.items()):
         if dados["classe"] == CLASSE_TERCEIRO_DESCONHECIDO:
+            origens = set(dados["origem"].split("+"))
+            # ⚠️ 09/10/2026: `dns-prefetch`/`preconnect` só AVISAM o navegador de
+            # uma conexão; não carregam nem executam. O achado diz qual dos dois
+            # é. A SEVERIDADE continua a do código: rebaixar a dica exige regra
+            # nova em `fontes_politica.json`, que muda a versão da política e
+            # desatualiza os recibos existentes — decisão do integrador.
+            so_dica = origens <= {"link:dns-prefetch", "link:preconnect"}
             achados.append(
                 Achado(
                     "SCRIPT_TERCEIRO_NAO_DECLARADO",
-                    "Script/iframe/preload de terceiro que a casa não declarou para este site.",
-                    evidencia={"host": host, "origem": dados["origem"]},
+                    ("Dica de conexão (dns-prefetch/preconnect) para terceiro não "
+                     "declarado — não prova execução de script nem de anúncio."
+                     if so_dica else
+                     "Recurso de terceiro CARREGADO (script, iframe ou preload) que a "
+                     "casa não declarou para este site."),
+                    evidencia={"host": host, "origem": dados["origem"],
+                               "tipo": "dica_de_conexao" if so_dica else "recurso_carregado"},
                 )
             )
 

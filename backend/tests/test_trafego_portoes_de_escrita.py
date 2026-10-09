@@ -672,29 +672,40 @@ def test_as_listas_de_estrategia_sao_projecao_da_autoridade():
 def test_o_campo_deprecado_recusa_com_NOME_PROPRIO_e_nunca_em_silencio():
     """CONTRAPROVA T04: `include_in_conversions_metric` não decide calado.
 
-    Ele está DEPRECIADO e continua tirando a ação da métrica que o lance
-    otimiza — então a recusa é real. O que muda é que ela deixa de aparecer
-    como "nenhuma ação válida" e passa a dizer que veio de um campo depreciado.
+    Revisado em 09/10/2026 pela documentação v25: o campo é de RELATÓRIO e
+    reflete o padrão da conta; o lance segue primary_for_goal + a meta da
+    campanha. Sem meta efetiva resolvida ele recusa, com nome próprio (a
+    campanha herdaria o padrão); com a meta da campanha biddable, vira aviso.
     """
     from datetime import datetime, timedelta, timezone
 
     from volc_ads import mensuracao as mens
 
     agora = datetime(2026, 9, 6, tzinfo=timezone.utc)
-    leitura = mens.Leitura(
-        estado=mens.COM_DADOS, procedencia="teste",
-        lido_em=(agora - timedelta(hours=1)).isoformat(), meta_biddable=True,
-        acoes=(mens.AcaoLida(id="9", status="ENABLED", primaria=True,
-                             incluida_em_metricas=False,
-                             conversoes_na_janela=5.0, dias_desde_a_ultima=1),))
-    v = mens.avaliar(customer_id="1", canal="DISPLAY",
-                     estrategia_lance="MAXIMIZE_CONVERSIONS",
-                     leitura=leitura, agora=agora)
+
+    def _leitura(meta_biddable):
+        return mens.Leitura(
+            estado=mens.COM_DADOS, procedencia="teste",
+            lido_em=(agora - timedelta(hours=1)).isoformat(), meta_biddable=meta_biddable,
+            acoes=(mens.AcaoLida(id="9", status="ENABLED", primaria=True,
+                                 incluida_em_metricas=False,
+                                 conversoes_na_janela=5.0, dias_desde_a_ultima=1),))
+
+    # Sem meta efetiva resolvida, o campo depreciado recusa — com NOME PRÓPRIO,
+    # dizendo que é herança do padrão da conta.
+    v = mens.avaliar(customer_id="1", canal="DISPLAY", estrategia_lance="MAXIMIZE_CONVERSIONS",
+                     leitura=_leitura(None), agora=agora)
     assert v.estado == mens.NAO_PRONTA
-    assert mens.FORA_DA_METRICA_DE_CONVERSOES in v.codigos
-    (b,) = [x for x in v.bloqueios
-            if x.codigo == mens.FORA_DA_METRICA_DE_CONVERSOES]
-    assert "DEPRECIADO" in b.causa
+    (b,) = [x for x in v.bloqueios if x.codigo == mens.FORA_DA_METRICA_DE_CONVERSOES]
+    assert "depreciado" in b.causa.lower() and "HERDA" in b.causa
+
+    # ⚠️ Revisão de 09/10/2026 (documentação v25): com a meta EFETIVA da
+    # campanha biddable, o lance segue primary_for_goal + essa meta; o campo
+    # de relatório não veta — vira aviso, sem silêncio.
+    v = mens.avaliar(customer_id="1", canal="DISPLAY", estrategia_lance="MAXIMIZE_CONVERSIONS",
+                     leitura=_leitura(True), agora=agora)
+    assert mens.FORA_DA_METRICA_DE_CONVERSOES not in v.codigos
+    assert mens.CAMPO_DEPRECADO_DIVERGENTE in {a.codigo for a in v.avisos}
 
     # ⚠️ E `None` (campo não lido) NÃO recusa: não lido nunca foi um `False`.
     lido_parcial = mens.Leitura(

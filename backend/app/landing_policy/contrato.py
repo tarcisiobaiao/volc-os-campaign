@@ -354,7 +354,9 @@ _BLOQUEIA_NO_PAGO = frozenset({
     "FORMULARIO_DADO_SENSIVEL",
     "ALEGACAO_DE_RESULTADO_IMPROVAVEL",
     "ALEGACAO_FINANCEIRA_SEM_DIVULGACAO",
-    "CONTEUDO_ORIGINAL_INSUFICIENTE",
+    # CONTEUDO_ORIGINAL_INSUFICIENTE saiu daqui em 09/10/2026: a contagem de
+    # palavras isolada é ALERTA interno (risco), não violação do Google nem
+    # prova de ponte. Ponte continua sendo julgada por PAGINA_PONTE.
     "PAGINA_PONTE",
     "DESTINO_INCONGRUENTE_COM_ANUNCIO",
     "REDIRECIONAMENTO_CROSS_DOMAIN",
@@ -425,6 +427,9 @@ _BLOQUEIA_NO_PAGO = frozenset({
 #: detectados e nunca reprovavam nada — que é a forma educada de um portão dizer
 #: "eu vi e deixei passar".
 _RISCO_SEMPRE = frozenset({
+    # 09/10/2026: contagem de palavras isolada é alerta interno — ver o
+    # comentário em `_BLOQUEIA_NO_PAGO`.
+    "CONTEUDO_ORIGINAL_INSUFICIENTE",
     # ⚠️ `ANCORA_INCONGRUENTE_COM_DESTINO` FOI PROMOVIDO E DEPOIS DEVOLVIDO AQUI.
     #
     # A promoção durou uma revisão. Medido no papel estrito, ele reprovava CTA
