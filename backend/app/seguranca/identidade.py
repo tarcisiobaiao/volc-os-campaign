@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 import httpx
 from fastapi import Depends, Header, HTTPException
@@ -137,6 +137,12 @@ async def _usuario_do_token(settings: Settings, token: str) -> dict:
 
     if resposta.status_code == 401:
         raise HTTPException(status_code=401, detail="Credencial inválida ou expirada.")
+    # ⚠️ Medido em 09/10/2026 no Supabase oficial: o GoTrue responde 403 com
+    # `error_code` `bad_jwt` (e `session_not_found` para sessão encerrada) — não
+    # 401. Cair no 503 abaixo dizia "serviço fora do ar" para quem só precisa
+    # entrar de novo. Outros 403 continuam 503: não sabemos o que são.
+    if resposta.status_code == 403 and _codigo_de_credencial_ruim(resposta):
+        raise HTTPException(status_code=401, detail="Credencial inválida ou expirada.")
     if resposta.status_code >= 400:
         log.warning("resposta inesperada do auth: %s", resposta.status_code)
         raise HTTPException(status_code=503, detail="Não foi possível validar a credencial.")
@@ -145,6 +151,18 @@ async def _usuario_do_token(settings: Settings, token: str) -> dict:
     if not corpo.get("id"):
         raise HTTPException(status_code=401, detail="Credencial sem sujeito.")
     return corpo
+
+
+_CODIGOS_DE_CREDENCIAL_RUIM = frozenset({"bad_jwt", "session_not_found", "session_expired",
+                                          "user_not_found"})
+
+
+def _codigo_de_credencial_ruim(resposta: Any) -> bool:
+    try:
+        corpo = resposta.json()
+    except Exception:  # noqa: BLE001 — corpo ilegível não é credencial ruim comprovada
+        return False
+    return isinstance(corpo, dict) and str(corpo.get("error_code") or "") in _CODIGOS_DE_CREDENCIAL_RUIM
 
 
 async def _papel_do_sub(settings: Settings, sub: str) -> str:

@@ -146,7 +146,9 @@ class _SupabaseDeMentira:
         linhas_papel: Optional[list] = None,
         status_papel: int = 200,
         erro_de_rede: bool = False,
+        corpo_auth: Optional[dict] = None,
     ) -> None:
+        self.corpo_auth = corpo_auth
         self.usuario = usuario if usuario is not None else {"id": SUB_A, "email": "a@volc.test"}
         self.status_auth = status_auth
         self.linhas_papel = linhas_papel if linhas_papel is not None else []
@@ -162,7 +164,7 @@ class _SupabaseDeMentira:
             raise httpx.ConnectError("supabase fora do ar (simulado)")
         pedido = httpx.Request("GET", url)
         if "/auth/v1/user" in url:
-            corpo = self.usuario if self.status_auth == 200 else {"msg": "invalid"}
+            corpo = self.usuario if self.status_auth == 200 else (self.corpo_auth or {"msg": "invalid"})
             return httpx.Response(self.status_auth, json=corpo, request=pedido)
         if f"/rest/v1/rpc/{ident.RPC_PAPEL}" in url:
             # A RPC devolve ESCALAR (text), nao lista de linhas: `volc_role_of`
@@ -274,6 +276,22 @@ def test_token_invalido_ou_expirado_e_401(dublar):
     erro = _recusa(ident.exigir_usuario(authorization="Bearer token.expirado.qualquer",
                                         settings=_config()))
     assert erro.status_code == 401
+
+
+@pytest.mark.parametrize("codigo", ["bad_jwt", "session_not_found"])
+def test_gotrue_403_de_credencial_ruim_e_401_e_nao_503(dublar, codigo):
+    """Medido em 09/10/2026: o GoTrue do Supabase oficial responde 403
+    `bad_jwt` para token inválido. Virava 503 ("serviço fora do ar") para quem
+    só precisava entrar de novo."""
+    dublar(_SupabaseDeMentira(status_auth=403, corpo_auth={"code": 403, "error_code": codigo}))
+    erro = _recusa(ident.exigir_usuario(authorization="Bearer t", settings=_config()))
+    assert erro.status_code == 401
+
+
+def test_gotrue_403_desconhecido_continua_503(dublar):
+    dublar(_SupabaseDeMentira(status_auth=403, corpo_auth={"code": 403, "error_code": "outra_coisa"}))
+    erro = _recusa(ident.exigir_usuario(authorization="Bearer t", settings=_config()))
+    assert erro.status_code == 503
 
 
 def test_token_sem_sujeito_e_401(dublar):
