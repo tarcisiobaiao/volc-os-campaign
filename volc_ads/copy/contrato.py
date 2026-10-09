@@ -684,8 +684,53 @@ def checar(dados: dict, pedido: Pedido, *, semantico_ativo: bool = False) -> lis
     achados += _c9_cobertura_do_termo(dados, pedido)
     achados += _c10_portao_do_lancamento(dados, pedido)
     achados += _c11_variedade_de_keywords(dados, pedido)
+    achados += _c12_ano_passado(dados, pedido)
     achados += _forma(dados, pedido)
     return achados
+
+
+def _c12_ano_passado(dados: dict, pedido: Pedido) -> list[Achado]:
+    """Ano anterior ao corrente em qualquer recurso — sempre, com ou sem fato.
+
+    Medido no card 106 em 09/10/2026: sem texto da LP o brief não tem fatos, e
+    `C7` só cobra lastro quando há fato. A cascata entregou "Gás do Povo
+    Calendário 2025" e "Regras do Gás do Povo 2024" em 2026. Anúncio que vende o
+    estado ATUAL de um programa com o ano passado é desatualização afirmada —
+    não depende de juiz de sentido para ser visto.
+    """
+    import datetime as _dt
+
+    ref = int(pedido.ano or _dt.date.today().year)
+    fora: list[Achado] = []
+
+    def conferir(texto: object, alvo: Alvo) -> None:
+        for m in re.finditer(RX_ANO, str(texto or "")):
+            ano = m.group(0)
+            if int(ano) >= ref:
+                continue
+            # Ano como DATA de um fato ("mudou em 2025", "desde 2024") ou como
+            # número de norma ("Resolução 1.130/2025") é história, não rótulo.
+            # O defeito é o ano rotulando o estado atual: "Calendário 2025".
+            antes = str(texto)[:m.start()].rstrip()
+            if antes.endswith("/") or re.search(
+                    r"(?i)\b(em|desde|de|do|da|ate|até|no|na|lei|decreto|resolu[cç][aã]o|portaria|n[ºo°])\.?$",
+                    antes):
+                continue
+            fora.append(Achado(
+                "C12.ano_passado", Classe.FORMA_REESCREVER,
+                f"cita {ano}, anterior a {ref}: troque pelo ano corrente ou tire o ano "
+                f"→ {texto!r}", alvo))
+            return
+
+    for tipo, chave in (("headline", "headlines"), ("description", "descriptions"),
+                        ("callout", "callouts")):
+        for i, t in enumerate(dados.get(chave) or []):
+            conferir(t, Alvo(tipo, i))
+    for i, sl in enumerate(dados.get("sitelinks") or []):
+        if isinstance(sl, dict):
+            for sub in ("title", "description1", "description2"):
+                conferir(sl.get(sub), Alvo("sitelink", i, sub))
+    return fora
 
 
 def _conteudo(texto: str) -> set[str]:

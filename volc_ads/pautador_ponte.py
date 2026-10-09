@@ -707,6 +707,58 @@ def _agregar(
     )
 
 
+def _grupos_do_conjunto_pago(cluster: dict[str, Any]) -> tuple[GrupoCandidato, ...] | None:
+    """Os grupos a partir do CONJUNTO PAGO, quando o cluster o tem.
+
+    ⚠️ Medido em 09/10/2026 no card 106: o conjunto aprovado tinha
+    "gás do povo como se cadastrar", que a `production_ads_queue` não tinha, e o
+    grupo ELEGIBILIDADE da triagem oferecia "vale gás quem tem direito", que o
+    conjunto reprovou por incongruência com a LP. `/provar` tira as keywords do
+    conjunto e a ponte as conferia contra os grupos da triagem: um termo
+    aprovado derrubava o pedido com 503. Duas fontes para a mesma decisão.
+    """
+    conjunto = None
+    for item in cluster.get("factory_output") or []:
+        if isinstance(item, dict):
+            conjunto = (item.get("keywords_campanha") or {}).get("conjunto_pago")
+            if conjunto:
+                break
+    if not conjunto:
+        return None
+    proc = _rotulo_procedencia(cluster)
+    moeda = cluster.get("currency")
+    seo = _fila(cluster.get("content_seo_queue"))
+    funis = sorted(cluster.get("funis_sugeridos") or [],
+                   key=lambda f: f.get("rank") if isinstance(f.get("rank"), int) else 99)
+    subs = {str(x.get("tipo") or "").upper(): x
+            for x in ((funis[0].get("sub_intencoes") or []) if funis else [])}
+    por_tipo: dict[str, list[KeywordCandidata]] = {}
+    for d in conjunto.get("selected_keywords") or []:
+        termo = str(d.get("termo") or "")
+        vol = (d.get("volume") or {}).get("valor")
+        por_tipo.setdefault(str(d.get("subintencao") or "SEM_SUB_INTENCAO").upper(), []).append(
+            KeywordCandidata(
+                texto=termo,
+                volume=None if vol is None else int(vol),
+                cpc=_cpc((d.get("cpc") or {}).get("valor"), proc, moeda),
+                competicao=str(d.get("competicao") or ""),
+                tendencia=None, tags=(),
+                motivo="; ".join(d.get("motivos") or []),
+                tambem_em_conteudo=_norm(termo) in seo,
+            ))
+    grupos = []
+    for tipo, kws in por_tipo.items():
+        volume, simples, ponderado = _agregar(tuple(kws), proc, moeda)
+        sub = subs.get(tipo) or {}
+        grupos.append(GrupoCandidato(
+            tipo=tipo, descricao=str(sub.get("descricao") or ""), keywords=tuple(kws),
+            volume=volume, cpc_simples=simples, cpc_ponderado=ponderado,
+            volume_declarado=int(sub.get("volume_sub") or 0),
+            keywords_declaradas=len(sub.get("keywords") or []), fora_da_fila=(),
+        ))
+    return tuple(grupos)
+
+
 def _grupos_do_funil(
     cluster: dict[str, Any], avisos: list[Aviso]
 ) -> tuple[tuple[GrupoCandidato, ...], tuple[Descartada, ...]]:
@@ -1190,6 +1242,16 @@ def montar_cockpit(linhas: Linhas) -> Cockpit:
         ))
 
     grupos, descartadas = _grupos_do_funil(cluster, avisos)
+    do_conjunto = _grupos_do_conjunto_pago(cluster)
+    if do_conjunto is not None:
+        grupos = do_conjunto
+        avisos.append(Aviso(
+            "GRUPOS_DO_CONJUNTO_PAGO", "informacao",
+            "Os grupos mostram o conjunto pago, não a triagem",
+            "O cluster tem conjunto do motor de elegibilidade paga; é dele que "
+            "`/provar` tira as keywords de Search. Mostrar a triagem antiga "
+            "ofereceria termo que o conjunto reprovou e esconderia termo aprovado.",
+        ))
     origem = _origem(linhas, cluster, avisos)
 
     resumo = cluster.get("summary") or {}
@@ -1625,6 +1687,29 @@ def _run_dir(carimbo: str, raiz: Path) -> Path | None:
     return (definitivas or candidatas or [None])[0]
 
 
+def _pasta_do_run(run: dict[str, Any], raiz: Path) -> Path | None:
+    """A pasta do run, nos três formatos que `pautador_funnel_runs.artefatos` já teve.
+
+    ⚠️ Medido em 09/10/2026: o worker grava `{pid, carimbo}` enquanto roda e
+    TROCA por `{pasta, arquivos}` ao terminar (`redator/worker.py`). Ler só
+    `carimbo` fazia todo run concluído (28 de 28 recentes) parecer sem artefato,
+    e a copy saía sem fatos nem texto da LP — no card 106, "Calendário 2025" e
+    "Cadastro Grátis" numa LP que não fala de nenhum dos dois. Mesma ordem de
+    `routers/publicacao.py`: pasta, carimbo, `run_id`.
+    """
+    runs = raiz / "funnelforge-migracao" / "engine" / "runs"
+    arte = run.get("artefatos") or {}
+    if arte.get("pasta") and (runs / str(arte["pasta"])).is_dir():
+        return runs / str(arte["pasta"])
+    if arte.get("carimbo"):
+        achada = _run_dir(str(arte["carimbo"]), raiz)
+        if achada is not None:
+            return achada
+    if run.get("run_id") and (runs / str(run["run_id"])).is_dir():
+        return runs / str(run["run_id"])
+    return None
+
+
 def carregar(opportunity_id: int, *, run_id: int | None = None,
              leitor: Any = None, raiz: Path | None = None) -> Linhas:
     """Busca as linhas no Supabase e o `state.json` no disco. Só leitura."""
@@ -1661,15 +1746,13 @@ def carregar(opportunity_id: int, *, run_id: int | None = None,
     if run and run.get("project_id"):
         wordpress = um("project_wordpress", {"project_id": f"eq.{run['project_id']}"})
 
-    estado, pasta = None, None
-    carimbo = ((run or {}).get("artefatos") or {}).get("carimbo")
-    if carimbo:
-        pasta = _run_dir(str(carimbo), raiz)
-        if pasta is not None:
-            try:
-                estado = json.loads((pasta / "state.json").read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                estado = None
+    estado = None
+    pasta = _pasta_do_run(run or {}, raiz)
+    if pasta is not None:
+        try:
+            estado = json.loads((pasta / "state.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            estado = None
 
     return Linhas(
         opportunity_id=opportunity_id, cluster=cluster, run=run, entidade=entidade,

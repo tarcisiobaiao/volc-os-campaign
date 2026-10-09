@@ -1060,3 +1060,70 @@ def teste_usar_todas_e_selecao_juntas_sao_contradicao() -> None:
     except PonteIncompleta:
         return
     raise AssertionError("aceitou seleção e `usar todas` ao mesmo tempo")
+
+
+# ── pasta do run nos três formatos de `artefatos` (09/10/2026) ──────────────
+
+def _raiz_com_run(tmp_path, nome: str):
+    pasta = tmp_path / "funnelforge-migracao" / "engine" / "runs" / nome
+    pasta.mkdir(parents=True)
+    (pasta / "state.json").write_text("{}", encoding="utf-8")
+    return tmp_path, pasta
+
+
+def test_run_concluido_grava_pasta_e_a_ponte_acha(tmp_path) -> None:
+    """O worker troca `{pid, carimbo}` por `{pasta, arquivos}` ao terminar; ler
+    só `carimbo` deixava todo run concluído sem fatos nem texto da LP."""
+    from volc_ads.pautador_ponte import _pasta_do_run
+
+    raiz, pasta = _raiz_com_run(tmp_path, "guia-gas-do-povo-20261008-134021")
+    run = {"artefatos": {"pasta": "guia-gas-do-povo-20261008-134021", "arquivos": []}}
+    assert _pasta_do_run(run, raiz) == pasta
+
+
+def test_run_em_andamento_ainda_e_achado_pelo_carimbo(tmp_path) -> None:
+    from volc_ads.pautador_ponte import _pasta_do_run
+
+    raiz, pasta = _raiz_com_run(tmp_path, "guia-x-20261008-134021")
+    assert _pasta_do_run({"artefatos": {"pid": 1, "carimbo": "20261008-134021"}}, raiz) == pasta
+
+
+def test_run_sem_artefatos_cai_no_run_id_e_depois_em_nada(tmp_path) -> None:
+    from volc_ads.pautador_ponte import _pasta_do_run
+
+    raiz, pasta = _raiz_com_run(tmp_path, "guia-y-20261008-134021")
+    assert _pasta_do_run({"run_id": "guia-y-20261008-134021", "artefatos": {}}, raiz) == pasta
+    assert _pasta_do_run({"run_id": "nao-existe", "artefatos": None}, raiz) is None
+
+
+def test_grupos_vem_do_conjunto_pago_quando_ele_existe() -> None:
+    """Card 106 (09/10/2026): termo aprovado fora da triagem derrubava /provar,
+    e a triagem oferecia termo que o conjunto reprovou."""
+    from volc_ads.pautador_ponte import _grupos_do_conjunto_pago
+
+    def d(termo, sub, vol, cpc):
+        return {"termo": termo, "subintencao": sub, "volume": {"valor": vol},
+                "cpc": {"valor": cpc}, "competicao": "LOW", "motivos": ["ok"]}
+
+    cluster = {
+        "currency": "BRL",
+        "production_ads_queue": [{"keyword": "vale gás quem tem direito"}],
+        "funis_sugeridos": [{"rank": 1, "sub_intencoes": [
+            {"tipo": "ELEGIBILIDADE", "descricao": "quem tem direito", "volume_sub": 10,
+             "keywords": [{"keyword": "gás do povo como se cadastrar"}]}]}],
+        "factory_output": [{"keywords_campanha": {"conjunto_pago": {"selected_keywords": [
+            d("gás do povo como se cadastrar", "ELEGIBILIDADE", 480, 0.09),
+            d("gás do povo", "INFORMACIONAL", 673000, None)]}}}],
+    }
+    grupos = {g.tipo: g for g in _grupos_do_conjunto_pago(cluster)}
+    assert [k.texto for k in grupos["ELEGIBILIDADE"].keywords] == ["gás do povo como se cadastrar"]
+    assert grupos["ELEGIBILIDADE"].descricao == "quem tem direito"
+    # ausência de CPC continua ausência, nunca zero
+    assert grupos["INFORMACIONAL"].keywords[0].cpc.valor is None
+    assert "vale gás quem tem direito" not in [k.texto for g in grupos.values() for k in g.keywords]
+
+
+def test_sem_conjunto_pago_os_grupos_continuam_da_triagem() -> None:
+    from volc_ads.pautador_ponte import _grupos_do_conjunto_pago
+
+    assert _grupos_do_conjunto_pago({"factory_output": [{"keywords_campanha": {}}]}) is None
