@@ -208,7 +208,7 @@ def _instalar_leitura(monkeypatch: pytest.MonkeyPatch, *,
     agentes: list[str] = []
 
     def dublê(url: str, *, user_agent: str = "", timeout: int = 20,
-              max_bytes: int = 2_000_000) -> dict[str, Any]:
+              max_bytes: int = 2_000_000, preservar_query: bool = False) -> dict[str, Any]:
         agentes.append(user_agent)
         if erro is not None:
             raise erro

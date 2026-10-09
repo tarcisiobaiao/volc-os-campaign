@@ -3925,34 +3925,61 @@ def _ler_destino_ao_vivo(url: str) -> dict[str, dict[str, Any]]:
     que não serve a página não é destino, e avaliar o corpo de um 404 diria
     coisas verdadeiras sobre a página errada.
     """
-    # ⚠️ Medido em 09/10/2026 no card 106: `fetch_public_https_chain` DESCARTA a
-    # query string (privacidade dos artefatos do publisher), e
-    # `https://creditoup.com.br/?post_type=r&p=2477` foi lida como a HOME — 200,
-    # "home blog". O portão julgou a home como se fosse a LP: 417 palavras e os
-    # links da lista de posts viraram bloqueios da LP. Quando a página É a query,
-    # este leitor não consegue lê-la, e o certo é dizer isso.
-    from urllib.parse import urlsplit as _urlsplit
-    if _urlsplit(url).query:
-        raise DestinoIlegivel(
-            f"a URL {url!r} identifica a página pela query string, e a leitura "
-            "pública descarta a query — leria OUTRA página (a home, medido). "
-            "Publique e use o permalink para o portão avaliar a LP.")
+    # ⚠️ Medido em 09/10/2026 no card 106: a leitura descartava a query e
+    # `?post_type=r&p=2477` foi lida como a HOME (200, "home blog"); o portão
+    # julgou a home como se fosse a LP. Agora a query vai na REQUISIÇÃO, os
+    # registros recebem só a forma sanitizada (`url_para_recibo`), e 200 sozinho
+    # não basta: `_pagina_recebida` prova QUE página veio.
     leituras: dict[str, dict[str, Any]] = {}
     for rotulo, agente in LEITURAS_DO_DESTINO:
         try:
             leitura = pqf.fetch_public_https_chain(
-                url, user_agent=agente, timeout=TIMEOUT_LEITURA_DO_DESTINO_S)
+                url, user_agent=agente, timeout=TIMEOUT_LEITURA_DO_DESTINO_S,
+                preservar_query=True)
         except Exception as exc:  # noqa: BLE001 — traduzida abaixo, nunca engolida
             raise DestinoIlegivel(
-                f"a leitura {rotulo!r} do destino não concluiu "
+                f"destino público não validado: a leitura {rotulo!r} não concluiu "
                 f"({type(exc).__name__}: {str(exc)[:160]})") from exc
         status = int(leitura.get("status") or 0)
         if status != 200:
             raise DestinoIlegivel(
-                f"a leitura {rotulo!r} do destino respondeu HTTP {status}. Um "
-                "destino que não serve a página não é um destino elegível.")
+                f"destino público não validado: a leitura {rotulo!r} respondeu HTTP "
+                f"{status} para {pqf.url_para_recibo(url)}. Rascunho e página "
+                "privada aparecem assim — não é problema de conteúdo.")
+        problema = _pagina_recebida(url, leitura)
+        if problema:
+            raise DestinoIlegivel(f"destino público não validado ({rotulo}): {problema}")
         leituras[rotulo] = leitura
     return leituras
+
+
+def _pagina_recebida(url: str, leitura: dict[str, Any]) -> str | None:
+    """Que página veio? `None` quando é a pedida; senão, o motivo.
+
+    Prova pelo que a página declara de si (classe do `<body>` e `shortlink` do
+    WordPress), não pelo status. Recusa só o que é evidência de OUTRA página:
+    soft-404, id de post divergente, e a home servida no lugar de outra URL.
+    """
+    import re as _re
+    from urllib.parse import parse_qs as _qs, urlsplit as _split
+
+    html = str(leitura.get("html") or "")
+    corpo = _re.search(r"<body[^>]*\bclass=[\"']([^\"']*)", html, _re.I)
+    classes = set((corpo.group(1) if corpo else "").split())
+    titulo = _re.search(r"<title[^>]*>(.*?)</title>", html, _re.I | _re.S)
+    titulo_txt = (titulo.group(1) if titulo else "").strip().lower()
+    if "error404" in classes or _re.search(r"n[ãa]o encontrad|not found|404", titulo_txt):
+        return "soft-404 — o servidor respondeu 200 com a página de erro"
+    pedida = _split(url)
+    q = _qs(pedida.query)
+    pid = (q.get("p") or q.get("page_id") or [None])[0]
+    if pid:
+        if not ({f"postid-{pid}", f"page-id-{pid}"} & classes) and f"?p={pid}" not in html:
+            return (f"pediu o post {pid} e a página recebida não declara esse id "
+                    f"(classes do body: {' '.join(sorted(classes))[:120] or 'nenhuma'})")
+    elif (pedida.path or "/") not in ("", "/") and "home" in classes:
+        return "a home foi servida no lugar da URL pedida"
+    return None
 
 
 def _pagina_do_destino(url: str, leituras: dict[str, dict[str, Any]], *,

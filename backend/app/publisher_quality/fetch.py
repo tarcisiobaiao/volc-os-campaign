@@ -4,7 +4,7 @@ import hashlib
 import ipaddress
 import socket
 from urllib.error import HTTPError
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import Request, build_opener, HTTPSHandler, HTTPRedirectHandler
 
 #: O user-agent padrão do leitor read-only. Fica nomeado porque a checagem de
@@ -65,6 +65,41 @@ def validate_public_https_target(url: str) -> str:
     return urlunparse(("https", parsed.netloc.lower(), parsed.path or "/", "", "", ""))
 
 
+def alvo_de_requisicao(url: str) -> str:
+    """A URL QUE SE REQUISITA: mesmas checagens de `validate_public_https_target`,
+    mas a query fica — ela pode ser a identidade da página (`?p=2477`).
+
+    ⚠️ Medido em 09/10/2026: com a query descartada, `?post_type=r&p=2477` foi
+    lida como a home, e o portão julgou a home como se fosse a LP. A
+    sanitização é dos REGISTROS (`url_para_recibo`), não do destino.
+    """
+    validate_public_https_target(url)  # segurança: HTTPS, sem credencial, host público
+    parsed = urlparse((url or "").strip())
+    return urlunparse(("https", parsed.netloc.lower(), parsed.path or "/", "", parsed.query, ""))
+
+
+#: Chaves de query que identificam CONTEÚDO público e podem aparecer no recibo.
+#: Qualquer outra (preview, nonce, token, gclid, e-mail…) vira fingerprint.
+CHAVES_PUBLICAS_DE_CONTEUDO = frozenset({"p", "page_id", "post_type", "cat", "tag", "lang"})
+
+
+def url_para_recibo(url: str) -> str:
+    """A representação que vai para recibos e artefatos: sem valor sensível.
+
+    Valores fora de `CHAVES_PUBLICAS_DE_CONTEUDO` viram `~<sha256[:10]>` — o
+    mesmo valor dá o mesmo fingerprint (comparável), sem expor o conteúdo.
+    """
+    parsed = urlparse((url or "").strip())
+    pares = []
+    for chave, valor in parse_qsl(parsed.query, keep_blank_values=True):
+        if chave.lower() in CHAVES_PUBLICAS_DE_CONTEUDO:
+            pares.append((chave, valor))
+        else:
+            pares.append((chave, "~" + hashlib.sha256(valor.encode("utf-8")).hexdigest()[:10]))
+    return urlunparse((parsed.scheme or "https", parsed.netloc.lower(), parsed.path or "/", "",
+                       urlencode(pares, safe="~"), ""))
+
+
 class _SafeRedirectHandler(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
         validate_public_https_target(newurl)
@@ -79,19 +114,18 @@ class _RecordingRedirectHandler(_SafeRedirectHandler):
     mantém a cadeia sendo evidência do que foi permitido, não do que foi tentado.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, preservar_query: bool = False) -> None:
         super().__init__()
-        self.saltos: list[dict[str, object]] = []
+        self.saltos = []
+        self.preservar_query = preservar_query
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
         pedido = super().redirect_request(req, fp, code, msg, headers, newurl)
-        self.saltos.append(
-            {
-                "from": validate_public_https_target(req.full_url),
-                "status": int(code),
-                "to": validate_public_https_target(newurl),
-            }
-        )
+        if self.preservar_query:
+            de, para = url_para_recibo(req.full_url), url_para_recibo(alvo_de_requisicao(newurl))
+        else:
+            de, para = validate_public_https_target(req.full_url), validate_public_https_target(newurl)
+        self.saltos.append({"from": de, "status": int(code), "to": para})
         return pedido
 
 
@@ -128,8 +162,13 @@ def fetch_public_https_chain(
     user_agent: str = USER_AGENT_PADRAO,
     timeout: int = 20,
     max_bytes: int = 2_000_000,
+    preservar_query: bool = False,
 ) -> dict[str, object]:
     """Uma leitura pública, com a CADEIA DE REDIRECIONAMENTO preservada.
+
+    `preservar_query=True` (portão de destino de campanha): requisita a URL com
+    a query e devolve `url`, `final_url` e saltos na forma de `url_para_recibo`.
+    O padrão continua o de sempre para quem não precisa da query.
 
     ## Por que isto precisou existir separado de `fetch_public_https_once`
 
@@ -152,8 +191,8 @@ def fetch_public_https_chain(
     autenticação, sem POST, com teto de bytes. Não existe caminho aqui para
     escrever em lugar nenhum.
     """
-    safe_url = validate_public_https_target(url)
-    handler = _RecordingRedirectHandler()
+    safe_url = alvo_de_requisicao(url) if preservar_query else validate_public_https_target(url)
+    handler = _RecordingRedirectHandler(preservar_query=preservar_query)
     opener = build_opener(handler, HTTPSHandler)
     request = Request(
         safe_url,
@@ -163,20 +202,23 @@ def fetch_public_https_chain(
         },
         method="GET",
     )
+    validar = alvo_de_requisicao if preservar_query else validate_public_https_target
     try:
         with opener.open(request, timeout=timeout) as response:
             status = int(response.status)
-            final_url = validate_public_https_target(response.geturl())
+            final_url = validar(response.geturl())
             headers = {k.lower(): v for k, v in response.headers.items()}
             raw = response.read(max_bytes + 1)
     except HTTPError as erro:
         # Resposta de erro ainda é resposta: o corpo é curto e o status é o dado.
         status = int(erro.code)
-        final_url = validate_public_https_target(erro.geturl())
+        final_url = validar(erro.geturl())
         headers = {k.lower(): v for k, v in (erro.headers or {}).items()}
         raw = erro.read(min(max_bytes, 64_000))
     if len(raw) > max_bytes:
         raise ValueError("publisher quality target response exceeds read-only byte cap")
+    if preservar_query:
+        safe_url, final_url = url_para_recibo(safe_url), url_para_recibo(final_url)
     return {
         "url": safe_url,
         "final_url": final_url,

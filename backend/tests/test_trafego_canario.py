@@ -412,7 +412,7 @@ def _recibo_de_aprovacao(html: str = HTML_DO_DESTINO) -> dict:
 
 
 def _leitura_do_destino(url: str, *, user_agent: str = "", timeout: int = 20,
-                        max_bytes: int = 2_000_000) -> dict:
+                        max_bytes: int = 2_000_000, preservar_query: bool = False) -> dict:
     """Dublê de `fetch_public_https_chain`, com a forma EXATA da função real.
 
     Todas as variantes recebem o mesmo HTML: é o caso "sem cloaking, sem

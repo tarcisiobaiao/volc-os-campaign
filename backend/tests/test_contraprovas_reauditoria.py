@@ -195,7 +195,7 @@ def _leitor(*, desktop: str = HTML_CONFORME, movel: str | None = None,
     agentes: list[str] = []
 
     def ler(url: str, *, user_agent: str = "", timeout: int = 20,
-            max_bytes: int = 2_000_000) -> Dict[str, Any]:
+            max_bytes: int = 2_000_000, preservar_query: bool = False) -> Dict[str, Any]:
         agentes.append(user_agent)
         if erro is not None:
             raise erro
