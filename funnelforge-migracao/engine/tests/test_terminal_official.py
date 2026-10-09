@@ -94,6 +94,17 @@ def test_official_terminal_keeps_rich_link_density_and_legacy_exemption():
     assert official_link_density("<p>Legacy terminal</p>", ctx) == []
 
 
+def test_terminal_oficial_aceita_recirculacao_interna_e_recusa_externo_nao_verificado():
+    ctx = {"role": PageRole.SOLUTION, "is_terminal": True,
+           "terminal_official": True, "official_links": [URL],
+           "domain": "https://creditoup.com.br"}
+    ok = (f'<a href="{URL}">Fonte oficial</a>'
+          '<a href="https://creditoup.com.br/rec/outro-guia">Outro guia</a>')
+    assert official_link_density(ok, ctx) == []
+    ruim = ok + '<a href="https://externo.example/nao-verificado">Outro site</a>'
+    assert official_link_density(ruim, ctx)[0].code == "terminal_exit_not_authorized"
+
+
 def test_official_terminal_prompt_does_not_require_recirculation():
     prompt = render(
         "redator_pages", role="SOLUTION", is_terminal=True, terminal_official=True,

@@ -34,7 +34,19 @@ def test_strips_divider_wedged_between_buttons():
     raw = _BTN + _SEP + _BTN
     out = normalize_gutenberg(raw)
     assert "wp:separator" not in out
-    assert out.count("wp:buttons") == 4  # both button groups survive (2 open + 2 close)
+    assert out.count("wp:buttons") == 2  # one group (open + close), both CTAs inside
+    assert out.count("<!-- wp:button -->") == 2
+    assert out.count('href="/rec/x"') == 2
+
+
+def test_merges_button_groups_separated_only_by_spacer():
+    spacer = ('<!-- wp:spacer {"height":"24px"} -->'
+              '<div style="height:24px" aria-hidden="true"></div>'
+              '<!-- /wp:spacer -->')
+    out = normalize_gutenberg(_BTN + spacer + _BTN)
+    assert "wp:spacer" not in out
+    assert out.count("wp:buttons") == 2
+    assert out.count('href="/rec/x"') == 2
 
 
 def test_keeps_separator_between_text_sections():

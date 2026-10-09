@@ -1,0 +1,1456 @@
+{
+  "data": "2026-10-08",
+  "metodo": "Read-only dos estados, logs e recibos; estado final não reconstitui bloqueios transitórios apagados. Nenhum draft alterado. Chamadas do dossiê nem sempre aparecem no log principal. Latências de páginas não são tempo de parede.",
+  "runs": [
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-094351",
+      "path": "funnelforge-migracao/engine/runs/gas-do-povo-como-funciona-20261008-094351/state.json",
+      "etapas": 7,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "funnel_graph": [
+          "loop_sem_ganho",
+          "loop_sem_ganho"
+        ],
+        "revisao_esqueleto": [
+          "loop_sem_ganho",
+          "loop_sem_ganho",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "retorno_justificado",
+          "retorno_justificado",
+          "retorno_justificado",
+          "retorno_justificado",
+          "retorno_justificado",
+          "retorno_justificado",
+          "coorte_fria_sem_resposta_direta"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-094711",
+      "path": "funnelforge-migracao/engine/runs/gas-do-povo-como-funciona-20261008-094711/state.json",
+      "etapas": 2,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {},
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-094810",
+      "path": "funnelforge-migracao/engine/runs/gas-do-povo-como-funciona-20261008-094810/state.json",
+      "etapas": 53,
+      "chamadas_llm_recibos": 10,
+      "chamadas_log": 14,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "content_gate_p2": [
+          "ungrounded_critical_claim"
+        ],
+        "blocked_p2": [
+          "revisao_global_block"
+        ]
+      },
+      "cobertura_factual": {
+        "ready": 4,
+        "review": 1
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=0; pico_de_chamadas_em_voo=0; parede_s=0.027; soma_das_paginas_s=0.045; teto_do_run=não; dossie=578be88c7b13"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 27
+      },
+      "publicados_preexistentes": 5
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-113427",
+      "path": "funnelforge-migracao/engine/runs/gas-do-povo-como-funciona-20261008-113427/state.json",
+      "etapas": 43,
+      "chamadas_llm_recibos": 29,
+      "chamadas_log": 27,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 1,
+      "chamadas_pesquisa": 2,
+      "retentativas_log": 3,
+      "causas_tentativas": {
+        "numero_sem_fato_compativel": 1,
+        "cta_external_channel": 1,
+        "numero_fora_dos_fatos": 1
+      },
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "revisor_p1": [
+          "revisao_humana"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "revisor_p2": [
+          "revisao_humana"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "seo_p3": [
+          "seo_meta_too_long"
+        ],
+        "revisor_p3": [
+          "revisao_humana"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "revisor_p4": [
+          "revisao_humana"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "revisor_p5": [
+          "revisao_humana"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {
+        "ready": 3,
+        "review": 2
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 1,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 1,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 1,
+          "categoria": "erro_factual",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 1,
+          "categoria": "erro_factual",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 2,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "congruencia_destino",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 3,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=26; pico_de_chamadas_em_voo=3; parede_s=494.637; soma_das_paginas_s=1184.999; teto_do_run=não; dossie=ae58df4e684b"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 494637
+      },
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-120159",
+      "path": "funnelforge-migracao/engine/runs/gas-do-povo-como-funciona-20261008-120159/state.json",
+      "etapas": 50,
+      "chamadas_llm_recibos": 33,
+      "chamadas_log": 30,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 4,
+      "causas_tentativas": {
+        "numero_fora_dos_fatos": 1,
+        "numero_sem_fato_compativel": 1,
+        "cross_domain": 2,
+        "cta_external_channel": 1
+      },
+      "falhas_transportes": [
+        {
+          "passo": "image_review_p3",
+          "classe": "terminal"
+        }
+      ],
+      "bloqueios_finais": {
+        "revisor_p1": [
+          "revisao_humana"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "revisor_p2": [
+          "revisao_humana"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "image_review_p3": [],
+        "revisor_p4": [
+          "revisao_humana"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "revisor_p5": [
+          "revisao_humana"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {
+        "review": 1,
+        "ready": 4
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 1,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 1,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "congruencia_destino",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "estilo",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 5,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.092768,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=29; pico_de_chamadas_em_voo=3; parede_s=652.22; soma_das_paginas_s=1392.402; teto_do_run=não; dossie=73849145e081"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 652220
+      },
+      "publicados_preexistentes": 1
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-122309",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-122309/state.json",
+      "etapas": 7,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "funnel_graph": [
+          "bloco_incompativel_com_a_funcao"
+        ],
+        "revisao_esqueleto": [
+          "bloco_incompativel_com_a_funcao",
+          "bloco_sem_entrega_correspondente",
+          "checkpoint_sem_conclusao"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-122348",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-122348/state.json",
+      "etapas": 55,
+      "chamadas_llm_recibos": 35,
+      "chamadas_log": 31,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 3,
+      "causas_tentativas": {
+        "cross_domain": 2
+      },
+      "falhas_transportes": [
+        {
+          "passo": "revisor_p1",
+          "classe": "transitorio"
+        }
+      ],
+      "bloqueios_finais": {
+        "revisor_p2": [
+          "revisao_humana"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "revisor_p3": [
+          "revisao_humana"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "content_gate_p4": [
+          "cross_domain"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "revisor_p5": [
+          "revisao_humana"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {
+        "ready": 4,
+        "review": 1
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 1,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 2,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 4,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.19278,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=30; pico_de_chamadas_em_voo=3; parede_s=526.054; soma_das_paginas_s=1208.633; teto_do_run=não; dossie=d46f15827f66"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 526054
+      },
+      "publicados_preexistentes": 1
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-123925",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-123925/state.json",
+      "etapas": 55,
+      "chamadas_llm_recibos": 35,
+      "chamadas_log": 31,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 3,
+      "causas_tentativas": {
+        "cross_domain": 2
+      },
+      "falhas_transportes": [
+        {
+          "passo": "write_p1",
+          "classe": "transitorio"
+        }
+      ],
+      "bloqueios_finais": {
+        "revisor_p2": [
+          "revisao_humana"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "revisor_p3": [
+          "revisao_humana"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "revisor_p4": [
+          "revisao_humana"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {
+        "ready": 3,
+        "review": 2
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.28352,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=30; pico_de_chamadas_em_voo=3; parede_s=477.295; soma_das_paginas_s=1121.744; teto_do_run=não; dossie=9c109a6a7e3d"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 477295
+      },
+      "publicados_preexistentes": 1
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-125104",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-125104/state.json",
+      "etapas": 7,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "funnel_graph": [
+          "bloco_incompativel_com_a_funcao"
+        ],
+        "revisao_esqueleto": [
+          "bloco_incompativel_com_a_funcao",
+          "checkpoint_sem_conclusao"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-125231",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-125231/state.json",
+      "etapas": 48,
+      "chamadas_llm_recibos": 39,
+      "chamadas_log": 27,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 6,
+      "chamadas_pesquisa": 12,
+      "retentativas_log": 3,
+      "causas_tentativas": {
+        "cross_domain": 1,
+        "critical_claim_without_citation": 1,
+        "terminal_exit_not_authorized": 2
+      },
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "revisor_p1": [
+          "revisao_humana"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "revisor_p2": [
+          "revisao_humana"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "revisor_p3": [
+          "revisao_humana"
+        ],
+        "blocked_p3": [
+          "fail_closed"
+        ],
+        "revisor_p4": [
+          "revisao_humana"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "revisor_p5": [
+          "revisao_humana"
+        ],
+        "blocked_p5": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {
+        "review": 4,
+        "ready": 1
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 1,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 3,
+          "categoria": "congruencia_destino",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "erro_factual",
+          "severidade": "bloqueante"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=26; pico_de_chamadas_em_voo=3; parede_s=568.77; soma_das_paginas_s=1409.126; teto_do_run=não; dossie=d9238d1297cb"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 568770
+      },
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-130719",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-130719/state.json",
+      "etapas": 62,
+      "chamadas_llm_recibos": 36,
+      "chamadas_log": 32,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 2,
+      "causas_tentativas": {
+        "cross_domain": 2
+      },
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "content_gate_p1": [
+          "conteudo_original_insuficiente"
+        ],
+        "blocked_p1": [
+          "fail_closed"
+        ],
+        "revisor_p2": [
+          "revisao_humana"
+        ],
+        "blocked_p2": [
+          "fail_closed"
+        ],
+        "revisor_p4": [
+          "revisao_humana"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ],
+        "content_gate_p5": [
+          "cta_external_channel"
+        ],
+        "publish_p5": [
+          "final_artifact_rejected",
+          "cta_external_channel"
+        ]
+      },
+      "cobertura_factual": {
+        "ready": 3,
+        "review": 2
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 1,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 1,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 2,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "congruencia_destino",
+          "severidade": "bloqueante"
+        },
+        {
+          "pagina": 4,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.2859935,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=31; pico_de_chamadas_em_voo=3; parede_s=492.256; soma_das_paginas_s=1102.607; teto_do_run=não; dossie=51d5a55652c3"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 492256
+      },
+      "publicados_preexistentes": 1
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-132515",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-132515/state.json",
+      "etapas": 72,
+      "chamadas_llm_recibos": 42,
+      "chamadas_log": 38,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 3,
+      "causas_tentativas": {
+        "numero_sem_fato_compativel": 1,
+        "cross_domain": 2
+      },
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "content_gate_p4": [
+          "cross_domain"
+        ],
+        "blocked_p4": [
+          "fail_closed"
+        ]
+      },
+      "cobertura_factual": {
+        "ready": 5
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 2,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 3,
+          "categoria": "oportunidade",
+          "severidade": "nota"
+        },
+        {
+          "pagina": 5,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.5115195,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=37; pico_de_chamadas_em_voo=3; parede_s=550.468; soma_das_paginas_s=1342.878; teto_do_run=não; dossie=10ca54b69379"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 550468
+      },
+      "publicados_preexistentes": 3
+    },
+    {
+      "run_id": "guia-gas-do-povo-20261008-134021",
+      "path": "funnelforge-migracao/engine/runs/guia-gas-do-povo-20261008-134021/state.json",
+      "etapas": 73,
+      "chamadas_llm_recibos": 39,
+      "chamadas_log": 35,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 2,
+      "chamadas_pesquisa": 4,
+      "retentativas_log": 1,
+      "causas_tentativas": {
+        "cross_domain": 1
+      },
+      "falhas_transportes": [],
+      "bloqueios_finais": {},
+      "cobertura_factual": {
+        "ready": 4,
+        "review": 1
+      },
+      "paginas_redigidas": 5,
+      "revisoes": [
+        {
+          "pagina": 3,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 4,
+          "categoria": "erro_factual",
+          "severidade": "ajuste"
+        },
+        {
+          "pagina": 5,
+          "categoria": "congruencia_destino",
+          "severidade": "ajuste"
+        }
+      ],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.5703025,
+      "custo_plano": "não informado",
+      "paralelo": {
+        "step": "paginas_paralelas",
+        "status": "OK",
+        "model_used": "",
+        "model_requested": "",
+        "auth_mode": "",
+        "reasoning_effort": "",
+        "response_id": "",
+        "attempts": 0,
+        "issues": [
+          {
+            "code": "paralelo",
+            "message": "workers=3; páginas=5; redigidas=5; acabadas=5; chamadas=34; pico_de_chamadas_em_voo=3; parede_s=516.349; soma_das_paginas_s=1173.46; teto_do_run=não; dossie=6caafe0f5133"
+          }
+        ],
+        "artifact_path": null,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cost_usd": 0.0,
+        "latency_ms": 516349
+      },
+      "publicados_preexistentes": 5
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-dossie-v2",
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v2/state.json",
+      "etapas": 13,
+      "chamadas_llm_recibos": 3,
+      "chamadas_log": 1,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 1,
+      "chamadas_pesquisa": 2,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {},
+      "cobertura_factual": {
+        "review": 3,
+        "ready": 2
+      },
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-dossie-v6",
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v6/state.json",
+      "etapas": 2,
+      "chamadas_llm_recibos": 1,
+      "chamadas_log": 1,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {},
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.025752,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "gas-do-povo-como-funciona-20261008-dossie-v7",
+      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v7/state.json",
+      "etapas": 13,
+      "chamadas_llm_recibos": 3,
+      "chamadas_log": 1,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 1,
+      "chamadas_pesquisa": 2,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {},
+      "cobertura_factual": {
+        "review": 4,
+        "ready": 1
+      },
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "programa-gas-do-povo-como-funciona-20261008-dossie-v3",
+      "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v3/state.json",
+      "etapas": 2,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "funnel_graph": [
+          "referencia_de_duvida_inexistente"
+        ],
+        "revisao_esqueleto": [
+          "referencia_de_duvida_inexistente"
+        ]
+      },
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "programa-gas-do-povo-como-funciona-20261008-dossie-v4",
+      "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v4/state.json",
+      "etapas": 2,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "funnel_graph": [
+          "referencia_de_duvida_inexistente"
+        ],
+        "revisao_esqueleto": [
+          "referencia_de_duvida_inexistente"
+        ]
+      },
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    },
+    {
+      "run_id": "programa-gas-do-povo-como-funciona-20261008-dossie-v5",
+      "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v5/state.json",
+      "etapas": 2,
+      "chamadas_llm_recibos": null,
+      "chamadas_log": 0,
+      "chamadas_recibo_canario": null,
+      "pesquisas_logicas": 0,
+      "chamadas_pesquisa": 0,
+      "retentativas_log": 0,
+      "causas_tentativas": {},
+      "falhas_transportes": [],
+      "bloqueios_finais": {
+        "funnel_graph": [
+          "loop_sem_ganho"
+        ],
+        "revisao_esqueleto": [
+          "loop_sem_ganho",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "cta_contextual",
+          "retorno_justificado",
+          "retorno_justificado",
+          "retorno_justificado",
+          "checkpoint_sem_conclusao"
+        ]
+      },
+      "cobertura_factual": {},
+      "paginas_redigidas": 0,
+      "revisoes": [],
+      "requisitos_explicitos_esqueleto": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ledger_usd": 0.0,
+      "custo_plano": "não informado",
+      "paralelo": null,
+      "publicados_preexistentes": 0
+    }
+  ]
+}

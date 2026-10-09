@@ -147,10 +147,28 @@ def test_inventario_usa_o_tipo_da_pesquisa_quando_existe():
     f1, n1 = inv.fatos
     assert (f1.id, f1.tipo, f1.escopo, f1.tipo_origem) == ("f1", "orgao", "nacional", "pesquisa")
     assert (n1.id, n1.tipo, n1.escopo, n1.citavel) == ("n1", "condicao", "regional:SP", True)
-    assert n1.verificada_ao_vivo is True and f1.verificada_ao_vivo is False
+    assert n1.verificada_ao_vivo is True and f1.verificada_ao_vivo is True
     assert inv.canais_oficiais == ["https://a.exemplo.gov.br/x"]
     fonte = inv.fontes[0]
     assert (fonte.papel, fonte.resolvida) == ("oficial", True)
+
+
+def test_dado_validado_numerico_mantem_lastro_da_fonte_resolvida():
+    url = "https://www.gov.br/exemplo/regra"
+    facts = ResearchFacts(
+        fontes=[url], fontes_resolvidas=[url],
+        dados_validados=[{
+            "fato": "O cadastro deve estar atualizado em até 24 meses.",
+            "fonte": url, "tipo": "condicao",
+        }],
+    )
+    page = Page(page_number=2, page_type="PRESELL", slug="regra", h1_title="Regra")
+    state = RunState(run_id="r", plan=FunnelPlan(pages=[page]), facts={2: facts})
+
+    inv = montar_inventario(state, page)
+
+    assert inv.fatos[0].texto.endswith("24 meses.")
+    assert inv.fatos[0].verificada_ao_vivo is True
 
 
 def test_termos_ausentes_quando_o_card_nao_mandou():

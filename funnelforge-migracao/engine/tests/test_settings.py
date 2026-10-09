@@ -68,6 +68,8 @@ def test_config_antigo_com_allowlist_carrega_sem_efeito(tmp_path: Path):
 def test_load_settings_parses_new_blocks(config_files: Path):
     s = load_settings(config_files / ".env", config_files / "config.yaml")
     assert s.site.cnpj == "42.724.548/0001-24"
+    assert s.site.rodape_institucional_persistente is True
+    assert "financiado por blocos de anuncios" in s.site.rodape_institucional.lower()
     # Sem allowlist: `official_preference` so ORDENA e `blocked_hosts` e
     # denylist opcional -- ambos VAZIOS por padrao, que e o caso normal de um
     # funil novo (iFood, Serasa) rodando sem ninguem editar lista nenhuma.

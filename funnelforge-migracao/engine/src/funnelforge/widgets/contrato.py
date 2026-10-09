@@ -264,14 +264,38 @@ def _texto(v: object) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def _lista_de_textos(v: object, limite: int) -> list[str]:
+def _texto_limitado(v: object, limite: int, campo: str,
+                    motivos: list[str]) -> str:
+    """Keep the model's text intact and reject overflow instead of slicing it.
+
+    Silent slicing produced real reader-facing fragments (``"con"`` and
+    ``"necessidade de r"``) while the widget contract still reported OK.
+    The pipeline already retries ``WidgetInvalido`` with its exact reasons, so
+    rejection is both safer and cheaper than rendering corrupted prose.
+    """
+    texto = _texto(v)
+    if len(texto) > limite:
+        motivos.append(
+            f"`{campo}` tem {len(texto)} caracteres; o máximo é {limite}. "
+            "Reescreva a frase inteira sem cortar palavra."
+        )
+    return texto
+
+
+def _lista_de_textos(v: object, limite: int, campo: str,
+                     motivos: list[str]) -> list[str]:
     if not isinstance(v, list):
         return []
     saida = []
     for item in v:
         t = _texto(item)
         if t:
-            saida.append(t[:limite])
+            if len(t) > limite:
+                motivos.append(
+                    f"`{campo}[{len(saida)}]` tem {len(t)} caracteres; o máximo "
+                    f"é {limite}. Reescreva o item inteiro sem cortar palavra."
+                )
+            saida.append(t)
     return saida
 
 
@@ -308,10 +332,11 @@ def _montar(d: dict) -> Widget:
             f"`arquetipo` deve ser um de {sorted(ARQUETIPOS)} — veio {arquetipo!r}.")
     spec = ARQUETIPOS[arquetipo]
 
-    titulo = _texto(d.get("titulo"))[:MAX_TITULO]
+    titulo = _texto_limitado(d.get("titulo"), MAX_TITULO, "titulo", motivos)
     if not titulo:
         motivos.append("`titulo` está vazio.")
-    subtitulo = _texto(d.get("subtitulo"))[:MAX_SUBTITULO]
+    subtitulo = _texto_limitado(
+        d.get("subtitulo"), MAX_SUBTITULO, "subtitulo", motivos)
 
     # ── controles ────────────────────────────────────────────────────────────
     controles: list[Controle] = []
@@ -336,7 +361,9 @@ def _montar(d: dict) -> Widget:
                 continue
             valores.add(valor)
             if txt:
-                opcoes.append(Opcao(valor=valor, texto=txt[:MAX_OPCAO]))
+                txt = _texto_limitado(
+                    txt, MAX_OPCAO, f"controles[{i}].opcoes[{k}].texto", motivos)
+                opcoes.append(Opcao(valor=valor, texto=txt))
         if not rotulo:
             motivos.append(f"O controle {cid} está sem `rotulo` — o leitor não "
                            "saberia o que está respondendo.")
@@ -344,7 +371,9 @@ def _montar(d: dict) -> Widget:
         if len(opcoes) < 2:
             motivos.append(f"O controle {cid} tem {len(opcoes)} opção(ões); o "
                            "mínimo é 2, senão não há o que escolher.")
-        controles.append(Controle(id=cid, rotulo=rotulo[:MAX_OPCAO * 2], opcoes=opcoes))
+        rotulo = _texto_limitado(
+            rotulo, MAX_OPCAO * 2, f"controles[{i}].rotulo", motivos)
+        controles.append(Controle(id=cid, rotulo=rotulo, opcoes=opcoes))
 
     minc, maxc = int(spec["min_controles"]), int(spec["max_controles"])  # type: ignore[call-overload]
     if not (minc <= len(controles) <= maxc):
@@ -356,20 +385,29 @@ def _montar(d: dict) -> Widget:
     for i, s in enumerate(d.get("cenarios") or []):
         if not isinstance(s, dict):
             continue
-        chip = _texto(s.get("chip"))[:MAX_CHIP]
+        chip = _texto_limitado(s.get("chip"), MAX_CHIP,
+                               f"cenarios[{i}].chip", motivos)
         tom = _texto(s.get("tom")).lower() or "neutro"
         if tom not in TONS:
             tom = "neutro"
-        c_titulo = _texto(s.get("titulo"))[:MAX_TITULO]
-        corpo = _texto(s.get("corpo"))[:MAX_CORPO]
-        passos = _lista_de_textos(s.get("passos"), MAX_PASSO)[:5]
+        c_titulo = _texto_limitado(s.get("titulo"), MAX_TITULO,
+                                   f"cenarios[{i}].titulo", motivos)
+        corpo = _texto_limitado(s.get("corpo"), MAX_CORPO,
+                                f"cenarios[{i}].corpo", motivos)
+        passos = _lista_de_textos(
+            s.get("passos"), MAX_PASSO, f"cenarios[{i}].passos", motivos)[:5]
         listas: list[Lista] = []
         for lst in (s.get("listas") or []):
             if not isinstance(lst, dict):
                 continue
-            r, itens = _texto(lst.get("rotulo")), _lista_de_textos(lst.get("itens"), MAX_ITEM)[:5]
+            r = _texto_limitado(
+                lst.get("rotulo"), MAX_CHIP,
+                f"cenarios[{i}].listas[{len(listas)}].rotulo", motivos)
+            itens = _lista_de_textos(
+                lst.get("itens"), MAX_ITEM,
+                f"cenarios[{i}].listas[{len(listas)}].itens", motivos)[:5]
             if r and itens:
-                listas.append(Lista(rotulo=r[:MAX_CHIP], itens=itens))
+                listas.append(Lista(rotulo=r, itens=itens))
         quando = {}
         for k, v in (s.get("quando") or {}).items():
             quando[_identificador(_texto(k))] = _identificador(_texto(v))
@@ -392,8 +430,10 @@ def _montar(d: dict) -> Widget:
         motivos.append(f"Vieram {len(cenarios)} cenário(s) válido(s); o mínimo é 2 "
                        "— com um só, a interação não muda nada na tela.")
 
+    rodape = _texto_limitado(d.get("rodape"), MAX_RODAPE, "rodape", motivos)
+
     motivos += _equilibrio(cenarios)
-    motivos += _sem_urls(cenarios, _texto(d.get("rodape")))
+    motivos += _sem_urls(cenarios, rodape)
 
     motivos += _cobertura(controles, cenarios)
 
@@ -402,7 +442,7 @@ def _montar(d: dict) -> Widget:
 
     return Widget(arquetipo=arquetipo, titulo=titulo, subtitulo=subtitulo,
                   controles=controles, cenarios=cenarios,
-                  rodape=_texto(d.get("rodape"))[:MAX_RODAPE])
+                  rodape=rodape)
 
 
 _URL_RE = re.compile(r"https?://|www\.", re.I)

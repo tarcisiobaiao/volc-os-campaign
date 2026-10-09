@@ -477,10 +477,10 @@ class DispararEntrada(BaseModel):
     # desligado. `StrictBool`: "true" em texto é 422, não um fluxo ligado por
     # engano de serialização — ele muda prompts e passos do motor.
     editorial_v2: StrictBool = False
-    # Opt-in explícito enquanto validamos o novo caminho em WordPress real.
-    # O default preserva o fluxo existente; `rapido_chatgpt` ativa dossiê,
-    # três workers, revisão global e plano ChatGPT sem fallback faturado.
-    perfil_execucao: Literal["completo", "rapido_chatgpt"] = "completo"
+    # `completo_chatgpt` e o motor canonico inteiro; a velocidade vem apenas de
+    # tres workers entre paginas. `rapido_chatgpt` segue aceito como alias
+    # legado para requests ja gravados, sem ativar um pipeline reduzido.
+    perfil_execucao: Literal["completo", "completo_chatgpt", "rapido_chatgpt"] = "completo"
 
 
 class RunDoRedator(BaseModel):

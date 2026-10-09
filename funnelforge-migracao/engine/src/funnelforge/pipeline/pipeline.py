@@ -86,6 +86,7 @@ class Deps:
     # em teste: o escopo da fonte vem do host.
     hints_do_operador: list[dict] = field(default_factory=list)
     ler_documento: Any = None
+    attention_matrix: Any = None
 
 
 def editorial_v2_do_run(state: RunState, settings: Settings) -> bool:
@@ -191,6 +192,7 @@ def run_pipeline(
     timestamp: str = "",
     plan: FunnelPlan | None = None,
     ate_o_dossie: bool = False,
+    card_pre_arquitetura: dict | None = None,
 ) -> RunState:
     """Run the funnel pipeline end to end: load briefing -> extract plan ->
     per page (research -> write -> judge -> seo -> [image for P1] -> build
@@ -228,6 +230,15 @@ def run_pipeline(
     if briefing_path is not None:
         state.briefing_text = deps.loader.load(Path(briefing_path))
 
+    if card_pre_arquitetura is not None and state.plan is None:
+        if plan is not None:
+            raise ValueError("brief pré-arquitetura não pode chegar depois de plano injetado")
+        if not deps.settings.run.dossie_factual:
+            raise ValueError("inteligência pré-redação exige o dossiê existente")
+        from funnelforge.pipeline.inteligencia import preparar_inteligencia
+        preparar_inteligencia(state, deps, card_pre_arquitetura)
+        state.editorial_v2 = True
+
     # PLANO INJETADO (ponte VOLC). Só entra num state que ainda NÃO tem plano,
     # para que um `resume` jamais seja sobrescrito por engano.
     _plano_injetado = plan is not None and state.plan is None
@@ -249,6 +260,15 @@ def run_pipeline(
     # funil não é validado nenhuma vez.
     _fresh_extract = state.plan is None or _plano_injetado
     st.step_extract(state, deps)
+    if state.brief_pre_arquitetura is not None and not tem_jornada(state.plan):
+        state.step_status["funnel_graph"] = StepResult(
+            step="funnel_graph", status=StepStatus.FAILED,
+            issues=[Issue(code="arquitetura_invalida" if _falhou(state, "extract") else "jornada_ausente",
+                          message="Arquitetura recusada antes do writer; ver recibo extract."
+                          if _falhou(state, "extract") else "Arquiteto não declarou jornada.")])
+        _write_report(state, deps)
+        _checkpoint(state, deps)
+        return state
     if _fresh_extract:
         try:
             st.expand_presell_hubs(state, deps)
@@ -265,12 +285,20 @@ def run_pipeline(
         # funil estruturalmente quebrado (grafo ou jornada) não deve pagar nem
         # ela — o portão logo adiante aborta o run de qualquer jeito.
         _populate_routes(state, deps)
+        # Segunda e última passagem JEV. Ela depende do esqueleto pronto e
+        # verifica páginas, arestas e CTAs em lote; é consultiva, fail-soft e
+        # nunca altera o plano nem bloqueia o dossiê/writer.
+        if (card_pre_arquitetura is not None
+                and not _falhou(state, "funnel_graph")
+                and getattr(deps.settings.run, "jev_enabled", False)):
+            from funnelforge.pipeline.inteligencia import revisar_arquitetura_jev
+            revisar_arquitetura_jev(state, deps, card_pre_arquitetura)
         # Classifica a FORMA DA PERGUNTA de cada solução -> `page.engajamento`,
         # que decide qual ferramenta interativa a página recebe. Roda aqui
         # porque precisa do plano já expandido e com slugs finais, e antes do
         # checkpoint, para que um resume não reclassifique. 100% fail-safe:
         # qualquer problema usa inferência semântica sobre H1/estrutura.
-        if not _falhou(state, "funnel_graph"):
+        if not _falhou(state, "funnel_graph") and state.brief_pre_arquitetura is None:
             st.declarar_engajamento(state, deps)
 
     # RAMO EDITORIAL NOVO: decidido UMA vez por execução e gravado no estado
@@ -331,7 +359,25 @@ def run_pipeline(
     laco = _Laco(v2=v2, publish=publish, com_jornada=com_jornada,
                  orcamento=orcamento, a_publicar=a_publicar, dossie_vivo=dossie_vivo)
     workers = int(getattr(deps.settings.run, "page_workers", 1) or 1)
-    if workers > 1 and len(pages) > 1:
+    if dossie_vivo is not None:
+        # A pesquisa sob demanda pode continuar paralela, mas a REDAÇÃO só
+        # começa depois de as evidências de todas as páginas serem
+        # reconciliadas. Antes, cada worker congelava uma fotografia diferente
+        # do dossiê: uma fonte oficial reconhecida pela p5 podia fortalecer a
+        # p2 depois que a p2 já tinha escrito e sido revisada com inventário
+        # vazio. O resultado era uma contradição impossível de resolver no
+        # revisor (dossiê final com fatos, inventário da página sem eles).
+        #
+        # Isso não cria um segundo caminho "rápido": é o mesmo pipeline
+        # canônico. Só separa corretamente as fases — evidência estável;
+        # depois briefing/redação paralelos.
+        _complementar_dossie_antes_da_redacao(
+            state, pages, deps, dossie_vivo, workers=workers)
+        _consolidar_dossie(state, deps, dossie_vivo)
+    if state.brief_pre_arquitetura is not None:
+        from funnelforge.pipeline.inteligencia import congelar_pacotes
+        congelar_pacotes(state, deps)
+    if (workers > 1 and len(pages) > 1) or state.pacotes:
         _paginas_em_paralelo(state, pages, deps, laco, workers)
     else:
         for page in pages:
@@ -518,6 +564,9 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
     _checkpoint(state, deps)
 
     por_numero = {p.page_number: p for p in state.plan.pages}
+    if state.pacotes and lote and not parar.is_set():
+        from funnelforge.pipeline.inteligencia import revisar_lote
+        revisar_lote(state, [por_numero[n] for n in lote], deps)
     acabadas = fase("acabamento", [por_numero[n] for n in lote]) if not parar.is_set() else []
     for delta in acabadas:
         if delta.publicar:
@@ -548,7 +597,7 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
     abrir páginas novas; qualquer outra falha fica na própria página."""
     v2, publish, com_jornada = laco.v2, laco.publish, laco.com_jornada
     orcamento, a_publicar = laco.orcamento, laco.a_publicar
-    if (laco.dossie_vivo is not None and laco.fase != "acabamento"
+    if (not state.pacotes and laco.dossie_vivo is not None and laco.fase != "acabamento"
             and not _done(state, f"write_p{page.page_number}")):
         _complementar_pagina(state, page, deps, laco.dossie_vivo)
     if _falhou(state, f"dossie_p{page.page_number}"):
@@ -634,14 +683,15 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
         if v2 and page.page_number in state.briefings:
             # O widget roda UMA vez, antes da revisão: se ele fosse gerado
             # depois, entraria no ar texto que ninguém revisou (V12).
-            if (getattr(deps.settings.run, "widgets_enabled", False)
+            if (not state.pacotes and getattr(deps.settings.run, "widgets_enabled", False)
                     and f"widget_p{page.page_number}" not in state.step_status):
                 st.step_widget(state, page, deps)
                 _checkpoint(state, deps)
             # O próprio revisor decide se roda: decisão humana gravada
             # manda, e página já aprovada ou em revisão humana com o MESMO
             # conteúdo não é revisada de novo (o resume não re-rola).
-            st.revisar_pagina_v2(state, page, deps)
+            if not state.pacotes:
+                st.revisar_pagina_v2(state, page, deps)
             _checkpoint(state, deps)
             if not st.revisao_liberada(state, page):
                 state.step_status[f"blocked_p{page.page_number}"] = StepResult(
@@ -736,7 +786,11 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
             state.step_status[f"evidencia_p{page.page_number}"] = StepResult(
                 step=f"evidencia_p{page.page_number}", status=StepStatus.SKIPPED,
                 issues=[Issue(code="revisao_humana_por_evidencia", message=revisao)])
-        if publish and deps.publisher is not None and not revisao and not _done(
+        # No V2, ``step_publish`` só pode gravar ``draft``. Uma página que pede
+        # revisão factual precisa chegar ao WordPress justamente COMO rascunho
+        # para a pessoa revisar; status público continua fail-closed.
+        pode_gravar_para_revisao = deps.settings.run.publish_status == "draft"
+        if publish and deps.publisher is not None and (not revisao or pode_gravar_para_revisao) and not _done(
             state, f"publish_p{page.page_number}"
         ):
             if com_jornada:
@@ -837,6 +891,10 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
     buscas: list[float] = []
 
     def pesquisar(assunto, spec, faltantes):
+        if faltantes is None and state.pesquisa_pre_arquitetura:
+            from funnelforge.pipeline.dossie import RespostaDaPesquisa
+            # A pesquisa global já ocorreu ANTES do arquiteto. Absorver é local.
+            return RespostaDaPesquisa(**state.pesquisa_pre_arquitetura)
         if orcamento is not None:
             orcamento.exigir_saldo("dossie")
         resp = pesquisar_funil(deps.llm, cfg, assunto, spec, faltantes)
@@ -940,13 +998,73 @@ def _complementar_pagina(state: RunState, page: Page, deps: Deps, vivo: Any) -> 
             resumo, ensure_ascii=False)[:600])])
 
 
+def _complementar_dossie_antes_da_redacao(
+        state: RunState, pages: list[Page], deps: Deps, vivo: Any, *, workers: int) -> None:
+    """Resolve lacunas em paralelo e congela UMA base para todos os redatores.
+
+    Cada busca trabalha numa cópia do estado, como os workers de página. O
+    compilador factual é compartilhado e já serializa a absorção/deduplicação.
+    No fim, apenas os recibos locais voltam ao estado principal; fatos,
+    cobertura e canais são recalculados de uma vez por ``_consolidar_dossie``.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    if state.brief_pre_arquitetura is not None:
+        resumo = vivo.complementar_lote(pages, state)
+        state.step_status["dossie_complemento_lote"] = StepResult(
+            step="dossie_complemento_lote", status=StepStatus.OK,
+            issues=[Issue(code="complemento_lote", message=json.dumps(resumo))])
+        return
+
+    alvos = [p for p in pages if p.page_number in vivo.coberturas and vivo.lacunas(
+        p.page_number)]
+    if not alvos:
+        return
+
+    def pesquisar(page: Page) -> tuple[int, StepResult]:
+        copia = state.model_copy(deep=True)
+        pagina = next(p for p in copia.plan.pages if p.page_number == page.page_number)
+        chave = f"dossie_complemento_p{page.page_number}"
+        try:
+            _complementar_pagina(copia, pagina, deps, vivo)
+            return page.page_number, copia.step_status[chave]
+        except Exception as exc:  # a falha degrada a página; não derruba as demais
+            return page.page_number, StepResult(
+                step=chave, status=StepStatus.FAILED,
+                issues=[Issue(code="complemento_falhou",
+                              message=f"{type(exc).__name__}: {str(exc)[:300]}")])
+
+    limite = max(1, min(int(workers or 1), len(alvos)))
+    if limite == 1:
+        resultados = [pesquisar(p) for p in alvos]
+    else:
+        with ThreadPoolExecutor(max_workers=limite, thread_name_prefix="evidencia") as pool:
+            resultados = list(pool.map(pesquisar, alvos))
+    for n, recibo in sorted(resultados):
+        state.step_status[f"dossie_complemento_p{n}"] = recibo
+
+
 def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
     """Depois das páginas: o dossiê do run é o cache consolidado (fatos por
     fact_id, coberturas como cada página as viu), com SHA novo."""
+    from funnelforge.pipeline.dossie import aplicar_portao
+
     with vivo.trava:
+        # Reprojeta TODOS os fatos no estado principal depois de todas as
+        # pesquisas. Sem isto o JSON final podia estar correto, mas briefing,
+        # widget e revisor continuavam lendo a fotografia antiga de cada
+        # worker.
+        paginas = [p for p in state.plan.pages if p.jornada is not None]
+        vivo.recalcular(state, paginas)
         final = vivo.montar(state)
     state.dossie = final.model_dump(mode="json")
     state.dossie_sha256 = final.sha256
+    # O portão inicial descreve a cobertura ANTES das complementações sob
+    # demanda. Depois que o snapshot final é congelado, regrave o veredito de
+    # cada página; senão uma lacuna já resolvida continua pedindo revisão
+    # humana e impede a publicação do rascunho (o run 27 provou esse estado
+    # vencido na p2).
+    aplicar_portao(state, final)
     pasta = deps.runner.runs_dir / state.run_id
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "dossie_factual.json").write_text(final.model_dump_json(indent=2), encoding="utf-8")
@@ -967,6 +1085,9 @@ def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
 def _revisao_por_evidencia(state: RunState, page: Page) -> str:
     """Página escrita com a promessa central sem evidência não publica sem
     decisão humana."""
+    pacote = state.pacotes.get(page.page_number) or {}
+    if pacote.get("ferramenta", {}).get("estado") == "fallback_sem_js":
+        return "Ativo interativo usa fallback textual do arquiteto; revisão humana pendente."
     r = state.step_status.get(f"dossie_p{page.page_number}")
     if r is None:
         return ""

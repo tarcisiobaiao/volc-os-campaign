@@ -28,6 +28,8 @@ IMAGE_RULES = (
     "QR codes, readable personal data, login screens, payment screens or replicas "
     "of official apps/websites anywhere in the image. No approval checkmarks, "
     "money received, guaranteed eligibility or completed-service success scenes. "
+    "No readable words, letters, numeric labels or labeled charts in synthetic images; "
+    "all typography and factual data visualization are rendered later by code. "
     "Depict the topic through specific unbranded activities, materials and environments. "
     "People are optional; use a simple, physically plausible composition. If present, "
     "each person's visible limbs must connect correctly, with no extra hands, arms, "

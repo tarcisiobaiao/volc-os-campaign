@@ -12,7 +12,9 @@ from funnelforge.pipeline.doctrine import doctrine_context
 from funnelforge.pipeline.pipeline import Deps
 from funnelforge.pipeline.runner import Runner
 from funnelforge.pipeline.steps import (
-    _prompt_name_for, _write_ctx, build_official_links, build_platform_links,
+    _aplicar_rotulos_aprovados_da_lp, _aplicar_rotulos_aprovados_gutenberg,
+    _deslinkar_fontes_externas_da_lp, _prompt_name_for, _write_ctx,
+    build_official_links, build_platform_links,
 )
 from funnelforge.prompts import render
 from tests.fakes import FakeLLM
@@ -35,6 +37,59 @@ def test_prompt_name_follows_role_not_raw_page_type():
     hub_solution = Page(page_number=3, page_type="HUB", h1_title="t", slug="fgts-p1")
     assert _prompt_name_for(hub_presell) == "redator_presell"
     assert _prompt_name_for(hub_solution) == "redator_pages"
+
+
+def test_lp_preserva_rotulos_aprovados_no_contrato_tipado():
+    page = Page(page_number=1, page_type="LANDING PAGE", h1_title="Tema", slug="tema",
+                routes=[
+                    {"placement": "hero", "kind": "funnel", "target": "tema-pr",
+                     "anchor": "Conferir se este é o meu caso"},
+                    {"placement": "footer", "kind": "funnel", "target": "tema-p1",
+                     "anchor": "Ver como resolver a pendência"},
+                ])
+    conteudo = {"cta_texts": ["Saiba mais", "Continuar"]}
+    assert _aplicar_rotulos_aprovados_da_lp(conteudo, page) is True
+    assert conteudo["cta_texts"] == [
+        "Conferir se este é o meu caso", "Ver como resolver a pendência"]
+
+
+def test_lp_nao_mascara_cardinalidade_errada_de_ctas():
+    page = Page(page_number=1, page_type="LANDING PAGE", h1_title="Tema", slug="tema",
+                routes=[{"placement": "hero", "kind": "funnel", "target": "tema-pr",
+                         "anchor": "Conferir o caso"}])
+    conteudo = {"cta_texts": []}
+    assert _aplicar_rotulos_aprovados_da_lp(conteudo, page) is False
+    assert conteudo["cta_texts"] == []
+
+
+def test_lp_mantem_fonte_em_prosa_sem_vazar_clique_externo():
+    obj = {
+        "intro": ('<p>Segundo o <a href="https://www.gov.br/fonte">gov.br</a>, '
+                  'a regra existe.</p>'),
+        "sections": [{"body": ('<p>Continue no <a href="https://creditoup.com.br/rec/x">'
+                                 'guia interno</a>.</p>')}],
+    }
+    out, total = _deslinkar_fontes_externas_da_lp(obj, "https://creditoup.com.br")
+    assert total == 1
+    assert "<a href" not in out["intro"] and "gov.br" in out["intro"]
+    assert '<a href="https://creditoup.com.br/rec/x">' in out["sections"][0]["body"]
+
+
+def test_gutenberg_preserva_rotulo_aprovado_so_no_botao():
+    href = "https://orgao.gov.br/servico?a=1&b=2"
+    body = (
+        '<!-- wp:paragraph --><p><a href="https://orgao.gov.br/servico?a=1&amp;b=2">'
+        'citação em prosa</a></p><!-- /wp:paragraph -->'
+        '<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button -->'
+        '<div class="wp-block-button"><a class="wp-block-button__link" '
+        'href="https://orgao.gov.br/servico?a=1&amp;b=2"><strong>Consultar agora</strong></a>'
+        '</div><!-- /wp:button --></div><!-- /wp:buttons -->')
+    out, total = _aplicar_rotulos_aprovados_gutenberg(body, [{
+        "href": href, "anchor": "Ver orientação no site externo de Agência X >>>"}])
+    assert total == 1
+    assert "citação em prosa" in out
+    assert "Consultar agora" not in out
+    assert "Ver orientação no site externo de Agência X &gt;&gt;&gt;" in out
 
 
 # ---------------------------------------------------------------------------
@@ -375,6 +430,43 @@ def test_write_ctx_solution_order_and_is_terminal(config_files: Path) -> None:
     term_ctx = _write_ctx(state, by["a-p3"], deps)
     assert term_ctx["solution_order"] == {"a-p1": 1, "a-p2": 2, "a-p3": 3}
     assert term_ctx["is_terminal"] is True
+
+
+def test_write_ctx_nao_ressuscita_saida_desativada_pelo_dossie(config_files: Path) -> None:
+    deps = _deps(config_files, FakeLLM(responses=[]))
+    page = Page(page_number=3, page_type="SOLUTION", role=PageRole.SOLUTION,
+                h1_title="Resposta", slug="a-p1", ordinal=1)
+    state = RunState(
+        run_id="a-20261008-120000",
+        plan=FunnelPlan(total_pages=1, pages=[page]),
+        facts={3: ResearchFacts(fontes=["https://orgao.gov.br/servico"])},
+        dossie={"paginas": [{"page_number": 3, "cobertura": {"desativados": [
+            {"tipo": "saida_oficial", "motivo": "sem canal verificado"}
+        ]}}]},
+    )
+    ctx = _write_ctx(state, page, deps)
+    assert ctx["official_links"] == []
+    assert state.official_links[3] == []
+    assert not any(r.kind == "external_official" for r in page.routes)
+
+
+def test_write_ctx_nomeia_canal_externo_com_emissor_do_dossie(config_files: Path) -> None:
+    deps = _deps(config_files, FakeLLM(responses=[]))
+    plan = _forward_plan()
+    page = plan.pages[2]
+    url = "https://www.gov.br/anp/servico"
+    state = RunState(
+        run_id="a-20261008-120001", plan=plan,
+        facts={page.page_number: ResearchFacts(fontes=[url])},
+        official_links={page.page_number: [url]},
+        editorial_v2=True, pacotes={page.page_number: {"sha256": "fixture"}},
+        brief_pre_arquitetura={"intencao_principal": "tema"},
+        dossie={"fatos": [{"source_url": url, "paginas": [],
+                            "proveniencia": {"issuer": "ANP"}}]},
+    )
+    _write_ctx(state, page, deps)
+    rota = next(r for r in page.routes if r.kind == "external_official")
+    assert rota.anchor == "Ver orientação no site externo de ANP >>>"
 
 
 def test_presell_write_receives_qualifier_lens_and_questions_not_angle(

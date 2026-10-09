@@ -93,16 +93,42 @@ Pesquisar = Callable[[str, list[dict], list[dict] | None], RespostaDaPesquisa]
 
 
 def requisitos_da_pagina(page: Page) -> list[RequisitoFactual]:
-    """Os requisitos declarados; sem declaração, o mínimo honesto: a resposta
-    principal precisa de UM fato verificado que não seja só contexto."""
+    """Requisitos declarados ou contrato factual seguro para cards legados.
+
+    Cards anteriores ao contrato tipado trazem uma promessa complexa e um
+    plano visual, mas nenhum ``jornada.requisitos``. Aceitar um único fato
+    genérico para a página inteira deixa passar exatamente o caso perigoso:
+    uma fonte prova que o programa existe, enquanto passos, números e regras
+    do bloco visual continuam sem lastro. O fallback deriva uma necessidade
+    para a promessa completa e uma para cada entrega visual. Não inventa fato;
+    só torna explícito o que o próprio esqueleto já prometeu pesquisar.
+    """
     j = page.jornada
     if j is None:
         return []
     if j.requisitos:
         return list(j.requisitos)
-    return [RequisitoFactual(id="resposta_principal",
-                             descricao=f"fato que sustenta a resposta de '{j.pergunta_principal}'",
-                             tipos=[t for t in TIPOS_DE_FATO if t != "contexto"])]
+    tipos = [t for t in TIPOS_DE_FATO if t != "contexto"]
+    promessa = (j.resposta_imediata or "").strip()
+    requisitos = [RequisitoFactual(
+        id="resposta_principal",
+        descricao=(f"provas suficientes para sustentar integralmente esta resposta: {promessa}"
+                   if promessa else
+                   f"fato que sustenta a resposta de '{j.pergunta_principal}'"),
+        tipos=tipos,
+    )]
+    for index, bloco in enumerate(j.plano_visual, start=1):
+        descricao = " ".join(
+            part.strip() for part in (bloco.secao, bloco.funcao) if part and part.strip()
+        )
+        if not descricao:
+            continue
+        requisitos.append(RequisitoFactual(
+            id=f"entrega_visual_{index}",
+            descricao=f"fatos e regras que permitem entregar este bloco sem extrapolar: {descricao}",
+            tipos=tipos,
+        ))
+    return requisitos
 
 
 def especificacao_das_paginas(pages: list[Page]) -> list[dict]:
@@ -742,8 +768,9 @@ class CompiladorDeDossie:
         o requisito DERIVADO de cada página (a pergunta dela): duas páginas
         nunca compartilham essa lacuna — no card real #65 a p5 esperou a busca
         da p4 e ficou sem pesquisa."""
-        if lacuna["requisito"] == "resposta_principal":
-            return f"{lacuna['duvida_id']}:resposta_principal"
+        if (lacuna["requisito"] == "resposta_principal"
+                or lacuna["requisito"].startswith("entrega_visual_")):
+            return f"{lacuna['duvida_id']}:{lacuna['requisito']}"
         return lacuna["requisito"]
 
     def lacunas(self, numero: int) -> list[dict]:
@@ -791,13 +818,7 @@ class CompiladorDeDossie:
                     "estado": self.coberturas[n].estado}
 
     def complementar_lote(self, pages: list[Page], state: RunState) -> dict:
-        """Uma única complementação para todas as lacunas do perfil rápido.
-
-        O perfil completo continua pesquisando por página e pode sobrepor a
-        escrita das páginas prontas. No perfil rápido, uma busca consolidada
-        evita o padrão medido de 5 páginas × (busca + estruturação) sem abrir
-        mão do dossiê global nem inventar evidência.
-        """
+        """Uma complementação deduplicada para todos os requisitos do esqueleto."""
         alvo = [p for p in pages if p.page_number in self.coberturas]
         with self.trava:
             self.recalcular(state, alvo)

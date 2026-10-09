@@ -15,6 +15,7 @@ simulação MiroFish vira limiar aqui.
 from funnelforge.pipeline.jornada._comum import (
     EstadoDoLeitor,
     classificar_saida_oficial,
+    cta_do_link,
     estado_do_leitor,
     tem_jornada,
 )
@@ -31,7 +32,7 @@ from funnelforge.pipeline.jornada.revisao_global import pagina_aprovada, revisar
 
 __all__ = [
     "EstadoDoLeitor", "PoliticaDaSaidaOficial", "RevisaoDoEsqueleto",
-    "alvo_da_proxima_duvida", "ativos_validos", "classificar_saida_oficial",
+    "alvo_da_proxima_duvida", "ativos_validos", "classificar_saida_oficial", "cta_do_link",
     "contexto_de_jornada", "contrato_de_medicao", "estado_do_leitor",
     "pagina_aprovada", "politica_da_saida_oficial", "revisar_esqueleto",
     "revisar_funil_pronto", "tem_jornada",

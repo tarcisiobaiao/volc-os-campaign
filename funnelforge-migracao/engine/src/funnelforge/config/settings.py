@@ -12,6 +12,10 @@ class Secrets(BaseModel):
     gemini_api_key: str | None = None
     anthropic_api_key: str | None = None
     perplexity_api_key: str | None = None
+    dataforseo_login: str | None = None
+    dataforseo_password: str | None = None
+    # Compatibilidade com o nome antigo usado pelo sensor da Attention Matrix.
+    dataforseo_senha: str | None = None
     wp_url: str | None = None
     wp_user: str | None = None
     wp_app_token: str | None = None
@@ -34,6 +38,8 @@ class RunConfig(BaseModel):
     # DOSSIÊ FACTUAL pré-redação (só com jornada): uma pesquisa do funil
     # (passo `steps.dossie`), portão de cobertura e fatos congelados por hash.
     dossie_factual: bool = False
+    inteligencia_pre_redacao: bool = False
+    jev_enabled: bool = False  # consultivo; nunca gate factual
     # Páginas em paralelo depois do dossiê. 1 = o laço serial de sempre.
     page_workers: int = Field(default=1, ge=1, le=3)
     # Compatibilidade com runs antigos. ``rapido`` não seleciona outro motor:

@@ -48,6 +48,8 @@ def test_prompt_do_arquiteto_pede_a_jornada_tipada():
                   "retornos_justificados", "hipotese_de_medicao", "coortes"):
         assert f'"{chave}"' in prompt, chave
     assert "observacao_real" in prompt and "simulacao" in prompt
+    assert "Abrir o CadÚnico no site do MDS" in prompt
+    assert 'Nunca use rótulo genérico como "canal oficial"' in prompt
 
 
 def test_page_factory_leva_a_jornada_ao_writer_briefing_e_a_pagina_canonica():
@@ -129,6 +131,32 @@ def test_revisor_real_com_saida_parcial_preserva_a_jornada(monkeypatch):
     assert res["telemetria"][0]["etapa"] == "revisor_do_arquiteto"
 
 
+def test_revisor_substitui_mapa_de_retornos_quando_corrige_id_invalido(monkeypatch):
+    arq = copy.deepcopy(ARQUITETO)
+    arq["pages"][1]["jornada"] = copy.deepcopy(JORNADA_COMPLETA)
+    arq["pages"][1]["jornada"]["retornos_justificados"] = {
+        "slug_antigo_invalido": "voltar para conferir"
+    }
+    revisado = copy.deepcopy(arq)
+    revisado["pages"][1]["jornada"]["retornos_justificados"] = {
+        "senac_gratuito": "voltar para conferir"
+    }
+
+    class _Cliente:
+        async def complete_json(self, system, user):
+            return {**revisado, "changes": ["ID do retorno corrigido"], "achados": []}
+
+    monkeypatch.setattr(FunnelReviewer, "_gemini", lambda self: _Cliente())
+    ctx = AgentContext(settings=Settings(gemini_api_key="k", google_api_key=None,
+                                         supabase_url=None, supabase_service_role_key=None),
+                       engine=MockEngine(), grounding=None)
+    res = asyncio.run(FunnelReviewer(ctx).review(arq, entity_facts={}, forced_language="pt-BR"))
+
+    assert res["pages"][1]["jornada"]["retornos_justificados"] == {
+        "senac_gratuito": "voltar para conferir"
+    }
+
+
 def test_normalizacao_logo_apos_o_arquiteto_nomeia_campo_e_motivo():
     arq = copy.deepcopy(ARQUITETO)
     arq["pages"][1]["jornada"]["saida_oficial"]["classificacao"] = "Boa"
@@ -138,3 +166,55 @@ def test_normalizacao_logo_apos_o_arquiteto_nomeia_campo_e_motivo():
     assert rel["estado"] == "invalida"
     assert {"campo": "pagina[renda-senac].jornada.entrada_direta",
             "motivo": "'talvez' fora do vocabulário (autocontida, depende_de_contexto)"} in rel["erros"]
+
+
+def test_prompt_pre_redacao_explicita_schema_factual_e_visual():
+    p = fb.build_funnel_architect_user(pais='Brasil', tema='Gás', lingua='pt-BR',
+        data_atual='08/10/2026', supporting_data='', user_questions='',
+        brief_pre_arquitetura={'sha256':'fixture'})
+    for chave in ('"id":"entidade.regra"', '"descricao"', '"tipos"', '"critico"',
+                  'jornada.screenshot_necessario', 'jornada.imagem_necessaria', 'jornada.schema_tipos'):
+        assert chave in p
+    assert "cálculo determinístico que poupa trabalho manual" in p
+    assert "sem lastro verificável, não gere a ferramenta" in p
+
+
+def test_normalizacao_requisitos_aceita_alias_real_e_descarta_contexto_nao_factual():
+    arq = copy.deepcopy(ARQUITETO)
+    arq["funnel_strategy"]["jornada"]["checkpoint"] = "renda"
+    arq["pages"][1]["jornada"]["proxima_duvida"] = ""
+    arq["pages"][1]["jornada"]["requisitos"] = [{
+        "fact_id": "renda.limite",
+        "afirmacao": "Confirmar o limite de renda vigente.",
+        "base_disponivel": "fonte ainda a conferir",
+    }]
+    normal, rel = normalizar_arquitetura(arq)
+    requisito = normal["pages"][1]["jornada"]["requisitos"][0]
+    assert rel["estado"] == "valida"
+    assert requisito == {
+        "id": "renda.limite",
+        "descricao": "Confirmar o limite de renda vigente.",
+    }
+    assert len(rel["normalizacoes"]) == 2
+    assert rel["avisos"] == [{
+        "campo": "pagina[renda-senac].jornada.requisitos[0].base_disponivel",
+        "motivo": "contexto não factual descartado; o dossiê fará a verificação",
+    }]
+
+
+def test_normalizacao_requisitos_recusa_alias_conflitante():
+    arq = copy.deepcopy(ARQUITETO)
+    arq["funnel_strategy"]["jornada"]["checkpoint"] = "renda"
+    arq["pages"][1]["jornada"]["proxima_duvida"] = ""
+    arq["pages"][1]["jornada"]["requisitos"] = [{
+        "id": "renda.limite",
+        "fact_id": "renda.outro",
+        "descricao": "Confirmar o limite.",
+        "afirmacao": "Confirmar outro fato.",
+    }]
+    _, rel = normalizar_arquitetura(arq)
+    assert rel["estado"] == "invalida"
+    assert {erro["motivo"] for erro in rel["erros"]} == {
+        "id e fact_id conflitantes",
+        "descricao e afirmacao conflitantes",
+    }

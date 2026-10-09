@@ -46,6 +46,25 @@ def clean_body_notice(content: str, *, footer: bool) -> str:
     return content
 
 
+#: Rótulo que serviria a QUALQUER destino: não diz a dor/desejo do leitor, a
+#: próxima resposta nem a consequência. Uma lista só — o portão do redator
+#: (`cta_issues`) e o revisor de esqueleto (`jornada.esqueleto`) usam esta.
+_CTA_GENERICO_RE = re.compile(
+    r'(saiba mais|continuar|continue|clique aqui|ver informacoes|ver mais|leia mais|'
+    r'entenda mais|confira|conferir|acessar|acesse|avancar|seguir|'
+    r'proximo|proxima|proximo passo|proxima pagina|'
+    r'(?:ler|leia|abrir|abra|acessar|acesse|ver|veja) (?:o )?'
+    r'(?:guia|conteudo|passo a passo)|'
+    r'(?:ler|leia|abrir|abra|acessar|acesse|ver|veja) (?:o )?guia de .+|'
+    r'guia de .+|'
+    r'(?:identificar|descobrir|escolher) qual (?:duvida|tema|assunto)'
+    r'(?: resolver| ver)?(?: primeiro)?)')
+
+
+def cta_generico(label: str) -> bool:
+    return bool(_CTA_GENERICO_RE.fullmatch(fold(label).strip(' >»!.')))
+
+
 def cta_issues(pairs: list[tuple[str, str]], ctx: dict) -> list[Issue]:
     if not ctx.get("copy_rapida"):
         return []
@@ -54,14 +73,7 @@ def cta_issues(pairs: list[tuple[str, str]], ctx: dict) -> list[Issue]:
     for label, href in pairs:
         text = fold(label).strip(' >»!.')
         internal = not urlsplit(href).hostname or urlsplit(href).hostname == host
-        if re.fullmatch(r'(saiba mais|continuar|clique aqui|ver informacoes|'
-                        r'(?:ler|leia|abrir|abra|acessar|acesse|ver|veja) (?:o )?'
-                        r'(?:guia|conteudo|passo a passo)|'
-                        r'(?:ler|leia|abrir|abra|acessar|acesse|ver|veja) (?:o )?guia de .+|'
-                        r'guia de .+|entenda mais|'
-                        r'(?:identificar|descobrir|escolher) qual (?:duvida|tema|assunto)'
-                        r'(?: resolver| ver)?(?: primeiro)?)',
-                        text):
+        if cta_generico(label):
             issues.append(Issue(code="cta_generic", message=f'CTA "{label}": nomeie a resposta '
                                 'obtida no destino, com ação + ganho concreto.'))
         if internal and re.match(r'^(consult(ar|e)|solicit(ar|e)|liber(ar|e)|receb(er|a)|'

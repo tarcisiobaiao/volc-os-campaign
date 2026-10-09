@@ -105,6 +105,8 @@ páginas existentes quando necessário.
 6. **Contrato de intenção e navegação**
    Preserve e revise `editorial` em TODAS as páginas: reader_question, useful_delivery,
    cta_label e links (target + reason). Rótulos são no idioma publicável; diretrizes em PT-BR.
+   CTA para saída externa nomeia o serviço, órgão, aplicativo ou site exato; rótulo genérico
+   como "canal oficial" ou "site oficial" é incongruente e deve ser apontado em `achados`.
    Se fundir, remover ou renomear páginas, atualize TODOS os targets para slugs existentes.
    Não rotacione soluções nem varie rótulos por obrigação. Priorize a dúvida relevante.
    Não esconda a resposta em FAQ ou fragmente conteúdo só para gerar mais cliques.
@@ -282,6 +284,8 @@ class FunnelReviewer(BaseAgent):
     @staticmethod
     def _original(architect_output: Dict[str, Any], motivo: str) -> Dict[str, Any]:
         return {
+            **({"brief_pre_arquitetura": architect_output["brief_pre_arquitetura"]}
+               if architect_output.get("brief_pre_arquitetura") else {}),
             "funnel_strategy": architect_output.get("funnel_strategy") or {},
             "pages": architect_output.get("pages") or [],
             "changes": [],
@@ -335,6 +339,8 @@ class FunnelReviewer(BaseAgent):
             "changes": changes if isinstance(changes, list) else [],
             "achados": achados,
             "estado": "revisado",
+            **({"brief_pre_arquitetura": architect_output["brief_pre_arquitetura"]}
+               if architect_output.get("brief_pre_arquitetura") else {}),
             "jornada_preservada": preservados,
             "telemetria": [{"etapa": "revisor_do_arquiteto", **getattr(client, "ultimo_uso", None)}]
             if isinstance(getattr(client, "ultimo_uso", None), dict) else [],

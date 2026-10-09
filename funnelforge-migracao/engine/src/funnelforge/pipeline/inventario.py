@@ -134,10 +134,16 @@ def _fatos(facts: ResearchFacts) -> list[FatoDoInventario]:
             continue
         tipo, origem_do_tipo = _tipado(dado.get("tipo"), "dados_validados")
         citavel = dado.get("citavel")
+        fonte = str(dado.get("fonte") or "").strip()
         saida.append(FatoDoInventario(
             id=f"f{i}", tipo=tipo, tipo_origem=origem_do_tipo, origem="dados_validados",
-            texto=texto, fonte=str(dado.get("fonte") or "").strip(),
-            verificada_ao_vivo=False, escopo=dado.get("escopo"),
+            texto=texto, fonte=fonte,
+            # O dossiê factual consolida fatos qualitativos em
+            # `dados_validados`, mas preserva em `fontes_resolvidas` a prova de
+            # que a URL respondeu ao verificador ao vivo. Marcar todo dado
+            # validado como falso aqui fazia números oficiais (por exemplo,
+            # "24 meses") perderem o lastro entre o dossiê e o revisor.
+            verificada_ao_vivo=fonte in resolvidas, escopo=dado.get("escopo"),
             citavel=citavel if isinstance(citavel, bool) else None,
         ))
     for i, fato in enumerate(facts.fatos_verificados or [], start=1):

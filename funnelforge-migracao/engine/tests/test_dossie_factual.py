@@ -24,6 +24,7 @@ from funnelforge.pipeline.dossie import (
     hash_do_dossie,
     invalidar_paginas,
     paginas_afetadas,
+    requisitos_da_pagina,
 )
 from funnelforge.pipeline.jornada import contexto_de_jornada
 from funnelforge.pipeline.validators.checks import run_validators
@@ -130,6 +131,21 @@ class _Pesquisa:
                                   modelo_servido="gemini-3.8-flash", auth_mode="api_key",
                                   prompt_tokens=1000, completion_tokens=400, custo_usd=0.002,
                                   latencia_ms=900)
+
+
+def test_card_legado_deriva_requisitos_da_promessa_e_do_plano_visual():
+    plano = plano_do_funnel_architecture(arquitetura())
+    pagina = plano.pages[0].model_copy(deep=True)
+    pagina.jornada.requisitos = []
+
+    requisitos = requisitos_da_pagina(pagina)
+
+    assert requisitos[0].id == "resposta_principal"
+    assert pagina.jornada.resposta_imediata in requisitos[0].descricao
+    assert [r.id for r in requisitos[1:]] == [
+        f"entrega_visual_{i}" for i in range(1, len(pagina.jornada.plano_visual) + 1)
+    ]
+    assert all(r.critico for r in requisitos)
 
 
 def _arq_com_requisito_de_renda():

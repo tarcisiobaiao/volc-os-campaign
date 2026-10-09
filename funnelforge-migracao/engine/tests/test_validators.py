@@ -1310,6 +1310,23 @@ def test_critical_claim_requires_resolved_typed_fact_and_citation() -> None:
     assert run_validators(["critical_fact_grounding"], cited, {"facts": trusted}) == []
 
 
+def test_critical_claim_accepts_resolved_typed_validated_datum() -> None:
+    """A typed qualitative datum is evidence too; the final gate must use it."""
+    source = "https://www.gov.br/mds/gas-do-povo"
+    facts = ResearchFacts(
+        fontes=[source], fontes_resolvidas=[source],
+        dados_validados=[{
+            "tipo": "condicao",
+            "fato": "O CadÚnico precisa estar atualizado há no máximo 24 meses.",
+            "fonte": source,
+            "citavel": True,
+        }],
+    )
+    body = (f'<p>O CadÚnico precisa estar atualizado há no máximo 24 meses. '
+            f'<a href="{source}">Fonte oficial</a>.</p>')
+    assert run_validators(["critical_fact_grounding"], body, {"facts": facts}) == []
+
+
 def test_paid_lp_may_cite_exact_source_host_without_outbound_link() -> None:
     source = "https://caixanoticias.caixa.gov.br/Paginas/FGTS.aspx"
     fact = VerifiedFact(

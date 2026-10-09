@@ -175,6 +175,7 @@ def _plan_from_raw(raw: dict) -> FunnelPlan:
         # from the real plan or the report.
         total_pages=len(pages),
         pages=pages,
+        jornada=strategy.get("jornada"),
     )
 
 
@@ -504,14 +505,55 @@ def step_extract(state: RunState, deps: Any) -> None:
     if state.plan is not None:
         return
     prompt = render("extractor", briefing=state.briefing_text)
+    messages = [{"role": "user", "content": prompt}]
+    if state.brief_pre_arquitetura is not None:
+        from funnelforge.pipeline.inteligencia import mensagens_do_arquiteto
+        messages = mensagens_do_arquiteto(state.brief_pre_arquitetura)
     cfg = deps.settings.steps["extract"]
     text, res = deps.runner.run_llm_step(
-        "extract", cfg, [{"role": "user", "content": prompt}], ctx={},
+        "extract", cfg, messages, ctx={},
         run_id=state.run_id,
     )
     try:
         raw = _tolerant_json(text)
-        plan = _plan_from_raw(raw)
+        if state.brief_pre_arquitetura is not None:
+            pasta = deps.runner.runs_dir / state.run_id
+            pasta.mkdir(parents=True, exist_ok=True)
+            (pasta / "arquitetura_pre_redacao.json").write_text(json.dumps(raw, ensure_ascii=False, indent=2))
+            from funnelforge.adapters.attention_matrix import modulo_do_repo
+            from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
+            contrato = modulo_do_repo("backend/app/agents/funnel_pro/jornada_contrato.py")
+            factory = modulo_do_repo("backend/app/agents/funnel_pro/page_factory.py")
+            roles = modulo_do_repo("backend/app/entities/funnel_roles.py")
+            raw, normalizacao = contrato.normalizar_arquitetura(raw)
+            (pasta / "arquitetura_normalizacao.json").write_text(
+                json.dumps(normalizacao, ensure_ascii=False, indent=2))
+            if normalizacao.get("estado") == "invalida":
+                erros = "; ".join(
+                    f"{e.get('campo')}: {e.get('motivo')}"
+                    for e in normalizacao.get("erros") or [])
+                raise ValueError(f"arquitetura inválida após normalização: {erros}")
+            res.issues = list(res.issues) + [
+                Issue(code="architecture_normalized", message=json.dumps(item, ensure_ascii=False))
+                for item in normalizacao.get("normalizacoes") or []
+            ] + [
+                Issue(code="architecture_warning", message=json.dumps(item, ensure_ascii=False))
+                for item in normalizacao.get("avisos") or []
+            ]
+            paginas_backend = factory.architect_pages_to_funnel_pages(raw)
+            jobs_backend = factory.page_factory(raw)["writingJobs"]
+            # O caminho normal do backend sempre aplica papéis, sufixos e
+            # reescreve referências cruzadas antes de persistir o card. A
+            # inteligência pré-redação chama o mesmo arquiteto diretamente e
+            # precisa executar exatamente essa etapa; deixar a ponte do motor
+            # sufixar apenas a slug própria cria links para slugs inexistentes.
+            paginas_backend, jobs_backend = roles.apply_roles_and_slugs(
+                paginas_backend, jobs_backend)
+            canonica = {"funnel_strategy": raw.get("funnel_strategy") or {},
+                       "pages": paginas_backend, "writing_jobs": jobs_backend}
+            plan = plano_do_funnel_architecture(canonica)
+        else:
+            plan = _plan_from_raw(raw)
     except (ValueError, json.JSONDecodeError, ValidationError) as exc:
         res.status = StepStatus.FAILED
         res.issues = list(res.issues) + [Issue(code="parse_error", message=str(exc))]
@@ -523,6 +565,9 @@ def step_extract(state: RunState, deps: Any) -> None:
         res.issues = list(res.issues) + extra
         res.status = StepStatus.FAILED
     state.plan = plan
+    if state.brief_pre_arquitetura is not None:
+        plan.brief_pre_arquitetura = state.brief_pre_arquitetura.model_copy(deep=True)
+        plan.editorial_v2 = True
     # Pull REAL cross-funnel exit URLs from the site sitemap (a diverse-but-
     # related guide for the terminal SOLUTION). None-safe + best-effort.
     cross_targets = None
@@ -1267,6 +1312,35 @@ def research_hosts(facts: ResearchFacts) -> list[str]:
     return list(hosts)
 
 
+def _rotulo_do_canal_oficial(state: RunState, page: Page, url: str) -> str:
+    """Nomeia o destino externo sem prometer execução no publisher.
+
+    O rótulo antigo (``Consultar no canal oficial``) escondia para onde o
+    leitor sairia e era recusado pelo próprio contrato de copy. O dossiê já
+    carrega o emissor do documento; quando ele não existe, o host continua
+    sendo uma identificação concreta e auditável do destino.
+    """
+    url_limpa = (url or "").split("#", 1)[0].rstrip("/")
+    duvida = page.jornada.duvida_id if page.jornada else ""
+    candidatos: list[dict] = []
+    for fato in (state.dossie or {}).get("fatos", []):
+        fonte = str(fato.get("source_url") or "").split("#", 1)[0].rstrip("/")
+        if fonte != url_limpa:
+            continue
+        if duvida and duvida in (fato.get("paginas") or []):
+            candidatos.insert(0, fato)
+        else:
+            candidatos.append(fato)
+    for fato in candidatos:
+        prov = fato.get("proveniencia") or {}
+        emissor = str(prov.get("issuer") or (prov.get("declarado") or {}).get("emissor") or "")
+        emissor = re.sub(r"\s+", " ", emissor).strip(" .:-")
+        if emissor:
+            return f"Ver orientação no site externo de {emissor[:55]} >>>"
+    host = (urlparse(url).hostname or "").removeprefix("www.")
+    return f"Abrir a fonte externa {host or 'verificada'} >>>"
+
+
 def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     """Validator ctx for `step_write`: same-domain/identity fields (T0B/T0D)
     plus the T1A pagespec + h1_by_slug the `pagespec` validator needs to
@@ -1305,7 +1379,12 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     # rejeitar — ela volta ao prompt do redator, vira alvo do CTA oficial, entra
     # no conjunto autorizado e ainda gera o print embutido no artigo. Era assim
     # que um portal concorrente levava o clique comprado embora.
-    if page.page_number in state.official_links:
+    if _saida_oficial_desativada(state, page):
+        # O dossiê é a decisão mais nova e mais forte. Uma saída desativada
+        # não pode ser ressuscitada pelo fallback de checkpoints antigos.
+        official_links = []
+        state.official_links[page.page_number] = []
+    elif page.page_number in state.official_links:
         official_links = list(state.official_links[page.page_number])
     else:
         official_links = build_official_links(facts, deps.settings.site)
@@ -1324,8 +1403,13 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         # a página não é obrigada a um link que não existe (e nem pode tê-lo).
         from dataclasses import replace as _replace
         politica = _replace(politica, exige=False)
-    bind_official_route(page, official_links, role=role, is_terminal=is_terminal,
-                        terminal_official=terminal_official, politica=politica)
+    bind_official_route(
+        page, official_links, role=role, is_terminal=is_terminal,
+        terminal_official=terminal_official, politica=politica,
+        official_anchor=_rotulo_do_canal_oficial(state, page, official_links[0])
+        if (official_links and state.brief_pre_arquitetura is not None
+            and getattr(state, "editorial_v2", False)) else "",
+    )
     # FIX-3c: commercial PLATFORM deep links for SOLUTION pages -- the fintechs/
     # services the path names, from the research, each confirmed LIVE by a
     # chromium visit (fail-closed). Feeds the writer prompt AND same_domain
@@ -1436,6 +1520,106 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         "platform_links": platform_links,
         "verified_platforms": verified_platforms,
     }
+
+
+def _aplicar_rotulos_aprovados_da_lp(content_obj: dict, page: Page) -> bool:
+    """Mantém a criatividade no arquiteto e impede drift no último metro.
+
+    Os destinos e rótulos dos botões já foram aprovados no contrato tipado. O
+    redator preenche o restante da LP, mas não deve renomear esses botões. Só
+    há substituição quando a resposta trouxe exatamente a quantidade esperada;
+    ausência ou cardinalidade errada continuam sendo falha de schema.
+    """
+    esperados = [r.anchor for r in page.routes if r.kind == "funnel"]
+    recebidos = content_obj.get("cta_texts")
+    if not esperados or not isinstance(recebidos, list) or len(recebidos) != len(esperados):
+        return False
+    alterou = recebidos != esperados
+    content_obj["cta_texts"] = esperados
+    return alterou
+
+
+_LINK_HTML_RE = re.compile(
+    r"<a\b(?P<attrs>[^>]*)>(?P<body>[\s\S]*?)</a>", re.I)
+_HREF_HTML_RE = re.compile(r"\bhref\s*=\s*[\"'](?P<href>[^\"']+)[\"']", re.I)
+
+
+def _deslinkar_fontes_externas_da_lp(obj: Any, domain: str) -> tuple[Any, int]:
+    """Transforma citação externa clicável da LP em citação textual.
+
+    A landing page recebe o clique comprado. Fontes continuam nomeadas e
+    sustentam a copy, mas não desviam a sessão pelo corpo; CTAs do funil vivem
+    em ``cta_texts``/template e links do mesmo domínio permanecem intactos.
+    """
+    site = (urlparse(domain).hostname or "").removeprefix("www.").lower()
+    total = 0
+
+    def texto(valor: str) -> str:
+        nonlocal total
+
+        def trocar(match: re.Match) -> str:
+            nonlocal total
+            href_match = _HREF_HTML_RE.search(match.group("attrs"))
+            if not href_match:
+                return match.group(0)
+            host = (urlparse(href_match.group("href")).hostname or "").removeprefix("www.").lower()
+            if not host or host == site or host.endswith("." + site):
+                return match.group(0)
+            total += 1
+            return match.group("body")
+
+        return _LINK_HTML_RE.sub(trocar, valor)
+
+    def visitar(valor: Any) -> Any:
+        if isinstance(valor, str):
+            return texto(valor)
+        if isinstance(valor, list):
+            return [visitar(item) for item in valor]
+        if isinstance(valor, dict):
+            return {chave: visitar(item) for chave, item in valor.items()}
+        return valor
+
+    return visitar(obj), total
+
+
+def _aplicar_rotulos_aprovados_gutenberg(
+        content: str, rotas: list[dict[str, Any]]) -> tuple[str, int]:
+    """Alinha botões Gutenberg ao rótulo tipado da rota, por href exato.
+
+    Só links dentro de ``wp:buttons`` são tocados; links editoriais em prosa
+    permanecem do redator. Assim o modelo pode construir a ponte e o artigo,
+    mas não trocar o contrato do clique depois de ele ter sido aprovado.
+    """
+    alteracoes = 0
+    bloco_re = re.compile(
+        r"<!--\s*wp:buttons\b(?:(?!-->)[\s\S])*?-->[\s\S]*?"
+        r"<!--\s*/wp:buttons\s*-->", re.I)
+
+    def alinhar_bloco(match: re.Match) -> str:
+        nonlocal alteracoes
+        bloco = match.group(0)
+        for rota in rotas:
+            href = str(rota.get("href") or "")
+            rotulo = str(rota.get("anchor") or "").strip()
+            if not href or not rotulo:
+                continue
+            alvos = {href, escape(href, quote=True)}
+            href_re = "|".join(re.escape(a) for a in sorted(alvos))
+            ancora_re = re.compile(
+                r"(<a\b(?=[^>]*\bhref=[\"'](?:" + href_re + r")[\"'])[^>]*>)"
+                r"[\s\S]*?(</a>)", re.I)
+
+            def trocar(ancora: re.Match) -> str:
+                nonlocal alteracoes
+                novo = ancora.group(1) + escape(rotulo) + ancora.group(2)
+                if novo != ancora.group(0):
+                    alteracoes += 1
+                return novo
+
+            bloco = ancora_re.sub(trocar, bloco)
+        return bloco
+
+    return bloco_re.sub(alinhar_bloco, content), alteracoes
 
 
 def step_write(state: RunState, page: Page, deps: Any) -> None:
@@ -1568,6 +1752,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
             **extras_v2,
         )
         cfg = deps.settings.steps["write_p1"]
+        if state.pacotes:
+            from funnelforge.pipeline.inteligencia import prompt_do_pacote
+            prompt = prompt_do_pacote(state, page)
         text, res = deps.runner.run_llm_step(
             f"write_p{page.page_number}", cfg, [{"role": "user", "content": prompt}],
             ctx=route_ctx, run_id=state.run_id,
@@ -1588,6 +1775,21 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         # não Gutenberg), e foi exatamente no corpo da LP que os valores
         # malformados foram medidos: "de 5 % a 50 %" e "até 2900.00 R$".
         content_obj = formatar_moeda_em_estrutura(content_obj)
+        if v2 and state.pacotes:
+            content_obj, links_removidos = _deslinkar_fontes_externas_da_lp(
+                content_obj, deps.settings.site.domain)
+            if links_removidos:
+                _registrar_normalizacao(state, page.page_number, {
+                    "etapa": "fontes_externas_da_lp_em_prosa",
+                    "alterou": True,
+                    "quantidade": links_removidos,
+                })
+        if v2 and state.pacotes and _aplicar_rotulos_aprovados_da_lp(content_obj, page):
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "rotulos_aprovados_da_lp",
+                "alterou": True,
+                "rotulos": [r.anchor for r in page.routes if r.kind == "funnel"],
+            })
         content = json.dumps(content_obj, ensure_ascii=False)
         # O contrato da LP roda DENTRO do runner quando `lp_json_contract` está
         # em write_p1.validators: lá ele ganha retry com feedback e o modelo tem
@@ -1710,6 +1912,9 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         **extras_v2,
     )
     cfg = deps.settings.steps["write_page"]
+    if state.pacotes:
+        from funnelforge.pipeline.inteligencia import prompt_do_pacote
+        prompt = prompt_do_pacote(state, page)
     if v2:
         # Gate estrutural ANTES de SEO, widget, revisão e imagem (canário p5,
         # 30/09): só blocos Gutenberg fechados e os slots do Ad Inserter no fluxo
@@ -1728,6 +1933,19 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         # A normalização deixa de ser reescrita silenciosa: o que ela mudou fica
         # registrado no estado (e o revisor lê a versão normalizada).
         _registrar_normalizacao(state, page.page_number, resumo_da_normalizacao(text, content))
+        anterior = content
+        content, total_rotulos = (
+            _aplicar_rotulos_aprovados_gutenberg(content, rotas)
+            if state.pacotes else (content, 0)
+        )
+        if total_rotulos:
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "rotulos_aprovados_gutenberg",
+                "alterou": True,
+                "quantidade": total_rotulos,
+                "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            })
         anterior = content
         content = clean_body_notice(content, footer=footer_discloses(route_ctx))
         if content != anterior:
@@ -2071,7 +2289,7 @@ def _revisao_humana_sem_modelo(state: RunState, page: Page, deps: Any, motivo: s
                      json.dumps(state.revisoes[n], ensure_ascii=False, indent=2))
 
 
-def _revisar_pagina(state: RunState, page: Page, deps: Any) -> None:
+def _revisar_pagina(state: RunState, page: Page, deps: Any, resposta_precalculada=None) -> None:
     """O revisor contextual desta página (só no ramo novo). Ver `pipeline/revisao.py`.
 
     Ordem: (1) decisão humana gravada manda; (2) o aviso canônico vai para o
@@ -2121,7 +2339,8 @@ def _revisar_pagina(state: RunState, page: Page, deps: Any) -> None:
                                    f"Contexto da revisão indisponível: {type(exc).__name__}.")
         return
     resultado = executar_revisao(doc, ctx, runner=deps.runner, cfg=cfg,
-                                 run_id=state.run_id, numero=n)
+                                 run_id=state.run_id, numero=n,
+                                 resposta_precalculada=resposta_precalculada)
     final = resultado.documento
     if final != doc:
         draft.content = final.corpo
@@ -2222,6 +2441,11 @@ def seo_deterministico(page: Page, draft: Any) -> dict:
 
 def step_seo(state: RunState, page: Page, deps: Any) -> None:
     draft = state.drafts.get(page.page_number)
+    if state.pacotes:
+        state.seo[page.page_number] = seo_deterministico(page, draft)
+        state.step_status[f"seo_p{page.page_number}"] = StepResult(
+            step=f"seo_p{page.page_number}", status=StepStatus.OK, attempts=0)
+        return
     content = draft.content if draft else ""
     if getattr(state, "editorial_v2", False):
         prompt = _prompt_seo_v2(state, page, content)
@@ -2366,7 +2590,8 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
             [{"role": "user", "content": [
                 {"type": "text", "text": render(
                     "image_review", headline=page.h1_title,
-                    objective=page.emotional_objective, keywords=page.target_keywords)},
+                    objective=page.emotional_objective, keywords=page.target_keywords,
+                    no_generated_text=bool(getattr(state, "editorial_v2", False)))},
                 {"type": "image_url", "image_url": {
                     "url": "data:image/webp;base64," + base64.b64encode(
                         Path(saved).read_bytes()).decode("ascii"), "detail": "high"}},
@@ -3363,6 +3588,10 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
                 # que o widget inventou.
                 facts=base_para_o_redator(state.facts.get(page.page_number)),
                 ativo=ativo or {},
+                # As guardas editoriais novas não podem alterar o ouro do V1.
+                # O motor é único; a flag escolhe apenas o contrato de qualidade
+                # do run, como já acontece nos demais prompts do Editorial V2.
+                editorial_v2=bool(getattr(state, "editorial_v2", False)),
             ) + correcao
             text, res = deps.runner.run_llm_step(
                 key, cfg, [{"role": "user", "content": prompt}], ctx={},

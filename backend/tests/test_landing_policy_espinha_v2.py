@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import pytest
 
+from app.redator.politica_de_destino import coleta_dado_do_visitante
+
 from app.landing_policy import (
     JANELA_DE_FRESCOR_PADRAO_S,
     POLICY_CONTRACT_VERSION,
@@ -676,6 +678,13 @@ def test_cp24c_formulario_no_artefato_sobe_o_papel_sem_ninguem_declarar():
         )
     )
     assert papel is PapelDestino.CONVERSION_PAGE
+
+
+def test_cp24c_widget_select_local_nao_e_coleta_de_dado():
+    html = ('<label for="situacao">Situação</label>'
+            '<select id="situacao"><option>Quero orientação</option></select>')
+    assert coleta_dado_do_visitante(html) is False
+    assert coleta_dado_do_visitante('<form><select name="situacao"></select></form>') is True
 
 
 def test_cp24d_o_papel_estrito_consegue_ficar_verde():

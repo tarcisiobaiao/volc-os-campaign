@@ -1,0 +1,51 @@
+{
+  "tipo": "canario_seco_unico",
+  "publish": false,
+  "publisher": false,
+  "imagens": false,
+  "workers_configurados": 3,
+  "teto_chamadas": 12,
+  "custo_faturado_usd": null,
+  "custo": "não informado",
+  "erro": null,
+  "run_id": "_pending-20261008-pre-redacao-unico",
+  "pacotes": {},
+  "paginas_redigidas": 0,
+  "publicadas": 0,
+  "passos": {
+    "inteligencia": {
+      "estado": "OK",
+      "tentativas": 2,
+      "modelo_pedido": "chatgpt/gpt-6.1-sol",
+      "modelo_servido": "gpt-6.1-sol",
+      "latencia_ms": 27298,
+      "causas": [
+        "paa"
+      ]
+    },
+    "extract": {
+      "estado": "FAILED",
+      "tentativas": 1,
+      "modelo_pedido": "chatgpt/gpt-6-sol",
+      "modelo_servido": "chatgpt/gpt-6-sol",
+      "latencia_ms": 209979,
+      "causas": [
+        "parse_error"
+      ]
+    },
+    "funnel_graph": {
+      "estado": "FAILED",
+      "tentativas": 0,
+      "modelo_pedido": "",
+      "modelo_servido": "",
+      "latencia_ms": 0,
+      "causas": [
+        "jornada_ausente"
+      ]
+    }
+  },
+  "concorrencia": null,
+  "chamadas": 3,
+  "duracao_s": 241.666,
+  "baseline_preservada": true
+}

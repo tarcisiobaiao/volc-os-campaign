@@ -463,8 +463,11 @@ def test_ponta_a_ponta_a_flag_e_os_contextos_chegam_ao_motor(monkeypatch, com_ch
                          **({"editorial_v2": True} if ligado else {}))
 
     # 2 · o worker DE VERDADE: grava perfil/arquitetura e dispara o processo
-    asyncio.run(executar_de_verdade(supa=supa, run_row_id=77, arquitetura=recebido["arquitetura"],
-                           perfil=recebido["perfil"], publicar=True))
+    asyncio.run(executar_de_verdade(
+        supa=supa, run_row_id=77, arquitetura=recebido["arquitetura"],
+        perfil=recebido["perfil"], publicar=True,
+        autorizacao="teste: portão de política aprovado",
+    ))
     status = [v.get("status") for _t, _m, v in supa.patches if v.get("status")]
     assert status[-1] == "done", supa.patches[-1]
 

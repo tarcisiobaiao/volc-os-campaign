@@ -38,6 +38,12 @@ class Route(BaseModel):
 class EditorialLink(BaseModel):
     target: str = Field(min_length=1)
     reason: str = Field(min_length=1)
+    # O botão DESTA origem para o destino: dor/desejo do leitor neste ponto +
+    # a próxima resposta concreta + a consequência útil. Vazio = o rótulo do
+    # destino (`editorial.cta_label`), como antes. O mesmo destino pode (e
+    # costuma) pedir rótulos diferentes em origens diferentes. Vazio fica fora
+    # do dump: pacotes congelados e estados antigos conferem byte a byte.
+    cta: str = Field(default="", exclude_if=lambda v: not v)
 
 
 class EditorialIntent(BaseModel):
@@ -341,6 +347,11 @@ class JornadaDaPagina(BaseModel):
     # CERTO em todos os caminhos o motor calcula (`jornada.estado_do_leitor`).
     ja_resolvido: list[str] = []
     proxima_duvida: str = ""
+    # A dúvida LEGÍTIMA que a entrega completa desta página abre (a
+    # consequência ou o "e agora?"), e que o CTA principal resolve. Não é
+    # informação retida: a resposta da página vem inteira antes dela. Vazio
+    # fica fora do dump (pacotes congelados antes do campo conferem igual).
+    tensao_residual: str = Field(default="", exclude_if=lambda v: not v)
     condicao_terminal: str = ""
     entrada_direta: Literal["autocontida", "depende_de_contexto"] = "autocontida"
     saida_oficial: SaidaOficialPrevista = SaidaOficialPrevista()
@@ -355,6 +366,9 @@ class JornadaDaPagina(BaseModel):
     plano_visual: list[BlocoVisual] = []
     ativos: list[AtivoInterativo] = []
     requisitos: list[RequisitoFactual] = []
+    screenshot_necessario: bool = False
+    imagem_necessaria: bool = False
+    schema_tipos: list[str] = []
 
     @field_validator("duvida_id", "proxima_duvida", "entrada_direta", mode="before")
     @classmethod
@@ -556,6 +570,105 @@ class ContextoDeAnuncio(BaseModel):
         return self
 
 
+FamiliaEmocional = Literal[
+    "oportunidade",
+    "incerteza",
+    "medo_de_perder",
+    "desejo_de_controle",
+    "prevencao_de_erro",
+    "necessidade_de_acao",
+    "ambigua",
+]
+
+
+class SinalEmocional(BaseModel):
+    """Leitura consultiva de UMA pergunta real da demanda.
+
+    Não é demografia, fato nem diagnóstico psicológico. As notas são sinais
+    para o arquiteto escolher ordem, entrega e direção do CTA; nunca bloqueiam
+    uma página ou autorizam uma promessa pessoal.
+    """
+    pergunta: str = Field(min_length=1)
+    duvida_id: str = ""
+    familia: FamiliaEmocional = "ambigua"
+    correspondencia: dict[str, float] = {}
+    confianca: float = Field(default=0.0, ge=0.0, le=100.0)
+    intensidade: float = Field(default=0.0, ge=0.0, le=100.0)
+    autorrelevancia: float = Field(default=0.0, ge=0.0, le=100.0)
+    potencial_continuacao: float = Field(default=0.0, ge=0.0, le=100.0)
+    urgencia_de_acao: float = Field(default=0.0, ge=0.0, le=100.0)
+    ganho_informacional: float = Field(default=0.0, ge=0.0, le=100.0)
+    sinal_observavel: float = Field(default=0.0, ge=0.0, le=100.0)
+    sensibilidade_temporal: float = Field(default=0.0, ge=0.0, le=100.0)
+    consulta_pessoal: float = Field(default=0.0, ge=0.0, le=100.0)
+    canal_oficial_necessario: float = Field(default=0.0, ge=0.0, le=100.0)
+    respondavel_editorialmente: float = Field(default=0.0, ge=0.0, le=100.0)
+    proximo_passo_concreto: float = Field(default=0.0, ge=0.0, le=100.0)
+    intencao: str = "outra"
+    entrega: str = "explicacao"
+    momento: str = "reconhecimento"
+    formato: Literal["pagina", "secao", "faq", "ferramenta", "avaliar"] = "avaliar"
+    direcao_cta: str = ""
+    limite_cta: str = ""
+
+
+class CorrelacaoEmocional(BaseModel):
+    origem: int = Field(ge=0)
+    destino: int = Field(ge=0)
+    origem_duvida_id: str = ""
+    destino_duvida_id: str = ""
+    nota: float = Field(ge=0.0, le=100.0)
+    relacao: Literal["progressao", "complementar", "possivel_redundancia"]
+    motivo: str
+
+
+class PerfilEmocionalDoFunil(BaseModel):
+    """Avatar comportamental derivado da demanda, sem inventar uma pessoa."""
+    schema_version: int = 1
+    estado: Literal["presente", "fallback", "ausente"] = "ausente"
+    provider: str = ""
+    modelo_pedido: str = ""
+    modelo_servido: str = ""
+    familia_dominante: FamiliaEmocional = "ambigua"
+    distribuicao: dict[str, float] = {}
+    resumo: str = ""
+    sinais: list[SinalEmocional] = []
+    correlacoes: list[CorrelacaoEmocional] = []
+    climax_pergunta: int | None = None
+    climax_duvida_id: str | None = None
+    hipotese: str = "Leitura comportamental consultiva; precisa ser calibrada com dados reais."
+
+
+class DuvidaDoBrief(BaseModel):
+    """Candidata, nunca uma página aprovada nem evidência factual."""
+    jornada: JornadaDaPagina
+    variantes: list[str] = []
+    prioridade: int = 0
+    evidencia_demanda: list[dict] = []
+    formato: Literal["pagina", "secao", "faq", "ferramenta", "avaliar"] = "avaliar"
+    confianca: Literal["baixa", "media", "alta"] = "baixa"
+    sinal_emocional: SinalEmocional | None = None
+
+
+class BriefDoFunil(BaseModel):
+    """Extensão compacta da jornada: sinais antes de decidir páginas/rotas."""
+    intencao_principal: str
+    trabalho_do_leitor: str = ""
+    consciencia: str = "nao_observada"
+    entidade: str = ""
+    pais: str = ""
+    idioma: str = ""
+    contexto: dict = {}
+    dores_observadas: list[str] = []
+    desejos_observados: list[str] = []
+    perfil_emocional: PerfilEmocionalDoFunil | None = None
+    duvidas: list[DuvidaDoBrief] = []
+    sinais: list[dict] = []
+    fatos_existentes: list[dict] = []
+    lacunas: list[str] = []
+    sha256: str = ""
+
+
 class FunnelPlan(BaseModel):
     avatar_summary: str = ""
     tone_voice: str = ""
@@ -568,6 +681,7 @@ class FunnelPlan(BaseModel):
     contexto_de_busca: TermosDeBusca | None = None
     contexto_de_anuncio: ContextoDeAnuncio | None = None
     jornada: JornadaDoFunil | None = None
+    brief_pre_arquitetura: BriefDoFunil | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -909,6 +1023,13 @@ class RunState(BaseModel):
     # resume usa este mesmo dossiê; nada muda os fatos durante a redação.
     dossie: dict = {}
     dossie_sha256: str = ""
+    brief_pre_arquitetura: BriefDoFunil | None = None
+    pesquisa_pre_arquitetura: dict = {}
+    # Segunda passagem JEV, depois do grafo: verificação consultiva de cada
+    # aresta/CTA. Não reescreve nem bloqueia; o código guarda probabilidades,
+    # thresholds e problemas para o pacote do writer e o recibo do run.
+    revisao_semantica_jev: dict = {}
+    pacotes: dict[int, dict] = {}
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)
