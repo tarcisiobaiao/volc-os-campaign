@@ -48,6 +48,11 @@ BANNED_OFFICIAL: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 # 1st-person emotional CTAs — banned ONLY on the Landing Page (P1). Interior
 # funnel pages (PRESELL/SOLUTION) intentionally use this register by design.
+# Contrato V1 (ouro byte a byte): o ramo editorial v2 não renderiza esta lista
+# e remove `cta_first_person` (retry_policy.CODIGOS_REMOVIDOS_NO_V2). No v2 a
+# voz do leitor ("Ver se minha família atende aos requisitos") é permitida
+# quando descreve a checagem que o destino sustenta; o limite é a promessa
+# (aprovação, pagamento, consulta pessoal, cadastro) — ver copy_contract.
 # ---------------------------------------------------------------------------
 BANNED_CTA_FIRST_PERSON: tuple[str, ...] = (
     "quero ver",
@@ -106,7 +111,10 @@ def banned_cta_execution_hit(text: str) -> str | None:
     anchored (see `_cta_execution_regex`)."""
     # An informational frame changes the promise: explain a request, not execute it.
     text = text or ""
-    frame = re.search(r"\b(?:como|quando|onde|guia|passo a passo)\b", text, re.I)
+    # "o que/qual/quais/quem/se" também enquadram: "Ver o que pedir à distribuidora"
+    # explica o pedido. Sem eles, só "Ver como…" passava e virou fórmula.
+    frame = re.search(r"\b(?:como|quando|onde|guia|passo a passo|o que|quais|qual|quem|se)\b",
+                      text, re.I)
     direct = re.search(r"\b(?:solicitar|solicite|contratar|contrate|pedir|peça|"
                        r"resgatar|resgate|liberar|libere)\b", text, re.I)
     if direct and not (frame and frame.start() < direct.start()):
@@ -150,6 +158,8 @@ COMPLIANCE_NOTICE_TEXT: str = (
 # ---------------------------------------------------------------------------
 # Approved CTA exemplars — the calm, 3rd-person/infinitive register that
 # Landing Page CTAs must follow instead of the banned 1st-person phrasing.
+# Só V1 (redator_p1/judge e âncora de `routing`); no v2 "Ver o passo a passo" é
+# `cta_generic` e nenhum prompt v2 recebe estes exemplos.
 # ---------------------------------------------------------------------------
 APPROVED_CTA_EXEMPLARS: tuple[str, ...] = (
     "Ver o passo a passo",

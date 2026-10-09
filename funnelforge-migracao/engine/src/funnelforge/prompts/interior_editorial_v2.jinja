@@ -9,7 +9,14 @@ BASE FACTUAL:
 </dados>
 <fontes>
 Número, percentual, prazo, limite ou dispositivo legal só sai de FATOS VERIFICADOS.
-Reproduza valor e unidade e cite a fonte indicada na mesma frase. Se algo foi removido como
+{% if fonte_sem_link | default(false) %}Reproduza valor e unidade. Cite cada fonte em prosa, uma vez na página, pelo nome indicado na base
+factual, onde ela sustenta a resposta; nas outras menções, o nome da instituição basta, sem repetir em toda frase. Se algo foi removido como
+número não verificado, não o reconstrua de memória. Se não há número, entregue orientação sem ele.
+Não apresente regra, valor ou prazo antigo como atual; ano no texto só quando um fato o tornar relevante para a decisão do leitor.
+Não invente disponibilidade atual, CNPJ, pré-requisito, inscrição aberta ou vínculo institucional.
+Esta página não leva link externo, URL escrita, "fonte:" nem lista de fontes no corpo: as fontes ficam
+no dossiê de evidência. Os únicos links são as conexões do funil listadas abaixo.
+{% else %}Reproduza valor e unidade. Se algo foi removido como
 número não verificado, não o reconstrua de memória. Se não há número, entregue orientação sem ele.
 Não apresente regra, valor ou prazo antigo como atual; ano no texto só quando um fato o tornar relevante para a decisão do leitor.
 Não invente disponibilidade atual, CNPJ, pré-requisito, inscrição aberta ou vínculo institucional.
@@ -20,7 +27,9 @@ Use somente URLs fornecidas, copiadas exatamente; não invente caminhos em domí
 {% endfor %}
 Quando uma etapa depender de um canal oficial específico, ponha o hyperlink real nessa etapa e
 identifique o canal por nome, como orientação externa, sem simular execução de serviço aqui.
-</fontes>
+Cada fonte vira link no máximo uma vez, no ponto em que o leitor age ou confere o dado; nas outras
+menções, o nome da instituição basta, e não depois de cada frase.
+{% endif %}</fontes>
 <conexoes>
 Links disponíveis, na ordem editorial de relevância:
 {% for r in routes | default([]) %}- {{ r.kind }}: {{ r.anchor }} → {{ r.href }}
@@ -31,7 +40,7 @@ Não invente destinos. Inclua as conexões onde elas ajudam a próxima dúvida r
 O rótulo do botão expressa a intenção ou o avanço do leitor naquele clique (o que ele ganha), não o formato editorial, e o destino entrega exatamente isso. Se o destino só explica como consultar em outro site, o rótulo diz isso e não promete a lista, a vaga ou o resultado em si.
 A frase antes do botão principal nomeia a consequência ou a nova dúvida que a entrega desta página abriu e o ganho concreto de seguir; sem fórmula pronta.
 Use o rótulo aprovado de cada link sem trocá-lo por sinônimo. Não coloque botão após todo H2 por obrigação.
-Links externos são identificados como externos. Para links internos, diga que o leitor continua neste site quando isso evitar confundir guia com serviço.
+{% if fonte_sem_link | default(false) %}Não há link externo nesta página.{% else %}Ao linkar um site externo, diga uma vez, em linguagem natural, que o passo acontece no site da instituição (nome e destino); não acrescente "em site externo" a cada menção.{% endif %} Para links internos, diga que o leitor continua neste site quando isso evitar confundir guia com serviço.
 Não ofereça "Inscreva-se" quando o clique apenas abre outra página editorial.
 </conexoes>
 <entregas_dos_destinos>

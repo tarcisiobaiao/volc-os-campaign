@@ -22,7 +22,7 @@ EDITORIAL_NOTICE = (
     "pedimos senhas, CPF ou dados bancários nesta página."
 )
 IMAGE_RULES = (
-    "MANDATORY EDITORIAL IMAGE RULES: Create an unbranded editorial illustration. "
+    "MANDATORY EDITORIAL IMAGE RULES: Create an unbranded editorial photograph. "
     "No logos, wordmarks, seals, coats of arms, flags used as institutional branding, "
     "government or bank insignia, branded uniforms, official documents or cards, "
     "QR codes, readable personal data, login screens, payment screens or replicas "
@@ -30,8 +30,10 @@ IMAGE_RULES = (
     "money received, guaranteed eligibility or completed-service success scenes. "
     "No readable words, letters, numeric labels or labeled charts in synthetic images; "
     "all typography and factual data visualization are rendered later by code. "
-    "Depict the topic through specific unbranded activities, materials and environments. "
-    "People are optional; use a simple, physically plausible composition. If present, "
+    "Depict the topic through the reader's real situation: people from the plausible "
+    "audience doing the concrete activity, with recognizable unbranded objects of the "
+    "niche; a still life of generic symbols does not explain the topic. Keep a simple, "
+    "physically plausible composition. If people are present, "
     "each person's visible limbs must connect correctly, with no extra hands, arms, "
     "fingers or fused objects. Avoid the default beige home desk with mug and tablet. "
     "The topic is context, never permission to reproduce an institution's identity."

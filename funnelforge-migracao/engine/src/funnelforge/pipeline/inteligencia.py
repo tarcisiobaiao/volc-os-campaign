@@ -424,6 +424,31 @@ def pacote_conferido(state, page):
     return pacote
 
 
+def _visao_sem_url_do_redator(pacote):
+    """LP e pré-sell: o redator vê o fato, o id e o NOME da fonte, nunca a URL.
+
+    No run da tarifa social (09/10) a URL chegou ao redator da LP 14 vezes
+    (fatos do `factual`, do dossiê da jornada e o pacote inteiro como briefing)
+    e voltou como texto "(fonte: https://...)" e, na pré-sell, como 13 `<a>`.
+    A evidência continua no pacote congelado e no dossiê; isto muda só a cópia
+    que vira prompt (`pacote_conferido` já devolve uma cópia). O nome (host)
+    é o mesmo de `base_factual.nome_da_fonte`: é ele que o portão
+    `critical_fact_grounding` aceita como citação num destino sem link.
+    """
+    from funnelforge.pipeline.base_factual import nome_da_fonte
+    j = pacote.get("jornada") or {}
+    for base in (pacote.get("factual") or {}, j.get("dossie") or {}):
+        for fato in base.get("fatos") or []:
+            if isinstance(fato, dict) and "fonte" in fato:
+                fato["citar_como"] = nome_da_fonte(fato.pop("fonte"))
+        if "urls_oficiais" in base:
+            base["urls_oficiais"] = []
+        for vinculo in base.get("vinculos") or []:
+            if isinstance(vinculo, dict):
+                vinculo.pop("url", None)
+    return pacote
+
+
 def prompt_do_pacote(state, page):
     from funnelforge.prompts import render
     pacote = pacote_conferido(state, page)
@@ -447,6 +472,10 @@ def prompt_do_pacote(state, page):
             for link in pacote["links"] if link["kind"] == "funnel"
         ]
     lp = p["page_type"] == "LANDING PAGE"
+    sem_link = lp or p["role"] == "PRESELL"
+    if sem_link:
+        pacote = _visao_sem_url_do_redator(pacote)
+        j = pacote["jornada"]
     nome = "redator_p1_v2" if lp else (
         "redator_presell_v2" if p["role"] == "PRESELL" else "redator_pages_v2")
     destinos = [{"role_label": "próxima dúvida", "h1": d["h1"],
@@ -468,9 +497,9 @@ def prompt_do_pacote(state, page):
         cnpj=pacote["cnpj"], today=pacote["data"], escrita_natural=True,
         briefing_texto=json.dumps(pacote, ensure_ascii=False))
     regra_lp = (
-        " Na LP, cite o nome da fonte em prosa, mas não gere hyperlink externo "
-        "clicável no corpo; o destino pago deve manter a sessão no funil."
-        if lp else ""
+        " Nesta página, cite a instituição em prosa só quando ajudar, sem URL escrita, "
+        "sem \"fonte:\" e sem hyperlink externo no corpo; o leitor continua no funil."
+        if sem_link else ""
     )
     ctas = ("Preserve os hrefs. Nos links reformular_cta=true, escreva um rótulo específico "
             "pela entrega confirmada do destino e pela próxima dúvida, nunca 'depois do cálculo' "

@@ -175,8 +175,21 @@ def _probabilidades(answer: dict) -> dict[str, float]:
     return fora
 
 
+# No fallback, "ambigua" quer dizer "a heurística não reconheceu", não "o leitor
+# não sente nada". No run da Tarifa Social, 84% das perguntas caíram aqui e o
+# brief mandou o arquiteto "não forçar emoção" em todas: CTAs mornos por
+# construção. A escolha da família volta para quem lê a pergunta inteira.
+_DIRECAO_NAO_CLASSIFICADO = (
+    "sinal não classificado pela heurística: leia a pergunta e escolha a família "
+    "(oportunidade, incerteza, medo de perder, controle, prevenção de erro ou ação); "
+    "nomeie o resultado concreto que o destino entrega"
+)
+_LIMITE_NAO_CLASSIFICADO = "não invente prazo, risco, benefício ou urgência para produzir emoção"
+
+
 def _sinal_fallback(pergunta: str, duvida_id: str = "") -> dict:
     familia = _familia_heuristica(pergunta)
+    nao_classificado = familia == "ambigua"
     return {
         "pergunta": pergunta,
         "duvida_id": duvida_id,
@@ -198,8 +211,8 @@ def _sinal_fallback(pergunta: str, duvida_id: str = "") -> dict:
         "entrega": "explicacao",
         "momento": "reconhecimento",
         "formato": _formato_heuristico(pergunta),
-        "direcao_cta": _DIRECAO[familia],
-        "limite_cta": _LIMITES[familia],
+        "direcao_cta": _DIRECAO_NAO_CLASSIFICADO if nao_classificado else _DIRECAO[familia],
+        "limite_cta": _LIMITE_NAO_CLASSIFICADO if nao_classificado else _LIMITES[familia],
     }
 
 
@@ -278,8 +291,13 @@ def _perfil(
     climax = max(range(len(sinais)), key=lambda i: forca(sinais[i])) if sinais else None
     climax_duvida_id = sinais[climax].get("duvida_id") if climax is not None else None
     entrega = sinais[climax]["entrega"] if climax is not None else "explicacao"
+    sem_familia = sum(1 for s in sinais if s.get("familia") == "ambigua")
     resumo = (
-        f"Leitor movido principalmente por {dominante.replace('_', ' ')}, "
+        f"Classificação emocional indisponível (heurística local): {sem_familia} de "
+        f"{len(sinais)} perguntas sem família reconhecida. Infira a família de cada "
+        "dúvida pela linguagem real da busca e pelas dores observadas."
+        if estado == "fallback" and sinais and sem_familia * 2 >= len(sinais)
+        else f"Leitor movido principalmente por {dominante.replace('_', ' ')}, "
         f"que busca {entrega.replace('_', ' ')} antes de avançar."
         if sinais
         else "Demanda insuficiente para formar avatar comportamental."

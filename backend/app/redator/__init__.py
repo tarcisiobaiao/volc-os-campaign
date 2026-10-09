@@ -4,6 +4,6 @@ O motor é um pacote independente: ele não importa `app.*` e não sabe o que é
 card. Esta camada é a tradução — ela monta, por execução, o que o motor precisa
 saber sobre o SITE e sobre o TEMA, e que o `config.yaml` dele não tem como saber.
 """
-from app.redator.perfil import PerfilIncompleto, montar_perfil
+from app.redator.perfil import PRESET_CANONICO, PerfilIncompleto, card_do_motor, montar_perfil
 
-__all__ = ["PerfilIncompleto", "montar_perfil"]
+__all__ = ["PRESET_CANONICO", "PerfilIncompleto", "card_do_motor", "montar_perfil"]

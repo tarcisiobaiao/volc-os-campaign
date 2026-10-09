@@ -112,8 +112,17 @@ def nome_da_fonte(url: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
+# SOLUÇÃO no ramo editorial novo: o link oficial continua permitido onde serve
+# à tarefa, mas UMA vez por fonte. "Inclua este link na MESMA frase" produziu a
+# p6 da tarifa social (09/10) com o mesmo link da ANEEL nove vezes, um
+# "conforme a ANEEL" depois de quase toda frase. O texto antigo segue no V1.
+def _citacao_link_unico(fonte: str) -> str:
+    return (f"fonte: {fonte}. Vira link no máximo UMA vez por fonte, no ponto em que "
+            "o leitor age ou confere; nas outras menções basta o nome da instituição.")
+
+
 def _bloco_de_fatos(confiaveis: list[Any], destino_pago: bool = False,
-                    *, ha_dados_tipados: bool = False) -> str:
+                    *, ha_dados_tipados: bool = False, link_unico: bool = False) -> str:
     if not confiaveis:
         if ha_dados_tipados:
             return ""
@@ -148,12 +157,15 @@ def _bloco_de_fatos(confiaveis: list[Any], destino_pago: bool = False,
              f"descritiva (\"segundo o site da {nome_da_fonte(fonte)}\"). "
              f"NÃO escreva a URL e NÃO crie link."
              if destino_pago
+             else f"     AO USAR ESTE NÚMERO, {_citacao_link_unico(fonte)}"
+             if link_unico
              else f"     AO USAR ESTE NÚMERO, inclua este link na MESMA frase: {fonte}"),
         ]
     return "\n".join(linhas) + "\n"
 
 
-def _bloco_de_dados(confiaveis: list[dict], destino_pago: bool = False) -> str:
+def _bloco_de_dados(confiaveis: list[dict], destino_pago: bool = False,
+                    *, link_unico: bool = False) -> str:
     if not confiaveis:
         return ""
     linhas = [
@@ -169,6 +181,8 @@ def _bloco_de_dados(confiaveis: list[dict], destino_pago: bool = False) -> str:
                 f"(\"segundo o site da {nome_da_fonte(fonte)}\"). "
                 "NÃO escreva a URL e NÃO crie link."
             )
+        elif link_unico:
+            linhas.append(f"     Ao usar esta condição ou processo, {_citacao_link_unico(fonte)}")
         else:
             linhas.append(
                 "     Ao usar esta condição ou processo, inclua este link na "
@@ -178,7 +192,7 @@ def _bloco_de_dados(confiaveis: list[dict], destino_pago: bool = False) -> str:
 
 
 def base_para_o_redator(facts: ResearchFacts | None, *,
-                       destino_pago: bool = False) -> str:
+                       destino_pago: bool = False, link_unico: bool = False) -> str:
     """A base factual como o redator deve recebê-la.
 
     Texto formatado, não JSON: o modelo não precisa navegar cinco campos para
@@ -188,7 +202,11 @@ def base_para_o_redator(facts: ResearchFacts | None, *,
     `destino_pago=True` troca a instrução de citação: nome em prosa em vez de
     URL para linkar, e o dossiê de evidência perde as URLs. O princípio é o
     mesmo do resto do módulo — o que o modelo não pode usar não fica escrito
-    em lugar nenhum do que ele lê.
+    em lugar nenhum do que ele lê. Vale para a LP e para a pré-sell.
+
+    `link_unico=True` (página de SOLUÇÃO do ramo novo) mantém a URL, mas pede
+    o link uma vez por fonte, onde o leitor age ou confere, em vez de "na
+    MESMA frase" de cada número. Sem nenhum dos dois, o texto é o do V1.
     """
     if facts is None:
         return _bloco_de_fatos([], destino_pago)
@@ -197,8 +215,8 @@ def base_para_o_redator(facts: ResearchFacts | None, *,
     dados_confiaveis = _dados_confiaveis(facts)
     partes = [
         _bloco_de_fatos(confiaveis, destino_pago,
-                        ha_dados_tipados=bool(dados_confiaveis)),
-        _bloco_de_dados(dados_confiaveis, destino_pago),
+                        ha_dados_tipados=bool(dados_confiaveis), link_unico=link_unico),
+        _bloco_de_dados(dados_confiaveis, destino_pago, link_unico=link_unico),
     ]
 
     resumo = _podar(facts.resumo or "")

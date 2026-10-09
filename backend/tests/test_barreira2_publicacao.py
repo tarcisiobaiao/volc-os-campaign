@@ -642,3 +642,48 @@ def test_publicacao_que_falha_nao_sai_com_200(cliente, mundo, monkeypatch):
     # O corpo continua informativo: o recibo do portão viaja com a falha, senão
     # a única prova de que a página FOI avaliada morre com a requisição.
     assert detalhe["recibo"]["paid_destination_ready"] is True
+
+
+def test_o_disparo_da_interface_roda_o_motor_canonico_com_pesquisa_antes(
+    cliente, mundo_do_disparo, monkeypatch
+):
+    """O diálogo não manda `perfil_execucao`; o padrão é o motor canônico.
+
+    Antes, "completo" caía no `config.yaml` (sem editorial V2, sem dossiê,
+    um worker) e o motor recebia só o plano pronto, sem PAA nem pesquisa
+    antecipada: a interface rodava um motor diferente do validado.
+    """
+    from app.redator import worker as w
+    import app.redator as rd
+
+    capturado: Dict[str, Any] = {}
+    presets: list = []
+
+    async def executar(**kwargs):
+        capturado.update(kwargs)
+
+    def montar(**k):
+        presets.append(k.get("preset"))
+        return {"wordpress": {"url": "x"}}
+
+    monkeypatch.setattr(w, "executar", executar)
+    monkeypatch.setattr(rd, "montar_perfil", montar)
+
+    r = cliente.post("/api/publicacao/redator/disparar",
+                     json={"opportunity_id": 7, "project_id": 3})
+
+    assert r.status_code == 200, r.text
+    assert presets == ["completo_chatgpt"]
+    card = capturado.get("card") or {}
+    assert card["main_keyword"], card
+    assert card["historico"]["arquitetura_referencia"]["pages"][0]["slug"] == "rotina-de-leitura"
+
+
+def test_a_retomada_usa_o_preset_com_que_o_run_nasceu(tmp_path):
+    (tmp_path / "config_snapshot.json").write_text(
+        '{"openai": {"auth_mode": "chatgpt_plan"}}', encoding="utf-8")
+    assert pub._preset_do_run(tmp_path) == "completo_chatgpt"
+    (tmp_path / "config_snapshot.json").write_text(
+        '{"openai": {"auth_mode": "api_key"}}', encoding="utf-8")
+    assert pub._preset_do_run(tmp_path) is None
+    assert pub._preset_do_run(tmp_path / "ausente") is None

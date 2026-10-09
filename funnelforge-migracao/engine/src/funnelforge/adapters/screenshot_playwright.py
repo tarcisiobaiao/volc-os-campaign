@@ -92,7 +92,10 @@ _OVERLAY_SCAN_JS = r"""() => {
    const named=words.test(signature);
    const mentions=words.test(text);
    const coverage=(r.width*r.height)/Math.max(1,innerWidth*innerHeight);
-   if((modal||positioned||named) && mentions && (coverage>=0.02 || r.width>=innerWidth*.55)){
+   // A small persistent control left after consent ("Redefinir Cookies") is not a
+   // banner covering the task: short text, not a dialog, under 5% of the viewport.
+   const control=!modal && text.length<40 && coverage<0.05;
+   if(!control && (modal||positioned||named) && mentions && (coverage>=0.02 || r.width>=innerWidth*.55)){
      out.push({tag:e.tagName.toLowerCase(),id:(e.id||'').slice(0,80),classes:signature.slice(0,160),
        text:text.slice(0,180),coverage:+coverage.toFixed(3),zIndex:s.zIndex});
    }

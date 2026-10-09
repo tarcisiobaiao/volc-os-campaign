@@ -1873,19 +1873,46 @@ def _source_is_cited(content: str, source: str, ctx: dict) -> bool:
     never outbound URLs; there, naming the exact source host is the strongest
     citation the page is allowed to render. This does not let an issuer name or
     a generic apex stand in for another source: the complete hostname must be
-    present in the copy.
+    present in the copy. The pre-sell follows the same rule (owner, 09/10:
+    no outbound source link and no written URL in LP or pre-sell bodies).
     """
     if source in content:
         return True
     role = ctx.get("role")
     role_value = getattr(role, "value", role)
-    if str(role_value).lower() != "lp":
+    if str(role_value).lower() not in ("lp", "presell"):
         return False
     host = _url_host(source).removeprefix("www.")
     if not host:
         return False
-    return bool(re.search(rf"(?<![\w.-])(?:www\.)?{re.escape(host)}(?![\w.-])",
-                          content, re.I))
+    if re.search(rf"(?<![\w.-])(?:www\.)?{re.escape(host)}(?![\w.-])", content, re.I):
+        return True
+    # Sem URL no corpo, a atribuição natural é o nome da instituição que o
+    # próprio endereço identifica ("ANEEL" para gov.br/aneel, "Caixa" para
+    # caixa.gov.br). Rótulos genéricos (gov, br, com, www) nunca contam.
+    return any(re.search(rf"(?<![\w-]){re.escape(nome)}(?![\w-])", content, re.I)
+               for nome in _instituicoes_da_fonte(source))
+
+
+_ROTULOS_GENERICOS = {"www", "gov", "br", "com", "org", "net", "edu", "jus", "leg", "mil",
+                      "pt", "pt-br", "es", "en", "portal", "site", "assuntos", "servicos",
+                      "app", "apps", "web", "sistema", "sistemas", "atendimento"}
+
+
+def _instituicoes_da_fonte(source: str) -> list[str]:
+    """Nomes que identificam o emissor no endereço da fonte primária."""
+    # Só o rótulo que identifica o PRÓPRIO site do órgão: o 1º rótulo do host
+    # (www.caixa.gov.br → caixa) ou, no portal único (gov.br/aneel), o 1º
+    # segmento do caminho. Um subsite (caixanoticias.caixa.gov.br) não é
+    # citado pelo nome do emissor: a decisão anterior continua valendo.
+    partes = urlparse(source)
+    host = (partes.hostname or "").lower().removeprefix("www.")
+    if host in ("gov.br", "gob.ar", "gob.pe", "gov.co", "gob.mx"):
+        rotulos = [s for s in partes.path.lower().split("/") if s][:1]
+    else:
+        rotulos = host.split(".")[:1]
+    return [r for r in rotulos if len(r) >= 3 and r not in _ROTULOS_GENERICOS
+            and not r.isdigit()]
 
 
 def _rotulo_literal_citado(texto: str, inicio: int, fim: int) -> str:

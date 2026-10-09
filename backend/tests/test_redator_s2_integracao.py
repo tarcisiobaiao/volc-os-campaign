@@ -475,8 +475,10 @@ def test_ponta_a_ponta_a_flag_e_os_contextos_chegam_ao_motor(monkeypatch, com_ch
     m = json.loads(saida_motor.read_text(encoding="utf-8"))
     assert m["argv"][-1] == "--publish"          # sobe como rascunho (draft) — ver config.yaml
     assert m["modo_perfil"] == "0o600"           # a senha decifrada não fica legível
-    assert m["settings_editorial_v2"] is ligado
-    assert m["editorial_v2_do_run"] is ligado
+    # O disparo padrão roda o motor canônico, que é sempre editorial V2: o
+    # checkbox deixou de escolher entre dois motores (09/10/2026).
+    assert m["settings_editorial_v2"] is True
+    assert m["editorial_v2_do_run"] is True
     assert m["plano_busca"] == "presente" and m["plano_anuncio"] == "presente"
     assert m["inv_termos"]["estado"] == "presente"
     assert m["inv_termos"]["amostra"][:1] == ["cursos senac gratuitos"]

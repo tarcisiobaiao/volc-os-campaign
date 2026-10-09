@@ -183,6 +183,55 @@ def montar_perfil(
     return perfil
 
 
+PRESET_CANONICO = "completo_chatgpt"
+
+
+def card_do_motor(
+    *,
+    oportunidade: Dict[str, Any],
+    entidade: Dict[str, Any] | None,
+    arquitetura: Dict[str, Any],
+) -> Dict[str, Any]:
+    """O card que o motor usa para pesquisar ANTES de arquitetar.
+
+    Sem ele, o disparo da interface entregava ao motor só o plano pronto: sem
+    PAA, sem pesquisa antecipada, sem brief e sem os pacotes pré-redação que
+    validam ferramentas e destinos antes da promessa. Os 8 runs disparados pelo
+    worker em 08/10 não tinham brief nem pacotes. A arquitetura aprovada no
+    Pautador segue como referência (`historico.arquitetura_referencia`), não
+    como plano congelado: o arquiteto a revê com a pesquisa em mãos.
+    """
+    from app.data.countries import resolve_country
+
+    ent = entidade or {}
+    geo = resolve_country(ent.get("country"),
+                          code=ent.get("country_code") or oportunidade.get("country_code")) or {}
+    termos = _termos_do_card(arquitetura, entidade)
+    paginas = arquitetura.get("pages") or [{}]
+    tema = (ent.get("canonical_name") or ent.get("full_name")
+            or (termos[0] if termos else "") or str((paginas[0] or {}).get("h1_title") or ""))
+    card: Dict[str, Any] = {
+        "main_keyword": tema,
+        "keyword": tema,
+        "entidade": ent.get("full_name") or tema,
+        "country": geo.get("country_name") or ent.get("country") or "",
+        "native_language": geo.get("native_language") or ent.get("language") or "",
+        "location_code": geo.get("google_ads_geo_target"),
+        "language_code": geo.get("language_code"),
+        "description": ent.get("description") or "",
+        "concrete_pain": oportunidade.get("concrete_pain") or "",
+        "search_terms": termos,
+        "expansion_hooks": [*(ent.get("related_systems") or []), *(ent.get("aliases") or [])],
+        "historico": {"arquitetura_referencia": arquitetura},
+    }
+    for chave in ("contexto_de_leitura", "contexto_de_busca", "contexto_de_anuncio"):
+        if isinstance(arquitetura.get(chave), dict):
+            card[chave] = arquitetura[chave]
+    if str(oportunidade.get("insights") or "").strip():
+        card["editorial_context"] = str(oportunidade["insights"]).strip()
+    return card
+
+
 def perfil_para_log(perfil: Dict[str, Any]) -> Dict[str, Any]:
     """A mesma coisa, sem a senha. Use SEMPRE isto para logar ou devolver."""
     from app.seguranca import mascara

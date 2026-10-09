@@ -1428,7 +1428,14 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     # Só SOLUTION carrega forma de pergunta: LP e PRESELL não têm contrato
     # visual nem widget, e inventar rótulo para elas mudaria o prompt à toa.
     engajamento = engajamento_declarado(page) if role is PageRole.SOLUTION else ""
+    # Botão "Calcular…/Estimar meu…" só vale para destino cuja ferramenta o
+    # pacote congelado confirmou pronta (cálculo validado por código).
+    destinos_com_ferramenta = [
+        str(d.get("destino") or "") for d in
+        ((state.pacotes or {}).get(page.page_number) or {}).get("destinos") or []
+        if d.get("tipo") == "funnel" and d.get("ferramentas") == "pronta"]
     return {
+        "destinos_com_ferramenta": destinos_com_ferramenta,
         "contextual_editorial": page.editorial is not None,
         "resolved_internal_routes": [
             resolve_route(r, domain=deps.settings.site.domain,
@@ -1548,31 +1555,109 @@ _LINK_HTML_RE = re.compile(
 _HREF_HTML_RE = re.compile(r"\bhref\s*=\s*[\"'](?P<href>[^\"']+)[\"']", re.I)
 
 
-def _deslinkar_fontes_externas_da_lp(obj: Any, domain: str) -> tuple[Any, int]:
-    """Transforma citação externa clicável da LP em citação textual.
+# Citação de fonte escrita como TEXTO: "(fonte: https://...)", "Fonte: <url>" ou
+# a URL nua no meio da prosa. Foi assim que a LP da tarifa social (09/10) saiu,
+# depois que o desembrulho de <a> já existia: o prompt pedia o link "na mesma
+# frase" e o modelo escreveu a URL em texto.
+_URL_TXT = r"https?://[^\s<>\"'()\[\]]+"
+_CITACAO_ENTRE_PARENTESES_RE = re.compile(
+    r"\s*\(\s*(?:fontes?|source)?\s*:?\s*" + _URL_TXT
+    + r"(?:\s*[;,]\s*" + _URL_TXT + r")*\s*\)", re.I)
+_CITACAO_ROTULADA_RE = re.compile(
+    r"[\s,;\u2013\u2014-]*\b(?:fontes?|source)\s*:\s*" + _URL_TXT
+    + r"(?:\s*[;,]\s*" + _URL_TXT + r")*", re.I)
+_URL_NUA_RE = re.compile(_URL_TXT, re.I)
+_TAG_OU_COMENTARIO_RE = re.compile(r"(<!--[\s\S]*?-->|<[^>]*>)")
+_SITE_EXTERNO_RE = re.compile(r",?\s*em (?:um )?site externo\s*$", re.I)
+_LINK_COM_SUFIXO_RE = re.compile(
+    r"<a\b(?P<attrs>[^>]*)>(?P<body>[\s\S]*?)</a>"
+    r"(?P<sufixo>,?\s*em (?:um )?site externo\b)?", re.I)
+_BOTAO_GUTENBERG_RE = re.compile(
+    r"<!--\s*wp:button\b(?:(?!-->)[\s\S])*?-->[\s\S]*?<!--\s*/wp:button\s*-->", re.I)
+_BOTOES_VAZIOS_RE = re.compile(
+    r"<!--\s*wp:buttons\b(?:(?!-->)[\s\S])*?-->\s*<div[^>]*>\s*</div>\s*"
+    r"<!--\s*/wp:buttons\s*-->\s*", re.I)
 
-    A landing page recebe o clique comprado. Fontes continuam nomeadas e
-    sustentam a copy, mas não desviam a sessão pelo corpo; CTAs do funil vivem
-    em ``cta_texts``/template e links do mesmo domínio permanecem intactos.
+
+def _sem_fontes_externas_no_corpo(obj: Any, domain: str) -> tuple[Any, int]:
+    """LP e pré-sell: nenhuma fonte externa clicável nem URL escrita no corpo.
+
+    Regra do produto: a LP recebe o clique comprado e a pré-sell é a ponte do
+    funil; fontes, datas e evidência ficam no dossiê, e o texto nomeia a
+    instituição em prosa quando ajuda. Aqui, como defesa em profundidade:
+    ``<a>`` externo vira o texto da âncora (sem o ", em site externo" que só
+    fazia sentido com o link), botão Gutenberg para fora do site sai inteiro, e
+    "(fonte: https://...)", "Fonte: <url>" e URL nua na prosa são removidos.
+    Links e botões do mesmo domínio (o funil) ficam intactos. Atributos e
+    comentários de bloco não são tocados. Nunca chamar em página de SOLUÇÃO.
+    Aceita str (Gutenberg) ou a estrutura JSON da LP; devolve (obj, remoções).
     """
     site = (urlparse(domain).hostname or "").removeprefix("www.").lower()
     total = 0
 
+    def externo(url: str) -> bool:
+        host = (urlparse(url).hostname or "").removeprefix("www.").lower()
+        return bool(host) and host != site and not host.endswith("." + site)
+
+    def href_externo(attrs: str) -> bool:
+        href_match = _HREF_HTML_RE.search(attrs)
+        return bool(href_match) and externo(unescape(href_match.group("href")))
+
+    def prosa(trecho: str) -> str:
+        nonlocal total
+
+        def tirar(match: re.Match) -> str:
+            nonlocal total
+            urls = _URL_NUA_RE.findall(match.group(0))
+            if not any(externo(u.rstrip(".,;:!?")) for u in urls):
+                return match.group(0)
+            total += 1
+            return ""
+
+        def tirar_nua(match: re.Match) -> str:
+            nonlocal total
+            url = match.group(0)
+            limpa = url.rstrip(".,;:!?")
+            if not externo(limpa):
+                return url
+            total += 1
+            return url[len(limpa):]
+
+        novo = _CITACAO_ENTRE_PARENTESES_RE.sub(tirar, trecho)
+        novo = _CITACAO_ROTULADA_RE.sub(tirar, novo)
+        novo = _URL_NUA_RE.sub(tirar_nua, novo)
+        if novo == trecho:
+            return trecho
+        novo = re.sub(r"\(\s*\)", "", novo)
+        novo = re.sub(r"[ \t]{2,}", " ", novo)
+        novo = re.sub(r"[ \t]+([.,;:!?])", r"\1", novo)
+        novo = re.sub(r"([,;:])(?=[.!?])", "", novo)
+        return novo
+
     def texto(valor: str) -> str:
         nonlocal total
 
-        def trocar(match: re.Match) -> str:
+        def botao(match: re.Match) -> str:
             nonlocal total
-            href_match = _HREF_HTML_RE.search(match.group("attrs"))
-            if not href_match:
-                return match.group(0)
-            host = (urlparse(href_match.group("href")).hostname or "").removeprefix("www.").lower()
-            if not host or host == site or host.endswith("." + site):
+            ancora = _LINK_HTML_RE.search(match.group(0))
+            if ancora is None or not href_externo(ancora.group("attrs")):
                 return match.group(0)
             total += 1
-            return match.group("body")
+            return ""
 
-        return _LINK_HTML_RE.sub(trocar, valor)
+        def trocar(match: re.Match) -> str:
+            nonlocal total
+            if not href_externo(match.group("attrs")):
+                return match.group(0)
+            total += 1
+            corpo = _SITE_EXTERNO_RE.sub("", match.group("body"))
+            return corpo
+
+        valor = _BOTAO_GUTENBERG_RE.sub(botao, valor)
+        valor = _BOTOES_VAZIOS_RE.sub("", valor)
+        valor = _LINK_COM_SUFIXO_RE.sub(trocar, valor)
+        partes = _TAG_OU_COMENTARIO_RE.split(valor)
+        return "".join(p if i % 2 else prosa(p) for i, p in enumerate(partes))
 
     def visitar(valor: Any) -> Any:
         if isinstance(valor, str):
@@ -1584,6 +1669,10 @@ def _deslinkar_fontes_externas_da_lp(obj: Any, domain: str) -> tuple[Any, int]:
         return valor
 
     return visitar(obj), total
+
+
+# Nome antigo (só LP), mantido para quem já o importa.
+_deslinkar_fontes_externas_da_lp = _sem_fontes_externas_no_corpo
 
 
 def _aplicar_rotulos_aprovados_gutenberg(
@@ -1779,8 +1868,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         # não Gutenberg), e foi exatamente no corpo da LP que os valores
         # malformados foram medidos: "de 5 % a 50 %" e "até 2900.00 R$".
         content_obj = formatar_moeda_em_estrutura(content_obj)
-        if v2 and state.pacotes:
-            content_obj, links_removidos = _deslinkar_fontes_externas_da_lp(
+        if v2:
+            content_obj, links_removidos = _sem_fontes_externas_no_corpo(
                 content_obj, deps.settings.site.domain)
             if links_removidos:
                 _registrar_normalizacao(state, page.page_number, {
@@ -1896,7 +1985,12 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         objective=page.emotional_objective,
         skeleton="\n".join(page.main_content_structure),
         keywords=", ".join(page.target_keywords),
-        facts=base_para_o_redator(facts),
+        # Ramo novo: pré-sell recebe a fonte como nome em prosa (como a LP);
+        # solução mantém a URL, mas linka cada fonte uma vez. V1 inalterado.
+        facts=base_para_o_redator(
+            facts,
+            destino_pago=v2 and effective_role(page) is PageRole.PRESELL,
+            link_unico=v2 and effective_role(page) is PageRole.SOLUTION),
         domain=domain,
         routes=rotas,
         official_links=route_ctx["official_links"],
@@ -1959,6 +2053,19 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
                 "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
                 "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
             })
+        if effective_role(page) is PageRole.PRESELL:
+            # Pré-sell: mesma regra da LP (sem fonte externa clicável nem URL
+            # escrita no corpo). Página de SOLUÇÃO nunca passa por aqui.
+            anterior = content
+            content, removidos = _sem_fontes_externas_no_corpo(content, domain)
+            if removidos:
+                _registrar_normalizacao(state, page.page_number, {
+                    "etapa": "fontes_externas_da_presell_em_prosa",
+                    "alterou": True,
+                    "quantidade": removidos,
+                    "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                    "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+                })
 
     state.step_status[f"write_p{page.page_number}"] = res
     state.drafts[page.page_number] = PageDraft(
@@ -2167,13 +2274,26 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> Co
     def revalidar(d: Any) -> list[Issue]:
         return separar_para_o_revisor(_issues_da_pagina(state, page, deps, d))[0]
 
+    # LP e pré-sell não levam fonte externa no corpo. O patch do revisor passa
+    # pelo mesmo saneador do redator: se ele inserir um link, os hrefs mudam e
+    # a rodada recusa o patch, mantendo a versão saneada.
+    dominio = deps.settings.site.domain
+    limpar_fontes = bool(getattr(state, "editorial_v2", False)) and effective_role(page) in (
+        PageRole.LP, PageRole.PRESELL)
     normalizar = None
     if doc.formato != "lp_json":
         def normalizar(d: Any) -> tuple[Any, dict]:
             corpo = normalize_gutenberg(d.corpo,
                                         ad_paragraph_anchors=deps.settings.ads.paragraph_anchors)
+            if limpar_fontes:
+                corpo, _ = _sem_fontes_externas_no_corpo(corpo, dominio)
             return (_substituir(d, corpo=corpo),
                     resumo_da_normalizacao(d.corpo, corpo, etapa="normalize_pos_patch"))
+    elif limpar_fontes:
+        def normalizar(d: Any) -> tuple[Any, dict]:
+            limpo, removidos = _sem_fontes_externas_no_corpo(json.loads(d.corpo), dominio)
+            return (_substituir(d, corpo=json.dumps(limpo, ensure_ascii=False)),
+                    {"etapa": "fontes_pos_patch", "removidos": removidos})
 
     return ContextoDaRevisao(
         pagina=_pagina_da_revisao(page),
@@ -2549,6 +2669,7 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
         prompt_text = render(
             prompt_name, headline=page.h1_title, objective=page.emotional_objective,
             keywords=page.target_keywords, page_number=page.page_number,
+            **_contexto_visual_do_leitor(state, page),
             previous_scenes=[
                 receipt.get("review", {}).get("evidence", "")[:700]
                 for _, receipt in sorted(state.image_reviews.items())
@@ -2607,6 +2728,7 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
                 {"type": "text", "text": render(
                     "image_review", headline=page.h1_title,
                     objective=page.emotional_objective, keywords=page.target_keywords,
+                    hero=is_lp and bool(getattr(state, "editorial_v2", False)),
                     no_generated_text=bool(getattr(state, "editorial_v2", False)))},
                 {"type": "image_url", "image_url": {
                     "url": "data:image/webp;base64," + base64.b64encode(
@@ -2644,6 +2766,26 @@ def step_image(state: RunState, page: Page, deps: Any) -> None:
             issues=[Issue(
                 code="image_skipped",
                 message=f"Etapa de imagem ignorada após falha (não bloqueante): {exc}")])
+
+
+def _contexto_visual_do_leitor(state: RunState, page: Page) -> dict[str, Any]:
+    """O briefing visual: quem é o leitor, qual situação e qual ganho.
+
+    Só com H1, objetivo e keywords o modelo de imagem caía em natureza-morta
+    de símbolos (lâmpada, tomada e calculadora para a Tarifa Social).
+    """
+    jornada = page.jornada
+    valor = getattr(jornada, "valor", None)
+    brief = state.brief_pre_arquitetura
+    dores = (brief.get("dores_observadas") if isinstance(brief, dict)
+             else getattr(brief, "dores_observadas", None)) or []
+    return {
+        "reader_question": page.editorial.reader_question if page.editorial else "",
+        "reader_problem": getattr(valor, "problema", "") or "",
+        "reader_gain": getattr(valor, "capacidade_do_leitor", "") or "",
+        "avatar": (state.plan.avatar_summary if state.plan else "")[:400],
+        "dores": [str(d)[:160] for d in dores[:4]],
+    }
 
 
 def _record_image_generation(state: RunState, page: Page, deps: Any, size: str) -> None:

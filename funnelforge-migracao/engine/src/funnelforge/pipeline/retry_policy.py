@@ -180,6 +180,10 @@ CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
     "anchor_incongruent",        # FF-26 congruência âncora × H1 por token (contextualizar)
     "cta_incongruent",           # FF-26 idem, no texto do botão (validador opcional)
     "missing_bridge",            # ponte antes do CTA por posição (heurística opcional)
+    # O rótulo nasce no arquiteto e o build força o rótulo aprovado no botão:
+    # bloquear aqui reprovaria a página sem que o redator pudesse corrigir.
+    "cta_longo",                 # botão acima de CTA_MAX_CHARS
+    "cta_rotulo_repetido",       # mesmo texto para destinos diferentes
     # D2 — portão de composição (`checks.composicao_editorial`): achados para o
     # revisor. O slot do Ad Inserter (`ad_slot_inseguro`) fica `estrutural`.
     "composicao_paredao_de_texto",

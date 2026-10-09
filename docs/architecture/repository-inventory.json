@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-09T17:26:30-03:00",
+  "generated_at": "2026-10-09T18:16:46-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 846,
-    "markdown": 624,
+    "files": 848,
+    "markdown": 626,
     "sql": 222,
-    "tracked": 836,
+    "tracked": 838,
     "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 44,
-      "documentation": 450,
+      "audit": 45,
+      "documentation": 451,
       "generated": 2,
       "module-guide": 41,
       "product-document": 23,
@@ -1083,6 +1083,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/GADS-SPRINT-OPERACIONAL-2026-10-09.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 9923,
+      "lines": 129,
+      "sha256": "93f17f85efd6812cab8e2d232f3c5553ce50378c13bda02d25db84f6dddeceb2",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/GOLDEN-IMAGEM-P17-T08.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1317,7 +1329,7 @@
       "tracked": true,
       "bytes": 23945,
       "lines": 318,
-      "sha256": "652c2f550227c8d5951bea72d05e50b5674740f76b8015b241007d4b017d1a10",
+      "sha256": "b283a851736891458b5df733a074db0502f7bcd43673ba235702c0861facf6d1",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1918,6 +1930,18 @@
       "bytes": 13268,
       "lines": 215,
       "sha256": "4bb04634a9116e232538b65db944df27dee5bc73db10f26c89f5fd3e238aee85",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-RECUPERACAO-MOTOR-2026-10-09.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 4249,
+      "lines": 63,
+      "sha256": "b791f38472a686ff1bd657059383cc5e5e632fe9b54ca49f4daf4dcaeb88ef11",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

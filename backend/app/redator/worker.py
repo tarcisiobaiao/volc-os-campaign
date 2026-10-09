@@ -383,6 +383,7 @@ async def executar(
     perfil: Dict[str, Any],
     publicar: bool = True,
     autorizacao: str = "",
+    card: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Roda um funil de ponta a ponta. Não levanta: o desfecho vai para a linha.
 
@@ -393,6 +394,10 @@ async def executar(
     evidência que ele deixou. Sem ela, `publicar=True` vira falha na linha do run
     e nenhum processo é disparado: quem não sabe dizer quem autorizou não
     publica. Ver `_disparar_motor`.
+
+    `card` liga a pesquisa antes da arquitetura (`--card-pre-arquitetura`): PAA,
+    pesquisa antecipada, brief e pacotes pré-redação do mesmo motor. Sem ele o
+    motor recebe só o plano pronto.
     """
     from app.redator.perfil import perfil_para_log
 
@@ -416,6 +421,11 @@ async def executar(
             caminho_perfil.write_text(json.dumps(perfil, ensure_ascii=False), encoding="utf-8")
             os.chmod(caminho_perfil, 0o600)
             caminho_arq.write_text(json.dumps(arquitetura, ensure_ascii=False), encoding="utf-8")
+            extra: list[str] = []
+            if card:
+                caminho_card = tmp / "card.json"
+                caminho_card.write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
+                extra = ["--card-pre-arquitetura", str(caminho_card)]
 
             log.info("run %s: disparando o motor · perfil=%s",
                      run_row_id, json.dumps(perfil_para_log(perfil), ensure_ascii=False)[:400])
@@ -426,7 +436,7 @@ async def executar(
                 raiz=raiz,
                 argumentos=["run-volc", str(caminho_arq),
                             "--perfil", str(caminho_perfil),
-                            "--timestamp", carimbo],
+                            "--timestamp", carimbo, *extra],
                 publicar=publicar,
                 autorizacao=autorizacao,
             )

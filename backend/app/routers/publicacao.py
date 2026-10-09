@@ -31,6 +31,7 @@ import base64
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
 import httpx
@@ -603,6 +604,17 @@ def _portao_do_plano(paginas: List[Dict[str, Any]], *, base_do_site: str) -> str
     return f"portao_do_plano:card:{papel.value}:{impressao_do_recibo(recibo)}"
 
 
+def _preset_do_run(run_dir) -> Optional[str]:
+    """O preset com que o run nasceu, lido do `config_snapshot.json` do motor."""
+    from app.redator import PRESET_CANONICO
+
+    try:
+        snap = json.loads((Path(run_dir) / "config_snapshot.json").read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError):
+        return None
+    return PRESET_CANONICO if (snap.get("openai") or {}).get("auth_mode") == "chatgpt_plan" else None
+
+
 @router.post("/redator/disparar", response_model=DispararSaida, dependencies=[Depends(exigir_admin)])
 async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     """Enfileira a escrita de um funil para um site.
@@ -631,7 +643,8 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     opps = await supa.select(
         "pautador_entity_opportunities",
         {"id": f"eq.{body.opportunity_id}",
-         "select": "id,status,entity_id,funnel_architecture", "limit": 1},
+         "select": "id,status,entity_id,funnel_architecture,country_code,concrete_pain,insights",
+         "limit": 1},
     )
     if not opps:
         raise HTTPException(status_code=404, detail="Card não encontrado.")
@@ -719,7 +732,7 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     # acabaram de acontecer e o operador ainda está olhando: credencial ilegível
     # ou card sem arquitetura viram 409 com o motivo, e não um run que falha
     # dez segundos depois numa tela que ninguém está vendo.
-    from app.redator import PerfilIncompleto, montar_perfil
+    from app.redator import PRESET_CANONICO, PerfilIncompleto, card_do_motor, montar_perfil
     from app.redator import worker as w
 
     entidade = None
@@ -733,7 +746,11 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
             perfil_wp=perfil, arquitetura=arq, entidade=entidade,
             teto_usd=body.teto_usd, teto_pagina_usd=body.teto_pagina_usd,
             editorial_v2=body.editorial_v2,
-            preset=(body.perfil_execucao if body.perfil_execucao != "completo" else None))
+            # "completo" é o motor canônico. Antes ele caía no `config.yaml`
+            # (sem editorial V2, sem dossiê, 1 worker, redator com fallback
+            # pago): a interface rodava um motor diferente do validado.
+            preset=(PRESET_CANONICO if body.perfil_execucao == "completo"
+                    else body.perfil_execucao))
     except PerfilIncompleto as exc:
         await supa.patch(TABELA_RUNS, {"id": f"eq.{criado[0]['id']}"},
                          {"status": "failed", "erro": str(exc)})
@@ -752,6 +769,7 @@ async def disparar_redator(body: DispararEntrada = Body(...)) -> DispararSaida:
     tarefa = asyncio.create_task(w.executar(
         supa=supa, run_row_id=int(criado[0]["id"]),
         arquitetura=arq_do_run, perfil=perfil_do_run, publicar=True,
+        card=card_do_motor(oportunidade=opps[0], entidade=entidade, arquitetura=arq_do_run),
         # A prova de que este disparo passou pelo portão do plano. Sem ela o
         # worker recusa montar `--publish` e o run termina `failed` sem publicar
         # nada — ver `worker._disparar_motor`.
@@ -1959,7 +1977,10 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
         perfil_do_run = montar_perfil(
             perfil_wp=perfil_wp, arquitetura=arq, entidade=entidade,
             editorial_v2=(run.get("editorial_v2") is True
-                          or estado.get("editorial_v2") is True))
+                          or estado.get("editorial_v2") is True),
+            # A retomada usa os modelos com que o run nasceu; sem isto, um run
+            # canônico seria retomado com os modelos do `config.yaml`.
+            preset=_preset_do_run(run_dir))
     except PerfilIncompleto as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

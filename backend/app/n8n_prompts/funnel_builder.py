@@ -20,9 +20,13 @@ página com entrega própria e próxima pergunta natural não é fragmentação.
   Uma página existe quando tem intenção própria, entrega exclusiva, próxima pergunta natural e
   funciona para quem entra direto; funda só o que não tem nada disso. Não minimize páginas.
 - Priorize o caminho mais pertinente, sem rodízio ou equilíbrio artificial entre soluções.
-- Cada botão diz a dor ou o desejo do leitor naquele ponto, a próxima resposta e a consequência
-  útil. Dois botões da mesma página para destinos diferentes nunca têm o mesmo texto. Não exija
-  cotas de órgãos, siglas ou H2.
+- Cada botão nomeia o que o leitor consegue no destino, com verbo de resultado ou ação concreta,
+  em uma ideia curta (até ~50 caracteres): "Ver se minha família atende aos requisitos",
+  "Conferir os documentos que preciso", "Ver o que fazer se o desconto não aparece".
+  Sem segunda oração ("e evitar…", "e saber onde…"). "Entender…" só quando o destino é de fato
+  uma explicação, nunca como padrão. Primeira pessoa vale quando descreve a conferência que o
+  destino realmente oferece. Dois botões da mesma página para destinos diferentes nunca têm o
+  mesmo texto. Não exija cotas de órgãos, siglas ou H2.
 - Emoção que os fatos sustentam é permitida (incerteza resolvida, medo de perder oportunidade
   real, controle, evitar erro, alívio, progresso, curiosidade informacional). Seguro não significa
   sem emoção.
@@ -57,7 +61,8 @@ intro_section e closing_section são arrays de bullets de orientação, não pro
 <arquitetura>
 A integração atual usa P1 LANDING PAGE, P2 HUB e P3+ SOLUTION. Respeite esses tipos e posições.
 A LP responde o essencial e oferece acesso direto às dúvidas. O HUB (pré-sell) existe quando
-ajuda o leitor a se reconhecer num caso e escolher o próprio caminho; se só repetiria a LP ou só
+ajuda o leitor a se reconhecer num caso e escolher o próprio caminho (botões por perfil ou etapa:
+"Já recebo e quero saber quando cai", "Ainda não tenho cadastro"); se só repetiria a LP ou só
 avisaria, funda-o na LP. Soluções precisam ter entregas distintas e completas; elimine redundância
 real (página sem entrega exclusiva), sem cortar página que tem intenção e valor próprios.
 Escolha a forma que a demanda pede: hub por intenção, jornada progressiva, diagnóstico editorial
@@ -71,17 +76,19 @@ Todas as páginas devem ser alcançáveis a partir da LP; sem links para si mesm
 Cada página declara editorial com:
 - reader_question: pergunta principal de entrada.
 - useful_delivery: resposta/artefato concreto que o leitor leva desta página.
-- cta_label: texto curto de um botão que leva A ESTA página.
+- cta_label: texto curto (até ~50 caracteres) de um botão que leva A ESTA página, dizendo o
+  que o leitor consegue nela.
 - Quando o botão levar a uma saída oficial externa, cta_label nomeia o serviço,
   órgão, aplicativo ou site exato (ex.: "Abrir o CadÚnico no site do MDS").
   Nunca use rótulo genérico como "canal oficial", "site oficial" ou
   "conferir canais oficiais".
 - links: destinos pertinentes, em ordem de relevância, com target=slug exato, reason explícito e
-  cta: o texto do botão DESTA página para aquele destino (dor ou desejo do leitor aqui + a próxima
-  resposta concreta + a consequência útil, ex.: "Ver quando o dinheiro cai e o que fazer se
-  atrasar"). O mesmo destino pode ter cta diferente em cada origem. Nunca prometa resultado
-  individual, nem use cta genérico (Saiba mais, Continuar, Próximo, Ver conteúdo, Ver guia,
-  Clique aqui, Acessar, Confira).
+  cta: o texto do botão DESTA página para aquele destino: o resultado concreto que o destino
+  entrega para o ponto em que o leitor está, numa ideia curta (ex.: "Ver quando o dinheiro cai",
+  "Calcular a renda por pessoa" se o destino tem essa calculadora). O mesmo destino pode ter cta
+  diferente em cada origem. Nunca prometa aprovação, pagamento, consulta pessoal ou inscrição
+  que o site não faz, nem use cta genérico (Saiba mais, Continuar, Próximo, Ver conteúdo, Ver
+  guia, Clique aqui, Acessar, Confira).
 Uma solução pode não precisar de outro guia interno. O canal oficial será ligado pela pesquisa.
 Não presuma que o leitor percorra todas as páginas. Medição real requer eventos e sessões,
 não uma inferência a partir do grafo.
@@ -139,6 +146,10 @@ jornada, o estado do leitor naquele ponto. Referências entre páginas usam duvi
   Não escreva URL de fonte: o dossiê vincula cada requisito à fonte citada e verificada. Sem
   fonte factual, o ativo não é gerado. Nunca peça
   dado pessoal.
+  Caso típico: critério com limite de renda por pessoa (renda total da casa ÷ moradores) pede a
+  calculadora de divisão na página que explica os critérios; valor proporcional a uma quantidade
+  pede a de multiplicação ou percentual. A calculadora só faz a conta; o texto ao lado cita o
+  limite verificado para o leitor comparar. Ela não declara direito.
   Se a página ensinar um cálculo determinístico que o leitor teria de fazer à mão e os
   requisitos factuais puderem provar entradas e regra, declare o ativo e o bloco
   plano_visual correspondente (ferramenta → html). Se entradas ou regra não puderem ser
@@ -268,7 +279,10 @@ def build_funnel_architect_user(
              "afirmacao ou base_disponivel em lugar dessas chaves. Reutilize o mesmo id para "
              "uma lacuna compartilhada. Declare jornada.plano_visual, jornada.ativos, "
              "jornada.screenshot_necessario (boolean), jornada.imagem_necessaria (boolean) e "
-             "jornada.schema_tipos (lista). "
+             "jornada.schema_tipos (lista). A LP sempre leva imagem (imagem_necessaria=true). "
+             "Solução que leva o leitor a agir, consultar ou confirmar num serviço oficial "
+             "declara screenshot_necessario=true: o print real da página oficial mostra onde "
+             "clicar. "
              "Quando a página ensinar um cálculo determinístico que poupa trabalho manual e "
              "seus requisitos puderem provar regra e entradas, declare o ativo HTML e seu "
              "plano_visual; sem lastro verificável, não gere a ferramenta. "

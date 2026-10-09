@@ -16,6 +16,12 @@ Also inspect visual quality, not just compliance:
   or purely generic study scene with no meaningful connection to this topic.
   Plain learning devices can be relevant to distance learning; do not require
   logos, official facilities or readable interfaces to prove relevance.
+{% if hero -%}
+- This is the landing-page HERO. Set topic_mismatch=true when it is a still life of
+  generic symbols (light bulb, coins, calculator, piggy bank, house icon) without
+  the reader's situation: a hero must show people or a lived scene that a reader of
+  this headline recognizes as their own moment.
+{% endif -%}
 {% if no_generated_text -%}
 - Synthetic editorial images must not carry readable words, letters, numeric labels
   or labeled charts. Typography and factual visualization belong to code. If any

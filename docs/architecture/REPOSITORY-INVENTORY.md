@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-09T17:26:30-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-09T18:16:46-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 846 arquivos: 624 Markdown e 222 SQL;
-- 836 versionados e 10 ainda não versionados;
+- 848 arquivos: 626 Markdown e 222 SQL;
+- 838 versionados e 10 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,8 +16,8 @@ Gerado em `2026-10-09T17:26:30-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 44 |
-| `documentation` | 450 |
+| `audit` | 45 |
+| `documentation` | 451 |
 | `generated` | 2 |
 | `module-guide` | 41 |
 | `product-document` | 23 |
@@ -214,6 +214,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/FUNNELFORGE-MINERACAO-WORDPRESS-DRAFT-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-OPORTUNIDADE-REAL-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-RECUPERACAO-MOTOR-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-VALIDACAO-REAL-CODEX-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-WRITER-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md` | `audit` | — | 0 | 0 |
@@ -311,7 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260907190100_meta_worker_fencing_rollback.sql` | `sql-needs-review` | high | 10 | 19 |
 | `supabase/migrations/20260907210000_meta_read_model_consistency.sql` | `sql-needs-review` | high | 5 | 15 |
 | `supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql` | `sql-needs-review` | high | 2 | 3 |
-| `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 2 | 8 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.
