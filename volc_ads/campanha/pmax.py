@@ -625,7 +625,7 @@ def _checar_contrato(brief: Brief, r: validacao.Resultado, cid: str = ""):
 
 
 def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
-                       *, login_customer_id: str) -> None:
+                       *, login_customer_id: str, somente_validacao: bool = False) -> None:
     """O portão que separa "monta o payload" de "pode existir gastando".
 
     Este portão é INDEPENDENTE de o canal estar fora do executor. Hoje PMax
@@ -712,7 +712,19 @@ def _checar_mensuracao(cid: str, brief: Brief, cfg, r: validacao.Resultado,
         lances_do_canal=LANCES_PERMITIDOS,
     )
     for bloqueio in veredito.bloqueios:
-        alvo = r.aviso if bloqueio.codigo in AVISOS_DE_MENSURACAO else r.erro
+        # Conferir o formato na API não lança uma campanha. Preserve o recibo
+        # íntegro desta conta/MCC e todos os achados; somente na função
+        # `validar` os impedimentos de aprendizado viram avisos. `construir`,
+        # `planejar` e `/subir` continuam fail-closed como antes.
+        operacional = bloqueio.codigo in (
+            mensuracao.SEM_ACAO_DE_CONVERSAO,
+            mensuracao.ACAO_EM_ESTADO_INVALIDO,
+            mensuracao.ACAO_NAO_PRIMARIA,
+            mensuracao.FORA_DA_METRICA_DE_CONVERSOES,
+            mensuracao.META_NAO_BIDDABLE,
+        )
+        alvo = r.aviso if (bloqueio.codigo in AVISOS_DE_MENSURACAO
+                           or (somente_validacao and operacional)) else r.erro
         alvo("pmax.mensuracao", bloqueio.codigo, bloqueio.causa,
              plano.MENSURACAO_INADEQUADA)
     for achado in veredito.avisos:
@@ -1042,6 +1054,13 @@ def _checar_faixas(grupos: list[_Grupo], r: validacao.Resultado) -> None:
 
 
 def construir(cid: str, brief: Brief, *, login_customer_id: str):
+    """Construção operacional: preserva os bloqueios de lançamento."""
+    return _construir(cid, brief, login_customer_id=login_customer_id,
+                      somente_validacao=False)
+
+
+def _construir(cid: str, brief: Brief, *, login_customer_id: str,
+               somente_validacao: bool):
     """Monta o grafo de Performance Max sem executar chamada externa.
 
     Devolve `(operacoes, resultado)`. Mesma forma dos outros três canais — e
@@ -1059,7 +1078,8 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str):
 
     _recusar_o_que_nao_e_de_pmax(brief, r)
     cfg = _checar_contrato(brief, r, cid)
-    _checar_mensuracao(cid, brief, cfg, r, login_customer_id=login_customer_id)
+    _checar_mensuracao(cid, brief, cfg, r, login_customer_id=login_customer_id,
+                       somente_validacao=somente_validacao)
 
     pol = conteudo.abrir_portao(brief, r)
 
@@ -1523,12 +1543,12 @@ def _com(p: plano.PlanoDeCanal, **troca) -> plano.PlanoDeCanal:
 def validar(cid: str, brief: Brief, *, login_customer_id: str):
     """Validação local + `validate_only`. **Nunca cria recurso.**
 
-    Existe e é chamável, e `planejar()` marca `pode_provar=False` enquanto o
-    canal estiver fora do executor — a fronteira externa é decisão de
-    autorização, não do builder. Quem chamar isto está declarando que tem a
-    autorização.
+    A conferência técnica preserva os impedimentos de mensuração como avisos,
+    mas exige recibo íntegro desta conta/MCC. Não libera `construir`,
+    `planejar`, criação, ativação nem qualquer gasto.
     """
-    ops, r = construir(cid, brief, login_customer_id=login_customer_id)
+    ops, r = _construir(cid, brief, login_customer_id=login_customer_id,
+                        somente_validacao=True)
     if not r.ok:
         return r, None, 0
     falha = validar_mutacoes(cid, ops, login_customer_id=login_customer_id)

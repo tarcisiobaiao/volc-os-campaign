@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-09T14:37:45-03:00",
+  "generated_at": "2026-10-09T15:13:48-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 841,
-    "markdown": 619,
+    "files": 843,
+    "markdown": 621,
     "sql": 222,
-    "tracked": 831,
+    "tracked": 833,
     "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 40,
+      "audit": 42,
       "documentation": 449,
       "generated": 2,
       "module-guide": 41,
@@ -1303,9 +1303,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 24038,
+      "bytes": 23985,
       "lines": 318,
-      "sha256": "8c188a3348459064b48b77be0801e68e589859ede1383a2ff0f12075ba477055",
+      "sha256": "1e5d2cd39712f085a21acbc09eccdd664494919545829f34e5665b50114c3039",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1863,6 +1863,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/audits/FUNNELFORGE-OPORTUNIDADE-REAL-2026-10-09.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 5642,
+      "lines": 96,
+      "sha256": "f00f6b4c5e67b8619c8da589f86ca6217e8be1f313732038cc79fa9b67bb994b",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md",
       "extension": ".md",
       "classification": "audit",
@@ -1894,6 +1906,18 @@
       "bytes": 3284,
       "lines": 66,
       "sha256": "9873ff155deea00e537264db6bbe812776aa02aec38c104c2c51bce3aba90f40",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 5103,
+      "lines": 91,
+      "sha256": "042c7259bdc740e2db3264c2bfbeb4531cc703c7c39c13e68e184815feecad26",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6453,7 +6477,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "4e0aa2871bd6a12ea4f1f3d2a5af8c2f695007d3a96cfd825d64c8bb97c437a3",
+      "sha256": "453042d531a058c5013c7b35f453f31310b69b0830f56fa7c52f53317efb4d68",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

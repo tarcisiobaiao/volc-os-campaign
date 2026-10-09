@@ -14,7 +14,7 @@ Snapshot gerado em **22/08/2026** para impedir que roadmap, documentação e imp
 
 - **493 nós** e **754 relações**.
 - Tipos: backend_module=4, business_component=8, capability=44, concept=150, database_function=67, document=59, edge_function=1, external_system=16, frontend_service=14, table_or_view=64, task=11, ui_surface=22, workflow=33.
-- Estados: decision=9, declared_active=24, empty=31, historical=35, implemented=148, inactive=13, live=17, partial=88, reference=82, risk=10, todo=36.
+- Estados: decision=9, declared_active=24, empty=31, historical=35, implemented=148, inactive=13, live=17, partial=89, reference=82, risk=10, todo=35.
 
 ## Regra de confiança
 

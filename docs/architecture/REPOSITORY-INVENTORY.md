@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-09T14:37:45-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-09T15:13:48-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 841 arquivos: 619 Markdown e 222 SQL;
-- 831 versionados e 10 ainda não versionados;
+- 843 arquivos: 621 Markdown e 222 SQL;
+- 833 versionados e 10 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,7 +16,7 @@ Gerado em `2026-10-09T14:37:45-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 40 |
+| `audit` | 42 |
 | `documentation` | 449 |
 | `generated` | 2 |
 | `module-guide` | 41 |
@@ -210,9 +210,11 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-OPORTUNIDADE-REAL-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-VALIDACAO-REAL-CODEX-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-WRITER-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/MODELOS-FUNIL-2026-10-07.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REDATOR-IDENTIDADE-EDITORIAL-2026-09-17.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REFINO-CONTEXTUAL-FUNIS-2026-09-18.md` | `audit` | — | 0 | 0 |
@@ -310,8 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 2 | 8 |
 | `supabase/migrations/20260908020000_meta_asset_registration.sql` | `sql-needs-review` | medium | 5 | 8 |
 | `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql` | `sql-needs-review` | high | 4 | 15 |
-| `supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

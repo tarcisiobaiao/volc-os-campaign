@@ -146,11 +146,11 @@
       "type": "concept",
       "cluster": "acquisition",
       "cluster_label": "Aquisição & campanhas",
-      "state": "todo",
-      "state_label": "Planejado",
+      "state": "partial",
+      "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Audiências, assets, formatos, feed e vídeo/imagem.",
-      "evidence": "Tem ajuste de campanha em comum.py, SEM construtor de grafo (E-21). Não implementado. 2026-08-30 eec859e: fronteira fail-closed em /provar e /subir; Demand Gen relabelado como Search recusado antes de escopo, ponte, cliente e trava; rota produtiva segue recusada (403). Estado permanece todo: o aceite de P04-T09 declara partial como maximo e tres de cinco criterios seguem sem prova.",
+      "evidence": "Builder volc_ads/campanha/demand_gen.py existente: a antiga afirmação SEM construtor é incorreta. 09/10/2026: nove operações multi-asset aceitas pela API real v25 em validate_only com mídia de ensaio. Estado reconciliado para partial, não done: criação produtiva permanece fechada por contrato; esta prova não abre /subir nem valida mídia de produção. Ver P04-T09 e docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md.",
       "source": "Curadoria humana, atualizada em 2026-10-08"
     },
     {
@@ -163,7 +163,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Públicos, placements, exclusões, formatos e criativos.",
-      "evidence": "CORRIGIDO em 27/08/2026: a evidência anterior dizia 'SEM construtor de grafo, não implementado', e isso é comprovadamente falso desde 646d25e. volc_ads/campanha/display.py constrói o grafo completo — budget, campanha (DISPLAY, PAUSED, maximize_conversions, rede de conteúdo), geo, idioma, ad group DISPLAY_STANDARD e responsive display ad — e desde 3eeafbc/07dfe3c emite também o asset de imagem no mesmo mutate atômico. 51 testes. Fica `partial` e não `implemented` por uma razão só: nenhuma prova tocou a conta real. validate_only está implementado e exercitado com cliente falso; contra a conta ele exige autorização. Segmentação positiva por placement está declarada como indisponibilidade explicada — a documentação oficial se contradiz e a prova exigiria validate_only real. Em db39f0b a fronteira de criativo passou a existir (volc_ads/criativo_ponte.py) e a procedência viaja como `Linhagem` até o recibo, conferida contra os bytes que vão sair. Isso NÃO muda o estado deste canal, e a razão é dupla: continua sem qualquer prova contra a conta real, e o caminho HTTP não chega à ponte — `ProvarEntrada` não tem campo de imagem no corpo, então toda campanha de Display nascida pela API hoje sobe SEM imagem e com `linhagem: []`. Testes de campanha/testes_display.py: 51 → 62.",
+      "evidence": "Builder Display e ponte de imagem existentes, com histórico de provas em docs/closure/traffic-creative-operational-closure-v1/verificacao/VALIDATE-ONLY-CANAIS.md. 09/10/2026: nove operações aceitas na API real v25 em validate_only com mídia local de ensaio. A antiga afirmação de ausência de prova remota está superada. Segue partial: não prova cockpit completo, mídia de produção, todo formato/segmentação ou lançamento governado. Ver docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md.",
       "source": "Curadoria humana, atualizada em 2026-10-08"
     },
     {
@@ -176,7 +176,7 @@
       "state_label": "Parcial / elo incompleto",
       "tier": 1,
       "summary": "Asset groups, sinais, metas, listing groups e criativos.",
-      "evidence": "Planeja e não prova. volc_ads/campanha/pmax.py monta o grafo e serializa os protos v25; perfil.PERFORMANCE_MAX referencia planejador=pmax.planejar. O manifesto da linha v2 (06/09/2026) declara ler e propor e uma prova validate_only com recibo de mensuração lido no servidor; a criação real segue recusada em /subir, no canário e no executor. Ver P04-T07.",
+      "evidence": "Builder PMax monta o grafo v25. 09/10/2026: 25 operações aceitas na API real em validate_only com recibo íntegro de mensuração relida. A antiga afirmação de que não prova está superada. Somente validar mantém impedimentos operacionais como avisos técnicos; construir, planejar e /subir permanecem bloqueados. Mensuração de website precisa de decisão do dono antes de investir; a meta de instalação de app não é substituta da meta econômica. Ver P04-T07 e docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md.",
       "source": "Curadoria humana, atualizada em 2026-10-08"
     },
     {
@@ -189,7 +189,7 @@
       "state_label": "Implementado",
       "tier": 1,
       "summary": "Keywords, termos de busca, match type, negativas, RSA e CPC. Nasce PAUSED, CPC manual, phrase.",
-      "evidence": "Único construtor de grafo: volc_ads/campanha/search.py (E-21).",
+      "evidence": "Builder volc_ads/campanha/search.py existente. 09/10/2026: Search, 15 operações aceitas na API real v25 em validate_only. Nenhum recurso criado/ativado. Esta prova chama o builder diretamente, não demonstra oportunidade elegível no cockpit; os outros três canais também têm builders. Ver docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md.",
       "source": "Curadoria humana, atualizada em 2026-10-08"
     },
     {
