@@ -602,15 +602,22 @@ def _sinal_para_cpc(sinal: Any) -> Optional[Dict[str, Any]]:
         "valor": None if valor is None else float(valor),
         "procedencia": procedencia,
         "moeda": None,
-        # `measured` no vocabulário do `Sinal` é medição de leilão de verdade,
-        # que é o que "medido na conta" quer dizer para quem lê a tela.
-        "medido_na_conta": estado == _SINAL_MEDIDO,
+        # ⚠️ Corrigido em 09/10/2026: `measured` no `Sinal` quer dizer "veio
+        # número da mineração" (Keyword Planner ou DataForSEO), não leilão
+        # desta conta. Estimativa de planejador ou de terceiro nunca é
+        # "medido na conta" — a tela mostrava `true` para o CPC do DataForSEO.
+        "medido_na_conta": False,
     }
 
 
-def _kw_do_conjunto(d: Any) -> Dict[str, Any]:
+def _kw_do_conjunto(d: Any, fontes: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """Uma decisão do conjunto, na forma que `KeywordDoConjuntoPago` declara."""
     volume = getattr(getattr(d, "volume", None), "valor", None)
+    cpc = _sinal_para_cpc(getattr(d, "cpc", None))
+    if cpc is not None and fontes is not None:
+        from volc_ads.pautador_ponte import moeda_e_origem_do_cpc
+        moeda, origem = moeda_e_origem_do_cpc(d.termo, fontes)
+        cpc = {**cpc, "moeda": moeda, "procedencia": f"{cpc['procedencia']} · {origem}"}
     motivos = list(getattr(d, "motivos", None) or [])
     return {
         "termo": d.termo,
@@ -620,7 +627,7 @@ def _kw_do_conjunto(d: Any) -> Dict[str, Any]:
         # `int` só quando há número. Volume ausente é `null` — ver o ⚠️ de
         # `src/types/trafego.ts:Cpc.valor`: zero é uma medição.
         "volume": None if volume is None else int(volume),
-        "cpc": _sinal_para_cpc(getattr(d, "cpc", None)),
+        "cpc": cpc,
         "motivo": "; ".join(motivos) or None,
     }
 
@@ -752,12 +759,14 @@ def _corpo_da_revisao(
     opportunity_id: int, cluster: Dict[str, Any], conjunto: CampaignKeywordSet
 ) -> Dict[str, Any]:
     pode, porque_nao, alertas = _veredito(conjunto)
+    from volc_ads.pautador_ponte import fontes_por_termo
+    fontes = fontes_por_termo(cluster.get("raw_keywords"))
     return {
         "opportunity_id": opportunity_id,
         "cluster_id": cluster.get("id"),
-        "selecionadas": [_kw_do_conjunto(d) for d in conjunto.selected_keywords],
-        "excluidas": [_kw_do_conjunto(d) for d in conjunto.excluded_keywords],
-        "em_revisao_humana": [_kw_do_conjunto(d) for d in conjunto.human_review_keywords],
+        "selecionadas": [_kw_do_conjunto(d, fontes) for d in conjunto.selected_keywords],
+        "excluidas": [_kw_do_conjunto(d, fontes) for d in conjunto.excluded_keywords],
+        "em_revisao_humana": [_kw_do_conjunto(d, fontes) for d in conjunto.human_review_keywords],
         # `negative_keywords` é `List[Dict]` no motor e `string[]` no contrato da
         # tela. O motor NÃO cria negativa (`conferir_congelamento` levanta se
         # houver), então esta lista é vazia na prática — a conversão existe para

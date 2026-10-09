@@ -152,7 +152,10 @@ def test_get_devolve_a_impressao_e_o_veredito_do_servidor():
     medida, ausente = corpo["selecionadas"]
     assert medida["volume"] == 27100
     assert medida["cpc"]["valor"] == 0.93
-    assert medida["cpc"]["medido_na_conta"] is True
+    # ⚠️ Corrigido em 09/10/2026: CPC da mineração (Keyword Planner ou
+    # DataForSEO) é estimativa, não leilão desta conta. `True` aqui rotulava
+    # o CPC do DataForSEO como medição da conta.
+    assert medida["cpc"]["medido_na_conta"] is False
     # ⚠️ Ausência viaja como `null`, e o objeto de CPC continua viajando com a
     # procedência: "não medido, fonte X" é informação; `0.0` seria a afirmação
     # de que o clique é de graça.

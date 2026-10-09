@@ -540,6 +540,36 @@ def _idioma_segmentavel(tag: str, pais: str) -> tuple[str, str]:
 
 
 # ── montagem do cockpit ──────────────────────────────────────────────────────
+#: Moeda do CPC por FONTE da mineração. Só entra fonte cuja moeda está medida.
+#: ⚠️ DataForSEO devolve USD normalizado globalmente (`DATAFORSEO-MEDIDO.md`, teste
+#: decisivo na Argentina). O Keyword Planner devolve na moeda da conta de
+#: planejamento, que o cluster NÃO registra — então fica desconhecida, nunca o
+#: palpite por país de `cluster.currency` ("best-effort, for cluster display").
+MOEDA_DO_CPC_POR_FONTE: dict[str, str] = {
+    "related_keywords_labs": "USD",
+    "dataforseo": "USD",
+}
+
+
+def fontes_por_termo(raw_keywords: Any) -> dict[str, str]:
+    """termo normalizado → fonte declarada em `raw_keywords[].source`."""
+    return {_norm(str(k.get("keyword") or "")): str(k.get("source") or "")
+            for k in (raw_keywords or []) if isinstance(k, dict) and k.get("keyword")}
+
+
+def moeda_e_origem_do_cpc(termo: str, fontes: dict[str, str]) -> tuple[str | None, str]:
+    """(moeda, rótulo de origem) do CPC de UM termo — nunca o palpite do cluster."""
+    fonte = fontes.get(_norm(termo), "")
+    if not fonte:
+        return None, "fonte do CPC não registrada · moeda desconhecida"
+    moeda = MOEDA_DO_CPC_POR_FONTE.get(fonte)
+    if moeda:
+        return moeda, f"{fonte} · estimativa de terceiro em {moeda}"
+    if fonte.startswith("google_ads"):
+        return None, f"{fonte} · estimativa do planejador · moeda da conta de planejamento não registrada"
+    return None, f"{fonte} · moeda desconhecida"
+
+
 def _cpc(valor: Any, proc: str, moeda: str | None) -> Cpc:
     """Ausente entra, ausente sai. A procedência viaja em qualquer caso.
 
@@ -626,9 +656,14 @@ def _volume(e: dict[str, Any]) -> int | None:
     return _inteiro(e.get("volume"))
 
 
-def _candidata(e: dict[str, Any], proc: str, moeda: str | None, em_conteudo: bool) -> KeywordCandidata:
+def _candidata(e: dict[str, Any], proc: str, moeda: str | None, em_conteudo: bool,
+               fontes: dict[str, str] | None = None) -> KeywordCandidata:
+    texto = str(e.get("keyword") or "")
+    if fontes is not None:
+        moeda, origem = moeda_e_origem_do_cpc(texto, fontes)
+        proc = f"{proc} · {origem}"
     return KeywordCandidata(
-        texto=str(e.get("keyword") or ""),
+        texto=texto,
         volume=_volume(e),
         cpc=_cpc(e.get("cpc"), proc, moeda),
         competicao=str(e.get("competition") or ""),
@@ -681,6 +716,14 @@ def _agregar(
       · a procedência declara quando a média é parcial (ver `_rotulo_media`).
     """
     total = len(kws)
+    moedas = {k.cpc.moeda for k in kws if k.cpc is not None and k.cpc.valor is not None}
+    if len(moedas) > 1:
+        # ⚠️ Somar BRL com USD não é média: é um número sem unidade.
+        rot = f"{proc} · moedas divergentes ({', '.join(sorted(str(m) for m in moedas))}): média não calculada"
+        volumes = [k.volume for k in kws if k.volume is not None]
+        return (sum(volumes) if volumes else None, _cpc(None, rot, None), _cpc(None, rot, None))
+    if moedas:
+        moeda = next(iter(moedas))
 
     volumes = [k.volume for k in kws if k.volume is not None]
     volume = sum(volumes) if volumes else None
@@ -726,7 +769,7 @@ def _grupos_do_conjunto_pago(cluster: dict[str, Any]) -> tuple[GrupoCandidato, .
     if not conjunto:
         return None
     proc = _rotulo_procedencia(cluster)
-    moeda = cluster.get("currency")
+    fontes = fontes_por_termo(cluster.get("raw_keywords"))
     seo = _fila(cluster.get("content_seo_queue"))
     funis = sorted(cluster.get("funis_sugeridos") or [],
                    key=lambda f: f.get("rank") if isinstance(f.get("rank"), int) else 99)
@@ -740,7 +783,9 @@ def _grupos_do_conjunto_pago(cluster: dict[str, Any]) -> tuple[GrupoCandidato, .
             KeywordCandidata(
                 texto=termo,
                 volume=None if vol is None else int(vol),
-                cpc=_cpc((d.get("cpc") or {}).get("valor"), proc, moeda),
+                cpc=_cpc((d.get("cpc") or {}).get("valor"),
+                         f"{proc} · {moeda_e_origem_do_cpc(termo, fontes)[1]}",
+                         moeda_e_origem_do_cpc(termo, fontes)[0]),
                 competicao=str(d.get("competicao") or ""),
                 tendencia=None, tags=(),
                 motivo="; ".join(d.get("motivos") or []),
@@ -748,7 +793,7 @@ def _grupos_do_conjunto_pago(cluster: dict[str, Any]) -> tuple[GrupoCandidato, .
             ))
     grupos = []
     for tipo, kws in por_tipo.items():
-        volume, simples, ponderado = _agregar(tuple(kws), proc, moeda)
+        volume, simples, ponderado = _agregar(tuple(kws), proc, None)
         sub = subs.get(tipo) or {}
         grupos.append(GrupoCandidato(
             tipo=tipo, descricao=str(sub.get("descricao") or ""), keywords=tuple(kws),
@@ -763,7 +808,10 @@ def _grupos_do_funil(
     cluster: dict[str, Any], avisos: list[Aviso]
 ) -> tuple[tuple[GrupoCandidato, ...], tuple[Descartada, ...]]:
     proc = _rotulo_procedencia(cluster)
-    moeda = cluster.get("currency")
+    # `cluster.currency` é palpite por país, não a moeda do CPC: ver
+    # `moeda_e_origem_do_cpc`. Cada keyword leva a moeda da SUA fonte.
+    moeda = None
+    fontes = fontes_por_termo(cluster.get("raw_keywords"))
     ads = _fila(cluster.get("production_ads_queue"))
     seo = _fila(cluster.get("content_seo_queue"))
 
@@ -802,7 +850,7 @@ def _grupos_do_funil(
             continue
         usadas.update(dentro)
         kws = tuple(
-            _candidata(ads[n], proc, moeda, em_conteudo=n in seo) for n in dentro
+            _candidata(ads[n], proc, moeda, em_conteudo=n in seo, fontes=fontes) for n in dentro
         )
         volume, simples, ponderado = _agregar(kws, proc, moeda)
         grupos.append(GrupoCandidato(
@@ -830,7 +878,7 @@ def _grupos_do_funil(
         # Keyword aprovada para anúncio que nenhuma sub-intenção lista. Medido:
         # zero hoje. Cair num grupo próprio é melhor que sumir — a triagem
         # aprovou, e o dinheiro dela é tão real quanto o das outras.
-        kws = tuple(_candidata(ads[n], proc, moeda, em_conteudo=n in seo) for n in orfas)
+        kws = tuple(_candidata(ads[n], proc, moeda, em_conteudo=n in seo, fontes=fontes) for n in orfas)
         volume, simples, ponderado = _agregar(kws, proc, moeda)
         grupos.append(GrupoCandidato(
             tipo="SEM_SUB_INTENCAO", descricao="Aprovadas para anúncio que "

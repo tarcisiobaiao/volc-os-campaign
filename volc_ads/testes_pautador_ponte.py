@@ -1127,3 +1127,49 @@ def test_sem_conjunto_pago_os_grupos_continuam_da_triagem() -> None:
     from volc_ads.pautador_ponte import _grupos_do_conjunto_pago
 
     assert _grupos_do_conjunto_pago({"factory_output": [{"keywords_campanha": {}}]}) is None
+
+
+# ── moeda e origem do CPC por keyword (09/10/2026) ──────────────────────────
+
+def test_cpc_leva_a_moeda_da_sua_fonte_e_nunca_o_palpite_do_cluster() -> None:
+    """Card 106: cluster.currency='BRL' é palpite por país; 58 termos vieram do
+    DataForSEO (USD) e o cockpit os mostrava como BRL."""
+    from volc_ads.pautador_ponte import _grupos_do_conjunto_pago
+
+    def d(termo, cpc):
+        return {"termo": termo, "subintencao": "ACESSO", "volume": {"valor": 100},
+                "cpc": {"valor": cpc}, "motivos": []}
+
+    cluster = {
+        "currency": "BRL",
+        "raw_keywords": [
+            {"keyword": "vale gás consulta", "source": "related_keywords_labs"},
+            {"keyword": "gás do povo consulta", "source": "google_ads_keyword_planner"},
+        ],
+        "funis_sugeridos": [],
+        "factory_output": [{"keywords_campanha": {"conjunto_pago": {"selected_keywords": [
+            d("vale gás consulta", 0.5), d("gás do povo consulta", 0.24), d("sem fonte", 0.1)]}}}],
+    }
+    (g,) = _grupos_do_conjunto_pago(cluster)
+    por = {k.texto: k.cpc for k in g.keywords}
+    assert por["vale gás consulta"].moeda == "USD"
+    assert por["gás do povo consulta"].moeda is None          # planejador: conta não registrada
+    assert "não registrada" in por["gás do povo consulta"].procedencia
+    assert por["sem fonte"].moeda is None
+    assert all(c.moeda != "BRL" for c in por.values())
+    assert not any(c.medido_na_conta for c in por.values())
+    # média com moedas divergentes não sai
+    assert g.cpc_simples.valor is None and "moedas divergentes" in g.cpc_simples.procedencia
+
+
+def test_media_sai_quando_todas_as_moedas_batem() -> None:
+    from volc_ads.pautador_ponte import Cpc, KeywordCandidata, _agregar
+
+    def k(v, m):
+        return KeywordCandidata(texto=str(v), volume=10, cpc=Cpc(v, "x", m), competicao="",
+                                tendencia=None, tags=(), motivo="")
+
+    _, simples, _ = _agregar((k(1.0, "USD"), k(3.0, "USD")), "proc", None)
+    assert simples.valor == 2.0 and simples.moeda == "USD"
+    _, simples, _ = _agregar((k(1.0, None), k(3.0, None)), "proc", None)
+    assert simples.valor == 2.0 and simples.moeda is None
