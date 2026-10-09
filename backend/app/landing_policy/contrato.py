@@ -488,6 +488,15 @@ FUNDAMENTO_POR_CODIGO: dict[str, str] = {
     "DIVULGACAO_DE_MONETIZACAO_AUSENTE": FUNDAMENTO_INTERPRETACAO,
     "LINK_EXTERNO_NAO_CLASSIFICADO": FUNDAMENTO_INTERPRETACAO,
     "SCRIPT_TERCEIRO_NAO_DECLARADO": FUNDAMENTO_INTERPRETACAO,
+    # O Google exige conteúdo original suficiente (valuable inventory); o piso
+    # NUMÉRICO de palavras é régua da casa — não existe número no texto dele.
+    "CONTEUDO_ORIGINAL_INSUFICIENTE": FUNDAMENTO_INTERPRETACAO,
+    # Misrepresentation cobre sugerir vínculo com órgão; ler âncora de link como
+    # sugestão de vínculo é leitura da casa.
+    "MARCA_GOVERNAMENTAL_COM_DESTINO_DIVERGENTE": FUNDAMENTO_INTERPRETACAO,
+    # Circumventing systems cobre ocultar conteúdo do revisor; observar
+    # `String.fromCharCode(` é indício, não prova.
+    "OFUSCACAO_DE_SCRIPT_OBSERVADA": FUNDAMENTO_INTERPRETACAO,
     # Decisões da casa, registradas como tal nas próprias fontes.
     "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO": FUNDAMENTO_INTERNO,  # após conta suspensa
     "LINK_EXTERNO_NO_CHROME": FUNDAMENTO_INTERNO,

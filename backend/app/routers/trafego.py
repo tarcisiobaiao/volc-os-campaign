@@ -3916,6 +3916,18 @@ def _ler_destino_ao_vivo(url: str) -> dict[str, dict[str, Any]]:
     que não serve a página não é destino, e avaliar o corpo de um 404 diria
     coisas verdadeiras sobre a página errada.
     """
+    # ⚠️ Medido em 09/10/2026 no card 106: `fetch_public_https_chain` DESCARTA a
+    # query string (privacidade dos artefatos do publisher), e
+    # `https://creditoup.com.br/?post_type=r&p=2477` foi lida como a HOME — 200,
+    # "home blog". O portão julgou a home como se fosse a LP: 417 palavras e os
+    # links da lista de posts viraram bloqueios da LP. Quando a página É a query,
+    # este leitor não consegue lê-la, e o certo é dizer isso.
+    from urllib.parse import urlsplit as _urlsplit
+    if _urlsplit(url).query:
+        raise DestinoIlegivel(
+            f"a URL {url!r} identifica a página pela query string, e a leitura "
+            "pública descarta a query — leria OUTRA página (a home, medido). "
+            "Publique e use o permalink para o portão avaliar a LP.")
     leituras: dict[str, dict[str, Any]] = {}
     for rotulo, agente in LEITURAS_DO_DESTINO:
         try:

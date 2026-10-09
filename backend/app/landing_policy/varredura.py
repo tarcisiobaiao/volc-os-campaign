@@ -1027,7 +1027,12 @@ def varrer_links(pagina: PaginaObservada) -> Verificacao:
         }
         inventario.append(item)
 
-        if classe != CLASSE_GOVERNO and re.search(r"(?i)\b(caixa|gov\.br|governo|inss|receita\s+federal)\b", texto):
+        # ⚠️ Link para o PRÓPRIO site não finge levar ao órgão: medido em
+        # 09/10/2026, os títulos dos nossos posts ("Saldo bloqueado no Caixa Tem:
+        # como resolver…") disparavam esta regra na lista de posts. O risco que ela
+        # cobre é o link que parece oficial e sai para terceiro.
+        if (classe not in (CLASSE_GOVERNO, CLASSE_MESMO_SITE, CLASSE_RELATIVO)
+                and re.search(r"(?i)\b(caixa|gov\.br|governo|inss|receita\s+federal)\b", texto)):
             achados.append(
                 Achado(
                     "MARCA_GOVERNAMENTAL_COM_DESTINO_DIVERGENTE",
@@ -1630,7 +1635,9 @@ def varrer_conteudo(pagina: PaginaObservada) -> Verificacao:
         achados.append(
             Achado(
                 "CONTEUDO_ORIGINAL_INSUFICIENTE",
-                f"Destino com {palavras} palavras visíveis (piso {PISO_DE_PALAVRAS}).",
+                f"Destino com {palavras} palavras visíveis, abaixo do piso INTERNO de "
+                f"{PISO_DE_PALAVRAS}. O Google exige conteúdo original suficiente, sem "
+                f"número; o piso é régua da casa para separar página própria de ponte.",
                 evidencia={"palavras": palavras, "piso": PISO_DE_PALAVRAS},
             )
         )

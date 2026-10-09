@@ -100,3 +100,27 @@ def teste_o_fundamento_viaja_no_achado_serializado():
     assert por_codigo["IDENTIDADE_OPERADOR_AUSENTE"]["basis"] == FUNDAMENTO_INTERPRETACAO
     # A severidade não mudou: no destino pago, a decisão da espinha v2 continua.
     assert por_codigo["IDENTIDADE_OPERADOR_AUSENTE"]["severity"] == "blocker"
+
+
+# ── revisão de 09/10/2026: piso de palavras e links para o próprio site ──
+
+def teste_piso_de_palavras_e_declarado_como_regua_da_casa():
+    assert fundamento("CONTEUDO_ORIGINAL_INSUFICIENTE") == FUNDAMENTO_INTERPRETACAO
+    av = elegibilidade_de_destino_de_campanha(_pagina("<p>Texto curto.</p>"))
+    (a,) = [x for x in av.bloqueios if x.codigo == "CONTEUDO_ORIGINAL_INSUFICIENTE"]
+    assert "piso INTERNO" in a.mensagem and "sem número" in a.mensagem
+
+
+def teste_link_para_post_do_proprio_site_nao_e_marca_governamental():
+    """Título de post nosso com 'Caixa Tem' não finge levar ao órgão."""
+    corpo = ('<p><a href="https://creditoup.com.br/saldo-bloqueado-caixa-tem/">'
+             'Saldo bloqueado no Caixa Tem: como resolver</a></p>'
+             '<p><a href="/curso-gratuito/">Curso gratuito do governo com certificado</a></p>')
+    av = elegibilidade_de_destino_de_campanha(_pagina(corpo))
+    assert "MARCA_GOVERNAMENTAL_COM_DESTINO_DIVERGENTE" not in {a.codigo for a in av.bloqueios}
+
+
+def teste_link_para_terceiro_com_marca_publica_continua_marcado():
+    corpo = '<p><a href="https://consulta-beneficio.example.com/">Consulta oficial Caixa</a></p>'
+    av = elegibilidade_de_destino_de_campanha(_pagina(corpo))
+    assert "MARCA_GOVERNAMENTAL_COM_DESTINO_DIVERGENTE" in {a.codigo for a in av.bloqueios}
