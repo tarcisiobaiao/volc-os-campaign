@@ -1,0 +1,11 @@
+[Unit]
+Description=VOLC coleta Google Ads D0 — 06/12/18/23 em São Paulo
+
+[Timer]
+OnCalendar=*-*-* 06,12,18,23:05:00 America/Sao_Paulo
+RandomizedDelaySec=3m
+Persistent=true
+Unit=volc-gads-coleta@d0.service
+
+[Install]
+WantedBy=timers.target

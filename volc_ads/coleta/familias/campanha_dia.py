@@ -211,7 +211,7 @@ class _CampanhaDia:
             "execucao_chave": execucao_chave,
             "fonte": "python_oneshot",
             "job": f"gads_{self.nome}",
-            "disparo": "manual",
+            "disparo": ctx.disparo,
             "workflow_id": None,
             "execucao_externa_id": None,
             "api_versao": ctx.api_versao,

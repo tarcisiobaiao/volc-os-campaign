@@ -1,0 +1,11 @@
+[Unit]
+Description=VOLC coleta Google Ads D-1 — 06:30 em São Paulo
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 America/Sao_Paulo
+RandomizedDelaySec=3m
+Persistent=true
+Unit=volc-gads-coleta@d1.service
+
+[Install]
+WantedBy=timers.target

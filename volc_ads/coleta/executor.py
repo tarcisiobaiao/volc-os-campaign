@@ -74,7 +74,7 @@ def documento_padrao(familia: Familia, ctx: Contexto, linhas: list[dict], *,
         "execucao_chave": execucao_chave,
         "job": f"gads_{familia.nome}",
         "fonte": "python_oneshot",
-        "disparo": "manual",
+        "disparo": ctx.disparo,
         "customer_id": ctx.customer_id,
         "origem_janela": ctx.origem_janela,
         "janela_inicio": ctx.data_inicio.isoformat(),
@@ -88,6 +88,34 @@ def documento_padrao(familia: Familia, ctx: Contexto, linhas: list[dict], *,
         "batimento_em": agora.isoformat(),
         "linhas": linhas,
     }
+
+
+def prefixo_do_passo(familia_nome: str, ctx: Contexto) -> str:
+    """A `execucao_chave` sem o instante: identifica o PASSO (família, conta,
+    janela e, na agenda, o passo). Cada tentativa ganha o instante no fim e,
+    com ele, recibo próprio — retry guarda a falha E registra a recuperação."""
+    base = (f"gads_{familia_nome}:{ctx.customer_id}:{ctx.origem_janela}:"
+            f"{ctx.data_inicio.isoformat()}:{ctx.data_fim.isoformat()}")
+    return f"{base}:passo{ctx.passo}" if ctx.passo else base
+
+
+def passo_concluido(linhas_do_ledger: Iterable[dict], *, exige_fechamento: bool) -> bool:
+    """Alguma tentativa deste passo terminou sem lote `falhou`?
+
+    `linhas_do_ledger`: `execucao_chave`, `tipo_lote` e `resultado` das linhas do
+    ledger cujo prefixo é o do passo. A família com fechamento só conta como
+    concluída quando o fechamento existe (é ele que a RPC reconcilia).
+    """
+    por_tentativa: dict[str, list[dict]] = {}
+    for l in linhas_do_ledger:
+        por_tentativa.setdefault(str(l.get("execucao_chave")), []).append(l)
+    for linhas in por_tentativa.values():
+        if any(l.get("resultado") == "falhou" for l in linhas):
+            continue
+        if exige_fechamento and not any(l.get("tipo_lote") == "fechamento" for l in linhas):
+            continue
+        return True
+    return False
 
 
 def coletar(familia: Familia, ctx: Contexto, *,
@@ -124,8 +152,7 @@ def coletar(familia: Familia, ctx: Contexto, *,
 
     # Uma execução por (família, conta, janela, instante de coleta): D0 roda
     # várias vezes ao dia e cada passada é uma leitura nova, com recibo próprio.
-    execucao_chave = (f"gads_{familia.nome}:{ctx.customer_id}:{ctx.origem_janela}:"
-                      f"{ctx.data_inicio.isoformat()}:{ctx.data_fim.isoformat()}:{ctx.colhida_iso}")
+    execucao_chave = f"{prefixo_do_passo(familia.nome, ctx)}:{ctx.colhida_iso}"
     montar = getattr(familia, "documento", None)
     rpc = getattr(familia, "rpc", "volc_registrar_gads_fatos")
     # Sem linha nenhuma ainda se registra um lote vazio: "li e veio zero" é um

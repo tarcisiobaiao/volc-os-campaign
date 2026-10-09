@@ -62,3 +62,22 @@ class RPC:
             raise ErroPersistenciaColeta(f"inventário ilegível: {exc}") from exc
         return {str(l["campaign_id"]): str(l["volc_campaign_id"])
                 for l in linhas if l.get("campaign_id") and l.get("volc_campaign_id")}
+
+    def execucoes_do_passo(self, prefixo: str) -> list[dict]:
+        """Linhas do ledger de um passo da agenda (só leitura).
+
+        ⚠️ Falha de leitura levanta: concluir "não rodou" porque o ledger não
+        respondeu faria o agendador repetir em silêncio.
+        """
+        from urllib.parse import urlencode
+
+        q = urlencode({"select": "execucao_chave,tipo_lote,resultado",
+                       "execucao_chave": f"like.{prefixo}:*"}, safe=".,:*")
+        req = Request(f"{self.url}/rest/v1/trafego_coleta_execucao?{q}", headers={
+            "apikey": self.service_key, "Authorization": f"Bearer {self.service_key}",
+            "Accept": "application/json"})
+        try:
+            with urlopen(req, timeout=self.timeout_s) as resp:
+                return json.loads(resp.read() or b"[]")
+        except (HTTPError, URLError) as exc:
+            raise ErroPersistenciaColeta(f"ledger ilegível: {exc}") from exc

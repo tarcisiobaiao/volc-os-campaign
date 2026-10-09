@@ -5,6 +5,10 @@ Uso:
         --origem D-1 --data 2026-10-07 [--familias campanha_dia,hora_dispositivo] [--seco]
 
 --seco: lê o Google e monta os documentos, mas NÃO chama a RPC (mostra o que iria).
+--agenda PASSO: execução recorrente (`disparo='agenda'`). O passo entra na chave e,
+    antes de ler o Google, cada família cujo passo já tem tentativa concluída no
+    ledger é PULADA — rodar duas vezes o mesmo passo não relê nem regrava.
+--recibo ARQ: grava o recibo JSON da execução (famílias, chaves, lotes, saída).
 Sem --data: D-1 = ontem no fuso da conta; D0 = hoje no fuso da conta.
 """
 from __future__ import annotations
@@ -39,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ate", help="fim do backfill (YYYY-MM-DD)")
     ap.add_argument("--familias", help="lista separada por vírgula; padrão: todas")
     ap.add_argument("--seco", action="store_true")
+    ap.add_argument("--agenda", metavar="PASSO", help="passo da agenda (ex.: 06, 12, 18, 23)")
+    ap.add_argument("--recibo", metavar="ARQ", help="grava o recibo JSON da execução")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.WARNING)
     logging.getLogger("google.ads.googleads.client").setLevel(logging.ERROR)
@@ -60,7 +66,8 @@ def main(argv: list[str] | None = None) -> int:
         mapa = rpc_cliente.mapa_volc(a.conta)
     ctx = Contexto(customer_id=a.conta, login_customer_id=a.mcc, origem_janela=a.origem,
                    data_inicio=ini, data_fim=fim, fuso=fuso, moeda=moeda,
-                   colhida_em=datetime.now(timezone.utc), mapa_volc=mapa)
+                   colhida_em=datetime.now(timezone.utc), mapa_volc=mapa,
+                   disparo="agenda" if a.agenda else "manual", passo=a.agenda)
 
     familias = todas()
     escolhidas = a.familias.split(",") if a.familias else sorted(familias)
@@ -81,10 +88,22 @@ def main(argv: list[str] | None = None) -> int:
     print(f"conta {a.conta} · fuso {fuso} · moeda {moeda} · {a.origem} {ini}..{fim} · "
           f"{'SECO (sem RPC)' if a.seco else 'gravando via RPC'} · vínculos {len(mapa)}")
     falhou = False
+    recibo: dict = {"conta": a.conta, "origem": a.origem, "janela": [ini.isoformat(), fim.isoformat()],
+                    "disparo": ctx.disparo, "passo": ctx.passo, "colhida_em": ctx.colhida_iso,
+                    "seco": a.seco, "familias": {}}
     for nome in escolhidas:
+        prefixo = executor.prefixo_do_passo(nome, ctx)
         try:
+            if a.agenda and not a.seco and executor.passo_concluido(
+                    rpc_cliente.execucoes_do_passo(prefixo),
+                    exige_fechamento=hasattr(familias[nome], "fechamento")):
+                print(f"  {nome}: passo {a.agenda} já concluído no ledger · pulada")
+                recibo["familias"][nome] = {"prefixo": prefixo, "pulada": "passo_concluido"}
+                continue
             r = executor.coletar(familias[nome], ctx, buscar=_buscar, registrar=registrar)
             print("  " + r.resumo())
+            recibo["familias"][nome] = {"prefixo": prefixo, "resumo": r.resumo(), "lotes": r.lotes,
+                                        "fechamento": r.fechamento, "truncado": r.truncado}
             if r.truncado:
                 falhou = True
             for lote in r.lotes:
@@ -95,7 +114,12 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:  # noqa: BLE001 — uma família não derruba as outras
             falhou = True
             print(f"  {nome}: ERRO {type(exc).__name__}: {str(exc)[:300]}")
-    return 1 if falhou else 0
+            recibo["familias"][nome] = {"prefixo": prefixo, "erro": f"{type(exc).__name__}: {str(exc)[:300]}"}
+    recibo["saida"] = 1 if falhou else 0
+    if a.recibo:
+        with open(a.recibo, "w", encoding="utf-8") as fh:
+            json.dump(recibo, fh, ensure_ascii=False, indent=1, default=str)
+    return recibo["saida"]
 
 
 if __name__ == "__main__":

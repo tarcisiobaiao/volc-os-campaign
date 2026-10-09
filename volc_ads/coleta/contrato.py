@@ -27,6 +27,7 @@ Regras que todo normalizador segue (são as invariantes do banco):
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any, Mapping, Protocol
@@ -46,8 +47,19 @@ class Contexto:
     # campaign_id → volc_campaign_id (de trafego_inventario_campanha). Sem ele a
     # RPC da v12_04 sobrescreveria o vínculo que o inventário já gravou com NULL.
     mapa_volc: Mapping[str, str] = field(default_factory=dict)
+    # Execução recorrente: `disparo='agenda'` exige o PASSO da agenda (ex.: "06",
+    # "12"), que entra na `execucao_chave` — as passadas do dia são leituras
+    # distintas (v12_04), e é pelo passo que o agendador sabe se já rodou.
+    disparo: str = "manual"
+    passo: str | None = None
 
     def __post_init__(self) -> None:
+        if self.disparo not in ("manual", "agenda"):
+            raise ValueError(f"disparo inválido: {self.disparo} (CHECK do ledger: agenda | manual)")
+        if self.disparo == "agenda" and not self.passo:
+            raise ValueError("disparo='agenda' exige o passo da agenda")
+        if self.passo is not None and not re.fullmatch(r"[0-9a-z]{1,8}", self.passo):
+            raise ValueError(f"passo inválido: {self.passo!r}")
         if self.origem_janela not in ("D0", "D-1", "backfill"):
             raise ValueError(f"origem_janela inválida: {self.origem_janela}")
         if self.data_fim < self.data_inicio:

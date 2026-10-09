@@ -120,3 +120,70 @@ def teste_fechamento_e_truncamento():
                          registrar=lambda rpc, d: docs.append(d) or {"ok": True})
     assert docs[-1] == {"tipo_lote": "fechamento", "lotes": 1}
     assert r.fechamento == {"ok": True} and r.truncado is True
+
+
+# ── execução recorrente (agenda) ───────────────────────────────────────────
+
+def teste_agenda_exige_passo_e_disparo_do_ledger():
+    with pytest.raises(ValueError, match="exige o passo"):
+        _ctx(disparo="agenda")
+    with pytest.raises(ValueError, match="disparo inválido"):
+        _ctx(disparo="cron")
+    with pytest.raises(ValueError, match="passo inválido"):
+        _ctx(disparo="agenda", passo="06; drop")
+
+
+def teste_sem_passo_a_chave_continua_a_de_antes():
+    """Execução manual não muda: as chaves já gravadas seguem comparáveis."""
+    ctx = _ctx()
+    assert executor.prefixo_do_passo("url", ctx) == "gads_url:5478096539:D-1:2026-10-07:2026-10-07"
+    doc = executor.documento_padrao(_Fam(), ctx, [], lote=1,
+                                    execucao_chave="k", iniciada=ctx.colhida_em)
+    assert doc["disparo"] == "manual"
+
+
+def teste_na_agenda_o_passo_entra_na_chave_e_o_disparo_no_documento():
+    ctx = _ctx(disparo="agenda", passo="06")
+    docs = []
+    executor.coletar(_Fam(), ctx, buscar=lambda cid, q: ["a"],
+                     registrar=lambda rpc, d: docs.append(d) or {})
+    assert docs[0]["execucao_chave"].startswith(
+        "gads_url:5478096539:D-1:2026-10-07:2026-10-07:passo06:")
+    assert docs[0]["disparo"] == "agenda"
+
+
+def teste_campanha_dia_declara_o_disparo_da_agenda():
+    from volc_ads.coleta.familias.campanha_dia import FAMILIA
+
+    doc = FAMILIA._cabecalho(_ctx(disparo="agenda", passo="06"), "k", datetime.now(timezone.utc))
+    assert doc["disparo"] == "agenda"
+
+
+@pytest.mark.parametrize("linhas, exige, esperado", [
+    ([], False, False),                                                     # nunca rodou
+    ([{"execucao_chave": "a", "tipo_lote": "contas", "resultado": "ok"}], False, True),
+    ([{"execucao_chave": "a", "tipo_lote": "contas", "resultado": "falhou"}], False, False),
+    # a falha fica no ledger; a recuperação posterior conclui o passo
+    ([{"execucao_chave": "a", "tipo_lote": "contas", "resultado": "falhou"},
+      {"execucao_chave": "b", "tipo_lote": "contas", "resultado": "parcial"}], False, True),
+    # família com fechamento: lote sem fechamento é tentativa interrompida
+    ([{"execucao_chave": "a", "tipo_lote": "contas", "resultado": "ok"}], True, False),
+    ([{"execucao_chave": "a", "tipo_lote": "contas", "resultado": "ok"},
+      {"execucao_chave": "a", "tipo_lote": "fechamento", "resultado": "ok"}], True, True),
+])
+def teste_passo_concluido(linhas, exige, esperado):
+    assert executor.passo_concluido(linhas, exige_fechamento=exige) is esperado
+
+
+def teste_ledger_ilegivel_levanta_em_vez_de_dizer_que_nao_rodou(monkeypatch):
+    from urllib.error import URLError
+
+    from volc_ads.coleta import persistencia
+
+    def _cai(*a, **k):
+        raise URLError("fora do ar")
+
+    monkeypatch.setattr(persistencia, "urlopen", _cai)
+    rpc = RPC(url=persistencia.AUTORIDADE, service_key="x")
+    with pytest.raises(ErroPersistenciaColeta, match="ledger ilegível"):
+        rpc.execucoes_do_passo("gads_url:1:D-1:2026-10-07:2026-10-07:passo06")
