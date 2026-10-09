@@ -3259,6 +3259,13 @@ def ensure_top_navigation_cta(
     if bloco and content.find(bloco) < limite_topo:
         return content
     if not bloco:
+        if state.pacotes and page.page_number in state.pacotes:
+            from funnelforge.pipeline.inteligencia import pacote_conferido
+            pacote = pacote_conferido(state, page)
+            if any(l["href"] == href and l.get("reformular_cta") for l in pacote["links"]):
+                # Uma promessa retirada não pode ressurgir pela navegação
+                # automática. Reutilize somente a copy realmente escrita.
+                return content
         rotulo = rota.anchor.rstrip(" >»")
         if rota.kind == "external_official" and page.editorial is not None:
             rotulo = page.editorial.cta_label.rstrip(" >»")
@@ -3511,10 +3518,33 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
     # current pipeline. Each short-circuits before any LLM call.
     if not getattr(deps.settings.run, "widgets_enabled", False):
         return
-    if effective_role(page) is not PageRole.SOLUTION:
-        return
     draft = state.drafts.get(page.page_number)
     if draft is None or not draft.content.strip():
+        return
+    if draft.format != "lp_json" and state.pacotes and page.page_number in state.pacotes:
+        from funnelforge.pipeline.inteligencia import pacote_conferido
+        pacote = pacote_conferido(state, page)
+        calculadoras = [a for a in pacote.get("ferramenta", {}).get("itens", [])
+                       if a.get("estado") == "pronta"]
+        if calculadoras:
+            for a in calculadoras:
+                issues = sanitize_widget_block(a["bloco"])
+                if issues:
+                    state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, *issues)
+                    return
+            for a in calculadoras:
+                if a["bloco"].strip() not in draft.content:
+                    draft.content = inject_widget(draft.content, a["bloco"])
+            state.step_status[f"widget_p{page.page_number}"] = StepResult(
+                step=f"widget_p{page.page_number}", status=StepStatus.OK, attempts=0,
+                issues=[Issue(code="calculo_validado_por_codigo",
+                              message="Calculadora pré-validada; sem chamada ao modelo")])
+            return
+        if pacote.get("ferramenta", {}).get("itens"):
+            state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, Issue(
+                code="ativo_indisponivel", message="Fallback confirmado antes da redação; sem nova geração"))
+            return
+    if effective_role(page) is not PageRole.SOLUTION:
         return
     # O eixo `engajamento` pode dizer que esta página NÃO comporta widget
     # (`dado_unico`: a resposta é um número, a interação não agrega e o enfeite

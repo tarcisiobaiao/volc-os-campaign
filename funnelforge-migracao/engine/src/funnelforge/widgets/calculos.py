@@ -1,0 +1,101 @@
+"""Calculadoras locais: operações fixas, casos conferidos por Decimal, sem LLM.
+
+Entradas não negativas com até dois decimais. No browser, centésimos inteiros
+BigInt reproduzem ROUND_HALF_UP do Python. Não há consulta, armazenamento,
+elegibilidade automática, constantes de benefício ou código vindo do modelo.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from decimal import Decimal, ROUND_HALF_UP, localcontext
+from html import escape
+
+from funnelforge.domain.models import CalculoDoAtivo
+from funnelforge.widgets.estilo import CSS
+
+
+def numero(valor: str) -> Decimal:
+    valor = str(valor).strip().replace(",", ".")
+    if not re.fullmatch(r"[0-9]{1,13}(?:\.[0-9]{1,2})?", valor):
+        raise ValueError("Use número não negativo com até dois decimais, sem separador de milhar")
+    n = Decimal(valor)
+    if n > Decimal("1000000000000"):
+        raise ValueError("Entrada acima do limite da calculadora")
+    return n
+
+
+def calcular(operacao: str, a: str, b: str) -> Decimal:
+    x, y = numero(a), numero(b)
+    with localcontext() as ctx:
+        ctx.prec = 50
+        if operacao == "divisao":
+            if not y:
+                raise ValueError("O divisor deve ser maior que zero")
+            resultado = x / y
+        elif operacao == "multiplicacao":
+            resultado = x * y
+        elif operacao == "percentual":
+            resultado = x * y / Decimal(100)
+        else:
+            raise ValueError("Operação não implementada")
+        return resultado.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def validar(calculo: CalculoDoAtivo) -> list[dict]:
+    recibos = []
+    for caso in calculo.casos:
+        resultado = calcular(calculo.operacao, *caso.entradas)
+        esperado = numero(caso.resultado)
+        if resultado != esperado:
+            raise ValueError("Exemplo de cálculo não corresponde ao resultado calculado por código")
+        recibos.append({"entradas": caso.entradas, "resultado": str(resultado), "ok": True})
+    return recibos
+
+
+_JS = r'''(function(){
+var r=document.getElementById("__ID__");if(!r){return;}
+var inputs=r.querySelectorAll("input");var out=r.querySelector("[data-vc-out]");
+function cents(text){
+var s=text.trim().replace(",",".");
+if(!/^\d{1,13}(\.\d{1,2})?$/.test(s)){throw Error("Entrada inválida");}
+var p=s.split(".");var v=BigInt(p[0])*100n+BigInt(((p[1]||"")+"00").slice(0,2));
+if(v>100000000000000n){throw Error("Entrada acima do limite");}return v;
+}
+function update(){try{
+var a=cents(inputs[0].value);var b=cents(inputs[1].value);var n;var d;
+var op=r.getAttribute("data-vc-operation");
+if(op==="divisao"){if(b===0n){throw Error("O divisor deve ser maior que zero");}n=a*100n;d=b;}
+else if(op==="percentual"){n=a*b;d=10000n;}
+else if(op==="multiplicacao"){n=a*b;d=100n;}
+else{throw Error("Operação não disponível");}
+var q=n/d;if((n%d)*2n>=d){q=q+1n;}
+out.textContent=(q/100n).toString()+","+(q%100n).toString().padStart(2,"0");
+out.setAttribute("data-vc-status","ok");
+}catch(e){out.textContent=e.message;out.setAttribute("data-vc-status","invalid");}}
+for(var i=0;i<inputs.length;i++){inputs[i].addEventListener("input",update);}
+})();'''
+
+
+def renderizar_calculo(calculo: CalculoDoAtivo, *, titulo: str, identidade: str) -> str:
+    validar(calculo)
+    wid = "vc-" + hashlib.sha256((identidade + json.dumps(
+        calculo.model_dump(), sort_keys=True, ensure_ascii=False)).encode()).hexdigest()[:12]
+    controles = "".join(
+        f'<div><label class="vw-rot" for="{wid}-{i}">{escape(rotulo)}</label>'
+        f'<input class="vw-sel" type="text" id="{wid}-{i}" value="" '
+        'aria-describedby="' + wid + '-help"></div>'
+        for i, rotulo in enumerate(calculo.rotulos))
+    html = (f'<section class="vw" id="{wid}" data-vc-operation="{calculo.operacao}">'
+            f'<div class="vw-top"><h3 class="vw-tit">{escape(titulo)}</h3>'
+            f'<div class="vw-sub" id="{wid}-help">Use números sem separador de milhar. '
+            'Cálculo informativo: não consulta cadastros nem confirma elegibilidade. '
+            'Sem JavaScript, faça a operação descrita no artigo.</div></div>'
+            f'<div class="vw-ctls">{controles}</div><div class="vw-caixa">'
+            f'<strong>{escape(calculo.rotulo_resultado)}</strong>'
+            '<div class="vw-out" style="min-height:3em;grid-area:1/1" aria-live="polite" '
+            'data-vc-out="1" data-vc-status="empty">Preencha os dois valores.</div>'
+            '</div></section>')
+    return '<!-- wp:html -->\n<style>' + CSS + '</style>\n' + html + '\n<script>' + (
+        _JS.replace("__ID__", wid)) + '</script>\n<!-- /wp:html -->'

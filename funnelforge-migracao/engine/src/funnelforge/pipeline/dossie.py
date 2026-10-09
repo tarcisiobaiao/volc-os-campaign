@@ -658,10 +658,10 @@ class CompiladorDeDossie:
         self.trava = threading.RLock()
 
     # -- uma rodada ----------------------------------------------------------
-    def _pesquisar(self, faltantes: list[dict] | None):
+    def _pesquisar(self, faltantes: list[dict] | None, *, spec: list[dict] | None = None):
         from funnelforge.pipeline.dossie import RespostaDaPesquisa as _R
         try:
-            return self.pesquisar(self.assunto, self.spec, faltantes)
+            return self.pesquisar(self.assunto, self.spec if spec is None else spec, faltantes)
         except Exception as exc:  # noqa: BLE001 - provedor fora não derruba o funil
             return _R(dados={"fatos": []}, citacoes=[], defeito=f"{type(exc).__name__}: "
                       f"{str(exc)[:300]}")
@@ -817,13 +817,23 @@ class CompiladorDeDossie:
                     if resp is not None else "",
                     "estado": self.coberturas[n].estado}
 
-    def complementar_lote(self, pages: list[Page], state: RunState) -> dict:
+    def _requisitos_dos_ativos(self, pages: list[Page]) -> set[tuple[str, str]]:
+        return {(p.jornada.duvida_id, req) for p in pages if p.jornada
+                for a in ativos_validos(p)
+                for req in (a.rule_source_fact_id, a.current_value_source_fact_id) if req}
+
+    def complementar_lote(self, pages: list[Page], state: RunState,
+                         *, separar_ativos: bool = False) -> dict:
         """Uma complementação deduplicada para todos os requisitos do esqueleto."""
         alvo = [p for p in pages if p.page_number in self.coberturas]
         with self.trava:
             self.recalcular(state, alvo)
             faltam = _faltantes(
                 {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
+            if separar_ativos:
+                ferramentas = self._requisitos_dos_ativos(alvo)
+                faltam = [f for f in faltam
+                          if (f["duvida_id"], f["requisito"]) not in ferramentas]
             unicas: dict[str, dict] = {}
             for lacuna in faltam:
                 chave = self._chave(lacuna)
@@ -846,6 +856,64 @@ class CompiladorDeDossie:
                 "restantes": len(restantes),
                 "defeito": getattr(resp, "defeito", "") if resp is not None else "",
             }
+
+    def complementar_ativos(self, pages: list[Page], state: RunState) -> dict:
+        """Uma busca de ferramentas + uma segunda só para provas ainda faltantes.
+
+        Reusa verificação, derivação, quota e citações do dossiê. Nunca busca
+        conteúdo/CTA, nunca pesquisa quando a regra já está vinculada, e
+        timeout/erro do provedor não vira uma retentativa cega.
+        """
+        alvo = [p for p in pages if p.jornada and p.page_number in self.coberturas]
+        necessidades = self._requisitos_dos_ativos(alvo)
+        rodadas = []
+        if any(t.rodada in (191, 192) and t.defeito for t in self.telemetria):
+            return {"rodadas": [], "tentativas": 0, "limite": 2}
+        usadas = sum(t.rodada in (191, 192) for t in self.telemetria)
+        for tentativa in range(usadas + 1, 3):
+            with self.trava:
+                self.recalcular(state, alvo)
+                faltam = [f for f in _faltantes(
+                    {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
+                    if (f["duvida_id"], f["requisito"]) in necessidades]
+            if not faltam:
+                break
+            # A pergunta e os dois operandos fazem parte do contexto. A
+            # segunda passagem não repete os requisitos já resolvidos.
+            ids = {(f["duvida_id"], f["requisito"]) for f in faltam}
+            spec = []
+            for p in alvo:
+                reqs = [r for r in requisitos_da_pagina(p)
+                        if (p.jornada.duvida_id, r.id) in ids]
+                if reqs:
+                    spec.append({"duvida_id": p.jornada.duvida_id,
+                        "pergunta": p.jornada.pergunta_principal,
+                        "promessa": "Provar somente as regras/dados destas ferramentas, não redigir a página",
+                        "requisitos": [r.model_dump(mode="json") for r in reqs],
+                        "ferramentas": [a.model_dump(mode="json") for a in ativos_validos(p)
+                            if any((p.jornada.duvida_id, r) in ids for r in
+                                   (a.rule_source_fact_id, a.current_value_source_fact_id))],
+                        "jurisdicao": list(state.plan.jornada.jurisdicao)
+                            if state.plan.jornada else [],
+                        "vigencia_de_referencia": self.hoje.isoformat()})
+            pedido = [dict(f, finalidade="construcao_de_ferramenta",
+                           tentativa=tentativa,
+                           instrucao=("Buscar prova verificável da necessidade exata; não inventar valores, "
+                                      "não repetir fatos já verificados, não escrever artigo nem CTA"))
+                      for f in faltam]
+            resp = self._pesquisar(pedido, spec=spec)
+            with self.trava:
+                self.absorver(resp, 190 + tentativa, pedido, state=state, pages=alvo, pagina=-2)
+                restantes = [f for f in _faltantes(
+                    {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
+                    if (f["duvida_id"], f["requisito"]) in necessidades]
+            rodadas.append({"tentativa": tentativa,
+                            "pedidos": [f"{f['duvida_id']}:{f['requisito']}" for f in faltam],
+                            "restantes": [f"{f['duvida_id']}:{f['requisito']}" for f in restantes],
+                            "defeito": resp.defeito})
+            if resp.defeito:
+                break
+        return {"rodadas": rodadas, "tentativas": len(rodadas), "limite": 2}
 
     def montar(self, state: RunState) -> DossieDoFunil:
         oficiais = {u for p in self.pages for u in (state.official_links.get(p.page_number) or [])}

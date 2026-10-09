@@ -269,6 +269,23 @@ class BlocoVisual(BaseModel):
         return canon_rotulo(value)
 
 
+class CasoDoCalculo(BaseModel):
+    entradas: list[str] = Field(min_length=2, max_length=2)
+    resultado: str
+
+
+class CalculoDoAtivo(BaseModel):
+    """Operações implementadas, nunca código/fórmula livre do modelo.
+
+    Casos são exemplos de teste, não fontes factuais nem prova de elegibilidade.
+    Valores de regras continuam exigindo os vínculos do dossiê.
+    """
+    operacao: Literal["divisao", "multiplicacao", "percentual"]
+    rotulos: list[str] = Field(min_length=2, max_length=2)
+    rotulo_resultado: str = Field(min_length=1)
+    casos: list[CasoDoCalculo] = Field(min_length=2, max_length=12)
+
+
 class AtivoInterativo(BaseModel):
     """Um widget pedido pelo arquiteto. O arquiteto declara a NECESSIDADE
     semântica da prova — `rule_source_fact_id` (o requisito factual da página
@@ -289,6 +306,7 @@ class AtivoInterativo(BaseModel):
     acessibilidade: str = ""
     evento_de_medicao: str = ""
     custo_estimado_usd: float | None = None
+    calculo: CalculoDoAtivo | None = Field(default=None, exclude_if=lambda v: v is None)
 
     @field_validator("rule_source_fact_id", "current_value_source_fact_id", mode="before")
     @classmethod

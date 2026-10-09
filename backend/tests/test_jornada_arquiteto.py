@@ -52,6 +52,18 @@ def test_prompt_do_arquiteto_pede_a_jornada_tipada():
     assert 'Nunca use rótulo genérico como "canal oficial"' in prompt
 
 
+def test_arquiteto_pre_redacao_pede_calculo_de_operacao_fixa():
+    args = dict(pais="Brasil", tema="Renda", lingua="pt-BR", data_atual="09/10/2026",
+                supporting_data="kw", user_questions="Como calcular?")
+    original = fb.build_funnel_architect_user(**args)
+    moderno = fb.build_funnel_architect_user(**args, brief_pre_arquitetura={"tema": "Renda"})
+    for campo in ("operacao", "rotulos", "rotulo_resultado", "casos", "divisao", "percentual"):
+        assert campo in moderno
+    assert "Sem fórmula livre" in moderno
+    assert "não confirma elegibilidade" in moderno
+    assert "rotulo_resultado" not in original
+
+
 def test_page_factory_leva_a_jornada_ao_writer_briefing_e_a_pagina_canonica():
     jobs = page_factory(copy.deepcopy(ARQUITETO))["writingJobs"]
     assert jobs[1]["writer_briefing"]["jornada"] == JORNADA_RENDA

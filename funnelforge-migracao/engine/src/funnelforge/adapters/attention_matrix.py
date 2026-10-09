@@ -27,6 +27,15 @@ def perguntas(card: dict, cache_dir: Path, *, cliente=None, agora=None) -> dict:
     agora = time.time() if agora is None else agora
     raiz = [card.get("main_keyword", ""), card.get("country", ""),
             card.get("native_language", "")]
+    # A validação do Pautador já pagou esta coleta. Não consultar outra SERP
+    # apenas porque o card carrega perguntas em vez do payload bruto.
+    existentes = list(dict.fromkeys(q.strip() for q in
+        (card.get("contexto_de_leitura") or {}).get("perguntas_paa", [])
+        if isinstance(q, str) and q.strip()))
+    if existentes and card.get("serp") is None:
+        cabeca, recibo = sensor.cabeca_editorial_do_paa(existentes, card.get("volumes") or {})
+        return {"perguntas": existentes, "cabeca": cabeca, "recibo": recibo,
+                "origem": "pautador.contexto_de_leitura", "erro": ""}
     arquivo = cache_dir / (sha256_canonico(raiz) + ".json")
     serp = card.get("serp")
     origem = "card.serp"

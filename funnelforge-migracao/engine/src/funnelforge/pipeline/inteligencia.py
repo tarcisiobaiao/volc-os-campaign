@@ -249,6 +249,53 @@ def revisar_arquitetura_jev(state, deps, card, *, provider=None):
         json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def ferramentas_da_pagina(state, page, deps):
+    """Disponibilidade provada ANTES da promessa: fonte + componente + cálculo.
+
+    O catálogo de orientação continua no gerador existente. Calculadoras
+    declaradas são montadas aqui sem chamada, com operações e testes fixos.
+    Especificação aberta/sem componente nunca ganha estado 'pronta'.
+    """
+    from funnelforge.pipeline.jornada import ativos_validos
+    from funnelforge.pipeline.dossie import projecao_para_o_prompt
+    from funnelforge.pipeline.validators.checks import sanitize_widget_block
+    from funnelforge.widgets.calculos import renderizar_calculo, validar
+    factual = projecao_para_o_prompt(state.dossie, page.page_number)
+    desativados = {d.get("nome"): d.get("motivo", "sem evidência")
+                  for d in factual.get("desativados", []) if d.get("tipo") == "ativo"}
+    completos = {a.pergunta for a in ativos_validos(page)}
+    itens = []
+    for a in page.jornada.ativos:
+        item = {"pergunta": a.pergunta, "fallback_sem_js": a.fallback_sem_js,
+                "estado": "fallback_sem_js", "motivo": "sem componente de cálculo declarado"}
+        if not deps.settings.run.widgets_enabled:
+            item["motivo"] = "widgets desabilitados nesta execução"
+        elif page.page_type == "LANDING PAGE":
+            item["motivo"] = "calculadora pré-montada disponível apenas no corpo Gutenberg"
+        elif a.pergunta not in completos:
+            item["motivo"] = "especificação incompleta"
+        elif a.pergunta in desativados:
+            item["motivo"] = desativados[a.pergunta]
+        elif a.calculo is not None:
+            try:
+                recibos = validar(a.calculo)
+                if len(a.entradas) != len(a.calculo.rotulos):
+                    raise ValueError("Entradas do ativo e da calculadora divergentes")
+                bloco = renderizar_calculo(a.calculo, titulo=a.pergunta,
+                                           identidade=f"{state.run_id}:{page.page_number}:{a.pergunta}")
+                if sanitize_widget_block(bloco):
+                    raise ValueError("Gabarito da calculadora recusado pelo sanitizador")
+                item.update(estado="pronta", motivo="fonte vinculada e cálculo validado por código",
+                            bloco=bloco, operacao=a.calculo.operacao, testes=recibos,
+                            entrega="Calcular " + a.calculo.rotulo_resultado
+                                    + "; resultado informativo, sem consulta de cadastro ou confirmação de elegibilidade")
+            except ValueError as exc:
+                item["motivo"] = str(exc)
+        itens.append(item)
+    return {"itens": itens, "estado": ("pronta" if itens and all(
+        a["estado"] == "pronta" for a in itens) else "fallback_sem_js" if itens else "nao_pedida")}
+
+
 def congelar_pacotes(state, deps):
     from funnelforge.pipeline.jornada import contexto_de_jornada
     from funnelforge.pipeline.dossie import projecao_para_o_prompt
@@ -264,6 +311,13 @@ def congelar_pacotes(state, deps):
     pasta = deps.runner.runs_dir / state.run_id
     pasta.mkdir(parents=True, exist_ok=True)
     pacotes = {}
+    ferramentas = {p.page_number: ferramentas_da_pagina(state, p, deps) for p in state.plan.pages}
+    entregas = {}
+    for p in state.plan.pages:
+        itens = ferramentas[p.page_number]["itens"]
+        if itens:
+            entregas[p.page_number] = " ".join(
+                a["entrega"] if a["estado"] == "pronta" else a["fallback_sem_js"] for a in itens).strip()
     for p in state.plan.pages:
         from funnelforge.pipeline import steps as st
         from funnelforge.pipeline.routing import resolve_page_links
@@ -297,18 +351,61 @@ def congelar_pacotes(state, deps):
                     if a.get("origem_pagina") == p.page_number
                 ],
             }
-        # Reusa o fallback textual do ativo; nunca inventa ferramenta no writer.
+        # O plano original fica para auditoria. A entrega operacional e os
+        # destinos recebem o resultado factual/funcional, não uma promessa
+        # de ferramenta que ainda não existe.
         dossier = next((d for d in state.dossie.get("paginas", [])
                         if d["page_number"] == p.page_number), {})
         pacote["evidencia_por_requisito"] = (dossier.get("cobertura") or {}).get("requisitos", [])
         pacote["pesquisa_on_demand"] = {"tentativas": 0, "orcamento_chamadas": 0,
                                         "motivo": "complemento_em_lote_finalizado"}
-        pacote["ferramenta"] = {"ativos": [a.model_dump(mode="json") for a in p.jornada.ativos],
-                                "estado": "fallback_sem_js" if p.jornada.ativos else "nao_pedida"}
-        if p.jornada.ativos:
+        pacote["ferramenta"] = ferramentas[p.page_number]
+        indisponiveis = [a for a in pacote["ferramenta"]["itens"] if a["estado"] != "pronta"]
+        if p.page_number in entregas:
+            j["resposta_imediata"] = entregas[p.page_number]
+            if j["valor"]:
+                j["valor"]["capacidade_do_leitor"] = entregas[p.page_number]
+        if indisponiveis:
             pacote["estado"] = "human_review"
             pacote["restricoes"].append("Apresente somente o fallback_sem_js especificado; "
                                         "não prometa uma ferramenta interativa disponível.")
+            fallback = entregas[p.page_number]
+            entrega = fallback or ("Responder à dúvida com os fatos verificados, sem ferramenta interativa: "
+                                   + j["pergunta"])
+            j["resposta_imediata"] = entrega
+            j["condicao_terminal"] = entrega
+            j.pop("tensao_residual", None)
+            j["ativos"] = [a for a in j["ativos"] if a["pergunta"] not in {
+                x["pergunta"] for x in indisponiveis}]
+            j["plano_visual"] = [b for b in j["plano_visual"]
+                                 if b["intencao"] not in ("calculo", "ferramenta")]
+            if j["valor"]:
+                j["valor"]["capacidade_do_leitor"] = entrega
+                j["valor"]["informacao_nova"] = entrega
+                j["valor"]["entregas"] = [e for e in j["valor"]["entregas"]
+                                           if e not in ("calculo", "ferramenta")]
+        pacote["entrega_confirmada"] = {"promessa": j["resposta_imediata"],
+                                        "ferramentas": pacote["ferramenta"]["estado"],
+                                        "substituiu_promessa": p.page_number in entregas}
+        for destino in pacote["destinos"]:
+            alvo = next((a for a in state.plan.pages if destino.get("tipo") == "funnel"
+                         and str(destino.get("destino", "")).strip("/") == a.slug.strip("/")), None)
+            if alvo is not None:
+                destino["ferramentas"] = ferramentas[alvo.page_number]["estado"]
+                if alvo.page_number in entregas:
+                    destino["entrega"] = entregas[alvo.page_number]
+        # Uma aresta pode ter copy de uma ferramenta que saiu. A LLM escreve
+        # o rótulo final sobre a entrega confirmada, sem trocar href/topologia.
+        for link in pacote["links"]:
+            alvo = next((a for a in state.plan.pages if link["kind"] == "funnel"
+                         and link["href"].rstrip("/").endswith("/" + a.slug)), None)
+            if p.page_number in entregas or (alvo is not None and alvo.page_number in entregas):
+                link["reformular_cta"] = True
+                link["anchor"] = ""
+        for destino in j["destinos"]:
+            if p.page_number in entregas or any(a.slug == destino["slug"]
+                    and a.page_number in entregas for a in state.plan.pages):
+                destino["cta"] = ""
         pacote["sha256"] = sha256_canonico(pacote)
         pacotes[p.page_number] = pacote
     state.pacotes = copy.deepcopy(pacotes)
@@ -331,6 +428,14 @@ def prompt_do_pacote(state, page):
     from funnelforge.prompts import render
     pacote = pacote_conferido(state, page)
     p, j = pacote["pagina"], pacote["jornada"]
+    # O redator precisa da capacidade, não do CSS/JS já testado. O bloco
+    # completo permanece no pacote congelado para injeção determinística.
+    for ativo in pacote.get("ferramenta", {}).get("itens", []):
+        ativo.pop("bloco", None)
+    if pacote.get("entrega_confirmada", {}).get("substituiu_promessa"):
+        p["editorial"]["useful_delivery"] = j["resposta_imediata"]
+        p["jornada"] = j
+        p["hook_to_next_page"] = "Escrever o CTA após a entrega confirmada, sem presumir cálculo realizado"
     # `pacote_conferido` devolve uma cópia. O plano original preserva a
     # proposta do arquiteto para auditoria; ao redator só chegam hrefs que o
     # roteamento manteve. Slug descartado (por exemplo retorno regressivo)
@@ -367,7 +472,12 @@ def prompt_do_pacote(state, page):
         "clicável no corpo; o destino pago deve manter a sessão no funil."
         if lp else ""
     )
-    return prompt + "\nPacote congelado prevalece: preserve destinos e rótulos aprovados. " \
+    ctas = ("Preserve os hrefs. Nos links reformular_cta=true, escreva um rótulo específico "
+            "pela entrega confirmada do destino e pela próxima dúvida, nunca 'depois do cálculo' "
+            "se não há calculadora. Não copie a promessa antiga. "
+            if any(l.get("reformular_cta") for l in pacote["links"]) else
+            "Preserve destinos e rótulos aprovados. ")
+    return prompt + "\nPacote congelado prevalece: " + ctas + \
         "Slug e duvida_id são identificadores, nunca href; use somente os links resolvidos. " \
         "Não pesquise, não invente ferramentas. Blocos dependentes de lacuna devem ser omitidos." \
         + regra_lp

@@ -373,6 +373,13 @@ def run_pipeline(
         # depois briefing/redação paralelos.
         _complementar_dossie_antes_da_redacao(
             state, pages, deps, dossie_vivo, workers=workers)
+        if (state.brief_pre_arquitetura is not None and not state.pacotes
+                and deps.settings.run.widgets_enabled):
+            resumo = dossie_vivo.complementar_ativos(pages, state)
+            state.step_status["pesquisa_ativos"] = StepResult(
+                step="pesquisa_ativos", status=StepStatus.OK,
+                attempts=resumo["tentativas"],
+                issues=[Issue(code="pesquisa_dedicada_ativos", message=json.dumps(resumo))])
         _consolidar_dossie(state, deps, dossie_vivo)
     if state.brief_pre_arquitetura is not None:
         from funnelforge.pipeline.inteligencia import congelar_pacotes
@@ -1010,7 +1017,8 @@ def _complementar_dossie_antes_da_redacao(
     from concurrent.futures import ThreadPoolExecutor
 
     if state.brief_pre_arquitetura is not None:
-        resumo = vivo.complementar_lote(pages, state)
+        resumo = vivo.complementar_lote(pages, state,
+                                       separar_ativos=deps.settings.run.widgets_enabled)
         state.step_status["dossie_complemento_lote"] = StepResult(
             step="dossie_complemento_lote", status=StepStatus.OK,
             issues=[Issue(code="complemento_lote", message=json.dumps(resumo))])
