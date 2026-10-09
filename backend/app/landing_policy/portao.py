@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.landing_policy.contrato import (
+    fundamento,
     EXIGENCIAS_POR_PONTO,
     NAO_APLICAVEL_E_DESCONHECIDO_EM,
     STATUS_FALHOU,
@@ -180,6 +181,7 @@ def avaliar(
                 mensagem=achado.mensagem,
                 severidade=severidade(achado.codigo, papel),
                 evidencia=achado.evidencia,
+                fundamento=fundamento(achado.codigo),
             )
             if classificado.severidade == SEVERIDADE_BLOQUEIO:
                 bloqueios.append(classificado)

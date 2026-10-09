@@ -172,6 +172,9 @@ class Achado:
     mensagem: str
     severidade: str = SEVERIDADE_RISCO
     evidencia: Any = None
+    #: De onde vem a exigência (ver `FUNDAMENTO_POR_CODIGO`). A tela precisa
+    #: dizer "regra interna do VOLC" quando é isso, e não "o Google exige".
+    fundamento: str | None = None
 
     def para_json(self) -> dict[str, Any]:
         saida: dict[str, Any] = {
@@ -181,6 +184,8 @@ class Achado:
         }
         if self.evidencia is not None:
             saida["evidence"] = self.evidencia
+        if self.fundamento is not None:
+            saida["basis"] = self.fundamento
         return saida
 
 
@@ -443,6 +448,59 @@ _RISCO_SEMPRE = frozenset({
 
 #: Papéis que carregam o peso do clique comprado ou do dado do visitante.
 PAPEIS_ESTRITOS = frozenset({PapelDestino.PAID_DESTINATION, PapelDestino.CONVERSION_PAGE})
+
+
+# ── fundamento de cada exigência ───────────────────────────────────────────
+#
+# Revisão de 09/10/2026: o portão misturava três naturezas de exigência sob o
+# mesmo "bloqueio", e a tela não tinha como distinguir "o Google proíbe" de "a
+# casa decidiu". A tabela fica AQUI e não em `fontes_politica.json` de
+# propósito: o hash daquele arquivo é a versão da política, e mudá-lo
+# invalidaria todo recibo de aprovação emitido — sem nenhuma regra ter mudado.
+#
+#   google            — o texto da política do Google proíbe ou exige isto;
+#   interpretacao_volc — leitura da casa de uma política do Google, mais estrita
+#                        que o texto (ex.: FAQ que RECOMENDA página "Sobre");
+#   interna_volc      — decisão da casa, sem texto do Google (incidente, processo).
+#
+# Só severidade decide bloqueio; o fundamento informa. Códigos fora da tabela
+# saem como `nao_classificado`.
+FUNDAMENTO_GOOGLE = "google"
+FUNDAMENTO_INTERPRETACAO = "interpretacao_volc"
+FUNDAMENTO_INTERNO = "interna_volc"
+
+FUNDAMENTO_POR_CODIGO: dict[str, str] = {
+    "IDENTIDADE_CNPJ_DIVERGENTE": FUNDAMENTO_GOOGLE,            # misrepresentation
+    "IDENTIDADE_CREDENCIAL_NAO_COMPROVADA": FUNDAMENTO_GOOGLE,  # misrepresentation
+    "AFILIACAO_GOVERNAMENTAL_IMPLICITA": FUNDAMENTO_GOOGLE,
+    "AVISO_NAO_OFICIAL_AUSENTE": FUNDAMENTO_GOOGLE,             # gov documents & services (no escopo)
+    "TITULO_SUGERE_ORIGEM_OFICIAL": FUNDAMENTO_GOOGLE,
+    "ALEGACAO_FINANCEIRA_SEM_DIVULGACAO": FUNDAMENTO_GOOGLE,    # dishonest pricing
+    "CAMPO_CREDENCIAL_OBSERVADO": FUNDAMENTO_GOOGLE,            # phishing
+    "PAGINA_PONTE": FUNDAMENTO_GOOGLE,
+    "DESTINO_NAO_RESPONDE": FUNDAMENTO_GOOGLE,
+    # O FAQ de phishing RECOMENDA "About us" e contato atualizado; CNPJ impresso
+    # não é exigido pelo Google. A exigência no destino pago é da espinha v2.
+    "IDENTIDADE_OPERADOR_AUSENTE": FUNDAMENTO_INTERPRETACAO,
+    "IDENTIDADE_CONTATO_AUSENTE": FUNDAMENTO_INTERPRETACAO,
+    # "Ads that don't indicate they are ads" é sobre o FORMATO do anúncio; a
+    # página declarar que é monetizada é transparência editorial da casa.
+    "DIVULGACAO_DE_MONETIZACAO_AUSENTE": FUNDAMENTO_INTERPRETACAO,
+    "LINK_EXTERNO_NAO_CLASSIFICADO": FUNDAMENTO_INTERPRETACAO,
+    "SCRIPT_TERCEIRO_NAO_DECLARADO": FUNDAMENTO_INTERPRETACAO,
+    # Decisões da casa, registradas como tal nas próprias fontes.
+    "LINK_EXTERNO_CLICAVEL_EM_DESTINO_PAGO": FUNDAMENTO_INTERNO,  # após conta suspensa
+    "LINK_EXTERNO_NO_CHROME": FUNDAMENTO_INTERNO,
+    "RECIBO_DE_APROVACAO_AUSENTE": FUNDAMENTO_INTERNO,
+    "RECIBO_DE_APROVACAO_VENCIDO": FUNDAMENTO_INTERNO,
+    "RECIBO_DE_POLITICA_DESATUALIZADO": FUNDAMENTO_INTERNO,
+    "RECIBO_NAO_APROVA_O_DESTINO": FUNDAMENTO_INTERNO,
+    "RECIBO_DE_OUTRO_CONTEUDO": FUNDAMENTO_INTERNO,
+}
+
+
+def fundamento(codigo: str) -> str:
+    return FUNDAMENTO_POR_CODIGO.get(codigo, "nao_classificado")
 
 
 def severidade(codigo: str, papel: PapelDestino) -> str:

@@ -1337,8 +1337,33 @@ _DIVULGACAO_RE = re.compile(
     r"(?i)(car[áa]ter\s+informativ|conte[úu]do\s+informativ|n[ãa]o\s+(somos|é|e)\s+(uma\s+)?"
     r"institui[çc][ãa]o\s+financeira|n[ãa]o\s+(realizamos|fazemos)\s+(nenhum\s+)?(tipo\s+de\s+)?"
     r"(empr[ée]stimo|solicita[çc]|contrata[çc])|consulte\s+(sempre\s+)?(o\s+)?(canal|site)\s+oficial|"
-    r"sujeit[oa]\s+a\s+an[áa]lise|valores?\s+(s[ãa]o\s+)?(meramente\s+)?ilustrativ)"
+    r"sujeit[oa]\s+a\s+an[áa]lise|valores?\s+(s[ãa]o\s+)?(meramente\s+)?ilustrativ|"
+    # Medido em 09/10/2026 na página real da Senac: "Portal editorial
+    # independente", "publica guias informativos", "guia independente, sem
+    # vínculo". Dizem de onde o texto vem e o que o site não é — o mesmo peso de
+    # "caráter informativo", que já era aceito.
+    r"(guias?|conte[úu]dos?)\s+informativ|(site|portal|guia)\s+(editorial\s+)?independente|"
+    r"sem\s+v[íi]nculo\s+(com|oficial))"
 )
+
+
+def _marca_do_operador(url: str) -> str:
+    """O nome do site, como ele aparece colado no domínio (`creditoup`)."""
+    host = _host(url)
+    host = host[4:] if host.startswith("www.") else host
+    return host.split(".")[0] if host else ""
+
+
+def _e_a_marca(texto: str, inicio: int, marca: str) -> bool:
+    """A ocorrência começa o nome do próprio operador ("Crédito Up" em creditoup.com.br)?
+
+    ⚠️ Só o operador DA PÁGINA. "Crédito Up" num outro domínio continua sendo
+    a palavra crédito, e "crédito pessoal" no próprio site também.
+    """
+    if not marca:
+        return False
+    janela = _sem_acento(texto[inicio:inicio + len(marca) + 6]).lower()
+    return re.sub(r"[^a-z0-9]", "", janela).startswith(marca)
 
 
 def varrer_alegacoes(pagina: PaginaObservada) -> Verificacao:
@@ -1352,7 +1377,11 @@ def varrer_alegacoes(pagina: PaginaObservada) -> Verificacao:
         )
 
     improvaveis = [m.group(0) for m in re.finditer(_RESULTADO_IMPROVAVEL, texto)]
-    financeiras = [m.group(0) for m in re.finditer(_ALEGACAO_FINANCEIRA_RE, texto)]
+    # O nome do site não é alegação financeira: 6 das 12 ocorrências que
+    # reprovavam a página real da Senac eram "O Crédito Up é…" (09/10/2026).
+    marca = _marca_do_operador(pagina.url)
+    financeiras = [m.group(0) for m in re.finditer(_ALEGACAO_FINANCEIRA_RE, texto)
+                   if not _e_a_marca(texto, m.start(), marca)]
     tortos = sorted({m.group(0).strip() for m in _DINHEIRO_TORTO_RE.finditer(texto)})
     tem_divulgacao = bool(_DIVULGACAO_RE.search(texto))
 
