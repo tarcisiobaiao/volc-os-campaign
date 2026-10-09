@@ -1,25 +1,25 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-08T21:12:30-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-09T14:37:45-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 826 arquivos: 613 Markdown e 213 SQL;
-- 815 versionados e 11 ainda não versionados;
+- 841 arquivos: 619 Markdown e 222 SQL;
+- 831 versionados e 10 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 140 SQL com palavras de mutação de alto risco.
+- 146 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 39 |
-| `documentation` | 445 |
+| `audit` | 40 |
+| `documentation` | 449 |
 | `generated` | 2 |
-| `module-guide` | 40 |
+| `module-guide` | 41 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-08T21:12:30-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 99 |
+| `sql-needs-review` | 108 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -170,6 +170,12 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v15_02_meta_ads_insights.sql` | `sql-needs-review` | 5 | 13 |
 | `supabase/migrations/v16_01_criativo_procedencia_e_anexo.sql` | `sql-needs-review` | 4 | 8 |
 | `supabase/migrations/v16_01_rollback.sql` | `sql-needs-review` | 2 | 2 |
+| `supabase/migrations/v17_01_gads_fatos_granulares.sql` | `sql-needs-review` | 8 | 16 |
+| `supabase/migrations/v17_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v17_02_autonomia_gestao.PROPOSTA.sql` | `sql-needs-review` | 5 | 11 |
+| `supabase/migrations/v17_03_rollback.sql` | `sql-needs-review` | 3 | 8 |
+| `supabase/migrations/v17_04_arbitragem_reconciliada.sql` | `sql-needs-review` | 4 | 14 |
+| `supabase/migrations/v17_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |
@@ -205,6 +211,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-VALIDACAO-REAL-CODEX-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-WRITER-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/MODELOS-FUNIL-2026-10-07.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REDATOR-IDENTIDADE-EDITORIAL-2026-09-17.md` | `audit` | — | 0 | 0 |
@@ -232,6 +239,8 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | high | 4 | 6 |
 | `scripts/provas-v12_02.sql` | `sql-needs-review` | high | 3 | 4 |
 | `scripts/provas-v12_04.sql` | `sql-needs-review` | high | 6 | 12 |
+| `scripts/provas-v17_01.sql` | `sql-needs-review` | medium | 3 | 4 |
+| `scripts/provas-v17_04.sql` | `sql-needs-review` | medium | 1 | 0 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | high | 2 | 7 |
 | `sql/fix_marliseac_password_final.sql` | `sql-needs-review` | medium | 1 | 0 |
@@ -303,9 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260908020100_meta_asset_registration_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/20260908120000_meta_financeiro_conjunto_dia.sql` | `sql-needs-review` | high | 4 | 15 |
 | `supabase/migrations/20260908120100_meta_financeiro_conjunto_dia_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
-| `supabase/migrations/20260908205124_creative_reuse_packs.sql` | `sql-needs-review` | high | 3 | 5 |
-| `supabase/migrations/20260908220817_meta_business_credentials.sql` | `sql-needs-review` | medium | 1 | 0 |
-| `supabase/migrations/20260908224044_meta_reference_visual.sql` | `sql-needs-review` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

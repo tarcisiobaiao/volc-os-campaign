@@ -11,7 +11,7 @@ import unicodedata
 from dataclasses import replace as _substituir
 from datetime import date, datetime, timezone
 from pathlib import Path
-from html import escape
+from html import escape, unescape
 from typing import Any
 from urllib.parse import urlparse
 
@@ -1434,6 +1434,10 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
             resolve_route(r, domain=deps.settings.site.domain,
                           post_type=deps.settings.site.post_type)
             for r in page.routes if r.kind == "funnel"],
+        **({"resolved_external_links": sorted(
+            set(facts.fontes_resolvidas or []) | set(official_links)
+            | {p["url"] for p in platform_links})}
+           if getattr(state, "editorial_v2", False) and page.editorial is not None else {}),
         "parsed": {"role": role.value, "slug": page.slug,
                    "next_page_slug": page.next_page_slug,
                    "routes": [r.model_dump() for r in page.routes]},
@@ -2428,12 +2432,24 @@ def _cortar(texto: str, limite: int) -> str:
 
 
 def seo_deterministico(page: Page, draft: Any) -> dict:
-    """SEO do perfil rápido, sem modelo: o H1 que o arquiteto aprovou e a
-    resposta imediata da jornada (ou o 1º parágrafo do texto escrito)."""
-    resposta = (page.jornada.resposta_imediata if page.jornada else "") or ""
-    if not resposta and draft is not None and draft.format != "lp_json":
-        m = re.search(r"<p[^>]*>(.*?)</p>", draft.content or "", flags=re.S)
-        resposta = re.sub(r"<[^>]+>", "", m.group(1)) if m else ""
+    """SEO sem chamada: título do plano, descrição do conteúdo redigido.
+
+    O briefing pode conter instruções, não copy publicável. Sem corpo válido,
+    a descrição fica vazia em vez de publicar uma instrução do arquiteto.
+    """
+    resposta = ""
+    if draft is not None:
+        if draft.format == "lp_json":
+            try:
+                obj = json.loads(draft.content or "")
+                intro = obj.get("intro", "") if isinstance(obj, dict) else ""
+                resposta = intro if isinstance(intro, str) else ""
+            except (TypeError, ValueError):
+                pass
+        else:
+            m = re.search(r"<p\b[^>]*>(.*?)</p>", draft.content or "", flags=re.S | re.I)
+            resposta = m.group(1) if m else ""
+    resposta = unescape(re.sub(r"<[^>]+>", "", resposta))
     return {"seotitle": _cortar(page.h1_title, 60), "metadescription": _cortar(resposta, 155),
             "keywordfocus": (page.target_keywords or [page.h1_title])[0],
             "slug": page.slug, "origem": "deterministico"}

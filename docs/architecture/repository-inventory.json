@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-08T21:12:30-03:00",
+  "generated_at": "2026-10-09T14:37:45-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 826,
-    "markdown": 613,
-    "sql": 213,
-    "tracked": 815,
-    "untracked": 11,
+    "files": 841,
+    "markdown": 619,
+    "sql": 222,
+    "tracked": 831,
+    "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 39,
-      "documentation": 445,
+      "audit": 40,
+      "documentation": 449,
       "generated": 2,
-      "module-guide": 40,
+      "module-guide": 41,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,12 +22,12 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 99,
+      "sql-needs-review": 108,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 140,
-      "medium": 55,
+      "high": 146,
+      "medium": 58,
       "read-only-or-ddl-free": 18
     }
   },
@@ -478,6 +478,18 @@
       "bytes": 10325,
       "lines": 186,
       "sha256": "c00f2d3cd3b98b9a4d6c85b7296c3be314c0dfb638a83e08618255aef2252a5f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "deploy/gads-coleta/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 2711,
+      "lines": 53,
+      "sha256": "f3254be5159616b7a0cf0fec266945e724863a8dd0b56127055aae821a3b373f",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1023,6 +1035,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/GADS-AUTONOMIA-ESTADO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 8976,
+      "lines": 92,
+      "sha256": "41f1e6a2bb55a4d6262e3e31b257a604d7e9f2a83efd96a2323f80092974ee3c",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/GADS-FATOS-GRANULARES-v17.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5367,
+      "lines": 95,
+      "sha256": "3ca58718086d65b0311198d3c4b81437689355b471498a6214ff7976b5ea14bf",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/GADS-REPORT-D0-D1-E-CONTRATO-DE-DADOS.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1267,9 +1303,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23648,
-      "lines": 312,
-      "sha256": "06147df9798d0bc3c1d0a9f711818502ea3cc618c02b950c8ff2b9b0b96e30e9",
+      "bytes": 24038,
+      "lines": 318,
+      "sha256": "8c188a3348459064b48b77be0801e68e589859ede1383a2ff0f12075ba477055",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1794,7 +1830,7 @@
       "path": "docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md",
       "extension": ".md",
       "classification": "audit",
-      "tracked": false,
+      "tracked": true,
       "bytes": 4615,
       "lines": 71,
       "sha256": "4b460d054792427c5fff458d0a53c580d4874c67d35665cdbe0d4c1d29a5ae01",
@@ -1834,6 +1870,18 @@
       "bytes": 13268,
       "lines": 215,
       "sha256": "4bb04634a9116e232538b65db944df27dee5bc73db10f26c89f5fd3e238aee85",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-VALIDACAO-REAL-CODEX-2026-10-09.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 7932,
+      "lines": 71,
+      "sha256": "1f625a5289309f084cc24f5b9baf20ed06e38bcea0d251f1e1e59e0535024112",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -5187,6 +5235,30 @@
       "sql_risk": null
     },
     {
+      "path": "docs/contracts/GADS-CRIACAO-CANAIS-v1.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 67458,
+      "lines": 1398,
+      "sha256": "c4f2f65313a2ff9e6ce4a5518643dbf8bfed0c7b86aff4e74f886c90df539e50",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/contracts/GADS-GESTAO-v1.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 27461,
+      "lines": 467,
+      "sha256": "228928d9c3ea8a38b1cb5dbf7f091e5fad3ed597e9d0611a217c3ecfdc03790c",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/contracts/HEALTH-DEADMAN-GOOGLE-INTELLIGENCE.md",
       "extension": ".md",
       "classification": "documentation",
@@ -6901,6 +6973,30 @@
       "graph_nodes": 6,
       "graph_degree": 12,
       "sql_risk": "high"
+    },
+    {
+      "path": "scripts/provas-v17_01.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 13018,
+      "lines": 206,
+      "sha256": "760e70604d37978330e92ea01f6a409f9e035912c5c500a264915a52376c61af",
+      "graph_nodes": 3,
+      "graph_degree": 4,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "scripts/provas-v17_04.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 7773,
+      "lines": 123,
+      "sha256": "94c414207764f474467166e9c83c1f1ecd16e571e8fbc2e3766dde6ee5769feb",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "medium"
     },
     {
       "path": "services/creative-studio/README.md",
@@ -8947,9 +9043,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 73645,
-      "lines": 1299,
-      "sha256": "84128317e860759553708fb045d98b98d2b5a75aa2b73be29782215a098eb313",
+      "bytes": 76720,
+      "lines": 1352,
+      "sha256": "62cffe0f5cebc1a5500d77ae2fa4e6cfe73bfa2cabc77153bc4fbcc932f24adb",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -9408,6 +9504,90 @@
       "sha256": "a469a5cec9f5e048873ad6a57ac9c92da6049cd7e6aa48ecb424214df652f9bb",
       "graph_nodes": 2,
       "graph_degree": 2,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v17_01_gads_fatos_granulares.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 41177,
+      "lines": 670,
+      "sha256": "7e4ef29bb719aaf84db2d075129c8dfcc238171ba238b26cb0a86c684dfb2631",
+      "graph_nodes": 8,
+      "graph_degree": 16,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v17_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1259,
+      "lines": 27,
+      "sha256": "e91c68f8a17b2392338d146fa327714a3ffabd9d65ac2a30e213653176b499b2",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v17_02_autonomia_gestao.PROPOSTA.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 19849,
+      "lines": 393,
+      "sha256": "3573a001d2b784996e96170117ab0ec662d6437e4146e775c1c298fc01b68fb6",
+      "graph_nodes": 5,
+      "graph_degree": 11,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v17_03_gestao_operacoes_sem_delta.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 54601,
+      "lines": 1092,
+      "sha256": "13312542327e023a8672134d5138706ee931f9ecbffa2b0df0f5b74ed8dabdbe",
+      "graph_nodes": 10,
+      "graph_degree": 22,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "supabase/migrations/v17_03_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 15602,
+      "lines": 322,
+      "sha256": "39476dc82165a25b393ef0ce4d1f5216b36280d07e18f33905488d40f4040083",
+      "graph_nodes": 3,
+      "graph_degree": 8,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v17_04_arbitragem_reconciliada.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 11152,
+      "lines": 189,
+      "sha256": "2dc5c02308e86775a32c3ef4e68ad9260841a84fb431e107fb48da55d5b9947d",
+      "graph_nodes": 4,
+      "graph_degree": 14,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v17_04_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 6233,
+      "lines": 102,
+      "sha256": "d6d2d3ffc6be1b82e8afeb0f5b3e54314ac7802329d0c1fd7f5b69e67cdde373",
+      "graph_nodes": 1,
+      "graph_degree": 0,
       "sql_risk": "high"
     },
     {

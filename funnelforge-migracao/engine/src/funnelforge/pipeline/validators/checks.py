@@ -2084,12 +2084,22 @@ VALIDATORS: dict[str, Callable[[str, dict], list[Issue]]] = {
 
 
 def contextual_links(content: str, ctx: dict) -> list[Issue]:
-    """The writer may change prose, not invent internal destinations."""
+    """The writer may change prose, not invent verified destinations."""
     if not ctx.get("contextual_editorial"):
         return []
     domain = ctx.get("domain", "")
     origin = urlparse(domain).netloc.lower()
     allowed = {u.rstrip("/") for u in ctx.get("resolved_internal_routes", [])}
+    # Explicit V2 context only: preserve archived V1 behavior. A verified
+    # hostname does not authorize an invented path or a functional query.
+    from funnelforge.adapters.pesquisa_plano import canonica
+
+    def external_key(url: str) -> str:
+        parsed = urlparse(canonica(url))
+        return parsed._replace(netloc=parsed.netloc.lower(), fragment="",
+                               path=parsed.path.rstrip("/")).geturl()
+
+    external = {external_key(u) for u in ctx.get("resolved_external_links", [])}
     issues: list[Issue] = []
 
     class Links(HTMLParser):
@@ -2106,6 +2116,9 @@ def contextual_links(content: str, ctx: dict) -> list[Issue]:
                 if without_fragment not in allowed:
                     issues.append(Issue(code="unplanned_internal_link",
                                         message=f"Destino interno fora do plano: {href}"))
+            elif "resolved_external_links" in ctx and external_key(absolute) not in external:
+                issues.append(Issue(code="unplanned_external_link",
+                                    message=f"Destino externo sem URL verificada: {href}"))
     Links(convert_charrefs=True).feed(content)
     return issues
 
