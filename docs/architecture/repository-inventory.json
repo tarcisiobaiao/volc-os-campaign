@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-09T16:32:54-03:00",
+  "generated_at": "2026-10-09T16:54:28-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 844,
-    "markdown": 622,
+    "files": 845,
+    "markdown": 623,
     "sql": 222,
     "tracked": 834,
-    "untracked": 10,
+    "untracked": 11,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 43,
+      "audit": 44,
       "documentation": 449,
       "generated": 2,
       "module-guide": 41,
@@ -1305,7 +1305,7 @@
       "tracked": true,
       "bytes": 23958,
       "lines": 318,
-      "sha256": "62645f8659c7913feeec516cc08de48bb9c1546bbc34cd4f3c0a0340291e9704",
+      "sha256": "004d42fb4c868b3dd1c9a89e1eb7ed67c4ed838b971997eb6395695f7a8e8497",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1870,6 +1870,18 @@
       "bytes": 6468,
       "lines": 124,
       "sha256": "483dde6fd1b9e995f2fc991fbeffb74819351c0bf0f561e5c182a9a61108186c",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-MINERACAO-WORDPRESS-DRAFT-2026-10-09.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": false,
+      "bytes": 7550,
+      "lines": 123,
+      "sha256": "d7e0a96707c1086dbb27bcc60f33524c599cfd5eb53f1370eceb561e039c3c73",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

@@ -134,6 +134,39 @@ def _grounded():
     return _sse(texto, cits)
 
 
+def test_saida_do_lote_nao_usa_teto_do_microprobe():
+    paginas = [{"requisitos": [{"id": str(i)} for i in range(20)]}]
+    assert pp.limite_de_saida(2500, PAGINAS, None) == 2500
+    assert pp.limite_de_saida(2500, paginas, None) == 10100
+    assert pp.limite_de_saida(4000, paginas, None) == 11600
+    assert pp.limite_de_saida(4000, paginas, [{"requisito": "unico"}]) == 4000
+    assert pp.limite_de_saida(4000, [{"requisitos": [{}] * 100}], None) == 12000
+
+
+def test_provider_envia_limites_finitos_por_lote_sem_retentar():
+    transporte = _Transporte(_grounded(), _estruturado([FATO_OK]))
+    llm = _LLM(transporte)
+    paginas = [{**PAGINAS[0], "requisitos": PAGINAS[0]["requisitos"] * 20}]
+    resp = pp.pesquisar_dossie_plano(llm, CFG, "Senac", paginas,
+                                    ler=lambda u: (PAGINA_PB, ""), hoje="07/10/2026")
+    assert not resp.defeito
+    assert [b["max_output_tokens"] for b in transporte.corpos] == [10100, 11600]
+    assert len(transporte.corpos) == 2
+
+
+def test_incomplete_preserva_uso_sem_aprovar_texto_parcial_ou_retentar():
+    evento = {'type':'response.incomplete', 'response':{
+        'id':'resp_lote', 'model':'gpt-6.1-sol', 'status':'incomplete',
+        'incomplete_details':{'reason':'max_output_tokens'},
+        'usage':{'input_tokens':9000, 'output_tokens':2500}}}
+    resp, tr, _ = _rodar(['data: ' + json.dumps(evento)])
+    assert resp.defeito.startswith('response.incomplete:')
+    assert resp.dados == {'fatos': []} and resp.citacoes == []
+    assert (resp.prompt_tokens, resp.completion_tokens) == (9000, 2500)
+    assert resp.modelo_servido == 'gpt-6.1-sol'
+    assert len(tr.corpos) == 1
+
+
 # ---------------------------------------------------------------------------
 
 def test_montagem_do_stream_com_output_final_vazio():

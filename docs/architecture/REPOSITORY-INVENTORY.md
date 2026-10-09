@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-09T16:32:54-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-09T16:54:28-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 844 arquivos: 622 Markdown e 222 SQL;
-- 834 versionados e 10 ainda não versionados;
+- 845 arquivos: 623 Markdown e 222 SQL;
+- 834 versionados e 11 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,7 +16,7 @@ Gerado em `2026-10-09T16:32:54-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 43 |
+| `audit` | 44 |
 | `documentation` | 449 |
 | `generated` | 2 |
 | `module-guide` | 41 |
@@ -211,6 +211,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-STATE-OF-ART-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-LUCRO-POR-VISITA-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-MINERACAO-WORDPRESS-DRAFT-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-OPORTUNIDADE-REAL-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-PRE-REDACAO-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-VALIDACAO-REAL-CODEX-2026-10-09.md` | `audit` | — | 0 | 0 |
@@ -311,7 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260907210000_meta_read_model_consistency.sql` | `sql-needs-review` | high | 5 | 15 |
 | `supabase/migrations/20260907210100_meta_read_model_consistency_rollback.sql` | `sql-needs-review` | high | 2 | 3 |
 | `supabase/migrations/20260908000000_meta_insights_escopo.sql` | `sql-needs-review` | high | 2 | 8 |
-| `supabase/migrations/20260908020000_meta_asset_registration.sql` | `sql-needs-review` | medium | 5 | 8 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

@@ -43,6 +43,21 @@ RASTREIO = frozenset({"utm_source", "utm_medium", "utm_campaign", "utm_term", "u
                       "gclid", "fbclid", "msclkid"})
 MAX_TOKENS_DA_PESQUISA = 2500
 MAX_TOKENS_DA_ESTRUTURACAO = 4000
+MAX_TOKENS_DO_LOTE = 12000
+
+
+def limite_de_saida(base: int, paginas: list[dict], faltantes: list[dict] | None) -> int:
+    """Lote não cabe no teto de um microprobe; raciocínio também consome saída.
+
+    Continua finito e sem retentativa automática. Uma lacuna isolada mantém
+    o teto anterior; cada necessidade adicional ganha espaço para evidência
+    e estrutura. `response.incomplete` continua sendo reprovação.
+    """
+    total = len(faltantes) if faltantes else sum(
+        len(p.get("requisitos") or []) for p in paginas)
+    return min(MAX_TOKENS_DO_LOTE, base + max(0, total - 1) * 400)
+
+
 SOBREPOSICAO_MINIMA = 0.5        # termos da afirmação presentes no trecho citado
 SOBREPOSICAO_NA_PAGINA = 0.4     # termos da afirmação presentes na página lida
 
@@ -170,6 +185,10 @@ def montar_stream(linhas: Iterable[str]) -> RespostaMontada:
             break
         elif t in ("response.failed", "response.incomplete", "error"):
             bruto = ev.get("response") if isinstance(ev.get("response"), dict) else ev
+            r.response_id = str(bruto.get("id") or "")
+            r.status = str(bruto.get("status") or "")
+            r.modelo = str(bruto.get("model") or "")
+            r.uso = _numeros(bruto.get("usage") or {})
             erro = bruto.get("error") or bruto.get("incomplete_details") or {"code": t}
             r.falha = f"{t}: {json.dumps(erro, ensure_ascii=False)[:300]}"
             break
@@ -555,7 +574,8 @@ def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: lis
     if cfg.dominios_permitidos:
         ferramenta["filters"] = {"allowed_domains": list(cfg.dominios_permitidos)}
     body = {"model": slug, "store": False, "stream": True,
-            "reasoning": {"effort": esforco}, "max_output_tokens": MAX_TOKENS_DA_PESQUISA,
+            "reasoning": {"effort": esforco},
+            "max_output_tokens": limite_de_saida(MAX_TOKENS_DA_PESQUISA, paginas, faltantes),
             "tools": [ferramenta], "tool_choice": "required",
             "include": ["web_search_call.action.sources"],
             "input": [{"role": "user",
@@ -593,7 +613,8 @@ def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: lis
     fontes = [s for b in m1.buscas for s in b.sources]
     tipos = [t for t, _ in _VOCABULARIO_DE_TIPOS]
     body2 = {"model": slug, "store": False, "stream": True,
-             "reasoning": {"effort": esforco}, "max_output_tokens": MAX_TOKENS_DA_ESTRUTURACAO,
+             "reasoning": {"effort": esforco},
+             "max_output_tokens": limite_de_saida(MAX_TOKENS_DA_ESTRUTURACAO, paginas, faltantes),
              "text": {"format": {"type": "json_schema", "name": "fatos_do_dossie",
                                  "schema": schema_da_estruturacao(tipos), "strict": True}},
              "input": [{"role": "user",
