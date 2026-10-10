@@ -179,9 +179,9 @@ def test_14_delta_fora_da_pagina_e_violacao_e_nao_e_aplicado():
 
 
 def test_15_unicidade_entre_paginas_do_lote_tem_o_veredito_do_serial(tmp_path, monkeypatch):
-    """Limiar zero: todo par é "duplicado". No serial a p1 passa e as demais
-    caem contra as anteriores; o paralelo tem de chegar ao mesmo veredito e
-    não gastar SEO/revisão com as condenadas."""
+    """Limiar zero: todo par é "parecido". Desde 10/10/2026 a similaridade
+    lexical é observação para o revisor, não condenação: serial e paralelo
+    chegam ao mesmo veredito, nenhuma página cai por isso e todas seguem."""
     vereditos = {}
     for workers in (1, 3):
         settings = _settings(tmp_path / "u", workers)
@@ -195,19 +195,21 @@ def test_15_unicidade_entre_paginas_do_lote_tem_o_veredito_do_serial(tmp_path, m
                              timestamp="20261007-120000")
         falhou = {k for k, r in state.step_status.items() if r.status.value == "FAILED"}
         vereditos[workers] = {
-            # No serial quem reprova é o validador `uniqueness` dentro da
-            # redação (sem rascunho irmão o redator paralelo não o aciona); no
-            # paralelo, a consolidação. O que importa é a mesma condenação.
             "condenadas": sorted(p.page_number for p in state.plan.pages if {
                 f"write_p{p.page_number}", f"page_{p.page_number}"} & falhou),
             "seo": sorted(k for k in state.step_status if k.startswith("seo_p")),
             "revisor": sorted(state.revisoes),
             "drafts_ok": sorted(n for n in state.drafts if f"write_p{n}" not in falhou
                                 and f"page_{n}" not in falhou),
+            "observadas": sorted(n for n in state.drafts if any(
+                i.code == "similaridade_lexical"
+                for i in state.step_status[f"write_p{n}"].issues)),
         }
     assert vereditos[1] == vereditos[3]
-    assert vereditos[3]["condenadas"] == [2, 3, 4, 5]
-    assert vereditos[3]["seo"] == ["seo_p1"] and vereditos[3]["drafts_ok"] == [1]
+    assert vereditos[3]["condenadas"] == []
+    assert vereditos[3]["drafts_ok"] == [1, 2, 3, 4, 5]
+    assert vereditos[3]["observadas"] == [2, 3, 4, 5]     # cada uma contra as anteriores
+    assert vereditos[3]["seo"] == [f"seo_p{n}" for n in (1, 2, 3, 4, 5)]
 
 
 # [16] ------------------------------------------------------------------------

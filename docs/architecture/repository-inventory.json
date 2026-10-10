@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T19:31:53-03:00",
+  "generated_at": "2026-10-10T20:45:39-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 861,
     "markdown": 639,
     "sql": 222,
-    "tracked": 845,
-    "untracked": 16,
+    "tracked": 846,
+    "untracked": 15,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23784,
+      "bytes": 23761,
       "lines": 318,
-      "sha256": "80fc31b3a06e9e1fea5469e66005eb672b723587bf4cb73893dfbdb8f5505b5c",
+      "sha256": "f8f9c5478c41c5b51e6c2846db16fbdacf301d7aa1a42d22fe97a49beff8191c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1878,10 +1878,10 @@
       "path": "docs/audits/FUNNELFORGE-ENTRADAS-DO-REDATOR-2026-10-10.md",
       "extension": ".md",
       "classification": "audit",
-      "tracked": false,
-      "bytes": 12616,
-      "lines": 97,
-      "sha256": "4b2d55f84ee982bcb8a4edb8f204882bab3eb84d0b1cfd1f9f08788e95a1a8ea",
+      "tracked": true,
+      "bytes": 16095,
+      "lines": 144,
+      "sha256": "dbce8a565168ec1059cc7e7f992322cc7f92f62045ac0d5f17b633deb0951ebe",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

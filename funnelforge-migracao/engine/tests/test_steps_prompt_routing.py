@@ -675,10 +675,11 @@ def _hub_draft(n: int, opener: str, body: str) -> PageDraft:
                      content=content, word_count=1)
 
 
-def test_presell_hub_distinction_guard_fails_near_identical_hubs(
+def test_presell_hub_distinction_guard_observes_near_identical_hubs(
         config_files: Path) -> None:
-    """3 hubs identical EXCEPT the opening CTA line -> the qualifier+preview
-    body is materially identical -> the write fails (guard sees past line 1)."""
+    """3 hubs identical EXCEPT the opening CTA line: the guard sees past line 1
+    and records the similarity for the contextual reviewer. Since 10/10/2026
+    it never fails the write (lexical similarity is a clue, not a verdict)."""
     deps = _deps(config_files, FakeLLM(responses=[]))
     plan, state = _hub_plan_and_state()
     shared_body = (
@@ -692,10 +693,12 @@ def test_presell_hub_distinction_guard_fails_near_identical_hubs(
         state.drafts[n] = _hub_draft(n, opener, shared_body)
 
     st.presell_hub_distinction_guard(state, plan.pages[3], deps)   # last hub (a-pr3)
+    st.presell_hub_distinction_guard(state, plan.pages[3], deps)   # idempotent
 
     res = state.step_status["write_p4"]
-    assert res.status is StepStatus.FAILED
-    assert "hub_not_distinct" in {i.code for i in res.issues}
+    assert res.status is StepStatus.OK
+    codes = [i.code for i in res.issues]
+    assert codes.count("similaridade_lexical") == 1 and "hub_not_distinct" not in codes
 
 
 def test_presell_hub_distinction_guard_passes_distinct_hubs(config_files: Path) -> None:
@@ -730,17 +733,19 @@ def test_presell_hub_distinction_guard_honors_hub_threshold(config_files: Path) 
         state.drafts[n] = _hub_draft(n, f"Toque {fr}.", body)
     j = jaccard(state.drafts[3].content, state.drafts[4].content)
     assert j > 0.1, f"setup: neutral hubs must share vocabulary, got jaccard {j}"
-    # threshold ABOVE the pair's Jaccard -> PASS (the lenient hub bar)
+    # threshold ABOVE the pair's Jaccard -> nothing recorded
     deps.settings.uniqueness.hub_distinction_threshold = j + 0.1
     st.presell_hub_distinction_guard(state, plan.pages[3], deps)
     assert state.step_status["write_p4"].status is StepStatus.OK
-    # SAME content, threshold BELOW the Jaccard -> FAIL (proves the knob governs)
+    assert not state.step_status["write_p4"].issues
+    # SAME content, threshold BELOW the Jaccard -> observation only, still OK
     plan2, state2 = _hub_plan_and_state()
     for n in (2, 3, 4):
         state2.drafts[n] = state.drafts[n]
     deps.settings.uniqueness.hub_distinction_threshold = max(0.01, j - 0.1)
     st.presell_hub_distinction_guard(state2, plan2.pages[3], deps)
-    assert state2.step_status["write_p4"].status is StepStatus.FAILED
+    assert state2.step_status["write_p4"].status is StepStatus.OK
+    assert [i.code for i in state2.step_status["write_p4"].issues] == ["similaridade_lexical"]
 
 
 def test_presell_hub_distinction_guard_accepts_same_relevant_first_solution(

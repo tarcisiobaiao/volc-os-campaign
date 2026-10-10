@@ -61,7 +61,7 @@ ferramentas 1 + sniper 1 + redações 9 (p3 em 2 tentativas) = 16, em 12 min
 | Dossiê | 41 fatos, 1 complementação; 4 páginas `ready`, 5 `review` (promessa central sem lastro) | igual ao canário anterior |
 | Ferramentas (M3) | 5 candidatas; 3 peças (p3 navegador, p4 e p9 diagnóstico) e **2 NONE com motivo** ("o checklist, os passos no App FGTS e a seção sobre o mês de aniversário já cobrem as decisões que um navegador apresentaria") | é o comportamento pedido: a peça complementa ou não existe |
 | Sniper (M4) | 22 rótulos, 0 recusas; dobra "Saque-aniversário: retire parte do FGTS"; saídas oficiais nomeadas ("CAIXA: onde aderir ao saque-aniversário") | formas mistas (situação "Já optei: …", dúvida, resultado); a entrega ajustada ainda saiu como descrição da página ("Compara…"); o prompt ganhou a regra "escreva-a como resposta ao leitor" depois desta chamada |
-| Redação | 8 rascunhos (p1–p8); p9 não redigida (teto); **p2 e p3 FAILED em `duplicate_content`** (Jaccard 0,346 com p1 e 0,353 com p2; limiar 0,35) | validador lexical pré-existente, não alterado: a própria `UniquenessConfig` diz que funil de tema único ("all-FGTS") fica ~0,4 e só eleva o limiar para hub×hub |
+| Redação | 8 rascunhos (p1–p8); p9 não redigida (teto); **p2 e p3 FAILED em `duplicate_content`** (limiar 0,35; o guarda mediu 0,389 p2×p1 e 0,358 p3×p2 — os 0,346/0,353 citados antes vinham de texto limpo à mão, não da entrada do guarda; correção na seção 5) | validador lexical pré-existente, não alterado: a própria `UniquenessConfig` diz que funil de tema único ("all-FGTS") fica ~0,4 e só eleva o limiar para hub×hub |
 | Revisão em lote | não executada (seria a 17ª chamada) | — |
 
 Observável nos 8 rascunhos (sem revisão), comparado ao canário Tarifa Social:
@@ -88,9 +88,56 @@ Observável nos 8 rascunhos (sem revisão), comparado ao canário Tarifa Social:
 ## 4. Pendências
 
 1. **Teto × número de páginas.** 9 páginas não cabem em 16 chamadas (mínimo 16 sem retentativa). Para fechar um canário de card novo, o operador decide: teto maior, ou pedir ao arquiteto menos páginas para o canário, ou aceitar canário só de esqueleto aprovado.
-2. **`duplicate_content` em funil de tema único.** p2 (hub) e p3 reprovaram por 0,346/0,353 contra 0,35. A config já reconhece que um funil homogêneo fica ~0,4 e só eleva o limiar para hub×hub. Decisão do operador: estender o limiar maior a hub×LP e solução×hub, ou manter. Nada foi alterado nesta rodada.
+2. **`duplicate_content` em funil de tema único.** p2 (hub) e p3 reprovaram por 0,389/0,358 contra 0,35. **Resolvido na seção 5**: o operador decidiu que similaridade lexical não bloqueia (sem mexer no limiar).
 3. **Revisar os 8 rascunhos** (1 chamada da revisão em lote) ou aprovar manualmente antes de qualquer composição final; p9 (antecipação) não foi redigida.
 4. **LP:** a intro ainda abre com pergunta-gancho; a orientação de M2 entrou só no prompt das internas. Levar a mesma frase ao `redator_p1_v2` é uma linha, mas fica para a próxima rodada com canário.
 5. **Legenda do print:** o trecho sustentado pode ser longo (cortado em 200 caracteres); conferir legibilidade no tema real.
 6. **Entrega ajustada como descrição da página** e **nota de verificação na resposta imediata**: os dois prompts já foram corrigidos depois do canário; só o próximo run prova.
 7. Nenhum card de outro país/idioma existe no Pautador: a generalização de idioma está só na redação dos prompts, não em canário.
+
+## 5. Reavaliação: similaridade lexical deixa de bloquear (10/10, rodada curta)
+
+Decisão do operador: palavras parecidas entre páginas do mesmo tema não
+bloqueiam redação, revisão, composição nem publicação; não se eleva limiar nem
+se cria exceção por tema, hub ou canário. Redundância material de entrega é do
+revisor contextual. Nenhuma chamada de modelo nesta rodada; o funil não foi
+regenerado; recibos históricos do canário ficam como estão.
+
+**Pontos bloqueantes corrigidos (caminho canônico):**
+
+| Consumidor | Antes | Agora |
+|---|---|---|
+| `steps.uniqueness_state_guard` (serial, depois do `step_write`, e consolidação do lote paralelo em `pipeline.py`) | `write_pN` FAILED + `duplicate_content` → `blocked_pN`, sem revisão nem build; retomada redige de novo | observação `similaridade_lexical` no `write_pN` (par mais parecido, idempotente), status intacto |
+| `steps.presell_hub_distinction_guard` (mesmos dois pontos) | `write_pN` FAILED + `hub_not_distinct` | mesma observação; `_fail_hub` removido (sem consumidor) |
+| `retry_policy.CODIGOS_PATCHAVEIS` | `duplicate_content` era estrutural | `similaridade_lexical`, `duplicate_content`, `hub_not_distinct` são localizadores (nenhuma retentativa) |
+| revisor contextual (`steps._contexto_da_revisao`) | não via a métrica | recebe a observação como localizador: "Observação, não defeito… aponte só repetição material de entrega" |
+
+Já não bloqueavam no canônico e ficaram como estavam: o validador `uniqueness`
+e `opening_line_unique` (saem do V2 em `validadores_tecnicos`; continuam no V1
+arquivado). Verificações técnicas (HTML/Gutenberg, JS dos widgets, cálculos,
+links, segurança, recibo) inalteradas.
+
+**Replay de p2/p3 sem modelo** (`producao/funil-canario-fgts-20261010/roteiros/replay_similaridade_p2_p3.py`,
+recibo em `reavaliacao-similaridade/recibo-replay-similaridade.json`), numa
+cópia do run; o `state.json` original ficou com o mesmo sha256:
+
+| | p2 (pré-sell) | p3 (vale a pena) |
+|---|---|---|
+| Histórico do run (não alterado) | FAILED, `duplicate_content` contra p1 | FAILED, `duplicate_content` contra p2 |
+| Veredito do próprio passo de redação | aprovado na 1ª tentativa | aprovado na 2ª (1ª caiu em `bloco_sem_fechamento`, retentativa técnica legítima) |
+| Jaccard do guarda | 0,389 com p1 | 0,343 com p1; 0,358 com p2 |
+| Consolidação com o código novo | `write_p2` OK + observação | `write_p3` OK + observação |
+| Laço redigiria de novo / condena / bloqueia antes do build | não / não / não | não / não / não |
+| `revisar_lote` canônico (coletor no lugar do modelo) | entra no lote, observação no prompt como localizador | idem |
+| HTML/Gutenberg no rascunho real / com um bloco sem fechamento | nenhum / `unbalanced` estrutural | nenhum / `unbalanced` estrutural |
+
+Isso não aprova nada: o coletor levanta erro de propósito, e na cópia p2/p3
+ficariam em revisão humana. **Continuam pendentes:** p9 não redigida; revisão
+contextual final das 8 páginas (1 chamada); decisão sobre teto × número de
+páginas para fechar um canário de card novo.
+
+**Testes focados:** `test_similaridade_nao_bloqueia.py` (4 novos),
+`test_bloqueios_editoriais_v2.py`, `test_steps_prompt_routing.py` (hubs),
+`test_paginas_paralelas.py::test_15` (serial e paralelo com o mesmo veredito,
+0 condenadas, 4 observadas), uniqueness, smoke, sniper, widgets, revisor:
+250 passaram. `git diff --check` limpo.

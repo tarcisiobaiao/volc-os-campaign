@@ -197,6 +197,12 @@ CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
     "cta_editorial_execution",   # verbo de execução/consulta pessoal por lista
     "cta_external_channel",      # saída externa sem nome do canal
     "official_links_few",        # cota mínima de links oficiais no corpo
+    # 10/10/2026 (operador): similaridade de palavras entre páginas do mesmo
+    # tema não bloqueia redação, revisão, composição nem publicação. Vira pista
+    # para o revisor, que julga redundância material de entrega.
+    "similaridade_lexical",      # observação dos guardas de estado (steps)
+    "duplicate_content",         # validador `uniqueness` (V1) e estados antigos
+    "hub_not_distinct",          # guarda de hubs antes de 10/10/2026
     # 10/10/2026: número com fato, mas o fato é de outro assunto ou só de fonte
     # regional — assim como número sem match lexical, o significado é do revisor.
     "numero_fora_do_contexto_do_fato",

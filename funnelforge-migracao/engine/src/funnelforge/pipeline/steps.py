@@ -400,24 +400,36 @@ def index_decision_for(settings: Any, page: Page) -> IndexDecision:
     return IndexDecision(robots=robots, canonical=canonical)
 
 
-def uniqueness_state_guard(state: RunState, page: Page, deps: Any) -> None:
-    """Funnel-level content-uniqueness state hook (T0E). Compares this
-    page's draft against every other already-written draft in the same run
-    via `pipeline.uniqueness.jaccard` (the SAME boilerplate-aware
-    Jaccard/tokenizer the T1C `uniqueness` validator uses -- see below); if
-    any pair meets/exceeds `settings.uniqueness.jaccard_threshold`, fails
-    this page's `write_p{n}` step (fail-closed -- build/publish are gated on
-    write status) so near-duplicate pages never ship as distinct URLs.
+#: Código da OBSERVAÇÃO de similaridade lexical entre páginas do mesmo run.
+#: Nunca bloqueia: vai ao revisor contextual como localizador (retry_policy).
+SIMILARIDADE_LEXICAL = "similaridade_lexical"
 
-    NOTE: this is the run-time *state hook*, invoked per-page right after
-    `step_write` inside `run_pipeline`. `pipeline/uniqueness.py`'s
-    `uniqueness_guard(content, ctx)` is a separate, later static content
-    validator run inside `run_validators`/`checks.py`, registered on the
-    `write_page` step only (interior HUB/SOLUTION pages) -- `write_p1`
-    (the Landing Page) never runs it. This state hook stays because it is
-    the ONLY uniqueness guard that also covers the Landing Page draft; both
-    now share `pipeline.uniqueness.jaccard` as their single algorithm so
-    they can never disagree on an overlapping pair."""
+
+def _observar_similaridade(state: RunState, page: Page, mensagem: str) -> None:
+    """Registra a observação no `write_pN` SEM mudar o status (idempotente:
+    uma observação por página, a última vale). Similaridade de palavras entre
+    páginas do mesmo tema não prova redundância de entrega; quem julga é o
+    revisor contextual, com o conteúdo e o bucket factual."""
+    res = state.step_status.get(f"write_p{page.page_number}")
+    if res is None:
+        return
+    res.issues = [i for i in res.issues if i.code != SIMILARIDADE_LEXICAL] + [
+        Issue(code=SIMILARIDADE_LEXICAL, message=mensagem)]
+
+
+def uniqueness_state_guard(state: RunState, page: Page, deps: Any) -> None:
+    """Similaridade lexical entre os rascunhos do run: OBSERVAÇÃO, não bloqueio.
+
+    Compara este rascunho com os demais já escritos via `pipeline.uniqueness.
+    jaccard` (o mesmo algoritmo que desconta o kit de conformidade). Até
+    10/10/2026 este gancho reprovava o `write_pN` acima de
+    `uniqueness.jaccard_threshold` — o que condenava a página (`blocked_pN`),
+    tirava-a da revisão e do build e, numa retomada, pagava uma nova redação.
+    No canário FGTS daquele dia, pré-sell e solução de um funil de tema único
+    caíram por 0,346 e 0,353 contra 0,35: vocabulário comum do tema, não
+    entrega repetida. Agora o par mais parecido acima do limiar vira uma
+    observação para o revisor contextual, que avalia redundância material de
+    entrega; o status do passo não muda. O limiar só decide quando anotar."""
     draft = state.drafts.get(page.page_number)
     if draft is None:
         return
@@ -426,21 +438,21 @@ def uniqueness_state_guard(state: RunState, page: Page, deps: Any) -> None:
     plan = state.plan or FunnelPlan()
     role_by_num = {p.page_number: effective_role(p) for p in plan.pages}
     cur_is_hub = role_by_num.get(page.page_number, effective_role(page)) is PageRole.PRESELL
+    pior: tuple[float, int, float] | None = None
     for other_n, other in state.drafts.items():
         if other_n == page.page_number:
             continue
-        # PRESELL-vs-PRESELL: neutral hubs legitimately share solution vocabulary
-        # -> use the lenient hub threshold (see UniquenessConfig). Every other
-        # pair (solution/LP) stays at the strict jaccard_threshold.
         threshold = hub if (cur_is_hub and role_by_num.get(other_n) is PageRole.PRESELL) else base
-        if jaccard(draft.content, other.content) >= threshold:
-            res = state.step_status.get(f"write_p{page.page_number}")
-            if res is not None:
-                res.status = StepStatus.FAILED
-                res.issues = list(res.issues) + [Issue(
-                    code="duplicate_content",
-                    message=f"Conteúdo quase idêntico à página {other_n} (Jaccard>={threshold}).")]
-            return
+        valor = jaccard(draft.content, other.content)
+        if valor >= threshold and (pior is None or valor > pior[0]):
+            pior = (valor, other_n, threshold)
+    if pior is not None:
+        valor, other_n, threshold = pior
+        _observar_similaridade(state, page, (
+            f"Vocabulário parecido com a página {other_n} (Jaccard {valor:.2f}, "
+            f"referência {threshold:.2f}). Observação, não defeito: páginas do mesmo "
+            "tema compartilham palavras. Aponte só repetição material de entrega "
+            "(a mesma resposta dita de novo), com trecho."))
 
 
 def _presell_opening_solution(content: str, solution_slugs: set[str]) -> str | None:
@@ -455,18 +467,13 @@ def _presell_opening_solution(content: str, solution_slugs: set[str]) -> str | N
     return best_slug
 
 
-def _fail_hub(state: RunState, page: Page, code: str, message: str) -> None:
-    res = state.step_status.get(f"write_p{page.page_number}")
-    if res is not None:
-        res.status = StepStatus.FAILED
-        res.issues = list(res.issues) + [Issue(code=code, message=message)]
-
-
 def presell_hub_distinction_guard(state: RunState, page: Page, deps: Any) -> None:
-    """Reject materially duplicated hub bodies, not repeated useful links.
+    """Hubs com vocabulário parecido: OBSERVAÇÃO para o revisor, não bloqueio.
 
-    Compare the whole draft so changing only the opening line cannot disguise
-    a duplicate. Reusing the most relevant destination is explicitly allowed.
+    Compara o rascunho inteiro (a 1ª linha trocada não disfarça cópia) contra
+    os outros hubs pela mesma métrica lexical do `uniqueness_state_guard`.
+    Desde 10/10/2026 não reprova o `write_pN`: a mesma métrica, a mesma regra.
+    Reaproveitar o destino mais pertinente é explicitamente permitido.
     """
     if effective_role(page) is not PageRole.PRESELL:
         return
@@ -486,10 +493,12 @@ def presell_hub_distinction_guard(state: RunState, page: Page, deps: Any) -> Non
     # (whole draft compared, so copying the body while varying only line 1 is
     # still caught -- "não apenas a 1ª linha").
     for other_page, other in others:
-        if jaccard(current.content, other.content) >= threshold:
-            _fail_hub(state, page, "hub_not_distinct",
-                      f"Hub '{page.slug}' materialmente igual ao hub "
-                      f"'{other_page.slug}' (bloco qualificador + previews).")
+        valor = jaccard(current.content, other.content)
+        if valor >= threshold:
+            _observar_similaridade(state, page, (
+                f"Hub '{page.slug}' com vocabulário parecido com o hub "
+                f"'{other_page.slug}' (Jaccard {valor:.2f}, referência {threshold:.2f}). "
+                "Observação: aponte só se os dois entregam a mesma escolha."))
             return
     # Reusing the most relevant first destination is not a quality defect.
 
@@ -2601,6 +2610,11 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any, *,
                  if anuncio.estado == "presente" else 0),
     )
     _bloq, heuristicos = separar_para_o_revisor(_issues_da_pagina(state, page, deps, doc))
+    # A observação de similaridade lexical (gravada no `write_pN` pelos
+    # guardas do run, sem bloquear) chega ao revisor como pista, não veredito.
+    escrita = state.step_status.get(f"write_p{page.page_number}")
+    heuristicos += [i for i in (escrita.issues if escrita else [])
+                    if i.code == SIMILARIDADE_LEXICAL]
     localizadores = [{"codigo": i.code, "mensagem": i.message,
                       "trecho": _trecho_do_localizador(i, doc)} for i in heuristicos]
 

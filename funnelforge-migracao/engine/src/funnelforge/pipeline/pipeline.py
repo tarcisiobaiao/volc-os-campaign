@@ -600,9 +600,10 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
     with cronometrar(state, "redacao"):
         redigidas = [d for d in fase("redacao", pages) if d.sinal == "redigida"]
 
-    # UNICIDADE ENTRE AS PÁGINAS DO LOTE — a mesma regra do serial: cada página
-    # contra as escritas antes dela. A repetida tem `write_pN` reprovado e a
-    # fase B a trata como página condenada (blocked, sem gasto).
+    # SIMILARIDADE ENTRE AS PÁGINAS DO LOTE — a mesma regra do serial: cada
+    # página contra as escritas antes dela. Desde 10/10/2026 é só observação no
+    # `write_pN` (status intacto), levada ao revisor contextual como pista; a
+    # página segue para revisão e acabamento.
     lote = sorted(d.page_number for d in redigidas)
     todos = dict(state.drafts)
     for n in lote:
@@ -692,9 +693,8 @@ def _processar_pagina(state: RunState, page: Page, deps: Deps, laco: "_Laco") ->
         if not _done(state, f"write_p{page.page_number}"):
             st.step_write(state, page, deps)
             st.uniqueness_state_guard(state, page, deps)
-            # CARD-0009: structural-distinction net across the 3 presell
-            # hubs (materially-identical body or non-neutral hero -> write
-            # fails). No-op for non-presell pages.
+            # Similaridade lexical entre hubs: observação para o revisor, sem
+            # reprovar a redação (10/10/2026). No-op fora de pré-sell.
             st.presell_hub_distinction_guard(state, page, deps)
             _checkpoint(state, deps)
 
