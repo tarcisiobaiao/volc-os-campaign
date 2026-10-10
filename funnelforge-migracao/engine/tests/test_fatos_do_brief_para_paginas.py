@@ -36,3 +36,17 @@ def test_fato_do_brief_nao_verificado_nao_se_espalha():
     p = NS(jornada=NS(duvida_id="x"))
     nao_verificado = _fato(6, ["q_6c29c9a62edd"]).model_copy(update={"status": "unverified"})
     assert _fatos_para_a_pagina([nao_verificado], p) == []
+
+
+def test_requisito_declarado_por_duas_paginas_compartilha_o_fato():
+    """Run de 10/10: o alcance do desconto era requisito da p6 e da p7; o fato
+    marcado só para a p6 deixava a p7 'sem lastro'."""
+    req = NS(id="cobranca.alcance_tsee")
+    p6 = NS(jornada=NS(duvida_id="quanto_paga", requisitos=[req]))
+    p7 = NS(jornada=NS(duvida_id="desconto_social", requisitos=[req]))
+    outra = NS(jornada=NS(duvida_id="distribuidoras", requisitos=[NS(id="canal")]))
+    fato = _fato(7, ["quanto_paga"]).model_copy(update={"requisitos": ["cobranca.alcance_tsee"]})
+    nao_verificado = fato.model_copy(update={"fact_id": "f_00000000000a", "status": "unavailable"})
+    assert _fatos_para_a_pagina([fato, nao_verificado], p7) == [fato]
+    assert _fatos_para_a_pagina([fato], p6) == [fato]
+    assert _fatos_para_a_pagina([fato], outra) == []

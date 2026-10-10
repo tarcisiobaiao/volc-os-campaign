@@ -131,16 +131,33 @@ def requisitos_da_pagina(page: Page) -> list[RequisitoFactual]:
     return requisitos
 
 
+REQUISITO_DO_CANAL_OFICIAL = "canal_oficial"
+
+
 def especificacao_das_paginas(pages: list[Page]) -> list[dict]:
+    """O que a pesquisa precisa provar, por página: a pergunta, a resposta
+    prometida, os requisitos (inclusive os das ferramentas) e, quando a jornada
+    espera saída oficial, o serviço exato da TAREFA daquela página (entender a
+    regra, localizar atendimento, consultar, atualizar cadastro, solicitar).
+    O canal oficial é pedido à pesquisa, mas não entra na cobertura: sem ele a
+    página já degrada pela política da saída oficial."""
     spec = []
     for p in pages:
         j = p.jornada
+        requisitos = [{"id": r.id, "descricao": r.descricao, "tipos": r.tipos}
+                      for r in requisitos_da_pagina(p)]
+        saida = j.saida_oficial
+        if saida is not None and saida.esperada and (saida.condicao or "").strip():
+            requisitos.append({
+                "id": REQUISITO_DO_CANAL_OFICIAL,
+                "descricao": ("página oficial exata (serviço, não portal genérico) para a "
+                              "tarefa desta página: " + saida.condicao.strip()),
+                "tipos": ["orgao", "processo"]})
         spec.append({
             "duvida_id": j.duvida_id, "pergunta": j.pergunta_principal,
             "promessa": j.resposta_imediata,
             "entregas": list(j.valor.entregas) if j.valor else [],
-            "requisitos": [{"id": r.id, "descricao": r.descricao, "tipos": r.tipos}
-                           for r in requisitos_da_pagina(p)],
+            "requisitos": requisitos,
         })
     return spec
 
@@ -322,9 +339,31 @@ def _fatos_para_a_pagina(fatos: list[FatoDoDossie], page: Page) -> list[FatoDoDo
     de requisitos continua por requisito.
     """
     duvida = page.jornada.duvida_id
+    # Requisito declarado por mais de uma página (ex.: o alcance do desconto,
+    # na p6 e na p7): o fato verificado que o prova serve a todas, mesmo que a
+    # estruturação o tenha marcado só para uma. Só os requisitos DECLARADOS no
+    # esqueleto; os derivados de card legado são de uma página só.
+    proprios = {r.id for r in (getattr(page.jornada, "requisitos", None) or [])}
     return [f for f in fatos if duvida in f.paginas
             or (f.status == "verified" and f.paginas
-                and all(_DUVIDA_DO_BRIEF.match(d) for d in f.paginas))]
+                and all(_DUVIDA_DO_BRIEF.match(d) for d in f.paginas))
+            or (f.status == "verified" and proprios & set(f.requisitos))]
+
+
+def escopo_para_o_motor(f: FatoDoDossie) -> str | None:
+    """A abrangência no vocabulário do motor (`nacional` | `regional:UF`):
+    conferida no documento quando existe; senão, a declarada pela pesquisa.
+    Desconhecida fica None — nunca presumida."""
+    escopo, jurisdicao = escopo_do_fato(f)
+    if escopo == "desconhecido":
+        declarado = (f.proveniencia or {}).get("declarado") or {}
+        escopo = str(declarado.get("escopo") or "desconhecido")
+        jurisdicao = str(declarado.get("jurisdicao") or "").upper()
+    if escopo in ("nacional", "internacional"):
+        return "nacional"
+    if escopo in ("subnacional", "local") and re.fullmatch(r"[A-Z]{2}-[A-Z]{2}", jurisdicao):
+        return "regional:" + jurisdicao.split("-")[1]
+    return None
 
 
 def _research_facts(fatos: list[FatoDoDossie]) -> ResearchFacts:
@@ -333,13 +372,19 @@ def _research_facts(fatos: list[FatoDoDossie]) -> ResearchFacts:
     fatos_verificados, dados = [], []
     for f in verificados:
         url = f.source_url or f.derivacao.get("fonte_base", "")
+        escopo = escopo_para_o_motor(f)
         if f.tipo in TIPOS_TEMPORAIS and f.valor and f.vigente_desde:
             fatos_verificados.append({
                 "valor": f.valor, "unidade": f.unidade or "-", "fonte_primaria": url,
                 "dispositivo": f.dispositivo or f.afirmacao[:160],
-                "vigente_desde": f.vigente_desde, "verificado_em": f.verificado_em, "tipo": f.tipo})
+                "vigente_desde": f.vigente_desde, "verificado_em": f.verificado_em, "tipo": f.tipo,
+                "afirmacao": f.afirmacao, **({"escopo": escopo} if escopo else {})})
         else:
-            dados.append({"fato": f.afirmacao, "fonte": url, "tipo": f.tipo})
+            # O valor estruturado vai junto: "100%" num fato de condição não é o
+            # primeiro número da frase ("05" de 05/07/2025).
+            dados.append({"fato": f.afirmacao, "fonte": url, "tipo": f.tipo,
+                          **({"valor": f.valor, "unidade": f.unidade} if f.valor else {}),
+                          **({"escopo": escopo} if escopo else {})})
     fontes = list(dict.fromkeys(f.source_url or f.derivacao.get("fonte_base", "")
                                 for f in verificados))
     fontes = [u for u in fontes if u]

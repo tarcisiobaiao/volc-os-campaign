@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-10T09:27:57-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-10T10:50:37-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 852 arquivos: 630 Markdown e 222 SQL;
-- 841 versionados e 11 ainda não versionados;
+- 854 arquivos: 632 Markdown e 222 SQL;
+- 842 versionados e 12 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,8 +16,8 @@ Gerado em `2026-10-10T09:27:57-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 48 |
-| `documentation` | 452 |
+| `audit` | 49 |
+| `documentation` | 453 |
 | `generated` | 2 |
 | `module-guide` | 41 |
 | `product-document` | 23 |
@@ -208,6 +208,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/CORRECAO-C6-E-PENDENCIAS-2026-09-18.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-ASSETS-PRE-REDACAO-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-BUCKET-PESQUISA-UNICA-2026-10-10.md` | `audit` | — | 0 | 0 |
+| `docs/audits/FUNNELFORGE-FECHAMENTO-MOTOR-2026-10-10.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-FECHAMENTO-TARIFA-SOCIAL-2026-10-10.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-ATTENTION-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-JEV-GEMINI-ARCHITECT-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
@@ -311,7 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/20260904183514_meta_create_paused_executor_rollback.sql` | `sql-needs-review` | high | 1 | 0 |
 | `supabase/migrations/20260907120000_meta_recovery_snapshot.sql` | `sql-needs-review` | high | 6 | 10 |
 | `supabase/migrations/20260907120100_meta_recovery_snapshot_rollback.sql` | `sql-needs-review` | high | 4 | 6 |
-| `supabase/migrations/20260907190000_meta_worker_fencing.sql` | `sql-needs-review` | high | 13 | 24 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

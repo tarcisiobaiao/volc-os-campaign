@@ -584,3 +584,20 @@ def test_lp_e_roteada_por_progresso_mesmo_vinda_do_card(tmp_path):
     build_funnel_routes(plano, settings_do_cenario(tmp_path))
     lp = next(p for p in plano.pages if effective_role(p) is PageRole.LP)
     assert lp.routes[0].target == SLUG["renda"]
+
+
+def test_print_de_destino_que_a_pagina_nao_linka_nao_entra(tmp_path):
+    arquivo = tmp_path / "p4-oficial.webp"
+    arquivo.write_bytes(b"webp")
+    linkado, solto = "https://www.gov.br/aneel/fale", "https://www.ba.gov.br/noticia"
+    state = RunState(run_id="r")
+    state.screenshots[4] = [
+        st.proveniencia_do_print(u, arquivo, st.ResearchFacts(), titulo="t", crop="mobile")
+        for u in (linkado, solto)]
+    pub = _Publicador()
+    deps = type("D", (), {"publisher": pub})()
+    pagina = type("P", (), {"page_number": 4})()
+    html = (f'<!-- wp:paragraph -->\n<p><a href="{linkado}">ANEEL</a></p>\n'
+            '<!-- /wp:paragraph -->')
+    saida = st._embed_official_screenshots(state, pagina, deps, html)
+    assert len(pub.enviados) == 1 and saida.count("<!-- wp:image") == 1

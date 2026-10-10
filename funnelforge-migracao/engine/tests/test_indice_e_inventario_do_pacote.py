@@ -75,3 +75,44 @@ def test_revisor_le_os_fatos_do_pacote_mesmo_com_state_facts_divergente():
     com_trecho = [f for f in inv.fatos if f.trecho]
     assert com_trecho == [f for f in inv.fatos if any(
         x["id"] == f.id and x.get("trecho") for x in factual["fatos"])]
+
+
+def test_revisao_global_leva_cada_fato_uma_vez_e_ids_resolviveis(tmp_path, monkeypatch):
+    import re
+
+    from funnelforge.domain.models import PageDraft, StepResult, StepStatus
+    from funnelforge.pipeline import inteligencia, steps as st
+    from funnelforge.pipeline.inteligencia import congelar_pacotes
+    from tests.test_ctas_do_funil import estado, roteiro
+
+    state, deps, _ = estado(tmp_path, roteiro())
+    congelar_pacotes(state, deps)
+    for p in state.plan.pages:
+        state.drafts[p.page_number] = PageDraft(
+            page_number=p.page_number, page_type=p.page_type,
+            format="lp_json" if p.page_type == "LANDING PAGE" else "gutenberg",
+            content=('{"hero_title": "t"}' if p.page_type == "LANDING PAGE"
+                     else "<!-- wp:paragraph --><p>Texto.</p><!-- /wp:paragraph -->"))
+    enviada = {}
+
+    class Captura:
+        runs_dir = tmp_path / "runs"
+
+        def run_llm_step(self, nome, cfg, mensagens, ctx, run_id):
+            enviada["texto"] = mensagens[0]["content"]
+            return '{"paginas": []}', StepResult(step=nome, status=StepStatus.OK)
+
+    monkeypatch.setattr(st, "_revisar_pagina", lambda *a, **k: None)
+    deps.runner = Captura()
+    inteligencia.revisar_lote(state, state.plan.pages, deps)
+    texto = enviada["texto"]
+    assert "ÍNDICE FACTUAL DO LOTE" in texto
+    ids = set(re.findall(r"f_[0-9a-f]{12}", texto))
+    assert ids
+    for fid in ids:                                   # todo id citado se resolve no índice
+        assert re.search(rf"- {fid} \[", texto), fid
+    fatos = {f["id"]: f["afirmacao"] for n in state.pacotes
+             for f in state.pacotes[n]["factual"]["fatos"]}
+    for fid, afirmacao in fatos.items():
+        assert texto.count(f"- {fid} [") == 1          # o texto do fato vai uma vez
+    assert texto.count("PACOTE DE POLÍTICAS DO LOTE (vale para todas as páginas)") == 1

@@ -808,6 +808,9 @@ class VerifiedFact(BaseModel):
     tipo: str | None = None
     escopo: str | None = None
     citavel: bool | None = None
+    # A afirmação do dossiê que este valor sustenta: o portão confere se a
+    # frase usa o número no MESMO assunto (dois fatos podem ter "100%").
+    afirmacao: str = Field(default="", exclude_if=lambda v: not v)
 
     @field_validator("fonte_primaria")
     @classmethod
@@ -928,6 +931,8 @@ class StepResult(BaseModel):
     completion_tokens: int = 0
     cost_usd: float = 0.0
     latency_ms: int = 0
+    # parte de `prompt_tokens` servida do cache de prompt do provedor
+    cached_tokens: int = Field(default=0, exclude_if=lambda v: not v)
 
 
 #: Campos de PROCEDÊNCIA de uma chamada (quem pediu o quê, a quem, como).

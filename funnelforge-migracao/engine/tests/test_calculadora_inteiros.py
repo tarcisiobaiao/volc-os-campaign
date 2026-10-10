@@ -52,3 +52,22 @@ def test_navegador_recusa_meio_integrante_e_calcula_inteiro():
         assert saida.get_attribute("data-vc-status") == "ok"
         assert saida.inner_text() == "500,00"
         browser.close()
+
+
+def test_gate_final_aceita_a_calculadora_do_motor_e_so_ela():
+    """Run final de 10/10: a pré-sell com a calculadora do motor caía no gate
+    final por "campo de texto" e "JavaScript diferente"."""
+    from funnelforge.domain.models import CalculoDoAtivo
+    from funnelforge.pipeline.editorial_safety import html_issues
+    from funnelforge.widgets.calculos import renderizar_calculo
+    calc = CalculoDoAtivo(operacao="divisao", rotulos=["Renda total", "Pessoas"],
+                          rotulo_resultado="Renda por pessoa", inteiros=[1],
+                          casos=[{"entradas": ["3000", "3"], "resultado": "1000"},
+                                 {"entradas": ["1000", "4"], "resultado": "250"}])
+    bloco = renderizar_calculo(calc, titulo="Calcule a renda", identidade="p2")
+    assert html_issues(bloco) == []
+    adulterado = bloco.replace('var r=document', 'fetch("https://x.y");var r=document')
+    assert any("JavaScript" in i.message for i in html_issues(adulterado))
+    campo_solto = bloco.replace('<div class="vw-ctls">',
+                                '<div class="vw-ctls"><input type="text" name="cpf">')
+    assert any("dados pessoais" in i.message for i in html_issues(campo_solto))

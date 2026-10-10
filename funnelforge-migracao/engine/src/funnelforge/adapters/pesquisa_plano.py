@@ -411,15 +411,25 @@ def schema_da_estruturacao(tipos: list[str]) -> dict:
             "properties": {"fatos": {"type": "array", "items": fato}}}
 
 
+def _agrupar(itens: Iterable[tuple[str, str, str]]) -> str:
+    """Um requisito igual em várias páginas é pedido UMA vez, com as páginas."""
+    grupos: dict[tuple[str, str], list[str]] = {}
+    for duvida, requisito, descricao in itens:
+        grupos.setdefault((requisito, descricao), [])
+        if duvida not in grupos[(requisito, descricao)]:
+            grupos[(requisito, descricao)].append(duvida)
+    return "\n".join(f"- [{', '.join(duvidas)}] {requisito}: {descricao}"
+                     for (requisito, descricao), duvidas in grupos.items())
+
+
 def _prompt_da_pesquisa(assunto: str, paginas: list[dict], faltantes: list[dict] | None,
                         hoje: str) -> str:
     if faltantes:
-        alvo = "\n".join(f"- [{f['duvida_id']}] {f['requisito']}: {f['descricao']}"
-                         for f in faltantes)
+        alvo = _agrupar((f["duvida_id"], f["requisito"], f["descricao"]) for f in faltantes)
         pedido = f"Pesquise SOMENTE estes requisitos, que ainda não têm fonte:\n{alvo}"
     else:
-        alvo = "\n".join(f"- [{p['duvida_id']}] {r['id']}: {r['descricao']}"
-                         for p in paginas for r in p.get("requisitos") or [])
+        alvo = _agrupar((p["duvida_id"], r["id"], r["descricao"])
+                        for p in paginas for r in p.get("requisitos") or [])
         pedido = f"Requisitos a provar:\n{alvo}"
     return (f"Hoje é {hoje}. Pesquise na web, priorizando páginas oficiais, fatos atuais "
             f"sobre: {assunto}.\n{pedido}\n\n"
@@ -445,7 +455,10 @@ def _prompt_da_estruturacao(texto: str, evs: list[Evidencia], fontes: list[dict]
             "'2026-03-19'); trecho só com mês/ano ou sem data -> vazio; emissor = o nome do "
             "órgão ou organização que publica a fonte, escrito como aparece nela; "
             "tipo_de_emissor, escopo e jurisdicao (ISO 3166, ex.: 'BR', 'PT', 'MX-JAL') da "
-            "fonte, ou 'desconhecido'/vazio quando a evidência não diz; paginas e requisitos só dos ids listados. Não crie fato, número ou "
+            "fonte, ou 'desconhecido'/vazio quando a evidência não diz (empresa, concessionária "
+            "ou governo que atende só um estado ou região é 'subnacional', com a jurisdição "
+            "da área atendida quando a fonte a nomeia, ex.: 'BR-MG'); "
+            "paginas e requisitos só dos ids listados. Não crie fato, número ou "
             "fonte. Fórmula, regra ou método de cálculo é tipo processo mesmo quando a fonte "
             "traz um exemplo numérico; tipo numero fica para valor, limite ou percentual que "
             "pode mudar no tempo. "

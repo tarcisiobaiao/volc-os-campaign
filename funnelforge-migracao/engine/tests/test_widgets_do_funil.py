@@ -97,3 +97,55 @@ def test_widget_pronto_entra_sem_chamada_e_nada_e_gerado_depois(tmp_path):
                  ["ferramenta"]["itens"])
     assert state.step_status[f"widget_p{outra.page_number}"].status is StepStatus.SKIPPED
     assert 'class="vw-' not in state.drafts[outra.page_number].content
+
+
+def _revisar_widget(tmp_path, patch_depois):
+    from funnelforge.config.settings import StepConfig
+    from funnelforge.pipeline.inteligencia import corretor_de_widget
+    from funnelforge.pipeline.revisao import (ContextoDaRevisao, Documento, Referencias,
+                                              executar_revisao)
+    from funnelforge.pipeline.runner import Runner
+    from tests.fakes import FakeLLM
+    from funnelforge.widgets.contrato import ler
+    from funnelforge.widgets.render import renderizar
+    bloco = renderizar(ler(json.dumps(NAVEGADOR)))
+    corpo = ("<!-- wp:paragraph -->\n<p>Guia da inscrição.</p>\n<!-- /wp:paragraph -->\n\n"
+             + bloco)
+    doc = Documento(formato="gutenberg", corpo=corpo, seotitle="Inscrição",
+                    metadescription="Como se inscrever.")
+    corrigir = corretor_de_widget({"conteudo": NAVEGADOR, "bloco": bloco}, None)
+    ctx = ContextoDaRevisao(pagina={"numero": 3, "slug": "s", "papel": "SOLUTION", "h1": "x"},
+                            referencias=Referencias(fatos={"f_1"}), corrigir_widget=corrigir)
+    trecho = "Separe os documentos"
+    resposta = json.dumps({
+        "versao": "revisao-v1", "decisao": "ajustar",
+        "achados": [{"id": "a1", "severidade": "bloqueante", "categoria": "erro_factual",
+                     "campo": "widget", "trecho": trecho, "motivo": "sem fato",
+                     "evidencia": {"tipo": "fato", "ref": "f_1"}}],
+        "patches": [{"achado": "a1", "campo": "widget", "antes": trecho,
+                     "depois": patch_depois}],
+        "afirmacoes_nao_verificadas": [], "preservado": [],
+        "notas": {"compliance": 9, "cta_discipline": 8, "useful_delivery": 8,
+                  "destination_relevance": 8}})
+    runner = Runner(llm=FakeLLM(responses=[resposta]), max_retries=0,
+                    runs_dir=tmp_path / "runs", sleep=lambda _s: None)
+    cfg = StepConfig(model="gpt-4.1", fallbacks=[], temperature=0.0, validators=[])
+    return executar_revisao(doc, ctx, runner=runner, cfg=cfg, run_id="r-20261010-1", numero=3)
+
+
+def test_revisor_corrige_so_a_frase_do_widget_e_a_peca_e_refeita(tmp_path):
+    r = _revisar_widget(tmp_path, "Confira a lista de documentos na unidade")
+    assert r.decisao == "aprovado", r.registro["motivos"]
+    widget = r.documento.widget_texto()
+    assert "Confira a lista de documentos na unidade" in widget
+    assert "Separe os documentos" not in widget
+    assert "Procure a unidade do Senac do seu estado" in widget       # resto intacto
+    assert r.registro["rodadas"][0]["patches_aplicados"][0]["campo"] == "widget"
+
+
+def test_patch_do_widget_com_numero_sem_lastro_e_recusado(tmp_path):
+    r = _revisar_widget(tmp_path, "Separe 3 documentos")
+    assert r.decisao == "revisao_humana"
+    assert "Separe os documentos" in r.documento.widget_texto()
+    recusa = r.registro["rodadas"][0]["patches_recusados"][0]
+    assert recusa["campo"] == "widget" and recusa["motivo"] != "campo_somente_leitura"

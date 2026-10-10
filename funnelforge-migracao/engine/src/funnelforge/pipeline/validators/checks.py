@@ -1926,6 +1926,50 @@ def _rotulo_literal_citado(texto: str, inicio: int, fim: int) -> str:
 PREFIXO_ATRIBUICAO_EM_PROSA = "Atribuição em prosa"
 
 
+def _quantia_escrita_no_fato(claim: str, numero: str | None, texto: str) -> bool:
+    """O fato verificado ESCREVE a mesma quantia, com a mesma unidade ("desconto
+    de 100%")? Run final de 10/10: a estruturação deixou `valor` vazio num fato
+    de condição e o "100%" da primeira dobra caiu como afirmação sem fato, que o
+    sniper (com o mesmo fato) tinha aceitado. Data ou outro número da frase não
+    contam: só quantia que o próprio padrão de afirmação crítica reconhece."""
+    if numero is None or not texto:
+        return False
+    # Rótulo citado entre aspas ("Solicite seu saque 100% digital") é nome de
+    # botão, não quantia: não sustenta "receba 100% do saldo".
+    sem_rotulos = re.sub(r'["“][^"“”\n]{1,160}["”]', " ", texto)
+    for m in _CRITICAL_CLAIM_RE.finditer(_visible_fact_text(sem_rotulos)):
+        escrita = _normalized_claim(m.group(0))
+        if (_QUANTIA_RE.match(escrita) and _canon_numero(escrita) == numero
+                and ("%" in claim) == ("%" in escrita)
+                and ("r$" in claim.lower()) == ("r$" in escrita.lower())):
+            return True
+    return False
+
+
+def _frase_em_volta(texto: str, inicio: int, fim: int) -> str:
+    comeco = max(texto.rfind(c, 0, inicio) for c in ".!?\n") + 1
+    finais = [i for i in (texto.find(c, fim) for c in ".!?\n") if i != -1]
+    return texto[comeco:min(finais) if finais else len(texto)]
+
+
+def _texto_do_fato(fact: object) -> str:
+    return str(_field(fact, "afirmacao", "") or _field(fact, "fato", "") or "")
+
+
+def _raizes(texto: str) -> set[str]:
+    return {w[:5] for w in _claim_terms(texto) if not w.isdigit()}
+
+
+def _mesmo_assunto(frase: str, fact: object) -> bool:
+    """A frase e o fato dividem ao menos um radical (paráfrase passa: "desconto
+    integral" ~ "concede desconto de 100%"). Fato antigo, sem a afirmação
+    gravada, não é julgado aqui."""
+    texto = _texto_do_fato(fact)
+    if not texto:
+        return True
+    return bool(_raizes(frase) & _raizes(f"{texto} {_field(fact, 'unidade', '')}"))
+
+
 def _sem_citacao(raw: str, fundamentos: list, ctx: dict) -> Issue:
     """Número COM fato verificado cuja fonte o texto não nomeia.
 
@@ -1994,12 +2038,16 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
         if not source or not value or not datum.get("tipo"):
             continue
         strict.append({
-            "valor": value,
+            # Com valor estruturado, o número é ele, nunca o primeiro número da
+            # frase; a frase continua no texto do fato (assunto e paráfrase).
+            "valor": str(datum.get("valor") or value),
             "unidade": str(datum.get("unidade") or ""),
             "dispositivo": str(datum.get("dispositivo") or ""),
             "fonte_primaria": source,
             "citavel": datum.get("citavel"),
             "tipo": datum["tipo"],
+            "afirmacao": value,
+            "escopo": datum.get("escopo"),
         })
     # `citavel: false` (pesquisa tipada): a fonte é contraditória ou instável
     # sobre o fato — ele não ancora afirmação nenhuma, mesmo com fonte viva.
@@ -2034,6 +2082,7 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
         # mais permissivo com grafia e mais ESTRITO com valor.
         quantia = bool(_QUANTIA_RE.match(claim))
         numero = _canon_numero(claim) if quantia else None
+        frase = _frase_em_volta(visible, match.start(), match.end())
 
         # TODOS os fatos que sustentam a afirmação, não só o primeiro. Run de
         # 10/10: "100%" e "65 anos" estavam em fatos da ANEEL e da Cemig/EDP; a
@@ -2056,9 +2105,12 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
                 if (_canon_numero(valor) == numero
                         and _unidade_compativel(claim, unidade)):
                     fundamentos.append(fact)
+                elif (_quantia_escrita_no_fato(claim, numero, _texto_do_fato(fact))
+                      and _mesmo_assunto(frase, fact)):
+                    fundamentos.append(fact)
                 continue
             haystack = _normalized_claim(" ".join((
-                valor, unidade, str(_field(fact, "dispositivo", "")),
+                valor, unidade, str(_field(fact, "dispositivo", "")), _texto_do_fato(fact),
             )))
             if claim in haystack:
                 fundamentos.append(fact)
@@ -2068,9 +2120,30 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
                 message=f"Afirmação crítica sem fato tipado e fonte resolvida: {raw!r}.",
             ))
             continue
+        # O MESMO ASSUNTO, não só o mesmo número: entre os fatos com o número,
+        # valem os que dividem ao menos um radical com a frase. Sem nenhum, o
+        # número pode ter vindo de outro fato ("100%" do desconto x "100%" de
+        # outra coisa): isso é pista para o revisor, que julga o sentido.
+        contextuais = [f for f in fundamentos if _mesmo_assunto(frase, f)]
+        if not contextuais and all(_texto_do_fato(f) for f in fundamentos):
+            hosts = ", ".join(sorted({_url_host(str(_field(f, "fonte_primaria", "")))
+                                      for f in fundamentos}))
+            issues.append(Issue(
+                code="numero_fora_do_contexto_do_fato",
+                message=(f"O número {raw!r} aparece em fato(s) sobre outro assunto "
+                         f"({hosts}); confira se a frase usa o número com o sentido "
+                         "da fonte.")))
+        base = contextuais or fundamentos
         if not any(_source_is_cited(content, str(_field(f, "fonte_primaria", "")), ctx)
-                   for f in fundamentos):
-            issues.append(_sem_citacao(raw, fundamentos, ctx))
+                   for f in base):
+            issues.append(_sem_citacao(raw, base, ctx))
+        escopos = [str(_field(f, "escopo", "") or "") for f in base]
+        if escopos and all(e.startswith("regional:") for e in escopos):
+            issues.append(Issue(
+                code="fonte_so_regional",
+                message=(f"O número {raw!r} só tem fonte regional "
+                         f"({', '.join(sorted(set(escopos)))}); confira se o texto não o "
+                         "apresenta como regra de todo o país.")))
 
     # Consequential legal assertions can be false even without a number or an
     # explicit statute identifier ("tem direito", "é obrigatório"). Require a

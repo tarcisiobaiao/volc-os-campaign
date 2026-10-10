@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, StrictBool
 
 from funnelforge.domain.models import Issue
+from funnelforge.widgets.calculos import _JS as CALCULO_JS
 from funnelforge.widgets.estilo import JS as WIDGET_JS
 
 POLICY_VERSION = "editorial-visual-v2"
@@ -73,6 +74,9 @@ class _EditorialHTML(HTMLParser):
         self.raw_tag = ""
         self.script_parts: list[str] = []
         self.widget_ids: set[str] = set()
+        # Calculadoras do motor (`widgets/calculos.py`): a <section> com id
+        # "vc-…" e data-vc-operation. Só elas podem ter entrada numérica.
+        self.calc_ids: set[str] = set()
 
     def reject(self, reason: str) -> None:
         self.issues.append(Issue(code="unsafe_editorial_html", message=reason))
@@ -96,6 +100,9 @@ class _EditorialHTML(HTMLParser):
         values = dict(attrs)
         if tag == "section" and re.fullmatch(r"vw-[a-f0-9]+", values.get("id") or ""):
             self.widget_ids.add(values["id"])
+        if (tag == "section" and re.fullmatch(r"vc-[a-f0-9]{12}", values.get("id") or "")
+                and values.get("data-vc-operation")):
+            self.calc_ids.add(values["id"])
         if tag in {"script", "style"}:
             self.raw_tag = tag
             self.script_parts = []
@@ -111,9 +118,17 @@ class _EditorialHTML(HTMLParser):
                 self.reject(f"URL insegura em {key}")
         if tag in {"input", "textarea"}:
             # Editorial widgets may offer choices, never collect free-text credentials.
-            if tag == "textarea" or values.get("type", "text").lower() not in {
-                "radio", "checkbox", "range", "button",
-            }:
+            # A única entrada digitável é a numérica da calculadora do motor:
+            # id da calculadora, inputmode numérico, sem nome (nada é enviado).
+            numerica_da_calculadora = (
+                tag == "input" and values.get("type", "text").lower() == "text"
+                and values.get("inputmode") in {"numeric", "decimal"}
+                and "name" not in values
+                and any(re.fullmatch(re.escape(c) + r"-\d+", values.get("id") or "")
+                        for c in self.calc_ids))
+            if not numerica_da_calculadora and (
+                    tag == "textarea" or values.get("type", "text").lower() not in {
+                        "radio", "checkbox", "range", "button"}):
                 self.reject("Campo de texto/dados pessoais não permitido no guia editorial")
 
     handle_startendtag = handle_starttag
@@ -129,6 +144,8 @@ class _EditorialHTML(HTMLParser):
             body = "".join(self.script_parts).strip()
             if tag == "script" and not any(
                 body == WIDGET_JS.replace("__ID__", wid).strip() for wid in self.widget_ids
+            ) and not any(
+                body == CALCULO_JS.replace("__ID__", cid).strip() for cid in self.calc_ids
             ):
                 self.reject("JavaScript diferente do widget determinístico do engine")
             if tag == "style" and re.search(r"url\s*\(|@import|expression\s*\(|\\", body, re.I):

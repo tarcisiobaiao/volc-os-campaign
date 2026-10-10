@@ -191,6 +191,10 @@ CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
     "cta_editorial_execution",   # verbo de execução/consulta pessoal por lista
     "cta_external_channel",      # saída externa sem nome do canal
     "official_links_few",        # cota mínima de links oficiais no corpo
+    # 10/10/2026: número com fato, mas o fato é de outro assunto ou só de fonte
+    # regional — o significado é do revisor; número SEM fato continua bloqueando.
+    "numero_fora_do_contexto_do_fato",
+    "fonte_so_regional",
     # D2 — portão de composição (`checks.composicao_editorial`): achados para o
     # revisor. O slot do Ad Inserter (`ad_slot_inseguro`) fica `estrutural`.
     "composicao_paredao_de_texto",

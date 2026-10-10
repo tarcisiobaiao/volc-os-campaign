@@ -1319,12 +1319,15 @@ CANAIS_POR_PAGINA = 4
 
 
 def _ordem_dos_canais(state: RunState, page: Page, urls: list[str]) -> list[str]:
-    """Primeiro a fonte dos fatos DESTA página, depois o emissor oficial de
-    escopo nacional conferido no documento, depois o resto (ordem original).
+    """Primeiro o emissor oficial de escopo nacional conferido no documento,
+    depois a fonte dos fatos DESTA página (a da tarefa dela), depois o resto
+    (ordem original).
 
     Com a pesquisa compartilhada, todas as páginas recebem os mesmos fatos, e a
     ordem antiga (tipo do fato) pôs a página da Cemig como saída oficial de
-    cinco páginas de um funil nacional, à frente da ANEEL (run de 10/10)."""
+    cinco páginas de um funil nacional, à frente da ANEEL (run de 10/10). No run
+    final, "própria primeiro" pôs uma notícia do governo da Bahia à frente do
+    "Fale com a sua distribuidora" da ANEEL, as duas fontes da p4."""
     from funnelforge.pipeline.dossie import EMISSORES_OFICIAIS
     fatos = (state.dossie or {}).get("fatos") or []
     duvida = page.jornada.duvida_id if page.jornada else ""
@@ -1338,7 +1341,7 @@ def _ordem_dos_canais(state: RunState, page: Page, urls: list[str]) -> list[str]
         nacional = (bool(prov.get("emissor_verificado"))
                     and prov.get("tipo_de_emissor") in EMISSORES_OFICIAIS
                     and prov.get("escopo") in ("nacional", "internacional"))
-        return (not propria, not nacional, posicao)
+        return (not nacional, not propria, posicao)
 
     return [url for _posicao, url in sorted(enumerate(urls), key=chave)]
 
@@ -1679,6 +1682,20 @@ def _aplicar_rotulos_aprovados_da_lp(content_obj: dict, page: Page) -> bool:
     return alterou
 
 
+def _aplicar_primeira_dobra(content_obj: dict, state: RunState) -> bool:
+    """Título e subtítulo do topo da LP vêm da etapa de CTAs do funil (a mesma
+    chamada que escreve os botões), como os rótulos: o redator escreve o resto."""
+    dobra = (getattr(state, "ctas_do_funil", None) or {}).get("primeira_dobra") or {}
+    if not dobra.get("titulo") or not dobra.get("subtitulo"):
+        return False
+    alvo = {"hero_title": dobra["titulo"], "hero_subtitle": dobra["subtitulo"]}
+    if "hero_subtitle_desktop" in content_obj:
+        alvo["hero_subtitle_desktop"] = dobra["subtitulo"]
+    alterou = any(content_obj.get(k) != v for k, v in alvo.items())
+    content_obj.update(alvo)
+    return alterou
+
+
 _LINK_HTML_RE = re.compile(
     r"<a\b(?P<attrs>[^>]*)>(?P<body>[\s\S]*?)</a>", re.I)
 _HREF_HTML_RE = re.compile(r"\bhref\s*=\s*[\"'](?P<href>[^\"']+)[\"']", re.I)
@@ -2011,6 +2028,12 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
                 "etapa": "rotulos_aprovados_da_lp",
                 "alterou": True,
                 "rotulos": [r.anchor for r in page.routes if r.kind == "funnel"],
+            })
+        if v2 and state.pacotes and _aplicar_primeira_dobra(content_obj, state):
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "primeira_dobra_aprovada", "alterou": True,
+                "hero_title": content_obj.get("hero_title"),
+                "hero_subtitle": content_obj.get("hero_subtitle"),
             })
         content = json.dumps(content_obj, ensure_ascii=False)
         # O contrato da LP roda DENTRO do runner quando `lp_json_contract` está
@@ -2376,7 +2399,8 @@ def numeros_permitidos_no_patch(fatos: Any) -> set[str]:
     return ok
 
 
-def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> ContextoDaRevisao:
+def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any, *,
+                         fatos_no_indice: bool = False) -> ContextoDaRevisao:
     n = page.page_number
     inv = montar_inventario(state, page)
     pacote = carregar_pacote(hoje=date.today())
@@ -2428,7 +2452,8 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> Co
         pagina=_pagina_da_revisao(page),
         briefing_texto=(briefing_para_o_redator(briefing) if briefing else
                         "BRIEFING AUSENTE: esta página foi escrita sem briefing."),
-        inventario_texto=inventario_para_o_briefing(inv),
+        inventario_texto=inventario_para_o_briefing(inv, fatos_no_indice=fatos_no_indice),
+        fatos_do_inventario=list(inv.fatos),
         origem={"rotas": _rotas_de_chegada(state, page), "anuncio": anuncio.model_dump()},
         destinos=destinos, ctas=_ctas_da_pagina(page, doc, destinos),
         termos={"estado": tb.estado, "janela": tb.janela, "amostra": list(tb.amostra),
@@ -2441,7 +2466,19 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> Co
         referencias=refs, numeros_permitidos=numeros_ok,
         revalidar=revalidar, normalizar=normalizar, pacote_vencido=pacote.vencido,
         jornada=_jornada_da_revisao(state, page),
+        corrigir_widget=_corretor_do_widget(state, page),
     )
+
+
+def _corretor_do_widget(state: RunState, page: Page):
+    """Com widget de orientação pronto no pacote, o revisor corrige o texto dele
+    localmente; sem ele (calculadora, caminho legado), o widget é só leitura."""
+    from funnelforge.pipeline.inteligencia import corretor_de_widget
+    orientacao = (((state.pacotes or {}).get(page.page_number) or {}).get("ferramenta")
+                  or {}).get("orientacao")
+    if not orientacao:
+        return None
+    return corretor_de_widget(orientacao, state.facts.get(page.page_number))
 
 
 def _jornada_da_revisao(state: RunState, page: Page) -> dict:
@@ -4521,6 +4558,12 @@ def _embed_official_screenshots(state: RunState, page: Page, deps: Any, html: st
             # PROVENIÊNCIA OU NADA: print sem URL/data/hash/trecho/legenda (ou
             # cujo arquivo mudou depois da captura) não vai ao ar.
             if print_sem_proveniencia(shot) or shot.get("sha256") != _sha256_do_arquivo(Path(local)):
+                continue
+            # PRINT AO LADO DO LINK, OU NADA: o print mostra o que o leitor vai
+            # encontrar no destino que a página oferece. Destino que o texto não
+            # linka deixava o print solto depois do 2º título (run final de
+            # 10/10: a notícia do governo da Bahia ficou na p4 sem link nenhum).
+            if _anchor_after_href(html, href) is None:
                 continue
             host = urlparse(href).netloc.lower()
             alt = shot.get("alt") or f"Reprodução: {host} — tela oficial de {_link_theme(href)}"

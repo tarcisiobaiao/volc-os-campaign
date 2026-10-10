@@ -16,7 +16,7 @@ def _rodar(monkeypatch, **kw):
             return '{"paginas": []}', StepResult(step=nome, status=StepStatus.OK)
 
     monkeypatch.setattr(st, "step_seo", lambda *a: None)
-    monkeypatch.setattr(st, "_contexto_da_revisao", lambda *a: None)
+    monkeypatch.setattr(st, "_contexto_da_revisao", lambda *a, **k: None)
     monkeypatch.setattr(st, "_revisar_pagina", lambda *a, **k: None)
     monkeypatch.setattr(rv, "documento_de", lambda *a: None)
     monkeypatch.setattr(rv, "montar_prompt_do_revisor", lambda *a: "PROMPT")

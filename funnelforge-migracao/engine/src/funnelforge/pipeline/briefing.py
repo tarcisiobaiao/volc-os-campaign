@@ -173,27 +173,46 @@ def _sim(valor: bool | None) -> str:
     return "sim" if valor else ("não" if valor is False else "não declarado")
 
 
-def inventario_para_o_briefing(inv: InventarioFactual) -> str:
+def linha_do_fato(f) -> str:
+    """Um fato do inventário em uma linha: id, tipo, texto, fonte e trecho."""
+    partes = [f"  - {f.id} [{f.tipo}] {f.texto}"]
+    if f.origem == "fatos_verificados":
+        partes.append(f"fonte verificada ao vivo: {_sim(f.verificada_ao_vivo)}")
+        if f.vigente_desde:
+            partes.append(f"vigente desde {f.vigente_desde.isoformat()}")
+    else:
+        partes.append("observação qualitativa (não autoriza número)")
+    if f.escopo:
+        partes.append(f"escopo: {f.escopo}")
+    if f.citavel is False:
+        partes.append("NÃO CITÁVEL (fonte contraditória ou instável)")
+    if f.trecho:
+        partes.append(f"trecho da fonte: \"{f.trecho}\"")
+    if f.tipo_origem == "regra_legado":
+        partes.append("tipo atribuído pela regra de legado")
+    return " — ".join(partes)
+
+
+def indice_factual_do_lote(fatos: list) -> str:
+    """Os fatos de todas as páginas da revisão global, uma vez cada, com o
+    texto e o trecho: é aqui que os ids citados nas páginas se resolvem."""
+    vistos: dict[str, object] = {}
+    for f in fatos:
+        vistos.setdefault(f.id, f)
+    return ("ÍNDICE FACTUAL DO LOTE (o mesmo dossiê e os mesmos pacotes da redação; cada "
+            "página lista os ids que pode usar):\n" + "\n".join(linha_do_fato(f)
+                                                              for f in vistos.values()))
+
+
+def inventario_para_o_briefing(inv: InventarioFactual, *, fatos_no_indice: bool = False) -> str:
     linhas: list[str] = ["FATOS (cite pelos ids em \"ref\" e em \"fatos\"):"]
     if not inv.fatos:
         linhas.append("  NENHUM fato nesta página: sem benefício com fato, sem número.")
-    for f in inv.fatos:
-        partes = [f"  - {f.id} [{f.tipo}] {f.texto}"]
-        if f.origem == "fatos_verificados":
-            partes.append(f"fonte verificada ao vivo: {_sim(f.verificada_ao_vivo)}")
-            if f.vigente_desde:
-                partes.append(f"vigente desde {f.vigente_desde.isoformat()}")
-        else:
-            partes.append("observação qualitativa (não autoriza número)")
-        if f.escopo:
-            partes.append(f"escopo: {f.escopo}")
-        if f.citavel is False:
-            partes.append("NÃO CITÁVEL (fonte contraditória ou instável)")
-        if f.trecho:
-            partes.append(f"trecho da fonte: \"{f.trecho}\"")
-        if f.tipo_origem == "regra_legado":
-            partes.append("tipo atribuído pela regra de legado")
-        linhas.append(" — ".join(partes))
+    elif fatos_no_indice:
+        linhas.append("  ids desta página (texto, fonte e trecho no ÍNDICE FACTUAL DO LOTE): "
+                      + ", ".join(f.id for f in inv.fatos))
+    else:
+        linhas += [linha_do_fato(f) for f in inv.fatos]
     if inv.fontes:
         linhas.append("FONTES:")
         for s in inv.fontes:

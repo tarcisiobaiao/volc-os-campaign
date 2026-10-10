@@ -159,7 +159,9 @@ _NUMERO_COM_UNIDADE_RE = re.compile(
     r"sal[aá]rios?|mil|milh[aã]o|milh[oõ]es|bilh[aã]o|bilh[oõ]es|reais|real|parcelas?|vezes|"
     r"vez|pontos?|kwh|km|kg)\b)?", re.I)
 _HREF_RE = re.compile(r'href\s*=\s*["\']([^"\']*)["\']', re.I)
-_SECTION_WIDGET_RE = re.compile(r'<section\b[^>]*\bclass="[^"]*\bvw-', re.I)
+# Widget do projeto: a <section> com a classe "vw" (orientação) ou "vw-…"
+# (calculadora). Só "vw-" deixava o widget de orientação invisível ao revisor.
+_SECTION_WIDGET_RE = re.compile(r'<section\b[^>]*\bclass="[^"]*\bvw\b', re.I)
 
 
 def _agora() -> str:
@@ -521,6 +523,10 @@ def _patchavel(achado: dict | None) -> bool:
 class RegrasDePatch:
     numeros_permitidos: set[str] = field(default_factory=set)
     max_patches: int = MAX_PATCHES_POR_RODADA
+    # Correção localizada do texto de um widget de orientação: troca a frase
+    # no CONTEÚDO da peça e refaz o HTML pelo gabarito. None = só leitura.
+    corrigir_widget: (Callable[["Documento", str, str], tuple["Documento | None", str]]
+                      | None) = None
 
 
 def _sobrepoe(ini: int, fim: int, spans: list[tuple[int, int]]) -> bool:
@@ -655,7 +661,22 @@ def aplicar_patches(doc: Documento, patches: Any, achados: dict[str, dict],
             continue
         campo, antes, depois = registro["campo"], registro["antes"], registro["depois"]
         if campo == "widget":
-            recusar("campo_somente_leitura")
+            achado = achados.get(registro["achado"])
+            if regras.corrigir_widget is None:
+                recusar("campo_somente_leitura")
+            elif achado is None or not _patchavel(achado) or achado["campo"] != "widget":
+                recusar("achado_nao_patchavel")
+            elif not antes.strip():
+                recusar("antes_vazio")
+            elif (motivo := _checar_depois(antes, depois, False, regras)) is not None:
+                recusar(motivo)
+            else:
+                corrigido, motivo = regras.corrigir_widget(novo, antes, depois)
+                if corrigido is None:
+                    recusar(motivo)
+                else:
+                    novo = corrigido
+                    aplicados.append({**registro, "estado": "aplicado"})
             continue
         texto = novo.campos().get(campo)
         if texto is None:
@@ -706,12 +727,18 @@ def aplicar_patches(doc: Documento, patches: Any, achados: dict[str, dict],
     return novo, aplicados, recusados
 
 
+_TEXTO_ENTRE_TAGS_RE = re.compile(r">[^<]*<")
+
+
 def assinatura_estrutural(doc: Documento) -> dict:
-    """O que um patch NUNCA pode mudar: hrefs, comentários de bloco, widget."""
+    """O que um patch NUNCA pode mudar: hrefs, comentários de bloco e o MARKUP
+    dos blocos HTML (tags, atributos, ids). O texto de um widget de orientação
+    pode mudar só pela correção localizada, que refaz a peça pelo gabarito."""
     if doc.formato == "gutenberg":
         return {"hrefs": _HREF_RE.findall(doc.corpo),
                 "blocos": [m.group(0) for m in _BLOCO_RE.finditer(doc.corpo)],
-                "widget": _RAW_HTML_RE.findall(doc.corpo)}
+                "widget": [_TEXTO_ENTRE_TAGS_RE.sub("><", b)
+                           for b in _RAW_HTML_RE.findall(doc.corpo)]}
     lp = doc._lp()
     return {"chaves": sorted(lp), "secoes": len(lp.get("sections") or []),
             "faq": len(lp.get("faq") or []), "ctas": len(lp.get("cta_texts") or []),
@@ -852,6 +879,9 @@ class ContextoDaRevisao:
     numeros_permitidos: set[str] = field(default_factory=set)
     revalidar: Callable[[Documento], list[Issue]] | None = None
     normalizar: Callable[[Documento], tuple[Documento, dict | None]] | None = None
+    corrigir_widget: Callable[[Documento, str, str], tuple[Documento | None, str]] | None = None
+    # Os fatos do inventário desta página (para o índice factual do lote).
+    fatos_do_inventario: list = field(default_factory=list)
     pacote_vencido: bool = False
     # A jornada da página (`jornada.contexto_de_jornada`); vazia sem contrato.
     jornada: dict = field(default_factory=dict)
@@ -952,7 +982,10 @@ def montar_prompt_do_revisor(doc: Documento, ctx: ContextoDaRevisao, *,
         criterios_so_aviso=[c for c in criterios if c in CRITERIOS_SO_AVISO],
         # sem número copiável: no canário o modelo devolveu o 0 do exemplo
         exemplo_de_notas="{" + ", ".join(f'"{c}": <0-10>' for c in criterios) + "}",
-        blocos=blocos, campos=list(doc.campos()), tem_widget=bool(doc.widget_texto()),
+        blocos=blocos, tem_widget=bool(doc.widget_texto()),
+        widget_editavel=bool(doc.widget_texto()) and ctx.corrigir_widget is not None,
+        campos=list(doc.campos()) + (["widget"] if bool(doc.widget_texto())
+                                     and ctx.corrigir_widget is not None else []),
         identidade=ctx.identidade or {},
         jornada=ctx.jornada or {},
         regras=politicas.get("regras") or [], notas_c=politicas.get("notas_c") or [],
@@ -1117,7 +1150,7 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
         bloqueantes = [a for a in achados if a["severidade"] == "bloqueante"]
         no_widget = [f"bloqueante_em_widget:{a['id']}" for a in bloqueantes
                      if a["campo"] == "widget"]
-        if no_widget:
+        if no_widget and ctx.corrigir_widget is None:
             return fechar("revisao_humana", doc, no_widget)
         if decisao == "aprovado" and patches:
             decisao = "ajustar"
@@ -1158,7 +1191,8 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
         # validadores determinísticos e pela regra "todo bloqueante resolvido".
         novo, aplicados, recusados = aplicar_patches(
             doc, patches, {a["id"]: a for a in achados},
-            RegrasDePatch(numeros_permitidos=set(ctx.numeros_permitidos)))
+            RegrasDePatch(numeros_permitidos=set(ctx.numeros_permitidos),
+                          corrigir_widget=ctx.corrigir_widget))
         rod["patches_aplicados"], rod["patches_recusados"] = aplicados, recusados
         if not aplicados:
             return manter_original("nenhum_patch_aplicado")

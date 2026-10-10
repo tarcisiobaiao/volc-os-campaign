@@ -26,6 +26,8 @@ from funnelforge.domain.models import Issue, StepResult, StepStatus, effective_r
 
 VERSAO = "ctas-do-funil-v1"
 MAX_ROTULO = 60          # copy_contract.CTA_MAX_CHARS
+TITULO_DA_DOBRA = 45     # 2 linhas no celular sobre a imagem do topo
+SUBTITULO_DA_DOBRA = 160
 SUFIXO_DE_SAIDA = " >>>"
 _PROIBIDO_RE = re.compile(r"https?://|www\.|<|>|\[|\]|\"", re.I)
 _NUMERO_RE = re.compile(r"\d+(?:[.,]\d+)*")
@@ -141,17 +143,53 @@ def _conferir(rotulo: Any, aresta: dict, contexto_do_destino: str) -> tuple[str,
     return final, ""
 
 
+def _lacunas_centrais(state) -> dict[int, list[dict]]:
+    """Páginas cuja promessa central ficou sem lastro depois da pesquisa."""
+    lacunas: dict[int, list[dict]] = {}
+    por_numero = {p.page_number: p for p in state.plan.pages}
+    for pagina in (state.dossie or {}).get("paginas", []):
+        page = por_numero.get(pagina.get("page_number"))
+        if page is None or page.jornada is None:
+            continue
+        descricoes = {r.id: r.descricao for r in page.jornada.requisitos}
+        faltam = [{"requisito": c["requisito_id"], "estado": c.get("estado", ""),
+                   "descricao": descricoes.get(c["requisito_id"], c["requisito_id"])}
+                  for c in (pagina.get("cobertura") or {}).get("requisitos") or []
+                  if c.get("central") and c.get("estado") not in ("verified", "derived")]
+        if faltam:
+            lacunas[page.page_number] = faltam
+    return lacunas
+
+
+def _conferir_texto(texto: Any, minimo: int, maximo: int, base: str) -> tuple[str, str]:
+    """Primeira dobra e entrega ajustada: só o objetivo (tamanho, URL, número)."""
+    if not isinstance(texto, str) or not texto.strip():
+        return "", "vazio"
+    limpo = re.sub(r"\s+", " ", texto).strip()
+    if not minimo <= len(limpo) <= maximo:
+        return "", f"{len(limpo)} caracteres (de {minimo} a {maximo})"
+    if re.search(r"https?://|www\.|<|>", limpo, re.I):
+        return "", "URL ou tag"
+    digitos = {float(n.replace(".", "").replace(",", ".")) for n in _NUMERO_RE.findall(limpo)}
+    if not digitos <= numeros_do_texto(base):
+        return "", "número que não está nos fatos"
+    return limpo, ""
+
+
 def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set:
-    """Aplica nas rotas os rótulos do sniper; devolve {(origem, slug)} rotulados."""
+    """Uma chamada para os textos de clique do funil: primeira dobra da LP,
+    botões de entrada e progressão, saídas oficiais e, para a página cuja
+    promessa central ficou sem fonte, a entrega ajustada (que vale também para
+    os botões que levam a ela). Aplica tudo nas rotas e em `entregas` (o
+    chamador monta os pacotes com elas); devolve {(origem, slug)} rotulados."""
+    from funnelforge.domain.models import PageRole
     cfg = deps.settings.steps.get("ctas") or deps.settings.steps.get("write_page")
     if state.plan is None or cfg is None:
         return set()
     arestas, oficiais = _arestas(state, deps, ferramentas, entregas)
-    if not arestas:
-        return set()
+    anterior = state.ctas_do_funil or {}
     anteriores = {(b["origem"], _chave(b["destino"])): b
-                  for b in (state.ctas_do_funil or {}).get("botoes") or []
-                  if b.get("rotulo")}
+                  for b in anterior.get("botoes") or [] if b.get("rotulo")}
     reusados, pedir = [], []
     for a in arestas:
         antigo = anteriores.get((a["origem"], _chave(a["destino"])))
@@ -167,25 +205,92 @@ def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set
             a["oficial"] = next(f"o{k}" for k, url in enumerate(oficiais, start=1)
                                 if url == _chave(a["destino"]))
     contexto = _contexto(state, ferramentas, entregas, oficiais)
+    paginas = {p["pagina"]: p for p in contexto["paginas"]}
+
+    lp = next((p for p in state.plan.pages if effective_role(p) is PageRole.LP), None)
+    base_lp = " ".join([paginas[lp.page_number]["entrega"],
+                        *(f["afirmacao"] for f in _fatos(state, lp.page_number))]) if lp else ""
+    assinatura_lp = sha256_canonico(base_lp)[:16] if lp else ""
+    dobra = anterior.get("primeira_dobra") or {}
+    pedir_dobra = lp is not None and dobra.get("assinatura") != assinatura_lp
+    if not pedir_dobra:
+        dobra = {**dobra, "origem": "reaproveitado"} if dobra else {}
+
+    ajustes_antigos = {a["pagina"]: a for a in anterior.get("entregas_ajustadas") or []}
+    ajustes, pedir_ajustes = [], []
+    for n, faltam in _lacunas_centrais(state).items():
+        assinatura = sha256_canonico({"faltam": faltam,
+                                      "entrega": paginas.get(n, {}).get("entrega", "")})[:16]
+        velho = ajustes_antigos.get(n)
+        if velho is not None and velho.get("assinatura") == assinatura:
+            ajustes.append({**velho, "origem": "reaproveitado"})
+        else:
+            pedir_ajustes.append({"pagina": n, "assinatura": assinatura, "faltam": faltam,
+                                  "entrega": paginas.get(n, {}).get("entrega", ""),
+                                  "fatos": paginas.get(n, {}).get("fatos", [])})
+
     recusas: dict[str, str] = {}
     novos: list[dict] = []
     res = StepResult(step="ctas_do_funil", status=StepStatus.SKIPPED, attempts=0)
-    if pedir:
+    if pedir or pedir_dobra or pedir_ajustes:
         from funnelforge.pipeline import steps as st
         from funnelforge.prompts import render
-        prompt = render("ctas_do_funil", botoes=pedir, **contexto)
+        prompt = render("ctas_do_funil", botoes=pedir, ajustes=pedir_ajustes,
+                        primeira_dobra=({"pergunta": paginas[lp.page_number]["pergunta"],
+                                         "entrega": paginas[lp.page_number]["entrega"],
+                                         "fatos": paginas[lp.page_number]["fatos"]}
+                                        if pedir_dobra else None), **contexto)
         try:
             texto, res = deps.runner.run_llm_step(
                 "ctas_do_funil", cfg.model_copy(update={"validators": []}),
                 [{"role": "user", "content": prompt}], ctx={}, run_id=state.run_id)
-            resposta = {str(b.get("id")): b for b in st._tolerant_json(texto).get("botoes") or []
-                        if isinstance(b, dict)}
-        except Exception as exc:  # noqa: BLE001 - sem rótulo novo, fica o do plano
+            dados = st._tolerant_json(texto)
+        except Exception as exc:  # noqa: BLE001 - sem texto novo, fica o do plano
             res = getattr(exc, "step_result", StepResult(step="ctas_do_funil",
                                                          status=StepStatus.FAILED))
-            resposta = {}
+            dados = {}
             recusas["*"] = f"{type(exc).__name__}: {str(exc)[:200]}"
-        paginas = {p["pagina"]: p for p in contexto["paginas"]}
+        resposta = {str(b.get("id")): b for b in dados.get("botoes") or []
+                    if isinstance(b, dict)}
+
+        # 1) entregas ajustadas: só para as páginas pedidas, com os fatos delas.
+        propostas = {e.get("pagina"): e for e in dados.get("entregas_ajustadas") or []
+                     if isinstance(e, dict)}
+        for pedido in pedir_ajustes:
+            n = pedido["pagina"]
+            proposta = propostas.get(n) or {}
+            entrega, motivo = _conferir_texto(
+                proposta.get("entrega"), 30, 400, " ".join([pedido["entrega"], *pedido["fatos"]]))
+            if motivo:
+                recusas[f"entrega_p{n}"] = motivo
+                continue
+            ajustes.append({"pagina": n, "assinatura": pedido["assinatura"],
+                            "entrega_original": pedido["entrega"], "entrega": entrega,
+                            "o_que_sai": str(proposta.get("o_que_sai") or "")[:300],
+                            "requisitos_sem_lastro": [f["requisito"] for f in pedido["faltam"]],
+                            "origem": "sniper"})
+        for a in ajustes:
+            if a["pagina"] in paginas:
+                paginas[a["pagina"]]["entrega"] = a["entrega"]
+
+        # 2) primeira dobra da LP.
+        if pedir_dobra:
+            bruta = dados.get("primeira_dobra") if isinstance(dados.get("primeira_dobra"),
+                                                              dict) else {}
+            # O título do template cabe em 2 linhas no celular (run final de
+            # 10/10: 60 caracteres viraram 3 linhas sobre a imagem).
+            titulo, m1 = _conferir_texto(bruta.get("titulo"), 8, TITULO_DA_DOBRA, base_lp)
+            subtitulo, m2 = _conferir_texto(bruta.get("subtitulo"), 30, SUBTITULO_DA_DOBRA,
+                                            base_lp)
+            if m1 or m2:
+                recusas["primeira_dobra"] = f"título: {m1 or 'ok'}; subtítulo: {m2 or 'ok'}"
+                dobra = {}
+            else:
+                dobra = {"titulo": titulo, "subtitulo": subtitulo, "assinatura": assinatura_lp,
+                         "justificativa": str(bruta.get("justificativa") or "")[:300],
+                         "origem": "sniper"}
+
+        # 3) botões, conferidos contra a entrega (ajustada) do destino.
         oficiais_por_id = {o["id"]: o for o in contexto["oficiais"]}
         for a in pedir:
             b = resposta.get(a["id"])
@@ -218,13 +323,27 @@ def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set
         novos = [b for b in novos if id(b) not in repetidos]
     aplicados = novos + reusados
     _aplicar(state, aplicados)
+    for a in ajustes:
+        entregas[a["pagina"]] = a["entrega"]
     state.ctas_do_funil = {"versao": VERSAO, "botoes": aplicados, "recusas": recusas,
+                           "primeira_dobra": dobra, "entregas_ajustadas": ajustes,
                            "pedidos": len(pedir), "reaproveitados": len(reusados),
                            "modelo": res.model_used or "", "auth_mode": res.auth_mode or ""}
     res.issues = list(res.issues) + [Issue(code="ctas_do_funil", message=json.dumps({
         "arestas": len(arestas), "pedidas": len(pedir), "aplicadas": len(novos),
-        "reaproveitadas": len(reusados), "recusas": recusas}, ensure_ascii=False))]
+        "reaproveitadas": len(reusados), "primeira_dobra": bool(dobra),
+        "entregas_ajustadas": [a["pagina"] for a in ajustes], "recusas": recusas},
+        ensure_ascii=False))]
     state.step_status["ctas_do_funil"] = res
+    if ajustes:
+        # O plano aprovado não muda em silêncio: a mudança material de entrega
+        # fica registrada por página, com o que saiu e por quê.
+        state.step_status["delta_de_entrega"] = StepResult(
+            step="delta_de_entrega", status=StepStatus.OK, attempts=0, issues=[
+                Issue(code="entrega_ajustada", message=json.dumps(
+                    {k: a[k] for k in ("pagina", "entrega_original", "entrega", "o_que_sai",
+                                       "requisitos_sem_lastro") if k in a},
+                    ensure_ascii=False)) for a in ajustes])
     pasta = deps.runner.runs_dir / state.run_id
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "ctas_do_funil.json").write_text(

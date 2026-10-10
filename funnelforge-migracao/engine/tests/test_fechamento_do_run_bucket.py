@@ -87,6 +87,26 @@ def test_saida_oficial_prefere_a_fonte_da_pagina_e_o_emissor_nacional():
                           "escopo": "nacional"}},
         {"source_url": cadunico, "paginas": ["como_obter"], "proveniencia": {}}]})
     pagina = NS(jornada=NS(duvida_id="como_obter"))
-    assert _ordem_dos_canais(state, pagina, [cemig, ANEEL, cadunico]) == [cadunico, ANEEL, cemig]
+    # Emissor nacional conferido primeiro; entre os demais, a fonte da página.
+    assert _ordem_dos_canais(state, pagina, [cemig, ANEEL, cadunico]) == [ANEEL, cadunico, cemig]
     outra = NS(jornada=NS(duvida_id="outra"))
     assert _ordem_dos_canais(state, outra, [cemig, ANEEL, cadunico])[0] == ANEEL
+
+
+def test_fonte_regional_da_pagina_nao_passa_a_frente_do_servico_nacional():
+    """Run final de 10/10: as duas fontes eram da p4; a notícia do governo da
+    Bahia ficou à frente do "Fale com a sua distribuidora" da ANEEL."""
+    from types import SimpleNamespace as NS
+    from funnelforge.domain.models import RunState
+    from funnelforge.pipeline.steps import _ordem_dos_canais
+    bahia = "https://www.ba.gov.br/justica/noticias/2025-01/17854/servico-de-energia"
+    fale = "https://www.gov.br/aneel/pt-br/canais_atendimento/fale-com-a-sua-distribuidora"
+    state = RunState(run_id="r", dossie={"fatos": [
+        {"source_url": bahia, "paginas": ["por_distribuidora"],
+         "proveniencia": {"emissor_verificado": True, "escopo": "desconhecido",
+                          "declarado": {"escopo": "subnacional"}}},
+        {"source_url": fale, "paginas": ["por_distribuidora"],
+         "proveniencia": {"emissor_verificado": True, "tipo_de_emissor": "regulador",
+                          "escopo": "nacional"}}]})
+    pagina = NS(jornada=NS(duvida_id="por_distribuidora"))
+    assert _ordem_dos_canais(state, pagina, [bahia, fale]) == [fale, bahia]

@@ -589,6 +589,7 @@ def test_print_oficial_do_v1_e_capturado_e_embutido_no_ramo_novo(tmp_path, monke
     solucoes = [p for p in state.plan.pages if p.role is PageRole.SOLUTION]
     com_print = [p for p in solucoes if state.screenshots.get(p.page_number)]
     assert com_print, "nenhuma SOLUTION do ramo novo capturou o print oficial"
+    embutidos = 0
     for p in com_print:
         n = p.page_number
         assert state.step_status[f"screenshot_p{n}"].status is StepStatus.OK
@@ -596,5 +597,14 @@ def test_print_oficial_do_v1_e_capturado_e_embutido_no_ramo_novo(tmp_path, monke
         publicado = wp.posts[p.slug]["content"]
         assert wp.posts[p.slug]["status"] == "draft"
         prints = [d for d in state.decoracoes[n] if d["tipo"] == "print_oficial"]
-        assert prints and all(d["fragmento"] in publicado for d in prints)
-        assert any(Path(s["path"]).name in publicado for s in state.screenshots[n])
+        assert all(d["fragmento"] in publicado for d in prints)
+        # Print ao lado do link, ou nada: destino que o texto aprovado não linka
+        # não sobe para a mídia nem entra solto no corpo.
+        for s in state.screenshots[n]:
+            nome = Path(s["path"]).name
+            if s["url"] in state.drafts[n].content:
+                assert nome in publicado and nome in wp.midia
+                embutidos += 1
+            else:
+                assert nome not in publicado and nome not in wp.midia
+    assert embutidos, "nenhum print oficial ficou ao lado do link que ele mostra"

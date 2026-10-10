@@ -263,13 +263,18 @@ def run_pipeline(
             raise ValueError("brief pré-arquitetura não pode chegar depois de plano injetado")
         if not deps.settings.run.dossie_factual:
             raise ValueError("inteligência pré-redação exige o dossiê existente")
-        from funnelforge.pipeline.inteligencia import preparar_inteligencia
-        with cronometrar(state, "inteligencia"):
-            preparar_inteligencia(state, deps, card_pre_arquitetura)
-        state.editorial_v2 = True
+        from funnelforge.pipeline.inteligencia import plano_aprovado_valido, preparar_inteligencia
         referencia = (card_pre_arquitetura.get("historico") or {}).get("arquitetura_referencia")
         if isinstance(referencia, dict) and referencia.get("pages") and deps.arquitetura_aprovada is None:
             deps.arquitetura_aprovada = referencia
+        # Com esqueleto aprovado, a pesquisa antecipada (guiada pelo PAA, feita
+        # para o arquiteto) não roda: a primeira pesquisa é a do dossiê, guiada
+        # pelos requisitos, ferramentas e saídas oficiais das páginas aprovadas.
+        # O PAA continua no brief (intenção, dúvidas e linguagem).
+        with cronometrar(state, "inteligencia"):
+            preparar_inteligencia(state, deps, card_pre_arquitetura,
+                                  pesquisar=not plano_aprovado_valido(deps.arquitetura_aprovada))
+        state.editorial_v2 = True
 
     # PLANO INJETADO (ponte VOLC). Só entra num state que ainda NÃO tem plano,
     # para que um `resume` jamais seja sobrescrito por engano.
@@ -425,7 +430,10 @@ def run_pipeline(
         for page in pages:
             if _processar_pagina(state, page, deps, laco) == "break":
                 break
-    if dossie_vivo is not None:
+    if dossie_vivo is not None and not state.pacotes:
+        # Com pacotes, a evidência foi congelada ANTES da redação e não muda
+        # depois dela: reconsolidar aqui reordenava canais oficiais de páginas já
+        # escritas e revisadas (p4 do run final de 10/10).
         _consolidar_dossie(state, deps, dossie_vivo)
 
     # REVISÃO GLOBAL do funil pronto (só com jornada), ANTES de qualquer
@@ -1110,6 +1118,12 @@ def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
         # widget e revisor continuavam lendo a fotografia antiga de cada
         # worker.
         paginas = [p for p in state.plan.pages if p.jornada is not None]
+        vivo.recalcular(state, paginas)
+        final = vivo.montar(state)
+        # A ordem dos canais oficiais lê o dossiê do estado (emissor, escopo,
+        # páginas de cada fonte). Na 1ª passada ele ainda é o de antes da rodada
+        # complementar; a 2ª ordena com os fatos finais. Rede já está no bucket.
+        state.dossie = final.model_dump(mode="json")
         vivo.recalcular(state, paginas)
         final = vivo.montar(state)
     state.dossie = final.model_dump(mode="json")

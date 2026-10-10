@@ -272,6 +272,7 @@ class OpenAIResponsesClient:
             text=texto, model_used=PREFIXO_DO_PLANO + servido, parsed=parsed,
             prompt_tokens=int(uso.get("input_tokens") or 0),
             completion_tokens=int(uso.get("output_tokens") or 0),
+            cached_tokens=int((uso.get("input_tokens_details") or {}).get("cached_tokens") or 0),
             cost_usd=0.0, latency_ms=int((time.perf_counter() - inicio) * 1000),
             response_id=str(final.get("id") or ""), auth_mode=AUTH_MODE,
             reasoning_effort=reasoning_effort or "")

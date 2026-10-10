@@ -89,7 +89,7 @@ class Runner:
         attempts = 0
         last_issues: list = []
         model_used = text = ""
-        prompt_tokens = completion_tokens = latency_ms = 0
+        prompt_tokens = completion_tokens = latency_ms = cached_tokens = 0
         cost_usd = 0.0
 
         def _parcial() -> StepResult:
@@ -99,6 +99,7 @@ class Runner:
                 step=name, status=StepStatus.FAILED, model_used=model_used,
                 model_requested=cfg.model,
                 attempts=attempts, issues=last_issues, prompt_tokens=prompt_tokens,
+                cached_tokens=cached_tokens,
                 completion_tokens=completion_tokens, cost_usd=cost_usd,
                 latency_ms=latency_ms)
 
@@ -135,6 +136,7 @@ class Runner:
                            "reasoning_effort": getattr(res, "reasoning_effort", "") or "",
                            "response_id": getattr(res, "response_id", "") or ""}
             prompt_tokens += res.prompt_tokens
+            cached_tokens += int(getattr(res, "cached_tokens", 0) or 0)
             completion_tokens += res.completion_tokens
             cost_usd += res.cost_usd
             latency_ms += res.latency_ms
@@ -163,6 +165,7 @@ class Runner:
                               "fallback": _normalize_model_base(model_used)
                               != _normalize_model_base(cfg.model),
                               "prompt_tokens": res.prompt_tokens,
+                              "cached_tokens": int(getattr(res, "cached_tokens", 0) or 0),
                               "completion_tokens": res.completion_tokens,
                               "cost_usd": res.cost_usd, "latency_ms": res.latency_ms,
                               "n_issues": len(last_issues),
@@ -183,7 +186,7 @@ class Runner:
                     issues=[Issue(code=f"localizador:{i.code}", message=i.message)
                             for i in localizadores],
                     prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
-                    cost_usd=cost_usd, latency_ms=latency_ms)
+                    cached_tokens=cached_tokens, cost_usd=cost_usd, latency_ms=latency_ms)
             # Reprovação que NÃO depende do texto (rotas do pagespec, ausência
             # de link oficial): reescrever devolve o mesmo veredito. Sela aqui.
             if not veredito.retentar:
