@@ -55,6 +55,26 @@ def _lista(valor: Any) -> list[str]:
     return []
 
 
+# O que o `config_snapshot.json` de um run fixa para a retomada. Site e
+# credencial continuam vindo do perfil: são do projeto, não do run.
+_CONFIG_DO_RUN = ("run", "steps", "routing", "ads", "index", "uniqueness",
+                  "screenshot", "budget", "openai")
+
+
+def configuracao_efetiva_do_run(settings: Settings, snapshot: dict[str, Any]) -> Settings:
+    """As settings com que o run NASCEU, para retomá-lo igual.
+
+    Inferir o preset pelo modo de autenticação errava em silêncio sempre que o
+    run tinha outra combinação (workers, prints, modelos, tetos). O snapshot é
+    o registro do que de fato rodou; os segredos continuam os do ambiente.
+    """
+    dados = settings.model_dump()
+    for chave in _CONFIG_DO_RUN:
+        if chave in snapshot:
+            dados[chave] = snapshot[chave]
+    return Settings.model_validate(dados)
+
+
 def aplicar_perfil(settings: Settings, perfil: dict[str, Any] | None) -> Settings:
     """Devolve uma `Settings` NOVA com o projeto e o tema por cima da doutrina.
 

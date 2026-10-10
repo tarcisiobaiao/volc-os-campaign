@@ -260,12 +260,12 @@ def _revisar_avulso(tmp_path: Path, resposta: str) -> tuple[dict, dict, str]:
 
 
 def test_ajuste_retido_so_pela_trava_leva_os_patches_para_a_pessoa(tmp_path):
-    """Notas coerentes com o bloqueante (compliance 4 no texto de antes): vai à
-    pessoa com o texto original, mas o patch corretivo segue no lote."""
+    """Nota de falha (compliance 3 no texto de antes): vai à pessoa com o texto
+    original, mas o patch corretivo segue no lote."""
     registro, lote, revisado = _revisar_avulso(
-        tmp_path, _resp("ajustar", dict(BOAS, compliance=4), [A_PROMESSA], [P_PROMESSA]))
+        tmp_path, _resp("ajustar", dict(BOAS, compliance=3), [A_PROMESSA], [P_PROMESSA]))
     assert registro["decisao"] == lote["decisao"] == "revisao_humana"
-    assert f"{MOTIVO}:compliance=4" in registro["motivos"]
+    assert f"{MOTIVO}:compliance=3" in registro["motivos"]
     assert revisado == _doc().corpo                                 # texto intacto
     rod = registro["rodadas"][0]
     assert rod["retida_pela_trava_de_notas"] is True and not rod.get("mantida")

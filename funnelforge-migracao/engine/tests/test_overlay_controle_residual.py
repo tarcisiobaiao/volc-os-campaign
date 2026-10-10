@@ -48,3 +48,24 @@ def test_faixa_fina_de_redefinir_cookies_nao_descarta_o_print():
 
 def test_banner_de_cookies_continua_obstrutivo():
     assert _scan(BANNER)
+
+
+def test_print_mobile_comeca_no_titulo_abaixo_do_cabecalho_fixo():
+    """Print útil no celular: rola até o H1 do conteúdo e desconta o cabeçalho
+    fixo do portal, que senão cobriria o título."""
+    from funnelforge.adapters.screenshot_playwright import PlaywrightScreenshotProvider
+    html = ("""<body style="margin:0"><header style="position:sticky;top:0;height:60px;
+    background:#fff;width:100%">Portal</header><div style="height:900px">menu</div>
+    <main><h1 id="t">Tarifa Social</h1><p style="height:1500px">texto</p></main></body>""")
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except Exception as exc:  # noqa: BLE001
+            pytest.skip(f"Chromium indisponível: {exc}")
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        page.set_content(html)
+        PlaywrightScreenshotProvider._rolar_ate_o_titulo(page)
+        topo = page.evaluate("document.getElementById('t').getBoundingClientRect().top")
+        browser.close()
+    assert 60 <= topo <= 120
+

@@ -92,9 +92,13 @@ def previews(run: Path, out: Path) -> tuple[list[dict], dict]:
             body, css = elementor_body(json.loads(source.read_text()))
         else:
             source = next(run.glob(f'p{n}.*.gutenberg.html'))
-            body, css = f'<h1>{p["h1_title"]}</h1>' + source.read_text(), extra_css
+            # O MU-plugin de hardening escopa o CSS em `.single-rec .content`,
+            # como o tema: sem esse escopo, nenhuma regra dele vale no preview.
+            body = f'<div class="content"><h1>{p["h1_title"]}</h1>' + source.read_text() + '</div>'
+            css = extra_css
         path = out / f'p{n}.preview.html'
-        path.write_text(document(p['h1_title'], body, css=css, footer=footer))
+        path.write_text(document(p['h1_title'], body, css=css, footer=footer,
+                                 body_class='' if p['page_type'] == 'LANDING PAGE' else 'single-rec'))
         docs.append({'page': p, 'path': path, 'source': source,
                      'sha256': hashlib.sha256(source.read_bytes()).hexdigest()})
     return docs, config

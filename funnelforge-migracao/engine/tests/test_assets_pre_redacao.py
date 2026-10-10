@@ -1,5 +1,6 @@
 """PAA reaproveitado, pesquisa ultranichada, cálculo real e promessa efetiva."""
 import copy
+import json
 from decimal import Decimal
 
 import pytest
@@ -175,13 +176,26 @@ def test_ferramenta_pre_validada_injetada_sem_chamada_llm(tmp_path):
 
 
 def test_navegacao_nao_reintroduz_copy_da_ferramenta_retirada(tmp_path):
-    state, p, deps = pacote(tmp_path, sem_fonte=True)
+    # ferramenta retirada por gabarito que não bate com o código (sem fonte, a
+    # calculadora de operação fixa continua pronta desde 10/10/2026)
+    state, p, deps = pacote(tmp_path, ruim=True)
     corpo = ("<!-- wp:paragraph --><p>Informação verificável.</p><!-- /wp:paragraph -->\n" * 3
              + "<!-- wp:heading --><h2>Próximo passo</h2><!-- /wp:heading -->")
     assert ensure_top_navigation_cta(state, p, deps, corpo) == corpo
 
 
-@pytest.mark.parametrize("ruim,sem_fonte", [(True, False), (False, True)])
+def test_calculadora_de_operacao_fixa_fica_pronta_sem_lastro_do_limite(tmp_path):
+    """10/10/2026: renda ÷ moradores não depende do salário-mínimo. Sem fonte da
+    regra ou do valor vigente, a conta segue disponível e o texto é proibido de
+    afirmar o limite ou concluir direito (degradação no dossiê)."""
+    state, p, deps = pacote(tmp_path, sem_fonte=True)
+    assert state.pacotes[p.page_number]["ferramenta"]["estado"] == "pronta"
+    degradacoes = (state.dossie.get("paginas") or {}) if isinstance(state.dossie, dict) else {}
+    texto = json.dumps(state.dossie, ensure_ascii=False)
+    assert "não afirme o limite em reais" in texto, degradacoes
+
+
+@pytest.mark.parametrize("ruim,sem_fonte", [(True, False)])
 def test_fallback_fecha_promessa_e_cta_antes_da_redacao(tmp_path, ruim, sem_fonte):
     state, p, deps = pacote(tmp_path, ruim=ruim, sem_fonte=sem_fonte)
     pac = state.pacotes[p.page_number]
@@ -220,3 +234,14 @@ def test_chromium_resultados_reais_e_sem_overflow():
                 page.close()
         finally:
             browser.close()
+
+
+def test_ferramenta_pronta_nao_apaga_rotulos_nem_troca_a_promessa(tmp_path):
+    """Run real 09/10: a calculadora pronta da pré-sell apagou os três botões
+    dela e o da LP que chegava nela; o redator reescreveu e saíram mornos."""
+    state, p, deps = pacote(tmp_path)
+    assert state.pacotes[p.page_number]["ferramenta"]["estado"] == "pronta"
+    for pacote_ in state.pacotes.values():
+        assert not any(l.get("reformular_cta") for l in pacote_["links"])
+    assert state.pacotes[p.page_number]["jornada"]["resposta_imediata"] == \
+        p.jornada.resposta_imediata

@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-09T18:16:46-03:00",
+  "generated_at": "2026-10-10T07:32:13-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 848,
-    "markdown": 626,
+    "files": 849,
+    "markdown": 627,
     "sql": 222,
-    "tracked": 838,
+    "tracked": 839,
     "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 45,
+      "audit": 46,
       "documentation": 451,
       "generated": 2,
       "module-guide": 41,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23945,
+      "bytes": 23929,
       "lines": 318,
-      "sha256": "b283a851736891458b5df733a074db0502f7bcd43673ba235702c0861facf6d1",
+      "sha256": "4fc9b4355e16f781995ffc4f270ae2c1130c55ddf02322c4b197021969627286",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1942,6 +1942,18 @@
       "bytes": 4249,
       "lines": 63,
       "sha256": "b791f38472a686ff1bd657059383cc5e5e632fe9b54ca49f4daf4dcaeb88ef11",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-REVISAO-LOCALIZADA-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 3988,
+      "lines": 63,
+      "sha256": "39b0dbb25e60b6ca440ac7b2105d8aaeb4334b75fa2967856f7fe8c5285a7896",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

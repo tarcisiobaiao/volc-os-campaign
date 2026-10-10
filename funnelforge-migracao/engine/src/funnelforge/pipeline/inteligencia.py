@@ -315,7 +315,10 @@ def congelar_pacotes(state, deps):
     entregas = {}
     for p in state.plan.pages:
         itens = ferramentas[p.page_number]["itens"]
-        if itens:
+        # Só a ferramenta que NÃO ficou pronta muda a promessa e os botões. Com
+        # a calculadora validada, a entrega planejada vale como está: apagar os
+        # rótulos aprovados obrigava o redator a reescrevê-los (e saíam mornos).
+        if any(a["estado"] != "pronta" for a in itens):
             entregas[p.page_number] = " ".join(
                 a["entrega"] if a["estado"] == "pronta" else a["fallback_sem_js"] for a in itens).strip()
     for p in state.plan.pages:
@@ -512,6 +515,22 @@ def prompt_do_pacote(state, page):
         + regra_lp
 
 
+def _inventario_de_midia(state, page):
+    """O que a página tem de fato, para o revisor não julgar promessa no escuro."""
+    n = page.page_number
+    revisao = (state.image_reviews or {}).get(n) or {}
+    ferramenta = ((state.pacotes or {}).get(n) or {}).get("ferramenta") or {}
+    return {
+        "imagem": {"aprovada": bool(revisao.get("accepted")),
+                   "cena": ((revisao.get("review") or {}).get("evidence") or "")[:240]},
+        "prints_oficiais": [s.get("url") for s in (state.screenshots or {}).get(n) or []],
+        "ferramenta": {"estado": ferramenta.get("estado", "nao_pedida"),
+                       "itens": [{"pergunta": i.get("pergunta"), "estado": i.get("estado"),
+                                  "entrega": i.get("entrega", "")}
+                                 for i in ferramenta.get("itens") or []]},
+    }
+
+
 def revisar_lote(state, pages, deps):
     """Uma chamada; mesmas políticas, notas, patcher e recibos do revisor V2."""
     from funnelforge.pipeline import steps as st
@@ -522,10 +541,13 @@ def revisar_lote(state, pages, deps):
         doc = documento_de(state.drafts[p.page_number], state.seo.get(p.page_number))
         ctx = st._contexto_da_revisao(state, p, deps, doc)
         prompts.append({"page_number": p.page_number,
-                        "prompt": montar_prompt_do_revisor(doc, ctx)})
+                        "prompt": montar_prompt_do_revisor(doc, ctx),
+                        "inventario_de_midia": _inventario_de_midia(state, p)})
     mensagem = ("REVISOR GLOBAL: revise todas as páginas em uma única resposta. "
                 "Preserve o contrato individual integral, critérios, notas e políticas. "
-                "Não redesenhe a jornada. Não pesquise. Responda JSON: "
+                "Não redesenhe a jornada. Não pesquise. inventario_de_midia diz o que existe "
+                "de verdade em cada página (imagem aprovada, prints oficiais, ferramenta): "
+                "não prometa nem peça o que não está lá. Responda JSON: "
                 '{"paginas":[{"page_number":1,"revisao":{...resposta do revisor...}}]}. '
                 "Uma entrada exata por página; nenhum texto fora do JSON.\n"
                 + json.dumps({"brief_pre_arquitetura": state.brief_pre_arquitetura.model_dump(),

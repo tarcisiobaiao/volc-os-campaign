@@ -374,11 +374,24 @@ def resume(run_id: str, publish: bool = False, only: str | None = None,
     estado não acha nada; a verdade está em `page_4`. Foi assim que o 401 acima
     passou despercebido por três tentativas.
     """
-    from funnelforge.config.perfil import aplicar_perfil, termos_do_tema
+    from funnelforge.config.perfil import (
+        aplicar_perfil,
+        configuracao_efetiva_do_run,
+        termos_do_tema,
+    )
     from funnelforge.domain.models import RunState
 
     dados_perfil = json.loads(perfil.read_text(encoding="utf-8")) if perfil else None
-    settings = aplicar_perfil(load_settings(), dados_perfil)
+    base = load_settings()
+    snapshot = Path("runs") / run_id / "config_snapshot.json"
+    if snapshot.exists():
+        # A retomada roda com a configuração EFETIVA do run (modelos, workers,
+        # prints, tetos); do perfil só valem site e credencial.
+        base = configuracao_efetiva_do_run(
+            base, json.loads(snapshot.read_text(encoding="utf-8")))
+        if dados_perfil:
+            dados_perfil = {k: v for k, v in dados_perfil.items() if k != "preset"}
+    settings = aplicar_perfil(base, dados_perfil)
     deps = build_deps(settings)
     deps.tema_termos = termos_do_tema(dados_perfil)
 

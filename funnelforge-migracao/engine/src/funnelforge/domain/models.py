@@ -284,6 +284,9 @@ class CalculoDoAtivo(BaseModel):
     rotulos: list[str] = Field(min_length=2, max_length=2)
     rotulo_resultado: str = Field(min_length=1)
     casos: list[CasoDoCalculo] = Field(min_length=2, max_length=12)
+    # Índices das entradas que só aceitam inteiro positivo (pessoas, meses):
+    # "1,5 integrante" não é entrada válida, mesmo que a conta funcione.
+    inteiros: list[Literal[0, 1]] = Field(default_factory=list, exclude_if=lambda v: not v)
 
 
 class AtivoInterativo(BaseModel):

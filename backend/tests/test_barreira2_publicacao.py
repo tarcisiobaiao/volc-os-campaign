@@ -679,11 +679,9 @@ def test_o_disparo_da_interface_roda_o_motor_canonico_com_pesquisa_antes(
     assert card["historico"]["arquitetura_referencia"]["pages"][0]["slug"] == "rotina-de-leitura"
 
 
-def test_a_retomada_usa_o_preset_com_que_o_run_nasceu(tmp_path):
-    (tmp_path / "config_snapshot.json").write_text(
-        '{"openai": {"auth_mode": "chatgpt_plan"}}', encoding="utf-8")
-    assert pub._preset_do_run(tmp_path) == "completo_chatgpt"
-    (tmp_path / "config_snapshot.json").write_text(
-        '{"openai": {"auth_mode": "api_key"}}', encoding="utf-8")
-    assert pub._preset_do_run(tmp_path) is None
-    assert pub._preset_do_run(tmp_path / "ausente") is None
+def test_a_retomada_nao_infere_preset_pelo_modo_de_autenticacao():
+    """A configuração efetiva do run vem do `config_snapshot.json` no motor
+    (`funnelforge resume`); o backend não adivinha preset."""
+    import inspect
+    assert not hasattr(pub, "_preset_do_run")
+    assert "preset=" not in inspect.getsource(pub.publicar_pagina_do_run)

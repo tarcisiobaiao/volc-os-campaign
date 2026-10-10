@@ -585,7 +585,18 @@ def cobertura_da_pagina(state: RunState, page: Page, fatos: list[FatoDoDossie],
                                                       hoje or date.today())
             cob.vinculos += vinculos
             cob.vinculos_faltantes += faltas
-            if falhas:
+            if falhas and ativo.calculo is not None:
+                # Calculadora de operação fixa só faz a conta (renda ÷ moradores
+                # não depende do salário-mínimo). O que falta é o lastro para
+                # COMPARAR com um limite: isso sai do texto, a ferramenta fica.
+                cob.degradacoes.append({
+                    "requisito": f"ativo:{ativo.pergunta}", "estado": "unsupported",
+                    "risco": "baixo", "central": False,
+                    "instrucao": ("a calculadora faz só a conta; sem fonte verificada para "
+                                  "a regra ou o valor vigente do limite, não afirme o limite "
+                                  "em reais nem conclua direito a partir do resultado ("
+                                  + "; ".join(falhas) + ")")})
+            elif falhas:
                 # Só a FERRAMENTA que depende do dado sai; a página segue.
                 cob.desativados.append({"tipo": "ativo", "nome": ativo.pergunta,
                                         "motivo": "; ".join(falhas)})

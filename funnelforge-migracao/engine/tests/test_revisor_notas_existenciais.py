@@ -87,7 +87,7 @@ def test_todas_as_notas_zero_nao_aprovam(tmp_path):
     r, _ = _rodar([_resp(notas={c: 0 for c in EDITORIAIS})], tmp_path)
     assert r.decisao == "revisao_humana"
     assert sorted(_motivos_de_nota(r)) == sorted(
-        f"{MOTIVO}:{c}=0" for c in EDITORIAIS if c not in revisao.CRITERIOS_SO_AVISO)
+        f"{MOTIVO}:{c}=0" for c in EDITORIAIS if c in revisao.CRITERIOS_MATERIAIS)
     _intacto(r)
 
 
@@ -100,11 +100,22 @@ def test_sem_notas_nao_aprova(tmp_path, notas):
     _intacto(r)
 
 
-def test_uma_nota_seis_em_politica_ou_destino_nao_aprova(tmp_path):
+def test_nota_seis_em_politica_ou_destino_aprova_com_aviso(tmp_path):
+    """10/10/2026: nota intermediária é opinião; risco material entra como achado
+    bloqueante com evidência (que continua segurando)."""
     for criterio in ("compliance", "destination_relevance"):
         r, _ = _rodar([_resp(notas=dict(BOAS, **{criterio: 6}))], tmp_path / criterio)
+        assert r.decisao == "aprovado", r.registro["motivos"]
+        avaliacao = r.registro["rodadas"][0]["notas_existenciais"]
+        assert avaliacao["avisos"] == [f"nota_baixa_so_aviso:{criterio}=6"]
+
+
+def test_nota_de_falha_em_politica_ou_destino_sem_achado_nao_aprova(tmp_path):
+    """"Falhou em política" sem nenhum achado é resposta incoerente."""
+    for criterio in ("compliance", "destination_relevance"):
+        r, _ = _rodar([_resp(notas=dict(BOAS, **{criterio: 3}))], tmp_path / criterio)
         assert r.decisao == "revisao_humana"
-        assert _motivos_de_nota(r) == [f"{MOTIVO}:{criterio}=6"]
+        assert _motivos_de_nota(r) == [f"{MOTIVO}:{criterio}=3"]
         _intacto(r)
 
 
@@ -153,13 +164,13 @@ def test_nota_nao_numerica_ou_fora_de_0_a_10_nao_aprova(tmp_path, valor, escrito
 
 
 def test_as_notas_avaliadas_ficam_no_registro_da_rodada(tmp_path):
-    r, _ = _rodar([_resp(notas=dict(BOAS, destination_relevance=6))], tmp_path)
+    r, _ = _rodar([_resp(notas=dict(BOAS, destination_relevance=3))], tmp_path)
     avaliacao = r.registro["rodadas"][0]["notas_existenciais"]
     assert tuple(avaliacao["criterios"]) == EDITORIAIS
     assert avaliacao["minima"] == 7
-    assert avaliacao["avaliadas"]["destination_relevance"] == 6
+    assert avaliacao["avaliadas"]["destination_relevance"] == 3
     assert avaliacao["avaliadas"]["compliance"] == 9
-    assert avaliacao["insuficientes"] == [f"{MOTIVO}:destination_relevance=6"]
+    assert avaliacao["insuficientes"] == [f"{MOTIVO}:destination_relevance=3"]
     r2, _ = _rodar([_resp(notas=BOAS)], tmp_path / "ok")
     assert r2.registro["rodadas"][0]["notas_existenciais"]["insuficientes"] == []
 
@@ -169,10 +180,10 @@ def test_as_notas_avaliadas_ficam_no_registro_da_rodada(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_ajustar_com_nota_baixa_vai_para_humano_com_draft_intacto(tmp_path):
-    r, llm = _rodar([_resp("ajustar", dict(BOAS, compliance=4), [A_PROMESSA], [P_PROMESSA])],
+    r, llm = _rodar([_resp("ajustar", dict(BOAS, compliance=3), [A_PROMESSA], [P_PROMESSA])],
                     tmp_path)
     assert r.decisao == "revisao_humana" and len(llm.calls) == 1
-    assert f"{MOTIVO}:compliance=4" in r.registro["motivos"]
+    assert f"{MOTIVO}:compliance=3" in r.registro["motivos"]
     _intacto(r)
     rod = r.registro["rodadas"][0]
     assert not rod.get("mantida")
@@ -369,3 +380,12 @@ def test_executar_revisao_sem_papel_usa_o_conjunto_mais_estrito(tmp_path):
     assert r.decisao == "revisao_humana"
     assert f"{MOTIVO}:cta_discipline=ausente" in r.registro["motivos"]
     assert f"{MOTIVO}:single_destination=ausente" in r.registro["motivos"]
+
+
+def test_ajustar_com_nota_intermediaria_aplica_o_patch_que_resolve_o_bloqueante(tmp_path):
+    """O achado material foi encontrado e o patch o resolve: a nota 5 dada ao
+    texto ANTES do patch não segura mais a página (10/10/2026)."""
+    r, llm = _rodar([_resp("ajustar", dict(BOAS, compliance=5), [A_PROMESSA], [P_PROMESSA])],
+                    tmp_path)
+    assert r.decisao == "aprovado" and len(llm.calls) == 1, r.registro["motivos"]
+    assert r.documento != _doc()

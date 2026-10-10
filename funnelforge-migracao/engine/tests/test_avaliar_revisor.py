@@ -94,10 +94,15 @@ class _RevisorFalso:
         prompt = texto_da_mensagem(messages[-1])
         texto = prompt.split('<dados_nao_confiaveis tipo="texto">', 1)[-1]
         texto = texto.split("</dados_nao_confiaveis>", 1)[0]
-        decisao = "revisao_humana" if "garant" in texto.lower() else "aprovado"
+        garantia = "garant" in texto.lower()
+        decisao = "revisao_humana" if garantia else "aprovado"
+        # Desde 10/10/2026 só problema material segura: a promessa de garantia
+        # chega como afirmação sem fato, não como "revisão humana" vazia.
         return LLMResult(text=json.dumps({"versao": "revisao-v1", "decisao": decisao,
                                           "achados": [], "patches": [],
-                                          "afirmacoes_nao_verificadas": [],
+                                          "afirmacoes_nao_verificadas": [
+                                              {"trecho": "garant", "motivo": "garantia sem fato"}
+                                          ] if garantia else [],
                                           # notas válidas em todo critério que a trava
                                           # pode exigir: sem elas, nada aprova
                                           "notas": {c: 9 for c in (

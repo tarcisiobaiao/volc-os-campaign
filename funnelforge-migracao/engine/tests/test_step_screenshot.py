@@ -865,10 +865,10 @@ def test_pipeline_runs_screenshot_step_for_solution(tmp_path: Path, config_files
 # --------------------------------------------------------------------------- #
 # Task 9 (B5): config-driven wiring -- screenshot.mode + crop_profile + limiares
 # --------------------------------------------------------------------------- #
-def test_screenshot_config_defaults_and_real_config_are_desktop() -> None:
-    """The new `screenshot:` config block (B5) exists with desktop defaults, and
-    the project's real config.yaml opts into desktop mode + crop_profile with the
-    guard thresholds surfaced from config (limiares)."""
+def test_screenshot_config_defaults_desktop_and_real_config_mobile() -> None:
+    """The `screenshot:` block keeps desktop class defaults; the project's real
+    config.yaml opts into MOBILE capture + crop since 10/10/2026 (the reader is
+    on a phone: a desktop print shrunk to 390 px was illegible)."""
     from funnelforge.config.settings import ScreenshotConfig
 
     default = ScreenshotConfig()
@@ -878,8 +878,8 @@ def test_screenshot_config_defaults_and_real_config_are_desktop() -> None:
     settings = load_settings(
         Path("/nonexistent.env"), Path(__file__).resolve().parents[1] / "config.yaml"
     )
-    assert settings.screenshot.mode == "desktop"
-    assert settings.screenshot.crop_profile == "desktop"
+    assert settings.screenshot.mode == "mobile"
+    assert settings.screenshot.crop_profile == "mobile"
     assert settings.screenshot.blank_frac_max > 0
     assert settings.screenshot.blank_contig_max > 0
     assert settings.screenshot.retry_settle_ms > 1500
@@ -965,3 +965,26 @@ def test_pipeline_skips_screenshot_when_provider_none(tmp_path: Path, config_fil
 
     assert "screenshot_p3" not in out.step_status
     assert 3 not in out.screenshots
+
+
+def test_navegacao_interrompida_tenta_uma_vez_e_entrega_o_print(tmp_path: Path) -> None:
+    """gov.br/MME em 10/10/2026: a 1ª navegação caiu em chrome-error e a 2ª
+    passou; o passo inteiro era descartado por uma falha transitória."""
+    class _Instavel(FakeScreenshotProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.tentativas = 0
+
+        def capture(self, url, **kw):
+            self.tentativas += 1
+            if self.tentativas == 1:
+                raise RuntimeError("Navigation interrupted by chrome-error://chromewebdata/")
+            return super().capture(url, **kw)
+
+    deps = _deps(tmp_path, _settings(), _Instavel())
+    state = RunState(run_id="atualizar-cadastro-p1-20260720")
+    state.facts[3] = ResearchFacts(fontes=["https://www.gov.br/inss/pt-br/servico"])
+    st.step_screenshot(state, _solution_page(), deps)
+    assert state.step_status["screenshot_p3"].status is StepStatus.OK
+    assert [s["url"] for s in state.screenshots[3]] == ["https://www.gov.br/inss/pt-br/servico"]
+    assert deps.screenshot.tentativas == 2

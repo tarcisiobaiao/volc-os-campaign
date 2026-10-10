@@ -31,7 +31,6 @@ import base64
 import json
 import logging
 import os
-from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
 import httpx
@@ -602,17 +601,6 @@ def _portao_do_plano(paginas: List[Dict[str, Any]], *, base_do_site: str) -> str
         })
 
     return f"portao_do_plano:card:{papel.value}:{impressao_do_recibo(recibo)}"
-
-
-def _preset_do_run(run_dir) -> Optional[str]:
-    """O preset com que o run nasceu, lido do `config_snapshot.json` do motor."""
-    from app.redator import PRESET_CANONICO
-
-    try:
-        snap = json.loads((Path(run_dir) / "config_snapshot.json").read_text(encoding="utf-8"))
-    except (OSError, TypeError, ValueError):
-        return None
-    return PRESET_CANONICO if (snap.get("openai") or {}).get("auth_mode") == "chatgpt_plan" else None
 
 
 @router.post("/redator/disparar", response_model=DispararSaida, dependencies=[Depends(exigir_admin)])
@@ -1976,11 +1964,10 @@ async def publicar_pagina_do_run(run_row_id: int, page_number: int) -> PublicarP
         # run v2 retomado sem a flag publicaria sem conferir o recibo.
         perfil_do_run = montar_perfil(
             perfil_wp=perfil_wp, arquitetura=arq, entidade=entidade,
+            # Sem preset: `funnelforge resume` restaura a configuração efetiva
+            # do run pelo `config_snapshot.json` (modelos, workers, prints).
             editorial_v2=(run.get("editorial_v2") is True
-                          or estado.get("editorial_v2") is True),
-            # A retomada usa os modelos com que o run nasceu; sem isto, um run
-            # canônico seria retomado com os modelos do `config.yaml`.
-            preset=_preset_do_run(run_dir))
+                          or estado.get("editorial_v2") is True))
     except PerfilIncompleto as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

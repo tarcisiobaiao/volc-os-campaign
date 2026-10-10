@@ -43,9 +43,17 @@ def calcular(operacao: str, a: str, b: str) -> Decimal:
         return resultado.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+def inteiro_positivo(valor: str) -> None:
+    n = numero(valor)
+    if n != n.to_integral_value() or n <= 0:
+        raise ValueError("Use um número inteiro maior que zero")
+
+
 def validar(calculo: CalculoDoAtivo) -> list[dict]:
     recibos = []
     for caso in calculo.casos:
+        for i in calculo.inteiros:
+            inteiro_positivo(caso.entradas[i])
         resultado = calcular(calculo.operacao, *caso.entradas)
         esperado = numero(caso.resultado)
         if resultado != esperado:
@@ -65,6 +73,8 @@ if(v>100000000000000n){throw Error("Entrada acima do limite");}return v;
 }
 function update(){try{
 var a=cents(inputs[0].value);var b=cents(inputs[1].value);var n;var d;
+var ints=(r.getAttribute("data-vc-inteiros")||"").split(",").filter(Boolean);
+for(var k=0;k<ints.length;k++){var v=[a,b][+ints[k]];if(v%100n!==0n||v<=0n){throw Error("Use um número inteiro maior que zero em: "+r.querySelectorAll("label")[+ints[k]].textContent);}}
 var op=r.getAttribute("data-vc-operation");
 if(op==="divisao"){if(b===0n){throw Error("O divisor deve ser maior que zero");}n=a*100n;d=b;}
 else if(op==="percentual"){n=a*b;d=10000n;}
@@ -85,9 +95,11 @@ def renderizar_calculo(calculo: CalculoDoAtivo, *, titulo: str, identidade: str)
     controles = "".join(
         f'<div><label class="vw-rot" for="{wid}-{i}">{escape(rotulo)}</label>'
         f'<input class="vw-sel" type="text" id="{wid}-{i}" value="" '
+        f'inputmode="{"numeric" if i in calculo.inteiros else "decimal"}" '
         'aria-describedby="' + wid + '-help"></div>'
         for i, rotulo in enumerate(calculo.rotulos))
-    html = (f'<section class="vw" id="{wid}" data-vc-operation="{calculo.operacao}">'
+    html = (f'<section class="vw" id="{wid}" data-vc-operation="{calculo.operacao}" '
+            f'data-vc-inteiros="{",".join(str(i) for i in calculo.inteiros)}">'
             f'<div class="vw-top"><h3 class="vw-tit">{escape(titulo)}</h3>'
             f'<div class="vw-sub" id="{wid}-help">Use números sem separador de milhar. '
             'Cálculo informativo: não consulta cadastros nem confirma elegibilidade. '

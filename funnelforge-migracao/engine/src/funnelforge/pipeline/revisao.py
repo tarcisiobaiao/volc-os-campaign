@@ -103,7 +103,16 @@ MOTIVO_NOTAS_INSUFICIENTES = "notas_existenciais_insuficientes"
 # aviso e não segura a página. O que bloqueia continua bloqueando: política e
 # congruência do destino pela nota, achados bloqueantes (fato, política,
 # destino, identidade), afirmação sem fato e nota ausente/fora do contrato.
-CRITERIOS_SO_AVISO = frozenset({"cta_discipline", "useful_delivery"})
+# 10/10/2026 (operador): nota intermediária não segura a página. Número é
+# opinião; risco material (política, destino, identidade, fato) entra como
+# achado bloqueante com evidência, que continua segurando. Duas exceções de
+# contrato: nota ausente/fora da escala, e nota de FALHA (< NOTA_DE_FALHA) num
+# critério material — "falhou em política" sem achado é resposta incoerente
+# (inclui o 0 copiado do exemplo).
+CRITERIOS_SO_AVISO = frozenset({"cta_discipline", "useful_delivery", "compliance",
+                                "destination_relevance", "single_destination"})
+CRITERIOS_MATERIAIS = frozenset({"compliance", "destination_relevance", "single_destination"})
+NOTA_DE_FALHA = 4
 MOTIVO_NOTA_SO_AVISO = "nota_baixa_so_aviso"
 # A marca que o recibo do revisor carrega quando a trava foi aplicada. Recibo
 # do revisor SEM ela (emitido antes da trava) não libera publicação.
@@ -667,7 +676,21 @@ def aplicar_patches(doc: Documento, patches: Any, achados: dict[str, dict],
             recusar("antes_ausente")
             continue
         if n > 1:
-            recusar("antes_duplicado")
+            # O mesmo CTA repetido (botão do topo e do fechamento) é UM rótulo:
+            # troca em todas as ocorrências, só quando todas são texto de botão.
+            inicios = [m.start() for m in re.finditer(re.escape(antes), texto)]
+            so_botoes = (novo.formato == "gutenberg" and campo == "corpo" and all(
+                _bloco_que_contem(texto, i) in _BLOCOS_DE_BOTAO
+                and _regiao(novo, campo, texto, i, i + len(antes)) is None for i in inicios))
+            if not so_botoes:
+                recusar("antes_duplicado")
+                continue
+            motivo = _checar_depois(antes, depois, novo.eh_rico(campo), regras)
+            if motivo is not None:
+                recusar(motivo)
+                continue
+            novo = novo.com(campo, texto.replace(antes, depois))
+            aplicados.append({**registro, "estado": "aplicado", "ocorrencias": n})
             continue
         ini = texto.index(antes)
         motivo = _regiao(novo, campo, texto, ini, ini + len(antes))
@@ -763,6 +786,9 @@ def avaliar_notas_existenciais(notas: Any, criterios: tuple[str, ...]) -> dict:
         if not _nota_valida(valor):
             insuficientes.append(
                 f"{MOTIVO_NOTAS_INSUFICIENTES}:{criterio}={_como_escrito(valor)}")
+        elif criterio in CRITERIOS_MATERIAIS and valor < NOTA_DE_FALHA:
+            insuficientes.append(
+                f"{MOTIVO_NOTAS_INSUFICIENTES}:{criterio}={_como_escrito(valor)}")
         elif valor < NOTA_MINIMA_EXISTENCIAL:
             alvo = avisos if criterio in CRITERIOS_SO_AVISO else insuficientes
             prefixo = MOTIVO_NOTA_SO_AVISO if criterio in CRITERIOS_SO_AVISO \
@@ -771,6 +797,13 @@ def avaliar_notas_existenciais(notas: Any, criterios: tuple[str, ...]) -> dict:
     return {"criterios": list(criterios), "minima": NOTA_MINIMA_EXISTENCIAL,
             "avaliadas": avaliadas, "ausentes": ausentes, "insuficientes": insuficientes,
             "avisos": avisos}
+
+
+# Recusa que indica resposta tentando mudar o que não podia (endereço, link,
+# marcação, número sem lastro). Texto de link existente fica protegido pela
+# recusa em si, sem segurar a página.
+_RECUSAS_DE_SEGURANCA = frozenset({"url_nova", "link_novo", "tag_nao_permitida",
+                                   "numero_novo", "numero_alterado"})
 
 
 def _notas_que_impedem(rod: dict) -> list[str]:
@@ -1089,6 +1122,25 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
         if decisao == "aprovado" and patches:
             decisao = "ajustar"
             rod["normalizacao_da_decisao"] = "aprovado_com_patches_tratado_como_ajustar"
+        # Só problema MATERIAL segura a página: achado bloqueante ou afirmação
+        # sem fato no inventário. "Revisão humana" sem nenhum dos dois é
+        # preferência ou cautela do modelo: aplica os ajustes e segue.
+        sem_material = not bloqueantes_brutos and not afirmacoes
+        if decisao == "revisao_humana" and sem_material:
+            decisao = "ajustar" if patches else "aprovado"
+            rod["normalizacao_da_decisao"] = "revisao_humana_sem_problema_material"
+
+        def manter_original(motivo: str) -> ResultadoDaRevisao:
+            """Patch recusado sem problema material pendente: a página segue com
+            o texto revisado de entrada e a pendência fica registrada. Recusa por
+            segurança (URL, link, tag, número sem lastro) indica resposta que
+            tentou mudar o que não podia: segura a página."""
+            inseguro = [r for r in rod.get("patches_recusados") or []
+                        if r.get("motivo") in _RECUSAS_DE_SEGURANCA]
+            if sem_material and not inseguro and not _notas_que_impedem(rod):
+                rod["pendencia_de_patch"] = motivo
+                return fechar("aprovado", doc, [])
+            return fechar("revisao_humana", doc, [motivo])
         rod["decisao_efetiva"] = decisao
         if decisao == "revisao_humana":
             return fechar("revisao_humana", doc, ["decidido_pelo_revisor"])
@@ -1109,14 +1161,14 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
             RegrasDePatch(numeros_permitidos=set(ctx.numeros_permitidos)))
         rod["patches_aplicados"], rod["patches_recusados"] = aplicados, recusados
         if not aplicados:
-            return fechar("revisao_humana", doc, ["nenhum_patch_aplicado"])
+            return manter_original("nenhum_patch_aplicado")
         if assinatura_estrutural(novo) != assinatura_estrutural(doc):
-            return fechar("revisao_humana", doc, ["estrutura_alterada"])
+            return manter_original("estrutura_alterada")
         if ctx.normalizar is not None:
             normalizado, reg = ctx.normalizar(novo)
             rod["normalizacao"] = reg
             if _HREF_RE.findall(normalizado.corpo) != _HREF_RE.findall(novo.corpo):
-                return fechar("revisao_humana", doc, ["estrutura_alterada"])
+                return manter_original("estrutura_alterada")
             novo = normalizado
         revalidar = ctx.revalidar or revalidacao_basica
         # Só reprova o que o PATCH introduziu. A chave ignora números da
@@ -1125,7 +1177,7 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
         novas = [i for i in revalidar(novo) if _chave_da_issue(i) not in ja_havia]
         rod["revalidacao"] = [i.model_dump() for i in novas]
         if novas:
-            return fechar("revisao_humana", doc, ["revalidacao_reprovou"])
+            return manter_original("revalidacao_reprovou")
         pendentes = []
         for a in bloqueantes_brutos:
             dele = [p for p in aplicados if p["achado"] == a["id"]]

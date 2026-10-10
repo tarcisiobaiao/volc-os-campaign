@@ -165,6 +165,8 @@ class PlaywrightScreenshotProvider:
                 overlays_before = self._consent_overlays(page)
                 consent_action = self._dismiss_cookies(page) if overlays_before else ""
                 overlays_after = self._consent_overlays(page)
+                if mode == "mobile" and not full_page:
+                    self._rolar_ate_o_titulo(page)
                 is_error = self._looks_like_error_page(page)
                 png = page.screenshot(full_page=full_page, type="png")
                 try:
@@ -304,6 +306,29 @@ class PlaywrightScreenshotProvider:
         except Exception as exc:  # noqa: BLE001 - evidence, never credentials
             return [{"tag": "unknown", "text": "overlay inspection failed",
                      "coverage": 1.0, "error": type(exc).__name__}]
+
+    @staticmethod
+    def _rolar_ate_o_titulo(page: object) -> None:
+        """No celular, o cabeçalho do portal ocupa a primeira tela: o print útil
+        começa no título principal do conteúdo. Sem título visível, fica no topo."""
+        try:
+            page.evaluate(  # type: ignore[attr-defined]
+                "() => { const h = [...document.querySelectorAll('main h1, article h1, h1')]"
+                ".find(e => e.getBoundingClientRect().height > 0);"
+                " if (h) window.scrollTo(0, Math.max(0, h.getBoundingClientRect().top"
+                " + window.scrollY - 16)); }")
+            page.wait_for_timeout(300)  # type: ignore[attr-defined]
+            # Cabeçalho fixo/sticky que desce junto cobre o título: desconta.
+            page.evaluate(  # type: ignore[attr-defined]
+                "() => { const fixo = [...document.querySelectorAll('body *')].filter(e => {"
+                " const s = getComputedStyle(e), r = e.getBoundingClientRect();"
+                " return (s.position === 'fixed' || s.position === 'sticky') && r.top <= 1"
+                " && r.height > 0 && r.height < innerHeight / 3 && r.width > innerWidth / 2; });"
+                " const altura = Math.max(0, ...fixo.map(e => e.getBoundingClientRect().bottom));"
+                " if (altura) window.scrollBy(0, -altura); }")
+            page.wait_for_timeout(200)  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001 - recorte é melhor esforço; o print segue
+            return
 
     @staticmethod
     def _dismiss_cookies(page: object) -> str:

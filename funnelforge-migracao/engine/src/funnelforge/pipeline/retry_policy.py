@@ -184,6 +184,13 @@ CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
     # bloquear aqui reprovaria a página sem que o redator pudesse corrigir.
     "cta_longo",                 # botão acima de CTA_MAX_CHARS
     "cta_rotulo_repetido",       # mesmo texto para destinos diferentes
+    # 10/10/2026 (operador): lista de palavras não decide sozinha se o botão
+    # engana. O revisor lê a frase, o destino e o que a página entrega; a
+    # promessa falsa continua bloqueando como achado material dele.
+    "cta_generic",               # rótulo genérico por lista ("Saiba mais")
+    "cta_editorial_execution",   # verbo de execução/consulta pessoal por lista
+    "cta_external_channel",      # saída externa sem nome do canal
+    "official_links_few",        # cota mínima de links oficiais no corpo
     # D2 — portão de composição (`checks.composicao_editorial`): achados para o
     # revisor. O slot do Ad Inserter (`ad_slot_inseguro`) fica `estrutural`.
     "composicao_paredao_de_texto",

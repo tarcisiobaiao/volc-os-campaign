@@ -497,6 +497,48 @@ def presell_hub_distinction_guard(state: RunState, page: Page, deps: Any) -> Non
 # ---------------------------------------------------------------------------
 
 
+def _usar_arquitetura_aprovada(state: RunState, deps: Any, aprovada: dict) -> bool:
+    """Plano aprovado no Pautador, sem nova chamada ao arquiteto.
+
+    A pesquisa antecipada continua: ela alimenta dossiê, pacotes e o revisor.
+    O que não muda em silêncio é o esqueleto (páginas, slugs, destinos e
+    promessa). Plano sem jornada não serve a este caminho: o arquiteto refaz e
+    o delta fica registrado.
+    """
+    from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
+    from funnelforge.pipeline.jornada import tem_jornada
+    try:
+        plan = plano_do_funnel_architecture(aprovada)
+    except (ValueError, ValidationError):
+        return False
+    if not tem_jornada(plan):
+        return False
+    plan.brief_pre_arquitetura = state.brief_pre_arquitetura.model_copy(deep=True)
+    plan.editorial_v2 = True
+    state.plan = plan
+    state.step_status["extract"] = StepResult(
+        step="extract", status=StepStatus.OK, attempts=0,
+        issues=[Issue(code="arquitetura_aprovada_preservada",
+                      message=f"{len(plan.pages)} páginas do plano aprovado; sem chamada "
+                              "ao arquiteto")])
+    return True
+
+
+def _registrar_delta_de_arquitetura(state: RunState, aprovada: dict, plan: FunnelPlan) -> None:
+    """O arquiteto refez o plano aprovado: o delta vai para a pessoa decidir."""
+    antes = [str(p.get("slug") or "") for p in aprovada.get("pages") or []]
+    depois = [p.slug for p in plan.pages]
+    if antes == depois:
+        return
+    state.step_status["delta_arquitetura"] = StepResult(
+        step="delta_arquitetura", status=StepStatus.FAILED, attempts=0,
+        issues=[Issue(code="plano_diferente_do_aprovado", message=json.dumps({
+            "removidas": [s for s in antes if s not in depois],
+            "novas": [s for s in depois if s not in antes],
+            "aprovadas": antes, "geradas": depois,
+            "acao": "publicação suspensa até aprovação do novo plano"}, ensure_ascii=False))])
+
+
 def step_extract(state: RunState, deps: Any) -> None:
     """Extract the FunnelPlan from the briefing text via the `extract` step.
 
@@ -504,6 +546,10 @@ def step_extract(state: RunState, deps: Any) -> None:
     """
     if state.plan is not None:
         return
+    aprovada = getattr(deps, "arquitetura_aprovada", None)
+    if state.brief_pre_arquitetura is not None and aprovada:
+        if _usar_arquitetura_aprovada(state, deps, aprovada):
+            return
     prompt = render("extractor", briefing=state.briefing_text)
     messages = [{"role": "user", "content": prompt}]
     if state.brief_pre_arquitetura is not None:
@@ -568,6 +614,8 @@ def step_extract(state: RunState, deps: Any) -> None:
     if state.brief_pre_arquitetura is not None:
         plan.brief_pre_arquitetura = state.brief_pre_arquitetura.model_copy(deep=True)
         plan.editorial_v2 = True
+        if aprovada:
+            _registrar_delta_de_arquitetura(state, aprovada, plan)
     # Pull REAL cross-funnel exit URLs from the site sitemap (a diverse-but-
     # related guide for the terminal SOLUTION). None-safe + best-effort.
     cross_targets = None
@@ -1336,9 +1384,11 @@ def _rotulo_do_canal_oficial(state: RunState, page: Page, url: str) -> str:
         emissor = str(prov.get("issuer") or (prov.get("declarado") or {}).get("emissor") or "")
         emissor = re.sub(r"\s+", " ", emissor).strip(" .:-")
         if emissor:
-            return f"Ver orientação no site externo de {emissor[:55]} >>>"
+            # Nomeia quem publica e o que o leitor abre; o ">>>" já sinaliza a
+            # saída. "site externo" em cada botão era ruído (operador, 10/10).
+            return f"{emissor[:55]}: abrir a orientação oficial >>>"
     host = (urlparse(url).hostname or "").removeprefix("www.")
-    return f"Abrir a fonte externa {host or 'verificada'} >>>"
+    return f"Abrir a página em {host or 'fonte verificada'} >>>"
 
 
 def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
@@ -3030,7 +3080,13 @@ def step_screenshot(state: RunState, page: Page, deps: Any) -> None:
         shots: list[dict] = []
         rejeitados: list[Issue] = []
         for k, url in enumerate(links[:cap], start=1):
-            result = deps.screenshot.capture(url, mode=sc.mode)
+            try:
+                result = deps.screenshot.capture(url, mode=sc.mode)
+            except Exception:  # noqa: BLE001 - navegação interrompida por rede
+                # Medido em 10/10 no gov.br: a 1ª navegação caiu em página de
+                # erro do Chromium e a 2ª passou. Uma nova tentativa, só uma.
+                result = deps.screenshot.capture(
+                    url, mode=sc.mode, settle_ms=sc.retry_settle_ms)
             # Guard 1 (status/error): drop non-200 or error/404 pages outright.
             if _screenshot_rejected_by_status(result):
                 continue

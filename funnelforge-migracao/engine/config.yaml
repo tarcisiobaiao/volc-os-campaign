@@ -147,8 +147,11 @@ screenshot:
   # rejeita quando a fracao de faixas horizontais quase-planas passa de blank_frac_max
   # ou ha uma faixa contigua plana >= blank_contig_max; retry_settle_ms e o settle
   # MAIOR que o unico retry pede (com scroll) p/ acordar lazy-loaders.
-  mode: desktop
-  crop_profile: desktop
+  # 10/10/2026: o leitor está no celular. O print desktop reduzido a 390 px
+  # ficava ilegível; a captura mobile rola até o título do conteúdo oficial e o
+  # perfil mobile recorta 800x1200 (400x600 CSS px a DPR 2) da área útil.
+  mode: mobile
+  crop_profile: mobile
   blank_frac_max: 0.18
   blank_contig_max: 0.15
   retry_settle_ms: 4000

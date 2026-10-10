@@ -2,3 +2,28 @@
 .single-rec .content :where(.wp-block-buttons + .wp-block-buttons) {
 	margin-block-start: 0.5em;
 }
+
+/* Tabela de duas colunas (rótulo → explicação) no celular: vira lista
+   empilhada, sem quebrar palavra no meio nem rolar de lado. Tabelas com três
+   ou mais colunas mantêm a grade e rolam dentro do próprio bloco. */
+.single-rec .content .wp-block-table { overflow-x: auto; }
+@media (max-width: 600px) {
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) thead {
+		position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+	}
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))),
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) tbody,
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) tr,
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) td {
+		display: block; width: 100%;
+	}
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) tr {
+		padding: 12px 0; border-bottom: 1px solid #e2e8f0;
+	}
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) td {
+		border: 0; padding: 2px 0; overflow-wrap: normal; word-break: normal;
+	}
+	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) td:first-child {
+		font-weight: 700;
+	}
+}

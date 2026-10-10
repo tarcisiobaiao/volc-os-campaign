@@ -311,8 +311,11 @@ def test_saida_oficial_existe_no_momento_da_acao():
 # revisor com autoridade reduzida (os casos de nota estão no teste do revisor)
 # ---------------------------------------------------------------------------
 
-def test_revisor_so_trava_politica_e_destino_e_aceita_copy_forte():
-    assert CRITERIOS_SO_AVISO == {"cta_discipline", "useful_delivery"}
+def test_revisor_so_trava_problema_material_e_aceita_copy_forte():
+    # 10/10/2026: nenhuma nota intermediária segura; política e destino só
+    # seguram por achado bloqueante ou nota de falha incoerente.
+    assert CRITERIOS_SO_AVISO >= {"cta_discipline", "useful_delivery", "compliance",
+                                  "destination_relevance"}
     texto = render("revisor", pagina={"numero": 3, "papel": "SOLUTION"},
                    criterios=["compliance", "cta_discipline", "useful_delivery",
                               "destination_relevance"],
@@ -321,7 +324,8 @@ def test_revisor_so_trava_politica_e_destino_e_aceita_copy_forte():
                    identidade={}, jornada={}, regras=[], notas_c=[], pacote={},
                    max_patches=8, ha_termos=False)
     assert "Copy comercialmente forte, emocional e factual passa" in texto
-    assert "exceto em cta_discipline, useful_delivery" in texto
+    assert "não segura a publicação" in texto
+    assert "exige o achado bloqueante correspondente" in texto
 
 
 # ---------------------------------------------------------------------------

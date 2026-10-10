@@ -87,6 +87,10 @@ class Deps:
     hints_do_operador: list[dict] = field(default_factory=list)
     ler_documento: Any = None
     attention_matrix: Any = None
+    # O `funnel_architecture` que uma pessoa aprovou no Pautador. Com ele, a
+    # pesquisa antecipada enriquece dossiê e pacotes, mas páginas, slugs,
+    # destinos e promessas continuam os aprovados (ver `step_extract`).
+    arquitetura_aprovada: dict | None = None
 
 
 def editorial_v2_do_run(state: RunState, settings: Settings) -> bool:
@@ -238,6 +242,9 @@ def run_pipeline(
         from funnelforge.pipeline.inteligencia import preparar_inteligencia
         preparar_inteligencia(state, deps, card_pre_arquitetura)
         state.editorial_v2 = True
+        referencia = (card_pre_arquitetura.get("historico") or {}).get("arquitetura_referencia")
+        if isinstance(referencia, dict) and referencia.get("pages") and deps.arquitetura_aprovada is None:
+            deps.arquitetura_aprovada = referencia
 
     # PLANO INJETADO (ponte VOLC). Só entra num state que ainda NÃO tem plano,
     # para que um `resume` jamais seja sobrescrito por engano.
@@ -260,6 +267,10 @@ def run_pipeline(
     # funil não é validado nenhuma vez.
     _fresh_extract = state.plan is None or _plano_injetado
     st.step_extract(state, deps)
+    delta = state.step_status.get("delta_arquitetura")
+    if delta is not None and delta.status is StepStatus.FAILED and publish:
+        # Plano diferente do aprovado: nada sobe até alguém aprovar o novo.
+        publish = False
     if state.brief_pre_arquitetura is not None and not tem_jornada(state.plan):
         state.step_status["funnel_graph"] = StepResult(
             step="funnel_graph", status=StepStatus.FAILED,
@@ -573,6 +584,14 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
     por_numero = {p.page_number: p for p in state.plan.pages}
     if state.pacotes and lote and not parar.is_set():
         from funnelforge.pipeline.inteligencia import revisar_lote
+        if getattr(deps.settings.run, "widgets_enabled", False):
+            # A calculadora pré-validada entra ANTES do revisor global, que a
+            # lê como parte da página. Sem isto, no caminho com pacotes o
+            # widget era pulado antes da revisão e de novo depois do build:
+            # ferramenta pronta nunca chegava à página.
+            for n in lote:
+                if f"widget_p{n}" not in state.step_status:
+                    st.step_widget(state, por_numero[n], deps)
         revisar_lote(state, [por_numero[n] for n in lote], deps)
     acabadas = fase("acabamento", [por_numero[n] for n in lote]) if not parar.is_set() else []
     for delta in acabadas:

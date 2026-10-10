@@ -141,6 +141,12 @@ class Runner:
             if self.budget is not None:
                 self.budget.registrar(name, res.cost_usd)
             last_issues = run_validators(cfg.validators, text, ctx)
+            if str(getattr(res, "finish_reason", "") or "").lower() in ("length", "max_tokens"):
+                # Resposta cortada pelo teto de saída: defeito mecânico, achado
+                # aqui e não depois de pagar as etapas que dependem do texto.
+                last_issues = [Issue(code="resposta_truncada",
+                                     message="O provedor encerrou a resposta pelo limite de "
+                                             "saída; o texto está incompleto.")] + list(last_issues)
             # RAMO EDITORIAL NOVO (B5): julgamento por palavra/regex não reprova
             # nem pede o texto inteiro de novo; vira localizador para o revisor
             # contextual. Sem a flag no ctx, a lista fica como sempre foi.

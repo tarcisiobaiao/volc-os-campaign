@@ -115,9 +115,11 @@ def elementor_body(nodes: list) -> tuple[str, str]:
     return ''.join(render(n) for n in nodes), '\n'.join(styles)
 
 
-def document(title: str, body: str, *, css: str = "", head: str = "", footer: str = "") -> str:
+def document(title: str, body: str, *, css: str = "", head: str = "", footer: str = "",
+             body_class: str = "") -> str:
+    classe = f' class="{escape(body_class)}"' if body_class else ""
     return ('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             f'<title>{escape(title)}</title>{head}<style>{CSS}\n{css}</style></head>'
-            f'<body><main>{body}</main>{"<footer>" + escape(footer) + "</footer>" if footer else ""}'
+            f'<body{classe}><main>{body}</main>{"<footer>" + escape(footer) + "</footer>" if footer else ""}'
             '</body></html>')

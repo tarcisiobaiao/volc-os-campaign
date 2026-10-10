@@ -2231,6 +2231,8 @@ _WIDGET_VOID_TAGS = frozenset({"input"})
 # prefix; everything else -- href/src/name/on*=/... -- is rejected.
 _WIDGET_ALLOWED_ATTRS = frozenset({
     "style", "id", "class", "type", "value", "placeholder", "for",
+    # só escolhe o teclado no celular (numérico/decimal); não executa nada
+    "inputmode",
 })
 
 _SCRIPT_EL_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.S | re.I)

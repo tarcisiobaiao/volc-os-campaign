@@ -466,7 +466,7 @@ def test_write_ctx_nomeia_canal_externo_com_emissor_do_dossie(config_files: Path
     )
     _write_ctx(state, page, deps)
     rota = next(r for r in page.routes if r.kind == "external_official")
-    assert rota.anchor == "Ver orientação no site externo de ANP >>>"
+    assert rota.anchor == "ANP: abrir a orientação oficial >>>"
 
 
 def test_presell_write_receives_qualifier_lens_and_questions_not_angle(

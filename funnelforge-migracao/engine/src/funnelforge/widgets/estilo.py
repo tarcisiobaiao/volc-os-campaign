@@ -166,6 +166,7 @@ linear-gradient(135deg,var(--vw-fraca) 50%,transparent 50%);
 background-position:calc(100% - 20px) 21px,calc(100% - 14px) 21px;
 background-size:6px 6px,6px 6px;background-repeat:no-repeat}
 .vw-sel:hover{border-color:var(--vw-marca)}
+input.vw-sel{background-image:none;padding:0 .85em;cursor:text}
 .vw-bts{display:flex;flex-wrap:wrap;gap:.5em}
 .vw-bt{min-height:48px;padding:0 1em;border:1px solid var(--vw-linha);border-radius:8px;
 background:#fff;color:var(--vw-corpo);font:inherit;font-size:.9em;font-weight:600;
