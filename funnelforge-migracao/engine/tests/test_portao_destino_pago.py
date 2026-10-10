@@ -153,12 +153,42 @@ def test_lp_ponte_sem_conteudo_e_reprovada(tmp_path, config_files):
     )
     state = _estado(conteudo)
     deps = _deps(tmp_path, config_files)
+    # Caminho real: o artefato Elementor existe antes do portão, como no
+    # pipeline. Sem o build, a falha era `lp_final_invalid` e mascarava que a
+    # ponte recebia OK (piso de palavras virou alerta no 19c0e14).
+    _construir(state, deps)
 
     step_content_gate(state, _pagina_lp(), deps)
 
     resultado = state.step_status["content_gate_p1"]
     assert resultado.status is StepStatus.FAILED
-    assert "conteudo_original_insuficiente" in {i.code for i in resultado.issues}
+    codigos = {i.code for i in resultado.issues}
+    assert "lp_sem_entrega_propria" in codigos
+    assert "lp_final_invalid" not in codigos
+
+
+def test_lp_curta_que_responde_passa_sem_piso_de_palavras(tmp_path, config_files):
+    """A contraprova inversa: ~90 palavras que respondem não são ponte."""
+    conteudo = conteudo_da_lp(
+        intro=("<p>Os primeiros 80 kWh do mês saem sem custo para a residência que "
+               "atende às regras da Tarifa Social.</p>"),
+        sections=[
+            {"title": "Quem tem direito", "body": "<p>Famílias do CadÚnico com renda por "
+             "pessoa de até meio salário-mínimo e quem recebe o BPC.</p>"},
+            {"title": "Como entra na conta", "body": "<p>A distribuidora aplica o desconto "
+             "quando os dados do cadastro batem com os da conta de luz.</p>"},
+            {"title": "O que fazer se não aparecer", "body": "<p>Confira se o titular da "
+             "conta é da família e se o cadastro foi atualizado nos últimos dois anos.</p>"},
+            {"title": "O que continua sendo cobrado", "body": "<p>Consumo acima do limite, "
+             "iluminação pública e tributos podem seguir na fatura.</p>"},
+        ],
+    )
+    state = _estado(conteudo)
+    deps = _deps(tmp_path, config_files)
+    _construir(state, deps)
+    step_content_gate(state, _pagina_lp(), deps)
+    codigos = {i.code for i in state.step_status["content_gate_p1"].issues}
+    assert "lp_sem_entrega_propria" not in codigos
 
 
 def test_fonte_de_pesquisa_linkada_no_corpo_da_lp_reprova(tmp_path, config_files):

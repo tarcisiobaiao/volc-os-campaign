@@ -1,6 +1,7 @@
 # funnel-forge/src/funnelforge/pipeline/steps.py
 from __future__ import annotations
 
+import copy
 import json
 import base64
 import hashlib
@@ -524,18 +525,49 @@ def _usar_arquitetura_aprovada(state: RunState, deps: Any, aprovada: dict) -> bo
     return True
 
 
+def _resumo_material_do_plano(plan: FunnelPlan) -> dict[str, dict]:
+    """O que a aprovação de um plano cobre, por slug: papel, a pergunta que a
+    página responde, os tipos de entrega, as ferramentas e os destinos.
+    Reescrita de texto (H1, promessa com outras palavras) fica de fora."""
+    resumo = {}
+    for p in plan.pages:
+        j = p.jornada
+        resumo[p.slug] = {
+            "papel": effective_role(p).value,
+            "duvida": j.duvida_id if j else "",
+            "entregas": sorted(j.valor.entregas) if j and j.valor else [],
+            "ferramentas": sorted(a.calculo.operacao if a.calculo else "orientacao"
+                                  for a in (j.ativos if j else [])),
+            "destinos": sorted(l.target for l in (p.editorial.links if p.editorial else [])),
+        }
+    return resumo
+
+
 def _registrar_delta_de_arquitetura(state: RunState, aprovada: dict, plan: FunnelPlan) -> None:
-    """O arquiteto refez o plano aprovado: o delta vai para a pessoa decidir."""
-    antes = [str(p.get("slug") or "") for p in aprovada.get("pages") or []]
-    depois = [p.slug for p in plan.pages]
-    if antes == depois:
+    """O arquiteto refez o plano aprovado: o delta MATERIAL vai para a pessoa.
+
+    Mesmos slugs não bastam: papel, pergunta, entrega, ferramenta ou destino
+    diferentes também mudam o que foi aprovado."""
+    from funnelforge.adapters.briefing_volc import plano_do_funnel_architecture
+    try:
+        antes = _resumo_material_do_plano(plano_do_funnel_architecture(copy.deepcopy(aprovada)))
+    except (ValueError, ValidationError):
+        antes = {str(p.get("slug") or ""): {} for p in aprovada.get("pages") or []}
+    depois = _resumo_material_do_plano(plan)
+    mudadas = {slug: [campo for campo in depois[slug]
+                      if antes[slug] and antes[slug].get(campo) != depois[slug][campo]]
+               for slug in depois if slug in antes}
+    mudadas = {slug: campos for slug, campos in mudadas.items() if campos}
+    removidas = [s for s in antes if s not in depois]
+    novas = [s for s in depois if s not in antes]
+    if not (removidas or novas or mudadas):
         return
     state.step_status["delta_arquitetura"] = StepResult(
         step="delta_arquitetura", status=StepStatus.FAILED, attempts=0,
         issues=[Issue(code="plano_diferente_do_aprovado", message=json.dumps({
-            "removidas": [s for s in antes if s not in depois],
-            "novas": [s for s in depois if s not in antes],
-            "aprovadas": antes, "geradas": depois,
+            "removidas": removidas, "novas": novas,
+            "alteradas": {slug: {c: [antes[slug].get(c), depois[slug][c]] for c in campos}
+                          for slug, campos in mudadas.items()},
             "acao": "publicação suspensa até aprovação do novo plano"}, ensure_ascii=False))])
 
 

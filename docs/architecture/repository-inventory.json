@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T07:32:13-03:00",
+  "generated_at": "2026-10-10T08:09:17-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 849,
-    "markdown": 627,
+    "files": 850,
+    "markdown": 628,
     "sql": 222,
-    "tracked": 839,
+    "tracked": 840,
     "untracked": 10,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 46,
+      "audit": 47,
       "documentation": 451,
       "generated": 2,
       "module-guide": 41,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23929,
+      "bytes": 23898,
       "lines": 318,
-      "sha256": "4fc9b4355e16f781995ffc4f270ae2c1130c55ddf02322c4b197021969627286",
+      "sha256": "d9651fac0855996faff2b35f6ecfb63fd90330091fe52025e4387731ad7a1b1d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1846,6 +1846,18 @@
       "bytes": 3742,
       "lines": 64,
       "sha256": "e45413bb241d24ffbe9a6f21385a7a1aed289d2e7812c819e623b0b52d79021f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-FECHAMENTO-TARIFA-SOCIAL-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 2395,
+      "lines": 45,
+      "sha256": "e474fe59d199f36a4bed5f15260bbf58847c108e3980f9e9350d3a5e1bafd2cc",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7415,7 +7427,7 @@
       "lines": 242,
       "sha256": "320fdd5db67dde5e784fd52923742037f6a7af8e3c93d8a1754d5d48b1c97bfd",
       "graph_nodes": 8,
-      "graph_degree": 18,
+      "graph_degree": 16,
       "sql_risk": "high"
     },
     {
@@ -7619,7 +7631,7 @@
       "lines": 117,
       "sha256": "e1339fbc64a1e30f0c720bb5540401c1192ebee5ffc75e2682a1f4aa23135db4",
       "graph_nodes": 3,
-      "graph_degree": 4,
+      "graph_degree": 6,
       "sql_risk": "high"
     },
     {

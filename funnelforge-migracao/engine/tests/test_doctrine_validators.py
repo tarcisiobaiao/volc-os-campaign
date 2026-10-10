@@ -45,7 +45,8 @@ def test_lp_json_contract_fala_a_lingua_da_lp():
         "hero_subtitle": "Promessa -- toque abaixo e veja como resolver",
         "article_title": "Titulo",
         "intro": "<p>Dor pratica. Promessa direta.</p>",
-        "sections": [{"title": f"S{i}", "body": "<p>x</p>"} for i in range(4)],
+        # corpo com entrega própria (desde 10/10 a LP só de ponte reprova)
+        "sections": [{"title": f"S{i}", "body": "<p>Quem recebe o BPC e mora com a família pode ter o desconto na conta.</p>"} for i in range(4)],
         "faq": [{"q": "P?", "a": "Sim."} for _ in range(5)],
         "transition": "<p>t</p>",
         "cta_texts": ["Ver o passo a passo »", "Como funciona »", "Ver a lista »"],

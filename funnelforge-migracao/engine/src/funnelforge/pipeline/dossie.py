@@ -308,9 +308,23 @@ def marcar_conflitos(fatos: list[FatoDoDossie]) -> list[str]:
     return sorted(set(conflitos))
 
 
+# Id das dúvidas do brief pré-arquitetura (`compilar_brief`): "q_" + 12 hex.
+_DUVIDA_DO_BRIEF = re.compile(r"^q_[0-9a-f]{12}$")
+
+
 def _fatos_para_a_pagina(fatos: list[FatoDoDossie], page: Page) -> list[FatoDoDossie]:
+    """Os fatos da página e os da pesquisa antecipada que nenhuma página possui.
+
+    A pesquisa global responde às perguntas do PAA (`q_…`), que não viram
+    `duvida_id` de página. Run real de 10/10: "80 kWh com desconto integral"
+    (MME/ANEEL) e a página de Tarifa Social da Cemig estavam verificados e
+    nenhuma página os recebia. Eles entram no inventário de todas; a cobertura
+    de requisitos continua por requisito.
+    """
     duvida = page.jornada.duvida_id
-    return [f for f in fatos if duvida in f.paginas]
+    return [f for f in fatos if duvida in f.paginas
+            or (f.status == "verified" and f.paginas
+                and all(_DUVIDA_DO_BRIEF.match(d) for d in f.paginas))]
 
 
 def _research_facts(fatos: list[FatoDoDossie]) -> ResearchFacts:

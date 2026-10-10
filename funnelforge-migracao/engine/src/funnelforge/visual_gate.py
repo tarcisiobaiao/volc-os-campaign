@@ -32,7 +32,12 @@ CHECKS = r"""() => {
    }return t.right>innerWidth+2||t.left < -2;
  });
  checks.text_clipping=!clipped.length;evidence.clipped=clipped.map(e=>e.innerText.slice(0,90));
- checks.edge_padding=leaves.every(e=>rect(e).left>=main.left+10 && rect(e).right<=main.right-10);
+ // Conteúdo que rola dentro de um contêiner (tabela larga no celular) é medido
+ // pelo contêiner, que entra na conta como folha da página; o miolo, não.
+ const rola=e=>{for(let p=e.parentElement;p&&p!==document.body;p=p.parentElement){
+   if(/auto|scroll/.test(getComputedStyle(p).overflowX))return p;}return null;};
+ const naPagina=[...new Set(leaves.map(e=>rola(e)||e))];
+ checks.edge_padding=naPagina.every(e=>rect(e).left>=main.left+10 && rect(e).right<=main.right-10);
  const overlaps=[];
  for(const parent of document.querySelectorAll('main,main div')){
    const c=[...parent.children].filter(e=>visible(e)&&!['STYLE','SCRIPT'].includes(e.tagName));
@@ -78,7 +83,11 @@ CHECKS = r"""() => {
 
 
 def previews(run: Path, out: Path) -> tuple[list[dict], dict]:
-    plan = json.loads((run / 'funnel_plan.json').read_text())
+    # O plano VIVO do estado: a rota de saída oficial nasce na escrita, depois
+    # do `funnel_plan.json` gravado na extração.
+    estado = run / 'state.json'
+    plan = (json.loads(estado.read_text()).get('plan') if estado.exists() else None) \
+        or json.loads((run / 'funnel_plan.json').read_text())
     config = json.loads((run / 'config_snapshot.json').read_text())
     site = config['site']
     footer = site.get('rodape_institucional', '') if site.get('rodape_institucional_persistente') else ''

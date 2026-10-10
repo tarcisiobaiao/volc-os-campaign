@@ -42,6 +42,8 @@ def test_navegador_recusa_meio_integrante_e_calcula_inteiro():
         page.set_content(html)
         entradas = page.locator("input")
         saida = page.locator("[data-vc-out]")
+        # com o script rodando, o aviso de fallback some da apresentação
+        assert not page.locator("[data-vc-semjs]").is_visible()
         entradas.nth(0).fill("1500")
         entradas.nth(1).fill("1,5")
         assert saida.get_attribute("data-vc-status") == "invalid"

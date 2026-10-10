@@ -26,4 +26,9 @@
 	.single-rec .content .wp-block-table table:not(:has(td:nth-child(3))) td:first-child {
 		font-weight: 700;
 	}
+	/* Três ou mais colunas: largura mínima legível e rolagem dentro do bloco. */
+	.single-rec .content .wp-block-table table:has(td:nth-child(3)) { min-width: 36em; }
+	.single-rec .content .wp-block-table table:has(td:nth-child(3)) :is(td, th) {
+		overflow-wrap: normal; word-break: normal;
+	}
 }

@@ -531,8 +531,12 @@ def _inventario_de_midia(state, page):
     }
 
 
-def revisar_lote(state, pages, deps):
-    """Uma chamada; mesmas políticas, notas, patcher e recibos do revisor V2."""
+def revisar_lote(state, pages, deps, *, direcao: str = ""):
+    """Uma chamada; mesmas políticas, notas, patcher e recibos do revisor V2.
+
+    `direcao` é a orientação do operador para ESTA revisão (ex.: primeira dobra
+    e CTAs). Entra como dado do operador, abaixo das regras: não autoriza fato,
+    número, link ou capacidade sem lastro no inventário."""
     from funnelforge.pipeline import steps as st
     from funnelforge.pipeline.revisao import documento_de, montar_prompt_do_revisor
     prompts = []
@@ -550,6 +554,9 @@ def revisar_lote(state, pages, deps):
                 "não prometa nem peça o que não está lá. Responda JSON: "
                 '{"paginas":[{"page_number":1,"revisao":{...resposta do revisor...}}]}. '
                 "Uma entrada exata por página; nenhum texto fora do JSON.\n"
+                + (("DIREÇÃO DO OPERADOR para esta revisão (aplique com patches "
+                    "localizados, só com fatos do inventário de cada página): "
+                    + direcao.strip() + "\n") if direcao.strip() else "")
                 + json.dumps({"brief_pre_arquitetura": state.brief_pre_arquitetura.model_dump(),
                               "paginas": prompts}, ensure_ascii=False))
     try:

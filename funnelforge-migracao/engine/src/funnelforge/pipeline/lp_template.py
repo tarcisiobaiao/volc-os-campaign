@@ -35,6 +35,23 @@ _REQUIRED_LP_SLOTS = (
     "sections", "faq", "transition", "cta_texts",
 )
 
+# Entrega própria, não piso de palavras: uma LP curta passa com poucas frases
+# que respondem; o que não passa é o corpo feito só de comandos de navegação
+# ("Escolha abaixo", "Veja no botão"), que é página-ponte. Uma frase "com
+# conteúdo" tem ao menos 8 palavras; comandos de clique têm 2 a 4.
+MIN_FRASES_DE_ENTREGA = 3
+_PALAVRAS_POR_FRASE_DE_ENTREGA = 8
+
+
+def _frases_de_entrega(content: dict) -> list[str]:
+    from html import unescape
+    textos = [content.get("intro") or "",
+              *((s or {}).get("body") or "" for s in content.get("sections") or [])]
+    corrido = " ".join(re.sub(r"<[^>]+>", " ", unescape(t)) for t in textos)
+    frases = re.split(r"(?<=[.!?])\s+|\n+", corrido)
+    return [f for f in frases if len(f.split()) >= _PALAVRAS_POR_FRASE_DE_ENTREGA]
+
+
 def validate_lp_content(content: dict) -> list[Issue]:
     """Validate the redator_p1 JSON that feeds the LP template.
 
@@ -110,6 +127,13 @@ def validate_lp_content(content: dict) -> list[Issue]:
                 code="cta_first_person",
                 message=f"CTA em 1ª pessoa emocional na LP (proibido): '{phrase}'."))
             break
+    if len(_frases_de_entrega(content)) < MIN_FRASES_DE_ENTREGA:
+        issues.append(Issue(
+            code="lp_sem_entrega_propria",
+            message=("A LP só encaminha: a introdução e as seções não trazem frases que "
+                     "respondam algo por conta própria (ex.: 'Escolha abaixo', 'Veja no "
+                     "botão'). Responda a dúvida principal no próprio texto; o tamanho "
+                     "pode ser curto.")))
     flat = json.dumps(content, ensure_ascii=False).lower()
     for p in BANNED_OFFICIAL:
         if p in flat:

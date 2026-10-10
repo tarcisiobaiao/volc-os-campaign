@@ -108,7 +108,8 @@ def test_runner_sem_a_flag_continua_como_antes(tmp_path):
 
 def test_lp_v2_primeira_pessoa_sai_e_schema_continua_bloqueando(tmp_path):
     lp = {"hero_title": "T", "hero_subtitle": "S", "article_title": "A",
-          "intro": "<p>i</p>", "sections": [{"title": "t", "body": "<p>b</p>"}] * 4,
+          # corpo com entrega própria (desde 10/10 a LP só de ponte reprova)
+          "intro": "<p>i</p>", "sections": [{"title": "t", "body": "<p>Quem recebe o BPC e mora com a família pode ter o desconto na conta.</p>"}] * 4,
           "faq": [{"q": "q?", "a": "a"}], "transition": "<p>t</p>",
           "cta_texts": ["Quero ver quem tem direito", "Ver regras", "Ver passo a passo"]}
     cfg = StepConfig(model="m", fallbacks=[], temperature=0.7, validators=["lp_json_contract"])

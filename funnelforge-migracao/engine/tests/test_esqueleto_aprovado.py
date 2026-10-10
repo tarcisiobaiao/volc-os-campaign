@@ -98,3 +98,30 @@ def test_calculadora_pronta_chega_a_pagina_no_caminho_com_pacotes(tmp_path, monk
         assert state.pacotes[n]["ferramenta"]["estado"] == "pronta"
         assert state.step_status[f"widget_p{n}"].status is StepStatus.OK
         assert "data-vc-operation" in state.drafts[n].content
+
+
+def test_mesmos_slugs_com_entrega_ou_destino_diferente_e_delta_material():
+    aprovada = arquitetura()
+    plan = plano_do_funnel_architecture(copy.deepcopy(aprovada))
+    alvo = next(p for p in plan.pages if p.editorial and p.editorial.links)
+    alvo.editorial.links = alvo.editorial.links[1:]          # um destino a menos
+    com_jornada = next(p for p in plan.pages if p.jornada and p.jornada.valor)
+    com_jornada.jornada.valor.entregas = ["resposta_direta", "ferramenta"]
+    state = RunState(run_id="r")
+    _registrar_delta_de_arquitetura(state, aprovada, plan)
+    corpo = json.loads(state.step_status["delta_arquitetura"].issues[0].message)
+    assert not corpo["removidas"] and not corpo["novas"]
+    assert "destinos" in corpo["alteradas"][alvo.slug]
+    assert "entregas" in corpo["alteradas"][com_jornada.slug]
+
+
+def test_reescrita_de_texto_nao_pede_nova_aprovacao():
+    aprovada = arquitetura()
+    plan = plano_do_funnel_architecture(copy.deepcopy(aprovada))
+    for p in plan.pages:
+        p.h1_title = p.h1_title + " (revisado)"
+        if p.jornada:
+            p.jornada.resposta_imediata = "Outra redação da mesma resposta."
+    state = RunState(run_id="r")
+    _registrar_delta_de_arquitetura(state, aprovada, plan)
+    assert "delta_arquitetura" not in state.step_status

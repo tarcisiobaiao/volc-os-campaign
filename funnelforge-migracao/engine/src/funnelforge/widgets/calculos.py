@@ -65,6 +65,7 @@ def validar(calculo: CalculoDoAtivo) -> list[dict]:
 _JS = r'''(function(){
 var r=document.getElementById("__ID__");if(!r){return;}
 var inputs=r.querySelectorAll("input");var out=r.querySelector("[data-vc-out]");
+var semjs=r.querySelector("[data-vc-semjs]");if(semjs){semjs.hidden=true;}
 function cents(text){
 var s=text.trim().replace(",",".");
 if(!/^\d{1,13}(\.\d{1,2})?$/.test(s)){throw Error("Entrada inválida");}
@@ -101,13 +102,15 @@ def renderizar_calculo(calculo: CalculoDoAtivo, *, titulo: str, identidade: str)
     html = (f'<section class="vw" id="{wid}" data-vc-operation="{calculo.operacao}" '
             f'data-vc-inteiros="{",".join(str(i) for i in calculo.inteiros)}">'
             f'<div class="vw-top"><h3 class="vw-tit">{escape(titulo)}</h3>'
-            f'<div class="vw-sub" id="{wid}-help">Use números sem separador de milhar. '
-            'Cálculo informativo: não consulta cadastros nem confirma elegibilidade. '
-            'Sem JavaScript, faça a operação descrita no artigo.</div></div>'
+            f'<div class="vw-sub" id="{wid}-help">Use números sem ponto de milhar. '
+            'A conta não consulta cadastro nem confirma direito.</div></div>'
             f'<div class="vw-ctls">{controles}</div><div class="vw-caixa">'
             f'<strong>{escape(calculo.rotulo_resultado)}</strong>'
             '<div class="vw-out" style="min-height:3em;grid-area:1/1" aria-live="polite" '
             'data-vc-out="1" data-vc-status="empty">Preencha os dois valores.</div>'
+            # Fallback: só fica visível se o script não rodar.
+            '<div class="vw-sub" data-vc-semjs="1">Sem a calculadora, faça a conta '
+            'descrita no texto.</div>'
             '</div></section>')
     return '<!-- wp:html -->\n<style>' + CSS + '</style>\n' + html + '\n<script>' + (
         _JS.replace("__ID__", wid)) + '</script>\n<!-- /wp:html -->'
