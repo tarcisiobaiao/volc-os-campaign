@@ -3335,7 +3335,10 @@ def proveniencia_do_print(url: str, arquivo: Path, facts: ResearchFacts, *,
         "legenda": (f"Reprodução de tela de {host}, capturada em "
                     f"{agora.strftime('%d/%m/%Y')}. A página pertence ao site de origem."
                     + (f" Mostra: {elemento}." if elemento else "")),
-        "alt": f"Reprodução: {host} — tela oficial de {_link_theme(url)}",
+        # O alt descreve a imagem (qual página, de qual site); não é depósito
+        # de keyword nem afirmação que a captura não mostra.
+        "alt": f"Reprodução: {host} — tela oficial de {_link_theme(url)}"
+               + (f": página “{' '.join(titulo.split())[:120]}”" if titulo.strip() else ""),
         "crop": crop, "sha256": _sha256_do_arquivo(arquivo), "estado": "atual",
     }
 
@@ -4714,14 +4717,33 @@ def _link_theme(url: str) -> str:
     return parsed.netloc.lower()
 
 
+def legenda_do_print(host: str, *, capturado_em: str = "", titulo: str = "",
+                     trecho: str = "") -> str:
+    """A legenda que o leitor lê sob o print: reprodução de onde e quando e,
+    quando a proveniência traz, QUAL página é (o título que o Chromium leu na
+    captura) e o que essa fonte sustenta no texto. Só o que a captura e a
+    pesquisa provam: sem título, a legenda fica como era; sem trecho, não se
+    afirma o que a fonte mostra."""
+    legenda = f"Reprodução: site oficial ({host}){_quando_capturado(capturado_em)}"
+    titulo = " ".join(str(titulo or "").split())
+    trecho = " ".join(str(trecho or "").split())
+    if titulo:
+        legenda += f" — página “{titulo[:120]}”"
+    if trecho:
+        legenda += f". O que esta fonte sustenta no texto: {trecho[:200]}"
+    return legenda
+
+
 def _insert_official_screenshot(html: str, image_url: str, href: str, host: str,
                                 alt: str, *, capturado_em: str = "",
-                                media_id: int | None = None) -> str:
+                                media_id: int | None = None, titulo: str = "",
+                                trecho: str = "") -> str:
     """Insert a Gutenberg wp:image (with a 'Reprodução: site oficial (host)'
     figcaption) right after the block that contains `href`; fallback anchor is
     after the SECOND heading. No-op when there's no image URL or neither anchor
     is found. Spacers above/below keep AdSense-safe distance from headings and
-    CTA stacks, mirroring _insert_midcontent_image."""
+    CTA stacks, mirroring _insert_midcontent_image. `titulo` e `trecho` vêm da
+    proveniência do print (`proveniencia_do_print`) e entram na legenda."""
     if not image_url:
         return html
     cut = _anchor_after_href(html, href)
@@ -4732,8 +4754,8 @@ def _insert_official_screenshot(html: str, image_url: str, href: str, host: str,
     block = (
         f"\n\n{_SCREENSHOT_SPACER}\n"
         f"{_bloco_de_imagem(image_url, alt, media_id)}"
-        f'<figcaption class="wp-element-caption">Reprodução: site oficial ({host})'
-        f"{_quando_capturado(capturado_em)}"
+        f'<figcaption class="wp-element-caption">'
+        f"{escape(legenda_do_print(host, capturado_em=capturado_em, titulo=titulo, trecho=trecho), quote=False)}"
         "</figcaption></figure>\n"
         "<!-- /wp:image -->\n"
         f"{_SCREENSHOT_SPACER}"
@@ -4777,7 +4799,9 @@ def _embed_official_screenshots(state: RunState, page: Page, deps: Any, html: st
                 continue
             html = _insert_official_screenshot(html, url, href, host, alt,
                                                capturado_em=shot.get("capturado_em", ""),
-                                               media_id=media.get("id"))
+                                               media_id=media.get("id"),
+                                               titulo=shot.get("titulo", ""),
+                                               trecho=shot.get("trecho", ""))
         except Exception:  # noqa: BLE001 - official screenshot embed is non-essential; never fail publish
             continue
     return html

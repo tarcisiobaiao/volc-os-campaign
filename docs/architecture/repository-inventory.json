@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T18:29:12-03:00",
+  "generated_at": "2026-10-10T19:31:53-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 859,
-    "markdown": 637,
+    "files": 861,
+    "markdown": 639,
     "sql": 222,
     "tracked": 845,
-    "untracked": 14,
+    "untracked": 16,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 52,
-      "documentation": 455,
+      "audit": 53,
+      "documentation": 456,
       "generated": 2,
       "module-guide": 41,
       "product-document": 23,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23808,
+      "bytes": 23784,
       "lines": 318,
-      "sha256": "4b91b550c6e5748905fe84fc25509ecf47de99eaf367cc10b97a371d3cfbfbab",
+      "sha256": "80fc31b3a06e9e1fea5469e66005eb672b723587bf4cb73893dfbdb8f5505b5c",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1870,6 +1870,18 @@
       "bytes": 9103,
       "lines": 138,
       "sha256": "ffd9d98f18b156fce13f7c382b4c90b052c62451e481fe7a3cf2137f32b05400",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-ENTRADAS-DO-REDATOR-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": false,
+      "bytes": 12616,
+      "lines": 97,
+      "sha256": "4b2d55f84ee982bcb8a4edb8f204882bab3eb84d0b1cfd1f9f08788e95a1a8ea",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6867,6 +6879,18 @@
       "sql_risk": null
     },
     {
+      "path": "funnelforge-migracao/engine/runs-canario/saque-aniversario-fgts-20261010-fgts-canario/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 19873,
+      "lines": 221,
+      "sha256": "96a1522da0e449ab6861d1475ccb0e17c98eec43da7994ca3cc64aec81831392",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-bucket/report.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7535,7 +7559,7 @@
       "lines": 242,
       "sha256": "320fdd5db67dde5e784fd52923742037f6a7af8e3c93d8a1754d5d48b1c97bfd",
       "graph_nodes": 8,
-      "graph_degree": 16,
+      "graph_degree": 18,
       "sql_risk": "high"
     },
     {
@@ -7739,7 +7763,7 @@
       "lines": 117,
       "sha256": "e1339fbc64a1e30f0c720bb5540401c1192ebee5ffc75e2682a1f4aa23135db4",
       "graph_nodes": 3,
-      "graph_degree": 6,
+      "graph_degree": 4,
       "sql_risk": "high"
     },
     {

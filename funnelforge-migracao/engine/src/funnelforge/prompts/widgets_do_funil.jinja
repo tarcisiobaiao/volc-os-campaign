@@ -16,6 +16,8 @@ Você NÃO escreve HTML, CSS nem JavaScript. Para cada página, devolva o CONTE�
 - diagnostico (Diagnóstico de Recusa): exatamente 1 pergunta, o que aconteceu com o leitor; cada cenário traz a causa provável e como destravar. Chip ex.: "falta documento".
 
 Escolha a peça pela dúvida da página (a sugestão abaixo é só ponto de partida) ou devolva NONE.
+A peça complementa o texto: ela cobre a ramificação por situação do leitor que o texto corrido não cobre (o que fazer no MEU caso), e não repete em cenários o que as seções e os blocos planejados da página já entregam em lista, passos ou tabela. Se os blocos planejados já fazem exatamente essa divisão, devolva NONE ou escolha outra função que acrescente. O redator recebe os controles e os cenários da peça e escreve o porquê e o que a peça não cobre.
+O sistema imprime no topo da peça o aviso "Orientação informativa: não consulta cadastros nem confirma elegibilidade, aprovação ou contratação": não repita esse limite no subtítulo, nos cenários nem no rodapé; o rodapé serve para nomear a instituição da regra.
 
 # REGRAS DO CONTEÚDO
 - Só use números, prazos, datas, valores, nomes de documento e regras que estão nos FATOS da própria página. Sem o fato, escreva a orientação sem a cifra.
@@ -42,7 +44,9 @@ Escolha a peça pela dúvida da página (a sugestão abaixo é só ponto de part
 Dúvida que a página resolve: {{ p.pergunta }}
 Resposta que a página entrega: {{ p.resposta }}
 Blocos planejados: {{ p.plano_visual | join(", ") or "nenhum" }}
-Peça sugerida: {{ p.sugestao }}
+{% if p.secoes %}Seções e blocos que o texto já entrega (não repita isto em cenários):
+{% for s in p.secoes %}- {{ s }}
+{% endfor %}{% endif %}Peça sugerida: {{ p.sugestao }}
 FATOS DA PÁGINA:
 {% for f in p.fatos %}- {{ f.afirmacao }}{% if f.valor %} [{{ f.valor }}{% if f.unidade %} {{ f.unidade }}{% endif %}]{% endif %}{% if f.vigente_desde %} (vigente desde {{ f.vigente_desde }}){% endif %}{% if f.emissor %} — {{ f.emissor }}{% endif %}
 {% else %}- nenhum fato verificado: peça só qualitativa, ou NONE

@@ -1,8 +1,11 @@
 <jornada_do_leitor>
 Pergunta principal desta página: {{ jornada.pergunta }}{% if jornada.trabalho %} (trabalho do leitor: {{ jornada.trabalho }}){% endif %}
 Resposta imediata, na primeira dobra, antes de qualquer anúncio, widget ou CTA: {{ jornada.resposta_imediata or "não declarada — derive da base factual, sem inventar" }}
+Ela é a resposta ao leitor, com a condição que decide, não o aviso do portal: a identidade editorial (não consulta, não cadastra, não confirma) o sistema insere uma vez na página. Se a resposta declarada acima trouxer esse limite, escreva a resposta e as condições e deixe o limite para o aviso; só fica o limite que é a própria resposta (ex.: "não existe pedido online"), porque decide o que o leitor faz.
 Ordem da página: promessa → resposta imediata → aprofundamento útil → consequência ou nova dúvida → CTA específico. Não esconda a resposta desta página nem despeje a jornada inteira nela.
 Quem chega aqui: {{ jornada.coortes | join(", ") if jornada.coortes else "não declarado" }}.{% if jornada.entrada_direta == "autocontida" %} Quem entra direto (busca, link compartilhado) resolve a tarefa sem ter lido outra página.{% endif %}
+{% for c in jornada.coortes_detalhadas | default([]) %}- quem chega por {{ c.canal }} espera: {{ c.promessa }} ({% if c.profundidade == "resposta_direta" %}decide em um ou dois olhares: resposta direta na dobra{% else %}aceita leitura guiada{% endif %}){% if c.proximo_passo %}; próximo passo planejado: "{{ c.proximo_passo }}"{% endif %}
+{% endfor %}
 {% if jornada.resolvido_em_todo_caminho %}Já resolvido por TODO leitor que chega aqui; não reofereça como CTA (uma frase de recapitulação basta): {% for d in jornada.resolvido_em_todo_caminho %}"{{ d }}"{% if not loop.last %}; {% endif %}{% endfor %}.
 {% endif %}{% if jornada.talvez_resolvido %}Resolvido só por parte dos leitores (há quem entre direto): {% for d in jornada.talvez_resolvido %}"{{ d }}"{% if not loop.last %}; {% endif %}{% endfor %}. Recapitule em uma frase e, se houver CTA para isso, ele é secundário e condicional ("se você ainda não...").
 {% endif %}{% if jornada.proxima_duvida %}Próxima dúvida ainda aberta: "{{ jornada.proxima_duvida }}". O CTA principal leva a ela.

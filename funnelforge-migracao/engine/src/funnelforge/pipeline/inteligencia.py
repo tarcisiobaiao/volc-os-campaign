@@ -374,10 +374,18 @@ def preparar_widgets_de_orientacao(state, deps, ferramentas: dict) -> dict:
     paginas = []
     for p in candidatas:
         factual = projecao_para_o_prompt(state.dossie, p.page_number)
+        # O que o TEXTO já vai entregar (seções do plano e blocos planejados):
+        # a peça complementa a página em vez de repetir a lista ou a tabela
+        # dela em cenários (p3/p6 do canário de 10/10 saíram em triplicata).
+        secoes = [*(p.main_content_structure or []),
+                  *(f"bloco '{b.secao}': {b.intencao} em {b.padrao}"
+                    + (f" ({b.funcao})" if b.funcao else "")
+                    for b in p.jornada.plano_visual)]
         paginas.append({
             "pagina": p.page_number, "h1": p.h1_title, "pergunta": p.jornada.pergunta_principal,
             "resposta": p.jornada.resposta_imediata,
             "plano_visual": [b.intencao for b in p.jornada.plano_visual],
+            "secoes": secoes,
             "sugestao": chave_por_nome(st.widget_archetype_for(state, p)) or "",
             "fatos": factual.get("fatos") or []})
     prompt = render("widgets_do_funil", paginas=paginas)
@@ -745,17 +753,45 @@ def brief_para_revisao(brief) -> dict:
             "desejos_observados": dados.get("desejos_observados") or []}
 
 
+def peca_em_texto(conteudo: dict) -> str:
+    """A peça de orientação como o LEITOR a lê: controles com opções e, por
+    cenário, chip, título e passos ou itens. É o que o redator precisa para
+    complementar a peça em vez de repeti-la; HTML, CSS e JS ficam de fora."""
+    if not isinstance(conteudo, dict):
+        return ""
+    partes = []
+    for c in conteudo.get("controles") or []:
+        opcoes = " / ".join(str(o.get("texto") or "") for o in (c.get("opcoes") or [])
+                            if isinstance(o, dict))
+        partes.append(f"pergunta \"{c.get('rotulo') or ''}\" com as opções {opcoes}")
+    for s in conteudo.get("cenarios") or []:
+        itens = [*(s.get("passos") or [])]
+        for lst in s.get("listas") or []:
+            if isinstance(lst, dict):
+                itens += [f"{lst.get('rotulo') or ''}: {i}" for i in lst.get("itens") or []]
+        corpo = str(s.get("corpo") or "").strip()
+        partes.append(f"cenário \"{s.get('titulo') or ''}\" [{s.get('chip') or ''}]: "
+                      + (corpo + " " if corpo else "") + "; ".join(str(i) for i in itens))
+    if conteudo.get("rodape"):
+        partes.append(f"rodapé: {conteudo['rodape']}")
+    return " | ".join(p for p in partes if p.strip())
+
+
 def prompt_do_pacote(state, page):
     from funnelforge.prompts import render
     pacote = pacote_conferido(state, page)
     p, j = pacote["pagina"], pacote["jornada"]
     # O redator precisa da capacidade, não do CSS/JS já testado. O bloco
     # completo permanece no pacote congelado para injeção determinística.
+    # O CONTEÚDO da peça de orientação (controles e cenários) fica: é o que
+    # permite ao texto complementar a peça em vez de repeti-la; ele vai em
+    # texto corrido na frase "Ferramenta pronta", não como JSON no briefing.
     for ativo in pacote.get("ferramenta", {}).get("itens", []):
         ativo.pop("bloco", None)
+    texto_da_peca = ""
     if pacote.get("ferramenta", {}).get("orientacao"):
         pacote["ferramenta"]["orientacao"].pop("bloco", None)
-        pacote["ferramenta"]["orientacao"].pop("conteudo", None)
+        texto_da_peca = peca_em_texto(pacote["ferramenta"]["orientacao"].pop("conteudo", None))
     if pacote.get("entrega_confirmada", {}).get("substituiu_promessa"):
         p["editorial"]["useful_delivery"] = j["resposta_imediata"]
         p["jornada"] = j
@@ -829,8 +865,13 @@ def prompt_do_pacote(state, page):
         + str(a.get("nome") or a.get("pergunta") or "") + " (entradas: "
         + "; ".join(a.get("entradas") or []) + "; resultado: "
         + str(a.get("resultado") or a.get("entrega") or "") + "; limite: "
-        + str(a.get("limites") or "não confirma direito") + "). Conte com ela no texto, "
-        "sem reescrever o conteúdo dela nem criar outra." for a in prontas))
+        + str(a.get("limites") or "não confirma direito") + ")."
+        + (" O que a peça já diz ao leitor, por situação: " + texto_da_peca
+           + " O texto explica o porquê, as condições e o que a peça não cobre; não repita "
+           "os cenários dela em lista, passos ou tabela."
+           if texto_da_peca and a is pacote["ferramenta"].get("orientacao") else "")
+        + " Conte com ela no texto, sem reescrever o conteúdo dela nem criar outra."
+        for a in prontas))
     ctas = ("Preserve os hrefs. Nos links reformular_cta=true, escreva um rótulo específico "
             "pela entrega confirmada do destino e pela próxima dúvida, nunca 'depois do cálculo' "
             "se não há calculadora. Não copie a promessa antiga. "

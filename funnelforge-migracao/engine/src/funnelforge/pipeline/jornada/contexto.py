@@ -110,6 +110,14 @@ def contexto_de_jornada(plan: FunnelPlan | None, page: Page,
         "trabalho": j.trabalho_do_leitor,
         "resposta_imediata": j.resposta_imediata,
         "coortes": list(j.coortes_de_entrada),
+        # O que o arquiteto já declarou por coorte que ENTRA nesta página
+        # (promessa e profundidade): só repasse, nenhuma inferência. O redator
+        # recebia apenas o nome dos canais.
+        "coortes_detalhadas": [
+            {"canal": c.canal, "promessa": c.promessa, "profundidade": c.profundidade,
+             "proximo_passo": pergunta(c.proximo_passo) if c.proximo_passo else ""}
+            for c in (plan.jornada.coortes if plan.jornada is not None else [])
+            if c.entrada == j.duvida_id],
         "resolvido_em_todo_caminho": [pergunta(d) for d in sorted(estado.certamente)],
         "talvez_resolvido": [pergunta(d) for d in sorted(estado.possivelmente - estado.certamente)],
         "proxima_duvida": pergunta(j.proxima_duvida) if j.proxima_duvida else "",
