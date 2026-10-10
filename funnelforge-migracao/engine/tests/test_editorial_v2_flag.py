@@ -21,13 +21,13 @@ from tests.cenario_editorial import arquitetura_base, settings_do_cenario
 ENGINE = Path(__file__).resolve().parents[1]
 
 
-def test_flag_nasce_desligada_nas_settings_e_no_config_yaml(tmp_path: Path):
+def test_config_canonica_liga_v2_e_settings_legadas_preservam_reproducao(tmp_path: Path):
     assert RunConfig().editorial_v2 is False
     texto = (ENGINE / "config.yaml").read_text(encoding="utf-8")
-    assert "editorial_v2: false" in texto
+    assert "editorial_v2: true" in texto
     (tmp_path / ".env").write_text("", encoding="utf-8")
     settings = load_settings(tmp_path / ".env", ENGINE / "config.yaml")
-    assert settings.run.editorial_v2 is False
+    assert settings.run.editorial_v2 is True
 
 
 def test_config_yaml_tem_o_passo_do_briefing_com_o_contrato(tmp_path: Path):

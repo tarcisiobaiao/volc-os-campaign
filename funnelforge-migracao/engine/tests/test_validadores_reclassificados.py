@@ -47,7 +47,9 @@ def test_classes_da_regua():
         assert classe_da_issue(issue) == "patchavel", issue.code
     for issue in (PRIMEIRA, VISUAL):
         assert classe_da_issue(issue) == "removido", issue.code
-    for issue in (DOMINIO, SCHEMA, NUMERO, NUM_CIT, DIRECAO_ZONA):
+    for issue in (NUMERO, NUM_CIT, DIRECAO_ZONA):
+        assert classe_da_issue(issue) == "patchavel", issue.code
+    for issue in (DOMINIO, SCHEMA):
         assert classe_da_issue(issue) == "estrutural", issue.code
     assert {"fear_language", "official_impersonation", "cta_execution", "language_pt",
             "no_compliance", "anchor_incongruent"} <= CODIGOS_PATCHAVEIS
@@ -84,7 +86,7 @@ def test_runner_v2_nao_reescreve_a_pagina_por_palavra(tmp_path):
                                      ctx={"editorial_v2": True}, run_id="r-1-2")
     assert len(llm.calls) == 1 and texto == TEXTO_COM_VAGAS
     assert res.status is StepStatus.OK
-    assert [i.code for i in res.issues] == ["localizador:fear_language"]
+    assert not res.issues  # a regex editorial nem é executada no caminho atual
 
 
 def test_runner_v2_ainda_reescreve_por_falha_estrutural_sem_mandato_de_tom(tmp_path):

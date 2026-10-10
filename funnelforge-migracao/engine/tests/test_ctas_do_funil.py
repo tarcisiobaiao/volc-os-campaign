@@ -89,7 +89,7 @@ def test_uma_chamada_rotula_todos_os_botoes_antes_do_hash(tmp_path):
     assert registro["primeira_dobra"]["titulo"] == DOBRA["titulo"]
 
 
-def test_rotulo_que_o_codigo_recusa_fica_o_do_plano(tmp_path):
+def test_so_rotulo_tecnicamente_invalido_fica_o_do_plano(tmp_path):
     ruins = {0: "Ver em https://golpe.com", 1: "x" * 70, 2: "Ver as 999 opções de curso"}
     state, deps, _ = estado(tmp_path, roteiro(
         lambda i, b: ruins.get(i, f"Abrir o caminho {LETRAS[i]}")))
@@ -98,8 +98,10 @@ def test_rotulo_que_o_codigo_recusa_fica_o_do_plano(tmp_path):
     congelar_pacotes(state, deps)
 
     recusas = state.ctas_do_funil["recusas"]
-    assert set(recusas) == {"b1", "b2", "b3"}
-    assert "URL" in recusas["b1"] and "caracteres" in recusas["b2"] and "número" in recusas["b3"]
+    assert set(recusas) == {"b1"}
+    assert "URL" in recusas["b1"]
+    assert {b["id"]: b["rotulo"] for b in state.ctas_do_funil["botoes"]}["b2"] == "x" * 70
+    assert "999" in next(b["rotulo"] for b in state.ctas_do_funil["botoes"] if b["id"] == "b3")
     rotulos_antigos = {(p.page_number, r.target): r.anchor for p in plano.pages for r in p.routes}
     recusados = {(b["origem"], b["destino"]) for b in state.ctas_do_funil["botoes"]}
     for p in state.plan.pages:
@@ -108,13 +110,12 @@ def test_rotulo_que_o_codigo_recusa_fica_o_do_plano(tmp_path):
                 assert r.anchor == rotulos_antigos[(p.page_number, r.target)]
 
 
-def test_destinos_diferentes_com_o_mesmo_rotulo_nao_passam(tmp_path):
+def test_rotulos_repetidos_nao_sao_recusados_por_heuristica(tmp_path):
     state, deps, _ = estado(tmp_path, roteiro(lambda i, b: "Abrir o guia"))
     congelar_pacotes(state, deps)
     aplicados = state.ctas_do_funil["botoes"]
-    for origem in {b["origem"] for b in aplicados}:
-        assert len([b for b in aplicados if b["origem"] == origem]) == 1
-    assert any("mesmo rótulo" in m for m in state.ctas_do_funil["recusas"].values())
+    assert len([b for b in aplicados if b["origem"] == 1]) == 3
+    assert not state.ctas_do_funil["recusas"]
 
 
 def test_nova_congelada_so_pergunta_o_que_mudou_no_destino(tmp_path):
@@ -152,12 +153,12 @@ def test_sniper_fora_do_ar_mantem_os_rotulos_do_plano(tmp_path):
     assert state.pacotes and all(pacote_conferido(state, p) for p in state.plan.pages)
 
 
-def test_primeira_dobra_com_numero_inventado_ou_navegacao_longa_e_recusada(tmp_path):
+def test_numero_na_copy_vai_ao_revisor_nao_ao_comparador_lexical(tmp_path):
     ruim = {"titulo": "Curso gratuito: 99% de aprovação", "subtitulo": DOBRA["subtitulo"]}
     state, deps, _ = estado(tmp_path, roteiro(dobra=ruim))
     congelar_pacotes(state, deps)
-    assert state.ctas_do_funil["primeira_dobra"] == {}
-    assert "número" in state.ctas_do_funil["recusas"]["primeira_dobra"]
+    assert state.ctas_do_funil["primeira_dobra"]["titulo"] == ruim["titulo"]
+    assert not state.ctas_do_funil["recusas"]
 
 
 def test_promessa_sem_lastro_ganha_entrega_ajustada_e_delta_registrado(tmp_path):
@@ -202,46 +203,26 @@ def test_recongelar_so_a_pagina_cuja_saida_oficial_mudou(tmp_path):
     assert state.pacotes[n]["sha256"] != antes[n]["sha256"]
 
 
-def test_primeira_dobra_longa_demais_para_o_celular_e_recusada(tmp_path):
+def test_tamanho_da_dobra_nao_e_bloqueio_editorial(tmp_path):
     longa = dict(DOBRA, titulo="Curso gratuito no Senac para famílias de baixa renda em 2026")
     state, deps, _ = estado(tmp_path, roteiro(dobra=longa))
     congelar_pacotes(state, deps)
-    assert state.ctas_do_funil["primeira_dobra"] == {}
-    assert "caracteres" in state.ctas_do_funil["recusas"]["primeira_dobra"]
+    assert state.ctas_do_funil["primeira_dobra"]["titulo"] == longa["titulo"]
+    assert not state.ctas_do_funil["recusas"]
 
 
-def test_rotulo_generico_volta_ao_modelo_e_resposta_generica_e_recusada(tmp_path):
-    """Homologação de 10/10: "Entender como a Tarifa Social chega à conta" e
-    "Conhecer os critérios…" não diziam a resposta do destino. Rótulo genérico
-    não é reaproveitado; o que o modelo devolve genérico é recusado."""
-    from funnelforge.pipeline.ctas import rotulo_generico
-    assert rotulo_generico("Entender como a Tarifa Social chega à conta")
-    assert rotulo_generico("Conhecer os critérios para ter Tarifa Social")
-    assert rotulo_generico("Entender por que ainda pode haver valor na conta")
-    assert not rotulo_generico("Ver os passos para o desconto aparecer na conta")
-    assert not rotulo_generico("ANEEL: consultar as regras de acesso >>>")
-
-    genericos = {"b1"}
-    state, deps, llm = estado(tmp_path, roteiro(
-        rotulo=lambda i, b: ("Entender como funciona" if b in genericos
-                             else f"Ver o passo {LETRAS[i]} da inscrição")))
-    congelar_pacotes(state, deps)
-    assert "b1" in state.ctas_do_funil["recusas"]
-    assert "genérico" in state.ctas_do_funil["recusas"]["b1"]
-    assert not any(rotulo_generico(b["rotulo"]) for b in state.ctas_do_funil["botoes"])
-
-    # Um rótulo genérico gravado (run anterior) não é reaproveitado: só ele volta.
-    alvo = state.ctas_do_funil["botoes"][0]
-    alvo["rotulo"] = "Entender como funciona"
-    genericos.clear()
-    state.pacotes = {}
-    congelar_pacotes(state, deps)
-    segunda = chamadas_do_sniper(llm)[-1]
-    # volta o genérico gravado e o que foi recusado na primeira rodada; os demais
-    # são reaproveitados
-    assert len(_QUALQUER_BOTAO_RE.findall(segunda)) == 2
-    assert state.ctas_do_funil["reaproveitados"] == len(state.ctas_do_funil["botoes"]) - 2
-    assert not any(rotulo_generico(b["rotulo"]) for b in state.ctas_do_funil["botoes"])
+def test_verbos_livres_sao_aceitos_e_reaproveitados_sem_chamada_extra(tmp_path):
+    for rotulo in ("Descubra se sua família atende aos critérios",
+                   "Entender como a Tarifa Social chega à conta",
+                   "Conhecer os critérios para ter Tarifa Social"):
+        state, deps, llm = estado(tmp_path, roteiro(lambda i, b: rotulo))
+        congelar_pacotes(state, deps)
+        assert not state.ctas_do_funil["recusas"]
+        quantidade = len(chamadas_do_sniper(llm))
+        state.pacotes = {}
+        congelar_pacotes(state, deps)
+        assert len(chamadas_do_sniper(llm)) == quantidade
+        assert state.ctas_do_funil["reaproveitados"] == len(state.ctas_do_funil["botoes"])
 
 
 def test_botao_repedido_para_pagina_com_entrega_ajustada_ve_a_entrega_ajustada(tmp_path):
@@ -258,10 +239,10 @@ def test_botao_repedido_para_pagina_com_entrega_ajustada_ve_a_entrega_ajustada(t
     original = state.plan.pages[3].jornada.resposta_imediata
     congelar_pacotes(state, deps)
     ajustada = state.ctas_do_funil["entregas_ajustadas"][0]["entrega"]
-    # um botão que leva à p4 volta ao modelo (rótulo genérico gravado)
+    # Um botão com assinatura obsoleta precisa refletir a entrega atualizada.
     botao = next(b for b in state.ctas_do_funil["botoes"]
                  if b["tipo"] == "funnel" and b["destino_pagina"] == 4)
-    botao["rotulo"] = "Entender como funciona"
+    botao["assinatura"] = "assinatura-obsoleta"
     state.pacotes = {}
     congelar_pacotes(state, deps)
     segunda = chamadas_do_sniper(llm)[-1]

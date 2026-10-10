@@ -38,11 +38,11 @@ def test_mesmo_numero_de_outro_assunto_vai_ao_revisor():
     assert classe_da_issue(issues[0]) == "patchavel"           # sentido é do revisor
 
 
-def test_numero_sem_nenhum_fato_continua_bloqueando():
+def test_match_mecanico_de_numero_e_julgamento_do_revisor():
     issues = _issues(f'<p>O desconto é de 70%, segundo a <a href="{ANEEL}">ANEEL</a>.</p>',
                      DESCONTO)
     assert [i.code for i in issues] == ["ungrounded_critical_claim"]
-    assert classe_da_issue(issues[0]) == "estrutural"
+    assert classe_da_issue(issues[0]) == "patchavel"
 
 
 def test_numero_so_com_fonte_regional_vira_pista_e_nacional_nao():

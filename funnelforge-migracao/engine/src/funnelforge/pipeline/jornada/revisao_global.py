@@ -100,6 +100,10 @@ def revisar_funil_pronto(state: RunState, settings: Any) -> dict:
 
     def achado(page: Page, regra: str, localizador: str, evidencia: str,
                proposta: str, severidade: str) -> None:
+        if (state.editorial_v2 or plan.editorial_v2 or settings.run.editorial_v2):
+            # Loops, relevância e conclusão são avaliação editorial da LLM.
+            # A auditoria determinística observa; não veta uma aprovação dela.
+            severidade = "aviso"
         achados.append({"pagina": page.page_number, "slug": page.slug,
                         "duvida_id": rotulo(page), "regra": regra,
                         "localizador": localizador, "evidencia": evidencia,

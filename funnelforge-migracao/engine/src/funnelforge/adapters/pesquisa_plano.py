@@ -41,6 +41,11 @@ from funnelforge.config.settings import PREFIXO_DO_PLANO, StepConfig
 AUTH_MODE = "chatgpt_plan"
 RASTREIO = frozenset({"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
                       "gclid", "fbclid", "msclkid"})
+# Token de sessão de quem navegou (Plone `_authenticator`, Liferay `doAsUserId`,
+# sessão Java/PHP): a página pública é a mesma sem ele, e o link publicado não
+# pode carregar a sessão de outra pessoa. A pesquisa de 10/10 trouxe o FAQ do
+# MME com `_authenticator` duas vezes (corrigido à mão na primeira).
+SESSAO = frozenset({"_authenticator", "doasuserid", "jsessionid", "phpsessid"})
 MAX_TOKENS_DA_PESQUISA = 2500
 MAX_TOKENS_DA_ESTRUTURACAO = 4000
 MAX_TOKENS_DO_LOTE = 12000
@@ -64,12 +69,12 @@ SOBREPOSICAO_NA_PAGINA = 0.4     # termos da afirmação presentes na página li
 
 
 def canonica(url: str | None) -> str:
-    """Tira SÓ parâmetros de rastreio conhecidos; query funcional fica."""
+    """Tira SÓ parâmetros de rastreio e de sessão conhecidos; query funcional fica."""
     if not url:
         return ""
     p = urlparse(url.strip())
     q = [(k, v) for k, v in parse_qsl(p.query, keep_blank_values=True)
-         if k.lower() not in RASTREIO]
+         if k.lower() not in RASTREIO | SESSAO]
     return urlunparse(p._replace(query=urlencode(q, doseq=True)))
 
 

@@ -502,7 +502,7 @@ def step_briefing(state: RunState, page: Page, deps: Any) -> None:
     try:
         texto, res = deps.runner.run_llm_step(
             key, cfg, [{"role": "user", "content": prompt}],
-            ctx={"briefing_ref": ref}, run_id=state.run_id)
+            ctx={"briefing_ref": ref, "editorial_v2": True}, run_id=state.run_id)
     except LLMStepError as exc:
         _falha(state, key, f"Briefing indisponível: {exc.motivo}. A página não será escrita.",
                pago=exc.step_result)
@@ -516,7 +516,7 @@ def step_briefing(state: RunState, page: Page, deps: Any) -> None:
     except (ValueError, json.JSONDecodeError) as exc:  # o runner já validou; defesa
         _falha(state, key, f"Briefing ilegível: {exc}.", pago=res)
         return
-    erros, avisos = validar_briefing(dados, ref)
+    erros, avisos = validar_briefing(dados, ref, somente_estrutura=True)
     if erros:  # não acontece depois do runner; se acontecer, fecha
         res.issues = list(res.issues) + erros
         _falha(state, key, "Briefing incoerente com o contrato.", pago=res)

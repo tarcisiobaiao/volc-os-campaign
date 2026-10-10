@@ -174,7 +174,7 @@ background:#fff;color:var(--vw-corpo);font:inherit;font-size:.9em;font-weight:60
 cursor:pointer;transition:border-color .16s ease,background-color .16s ease}
 .vw-bt:hover{border-color:var(--vw-marca)}
 .vw-bt[aria-pressed="true"]{border-color:var(--vw-marca);background:var(--vw-marca-fraca);
-color:var(--vw-marca)}
+color:#0b5f75}
 /* o anel de foco NUNCA sai — é o único caminho de quem navega por teclado */
 .vw-sel:focus-visible,.vw-bt:focus-visible{outline:2px solid var(--vw-marca);outline-offset:2px}
 

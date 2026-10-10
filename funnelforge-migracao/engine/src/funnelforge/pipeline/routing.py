@@ -462,8 +462,9 @@ def validate_funnel_graph(plan: FunnelPlan, settings: Settings, *,
     # Before research there is deliberately no guessed official URL.
     pending_official = research_pending and exit_kind == "external_official"
     com_jornada = any(p.jornada is not None for p in pages)
-    if solutions and not pending_official and not com_jornada and not any(
-            r.kind == exit_kind for r in solutions[-1].routes):
+    if (not settings.run.editorial_v2 and not plan.editorial_v2
+            and solutions and not pending_official and not com_jornada and not any(
+            r.kind == exit_kind for r in solutions[-1].routes)):
         issues.append(Issue(
             code="terminal_no_exit",
             message=f"Pagina terminal '{solutions[-1].slug}' sem saida {exit_kind}."))
@@ -472,5 +473,6 @@ def validate_funnel_graph(plan: FunnelPlan, settings: Settings, *,
     # dúvida já resolvida, LP que só roteia, beco sem saída...) são falha de
     # GRAFO — entram aqui para cair no mesmo portão que aborta o run antes da
     # pesquisa. Sem jornada no plano, a lista abaixo é vazia.
-    issues.extend(revisar_esqueleto(plan).bloqueantes)
+    issues.extend(revisar_esqueleto(plan, somente_estrutura=bool(
+        settings.run.editorial_v2 or plan.editorial_v2)).bloqueantes)
     return issues

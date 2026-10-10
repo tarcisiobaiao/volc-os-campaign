@@ -23,22 +23,22 @@ def test_qualquer_fato_que_sustenta_vale_quando_a_fonte_dele_e_citada():
     assert critical_fact_grounding(texto, {"facts": fatos, "role": PageRole.PRESELL}) == []
 
 
-def test_numero_sem_fato_continua_bloqueando():
+def test_match_mecanico_de_numero_nao_decide_publicacao():
     fatos = _fatos(("100", "%", ANEEL))
     issues = critical_fact_grounding("<p>O desconto é de 70%, segundo a ANEEL.</p>",
                                      {"facts": fatos, "role": PageRole.PRESELL})
     assert [i.code for i in issues] == ["ungrounded_critical_claim"]
-    assert classe_da_issue(issues[0]) == "estrutural"
+    assert classe_da_issue(issues[0]) == "patchavel"
 
 
-def test_atribuicao_em_prosa_vai_ao_revisor_so_na_lp_e_na_presell():
+def test_atribuicao_em_prosa_e_julgada_pelo_revisor_em_todos_os_papeis():
     fatos = _fatos(("60", "anos", EDP))
     texto = "<p>Ter 60 anos não basta, segundo a ANEEL.</p>"
     presell = critical_fact_grounding(texto, {"facts": fatos, "role": PageRole.PRESELL})
     assert [i.code for i in presell] == ["critical_claim_without_citation"]
     assert "edp.com.br" in presell[0].message and classe_da_issue(presell[0]) == "patchavel"
     solucao = critical_fact_grounding(texto, {"facts": fatos, "role": PageRole.SOLUTION})
-    assert classe_da_issue(solucao[0]) == "estrutural"
+    assert classe_da_issue(solucao[0]) == "patchavel"
 
 
 def _pagina(h1):

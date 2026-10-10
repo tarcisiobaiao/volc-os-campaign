@@ -40,6 +40,6 @@ def test_config_do_motor_continua_rascunho():
     motor = Path(__file__).resolve().parents[1]
     dados = yaml.safe_load((motor / "config.yaml").read_text(encoding="utf-8"))
     assert dados["run"]["publish_status"] == "draft"
-    assert dados["run"]["editorial_v2"] is False
+    assert dados["run"]["editorial_v2"] is True
     assert dados["steps"]["revisor"]["temperature"] == 0.0
     assert dados["steps"]["revisor"]["validators"] == []

@@ -89,8 +89,10 @@ def preflight_issues(validators: list[str], ctx: dict) -> list[Issue]:
     `validators` é a lista do passo (`cfg.validators`); nomes sem pré-voo
     equivalente são ignorados — o pré-voo nunca é mais exigente que o passo.
     """
+    from funnelforge.pipeline.retry_policy import validadores_tecnicos
+
     out: list[Issue] = []
-    for name in validators:
+    for name in validadores_tecnicos(validators, ctx):
         checagem = PREFLIGHT.get(name)
         if checagem is not None:
             out.extend(checagem(ctx))  # type: ignore[operator]

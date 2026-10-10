@@ -242,13 +242,24 @@ def _plano_visual(p: Page, b, a) -> None:
                             f"gerado: falta {', '.join(faltam)}."))
 
 
-def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
+def revisar_esqueleto(plan: FunnelPlan | None, *, somente_estrutura: bool = False
+                     ) -> RevisaoDoEsqueleto:
     """Valida o MAPA inteiro da jornada. Sem jornada no plano: nada a dizer."""
     rev = RevisaoDoEsqueleto()
     if not tem_jornada(plan):
         return rev
     assert plan is not None
-    b, a = rev.bloqueantes.append, rev.avisos.append
+    a = rev.avisos.append
+
+    def b(issue: Issue) -> None:
+        # Integridade de objetos e ids necessários à montagem, não julgamento
+        # de valor, ganho, emoção, copy ou layout por palavras/contagens.
+        if not somente_estrutura or issue.code in {"jornada_incompleta", "jornada_sem_editorial",
+                          "duvida_duplicada", "referencia_de_duvida_inexistente",
+                          "proxima_duvida_sem_destino", "ativo_requisito_inexistente"}:
+            rev.bloqueantes.append(issue)
+        else:
+            a(issue)
     sem = [p.slug for p in plan.pages if p.jornada is None]
     if sem:
         b(Issue(code="jornada_incompleta",
@@ -275,7 +286,7 @@ def revisar_esqueleto(plan: FunnelPlan | None) -> RevisaoDoEsqueleto:
     for p in plan.pages:
         chave = norm(p.jornada.pergunta_principal)
         if chave in perguntas and perguntas[chave] != p.jornada.duvida_id:
-            b(Issue(code="duvida_duplicada",
+            (a if somente_estrutura else b)(Issue(code="duvida_duplicada",
                     message=f"[{p.jornada.duvida_id}] repete a pergunta de "
                             f"[{perguntas[chave]}]: '{p.jornada.pergunta_principal}'."))
         perguntas.setdefault(chave, p.jornada.duvida_id)

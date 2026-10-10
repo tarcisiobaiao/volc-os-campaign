@@ -44,6 +44,7 @@ from funnelforge.pipeline.revisao import (
     gerar_recibo,
     VERSAO_DA_TRAVA,
     hash_do_conteudo,
+    numeros_por_extenso,
     reconferir_notas_da_revisao,
 )
 from funnelforge.pipeline.runner import LLMStepError
@@ -1568,6 +1569,7 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
         if d.get("tipo") == "funnel" and d.get("ferramentas") == "pronta"]
     return {
         "destinos_com_ferramenta": destinos_com_ferramenta,
+        "editorial_v2": bool(getattr(state, "editorial_v2", False)),
         "contextual_editorial": page.editorial is not None,
         "resolved_internal_routes": [
             resolve_route(r, domain=deps.settings.site.domain,
@@ -2044,7 +2046,7 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         configurados = list(cfg.validators or [])
         lp_issues: list[Issue] = []
         if "lp_json_contract" not in configurados:
-            lp_issues = validate_lp_content(content_obj)
+            lp_issues = validate_lp_content(content_obj, technical_only=v2)
         if "critical_fact_grounding" not in configurados:
             lp_issues.extend(run_validators(
                 ["critical_fact_grounding"], content, route_ctx))
@@ -2364,7 +2366,7 @@ def _issues_da_pagina(state: RunState, page: Page, deps: Any, doc: Any) -> list[
             obj = json.loads(doc.corpo)
         except (ValueError, TypeError):
             return [Issue(code="lp_schema", message="LP JSON ilegível.")]
-        issues += validate_lp_content(obj)
+        issues += validate_lp_content(obj, technical_only=True)
         issues += run_validators(["identity", "calm_utility", "critical_fact_grounding",
                                   "language_pt"], doc.corpo, ctx)
     else:
@@ -2375,7 +2377,7 @@ def _issues_da_pagina(state: RunState, page: Page, deps: Any, doc: Any) -> list[
         issues += html_issues(doc.corpo)
         issues += _composicao_v2(state, page, doc.corpo, ctx)
     issues += run_validators(["calm_utility", "language_pt"],
-                             f"{doc.seotitle}\n{doc.metadescription}", {})
+                             f"{doc.seotitle}\n{doc.metadescription}", ctx)
     issues += run_validators(["seo_limits"], "", {"parsed": {
         "metadescription": doc.metadescription, "seotitle": doc.seotitle}})
     return issues
@@ -2396,6 +2398,7 @@ def numeros_permitidos_no_patch(fatos: Any) -> set[str]:
         if tipo in ("data", "prazo", "mudanca"):
             partes.append(str(f.vigente_desde or ""))
         ok |= numeros(" ".join(partes))
+        ok |= set(numeros_por_extenso(" ".join(partes)))
     return ok
 
 
@@ -2404,7 +2407,12 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any, *,
     n = page.page_number
     inv = montar_inventario(state, page)
     pacote = carregar_pacote(hoje=date.today())
-    destinos = destinos_da_pagina(state, page)
+    # Com pacote congelado, o revisor confere os botões contra as MESMAS
+    # entregas que o redator leu (inclusive o fallback de ferramenta que não
+    # ficou pronta), não contra a promessa do plano.
+    congelado = (state.pacotes or {}).get(n)
+    destinos = (copy.deepcopy(congelado["destinos"]) if congelado
+                else destinos_da_pagina(state, page))
     briefing = state.briefings.get(n)
     numeros_ok = numeros_permitidos_no_patch(inv.fatos)
     tb = inv.termos_de_busca
@@ -4056,7 +4064,8 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
             # inteira caía junto. É preciso julgar aqui com a MESMA régua de lá.
             issues += run_validators(
                 ["critical_fact_grounding"], block,
-                {"facts": state.facts.get(page.page_number, ResearchFacts(sparse=True))})
+                {"facts": state.facts.get(page.page_number, ResearchFacts(sparse=True)),
+                 "editorial_v2": state.editorial_v2})
             if not issues:
                 break
             if tentativa < tentativas_widget:
@@ -4125,7 +4134,7 @@ def _final_content_issues(state: RunState, page: Page, deps: Any, content: str) 
     ctx["final_identity"] = True
     issues = run_validators(list(_FINAL_CONTENT_VALIDATORS), content, ctx)
     issues.extend(html_issues(content))
-    if ctx.get("copy_rapida"):
+    if ctx.get("copy_rapida") and not ctx.get("editorial_v2"):
         from funnelforge.pipeline.copy_contract import disclosure_issues
         issues.extend(disclosure_issues(content, ctx))
 
@@ -4241,6 +4250,11 @@ def _portao_da_lp(state: RunState, page: Page, deps: Any, *,
             issues=[Issue(code="lp_json_ilegivel",
                           message="O artefato da LP não é um objeto JSON.")],
         )
+    if _pagina_v2(state, page):
+        # Política do destino Google continua no módulo de Ads. O redator não
+        # consulta esse scanner lexical: a LLM revisa o conteúdo já pronto.
+        issues = validate_lp_content(conteudo, technical_only=True)
+        return lp_gate.ResultadoDoPortao(pronto=not issues, issues=issues)
     # O Elementor já renderizado entra na apuração de campo de formulário: o
     # template é fixo e desenhado à mão hoje, mas um widget de formulário
     # acrescentado nele amanhã tem de subir o papel sozinho.
@@ -4309,9 +4323,10 @@ def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
         run_dir = deps.runner.runs_dir / state.run_id
         actual = json.loads((run_dir / "p1.elementor.json").read_text(encoding="utf-8"))
         actual_settings = json.loads((run_dir / "p1.page_settings.json").read_text(encoding="utf-8"))
-        from funnelforge.pipeline.copy_contract import disclosure_issues
-        issues.extend(disclosure_issues(json.dumps(actual, ensure_ascii=False),
-                                        _write_ctx(state, page, deps)))
+        if not v2:
+            from funnelforge.pipeline.copy_contract import disclosure_issues
+            issues.extend(disclosure_issues(json.dumps(actual, ensure_ascii=False),
+                                            _write_ctx(state, page, deps)))
         if actual != expected or actual_settings != settings:
             issues.append(Issue(code="lp_artifact_mismatch",
                                 message="LP difere do template editorial validado; refaça o build."))

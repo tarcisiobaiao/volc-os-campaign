@@ -76,9 +76,11 @@ def test_prompts_nao_repetem_a_frase_do_aviso_a_mao():
         assert ("compliance_notice_text" in fonte or 'include "interior_editorial.jinja"' in fonte)
 
 
-def test_perfil_rapido_expoe_falsa_oficialidade_ao_redator():
+def test_escrita_natural_orienta_falsa_oficialidade_pelo_sentido():
+    # 10/10: lista de expressões proibidas saiu do prompt V2 (o revisor julga
+    # pelo sentido); a orientação contra parecer órgão continua.
     from importlib import resources
     fonte = resources.files("funnelforge.prompts").joinpath(
         "escrita_natural.jinja").read_text("utf-8")
-    assert "banned_official" in fonte
-    assert "Não repita uma expressão proibida" in fonte
+    assert "banned_official" not in fonte
+    assert "o portal nunca parece ser o órgão" in fonte

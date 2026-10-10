@@ -409,7 +409,8 @@ def preparar_widgets_de_orientacao(state, deps, ferramentas: dict) -> dict:
         bloco = renderizar(w)
         problemas = sanitize_widget_block(bloco) + run_validators(
             ["critical_fact_grounding"], bloco,
-            {"facts": state.facts.get(n, ResearchFacts(sparse=True))})
+            {"facts": state.facts.get(n, ResearchFacts(sparse=True)),
+             "editorial_v2": bool(getattr(state, "editorial_v2", False))})
         if problemas:
             recibo["recusadas"][n] = "; ".join(f"{i.code}: {i.message}" for i in problemas)[:400]
             continue
@@ -718,7 +719,8 @@ def corretor_de_widget(orientacao: dict, facts):
         bloco = renderizar(w).strip()
         if sanitize_widget_block(bloco) or run_validators(
                 ["critical_fact_grounding"], bloco,
-                {"facts": facts if facts is not None else ResearchFacts(sparse=True)}):
+                {"facts": facts if facts is not None else ResearchFacts(sparse=True),
+                 "editorial_v2": True}):
             return None, "widget_reprovado_na_conferencia"
         if atual["bloco"] not in doc.corpo:
             return None, "widget_do_pacote_nao_encontrado"
@@ -778,6 +780,13 @@ def prompt_do_pacote(state, page):
     destinos = [{"role_label": "próxima dúvida", "h1": d["h1"],
                  "delivery": d["entrega"], "objective": d["motivo"]}
                 for d in pacote["destinos"] if d["tipo"] == "funnel"]
+    # Pré-sell e soluções escrevem a frase antes de cada botão: precisam da
+    # entrega CONFIRMADA de cada destino (com o fallback, se a ferramenta de
+    # lá não ficou pronta), a mesma que a LP já recebia em `lp_destinations`.
+    entregas_dos_destinos = [
+        {"h1": d["h1"], "objective": d["entrega"] + (
+            " (ferramenta interativa pronta lá)" if d.get("ferramentas") == "pronta" else "")}
+        for d in pacote["destinos"] if d["tipo"] == "funnel"]
     prompt = render(nome, headline=p["h1_title"], objective=p["emotional_objective"],
         skeleton="\n".join(p["main_content_structure"]), keywords=", ".join(p["target_keywords"]),
         cta_text=p["hook_to_next_page"], page_num=p["page_number"],
@@ -791,7 +800,8 @@ def prompt_do_pacote(state, page):
         com_trechos=True,
         domain=pacote["dominio"], routes=pacote["links"],
         official_links=pacote["factual"].get("urls_oficiais", []), platform_links=[],
-        qualifier_lens=j["pergunta"], qualifier_questions=[], next_solutions=[],
+        qualifier_lens=j["pergunta"], qualifier_questions=[],
+        next_solutions=entregas_dos_destinos,
         is_terminal=bool(j["condicao_terminal"]), terminal_official=j["saida_oficial"]["classificacao"] == "boa",
         cross_funnel_label="", engajamento=p["engajamento"],
         plano_visual=j["plano_visual"], exigencia_visual=[], visual_required_blocks=[],

@@ -18,7 +18,6 @@ from tests.cenario_editorial import (
     AVATAR_DO_ARQUITETO,
     TOM_DO_ARQUITETO,
     arquitetura_base,
-    briefing_valido,
     congelar_data,
     ordem_do_run,
     prompts_do_run,
@@ -126,12 +125,8 @@ def test_briefing_invalido_fecha_a_pagina_sem_gasto_de_redacao(tmp_path: Path, m
     def responder(model, messages):
         prompt = texto_da_mensagem(messages[-1])
         if "EDITOR DE BRIEFING" in prompt:
-            # intenção declarada como FATO e benefício sem fato, em toda tentativa
-            dados = json.loads(briefing_valido(prompt))
-            dados["intencao"]["intencao_real_da_busca"] = {
-                "texto": "quer o desconto", "base": "fato", "ref": ["n1"]}
-            dados["beneficios"] = [{"texto": "desconto garantido", "fatos": [], "limite": ""}]
-            return json.dumps(dados)
+            # Contrato técnico inválido, não uma interpretação editorial.
+            return "{}"
         return responder_v2(model, messages)
 
     state, deps, llm = _rodar(tmp_path, monkeypatch, _arquitetura_v2(), responder=responder)
@@ -144,8 +139,7 @@ def test_briefing_invalido_fecha_a_pagina_sem_gasto_de_redacao(tmp_path: Path, m
         briefing = state.step_status[f"briefing_p{n}"]
         assert briefing.status is StepStatus.FAILED
         codigos = {i.code for i in briefing.issues}
-        assert {"intencao_nao_e_fato", "beneficio_sem_fato",
-                "briefing_indisponivel"} <= codigos, codigos
+        assert {"campo_ausente", "briefing_indisponivel"} <= codigos, codigos
         assert briefing.attempts == deps.settings.run.max_retries + 1
         escrita = state.step_status[f"write_p{n}"]
         assert escrita.status is StepStatus.FAILED and escrita.attempts == 0

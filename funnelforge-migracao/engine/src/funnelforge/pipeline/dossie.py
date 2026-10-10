@@ -1122,7 +1122,11 @@ def aplicar_portao(state: RunState, dossie: DossieDoFunil) -> ResultadoDoPortao:
                                    message="requisito da promessa central sem evidência: a "
                                            "página é escrita, mas não publica sem decisão "
                                            "humana"))
-        if cob.ready_to_write:
+        if cob.ready_to_write or state.editorial_v2 or (
+                state.plan is not None and state.plan.editorial_v2):
+            if not cob.ready_to_write:
+                issues += [Issue(code="localizador:dossie_conflito", message=b)
+                           for b in cob.blockers]
             state.step_status[f"dossie_p{n}"] = StepResult(
                 step=f"dossie_p{n}", status=StepStatus.OK, model_used=cob.estado, issues=issues)
             state.step_status.pop(f"blocked_p{n}", None)

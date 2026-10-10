@@ -421,7 +421,8 @@ def _avisos_de_numero_e_url(dados: dict, conf: _Conferencia) -> None:
                            "— verificar antes de virar texto.")
 
 
-def validar_briefing(dados: Any, ref: dict) -> tuple[list[Issue], list[Issue]]:
+def validar_briefing(dados: Any, ref: dict, *, somente_estrutura: bool = False
+                    ) -> tuple[list[Issue], list[Issue]]:
     """(erros, avisos) do briefing contra a régua `ref` da página."""
     conf = _Conferencia(ref)
     if not isinstance(dados, dict):
@@ -526,6 +527,15 @@ def validar_briefing(dados: Any, ref: dict) -> tuple[list[Issue], list[Issue]]:
 
     _checar_plano_visual(dados, conf)
     _avisos_de_numero_e_url(dados, conf)
+    if somente_estrutura:
+        # Falhas de tipo/campos necessários ao consumidor são contrato; lastro,
+        # intenção e tom são contexto da revisão. IDs inexistentes ainda são
+        # referências quebradas, não uma opinião sobre a linguagem da copy.
+        estruturais = {"briefing_json_invalido", "campo_ausente",
+                       "evidencia_inexistente", "ref_do_arquiteto_inexistente",
+                       "ref_inexistente"}
+        conf.avisos.extend(i for i in conf.erros if i.code not in estruturais)
+        conf.erros = [i for i in conf.erros if i.code in estruturais]
     return conf.erros, conf.avisos
 
 
@@ -542,5 +552,6 @@ def briefing_contract(content: str, ctx: dict) -> list[Issue]:
     except (ValueError, json.JSONDecodeError) as exc:
         return [Issue(code="briefing_json_invalido",
                       message=f"Responda SOMENTE com o objeto JSON do briefing ({exc}).")]
-    erros, _avisos = validar_briefing(dados, ref)
+    erros, _avisos = validar_briefing(dados, ref, somente_estrutura=bool(
+        ctx.get("editorial_v2") or ctx.get("contextual_editorial")))
     return erros

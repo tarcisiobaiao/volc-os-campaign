@@ -204,7 +204,8 @@ def _populate_routes(state: RunState, deps: Deps) -> None:
         # A prova de que o mapa foi revisado antes do gasto. Os bloqueantes
         # também estão no `funnel_graph` (é ele o portão); aqui o passo fica
         # FAILED quando o esqueleto reprova, com bloqueantes e avisos juntos.
-        revisao = revisar_esqueleto(plan)
+        revisao = revisar_esqueleto(plan, somente_estrutura=editorial_v2_do_run(
+            state, deps.settings))
         state.step_status["revisao_esqueleto"] = StepResult(
             step="revisao_esqueleto",
             status=StepStatus.FAILED if revisao.bloqueantes else StepStatus.OK,
@@ -1158,6 +1159,8 @@ def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
 def _revisao_por_evidencia(state: RunState, page: Page) -> str:
     """Página escrita com a promessa central sem evidência não publica sem
     decisão humana."""
+    if state.editorial_v2 or (state.plan is not None and state.plan.editorial_v2):
+        return ""  # O revisor LLM decide com o dossiê, não a falta de um campo.
     pacote = state.pacotes.get(page.page_number) or {}
     if pacote.get("ferramenta", {}).get("estado") == "fallback_sem_js":
         return "Ativo interativo usa fallback textual do arquiteto; revisão humana pendente."

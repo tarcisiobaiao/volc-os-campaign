@@ -1731,8 +1731,10 @@ def lp_json_contract(content: str, ctx: dict) -> list[Issue]:
     if not isinstance(parsed, dict):
         return [Issue(code="parse_error",
                       message="Saída da LP não é um objeto JSON.")]
-    issues = validate_lp_content(parsed)
-    if ctx.get("copy_rapida"):
+    issues = validate_lp_content(parsed, technical_only=bool(
+        ctx.get("editorial_v2") or ctx.get("contextual_editorial")))
+    if ctx.get("copy_rapida") and not (
+            ctx.get("editorial_v2") or ctx.get("contextual_editorial")):
         from funnelforge.pipeline.copy_contract import cta_issues
         hrefs = ctx.get("copy_lp_hrefs") or []
         issues += cta_issues([(label, hrefs[min(i, len(hrefs)-1)] if hrefs else "")
@@ -2280,16 +2282,10 @@ def run_validators(
     content: str,
     ctx: dict
 ) -> list[Issue]:
+    from funnelforge.pipeline.retry_policy import validadores_tecnicos
+
     out: list[Issue] = []
-    for name in names:
-        # These proxies cannot establish reader value or link relevance. For a
-        # contextual plan those decisions belong to the existing semantic judge.
-        if ctx.get("contextual_editorial") and name in {
-            "interior_min_length", "no_trailing_buttons", "no_leading_buttons",
-            "short_intro", "min_headings", "opening_line_unique", "forward_only",
-            "cta_destination_congruent", "bridge_before_cta", "visual_contract",
-        }:
-            continue
+    for name in validadores_tecnicos(names, ctx):
         out.extend(VALIDATORS[name](content, ctx))
     return out
 

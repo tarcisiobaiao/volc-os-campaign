@@ -6,9 +6,9 @@ a ferramenta do destino saía, reescrevia o botão sozinho, página por página.
 
 Aqui o mesmo modelo e o mesmo cliente autenticado do redator recebem, uma vez,
 todas as arestas com o que cada destino de fato entrega, e devolvem o texto de
-cada botão. O código só confere o que é objetivo (todas as arestas, até 60
-caracteres, sem URL, sem número fora dos fatos do destino, rótulos distintos
-para destinos distintos da mesma página) e aplica o rótulo na rota. Destino e
+cada botão. O código confere as arestas, campos preenchidos e ausência de
+URL/markup no rótulo. Linguagem, números e persuasão são do revisor contextual.
+Aplica o rótulo na rota. Destino e
 href nunca mudam aqui. Rótulo recusado ou chamada que falha: fica o rótulo do
 plano aprovado, com o motivo no recibo.
 
@@ -21,7 +21,7 @@ import json
 import re
 from typing import Any
 
-from funnelforge.domain.dossie import numeros_do_texto, sha256_canonico
+from funnelforge.domain.dossie import sha256_canonico
 from funnelforge.domain.models import Issue, StepResult, StepStatus, effective_role
 
 VERSAO = "ctas-do-funil-v1"
@@ -30,17 +30,6 @@ TITULO_DA_DOBRA = 45     # 2 linhas no celular sobre a imagem do topo
 SUBTITULO_DA_DOBRA = 160
 SUFIXO_DE_SAIDA = " >>>"
 _PROIBIDO_RE = re.compile(r"https?://|www\.|<|>|\[|\]|\"", re.I)
-# Abertura que anuncia o tema, não a resposta do destino (homologação de 10/10:
-# "Entender como a Tarifa Social chega à conta"). Não é reaproveitada numa nova
-# congelada e é recusada quando o modelo a devolve.
-_GENERICO_RE = re.compile(
-    r"^(?:entender|entenda|conhecer|conheça|saiba|saber mais|ver mais|leia|clique|"
-    r"descobrir|descubra)\b", re.I)
-
-
-def rotulo_generico(rotulo: str) -> bool:
-    return bool(_GENERICO_RE.match((rotulo or "").strip()))
-_NUMERO_RE = re.compile(r"\d+(?:[.,]\d+)*")
 
 
 def _chave(url: str) -> str:
@@ -144,14 +133,7 @@ def _conferir(rotulo: Any, aresta: dict, contexto_do_destino: str) -> tuple[str,
     limpo = re.sub(r"\s+", " ", rotulo).strip().removesuffix(">>>").strip()
     if _PROIBIDO_RE.search(limpo):
         return "", "rótulo com URL, tag, colchete ou aspas"
-    if rotulo_generico(limpo):
-        return "", "rótulo genérico: diga a resposta que o destino dá"
     final = limpo + (SUFIXO_DE_SAIDA if aresta["tipo"] == "oficial" else "")
-    if len(final) > MAX_ROTULO:
-        return "", f"rótulo com {len(final)} caracteres (máx. {MAX_ROTULO})"
-    digitos = {float(n.replace(".", "").replace(",", ".")) for n in _NUMERO_RE.findall(limpo)}
-    if not digitos <= numeros_do_texto(contexto_do_destino):
-        return "", "número que não está nos fatos nem na entrega do destino"
     return final, ""
 
 
@@ -178,13 +160,8 @@ def _conferir_texto(texto: Any, minimo: int, maximo: int, base: str) -> tuple[st
     if not isinstance(texto, str) or not texto.strip():
         return "", "vazio"
     limpo = re.sub(r"\s+", " ", texto).strip()
-    if not minimo <= len(limpo) <= maximo:
-        return "", f"{len(limpo)} caracteres (de {minimo} a {maximo})"
     if re.search(r"https?://|www\.|<|>", limpo, re.I):
         return "", "URL ou tag"
-    digitos = {float(n.replace(".", "").replace(",", ".")) for n in _NUMERO_RE.findall(limpo)}
-    if not digitos <= numeros_do_texto(base):
-        return "", "número que não está nos fatos"
     return limpo, ""
 
 
@@ -205,8 +182,7 @@ def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set
     reusados, pedir = [], []
     for a in arestas:
         antigo = anteriores.get((a["origem"], _chave(a["destino"])))
-        if (antigo is not None and antigo.get("assinatura") == a["assinatura"]
-                and not rotulo_generico(antigo["rotulo"])):
+        if antigo is not None and antigo.get("assinatura") == a["assinatura"]:
             reusados.append({**a, "rotulo": antigo["rotulo"],
                              "justificativa": antigo.get("justificativa", ""),
                              "origem_do_rotulo": "reaproveitado"})
@@ -330,16 +306,8 @@ def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set
             novos.append({**a, "rotulo": rotulo,
                           "justificativa": str(b.get("justificativa") or "")[:300],
                           "origem_do_rotulo": "sniper"})
-        # Destinos diferentes da mesma página com o mesmo texto: o leitor não
-        # distingue os botões. Ficam os do plano nos dois.
-        por_origem: dict[tuple[int, str], list[dict]] = {}
-        for b in novos + reusados:
-            base = b["rotulo"].removesuffix(">>>").strip().casefold()
-            por_origem.setdefault((b["origem"], base), []).append(b)
-        repetidos = {id(b) for grupo in por_origem.values() if len(grupo) > 1 for b in grupo}
-        for b in [b for b in novos if id(b) in repetidos]:
-            recusas[b["id"]] = "mesmo rótulo para destinos diferentes da mesma página"
-        novos = [b for b in novos if id(b) not in repetidos]
+        # A revisão contextual avalia repetição e promessa. O código mantém
+        # cada rótulo associado ao seu id/destino, sem julgar vocabulário.
     aplicados = novos + reusados
     _aplicar(state, aplicados)
     for a in ajustes:

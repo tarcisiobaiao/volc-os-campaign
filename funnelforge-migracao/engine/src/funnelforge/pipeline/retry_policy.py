@@ -170,6 +170,12 @@ _CODIGOS_TERMINAIS: frozenset[str] = frozenset({
 # Julgamento semântico por palavra/regex -> LOCALIZADOR para o revisor. Entre
 # parênteses, a regra do inventário da Frente A (`inventario-regras.json`).
 CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
+    # Decisão do operador (10/10): correspondência lexical NÃO prova verdade,
+    # intenção, identidade ou qualidade. Esses julgamentos pertencem à LLM.
+    "ungrounded_critical_claim", "critical_claim_without_citation",
+    "directional_copy_outside_widget", "lp_intro_long", "long_body_disclaimer",
+    "duplicate_disclosure", "independent_identity_missing",
+    "outline_button", "adjacent_button_groups", "adjacent_groups_without_margin",
     "fear_language",             # FF-01 lista de medo/escassez (converter_em_aviso)
     "official_impersonation",    # FF-02 lista de falsa oficialidade (contextualizar)
     "cta_execution",             # FF-03 radical de verbo no botão (contextualizar)
@@ -192,7 +198,7 @@ CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
     "cta_external_channel",      # saída externa sem nome do canal
     "official_links_few",        # cota mínima de links oficiais no corpo
     # 10/10/2026: número com fato, mas o fato é de outro assunto ou só de fonte
-    # regional — o significado é do revisor; número SEM fato continua bloqueando.
+    # regional — assim como número sem match lexical, o significado é do revisor.
     "numero_fora_do_contexto_do_fato",
     "fonte_so_regional",
     # D2 — portão de composição (`checks.composicao_editorial`): achados para o
@@ -204,6 +210,29 @@ CODIGOS_PATCHAVEIS: frozenset[str] = frozenset({
     "bloco_pullquote_duplicado",
     "plano_visual_nao_cumprido",
 })
+
+# Fora do caminho canônico: não executar regex editoriais para depois pagar
+# retentativas ou enviar um inventário de falsos positivos ao revisor. As
+# funções históricas ficam disponíveis só para compatibilidade dos runs V1.
+VALIDADORES_EDITORIAIS: frozenset[str] = frozenset({
+    "language_pt", "cta_style", "pagespec", "calm_utility", "compliance",
+    "plano_de_destino_pago", "length_p1", "interior_min_length",
+    "no_trailing_buttons", "no_leading_buttons", "short_intro", "min_headings",
+    "winning_lp", "identity", "uniqueness", "opening_line_unique", "forward_only",
+    "official_link_density", "cta_destination_congruent", "bridge_before_cta",
+    "critical_fact_grounding", "ad_interaction", "visual_contract",
+})
+
+
+def validadores_tecnicos(names: Iterable[str], ctx: dict) -> list[str]:
+    """Sem perfil novo: o motor editorial usa só contratos técnicos.
+
+    Não muda a pesquisa (proveniência), cálculos, segurança do HTML, rotas
+    resolvidas nem a decisão posterior da LLM. V1 arquivado é reproduzível.
+    """
+    if not (ctx.get("editorial_v2") or ctx.get("contextual_editorial")):
+        return list(names)
+    return [name for name in names if name not in VALIDADORES_EDITORIAIS]
 # Regras com decisão `remover` no inventário: saem do ramo novo.
 CODIGOS_REMOVIDOS_NO_V2: frozenset[str] = frozenset({
     "cta_first_person",          # FF-04 1ª pessoa na LP (nenhuma política; NE-03)
@@ -215,25 +244,13 @@ def classe_da_issue(issue: Any) -> str:
     """`estrutural` (bloqueia/retenta como hoje), `patchavel` (localizador para o
     revisor) ou `removido` (não vale no ramo novo).
 
-    Dois códigos dependem da MENSAGEM porque o mesmo código cobre um caso
-    objetivo e um heurístico:
-    - `critical_claim_without_citation`: número sem a fonte citada é objetivo
-      (FF-17, fica); afirmação JURÍDICA sem a fonte é o ramo de FF-18; na LP e
-      na pré-sell, número COM fato verificado cuja fonte não foi nomeada em
-      prosa é atribuição, ajuste do revisor ("Atribuição em prosa").
-    - `directional_copy_outside_widget`: dentro da zona das âncoras de anúncio
-      é dependência técnica comprovada (FF-15/PUB-11, fica); fora dela é aviso.
+    Match de número, citação e linguagem perto de anúncio não decide sentido.
+    Esses códigos são localizadores também quando reaparecem num run retomado.
     """
     code = getattr(issue, "code", "")
-    mensagem = str(getattr(issue, "message", "") or "")
     if code in CODIGOS_REMOVIDOS_NO_V2:
         return "removido"
     if code in CODIGOS_PATCHAVEIS:
-        return "patchavel"
-    if code == "critical_claim_without_citation" and mensagem.startswith(
-            ("Afirmação legal", "Atribuição em prosa")):
-        return "patchavel"
-    if code == "directional_copy_outside_widget" and "zona de anúncio" not in mensagem:
         return "patchavel"
     return "estrutural"
 

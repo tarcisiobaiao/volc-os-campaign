@@ -34,12 +34,9 @@ run:
   official_screenshots: true     # prints reais das paginas oficiais (desktop) via Playwright, ancorados ao passo nas SOLUCOES (requer extra .[screenshots] + playwright install chromium)
   screenshots_max_per_page: 2    # /rec SOLUTION: cap de prints oficiais por pagina (sobre os official_links)
   widgets_enabled: true          # CARD-0013: widgets interativos nas SOLUCOES (bloco wp:html gerado + sanitizado + injetado antes do 3o H2). DESLIGADO por padrao: e codigo executavel em pagina publicada, rollout e decisao do humano. Off => pipeline identico ao atual.
-  # RAMO EDITORIAL NOVO (reforma de 30/09/2026): briefing persuasivo por pagina
-  # (passo `briefing` abaixo), redacao v2 a partir dele e SEO antes da revisao.
-  # DESLIGADO durante a implementacao: com false, prompts e ordem de passos sao
-  # identicos aos de antes (teste de ouro). O perfil do run liga POR FUNIL
-  # (tema.editorial_v2 no --perfil); a arquitetura do card tambem pode ligar.
-  editorial_v2: false
+  # Motor canônico: revisão contextual por LLM, sem vetos lexicais de copy.
+  # V1 só para reprodução explícita de runs históricos; nenhum perfil novo.
+  editorial_v2: true
 site:
   domain: https://creditoup.com.br
   post_type: rec

@@ -1,4 +1,4 @@
-"""Preferência editorial vira localizador para o revisor; técnica e fato bloqueiam.
+"""Julgamento editorial pertence ao revisor; contratos técnicos bloqueiam.
 
 Inventário de 10/10/2026 dos bloqueios ativos no caminho canônico (V2).
 """
@@ -11,11 +11,11 @@ from funnelforge.pipeline.retry_policy import classe_da_issue, classificar_issue
 PREFERENCIA = ["cta_generic", "cta_editorial_execution", "cta_external_channel",
                "official_links_few", "cta_longo", "cta_rotulo_repetido", "fear_language",
                "official_impersonation", "composicao_paredao_de_texto",
-               "plano_visual_nao_cumprido"]
+               "plano_visual_nao_cumprido", "critical_claim_without_citation",
+               "ungrounded_critical_claim"]
 TECNICO_OU_FATO = ["unbalanced", "has_script", "lp_schema", "lp_missing_slot", "lp_sections",
                    "ad_slot_inseguro", "bloco_malformado", "cross_domain",
-                   "unplanned_external_link", "critical_claim_without_citation",
-                   "ungrounded_critical_claim", "fake_credential", "wrong_cnpj",
+                   "unplanned_external_link", "fake_credential", "wrong_cnpj",
                    "terminal_exit_not_authorized", "duplicate_content", "self_loop"]
 
 

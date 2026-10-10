@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T11:50:15-03:00",
+  "generated_at": "2026-10-10T17:30:21-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 854,
-    "markdown": 632,
+    "files": 857,
+    "markdown": 635,
     "sql": 222,
-    "tracked": 842,
-    "untracked": 12,
+    "tracked": 844,
+    "untracked": 13,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 49,
-      "documentation": 453,
+      "audit": 51,
+      "documentation": 454,
       "generated": 2,
       "module-guide": 41,
       "product-document": 23,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23841,
+      "bytes": 23816,
       "lines": 318,
-      "sha256": "38a00f1e8e8bd687477d19d137c9077700c02652f846c953539737615445e787",
+      "sha256": "bf0479ed55b23a3f50f97e18cbbf1521b2c2d55a07f6d8681fa75c84b69341b5",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1863,6 +1863,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/audits/FUNNELFORGE-FECHAMENTO-CANARIO-EDITORIAL-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 8104,
+      "lines": 124,
+      "sha256": "73f851ee9e660dd08acec775a6d936d7c9b1b16b1fbc591aa48eeea8a20eb9c5",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/audits/FUNNELFORGE-FECHAMENTO-MOTOR-2026-10-10.md",
       "extension": ".md",
       "classification": "audit",
@@ -1990,6 +2002,18 @@
       "bytes": 3988,
       "lines": 63,
       "sha256": "39b0dbb25e60b6ca440ac7b2105d8aaeb4334b75fa2967856f7fe8c5285a7896",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-SEM-VETOS-MECANICOS-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 4341,
+      "lines": 76,
+      "sha256": "ce3096b7b43a25509b422e437cc7bed8dbcca2c25f837b41a06a1078d2f04a14",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6838,6 +6862,18 @@
       "bytes": 21393,
       "lines": 277,
       "sha256": "b9bf2e100ee11ad12c5d40254d480659925519a1f2570ac9bcfdf67a0bfbe872",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-canario-editorial/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 20256,
+      "lines": 281,
+      "sha256": "1c6b2017c9f306084d62dc36618df1bea79de5b6096579eda9288c15399df250",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null

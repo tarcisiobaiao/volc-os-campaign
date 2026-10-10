@@ -45,6 +45,8 @@ import html
 import json
 import math
 import re
+import unicodedata
+from collections import Counter
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -153,6 +155,14 @@ _NUMERO_POR_EXTENSO_RE = re.compile(
     r"cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|duzentas|trezentos|"
     r"quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos|mil|milh[aã]o|"
     r"milh[oõ]es|bilh[aã]o|bilh[oõ]es|dobro|triplo|metade|dezena|d[uú]zia|centena)\b", re.I)
+
+
+def numeros_por_extenso(texto: str) -> list[str]:
+    """Cada número por extenso do texto, minúsculo e sem acento ("três"→"tres")."""
+    return [unicodedata.normalize("NFKD", m.lower()).encode("ascii", "ignore").decode()
+            for m in _NUMERO_POR_EXTENSO_RE.findall(texto or "")]
+
+
 # B8/R4: número com o que vem colado a ele (unidade ou moeda): "30 dias", "R$ 1.518"
 _NUMERO_COM_UNIDADE_RE = re.compile(
     r"(R\$\s*)?(\d[\d.,]*)(\s*%|\s+(?:dias?|m[eê]s|meses|anos?|semanas?|horas?|minutos?|"
@@ -601,7 +611,10 @@ def _numeros_com_unidade(texto: str) -> list[tuple[str, str]]:
 
 
 def _checar_numeros(antes: str, depois: str, regras: RegrasDePatch) -> str | None:
-    if len(_NUMERO_POR_EXTENSO_RE.findall(depois)) > len(_NUMERO_POR_EXTENSO_RE.findall(antes)):
+    # Número por extenso novo só passa se estiver no texto de um fato citável
+    # ("até três salários-mínimos" do fato da ANEEL), como os dígitos.
+    novos = Counter(numeros_por_extenso(depois)) - Counter(numeros_por_extenso(antes))
+    if any(p not in regras.numeros_permitidos for p in novos):
         return "numero_novo"
     if numeros(depois) - numeros(antes) - set(regras.numeros_permitidos):
         return "numero_novo"
@@ -1015,7 +1028,7 @@ def revalidacao_basica(doc: Documento) -> list[Issue]:
             dados = json.loads(doc.corpo)
         except (ValueError, TypeError):
             return [Issue(code="lp_schema", message="LP JSON ilegível depois do patch.")]
-        issues += validate_lp_content(dados)
+        issues += validate_lp_content(dados, technical_only=True)
     else:
         issues += html_issues(doc.corpo)
         issues += run_validators(["gutenberg_blocks"], doc.corpo,

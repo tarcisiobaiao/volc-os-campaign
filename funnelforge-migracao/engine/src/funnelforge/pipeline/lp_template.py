@@ -43,7 +43,7 @@ _REQUIRED_LP_SLOTS = (
 # template: campos, tipos, 4 seções, 3 CTAs, HTML válido.
 
 
-def validate_lp_content(content: dict) -> list[Issue]:
+def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[Issue]:
     """Validate the redator_p1 JSON that feeds the LP template.
 
     Checks the slot schema (all fields present, 4 sections, >=3 CTAs), the
@@ -94,6 +94,9 @@ def validate_lp_content(content: dict) -> list[Issue]:
         issues.append(Issue(code="lp_ctas",
                             message=f"Esperado EXATAMENTE 3 CTAs (o template tem 3 "
                                     f"posições de destino), veio {len(ctas)}."))
+
+    if technical_only:
+        return issues  # Copy, extensão da intro e promessa: revisão contextual.
 
     intro = content.get("intro") or ""
     if intro.count("<p>") > 1:

@@ -259,10 +259,12 @@ def test_16_chamadas_e_custo_batem_exatamente_no_paralelo(tmp_path, monkeypatch)
 # [17] ------------------------------------------------------------------------
 
 def test_17_falha_de_uma_pagina_nao_derruba_as_outras(tmp_path, monkeypatch):
-    from tests.test_jornada_senac import SLUG
-    medidor = _Medidor(falhar_em=f"/r/{SLUG['curso']}/")
+    # A URL da própria página não entra no prompt do writer. Antes este teste
+    # não injetava a falha: passava por um veto editorial incidental.
+    alvo = "Tema/headline: Tipos de curso do Senac e como escolher o seu"
+    medidor = _Medidor(falhar_em=alvo)
     serial, deps_s, _, _ = _rodar(tmp_path, monkeypatch, 1, medidor=_Medidor(
-        falhar_em=f"/r/{SLUG['curso']}/"))
+        falhar_em=alvo))
     paralelo, deps_p, _, _ = _rodar(tmp_path, monkeypatch, 3, medidor=medidor)
     falhas_s = sorted(k for k, r in serial.step_status.items() if r.status.value == "FAILED")
     falhas_p = sorted(k for k, r in paralelo.step_status.items() if r.status.value == "FAILED")

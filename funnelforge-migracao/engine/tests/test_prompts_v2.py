@@ -81,9 +81,11 @@ def _render(nome: str, ctx: dict) -> str:
     return render(nome, **ctx)
 
 
-def test_lp_pede_profundidade_util_compativel_com_o_gate_de_destino_pago():
+def test_lp_pede_profundidade_util_sem_meta_de_palavras():
+    # 10/10: o portão de destino pago saiu da geração V2 da LP; a meta de 650
+    # palavras que ele exigia ficou sem dono e só empurrava texto inflado.
     prompt = _render("redator_p1_v2", REDATORES_V2["redator_p1_v2"])
-    assert "pelo menos 650 palavras visíveis úteis" in prompt
+    assert "650" not in prompt and "sem meta de palavras" in prompt
     assert "nunca infle com repetição" in prompt
 
 

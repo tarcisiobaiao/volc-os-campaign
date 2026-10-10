@@ -149,11 +149,10 @@ def cenario(tmp_path,monkeypatch,invalida=False,aliases_conflitantes=False):
     state=run_pipeline(None,deps,card_pre_arquitetura=CARD,publish=False,timestamp='hermetico')
     return state,llm,pesquisa
 
-def test_invalida_zero_writer(tmp_path,monkeypatch):
+def test_entrega_editorial_incompleta_avisa_sem_barrar_writer(tmp_path,monkeypatch):
     state,llm,pesquisa=cenario(tmp_path,monkeypatch,True)
-    assert state.step_status['funnel_graph'].status.value=='FAILED'
-    assert not any(k.startswith('write_') for k in state.step_status)
-    assert len(llm.calls)==1 and len(pesquisa.pedidos)==1
+    assert any(k.startswith('write_') for k in state.step_status)
+    assert not state.published
 
 
 def test_alias_conflitante_recusado_antes_do_writer(tmp_path,monkeypatch):
