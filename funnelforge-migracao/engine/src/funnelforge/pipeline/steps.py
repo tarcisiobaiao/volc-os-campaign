@@ -1863,6 +1863,150 @@ def _aplicar_rotulos_aprovados_gutenberg(
     return bloco_re.sub(alinhar_bloco, content), alteracoes
 
 
+# Navegação do topo das internas (operador, 10/10): os caminhos desta página
+# logo depois do primeiro parágrafo (a orientação inicial), num ÚNICO
+# `wp:buttons`, sem `<p>` (o Ad Inserter conta parágrafos aninhados). O próximo
+# passo principal fica com a cor padrão do tema; as alternativas, sólidas e
+# claras (o MU-plugin do site converte outline em sólido). #0b5f75 sobre
+# #e6f1f4 = 6,28:1, o par que o widget já usa.
+CLASSE_DA_NAVEGACAO = "vf-caminhos"
+_COR_DA_ALTERNATIVA = {"background": "#e6f1f4", "text": "#0b5f75"}
+_NAVEGACAO_RE = re.compile(
+    r"<!--\s*wp:buttons\s+\{[^}]*\"className\":\"" + CLASSE_DA_NAVEGACAO + r"\"[^}]*\}\s*-->"
+    r"[\s\S]*?<!--\s*/wp:buttons\s*-->\s*", re.I)
+
+
+def _botao_da_navegacao(href: str, rotulo: str, principal: bool) -> str:
+    largura = "has-custom-width wp-block-button__width-100"
+    if principal:
+        return ('<!-- wp:button {"width":100} -->\n'
+                f'<div class="wp-block-button {largura}"><a class="wp-block-button__link '
+                f'wp-element-button" href="{escape(href, quote=True)}">{escape(rotulo)}</a></div>\n'
+                '<!-- /wp:button -->')
+    cor = _COR_DA_ALTERNATIVA
+    return ('<!-- wp:button {"width":100,"style":{"color":{"background":"'
+            f'{cor["background"]}","text":"{cor["text"]}"}}}}}} -->\n'
+            f'<div class="wp-block-button {largura}"><a class="wp-block-button__link '
+            f'has-text-color has-background wp-element-button" href="{escape(href, quote=True)}" '
+            f'style="color:{cor["text"]};background-color:{cor["background"]}">'
+            f'{escape(rotulo)}</a></div>\n<!-- /wp:button -->')
+
+
+def navegacao_do_topo(content: str, rotas: list[dict[str, Any]], *,
+                      principal: str = "") -> tuple[str, list[dict]]:
+    """Os caminhos internos desta página depois do primeiro parágrafo.
+
+    Só rotas do funil (a saída oficial fica no passo em que o leitor age). O
+    principal vem primeiro; as alternativas seguem a ordem das rotas. Botões
+    que o redator pôs antes do primeiro título saem (viraram esta navegação),
+    e uma navegação anterior é trocada, não duplicada. Sem rota interna ou sem
+    parágrafo de abertura, nada muda."""
+    from funnelforge.pipeline.enhancers.gutenberg import _top_level_blocks
+
+    caminhos, vistos = [], set()
+    for rota in rotas:
+        href, rotulo = str(rota.get("href") or ""), str(rota.get("anchor") or "").strip()
+        if rota.get("kind") != "funnel" or not href or not rotulo or href in vistos:
+            continue
+        vistos.add(href)
+        caminhos.append({"href": href, "rotulo": rotulo, "principal": href == principal})
+    if not caminhos:
+        return content, []
+    if not any(c["principal"] for c in caminhos):
+        caminhos[0]["principal"] = True
+    caminhos.sort(key=lambda c: not c["principal"])
+    content = _NAVEGACAO_RE.sub("", content)
+    blocos = _top_level_blocks(content)
+    primeiro_titulo = next((ini for ini, _fim, nome in blocos if nome == "heading"), len(content))
+    for ini, fim, nome in reversed(blocos):
+        if nome == "buttons" and fim <= primeiro_titulo:
+            content = content[:ini] + content[fim:].lstrip("\n")
+    paragrafo = next(((ini, fim) for ini, fim, nome in _top_level_blocks(content)
+                      if nome == "paragraph"), None)
+    if paragrafo is None:
+        return content, []
+    bloco = (f'<!-- wp:buttons {{"className":"{CLASSE_DA_NAVEGACAO}"}} -->\n'
+             f'<div class="wp-block-buttons {CLASSE_DA_NAVEGACAO}">'
+             + "\n".join(_botao_da_navegacao(c["href"], c["rotulo"], c["principal"])
+                         for c in caminhos)
+             + '</div>\n<!-- /wp:buttons -->')
+    fim = paragrafo[1]
+    return content[:fim] + "\n\n" + bloco + "\n\n" + content[fim:].lstrip("\n"), caminhos
+
+
+_PARAGRAFO_HTML_RE = re.compile(r"(<p\b[^>]*>)([\s\S]*?)(</p>)", re.I)
+_INLINE_RE = re.compile(r"<(/?)(strong|em|b|i)\b[^>]*>", re.I)
+
+
+def fechar_inline_por_paragrafo(content: str) -> tuple[str, int]:
+    """Negrito/itálico aberto num parágrafo e fechado em outro (canário de
+    10/10, p6: `<p><strong>Não.</p> … </strong></p>`) quebra o bloco no editor.
+    Fecha a tag aberta no fim do próprio parágrafo e tira o fechamento solto.
+    Só markup: o texto não muda. Devolve (conteúdo, parágrafos ajustados)."""
+    ajustes = 0
+
+    def arrumar(m: re.Match) -> str:
+        nonlocal ajustes
+        abertura, miolo, fim = m.groups()
+        pilha: list[str] = []
+        partes: list[str] = []
+        pos = 0
+        mudou = False
+        for t in _INLINE_RE.finditer(miolo):
+            partes.append(miolo[pos:t.start()])
+            pos = t.end()
+            nome = t.group(2).lower()
+            if t.group(1) != "/":
+                pilha.append(nome)
+                partes.append(t.group(0))
+            elif pilha and pilha[-1] == nome:
+                pilha.pop()
+                partes.append(t.group(0))
+            else:
+                mudou = True                     # fechamento sem abertura aqui
+        partes.append(miolo[pos:])
+        if pilha:
+            mudou = True
+            partes.extend(f"</{n}>" for n in reversed(pilha))
+        if not mudou:
+            return m.group(0)
+        ajustes += 1
+        return abertura + "".join(partes) + fim
+
+    return _PARAGRAFO_HTML_RE.sub(arrumar, content), ajustes
+
+
+def _so_letras(texto: str) -> str:
+    return re.sub(r"[\W_]+", " ", unescape(re.sub(r"<[^>]+>", " ", texto)).lower()).strip()
+
+
+def sem_eco_do_titulo(content: str, h1: str, ad_paragraph_anchors: Any = None) -> tuple[str, bool]:
+    """Primeiro parágrafo que só repete o H1 da página (pré-sell do canário de
+    10/10: "Quem tem direito à Tarifa Social de Energia Elétrica?" logo abaixo
+    do mesmo título) sai. Não sai se, sem ele, os slots do Ad Inserter ficariam
+    sem o parágrafo de que precisam."""
+    from funnelforge.pipeline.enhancers.gutenberg import _top_level_blocks
+    from funnelforge.pipeline.validators.checks import _slots_do_ad_inserter
+
+    primeiro = next(((ini, fim) for ini, fim, nome in _top_level_blocks(content)
+                     if nome == "paragraph"), None)
+    if primeiro is None or not h1.strip() or _so_letras(content[primeiro[0]:primeiro[1]]) != _so_letras(h1):
+        return content, False
+    novo = content[:primeiro[0]] + content[primeiro[1]:].lstrip("\n")
+    if _slots_do_ad_inserter(novo, {"ad_paragraph_anchors": ad_paragraph_anchors or []}):
+        return content, False
+    return novo, True
+
+
+def _href_da_proxima_duvida(state: RunState, page: Page, rotas: list[dict[str, Any]]) -> str:
+    """O href da rota que leva à próxima dúvida desta página (o passo principal)."""
+    proxima = (page.jornada.proxima_duvida if page.jornada else "") or ""
+    alvo = next((p.slug for p in (state.plan.pages if state.plan else [])
+                 if p.jornada and proxima and p.jornada.duvida_id == proxima), "")
+    return next((str(r.get("href") or "") for r in rotas if r.get("kind") == "funnel" and alvo
+                 and str(r.get("href") or "").rstrip("/").endswith("/" + alvo)), "")
+
+
 def step_write(state: RunState, page: Page, deps: Any) -> None:
     """Write the page draft, branching by the page's EFFECTIVE role (T1D).
 
@@ -2217,6 +2361,34 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
                     "etapa": "fontes_externas_da_presell_em_prosa",
                     "alterou": True,
                     "quantidade": removidos,
+                    "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                    "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+                })
+        anterior = content
+        content, inline = fechar_inline_por_paragrafo(content)
+        if inline:
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "inline_fechado_no_paragrafo", "alterou": True, "quantidade": inline,
+                "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            })
+        anterior = content
+        content, ecoava = sem_eco_do_titulo(content, page.h1_title,
+                                            deps.settings.ads.paragraph_anchors)
+        if ecoava:
+            _registrar_normalizacao(state, page.page_number, {
+                "etapa": "paragrafo_que_repetia_o_h1", "alterou": True,
+                "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
+                "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            })
+        if state.pacotes:
+            anterior = content
+            content, caminhos = navegacao_do_topo(
+                content, rotas, principal=_href_da_proxima_duvida(state, page, rotas))
+            if caminhos:
+                _registrar_normalizacao(state, page.page_number, {
+                    "etapa": "navegacao_do_topo", "alterou": content != anterior,
+                    "caminhos": caminhos,
                     "sha256_antes": hashlib.sha256(anterior.encode("utf-8")).hexdigest(),
                     "sha256_depois": hashlib.sha256(content.encode("utf-8")).hexdigest(),
                 })

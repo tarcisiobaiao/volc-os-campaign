@@ -802,6 +802,7 @@ def prompt_do_pacote(state, page):
         official_links=pacote["factual"].get("urls_oficiais", []), platform_links=[],
         qualifier_lens=j["pergunta"], qualifier_questions=[],
         next_solutions=entregas_dos_destinos,
+        navegacao_no_topo=not lp and any(l["kind"] == "funnel" for l in pacote["links"]),
         is_terminal=bool(j["condicao_terminal"]), terminal_official=j["saida_oficial"]["classificacao"] == "boa",
         cross_funnel_label="", engajamento=p["engajamento"],
         plano_visual=j["plano_visual"], exigencia_visual=[], visual_required_blocks=[],

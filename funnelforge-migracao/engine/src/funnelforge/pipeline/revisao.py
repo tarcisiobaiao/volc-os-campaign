@@ -87,6 +87,8 @@ PADROES_DE_ESCRITA: tuple[str, ...] = (
     "gerundio_raso", "nao_x_mas_y", "trinca_forcada", "repeticao",
     "anuncio_do_proximo_ponto", "verbo_rebuscado", "qualificadores_em_excesso",
     "conclusao_vazia", "frase_de_efeito", "travessao_em_serie", "negrito_em_excesso",
+    # 10/10 (operador): leitura rápida e leitor pouco familiarizado com o tema.
+    "titulo_sem_resposta", "termo_sem_explicacao",
 )
 CATEGORIAS_SO_NOTA = frozenset({"estilo", "oportunidade"})
 MAX_PATCHES_POR_RODADA = 8
@@ -1228,8 +1230,11 @@ def executar_revisao(doc: Documento, ctx: ContextoDaRevisao, *, runner: Any, cfg
         pendentes = []
         for a in bloqueantes_brutos:
             dele = [p for p in aplicados if p["achado"] == a["id"]]
+            # O trecho saiu, ou só sobrou dentro do próprio texto novo (patch que
+            # fecha o negrito em volta da frase: canário de 10/10, p6).
             resolvido = bool(dele) and all(
-                p["antes"] not in (novo.texto(p["campo"]) or "") for p in dele)
+                (novo.texto(p["campo"]) or "").count(p["antes"]) <= p["depois"].count(p["antes"])
+                for p in dele)
             if not resolvido:
                 pendentes.append(f"bloqueante_nao_resolvido:{a['id']}")
         # afirmação sem fato só sai da lista se o trecho dela sumiu do campo

@@ -1070,9 +1070,24 @@ def projecao_para_o_prompt(dossie: dict, numero: int) -> dict:
     if pagina is None:
         return {}
     por_id = {f["fact_id"]: f for f in dossie.get("fatos", [])}
+    # LP e pré-sell antecipam a resposta curta dos destinos diretos (operador,
+    # 10/10): recebem também os fatos verificados deles, marcados com a página
+    # de origem. Redator e revisor leem esta mesma projeção, então o revisor
+    # não corta da LP uma frase verdadeira que só o destino provava.
+    ids = list(pagina.get("fatos_verificados", []))
+    origem: dict[str, str] = {}
+    if pagina.get("role") in ("LP", "PRESELL"):
+        por_slug = {p.get("slug"): p for p in dossie.get("paginas", [])}
+        for d in (pagina.get("cta") or {}).get("destinos") or []:
+            alvo = por_slug.get(d.get("slug"))
+            for i in (alvo or {}).get("fatos_verificados", []):
+                if i not in ids:
+                    ids.append(i)
+                    origem[i] = str(alvo.get("slug") or "")
     return {
         "sha256": pagina.get("sha256", ""),
         "fatos": [{"id": i, "afirmacao": por_id[i]["afirmacao"], "tipo": por_id[i]["tipo"],
+                   **({"do_destino": origem[i]} if i in origem else {}),
                    "valor": por_id[i].get("valor", ""), "unidade": por_id[i].get("unidade", ""),
                    "fonte": por_id[i]["source_url"],
                    "abrangencia": _abrangencia_do_fato(por_id[i]),
@@ -1084,7 +1099,7 @@ def projecao_para_o_prompt(dossie: dict, numero: int) -> dict:
                    # recebe o pedaço pertinente, não a página inteira.
                    **({"trecho": por_id[i]["trecho_do_documento"]}
                       if por_id[i].get("trecho_do_documento") else {})}
-                  for i in pagina.get("fatos_verificados", []) if i in por_id],
+                  for i in ids if i in por_id],
         "urls_oficiais": list(pagina.get("urls_oficiais") or []),
         "vinculos": list((pagina.get("cobertura") or {}).get("vinculos") or []),
         "estado": (pagina.get("cobertura") or {}).get("estado", "ready"),

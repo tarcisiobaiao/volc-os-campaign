@@ -129,5 +129,6 @@ def test_canonica_tira_token_de_sessao_e_mantem_query_funcional():
 def test_sniper_mostra_contraste_resposta_tema_sem_proibir_verbo():
     from importlib import resources
     fonte = resources.files("funnelforge.prompts").joinpath("ctas_do_funil.jinja").read_text("utf-8")
-    assert "só repete o tema" in fonte and "Nenhum verbo é proibido" in fonte
+    assert "PRÓXIMA PERGUNTA ou a SITUAÇÃO do leitor" in fonte and "Nenhum verbo é proibido" in fonte
+    assert "[PRINCIPAL]" in fonte
     assert "o sistema recusa" not in fonte

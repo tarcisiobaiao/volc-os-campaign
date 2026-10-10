@@ -89,6 +89,9 @@ def _arestas(state, deps, ferramentas: dict, entregas: dict) -> tuple[list[dict]
                 prontas = _ferramentas_prontas(ferramentas.get(alvo.page_number) or {})
                 arestas.append({"origem": p.page_number, "tipo": "funnel", "destino": r.target,
                                 "destino_pagina": alvo.page_number, "posicao": r.placement,
+                                # o próximo passo natural de quem termina a página
+                                "principal": bool(p.jornada and alvo.jornada and
+                                                  alvo.jornada.duvida_id == p.jornada.proxima_duvida),
                                 "rotulo_atual": r.anchor,
                                 "assinatura": _assinatura(entrega, prontas)})
             elif r.kind == "external_official" and _chave(r.target) not in vistos:

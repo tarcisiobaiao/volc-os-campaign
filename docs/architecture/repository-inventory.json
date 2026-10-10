@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T17:30:21-03:00",
+  "generated_at": "2026-10-10T18:29:12-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 857,
-    "markdown": 635,
+    "files": 859,
+    "markdown": 637,
     "sql": 222,
-    "tracked": 844,
-    "untracked": 13,
+    "tracked": 845,
+    "untracked": 14,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 51,
-      "documentation": 454,
+      "audit": 52,
+      "documentation": 455,
       "generated": 2,
       "module-guide": 41,
       "product-document": 23,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23816,
+      "bytes": 23808,
       "lines": 318,
-      "sha256": "bf0479ed55b23a3f50f97e18cbbf1521b2c2d55a07f6d8681fa75c84b69341b5",
+      "sha256": "4b91b550c6e5748905fe84fc25509ecf47de99eaf367cc10b97a371d3cfbfbab",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1858,6 +1858,18 @@
       "bytes": 7559,
       "lines": 135,
       "sha256": "3eb020236d02612c89c4e2643768da198b23a0b5c6ce953029538fc49aa1ef3d",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-COPY-NAVEGACAO-COMPOSICAO-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 9103,
+      "lines": 138,
+      "sha256": "ffd9d98f18b156fce13f7c382b4c90b052c62451e481fe7a3cf2137f32b05400",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6867,6 +6879,18 @@
       "sql_risk": null
     },
     {
+      "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-canario-copy/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 19040,
+      "lines": 282,
+      "sha256": "596c42cf19d7decfe6f3d4291cde26fa839b5b911311b429ea0b3c822c6810ec",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-canario-editorial/report.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7511,7 +7535,7 @@
       "lines": 242,
       "sha256": "320fdd5db67dde5e784fd52923742037f6a7af8e3c93d8a1754d5d48b1c97bfd",
       "graph_nodes": 8,
-      "graph_degree": 18,
+      "graph_degree": 16,
       "sql_risk": "high"
     },
     {
@@ -7715,7 +7739,7 @@
       "lines": 117,
       "sha256": "e1339fbc64a1e30f0c720bb5540401c1192ebee5ffc75e2682a1f4aa23135db4",
       "graph_nodes": 3,
-      "graph_degree": 4,
+      "graph_degree": 6,
       "sql_risk": "high"
     },
     {

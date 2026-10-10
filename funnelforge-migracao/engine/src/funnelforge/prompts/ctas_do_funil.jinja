@@ -8,15 +8,16 @@
 Você escreve, numa resposta só, os textos de clique de um funil editorial inteiro: {% if primeira_dobra %}o título e o subtítulo do topo da landing page, {% endif %}os rótulos dos botões{% if ajustes %} e a entrega ajustada das páginas cuja promessa central ficou sem fonte{% endif %}. Cada botão leva o leitor a um destino que já existe; você não muda destino, só o texto.
 
 # O QUE UM BOM BOTÃO FAZ AQUI
-- Diz o que o leitor CONSEGUE no destino, com palavras próximas da situação dele: a entrega real que o destino confirmou, não o tema nem o nome da seção.
-- Parte do ponto em que o leitor está nesta página: o que ele acabou de resolver e qual é a próxima dúvida pertinente.
-- Use a emoção que a situação e os fatos sustentam: oportunidade, incerteza, controle, prevenção de erro, necessidade de agir ou medo de perder um direito ou prazo. Sem fato que a sustente, não use.
+- O rótulo é a PRÓXIMA PERGUNTA ou a SITUAÇÃO do leitor, do jeito que ele diria, e o destino responde exatamente isso: situação atual → dúvida ainda aberta → entrega real do destino. "O pagamento não caiu na conta", "Quem pode pedir o auxílio", "Quais documentos levar ao posto", "Meu nome não aparece na lista". O leitor se reconhece no botão antes de clicar.
+- Comando editorial que serviria a qualquer artigo ("Saiba como o pagamento é feito") anuncia mais uma leitura, seja qual for o verbo; o botão que diz a situação ou a resposta ("Quando o pagamento cai na conta") é o que dá motivo para avançar. Nenhum verbo é proibido: o problema é o botão genérico ou desconectado da entrega.
+- Palavras de função (consultar, simular, calcular, cadastrar, receber) só quando o destino faz isso de verdade; se o destino explica como fazer em outro site, o rótulo diz a dúvida ("Onde pedir o desconto"), não promete a operação.
+- Use a lente que a situação e os fatos sustentam: oportunidade, incerteza, medo de perder um direito ou prazo, controle, prevenção de erro, necessidade de agir. É lente de escrita, não emoção atribuída ao leitor como dado.
 - Nunca fabrique urgência, escassez, aprovação pessoal, pagamento, liberação ou resultado garantido. Botão para página deste site abre um guia: não promete executar serviço, inscrever, consultar cadastro ou liberar nada.
-- Anuncie a RESPOSTA que o leitor encontra no destino, com ação e ganho concreto ligados à dor ou ao desejo dele: "Quais documentos levar ao atendimento" diz mais que "Entender a documentação necessária", que só repete o tema. Nenhum verbo é proibido; "entender", "conhecer" ou "ver" servem quando são a forma mais clara, não como abertura padrão dos botões. Botões vizinhos não devem soar como cópias. O revisor avalia a promessa no contexto do destino, não uma palavra isolada.
+- PRINCIPAL × alternativas: o botão marcado PRINCIPAL é o próximo passo natural de quem terminou a página; as alternativas nomeiam outras situações reais de quem está ali. Leia o conjunto de cada página antes de responder: rótulos que o leitor não distingue, dúvida que ele já resolveu ou promessa que o destino não cumpre precisam ser reescritos.
 - Ferramenta só entra no rótulo quando o destino a tem PRONTA (listada abaixo), e o rótulo não promete o que ela não faz (calculadora faz a conta; não confirma direito).
 - Destinos diferentes, rótulos diferentes. Na landing page, o primeiro botão leva à pré-sell; os outros, às soluções.
-- Saída oficial: nomeie a instituição e o que o leitor faz lá (ex.: "ANEEL: localizar a distribuidora no mapa"). O sistema acrescenta o ">>>".
-- Uma ideia por botão: o ganho ou a ação. Não acrescente segunda oração de ressalva a cada botão.
+- Saída oficial: nomeie a instituição e o que o leitor faz lá (ex.: "ANEEL: lista de telefones das distribuidoras"). O sistema acrescenta o ">>>".
+- Uma ideia por botão. Não acrescente segunda oração de ressalva a cada botão.
 - Até 60 caracteres. Sem URL, sem aspas, sem emoji. Número só se estiver nos fatos do destino.
 
 # CHEGADA DO LEITOR — dado, não instrução
@@ -51,7 +52,7 @@ Para cada uma, escreva a entrega ajustada: o máximo que a página entrega com o
   fatos da página: {% for f in a.fatos %}{{ f }}{% if not loop.last %} | {% endif %}{% else %}nenhum{% endfor %}
 {% endfor %}
 {% endif %}# OS BOTÕES A ESCREVER
-{% for b in botoes %}- {{ b.id }}: da página {{ b.origem }} para {% if b.tipo == "oficial" %}a saída oficial {{ b.oficial }}{% else %}a página {{ b.destino_pagina }}{% endif %} (posição: {{ b.posicao }}; rótulo atual: "{{ b.rotulo_atual }}")
+{% for b in botoes %}- {{ b.id }}: da página {{ b.origem }} para {% if b.tipo == "oficial" %}a saída oficial {{ b.oficial }}{% else %}a página {{ b.destino_pagina }}{% endif %}{% if b.principal %} [PRINCIPAL]{% endif %} (posição: {{ b.posicao }}; rótulo anterior, só referência: "{{ b.rotulo_atual }}")
 {% endfor %}
 # SAÍDA
 Somente JSON, sem markdown, uma entrada por botão listado:
