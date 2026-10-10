@@ -30,6 +30,16 @@ TITULO_DA_DOBRA = 45     # 2 linhas no celular sobre a imagem do topo
 SUBTITULO_DA_DOBRA = 160
 SUFIXO_DE_SAIDA = " >>>"
 _PROIBIDO_RE = re.compile(r"https?://|www\.|<|>|\[|\]|\"", re.I)
+# Abertura que anuncia o tema, não a resposta do destino (homologação de 10/10:
+# "Entender como a Tarifa Social chega à conta"). Não é reaproveitada numa nova
+# congelada e é recusada quando o modelo a devolve.
+_GENERICO_RE = re.compile(
+    r"^(?:entender|entenda|conhecer|conheça|saiba|saber mais|ver mais|leia|clique|"
+    r"descobrir|descubra)\b", re.I)
+
+
+def rotulo_generico(rotulo: str) -> bool:
+    return bool(_GENERICO_RE.match((rotulo or "").strip()))
 _NUMERO_RE = re.compile(r"\d+(?:[.,]\d+)*")
 
 
@@ -134,6 +144,8 @@ def _conferir(rotulo: Any, aresta: dict, contexto_do_destino: str) -> tuple[str,
     limpo = re.sub(r"\s+", " ", rotulo).strip().removesuffix(">>>").strip()
     if _PROIBIDO_RE.search(limpo):
         return "", "rótulo com URL, tag, colchete ou aspas"
+    if rotulo_generico(limpo):
+        return "", "rótulo genérico: diga a resposta que o destino dá"
     final = limpo + (SUFIXO_DE_SAIDA if aresta["tipo"] == "oficial" else "")
     if len(final) > MAX_ROTULO:
         return "", f"rótulo com {len(final)} caracteres (máx. {MAX_ROTULO})"
@@ -193,7 +205,8 @@ def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set
     reusados, pedir = [], []
     for a in arestas:
         antigo = anteriores.get((a["origem"], _chave(a["destino"])))
-        if antigo is not None and antigo.get("assinatura") == a["assinatura"]:
+        if (antigo is not None and antigo.get("assinatura") == a["assinatura"]
+                and not rotulo_generico(antigo["rotulo"])):
             reusados.append({**a, "rotulo": antigo["rotulo"],
                              "justificativa": antigo.get("justificativa", ""),
                              "origem_do_rotulo": "reaproveitado"})
@@ -228,6 +241,12 @@ def definir_ctas_do_funil(state, deps, ferramentas: dict, entregas: dict) -> set
             pedir_ajustes.append({"pagina": n, "assinatura": assinatura, "faltam": faltam,
                                   "entrega": paginas.get(n, {}).get("entrega", ""),
                                   "fatos": paginas.get(n, {}).get("fatos", [])})
+    # A entrega ajustada reaproveitada vale JÁ no prompt: botão repedido para a
+    # página ajustada é escrito contra o que ela entrega, não contra a promessa
+    # original (homologação de 10/10, botão da LP para a pré-sell).
+    for a in ajustes:
+        if a["pagina"] in paginas:
+            paginas[a["pagina"]]["entrega"] = a["entrega"]
 
     recusas: dict[str, str] = {}
     novos: list[dict] = []

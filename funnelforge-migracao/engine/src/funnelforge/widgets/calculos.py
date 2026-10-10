@@ -16,11 +16,20 @@ from funnelforge.domain.models import CalculoDoAtivo
 from funnelforge.widgets.estilo import CSS
 
 
+# Formato brasileiro: ponto de milhar só em grupos de três e vírgula decimal
+# ("1.518,00"). O ponto decimal ("1518.5") vale quando não pode ser milhar.
+# O JS do navegador (`cents`, abaixo) usa as mesmas duas expressões.
+_COM_VIRGULA = re.compile(r"([0-9]{1,3}(?:\.[0-9]{3})+|[0-9]{1,13})(?:,([0-9]{1,2}))?")
+_COM_PONTO = re.compile(r"([0-9]{1,13})\.([0-9]{1,2})")
+
+
 def numero(valor: str) -> Decimal:
-    valor = str(valor).strip().replace(",", ".")
-    if not re.fullmatch(r"[0-9]{1,13}(?:\.[0-9]{1,2})?", valor):
-        raise ValueError("Use número não negativo com até dois decimais, sem separador de milhar")
-    n = Decimal(valor)
+    texto = str(valor).strip()
+    m = _COM_VIRGULA.fullmatch(texto) or _COM_PONTO.fullmatch(texto)
+    inteiro = m.group(1).replace(".", "") if m else ""
+    if not m or len(inteiro) > 13:
+        raise ValueError("Use número não negativo com até dois decimais (ex.: 1.518,00)")
+    n = Decimal(f"{inteiro}.{m.group(2) or '0'}")
     if n > Decimal("1000000000000"):
         raise ValueError("Entrada acima do limite da calculadora")
     return n
@@ -67,9 +76,11 @@ var r=document.getElementById("__ID__");if(!r){return;}
 var inputs=r.querySelectorAll("input");var out=r.querySelector("[data-vc-out]");
 var semjs=r.querySelector("[data-vc-semjs]");if(semjs){semjs.hidden=true;}
 function cents(text){
-var s=text.trim().replace(",",".");
-if(!/^\d{1,13}(\.\d{1,2})?$/.test(s)){throw Error("Entrada inválida");}
-var p=s.split(".");var v=BigInt(p[0])*100n+BigInt(((p[1]||"")+"00").slice(0,2));
+var s=text.trim();
+var m=/^(\d{1,3}(?:\.\d{3})+|\d{1,13})(?:,(\d{1,2}))?$/.exec(s)||/^(\d{1,13})\.(\d{1,2})$/.exec(s);
+var inteiro=m?m[1].replace(/\./g,""):"";
+if(!m||inteiro.length>13){throw Error("Entrada inválida");}
+var v=BigInt(inteiro)*100n+BigInt(((m[2]||"")+"00").slice(0,2));
 if(v>100000000000000n){throw Error("Entrada acima do limite");}return v;
 }
 function update(){try{
@@ -102,7 +113,8 @@ def renderizar_calculo(calculo: CalculoDoAtivo, *, titulo: str, identidade: str)
     html = (f'<section class="vw" id="{wid}" data-vc-operation="{calculo.operacao}" '
             f'data-vc-inteiros="{",".join(str(i) for i in calculo.inteiros)}">'
             f'<div class="vw-top"><h3 class="vw-tit">{escape(titulo)}</h3>'
-            f'<div class="vw-sub" id="{wid}-help">Use números sem ponto de milhar. '
+            f'<div class="vw-sub" id="{wid}-help">Pode usar ponto de milhar e vírgula: '
+            '1.518,00. '
             'A conta não consulta cadastro nem confirma direito.</div></div>'
             f'<div class="vw-ctls">{controles}</div><div class="vw-caixa">'
             f'<strong>{escape(calculo.rotulo_resultado)}</strong>'

@@ -14,6 +14,7 @@ NÃO EXISTE MAIS ALLOWLIST DE HOSTS. Quem autoriza uma URL externa é a PESQUISA
 daquela página: `registrar_canais_oficiais` decide uma vez (proveniência +
 verificação no Chromium + sonda anti-anúncio) e guarda em `state.official_links`
 -- é dali que o print sai. O adapter, por consequência, exige só https."""
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -988,3 +989,53 @@ def test_navegacao_interrompida_tenta_uma_vez_e_entrega_o_print(tmp_path: Path) 
     assert state.step_status["screenshot_p3"].status is StepStatus.OK
     assert [s["url"] for s in state.screenshots[3]] == ["https://www.gov.br/inss/pt-br/servico"]
     assert deps.screenshot.tentativas == 2
+
+
+# --------------------------------------------------------------------------- #
+# Reserva de espaço das imagens (homologação de 10/10: CLS 0,158 na p7 mobile).
+# O bloco core/image do Gutenberg salva `wp-image-<id>` e NÃO salva width/height
+# como atributo do <img>; com o id da mídia, o WordPress acrescenta largura e
+# altura ao renderizar (wp_img_tag_add_width_and_height_attr) e o editor
+# continua vendo exatamente a marcação que ele mesmo gera.
+# --------------------------------------------------------------------------- #
+_GUTENBERG_IMG_RE = re.compile(
+    r'<!-- wp:image \{"id":(\d+),"sizeSlug":"large","linkDestination":"none"\} -->\n'
+    r'<figure class="wp-block-image size-large"><img src="[^"]+" alt="[^"]*" '
+    r'class="wp-image-(\d+)"/>')
+
+
+def test_print_e_imagem_do_meio_levam_o_id_da_midia_como_o_gutenberg() -> None:
+    html = ('<!-- wp:heading --><h2>Um</h2><!-- /wp:heading -->\n'
+            '<!-- wp:paragraph --><p><a href="https://www.gov.br/x">gov</a></p>'
+            '<!-- /wp:paragraph -->')
+    meio = st._insert_midcontent_image(html, "https://creditoup.com.br/i.webp", "alt",
+                                       media_id=41)
+    print_ = st._insert_official_screenshot(
+        html, "https://creditoup.com.br/p.webp", "https://www.gov.br/x", "www.gov.br",
+        "alt", media_id=42)
+    assert [m.groups() for m in _GUTENBERG_IMG_RE.finditer(meio)] == [("41", "41")]
+    assert [m.groups() for m in _GUTENBERG_IMG_RE.finditer(print_)] == [("42", "42")]
+    for saida in (meio, print_):
+        img = re.search(r"<img[^>]*>", saida).group(0)
+        assert " width=" not in img and " height=" not in img   # bloco válido no editor
+
+
+def test_publicacao_passa_o_id_devolvido_pelo_upload(tmp_path) -> None:
+    from funnelforge.domain.models import RunState
+
+    class Pub:
+        def upload_media(self, data, filename, mime="image/webp", alt=""):
+            return {"id": 77, "source_url": f"https://creditoup.com.br/u/{filename}"}
+
+    shot = tmp_path / "p3-oficial.webp"
+    shot.write_bytes(b"RIFF0000WEBP")
+    state = RunState(run_id="r")
+    state.screenshots[3] = [{
+        "url": "https://www.gov.br/x", "path": str(shot), "capturado_em": "2026-10-10",
+        "titulo": "t", "trecho": "t", "legenda": "l", "alt": "a", "crop": "mobile",
+        "sha256": st._sha256_do_arquivo(shot)}]
+    page = SimpleNamespace(page_number=3)
+    html = ('<!-- wp:paragraph --><p><a href="https://www.gov.br/x">gov</a></p>'
+            '<!-- /wp:paragraph -->')
+    out = st._embed_official_screenshots(state, page, SimpleNamespace(publisher=Pub()), html)
+    assert '"id":77' in out and 'class="wp-image-77"' in out

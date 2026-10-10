@@ -173,7 +173,8 @@ código `ungrounded_critical_claim`.
 
 - **p2, calculadora de renda por pessoa:**
   - no Chromium, 1518 ÷ 4 = 379,50;
-  - "2,5" pessoas e "1.518,00" são recusados;
+  - "2,5" pessoas é recusado; "1.518,00" era recusado até o fechamento
+    localizado (abaixo) e agora é aceito;
   - o aviso sem JS fica oculto.
 - **p3, p4 e p5, navegadores de jornada:** respondem à escolha no Chromium.
 - **p4:** o revisor corrigiu o texto do widget por patch localizado na
@@ -239,16 +240,16 @@ afetada:
   - a auditoria do motor passou a 390 e 1440 px nas 7 páginas, depois da
     recomposição;
   - numa de quatro medições, a p7 mobile deu CLS 0,158. O HTML é idêntico, e
-    as três repetições deram 0. Causa provável: as `<img>` inseridas pelo motor
-    vão sem largura e altura.
+    as três repetições deram 0. A causa era as `<img>` inseridas pelo motor
+    irem sem largura e altura; corrigido no fechamento localizado (abaixo).
 - **Limites:**
   - **Imagens:** foram reaproveitadas na composição (p1, p2, p3 e p6 de 09/10;
     p4, p5 e p7 de 10/10). O run não gerou imagem.
   - **Prévia:** não é WordPress. O CSS do MU-plugin não está no site, e a rota
     HTTP não foi executada.
-  - **Links com parâmetro de sessão**, vindos da pesquisa:
-    - MME: `?_authenticator=…`, na p5 e na p7;
-    - Neoenergia: `/en/…?doAsUserId=6205`, na p5.
+  - **Links com parâmetro de sessão** vindos da pesquisa (MME
+    `?_authenticator=…`; Neoenergia `?doAsUserId=…`): trocados no fechamento
+    localizado (abaixo).
   - **Pré-sell:** a definição da renda por pessoa e o salário-mínimo vigente
     seguem sem fonte. A entrega foi reduzida, não resolvida.
   - **Prints repetidos:** o mesmo print da ANEEL aparece na p3, na p6 e na p7.
@@ -256,3 +257,100 @@ afetada:
   - **Retentativas:** a causa por tentativa não é gravada (só o código).
   - **ROI e CTR:** nenhuma afirmação. Nada foi publicado nem medido com
     tráfego.
+
+## Fechamento localizado, depois da homologação (10/10)
+
+Pedido do dono: sem nova arquitetura, sem pesquisa nova e sem reescrever
+páginas. Foi uma retomada só das etapas afetadas, registrada à parte:
+`retomada_fechamento`, 2 chamadas, 60 mil/5 mil tokens, 176 s.
+
+### Links públicos
+
+As três URLs com parâmetro de sessão viraram a URL canônica que o próprio site
+declara. A troca só foi feita depois de baixar a versão pública pelo leitor do
+motor e conferir o trecho de cada fato nela:
+
+- **MME:** texto idêntico.
+- **Coelba:** texto idêntico.
+- **Neoenergia:** a página `/en/` declara a canônica pt-BR, e a frase do fato
+  está nela.
+
+Foram atualizados fatos (com `url_substituida`), fontes, canais, rota e botão
+da p5, rascunhos, prints (com `url_capturada`), pacotes, índice de evidências
+e metadados. O dossiê foi de `468673eb…` para `e17a33b0…`. Telemetria,
+briefings e revisões antigas ficaram como histórico.
+
+### Espaço das imagens
+
+- O wp:image do motor passa a levar o id da mídia (`"id":N`,
+  `class="wp-image-N"`), como o Gutenberg salva.
+- O WordPress (7.1.3 no site) acrescenta largura e altura ao renderizar.
+- Largura e altura no `<img>` gravado deixariam o bloco inválido no editor:
+  o `save` do core/image não as salva (conferido no código publicado do
+  `@wordpress/block-library`).
+- **Prova na prévia, que emula esse filtro:** com as imagens pendentes, a
+  altura reservada foi de 0 px para 235 a 538 px no celular. CLS 0 em 4 de 4
+  auditorias.
+
+### Calculadora
+
+- Python (gabarito) e JS (navegador) usam as mesmas duas expressões. Aceitam
+  ponto de milhar em grupos de três e vírgula decimal; o ponto decimal vale
+  quando não pode ser milhar.
+- No Chromium, "1.518,00", "1518,00", "1.518" e "1518" ÷ 4 dão 379,50. "2,5"
+  e "2.5" pessoas e "1,518.00" são recusados.
+- Um teste antigo tratava "1.234,56" como ambíguo. Ele foi trocado pelo
+  formato americano.
+
+### Rótulos genéricos
+
+- Rótulo que abre com "Entender/Conhecer/Saiba/Descobrir…" não é mais
+  reaproveitado e é recusado quando o modelo o devolve. O prompt pede a
+  resposta que o destino dá.
+- Voltaram ao sniper só 3 botões:
+
+| Botão | Antes | Depois |
+|---|---|---|
+| LP → pré-sell | Conhecer os critérios para ter Tarifa Social | Quando CadÚnico ou BPC dão acesso à Tarifa Social |
+| LP → p6 | Entender por que ainda pode haver valor na conta | O que ainda pode ser cobrado com a Tarifa Social |
+| Pré-sell → p3 | Entender como a Tarifa Social chega à conta | O que fazer se o desconto não aparecer na conta |
+
+**Defeito achado pela execução a seco:** numa nova congelada, a entrega
+ajustada da pré-sell era reaproveitada, mas o prompt do sniper ainda mostrava a
+promessa original. O botão novo para ela seria escrito contra o que ela não
+entrega. Agora a entrega ajustada entra no contexto antes do prompt (teste
+`test_botao_repedido_para_pagina_com_entrega_ajustada_ve_a_entrega_ajustada`).
+
+### Promessa da pré-sell
+
+- **Antes:** "O acesso depende de hipóteses legais e dados cadastrais vigentes.
+  Ter NIS, receber Bolsa Família, ser aposentado ou ter 60 anos, isoladamente,
+  não confirma o direito."
+- **Depois:** "Apresenta as hipóteses de acesso […]; não estão confirmados os
+  parâmetros de cálculo da renda por pessoa nem o valor em reais do limite de
+  renda."
+- **Os textos combinam:** o texto aprovado traz as três hipóteses e os limites
+  "expressos em salários-mínimos". O botão da LP anuncia as hipóteses, sem
+  limite em reais e sem confirmar direito.
+- **A mudança depende do aceite do dono.**
+
+### Revisão e gate
+
+- Só as páginas cujo conteúdo mudou (LP, p2, p5 e p7) foram revisadas, numa
+  chamada. As 4 foram aprovadas sem patch.
+- Gate OK nas 7.
+- Composição local e Chromium a 390 e 1440 px OK, sem erro de JS.
+
+### Entregas prometidas que continuam ausentes
+
+- **Pré-sell:** definição dos termos da renda por pessoa e limite em reais.
+- **p6:** o "exemplo" do esqueleto. A página traz um passo a passo de
+  comparação de faturas, sem conta de exemplo.
+- **p6 e p7, widgets:** não eram promessa do esqueleto e não foram
+  restaurados.
+
+### Testes
+
+1.724 passaram, 7 pulados. São 29 casos novos de calculadora e imagem, 2 do
+sniper e o ajuste de 1 teste antigo.
+

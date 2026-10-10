@@ -53,8 +53,10 @@ def test_calculo_conferido_e_markup_sanitizado(op):
     assert bloco == renderizar_calculo(c, titulo='Minha conta <script>', identidade="p3")
 
 
+# "1.234,56" saiu daqui em 10/10: o formato brasileiro passou a ser aceito
+# (ver test_calculadora_inteiros); o americano continua ambíguo.
 @pytest.mark.parametrize("a,b", [("NaN", "2"), ("Infinity", "2"), ("-1", "2"),
-    ("1.234,56", "2"), ("1e3", "2"), ("1", "0"), ("1000000000001", "2")])
+    ("1,234.56", "2"), ("1e3", "2"), ("1", "0"), ("1000000000001", "2")])
 def test_calculo_recusa_entradas_ambiguas_ou_invalidas(a, b):
     with pytest.raises(ValueError):
         calcular("divisao", a, b)

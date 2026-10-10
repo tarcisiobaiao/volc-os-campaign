@@ -4434,7 +4434,23 @@ def _upload_featured(state: RunState, page: Page, deps: Any, alt: str) -> tuple[
         return None, ""
 
 
-def _insert_midcontent_image(html: str, url: str, alt: str) -> str:
+def _bloco_de_imagem(url: str, alt: str, media_id: int | None) -> str:
+    """O wp:image como o Gutenberg salva. Com o id da mídia, `wp-image-<id>`:
+    o WordPress acrescenta largura e altura ao renderizar
+    (`wp_img_tag_add_width_and_height_attr`) e o espaço fica reservado antes
+    de a imagem chegar. width/height no <img> deixariam o bloco inválido no
+    editor, porque o core/image não os salva."""
+    if isinstance(media_id, int) and media_id > 0:
+        return (f'<!-- wp:image {{"id":{media_id},"sizeSlug":"large",'
+                '"linkDestination":"none"} -->\n'
+                f'<figure class="wp-block-image size-large"><img src="{url}" alt="{alt}" '
+                f'class="wp-image-{media_id}"/>')
+    return ('<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->\n'
+            f'<figure class="wp-block-image size-large"><img src="{url}" alt="{alt}"/>')
+
+
+def _insert_midcontent_image(html: str, url: str, alt: str,
+                             media_id: int | None = None) -> str:
     """Insert a Gutenberg wp:image block right after the FIRST heading block so
     the interior post opens with a visual (the old n8n flow's mid-content
     image). No-op when there is no heading to anchor to or no URL."""
@@ -4450,8 +4466,7 @@ def _insert_midcontent_image(html: str, url: str, alt: str) -> str:
               'aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->')
     block = (
         f"\n\n{spacer}\n"
-        '<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->\n'
-        f'<figure class="wp-block-image size-large"><img src="{url}" alt="{alt}"/></figure>\n'
+        f"{_bloco_de_imagem(url, alt, media_id)}</figure>\n"
         "<!-- /wp:image -->\n"
         f"{spacer}"
     )
@@ -4513,7 +4528,8 @@ def _link_theme(url: str) -> str:
 
 
 def _insert_official_screenshot(html: str, image_url: str, href: str, host: str,
-                                alt: str, *, capturado_em: str = "") -> str:
+                                alt: str, *, capturado_em: str = "",
+                                media_id: int | None = None) -> str:
     """Insert a Gutenberg wp:image (with a 'Reprodução: site oficial (host)'
     figcaption) right after the block that contains `href`; fallback anchor is
     after the SECOND heading. No-op when there's no image URL or neither anchor
@@ -4528,8 +4544,7 @@ def _insert_official_screenshot(html: str, image_url: str, href: str, host: str,
         return html
     block = (
         f"\n\n{_SCREENSHOT_SPACER}\n"
-        '<!-- wp:image {"sizeSlug":"large","linkDestination":"none"} -->\n'
-        f'<figure class="wp-block-image size-large"><img src="{image_url}" alt="{alt}"/>'
+        f"{_bloco_de_imagem(image_url, alt, media_id)}"
         f'<figcaption class="wp-element-caption">Reprodução: site oficial ({host})'
         f"{_quando_capturado(capturado_em)}"
         "</figcaption></figure>\n"
@@ -4574,7 +4589,8 @@ def _embed_official_screenshots(state: RunState, page: Page, deps: Any, html: st
             if not url:
                 continue
             html = _insert_official_screenshot(html, url, href, host, alt,
-                                               capturado_em=shot.get("capturado_em", ""))
+                                               capturado_em=shot.get("capturado_em", ""),
+                                               media_id=media.get("id"))
         except Exception:  # noqa: BLE001 - official screenshot embed is non-essential; never fail publish
             continue
     return html
@@ -4795,7 +4811,8 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
                 lambda c: ensure_top_navigation_cta(state, page, deps, c),
             ))
             decoradores.extend((
-                ("imagem_meio", lambda c: _insert_midcontent_image(c, media_url, alt)),
+                ("imagem_meio", lambda c: _insert_midcontent_image(c, media_url, alt,
+                                                                   featured_media)),
                 ("print_oficial", lambda c: _embed_official_screenshots(state, page, deps, c)),
             ))
             for tipo, decorado in decoradores:
@@ -4817,7 +4834,7 @@ def step_publish(state: RunState, page: Page, deps: Any) -> None:
             # the mid-content image after the first heading.
             content = (notice_html(deps.settings.site.domain) + "\n"
                        + finalize_compliance_notice(draft.content))
-            content = _insert_midcontent_image(content, media_url, alt)
+            content = _insert_midcontent_image(content, media_url, alt, featured_media)
             # Official-page screenshots (CARD-0005): upload each capture and embed
             # it after the paragraph that links to that official URL. Best-effort/
             # non-fatal -- a missing or failed screenshot just leaves the text as-is.

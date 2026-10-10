@@ -8,7 +8,7 @@ import pytest
 
 from funnelforge.domain.models import CalculoDoAtivo
 from funnelforge.pipeline.validators.checks import sanitize_widget_block
-from funnelforge.widgets.calculos import renderizar_calculo, validar
+from funnelforge.widgets.calculos import calcular, renderizar_calculo, validar
 
 sync_api = pytest.importorskip("playwright.sync_api")
 
@@ -51,6 +51,69 @@ def test_navegador_recusa_meio_integrante_e_calcula_inteiro():
         entradas.nth(1).fill("3")
         assert saida.get_attribute("data-vc-status") == "ok"
         assert saida.inner_text() == "500,00"
+        browser.close()
+
+
+# Formato brasileiro (homologação de 10/10: "1.518,00" era recusado). Ponto só
+# vale como milhar em grupos de três; vírgula é o decimal; o ponto decimal
+# antigo ("1518.5") continua aceito quando não pode ser milhar.
+ACEITOS = [("1.518,00", "1518.00"), ("1518,00", "1518.00"), ("1518", "1518"),
+           ("1.518", "1518"), ("1518,5", "1518.5"), ("1518.50", "1518.50"),
+           ("12.345.678,90", "12345678.90"), (" 1.518,00 ", "1518.00"), ("0,5", "0.5")]
+RECUSADOS = ["1,518.00", "1.5180", "15,180", "1518,", ",5", "1.51.8", "1 518", "-1518",
+             "R$ 1.518,00", "1.518,001", "abc", ""]
+
+
+@pytest.mark.parametrize(("texto", "esperado"), ACEITOS)
+def test_gabarito_aceita_o_formato_brasileiro(texto, esperado):
+    from decimal import Decimal
+
+    from funnelforge.widgets.calculos import numero
+    assert numero(texto) == Decimal(esperado)
+
+
+@pytest.mark.parametrize("texto", RECUSADOS)
+def test_gabarito_recusa_formato_ambiguo_ou_estranho(texto):
+    from funnelforge.widgets.calculos import numero
+    with pytest.raises(ValueError):
+        numero(texto)
+
+
+@pytest.mark.parametrize("pessoas", ["2,5", "2.5", "0", "0,00", "1.000,5"])
+def test_quantidade_de_pessoas_fracionada_ou_zero_continua_recusada(pessoas):
+    from funnelforge.widgets.calculos import inteiro_positivo
+    with pytest.raises(ValueError, match="inteiro"):
+        inteiro_positivo(pessoas)
+
+
+def test_navegador_e_gabarito_concordam_em_cada_formato():
+    """O JS do navegador e o `numero` do gabarito aceitam e recusam o mesmo."""
+    bloco = renderizar_calculo(_calculo(), titulo="Renda por pessoa", identidade="t")
+    html = bloco.replace("<!-- wp:html -->", "").replace("<!-- /wp:html -->", "")
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch()
+        except Exception as exc:  # noqa: BLE001
+            pytest.skip(f"Chromium indisponível: {exc}")
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        page.set_content(html)
+        entradas = page.locator("input")
+        saida = page.locator("[data-vc-out]")
+        entradas.nth(1).fill("4")
+        for texto, esperado in ACEITOS:
+            entradas.nth(0).fill(texto)
+            assert saida.get_attribute("data-vc-status") == "ok", texto
+            gabarito = str(calcular("divisao", texto, "4")).replace(".", ",")
+            assert saida.inner_text() == gabarito, texto
+        for texto in RECUSADOS:
+            entradas.nth(0).fill(texto)
+            assert saida.get_attribute("data-vc-status") == "invalid", texto
+        entradas.nth(0).fill("1.518,00")
+        for pessoas in ("2,5", "2.5", "0"):
+            entradas.nth(1).fill(pessoas)
+            assert saida.get_attribute("data-vc-status") == "invalid", pessoas
+        entradas.nth(1).fill("4,00")
+        assert saida.inner_text() == "379,50"
         browser.close()
 
 

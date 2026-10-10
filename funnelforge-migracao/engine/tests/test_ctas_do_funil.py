@@ -208,3 +208,64 @@ def test_primeira_dobra_longa_demais_para_o_celular_e_recusada(tmp_path):
     congelar_pacotes(state, deps)
     assert state.ctas_do_funil["primeira_dobra"] == {}
     assert "caracteres" in state.ctas_do_funil["recusas"]["primeira_dobra"]
+
+
+def test_rotulo_generico_volta_ao_modelo_e_resposta_generica_e_recusada(tmp_path):
+    """Homologação de 10/10: "Entender como a Tarifa Social chega à conta" e
+    "Conhecer os critérios…" não diziam a resposta do destino. Rótulo genérico
+    não é reaproveitado; o que o modelo devolve genérico é recusado."""
+    from funnelforge.pipeline.ctas import rotulo_generico
+    assert rotulo_generico("Entender como a Tarifa Social chega à conta")
+    assert rotulo_generico("Conhecer os critérios para ter Tarifa Social")
+    assert rotulo_generico("Entender por que ainda pode haver valor na conta")
+    assert not rotulo_generico("Ver os passos para o desconto aparecer na conta")
+    assert not rotulo_generico("ANEEL: consultar as regras de acesso >>>")
+
+    genericos = {"b1"}
+    state, deps, llm = estado(tmp_path, roteiro(
+        rotulo=lambda i, b: ("Entender como funciona" if b in genericos
+                             else f"Ver o passo {LETRAS[i]} da inscrição")))
+    congelar_pacotes(state, deps)
+    assert "b1" in state.ctas_do_funil["recusas"]
+    assert "genérico" in state.ctas_do_funil["recusas"]["b1"]
+    assert not any(rotulo_generico(b["rotulo"]) for b in state.ctas_do_funil["botoes"])
+
+    # Um rótulo genérico gravado (run anterior) não é reaproveitado: só ele volta.
+    alvo = state.ctas_do_funil["botoes"][0]
+    alvo["rotulo"] = "Entender como funciona"
+    genericos.clear()
+    state.pacotes = {}
+    congelar_pacotes(state, deps)
+    segunda = chamadas_do_sniper(llm)[-1]
+    # volta o genérico gravado e o que foi recusado na primeira rodada; os demais
+    # são reaproveitados
+    assert len(_QUALQUER_BOTAO_RE.findall(segunda)) == 2
+    assert state.ctas_do_funil["reaproveitados"] == len(state.ctas_do_funil["botoes"]) - 2
+    assert not any(rotulo_generico(b["rotulo"]) for b in state.ctas_do_funil["botoes"])
+
+
+def test_botao_repedido_para_pagina_com_entrega_ajustada_ve_a_entrega_ajustada(tmp_path):
+    """Homologação de 10/10: numa nova congelada, a entrega ajustada da p2 era
+    reaproveitada, mas o prompt do sniper ainda mostrava a promessa original
+    da p2, e o botão novo para ela seria escrito contra o que ela não entrega."""
+    state, deps, llm = estado(tmp_path, roteiro(
+        entrega=lambda n: "A página entrega só a regra confirmada; o limite em reais "
+                          "não está confirmado agora."))
+    pagina = next(p for p in state.dossie["paginas"] if p["page_number"] == 4)
+    pagina["cobertura"]["requisitos"].append(
+        {"requisito_id": "regra.sem_fonte", "coberto": False, "fatos": [], "motivo": "x",
+         "estado": "unsupported", "central": True, "risco": "alto"})
+    original = state.plan.pages[3].jornada.resposta_imediata
+    congelar_pacotes(state, deps)
+    ajustada = state.ctas_do_funil["entregas_ajustadas"][0]["entrega"]
+    # um botão que leva à p4 volta ao modelo (rótulo genérico gravado)
+    botao = next(b for b in state.ctas_do_funil["botoes"]
+                 if b["tipo"] == "funnel" and b["destino_pagina"] == 4)
+    botao["rotulo"] = "Entender como funciona"
+    state.pacotes = {}
+    congelar_pacotes(state, deps)
+    segunda = chamadas_do_sniper(llm)[-1]
+    assert "# PÁGINAS CUJA PROMESSA CENTRAL FICOU SEM FONTE" not in segunda   # reaproveitada
+    bloco_p4 = segunda.split("## Página 4 (")[1].split("## Página")[0]
+    assert f"Entrega confirmada: {ajustada}" in bloco_p4
+    assert original not in bloco_p4
