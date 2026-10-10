@@ -189,6 +189,8 @@ def inventario_para_o_briefing(inv: InventarioFactual) -> str:
             partes.append(f"escopo: {f.escopo}")
         if f.citavel is False:
             partes.append("NÃO CITÁVEL (fonte contraditória ou instável)")
+        if f.trecho:
+            partes.append(f"trecho da fonte: \"{f.trecho}\"")
         if f.tipo_origem == "regra_legado":
             partes.append("tipo atribuído pela regra de legado")
         linhas.append(" — ".join(partes))
@@ -292,7 +294,11 @@ def briefing_para_o_redator(briefing: dict) -> str:
     """O briefing como o redator do ramo novo o lê: texto, cada ponto com a sua
     procedência. Hipótese aparece COMO hipótese — nunca como fato."""
     if briefing.get("pacote"):
-        return json.dumps(briefing["pacote"], ensure_ascii=False)
+        # Caminho com pacotes: a mesma visão que o redator leu, sem o código das
+        # ferramentas (CSS/JS não é briefing; no run de 10/10 ele inflava a
+        # revisão global para 310 mil tokens).
+        from funnelforge.pipeline.inteligencia import visao_do_pacote_para_revisao
+        return json.dumps(visao_do_pacote_para_revisao(briefing["pacote"]), ensure_ascii=False)
     b = briefing
     intencao = b.get("intencao") or {}
     leitor = b.get("leitor") or {}

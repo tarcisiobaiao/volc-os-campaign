@@ -507,12 +507,19 @@ def vincular_ativo(ativo: Any, page: Page, verificados: list[FatoDoDossie],
     return vinculos, falhas, faltas
 
 
+# A lacuna restringe o que NÃO está nos fatos, nunca o que está. Run de 10/10:
+# a p6 tinha cinco fatos verificados com "100% nos primeiros 80 kWh" (vindos da
+# pesquisa antecipada, sem o id do requisito) e a instrução "não afirme valor
+# nem precisão sobre isso"; o redator obedeceu e tirou o número central.
 _INSTRUCAO = {
-    "unavailable": ("a fonte de '{d}' está indisponível agora (não quer dizer que é falso): não "
-                    "afirme valor, prazo nem precisão sobre isso; explique só o que está "
-                    "comprovado e diga onde o leitor confere na fonte oficial"),
-    "unsupported": ("não há evidência suficiente sobre '{d}': omita a afirmação; não diga que o "
-                    "leitor tem direito, não cite número nem prazo"),
+    "unavailable": ("nenhum fato foi vinculado a '{d}' porque a fonte que o tratava está "
+                    "indisponível agora (não quer dizer que é falso). Diga tudo o que os FATOS "
+                    "desta página sustentam, com os números deles; não acrescente valor, "
+                    "prazo ou precisão que não esteja nos fatos, e não troque a falta por "
+                    "ressalvas"),
+    "unsupported": ("não há fato vinculado a '{d}': use só o que os FATOS desta página "
+                    "sustentam; sem fato, omita a afirmação, não diga que o leitor tem direito "
+                    "e não cite número nem prazo que não esteja nos fatos"),
     "conflicting": ("as fontes divergem sobre '{d}': não afirme nenhuma das versões; diga que "
                     "a informação varia e indique a fonte oficial para conferir"),
 }
@@ -842,23 +849,18 @@ class CompiladorDeDossie:
                     if resp is not None else "",
                     "estado": self.coberturas[n].estado}
 
-    def _requisitos_dos_ativos(self, pages: list[Page]) -> set[tuple[str, str]]:
-        return {(p.jornada.duvida_id, req) for p in pages if p.jornada
-                for a in ativos_validos(p)
-                for req in (a.rule_source_fact_id, a.current_value_source_fact_id) if req}
-
-    def complementar_lote(self, pages: list[Page], state: RunState,
-                         *, separar_ativos: bool = False) -> dict:
-        """Uma complementação deduplicada para todos os requisitos do esqueleto."""
+    def complementar_lote(self, pages: list[Page], state: RunState) -> dict:
+        """A ÚNICA complementação antes da redação: uma rodada agrupada e
+        deduplicada para as lacunas de todas as páginas, inclusive as provas
+        que as ferramentas pedem (regra e valor vigente). Antes eram até três
+        rodadas — esta e duas só de ferramentas, que no run de 09/10 voltaram
+        duas vezes com o mesmo requisito sem fonte. Lacuna que esta rodada não
+        resolve degrada a página; não vira nova busca escondida."""
         alvo = [p for p in pages if p.page_number in self.coberturas]
         with self.trava:
             self.recalcular(state, alvo)
             faltam = _faltantes(
                 {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
-            if separar_ativos:
-                ferramentas = self._requisitos_dos_ativos(alvo)
-                faltam = [f for f in faltam
-                          if (f["duvida_id"], f["requisito"]) not in ferramentas]
             unicas: dict[str, dict] = {}
             for lacuna in faltam:
                 chave = self._chave(lacuna)
@@ -882,66 +884,27 @@ class CompiladorDeDossie:
                 "defeito": getattr(resp, "defeito", "") if resp is not None else "",
             }
 
-    def complementar_ativos(self, pages: list[Page], state: RunState) -> dict:
-        """Uma busca de ferramentas + uma segunda só para provas ainda faltantes.
-
-        Reusa verificação, derivação, quota e citações do dossiê. Nunca busca
-        conteúdo/CTA, nunca pesquisa quando a regra já está vinculada, e
-        timeout/erro do provedor não vira uma retentativa cega.
-        """
-        alvo = [p for p in pages if p.jornada and p.page_number in self.coberturas]
-        necessidades = self._requisitos_dos_ativos(alvo)
-        rodadas = []
-        if any(t.rodada in (191, 192) and t.defeito for t in self.telemetria):
-            return {"rodadas": [], "tentativas": 0, "limite": 2}
-        usadas = sum(t.rodada in (191, 192) for t in self.telemetria)
-        for tentativa in range(usadas + 1, 3):
-            with self.trava:
-                self.recalcular(state, alvo)
-                faltam = [f for f in _faltantes(
-                    {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
-                    if (f["duvida_id"], f["requisito"]) in necessidades]
-            if not faltam:
-                break
-            # A pergunta e os dois operandos fazem parte do contexto. A
-            # segunda passagem não repete os requisitos já resolvidos.
-            ids = {(f["duvida_id"], f["requisito"]) for f in faltam}
-            spec = []
-            for p in alvo:
-                reqs = [r for r in requisitos_da_pagina(p)
-                        if (p.jornada.duvida_id, r.id) in ids]
-                if reqs:
-                    spec.append({"duvida_id": p.jornada.duvida_id,
-                        "pergunta": p.jornada.pergunta_principal,
-                        "promessa": "Provar somente as regras/dados destas ferramentas, não redigir a página",
-                        "requisitos": [r.model_dump(mode="json") for r in reqs],
-                        "ferramentas": [a.model_dump(mode="json") for a in ativos_validos(p)
-                            if any((p.jornada.duvida_id, r) in ids for r in
-                                   (a.rule_source_fact_id, a.current_value_source_fact_id))],
-                        "jurisdicao": list(state.plan.jornada.jurisdicao)
-                            if state.plan.jornada else [],
-                        "vigencia_de_referencia": self.hoje.isoformat()})
-            pedido = [dict(f, finalidade="construcao_de_ferramenta",
-                           tentativa=tentativa,
-                           instrucao=("Buscar prova verificável da necessidade exata; não inventar valores, "
-                                      "não repetir fatos já verificados, não escrever artigo nem CTA"))
-                      for f in faltam]
-            resp = self._pesquisar(pedido, spec=spec)
-            with self.trava:
-                self.absorver(resp, 190 + tentativa, pedido, state=state, pages=alvo, pagina=-2)
-                restantes = [f for f in _faltantes(
-                    {p.page_number: self.coberturas[p.page_number] for p in alvo}, alvo)
-                    if (f["duvida_id"], f["requisito"]) in necessidades]
-            rodadas.append({"tentativa": tentativa,
-                            "pedidos": [f"{f['duvida_id']}:{f['requisito']}" for f in faltam],
-                            "restantes": [f"{f['duvida_id']}:{f['requisito']}" for f in restantes],
-                            "defeito": resp.defeito})
-            if resp.defeito:
-                break
-        return {"rodadas": rodadas, "tentativas": len(rodadas), "limite": 2}
+    def _anexar_documentos(self) -> None:
+        """Cada fato aponta para o documento que o bucket leu e para o trecho
+        dele que sustenta a afirmação. Só o que já foi lido: nada é baixado."""
+        bucket = getattr(self.deps, "bucket", None)
+        if bucket is None:
+            return
+        from funnelforge.adapters.pesquisa_plano import trecho_pertinente
+        for f in self.fatos.values():
+            if f.origem == "derivado" or not f.source_url or f.documento:
+                continue
+            doc = bucket.ja_lido(f.source_url)
+            if not doc or not doc.get("ok"):
+                continue
+            f.documento = {k: doc[k] for k in ("id", "sha256", "url_final", "titulo",
+                                               "coletado_em", "content_type") if doc.get(k)}
+            f.trecho_do_documento = trecho_pertinente(doc.get("texto") or "", f.afirmacao,
+                                                      f.valor)
 
     def montar(self, state: RunState) -> DossieDoFunil:
         oficiais = {u for p in self.pages for u in (state.official_links.get(p.page_number) or [])}
+        self._anexar_documentos()
         for f in self.fatos.values():
             f.tipo_da_fonte = _tipo_da_fonte(f.source_url, oficiais, f.proveniencia)
         return montar_dossie(state, self.pages, list(self.fatos.values()), self.coberturas,
@@ -1071,7 +1034,11 @@ def projecao_para_o_prompt(dossie: dict, numero: int) -> dict:
                    "derivacao": (por_id[i].get("derivacao") or {}).get("formula", ""),
                    "premissas": list((por_id[i].get("derivacao") or {}).get("premissas", [])),
                    "emissor": (por_id[i].get("proveniencia") or {}).get("issuer", ""),
-                   "vigente_desde": por_id[i].get("vigente_desde") or ""}
+                   "vigente_desde": por_id[i].get("vigente_desde") or "",
+                   # O trecho da própria fonte, quando o bucket a leu: o redator
+                   # recebe o pedaço pertinente, não a página inteira.
+                   **({"trecho": por_id[i]["trecho_do_documento"]}
+                      if por_id[i].get("trecho_do_documento") else {})}
                   for i in pagina.get("fatos_verificados", []) if i in por_id],
         "urls_oficiais": list(pagina.get("urls_oficiais") or []),
         "vinculos": list((pagina.get("cobertura") or {}).get("vinculos") or []),
@@ -1127,3 +1094,62 @@ def aplicar_portao(state: RunState, dossie: DossieDoFunil) -> ResultadoDoPortao:
                                       "de redação para ESTA página (as outras seguem)")] + issues)
             res.bloqueadas[n] = list(cob.blockers)
     return res
+
+
+def indice_de_evidencias(dossie: DossieDoFunil) -> dict:
+    """O ÍNDICE DE EVIDÊNCIAS do bucket, derivado do dossiê congelado.
+
+    Por fato: a afirmação, o documento e o trecho de onde veio, a URL final, a
+    instituição (conferida no documento ou só declarada pela pesquisa), quando
+    foi coletado, a vigência quando a fonte a declara, a abrangência, as
+    páginas que podem usá-lo e se há divergência. Por página: o estado de cada
+    requisito e as lacunas. Nada aqui é nota de confiança: campo que a fonte
+    não traz fica vazio."""
+    uso: dict[str, list[dict]] = {}
+    for p in dossie.paginas:
+        for estado, ids in (("verificado", p.fatos_verificados),
+                            ("nao_confirmado", p.fatos_nao_confirmados),
+                            ("conflito", p.conflitos)):
+            for fid in ids:
+                uso.setdefault(fid, []).append({"pagina": p.page_number, "uso": estado})
+    fatos = []
+    for f in dossie.fatos:
+        prov = f.proveniencia or {}
+        declarado = prov.get("declarado") or {}
+        escopo, jurisdicao = escopo_do_fato(f)
+        fatos.append({
+            "id": f.fact_id, "afirmacao": f.afirmacao, "tipo": f.tipo,
+            "valor": f.valor, "unidade": f.unidade, "dispositivo": f.dispositivo,
+            "estado": f.status, "motivo": f.motivo_do_status, "origem": f.origem,
+            "nivel_de_evidencia": f.nivel_de_evidencia,
+            "fonte": f.source_url, "url_final": f.documento.get("url_final", ""),
+            "documento": f.documento.get("id", ""),
+            "sha256_do_documento": f.documento.get("sha256", ""),
+            "titulo_do_documento": f.documento.get("titulo", ""),
+            "trecho_do_documento": f.trecho_do_documento,
+            "trecho_do_provedor": f.evidencia,
+            "instituicao": prov.get("issuer") or "",
+            "instituicao_conferida_no_documento": bool(prov.get("emissor_verificado")),
+            "instituicao_declarada_pela_pesquisa": declarado.get("emissor", ""),
+            "coletado_em": f.documento.get("coletado_em", "")
+            or (f.verificado_em.isoformat() if f.verificado_em else ""),
+            "vigente_desde": f.vigente_desde.isoformat() if f.vigente_desde else "",
+            "abrangencia": "" if escopo == "desconhecido" else escopo,
+            "jurisdicao": jurisdicao,
+            "abrangencia_declarada": {k: declarado.get(k, "") for k in ("escopo", "jurisdicao")
+                                      if declarado.get(k)},
+            "derivacao": f.derivacao.get("formula", "") if f.derivacao else "",
+            "paginas": uso.get(f.fact_id, []),
+            "requisitos": list(f.requisitos),
+            "divergencia": f.status == "conflict",
+        })
+    paginas = [{
+        "pagina": p.page_number, "slug": p.slug, "estado": p.cobertura.estado,
+        "requisitos": [{"id": c.requisito_id, "estado": c.estado, "central": c.central,
+                        "fatos": list(c.fatos), "motivo": c.motivo}
+                       for c in p.cobertura.requisitos],
+        "lacunas": [d for d in p.cobertura.degradacoes],
+        "desativados": list(p.cobertura.desativados),
+    } for p in dossie.paginas]
+    return {"versao": "indice-de-evidencias-v1", "dossie_sha256": dossie.sha256,
+            "fatos": fatos, "paginas": paginas, "conflitos": list(dossie.conflitos)}

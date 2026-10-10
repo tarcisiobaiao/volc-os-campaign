@@ -297,8 +297,7 @@ def run_volc(arquitetura: Path, perfil: Path | None = None, publish: bool = Fals
         deps.image_gen = None
         deps.runner.runs_dir = Path("runs-canario")
     conferir_modelos_do_plano(settings, deps.llm)
-    from funnelforge.adapters.pesquisa_plano import ler_documento
-    deps.ler_documento = ler_documento
+    _ligar_bucket(deps)
     if hints_de is not None:
         deps.hints_do_operador = json.loads(hints_de.read_text(encoding="utf-8"))
     estado_inicial = None
@@ -394,6 +393,7 @@ def resume(run_id: str, publish: bool = False, only: str | None = None,
     settings = aplicar_perfil(base, dados_perfil)
     deps = build_deps(settings)
     deps.tema_termos = termos_do_tema(dados_perfil)
+    _ligar_bucket(deps)
 
     state_path = Path("runs") / run_id / "state.json"
     state = RunState.from_json(state_path.read_text(encoding="utf-8"))
@@ -401,6 +401,15 @@ def resume(run_id: str, publish: bool = False, only: str | None = None,
         None, deps, only=only,
         publish=publish or settings.run.publish, resume_state=state,
     )
+
+
+def _ligar_bucket(deps) -> None:
+    """O bucket temporário do run: cada documento baixado uma vez, com recibo.
+    O cache compartilhado fica ao lado dos runs; a cópia de cada run não expira."""
+    from funnelforge.adapters.bucket import BucketDoRun
+
+    deps.bucket = BucketDoRun(cache=deps.runner.runs_dir / "_cache_documentos")
+    deps.ler_documento = deps.bucket.documento
 
 
 def _cliente_do_revisor():

@@ -58,6 +58,12 @@ class FatoDoDossie(BaseModel):
     nivel_de_evidencia: str = "leitura_direta"
     derivacao: dict = {}               # linhagem do derivado (fórmula, premissas...)
     proveniencia: dict = {}            # emissor, escopo, versão, sha256 do conteúdo
+    # O documento LIDO no bucket do run (id, sha256, URL final, título, coleta)
+    # e o trecho dele que sustenta a afirmação. `evidencia` é a frase do
+    # provedor com a citação; este é o texto da própria fonte. Vazios em dossiê
+    # anterior ao bucket: ficam fora do dump para o hash não mudar.
+    documento: dict = Field(default_factory=dict, exclude_if=lambda v: not v)
+    trecho_do_documento: str = Field(default="", exclude_if=lambda v: not v)
 
 
 class CoberturaDoRequisito(BaseModel):

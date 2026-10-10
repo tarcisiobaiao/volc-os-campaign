@@ -69,6 +69,8 @@ class FatoDoInventario(BaseModel):
     verificada_ao_vivo: bool = False
     escopo: str | None = None
     citavel: bool | None = None
+    # O trecho da própria fonte (bucket do run), quando o pacote o trouxe.
+    trecho: str = ""
 
 
 class FonteDoInventario(BaseModel):
@@ -244,13 +246,51 @@ def _anuncio(state: RunState, page: Page) -> AnuncioNoInventario:
         motivo_ausencia=anuncio.motivo_ausencia)
 
 
+_TIPOS_COM_VIGENCIA = frozenset({"numero", "prazo", "data", "mudanca"})
+
+
+def _fatos_do_pacote(factual: dict) -> tuple[list[FatoDoInventario], ResearchFacts]:
+    """Os fatos que o REDATOR recebeu, com os mesmos ids do pacote congelado.
+
+    Revisor e redator leem a mesma base: antes o revisor montava o inventário
+    de `state.facts`, outra projeção do dossiê, e um estado retomado podia dar
+    a cada um uma lista diferente (p4 da Tarifa Social, 10/10)."""
+    fatos, fontes = [], []
+    for f in factual.get("fatos") or []:
+        texto = str(f.get("afirmacao") or "").strip()
+        valor = " ".join(x for x in (str(f.get("valor") or "").strip(),
+                                     str(f.get("unidade") or "").strip()) if x)
+        if valor and valor.split()[0] not in texto:
+            texto = f"{texto} ({valor})"
+        tipo, origem_do_tipo = _tipado(f.get("tipo"), "fatos_verificados", f.get("unidade") or "")
+        vigencia = f.get("vigente_desde") or None
+        fonte = str(f.get("fonte") or "").strip()
+        fatos.append(FatoDoInventario(
+            id=str(f.get("id")), tipo=tipo, tipo_origem=origem_do_tipo,
+            origem="fatos_verificados", texto=texto, fonte=fonte,
+            vigente_desde=vigencia if tipo in _TIPOS_COM_VIGENCIA else None,
+            verificada_ao_vivo=True, escopo=f.get("abrangencia") or None,
+            trecho=str(f.get("trecho") or "")))
+        if fonte:
+            fontes.append(fonte)
+    fontes = list(dict.fromkeys(fontes))
+    return fatos, ResearchFacts(fontes=fontes, fontes_resolvidas=fontes, sparse=not fatos)
+
+
 def montar_inventario(state: RunState, page: Page) -> InventarioFactual:
-    """O inventário factual desta página. Puro: sem rede, sem LLM, sem gravar."""
+    """O inventário factual desta página. Puro: sem rede, sem LLM, sem gravar.
+
+    Com pacote congelado, os fatos são os do pacote (os mesmos do redator)."""
     facts = state.facts.get(page.page_number) or ResearchFacts(sparse=True)
     canais = list(state.official_links.get(page.page_number, []) or [])
+    pacote = (getattr(state, "pacotes", None) or {}).get(page.page_number)
+    if pacote is not None:
+        fatos, facts = _fatos_do_pacote(pacote.get("factual") or {})
+    else:
+        fatos = _fatos(facts)
     return InventarioFactual(
         pagina=page.page_number,
-        fatos=_fatos(facts),
+        fatos=fatos,
         fontes=_fontes(facts, canais),
         canais_oficiais=canais,
         termos_de_busca=_termos(state),

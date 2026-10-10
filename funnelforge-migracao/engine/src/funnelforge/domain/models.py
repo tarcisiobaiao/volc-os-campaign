@@ -1051,6 +1051,11 @@ class RunState(BaseModel):
     # thresholds e problemas para o pacote do writer e o recibo do run.
     revisao_semantica_jev: dict = {}
     pacotes: dict[int, dict] = {}
+    # Os rótulos dos botões do funil (`pipeline/ctas.py`), com a justificativa
+    # interna e a assinatura do destino que os sustenta. Vazio = não rodou.
+    ctas_do_funil: dict = {}
+    # Tempo de parede de cada etapa do run, em segundos (`pipeline.cronometrar`).
+    tempos: dict[str, float] = {}
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)

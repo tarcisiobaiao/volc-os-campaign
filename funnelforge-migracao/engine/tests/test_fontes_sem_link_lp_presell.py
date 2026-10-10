@@ -230,7 +230,8 @@ def test_pacote_da_presell_chega_ao_redator_sem_url_e_sem_mutar_o_pacote(monkeyp
     monkeypatch.setattr(inteligencia, "pacote_conferido", lambda *a: copy.deepcopy(pacote))
     prompt = inteligencia.prompt_do_pacote(None, SimpleNamespace(page_number=2))
     assert ANEEL not in prompt
-    assert '"citar_como": "gov.br"' in prompt
+    # O fato vai uma vez, na lista do DOSSIÊ da jornada, com o nome a citar.
+    assert "citar como: gov.br" in prompt
     assert "sem hyperlink externo no corpo" in prompt
     assert pacote == original                            # o dossiê guarda a fonte
 

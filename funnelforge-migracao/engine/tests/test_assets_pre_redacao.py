@@ -79,58 +79,36 @@ def compilador(pesquisa):
     return state, vivo
 
 
-def test_segunda_busca_so_recebe_o_requisito_da_ferramenta_ainda_faltante():
+def test_uma_rodada_agrupada_leva_conteudo_e_ferramenta_juntos():
+    """Antes: lote sem as ferramentas + até duas buscas só delas. Agora a única
+    complementação já pede a regra e o valor vigente da calculadora."""
     sem_ferramenta = [f for f in FATOS_COMPLETOS if not set(f["requisitos"]) & {
         RENDA, "renda.valor_vigente", "salario_minimo.vigente"}]
-    regra = [f for f in FATOS_COMPLETOS if RENDA in f["requisitos"]]
-    valor = [f for f in FATOS_COMPLETOS if "renda.valor_vigente" in f["requisitos"]]
-    pesquisa = _Pesquisa(sem_ferramenta, regra, valor)
+    resto = [f for f in FATOS_COMPLETOS if f not in sem_ferramenta]
+    pesquisa = _Pesquisa(sem_ferramenta, resto)
     state, vivo = compilador(pesquisa)
-    resumo = vivo.complementar_ativos(state.plan.pages, state)
-    assert resumo["tentativas"] == 2
-    assert {f["requisito"] for f in pesquisa.pedidos[1]} == {RENDA, "renda.valor_vigente"}
-    assert {f["requisito"] for f in pesquisa.pedidos[2]} == {"renda.valor_vigente"}
-    assert all(f["finalidade"] == "construcao_de_ferramenta" for f in pesquisa.pedidos[2])
-    assert vivo.complementar_ativos(state.plan.pages, state)["tentativas"] == 0
+    resumo = vivo.complementar_lote(state.plan.pages, state)
+    assert resumo["pesquisadas"] >= 2 and len(pesquisa.pedidos) == 2
+    pedidos = {f["requisito"] for f in pesquisa.pedidos[1]}
+    assert {RENDA, "renda.valor_vigente"} <= pedidos
+    # A lacuna já pesquisada não volta numa segunda chamada.
+    vivo.complementar_lote(state.plan.pages, state)
+    assert len(pesquisa.pedidos) == 2
 
 
-def test_limite_duas_tentativas_e_sem_artigo_na_pesquisa():
-    pesquisa = _Pesquisa([], [], [])
-    state, vivo = compilador(pesquisa)
-    assert vivo.complementar_ativos(state.plan.pages, state)["tentativas"] == 2
-    assert len(pesquisa.pedidos) == 3
-    assert vivo.complementar_ativos(state.plan.pages, state)["tentativas"] == 0
-    assert len(pesquisa.pedidos) == 3
-
-
-def test_pesquisa_dedicada_isola_spec_e_nao_repete_timeout():
+def test_rodada_agrupada_com_defeito_nao_e_repetida():
     from funnelforge.pipeline.dossie import RespostaDaPesquisa
     consultas = []
+
     def pesquisar(assunto, spec, faltantes):
-        consultas.append((spec, faltantes))
+        consultas.append(faltantes)
         if faltantes is None:
             return RespostaDaPesquisa(dados={"fatos": []}, citacoes=[])
         return RespostaDaPesquisa(dados={"fatos": []}, citacoes=[], defeito="timeout")
     state, vivo = compilador(pesquisar)
-    resumo = vivo.complementar_ativos(state.plan.pages, state)
-    assert resumo["tentativas"] == 1
-    specs, faltantes = consultas[-1]
-    assert {r["id"] for s in specs for r in s["requisitos"]} == {
-        RENDA, "renda.valor_vigente"}
-    assert all("ferramentas" in s for s in specs)
-    assert all(f["finalidade"] == "construcao_de_ferramenta" for f in faltantes)
-    assert vivo.complementar_ativos(state.plan.pages, state)["tentativas"] == 0
+    assert vivo.complementar_lote(state.plan.pages, state)["defeito"] == "timeout"
+    vivo.complementar_lote(state.plan.pages, state)
     assert len(consultas) == 2
-
-
-def test_derivacao_resolve_sem_segunda_busca():
-    iniciais = [f for f in FATOS_COMPLETOS if not set(f["requisitos"]) & {
-        RENDA, "renda.valor_vigente"}]
-    regra = [f for f in FATOS_COMPLETOS if RENDA in f["requisitos"]]
-    pesquisa = _Pesquisa(iniciais, regra)
-    state, vivo = compilador(pesquisa)
-    assert vivo.complementar_ativos(state.plan.pages, state)["tentativas"] == 1
-    assert len(pesquisa.pedidos) == 2
 
 
 def pacote(tmp_path, *, ruim=False, sem_fonte=False):

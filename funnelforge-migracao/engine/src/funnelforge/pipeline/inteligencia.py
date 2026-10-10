@@ -162,7 +162,9 @@ def preparar_inteligencia(state, deps, card):
     if cfg.fallbacks:
         raise ValueError("pesquisa pré-arquitetura não aceita fallback")
     try:
-        resp = pesquisar_funil(deps.llm, cfg, brief.intencao_principal, spec)
+        from funnelforge.pipeline.pipeline import leitura_do_bucket
+        resp = pesquisar_funil(deps.llm, cfg, brief.intencao_principal, spec,
+                               **leitura_do_bucket(deps))
     except Exception as exc:
         from funnelforge.pipeline.budget import OrcamentoEstourado
         if isinstance(exc, OrcamentoEstourado):
@@ -296,6 +298,99 @@ def ferramentas_da_pagina(state, page, deps):
         a["estado"] == "pronta" for a in itens) else "fallback_sem_js" if itens else "nao_pedida")}
 
 
+def _cartao_de_orientacao(w, bloco: str) -> dict:
+    """O que o redator, o sniper e o revisor precisam saber da peça pronta."""
+    from funnelforge.widgets.contrato import ARQUETIPOS
+    spec = ARQUETIPOS[w.arquetipo]
+    return {"pergunta": w.titulo, "estado": "pronta", "tipo": "orientacao",
+            "arquetipo": w.arquetipo, "nome": str(spec["nome"]),
+            "entradas": [c.rotulo + ": " + " / ".join(o.texto for o in c.opcoes)
+                         for c in w.controles],
+            "resultado": "orientação por situação: " + "; ".join(c.chip for c in w.cenarios),
+            "limites": "orienta com os fatos da página; não consulta cadastro nem confirma "
+                       "direito, valor ou aprovação",
+            "entrega": f"{spec['nome']}: {spec['eyebrow']}", "bloco": bloco}
+
+
+def preparar_widgets_de_orientacao(state, deps, ferramentas: dict) -> dict:
+    """Os widgets de orientação do funil, prontos ANTES da redação, numa chamada.
+
+    O conteúdo vem dos fatos do pacote de cada página; HTML, CSS e JS vêm de
+    `widgets/render.py`. Antes, no caminho com pacotes, o widget de orientação
+    era gerado depois da redação, uma chamada por página, e nem o redator nem
+    os botões sabiam que ele existiria. Peça que não passa no contrato, no
+    sanitizador ou no lastro factual não vira ferramenta e não é prometida.
+    Página com ativo do arquiteto (calculadora) fica com o ativo."""
+    from funnelforge.domain.models import PageRole, ResearchFacts, effective_role
+    from funnelforge.pipeline import steps as st
+    from funnelforge.pipeline.dossie import projecao_para_o_prompt
+    from funnelforge.pipeline.validators.checks import run_validators, sanitize_widget_block
+    from funnelforge.prompts import render
+    from funnelforge.widgets.contrato import WidgetInvalido, chave_por_nome, ler
+    from funnelforge.widgets.render import renderizar
+    cfg = deps.settings.steps.get("widget")
+    if not deps.settings.run.widgets_enabled or cfg is None:
+        return {}
+    candidatas = []
+    for p in state.plan.pages:
+        if effective_role(p) is not PageRole.SOLUTION or ferramentas[p.page_number]["itens"]:
+            continue
+        arquetipo = st.widget_archetype_for(state, p)
+        if arquetipo is None:
+            continue
+        candidatas.append(p)
+    if not candidatas:
+        return {}
+    paginas = []
+    for p in candidatas:
+        factual = projecao_para_o_prompt(state.dossie, p.page_number)
+        paginas.append({
+            "pagina": p.page_number, "h1": p.h1_title, "pergunta": p.jornada.pergunta_principal,
+            "resposta": p.jornada.resposta_imediata,
+            "plano_visual": [b.intencao for b in p.jornada.plano_visual],
+            "sugestao": chave_por_nome(st.widget_archetype_for(state, p)) or "",
+            "fatos": factual.get("fatos") or []})
+    prompt = render("widgets_do_funil", paginas=paginas)
+    recibo = {"paginas": [p.page_number for p in candidatas], "prontas": [], "recusadas": {}}
+    try:
+        texto, res = deps.runner.run_llm_step(
+            "widgets_do_funil", cfg.model_copy(update={"validators": []}),
+            [{"role": "user", "content": prompt}], ctx={}, run_id=state.run_id)
+        entradas = st._tolerant_json(texto).get("widgets") or []
+    except Exception as exc:  # noqa: BLE001 - sem peça pronta, nada é prometido
+        res = getattr(exc, "step_result", StepResult(step="widgets_do_funil",
+                                                     status=StepStatus.FAILED))
+        entradas = []
+        recibo["defeito"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+    por_numero = {p.page_number: p for p in candidatas}
+    for e in entradas:
+        n = e.get("page_number") if isinstance(e, dict) else None
+        if n not in por_numero or n in recibo["prontas"]:
+            continue
+        bruto = e.get("widget")
+        if not isinstance(bruto, dict):
+            recibo["recusadas"][n] = "NONE: " + str(e.get("motivo") or "")[:200]
+            continue
+        try:
+            w = ler(json.dumps(bruto, ensure_ascii=False))
+        except WidgetInvalido as invalido:
+            recibo["recusadas"][n] = "; ".join(invalido.motivos)[:400]
+            continue
+        bloco = renderizar(w)
+        problemas = sanitize_widget_block(bloco) + run_validators(
+            ["critical_fact_grounding"], bloco,
+            {"facts": state.facts.get(n, ResearchFacts(sparse=True))})
+        if problemas:
+            recibo["recusadas"][n] = "; ".join(f"{i.code}: {i.message}" for i in problemas)[:400]
+            continue
+        ferramentas[n]["orientacao"] = _cartao_de_orientacao(w, bloco)
+        recibo["prontas"].append(n)
+    res.issues = list(res.issues) + [Issue(code="widgets_do_funil",
+                                           message=json.dumps(recibo, ensure_ascii=False))]
+    state.step_status["widgets_do_funil"] = res
+    return recibo
+
+
 def congelar_pacotes(state, deps):
     from funnelforge.pipeline.jornada import contexto_de_jornada
     from funnelforge.pipeline.dossie import projecao_para_o_prompt
@@ -312,6 +407,7 @@ def congelar_pacotes(state, deps):
     pasta.mkdir(parents=True, exist_ok=True)
     pacotes = {}
     ferramentas = {p.page_number: ferramentas_da_pagina(state, p, deps) for p in state.plan.pages}
+    preparar_widgets_de_orientacao(state, deps, ferramentas)
     entregas = {}
     for p in state.plan.pages:
         itens = ferramentas[p.page_number]["itens"]
@@ -321,6 +417,10 @@ def congelar_pacotes(state, deps):
         if any(a["estado"] != "pronta" for a in itens):
             entregas[p.page_number] = " ".join(
                 a["entrega"] if a["estado"] == "pronta" else a["fallback_sem_js"] for a in itens).strip()
+    # Os botões do funil inteiro, numa chamada, sobre as entregas e ferramentas
+    # já confirmadas. Os rótulos entram nas rotas ANTES do hash do pacote.
+    from funnelforge.pipeline.ctas import definir_ctas_do_funil
+    rotulados = definir_ctas_do_funil(state, deps, ferramentas, entregas)
     for p in state.plan.pages:
         from funnelforge.pipeline import steps as st
         from funnelforge.pipeline.routing import resolve_page_links
@@ -399,13 +499,19 @@ def congelar_pacotes(state, deps):
                     destino["entrega"] = entregas[alvo.page_number]
         # Uma aresta pode ter copy de uma ferramenta que saiu. A LLM escreve
         # o rótulo final sobre a entrega confirmada, sem trocar href/topologia.
+        # Só sem o rótulo do sniper (chamada falhou ou rótulo recusado pelo
+        # código) o redator ainda reescreve o botão de ferramenta que saiu.
         for link in pacote["links"]:
             alvo = next((a for a in state.plan.pages if link["kind"] == "funnel"
                          and link["href"].rstrip("/").endswith("/" + a.slug)), None)
+            if (alvo is not None and (p.page_number, alvo.slug) in rotulados):
+                continue
             if p.page_number in entregas or (alvo is not None and alvo.page_number in entregas):
                 link["reformular_cta"] = True
                 link["anchor"] = ""
         for destino in j["destinos"]:
+            if (p.page_number, destino["slug"]) in rotulados:
+                continue
             if p.page_number in entregas or any(a.slug == destino["slug"]
                     and a.page_number in entregas for a in state.plan.pages):
                 destino["cta"] = ""
@@ -452,6 +558,64 @@ def _visao_sem_url_do_redator(pacote):
     return pacote
 
 
+def _visao_do_redator(pacote: dict) -> dict:
+    """O pacote como o redator o lê: sem o que o prompt já mostra noutra seção.
+
+    A jornada vai em <jornada_do_leitor> e os fatos em <dados>. No run de 09/10
+    o mesmo pacote também viajava inteiro no briefing, e o mesmo fato aparecia
+    quatro vezes no prompt da p4 (jornada da página, jornada do pacote, fatos
+    do pacote e fatos do dossiê da jornada). O pacote congelado não muda, e o
+    sha256 dele continua no prompt como recibo de qual pacote foi lido."""
+    visao = {k: v for k, v in pacote.items()
+             if k not in ("jornada", "factual", "pesquisa_on_demand")}
+    visao["pagina"] = {k: v for k, v in pacote.get("pagina", {}).items()
+                       if k not in ("jornada", "routes")}
+    visao["estado_da_evidencia"] = {k: pacote.get("factual", {}).get(k)
+                                    for k in ("estado", "degradacoes", "desativados")}
+    return visao
+
+
+def _jornada_traz_os_fatos(jornada: dict, factual: dict) -> bool:
+    """A lista do DOSSIÊ na jornada é a mesma dos fatos do pacote (mesmos ids)?"""
+    na_jornada = [f.get("id") for f in ((jornada or {}).get("dossie") or {}).get("fatos") or []]
+    return bool(na_jornada) and na_jornada == [f.get("id") for f in factual.get("fatos") or []]
+
+
+def _base_complementar(factual: dict) -> dict:
+    return {"fatos": "os fatos verificados desta página estão no DOSSIÊ FACTUAL CONGELADO "
+                     "da jornada, com o trecho de cada fonte: só eles sustentam número, prazo "
+                     "ou regra",
+            "urls_oficiais": factual.get("urls_oficiais") or [],
+            "estado": factual.get("estado", ""),
+            "vinculos": factual.get("vinculos") or []}
+
+
+def visao_do_pacote_para_revisao(pacote: dict) -> dict:
+    """O pacote que o redator leu, para o revisor: mesma visão, sem o código
+    das ferramentas (o revisor lê a ferramenta na própria página)."""
+    visao = _visao_do_redator(copy.deepcopy(pacote))
+    ferramenta = visao.get("ferramenta") or {}
+    for item in [*(ferramenta.get("itens") or []),
+                 *([ferramenta["orientacao"]] if ferramenta.get("orientacao") else [])]:
+        item.pop("bloco", None)
+    return visao
+
+
+def brief_para_revisao(brief) -> dict:
+    """O brief da chegada sem os fatos 'a conferir' da pesquisa antecipada: o
+    revisor julga com o MESMO inventário do redator, nada a mais."""
+    if brief is None:
+        return {}
+    dados = brief.model_dump()
+    return {"intencao_principal": dados.get("intencao_principal", ""),
+            "trabalho_do_leitor": dados.get("trabalho_do_leitor", ""),
+            "consciencia": dados.get("consciencia", ""),
+            "perguntas_do_leitor": [((d.get("jornada") or {}).get("pergunta_principal") or "")
+                                    for d in dados.get("duvidas") or []],
+            "dores_observadas": dados.get("dores_observadas") or [],
+            "desejos_observados": dados.get("desejos_observados") or []}
+
+
 def prompt_do_pacote(state, page):
     from funnelforge.prompts import render
     pacote = pacote_conferido(state, page)
@@ -460,6 +624,8 @@ def prompt_do_pacote(state, page):
     # completo permanece no pacote congelado para injeção determinística.
     for ativo in pacote.get("ferramenta", {}).get("itens", []):
         ativo.pop("bloco", None)
+    if pacote.get("ferramenta", {}).get("orientacao"):
+        pacote["ferramenta"]["orientacao"].pop("bloco", None)
     if pacote.get("entrega_confirmada", {}).get("substituiu_promessa"):
         p["editorial"]["useful_delivery"] = j["resposta_imediata"]
         p["jornada"] = j
@@ -489,7 +655,12 @@ def prompt_do_pacote(state, page):
         cta_text=p["hook_to_next_page"], page_num=p["page_number"],
         total_pages=pacote["total_pages"], role=p["role"],
         editorial=p["editorial"], jornada=j, lp_destinations=destinos,
-        facts=json.dumps(pacote["factual"], ensure_ascii=False),
+        # Os fatos já vão na lista do DOSSIÊ da jornada, com o trecho de cada
+        # fonte; aqui fica só o que ela não mostra (sem o mesmo fato duas vezes).
+        facts=json.dumps(_base_complementar(pacote["factual"])
+                         if _jornada_traz_os_fatos(j, pacote["factual"]) else pacote["factual"],
+                         ensure_ascii=False),
+        com_trechos=True,
         domain=pacote["dominio"], routes=pacote["links"],
         official_links=pacote["factual"].get("urls_oficiais", []), platform_links=[],
         qualifier_lens=j["pergunta"], qualifier_questions=[], next_solutions=[],
@@ -498,12 +669,23 @@ def prompt_do_pacote(state, page):
         plano_visual=j["plano_visual"], exigencia_visual=[], visual_required_blocks=[],
         signature_block="", author_name=pacote["autor"], author_credential=pacote["credencial"],
         cnpj=pacote["cnpj"], today=pacote["data"], escrita_natural=True,
-        briefing_texto=json.dumps(pacote, ensure_ascii=False))
+        briefing_texto=json.dumps(_visao_do_redator(pacote), ensure_ascii=False))
     regra_lp = (
         " Nesta página, cite a instituição em prosa só quando ajudar, sem URL escrita, "
         "sem \"fonte:\" e sem hyperlink externo no corpo; o leitor continua no funil."
         if sem_link else ""
     )
+    prontas = [a for a in pacote.get("ferramenta", {}).get("itens", [])
+               if a.get("estado") == "pronta"]
+    if pacote.get("ferramenta", {}).get("orientacao"):
+        prontas.append(pacote["ferramenta"]["orientacao"])
+    ferramenta = ("".join(
+        " Ferramenta pronta nesta página, inserida pelo sistema: "
+        + str(a.get("nome") or a.get("pergunta") or "") + " (entradas: "
+        + "; ".join(a.get("entradas") or []) + "; resultado: "
+        + str(a.get("resultado") or a.get("entrega") or "") + "; limite: "
+        + str(a.get("limites") or "não confirma direito") + "). Conte com ela no texto, "
+        "sem reescrever o conteúdo dela nem criar outra." for a in prontas))
     ctas = ("Preserve os hrefs. Nos links reformular_cta=true, escreva um rótulo específico "
             "pela entrega confirmada do destino e pela próxima dúvida, nunca 'depois do cálculo' "
             "se não há calculadora. Não copie a promessa antiga. "
@@ -512,7 +694,7 @@ def prompt_do_pacote(state, page):
     return prompt + "\nPacote congelado prevalece: " + ctas + \
         "Slug e duvida_id são identificadores, nunca href; use somente os links resolvidos. " \
         "Não pesquise, não invente ferramentas. Blocos dependentes de lacuna devem ser omitidos." \
-        + regra_lp
+        + ferramenta + regra_lp
 
 
 def _inventario_de_midia(state, page):
@@ -527,7 +709,9 @@ def _inventario_de_midia(state, page):
         "ferramenta": {"estado": ferramenta.get("estado", "nao_pedida"),
                        "itens": [{"pergunta": i.get("pergunta"), "estado": i.get("estado"),
                                   "entrega": i.get("entrega", "")}
-                                 for i in ferramenta.get("itens") or []]},
+                                 for i in [*(ferramenta.get("itens") or []),
+                                           *([ferramenta["orientacao"]]
+                                             if ferramenta.get("orientacao") else [])]]},
     }
 
 
@@ -547,6 +731,17 @@ def revisar_lote(state, pages, deps, *, direcao: str = ""):
         prompts.append({"page_number": p.page_number,
                         "prompt": montar_prompt_do_revisor(doc, ctx),
                         "inventario_de_midia": _inventario_de_midia(state, p)})
+    # O pacote de políticas é o mesmo em todas as páginas do lote: vai uma vez.
+    politicas = {m.group(0) for e in prompts
+                 if (m := re.search(r"<pacote_de_politicas>[\s\S]*?</pacote_de_politicas>",
+                                    e["prompt"]))}
+    comum = ""
+    if len(politicas) == 1 and all("<pacote_de_politicas>" in e["prompt"] for e in prompts):
+        comum = politicas.pop()
+        for e in prompts:
+            e["prompt"] = e["prompt"].replace(
+                comum, "<pacote_de_politicas>o mesmo para todas as páginas: ver "
+                       "PACOTE DE POLÍTICAS DO LOTE no início</pacote_de_politicas>")
     mensagem = ("REVISOR GLOBAL: revise todas as páginas em uma única resposta. "
                 "Preserve o contrato individual integral, critérios, notas e políticas. "
                 "Não redesenhe a jornada. Não pesquise. inventario_de_midia diz o que existe "
@@ -557,8 +752,10 @@ def revisar_lote(state, pages, deps, *, direcao: str = ""):
                 + (("DIREÇÃO DO OPERADOR para esta revisão (aplique com patches "
                     "localizados, só com fatos do inventário de cada página): "
                     + direcao.strip() + "\n") if direcao.strip() else "")
-                + json.dumps({"brief_pre_arquitetura": state.brief_pre_arquitetura.model_dump(),
-                              "paginas": prompts}, ensure_ascii=False))
+                + (("PACOTE DE POLÍTICAS DO LOTE (vale para todas as páginas):\n" + comum
+                    + "\n") if comum else "")
+                + json.dumps({"brief_pre_arquitetura": brief_para_revisao(
+                    state.brief_pre_arquitetura), "paginas": prompts}, ensure_ascii=False))
     try:
         texto, recibo = deps.runner.run_llm_step("revisor_lote", deps.settings.steps["revisor"],
             [{"role": "user", "content": mensagem}], ctx={}, run_id=state.run_id)

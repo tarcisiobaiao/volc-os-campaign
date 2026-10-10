@@ -58,6 +58,7 @@ def limite_de_saida(base: int, paginas: list[dict], faltantes: list[dict] | None
     return min(MAX_TOKENS_DO_LOTE, base + max(0, total - 1) * 400)
 
 
+LEITURAS_EM_PARALELO = 4         # páginas citadas lidas ao mesmo tempo
 SOBREPOSICAO_MINIMA = 0.5        # termos da afirmação presentes no trecho citado
 SOBREPOSICAO_NA_PAGINA = 0.4     # termos da afirmação presentes na página lida
 
@@ -350,6 +351,37 @@ def sustentado(afirmacao: str, valor: str, trecho: str,
     return ""
 
 
+_FRASE_RE = re.compile(r"(?<=[.!?;:])\s+|\s{2,}")
+
+
+def trecho_pertinente(texto: str, afirmacao: str, valor: str = "", *,
+                      largura: int = 360) -> str:
+    """O trecho do DOCUMENTO que mais sustenta a afirmação, ou "" se nenhum.
+
+    Janela de frases consecutivas com até `largura` caracteres; vence a que
+    tem mais termos da afirmação e, havendo valor, os números dele. Abaixo da
+    sobreposição mínima da conferência de página, devolve vazio: um trecho
+    qualquer da fonte não é prova e não vai ao redator como se fosse."""
+    termos = _termos(afirmacao)
+    if not texto or not termos:
+        return ""
+    frases = [f.strip() for f in _FRASE_RE.split(texto) if f.strip()]
+    melhor, nota_melhor = "", 0.0
+    for i in range(len(frases)):
+        janela = frases[i]
+        j = i + 1
+        while j < len(frases) and len(janela) + len(frases[j]) + 1 <= largura:
+            janela += " " + frases[j]
+            j += 1
+        janela = janela[:largura]
+        nota = len(termos & _termos(janela)) / len(termos)
+        if valor.strip() and _valor_presente(valor, janela):
+            nota += 0.5
+        if nota > nota_melhor:
+            melhor, nota_melhor = janela, nota
+    return melhor if nota_melhor >= SOBREPOSICAO_NA_PAGINA else ""
+
+
 # ---------------------------------------------------------------------------
 # 3. estruturação (schema estrito, sem URL)
 # ---------------------------------------------------------------------------
@@ -460,7 +492,7 @@ def ler_documento(url: str, timeout_s: float = 20.0) -> dict:
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "motivo": f"página não lida ({type(exc).__name__})"}
     base = {"status": r.status_code, "content_type": r.headers.get("content-type", ""),
-            "sha256": hashlib.sha256(r.content).hexdigest()}
+            "sha256": hashlib.sha256(r.content).hexdigest(), "url_final": str(r.url)}
     if r.status_code != 200:
         return dict(base, ok=False, motivo=f"página respondeu HTTP {r.status_code}")
     tipo = base["content_type"].lower()
@@ -556,7 +588,7 @@ def _defeito_da_chamada(m: RespostaMontada | None, recusa: dict, slug: str,
 
 def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: list[dict],
                            faltantes: list[dict] | None = None, *,
-                           ler: Callable[[str], tuple[str, str]] = ler_pagina,
+                           ler: Callable[[str], tuple[str, str]] | None = None,
                            hoje: str | None = None):
     """Uma rodada do dossiê pelo `chatgpt_plan_web_search` -> `RespostaDaPesquisa`."""
     from datetime import date
@@ -564,6 +596,7 @@ def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: lis
     from funnelforge.adapters.research_perplexity import _VOCABULARIO_DE_TIPOS
     from funnelforge.pipeline.dossie import RespostaDaPesquisa
 
+    ler = ler or ler_pagina
     plano = _plano(llm)
     contar = getattr(llm, "_contar", None)
     slug = cfg.model.removeprefix(PREFIXO_DO_PLANO)
@@ -634,7 +667,20 @@ def pesquisar_dossie_plano(llm: Any, cfg: StepConfig, assunto: str, paginas: lis
     por_id = {e.id: e for e in evs}
     requisitos_validos = {r["id"] for p in paginas for r in p.get("requisitos") or []}
     paginas_validas = {p["duvida_id"] for p in paginas}
+    # As páginas citadas são lidas ANTES da conferência, em paralelo limitado:
+    # leitura é rede, a conferência é código. Com o bucket do run, a fonte já
+    # lida numa rodada anterior não é baixada de novo.
+    citadas_nos_fatos = list(dict.fromkeys(
+        next((u for u, ok in zip(e.urls, e.na_source) if ok), e.urls[0])
+        for f, e in ((f, por_id.get(str(f.get("evidencia_id") or ""))) for f in estruturados)
+        if e is not None and not sustentado(str(f.get("afirmacao") or ""),
+                                            str(f.get("valor") or ""), e.trecho)))
     paginas_lidas: dict[str, tuple[str, str]] = {}
+    if citadas_nos_fatos:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(LEITURAS_EM_PARALELO, len(citadas_nos_fatos)),
+                                thread_name_prefix="leitura") as pool:
+            paginas_lidas = dict(zip(citadas_nos_fatos, pool.map(ler, citadas_nos_fatos)))
     fatos, rejeitados = [], []
     for f in estruturados:
         ev = por_id.get(str(f.get("evidencia_id") or ""))

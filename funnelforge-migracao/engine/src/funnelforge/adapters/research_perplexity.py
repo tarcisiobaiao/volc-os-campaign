@@ -339,15 +339,18 @@ def _prompt_do_funil(assunto: str, paginas: list[dict], faltantes: list[dict] | 
 
 
 def pesquisar_funil(llm: LLMClient, cfg: StepConfig, assunto: str, paginas: list[dict],
-                    faltantes: list[dict] | None = None):
+                    faltantes: list[dict] | None = None, *, ler=None):
     """A pesquisa do dossiê. Gemini com busca vai pelo SDK nativo (Search +
     Structured Output + telemetria completa); o resto, pelo LiteLLM. A escolha
-    é pelo modelo configurado — nunca um cai para o outro."""
+    é pelo modelo configurado — nunca um cai para o outro.
+
+    `ler` é a leitura das páginas citadas (o bucket do run, quando existe):
+    a mesma fonte não é baixada de novo em outra rodada."""
     if cfg.model.startswith("chatgpt/") and getattr(cfg, "web_search", False):
         # `chatgpt_plan_web_search`: provider dedicado do dossiê. O cliente
         # genérico do plano continua recusando web_search.
         from funnelforge.adapters.pesquisa_plano import pesquisar_dossie_plano
-        return pesquisar_dossie_plano(llm, cfg, assunto, paginas, faltantes)
+        return pesquisar_dossie_plano(llm, cfg, assunto, paginas, faltantes, ler=ler)
     if cfg.model.startswith("gemini/") and getattr(cfg, "web_search", False):
         from funnelforge.adapters.pesquisa_gemini import pesquisar_dossie_nativo
         return pesquisar_dossie_nativo(cfg, assunto, paginas, faltantes)

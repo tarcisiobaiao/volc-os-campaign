@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-10T08:09:17-03:00",
+  "generated_at": "2026-10-10T09:27:57-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 850,
-    "markdown": 628,
+    "files": 852,
+    "markdown": 630,
     "sql": 222,
-    "tracked": 840,
-    "untracked": 10,
+    "tracked": 841,
+    "untracked": 11,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 47,
-      "documentation": 451,
+      "audit": 48,
+      "documentation": 452,
       "generated": 2,
       "module-guide": 41,
       "product-document": 23,
@@ -1327,9 +1327,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 23898,
+      "bytes": 23881,
       "lines": 318,
-      "sha256": "d9651fac0855996faff2b35f6ecfb63fd90330091fe52025e4387731ad7a1b1d",
+      "sha256": "4b713a6b1b7aa30bfeb382a5c071ac0fb16777ed4edfd074f70848fd92448739",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1846,6 +1846,18 @@
       "bytes": 3742,
       "lines": 64,
       "sha256": "e45413bb241d24ffbe9a6f21385a7a1aed289d2e7812c819e623b0b52d79021f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/FUNNELFORGE-BUCKET-PESQUISA-UNICA-2026-10-10.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": true,
+      "bytes": 7559,
+      "lines": 135,
+      "sha256": "3eb020236d02612c89c4e2643768da198b23a0b5c6ce953029538fc49aa1ef3d",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6807,6 +6819,18 @@
       "sql_risk": null
     },
     {
+      "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-bucket/report.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 21393,
+      "lines": 277,
+      "sha256": "b9bf2e100ee11ad12c5d40254d480659925519a1f2570ac9bcfdf67a0bfbe872",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "funnelforge-migracao/referencia/funil-no-ar/INVENTARIO.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7427,7 +7451,7 @@
       "lines": 242,
       "sha256": "320fdd5db67dde5e784fd52923742037f6a7af8e3c93d8a1754d5d48b1c97bfd",
       "graph_nodes": 8,
-      "graph_degree": 16,
+      "graph_degree": 18,
       "sql_risk": "high"
     },
     {
@@ -7631,7 +7655,7 @@
       "lines": 117,
       "sha256": "e1339fbc64a1e30f0c720bb5540401c1192ebee5ffc75e2682a1f4aa23135db4",
       "graph_nodes": 3,
-      "graph_degree": 6,
+      "graph_degree": 4,
       "sql_risk": "high"
     },
     {

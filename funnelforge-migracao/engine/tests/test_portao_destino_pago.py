@@ -140,35 +140,83 @@ def test_lp_util_e_interna_alcanca_verde(tmp_path, config_files):
     assert resultado.status is StepStatus.OK, [i.code for i in resultado.issues]
 
 
-def test_lp_ponte_sem_conteudo_e_reprovada(tmp_path, config_files):
-    """CONTRAPROVA 29 — página-ponte sem valor é recusada.
+_PONTE = dict(
+    intro="<p>Escolha abaixo.</p>",
+    sections=[{"title": f"Passo {i}", "body": "<p>Veja no botão.</p>"} for i in range(4)],
+    transition="<p>Toque no botão.</p>",
+)
 
-    Quatro seções vazias e três botões: o artefato é encaminhamento, não
-    conteúdo. É a forma que a política descreve como destino sem valor."""
-    conteudo = conteudo_da_lp(
-        intro="<p>Escolha abaixo.</p>",
-        sections=[{"title": f"Passo {i}", "body": "<p>Veja no botão.</p>"}
-                  for i in range(4)],
-        transition="<p>Toque no botão.</p>",
-    )
-    state = _estado(conteudo)
+
+def test_lp_ponte_nao_e_decidida_por_contagem_no_portao(tmp_path, config_files):
+    """CONTRAPROVA 29, parte 1 — contar frases ou palavras não decide qualidade.
+
+    A regra "3 frases de 8 palavras" saiu (10/10, operador): uma LP curta pode
+    responder e uma longa pode só encaminhar. O portão do template continua
+    conferindo o que é objetivo; a ponte é julgada pela revisão contextual."""
+    state = _estado(conteudo_da_lp(**_PONTE))
     deps = _deps(tmp_path, config_files)
-    # Caminho real: o artefato Elementor existe antes do portão, como no
-    # pipeline. Sem o build, a falha era `lp_final_invalid` e mascarava que a
-    # ponte recebia OK (piso de palavras virou alerta no 19c0e14).
     _construir(state, deps)
 
     step_content_gate(state, _pagina_lp(), deps)
 
-    resultado = state.step_status["content_gate_p1"]
-    assert resultado.status is StepStatus.FAILED
-    codigos = {i.code for i in resultado.issues}
-    assert "lp_sem_entrega_propria" in codigos
-    assert "lp_final_invalid" not in codigos
+    codigos = {i.code for i in state.step_status["content_gate_p1"].issues}
+    assert not {"lp_sem_entrega_propria", "lp_final_invalid"} & codigos, codigos
+
+
+def test_lp_ponte_e_segurada_pela_revisao_contextual(tmp_path):
+    """CONTRAPROVA 29, parte 2 — a ponte é detectada por quem lê a página.
+
+    O revisor recebe o critério de página sem valor próprio; um achado
+    bloqueante de congruencia_destino com evidência da intenção de chegada
+    segura a LP, sem patch e sem segunda chamada."""
+    from funnelforge.config.settings import StepConfig
+    from funnelforge.pipeline.revisao import (ContextoDaRevisao, Documento, Referencias,
+                                              executar_revisao, montar_prompt_do_revisor)
+    from funnelforge.pipeline.runner import Runner
+    from tests.fakes import FakeLLM
+
+    doc = Documento(formato="lp_json",
+                    corpo=json.dumps(conteudo_da_lp(**_PONTE), ensure_ascii=False),
+                    seotitle="Saque-Aniversário do FGTS", metadescription="Regras e prazos.")
+    ctx = ContextoDaRevisao(
+        pagina={"numero": 1, "slug": "fgts-saque-aniversario", "papel": "LP",
+                "h1": "Saque-Aniversário do FGTS: regras e simulação"},
+        briefing_texto="BRIEFING: responder quem pode sacar e quando.",
+        inventario_texto="FATOS: f_1 [condicao] o saque é anual",
+        referencias=Referencias(fatos={"f_1"}, paa=1, destinos={"d1": "quem-tem-direito"}),
+        numeros_permitidos=set())
+    prompt = montar_prompt_do_revisor(doc, ctx)
+    assert "SEM VALOR PRÓPRIO" in prompt and "Tamanho não é critério" in prompt
+    achado = {"id": "a1", "severidade": "bloqueante", "categoria": "congruencia_destino",
+              "campo": "intro", "trecho": "Escolha abaixo.",
+              "motivo": "a página só encaminha; não responde quem pode sacar",
+              "evidencia": {"tipo": "intencao", "ref": "paa:1"}}
+
+    def revisar(achados):
+        resposta = json.dumps({
+            "versao": "revisao-v1", "decisao": "revisao_humana", "achados": achados,
+            "patches": [], "afirmacoes_nao_verificadas": [], "preservado": [],
+            "notas": {"compliance": 8, "cta_discipline": 7, "useful_delivery": 2,
+                      "destination_relevance": 7, "single_destination": 8}})
+        llm = FakeLLM(responses=[resposta])
+        runner = Runner(llm=llm, max_retries=0, runs_dir=tmp_path / "runs",
+                        sleep=lambda _s: None)
+        cfg = StepConfig(model="gpt-4.1", fallbacks=[], temperature=0.0, validators=[])
+        r = executar_revisao(doc, ctx, runner=runner, cfg=cfg, run_id="run-20261010-120000",
+                             numero=1)
+        return r, len(llm.calls)
+
+    segurada, chamadas = revisar([achado])
+    assert segurada.decisao == "revisao_humana" and chamadas == 1
+    validos = [a for a in segurada.registro["rodadas"][0]["achados"] if not a.get("invalido")]
+    assert [(a["id"], a["severidade"]) for a in validos] == [("a1", "bloqueante")]
+    # Controle: sem o achado material, "revisao_humana" por cautela não segura.
+    liberada, _ = revisar([])
+    assert liberada.decisao != "revisao_humana"
 
 
 def test_lp_curta_que_responde_passa_sem_piso_de_palavras(tmp_path, config_files):
-    """A contraprova inversa: ~90 palavras que respondem não são ponte."""
+    """A contraprova inversa: ~90 palavras que respondem passam no portão."""
     conteudo = conteudo_da_lp(
         intro=("<p>Os primeiros 80 kWh do mês saem sem custo para a residência que "
                "atende às regras da Tarifa Social.</p>"),
@@ -187,8 +235,8 @@ def test_lp_curta_que_responde_passa_sem_piso_de_palavras(tmp_path, config_files
     deps = _deps(tmp_path, config_files)
     _construir(state, deps)
     step_content_gate(state, _pagina_lp(), deps)
-    codigos = {i.code for i in state.step_status["content_gate_p1"].issues}
-    assert "lp_sem_entrega_propria" not in codigos
+    resultado = state.step_status["content_gate_p1"]
+    assert resultado.status is StepStatus.OK, [i.code for i in resultado.issues]
 
 
 def test_fonte_de_pesquisa_linkada_no_corpo_da_lp_reprova(tmp_path, config_files):

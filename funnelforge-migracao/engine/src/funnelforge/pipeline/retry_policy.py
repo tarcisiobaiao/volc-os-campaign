@@ -214,7 +214,9 @@ def classe_da_issue(issue: Any) -> str:
     Dois códigos dependem da MENSAGEM porque o mesmo código cobre um caso
     objetivo e um heurístico:
     - `critical_claim_without_citation`: número sem a fonte citada é objetivo
-      (FF-17, fica); afirmação JURÍDICA sem a fonte é o ramo de FF-18.
+      (FF-17, fica); afirmação JURÍDICA sem a fonte é o ramo de FF-18; na LP e
+      na pré-sell, número COM fato verificado cuja fonte não foi nomeada em
+      prosa é atribuição, ajuste do revisor ("Atribuição em prosa").
     - `directional_copy_outside_widget`: dentro da zona das âncoras de anúncio
       é dependência técnica comprovada (FF-15/PUB-11, fica); fora dela é aviso.
     """
@@ -224,7 +226,8 @@ def classe_da_issue(issue: Any) -> str:
         return "removido"
     if code in CODIGOS_PATCHAVEIS:
         return "patchavel"
-    if code == "critical_claim_without_citation" and mensagem.startswith("Afirmação legal"):
+    if code == "critical_claim_without_citation" and mensagem.startswith(
+            ("Afirmação legal", "Atribuição em prosa")):
         return "patchavel"
     if code == "directional_copy_outside_widget" and "zona de anúncio" not in mensagem:
         return "patchavel"

@@ -1923,6 +1923,29 @@ def _rotulo_literal_citado(texto: str, inicio: int, fim: int) -> str:
     return ""
 
 
+PREFIXO_ATRIBUICAO_EM_PROSA = "Atribuição em prosa"
+
+
+def _sem_citacao(raw: str, fundamentos: list, ctx: dict) -> Issue:
+    """Número COM fato verificado cuja fonte o texto não nomeia.
+
+    Na LP e na pré-sell a citação é o nome da instituição em prosa (sem link):
+    nomear a fonte certa é ajuste localizado do revisor, não motivo para
+    reescrever a página inteira. Número sem fato continua
+    `ungrounded_critical_claim`, que bloqueia; página de solução, que linka a
+    fonte, continua exigindo o link."""
+    role = ctx.get("role")
+    if str(getattr(role, "value", role)).lower() in ("lp", "presell"):
+        fontes = ", ".join(sorted({_url_host(str(_field(f, "fonte_primaria", "")))
+                                   for f in fundamentos}))
+        return Issue(code="critical_claim_without_citation",
+                     message=(f"{PREFIXO_ATRIBUICAO_EM_PROSA}: {raw!r} tem fato verificado, "
+                              f"mas o texto não nomeia a fonte dele ({fontes})."))
+    return Issue(
+        code="critical_claim_without_citation",
+        message=f"Afirmação crítica {raw!r} não cita sua fonte primária no conteúdo.")
+
+
 def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
     """Every critical numeric/legal claim must map to a resolved typed fact.
 
@@ -2012,7 +2035,11 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
         quantia = bool(_QUANTIA_RE.match(claim))
         numero = _canon_numero(claim) if quantia else None
 
-        grounding = None
+        # TODOS os fatos que sustentam a afirmação, não só o primeiro. Run de
+        # 10/10: "100%" e "65 anos" estavam em fatos da ANEEL e da Cemig/EDP; a
+        # pré-sell citava a ANEEL, o portão olhava só a fonte do primeiro fato
+        # (EDP) e reprovou três redações seguidas de uma página correta.
+        fundamentos = []
         for fact in trusted:
             valor = str(_field(fact, "valor", ""))
             unidade = str(_field(fact, "unidade", ""))
@@ -2024,31 +2051,26 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
                 if (rotulo and _field(fact, "tipo", "") == "processo"
                         and any(_normalized_claim(t.group(1)) == rotulo
                                 for t in re.finditer(r'["“]([^"“”\n]{1,160})["”]', valor))):
-                    grounding = fact
-                    break
+                    fundamentos.append(fact)
+                    continue
                 if (_canon_numero(valor) == numero
                         and _unidade_compativel(claim, unidade)):
-                    grounding = fact
-                    break
+                    fundamentos.append(fact)
                 continue
             haystack = _normalized_claim(" ".join((
                 valor, unidade, str(_field(fact, "dispositivo", "")),
             )))
             if claim in haystack:
-                grounding = fact
-                break
-        if grounding is None:
+                fundamentos.append(fact)
+        if not fundamentos:
             issues.append(Issue(
                 code="ungrounded_critical_claim",
                 message=f"Afirmação crítica sem fato tipado e fonte resolvida: {raw!r}.",
             ))
             continue
-        source = str(_field(grounding, "fonte_primaria", ""))
-        if not _source_is_cited(content, source, ctx):
-            issues.append(Issue(
-                code="critical_claim_without_citation",
-                message=f"Afirmação crítica {raw!r} não cita sua fonte primária no conteúdo.",
-            ))
+        if not any(_source_is_cited(content, str(_field(f, "fonte_primaria", "")), ctx)
+                   for f in fundamentos):
+            issues.append(_sem_citacao(raw, fundamentos, ctx))
 
     # Consequential legal assertions can be false even without a number or an
     # explicit statute identifier ("tem direito", "é obrigatório"). Require a
@@ -2064,7 +2086,7 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
         ):
             continue  # question/FAQ heading is not a factual assertion
         terms = _claim_terms(sentence)
-        grounding = None
+        fundamentos = []
         for fact in trusted:
             device = str(_field(fact, "dispositivo", "") or "")
             if _normalized_claim(device) in {"", "nao se aplica", "n/a"}:
@@ -2072,17 +2094,16 @@ def critical_fact_grounding(content: str, ctx: dict) -> list[Issue]:
             fact_terms = _claim_terms(
                 f"{_field(fact, 'valor', '')} {device}")
             if len(terms & fact_terms) >= 2:
-                grounding = fact
-                break
+                fundamentos.append(fact)
         raw_sentence = re.sub(r"\s+", " ", sentence).strip()
-        if grounding is None:
+        if not fundamentos:
             issues.append(Issue(
                 code="ungrounded_legal_claim",
                 message=f"Afirmação de força legal sem dispositivo verificável: {raw_sentence!r}.",
             ))
         else:
-            source = str(_field(grounding, "fonte_primaria", ""))
-            if not _source_is_cited(content, source, ctx):
+            if not any(_source_is_cited(content, str(_field(f, "fonte_primaria", "")), ctx)
+                       for f in fundamentos):
                 issues.append(Issue(
                     code="critical_claim_without_citation",
                     message=f"Afirmação legal não cita sua fonte primária: {raw_sentence!r}.",

@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from contextlib import contextmanager
 from typing import Any
 
 from funnelforge.config.settings import Settings
@@ -86,6 +88,9 @@ class Deps:
     # em teste: o escopo da fonte vem do host.
     hints_do_operador: list[dict] = field(default_factory=list)
     ler_documento: Any = None
+    # O bucket temporário do run (`adapters/bucket.py`): documentos baixados
+    # uma vez, com recibo de rede. None em teste: cada leitura vai direto.
+    bucket: Any = None
     attention_matrix: Any = None
     # O `funnel_architecture` que uma pessoa aprovou no Pautador. Com ele, a
     # pesquisa antecipada enriquece dossiê e pacotes, mas páginas, slugs,
@@ -129,6 +134,25 @@ def _select_pages(state: RunState, only: str | None) -> list[Page]:
 
 def _checkpoint(state: RunState, deps: Deps) -> None:
     deps.runner.checkpoint(state.run_id, state.to_json())
+    if getattr(deps, "bucket", None) is not None:
+        deps.bucket.gravar(deps.runner.runs_dir / state.run_id)
+
+
+@contextmanager
+def cronometrar(state: RunState, etapa: str):
+    """Tempo de parede da etapa em `state.tempos` (soma, se a etapa repetir)."""
+    inicio = time.monotonic()
+    try:
+        yield
+    finally:
+        state.tempos[etapa] = round(state.tempos.get(etapa, 0.0)
+                                    + time.monotonic() - inicio, 3)
+
+
+def leitura_do_bucket(deps: Any) -> dict:
+    """O `ler` da pesquisa quando o run tem bucket; sem bucket, nada muda."""
+    bucket = getattr(deps, "bucket", None)
+    return {"ler": bucket.ler_pagina} if bucket is not None else {}
 
 
 def _populate_routes(state: RunState, deps: Deps) -> None:
@@ -240,7 +264,8 @@ def run_pipeline(
         if not deps.settings.run.dossie_factual:
             raise ValueError("inteligência pré-redação exige o dossiê existente")
         from funnelforge.pipeline.inteligencia import preparar_inteligencia
-        preparar_inteligencia(state, deps, card_pre_arquitetura)
+        with cronometrar(state, "inteligencia"):
+            preparar_inteligencia(state, deps, card_pre_arquitetura)
         state.editorial_v2 = True
         referencia = (card_pre_arquitetura.get("historico") or {}).get("arquitetura_referencia")
         if isinstance(referencia, dict) and referencia.get("pages") and deps.arquitetura_aprovada is None:
@@ -266,7 +291,8 @@ def run_pipeline(
     # feedback corretivo conserta uma lista VAZIA de rotas); e o grafo do
     # funil não é validado nenhuma vez.
     _fresh_extract = state.plan is None or _plano_injetado
-    st.step_extract(state, deps)
+    with cronometrar(state, "arquitetura"):
+        st.step_extract(state, deps)
     delta = state.step_status.get("delta_arquitetura")
     if delta is not None and delta.status is StepStatus.FAILED and publish:
         # Plano diferente do aprovado: nada sobe até alguém aprovar o novo.
@@ -330,7 +356,8 @@ def run_pipeline(
     dossie_vivo = None
     if (getattr(deps.settings.run, "dossie_factual", False) and tem_jornada(state.plan)
             and not _falhou(state, "funnel_graph")):
-        dossie_vivo = _preparar_dossie(state, deps)
+        with cronometrar(state, "dossie_global"):
+            dossie_vivo = _preparar_dossie(state, deps)
         _checkpoint(state, deps)
     if ate_o_dossie:
         # Só esqueleto -> pesquisa -> dossiê -> verificação -> cobertura.
@@ -382,21 +409,18 @@ def run_pipeline(
         # Isso não cria um segundo caminho "rápido": é o mesmo pipeline
         # canônico. Só separa corretamente as fases — evidência estável;
         # depois briefing/redação paralelos.
-        _complementar_dossie_antes_da_redacao(
-            state, pages, deps, dossie_vivo, workers=workers)
-        if (state.brief_pre_arquitetura is not None and not state.pacotes
-                and deps.settings.run.widgets_enabled):
-            resumo = dossie_vivo.complementar_ativos(pages, state)
-            state.step_status["pesquisa_ativos"] = StepResult(
-                step="pesquisa_ativos", status=StepStatus.OK,
-                attempts=resumo["tentativas"],
-                issues=[Issue(code="pesquisa_dedicada_ativos", message=json.dumps(resumo))])
-        _consolidar_dossie(state, deps, dossie_vivo)
+        with cronometrar(state, "complemento_e_consolidacao"):
+            _complementar_dossie_antes_da_redacao(
+                state, pages, deps, dossie_vivo, workers=workers)
+            _consolidar_dossie(state, deps, dossie_vivo)
     if state.brief_pre_arquitetura is not None:
         from funnelforge.pipeline.inteligencia import congelar_pacotes
-        congelar_pacotes(state, deps)
+        with cronometrar(state, "pacotes_ferramentas_ctas"):
+            congelar_pacotes(state, deps)
+        _checkpoint(state, deps)
     if (workers > 1 and len(pages) > 1) or state.pacotes:
-        _paginas_em_paralelo(state, pages, deps, laco, workers)
+        with cronometrar(state, "paginas"):
+            _paginas_em_paralelo(state, pages, deps, laco, workers)
     else:
         for page in pages:
             if _processar_pagina(state, page, deps, laco) == "break":
@@ -564,7 +588,8 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
 
     antes = list(state.step_status)
     inicio = time.monotonic()
-    redigidas = [d for d in fase("redacao", pages) if d.sinal == "redigida"]
+    with cronometrar(state, "redacao"):
+        redigidas = [d for d in fase("redacao", pages) if d.sinal == "redigida"]
 
     # UNICIDADE ENTRE AS PÁGINAS DO LOTE — a mesma regra do serial: cada página
     # contra as escritas antes dela. A repetida tem `write_pN` reprovado e a
@@ -592,8 +617,11 @@ def _paginas_em_paralelo(state: RunState, pages: list[Page], deps: Deps, laco: _
             for n in lote:
                 if f"widget_p{n}" not in state.step_status:
                     st.step_widget(state, por_numero[n], deps)
-        revisar_lote(state, [por_numero[n] for n in lote], deps)
-    acabadas = fase("acabamento", [por_numero[n] for n in lote]) if not parar.is_set() else []
+        with cronometrar(state, "revisao"):
+            revisar_lote(state, [por_numero[n] for n in lote], deps)
+    with cronometrar(state, "acabamento"):
+        acabadas = (fase("acabamento", [por_numero[n] for n in lote])
+                    if not parar.is_set() else [])
     for delta in acabadas:
         if delta.publicar:
             laco.a_publicar.append(por_numero[delta.page_number] if delta.pagina is None
@@ -923,7 +951,8 @@ def _preparar_dossie(state: RunState, deps: Deps) -> None:
             return RespostaDaPesquisa(**state.pesquisa_pre_arquitetura)
         if orcamento is not None:
             orcamento.exigir_saldo("dossie")
-        resp = pesquisar_funil(deps.llm, cfg, assunto, spec, faltantes)
+        resp = pesquisar_funil(deps.llm, cfg, assunto, spec, faltantes,
+                               **leitura_do_bucket(deps))
         # O grounding cobra por consulta e `completion_cost` pode não somar
         # isso: o orçamento debita tokens + consultas × preço de tabela (teto
         # conservador; se o LiteLLM já incluiu, superestima — nunca o contrário).
@@ -1036,8 +1065,7 @@ def _complementar_dossie_antes_da_redacao(
     from concurrent.futures import ThreadPoolExecutor
 
     if state.brief_pre_arquitetura is not None:
-        resumo = vivo.complementar_lote(pages, state,
-                                       separar_ativos=deps.settings.run.widgets_enabled)
+        resumo = vivo.complementar_lote(pages, state)
         state.step_status["dossie_complemento_lote"] = StepResult(
             step="dossie_complemento_lote", status=StepStatus.OK,
             issues=[Issue(code="complemento_lote", message=json.dumps(resumo))])
@@ -1095,6 +1123,10 @@ def _consolidar_dossie(state: RunState, deps: Deps, vivo: Any) -> None:
     pasta = deps.runner.runs_dir / state.run_id
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "dossie_factual.json").write_text(final.model_dump_json(indent=2), encoding="utf-8")
+    from funnelforge.pipeline.dossie import indice_de_evidencias
+    (pasta / "bucket").mkdir(exist_ok=True)
+    (pasta / "bucket" / "indice_de_evidencias.json").write_text(
+        json.dumps(indice_de_evidencias(final), ensure_ascii=False, indent=1), encoding="utf-8")
     vivo.gravar_chamadas()
     estados = {}
     for p in final.paginas:

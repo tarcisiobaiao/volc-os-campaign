@@ -1303,8 +1303,44 @@ def _verificadores(deps: Any) -> tuple[Any, Any]:
     verificador = getattr(deps, "url_verifier", None)
     verify = getattr(verificador, "verify_url", None)
     sonda = getattr(getattr(deps, "screenshot", None), "is_ad_monetized", None)
+    bucket = getattr(deps, "bucket", None)
+    if callable(sonda) and bucket is not None:
+        # Um Chromium por URL, uma vez por run: o dossiê recalcula os canais a
+        # cada rodada e a sonda era repetida para a mesma página oficial.
+        bruta = sonda
+
+        def sonda(url: str, _bruta=bruta) -> Any:
+            return bucket.memo("sonda_de_anuncio", url, lambda: _bruta(url))
     return (verify if callable(verify) else None,
             sonda if callable(sonda) else None)
+
+
+CANAIS_POR_PAGINA = 4
+
+
+def _ordem_dos_canais(state: RunState, page: Page, urls: list[str]) -> list[str]:
+    """Primeiro a fonte dos fatos DESTA página, depois o emissor oficial de
+    escopo nacional conferido no documento, depois o resto (ordem original).
+
+    Com a pesquisa compartilhada, todas as páginas recebem os mesmos fatos, e a
+    ordem antiga (tipo do fato) pôs a página da Cemig como saída oficial de
+    cinco páginas de um funil nacional, à frente da ANEEL (run de 10/10)."""
+    from funnelforge.pipeline.dossie import EMISSORES_OFICIAIS
+    fatos = (state.dossie or {}).get("fatos") or []
+    duvida = page.jornada.duvida_id if page.jornada else ""
+
+    def chave(item: tuple[int, str]) -> tuple:
+        posicao, url = item
+        dela = [f for f in fatos
+                if str(f.get("source_url") or "").rstrip("/") == url.rstrip("/")]
+        propria = any(duvida and duvida in (f.get("paginas") or []) for f in dela)
+        prov = next((f.get("proveniencia") for f in dela if f.get("proveniencia")), None) or {}
+        nacional = (bool(prov.get("emissor_verificado"))
+                    and prov.get("tipo_de_emissor") in EMISSORES_OFICIAIS
+                    and prov.get("escopo") in ("nacional", "internacional"))
+        return (not propria, not nacional, posicao)
+
+    return [url for _posicao, url in sorted(enumerate(urls), key=chave)]
 
 
 def registrar_canais_oficiais(state: RunState, page: Page, deps: Any) -> None:
@@ -1327,8 +1363,9 @@ def registrar_canais_oficiais(state: RunState, page: Page, deps: Any) -> None:
         return
     verify, ad_probe = _verificadores(deps)
     try:
-        escolhidos = build_official_links(
-            facts, deps.settings.site, verify=verify, ad_probe=ad_probe)
+        escolhidos = _ordem_dos_canais(state, page, build_official_links(
+            facts, deps.settings.site, verify=verify, ad_probe=ad_probe,
+            cap=2 * CANAIS_POR_PAGINA))[:CANAIS_POR_PAGINA]
     except Exception:  # noqa: BLE001 - escolha de canal nunca derruba a pesquisa
         state.official_links[page.page_number] = []
         return
@@ -1349,9 +1386,15 @@ def registrar_canais_oficiais(state: RunState, page: Page, deps: Any) -> None:
     termos = canal_profundo.termos_uteis(
         page.h1_title, " ".join(page.main_content_structure or []),
         " ".join(getattr(page, "target_keywords", []) or []))
+    bucket = getattr(deps, "bucket", None)
+    colher = canal_profundo.colher_links
+    if bucket is not None:
+        def colher(url: str) -> list:  # noqa: F811 - mesma assinatura, uma visita por run
+            return bucket.memo("links_da_raiz", url,
+                               lambda: canal_profundo.colher_links(url)) or []
     state.official_links[page.page_number] = [
-        canal_profundo.aprofundar(u, termos, verificar=verify) if canal_profundo.e_raiz(u)
-        else u
+        canal_profundo.aprofundar(u, termos, verificar=verify, colher=colher)
+        if canal_profundo.e_raiz(u) else u
         for u in escolhidos
     ]
 
@@ -1400,6 +1443,10 @@ def _rotulo_do_canal_oficial(state: RunState, page: Page, url: str) -> str:
     carrega o emissor do documento; quando ele não existe, o host continua
     sendo uma identificação concreta e auditável do destino.
     """
+    from funnelforge.pipeline.ctas import rotulo_da_saida_oficial
+    escolhido = rotulo_da_saida_oficial(state, page, url)
+    if escolhido:
+        return escolhido
     url_limpa = (url or "").split("#", 1)[0].rstrip("/")
     duvida = page.jornada.duvida_id if page.jornada else ""
     candidatos: list[dict] = []
@@ -2393,8 +2440,17 @@ def _contexto_da_revisao(state: RunState, page: Page, deps: Any, doc: Any) -> Co
         politicas=pacote_para_o_revisor(pacote), localizadores=localizadores,
         referencias=refs, numeros_permitidos=numeros_ok,
         revalidar=revalidar, normalizar=normalizar, pacote_vencido=pacote.vencido,
-        jornada=contexto_de_jornada(state.plan, page, state.dossie),
+        jornada=_jornada_da_revisao(state, page),
     )
+
+
+def _jornada_da_revisao(state: RunState, page: Page) -> dict:
+    """Com pacote congelado, os fatos chegam ao revisor uma vez, pelo inventário
+    (mesmos ids e trechos do redator); a jornada só aponta para ele."""
+    jornada = contexto_de_jornada(state.plan, page, state.dossie)
+    if (state.pacotes or {}).get(page.page_number) and jornada.get("dossie"):
+        jornada["dossie"] = {**jornada["dossie"], "fatos": [], "fatos_no_inventario": True}
+    return jornada
 
 
 def _pagina_da_revisao(page: Page) -> dict:
@@ -2633,6 +2689,43 @@ def _cortar(texto: str, limite: int) -> str:
     return corte or texto[:limite]
 
 
+LIMITE_DO_TITULO_VISIVEL = 70
+
+
+def _cortar_frase(texto: str, limite: int) -> str:
+    """A descrição termina numa frase inteira: fim de frase dentro do limite;
+    sem ele, a última pausa (vírgula, ponto e vírgula, dois-pontos) vira ponto
+    final; só então o corte por palavra. No run de 10/10 o corte por palavra
+    deixou "procure na fatura a classificação da unidade e" como descrição, e
+    o revisor gastou patch em quatro páginas para fechar a frase."""
+    texto = " ".join(str(texto or "").split())
+    if len(texto) <= limite:
+        return texto
+    trecho = texto[:limite]
+    fim = max(trecho.rfind(". "), trecho.rfind("! "), trecho.rfind("? "))
+    if trecho.endswith((".", "!", "?")):
+        fim = len(trecho) - 1
+    if fim >= 60:
+        return trecho[:fim + 1]
+    for pausas in ((", ", "; ", ": "), (" e ",)):
+        pausa = max(trecho.rfind(p) for p in pausas)
+        if pausa >= 90:
+            return trecho[:pausa].rstrip() + "."
+    return _cortar(texto, limite)
+
+
+def _cortar_titulo(texto: str, limite: int) -> str:
+    """Título longo perde a oração de depois dos dois-pontos inteira, não a
+    metade dela ("…distribuidoras: encontre")."""
+    texto = " ".join(str(texto or "").split())
+    if len(texto) <= limite:
+        return texto
+    dois_pontos = texto[:limite].rfind(": ")
+    if dois_pontos >= 25:
+        return texto[:dois_pontos]
+    return _cortar(texto, limite)
+
+
 def seo_deterministico(page: Page, draft: Any) -> dict:
     """SEO sem chamada: título do plano, descrição do conteúdo redigido.
 
@@ -2652,7 +2745,9 @@ def seo_deterministico(page: Page, draft: Any) -> dict:
             m = re.search(r"<p\b[^>]*>(.*?)</p>", draft.content or "", flags=re.S | re.I)
             resposta = m.group(1) if m else ""
     resposta = unescape(re.sub(r"<[^>]+>", "", resposta))
-    return {"seotitle": _cortar(page.h1_title, 60), "metadescription": _cortar(resposta, 155),
+    # O título SEO é o H1 visível das internas: inteiro, se couber em 70.
+    return {"seotitle": _cortar_titulo(page.h1_title, LIMITE_DO_TITULO_VISIVEL),
+            "metadescription": _cortar_frase(resposta, 155),
             "keywordfocus": (page.target_keywords or [page.h1_title])[0],
             "slug": page.slug, "origem": "deterministico"}
 
@@ -3752,28 +3847,36 @@ def step_widget(state: RunState, page: Page, deps: Any) -> None:
     if draft is None or not draft.content.strip():
         return
     if draft.format != "lp_json" and state.pacotes and page.page_number in state.pacotes:
+        # CAMINHO COM PACOTES: só entra a ferramenta que o pacote congelado já
+        # tem PRONTA (calculadora conferida por código ou widget de orientação
+        # preparado antes da redação). Nada é gerado depois de escrever.
         from funnelforge.pipeline.inteligencia import pacote_conferido
         pacote = pacote_conferido(state, page)
-        calculadoras = [a for a in pacote.get("ferramenta", {}).get("itens", [])
-                       if a.get("estado") == "pronta"]
-        if calculadoras:
-            for a in calculadoras:
+        ferramenta = pacote.get("ferramenta", {})
+        prontas = [a for a in ferramenta.get("itens", []) if a.get("estado") == "pronta"]
+        if ferramenta.get("orientacao"):
+            prontas.append(ferramenta["orientacao"])
+        if prontas:
+            for a in prontas:
                 issues = sanitize_widget_block(a["bloco"])
                 if issues:
                     state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, *issues)
                     return
-            for a in calculadoras:
+            for a in prontas:
                 if a["bloco"].strip() not in draft.content:
                     draft.content = inject_widget(draft.content, a["bloco"])
             state.step_status[f"widget_p{page.page_number}"] = StepResult(
                 step=f"widget_p{page.page_number}", status=StepStatus.OK, attempts=0,
-                issues=[Issue(code="calculo_validado_por_codigo",
-                              message="Calculadora pré-validada; sem chamada ao modelo")])
+                issues=[Issue(code="ferramenta_pronta_do_pacote",
+                              message="Ferramenta preparada antes da redação; sem chamada ao "
+                                      "modelo: " + ", ".join(
+                                          str(a.get("tipo") or "calculo") for a in prontas))])
             return
-        if pacote.get("ferramenta", {}).get("itens"):
-            state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, Issue(
-                code="ativo_indisponivel", message="Fallback confirmado antes da redação; sem nova geração"))
-            return
+        state.step_status[f"widget_p{page.page_number}"] = _widget_skip(page, Issue(
+            code="ativo_indisponivel" if ferramenta.get("itens") else "sem_ferramenta_pronta",
+            message="Sem ferramenta pronta no pacote congelado; nada é gerado depois da "
+                    "redação"))
+        return
     if effective_role(page) is not PageRole.SOLUTION:
         return
     # O eixo `engajamento` pode dizer que esta página NÃO comporta widget
