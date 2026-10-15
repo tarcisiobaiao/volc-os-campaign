@@ -7,3 +7,6 @@ __pycache__/
 .ruff_cache/
 .venv/
 .superpowers/
+# Saídas dos canários (runs_dir do cli.py); arquivadas fora do repo com manifesto SHA-256.
+# Recibos e reports citados por auditorias são versionados com git add -f.
+runs-canario/
