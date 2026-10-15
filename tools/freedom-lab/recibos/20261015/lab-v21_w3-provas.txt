@@ -1,0 +1,70 @@
+  ✓ v21 · base tem os pré-requisitos das v6 e da v8_01
+  ✓ v21 · pacote em dia com as partes
+  ✓ v21 · pacote aplicar tem um único COMMIT
+  ✓ v21 · pacote aplicar tem um único BEGIN
+  ✓ v21 · MIGRATION/ROLLBACK do recibo são o pacote v21
+  ✓ v21 · antes: nenhuma das 5 tabelas existe (estado de produção em 15/10)
+  ✓ v21 · semente sintética aceita pela base (CHECKs e FKs de produção)
+  ✓ v21 · dois usuários sintéticos semeados
+  ✓ v21 · harness: admin sintético é admin pela v8_01
+  ✓ v21 · harness: comum não é admin
+  ✓ v21 · controle: v7_13 sozinha deixa SELECT/DELETE/TRUNCATE para a anon (defeito do revisor reproduzido)
+  ✓ v21 · controle: a anon trunca de fato, então as negações adiante vêm do pacote e não do harness
+  ✓ v21 · pacote chegou ao fim (pós-checagem) e está aberto, sem COMMIT
+  ✓ v21 · outra sessão não vê nenhuma das 5 tabelas enquanto o pacote está aberto
+  ✓ v21 · anon durante o pacote: campaign_commissions não existe para ela
+  ✓ v21 · anon durante o pacote: meta_capi_sites não existe para ela
+  ✓ v21 · ROLLBACK do pacote aberto não deixa resíduo
+  ✓ v21 · pacote com erro no fim falhou pelo erro plantado
+  ✓ v21 · depois do erro: nenhuma tabela (v7_13 e v6_0x desfeitas junto)
+  ✓ v21 · depois do erro: nenhuma função v6
+  ✓ v21 · pacote aplicou
+  ✓ v21 · as 5 tabelas existem
+  ✓ v21 · anon sem nenhum privilégio em meta_capi_sites
+  ✓ v21 · anon lê meta_capi_sites: negado
+  ✓ v21 · anon trunca meta_capi_sites: negado
+  ✓ v21 · RLS ligada em meta_capi_sites
+  ✓ v21 · anon sem nenhum privilégio em campaign_roles
+  ✓ v21 · anon lê campaign_roles: negado
+  ✓ v21 · anon trunca campaign_roles: negado
+  ✓ v21 · RLS ligada em campaign_roles
+  ✓ v21 · anon sem nenhum privilégio em campaign_members
+  ✓ v21 · anon lê campaign_members: negado
+  ✓ v21 · anon trunca campaign_members: negado
+  ✓ v21 · RLS ligada em campaign_members
+  ✓ v21 · anon sem nenhum privilégio em campaign_commissions
+  ✓ v21 · anon lê campaign_commissions: negado
+  ✓ v21 · anon trunca campaign_commissions: negado
+  ✓ v21 · RLS ligada em campaign_commissions
+  ✓ v21 · anon sem nenhum privilégio em daily_campaign_member_payouts
+  ✓ v21 · anon lê daily_campaign_member_payouts: negado
+  ✓ v21 · anon trunca daily_campaign_member_payouts: negado
+  ✓ v21 · RLS ligada em daily_campaign_member_payouts
+  ✓ v21 · admin logado não lê meta_capi_sites (token da Meta)
+  ✓ v21 · service_role lê meta_capi_sites
+  ✓ v21 · comum lê o catálogo de papéis
+  ✓ v21 · admin não escreve no catálogo pelo cliente
+  ✓ v21 · comum NÃO cria vínculo (nem para si)
+  ✓ v21 · admin cria vínculo do comum
+  ✓ v21 · admin cria o próprio vínculo
+  ✓ v21 · comum vê só o próprio vínculo
+  ✓ v21 · admin vê todos os vínculos
+  ✓ v21 · comum altera vínculo alheio: 0 linhas
+  ✓ v21 · comum apaga vínculos: 0 linhas
+  ✓ v21 · comum NÃO se dá comissão
+  ✓ v21 · comum NÃO escreve payout
+  ✓ v21 · comum NÃO roda v6_populate_*
+  ✓ v21 · anon NÃO roda v6_get_active_commission_rate
+  ✓ v21 · reverter recusa com vínculo existente
+  ✓ v21 · reverter recusa com site cadastrado
+  ✓ v21 · recusa no v21_01_rollback desfez o v21_02_rollback que já tinha rodado
+  ✓ v21 · pacote reverter aplicou
+  ✓ v21 · as 5 tabelas sumiram
+  ✓ v21 · set_pautador_updated_at preservada
+  ✓ v21 · reverter devolve o fingerprint exato de antes
+  ✓ v21 · reverter idempotente
+  ✓ v21 · pacote reaplicou depois do reverter
+  ✓ v21 · fingerprint idêntico entre 1ª e 2ª aplicação
+  ✓ v21 · fingerprint muda com o pacote
+  ✓ v21 · reaplicar por cima recusado pela pré-checagem
+  ✓ v21 · lab devolvido ao estado anterior
