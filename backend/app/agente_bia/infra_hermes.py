@@ -34,7 +34,9 @@ Nada do corpo do upstream é repassado: só o código da lista pública.
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
 import time
 from typing import Any, List, Optional
 
@@ -50,6 +52,33 @@ from app.agente_bia.portas import (
 log = logging.getLogger("volc.agente_bia.hermes")
 
 _RECUSAS = {400, 401, 403, 404, 409, 413, 415, 422, 429}
+
+#: Única forma de id de sessão que este adaptador aceita tocar. A chave do API
+#: Server é do profile `default` e abriria também as sessões do Telegram; o
+#: adaptador se recusa a falar de qualquer sessão que não seja do VOLC.
+_SESSAO_VOLC = re.compile(r"^volc_[0-9a-f]{32}$")
+
+
+def _exigir_sessao_volc(sessao_motor: str) -> None:
+    if not _SESSAO_VOLC.fullmatch(sessao_motor or ""):
+        raise MotorRecusou("hermes_recusou")
+
+
+def _tem_ferramenta(m: dict) -> bool:
+    """Chamada/resultado de ferramenta: role=tool, tool_name, ou tool_calls NÃO vazio.
+
+    Medido no state.db real (15/10/2026): mensagem sem ferramenta tem
+    tool_calls NULL. Texto "[]"/"null" também é tratado como vazio.
+    """
+    if m.get("role") == "tool" or m.get("tool_name"):
+        return True
+    tc = m.get("tool_calls")
+    if isinstance(tc, str):
+        try:
+            tc = json.loads(tc) if tc.strip() else None
+        except ValueError:
+            return True  # ilegível: na dúvida, conta como uso (falha fechada)
+    return bool(tc) if isinstance(tc, (list, dict)) else False
 
 
 def _codigo_de_recusa(status: int) -> str:
@@ -106,6 +135,7 @@ class HermesHttp:
             raise MotorRecusou("hermes_com_ferramentas")
 
     async def garantir_sessao(self, sessao_motor: str, titulo: str) -> None:
+        _exigir_sessao_volc(sessao_motor)
         try:
             async with self._cliente(15.0) as c:
                 r = await c.post("/api/sessions", json={"id": sessao_motor, "title": titulo})
@@ -125,6 +155,7 @@ class HermesHttp:
         raise MotorRecusou("hermes_indisponivel")
 
     async def conversar(self, sessao_motor: str, texto: str) -> RespostaDoMotor:
+        _exigir_sessao_volc(sessao_motor)
         inicio = time.monotonic()
         try:
             async with self._cliente(self._timeout) as c:
@@ -164,6 +195,7 @@ class HermesHttp:
         )
 
     async def mensagens(self, sessao_motor: str) -> List[MensagemDoMotor]:
+        _exigir_sessao_volc(sessao_motor)
         try:
             async with self._cliente(15.0) as c:
                 r = await c.get(f"/api/sessions/{sessao_motor}/messages")
@@ -183,7 +215,7 @@ class HermesHttp:
             papel, conteudo = m.get("role"), m.get("content")
             # Chamada ou resultado de ferramenta vira só um SINAL (para a
             # auditoria do turno); o conteúdo dela nunca sai deste adaptador.
-            if papel == "tool" or m.get("tool_calls") or m.get("tool_name"):
+            if _tem_ferramenta(m):
                 saida.append(MensagemDoMotor(papel="tool", texto="", ferramenta=True))
                 continue
             if papel in ("user", "assistant") and isinstance(conteudo, str):

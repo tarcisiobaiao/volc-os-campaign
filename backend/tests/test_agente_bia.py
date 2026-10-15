@@ -923,3 +923,24 @@ def test_admin_revogado_perde_o_acesso_na_proxima_requisicao(banca):
     banca.auth.tokens["tok-admin-a"] = (ADMIN_A, "OPERATOR")  # papel revogado no banco
     assert banca.historico(cid).status_code == 403
     assert banca.enviar(cid).status_code == 403
+
+
+def test_adaptador_recusa_sessao_que_nao_e_do_volc():
+    """A chave é do profile default: o adaptador nunca fala de sessão do Telegram."""
+    import asyncio
+    from app.agente_bia.portas import MotorRecusou
+    hermes = HermesFalso()
+    motor = HermesHttp(BASE_HERMES, hermes.chave, timeout_s=10, transport=hermes.transporte())
+    for sid in ("20261015_telegram_123", "volc_" + "A" * 32, "../volc_" + "a" * 32, ""):
+        for chamada in (motor.mensagens(sid), motor.conversar(sid, "x"), motor.garantir_sessao(sid, "t")):
+            with pytest.raises(MotorRecusou):
+                asyncio.run(chamada)
+    assert hermes.pedidos == []
+
+
+@pytest.mark.parametrize("tool_calls,esperado", [(None, False), ("", False), ("[]", False), ("null", False),
+                                                 ([], False), ('[{"function":{}}]', True),
+                                                 ([{"function": {}}], True), ("{quebrado", True)])
+def test_deteccao_de_ferramenta_no_read_back(tool_calls, esperado):
+    from app.agente_bia.infra_hermes import _tem_ferramenta
+    assert _tem_ferramenta({"role": "assistant", "content": "x", "tool_calls": tool_calls}) is esperado

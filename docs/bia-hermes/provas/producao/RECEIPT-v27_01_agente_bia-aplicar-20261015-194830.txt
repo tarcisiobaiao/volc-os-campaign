@@ -1,0 +1,20 @@
+== preflight 20261015-194830 · aplicar v27_01_agente_bia · alvo producao · aprovador Tarcisio
+sha ok  v27_01_agente_bia  d8b03f4d095bb3343821a9acd3953dd1a3f412f82cf0a5dfae465bfae143c51c
+sha ok  v27_01_rollback.sql  04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd13815b6e09719
+estado  (nunca registrada)
+fingerprint antes  58e2c4304ec8951c19b83a395289b8ff
+== backup
+-rw-r--r-- 1 root root 5831753 Oct 15 22:48 /root/backups/pre-v27_01_agente_bia-20261015-194830.dump
+backup  /root/backups/pre-v27_01_agente_bia-20261015-194830.dump
+aplica  v27_01_agente_bia
+ set_config | set_config 
+------------+------------
+ Tarcisio   | 2026-10-15
+(1 row)
+
+WARNING:  there is already a transaction in progress
+WARNING:  there is no transaction in progress
+== postflight
+fingerprint depois dfe4bc0c61a579c6fdf4a4e168b60d23
+  1 v27_01_agente_bia aplicar d8b03f4d095b Tarcisio
+== fim · recibo: docs/bia-hermes/provas/producao/RECEIPT-v27_01_agente_bia-aplicar-20261015-194830.txt

@@ -1,0 +1,22 @@
+Postflight da v27_01_agente_bia no Supabase oficial (database.agenciavolc.com.br), 15/10/2026 ~19:50 BRT.
+Executado como supabase_admin; tudo que escreve rodou dentro de BEGIN … ROLLBACK (nenhuma linha persistida).
+
+fingerprint public+app_auth   antes v20_01: 58e2c4304ec8951c19b83a395289b8ff
+                              depois v20_01: 58e2c4304ec8951c19b83a395289b8ff  (v20_01 não toca public/app_auth)
+                              depois v27_01: dfe4bc0c61a579c6fdf4a4e168b60d23  (11 RPCs públicas novas)
+ledger volc_ops.migracao_evento: 1 evento (v27_01_agente_bia aplicar d8b03f4d…, Tarcisio); v20_01 não se auto-registra; nenhuma migration antiga registrada
+PostgREST: PGRST_DB_SCHEMAS=public,storage,graphql_public (agente_bia e volc_ops fora do Data API)
+
+rpcs SECURITY DEFINER com search_path fixo ........ 11
+grants de RPC para anon/authenticated/PUBLIC ....... 0
+service_role EXECUTE em todas ...................... t
+RLS nas 3 tabelas de agente_bia .................... t (3)
+USAGE em agente_bia: anon/authenticated/service_role  f / f / f
+anon chamando volc_agente_listar_conversas ......... permission denied for function
+authenticated lendo agente_bia.execucao ............ permission denied for schema
+service_role lendo agente_bia.execucao direto ...... permission denied for schema
+idempotência (mesmo request_id) .................... nova → repetida → conflito (outro conteúdo) → ocupado (outro request em voo)
+sessão Hermes fora do histórico .................... t
+outro dono não lê a conversa ....................... t
+linhas em agente_bia depois do ROLLBACK ............ 0
+backups: /root/backups/pre-v20_01_ledger_migrations-20261015-194750.dump, /root/backups/pre-v27_01_agente_bia-20261015-194830.dump
