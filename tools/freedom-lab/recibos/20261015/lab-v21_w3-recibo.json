@@ -3,10 +3,10 @@
   "migration": "v21_pacote_aplicar.sql", "migration_sha256": "8ce5ad07324e88ed11b214f8a4342ed7c50f2e441fb615c271729a7ec7192468",
   "rollback": "v21_pacote_reverter.sql", "rollback_sha256": "33e8d58227340dff068f42ac7e313906e5cf52a68f0049a66053f2057fa59853",
   "semente_sha256": "ee23cede9a6f7c0851e66ad6a3ae933d7bc94f794a2085cd3c09eb54afd40acd",
-  "harness_sha256": {"lab.sh": "f47a5441f13f0026978c666430868f33ae963517cb89d190749992167448959c", "sonda_acesso.sql": "7c78d7864f498d5001108cb68da07b1f2d160a8947905613d4bae392b0b27656", "fingerprint_schema.sql": "0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7"},
+  "harness_sha256": {"lab.sh": "c66ce9ab060aa09ae39d364684b0b603f254648b478943a29b02cb81f4386e7f", "sonda_acesso.sql": "7c78d7864f498d5001108cb68da07b1f2d160a8947905613d4bae392b0b27656", "fingerprint_schema.sql": "0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7"},
   "suite": "tools/freedom-lab/db/suites/v21_w3.sh", "suite_sha256": "a3a2d36f235b6adde299636c8afdde916bfc5dcc88c50db9b6f07c8e3cf9ecb5", "suite_versionada": "sim",
   "base": "prod-schema:2c70b4a4b5c6616d54c126c2a5e2be6d13d1f29e424f1ed2660d58f39e4c833c",
   "semente_aplicada_sha256": null,
-  "fingerprint_total_pos": "",
+  "fingerprint_total_pos": "_TOTAL|5911|8ff392828075242c9ed75b7da3b48b89",
   "verificacoes": 70, "falhas": 0, "producao_acessada": false, "producao_acessada_motivo": "estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada"
 }
