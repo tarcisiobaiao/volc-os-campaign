@@ -121,3 +121,19 @@ def test_carregado_como_biblioteca_nao_roda_comando(tmp_path):
         capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == "carregado"
+
+
+def test_suite_com_erro_ou_vazia_conta_como_falha():
+    fonte = LAB.read_text(encoding="utf-8")
+    assert 'source "$SUITE"; local suite_rc=$?' in fonte
+    assert '[ "$suite_rc" = 0 ] || nao' in fonte
+    assert '[ "$T" -gt 0 ] || nao' in fonte
+
+
+def test_helpers_disponiveis_fora_do_testar(tmp_path):
+    """Uma suíte carregada por source enxerga estado, sqlstate, login_como, P e PA."""
+    r = subprocess.run(
+        ["bash", "-c", f'. "{LAB}"; type estado sqlstate login_como P PA ok nao eq >/dev/null && echo ok'],
+        env=os.environ | {"LAB_NOME": "volc-nao-e-do-lab-zz", "RECIBOS": str(tmp_path)},
+        capture_output=True, text=True, timeout=30)
+    assert r.stdout.strip() == "ok", r.stderr

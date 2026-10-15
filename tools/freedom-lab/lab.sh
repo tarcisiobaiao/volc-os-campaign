@@ -217,7 +217,11 @@ testar() {
   local suite_sha; suite_sha="$(sha "$SUITE")"
   echo "▶ suíte: $(basename "$SUITE") (sha256 $suite_sha, garantida=$SUITE_GARANTIDA)"
   # shellcheck source=/dev/null
-  source "$SUITE"
+  source "$SUITE"; local suite_rc=$?
+  # Recibo nunca diz "0 falhas" sem ter provado nada: suíte que sai com erro ou que
+  # não executou nenhuma verificação conta como falha.
+  [ "$suite_rc" = 0 ] || nao "suíte $(basename "$SUITE") saiu com código $suite_rc"
+  [ "$T" -gt 0 ] || nao "suíte $(basename "$SUITE") não executou nenhuma verificação"
   P -c "select arquivo, sha256, base, resultado from volc_lab.migracao_aplicada order by aplicada_em" > "$RECIBOS/ledger-lab.txt"
   # Base explícita: a tabela volc_lab.base só existe depois de base-prod. A consulta não
   # pode citá-la quando ela não existe (o planner resolve a relação mesmo no ramo morto).
