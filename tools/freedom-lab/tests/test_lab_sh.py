@@ -22,7 +22,7 @@ def test_toda_execucao_de_sql_passa_pela_guarda():
     fonte = LAB.read_text(encoding="utf-8")
     assert 'P() { exigir_lab || return $?;' in fonte
     # docker exec direto só dentro de funções que começam por exigir_lab
-    for nome in ("semear() {", "testar() {"):
+    for nome in ("semear() {", "testar() {", "sqlstate() {"):
         trecho = fonte[fonte.index(nome):]
         assert trecho.splitlines()[1].strip() == "exigir_lab || return $?", nome
 
@@ -61,3 +61,63 @@ def test_restaurar_em_blocos_corta_so_em_fronteira(tmp_path):
     juntos = "".join(f.read_text().replace("-- cabeçalho\nSET x = 1;\n", "", 1) for f in sorted(saida.iterdir()))
     assert juntos.count("CREATE TABLE") == 200 and "CREATE SCHEMA public" not in juntos
     assert all(f.read_text().startswith("-- cabeçalho") for f in saida.iterdir())
+
+
+def test_base_prod_usa_o_verificador_estrutural():
+    fonte = LAB.read_text(encoding="utf-8")
+    assert "verificar_dump_schema.py" in fonte
+    assert "grep -qE '^(COPY|INSERT) '" not in fonte
+
+
+def test_blocos_do_dump_ficam_fora_do_repo_e_somem():
+    fonte = LAB.read_text(encoding="utf-8")
+    assert 'mktemp -d "${TMPDIR:-/tmp}/volc-lab-blocos' in fonte
+    corpo = fonte[fonte.index("base_prod() {"):]
+    corpo = corpo[:corpo.index("\n}\n")]
+    assert corpo.index('rm -rf "$blocos"') < corpo.index("[ $c = 0 ] || return $c")
+    assert 'blocos="$RECIBOS/blocos"' not in fonte
+
+
+@pytest.mark.skipif(shutil.which("docker") is None, reason="docker ausente")
+def test_suite_fora_de_db_suites_e_recusada_sem_flag(tmp_path):
+    suite = tmp_path / "suite.sh"
+    suite.write_text('ok "nada"\n')
+    env = os.environ | {"MIGRATION_SUITE": str(suite), "RECIBOS": str(tmp_path)}
+    # o container do lab precisa existir para chegar à checagem; sem ele, a guarda de lab recusa antes
+    r = subprocess.run([str(LAB), "testar"], env=env, capture_output=True, text=True, timeout=60)
+    assert r.returncode != 0
+
+
+def test_recibo_so_afirma_producao_intocada_com_suite_versionada():
+    fonte = LAB.read_text(encoding="utf-8")
+    assert "LAB_SUITE_LIVRE" in fonte and "nao_garantido" in fonte
+    assert '"producao_acessada\\": false' not in fonte  # nunca mais fixo
+
+
+def test_semente_de_producao_passa_pelo_gate():
+    fonte = LAB.read_text(encoding="utf-8")
+    corpo = fonte[fonte.index("semear_prod() {"):]
+    assert corpo.splitlines()[2].strip() == 'gate_semente "$LAB_SEMENTE" || return 1'
+    assert "semear_prod" in fonte[fonte.index("recriar-prod)"):]
+
+
+def test_ctrl_c_no_restore_apaga_os_blocos():
+    corpo = LAB.read_text(encoding="utf-8")
+    corpo = corpo[corpo.index("base_prod() {"):]
+    assert "trap 'rm -rf \"$blocos\"; exit 130' INT TERM" in corpo
+    assert "trap - INT TERM" in corpo
+
+
+def test_recibo_sem_semente_de_producao_e_null():
+    fonte = LAB.read_text(encoding="utf-8")
+    assert "semente_json=null" in fonte
+
+
+def test_carregado_como_biblioteca_nao_roda_comando(tmp_path):
+    """As provas do ledger fazem `. lab.sh`: carregar não pode criar nem destruir nada."""
+    r = subprocess.run(
+        ["bash", "-c", f'. "{LAB}" destruir; type criar P PA sqlstate eq base_prod >/dev/null && echo carregado'],
+        env=os.environ | {"LAB_NOME": "volc-nao-e-do-lab-zz", "RECIBOS": str(tmp_path)},
+        capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "carregado"

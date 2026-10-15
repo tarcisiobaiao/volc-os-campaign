@@ -1,0 +1,151 @@
+{
+ "_sobre": "Fingerprint de schema por categoria: produção (sonda read-only de 15/10, tools/freedom-lab/db/fingerprint_schema.sql) × base restaurada pelo lab.sh base-prod (dump --schema-only sha256 2c70b4a4…4c833c, imagem supabase/postgres:15.8.1.085). Só contagens e md5; nenhum nome de objeto.",
+ "md5_iguais": "8 de 11",
+ "categorias": {
+  "_TOTAL": {
+   "producao": {
+    "itens": 5911,
+    "md5": "695e913a4373efd1c2265cdd5ac87251"
+   },
+   "base_restaurada": {
+    "itens": 5911,
+    "md5": "8ff392828075242c9ed75b7da3b48b89"
+   },
+   "md5_igual": false,
+   "contagem_igual": true
+  },
+  "colunas": {
+   "producao": {
+    "itens": 3028,
+    "md5": "bdcc7d994784171c111fe418e58fbe3d"
+   },
+   "base_restaurada": {
+    "itens": 3028,
+    "md5": "bdcc7d994784171c111fe418e58fbe3d"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "constraints": {
+   "producao": {
+    "itens": 1202,
+    "md5": "5458af5f5663d110c7e3e504b52c49b9"
+   },
+   "base_restaurada": {
+    "itens": 1202,
+    "md5": "bc79af75197f8cc8fa12b1f21c00eb2a"
+   },
+   "md5_igual": false,
+   "contagem_igual": true
+  },
+  "extensoes": {
+   "producao": {
+    "itens": 9,
+    "md5": "a2c0b3765fdd8c9a5ebbccfaa3caa9bc"
+   },
+   "base_restaurada": {
+    "itens": 9,
+    "md5": "a2c0b3765fdd8c9a5ebbccfaa3caa9bc"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "funcoes": {
+   "producao": {
+    "itens": 235,
+    "md5": "4a9945d72c4cbfbd47fca2386d16d89b"
+   },
+   "base_restaurada": {
+    "itens": 235,
+    "md5": "4a9945d72c4cbfbd47fca2386d16d89b"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "gatilhos": {
+   "producao": {
+    "itens": 120,
+    "md5": "9211c15dcc66941ade3ff0d7f58f90cc"
+   },
+   "base_restaurada": {
+    "itens": 120,
+    "md5": "9211c15dcc66941ade3ff0d7f58f90cc"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "grants": {
+   "producao": {
+    "itens": 236,
+    "md5": "8e6ee9af37f588f2e37d61df57711e4d"
+   },
+   "base_restaurada": {
+    "itens": 236,
+    "md5": "a48dedba6d731cc228cd4ca9e66cb16b"
+   },
+   "md5_igual": false,
+   "contagem_igual": true
+  },
+  "grants_funcao": {
+   "producao": {
+    "itens": 235,
+    "md5": "aeedb157417cd4d6026aa9891113917d"
+   },
+   "base_restaurada": {
+    "itens": 235,
+    "md5": "aeedb157417cd4d6026aa9891113917d"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "indices": {
+   "producao": {
+    "itens": 558,
+    "md5": "21e7c7b89a4055804b96f299f0758d6a"
+   },
+   "base_restaurada": {
+    "itens": 558,
+    "md5": "21e7c7b89a4055804b96f299f0758d6a"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "policies": {
+   "producao": {
+    "itens": 29,
+    "md5": "c606c11e93ffcb0fc2e10f680fc4c5da"
+   },
+   "base_restaurada": {
+    "itens": 29,
+    "md5": "ede328d25cd5fffef8e0e9a22d24a7be"
+   },
+   "md5_igual": false,
+   "contagem_igual": true
+  },
+  "tabelas": {
+   "producao": {
+    "itens": 236,
+    "md5": "3df6657d0fa241f8baec7d6235c7bc41"
+   },
+   "base_restaurada": {
+    "itens": 236,
+    "md5": "3df6657d0fa241f8baec7d6235c7bc41"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  },
+  "views": {
+   "producao": {
+    "itens": 23,
+    "md5": "af37fa76474526c09f263caa440eaee4"
+   },
+   "base_restaurada": {
+    "itens": 23,
+    "md5": "af37fa76474526c09f263caa440eaee4"
+   },
+   "md5_igual": true,
+   "contagem_igual": true
+  }
+ },
+ "divergencia_explicada": "constraints, policies e grants: mesma contagem, md5 diferente por deparse sensível a search_path (auth no path) e por grantor/ordem de ACL recriada; achado do W4 reproduzido pelo integrador."
+}

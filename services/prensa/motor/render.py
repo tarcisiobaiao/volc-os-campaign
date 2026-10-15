@@ -834,132 +834,154 @@ def main() -> None:
         err("uso: render.py out/<spec>.resolvido.json [--sufixo _x]")
     spec = json.loads((AQUI / sys.argv[1]).read_text())
     sufixo = sys.argv[sys.argv.index("--sufixo") + 1] if "--sufixo" in sys.argv else ""
+    # VARIANTS — revalidadas aqui porque a porta HTTP entrega spec resolvida
+    # direto ao render, sem passar pelo resolve.py. Sem variants, o caminho é
+    # bit a bit o de sempre: uma passada, nomes de arquivo de sempre.
+    from variantes import VarianteInvalida, spec_da_variante, valida_variantes
+    try:
+        variantes = valida_variantes(spec)
+    except VarianteInvalida as exc:
+        err(str(exc))
+    with sync_playwright() as p:
+        browser = p.chromium.launch(channel="chrome", headless=True, args=[
+            "--disable-gpu", "--force-color-profile=srgb",
+            "--font-render-hinting=none", "--disable-lcd-text", "--hide-scrollbars"])
+        if variantes is None:
+            falhas = renderiza_artboard(browser, spec, sufixo)
+        else:
+            falhas = 0
+            for v in variantes:
+                print(f"   variante {v['id']}: {v['w']}x{v['h']}")
+                falhas += renderiza_artboard(browser, spec_da_variante(spec, v),
+                                             f"{sufixo}_{v['id']}")
+        browser.close()
+    if falhas:
+        err(f"{falhas} slide(s) reprovado(s)")
+
+
+def renderiza_artboard(browser, spec: dict, sufixo: str) -> int:
+    """Uma geometria, todas as lâminas. Devolve quantas reprovaram."""
     base = spec["artboard"]["base"]
     safe = spec["artboard"]["safe_area"]
     fontes_js = [{"familia": f["family"], "peso": f.get("weight", 400),
                   "estilo": f.get("style", "normal")} for f in spec["fonts"]]
     slides = spec.get("slides") or [{"id": "s1", "background": spec.get("background", "#000"),
                                      "layers": spec["layers"]}]
-    with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome", headless=True, args=[
-            "--disable-gpu", "--force-color-profile=srgb",
-            "--font-render-hinting=none", "--disable-lcd-text", "--hide-scrollbars"])
-        page = browser.new_page(viewport={"width": base["w"], "height": base["h"]},
-                                device_scale_factor=1)
-        # PASSADA DE COMPOSIÇÃO — só existe quando alguém declara `composicao`.
-        # Sem declaração o caminho é bit a bit o de sempre: nenhuma medida extra,
-        # nenhum screenshot extra, nenhum PNG diferente. É a única forma de a
-        # migração ser faseada sem que o parque inteiro precise ser revalidado
-        # no mesmo commit.
-        geridas = [s for s in slides if s.get("composicao")]
-        posicoes_por_slide = {}
-        if geridas:
-            import medida, costura
-            print(f"   composição: {len(geridas)}/{len(slides)} lâmina(s) gerida(s) — "
-                  f"medindo a classe inteira antes de emitir")
-            fxp = AQUI / "out" / "faixa_elastica.json"
-            fx = json.loads(fxp.read_text()) if fxp.exists() else {}
-            laminas = []
-            for sl in geridas:
-                pilha_ids = [b["ref"] for b in sl["composicao"]["pilha"]]
-                ms = medida.mede_slide(page, sl, spec, fontes_js, parque=pilha_ids)
-                flex = next((b["ref"] for b in sl["composicao"]["pilha"] if b.get("flex")), None)
-                kind = next((c["kind"] for c in sl["layers"]
-                             if c.get("id") == flex and c.get("type") == "grafico"), None)
-                laminas.append({"id": sl["id"], "decl": sl["composicao"],
-                                "L": (ms.get("L_headline") or 0),
-                                "faixa_forma": ({flex: fx[kind]["faixa_span"]}
-                                                if kind and kind in fx else {}),
-                                "blocos": {k: {"ink_topo": v["topo"], "ink_base": v["base"],
-                                               "ink_off": v.get("ink_off"),
-                                               "exc_topo": v.get("exc_topo"),
-                                               "exc_base": v.get("exc_base")}
-                                           for k, v in ms["blocos"].items()
-                                           if v.get("topo") is not None}})
-            r = costura.resolve_classe(laminas, spec.get("skin_tokens") or {})
-            posicoes_por_slide = {x["slide"]: x["posicoes"] for x in r["laminas"]}
-            # SEGUNDA RESOLUÇÃO, com o flexível já medido na altura emitida.
-            r = costura.resolve_classe(laminas, spec.get("skin_tokens") or {})
-            posicoes_por_slide = {x["slide"]: x["posicoes"] for x in r["laminas"]}
+    page = browser.new_page(viewport={"width": base["w"], "height": base["h"]},
+                            device_scale_factor=1)
+    # PASSADA DE COMPOSIÇÃO — só existe quando alguém declara `composicao`.
+    # Sem declaração o caminho é bit a bit o de sempre: nenhuma medida extra,
+    # nenhum screenshot extra, nenhum PNG diferente. É a única forma de a
+    # migração ser faseada sem que o parque inteiro precise ser revalidado
+    # no mesmo commit.
+    geridas = [s for s in slides if s.get("composicao")]
+    posicoes_por_slide = {}
+    if geridas:
+        import medida, costura
+        print(f"   composição: {len(geridas)}/{len(slides)} lâmina(s) gerida(s) — "
+              f"medindo a classe inteira antes de emitir")
+        fxp = AQUI / "out" / "faixa_elastica.json"
+        fx = json.loads(fxp.read_text()) if fxp.exists() else {}
+        laminas = []
+        for sl in geridas:
+            pilha_ids = [b["ref"] for b in sl["composicao"]["pilha"]]
+            ms = medida.mede_slide(page, sl, spec, fontes_js, parque=pilha_ids)
+            flex = next((b["ref"] for b in sl["composicao"]["pilha"] if b.get("flex")), None)
+            kind = next((c["kind"] for c in sl["layers"]
+                         if c.get("id") == flex and c.get("type") == "grafico"), None)
+            laminas.append({"id": sl["id"], "decl": sl["composicao"],
+                            "L": (ms.get("L_headline") or 0),
+                            "faixa_forma": ({flex: fx[kind]["faixa_span"]}
+                                            if kind and kind in fx else {}),
+                            "blocos": {k: {"ink_topo": v["topo"], "ink_base": v["base"],
+                                           "ink_off": v.get("ink_off"),
+                                           "exc_topo": v.get("exc_topo"),
+                                           "exc_base": v.get("exc_base")}
+                                       for k, v in ms["blocos"].items()
+                                       if v.get("topo") is not None}})
+        r = costura.resolve_classe(laminas, spec.get("skin_tokens") or {})
+        posicoes_por_slide = {x["slide"]: x["posicoes"] for x in r["laminas"]}
+        # SEGUNDA RESOLUÇÃO, com o flexível já medido na altura emitida.
+        r = costura.resolve_classe(laminas, spec.get("skin_tokens") or {})
+        posicoes_por_slide = {x["slide"]: x["posicoes"] for x in r["laminas"]}
 
-            # a tinta MEDIDA de cada bloco viaja junto: é o outro lado do
-            # deslocamento diferencial aplicado na hora de emitir
-            for lam in laminas:
-                for bid, p in posicoes_por_slide.get(lam["id"], {}).items():
-                    p["ink_off"] = lam["blocos"][bid].get("ink_off")
-            print(f"   módulo M = {r['modulo_px']}px ({r['modulo_origem']})")
+        # a tinta MEDIDA de cada bloco viaja junto: é o outro lado do
+        # deslocamento diferencial aplicado na hora de emitir
+        for lam in laminas:
+            for bid, p in posicoes_por_slide.get(lam["id"], {}).items():
+                p["ink_off"] = lam["blocos"][bid].get("ink_off")
+        print(f"   módulo M = {r['modulo_px']}px ({r['modulo_origem']})")
 
-            # ALTURA DO FLEXÍVEL — o solver decidiu o SPAN de tinta; a altura de
-            # caixa que o produz sai por bissecção sobre medida real, porque
-            # span(h) não é afim para todo gerador. Resolvida aqui, a camada é
-            # reescrita ANTES do render final: a peça sai com a altura resolvida,
-            # e a PASSADA 2 re-mede o que de fato foi pintado.
-            import elastico
-            alturas = {}
-            for sl in geridas:
-                for cam in sl["layers"]:
-                    alvo = (posicoes_por_slide.get(sl["id"]) or {}).get(cam.get("id"), {})
-                    if cam.get("type") != "grafico" or "span_alvo" not in alvo:
-                        continue
-                    par = {k: v for k, v in cam.items()
-                           if k not in ("id", "type", "kind", "pos", "w", "h")}
-                    faixa = tuple(fx.get(cam["kind"], {}).get("faixa_h", [260, 620]))
-                    res = elastico.resolve_h(page, cam["kind"], par,
-                                             alvo["span_alvo"], faixa)
-                    cam["h"] = res["h"]
-                    alturas[(sl["id"], cam["id"])] = res["h"]
-                    alvo["h_resolvido"] = res["h"]
-                    alvo["span_medido"] = res["span"]
-                    # o flexível deixa de ser flexível: passa a ser um bloco de
-                    # altura e excursão MEDIDAS na altura resolvida. Não é
-                    # iteração — o span já foi decidido, e resolver a posição uma
-                    # vez com o valor real é mais exato que resolvê-la com o alvo.
-                    lam = next(l for l in laminas if l["id"] == sl["id"])
-                    b = lam["blocos"][cam["id"]]
-                    b["ink_base"] = b["ink_topo"] + res["span"]
-                    if res.get("ink_off") is not None:
-                        b["ink_off"] = res["ink_off"]
-                    lam["faixa_forma"] = {cam["id"]: [res["span"], res["span"]]}
-                    print(f"   {sl['id']}/{cam['id']}: span alvo {alvo['span_alvo']} → "
-                          f"h={res['h']} (span medido {res['span']}"
-                          + (", SATURADO" if res.get("saturado") else
-                             f", erro {res.get('erro_px')}px") + ")")
+        # ALTURA DO FLEXÍVEL — o solver decidiu o SPAN de tinta; a altura de
+        # caixa que o produz sai por bissecção sobre medida real, porque
+        # span(h) não é afim para todo gerador. Resolvida aqui, a camada é
+        # reescrita ANTES do render final: a peça sai com a altura resolvida,
+        # e a PASSADA 2 re-mede o que de fato foi pintado.
+        import elastico
+        alturas = {}
+        for sl in geridas:
+            for cam in sl["layers"]:
+                alvo = (posicoes_por_slide.get(sl["id"]) or {}).get(cam.get("id"), {})
+                if cam.get("type") != "grafico" or "span_alvo" not in alvo:
+                    continue
+                par = {k: v for k, v in cam.items()
+                       if k not in ("id", "type", "kind", "pos", "w", "h")}
+                faixa = tuple(fx.get(cam["kind"], {}).get("faixa_h", [260, 620]))
+                res = elastico.resolve_h(page, cam["kind"], par,
+                                         alvo["span_alvo"], faixa)
+                cam["h"] = res["h"]
+                alturas[(sl["id"], cam["id"])] = res["h"]
+                alvo["h_resolvido"] = res["h"]
+                alvo["span_medido"] = res["span"]
+                # o flexível deixa de ser flexível: passa a ser um bloco de
+                # altura e excursão MEDIDAS na altura resolvida. Não é
+                # iteração — o span já foi decidido, e resolver a posição uma
+                # vez com o valor real é mais exato que resolvê-la com o alvo.
+                lam = next(l for l in laminas if l["id"] == sl["id"])
+                b = lam["blocos"][cam["id"]]
+                b["ink_base"] = b["ink_topo"] + res["span"]
+                if res.get("ink_off") is not None:
+                    b["ink_off"] = res["ink_off"]
+                lam["faixa_forma"] = {cam["id"]: [res["span"], res["span"]]}
+                print(f"   {sl['id']}/{cam['id']}: span alvo {alvo['span_alvo']} → "
+                      f"h={res['h']} (span medido {res['span']}"
+                      + (", SATURADO" if res.get("saturado") else
+                         f", erro {res.get('erro_px')}px") + ")")
 
-            # SEGUNDA RESOLUÇÃO — agora o flexível não é mais flexível: é um
-            # bloco de altura e excursão MEDIDAS na altura que será emitida. Não
-            # é iteração (o span já está decidido e imobilizado): é resolver a
-            # posição uma única vez com o número real em vez do alvo.
-            r = costura.resolve_classe(laminas, spec.get("skin_tokens") or {})
-            posicoes_por_slide = {x["slide"]: x["posicoes"] for x in r["laminas"]}
-            for lam in laminas:
-                for bid, pp in posicoes_por_slide.get(lam["id"], {}).items():
-                    pp["ink_off"] = lam["blocos"][bid].get("ink_off")
-                    # a altura emitida viaja no veredito: sem ela, quem for
-                    # auditar a peça depois re-renderiza o gráfico na altura
-                    # padrão e mede outra peça (aconteceu comigo duas vezes)
-                    hr = alturas.get((lam["id"], bid))
-                    if hr: pp["h_resolvido"] = hr
-            print(f"   módulo M = {r['modulo_px']}px ({r['modulo_origem']})")
+        # SEGUNDA RESOLUÇÃO — agora o flexível não é mais flexível: é um
+        # bloco de altura e excursão MEDIDAS na altura que será emitida. Não
+        # é iteração (o span já está decidido e imobilizado): é resolver a
+        # posição uma única vez com o número real em vez do alvo.
+        r = costura.resolve_classe(laminas, spec.get("skin_tokens") or {})
+        posicoes_por_slide = {x["slide"]: x["posicoes"] for x in r["laminas"]}
+        for lam in laminas:
+            for bid, pp in posicoes_por_slide.get(lam["id"], {}).items():
+                pp["ink_off"] = lam["blocos"][bid].get("ink_off")
+                # a altura emitida viaja no veredito: sem ela, quem for
+                # auditar a peça depois re-renderiza o gráfico na altura
+                # padrão e mede outra peça (aconteceu comigo duas vezes)
+                hr = alturas.get((lam["id"], bid))
+                if hr: pp["h_resolvido"] = hr
+        print(f"   módulo M = {r['modulo_px']}px ({r['modulo_origem']})")
 
-        falhas = 0
-        for i, slide in enumerate(slides, 1):
-            nome = f"{spec['spec_id']}{sufixo}_s{i:02d}" if len(slides) > 1 else f"{spec['spec_id']}{sufixo}"
-            png = AQUI / "out" / f"{nome}.png"
-            veredito, ok = render_slide(page, slide, spec, safe, fontes_js, png,
-                                        spec["gates"].get("clearance_decorativo_px", 24),
-                                        spec["gates"].get("modo_exploracao", False),
-                                        posicoes_por_slide.get(slide["id"]))
-            (AQUI / "out" / f"{nome}.veredito.json").write_text(
-                json.dumps(veredito, indent=2, ensure_ascii=False))
-            if ok:
-                sha = hashlib.sha256(png.read_bytes()).hexdigest()
-                print(f"✅ {nome}.png · sha256 {sha[:16]}…")
-            else:
-                falhas += 1
-                print(f"❌ {nome}: verify REPROVOU — nenhum PNG escrito (fail-closed)")
-        browser.close()
-    if falhas:
-        err(f"{falhas} slide(s) reprovado(s)")
+    falhas = 0
+    for i, slide in enumerate(slides, 1):
+        nome = f"{spec['spec_id']}{sufixo}_s{i:02d}" if len(slides) > 1 else f"{spec['spec_id']}{sufixo}"
+        png = AQUI / "out" / f"{nome}.png"
+        veredito, ok = render_slide(page, slide, spec, safe, fontes_js, png,
+                                    spec["gates"].get("clearance_decorativo_px", 24),
+                                    spec["gates"].get("modo_exploracao", False),
+                                    posicoes_por_slide.get(slide["id"]))
+        (AQUI / "out" / f"{nome}.veredito.json").write_text(
+            json.dumps(veredito, indent=2, ensure_ascii=False))
+        if ok:
+            sha = hashlib.sha256(png.read_bytes()).hexdigest()
+            print(f"✅ {nome}.png · sha256 {sha[:16]}…")
+        else:
+            falhas += 1
+            print(f"❌ {nome}: verify REPROVOU — nenhum PNG escrito (fail-closed)")
+    page.close()
+    return falhas
 
 if __name__ == "__main__":
     main()
