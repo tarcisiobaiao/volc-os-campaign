@@ -1973,6 +1973,26 @@
             "tools/freedom-lab/recibos/20261015/sonda-producao-resumo.json"
           ],
           "updated_at": "2026-10-15"
+        },
+        {
+          "id": "P10-T27",
+          "title": "Ledger de migrations com aprovação por hash (v20_01/v20_02)",
+          "status": "partial",
+          "updated_at": "2026-10-15",
+          "proof": "15/10/2026 · W9 integrado (merge 86ae85bc, revisão da nuvem aprovada em 186b735): volc_ops.migracao_evento append-only (UPDATE/DELETE/TRUNCATE recusados no banco), estado derivado, trava concorrente, recusa de reaplicação e de sha256 divergente no arquivo e no histórico, rollback aprovado junto com a migration, linha de base v20_02 ancorada no fingerprint de produção 695e913a…; protocolo scripts/migracao-protocolo.sh. Prova no Mac na imagem supabase/postgres:15.8.1.085: provar-ledger-migracoes.sh LEDGER VERDE (56 verificações) e provar-migracao-par.sh sobre o par v18_01 VERDE (27). Não aplicado em produção.",
+          "acceptance": "Sonda read-only confirma o search_path do papel postgres em produção (tools/freedom-lab/db/sonda_search_path.sql; esperado \"$user\", public, extensions); dono aprova os sha256 da v20_01/v20_02 e a janela; aplicação pelo próprio protocolo com recibo; README de migrations deixa de ser o único ledger.",
+          "graph_nodes": [
+            "cap_freedom_lab",
+            "cap_source_truth"
+          ],
+          "links": [
+            "supabase/migrations/v20_01_ledger_migrations.sql",
+            "supabase/migrations/v20_02_ledger_linha_de_base.sql",
+            "scripts/migracao-protocolo.sh",
+            "scripts/provar-ledger-migracoes.sh",
+            "scripts/provar-migracao-par.sh",
+            "tools/freedom-lab/db/sonda_search_path.sql"
+          ]
         }
       ]
     },
@@ -2146,7 +2166,9 @@
           "status": "partial",
           "acceptance": "Oito peças com mesmos fundos e copy, sem geração paga; contraste e composição conferidos; direção v2 preferida visualmente pelo operador sem regressão do caminho legado.",
           "proof": "10/09/2026: direção versionada opt-in e replay controlado de mesmas cenas/copy, sem superioridade estética demonstrada. 11/09: preservados os consertos do Claude; contraste vinculado ao recorte da camada image, máscara exterior contínua, peso variável real no recibo e poda de fontes. 92 testes focais; Chrome153/x86_64 prova shrink do título99→59 mantendo apoio39/CTA32 e recusa zona impossível. Oito peças+spec_news passaram resolve/render/DOM; banner com CTA32. Fontes embutidas reduzidas64–80%. Suíte criativa1204 passed/62 skipped/4 falhas herdadas. Precisão: opsz aplica-se a Inter/Source Serif que o declaram, não aos displays Archivo/Barlow. docs/closure/prensa-refino-20260911/HANDOFF.md. Sem geração paga, banco, publicação ou reinício do container.",
-          "gaps": "Aceite visual permanece pendente. Medição de contraste é percentil da zona, não pixel gate dos glifos. Posicionamento de sujeito não é inferido automaticamente; PRENSA não oferece oclusão/perspectiva física. Direção v2 ainda opt-in, não habilitada no fluxo automático de produção."
+          "gaps": "Aceite visual permanece pendente. Medição de contraste é percentil da zona, não pixel gate dos glifos. Posicionamento de sujeito não é inferido automaticamente; PRENSA não oferece oclusão/perspectiva física. Direção v2 ainda opt-in, não habilitada no fluxo automático de produção.",
+          "latest_evidence": "15/10/2026 · W6 integrado (merge d352305d, revisão da nuvem aprovada): spec aceita variants; cada proporção renderiza a mesma composição em outra geometria, tudo ou nada (HTTP 422 se uma variante reprova), recusa chave desconhecida, id duplicado e colocação automática; sem variants o PNG é idêntico byte a byte ao main. services/prensa/tests 41 passed no Mac com Chrome. Não recompõe o layout por formato; variante 9:16 sem safe_area herda a margem do feed (decisão do dono pendente). Status mantido.",
+          "updated_at": "2026-10-15"
         },
         {
           "id": "P11-T17",
