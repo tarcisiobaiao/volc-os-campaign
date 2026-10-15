@@ -506,7 +506,13 @@ def enviar(envelope: Envelope) -> None:
     razão junto, em vez de concluir que basta acrescentar um POST. Um
     módulo que "não envia porque ninguém chamou" depende de ninguém chamar.
 
-    Para abrir esta porta faltam, nesta ordem:
+    ⚠️ W14 (15/10/2026): o caminho governado existe em
+    `app.trafego.conversao_offline` — `validar_no_google` (validateOnly) e
+    `enviar_de_verdade`, travado pela trava de dois fatores do forge, por
+    aprovação vinculada à impressão e pelo registro v25_01 (não aplicado). Esta
+    função continua recusando o envio de um envelope solto.
+
+    Para abrir esta porta faltavam, nesta ordem:
 
       1. autorização de dono para gastar quota e alterar dados de conversão;
       2. um lugar durável para a fila — `conversion_queue` não serve: não tem

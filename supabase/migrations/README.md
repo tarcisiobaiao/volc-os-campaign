@@ -2,6 +2,20 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+
+## Registro de conversões offline: v25_01 (W14) — PROPOSTA, não aplicada
+
+`v25_01_conversao_offline_ledger.sql` e `v25_01_rollback.sql`. Prova:
+`tools/freedom-lab/db/suites/v25_w14.sh` pelo `lab.sh recriar-prod`, no Mac.
+Handoff: `/mnt/project-files/handoffs/W14-conversoes-google.md`. Plano da conta:
+`docs/architecture/W14-PLANO-CONTA-GOOGLE-CONVERSOES.md`.
+
+- Tabelas novas (`conversao_offline_decisao`, `_lote`, `_item`) e duas RPCs
+  SECURITY DEFINER; `conversion_queue`/`conversion_batches` não são tocadas.
+- **Quem aplica e reverte:** o mesmo papel (`supabase_admin` em produção).
+- **Ordem:** depois do W4 e da v23_01 (W12), que dá a receita datada e o câmbio.
+- O rollback recusa se houver qualquer linha: é o rastro do que foi enviado ao Google.
+
 ## Google Ads: v17_01 fatos granulares — 08/10/2026
 
 `v17_01_gads_fatos_granulares.sql` (SHA-256

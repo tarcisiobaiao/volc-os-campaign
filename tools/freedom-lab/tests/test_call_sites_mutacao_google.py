@@ -9,7 +9,7 @@ inclusive testes de pacote como testes_*.py), em qualquer nível (função ou m�
 - `getattr` com nome montado em tempo de execução (`"mut" + "ate"`, f-string, chamada).
 Qualquer ponto novo exige entrar em PERMITIDOS num commit revisado. As guardas dos
 pontos de escrita real são conferidas pela AST da função, não por substring.
-Medido em 15/10/2026. Cada regra tem contraprova abaixo: sem ela, o teste falha.
+Medido em 15/10/2026 (Data Manager acrescentada pelo W14). Cada regra tem contraprova abaixo: sem ela, o teste falha.
 """
 import ast
 import re
@@ -22,7 +22,12 @@ VERBO = re.compile(
     r"|upload_(click|call)_conversions|upload_conversion_adjustments|upload_user_data"
     r"|apply_recommendation|dismiss_recommendation|create_customer_client"
     r"|create_offline_user_data_job|add_offline_user_data_job_operations"
-    r"|run_offline_user_data_job|move_manager_link)$")
+    r"|run_offline_user_data_job|move_manager_link"
+    # Data Manager (W14): o porto do transporte e o RPC do SDK oficial
+    r"|ingerir|ingest_events|ingest_ad_events)$")
+#: O endereço da Data Manager em string de código (docstring não conta): quem o
+#: escreve fala com o Google sem passar pelo porto `ingerir`.
+ENDERECO = re.compile(r"datamanager\.googleapis\.com|events:ingest")
 
 PERMITIDOS = {
     # pontos de escrita real: guardados por modo.exigir_leitura_apenas (conferido abaixo)
@@ -33,6 +38,14 @@ PERMITIDOS = {
     # validate_only fixo em True (conferido abaixo)
     ("volc_ads/gads/client.py", "validar_mutacoes", "mutate"),
     ("volc_ads/campanha/pmax.py", "validar_pos_criacao", "mutate_campaign_goal_configs"),
+    # Data Manager (W14): validateOnly literal True e o envio real guardado
+    ("backend/app/trafego/conversao_offline/application/enviar.py", "validar_no_google", "ingerir"),
+    ("backend/app/trafego/conversao_offline/application/enviar.py", "enviar_de_verdade", "ingerir"),
+    # o único lugar que conhece o endereço é o transporte HTTP
+    ("backend/app/trafego/conversao_offline/infrastructure/data_manager_http.py", "<modulo>",
+     "endereco:datamanager.googleapis.com"),
+    ("backend/app/trafego/conversao_offline/infrastructure/data_manager_http.py", "ingerir",
+     "endereco:events:ingest"),
     # testes que procuram a ausência de escrita por nome
     ("volc_ads/copy/testes_termos_de_busca.py", "test_coleta_faz_uma_gaql_somente_leitura_no_search_term_view", "str:mutate"),
     ("volc_ads/gestao/testes_lote.py", "_erro", "str:mutate"),
@@ -62,7 +75,15 @@ def achados_no_fonte(rel: str, fonte: str):
                 return n.name
         return "<modulo>"
 
+    docstrings = {id(b[0].value) for b in
+                  [getattr(n, "body", None) for n in ast.walk(arvore)
+                   if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))]
+                  if b and isinstance(b[0], ast.Expr) and isinstance(b[0].value, ast.Constant)}
+
     for n in ast.walk(arvore):
+        if (isinstance(n, ast.Constant) and isinstance(n.value, str)
+                and id(n) not in docstrings and ENDERECO.search(n.value)):
+            yield (rel, contexto(n), "endereco:" + ENDERECO.search(n.value).group(0))
         if isinstance(n, ast.Attribute) and VERBO.match(n.attr):
             yield (rel, contexto(n), n.attr)
         elif isinstance(n, ast.Constant) and isinstance(n.value, str) and VERBO.match(n.value):
@@ -132,6 +153,9 @@ def test_guardas_reais_pela_ast():
     assert validate_only_sempre_true(_ler("volc_ads/gads/client.py"), "validar_mutacoes")
     assert validate_only_sempre_true(_ler("volc_ads/campanha/pmax.py"), "validar_pos_criacao")
     assert guarda_antes_do_verbo(_ler("volc_ads/gestao/lote.py"), "enviar", {"mutate"})
+    w14 = "backend/app/trafego/conversao_offline/application/enviar.py"
+    assert validate_only_sempre_true(_ler(w14), "validar_no_google")
+    assert guarda_antes_do_verbo(_ler(w14), "enviar_de_verdade", {"ingerir"})
     assert guarda_antes_do_verbo(_ler("volc_ads/gestao/lote.py"), "aplicar_recomendacoes",
                                  {"apply_recommendation", "dismiss_recommendation"})
 
@@ -155,6 +179,18 @@ from x import mutate_campaigns as _m
             "dismiss_recommendation", "create_customer_client",
             "import:mutate_campaigns"} <= tipos
     assert ("x.py", "<modulo>", "mutate") in set(achados_no_fonte("x.py", fonte))
+
+
+def test_contraprova_endereco_da_data_manager_fora_do_transporte():
+    fonte = '''"""Fala de datamanager.googleapis.com só na docstring."""
+import httpx
+def atalho(c):
+    """events:ingest aqui também é só texto."""
+    return c.post("https://datamanager.googleapis.com/v1/" + "events:ingest", json={})
+'''
+    assert set(achados_no_fonte("x.py", fonte)) == {
+        ("x.py", "atalho", "endereco:datamanager.googleapis.com"),
+        ("x.py", "atalho", "endereco:events:ingest")}
 
 
 def test_contraprova_comentario_nao_e_guarda():
