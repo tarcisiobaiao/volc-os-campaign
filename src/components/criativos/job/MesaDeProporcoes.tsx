@@ -122,6 +122,9 @@ export const MesaDeProporcoes: React.FC<{
         {story && <AlternarMoldura ligada={molduraLigada} aoAlternar={aoAlternarMoldura} />}
       </div>
 
+      <p className="mt-2 text-[12px] text-muted-foreground sm:hidden">
+        Deslize a mesa para ver as {comArquivo.length} proporções.
+      </p>
       {/* Rola DENTRO da mesa, nunca a página: no telefone a família inteira
           não cabe, e a página não pode ganhar barra horizontal. */}
       <ul className="-mx-1 mt-3 flex gap-4 overflow-x-auto px-1 pb-2">
