@@ -48,14 +48,15 @@ import webbrowser
 # O que a casa precisa, e por quê. Leitura primeiro: escrita em GTM e GA4 não
 # entra sem pedido explícito, pela mesma razão que a trava de escrita do
 # Google Ads existe.
-ESCOPOS = [
+ESCOPOS_PADRAO = [
     # Sem este, a ADC nova perderia o Google Ads. Mantenha-o SEMPRE.
     "https://www.googleapis.com/auth/adwords",
     "https://www.googleapis.com/auth/tagmanager.readonly",
     "https://www.googleapis.com/auth/analytics.readonly",
 ]
 
-DESTINO = pathlib.Path.home() / ".config" / "volc" / "google-oauth.json"
+DESTINO_PADRAO = pathlib.Path.home() / ".config" / "volc" / "google-oauth.json"
+DESTINO_GTM_PUBLICACAO = pathlib.Path.home() / ".config" / "volc" / "google-gtm-publish-oauth.json"
 
 
 def _porta_livre() -> int:
@@ -139,7 +140,12 @@ def main() -> None:
               "APP GOOGLE ADS COMPUTADR/"
               "client_secret_891119529554-qp053mpvh5jkun5eu2o8dt1uanqgp92d."
               "apps.googleusercontent.com.json")
-    caminho = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else padrao)
+    publicar_gtm = "--gtm-publish" in sys.argv[1:]
+    argumentos = [a for a in sys.argv[1:] if a != "--gtm-publish"]
+    caminho = pathlib.Path(argumentos[0] if argumentos else padrao)
+    escopos = (["https://www.googleapis.com/auth/tagmanager.publish"]
+               if publicar_gtm else ESCOPOS_PADRAO)
+    destino = DESTINO_GTM_PUBLICACAO if publicar_gtm else DESTINO_PADRAO
     if not caminho.exists():
         raise SystemExit(f"Não achei o client secret em {caminho}")
 
@@ -156,7 +162,7 @@ def main() -> None:
         "client_id": cli["client_id"],
         "redirect_uri": redirect,
         "response_type": "code",
-        "scope": " ".join(ESCOPOS),
+        "scope": " ".join(escopos),
         # `offline` + `consent` garantem um refresh_token novo mesmo se este
         # usuário já autorizou o app antes.
         "access_type": "offline",
@@ -165,7 +171,7 @@ def main() -> None:
     })
 
     print("Escopos que vou pedir:")
-    for e in ESCOPOS:
+    for e in escopos:
         print("   ", e)
     print(f"\nAbrindo o navegador. Se não abrir, cole esta URL:\n\n{url}\n")
     webbrowser.open(url)
@@ -182,32 +188,33 @@ def main() -> None:
     print("\nEscopos CONCEDIDOS:")
     for e in sorted(concedidos):
         print("   ", e)
-    faltando = [e for e in ESCOPOS if e not in concedidos]
+    faltando = [e for e in escopos if e not in concedidos]
     if faltando:
         print("\n⚠️  Não vieram:", ", ".join(faltando))
 
     print("\n── provando cada API com o token novo ──")
     _sondar("Google Tag Manager v2",
             "https://tagmanager.googleapis.com/tagmanager/v2/accounts", tok["access_token"])
-    _sondar("GA4 Admin",
-            "https://analyticsadmin.googleapis.com/v1beta/accountSummaries", tok["access_token"])
-    _sondar("Google Ads v25",
-            "https://googleads.googleapis.com/v25/customers:listAccessibleCustomers",
-            tok["access_token"], {
-                "developer-token": _ler_env("GOOGLE_ADS_DEVELOPER_TOKEN"),
-                "login-customer-id": _ler_env("GOOGLE_ADS_LOGIN_CUSTOMER_ID"),
-            })
+    if not publicar_gtm:
+        _sondar("GA4 Admin",
+                "https://analyticsadmin.googleapis.com/v1beta/accountSummaries", tok["access_token"])
+        _sondar("Google Ads v25",
+                "https://googleads.googleapis.com/v25/customers:listAccessibleCustomers",
+                tok["access_token"], {
+                    "developer-token": _ler_env("GOOGLE_ADS_DEVELOPER_TOKEN"),
+                    "login-customer-id": _ler_env("GOOGLE_ADS_LOGIN_CUSTOMER_ID"),
+                })
 
-    DESTINO.parent.mkdir(parents=True, exist_ok=True)
-    DESTINO.write_text(json.dumps({
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    destino.write_text(json.dumps({
         "type": "authorized_user",
         "client_id": cli["client_id"],
         "client_secret": cli["client_secret"],
         "refresh_token": tok["refresh_token"],
         "scopes": concedidos,
     }, indent=2), encoding="utf-8")
-    DESTINO.chmod(0o600)
-    print(f"\nGravado em {DESTINO} (chmod 600).")
+    destino.chmod(0o600)
+    print(f"\nGravado em {destino} (chmod 600).")
     print("Nada foi sobrescrito: ~/google-ads.yaml e a ADC do gcloud seguem intactos.")
 
 

@@ -1,0 +1,152 @@
+<script>
+/*
+ * WEBS Wrapper v2 — eventos de anúncio do GPT → dataLayer, sem tocar no anúncio
+ *
+ * Config opcional (defina antes desta tag):
+ *   window.websWrapper = {
+ *     includeRebid: false,
+ *     targeting: ['utm_source', 'utm_medium', 'utm_campaign'], // params da URL → key-values do GPT
+ *     page: 'financas',   // opcional: categoria ou ID do post (NÃO a URL inteira)
+ *     pageKey: 'pg'       // opcional: nome da key de página (padrão 'pg')
+ *   };
+ *
+ * NÃO FAZ (de propósito):
+ *  - Não acessa o iframe do anúncio nem escuta cliques dentro dele. Isso altera o
+ *    comportamento do criativo e viola as políticas do Ad Manager / AdSense.
+ *    Cliques por campanha: relatório do Ad Manager quebrado por ad unit + key-values.
+ *  - Não envia PII nem IDs de clique (gclid, fbclid...) como key-values.
+ *
+ * DICA: setTargeting só vale para requisições feitas DEPOIS dele. Dispare esta tag no
+ * acionador "Inicialização" do GTM (ou antes do googletag.display) para pegar a 1ª impressão.
+ */
+(function (w) {
+  'use strict';
+  if (w.__WEBS_W2) return;
+  w.__WEBS_W2 = 1;
+ 
+  var cfg = w.websWrapper || {};
+  if (!Array.isArray(cfg.targeting)) cfg.targeting = ['utm_source', 'utm_medium', 'utm_campaign'];
+  if (!cfg.page) cfg.page = (w.location.pathname || '/').split('/').filter(Boolean).pop() || 'home';
+  var slots = {};   // cache do slotRenderEnded, por slotElementId (adUnit pode repetir)
+ 
+  // Keys que identificam pessoa ou clique: nunca viram key-value.
+  var BLOCKED_KEY = /(^|_)(gclid|gbraid|wbraid|fbclid|msclkid|ttclid|dclid|li_fat_id|email|e_?mail|phone|tel|celular|cpf|cnpj|rg|nome|name|user|uid|userid|token|session|sid|ip)($|_)/i;
+  var PII = [
+    /[^\s@]+@[^\s@]+\.[a-z]{2,}/i,                 // e-mail
+    /\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}/,        // CNPJ
+    /\d{3}\.?\d{3}\.?\d{3}-?\d{2}/,                // CPF
+    /\+?\d[\d\s().-]{8,}\d/                        // telefone / sequências longas
+  ];
+ 
+  function has(txt, alvo) {
+    return String(txt || '').toLowerCase().indexOf(alvo) !== -1;
+  }
+ 
+  function push(evento, dados) {
+    if (cfg.includeRebid !== true && (has(dados.slotId, 'rebid') || has(dados.adUnit, 'rebid'))) return;
+    var obj = { event: evento };
+    for (var k in dados) {
+      if (Object.prototype.hasOwnProperty.call(dados, k)) obj[k] = dados[k];
+    }
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push(obj);
+  }
+ 
+  // Último analytics_storage enviado via gtag('consent', ...). null = Consent Mode ausente.
+  function consentDenied() {
+    var dl = w.dataLayer, st = null;
+    if (!dl || !dl.length) return false;
+    for (var i = 0; i < dl.length; i++) {
+      var a = dl[i];
+      if (!a || a[0] !== 'consent' || !a[2] || !a[2].analytics_storage) continue;
+      if (a[1] === 'default' && a[2].region) continue;
+      st = a[2].analytics_storage;
+    }
+    return st === 'denied';
+  }
+ 
+  // ---------- KEY-VALUES (sanitizados para as regras do Ad Manager) ----------
+  // Key: até 20 chars, começa com letra. Value: até 40 chars, sem " ' = ! + # * ~ ; ^ ( ) < > [ ] ,
+  function safeKey(k) {
+    k = String(k || '').toLowerCase();
+    return /^[a-z][a-z0-9_]{0,19}$/.test(k) && !BLOCKED_KEY.test(k) ? k : '';
+  }
+  function safeValue(v) {
+    v = String(v == null ? '' : v).trim().toLowerCase();
+    if (!v) return '';
+    for (var i = 0; i < PII.length; i++) if (PII[i].test(v)) return '';
+    if (v.normalize) v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // sem acentos
+    return v.replace(/["'=!+#*~;^()<>\[\],]/g, '').replace(/\s+/g, '_').slice(0, 40);
+  }
+ 
+  function targeting() {
+    var keys = (cfg.targeting || []).map(safeKey).filter(Boolean).slice(0, 10);
+    var pageKey = safeKey(cfg.pageKey || 'pg'), pageVal = safeValue(cfg.page);
+    if (!keys.length && !(pageKey && pageVal)) return;
+ 
+    var params;
+    try { params = new URLSearchParams(w.location.search); } catch (e) { params = new URLSearchParams(''); }
+ 
+    // Persistência na sessão (para manter a origem nas páginas seguintes) só com consentimento.
+    var persist = !consentDenied(), store = {};
+    if (persist) {
+      try { store = JSON.parse(sessionStorage.getItem('webs') || '{}') || {}; } catch (e) { store = {}; }
+    }
+    var saved = store.targeting || {}, tg = {}, n = 0;
+ 
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var v = safeValue(params.get(k)) || safeValue(saved[k]);   // re-sanitiza o que veio do storage
+      if (v) { tg[k] = v; n++; }
+    }
+ 
+    try {
+      if (persist) { store.targeting = tg; sessionStorage.setItem('webs', JSON.stringify(store)); }
+      else sessionStorage.removeItem('webs');
+    } catch (e) {}
+ 
+    // Key de página: vale só para esta página, não vai para o storage da sessão.
+    if (pageKey && pageVal && !tg[pageKey]) { tg[pageKey] = pageVal; n++; }
+ 
+    if (!n) return;
+    w.googletag.cmd.push(function () {
+      var pa = w.googletag.pubads();
+      for (var key in tg) {
+        if (Object.prototype.hasOwnProperty.call(tg, key)) pa.setTargeting(key, tg[key]);
+      }
+    });
+  }
+ 
+  // ---------- EVENTOS OFICIAIS DO GPT ----------
+  function info(slot) {
+    var el = slot.getSlotElementId(), c = slots[el] || {};
+    return {
+      adUnit: slot.getAdUnitPath(),
+      slotId: slot.getSlotId().toString(),
+      slotElementId: el,
+      size: c.size,
+      isEmpty: c.isEmpty
+    };
+  }
+ 
+  w.googletag = w.googletag || {};
+  w.googletag.cmd = w.googletag.cmd || [];
+ 
+  w.googletag.cmd.push(function () {
+    var pa = w.googletag.pubads();
+ 
+    pa.addEventListener('slotRenderEnded', function (ev) {
+      slots[ev.slot.getSlotElementId()] = { size: ev.size, isEmpty: ev.isEmpty };
+    });
+ 
+    pa.addEventListener('impressionViewable', function (ev) {
+      var d = info(ev.slot), alvo = d.slotId + ' ' + d.adUnit;
+      push('adView', d);
+      if (has(alvo, 'interstitial')) push('adViewInterstitial', d);
+      if (has(alvo, 'rewarded') || has(alvo, 'rewards') || has(alvo, 'offerwall')) push('adViewRewarded', d);
+    });
+  });
+ 
+  targeting();
+})(window);
+</script>
