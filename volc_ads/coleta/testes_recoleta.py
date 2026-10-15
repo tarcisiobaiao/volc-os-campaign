@@ -262,12 +262,67 @@ def teste_recoleta_com_dias_fora_do_contrato_sai_antes_de_falar_com_o_google(dia
     assert banco.contas_lidas == [] and google.consultas == []
 
 
-# ── o contrato de invocação (run.sh), com um python de mentira ─────────────
+# ── o contrato de invocação (run.sh), com um python e um flock de mentira ──
+#
+# ⚠️ O run.sh roda no Hetzner (Linux, util-linux `flock`). O macOS não tem
+# `flock`, e o teste não pode depender dele: um `skipif` deixaria a trava sem
+# prova justamente onde o integrador roda a suíte. Então os testes montam um
+# PATH "de Mac" (só bash, env, date, mkdir, rmdir, sleep, cat — sem flock) e põem
+# na frente um flock DUBLÊ que implementa a semântica que o run.sh usa:
+#   `flock -n 9`     tenta a vez uma vez; sem vez, sai 1
+#   `flock -w S 9`   tenta por até S segundos; sem vez, sai 1
+# A trava é um diretório (`mkdir` é atômico em qualquer SO) com o PID de quem a
+# segurou; dono morto = trava livre, como o fd que o kernel fecha na saída.
+# O dublê anota cada chamada, e os testes conferem os argumentos exatos.
 
 RUN = RAIZ / "deploy" / "gads-coleta" / "run.sh"
 
+FLOCK_DUBLE = """#!/usr/bin/env bash
+echo "$*" >> "$VOLC_TESTE_FLOCK_LOG"
+case "$1" in
+  -n) espera=0; shift ;;
+  -w) espera="$2"; shift 2 ;;
+  *) echo "flock dublê: uso fora do contrato do run.sh: $*" >&2; exit 2 ;;
+esac
+[ "$1" = 9 ] && [ "$#" -eq 1 ] || { echo "flock dublê: esperava só o fd 9: $*" >&2; exit 2; }
+trava="$VOLC_GADS_LOCK.trava"
+limite=$(( $(date +%s) + espera ))
+while :; do
+  if mkdir "$trava" 2>/dev/null; then echo "$PPID" > "$trava/pid"; exit 0; fi
+  dono="$(cat "$trava/pid" 2>/dev/null || true)"
+  if [ -n "$dono" ] && ! kill -0 "$dono" 2>/dev/null; then rm -rf "$trava"; continue; fi
+  [ "$(date +%s)" -lt "$limite" ] || exit 1
+  sleep 0.1
+done
+"""
 
-def _rodar(tmp_path, modo, contas="5478096539,1112223334", falha="", **env_extra):
+FERRAMENTAS_DO_MAC = ("bash", "env", "date", "mkdir", "rmdir", "rm", "sleep", "cat")
+
+
+def _path_de_mac(tmp_path: Path, *, com_duble: bool = True) -> str:
+    """PATH sem `flock` real; com o dublê na frente quando pedido."""
+    import shutil
+
+    mac = tmp_path / "bin-mac"
+    if not mac.exists():
+        mac.mkdir(parents=True)
+        for nome in FERRAMENTAS_DO_MAC:
+            (mac / nome).symlink_to(shutil.which(nome))
+    assert shutil.which("flock", path=str(mac)) is None
+    if not com_duble:
+        return str(mac)
+    duble = tmp_path / "bin-duble"
+    if not duble.exists():
+        duble.mkdir()
+        (duble / "flock").write_text(FLOCK_DUBLE)
+        (duble / "flock").chmod(0o755)
+    return f"{duble}{os.pathsep}{mac}"
+
+
+def _rodar(tmp_path, modo, contas="5478096539,1112223334", falha="", *, com_duble=True, **env_extra):
+    import shutil
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
     raiz = tmp_path / "opt"
     (raiz / "venv" / "bin").mkdir(parents=True, exist_ok=True)
     py = raiz / "venv" / "bin" / "python"
@@ -277,13 +332,45 @@ def _rodar(tmp_path, modo, contas="5478096539,1112223334", falha="", **env_extra
                   'exit 0\n')
     py.chmod(0o755)
     log = tmp_path / "chamadas.log"
-    env = {"PATH": os.environ["PATH"], "VOLC_GADS_ROOT": str(raiz),
+    env = {"PATH": _path_de_mac(tmp_path, com_duble=com_duble), "VOLC_GADS_ROOT": str(raiz),
            "VOLC_GADS_LOCK": str(tmp_path / "lock"), "VOLC_GADS_RECIBOS": str(tmp_path / "recibos"),
            "VOLC_GADS_CONTAS": contas, "VOLC_GADS_MCC": MCC, "SERVICE_ROLE_KEY": "dublê-sem-valor",
-           "VOLC_TESTE_LOG": str(log), "VOLC_TESTE_FALHA": falha or "nenhuma", **env_extra}
-    p = subprocess.run(["bash", str(RUN), modo], env=env, capture_output=True, text=True)
+           "VOLC_TESTE_LOG": str(log), "VOLC_TESTE_FALHA": falha or "nenhuma",
+           "VOLC_TESTE_FLOCK_LOG": str(tmp_path / "flock.log"), **env_extra}
+    p = subprocess.run([shutil.which("bash"), str(RUN), modo], env=env, capture_output=True, text=True)
     chamadas = log.read_text().splitlines() if log.exists() else []
     return p, chamadas
+
+
+def _flock_chamado(tmp_path) -> list[str]:
+    arq = tmp_path / "flock.log"
+    return arq.read_text().splitlines() if arq.exists() else []
+
+
+class _Dono:
+    """Segura a trava do dublê como outro processo seguraria o fd: enquanto o
+    processo vive, a vez é dele; morto, a trava fica livre."""
+
+    def __init__(self, tmp_path, segundos):
+        tmp_path.mkdir(parents=True, exist_ok=True)
+        self.proc = subprocess.Popen(["sleep", str(segundos)])
+        trava = tmp_path / "lock.trava"
+        trava.mkdir()
+        (trava / "pid").write_text(str(self.proc.pid))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.proc.kill()
+        self.proc.wait()
+
+
+def teste_o_path_de_mac_nao_tem_flock_e_sem_o_duble_o_run_sh_quebra(tmp_path):
+    """Prova que a simulação é fiel: sem o dublê, é o erro que o Mac deu."""
+    p, chamadas = _rodar(tmp_path, "d1", com_duble=False)
+    assert p.returncode != 0 and chamadas == []
+    assert "flock" in p.stderr
 
 
 def teste_run_recoleta_chama_o_cli_por_conta_com_a_janela_e_o_passo(tmp_path):
@@ -346,47 +433,47 @@ def teste_run_recusa_modo_desconhecido(tmp_path):
     assert p.returncode == 64 and chamadas == []
 
 
+def teste_run_d1_pede_a_vez_sem_esperar_e_a_recoleta_espera(tmp_path):
+    _rodar(tmp_path / "d1", "d1")
+    _rodar(tmp_path / "d0", "d0")
+    _rodar(tmp_path / "rec", "recoleta")
+    _rodar(tmp_path / "rec5", "recoleta", VOLC_GADS_RECOLETA_ESPERA_S="5")
+    assert _flock_chamado(tmp_path / "d1") == ["-n 9"]
+    assert _flock_chamado(tmp_path / "d0") == ["-n 9"]
+    assert _flock_chamado(tmp_path / "rec") == ["-w 1800 9"]
+    assert _flock_chamado(tmp_path / "rec5") == ["-w 5 9"]
+
+
 def teste_run_d1_concorrente_sai_75_sem_ler(tmp_path):
-    lock = tmp_path / "lock"
-    with open(lock, "w") as fh:
-        segura = subprocess.Popen(["flock", "-x", str(lock), "sleep", "5"])
-        try:
-            import time
-            time.sleep(0.3)
-            p, chamadas = _rodar(tmp_path, "d1")
-        finally:
-            segura.kill()
-            segura.wait()
-    assert p.returncode == 75 and chamadas == []
-
-
-def _segurar_lock(lock, segundos):
-    import time
-    proc = subprocess.Popen(["flock", "-x", str(lock), "sleep", str(segundos)])
-    time.sleep(0.3)
-    return proc
+    with _Dono(tmp_path, 10):
+        p, chamadas = _rodar(tmp_path, "d1")
+    assert p.returncode == 75 and chamadas == [], p.stderr
 
 
 def teste_run_recoleta_espera_a_vez_em_vez_de_desistir(tmp_path):
-    segura = _segurar_lock(tmp_path / "lock", 1.5)
-    try:
+    import threading
+
+    with _Dono(tmp_path, 30) as dono:
+        # o dono termina (e é recolhido: zumbi ainda responde a `kill -0`) no meio da espera
+        threading.Timer(1.0, lambda: (dono.proc.kill(), dono.proc.wait())).start()
         p, chamadas = _rodar(tmp_path, "recoleta", VOLC_GADS_RECOLETA_ESPERA_S="20")
-    finally:
-        segura.kill()
-        segura.wait()
     assert p.returncode == 0 and len(chamadas) == 2, p.stderr
 
 
 def teste_run_recoleta_que_nao_pega_a_vez_falha_em_vez_de_sair_75(tmp_path):
     """75 é sucesso na unit (`SuccessExitStatus=75`): a recoleta perdida sumiria."""
-    segura = _segurar_lock(tmp_path / "lock", 5)
-    try:
+    with _Dono(tmp_path, 10):
         p, chamadas = _rodar(tmp_path, "recoleta", VOLC_GADS_RECOLETA_ESPERA_S="1")
-    finally:
-        segura.kill()
-        segura.wait()
     assert p.returncode == 1 and chamadas == []
     assert "FALHOU" in p.stderr
+
+
+def teste_trava_e_liberada_quando_o_run_sh_termina(tmp_path):
+    """Duas passadas seguidas do mesmo modo: a segunda pega a vez (o kernel
+    fecharia o fd; no dublê, o dono morto libera)."""
+    p1, c1 = _rodar(tmp_path, "d1")
+    p2, c2 = _rodar(tmp_path, "d1")
+    assert (p1.returncode, p2.returncode) == (0, 0) and (len(c1), len(c2)) == (2, 4)
 
 
 def teste_timer_da_recoleta_aponta_a_instancia_e_roda_depois_do_d1():
