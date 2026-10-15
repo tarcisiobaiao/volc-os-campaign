@@ -13,7 +13,7 @@ Caminho: navegador (sessão Supabase, ADMIN) → FastAPI `/api/agent/*` → ledg
 | [RUNBOOK-IMPLANTACAO.md](RUNBOOK-IMPLANTACAO.md) | checkpoints CP1 (banco), CP2 (Hermes), CP3 (túnel), CP4 (prova real) |
 | [RUNBOOK-ROLLBACK-ROTACAO.md](RUNBOOK-ROLLBACK-ROTACAO.md) | desligar, reverter, rotacionar, reter |
 | [HANDOFF-INTEGRADOR.md](HANDOFF-INTEGRADOR.md) | o que o integrador aplica em roadmap, curadoria e grafo depois do merge |
-| `provas/` | recibo do laboratório da v27_01 (66/66, modo garantido) |
+| `provas/` | recibos: suíte do lab v27_01 (66/66, modo garantido, `producao_acessada: false`) e protocolo oficial em banco descartável (aplicar, rollback recusado com dado, reverter) |
 
 ## Código
 

@@ -68,3 +68,7 @@ Nós esperados na camada técnica: `backend/app/agente_bia/*`, `src/features/bia
 3. CP3/CP4: túnel, `.env.local` e `scripts/bia_prova_real.py`.
 4. Endurecimento do túnel (chave SSH dedicada com `permitopen`).
 5. Fase 2: expor o catálogo ao Hermes como MCP, com token por execução, e `registrar_proposta`.
+
+## 7. Nota de secret scan
+
+O `gitleaks` (sobre `a54a77e2..HEAD` e sobre `docs/bia-hermes/provas`) só acusou um JWT **sintético** de teste (`sub` fictício, assinatura "assinatura-falsa"), que estava literal no commit `c84eaea1`. No commit de fechamento ele passou a ser montado em runtime. O histórico não foi reescrito (regra da missão). Não é credencial.
