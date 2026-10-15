@@ -18,7 +18,6 @@ import { Layout } from '@/components/layout/Layout';
 import { IdentidadeDeCanal } from '@/components/trafego/hub/IdentidadeDeCanal';
 import {
   AUSENTE,
-  contagem,
   dinheiro,
   frescorLegivel,
   lidoHa,
@@ -53,7 +52,10 @@ import {
   preenchimentoDaCaixa,
   type Preenchimento,
 } from '@/lib/trafego/gestao/fila';
-import type { CampanhaCanonica } from '@/types/trafego';
+import type { CampanhaCanonica, CampanhaNoInventario } from '@/types/trafego';
+import { Metrica } from '@/components/sistema/Metrica';
+import { FaixaDeMetricas } from '@/components/sistema/PainelInstrumento';
+import { entregaNaFaixa } from '@/lib/trafego/economia/entrega';
 import type { Proposta as PropostaDoDiagnostico } from '@/types/diagnostico';
 
 const CampanhaCanonPage: React.FC = () => {
@@ -258,7 +260,11 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
           </p>
         ) : (
           <>
-            <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* A ENTREGA é o que a conta mediu e ganha a faixa de instrumento
+                (design.md §V3): custo como herói, com frescor colado nele. */}
+            <FaixaDeEntrega campanha={c} />
+            <p className="kicker mt-5">o que a conta declara</p>
+            <dl className="mt-2 grid gap-x-8 gap-y-3 sm:grid-cols-3">
               <Medida
                 rotulo="lance"
                 valor={dinheiro(c.lance_micros, c.entrega?.moeda ?? null)}
@@ -280,16 +286,10 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
                 valor={tetoDaCampanha(c).texto}
                 nota={tetoDaCampanha(c).explica}
               />
-              <Medida rotulo="impressões" valor={contagem(c.entrega?.impressoes ?? null)} />
-              <Medida rotulo="cliques" valor={contagem(c.entrega?.cliques ?? null)} />
-              <Medida
-                rotulo="custo"
-                valor={dinheiro(c.entrega?.custo_micros ?? null, c.entrega?.moeda ?? null)}
-              />
             </dl>
             <p className="mt-3 text-[11px] text-muted-foreground">
               {/* Nenhum número decisório sem frescor (SPEC §4.1). */}
-              medido na leitura de {lidoHa(c.entrega?.leitura?.idade_s ?? null)}
+              declarado pela conta · {lidoHa(c.entrega?.leitura?.idade_s ?? null)}
             </p>
           </>
         )}
@@ -412,6 +412,33 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
  * das oito seções ficavam sem nome acessível, entre elas a que carrega o
  * frescor. Um `id` com espaço também é HTML inválido.
  */
+const FaixaDeEntrega: React.FC<{ campanha: CampanhaNoInventario }> = ({ campanha }) => {
+  const n = entregaNaFaixa(campanha);
+  return (
+    <FaixaDeMetricas>
+      <Metrica
+        tamanho="hero"
+        rotulo="custo"
+        valor={n.custo.valor}
+        formato={n.formatoDeDinheiro}
+        verdade={n.custo.verdade}
+        detalheDaVerdade={n.custo.detalhe}
+        lidoEm={n.lidoEm}
+        fonte="Google Ads"
+      />
+      <Metrica rotulo="cliques" valor={n.cliques.valor} formato={{ tipo: 'inteiro' }} verdade={n.cliques.verdade} />
+      <Metrica rotulo="impressões" valor={n.impressoes.valor} formato={{ tipo: 'inteiro' }} verdade={n.impressoes.verdade} />
+      <Metrica
+        rotulo="CPC"
+        valor={n.cpc.valor}
+        formato={n.formatoDeDinheiro}
+        verdade={n.cpc.verdade}
+        detalheDaVerdade={n.cpc.detalhe}
+      />
+    </FaixaDeMetricas>
+  );
+};
+
 const Secao: React.FC<{
   titulo: string;
   kicker: string;
