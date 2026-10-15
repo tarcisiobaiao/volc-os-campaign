@@ -33,6 +33,23 @@ Isso falha explícito, antes de custo — nunca é ignorado.
 
 Chave desconhecida numa variante também falha: um campo que o motor não lê é
 exatamente o defeito que este módulo existe para fechar.
+
+## Variante 9:16 sem `safe_area` própria
+
+Antes, herdava a margem da base — pensada para o feed — e o texto podia cair
+embaixo da interface de Stories/Reels (barra de progresso e perfil no topo,
+campo de resposta e CTA na base). Agora ela reserva essa interface por padrão:
+a zona segura do guia oficial da Meta para Instagram Stories, registrada no
+repo como EV-META-20 (`docs/specs/creative-supply-chain-v1/OFFICIAL-API-EVIDENCE.json`,
+https://www.facebook.com/business/ads-guide/update/image/instagram-story/traffic):
+~14% no topo, 35% na base e 6% nas laterais, com tolerância de 1% na proporção.
+Em 1080x1920 isso dá top 269, bottom 672, left/right 65 (arredondado para
+cima: a margem nunca fica menor que a da Meta).
+
+Por lado vale o MAIOR entre a margem herdada e a da Meta: a da base é o mínimo
+de respiro que o autor da spec declarou, a da Meta é o que a plataforma cobre.
+As duas precisam valer. Variante que declara `safe_area` própria não muda, e
+spec sem variants nem passa por aqui.
 """
 from __future__ import annotations
 
@@ -40,6 +57,12 @@ import copy
 import re
 
 CHAVES_VARIANTE = frozenset({"id", "w", "h", "safe_area"})
+
+#: Zona segura de Instagram Stories em % da dimensão (EV-META-20, ver docstring).
+SAFE_STORIES_PCT = {"top": 14, "bottom": 35, "left": 6, "right": 6}
+#: Tolerância de proporção do mesmo guia: 1%.
+TOLERANCIA_9X16_PCT = 1
+ORIGEM_SAFE_STORIES = "padrao_meta_stories_EV-META-20"
 LADOS = frozenset({"top", "bottom", "left", "right"})
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,39}$")
 
@@ -74,6 +97,24 @@ def _valida_safe_area(sa, w: int, h: int, onde: str) -> None:
         raise VarianteInvalida(f"{onde}: safe_area não deixa área útil em {w}x{h}")
 
 
+def e_9x16(w: int, h: int) -> bool:
+    """Proporção 9:16 dentro da tolerância de 1% do guia da Meta (em inteiros)."""
+    return abs(16 * w - 9 * h) * 100 <= TOLERANCIA_9X16_PCT * 9 * h
+
+
+def safe_area_stories(w: int, h: int) -> dict:
+    """A zona segura da Meta em px, arredondada para cima."""
+    return {lado: -(-(h if lado in ("top", "bottom") else w) * pct // 100)
+            for lado, pct in SAFE_STORIES_PCT.items()}
+
+
+def _safe_area_stories_sobre(herdada: dict | None, variante: dict) -> dict:
+    """Por lado, o maior entre a margem herdada da base e a zona segura da Meta."""
+    herdada = herdada or {}
+    meta = safe_area_stories(variante["w"], variante["h"])
+    return {lado: max(herdada.get(lado, 0), meta[lado]) for lado in SAFE_STORIES_PCT}
+
+
 def valida_variantes(spec: dict) -> list[dict] | None:
     """Devolve a lista validada, `None` se a spec não declara variants.
 
@@ -106,6 +147,10 @@ def valida_variantes(spec: dict) -> list[dict] | None:
             raise VarianteInvalida(f"{onde} ({vid}): w e h exigem inteiros > 0")
         if "safe_area" in v:
             _valida_safe_area(v["safe_area"], v["w"], v["h"], f"{onde} ({vid})")
+        elif e_9x16(v["w"], v["h"]):
+            # a margem padrão de Stories é julgada aqui, antes de custo, não no render
+            _valida_safe_area(_safe_area_stories_sobre(artboard.get("safe_area"), v),
+                              v["w"], v["h"], f"{onde} ({vid}): safe_area padrão de Stories")
 
     colocacao = spec.get("colocacao") or {}
     if colocacao.get("modo") == "auto" or "colocacao_resolvida" in spec:
@@ -134,5 +179,8 @@ def spec_da_variante(spec: dict, variante: dict) -> dict:
         artboard["base"]["formato"] = variante["id"]
     if "safe_area" in variante:
         artboard["safe_area"] = dict(variante["safe_area"])
+    elif e_9x16(variante["w"], variante["h"]):
+        artboard["safe_area"] = _safe_area_stories_sobre(artboard.get("safe_area"), variante)
+        artboard["safe_area_origem"] = ORIGEM_SAFE_STORIES
     artboard["variante"] = variante["id"]
     return copia
