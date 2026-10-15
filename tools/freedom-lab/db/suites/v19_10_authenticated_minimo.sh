@@ -191,6 +191,12 @@ while IFS='|' read -r nome st <&3; do
 done 3< "$R/operador-depois.txt"
 eq "$(estado authenticated "update public.daily_campaign_metrics set commission_operator=commission_operator where campaign_id='123456789' returning 1" "$ADMIN" | cut -c1-4)" "ok:1" "ADMIN ainda grava dinheiro (telas de admin)"
 eq "$(P -c "select count(*) from pg_class c where c.relnamespace='public'::regnamespace and c.relkind='S' and case when c.relkind='S' then has_sequence_privilege('authenticated', c.oid, 'UPDATE') end")" "0" "nenhuma sequência de public com setval para authenticated"
+# W12 (câmbio): system_settings e a sequência do histórico de câmbio
+eq "$(estado authenticated "update public.system_settings set value='9.99' where key='dollar_exchange_rate' returning 1" "$OPER" | cut -c1-5)" "42501" "W12 · operador não altera dollar_exchange_rate"
+eq "$(estado authenticated "update public.system_settings set value='9.99' where key='dollar_exchange_rate' returning 1" "$ADMIN" | cut -c1-5)" "42501" "W12 · nem admin altera system_settings pelo browser (UPDATE só em componente sem import)"
+eq "$(estado anon "update public.system_settings set value='9.99' where key='dollar_exchange_rate' returning 1" | cut -c1-5)" "42501" "W12 · anon não altera system_settings (v19_01)"
+eq "$(estado authenticated "select setval('public.exchange_rate_history_id_seq', 1)" "$OPER" | cut -c1-5)" "42501" "W12 · operador não dá setval em exchange_rate_history_id_seq"
+eq "$(P -c "select has_sequence_privilege('authenticated','public.exchange_rate_history_id_seq','USAGE') or has_sequence_privilege('authenticated','public.exchange_rate_history_id_seq','SELECT') or has_sequence_privilege('authenticated','public.exchange_rate_history_id_seq','UPDATE') or has_sequence_privilege('anon','public.exchange_rate_history_id_seq','USAGE') or has_sequence_privilege('anon','public.exchange_rate_history_id_seq','UPDATE')")" "f" "W12 · exchange_rate_history_id_seq sem USAGE/SELECT/UPDATE para anon e authenticated"
 
 echo "▶ 5. escrita fora da decisão é recusada; RLS onde authenticated alcança"
 P -A -t -F'|' > "$R/fora-da-decisao.txt" <<'SQL'

@@ -67,7 +67,7 @@ BEGIN
   IF v_mudou IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10_rollback abortado: função alterada depois da v19_10: %. Nada foi desfeito.', v_mudou;
   END IF;
-  SELECT string_agg(a.papel || '/' || a.objtipo, ', ') INTO v_mudou
+  SELECT string_agg(a.papel || '/' || a.objtipo::text, ', ') INTO v_mudou
     FROM app_auth.w4_auth_defacl a
    WHERE (SELECT array_agg(i::text ORDER BY i::text) FROM pg_default_acl d, unnest(d.defaclacl) i
            WHERE d.defaclrole = a.papel::regrole AND d.defaclnamespace = 'public'::regnamespace AND d.defaclobjtype = a.objtipo)
