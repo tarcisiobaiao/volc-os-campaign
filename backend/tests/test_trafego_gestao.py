@@ -36,7 +36,14 @@ from app.trafego.gestao.infrastructure import repositorio_postgrest as RP  # noq
 from volc_ads.gestao import acoes as A, ledger as motor  # noqa: E402
 
 CID, CAMP = D.CASA, D.CAMPANHA
-ORC = {"tipo": "orcamento.diario", "campaign_id": CAMP, "amount_micros": 36_000_000}
+ORC = {"tipo": "orcamento.diario", "campaign_id": CAMP, "amount_micros": 36_000_000,
+       "origem": "operador"}
+QUANDO = "2026-10-15T12:00:00+00:00"
+
+
+def _pedido(payload):
+    """A ida como `propor` a faz: o autor autenticado carimba a origem operador."""
+    return P.pedido_do_payload(payload, autor="op@volc", quando=QUANDO)
 
 
 def _diff(p):
@@ -63,11 +70,11 @@ _CASOS = [
     ({**ORC, "budget_id": D.BUDGET, "compartilhado_ciente": True},
      D.antes_orcamento(compartilhado=True, campanhas_no_orcamento=3)),
     ({"tipo": "lance.alvo", "campaign_id": CAMP, "estrategia": "MAXIMIZE_CONVERSIONS",
-      "alvo": "tcpa", "valor": 25_000_000}, {"tcpa_micros": 20_000_000, "moeda": "BRL"}),
+      "alvo": "tcpa", "valor": 25_000_000, "origem": "operador"}, {"tcpa_micros": 20_000_000, "moeda": "BRL"}),
     ({"tipo": "lance.alvo", "campaign_id": CAMP, "estrategia": "TARGET_ROAS",
       "alvo": "troas", "valor": 4.5}, {"troas": 4.0}),
     ({"tipo": "lance.estrategia", "campaign_id": CAMP, "nova": "TARGET_SPEND",
-      "teto_cpc_micros": 2_000_000}, {"estrategia": "MANUAL_CPC"}),
+      "teto_cpc_micros": 2_000_000, "origem": "operador"}, {"estrategia": "MANUAL_CPC"}),
     ({"tipo": "negativa.keyword", "escopo": "grupo", "alvo": "193210441352",
       "termos": [{"texto": "grátis", "correspondencia": "PHRASE"}, {"texto": "pdf"}]},
      {"negativas_existentes": 0, "chaves": []}),
@@ -104,7 +111,7 @@ def test_os_15_tipos_do_contrato_estao_nos_9_grupos():
 @pytest.mark.parametrize("payload,antes", _CASOS, ids=[c[0]["tipo"] for c in _CASOS])
 def test_ida_e_volta_a_proposta_reconstroi_a_mesma_acao(payload, antes):
     """O que se aplica sai do diff aprovado: acao_da_proposta(proposta(a)) == a."""
-    acao = P.pedido_do_payload(payload).acao
+    acao = _pedido(payload).acao
     linha = json.loads(json.dumps(motor.proposta(acao, CID, antes,
                                                  datetime.now(timezone.utc))))  # como o jsonb
     assert P.acao_da_proposta(linha) == acao
@@ -120,11 +127,11 @@ def test_payload_recusa_tipo_desconhecido_e_campo_faltando():
         P.pedido_do_payload({"tipo": "status", "nivel": "campanha", "ident": CAMP,
                              "status": "REMOVED"})
     with pytest.raises(E.AcaoInvalida, match="inteiro"):
-        P.pedido_do_payload({**ORC, "amount_micros": 36.5})
+        _pedido({**ORC, "amount_micros": 36.5})
 
 
 def test_orcamento_sem_budget_id_e_completado_pelo_estado():
-    pedido = P.pedido_do_payload(ORC)
+    pedido = _pedido(ORC)
     assert pedido.completar is not None
     final = pedido.completar(D.antes_orcamento())
     assert (final.budget_id, final.amount_micros) == (D.BUDGET, 36_000_000)
@@ -140,7 +147,11 @@ async def test_propor_le_o_antes_e_grava_evidencia_diagnostico_e_proposta():
     assert not r["ja_existia"] and p["estado"] == "aguardando_aprovacao"
     assert p["operacao"] == "orcamento.diario" and p["delta_pct"] == 20.0
     assert p["valor_atual"]["verba_diaria_micros"] == 30_000_000
-    assert p["valor_proposto"] == {"verba_diaria_micros": 36_000_000, "budget_id": D.BUDGET}
+    proposto = dict(p["valor_proposto"])
+    origem = proposto.pop("origem_valor")
+    assert proposto == {"verba_diaria_micros": 36_000_000, "budget_id": D.BUDGET}
+    # A origem é carimbada pelo servidor com o autor autenticado, não pela tela.
+    assert origem["origem"] == "operador" and origem["evidencia"].startswith("operador:op@volc@")
     assert p["volc_campaign_id"] and p["criada_por"] == "humano:op@volc"
     ev = led.evidencias[r["evidencia_id"]]
     assert ev["suficiencia"] == "suficiente" and ev["moeda"] == "BRL"
@@ -901,7 +912,7 @@ def _um_caso_por_tipo():
 
 
 def _no_mundo(conta, payload, antes):
-    acao = P.pedido_do_payload(payload).acao
+    acao = _pedido(payload).acao
     conta.mundo[(acao.tipo, str(acao.alvo_id))] = json.loads(json.dumps(antes))
     return acao
 

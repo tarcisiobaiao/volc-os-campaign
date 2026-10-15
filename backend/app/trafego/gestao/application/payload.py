@@ -20,6 +20,18 @@ que o humano aprovou, e não de um payload guardado ao lado que ninguém viu.
 `testes` provam ida e volta para todos os tipos: `acao_da_proposta(proposta(a))
 == a`.
 
+## Verba e lance dizem de onde vieram (`ValorMonetario`)
+
+`orcamento.diario`, `lance.alvo` (tCPA/teto de CPC) e `lance.estrategia` com
+alvo em dinheiro exigem `origem` no pedido. Só `operador` e `medido_na_conta`
+passam (`ValorMonetario.autoriza`); `serp`, `keyword_planner`, `dataforseo`,
+`ferramenta_externa`, `estimativa_modelo` são recusados aqui, com 422, antes de
+ler a conta. A evidência do `operador` é carimbada AQUI com o autor
+autenticado e o instante — a tela não escolhe quem é o operador. `medido_na_
+conta` traz a GAQL que leu o número em `evidencia`. A origem vai gravada em
+`valor_proposto.origem_valor` e volta com a proposta; proposta antiga sem ela
+volta como `nao_informada`, que `operacoes()` recusa na hora de aplicar.
+
 `reverso.remover_criados` não entra pela ida: ele só existe como reverso de
 outra ação, montado por `ledger.reversao` a partir do que a aplicação criou.
 """
@@ -30,6 +42,7 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from volc_ads.gestao import acoes as A
 from volc_ads.gestao.acoes import AcaoRecusada
+from volc_ads.gestao.valor import ValorMonetario, ValorSemAutoridade
 
 from .erros import AcaoInvalida
 
@@ -116,13 +129,40 @@ def _int(v: Any, rotulo: str) -> int:
     return v
 
 
-def _montar(tipo: str, d: Mapping[str, Any]) -> Pedido:
+def _dinheiro(d: Mapping[str, Any], campo: str, tipo: str, autor: str,
+              quando: str) -> ValorMonetario:
+    """O número do pedido com a origem dele — e só se a origem autoriza verba."""
+    micros = _int(_obrig(d, campo, tipo), campo)
+    origem = d.get("origem")
+    if not origem:
+        raise AcaoInvalida(
+            f"{tipo}: `{campo}` sem `origem`. Verba e lance dizem de onde vieram "
+            "(operador ou medido_na_conta)", codigo="valor_sem_origem",
+            detalhe={"campo": campo})
+    if origem == "operador":
+        quem = "_".join(str(autor or "").split())
+        if not quem or not quando:
+            raise AcaoInvalida(f"{tipo}: origem operador exige o autor autenticado",
+                               codigo="valor_sem_origem", detalhe={"campo": campo})
+        evidencia = f"operador:{quem}@{quando}"
+    else:
+        evidencia = str(d.get("evidencia") or "")
+    try:
+        valor = ValorMonetario(micros, str(origem), evidencia)
+        valor.autoriza()
+    except ValorSemAutoridade as exc:
+        raise AcaoInvalida(f"{tipo}: {exc}", codigo="valor_sem_autoridade",
+                           detalhe={"campo": campo, "origem": origem}) from exc
+    return valor
+
+
+def _montar(tipo: str, d: Mapping[str, Any], autor: str = "", quando: str = "") -> Pedido:
     if tipo == "status":
         return Pedido(A.AlterarStatus(_obrig(d, "nivel", tipo), str(_obrig(d, "ident", tipo)),
                                       _obrig(d, "status", tipo)))
     if tipo == "orcamento.diario":
         cid = _obrig(d, "campaign_id", tipo)
-        valor = _int(_obrig(d, "amount_micros", tipo), "amount_micros")
+        valor = _dinheiro(d, "amount_micros", tipo, autor, quando)
         ciente = bool(d.get("compartilhado_ciente", False))
         if d.get("budget_id") is not None:
             return Pedido(A.AlterarOrcamento(cid, d["budget_id"], valor, ciente))
@@ -132,7 +172,9 @@ def _montar(tipo: str, d: Mapping[str, Any]) -> Pedido:
     if tipo == "lance.alvo":
         cid = _obrig(d, "campaign_id", tipo)
         alvo = _obrig(d, "alvo", tipo)
-        valor = _obrig(d, "valor", tipo)
+        # tROAS é razão, não dinheiro: segue sem origem (lacuna declarada no W5).
+        valor = (_obrig(d, "valor", tipo) if alvo == "troas"
+                 else _dinheiro(d, "valor", tipo, autor, quando))
         if d.get("estrategia"):
             return Pedido(A.AlterarAlvoDeLance(cid, d["estrategia"], alvo, valor))
         if alvo not in _SONDA_DO_ALVO:
@@ -141,11 +183,17 @@ def _montar(tipo: str, d: Mapping[str, Any]) -> Pedido:
         sonda = A.AlterarAlvoDeLance(cid, _SONDA_DO_ALVO[alvo], alvo, valor)
         return Pedido(sonda, lambda antes: A.AlterarAlvoDeLance.do_estado(antes, alvo, valor))
     if tipo == "lance.estrategia":
+        def alvo_em_dinheiro(campo: str) -> Optional[ValorMonetario]:
+            # 0/ausente = estratégia sem alvo: não é número que autorize verba.
+            if not _int(d.get(campo, 0) or 0, campo):
+                return None
+            return _dinheiro(d, campo, tipo, autor, quando)
+
         return Pedido(A.TrocarEstrategia(
             _obrig(d, "campaign_id", tipo), _obrig(d, "nova", tipo),
-            tcpa_micros=_int(d.get("tcpa_micros", 0), "tcpa_micros"),
+            tcpa=alvo_em_dinheiro("tcpa_micros"),
             troas=float(d.get("troas", 0.0) or 0.0),
-            teto_cpc_micros=_int(d.get("teto_cpc_micros", 0), "teto_cpc_micros"),
+            teto_cpc=alvo_em_dinheiro("teto_cpc_micros"),
             portfolio=str(d.get("portfolio") or "")))
     if tipo == "negativa.keyword":
         return Pedido(A.AdicionarNegativas(
@@ -197,13 +245,17 @@ def _montar(tipo: str, d: Mapping[str, Any]) -> Pedido:
     raise AcaoInvalida(f"tipo de ação desconhecido: {tipo!r}", detalhe={"validos": list(TIPOS)})
 
 
-def pedido_do_payload(payload: Mapping[str, Any]) -> Pedido:
-    """`{"tipo": ..., <campos do tipo>}` → `Pedido`. 422 em qualquer recusa local."""
+def pedido_do_payload(payload: Mapping[str, Any], *, autor: str = "",
+                      quando: str = "") -> Pedido:
+    """`{"tipo": ..., <campos do tipo>}` → `Pedido`. 422 em qualquer recusa local.
+
+    `autor`/`quando` carimbam a evidência de `origem: operador` (ver o topo).
+    """
     if not isinstance(payload, Mapping):
         raise AcaoInvalida("`acao` tem de ser objeto com `tipo`")
     tipo = str(payload.get("tipo") or "")
     try:
-        return _montar(tipo, payload)
+        return _montar(tipo, payload, autor, quando)
     except AcaoInvalida:
         raise
     except (AcaoRecusada, TypeError, ValueError) as exc:
@@ -215,6 +267,17 @@ def pedido_do_payload(payload: Mapping[str, Any]) -> Pedido:
 
 def _cid_do_alvo(linha: Mapping[str, Any]) -> int:
     return int(str(linha["alvo_id_externo"]))
+
+
+def _dinheiro_gravado(linha: Mapping[str, Any], vp: Mapping[str, Any],
+                     micros: Any) -> ValorMonetario:
+    """O número gravado com a origem gravada. Sem `origem_valor` (proposta de
+    antes do W5), `nao_informada`: reconstrói, verifica e reverte, mas não aplica."""
+    o = vp.get("origem_valor")
+    if isinstance(o, Mapping) and o.get("origem"):
+        return ValorMonetario(micros, str(o["origem"]), str(o.get("evidencia") or ""))
+    return ValorMonetario(micros, "nao_informada",
+                          f"proposta {linha.get('proposta_id')} gravada sem origem_valor")
 
 
 def acao_da_proposta(linha: Mapping[str, Any]) -> Any:
@@ -236,15 +299,20 @@ def acao_da_proposta(linha: Mapping[str, Any]) -> Any:
         if op == "orcamento.diario":
             ciente = bool(va.get("compartilhado")) or int(va.get("campanhas_no_orcamento") or 1) > 1
             return A.AlterarOrcamento(_cid_do_alvo(linha), vp["budget_id"],
-                                      vp["verba_diaria_micros"], ciente)
+                                      _dinheiro_gravado(linha, vp, vp["verba_diaria_micros"]),
+                                      ciente)
         if op == "lance.alvo":
             qual = next(k for k in ("teto_cpc", "tcpa", "troas") if k in vp)
-            return A.AlterarAlvoDeLance(_cid_do_alvo(linha), vp["estrategia"], qual, vp[qual])
+            lance = vp[qual] if qual == "troas" else _dinheiro_gravado(linha, vp, vp[qual])
+            return A.AlterarAlvoDeLance(_cid_do_alvo(linha), vp["estrategia"], qual, lance)
         if op == "lance.estrategia":
+            def gravado(campo: str) -> Optional[ValorMonetario]:
+                return _dinheiro_gravado(linha, vp, vp[campo]) if vp.get(campo) else None
+
             return A.TrocarEstrategia(_cid_do_alvo(linha), vp["estrategia"],
-                                      tcpa_micros=vp.get("tcpa_micros", 0),
+                                      tcpa=gravado("tcpa_micros"),
                                       troas=float(vp.get("troas", 0.0)),
-                                      teto_cpc_micros=vp.get("teto_cpc_micros", 0),
+                                      teto_cpc=gravado("teto_cpc_micros"),
                                       portfolio=vp.get("portfolio", ""))
         if op == "negativa.keyword":
             return A.AdicionarNegativas(vp["escopo"], alvo,

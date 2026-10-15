@@ -12,6 +12,12 @@ from google.ads.googleads.client import GoogleAdsClient
 from volc_ads.gads import catalogo
 from volc_ads.gestao import acoes as A
 from volc_ads.gestao.acoes import AcaoRecusada
+from volc_ads.gestao.valor import ValorMonetario
+
+
+def OP(micros):
+    """Valor digitado pelo operador — a origem que as ações de verba/lance exigem."""
+    return ValorMonetario(micros, "operador", "operador:teste@2026-10-15T00:00:00+00:00")
 
 CID = "5478096539"
 CAMP = 24278665189
@@ -98,7 +104,7 @@ def teste_status_confere_estado():
 
 
 def _antes_orcamento(**troca):
-    a = A.AlterarOrcamento(CAMP, 15886629542, 35_000_000)
+    a = A.AlterarOrcamento(CAMP, 15886629542, OP(35_000_000))
     linha = _linha(campaign__id=CAMP, campaign_budget__id=15886629542,
                    campaign_budget__amount_micros=30_000_000, campaign_budget__period="DAILY",
                    campaign_budget__explicitly_shared=troca.get("compartilhado", False),
@@ -124,23 +130,23 @@ def teste_orcamento_compartilhado_so_com_ciencia():
     a, antes = _antes_orcamento(compartilhado=True, n=3)
     with pytest.raises(AcaoRecusada, match="compartilhado por 3"):
         a.conferir(antes)
-    A.AlterarOrcamento(CAMP, 15886629542, 35_000_000, compartilhado_ciente=True).conferir(antes)
+    A.AlterarOrcamento(CAMP, 15886629542, OP(35_000_000), compartilhado_ciente=True).conferir(antes)
 
 
 def teste_orcamento_recusa_estado_divergente_e_periodo_total():
     a, antes = _antes_orcamento()
     with pytest.raises(AcaoRecusada, match="outro estado"):
-        A.AlterarOrcamento(CAMP, 1, 35_000_000).conferir(antes)
+        A.AlterarOrcamento(CAMP, 1, OP(35_000_000)).conferir(antes)
     with pytest.raises(AcaoRecusada, match="não diário"):
         a.conferir({**antes, "total_micros": 900_000_000, "periodo": "CUSTOM_PERIOD"})
     with pytest.raises(AcaoRecusada, match="já está"):
-        A.AlterarOrcamento(CAMP, 15886629542, 30_000_000).conferir(antes)
+        A.AlterarOrcamento(CAMP, 15886629542, OP(30_000_000)).conferir(antes)
 
 
 @pytest.mark.parametrize("valor", [0, -10_000, 35_000_001, 1.5, True])
 def teste_orcamento_recusa_micros_invalidos(valor):
     with pytest.raises(AcaoRecusada):
-        A.AlterarOrcamento(CAMP, 1, valor)
+        A.AlterarOrcamento(CAMP, 1, OP(valor))
 
 
 # ── 3. alvo de lance ────────────────────────────────────────────────────────
@@ -155,7 +161,7 @@ def _antes_lance(estrategia="TARGET_SPEND", **campos):
 
 def teste_teto_de_cpc_do_maximizar_cliques_vai_no_target_spend():
     antes = _antes_lance(campaign__target_spend__cpc_bid_ceiling_micros=1_000_000)
-    a = A.AlterarAlvoDeLance.do_estado(antes, "teto_cpc", 1_500_000)
+    a = A.AlterarAlvoDeLance.do_estado(antes, "teto_cpc", OP(1_500_000))
     (op,) = _ops(a)
     c = op.campaign_operation
     assert c.update.target_spend.cpc_bid_ceiling_micros == 1_500_000
@@ -172,7 +178,8 @@ def teste_teto_de_cpc_do_maximizar_cliques_vai_no_target_spend():
     ("TARGET_ROAS", "troas", 2.0, "target_roas.target_roas"),
 ])
 def teste_alvo_vai_no_campo_da_estrategia(estrategia, alvo, valor, caminho):
-    (op,) = _ops(A.AlterarAlvoDeLance(CAMP, estrategia, alvo, valor))
+    lance = valor if alvo == "troas" else OP(valor)
+    (op,) = _ops(A.AlterarAlvoDeLance(CAMP, estrategia, alvo, lance))
     assert list(op.campaign_operation.update_mask.paths) == [caminho]
     grupo, campo = caminho.split(".")
     assert getattr(getattr(op.campaign_operation.update, grupo), campo) == valor
@@ -185,23 +192,23 @@ def teste_alvo_vai_no_campo_da_estrategia(estrategia, alvo, valor, caminho):
 ])
 def teste_alvo_sem_campo_na_estrategia_e_recusado(estrategia, alvo):
     with pytest.raises(AcaoRecusada, match="não tem alvo"):
-        A.AlterarAlvoDeLance(CAMP, estrategia, alvo, 1_000_000)
+        A.AlterarAlvoDeLance(CAMP, estrategia, alvo, OP(1_000_000))
 
 
 def teste_alvo_nao_troca_estrategia_por_tras():
-    a = A.AlterarAlvoDeLance(CAMP, "MAXIMIZE_CONVERSIONS", "tcpa", 8_000_000)
+    a = A.AlterarAlvoDeLance(CAMP, "MAXIMIZE_CONVERSIONS", "tcpa", OP(8_000_000))
     with pytest.raises(AcaoRecusada, match="TrocarEstrategia"):
         a.conferir(_antes_lance("TARGET_SPEND"))
     with pytest.raises(AcaoRecusada, match="portfólio"):
         A.AlterarAlvoDeLance.do_estado(
             _antes_lance("TARGET_SPEND", campaign__bidding_strategy=
-                         f"customers/{CID}/biddingStrategies/9"), "teto_cpc", 1_000_000)
+                         f"customers/{CID}/biddingStrategies/9"), "teto_cpc", OP(1_000_000))
 
 
 def teste_alvo_zero_limpa_so_onde_e_opcional():
-    A.AlterarAlvoDeLance(CAMP, "MAXIMIZE_CONVERSIONS", "tcpa", 0)
+    A.AlterarAlvoDeLance(CAMP, "MAXIMIZE_CONVERSIONS", "tcpa", OP(0))
     with pytest.raises(AcaoRecusada):
-        A.AlterarAlvoDeLance(CAMP, "TARGET_CPA", "tcpa", 0)
+        A.AlterarAlvoDeLance(CAMP, "TARGET_CPA", "tcpa", OP(0))
     with pytest.raises(AcaoRecusada):
         A.AlterarAlvoDeLance(CAMP, "TARGET_ROAS", "troas", 0)
 
@@ -212,7 +219,7 @@ def teste_alvo_zero_limpa_so_onde_e_opcional():
 @pytest.mark.parametrize("acao, oneof, caminho", [
     (A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSIONS"), "maximize_conversions",
      "maximize_conversions.target_cpa_micros"),
-    (A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSIONS", tcpa_micros=8_000_000),
+    (A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSIONS", tcpa=OP(8_000_000)),
      "maximize_conversions", "maximize_conversions.target_cpa_micros"),
     (A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSION_VALUE", troas=4.0),
      "maximize_conversion_value", "maximize_conversion_value.target_roas"),
@@ -230,7 +237,7 @@ def teste_troca_marca_o_oneof_mesmo_sem_alvo(acao, oneof, caminho):
 
 def teste_troca_recusa_parametro_de_outra_estrategia():
     with pytest.raises(AcaoRecusada, match="tcpa_micros"):
-        A.TrocarEstrategia(CAMP, "TARGET_SPEND", tcpa_micros=8_000_000)
+        A.TrocarEstrategia(CAMP, "TARGET_SPEND", tcpa=OP(8_000_000))
     with pytest.raises(AcaoRecusada, match="não é escrita"):
         A.TrocarEstrategia(CAMP, "TARGET_CPA")
 
@@ -245,7 +252,7 @@ def teste_troca_respeita_o_canal():
 
 def teste_reverso_da_troca_volta_estrategia_e_alvo_anteriores():
     antes = _antes_lance(campaign__target_spend__cpc_bid_ceiling_micros=1_000_000)
-    (rev,) = A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSIONS", tcpa_micros=8_000_000).reverso(antes)
+    (rev,) = A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSIONS", tcpa=OP(8_000_000)).reverso(antes)
     assert (rev.nova, rev.teto_cpc_micros, rev.tcpa_micros) == ("TARGET_SPEND", 1_000_000, 0)
     port = f"customers/{CID}/biddingStrategies/9"
     (rev,) = A.TrocarEstrategia(CAMP, "MANUAL_CPC").reverso(
@@ -594,7 +601,7 @@ def teste_api_v25_nao_tem_validate_only_para_recomendacao():
 TODAS = [
     A.AlterarStatus("campanha", CAMP, "PAUSED"), A.AlterarStatus("grupo", AG, "PAUSED"),
     A.AlterarStatus("anuncio", f"{AG}~1", "PAUSED"), A.AlterarStatus("asset_group", 1, "PAUSED"),
-    A.AlterarOrcamento(CAMP, 1, 10_000), A.AlterarAlvoDeLance(CAMP, "TARGET_SPEND", "teto_cpc", 10_000),
+    A.AlterarOrcamento(CAMP, 1, OP(10_000)), A.AlterarAlvoDeLance(CAMP, "TARGET_SPEND", "teto_cpc", OP(10_000)),
     A.TrocarEstrategia(CAMP, "MANUAL_CPC"),
     A.AdicionarNegativas("campanha", CAMP, (A.Termo("x"),)),
     A.AdicionarNegativas("grupo", AG, (A.Termo("x"),)),

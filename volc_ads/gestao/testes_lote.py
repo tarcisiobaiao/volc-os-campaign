@@ -21,6 +21,11 @@ from volc_ads.gads import modo
 from volc_ads.gestao import acoes as A
 from volc_ads.gestao import lote
 from volc_ads.gestao.lote import LoteRecusado
+from volc_ads.gestao.valor import ValorMonetario
+
+
+def OP(micros):
+    return ValorMonetario(micros, "operador", "operador:teste@2026-10-15T00:00:00+00:00")
 
 CID = "5478096539"
 CAMP = 24278665189
@@ -117,12 +122,12 @@ def teste_plano_guarda_a_faixa_de_cada_acao_e_ids_temporarios_do_lote():
 def teste_status_e_lance_na_mesma_campanha_cabem_no_lote():
     """Campos diferentes do mesmo recurso: aceito ao vivo em 08/10/2026."""
     lote.montar([A.AlterarStatus("campanha", CAMP, "PAUSED"),
-                 A.AlterarAlvoDeLance(CAMP, "TARGET_SPEND", "teto_cpc", 1_500_000)], GT, CID)
+                 A.AlterarAlvoDeLance(CAMP, "TARGET_SPEND", "teto_cpc", OP(1_500_000))], GT, CID)
 
 
 def teste_duas_acoes_no_mesmo_campo_sao_recusadas():
     with pytest.raises(LoteRecusado, match="campaign_bidding_strategy"):
-        lote.montar([A.AlterarAlvoDeLance(CAMP, "TARGET_SPEND", "teto_cpc", 1_500_000),
+        lote.montar([A.AlterarAlvoDeLance(CAMP, "TARGET_SPEND", "teto_cpc", OP(1_500_000)),
                      A.TrocarEstrategia(CAMP, "MAXIMIZE_CONVERSIONS")], GT, CID)
     with pytest.raises(LoteRecusado, match="~11"):
         lote.montar([A.AjustarHorario(CAMP, 11, 1.2),

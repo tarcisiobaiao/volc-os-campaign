@@ -87,7 +87,7 @@ describe('o cliente preserva a codigo do contrato', () => {
     vi.stubGlobal('fetch', fetchFalso);
     const p = gestaoApi.propor({
       customer_id: '5478096539',
-      acao: { tipo: 'orcamento.diario', campaign_id: '24278665189', amount_micros: 33_000_000 },
+      acao: { tipo: 'orcamento.diario', campaign_id: '24278665189', amount_micros: 33_000_000, origem: 'operador' },
       motivo: 'teste',
     });
     await expect(p).rejects.toMatchObject({ status: 409, codigo: 'regra_ausente', detalhe: { regra_chave: 'gestao_manual_google' } });

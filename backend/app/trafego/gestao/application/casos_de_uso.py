@@ -45,6 +45,7 @@ from zoneinfo import ZoneInfo
 from app.trafego import escopo, intencao
 from volc_ads.gestao import ledger as motor_ledger
 from volc_ads.gestao.acoes import AcaoRecusada
+from volc_ads.gestao.valor import ValorSemAutoridade
 
 from . import autonomia, sem_delta
 from .efeito import conferir_efeito
@@ -108,6 +109,15 @@ def campos_divergentes(aprovado: Mapping[str, Any], agora: Mapping[str, Any]) ->
     """As chaves cujo valor mudou entre o "antes" aprovado e o relido."""
     a, b = _canon(dict(aprovado or {})), _canon(dict(agora or {}))
     return sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
+
+
+def _exigir_autoridade(acao: Any) -> None:
+    """Verba/lance de origem que não autoriza (serp, ferramenta externa, proposta
+    antiga sem origem) para aqui: nada lido, nada gravado, nenhuma requisição."""
+    try:
+        acao.exigir_autoridade()
+    except ValorSemAutoridade as exc:
+        raise AcaoInvalida(str(exc), codigo="valor_sem_autoridade") from exc
 
 
 def _iso(d: datetime) -> str:
@@ -275,6 +285,8 @@ class Gestao:
             return await asyncio.to_thread(fn, *args, **kw)
         except ErroDeGestao:
             raise
+        except ValorSemAutoridade as exc:
+            raise AcaoInvalida(str(exc), codigo="valor_sem_autoridade") from exc
         except AcaoRecusada as exc:
             raise AcaoInvalida(str(exc), codigo="estado_nao_permite") from exc
         except Exception as exc:  # noqa: BLE001
@@ -307,7 +319,7 @@ class Gestao:
         horas = validade_horas or self.config.validade_padrao_horas
         if not 1 <= int(horas) <= self.config.validade_maxima_horas:
             raise AcaoInvalida(f"validade_horas fora de [1, {self.config.validade_maxima_horas}]")
-        pedido = pedido_do_payload(acao_payload)
+        pedido = pedido_do_payload(acao_payload, autor=autor, quando=_iso(self.agora()))
 
         chave = regra_chave or self.config.regra_padrao
         regra = await self.ledger.regra_vigente(chave)
@@ -585,6 +597,7 @@ class Gestao:
             raise ConflitoDeEstado(porque or "não pode aplicar")
 
         acao = acao_da_proposta(p)
+        _exigir_autoridade(acao)
         self._exigir_trava_aberta()
         antes = await self._google(self.conta.ler_antes, customer_id, acao, conferir=False)
         divergentes = campos_divergentes(p.get("valor_atual") or {}, antes.dados)

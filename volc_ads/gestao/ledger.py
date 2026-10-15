@@ -41,8 +41,12 @@ def chave_idempotencia(acao: Acao, customer_id: str, antes: dict) -> str:
 
     O "antes" entra na chave: a mesma mudança proposta sobre outro estado é
     outra proposta. Cabe na CHECK `^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`.
+
+    `origem_valor` fica FORA: a evidência do operador carrega o instante, e
+    dois cliques no mesmo diff não podem virar duas propostas.
     """
-    corpo = _canonico([acao.tipo, alvo_chave(acao, customer_id), antes, acao.valor_proposto()])
+    proposto = {k: v for k, v in acao.valor_proposto().items() if k != "origem_valor"}
+    corpo = _canonico([acao.tipo, alvo_chave(acao, customer_id), antes, proposto])
     return f"gestao:{acao.tipo}:{hashlib.sha256(corpo.encode()).hexdigest()[:40]}"
 
 

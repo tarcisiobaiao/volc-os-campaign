@@ -95,11 +95,20 @@ export interface AcaoStatus {
   status: StatusGerivel;
 }
 
+/**
+ * De onde veio o número de verba/lance. A tela só manda `operador` (o humano
+ * digitou); o servidor carimba quem e quando. `medido_na_conta` exige a GAQL em
+ * `evidencia`. Qualquer outra origem (SERP, ferramenta externa) é recusada.
+ */
+export type OrigemDoValor = 'operador' | 'medido_na_conta';
+
 export interface AcaoOrcamento {
   tipo: 'orcamento.diario';
   campaign_id: IdExterno;
   /** Micros inteiros, múltiplos de 10.000. */
   amount_micros: number;
+  origem: OrigemDoValor;
+  evidencia?: string;
   budget_id?: IdExterno;
   compartilhado_ciente?: boolean;
 }
@@ -110,6 +119,9 @@ export interface AcaoAlvoDeLance {
   alvo: AlvoDeLance;
   /** `troas` é razão (4.5 = 450%); os outros em micros. */
   valor: number;
+  /** Obrigatória para tcpa/teto_cpc (dinheiro); tROAS é razão e não leva. */
+  origem?: OrigemDoValor;
+  evidencia?: string;
   estrategia?: string;
 }
 
@@ -120,6 +132,9 @@ export interface AcaoTrocaDeEstrategia {
   tcpa_micros?: number;
   troas?: number;
   teto_cpc_micros?: number;
+  /** Obrigatória quando há tcpa_micros/teto_cpc_micros. */
+  origem?: OrigemDoValor;
+  evidencia?: string;
   portfolio?: string;
 }
 

@@ -280,7 +280,10 @@ describe('propor: formulário → antes/depois → proposta', () => {
     await waitFor(() => expect(api.propor).toHaveBeenCalledTimes(1));
     expect(api.propor).toHaveBeenCalledWith({
       customer_id: CUSTOMER,
-      acao: { tipo: 'orcamento.diario', campaign_id: CAMPANHA, amount_micros: 33_000_000, compartilhado_ciente: false },
+      acao: {
+        tipo: 'orcamento.diario', campaign_id: CAMPANHA, amount_micros: 33_000_000, origem: 'operador',
+        compartilhado_ciente: false,
+      },
       motivo: 'verba limita entrega',
     });
     await screen.findByText(/Proposta registrada/);
