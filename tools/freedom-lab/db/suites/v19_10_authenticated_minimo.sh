@@ -337,9 +337,13 @@ PA -c "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url IN ('blog.p1.example/
 # depois: uma RPC atômica
 eq "$(estado authenticated "SELECT string_agg(url, ',' ORDER BY url) FROM public.volc_salvar_funil('123456789', ARRAY['https://www.blog.p1.example/old/', 'p1.example/a', 'p1.example/b'])" "$OPER")" "ok:blog.p1.example/old,p1.example/a,p1.example/b" "volc_salvar_funil: histórica divergente reenviada sem mudança não é tocada; válidas mantidas; nova entra"
 eq "$(estado authenticated "SELECT string_agg(url, ',' ORDER BY url) FROM public.volc_salvar_funil('123456789', ARRAY['p1.example/a'])" "$OPER")" "ok:p1.example/a" "volc_salvar_funil: o que saiu da lista é desativado (inclusive a divergente)"
-eq "$(estado authenticated "DO \$t\$ BEGIN PERFORM public.volc_salvar_funil('123456789', ARRAY['outro.example/inat', 'p1.example/c']); EXCEPTION WHEN insufficient_privilege THEN NULL; END \$t\$; $ATIVAS" "$OPER")" "ok:blog.p1.example/old,p1.example/a" "volc_salvar_funil: reativar a divergente é recusado e NADA muda (atômico; ativas não diminuem)"
+# ultima <claims> <sql>: como o estado (authenticated, BEGIN … ROLLBACK), devolve a ÚLTIMA linha de dados
+ultima() { printf "BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claims = '%s'; %s; ROLLBACK;\n" "$1" "$2" \
+  | docker exec -i "$NOME" psql -h localhost -U postgres -d postgres -X -A -t 2>&1 | grep -vE '^(BEGIN|ROLLBACK|SET|DO)$' | tail -1; }
+eq "$(ultima "$OPER" "DO \$t\$ BEGIN PERFORM public.volc_salvar_funil('123456789', ARRAY['outro.example/inat', 'p1.example/c']); EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'recusado'; END \$t\$; $ATIVAS")" "blog.p1.example/old,p1.example/a" "volc_salvar_funil: reativar a divergente é recusado e NADA muda (atômico; ativas não diminuem)"
+eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('123456789', ARRAY['outro.example/inat', 'p1.example/c'])" "$OPER" | cut -c1-5)" "42501" "volc_salvar_funil: a recusa chega ao cliente (não é engolida)"
 eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY['p2v.example/x2'])" "$OPER" | cut -c1-5)" "42501" "volc_salvar_funil: operador não grava na campanha de outro"
-eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY[]::text[])" "$OPER")" "ok:0" "volc_salvar_funil: operador não desativa nada na campanha de outro"
+eq "$(ultima "$OPER" "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY[]::text[]); SELECT count(*) FROM $CFU WHERE campaign_id = '222222222' AND \"Active\"")" "1" "volc_salvar_funil: operador não desativa nada na campanha de outro (a ativa dela segue ativa)"
 eq "$(estado anon "SELECT count(*) FROM public.volc_salvar_funil('123456789', ARRAY[]::text[])" | cut -c1-5)" "42501" "volc_salvar_funil: anon sem EXECUTE"
 eq "$(P -c "$ATIVAS")" "blog.p1.example/old,p1.example/a" "volc_salvar_funil: estado gravado intacto depois das provas"
 PA -c "DELETE FROM public.campaign_funnel_urls WHERE campaign_id = '123456789' AND url IN ('blog.p1.example/old', 'outro.example/inat')" >/dev/null
