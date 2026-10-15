@@ -1,0 +1,39 @@
+{
+  "http": 200,
+  "aprovado_pelos_juizes": true,
+  "n_operacoes": 40,
+  "prova_google": {
+    "request_ids": [
+      "SDeAi8SZ8xFRhKFHxNBWuQ"
+    ],
+    "versao_api": "v25",
+    "validado_em": "2026-10-15T01:39:28.013635+00:00",
+    "validate_only": true
+  },
+  "selo_retido": {
+    "motivos": [
+      "destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.",
+      "bloqueio DIVULGACAO_DE_MONETIZACAO_AUSENTE: Nenhuma divulgação de monetização por anúncios observada.",
+      "bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página.",
+      "bloqueio IDENTIDADE_OPERADOR_AUSENTE: Nenhum registro de operador (CNPJ) na página. 'Sobre' e 'Contato' dizem como chegar a alguém; eles não dizem QUEM responde.",
+      "desconhecido claims_and_disclosures: página sem texto visível para inspecionar",
+      "desconhecido content_originality_and_congruence: página sem texto visível",
+      "desconhecido government_services: página sem texto visível",
+      "desconhecido identity: página sem texto visível para inspecionar",
+      "desconhecido live_drift: nenhum HTML ao vivo observado nesta avaliação",
+      "desconhecido redirect_and_cloaking: cadeia de redirecionamento não medida; sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+    ],
+    "porque": "O payload passou nos juízes, mas o DESTINO não está elegível como destino de campanha paga. A impressão aprovável não foi emitida: ela autoriza escrita, e nada aqui autoriza apontar clique comprado para esta página."
+  },
+  "plano_impressao": null,
+  "elegivel_para_subir": false,
+  "motivo_elegibilidade": "O destino https://creditoup.com.br/?post_type=r&p=2477 não está elegível como destino de campanha paga: destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.; bloqueio DIVULGACAO_DE_MONETIZACAO_AUSENTE: Nenhuma divulgação de monetização por anúncios observada.; bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página. (e mais 7).",
+  "destino_elegivel": false,
+  "recusa_local": null,
+  "falha_validacao": null,
+  "autocorrecao": [],
+  "avisos_locais": [
+    "headline: Repetição de palavra entre recursos do mesmo grupo (política 14848296) — aparece em 5 itens (limite 4)"
+  ],
+  "detalhe_http": null
+}

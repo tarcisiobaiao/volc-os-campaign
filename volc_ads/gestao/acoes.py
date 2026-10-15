@@ -1143,7 +1143,11 @@ class ExcluirPlacements(Acao):
                     "campaign_criterion.youtube_video.video_id FROM campaign_criterion "
                     f"WHERE campaign.id = {self.campaign_id} "
                     "AND campaign_criterion.negative = TRUE AND campaign_criterion.type IN "
-                    "(PLACEMENT, MOBILE_APPLICATION, YOUTUBE_CHANNEL, YOUTUBE_VIDEO)",)
+                    "(PLACEMENT, MOBILE_APPLICATION, YOUTUBE_CHANNEL, YOUTUBE_VIDEO)",
+                    # O canal precisa vir mesmo sem exclusão nenhuma ainda: a
+                    # consulta acima volta vazia e o canal some com ela.
+                    "SELECT campaign.id, campaign.advertising_channel_type FROM campaign "
+                    f"WHERE campaign.id = {self.campaign_id}")
         return ("SELECT customer_negative_criterion.id, customer_negative_criterion.type, "
                 "customer_negative_criterion.placement.url, "
                 "customer_negative_criterion.mobile_application.app_id, "
@@ -1159,9 +1163,24 @@ class ExcluirPlacements(Acao):
             p = _placement_da_linha(getattr(r, recurso))
             if p:
                 chaves.append(list(p.chave))
-        return {"exclusoes_existentes": len(chaves), "chaves": sorted(chaves)}
+        antes = {"exclusoes_existentes": len(chaves), "chaves": sorted(chaves)}
+        if self.escopo == "campanha" and len(linhas) > 1:
+            canais = [_enum(r.campaign.advertising_channel_type) for r in linhas[1]]
+            antes["canal"] = canais[0] if canais else None
+        return antes
 
     def conferir(self, antes):
+        if self.escopo == "campanha" and "canal" in antes:
+            if antes["canal"] is None:
+                raise AcaoRecusada(f"campanha {self.campaign_id} não encontrada na conta")
+            if antes["canal"] == "PERFORMANCE_MAX":
+                # A lista de critérios de campanha PMax não tem PLACEMENT: o
+                # Google só aceita exclusão de placement de PMax na CONTA (ou
+                # por lista de exclusão). Recusar aqui dá a mensagem certa em
+                # vez de um erro genérico no validate_only.
+                raise AcaoRecusada(
+                    "Performance Max não aceita exclusão de placement por campanha; "
+                    "use escopo='conta' (vale para toda a conta) ou uma lista de exclusão")
         ja = {tuple(k) for k in antes.get("chaves", [])}
         dup = [p.json() for p in self.itens if p.chave in ja]
         if dup:

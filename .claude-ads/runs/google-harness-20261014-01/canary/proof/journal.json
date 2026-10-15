@@ -1,0 +1,5 @@
+{
+  "contract_sha256": "f48519480aa78e180cc7d3231c4452ad9c729c8b1f409411fea4b5e240fd5ebe",
+  "generations_started": 2,
+  "last_error": "builder: {\"achados\": [{\"severidade\": \"erro\", \"campo\": \"description_rsa\", \"valor\": \"Confira as regras de renda familiar e os critérios gerais para concorrer a vagas\", \"motivo\": \"91 chars > limite 90\", \"codigo\": \"\"}, {\"severidade\": \"erro\", \"campo\": \"description_rsa\", \"valor\": \"1 itens\", \"motivo\": \"mínimo é 2\", \"codigo\": \"\"}]}"
+}

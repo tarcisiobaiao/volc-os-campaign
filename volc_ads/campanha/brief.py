@@ -1400,6 +1400,14 @@ SEM_SUB_INTENCAO = "—"
 
 
 @dataclass
+class CopyRSA:
+    """Texto próprio de um grupo; assets de campanha continuam em `Copy`."""
+
+    headlines: list[str] = field(default_factory=list)
+    descriptions: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SubIntencao:
     """Um grupo de keywords que respondem à MESMA pergunta. Vira um ad group.
 
@@ -1432,6 +1440,8 @@ class SubIntencao:
     tcpa: float | None = None
     # negativas SÓ deste grupo; as de `brief.negativas_adgroup` valem em todos
     negativas: list[str] = field(default_factory=list)
+    # Opcional: chamadores antigos continuam usando a copy comum do brief.
+    rsa: CopyRSA | None = None
 
     def __post_init__(self) -> None:
         if not self.nome.strip():

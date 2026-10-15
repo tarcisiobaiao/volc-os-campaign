@@ -1182,9 +1182,11 @@ def test_cpc_estimado_alterado_nao_muda_brief_nem_payload_do_search() -> None:
     removido, multiplicado ou inventado. O Brief e as operações do Search
     têm de sair idênticos."""
     import dataclasses
+    from unittest.mock import patch
 
     from volc_ads.campanha import search
     from volc_ads.campanha.brief import Copy, Sitelink
+    from volc_ads.campanha.testes_search import _cliente_sem_rede
 
     copy_op = Copy(
         headlines=[f"Cartão Negativado {i}" for i in range(1, 9)],
@@ -1211,7 +1213,10 @@ def test_cpc_estimado_alterado_nao_muda_brief_nem_payload_do_search() -> None:
         b = montar_brief(c, Escolha(cpc_inicial=0.40, budget_diario=15.0, vertical="informativo",
                                     carimbo_nome="20261009_120000"),
                          copy=copy_op).brief
-        ops, _r = search.construir("5478096539", b, login_customer_id="6016739364")
+        # Esta prova é de protobuf, não de OAuth. Sem isso ela renovava a
+        # credencial real apesar do contrato offline declarado no arquivo.
+        with patch.object(search, "cliente", return_value=_cliente_sem_rede()):
+            ops, _r = search.construir("5478096539", b, login_customer_id="6016739364")
         return dataclasses.asdict(b), [type(o).serialize(o) if hasattr(type(o), "serialize")
                                        else o._pb.SerializeToString() for o in ops]
 

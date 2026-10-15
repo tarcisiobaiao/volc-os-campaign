@@ -1,0 +1,14 @@
+{
+ "opportunity_id": 106,
+ "run_id": 28,
+ "customer_id": "5478096539",
+ "login_customer_id": "6016739364",
+ "budget_diario": 10.0,
+ "cpc_inicial": 0.5,
+ "estrategia_lance": "MANUAL_CPC",
+ "rede": {"google_search": true, "search_partners": false, "display_expansion": false},
+ "vertical": "informativo",
+ "url_final": "https://creditoup.com.br/?post_type=r&p=2477",
+ "carimbo_nome": "20261014_230000",
+ "origem_dos_parametros": "Reuso literal dos parâmetros declarados pelo operador no pedido de 09/10 (canarios/volc-gads-blindagem-20261009/operacao-20261009/provar-106-search-pedido-v3.json, sha256 8eb58f633273f7220e3d812e40b21ff958e011a7386515580f51d740a0e4a8eb). Nenhum valor financeiro novo foi decidido nesta missão; nada é criado."
+}

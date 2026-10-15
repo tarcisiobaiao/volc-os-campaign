@@ -1,0 +1,14 @@
+{
+ "rotulo": "Instalacao em venvs isolados no scratchpad (pip, sem pipe de instalador); data 2026-10-14",
+ "python_3_13": {
+  "mabwiser": {"resultado": "instalou 2.7.4 (wheel py3, puxa pandas/sklearn/seaborn)", "smoke": "ThompsonSampling fit/predict ok"},
+  "vowpalwabbit": {"resultado": "instalou 9.11.9 (wheel cp313 macOS arm64)", "smoke": "--cb_explore_adf learn/predict ok; numpy instalado a parte"},
+  "obp": {"resultado": "pip RECUOU silenciosamente para obp 0.4.1 (wheel 2021); sdists 0.5.0/0.5.3/0.5.6 tem versao inconsistente no metadata; 0.5.7 exige Python <3.11", "smoke": "IPW/DM/DR do obp 0.4.1 = implementacao numpy (diferenca 0.0) — e3b_obp_crosscheck.json"}
+ },
+ "python_3_14": {
+  "mabwiser": {"resultado": "instalou 2.7.4; import ok"},
+  "vowpalwabbit": {"resultado": "instalou 9.11.9 (wheel cp314); Workspace ok"},
+  "obp": {"resultado": "mesmo recuo para 0.4.1; `pip download obp==0.5.7` -> ERROR: requires a different Python: 3.14.6 not in '<3.11,>=3.8'"}
+ },
+ "conclusao": "VW e MABWiser instalam limpo em 3.13/3.14; obp atual (0.5.7) nao suporta >=3.11 e o pip entrega uma versao de 2021 sem avisar — se usado, fixar versao e venv proprio; para o VOLC, IPS/DR cabem em ~20 linhas numpy (e3_ope.py)."
+}

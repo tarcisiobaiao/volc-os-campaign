@@ -37,7 +37,12 @@ GAQLS = {
     ),
     "campaign_asset": (
         "SELECT campaign_asset.resource_name, campaign_asset.status, "
-        "campaign_asset.primary_status, campaign_asset.primary_status_reasons, campaign.id, "
+        "campaign_asset.primary_status, campaign_asset.primary_status_reasons, "
+        # A política do ASSET vinculado (sitelink, callout, imagem…). Sem ela a
+        # família dizia "status do vínculo" e calava a reprovação do texto.
+        # Lido contra a conta real em 14/10/2026: 71 linhas, sem erro de FROM.
+        "asset.policy_summary.approval_status, asset.policy_summary.review_status, "
+        "asset.policy_summary.policy_topic_entries, campaign.id, "
         # Só aqui a API exige o campo do filtro no SELECT (EXPECTED_REFERENCED_FIELD_IN_SELECT_CLAUSE).
         "campaign.status "
         "FROM campaign_asset "
@@ -104,8 +109,71 @@ def _motivos(repetido: Any) -> list[str]:
     return [enum_nome(m) for m in repetido]
 
 
+def _evidencia(ev: Any) -> dict:
+    """O PORQUÊ do tópico, como a API mandou. Só as formas presentes."""
+    d: dict = {}
+    if ev.text_list.texts:
+        d["text_list"] = list(ev.text_list.texts)
+    if ev.website_list.websites:
+        d["website_list"] = list(ev.website_list.websites)
+    if ev.destination_text_list.destination_texts:
+        d["destination_text_list"] = list(ev.destination_text_list.destination_texts)
+    if ev.destination_mismatch.url_types:
+        d["destination_mismatch_url_types"] = [enum_nome(t) for t in ev.destination_mismatch.url_types]
+    dnw = ev.destination_not_working
+    if dnw.expanded_url or dnw.http_error_code or dnw.last_checked_date_time:
+        d["destination_not_working"] = {
+            "expanded_url": dnw.expanded_url or None,
+            "device": enum_nome(dnw.device),
+            "http_error_code": dnw.http_error_code or None,
+            "dns_error_type": enum_nome(dnw.dns_error_type),
+            "last_checked": dnw.last_checked_date_time or None,
+        }
+    if ev.language_code:
+        d["language_code"] = ev.language_code
+    return d
+
+
+def _restricao(c: Any) -> dict:
+    """ONDE o tópico limita (país, certificado, revenda). Só o que veio."""
+    d: dict = {}
+    for campo in ("country_constraint_list", "certificate_missing_in_country_list",
+                  "certificate_domain_mismatch_in_country_list"):
+        lista = getattr(c, campo)
+        if lista.countries:
+            d[campo] = {"total_alvo": lista.total_targeted_countries or None,
+                        "paises": [p.country_criterion for p in lista.countries]}
+    if "reseller_constraint" in c:
+        d["reseller_constraint"] = True
+    return d
+
+
 def _topicos(politica: Any) -> list[dict]:
-    return [{"topic": t.topic, "type": enum_nome(t.type_)} for t in politica.policy_topic_entries]
+    """Tópico, tipo e — quando a API manda — evidências e restrições.
+
+    Até 14/10/2026 só `topic` e `type` eram guardados: o motivo (texto ou URL
+    que violou, destino quebrado, país restrito) vinha de graça na mesma linha
+    e era jogado fora. Medido na conta real: um anúncio FULLY_LIMITED em
+    GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES com uma restrição declarada.
+    Chaves só aparecem quando há conteúdo, então tópico sem evidência mantém
+    exatamente a forma (e o `estado_hash`) de antes.
+    """
+    saida = []
+    for t in politica.policy_topic_entries:
+        item: dict = {"topic": t.topic, "type": enum_nome(t.type_)}
+        evidencias = [e for e in (_evidencia(ev) for ev in t.evidences) if e]
+        restricoes = [r for r in (_restricao(c) for c in t.constraints) if r]
+        if evidencias:
+            item["evidences"] = evidencias
+        if restricoes:
+            item["constraints"] = restricoes
+        if len(t.constraints) > len(restricoes):
+            # Medido em 14/10/2026: FULLY_LIMITED com uma restrição VAZIA (nenhum
+            # campo preenchido). Não há país a guardar, mas a API disse que há
+            # restrição — o fato fica, sem inventar o conteúdo.
+            item["constraints_sem_detalhe"] = len(t.constraints) - len(restricoes)
+        saida.append(item)
+    return saida
 
 
 def _id_texto(valor: int) -> str | None:
@@ -137,6 +205,10 @@ class _Estado:
             aprovacao = enum_nome(msg.policy_summary.approval_status)
             revisao = enum_nome(msg.policy_summary.review_status)
             topicos = _topicos(msg.policy_summary)
+        elif tipo == "campaign_asset":
+            aprovacao = enum_nome(row.asset.policy_summary.approval_status)
+            revisao = enum_nome(row.asset.policy_summary.review_status)
+            topicos = _topicos(row.asset.policy_summary)
         elif tipo == "keyword":
             aprovacao = enum_nome(msg.approval_status)
 

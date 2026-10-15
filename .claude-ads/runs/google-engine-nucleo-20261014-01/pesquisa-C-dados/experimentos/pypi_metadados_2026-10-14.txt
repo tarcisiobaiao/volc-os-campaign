@@ -1,0 +1,47 @@
+bertopic                         v0.17.4         2025-12-03 py>=3.10 lic=MIT License                  Copyright pure=True cp314mac=False nwheels=1
+bytewax                          v0.21.1         2024-11-25 py>=3.8 lic= pure=False cp314mac=False nwheels=30
+clickhouse-connect               v1.10.1         2026-10-14 py<3.15,>=3.10 lic=Apache-2.0 pure=False cp314mac=True nwheels=59
+crawlee                          v1.10.4         2026-10-06 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+dagster                          v1.13.26        2026-10-09 py<3.15,>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+duckdb                           v1.5.6          2026-09-28 py>=3.10.0 lic= pure=False cp314mac=True nwheels=34
+facebook-business                v26.0.2         2026-09-21 pyNone lic=LICENSE.txt pure=True cp314mac=False nwheels=1
+fastapi                          v0.143.1        2026-10-14 py>=3.10 lic=MIT pure=True cp314mac=False nwheels=1
+fastembed                        v0.9.0          2026-10-07 py>=3.10.0 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+feast                            v0.67.0         2026-10-13 py>=3.10.0 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+garf-core                        v1.3.3          2026-09-29 py>=3.9 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+garf-executors                   v1.7.0.post1    2026-09-23 py>=3.9 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+garf-google-ads                  v1.2.1          2026-07-30 py>=3.9 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+garf-io                          v1.5.1          2026-10-14 py>=3.8 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+garf-youtube-data-api            v0.0.13         2026-01-07 py>=3.8 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+garf-youtube                     v1.0.0          2026-01-16 py>=3.9 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+geoip2                           v5.3.0          2026-07-16 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+google-ads-api-report-fetcher    v1.18.3         2026-02-04 py>=3.9 lic=Apache 2.0 pure=True cp314mac=False nwheels=1
+google-ads                       v33.0.0         2026-09-23 py<3.15,>=3.9 lic=Apache License                           pure=True cp314mac=False nwheels=1
+google-genai                     v2.31.0         2026-10-14 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+grpcio                           v1.84.0         2026-09-14 py>=3.10 lic=Apache-2.0 pure=False cp314mac=True nwheels=60
+hdbscan                          v0.8.44         2026-06-01 py>=3.10 lic=BSD pure=False cp314mac=True nwheels=16
+httpx                            v0.28.1         2024-12-06 py>=3.8 lic=BSD-3-Clause pure=True cp314mac=False nwheels=1
+hypothesis                       v6.169.2        2026-10-14 py>=3.11 lic=MPL-2.0 pure=False cp314mac=True nwheels=77
+ipinfo                           v5.6.0          2026-04-22 py>=3.10 lic=Apache License 2.0 pure=True cp314mac=False nwheels=1
+litellm                          v1.105.1        2026-10-14 py<3.15,>=3.10 lic=MIT pure=False cp314mac=True nwheels=7
+numpy                            v2.5.4          2026-10-10 py>=3.12 lic=BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 pure=False cp314mac=True nwheels=65
+onnxruntime                      v1.31.0         2026-10-09 py>=3.11 lic=MIT License pure=False cp314mac=True nwheels=24
+opentelemetry-api                v1.45.1         2026-10-06 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+opentelemetry-sdk                v1.45.1         2026-10-06 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+pandas                           v3.0.6          2026-09-17 py>=3.11 lic=BSD 3-Clause License                     pure=False cp314mac=True nwheels=57
+playwright                       v1.64.0         2026-10-13 py>=3.10 lic=Apache-2.0 pure=False cp314mac=False nwheels=8
+polars                           v2.0.0          2026-10-06 py>=3.10 lic=Copyright (c) 2025 Ritchie Vink          pure=True cp314mac=False nwheels=1
+prefect                          v3.8.8          2026-10-06 py<3.15,>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+protobuf                         v7.36.2         2026-09-17 py>=3.10 lic=3-Clause BSD License pure=True cp314mac=True nwheels=7
+pydantic                         v2.14.1         2026-10-11 py>=3.10 lic=MIT pure=True cp314mac=False nwheels=1
+qdrant-client                    v1.19.1         2026-09-16 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+ray                              v2.59.0         2026-10-02 py>=3.10 lic=Apache 2.0 pure=False cp314mac=True nwheels=20
+redis                            v8.1.0          2026-07-30 py>=3.10 lic=MIT pure=True cp314mac=False nwheels=1
+respx                            v0.23.1         2026-04-08 py>=3.8 lic=BSD-3-Clause pure=True cp314mac=False nwheels=1
+schemathesis                     v4.31.1         2026-10-14 py>=3.11 lic=MIT pure=True cp314mac=False nwheels=1
+scikit-learn                     v1.9.1          2026-09-10 py>=3.11 lic=BSD-3-Clause pure=False cp314mac=True nwheels=42
+sentence-transformers            v6.1.0          2026-09-18 py>=3.10 lic=Apache-2.0 pure=True cp314mac=False nwheels=1
+tokenizers                       v0.23.3         2026-10-09 py>=3.10 lic= pure=False cp314mac=True nwheels=23
+torch                            v2.14.1         2026-09-30 py>=3.10 lic=Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT pure=False cp314mac=True nwheels=24
+umap-learn                       v0.5.12         2026-04-08 py>=3.9 lic=BSD pure=True cp314mac=False nwheels=1
+websockets                       v17.2           2026-10-03 py>=3.11 lic=BSD-3-Clause pure=True cp314mac=True nwheels=147

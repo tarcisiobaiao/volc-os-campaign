@@ -1,0 +1,29 @@
+{
+  "source_response_sha256": "92c14e969c4d65fd7c5e5ec46fb4afbe8242c4dc90284dc1d51bd4f7655e8a82",
+  "source_proposal_sha256": "14a5e9c0e427ba27aedbcd3e26aa224209c286cdd2ece04c7bcd3d6abe29b793",
+  "changes": [
+    {
+      "path": "/grupos/1/descriptions/0",
+      "before": "Confira as regras de renda familiar e os critérios gerais para concorrer a vagas gratuitas.",
+      "after": "Confira as regras de renda familiar e os critérios para concorrer a vagas gratuitas."
+    },
+    {
+      "path": "/grupos/2/headlines/0",
+      "before": "Senac nos 27 Estados",
+      "after": "Senac do Seu Estado"
+    },
+    {
+      "path": "/sitelinks/1",
+      "before": "Lista dos 27 Estados",
+      "after": "Senac por Estado"
+    },
+    {
+      "path": "/callouts/2",
+      "before": "Links para 27 Estados",
+      "after": "Links Oficiais por Estado"
+    }
+  ],
+  "reason": "limite real de 90 caracteres e 26 estados + DF, não 27 estados",
+  "reviewer": "Codex lead; revisão local explícita, não chamada LLM",
+  "new_llm_calls": 0
+}

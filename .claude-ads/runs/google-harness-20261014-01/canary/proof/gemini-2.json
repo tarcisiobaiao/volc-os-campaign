@@ -1,0 +1,29 @@
+{
+  "requested_model": "gemini-3.8-flash",
+  "served_model": "gemini-3.8-flash",
+  "text": "{\n  \"grupos\": [\n    {\n      \"nome\": \"Cursos Gratuitos Senac - Regras Gerais\",\n      \"keyword_indices\": [0, 1],\n      \"headlines\": [\n        \"Cursos Gratuitos Senac\",\n        \"Guia de Cursos do Senac\",\n        \"Programa Senac Gratuidade\"\n      ],\n      \"descriptions\": [\n        \"Entenda o funcionamento do Programa de Gratuidade do Senac e como buscar turmas no país.\",\n        \"Guia editorial independente com orientações sobre cursos, modalidades e links oficiais.\"\n      ],\n      \"hipotese\": \"Usuários buscando termos amplos sobre cursos gratuitos precisam de uma visão geral sobre como funciona o programa e onde encontrar as turmas oficiais.\"\n    },\n    {\n      \"nome\": \"Requisitos e Critérios de Acesso\",\n      \"keyword_indices\": [2],\n      \"headlines\": [\n        \"Requisitos Senac Gratuidade\",\n        \"Regras de Renda do Senac\",\n        \"Critérios para Vagas Senac\"\n      ],\n      \"descriptions\": [\n        \"Confira as regras de renda familiar e os critérios gerais para concorrer a vagas gratuitas.\",\n        \"Aprenda a calcular a renda familiar per capita exigida no regulamento do programa.\"\n      ],\n      \"hipotese\": \"Usuários pesquisando requisitos focam especificamente na regra de renda e condições de estudo ou trabalho para concorrer.\"\n    },\n    {\n      \"nome\": \"Cursos Senac por Estado e Editais\",\n      \"keyword_indices\": [3],\n      \"headlines\": [\n        \"Senac nos 27 Estados\",\n        \"Cursos Senac por Estado\",\n        \"Onde Achar Vagas no Senac\"\n      ],\n      \"descriptions\": [\n        \"Cada estado possui calendário e inscrições próprias. Acesse a lista de links oficiais.\",\n        \"Orientações para localizar o portal oficial da sua região e acompanhar os editais locais.\"\n      ],\n      \"hipotese\": \"Usuários com foco regional buscam a navegação direta até o portal oficial da sua respectiva unidade da federação.\"\n    }\n  ],\n  \"sitelinks\": [\n    \"Regras de Renda\",\n    \"Lista dos 27 Estados\",\n    \"Passo a Passo Inscrição\",\n    \"Tipos de Cursos\"\n  ],\n  \"callouts\": [\n    \"Guia Independente\",\n    \"Critérios Oficiais\",\n    \"Links para 27 Estados\",\n    \"Informações Claras\"\n  ],\n  \"lacunas\": [\n    \"A página não processa inscrições ou matrículas diretamente.\",\n    \"O calendário e a disponibilidade de vagas dependem exclusivamente de cada Senac estadual.\",\n    \"Valores de cursos pagos e editais específicos devem ser consultados nos sites oficiais de cada unidade federativa.\"\n  ]\n}",
+  "seconds": 6.126,
+  "usage": {
+    "cache_tokens_details": null,
+    "cached_content_token_count": null,
+    "candidates_token_count": 653,
+    "candidates_tokens_details": null,
+    "prompt_token_count": 2022,
+    "prompt_tokens_details": [
+      {
+        "modality": "TEXT",
+        "token_count": 2022
+      }
+    ],
+    "thoughts_token_count": null,
+    "tool_use_prompt_token_count": null,
+    "tool_use_prompt_tokens_details": null,
+    "total_token_count": 2675,
+    "traffic_type": null
+  },
+  "finish_reasons": [
+    "STOP"
+  ],
+  "cost_usd": null,
+  "cost_status": "not_reported_by_provider"
+}

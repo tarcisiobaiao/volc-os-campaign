@@ -1,0 +1,71 @@
+{
+  "url": "https://creditoup.com.br/?post_type=r&p=2477",
+  "elegivel": false,
+  "veredito": "blocked",
+  "papel": "paid_destination",
+  "ponto": "campaign_destination_eligibility",
+  "politica": "paid_destination_policy_spine.v2",
+  "motivos": [
+    "destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.",
+    "bloqueio DIVULGACAO_DE_MONETIZACAO_AUSENTE: Nenhuma divulgação de monetização por anúncios observada.",
+    "bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página.",
+    "bloqueio IDENTIDADE_OPERADOR_AUSENTE: Nenhum registro de operador (CNPJ) na página. 'Sobre' e 'Contato' dizem como chegar a alguém; eles não dizem QUEM responde.",
+    "desconhecido claims_and_disclosures: página sem texto visível para inspecionar",
+    "desconhecido content_originality_and_congruence: página sem texto visível",
+    "desconhecido government_services: página sem texto visível",
+    "desconhecido identity: página sem texto visível para inspecionar",
+    "desconhecido live_drift: nenhum HTML ao vivo observado nesta avaliação",
+    "desconhecido redirect_and_cloaking: cadeia de redirecionamento não medida; sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+  ],
+  "bloqueios": [
+    "DIVULGACAO_DE_MONETIZACAO_AUSENTE",
+    "IDENTIDADE_CONTATO_AUSENTE",
+    "IDENTIDADE_OPERADOR_AUSENTE"
+  ],
+  "riscos": [],
+  "desconhecidos": [
+    {
+      "verificacao": "claims_and_disclosures",
+      "status": "unavailable",
+      "motivo": "página sem texto visível para inspecionar"
+    },
+    {
+      "verificacao": "content_originality_and_congruence",
+      "status": "unavailable",
+      "motivo": "página sem texto visível"
+    },
+    {
+      "verificacao": "government_services",
+      "status": "unavailable",
+      "motivo": "página sem texto visível"
+    },
+    {
+      "verificacao": "identity",
+      "status": "unavailable",
+      "motivo": "página sem texto visível para inspecionar"
+    },
+    {
+      "verificacao": "live_drift",
+      "status": "not_applicable",
+      "motivo": "nenhum HTML ao vivo observado nesta avaliação"
+    },
+    {
+      "verificacao": "redirect_and_cloaking",
+      "status": "unavailable",
+      "motivo": "cadeia de redirecionamento não medida; sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+    }
+  ],
+  "leitura_ao_vivo": {
+    "concluida": false,
+    "detalhe": "destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.",
+    "variantes": []
+  },
+  "recibo_de_aprovacao": {
+    "presente": true
+  },
+  "declaracoes_do_projeto": {
+    "adtech": [],
+    "chrome": [],
+    "fonte": "ausente: o projeto não tem declaração de adtech nem de chrome configurada"
+  }
+}

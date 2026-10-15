@@ -200,6 +200,20 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
 
     grupos = _grupos(brief, ts, r)
 
+    # A mesma validação/API, mas sobre a copy que ESTE grupo vai usar.
+    # Não misturar assets de campanha com texto específico de um grupo.
+    rsa_por_grupo = {}
+    for sub, _kws, _nome in grupos:
+        if sub.rsa is None:
+            rsa_por_grupo[sub.nome] = (headlines, descriptions, fixacoes)
+            continue
+        hs = conteudo.forma(sub.rsa.headlines, "headline_rsa", r, permitir_dki=True)
+        ds = conteudo.forma(sub.rsa.descriptions, "description_rsa", r)
+        conteudo.politica(pol, hs, "headline_rsa", r)
+        conteudo.politica(pol, ds, "description_rsa", r)
+        fs = sc.checar_rsa(cfg.anuncio if cfg else None, hs, ds, r)
+        rsa_por_grupo[sub.nome] = (hs, ds, fs)
+
     # As negativas, triadas com o `r` DE VERDADE. Na versão anterior os dois
     # blocos abaixo recebiam um `validacao.Resultado()` descartável, e por isso
     # negativa longa demais ou com palavras demais sumia do payload em
@@ -297,26 +311,26 @@ def construir(cid: str, brief: Brief, *, login_customer_id: str, ai_max: bool = 
             ops.append(o)
 
         # RSA — um por ad group. Ad group sem anúncio não veicula nada, então
-        # este bloco não é opcional quando os grupos se multiplicam. A copy é a
-        # mesma nos N grupos: o brief carrega uma `Copy` só.
+        # este bloco não é opcional quando os grupos se multiplicam.
+        headlines_grupo, descriptions_grupo, fixacoes_grupo = rsa_por_grupo[sub.nome]
         o = c.get_type("MutateOperation")
         ada = o.ad_group_ad_operation.create
         ada.ad_group = ag
         ada.status = c.enums.AdGroupAdStatusEnum.ENABLED
         ada.ad.final_urls.append(url)
-        for t in headlines:
+        for t in headlines_grupo:
             a = c.get_type("AdTextAsset")
             a.text = t
-            if t.strip() in fixacoes:
+            if t.strip() in fixacoes_grupo:
                 a.pinned_field = getattr(c.enums.ServedAssetFieldTypeEnum,
-                                         fixacoes[t.strip()])
+                                         fixacoes_grupo[t.strip()])
             ada.ad.responsive_search_ad.headlines.append(a)
-        for t in descriptions:
+        for t in descriptions_grupo:
             a = c.get_type("AdTextAsset")
             a.text = t
-            if t.strip() in fixacoes:
+            if t.strip() in fixacoes_grupo:
                 a.pinned_field = getattr(c.enums.ServedAssetFieldTypeEnum,
-                                         fixacoes[t.strip()])
+                                         fixacoes_grupo[t.strip()])
             ada.ad.responsive_search_ad.descriptions.append(a)
         if cfg is not None and cfg.anuncio is not None:
             if cfg.anuncio.path1:

@@ -1,0 +1,26 @@
+[
+  {
+    "campaign_id": "24278665189",
+    "ad_group_id": "199085896206",
+    "text": "cursos gratuitos senac",
+    "match_type": "PHRASE"
+  },
+  {
+    "campaign_id": "24278665189",
+    "ad_group_id": "199085896206",
+    "text": "cursos senac",
+    "match_type": "PHRASE"
+  },
+  {
+    "campaign_id": "24278665189",
+    "ad_group_id": "199085896206",
+    "text": "requisitos cursos senac",
+    "match_type": "PHRASE"
+  },
+  {
+    "campaign_id": "24278665189",
+    "ad_group_id": "199085896206",
+    "text": "cursos senac por estado",
+    "match_type": "PHRASE"
+  }
+]

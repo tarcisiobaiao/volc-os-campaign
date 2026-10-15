@@ -363,6 +363,28 @@ def teste_placement_ja_excluido_e_recusado():
         a.conferir(a.interpretar_antes(([linha],)))
 
 
+@pytest.mark.parametrize("canal, recusa", [
+    ("PERFORMANCE_MAX", "Performance Max"), ("DISPLAY", None), ("DEMAND_GEN", None),
+])
+def teste_exclusao_de_placement_por_campanha_respeita_o_canal(canal, recusa):
+    a = A.ExcluirPlacements("campanha", (A.Placement("site", "exemplo.com"),), campaign_id=CAMP)
+    assert len(a.consultas_antes(CID)) == 2
+    antes = a.interpretar_antes(([], [_linha(campaign__id=CAMP,
+                                              campaign__advertising_channel_type=canal)]))
+    assert antes["canal"] == canal
+    if recusa:
+        with pytest.raises(AcaoRecusada, match=recusa):
+            a.conferir(antes)
+    else:
+        a.conferir(antes)
+
+
+def teste_exclusao_por_campanha_inexistente_e_recusada():
+    a = A.ExcluirPlacements("campanha", (A.Placement("site", "exemplo.com"),), campaign_id=CAMP)
+    with pytest.raises(AcaoRecusada, match="não encontrada"):
+        a.conferir(a.interpretar_antes(([], [])))
+
+
 def teste_ip_na_campanha_e_na_conta():
     ops = _ops(A.ExcluirIps("campanha", ("203.0.113.7", "198.51.100.0/24", "2001:db8::1"),
                             campaign_id=CAMP))

@@ -1,0 +1,11 @@
+{
+  "generation_attempt": 1,
+  "status": "http_400_invalid_argument_before_generation",
+  "observed_error": "Invalid JSON payload: additional_properties em generation_config.response_schema e properties[].items",
+  "cause": "SDK Schema protobuf incompatível com additionalProperties do Pydantic extra=forbid",
+  "fix": "response_json_schema recebe Proposta.model_json_schema() diretamente; teste cobre corpo HTTP serializado",
+  "provider_usage_reported": false,
+  "cost_usd": null,
+  "google_validate_only_called": false,
+  "no_credentials_recorded": true
+}

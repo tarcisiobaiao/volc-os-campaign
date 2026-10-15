@@ -1,0 +1,87 @@
+{
+ "rotulo": "SINTETICO — desenho do relatorio, nao resultado da operacao",
+ "modelos": {
+  "funil_A": {
+   "lancadas": 3,
+   "p_verdadeira": 0.4,
+   "lucrativa": 1,
+   "prejuizo": 1,
+   "indeterminada": 0,
+   "nao_elegivel": 1,
+   "prop_lucrativa_entre_avaliadas": 0.5,
+   "wilson95": [
+    0.095,
+    0.905
+   ]
+  },
+  "funil_B": {
+   "lancadas": 8,
+   "p_verdadeira": 0.4,
+   "lucrativa": 3,
+   "prejuizo": 2,
+   "indeterminada": 2,
+   "nao_elegivel": 1,
+   "prop_lucrativa_entre_avaliadas": 0.429,
+   "wilson95": [
+    0.158,
+    0.75
+   ]
+  },
+  "funil_C": {
+   "lancadas": 25,
+   "p_verdadeira": 0.4,
+   "lucrativa": 4,
+   "prejuizo": 4,
+   "indeterminada": 7,
+   "nao_elegivel": 10,
+   "prop_lucrativa_entre_avaliadas": 0.267,
+   "wilson95": [
+    0.109,
+    0.52
+   ]
+  },
+  "funil_D": {
+   "lancadas": 60,
+   "p_verdadeira": 0.55,
+   "lucrativa": 19,
+   "prejuizo": 12,
+   "indeterminada": 14,
+   "nao_elegivel": 15,
+   "prop_lucrativa_entre_avaliadas": 0.422,
+   "wilson95": [
+    0.29,
+    0.567
+   ]
+  },
+  "funil_E": {
+   "lancadas": 150,
+   "p_verdadeira": 0.4,
+   "lucrativa": 19,
+   "prejuizo": 42,
+   "indeterminada": 38,
+   "nao_elegivel": 51,
+   "prop_lucrativa_entre_avaliadas": 0.192,
+   "wilson95": [
+    0.126,
+    0.28
+   ]
+  }
+ },
+ "n_para_margem_10pp_p50": 97,
+ "n_para_margem_15pp_p50": 43,
+ "wilson_exemplos": {
+  "1_de_2": [
+   0.09453120573423074,
+   0.9054687942657693
+  ],
+  "2_de_3": [
+   0.2076596008020477,
+   0.9385080552796037
+  ],
+  "20_de_50": [
+   0.27608389730256544,
+   0.5381856225241064
+  ]
+ },
+ "leitura": "Com 3 ou 8 campanhas o intervalo cobre quase todo [0,1]; ordenar modelos pela proporção observada premia o acaso. Mostrar proporção + Wilson + n, e 'indeterminada' como classe própria; sem limiar de vencedor."
+}

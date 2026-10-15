@@ -1,0 +1,76 @@
+{
+  "opportunity_id": 106,
+  "run_id": 28,
+  "customer_id": "5478096539",
+  "login_customer_id": "6016739364",
+  "canal": "SEARCH",
+  "budget_diario": 10.0,
+  "cpc_inicial": 0.5,
+  "estrategia_lance": "MANUAL_CPC",
+  "rede": {
+    "google_search": true,
+    "search_partners": false,
+    "display_expansion": false
+  },
+  "carimbo_nome": "20261014_230000",
+  "copy": {
+    "headlines": [
+      "Gás do Povo",
+      "Gás do Povo: Como Funciona",
+      "Regras para o Gás do Povo",
+      "Como Consultar o Gás do Povo",
+      "Guia de Cadastro Gás do Povo",
+      "Valide a Recarga na Revenda",
+      "Entenda Pendências Cadastrais",
+      "Como Faço para Retirar o Gás?",
+      "Gás do Povo: Guia de Retirada",
+      "Verificar Critérios de Seleção",
+      "Regras do Processo de 2026",
+      "Siga as Regras de 30/06/2026",
+      "{KeyWord:Gás do Povo Consulta}"
+    ],
+    "descriptions": [
+      "Veja os critérios do Gás do Povo e as orientações oficiais de 23/03/2026.",
+      "Saiba como validar a retirada na revenda credenciada e regularizar pendências cadastrais.",
+      "Portal informativo: explicamos as regras de seleção e como consultar seu cadastro em 2026.",
+      "Quer saber como verificar os critérios e consultar o benefício pelas novas orientações?"
+    ],
+    "sitelinks": [
+      {
+        "title": "Critérios de Seleção",
+        "description1": "Entenda as regras de elegibilidade",
+        "description2": "Veja as orientações de 23/03/2026"
+      },
+      {
+        "title": "Validação na Revenda",
+        "description1": "Como liberar o seu benefício",
+        "description2": "Passo a passo para utilizar o gás"
+      },
+      {
+        "title": "Pendências Cadastrais",
+        "description1": "Como corrigir erros no cadastro",
+        "description2": "Siga o caminho oficial indicado"
+      },
+      {
+        "title": "Guia de Retirada 2026",
+        "description1": "Veja como verificar seu benefício",
+        "description2": "Instruções baseadas em atos oficiais"
+      },
+      {
+        "title": "Regras de Junho 2026",
+        "description1": "Confira as atualizações do guia",
+        "description2": "Mudanças oficiais de 30/06/2026"
+      }
+    ],
+    "callouts": [
+      "Guia Informativo Grátis",
+      "Regras de 23/03 e 30/06",
+      "Passo a Passo de Retirada",
+      "Validação na Revenda",
+      "Orientação sobre Cadastro",
+      "Portal de Conteúdo"
+    ]
+  },
+  "vertical": "informativo",
+  "url_final": "https://creditoup.com.br/?post_type=r&p=2477"
+}

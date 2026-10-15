@@ -1,0 +1,88 @@
+{
+  "status": "validate_only_aceito",
+  "contract_sha256": "6da6a6a4cf094a029aa77665a808d025cbe2471c3ad7951c672c6e74305eccd2",
+  "caminho": "POST /api/trafego/provar (rota canônica, em processo)",
+  "identidade": "substituída e declarada — não prova a sessão do produto",
+  "opportunity_id": 106,
+  "conjunto_aprovado_sha256": "4c7b00c436103e4e7ab33d43517266e0f71d3f51bac24726a224ab363e9e1bc2",
+  "keywords_aprovadas": 14,
+  "lp_status_wp": "draft",
+  "pedido_sha256": "ac921767f7ac8a50a73187ff1c429f7e57f1552a7aa6750e4a3dedc78ed7ad8c",
+  "copy_sha256": "c0914c961eb1ab40f962d58aee86622cb7d4d67adfd22addb7cd26e36d6a0921",
+  "geracoes": 1,
+  "modelo_pedido": "gemini-3.8-flash",
+  "modelo_servido": "gemini-3.8-flash",
+  "uso_tokens": {
+    "cache_tokens_details": null,
+    "cached_content_token_count": null,
+    "candidates_token_count": 596,
+    "candidates_tokens_details": null,
+    "prompt_token_count": 1844,
+    "prompt_tokens_details": [
+      {
+        "modality": "TEXT",
+        "token_count": 1844
+      }
+    ],
+    "thoughts_token_count": null,
+    "tool_use_prompt_token_count": null,
+    "tool_use_prompt_tokens_details": null,
+    "total_token_count": 2440,
+    "traffic_type": null
+  },
+  "segundos_gemini": 6.055,
+  "custo_usd_estimado": 0.003618,
+  "custo_usd_observado": null,
+  "provar": {
+    "http": 200,
+    "aprovado_pelos_juizes": true,
+    "n_operacoes": 40,
+    "prova_google": {
+      "request_ids": [
+        "SDeAi8SZ8xFRhKFHxNBWuQ"
+      ],
+      "versao_api": "v25",
+      "validado_em": "2026-10-15T01:39:28.013635+00:00",
+      "validate_only": true
+    },
+    "selo_retido": {
+      "motivos": [
+        "destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.",
+        "bloqueio DIVULGACAO_DE_MONETIZACAO_AUSENTE: Nenhuma divulgação de monetização por anúncios observada.",
+        "bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página.",
+        "bloqueio IDENTIDADE_OPERADOR_AUSENTE: Nenhum registro de operador (CNPJ) na página. 'Sobre' e 'Contato' dizem como chegar a alguém; eles não dizem QUEM responde.",
+        "desconhecido claims_and_disclosures: página sem texto visível para inspecionar",
+        "desconhecido content_originality_and_congruence: página sem texto visível",
+        "desconhecido government_services: página sem texto visível",
+        "desconhecido identity: página sem texto visível para inspecionar",
+        "desconhecido live_drift: nenhum HTML ao vivo observado nesta avaliação",
+        "desconhecido redirect_and_cloaking: cadeia de redirecionamento não medida; sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+      ],
+      "porque": "O payload passou nos juízes, mas o DESTINO não está elegível como destino de campanha paga. A impressão aprovável não foi emitida: ela autoriza escrita, e nada aqui autoriza apontar clique comprado para esta página."
+    },
+    "plano_impressao": null,
+    "elegivel_para_subir": false,
+    "motivo_elegibilidade": "O destino https://creditoup.com.br/?post_type=r&p=2477 não está elegível como destino de campanha paga: destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.; bloqueio DIVULGACAO_DE_MONETIZACAO_AUSENTE: Nenhuma divulgação de monetização por anúncios observada.; bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página. (e mais 7).",
+    "destino_elegivel": false,
+    "recusa_local": null,
+    "falha_validacao": null,
+    "autocorrecao": [],
+    "avisos_locais": [
+      "headline: Repetição de palavra entre recursos do mesmo grupo (política 14848296) — aparece em 5 itens (limite 4)"
+    ],
+    "detalhe_http": null
+  },
+  "sem_mudanca_na_conta": true,
+  "mutacoes_persistentes": 0,
+  "parametros_do_operador": "Reuso literal dos parâmetros declarados pelo operador no pedido de 09/10 (canarios/volc-gads-blindagem-20261009/operacao-20261009/provar-106-search-pedido-v3.json, sha256 8eb58f633273f7220e3d812e40b21ff958e011a7386515580f51d740a0e4a8eb). Nenhum valor financeiro novo foi decidido nesta missão; nada é criado.",
+  "politica_aprovada_comprovada": false,
+  "receita_lucro_roi_comprovados": false,
+  "artifacts": {
+    "contexto.json": "7efdbe51ddc3dc63f5002ba84a1297451f9821b1a2dedf64775ab7df66ec90f4",
+    "gemini-1.json": "f73998130b0f6d898778685aa16d95f4c0d38718304dd76fe261df7ed4dcaeaa",
+    "provar-pedido-1.json": "ac921767f7ac8a50a73187ff1c429f7e57f1552a7aa6750e4a3dedc78ed7ad8c",
+    "provar-resposta-1.json": "14a855b870e02eec43c2a21c850c8292eefcf707718046bc232a0d9cb4635de2",
+    "snapshot-antes.json": "ac6a65e90c3a7d4ebad1f5a7de97028ee2a90fd7236ca59d3202d0ac82f25487",
+    "snapshot-depois.json": "ac6a65e90c3a7d4ebad1f5a7de97028ee2a90fd7236ca59d3202d0ac82f25487"
+  }
+}

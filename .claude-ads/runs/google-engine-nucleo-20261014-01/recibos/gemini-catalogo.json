@@ -1,0 +1,59 @@
+{
+ "listado_em_s": 1.4,
+ "modelos_flash": [
+  {
+   "name": "models/gemini-3.5-flash",
+   "input_token_limit": 1048576,
+   "output_token_limit": 65536,
+   "actions": [
+    "generateContent",
+    "countTokens",
+    "createCachedContent",
+    "batchGenerateContent"
+   ]
+  },
+  {
+   "name": "models/gemini-3.5-flash-lite",
+   "input_token_limit": 1048576,
+   "output_token_limit": 65536,
+   "actions": [
+    "generateContent",
+    "countTokens",
+    "createCachedContent",
+    "batchGenerateContent"
+   ]
+  },
+  {
+   "name": "models/gemini-3.8-flash",
+   "input_token_limit": 1048576,
+   "output_token_limit": 65536,
+   "actions": [
+    "generateContent",
+    "countTokens",
+    "createCachedContent",
+    "batchGenerateContent"
+   ]
+  },
+  {
+   "name": "models/gemini-3.8-flash-tts",
+   "input_token_limit": 8192,
+   "output_token_limit": 16384,
+   "actions": [
+    "generateContent",
+    "countTokens",
+    "batchGenerateContent"
+   ]
+  },
+  {
+   "name": "models/gemini-3.8-flash-lite-tts",
+   "input_token_limit": 8192,
+   "output_token_limit": 16384,
+   "actions": [
+    "generateContent",
+    "countTokens",
+    "batchGenerateContent"
+   ]
+  }
+ ],
+ "total_flash": 26
+}

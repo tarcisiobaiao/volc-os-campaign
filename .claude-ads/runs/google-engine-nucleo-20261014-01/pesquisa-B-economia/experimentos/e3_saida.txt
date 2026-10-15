@@ -1,0 +1,121 @@
+{
+ "rotulo": "SINTETICO — propensoes conhecidas; mecanica, nao ganho real",
+ "seed": 20261014,
+ "acoes": [
+  "reduzir_20pct",
+  "manter",
+  "aumentar_20pct"
+ ],
+ "valor_politica_de_log": 0.2325,
+ "valor_politica_alvo": 0.3981,
+ "cenarios": [
+  {
+   "cenario": "A_boa_sobreposicao",
+   "n_log": 5000,
+   "replicas": 300,
+   "valor_verdadeiro": 0.3981,
+   "fracao_log_sem_suporte_para_o_alvo": 0.0,
+   "peso_max_mediano": 3.0,
+   "n_efetivo_mediano": 2835.6,
+   "IPS": {
+    "vies": 0.0025,
+    "rmse": 0.0218,
+    "cobertura_ic95": 0.963
+   },
+   "SNIPS": {
+    "vies": 0.0027,
+    "rmse": 0.0215
+   },
+   "DM": {
+    "vies": -0.0506,
+    "rmse": 0.0536
+   },
+   "DR": {
+    "vies": 0.0032,
+    "rmse": 0.0207,
+    "cobertura_ic95": 0.96
+   }
+  },
+  {
+   "cenario": "B_n_pequeno",
+   "n_log": 200,
+   "replicas": 300,
+   "valor_verdadeiro": 0.3981,
+   "fracao_log_sem_suporte_para_o_alvo": 0.0,
+   "peso_max_mediano": 2.96,
+   "n_efetivo_mediano": 113.0,
+   "IPS": {
+    "vies": -0.0036,
+    "rmse": 0.1109,
+    "cobertura_ic95": 0.957
+   },
+   "SNIPS": {
+    "vies": -0.0001,
+    "rmse": 0.1126
+   },
+   "DM": {
+    "vies": -0.0534,
+    "rmse": 0.1101
+   },
+   "DR": {
+    "vies": -0.0053,
+    "rmse": 0.1063,
+    "cobertura_ic95": 0.937
+   }
+  },
+  {
+   "cenario": "C_sem_suporte",
+   "n_log": 5000,
+   "replicas": 300,
+   "valor_verdadeiro": 0.3981,
+   "fracao_log_sem_suporte_para_o_alvo": 0.1177,
+   "peso_max_mediano": 2.18,
+   "n_efetivo_mediano": 2951.8,
+   "IPS": {
+    "vies": -0.0148,
+    "rmse": 0.0252,
+    "cobertura_ic95": 0.857
+   },
+   "SNIPS": {
+    "vies": 0.0365,
+    "rmse": 0.0426
+   },
+   "DM": {
+    "vies": 0.0574,
+    "rmse": 0.061
+   },
+   "DR": {
+    "vies": 0.0514,
+    "rmse": 0.0558,
+    "cobertura_ic95": 0.25
+   }
+  },
+  {
+   "cenario": "D_propensao_inventada",
+   "n_log": 5000,
+   "replicas": 300,
+   "valor_verdadeiro": 0.3981,
+   "fracao_log_sem_suporte_para_o_alvo": 0.0,
+   "peso_max_mediano": 3.0,
+   "n_efetivo_mediano": 3089.5,
+   "IPS": {
+    "vies": 0.4469,
+    "rmse": 0.4486,
+    "cobertura_ic95": 0.0
+   },
+   "SNIPS": {
+    "vies": 0.0581,
+    "rmse": 0.0616
+   },
+   "DM": {
+    "vies": -0.053,
+    "rmse": 0.056
+   },
+   "DR": {
+    "vies": 0.0191,
+    "rmse": 0.0282,
+    "cobertura_ic95": 0.997
+   }
+  }
+ ]
+}

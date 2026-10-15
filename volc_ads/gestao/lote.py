@@ -281,10 +281,22 @@ def enviar(plano: Plano, *, login_customer_id: str, validate_only: bool,
 
     try:
         resposta = executar(lambda: servico.mutate(request=req), politica=politica,
-                            rotulo=f"gestao:{plano.customer_id}")
+                            rotulo=f"gestao:{plano.customer_id}",
+                            nao_retentar=None if validate_only else concorrencia)
     except (ErroTerminal, ErroEsgotado) as exc:
         return mapear(plano, validate_only=validate_only, falha=exc.falha)
     return mapear(plano, validate_only=validate_only, resposta=resposta)
+
+
+def concorrencia(falha: FalhaGads) -> bool:
+    """`DatabaseError.CONCURRENT_MODIFICATION`: alguém (a UI, outra rotina)
+    escreveu no mesmo recurso. O Google manda retentar, mas reenviar a MESMA
+    requisição numa escrita real pode sobrescrever a edição alheia feita depois
+    da leitura "antes" que a aprovação humana viu. Uma fila própria não evita
+    isso: ela não enxerga a UI. Então a escrita real não retenta: a ação volta
+    `falhou` com o código, e a próxima tentativa nasce de uma releitura.
+    """
+    return any(e.valor_codigo == "CONCURRENT_MODIFICATION" for e in falha.erros)
 
 
 def _juntar(customer_id: str, validate_only: bool, acoes: Sequence[Acao],

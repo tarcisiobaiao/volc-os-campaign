@@ -1,0 +1,31 @@
+{
+  "requested_model": "gemini-3.8-flash",
+  "served_model": "gemini-3.8-flash",
+  "text": "{\n  \"headlines\": [\n    \"Guia do Gás do Povo\",\n    \"Entenda o Gás do Povo\",\n    \"Como Funciona o Gás do Povo\",\n    \"Etapas do Gás do Povo\",\n    \"Critérios e Regras do Programa\",\n    \"Orientações Sobre a Retirada\",\n    \"Validação na Revenda\",\n    \"Guia Informativo Independente\",\n    \"Dúvidas do Gás do Povo\",\n    \"Ordem das Etapas do Programa\",\n    \"Passo a Passo Informativo\"\n  ],\n  \"descriptions\": [\n    \"Entenda a ordem das etapas do Gás do Povo e saiba o que conferir neste guia informativo.\",\n    \"Aprenda sobre regras, critérios de renda, validação na revenda e orientações do programa.\",\n    \"Guia independente: tire dúvidas sobre o funcionamento das etapas antes de ir à revenda.\",\n    \"Veja como funcionam os critérios, a validação de recarga e a correção de pendências.\"\n  ],\n  \"sitelinks\": [\n    {\n      \"title\": \"Critérios e Regras\",\n      \"description1\": \"Entenda as condições do programa\",\n      \"description2\": \"Saiba sobre limites de renda\"\n    },\n    {\n      \"title\": \"Validação na Revenda\",\n      \"description1\": \"Entenda a etapa de validação\",\n      \"description2\": \"Orientações sobre a retirada\"\n    },\n    {\n      \"title\": \"Orientações da Revenda\",\n      \"description1\": \"Informações sobre frete e regras\",\n      \"description2\": \"Veja como checar credenciamento\"\n    },\n    {\n      \"title\": \"Pendências Cadastrais\",\n      \"description1\": \"Saiba como proceder em pendências\",\n      \"description2\": \"Orientações para o CadÚnico\"\n    }\n  ],\n  \"callouts\": [\n    \"Guia Independente\",\n    \"Conteúdo Explicativo\",\n    \"Entenda os Critérios\",\n    \"Passo a Passo das Etapas\",\n    \"Orientações de Retirada\",\n    \"Sem Coleta de Senhas\"\n  ],\n  \"lacunas\": [\n    \"A página não realiza cadastro nem inscrição individual no programa.\",\n    \"Não é possível consultar situação do CPF ou verificar benefício diretamente na página.\",\n    \"A página não traz menções, regras ou previsões específicas para o ano de 2026.\",\n    \"A página não disponibiliza lista de lojas ou revendas credenciadas próximas.\"\n  ]\n}",
+  "seconds": 6.055,
+  "usage": {
+    "cache_tokens_details": null,
+    "cached_content_token_count": null,
+    "candidates_token_count": 596,
+    "candidates_tokens_details": null,
+    "prompt_token_count": 1844,
+    "prompt_tokens_details": [
+      {
+        "modality": "TEXT",
+        "token_count": 1844
+      }
+    ],
+    "thoughts_token_count": null,
+    "tool_use_prompt_token_count": null,
+    "tool_use_prompt_tokens_details": null,
+    "total_token_count": 2440,
+    "traffic_type": null
+  },
+  "finish_reasons": [
+    "STOP"
+  ],
+  "cost_usd": null,
+  "cost_status": "not_reported_by_provider",
+  "cost_usd_estimated": 0.003618,
+  "price_source": "https://ai.google.dev/gemini-api/docs/pricing (lido 2026-10-14; Standard; válido até 2026-12-31)"
+}

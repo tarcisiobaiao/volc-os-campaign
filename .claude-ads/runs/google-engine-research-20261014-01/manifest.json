@@ -1,0 +1,22 @@
+{
+  "run_id": "google-engine-research-20261014-01",
+  "date": "2026-10-14",
+  "timezone": "America/Sao_Paulo",
+  "objective": "Auditar o motor Google Ads existente e pesquisar bibliotecas e ferramentas primarias para concluir criacao, leitura e gestao de campanhas de arbitragem.",
+  "mode": "read_only_audit_and_public_research",
+  "repository_branch": "main",
+  "repository_head_at_start": "fb4465955501451c8c529064c87ee3145129c7c2",
+  "graph_at_start": "current:true; input digest verified",
+  "authorized_external_mutations": false,
+  "paid_model_calls_authorized": false,
+  "credentials": "presence/reference only; no values collected in artifacts",
+  "scope": ["google_ads", "existing_meta_boundaries", "gemini_integration_design", "python_libraries", "verification_harness"],
+  "excluded": ["campaign_mutations", "database_writes", "deploy", "install_dependencies", "model_api_calls", "git_changes_to_existing_code"],
+  "evidence_policy": "official documentation, publisher repositories, local source and dated receipts; distinguish implementation, fixtures, validate_only and verified mutation",
+  "artifact_retention": "Sanitized research only; retain as project audit evidence. No credentials or raw account exports. Local filesystem owner controls access.",
+  "status": "research_complete_engine_operational_closure_pending",
+  "completed_checks": {"focused_tests_passed": 460, "focused_tests_failed": 0, "focused_tests_skipped": 0, "live_google_select_queries": 3, "library_and_repository_items": 22, "graph_final": "current:true", "secret_pattern_findings": 0},
+  "limitations": ["No fresh validate_only submission in this research run", "No campaign creation or management applied", "No Supabase production state or scheduler revalidated", "Gemini key presence is not proof of validity or model access"],
+  "data_lifecycle": {"classification": "internal_sanitized_research", "minimum_retention_days": 90, "review_on": "2027-01-12", "deadline_exception": "Review only; no scheduled deletion or external upload", "encryption_evidence": "not_verified", "access_roles": ["local_workstation_owner"], "deletion_verification": "No deletion performed", "incident_owner_and_channel": "Project operator through the current local conversation"},
+  "artifacts": ["RELATORIO.md", "bibliotecas.json", "leitura-google.json", "tests.xml"]
+}

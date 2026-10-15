@@ -1,0 +1,69 @@
+{
+  "opportunity_id": 106,
+  "run_id": 28,
+  "customer_id": "5478096539",
+  "login_customer_id": "6016739364",
+  "canal": "SEARCH",
+  "budget_diario": 10.0,
+  "cpc_inicial": 0.5,
+  "estrategia_lance": "MANUAL_CPC",
+  "rede": {
+    "google_search": true,
+    "search_partners": false,
+    "display_expansion": false
+  },
+  "carimbo_nome": "20261014_230000",
+  "copy": {
+    "headlines": [
+      "Guia do Gás do Povo",
+      "Entenda o Gás do Povo",
+      "Como Funciona o Gás do Povo",
+      "Etapas do Gás do Povo",
+      "Critérios e Regras do Programa",
+      "Orientações Sobre a Retirada",
+      "Validação na Revenda",
+      "Guia Informativo Independente",
+      "Dúvidas do Gás do Povo",
+      "Ordem das Etapas do Programa",
+      "Passo a Passo Informativo"
+    ],
+    "descriptions": [
+      "Entenda a ordem das etapas do Gás do Povo e saiba o que conferir neste guia informativo.",
+      "Aprenda sobre regras, critérios de renda, validação na revenda e orientações do programa.",
+      "Guia independente: tire dúvidas sobre o funcionamento das etapas antes de ir à revenda.",
+      "Veja como funcionam os critérios, a validação de recarga e a correção de pendências."
+    ],
+    "sitelinks": [
+      {
+        "title": "Critérios e Regras",
+        "description1": "Entenda as condições do programa",
+        "description2": "Saiba sobre limites de renda"
+      },
+      {
+        "title": "Validação na Revenda",
+        "description1": "Entenda a etapa de validação",
+        "description2": "Orientações sobre a retirada"
+      },
+      {
+        "title": "Orientações da Revenda",
+        "description1": "Informações sobre frete e regras",
+        "description2": "Veja como checar credenciamento"
+      },
+      {
+        "title": "Pendências Cadastrais",
+        "description1": "Saiba como proceder em pendências",
+        "description2": "Orientações para o CadÚnico"
+      }
+    ],
+    "callouts": [
+      "Guia Independente",
+      "Conteúdo Explicativo",
+      "Entenda os Critérios",
+      "Passo a Passo das Etapas",
+      "Orientações de Retirada",
+      "Sem Coleta de Senhas"
+    ]
+  },
+  "vertical": "informativo",
+  "url_final": "https://creditoup.com.br/?post_type=r&p=2477"
+}

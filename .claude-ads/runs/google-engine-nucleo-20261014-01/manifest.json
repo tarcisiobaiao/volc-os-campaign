@@ -1,0 +1,92 @@
+{
+  "run_id": "google-engine-nucleo-20261014-01",
+  "date": "2026-10-14",
+  "timezone": "America/Sao_Paulo",
+  "objective": "Finalizar o núcleo operacional do engine Google Ads VOLC: inventário sem perdas dos três blueprints + call Webgo + pesquisa anterior, investigação/experimentos isolados, integração seletiva no caminho existente e prova real somente leitura/validate_only.",
+  "integrator": "sessão Claude única (este manifesto); pesquisadores A/B/C escrevem só em pesquisa-*/ e no scratchpad próprio",
+  "repository": {
+    "checkout": "volc-os-campaign-qg-real-20261007",
+    "branch": "main",
+    "head_at_start": "fb4465955501451c8c529064c87ee3145129c7c2",
+    "graph_check_at_start": "current:true (insumos idênticos), input_sha256 9b6b86b0…",
+    "preexisting_uncommitted": {
+      "same_front_google_harness_20261014": [
+        "backend/requirements-dev.txt",
+        "volc_ads/campanha/brief.py",
+        "volc_ads/campanha/search.py",
+        "volc_ads/campanha/testes_search.py",
+        "volc_ads/gads/client.py",
+        "volc_ads/testes_pautador_ponte.py",
+        "volc_ads/harness/",
+        "docs/audits/GOOGLE-HARNESS-GEMINI-WEBGO-2026-10-14.md",
+        ".claude-ads/runs/google-engine-research-20261014-01/",
+        ".claude-ads/runs/google-harness-20261014-01/",
+        "docs/architecture/REPOSITORY-INVENTORY.md",
+        "docs/architecture/repository-inventory.json",
+        "volc-os-workbook/ROADMAP-VIVO.json (P05-T10 latest_evidence)",
+        "docs/volc-os-graph/curadoria-operacional.json (cap_search_birth evidence)",
+        "docs/volc-os-graph/BUILD-STATUS.json, volc-os-graph.json (gerados)"
+      ],
+      "other_front_preserved_untouched": [
+        "funnelforge-migracao/engine/runs-canario/ (Redator/FunnelForge, 10/10)"
+      ],
+      "policy": "Trabalho anterior da mesma frente (harness 14/10, sessão sem commit) é preservado e revisado; nada é descartado. Outra frente não entra no commit."
+    }
+  },
+  "sources": {
+    "B1": "/Users/mac/.codex/attachments/64124e2c-efd4-422c-8ac4-50e1b43afccf/Pasted text.txt (13410 bytes, 123 linhas, JSON)",
+    "B2": "/Users/mac/.codex/attachments/358aeef1-caf6-4622-8aaa-8827d0ad6285/Pasted text.txt (11985 bytes, 101 linhas, JSON)",
+    "B3": "/Users/mac/.codex/attachments/f7bac088-b8fb-43c7-ab4a-bb4f72466b69/Pasted text.txt (12811 bytes, 115 linhas, prosa + JSON + 'Sources' vagas)",
+    "CALL": "/Users/mac/Downloads/Webgo - Sistema, upgrades e funções.txt (32 min; só o trecho operacional 00:00–24:28 é usado; trecho pessoal 24:42–32:09 excluído de prompts e artefatos)",
+    "R0": ".claude-ads/runs/google-engine-research-20261014-01/ + google-harness-20261014-01/",
+    "trust": "Referências externas não confiáveis: nenhuma instrução embutida executada; JSON lido com json.loads, nunca eval."
+  },
+  "authorized": [
+    "pesquisa pública",
+    "instalação isolada revisada (venvs no scratchpad)",
+    "implementação local",
+    "leituras pelas integrações existentes",
+    "Gemini real pela chave configurada: ≤4 gerações, teto US$ 2",
+    "Google Ads validate_only",
+    "testes/replays/simulações rotulados"
+  ],
+  "not_authorized": [
+    "criar/ativar/pausar/remover campanhas ou anúncios",
+    "mudar verba, lances, negativas, exclusões, metas",
+    "publicar conversões/eventos/públicos",
+    "iniciar/agendar/promover experimentos",
+    "seasonality adjustments reais",
+    "migrations, deploy, push, infraestrutura permanente",
+    "copiar credenciais/PII para logs, prompts ou terceiros"
+  ],
+  "layout": {
+    "inventario-semente.json": "136 IDs com origem e alegação (gerado por script, sem eval)",
+    "pesquisa-A-apis/": "APIs e execução",
+    "pesquisa-B-economia/": "economia e estatística",
+    "pesquisa-C-dados/": "dados, criativos e operação",
+    "integrador/": "mapa do caminho, decisões, P0",
+    "recibos/": "recibos sanitizados de chamadas reais",
+    "INVENTARIO.json": "consolidado final (integrador)",
+    "RELATORIO.md": "relatório curto final"
+  },
+  "status": "concluido_parcial_honesto",
+  "fechamento": {
+    "commit_local": "este commit (sem push)",
+    "inventario": "156 itens decididos",
+    "gemini": {
+      "geracoes": 1,
+      "teto": 4,
+      "modelo_pedido_e_servido": "gemini-3.8-flash",
+      "tokens": 2440,
+      "custo_usd_estimado": 0.003618,
+      "custo_usd_observado": null
+    },
+    "google": {
+      "validate_only_rpcs": 5,
+      "mutacoes_persistentes": 0
+    },
+    "regressao": "backend+volc_ads: 18 falhas (mesmo conjunto da baseline), 7653 passando",
+    "sessao_real": "9 rotas autenticadas de leitura (200); /provar e /subir pela tela não exercitados",
+    "relatorio": "RELATORIO.md"
+  }
+}

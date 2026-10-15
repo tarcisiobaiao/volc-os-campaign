@@ -1,0 +1,4 @@
+{
+  "type": "ValueError",
+  "reason": "builder: {\"achados\": [{\"severidade\": \"erro\", \"campo\": \"description_rsa\", \"valor\": \"Confira as regras de renda familiar e os critérios gerais para concorrer a vagas\", \"motivo\": \"91 chars > limite 90\", \"codigo\": \"\"}, {\"severidade\": \"erro\", \"campo\": \"description_rsa\", \"valor\": \"1 itens\", \"motivo\": \"mínimo é 2\", \"codigo\": \"\"}]}"
+}

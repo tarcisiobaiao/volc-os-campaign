@@ -1,0 +1,4 @@
+# Harness opcional de desenvolvimento/prova. O SDK Google Ads e Pydantic
+# já vêm do ambiente do backend. Não altera o runtime mínimo do Pautador.
+google-genai==2.31.0
+hypothesis==6.169.2

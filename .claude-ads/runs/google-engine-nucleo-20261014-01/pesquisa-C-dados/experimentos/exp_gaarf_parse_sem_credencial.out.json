@@ -1,0 +1,80 @@
+{
+ "google_ads_default_version_no_sdk": "v25",
+ "parser_module_version": "garf.community.google.ads.parsers",
+ "policy_ad": {
+  "gaql_enviada": "SELECT '2026-10-14' AS event_date, customer.id, ad_group_ad.ad.id, ad_group_ad.policy_summary.approval_status AS approval, ad_group_ad.policy_summary.review_status AS review, ad_group_ad.policy_summary.policy_topic_entries:topic AS topics, metrics.impressions AS impressions FROM ad_group_ad WHERE ad_group_ad.policy_summary.approval_status != 'APPROVED' AND segments.date DURING LAST_30_DAYS",
+  "fields": [
+   "customer.id",
+   "ad_group_ad.ad.id",
+   "ad_group_ad.policy_summary.approval_status",
+   "ad_group_ad.policy_summary.review_status",
+   "ad_group_ad.policy_summary.policy_topic_entries",
+   "metrics.impressions"
+  ],
+  "column_names": [
+   "event_date",
+   "customer_id",
+   "ad_group_ad_ad_id",
+   "approval",
+   "review",
+   "topics",
+   "impressions"
+  ],
+  "customizers": {
+   "topics": {
+    "type": "nested_field",
+    "value": "topic"
+   }
+  },
+  "virtual_columns": {
+   "event_date": "type='built-in' value='2026-10-14' fields=None substitute_expression=None"
+  },
+  "campos_fora_do_catalogo_v25_volc": []
+ },
+ "placement_macro": {
+  "gaql_enviada": "SELECT campaign.id, campaign.advertising_channel_type AS campaign_type, group_placement_view.placement AS placement, group_placement_view.placement_type AS placement_type, metrics.cost_micros / 1e6 AS cost FROM group_placement_view WHERE segments.date BETWEEN '2026-10-07' AND '2026-10-13' AND metrics.impressions > 0",
+  "fields": [
+   "campaign.id",
+   "campaign.advertising_channel_type",
+   "group_placement_view.placement",
+   "group_placement_view.placement_type",
+   "metrics.cost_micros"
+  ],
+  "column_names": [
+   "campaign_id",
+   "campaign_type",
+   "placement",
+   "placement_type",
+   "cost"
+  ],
+  "customizers": {},
+  "virtual_columns": {
+   "cost": "type='expression' value='metrics.cost_micros / 1e6' fields=['metrics.cost_micros'] substitute_expression='{metrics_cost_micros} / 1e6'"
+  },
+  "campos_fora_do_catalogo_v25_volc": []
+ },
+ "report_fabricado": {
+  "colunas": [
+   "event_date",
+   "customer_id",
+   "ad_group_ad_ad_id",
+   "approval",
+   "review",
+   "topics",
+   "impressions"
+  ],
+  "linhas": [
+   [
+    "2026-10-14",
+    "1234567890",
+    "42",
+    "APPROVED_LIMITED",
+    "REVIEWED",
+    "['TRADEMARKS_IN_AD_TEXT']",
+    "0"
+   ]
+  ],
+  "observacao": "':topic' descarta type/constraints/evidences; só o tópico sobra"
+ },
+ "segundos": 10.73
+}

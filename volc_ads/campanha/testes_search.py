@@ -124,6 +124,36 @@ def _adgroups(ops):
     return [o.ad_group_operation.create for o in _por_tipo(ops, "ad_group_operation")]
 
 
+def test_rsa_por_grupo_nao_repete_copy_da_campanha():
+    from volc_ads.campanha.brief import CopyRSA
+
+    especifica = CopyRSA(
+        headlines=["Calcule a Renda da Familia", "Regras de Renda", "Renda Por Pessoa"],
+        descriptions=["Veja a conta da renda por pessoa no guia independente.",
+                      "Confira as regras e os exemplos antes de procurar o curso."],
+    )
+    brief = _brief(keywords=[], sub_intencoes=[
+        SubIntencao("renda", ["renda senac"], rsa=especifica),
+        SubIntencao("cursos", ["cursos senac"]),
+    ])
+    ops, resultado = search.construir(CID, brief, login_customer_id="123")
+    assert resultado.ok, resultado.achados
+    anuncios = _por_tipo(ops, "ad_group_ad_operation")
+    assert [a.text for a in anuncios[0].ad_group_ad_operation.create.ad.responsive_search_ad.headlines] == especifica.headlines
+    assert [a.text for a in anuncios[1].ad_group_ad_operation.create.ad.responsive_search_ad.headlines] == brief.copy.headlines
+
+
+def test_rsa_por_grupo_invalida_nao_e_ignorada():
+    from volc_ads.campanha.brief import CopyRSA
+
+    brief = _brief(keywords=[], sub_intencoes=[
+        SubIntencao("renda", ["renda senac"], rsa=CopyRSA(headlines=["x"], descriptions=[])),
+    ])
+    ops, resultado = search.construir(CID, brief, login_customer_id="123")
+    assert not resultado.ok
+    assert ops == []
+
+
 # ── faixas de id temporário ─────────────────────────────────────────────────
 
 

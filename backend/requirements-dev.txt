@@ -28,6 +28,9 @@ pytest>=8.0
 # remover a v23 e mudar o default de versão — sobe à mão, com a suíte.
 google-ads>=33.0.0,<34
 
+# Harness Ads opcional/local: SDK Gemini e testes de propriedade. Não Vercel.
+-r ../volc_ads/harness/requirements.txt
+
 # ⚠️ DEPENDÊNCIA DA SUÍTE, e ela faltava aqui — de novo.
 #
 # `tests/test_criativo_execucao.py` prova a orquestração do Estúdio (criação,

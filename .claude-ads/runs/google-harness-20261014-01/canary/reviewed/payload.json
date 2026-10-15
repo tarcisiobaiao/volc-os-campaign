@@ -1,0 +1,404 @@
+[
+  {
+    "campaign_budget_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/campaignBudgets/-1",
+        "delivery_method": "STANDARD",
+        "name": "Budget_20261015T004915Z",
+        "amount_micros": "20000000",
+        "explicitly_shared": false
+      }
+    }
+  },
+  {
+    "campaign_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/campaigns/-2",
+        "status": "PAUSED",
+        "advertising_channel_type": "SEARCH",
+        "network_settings": {
+          "target_google_search": true,
+          "target_search_network": false,
+          "target_content_network": false
+        },
+        "manual_cpc": {
+          "enhanced_cpc_enabled": false
+        },
+        "name": "HARNESS BR - 20261015T004915Z / Guia independente de cursos Senac / https://creditoup.com.br/r/guia-cursos-senac/",
+        "campaign_budget": "customers/5478096539/campaignBudgets/-1",
+        "final_url_suffix": "utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_term={keyword}&utm_content={adgroupid}&utm_device={device}&utm_placement={placement}&vc_creative={creative}&vc_match={matchtype}&vc_network={network}&vc_target={targetid}&vc_loc={loc_physical_ms}&vc_ext={extensionid}",
+        "contains_eu_political_advertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+      }
+    }
+  },
+  {
+    "campaign_criterion_operation": {
+      "create": {
+        "location": {
+          "geo_target_constant": "geoTargetConstants/2076"
+        },
+        "campaign": "customers/5478096539/campaigns/-2"
+      }
+    }
+  },
+  {
+    "campaign_criterion_operation": {
+      "create": {
+        "language": {
+          "language_constant": "languageConstants/1014"
+        },
+        "campaign": "customers/5478096539/campaigns/-2"
+      }
+    }
+  },
+  {
+    "ad_group_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/adGroups/-3",
+        "status": "ENABLED",
+        "type_": "SEARCH_STANDARD",
+        "name": "Cursos Gratuitos Senac - Regras Gerais_20261015T004915Z",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "cpc_bid_micros": "600000"
+      }
+    }
+  },
+  {
+    "ad_group_criterion_operation": {
+      "create": {
+        "status": "ENABLED",
+        "keyword": {
+          "match_type": "PHRASE",
+          "text": "cursos gratuitos senac"
+        },
+        "ad_group": "customers/5478096539/adGroups/-3"
+      }
+    }
+  },
+  {
+    "ad_group_criterion_operation": {
+      "create": {
+        "status": "ENABLED",
+        "keyword": {
+          "match_type": "PHRASE",
+          "text": "cursos senac"
+        },
+        "ad_group": "customers/5478096539/adGroups/-3"
+      }
+    }
+  },
+  {
+    "ad_group_ad_operation": {
+      "create": {
+        "status": "ENABLED",
+        "ad": {
+          "responsive_search_ad": {
+            "headlines": [
+              {
+                "text": "Cursos Gratuitos Senac"
+              },
+              {
+                "text": "Guia de Cursos do Senac"
+              },
+              {
+                "text": "Programa Senac Gratuidade"
+              }
+            ],
+            "descriptions": [
+              {
+                "text": "Entenda o funcionamento do Programa de Gratuidade do Senac e como buscar turmas no país."
+              },
+              {
+                "text": "Guia editorial independente com orientações sobre cursos, modalidades e links oficiais."
+              }
+            ]
+          },
+          "final_urls": [
+            "https://creditoup.com.br/r/guia-cursos-senac/"
+          ]
+        },
+        "ad_group": "customers/5478096539/adGroups/-3"
+      }
+    }
+  },
+  {
+    "ad_group_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/adGroups/-4",
+        "status": "ENABLED",
+        "type_": "SEARCH_STANDARD",
+        "name": "Requisitos e Critérios de Acesso_20261015T004915Z",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "cpc_bid_micros": "600000"
+      }
+    }
+  },
+  {
+    "ad_group_criterion_operation": {
+      "create": {
+        "status": "ENABLED",
+        "keyword": {
+          "match_type": "PHRASE",
+          "text": "requisitos cursos senac"
+        },
+        "ad_group": "customers/5478096539/adGroups/-4"
+      }
+    }
+  },
+  {
+    "ad_group_ad_operation": {
+      "create": {
+        "status": "ENABLED",
+        "ad": {
+          "responsive_search_ad": {
+            "headlines": [
+              {
+                "text": "Requisitos Senac Gratuidade"
+              },
+              {
+                "text": "Regras de Renda do Senac"
+              },
+              {
+                "text": "Critérios para Vagas Senac"
+              }
+            ],
+            "descriptions": [
+              {
+                "text": "Confira as regras de renda familiar e os critérios para concorrer a vagas gratuitas."
+              },
+              {
+                "text": "Aprenda a calcular a renda familiar per capita exigida no regulamento do programa."
+              }
+            ]
+          },
+          "final_urls": [
+            "https://creditoup.com.br/r/guia-cursos-senac/"
+          ]
+        },
+        "ad_group": "customers/5478096539/adGroups/-4"
+      }
+    }
+  },
+  {
+    "ad_group_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/adGroups/-5",
+        "status": "ENABLED",
+        "type_": "SEARCH_STANDARD",
+        "name": "Cursos Senac por Estado e Editais_20261015T004915Z",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "cpc_bid_micros": "600000"
+      }
+    }
+  },
+  {
+    "ad_group_criterion_operation": {
+      "create": {
+        "status": "ENABLED",
+        "keyword": {
+          "match_type": "PHRASE",
+          "text": "cursos senac por estado"
+        },
+        "ad_group": "customers/5478096539/adGroups/-5"
+      }
+    }
+  },
+  {
+    "ad_group_ad_operation": {
+      "create": {
+        "status": "ENABLED",
+        "ad": {
+          "responsive_search_ad": {
+            "headlines": [
+              {
+                "text": "Senac do Seu Estado"
+              },
+              {
+                "text": "Cursos Senac por Estado"
+              },
+              {
+                "text": "Onde Achar Vagas no Senac"
+              }
+            ],
+            "descriptions": [
+              {
+                "text": "Cada estado possui calendário e inscrições próprias. Acesse a lista de links oficiais."
+              },
+              {
+                "text": "Orientações para localizar o portal oficial da sua região e acompanhar os editais locais."
+              }
+            ]
+          },
+          "final_urls": [
+            "https://creditoup.com.br/r/guia-cursos-senac/"
+          ]
+        },
+        "ad_group": "customers/5478096539/adGroups/-5"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-100",
+        "final_urls": [
+          "https://creditoup.com.br/r/guia-cursos-senac/"
+        ],
+        "sitelink_asset": {
+          "link_text": "Regras de Renda"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "SITELINK",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-100"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-101",
+        "final_urls": [
+          "https://creditoup.com.br/r/guia-cursos-senac/"
+        ],
+        "sitelink_asset": {
+          "link_text": "Senac por Estado"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "SITELINK",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-101"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-102",
+        "final_urls": [
+          "https://creditoup.com.br/r/guia-cursos-senac/"
+        ],
+        "sitelink_asset": {
+          "link_text": "Passo a Passo Inscrição"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "SITELINK",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-102"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-103",
+        "final_urls": [
+          "https://creditoup.com.br/r/guia-cursos-senac/"
+        ],
+        "sitelink_asset": {
+          "link_text": "Tipos de Cursos"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "SITELINK",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-103"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-104",
+        "callout_asset": {
+          "callout_text": "Guia Independente"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "CALLOUT",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-104"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-105",
+        "callout_asset": {
+          "callout_text": "Critérios Oficiais"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "CALLOUT",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-105"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-106",
+        "callout_asset": {
+          "callout_text": "Links Oficiais por Estado"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "CALLOUT",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-106"
+      }
+    }
+  },
+  {
+    "asset_operation": {
+      "create": {
+        "resource_name": "customers/5478096539/assets/-107",
+        "callout_asset": {
+          "callout_text": "Informações Claras"
+        }
+      }
+    }
+  },
+  {
+    "campaign_asset_operation": {
+      "create": {
+        "field_type": "CALLOUT",
+        "campaign": "customers/5478096539/campaigns/-2",
+        "asset": "customers/5478096539/assets/-107"
+      }
+    }
+  }
+]

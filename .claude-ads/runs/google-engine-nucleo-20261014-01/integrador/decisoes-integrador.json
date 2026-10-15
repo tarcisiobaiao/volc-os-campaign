@@ -1,0 +1,108 @@
+{
+ "W01": {
+  "decisao": "reutilizar_existente",
+  "justificativa": "O inventário do cockpit já mostra o canal (PALAVRA_DO_CANAL em src/components/trafego/inventario/formato.tsx) e filtra por canal (Todos/Search/Display/Demand Gen/Performance Max/Vídeo/Shopping), visto na sessão real em 14/10. Falta só conferir com o operador se o filtro atende ao pedido.",
+  "teste": "sessão real: tela /trafego renderizou o filtro CANAL",
+  "classe_prova": "sessão real (leitura)"
+ },
+ "W02": {
+  "decisao": "extrair_padrao",
+  "justificativa": "Autoria observada existe na API: change_event.user_email + resource_change_operation=CREATE em CAMPAIGN, já coletado pela família `mudanca` (volc_ads/coleta/familias/mudanca.py) para google_ads_mudanca. Limite: só 30 dias; campanha mais antiga fica 'desconhecido', nunca o operador atribuído à mão (que não prova autoria).",
+  "prerequisito": "coleta `mudanca` agendada cobrindo as contas da operação; projeção no inventário",
+  "classe_prova": "código"
+ },
+ "W03": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Preferência estética (Display em azul-marinho) sem impacto no motor. Fica para a rodada de UI com o operador; o mapa de cor por canal é um ponto único (formato.tsx).",
+  "prerequisito": "rodada de UI do inventário"
+ },
+ "W04": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Duplicar campanhas vs adicionar grupos é hipótese de escala, não regra. A doutrina P7 da rota (um conjunto por campanha) é decisão do dono; testar escala por grupos exige um experimento com um eixo, receita reconciliada no mesmo grão e caixa protegido. Nada foi automatizado.",
+  "prerequisito": "decisão do dono sobre P7 + receita por campanha reconciliada + desenho de experimento (ver pesquisa B)"
+ },
+ "W05": {
+  "decisao": "nao_verificavel",
+  "justificativa": "A afirmação de que o Display acaba no próximo ano veio truncada na transcrição automática e não foi encontrada como anúncio oficial nesta rodada; não orienta código nem migração.",
+  "prerequisito": "anúncio oficial do Google com data"
+ },
+ "W06": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Menos cliques para tCPA por grupo depende do suporte por estratégia (override de target_cpa em AdGroup só em estratégias compatíveis — ver A34) e de autorização de mudança de lance, que é do operador. Gestão de lance não foi alterada nesta missão.",
+  "prerequisito": "A34 confirmado + regra de gestão publicada + aprovação humana"
+ },
+ "W07": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Visão campanha/conjunto/anúncio no Google exige custo E receita no mesmo grão; receita por grupo/anúncio não é observada hoje (ver B36). Mostrar custo por grupo é possível; ROAS por anúncio não, sem atribuição nesse nível.",
+  "prerequisito": "atribuição de receita por grupo/anúncio (UTM/ValueTrack no destino + receita reconciliada)"
+ },
+ "I01": {
+  "decisao": "integrar_agora",
+  "justificativa": "Feito: volc_ads/harness/canonico.py leva a proposta Gemini (só texto) ao /provar canônico, com o portão do conjunto pago, o destino e o selo da rota. Prova real: 1 geração, 40 operações aceitas em validate_only, request ID SDeAi8SZ8xFRhKFHxNBWuQ, conta sem mudança, selo retido pelo destino em rascunho.",
+  "classe_prova": "validate_only real; identidade substituída e declarada"
+ },
+ "I02": {
+  "decisao": "integrar_agora",
+  "justificativa": "Feito: subir.preparar guarda ProvaGoogle (request ID, versão, instante) do validate_only aceito; projecao.preparo expõe em /provar para os quatro canais. Fora do Selo. Prova real: request IDs d-cek3xx80tm8NJ2Xj4IKg (replay) e SDeAi8SZ8xFRhKFHxNBWuQ (Gemini).",
+  "classe_prova": "validate_only real + 5 testes herméticos"
+ },
+ "I03": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Sitelinks com destino próprio exigem URL publicada por sitelink e conferência de destino por URL; a LP do único card com conjunto aprovado nem está publicada. Mantido o contrato atual (URL final única).",
+  "prerequisito": "páginas internas publicadas + portão de destino por sitelink"
+ },
+ "A05": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Data Manager é o caminho real de upload offline (pacote google-ads-datamanager 0.9.4, preview; RPCs unárias com validate_only). Não integrado: o VOLC não liga gclid/transaction_id à receita (auditoria B §2) e o consentimento não é capturado; enviar seria inventar identidade. A fronteira backend/app/trafego/data_manager.py continua montando sem enviar.",
+  "prerequisito": "conversão real com transaction_id + consentimento + decisão de valor (fato, não previsão); depois alinhar envelope (≤2.000 eventos, valor em moeda, ajuste por transaction_id, sem retraction)"
+ },
+ "A17": {
+  "decisao": "reutilizar_existente",
+  "justificativa": "Confirmado e PROVADO nesta missão em validate_only real: uma operação adulterada derrubou o request inteiro com partial_failure=false (request _vF5SenV1hmR_7wRwcLsiQ) e as dependentes falharam por ID temporário (-1, -2…). O nascimento (subir) já usa esse modo.",
+  "classe_prova": "validate_only real"
+ },
+ "A20": {
+  "decisao": "integrar_agora",
+  "justificativa": "Integrado: volc_ads/gestao/lote.enviar deixa de reenviar às cegas CONCURRENT_MODIFICATION em escrita real (client.executar ganhou o predicado opcional nao_retentar); a ação volta 'falhou' e a próxima tentativa nasce de releitura. Ensaio (validate_only) continua retentando. Fila própria não foi criada: ela não enxergaria a UI.",
+  "classe_prova": "fixture (2 testes); nenhuma escrita real"
+ },
+ "A21": {
+  "decisao": "reutilizar_existente",
+  "justificativa": "O mapeamento de partial_failure_error por ação já existe em gestao/lote. Provado em validate_only real com partial_failure=true: RPC OK, código 3, 22 de 30 operações em erro e 8 sem erro (assets) — numa escrita real isso criaria assets órfãos, por isso criação estrutural fica atômica (request 2IVQoLCeyv5nICg3op0_oQ).",
+  "classe_prova": "validate_only real"
+ },
+ "A31": {
+  "decisao": "integrar_agora",
+  "justificativa": "Parcial integrado: ExcluirPlacements por campanha agora lê o canal e recusa Performance Max (PMax só aceita exclusão de placement na conta ou por lista) e campanha inexistente, antes do validate_only. A coleta de placements (detail/group/pmax) já existia; o canal na linha coletada e a view de adequação de conteúdo ficam adiados (mudam a identidade do fato).",
+  "classe_prova": "fixture (4 testes) + catálogo GAQL v25"
+ },
+ "A34": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Override de tCPA por grupo é documentado (ad_group.target_cpa_micros + effective_target_cpa_source) e é pedido do operador, mas é ação de dinheiro: entra como nível 'grupo' de AlterarAlvoDeLance com antes/conferir/reverso e aprovação humana, numa rodada própria. Nenhum lance foi alterado.",
+  "prerequisito": "spec da ação por grupo + regra de gestão publicada + validate_only real em conta com MaxConv/tCPA"
+ },
+ "A42": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Confirmado que Search/Display não recebem performance_label desde a v23. Trocar UNSPECIFIED por nulo em asset.py muda a identidade de fatos já gravados (risco de duplicata sem backfill). Regra: nenhuma decisão de copy depende do rótulo; usar métricas por ativo.",
+  "prerequisito": "conferir chave de upsert do fato granular asset e plano de backfill"
+ },
+ "A43": {
+  "decisao": "extrair_padrao",
+  "justificativa": "Registrado no relatório e no mapa: Data Manager não faz retraction; ajuste é reenviar o mesmo transaction_id com valor absoluto. Na Google Ads API, retraction exige conversão com ≥24 h e ≤54 dias e é terminal. 'Retratar fraude imediatamente' (B3) está refutado."
+ },
+ "B38": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "Wilson é a forma certa de mostrar 'proporção de campanhas lucrativas por funil' (E5: com 3 campanhas o IC vai de 0,10 a 0,91; ~97 campanhas para ±10 pp), mas não há consumidor no código hoje e o modelo de funil não tem versão formal (/r, /wg é diretório). Função fica no experimento, não no produto.",
+  "prerequisito": "relatório de funis com versão formal do funil + receita reconciliada por campanha"
+ },
+ "B39": {
+  "decisao": "adiar_prerequisito",
+  "justificativa": "A v17_04 (não aplicada) chama de 'reconciliada' receita que ainda muda até D+3 e junta por data sem conferir fuso. A emenda é na migration antes de aplicá-la — aplicar migration não está autorizado nesta missão.",
+  "prerequisito": "dono decide aplicar v17_04; emenda receita_imatura + checagem de fuso entra junto"
+ },
+ "C26": {
+  "decisao": "extrair_padrao",
+  "justificativa": "Padrão extraído e INTEGRADO na família `estado`: (1) evidences/constraints dos tópicos de política preservados (restrição vazia vira contagem, sem inventar); (2) campaign_asset passa a trazer a política do asset. Leitura real: 734 linhas, 71 assets de campanha, 1 anúncio FULLY_LIMITED em GOVERNMENT_DOCUMENTS com restrição declarada. Não copiado: o mapeamento review_status→approval_status do ads-monitor (bug). Política observada fica separada de regra interna; nenhuma proibição por palavra.",
+  "classe_prova": "chamada real de leitura + 6 testes"
+ }
+}

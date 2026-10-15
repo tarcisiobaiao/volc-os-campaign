@@ -1,0 +1,29 @@
+{
+  "status": "validate_only_passed",
+  "api_version": "v25",
+  "google_request_ids": [
+    "Ia6xrHj1hd9AfbwxS2X9tQ"
+  ],
+  "google_error": null,
+  "seconds_validation_and_readback": 4.869,
+  "operations": 30,
+  "groups": 3,
+  "keywords": 4,
+  "payload_sha256": "bc30916ac788257c8c15f4c35faa69334ab7b7f05eb1dd61a11a613897054b71",
+  "input_sha256": "28292e2c4d0e8610059a1db7bc38e9058129d9cbbaa4e255de698d85a917a4ce",
+  "local_copy_adjustments": 4,
+  "new_llm_calls": 0,
+  "budget_diario": 20.0,
+  "cpc_inicial": 0.6,
+  "finance_origin": "explicit_technical_canary_input_not_serp",
+  "persistent_mutations": 0,
+  "validate_only": true,
+  "campaign_status": "PAUSED",
+  "snapshot_campaigns_ads_budget_strategy_unchanged": true,
+  "policy_approval_proven": false,
+  "roi_proven": false,
+  "http_authenticated_creation_proven": false,
+  "builder_findings": {
+    "achados": []
+  }
+}

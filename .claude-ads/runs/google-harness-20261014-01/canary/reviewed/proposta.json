@@ -1,0 +1,70 @@
+{
+  "grupos": [
+    {
+      "nome": "Cursos Gratuitos Senac - Regras Gerais",
+      "keyword_indices": [
+        0,
+        1
+      ],
+      "headlines": [
+        "Cursos Gratuitos Senac",
+        "Guia de Cursos do Senac",
+        "Programa Senac Gratuidade"
+      ],
+      "descriptions": [
+        "Entenda o funcionamento do Programa de Gratuidade do Senac e como buscar turmas no país.",
+        "Guia editorial independente com orientações sobre cursos, modalidades e links oficiais."
+      ],
+      "hipotese": "Usuários buscando termos amplos sobre cursos gratuitos precisam de uma visão geral sobre como funciona o programa e onde encontrar as turmas oficiais."
+    },
+    {
+      "nome": "Requisitos e Critérios de Acesso",
+      "keyword_indices": [
+        2
+      ],
+      "headlines": [
+        "Requisitos Senac Gratuidade",
+        "Regras de Renda do Senac",
+        "Critérios para Vagas Senac"
+      ],
+      "descriptions": [
+        "Confira as regras de renda familiar e os critérios para concorrer a vagas gratuitas.",
+        "Aprenda a calcular a renda familiar per capita exigida no regulamento do programa."
+      ],
+      "hipotese": "Usuários pesquisando requisitos focam especificamente na regra de renda e condições de estudo ou trabalho para concorrer."
+    },
+    {
+      "nome": "Cursos Senac por Estado e Editais",
+      "keyword_indices": [
+        3
+      ],
+      "headlines": [
+        "Senac do Seu Estado",
+        "Cursos Senac por Estado",
+        "Onde Achar Vagas no Senac"
+      ],
+      "descriptions": [
+        "Cada estado possui calendário e inscrições próprias. Acesse a lista de links oficiais.",
+        "Orientações para localizar o portal oficial da sua região e acompanhar os editais locais."
+      ],
+      "hipotese": "Usuários com foco regional buscam a navegação direta até o portal oficial da sua respectiva unidade da federação."
+    }
+  ],
+  "sitelinks": [
+    "Regras de Renda",
+    "Senac por Estado",
+    "Passo a Passo Inscrição",
+    "Tipos de Cursos"
+  ],
+  "callouts": [
+    "Guia Independente",
+    "Critérios Oficiais",
+    "Links Oficiais por Estado",
+    "Informações Claras"
+  ],
+  "lacunas": [
+    "A página não processa inscrições ou matrículas diretamente.",
+    "O calendário e a disponibilidade de vagas dependem exclusivamente de cada Senac estadual.",
+    "Valores de cursos pagos e editais específicos devem ser consultados nos sites oficiais de cada unidade federativa."
+  ]
+}

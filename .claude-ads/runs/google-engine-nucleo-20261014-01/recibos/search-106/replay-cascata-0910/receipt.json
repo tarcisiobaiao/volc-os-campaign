@@ -1,0 +1,26 @@
+{
+  "classe": "validate_only real (replay da copy da cascata de 09/10)",
+  "identidade": "substituída e declarada",
+  "pedido_sha256": "71fe098352cd5d1aa2b1b861f43842778076456f397f06a1c906215eab7f4481",
+  "http": 200,
+  "sem_mudanca_na_conta": true,
+  "campanhas_lidas": 5,
+  "anuncios_lidos": 8,
+  "snapshot_sha256": "ac6a65e90c3a7d4ebad1f5a7de97028ee2a90fd7236ca59d3202d0ac82f25487",
+  "resumo": {
+    "aprovado_pelos_juizes": true,
+    "n_operacoes": 42,
+    "prova_google": {
+      "request_ids": [
+        "d-cek3xx80tm8NJ2Xj4IKg"
+      ],
+      "versao_api": "v25",
+      "validado_em": "2026-10-15T01:38:40.567711+00:00",
+      "validate_only": true
+    },
+    "plano_impressao": null,
+    "elegivel_para_subir": false,
+    "destino_elegivel": false,
+    "motivo_elegibilidade": "O destino https://creditoup.com.br/?post_type=r&p=2477 não está elegível como destino de campanha paga: destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.; bloqueio DIVULGACAO_DE_MONETIZACAO_AUSENTE: Nenhuma divulgação de monetização por anúncios observada.; bloqueio IDENTIDADE_CONTATO_AUSENTE: Faltam os caminhos de contato/privacidade que identificam quem responde pela página. (e mais 7)."
+  }
+}

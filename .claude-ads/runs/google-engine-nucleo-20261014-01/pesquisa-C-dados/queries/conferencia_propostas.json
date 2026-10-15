@@ -1,0 +1,44 @@
+[
+ {
+  "from": "ad_group_ad_asset_view",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 6
+ },
+ {
+  "from": "ad_group_asset",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 10
+ },
+ {
+  "from": "customer_asset",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 8
+ },
+ {
+  "from": "campaign_asset",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 10
+ },
+ {
+  "from": "ad_group_criterion",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 10
+ },
+ {
+  "from": "asset_group_signal",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 6
+ },
+ {
+  "from": "group_placement_view",
+  "invalidos_select": [],
+  "where_nao_filtravel": [],
+  "n_campos": 16
+ }
+]

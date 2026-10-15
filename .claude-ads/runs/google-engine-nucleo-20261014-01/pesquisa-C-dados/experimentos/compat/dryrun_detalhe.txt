@@ -1,0 +1,48 @@
+bertopic                         total= 51 novos= 40 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 annotated-doc==0.0.5 bertopic==0.17.4 cloudpickle==3.1.2 filelock==4.2.0 fsspec==2026.9.0 hdbscan==0.8.44 hf-xet==1.7.0 huggingface_hub==1.33.0 joblib==1.6.0 llvmlite==0.50.0 markdown-it-py==4.2.0 mdurl==0.1.2 mpmath==1.3.0 narwhals==2.27.1 networkx==3.7 numba==0.68.0 numpy==2.5.4 pandas==3.0.6 plotly==7.1.0 pynndescent==0.6.0 python-dateutil==2.9.0.post0 regex==2026.9.29 rich==15.0.0 safetensors==0.8.0 scikit-learn==1.9.1 scipy==1.18.1 sentence-transformers==6.1.0 setuptools==84.0.0 shellingham==1.5.4 six==1.17.0 sympy==1.14.0 threadpoolctl==3.7.0 tokenizers==0.23.3 torch==2.14.1 tqdm==4.70.1 transformers==5.19.0 typer==0.27.3 umap-learn==0.5.12
+clickhouse-connect               total=  4 novos=  2 sdist=[]  clickhouse-connect==1.10.1 lz4==4.4.5
+crawlee                          total= 27 novos= 15 sdist=[]  Protego==0.7.0 async-timeout==5.0.1 cachetools==7.2.1 colorama==0.4.6 crawlee==1.10.4 filelock==4.2.0 impit==0.15.0 more-itertools==11.2.1 multidict==7.1.0 proclimits==0.2.0 propcache==0.5.4 psutil==7.2.2 requests-file==3.0.1 tldextract==5.4.0 yarl==1.25.1
+dagster                          total= 42 novos= 26 sdist=['pendulum', 'watchdog']  Jinja2==3.1.6 Mako==1.4.3 MarkupSafe==3.0.4 SQLAlchemy==2.1.4 alembic==1.20.0 coloredlogs==14.0 croniter==6.2.4 dagster-pipes==1.5.13 dagster==1.5.13 docstring_parser==0.18.0 fsspec==2026.9.0 grpcio-health-checking==1.83.0 humanfriendly==10.0 pathlib_abc==0.5.2 pendulum==2.1.2 python-dateutil==2.9.0.post0 pytz==2026.5 pytzdata==2020.1 setuptools==84.0.0 six==1.17.0 tabulate==0.10.0 tomli==2.5.0 toposort==1.10 tqdm==4.70.1 universal_pathlib==0.3.10 watchdog==6.0.0
+duckdb                           total=  1 novos=  1 sdist=[]  duckdb==1.5.6
+facebook-business                total= 18 novos= 13 sdist=[]  aiohappyeyeballs==2.7.1 aiohttp==3.14.5 aiosignal==1.4.0 attrs==26.1.0 capi_param_builder_python==1.3.2 curlify==3.0.0 facebook_business==26.0.2 frozenlist==1.8.0 multidict==7.1.0 propcache==0.5.4 pycountry==26.2.16 six==1.17.0 yarl==1.25.1
+fastembed                        total= 28 novos= 13 sdist=[]  fastembed==0.9.0 filelock==4.2.0 flatbuffers==25.12.19 fsspec==2026.9.0 hf-xet==1.7.0 huggingface_hub==1.33.0 loguru==0.7.3 mmh3==5.3.1 numpy==2.5.4 onnxruntime==1.31.0 py_rust_stemmers==0.1.8 tokenizers==0.23.3 tqdm==4.70.1
+garf-core                        total= 20 novos=  9 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 eval_type_backport==0.4.0 garf-core==1.3.3 opentelemetry-api==1.45.1 python-dateutil==2.9.0.post0 redis==8.1.0 six==1.17.0 sqlparse==0.6.0
+garf-executors                   total= 48 novos= 30 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 annotated-doc==0.0.5 eval_type_backport==0.4.0 garf-core==1.3.3 garf-executors==1.7.0.post1 garf-io==1.5.1 jwt==1.4.0 markdown-it-py==4.2.0 mdurl==0.1.2 opentelemetry-api==1.45.1 opentelemetry-exporter-http-transport==0.66b1 opentelemetry-exporter-otlp-common==0.66b1 opentelemetry-exporter-otlp-proto-common==1.45.1 opentelemetry-exporter-otlp-proto-grpc==1.45.1 opentelemetry-exporter-otlp-proto-http==1.45.1 opentelemetry-exporter-otlp==1.45.1 opentelemetry-proto==1.45.1 opentelemetry-sdk==1.45.1 opentelemetry-semantic-conventions==0.66b1 psutil==7.2.2 python-dateutil==2.9.0.post0 redis==8.1.0 rich==15.0.0 shellingham==1.5.4 six==1.17.0 smart_open==8.0.3 sqlparse==0.6.0 typer==0.27.3 wrapt==2.5.1
+garf-google-ads                  total= 47 novos= 18 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 eval_type_backport==0.4.0 garf-core==1.3.3 garf-google-ads==1.2.1 garf-io==1.5.1 markdown-it-py==4.2.0 mdurl==0.1.2 numpy==2.5.4 opentelemetry-api==1.45.1 pandas==3.0.6 python-dateutil==2.9.0.post0 redis==8.1.0 rich==15.0.0 six==1.17.0 smart_open==8.0.3 sqlparse==0.6.0 wrapt==2.5.1
+garf-io                          total= 27 novos= 15 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 eval_type_backport==0.4.0 garf-core==1.3.3 garf-io==1.5.1 markdown-it-py==4.2.0 mdurl==0.1.2 opentelemetry-api==1.45.1 python-dateutil==2.9.0.post0 redis==8.1.0 rich==15.0.0 six==1.17.0 smart_open==8.0.3 sqlparse==0.6.0 wrapt==2.5.1
+geoip2                           total= 15 novos= 10 sdist=[]  aiohappyeyeballs==2.7.1 aiohttp==3.14.5 aiosignal==1.4.0 attrs==26.1.0 frozenlist==1.8.0 geoip2==5.3.0 maxminddb==3.2.0 multidict==7.1.0 propcache==0.5.4 yarl==1.25.1
+google-ads-api-report-fetcher    total= 60 novos= 31 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 annotated-doc==0.0.5 eval_type_backport==0.4.0 garf-core==1.3.3 garf-executors==1.7.0.post1 garf-io==1.5.1 google-ads-api-report-fetcher==1.18.3 jwt==1.4.0 markdown-it-py==4.2.0 mdurl==0.1.2 opentelemetry-api==1.45.1 opentelemetry-exporter-http-transport==0.66b1 opentelemetry-exporter-otlp-common==0.66b1 opentelemetry-exporter-otlp-proto-common==1.45.1 opentelemetry-exporter-otlp-proto-grpc==1.45.1 opentelemetry-exporter-otlp-proto-http==1.45.1 opentelemetry-exporter-otlp==1.45.1 opentelemetry-proto==1.45.1 opentelemetry-sdk==1.45.1 opentelemetry-semantic-conventions==0.66b1 psutil==7.2.2 python-dateutil==2.9.0.post0 redis==8.1.0 rich==15.0.0 shellingham==1.5.4 six==1.17.0 smart_open==8.0.3 sqlparse==0.6.0 typer==0.27.3 wrapt==2.5.1
+hdbscan                          total=  8 novos=  8 sdist=[]  cloudpickle==3.1.2 hdbscan==0.8.44 joblib==1.6.0 narwhals==2.27.1 numpy==2.5.4 scikit-learn==1.9.1 scipy==1.18.1 threadpoolctl==3.7.0
+ipinfo                           total= 15 novos= 10 sdist=[]  aiohappyeyeballs==2.7.1 aiohttp==3.14.5 aiosignal==1.4.0 attrs==26.1.0 cachetools==7.2.1 frozenlist==1.8.0 ipinfo==5.6.0 multidict==7.1.0 propcache==0.5.4 yarl==1.25.1
+litellm                          total= 58 novos= 37 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 aiohappyeyeballs==2.7.1 aiohttp==3.14.5 aiosignal==1.4.0 attrs==26.1.0 boto3==1.43.114 botocore==1.43.114 fastuuid==0.14.0 filelock==3.32.7 frozenlist==1.8.0 fsspec==2026.9.0 h2==4.4.1 hf-xet==1.7.0 hpack==4.2.0 huggingface_hub==1.33.0 hyperframe==6.1.0 importlib_metadata==8.9.0 jiter==0.17.0 jmespath==1.1.0 jsonschema-specifications==2025.9.1 jsonschema==4.26.0 litellm==1.105.1 multidict==7.1.0 openai==2.54.0 propcache==0.5.4 python-dateutil==2.9.0.post0 referencing==0.37.0 regex==2026.9.29 rpds-py==2026.9.1 s3transfer==0.19.2 six==1.17.0 tiktoken==0.14.0 tokenizers==0.23.3 tqdm==4.70.1 yarl==1.25.1 zipp==4.1.1
+opentelemetry-sdk                total=  4 novos=  3 sdist=[]  opentelemetry-api==1.45.1 opentelemetry-sdk==1.45.1 opentelemetry-semantic-conventions==0.66b1
+pandas                           total=  4 novos=  4 sdist=[]  numpy==2.5.4 pandas==3.0.6 python-dateutil==2.9.0.post0 six==1.17.0
+playwright                       total=  4 novos=  3 sdist=[]  greenlet==3.5.6 playwright==1.64.0 pyee==14.0.0
+polars                           total=  2 novos=  2 sdist=[]  polars-runtime-32==2.0.0 polars==2.0.0
+prefect                          total= 40 novos= 31 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 cloudpickle==3.1.2 croniter==6.2.4 dask==2026.8.0 distributed==2026.8.0 docker==7.2.0 fsspec==2026.9.0 importlib_resources==7.1.0 locket==1.0.0 marshmallow-oneofschema==3.2.0 marshmallow==4.3.1 msgpack==1.2.3 mypy_extensions==1.1.0 partd==1.4.2 pendulum==3.3.0 prefect==1.4.1 psutil==7.2.2 python-box==7.4.1 python-dateutil==2.9.0.post0 python-slugify==9.1.3 pytz==2026.5 six==1.17.0 tabulate==0.10.0 tblib==3.2.2 text-unidecode==1.3 toml==0.10.2 toolz==1.2.0 tornado==6.5.10 tzdata==2026.5 zict==3.0.0
+qdrant-client                    total= 20 novos=  6 sdist=[]  h2==4.4.1 hpack==4.2.0 hyperframe==6.1.0 numpy==2.5.4 portalocker==3.2.0 qdrant-client==1.19.1
+ray                              total= 17 novos=  8 sdist=[]  attrs==26.1.0 filelock==4.2.0 jsonschema-specifications==2025.9.1 jsonschema==4.26.0 msgpack==1.2.3 ray==2.59.0 referencing==0.37.0 rpds-py==2026.9.1
+redis                            total=  1 novos=  1 sdist=[]  redis==8.1.0
+respx                            total=  7 novos=  1 sdist=[]  respx==0.23.1
+schemathesis                     total= 27 novos= 11 sdist=[]  MarkupSafe==3.0.4 Werkzeug==3.1.9 graphql-core==3.2.13 harfile==0.5.0 hypothesis-graphql==0.13.2 jsonschema_rs==0.58.6 markdown-it-py==4.2.0 mdurl==0.1.2 pyrate-limiter==4.5.0 rich==15.0.0 schemathesis==4.31.1
+sentence-transformers            total= 41 novos= 30 sdist=[]  Jinja2==3.1.6 MarkupSafe==3.0.4 annotated-doc==0.0.5 cloudpickle==3.1.2 filelock==4.2.0 fsspec==2026.9.0 hf-xet==1.7.0 huggingface_hub==1.33.0 joblib==1.6.0 markdown-it-py==4.2.0 mdurl==0.1.2 mpmath==1.3.0 narwhals==2.27.1 networkx==3.7 numpy==2.5.4 regex==2026.9.29 rich==15.0.0 safetensors==0.8.0 scikit-learn==1.9.1 scipy==1.18.1 sentence-transformers==6.1.0 setuptools==84.0.0 shellingham==1.5.4 sympy==1.14.0 threadpoolctl==3.7.0 tokenizers==0.23.3 torch==2.14.1 tqdm==4.70.1 transformers==5.19.0 typer==0.27.3
+
+== prefect==3.8.8
+The conflict is caused by:
+    prefect 3.8.8 depends on fastapi<1.0.0 and >=0.139.0
+    The user requested (constraint) fastapi==0.115.6
+
+== dagster==1.13.26
+The conflict is caused by:
+    dagster 1.13.26 depends on protobuf<7 and >=4; python_version >= "3.11"
+    The user requested (constraint) protobuf==7.35.1
+
+== feast==0.67.0
+The conflict is caused by:
+    feast 0.67.0 depends on tenacity<9 and >=7
+    The user requested (constraint) tenacity==9.1.4
+
+== bytewax
+  error: subprocess-exited-with-error
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: metadata-generation-failed
+× Encountered error while generating package metadata.

@@ -974,9 +974,9 @@ def test_a_selecao_de_keywords_chega_intacta_ao_plano(monkeypatch):
     _instalar_portas_hermeticas(monkeypatch)
     hermetica = sb.validar_mutacoes
 
-    def espiao(customer_id, operacoes, *, login_customer_id):
+    def espiao(customer_id, operacoes, *, login_customer_id, **kw):
         capturado["ops"] = list(operacoes)
-        return hermetica(customer_id, operacoes, login_customer_id=login_customer_id)
+        return hermetica(customer_id, operacoes, login_customer_id=login_customer_id, **kw)
 
     monkeypatch.setattr(sb, "validar_mutacoes", espiao)
 

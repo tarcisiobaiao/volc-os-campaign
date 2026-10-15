@@ -1,0 +1,200 @@
+{
+  "classe": "validate_only real (atomicidade/erro parcial)",
+  "operacoes": 30,
+  "operacao_adulterada": 0,
+  "adulteracao": "campaign_budget.amount_micros + 1 (fora da unidade mínima)",
+  "ids_temporarios_exemplo": [
+    "customers/5478096539/adGroups/-3",
+    "customers/5478096539/adGroups/-4",
+    "customers/5478096539/adGroups/-5",
+    "customers/5478096539/assets/-100",
+    "customers/5478096539/assets/-101",
+    "customers/5478096539/assets/-102"
+  ],
+  "payload_sha256": "77a13b7e1a0c1de3e4b066793af9fd209891ddefd951ea0eea48f03131ff9d8e",
+  "resultados": {
+    "partial_failure=False": {
+      "rpc": "FALHOU (request inteira)",
+      "request_id": "_vF5SenV1hmR_7wRwcLsiQ",
+      "classe": "terminal",
+      "erros": [
+        "campaign_budget_error.NON_MULTIPLE_OF_MINIMUM_CURRENCY_UNIT\n  campo:   mutate_operations[0].campaign_budget_operation.create.amount_micros\n  operação: [0]\n  gatilho: '20000001'\n  mensagem: A money amount was not a multiple of a minimum unit.",
+        "mutate_error.RESOURCE_NOT_FOUND\n  campo:   mutate_operations[1].campaign_operation.create.campaign_budget\n  operação: [1]\n  gatilho: '-1'\n  mensagem: Resource was not found.",
+        "mutate_error.RESOURCE_NOT_FOUND\n  campo:   mutate_operations[2].campaign_criterion_operation.create.campaign\n  operação: [2]\n  gatilho: '-2'\n  mensagem: Resource was not found.",
+        "mutate_error.RESOURCE_NOT_FOUND\n  campo:   mutate_operations[3].campaign_criterion_operation.create.campaign\n  operação: [3]\n  gatilho: '-2'\n  mensagem: Resource was not found.",
+        "mutate_error.RESOURCE_NOT_FOUND\n  campo:   mutate_operations[4].ad_group_operation.create.campaign\n  operação: [4]\n  gatilho: '-2'\n  mensagem: Resource was not found."
+      ],
+      "s": 1.667
+    },
+    "partial_failure=True": {
+      "rpc": "OK",
+      "request_ids": [
+        "2IVQoLCeyv5nICg3op0_oQ"
+      ],
+      "partial_failure_error_code": 3,
+      "erros_parciais": [
+        {
+          "indice": [
+            0
+          ],
+          "codigo": "campaign_budget_error: NON_MULTIPLE_OF_MINIMUM_CURRENCY_UNIT",
+          "mensagem": "A money amount was not a multiple of a minimum unit."
+        },
+        {
+          "indice": [
+            1
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            2
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            3
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            4
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            5
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            6
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            7
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            8
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            9
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            10
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            11
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            12
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            13
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            15
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            17
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            19
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            21
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            23
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            25
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            27
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        },
+        {
+          "indice": [
+            29
+          ],
+          "codigo": "mutate_error: RESOURCE_NOT_FOUND",
+          "mensagem": "Resource was not found."
+        }
+      ],
+      "resultados_vazios_ou_nao": 0,
+      "n_respostas": 0,
+      "s": 1.832
+    }
+  },
+  "sem_mudanca_na_conta": true,
+  "mutacoes_persistentes": 0,
+  "sem_mudanca_na_conta_reexecucao": true,
+  "nota": "ramo partial_failure=True reexecutado: a 1a tentativa falhou num import do script (não na API)"
+}

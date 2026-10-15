@@ -1,0 +1,74 @@
+{
+ "classe": "chamada real de leitura com sessão autenticada do produto (operador logado no navegador)",
+ "data": "2026-10-14",
+ "frontend": "http://localhost:8080 (Vite deste checkout)",
+ "backend": "uvicorn app.main:app :8011, código desta missão (HEAD fb446595 + delta local), FORGE_PERMITIR_ESCRITA ausente",
+ "como": "Claude in Chrome navegou até /trafego e /trafego/nova/106; nenhum token lido, copiado ou impresso; nenhum formulário preenchido",
+ "contraprova": "GET /api/trafego/trava sem Authorization respondeu 401",
+ "rotas": [
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/pautador/opportunities/106/conjunto-pago",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/canais/esquema",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/candidatos/106",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/copy/106",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/inventario",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/inventario/alertas",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/plano-de-mensuracao",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/politica/verticais",
+   "http": 200
+  },
+  {
+   "n": 2,
+   "metodo": "GET",
+   "rota": "/api/trafego/trava",
+   "http": 200
+  },
+  {
+   "n": 1,
+   "metodo": "GET",
+   "rota": "/api/trafego/trava",
+   "http": 401
+  }
+ ],
+ "posts": 0,
+ "nao_feito": "POST /provar pela tela: o assistente de 7 etapas grava decisões no 'resumo persistente' (escrita no banco do produto, fora da autorização); e o destino (LP 2477) está em rascunho, então o selo seria retido de qualquer forma",
+ "o_que_prova": "o backend com o delta desta missão atende a sessão real do produto nas leituras do cockpit Search (candidatos, conjunto pago, copy, trava, esquema, política, plano de mensuração)",
+ "o_que_nao_prova": "o /provar e o /subir autenticados ponta a ponta pela tela"
+}

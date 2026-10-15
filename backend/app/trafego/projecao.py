@@ -276,7 +276,21 @@ def preparo(p: Any) -> dict[str, Any]:
         # também serve `Preparo` de versões que não tinham o campo.
         "linhagem": _linhagem(getattr(p, "linhagem", ())),
         "falha_validacao": _falha(p.falha_validacao),
+        # A identificação da chamada que ACEITOU o payload. `getattr` pela
+        # mesma razão da linhagem; `None` quando não houve aceite.
+        "prova_google": _prova_google(getattr(p, "prova_google", None)),
         "aprovado": bool(selo),
+    }
+
+
+def _prova_google(prova: Any) -> dict[str, Any] | None:
+    if prova is None:
+        return None
+    return {
+        "request_ids": list(prova.request_ids),
+        "versao_api": prova.versao_api,
+        "validado_em": prova.validado_em,
+        "validate_only": True,
     }
 
 

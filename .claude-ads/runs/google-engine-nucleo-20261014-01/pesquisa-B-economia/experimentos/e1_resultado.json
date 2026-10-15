@@ -1,0 +1,267 @@
+{
+ "rotulo": "SINTETICO — verdade conhecida; nenhum dado real; nao e parametro operacional",
+ "seed": 20261014,
+ "replicas": 40,
+ "entidades": 3000,
+ "mu": 0.05,
+ "distribuicao_cliques": "Zipf(1.6) truncado em 20000; treino = Binomial(n, 0.5)",
+ "cenarios_taxa": [
+  {
+   "kappa_verdadeiro": 2.0,
+   "kappa_estimado_mediana": 2.036387086788545,
+   "M_otimo_grade": 2.04,
+   "mse_x1e4": {
+    "raw": 183.4461,
+    "pooled": 164.1666,
+    "eb": 96.2063,
+    "oracle": 96.0406,
+    "fixo_M20": 132.1557,
+    "min10": 146.2166,
+    "min30": 155.254,
+    "min100": 159.7045
+   },
+   "mse_x1e4_M20_vs_Motimo": [
+    132.6087,
+    99.1779
+   ],
+   "vies_top5pct": {
+    "raw": 0.30808,
+    "eb": -0.00223,
+    "fixo_M20": -0.20319,
+    "pooled": -0.00341
+   },
+   "decisao_lucrativo": {
+    "raw": {
+     "media_selecionadas": 860.175,
+     "taxa_falso_lucrativo": 0.4791368531800694,
+     "taxa_lucrativas_perdidas": 0.5052333333333333
+    },
+    "eb": {
+     "media_selecionadas": 2220.1,
+     "taxa_falso_lucrativo": 0.7014477277058494,
+     "taxa_lucrativas_perdidas": 0.11773333333333333
+    },
+    "fixo_M20": {
+     "media_selecionadas": 2159.4,
+     "taxa_falso_lucrativo": 0.5785599680377187,
+     "taxa_lucrativas_perdidas": 0.18350000000000002
+    },
+    "min30": {
+     "media_selecionadas": 2226.3,
+     "taxa_falso_lucrativo": 0.592566007492486,
+     "taxa_lucrativas_perdidas": 0.21713333333333332
+    }
+   }
+  },
+  {
+   "kappa_verdadeiro": 5.0,
+   "kappa_estimado_mediana": 4.912811385937605,
+   "M_otimo_grade": 4.96,
+   "mse_x1e4": {
+    "raw": 194.7511,
+    "pooled": 84.2932,
+    "eb": 58.482,
+    "oracle": 58.3296,
+    "fixo_M20": 68.4521,
+    "min10": 75.7353,
+    "min30": 79.4956,
+    "min100": 81.8926
+   },
+   "mse_x1e4_M20_vs_Motimo": [
+    68.6463,
+    61.1765
+   ],
+   "vies_top5pct": {
+    "raw": 0.39777,
+    "eb": -0.00067,
+    "fixo_M20": -0.08755,
+    "pooled": 0.00207
+   },
+   "decisao_lucrativo": {
+    "raw": {
+     "media_selecionadas": 518.975,
+     "taxa_falso_lucrativo": 0.32145387234838624,
+     "taxa_lucrativas_perdidas": 0.6338333333333332
+    },
+    "eb": {
+     "media_selecionadas": 252.225,
+     "taxa_falso_lucrativo": 0.17900551207530022,
+     "taxa_lucrativas_perdidas": 0.7238333333333333
+    },
+    "fixo_M20": {
+     "media_selecionadas": 929.675,
+     "taxa_falso_lucrativo": 0.3371810181082444,
+     "taxa_lucrativas_perdidas": 0.5266
+    },
+    "min30": {
+     "media_selecionadas": 959.475,
+     "taxa_falso_lucrativo": 0.3092648778352961,
+     "taxa_lucrativas_perdidas": 0.6388
+    }
+   }
+  },
+  {
+   "kappa_verdadeiro": 20.0,
+   "kappa_estimado_mediana": 20.62406567797227,
+   "M_otimo_grade": 20.59,
+   "mse_x1e4": {
+    "raw": 206.0614,
+    "pooled": 23.2375,
+    "eb": 19.5606,
+    "oracle": 19.4977,
+    "fixo_M20": 20.0101,
+    "min10": 22.581,
+    "min30": 22.1403,
+    "min100": 22.606
+   },
+   "mse_x1e4_M20_vs_Motimo": [
+    20.0143,
+    20.0143
+   ],
+   "vies_top5pct": {
+    "raw": 0.48171,
+    "eb": -0.00138,
+    "fixo_M20": -0.00012,
+    "pooled": 0.00072
+   },
+   "decisao_lucrativo": {
+    "raw": {
+     "media_selecionadas": 306.15,
+     "taxa_falso_lucrativo": 0.4046232400292116,
+     "taxa_lucrativas_perdidas": 0.7637666666666666
+    },
+    "eb": {
+     "media_selecionadas": 249.75,
+     "taxa_falso_lucrativo": 0.3673016035512578,
+     "taxa_lucrativas_perdidas": 0.7896000000000001
+    },
+    "fixo_M20": {
+     "media_selecionadas": 271.65,
+     "taxa_falso_lucrativo": 0.37499342426967974,
+     "taxa_lucrativas_perdidas": 0.7819666666666667
+    },
+    "min30": {
+     "media_selecionadas": 120.65,
+     "taxa_falso_lucrativo": 0.2291024982291336,
+     "taxa_lucrativas_perdidas": 0.9245666666666669
+    }
+   }
+  },
+  {
+   "kappa_verdadeiro": 100.0,
+   "kappa_estimado_mediana": 102.39510728921096,
+   "M_otimo_grade": 102.12,
+   "mse_x1e4": {
+    "raw": 212.489,
+    "pooled": 4.9417,
+    "eb": 4.481,
+    "oracle": 4.4573,
+    "fixo_M20": 5.6232,
+    "min10": 6.6257,
+    "min30": 5.0161,
+    "min100": 4.8466
+   },
+   "mse_x1e4_M20_vs_Motimo": [
+    5.5679,
+    4.6716
+   ],
+   "vies_top5pct": {
+    "raw": 0.51449,
+    "eb": 0.00044,
+    "fixo_M20": 0.03439,
+    "pooled": 0.00015
+   },
+   "decisao_lucrativo": {
+    "raw": {
+     "media_selecionadas": 310.575,
+     "taxa_falso_lucrativo": 0.581876849440563,
+     "taxa_lucrativas_perdidas": 0.8268333333333334
+    },
+    "eb": {
+     "media_selecionadas": 73.3,
+     "taxa_falso_lucrativo": 0.3592374608156648,
+     "taxa_lucrativas_perdidas": 0.9396000000000001
+    },
+    "fixo_M20": {
+     "media_selecionadas": 287.025,
+     "taxa_falso_lucrativo": 0.5718098889188855,
+     "taxa_lucrativas_perdidas": 0.8361000000000001
+    },
+    "min30": {
+     "media_selecionadas": 57.8,
+     "taxa_falso_lucrativo": 0.39557873843697633,
+     "taxa_lucrativas_perdidas": 0.9532666666666667
+    }
+   }
+  },
+  {
+   "kappa_verdadeiro": 500.0,
+   "kappa_estimado_mediana": 497.41474881703755,
+   "M_otimo_grade": 506.46,
+   "mse_x1e4": {
+    "raw": 205.7569,
+    "pooled": 0.9913,
+    "eb": 0.9458,
+    "oracle": 0.9303,
+    "fixo_M20": 2.4653,
+    "min10": 3.2959,
+    "min30": 1.3098,
+    "min100": 1.0173
+   },
+   "mse_x1e4_M20_vs_Motimo": [
+    2.3984,
+    0.9692
+   ],
+   "vies_top5pct": {
+    "raw": 0.50613,
+    "eb": -1e-05,
+    "fixo_M20": 0.04236,
+    "pooled": 8e-05
+   },
+   "decisao_lucrativo": {
+    "raw": {
+     "media_selecionadas": 329.65,
+     "taxa_falso_lucrativo": 0.6591860013120214,
+     "taxa_lucrativas_perdidas": 0.8502333333333333
+    },
+    "eb": {
+     "media_selecionadas": 23.475,
+     "taxa_falso_lucrativo": 0.31569226015380264,
+     "taxa_lucrativas_perdidas": 0.9803000000000001
+    },
+    "fixo_M20": {
+     "media_selecionadas": 319.95,
+     "taxa_falso_lucrativo": 0.6568049426033563,
+     "taxa_lucrativas_perdidas": 0.8535666666666668
+    },
+    "min30": {
+     "media_selecionadas": 68.625,
+     "taxa_falso_lucrativo": 0.5617396694322764,
+     "taxa_lucrativas_perdidas": 0.9599
+    }
+   }
+  }
+ ],
+ "rpc_lucro": {
+  "entidades": 5000,
+  "fracao_entidades_lucro_observado_nao_positivo": 0.5892,
+  "fracao_entidades_receita_zero": 0.1564,
+  "lucro_medio_por_clique_verdadeiro_ponderado": 0.00064,
+  "lucro_medio_lognormal_so_positivos": 0.018058,
+  "mse_lucro_por_clique_x1e6": {
+   "raw": 83.6899,
+   "gamma_poisson_eb_em_pageviews": 45.3221
+  },
+  "gamma_estimado": {
+   "shape": 2.256,
+   "rate": 1.241,
+   "shape_verdadeiro": 2.0,
+   "rate_verdadeiro": 1.111
+  },
+  "leitura": "Gamma-Poisson encolhe a CONTAGEM (pageviews/clique) e o lucro é derivado depois (lambda*RPM - CPC), preservando lucro negativo. Lognormal exige valor > 0: descarta as entidades com lucro <= 0 e superestima o lucro médio."
+ },
+ "cauda": {
+  "frac_ate_2_cliques": 0.5733333333333334,
+  "frac_cliques_nas_entidades_ate_2": 0.009317760069861368
+ }
+}

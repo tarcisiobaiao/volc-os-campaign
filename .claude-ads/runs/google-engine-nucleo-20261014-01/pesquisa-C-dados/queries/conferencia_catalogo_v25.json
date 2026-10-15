@@ -1,0 +1,334 @@
+[
+ {
+  "grupo": "policy",
+  "origem": "google-marketing-solutions/ads-policy-monitor@7d313aead8aa49f2bdfe459cf112a9dfc8e12cf7:cloud_functions/ads_policy_monitor/gaql/ad_policy_data.sql:14-41",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.ad.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.policy_summary.approval_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.policy_summary.policy_topic_entries": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.policy_summary.review_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.primary_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.clicks": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.impressions": "METRIC|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "policy",
+  "origem": "google-marketing-solutions/ads-policy-monitor@7d313aead8aa49f2bdfe459cf112a9dfc8e12cf7:cloud_functions/ads_policy_monitor/gaql/ad_group_asset.sql:14-37",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.policy_summary.approval_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.policy_summary.policy_topic_entries": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "asset.policy_summary.review_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.source": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.primary_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "policy",
+  "origem": "google-marketing-solutions/ads-policy-monitor@7d313aead8aa49f2bdfe459cf112a9dfc8e12cf7:cloud_functions/ads_policy_monitor/gaql/campaign_asset.sql:14-34",
+  "campos_catalogo_v25": {
+   "asset.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.policy_summary.approval_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.policy_summary.policy_topic_entries": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "asset.policy_summary.review_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.source": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.primary_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "policy",
+  "origem": "google-marketing-solutions/ads-policy-monitor@7d313aead8aa49f2bdfe459cf112a9dfc8e12cf7:cloud_functions/ads_policy_monitor/gaql/customer_asset.sql:14-29",
+  "campos_catalogo_v25": {
+   "asset.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.policy_summary.approval_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.policy_summary.policy_topic_entries": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "asset.policy_summary.review_status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.source": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "placements",
+  "origem": "google-marketing-solutions/ads_placement_guardian@294c4c37e1383af9ec639e3c2ccf79b7b25abba2:libs/ads_housekeeper/googleads_housekeeper/domain/placement_handler/entities.py:50-72",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.cost_micros": "METRIC|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "placements",
+  "origem": "google-marketing-solutions/ads_placement_guardian@294c4c37e1383af9ec639e3c2ccf79b7b25abba2:libs/ads_housekeeper/googleads_housekeeper/domain/placement_handler/entities.py:247-264",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.all_conversions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions": "METRIC|selecionavel=True|filtravel=True",
+   "segments.conversion_action_name": "SEGMENT|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "placements",
+  "origem": "google-marketing-solutions/ads_placement_guardian@294c4c37e1383af9ec639e3c2ccf79b7b25abba2:libs/ads_housekeeper/googleads_housekeeper/domain/placement_handler/entities.py:343-355",
+  "campos_catalogo_v25": {},
+  "ausentes": []
+ },
+ {
+  "grupo": "placements",
+  "origem": "google-marketing-solutions/video-exclusion-toolbox@97d544876a1139688f07f84e51d1dbde5fc71641:src/gads_channel_report_fetcher/main.py:86-110",
+  "campos_catalogo_v25": {
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "group_placement_view.display_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "group_placement_view.placement": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "group_placement_view.placement_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "group_placement_view.target_url": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.all_conversions_from_interactions_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.average_cpm": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.clicks": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.cost_micros": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.ctr": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.impressions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_trueview_view_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_trueview_views": "METRIC|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "placements",
+  "origem": "google-marketing-solutions/video-exclusion-toolbox@97d544876a1139688f07f84e51d1dbde5fc71641:src/gads_video_report_fetcher/main.py:86-116",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "detail_placement_view.display_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "detail_placement_view.group_placement_target_url": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "detail_placement_view.placement": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "detail_placement_view.placement_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "detail_placement_view.target_url": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.all_conversions_from_interactions_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.average_cpm": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.clicks": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.cost_micros": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.ctr": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.impressions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_quartile_p100_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_quartile_p25_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_quartile_p50_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_quartile_p75_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_trueview_view_rate": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.video_trueview_views": "METRIC|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "placements",
+  "origem": "google-marketing-solutions/pmax_best_practices_dashboard@3dc6fa0dbc0bca7c791c98973f80bf6bdc150422:google_ads_queries/pmax_placement_view.sql:15-32",
+  "campos_catalogo_v25": {
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.impressions": "METRIC|selecionavel=True|filtravel=True",
+   "performance_max_placement_view.display_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "performance_max_placement_view.placement": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "performance_max_placement_view.placement_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "performance_max_placement_view.target_url": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "qs",
+  "origem": "google-marketing-solutions/arba@72c5661a6e6633d6fcb20428369253bc42ca1d83:queries/ads/keyword_performance.sql:1-40",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_criterion.criterion_id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.clicks": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions_value": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.cost_micros": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.historical_creative_quality_score": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.historical_landing_page_quality_score": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.historical_quality_score": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.historical_search_predicted_ctr": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.impressions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.search_absolute_top_impression_share": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.search_budget_lost_absolute_top_impression_share": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.search_impression_share": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.search_rank_lost_impression_share": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.search_top_impression_share": "METRIC|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "qs",
+  "origem": "google-marketing-solutions/arba@72c5661a6e6633d6fcb20428369253bc42ca1d83:queries/ads/speed_score.sql:1-21",
+  "campos_catalogo_v25": {
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "landing_page_view.unexpanded_final_url": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.speed_score": "METRIC|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "assets",
+  "origem": "google-marketing-solutions/dgpulse@9cbb9d4e36ebb6660ec7d3fa4dcf3d8678f8b0f2:google_ads_queries/adgroupad_asset_view.sql:21-40",
+  "campos_catalogo_v25": {
+   "ad_group_ad_asset_view.resource_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.image_asset.full_size.url": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "metrics.clicks": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.conversions_value": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.cost_micros": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.ctr": "METRIC|selecionavel=True|filtravel=True",
+   "metrics.impressions": "METRIC|selecionavel=True|filtravel=True",
+   "segments.date": "SEGMENT|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "assets",
+  "origem": "google-marketing-solutions/dgpulse@9cbb9d4e36ebb6660ec7d3fa4dcf3d8678f8b0f2:google_ads_queries/ad_group_ad.sql:20-45",
+  "campos_catalogo_v25": {
+   "ad_group.demand_gen_ad_group_settings.channel_controls.channel_config": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.demand_gen_ad_group_settings.channel_controls.channel_strategy": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.ad.demand_gen_multi_asset_ad.descriptions": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_multi_asset_ad.headlines": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_multi_asset_ad.logo_images": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_multi_asset_ad.marketing_images": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_multi_asset_ad.portrait_marketing_images": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_multi_asset_ad.square_marketing_images": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_video_responsive_ad.descriptions": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_video_responsive_ad.headlines": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_video_responsive_ad.logo_images": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_video_responsive_ad.long_headlines": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.demand_gen_video_responsive_ad.videos": "ATTRIBUTE|selecionavel=True|filtravel=False",
+   "ad_group_ad.ad.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.ad.type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_ad.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.advertising_channel_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "assets",
+  "origem": "google-marketing-solutions/pmax_best_practices_dashboard@3dc6fa0dbc0bca7c791c98973f80bf6bdc150422:google_ads_queries/assetgroupsignal.sql:15-22",
+  "campos_catalogo_v25": {
+   "asset_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset_group_signal.audience.audience": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "assets",
+  "origem": "google-marketing-solutions/pmax_best_practices_dashboard@3dc6fa0dbc0bca7c791c98973f80bf6bdc150422:google_ads_queries/ad_group_asset.sql:15-21",
+  "campos_catalogo_v25": {
+   "ad_group_asset.ad_group": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_asset.field_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "asset.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ },
+ {
+  "grupo": "negativas",
+  "origem": "google-marketing-solutions/negative_keyword_cleaner@e3443326691b627013e9beae91f09b5646108ff7:src/utils/gaarf_queries.py:43-172",
+  "campos_catalogo_v25": {
+   "ad_group.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_criterion.criterion_id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_criterion.keyword.match_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_criterion.keyword.text": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_criterion.negative": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "ad_group_criterion.type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign_criterion.criterion_id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign_criterion.keyword.match_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign_criterion.keyword.text": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign_criterion.negative": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "campaign_criterion.type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer_client.descriptive_name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer_client.id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer_client.manager": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "customer_client.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "shared_criterion.criterion_id": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "shared_criterion.keyword.match_type": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "shared_criterion.keyword.text": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "shared_set.name": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "shared_set.status": "ATTRIBUTE|selecionavel=True|filtravel=True",
+   "shared_set.type": "ATTRIBUTE|selecionavel=True|filtravel=True"
+  },
+  "ausentes": []
+ }
+]

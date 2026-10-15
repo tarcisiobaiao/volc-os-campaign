@@ -166,3 +166,81 @@ def teste_keyword_aprovacao_e_tipos():
 
 def teste_linha_sem_entidade_e_descartada():
     assert FAMILIA.normalizar(GoogleAdsRow(), CTX) is None
+
+
+# ── 14/10/2026: o PORQUÊ da política e a política dos assets de campanha ─────
+
+
+def _anuncio_restrito_por_pais() -> GoogleAdsRow:
+    """A forma medida na conta real: FULLY_LIMITED com restrição de país."""
+    from google.ads.googleads.v25.common.types.policy import (
+        PolicyTopicConstraint, PolicyTopicEvidence)
+
+    r = _anuncio()
+    entrada = PolicyTopicEntry(
+        topic="GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES",
+        type_=PolicyTopicEntryTypeEnum.PolicyTopicEntryType.FULLY_LIMITED)
+    restricao = PolicyTopicConstraint()
+    restricao.country_constraint_list.total_targeted_countries = 1
+    restricao.country_constraint_list.countries.append(
+        PolicyTopicConstraint.CountryConstraint(country_criterion="geoTargetConstants/2076"))
+    entrada.constraints.append(restricao)
+    evidencia = PolicyTopicEvidence()
+    evidencia.text_list.texts.append("Consulta CPF oficial")
+    entrada.evidences.append(evidencia)
+    r.ad_group_ad.policy_summary.policy_topic_entries.append(entrada)
+    return r
+
+
+def teste_evidencia_e_restricao_sobrevivem():
+    l = FAMILIA.normalizar(_anuncio_restrito_por_pais(), CTX)
+    gov = next(t for t in l["topicos_politica"]
+               if t["topic"] == "GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES")
+    assert gov["type"] == "FULLY_LIMITED"
+    assert gov["constraints"] == [{"country_constraint_list": {
+        "total_alvo": 1, "paises": ["geoTargetConstants/2076"]}}]
+    assert gov["evidences"] == [{"text_list": ["Consulta CPF oficial"]}]
+    assert json.loads(json.dumps(l)) == l
+
+
+def teste_topico_sem_evidencia_mantem_a_forma_antiga():
+    """Sem evidência/restrição, nenhuma chave nova: o estado_hash não muda."""
+    l = FAMILIA.normalizar(_anuncio(), CTX)
+    assert l["topicos_politica"] == [{"topic": "TRADEMARKS_IN_AD_TEXT", "type": "LIMITED"}]
+
+
+def teste_asset_de_campanha_traz_a_politica_do_asset():
+    r = GoogleAdsRow()
+    r.campaign.id = 24278665189
+    r.campaign_asset.resource_name = "customers/5478096539/campaignAssets/24278665189~555~SITELINK"
+    r.campaign_asset.status = ENABLED
+    r.asset.policy_summary.approval_status = PolicyApprovalStatusEnum.PolicyApprovalStatus.DISAPPROVED
+    r.asset.policy_summary.review_status = PolicyReviewStatusEnum.PolicyReviewStatus.REVIEWED
+    r.asset.policy_summary.policy_topic_entries.append(PolicyTopicEntry(
+        topic="DESTINATION_NOT_WORKING",
+        type_=PolicyTopicEntryTypeEnum.PolicyTopicEntryType.PROHIBITED))
+    l = FAMILIA.normalizar(r, CTX)
+    assert l["entidade_tipo"] == "campaign_asset"
+    assert (l["aprovacao"], l["revisao"]) == ("DISAPPROVED", "REVIEWED")
+    assert l["topicos_politica"] == [{"topic": "DESTINATION_NOT_WORKING", "type": "PROHIBITED"}]
+
+
+def teste_gaql_do_asset_de_campanha_pede_a_politica_do_asset():
+    q = GAQLS["campaign_asset"]
+    for campo in ("asset.policy_summary.approval_status", "asset.policy_summary.review_status",
+                  "asset.policy_summary.policy_topic_entries"):
+        assert campo in q
+
+
+def teste_restricao_vazia_vira_contagem_sem_inventar_conteudo():
+    from google.ads.googleads.v25.common.types.policy import PolicyTopicConstraint
+
+    r = _anuncio()
+    entrada = PolicyTopicEntry(
+        topic="GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES",
+        type_=PolicyTopicEntryTypeEnum.PolicyTopicEntryType.FULLY_LIMITED)
+    entrada.constraints.append(PolicyTopicConstraint())
+    r.ad_group_ad.policy_summary.policy_topic_entries.append(entrada)
+    gov = FAMILIA.normalizar(r, CTX)["topicos_politica"][1]
+    assert gov == {"topic": "GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES",
+                   "type": "FULLY_LIMITED", "constraints_sem_detalhe": 1}

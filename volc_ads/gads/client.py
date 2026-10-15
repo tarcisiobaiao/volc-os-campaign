@@ -16,6 +16,7 @@ from functools import lru_cache
 from typing import Any, TypeVar
 
 from google.ads.googleads.client import GoogleAdsClient
+import grpc
 
 from . import modo
 from .errors import Classe, FalhaGads, classificar
@@ -78,12 +79,16 @@ def executar(
     *,
     politica: PoliticaRetry | None = None,
     rotulo: str = "",
+    nao_retentar: Callable[[FalhaGads], bool] | None = None,
 ) -> T:
     """Executa `fn` aplicando retry apenas onde retry faz sentido.
 
     TERMINAL sobe na hora — não gastamos cinco tentativas num payload inválido.
     THROTTLED espera o que a API mandou esperar.
     TRANSIENT usa backoff exponencial com jitter.
+    `nao_retentar` deixa o chamador dizer que uma falha retentável NÃO deve ser
+    repetida no SEU contexto (ex.: concorrência numa escrita real); ela sobe
+    como `ErroTerminal`, com a classificação original.
     """
     pol = politica or PoliticaRetry()
     ultima: FalhaGads | None = None
@@ -95,8 +100,8 @@ def executar(
             falha = classificar(exc)
             ultima = falha
 
-            if falha.classe is Classe.TERMINAL:
-                log.error("[%s] terminal: %s", rotulo, falha.resumo())
+            if falha.classe is Classe.TERMINAL or (nao_retentar and nao_retentar(falha)):
+                log.error("[%s] sem retentativa: %s", rotulo, falha.resumo())
                 raise ErroTerminal(falha) from exc
 
             if tentativa == pol.tentativas - 1:
@@ -148,6 +153,7 @@ def validar_mutacoes(
     operacoes: list[Any],
     *,
     login_customer_id: str,
+    request_ids: list[str] | None = None,
 ) -> FalhaGads | None:
     """Submete o grafo de operações com validate_only=True.
 
@@ -158,7 +164,10 @@ def validar_mutacoes(
     para todos os efeitos. A API valida e descarta.
     """
     c = cliente(login_customer_id)
-    servico = c.get_service("GoogleAdsService")
+    servico = (
+        c.get_service("GoogleAdsService", interceptors=[_CapturarRequestId(request_ids)])
+        if request_ids is not None else c.get_service("GoogleAdsService")
+    )
 
     req = c.get_type("MutateGoogleAdsRequest")
     req.customer_id = str(customer_id)
@@ -171,6 +180,20 @@ def validar_mutacoes(
     except Exception as exc:  # noqa: BLE001
         return classificar(exc)
     return None
+
+
+class _CapturarRequestId(grpc.UnaryUnaryClientInterceptor):
+    """Metadado real da RPC; nunca registra token, header ou corpo."""
+
+    def __init__(self, destino: list[str]):
+        self.destino = destino
+
+    def intercept_unary_unary(self, continuation, client_call_details, request):
+        chamada = continuation(client_call_details, request)
+        for chave, valor in chamada.trailing_metadata() or ():
+            if chave == "request-id":
+                self.destino.append(str(valor))
+        return chamada
 
 
 def mutar(

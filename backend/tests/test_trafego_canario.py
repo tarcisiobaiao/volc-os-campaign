@@ -637,6 +637,7 @@ def _instalar_portas_hermeticas(monkeypatch: pytest.MonkeyPatch):
         operacoes: list,
         *,
         login_customer_id: str,
+        request_ids: list | None = None,
     ):
         assert customer_id == canario.CONTA
         assert login_customer_id == canario.MCC

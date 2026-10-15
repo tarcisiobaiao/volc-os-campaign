@@ -50,7 +50,7 @@ import hashlib
 import json
 import sys
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +61,7 @@ from .campanha.criterio import chave as _chave_criterio
 from .criativo.adaptadores import medir_imagem
 from .gads import modo
 from .gads.client import (
+    VERSAO_API,
     ErroEsgotado,
     cliente,
     ErroTerminal,
@@ -200,6 +201,25 @@ class Selo:
 
 
 @dataclass(frozen=True)
+class ProvaGoogle:
+    """O que a API devolveu ao ACEITAR o `validate_only` deste payload.
+
+    Até 14/10/2026 o sucesso não deixava rastro: `validar_mutacoes` devolvia
+    `None` e a identificação da chamada se perdia. A falha já carregava
+    `request_id` (em `FalhaGads`); o aceite não. Um recibo de prova sem o id da
+    RPC não deixa ninguém conferir no suporte do Google qual chamada aceitou.
+
+    Fica FORA do `Selo`, como a linhagem: o selo é a impressão do PAYLOAD, e o
+    id da chamada não é payload. Lista vazia é "a RPC não devolveu o metadado",
+    nunca um id inventado.
+    """
+
+    request_ids: tuple[str, ...]
+    versao_api: str
+    validado_em: str
+
+
+@dataclass(frozen=True)
 class AutoridadeDasOperacoes:
     """Fatos derivados do payload, nunca do rótulo mutável de ``Preparo``."""
 
@@ -247,6 +267,8 @@ class Preparo:
     #: PAYLOAD, e a linhagem não é payload. Um campo a mais aqui não invalida
     #: uma prova já feita.
     linhagem: tuple[Linhagem, ...] = ()
+    #: Só existe quando há selo. Ver `ProvaGoogle`.
+    prova_google: ProvaGoogle | None = None
 
     @property
     def provado(self) -> bool:
@@ -716,8 +738,10 @@ def preparar(
             linhagem=_linhagem_do_payload(brief, operacoes),
         )
 
+    request_ids: list[str] = []
     falha = validar_mutacoes(
-        customer_id, list(operacoes), login_customer_id=login_customer_id
+        customer_id, list(operacoes), login_customer_id=login_customer_id,
+        request_ids=request_ids,
     )
 
     # ── AUTOCORREÇÃO DE POLÍTICA — UMA passada, e só de política ──────────
@@ -796,9 +820,11 @@ def preparar(
                         f"⊘ operações remontadas divergiram do canal: {exc}",
                     )
                 else:
+                    request_ids2: list[str] = []
                     falha2 = validar_mutacoes(
                         customer_id, list(operacoes2),
                         login_customer_id=login_customer_id,
+                        request_ids=request_ids2,
                     )
                     veredito = (
                         "passou" if falha2 is None else "reprovou de novo"
@@ -813,6 +839,8 @@ def preparar(
                         _nome_campanha(operacoes2),
                     )
                     autoridade = autoridade2
+                    # O id que vale é o da chamada que aceitou ESTE payload.
+                    request_ids = request_ids2
 
     if falha is not None:
         return Preparo(
@@ -854,6 +882,11 @@ def preparar(
             impressao=autoridade.impressao,
             n_operacoes=len(operacoes),
             carimbo=_carimbo(),
+        ),
+        prova_google=ProvaGoogle(
+            request_ids=tuple(request_ids),
+            versao_api=VERSAO_API,
+            validado_em=datetime.now(timezone.utc).isoformat(),
         ),
     )
 

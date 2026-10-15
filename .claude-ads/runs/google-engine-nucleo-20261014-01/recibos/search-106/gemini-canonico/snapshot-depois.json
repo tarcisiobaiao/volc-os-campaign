@@ -1,0 +1,81 @@
+{
+  "campaigns": [
+    {
+      "id": "23518009650",
+      "status": "PAUSED",
+      "channel": "SEARCH",
+      "budget_micros": 30000000,
+      "bidding_strategy": "MAXIMIZE_CONVERSIONS"
+    },
+    {
+      "id": "23518661646",
+      "status": "PAUSED",
+      "channel": "SEARCH",
+      "budget_micros": 21970000,
+      "bidding_strategy": "MAXIMIZE_CONVERSIONS"
+    },
+    {
+      "id": "23524108985",
+      "status": "PAUSED",
+      "channel": "SEARCH",
+      "budget_micros": 10000000,
+      "bidding_strategy": "MAXIMIZE_CONVERSIONS"
+    },
+    {
+      "id": "24183717006",
+      "status": "PAUSED",
+      "channel": "SEARCH",
+      "budget_micros": 10000000,
+      "bidding_strategy": "MANUAL_CPC"
+    },
+    {
+      "id": "24278665189",
+      "status": "ENABLED",
+      "channel": "SEARCH",
+      "budget_micros": 30000000,
+      "bidding_strategy": "TARGET_SPEND"
+    }
+  ],
+  "ads": [
+    {
+      "group_id": "193210441352",
+      "id": "795537788619",
+      "status": "ENABLED"
+    },
+    {
+      "group_id": "196345164167",
+      "id": "795537788622",
+      "status": "ENABLED"
+    },
+    {
+      "group_id": "196487277310",
+      "id": "795678932054",
+      "status": "ENABLED"
+    },
+    {
+      "group_id": "193537926238",
+      "id": "795703071809",
+      "status": "ENABLED"
+    },
+    {
+      "group_id": "195704812787",
+      "id": "795703071812",
+      "status": "ENABLED"
+    },
+    {
+      "group_id": "200470778793",
+      "id": "819856618224",
+      "status": "ENABLED"
+    },
+    {
+      "group_id": "199085896206",
+      "id": "825455438614",
+      "status": "PAUSED"
+    },
+    {
+      "group_id": "199085896206",
+      "id": "826462028814",
+      "status": "ENABLED"
+    }
+  ]
+}

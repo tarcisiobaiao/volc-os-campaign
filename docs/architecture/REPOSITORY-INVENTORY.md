@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-10T20:45:39-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-14T23:03:11-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 861 arquivos: 639 Markdown e 222 SQL;
-- 846 versionados e 15 ainda não versionados;
+- 878 arquivos: 650 Markdown e 228 SQL;
+- 863 versionados e 15 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,10 +16,10 @@ Gerado em `2026-10-10T20:45:39-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 53 |
-| `documentation` | 456 |
+| `audit` | 55 |
+| `documentation` | 463 |
 | `generated` | 2 |
-| `module-guide` | 41 |
+| `module-guide` | 43 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-10T20:45:39-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 108 |
+| `sql-needs-review` | 114 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -192,6 +192,13 @@ estejam errados, mas impede aplicação automática.
 
 | Path | Classe | Risco SQL | Nós no grafo | Grau |
 |---|---|---|---:|---:|
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-B-economia/AUDITORIA-DADOS.md` | `audit` | — | 0 | 0 |
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-C-dados/queries/assets-extraidas.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-C-dados/queries/negativas-extraidas.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-C-dados/queries/placements-extraidas.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-C-dados/queries/policy-extraidas.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-C-dados/queries/propostas-delta-volc.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
+| `.claude-ads/runs/google-engine-nucleo-20261014-01/pesquisa-C-dados/queries/qs-extraidas.sql` | `sql-needs-review` | read-only-or-ddl-free | 1 | 0 |
 | `backend/app/motor_pautas/AUDITORIA-EXTERNA.md` | `audit` | — | 0 | 0 |
 | `backend/app/motor_pautas/AUDITORIA-GEMINI-DNA-R2.md` | `audit` | — | 0 | 0 |
 | `backend/app/motor_pautas/AUDITORIA-GEMINI-DNA-R3.md` | `audit` | — | 0 | 0 |
@@ -225,6 +232,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/audits/FUNNELFORGE-SEM-VETOS-MECANICOS-2026-10-10.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-VALIDACAO-REAL-CODEX-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/FUNNELFORGE-WRITER-AB-2026-10-08.md` | `audit` | — | 0 | 0 |
+| `docs/audits/GOOGLE-HARNESS-GEMINI-WEBGO-2026-10-14.md` | `audit` | — | 0 | 0 |
 | `docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md` | `audit` | — | 0 | 0 |
 | `docs/audits/MODELOS-FUNIL-2026-10-07.md` | `audit` | — | 0 | 0 |
 | `docs/audits/REDATOR-IDENTIDADE-EDITORIAL-2026-09-17.md` | `audit` | — | 0 | 0 |
@@ -304,14 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/rpc_get_dashboard_totals.sql` | `sql-needs-lineage` | medium | 2 | 7 |
 | `src/sql/rpc_get_operational_costs_aggregated.sql` | `sql-needs-lineage` | medium | 2 | 3 |
 | `src/sql/rpc_get_period_comparison.sql` | `sql-needs-lineage` | medium | 2 | 6 |
-| `src/sql/rpc_get_projects_summary.sql` | `sql-needs-lineage` | medium | 2 | 7 |
-| `src/sql/rpc_get_top_campaigns_by_revenue.sql` | `sql-needs-lineage` | medium | 2 | 3 |
-| `src/sql/setup_users_rls_policies.sql` | `sql-needs-lineage` | high | 1 | 0 |
-| `src/sql/sync_status_from_google_ads.sql` | `sql-needs-lineage` | high | 4 | 10 |
-| `src/sql/system-settings-timestamps.sql` | `sql-needs-lineage` | medium | 4 | 10 |
-| `src/sql/timezone-trigger.sql` | `sql-needs-lineage` | high | 6 | 18 |
-| `src/sql/update_sync_gam_function.sql` | `sql-needs-lineage` | medium | 2 | 3 |
-| `src/sql/update_user_roles_remove_viewer.sql` | `sql-needs-lineage` | high | 1 | 0 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

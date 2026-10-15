@@ -1,0 +1,117 @@
+{
+ "n_termos": 200,
+ "seed": 20261014,
+ "intencoes": {
+  "emprestimo_contratar": "manter",
+  "fgts_saque": "manter",
+  "cartao_credito": "manter",
+  "login_suporte": "negativar",
+  "emprego": "negativar",
+  "reclamacao_golpe": "negativar",
+  "informacional": "revisar",
+  "concorrente_marca": "revisar"
+ },
+ "tfidf_char_sklearn_hdbscan": {
+  "ari": 0.237,
+  "nmi": 0.558,
+  "n_clusters": 12,
+  "ruido_frac": 0.37,
+  "clusters_mistos_manter_e_negativar": 2,
+  "termos_manter_negativados_pela_maioria": 1,
+  "exemplos_dano": [
+   "cartao consignado"
+  ],
+  "segundos": 0.07
+ },
+ "fastembed_sklearn_hdbscan": {
+  "ari": 0.005,
+  "nmi": 0.078,
+  "n_clusters": 2,
+  "ruido_frac": 0.075,
+  "clusters_mistos_manter_e_negativar": 1,
+  "termos_manter_negativados_pela_maioria": 0,
+  "exemplos_dano": [],
+  "segundos_cluster": 0.01
+ },
+ "fastembed_pkg_hdbscan": {
+  "ari": 0.091,
+  "nmi": 0.246,
+  "n_clusters": 4,
+  "ruido_frac": 0.535,
+  "clusters_mistos_manter_e_negativar": 2,
+  "termos_manter_negativados_pela_maioria": 0,
+  "exemplos_dano": [],
+  "segundos_cluster": 0.02
+ },
+ "fastembed_aglomerativo_cos_sweep": [
+  {
+   "ari": 0.102,
+   "nmi": 0.6,
+   "n_clusters": 97,
+   "ruido_frac": 0.0,
+   "clusters_mistos_manter_e_negativar": 3,
+   "termos_manter_negativados_pela_maioria": 0,
+   "exemplos_dano": [],
+   "limiar_cos": 0.2
+  },
+  {
+   "ari": 0.178,
+   "nmi": 0.599,
+   "n_clusters": 57,
+   "ruido_frac": 0.0,
+   "clusters_mistos_manter_e_negativar": 5,
+   "termos_manter_negativados_pela_maioria": 2,
+   "exemplos_dano": [
+    "hoje liberar fgts",
+    "antecipacao fgts hoje"
+   ],
+   "limiar_cos": 0.3
+  },
+  {
+   "ari": 0.268,
+   "nmi": 0.588,
+   "n_clusters": 36,
+   "ruido_frac": 0.0,
+   "clusters_mistos_manter_e_negativar": 4,
+   "termos_manter_negativados_pela_maioria": 2,
+   "exemplos_dano": [
+    "hoje liberar fgts",
+    "antecipacao fgts hoje"
+   ],
+   "limiar_cos": 0.4
+  },
+  {
+   "ari": 0.33,
+   "nmi": 0.584,
+   "n_clusters": 24,
+   "ruido_frac": 0.0,
+   "clusters_mistos_manter_e_negativar": 5,
+   "termos_manter_negativados_pela_maioria": 0,
+   "exemplos_dano": [],
+   "limiar_cos": 0.5
+  },
+  {
+   "ari": 0.179,
+   "nmi": 0.487,
+   "n_clusters": 13,
+   "ruido_frac": 0.0,
+   "clusters_mistos_manter_e_negativar": 2,
+   "termos_manter_negativados_pela_maioria": 0,
+   "exemplos_dano": [],
+   "limiar_cos": 0.6
+  }
+ ],
+ "fastembed_1nn_3_sementes_por_intencao": {
+  "acuracia": 0.614,
+  "n_avaliados": 176,
+  "manter_previstos_como_negativar": 9
+ },
+ "tfidf_1nn_3_sementes_por_intencao": {
+  "acuracia": 0.58,
+  "manter_previstos_como_negativar": 6
+ },
+ "fastembed_modelo": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+ "fastembed_carga_s": 0.83,
+ "fastembed_embed_200_s": 0.35,
+ "dim": 384
+}

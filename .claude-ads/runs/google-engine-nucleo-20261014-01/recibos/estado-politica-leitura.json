@@ -1,0 +1,33 @@
+{
+ "classe": "chamada real de leitura (família estado, sem gravar)",
+ "linhas": 734,
+ "por_tipo": {
+  "keyword": 644,
+  "campaign_asset": 71,
+  "ad_group_ad": 7,
+  "ad_group": 7,
+  "campaign": 5
+ },
+ "aprovacao": {
+  "keyword:APPROVED": 397,
+  "keyword:UNSPECIFIED": 247,
+  "campaign_asset:APPROVED": 68,
+  "campaign_asset:UNSPECIFIED": 3,
+  "ad_group_ad:APPROVED": 6,
+  "ad_group_ad:APPROVED_LIMITED": 1
+ },
+ "linhas_com_evidencia_ou_restricao": 1,
+ "exemplos": [
+  {
+   "tipo": "ad_group_ad",
+   "aprovacao": "APPROVED_LIMITED",
+   "topicos": [
+    {
+     "topic": "GOVERNMENT_DOCUMENTS_AND_OFFICIAL_SERVICES",
+     "type": "FULLY_LIMITED",
+     "constraints_sem_detalhe": 1
+    }
+   ]
+  }
+ ]
+}

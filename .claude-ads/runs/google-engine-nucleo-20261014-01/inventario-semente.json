@@ -1,0 +1,1606 @@
+{
+ "schema": "volc-inventario-semente-v1",
+ "gerado_em": "2026-10-14",
+ "itens": [
+  {
+   "id": "A01",
+   "nome": "google-ads (SDK Python)",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.1_python_libraries_stack.api_and_ingestion.google-ads L7",
+    "M§5",
+    "R0:bibliotecas.json#google-ads"
+   ],
+   "alegacao": "SDK oficial gRPC/protobuf de alta performance.",
+   "url_original": "https://github.com/googleads/google-ads-python",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A02",
+   "nome": "google-ads-python examples/ BatchJobService",
+   "tipo": "repositorio",
+   "origens": [
+    "B1:$.2_sota_repositories_to_study_and_fork[1] L50-53"
+   ],
+   "alegacao": "examples/ tem operações em lote (BatchJobService), 'obrigatórias' para alterar dezenas de milhares de lances sem estourar rate limit.",
+   "url_original": "googleads/google-ads-python",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A03",
+   "nome": "google-api-python-client (AdSense/GAM/GA4)",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.1_python_libraries_stack.api_and_ingestion.google-api-python-client L8",
+    "M§5"
+   ],
+   "alegacao": "Extrai receita: AdSense Management API, Ad Manager API, GA4 Data API.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A04",
+   "nome": "SDKs adequados a GA4/GAM/AdSense (google-analytics-data, googleads/GAM, AdSense v2)",
+   "tipo": "biblioteca",
+   "origens": [
+    "M§5"
+   ],
+   "alegacao": "Conferir SDK correto por produto (o B1 cita só google-api-python-client).",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A05",
+   "nome": "google-ads-datamanager / Data Manager API",
+   "tipo": "servico",
+   "origens": [
+    "B2:$.1_the_new_google_paradigm_apis.google_ads_data_manager_api L6-11",
+    "B3p L8",
+    "M§5"
+   ],
+   "alegacao": "pip install google-ads-datamanager; datamanager.googleapis.com gRPC/streaming; substitui OCI e Customer Match; IngestionServiceClient com gclid+transaction_id+session_attributes+Confidential Matching força Conversion Modeling; adblock destrói até 30% dos GCLIDs.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A06",
+   "nome": "googleads/data-manager-python",
+   "tipo": "repositorio",
+   "origens": [
+    "M§5"
+   ],
+   "alegacao": "Repositório do cliente Python da Data Manager API.",
+   "url_original": "https://github.com/googleads/data-manager-python",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A07",
+   "nome": "googleads/google-ads-mcp (MCP oficial)",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$..google_ads_mcp_servers.hidden_repos[0] L16",
+    "B3p L5",
+    "M§5",
+    "R0:bibliotecas.json#google-ads-mcp"
+   ],
+   "alegacao": "B2: agente LLM via MCP executa mutações por tool-calling. B3 corrige: MCP oficial é estritamente read-only.",
+   "url_original": "https://github.com/googleads/google-ads-mcp",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A08",
+   "nome": "kLOsk/adloop",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$..hidden_repos[0] L16"
+   ],
+   "alegacao": "Implementação MCP para Google Ads.",
+   "url_original": "https://github.com/kLOsk/adloop",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A09",
+   "nome": "iso73-ops/claude-keitaro",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$..hidden_repos[0] L16"
+   ],
+   "alegacao": "MCP para tracker Keitaro.",
+   "url_original": "https://github.com/iso73-ops/claude-keitaro",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A10",
+   "nome": "itallstartedwithaidea/advertising-hub",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$..hidden_repos[1] L17"
+   ],
+   "alegacao": "Hub MCP/agente de publicidade.",
+   "url_original": "https://github.com/itallstartedwithaidea/advertising-hub",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A11",
+   "nome": "Media Buyer Autônomo 24/7 via MCP",
+   "tipo": "ideia",
+   "origens": [
+    "B2:$..google_ads_mcp_servers.arbitrage_exploit L19"
+   ],
+   "alegacao": "Agente LLM lê anomalias, cruza compliance e executa mutações por tool-calling.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A12",
+   "nome": "google-marketing-solutions/agentic_dsta",
+   "tipo": "repositorio",
+   "origens": [
+    "B3j:$.1_verified_active_google_repositories[2] L29-33",
+    "B3p L5",
+    "M§5/§7.1"
+   ],
+   "alegacao": "FastAPI + ADK com GoogleAds Toolset que lê sinais externos (API Hub/Firestore) e executa mutações.",
+   "url_original": "https://github.com/google-marketing-solutions/agentic_dsta",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A13",
+   "nome": "google-marketing-solutions/if-this-then-ad (IFTTA)",
+   "tipo": "repositorio",
+   "origens": [
+    "B3j:$.1_verified_active_google_repositories[4] L40-45",
+    "M§5",
+    "R0:bibliotecas.json#if-this-then-ad (cita google/if-this-then-ad)"
+   ],
+   "alegacao": "Regras para ativar/pausar entidades Google Ads/DV360 a partir de APIs JSON externas.",
+   "url_original": "https://github.com/google-marketing-solutions/if-this-then-ad",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A14",
+   "nome": "google-marketing-solutions/Tightlock",
+   "tipo": "repositorio",
+   "origens": [
+    "B3j:$.1_verified_active_google_repositories[0] L16-21",
+    "B3p L4",
+    "M§5"
+   ],
+   "alegacao": "Ativo, substituto oficial do Megalista; transporte first-party via Airflow/Cloud Composer.",
+   "url_original": "https://github.com/google-marketing-solutions/Tightlock",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A15",
+   "nome": "google/megalista",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$.2_hidden_google_gtech_repositories.gems[1] L33-36 (como google-marketing-solutions/megalista)",
+    "B3p L4",
+    "M§5"
+   ],
+   "alegacao": "B2: arquitetura de retry/batching/hashing p/ listas e conversões sintéticas. B3: depreciado/arquivado.",
+   "url_original": "https://github.com/google/megalista",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A16",
+   "nome": "'Tightrope' (nome errado)",
+   "tipo": "alegacao",
+   "origens": [
+    "B2:$..gems[1].repo L34"
+   ],
+   "alegacao": "google-marketing-solutions/tightrope existe? B3 diz que o nome correto é Tightlock.",
+   "url_original": "https://github.com/google-marketing-solutions/tightrope",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A17",
+   "nome": "GoogleAdsService.Mutate atômico (partial_failure=False + IDs temporários)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3p L6",
+    "B3j:$.2_hard_api_mechanics_for_arbitrage.atomic_vs_bulk_mutation_architecture L59-66",
+    "M§7.3"
+   ],
+   "alegacao": "Mutate síncrono com partial_failure=False é tudo-ou-nada; IDs temporários negativos; rollback de campanha inteira se um anúncio falha.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A18",
+   "nome": "Limites de operações por Mutate (10.000; 20.000 AdGroupCriterion)",
+   "tipo": "alegacao",
+   "origens": [
+    "B3p L6",
+    "B3j L64"
+   ],
+   "alegacao": "Até 10.000 operações por chamada, 20.000 para AdGroupCriterionOperation.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A19",
+   "nome": "BatchJobService semântica (sempre partial failure; sub-batches de 1.000)",
+   "tipo": "alegacao",
+   "origens": [
+    "B3p L6",
+    "B3j L61"
+   ],
+   "alegacao": "Assíncrono, sempre partial_failure, sub-batching interno de 1.000 operações.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A20",
+   "nome": "DatabaseError.CONCURRENT_MODIFICATION + fila por customer",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3j L61-64",
+    "M§7.3"
+   ],
+   "alegacao": "Concorrência na mesma campanha/conta gera CONCURRENT_MODIFICATION; fila única por customer_id (Celery/Redis/Ray Actor) elimina o erro.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A21",
+   "nome": "partial_failure_error (google.rpc.Status) parse",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3j L64",
+    "M§7.3"
+   ],
+   "alegacao": "Lotes de 10k com partial_failure=True, parse de partial_failure_error para logar só itens que falharam.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A22",
+   "nome": "ConversionAdjustmentUploadService RESTATEMENT/RETRACTION",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3j:$.2_hard_api_mechanics_for_arbitrage.conversion_restatements_and_retractions L54-58",
+    "B2:$.3_edge_computing_and_speed_hacks.pre_postback_predictive_firing L59",
+    "M§7.4"
+   ],
+   "alegacao": "RESTATEMENT com gclid+conversion_date_time ou order_id e adjusted_value; RETRACTION imediata quando antifraude marca sessão inválida.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A23",
+   "nome": "ConversionUploadService (UploadClickConversions)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "M§7.4",
+    "memória 08/10: recusa novos desde 15/06/2026"
+   ],
+   "alegacao": "Upload de conversões de clique; diferenciar de Data Manager.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A24",
+   "nome": "OfflineUserDataJobService",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B1:$.5_system_architecture_pipeline.step_5_actuation L122",
+    "M§7.4"
+   ],
+   "alegacao": "B1: atuação por OfflineUserDataJobService 'para injeção de conversões otimizadas'.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A25",
+   "nome": "BiddingSeasonalityAdjustmentService",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3j:$.2_hard_api_mechanics_for_arbitrage.seasonality_adjustments_as_bidding_steering L49-53",
+    "M§7.5"
+   ],
+   "alegacao": "conversion_rate_modifier (ex. 1.4/0.7), escopo campaigns/advertising_channel_types + devices, janelas 1-14 dias 'frequentemente poucas horas', volta imediata sem choque.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A26",
+   "nome": "ExperimentService / ExperimentArmService / PromoteExperiment",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3j:$.2_hard_api_mechanics_for_arbitrage.campaign_drafts_and_experiments_api L67-71",
+    "M§7.6"
+   ],
+   "alegacao": "traffic_split_percent 80/20; PromoteExperiment assíncrono aplica sem perda de histórico.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A27",
+   "nome": "Quality Score: componentes e campos GAQL",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3p L7",
+    "B3j:$.3_real_time_auction_and_quality_diagnostics.deconstructing_quality_score_components L75-86",
+    "M§7.7"
+   ],
+   "alegacao": "Campos quality_info.* e metrics.historical_*; QS 1-10 é diagnóstico histórico, leilão usa componentes em tempo real; LP BELOW_AVERAGE => CWV/excesso de anúncios/template.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A28",
+   "nome": "Asset performance: ad_group_ad_asset_view | asset_group_asset",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B3j:$..granular_asset_performance_in_rsa_and_pmax L87-91",
+    "M§7.7"
+   ],
+   "alegacao": "Google depreciou rótulos e exige métricas por ativo; ativos clickbait substituídos via AdGroupAdOperation.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A29",
+   "nome": "Pausar/substituir ativos de RSA (Genetic Ad Mutator)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_4_automated_clone_and_scale L110-114",
+    "B3j L90",
+    "M§7.7"
+   ],
+   "alegacao": "A API pausa os piores ativos do RSA e injeta novos; QS sempre 9/10-10/10.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A30",
+   "nome": "AdGroupBidModifierService (intraday scalper)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_2_dayparting_and_epc_arbitrage L100-104"
+   ],
+   "alegacao": "Dispara AdGroupBidModifierService por geo/dispositivo ou altera orçamentos/tROAS ao detectar anomalia de EPC.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A31",
+   "nome": "Exclusões de placement (detail/group_placement_view, Exclusion List MCC)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_3_automated_gdn_pmax_shield L105-109",
+    "B2:$.4_advanced_algorithmic_warfare.pmax_and_gdn_traffic_sculpting L69-74",
+    "CALL 14:06-18:40"
+   ],
+   "alegacao": "Worker 10 min GAQL group_placement_view/detail_placement_view; exclusion list nível conta/MCC; DG/PMax/YouTube.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A32",
+   "nome": "Exclusão de IP por CampaignCriterionService (/24 CIDR)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B2:$..pmax_and_gdn_traffic_sculpting.algorithm L73"
+   ],
+   "alegacao": "Adiciona bloco CIDR /24 instantaneamente nas exclusões de IP da campanha.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A33",
+   "nome": "Conversion Value Rules / value rule set",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B2:$.4_advanced_algorithmic_warfare.micro_bidding_for_smart_bidding L64-68"
+   ],
+   "alegacao": "Value rules + manipulação de payload dão controle cirúrgico por dimensão.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A34",
+   "nome": "tCPA por grupo de anúncios (override)",
+   "tipo": "capacidade_api",
+   "origens": [
+    "CALL 11:30-13:00",
+    "R0 audit §1"
+   ],
+   "alegacao": "Aplicar CPA no nível de grupo mantendo referência do CPA inicial.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A35",
+   "nome": "Quotas/rate limits (dev token, ops/dia, QPS)",
+   "tipo": "alegacao",
+   "origens": [
+    "B1 L52",
+    "M§7.3"
+   ],
+   "alegacao": "BatchJobService evita estourar rate limit; conferir quotas por endpoint/versão.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A36",
+   "nome": "Google Ads API Developer Assistant",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#google-ads-api-developer-assistant"
+   ],
+   "alegacao": "Validação GAQL, inspeção de objetos, diagnóstico de conversões.",
+   "url_original": "https://github.com/googleads/google-ads-api-developer-assistant",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A37",
+   "nome": "google-genai (SDK Gemini) + catálogo/preço",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#google-genai",
+    "M§10"
+   ],
+   "alegacao": "Adapter do harness; conferir catálogo, preço e limites antes de gerar.",
+   "url_original": "https://github.com/googleapis/python-genai",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A38",
+   "nome": "Google ADK",
+   "tipo": "biblioteca",
+   "origens": [
+    "B3j L32 (ADK em agentic_dsta)",
+    "R0:bibliotecas.json#google-adk"
+   ],
+   "alegacao": "ADK como runtime de agente com toolset de escrita.",
+   "url_original": "https://github.com/google/adk-python",
+   "pesquisador": "A"
+  },
+  {
+   "id": "A39",
+   "nome": "Offline Conversions API (OCI) para manipular Smart Bidding",
+   "tipo": "capacidade_api",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_1_smart_bidding_manipulation L95-99"
+   ],
+   "alegacao": "Enviar conversões via OCI controla o 'cérebro' do Google.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "A40",
+   "nome": "Google Ads API v26 / SDK 34",
+   "tipo": "alegacao",
+   "origens": [
+    "R0:RELATORIO §5"
+   ],
+   "alegacao": "v26 anunciada 14/10/2026 exige SDK >=34; PyPI tinha 33.0.0.",
+   "url_original": null,
+   "pesquisador": "A"
+  },
+  {
+   "id": "B01",
+   "nome": "vowpalwabbit (VW) / --cb_explore_adf",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.1_python_libraries_stack.machine_learning_and_bandits.vowpalwabbit L19",
+    "B1:$.2_sota_repositories_to_study_and_fork[0] L44-48",
+    "M§5"
+   ],
+   "alegacao": "'O OURO da AdTech'; contextual bandits online, aprende a cada clique; usado por DSPs para criativo e lance.",
+   "url_original": "https://github.com/VowpalWabbit/vowpal_wabbit",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B02",
+   "nome": "lightgbm",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..machine_learning_and_bandits.lightgbm L20",
+    "B2:$..pre_postback_predictive_firing L57-59",
+    "M§5"
+   ],
+   "alegacao": "Predição de CTR/CVR/RPC; prever valor do clique em 50 ms com 92% de confiança.",
+   "url_original": "https://github.com/microsoft/LightGBM",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B03",
+   "nome": "catboost",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..machine_learning_and_bandits.catboost L21",
+    "M§5"
+   ],
+   "alegacao": "Categóricas de alta cardinalidade (Criteria_Id, Placement_URL, Geo, Device).",
+   "url_original": "https://github.com/catboost/catboost",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B04",
+   "nome": "mabwiser",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..machine_learning_and_bandits.mabwiser L22",
+    "B1:$.2_sota_repositories_to_study_and_fork[4] L64-68",
+    "M§5"
+   ],
+   "alegacao": "Thompson Sampling em grupos de anúncios para pausar perdedores matematicamente.",
+   "url_original": "https://github.com/fidelity/mabwiser",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B05",
+   "nome": "scikit-survival",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..machine_learning_and_bandits.scikit-survival L23",
+    "M§5"
+   ],
+   "alegacao": "Dados censurados: cliques pagos cuja receita ainda não chegou.",
+   "url_original": "https://github.com/sebp/scikit-survival",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B06",
+   "nome": "prophet",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..machine_learning_and_bandits.prophet L24",
+    "M§5"
+   ],
+   "alegacao": "Sazonalidade intradiária/semanal de CPC e RPM.",
+   "url_original": "https://github.com/facebook/prophet",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B07",
+   "nome": "ortools",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.1_python_libraries_stack.operations_research_and_optimization.ortools L27",
+    "B1:$.3_algorithms_and_ml_concepts.budget_allocation L86",
+    "M§5"
+   ],
+   "alegacao": "Alocação de orçamento entre milhares de campanhas maximizando ROAS por PL/knapsack.",
+   "url_original": "https://github.com/google/or-tools",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B08",
+   "nome": "cvxpy",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..operations_research_and_optimization.cvxpy L28",
+    "M§5"
+   ],
+   "alegacao": "Otimização convexa de portfólio de campanhas.",
+   "url_original": "https://github.com/cvxpy/cvxpy",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B09",
+   "nome": "optuna",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..operations_research_and_optimization.optuna L29",
+    "M§5"
+   ],
+   "alegacao": "Otimização bayesiana de hiperparâmetros e calibração de regras.",
+   "url_original": "https://github.com/optuna/optuna",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B10",
+   "nome": "pymc-marketing",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.2_sota_repositories_to_study_and_fork[3] L59-63",
+    "M§5"
+   ],
+   "alegacao": "Curvas de saturação (Hill) e adstock; ponto de retornos decrescentes.",
+   "url_original": "https://github.com/pymc-labs/pymc-marketing",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B11",
+   "nome": "google/lightweight_mmm (LightweightMMM)",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.2_sota_repositories_to_study_and_fork[3].name L60",
+    "M§5"
+   ],
+   "alegacao": "MMM leve do Google.",
+   "url_original": "https://github.com/google/lightweight_mmm",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B12",
+   "nome": "google/meridian",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#meridian",
+    "curadoria system:google-meridian"
+   ],
+   "alegacao": "MMM agregado (sucessor do LightweightMMM).",
+   "url_original": "https://github.com/google/meridian",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B13",
+   "nome": "Contextual MAB com Thompson Sampling (lances/exploração)",
+   "tipo": "algoritmo",
+   "origens": [
+    "B1:$.3_algorithms_and_ml_concepts.bidding_and_exploration L72-75"
+   ],
+   "alegacao": "TS modela incerteza do ROAS por keyword/adgroup e dá lances exploratórios.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B14",
+   "nome": "Survival + Importance Sampling p/ delayed feedback",
+   "tipo": "algoritmo",
+   "origens": [
+    "B1:$.3_algorithms_and_ml_concepts.delayed_feedback_handling L76-79"
+   ],
+   "alegacao": "Modelo de delay distribution prevê receita esperada não confirmada antes de cortar lance.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B15",
+   "nome": "Hierarchical Bayes / Empirical Bayes (sparse data)",
+   "tipo": "algoritmo",
+   "origens": [
+    "B1:$.3_algorithms_and_ml_concepts.sparse_data_estimation L80-83",
+    "M§5/§8.2"
+   ],
+   "alegacao": "90% das keywords têm 1-2 cliques; EB empresta força do adgroup/conta.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B16",
+   "nome": "Shrinkage Beta-Binomial (taxas)",
+   "tipo": "algoritmo",
+   "origens": [
+    "B3j:$.4_validated_statistical_and_ml_methods_for_adtech.empirical_bayes_shrinkage_for_long_tail L99-102",
+    "M§8.2"
+   ],
+   "alegacao": "Beta-Binomial para CTR/CVR.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B17",
+   "nome": "Shrinkage Gamma-Poisson / Log-Normal (RPC/ROAS)",
+   "tipo": "algoritmo",
+   "origens": [
+    "B3j L101",
+    "M§8.2"
+   ],
+   "alegacao": "Gamma-Poisson ou Log-Normal para RPC/ROAS.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B18",
+   "nome": "Fórmula de média com prior M=20",
+   "tipo": "alegacao",
+   "origens": [
+    "B3j L101",
+    "M§8.2"
+   ],
+   "alegacao": "Estimated_RPC=(N*Obs+M*Prior)/(N+M), M ex. 20 cliques; 'impede matematicamente decisões precipitadas'.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B19",
+   "nome": "Nowcasting / Cost-Completeness Calibration",
+   "tipo": "algoritmo",
+   "origens": [
+    "B3j:$.4_validated_statistical_and_ml_methods_for_adtech.censored_data_and_conversion_lag L95-98",
+    "M§8.1"
+   ],
+   "alegacao": "Projected=Observed/Maturation_Factor(dt); custo 95%+ completo em 3h; 65% em 1h, 90% em 3h.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B20",
+   "nome": "Curvas de maturação (as-of snapshots)",
+   "tipo": "algoritmo",
+   "origens": [
+    "M§5/§8.1"
+   ],
+   "alegacao": "Precisa de snapshots as-of de receita por coorte.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B21",
+   "nome": "MCKP (Multiple-Choice Knapsack) para orçamento",
+   "tipo": "algoritmo",
+   "origens": [
+    "B1:$.3_algorithms_and_ml_concepts.budget_allocation L84-87",
+    "M§5"
+   ],
+   "alegacao": "Regressão log-linear de lucro por nível de verba + knapsack OR-Tools.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B22",
+   "nome": "Controlador PID p/ tROAS/MaxCPC hora a hora",
+   "tipo": "algoritmo",
+   "origens": [
+    "B1 L86",
+    "M§5"
+   ],
+   "alegacao": "PID ajusta Target ROAS/Max CPC de hora em hora para pacing suave.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B23",
+   "nome": "Riskfolio-Lib / Mean-CVaR",
+   "tipo": "biblioteca",
+   "origens": [
+    "B2:$.4_advanced_algorithmic_warfare.portfolio_cvar_optimization L75-80",
+    "M§5"
+   ],
+   "alegacao": "Campanha como ativo financeiro; Mean-CVaR minimiza tail risk do orçamento diário.",
+   "url_original": "https://github.com/dcajasn/Riskfolio-Lib",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B24",
+   "nome": "Gaussian Process Regression (Shadow Bidding / degrau do leilão)",
+   "tipo": "algoritmo",
+   "origens": [
+    "B2:$.4_advanced_algorithmic_warfare.auction_insights_undercutting L81-85",
+    "M§5"
+   ],
+   "alegacao": "IS, top_impression_percentage e average_cpc hora a hora + GPR acham o degrau de segundo preço; 40% de desconto mantendo RPM.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B25",
+   "nome": "Offline RL para RTB (Alibaba/Tencent, NeurIPS)",
+   "tipo": "repositorio",
+   "origens": [
+    "B1:$.2_sota_repositories_to_study_and_fork[2] L54-58"
+   ],
+   "alegacao": "Repos acadêmicos formulam tCPA/tROAS como MDP.",
+   "url_original": "Buscar 'Offline Reinforcement Learning Real-Time Bidding' / 'RL-Bidding'",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B26",
+   "nome": "obp / Open Bandit Pipeline (st-tech/zr-obp)",
+   "tipo": "biblioteca",
+   "origens": [
+    "B3j:$.4_validated_statistical_and_ml_methods_for_adtech.offline_policy_evaluation_ope L103-108",
+    "M§5"
+   ],
+   "alegacao": "OPE com DR/IPS sobre logs históricos responde 'qual teria sido meu ROAS'.",
+   "url_original": "https://github.com/st-tech/zr-obp",
+   "pesquisador": "B"
+  },
+  {
+   "id": "B27",
+   "nome": "Synthetic Value Injection (multiplicar valor da conversão)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_1_smart_bidding_manipulation L95-99"
+   ],
+   "alegacao": "Multiplicar valor da conversão (1.5x) quando margem explode; reduzir quando RPM cai.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B28",
+   "nome": "Value Rules Matrix: Valor=Receita_Prevista*(Margem^alpha)*FQ",
+   "tipo": "ideia",
+   "origens": [
+    "B2:$.4_advanced_algorithmic_warfare.micro_bidding_for_smart_bidding.algorithm L67"
+   ],
+   "alegacao": "Spread líquido por ASN/OS/cidade; alavancagem do valor enviado.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B29",
+   "nome": "Intraday Volatility Scalper (coletor 15 min)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_2_dayparting_and_epc_arbitrage L100-104"
+   ],
+   "alegacao": "Anunciantes da ponta B esgotam orçamento às 18h; capturar spread de EPC por geo/device.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B30",
+   "nome": "Pre-Postback Predictive Firing",
+   "tipo": "ideia",
+   "origens": [
+    "B2:$.3_edge_computing_and_speed_hacks.pre_postback_predictive_firing L56-60"
+   ],
+   "alegacao": "Enviar valor previsto ($1.85, 92% conf.) imediatamente e RESTATEMENT depois.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B31",
+   "nome": "Circuit breakers (máx +30% por vez; pausar se prejuízo > $X/hora)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.5_system_architecture_pipeline.step_4_safety_guardrails L121"
+   ],
+   "alegacao": "Regras rígidas de segurança.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B32",
+   "nome": "Inferência e decisão horária VW+EB (step_3)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.5_system_architecture_pipeline.step_3_inference_and_decision L120"
+   ],
+   "alegacao": "Modelo sugere tROAS/MaxCPC/orçamento para a próxima hora.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B33",
+   "nome": "Feature engineering Polars+DuckDB por gclid/UTM (step_2)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.5_system_architecture_pipeline.step_2_feature_engineering L119"
+   ],
+   "alegacao": "Unir por gclid/UTM; ROAS real, lucro, conversões atrasadas.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B34",
+   "nome": "Spread CPC × RPM/EPC (objetivo central)",
+   "tipo": "alegacao",
+   "origens": [
+    "B1:$.core_objective L3"
+   ],
+   "alegacao": "Maximizar spread entre CPC pago e RPM/EPC em tempo quase real.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B35",
+   "nome": "Relatório de funis: % campanhas com ROI positivo por cor/diretório",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 02:14-06:55"
+   ],
+   "alegacao": "Contar campanhas ativas por funil/LP, classes de ROI (vermelho/laranja/amarelo/verde), % positivas, efetividade por diretório (/r, /wg).",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "B36",
+   "nome": "Custo×receita por grupo/anúncio",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 11:30-13:00",
+    "CALL 23:28"
+   ],
+   "alegacao": "Ver ROAS por anúncio; anúncio caro pode ser o mais lucrativo.",
+   "url_original": null,
+   "pesquisador": "B"
+  },
+  {
+   "id": "C01",
+   "nome": "httpx",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..api_and_ingestion.httpx L9",
+    "M§5"
+   ],
+   "alegacao": "Cliente assíncrono para afiliados/trackers/feeds.",
+   "url_original": "https://github.com/encode/httpx",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C02",
+   "nome": "pydantic",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..api_and_ingestion.pydantic L10",
+    "M§5",
+    "R0"
+   ],
+   "alegacao": "Validação ultra-rápida (Rust v2).",
+   "url_original": "https://github.com/pydantic/pydantic",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C03",
+   "nome": "polars",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..data_processing_and_storage.polars L13",
+    "M§5"
+   ],
+   "alegacao": "Substituto SOTA do pandas; milhões de linhas em ms.",
+   "url_original": "https://github.com/pola-rs/polars",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C04",
+   "nome": "duckdb",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..data_processing_and_storage.duckdb L14",
+    "M§5"
+   ],
+   "alegacao": "OLAP in-process sobre Parquet.",
+   "url_original": "https://github.com/duckdb/duckdb",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C05",
+   "nome": "clickhouse-connect / ClickHouse",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..data_processing_and_storage.clickhouse-connect L15",
+    "B1:$.5_system_architecture_pipeline.step_1_ingestion L118",
+    "M§5"
+   ],
+   "alegacao": "Melhor colunar real-time para bilhões de eventos.",
+   "url_original": "https://github.com/ClickHouse/clickhouse-connect",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C06",
+   "nome": "feast",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..data_processing_and_storage.feast L16",
+    "M§5"
+   ],
+   "alegacao": "Feature store para servir variáveis em tempo real.",
+   "url_original": "https://github.com/feast-dev/feast",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C07",
+   "nome": "redis",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..orchestration_and_execution.redis L39",
+    "M§5"
+   ],
+   "alegacao": "Estado de lances, gasto por minuto, bloqueio de cliques fraudulentos.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C08",
+   "nome": "prefect",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..orchestration_and_execution.prefect L37",
+    "M§5"
+   ],
+   "alegacao": "Orquestrador superior ao Airflow.",
+   "url_original": "https://github.com/PrefectHQ/prefect",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C09",
+   "nome": "dagster",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1 L37",
+    "M§5"
+   ],
+   "alegacao": "Alternativa ao Prefect orientada a ativos.",
+   "url_original": "https://github.com/dagster-io/dagster",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C10",
+   "nome": "ray",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..orchestration_and_execution.ray L38",
+    "B3j L64 (Ray Actor por conta)",
+    "M§5"
+   ],
+   "alegacao": "Inferência/lances em milhares de contas simultâneas.",
+   "url_original": "https://github.com/ray-project/ray",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C11",
+   "nome": "bytewax",
+   "tipo": "biblioteca",
+   "origens": [
+    "B2:$.5_surprising_open_source_tools_to_plug_in.realtime_stream_processing L93-96",
+    "M§5"
+   ],
+   "alegacao": "Stream processing Rust/Python; janelas deslizantes em ms.",
+   "url_original": "https://github.com/bytewax/bytewax",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C12",
+   "nome": "FastAPI (webhooks de tracker)",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$.5_system_architecture_pipeline.step_1_ingestion L118",
+    "B2 L52",
+    "M§5"
+   ],
+   "alegacao": "Webhooks recebem cliques/conversões em tempo real.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C13",
+   "nome": "sentence-transformers",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..nlp_and_genai.sentence-transformers L32",
+    "M§5"
+   ],
+   "alegacao": "Embeddings locais para agrupar search terms e achar negativas.",
+   "url_original": "https://github.com/UKPLab/sentence-transformers",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C14",
+   "nome": "litellm",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..nlp_and_genai.litellm L33",
+    "M§5"
+   ],
+   "alegacao": "Wrapper unificado de LLMs para RSA em massa.",
+   "url_original": "https://github.com/BerriAI/litellm",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C15",
+   "nome": "bertopic",
+   "tipo": "biblioteca",
+   "origens": [
+    "B1:$..nlp_and_genai.bertopic L34",
+    "M§5"
+   ],
+   "alegacao": "Tópicos para descobrir nichos de alto ROI em search terms.",
+   "url_original": "https://github.com/MaartenGr/BERTopic",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C16",
+   "nome": "HDBSCAN + embeddings para negativar intenção",
+   "tipo": "algoritmo",
+   "origens": [
+    "B1:$.3_algorithms_and_ml_concepts.keyword_and_placement_pruning L88-91",
+    "M§5"
+   ],
+   "alegacao": "Cluster semântico de 500 termos de 1 clique; 'negativa a intenção inteira instantaneamente'.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C17",
+   "nome": "qdrant-client + FastEmbed",
+   "tipo": "biblioteca",
+   "origens": [
+    "B2:$.5_surprising_open_source_tools_to_plug_in.vector_search_for_ad_cloning L89-92",
+    "M§5"
+   ],
+   "alegacao": "Busca vetorial do histórico com ROAS/EPC no payload; 'nasce pré-otimizada'.",
+   "url_original": "https://github.com/qdrant/qdrant-client",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C18",
+   "nome": "Crawlee for Python + Playwright (spy de concorrentes)",
+   "tipo": "biblioteca",
+   "origens": [
+    "B2:$.5_surprising_open_source_tools_to_plug_in.headless_competitor_spy_integration L97-100",
+    "M§5"
+   ],
+   "alegacao": "Monitorar Transparency Center e landers; criar campanha concorrente em rascunho.",
+   "url_original": "https://github.com/apify/crawlee-python",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C19",
+   "nome": "Google Ads Transparency Center como fonte",
+   "tipo": "servico",
+   "origens": [
+    "B2 L99"
+   ],
+   "alegacao": "Monitorar anúncios de concorrentes >7 dias.",
+   "url_original": "https://adstransparency.google.com",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C20",
+   "nome": "Cloudflare Workers + KV / Upstash Redis (edge lander routing)",
+   "tipo": "infra",
+   "origens": [
+    "B2:$.3_edge_computing_and_speed_hacks.edge_dynamic_lander_routing L51-55",
+    "M§5"
+   ],
+   "alegacao": "Worker monta HTML por clique em <10 ms com layout+related searches de maior RPC.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C21",
+   "nome": "IPinfo.io",
+   "tipo": "servico",
+   "origens": [
+    "B2:$..pmax_and_gdn_traffic_sculpting.stack L72",
+    "M§5"
+   ],
+   "alegacao": "ASN para detectar datacenter/proxy/VPN.",
+   "url_original": "https://ipinfo.io",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C22",
+   "nome": "MaxMind GeoIP2",
+   "tipo": "servico",
+   "origens": [
+    "B2 L72",
+    "M§5"
+   ],
+   "alegacao": "Geo/ASN lookup.",
+   "url_original": "https://github.com/maxmind/GeoIP2-python",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C23",
+   "nome": "FingerprintJS",
+   "tipo": "servico",
+   "origens": [
+    "B2 L72",
+    "M§5"
+   ],
+   "alegacao": "Fingerprint de navegador anti-bot.",
+   "url_original": "https://github.com/fingerprintjs/fingerprintjs",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C24",
+   "nome": "Real-Time Junk Placement Killer (queries + heurística)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.4_proprietary_engine_ideas_the_gold.idea_3_automated_gdn_pmax_shield L105-109",
+    "B2 L73"
+   ],
+   "alegacao": "Bounce >95% ou CTR interno 0% após X cliques => exclusão; discrepância cliques vs landings >35% => exclusão em <5 min.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C25",
+   "nome": "google/ads-api-report-fetcher (gaarf)",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$.2_hidden_google_gtech_repositories.gems[0] L27-31",
+    "B3j:$.1_verified_active_google_repositories[1] L22-27",
+    "M§5",
+    "R0:bibliotecas.json#google-ads-api-report-fetcher"
+   ],
+   "alegacao": "pip install google-ads-api-report-fetcher; GAQL assíncrono com macros direto para Polars/DuckDB/ClickHouse/BigQuery.",
+   "url_original": "https://github.com/google/ads-api-report-fetcher",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C26",
+   "nome": "google-marketing-solutions/ads-policy-monitor",
+   "tipo": "repositorio",
+   "origens": [
+    "B3j:$.1_verified_active_google_repositories[3] L34-39",
+    "M§5/§7.2"
+   ],
+   "alegacao": "Queries GAQL de policy_summary.approval_status/policy_topic_entries para monitorar políticas em MCC.",
+   "url_original": "https://github.com/google-marketing-solutions/ads-policy-monitor",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C27",
+   "nome": "'arf' Ads Relevance Factory",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$.2_hidden_google_gtech_repositories.gems[2] L38-41"
+   ],
+   "alegacao": "Monitoramento/automação de QS e relevância em escala.",
+   "url_original": "https://github.com/google-marketing-solutions/ads-relevance-factory",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C28",
+   "nome": "google-marketing-solutions/adios",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$..gems[2].name L38",
+    "M§5",
+    "R0:bibliotecas.json#adios"
+   ],
+   "alegacao": "Ferramenta de assets/imagens (B2 a põe junto a QS/relevância).",
+   "url_original": "https://github.com/google-marketing-solutions/adios",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C29",
+   "nome": "GoogleCloudPlatform/marketing-analytics-jumpstart",
+   "tipo": "repositorio",
+   "origens": [
+    "B2:$..gems[3] L42-46"
+   ],
+   "alegacao": "Templates SQL e modelos de propensão/LTV com Terraform.",
+   "url_original": "https://github.com/GoogleCloudPlatform/marketing-analytics-jumpstart",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C30",
+   "nome": "Trackers: Voluum, RedTrack, Keitaro",
+   "tipo": "servico",
+   "origens": [
+    "B1 L9",
+    "B1 L118"
+   ],
+   "alegacao": "Fonte de cliques/conversões pós-clique.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C31",
+   "nome": "Feeds de busca: System1, Tonic, Sedo; Yahoo/Bing feed; AFD/AFS",
+   "tipo": "servico",
+   "origens": [
+    "B1 L3/L9/L102",
+    "B2 L53-54/L58"
+   ],
+   "alegacao": "Monetização da ponta B.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C32",
+   "nome": "Edge dynamic lander (layout+Related Searches por clique)",
+   "tipo": "ideia",
+   "origens": [
+    "B2:$.3_edge_computing_and_speed_hacks.edge_dynamic_lander_routing.execution L54"
+   ],
+   "alegacao": "Aprovação depende da página, RPM do layout agressivo; montar HTML dinâmico por clique.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C33",
+   "nome": "Telemetria por WebSockets (mouse X/Y, UA, ASN)",
+   "tipo": "ideia",
+   "origens": [
+    "B2:$..pre_postback_predictive_firing.execution L59"
+   ],
+   "alegacao": "Capturar telemetria na LP para prever valor.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C34",
+   "nome": "IP Exorcism (ASN datacenter => não renderizar anúncios nem enviar conversão)",
+   "tipo": "ideia",
+   "origens": [
+    "B2:$..pmax_and_gdn_traffic_sculpting.algorithm L73"
+   ],
+   "alegacao": "Bloquear monetização para ASN de datacenter/VPN; exclusão de IP/24.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C35",
+   "nome": "google-marketing-solutions/ads-monitor",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#ads-monitor",
+    "curadoria system:google-ads-monitor-reference"
+   ],
+   "alegacao": "Métricas e alertas (Gaarf+Prometheus+Grafana).",
+   "url_original": "https://github.com/google-marketing-solutions/ads-monitor",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C36",
+   "nome": "google-marketing-solutions/arba",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#arba"
+   ],
+   "alegacao": "Diagnóstico de IS perdido e QS.",
+   "url_original": "https://github.com/google-marketing-solutions/arba",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C37",
+   "nome": "negative_keyword_cleaner",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#negative_keyword_cleaner"
+   ],
+   "alegacao": "Negativas que bloqueiam tráfego relevante.",
+   "url_original": "https://github.com/google-marketing-solutions/negative_keyword_cleaner",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C38",
+   "nome": "copycat",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#copycat"
+   ],
+   "alegacao": "Geração de RSA a partir da voz da marca.",
+   "url_original": "https://github.com/google-marketing-solutions/copycat",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C39",
+   "nome": "topic-mine",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#topic-mine"
+   ],
+   "alegacao": "Tendências/first-party como insumo de pauta.",
+   "url_original": "https://github.com/google-marketing-solutions/topic-mine",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C40",
+   "nome": "feedx",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#feedx"
+   ],
+   "alegacao": "Experimentos de feed Shopping.",
+   "url_original": "https://github.com/google-marketing-solutions/feedx",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C41",
+   "nome": "hypothesis",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#hypothesis"
+   ],
+   "alegacao": "Testes de propriedade/estado (já instalado no venv dev).",
+   "url_original": "https://github.com/HypothesisWorks/hypothesis",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C42",
+   "nome": "schemathesis",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#schemathesis"
+   ],
+   "alegacao": "Fuzzing OpenAPI local.",
+   "url_original": "https://github.com/schemathesis/schemathesis",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C43",
+   "nome": "respx",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#respx"
+   ],
+   "alegacao": "Mocks HTTPX.",
+   "url_original": "https://github.com/lundberg/respx",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C44",
+   "nome": "opentelemetry-python",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#opentelemetry-python"
+   ],
+   "alegacao": "Traces intenção→readback.",
+   "url_original": "https://github.com/open-telemetry/opentelemetry-python",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C45",
+   "nome": "google/skills",
+   "tipo": "repositorio",
+   "origens": [
+    "R0:bibliotecas.json#google-skills"
+   ],
+   "alegacao": "Instruções para agentes de desenvolvimento.",
+   "url_original": "https://github.com/google/skills",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C46",
+   "nome": "facebook-business SDK",
+   "tipo": "biblioteca",
+   "origens": [
+    "R0:bibliotecas.json#facebook-business"
+   ],
+   "alegacao": "SDK oficial Meta (fronteira).",
+   "url_original": "https://github.com/facebook/facebook-python-business-sdk",
+   "pesquisador": "C"
+  },
+  {
+   "id": "C47",
+   "nome": "CRMint / BigQuery / Dataform como plataforma",
+   "tipo": "infra",
+   "origens": [
+    "R0:RELATORIO §4 Estacionar"
+   ],
+   "alegacao": "Nova plataforma de pipelines.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C48",
+   "nome": "JEV e múltiplos frameworks de agentes",
+   "tipo": "infra",
+   "origens": [
+    "R0:RELATORIO §4 Estacionar"
+   ],
+   "alegacao": "Revisor genérico/agentes extras.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C49",
+   "nome": "Ingestão ClickHouse + workers GAQL 15-30 min (step_1)",
+   "tipo": "ideia",
+   "origens": [
+    "B1:$.5_system_architecture_pipeline.step_1_ingestion L118"
+   ],
+   "alegacao": "Webhooks FastAPI -> ClickHouse; GAQL a cada 15-30 min.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "C50",
+   "nome": "BigQuery public dataset do Transparency Center",
+   "tipo": "servico",
+   "origens": [
+    "derivado de B2 L99 (fonte primária a conferir)"
+   ],
+   "alegacao": "Fonte oficial alternativa ao scraping.",
+   "url_original": null,
+   "pesquisador": "C"
+  },
+  {
+   "id": "W01",
+   "nome": "Badge de tipo de campanha + filtro por tipo",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 20:21-21:51"
+   ],
+   "alegacao": "Mostrar Display/Demand Gen/Search ao lado do nome; filtrar por tipo.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "W02",
+   "nome": "Quem colocou a campanha no ar",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 20:50-21:37"
+   ],
+   "alegacao": "Exibir responsável; hoje operador atribuído manualmente.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "W03",
+   "nome": "Cor azul-marinho para Display",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 19:44"
+   ],
+   "alegacao": "Quick win estético.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "W04",
+   "nome": "Escalar dentro da campanha (grupos) vs duplicar 9-17 campanhas",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 07:47-10:29"
+   ],
+   "alegacao": "Campanha bate teto de ~1500-2000 com orçamento 10.000; duplicar ou adicionar grupos.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "W05",
+   "nome": "'Display acaba no ano que vem'",
+   "tipo": "alegacao",
+   "origens": [
+    "CALL 14:47-15:01"
+   ],
+   "alegacao": "Display terá fim (abril?).",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "W06",
+   "nome": "Cliques/telas lentas para aplicar CPA por grupo",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 12:59-13:00"
+   ],
+   "alegacao": "Menos cliques na UI para tCPA por grupo.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "W07",
+   "nome": "Visibilidade Meta-like de conjunto/anúncio",
+   "tipo": "operacional",
+   "origens": [
+    "CALL 10:29-11:30",
+    "CALL 23:32"
+   ],
+   "alegacao": "Hierarquia campanha/conjunto/anúncio já existe no Meta do VOLC.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "I01",
+   "nome": "Proposta Gemini integrada ao /provar com conjunto pago",
+   "tipo": "capacidade_interna",
+   "origens": [
+    "audit 14/10 §5",
+    "R0 §7 ordem 1-2"
+   ],
+   "alegacao": "Fechar percurso HTTP autenticado com proposta assistida.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "I02",
+   "nome": "Request ID/hash no sucesso do /provar",
+   "tipo": "capacidade_interna",
+   "origens": [
+    "R0 §3 item 4"
+   ],
+   "alegacao": "validar_mutacoes descarta identificação de sucesso.",
+   "url_original": null,
+   "pesquisador": "I"
+  },
+  {
+   "id": "I03",
+   "nome": "Sitelinks com URL única do builder",
+   "tipo": "capacidade_interna",
+   "origens": [
+    "audit 14/10 §5"
+   ],
+   "alegacao": "Sitelinks herdam URL final.",
+   "url_original": null,
+   "pesquisador": "I"
+  }
+ ]
+}

@@ -1,0 +1,152 @@
+crmint	false	2026-06-21T16:57:05Z	Reliable data integration & processing for advertisers
+argon	true	2023-04-18T10:03:10Z	Campaign Manager 360 and Display & Video 360 Reports to BigQuery connector
+customer-match-upload-script	false	2022-05-18T09:38:49Z	
+gps_building_blocks	false	2026-06-18T04:21:51Z	
+dv360-api-appsscript-samples	true	2024-08-01T13:43:37Z	Google Apps Script samples for the Display & Video (DV360) API
+cm-creatives-drive-uploader	false	2020-09-09T08:55:54Z	Google Apps Script code for bulk trafficking Campaign Manager Creatives stored i
+prefetchalyzer	true	2025-02-18T13:37:23Z	Identify impactful pre-fetch and pre-cache opportunities across web pages in use
+cm360-audience-manager	false	2026-05-23T15:18:13Z	Google Apps Script code for managing Campaign Manager 360 Audience Lists in bulk
+centimani	false	2026-02-20T21:16:38Z	
+google-analytics-utilities	false	2026-06-25T07:56:45Z	
+replicate_mango	true	2021-09-17T10:37:41Z	Assortment Analytics with Google - Optimize your product assortment with the hel
+if-this-then-ad	false	2026-09-25T09:04:46Z	☀️ A game changer in rule-based marketing. Run marketing campaigns based on real
+compass	false	2026-06-18T11:29:59Z	
+crystalvalue	false	2026-06-16T20:00:04Z	
+gps_soteria	false	2025-02-12T14:29:22Z	
+low_volume_skus	true	2024-05-28T15:33:05Z	
+ads_placement_guardian	false	2026-07-10T16:46:37Z	
+cwv_from_ga4_exports	false	2026-05-20T03:24:55Z	Simple solution to make reporting on CWVs from BQ simpler to set up.
+performance-psi-tracker	true	2025-01-10T09:32:28Z	
+tagspeed_audit	true	2025-02-18T13:37:57Z	A way to measure the impact of 3P JavaScript on pagespeed.
+.allstar	false	2023-01-31T13:16:37Z	Allstart template repo
+ga4-gtm-utilities	false	2026-06-22T21:17:49Z	
+gtm-boilerplate	false	2026-10-05T07:55:46Z	
+.github	false	2024-04-29T18:27:39Z	
+slide-starter	true	2025-02-18T10:22:32Z	
+Tightlock	false	2026-04-13T20:26:23Z	
+app-reporting-pack	false	2026-07-22T06:41:28Z	Comprehensive reporting for Google Ads App campaigns
+tech-fundamentals-gcp-intro	true	2023-09-05T09:08:07Z	
+ml_toast	true	2024-07-30T21:17:40Z	Cluster multilingual search terms captured from different time windows into sema
+pmax_best_practices_dashboard	false	2026-09-07T08:15:08Z	
+ga4-ecom-attributor	false	2025-05-21T12:20:35Z	
+dactionboard	true	2026-02-13T11:44:26Z	Comprehensive reporting for Google Ads Video Action campaigns
+google-ads-megalista	true	2023-03-22T19:00:50Z	
+bqflow	false	2025-03-07T17:06:36Z	
+tadau	false	2026-06-29T23:48:28Z	
+video-exclusion-toolbox	false	2026-10-07T14:30:20Z	
+sgtm-autodeployer	false	2025-03-07T10:25:21Z	
+feedgen	false	2026-04-07T03:52:27Z	Optimise Shopping feeds with Generative AI
+gps-phoebe	false	2026-05-22T14:05:28Z	
+web-performance-lab	false	2026-10-14T12:17:11Z	
+web-vitals-gtm-template	false	2025-07-25T13:26:22Z	
+creative-mango	true	2024-08-08T08:19:07Z	
+fractional_uplift	true	2026-01-12T10:36:06Z	A flexible python package for cost-aware uplift modelling.
+google-ads-exclusion-scripts	true	2023-10-16T03:53:36Z	
+adios	false	2026-10-07T10:31:41Z	🚀 Adios: One-stop solution for Google Ads image assets management
+keyword_platform	false	2026-08-05T02:23:23Z	
+ads-monitor	false	2026-06-19T17:25:32Z	Comprehensive system for monitoring changes and fluctuations  in Google Ads
+ads-policy-monitor	false	2026-05-28T09:21:51Z	
+google_ads_custom_report_builder	true	2023-10-02T19:03:54Z	
+causmos	false	2026-08-09T09:32:59Z	
+topic-mine	false	2026-10-06T21:28:02Z	Topic Mine leverages 1st and/or 2nd party data to identify trending topics and u
+description_genius	true	2026-06-23T20:41:03Z	Easily generate and translate captivating product descriptions using product fea
+tagsmith	false	2026-09-30T05:32:31Z	
+feedx	false	2026-09-07T10:02:43Z	Transparent, robust and trustworthy A/B experimentation for Shopping feeds.
+gem-sheet	true	2024-05-17T06:49:19Z	
+variable_redactor	false	2025-01-16T10:39:55Z	
+madpmax	false	2026-05-13T13:10:14Z	
+credentials_creator_walkthrough	false	2025-06-24T09:40:56Z	
+gps-sgtm-pantheon	false	2025-11-03T15:03:25Z	
+scale-speak-lite	true	2024-05-16T08:06:21Z	
+optimus	true	2026-01-09T00:18:30Z	
+remarque	false	2026-07-16T12:26:45Z	Discovering audiences for remarketing
+ga4_plus_chrome_extension	true	2024-02-06T22:11:55Z	
+shrinkify	true	2026-06-17T00:58:03Z	
+auto_synthetic_data_platform	false	2026-06-17T02:26:50Z	
+data_decomposition_platform	false	2026-08-17T07:10:38Z	
+margin-protection	false	2026-06-24T04:03:16Z	
+gam_apps_script	false	2026-05-27T00:51:59Z	
+abcds-detector	false	2026-10-13T01:42:13Z	
+project_ephesus	false	2026-02-18T07:42:23Z	Easy user level datamart builder using GA4 data. Orchestrated from Google Colab.
+css-feedviz	false	2025-01-14T10:03:15Z	
+ga4_dataform	false	2025-01-03T21:52:09Z	
+adclip	false	2026-06-24T04:19:43Z	
+gam_user_list	false	2026-05-27T01:05:04Z	
+pmax-themer	false	2026-02-18T09:13:36Z	
+rsa-ai-generator	false	2026-05-22T19:14:46Z	
+broad_digger	true	2024-12-18T09:46:18Z	
+kv_rcm	false	2026-06-05T22:04:29Z	
+feed-segmenter	false	2024-04-11T12:19:10Z	
+dgpulse	false	2026-09-25T15:56:23Z	
+vigenair	false	2026-10-13T05:29:17Z	Recrafting Video Ads with Generative AI
+publisher-labs	false	2026-06-19T17:34:15Z	
+gps_mas	true	2025-06-09T07:34:54Z	
+curvesmith	false	2026-09-24T19:03:19Z	
+custom-taxonomy-classifier	false	2026-05-20T01:57:29Z	
+ariel	false	2026-09-23T16:02:40Z	A cutting-edge AI dubbing solution designed to enhance the global reach of digit
+video-metadata-ai-toolkit	false	2026-05-19T17:10:49Z	
+mFloor	false	2025-02-19T08:56:26Z	
+conversion-status-checker	true	2024-10-08T08:26:34Z	
+ads_budget_alert_script	true	2024-09-19T17:46:36Z	
+copycat	false	2026-09-24T08:37:24Z	Generate Google Search Ads that match your brand style.
+backgroundr	false	2026-09-15T17:17:33Z	Bulk AI image editing directly in Google Sheets. Leverages Nano Banana and Gemin
+article-to-video	false	2026-06-29T15:18:37Z	
+shopping-report-builder	false	2026-06-24T10:59:06Z	
+asset_coverage_dashboard	false	2026-06-24T09:36:06Z	
+agency_solution_mapper	true	2024-12-13T22:48:57Z	
+shape_shifter	false	2025-12-05T22:27:02Z	
+ariel_on_sheets	false	2026-02-21T22:08:07Z	
+data_transfer_service_exporter	false	2024-11-15T22:40:07Z	A Cloud Function to export data from the Data Transfer Service to Google Cloud S
+ga-mp-uploader	false	2026-05-23T00:08:11Z	
+ac-protect	true	2025-12-06T01:52:46Z	
+giga	false	2026-10-08T09:09:34Z	
+sa360-client-library	false	2024-11-13T10:30:12Z	
+campaign_utm_custom_parameter	false	2026-02-20T22:26:29Z	
+copycat_on_sheets	false	2026-06-05T22:48:31Z	
+product_custom_labeling_automation_script	false	2025-05-13T16:15:42Z	
+creative-assistant	true	2026-06-24T12:40:42Z	
+bach	true	2026-06-23T13:18:56Z	Google Ads automation framework with external connectors support
+negative_keyword_cleaner	false	2026-06-08T08:30:07Z	Identify irrelevant negative keywords from your Google Ads account
+gen-v	true	2026-08-18T09:40:19Z	Create AI-powered video ads with Veo on Google Cloud, enhanced with AI voice and
+text_ads_generator	false	2025-02-18T03:32:19Z	
+merch-intel	false	2026-05-20T01:25:26Z	
+search_term_amp	false	2026-08-19T20:46:39Z	
+videomate	false	2026-03-26T01:35:21Z	
+appsight	false	2026-06-24T15:35:57Z	
+vast-redirect-signal-inspector	false	2026-06-19T11:18:23Z	
+brandalign	false	2025-04-04T12:16:55Z	
+hyperion	false	2026-03-17T19:15:02Z	
+image-inventory	false	2026-05-28T18:28:56Z	An open-source solution that automatically classifies product images based on a 
+apps-script-test-suite	false	2026-07-05T04:26:17Z	
+textlytics	false	2026-01-21T14:09:47Z	
+youtube-bulk-uploader	false	2026-01-06T10:45:29Z	
+gam_sites_toolkit	false	2026-05-27T02:22:43Z	
+vast-validator	false	2025-04-23T12:01:42Z	
+gtech-bidding-solutions	false	2025-10-01T17:43:51Z	
+dreamboard	false	2026-10-09T18:05:55Z	
+audience_builder	false	2025-05-13T11:25:57Z	
+advanced-bidding-manager	false	2026-01-13T11:27:36Z	
+video-ads-compass	false	2025-07-09T06:48:58Z	
+product-return-predictor	false	2026-09-15T10:08:29Z	
+bid2x	false	2026-09-23T13:12:58Z	
+video-content-signals-demo	false	2026-06-21T16:20:37Z	
+adir	false	2026-10-13T11:13:21Z	
+cinematech	false	2026-06-13T20:13:08Z	
+shoppable-video	false	2026-06-20T15:59:33Z	
+dlg-tool	false	2026-07-24T15:10:58Z	
+bucketlocale	false	2026-06-21T16:46:49Z	
+adspace_agent	false	2026-10-01T00:44:32Z	Your agents for ads
+arba	false	2026-07-09T12:51:31Z	ARBA identifies every reason your ads lose Impression Share, with a deep-dive fo
+youtube-topic-insights	false	2026-02-04T13:42:40Z	
+agentic_dsta	false	2026-06-23T19:36:34Z	
+social-pulse	false	2026-06-20T00:02:58Z	
+banana_milkshake	false	2026-09-08T02:56:36Z	
+google_ads_adk	true	2026-07-07T05:49:28Z	Google Ads ADK Toolset enables Large Language Models (LLMs) to interact seamless
+scene-machine	false	2026-10-14T09:02:41Z	Turn ideas into ad videos
+BulkAiBCD	false	2026-09-28T10:54:05Z	
+demand-led-growth	false	2026-08-19T10:30:47Z	
+smart_engine	false	2026-07-30T15:37:40Z	
+shadow-ops	false	2026-10-10T17:55:01Z	
+Artis	false	2026-09-15T08:28:02Z	
+gta-ai-labelling	false	2026-10-13T12:22:54Z	
+DV360_Live_Pacing_Tracker	false	2026-10-07T15:40:35Z	

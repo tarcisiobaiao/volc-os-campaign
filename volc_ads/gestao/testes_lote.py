@@ -297,3 +297,38 @@ def teste_aplicar_recomendacao_exige_a_trava(monkeypatch):
         lote.aplicar_recomendacoes(CID, [A.AplicarRecomendacao(REC)], login_customer_id="1",
                                    motivo="teste da trava de recomendação", cliente=_Cliente(serv))
     assert serv.pedidos == []
+
+
+# ── 14/10/2026: concorrência numa escrita real não é reenviada às cegas ─────
+
+
+def _concorrencia():
+    from google.ads.googleads.v25.errors.types.database_error import DatabaseErrorEnum
+
+    e = GoogleAdsError(message="Multiple requests were attempting to modify the same resource")
+    e.error_code.database_error = DatabaseErrorEnum.DatabaseError.CONCURRENT_MODIFICATION
+    return GoogleAdsException(None, None, GoogleAdsFailure(errors=[e]), "req-conc")
+
+
+def teste_concorrencia_em_escrita_real_nao_retenta(monkeypatch):
+    from volc_ads.gads.client import PoliticaRetry
+
+    monkeypatch.setenv("FORGE_PERMITIR_ESCRITA", "1")
+    serv = _Servico([_concorrencia(), _resposta(n_ops=1)])
+    p = lote.montar([A.AlterarStatus("campanha", CAMP, "PAUSED")], GT, CID)
+    with modo.destravar("teste de concorrência na escrita"):
+        r = lote.enviar(p, login_customer_id="1", validate_only=False, cliente=_Cliente(serv),
+                        politica=PoliticaRetry(tentativas=3, base_s=0))
+    assert len(serv.pedidos) == 1, "reenviou a mesma escrita depois de CONCURRENT_MODIFICATION"
+    assert r.acoes[0].desfecho == "falhou" and r.request_id == "req-conc"
+
+
+def teste_concorrencia_no_ensaio_continua_retentando():
+    """validate_only não escreve: repetir não sobrescreve ninguém."""
+    from volc_ads.gads.client import PoliticaRetry
+
+    serv = _Servico([_concorrencia(), _resposta(n_ops=1)])
+    p = lote.montar([A.AlterarStatus("campanha", CAMP, "PAUSED")], GT, CID)
+    r = lote.enviar(p, login_customer_id="1", validate_only=True, cliente=_Cliente(serv),
+                    politica=PoliticaRetry(tentativas=3, base_s=0))
+    assert len(serv.pedidos) == 2 and r.acoes[0].desfecho == "ok"

@@ -551,11 +551,15 @@
           "id": "P04-T04",
           "title": "Implementar builder e validate_only do primeiro canal",
           "status": "partial",
-          "latest_evidence": "09/10/2026, prova Google real neste chat: Search (15 operações), Display (9), Demand Gen (9) e PMax (25) aceitos pela API v25 em validate_only=true, partial_failure=false; 58 operações descartadas, zero criação/ativação. Builders existentes chamados diretamente, com banners LOCAL/ENSAIO, não criativos de produção. SDK alinhado à dependência declarada 33.0.0; 1502 testes Ads passam. NÃO prova cockpit completo: vínculo projeto/conta, conjunto pago n8n recusado e mídia de produção continuam pendentes. Evidência: docs/audits/GOOGLE-QUATRO-CANAIS-VALIDATE-ONLY-2026-10-09.md.",
+          "latest_evidence": "14/10/2026 (núcleo, google-engine-nucleo-20261014-01) · Search pela rota /provar canônica com dado real (oportunidade 106, conjunto aprovado): validate_only aceito com 42 ops (copy de 09/10) e 40 ops (copy Gemini), request IDs agora devolvidos em preparo.prova_google; atomicidade provada em validate_only real (partial_failure=false derruba tudo; dependentes por ID temporário). Selo retido pelo destino (LP 2477 em rascunho). Identidade substituída e declarada no /provar; cockpit autenticado só em leitura. Segue partial.",
           "proof": "Construtor completo em volc_ads/campanha/display.py: budget → campanha → geo → idioma → ad group → responsive display ad, num mutate. Desde 3eeafbc/07dfe3c o grafo também carrega o asset de imagem, emitido como asset_operation na MESMA requisição atômica. 62 testes próprios no arquivo em db39f0b (eram 51 em 07dfe3c); volc_ads 223 → 354 → 458. O caminho de validate_only está implementado e testado com cliente falso; FALTA a prova contra a conta real, que exige autorização — e é só ela que separa esta tarefa de `done`. · 07/10/2026 · Reconciliação: status corrigido de done para partial. A própria evidência registra que a prova validate_only contra a conta real não foi executada, e o aceite exige essa prova. · 09/10/2026 · Blindagem Google Ads integrada ao main e6184e9 (local, sem push). Em 08/10, `/provar` DISPLAY com `validate_only` real na 547-809-6539 foi ACEITO (35 ops, selo; MANUAL_CPM 19 ops), mas com dublês a montante (oportunidade, conjunto pago, brief). Em 09/10, smoke sem dublê além da identidade: nenhuma oportunidade de produção chega ao Google (106 sem cluster; 65/73/74 com cluster do n8n, 409 N8N_PAID_ELIGIBILITY_CONTRACT_UNSUPPORTED). Falta: oportunidade com conjunto_pago do motor Python, canário Display aceito e DISPLAY em CANAIS_COM_CRIACAO_AUTORIZADA. Status mantido.",
           "evidencia": [
             "2026-09-01 · sprint/traffic-creative-operational-closure-v1: builders dos quatro canais com entrada uniforme planejar(cid, brief, *, login_customer_id) e despacho por perfil.planejar; volc_ads/campanha/plano.py (906 linhas, dataclasses puras sem SDK) permite ao backend importar tipos sem o SDK. NÃO AVANÇA de partial: a lacuna declarada desta tarefa é \"a prova contra a conta real\", e nenhum validate_only foi executado nesta missão. O Gemini afirmou que o payload de Display está \"100% completo para validate_only em produção real\" — DESCARTADO pelo lead como afirmação sem prova com a forma de prova.",
             "2026-09-01 · 2b6392f + 134083a (sprint/traffic-creative-operational-closure-v1): A LACUNA LITERAL DESTA TAREFA — 'a prova contra a conta real' — FOI FECHADA. validate_only=True executado na conta 547-809-6539 via MCC 601-673-9364: display.validar APROVADO com 9 operacoes; demand_gen.validar APROVADO com 9 operacoes (budget >= R$ 25,40/dia). Zero mutate em conta nenhuma; FORGE_PERMITIR_ESCRITA e modo.destravar nao tocados. A chamada real expos um defeito que a suite offline nao pegava: Display emitia dois asset_operation.create com OS MESMOS BYTES em papeis diferentes, recusado com asset_error.DUPLICATE_ASSETS_WITH_DIFFERENT_FIELD_VALUE mais tres mutate_error.RESOURCE_NOT_FOUND em cascata — o Google identifica asset por CONTEUDO. Demand Gen ja tinha a guarda; Display nao. Corrigido e provado. Evidencia completa em docs/closure/traffic-creative-operational-closure-v1/verificacao/VALIDATE-ONLY-CANAIS.md."
+          ],
+          "updated_at": "2026-10-14",
+          "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md"
           ]
         },
         {
@@ -668,7 +672,12 @@
           "id": "P05-T05",
           "title": "Levar recibo de lançamento ao cockpit existente",
           "status": "partial",
-          "proof": "jornada ainda tem rotas e identidades históricas · 07/10/2026 · Integrado na branch integration/qg-real-20261007 (sprint traffic-operating-cockpit-v2): a aba Criar lê o veredito de GET /api/trafego/canais e mostra a JornadaDoCanal; a sprint fechou PARCIAL e nada foi lido em conta real. · 09/10/2026 (c86c38c, d9af134): primeira cadeia real ponta a ponta no cockpit, card 106 (Gás do Povo). Projeto 2 religado à conta 5478096539 (era 8017851692, cancelada); mineração paga pelo motor Python (Keyword Planner + DataForSEO + Gemini, 356 kw do Google); conjunto reavaliado com teto do canário R$ 1,00 e congruência termo × LP 2477 (14 de 95 congruentes) e aprovado (cluster 10, hash 4c7b00c4…, aprovado_por claude-code:autorizado-por:tarcisio); copy ancorada na LP e editada; /provar SEARCH: 44 operações, validate_only aceito (preparo.aprovado=true), selo RETIDO pelo portão de destino (LP rascunho, 419 palavras < 600, links/scripts não declarados, marca gov.br com destino divergente). Defeitos corrigidos no caminho: card de entidade não minerava em Python; conjunto nunca aprovável (teto/congruência sem entrada); ponte lia só artefatos.carimbo (todo run concluído sem state.json); grupos do cockpit da triagem e não do conjunto (503); copy com ano passado (C12). Falta: publicar a LP em conformidade, mídia Google aprovada para Display/DG/PMax. · 09/10/2026 (rodada sniper, 9514fd8..5b8650b) CORREÇÃO: os bloqueios de destino registrados acima (419 palavras, links, scripts, marca governamental) foram medidos na HOME — a leitura pública descarta a query e ?post_type=r&p=2477 virou a home. Corrigido (URL por query é recusada com motivo). Nenhum bloqueio da LP 2477 foi medido; ela é rascunho (anônimo recebe 404). Copy final registrada pelo PATCH /copy; Search revalidado: 44 ops, validate_only aceito, request ID pNVi5pBJHo5K-w48h7rNdQ, pedido sha256 9bc372dd…. Identidade da prova era dublê; auth real só provada nos negativos (401) e o passo com sessão real está em scripts/provar-sessao-real-gads.sh. Estado: fluxo cockpit validado para Search com dado real; NÃO pronto para lançar. Ver docs/architecture/GADS-FECHAMENTO-SNIPER-2026-10-09.md. · 09/10/2026 sprint operacional (9c40a59..): CPC estimado deixou de decidir (conjunto, teto) e /provar exige orçamento/lance do operador (422 sem padrão), provado por invariância até o payload; leitor de destino requisita a URL real e prova a página recebida (rascunho 2477 = destino público não validado, 404). Search: fluxo cockpit exercitado com dado real e identidade SIMULADA; auth real depende do passo do operador (scripts/provar-sessao-real-gads.sh). Display/DG/PMax: cockpit não exercitado (rota HTTP trata asset como produção; sem mídia aprovada). Ver docs/architecture/GADS-SPRINT-OPERACIONAL-2026-10-09.md."
+          "proof": "jornada ainda tem rotas e identidades históricas · 07/10/2026 · Integrado na branch integration/qg-real-20261007 (sprint traffic-operating-cockpit-v2): a aba Criar lê o veredito de GET /api/trafego/canais e mostra a JornadaDoCanal; a sprint fechou PARCIAL e nada foi lido em conta real. · 09/10/2026 (c86c38c, d9af134): primeira cadeia real ponta a ponta no cockpit, card 106 (Gás do Povo). Projeto 2 religado à conta 5478096539 (era 8017851692, cancelada); mineração paga pelo motor Python (Keyword Planner + DataForSEO + Gemini, 356 kw do Google); conjunto reavaliado com teto do canário R$ 1,00 e congruência termo × LP 2477 (14 de 95 congruentes) e aprovado (cluster 10, hash 4c7b00c4…, aprovado_por claude-code:autorizado-por:tarcisio); copy ancorada na LP e editada; /provar SEARCH: 44 operações, validate_only aceito (preparo.aprovado=true), selo RETIDO pelo portão de destino (LP rascunho, 419 palavras < 600, links/scripts não declarados, marca gov.br com destino divergente). Defeitos corrigidos no caminho: card de entidade não minerava em Python; conjunto nunca aprovável (teto/congruência sem entrada); ponte lia só artefatos.carimbo (todo run concluído sem state.json); grupos do cockpit da triagem e não do conjunto (503); copy com ano passado (C12). Falta: publicar a LP em conformidade, mídia Google aprovada para Display/DG/PMax. · 09/10/2026 (rodada sniper, 9514fd8..5b8650b) CORREÇÃO: os bloqueios de destino registrados acima (419 palavras, links, scripts, marca governamental) foram medidos na HOME — a leitura pública descarta a query e ?post_type=r&p=2477 virou a home. Corrigido (URL por query é recusada com motivo). Nenhum bloqueio da LP 2477 foi medido; ela é rascunho (anônimo recebe 404). Copy final registrada pelo PATCH /copy; Search revalidado: 44 ops, validate_only aceito, request ID pNVi5pBJHo5K-w48h7rNdQ, pedido sha256 9bc372dd…. Identidade da prova era dublê; auth real só provada nos negativos (401) e o passo com sessão real está em scripts/provar-sessao-real-gads.sh. Estado: fluxo cockpit validado para Search com dado real; NÃO pronto para lançar. Ver docs/architecture/GADS-FECHAMENTO-SNIPER-2026-10-09.md. · 09/10/2026 sprint operacional (9c40a59..): CPC estimado deixou de decidir (conjunto, teto) e /provar exige orçamento/lance do operador (422 sem padrão), provado por invariância até o payload; leitor de destino requisita a URL real e prova a página recebida (rascunho 2477 = destino público não validado, 404). Search: fluxo cockpit exercitado com dado real e identidade SIMULADA; auth real depende do passo do operador (scripts/provar-sessao-real-gads.sh). Display/DG/PMax: cockpit não exercitado (rota HTTP trata asset como produção; sem mídia aprovada). Ver docs/architecture/GADS-SPRINT-OPERACIONAL-2026-10-09.md.",
+          "latest_evidence": "14/10/2026 (núcleo) · /provar passa a devolver prova_google (request ID, versão v25, instante) nos 4 canais, fora do selo. Sessão real do operador em localhost:8080 chamou 9 rotas autenticadas do cockpit Search no backend com o delta (todas 200; sem token 401). /provar e /subir pela tela não exercitados: o assistente grava decisões no banco (fora da autorização) e o destino está em rascunho. Segue partial.",
+          "updated_at": "2026-10-14",
+          "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md"
+          ]
         },
         {
           "id": "P05-T06",
@@ -733,6 +742,7 @@
           "id": "P05-T10",
           "title": "Evoluir RSA por observação e experimento controlado",
           "status": "partial",
+          "latest_evidence": "14/10/2026 · (1) Harness Gemini de builder (sessão anterior): 3 grupos com RSA próprio, 30 ops em validate_only após 4 ajustes locais. (2) Núcleo: harness/canonico.py leva a proposta Gemini (só texto) pela rota /provar real — portão do conjunto pago, política, destino, selo; 1 geração gemini-3.8-flash, 2.440 tokens, ~US$ 0,0036 estimado, 40 ops aceitas, request ID SDeAi8SZ8xFRhKFHxNBWuQ, conta relida sem mudança. A rota colapsa em um conjunto (P7): RSA por grupo só no modo laboratório. Troca de texto de RSA é AdService.MutateAds (lista inteira); headline não tem status pausável. Sem mutação, serving, política aprovada ou ROI. Segue partial.",
           "proof": "Copy engine e Caixa de Propostas existem. Em 30/09/2026, no funil Senac, o lote WordPress foi aplicado e relido (20/20), uma RSA nova foi criada PAUSED e 8 assets novos foram criados sem vínculo; a RSA antiga segue ativa. O lote 3 (vincular assets, trocar e ativar a RSA nova) está preparado com validate_only e rollback, mas não foi autorizado pelo operador. Falta: ingestão tipada e critério de suficiência, aprovação registrada com o hash executado, um eixo por experimento, escrita pelo executor canônico (P09-T03) e qualquer medição de performance. [Histórico completo: docs/operations/qg-reconciliation-20261007/EVIDENCE-LEDGER.md#p05-t10]",
           "explanation": "Preservar a ideia de evolução criativa sem confundir share de impressões com causalidade nem perder a identidade de cada asset.",
           "acceptance": "Ingestão tipada campaign/ad group/ad/asset/resource_name com lido_em, performance_label, ad_strength e action_items; suficiência; diff; aprovação; validate_only; um eixo por experimento; recibo e rollback pelo executor canônico.",
@@ -754,8 +764,10 @@
             "recibo e rollback pelo executor canônico: as escritas de 2A/2B saíram de integracao/gads_lote.py; depende de P09-T03",
             "sem medição de performance; a redução do teto de CPC em 29/09 (R$ 1,00 → R$ 0,60) confunde a leitura de volume (APROVACAO-LOTE.md:199)"
           ],
-          "updated_at": "2026-09-30",
+          "updated_at": "2026-10-14",
           "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md",
+            "docs/audits/GOOGLE-HARNESS-GEMINI-WEBGO-2026-10-14.md",
             ".claude-ads/runs/editorial-refactor-20260930/lote-producao/APROVACAO-LOTE.md",
             ".claude-ads/runs/editorial-refactor-20260930/lote-producao/recibo-lote2A.json",
             ".claude-ads/runs/editorial-refactor-20260930/lote-producao/recibo-lote2B.json",
@@ -893,7 +905,12 @@
           "id": "P06-T03",
           "title": "Reativar e reconciliar fontes de receita",
           "status": "partial",
-          "proof": "Em 06/10/2026, uma nova rede GAM foi conectada e adicionada aos quatro workflows ativos de receita por utm_campaign e SITE_NAME, nas janelas atual e D-1. Quatro canários reais concluíram com sucesso, sem mutação de inventário GAM, e as pernas temporárias foram removidas. Continua parcial porque os workflows preservam o destino Supabase legado já configurado e ainda faltam reconciliação com a autoridade self-hosted, ledger, heartbeat e alerta de rotina parada. Evidência: registro operacional de 06/10/2026 mantido fora do repositório, porque identifica a rede e o titular de terceiro. · 09/10/2026 · main e6184e9 (local, sem push): v17_04 (arbitragem reconciliada) escrita e provada no espelho (7 cenários, ROLLBACK), NÃO aplicada em produção. Lucro/ROAS só com receita_status=reconciliada_fonte_unica; GAM só pela rota GOOGLE_CAMPAIGN; GAM×JoinAds no mesmo dia = nao_reconciliada_sobreposicao; placement e hora sem receita (não há atribuição). Leitura real: Senac 24278665189 em 07/10 reconciliada, custo R$ 59,66, JoinAds R$ 4,515, lucro −R$ 55,15. Produção: gam_metrics/display_gam_placements/hourly_stats com 0 linhas; JoinAds é a única receita viva. Defeito de dado: projeto 2 aponta google_ads_customer_id 8017851692 (conta cancelada; a real é 5478096539)."
+          "proof": "Em 06/10/2026, uma nova rede GAM foi conectada e adicionada aos quatro workflows ativos de receita por utm_campaign e SITE_NAME, nas janelas atual e D-1. Quatro canários reais concluíram com sucesso, sem mutação de inventário GAM, e as pernas temporárias foram removidas. Continua parcial porque os workflows preservam o destino Supabase legado já configurado e ainda faltam reconciliação com a autoridade self-hosted, ledger, heartbeat e alerta de rotina parada. Evidência: registro operacional de 06/10/2026 mantido fora do repositório, porque identifica a rede e o titular de terceiro. · 09/10/2026 · main e6184e9 (local, sem push): v17_04 (arbitragem reconciliada) escrita e provada no espelho (7 cenários, ROLLBACK), NÃO aplicada em produção. Lucro/ROAS só com receita_status=reconciliada_fonte_unica; GAM só pela rota GOOGLE_CAMPAIGN; GAM×JoinAds no mesmo dia = nao_reconciliada_sobreposicao; placement e hora sem receita (não há atribuição). Leitura real: Senac 24278665189 em 07/10 reconciliada, custo R$ 59,66, JoinAds R$ 4,515, lucro −R$ 55,15. Produção: gam_metrics/display_gam_placements/hourly_stats com 0 linhas; JoinAds é a única receita viva. Defeito de dado: projeto 2 aponta google_ads_customer_id 8017851692 (conta cancelada; a real é 5478096539).",
+          "latest_evidence": "14/10/2026 (auditoria B, só código/SQL) · Receita JoinAds/GAM é upsert do último valor (sem as-of); D-1 reescreve 3 dias; ligação custo×receita só por UTM × campanha-dia; grupo seria ingerível por utm_content (hoje só utm_campaign); câmbio congelado 5,25 e 5,50/5,35 fixos no front; v17_04 (não aplicada) chama de reconciliada receita ainda imatura e não confere fuso. Segue partial.",
+          "updated_at": "2026-10-14",
+          "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md"
+          ]
         },
         {
           "id": "P06-T04",
@@ -1039,7 +1056,7 @@
           "id": "P08-T06",
           "title": "Unificar sinais existentes num Topic Radar",
           "status": "partial",
-          "proof": "03/09/2026 · A elegibilidade paga passou a viajar ao lado da oportunidade editorial, sem fundir as duas escalas; ponte_editorial entrega as duas respostas com seus bloqueadores. Continua partial: o Topic Radar ainda não unifica Trends, Search Console, GA4, termos, RPM, geo e sazonalidade numa saída única."
+          "proof": "03/09/2026 · A elegibilidade paga passou a viajar ao lado da oportunidade editorial, sem fundir as duas escalas; ponte_editorial entrega as duas respostas com seus bloqueadores. Continua partial: o Topic Radar ainda não unifica Trends, Search Console, GA4, termos, RPM, geo e sazonalidade numa saída única. · 14/10/2026 · Recuperado o protótipo Python R3 a partir do histórico Claude, fora do main, em ../producao/attention-validacao-20261014/. Estado histórico não recuperado. Validação nova: 96 sinais públicos coletados, 6 selecionados; duas chamadas reais Gemini, mesmo modelo servido gemini-3.6-flash embora solicitado gemini-3.5-flash. Padrão 16,516 s/5539 tokens; low 4,031 s/2967 tokens; decisões iguais em 6/6 (uma promoção). Fixtures isoladas de gravação atômica e deduplicação pós-queda passaram. Não prova recall, cache pago histórico, estabilidade diária ou ROI; nenhuma integração, default ou produção alterados. Recibo: ../producao/attention-validacao-20261014/recovered/resultado.json. Permanece partial."
         },
         {
           "id": "P08-T07",
@@ -1138,6 +1155,7 @@
           "status": "partial",
           "proof": "O caminho privilegiado de BiddingActionBox foi removido e a criação Search passa pelo backend autenticado. Snapshots registram três famílias de executores com mutate (Webhook, Form Triggers e ClickUp), mas o estado vivo ainda exige conferência. v10_01 não foi aplicada nem ligada às rotas; superfícies n8n precisam ser autenticadas ou aposentadas e provar zero mutate fora da porta. · Atualização de 31/08/2026: a porta de escrita ficou estreita por construção — /subir recusa (503) quando o ledger não está configurado, e o banco recusa segundo recibo em voo no mesmo item. As superfícies n8n continuam pendentes (D10).",
           "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md",
             "docs/architecture/ORAKUL-DECISION-INTELLIGENCE-AUDIT.json",
             "docs/architecture/REPORT-ORAKUL-DECISION-INTELLIGENCE-FABLE.md"
           ],
@@ -1148,7 +1166,9 @@
             "FORGE_PERMITIR_ESCRITA=1 sozinho não é autorização suficiente para criar campanha",
             "Existe prova negativa executável demonstrando zero mutate pelo caminho fechado",
             "Nenhum comportamento da rota HTTP /api/trafego/subir é quebrado"
-          ]
+          ],
+          "latest_evidence": "14/10/2026 (núcleo) · gestao/lote.enviar não reenvia mais CONCURRENT_MODIFICATION em escrita real (predicado nao_retentar em client.executar): a ação volta falhou e a próxima tentativa nasce de releitura; ensaio continua retentando. ExcluirPlacements por campanha recusa Performance Max e campanha inexistente antes do Google. Testes herméticos; nenhuma escrita real. Segue partial.",
+          "updated_at": "2026-10-14"
         },
         {
           "id": "P09-T04",
@@ -1310,10 +1330,13 @@
             "P06-T08"
           ],
           "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md",
             "docs/architecture/SPEC-GOOGLE-ADS-INTELLIGENCE-COLLECTOR.md",
             "supabase/migrations/v12_01_google_inteligencia_coletas.sql",
             "deploy/google-intelligence/README.md"
-          ]
+          ],
+          "latest_evidence": "14/10/2026 (núcleo) · Família estado: tópicos de política preservam evidences/constraints (restrição vazia vira contagem) e campaign_asset traz a política do asset. Leitura real sem gravar: 734 linhas, 71 assets de campanha, 1 anúncio FULLY_LIMITED em GOVERNMENT_DOCUMENTS com restrição declarada. estado_hash muda uma vez para linhas com política nova. Agenda contínua segue fora deste delta. Segue partial.",
+          "updated_at": "2026-10-14"
         },
         {
           "id": "P09-T15",
@@ -2328,6 +2351,7 @@
           ],
           "priority": 1,
           "links": [
+            ".claude-ads/runs/google-engine-nucleo-20261014-01/RELATORIO.md",
             "tools/agent-harness/missions/decision-intelligence-lab-v1.json",
             "docs/architecture/VOLC-DECISION-INTELLIGENCE-LAB-V1.md",
             "docs/architecture/VOLC-DECISION-LAB-RAW-MAPPING.json",
@@ -2343,7 +2367,9 @@
             ".research/google-marketing-solutions/if-this-then-ad",
             "inventario-n8n/flows/gads-new-campaign-validation.json",
             "inventario-n8n/flows/orakul-vos-auto-adjust.json"
-          ]
+          ],
+          "latest_evidence": "14/10/2026 (pesquisa B, SINTÉTICO rotulado) · Mecânica de shrinkage Beta-Binomial (M=20 não universal), nowcasting chain-ladder/BF sem vazamento e OPE IPS/DR (obp 0.4.1 = numpy) provada em dados sintéticos; sem suporte o DR erra e propensão inventada dobra o valor. Impedimentos reais: sem as-of de receita/custo, ledger sem ações elegíveis, propensão e recompensa econômica. Nenhum ganho real alegado. Segue partial.",
+          "updated_at": "2026-10-14"
         },
         {
           "id": "P14-T03",

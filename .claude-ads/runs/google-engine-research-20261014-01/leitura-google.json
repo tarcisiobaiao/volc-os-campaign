@@ -1,0 +1,15 @@
+{
+  "observed_on": "2026-10-14",
+  "timezone": "America/Sao_Paulo",
+  "mode": "read_only",
+  "api_version": "v25",
+  "mutations": 0,
+  "account_ref": "operational_google_account",
+  "queries": [
+    {"name": "account", "status": "ok", "rows": 1, "seconds": 1.34, "data": [{"status": "ENABLED", "currency": "BRL", "timezone": "America/Sao_Paulo", "test_account": false}]},
+    {"name": "campaigns", "status": "ok", "rows": 5, "seconds": 0.7, "data": [{"channel": "SEARCH", "status": "ENABLED", "count": 1}, {"channel": "SEARCH", "status": "PAUSED", "count": 4}]},
+    {"name": "account_goals", "status": "ok", "rows": 2, "seconds": 0.75, "data": [{"category": "PURCHASE", "origin": "WEBSITE", "biddable": false}, {"category": "DOWNLOAD", "origin": "APP", "biddable": true}]}
+  ],
+  "limitations": ["No campaign-specific or custom conversion goals fetched today", "No ad policy, performance, revenue or scheduling audit today", "Current reads do not prove the authenticated backend creation flow"],
+  "secrets_recorded": false
+}

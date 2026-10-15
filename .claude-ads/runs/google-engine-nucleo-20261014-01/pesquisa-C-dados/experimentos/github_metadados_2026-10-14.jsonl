@@ -1,0 +1,87 @@
+{"archived":false,"default_branch":"main","description":"The fastest, litest AI Gateway. Rust core with Python SDK. Call 100+ LLM APIs in OpenAI (or native) format with cost tracking, guardrails, load balancing, and logging [Bedrock, Azure, OpenAI, Anthropic, OpenAI, VertexAI, vLLM, Nvidia NIM]","full_name":"BerriAI/litellm","html_url":"https://github.com/BerriAI/litellm","license":"NOASSERTION","pushed_at":"2026-10-15T01:25:37Z","stargazers_count":61264}
+
+{"archived":false,"default_branch":"main","description":"Python driver/sqlalchemy/superset connectors","full_name":"ClickHouse/clickhouse-connect","html_url":"https://github.com/ClickHouse/clickhouse-connect","license":"Apache-2.0","pushed_at":"2026-10-14T23:01:53Z","stargazers_count":530}
+
+{"archived":false,"default_branch":"main","description":"Marketing Analytics Jumpstart consists of an easy to deploy, custom end-to-end solution that enables Marketing Technology teams to analyze and enrich marketing data, and activate to Google Ads using smart bidding to achieve X-XX% in ROAS.","full_name":"GoogleCloudPlatform/marketing-analytics-jumpstart","html_url":"https://github.com/GoogleCloudPlatform/marketing-analytics-jumpstart","license":"Apache-2.0","pushed_at":"2026-01-05T20:04:51Z","stargazers_count":200}
+
+{"archived":false,"default_branch":"master","description":"The property-based testing library for Python","full_name":"HypothesisWorks/hypothesis","html_url":"https://github.com/HypothesisWorks/hypothesis","license":"NOASSERTION","pushed_at":"2026-10-14T23:47:16Z","stargazers_count":9083}
+
+{"archived":false,"default_branch":"master","description":"Leveraging BERT and c-TF-IDF to create easily interpretable topics. ","full_name":"MaartenGr/BERTopic","html_url":"https://github.com/MaartenGr/BERTopic","license":"MIT","pushed_at":"2026-10-14T07:47:04Z","stargazers_count":7890}
+
+{"archived":false,"default_branch":"main","description":"Prefect is a workflow orchestration framework for building resilient data pipelines in Python.","full_name":"PrefectHQ/prefect","html_url":"https://github.com/PrefectHQ/prefect","license":"Apache-2.0","pushed_at":"2026-10-13T08:24:28Z","stargazers_count":24021}
+
+{"archived":false,"default_branch":"main","description":"State-of-the-Art Embeddings, Retrieval, and Reranking","full_name":"huggingface/sentence-transformers","html_url":"https://github.com/huggingface/sentence-transformers","license":"Apache-2.0","pushed_at":"2026-10-14T15:37:13Z","stargazers_count":19174}
+
+{"archived":false,"default_branch":"master","description":"Crawlee—A web scraping and browser automation library for Python to build reliable crawlers. Extract data for AI, LLMs, RAG, or GPTs. Download HTML, PDF, JPG, PNG, and other files from websites. Works with Parsel, BeautifulSoup, Playwright, and raw HTTP. Both headful and headless mode. With proxy rotation.","full_name":"apify/crawlee-python","html_url":"https://github.com/apify/crawlee-python","license":"Apache-2.0","pushed_at":"2026-10-14T21:17:44Z","stargazers_count":9591}
+
+{"archived":false,"default_branch":"main","description":"Python Stream Processing","full_name":"bytewax/bytewax","html_url":"https://github.com/bytewax/bytewax","license":"Apache-2.0","pushed_at":"2026-10-13T20:05:25Z","stargazers_count":2056}
+
+{"archived":false,"default_branch":"master","description":"An orchestration platform for the development, production, and observation of data assets.","full_name":"dagster-io/dagster","html_url":"https://github.com/dagster-io/dagster","license":"Apache-2.0","pushed_at":"2026-10-12T16:39:43Z","stargazers_count":16278}
+
+{"archived":false,"default_branch":"main","description":"DuckDB is an analytical in-process SQL database management system","full_name":"duckdb/duckdb","html_url":"https://github.com/duckdb/duckdb","license":"MIT","pushed_at":"2026-10-14T18:33:51Z","stargazers_count":42159}
+
+{"archived":false,"default_branch":"master","description":"A next generation HTTP client for Python. 🦋","full_name":"encode/httpx","html_url":"https://github.com/encode/httpx","license":"BSD-3-Clause","pushed_at":"2026-10-02T12:53:43Z","stargazers_count":15602}
+
+{"archived":false,"default_branch":"main","description":"Python SDK for Meta Marketing APIs","full_name":"facebook/facebook-python-business-sdk","html_url":"https://github.com/facebook/facebook-python-business-sdk","license":"NOASSERTION","pushed_at":"2026-09-21T05:49:23Z","stargazers_count":1610}
+
+{"archived":false,"default_branch":"master","description":"FastAPI framework, high performance, easy to learn, fast to code, ready for production","full_name":"fastapi/fastapi","html_url":"https://github.com/fastapi/fastapi","license":"MIT","pushed_at":"2026-10-14T20:38:38Z","stargazers_count":103098}
+
+{"archived":false,"default_branch":"master","description":"The Open Source Feature Store for AI/ML","full_name":"feast-dev/feast","html_url":"https://github.com/feast-dev/feast","license":"Apache-2.0","pushed_at":"2026-10-13T13:34:45Z","stargazers_count":7330}
+
+{"archived":false,"default_branch":"master","description":"The most advanced free and open-source browser fingerprinting library","full_name":"fingerprintjs/fingerprintjs","html_url":"https://github.com/fingerprintjs/fingerprintjs","license":"MIT","pushed_at":"2026-10-14T11:10:27Z","stargazers_count":28580}
+
+{"archived":false,"default_branch":"main","description":"🚀 Adios: One-stop solution for Google Ads image assets management","full_name":"google-marketing-solutions/adios","html_url":"https://github.com/google-marketing-solutions/adios","license":"Apache-2.0","pushed_at":"2026-10-07T10:31:41Z","stargazers_count":71}
+
+{"archived":false,"default_branch":"main","description":"Comprehensive system for monitoring changes and fluctuations  in Google Ads","full_name":"google-marketing-solutions/ads-monitor","html_url":"https://github.com/google-marketing-solutions/ads-monitor","license":"Apache-2.0","pushed_at":"2026-06-19T17:25:32Z","stargazers_count":26}
+
+{"archived":false,"default_branch":"main","description":null,"full_name":"google-marketing-solutions/ads-policy-monitor","html_url":"https://github.com/google-marketing-solutions/ads-policy-monitor","license":"Apache-2.0","pushed_at":"2026-05-28T09:21:51Z","stargazers_count":21}
+
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}
+{"archived":false,"default_branch":"main","description":"ARBA identifies every reason your ads lose Impression Share, with a deep-dive focus on mastering your Quality Score","full_name":"google-marketing-solutions/arba","html_url":"https://github.com/google-marketing-solutions/arba","license":"Apache-2.0","pushed_at":"2026-07-09T12:51:31Z","stargazers_count":11}
+
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}
+{"archived":false,"default_branch":"main","description":"Generate Google Search Ads that match your brand style.","full_name":"google-marketing-solutions/copycat","html_url":"https://github.com/google-marketing-solutions/copycat","license":"Apache-2.0","pushed_at":"2026-09-24T08:37:24Z","stargazers_count":86}
+
+{"archived":false,"default_branch":"main","description":"Transparent, robust and trustworthy A/B experimentation for Shopping feeds.","full_name":"google-marketing-solutions/feedx","html_url":"https://github.com/google-marketing-solutions/feedx","license":"Apache-2.0","pushed_at":"2026-09-07T10:02:43Z","stargazers_count":64}
+
+{"archived":false,"default_branch":"main","description":"Identify irrelevant negative keywords from your Google Ads account","full_name":"google-marketing-solutions/negative_keyword_cleaner","html_url":"https://github.com/google-marketing-solutions/negative_keyword_cleaner","license":"Apache-2.0","pushed_at":"2026-06-08T08:30:07Z","stargazers_count":36}
+
+{"archived":false,"default_branch":"main","description":"Topic Mine leverages 1st and/or 2nd party data to identify trending topics and uses our GEMINI to create relevant ads' texts. It generates headlines, descriptions and keywords given a list of products, brands or services and (optionally) additional info about them. ","full_name":"google-marketing-solutions/topic-mine","html_url":"https://github.com/google-marketing-solutions/topic-mine","license":"Apache-2.0","pushed_at":"2026-10-06T21:28:02Z","stargazers_count":33}
+
+{"archived":false,"default_branch":"main","description":"Google Ads API Report Fetcher (gaarf)","full_name":"google/ads-api-report-fetcher","html_url":"https://github.com/google/ads-api-report-fetcher","license":"Apache-2.0","pushed_at":"2026-10-09T12:02:01Z","stargazers_count":64}
+
+{"archived":false,"default_branch":"master","description":"Reliable data integration \u0026 processing for advertisers","full_name":"google-marketing-solutions/crmint","html_url":"https://github.com/google-marketing-solutions/crmint","license":"NOASSERTION","pushed_at":"2026-06-21T16:57:05Z","stargazers_count":214}
+
+{"archived":false,"default_branch":"main","description":"Call APIs with SQL","full_name":"google/garf","html_url":"https://github.com/google/garf","license":"Apache-2.0","pushed_at":"2026-10-14T12:16:00Z","stargazers_count":30}
+
+{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/repos#get-a-repository","status":"404"}
+{"archived":false,"default_branch":"main","description":"Agent Skills for Google products and technologies","full_name":"google/skills","html_url":"https://github.com/google/skills","license":"Apache-2.0","pushed_at":"2026-10-14T19:02:54Z","stargazers_count":21301}
+
+{"archived":false,"default_branch":"main","description":"State-of-the-Art Embeddings, Retrieval, and Reranking","full_name":"huggingface/sentence-transformers","html_url":"https://github.com/huggingface/sentence-transformers","license":"Apache-2.0","pushed_at":"2026-10-14T15:37:13Z","stargazers_count":19174}
+
+{"archived":false,"default_branch":"master","description":"Official Python Library for IPinfo API (IP geolocation and other types of IP data)","full_name":"ipinfo/python","html_url":"https://github.com/ipinfo/python","license":"Apache-2.0","pushed_at":"2026-06-17T06:52:47Z","stargazers_count":567}
+
+{"archived":false,"default_branch":"master","description":"Mock HTTPX with awesome request patterns and response side effects 🦋","full_name":"lundberg/respx","html_url":"https://github.com/lundberg/respx","license":"BSD-3-Clause","pushed_at":"2026-07-21T03:12:51Z","stargazers_count":841}
+
+{"archived":false,"default_branch":"main","description":"Python code for GeoIP2 webservice client and database reader","full_name":"maxmind/GeoIP2-python","html_url":"https://github.com/maxmind/GeoIP2-python","license":"Apache-2.0","pushed_at":"2026-10-14T20:32:31Z","stargazers_count":1220}
+
+{"archived":false,"default_branch":"main","description":"Python version of the Playwright testing and automation library.","full_name":"microsoft/playwright-python","html_url":"https://github.com/microsoft/playwright-python","license":"Apache-2.0","pushed_at":"2026-10-13T23:32:18Z","stargazers_count":15043}
+
+{"archived":false,"default_branch":"main","description":"OpenTelemetry Python API and SDK ","full_name":"open-telemetry/opentelemetry-python","html_url":"https://github.com/open-telemetry/opentelemetry-python","license":"Apache-2.0","pushed_at":"2026-10-14T14:48:50Z","stargazers_count":2673}
+
+{"archived":false,"default_branch":"main","description":"Extremely fast Query Engine for DataFrames, written in Rust","full_name":"pola-rs/polars","html_url":"https://github.com/pola-rs/polars","license":"MIT","pushed_at":"2026-10-14T19:21:04Z","stargazers_count":40085}
+
+{"archived":false,"default_branch":"main","description":"Data validation using Python type hints","full_name":"pydantic/pydantic","html_url":"https://github.com/pydantic/pydantic","license":"MIT","pushed_at":"2026-10-14T17:56:22Z","stargazers_count":29035}
+
+{"archived":false,"default_branch":"main","description":"Fast, Accurate, Lightweight Python library to make State of the Art Embedding","full_name":"qdrant/fastembed","html_url":"https://github.com/qdrant/fastembed","license":"Apache-2.0","pushed_at":"2026-10-13T06:00:43Z","stargazers_count":3243}
+
+{"archived":false,"default_branch":"master","description":"Python client for Qdrant vector search engine","full_name":"qdrant/qdrant-client","html_url":"https://github.com/qdrant/qdrant-client","license":"Apache-2.0","pushed_at":"2026-10-14T19:38:06Z","stargazers_count":1373}
+
+{"archived":false,"default_branch":"master","description":"Ray is an AI compute engine. Ray consists of a core distributed runtime and a set of AI Libraries for accelerating ML workloads.","full_name":"ray-project/ray","html_url":"https://github.com/ray-project/ray","license":"Apache-2.0","pushed_at":"2026-10-15T00:17:56Z","stargazers_count":44031}
+
+{"archived":false,"default_branch":"master","description":"Redis Python client","full_name":"redis/redis-py","html_url":"https://github.com/redis/redis-py","license":"MIT","pushed_at":"2026-10-14T16:12:55Z","stargazers_count":13647}
+
+{"archived":false,"default_branch":"master","description":"Catch API bugs before your users do","full_name":"schemathesis/schemathesis","html_url":"https://github.com/schemathesis/schemathesis","license":"MIT","pushed_at":"2026-10-14T23:49:14Z","stargazers_count":3665}
+
+{"archived":false,"default_branch":"master","description":"A high performance implementation of HDBSCAN clustering.","full_name":"scikit-learn-contrib/hdbscan","html_url":"https://github.com/scikit-learn-contrib/hdbscan","license":"BSD-3-Clause","pushed_at":"2026-10-08T01:53:05Z","stargazers_count":3156}
+
