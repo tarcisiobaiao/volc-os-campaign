@@ -1061,7 +1061,7 @@ def test_subir_display_nao_consulta_o_portao_do_conjunto_pago(
                 plano_impressao="a" * 64,
             ),
             identidade=Identidade(
-                sub="u1", email="op@volc", papel="ADMIN", origem="teste"),
+                sub="u1", email="op@volc", papel="ADMIN", origem="sessao"),
         ))
     except Exception:  # noqa: BLE001 — o desfecho não é o que se mede aqui
         pass
@@ -1110,7 +1110,7 @@ def test_subir_search_continua_passando_pelo_portao_do_conjunto_pago(
                       "display_expansion": False},
             ),
             identidade=Identidade(
-                sub="u1", email="op@volc", papel="ADMIN", origem="teste"),
+                sub="u1", email="op@volc", papel="ADMIN", origem="sessao"),
         ))
     except Exception:  # noqa: BLE001
         pass

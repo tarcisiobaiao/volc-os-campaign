@@ -786,7 +786,7 @@ def test_plano_efetivo_diferente_do_aprovado_para_antes_da_consulta_remota(
     ))
     identidade = Identidade(
         sub="operador", email="tarcisio@agenciavolc.com.br",
-        papel="ADMIN", origem="teste",
+        papel="ADMIN", origem="sessao",
     )
 
     with pytest.raises(HTTPException) as erro:
@@ -803,7 +803,11 @@ def test_provar_e_subir_reconstroem_o_mesmo_plano_antes_da_rede(
     planos_remotos = _instalar_portas_hermeticas(monkeypatch)
     payload = _payload_da_rota()
 
-    prova = asyncio.run(trafego.provar(trafego.ProvarEntrada(**payload)))
+    # W5: a verba e o CPC da prova são do operador da SESSÃO; sem identidade,
+    # `preparar()` recusa o dinheiro antes do validate_only.
+    sessao = Identidade(sub="operador", email="tarcisio@agenciavolc.com.br",
+                        papel="ADMIN", origem="sessao")
+    prova = asyncio.run(trafego.provar(trafego.ProvarEntrada(**payload), identidade=sessao))
     autorizacao = prova["autorizacao"]
 
     assert prova["preparo"]["aprovado"] is True
@@ -848,7 +852,7 @@ def test_provar_e_subir_reconstroem_o_mesmo_plano_antes_da_rede(
     })
     identidade = Identidade(
         sub="operador", email="tarcisio@agenciavolc.com.br",
-        papel="ADMIN", origem="teste",
+        papel="ADMIN", origem="sessao",
     )
 
     with pytest.raises(HTTPException) as erro:

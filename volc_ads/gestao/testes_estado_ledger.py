@@ -12,6 +12,12 @@ from volc_ads.gestao import estado, ledger
 from volc_ads.gestao.acoes import AcaoRecusada
 from volc_ads.gestao.lote import ResultadoAcao
 from volc_ads.gads.errors import ErroGads
+from volc_ads.gestao.valor import ValorMonetario
+
+
+def OP(micros):
+    return ValorMonetario(micros, "operador", "operador:teste/operador@2026-10-15T00:00:00+00:00",
+                          "valor digitado no teste")
 
 CID = "5478096539"
 CAMP = 24278665189
@@ -47,14 +53,14 @@ def teste_ler_confere_gaql_carimba_e_interpreta():
         vistas.append((cid, q))
         return [_linha_orcamento()]
 
-    a = A.AlterarOrcamento(CAMP, 15886629542, 35_000_000)
+    a = A.AlterarOrcamento(CAMP, 15886629542, OP(35_000_000))
     antes = estado.ler(CID, a, buscar=buscar, agora=lambda: AGORA)
     assert antes.lido_em == AGORA and antes.dados["verba_diaria_micros"] == 30_000_000
     assert vistas == [(CID, antes.consultas[0])]
 
 
 def teste_ler_recusa_quando_o_estado_nao_permite():
-    a = A.AlterarOrcamento(CAMP, 15886629542, 35_000_000)
+    a = A.AlterarOrcamento(CAMP, 15886629542, OP(35_000_000))
     with pytest.raises(AcaoRecusada, match="compartilhado"):
         estado.ler(CID, a, buscar=lambda c, q: [_linha_orcamento(True, 4)])
     sem = estado.ler(CID, a, buscar=lambda c, q: [_linha_orcamento(True, 4)], conferir=False)
@@ -77,7 +83,7 @@ _CHAVE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$")
 
 
 def teste_proposta_de_orcamento_tem_delta_moeda_e_chave_do_teto():
-    a = A.AlterarOrcamento(CAMP, 15886629542, 36_000_000)
+    a = A.AlterarOrcamento(CAMP, 15886629542, OP(36_000_000))
     antes = a.interpretar_antes(([_linha_orcamento()],))
     p = ledger.proposta(a, CID, antes, AGORA)
     assert p["operacao"] == "orcamento.diario" and p["alvo_nivel"] == "campanha"

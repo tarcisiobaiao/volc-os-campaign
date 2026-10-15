@@ -33,6 +33,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.config import Settings, get_settings
 from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario
 from app.trafego.gestao.application.erros import ErroDeGestao
+from app.trafego.gestao.application.payload import Ator
 
 log = logging.getLogger("volc.trafego.gestao.rota")
 
@@ -62,6 +63,11 @@ def obter_gestao(settings: Settings = Depends(get_settings)) -> Any:
 def _quem(identidade: Identidade) -> str:
     """O autor que vai para `criada_por`/`decidida_por` como `humano:<quem>`."""
     return identidade.email or identidade.sub
+
+
+def _ator(identidade: Identidade) -> Ator:
+    """A origem `operador` sai daqui — da identidade autenticada, nunca do corpo."""
+    return Ator(sub=identidade.sub, papel=identidade.papel, origem=identidade.origem)
 
 
 async def _rodar(coro: Any) -> Any:
@@ -146,7 +152,8 @@ async def propor(response: Response, corpo: PedidoDeProposta = Body(...),
     """
     saida = await _rodar(gestao.propor(
         corpo.customer_id, corpo.acao, motivo=corpo.motivo, autor=_quem(identidade),
-        regra_chave=corpo.regra_chave, validade_horas=corpo.validade_horas))
+        regra_chave=corpo.regra_chave, validade_horas=corpo.validade_horas,
+        ator=_ator(identidade)))
     if saida.get("ja_existia"):
         response.status_code = 200
     return saida

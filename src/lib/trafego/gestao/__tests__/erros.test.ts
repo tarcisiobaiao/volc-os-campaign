@@ -63,6 +63,16 @@ describe('os 409 do contrato viram frase de operação', () => {
       expect(e.tecnica).toBe(`mensagem do servidor para ${c}`);
     }
   });
+  it('valor sem origem e sem autoridade explicam o que falta e como corrigir', () => {
+    const sem = erroLegivel(erro('valor_sem_origem', 422));
+    expect(sem.titulo).toMatch(/de onde veio o valor/);
+    expect(sem.proximoPasso).toMatch(/Digite o valor no formulário/);
+    const sa = erroLegivel(erro('valor_sem_autoridade', 422));
+    expect(sa.titulo).toMatch(/não autoriza gastar verba/);
+    expect(sa.proximoPasso).toMatch(/SERP/);
+    expect(sa.proximoPasso).toMatch(/recuse-a e proponha de novo/);
+    expect(sa.titulo).not.toMatch(/mensagem do servidor/);
+  });
   it('código desconhecido cai na mensagem do servidor, e 403 sem código é papel', () => {
     expect(erroLegivel(erro('codigo_novo', 409)).titulo).toBe('mensagem do servidor para codigo_novo');
     expect(erroLegivel(new ErroDaGestao('Esta operação exige papel administrativo.', 403)).titulo).toMatch(/administrativo/);
@@ -87,7 +97,7 @@ describe('o cliente preserva a codigo do contrato', () => {
     vi.stubGlobal('fetch', fetchFalso);
     const p = gestaoApi.propor({
       customer_id: '5478096539',
-      acao: { tipo: 'orcamento.diario', campaign_id: '24278665189', amount_micros: 33_000_000 },
+      acao: { tipo: 'orcamento.diario', campaign_id: '24278665189', amount_micros: 33_000_000, origem: 'operador' },
       motivo: 'teste',
     });
     await expect(p).rejects.toMatchObject({ status: 409, codigo: 'regra_ausente', detalhe: { regra_chave: 'gestao_manual_google' } });

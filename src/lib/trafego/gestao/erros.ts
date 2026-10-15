@@ -176,6 +176,16 @@ const FRASES: Record<
   fora_do_escopo: {
     titulo: 'Esta conta não está na árvore de contas da casa.',
   },
+  valor_sem_origem: {
+    titulo: 'Falta dizer de onde veio o valor de verba ou lance.',
+    proximo:
+      'Digite o valor no formulário: o número que você digita entra como valor do operador. Se o pedido veio de uma automação, ela precisa mandar a origem.',
+  },
+  valor_sem_autoridade: {
+    titulo: 'A origem deste valor não autoriza gastar verba nem mudar lance.',
+    proximo:
+      'Só vale número digitado por uma pessoa logada (com motivo de ao menos 10 caracteres) ou lido pelo VOLC na própria conta. CPC de SERP, Semrush, Keyword Planner ou estimativa não liberam verba. Se a proposta é antiga e não tem origem gravada, recuse-a e proponha de novo.',
+  },
   proposta_ilegivel: {
     titulo: 'A proposta gravada não reconstrói uma ação.',
     proximo: 'Recuse-a e proponha de novo.',

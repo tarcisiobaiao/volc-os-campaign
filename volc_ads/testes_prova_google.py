@@ -17,6 +17,14 @@ from volc_ads.copy.mock import falha_politica
 from volc_ads.gads.errors import FalhaGads
 
 
+def _do_operador(brief):
+    """W5: verba e lance do brief declarados pelo operador da sessão (dublê)."""
+    from volc_ads.gestao.valor import valores_do_operador
+    return valores_do_operador(brief, sub="u-teste", papel="OPERATOR",
+                               quando="2026-10-15T12:00:00+00:00",
+                               justificativa="valores definidos pelo operador no teste")
+
+
 @pytest.fixture(autouse=True)
 def _sem_credencial(monkeypatch):
     monkeypatch.setattr(search, "cliente", lambda _login: _cliente_sem_rede())
@@ -39,7 +47,7 @@ def test_aceite_guarda_request_id_versao_e_instante(monkeypatch):
     validar, chamadas = _aceita_com_id(["req-abc"])
     monkeypatch.setattr(sb, "validar_mutacoes", validar)
 
-    preparo = sb.preparar(CID, _brief(), login_customer_id=CID, canal="SEARCH")
+    preparo = sb.preparar(CID, (_b := _brief()), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b))
 
     assert preparo.selo is not None
     assert len(chamadas) == 1
@@ -56,11 +64,9 @@ def test_aceite_guarda_request_id_versao_e_instante(monkeypatch):
 def test_request_id_fica_fora_do_selo(monkeypatch):
     """O selo é a impressão do PAYLOAD: o id da chamada não pode mudá-lo."""
     monkeypatch.setattr(sb, "validar_mutacoes", _aceita_com_id(["um"])[0])
-    a = sb.preparar(CID, _brief(carimbo_nome="20261014_120000"),
-                    login_customer_id=CID, canal="SEARCH")
+    a = sb.preparar(CID, (_b := _brief(carimbo_nome="20261014_120000")), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b))
     monkeypatch.setattr(sb, "validar_mutacoes", _aceita_com_id(["outro"])[0])
-    b = sb.preparar(CID, _brief(carimbo_nome="20261014_120000"),
-                    login_customer_id=CID, canal="SEARCH")
+    b = sb.preparar(CID, (_b := _brief(carimbo_nome="20261014_120000")), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b))
 
     assert a.prova_google.request_ids != b.prova_google.request_ids
     assert a.selo.impressao == b.selo.impressao
@@ -69,7 +75,7 @@ def test_request_id_fica_fora_do_selo(monkeypatch):
 
 def test_rpc_sem_metadado_nao_inventa_id(monkeypatch):
     monkeypatch.setattr(sb, "validar_mutacoes", _aceita_com_id([])[0])
-    preparo = sb.preparar(CID, _brief(), login_customer_id=CID, canal="SEARCH")
+    preparo = sb.preparar(CID, (_b := _brief()), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b))
     assert preparo.selo is not None
     assert preparo.prova_google.request_ids == ()
 
@@ -78,7 +84,7 @@ def test_recusa_nao_tem_prova_de_aceite(monkeypatch):
     falha = FalhaGads(erros=(), request_id="req-recusa")
     monkeypatch.setattr(sb, "validar_mutacoes",
                         lambda *a, request_ids=None, **k: falha)
-    preparo = sb.preparar(CID, _brief(), login_customer_id=CID, canal="SEARCH",
+    preparo = sb.preparar(CID, (_b := _brief()), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b),
                           autocorrigir=False)
     assert preparo.selo is None
     assert preparo.prova_google is None
@@ -104,7 +110,7 @@ def test_autocorrecao_registra_o_id_da_chamada_que_aceitou(monkeypatch):
         return None
 
     monkeypatch.setattr(sb, "validar_mutacoes", validar)
-    preparo = sb.preparar(CID, _brief(), login_customer_id=CID, canal="SEARCH")
+    preparo = sb.preparar(CID, (_b := _brief()), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b))
 
     if preparo.selo is None:
         pytest.skip("o dublê de política não é acionável para esta copy: "
@@ -116,7 +122,7 @@ def test_autocorrecao_registra_o_id_da_chamada_que_aceitou(monkeypatch):
 def test_prova_guarda_a_impressao_do_payload_aceito(monkeypatch):
     """O selo pode ser retido depois (destino); a prova não perde qual payload foi."""
     monkeypatch.setattr(sb, "validar_mutacoes", _aceita_com_id(["req-x"])[0])
-    preparo = sb.preparar(CID, _brief(), login_customer_id=CID, canal="SEARCH")
+    preparo = sb.preparar(CID, (_b := _brief()), login_customer_id=CID, canal="SEARCH", valores=_do_operador(_b))
     assert preparo.prova_google.impressao == preparo.selo.impressao
     assert preparo.prova_google.n_operacoes == len(preparo.operacoes)
     visto = projecao.preparo(preparo)["prova_google"]

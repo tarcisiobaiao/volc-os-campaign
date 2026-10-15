@@ -216,6 +216,7 @@ const ROTULO_DO_CAMPO: Record<string, string> = {
   aplicar: 'aplicar',
   dispensar: 'dispensar',
   escopo: 'escopo',
+  origem_valor: 'origem do valor',
 };
 
 /** Campos que mudam o dinheiro: micros pela chave, ou alvos de lance em micros. */
@@ -234,6 +235,11 @@ export function valorLegivel(chave: string, valor: unknown, moeda: string | null
     if (chave === 'status') return STATUS[valor] ?? valor;
     if (chave === 'estrategia') return ROTULO_DA_ESTRATEGIA[valor] ?? valor;
     return valor;
+  }
+  if (chave === 'origem_valor' && valor && typeof valor === 'object') {
+    const o = valor as Record<string, unknown>;
+    const porque = typeof o.justificativa === 'string' && o.justificativa ? ` — ${o.justificativa}` : '';
+    return `${String(o.origem ?? AUSENTE)}${porque} (${String(o.evidencia ?? '')})`;
   }
   if (Array.isArray(valor)) {
     if (!valor.length) return 'nenhum';

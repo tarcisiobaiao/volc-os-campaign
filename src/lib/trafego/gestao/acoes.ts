@@ -480,6 +480,7 @@ export function montarOrcamento(f: FormOrcamento, ctx: ContextoDaCampanha): Mont
       tipo: 'orcamento.diario',
       campaign_id: ctx.campaignId,
       amount_micros: micros as number,
+      origem: 'operador',
       ...(budget ? { budget_id: budget } : {}),
       compartilhado_ciente: f.compartilhadoCiente,
     },
@@ -515,6 +516,8 @@ export function montarAlvo(f: FormAlvo, ctx: ContextoDaCampanha): Montagem {
       campaign_id: ctx.campaignId,
       alvo: alvo.alvo,
       valor,
+      // Dinheiro diz de onde veio: o humano digitou. tROAS é razão, não leva.
+      ...(alvo.unidade === 'percentual' ? {} : { origem: 'operador' as const }),
       // A estratégia LIDA vai junto: se a conta mudou de estratégia desde a
       // leitura, o servidor recusa em vez de escrever no campo errado.
       ...(ctx.estrategia ? { estrategia: ctx.estrategia } : {}),
@@ -575,6 +578,7 @@ export function montarEstrategia(f: FormEstrategia, ctx: ContextoDaCampanha): Mo
     } else acao.portfolio = p;
   }
   if (Object.keys(erros).length) return falha(erros);
+  if (acao.tcpa_micros || acao.teto_cpc_micros) acao.origem = 'operador';
   return { ok: true, acao };
 }
 

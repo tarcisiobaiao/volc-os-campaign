@@ -36,7 +36,7 @@ from test_trafego_canario import (  # noqa: E402
 from test_trafego_plano_persistido import _plano_lido  # noqa: E402
 
 IDENTIDADE = Identidade(sub="operador-sub-1", email="teste@agenciavolc.com.br",
-                        papel="ADMIN", origem="teste")
+                        papel="ADMIN", origem="sessao")
 
 #: A função REAL, guardada antes de qualquer dublê. `_instalar_portas_hermeticas`
 #: troca `_plano_de_mensuracao` por um que devolve `None`; quem quer medir a

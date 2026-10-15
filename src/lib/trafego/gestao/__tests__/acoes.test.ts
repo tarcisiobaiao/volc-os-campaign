@@ -94,6 +94,7 @@ describe('2 · orçamento diário', () => {
       tipo: 'orcamento.diario',
       campaign_id: '24278665189',
       amount_micros: 33_000_000,
+      origem: 'operador',
       compartilhado_ciente: false,
     });
     expect(
@@ -113,6 +114,7 @@ describe('3 · alvo de lance — o campo certo conforme a estratégia lida', () 
       campaign_id: '24278665189',
       alvo: 'tcpa',
       valor: 25_000_000,
+      origem: 'operador',
       estrategia: 'MAXIMIZE_CONVERSIONS',
     });
   });
@@ -144,6 +146,14 @@ describe('4 · troca de estratégia', () => {
     expect(
       acao(montarEstrategia({ nova: 'MAXIMIZE_CONVERSION_VALUE', tcpa: '', troas: '400', tetoCpc: '', portfolio: '' }, ctx)),
     ).toEqual({ tipo: 'lance.estrategia', campaign_id: '24278665189', nova: 'MAXIMIZE_CONVERSION_VALUE', troas: 4 });
+  });
+  it('alvo em dinheiro na troca leva a origem operador', () => {
+    expect(
+      acao(montarEstrategia({ nova: 'TARGET_SPEND', tcpa: '', troas: '', tetoCpc: '2,50', portfolio: '' }, ctx)),
+    ).toEqual({
+      tipo: 'lance.estrategia', campaign_id: '24278665189', nova: 'TARGET_SPEND',
+      teto_cpc_micros: 2_500_000, origem: 'operador',
+    });
   });
   it('portfólio exige resource name', () => {
     const f = { nova: 'PORTFOLIO' as const, tcpa: '', troas: '', tetoCpc: '', portfolio: 'x' };

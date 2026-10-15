@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Any, Callable, ClassVar, Sequence
 
 from google.ads.googleads.v25.enums.types.day_of_week import DayOfWeekEnum
@@ -50,8 +50,8 @@ Temporario = Callable[[], int]
 MICROS_MINIMO = 10_000
 
 
-class AcaoRecusada(ValueError):
-    """A ação não sai da máquina: inválida em si, ou incompatível com o "antes"."""
+from .valor import (AcaoRecusada, ValorMonetario, ValorSemAutoridade,  # noqa: E402,F401
+                    medido_na_conta)
 
 
 # ── utilidades ──────────────────────────────────────────────────────────────
@@ -75,6 +75,35 @@ def _micros(valor: Any, rotulo: str, *, zero_ok: bool = False) -> int:
     if valor % MICROS_MINIMO:
         raise AcaoRecusada(
             f"{rotulo}={valor} não é múltiplo de {MICROS_MINIMO} micros (0,01 da moeda)")
+    return valor
+
+
+#: Alvo → o campo do "antes" que mede o MESMO número. Medição de outro campo
+#: (CPC médio, custo) não vira orçamento nem tCPA: é outra grandeza.
+CAMPO_MEDIDO = {"amount_micros": "verba_diaria_micros", "tcpa": "tcpa_micros",
+                "teto_cpc": "teto_cpc_micros", "tcpa_micros": "tcpa_micros",
+                "teto_cpc_micros": "teto_cpc_micros"}
+
+
+def _valor(valor: Any, rotulo: str, *, zero_ok: bool = False) -> ValorMonetario:
+    """Valor de verba/lance: tem de dizer de onde veio (`ValorMonetario`).
+
+    Aqui só se confere a forma (inteiro, múltiplo de 0,01). A AUTORIDADE da
+    origem é conferida em `operacoes()`, pelo `autoriza()` — antes de existir
+    requisição. Um número cru é recusado já na construção: sem origem, não há
+    como saber se ele é do operador ou de uma SERP.
+    """
+    if not isinstance(valor, ValorMonetario):
+        raise AcaoRecusada(
+            f"{rotulo} sem origem: {valor!r}. Verba e lance são ValorMonetario "
+            "(operador ou medido_na_conta liberam; serp/ferramenta externa não)")
+    if valor.micros is None:
+        raise AcaoRecusada(f"{rotulo} ausente: ausência não é zero nem verba")
+    _micros(valor.micros, rotulo, zero_ok=zero_ok)
+    m = valor.medicao if valor.origem == "medido_na_conta" else None
+    if m is not None and m.campo != CAMPO_MEDIDO[rotulo]:
+        raise ValorSemAutoridade(
+            f"{rotulo} medido em {m.campo!r}: só {CAMPO_MEDIDO[rotulo]!r} mede este valor")
     return valor
 
 
@@ -170,6 +199,18 @@ class Acao:
 
     def descrever(self) -> str:
         return f"{self.tipo} {self.alvo_nivel}:{self.alvo_id} → {self.valor_proposto()}"
+
+    def exigir_autoridade(self) -> None:
+        """Levanta `ValorSemAutoridade` se algum valor de verba/lance não autoriza.
+
+        `operacoes()` já confere ao montar; isto deixa o caso de uso recusar
+        ANTES de ler a conta, gravar ledger ou conferir a trava.
+        """
+        if is_dataclass(self):
+            for f in fields(self):
+                v = getattr(self, f.name)
+                if isinstance(v, ValorMonetario):
+                    v.autoriza()
 
 
 # ── 1. status ───────────────────────────────────────────────────────────────
@@ -287,21 +328,26 @@ class AlterarOrcamento(Acao):
     tipo: ClassVar[str] = "orcamento.diario"
     campaign_id: int
     budget_id: int
-    amount_micros: int
+    verba: ValorMonetario
     compartilhado_ciente: bool = False
 
     def __post_init__(self):
         object.__setattr__(self, "campaign_id", _id(self.campaign_id, "campaign_id"))
         object.__setattr__(self, "budget_id", _id(self.budget_id, "budget_id"))
-        _micros(self.amount_micros, "amount_micros")
+        _valor(self.verba, "amount_micros")
+
+    @property
+    def amount_micros(self) -> int:
+        """O número (para comparar e mostrar). Quem MONTA a requisição usa `autoriza()`."""
+        return self.verba.micros
 
     @classmethod
-    def do_estado(cls, antes: dict, amount_micros: int, *,
+    def do_estado(cls, antes: dict, verba: ValorMonetario, *,
                   compartilhado_ciente: bool = False) -> "AlterarOrcamento":
         """A ação montada a partir do "antes" lido — o budget é o que a campanha usa HOJE."""
         if not antes.get("existe"):
             raise AcaoRecusada("campanha não existe na conta")
-        return cls(antes["campaign_id"], antes["budget_id"], amount_micros,
+        return cls(antes["campaign_id"], antes["budget_id"], verba,
                    compartilhado_ciente)
 
     @property
@@ -316,7 +362,7 @@ class AlterarOrcamento(Acao):
         op = get_type("MutateOperation")
         b = op.campaign_budget_operation
         b.update.resource_name = _rn(customer_id, "campaignBudgets", self.budget_id)
-        b.update.amount_micros = self.amount_micros
+        b.update.amount_micros = self.verba.autoriza()
         b.update_mask.paths.append("amount_micros")
         return [op]
 
@@ -369,12 +415,18 @@ class AlterarOrcamento(Acao):
     def valor_proposto(self):
         # `verba_diaria_micros` é a chave que o gatilho
         # `trafego_proposta_respeita_regra` lê para o teto de orçamento.
-        return {"verba_diaria_micros": self.amount_micros, "budget_id": self.budget_id}
+        return {"verba_diaria_micros": self.amount_micros, "budget_id": self.budget_id,
+                "origem_valor": self.verba.json()}
 
     def reverso(self, antes, criados=()):
+        # O valor anterior foi LIDO na conta (`valor_anterior`, capturado no
+        # envio pela consulta abaixo): é a origem medido_na_conta por definição.
         v = antes.get("verba_diaria_micros")
         if v and v != self.amount_micros:
-            return (AlterarOrcamento(self.campaign_id, self.budget_id, v,
+            medido = medido_na_conta(v, fonte="valor_anterior", ref="envio",
+                                     campo="verba_diaria_micros",
+                                     as_of="capturado_no_envio", registro=antes)
+            return (AlterarOrcamento(self.campaign_id, self.budget_id, medido,
                                      compartilhado_ciente=True),)
         return ()
 
@@ -445,13 +497,16 @@ class AlterarAlvoDeLance(Acao):
     `valor` 0 limpa o alvo (tCPA/tROAS opcionais no Maximizar conversões/valor;
     teto de CPC opcional no Maximizar cliques). Em TARGET_CPA/TARGET_ROAS
     padrão o alvo é obrigatório, e 0 é recusado.
+
+    `lance` é `ValorMonetario` para tCPA e teto de CPC (dinheiro). tROAS é
+    razão (3.5 = 350%), não dinheiro, e segue `float` — ver W5.md (lacuna).
     """
 
     tipo: ClassVar[str] = "lance.alvo"
     campaign_id: int
     estrategia: str
     alvo: str
-    valor: float | int
+    lance: ValorMonetario | float
 
     def __post_init__(self):
         object.__setattr__(self, "campaign_id", _id(self.campaign_id, "campaign_id"))
@@ -461,16 +516,25 @@ class AlterarAlvoDeLance(Acao):
                 f"Pares válidos: {sorted(CAMPO_DO_ALVO)}")
         limpa_ok = self.estrategia not in ("TARGET_CPA", "TARGET_ROAS")
         if self.alvo == "troas":
-            if isinstance(self.valor, bool) or not isinstance(self.valor, (int, float)):
-                raise AcaoRecusada(f"tROAS é razão (3.5 = 350%): {self.valor!r}")
-            if self.valor < 0 or self.valor > TROAS_MAXIMO or (self.valor == 0 and not limpa_ok):
-                raise AcaoRecusada(f"tROAS fora de (0, {TROAS_MAXIMO}]: {self.valor}")
-            object.__setattr__(self, "valor", float(self.valor))
+            if isinstance(self.lance, bool) or not isinstance(self.lance, (int, float)):
+                raise AcaoRecusada(f"tROAS é razão (3.5 = 350%): {self.lance!r}")
+            if self.lance < 0 or self.lance > TROAS_MAXIMO or (self.lance == 0 and not limpa_ok):
+                raise AcaoRecusada(f"tROAS fora de (0, {TROAS_MAXIMO}]: {self.lance}")
+            object.__setattr__(self, "lance", float(self.lance))
         else:
-            _micros(self.valor, self.alvo, zero_ok=limpa_ok)
+            _valor(self.lance, self.alvo, zero_ok=limpa_ok)
+
+    @property
+    def valor(self) -> float | int:
+        """O número (micros, ou razão no tROAS). A requisição usa `_valor_autorizado`."""
+        return self.lance if self.alvo == "troas" else self.lance.micros
+
+    def _valor_autorizado(self) -> float | int:
+        return self.lance if self.alvo == "troas" else self.lance.autoriza()
 
     @classmethod
-    def do_estado(cls, antes: dict, alvo: str, valor: float | int) -> "AlterarAlvoDeLance":
+    def do_estado(cls, antes: dict, alvo: str,
+                  valor: ValorMonetario | float) -> "AlterarAlvoDeLance":
         if not antes.get("existe"):
             raise AcaoRecusada("campanha não existe na conta")
         if antes.get("portfolio"):
@@ -498,7 +562,7 @@ class AlterarAlvoDeLance(Acao):
         c = op.campaign_operation.update
         c.resource_name = _rn(customer_id, "campaigns", self.campaign_id)
         getattr(c._pb, grupo).SetInParent()
-        setattr(getattr(c, grupo), campo, self.valor)
+        setattr(getattr(c, grupo), campo, self._valor_autorizado())
         op.campaign_operation.update_mask.paths.append(self.caminho)
         return [op]
 
@@ -526,7 +590,10 @@ class AlterarAlvoDeLance(Acao):
             raise AcaoRecusada(f"{self.alvo} já está em {self.valor}")
 
     def valor_proposto(self):
-        return {"estrategia": self.estrategia, self.alvo: self.valor}
+        v: dict[str, Any] = {"estrategia": self.estrategia, self.alvo: self.valor}
+        if isinstance(self.lance, ValorMonetario):
+            v["origem_valor"] = self.lance.json()
+        return v
 
     def reverso(self, antes, criados=()):
         if antes.get("estrategia") != self.estrategia:
@@ -534,6 +601,10 @@ class AlterarAlvoDeLance(Acao):
         anterior = _valor_do_alvo(antes, self.alvo)
         if anterior == self.valor:
             return ()
+        if self.alvo != "troas":
+            anterior = medido_na_conta(anterior, fonte="valor_anterior", ref="envio",
+                                       campo=CAMPO_MEDIDO[self.alvo],
+                                       as_of="capturado_no_envio", registro=antes)
         return (AlterarAlvoDeLance(self.campaign_id, self.estrategia, self.alvo, anterior),)
 
 
@@ -566,14 +637,18 @@ class TrocarEstrategia(Acao):
     0 (`maximize_conversions.target_cpa_micros`): máscara vazia não troca nada,
     e o descriptor não registra presença de submensagem vazia — daí o
     `SetInParent()` no proto cru.
+
+    `tcpa`/`teto_cpc` são `ValorMonetario` ou None (= estratégia sem alvo;
+    vai 0 no proto, como antes). Um 0 cru também significa "sem alvo" — não é
+    número que autorize verba —, mas qualquer outro número cru é recusado.
     """
 
     tipo: ClassVar[str] = "lance.estrategia"
     campaign_id: int
     nova: str
-    tcpa_micros: int = 0
+    tcpa: ValorMonetario | None = None
     troas: float = 0.0
-    teto_cpc_micros: int = 0
+    teto_cpc: ValorMonetario | None = None
     portfolio: str = ""
 
     def __post_init__(self):
@@ -582,8 +657,14 @@ class TrocarEstrategia(Acao):
             raise AcaoRecusada(
                 f"estratégia {self.nova!r} não é escrita pela gestão "
                 f"(válidas: {sorted(_ESTRATEGIAS_ESCREVIVEIS)})")
-        _micros(self.tcpa_micros, "tcpa_micros", zero_ok=True)
-        _micros(self.teto_cpc_micros, "teto_cpc_micros", zero_ok=True)
+        for campo in ("tcpa", "teto_cpc"):
+            v = getattr(self, campo)
+            if v is None or (v == 0 and not isinstance(v, bool)):
+                object.__setattr__(self, campo, None)
+                continue
+            _valor(v, f"{campo}_micros", zero_ok=True)
+            if v.micros == 0:  # alvo 0 = sem alvo: o mesmo proto que None
+                object.__setattr__(self, campo, None)
         if not (0 <= float(self.troas) <= TROAS_MAXIMO):
             raise AcaoRecusada(f"tROAS fora de [0, {TROAS_MAXIMO}]: {self.troas}")
         sobra = {
@@ -607,12 +688,25 @@ class TrocarEstrategia(Acao):
     def alvo_id(self):
         return str(self.campaign_id)
 
+    @property
+    def tcpa_micros(self) -> int:
+        return self.tcpa.micros if self.tcpa is not None else 0
+
+    @property
+    def teto_cpc_micros(self) -> int:
+        return self.teto_cpc.micros if self.teto_cpc is not None else 0
+
+    @staticmethod
+    def _autorizado(v: ValorMonetario | None) -> int:
+        return v.autoriza() if v is not None else 0
+
     def _mascara_e_valor(self) -> tuple[str, str, Any]:
+        if self.nova == "TARGET_SPEND":
+            return ("target_spend", "cpc_bid_ceiling_micros", self._autorizado(self.teto_cpc))
+        if self.nova == "MAXIMIZE_CONVERSIONS":
+            return ("maximize_conversions", "target_cpa_micros", self._autorizado(self.tcpa))
         return {
             "MANUAL_CPC": ("manual_cpc", "enhanced_cpc_enabled", False),
-            "TARGET_SPEND": ("target_spend", "cpc_bid_ceiling_micros", self.teto_cpc_micros),
-            "MAXIMIZE_CONVERSIONS": ("maximize_conversions", "target_cpa_micros",
-                                     self.tcpa_micros),
             "MAXIMIZE_CONVERSION_VALUE": ("maximize_conversion_value", "target_roas",
                                           float(self.troas)),
         }[self.nova]
@@ -661,6 +755,9 @@ class TrocarEstrategia(Acao):
         for k in ("tcpa_micros", "troas", "teto_cpc_micros", "portfolio"):
             if getattr(self, k):
                 v[k] = getattr(self, k)
+        dinheiro = self.tcpa or self.teto_cpc
+        if dinheiro is not None:
+            v["origem_valor"] = dinheiro.json()
         return v
 
     def reverso(self, antes, criados=()):
@@ -673,11 +770,18 @@ class TrocarEstrategia(Acao):
         if e not in _ESTRATEGIAS_ESCREVIVEIS:
             # TARGET_CPA/TARGET_ROAS padrão: não se recria pela API de hoje.
             return ()
+        def medido(chave: str, estrategia: str) -> ValorMonetario | None:
+            v = antes.get(chave) if e == estrategia else 0
+            if not v:
+                return None
+            return medido_na_conta(v, fonte="valor_anterior", ref="envio", campo=chave,
+                                   as_of="capturado_no_envio", registro=antes)
+
         return (TrocarEstrategia(
             self.campaign_id, e,
-            tcpa_micros=antes["tcpa_micros"] if e == "MAXIMIZE_CONVERSIONS" else 0,
+            tcpa=medido("tcpa_micros", "MAXIMIZE_CONVERSIONS"),
             troas=antes["troas"] if e == "MAXIMIZE_CONVERSION_VALUE" else 0.0,
-            teto_cpc_micros=antes["teto_cpc_micros"] if e == "TARGET_SPEND" else 0),)
+            teto_cpc=medido("teto_cpc_micros", "TARGET_SPEND")),)
 
 
 # ── itens: termo e placement ────────────────────────────────────────────────

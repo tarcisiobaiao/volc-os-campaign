@@ -45,6 +45,7 @@ from zoneinfo import ZoneInfo
 from app.trafego import escopo, intencao
 from volc_ads.gestao import ledger as motor_ledger
 from volc_ads.gestao.acoes import AcaoRecusada
+from volc_ads.gestao.valor import ValorMonetario, ValorSemAutoridade, sha256_canonico
 
 from . import autonomia, sem_delta
 from .efeito import conferir_efeito
@@ -52,7 +53,7 @@ from .erros import (AcaoInvalida, AntesDivergiu, BancoRecusou, CampanhaNaoImport
                     ConflitoDeEstado, EmCarencia, ErroDeGestao, EscritaBloqueada,
                     EvidenciaInsuficiente, ExigeAprovacaoHumana, ForaDaCasa, ForaDaRegra,
                     Indisponivel, NaoEncontrado, RegraAusente)
-from .payload import acao_da_proposta, customer_id_da_proposta, pedido_do_payload
+from .payload import Ator, acao_da_proposta, customer_id_da_proposta, pedido_do_payload
 from .portas import ContaGoogle, Ledger
 
 PLATAFORMA = "GOOGLE_ADS"
@@ -108,6 +109,32 @@ def campos_divergentes(aprovado: Mapping[str, Any], agora: Mapping[str, Any]) ->
     """As chaves cujo valor mudou entre o "antes" aprovado e o relido."""
     a, b = _canon(dict(aprovado or {})), _canon(dict(agora or {}))
     return sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
+
+
+def _exigir_autoridade(acao: Any) -> None:
+    """Verba/lance de origem que não autoriza (serp, ferramenta externa, proposta
+    antiga sem origem) para aqui: nada lido, nada gravado, nenhuma requisição."""
+    try:
+        acao.exigir_autoridade()
+    except ValorSemAutoridade as exc:
+        raise AcaoInvalida(str(exc), codigo="valor_sem_autoridade") from exc
+
+
+def _tem_autoridade(p: Mapping[str, Any]) -> bool:
+    try:
+        acao_da_proposta(p).exigir_autoridade()
+    except (ValorSemAutoridade, AcaoInvalida):
+        return False
+    return True
+
+
+def _valores_medidos(acao: Any) -> List[ValorMonetario]:
+    out = []
+    for f in fields(acao) if hasattr(acao, "__dataclass_fields__") else ():
+        v = getattr(acao, f.name)
+        if isinstance(v, ValorMonetario) and v.origem == "medido_na_conta":
+            out.append(v)
+    return out
 
 
 def _iso(d: datetime) -> str:
@@ -275,6 +302,8 @@ class Gestao:
             return await asyncio.to_thread(fn, *args, **kw)
         except ErroDeGestao:
             raise
+        except ValorSemAutoridade as exc:
+            raise AcaoInvalida(str(exc), codigo="valor_sem_autoridade") from exc
         except AcaoRecusada as exc:
             raise AcaoInvalida(str(exc), codigo="estado_nao_permite") from exc
         except Exception as exc:  # noqa: BLE001
@@ -294,11 +323,48 @@ class Gestao:
                 "a escrita no Google está desligada neste processo (FORGE_PERMITIR_ESCRITA "
                 "≠ 1). Nada foi gravado no ledger e nada foi enviado.")
 
+    async def _conferir_medicoes(self, acao: Any, customer_id: str) -> None:
+        """`medido_na_conta` só vale contra o registro que o backend guardou.
+
+        A evidência aponta um "antes" gravado em `trafego_proposta.valor_atual`
+        (lido por `propor` na conta). Confere-se: o registro existe, é da MESMA
+        conta e do MESMO alvo, foi lido no `as_of` declarado, o hash do registro
+        bate e o campo tem exatamente o valor pedido. Qualquer divergência é
+        `valor_sem_autoridade` — antes de ler a conta e antes de gravar.
+        """
+        for v in _valores_medidos(acao):
+            m = v.medicao
+            def recusa(porque: str) -> AcaoInvalida:
+                return AcaoInvalida(f"medição não confere: {porque}",
+                                    codigo="valor_sem_autoridade",
+                                    detalhe={"evidencia": v.evidencia})
+            if m is None or m.fonte != "trafego_proposta.valor_atual":
+                raise recusa("só um 'antes' guardado em trafego_proposta vale como medição")
+            ref = await self.ledger.proposta(m.ref)
+            if not ref:
+                raise recusa(f"a proposta {m.ref} não existe")
+            esperado = motor_ledger.alvo_chave(acao, customer_id)
+            if ref.get("alvo_chave") != esperado:
+                raise recusa(f"a leitura é de {ref.get('alvo_chave')}, não de {esperado}")
+            lido, as_of = _quando(ref.get("valor_atual_lido_em")), _quando(m.as_of)
+            if lido is None or as_of is None or lido != as_of:
+                raise recusa(f"as_of {m.as_of} ≠ lido em {ref.get('valor_atual_lido_em')}")
+            registro = ref.get("valor_atual") or {}
+            if sha256_canonico(registro) != m.sha256:
+                raise recusa("o hash não é o do registro guardado")
+            if registro.get(m.campo) != v.micros:
+                raise recusa(f"{m.campo} lido = {registro.get(m.campo)}, pedido = {v.micros}")
+
+    async def _exigir_valores(self, acao: Any, customer_id: str) -> None:
+        _exigir_autoridade(acao)
+        await self._conferir_medicoes(acao, customer_id)
+
     # ── propor ──────────────────────────────────────────────────────────────
 
     async def propor(self, customer_id: str, acao_payload: Mapping[str, Any], *,
                      motivo: str, autor: str, regra_chave: Optional[str] = None,
-                     validade_horas: Optional[int] = None) -> Dict[str, Any]:
+                     validade_horas: Optional[int] = None,
+                     ator: Optional[Ator] = None) -> Dict[str, Any]:
         customer_id = await self._no_escopo(customer_id)
         motivo = (motivo or "").strip()
         if not motivo:
@@ -307,7 +373,9 @@ class Gestao:
         horas = validade_horas or self.config.validade_padrao_horas
         if not 1 <= int(horas) <= self.config.validade_maxima_horas:
             raise AcaoInvalida(f"validade_horas fora de [1, {self.config.validade_maxima_horas}]")
-        pedido = pedido_do_payload(acao_payload)
+        pedido = pedido_do_payload(acao_payload, ator=ator, quando=_iso(self.agora()),
+                                   justificativa=motivo)
+        await self._conferir_medicoes(pedido.acao, customer_id)
 
         chave = regra_chave or self.config.regra_padrao
         regra = await self.ledger.regra_vigente(chave)
@@ -436,6 +504,16 @@ class Gestao:
             aplicacoes = await self.ledger.aplicacoes_da_proposta(p["proposta_id"])
             if await self._tentativa_pendente(aplicacoes):
                 return True
+        if not _tem_autoridade(p):
+            # Proposta sem origem que autoriza (anterior ao W5, ou origem que
+            # deixou de valer) não é aplicável: segurar a chave prenderia o
+            # operador até ela vencer. Vira `cancelada` e a nova nasce.
+            marcada = await self.ledger.atualizar_estado_proposta(
+                p["proposta_id"], list(ESTADOS_VIVOS), "cancelada")
+            if marcada is None:
+                atual = await self.ledger.proposta(p["proposta_id"]) or {}
+                return atual.get("estado") in ESTADOS_VIVOS
+            return False
         expira = _quando(p.get("expira_em"))
         if expira is None or expira > self.agora():
             return True
@@ -494,6 +572,9 @@ class Gestao:
             raise AcaoInvalida("`diff_apresentado` é obrigatório: o diff que a tela MOSTROU",
                                codigo="sem_diff_apresentado")
         if decisao == "aprovada":
+            # A origem é conferida de novo: aprovar um número sem autoridade
+            # (proposta antiga, medição que não confere) seria aprovar à toa.
+            await self._exigir_valores(acao_da_proposta(p), customer_id_da_proposta(p))
             for coluna in ("valor_proposto", "valor_atual"):
                 if coluna not in diff_apresentado and coluna == "valor_proposto":
                     raise AcaoInvalida("aprovar exige `diff_apresentado.valor_proposto`",
@@ -585,6 +666,7 @@ class Gestao:
             raise ConflitoDeEstado(porque or "não pode aplicar")
 
         acao = acao_da_proposta(p)
+        await self._exigir_valores(acao, customer_id)
         self._exigir_trava_aberta()
         antes = await self._google(self.conta.ler_antes, customer_id, acao, conferir=False)
         divergentes = campos_divergentes(p.get("valor_atual") or {}, antes.dados)

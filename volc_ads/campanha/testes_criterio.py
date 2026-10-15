@@ -742,7 +742,8 @@ def test_aviso_de_conflito_sobrevive_a_prova_que_passa(monkeypatch):
         # anula AS DUAS positivas, mas é AVISO — a construção passa
         Criterio("saque", "PHRASE", negativa=True, nivel="CAMPAIGN"),
     ])
-    preparo = sb.preparar(CID, b, login_customer_id=CID, canal="SEARCH")
+    preparo = sb.preparar(CID, b, login_customer_id=CID, canal="SEARCH",
+                          valores=_do_operador(b))
 
     assert preparo.selo is not None, "a prova tinha de PASSAR neste teste"
     assert preparo.recusa_local == "", "nada podia barrar"
@@ -842,3 +843,11 @@ def test_display_avisa_sobre_negativa_tipada():
         pass
     alvo = [a for a in achados if a.campo == "negativas"]
     assert alvo, f"Display não avisou sobre negativa tipada: {[a.campo for a in achados]}"
+
+
+def _do_operador(brief):
+    """W5: verba e lance do brief declarados pelo operador da sessão (dublê)."""
+    from volc_ads.gestao.valor import valores_do_operador
+    return valores_do_operador(brief, sub="u-teste", papel="OPERATOR",
+                               quando="2026-10-15T12:00:00+00:00",
+                               justificativa="valores definidos pelo operador no teste")
