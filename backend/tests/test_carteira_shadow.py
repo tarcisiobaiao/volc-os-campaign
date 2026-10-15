@@ -1,17 +1,17 @@
 """A carteira em sombra (W13) lida pela mesma porta da tela do W7.
 
-O lote é gerado aqui mesmo pelo motor do Freedom Lab, a partir de dados
-sintéticos (sem rede, sem Supabase), e lido de volta por
-`recomendacao_shadow.listar/ler` e pela rota. Prova o contrato entre os dois
-lados: o que o motor grava, a tela lê sem adaptação.
+O lote vem de `tests/fixtures/carteira_shadow/`, gravado pelo motor do Freedom
+Lab a partir de dados sintéticos (sem rede, sem Supabase). O backend NÃO importa
+o motor: `volc_lab` exige jsonschema, que só existe no venv do lab. O contrato
+entre os dois lados continua provado, do lado do lab: o teste
+`test_fixture_da_carteira_no_backend_e_o_que_o_motor_grava` regenera o lote e
+exige os mesmos bytes. Gerador: `tools/freedom-lab/tests/gerar_fixture_carteira_backend.py`.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import shutil
-import sys
-from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -20,69 +20,25 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.trafego import recomendacao_shadow as rs
 
-sys.path.insert(0, str(Path(rs.__file__).resolve().parents[3] / "tools" / "freedom-lab" / "src"))
-from volc_lab.sombra_carteira import aplicacao  # noqa: E402
-from volc_lab.sombra_carteira.portas import Leitura  # noqa: E402
-
-CONTA = "1112223334"
-HOJE = date(2026, 10, 15)
-LIDO = "2026-10-15T12:00:00Z"
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "carteira_shadow"
 RUIM, SEM_CAMBIO = "900000000001", "900000000003"
 SENAC = "24278665189"
 
 
-def _custo(cid, d, micros, cliques=40):
-    return {"customer_id": CONTA, "campaign_id": cid, "metric_date": d.isoformat(), "segmentos": {},
-            "custo_micros": micros, "cliques": cliques, "currency_code": "BRL", "janela_fechada": True,
-            "campaign_name": f"camp {cid[-1]}", "campaign_status": "ENABLED", "valor_conversoes": 10.0,
-            "colhida_em": LIDO, "origem_janela": "backfill"}
-
-
-def _receita(cid, d, usd, modo="anterior", moeda="USD"):
-    return {"fonte": "joinads", "chave": {"date": d.isoformat(), "utm_campaign_value": cid,
-                                          "joinads_domain": "a.com.br"},
-            "data_referencia": d.isoformat(), "moeda": moeda, "receita": usd,
-            "receita_brl": round(usd * 5.4, 4) if modo == "anterior" else None,
-            "cambio_modo": modo, "cambio_taxa": 5.4 if modo == "anterior" else None,
-            "cambio_defasagem_dias": 1 if modo == "anterior" else 40, "coletado_em": LIDO, "removida": False}
-
-
-class _Fonte:
-    def __init__(self, c, r):
-        self.c, self.r = c, r
-
-    def custo_campanha_dia(self, conta, inicio, fim):
-        return Leitura(tuple(self.c), LIDO, "teste")
-
-    def receita_vigente(self, inicio, fim):
-        return Leitura(tuple(self.r), LIDO, "teste")
-
-    def cotacoes(self, pedidos, conhecido_ate, max_defasagem_dias):
-        # Câmbio resolvido na leitura (cambio_resolver): USD com a cotação da
-        # véspera; EUR só com cotação velha demais, então sem dado.
-        linhas = []
-        for par, d in pedidos:
-            usd = par == "USD/BRL"
-            linhas.append({"par": par, "data": d.isoformat(), "modo": "anterior" if usd else "defasada",
-                           "taxa": 5.4 if usd else None, "data_cotacao": (d - timedelta(days=1 if usd else 40)).isoformat(),
-                           "defasagem_dias": 1 if usd else 40, "cotacao_id": 7, "fonte": "ptax"})
-        return Leitura(tuple(linhas), LIDO, "teste")
-
-
 @pytest.fixture()
 def raiz(tmp_path, monkeypatch):
+    # Cópia: vários testes adulteram arquivos, e a fixture versionada não muda.
     destino = tmp_path / "experimentos"
-    c, r = [], []
-    for i in range(1, 21):
-        d = HOJE - timedelta(days=i)
-        c += [_custo(RUIM, d, 30_000_000), _custo(SEM_CAMBIO, d, 10_000_000)]
-        r += [_receita(RUIM, d, 0.30), _receita(SEM_CAMBIO, d, 5.0, modo="defasada", moeda="EUR")]
-    f = _Fonte(c, r)
-    aplicacao.gerar_lote(CONTA, f, f, f, destino, base_ref="a8059ba0", hoje=HOJE)
+    shutil.copytree(FIXTURE, destino)
     # O experimento Senac (anterior ao motor) convive na mesma pasta.
     shutil.copytree(rs.RAIZ_PADRAO / "senac-shadow-20261015", destino / "senac-shadow-20261015")
     monkeypatch.setenv(rs.VARIAVEL_RAIZ, str(destino))
     return destino
+
+
+def test_backend_nao_importa_o_motor_do_lab():
+    texto = Path(__file__).read_text()
+    assert "import " + "volc_lab" not in texto and "from " + "volc_lab" not in texto
 
 
 def test_carteira_lista_todas_as_campanhas_sem_acao(raiz):

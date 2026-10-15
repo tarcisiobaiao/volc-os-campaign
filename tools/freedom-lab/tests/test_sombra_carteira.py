@@ -800,3 +800,20 @@ def test_senac_ponta_a_ponta_pelo_lote_disco_e_replay(tmp_path):
     assert doc["recomendacao"]["direcao"] == senac["recomendacao"]["direcao"] == "pausar"
     assert validar(json.loads((pasta / "experimento.json").read_text()), pasta) == []
     assert aplicacao.replay(pasta)["identico"] is True
+
+
+def test_fixture_da_carteira_no_backend_e_o_que_o_motor_grava(tmp_path):
+    """O backend testa a carteira lendo um lote fixo, sem importar o motor
+    (jsonschema não existe no venv dele). Este teste trava o contrato: o lote
+    versionado tem de ser byte a byte o que o motor grava hoje."""
+    import importlib.util
+    caminho = Path(__file__).resolve().parent / "gerar_fixture_carteira_backend.py"
+    spec = importlib.util.spec_from_file_location("gerar_fixture_carteira_backend", caminho)
+    gerador = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gerador)
+    gerador.gerar(tmp_path / "novo")
+    assert gerador.DESTINO.is_dir(), "fixture do backend ausente"
+    esperado, versionado = arvore(tmp_path / "novo"), arvore(gerador.DESTINO)
+    assert esperado == versionado, (
+        "o lote fixo do backend não é o que o motor grava; regenere com "
+        "`cd tools/freedom-lab && PYTHONPATH=src python3 tests/gerar_fixture_carteira_backend.py`")
