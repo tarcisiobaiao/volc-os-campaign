@@ -27,7 +27,9 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
-CONTA, CAMPANHA, MCC = "5478096539", "24278665189", "4904074301"
+# Conta e MCC entram pelo ambiente na coleta (LAB_ADS_CUSTOMER, LAB_ADS_MCC); o código
+# e os recibos só carregam a forma mascarada. A campanha é o objeto da prova.
+CAMPANHA = "24278665189"
 GAQL = ("SELECT segments.date, metrics.clicks, metrics.cost_micros, metrics.conversions, "
         "metrics.conversions_value FROM campaign WHERE campaign.id = 24278665189 "
         "AND segments.date DURING LAST_30_DAYS ORDER BY segments.date")
@@ -72,11 +74,17 @@ def sha256(caminho: Path) -> str:
 
 
 def coletar(d: Path) -> None:
-    from volc_lab.brokers import google_ads
+    import os
 
-    linhas = google_ads.ler(CONTA, GAQL, login_customer_id=MCC, destino_recibo=d / "recibos-ads.jsonl")
+    from volc_lab.brokers import google_ads
+    from volc_lab.brokers.recibos import mascarar
+
+    conta, mcc = os.environ.get("LAB_ADS_CUSTOMER", ""), os.environ.get("LAB_ADS_MCC", "")
+    if not (conta and mcc):
+        raise SystemExit("defina LAB_ADS_CUSTOMER e LAB_ADS_MCC no ambiente da coleta")
+    linhas = google_ads.ler(conta, GAQL, login_customer_id=mcc, destino_recibo=d / "recibos-ads.jsonl")
     snap = {"_sobre": "Custo diário lido pelo broker Google Ads (search_stream, leitura).",
-            "conta": "547****539", "campaign_id": CAMPANHA, "moeda": "BRL", "fuso": "America/Sao_Paulo",
+            "conta": mascarar(conta), "campaign_id": CAMPANHA, "moeda": "BRL", "fuso": "America/Sao_Paulo",
             "gaql_sha256": hashlib.sha256(GAQL.encode()).hexdigest(), "lido_em": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "linhas": [{"date": r.segments.date, "clicks": int(r.metrics.clicks),
                         "cost_micros": int(r.metrics.cost_micros), "conversions": float(r.metrics.conversions),
@@ -178,6 +186,9 @@ def rodar(d: Path) -> dict:
         "só grão campanha × dia; sem receita por URL, sessão, hora ou placement",
         "conversions_value do Google é valor estático por conversão, não receita; ignorado na decisão",
         "limiares são parâmetros do laboratório, não a política do dono (volc_ads/inteligencia_decisao/politicas.py)",
+        "joinads_metrics.revenue tem DEFAULT 0 (src/sql/joinads/01_joinads_metrics.sql): receita 0,00 pode ser default, não medição",
+        "chave de joinads_metrics inclui joinads_domain; não está provado que o snapshot somou todos os domínios da campanha",
+        "fuso do campo date do JoinAds não declarado; o custo está em America/Sao_Paulo",
     ]
     if len(sem_receita):
         lacunas.append(f"dias maduros com custo e sem receita (ausentes, não zero): "

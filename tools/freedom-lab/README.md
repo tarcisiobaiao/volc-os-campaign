@@ -51,8 +51,19 @@ tools/freedom-lab/lab.sh criar | semear | migrar | testar | destruir | status
   ledger continua sendo `supabase/migrations/README.md`.
 - ⚠️ Não use `supabase db reset` em `supabase/migrations/`: o CLI pularia a
   série v8–v17 e aplicaria os rollbacks timestampados para frente.
-- Base "do zero" = imagem + semente. Base com o schema real de produção exige
-  `pg_dump --schema-only` sanitizado, que depende de autorização de leitura.
+- Base "do zero" = imagem + semente. Base "estado de produção" = `lab.sh base-prod`
+  com `LAB_DUMP` (dump `--schema-only` de produção, fora do repo, sem COPY/INSERT) e
+  `LAB_DUMP_SHA256`: tira o default ACL da imagem, cria os pré-requisitos
+  (`db/base_prod_prereqs.sql`) e restaura como `supabase_admin` em blocos
+  (`db/restaurar_em_blocos.py`). Com o dump de 15/10, 8 de 11 categorias do
+  fingerprint batem com produção por md5; constraints, policies e grants batem em
+  contagem (o md5 difere por deparse/grantor). `recriar-prod` faz o ciclo inteiro.
+- `criar` só devolve depois do init da imagem (auth.uid criado, postgres rebaixado).
+- `PA` executa como `supabase_admin` (migrations de users e default ACL).
+- `MIGRATION_SUITE=<arquivo>` troca a suíte do `testar` (padrão
+  `db/suites/v18_01.sh`); `estado <papel> <sql> [claims]` exercita policy por JWT.
+- Não criar outro laboratório Postgres em `scripts/`: suítes novas entram em
+  `db/suites/` e usam este ciclo de vida.
 
 ## 3. Brokers de capacidade (`src/volc_lab/brokers/`)
 

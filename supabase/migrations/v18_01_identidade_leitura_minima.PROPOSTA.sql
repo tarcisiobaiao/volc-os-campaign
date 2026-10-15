@@ -59,8 +59,10 @@ CREATE ROLE volc_leitura NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
 COMMENT ON ROLE volc_leitura IS
   'v18_01 · grupo de leitura mínima do VOLC O.S. · SELECT por allowlist · sem BYPASSRLS';
 
--- LOGIN sem PASSWORD: ninguém entra até o operador definir a senha fora do
--- repositório. INHERIT para receber os grants de volc_leitura.
+-- LOGIN sem PASSWORD: em produção (pg_hba com scram-sha-256) ninguém entra até o
+-- operador definir a senha fora do repositório. Atenção: onde o pg_hba confia na
+-- origem (o laboratório confia em 127.0.0.1), o login entra sem senha — por isso
+-- o lab roda sem rede. INHERIT para receber os grants de volc_leitura.
 CREATE ROLE volc_leitura_agente LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE
   NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 5 IN ROLE volc_leitura;
 COMMENT ON ROLE volc_leitura_agente IS

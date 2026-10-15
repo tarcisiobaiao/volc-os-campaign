@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-08",
+  "updated_at": "2026-10-15",
   "purpose": "Fonte editorial provisória das tarefas do Workbook. O grafo continua sendo a autoridade de capacidades e relações.",
   "status_weights": {
     "done": 1,
@@ -1936,7 +1936,8 @@
             "tools/freedom-lab/DEPENDENCIAS.json",
             "tools/freedom-lab/contracts/experimento.schema.json",
             "tools/freedom-lab/recibos/20261015/"
-          ]
+          ],
+          "updated_at": "2026-10-15"
         },
         {
           "id": "P10-T25",
@@ -1951,8 +1952,10 @@
           "links": [
             "supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql",
             "tools/freedom-lab/db/sonda_acesso.sql",
-            "tools/freedom-lab/db/fingerprint_schema.sql"
-          ]
+            "tools/freedom-lab/db/fingerprint_schema.sql",
+            "tools/freedom-lab/recibos/20261015/sonda-producao-resumo.json"
+          ],
+          "updated_at": "2026-10-15"
         },
         {
           "id": "P10-T26",
@@ -1966,8 +1969,10 @@
           ],
           "links": [
             "supabase/migrations/README.md",
-            "tools/freedom-lab/db/sonda_acesso.sql"
-          ]
+            "tools/freedom-lab/db/sonda_acesso.sql",
+            "tools/freedom-lab/recibos/20261015/sonda-producao-resumo.json"
+          ],
+          "updated_at": "2026-10-15"
         }
       ]
     },
@@ -2443,7 +2448,7 @@
             "inventario-n8n/flows/gads-new-campaign-validation.json",
             "inventario-n8n/flows/orakul-vos-auto-adjust.json"
           ],
-          "latest_evidence": "15/10/2026 · Freedom Lab: prova vertical shadow da campanha Senac 24278665189 (tools/freedom-lab/experimentos/senac-shadow-20261015). Custo real lido pelo broker Ads (GAQL, trava fechada, R$ 683,34 em 20 dias com custo); receita JoinAds no grão campanha × dia; janela madura 16 dias, custo R$ 554,75, receita R$ 40,79, ROAS 0,0735, 634 cliques; sob estresse (receita ×2, câmbio ×1,5) ROAS 0,22; direção shadow pausar, não executada, sem valor sugerido. Replay sem API reproduz o mesmo SHA. Limiares são do laboratório, não política do dono; receita sem as-of, câmbio fixo, GAM 0 linhas, RLS da sessão. Status mantido partial.",
+          "latest_evidence": "14/10/2026 (pesquisa B, SINTÉTICO rotulado) · Mecânica de shrinkage Beta-Binomial (M=20 não universal), nowcasting chain-ladder/BF sem vazamento e OPE IPS/DR (obp 0.4.1 = numpy) provada em dados sintéticos; sem suporte o DR erra e propensão inventada dobra o valor. Impedimentos reais: sem as-of de receita/custo, ledger sem ações elegíveis, propensão e recompensa econômica. Nenhum ganho real alegado. Segue partial. · 15/10/2026 · Freedom Lab: prova vertical shadow da campanha Senac 24278665189 (tools/freedom-lab/experimentos/senac-shadow-20261015). Custo real lido pelo broker Ads (GAQL, trava fechada, R$ 683,34 em 20 dias com custo); receita JoinAds no grão campanha × dia; janela madura 16 dias, custo R$ 554,75, receita R$ 40,79, ROAS 0,0735, 634 cliques; sob estresse (receita ×2, câmbio ×1,5) ROAS 0,22; direção shadow pausar, não executada, sem valor sugerido. Replay sem API reproduz o mesmo SHA. Limiares são do laboratório, não política do dono; receita sem as-of, câmbio fixo, GAM 0 linhas, RLS da sessão. Status mantido partial.",
           "updated_at": "2026-10-14"
         },
         {
