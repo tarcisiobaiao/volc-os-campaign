@@ -1,20 +1,16 @@
 import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { type IconSvgElement } from "@hugeicons/react";
 import { Icone } from "@/components/ui/icone";
 import { ICONES } from "@/lib/icones";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import {
-  Sparkles,
-  User,
-} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { openCommandPalette } from "@/components/CommandPalette";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { type Destino, estaNaSecao, gruposVisiveis } from "./destinos";
+import { nomeDoPapel, useSair } from "./MenuDoUsuario";
+import { AvatarDeIniciais } from "@/components/sistema/AvatarDeIniciais";
 
 interface NavigationProps {
   isCollapsed: boolean;
@@ -23,145 +19,6 @@ interface NavigationProps {
   setIsMobileOpen?: (open: boolean) => void;
 }
 
-interface NavigationItem {
-  title: string;
-  href: string;
-  icon: any;
-  description: string;
-  adminOnly?: boolean;
-}
-
-const navigationItems: NavigationItem[] = [
-  {
-    title: "Dashboard Geral",
-    href: "/",
-    icon: ICONES.visaoGeral,
-    description: "Visão geral de todas as campanhas",
-    adminOnly: true // Apenas admin vê o dashboard geral
-  },
-  {
-    title: "Projetos",
-    href: "/dashboard/projects",
-    icon: ICONES.projetos,
-    description: "Gerenciar projetos",
-    adminOnly: true // Apenas admin vê projetos
-  },
-  {
-    title: "Campanhas",
-    href: "/settings/campaigns",
-    icon: ICONES.campanhas,
-    description: "Ver e configurar campanhas"
-  },
-  {
-    title: "Relatórios",
-    href: "/reports",
-    icon: ICONES.relatorios,
-    description: "Relatórios e análises avançadas",
-    adminOnly: true // Apenas admin vê relatórios
-  },
-  {
-    title: "Incubadora",
-    href: "/incubator",
-    icon: ICONES.incubadora,
-    description: "Pipeline de sites para AdSense",
-    adminOnly: true
-  },
-  {
-    title: "Pautador Pro",
-    href: "/pautador-pro",
-    icon: ICONES.pautador,
-    description: "Arbitragem de atenção por país",
-    adminOnly: true
-  },
-  {
-    title: "Redator",
-    href: "/redator",
-    icon: ICONES.redator,
-    description: "O funil sendo escrito, etapa por etapa",
-    adminOnly: true
-  },
-  {
-    // Nome curto no menu, nome inteiro da área no título da página. O Estúdio é
-    // uma área de PRODUÇÃO transversal (SPEC §6): Tráfego e Conteúdo são
-    // destinos do patrimônio criativo, não donos dele, e por isso ele não entra
-    // como subaba de Tráfego nem como item de Configurações.
-    title: "Criativos",
-    href: "/criativos",
-    icon: ICONES.criativos,
-    description: "Estúdio Criativo, produção e aprovação",
-    adminOnly: true
-  },
-  {
-    title: "Tráfego",
-    href: "/trafego",
-    icon: ICONES.trafego,
-    // ⚠️ Dizia "Subir campanhas de Search no Google Ads" — uma AÇÃO de UM canal,
-    // no rótulo de um Hub que hoje responde três perguntas (o que existe, o que
-    // pode virar campanha, o que pede atenção). Quem lia isso não sabia que a
-    // conferência do que já está no ar mora aqui, e ia procurá-la noutro lugar.
-    // A frase nova nomeia as três abas sem prometer Display, Demand Gen ou PMax,
-    // que não existem nesta tela.
-    description: "Campanhas, preparar e atenção",
-    adminOnly: true
-  }
-];
-
-const configurationItems: NavigationItem[] = [
-  {
-    title: "Custos",
-    href: "/settings/costs",
-    icon: ICONES.custos,
-    description: "Definir custos e orçamentos",
-    adminOnly: true // Apenas admin vê custos
-  },
-  {
-    title: "Integrações",
-    href: "/settings/integrations",
-    icon: ICONES.integracoes,
-    description: "Google Ads e Ad Manager",
-    adminOnly: true // Apenas admin vê integrações
-  },
-  {
-    title: "Usuários",
-    href: "/settings/users",
-    icon: ICONES.usuarios,
-    description: "Cadastros, acessos e comissões",
-    adminOnly: true
-  },
-  {
-    title: "Cofre de Ativos",
-    href: "/settings/cofre-ativos",
-    icon: ICONES.cofreDeAtivos,
-    description: "Patrimônio, custódia e relações",
-    adminOnly: true
-  },
-  {
-    title: "QG Agêntico",
-    href: "/settings/qg-agentico",
-    icon: ICONES.qgAgentico,
-    description: "Roadmap vivo e execução",
-    adminOnly: true
-  }
-];
-
-
-/**
- * "Você está aqui" tem que sobreviver à rota filha.
- *
- * A comparação era `location.pathname === item.href`, então o menu só acendia
- * na rota exata. Abrir uma campanha (`/trafego/campanhas/:id`), uma tarefa do
- * QG (`/settings/qg-agentico/tarefas/:id`), um site da Incubadora ou qualquer
- * página do Redator apagava o item inteiro do menu — e o operador perdia a
- * única indicação de onde está, que é o quarto item do teste do tronco.
- *
- * O casamento é por SEGMENTO, não por prefixo de string: `/settings/costs` não
- * pode acender `/settings/co`, e `/` só casa com `/`.
- */
-const estaNaSecao = (pathname: string, href: string) => {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-};
-
 export const Navigation: React.FC<NavigationProps> = ({
   isCollapsed,
   setIsCollapsed,
@@ -169,8 +26,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   setIsMobileOpen
 }) => {
   const location = useLocation();
-  const { user, userProfile, signOut } = useAuth();
-  const { toast } = useToast();
+  const { user, userProfile } = useAuth();
   const isMobile = useIsMobile();
   const drawerRef = useRef<HTMLDivElement>(null);
   const abridorRef = useRef<HTMLElement | null>(null);
@@ -213,291 +69,173 @@ export const Navigation: React.FC<NavigationProps> = ({
     }
   }, [location.pathname, isMobile, setIsMobileOpen]);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao fazer logout",
-        description: "Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
+  const sair = useSair();
+  const grupos = gruposVisiveis(userProfile?.role);
+  const recolhido = isCollapsed && !isMobile;
 
   /**
    * Um item do menu é UM elemento, não dois.
    *
-   * Era `<Link><Button>…</Button></Link>`: um `<button>` dentro de um `<a>`.
-   * HTML inválido (conteúdo interativo dentro de âncora), e o estrago é real,
-   * não teórico:
+   * Era `<Link><Button>…</Button></Link>`: HTML inválido, dois pontos de
+   * parada de teclado por item e um alvo real cinco vezes menor que o
+   * desenhado. `asChild` funde os dois: uma tag, um papel, um foco.
    *
-   *   • DOIS pontos de parada de teclado por item. Treze itens viravam vinte e
-   *     seis tabulações, metade delas indo para um botão que não faz nada.
-   *   • O nome acessível saía concatenado — o leitor de tela anunciava
-   *     "Dashboard GeralVisão geral de todas as campanhas" como um nome só.
-   *   • O `<a>`, sendo `display:inline`, media 287×20 enquanto o botão pintava
-   *     287×48. O alvo REAL do link era um quinto do que se via.
-   *
-   * `asChild` funde os dois: o Slot do Radix aplica as classes do botão no
-   * próprio `<a>`. Uma tag, um papel, um foco, e o alvo passa a ser o que a
-   * pessoa enxerga.
+   * Uma linha só (36px no desktop, 44px no telefone). A descrição, que ocupava
+   * uma segunda linha em cada item e empurrava "Sistema" para baixo da dobra,
+   * vira dica de mouse. Recolhido, o `aria-label` dá nome ao link, porque o
+   * ícone decorativo leva `aria-hidden` por contrato.
    */
-  const NavItem = ({ item, isActive }: { item: NavigationItem; isActive: boolean }) => (
+  const NavItem = ({ item, isActive }: { item: Destino; isActive: boolean }) => (
     <Button
       asChild
       variant="ghost"
       className={cn(
-        "nav-item-volc group w-full justify-start gap-3 rounded-md relative active:scale-100 hover:bg-transparent hover:text-inherit",
+        "nav-item-volc group w-full justify-start gap-3 rounded-md px-3 relative active:scale-100 hover:bg-transparent hover:text-inherit",
         isActive && "nav-item-volc-active font-semibold",
         !isActive && "text-sidebar-foreground",
-        isMobile ? "h-14" : "h-12",
-        isCollapsed && !isMobile && "justify-center px-2"
+        isMobile ? "h-11" : "h-9",
+        recolhido && "justify-center px-0"
       )}
     >
-      {/* ⚠️ ACHADO PELA REVISÃO ADVERSARIAL.
-          Recolhido, o link contém SÓ o ícone — e o `Icone` decorativo leva
-          `aria-hidden`, por contrato. O bloco com título e descrição só
-          renderiza quando expandido. Resultado: treze links sem nome acessível
-          nenhum, exatamente no estado em que a palavra também sumiu da tela.
-          O `title` serve os dois: dá nome ao leitor e tooltip a quem usa mouse
-          e não reconhece o glifo. */}
       <Link
         to={item.href}
         aria-current={isActive ? "page" : undefined}
-        {...(isCollapsed && !isMobile ? { title: item.title, "aria-label": item.title } : {})}
+        title={recolhido ? item.title : item.description}
+        {...(recolhido ? { "aria-label": item.title } : {})}
       >
-        {/* O item ativo usa o mesmo eixo do "Pro" no Pautador: fio aurora +
-            wash navy/roxo. O título fica navy sólido — aurora em 14px
-            reprova AA no stop ciano. */}
-        {isActive && (
-          <span aria-hidden="true" className="nav-item-volc-rail" />
-        )}
+        {/* Fio aurora + wash navy/roxo: o mesmo eixo do "Pro" no Pautador. O
+            título fica navy sólido — aurora em 14px reprova AA no stop ciano. */}
+        {isActive && <span aria-hidden="true" className="nav-item-volc-rail" />}
         <Icone
           icon={item.icon}
+          tamanho="sm"
           className={cn(
             "nav-item-icon relative z-10",
             isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
           )}
         />
-        {(!isCollapsed || isMobile) && (
-          <div className="flex flex-col items-start relative z-10 min-w-0">
-            <span className="nav-item-title text-sm font-medium truncate">{item.title}</span>
-            <span className="text-[11px] text-muted-foreground truncate">{item.description}</span>
-          </div>
+        {!recolhido && (
+          <span className="nav-item-title relative z-10 min-w-0 truncate text-sm font-medium">{item.title}</span>
         )}
       </Link>
     </Button>
   );
 
-  // Conteúdo da sidebar
   const sidebarContent = (
     <>
-      {/* Header */}
-      <div className="p-4 border-b border-sidebar-border relative">
+      {/* Marca. O PNG escuro sumia no tema escuro; agora cada tema tem o seu. */}
+      <div className={cn("relative flex h-14 shrink-0 items-center border-b border-sidebar-border", recolhido ? "justify-center px-2" : "px-4")}>
         <span className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-aurora" />
-        <div className="flex items-center justify-center w-full">
-          {(!isCollapsed || isMobile) ? (
-            <div className="animate-fade-in flex-1 flex flex-col items-center justify-center text-center">
-              <img
-                src="/volc-logo-baixa.png"
-                alt="VOLC O.S."
-                className="h-12 max-w-full object-contain mb-2"
-              />
-              <p className="kicker flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3" />
-                Google Ads & Ad Manager
-              </p>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center w-9 h-9 rounded-md bg-gradient-aurora shadow-glow">
-              <span className="font-display text-sm font-bold text-white">V</span>
-            </div>
-          )}
-          {/* Botão de toggle - apenas desktop */}
-          {!isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors absolute top-4 right-4"
-              /* ⚠️ Era o único controle da aplicação sem nome acessível: um
-                 botão com SVG puro dentro. Quem usa leitor de tela ouvia
-                 "botão" e não tinha como saber o que ele faz. O nome diz o
-                 ESTADO e a AÇÃO, porque o mesmo botão recolhe e expande. */
-              aria-label={isCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
-              aria-expanded={!isCollapsed}
-            >
-              <Icone icon={isCollapsed ? ICONES.abrirMenu : ICONES.fecharMenu} tamanho="sm" />
-            </Button>
-          )}
-          {/* Botão fechar - apenas mobile */}
-          {isMobile && setIsMobileOpen && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMobileOpen(false)}
-              className="h-10 w-10 p-0 hover:bg-muted/50 transition-colors absolute top-4 right-4"
-              aria-label="Fechar menu"
-            >
-              <Icone icon={ICONES.fecharMenu} />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
-          {/* Busca / Command palette (⌘K) */}
-          <button
-            onClick={() => openCommandPalette()}
-            title="Buscar (⌘K)"
-            className={cn(
-              "nav-search w-full flex items-center gap-2 h-11 rounded-md border border-sidebar-border bg-raised text-muted-foreground hover:text-foreground text-sm",
-              isCollapsed && !isMobile ? "justify-center px-2" : "px-3"
-            )}
-          >
-            <Icone icon={ICONES.buscar} tamanho="sm" />
-            {(!isCollapsed || isMobile) && (
-              <>
-                <span className="flex-1 text-left">Buscar…</span>
-                <kbd className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground">⌘K</kbd>
-              </>
-            )}
-          </button>
-
-          {/* Main Navigation */}
-          <div>
-            {(!isCollapsed || isMobile) && (
-              <h3 className="kicker mb-3 px-1">
-                Principal
-              </h3>
-            )}
-            <nav aria-label="Navegação principal" className="space-y-2">
-              {navigationItems.map((item) => {
-                // Filtrar itens adminOnly para operadores
-                if (item.adminOnly && userProfile?.role !== 'ADMIN') {
-                  return null;
-                }
-                return (
-                  <NavItem
-                    key={item.href}
-                    item={item}
-                    isActive={estaNaSecao(location.pathname, item.href)}
-                  />
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Separator e Configuration - Ocultar seção inteira para OPERATORs */}
-          {userProfile?.role !== 'OPERATOR' && (
+        <Link to="/" className="flex min-w-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="VOLC O.S., início">
+          {recolhido ? (
             <>
-              <Separator className="bg-gradient-to-r from-transparent via-border to-transparent" />
-            <div>
-              {(!isCollapsed || isMobile) && (
-                <h3 className="kicker mb-3 px-1">
-                  Configurações
-                </h3>
-              )}
-              <nav aria-label="Configurações" className="space-y-2">
-                {configurationItems.map((item) => {
-                  // Hide admin-only items from non-admin users
-                  if (item.adminOnly && userProfile?.role !== 'ADMIN') {
-                    return null;
-                  }
-                  return (
-                    <NavItem
-                      key={item.href}
-                      item={item}
-                      isActive={estaNaSecao(location.pathname, item.href)}
-                    />
-                  );
-                })}
-              </nav>
-            </div>
+              <img src="/volc-v.png" alt="" className="h-7 w-auto dark:hidden" />
+              <img src="/volc-v-light.png" alt="" className="hidden h-7 w-auto dark:block" />
+            </>
+          ) : (
+            <>
+              <img src="/volc-logo-baixa.png" alt="" className="h-8 w-auto dark:hidden" />
+              <img src="/volc-logo-light.png" alt="" className="hidden h-8 w-auto dark:block" />
+              <span className="kicker mt-1 border-l border-sidebar-border pl-2 leading-none">O.S.</span>
             </>
           )}
+        </Link>
+        {!isMobile && !recolhido && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(true)}
+            className="ml-auto h-8 w-8 p-0 text-muted-foreground hover:bg-muted/50"
+            aria-label="Recolher menu lateral"
+            aria-expanded
+          >
+            <Icone icon={ICONES.fecharMenu} tamanho="sm" />
+          </Button>
+        )}
+        {isMobile && setIsMobileOpen && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMobileOpen(false)}
+            className="ml-auto h-10 w-10 p-0 hover:bg-muted/50"
+            aria-label="Fechar menu"
+          >
+            <Icone icon={ICONES.fecharMenu} />
+          </Button>
+        )}
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className={cn("space-y-5 py-4", recolhido ? "px-2" : "px-3")}>
+          {/* Recolhido, o botão de expandir mora no topo da coluna de ícones. */}
+          {recolhido && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(false)}
+              className="h-9 w-full p-0 text-muted-foreground hover:bg-muted/50"
+              aria-label="Expandir menu lateral"
+              aria-expanded={false}
+            >
+              <Icone icon={ICONES.abrirMenu} tamanho="sm" />
+            </Button>
+          )}
+
+          {/* No telefone a busca mora no cabeçalho; aqui ela repetiria. */}
+          {!isMobile && recolhido && (
+            <button
+              onClick={() => openCommandPalette()}
+              title="Buscar (⌘K)"
+              aria-label="Buscar"
+              className="nav-search flex h-9 w-full items-center justify-center rounded-md border border-sidebar-border bg-raised text-muted-foreground hover:text-foreground"
+            >
+              <Icone icon={ICONES.buscar} tamanho="sm" />
+            </button>
+          )}
+
+          {grupos.map((grupo) => (
+            <div key={grupo.id}>
+              {recolhido ? (
+                <div aria-hidden className="mx-auto mb-2 h-px w-6 bg-sidebar-border" />
+              ) : (
+                <h3 id={`nav-grupo-${grupo.id}`} className="kicker mb-1.5 px-3">
+                  {grupo.titulo}
+                </h3>
+              )}
+              <nav
+                aria-label={grupo.titulo}
+                {...(!recolhido ? { "aria-labelledby": `nav-grupo-${grupo.id}` } : {})}
+                className="space-y-0.5"
+              >
+                {grupo.itens.map((item) => (
+                  <NavItem key={item.href} item={item} isActive={estaNaSecao(location.pathname, item.href)} />
+                ))}
+              </nav>
+            </div>
+          ))}
         </div>
       </ScrollArea>
 
-      {/* User Section */}
-      <div className="p-4 border-t border-sidebar-border bg-sidebar">
-        {(!isCollapsed || isMobile) ? (
-          <div className="space-y-3 animate-fade-in">
-            {/* User Info */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-raised border border-sidebar-border">
-              <div className="h-8 w-8 rounded-full bg-gradient-aurora flex items-center justify-center shadow-glow">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-foreground truncate">
-                  {user?.email || "Usuário"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {userProfile?.role === "ADMIN" ? "Administrador" : userProfile?.role === "OPERATOR" ? "Operador" : "Conta"}
-                </div>
-              </div>
-            </div>
-
-            {/* Logout Button */}
-            <Button
-              onClick={handleSignOut}
-              variant="ghost"
-              className={cn(
-                "w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10",
-                isMobile ? "h-12" : "h-10"
-              )}
-            >
-              <Icone icon={ICONES.sair} tamanho="sm" />
-              <span className="text-sm">Sair</span>
-            </Button>
-
-            {/* Integration Status - esconder em mobile para economizar espaço */}
-            {!isMobile && (
-              <div className="text-center">
-                {/* ⚠️ Aqui havia dois pontos VERDES PULSANDO com as palavras
-                    "Integrado com · Google Ads · Ad Manager". Nada alimentava
-                    esses pontos: eram JSX fixo. O sidebar afirmava saúde de
-                    integração o tempo inteiro — inclusive na mesma tela em que
-                    o Hub de Tráfego dizia "Não consegui ler o inventário".
-                    Isso é a proibição número um do PRODUCT.md: criar sensação
-                    de controle fictícia.
-
-                    Um rótulo de ESCOPO não mente. Quem quer saber se a conta
-                    respondeu tem a leitura datada no Hub, que é medida. */}
-                <div className="kicker mb-2">Fontes conectadas</div>
-                <p className="text-xs text-muted-foreground">
-                  Google Ads · Ad Manager
-                </p>
-              </div>
-            )}
+      {/* No desktop, conta e "Sair" moram no menu do usuário do cabeçalho. No
+          telefone o cabeçalho não tem espaço, então a conta fica no rodapé da
+          gaveta — compacta, uma linha. */}
+      {isMobile && (
+        <div className="flex items-center gap-3 border-t border-sidebar-border px-4 py-3">
+          <AvatarDeIniciais nome={userProfile?.name} email={user?.email} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-medium text-foreground">{userProfile?.name || user?.email || "Conta"}</div>
+            <div className="text-xs text-muted-foreground">{nomeDoPapel(userProfile?.role)}</div>
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-gradient-aurora flex items-center justify-center">
-              <User className="h-4 w-4 text-white" />
-            </div>
-            <Button
-              onClick={handleSignOut}
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-              aria-label="Sair da conta"
-            >
-              <Icone icon={ICONES.sair} tamanho="sm" />
-            </Button>
-            {/* Os mesmos pontos inventados da versão expandida, aqui sem nem
-                a palavra ao lado: status comunicado só por cor (WCAG 1.4.1) e
-                sem dado por trás. Recolhido, o sidebar não promete nada. */}
-          </div>
-        )}
-      </div>
+          <Button
+            onClick={() => void sair()}
+            variant="ghost"
+            className="h-11 gap-2 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Icone icon={ICONES.sair} tamanho="sm" />
+            Sair
+          </Button>
+        </div>
+      )}
     </>
   );
 
@@ -551,8 +289,11 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col border-r border-sidebar-border bg-sidebar shadow-card transition-[width] duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]",
-        isCollapsed ? "w-16" : "w-80"
+        // Fixa na altura da janela: com a página rolando no documento, o menu
+        // subia junto e o operador perdia a navegação no meio de uma tabela.
+        // Largura sem transição: o design.md proíbe animar `width`.
+        "sticky top-0 flex h-screen shrink-0 flex-col self-start border-r border-sidebar-border bg-sidebar",
+        isCollapsed ? "w-16" : "w-[248px]"
       )}
     >
       {sidebarContent}

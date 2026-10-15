@@ -1,18 +1,71 @@
 import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Navigation } from "./Navigation";
 import { Button } from "@/components/ui/button";
-import { Menu, Search } from "lucide-react";
+import { Icone } from "@/components/ui/icone";
+import { ICONES } from "@/lib/icones";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { openCommandPalette } from "@/components/CommandPalette";
 import SinoDeAlertas from "@/components/layout/SinoDeAlertas";
 import { SeletorDeTema } from '@/components/layout/SeletorDeTema';
+import { MenuDoUsuario } from "./MenuDoUsuario";
+import { localizar } from "./destinos";
+
+const CHAVE_RECOLHIDO = "volc.menu.recolhido";
+
+/** Preferência por pessoa e por navegador. Sem armazenamento, o menu abre. */
+function lerRecolhido(): boolean {
+  try {
+    return window.localStorage.getItem(CHAVE_RECOLHIDO) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * "Onde estou", no cabeçalho.
+ *
+ * Grupo › destino, derivados do mesmo mapa do menu. Numa rota filha
+ * (`/settings/qg-agentico/tarefas/:id`) o destino vira link de volta. Rota
+ * fora do mapa não ganha trilha inventada.
+ */
+const Trilha: React.FC = () => {
+  const { pathname } = useLocation();
+  const onde = localizar(pathname);
+  if (!onde) return null;
+  return (
+    <nav aria-label="Você está em" className="min-w-0">
+      <ol className="flex min-w-0 items-center gap-2 text-sm">
+        <li className="kicker shrink-0">{onde.grupo.titulo}</li>
+        <li aria-hidden className="text-muted-foreground">/</li>
+        <li className="min-w-0 truncate">
+          {onde.profundo ? (
+            <Link to={onde.destino.href} className="font-medium text-muted-foreground hover:text-foreground">
+              {onde.destino.title}
+            </Link>
+          ) : (
+            <span aria-current="page" className="font-semibold text-foreground">{onde.destino.title}</span>
+          )}
+        </li>
+      </ol>
+    </nav>
+  );
+};
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
+  const [isNavigationCollapsed, setRecolhido] = useState(lerRecolhido);
+  const setIsNavigationCollapsed = (valor: boolean) => {
+    setRecolhido(valor);
+    try {
+      window.localStorage.setItem(CHAVE_RECOLHIDO, valor ? "1" : "0");
+    } catch {
+      /* sem armazenamento: vale só para esta visita */
+    }
+  };
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -44,7 +97,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       />
 
       {/* Main Content */}
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* `overflow-x-clip` e não `overflow-hidden`: os dois cortam o
+          transbordo lateral, mas só o segundo vira contêiner de rolagem — e
+          aí o cabeçalho `sticky` deixava de grudar no topo da janela. */}
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-clip">
         {isMobile ? (
           /* Mobile: sino no cabeçalho, entre a marca e a busca. */
           <header className="sticky top-0 z-[30] flex h-14 items-center border-b border-border bg-card px-4">
@@ -55,13 +111,18 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               className="h-10 w-10 p-0 touch-target"
               aria-label="Abrir menu"
             >
-              <Menu className="h-5 w-5" />
+              <Icone icon={ICONES.abrirMenu} />
             </Button>
             <div className="ml-3 flex items-center gap-2 flex-1 min-w-0">
               <img
                 src="/volc-logo-baixa.png"
                 alt="VOLC O.S."
-                className="h-7 object-contain max-w-[140px]"
+                className="h-7 object-contain max-w-[140px] dark:hidden"
+              />
+              <img
+                src="/volc-logo-light.png"
+                alt="VOLC O.S."
+                className="hidden h-7 object-contain max-w-[140px] dark:block"
               />
             </div>
             {/* ⚠️ O seletor de tema existe no telefone também.
@@ -82,20 +143,45 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               className="h-10 w-10 p-0 touch-target"
               aria-label="Buscar"
             >
-              <Search className="h-5 w-5" />
+              <Icone icon={ICONES.buscar} />
             </Button>
           </header>
         ) : (
-          /* Desktop: cabeçalho global. O canto superior direito é o lugar em
-             que o operador procura notificações, independentemente da página. */
-          <header className="relative z-[30] flex h-14 shrink-0 items-center justify-end border-b border-border bg-card px-6">
-            <div className="flex items-center gap-2">
+          /* Desktop: barra de comando. Antes eram 56px vazios com dois ícones
+             no canto; agora carrega o contexto (onde estou), a busca que já
+             existia só no menu, e quem está logado. O sino continua no canto
+             superior direito, onde o operador procura notificações. */
+          <header className="sticky top-0 z-[30] flex h-14 shrink-0 items-center gap-4 border-b border-border bg-card px-6">
+            <div className="min-w-0 flex-1">
+              <Trilha />
+            </div>
+            <button
+              type="button"
+              onClick={() => openCommandPalette()}
+              className="nav-search hidden h-9 w-72 items-center gap-2 rounded-md border border-border bg-background/60 px-3 text-sm text-muted-foreground hover:text-foreground lg:flex"
+            >
+              <Icone icon={ICONES.buscar} tamanho="sm" />
+              <span className="flex-1 text-left">Buscar ou ir para…</span>
+              <kbd className="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground">⌘K</kbd>
+            </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openCommandPalette()}
+              className="h-9 w-9 p-0 lg:hidden"
+              aria-label="Buscar"
+            >
+              <Icone icon={ICONES.buscar} tamanho="sm" />
+            </Button>
+            <div className="flex items-center gap-1.5">
               <SeletorDeTema />
               <SinoDeAlertas
                 className="h-9 w-9 border border-border bg-card"
                 side="bottom"
                 align="end"
               />
+              <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+              <MenuDoUsuario />
             </div>
           </header>
         )}
