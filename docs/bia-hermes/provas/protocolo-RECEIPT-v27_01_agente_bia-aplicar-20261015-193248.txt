@@ -4,9 +4,9 @@ sha ok  v27_01_rollback.sql  04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd
 estado  (nunca registrada)
 fingerprint antes  41df1c10bad10c5ace9296ba4ed79564
 aplica  v27_01_agente_bia
- set_config | set_config 
+ set_config | set_config
 ------------+------------
- lab-bia    | 
+ lab-bia    |
 (1 row)
 
 WARNING:  there is already a transaction in progress

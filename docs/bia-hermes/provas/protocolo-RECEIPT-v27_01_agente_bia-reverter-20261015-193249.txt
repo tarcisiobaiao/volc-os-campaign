@@ -3,7 +3,7 @@ sha ok  v27_01_rollback.sql  04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd
 estado  aplicada|d8b03f4d095bb3343821a9acd3953dd1a3f412f82cf0a5dfae465bfae143c51c|04560c174f4fb801298a1b01c1c5ef3dbefac9ebd893840c8dd13815b6e09719
 fingerprint antes  0dc60c8a32dc85846628dce418e84cea
 reverte v27_01_agente_bia
- set_config 
+ set_config
 ------------
  lab-bia
 (1 row)
