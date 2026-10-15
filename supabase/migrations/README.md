@@ -14,11 +14,21 @@ sobrescreve arquivo existente nem versionado):
 `scripts/ledger_recibo_incidente.py v20_02 docs/closure/incidente-anon-w4/RECEIPT-<passo1>.json`
 (âncora constante = `fingerprint_depois` do recibo, backfill dos 5 eventos v19 com o
 par de rollback `v19_99`, registro retroativo da `v20_01`). O recibo não prova a si
-mesmo: o SQL gerado mede o fingerprint e o efeito da v19 no banco e recusa se não
-baterem. Campos do recibo passam por formato estrito; rodar com `ON_ERROR_STOP=1`.
+mesmo: o SQL gerado mede o fingerprint e o efeito de CADA migration da v19 no banco
+(v19_00, v8_03, v19_01, v8_05, v19_02) e recusa se faltar alguma; o gerador recusa
+recibo cujo `fingerprint_antes` difere da âncora pré-v19 de produção (DDL aplicada
+antes do W4). Campos do recibo passam por formato estrito; rodar com `ON_ERROR_STOP=1`.
 O dono aprova o sha256 DESSE arquivo. Rollback: `v20_02_pos_v19_rollback.sql` (remove
 linha de base, backfill e registro da v20_01 em ordem inversa; recusa se alguma
-versão se ancorou depois). Não desfaz a v19 no banco, só o registro dela. Recibos seguintes (passo 2, rollback) entram por
+versão se ancorou depois). Não desfaz a v19 no banco, só o registro dela.
+
+⚠️ **Sem rollback depois da v8_06 (ou de qualquer evento posterior).** Quando outra
+versão já se ancorou na linha de base, `v20_02_pos_v19_rollback.sql` recusa por
+desenho. O único caminho é manual e **destrutivo**: `DROP SCHEMA volc_ops CASCADE`
+(apaga TODO o histórico do ledger), reaplicar `v20_01` pelo protocolo, regenerar a
+v20_02 pós-v19 do recibo do passo 1 e reimportar, em ordem, os recibos seguintes.
+Exige aprovação explícita do Tarcísio, backup do schema `volc_ops` antes e recibo
+do que foi apagado. Não é procedimento de rotina; nenhum script o executa. Recibos seguintes (passo 2, rollback) entram por
 `ledger_recibo_incidente.py importar … --saida ARQ`. Provado com o script real do
 W4 em modo laboratório: suíte `tools/freedom-lab/db/suites/v20_pos_v19.sh`. Antes
 de aplicar em produção: `tools/freedom-lab/db/sonda_search_path.sql` (leitura).

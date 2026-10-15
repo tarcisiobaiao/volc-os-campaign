@@ -52,6 +52,7 @@ V20_01_ROLL = f"{MIGR}/v20_01_rollback.sql"
 V19_99 = f"{MIGR}/v19_99_rollback.sql"
 SAIDA_V20_02 = f"{MIGR}/v20_02_ledger_linha_de_base_pos_v19.sql"
 ANCORA_PRE_V19 = "695e913a4373efd1c2265cdd5ac87251"  # produção, 15/10 ~10:55Z (fingerprint-prod.out)
+EVID_PROD = "fingerprint-prod.out sha256 fbd623d78b4d21267251599fa8d80855c33dd80cc0e176b29c69d6212b77d170, medido em producao antes da v19"
 
 PASSO1 = ["v19_00_users_gatilho_papel_real", "v8_03_users_rls_policies", "v19_01_anon_fecha_public",
           "v8_05_users_safe_view", "v19_02_default_acl_public_sem_anon"]
@@ -59,14 +60,33 @@ PASSO2 = ["v8_06_users_sensitive_columns_revoke"]
 REVERTIDAS = ["v8_06_users_sensitive_columns_revoke", "v19_02_default_acl_public_sem_anon", "v8_05_users_safe_view",
               "v19_01_anon_fecha_public", "v8_03_users_rls_policies", "v19_00_users_gatilho_papel_real"]
 
-# Efeito que tem de estar no banco para o recibo valer (SQL fixa, nunca vinda do recibo).
+# Efeito de CADA migration que tem de estar no banco para o recibo valer (SQL fixa,
+# nunca vinda do recibo). Aplicação parcial do pacote falha na primeira ausente.
+_DEF_ACL_ANON = ("EXISTS (SELECT 1 FROM pg_default_acl d JOIN pg_namespace ns ON ns.oid = d.defaclnamespace, "
+                 "aclexplode(d.defaclacl) a WHERE ns.nspname = 'public' AND d.defaclobjtype = 'r' "
+                 "AND a.grantee = 'anon'::regrole)")
 EFEITO = {
-    "--passo1": ("NOT has_table_privilege('anon', 'public.users', 'SELECT') AND to_regclass('app_auth.w4_acl') IS NOT NULL",
-                 "anon ainda lê public.users ou app_auth.w4_acl não existe: a v19 não está aplicada"),
-    "--passo2": ("NOT has_column_privilege('authenticated', 'public.users', 'password_hash', 'SELECT')",
-                 "authenticated ainda lê public.users.password_hash: a v8_06 não está aplicada"),
-    "--rollback": ("has_table_privilege('anon', 'public.users', 'SELECT')",
-                   "anon não lê public.users: o rollback v19_99 não está aplicado"),
+    "--passo1": [
+        ("v19_00_users_gatilho_papel_real",
+         "coalesce((SELECT prosrc FROM pg_proc WHERE oid = to_regprocedure('app_auth.tg_users_guard_privileged_columns()')), '') "
+         "LIKE '%current_setting(''role'', true)%'",
+         "o gatilho de users não lê o papel real (v19_00 ausente)"),
+        ("v8_03_users_rls_policies",
+         "coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.users')), false)",
+         "public.users sem RLS (v8_03 ausente)"),
+        ("v19_01_anon_fecha_public",
+         "NOT has_table_privilege('anon', 'public.users', 'SELECT') AND to_regclass('app_auth.w4_acl') IS NOT NULL",
+         "anon ainda lê public.users ou app_auth.w4_acl não existe (v19_01 ausente)"),
+        ("v8_05_users_safe_view", "to_regclass('public.users_safe') IS NOT NULL",
+         "public.users_safe não existe (v8_05 ausente)"),
+        ("v19_02_default_acl_public_sem_anon", f"NOT {_DEF_ACL_ANON}",
+         "default ACL de public ainda concede a anon (v19_02 ausente)"),
+    ],
+    "--passo2": [("v8_06_users_sensitive_columns_revoke",
+                  "NOT has_column_privilege('authenticated', 'public.users', 'password_hash', 'SELECT')",
+                  "authenticated ainda lê public.users.password_hash (v8_06 ausente)")],
+    "--rollback": [("v19_99_rollback", "has_table_privilege('anon', 'public.users', 'SELECT')",
+                    "anon não lê public.users (rollback v19_99 ausente)")],
 }
 
 FORMATO = {
@@ -191,9 +211,7 @@ BEGIN
     RAISE EXCEPTION 'ledger W4: o banco mede %, o recibo % diz %: recibo não corresponde a este banco', medido, recibo, esperado
       USING ERRCODE = 'P0001';
   END IF;
-  IF NOT ({EFEITO[r['operacao']][0]}) THEN
-    RAISE EXCEPTION 'ledger W4: {EFEITO[r['operacao']][1]} (recibo %)', recibo USING ERRCODE = 'P0001';
-  END IF;
+{chr(10).join(f"  IF NOT ({cond}) THEN{chr(10)}    RAISE EXCEPTION 'ledger W4: {msg} (recibo %)', recibo USING ERRCODE = 'P0001';{chr(10)}  END IF;" for _v, cond, msg in EFEITO[r['operacao']])}
 """
 
 
@@ -210,8 +228,13 @@ def _insert(e: dict, operacao: str, fingerprint_sql: str, evid: str, rollback: b
             f"          {rb[0]}, {rb[1]}, aprovador, aprov_em, {fingerprint_sql}, {evid});")
 
 
-def gerar_v20_02(caminho: Path) -> str:
+def gerar_v20_02(caminho: Path, ancora_pre_v19: str = ANCORA_PRE_V19) -> str:
     r, sha_rec = carregar(caminho, "--passo1")
+    if not FORMATO["md5"].match(ancora_pre_v19):
+        raise ReciboInvalido("âncora pré-v19: formato inválido")
+    if r["fingerprint_antes"] != ancora_pre_v19:
+        raise ReciboInvalido(f"fingerprint_antes do recibo ≠ âncora pré-v19 {ancora_pre_v19}: houve DDL entre a "
+                             "medição de produção e o passo 1 do W4 — remeça a âncora e registre essa DDL antes")
     linhas = []
     for i, e in enumerate(r["eventos"]):
         # fingerprint por evento só existe para o primeiro (estado anterior ao pacote); os
@@ -220,15 +243,15 @@ def gerar_v20_02(caminho: Path) -> str:
         linhas.append(_insert(e, "aplicar", fp, _evid(r, sha_rec, e), rollback=True))
     return f"""-- v20_02_ledger_linha_de_base_pos_v19.sql — GERADA por scripts/ledger_recibo_incidente.py
 -- a partir de um RECEIPT do passo 1 do W4 (sha256 na constante `recibo`). Não editar à mão.
--- Linha de base pré-v19 ({ANCORA_PRE_V19}), backfill da v19 e registro da v20_01, numa
+-- Linha de base pré-v19 ({ancora_pre_v19}), backfill da v19 e registro da v20_01, numa
 -- transação, só se o banco medir o fingerprint e o efeito que o recibo declara.
 -- Rodar pelo protocolo (volc_ops.aprovador) e com ON_ERROR_STOP=1.
 {_cabecalho_sql(r, sha_rec)}
   INSERT INTO volc_ops.migracao_evento
     (versao, operacao, arquivo, sha256, aprovador, aprovado_em, fingerprint, evidencia)
   VALUES ('linha_de_base_producao_20261015', 'linha_de_base', {literal(FP_SQL)}, {literal(sha_arquivo(FP_SQL))},
-          aprovador, aprov_em, {literal(ANCORA_PRE_V19)},
-          'fingerprint-prod.out sha256 fbd623d78b4d21267251599fa8d80855c33dd80cc0e176b29c69d6212b77d170, medido em produção antes da v19');
+          aprovador, aprov_em, {literal(ancora_pre_v19)},
+          {literal(EVID_PROD if ancora_pre_v19 == ANCORA_PRE_V19 else "ancora pre-v19 informada por --ancora-pre-v19 (laboratorio)")});
 
 {chr(10).join(linhas)}
 
@@ -255,7 +278,9 @@ def gerar_importacao(caminho: Path) -> str:
     reverter = operacao == "--rollback"
     corpo = []
     for e in r["eventos"]:
-        ins = _insert(e, "reverter" if reverter else "aplicar", "medido", _evid(r, sha_rec, e), rollback=not reverter)
+        # fingerprint = estado ANTES do ato (semântica da coluna em v20_01), vindo do recibo
+        ins = _insert(e, "reverter" if reverter else "aplicar", literal(r["fingerprint_antes"]), _evid(r, sha_rec, e),
+                      rollback=not reverter)
         if reverter:
             corpo.append(f"  IF EXISTS (SELECT 1 FROM volc_ops.migracao_estado WHERE versao = {literal(e['versao'])} AND estado = 'aplicada') THEN\n"
                          f"  {ins}\n    n := n + 1;\n  END IF;")
@@ -305,13 +330,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("modo", choices=["v20_02", "importar"])
     p.add_argument("recibo", type=Path)
     p.add_argument("--saida", type=Path)
+    p.add_argument("--ancora-pre-v19", default=ANCORA_PRE_V19,
+                   help="só laboratório: fingerprint da base antes do passo 1 (produção usa o padrão medido em 15/10)")
     a = p.parse_args(argv)
     if a.modo == "importar" and a.saida is None:
         print("RECUSADO: importar exige --saida", file=sys.stderr)
         return 2
     try:
         destino = destino_livre(a.saida or (RAIZ / SAIDA_V20_02))
-        sql = gerar_v20_02(a.recibo) if a.modo == "v20_02" else gerar_importacao(a.recibo)
+        sql = gerar_v20_02(a.recibo, a.ancora_pre_v19) if a.modo == "v20_02" else gerar_importacao(a.recibo)
         escrever(destino, sql)
     except (ReciboInvalido, OSError, UnicodeError) as e:
         print(f"RECUSADO: {e}", file=sys.stderr)

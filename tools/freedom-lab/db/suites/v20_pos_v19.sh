@@ -60,12 +60,12 @@ echo "▶ v20 · recibo FORJADO (v19 não aplicada) não vira registro"
 python3 -I - "$RAIZ/tools/freedom-lab/tests/fixtures/RECEIPT-lab-passo1.json" "$V20_DIR/forjado.json" "$FP_BASE" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1])); d["alvo"] = "producao"; d["fingerprint_depois"] = sys.argv[3]
-if d["fingerprint_antes"] == sys.argv[3]: d["fingerprint_antes"] = "0" * 32
+d["fingerprint_antes"] = "0" * 32
 json.dump(d, open(sys.argv[2], "w"))
 PY
-eq "$(v20_gen v20_02 "$V20_DIR/forjado.json" --saida "$V20_DIR/lab/v20_02_ledger_linha_de_base_pos_v19.sql")" 0 "gerador aceita a forma do recibo forjado (sha certos, alvo=producao)"
+eq "$(v20_gen v20_02 "$V20_DIR/forjado.json" --saida "$V20_DIR/lab/v20_02_ledger_linha_de_base_pos_v19.sql" --ancora-pre-v19 00000000000000000000000000000000)" 0 "gerador aceita a forma do recibo forjado (sha certos, alvo=producao)"
 eq "$(v20_proto aplicar --migration "$V20_DIR/lab/v20_02_ledger_linha_de_base_pos_v19.sql" --sha "$(sha "$V20_DIR/lab/v20_02_ledger_linha_de_base_pos_v19.sql")" --aprovador laboratorio)" 14 "…mas o banco recusa ao aplicar"
-grep -q "a v19 não está aplicada" "$V20_DIR"/proto/RECEIPT-v20_02_ledger_linha_de_base_pos_v19-aplicar-*.txt && ok "recusa pelo efeito ausente da v19 (anon ainda lê users)" || nao "recusa por outro motivo"
+grep -q "v19_00 ausente" "$V20_DIR"/proto/RECEIPT-v20_02_ledger_linha_de_base_pos_v19-aplicar-*.txt && ok "recusa pelo efeito ausente da 1ª migration da v19" || nao "recusa por outro motivo"
 eq "$(P -c "select count(*) from volc_ops.migracao_evento")" 0 "ledger intocado pela forja"
 rm -f "$V20_DIR/lab/v20_02_ledger_linha_de_base_pos_v19.sql"
 
@@ -78,16 +78,18 @@ eq "$(P -c "select md5 from volc_ops.fingerprint_schema() where categoria='_TOTA
 
 echo "▶ v20 · gerador recusa pelo motivo certo"
 python3 -I -c "import json,sys;d=json.load(open(sys.argv[1]));d['eventos'][2]['sha256']='0'*64;json.dump(d,open(sys.argv[2],'w'))" "$REC1" "$V20_DIR/adulterado.json"
-eq "$(v20_gen v20_02 "$V20_DIR/adulterado.json" --saida "$V20_DIR/lab/x.sql")" 1 "evento com sha256 ≠ repositório → recusado"
+eq "$(v20_gen v20_02 "$V20_DIR/adulterado.json" --saida "$V20_DIR/lab/x.sql" --ancora-pre-v19 "$FP_BASE")" 1 "evento com sha256 ≠ repositório → recusado"
 v20_recusa "sha256 do recibo" && ok "…com a mensagem do sha256" || nao "…recusou por outro motivo"
 python3 -I -c "import json,sys;d=json.load(open(sys.argv[1]));d['alvo']='producao\nCREATE TABLE public.injetado(i int);';json.dump(d,open(sys.argv[2],'w'))" "$REC1" "$V20_DIR/injecao.json"
-eq "$(v20_gen v20_02 "$V20_DIR/injecao.json" --saida "$V20_DIR/lab/x.sql")" 1 "quebra de linha no alvo → recusado"
+eq "$(v20_gen v20_02 "$V20_DIR/injecao.json" --saida "$V20_DIR/lab/x.sql" --ancora-pre-v19 "$FP_BASE")" 1 "quebra de linha no alvo → recusado"
 v20_recusa "alvo: formato inválido" && ok "…pela validação de formato" || nao "…recusou por outro motivo"
 [ ! -e "$V20_DIR/lab/x.sql" ] && ok "nenhuma recusa escreveu arquivo" || nao "recusa escreveu arquivo"
-eq "$(v20_gen v20_02 "$REC1" --saida "$RAIZ/supabase/migrations/v20_02_ledger_linha_de_base.sql")" 1 "saída sobre a v20_02 versionada → recusada"
+eq "$(v20_gen v20_02 "$REC1" --saida "$RAIZ/supabase/migrations/v20_02_ledger_linha_de_base.sql" --ancora-pre-v19 "$FP_BASE")" 1 "saída sobre a v20_02 versionada → recusada"
 git -C "$RAIZ" diff --quiet -- supabase/migrations/v20_02_ledger_linha_de_base.sql && ok "v20_02 versionada intacta (git diff limpo)" || nao "v20_02 versionada alterada"
 V20_02_LAB="$V20_DIR/lab/v20_02_ledger_linha_de_base_pos_v19.sql"
-eq "$(v20_gen v20_02 "$REC1" --saida "$V20_02_LAB")" 0 "v20_02 pós-v19 gerada do recibo real"
+eq "$(v20_gen v20_02 "$REC1" --saida "$V20_DIR/lab/sem-ancora.sql")" 1 "âncora de produção (695e913a) ≠ fingerprint_antes do lab → recusado"
+v20_recusa "houve DDL" && ok "…com a mensagem de DDL entre a medição e o passo 1" || nao "…recusou por outro motivo"
+eq "$(v20_gen v20_02 "$REC1" --saida "$V20_02_LAB" --ancora-pre-v19 "$FP_BASE")" 0 "v20_02 pós-v19 gerada do recibo real, âncora = base medida antes do passo 1"
 grep -q "esperado   constant text := '$FP_POS'" "$V20_02_LAB" && ok "âncora constante = fingerprint_depois do recibo" || nao "âncora não é a do recibo"
 
 echo "▶ v20 · linha de base pós-v19"
@@ -139,4 +141,28 @@ eq "$(sqlstate "INSERT INTO volc_ops.migracao_evento(versao,operacao,arquivo,sha
    "reverter de novo, pulando o importador → recusado pelo banco"
 { echo "{\"harness_ledger\": {\"ledger_recibo_incidente.py\": \"$(sha "$V20_GEN")\", \"aplicar-incidente-anon-w4.sh\": \"$(sha "$V20_W4")\", \"migracao-protocolo.sh\": \"$(sha "$V20_PROTO")\", \"v20_02_pos_v19_gerada\": \"$(sha "$V20_02_LAB")\", \"v20_02_pos_v19_rollback.sql\": \"$(sha "$V20_RB")\"}}"; } > "$RECIBOS/harness-ledger.json"
 python3 -I -m json.tool "$RECIBOS/harness-ledger.json" >/dev/null && ok "harness-ledger.json é JSON válido" || nao "harness-ledger.json inválido"
+
+echo "▶ v20 · R1: pacote aplicado pela metade não vira registro"
+for m in v19_00_users_gatilho_papel_real v8_03_users_rls_policies v19_01_anon_fecha_public; do
+  PA -f - < "$V20_M/$m.sql" > "$V20_DIR/parcial-$m.out" 2>&1 || nao "aplicação parcial: $m falhou"
+done
+FP_PARCIAL="$(P -c "select md5 from volc_ops.fingerprint_schema() where categoria='_TOTAL'")"
+python3 -I - "$REC1" "$V20_DIR/parcial.json" "$FP_BASE" "$FP_PARCIAL" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1])); d["fingerprint_antes"], d["fingerprint_depois"] = sys.argv[3], sys.argv[4]
+json.dump(d, open(sys.argv[2], "w"))
+PY
+eq "$(v20_gen v20_02 "$V20_DIR/parcial.json" --saida "$V20_DIR/lab/parcial.sql" --ancora-pre-v19 "$FP_BASE")" 0 "recibo que esconde a aplicação parcial gera (forma válida)"
+N_ANTES="$(P -c "select count(*) from volc_ops.migracao_evento")"
+v20_imp "$V20_DIR/lab/parcial.sql" && nao "v20_02 com pacote pela metade passou" || \
+  { grep -q "v8_05 ausente" "$V20_DIR/imp.out" && ok "…mas o banco recusa: v8_05 ausente (1ª migration faltante)" || nao "recusou por outro motivo"; }
+eq "$(P -c "select count(*) from volc_ops.migracao_evento")" "$N_ANTES" "nenhum evento gravado pela tentativa parcial"
+v20_w4 --rollback --aprovador laboratorio >/dev/null || true
+
+echo "▶ v20 · R2: DDL extra antes do W4 quebra a âncora pré-v19"
+P -c "CREATE TABLE public.ddl_extra_antes_do_w4 (i int)" >/dev/null && ok "DDL extra aplicada antes do passo 1" || nao "DDL extra falhou"
+REC_DDL="$(v20_w4 --passo1 --aprovador laboratorio --inventario "$V20_DIR/inventario-lab.json" --sha-inventario "$INV_SHA")"
+[ -n "$REC_DDL" ] && ok "passo 1 sobre base com DDL extra gravou recibo" || nao "passo 1 com DDL extra sem recibo"
+eq "$(v20_gen v20_02 "$REC_DDL" --saida "$V20_DIR/lab/ddl.sql" --ancora-pre-v19 "$FP_BASE")" 1 "fingerprint_antes ≠ âncora pré-v19 → recusado"
+v20_recusa "houve DDL" && ok "…com a mensagem de DDL entre a medição e o passo 1" || nao "…recusou por outro motivo"
 P -f - < "$FP" > "$RECIBOS/fp-final.out" 2>&1
