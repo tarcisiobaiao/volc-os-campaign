@@ -78,6 +78,7 @@ from app.trafego import (canario, capacidades as cap,
                          releitura_por_canal as rel,
                          veredito_de_releitura as vrel,
                          inteligencia_lab, ledger as led,
+                         recomendacao_shadow,
                          pmax_cockpit, projecao,
                          # ⚠️ No topo, e não dentro da função: desde 02/09/2026
                          # `/subir` depende dele para RECUSAR, e uma importação
@@ -158,6 +159,60 @@ async def laboratorio_de_inteligencia(scenario_id: str) -> Dict[str, Any]:
         return inteligencia_lab.projetar(scenario_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="cenário sintético não encontrado.") from exc
+
+
+@router.get(
+    "/recomendacao-shadow/{campaign_id}",
+    dependencies=[Depends(exigir_admin)],
+)
+async def recomendacao_shadow_da_campanha(campaign_id: str) -> Dict[str, Any]:
+    """Recomendação em sombra de uma campanha real, lida de experimento versionado.
+
+    Só leitura de arquivo conferido por sha256; nenhuma chamada externa e nada
+    executável. 404 é "não há experimento para esta campanha" — ausência, e
+    não "manter". 409 é artefato que não bate com o próprio manifesto
+    (`integridade_quebrada`) ou dois experimentos empatados no `as_of` mais
+    recente (`experimentos_ambiguos`). 503 `fonte_indisponivel` é a pasta de
+    experimentos ausente neste servidor — nunca vira "nenhum experimento".
+    """
+    # A projeção contém custo e receita reais. O portão geral do router prova
+    # apenas que há uma sessão; esta rota exige ADMIN explicitamente para um
+    # usuário autenticado não conseguir enumerar ids externos de campanhas.
+    try:
+        projecao_shadow = recomendacao_shadow.ler(campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="id de campanha malformado.") from exc
+    except recomendacao_shadow.IntegridadeQuebrada as exc:
+        raise HTTPException(status_code=409, detail={
+            "codigo": "integridade_quebrada",
+            "mensagem": f"a recomendação em sombra existe e não passou na conferência de integridade: {exc}",
+        }) from exc
+    except recomendacao_shadow.ExperimentosAmbiguos as exc:
+        raise HTTPException(status_code=409, detail={
+            "codigo": "experimentos_ambiguos",
+            "mensagem": f"há mais de um experimento em sombra igualmente recente para esta campanha: {exc}",
+        }) from exc
+    except recomendacao_shadow.FonteIndisponivel as exc:
+        raise HTTPException(status_code=503, detail={
+            "codigo": "fonte_indisponivel",
+            "mensagem": f"não é possível dizer se há recomendação em sombra: {exc}",
+        }) from exc
+    except recomendacao_shadow.RecomendacaoExpirada as exc:
+        raise HTTPException(status_code=410, detail={
+            "codigo": "recomendacao_expirada",
+            "mensagem": str(exc),
+            "as_of": exc.as_of,
+            "idade_dias": exc.idade_dias,
+            "validade_dias": exc.validade_dias,
+        }) from exc
+    if projecao_shadow is None:
+        # `codigo` distingue "nenhum experimento olhou esta campanha" de um
+        # 404 de rota inexistente (backend antigo), que a tela trata como falha.
+        raise HTTPException(status_code=404, detail={
+            "codigo": "sem_recomendacao_shadow",
+            "mensagem": "não há recomendação em sombra para esta campanha.",
+        })
+    return projecao_shadow
 
 
 def _fonte_de_reconciliacao() -> Any:
