@@ -2,6 +2,8 @@
 
 Arquivos, sempre juntos e sempre com estes nomes, em `wp-content/mu-plugins/`:
 
+**Nunca copiar `validate-*.php` para `mu-plugins/`**: são testes isolados que redeclaram funções do WordPress (`add_filter`, `add_action`…) e dão fatal no site inteiro. Rodam fora do WordPress (`php validate-notice-owner.php`) ou via `wp eval-file` a partir de `/tmp`.
+
 | Arquivo | Versão | Papel |
 |---|---|---|
 | `creditoup-compliance-hardening.php` | 1.2.0 | imprime o aviso global no `wp_footer` (ou antes de `</body>` se o template não chamar `wp_footer`) e só então emite `volc_editorial_disclosure_rendered`; fecha comentários |
@@ -91,5 +93,6 @@ Purge do WP Rocket e repetir o passo 4. Nenhum dado de post ou opção é altera
 
 ## Limites conhecidos
 
-- Um `ob_flush()` de terceiro no meio da página entrega pedaços antes do fim: o aviso global só entra no pedaço final (1.2.0), mas um aviso do motor já enviado num pedaço anterior não pode ser retirado. Nenhum plugin do lab faz isso; conferir no site real no passo 4.
+- `ob_flush()` de terceiro no meio da página **funciona**: os buffers continuam abertos, o aviso global entra no pedaço final e o dono decide no fim (revisão de cadf0d73: sempre 1 aviso, com flush antes ou depois do conteúdo).
+- O caso que falha é um terceiro que **fecha todos os buffers** (`ob_end_flush()`/`ob_get_clean()` em laço) logo depois do `<head>`: o dono perde o buffer antes do conteúdo e a LP V1 fica com 2 avisos (o global no topo). Antes de instalar, procurar esse padrão nos plugins e no tema do site (`grep -rn "while.*ob_get_level\|ob_end_flush\|ob_end_clean" wp-content/plugins wp-content/themes`) e conferir no passo 4.
 - No Elementor, retirar o aviso do motor deixa o container branco vazio que o envolvia.
