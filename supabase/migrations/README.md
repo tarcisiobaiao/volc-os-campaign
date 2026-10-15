@@ -10,7 +10,7 @@ Pacote para fechar a chave anon (lê e escreve 62 relações de `public`, medido
 Ordem: `v19_00` → `v8_03` → `v19_01` → `v8_05` → `v19_02`; depois do frontend
 novo no ar, `v8_06`. Rollback: `v19_99_rollback.sql`. A `v19_01` substitui a
 `v8_04` e a `v19_02` substitui a `v8_07`: não aplicar `v8_02`, `v8_04` nem `v8_07`.
-Ensaiado sobre o schema de produção de 15/10 (79/79).
+Ensaiado sobre o schema de produção de 15/10 com `lab.sh recriar-prod` e a suíte `tools/freedom-lab/db/suites/v19_incidente_anon.sh`.
 
 ## Google Ads: v17_01 fatos granulares — 08/10/2026
 

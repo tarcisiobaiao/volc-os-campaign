@@ -1,6 +1,9 @@
 -- =============================================================================
 -- preflight-producao.sql — pacote do incidente anon (W4). SOMENTE LEITURA.
--- Roda como supabase_admin, em BEGIN READ ONLY … ROLLBACK. Devolve só
+-- Roda com a MENOR identidade de leitura que existe hoje em produção:
+-- supabase_read_only_user (LOGIN, membro de pg_read_all_data, sem nenhum grant de
+-- escrita), com default_transaction_read_only=on na conexão e BEGIN READ ONLY …
+-- ROLLBACK. Quando a v18_01 existir, troca por volc_leitura_agente. Devolve só
 -- contagens e booleanos: nenhuma linha de negócio, nenhum e-mail, nenhum hash.
 -- Cada linha "BLOQUEIA=t" impede a aplicação; "ATENCAO=t" pede decisão.
 -- =============================================================================
@@ -8,8 +11,9 @@ BEGIN READ ONLY;
 SET LOCAL statement_timeout = '15s';
 \pset footer off
 
-SELECT 'P0 sessão' AS item, current_user AS valor,
-       NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS bloqueia,
+SELECT 'P0 sessão só leitura' AS item, current_user AS valor,
+       current_setting('transaction_read_only') AS read_only,
+       current_setting('transaction_read_only') <> 'on' AS bloqueia,
        current_setting('server_version') AS versao;
 
 -- P1 auth.uid() precisa ler request.jwt.claims (o que o PostgREST atual define).

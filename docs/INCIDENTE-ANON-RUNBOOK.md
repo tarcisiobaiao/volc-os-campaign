@@ -2,8 +2,10 @@
 
 **Estado: `ready_for_human`. Nada foi aplicado em produção.** Decisão e janela
 são do Tarcísio. Ensaio: schema de produção de 15/10 restaurado num Postgres
-descartável (`supabase/postgres:15.8.1.085`, sem rede) via `tools/freedom-lab/lab.sh`,
-**79/79 verificações verdes** (recibo no handoff W4).
+descartável (`supabase/postgres:15.8.1.085`, sem rede) por
+`tools/freedom-lab/lab.sh recriar-prod` com a suíte
+`tools/freedom-lab/db/suites/v19_incidente_anon.sh` (comando no cabeçalho dela;
+recibo no handoff W4).
 
 ## O problema, medido em produção (sonda read-only de 15/10 ~10:55Z)
 
@@ -36,7 +38,9 @@ necessidade para este incidente.
 ```bash
 scripts/aplicar-incidente-anon-w4.sh --so-checar
 ```
-Preflight read-only: confere sha256, papel superusuário, `auth.uid()` lendo
+Preflight só de leitura, como `supabase_read_only_user` (a menor identidade de
+leitura que existe hoje; nenhum grant de escrita) com a sessão forçada
+read-only — nunca `supabase_admin`. Confere `auth.uid()` lendo
 `request.jwt.claims`, estado anterior, ADMINs sem papel em `app_auth`, e-mails
 duplicados, superfície de anon (esperado 62).
 

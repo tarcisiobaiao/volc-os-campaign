@@ -7,7 +7,7 @@
 # backup antes, cada arquivo na própria transação com ON_ERROR_STOP, postflight
 # por sonda, recarga do PostgREST, recibo local.
 #
-# Uso:  scripts/aplicar-incidente-anon-w4.sh --so-checar   (preflight read-only)
+# Uso:  scripts/aplicar-incidente-anon-w4.sh --so-checar   (preflight; só leitura, nunca supabase_admin)
 #       scripts/aplicar-incidente-anon-w4.sh --passo1      (v19_00 v8_03 v19_01 v8_05 v19_02)
 #       scripts/aplicar-incidente-anon-w4.sh --passo2      (v8_06; só com o frontend novo no ar)
 #       scripts/aplicar-incidente-anon-w4.sh --rollback    (v19_99; devolve o estado inseguro)
@@ -20,6 +20,9 @@ SSH=(ssh -i "$HOME/.ssh/volc_hetzner_claude_ed25519" -o BatchMode=yes -o Connect
 # o preflight P0 confirma que a sessão é superusuário antes de qualquer escrita).
 SA="docker exec -i supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1"
 PG="docker exec -i supabase-db psql -U postgres -d postgres -X -v ON_ERROR_STOP=1"
+# Leitura (preflight e sondas): a menor identidade de leitura que existe hoje,
+# sem grant de escrita, com a sessão forçada read-only. Nunca supabase_admin.
+LEITURA="docker exec -i -e PGOPTIONS=-c\\ default_transaction_read_only=on supabase-db psql -h 127.0.0.1 -U supabase_read_only_user -d postgres -X -v ON_ERROR_STOP=1"
 CARIMBO="$(date +%Y%m%d-%H%M%S)"
 RECIBO="$RAIZ/docs/closure/incidente-anon-w4/RECEIPT-$CARIMBO.txt"
 H=/Users/mac/Desktop/VOLC-OS-CAMPAIGN/handoffs/freedom-lab-20261015
@@ -45,11 +48,11 @@ aplicar() { # aplicar <papel> <migration>
   "${SSH[@]}" "$cmd" < "$MIG/$2.sql" >>"$RECIBO" 2>&1 \
     || { log "FALHOU $2 — transação própria, nada parcial. Backup: ${DUMP:-sem backup}"; exit 1; }
 }
-sonda() { "${SSH[@]}" "$PG -P pager=off" < "$H/B-sonda-producao.sql" > "$1.out" 2> "$1.err"
+sonda() { "${SSH[@]}" "$LEITURA -P pager=off" < "$H/B-sonda-producao.sql" > "$1.out" 2> "$1.err"
   log "sonda   $1 · anon VE_LINHAS=$(grep -c 'S8|anon|.*|VE_LINHAS' "$1.err")"; }
 
 log "== preflight $CARIMBO"
-"${SSH[@]}" "$SA -P pager=off" < "$RAIZ/scripts/preflight-incidente-anon-w4.sql" | tee -a "$RECIBO"
+"${SSH[@]}" "$LEITURA -P pager=off" < "$RAIZ/scripts/preflight-incidente-anon-w4.sql" | tee -a "$RECIBO"
 [[ "${1:-}" == "--so-checar" ]] && { log "só preflight: nada aplicado"; exit 0; }
 read -r -p "Preflight lido e sem BLOQUEIA=t? digite APLICAR: " ok; [[ "$ok" == "APLICAR" ]] || exit 1
 
