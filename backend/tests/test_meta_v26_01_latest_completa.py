@@ -40,15 +40,27 @@ pytestmark = pytest.mark.skipif(
 
 ATIVO = "meta_account_metaacct_w15lab"
 
-SEMENTE = f"""
+# O dump de produção é schema-only: cofre_gaveta e cofre_tipo chegam vazias.
+# O teste reproduz isso esvaziando as duas depois da v13_01, e semeia só o par
+# de que a fixture precisa, igual à suíte do lab (ON CONFLICT DO NOTHING).
+ESVAZIAR_REFERENCIA = "DELETE FROM public.cofre_tipo; DELETE FROM public.cofre_gaveta;"
+REFERENCIA = [
+    "INSERT INTO public.cofre_gaveta (cluster, rotulo, descricao, ordem) VALUES ('paid_media', "
+    "'Midia paga', 'Gerenciadores e contas que compram midia nas plataformas.', 2) ON CONFLICT DO NOTHING",
+    "INSERT INTO public.cofre_tipo (kind, cluster, rotulo) VALUES ('meta_ad_account', 'paid_media', "
+    "'Conta de anuncios Meta') ON CONFLICT DO NOTHING",
+]
+
+SEMENTE = [f"""
 INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade,
   resumo, dono_nome, dono_custodia, capacidades, proxima_acao)
 VALUES ('{ATIVO}', 'meta_ad_account', 'paid_media', 'Conta Meta lab W15', 'Meta Ads', 'ready',
-  'high', 'Conta sintetica do laboratorio W15.', 'VOLC', 'verified', ARRAY['meta_read'], 'Nenhuma acao: fixture de teste descartavel.');
+  'high', 'Conta sintetica do laboratorio W15.', 'VOLC', 'verified', ARRAY['meta_read'], 'Nenhuma acao: fixture de teste descartavel.')
+""", f"""
 INSERT INTO public.trafego_meta_ad_account (cofre_ativo_id, account_external_id, moeda,
   timezone_name, readiness_state)
-VALUES ('{ATIVO}', '9990001', 'BRL', 'America/Sao_Paulo', 'READY_FOR_READ');
-"""
+VALUES ('{ATIVO}', '9990001', 'BRL', 'America/Sao_Paulo', 'READY_FOR_READ')
+"""]
 
 
 def _fato(fid: str, objeto: str, dia: str, observado: str, spend: str, completo: bool) -> str:
@@ -58,7 +70,7 @@ INSERT INTO public.trafego_meta_insight_daily (meta_insight_daily_id, ad_account
   conta_externa, nivel, objeto_externo, periodo_inicio, periodo_fim, janela_atribuicao,
   breakdown, observado_em, spend, impressions, currency, account_timezone, completo)
 VALUES ('{fid}', '{ATIVO}', '9990001', 'adset', '{objeto}', '{dia}', '{dia}', 'default',
-  'none', '{observado}', {spend_sql}, 100, 'BRL', 'America/Sao_Paulo', {str(completo).lower()});
+  'none', '{observado}', {spend_sql}, 100, 'BRL', 'America/Sao_Paulo', {str(completo).lower()})
 """
 
 
@@ -67,7 +79,7 @@ VALUES ('{fid}', '{ATIVO}', '9990001', 'adset', '{objeto}', '{dia}', '{dia}', 'd
 #   B: D-1 completo e recoleta COMPLETA mais nova                  → vence a recoleta
 #   C: só incompletas                                              → a mais nova, completo=false
 #   D: completa velha, incompleta nova, completa mais nova ainda   → a completa mais nova
-FATOS = "".join([
+FATOS = [
     _fato("w15-a1", "1001", "2026-10-10", "2026-10-11T10:00:00Z", "10.00", True),
     _fato("w15-a2", "1001", "2026-10-10", "2026-10-15T11:30:00Z", "3.00", False),
     _fato("w15-b1", "1002", "2026-10-10", "2026-10-11T10:00:00Z", "10.00", True),
@@ -77,7 +89,7 @@ FATOS = "".join([
     _fato("w15-d1", "1004", "2026-10-10", "2026-10-11T10:00:00Z", "10.00", True),
     _fato("w15-d2", "1004", "2026-10-10", "2026-10-13T11:30:00Z", "1.00", False),
     _fato("w15-d3", "1004", "2026-10-10", "2026-10-15T11:30:00Z", "11.00", True),
-])
+]
 
 CORRENTE = """SELECT string_agg(objeto_externo || '=' || meta_insight_daily_id || ':' || completo, ',' ORDER BY objeto_externo)
   FROM public.vw_trafego_meta_insight_latest WHERE ad_account_ativo_id = '""" + ATIVO + "'"
@@ -105,6 +117,10 @@ class Banco:
             entrada = corpo
         return subprocess.run(args, input=entrada, capture_output=True, text=True)
 
+    def inserir(self, insert: str) -> int:
+        """Roda um INSERT (sem ';') e devolve quantas linhas entraram."""
+        return int(self.valor(f"WITH w15_ins AS ({insert} RETURNING 1) SELECT count(*) FROM w15_ins"))
+
     def valor(self, sql: str, **kw) -> str:
         p = self.run(sql, **kw)
         assert p.returncode == 0, p.stderr
@@ -130,8 +146,21 @@ def banco():
         for f in CADEIA:
             p = b.run(arquivo=MIG / f)
             assert p.returncode == 0, f"{f}: {p.stderr[-2000:]}"
-        p = b.run(SEMENTE + FATOS)
-        assert p.returncode == 0, p.stderr
+            if f.startswith("v13_01"):
+                # como o dump schema-only de produção: referência vazia
+                p = b.run(ESVAZIAR_REFERENCIA)
+                assert p.returncode == 0, p.stderr
+                assert b.valor("SELECT count(*) FROM public.cofre_tipo") == "0"
+                assert b.valor("SELECT count(*) FROM public.cofre_gaveta") == "0"
+        for ins in REFERENCIA:
+            b.inserir(ins)
+        assert b.valor("SELECT count(*) FROM public.cofre_tipo "
+                       "WHERE kind = 'meta_ad_account' AND cluster = 'paid_media'") == "1"
+        # cada INSERT de prova confere exatamente 1 linha
+        for ins in SEMENTE + FATOS:
+            assert b.inserir(ins) == 1, ins
+        assert b.valor("SELECT count(*) FROM public.trafego_meta_insight_daily "
+                       f"WHERE ad_account_ativo_id = '{ATIVO}'") == "9"
         yield b
     finally:
         subprocess.run(admin + ["-c", f"DROP DATABASE IF EXISTS {nome} WITH (FORCE)"],

@@ -28,6 +28,11 @@
 #   4. reaplicar por cima é recusado sem mudar o fingerprint
 #   5. rollback devolve o fingerprint de antes; é idempotente; reaplicar é idêntico
 #
+# Referência: o dump é schema-only, então cofre_gaveta e cofre_tipo chegam
+# vazias. A suíte semeia via PA só a gaveta paid_media e o tipo
+# (meta_ad_account, paid_media), com ON CONFLICT DO NOTHING, e afirma o par.
+# Todo INSERT de prova confere a contagem exata (1 linha) via RETURNING.
+#
 # Dados sintéticos fixos (conta 9990001, ativo meta_account_metaacct_w15lab,
 # ids w15-*). As linhas de fato ficam no container: as tabelas Meta recusam
 # DELETE por gatilho, e o container é destruído no fim do recriar-prod.
@@ -69,8 +74,24 @@ v15_02_meta_ads_insights.sql|select to_regclass('public.trafego_meta_insight_dai
 20260908120000_meta_financeiro_conjunto_dia.sql|select to_regclass('public.vw_trafego_meta_financeiro_conjunto_dia') is not null"
 
 w15_fato() {  # $1 id  $2 objeto  $3 observado_em  $4 spend  $5 completo
-  printf "INSERT INTO public.trafego_meta_insight_daily (meta_insight_daily_id, ad_account_ativo_id, conta_externa, nivel, objeto_externo, periodo_inicio, periodo_fim, janela_atribuicao, breakdown, observado_em, spend, impressions, currency, account_timezone, completo) VALUES ('%s', '%s', '9990001', 'adset', '%s', '2026-10-10', '2026-10-10', 'default', 'none', '%s', %s, 100, 'BRL', 'America/Sao_Paulo', %s);\n" \
+  printf "INSERT INTO public.trafego_meta_insight_daily (meta_insight_daily_id, ad_account_ativo_id, conta_externa, nivel, objeto_externo, periodo_inicio, periodo_fim, janela_atribuicao, breakdown, observado_em, spend, impressions, currency, account_timezone, completo) VALUES ('%s', '%s', '9990001', 'adset', '%s', '2026-10-10', '2026-10-10', 'default', 'none', '%s', %s, 100, 'BRL', 'America/Sao_Paulo', %s)" \
     "$1" "$W15_ATIVO" "$2" "$3" "$4" "$5"
+}
+
+# INSERT de prova com contagem exata: devolve quantas linhas entraram (via
+# RETURNING, que independe do -q do psql) e guarda a saída em RECIBOS.
+w15_contar() {  # $1 rótulo  $2 INSERT sem ';'
+  local saida="$RECIBOS/w15-ins-$1.out"
+  PA -v ON_ERROR_STOP=1 -Atc "WITH w15_ins AS ($2 RETURNING 1) SELECT count(*) FROM w15_ins" > "$saida" 2>&1 || return 1
+  head -1 "$saida"
+}
+w15_exige() {  # eq que também devolve o status, para parar a suíte
+  eq "$1" "$2" "$3"; [ "$1" = "$2" ]
+}
+w15_um() {  # $1 rótulo  $2 INSERT sem ';' — exige exatamente 1 linha
+  local n
+  n=$(w15_contar "$1" "$2") || { nao "v26 · semente $1 ($(tail -1 "$RECIBOS/w15-ins-$1.out"))"; return 1; }
+  [ "$n" = "1" ] && ok "v26 · semente $1: 1 linha" || { nao "v26 · semente $1: $n linha(s), esperado 1"; return 1; }
 }
 
 w15_suite() {
@@ -90,22 +111,39 @@ w15_suite() {
     fi
   done <<< "$W15_CADEIA"
 
-  echo "▶ v26 · semente sintética"
-  { printf "BEGIN;\n"
-    printf "INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade, resumo, dono_nome, dono_custodia, capacidades, proxima_acao) VALUES ('%s', 'meta_ad_account', 'paid_media', 'Conta Meta lab W15', 'Meta Ads', 'ready', 'high', 'Conta sintetica do laboratorio W15.', 'VOLC', 'verified', ARRAY['meta_read'], 'Nenhuma acao: fixture de teste descartavel.') ON CONFLICT (ativo_id) DO NOTHING;\n" "$W15_ATIVO"
-    printf "INSERT INTO public.trafego_meta_ad_account (cofre_ativo_id, account_external_id, moeda, timezone_name, readiness_state) VALUES ('%s', '9990001', 'BRL', 'America/Sao_Paulo', 'READY_FOR_READ') ON CONFLICT DO NOTHING;\n" "$W15_ATIVO"
-    w15_fato w15-a1 1001 2026-10-11T10:00:00Z 10.00 true
-    w15_fato w15-a2 1001 2026-10-15T11:30:00Z 3.00 false
-    w15_fato w15-b1 1002 2026-10-11T10:00:00Z 10.00 true
-    w15_fato w15-b2 1002 2026-10-15T11:30:00Z 12.50 true
-    w15_fato w15-c1 1003 2026-10-11T10:00:00Z 4.00 false
-    w15_fato w15-c2 1003 2026-10-15T11:30:00Z 5.00 false
-    w15_fato w15-d1 1004 2026-10-11T10:00:00Z 10.00 true
-    w15_fato w15-d2 1004 2026-10-13T11:30:00Z 1.00 false
-    w15_fato w15-d3 1004 2026-10-15T11:30:00Z 11.00 true
-    printf "COMMIT;\n"
-  } | PA -v ON_ERROR_STOP=1 > "$RECIBOS/w15-semente.out" 2>&1 \
-    && ok "v26 · semente: 4 grãos, 9 revisões" || { nao "v26 · semente ($(tail -1 "$RECIBOS/w15-semente.out"))"; return 1; }
+  echo "▶ v26 · referência do Cofre (o dump schema-only vem sem dados)"
+  # cofre_ativo tem FK (kind, cluster) → cofre_tipo, e cofre_tipo.cluster →
+  # cofre_gaveta. O dump de produção é schema-only, então as duas tabelas de
+  # referência chegam VAZIAS no container. Semeia só as duas linhas de que a
+  # fixture precisa, com os valores literais da v13_01, sem sobrescrever nada
+  # que já exista; depois afirma que o par existe.
+  w15_contar "ref-gaveta" "INSERT INTO public.cofre_gaveta (cluster, rotulo, descricao, ordem) VALUES ('paid_media', 'Midia paga', 'Gerenciadores e contas que compram midia nas plataformas.', 2) ON CONFLICT DO NOTHING" >/dev/null \
+    || { nao "v26 · referência: cofre_gaveta ($(tail -1 "$RECIBOS/w15-ins-ref-gaveta.out"))"; return 1; }
+  w15_contar "ref-tipo" "INSERT INTO public.cofre_tipo (kind, cluster, rotulo) VALUES ('meta_ad_account', 'paid_media', 'Conta de anuncios Meta') ON CONFLICT DO NOTHING" >/dev/null \
+    || { nao "v26 · referência: cofre_tipo ($(tail -1 "$RECIBOS/w15-ins-ref-tipo.out"))"; return 1; }
+  w15_exige "$(w15_sql "select count(*) from public.cofre_gaveta where cluster = 'paid_media'")" "1" \
+     "v26 · referência: gaveta paid_media existe" || return 1
+  w15_exige "$(w15_sql "select count(*) from public.cofre_tipo where kind = 'meta_ad_account' and cluster = 'paid_media'")" "1" \
+     "v26 · referência: tipo (meta_ad_account, paid_media) existe" || return 1
+
+  echo "▶ v26 · semente sintética (cada INSERT confere 1 linha)"
+  local fatos="w15-a1 1001 2026-10-11T10:00:00Z 10.00 true
+w15-a2 1001 2026-10-15T11:30:00Z 3.00 false
+w15-b1 1002 2026-10-11T10:00:00Z 10.00 true
+w15-b2 1002 2026-10-15T11:30:00Z 12.50 true
+w15-c1 1003 2026-10-11T10:00:00Z 4.00 false
+w15-c2 1003 2026-10-15T11:30:00Z 5.00 false
+w15-d1 1004 2026-10-11T10:00:00Z 10.00 true
+w15-d2 1004 2026-10-13T11:30:00Z 1.00 false
+w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
+  w15_um "ativo" "$(printf "INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade, resumo, dono_nome, dono_custodia, capacidades, proxima_acao) VALUES ('%s', 'meta_ad_account', 'paid_media', 'Conta Meta lab W15', 'Meta Ads', 'ready', 'high', 'Conta sintetica do laboratorio W15.', 'VOLC', 'verified', ARRAY['meta_read'], 'Nenhuma acao: fixture de teste descartavel.')" "$W15_ATIVO")" || return 1
+  w15_um "conta" "$(printf "INSERT INTO public.trafego_meta_ad_account (cofre_ativo_id, account_external_id, moeda, timezone_name, readiness_state) VALUES ('%s', '9990001', 'BRL', 'America/Sao_Paulo', 'READY_FOR_READ')" "$W15_ATIVO")" || return 1
+  local id obj obs spend comp
+  while read -r id obj obs spend comp; do
+    w15_um "$id" "$(w15_fato "$id" "$obj" "$obs" "$spend" "$comp")" || return 1
+  done <<< "$fatos"
+  w15_exige "$(w15_sql "select count(*) from public.trafego_meta_insight_daily where ad_account_ativo_id = '$W15_ATIVO'")" "9" \
+     "v26 · semente: 4 grãos, 9 revisões no fato" || return 1
 
   echo "▶ v26 · antes"
   local fp_antes fp_depois
