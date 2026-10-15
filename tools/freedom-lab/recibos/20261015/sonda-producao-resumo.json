@@ -1,0 +1,69 @@
+{
+ "_sobre": "Resumo sanitizado da sonda read-only do Supabase de produção (BEGIN READ ONLY … ROLLBACK, statement_timeout 5s), executada pelo Leitor B em 15/10/2026 ~10:55Z sob autorização explícita do dono. Saídas brutas ficam fora do repo (catálogo nominal de tabelas abertas); aqui só contagens, fatos de papel e hashes. A seção S8 veio do stderr da mesma execução, transcrito da saída da ferramenta (não houve segunda execução).",
+ "arquivos_brutos_fora_do_repo": {
+  "sonda-prod.out": "990a38e5f14796ca3471f92e0e16f9846ff0163f6e7e195abb36ec315d7fab17",
+  "sonda-prod-s8.err": "8737f5db93a07698b02dd721f7c6013bef328515477e93f365fbe0dfbafbc732",
+  "fingerprint-prod.out": "fbd623d78b4d21267251599fa8d80855c33dd80cc0e176b29c69d6212b77d170"
+ },
+ "sonda_sql_sha256": "7c78d7864f498d5001108cb68da07b1f2d160a8947905613d4bae392b0b27656",
+ "fingerprint_sql_sha256": "0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7",
+ "versao": "PostgreSQL 15.8",
+ "sessao_read_only": true,
+ "ledger_volc_de_migrations": "ausente (supabase_migrations.schema_migrations e public.schema_migrations nulos; só ledgers dos serviços auth/storage/realtime/supabase_functions)",
+ "volc_leitor_existe": false,
+ "supabase_read_only_user": {
+  "login": true,
+  "bypassrls": true,
+  "membro_de": [
+   "pg_read_all_data"
+  ]
+ },
+ "anon": {
+  "grants_em_public_por_privilegio": 62,
+  "privilegios": [
+   "SELECT",
+   "INSERT",
+   "UPDATE",
+   "DELETE",
+   "TRUNCATE",
+   "REFERENCES",
+   "TRIGGER"
+  ],
+  "s7_classes": {
+   "aberto": 39,
+   "negado": 118,
+   "rls_filtrado": 3,
+   "rls_vazio": 16,
+   "view_definer": 4
+  },
+  "s8_select_real": {
+   "VE_LINHAS": 23,
+   "tabela_vazia": 25,
+   "rls_esconde": 14,
+   "erro": 0
+  },
+  "inclui_com_linhas": [
+   "users",
+   "projects",
+   "campaigns",
+   "system_settings"
+  ]
+ },
+ "authenticated": {
+  "s8_select_real": {
+   "VE_LINHAS": 23,
+   "tabela_vazia": 25,
+   "rls_esconde": 14,
+   "erro": 0
+  }
+ },
+ "default_acl_public": "postgres e supabase_admin concedem arwdDxt a anon/authenticated/service_role em tabela nova",
+ "security_definer_exec_por_anon_ou_authenticated": 6,
+ "fingerprint_producao": {
+  "_TOTAL_itens": 5911,
+  "_TOTAL_md5": "695e913a4373efd1c2265cdd5ac87251",
+  "tabelas": 236,
+  "funcoes": 235,
+  "policies": 29
+ }
+}

@@ -31,7 +31,14 @@ SONDA="$AQUI/db/sonda_acesso.sql"
 FP="$AQUI/db/fingerprint_schema.sql"
 RECIBOS="${RECIBOS:-$AQUI/runs/$(date +%Y%m%d-%H%M%S)}"
 
-P() { docker exec -i "$NOME" psql -U postgres -d postgres -X -q -A -t -v ON_ERROR_STOP=1 "$@"; }
+# Toda execução de SQL exige o container do LAB (nome + rótulo) e sem rede:
+# um LAB_NOME apontado para outro container nunca recebe migration, GRANT ou rollback.
+exigir_lab() {
+  existe || { echo "ERRO: $NOME não existe ou não tem o rótulo volc.freedom-lab=1; nada executado" >&2; return 97; }
+  [ "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$NOME")" = "none" ] || \
+    { echo "ERRO: $NOME tem rede; o lab só roda sem rede" >&2; return 98; }
+}
+P() { exigir_lab || return $?; docker exec -i "$NOME" psql -U postgres -d postgres -X -q -A -t -v ON_ERROR_STOP=1 "$@"; }
 sha() { shasum -a 256 "$1" | awk '{print $1}'; }
 
 existe() { [ -n "$(docker ps -aq --filter "name=^${NOME}$" --filter label=volc.freedom-lab=1)" ]; }
@@ -59,6 +66,7 @@ destruir() {
 }
 
 semear() {
+  exigir_lab || return $?
   if grep -nEi '@agenciavolc|eyJ[A-Za-z0-9_-]{10,}\.|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2}|[0-9]{2}\.[0-9]{3}\.[0-9]{3}/[0-9]{4}-[0-9]{2}|@(gmail|hotmail|outlook)\.' "$SEMENTE"; then
     echo "ERRO: semente contém material proibido; nada aplicado"; return 1; fi
   P -f - < "$SEMENTE" >/dev/null && echo "▶ semente sintética aplicada (sha256 $(sha "$SEMENTE"))"
@@ -73,6 +81,7 @@ migrar() {
 }
 
 testar() {
+  exigir_lab || return $?
   mkdir -p "$RECIBOS"
   local F=0 T=0
   ok()  { T=$((T+1)); printf '  ✓ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
@@ -169,6 +178,7 @@ testar() {
     echo "  \"migration\": \"$(basename "$MIGRATION")\", \"migration_sha256\": \"$(sha "$MIGRATION")\","
     echo "  \"rollback\": \"$(basename "$ROLLBACK")\", \"rollback_sha256\": \"$(sha "$ROLLBACK")\","
     echo "  \"semente_sha256\": \"$(sha "$SEMENTE")\","
+    echo "  \"harness_sha256\": {\"lab.sh\": \"$(sha "$0")\", \"sonda_acesso.sql\": \"$(sha "$SONDA")\", \"fingerprint_schema.sql\": \"$(sha "$FP")\"},"
     echo "  \"fingerprint_total_pos\": \"$(grep _TOTAL "$RECIBOS/fp2.out" | tr -d ' ')\","
     echo "  \"verificacoes\": $T, \"falhas\": $F, \"producao_acessada\": false, \"producao_acessada_motivo\": \"estrutural: este script não lê .env, não usa SSH e o container não tem rede\""
     echo "}"
