@@ -1,4 +1,4 @@
-"""Ledger da Bia no Supabase oficial, só pelas RPCs da v26_01.
+"""Ledger da Bia no Supabase oficial, só pelas RPCs da v27_01.
 
 Mesmo caminho de `app.seguranca.identidade._papel_do_sub`: PostgREST com a
 service_role do backend, chamando funções NOMEADAS. Não há aqui (nem em lugar
@@ -76,7 +76,7 @@ class LedgerSupabase:
             log.warning("ledger da Bia inacessível (%s): %s", funcao, type(exc).__name__)
             raise LedgerIndisponivel("ledger inacessível") from exc
         if r.status_code == 404:
-            log.error("RPC %s ausente — a migration v26_01 não foi aplicada", funcao)
+            log.error("RPC %s ausente — a migration v27_01 não foi aplicada", funcao)
             raise LedgerIndisponivel("ledger da Bia não instalado no banco")
         if r.status_code >= 400:
             codigo = ""

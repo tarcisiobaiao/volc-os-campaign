@@ -1,12 +1,12 @@
-"""Bia — o adaptador `LedgerSupabase` contra a SQL REAL da v26_01, no banco descartável.
+"""Bia — o adaptador `LedgerSupabase` contra a SQL REAL da v27_01, no banco descartável.
 
-Opt-in: só roda com `BIA_LAB_CONTAINER=<container do freedom-lab>` com a v26_01
+Opt-in: só roda com `BIA_LAB_CONTAINER=<container do freedom-lab>` com a v27_01
 aplicada (ver `docs/bia-hermes/RUNBOOK-IMPLANTACAO.md`, seção da prova do lab).
 Sem a variável, pula — e diz por quê.
 
 ## O que é real e o que é dublado
 
-Real: as 11 RPCs, os gatilhos, os índices e as travas da v26_01 num Postgres
+Real: as 11 RPCs, os gatilhos, os índices e as travas da v27_01 num Postgres
 15.8 da imagem Supabase; o `LedgerSupabase` e os casos de uso inteiros.
 
 Dublado: só o PostgREST. Um transporte httpx traduz `POST /rest/v1/rpc/<fn>`
@@ -34,7 +34,7 @@ from bia_dubles import HermesFalso
 CONTAINER = os.environ.get("BIA_LAB_CONTAINER", "")
 pytestmark = pytest.mark.skipif(not CONTAINER, reason="BIA_LAB_CONTAINER ausente: prova de lab opt-in")
 
-#: Tipos de cada parâmetro, copiados da v26_01. Um nome errado no adaptador
+#: Tipos de cada parâmetro, copiados da v27_01. Um nome errado no adaptador
 #: vira erro aqui (parâmetro desconhecido), como viraria no PostgREST.
 ASSINATURAS = {
     "volc_agente_criar_conversa": {"p_dono": "uuid", "p_sessao_motor": "text", "p_titulo": "text"},

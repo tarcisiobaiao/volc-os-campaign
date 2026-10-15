@@ -1,10 +1,10 @@
 -- =============================================================================
--- v26_01 — Bia/Hermes V1: conversas, execuções e eventos da Bia (modo consulta)
+-- v27_01 — Bia/Hermes V1: conversas, execuções e eventos da Bia (modo consulta)
 --
 -- ESTADO: CANDIDATA. Não aplicada. Aplicar exige janela e autorização do
 -- Tarcisio, pelo protocolo (scripts/migracao-protocolo.sh). Prova:
--- tools/freedom-lab/db/suites/v26_bia.sh (lab.sh recriar, banco descartável).
--- Rollback: v26_01_rollback.sql.
+-- tools/freedom-lab/db/suites/v27_bia.sh (lab.sh recriar, banco descartável).
+-- Rollback: v27_01_rollback.sql.
 --
 -- O QUE ESTE SCHEMA É, E O QUE NÃO É
 --   É o histórico operacional da conversa da Bia: quem perguntou o quê, em que
@@ -38,14 +38,14 @@ SET LOCAL lock_timeout = '5s';
 DO $pre$
 BEGIN
   IF to_regnamespace('agente_bia') IS NOT NULL THEN
-    RAISE EXCEPTION 'v26_01: schema agente_bia já existe; não reaplica por cima'
+    RAISE EXCEPTION 'v27_01: schema agente_bia já existe; não reaplica por cima'
       USING ERRCODE = '55000';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role')
      OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
      OR NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
      OR to_regclass('auth.users') IS NULL THEN
-    RAISE EXCEPTION 'v26_01: base errada (faltam papéis do Supabase ou auth.users)'
+    RAISE EXCEPTION 'v27_01: base errada (faltam papéis do Supabase ou auth.users)'
       USING ERRCODE = '55000';
   END IF;
 END

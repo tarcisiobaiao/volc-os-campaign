@@ -8,7 +8,7 @@ de resposta, o adaptador HTTP do Hermes (`HermesHttp`) e o catálogo do Gateway.
 
 Dublado: o transporte do auth (`ident.httpx`), o transporte do Hermes
 (`httpx.MockTransport` com o contrato v0.18.0 conferido na VPS) e o ledger
-(`LedgerMemoria`, mesma semântica das RPCs da v26_01 — a SQL é provada à parte
+(`LedgerMemoria`, mesma semântica das RPCs da v27_01 — a SQL é provada à parte
 no banco descartável).
 
 ⚠️ Nada aqui é inferência real. A prova real é o roteiro de aceite do runbook.

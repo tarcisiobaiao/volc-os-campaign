@@ -355,4 +355,3 @@ def resumo_para_recibo(ctx: Mapping[str, Any]) -> Dict[str, Any]:
         "verdade_custo": (ctx.get("custo") or {}).get("verdade"),
         "alertas": len(ctx.get("alertas") or []),
     }
-

@@ -1,5 +1,5 @@
 -- =============================================================================
--- v26_01_rollback — remove o schema da Bia (agente_bia) e as 11 RPCs.
+-- v27_01_rollback — remove o schema da Bia (agente_bia) e as 11 RPCs.
 --
 -- ⚠️ Histórico de conversa é dado de pessoas. Com linhas no schema, o rollback
 -- RECUSA (atômico, nada removido), a menos que o operador declare na MESMA
@@ -17,13 +17,13 @@ DECLARE
   linhas bigint;
 BEGIN
   IF to_regnamespace('agente_bia') IS NULL THEN
-    RAISE NOTICE 'v26_01_rollback: agente_bia não existe; nada a desfazer';
+    RAISE NOTICE 'v27_01_rollback: agente_bia não existe; nada a desfazer';
     RETURN;
   END IF;
   SELECT (SELECT count(*) FROM agente_bia.conversa) + (SELECT count(*) FROM agente_bia.execucao)
     INTO linhas;
   IF linhas > 0 AND coalesce(current_setting('agente_bia.descartar_historico', true), '') <> 'sim' THEN
-    RAISE EXCEPTION 'v26_01_rollback: agente_bia tem % linha(s); declare agente_bia.descartar_historico=sim para descartar', linhas
+    RAISE EXCEPTION 'v27_01_rollback: agente_bia tem % linha(s); declare agente_bia.descartar_historico=sim para descartar', linhas
       USING ERRCODE = '55000';
   END IF;
 END

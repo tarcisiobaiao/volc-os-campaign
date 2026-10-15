@@ -38,7 +38,7 @@ class Estado(str, Enum):
 TERMINAIS: FrozenSet[Estado] = frozenset({Estado.SUCCEEDED, Estado.FAILED, Estado.CANCELLED})
 EM_VOO: FrozenSet[Estado] = frozenset({Estado.QUEUED, Estado.RUNNING})
 
-#: Transições permitidas. A mesma tabela está no banco (v26_01), que é quem
+#: Transições permitidas. A mesma tabela está no banco (v27_01), que é quem
 #: manda; esta cópia existe para a aplicação recusar ANTES de ir à rede.
 TRANSICOES: Mapping[Estado, FrozenSet[Estado]] = {
     Estado.QUEUED: frozenset({Estado.RUNNING, Estado.CANCELLED}),

@@ -1,16 +1,16 @@
 # shellcheck shell=bash
 # =============================================================================
-# tools/freedom-lab/db/suites/v26_bia.sh — suíte da v26_01 (Bia/Hermes V1) para o lab.sh
+# tools/freedom-lab/db/suites/v27_bia.sh — suíte da v27_01 (Bia/Hermes V1) para o lab.sh
 #
 # Prova (banco descartável, sem rede, sem porta, nunca produção):
 #
 #   LAB_NOME=volc-freedom-lab-bia \
-#   MIGRATION=supabase/migrations/v26_01_agente_bia.sql \
-#   ROLLBACK=supabase/migrations/v26_01_rollback.sql \
-#   MIGRATION_SUITE=tools/freedom-lab/db/suites/v26_bia.sh \
+#   MIGRATION=supabase/migrations/v27_01_agente_bia.sql \
+#   ROLLBACK=supabase/migrations/v27_01_rollback.sql \
+#   MIGRATION_SUITE=tools/freedom-lab/db/suites/v27_bia.sh \
 #   tools/freedom-lab/lab.sh recriar
 #
-# O que prova, sobre v26_01_agente_bia.sql e v26_01_rollback.sql:
+# O que prova, sobre v27_01_agente_bia.sql e v27_01_rollback.sql:
 #   1. aplicar como supabase_admin; reaplicar por cima é recusado (55000)
 #   2. matriz: anon e authenticated sem EXECUTE nas 11 RPCs e sem acesso ao
 #      schema; service_role executa as RPCs mas NÃO lê as tabelas direto
@@ -32,12 +32,12 @@
 # =============================================================================
 
 for _f in P PA ok nao eq estado; do
-  declare -F "$_f" >/dev/null || { echo "ERRO: v26_bia.sh precisa ser carregada pelo lab.sh (falta $_f)" >&2; return 1 2>/dev/null || exit 1; }
+  declare -F "$_f" >/dev/null || { echo "ERRO: v27_bia.sh precisa ser carregada pelo lab.sh (falta $_f)" >&2; return 1 2>/dev/null || exit 1; }
 done
 unset _f
 
-BIA_APLICAR="$RAIZ/supabase/migrations/v26_01_agente_bia.sql"
-BIA_REVERTER="$RAIZ/supabase/migrations/v26_01_rollback.sql"
+BIA_APLICAR="$RAIZ/supabase/migrations/v27_01_agente_bia.sql"
+BIA_REVERTER="$RAIZ/supabase/migrations/v27_01_rollback.sql"
 U1=aaaaaaaa-0000-4000-8000-000000000001
 U2=aaaaaaaa-0000-4000-8000-000000000002
 S1="volc_$(printf '1%.0s' $(seq 32))"
@@ -63,15 +63,15 @@ como_sr() { ESTADO_COMO=supabase_admin estado service_role "$1"; }
 # como service_role, COMMITANDO (para a sequência semântica)
 sr() { printf 'SET ROLE service_role;\n%s\n' "$1" | PA 2>&1 | tail -1; }
 
-echo "▶ v26_bia: aplicar"
+echo "▶ v27_bia: aplicar"
 FP_ANTES="$(bia_fp)"
-bia_aplicar aplicar && ok "v26_01 aplica como supabase_admin" || nao "v26_01 não aplicou (ver bia-aplicar.out)"
+bia_aplicar aplicar && ok "v27_01 aplica como supabase_admin" || nao "v27_01 não aplicou (ver bia-aplicar.out)"
 FP_DEPOIS="$(bia_fp)"; FPP_DEPOIS="$(bia_fp_privado)"
 [ "$FP_ANTES" != "$FP_DEPOIS" ] && ok "fingerprint public mudou (RPCs novas)" || nao "fingerprint não mudou"
 bia_aplicar reaplicar; grep -q "55000\|já existe" "$RECIBOS/bia-reaplicar.out" \
   && ok "reaplicar por cima é recusado" || nao "reaplicação não foi recusada"
 
-echo "▶ v26_bia: matriz de acesso"
+echo "▶ v27_bia: matriz de acesso"
 for papel in anon authenticated; do
   eq "$(ESTADO_COMO=supabase_admin estado "$papel" "select public.volc_agente_listar_conversas('$U1', 5)")" 42501 \
      "$papel sem EXECUTE em volc_agente_listar_conversas"
@@ -89,7 +89,7 @@ eq "$(PA -c "select count(*) from pg_proc p join pg_namespace n on n.oid=p.prona
 eq "$(PA -c "select bool_and(relrowsecurity) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='agente_bia' and relkind='r'")" t \
    "RLS ligada nas 3 tabelas"
 
-echo "▶ v26_bia: semântica"
+echo "▶ v27_bia: semântica"
 PA -c "insert into auth.users (id, aud, role, email) values ('$U1','authenticated','authenticated','u1@lab.invalid'), ('$U2','authenticated','authenticated','u2@lab.invalid')" >/dev/null \
   && ok "dois usuários sintéticos no auth" || nao "não criou usuários sintéticos"
 C1="$(sr "select (public.volc_agente_criar_conversa('$U1', '$S1', null))->>'id'")"
@@ -145,7 +145,7 @@ PA -c "update agente_bia.execucao set iniciada_em = now() - interval '1 hour' wh
 sr "select public.volc_agente_expirar('$U1', 150)" >/dev/null
 eq "$(PA -c "select estado from agente_bia.execucao where id='$E5'")" uncertain "running órfã vira uncertain (nunca replay)"
 
-echo "▶ v26_bia: imutabilidade"
+echo "▶ v27_bia: imutabilidade"
 # ⚠️ Na imagem Supabase `postgres` é membro de pg_read_all_data: LÊ tudo (papel de
 # administração do banco, não da API). O que se prova é que ele não ESCREVE.
 eq "$(PA -c "select pg_has_role('postgres', 'pg_read_all_data', 'member')")" t "postgres lê só via pg_read_all_data (papel administrativo da imagem)"
@@ -158,7 +158,7 @@ eq "$(PA -c "truncate agente_bia.evento" 2>&1 | grep -o 'append-only')" "append-
 eq "$(PA -c "insert into agente_bia.execucao (conversa_id, dono, request_id, impressao, entrada) values ('$C1', '$U2', gen_random_uuid(), '$IMP', 'x')" 2>&1 | grep -o 'execucao_conversa_do_dono')" \
    execucao_conversa_do_dono "execução não pode apontar para conversa de outro dono"
 
-echo "▶ v26_bia: concorrência (duas sessões, mesmo dono)"
+echo "▶ v27_bia: concorrência (duas sessões, mesmo dono)"
 C2B="$(sr "select (public.volc_agente_criar_conversa('$U2', 'volc_$(printf '4%.0s' $(seq 32))', null))->>'id'")"
 ( printf "SET ROLE service_role; BEGIN; SELECT (public.volc_agente_reservar('$U2','$C2B','88888888-aaaa-4aaa-8aaa-000000000008','x','$IMP',30,null))->>'resultado'; SELECT pg_sleep(2); COMMIT;\n" \
   | PA > "$RECIBOS/bia-conc-1.out" 2>&1 ) &
@@ -171,13 +171,13 @@ eq "$(grep -E '^(nova|ocupado)$' "$RECIBOS/bia-conc-1.out" | head -1)" nova "1ª
 eq "$SEGUNDA" ocupado "2ª sessão concorrente recebe ocupado"
 [ "$ESPERA" -ge 1 ] && ok "2ª sessão esperou a trava ($ESPERA s)" || nao "2ª sessão não esperou a trava"
 
-echo "▶ v26_bia: retenção e cascade"
+echo "▶ v27_bia: retenção e cascade"
 PA -c "delete from auth.users where id='$U2'" >/dev/null
 eq "$(PA -c "select count(*) from agente_bia.conversa where dono='$U2'")" 0 "apagar o usuário apaga as conversas dele"
 eq "$(PA -c "select agente_bia.expurgar(10)" 2>&1 | grep -o 'mínima')" "mínima" "retenção mínima de 30 dias"
 eq "$(ESTADO_COMO=supabase_admin estado service_role "select agente_bia.expurgar(180)")" 42501 "service_role não executa expurgo"
 
-echo "▶ v26_bia: rollback"
+echo "▶ v27_bia: rollback"
 bia_reverter com-dado; grep -q "55000\|descartar_historico" "$RECIBOS/bia-com-dado.out" \
   && ok "rollback com dado é recusado" || nao "rollback com dado não foi recusado"
 eq "$(PA -c "select to_regnamespace('agente_bia') is not null")" t "rollback recusado é atômico (schema intacto)"

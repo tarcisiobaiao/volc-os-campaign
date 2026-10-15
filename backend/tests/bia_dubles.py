@@ -1,8 +1,8 @@
 """Dublês da Bia para a suíte hermética (não é módulo de teste).
 
-`LedgerMemoria` reproduz a semântica das RPCs da v26_01 em memória: é o que
+`LedgerMemoria` reproduz a semântica das RPCs da v27_01 em memória: é o que
 deixa as rotas serem provadas sem banco. A SQL de verdade é provada à parte,
-com os MESMOS cenários, em `tools/freedom-lab/db/suites/v26_bia.sh` (banco
+com os MESMOS cenários, em `tools/freedom-lab/db/suites/v27_bia.sh` (banco
 descartável) e em `test_agente_bia_ledger_lab.py` (adaptador ↔ SQL real).
 
 `HermesFalso` é um transporte httpx que imita o contrato do API Server
