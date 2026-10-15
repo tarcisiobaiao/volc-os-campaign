@@ -1,0 +1,375 @@
+{
+  "modo": "real",
+  "publicado": false,
+  "api_faturada": false,
+  "writer": "chatgpt/gpt-6.1-sol",
+  "juiz": "gpt-6-astra",
+  "teto_chamadas": 12,
+  "workers": 3,
+  "chamadas": [
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 36.0,
+      "prompt_tokens": 9531,
+      "completion_tokens": 1571
+    },
+    {
+      "pedido": "chatgpt/gpt-6-sol",
+      "servido": "chatgpt/gpt-6-sol",
+      "latencia_s": 234.9,
+      "prompt_tokens": 6098,
+      "completion_tokens": 9682
+    },
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 27.4,
+      "prompt_tokens": 14787,
+      "completion_tokens": 1443
+    },
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 40.8,
+      "prompt_tokens": 10361,
+      "completion_tokens": 1654
+    },
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 56.2,
+      "prompt_tokens": 15779,
+      "completion_tokens": 2368
+    },
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 26.8,
+      "prompt_tokens": 13818,
+      "completion_tokens": 1559
+    },
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 47.2,
+      "prompt_tokens": 15948,
+      "completion_tokens": 2424
+    },
+    {
+      "pedido": "chatgpt/gpt-6.1-sol",
+      "servido": "chatgpt/gpt-6.1-sol",
+      "latencia_s": 82.9,
+      "prompt_tokens": 107314,
+      "completion_tokens": 4520
+    },
+    {
+      "pedido": "chatgpt/gpt-6-astra",
+      "servido": "chatgpt/gpt-6-astra",
+      "latencia_s": 31.9,
+      "prompt_tokens": 12996,
+      "completion_tokens": 1117
+    },
+    {
+      "pedido": "chatgpt/gpt-6-astra",
+      "servido": "chatgpt/gpt-6-astra",
+      "latencia_s": 29.7,
+      "prompt_tokens": 12996,
+      "completion_tokens": 961
+    }
+  ],
+  "erro": null,
+  "A_write_p1": "OK",
+  "B_esqueleto": {
+    "estado": "OK",
+    "causas": []
+  },
+  "B_paginas": [
+    [
+      1,
+      "LP",
+      "visao_geral"
+    ],
+    [
+      2,
+      "PRESELL",
+      "escolha_da_duvida"
+    ],
+    [
+      3,
+      "SOLUTION",
+      "direito_consulta"
+    ],
+    [
+      4,
+      "SOLUTION",
+      "retirada_revenda"
+    ],
+    [
+      5,
+      "SOLUTION",
+      "atualizacao_cadunico"
+    ]
+  ],
+  "B_pacotes": {
+    "1": "27400711ccb9",
+    "2": "02fa3fdad51f",
+    "3": "191ef0e40cd8",
+    "4": "982deac29137",
+    "5": "5d14fc1302d8"
+  },
+  "B_writers_s": {
+    "1": 40.9,
+    "2": 27.5,
+    "3": 56.3,
+    "4": 47.2,
+    "5": 26.8
+  },
+  "B_write": {
+    "1": {
+      "estado": "OK",
+      "causas": []
+    },
+    "2": {
+      "estado": "OK",
+      "causas": [
+        "localizador:cta_execution"
+      ]
+    },
+    "3": {
+      "estado": "OK",
+      "causas": [
+        "localizador:cta_execution"
+      ]
+    },
+    "4": {
+      "estado": "OK",
+      "causas": [
+        "localizador:cta_execution"
+      ]
+    },
+    "5": {
+      "estado": "OK",
+      "causas": []
+    }
+  },
+  "B_revisao": {
+    "1": {
+      "decisao": "aprovado",
+      "motivos": []
+    },
+    "2": {
+      "decisao": "aprovado",
+      "motivos": []
+    },
+    "3": {
+      "decisao": "revisao_humana",
+      "motivos": [
+        "decidido_pelo_revisor"
+      ]
+    },
+    "4": {
+      "decisao": "aprovado",
+      "motivos": []
+    },
+    "5": {
+      "decisao": "aprovado",
+      "motivos": []
+    }
+  },
+  "A_estrutura": {
+    "botoes": 15,
+    "rotulos_distintos": 5,
+    "genericos": 0,
+    "repetidos_na_mesma_pagina": 3,
+    "saida_oficial_no_topo_com_duvida_aberta": [
+      3,
+      4
+    ],
+    "tensao_residual_declarada": 0,
+    "cta_por_origem_declarado": 0,
+    "esqueleto_bloqueantes": [],
+    "esqueleto_avisos": [
+      "coorte_fria_sem_resposta_direta",
+      "cta_sem_correspondencia_no_destino",
+      "tensao_residual_ausente"
+    ],
+    "palavras_por_pagina": {
+      "1": 920,
+      "2": 443,
+      "3": 645,
+      "4": 749,
+      "5": 549
+    }
+  },
+  "B_estrutura": {
+    "botoes": 12,
+    "rotulos_distintos": 10,
+    "genericos": 0,
+    "repetidos_na_mesma_pagina": 0,
+    "saida_oficial_no_topo_com_duvida_aberta": [],
+    "tensao_residual_declarada": 4,
+    "cta_por_origem_declarado": 9,
+    "esqueleto_bloqueantes": [],
+    "esqueleto_avisos": [
+      "bloco_sem_entrega_correspondente",
+      "coorte_fria_sem_resposta_direta"
+    ],
+    "palavras_por_pagina": {
+      "1": 1004,
+      "2": 542,
+      "3": 752,
+      "4": 826,
+      "5": 600
+    }
+  },
+  "julgamentos": [
+    {
+      "x": "A",
+      "y": "B",
+      "veredito": {
+        "x_conexao_com_intencao": 8,
+        "x_desejo_de_continuar": 4,
+        "x_forca_emocional": 3,
+        "x_clareza": 6,
+        "x_especificidade": 9,
+        "x_congruencia_do_cta": 8,
+        "x_valor_entregue": 7,
+        "x_diferenciacao": 6,
+        "x_potencial_de_profundidade": 8,
+        "x_policy_safety": 10,
+        "x_citacao_forte": "Frete e vasilhame podem ser cobrados, e a entrega depende da revenda.",
+        "x_fraqueza": "Antes de escolher esse caminho, formule a dúvida que você quer resolver.",
+        "y_conexao_com_intencao": 8,
+        "y_desejo_de_continuar": 6,
+        "y_forca_emocional": 4,
+        "y_clareza": 7,
+        "y_especificidade": 9,
+        "y_congruencia_do_cta": 8,
+        "y_valor_entregue": 8,
+        "y_diferenciacao": 7,
+        "y_potencial_de_profundidade": 8,
+        "y_policy_safety": 10,
+        "y_citacao_forte": "Se a dificuldade for com o código SMS, verifique o celular no CAIXA Tem; isso é diferente de uma pendência no Cadastro Único.",
+        "y_fraqueza": "O que define o caminho é a tarefa que falta resolver, não apenas o nome do programa.",
+        "vencedor": "Y",
+        "motivo": "Y vence por margem moderada: nas páginas de solução, entrega orientações práticas com menos interrupções e conecta a continuação a obstáculos concretos. A página de retirada já apresenta custos permitidos e canais de reclamação na abertura; a de cadastro acrescenta preparação para o atendimento. X também entrega informação útil, mas insere CTAs de retirada e CadÚnico antes de concluir explicações importantes, enfraquecendo a sequência de leitura. Ambos perdem força na entrada: a primeira dobra é abstrata, e LP e presell repetem excessivamente a tarefa de escolher uma dúvida. Isso reduz desejo de continuar e diferenciação, embora as soluções tenham conteúdo próprio. Os CTAs correspondem, em contexto, a guias, mas Y usa rótulos longos e o verbo 'Resolver' é menos preciso que 'Entender como resolver'. Não há promessa inequívoca de concessão, urgência inventada, falsa oficialidade ou coleta de dados sensíveis em nenhum dos dois. A vantagem de Y vem da utilidade e da progressão, não da quantidade de avisos ou referências oficiais."
+      },
+      "vencedor": "B",
+      "A": {
+        "conexao_com_intencao": 8,
+        "desejo_de_continuar": 4,
+        "forca_emocional": 3,
+        "clareza": 6,
+        "especificidade": 9,
+        "congruencia_do_cta": 8,
+        "valor_entregue": 7,
+        "diferenciacao": 6,
+        "potencial_de_profundidade": 8,
+        "policy_safety": 10
+      },
+      "B": {
+        "conexao_com_intencao": 8,
+        "desejo_de_continuar": 6,
+        "forca_emocional": 4,
+        "clareza": 7,
+        "especificidade": 9,
+        "congruencia_do_cta": 8,
+        "valor_entregue": 8,
+        "diferenciacao": 7,
+        "potencial_de_profundidade": 8,
+        "policy_safety": 10
+      }
+    },
+    {
+      "x": "B",
+      "y": "A",
+      "veredito": {
+        "x_conexao_com_intencao": 7,
+        "x_desejo_de_continuar": 5,
+        "x_forca_emocional": 3,
+        "x_clareza": 7,
+        "x_especificidade": 9,
+        "x_congruencia_do_cta": 9,
+        "x_valor_entregue": 7,
+        "x_diferenciacao": 6,
+        "x_potencial_de_profundidade": 8,
+        "x_policy_safety": 10,
+        "x_citacao_forte": "frete e vasilhame podem ser cobrados, mas não cabe complemento, taxa ou tarifa pela recarga coberta.",
+        "x_fraqueza": "Esse mapa já permite uma decisão: procure os critérios para entender quem pode receber; procure a consulta para conferir a situação da família; procure a orientação de retirada quando precisar entender o uso do vale na revenda.",
+        "y_conexao_com_intencao": 7,
+        "y_desejo_de_continuar": 5,
+        "y_forca_emocional": 3,
+        "y_clareza": 8,
+        "y_especificidade": 9,
+        "y_congruencia_do_cta": 8,
+        "y_valor_entregue": 7,
+        "y_diferenciacao": 6,
+        "y_potencial_de_profundidade": 8,
+        "y_policy_safety": 10,
+        "y_citacao_forte": "Se precisar de frete ou vasilhame, pergunte o preço desses itens separadamente da recarga antes de decidir.",
+        "y_fraqueza": "Verificar o CadÚnico",
+        "vencedor": "X",
+        "motivo": "X vence por margem pequena, principalmente pela continuidade mais contextualizada entre as soluções. Seus CTAs explicam melhor o conteúdo seguinte e aparecem associados a uma necessidade identificada: pendência cadastral, vale disponível ou preparação da retirada. Em Y, o CTA “Verificar o CadÚnico” aparece no início da página de retirada, entre a apresentação das formas de identificação e a orientação sobre o celular no CAIXA Tem. Isso interrompe uma resposta operacional e oferece um desvio cadastral antes de haver motivo para ele. Y também antecipa a chamada para retirada na página de critérios, antes de entregar os canais de consulta. Y ganha em concisão dos botões e organização de alguns checklists, mas essas vantagens não compensam inteiramente os desvios. Ambos perdem força na entrada: a primeira dobra fala mais sobre como organizar a leitura do que sobre resolver imediatamente a busca, e LP e presell repetem bastante a triagem. As soluções entregam valor concreto — critérios, documentos, custos e canais de reclamação —, mas a progressão inicial tem pouco valor incremental e pouca força emocional. Não há, no material apresentado, promessa individual, falsa oficialidade, urgência inventada ou coleta de dados sensíveis. Os contextos esclarecem que os destinos internos são orientações; por isso, a crítica aos CTAs de Y é editorial, não uma infração de segurança."
+      },
+      "vencedor": "B",
+      "B": {
+        "conexao_com_intencao": 7,
+        "desejo_de_continuar": 5,
+        "forca_emocional": 3,
+        "clareza": 7,
+        "especificidade": 9,
+        "congruencia_do_cta": 9,
+        "valor_entregue": 7,
+        "diferenciacao": 6,
+        "potencial_de_profundidade": 8,
+        "policy_safety": 10
+      },
+      "A": {
+        "conexao_com_intencao": 7,
+        "desejo_de_continuar": 5,
+        "forca_emocional": 3,
+        "clareza": 8,
+        "especificidade": 9,
+        "congruencia_do_cta": 8,
+        "valor_entregue": 7,
+        "diferenciacao": 6,
+        "potencial_de_profundidade": 8,
+        "policy_safety": 10
+      }
+    }
+  ],
+  "media_por_criterio": {
+    "A": {
+      "conexao_com_intencao": 7.5,
+      "desejo_de_continuar": 4.5,
+      "forca_emocional": 3.0,
+      "clareza": 7.0,
+      "especificidade": 9.0,
+      "congruencia_do_cta": 8.0,
+      "valor_entregue": 7.0,
+      "diferenciacao": 6.0,
+      "potencial_de_profundidade": 8.0,
+      "policy_safety": 10.0
+    },
+    "B": {
+      "conexao_com_intencao": 7.5,
+      "desejo_de_continuar": 5.5,
+      "forca_emocional": 3.5,
+      "clareza": 7.0,
+      "especificidade": 9.0,
+      "congruencia_do_cta": 8.5,
+      "valor_entregue": 7.5,
+      "diferenciacao": 6.5,
+      "potencial_de_profundidade": 8.0,
+      "policy_safety": 10.0
+    }
+  },
+  "total_100": {
+    "A": 70.0,
+    "B": 73.0
+  },
+  "veredito": "B",
+  "duracao_s": 494.0,
+  "total_chamadas": 10
+}

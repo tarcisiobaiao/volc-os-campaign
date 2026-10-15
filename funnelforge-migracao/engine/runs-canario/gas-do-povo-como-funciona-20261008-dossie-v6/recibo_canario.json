@@ -1,0 +1,37 @@
+{
+  "versao": "recibo-canario-v1",
+  "run_id": "gas-do-povo-como-funciona-20261008-dossie-v6",
+  "auth_mode": "api_key",
+  "chamadas_llm": 1,
+  "teto_de_chamadas": 40,
+  "etapas": [
+    {
+      "etapa": "engajamento",
+      "status": "OK",
+      "auth_mode": "api_key",
+      "modelo_pedido": "gpt-4.1",
+      "modelo_servido": "gemini-3.5-flash",
+      "reasoning_effort": null,
+      "tentativas": 1,
+      "tokens_entrada": 1250,
+      "tokens_saida": 2653,
+      "latencia_ms": 18954,
+      "custo": "API faturada: US$ 0.025752"
+    }
+  ],
+  "portoes": {
+    "revisao_esqueleto": "OK"
+  },
+  "imagem": "não exercitada",
+  "custo_api_faturada_usd": 0.025752,
+  "uso_do_plano": "reportado em tokens por etapa; sem equivalência financeira",
+  "publicacao": {
+    "publish": false,
+    "publish_status": "draft",
+    "publisher_ligado": false,
+    "gerador_de_imagem_ligado": false,
+    "paginas_publicadas": [],
+    "respostas_do_wordpress": 0,
+    "nada_publicado": true
+  }
+}

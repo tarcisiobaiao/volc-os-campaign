@@ -1,0 +1,24 @@
+{
+  "versao": "recibo-canario-v1",
+  "run_id": "programa-gas-do-povo-como-funciona-20261008-dossie-v4",
+  "auth_mode": "api_key",
+  "chamadas_llm": 0,
+  "teto_de_chamadas": 40,
+  "etapas": [],
+  "portoes": {
+    "funnel_graph": "FAILED",
+    "revisao_esqueleto": "FAILED"
+  },
+  "imagem": "não exercitada",
+  "custo_api_faturada_usd": 0.0,
+  "uso_do_plano": "reportado em tokens por etapa; sem equivalência financeira",
+  "publicacao": {
+    "publish": false,
+    "publish_status": "draft",
+    "publisher_ligado": false,
+    "gerador_de_imagem_ligado": false,
+    "paginas_publicadas": [],
+    "respostas_do_wordpress": 0,
+    "nada_publicado": true
+  }
+}

@@ -1,0 +1,496 @@
+{
+ "origem": "runs-canario/tarifa-social-energia-eletrica-20261010-canario-editorial",
+ "run": "tarifa-social-energia-eletrica-20261010-canario-copy",
+ "teto": 14,
+ "hints": [
+  {
+   "afirmacao": "Se o problema persistir depois do contato com a distribuidora, a ANEEL orienta registrar a solicitação nos canais de ate",
+   "resultado": "sustentado pelo documento"
+  },
+  {
+   "afirmacao": "Na fatura de energia estão disponíveis os telefones de contato da distribuidora e o número de identificação da unidade c",
+   "resultado": "sustentado pelo documento"
+  },
+  {
+   "afirmacao": "Enel Distribuição Ceará, Enel Distribuição Rio de Janeiro e Enel Distribuição São Paulo aparecem separadas, cada uma com",
+   "resultado": "sustentado pelo documento"
+  }
+ ],
+ "dossie_sha256": {
+  "antes": "3bf7c7ae0173d28b1ea6ec79b29bbb5a87cce3563d0898ecd767cfc4af44b1b4",
+  "depois": "cc429d677a3937ce42717ebacbf5c7507dc53219814bbf35938a1844de7ace4d"
+ },
+ "p4": {
+  "cobertura": "ready",
+  "requisitos": {
+   "distribuidoras.correspondencia": true,
+   "distribuidoras.servicos": true,
+   "distribuidoras.fatura": true
+  },
+  "canais_oficiais": [
+   "https://www.neoenergia.com/pt/w/clientes-das-concessionarias-da-neoenergia-podem-solicitar-tarifa-social-pelo-whatsapp",
+   "https://www.gov.br/aneel/pt-br/canais_atendimento/fale-com-a-sua-distribuidora"
+  ]
+ },
+ "grafo": "OK",
+ "revisao_esqueleto": "OK",
+ "rotulos": [
+  {
+   "origem": 1,
+   "destino": "quem-tem-direito-tarifa-social-pr",
+   "principal": true,
+   "antes": "Confira quem pode ter direito ao desconto",
+   "depois": "Quem tem direito à Tarifa Social?"
+  },
+  {
+   "origem": 1,
+   "destino": "como-saber-se-tarifa-social-esta-na-conta-p3",
+   "principal": false,
+   "antes": "Procure sinais de baixa renda na fatura",
+   "depois": "A Tarifa Social aparece na minha fatura?"
+  },
+  {
+   "origem": 1,
+   "destino": "quanto-paga-tarifa-social-p4",
+   "principal": false,
+   "antes": "Saiba por que a conta ainda pode ter valor a pagar",
+   "depois": "Por que ainda há valor a pagar na conta?"
+  },
+  {
+   "origem": 2,
+   "destino": "como-obter-tarifa-social-p1",
+   "principal": true,
+   "antes": "Saiba como o desconto pode entrar na conta",
+   "depois": "Como o desconto entra na conta de luz?"
+  },
+  {
+   "origem": 2,
+   "destino": "desconto-social-conta-de-luz-p5",
+   "principal": false,
+   "antes": "Compare o desconto na tarifa com a isenção da CDE",
+   "depois": "Desconto Social é igual à Tarifa Social?"
+  },
+  {
+   "origem": 2,
+   "destino": "quanto-paga-tarifa-social-p4",
+   "principal": false,
+   "antes": "Veja quais cobranças podem permanecer na conta",
+   "depois": "O desconto deixa a conta sem cobrança?"
+  },
+  {
+   "origem": 3,
+   "destino": "tarifa-social-por-distribuidora-p2",
+   "principal": true,
+   "antes": "Ache o contato da Neoenergia na fatura",
+   "depois": "Onde falar com a distribuidora da minha conta?"
+  },
+  {
+   "origem": 3,
+   "destino": "como-saber-se-tarifa-social-esta-na-conta-p3",
+   "principal": false,
+   "antes": "Confira como a Neoenergia indica baixa renda",
+   "depois": "Como identificar a Tarifa Social na fatura?"
+  },
+  {
+   "origem": 3,
+   "destino": "https://www.gov.br/pt-br/servicos/inscrever-se-no-cadastro-unico-para-programas-sociais-do-governo-federal?id=24433&origem=servico",
+   "principal": null,
+   "antes": null,
+   "depois": "gov.br: como se inscrever no Cadastro Único >>>"
+  },
+  {
+   "origem": 4,
+   "destino": "como-saber-se-tarifa-social-esta-na-conta-p3",
+   "principal": true,
+   "antes": null,
+   "depois": "Onde vejo o desconto na fatura?"
+  },
+  {
+   "origem": 4,
+   "destino": "https://www.neoenergia.com/pt/w/clientes-das-concessionarias-da-neoenergia-podem-solicitar-tarifa-social-pelo-whatsapp",
+   "principal": null,
+   "antes": null,
+   "depois": "Neoenergia: orientação sobre pedido por WhatsApp >>>"
+  },
+  {
+   "origem": 5,
+   "destino": "quanto-paga-tarifa-social-p4",
+   "principal": false,
+   "antes": "Veja como é cobrado o consumo acima de 80 kWh",
+   "depois": "O que ainda pode ser cobrado com a Tarifa Social?"
+  },
+  {
+   "origem": 6,
+   "destino": "desconto-social-conta-de-luz-p5",
+   "principal": false,
+   "antes": "Descubra o que a isenção da CDE muda na conta",
+   "depois": "Desconto Social e Tarifa Social mudam a mesma cobrança?"
+  },
+  {
+   "origem": 7,
+   "destino": "https://www.gov.br/mme/pt-br/luzdopovo/perguntas-frequentes-faq/perguntas-frequentes/",
+   "principal": null,
+   "antes": null,
+   "depois": "Ministério de Minas e Energia: regras do Desconto Social >>>"
+  }
+ ],
+ "primeira_dobra": {
+  "titulo": "Tarifa Social: desconto na conta de luz",
+  "subtitulo": "Famílias no CadÚnico com renda por pessoa de até meio salário-mínimo podem ter 100% de desconto na tarifa dos primeiros 80 kWh; outras cobranças podem permanecer.",
+  "assinatura": "7540a3f705fc2304",
+  "justificativa": "Nomeia o benefício, apresenta um critério de acesso e delimita o desconto sem prometer conta zerada.",
+  "origem": "sniper"
+ },
+ "entregas_ajustadas": [
+  {
+   "pagina": 2,
+   "entrega": "Apresenta as hipóteses de acesso e uma conta informativa da renda por pessoa, sem confirmar a composição legal dessa renda nem o valor vigente do salário-mínimo em reais."
+  }
+ ],
+ "chamadas_neste_processo": 9,
+ "log_novo": [
+  {
+   "ts": "canario-copy",
+   "step": "ctas_do_funil",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 4954,
+   "cached_tokens": 0,
+   "completion_tokens": 1640,
+   "cost_usd": 0.0,
+   "latency_ms": 32630,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0a6bf9e2bff2486e016acaaa65978487d297e27d346e63e750",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "revisor_lote",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6.1-sol",
+   "model_requested": "chatgpt/gpt-6.1-sol",
+   "fallback": false,
+   "prompt_tokens": 105837,
+   "cached_tokens": 0,
+   "completion_tokens": 5867,
+   "cost_usd": 0.0,
+   "latency_ms": 129176,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "reasoning_effort": "high",
+   "response_id": "resp_009fd424bd7a541c016acaaaf3bc7887d2bececae812c8a8f1",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p1",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 8487,
+   "cached_tokens": 0,
+   "completion_tokens": 1435,
+   "cost_usd": 0.0,
+   "latency_ms": 28264,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_00603beddc234fa2016aca999b482487d2ae1d92d3643d34b2",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p1",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 9720,
+   "cached_tokens": 0,
+   "completion_tokens": 1601,
+   "cost_usd": 0.0,
+   "latency_ms": 30941,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0a5bf83982e35b20016acaaa85909887d29f210e08e75b7feb",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p2",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 12821,
+   "cached_tokens": 0,
+   "completion_tokens": 1731,
+   "cost_usd": 0.0,
+   "latency_ms": 33677,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0cdb3ef9aea9d47c016aca999b387c87d29342f6c74e648d5e",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p2",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 13996,
+   "cached_tokens": 0,
+   "completion_tokens": 2246,
+   "cost_usd": 0.0,
+   "latency_ms": 43317,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0bf927bc955617e2016acaaa85690c87d28bd20e50b9ae7fd9",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p3",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 12154,
+   "cached_tokens": 0,
+   "completion_tokens": 2086,
+   "cost_usd": 0.0,
+   "latency_ms": 39601,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0d02a82579a752d4016aca999b11bc87d2a174de9d786ddded",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p3",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 12600,
+   "cached_tokens": 0,
+   "completion_tokens": 2208,
+   "cost_usd": 0.0,
+   "latency_ms": 42315,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_074d39825a05e2c0016acaaa854d4487d29045a9af4577336e",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p4",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 10563,
+   "cached_tokens": 0,
+   "completion_tokens": 1677,
+   "cost_usd": 0.0,
+   "latency_ms": 32778,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0decc113d0c4a35e016aca99b77c1087d28054d84b34018667",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p4",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 12222,
+   "cached_tokens": 0,
+   "completion_tokens": 1914,
+   "cost_usd": 0.0,
+   "latency_ms": 36714,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0bbbfbcea1305cb3016acaaaa476f087d2b82824f17976cb08",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p5",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 10990,
+   "cached_tokens": 0,
+   "completion_tokens": 1213,
+   "cost_usd": 0.0,
+   "latency_ms": 23843,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_063a5c4705ab9e3f016aca99bce03087d28d2c2d3522d3eb7a",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p5",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 11294,
+   "cached_tokens": 0,
+   "completion_tokens": 1262,
+   "cost_usd": 0.0,
+   "latency_ms": 25660,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0cf17dae71a1ec78016acaaaafdce487d29a1a2cc79377de00",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p6",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 11014,
+   "cached_tokens": 0,
+   "completion_tokens": 1569,
+   "cost_usd": 0.0,
+   "latency_ms": 30405,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_013d19095d2b1e3d016aca99c29dd087d2a24e4339347cd2e8",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p6",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 11367,
+   "cached_tokens": 0,
+   "completion_tokens": 1891,
+   "cost_usd": 0.0,
+   "latency_ms": 35878,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0314bedcf596b7bd016acaaab0a8c887d2b737f66146d553ba",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-editorial",
+   "step": "write_p7",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 11008,
+   "cached_tokens": 0,
+   "completion_tokens": 2024,
+   "cost_usd": 0.0,
+   "latency_ms": 38255,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0538463077bdc431016aca99d47d2c87d282f8440d6656da51",
+   "classe": "aprovado",
+   "retentar": false
+  },
+  {
+   "ts": "canario-copy",
+   "step": "write_p7",
+   "attempt": 1,
+   "model": "chatgpt/gpt-6-sol",
+   "model_requested": "chatgpt/gpt-6-sol",
+   "fallback": false,
+   "prompt_tokens": 11278,
+   "cached_tokens": 0,
+   "completion_tokens": 2168,
+   "cost_usd": 0.0,
+   "latency_ms": 40736,
+   "n_issues": 0,
+   "causas": [],
+   "auth_mode": "chatgpt_plan",
+   "response_id": "resp_0f923fd781cf2bd3016acaaac90cf087d2812baa3ca05c72c3",
+   "classe": "aprovado",
+   "retentar": false
+  }
+ ],
+ "paginas": {
+  "1": {
+   "revisao": "aprovado",
+   "falhas": {}
+  },
+  "2": {
+   "revisao": "aprovado",
+   "falhas": {}
+  },
+  "3": {
+   "revisao": "aprovado",
+   "falhas": {}
+  },
+  "4": {
+   "revisao": "aprovado",
+   "falhas": {}
+  },
+  "5": {
+   "revisao": "aprovado",
+   "falhas": {}
+  },
+  "6": {
+   "revisao": "revisao_humana",
+   "falhas": {
+    "revisor_p6": [
+     "revisao_humana"
+    ],
+    "blocked_p6": [
+     "fail_closed"
+    ]
+   }
+  },
+  "7": {
+   "revisao": "aprovado",
+   "falhas": {}
+  }
+ },
+ "revisao_global": "OK"
+}
