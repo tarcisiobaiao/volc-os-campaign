@@ -78,7 +78,9 @@ for estrategia, extra in (("MANUAL_CPC", {"cpc_inicial": 0.5}), ("MAXIMIZE_CONVE
 passo("gestão: propor +10% verba na Senac (deve recusar sem regra, sem gravar)",
       c.post("/api/trafego/gestao/propostas", json={
           "customer_id": CONTA, "motivo": "smoke do fluxo real, sem aplicar",
-          "acao": {"tipo": "orcamento.diario", "campaign_id": CAMPANHA_ATIVA, "amount_micros": 33_000_000}}),
+          "acao": {"tipo": "orcamento.diario", "campaign_id": CAMPANHA_ATIVA, "amount_micros": 33_000_000,
+                   # W5: sem origem a recusa seria `valor_sem_origem`, não a da regra.
+                   "origem": "operador"}}),
       lambda b: {"detail": b.get("detail"), "codigo": (b.get("detail") or {}).get("codigo") if isinstance(b.get("detail"), dict) else None})
 passo("gestão: recomendações (leitura Google)", c.get("/api/trafego/gestao/recomendacoes", params={"customer_id": CONTA}),
       lambda b: {"n": len(b) if isinstance(b, list) else len(b.get("recomendacoes", [])) if isinstance(b, dict) else None})

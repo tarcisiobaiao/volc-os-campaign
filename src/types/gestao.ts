@@ -487,6 +487,8 @@ export type CodigoDeErroDaGestao =
   | 'plataforma'
   | 'fora_do_escopo'
   | 'proposta_ilegivel'
+  | 'valor_sem_origem'
+  | 'valor_sem_autoridade'
   | 'indisponivel'
   | 'escopo_indisponivel'
   | 'sdk_ausente'

@@ -63,6 +63,16 @@ describe('os 409 do contrato viram frase de operação', () => {
       expect(e.tecnica).toBe(`mensagem do servidor para ${c}`);
     }
   });
+  it('valor sem origem e sem autoridade explicam o que falta e como corrigir', () => {
+    const sem = erroLegivel(erro('valor_sem_origem', 422));
+    expect(sem.titulo).toMatch(/de onde veio o valor/);
+    expect(sem.proximoPasso).toMatch(/Digite o valor no formulário/);
+    const sa = erroLegivel(erro('valor_sem_autoridade', 422));
+    expect(sa.titulo).toMatch(/não autoriza gastar verba/);
+    expect(sa.proximoPasso).toMatch(/SERP/);
+    expect(sa.proximoPasso).toMatch(/recuse-a e proponha de novo/);
+    expect(sa.titulo).not.toMatch(/mensagem do servidor/);
+  });
   it('código desconhecido cai na mensagem do servidor, e 403 sem código é papel', () => {
     expect(erroLegivel(erro('codigo_novo', 409)).titulo).toBe('mensagem do servidor para codigo_novo');
     expect(erroLegivel(new ErroDaGestao('Esta operação exige papel administrativo.', 403)).titulo).toMatch(/administrativo/);

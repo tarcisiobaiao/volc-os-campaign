@@ -238,7 +238,8 @@ export function valorLegivel(chave: string, valor: unknown, moeda: string | null
   }
   if (chave === 'origem_valor' && valor && typeof valor === 'object') {
     const o = valor as Record<string, unknown>;
-    return `${String(o.origem ?? AUSENTE)} (${String(o.evidencia ?? '')})`;
+    const porque = typeof o.justificativa === 'string' && o.justificativa ? ` — ${o.justificativa}` : '';
+    return `${String(o.origem ?? AUSENTE)}${porque} (${String(o.evidencia ?? '')})`;
   }
   if (Array.isArray(valor)) {
     if (!valor.length) return 'nenhum';

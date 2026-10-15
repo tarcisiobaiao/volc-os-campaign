@@ -70,6 +70,7 @@ from .gads.client import (
     validar_mutacoes,
 )
 from .gads.errors import FalhaGads
+from .gestao.valor import ValorSemAutoridade, exigir_dinheiro_autorizado
 
 # Onde os recibos ficam. Arquivo, e não banco, de propósito: o recibo tem de
 # sobreviver a um processo que morreu no meio da chamada, e nesse instante o
@@ -664,6 +665,7 @@ def preparar(
     ai_max: bool = False,
     configuracao: Any = None,
     autocorrigir: bool = True,
+    valores: Any = (),
 ) -> Preparo:
     """Monta o grafo, valida local e roda `validate_only`. NADA é criado.
 
@@ -677,6 +679,11 @@ def preparar(
     construtor em Search/Display, campo do brief em Demand Gen/PMax. `None` é o
     chamador antigo, e o payload dele não muda. Ela entra no selo pelo único
     caminho que importa — as operações que ela produz.
+
+    `valores` são os `ValorMonetario` de verba e lance que o chamador declara
+    (W5). Todo número de orçamento, lance, teto ou meta que o payload carrega
+    precisa de um que o autorize (operador ou medido_na_conta) — senão a recusa
+    vem ANTES do `validate_only`, sem selo. Vazio = nenhum dinheiro autorizado.
     """
     p = perfil.exigir_prova(canal)
     canal_resolvido = p.canal
@@ -740,6 +747,21 @@ def preparar(
             nome_campanha=nome,
             canal=canal_resolvido,
             recusa_local=f"autoridade das operações: {exc}",
+            avisos_locais=avisos_locais,
+            linhagem=_linhagem_do_payload(brief, operacoes),
+        )
+
+    try:
+        exigir_dinheiro_autorizado(operacoes, valores)
+    except ValorSemAutoridade as exc:
+        # Verba ou lance sem origem que autorize: nem o ensaio sai.
+        return Preparo(
+            customer_id=str(customer_id),
+            login_customer_id=str(login_customer_id),
+            operacoes=operacoes,
+            nome_campanha=nome,
+            canal=canal_resolvido,
+            recusa_local=f"valor_sem_autoridade: {exc}",
             avisos_locais=avisos_locais,
             linhagem=_linhagem_do_payload(brief, operacoes),
         )
@@ -820,6 +842,8 @@ def preparar(
                     autoridade2 = _autoridade_das_operacoes(
                         operacoes2, canal_esperado=canal_resolvido
                     )
+                    # O remontado passa pelo mesmo crivo de verba/lance (W5).
+                    exigir_dinheiro_autorizado(operacoes2, valores)
                 except ValueError as exc:
                     autocorrecao = (
                         *decisao.diario,

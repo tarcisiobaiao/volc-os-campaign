@@ -23,14 +23,25 @@ que o humano aprovou, e não de um payload guardado ao lado que ninguém viu.
 ## Verba e lance dizem de onde vieram (`ValorMonetario`)
 
 `orcamento.diario`, `lance.alvo` (tCPA/teto de CPC) e `lance.estrategia` com
-alvo em dinheiro exigem `origem` no pedido. Só `operador` e `medido_na_conta`
-passam (`ValorMonetario.autoriza`); `serp`, `keyword_planner`, `dataforseo`,
-`ferramenta_externa`, `estimativa_modelo` são recusados aqui, com 422, antes de
-ler a conta. A evidência do `operador` é carimbada AQUI com o autor
-autenticado e o instante — a tela não escolhe quem é o operador. `medido_na_
-conta` traz a GAQL que leu o número em `evidencia`. A origem vai gravada em
-`valor_proposto.origem_valor` e volta com a proposta; proposta antiga sem ela
-volta como `nao_informada`, que `operacoes()` recusa na hora de aplicar.
+alvo em dinheiro exigem `origem` no pedido, e a origem é ESCRITA AQUI, não pela
+tela:
+
+· `operador`: só uma identidade de SESSÃO (humano) — serviço não é operador. A
+  evidência `operador:<sub>/<papel>@<agora>` sai da identidade autenticada, e
+  a justificativa é o `motivo` obrigatório da proposta. Evidência mandada pelo
+  cliente é ignorada.
+· `medido_na_conta`: só com `medicao = {proposta_id, campo, as_of, sha256}`,
+  apontando o "antes" que o próprio backend leu e gravou numa proposta. Aqui se
+  confere a forma; o caso de uso confere o registro guardado (hash, as_of,
+  valor, mesma campanha) antes de ler a conta. Texto livre não é medição.
+· qualquer outra origem (serp, keyword_planner, dataforseo, ferramenta_externa,
+  estimativa_modelo): 422 `valor_sem_autoridade`, antes de ler a conta. No tROAS
+  (razão, sem origem obrigatória) uma origem que não autoriza também é recusada,
+  em vez de descartada em silêncio.
+
+A origem vai gravada em `valor_proposto.origem_valor` e volta com a proposta;
+proposta antiga sem ela volta como `nao_informada`: verifica e reverte, mas não
+é aprovada nem aplicada, e não segura a chave de idempotência.
 
 `reverso.remover_criados` não entra pela ida: ele só existe como reverso de
 outra ação, montado por `ledger.reversao` a partir do que a aplicação criou.
@@ -42,7 +53,8 @@ from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from volc_ads.gestao import acoes as A
 from volc_ads.gestao.acoes import AcaoRecusada
-from volc_ads.gestao.valor import ValorMonetario, ValorSemAutoridade
+from volc_ads.gestao import valor as V
+from volc_ads.gestao.valor import ORIGENS_QUE_AUTORIZAM, ValorMonetario, ValorSemAutoridade
 
 from .erros import AcaoInvalida
 
@@ -129,9 +141,29 @@ def _int(v: Any, rotulo: str) -> int:
     return v
 
 
-def _dinheiro(d: Mapping[str, Any], campo: str, tipo: str, autor: str,
-              quando: str) -> ValorMonetario:
-    """O número do pedido com a origem dele — e só se a origem autoriza verba."""
+@dataclass(frozen=True)
+class Ator:
+    """Quem pede, como a borda autenticou (`Identidade`). Nunca vem do corpo."""
+
+    sub: str
+    papel: str
+    origem: str  # "sessao" (humano) ou "servico"
+
+
+@dataclass(frozen=True)
+class Contexto:
+    ator: Optional[Ator] = None
+    quando: str = ""
+    justificativa: str = ""
+
+
+def _sem_autoridade(tipo: str, campo: str, porque: str, **detalhe: Any) -> AcaoInvalida:
+    return AcaoInvalida(f"{tipo}: {porque}", codigo="valor_sem_autoridade",
+                        detalhe={"campo": campo, **detalhe})
+
+
+def _dinheiro(d: Mapping[str, Any], campo: str, tipo: str, ctx: Contexto) -> ValorMonetario:
+    """O número do pedido com a origem que o SERVIDOR escreve — e só se ela autoriza."""
     micros = _int(_obrig(d, campo, tipo), campo)
     origem = d.get("origem")
     if not origem:
@@ -139,30 +171,53 @@ def _dinheiro(d: Mapping[str, Any], campo: str, tipo: str, autor: str,
             f"{tipo}: `{campo}` sem `origem`. Verba e lance dizem de onde vieram "
             "(operador ou medido_na_conta)", codigo="valor_sem_origem",
             detalhe={"campo": campo})
-    if origem == "operador":
-        quem = "_".join(str(autor or "").split())
-        if not quem or not quando:
-            raise AcaoInvalida(f"{tipo}: origem operador exige o autor autenticado",
-                               codigo="valor_sem_origem", detalhe={"campo": campo})
-        evidencia = f"operador:{quem}@{quando}"
-    else:
-        evidencia = str(d.get("evidencia") or "")
     try:
-        valor = ValorMonetario(micros, str(origem), evidencia)
+        if origem == "operador":
+            a = ctx.ator
+            if a is None or not a.sub or not ctx.quando:
+                raise _sem_autoridade(tipo, campo, "origem operador exige identidade "
+                                      "autenticada", origem=origem)
+            if a.origem != "sessao":
+                raise _sem_autoridade(tipo, campo, "identidade de serviço não é operador: "
+                                      "só um humano em sessão autoriza verba ou lance",
+                                      origem=origem)
+            valor = V.operador(micros, "_".join(a.sub.split()), "_".join(a.papel.split()) or "-",
+                               ctx.quando, ctx.justificativa)
+        elif origem == "medido_na_conta":
+            m = d.get("medicao")
+            if not isinstance(m, Mapping) or not all(m.get(k) for k in
+                                                     ("proposta_id", "campo", "as_of", "sha256")):
+                raise _sem_autoridade(
+                    tipo, campo, "medido_na_conta exige `medicao` {proposta_id, campo, as_of, "
+                    "sha256} de uma leitura guardada pelo backend; texto livre não é medição",
+                    origem=origem)
+            valor = ValorMonetario(
+                micros, "medido_na_conta",
+                f"medicao:trafego_proposta.valor_atual/{m['proposta_id']}#{m['campo']}"
+                f"@{m['as_of']} sha256={m['sha256']}")
+        else:
+            valor = ValorMonetario(micros, str(origem), str(d.get("evidencia") or origem))
         valor.autoriza()
     except ValorSemAutoridade as exc:
-        raise AcaoInvalida(f"{tipo}: {exc}", codigo="valor_sem_autoridade",
-                           detalhe={"campo": campo, "origem": origem}) from exc
+        raise _sem_autoridade(tipo, campo, str(exc), origem=origem) from exc
     return valor
 
 
-def _montar(tipo: str, d: Mapping[str, Any], autor: str = "", quando: str = "") -> Pedido:
+def _sem_origem_que_desautoriza(d: Mapping[str, Any], campo: str, tipo: str) -> None:
+    """tROAS não exige origem; mas uma origem declarada que não autoriza não some."""
+    origem = d.get("origem")
+    if origem and origem not in ORIGENS_QUE_AUTORIZAM:
+        raise _sem_autoridade(tipo, campo, f"origem {origem!r} não autoriza lance; "
+                              "a declaração não é descartada", origem=origem)
+
+
+def _montar(tipo: str, d: Mapping[str, Any], ctx: Contexto) -> Pedido:
     if tipo == "status":
         return Pedido(A.AlterarStatus(_obrig(d, "nivel", tipo), str(_obrig(d, "ident", tipo)),
                                       _obrig(d, "status", tipo)))
     if tipo == "orcamento.diario":
         cid = _obrig(d, "campaign_id", tipo)
-        valor = _dinheiro(d, "amount_micros", tipo, autor, quando)
+        valor = _dinheiro(d, "amount_micros", tipo, ctx)
         ciente = bool(d.get("compartilhado_ciente", False))
         if d.get("budget_id") is not None:
             return Pedido(A.AlterarOrcamento(cid, d["budget_id"], valor, ciente))
@@ -172,9 +227,13 @@ def _montar(tipo: str, d: Mapping[str, Any], autor: str = "", quando: str = "") 
     if tipo == "lance.alvo":
         cid = _obrig(d, "campaign_id", tipo)
         alvo = _obrig(d, "alvo", tipo)
-        # tROAS é razão, não dinheiro: segue sem origem (lacuna declarada no W5).
-        valor = (_obrig(d, "valor", tipo) if alvo == "troas"
-                 else _dinheiro(d, "valor", tipo, autor, quando))
+        # tROAS é razão, não dinheiro: segue sem origem obrigatória (lacuna
+        # declarada no W5), mas origem que não autoriza é recusada.
+        if alvo == "troas":
+            _sem_origem_que_desautoriza(d, "valor", tipo)
+            valor = _obrig(d, "valor", tipo)
+        else:
+            valor = _dinheiro(d, "valor", tipo, ctx)
         if d.get("estrategia"):
             return Pedido(A.AlterarAlvoDeLance(cid, d["estrategia"], alvo, valor))
         if alvo not in _SONDA_DO_ALVO:
@@ -183,11 +242,13 @@ def _montar(tipo: str, d: Mapping[str, Any], autor: str = "", quando: str = "") 
         sonda = A.AlterarAlvoDeLance(cid, _SONDA_DO_ALVO[alvo], alvo, valor)
         return Pedido(sonda, lambda antes: A.AlterarAlvoDeLance.do_estado(antes, alvo, valor))
     if tipo == "lance.estrategia":
+        _sem_origem_que_desautoriza(d, "troas/alvo", tipo)
+
         def alvo_em_dinheiro(campo: str) -> Optional[ValorMonetario]:
             # 0/ausente = estratégia sem alvo: não é número que autorize verba.
             if not _int(d.get(campo, 0) or 0, campo):
                 return None
-            return _dinheiro(d, campo, tipo, autor, quando)
+            return _dinheiro(d, campo, tipo, ctx)
 
         return Pedido(A.TrocarEstrategia(
             _obrig(d, "campaign_id", tipo), _obrig(d, "nova", tipo),
@@ -245,19 +306,21 @@ def _montar(tipo: str, d: Mapping[str, Any], autor: str = "", quando: str = "") 
     raise AcaoInvalida(f"tipo de ação desconhecido: {tipo!r}", detalhe={"validos": list(TIPOS)})
 
 
-def pedido_do_payload(payload: Mapping[str, Any], *, autor: str = "",
-                      quando: str = "") -> Pedido:
+def pedido_do_payload(payload: Mapping[str, Any], *, ator: Optional[Ator] = None,
+                      quando: str = "", justificativa: str = "") -> Pedido:
     """`{"tipo": ..., <campos do tipo>}` → `Pedido`. 422 em qualquer recusa local.
 
-    `autor`/`quando` carimbam a evidência de `origem: operador` (ver o topo).
+    `ator`/`quando`/`justificativa` escrevem a origem `operador` (ver o topo).
     """
     if not isinstance(payload, Mapping):
         raise AcaoInvalida("`acao` tem de ser objeto com `tipo`")
     tipo = str(payload.get("tipo") or "")
     try:
-        return _montar(tipo, payload, autor, quando)
+        return _montar(tipo, payload, Contexto(ator, quando, justificativa))
     except AcaoInvalida:
         raise
+    except ValorSemAutoridade as exc:
+        raise AcaoInvalida(f"{tipo}: {exc}", codigo="valor_sem_autoridade") from exc
     except (AcaoRecusada, TypeError, ValueError) as exc:
         raise AcaoInvalida(f"{tipo}: {exc}") from exc
 
@@ -275,7 +338,8 @@ def _dinheiro_gravado(linha: Mapping[str, Any], vp: Mapping[str, Any],
     antes do W5), `nao_informada`: reconstrói, verifica e reverte, mas não aplica."""
     o = vp.get("origem_valor")
     if isinstance(o, Mapping) and o.get("origem"):
-        return ValorMonetario(micros, str(o["origem"]), str(o.get("evidencia") or ""))
+        return ValorMonetario(micros, str(o["origem"]), str(o.get("evidencia") or ""),
+                              str(o.get("justificativa") or ""))
     return ValorMonetario(micros, "nao_informada",
                           f"proposta {linha.get('proposta_id')} gravada sem origem_valor")
 

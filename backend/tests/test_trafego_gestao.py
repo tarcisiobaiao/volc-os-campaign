@@ -28,6 +28,7 @@ from app.routers import trafego_gestao as rota  # noqa: E402
 from app.seguranca.identidade import Identidade, exigir_admin, exigir_usuario  # noqa: E402
 from app.trafego.gestao.application import autonomia, erros as E  # noqa: E402
 from app.trafego.gestao.application import payload as P  # noqa: E402
+from app.trafego.gestao.application.payload import Ator  # noqa: E402
 from app.trafego.gestao.application.casos_de_uso import (  # noqa: E402
     GoogleRecusou, campos_divergentes, conferir_contra_regra, janela_da_regra)
 from app.trafego.gestao.application.efeito import conferir_efeito  # noqa: E402
@@ -41,9 +42,13 @@ ORC = {"tipo": "orcamento.diario", "campaign_id": CAMP, "amount_micros": 36_000_
 QUANDO = "2026-10-15T12:00:00+00:00"
 
 
+ATOR = Ator(sub="u2", papel="OPERATOR", origem="sessao")
+
+
 def _pedido(payload):
-    """A ida como `propor` a faz: o autor autenticado carimba a origem operador."""
-    return P.pedido_do_payload(payload, autor="op@volc", quando=QUANDO)
+    """A ida como `propor` a faz: a identidade autenticada escreve a origem operador."""
+    return P.pedido_do_payload(payload, ator=ATOR, quando=QUANDO,
+                               justificativa="CPA estável, verba limitando")
 
 
 def _diff(p):
@@ -51,7 +56,7 @@ def _diff(p):
 
 
 async def _proposta_aprovada(g):
-    r = await g.propor(CID, ORC, motivo="CPA estável, verba limitando", autor="op@volc")
+    r = await g.propor(CID, ORC, motivo="CPA estável, verba limitando", autor="op@volc", ator=ATOR)
     p = r["proposta"]
     await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="admin@volc",
                     diff_apresentado=_diff(p))
@@ -142,7 +147,7 @@ def test_orcamento_sem_budget_id_e_completado_pelo_estado():
 
 async def test_propor_le_o_antes_e_grava_evidencia_diagnostico_e_proposta():
     g, led, conta = D.gestao_de_teste()
-    r = await g.propor(CID, ORC, motivo="CPA estável, verba limitando", autor="op@volc")
+    r = await g.propor(CID, ORC, motivo="CPA estável, verba limitando", autor="op@volc", ator=ATOR)
     p = r["proposta"]
     assert not r["ja_existia"] and p["estado"] == "aguardando_aprovacao"
     assert p["operacao"] == "orcamento.diario" and p["delta_pct"] == 20.0
@@ -151,7 +156,8 @@ async def test_propor_le_o_antes_e_grava_evidencia_diagnostico_e_proposta():
     origem = proposto.pop("origem_valor")
     assert proposto == {"verba_diaria_micros": 36_000_000, "budget_id": D.BUDGET}
     # A origem é carimbada pelo servidor com o autor autenticado, não pela tela.
-    assert origem["origem"] == "operador" and origem["evidencia"].startswith("operador:op@volc@")
+    assert origem["origem"] == "operador" and origem["evidencia"].startswith("operador:u2/OPERATOR@")
+    assert origem["justificativa"] == "CPA estável, verba limitando"
     assert p["volc_campaign_id"] and p["criada_por"] == "humano:op@volc"
     ev = led.evidencias[r["evidencia_id"]]
     assert ev["suficiencia"] == "suficiente" and ev["moeda"] == "BRL"
@@ -163,8 +169,8 @@ async def test_propor_le_o_antes_e_grava_evidencia_diagnostico_e_proposta():
 
 async def test_propor_e_idempotente_pela_chave_do_conteudo():
     g, led, _ = D.gestao_de_teste()
-    a = await g.propor(CID, ORC, motivo="m1", autor="op")
-    b = await g.propor(CID, ORC, motivo="m2", autor="outro")
+    a = await g.propor(CID, ORC, motivo="m1 (justificativa do teste)", autor="op", ator=ATOR)
+    b = await g.propor(CID, ORC, motivo="m2 (justificativa do teste)", autor="outro", ator=ATOR)
     assert b["ja_existia"] and b["proposta"]["proposta_id"] == a["proposta"]["proposta_id"]
     assert len(led.propostas) == 1 and len(led.evidencias) == 1
     # Contrato §3.2: "já existia" tem o MESMO formato da proposta nova.
@@ -192,34 +198,34 @@ def test_chave_da_tentativa_e_deterministica_e_cabe_na_check():
 async def test_proposta_recusada_nao_prende_o_operador():
     """A divergência 1: recusada sobre o mesmo "antes" devolvia a velha para sempre."""
     g, led, _ = D.gestao_de_teste()
-    a = await g.propor(CID, ORC, motivo="m1", autor="op")
+    a = await g.propor(CID, ORC, motivo="m1 (justificativa do teste)", autor="op", ator=ATOR)
     pa = a["proposta"]
     await g.aprovar(pa["proposta_id"], "recusada", motivo="caro agora", aprovador="adm",
                     diff_apresentado=_diff(pa))
-    b = await g.propor(CID, ORC, motivo="m2", autor="op")
+    b = await g.propor(CID, ORC, motivo="m2 (justificativa do teste)", autor="op", ator=ATOR)
     pb = b["proposta"]
     assert not b["ja_existia"] and pb["proposta_id"] != pa["proposta_id"]
     assert pb["idempotency_key"] == f"{pa['idempotency_key']}:t2"
     assert pb["estado"] == "aguardando_aprovacao" and b["evidencia_id"] != a["evidencia_id"]
     # A nova está viva: repetir devolve ELA (não a recusada, não uma terceira).
-    c = await g.propor(CID, ORC, motivo="m3", autor="op")
+    c = await g.propor(CID, ORC, motivo="m3 (justificativa do teste)", autor="op", ator=ATOR)
     assert c["ja_existia"] and c["proposta"]["proposta_id"] == pb["proposta_id"]
     assert (c["evidencia_id"], c["diagnostico_id"]) == (b["evidencia_id"], b["diagnostico_id"])
     assert len(led.propostas) == 2 and len(_vivas(led)) == 1
     # Recusada de novo → terceira tentativa.
     await g.aprovar(pb["proposta_id"], "recusada", motivo="ainda caro", aprovador="adm",
                     diff_apresentado=_diff(pb))
-    d = await g.propor(CID, ORC, motivo="m4", autor="op")
+    d = await g.propor(CID, ORC, motivo="m4 (justificativa do teste)", autor="op", ator=ATOR)
     assert not d["ja_existia"]
     assert d["proposta"]["idempotency_key"] == f"{pa['idempotency_key']}:t3"
 
 
 async def test_proposta_vencida_e_marcada_expirada_e_nasce_outra():
     g, led, _ = D.gestao_de_teste()
-    pa = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    pa = (await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR))["proposta"]
     led.propostas[pa["proposta_id"]]["expira_em"] = (
         datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
-    b = await g.propor(CID, ORC, motivo="m", autor="op")
+    b = await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     assert not b["ja_existia"] and b["proposta"]["idempotency_key"].endswith(":t2")
     assert led.propostas[pa["proposta_id"]]["estado"] == "expirada"
     assert len(_vivas(led)) == 1
@@ -234,7 +240,7 @@ async def test_aprovada_com_tentativa_sem_resposta_segue_viva_mesmo_vencida():
         await g.aplicar(p["proposta_id"], executor="adm")
     led.propostas[p["proposta_id"]]["expira_em"] = (
         datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
-    r = await g.propor(CID, ORC, motivo="de novo", autor="op")
+    r = await g.propor(CID, ORC, motivo="de novo (justificativa do teste)", autor="op", ator=ATOR)
     assert r["ja_existia"] and r["proposta"]["proposta_id"] == p["proposta_id"]
     assert led.propostas[p["proposta_id"]]["estado"] == "aprovada"
     assert len(led.propostas) == 1
@@ -246,7 +252,7 @@ async def test_revertida_e_aplicada_nao_seguram_a_idempotencia():
     ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
     await g.reverter(ap["aplicacao_id"], motivo="CPA subiu", autor="adm")
     assert led.propostas[p["proposta_id"]]["estado"] == "revertida"
-    b = await g.propor(CID, ORC, motivo="tentar de novo", autor="op")  # mesmo "antes": 30M
+    b = await g.propor(CID, ORC, motivo="tentar de novo", autor="op", ator=ATOR)  # mesmo "antes": 30M
     assert not b["ja_existia"] and b["proposta"]["idempotency_key"] == \
         f"{p['idempotency_key']}:t2"
 
@@ -255,14 +261,14 @@ async def test_revertida_e_aplicada_nao_seguram_a_idempotencia():
     p = await _proposta_aprovada(g)
     await g.aplicar(p["proposta_id"], executor="adm")
     conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 30_000_000
-    c = await g.propor(CID, ORC, motivo="alguém voltou a verba", autor="op")
+    c = await g.propor(CID, ORC, motivo="alguém voltou a verba", autor="op", ator=ATOR)
     assert not c["ja_existia"] and c["proposta"]["idempotency_key"].endswith(":t2")
 
 
 async def test_corrida_na_reproposta_deixa_uma_viva():
     """Dois repropõem juntos: os dois calculam `base:t2` e a UNIQUE escolhe um."""
     g, led, _ = D.gestao_de_teste()
-    pa = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    pa = (await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR))["proposta"]
     await g.aprovar(pa["proposta_id"], "recusada", motivo="não", aprovador="adm",
                     diff_apresentado=_diff(pa))
     t2 = f"{pa['idempotency_key']}:t2"
@@ -277,7 +283,7 @@ async def test_corrida_na_reproposta_deixa_uma_viva():
         return achou
 
     led.proposta_por_chave = le_antes_do_rival
-    r = await g.propor(CID, ORC, motivo="m", autor="op")
+    r = await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     assert r["ja_existia"] and r["proposta"]["proposta_id"] == "rival"
     assert len(_vivas(led)) == 1
 
@@ -285,14 +291,14 @@ async def test_corrida_na_reproposta_deixa_uma_viva():
 async def test_propor_campanha_nao_importada_e_recusada_sem_gravar():
     g, led, _ = D.gestao_de_teste(importada=False)
     with pytest.raises(E.CampanhaNaoImportada):
-        await g.propor(CID, ORC, motivo="m", autor="op")
+        await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     assert not led.ops
 
 
 async def test_propor_sem_regra_vigente():
     g, led, _ = D.gestao_de_teste(regras=[])
     with pytest.raises(E.RegraAusente):
-        await g.propor(CID, ORC, motivo="m", autor="op")
+        await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
 
 
 async def test_acao_sem_numero_esbarra_na_trava_4a_da_v10_02():
@@ -300,18 +306,18 @@ async def test_acao_sem_numero_esbarra_na_trava_4a_da_v10_02():
     g, led, _ = D.gestao_de_teste()
     with pytest.raises(E.ForaDaRegra) as exc:
         await g.propor(CID, {"tipo": "status", "nivel": "campanha", "ident": CAMP,
-                             "status": "PAUSED"}, motivo="sem conversão", autor="op")
+                             "status": "PAUSED"}, motivo="sem conversão", autor="op", ator=ATOR)
     assert exc.value.codigo == "regra_exige_delta" and not led.ops
 
 
 async def test_limite_percentual_e_teto_da_regra():
     g, led, _ = D.gestao_de_teste()
     with pytest.raises(E.ForaDaRegra) as exc:
-        await g.propor(CID, {**ORC, "amount_micros": 60_000_000}, motivo="m", autor="op")
+        await g.propor(CID, {**ORC, "amount_micros": 60_000_000}, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     assert exc.value.codigo == "limite_pct"
     g2, _, conta2 = D.gestao_de_teste(regras=[D.regra_padrao(teto_orcamento_micros=35_000_000)])
     with pytest.raises(E.ForaDaRegra) as exc2:
-        await g2.propor(CID, ORC, motivo="m", autor="op")
+        await g2.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     assert exc2.value.codigo == "teto_orcamento" and not led.ops
 
 
@@ -319,7 +325,7 @@ async def test_evidencia_insuficiente_fica_gravada_e_nao_nasce_proposta():
     g, led, conta = D.gestao_de_teste()
     conta.metricas["custo_micros"] = None
     with pytest.raises(E.EvidenciaInsuficiente) as exc:
-        await g.propor(CID, ORC, motivo="m", autor="op")
+        await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     ev = led.evidencias[exc.value.detalhe["evidencia_id"]]
     assert ev["suficiencia"] == "insuficiente" and ev["faltantes"] == ["custo_micros"]
     assert not led.propostas and not led.diagnosticos
@@ -329,13 +335,13 @@ async def test_estado_que_nao_permite_vira_422():
     g, _, conta = D.gestao_de_teste()
     conta.mundo[("orcamento.diario", CAMP)]["compartilhado"] = True
     with pytest.raises(E.AcaoInvalida, match="compartilhado"):
-        await g.propor(CID, ORC, motivo="m", autor="op")
+        await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
 
 
 async def test_conta_fora_da_casa_e_403_antes_de_qualquer_leitura():
     g, led, conta = D.gestao_de_teste()
     with pytest.raises(E.ForaDaCasa):
-        await g.propor(D.FORA, ORC, motivo="m", autor="op")
+        await g.propor(D.FORA, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR)
     with pytest.raises(E.ForaDaCasa):
         await g.recomendacoes(D.FORA)
     assert not conta.chamadas and not led.ops
@@ -346,7 +352,7 @@ async def test_conta_fora_da_casa_e_403_antes_de_qualquer_leitura():
 
 async def test_aprovar_exige_o_diff_que_a_tela_mostrou():
     g, led, _ = D.gestao_de_teste()
-    p = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    p = (await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR))["proposta"]
     errado = {**_diff(p), "valor_proposto": {"verba_diaria_micros": 99, "budget_id": 1}}
     with pytest.raises(E.ConflitoDeEstado) as exc:
         await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
@@ -369,7 +375,7 @@ async def test_aprovar_exige_o_diff_que_a_tela_mostrou():
 
 async def test_recusa_exige_motivo_e_proposta_vencida_expira():
     g, led, _ = D.gestao_de_teste()
-    p = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    p = (await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR))["proposta"]
     with pytest.raises(E.AcaoInvalida):
         await g.aprovar(p["proposta_id"], "recusada", motivo=" ", aprovador="a",
                         diff_apresentado={})
@@ -387,7 +393,7 @@ async def test_recusa_exige_motivo_e_proposta_vencida_expira():
 
 async def test_aplicar_sem_aprovacao_humana_e_recusado():
     g, led, conta = D.gestao_de_teste()
-    p = (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]
+    p = (await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR))["proposta"]
     with pytest.raises(E.ExigeAprovacaoHumana):
         await g.aplicar(p["proposta_id"], executor="adm")
     assert not led.aplicacoes and not any(c[0] == "aplicar" for c in conta.chamadas)
@@ -577,7 +583,7 @@ async def test_importar_declara_descoberta_e_e_idempotente():
     assert c["volc_campaign_id"] == volc_campaign_id(CID, CAMP)
     assert (await g.importar_campanha_externa(CID, CAMP, autor="op"))["ja_existia"]
     # agora a proposta de nível campanha passa
-    assert (await g.propor(CID, ORC, motivo="m", autor="op"))["proposta"]["volc_campaign_id"]
+    assert (await g.propor(CID, ORC, motivo="m (justificativa do teste)", autor="op", ator=ATOR))["proposta"]["volc_campaign_id"]
 
 
 async def test_importar_resolve_procedencia_desconhecida_uma_vez():
@@ -605,7 +611,7 @@ async def test_recomendacao_vira_proposta_mas_a_regra_de_hoje_a_recusa():
     conta.mundo[("recomendacao.aplicar", "abc123")] = {"existe": True, "tipo": "CAMPAIGN_BUDGET",
                                                        "dispensada": False}
     with pytest.raises(E.ForaDaRegra) as exc:
-        await g.propor(CID, rec["acoes"][0], motivo="o Google sugeriu", autor="op")
+        await g.propor(CID, rec["acoes"][0], motivo="o Google sugeriu", autor="op", ator=ATOR)
     assert exc.value.codigo == "regra_exige_delta"
 
 
@@ -740,11 +746,11 @@ def test_rotas_ciclo_completo():
     assert imp.status_code == 201 and imp.json()["campanha"]["procedencia"] == "descoberta"
     assert c.post(f"{BASE}/campanhas/importar",
                   json={"customer_id": CID, "campaign_id": CAMP}).status_code == 200
-    r = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC, "motivo": "m"})
+    r = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC, "motivo": "m (justificativa do teste)"})
     assert r.status_code == 201, r.text
     p = r.json()["proposta"]
     assert c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
-                                             "motivo": "m"}).status_code == 200
+                                             "motivo": "m (justificativa do teste)"}).status_code == 200
     painel = c.get(f"{BASE}/propostas", params={"customer_id": CID}).json()
     assert painel["total"] == 1 and painel["propostas"][0]["proximo_passo"] == "aguardar_humano"
     a = c.post(f"{BASE}/propostas/{p['proposta_id']}/aprovar",
@@ -766,7 +772,7 @@ def test_rota_recusar_e_erros_mapeados():
     g, led, conta = D.gestao_de_teste()
     c = _app(g)
     p = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
-                                          "motivo": "m"}).json()["proposta"]
+                                          "motivo": "m (justificativa do teste)"}).json()["proposta"]
     sem = c.post(f"{BASE}/propostas/{p['proposta_id']}/recusar", json={})
     assert sem.status_code == 422 and sem.json()["detail"]["codigo"] == "recusa_sem_motivo"
     ok = c.post(f"{BASE}/propostas/{p['proposta_id']}/recusar", json={"motivo": "caro"})
@@ -774,10 +780,10 @@ def test_rota_recusar_e_erros_mapeados():
     ap = c.post(f"{BASE}/propostas/{p['proposta_id']}/aplicar")
     assert ap.status_code == 409 and ap.json()["detail"]["codigo"] == "exige_aprovacao_humana"
     assert c.post(f"{BASE}/propostas/nao-existe/aplicar").status_code == 404
-    pausa = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m", "acao": {
+    pausa = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m (justificativa do teste)", "acao": {
         "tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"}})
     assert pausa.status_code == 409 and pausa.json()["detail"]["codigo"] == "regra_exige_delta"
-    ruim = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m",
+    ruim = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m (justificativa do teste)",
                                              "acao": {"tipo": "x"}})
     assert ruim.status_code == 422
 
@@ -785,7 +791,7 @@ def test_rota_recusar_e_erros_mapeados():
 def test_rota_repropor_depois_da_recusa_e_201_e_repetir_e_200_com_os_ids():
     g, led, conta = D.gestao_de_teste()
     c = _app(g)
-    corpo = {"customer_id": CID, "acao": ORC, "motivo": "m"}
+    corpo = {"customer_id": CID, "acao": ORC, "motivo": "m (justificativa do teste)"}
     p = c.post(f"{BASE}/propostas", json=corpo).json()["proposta"]
     assert c.post(f"{BASE}/propostas/{p['proposta_id']}/recusar",
                   json={"motivo": "caro"}).status_code == 200
@@ -803,7 +809,7 @@ def test_rota_divergencia_do_antes_e_409():
     g, led, conta = D.gestao_de_teste()
     c = _app(g)
     p = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
-                                          "motivo": "m"}).json()["proposta"]
+                                          "motivo": "m (justificativa do teste)"}).json()["proposta"]
     c.post(f"{BASE}/propostas/{p['proposta_id']}/aprovar", json={"diff_apresentado": _diff(p)})
     conta.mundo[("orcamento.diario", CAMP)]["verba_diaria_micros"] = 33_000_000
     r = c.post(f"{BASE}/propostas/{p['proposta_id']}/aplicar")
@@ -813,7 +819,7 @@ def test_rota_divergencia_do_antes_e_409():
 
 @pytest.mark.parametrize("metodo,caminho,corpo", [
     ("get", "/propostas", None), ("get", "/recomendacoes", None),
-    ("post", "/propostas", {"acao": ORC, "motivo": "m"}),
+    ("post", "/propostas", {"acao": ORC, "motivo": "m (justificativa do teste)"}),
     ("post", "/campanhas/importar", {"campaign_id": CAMP}),
 ])
 def test_rota_conta_fora_da_casa_e_403(metodo, caminho, corpo):
@@ -831,7 +837,7 @@ def test_rota_por_id_de_proposta_de_conta_fora_da_casa_e_403():
     g, led, conta = D.gestao_de_teste()
     c = _app(g)
     p = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC,
-                                          "motivo": "m"}).json()["proposta"]
+                                          "motivo": "m (justificativa do teste)"}).json()["proposta"]
     led.propostas[p["proposta_id"]]["alvo_chave"] = f"google_ads:{D.FORA}:campanha:{CAMP}"
     r = c.post(f"{BASE}/propostas/{p['proposta_id']}/aprovar", json={"diff_apresentado": {}})
     assert r.status_code == 403
@@ -850,9 +856,9 @@ def test_rota_sem_credencial_e_401(metodo, caminho):
 
 @pytest.mark.parametrize("caminho,corpo", [
     ("/propostas/x/aprovar", {"diff_apresentado": {}}),
-    ("/propostas/x/recusar", {"motivo": "m"}),
+    ("/propostas/x/recusar", {"motivo": "m (justificativa do teste)"}),
     ("/propostas/x/aplicar", None),
-    ("/aplicacoes/x/reverter", {"motivo": "m"}),
+    ("/aplicacoes/x/reverter", {"motivo": "m (justificativa do teste)"}),
 ])
 def test_rota_de_escrita_sem_admin_e_403(caminho, corpo):
     g, led, conta = D.gestao_de_teste()
@@ -865,7 +871,7 @@ def test_rota_de_escrita_sem_admin_e_403(caminho, corpo):
 def test_operador_propoe_e_verifica_sem_admin():
     g, *_ = D.gestao_de_teste()
     c = _app(g, _OPERADOR)
-    r = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC, "motivo": "m"})
+    r = c.post(f"{BASE}/propostas", json={"customer_id": CID, "acao": ORC, "motivo": "m (justificativa do teste)"})
     assert r.status_code == 201
     assert r.json()["proposta"]["criada_por"] == "humano:op@volc"
 
@@ -1019,7 +1025,7 @@ async def test_regra_de_referencia_transforma_os_15_tipos_em_proposta():
     assert {p["tipo"] for p, _ in casos} == set(P.TIPOS)
     for payload, antes in casos:
         _no_mundo(conta, payload, antes)
-        r = await g.propor(CID, payload, motivo=f"teste {payload['tipo']}", autor="op@volc")
+        r = await g.propor(CID, payload, motivo=f"teste {payload['tipo']}", autor="op@volc", ator=ATOR)
         p = r["proposta"]
         assert not r["ja_existia"] and p["operacao"] == payload["tipo"]
         if payload["tipo"] in SD.MONETARIAS:
@@ -1035,7 +1041,7 @@ async def test_operacao_fora_da_lista_continua_regra_exige_delta():
     payload = next(p for p, _ in _CASOS if p["tipo"] == "exclusao.ip")
     _no_mundo(conta, payload, {"ips_existentes": []})
     with pytest.raises(E.ForaDaRegra) as exc:
-        await g.propor(CID, payload, motivo="bots", autor="op")
+        await g.propor(CID, payload, motivo="bots (justificativa do teste)", autor="op", ator=ATOR)
     assert exc.value.codigo == "regra_exige_delta" and not led.ops
     assert "exclusao.ip" not in exc.value.detalhe["operacoes_sem_delta_da_regra"]
     assert exc.value.detalhe["classe"] == "segmentacao"
@@ -1047,13 +1053,13 @@ async def test_teto_sem_delta_recusa_antes_de_gravar():
                "ips": [f"203.0.113.{i}" for i in range(1, 22)]}
     _no_mundo(conta, payload, {"ips_existentes": []})
     with pytest.raises(E.ForaDaRegra) as exc:
-        await g.propor(CID, payload, motivo="bots", autor="op")
+        await g.propor(CID, payload, motivo="bots (justificativa do teste)", autor="op", ator=ATOR)
     assert exc.value.codigo == "teto_sem_delta" and not led.ops
     assert exc.value.detalhe["teto"] == {"max_itens": 20, "escopos": ["campanha", "conta"]}
     conta.mundo[("recomendacao.aplicar", "abc123")] = {**_REC_ANTES, "tipo": "CAMPAIGN_BUDGET"}
     with pytest.raises(E.ForaDaRegra) as exc2:
         await g.propor(CID, {"tipo": "recomendacao.aplicar", "recurso": _RN_REC},
-                       motivo="o Google sugeriu", autor="op")
+                       motivo="o Google sugeriu", autor="op", ator=ATOR)
     assert exc2.value.codigo == "teto_sem_delta" and "verba" in str(exc2.value)
 
 
@@ -1078,7 +1084,7 @@ def test_monetaria_continua_exigindo_delta_e_limite():
 async def test_ciclo_completo_de_uma_pausa_sob_a_regra_de_referencia():
     g, _led, conta = D.gestao_de_teste(regras=[D.regra_referencia()])
     pausa = {"tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"}
-    p = (await g.propor(CID, pausa, motivo="sem conversão há 21 dias", autor="op"))["proposta"]
+    p = (await g.propor(CID, pausa, motivo="sem conversão há 21 dias", autor="op", ator=ATOR))["proposta"]
     await g.aprovar(p["proposta_id"], "aprovada", motivo=None, aprovador="adm",
                     diff_apresentado=_diff(p))
     ap = (await g.aplicar(p["proposta_id"], executor="adm"))["aplicacao"]
@@ -1092,11 +1098,11 @@ async def test_ciclo_completo_de_uma_pausa_sob_a_regra_de_referencia():
 def test_rota_pausa_vira_proposta_com_a_regra_de_referencia():
     g, _led, conta = D.gestao_de_teste(regras=[D.regra_referencia()])
     c = _app(g)
-    pausa = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m", "acao": {
+    pausa = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m (justificativa do teste)", "acao": {
         "tipo": "status", "nivel": "campanha", "ident": CAMP, "status": "PAUSED"}})
     assert pausa.status_code == 201, pausa.text
     assert pausa.json()["proposta"]["operacao"] == "status"
     conta.mundo[("recomendacao.aplicar", "abc123")] = {**_REC_ANTES, "tipo": "CAMPAIGN_BUDGET"}
-    teto = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m", "acao": {
+    teto = c.post(f"{BASE}/propostas", json={"customer_id": CID, "motivo": "m (justificativa do teste)", "acao": {
         "tipo": "recomendacao.aplicar", "recurso": _RN_REC}})
     assert teto.status_code == 409 and teto.json()["detail"]["codigo"] == "teto_sem_delta"

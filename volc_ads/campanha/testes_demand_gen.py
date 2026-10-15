@@ -20,6 +20,15 @@ from google.ads.googleads.client import GoogleAdsClient
 from volc_ads import criativo_ponte
 from volc_ads import subir as motor
 from volc_ads.campanha import comum, demand_gen, perfil, plano
+
+
+def _do_operador(brief):
+    """W5: verba e lance do brief declarados pelo operador da sessão (dublê)."""
+    from volc_ads.gestao.valor import valores_do_operador
+    return valores_do_operador(brief, sub="u-teste", papel="OPERATOR",
+                               quando="2026-10-15T12:00:00+00:00",
+                               justificativa="valores definidos pelo operador no teste")
+
 from volc_ads.campanha.brief import (
     AssetRemotoDemandGen,
     Brief,
@@ -751,9 +760,10 @@ def test_perfil_prova_demand_gen_mas_registry_real_e_executor_recusam(
     monkeypatch.setattr(motor, "validar_mutacoes", lambda *_a, **_k: None)
     preparo = motor.preparar(
         CID,
-        _brief(),
+        (_b := _brief()),
         login_customer_id=MCC,
         canal="DEMAND_GEN",
+        valores=_do_operador(_b),
     )
     assert preparo.provado, preparo.porque_nao()
     assert preparo.selo.canal == "DEMAND_GEN"
@@ -822,7 +832,8 @@ def test_relabel_mcc_tipo_e_hash_divergentes_morrem_antes_da_trava_e_mutacao(
 ) -> None:
     monkeypatch.setattr(motor, "validar_mutacoes", lambda *_a, **_k: None)
     preparo = motor.preparar(
-        CID, _brief(), login_customer_id=MCC, canal="DEMAND_GEN"
+        CID, (_b := _brief()), login_customer_id=MCC, canal="DEMAND_GEN",
+        valores=_do_operador(_b),
     )
     assert preparo.provado, preparo.porque_nao()
     monkeypatch.setattr(
@@ -867,7 +878,8 @@ def test_canal_declarado_pelo_builder_nao_supera_o_canal_da_operacao(
     )
 
     preparo = motor.preparar(
-        CID, _brief(), login_customer_id=MCC, canal="DEMAND_GEN"
+        CID, (_b := _brief()), login_customer_id=MCC, canal="DEMAND_GEN",
+        valores=_do_operador(_b),
     )
     assert not preparo.provado
     assert "perfil declarou 'DEMAND_GEN', operações declaram 'SEARCH'" in (

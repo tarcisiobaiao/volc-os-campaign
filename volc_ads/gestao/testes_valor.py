@@ -13,9 +13,9 @@ from google.ads.googleads.client import GoogleAdsClient
 from volc_ads.gestao import acoes as A
 from volc_ads.gestao import lote
 from volc_ads.gestao.acoes import AcaoRecusada
-from volc_ads.gestao.valor import (CAMPOS_MEDIDOS, ORIGENS, ORIGENS_QUE_AUTORIZAM,
-                                   ValorMonetario, ValorSemAutoridade, medido_na_conta,
-                                   operador)
+from volc_ads.gestao.valor import (ORIGENS, ORIGENS_QUE_AUTORIZAM, ValorMonetario,
+                                   ValorSemAutoridade, medido_na_conta, operador,
+                                   sha256_canonico)
 
 CID = "5478096539"
 CAMP = 24278665189
@@ -31,17 +31,28 @@ def _get_type():
 
 GT = _get_type()
 
-GAQL_ORCAMENTO = ("SELECT campaign.id, campaign_budget.amount_micros FROM campaign "
-                  f"WHERE campaign.id = {CAMP}")
-GAQL_CPC = ("SELECT campaign.id, metrics.average_cpc FROM campaign "
-            "WHERE segments.date DURING LAST_30_DAYS")
 NAO_AUTORIZAM = sorted(ORIGENS - ORIGENS_QUE_AUTORIZAM)
+EV_OPERADOR = "operador:9f1c-sub/operador@2026-10-15T12:00:00+00:00"
+JUST = "verba limita a entrega no fim do dia"
+AS_OF = "2026-10-15T11:00:00+00:00"
+#: O campo que mede cada alvo (o "antes" guardado tem de ter este campo).
+CAMPO = {"orcamento": "verba_diaria_micros", "alvo_tcpa": "tcpa_micros",
+         "alvo_teto_cpc": "teto_cpc_micros", "troca_tcpa": "tcpa_micros",
+         "troca_teto_cpc": "teto_cpc_micros"}
 
 
-def _valor(origem: str, micros: int = 2_500_000) -> ValorMonetario:
-    evidencia = {"operador": "operador:tarcisio@2026-10-15T12:00:00+00:00",
-                 "medido_na_conta": GAQL_CPC}.get(origem, f"{origem}: CPC sugerido R$ 2,50")
-    return ValorMonetario(micros, origem, evidencia)
+def _medido(campo: str, micros: int = 2_500_000) -> ValorMonetario:
+    return medido_na_conta(micros, fonte="trafego_proposta.valor_atual", ref="prop-1",
+                           campo=campo, as_of=AS_OF, registro={campo: micros, "existe": True})
+
+
+def _valor(origem: str, micros: int = 2_500_000, campo: str = "verba_diaria_micros"
+           ) -> ValorMonetario:
+    if origem == "operador":
+        return ValorMonetario(micros, origem, EV_OPERADOR, JUST)
+    if origem == "medido_na_conta":
+        return _medido(campo, micros)
+    return ValorMonetario(micros, origem, f"{origem}: CPC sugerido R$ 2,50")
 
 
 #: Toda ação que põe dinheiro na conta, montada com um valor de certa origem.
@@ -94,28 +105,68 @@ def teste_operador_e_medido_na_conta_autorizam(origem):
 
 def teste_ausencia_nao_e_zero_nem_verba():
     with pytest.raises(ValorSemAutoridade, match="ausente"):
-        ValorMonetario(None, "operador", "operador:x@2026-10-15").autoriza()
+        ValorMonetario(None, "operador", EV_OPERADOR, JUST).autoriza()
 
 
-@pytest.mark.parametrize("evidencia", ["", "tarcisio", "operador:", "operador:sem-quando"])
-def teste_operador_exige_quem_e_quando(evidencia):
+def teste_negativo_nao_e_verba():
+    with pytest.raises(AcaoRecusada, match="negativo"):
+        ValorMonetario(-5_000_000, "operador", EV_OPERADOR, JUST)
+
+
+@pytest.mark.parametrize("evidencia", ["", "tarcisio", "operador:", "operador:sem-quando",
+                                       "operador:agente@volc@2026-10-15"])  # formato antigo
+def teste_operador_exige_a_evidencia_carimbada_pelo_servidor(evidencia):
     with pytest.raises(AcaoRecusada):
-        ValorMonetario(1_000_000, "operador", evidencia).autoriza()
+        ValorMonetario(1_000_000, "operador", evidencia, JUST).autoriza()
+
+
+@pytest.mark.parametrize("justificativa", ["", "ok", "         "])
+def teste_operador_exige_justificativa(justificativa):
+    with pytest.raises(ValorSemAutoridade, match="justificativa"):
+        ValorMonetario(1_000_000, "operador", EV_OPERADOR, justificativa).autoriza()
+
+
+def teste_operador_do_servidor_autoriza():
+    v = operador(1_000_000, "9f1c-sub", "operador", "2026-10-15T12:00:00+00:00", JUST)
+    assert v.autoriza() == 1_000_000 and v.json()["justificativa"] == JUST
 
 
 @pytest.mark.parametrize("evidencia", [
-    "li na conta",                                       # frase, não consulta
-    "SELECT campaign.id FROM campaign",                  # consulta sem campo de dinheiro
-    "metrics.average_cpc segundo a planilha",            # campo sem consulta
+    "SELECT metrics.average_cpc FROM keyword_view -- semrush",   # o caso da revisão R-W5
+    "SELECT campaign_budget.amount_micros FROM campaign",        # GAQL nunca executada
+    "li na conta",
+    "medicao:planilha/1#verba_diaria_micros@2026-10-15 sha256=" + "0" * 64,  # fonte estranha
+    "medicao:trafego_proposta.valor_atual/1#verba_diaria_micros@x sha256=abc",  # hash curto
 ])
-def teste_medido_na_conta_exige_a_gaql_com_campo_de_dinheiro(evidencia):
-    with pytest.raises(ValorSemAutoridade, match="GAQL"):
-        ValorMonetario(1_000_000, "medido_na_conta", evidencia).autoriza()
+def teste_medido_na_conta_texto_livre_nao_e_medicao(evidencia):
+    with pytest.raises(ValorSemAutoridade, match="leitura guardada"):
+        ValorMonetario(36_000_000, "medido_na_conta", evidencia).autoriza()
 
 
-@pytest.mark.parametrize("campo", CAMPOS_MEDIDOS)
-def teste_toda_gaql_com_campo_medido_autoriza(campo):
-    assert medido_na_conta(10_000, f"SELECT {campo} FROM campaign").autoriza() == 10_000
+def teste_semrush_nao_libera_orcamento():
+    v = ValorMonetario(36_000_000, "medido_na_conta",
+                       "SELECT metrics.average_cpc FROM keyword_view -- semrush")
+    a = A.AlterarOrcamento(CAMP, BUDGET, v)  # existe como anotação…
+    with pytest.raises(ValorSemAutoridade):   # …e não vira operação
+        lote.montar([a], GT, CID)
+
+
+def teste_medicao_amarrada_ao_registro_por_hash():
+    registro = {"verba_diaria_micros": 30_000_000, "existe": True}
+    v = medido_na_conta(30_000_000, fonte="trafego_proposta.valor_atual", ref="p1",
+                        campo="verba_diaria_micros", as_of=AS_OF, registro=registro)
+    assert v.medicao.sha256 == sha256_canonico(registro) and v.autoriza() == 30_000_000
+    with pytest.raises(AcaoRecusada, match="não tem"):
+        medido_na_conta(31_000_000, fonte="trafego_proposta.valor_atual", ref="p1",
+                        campo="verba_diaria_micros", as_of=AS_OF, registro=registro)
+
+
+def teste_medicao_de_outro_campo_nao_vira_orcamento_nem_tcpa():
+    """CPC médio medido não é orçamento; custo medido não é tCPA."""
+    with pytest.raises(ValorSemAutoridade, match="só 'verba_diaria_micros'"):
+        A.AlterarOrcamento(CAMP, BUDGET, _medido("teto_cpc_micros"))
+    with pytest.raises(ValorSemAutoridade, match="só 'tcpa_micros'"):
+        A.AlterarAlvoDeLance(CAMP, "MAXIMIZE_CONVERSIONS", "tcpa", _medido("verba_diaria_micros"))
 
 
 def teste_origem_desconhecida_e_recusada_na_construcao():
@@ -182,7 +233,7 @@ _CAMPO_NO_PROTO = {
 @pytest.mark.parametrize("origem", sorted(ORIGENS_QUE_AUTORIZAM))
 @pytest.mark.parametrize("nome", sorted(FABRICAS))
 def teste_operador_e_medido_na_conta_montam_a_operacao(nome, origem):
-    plano = lote.montar([FABRICAS[nome](_valor(origem))], GT, CID)
+    plano = lote.montar([FABRICAS[nome](_valor(origem, campo=CAMPO[nome]))], GT, CID)
     (op,) = plano.operacoes
     type(op).serialize(op)
     assert _CAMPO_NO_PROTO[nome](op) == 2_500_000
@@ -196,9 +247,10 @@ def teste_zero_em_troca_de_estrategia_e_sem_alvo_e_nao_numero():
 
 
 def teste_reverso_usa_o_valor_lido_na_conta_como_medido_na_conta():
-    a = A.AlterarOrcamento(CAMP, BUDGET, operador(35_000_000, "tarcisio", "2026-10-15"))
+    a = A.AlterarOrcamento(CAMP, BUDGET, _valor("operador", 35_000_000))
     (rev,) = a.reverso({"verba_diaria_micros": 30_000_000})
     assert rev.verba.origem == "medido_na_conta" and rev.verba.autoriza() == 30_000_000
+    assert rev.verba.medicao.fonte == "valor_anterior"
     (op,) = lote.montar([rev], GT, CID).operacoes
     assert op.campaign_budget_operation.update.amount_micros == 30_000_000
 
@@ -206,4 +258,4 @@ def teste_reverso_usa_o_valor_lido_na_conta_como_medido_na_conta():
 def teste_origem_vai_para_o_valor_proposto():
     a = A.AlterarOrcamento(CAMP, BUDGET, _valor("operador"))
     assert a.valor_proposto()["origem_valor"] == {
-        "origem": "operador", "evidencia": "operador:tarcisio@2026-10-15T12:00:00+00:00"}
+        "origem": "operador", "evidencia": EV_OPERADOR, "justificativa": JUST}

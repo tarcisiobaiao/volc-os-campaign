@@ -67,7 +67,7 @@ URL = "https://portalmundomais.com.br/saque-anual/"
 
 IDENTIDADE = Identidade(
     sub="operador-sub-1", email="tarcisio@agenciavolc.com.br",
-    papel="ADMIN", origem="teste",
+    papel="ADMIN", origem="sessao",
 )
 
 

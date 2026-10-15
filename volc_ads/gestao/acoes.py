@@ -50,7 +50,8 @@ Temporario = Callable[[], int]
 MICROS_MINIMO = 10_000
 
 
-from .valor import AcaoRecusada, ValorMonetario, ValorSemAutoridade  # noqa: E402,F401
+from .valor import (AcaoRecusada, ValorMonetario, ValorSemAutoridade,  # noqa: E402,F401
+                    medido_na_conta)
 
 
 # ── utilidades ──────────────────────────────────────────────────────────────
@@ -77,6 +78,13 @@ def _micros(valor: Any, rotulo: str, *, zero_ok: bool = False) -> int:
     return valor
 
 
+#: Alvo → o campo do "antes" que mede o MESMO número. Medição de outro campo
+#: (CPC médio, custo) não vira orçamento nem tCPA: é outra grandeza.
+CAMPO_MEDIDO = {"amount_micros": "verba_diaria_micros", "tcpa": "tcpa_micros",
+                "teto_cpc": "teto_cpc_micros", "tcpa_micros": "tcpa_micros",
+                "teto_cpc_micros": "teto_cpc_micros"}
+
+
 def _valor(valor: Any, rotulo: str, *, zero_ok: bool = False) -> ValorMonetario:
     """Valor de verba/lance: tem de dizer de onde veio (`ValorMonetario`).
 
@@ -92,6 +100,10 @@ def _valor(valor: Any, rotulo: str, *, zero_ok: bool = False) -> ValorMonetario:
     if valor.micros is None:
         raise AcaoRecusada(f"{rotulo} ausente: ausência não é zero nem verba")
     _micros(valor.micros, rotulo, zero_ok=zero_ok)
+    m = valor.medicao if valor.origem == "medido_na_conta" else None
+    if m is not None and m.campo != CAMPO_MEDIDO[rotulo]:
+        raise ValorSemAutoridade(
+            f"{rotulo} medido em {m.campo!r}: só {CAMPO_MEDIDO[rotulo]!r} mede este valor")
     return valor
 
 
@@ -411,7 +423,9 @@ class AlterarOrcamento(Acao):
         # envio pela consulta abaixo): é a origem medido_na_conta por definição.
         v = antes.get("verba_diaria_micros")
         if v and v != self.amount_micros:
-            medido = ValorMonetario(v, "medido_na_conta", self.consultas_antes("")[0])
+            medido = medido_na_conta(v, fonte="valor_anterior", ref="envio",
+                                     campo="verba_diaria_micros",
+                                     as_of="capturado_no_envio", registro=antes)
             return (AlterarOrcamento(self.campaign_id, self.budget_id, medido,
                                      compartilhado_ciente=True),)
         return ()
@@ -588,8 +602,9 @@ class AlterarAlvoDeLance(Acao):
         if anterior == self.valor:
             return ()
         if self.alvo != "troas":
-            anterior = ValorMonetario(anterior, "medido_na_conta",
-                                      _GAQL_LANCE.format(cid=self.campaign_id))
+            anterior = medido_na_conta(anterior, fonte="valor_anterior", ref="envio",
+                                       campo=CAMPO_MEDIDO[self.alvo],
+                                       as_of="capturado_no_envio", registro=antes)
         return (AlterarAlvoDeLance(self.campaign_id, self.estrategia, self.alvo, anterior),)
 
 
@@ -759,7 +774,8 @@ class TrocarEstrategia(Acao):
             v = antes.get(chave) if e == estrategia else 0
             if not v:
                 return None
-            return ValorMonetario(v, "medido_na_conta", _GAQL_LANCE.format(cid=self.campaign_id))
+            return medido_na_conta(v, fonte="valor_anterior", ref="envio", campo=chave,
+                                   as_of="capturado_no_envio", registro=antes)
 
         return (TrocarEstrategia(
             self.campaign_id, e,

@@ -4404,9 +4404,30 @@ class PlanoPreparado:
     supply_sha256: Optional[str]
 
 
+def _valores_do_operador(body: Any, identidade: Identidade, justificativa: str) -> list:
+    """W5: verba e lance da criação, com a origem escrita pelo SERVIDOR.
+
+    Só uma identidade de sessão (humano) é operador; serviço devolve lista
+    vazia, e `preparar()` recusa qualquer dinheiro no payload antes do
+    `validate_only`. Os números são os que o CORPO declarou (orçamento, CPC,
+    metas, inclusive por grupo e na configuração do canal): um número que o
+    payload carregue sem estar aqui — derivado no meio do caminho — é recusado.
+    """
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    from volc_ads.gestao import valor as V  # noqa: PLC0415 — volc_ads é tardio aqui
+
+    if getattr(identidade, "origem", None) != "sessao":
+        return []
+    return V.valores_do_operador(
+        body.model_dump() if hasattr(body, "model_dump") else dict(body),
+        sub=str(identidade.sub), papel=str(getattr(identidade, "papel", "") or ""),
+        quando=datetime.now(timezone.utc).isoformat(), justificativa=justificativa)
+
+
 def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
                              canal_resolvido: str, cid: str, mid: str,
-                             prefixo_nome: str) -> PlanoPreparado:
+                             prefixo_nome: str, valores: Any = ()) -> PlanoPreparado:
     """A montagem ÚNICA do plano aprovável, chamada por `/provar` e por `/subir`.
 
     ## Por que uma função, e duas chamadas
@@ -4564,7 +4585,7 @@ def _montar_e_preparar_plano(pp: Any, sb: Any, body: Any, *,
     # id colado do painel do Google vem `801-785-1692`, com hífen.
     preparo = sb.preparar(
         cid, plano.brief, login_customer_id=mid, canal=canal_resolvido,
-        ai_max=body.ai_max, **opcoes_do_canal,
+        ai_max=body.ai_max, valores=valores, **opcoes_do_canal,
     )
     return PlanoPreparado(plano=plano, preparo=preparo, linhas=linhas,
                           supply_sha256=supply)
@@ -4762,7 +4783,11 @@ async def provar(
         # A MESMA montagem de `/subir`; aqui o prefixo é o operacional.
         return _montar_e_preparar_plano(
             pp, sb, body, canal_resolvido=canal_resolvido, cid=cid, mid=mid,
-            prefixo_nome=_prefixo_operacional(body, impressao=chave_intencao))
+            prefixo_nome=_prefixo_operacional(body, impressao=chave_intencao),
+            # /provar é o ensaio (validate_only, nada é gasto) e roda sozinho
+            # na tela; a justificativa humana é cobrada no /subir (`motivo`).
+            valores=_valores_do_operador(
+                body, identidade, "prova validate_only pedida na sessão (/provar)"))
 
     try:
         montado = await asyncio.wait_for(
@@ -5409,7 +5434,8 @@ async def subir(
         # canário logo acima.
         return _montar_e_preparar_plano(
             pp, sb, body, canal_resolvido=canal_resolvido, cid=cid, mid=mid,
-            prefixo_nome=marca)
+            prefixo_nome=marca,
+            valores=_valores_do_operador(body, identidade, body.motivo))
 
     try:
         montado = await asyncio.to_thread(_provar_de_novo)

@@ -17,7 +17,8 @@ from volc_ads.gestao.valor import ValorMonetario
 
 def OP(micros):
     """Valor digitado pelo operador — a origem que as ações de verba/lance exigem."""
-    return ValorMonetario(micros, "operador", "operador:teste@2026-10-15T00:00:00+00:00")
+    return ValorMonetario(micros, "operador", "operador:teste/operador@2026-10-15T00:00:00+00:00",
+                          "valor digitado no teste")
 
 CID = "5478096539"
 CAMP = 24278665189

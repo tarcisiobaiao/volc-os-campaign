@@ -108,7 +108,7 @@ def _plano_nao_lido_por_padrao(monkeypatch: pytest.MonkeyPatch):
 
 IDENTIDADE = Identidade(
     sub="operador-sub-1", email="tarcisio@agenciavolc.com.br",
-    papel="ADMIN", origem="teste",
+    papel="ADMIN", origem="sessao",
 )
 
 #: A campanha que o executor devolve como criada, nos testes de sucesso.
