@@ -141,7 +141,7 @@ Nenhum destes é feito pela nuvem.
    confere e descarta. Ler o resumo: elegíveis, pulados por motivo, avisos.
 2. Se aceito, o Tarcisio aprova **a impressão exata do envelope validado**
    (`AprovacaoDeEnvio`). Só então `enviar_de_verdade`, com
-   `FORGE_PERMITIR_ESCRITA=1` e `modo.destravar(motivo)` no script do envio.
+   `VOLC_CONVERSOES_PERMITIR_ENVIO=1` e `trava.emitir_chave(impressao, motivo)` no script do envio (trava própria, uma chave por envelope; a do forge não serve).
 3. Após 30 min, `reconciliar` (o Google pede até 24 h). Ler `warningInfo` mesmo
    em SUCCESS.
 4. Deixar a ação **Secondary por 14 dias** e comparar, na coluna "Todas as
