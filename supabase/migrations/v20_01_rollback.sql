@@ -48,7 +48,14 @@ BEGIN
     RAISE EXCEPTION 'v20_01_rollback: % objeto(s) fora de volc_ops dependem do ledger — recusado', n
       USING ERRCODE = 'P0001';
   END IF;
-  DROP SCHEMA volc_ops CASCADE;
+  -- RESTRICT em cada DROP: o próprio Postgres recusa (2BP01) qualquer dependente
+  -- de fora que a checagem acima não enxergue — função que devolve o tipo de
+  -- linha do ledger, coluna de outra tabela com esse tipo. CASCADE os apagaria.
+  DROP VIEW     volc_ops.migracao_estado RESTRICT;
+  DROP TABLE    volc_ops.migracao_evento RESTRICT;
+  DROP FUNCTION volc_ops.migracao_evento_guarda() RESTRICT;
+  DROP FUNCTION volc_ops.fingerprint_schema() RESTRICT;
+  DROP SCHEMA   volc_ops RESTRICT;
 END $$;
 
 COMMIT;

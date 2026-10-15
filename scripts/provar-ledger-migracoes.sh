@@ -132,6 +132,16 @@ P -c "CREATE VIEW public.vw_alheia_ledger AS SELECT versao FROM volc_ops.migraca
 eq "$(P < "$R1" >/dev/null 2>&1; echo $?)" 3 "rollback do ledger recusado com view de public dependendo dele"
 grep -q 'fora de volc_ops dependem' <(P < "$R1" 2>&1) && ok "o motivo é a dependência externa" || nao "motivo da recusa por dependência"
 P -c "DROP VIEW public.vw_alheia_ledger" >/dev/null
+# dependentes pelo TIPO de linha do ledger: o CASCADE antigo os apagava em silêncio
+P -c "CREATE FUNCTION public.ultimos_eventos() RETURNS SETOF volc_ops.migracao_evento LANGUAGE sql AS 'SELECT * FROM volc_ops.migracao_evento'" >/dev/null
+eq "$(sqlstate "$(cat "$R1")")" 2BP01 "rollback do ledger recusado com função de public que devolve o tipo do ledger (RESTRICT)"
+eq "$(P -c "select to_regprocedure('public.ultimos_eventos()') is not null and to_regnamespace('volc_ops') is not null")" t "função alheia e ledger intactos"
+P -c "DROP FUNCTION public.ultimos_eventos()" >/dev/null
+P -c "CREATE TABLE public.copia_evento (e volc_ops.migracao_evento); INSERT INTO public.copia_evento SELECT e FROM volc_ops.migracao_evento e" >/dev/null
+N_COPIA="$(P -c "select count(*) from public.copia_evento")"
+eq "$(sqlstate "$(cat "$R1")")" 2BP01 "rollback do ledger recusado com coluna de outra tabela no tipo do ledger (RESTRICT)"
+eq "$(P -c "select count(*)||'|'||count(e) from public.copia_evento")" "$N_COPIA|$N_COPIA" "coluna alheia e seus dados intactos"
+P -c "DROP TABLE public.copia_evento" >/dev/null
 eq "$(proto reverter --versao v20_01_ledger_migrations --rollback "$R1" --sha-rollback "$(sha "$R1")" --aprovador laboratorio --remove-ledger)" 0 "v20_01 revertida"
 eq "$(P -c "select to_regnamespace('volc_ops') is null")" t "volc_ops removido"
 eq "$(fp_bruto)" "$FP_BASE" "fingerprint igual ao de antes do ledger"
@@ -147,6 +157,9 @@ printf 'BEGIN;\nDROP TABLE IF EXISTS public.tabela_sintetica_99;\nCOMMIT;\n' > "
 eq "$(proto aplicar --migration "$X" --sha "$(sha "$X")" --rollback "$XR" --sha-rollback "$(sha "$XR")" --aprovador laboratorio)" 0 "migration sintética registrada"
 eq "$(proto reverter --versao v20_01_ledger_migrations --rollback "$R1" --sha-rollback "$(sha "$R1")" --aprovador laboratorio --remove-ledger)" 14 "rollback do ledger recusado (há história de outra migration)"
 eq "$(P -c "select count(*) from volc_ops.migracao_evento where versao='v99_01_sintetica'")" 1 "história preservada"
+
+echo "▶ H · protocolo só fala com o banco do lab"
+eq "$("$PROTO" estado --alvo "docker:volc-nao-e-do-lab-zz" >/dev/null 2>&1; echo $?)" 2 "alvo docker fora do Freedom Lab → 2, nada executado"
 
 echo "▶ G · dois aplicadores simultâneos"
 Y="$LAB_DIR/lab/v99_02_lenta.sql"

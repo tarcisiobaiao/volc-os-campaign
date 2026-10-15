@@ -63,6 +63,10 @@ uso() { sed -n '17,29p' "${BASH_SOURCE[0]}" >&2; exit 2; }
 case "$ALVO" in
   docker:?*)
     CONT="${ALVO#docker:}"
+    # só o banco descartável do Freedom Lab: rótulo do lab e sem rede (como exigir_lab)
+    [ -n "$(docker ps -q --filter "name=^${CONT}$" --filter label=volc.freedom-lab=1)" ] && \
+      [ "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$CONT" 2>/dev/null)" = none ] || \
+      { echo "alvo docker:$CONT não é um container do Freedom Lab (rótulo volc.freedom-lab=1, sem rede): recusado" >&2; exit 2; }
     psql_alvo() { docker exec -i "$CONT" psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
     ;;
   producao)

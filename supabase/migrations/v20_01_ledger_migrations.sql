@@ -27,6 +27,9 @@
 --   · reverter com rollback cujo sha256 diverge do aprovado   → P0001
 --   · UPDATE, DELETE e TRUNCATE no log                        → P0001
 -- Concorrência: pg_advisory_xact_lock por versão serializa dois aplicadores.
+-- Limite declarado: o append-only vale contra o papel postgres (dono, não
+-- superusuário na imagem Supabase). Um superusuário contorna o gatilho com
+-- session_replication_role = replica ou ALTER TABLE … DISABLE TRIGGER.
 --
 -- Rollback: v20_01_rollback.sql (recusa se o ledger registrar algo além da
 -- própria linha de base).

@@ -73,11 +73,12 @@ criar() {
   docker run -d --name "$NOME" --label volc.freedom-lab=1 --network none \
     -e POSTGRES_PASSWORD="$senha" "$IMAGEM" >/dev/null || return 1
   unset senha
-  # A imagem sobe um servidor temporário, roda o init e REINICIA: "aceitou
-  # conexão" não basta. Pronto = o mesmo postmaster em três leituras seguidas.
+  # A imagem sobe um servidor temporário (listen_addresses vazio, só socket),
+  # roda o init e REINICIA: "aceitou conexão" não basta. Pronto = servidor
+  # definitivo (escuta TCP) e o mesmo postmaster em três leituras seguidas.
   local i t ant="" iguais=0
   for i in $(seq 1 120); do
-    t="$(P -c 'select pg_postmaster_start_time()' 2>/dev/null)"
+    t="$(P -c "select pg_postmaster_start_time() where current_setting('listen_addresses') <> ''" 2>/dev/null)"
     if [ -n "$t" ] && [ "$t" = "$ant" ]; then iguais=$((iguais+1)); else iguais=0; fi
     ant="$t"
     [ $iguais -ge 3 ] && { echo "▶ criado $NOME ($IMAGEM) sem porta publicada"; P -c "select version()"; return 0; }
