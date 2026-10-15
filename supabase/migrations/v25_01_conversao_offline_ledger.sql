@@ -273,6 +273,21 @@ BEGIN
       RAISE EXCEPTION 'abrir_lote: item sem decisão elegível com o mesmo valor (proveniência ausente)'
         USING ERRCODE = '55000';
     END IF;
+    -- ⚠️ SERIALIZA POR COORTE antes de ler o que já está vivo: sem isto, dois
+    -- envios reais da mesma coorte em paralelo leem a mesma soma e passam os
+    -- dois (revisão nuvem 2, ressalva: 80 para teto 50). Trava de transação,
+    -- em ordem determinística (sem deadlock entre lotes com coortes em comum),
+    -- no mesmo padrão do receita_observar do W12.
+    PERFORM pg_advisory_xact_lock(hashtextextended(k, 25))
+       FROM (SELECT DISTINCT d.operating_account_id || '|' || d.product_destination_id || '|'
+                    || d.coorte_data::text || '|' || d.coorte_campanha || '|' || d.coorte_dominio AS k
+               FROM jsonb_array_elements(p -> 'itens') i
+               JOIN public.conversao_offline_decisao d
+                 ON d.operating_account_id = p ->> 'operating_account_id'
+                AND d.product_destination_id = p ->> 'product_destination_id'
+                AND d.transaction_id = i ->> 'transaction_id'
+                AND d.estado = 'elegivel' AND d.valor_impressao = i ->> 'valor_impressao') c
+      ORDER BY k;
     -- reenvio do MESMO envelope que ficou sem resposta: o anterior vira 'reenviado'
     UPDATE public.conversao_offline_lote
        SET estado = 'reenviado', atualizado_em = now(),

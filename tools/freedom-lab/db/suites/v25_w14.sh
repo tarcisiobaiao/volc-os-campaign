@@ -30,6 +30,8 @@
 #   4b. teto do rateio: por coorte, o real vivo (já enviados + o lote) não passa
 #      do teto da proveniência nem das sessões; a view por coorte é só da
 #      service_role; o reenvio do mesmo envelope não conta duas vezes
+#   4c. dois envios reais da mesma coorte em paralelo: o segundo espera a trava
+#      da coorte e é recusado pelo teto (sessões commitadas, limpas pelo dono)
 #   5. rollback recusa com dado (atômico), devolve o fingerprint, é idempotente;
 #      reaplicar dá o mesmo fingerprint
 #
@@ -236,6 +238,26 @@ w14_suite() {
 
   eq "$(w14_bloco service_role "SELECT public.conversao_offline_abrir_lote('$(w14_lote_json validate_only "$W14_IMP_A" "$W14_TID1")'::jsonb || '{\"aprovacao\":{\"x\":1}}'::jsonb);")" "ERRO:22023" \
      "v25 · validate_only não carrega aprovação"
+
+  echo "▶ v25 · teto sob concorrência (revisão nuvem 2, ressalva)"
+  # Duas sessões de verdade, COMMITADAS: A abre o real e segura a transação;
+  # B abre o real da mesma coorte em paralelo. Sem a trava por coorte, as duas
+  # passam (80 para teto 50). Limpeza depois, pelo dono, com os gatilhos off.
+  local pc; pc=$(w14_prov_rateio 2 50.00)
+  local sa="BEGIN; SET LOCAL ROLE service_role; $(w14_decisao elegivel 40.00 NULL "$pc" "$W14_HORA" "$W14_TID1" "$W14_VIMP" corrida) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1") SELECT pg_sleep(2); COMMIT;"
+  local sb="BEGIN; SET LOCAL ROLE service_role; $(w14_decisao elegivel 40.00 NULL "$pc" "$W14_HORA" "$W14_TID2" "$W14_VIMP" corrida) $(w14_val_e_real "$W14_IMP_B" "$W14_TID2") COMMIT;"
+  ( printf '\\set VERBOSITY sqlstate\n%s\n' "$sa" | P > "$RECIBOS/w14-corrida-a.out" 2>&1 ) &
+  local pid=$!
+  sleep 0.7
+  printf '\\set VERBOSITY sqlstate\n%s\n' "$sb" | P > "$RECIBOS/w14-corrida-b.out" 2>&1
+  wait "$pid"
+  eq "$(grep -c '^t$' "$RECIBOS/w14-corrida-a.out")" "1" "v25 · corrida: a sessão A abre o real"
+  eq "$(grep -oE '(ERROR|ERRO):  [0-9A-Z]{5}' "$RECIBOS/w14-corrida-b.out" | head -1 | awk '{print $2}')" "23514" \
+     "v25 · corrida: a sessão B, em paralelo na mesma coorte, espera A e é recusada"
+  eq "$(P -c "SELECT itens_vivos || '|' || soma_valor FROM public.conversao_offline_envio_por_coorte" 2>&1)" "1|40.00" \
+     "v25 · corrida: o vivo da coorte fica dentro do teto"
+  PA -c "ALTER TABLE public.conversao_offline_item DISABLE TRIGGER USER; ALTER TABLE public.conversao_offline_lote DISABLE TRIGGER USER; ALTER TABLE public.conversao_offline_decisao DISABLE TRIGGER USER; DELETE FROM public.conversao_offline_item; DELETE FROM public.conversao_offline_lote; DELETE FROM public.conversao_offline_decisao WHERE rodada='corrida'; ALTER TABLE public.conversao_offline_item ENABLE TRIGGER USER; ALTER TABLE public.conversao_offline_lote ENABLE TRIGGER USER; ALTER TABLE public.conversao_offline_decisao ENABLE TRIGGER USER;" >/dev/null 2>&1 \
+    && ok "v25 · corrida: limpeza de teste pelo dono" || nao "v25 · corrida: limpeza"
 
   echo "▶ v25 · reverter"
   PA -c "INSERT INTO public.conversao_offline_decisao (rodada, customer_id, operating_account_id, product_destination_id, transaction_id, visita_ref, clique_tipo, clique_sha256, estado, coorte_data, coorte_campanha, coorte_dominio, motivo, detalhe) VALUES ('lab','1111111111','1111111111','900001','$W14_TID1','v1','gclid','$W14_SHA','pulado','2026-10-10','cup-lab','lab.invalid','receita_ausente','lab')" >/dev/null 2>&1 \
