@@ -96,6 +96,12 @@ describe('saveFunnelUrls — banco ainda sem a RPC (só o que mudou, grava antes
     expect(ativas()).toEqual(['p1.example/a']);
   });
 
+  it('lista vazia (ou só espaços) é recusada sem desativar nada', async () => {
+    await expect(campaignFunnelUrlsService.saveFunnelUrls(C, entrada(['  ']))).rejects.toMatchObject({ code: '22023' });
+    expect(chamadas.filter(c => c !== 'select')).toEqual([]);
+    expect(ativas()).toEqual(['blog.p1.example/old', 'p1.example/a']);
+  });
+
   it('reativar a divergente falha ANTES de desativar qualquer coisa: as ativas não diminuem', async () => {
     await expect(campaignFunnelUrlsService.saveFunnelUrls(C, entrada(['outro.example/inativa']))).rejects.toEqual(recusa);
     expect(ativas()).toEqual(['blog.p1.example/old', 'p1.example/a']);

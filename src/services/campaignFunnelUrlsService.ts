@@ -84,6 +84,9 @@ class CampaignFunnelUrlsService {
     if (erroLeitura) throw erroLeitura;
 
     const desejadas = Array.from(new Set(lista.map(limparUrlFunil).filter(u => u !== '')));
+    if (desejadas.length === 0) {
+      throw { code: '22023', message: 'funil: lista de URLs vazia — nada foi alterado' };
+    }
     const porUrl = new Map((atuais || []).map((r: CampaignFunnelUrl) => [r.url, r]));
 
     for (const url of desejadas) {

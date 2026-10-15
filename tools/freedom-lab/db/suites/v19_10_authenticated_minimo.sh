@@ -343,8 +343,12 @@ ultima() { printf "BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.cl
 eq "$(ultima "$OPER" "DO \$t\$ BEGIN PERFORM public.volc_salvar_funil('123456789', ARRAY['outro.example/inat', 'p1.example/c']); EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'recusado'; END \$t\$; $ATIVAS")" "blog.p1.example/old,p1.example/a" "volc_salvar_funil: reativar a divergente é recusado e NADA muda (atômico; ativas não diminuem)"
 eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('123456789', ARRAY['outro.example/inat', 'p1.example/c'])" "$OPER" | cut -c1-5)" "42501" "volc_salvar_funil: a recusa chega ao cliente (não é engolida)"
 eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY['p2v.example/x2'])" "$OPER" | cut -c1-5)" "42501" "volc_salvar_funil: operador não grava na campanha de outro"
-eq "$(ultima "$OPER" "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY[]::text[]); SELECT count(*) FROM $CFU WHERE campaign_id = '222222222' AND \"Active\"")" "1" "volc_salvar_funil: operador não desativa nada na campanha de outro (a ativa dela segue ativa)"
+eq "$(ultima "$OPER" "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY['p2v.example/x']); SELECT count(*) FROM $CFU WHERE campaign_id = '222222222' AND \"Active\"")" "1" "volc_salvar_funil: operador não desativa nada na campanha de outro (a ativa dela segue ativa)"
 eq "$(estado anon "SELECT count(*) FROM public.volc_salvar_funil('123456789', ARRAY[]::text[])" | cut -c1-5)" "42501" "volc_salvar_funil: anon sem EXECUTE"
+for L in "ARRAY[]::text[]" "NULL::text[]" "ARRAY['', '  ', 'https://www./']"; do
+  eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('123456789', $L)" "$OPER" | cut -c1-5)" "22023" "volc_salvar_funil: lista vazia/nula ($L) é recusada"
+  eq "$(ultima "$OPER" "DO \$t\$ BEGIN PERFORM public.volc_salvar_funil('123456789', $L); EXCEPTION WHEN invalid_parameter_value THEN NULL; END \$t\$; $ATIVAS")" "blog.p1.example/old,p1.example/a" "volc_salvar_funil: lista vazia/nula ($L) não desativa nada"
+done
 eq "$(P -c "$ATIVAS")" "blog.p1.example/old,p1.example/a" "volc_salvar_funil: estado gravado intacto depois das provas"
 PA -c "DELETE FROM public.campaign_funnel_urls WHERE campaign_id = '123456789' AND url IN ('blog.p1.example/old', 'outro.example/inat')" >/dev/null
 PA -c "UPDATE public.projects SET domain = '', main_url = '' WHERE id = 9001" >/dev/null

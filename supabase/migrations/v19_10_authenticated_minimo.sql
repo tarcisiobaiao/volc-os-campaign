@@ -489,6 +489,11 @@ BEGIN
     FROM (SELECT rtrim(regexp_replace(regexp_replace(btrim(u), '^https?://', '', 'i'), '^www\.', '', 'i'), '/') AS c
             FROM unnest(coalesce(p_urls, '{}')) u) x
    WHERE c <> '';
+  -- lista vazia ou nula desativaria a campanha inteira: recusa sem mudar nada
+  -- (o editor já exige ao menos uma URL; remover uma URL é removeFunnelUrl)
+  IF cardinality(v_urls) = 0 THEN
+    RAISE EXCEPTION 'funil: lista de URLs vazia — nada foi alterado' USING ERRCODE = '22023';
+  END IF;
   FOREACH v_u IN ARRAY v_urls LOOP
     IF EXISTS (SELECT 1 FROM public.campaign_funnel_urls
                 WHERE campaign_id = p_campaign_id AND url = v_u AND "Active") THEN
