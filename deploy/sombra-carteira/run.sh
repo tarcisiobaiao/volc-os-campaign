@@ -17,6 +17,23 @@ if [ "${VOLC_SOMBRA_HABILITADA:-nao}" != "sim" ]; then
   exit 65
 fi
 
+# Nunca como root: a unit roda como volc-sombra. O escape existe só para o
+# teste hermético, que roda como root no contêiner; a unit não o define.
+if [ "$(id -u)" = "0" ] && [ "${VOLC_SOMBRA_TESTE_PERMITE_ROOT:-}" != "1" ]; then
+  echo "run.sh não roda como root; use o usuário de serviço volc-sombra" >&2
+  exit 64
+fi
+
+# Só a service_role do .env do Supabase. Se aparecer qualquer outra chave
+# dele, alguém apontou o EnvironmentFile para o arquivo inteiro: recusa.
+for vazado in JWT_SECRET POSTGRES_PASSWORD DASHBOARD_PASSWORD DASHBOARD_USERNAME ANON_KEY \
+              SECRET_KEY_BASE VAULT_ENC_KEY LOGFLARE_API_KEY SMTP_PASS; do
+  if [ -n "${!vazado:-}" ]; then
+    echo "$vazado no ambiente: o EnvironmentFile deve ter só SERVICE_ROLE_KEY, não o .env inteiro" >&2
+    exit 64
+  fi
+done
+
 CONTAS="${VOLC_SOMBRA_CONTAS:-}"
 DESTINO="${VOLC_SOMBRA_DESTINO:-/var/lib/volc-sombra-carteira/experimentos}"
 BASE_REF="$(cat "$ROOT/current/.base_ref" 2>/dev/null || true)"
@@ -47,6 +64,7 @@ fi
 
 export SUPABASE_URL="https://database.agenciavolc.com.br"
 export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:?SERVICE_ROLE_KEY ausente no ambiente}"
+unset SERVICE_ROLE_KEY
 export PYTHONPATH="$ROOT/current/tools/freedom-lab/src"
 mkdir -p "$DESTINO"
 
