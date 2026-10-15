@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-15T06:07:51-03:00",
+  "generated_at": "2026-10-15T08:06:15-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
     "files": 881,
-    "markdown": 653,
-    "sql": 228,
-    "tracked": 864,
-    "untracked": 17,
+    "markdown": 648,
+    "sql": 233,
+    "tracked": 881,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 56,
-      "documentation": 465,
+      "documentation": 459,
       "generated": 2,
-      "module-guide": 43,
+      "module-guide": 44,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,13 +22,13 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 114,
+      "sql-needs-review": 119,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 146,
-      "medium": 58,
-      "read-only-or-ddl-free": 24
+      "high": 149,
+      "medium": 59,
+      "read-only-or-ddl-free": 25
     }
   },
   "exact_duplicates": [
@@ -1014,7 +1014,7 @@
       "path": "docs/architecture/ADR-CICLO-ECONOMICO-COMPRA-MONETIZACAO.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 12357,
       "lines": 113,
       "sha256": "df8adf0b261b7b888e5c254908e2029687838f7a81dbeb1eefa577bcc38e3744",
@@ -1531,9 +1531,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 24238,
+      "bytes": 24237,
       "lines": 318,
-      "sha256": "706ab73385095a8397b79fb175dc9c335c019103519a03c94ddff89ecc34a1bd",
+      "sha256": "f8281612a387dd9ef5b32f98ca8bc6909be8d611d311e141dcbf5732b5aba6a8",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1986,7 +1986,7 @@
       "path": "docs/audits/ATTENTION-REPLAY-PROVA-AB-2026-10-15.md",
       "extension": ".md",
       "classification": "audit",
-      "tracked": false,
+      "tracked": true,
       "bytes": 7467,
       "lines": 88,
       "sha256": "cedf18460cb2f60cf750671ac031fdf16d82eb11bab0c823ed9776bebf5cb787",
@@ -6861,7 +6861,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "453042d531a058c5013c7b35f453f31310b69b0830f56fa7c52f53317efb4d68",
+      "sha256": "ff3ba02faa23fefa47927881037da677ec57b343e47923c19f513ac1019e4248",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6987,22 +6987,10 @@
       "sql_risk": null
     },
     {
-      "path": "funnelforge-migracao/engine/runs-canario/_pending-20261008-pre-redacao-unico/report.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 1924,
-      "lines": 53,
-      "sha256": "7b5f7c497d52f363df1a87cae0364dcd1ac0f7f9cd4ba9ba8ff4c51b2c1a1024",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
       "path": "funnelforge-migracao/engine/runs-canario/ab-writer-gas-20261008/REPORT.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 3931,
       "lines": 54,
       "sha256": "072bd4a1c266e737b7670a4963900863e1bc56623617c5fe4a261f979a4f164f",
@@ -7011,22 +6999,10 @@
       "sql_risk": null
     },
     {
-      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-20261008-pre-redacao-pos-fix-final-20261008/report.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 12746,
-      "lines": 201,
-      "sha256": "cb74a3adaa0a66c056c7da3ab41f92adeb115bd87d34383d3d5bdbb5abfa803b",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
       "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v2/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 7371,
       "lines": 106,
       "sha256": "95515cc3c2fdfbbcbec951e6a807617f28171d97a01cbd12f88e1112ab909183",
@@ -7038,7 +7014,7 @@
       "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v6/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 3160,
       "lines": 62,
       "sha256": "f94a9e73b60ac6d6eae1a4b56e3cc8f18e19ac5159308f61e2b053af0493e0a6",
@@ -7050,7 +7026,7 @@
       "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-como-funciona-20261008-dossie-v7/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 7634,
       "lines": 106,
       "sha256": "26a48b566645f3f1bda2e63eb8e91cac7e6034b706ee169e837eeccdce5aefe3",
@@ -7059,22 +7035,10 @@
       "sql_risk": null
     },
     {
-      "path": "funnelforge-migracao/engine/runs-canario/gas-do-povo-guia-20261008-pre-redacao-validacao-final-20261008/report.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 12071,
-      "lines": 167,
-      "sha256": "16da2cd6e2e0d2c609408a3162611a2224c383ecfe57e50bc2ec2bbfaa285a57",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
       "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v3/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 2181,
       "lines": 53,
       "sha256": "ef9afa9eabec09c12105d14a2259645675c294b8cb3d5e2dd5602cc434466098",
@@ -7086,7 +7050,7 @@
       "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v4/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 2181,
       "lines": 53,
       "sha256": "2f0d1420706b0f31f5091780bb3887f9577cf4f811c258c1b0a64544c0d6f52e",
@@ -7098,7 +7062,7 @@
       "path": "funnelforge-migracao/engine/runs-canario/programa-gas-do-povo-como-funciona-20261008-dossie-v5/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 4520,
       "lines": 64,
       "sha256": "116da2b780d511ce903741225ede5789bd7bc9ba3fe8068caaa2dddf66bb1518",
@@ -7107,34 +7071,10 @@
       "sql_risk": null
     },
     {
-      "path": "funnelforge-migracao/engine/runs-canario/saque-aniversario-fgts-20261010-fgts-canario/report.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 19873,
-      "lines": 221,
-      "sha256": "96a1522da0e449ab6861d1475ccb0e17c98eec43da7994ca3cc64aec81831392",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
-      "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-bucket/report.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 21393,
-      "lines": 277,
-      "sha256": "b9bf2e100ee11ad12c5d40254d480659925519a1f2570ac9bcfdf67a0bfbe872",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
       "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-canario-copy/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 19040,
       "lines": 282,
       "sha256": "596c42cf19d7decfe6f3d4291cde26fa839b5b911311b429ea0b3c822c6810ec",
@@ -7146,22 +7086,10 @@
       "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-canario-editorial/report.md",
       "extension": ".md",
       "classification": "documentation",
-      "tracked": false,
+      "tracked": true,
       "bytes": 20256,
       "lines": 281,
       "sha256": "1c6b2017c9f306084d62dc36618df1bea79de5b6096579eda9288c15399df250",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
-      "path": "funnelforge-migracao/engine/runs-canario/tarifa-social-energia-eletrica-20261010-final/report.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 20655,
-      "lines": 291,
-      "sha256": "aa71c3d19613aa0171092953e871a4c6b26f8dba311ec557e614be4a44aa5585",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7787,7 +7715,7 @@
       "lines": 242,
       "sha256": "320fdd5db67dde5e784fd52923742037f6a7af8e3c93d8a1754d5d48b1c97bfd",
       "graph_nodes": 8,
-      "graph_degree": 18,
+      "graph_degree": 16,
       "sql_risk": "high"
     },
     {
@@ -7991,7 +7919,7 @@
       "lines": 117,
       "sha256": "e1339fbc64a1e30f0c720bb5540401c1192ebee5ffc75e2682a1f4aa23135db4",
       "graph_nodes": 3,
-      "graph_degree": 4,
+      "graph_degree": 6,
       "sql_risk": "high"
     },
     {
@@ -10059,6 +9987,30 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 10250,
+      "lines": 181,
+      "sha256": "46cd1769e829d08a69e1d4c14c4fabbf97ba80af21264d0ab20ecea5bb0d947e",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v18_01_identidade_leitura_minima_rollback.PROPOSTA.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3296,
+      "lines": 66,
+      "sha256": "592714219fc0a87065fbe65137c9c72bac6872766553617488a6755a7996ccbc",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/v8_01_app_auth_schema_and_roles.sql",
       "extension": ".sql",
       "classification": "sql-needs-review",
@@ -10309,6 +10261,54 @@
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
+    },
+    {
+      "path": "tools/freedom-lab/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 5082,
+      "lines": 88,
+      "sha256": "1f21b533aef66518158308672d6f5962a0000dd47122f26413dc70f1d08abd24",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "tools/freedom-lab/db/fingerprint_schema.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4458,
+      "lines": 70,
+      "sha256": "0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
+    },
+    {
+      "path": "tools/freedom-lab/db/semente_sintetica.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3516,
+      "lines": 48,
+      "sha256": "ee23cede9a6f7c0851e66ad6a3ae933d7bc94f794a2085cd3c09eb54afd40acd",
+      "graph_nodes": 2,
+      "graph_degree": 2,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "tools/freedom-lab/db/sonda_acesso.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 9895,
+      "lines": 183,
+      "sha256": "7c78d7864f498d5001108cb68da07b1f2d160a8947905613d4bae392b0b27656",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
     },
     {
       "path": "tools/meta-adk-review/EXECUTION.md",

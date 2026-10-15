@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-15T06:07:51-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-15T08:06:15-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 881 arquivos: 653 Markdown e 228 SQL;
-- 864 versionados e 17 ainda não versionados;
+- 881 arquivos: 648 Markdown e 233 SQL;
+- 881 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 146 SQL com palavras de mutação de alto risco.
+- 149 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,9 +17,9 @@ Gerado em `2026-10-15T06:07:51-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 56 |
-| `documentation` | 465 |
+| `documentation` | 459 |
 | `generated` | 2 |
-| `module-guide` | 43 |
+| `module-guide` | 44 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-15T06:07:51-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 114 |
+| `sql-needs-review` | 119 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -58,7 +58,7 @@ estejam errados, mas impede aplicação automática.
 | `sql/fix_user_campaigns_reference.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/recreate_marliseac.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/reset_senha_alternativo.sql` | `sql-needs-review` | 1 | 0 |
-| `src/sql/add_commission_operator_automation.sql` | `sql-needs-lineage` | 8 | 18 |
+| `src/sql/add_commission_operator_automation.sql` | `sql-needs-lineage` | 8 | 16 |
 | `src/sql/add_gam_metrics_columns.sql` | `sql-needs-lineage` | 4 | 8 |
 | `src/sql/add_revenue_converted_column.sql` | `sql-needs-lineage` | 10 | 27 |
 | `src/sql/add_revshare_automation.sql` | `sql-needs-lineage` | 10 | 33 |
@@ -67,7 +67,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/create_project_cost_sharing_table.sql` | `sql-needs-lineage` | 5 | 14 |
 | `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | 2 | 3 |
 | `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | 3 | 7 |
-| `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 4 |
+| `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | 3 | 6 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/get_rotated_campaign_highlights.sql` | `sql-needs-lineage` | 2 | 6 |
 | `src/sql/get_rotated_campaign_highlights_FINAL.sql` | `sql-needs-lineage` | 3 | 10 |
@@ -176,6 +176,8 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v17_03_rollback.sql` | `sql-needs-review` | 3 | 8 |
 | `supabase/migrations/v17_04_arbitragem_reconciliada.sql` | `sql-needs-review` | 4 | 14 |
 | `supabase/migrations/v17_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v18_01_identidade_leitura_minima_rollback.PROPOSTA.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |
@@ -187,6 +189,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v9_03_historico_e_ordem_operacional.sql` | `sql-needs-review` | 2 | 6 |
 | `supabase/migrations/v9_03_rollback.sql` | `sql-needs-review` | 2 | 6 |
 | `supabase/migrations/v9_99_trafego_inventario_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `tools/freedom-lab/db/sonda_acesso.sql` | `sql-needs-review` | 1 | 0 |
 
 ## Fila da próxima onda
 
@@ -271,7 +274,7 @@ estejam errados, mas impede aplicação automática.
 | `sql/recreate_marliseac.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/reset_marliseac_password.sql` | `sql-needs-review` | medium | 1 | 0 |
 | `sql/reset_senha_alternativo.sql` | `sql-needs-review` | high | 1 | 0 |
-| `src/sql/add_commission_operator_automation.sql` | `sql-needs-lineage` | high | 8 | 18 |
+| `src/sql/add_commission_operator_automation.sql` | `sql-needs-lineage` | high | 8 | 16 |
 | `src/sql/add_costs_division_column.sql` | `sql-needs-lineage` | medium | 1 | 0 |
 | `src/sql/add_gam_metrics_columns.sql` | `sql-needs-lineage` | high | 4 | 8 |
 | `src/sql/add_needs_password_change_column.sql` | `sql-needs-lineage` | medium | 1 | 0 |
@@ -287,7 +290,7 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/cron_campaign_highlights_fixed.sql` | `sql-needs-lineage` | read-only-or-ddl-free | 1 | 0 |
 | `src/sql/fix_campaigns_aggregated_pagination.sql` | `sql-needs-lineage` | high | 2 | 3 |
 | `src/sql/fix_campaigns_revenue_revshare.sql` | `sql-needs-lineage` | high | 3 | 7 |
-| `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | high | 3 | 4 |
+| `src/sql/fix_commission_role_and_recalculate.sql` | `sql-needs-lineage` | high | 3 | 6 |
 | `src/sql/fix_tax_history_table.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/force_recalculate_commissions_today.sql` | `sql-needs-lineage` | medium | 1 | 0 |
 | `src/sql/get_placement_negation_suggestions.sql` | `sql-needs-lineage` | medium | 2 | 3 |
