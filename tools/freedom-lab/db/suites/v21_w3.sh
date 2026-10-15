@@ -42,7 +42,7 @@
 # prova o banco, não o PostgREST.
 # =============================================================================
 
-for _f in P ok nao eq estado sqlstate; do  # contrato do lab.sh: também PA, login_como, SONDA
+for _f in P PA ok nao eq estado sqlstate; do  # contrato do lab.sh: também login_como, SONDA
   declare -F "$_f" >/dev/null || { echo "ERRO: v21_w3.sh precisa ser carregada pelo lab.sh (falta $_f)" >&2; return 1 2>/dev/null || exit 1; }
 done
 unset _f
@@ -52,6 +52,7 @@ V21_REVERTER="$RAIZ/supabase/migrations/v21_pacote_reverter.sql"
 V21_ADMIN=00000000-0000-4000-8000-00000000a021
 V21_COMUM=00000000-0000-4000-8000-00000000c021
 V21_CAMP=v21-lab-0001
+V21_PROJ=21021
 V21_TABELAS="meta_capi_sites campaign_roles campaign_members campaign_commissions daily_campaign_member_payouts"
 
 # Claims que auth.uid() lê, como o PostgREST põe. $1 papel  $2 sub (vazio = anon)
@@ -88,7 +89,11 @@ v21_suite() {
   eq "$(v21_existem)" "0" "v21 · antes: nenhuma das 5 tabelas existe (estado de produção em 15/10)"
 
   echo "▶ v21 · identidades sintéticas"
-  P > "$RECIBOS/v21-semente.out" 2>&1 <<SQL
+  # Semente inteira pelo PA (supabase_admin). Na base de produção (dump de 15/10):
+  # auth.users é de supabase_auth_admin sem INSERT para o postgres; app_auth.user_roles
+  # é de supabase_admin, RLS FORCE e nenhum GRANT; public.users, campaigns e projects
+  # são de supabase_admin. Só a semente sobe de papel; pacote, matriz e reverter seguem no P.
+  PA > "$RECIBOS/v21-semente.out" 2>&1 <<SQL
 CREATE FUNCTION pg_temp.v21_semear(tab regclass, base jsonb) RETURNS void LANGUAGE plpgsql AS \$f\$
 DECLARE
   v jsonb := base; r record; cols text;
@@ -116,15 +121,17 @@ END
 \$f\$;
 SELECT pg_temp.v21_semear('auth.users', '{"id":"$V21_ADMIN","email":"admin@v21.example.invalid"}');
 SELECT pg_temp.v21_semear('auth.users', '{"id":"$V21_COMUM","email":"comum@v21.example.invalid"}');
-SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_ADMIN","email":"admin@v21.example.invalid","role":"ADMIN"}');
-SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_COMUM","email":"comum@v21.example.invalid","role":"OPERATOR"}');
+SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_ADMIN","name":"Admin v21","email":"admin@v21.example.invalid","role":"ADMIN"}');
+SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_COMUM","name":"Comum v21","email":"comum@v21.example.invalid","role":"OPERATOR"}');
 SELECT pg_temp.v21_semear('app_auth.user_roles', '{"auth_user_id":"$V21_ADMIN","role":"ADMIN"}');
-SELECT pg_temp.v21_semear('public.campaigns', '{"campaign_id":"$V21_CAMP"}');
+-- campaigns exige projeto (FK project_id) e status do enum campaign_status
+SELECT pg_temp.v21_semear('public.projects', '{"id":$V21_PROJ,"project_name":"v21 lab","main_url":"https://v21.example.invalid","start_date":"2026-10-01","status":"Active"}');
+SELECT pg_temp.v21_semear('public.campaigns', '{"id":$V21_PROJ,"project_id":$V21_PROJ,"campaign_id":"$V21_CAMP","campaign_name":"v21 lab","start_date":"2026-10-01","status":"ENABLED"}');
 SQL
   if grep -q 'ERROR' "$RECIBOS/v21-semente.out"; then
     nao "v21 · semente recusada pela base: $(grep -m1 'ERROR' "$RECIBOS/v21-semente.out")"
   else ok "v21 · semente sintética aceita pela base (CHECKs e FKs de produção)"; fi
-  eq "$(v21_sql "select count(*) from public.users where id in ('$V21_ADMIN','$V21_COMUM')")" "2" "v21 · dois usuários sintéticos semeados"
+  eq "$(PA -c "select count(*) from public.users where id in ('$V21_ADMIN','$V21_COMUM')" 2>&1 | head -1)" "2" "v21 · dois usuários sintéticos semeados"
   eq "$(v21_como authenticated "$V21_ADMIN" 'select public.volc_current_admin()')" "ok:t" "v21 · harness: admin sintético é admin pela v8_01"
   eq "$(v21_como authenticated "$V21_COMUM" 'select public.volc_current_admin()')" "ok:f" "v21 · harness: comum não é admin"
 
