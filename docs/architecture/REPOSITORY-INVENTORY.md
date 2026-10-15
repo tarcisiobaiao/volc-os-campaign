@@ -1,13 +1,13 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-14T23:03:11-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-15T06:07:51-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 878 arquivos: 650 Markdown e 228 SQL;
-- 863 versionados e 15 ainda não versionados;
+- 881 arquivos: 653 Markdown e 228 SQL;
+- 864 versionados e 17 ainda não versionados;
 - 1 grupos de duplicatas exatas;
 - 146 SQL com palavras de mutação de alto risco.
 
@@ -16,8 +16,8 @@ Gerado em `2026-10-14T23:03:11-03:00` por `scripts/auditar_repositorio.py`.
 | Classe | Arquivos |
 |---|---:|
 | `archived` | 33 |
-| `audit` | 55 |
-| `documentation` | 463 |
+| `audit` | 56 |
+| `documentation` | 465 |
 | `generated` | 2 |
 | `module-guide` | 43 |
 | `product-document` | 23 |
@@ -208,6 +208,7 @@ estejam errados, mas impede aplicação automática.
 | `backend/app/motor_pautas/AUDITORIA-GEMINI-R6-BUG.md` | `audit` | — | 0 | 0 |
 | `backend/app/motor_pautas/REVISAO-CODEX.md` | `audit` | — | 0 | 0 |
 | `backend/app/motor_pautas/REVISAO-EXTERNA.md` | `audit` | — | 0 | 0 |
+| `docs/audits/ATTENTION-REPLAY-PROVA-AB-2026-10-15.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CAMPANHA-3-FUNIS-ACHADOS-MOTOR-2026-09-17.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CAMPANHA-3-FUNIS-EDUCACAO-2026-09-17.md` | `audit` | — | 0 | 0 |
 | `docs/audits/CORRECAO-3-FUNIS-HANDOFF-2026-09-18.md` | `audit` | — | 0 | 0 |
@@ -311,7 +312,6 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/rpc_get_daily_metrics_aggregated.sql` | `sql-needs-lineage` | medium | 2 | 6 |
 | `src/sql/rpc_get_dashboard_totals.sql` | `sql-needs-lineage` | medium | 2 | 7 |
 | `src/sql/rpc_get_operational_costs_aggregated.sql` | `sql-needs-lineage` | medium | 2 | 3 |
-| `src/sql/rpc_get_period_comparison.sql` | `sql-needs-lineage` | medium | 2 | 6 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

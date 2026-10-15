@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-14T23:03:11-03:00",
+  "generated_at": "2026-10-15T06:07:51-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 878,
-    "markdown": 650,
+    "files": 881,
+    "markdown": 653,
     "sql": 228,
-    "tracked": 863,
-    "untracked": 15,
+    "tracked": 864,
+    "untracked": 17,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
-      "audit": 55,
-      "documentation": 463,
+      "audit": 56,
+      "documentation": 465,
       "generated": 2,
       "module-guide": 43,
       "product-document": 23,
@@ -91,9 +91,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 7576,
-      "lines": 79,
-      "sha256": "56cceec5c81ae744262d7ef3384ad51bb585011f5ab0b05347d8eced204e898e",
+      "bytes": 7938,
+      "lines": 81,
+      "sha256": "9c68f1180ee397961340dcd5617756625a179976215aa37bdd816da9693d6a47",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -103,9 +103,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 4756,
-      "lines": 37,
-      "sha256": "b8606b96889408ee31d80b05ae2b43161f4559c669414f0e0a96372924b416bb",
+      "bytes": 5118,
+      "lines": 39,
+      "sha256": "e344bc65b0fb1a602e9fbe9e6a2ae2155b8585796568e29d19a5844c96cca058",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -250,6 +250,18 @@
       "bytes": 20438,
       "lines": 165,
       "sha256": "81d3bd456fec124fa9d1b6c29583846409424f2473da88034e912425d4d3316f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/google-homologacao-20261014-01/RELATORIO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7186,
+      "lines": 67,
+      "sha256": "08a98d3cb31f0fa32ff5750895a488123c680b7629565f7c0e7700a4af93e184",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -999,6 +1011,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/architecture/ADR-CICLO-ECONOMICO-COMPRA-MONETIZACAO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 12357,
+      "lines": 113,
+      "sha256": "df8adf0b261b7b888e5c254908e2029687838f7a81dbeb1eefa577bcc38e3744",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/architecture/ADR-CREATIVE-LP-CONTEXT.md",
       "extension": ".md",
       "classification": "documentation",
@@ -1509,7 +1533,7 @@
       "tracked": true,
       "bytes": 24238,
       "lines": 318,
-      "sha256": "0c9039d40b3888c32dd776112bb629b126be663eae790177b338ebf0924cd543",
+      "sha256": "706ab73385095a8397b79fb175dc9c335c019103519a03c94ddff89ecc34a1bd",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1954,6 +1978,18 @@
       "bytes": 5546,
       "lines": 125,
       "sha256": "8c2d8eb1d4c9630f788a3edfbd9296180d75f9440dc156a0d5ad0fead260a305",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/audits/ATTENTION-REPLAY-PROVA-AB-2026-10-15.md",
+      "extension": ".md",
+      "classification": "audit",
+      "tracked": false,
+      "bytes": 7467,
+      "lines": 88,
+      "sha256": "cedf18460cb2f60cf750671ac031fdf16d82eb11bab0c823ed9776bebf5cb787",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
