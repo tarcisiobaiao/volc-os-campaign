@@ -91,9 +91,9 @@ fluxos() { # fluxos <arquivo-saida> — 1 docker exec por fluxo; nada lê o stdi
   run tax_insert__taxHistoryService.ts:91 "$ADMIN" "" "INSERT INTO public.tax_history (month, percentage, effective_date) VALUES ((date_trunc('month', current_date) + interval '1 month')::date, 12, now()) RETURNING percentage;" >> "$O"
   run tax_update__taxHistoryService.ts:76 "$ADMIN" "" "UPDATE public.tax_history SET percentage=11 WHERE month=date_trunc('month', current_date)::date RETURNING percentage;" "$EFEITO" >> "$O"
   run uc_insert__campaignMembersService.ts:231 "$ADMIN" "" "INSERT INTO public.user_campaigns (user_id, campaign_id) VALUES ('b0000000-0000-4000-8000-00000000000a','123456789') RETURNING campaign_id;" >> "$O"
-  run uc_delete__campaignMembersService.ts:312 "$ADMIN" "" "DELETE FROM public.user_campaigns WHERE user_id='b0000000-0000-4000-8000-00000000000b' AND campaign_id='123456789' RETURNING 1;" >> "$O"
+  run uc_delete__campaignMembersService.ts:312 "$ADMIN" "" "DELETE FROM public.user_campaigns WHERE user_id='a0000000-0000-4000-8000-00000000000b' AND campaign_id='123456789' RETURNING 1;" >> "$O"
   run up_insert__campaignMembersService.ts:252 "$ADMIN" "" "INSERT INTO public.user_projects (user_id, project_id) VALUES ('b0000000-0000-4000-8000-00000000000a', 9001) RETURNING project_id;" >> "$O"
-  run up_delete__campaignMembersService.ts:343 "$ADMIN" "" "DELETE FROM public.user_projects WHERE user_id='b0000000-0000-4000-8000-00000000000b' RETURNING 1;" >> "$O"
+  run up_delete__campaignMembersService.ts:343 "$ADMIN" "" "DELETE FROM public.user_projects WHERE user_id='a0000000-0000-4000-8000-00000000000b' RETURNING 1;" >> "$O"
   run pautador_opp_update__pautadorService.ts:110 "$ADMIN" "" "UPDATE public.pautador_opportunities SET status='validating' WHERE id=9001 RETURNING status;" >> "$O"
   run pautador_entopp_update__pautadorEntityService.ts:77 "$ADMIN" "" "UPDATE public.pautador_entity_opportunities SET status='validating', kanban_stage='validating' WHERE id=9001 RETURNING status, kanban_stage;" >> "$O"
   run pautador_countries_insert__pautadorService.ts:51 "$ADMIN" "" "INSERT INTO public.pautador_countries (country_code, country_name, native_language) VALUES ('ZZ','Z','z') RETURNING country_code;" >> "$O"
@@ -157,7 +157,7 @@ ataques() {
     [ "$r" != "$base" ] && echo "$quem·zera_receita_alheia|ABERTO" >> "$O" || echo "$quem·zera_receita_alheia|FECHADO" >> "$O"
     r=$(run a2 "$claims" "" "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789','p2v.example/x', true);" "RESET ROLE; SELECT 'puxou', count(*) FROM public.campaign_funnel_urls WHERE campaign_id='123456789' AND url LIKE 'p2v.example%';")
     printf '%s' "$r" | grep -q 'puxou|1' && echo "$quem·puxa_receita_de_outro_projeto|ABERTO" >> "$O" || echo "$quem·puxa_receita_de_outro_projeto|FECHADO" >> "$O"
-    r=$(run a3 "$claims" "" "INSERT INTO public.user_campaigns (user_id, campaign_id) VALUES ('b0000000-0000-4000-8000-00000000000b','222222222');" "RESET ROLE; SELECT 'vinculou', count(*) FROM public.user_campaigns WHERE campaign_id='222222222';")
+    r=$(run a3 "$claims" "" "INSERT INTO public.user_campaigns (user_id, campaign_id) VALUES ('a0000000-0000-4000-8000-00000000000b','222222222');" "RESET ROLE; SELECT 'vinculou', count(*) FROM public.user_campaigns WHERE campaign_id='222222222';")
     printf '%s' "$r" | grep -q 'vinculou|1' && echo "$quem·vincula_operador_a_campanha_alheia|ABERTO" >> "$O" || echo "$quem·vincula_operador_a_campanha_alheia|FECHADO" >> "$O"
   done
 }
@@ -277,6 +277,8 @@ eq "$(P -c "select rolsuper::text||'|'||rolbypassrls::text||'|'||rolcanlogin::te
 eq "$(estado authenticated "select public.volc_pode_editar_funil('222222222','p2v.example/x')" "$OPER")" "ok:f" "escopo: operador não edita funil de campanha sem vínculo"
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','p2v.example/x')" "$OPER")" "ok:f" "escopo: operador não pendura URL de outro domínio na própria campanha"
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:t" "escopo: operador edita a própria campanha no domínio do projeto"
+EMAIL_FORJADO='{"sub":"a0000000-0000-4000-8000-0000000000ee","email":"operador@example.invalid","role":"authenticated"}'
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$EMAIL_FORJADO")" "ok:f" "escopo: o e-mail do operador num JWT de outra conta não dá acesso (identifica por id = auth.uid())"
 eq "$(P -c "select array_to_string(proconfig, ',') from pg_proc where oid='public.trigger_calculate_adsense_campaign_revenue()'::regprocedure")" "search_path=public, pg_temp" "agregação do funil com search_path fixo"
 
 echo "▶ 6. rollback"

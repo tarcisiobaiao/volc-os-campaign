@@ -1,6 +1,14 @@
 -- db/suites/v19_10_semente.sql — linhas sintéticas para a suíte v19_10 exercitar gatilhos de verdade.
 -- Base: seed do revisor local de 15/10 (/private/tmp/claude-502/v1910/seed.sql + seed2.sql). Só @example.invalid,
 -- ids 9001, domínios .example. Aplicada como supabase_admin depois da semente do pacote anon.
+-- O operador sintético passa a ter public.users.id = auth.users.id, como o app cria
+-- usuário hoje (api/_lib/usuarios.js); a função de escopo do funil identifica por id.
+BEGIN;
+SET LOCAL session_replication_role = replica;
+UPDATE public.users SET id = 'a0000000-0000-4000-8000-00000000000b' WHERE id = 'b0000000-0000-4000-8000-00000000000b';
+UPDATE public.user_projects SET user_id = 'a0000000-0000-4000-8000-00000000000b' WHERE user_id = 'b0000000-0000-4000-8000-00000000000b';
+UPDATE public.user_campaigns SET user_id = 'a0000000-0000-4000-8000-00000000000b' WHERE user_id = 'b0000000-0000-4000-8000-00000000000b';
+COMMIT;
 \set ON_ERROR_STOP on
 BEGIN;
 INSERT INTO public.system_settings (key, value) VALUES ('dollar_exchange_rate', '5.5');
@@ -24,8 +32,8 @@ INSERT INTO public.pautador_entities (id, country_code, canonical_name, slug) VA
 INSERT INTO public.pautador_entity_opportunities (id, entity_id, country_code) VALUES (9001, 9001, 'BR');
 INSERT INTO public.operational_cost_categories (id, name) VALUES (9001, 'cat1');
 INSERT INTO public.operational_costs (id, name, amount, category_id, month) VALUES (9001, 'cost1', 10, 9001, date_trunc('month', current_date)::date);
-INSERT INTO public.user_campaigns (user_id, campaign_id) VALUES ('b0000000-0000-4000-8000-00000000000b', '123456789');
-INSERT INTO public.user_projects (user_id, project_id) VALUES ('b0000000-0000-4000-8000-00000000000b', 9001);
+INSERT INTO public.user_campaigns (user_id, campaign_id) VALUES ('a0000000-0000-4000-8000-00000000000b', '123456789');
+INSERT INTO public.user_projects (user_id, project_id) VALUES ('a0000000-0000-4000-8000-00000000000b', 9001);
 COMMIT;
 select 'gam', revenue_converted from public.gam_metrics; select 'dcm', revenue_converted from public.daily_campaign_metrics;
 BEGIN;
