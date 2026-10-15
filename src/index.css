@@ -54,6 +54,28 @@
     --z-modal: 60;
     --z-toast: 70;
 
+    /* — V3 "Instrumento" (design.md §V3). Tokens ADITIVOS: nenhum valor V2
+       acima mudou. Nenhum destes carrega texto, então não entram na medição
+       de contraste de tinta; são material (sombra, fio, textura) e tempo. — */
+    --motion-dado: 640ms;
+    --motion-escalonar: 30ms;
+    --ease-dado: cubic-bezier(0.16, 1, 0.3, 1);
+
+    --linha-compacta: 2rem;
+    --linha-padrao: 2.5rem;
+    --linha-confortavel: 3rem;
+
+    --instrumento: var(--card);
+    --instrumento-fio: 0 0% 100% / 0.9;
+    --shadow-instrumento:
+      inset 0 1px 0 0 hsl(var(--instrumento-fio)),
+      0 1px 2px hsl(220 22% 10% / 0.06),
+      0 18px 36px -20px hsl(214 40% 18% / 0.32);
+
+    /* Hipótese: shadow, simulação, proposta não executada. Textura, não cor —
+       sempre com glifo ◇ e a palavra (PRODUCT.md §4: simulação não é dado). */
+    --hipotese-tinta: 220 22% 10% / 0.07;
+
     /* — Cores semânticas de dado (ROAS/status/deltas) — */
     /* ⚠️ MEDIDO, não escolhido. O contrato manda o chip combinar glifo + PALAVRA,
        e a palavra usa o token semântico como TEXTO — papel que exige 4,5:1 (WCAG
@@ -231,6 +253,15 @@
     --chart-3: 271 76% 66%;
     --chart-4: 14 92% 58%;
     --chart-5: 158 66% 50%;
+
+    /* V3 "Instrumento" — par escuro */
+    --instrumento: 218 26% 13%;
+    --instrumento-fio: 214 30% 93% / 0.07;
+    --shadow-instrumento:
+      inset 0 1px 0 0 hsl(var(--instrumento-fio)),
+      0 1px 2px hsl(220 40% 2% / 0.45),
+      0 18px 40px -18px hsl(220 50% 2% / 0.7);
+    --hipotese-tinta: 214 30% 93% / 0.08;
   }
 }
 
@@ -1666,4 +1697,57 @@
   .bancada-order-details > summary svg,
   .bancada-evidence-drawer > summary svg,
   .campaign-cockpit-primary-action { transition: none; }
+}
+
+/* =====================================================================
+   V3 "Instrumento" — utilitários (design.md §V3)
+   ===================================================================== */
+@layer components {
+  /* Números comparáveis: algarismos tabulares e alinhados. IBM Plex Sans tem
+     `tnum`; Outfit não, por isso número de KPI nunca usa font-display. */
+  .numero {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  /* Superfície de instrumento: card + fio de luz de 1px no topo + sombra
+     tingida. Não aninhar dentro de outra `.instrumento` nem de `shadow-card`. */
+  .instrumento {
+    background-color: hsl(var(--instrumento));
+    border: 1px solid hsl(var(--border) / 0.7);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-instrumento);
+  }
+
+  /* Hachura de hipótese. A gradiente é montada AQUI, no elemento, para que o
+     par escuro de `--hipotese-tinta` valha mesmo quando `.dark` está num
+     ancestral que não é o <html>. */
+  .hachura-hipotese {
+    background-image: repeating-linear-gradient(
+      135deg,
+      hsl(var(--hipotese-tinta)) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
+  /* Sparkline: o traço se desenha uma vez quando o dado chega. */
+  .sparkline-traco {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+  .sparkline-traco[data-desenhar="true"] {
+    stroke-dashoffset: 1;
+    animation: volc-desenhar var(--motion-dado) var(--ease-dado) forwards;
+  }
+}
+
+@keyframes volc-desenhar {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkline-traco[data-desenhar="true"] {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
