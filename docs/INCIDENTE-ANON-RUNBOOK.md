@@ -36,42 +36,59 @@ necessidade para este incidente.
 
 ## Estado da decisão
 
-**Bloqueado até o inventário de produção** (itens 1–4 abaixo). O pacote está
-provado em laboratório; o que falta é saber quem, fora do app, ainda usa a
-anon. Essa leitura de produção depende de autorização do Tarcísio.
+**Bloqueado até o inventário de produção.** O pacote está provado em
+laboratório; falta saber quem, fora do app, ainda usa a anon. O `--passo1`
+**recusa** sem um inventário assinado (abaixo). A leitura de produção para
+preenchê-lo depende de autorização do Tarcísio.
 
-## Comando exato (só com autorização nominal: operação e hashes)
+## Ordem com o ledger v20
 
-```bash
-scripts/aplicar-incidente-anon-w4.sh --so-checar
-```
-Só leitura, nunca `supabase_admin`:
-- **preflight** (`scripts/preflight-incidente-anon-w4.sql`) como
-  `supabase_read_only_user` com a sessão forçada read-only. Uma linha por item
-  (`item|valor|bloqueia`); o `--passo1` recusa seguir com qualquer `bloqueia=t`
-  (inclui P4: ADMIN do cadastro sem papel em `app_auth`);
-- **verificação como anon** (`scripts/verificar-anon-w4.sql`) como `postgres`
-  (membro de anon) com a sessão read-only: `SET ROLE anon` e SELECT real.
-  `supabase_read_only_user` não serve aqui — ele não assume anon e uma sonda
-  ingênua mostraria "zero" no estado inseguro.
+O pacote v19 vai **antes** do ledger v20 e **fora** dele (decisão do
+coordenador, 15/10): a v20 nunca foi aplicada em produção, o incidente é a
+prioridade, e o protocolo da v20 (`scripts/migracao-protocolo.sh`) roda como
+`postgres` dentro de `BEGIN…COMMIT`, enquanto os v19 exigem superusuário e têm
+transação própria. Para o ledger importar depois, cada execução do script grava
+`docs/closure/incidente-anon-w4/RECEIPT-<carimbo>.json` com os campos de
+`volc_ops.migracao_evento` por arquivo, o fingerprint de `public+app_auth` antes
+e depois (mesma SQL da âncora, `tools/freedom-lab/db/fingerprint_schema.sql`) e
+o carimbo de tempo. O que a v20 precisa mudar está no handoff W4.
 
-```bash
-scripts/aplicar-incidente-anon-w4.sh --passo1
-```
-Exige preflight sem bloqueio e a verificação dando **ABERTO** antes (prova que o
-instrumento enxerga o buraco); pede `APLICAR`; `pg_dump -Fc -n public -n app_auth`
-em `/root/backups/`; aplica 1→5 (cada arquivo atômico; se um falhar, o script
-para e diz quais já ficaram); `NOTIFY pgrst`; exige **FECHADO** depois.
+## Comandos (só com autorização nominal: operação, hashes e aprovador)
 
-```bash
-scripts/aplicar-incidente-anon-w4.sh --passo2
-```
-Só depois que o frontend com `src/hooks/useUserProfile.ts` corrigido estiver em produção.
+1. Leitura de produção para o inventário — **preparada, não executada**:
+   ```bash
+   VOLC_AUTORIZA_LEITURA=inventario-anon-w4 scripts/inventario-anon-producao.sh docs/closure/incidente-anon-w4/leitura
+   ```
+   Só leitura: edge function `volc-ingest` (filtrada por grep, nunca impressa
+   inteira), flags booleanas do GoTrue, contagem de chamadas no Kong, contagens e
+   datas no banco em `BEGIN READ ONLY`. GTM e credenciais do n8n são passos
+   manuais listados na saída (anotar só o claim `role`).
+2. Preencher `docs/closure/incidente-anon-w4/INVENTARIO-ANON.json` a partir de
+   `docs/INCIDENTE-ANON-INVENTARIO.modelo.json`: cada consumidor com
+   confirmação, evidência e decisão (`nao_usa_anon`, `aceita_quebra`,
+   `migrado_antes`, `desativado`), assinado, `bloqueia_passo1: false`.
+3. ```bash
+   scripts/aplicar-incidente-anon-w4.sh --so-checar
+   ```
+   Preflight como `supabase_read_only_user` (read-only; `item|valor|bloqueia`,
+   qualquer `t` recusa o passo 1) e verificação **como anon de verdade**
+   (`postgres` read-only + `SET ROLE anon`).
+4. ```bash
+   scripts/aplicar-incidente-anon-w4.sh --passo1 --aprovador "<nome>" --inventario docs/closure/incidente-anon-w4/INVENTARIO-ANON.json --sha-inventario <sha256>
+   ```
+   Recusa sem inventário válido, com preflight bloqueando, ou se a verificação
+   não vir o buraco antes. Pede `APLICAR`; `pg_dump -Fc -n public -n app_auth`;
+   fingerprint antes; aplica 1→5 (cada arquivo atômico; se um falhar, o script
+   para, diz quais ficaram e grava o recibo como `falhou`); `NOTIFY pgrst`; exige
+   **FECHADO** (V1, V2, V3 e V4 = 0); fingerprint depois; recibo JSON.
+5. ```bash
+   scripts/aplicar-incidente-anon-w4.sh --passo2 --aprovador "<nome>"
+   ```
+   Só depois que o frontend com `src/hooks/useUserProfile.ts` corrigido estiver em produção.
 
-Integração pendente: o main ganhou o protocolo genérico com ledger
-(`scripts/migracao-protocolo.sh`, v20_01). Se o ledger estiver em produção na
-janela, cada arquivo deve passar por ele; este script fica com preflight e
-verificação.
+O próprio script foi ensaiado contra um container do `lab.sh` com o schema de
+produção (`W4_ALVO_LAB=<container>`; recusa qualquer container fora do lab ou com
+rede): recusas, passo 1, recibo JSON e rollback com fingerprint de volta ao de antes.
 
 ## Antes da janela — inventário dos consumidores da anon
 
@@ -123,7 +140,7 @@ só ACL, policies, um índice único em `users` (1–2 linhas) e uma view.
 ## Rollback
 
 ```bash
-scripts/aplicar-incidente-anon-w4.sh --rollback
+scripts/aplicar-incidente-anon-w4.sh --rollback --aprovador "<nome>"
 ```
 Devolve **o estado inseguro** (anon volta a ler e escrever), e só nas ACLs que
 a v19_01 mudou. **Aborta sem desfazer nada** se alguma delas foi alterada de

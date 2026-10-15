@@ -5,6 +5,8 @@ vi.mock('@/lib/supabase', () => ({ supabase: { rpc: (...a: unknown[]) => rpc(...
 
 import {
   MENSAGEM_ADMIN_SEM_PAPEL,
+  MENSAGEM_PAPEL_INDETERMINADO,
+  MENSAGEM_SEM_PERFIL,
   garantirContagemDeAdminsConfiavel,
   garantirListaCompletaDeUsuarios,
 } from '@/v6/services/visaoDeAdmin';
@@ -38,8 +40,13 @@ describe('visão de admin depois da v8_03', () => {
     await expect(garantirContagemDeAdminsConfiavel(1)).rejects.toThrow(MENSAGEM_ADMIN_SEM_PAPEL);
   });
 
-  it('se a função não responde, não inventa diagnóstico', async () => {
+  it('se a confirmação do papel falha, a lista não passa como confiável', async () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'x' } });
-    await expect(garantirListaCompletaDeUsuarios([{ role: 'ADMIN' }])).resolves.toBeUndefined();
+    await expect(garantirListaCompletaDeUsuarios([{ role: 'ADMIN' }])).rejects.toThrow(MENSAGEM_PAPEL_INDETERMINADO);
+  });
+
+  it('lista vazia de quem o banco não reconhece como ADMIN: erro de perfil', async () => {
+    rpc.mockResolvedValue({ data: false, error: null });
+    await expect(garantirListaCompletaDeUsuarios([])).rejects.toThrow(MENSAGEM_SEM_PERFIL);
   });
 });

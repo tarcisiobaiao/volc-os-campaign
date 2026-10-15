@@ -1,0 +1,22 @@
+{
+  "_leia": "Modelo do inventário de consumidores da anon key exigido por scripts/aplicar-incidente-anon-w4.sh --passo1. Copie para docs/closure/incidente-anon-w4/INVENTARIO-ANON.json, preencha CADA consumidor com o que a leitura de produção mostrou (scripts/inventario-anon-producao.sh) e a decisão, assine, e passe o caminho e o sha256 do arquivo assinado ao script. O script recusa: consumidor sem confirmação, decisão fora da lista, assinatura vazia, ou bloqueia_passo1 = true.",
+  "decisoes_validas": [
+    "nao_usa_anon",
+    "aceita_quebra",
+    "migrado_antes",
+    "desativado"
+  ],
+  "consumidores": [
+    { "id": "gtm-n4ks27zv-tag-35", "uso": "POST /rest/v1/site_visits com JWT anon", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "gtm-n4ks27zv-tag-28", "uso": "GET /rest/v1/niche_conversion_mappings com JWT anon", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "gtm-n4ks27zv-tag-39-volc-ingest", "uso": "POST /functions/v1/volc-ingest sem chave; a função grava com qual chave?", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "gtm-kjk7qqk9", "uso": "desconhecido (sem export)", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "n8n-gads-campaign-search", "uso": "upsert/PATCH niche_conversion_mappings com apikey à mão", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "n8n-comportamento-gtm-scroll-funil", "uso": "RPCs compute_*_daily com apikey à mão", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "n8n-credencial-volc-oficial", "uso": "joinads, gads, meta", "confirmado_em_producao": null, "evidencia": null, "decisao": null },
+    { "id": "logs-kong-anon-fora-do-app", "uso": "tráfego /rest/v1 ou /functions/v1 de origem fora do app", "confirmado_em_producao": null, "evidencia": null, "decisao": null }
+  ],
+  "assinado_por": "",
+  "assinado_em": "",
+  "bloqueia_passo1": true
+}
