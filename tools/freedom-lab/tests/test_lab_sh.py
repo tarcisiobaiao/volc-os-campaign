@@ -99,3 +99,15 @@ def test_semente_de_producao_passa_pelo_gate():
     corpo = fonte[fonte.index("semear_prod() {"):]
     assert corpo.splitlines()[2].strip() == 'gate_semente "$LAB_SEMENTE" || return 1'
     assert "semear_prod" in fonte[fonte.index("recriar-prod)"):]
+
+
+def test_ctrl_c_no_restore_apaga_os_blocos():
+    corpo = LAB.read_text(encoding="utf-8")
+    corpo = corpo[corpo.index("base_prod() {"):]
+    assert "trap 'rm -rf \"$blocos\"; exit 130' INT TERM" in corpo
+    assert "trap - INT TERM" in corpo
+
+
+def test_recibo_sem_semente_de_producao_e_null():
+    fonte = LAB.read_text(encoding="utf-8")
+    assert "semente_json=null" in fonte

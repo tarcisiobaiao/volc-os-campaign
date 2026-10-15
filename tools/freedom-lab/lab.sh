@@ -156,8 +156,9 @@ base_prod() {
   # Os blocos são cópia do schema de produção: ficam FORA do repo e somem no fim,
   # inclusive quando o restore falha.
   local blocos c; blocos="$(mktemp -d "${TMPDIR:-/tmp}/volc-lab-blocos.XXXXXX")"
+  trap 'rm -rf "$blocos"; exit 130' INT TERM   # Ctrl-C não deixa schema de produção no TMPDIR
   restaurar_blocos "$dump" "$blocos"; c=$?
-  rm -rf "$blocos"
+  rm -rf "$blocos"; trap - INT TERM
   [ $c = 0 ] || return $c
   PA -c "create schema if not exists volc_lab; create table if not exists volc_lab.base(valor text); insert into volc_lab.base values ('prod-schema:$esperado')" >/dev/null
   P -f - < "$FP" 2>/dev/null | grep '|' | tr -d ' ' > "$RECIBOS/fp-base-prod.txt"
@@ -197,7 +198,11 @@ testar() {
   P -c "select arquivo, sha256, base, resultado from volc_lab.migracao_aplicada order by aplicada_em" > "$RECIBOS/ledger-lab.txt"
   # Base explícita: a tabela volc_lab.base só existe depois de base-prod. A consulta não
   # pode citá-la quando ela não existe (o planner resolve a relação mesmo no ramo morto).
-  local base_do_lab="imagem+semente"
+  local base_do_lab="imagem+semente" semente_json
+  # Semente realmente aplicada: a sintética na base imagem, LAB_SEMENTE (se houver) na de produção.
+  if [ -n "${SEMENTE_APLICADA_SHA:-}" ]; then semente_json="\"$SEMENTE_APLICADA_SHA\""
+  elif [ "$(P -c "select to_regclass('volc_lab.base') is not null")" = "t" ]; then semente_json=null
+  else semente_json="\"$(sha "$SEMENTE")\""; fi
   [ "$(P -c "select to_regclass('volc_lab.base') is not null")" = "t" ] && base_do_lab="$(P -c "select valor from volc_lab.base limit 1")"
   {
     echo "{"
@@ -208,7 +213,7 @@ testar() {
     echo "  \"harness_sha256\": {\"lab.sh\": \"$(sha "$0")\", \"sonda_acesso.sql\": \"$(sha "$SONDA")\", \"fingerprint_schema.sql\": \"$(sha "$FP")\"},"
     echo "  \"suite\": \"${SUITE#$RAIZ/}\", \"suite_sha256\": \"$suite_sha\", \"suite_versionada\": \"$SUITE_GARANTIDA\","
     echo "  \"base\": \"$base_do_lab\","
-    echo "  \"semente_aplicada_sha256\": \"${SEMENTE_APLICADA_SHA:-$(sha "$SEMENTE")}\","
+    echo "  \"semente_aplicada_sha256\": $semente_json,"
     echo "  \"fingerprint_total_pos\": \"$(grep _TOTAL "$RECIBOS/fp-final.out" 2>/dev/null | tr -d ' ')\","
     echo "  \"verificacoes\": $T, \"falhas\": $F, \"producao_acessada\": $( [ "$SUITE_GARANTIDA" = sim ] && echo false || echo '\"nao_garantido\"'), \"producao_acessada_motivo\": \"$( [ "$SUITE_GARANTIDA" = sim ] && echo 'estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada' || echo 'suíte livre carregada por source: o lab.sh não garante o que ela faz')\""
     echo "}"
