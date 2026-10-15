@@ -153,14 +153,43 @@ def test_mascara():
 
 # ---------- Google Ads: o broker não alcança escrita ----------
 
-def test_broker_ads_nao_expoe_nem_importa_escrita():
-    fonte = (BROKERS / "google_ads.py").read_text(encoding="utf-8")
-    arvore = ast.parse(fonte)
-    atributos = {n.attr for n in ast.walk(arvore) if isinstance(n, ast.Attribute)}
-    nomes = {n.id for n in ast.walk(arvore) if isinstance(n, ast.Name)}
-    proibidos = {"mutar", "destravar", "aplicar", "aplicar_recomendacoes", "enviar",
-                 "mutate", "get_service", "cliente", "GoogleAdsClient"}
-    assert not (atributos | nomes) & proibidos
+PROIBIDOS_ADS = {"mutar", "destravar", "aplicar", "aplicar_recomendacoes", "enviar",
+                 "mutate", "get_service", "cliente", "GoogleAdsClient", "lote", "gestao"}
+
+
+def nomes_alcancados(fonte: str) -> set[str]:
+    """Atributos, nomes, e tudo o que entra por import (nome original E alias)."""
+    nomes = set()
+    for n in ast.walk(ast.parse(fonte)):
+        if isinstance(n, ast.Attribute):
+            nomes.add(n.attr)
+        elif isinstance(n, ast.Name):
+            nomes.add(n.id)
+        elif isinstance(n, ast.alias):
+            nomes.update(n.name.split("."))
+            if n.asname:
+                nomes.add(n.asname)
+        elif isinstance(n, ast.ImportFrom) and n.module:
+            nomes.update(n.module.split("."))
+        elif isinstance(n, ast.Constant) and isinstance(n.value, str):
+            nomes.add(n.value)  # getattr(x, "mutar")
+    return nomes
+
+
+def test_broker_ads_nao_alcanca_escrita():
+    assert not nomes_alcancados((BROKERS / "google_ads.py").read_text(encoding="utf-8")) & PROIBIDOS_ADS
+
+
+@pytest.mark.parametrize("trecho", [
+    "from volc_ads.gads.client import mutar as _m",
+    "from volc_ads.gads import client as c\nf = c.mutar",
+    "import volc_ads.gestao.lote as l",
+    "from volc_ads.gads.modo import destravar as abre",
+    "x = getattr(obj, 'mutar')",
+])
+def test_contraprova_alias_e_import_sao_pegos(trecho):
+    fonte = (BROKERS / "google_ads.py").read_text(encoding="utf-8") + "\n" + trecho + "\n"
+    assert nomes_alcancados(fonte) & PROIBIDOS_ADS
 
 
 # ---------- valor operacional ----------
