@@ -79,6 +79,22 @@ novo no ar, `v8_06`. Rollback: `v19_99_rollback.sql`. A `v19_01` substitui a
 `v8_04` e a `v19_02` substitui a `v8_07`: não aplicar `v8_02`, `v8_04` nem `v8_07`.
 Ensaiado sobre o schema de produção de 15/10 com `lab.sh recriar-prod` e a suíte `tools/freedom-lab/db/suites/v19_incidente_anon.sh`.
 
+## authenticated com privilégio mínimo — v19_10 — 15/10/2026 · NÃO APLICADA
+
+Pacote separado, depois do pacote anon e do cadastro do GoTrue fechado. Decisão
+por relação com a chamada no código, dinheiro gravável só por ADMIN, RLS em toda
+tabela que authenticated alcança, sequências sem setval, agregação do funil em
+SECURITY DEFINER (o operador segue salvando URL de funil), default ACL de public
+sem anon/authenticated para tabela e sequência novas (função nova: lacuna
+declarada). Rollback: `v19_10_rollback.sql` — reverter ANTES do `v19_99_rollback.sql`.
+
+**Ordem com o W12 (v23_01, canônica):** aplicar
+v19 (pacote anon) → v19_10 → v23_01; reverter na ordem inversa (v23_01_rollback →
+v19_10_rollback → v19_99). Nenhum rollback confere se o outro rodou. A revisão
+local de 15/10 mediu as duas ordens; em nenhum estado testado anon ou PUBLIC
+ganharam escrita em `exchange_rate_history`. Suíte:
+`tools/freedom-lab/db/suites/v19_10_authenticated_minimo.sh`.
+
 ## Google Ads: v17_01 fatos granulares — 08/10/2026
 
 `v17_01_gads_fatos_granulares.sql` (SHA-256

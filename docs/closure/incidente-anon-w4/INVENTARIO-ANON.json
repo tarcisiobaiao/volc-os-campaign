@@ -1,0 +1,84 @@
+{
+ "_leia": "RASCUNHO preenchido pelo W4 com a leitura de produção de 15/10/2026 ~13:35Z, autorizada pelo Tarcísio (handoffs/freedom-lab-20261015/W4-inventario-leitura/, SHA256SUMS). As decisões são PROPOSTAS; só valem depois de revisadas e assinadas. Fonte principal: pg_stat_statements por papel (anon) desde 2026-08-05 15:18 -03 e logs do Kong de 14 dias.",
+ "decisoes_validas": [
+  "nao_usa_anon",
+  "aceita_quebra",
+  "migrado_antes",
+  "desativado"
+ ],
+ "consumidores": [
+  {
+   "id": "gtm-n4ks27zv-tag-35",
+   "uso": "POST /rest/v1/site_visits com JWT anon",
+   "confirmado_em_producao": true,
+   "evidencia": "anon executou 14 INSERT em site_visits desde 05/08 (pg_stat_statements); n_tup_ins=14; última linha 2026-09-01; Kong 14d: nenhum POST /rest/v1/site_visits. Tag pausada desde 18/09.",
+   "decisao": "aceita_quebra",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "gtm-n4ks27zv-tag-28",
+   "uso": "GET /rest/v1/niche_conversion_mappings com JWT anon",
+   "confirmado_em_producao": true,
+   "evidencia": "anon executou 2313 SELECT em niche_conversion_mappings desde 05/08; Kong 14d: 170 GET, TODOS com referer gtm-msr.appspot.com (modo preview do GTM), nenhum de site publicado; tabela com 0 linhas (n_tup_ins=0). Tag pausada desde 29/09.",
+   "decisao": "aceita_quebra",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "gtm-n4ks27zv-tag-39-volc-ingest",
+   "uso": "POST /functions/v1/volc-ingest sem chave; a função grava com qual chave?",
+   "confirmado_em_producao": true,
+   "evidencia": "volc-ingest/index.ts (sha256 b44a2d4d…) cria o cliente com SUPABASE_SERVICE_ROLE_KEY e grava raw_events; FUNCTIONS_VERIFY_JWT=false. Kong 14d: 7 POST /rest/v1/raw_events com UA do edge runtime (a própria função). Não usa a anon.",
+   "decisao": "nao_usa_anon",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "gtm-kjk7qqk9",
+   "uso": "desconhecido (sem export)",
+   "confirmado_em_producao": true,
+   "evidencia": "Kong 14d: das chamadas a /rest/v1, /functions/v1 e /graphql/v1, só 1 veio de site publicado (creditoup.com.br, GET project_wordpress/projects — ver nota) e nenhuma com referer de outro domínio além de localhost:8080, gtm-msr e o próprio database. pg_stat_statements não mostra escrita de anon fora de site_visits.",
+   "decisao": "nao_usa_anon",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "n8n-gads-campaign-search",
+   "uso": "upsert/PATCH niche_conversion_mappings com apikey à mão",
+   "confirmado_em_producao": true,
+   "evidencia": "pg_stat_statements: anon nunca executou INSERT/UPDATE/upsert em niche_conversion_mappings desde 05/08 (só SELECT). Tabela com 0 inserções. Se o workflow roda, não é com a anon.",
+   "decisao": "nao_usa_anon",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "n8n-comportamento-gtm-scroll-funil",
+   "uso": "RPCs compute_*_daily com apikey à mão",
+   "confirmado_em_producao": true,
+   "evidencia": "pg_stat_statements: anon não chamou compute_page_daily, compute_funnel_daily, get_daily_intelligence nem get_funnel_cro_intelligence desde 05/08.",
+   "decisao": "nao_usa_anon",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "n8n-credencial-volc-oficial",
+   "uso": "joinads, gads, meta",
+   "confirmado_em_producao": true,
+   "evidencia": "pg_stat_statements: anon não escreveu em joinads_metrics, daily_project_metrics, system_settings, trafego_* desde 05/08; as 920 chamadas com UA n8n no Kong (14d) não aparecem como anon.",
+   "decisao": "nao_usa_anon",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  },
+  {
+   "id": "logs-kong-anon-fora-do-app",
+   "uso": "tráfego /rest/v1 ou /functions/v1 de origem fora do app",
+   "confirmado_em_producao": true,
+   "evidencia": "anon desde 05/08: 30 consultas distintas, 5818 chamadas; quase tudo é niche_conversion_mappings (tag 28) e site_visits (tag 35). Resto: <=10 chamadas cada a daily_campaign_metrics, gam_metrics, tax_history, operational_costs, campaigns, projects e RPCs do dashboard (sessão não carregada ou curl de diagnóstico) e 1 SELECT de users com password_hash via PostgREST (autor não identificável pelos logs).",
+   "decisao": "aceita_quebra",
+   "confirmado_em": "2026-10-15 13:35Z (leitura autorizada)"
+  }
+ ],
+ "assinado_por": "",
+ "assinado_em": "",
+ "bloqueia_passo1": true,
+ "nota_creditoup": "1 GET de https://creditoup.com.br em 14 dias para project_wordpress/projects: pg_stat_statements mostra 1 SELECT de anon em projects; tratar como aceita_quebra junto do item de logs.",
+ "achados_fora_do_inventario": [
+  "GoTrue: DISABLE_SIGNUP=false, ENABLE_PHONE_SIGNUP=true e ENABLE_PHONE_AUTOCONFIRM=true — cadastro público por telefone possivelmente confirma sozinho e vira authenticated, que continua lendo e escrevendo as tabelas do app depois do pacote. Recomendo DISABLE_SIGNUP=true na mesma janela (decisão separada; não testado para não criar conta em produção).",
+  "volc-ingest aceita POST sem JWT (FUNCTIONS_VERIFY_JWT=false) e grava raw_events com service_role; a proteção é VOLC_ALLOWED_HOSTS.",
+  "1 SELECT de anon em users incluindo password_hash via PostgREST desde 05/08 (password_hash estava 100% NULL em 24/08)."
+ ]
+}

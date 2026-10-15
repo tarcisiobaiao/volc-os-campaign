@@ -15,6 +15,15 @@ export interface CampaignFunnelUrlInput {
   Active?: boolean;
 }
 
+// Mesma limpeza de public.clean_funnel_url (trim, sem http(s)://, sem www., sem / final).
+export function limparUrlFunil(url: string): string {
+  return url.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '');
+}
+
+function rpcAusente(error: { code?: string }): boolean {
+  return error.code === 'PGRST202' || error.code === '42883';
+}
+
 class CampaignFunnelUrlsService {
   // Buscar URLs do funil de uma campanha
   async getFunnelUrlsByCampaign(campaignId: string): Promise<CampaignFunnelUrl[]> {
@@ -38,44 +47,68 @@ class CampaignFunnelUrlsService {
     }
   }
 
-  // Salvar URLs do funil (substituir todas as existentes)
+  // Salvar URLs do funil (substituir todas as existentes).
+  // Uma chamada só (RPC volc_salvar_funil, atômica): URL já ativa e igual não é
+  // reenviada, nova é inserida, inativa na lista é reativada e a ativa que saiu
+  // da lista é desativada por último. Se o banco recusar qualquer item (ex.: URL
+  // histórica fora do domínio reativada), nada muda — a campanha nunca fica com
+  // menos URLs ativas por falha parcial.
   async saveFunnelUrls(campaignId: string, urls: CampaignFunnelUrlInput[]): Promise<CampaignFunnelUrl[]> {
     try {
-      // Primeiro, marcar todas as URLs existentes como inativas
-      await supabase
-        .from('campaign_funnel_urls')
-        .update({ Active: false, updated_at: new Date().toISOString() })
-        .eq('campaign_id', campaignId);
-
-      // Agora inserir as novas URLs (ou reativar se já existir)
-      const urlsToInsert = urls.map(url => ({
-        campaign_id: campaignId,
-        url: url.url, // A limpeza será feita pelo trigger
-        Active: true
-      }));
-
-      if (urlsToInsert.length > 0) {
-        const { data, error } = await supabase
-          .from('campaign_funnel_urls')
-          .upsert(urlsToInsert, { 
-            onConflict: 'campaign_id,url',
-            ignoreDuplicates: false 
-          })
-          .select('*');
-
-        if (error) {
-          console.error('Error saving funnel URLs:', error);
-          throw error;
-        }
-
-        return data || [];
+      const lista = urls.map(u => u.url);
+      const { data, error } = await supabase.rpc('volc_salvar_funil', {
+        p_campaign_id: campaignId,
+        p_urls: lista,
+      });
+      if (error && rpcAusente(error)) {
+        return await this.saveFunnelUrlsSemRpc(campaignId, lista);
       }
-
-      return [];
+      if (error) {
+        console.error('Error saving funnel URLs:', error);
+        throw error;
+      }
+      return (data as CampaignFunnelUrl[]) || [];
     } catch (error) {
       console.error('Error in saveFunnelUrls:', error);
       throw error;
     }
+  }
+
+  // Banco ainda sem a RPC (front publicado antes da migration): só o que mudou,
+  // e gravando ANTES de desativar — uma recusa no meio nunca reduz as ativas.
+  private async saveFunnelUrlsSemRpc(campaignId: string, lista: string[]): Promise<CampaignFunnelUrl[]> {
+    const { data: atuais, error: erroLeitura } = await supabase
+      .from('campaign_funnel_urls')
+      .select('*')
+      .eq('campaign_id', campaignId);
+    if (erroLeitura) throw erroLeitura;
+
+    const desejadas = Array.from(new Set(lista.map(limparUrlFunil).filter(u => u !== '')));
+    if (desejadas.length === 0) {
+      throw { code: '22023', message: 'funil: lista de URLs vazia — nada foi alterado' };
+    }
+    const porUrl = new Map((atuais || []).map((r: CampaignFunnelUrl) => [r.url, r]));
+
+    for (const url of desejadas) {
+      const existente = porUrl.get(url);
+      if (existente?.Active) continue; // igual e ativa: não reenvia
+      const { error } = existente
+        ? await supabase.from('campaign_funnel_urls')
+            .update({ Active: true, updated_at: new Date().toISOString() })
+            .eq('campaign_id', campaignId).eq('url', url)
+        : await supabase.from('campaign_funnel_urls')
+            .insert({ campaign_id: campaignId, url, Active: true });
+      if (error) throw error;
+    }
+
+    const sairam = (atuais || []).filter((r: CampaignFunnelUrl) => r.Active && !desejadas.includes(r.url));
+    for (const r of sairam) {
+      const { error } = await supabase.from('campaign_funnel_urls')
+        .update({ Active: false, updated_at: new Date().toISOString() })
+        .eq('campaign_id', campaignId).eq('url', r.url);
+      if (error) throw error;
+    }
+    return this.getFunnelUrlsByCampaign(campaignId);
   }
 
   // Adicionar uma URL individual
