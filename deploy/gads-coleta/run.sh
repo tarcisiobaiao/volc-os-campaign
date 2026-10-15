@@ -65,7 +65,8 @@ mkdir -p "$RECIBOS"
 SAIDA=0
 TENTADAS=0
 IFS=',' read -r -a LISTA <<< "$CONTAS"
-for CONTA in "${LISTA[@]}"; do
+# `${LISTA[@]+...}`: bash 3.2 (macOS) com `set -u` trata array vazio como não definido.
+for CONTA in ${LISTA[@]+"${LISTA[@]}"}; do
   CONTA="${CONTA//[[:space:]]/}"
   [ -n "$CONTA" ] || continue
   TENTADAS=$((TENTADAS + 1))
