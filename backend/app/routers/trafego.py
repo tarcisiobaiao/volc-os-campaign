@@ -78,6 +78,7 @@ from app.trafego import (canario, capacidades as cap,
                          releitura_por_canal as rel,
                          veredito_de_releitura as vrel,
                          inteligencia_lab, ledger as led,
+                         recomendacao_shadow,
                          pmax_cockpit, projecao,
                          # ⚠️ No topo, e não dentro da função: desde 02/09/2026
                          # `/subir` depende dele para RECUSAR, e uma importação
@@ -158,6 +159,33 @@ async def laboratorio_de_inteligencia(scenario_id: str) -> Dict[str, Any]:
         return inteligencia_lab.projetar(scenario_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="cenário sintético não encontrado.") from exc
+
+
+@router.get("/recomendacao-shadow/{campaign_id}")
+async def recomendacao_shadow_da_campanha(campaign_id: str) -> Dict[str, Any]:
+    """Recomendação em sombra de uma campanha real, lida de experimento versionado.
+
+    Só leitura de arquivo conferido por sha256; nenhuma chamada externa e nada
+    executável. 404 é "não há experimento para esta campanha" — ausência, e
+    não "manter". 409 é artefato que não bate com o próprio manifesto.
+    """
+    try:
+        projecao_shadow = recomendacao_shadow.ler(campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="id de campanha malformado.") from exc
+    except recomendacao_shadow.IntegridadeQuebrada as exc:
+        raise HTTPException(status_code=409, detail={
+            "codigo": "integridade_quebrada",
+            "mensagem": f"a recomendação em sombra existe e não passou na conferência de integridade: {exc}",
+        }) from exc
+    if projecao_shadow is None:
+        # `codigo` distingue "nenhum experimento olhou esta campanha" de um
+        # 404 de rota inexistente (backend antigo), que a tela trata como falha.
+        raise HTTPException(status_code=404, detail={
+            "codigo": "sem_recomendacao_shadow",
+            "mensagem": "não há recomendação em sombra para esta campanha.",
+        })
+    return projecao_shadow
 
 
 def _fonte_de_reconciliacao() -> Any:
