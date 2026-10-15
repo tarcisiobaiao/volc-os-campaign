@@ -402,21 +402,15 @@ def test_full_5_page_funnel_dry_run(tmp_path: Path, config_files: Path) -> None:
 
     button_links = [w["settings"]["link"]["url"]
                     for w in _walk(elementor) if w.get("widgetType") == "button"]
-    # DOIS HERÓIS: 6 widgets de botão para 3 destinos. O herói mobile mostra 2
-    # acima da dobra, o desktop mostra 3, e o corpo repete o terceiro -- por
-    # isso a lista repete, mas o CONJUNTO de destinos é exatamente 3.
-    assert len(button_links) == 6, f"expected 6 LP buttons, got {button_links}"
+    # DOIS HERÓIS com os 3 caminhos cada (pré-sell, solução 1, solução 2) e o
+    # corpo repetindo o terceiro: 7 widgets, exatamente 3 destinos.
+    assert len(button_links) == 7, f"expected 7 LP buttons, got {button_links}"
     assert len(set(button_links)) == 3, f"devem existir 3 destinos: {button_links}"
     for href in button_links:
         assert "/rec" in href
-    # HUB ÚNICO: o 1º botão de CADA herói leva ao hub (`-pr`) — >80% dos cliques
-    # ficam no primeiro botão, então ele tem que ser o qualificador.
-    assert button_links[0].rstrip("/").endswith("-pr"), button_links   # mobile
-    assert button_links[1].rstrip("/").endswith("-p1"), button_links
-    assert button_links[2].rstrip("/").endswith("-pr"), button_links   # desktop
-    assert button_links[3].rstrip("/").endswith("-p1"), button_links
-    assert button_links[4].rstrip("/").endswith("-p2"), button_links
-    assert button_links[5].rstrip("/").endswith("-p2"), button_links   # corpo
+    # O 1º botão de CADA herói leva à pré-sell (`-pr`); os outros dois, às soluções.
+    sufixos = [h.rstrip("/").rsplit("-", 1)[-1] for h in button_links]
+    assert sufixos == ["pr", "p1", "p2", "pr", "p1", "p2", "p2"], button_links
 
     # --- SOLUTION chain is FORWARD-ONLY; the terminal only recirculates ------
     # The honest interior graph never loops back: each mid SOLUTION advances to

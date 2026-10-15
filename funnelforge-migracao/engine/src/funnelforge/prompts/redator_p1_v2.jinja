@@ -21,7 +21,7 @@ Cada cta_texts[i] leva ao destino i (o sistema aplica o link; você escreve só 
 {% if lp_destinations | length < 3 %}São menos destinos que posições de texto. Todos os rótulos excedentes continuam levando ao último destino, mas não repita a mesma frase: use o primeiro rótulo como decisão imediata e o último como avanço depois da explicação, sempre prometendo apenas ganhos que essa mesma página realmente entrega. O render remove botões redundantes do herói.
 {% endif %}
 {% else %}
-Os 3 botões levam aos próximos passos do funil, na ordem em que o sistema resolveu os links. Escreva 3 rótulos, podendo repetir quando o destino se repetir; cada um diz o que o leitor ganha do outro lado.
+Os 3 botões levam aos próximos passos do funil, na ordem em que o sistema resolveu os links: o 1º à pré-sell, o 2º e o 3º a duas soluções diferentes. Os três aparecem juntos no topo do celular. Escreva 3 rótulos distintos, cada um dizendo o que o leitor ganha do outro lado; os links são só esses botões, que o sistema monta.
 {% endif %}
 </botoes>
 
@@ -62,7 +62,7 @@ Responda SOMENTE com um objeto JSON válido (UTF-8), sem markdown, sem crases, s
 
 {
   "hero_title": "o TEMA em 2 a 5 palavras",
-  "hero_subtitle": "o que o leitor resolve com esta página, em uma frase",
+  "hero_subtitle": "o que o leitor resolve com esta página, em uma frase curta (divide a tela do celular com os 3 botões)",
   "article_title": "título que nomeia a entrega real da página: o que o leitor sai sabendo ou fazendo",
   "intro": "<p>O desejo ou problema real do leitor e a razão concreta para seguir lendo.</p>",
   "sections": [

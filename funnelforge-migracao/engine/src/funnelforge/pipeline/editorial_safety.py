@@ -209,3 +209,91 @@ def reviewed_image_issues(state, page_number: int) -> list[Issue]:
         pass
     return [Issue(code="image_review_required",
                   message="Imagem ausente de revisão visual aprovada ou bytes alterados.")]
+
+
+# ---------------------------------------------------------------------------
+# Links por PAPEL da página (operador, 15/10/2026). Regra objetiva de URL e
+# papel, sem leitura de sentido: LP e pré-sell organizam a decisão e só levam
+# o leitor a páginas do próprio site; fonte e canal oficial clicáveis ficam nas
+# páginas de SOLUÇÃO. A evidência continua no bucket, no dossiê e no recibo do
+# revisor; "fonte factual" e "link visível ao leitor" são coisas diferentes.
+# ---------------------------------------------------------------------------
+
+PAPEIS_SEM_LINK_EXTERNO = frozenset({"LP", "PRESELL"})
+
+
+class _Hrefs(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            self.hrefs.append((dict(attrs).get("href") or "").strip())
+
+
+def hrefs_do_html(content: str) -> list[str]:
+    """Os `href` de todas as âncoras do HTML (vazio quando não há âncora)."""
+    parser = _Hrefs()
+    try:
+        parser.feed(content or "")
+        parser.close()
+    except Exception:  # noqa: BLE001 - HTML ilegível é problema do html_issues
+        return []
+    return parser.hrefs
+
+
+def _host(url: str) -> str:
+    try:
+        return (urlsplit(url).hostname or "").lower().removeprefix("www.")
+    except ValueError:
+        return ""
+
+
+def href_externo(href: str, dominio: str) -> bool:
+    """Aponta para outro host? Relativo, âncora (#) e o próprio site não são."""
+    if not href or href.startswith("#") or (href.startswith("/") and not href.startswith("//")):
+        return False
+    host, site = _host(href), _host(dominio if "//" in dominio else "https://" + dominio)
+    if not host:
+        return False
+    return host != site and not host.endswith("." + site)
+
+
+def links_externos_por_papel(content: str, *, papel: str, dominio: str) -> list[Issue]:
+    """LP/pré-sell com `href` para outro host = erro estrutural. Solução: nada.
+
+    Não é revisão de qualidade: é classificação de URL pelo papel da página.
+    Quem decide promessa, tom e contexto continua sendo o revisor contextual."""
+    if str(getattr(papel, "value", papel)) not in PAPEIS_SEM_LINK_EXTERNO:
+        return []
+    externos = sorted({h for h in hrefs_do_html(content) if href_externo(h, dominio)})
+    if not externos:
+        return []
+    codigo = "link_externo_na_lp" if str(getattr(papel, "value", papel)) == "LP" \
+        else "link_externo_na_presell"
+    return [Issue(code=codigo, message=(
+        f"{len(externos)} link(s) para outro site nesta página ({', '.join(externos[:4])}). "
+        "LP e pré-sell só levam a páginas do próprio funil; fonte e canal oficial "
+        "clicáveis ficam nas páginas de solução."))]
+
+
+def links_no_texto_da_lp(campos: list[str]) -> list[Issue]:
+    """Na LP, `<a>` só existe nos botões que o renderer monta. Qualquer âncora no
+    texto gerado (intro, seções, FAQ, transição), interna ou externa, é erro."""
+    total = sum(len(hrefs_do_html(c)) for c in campos if isinstance(c, str))
+    if not total:
+        return []
+    return [Issue(code="link_no_texto_da_lp", message=(
+        f"{total} link(s) no texto da LP. Os únicos links da LP são os botões do "
+        "template, que o renderer monta com os destinos do funil."))]
+
+
+_ANCORA_RE = re.compile(r"<a\b[^>]*>(?P<corpo>.*?)</a\s*>", re.I | re.S)
+
+
+def sem_ancoras(texto: str) -> tuple[str, int]:
+    """Troca cada `<a ...>texto</a>` pelo texto da âncora (defesa da redação da
+    LP, antes do contrato). Devolve o texto e quantas âncoras saíram."""
+    novo, n = _ANCORA_RE.subn(lambda m: m.group("corpo"), texto or "")
+    return novo, n

@@ -1736,6 +1736,36 @@ _BOTOES_VAZIOS_RE = re.compile(
     r"<!--\s*/wp:buttons\s*-->\s*", re.I)
 
 
+def _sem_ancoras_no_texto_da_lp(obj: Any) -> int:
+    """Tira toda âncora dos campos de texto da LP (o texto fica). Os links da LP
+    são só os botões que o renderer monta. Muda `obj` no lugar; devolve quantas."""
+    from funnelforge.pipeline.editorial_safety import sem_ancoras
+    if not isinstance(obj, dict):
+        return 0
+    total = 0
+
+    def limpar(valor: Any) -> Any:
+        nonlocal total
+        if isinstance(valor, str):
+            novo, n = sem_ancoras(valor)
+            total += n
+            return novo
+        return valor
+
+    for chave in ("intro", "transition", "hero_title", "hero_subtitle", "article_title"):
+        if chave in obj:
+            obj[chave] = limpar(obj[chave])
+    for lista, campos in (("sections", ("title", "body")), ("faq", ("q", "a"))):
+        for item in obj.get(lista) or []:
+            if isinstance(item, dict):
+                for campo in campos:
+                    if campo in item:
+                        item[campo] = limpar(item[campo])
+    if isinstance(obj.get("cta_texts"), list):
+        obj["cta_texts"] = [limpar(c) for c in obj["cta_texts"]]
+    return total
+
+
 def _sem_fontes_externas_no_corpo(obj: Any, domain: str) -> tuple[Any, int]:
     """LP e pré-sell: nenhuma fonte externa clicável nem URL escrita no corpo.
 
@@ -2177,6 +2207,14 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
                     "etapa": "fontes_externas_da_lp_em_prosa",
                     "alterou": True,
                     "quantidade": links_removidos,
+                })
+            # Na LP, link só no botão do template. Âncora interna que o redator
+            # tenha posto no texto vira o próprio texto, ANTES do contrato (que
+            # recusa qualquer âncora restante), para não pagar uma retentativa.
+            ancoras = _sem_ancoras_no_texto_da_lp(content_obj)
+            if ancoras:
+                _registrar_normalizacao(state, page.page_number, {
+                    "etapa": "links_no_texto_da_lp", "alterou": True, "quantidade": ancoras,
                 })
         if v2 and state.pacotes and _aplicar_rotulos_aprovados_da_lp(content_obj, page):
             _registrar_normalizacao(state, page.page_number, {
@@ -4314,6 +4352,8 @@ _FINAL_CONTENT_VALIDATORS: tuple[str, ...] = (
     # O clique comprado não vaza por botão: destino externo só no canal que a
     # pesquisa desta página escolheu (citação em prosa continua livre).
     "external_cta_authorized", "contextual_links",
+    # Pré-sell (e LP) sem link para outro site; solução mantém o canal oficial.
+    "links_por_papel",
 )
 
 

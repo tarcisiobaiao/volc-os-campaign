@@ -2268,6 +2268,22 @@ def contextual_links(content: str, ctx: dict) -> list[Issue]:
 
 VALIDATORS["contextual_links"] = contextual_links
 
+
+def links_por_papel(content: str, ctx: dict) -> list[Issue]:
+    """LP/pré-sell com link para outro site = estrutural; solução não é tocada.
+
+    Lê o papel EXPLÍCITO do contexto (sem o fail-closed de `_ctx_role`, que
+    trataria uma solução sem papel como LP e apagaria o canal oficial dela)."""
+    from funnelforge.pipeline.editorial_safety import links_externos_por_papel
+    papel = ctx.get("role")
+    if papel is None:
+        return []
+    return links_externos_por_papel(content, papel=getattr(papel, "value", papel),
+                                    dominio=ctx.get("domain", ""))
+
+
+VALIDATORS["links_por_papel"] = links_por_papel
+
 # Contrato do briefing-v1 (ramo editorial novo). Só opina com `briefing_ref` no
 # ctx, que só o passo do briefing monta; em qualquer outro passo é inerte.
 from funnelforge.pipeline.validators.briefing_contract import (  # noqa: E402

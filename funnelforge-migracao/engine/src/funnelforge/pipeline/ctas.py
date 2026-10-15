@@ -26,8 +26,11 @@ from funnelforge.domain.models import Issue, StepResult, StepStatus, effective_r
 
 VERSAO = "ctas-do-funil-v1"
 MAX_ROTULO = 60          # copy_contract.CTA_MAX_CHARS
-TITULO_DA_DOBRA = 45     # 2 linhas no celular sobre a imagem do topo
-SUBTITULO_DA_DOBRA = 160
+# Orientação de layout para o sniper (não é trava: `_conferir_texto` só confere
+# URL/tag). A dobra mobile divide a tela com os 3 botões e com a folha de
+# consentimento (15/10/2026): título em 2 linhas, subtítulo em 1 frase curta.
+TITULO_DA_DOBRA = 40     # 2 linhas no celular sobre a imagem do topo
+SUBTITULO_DA_DOBRA = 80
 SUFIXO_DE_SAIDA = " >>>"
 _PROIBIDO_RE = re.compile(r"https?://|www\.|<|>|\[|\]|\"", re.I)
 

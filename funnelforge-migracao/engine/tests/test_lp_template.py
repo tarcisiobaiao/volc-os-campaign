@@ -46,7 +46,7 @@ def test_render_lp_fills_slots_and_preserves_design():
     assert "Como consultar" in blob
     # every button points at the funnel destination (3 buttons; single href
     # supplied -> all 3 reuse it via the fallback-to-last rule)
-    assert blob.count(_HREF) == 6   # 6 widgets de botão (2 heróis + corpo)
+    assert blob.count(_HREF) == 7   # 7 widgets de botão (3 por herói + corpo)
     # hero image swapped, placeholders gone
     assert "wp-content/uploads/hero.webp" in blob
     assert "{{HERO_IMAGE}}" not in blob and "{{FUNNEL_HREF}}" not in blob
@@ -256,23 +256,23 @@ _HREFS3 = [
 ]
 
 
-def test_lp_template_has_six_button_slots_for_three_destinations():
-    """Dois heróis (mobile 2 botões, desktop 3) + 1 no corpo = 6 widgets para
-    3 destinos. A repetição é o preço de ter herói nos dois breakpoints."""
+def test_lp_template_has_seven_button_slots_for_three_destinations():
+    """Dois heróis com os 3 caminhos cada (15/10/2026: 98% do tráfego é mobile e
+    o herói mobile tinha só 2) + 1 repetição contextual no corpo = 7 widgets."""
     tpl = load_lp_template()
     buttons = [w for w in _fillable(tpl["content"]) if w.get("widgetType") == "button"]
-    assert len(buttons) == 6
+    assert len(buttons) == 7
 
 
 def test_render_lp_applies_distinct_href_per_button():
     tpl = load_lp_template()
     cont, _ = render_lp(tpl, _CONTENT, funnel_hrefs=_HREFS3, id_seed="s1")
     buttons = [w for w in _fillable(cont) if w.get("widgetType") == "button"]
-    assert len(buttons) == 6
+    assert len(buttons) == 7
     hrefs = [b["settings"]["link"]["url"] for b in buttons]
     a, b, c = _HREFS3
-    # mobile: hub + solução 1 · desktop: hub + s1 + s2 · corpo: solução 2
-    assert hrefs == [a, b, a, b, c, c]
+    # mobile: pré-sell + s1 + s2 · desktop: idem · corpo: solução 2
+    assert hrefs == [a, b, c, a, b, c, c]
     assert len(set(hrefs)) == 3      # os 3 destinos, todos alcançados
 
 
@@ -283,7 +283,7 @@ def test_render_lp_fewer_hrefs_falls_back_to_last():
     cont, _ = render_lp(tpl, _CONTENT, funnel_hrefs=[_HREF], id_seed="s1")
     buttons = [w for w in _fillable(cont) if w.get("widgetType") == "button"]
     hrefs = [b["settings"]["link"]["url"] for b in buttons]
-    assert hrefs == [_HREF] * 6
+    assert hrefs == [_HREF] * 7
     assert "{{FUNNEL_HREF}}" not in json.dumps(cont)
 
 

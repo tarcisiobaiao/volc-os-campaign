@@ -22,7 +22,13 @@ from html import escape
 from importlib import resources
 
 from funnelforge.domain.models import Issue
-from funnelforge.pipeline.editorial_safety import html_issues, notice_html, valid_web_url
+from funnelforge.pipeline.editorial_safety import (
+    href_externo,
+    html_issues,
+    links_no_texto_da_lp,
+    notice_html,
+    valid_web_url,
+)
 from funnelforge.pipeline.doctrine import (
     BANNED_CTA_FIRST_PERSON,
     BANNED_FEAR,
@@ -84,9 +90,17 @@ def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[
     if len(secs) != 4:
         issues.append(Issue(code="lp_sections",
                             message=f"Esperado 4 seções no template, veio {len(secs)}."))
+    # Os únicos links da LP são os botões do template (renderer). Âncora no
+    # texto gerado, interna ou externa, é erro estrutural (15/10/2026).
+    issues.extend(links_no_texto_da_lp([
+        content["intro"], content["transition"], content["hero_title"],
+        content["hero_subtitle"], content["article_title"],
+        *(s["body"] for s in content["sections"]), *(s["title"] for s in content["sections"]),
+        *(f["q"] for f in content["faq"]), *(f["a"] for f in content["faq"]),
+        *(c for c in content["cta_texts"])]))
     ctas = content.get("cta_texts") or []
     # EXATAMENTE 3, não ">= 3": o template tem 3 posições de destino
-    # (`_BUTTON_HREF`: 6 widgets de botão para 3 destinos) e o pagespec da LP é
+    # (`_BUTTON_HREF`: 7 widgets de botão para 3 destinos) e o pagespec da LP é
     # cta_min=cta_max=3. Com ">= 3", um modelo que devolvia 5 CTAs passava e os
     # dois excedentes sumiam sem aviso -- ninguém nunca soube que não eram
     # renderizados.
@@ -138,11 +152,17 @@ def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[
 # ("sections", i, "title"|"body") pulls content["sections"][i][...]; an int on
 # a button pulls content["cta_texts"][int]; a LIST is a fallback chain.
 #
-# O template tem DOIS HERÓIS, um por breakpoint -- antes o desktop não tinha
-# herói nenhum e a página abria direto no corpo. Os dois carregam o MESMO
-# título e os MESMOS destinos; muda a quantidade de botões acima da dobra
-# (2 no mobile, 3 no desktop) e o subtítulo, porque "toque abaixo" só faz
-# sentido em tela de toque.
+# O template tem DOIS HERÓIS, um por breakpoint. Os dois carregam o MESMO
+# título, os MESMOS três rótulos e os MESMOS três destinos, na mesma ordem:
+# pré-sell, solução 1, solução 2. 98% do tráfego é mobile (operador,
+# 15/10/2026): até então o herói mobile tinha só 2 botões e o terceiro caminho
+# aparecia apenas no corpo, abaixo da dobra.
+#
+# O herói mobile é compacto (sem altura mínima de tela cheia, conteúdo no topo,
+# sem divisor) porque a primeira dobra real tem o aviso editorial no topo e a
+# folha de consentimento cobrindo a metade de baixo na primeira visita: em
+# 360x800 sobravam ~280 px entre os dois, e o herói de `calc(100vh - 85px)`
+# com `flex-end` jogava título e botões para baixo da folha.
 #
 # Custo consciente do desenho: título e subtítulo existem DUAS VEZES no DOM,
 # já que `hide_*` do Elementor é `display:none`, não remoção. Por isso só o
@@ -154,38 +174,41 @@ _SLOT_MAP: dict[int, tuple[str, object]] = {
     1: ("heading", "hero_subtitle"),
     2: ("button", 0),
     3: ("button", 1),
+    4: ("button", 2),
     # --- herói DESKTOP (hide_tablet + hide_mobile) ---
-    4: ("heading", "hero_title"),
-    5: ("heading", ["hero_subtitle_desktop", "hero_subtitle"]),
-    6: ("button", 0),
-    7: ("button", 1),
-    8: ("button", 2),
+    5: ("heading", "hero_title"),
+    6: ("heading", ["hero_subtitle_desktop", "hero_subtitle"]),
+    7: ("button", 0),
+    8: ("button", 1),
+    9: ("button", 2),
     # --- corpo (ambos os breakpoints) ---
-    9: ("heading", "article_title"),
-    10: ("text", "intro"),
-    11: ("heading", ("sections", 0, "title")),
-    12: ("text", ("sections", 0, "body")),
-    13: ("heading", ("sections", 1, "title")),
-    14: ("text", ("sections", 1, "body")),
-    15: ("button", 2),
-    16: ("heading", ("sections", 2, "title")),
-    17: ("text", ("sections", 2, "body")),
-    18: ("heading", ("sections", 3, "title")),
-    19: ("text", ("sections", 3, "body")),
-    20: ("heading", "faq_title"),
-    21: ("faq", "faq"),
-    22: ("text", "transition"),
+    10: ("heading", "article_title"),
+    11: ("text", "intro"),
+    12: ("heading", ("sections", 0, "title")),
+    13: ("text", ("sections", 0, "body")),
+    14: ("heading", ("sections", 1, "title")),
+    15: ("text", ("sections", 1, "body")),
+    16: ("button", 2),                      # repetição contextual, não a única aparição
+    17: ("heading", ("sections", 2, "title")),
+    18: ("text", ("sections", 2, "body")),
+    19: ("heading", ("sections", 3, "title")),
+    20: ("text", ("sections", 3, "body")),
+    21: ("heading", "faq_title"),
+    22: ("faq", "faq"),
+    23: ("text", "transition"),
 }
 
 # Botão (ordinal em ordem de documento) -> índice do destino em `funnel_hrefs`.
-# São 6 widgets de botão para 3 destinos, porque os dois heróis repetem os
-# mesmos caminhos. Antes o href era POSICIONAL (`funnel_hrefs[n]`), o que com 6
-# botões mandaria três deles para o último destino -- o mapa explícito é o que
-# mantém a promessa "cada botão leva ao SEU destino" com heróis duplicados.
+# São 7 widgets de botão para 3 destinos: cada herói mostra os três caminhos e
+# o corpo repete o terceiro depois da explicação. Antes o href era POSICIONAL
+# (`funnel_hrefs[n]`), o que mandaria vários botões para o último destino -- o
+# mapa explícito é o que mantém "cada botão leva ao SEU destino". O índice do
+# rótulo em `_SLOT_MAP` e o do destino aqui são o MESMO em todo botão: rótulo e
+# href nunca se trocam entre breakpoints.
 _BUTTON_HREF: dict[int, int] = {
-    0: 0, 1: 1,           # mobile:  hub, solução 1
-    2: 0, 3: 1, 4: 2,     # desktop: hub, solução 1, solução 2
-    5: 2,                 # corpo:   solução 2
+    0: 0, 1: 1, 2: 2,     # mobile:  pré-sell, solução 1, solução 2
+    3: 0, 4: 1, 5: 2,     # desktop: pré-sell, solução 1, solução 2
+    6: 2,                 # corpo:   solução 2 (repetição contextual)
 }
 
 
@@ -402,8 +425,8 @@ def _aplicar_visual_rapido(content: list, *, hero_image_url: str) -> None:
         headings[0].setdefault("settings", {})["header_size"] = "h1"
         headings[1].setdefault("settings", {})["header_size"] = "p"
 
-        # Um funil linear tem um único próximo destino. O template histórico
-        # possui 2 botões no herói mobile e 3 no desktop para funis em leque;
+        # Um funil linear tem um único próximo destino. O template possui 3
+        # botões em cada herói para funis em leque (pré-sell + 2 soluções);
         # reaproveitá-los por fallback produzia dois ou três botões idênticos
         # acima da dobra. Preserve somente a primeira ocorrência de cada URL
         # dentro de cada herói. O CTA do corpo fica intacto e pode avançar a
@@ -491,6 +514,8 @@ def render_lp(
             href = _href_for_button(funnel_hrefs, button_ordinal)
             if not valid_web_url(href):
                 raise ValueError("Destino inválido no botão da LP")
+            if site_domain and href_externo(href, site_domain):
+                raise ValueError("Botão da LP para outro site: a LP só leva a páginas do funil")
             s.setdefault("link", {})["url"] = href
             button_ordinal += 1
 
