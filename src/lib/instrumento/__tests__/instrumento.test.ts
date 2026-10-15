@@ -13,7 +13,7 @@ import {
 } from "@/lib/instrumento";
 import { CURVA, DURACAO, atrasoEscalonado } from "@/lib/movimento";
 
-const nbsp = (s: string) => s.replace(/ /g, " ");
+const nbsp = (s: string) => s.replace(/\u00a0/g, " ");
 
 describe("formatarNumero", () => {
   it("ausência vira travessão, nunca zero", () => {
