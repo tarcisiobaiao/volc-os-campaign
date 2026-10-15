@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-15T10:02:20-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-15T20:18:58-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 891 arquivos: 652 Markdown e 239 SQL;
-- 888 versionados e 3 ainda não versionados;
+- 928 arquivos: 665 Markdown e 263 SQL;
+- 928 versionados e 0 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 152 SQL com palavras de mutação de alto risco.
+- 171 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,9 +17,9 @@ Gerado em `2026-10-15T10:02:20-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 56 |
-| `documentation` | 463 |
+| `documentation` | 475 |
 | `generated` | 2 |
-| `module-guide` | 44 |
+| `module-guide` | 45 |
 | `product-document` | 23 |
 | `project-control` | 4 |
 | `reference` | 12 |
@@ -27,8 +27,8 @@ Gerado em `2026-10-15T10:02:20-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 125 |
-| `sql-validation` | 12 |
+| `sql-needs-review` | 148 |
+| `sql-validation` | 13 |
 
 ## Duplicatas exatas
 
@@ -42,11 +42,13 @@ estejam errados, mas impede aplicação automática.
 | Path | Classe | Nós no grafo | Grau |
 |---|---|---:|---:|
 | `docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql` | `sql-needs-review` | 1 | 0 |
+| `scripts/preflight-incidente-anon-w4.sql` | `sql-needs-review` | 1 | 0 |
 | `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | 6 | 12 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | 4 | 6 |
 | `scripts/provas-v12_02.sql` | `sql-needs-review` | 3 | 4 |
 | `scripts/provas-v12_04.sql` | `sql-needs-review` | 6 | 12 |
+| `scripts/verificar-anon-w4.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | 2 | 7 |
 | `sql/archive/campaign-highlights/APLICAR_NO_SUPABASE.sql` | `archived` | 0 | 0 |
@@ -77,8 +79,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | 3 | 10 |
 | `src/sql/joinads/01_joinads_metrics.sql` | `sql-migration-line` | 4 | 7 |
 | `src/sql/joinads/03_limpa_ingestao_ruim.sql` | `sql-migration-line` | 1 | 0 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 5 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 3 |
+| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | 3 | 6 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | 2 | 2 |
 | `src/sql/pautador/02_publicacao_por_projeto.sql` | `sql-migration-line` | 1 | 0 |
@@ -178,9 +180,25 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v17_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v18_01_identidade_leitura_minima_rollback.PROPOSTA.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v19_01_anon_fecha_public.sql` | `sql-needs-review` | 2 | 2 |
+| `supabase/migrations/v19_02_default_acl_public_sem_anon.sql` | `sql-needs-review` | 2 | 2 |
+| `supabase/migrations/v19_10_authenticated_minimo.sql` | `sql-needs-review` | 15 | 39 |
+| `supabase/migrations/v19_10_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v19_99_rollback.sql` | `sql-needs-review` | 2 | 2 |
 | `supabase/migrations/v20_01_ledger_migrations.sql` | `sql-needs-review` | 4 | 16 |
 | `supabase/migrations/v20_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v20_02_pos_v19_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v20_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v21_01_meta_capi_sites_privilegios.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v21_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v21_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v21_02_v6_rbac_privilegios.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v21_pacote_aplicar.sql` | `sql-needs-review` | 12 | 40 |
+| `supabase/migrations/v21_pacote_reverter.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v23_01_receita_datada_cambio.sql` | `sql-needs-review` | 18 | 51 |
+| `supabase/migrations/v23_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v25_01_conversao_offline_ledger.sql` | `sql-needs-review` | 14 | 50 |
+| `supabase/migrations/v25_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |
@@ -193,6 +211,7 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v9_03_rollback.sql` | `sql-needs-review` | 2 | 6 |
 | `supabase/migrations/v9_99_trafego_inventario_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `tools/freedom-lab/db/sonda_acesso.sql` | `sql-needs-review` | 1 | 0 |
+| `tools/freedom-lab/db/suites/v19_10_apoio.sql` | `sql-needs-review` | 4 | 11 |
 
 ## Fila da próxima onda
 
@@ -262,6 +281,7 @@ estejam errados, mas impede aplicação automática.
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-CODEX-CRIATIVO.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-creative-operational-closure-v1/verificacao/REVISAO-GEMINI-CONTRATOS.md` | `audit` | — | 0 | 0 |
 | `docs/closure/traffic-operational-closure-v2/ler-catalogo-meta.sql` | `sql-needs-review` | high | 1 | 0 |
+| `scripts/preflight-incidente-anon-w4.sql` | `sql-needs-review` | high | 1 | 0 |
 | `scripts/provar-google-inteligencia-v12_03.sql` | `sql-needs-review` | high | 6 | 12 |
 | `scripts/provas-papeis-v11_03.sql` | `sql-needs-review` | high | 7 | 12 |
 | `scripts/provas-v11_03.sql` | `sql-needs-review` | high | 4 | 6 |
@@ -269,6 +289,7 @@ estejam errados, mas impede aplicação automática.
 | `scripts/provas-v12_04.sql` | `sql-needs-review` | high | 6 | 12 |
 | `scripts/provas-v17_01.sql` | `sql-needs-review` | medium | 3 | 4 |
 | `scripts/provas-v17_04.sql` | `sql-needs-review` | medium | 1 | 0 |
+| `scripts/verificar-anon-w4.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/2025-09-10_drop_costs_summary_by_category.sql` | `sql-needs-review` | high | 1 | 0 |
 | `sql/add_user_campaigns.sql` | `sql-needs-review` | high | 2 | 7 |
 | `sql/fix_marliseac_password_final.sql` | `sql-needs-review` | medium | 1 | 0 |
@@ -303,8 +324,8 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/get_rotated_campaign_highlights_read_only.sql` | `sql-needs-lineage` | high | 2 | 6 |
 | `src/sql/get_rotated_campaign_highlights_simple.sql` | `sql-needs-lineage` | high | 3 | 8 |
 | `src/sql/get_rotated_campaign_highlights_v2.sql` | `sql-needs-lineage` | high | 3 | 10 |
-| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 5 |
-| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 3 |
+| `src/sql/merge_duplicate_projects_www.sql` | `sql-needs-lineage` | high | 3 | 6 |
+| `src/sql/merge_projects_complete.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/merge_projects_final.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/merge_projects_fix.sql` | `sql-needs-lineage` | high | 2 | 2 |
 | `src/sql/n8n_insert_examples.sql` | `sql-needs-lineage` | medium | 1 | 0 |
@@ -316,8 +337,6 @@ estejam errados, mas impede aplicação automática.
 | `src/sql/rollback_sync_status.sql` | `sql-needs-lineage` | high | 1 | 0 |
 | `src/sql/rpc_get_campaign_detailed_metrics.sql` | `sql-needs-lineage` | medium | 2 | 3 |
 | `src/sql/rpc_get_daily_metrics_aggregated.sql` | `sql-needs-lineage` | medium | 2 | 6 |
-| `src/sql/rpc_get_dashboard_totals.sql` | `sql-needs-lineage` | medium | 2 | 7 |
-| `src/sql/rpc_get_operational_costs_aggregated.sql` | `sql-needs-lineage` | medium | 2 | 3 |
 
 O inventário completo e legível por máquina está em
 `docs/architecture/repository-inventory.json`.

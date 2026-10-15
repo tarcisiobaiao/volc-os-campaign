@@ -114,9 +114,10 @@ describe('a fonte declara a troca', () => {
     const jwt = (role: string) =>
       ['eyJhbGciOiJIUzI1NiJ9', Buffer.from(JSON.stringify({ role, iss: 'x' })).toString('base64url'), 'assinaturaqualquer']
         .join('.');
+    const marcadorPem = ['-----BEGIN ', 'PRIVATE KEY-----'].join('');
     expect(segredosEm(`a="${jwt('anon')}"`)).toEqual([]);
     expect(segredosEm(`a="${jwt('service_role')}"`)).toEqual([{ tipo: 'JWT service_role' }]);
-    expect(segredosEm('-----BEGIN PRIVATE KEY-----').map((a) => a.tipo)).toEqual(['chave privada PEM']);
+    expect(segredosEm(marcadorPem).map((a) => a.tipo)).toEqual(['chave privada PEM']);
   });
 });
 

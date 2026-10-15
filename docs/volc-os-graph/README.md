@@ -12,9 +12,9 @@ Snapshot gerado em **22/08/2026** para impedir que roadmap, documentação e imp
 
 ## Tamanho medido
 
-- **494 nós** e **756 relações**.
-- Tipos: backend_module=4, business_component=8, capability=45, concept=150, database_function=67, document=59, edge_function=1, external_system=16, frontend_service=14, table_or_view=64, task=11, ui_surface=22, workflow=33.
-- Estados: decision=9, declared_active=24, empty=31, historical=35, implemented=148, inactive=13, live=17, partial=90, reference=82, risk=10, todo=35.
+- **496 nós** e **757 relações**.
+- Tipos: backend_module=4, business_component=8, capability=45, concept=151, database_function=67, document=59, edge_function=1, external_system=16, frontend_service=15, table_or_view=64, task=11, ui_surface=22, workflow=33.
+- Estados: decision=9, declared_active=24, empty=31, historical=35, implemented=149, inactive=13, live=17, partial=91, reference=82, risk=10, todo=35.
 
 ## Regra de confiança
 

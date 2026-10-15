@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-15T10:02:20-03:00",
+  "generated_at": "2026-10-15T20:18:58-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 891,
-    "markdown": 652,
-    "sql": 239,
-    "tracked": 888,
-    "untracked": 3,
+    "files": 928,
+    "markdown": 665,
+    "sql": 263,
+    "tracked": 928,
+    "untracked": 0,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 56,
-      "documentation": 463,
+      "documentation": 475,
       "generated": 2,
-      "module-guide": 44,
+      "module-guide": 45,
       "product-document": 23,
       "project-control": 4,
       "reference": 12,
@@ -22,12 +22,12 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 125,
-      "sql-validation": 12
+      "sql-needs-review": 148,
+      "sql-validation": 13
     },
     "sql_risk": {
-      "high": 152,
-      "medium": 61,
+      "high": 171,
+      "medium": 66,
       "read-only-or-ddl-free": 26
     }
   },
@@ -38,42 +38,6 @@
     ]
   ],
   "files": [
-    {
-      "path": ".claude-ads/runs/creditoup-measurement-link-repair-20261015-01/CURATION-HANDOFF.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 1680,
-      "lines": 29,
-      "sha256": "c0da1a9dd4c23504c36f88594e69c4bf3b4827fa007035f607853f52dcdea8c1",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
-      "path": ".claude-ads/runs/creditoup-measurement-link-repair-20261015-01/FINAL-REPORT.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 2057,
-      "lines": 47,
-      "sha256": "59d5e23e38ace6c9d84e10c7c7bbfbdd7794b02b591e87ad370e9c4d9329aa49",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
-    {
-      "path": ".claude-ads/runs/creditoup-senac-measurement-audit-20261015-01/RELATORIO.md",
-      "extension": ".md",
-      "classification": "documentation",
-      "tracked": false,
-      "bytes": 7724,
-      "lines": 173,
-      "sha256": "1763ed5e0e4dd37f70a0523eb6a008c2378c2c21be5643dc6150d95e1f46886f",
-      "graph_nodes": 0,
-      "graph_degree": 0,
-      "sql_risk": null
-    },
     {
       "path": ".claude-ads/runs/editorial-refactor-20260930/frente-a-politicas/ledger.md",
       "extension": ".md",
@@ -411,6 +375,114 @@
       "sql_risk": null
     },
     {
+      "path": ".claude/skills/VENDOR-DESIGN.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 2957,
+      "lines": 53,
+      "sha256": "b6f3a810bb31392109b2ee7600fc9ce2468ec1c0e3f5fb2f7a6a01eaca0e71b2",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/better-design/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5431,
+      "lines": 66,
+      "sha256": "a1943c83d81cf918ac1c9b26ecd9f6e9a50a24ec7bfe1bb7b3bf2149e9dd6f7a",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/design-taste/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 7472,
+      "lines": 121,
+      "sha256": "982376a87001e5512b4ed118712cfe6404a2cbeff8e8dbbc513c284868716bee",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/taste-accessibility/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 6055,
+      "lines": 91,
+      "sha256": "f6a6c192a7aee94dc41ac68207d2f4eaca07285b464fd4bd269316735663b062",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/taste-color/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 4813,
+      "lines": 79,
+      "sha256": "404fad6d0450f7a088163a047dac6a41ddc5f16c5a26c2d4816daa86a6373118",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/taste-design-review/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5796,
+      "lines": 101,
+      "sha256": "052e6890cad76ac9992e9047e9d02ab53fef2985cf59a621cc5344dc70227d22",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/taste-design-system/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5822,
+      "lines": 92,
+      "sha256": "fa8f3b08c7155cf487befe240abb54352c1f53fd84e4930e3c114c80dc9e9930",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/taste-motion/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5482,
+      "lines": 99,
+      "sha256": "82fb81618bb2d2ff24127b82755b18478a6ede101c492d8327c912b7e0d9c7b3",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude/skills/taste-typography/SKILL.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5321,
+      "lines": 86,
+      "sha256": "0a903f7d3288becd1e27bb01240ab0cf0486a122581b1a2ca523445cb2c43361",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "AGENTS.md",
       "extension": ".md",
       "classification": "project-control",
@@ -675,6 +747,18 @@
       "sql_risk": null
     },
     {
+      "path": "backend/app/trafego/shadow_experimentos/README.md",
+      "extension": ".md",
+      "classification": "module-guide",
+      "tracked": true,
+      "bytes": 675,
+      "lines": 17,
+      "sha256": "9e3fffd88748fdf789fbf5e4b45b27de83756517b453db1ae7b393ad162c2d0c",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "backend/docs/n8n_kw_and_funnel_extraction.md",
       "extension": ".md",
       "classification": "documentation",
@@ -715,9 +799,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 2711,
-      "lines": 53,
-      "sha256": "f3254be5159616b7a0cf0fec266945e724863a8dd0b56127055aae821a3b373f",
+      "bytes": 7261,
+      "lines": 127,
+      "sha256": "44bbd603d4e351b236e6df69b4447362e236d0273c17401abe4dcb2b193a90d9",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -763,9 +847,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 13847,
-      "lines": 358,
-      "sha256": "17e41ba3d51ec84c590539b5d069805830081e1ad4072983c638271e99d956d2",
+      "bytes": 17127,
+      "lines": 404,
+      "sha256": "865499831b35239d74bc26ff24ce5f110bd6100ccc52c8642c7fa73f6f1ace80",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -838,6 +922,18 @@
       "bytes": 20059,
       "lines": 357,
       "sha256": "479083877f50a0251bac3079fc251361755cbdc738706009710ccf4bbad1d513",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/INCIDENTE-ANON-RUNBOOK.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 11912,
+      "lines": 177,
+      "sha256": "2ef4adcae390f6965c327af0d50aa77f4a6a2ae05f41c7e21c386e79184b7edb",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1567,9 +1663,9 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 24520,
-      "lines": 321,
-      "sha256": "ed726ba9efe760d76f028483793faf08831d8856ee651216a24f73244c7623bc",
+      "bytes": 26276,
+      "lines": 343,
+      "sha256": "0ba5842f49d1164ef953e274a7dae81a34a95cc75de5fc1cf2abf1e74c51c900",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -1690,6 +1786,18 @@
       "bytes": 9802,
       "lines": 215,
       "sha256": "bdf82abe7c24388d8fa8d50969d671a3537efc991b8f4366df1b340f4567b1ef",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "docs/architecture/W14-PLANO-CONTA-GOOGLE-CONVERSOES.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 13920,
+      "lines": 229,
+      "sha256": "87be9b693f3afd9c349e039a7b2b9897acdc46887c043514d7785ff8500089b0",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -6207,6 +6315,18 @@
       "sql_risk": null
     },
     {
+      "path": "docs/handoffs/W15-meta.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 25711,
+      "lines": 325,
+      "sha256": "832c7cb9beabdcbddfd1103cdd80876adf648b80506ba6ccc7dc40b539439847",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "docs/operations/FUNNELFORGE-AUTH-CHATGPT.md",
       "extension": ".md",
       "classification": "documentation",
@@ -6897,7 +7017,7 @@
       "tracked": true,
       "bytes": 1713,
       "lines": 32,
-      "sha256": "ff3ba02faa23fefa47927881037da677ec57b343e47923c19f513ac1019e4248",
+      "sha256": "0c67d893fc95947ac6c4ef472250a1f2fc753338609ad0609a4091d3dce69102",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7231,9 +7351,21 @@
       "extension": ".md",
       "classification": "documentation",
       "tracked": true,
-      "bytes": 1743,
-      "lines": 35,
-      "sha256": "6917f2bf028e8eec157de68e0a4387de0516d3a269abb71baacfe4cfd7d4fb40",
+      "bytes": 2476,
+      "lines": 46,
+      "sha256": "fa2a3b63dc44f00174d8e02edfa7360f8fe53143eb473ab337b0e7562fcad581",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "funnelforge-migracao/referencia/hardening-wordpress/INSTALACAO-HARDENING.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 10377,
+      "lines": 185,
+      "sha256": "ef4dd6caf0bcae8216df2454b3e42351b52ee7febee793fa4d011719792fda7b",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7335,6 +7467,18 @@
       "sql_risk": null
     },
     {
+      "path": "handoffs/freedom-lab-20261015/W5.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 15890,
+      "lines": 131,
+      "sha256": "622db68a1215a68932b9cf4f19487b1528ffdd4d2cf94ae2af8ac7d34afdf417",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "handoffs/freedom-lab-20261015/W6.md",
       "extension": ".md",
       "classification": "documentation",
@@ -7342,6 +7486,18 @@
       "bytes": 5923,
       "lines": 101,
       "sha256": "c6a473d74a3ee065234ff566c88d142cbabaf2cd6da48a1e10f44c07cb7f1878",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": "handoffs/freedom-lab-20261015/W6b.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 3361,
+      "lines": 70,
+      "sha256": "59e11017fcc0cc91d78fa600d326d6f87883d7bb6c15ff8a451dad7c87c2ea78",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7357,6 +7513,18 @@
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
+    },
+    {
+      "path": "scripts/preflight-incidente-anon-w4.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4519,
+      "lines": 62,
+      "sha256": "84892780f9d43e297c9843e03f41c7ae8cfef13f7b7fab7b2e7dbb9243bfd7ae",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
     },
     {
       "path": "scripts/provar-google-inteligencia-v12_03.sql",
@@ -7441,6 +7609,18 @@
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "medium"
+    },
+    {
+      "path": "scripts/verificar-anon-w4.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3084,
+      "lines": 55,
+      "sha256": "b05f011d36208836b7c1b6f97642597f30ef56e6dfc63edc8ecfc8f716dbfb23",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
     },
     {
       "path": "services/creative-studio/README.md",
@@ -7939,9 +8119,9 @@
       "extension": ".sql",
       "classification": "sql-needs-lineage",
       "tracked": true,
-      "bytes": 3472,
-      "lines": 101,
-      "sha256": "79119459eeaa1058e9e61941119bf9c32b8f792cb2be5b30ef2e99fd073a2642",
+      "bytes": 3885,
+      "lines": 107,
+      "sha256": "0c9651b029995150ba40cd768f5af562ed1527534dd9a183cf2dd44dfe338a57",
       "graph_nodes": 2,
       "graph_degree": 3,
       "sql_risk": "high"
@@ -8135,7 +8315,7 @@
       "lines": 269,
       "sha256": "42df7bc0e9adf143231847157943c8057635d7be17f6149c032f0cc839a18df5",
       "graph_nodes": 3,
-      "graph_degree": 5,
+      "graph_degree": 6,
       "sql_risk": "high"
     },
     {
@@ -8147,7 +8327,7 @@
       "lines": 239,
       "sha256": "8dba7a8bfdb08e4db45a522a14da15ed4679ff1dddfc6c296ab50801753dd3d0",
       "graph_nodes": 2,
-      "graph_degree": 3,
+      "graph_degree": 2,
       "sql_risk": "high"
     },
     {
@@ -8851,9 +9031,9 @@
       "extension": ".sql",
       "classification": "sql-migration-line",
       "tracked": true,
-      "bytes": 10984,
-      "lines": 200,
-      "sha256": "ba0137fe35a3d3c66162a727a8f9312ee96d3171007841abb90d115d852478a9",
+      "bytes": 11240,
+      "lines": 203,
+      "sha256": "7f3f0d2f352708f668f5f69c6fe4aeecf75dfceaacffb984bb44c45ebc0d24f9",
       "graph_nodes": 4,
       "graph_degree": 8,
       "sql_risk": "high"
@@ -9487,9 +9667,9 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 76720,
-      "lines": 1352,
-      "sha256": "62cffe0f5cebc1a5500d77ae2fa4e6cfe73bfa2cabc77153bc4fbcc932f24adb",
+      "bytes": 82975,
+      "lines": 1445,
+      "sha256": "1c07f6760f4713bcabacf895420da10637f46a61a6f5ed9d8b2a5dddcabbf150",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -10059,6 +10239,78 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/v19_00_users_gatilho_papel_real.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3180,
+      "lines": 75,
+      "sha256": "115b5aee43010fa5e6bcd5ea458fc0725d5a299774e86c72a0cea3635f4d0a67",
+      "graph_nodes": 2,
+      "graph_degree": 2,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "supabase/migrations/v19_01_anon_fecha_public.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 13969,
+      "lines": 282,
+      "sha256": "e7b0c9ba20fa96e7190a740d6f713fa8eac4cbd4b13a446d433c83378e4f858c",
+      "graph_nodes": 2,
+      "graph_degree": 2,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v19_02_default_acl_public_sem_anon.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 6077,
+      "lines": 115,
+      "sha256": "8919245ed846060f690e4baa47d3c07d35caf65a6171f859f2b92f3b5b23b671",
+      "graph_nodes": 2,
+      "graph_degree": 2,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v19_10_authenticated_minimo.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 47977,
+      "lines": 763,
+      "sha256": "ccb6a0fbe056ba6971f2aa13a56677ed40e00c1a37425ad88cda255ff03f9e17",
+      "graph_nodes": 15,
+      "graph_degree": 39,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v19_10_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 9704,
+      "lines": 182,
+      "sha256": "65d7277411ccc73a39ca926d55fc000b3295519d52c3500af4a81d6239676bb0",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v19_99_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 10078,
+      "lines": 221,
+      "sha256": "3abff0a814e1db384daaaa9181cbefb8865047ea98025393e4f4fe22293c8fdd",
+      "graph_nodes": 2,
+      "graph_degree": 2,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/v20_01_ledger_migrations.sql",
       "extension": ".sql",
       "classification": "sql-needs-review",
@@ -10095,6 +10347,18 @@
       "sql_risk": "medium"
     },
     {
+      "path": "supabase/migrations/v20_02_pos_v19_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3168,
+      "lines": 67,
+      "sha256": "ec384a33f353b5a30e8b33b2500c022383c5b59476e02d79f8d880ddd6cff7d7",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/v20_02_rollback.sql",
       "extension": ".sql",
       "classification": "sql-needs-review",
@@ -10105,6 +10369,150 @@
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v21_01_meta_capi_sites_privilegios.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1924,
+      "lines": 37,
+      "sha256": "b679c32292385f4d1903e038e4a3dea8db88242ae4cd820f614f120708745c84",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v21_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1172,
+      "lines": 28,
+      "sha256": "505f1b317c0f808650de6c1762ef28fbab7d4e6e445fa51a7b77ff49c72126ea",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v21_02_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1684,
+      "lines": 38,
+      "sha256": "770ae191d2bc312ab161dd46b27fb05dd0ce458b861becd16e5e7d0318f43a68",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v21_02_v6_rbac_privilegios.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 6191,
+      "lines": 118,
+      "sha256": "627413885c696e11406d50ee48243cd6af41bbcfebf432509b3b32895659d2df",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v21_pacote_aplicar.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 42003,
+      "lines": 849,
+      "sha256": "8ce5ad07324e88ed11b214f8a4342ed7c50f2e441fb615c271729a7ec7192468",
+      "graph_nodes": 12,
+      "graph_degree": 40,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v21_pacote_reverter.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4815,
+      "lines": 109,
+      "sha256": "33e8d58227340dff068f42ac7e313906e5cf52a68f0049a66053f2057fa59853",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v23_01_receita_datada_cambio.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 36770,
+      "lines": 672,
+      "sha256": "f42e696199163b88fdd78f259c0c03c8d1b0f861e8b8b84ad3813c8250dd373e",
+      "graph_nodes": 18,
+      "graph_degree": 51,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v23_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 5063,
+      "lines": 108,
+      "sha256": "4ed2cd169923cd61142c59cda9cbb3b762564625ff465626434b4fd531255a5a",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v25_01_conversao_offline_ledger.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 26723,
+      "lines": 429,
+      "sha256": "dbfcfdfc96cc9624fd150657517904d8bd7ae5a71cf1326055c919fe5e79f739",
+      "graph_nodes": 14,
+      "graph_degree": 50,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v25_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1827,
+      "lines": 46,
+      "sha256": "2a72db2ea3464def72201f0b2268efcf20a306925332928e4a27c4a0e8469377",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v26_01_meta_insight_latest_completa.sql",
+      "extension": ".sql",
+      "classification": "sql-validation",
+      "tracked": true,
+      "bytes": 5538,
+      "lines": 126,
+      "sha256": "33d5651bcaaf56118f37aa249783536130640bf0361f3b07b1012636194ece79",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "supabase/migrations/v26_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 2858,
+      "lines": 79,
+      "sha256": "0f6645a8056c97307ceade4d0499334a4103195c957f40714e6e181acc7f54e8",
+      "graph_nodes": 2,
+      "graph_degree": 3,
+      "sql_risk": "medium"
     },
     {
       "path": "supabase/migrations/v8_01_app_auth_schema_and_roles.sql",
@@ -10429,6 +10837,42 @@
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "read-only-or-ddl-free"
+    },
+    {
+      "path": "tools/freedom-lab/db/suites/v19_10_apoio.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4622,
+      "lines": 90,
+      "sha256": "51c38190d59e2d847690343b2c40147ec07a6bb97f658fb268341b1c6bb95b44",
+      "graph_nodes": 4,
+      "graph_degree": 11,
+      "sql_risk": "high"
+    },
+    {
+      "path": "tools/freedom-lab/db/suites/v19_10_semente.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 5159,
+      "lines": 57,
+      "sha256": "c8b1b71274d6b53e782a09488cb80776a8bff12e04dcb44b386157f4ef1a6501",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "tools/freedom-lab/db/suites/v19_incidente_anon_semente.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1775,
+      "lines": 19,
+      "sha256": "ebe2b1827150a7ee37266c60740658cad74e441f40a8fb9e27802de62207c432",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "medium"
     },
     {
       "path": "tools/meta-adk-review/EXECUTION.md",

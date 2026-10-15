@@ -18,6 +18,10 @@ def mascarar(texto: str) -> str:
 
 
 FALSO = "Zq9fK2mPw7xR4tYb8nVc3LdH"  # 24 chars, não é segredo de nada
+PEM_BEGIN = "-----BEGIN " + "PRIVATE KEY-----"
+PEM_END = "-----END " + "PRIVATE KEY-----"
+RSA_PEM_BEGIN = "-----BEGIN RSA " + "PRIVATE KEY-----"
+RSA_PEM_END = "-----END RSA " + "PRIVATE KEY-----"
 
 VAZAMENTOS = [
     ("jwt", f"apikey eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.{FALSO}", ["eyJyb2xlIjoiYW5vbiJ9", FALSO]),
@@ -47,8 +51,8 @@ VAZAMENTOS = [
     ("createclient-posicional-aspas-simples", f"createClient('https://x.invalid', '{FALSO}')", [FALSO]),
     ("bearer-maiusculo", f"AUTHORIZATION: BEARER {FALSO}", [FALSO]),
     ("supabaseclient-posicional", f'new SupabaseClient("https://x.invalid", "{FALSO}")', [FALSO]),
-    ("pem-uma-linha", "-----BEGIN PRIVATE KEY-----MIIEvQIBADANBgkqhkiG9w0BAQEFAAS" + FALSO + "-----END PRIVATE KEY-----", [FALSO, "MIIEvQIBADANBgkqhkiG9w0BAQEFAAS"]),
-    ("pem-multilinha", "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA" + FALSO + "\nQWERTYUIOPASDFGHJKL0987654321\n-----END RSA PRIVATE KEY-----", [FALSO, "QWERTYUIOPASDFGHJKL0987654321"]),
+    ("pem-uma-linha", PEM_BEGIN + "MIIEvQIBADANBgkqhkiG9w0BAQEFAAS" + FALSO + PEM_END, [FALSO, "MIIEvQIBADANBgkqhkiG9w0BAQEFAAS"]),
+    ("pem-multilinha", RSA_PEM_BEGIN + "\nMIIEowIBAAKCAQEA" + FALSO + "\nQWERTYUIOPASDFGHJKL0987654321\n" + RSA_PEM_END, [FALSO, "QWERTYUIOPASDFGHJKL0987654321"]),
     ("connstring-simbolos", "postgres://u:Pq@7!x#Wm$2@h:5432/db", ["7!x#Wm$2"]),
 ]
 
