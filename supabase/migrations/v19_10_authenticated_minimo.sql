@@ -31,15 +31,19 @@
 --    decisão em todas as relações de public, e nenhuma relação com grant ficou
 --    sem policy para os comandos concedidos.
 --
--- 5. Agregação do funil (dois gatilhos de campaign_funnel_urls) passa a SECURITY
---    DEFINER com search_path fixo, para o OPERADOR seguir salvando URL de funil
---    sem ganhar escrita em dinheiro (seção 2c).
+-- 5. Funil (seção 2c): RLS de campaign_funnel_urls por escopo (ADMIN ou operador
+--    vinculado à campanha, URL do domínio do projeto); os dois gatilhos de
+--    agregação recalculam só a campanha da linha e rodam como o papel dedicado
+--    volc_agregador_funil (não superusuário, sem BYPASSRLS, só o que o recálculo usa).
 -- 6. Default ACL de public: tabela/sequência nova de postgres e supabase_admin
 --    nasce sem nada para anon e authenticated (seção 2d).
 --
 -- O QUE NÃO FAZ: não toca users/users_safe (v8_03/v19_01/v8_05), anon (já
 -- fechado), service_role, nem tabelas que authenticated não alcança hoje.
--- LACUNA DECLARADA: função nova em public segue nascendo com EXECUTE por PUBLIC.
+-- LACUNA DECLARADA: função nova em public segue nascendo com EXECUTE para
+-- authenticated e service_role (default ACL de funções de postgres e
+-- supabase_admin); a próxima SECURITY DEFINER sem REVOKE explícito fica chamável
+-- por qualquer logado via /rpc. Não fechado neste ciclo.
 --
 -- ORDEM (provisória, a confirmar com os revisores): v19 (pacote anon) → v19_10 →
 -- v23_01 (W12). Reverter na ordem inversa: v23_01_rollback → v19_10_rollback →
@@ -137,7 +141,10 @@ INSERT INTO w4_decisao (relacao, s, i, u, d, evidencia) VALUES
 
 UPDATE w4_decisao SET admin = true
  WHERE relacao IN ('projects', 'tax_history', 'gam_metrics', 'operational_costs',
-                   'daily_campaign_metrics', 'daily_project_metrics', 'adsense_metrics');
+                   'daily_campaign_metrics', 'daily_project_metrics', 'adsense_metrics',
+                   -- vínculo operador×campanha/projeto decide comissão e escopo: só ADMIN
+                   -- (telas adminOnly; o v6 que também grava está desligado)
+                   'user_campaigns', 'user_projects');
 UPDATE w4_decisao SET upd_cols = ARRAY['status'] WHERE relacao = 'pautador_opportunities';
 UPDATE w4_decisao SET upd_cols = ARRAY['status', 'kanban_stage'] WHERE relacao = 'pautador_entity_opportunities';
 
@@ -153,10 +160,11 @@ CREATE TABLE app_auth.w4_auth_acl (
 CREATE TABLE app_auth.w4_auth_policy (
   esquema text NOT NULL, relacao text NOT NULL, policy text NOT NULL, PRIMARY KEY (esquema, relacao, policy));
 CREATE TABLE app_auth.w4_auth_func (
-  assinatura text PRIMARY KEY, dono text, secdef_antes bool, config_antes text[], secdef_depois bool, config_depois text[]);
+  assinatura text PRIMARY KEY, dono_antes text, def_antes text, dono_depois text, def_depois_md5 text);
+CREATE TABLE app_auth.w4_auth_criados (tipo text NOT NULL, nome text NOT NULL, PRIMARY KEY (tipo, nome));
 CREATE TABLE app_auth.w4_auth_defacl (
   papel text NOT NULL, objtipo "char" NOT NULL, acl_antes aclitem[], acl_depois aclitem[], PRIMARY KEY (papel, objtipo));
-REVOKE ALL ON app_auth.w4_auth_acl, app_auth.w4_auth_policy, app_auth.w4_auth_func, app_auth.w4_auth_defacl
+REVOKE ALL ON app_auth.w4_auth_acl, app_auth.w4_auth_policy, app_auth.w4_auth_func, app_auth.w4_auth_defacl, app_auth.w4_auth_criados
   FROM PUBLIC, anon, authenticated, service_role;
 COMMENT ON TABLE app_auth.w4_auth_acl IS 'v19_10 (W4): ACL e RLS de public antes/depois; lida pelo v19_10_rollback.sql, que a apaga.';
 
@@ -315,37 +323,181 @@ END
 $aplica$;
 
 -- -----------------------------------------------------------------------------
--- 2c. Agregação do funil como SECURITY DEFINER
+-- 2c. Funil: escopo na RLS e recálculo só da campanha afetada, por papel dedicado
 -- -----------------------------------------------------------------------------
 -- A tela "Configurar" da campanha (CampaignDetailDashboard.tsx:472 → FunnelUrlsEditor)
 -- é aberta a OPERATOR e grava em campaign_funnel_urls (campaignFunnelUrlsService.ts
--- :46/:59/:85/:110). Os gatilhos AFTER dessa tabela recalculam a receita em
--- daily_campaign_metrics. Como INVOKER, o recálculo rodava como o operador e
--- esbarrava na policy de dinheiro (só ADMIN). Aqui os dois gatilhos de agregação
--- passam a rodar como o dono (supabase_admin), com search_path fixo; quem PODE
--- editar URL de funil continua decidido pela RLS/grant de campaign_funnel_urls.
--- O operador não ganha escrita direta em daily_campaign_metrics. Rollback devolve
--- SECURITY INVOKER e a configuração anterior, byte a byte.
-DO $definer$
+-- :46/:59/:85/:110). Os gatilhos AFTER dessa tabela recalculam receita em
+-- daily_campaign_metrics. Revisão de 15/10 (ciclo 2): com o recálculo como dono e
+-- a tabela aberta a qualquer logado, um operador ou uma conta sem papel zerava a
+-- receita de campanha alheia, puxava receita de outro projeto e, vinculando-se em
+-- user_campaigns, recebia comissão. Correção:
+--   a) RLS de campaign_funnel_urls por escopo: escrever só ADMIN ou operador
+--      vinculado à campanha (user_campaigns, ou user_projects do projeto da
+--      campanha); a URL gravada tem de ser do domínio do projeto da campanha;
+--   b) user_campaigns e user_projects: escrita só ADMIN (decisão acima);
+--   c) os dois gatilhos recalculam só a(s) campanha(s) da linha (NEW e OLD), e
+--      rodam como o papel dedicado volc_agregador_funil — NOLOGIN, não
+--      superusuário, sem BYPASSRLS — com só o que o recálculo usa.
+DO $guarda_papel$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'volc_agregador_funil') THEN
+    RAISE EXCEPTION 'v19_10: o papel volc_agregador_funil já existe — não reaplica';
+  END IF;
+  IF to_regprocedure('public.volc_pode_editar_funil(text,text)') IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_10: public.volc_pode_editar_funil já existe — não reaplica';
+  END IF;
+END
+$guarda_papel$;
+
+-- a) quem pode escrever uma URL de funil
+CREATE FUNCTION public.volc_pode_editar_funil(p_campaign text, p_url text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $f$
+  SELECT public.volc_current_admin()
+      OR (
+        EXISTS (
+          SELECT 1 FROM public.users u
+           WHERE lower(u.email) = lower((SELECT auth.jwt()) ->> 'email')
+             AND u.role IN ('OPERATOR', 'ADMIN')
+             AND (EXISTS (SELECT 1 FROM public.user_campaigns uc
+                           WHERE uc.user_id = u.id AND uc.campaign_id = p_campaign)
+                  OR EXISTS (SELECT 1 FROM public.user_projects up
+                               JOIN public.campaigns c ON c.project_id = up.project_id
+                              WHERE up.user_id = u.id AND c.campaign_id = p_campaign)))
+        AND (p_url IS NULL OR EXISTS (
+          SELECT 1 FROM public.campaigns c JOIN public.projects pr ON pr.id = c.project_id
+           WHERE c.campaign_id = p_campaign
+             AND split_part(regexp_replace(regexp_replace(lower(p_url), '^[a-z]+://', ''), '^www\.', ''), '/', 1)
+                 = split_part(regexp_replace(regexp_replace(lower(coalesce(nullif(pr.domain, ''), pr.main_url)), '^[a-z]+://', ''), '^www\.', ''), '/', 1)))
+      )
+$f$;
+COMMENT ON FUNCTION public.volc_pode_editar_funil(text, text) IS
+  'v19_10 (W4): ADMIN, ou operador vinculado à campanha (user_campaigns ou user_projects '
+  'do projeto), e — com p_url — URL do domínio do projeto da campanha. Usada pela RLS '
+  'de campaign_funnel_urls. Removida pelo v19_10_rollback.sql.';
+ALTER FUNCTION public.volc_pode_editar_funil(text, text) OWNER TO supabase_admin;
+REVOKE ALL ON FUNCTION public.volc_pode_editar_funil(text, text) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.volc_pode_editar_funil(text, text) TO authenticated;
+INSERT INTO app_auth.w4_auth_criados VALUES ('funcao', 'public.volc_pode_editar_funil(text,text)');
+
+ALTER POLICY w4a_insert ON public.campaign_funnel_urls
+  WITH CHECK (public.volc_pode_editar_funil(campaign_id::text, url::text));
+ALTER POLICY w4a_update ON public.campaign_funnel_urls
+  USING (public.volc_pode_editar_funil(campaign_id::text, NULL))
+  WITH CHECK (public.volc_pode_editar_funil(campaign_id::text, url::text));
+
+-- c) papel dedicado e recálculo só da campanha da linha
+CREATE ROLE volc_agregador_funil NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;
+COMMENT ON ROLE volc_agregador_funil IS 'v19_10 (W4): dono dos gatilhos de agregação do funil; só o que o recálculo de daily_campaign_metrics usa.';
+INSERT INTO app_auth.w4_auth_criados VALUES ('papel', 'volc_agregador_funil');
+
+DO $agregador$
+DECLARE t text; f record; v_n int := 1; v_ant int := 0; v_pol text;
+BEGIN
+  -- leitura do que o recálculo e os gatilhos BEFORE de daily_campaign_metrics leem
+  FOREACH t IN ARRAY ARRAY['campaign_funnel_urls', 'adsense_metrics', 'campaigns', 'projects', 'system_settings',
+                           'exchange_rate_history', 'user_campaigns', 'users', 'tax_history'] LOOP
+    IF to_regclass('public.' || t) IS NULL THEN CONTINUE; END IF;
+    EXECUTE format('GRANT SELECT ON public.%I TO volc_agregador_funil', t);
+    IF (SELECT relrowsecurity FROM pg_class WHERE oid = ('public.' || t)::regclass) THEN
+      v_pol := 'w4a_agregador_select';
+      EXECUTE format('CREATE POLICY %I ON public.%I AS PERMISSIVE FOR SELECT TO volc_agregador_funil USING (true)', v_pol, t);
+      INSERT INTO app_auth.w4_auth_policy VALUES ('public', t, v_pol);
+    END IF;
+  END LOOP;
+  -- escrita só em daily_campaign_metrics
+  GRANT SELECT, INSERT, UPDATE ON public.daily_campaign_metrics TO volc_agregador_funil;
+  CREATE POLICY w4a_agregador_select ON public.daily_campaign_metrics AS PERMISSIVE FOR SELECT TO volc_agregador_funil USING (true);
+  CREATE POLICY w4a_agregador_insert ON public.daily_campaign_metrics AS PERMISSIVE FOR INSERT TO volc_agregador_funil WITH CHECK (true);
+  CREATE POLICY w4a_agregador_update ON public.daily_campaign_metrics AS PERMISSIVE FOR UPDATE TO volc_agregador_funil USING (true) WITH CHECK (true);
+  INSERT INTO app_auth.w4_auth_policy VALUES ('public', 'daily_campaign_metrics', 'w4a_agregador_select'),
+    ('public', 'daily_campaign_metrics', 'w4a_agregador_insert'), ('public', 'daily_campaign_metrics', 'w4a_agregador_update');
+  -- nextval das sequências que os defaults de daily_campaign_metrics usam
+  FOR f IN SELECT DISTINCT dp.refobjid::regclass AS seq FROM pg_depend dp
+             JOIN pg_attrdef ad ON dp.classid = 'pg_attrdef'::regclass AND dp.objid = ad.oid
+            WHERE ad.adrelid = 'public.daily_campaign_metrics'::regclass AND dp.refclassid = 'pg_class'::regclass
+              AND (SELECT relkind FROM pg_class WHERE oid = dp.refobjid) = 'S' LOOP
+    EXECUTE format('GRANT USAGE ON SEQUENCE %s TO volc_agregador_funil', f.seq);
+  END LOOP;
+  -- EXECUTE nas funções de public que o recálculo e os gatilhos de daily_campaign_metrics
+  -- chamam (fecho transitivo pelo nome no corpo), e só nelas
+  CREATE TEMP TABLE w4_fn (oid oid PRIMARY KEY) ON COMMIT DROP;
+  INSERT INTO w4_fn SELECT to_regprocedure('public.aggregate_adsense_funnel_revenue(text,date)')
+    WHERE to_regprocedure('public.aggregate_adsense_funnel_revenue(text,date)') IS NOT NULL;
+  INSERT INTO w4_fn SELECT DISTINCT tg.tgfoid FROM pg_trigger tg
+   WHERE tg.tgrelid = 'public.daily_campaign_metrics'::regclass AND NOT tg.tgisinternal ON CONFLICT DO NOTHING;
+  WHILE v_n <> v_ant LOOP
+    v_ant := (SELECT count(*) FROM w4_fn);
+    INSERT INTO w4_fn
+    SELECT DISTINCT p2.oid FROM w4_fn w JOIN pg_proc p1 ON p1.oid = w.oid
+      JOIN pg_proc p2 ON p2.pronamespace = 'public'::regnamespace
+                     AND p1.prosrc ~* ('\m' || p2.proname || '\s*\(')
+    ON CONFLICT DO NOTHING;
+    v_n := (SELECT count(*) FROM w4_fn);
+  END LOOP;
+  FOR f IN SELECT w.oid::regprocedure AS fn FROM w4_fn w JOIN pg_proc p ON p.oid = w.oid WHERE p.prorettype <> 'trigger'::regtype LOOP
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO volc_agregador_funil', f.fn);
+  END LOOP;
+END
+$agregador$;
+
+DO $gatilhos$
 DECLARE f text; p record;
 BEGIN
   FOREACH f IN ARRAY ARRAY['public.trigger_calculate_adsense_campaign_revenue()',
                            'public.trigger_funnel_url_change()'] LOOP
-    SELECT pr.oid, pg_get_userbyid(pr.proowner) AS dono, pr.prosecdef, pr.proconfig INTO p
-      FROM pg_proc pr WHERE pr.oid = to_regprocedure(f);
+    SELECT pr.oid, pg_get_userbyid(pr.proowner) AS dono INTO p FROM pg_proc pr WHERE pr.oid = to_regprocedure(f);
     IF p.oid IS NULL THEN RAISE EXCEPTION 'v19_10: função % não existe', f; END IF;
-    IF p.dono <> 'supabase_admin' THEN
-      RAISE EXCEPTION 'v19_10: % pertence a % (esperado supabase_admin) — não promovo a DEFINER', f, p.dono;
-    END IF;
-    INSERT INTO app_auth.w4_auth_func (assinatura, dono, secdef_antes, config_antes) VALUES (f, p.dono, p.prosecdef, p.proconfig);
-    EXECUTE format('ALTER FUNCTION %s SECURITY DEFINER', f);
-    EXECUTE format('ALTER FUNCTION %s SET search_path = public, pg_temp', f);
-    -- EXECUTE não muda: função de gatilho não é chamável fora de gatilho.
-    UPDATE app_auth.w4_auth_func SET secdef_depois = true,
-           config_depois = (SELECT proconfig FROM pg_proc WHERE oid = p.oid) WHERE assinatura = f;
+    IF p.dono <> 'supabase_admin' THEN RAISE EXCEPTION 'v19_10: % pertence a % (esperado supabase_admin)', f, p.dono; END IF;
+    INSERT INTO app_auth.w4_auth_func (assinatura, dono_antes, def_antes)
+    VALUES (f, p.dono, pg_get_functiondef(p.oid));
   END LOOP;
 END
-$definer$;
+$gatilhos$;
+
+-- Recalcula só as campanhas da linha (NEW e OLD), com a mesma conta de
+-- calculate_adsense_campaign_revenue() restrita a elas.
+CREATE OR REPLACE FUNCTION public.trigger_calculate_adsense_campaign_revenue()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $f$
+DECLARE v_campanhas text[];
+BEGIN
+  v_campanhas := array_remove(ARRAY[
+    CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN NEW.campaign_id::text END,
+    CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN OLD.campaign_id::text END], NULL);
+  WITH adsense_campaign_revenue AS (
+    SELECT cfu.campaign_id, am.date, SUM(am.revenue_converted) AS total_revenue_converted
+      FROM campaign_funnel_urls cfu
+      JOIN adsense_metrics am ON cfu.url = am.url
+     WHERE cfu."Active" = true AND cfu.campaign_id::text = ANY (v_campanhas)
+     GROUP BY cfu.campaign_id, am.date
+  )
+  INSERT INTO daily_campaign_metrics (campaign_id, date, revenue_converted_revshare, spend, revenue, roas,
+                                      clicks, impressions, conversions, cost_per_conversion, created_at, updated_at)
+  SELECT acr.campaign_id, acr.date, acr.total_revenue_converted, 0, 0, 0, 0, 0, 0, 0, NOW(), NOW()
+    FROM adsense_campaign_revenue acr
+  ON CONFLICT (campaign_id, date) DO UPDATE SET
+    revenue_converted_revshare = EXCLUDED.revenue_converted_revshare, updated_at = NOW();
+  RETURN COALESCE(NEW, OLD);
+END;
+$f$;
+
+CREATE OR REPLACE FUNCTION public.trigger_funnel_url_change()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $f$
+BEGIN
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    PERFORM aggregate_adsense_funnel_revenue(NEW.campaign_id, CURRENT_DATE);
+  END IF;
+  IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.campaign_id IS DISTINCT FROM NEW.campaign_id) THEN
+    PERFORM aggregate_adsense_funnel_revenue(OLD.campaign_id, CURRENT_DATE);
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$f$;
+
+ALTER FUNCTION public.trigger_calculate_adsense_campaign_revenue() OWNER TO volc_agregador_funil;
+ALTER FUNCTION public.trigger_funnel_url_change() OWNER TO volc_agregador_funil;
+UPDATE app_auth.w4_auth_func f SET dono_depois = pg_get_userbyid(p.proowner), def_depois_md5 = md5(pg_get_functiondef(p.oid))
+  FROM pg_proc p WHERE p.oid = to_regprocedure(f.assinatura);
 
 -- -----------------------------------------------------------------------------
 -- 2d. Default ACL: o mínimo vale também para tabela e sequência NOVAS em public
@@ -353,7 +505,7 @@ $definer$;
 -- Para os dois papéis que criam objetos em public (postgres e supabase_admin),
 -- anon e authenticated deixam de receber qualquer privilégio em tabela/view e
 -- sequência novas: toda migration futura declara o seu GRANT. Funções novas NÃO
--- mudam neste ciclo (lacuna declarada: seguem com EXECUTE por PUBLIC).
+-- mudam neste ciclo (lacuna declarada no cabeçalho).
 INSERT INTO app_auth.w4_auth_defacl (papel, objtipo, acl_antes)
 SELECT r.papel, t.objtipo,
        (SELECT d.defaclacl FROM pg_default_acl d

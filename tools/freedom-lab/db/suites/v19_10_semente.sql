@@ -36,3 +36,13 @@ UPDATE public.daily_project_metrics SET revenue_converted = 0;
 UPDATE public.adsense_metrics SET revenue_converted = 0;
 UPDATE public.users SET commission_percentage = 5 WHERE role='OPERATOR';
 COMMIT;
+
+-- Vítima dos ataques da revisão de 15/10 (ciclo 2): outro projeto, outra campanha,
+-- sem vínculo com o operador sintético.
+BEGIN;
+INSERT INTO public.projects (id, project_name, main_url, domain, start_date, status, revshare) VALUES (9002, 'p2v.example', 'https://p2v.example', 'p2v.example', current_date - 30, 'Active', 0.2);
+INSERT INTO public.campaigns (id, project_id, campaign_name, campaign_id, start_date, status) VALUES (9002, 9002, 'v1 / p2v.example', '222222222', current_date - 30, 'Active');
+INSERT INTO public.campaign_funnel_urls (campaign_id, url, "Active") VALUES ('222222222', 'p2v.example/x', true);
+INSERT INTO public.adsense_metrics (date, url, revenue) VALUES (current_date, 'p2v.example/x', 50);
+INSERT INTO public.daily_campaign_metrics (campaign_id, date, revenue, spend, revenue_converted_revshare) VALUES ('222222222', current_date, 1, 2, 486) ON CONFLICT (campaign_id, date) DO UPDATE SET revenue_converted_revshare = 486;
+COMMIT;

@@ -26,6 +26,7 @@
 W4_MIG="$RAIZ/supabase/migrations"; R="$RECIBOS"
 ADMIN='{"sub":"a0000000-0000-4000-8000-00000000000a","email":"admin@example.invalid","role":"authenticated"}'
 OPER='{"sub":"a0000000-0000-4000-8000-00000000000b","email":"operador@example.invalid","role":"authenticated"}'
+SEMPAPEL='{"sub":"a0000000-0000-4000-8000-0000000000ff","email":"conta-nova@example.invalid","role":"authenticated"}'
 fp() { P -f - < "$FP" 2>&1 | grep '|' | tr -d ' ' > "$1"; }
 aplicar() { local cmd=PA arq="$W4_MIG/$2"; [ "$1" = postgres ] && cmd=P; [ -f "$2" ] && arq="$2"
   if $cmd -f - < "$arq" > "$R/aplicar-$(basename "$arq").log" 2>&1; then registrar "$arq" "$1" ok; return 0
@@ -142,10 +143,28 @@ operador() {
   t pautador_opp_outra_coluna "update public.pautador_opportunities set keyword='x' where id=9001 returning 1"
 }
 
+# Ataques da revisão (ciclo 2): campanha alheia 222222222 (projeto 9002), sem vínculo.
+# Saída por ataque: nome|ABERTO (efeito aconteceu) ou nome|FECHADO.
+VITIMA="RESET ROLE; SELECT 'vitima', coalesce(sum(revenue_converted_revshare), -1) FROM public.daily_campaign_metrics WHERE campaign_id='222222222';"
+ataques() {
+  local O="$1" quem claims base r; : > "$O"
+  base=$(run base "$ADMIN" "" "SELECT 1;" "$VITIMA" | grep -o 'vitima|[^ ]*')
+  for quem in OPER SEMPAPEL; do
+    [ "$quem" = OPER ] && claims="$OPER" || claims="$SEMPAPEL"
+    r=$(run a1 "$claims" "" "UPDATE public.campaign_funnel_urls SET \"Active\"=false WHERE campaign_id='222222222';" "$VITIMA" | grep -o 'vitima|[^ ]*')
+    [ "$r" != "$base" ] && echo "$quem·zera_receita_alheia|ABERTO" >> "$O" || echo "$quem·zera_receita_alheia|FECHADO" >> "$O"
+    r=$(run a2 "$claims" "" "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789','p2v.example/x', true);" "RESET ROLE; SELECT 'puxou', count(*) FROM public.campaign_funnel_urls WHERE campaign_id='123456789' AND url LIKE 'p2v.example%';")
+    printf '%s' "$r" | grep -q 'puxou|1' && echo "$quem·puxa_receita_de_outro_projeto|ABERTO" >> "$O" || echo "$quem·puxa_receita_de_outro_projeto|FECHADO" >> "$O"
+    r=$(run a3 "$claims" "" "INSERT INTO public.user_campaigns (user_id, campaign_id) VALUES ('b0000000-0000-4000-8000-00000000000b','222222222');" "RESET ROLE; SELECT 'vinculou', count(*) FROM public.user_campaigns WHERE campaign_id='222222222';")
+    printf '%s' "$r" | grep -q 'vinculou|1' && echo "$quem·vincula_operador_a_campanha_alheia|ABERTO" >> "$O" || echo "$quem·vincula_operador_a_campanha_alheia|FECHADO" >> "$O"
+  done
+}
+
 echo "▶ 1. ANTES da v19_10 (com linhas reais)"
 fp "$R/fp0.txt"
-defacl() { P -c "select defaclrole::regrole||'|'||defaclobjtype||'|'||(select string_agg(i::text, ',' order by i::text) from unnest(defaclacl) i) from pg_default_acl where defaclnamespace='public'::regnamespace order by 1" > "$1"; }
+defacl() { P -c "select defaclrole::regrole::text||'|'||defaclobjtype::text||'|'||(select string_agg(i::text, ',' order by i::text) from unnest(defaclacl) i) from pg_default_acl where defaclnamespace='public'::regnamespace order by 1" > "$1" 2>&1; }
 defacl "$R/defacl0.txt"
+[ -s "$R/defacl0.txt" ] && ! grep -q ERROR "$R/defacl0.txt" && ok "default ACL de public lido ($(wc -l < "$R/defacl0.txt" | tr -d ' ') entradas)" || nao "leitura do default ACL vazia ou com erro"
 fluxos "$R/fluxos-antes.txt"
 operador "$R/operador-antes.txt"
 eq "$(vivos "$R/fluxos-antes.txt" | grep -c '|OK|')" "$(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ')" "todos os $(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ') fluxos vivos funcionam antes (ADMIN)"
@@ -153,6 +172,8 @@ grep -v '|ok:' "$R/operador-antes.txt" > "$R/operador-antes-ja-negado.txt" || tr
 # gam_revenue já falha antes (gatilho lê trafego_meta_adset); pautador_opp_outra_coluna depende da policy antiga
 eq "$(grep -vE '^(pautador_opp_outra_coluna|gam_revenue)\|' "$R/operador-antes.txt" | grep -c '|ok:')" "$(grep -vcE '^(pautador_opp_outra_coluna|gam_revenue)\|' "$R/operador-antes.txt")" "antes da v19_10 o OPERADOR consegue as escritas de dinheiro, sync_logs e setval (o buraco existe)"
 eq "$(grep '^OP_' "$R/fluxos-antes.txt" | grep -c '|OK|')" "$(grep -c '^OP_' "$R/fluxos-antes.txt")" "fluxos de OPERADOR funcionam antes (inclusive salvar URL de funil)"
+ataques "$R/ataques-antes.txt"
+eq "$(grep -c '|ABERTO' "$R/ataques-antes.txt")" "6" "antes da v19_10 os 3 ataques da revisão funcionam como operador e como conta sem papel (o buraco existe)"
 grep -q 'dcm|123456789' "$R/fluxos-antes.txt" && ok "os fluxos medem o efeito dos gatilhos (linhas de daily_campaign_metrics no resultado)" || nao "fluxos sem efeito de gatilho"
 
 echo "▶ 2. MUTANTES (a prova tem de enxergar gatilhos e o operador)"
@@ -170,9 +191,18 @@ sed "s/^ ('daily_campaign_metrics',      true, true,  true,  false,/ ('daily_cam
 grep -q "('daily_campaign_metrics',      true, true,  false, false" "$MUT_A" && ok "mutante A gerado (sem o UPDATE de daily_campaign_metrics, que só gatilhos usam)" || nao "mutante A não gerado"
 mutante A "$MUT_A" "grant usado só por gatilho"
 MUT_B="$R/v19_10_MUTANTE_B_funil_invoker.sql"
-sed '/^DO \$definer\$/,/^\$definer\$;/d' "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_B"
-grep -q 'definer\$' "$MUT_B" && nao "mutante B não gerado" || ok "mutante B gerado (agregação do funil continua INVOKER)"
+sed -e '/^ALTER FUNCTION public.trigger_\(calculate_adsense_campaign_revenue\|funnel_url_change\)() OWNER TO volc_agregador_funil;/d' \
+    -e 's/^RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS \$f\$/RETURNS trigger LANGUAGE plpgsql AS $f$/' \
+    "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_B"
+grep -q 'OWNER TO volc_agregador_funil' "$MUT_B" && nao "mutante B não gerado" || ok "mutante B gerado (gatilhos do funil continuam INVOKER)"
 mutante B "$MUT_B" "operador salvando URL de funil"
+MUT_C="$R/v19_10_MUTANTE_C_sem_escopo_funil.sql"
+sed -e 's/^  SELECT public.volc_current_admin()$/  SELECT true OR public.volc_current_admin()/' "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_C"
+grep -q 'SELECT true OR public.volc_current_admin()' "$MUT_C" && ok "mutante C gerado (escopo do funil aberto)" || nao "mutante C não gerado"
+aplicar supabase_admin "$MUT_C" && ok "mutante C aplicou" || nao "mutante C"
+ataques "$R/ataques-mutante-C.txt"
+grep -q '|ABERTO' "$R/ataques-mutante-C.txt" && ok "os testes de ataque PEGAM o mutante C (escopo aberto)" || nao "os testes de ataque não pegam o escopo aberto"
+aplicar supabase_admin v19_10_rollback.sql && ok "rollback do mutante C" || nao "rollback do mutante C"
 
 echo "▶ 3. aplica a v19_10"
 aplicar supabase_admin v19_10_authenticated_minimo.sql && ok "v19_10 aplicou (supabase_admin)" || nao "v19_10"
@@ -185,6 +215,10 @@ grep '^MORTO_' "$R/fluxos-depois.txt" | cut -d'|' -f1,2 > "$R/fluxos-mortos-depo
 echo "  (informativo) mortos/já quebrados depois: $(tr '\n' ' ' < "$R/fluxos-mortos-depois.txt")"
 
 echo "▶ 4. OPERADOR recusado"
+ataques "$R/ataques-depois.txt"
+while IFS='|' read -r nome st <&3; do
+  [ "$st" = FECHADO ] && ok "ataque · $nome recusado" || nao "ataque · $nome AINDA funciona"
+done 3< "$R/ataques-depois.txt"
 operador "$R/operador-depois.txt"
 while IFS='|' read -r nome st <&3; do
   [ "$st" = 42501 ] && ok "operador · $nome recusado (42501)" || nao "operador · $nome NÃO recusado ($st)"
@@ -233,7 +267,11 @@ eq "$(estado authenticated "select setval('public.w4_nova_seq_admin', 1)" "$OPER
 eq "$(estado anon 'select count(*) from public.w4_nova_tabela' | cut -c1-5)" "42501" "tabela nova · anon nada"
 eq "$(estado service_role 'insert into public.w4_nova_tabela (v) values (4) returning v')" "ok:4" "tabela nova · service_role (backend) grava"
 P -c "drop table public.w4_nova_tabela" >/dev/null; PA -c "drop sequence public.w4_nova_seq_admin" >/dev/null
-eq "$(P -c "select prosecdef from pg_proc where oid='public.trigger_funnel_url_change()'::regprocedure")" "t" "agregação do funil roda como dono (SECURITY DEFINER)"
+eq "$(P -c "select prosecdef::text||'|'||pg_get_userbyid(proowner) from pg_proc where oid='public.trigger_funnel_url_change()'::regprocedure")" "true|volc_agregador_funil" "agregação do funil roda como o papel dedicado (SECURITY DEFINER)"
+eq "$(P -c "select rolsuper::text||'|'||rolbypassrls::text||'|'||rolcanlogin::text from pg_roles where rolname='volc_agregador_funil'")" "false|false|false" "volc_agregador_funil: não superusuário, sem BYPASSRLS, sem login"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('222222222','p2v.example/x')" "$OPER")" "ok:f" "escopo: operador não edita funil de campanha sem vínculo"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','p2v.example/x')" "$OPER")" "ok:f" "escopo: operador não pendura URL de outro domínio na própria campanha"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:t" "escopo: operador edita a própria campanha no domínio do projeto"
 eq "$(P -c "select array_to_string(proconfig, ',') from pg_proc where oid='public.trigger_calculate_adsense_campaign_revenue()'::regprocedure")" "search_path=public, pg_temp" "agregação do funil com search_path fixo"
 
 echo "▶ 6. rollback"
@@ -252,7 +290,13 @@ PA -c "DROP POLICY w4_teste_restritiva ON public.daily_campaign_metrics" >/dev/n
 aplicar supabase_admin v19_10_rollback.sql && ok "rollback aplicou" || nao "rollback"
 fp "$R/fp-rollback.txt"
 diff "$R/fp0.txt" "$R/fp-rollback.txt" > "$R/diff-fp0-rollback.txt" && ok "rollback devolve o fingerprint EXATO de antes da v19_10 (inclui funções do funil de volta a INVOKER)" || nao "rollback deixou resíduo (diff-fp0-rollback.txt)"
-defacl "$R/defacl-rollback.txt"; diff -q "$R/defacl0.txt" "$R/defacl-rollback.txt" >/dev/null && ok "rollback devolve o default ACL de public exato" || nao "default ACL diferente depois do rollback"
+defacl "$R/defacl-rollback.txt"
+[ -s "$R/defacl-rollback.txt" ] && diff -q "$R/defacl0.txt" "$R/defacl-rollback.txt" >/dev/null && ok "rollback devolve o default ACL de public exato" || nao "default ACL diferente (ou vazio) depois do rollback"
+# mutação da própria checagem: um GRANT padrão a mais tem de aparecer como diferença
+PA -c "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO authenticated" >/dev/null
+defacl "$R/defacl-mutado.txt"
+diff -q "$R/defacl0.txt" "$R/defacl-mutado.txt" >/dev/null && nao "a checagem de default ACL não vê um GRANT a mais (prova vazia)" || ok "a checagem de default ACL pega um GRANT padrão a mais (mutação)"
+PA -c "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE SELECT ON TABLES FROM authenticated" >/dev/null
 aplicar supabase_admin v19_10_rollback.sql && ok "rollback idempotente" || nao "rollback idempotente"
 fluxos "$R/fluxos-pos-rollback.txt"
 eq "$(comparar "$R/fluxos-antes.txt" "$R/fluxos-pos-rollback.txt" "$R/dif-pos-rollback.txt")" "0" "fluxos depois do rollback = antes"

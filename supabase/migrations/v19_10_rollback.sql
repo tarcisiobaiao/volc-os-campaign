@@ -9,8 +9,9 @@
 -- inteira: nome, comando, papéis, USING, WITH CHECK) de qualquer relação que ela
 -- mudou foi alterado de novo depois da aplicação.
 --
--- Também devolve as duas funções de agregação do funil a SECURITY INVOKER com a
--- configuração anterior, e o default ACL de public para anon/authenticated como
+-- Também devolve os dois gatilhos de agregação do funil ao corpo, à segurança e
+-- ao dono anteriores (aborta se mudaram depois), remove a função de escopo
+-- volc_pode_editar_funil e o papel volc_agregador_funil, e o default ACL de public para anon/authenticated como
 -- era antes (aborta se qualquer um dos dois mudou depois da v19_10).
 --
 -- ORDEM: reverter a v19_10 ANTES do v19_99 (pacote anon); com o W12 aplicado,
@@ -63,7 +64,8 @@ BEGIN
   -- 1b. funções e default ACL também têm de estar como a v19_10 deixou
   SELECT string_agg(f.assinatura, ', ') INTO v_mudou
     FROM app_auth.w4_auth_func f JOIN pg_proc pr ON pr.oid = to_regprocedure(f.assinatura)
-   WHERE pr.prosecdef IS DISTINCT FROM f.secdef_depois OR pr.proconfig IS DISTINCT FROM f.config_depois;
+   WHERE pg_get_userbyid(pr.proowner) IS DISTINCT FROM f.dono_depois
+      OR md5(pg_get_functiondef(pr.oid)) IS DISTINCT FROM f.def_depois_md5;
   IF v_mudou IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10_rollback abortado: função alterada depois da v19_10: %. Nada foi desfeito.', v_mudou;
   END IF;
@@ -76,15 +78,13 @@ BEGIN
     RAISE EXCEPTION 'v19_10_rollback abortado: default ACL de public mudou depois da v19_10 (%). Nada foi desfeito.', v_mudou;
   END IF;
 
-  -- 1c. funções da agregação do funil voltam a INVOKER com a configuração anterior
+  -- 1c. gatilhos do funil voltam ao corpo, à segurança e ao dono anteriores
+  --     (o corpo salvo por pg_get_functiondef é um CREATE OR REPLACE completo:
+  --     sem SECURITY DEFINER nem SET, ele devolve INVOKER e config vazia)
   FOR x IN SELECT * FROM app_auth.w4_auth_func LOOP
     IF to_regprocedure(x.assinatura) IS NULL THEN CONTINUE; END IF;
-    EXECUTE format('ALTER FUNCTION %s %s', x.assinatura, CASE WHEN x.secdef_antes THEN 'SECURITY DEFINER' ELSE 'SECURITY INVOKER' END);
-    EXECUTE format('ALTER FUNCTION %s RESET ALL', x.assinatura);
-    FOR v_priv IN SELECT unnest(coalesce(x.config_antes, '{}')) LOOP
-      EXECUTE format('ALTER FUNCTION %s SET %s = %s', x.assinatura, split_part(v_priv, '=', 1),
-                     quote_literal(substr(v_priv, length(split_part(v_priv, '=', 1)) + 2)));
-    END LOOP;
+    EXECUTE x.def_antes;
+    EXECUTE format('ALTER FUNCTION %s OWNER TO %I', x.assinatura, x.dono_antes);
   END LOOP;
 
   -- 1d. default ACL: devolve a anon/authenticated o que existia antes
@@ -146,7 +146,22 @@ BEGIN
     v_n := v_n + 1;
   END LOOP;
 
+  -- objetos criados pela v19_10: função de escopo do funil e papel do agregador
+  FOR x IN SELECT * FROM app_auth.w4_auth_criados WHERE tipo = 'funcao' LOOP
+    IF to_regprocedure(x.nome) IS NOT NULL THEN EXECUTE format('DROP FUNCTION %s', x.nome); END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM app_auth.w4_auth_criados WHERE tipo = 'papel' AND nome = 'volc_agregador_funil')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'volc_agregador_funil') THEN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proowner = 'volc_agregador_funil'::regrole)
+       OR EXISTS (SELECT 1 FROM pg_class WHERE relowner = 'volc_agregador_funil'::regrole) THEN
+      RAISE EXCEPTION 'v19_10_rollback: volc_agregador_funil ainda é dono de objeto — nada removido';
+    END IF;
+    DROP OWNED BY volc_agregador_funil;   -- só privilégios e policies (não é dono de nada)
+    DROP ROLE volc_agregador_funil;
+  END IF;
+
   DROP TABLE app_auth.w4_auth_policy;
+  DROP TABLE app_auth.w4_auth_criados;
   DROP TABLE app_auth.w4_auth_func;
   DROP TABLE app_auth.w4_auth_defacl;
   DROP TABLE app_auth.w4_auth_acl;
