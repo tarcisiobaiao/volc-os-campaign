@@ -47,6 +47,8 @@ import { FaixaDeLaboratorio } from '@/components/trafego/laboratorio/SeloDeProto
 import { useCapacidades } from '@/hooks/useCapacidades';
 import { useCampanhaCanonica } from '@/hooks/useCampanhaCanonica';
 import { useDiagnosticoDeEntrega } from '@/hooks/useDiagnosticoDeEntrega';
+import { useRecomendacaoShadow } from '@/hooks/useRecomendacaoShadow';
+import { RecomendacaoEmSombra } from '@/components/trafego/sombra/RecomendacaoEmSombra';
 import { GerirCampanha } from '@/components/trafego/gestao/GerirCampanha';
 import {
   caixaLigadaAGestao,
@@ -304,6 +306,16 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
             />
           </div>
 
+          {/* ── 4a · RECOMENDAÇÃO EM SOMBRA ──────────────────────────────
+              Leitura de um experimento conferido por sha256 (grão campanha ×
+              dia). Só Google Ads, porque o experimento é indexado pelo id da
+              campanha no Google. Sem botão: recomendação não é ação. */}
+          {identidade.plataforma === 'GOOGLE_ADS' && (
+            <Secao titulo="Recomendação em sombra" kicker="decisão não executada" id="sombra">
+              <SombraDaCampanha idExterno={identidade.id_externo} />
+            </Secao>
+          )}
+
           {/* ── 4b · GERIR CAMPANHA ─────────────────────────────────────────
               Propor → aprovar (admin) → aplicar → verificar → reverter, sobre
               /api/trafego/gestao. A escrita no Google só sai depois de uma
@@ -400,6 +412,10 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
     </article>
   );
 };
+
+const SombraDaCampanha: React.FC<{ idExterno: string | null }> = ({ idExterno }) => (
+  <RecomendacaoEmSombra leitura={useRecomendacaoShadow(idExterno)} />
+);
 
 /** Uma seção da página canônica. Mesma moldura para as oito. */
 /**

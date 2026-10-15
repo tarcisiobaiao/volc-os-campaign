@@ -113,6 +113,7 @@ import type {
   RevisaoDoConjuntoPago, AprovacaoDoConjuntoPago,
 } from '@/types/trafego';
 import type { RespostaDoDiagnostico } from '@/types/diagnostico';
+import type { RecomendacaoShadow } from '@/types/recomendacaoShadow';
 import type { RespostaDoDecisionLab } from '@/types/inteligenciaDecisao';
 import type { GraphStatusLive, InboxLive, InboxReceipt, InboxTriage, WorkRoadExecutionsLive, WorkRoadLive } from '@/features/work-road/live';
 
@@ -2028,6 +2029,13 @@ export const pautadorApi = {
   decisionIntelligenceLab(scenarioId: string): Promise<RespostaDoDecisionLab> {
     return request(
       `/api/trafego/laboratorio/inteligencia/${encodeURIComponent(scenarioId)}`,
+    );
+  },
+
+  /** Recomendação em sombra (contrato v1). 404 = não há experimento para a campanha. */
+  recomendacaoShadow(campaignIdExterno: string): Promise<RecomendacaoShadow> {
+    return request(
+      `/api/trafego/recomendacao-shadow/${encodeURIComponent(campaignIdExterno)}`,
     );
   },
 
