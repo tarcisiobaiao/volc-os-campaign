@@ -56,10 +56,13 @@ o mesmo `VOLC_GADS_MCC`). Cada conta tem recibo próprio; uma conta que falha
 não impede as outras, e a saída é 1 se qualquer uma falhou.
 
 **Limites conhecidos** (antes de ligar):
-- o deadman (`backend/app/trafego/deadman_coleta.py`) só vigia D0 e D-1; a
-  recoleta tem recibo e ledger, mas ninguém alerta se ela parar;
+- o deadman classifica a recoleta (`job_da_recoleta` em
+  `backend/app/trafego/deadman_coleta.py`: expectativa lida deste timer, só
+  conta fechamento com `:passorec:` na chave, então backfill manual não a
+  pinta de verde), mas o deadman inteiro ainda não tem consumidor que alerte;
 - o tamanho do ajuste tardio em `cost_micros` não foi medido: rode
-  `--recoleta-dias 7 --seco` e compare com as linhas D-1 já gravadas;
+  `--recoleta-dias 7 --seco` na Portal Mundo Mais (`5478096539`, a única filha
+  ativa do MCC em 15/10) e compare com as linhas D-1 já gravadas;
 - campo que a releitura não trouxer vira NULL sobre o que o D-1 trouxe (o
   `ON CONFLICT` da v12_04 substitui a linha inteira);
 - as contas vêm de `VOLC_GADS_CONTAS`, não de `trafego_inventario_conta`.

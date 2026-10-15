@@ -50,6 +50,7 @@ não pode dizer "não aconteceu". Por isso existe `FONTE_INDISPONIVEL`, que vira
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping, Sequence
@@ -70,6 +71,7 @@ __all__ = [
     "FonteDeEvidencia",
     "intervalo_do_cron",
     "job_do_workflow",
+    "job_da_recoleta",
     "diagnosticar_coleta",
 ]
 
@@ -88,6 +90,10 @@ class JobDeColeta:
     ativo: bool
     fuso: str
     workflow_arquivo: str
+    # Trecho que a `execucao_chave` precisa conter. A recoleta (W11) divide job
+    # e origem (`gads_campanha_dia`/`backfill`) com o backfill manual; sem o
+    # marcador do passo, um backfill feito à mão pintaria a recoleta de verde.
+    marcador_chave: str | None = None
 
 
 class FonteDeEvidencia:
@@ -206,6 +212,39 @@ def job_do_workflow(workflow: Mapping[str, Any], arquivo: str) -> JobDeColeta:
     )
 
 
+# Passo fixo que `deploy/gads-coleta/run.sh recoleta` passa em `--agenda`; entra
+# na `execucao_chave` como `:passorec:` (volc_ads.coleta.executor.prefixo_do_passo).
+PASSO_RECOLETA = "rec"
+_ON_CALENDAR = re.compile(
+    r"^OnCalendar=\*-\*-\* (\d{2}):(\d{2})(?::\d{2})?(?: (\S+))?\s*$", re.M)
+
+
+def job_da_recoleta(timer: str, arquivo: str, *, ativo: bool = False) -> JobDeColeta:
+    """Expectativa da recoleta, lida do timer systemd versionado.
+
+    A recoleta não tem workflow n8n versionado: a autoridade de agenda dela, se
+    for systemd, é `deploy/gads-coleta/volc-gads-coleta-recoleta.timer`. Só a
+    forma diária com hora fixa é aceita; qualquer outra levanta em vez de virar
+    palpite. `ativo` vem de quem consulta (instalação real), nunca do arquivo:
+    timer versionado não é timer ligado, e o padrão seguro é desligado.
+    """
+    if "Unit=volc-gads-coleta@recoleta.service" not in timer:
+        raise ValueError(f"{arquivo}: o timer nao dispara volc-gads-coleta@recoleta.service")
+    achados = _ON_CALENDAR.findall(timer)
+    if len(achados) != 1:
+        raise ValueError(f"{arquivo}: precisa de exatamente um OnCalendar diario com hora fixa")
+    hora, minuto, fuso = achados[0]
+    return JobDeColeta(
+        job="gads_campanha_dia",
+        origem_janela="backfill",
+        cron=f"{int(minuto)} {int(hora)} * * *",
+        ativo=bool(ativo),
+        fuso=fuso or "America/Sao_Paulo",
+        workflow_arquivo=arquivo,
+        marcador_chave=f":passo{PASSO_RECOLETA}:",
+    )
+
+
 def _instante(valor: Any) -> datetime | None:
     """Converte o que a view devolveu, sem inventar fuso.
 
@@ -283,6 +322,8 @@ def diagnosticar_coleta(
         l for l in (fechamentos or [])
         if str(l.get("job") or "") == job.job
         and str(l.get("origem_janela") or "") == job.origem_janela
+        and (job.marcador_chave is None
+             or job.marcador_chave in str(l.get("execucao_chave") or ""))
     ]
 
     if not linhas:
