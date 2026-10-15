@@ -28,7 +28,10 @@
 --   (CAPI_MASTER_KEY) vive fora do banco, em env var.
 --   Defesa em profundidade: RLS + cifra + endpoint próprio autenticado.
 --
--- NÃO destrutivo. >>> Rodar no Supabase SQL Editor (projeto txvvzpstquqmbhljudfn). <<<
+-- NÃO destrutivo. NÃO rodar sozinho: esta etapa entra em produção só como parte
+-- de `supabase/migrations/v21_pacote_aplicar.sql` (transação única com a v21_01,
+-- que fecha os privilégios). O único Supabase operacional é o self-hosted
+-- (database.agenciavolc.com.br; ver docs/architecture/ADR-SUPABASE-AUTORIDADE-OPERACIONAL.md).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

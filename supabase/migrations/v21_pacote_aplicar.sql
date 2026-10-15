@@ -9,7 +9,7 @@
 -- intermediário. NÃO aplicar as partes uma a uma (ver v21_01/v21_02).
 --
 -- Partes (sha256 no momento da montagem):
---   ba0137fe35a3d3c66162a727a8f9312ee96d3171007841abb90d115d852478a9  src/sql/v7_13_meta_capi_sites.sql
+--   7f3f0d2f352708f668f5f69c6fe4aeecf75dfceaacffb984bb44c45ebc0d24f9  src/sql/v7_13_meta_capi_sites.sql
 --   b679c32292385f4d1903e038e4a3dea8db88242ae4cd820f614f120708745c84  supabase/migrations/v21_01_meta_capi_sites_privilegios.sql
 --   d78d690db04e9a9dff3c552d2ee7af8ca492659bb38e2cf2870d471bc332bb57  src/sql/v6_01_create_campaign_roles.sql
 --   bb73987842a0f2e176beb5b27242f66f85b76e7a32356e4b2ed2dabcc59eea68  src/sql/v6_02_create_campaign_members.sql
@@ -74,7 +74,10 @@ $pre$;
 --   (CAPI_MASTER_KEY) vive fora do banco, em env var.
 --   Defesa em profundidade: RLS + cifra + endpoint próprio autenticado.
 --
--- NÃO destrutivo. >>> Rodar no Supabase SQL Editor (projeto txvvzpstquqmbhljudfn). <<<
+-- NÃO destrutivo. NÃO rodar sozinho: esta etapa entra em produção só como parte
+-- de `supabase/migrations/v21_pacote_aplicar.sql` (transação única com a v21_01,
+-- que fecha os privilégios). O único Supabase operacional é o self-hosted
+-- (database.agenciavolc.com.br; ver docs/architecture/ADR-SUPABASE-AUTORIDADE-OPERACIONAL.md).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
