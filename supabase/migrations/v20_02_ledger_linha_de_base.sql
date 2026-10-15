@@ -70,9 +70,9 @@ BEGIN
   VALUES
     ('v20_01_ledger_migrations', 'aplicar',
      'supabase/migrations/v20_01_ledger_migrations.sql',
-     '5727f27d5941b06d671a7d1946a9107eae43363fdc486799cd66fe52767df0c8',
+     '9933eeea3123ed84608cee58edc49b1c2f2aebfb5b6bcaecf24cb9ab4bcc717f',
      'supabase/migrations/v20_01_rollback.sql',
-     '3146e96ec8643ee0de1775a83a961274c49af74dffb38a5e3aa8b1f02da28a4b',
+     '1c46c833aaed11308f97ee2cc3e030acd0fd9ca56d16770c7a5f6b3118fc9e7e',
      aprovador, aprov_em, medido,
      'registrada retroativamente pela v20_02 (o ledger não existia antes de si mesmo)');
 END $$;

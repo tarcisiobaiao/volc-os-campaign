@@ -23,11 +23,27 @@ BEGIN
     RAISE EXCEPTION 'v20_01_rollback: o ledger registra % evento(s) de outras migrations — recusado', n
       USING ERRCODE = 'P0001';
   END IF;
-  -- objetos de outro schema que dependam do ledger também barram o DROP
-  SELECT count(*) INTO n FROM pg_depend d
-    JOIN pg_class c ON c.oid = d.objid
-   WHERE d.refobjid IN (SELECT oid FROM pg_class WHERE relnamespace = 'volc_ops'::regnamespace)
-     AND c.relnamespace <> 'volc_ops'::regnamespace;
+  -- objetos de outro schema que dependam do ledger também barram o DROP (o
+  -- CASCADE os levaria junto). Só dependências normais/automáticas: a TOAST da
+  -- tabela (pg_toast, interna) é do próprio ledger. O schema de regra (view),
+  -- constraint (FK) e gatilho é o da relação que os carrega.
+  SELECT count(*) INTO n
+    FROM pg_depend d
+   WHERE d.deptype IN ('n','a')
+     AND ((d.refclassid = 'pg_class'::regclass
+           AND d.refobjid IN (SELECT oid FROM pg_class WHERE relnamespace = 'volc_ops'::regnamespace))
+       OR (d.refclassid = 'pg_proc'::regclass
+           AND d.refobjid IN (SELECT oid FROM pg_proc WHERE pronamespace = 'volc_ops'::regnamespace)))
+     AND CASE d.classid
+           WHEN 'pg_class'::regclass      THEN (SELECT relnamespace FROM pg_class WHERE oid = d.objid)
+           WHEN 'pg_rewrite'::regclass    THEN (SELECT c.relnamespace FROM pg_rewrite r JOIN pg_class c ON c.oid = r.ev_class WHERE r.oid = d.objid)
+           WHEN 'pg_constraint'::regclass THEN (SELECT connamespace FROM pg_constraint WHERE oid = d.objid)
+           WHEN 'pg_trigger'::regclass    THEN (SELECT c.relnamespace FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid WHERE t.oid = d.objid)
+           WHEN 'pg_proc'::regclass       THEN (SELECT pronamespace FROM pg_proc WHERE oid = d.objid)
+           WHEN 'pg_type'::regclass       THEN (SELECT typnamespace FROM pg_type WHERE oid = d.objid)
+           WHEN 'pg_attrdef'::regclass    THEN (SELECT c.relnamespace FROM pg_attrdef a JOIN pg_class c ON c.oid = a.adrelid WHERE a.oid = d.objid)
+           WHEN 'pg_policy'::regclass     THEN (SELECT c.relnamespace FROM pg_policy p JOIN pg_class c ON c.oid = p.polrelid WHERE p.oid = d.objid)
+         END IS DISTINCT FROM 'volc_ops'::regnamespace;
   IF n > 0 THEN
     RAISE EXCEPTION 'v20_01_rollback: % objeto(s) fora de volc_ops dependem do ledger — recusado', n
       USING ERRCODE = 'P0001';

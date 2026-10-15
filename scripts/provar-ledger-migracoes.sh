@@ -13,7 +13,7 @@
 #   F. com outra migration registrada, o rollback do ledger é recusado
 #   G. dois aplicadores simultâneos da mesma versão: exatamente um vence
 #
-# Uso: VOLC_LAB_PREFIXO=volc-lab-w9- [VOLC_PG_IMAGE=supabase/postgres:15.8.1.085] scripts/provar-ledger-migracoes.sh
+# Uso: [LAB_NOME=volc-lab-...] scripts/provar-ledger-migracoes.sh
 set -uo pipefail
 export LC_ALL=C LANG=C
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,11 +23,24 @@ FPSQL="$RAIZ/tools/freedom-lab/db/fingerprint_schema.sql"
 L1="$M/v20_01_ledger_migrations.sql";    R1="$M/v20_01_rollback.sql"
 L2="$M/v20_02_ledger_linha_de_base.sql"; R2="$M/v20_02_rollback.sql"
 
-# shellcheck source=lab-postgres-descartavel.sh
-. "$RAIZ/scripts/lab-postgres-descartavel.sh" ledger
-lab_criar
-echo "▶ servidor $(P -c 'show server_version') · imagem $LAB_IMG · container $LAB_CN"
-lab_papeis_supabase
+# Banco: o do Freedom Lab (tools/freedom-lab/lab.sh, supabase/postgres:15.8.1.085,
+# sem rede, rótulo volc.freedom-lab=1), carregado como biblioteca com nome próprio.
+LAB_NOME="${LAB_NOME:-volc-lab-w9-ledger-$$}"
+RECIBOS="$(mktemp -d "${TMPDIR:-/tmp}/volc-lab-w9-ledger-XXXX")"
+LAB_DIR="$RECIBOS"
+# shellcheck source=../tools/freedom-lab/lab.sh
+. "$RAIZ/tools/freedom-lab/lab.sh"
+trap 'destruir >/dev/null; rm -rf "$LAB_DIR"' EXIT
+criar >/dev/null || { echo "laboratório não subiu"; exit 2; }
+LAB_CN="$NOME"
+echo "▶ servidor $(P -c 'show server_version') · imagem $IMAGEM · container $LAB_CN"
+lab_sqlstate() { sqlstate "$1"; }
+# o default ACL quebrado de public (S10) vem da imagem; sem ele, toda prova de
+# fechamento mediria um ambiente mais seguro que o real
+P -c "CREATE TABLE public._sonda_default_acl(i int)" >/dev/null
+eq "$(P -c "select has_table_privilege('anon','public._sonda_default_acl','INSERT')")" t \
+   "default ACL quebrado de public presente (tabela nova nasce gravável por anon)"
+P -c "DROP TABLE public._sonda_default_acl" >/dev/null
 
 sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
 REC="$LAB_DIR/recibos"; mkdir -p "$REC"
@@ -48,10 +61,21 @@ CREATE VIEW public.vw_campanha_sintetica WITH (security_invoker = true) AS SELEC
 CREATE FUNCTION public.fn_sintetica() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NEW; END $f$;
 CREATE TRIGGER tg_sintetico BEFORE INSERT ON public.campanha_sintetica FOR EACH ROW EXECUTE FUNCTION public.fn_sintetica();
 CREATE TABLE app_auth.papel_sintetico (id int);
+-- objetos cujo texto deparsado depende do search_path (o defeito de 15/10):
+-- FK e view entre tabelas de public, default com função de extensions
+CREATE TABLE public.conta_sintetica (id uuid PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  campanha int REFERENCES public.campanha_sintetica (id));
+CREATE VIEW public.vw_conta_campanha AS
+  SELECT k.id, c.nome FROM public.conta_sintetica k JOIN public.campanha_sintetica c ON c.id = k.campanha;
 INSERT INTO public.campanha_sintetica VALUES (1, 'a', 10);
 SQL
 FP_BASE="$(fp_bruto)"
 echo "  fingerprint do laboratório antes do ledger: $FP_BASE"
+eq "$(P -c 'show search_path')" '"\$user", public, extensions' "sessão do script mede com o search_path do papel postgres da imagem"
+# controle: a semente discrimina o defeito — com search_path só de catálogo o deparse muda
+VD="select md5(pg_get_viewdef('public.vw_conta_campanha'::regclass, true))"
+[ "$(P -c "$VD")" != "$(printf 'SET search_path = pg_catalog, pg_temp;\n%s;\n' "$VD" | P)" ] && \
+   ok "controle · view deparsada muda com search_path = pg_catalog (a semente pega o defeito)" || nao "controle · semente não discrimina o search_path"
 
 echo "▶ A · v20_01 cria o ledger"
 eq "$(proto aplicar --migration "$L1" --sha "$(sha "$L1")" --rollback "$R1" --sha-rollback "$(sha "$R1")" --aprovador laboratorio --cria-ledger)" 0 "v20_01 aplicada pelo protocolo"
@@ -73,7 +97,7 @@ mkdir -p "$LAB_DIR/lab"; LAB2="$LAB_DIR/lab/v20_02_ledger_linha_de_base.sql"
 sed "s/695e913a4373efd1c2265cdd5ac87251/$FP_BASE/" "$L2" > "$LAB2"
 eq "$(lab_sqlstate "$(cat "$LAB2")")" P0001 "cópia do laboratório rodada sem o protocolo (sem aprovador) recusa"
 eq "$(proto aplicar --migration "$LAB2" --sha "$(sha "$LAB2")" --rollback "$R2" --sha-rollback "$(sha "$R2")" --aprovador laboratorio --aprovado-em 2026-10-15)" 0 \
-   "cópia com o fingerprint do laboratório registra a linha de base"; cat "$LAB_DIR/proto.out" | tail -8
+   "cópia com o fingerprint do laboratório registra a linha de base"
 eq "$(P -c "select string_agg(versao||':'||operacao, ',' order by id) from volc_ops.migracao_evento")" \
    "v20_02_ledger_linha_de_base:aplicar,linha_de_base_producao_20261015:linha_de_base,v20_01_ledger_migrations:aplicar" \
    "ledger: v20_02 aplicada, linha de base, v20_01 retroativa"
@@ -104,6 +128,10 @@ eq "$(proto aplicar --migration "$LAB2" --sha "$(sha "$LAB2")" --rollback "$R2" 
 eq "$(proto reverter --versao v20_02_ledger_linha_de_base --rollback "$R2" --sha-rollback "$(sha "$R2")" --aprovador laboratorio)" 0 "v20_02 revertida de novo"
 
 echo "▶ E · rollback da v20_01"
+P -c "CREATE VIEW public.vw_alheia_ledger AS SELECT versao FROM volc_ops.migracao_estado" >/dev/null
+eq "$(P < "$R1" >/dev/null 2>&1; echo $?)" 3 "rollback do ledger recusado com view de public dependendo dele"
+grep -q 'fora de volc_ops dependem' <(P < "$R1" 2>&1) && ok "o motivo é a dependência externa" || nao "motivo da recusa por dependência"
+P -c "DROP VIEW public.vw_alheia_ledger" >/dev/null
 eq "$(proto reverter --versao v20_01_ledger_migrations --rollback "$R1" --sha-rollback "$(sha "$R1")" --aprovador laboratorio --remove-ledger)" 0 "v20_01 revertida"
 eq "$(P -c "select to_regnamespace('volc_ops') is null")" t "volc_ops removido"
 eq "$(fp_bruto)" "$FP_BASE" "fingerprint igual ao de antes do ledger"
@@ -131,5 +159,5 @@ case "$CODS" in "0 11 "|"0 14 ") ok "exatamente um venceu (saídas: $CODS)";; *)
 eq "$(P -c "select count(*) from volc_ops.migracao_evento where versao='v99_02_lenta'")" 1 "um único evento de aplicação"
 
 echo
-if [ "$FALHAS" = 0 ]; then echo "  LEDGER VERDE — $(P -c 'show server_version')"; exit 0
-else echo "  $FALHAS FALHA(S) no ledger"; exit 1; fi
+if [ "$F" = 0 ]; then echo "  LEDGER VERDE — $(P -c 'show server_version')"; exit 0
+else echo "  $F FALHA(S) de $T no ledger"; exit 1; fi

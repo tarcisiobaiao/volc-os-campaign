@@ -12,7 +12,7 @@
 #
 # Uso:
 #   scripts/provar-migracao-par.sh --migration ARQ --rollback ARQ [--pre ARQ]... [--prova ARQ.sql]
-#   VOLC_PG_IMAGE=supabase/postgres:15.8.1.085 VOLC_LAB_PREFIXO=volc-lab-w9- scripts/provar-migracao-par.sh ...
+#   [LAB_NOME=volc-lab-...] scripts/provar-migracao-par.sh ...
 #
 # --pre   dependências aplicadas antes (pelo protocolo, aprovador "laboratorio")
 # --prova SQL que roda depois de cada aplicação e tem de terminar sem erro
@@ -34,11 +34,24 @@ while [ $# -gt 0 ]; do
 done
 [ -f "$MIG" ] && [ -f "$ROLL" ] || { sed -n '14,19p' "$0"; exit 2; }
 
-# shellcheck source=lab-postgres-descartavel.sh
-. "$RAIZ/scripts/lab-postgres-descartavel.sh" par
-lab_criar
-echo "▶ servidor $(P -c 'show server_version') · imagem $LAB_IMG · container $LAB_CN"
-lab_papeis_supabase
+# Banco: o do Freedom Lab (tools/freedom-lab/lab.sh, supabase/postgres:15.8.1.085,
+# sem rede, rótulo volc.freedom-lab=1), carregado como biblioteca com nome próprio.
+LAB_NOME="${LAB_NOME:-volc-lab-w9-par-$$}"
+RECIBOS="$(mktemp -d "${TMPDIR:-/tmp}/volc-lab-w9-par-XXXX")"
+LAB_DIR="$RECIBOS"
+# shellcheck source=../tools/freedom-lab/lab.sh
+. "$RAIZ/tools/freedom-lab/lab.sh"
+trap 'destruir >/dev/null; rm -rf "$LAB_DIR"' EXIT
+criar >/dev/null || { echo "laboratório não subiu"; exit 2; }
+LAB_CN="$NOME"
+echo "▶ servidor $(P -c 'show server_version') · imagem $IMAGEM · container $LAB_CN"
+lab_sqlstate() { sqlstate "$1"; }
+# o default ACL quebrado de public (S10) vem da imagem; sem ele, toda prova de
+# fechamento mediria um ambiente mais seguro que o real
+P -c "CREATE TABLE public._sonda_default_acl(i int)" >/dev/null
+eq "$(P -c "select has_table_privilege('anon','public._sonda_default_acl','INSERT')")" t \
+   "default ACL quebrado de public presente (tabela nova nasce gravável por anon)"
+P -c "DROP TABLE public._sonda_default_acl" >/dev/null
 
 sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
 V="$(basename "$MIG" .sql)"
@@ -115,5 +128,5 @@ done
 
 echo
 echo "  recibos do protocolo: $(ls "$REC" | wc -l | tr -d ' ') (destruídos com o container)"
-if [ "$FALHAS" = 0 ]; then echo "  CICLO $V VERDE — $(P -c 'show server_version')"; exit 0
-else echo "  $FALHAS FALHA(S) — $V"; exit 1; fi
+if [ "$F" = 0 ]; then echo "  CICLO $V VERDE — $(P -c 'show server_version')"; exit 0
+else echo "  $F FALHA(S) de $T — $V"; exit 1; fi

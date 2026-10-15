@@ -14,6 +14,11 @@
 #   recriar   destruir → criar → semear → testar (que migra, desfaz e refaz)
 #   status    mostra se o container existe
 #
+# Também é biblioteca: `. tools/freedom-lab/lab.sh` (com LAB_NOME próprio) dá
+# criar/destruir/P/sqlstate/ok/nao/eq sem rodar comando — é assim que as provas
+# do ledger (scripts/provar-ledger-migracoes.sh, scripts/provar-migracao-par.sh)
+# sobem o banco descartável, em vez de um laboratório paralelo.
+#
 # Nunca toca em produção: não lê .env, não usa SSH, não publica porta.
 # Recibo do `testar` vai para $RECIBOS (padrão: tools/freedom-lab/runs/<data>/).
 # =============================================================================
@@ -41,6 +46,21 @@ exigir_lab() {
 P() { exigir_lab || return $?; docker exec -i "$NOME" psql -U postgres -d postgres -X -q -A -t -v ON_ERROR_STOP=1 "$@"; }
 sha() { shasum -a 256 "$1" | awk '{print $1}'; }
 
+# SQLSTATE do primeiro erro de um bloco SQL rodado como postgres, ou "ok"
+sqlstate() {
+  exigir_lab || return $?
+  local out st
+  out="$(printf '\\set VERBOSITY verbose\n%s\n' "$1" | docker exec -i "$NOME" psql -U postgres -d postgres -X -A -t 2>&1)"
+  st="$(printf '%s' "$out" | grep -oE 'ERROR:  [0-9A-Z]{5}' | head -1 | awk '{print $2}')"
+  [ -n "$st" ] && echo "$st" || echo ok
+}
+
+# Contadores de verificação (T total, F falhas); o recibo das provas vai para $RECIBOS/provas.txt
+T=0 F=0
+ok()  { T=$((T+1)); printf '  ✓ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
+nao() { T=$((T+1)); F=$((F+1)); printf '  ✗ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
+eq()  { [ "$1" = "$2" ] && ok "$3" || nao "$3 (esperado=$2 obtido=$1)"; }
+
 existe() { [ -n "$(docker ps -aq --filter "name=^${NOME}$" --filter label=volc.freedom-lab=1)" ]; }
 
 criar() {
@@ -53,9 +73,14 @@ criar() {
   docker run -d --name "$NOME" --label volc.freedom-lab=1 --network none \
     -e POSTGRES_PASSWORD="$senha" "$IMAGEM" >/dev/null || return 1
   unset senha
-  local i; for i in $(seq 1 90); do
-    docker exec "$NOME" pg_isready -U postgres -h localhost >/dev/null 2>&1 && \
-      P -c "select 1" >/dev/null 2>&1 && { echo "▶ criado $NOME ($IMAGEM) sem porta publicada"; P -c "select version()"; return 0; }
+  # A imagem sobe um servidor temporário, roda o init e REINICIA: "aceitou
+  # conexão" não basta. Pronto = o mesmo postmaster em três leituras seguidas.
+  local i t ant="" iguais=0
+  for i in $(seq 1 120); do
+    t="$(P -c 'select pg_postmaster_start_time()' 2>/dev/null)"
+    if [ -n "$t" ] && [ "$t" = "$ant" ]; then iguais=$((iguais+1)); else iguais=0; fi
+    ant="$t"
+    [ $iguais -ge 3 ] && { echo "▶ criado $NOME ($IMAGEM) sem porta publicada"; P -c "select version()"; return 0; }
     sleep 1
   done
   echo "ERRO: banco não ficou pronto"; docker logs --tail 20 "$NOME"; return 1
@@ -83,10 +108,7 @@ migrar() {
 testar() {
   exigir_lab || return $?
   mkdir -p "$RECIBOS"
-  local F=0 T=0
-  ok()  { T=$((T+1)); printf '  ✓ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
-  nao() { T=$((T+1)); F=$((F+1)); printf '  ✗ %s\n' "$1" | tee -a "$RECIBOS/provas.txt"; }
-  eq()  { [ "$1" = "$2" ] && ok "$3" || nao "$3 (esperado=$2 obtido=$1)"; }
+  T=0 F=0
   estado() {
     local out st
     out=$(printf '\\set VERBOSITY verbose\nBEGIN; SET LOCAL ROLE %s; %s; ROLLBACK;\n' "$1" "$2" \
@@ -186,6 +208,9 @@ testar() {
   echo; echo "recibo: $RECIBOS/recibo.json"
   [ $F = 0 ] && { echo "CICLO VERDE ($T/$T)"; return 0; } || { echo "$F FALHA(S) de $T"; return 1; }
 }
+
+# Carregado com `.` (biblioteca): só as funções, nenhum comando.
+[ "${BASH_SOURCE[0]}" = "$0" ] || return 0
 
 case "${1:-}" in
   criar) criar ;;

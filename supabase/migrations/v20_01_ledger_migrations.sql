@@ -153,9 +153,19 @@ CREATE VIEW volc_ops.migracao_estado AS
 -- Mesmo cálculo de tools/freedom-lab/db/fingerprint_schema.sql (= B-fingerprint.sql),
 -- como função para o protocolo medir antes/depois sem copiar SQL. Lê só catálogo.
 -- Corpos de função entram como md5, nunca em claro.
+--
+-- search_path: o MESMO da sessão em que o script é medido (psql -U postgres na
+-- imagem supabase/postgres 15.8, onde pg_db_role_setting dá ao papel postgres
+-- "$user", public, extensions). pg_get_viewdef, pg_get_triggerdef,
+-- pg_get_indexdef, pg_get_constraintdef, pg_get_expr e format_type qualificam
+-- todo nome que não está visível no search_path; com pg_catalog só, views,
+-- gatilhos, índices, FKs e defaults saíam como "public.x"/"extensions.f()" e o
+-- md5 nunca batia com o 695e913a… medido pelo script — a v20_02 recusaria sempre.
+-- Fixo (e não herdado do chamador) para que dois eventos do ledger medidos em
+-- sessões diferentes sejam comparáveis.
 CREATE FUNCTION volc_ops.fingerprint_schema()
 RETURNS TABLE (categoria text, itens bigint, md5 text)
-LANGUAGE sql STABLE SET search_path = pg_catalog, pg_temp AS $f$
+LANGUAGE sql STABLE SET search_path = "$user", public, extensions AS $f$
 WITH esquemas AS (
   SELECT oid, nspname FROM pg_namespace
    WHERE nspname IN ('public','app_auth')
