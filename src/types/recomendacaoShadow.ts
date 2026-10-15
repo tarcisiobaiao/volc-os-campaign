@@ -91,8 +91,11 @@ export interface LinhaCarteiraShadow {
   campanha_nome: string | null;
   campanha_status: string | null;
   conta: string | null;
-  /** `ambigua`: dois experimentos com o mesmo `as_of` mais recente; sem direção. */
-  situacao: 'lida' | 'ambigua';
+  /**
+   * `ambigua`: dois experimentos com o mesmo `as_of` mais recente; `ilegivel`:
+   * experimento da campanha sem `as_of` legível. Nos dois, sem direção.
+   */
+  situacao: 'lida' | 'ambigua' | 'ilegivel';
   mensagem: string | null;
   direcao: DirecaoShadow | null;
   estado_dado: EstadoDadoShadow | null;
@@ -102,6 +105,8 @@ export interface LinhaCarteiraShadow {
   experimentos_substituidos?: string[];
   janela_madura: JanelaShadow | null;
   fracao_custo_maduro_sem_receita: number | null;
+  /** Experimento mais de 2 dias mais velho que o mais novo da carteira. */
+  defasada: boolean | null;
   valor_sugerido: null;
   executada: false;
 }

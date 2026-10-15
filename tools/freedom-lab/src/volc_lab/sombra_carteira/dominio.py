@@ -33,6 +33,7 @@ PARAMETROS_PADRAO: dict[str, float] = {
     "roas_equilibrio": 1.0,
     "roas_aumentar": 1.5,
     "max_custo_sem_receita": 0.10,   # fração do custo maduro sem receita que ainda permite decidir
+    "max_dias_sem_custo": 0.10,      # fração dos dias maduros com custo não lido (NULL) que ainda permite decidir
 }
 
 # Estados do dia. Só `reconciliado` entra em ROAS; o resto é ausência nomeada.
@@ -150,9 +151,17 @@ def reconciliar(
         por_dia_custo[c.metric_date] = c
 
     por_dia_receita: dict[date, list[ReceitaObservada]] = {}
+    vistas: set[tuple[str, date, str]] = set()
     for r in receitas:
         if r.campanha != campanha:
             raise ContratoQuebrado(f"receita da campanha {r.campanha} entregue para {campanha}")
+        # A leitura vigente tem UMA linha por chave (fonte, dia, componente). Duas
+        # são versões do diário ou página deslocada, e somá-las contaria a mesma
+        # receita duas vezes (a guarda que a prova Senac tinha).
+        chave = (r.fonte, r.data_referencia, r.componente)
+        if chave in vistas:
+            raise ContratoQuebrado(f"receita repetida para {campanha} em {r.data_referencia} ({r.fonte}/{r.componente})")
+        vistas.add(chave)
         if not (inicio <= r.data_referencia <= as_of):
             continue
         por_dia_receita.setdefault(r.data_referencia, []).append(r)
@@ -172,7 +181,10 @@ def reconciliar(
             estado = "janela_aberta"
         else:
             estado = estado_rec
-        maduro = d < corte and (custo is None or custo.janela_fechada)
+        # Maturidade é do CALENDÁRIO. Um dia antigo que só tem D0 (janela aberta,
+        # D-1 falhou) é maduro e entra na conta como custo sem receita
+        # reconciliada; tirá-lo da maturidade o faria sumir da guarda de fração.
+        maduro = d < corte
         dias.append(DiaReconciliado(
             data=d,
             custo_brl=None if custo is None or custo.custo_micros is None
@@ -241,8 +253,17 @@ def avaliar(
                        f"({datas[0]} a {datas[-1]})")
     valor_google = [d.valor_conversao_google for d in dias if d.valor_conversao_google is not None]
 
+    # Custo NULL não pesa na fração (não se sabe quanto foi): conta-se por dia.
+    dias_com_custo = [d for d in maduros if d.estado != "sem_custo"]
+    sem_custo_lido = [d for d in dias_com_custo if d.custo_brl is None]
+    fracao_dias_sem_custo = (len(sem_custo_lido) / len(dias_com_custo)) if dias_com_custo else None
+
     estresse: Optional[float] = None
-    if not custo_maduro:
+    if fracao_dias_sem_custo is not None and fracao_dias_sem_custo > p["max_dias_sem_custo"]:
+        estado_dado = SEM_DADO
+        motivo = (f"{len(sem_custo_lido)} de {len(dias_com_custo)} dias maduros sem custo lido "
+                  f"(limite {p['max_dias_sem_custo']:.0%})")
+    elif not custo_maduro:
         estado_dado = SEM_DADO
         motivo = "sem custo maduro na janela: não há o que reconciliar"
     elif fracao is not None and fracao > p["max_custo_sem_receita"]:
@@ -253,7 +274,10 @@ def avaliar(
     elif madura["roas"] is None:
         estado_dado = SEM_DADO
         motivo = "nenhum dia maduro reconciliado com custo positivo"
-    elif (madura["cliques"] or 0) < p["min_cliques_maduros"]:
+    elif madura["cliques"] is None:
+        estado_dado = SEM_DADO
+        motivo = "cliques não lidos em dia maduro reconciliado"
+    elif madura["cliques"] < p["min_cliques_maduros"]:
         estado_dado = AMOSTRA_INSUFICIENTE
         motivo = f"cliques maduros {madura['cliques']} < {int(p['min_cliques_maduros'])}"
     else:

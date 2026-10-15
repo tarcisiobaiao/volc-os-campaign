@@ -21,6 +21,7 @@ CONTA = "1112223334"
 HOJE = date(2026, 10, 15)
 LIDO = "2026-10-15T12:00:00Z"
 BASE_REF = "a8059ba0"
+SUF = "20261015t120000z"   # instante da leitura (LIDO) no nome do experimento
 CAMP_RUIM, CAMP_BOA, CAMP_SEM_CAMBIO, CAMP_POUCA = "900000000001", "900000000002", "900000000003", "900000000004"
 
 
@@ -90,8 +91,8 @@ def gerar(destino, c=None, r=None, **kw):
     return aplicacao.gerar_lote(CONTA, f, f, destino, base_ref=BASE_REF, hoje=HOJE, **kw)
 
 
-def resultado(destino, cid, as_of="20261015"):
-    return json.loads((destino / f"gads-{cid}-sombra-{as_of}" / "resultado.json").read_text())
+def resultado(destino, cid, sufixo=None):
+    return json.loads((destino / f"gads-{cid}-sombra-{sufixo or SUF}" / "resultado.json").read_text())
 
 
 def arvore(raiz: Path) -> dict[str, bytes]:
@@ -103,7 +104,7 @@ def arvore(raiz: Path) -> dict[str, bytes]:
 def test_um_experimento_valido_por_campanha(tmp_path):
     saida = gerar(tmp_path)
     assert saida["resumo"]["campanhas"] == 4
-    assert sorted(saida["novos"]) == sorted(f"gads-{c}-sombra-20261015"
+    assert sorted(saida["novos"]) == sorted(f"gads-{c}-sombra-{SUF}"
                                              for c in (CAMP_RUIM, CAMP_BOA, CAMP_SEM_CAMBIO, CAMP_POUCA))
     for eid in saida["novos"]:
         pasta = tmp_path / eid
@@ -144,7 +145,7 @@ def test_cambio_defasado_e_sem_dado_nunca_zero(tmp_path):
     assert r["recomendacao"]["direcao"] == "evidencia_insuficiente"
     assert r["janela_madura"]["roas"] is None and r["janela_madura"]["receita_brl"] is None
     assert "cambio_defasado" in r["custo_maduro_sem_receita_por_estado"]
-    csv = (tmp_path / f"gads-{CAMP_SEM_CAMBIO}-sombra-20261015" / "transformacao.csv").read_text().splitlines()
+    csv = (tmp_path / f"gads-{CAMP_SEM_CAMBIO}-sombra-{SUF}" / "transformacao.csv").read_text().splitlines()
     cab = csv[0].split(",")
     for linha in csv[1:]:
         celulas = dict(zip(cab, linha.split(",")))
@@ -180,9 +181,10 @@ def test_gam_sem_roteador_e_sobreposicao_nao_reconciliam():
     assert dia.estado == "sobreposicao_gam_joinads" and dia.receita_brl is None
 
 
-def test_janela_aberta_e_dias_recentes_nao_decidem(tmp_path):
+def test_dia_maduro_so_com_d0_conta_como_sem_receita_e_dias_recentes_nao_decidem(tmp_path):
     c, r = carteira()
-    c = [x | {"janela_fechada": False} if x["metric_date"] == dias()[10].isoformat() else x for x in c]
+    c = [x | {"janela_fechada": False, "origem_janela": "D0"} if x["metric_date"] == dias()[10].isoformat() else x
+         for x in c]
     # Receita gigante nos 3 dias imaturos não muda nada.
     r = [x | {"receita": 1e6, "receita_brl": 5.4e6}
          if x["data_referencia"] >= dias()[2].isoformat() and x["cambio_modo"] == "anterior" else x
@@ -190,9 +192,12 @@ def test_janela_aberta_e_dias_recentes_nao_decidem(tmp_path):
     gerar(tmp_path, c, r)
     ruim = resultado(tmp_path, CAMP_RUIM)
     assert ruim["recomendacao"]["direcao"] == "pausar"
-    linha = [l for l in (tmp_path / f"gads-{CAMP_RUIM}-sombra-20261015" / "transformacao.csv").read_text().splitlines()
+    linha = [l for l in (tmp_path / f"gads-{CAMP_RUIM}-sombra-{SUF}" / "transformacao.csv").read_text().splitlines()
              if l.startswith(dias()[10].isoformat())][0]
-    assert linha.endswith("false,janela_aberta")
+    # Maduro pelo calendário; não reconcilia; pesa na fração e aparece nas lacunas.
+    assert linha.endswith("true,janela_aberta")
+    assert ruim["custo_maduro_sem_receita_por_estado"]["janela_aberta"] == 30.0
+    assert any("janela_aberta" in l for l in ruim["recomendacao"]["lacunas"])
 
 
 def test_valor_de_conversao_do_google_nao_decide(tmp_path):
@@ -251,7 +256,7 @@ def test_cada_numero_declara_a_fonte_e_nunca_o_painel_legado(tmp_path):
     assert "receita_as_of" in r["fontes"]["receita_brl"]
     texto = json.dumps(r)
     assert "daily_campaign_metrics" not in texto
-    csv = (tmp_path / f"gads-{CAMP_RUIM}-sombra-20261015" / "transformacao.csv").read_text()
+    csv = (tmp_path / f"gads-{CAMP_RUIM}-sombra-{SUF}" / "transformacao.csv").read_text()
     assert ",D-1," in csv   # custo_origem por dia
 
 
@@ -277,10 +282,18 @@ def test_dado_diferente_no_mesmo_as_of_recusa_sem_escrever_nada(tmp_path):
     assert arvore(tmp_path) == antes
 
 
+def test_experimento_senac_de_data_so_nao_colide_com_o_instante_da_leitura(tmp_path):
+    antigo = tmp_path / "senac-shadow-20261015"
+    antigo.mkdir(parents=True)
+    (antigo / "resultado.json").write_text(json.dumps({"campanha": CAMP_RUIM, "as_of": "2026-10-15"}))
+    (antigo / "experimento.json").write_text("{}")
+    assert len(gerar(tmp_path)["novos"]) == 4
+
+
 def test_outro_experimento_da_campanha_no_mesmo_as_of_recusa(tmp_path):
     intruso = tmp_path / "senac-shadow-20261015"
     intruso.mkdir(parents=True)
-    (intruso / "resultado.json").write_text(json.dumps({"campanha": CAMP_RUIM, "as_of": "2026-10-15"}))
+    (intruso / "resultado.json").write_text(json.dumps({"campanha": CAMP_RUIM, "as_of": "2026-10-15T12:00:00Z"}))
     (intruso / "experimento.json").write_text("{}")
     antes = arvore(tmp_path)
     with pytest.raises(aplicacao.LoteRecusado, match="ambiguidade"):
@@ -408,3 +421,127 @@ def test_motor_da_carteira_reproduz_a_prova_senac_com_o_mesmo_cambio():
     assert av.fracao_custo_maduro_sem_receita == senac["fracao_custo_maduro_sem_receita"]
     assert av.recomendacao.direcao == senac["recomendacao"]["direcao"] == "pausar"
     assert av.estado_dado == dominio.COMPLETO
+
+
+# ── ciclo corretivo 1 (revisão adversarial de 2436b94) ──────────────────────
+
+def test_receita_repetida_na_mesma_chave_recusa_em_vez_de_somar(tmp_path):
+    """Duas versões do diário (ou página deslocada) não podem dobrar a receita."""
+    c, r = carteira()
+    r.append(dict(r[0]))
+    with pytest.raises(ContratoQuebrado, match="receita repetida"):
+        gerar(tmp_path, c, r)
+    assert not tmp_path.exists() or arvore(tmp_path) == {}
+
+
+def test_d1_falhando_em_dias_maduros_vira_sem_dado():
+    # Só 2 dos 17 dias maduros têm D-1; o resto ficou com o D0 (janela aberta).
+    c = [CustoDia.da_linha(custo(CAMP_BOA, d, 20_000_000, cliques=120, fechada=i in (3, 4),
+                                 origem="D-1" if i in (3, 4) else "D0"))
+         for i, d in enumerate(dias())]
+    r = [ReceitaObservada.da_linha(receita(CAMP_BOA, d, 6.0)) for d in dias()]
+    av = dominio.avaliar(CAMP_BOA, c, r, HOJE)
+    assert av.estado_dado == dominio.SEM_DADO
+    assert av.recomendacao.direcao == "evidencia_insuficiente"
+    assert av.fracao_custo_maduro_sem_receita > 0.5
+
+
+def test_custo_nao_lido_em_muitos_dias_maduros_vira_sem_dado():
+    c = [CustoDia.da_linha(custo(CAMP_RUIM, d, None if i > 5 else 30_000_000, cliques=80))
+         for i, d in enumerate(dias())]
+    r = [ReceitaObservada.da_linha(receita(CAMP_RUIM, d, 0.3)) for d in dias()]
+    av = dominio.avaliar(CAMP_RUIM, c, r, HOJE)
+    assert av.estado_dado == dominio.SEM_DADO and "sem custo lido" in av.motivo_estado_dado
+
+
+def test_clique_nao_lido_e_sem_dado_e_nao_amostra_insuficiente():
+    c = [CustoDia.da_linha(custo(CAMP_RUIM, d, 30_000_000, cliques=None if i == 8 else 40))
+         for i, d in enumerate(dias())]
+    r = [ReceitaObservada.da_linha(receita(CAMP_RUIM, d, 0.3)) for d in dias()]
+    av = dominio.avaliar(CAMP_RUIM, c, r, HOJE)
+    assert av.estado_dado == dominio.SEM_DADO and "cliques" in av.motivo_estado_dado
+
+
+def test_leitura_de_custo_vazia_recusa_sem_gravar_lote(tmp_path):
+    with pytest.raises(aplicacao.LoteRecusado, match="vazia"):
+        gerar(tmp_path, [], [])
+    assert not tmp_path.exists() or arvore(tmp_path) == {}
+
+
+def test_segunda_rodada_no_mesmo_dia_e_mais_recente_e_nao_colide(tmp_path):
+    c, r = carteira()
+    gerar(tmp_path, c, r)
+    f = Fonte(c, r, lido="2026-10-15T15:00:00Z")
+    saida = aplicacao.gerar_lote(CONTA, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
+    assert len(saida["novos"]) == 4 and saida["repetidos"] == []
+    assert all(n.endswith("20261015t150000z") for n in saida["novos"])
+    assert len(list((tmp_path / "_lotes").glob("*.json"))) == 2
+
+
+def test_lido_em_sem_fuso_quebra_o_contrato(tmp_path):
+    c, r = carteira()
+    f = Fonte(c, r, lido="2026-10-15T01:30:00")
+    with pytest.raises(ContratoQuebrado, match="sem fuso"):
+        aplicacao.gerar_lote(CONTA, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
+
+
+@pytest.mark.parametrize("valor", ["NaN", "Infinity", float("nan"), True])
+def test_numero_nao_finito_ou_booleano_quebra_o_contrato(valor):
+    with pytest.raises(ContratoQuebrado):
+        ReceitaObservada.da_linha(receita(CAMP_RUIM, dias()[0], 1.0) | {"receita": valor})
+
+
+def test_chave_sem_o_componente_quebra_o_contrato():
+    linha = receita(CAMP_RUIM, dias()[0], 1.0)
+    del linha["chave"]["joinads_domain"]
+    with pytest.raises(ContratoQuebrado, match="joinads_domain"):
+        ReceitaObservada.da_linha(linha)
+
+
+def test_reproducible_vem_do_replay_dos_bytes(tmp_path, monkeypatch):
+    """Se o recálculo a partir do recorte gravado diverge, o manifesto não diz identical."""
+    original = aplicacao.calcular
+    chamadas = {"n": 0}
+
+    def instavel(*a, **kw):
+        chamadas["n"] += 1
+        art = original(*a, **kw)
+        if chamadas["n"] % 2 == 0:
+            art = {**art, "transformacao.csv": art["transformacao.csv"] + b"\n"}
+        return art
+
+    monkeypatch.setattr(aplicacao, "calcular", instavel)
+    saida = gerar(tmp_path)
+    m = json.loads((tmp_path / saida["novos"][0] / "experimento.json").read_text())
+    assert m["result"]["reproducible"] == "not_reproduced"
+    assert m["decision"] != "adopt"
+
+
+def test_transporte_real_transforma_http_e_redirecionamento_em_recusa():
+    import http.server
+    import threading
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if "redir" in self.path:
+                self.send_response(302)
+                self.send_header("Location", "http://127.0.0.1:1/roubo")
+            else:
+                self.send_response(404)
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_port}"
+    try:
+        assert adaptadores._transporte_urllib("GET", base + "/x", {}, None)[0] == 404
+        assert adaptadores._transporte_urllib("GET", base + "/redir", {}, None)[0] == 302
+    finally:
+        srv.shutdown()
+    leitor = adaptadores.PostgrestSoLeitura("https://database.agenciavolc.com.br", "k",
+                                            transporte=lambda *a: (404, b""))
+    with pytest.raises(ContratoQuebrado, match="HTTP 404"):
+        leitor.receita_vigente(dias()[-1], HOJE)

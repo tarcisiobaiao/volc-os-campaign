@@ -25,7 +25,7 @@ const linha = (over: Partial<LinhaCarteiraShadow>): LinhaCarteiraShadow => ({
   conta: '111****334', situacao: 'lida', mensagem: null, direcao: 'pausar', estado_dado: 'completo',
   motivo_estado_dado: null, as_of: '2026-10-15', experimento_id: 'gads-900000000001-sombra-20261015',
   janela_madura: janela(0.0735, 554.75, 40.79), fracao_custo_maduro_sem_receita: 0.0006,
-  valor_sugerido: null, executada: false, ...over,
+  defasada: false, valor_sugerido: null, executada: false, ...over,
 });
 
 const CARTEIRA: CarteiraShadow = {
@@ -43,6 +43,10 @@ const CARTEIRA: CarteiraShadow = {
             janela_madura: janela(1.62, 340, 550.8) }),
     linha({ campanha_externa: '900000000004', situacao: 'ambigua', direcao: null, estado_dado: null,
             mensagem: '2 experimentos da campanha têm o mesmo as_of', janela_madura: null }),
+    linha({ campanha_externa: '900000000005', situacao: 'ilegivel', direcao: null, estado_dado: null,
+            mensagem: 'sem as_of legível', janela_madura: null }),
+    linha({ campanha_externa: '900000000006', campanha_nome: 'Campanha F', defasada: true,
+            as_of: '2026-10-01T12:00:00+00:00' }),
   ],
 };
 
@@ -55,7 +59,7 @@ describe('CarteiraEmSombra', () => {
     expect(within(linhaDe('900000000001')).getAllByText('pausar').length).toBeGreaterThan(0);
     expect(within(linhaDe('900000000001')).getByText('dado completo')).toBeTruthy();
     expect(within(linhaDe('900000000003')).getAllByText('aumentar').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('resumo-carteira').textContent).toMatch(/4 campanhas/);
+    expect(screen.getByTestId('resumo-carteira').textContent).toMatch(/6 campanhas/);
     expect(screen.getByTestId('resumo-carteira').textContent).toMatch(/1 sem dado/);
   });
 
@@ -69,11 +73,22 @@ describe('CarteiraEmSombra', () => {
     expect(within(l).getAllByText('—').length).toBeGreaterThanOrEqual(3);
   });
 
-  it('linha ambígua não mostra direção', () => {
+  it('linha ambígua ou ilegível não mostra direção', () => {
     pronta();
     const l = linhaDe('900000000004');
     expect(l.textContent).toMatch(/nenhum é exibido/);
     expect(within(l).queryByText('pausar')).toBeNull();
+    const i = linhaDe('900000000005');
+    expect(i.textContent).toMatch(/não tem data legível/);
+    expect(within(i).queryByText('pausar')).toBeNull();
+    expect(screen.getByTestId('resumo-carteira').textContent).toMatch(/2 sem leitura/);
+  });
+
+  it('leitura velha é marcada, não passa por atual', () => {
+    pronta();
+    expect(linhaDe('900000000006').textContent).toMatch(/leitura velha/);
+    expect(linhaDe('900000000001').textContent).not.toMatch(/leitura velha/);
+    expect(screen.getByTestId('resumo-carteira').textContent).toMatch(/1 com leitura velha/);
   });
 
   it('não oferece nenhum controle que execute a recomendação', () => {
