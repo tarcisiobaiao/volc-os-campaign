@@ -2,7 +2,7 @@
 
 Arquivos, sempre juntos e sempre com estes nomes, em `wp-content/mu-plugins/`:
 
-**Nunca copiar `validate-*.php` para `mu-plugins/`**: são testes isolados que redeclaram funções do WordPress (`add_filter`, `add_action`…) e dão fatal no site inteiro. Rodam fora do WordPress (`php validate-notice-owner.php`) ou via `wp eval-file` a partir de `/tmp`.
+**Nunca copiar `validate-*.php` para `mu-plugins/`**: são testes isolados que redeclaram funções do WordPress (`add_filter`, `add_action`…) e dão fatal no site inteiro. Rodam fora do WordPress (`php validate-notice-owner.php`) ou via `wpcli eval-file /tmp/<arquivo>.php` (função `wpcli` abaixo), a partir de `/tmp`.
 
 | Arquivo | Versão | Papel |
 |---|---|---|
@@ -25,6 +25,21 @@ Provado no WordPress descartável (`FF-corretiva-evidencias/cenarios-aviso.out`)
 
 Por isso: **instalar e remover os três arquivos juntos**. O hardening sem o dono duplica o aviso.
 A combinação anterior (hardening 1.1.0 de 42f04aed + dono 1.0.0) também dava 2: o dono decidia durante o conteúdo, antes de o sinal existir.
+
+## WP-CLI como root ou como outro usuário
+
+Todo comando `wp` deste documento passa por `wpcli`, que acrescenta `--allow-root` só quando o shell é root (`id -u` = 0); sem isso, o WP-CLI recusa rodar como root.
+
+```bash
+wpcli() {
+  if [ "$(id -u)" -eq 0 ]; then
+    wp --allow-root --path=/var/www/creditoup.com.br "$@"
+  else
+    wp --path=/var/www/creditoup.com.br "$@"
+  fi
+}
+# exemplos: wpcli eval 'echo "ok";'   |   wpcli eval-file /tmp/validate-published-content.php
+```
 
 ## 1. Inventário antes de qualquer instalação (somente leitura)
 
@@ -75,10 +90,15 @@ B=/var/backups/creditoup-hardening/$TS
 install -d -m 0750 "$B/antes" "$B/desinstalado"
 cd "$MU"
 # backup: só o que existe, sem engolir erro (set -e interrompe se a cópia falhar)
-for f in $NOMES $EXTRAS; do
+: > "$B/existiam.txt"
+for f in $NOMES; do
   if [ -e "$f" ]; then cp -p -- "$f" "$B/antes/$f"; echo "$f" >> "$B/existiam.txt"; fi
 done
-touch "$B/existiam.txt"
+# nenhum dos três existia: marcador explícito (arquivo vazio é inválido no rollback)
+[ -s "$B/existiam.txt" ] || echo "nenhum" > "$B/existiam.txt"
+# cópias extras: backup e registro à parte (o rollback NÃO as devolve sozinho)
+: > "$B/extras.txt"
+for f in $EXTRAS; do cp -p -- "$f" "$B/antes/$f"; echo "$f" >> "$B/extras.txt"; done
 # cópias extras saem de mu-plugins (já estão no backup)
 for f in $EXTRAS; do mv -- "$f" "$B/desinstalado/$f"; done
 # troca atômica, no MESMO nome de arquivo
@@ -102,7 +122,7 @@ for u in $URLS; do
 done
 ```
 
-1. `wp eval 'echo "ok";' --path=/var/www/creditoup.com.br` sem erro.
+1. `wpcli eval 'echo "ok";'` sem erro (função `wpcli` acima: funciona como root e como outro usuário).
 2. `curl -s -o /dev/null -w '%{http_code}' https://creditoup.com.br/` = 200, e `https://creditoup.com.br/wp-admin/` responde (302 para login).
 3. Cada uma das 4 URLs com `avisos=1`. O padrão conta o aviso global, o aviso canônico do motor e o aviso curto do V2 (os dois do motor têm `aria-label="Identidade editorial"`).
 4. O CSS do aviso responde 200 em `/wp-content/mu-plugins/creditoup-compliance-hardening.css`.
@@ -112,25 +132,49 @@ Qualquer item falhando: rollback imediato.
 
 ## 6. Rollback (estado exato do inventário, sempre os três juntos)
 
+O rollback **valida `existiam.txt` antes de tocar em qualquer arquivo**. Aborta sem alterar nada se o arquivo faltar, estiver vazio, tiver linha fora da allowlist dos três nomes (ou `nenhum`, sozinho), nome repetido, ou se algum nome listado não estiver em `$B/antes/`.
+
 ```bash
 set -euo pipefail
 MU=/var/www/creditoup.com.br/wp-content/mu-plugins
 NOMES="creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php"
 B=/var/backups/creditoup-hardening/<TS da instalação>      # o diretório anotado no passo 4
+L="$B/existiam.txt"
+aborta() { echo "ROLLBACK ABORTADO, nada foi alterado: $*" >&2; exit 1; }
+# --- validação (somente leitura) ---
+[ -d "$B/antes" ] || aborta "sem $B/antes"
+[ -f "$L" ] || aborta "sem $L"
+[ -s "$L" ] || aborta "$L vazio"
+RESTAURAR=""
+if [ "$(cat "$L")" = "nenhum" ]; then
+  :   # nenhum dos três existia antes: só retirar
+else
+  while IFS= read -r f || [ -n "$f" ]; do
+    case " $NOMES " in *" $f "*) ;; *) aborta "nome fora da allowlist: '$f'";; esac
+    case " $RESTAURAR " in *" $f "*) aborta "nome repetido: '$f'";; esac
+    [ -f "$B/antes/$f" ] || aborta "backup ausente: $B/antes/$f"
+    RESTAURAR="$RESTAURAR $f"
+  done < "$L"
+  [ -n "$RESTAURAR" ] || aborta "$L sem nomes"
+fi
+# --- mutação (só depois de validar) ---
 install -d -m 0750 "$B/desinstalado"
 cd "$MU"
 # 1) retira os três instalados (nunca só um: o par misto não foi provado)
 for f in $NOMES; do
   if [ -e "$f" ]; then mv -- "$f" "$B/desinstalado/$f.novo"; fi
 done
-# 2) devolve exatamente o que existia antes (mesmos nomes e cópias extras)
-for f in $(cat "$B/existiam.txt"); do
+# 2) devolve exatamente os que existiam antes, no mesmo nome
+for f in $RESTAURAR; do
   install -o www-data -g www-data -m 0644 "$B/antes/$f" "./$f"
 done
-ls -la; for f in $(cat "$B/existiam.txt"); do sha256sum -- "$f"; done
+ls -la
+for f in $RESTAURAR; do sha256sum -- "$f"; done
 ```
 
 Os hashes têm de bater com os do inventário do passo 1. Purge do WP Rocket e repetir o passo 5 (esperado: o estado anterior). Nenhum dado de post ou opção é alterado por esses arquivos.
+
+Cópias extras (`$B/extras.txt`) não voltam sozinhas: eram duplicatas da mesma classe e uma cópia antiga sem guarda ao lado de outra dá fatal (passo 3). Devolver uma delas é decisão manual, registrada no recibo, depois de conferir que nenhuma outra cópia da classe está em `mu-plugins/`.
 
 ## Limites conhecidos
 
