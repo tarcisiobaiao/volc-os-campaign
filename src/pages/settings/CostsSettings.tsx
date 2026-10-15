@@ -17,14 +17,14 @@ import { taxHistoryService, TaxHistoryDisplay } from '@/services/taxHistoryServi
 import { useUserRole } from '@/hooks/useUserRole';
 import { ProjectCostSharing } from '@/components/cost-sharing/ProjectCostSharing';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { formatarNumero } from '@/lib/instrumento';
 
 
 /**
  * Reais com separador de milhar. Era `toFixed(2).replace('.', ',')`, que
  * escrevia "R$ 13320,00" nesta página e "R$ 13.320,00" em todas as outras.
  */
-const formatoBrl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const brl = (valor: number): string => formatoBrl.format(valor);
+const brl = (valor: number): string => formatarNumero(valor, { tipo: 'moeda', moeda: 'BRL' });
 
 export default function CostsSettings() {
   const navigate = useNavigate();

@@ -60,6 +60,7 @@ import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { PublicacaoDoProjeto } from "@/components/publicacao/PublicacaoDoProjeto";
 import { useToast } from "@/hooks/use-toast";
 import { MetricDelta } from "@/components/campaign/MetricDelta";
+import { Delta } from "@/components/sistema/Delta";
 import { useCampaignComparisons, CampaignComparison } from "@/hooks/useCampaignComparisons";
 
 // Types
@@ -1262,14 +1263,9 @@ export default function ProjectDashboard() {
                 <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight text-success mb-1">{formatRevenue(metrics.revenue.value)}</div>
                 <div className="text-xs text-muted-foreground mb-2">{`Ontem: ${formatRevenue(metrics.revenue.comparison)}`}</div>
                 <div className="flex items-center text-xs">
-                  {/* O `+` era incondicional e a seta sempre subia: queda de 34%
-                      saía "+-34.6%" em verde. Sinal e tom seguem o número. */}
-                  {metrics.revenue.change < 0
-                    ? <TrendingDown className="mr-1 h-3 w-3 text-destructive" />
-                    : <TrendingUp className="mr-1 h-3 w-3 text-success" />}
-                  <span className={`${metrics.revenue.change < 0 ? 'text-destructive' : 'text-success'} font-medium tabular`}>
-                    {metrics.revenue.change > 0 ? '+' : ''}{metrics.revenue.change.toFixed(1).replace('.', ',')}%
-                  </span>
+                  {/* Era `+` incondicional e seta sempre para cima: queda de 34% saía
+                      "+-34.6%" em verde. A variação é contra o "Ontem" acima, pelo D0. */}
+                  <Delta atual={metrics.revenue.value} base={metrics.revenue.comparison} sentido="maior-melhor" />
                   {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
                     <span className={`ml-2 text-xs font-medium ${
                       metrics.organicExcedent.value > 0 ? 'text-info' : 'text-warning'
@@ -1377,14 +1373,9 @@ export default function ProjectDashboard() {
                 <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight mb-1">{`${metrics.roi.value.toFixed(1)}%`}</div>
                 <div className="text-xs text-muted-foreground mb-2">{`Ontem: ${metrics.roi.comparison.toFixed(0)}%`}</div>
                 <div className="flex items-center text-xs">
-                  {/* O `+` era incondicional e a seta sempre subia: queda de 34%
-                      saía "+-34.6%" em verde. Sinal e tom seguem o número. */}
-                  {metrics.roi.change < 0
-                    ? <TrendingDown className="mr-1 h-3 w-3 text-destructive" />
-                    : <TrendingUp className="mr-1 h-3 w-3 text-info" />}
-                  <span className={`${metrics.roi.change < 0 ? 'text-destructive' : 'text-info'} font-medium tabular`}>
-                    {metrics.roi.change > 0 ? '+' : ''}{metrics.roi.change.toFixed(1).replace('.', ',')}%
-                  </span>
+                  {/* Era `+` incondicional e seta sempre para cima: queda de 34% saía
+                      "+-34.6%" em verde. A variação é contra o "Ontem" acima, pelo D0. */}
+                  <Delta atual={metrics.roi.value} base={metrics.roi.comparison} sentido="maior-melhor" />
                   <span className="ml-2 text-muted-foreground">
                     Com {currentTaxRate}% SN
                     {currentProject?.costs_division && ` + Custos Op.`}

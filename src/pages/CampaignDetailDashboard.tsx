@@ -23,6 +23,7 @@ import { OtimizacaoBox } from "@/components/campaign/OtimizacaoBox";
 import { DisplayROITable } from "@/components/campaign/DisplayROITable";
 import { PlacementNegationCard } from "@/components/campaign/PlacementNegationCard";
 import { EstadoOperacional } from "@/components/sistema/EstadoOperacional";
+import { formatarNumero } from "@/lib/instrumento";
 
 export default function CampaignDetailDashboard() {
 
@@ -1090,7 +1091,7 @@ export default function CampaignDetailDashboard() {
                 Impressões vs Impressões Visíveis - Ad Exchange ({getChartPeriodTitle()})
               </CardTitle>
               <CardDescription className="text-xs">
-                Impressões GAM: {(campaign.gam_impressions || 0).toLocaleString('pt-BR')} • Impressões Visíveis: {(campaign.viewable_impressions || 0).toLocaleString('pt-BR')}
+                Impressões GAM: {formatarNumero(campaign.gam_impressions, { tipo: 'inteiro' })} • Impressões Visíveis: {formatarNumero(campaign.viewable_impressions, { tipo: 'inteiro' })}
               </CardDescription>
             </CardHeader>
             <CardContent>
