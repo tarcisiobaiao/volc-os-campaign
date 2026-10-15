@@ -93,6 +93,8 @@ INSERT INTO w4_decisao VALUES
  ('incubator_pipeline_logs',     true, false, false, false, 'incubatorService.ts:118'),
  ('v_incubator_schedule_progress',true,false, false, false, 'incubatorService.ts:243'),
  ('vw_display_roi',              true, false, false, false, 'useDisplayROI.ts:29'),
+ ('display_ads_placements',      true, false, false, false, 'lida por vw_display_roi (security_invoker) — useDisplayROI.ts:29; medido no lab'),
+ ('display_gam_placements',      true, false, false, false, 'lida por vw_display_roi (security_invoker) — useDisplayROI.ts:29; medido no lab'),
  ('vw_adsense_adjusted',         true, false, false, false, 'lida por simple_aggregate_campaign_revenue (gatilho de adsense_metrics)'),
  ('pautador_agent_logs',         true, false, false, false, 'pautadorService.ts:147'),
  ('pautador_entities',           true, false, false, false, 'pautadorEntityService.ts:25 (embed entity:pautador_entities)'),
