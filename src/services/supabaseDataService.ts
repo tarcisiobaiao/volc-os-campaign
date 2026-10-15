@@ -5,6 +5,8 @@ import { currencyConversionService } from './currencyConversionService';
 import { getSaoPauloTimestamp } from '@/utils/timezone';
 import { operationalCostsService } from './operationalCostsService';
 import { taxHistoryService } from './taxHistoryService';
+import { carimboMaisRecente } from '@/lib/carimboDeAtualizacao';
+import { lerCampanhasAgregadas, type ClienteRpc } from './campanhasAgregadas';
 
 // Types that match the UI components
 export interface Project {
@@ -3498,11 +3500,10 @@ class SupabaseDataService {
       }
 
 
-      // 🚀 RPC paginada — escapa do cap silencioso de 1000 linhas do PostgREST.
-      // A função SQL aceita p_limit/p_offset; iteramos até a página voltar < PAGE_SIZE.
-      // PAGE_SIZE bem abaixo do cap (1000) para garantir que nenhuma página seja truncada.
+      // 🚀 RPC paginada pelo PostgREST (order + range) — escapa do cap
+      // silencioso de 1000 linhas. Ver src/services/campanhasAgregadas.ts:
+      // produção só tem a assinatura de 3 parâmetros.
       const PAGE_SIZE = 500;
-      const HARD_CAP_PAGES = 200; // teto: 100k campanhas
 
       const rpcParams = {
         p_project_id: filters.projectId && filters.projectId !== 'all' ? parseInt(filters.projectId) : null,
@@ -3515,24 +3516,11 @@ class SupabaseDataService {
         period: filters.period,
       });
 
-      const aggregatedCampaigns: any[] = [];
-      let lastRpcError: any = null;
-      for (let page = 0; page < HARD_CAP_PAGES; page++) {
-        const { data: pageData, error: pageError } = await supabase.rpc('get_campaigns_aggregated', {
-          ...rpcParams,
-          p_limit: PAGE_SIZE,
-          p_offset: page * PAGE_SIZE,
-        });
-
-        if (pageError) {
-          lastRpcError = pageError;
-          break;
-        }
-        if (!pageData || pageData.length === 0) break;
-
-        aggregatedCampaigns.push(...pageData);
-        if (pageData.length < PAGE_SIZE) break;
-      }
+      const { linhas: aggregatedCampaigns, erro: lastRpcError } = await lerCampanhasAgregadas(
+        supabase as unknown as ClienteRpc,
+        rpcParams,
+        { tamanhoPagina: PAGE_SIZE },
+      );
 
       console.log('📊 RPC get_campaigns_aggregated retornou:', {
         count: aggregatedCampaigns.length,
@@ -4054,33 +4042,14 @@ class SupabaseDataService {
   }
 
   // Get last updated timestamp from system_settings (GAM and Google Ads)
+  // Não usa a RPC get_last_data_update: ela faz value::timestamptz e responde
+  // 400 com o carimbo pt-BR que o n8n grava em google_ads_last_update.
   async getLastDataUpdateTimestamp(): Promise<string | null> {
     try {
-      // Use the SQL function to get the most recent timestamp
-      const { data, error } = await supabase
-        .rpc('get_last_data_update');
-
-      if (error) {
-        console.error('Error fetching system settings timestamps:', error);
-        // Fallback to the old method if system_settings is not configured
-        return await this.getLastDataUpdateTimestampFallback();
-      }
-
-      if (data && data.length > 0) {
-        const result = data[0];
-        // Return the most recent timestamp
-        if (result.most_recent) {
-          return result.most_recent;
-        }
-        
-        // If no system_settings data, fallback
-        return await this.getLastDataUpdateTimestampFallback();
-      }
-
-      return null;
+      const { mostRecent } = await this.getSystemUpdateTimestamps();
+      return mostRecent ?? await this.getLastDataUpdateTimestampFallback();
     } catch (error) {
       console.error('Error in getLastDataUpdateTimestamp:', error);
-      // Fallback to the old method
       return await this.getLastDataUpdateTimestampFallback();
     }
   }
@@ -4147,18 +4116,8 @@ class SupabaseDataService {
         });
       }
 
-      // Determine the most recent timestamp
-      let mostRecent: string | null = null;
-      if (gamLastUpdate && googleAdsLastUpdate) {
-        // Compare both timestamps and return the most recent
-        const gamDate = new Date(gamLastUpdate);
-        const adsDate = new Date(googleAdsLastUpdate);
-        mostRecent = gamDate > adsDate ? gamLastUpdate : googleAdsLastUpdate;
-      } else if (gamLastUpdate) {
-        mostRecent = gamLastUpdate;
-      } else if (googleAdsLastUpdate) {
-        mostRecent = googleAdsLastUpdate;
-      }
+      // Os dois carimbos vêm em formatos diferentes (ISO × pt-BR); compara pelo instante.
+      const mostRecent = carimboMaisRecente([gamLastUpdate, googleAdsLastUpdate]);
 
       console.log({
         gamLastUpdate,

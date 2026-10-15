@@ -1,4 +1,5 @@
 import { secureApi, type ChaveConfiguracao } from '@/lib/secureApi';
+import { carimboMaisRecente } from '@/lib/carimboDeAtualizacao';
 
 /**
  * As chaves que este serviço conhece.
@@ -291,18 +292,8 @@ class SystemSettingsService {
         this.getSetting('google_ads_last_update')
       ]);
 
-      // Determine most recent
-      let mostRecent: string | null = null;
-      if (gamUpdate && adsUpdate) {
-        // Compare timestamps
-        const gamDate = this.parseTimestamp(gamUpdate);
-        const adsDate = this.parseTimestamp(adsUpdate);
-        mostRecent = (gamDate && adsDate && gamDate > adsDate) ? gamUpdate : adsUpdate;
-      } else if (gamUpdate) {
-        mostRecent = gamUpdate;
-      } else if (adsUpdate) {
-        mostRecent = adsUpdate;
-      }
+      // Os dois carimbos vêm em formatos diferentes (ISO × pt-BR); compara pelo instante.
+      const mostRecent = carimboMaisRecente([gamUpdate, adsUpdate]);
 
       return {
         gamLastUpdate: gamUpdate,
@@ -316,23 +307,6 @@ class SystemSettingsService {
         googleAdsLastUpdate: null,
         mostRecent: null
       };
-    }
-  }
-
-  // Helper to parse timestamp from different formats
-  private parseTimestamp(timestamp: string): Date | null {
-    try {
-      if (timestamp.includes('/') && timestamp.includes(',')) {
-        // Brazilian format: "10/09/2025, 10:29:04"
-        const [datePart, timePart] = timestamp.split(', ');
-        const [day, month, year] = datePart.split('/');
-        const fullDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}`;
-        return new Date(fullDateString);
-      } else {
-        return new Date(timestamp);
-      }
-    } catch {
-      return null;
     }
   }
 }
