@@ -47,6 +47,13 @@
 --   Trocar o número que o dashboard e a v17_04 leem é a decisão (c) do
 --   `src/sql/volc-sync/04_monthly_exchange_rate.BLOQUEADO.sql`; aqui o valor
 --   legado fica registrado ao lado (`receita_convertida_legado`) para comparar.
+-- · Cálculo econômico nunca usa `revenue_converted`: `vw_receita_vigente`
+--   (e o motor shadow) usam a receita de origem × `cambio_resolver`. O legado
+--   é reescrito em massa: `trigger_exchange_rate_update` (system_settings) →
+--   `update_all_revenue_converted()` refaz revenue_converted do histórico
+--   inteiro, e em gam_metrics o gatilho que roda por último usa a taxa de HOJE
+--   (bug pré-existente, fora do escopo). Por isso o diário só versiona por
+--   campo de origem, e `receita_convertida_legado` é só comparação.
 -- · Não coleta cotação: quem grava é `backend/app/monetizacao/cambio` (PTAX do
 --   Banco Central), fora desta migration.
 -- · O único GRANT existente que muda é a escrita de anon/authenticated em
@@ -65,10 +72,12 @@
 --   longa pode ver a versão antes de ela ser visível.
 -- · session_replication_role = replica desliga os gatilhos: escrita feita
 --   assim (restore, replicação lógica) não vira versão no diário.
--- · record_exchange_rate_change() vira SECURITY DEFINER: enquanto o W4 não
---   fechar a escrita de anon/authenticated em system_settings, quem muda
---   dollar_exchange_rate ali grava uma linha manual de câmbio (com papel e
---   auth_uid na proveniência). É o caminho vivo de hoje, agora rastreado.
+-- · record_exchange_rate_change() (gatilho de system_settings) continua
+--   INVOKER, como em produção. Por isso UPDATE de dollar_exchange_rate por
+--   anon/authenticated passa a falhar (42501, guarda e REVOKE do histórico):
+--   nenhum caminho vivo do repositório precisa disso, e como DEFINER a anon
+--   transformaria a taxa do dia numa 'exata' qualquer. O servidor
+--   (service_role/postgres) continua mudando e a versão sai 'manual'.
 -- · Pré-existente, fora do escopo: o front chama rpc_set_dollar_exchange_rate
 --   (ExchangeRateManager.tsx:74, secureApi.ts:229), que NÃO existe em produção.
 -- · Quem aplica é o DONO das três tabelas (em produção, supabase_admin):
@@ -132,19 +141,6 @@ BEGIN
     RAISE EXCEPTION 'v23_01 recusada: % já existe — esta migration não reaplica por cima',
       coalesce('exchange_rate_history.' || faltando, 'receita_observacao/v23_01_acl_anterior');
   END IF;
-
-  -- O gatilho vivo que grava o histórico (trigger_exchange_rate_historical em
-  -- system_settings) chama record_exchange_rate_change() como INVOKER. Ela
-  -- vira SECURITY DEFINER aqui; o rollback a devolve a INVOKER sem config, então
-  -- ela precisa estar exatamente assim antes (senão o rollback mentiria).
-  IF to_regprocedure('public.record_exchange_rate_change()') IS NULL THEN
-    RAISE EXCEPTION 'v23_01 recusada: falta public.record_exchange_rate_change() (gatilho de system_settings)';
-  END IF;
-  IF EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = 'public.record_exchange_rate_change()'::regprocedure
-              AND (p.prosecdef OR p.proconfig IS NOT NULL
-                   OR NOT pg_has_role(current_user, p.proowner, 'USAGE'))) THEN
-    RAISE EXCEPTION 'v23_01 recusada: record_exchange_rate_change() já é SECURITY DEFINER, tem SET de configuração ou não é de %', current_user;
-  END IF;
 END
 $pre$;
 
@@ -194,8 +190,8 @@ BEGIN
       -- Linha manual nova: o servidor diz quando e quem. Nada do cliente vale
       -- para o tempo (um "conhecido em 2021" inventado hoje vira hoje).
       NEW.fonte := 'manual';
-      -- clock_timestamp: duas linhas manuais na mesma transação (o gatilho de
-      -- system_settings e o sync reverso) não colidem no índice de versão.
+      -- clock_timestamp: duas linhas manuais na mesma transação não colidem
+      -- no índice de versão.
       NEW.as_of := clock_timestamp();
     ELSIF NEW.as_of IS NULL THEN
       RAISE EXCEPTION 'cotação de fonte % sem as_of da fonte', NEW.fonte USING ERRCODE = '23514';
@@ -209,7 +205,7 @@ BEGIN
       'papel',     nullif(current_setting('role', true), 'none'),
       'jwt_sub',   v_claims ->> 'sub',
       'jwt_papel', v_claims ->> 'role',
-      -- o que auth.uid() lê: quem estava logado, mesmo dentro de SECURITY DEFINER
+      -- o que auth.uid() lê: quem estava logado
       'auth_uid',  coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''), v_claims ->> 'sub')));
     RETURN NEW;
   END IF;
@@ -287,7 +283,7 @@ CREATE TABLE public.receita_observacao (
   removida                   boolean     NOT NULL,
   moeda                      text        NOT NULL CHECK (moeda ~ '^[A-Z]{3}$'),
   receita                    numeric,                  -- NULL = ausente, nunca zero inventado
-  receita_convertida_legado  numeric,                  -- revenue_converted dos gatilhos legados
+  receita_convertida_legado  numeric,                  -- revenue_converted legado no instante da versão; só comparação, nunca cálculo
   cambio_modo                text        NOT NULL CHECK (cambio_modo IN
                                ('exata', 'anterior', 'defasada', 'sem_cotacao', 'moeda_local', 'sem_receita')),
   cambio_cotacao_id          bigint,
@@ -361,9 +357,12 @@ BEGIN
   v_data    := (p_linha ->> 'date')::date;
   v_receita := CASE WHEN p_removida THEN NULL ELSE (p_linha ->> 'revenue')::numeric END;
   v_legado  := CASE WHEN p_removida THEN NULL ELSE (p_linha ->> 'revenue_converted')::numeric END;
+  -- Só campo de ORIGEM versiona: removida, data, chave, receita na moeda
+  -- original e moeda. revenue_converted (derivado) fica fora: o legado
+  -- update_all_revenue_converted() reescreve o histórico inteiro de gam_metrics
+  -- a cada mudança do dólar, e isso não é fato novo de receita.
   -- trim_scale: 10 e 10.00 são o mesmo valor e não podem virar duas versões.
-  v_dig     := md5(jsonb_build_array(p_removida, v_data, v_chave, trim_scale(v_receita),
-                                     trim_scale(v_legado), p_moeda)::text);
+  v_dig     := md5(jsonb_build_array(p_removida, v_data, v_chave, trim_scale(v_receita), p_moeda)::text);
 
   -- Dois upserts concorrentes na mesma chave: um espera o outro, e o segundo
   -- já vê a versão do primeiro (sem versão duplicada).
@@ -552,14 +551,8 @@ SELECT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END
    AND (a.grantee = 0 OR pg_get_userbyid(a.grantee) IN ('anon', 'authenticated'));
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.exchange_rate_history FROM PUBLIC, anon, authenticated;
 
--- O histórico vivo é gravado por trigger_exchange_rate_historical (AFTER
--- UPDATE em system_settings) → record_exchange_rate_change(), que era INVOKER:
--- sem a escrita do authenticated no histórico, o UPDATE de quem está logado
--- cairia junto. Como SECURITY DEFINER do dono, o insert passa pela guarda como
--- linha manual (fonte 'manual', as_of/coletado_em do servidor, auth_uid do
--- usuário na proveniência). O rollback a devolve a INVOKER.
-ALTER FUNCTION public.record_exchange_rate_change() SECURITY DEFINER;
-ALTER FUNCTION public.record_exchange_rate_change() SET search_path = pg_catalog, public;
+-- record_exchange_rate_change() (AFTER UPDATE em system_settings) fica
+-- INVOKER: anon/authenticated que mudarem dollar_exchange_rate recebem 42501.
 
 REVOKE ALL ON FUNCTION public.cambio_versao_guarda() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_registrar_truncate() FROM PUBLIC, anon, authenticated;

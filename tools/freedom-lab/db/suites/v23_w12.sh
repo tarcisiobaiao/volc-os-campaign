@@ -241,19 +241,26 @@ w12_suite() {
   done
   eq "$(w12_bloco "SET LOCAL ROLE authenticated; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:42501" \
      "v23 · authenticated não grava cotação versionada"
-  # O caminho legítimo do app (ExchangeRateManager): UPDATE em system_settings
-  # dispara record_exchange_rate_change(), que a v23_01 tornou SECURITY DEFINER.
-  # O INSERT dela passa pela guarda como linha manual carimbada pelo servidor.
+  # Gatilho vivo de system_settings (trigger_exchange_rate_historical →
+  # record_exchange_rate_change, INVOKER como em produção). Cliente não muda o
+  # dólar: a guarda e o REVOKE do histórico derrubam o UPDATE inteiro. O
+  # servidor muda e a versão sai manual, carimbada.
   local w12_sub='00000000-0000-4000-8000-00000000a012'
   local w12_jwt="SELECT set_config('request.jwt.claims', '{\"sub\":\"$w12_sub\",\"role\":\"authenticated\"}', true);"
-  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'; RESET ROLE; SELECT count(*)||'|'||min(fonte)||'|'||min(proveniencia->>'papel')||'|'||min(proveniencia->>'auth_uid')||'|'||bool_and(as_of >= now() AND coletado_em = now()) FROM public.exchange_rate_history WHERE rate = 6.1234 AND effective_date = current_date;")" \
-     "1|manual|authenticated|$w12_sub|true" \
-     "v23 · authenticated muda o dólar em system_settings: passa e grava UMA versão manual, com papel e auth.uid() do servidor"
+  local w12_dolar="UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate';"
+  local w12_versao="SELECT count(*)||'|'||min(fonte)||'|'||min(proveniencia->>'papel')||'|'||bool_and(as_of >= now() AND coletado_em = now()) FROM public.exchange_rate_history WHERE rate = 6.1234 AND effective_date = current_date;"
+  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_dolar SELECT 1;")" "ERRO:42501" \
+     "v23 · authenticated muda o dólar em system_settings: recusado (guarda + REVOKE do histórico)"
+  eq "$(w12_bloco "SET LOCAL ROLE anon; $w12_dolar SELECT 1;")" "ERRO:42501" \
+     "v23 · anon muda o dólar em system_settings: recusado (sem 'exata' forjada)"
   eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt INSERT INTO public.exchange_rate_history (rate, effective_date) VALUES (6.1234, current_date); SELECT 1;")" "ERRO:42501" \
-     "v23 · o mesmo authenticated não grava direto no histórico (só pelo gatilho)"
-  eq "$(w12_sql "select p.prosecdef||'|'||pg_get_userbyid(p.proowner)||'|'||array_to_string(p.proconfig, ',') from pg_proc p where p.oid = 'public.record_exchange_rate_change()'::regprocedure")" \
-     "true|supabase_admin|search_path=pg_catalog, public" \
-     "v23 · record_exchange_rate_change: SECURITY DEFINER, dono supabase_admin, search_path fixo"
+     "v23 · authenticated não grava direto no histórico"
+  eq "$(w12_bloco "SET LOCAL ROLE service_role; $w12_dolar RESET ROLE; $w12_versao")" "1|manual|service_role|true" \
+     "v23 · service_role (servidor) muda o dólar: grava UMA versão manual com papel e carimbo do servidor"
+  eq "$(w12_bloco "SET LOCAL ROLE service_role; SELECT set_config('request.jwt.claim.sub', '$w12_sub', true); $w12_dolar RESET ROLE; $w12_versao SELECT min(proveniencia->>'auth_uid') FROM public.exchange_rate_history WHERE rate = 6.1234;")" "$w12_sub" \
+     "v23 · versão manual do servidor leva o auth_uid de quem pediu (request.jwt.claim.sub)"
+  eq "$(w12_sql "select p.prosecdef||'|'||coalesce(array_to_string(p.proconfig, ','), '-') from pg_proc p where p.oid = 'public.record_exchange_rate_change()'::regprocedure")" "false|-" \
+     "v23 · record_exchange_rate_change continua INVOKER sem config, como em produção"
   eq "$(w12_bloco "SET LOCAL ROLE anon; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:42501" \
      "v23 · anon não grava cotação versionada"
   eq "$(w12_bloco "SET LOCAL ROLE service_role; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') RESET ROLE; SELECT count(*) FROM public.exchange_rate_history WHERE fonte='bcb_ptax';")" "1" \
@@ -296,6 +303,14 @@ w12_suite() {
   eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
         SELECT fonte||'|'||data_referencia||'|'||cambio_modo||'|'||trim_scale(receita_brl) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-gam';")" \
      "gam|2026-10-13|exata|10.82" "v23 · gam_metrics também versiona, com a chave (date, utm, conta GAM)"
+  # Legado (dump 2c70b4a4): mudar o dólar dispara update_all_revenue_converted(),
+  # que reescreve revenue_converted do histórico inteiro de gam_metrics. Campo
+  # derivado não é fato novo: nenhuma versão nova no diário.
+  eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
+        CREATE TEMP TABLE w12_n AS SELECT count(*) AS n, (SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') AS rc FROM public.receita_observacao;
+        SET LOCAL ROLE service_role; UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'; RESET ROLE;
+        SELECT ((SELECT count(*) FROM public.receita_observacao) - n)||'|'||((SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') IS DISTINCT FROM rc) FROM w12_n;")" \
+     "0|true" "v23 · mudança do dólar reescreve revenue_converted de gam_metrics em massa e não cria versão nenhuma no diário"
 
   echo "▶ v23 · câmbio impossível, escala numérica e TRUNCATE"
   eq "$(w12_bloco "$cots $(w12_jads 2026-10-20 4 w12-lab-zero) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-zero')||'|'||cambio_modo||'|'||trim_scale(cambio_taxa)||'|'||cambio_defasagem_dias FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
@@ -383,8 +398,6 @@ w12_suite() {
   eq "$(w12_sql "select count(*) from public.exchange_rate_history where rate = 5.25 and effective_date = '2026-02-18'")" "1" "v23 · cotação manual preservada pelo rollback"
   w12_fp depois-reverter
   diff -q "$RECIBOS/w12-fp-antes.out" "$RECIBOS/w12-fp-depois-reverter.out" >/dev/null && ok "v23 · rollback devolve o fingerprint exato de antes" || nao "v23 · rollback deixou resíduo no schema"
-  eq "$(w12_sql "select p.prosecdef||'|'||coalesce(array_to_string(p.proconfig, ','), '-') from pg_proc p where p.oid = 'public.record_exchange_rate_change()'::regprocedure")" "false|-" \
-     "v23 · rollback devolve record_exchange_rate_change a INVOKER sem config"
   w12_reverter reverter-de-novo && ok "v23 · rollback idempotente" || nao "v23 · rollback idempotente"
 
   echo "▶ v23 · reaplicar"

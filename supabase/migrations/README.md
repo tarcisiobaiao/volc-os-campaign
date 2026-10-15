@@ -18,8 +18,9 @@ Handoff: `/mnt/project-files/handoffs/W12-receita-cambio.md`.
   com leitura do diário e EXECUTE de `cambio_resolver`/`receita_as_of`. Ninguém
   além do dono tem USAGE/UPDATE na sequência do diário (um `setval` fazia o
   upsert de `gam_metrics` cair com 23505).
-- `record_exchange_rate_change()` (gatilho de `system_settings`) vira SECURITY
-  DEFINER; o rollback a devolve a INVOKER sem configuração.
+- `record_exchange_rate_change()` (gatilho de `system_settings`) **continua
+  INVOKER**: depois da v23_01, `UPDATE` de `dollar_exchange_rate` por
+  anon/authenticated falha (42501); só o servidor (service_role) muda o dólar.
 - O rollback da v23_01 **nunca** devolve privilégio a `anon` nem a `PUBLIC` em
   `exchange_rate_history`, mesmo que estivesse no retrato (política do W4:
   anon não escreve). O que deixa de devolver sai num `NOTICE`.

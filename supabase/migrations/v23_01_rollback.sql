@@ -71,16 +71,6 @@ END
 $acl$;
 DROP TABLE IF EXISTS public.v23_01_acl_anterior;
 
--- record_exchange_rate_change() volta a ser INVOKER sem config (como no dump).
-DO $fn$
-BEGIN
-  IF to_regprocedure('public.record_exchange_rate_change()') IS NOT NULL THEN
-    ALTER FUNCTION public.record_exchange_rate_change() SECURITY INVOKER;
-    ALTER FUNCTION public.record_exchange_rate_change() RESET ALL;
-  END IF;
-END
-$fn$;
-
 DROP TRIGGER IF EXISTS zz_receita_observacao ON public.joinads_metrics;
 DROP TRIGGER IF EXISTS zz_receita_observacao ON public.gam_metrics;
 DROP TRIGGER IF EXISTS zz_receita_observacao_truncate ON public.joinads_metrics;
