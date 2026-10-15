@@ -61,12 +61,18 @@ o carimbo de tempo. O que a v20 precisa mudar está no handoff W4.
    ```
    Só leitura: edge function `volc-ingest` (filtrada por grep, nunca impressa
    inteira), flags booleanas do GoTrue, contagem de chamadas no Kong, contagens e
-   datas no banco em `BEGIN READ ONLY`. GTM e credenciais do n8n são passos
+   datas no banco em `BEGIN READ ONLY`, e o que o papel anon executou
+   (`pg_stat_statements`). Saída bruta em `~/.config/volc/inventario-anon/` (700),
+   só a cópia passada por `scripts/mascarar-segredos.sh` vai para o diretório
+   dado (fora do repo). Feita em 15/10 13:35Z com autorização do Tarcísio. GTM e credenciais do n8n são passos
    manuais listados na saída (anotar só o claim `role`).
 2. Preencher `docs/closure/incidente-anon-w4/INVENTARIO-ANON.json` a partir de
    `docs/INCIDENTE-ANON-INVENTARIO.modelo.json`: cada consumidor com
    confirmação, evidência e decisão (`nao_usa_anon`, `aceita_quebra`,
-   `migrado_antes`, `desativado`), assinado, `bloqueia_passo1: false`.
+   `migrado_antes`, `desativado`), assinado, `bloqueia_passo1: false`. Os 8
+   consumidores e as decisões válidas são fixos em
+   `scripts/validar-inventario-anon-w4.py` (o JSON não os define); rascunho
+   preenchido com a leitura de 15/10 em `docs/closure/incidente-anon-w4/INVENTARIO-ANON.json`.
 3. ```bash
    scripts/aplicar-incidente-anon-w4.sh --so-checar
    ```
@@ -115,9 +121,13 @@ E ainda:
   Conceder antes: `SELECT public.volc_grant_role('<auth.users.id>','ADMIN','pre-W4');`.
   Se escapar, as telas de admin agora mostram o erro (`src/v6/services/visaoDeAdmin.ts`)
   em vez de uma lista silenciosamente incompleta ou de um falso "último administrador".
-- **Cadastro público no GoTrue**: com `DISABLE_SIGNUP` desligado, qualquer
-  pessoa cria login e vira `authenticated`, que continua lendo e escrevendo as
-  ~30 tabelas do app.
+- **Cadastro público no GoTrue — medido aberto em 15/10**: `DISABLE_SIGNUP=false`,
+  `ENABLE_PHONE_SIGNUP=true`, `ENABLE_PHONE_AUTOCONFIRM=true`. Qualquer pessoa
+  pode virar `authenticated`, que segue lendo e escrevendo 61 relações. Fechar
+  antes ou na janela: `scripts/fechar-cadastro-gotrue.sh` (`--checar`, `--aplicar`,
+  `--reverter`; pós-check sem criar conta).
+- **Senha**: 1 SELECT de `users` com `password_hash` pela anon desde 05/08.
+  Trocar a senha do único usuário e revogar sessões logo depois do passo 1.
 
 ## Janela recomendada
 

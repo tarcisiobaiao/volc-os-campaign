@@ -75,14 +75,15 @@ sha_esperado() {   # bash 3.2 do macOS: sem array associativo
     v8_06_users_sensitive_columns_revoke)  echo 0010e0874cfe518218eb483223fa5d42b00e40f3138f203b5ca0423efa381554 ;;
     v19_99_rollback)                       echo 3abff0a814e1db384daaaa9181cbefb8865047ea98025393e4f4fe22293c8fdd ;;
     preflight-incidente-anon-w4)           echo 84892780f9d43e297c9843e03f41c7ae8cfef13f7b7fab7b2e7dbb9243bfd7ae ;;
+    validar-inventario-anon-w4)            echo 74f1a70814cd2e75f2de875446465d3c699428d5ec71f3092477309d48e0a25d ;;
     fingerprint_schema)                    echo 0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7 ;;
     verificar-anon-w4)                     echo b05f011d36208836b7c1b6f97642597f30ef56e6dfc63edc8ecfc8f716dbfb23 ;;
   esac
 }
 mkdir -p "$(dirname "$RECIBO")"
 log() { echo "$*" | tee -a "$RECIBO"; }
-conferir() { local f="$1" real; real="$(shasum -a 256 "$f" | cut -d' ' -f1)"
-  [[ "$real" == "$(sha_esperado "$(basename "$f" .sql)")" ]] || { log "SHA DIVERGE: $f ($real)"; exit 1; }
+conferir() { local f="$1" b real; real="$(shasum -a 256 "$f" | cut -d' ' -f1)"; b="$(basename "$f")"
+  [[ "$real" == "$(sha_esperado "${b%.*}")" ]] || { log "SHA DIVERGE: $f ($real)"; exit 1; }
   log "sha ok  $(basename "$f")  $real"; }
 APLICADOS=""
 aplicar() { # aplicar <papel> <migration>
@@ -162,19 +163,12 @@ case "$OP" in
     # Inventário de consumidores da anon assinado — sem ele, o passo 1 não sai.
     [[ -n "$INVENT" && -f "$INVENT" && -n "$SHA_INV" ]] || { log "RECUSADO: falta --inventario ARQ --sha-inventario SHA256"; exit 1; }
     [[ "$(shasum -a 256 "$INVENT" | cut -d' ' -f1)" == "$SHA_INV" ]] || { log "RECUSADO: sha256 do inventário diverge do informado"; exit 1; }
-    python3 -I - "$INVENT" <<'PY' | tee -a "$RECIBO" || { log "RECUSADO: inventário incompleto ou não assinado"; exit 1; }
-import json, sys
-d = json.load(open(sys.argv[1])); val = set(d.get("decisoes_validas", []))
-falta = [c["id"] for c in d.get("consumidores", [])
-         if not c.get("confirmado_em_producao") or not c.get("evidencia") or c.get("decisao") not in val]
-erros = []
-if not d.get("consumidores"): erros.append("sem consumidores")
-if falta: erros.append("sem confirmação/evidência/decisão: " + ", ".join(falta))
-if not str(d.get("assinado_por", "")).strip() or not str(d.get("assinado_em", "")).strip(): erros.append("sem assinatura")
-if d.get("bloqueia_passo1") is not False: erros.append("bloqueia_passo1 não é false")
-if erros: print("inventario RECUSADO: " + "; ".join(erros)); sys.exit(1)
-print("inventario ok: %d consumidores, assinado por %s em %s" % (len(d["consumidores"]), d["assinado_por"], d["assinado_em"]))
-PY
+    conferir "$RAIZ/scripts/validar-inventario-anon-w4.py"
+    # Lista dos 8 consumidores e decisões válidas fixas no validador, não no JSON.
+    if ! python3 -I "$RAIZ/scripts/validar-inventario-anon-w4.py" "$INVENT" >> "$RECIBO" 2>&1; then
+      tail -1 "$RECIBO"; log "RECUSADO: inventário incompleto, forjado ou não assinado"; exit 1
+    fi
+    tail -1 "$RECIBO"
     # O instrumento precisa enxergar o buraco antes; senão o "FECHADO" de depois não prova nada.
     verificar ABERTO || { log "RECUSADO: a verificação não vê o buraco antes de aplicar"; exit 1; } ;;
   --passo2|--rollback) ;;
