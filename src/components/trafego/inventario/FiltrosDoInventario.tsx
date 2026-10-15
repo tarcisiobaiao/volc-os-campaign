@@ -155,7 +155,7 @@ export const FiltrosDoInventario: React.FC<FiltrosDoInventarioProps> = ({
   return (
     <section aria-label="recorte do inventário" className="border-b border-border pb-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-1 md:max-w-sm">
+        <div className="flex min-w-0 flex-1 basis-full flex-col gap-1 sm:basis-0 md:max-w-sm">
           <label htmlFor="busca-inventario" className="kicker text-[10px] text-muted-foreground">
             buscar
           </label>

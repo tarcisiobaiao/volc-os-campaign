@@ -126,8 +126,11 @@ export const RespostaExecutiva: React.FC<{ bancada: BancadaVisivel; mudou: boole
   </section>
 );
 
+// ⚠️ A coluna do valor é `fit-content(45%)`, não `auto`. Com `auto`, um valor
+// em texto ("declarado pelo contrato") crescia até o max-content e esmagava a
+// interpretação ao lado a zero: uma letra por linha, 600px de altura.
 const LinhaDeEvidencia: React.FC<{ item: EvidenciaVisivel }> = ({ item }) => (
-  <div className="grid gap-2 border-t border-border py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+  <div className="grid gap-2 border-t border-border py-3 sm:grid-cols-[minmax(0,1fr)_fit-content(45%)] sm:items-start">
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-[13px] font-medium">{item.rotulo}</p>
@@ -139,7 +142,7 @@ const LinhaDeEvidencia: React.FC<{ item: EvidenciaVisivel }> = ({ item }) => (
         fonte {item.fonte} · {item.janela} · {item.carimbo}
       </p>
     </div>
-    <p className="di-medida text-[18px] font-semibold leading-none sm:text-right">{item.valorExibido}</p>
+    <p className="di-medida break-words text-[18px] font-semibold leading-tight sm:text-right">{item.valorExibido}</p>
   </div>
 );
 

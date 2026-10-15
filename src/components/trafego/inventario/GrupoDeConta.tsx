@@ -219,7 +219,7 @@ const Cabecalho: React.FC<PropsDoGrupo> = ({
           </div>
         )}
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:shrink-0">
           <SeloDeFrescor
             frescor={conta.frescor}
             leitura={conta.leitura}
