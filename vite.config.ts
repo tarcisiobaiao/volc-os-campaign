@@ -56,6 +56,12 @@ export default defineConfig(({ mode }) => ({
               __dirname,
               "./src/pages/qa/BancadaVisual.producao.tsx",
             ),
+            // A bancada de design V3 (`/qa/design`) tem o mesmo problema e a
+            // mesma cura; a prova de bundle procura o marcador dela também.
+            "./pages/qa/BancadaDeDesign": path.resolve(
+              __dirname,
+              "./src/pages/qa/BancadaDeDesign.producao.tsx",
+            ),
           }
         : {}),
     },

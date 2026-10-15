@@ -355,3 +355,49 @@ Prove, do not infer:
 7. Copy audit: no vague AI phrasing on screen.
 
 Acceptance name for this system: `VOLC_OS_DESIGN_SYSTEM_V2_LOCAL_READY`.
+
+## V3 "Instrumento" — camada aditiva (proposta D0, 15/10/2026)
+
+V3 não substitui nada acima. Nenhum token V2 mudou de valor; os de cor continuam medidos.
+V3 acrescenta material, tempo e textura para que número, frescor e hipótese se leiam como instrumento de precisão.
+Direção de trabalho das frentes de design: `/mnt/project-files/design/DESIGN-SYSTEM.md` do Project (não é spec de produto; aponta para cá).
+
+Dials V3: `DESIGN_VARIANCE: 6`, `MOTION_INTENSITY: 5`, `VISUAL_DENSITY: 7`.
+
+### Tokens V3
+
+| Grupo | Token / utilitário | Valor |
+|---|---|---|
+| Escala de dado | `text-kpi-hero` / `text-kpi` / `text-metrica` / `text-denso` / `text-micro` | 40 / 28 / 18 / 13 / 11 px |
+| Número | `.numero` | `tabular-nums lining-nums`, sempre IBM Plex Sans (Outfit não tem `tnum`) |
+| Densidade | `h-linha-compacta` / `h-linha` / `h-linha-confortavel` | 32 / 40 / 48 px |
+| Superfície | `.instrumento`, `shadow-instrumento`, `--instrumento-fio` | card + fio de luz de 1px no topo + sombra tingida |
+| Hipótese | `.hachura-hipotese`, `--hipotese-tinta` | hachura diagonal 135°, 1px a cada 7px |
+| Tempo | `--motion-dado` 640ms, `--ease-dado` `cubic-bezier(0.16, 1, 0.3, 1)`, `--motion-escalonar` 30ms (teto 6) | |
+
+`src/lib/movimento.ts` espelha os tempos para framer-motion; o teste `instrumento.test.ts` falha se divergir.
+`cn()` declara a escala de dado ao tailwind-merge: sem isso `text-kpi-hero` é lido como cor e apagado.
+
+### Primitivos V3 (`src/components/sistema/`)
+
+`Metrica`, `NumeroAnimado`, `Delta`, `Sparkline`, `Frescor`, `PainelInstrumento` + `FaixaDeMetricas`, `RecomendacaoSombra`, `SeloDeProposta`.
+Regras em `src/lib/instrumento` (puras, testadas). Uma tela nova não reimplementa nenhum deles.
+
+Leis que os primitivos impõem:
+
+- `valor: null` ou não-finito (NaN, ±Infinity, ROAS de custo zero) vira "—" + "Desconhecido", nunca 0 nem ∞; erro, bloqueio e indisponível escondem o número.
+- Valor que arredonda a zero na precisão exibida sai sem sinal ("0,0%", nunca "-0,0%").
+- O tick de número só acontece entre duas observações; primeira leitura aparece pronta, nunca conta de zero.
+- `Delta` exige `sentido`; custo que sobe não é verde; base zero não gera percentual; variação abaixo de 0,05% (que a tela mostra como 0,0%) é `igual`, sem seta nem juízo. Tinta do Delta: `text-delta-bom` / `text-delta-ruim` (≥4,5:1 a 11px nos dois temas).
+- `Sparkline` quebra a linha em `null`; nunca interpola nem desce a zero.
+- `Frescor` acompanha número operacional; data futura é aviso de relógio, nunca "agora".
+- Hipótese (sombra, simulação, proposta) é hachura + ◇ + palavra; o medido é sólido. Nenhum cartão de recomendação oferece "executar".
+- Estado `aplicada` usa `verified` (observado no recibo), não `success`.
+
+### Padrões V3
+
+- Faixa de KPI: uma `Metrica tamanho="hero"` + 3 a 5 de faixa num único `PainelInstrumento`, separadas por hairline. Substitui a grade de cartões idênticos.
+- Tabela densa: `text-denso`, `.numero` à direita, frescor no cabeçalho da tabela, linha selecionada `bg-primary/[0.06]`.
+- Recomendação: `RecomendacaoSombra` ao lado da métrica que a motivou.
+
+Prova visual: rota DEV-only `/qa/design` (fora do bundle de produção, coberta por `bancada-fora-de-producao.test.ts`).

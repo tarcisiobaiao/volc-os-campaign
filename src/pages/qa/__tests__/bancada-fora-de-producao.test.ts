@@ -22,6 +22,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { MARCADOR_DA_BANCADA } from '@/pages/qa/BancadaVisual';
+import { MARCADOR_DA_BANCADA_DE_DESIGN } from '@/pages/qa/BancadaDeDesign';
 
 const raiz = resolve(__dirname, '..', '..', '..', '..');
 const ler = (rel: string) => readFileSync(resolve(raiz, rel), 'utf-8');
@@ -50,6 +51,13 @@ describe('a fonte declara o guarda', () => {
     expect(app).not.toMatch(/^import\s+BancadaVisual\s+from/m);
   });
 
+  it('a bancada de design também entra por import preguiçoso sob DEV', () => {
+    expect(app).toMatch(
+      /import\.meta\.env\.DEV\s*\?\s*React\.lazy\(\(\)\s*=>\s*import\(["'][^"']*pages\/qa\/BancadaDeDesign["']\)\)/,
+    );
+    expect(app).not.toMatch(/^import\s+BancadaDeDesign\s+from/m);
+  });
+
   it('nada fora de src/pages/qa importa a bancada', () => {
     // Uma segunda porta de entrada anularia o guarda da rota.
     const encontrados: string[] = [];
@@ -64,7 +72,8 @@ describe('a fonte declara o guarda', () => {
         if (!/\.(ts|tsx)$/.test(nome)) continue;
         if (caminho.includes(join('src', 'pages', 'qa'))) continue;
         if (caminho.endsWith(join('src', 'App.tsx'))) continue;
-        if (readFileSync(caminho, 'utf-8').includes('pages/qa/BancadaVisual')) {
+        const fonte = readFileSync(caminho, 'utf-8');
+        if (fonte.includes('pages/qa/BancadaVisual') || fonte.includes('pages/qa/BancadaDeDesign')) {
           encontrados.push(caminho.replace(raiz + '/', ''));
         }
       }
@@ -94,7 +103,7 @@ describe.runIf(process.env.VOLC_PROVA_DE_BUNDLE === '1')(
             if (statSync(caminho).isDirectory()) { varrer(caminho); continue; }
             let conteudo = '';
             try { conteudo = readFileSync(caminho, 'utf-8'); } catch { continue; }
-            if (conteudo.includes(MARCADOR_DA_BANCADA)) {
+            if (conteudo.includes(MARCADOR_DA_BANCADA) || conteudo.includes(MARCADOR_DA_BANCADA_DE_DESIGN)) {
               culpados.push(caminho.replace(saida + '/', ''));
             }
           }
