@@ -1,0 +1,348 @@
+{
+ "_sobre": "Recorte de receita_as_of (v23_01) desta campanha. null = ausente, não zero.",
+ "campaign_id": "900000000003",
+ "fonte": "fixture: receita_as_of sintética",
+ "lido_em": "2026-10-15T12:00:00Z",
+ "linhas": [
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-09-25",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-09-25",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-09-26",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-09-26",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-09-27",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-09-27",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-09-28",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-09-28",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-09-29",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-09-29",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-09-30",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-09-30",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-01",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-01",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-02",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-02",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-03",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-03",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-04",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-04",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-05",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-05",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-06",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-06",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-07",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-07",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-08",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-08",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-09",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-09",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-10",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-10",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-11",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-11",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-12",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-12",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-13",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-13",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  },
+  {
+   "cambio_defasagem_dias": 40,
+   "cambio_modo": "defasada",
+   "cambio_taxa": null,
+   "chave": {
+    "date": "2026-10-14",
+    "joinads_domain": "a.com.br",
+    "utm_campaign_value": "900000000003"
+   },
+   "coletado_em": "2026-10-15T12:00:00Z",
+   "data_referencia": "2026-10-14",
+   "fonte": "joinads",
+   "moeda": "EUR",
+   "receita": 5.0,
+   "receita_brl": null,
+   "removida": false
+  }
+ ]
+}

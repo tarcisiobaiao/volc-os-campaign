@@ -1,0 +1,208 @@
+{
+ "_sobre": "Respostas de cambio_resolver (v23_01) para os dias desta campanha, no corte da leitura de receita. Sem linha para um dia = sem_cotacao.",
+ "campaign_id": "900000000003",
+ "fonte": "fixture: cambio_resolver sintético",
+ "lido_em": "2026-10-15T12:00:00Z",
+ "linhas": [
+  {
+   "cotacao_id": 7,
+   "data": "2026-09-25",
+   "data_cotacao": "2026-08-16",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-09-26",
+   "data_cotacao": "2026-08-17",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-09-27",
+   "data_cotacao": "2026-08-18",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-09-28",
+   "data_cotacao": "2026-08-19",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-09-29",
+   "data_cotacao": "2026-08-20",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-09-30",
+   "data_cotacao": "2026-08-21",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-01",
+   "data_cotacao": "2026-08-22",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-02",
+   "data_cotacao": "2026-08-23",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-03",
+   "data_cotacao": "2026-08-24",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-04",
+   "data_cotacao": "2026-08-25",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-05",
+   "data_cotacao": "2026-08-26",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-06",
+   "data_cotacao": "2026-08-27",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-07",
+   "data_cotacao": "2026-08-28",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-08",
+   "data_cotacao": "2026-08-29",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-09",
+   "data_cotacao": "2026-08-30",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-10",
+   "data_cotacao": "2026-08-31",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-11",
+   "data_cotacao": "2026-09-01",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-12",
+   "data_cotacao": "2026-09-02",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-13",
+   "data_cotacao": "2026-09-03",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  },
+  {
+   "cotacao_id": 7,
+   "data": "2026-10-14",
+   "data_cotacao": "2026-09-04",
+   "defasagem_dias": 40,
+   "fonte": "ptax",
+   "modo": "defasada",
+   "par": "EUR/BRL",
+   "taxa": null
+  }
+ ]
+}

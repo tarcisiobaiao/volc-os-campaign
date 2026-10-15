@@ -1,0 +1,84 @@
+{
+ "as_of": "2026-10-15T12:00:00+00:00",
+ "as_of_data": "2026-10-15",
+ "campanha": "900000000001",
+ "campanha_nome": "camp 1",
+ "campanha_status": "ENABLED",
+ "codigo_sha256": "b84e59d4655dc1451529e0f7f9ef7c79c122b60072f1b49e0b3a84e870a5d773",
+ "conta": "111****334",
+ "contrato_motor": "sombra_carteira.v1",
+ "corte_maturidade": "2026-10-12",
+ "custo_maduro_sem_receita_por_estado": {},
+ "estado_dado": "completo",
+ "fontes": {
+  "cambio_lido_em": "2026-10-15T12:00:00Z",
+  "cliques": "google_ads_campanha_dia (v12_04).cliques",
+  "custo_brl": "google_ads_campanha_dia (v12_04): linha não segmentada, último valor do dia (D0, D-1 ou recoleta W11, ver custo_origem por dia); custo_micros / 1e6",
+  "custo_lido_em": "2026-10-15T12:00:00Z",
+  "receita_brl": "receita_as_of (v23_01, W12).receita (moeda de origem) × cambio_resolver (v23_01) resolvido na leitura, modo exata ou anterior; defasada e sem_cotacao ficam nulas; nunca o receita_brl da ingestão nem revenue_converted",
+  "receita_lido_em": "2026-10-15T12:00:00Z",
+  "valor_conversao_google": "google_ads_campanha_dia.valor_conversoes; exibido como não confiável, não decide"
+ },
+ "fracao_custo_maduro_sem_receita": 0.0,
+ "janela_madura": {
+  "cliques": 680,
+  "contribuicao_bruta": -482.46,
+  "cpc": 0.75,
+  "custo_brl": 510.0,
+  "dias": 17,
+  "receita_brl": 27.54,
+  "roas": 0.054,
+  "rpc": 0.0405
+ },
+ "janela_madura_recente": {
+  "cliques": 200,
+  "contribuicao_bruta": -141.9,
+  "cpc": 0.75,
+  "custo_brl": 150.0,
+  "dias": 5,
+  "receita_brl": 8.1,
+  "roas": 0.054,
+  "rpc": 0.0405
+ },
+ "lote_id": "sombra-carteira-111xxxx334-a648418b-20261015t120000z",
+ "motivo_estado_dado": null,
+ "parametros": {
+  "dias_imaturos": 3,
+  "estresse_cambio": 1.5,
+  "estresse_receita": 2.0,
+  "janela_dias": 30,
+  "janela_recente_dias": 5,
+  "max_custo_sem_receita": 0.1,
+  "max_defasagem_cambio_dias": 7,
+  "max_dias_sem_custo": 0.1,
+  "min_cliques_maduros": 200,
+  "roas_aumentar": 1.5,
+  "roas_equilibrio": 1.0
+ },
+ "recomendacao": {
+  "campanha": "900000000001",
+  "direcao": "pausar",
+  "executada": false,
+  "lacunas": [
+   "custo do fato canônico google_ads_campanha_dia é o último valor (ON CONFLICT substitui a linha); não há as-of de custo, e a recoleta do W11 pode mudar um dia já lido",
+   "receita lida de receita_as_of (v23_01, W12) no instante da leitura; a v23_01 ainda não está aplicada em produção",
+   "receita em BRL pela receita de origem × cambio_resolver (W12) resolvido NA LEITURA, com o mesmo conhecido_ate da receita; o receita_brl gravado na ingestão não é usado (congela o câmbio); dia com câmbio defasado ou sem cotação fica sem receita, nunca zero",
+   "GAM sem o roteador de atribuição no diário do W12: dia com GAM não reconcilia (pode ser adset Meta)",
+   "JoinAds soma todos os domínios (joinads_domain) da campanha no dia, como a v17_04; diferente da v17_04, a receita de mais de um projeto NÃO é recusada, porque o diário do W12 não guarda project_id",
+   "joinads_metrics.revenue tem DEFAULT 0: receita 0,00 pode ser default, não medição",
+   "fuso do campo date do JoinAds não declarado; o custo está no fuso da conta (America/Sao_Paulo)",
+   "conversions_value do Google é valor estático por conversão, não receita; ignorado na decisão",
+   "limiares são parâmetros do laboratório, não a política do dono (volc_ads/inteligencia_decisao/politicas.py)",
+   "só aparecem campanhas com linha no fato de custo da conta na janela; campanha nunca coletada não é vista",
+   "ROAS bruto: revshare e imposto não descontados"
+  ],
+  "motivos": [
+   "ROAS maduro 0.054 em 680 cliques e 17 dias",
+   "ROAS sob estresse (receita ×2.0, câmbio ×1.5) = 0.162",
+   "mesmo no estresse a campanha não paga o próprio custo"
+  ],
+  "valor_sugerido": null
+ },
+ "roas_sob_estresse": 0.162,
+ "valor_conversao_google_total": 200.0
+}

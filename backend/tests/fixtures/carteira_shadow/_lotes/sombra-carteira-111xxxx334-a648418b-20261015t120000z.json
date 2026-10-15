@@ -1,0 +1,77 @@
+{
+ "as_of": "2026-10-15T12:00:00+00:00",
+ "base_ref": "a8059ba0",
+ "codigo_sha256": "b84e59d4655dc1451529e0f7f9ef7c79c122b60072f1b49e0b3a84e870a5d773",
+ "conta": "111****334",
+ "contrato": "sombra_carteira_lote.v1",
+ "experimentos": [
+  {
+   "campanha": "900000000001",
+   "campanha_nome": "camp 1",
+   "campanha_status": "ENABLED",
+   "direcao": "pausar",
+   "estado_dado": "completo",
+   "executada": false,
+   "experimento_id": "gads-900000000001-sombra-20261015t120000z",
+   "manifesto_sha256": "0849e6f5bf7b50fc0f4df5776c1be4ee2f523ecce8a6afdd8690cb52cfd05ebd"
+  },
+  {
+   "campanha": "900000000003",
+   "campanha_nome": "camp 3",
+   "campanha_status": "ENABLED",
+   "direcao": "evidencia_insuficiente",
+   "estado_dado": "sem_dado",
+   "executada": false,
+   "experimento_id": "gads-900000000003-sombra-20261015t120000z",
+   "manifesto_sha256": "0e83ed2e3eea59c92afdc7a28a8192213d5355b9e4d36a9115ac209145b936c9"
+  }
+ ],
+ "isolamento": {
+  "chamadas_externas_alem_das_portas": 0,
+  "mutacoes_executadas": 0,
+  "oferece_aplicar": false
+ },
+ "leituras": {
+  "cambio": {
+   "fonte": "fixture: cambio_resolver sintético",
+   "lido_em": "2026-10-15T12:00:00Z",
+   "linhas": 40,
+   "pedidos": 40
+  },
+  "custo": {
+   "fonte": "fixture: google_ads_campanha_dia sintético",
+   "lido_em": "2026-10-15T12:00:00Z",
+   "linhas": 40
+  },
+  "receita": {
+   "fonte": "fixture: receita_as_of sintética",
+   "lido_em": "2026-10-15T12:00:00Z",
+   "linhas": 40
+  }
+ },
+ "lote_id": "sombra-carteira-111xxxx334-a648418b-20261015t120000z",
+ "parametros": {
+  "dias_imaturos": 3,
+  "estresse_cambio": 1.5,
+  "estresse_receita": 2.0,
+  "janela_dias": 30,
+  "janela_recente_dias": 5,
+  "max_custo_sem_receita": 0.1,
+  "max_defasagem_cambio_dias": 7,
+  "max_dias_sem_custo": 0.1,
+  "min_cliques_maduros": 200,
+  "roas_aumentar": 1.5,
+  "roas_equilibrio": 1.0
+ },
+ "resumo": {
+  "campanhas": 2,
+  "por_direcao": {
+   "evidencia_insuficiente": 1,
+   "pausar": 1
+  },
+  "por_estado_dado": {
+   "completo": 1,
+   "sem_dado": 1
+  }
+ }
+}

@@ -1,0 +1,135 @@
+{
+ "artifacts": [
+  {
+   "path": "cambio_lido.json",
+   "sha256": "0f5ee8fa0a7cd280d71bb6f851b1e6659088546c6a7b95b7242be2dc9e9f78a8"
+  },
+  {
+   "path": "custo_campanha_dia.json",
+   "sha256": "7bc82e05064d80005e69eddce17768b5d1dcb3287a3590ca700a21df81e8345f"
+  },
+  {
+   "path": "receita_observada.json",
+   "sha256": "435e63b7d46b095ebd1687e7c13e61363758c84b39c7df37e7d3f3456a3dfad9"
+  },
+  {
+   "path": "resultado.json",
+   "sha256": "1ac41e8f840656e3c32a75075f5c36fd30175d94e40860bb8bf2fe62c003c89a"
+  },
+  {
+   "path": "transformacao.csv",
+   "sha256": "8984360b7f066bfacd24c79d2006d4bd4579020d5822ecf5feaa71d9bfbd18d1"
+  }
+ ],
+ "baseline": {
+  "description": "equilíbrio: receita bruta = custo (ROAS 1,0)",
+  "values": {
+   "roas": 1.0
+  }
+ },
+ "decision": "adopt",
+ "dependencies": [],
+ "experiment_id": "gads-900000000001-sombra-20261015t120000z",
+ "hypothesis": {
+  "direction": "decrease",
+  "falsified_if": "ROAS bruto reconciliado da janela madura >= 1,0",
+  "min_effect": 0.5,
+  "primary_metric": "roas_maduro",
+  "statement": "No grão campanha × dia reconciliável, a campanha 900000000001 não paga o próprio custo na janela madura"
+ },
+ "input_snapshot": {
+  "captured_at": "2026-10-15T12:00:00Z",
+  "contains_pii": false,
+  "id": "gads-900000000001-sombra-20261015t120000z-entrada",
+  "sha256": "b75e18d9427826f361e4455211144d646c80f5eb79386d78d90f81232c1b1fdd",
+  "source": "custo: google_ads_campanha_dia (v12_04, W11); receita: receita_as_of (v23_01, W12); câmbio: cambio_resolver na leitura (v23_01, W12)"
+ },
+ "limitations": [
+  "custo do fato canônico google_ads_campanha_dia é o último valor (ON CONFLICT substitui a linha); não há as-of de custo, e a recoleta do W11 pode mudar um dia já lido",
+  "receita lida de receita_as_of (v23_01, W12) no instante da leitura; a v23_01 ainda não está aplicada em produção",
+  "receita em BRL pela receita de origem × cambio_resolver (W12) resolvido NA LEITURA, com o mesmo conhecido_ate da receita; o receita_brl gravado na ingestão não é usado (congela o câmbio); dia com câmbio defasado ou sem cotação fica sem receita, nunca zero",
+  "GAM sem o roteador de atribuição no diário do W12: dia com GAM não reconcilia (pode ser adset Meta)",
+  "JoinAds soma todos os domínios (joinads_domain) da campanha no dia, como a v17_04; diferente da v17_04, a receita de mais de um projeto NÃO é recusada, porque o diário do W12 não guarda project_id",
+  "joinads_metrics.revenue tem DEFAULT 0: receita 0,00 pode ser default, não medição",
+  "fuso do campo date do JoinAds não declarado; o custo está no fuso da conta (America/Sao_Paulo)",
+  "conversions_value do Google é valor estático por conversão, não receita; ignorado na decisão",
+  "limiares são parâmetros do laboratório, não a política do dono (volc_ads/inteligencia_decisao/politicas.py)",
+  "só aparecem campanhas com linha no fato de custo da conta na janela; campanha nunca coletada não é vista",
+  "ROAS bruto: revshare e imposto não descontados"
+ ],
+ "method": {
+  "description": "Motor shadow da carteira (volc_lab.sombra_carteira): custo não segmentado × receita em BRL do W12 por dia; maturidade exclui os últimos dias no fuso da conta; dia sem câmbio, sem receita, com GAM sem atribuição ou com sobreposição fica sem dado; decisão por ROAS maduro, estresse e fração de custo sem receita.",
+  "environment": {
+   "base_ref": "a8059ba0",
+   "codigo_sha256": "b84e59d4655dc1451529e0f7f9ef7c79c122b60072f1b49e0b3a84e870a5d773",
+   "lock_sha256": "355102c10b4a60995085e9aebf0706e08b73d59e5feec85f0e82840a3ba31feb"
+  },
+  "external_calls": {
+   "count": 0,
+   "mode": "none"
+  },
+  "external_writes": 0,
+  "replay_without_api": true,
+  "seeds_not_applicable_reason": "transformação determinística, sem amostragem"
+ },
+ "metrics": {
+  "cost": {
+   "kind": "observed",
+   "unit": "USD",
+   "value": 0
+  },
+  "quality": {
+   "kind": "observed",
+   "unit": "dias reconciliados maduros",
+   "value": 17
+  },
+  "time": {
+   "kind": "not_measured",
+   "not_measured_reason": "a duração fica fora dos artefatos para o replay reproduzir os mesmos sha256",
+   "unit": "s"
+  }
+ },
+ "result": {
+  "estimated": {
+   "roas_sob_estresse": 0.162
+  },
+  "hypothesis_outcome": "supported",
+  "observed": {
+   "direcao_shadow": "pausar",
+   "estado_dado": "completo",
+   "fracao_custo_maduro_sem_receita": 0.0,
+   "janela_madura": {
+    "cliques": 680,
+    "contribuicao_bruta": -482.46,
+    "cpc": 0.75,
+    "custo_brl": 510.0,
+    "dias": 17,
+    "receita_brl": 27.54,
+    "roas": 0.054,
+    "rpc": 0.0405
+   },
+   "janela_madura_recente": {
+    "cliques": 200,
+    "contribuicao_bruta": -141.9,
+    "cpc": 0.75,
+    "custo_brl": 150.0,
+    "dias": 5,
+    "receita_brl": 8.1,
+    "roas": 0.054,
+    "rpc": 0.0405
+   },
+   "roas_maduro": {
+    "baseline": 1.0,
+    "candidate": 0.054
+   }
+  },
+  "reproducible": "identical"
+ },
+ "rollback_or_cleanup": {
+  "done": true,
+  "steps": [
+   "nenhuma ação externa executada; nada a desfazer"
+  ],
+  "verified_by": "o motor só lê pelas portas; recomendacao.executada = false"
+ }
+}
