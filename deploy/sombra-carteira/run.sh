@@ -29,7 +29,8 @@ fi
 # Parâmetros do laboratório que a configuração pode sobrescrever (vazios = padrão do código).
 PARAMS=()
 for par in JANELA_DIAS:--janela-dias DIAS_IMATUROS:--dias-imaturos \
-           MIN_CLIQUES_MADUROS:--min-cliques-maduros MAX_CUSTO_SEM_RECEITA:--max-custo-sem-receita; do
+           MIN_CLIQUES_MADUROS:--min-cliques-maduros MAX_CUSTO_SEM_RECEITA:--max-custo-sem-receita \
+           MAX_DEFASAGEM_CAMBIO_DIAS:--max-defasagem-cambio-dias; do
   var="VOLC_SOMBRA_${par%%:*}"; flag="${par##*:}"
   val="${!var:-}"
   if [ -n "$val" ]; then

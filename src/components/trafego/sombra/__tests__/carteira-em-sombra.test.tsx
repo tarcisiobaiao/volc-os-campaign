@@ -30,6 +30,8 @@ const linha = (over: Partial<LinhaCarteiraShadow>): LinhaCarteiraShadow => ({
 
 const CARTEIRA: CarteiraShadow = {
   contrato: 'carteira_shadow.v1',
+  leitura_mais_nova: '2026-10-15T12:00:00',
+  carteira_defasada: false,
   integridade: 'coerente_com_manifesto',
   isolamento: { chamadas_externas: 0, mutacoes_executadas: 0, oferece_aplicar: false },
   campanhas: [
@@ -89,6 +91,15 @@ describe('CarteiraEmSombra', () => {
     expect(linhaDe('900000000006').textContent).toMatch(/leitura velha/);
     expect(linhaDe('900000000001').textContent).not.toMatch(/leitura velha/);
     expect(screen.getByTestId('resumo-carteira').textContent).toMatch(/1 com leitura velha/);
+  });
+
+  it('carteira inteira velha contra o relógio é dita, não passa por atual', () => {
+    pronta();
+    expect(screen.queryByTestId('carteira-velha')).toBeNull();
+    cleanup();
+    render(<CarteiraEmSombra leitura={{ estado: 'pronta', carteira: { ...CARTEIRA, carteira_defasada: true } }} />);
+    expect(screen.getByTestId('carteira-velha').textContent).toMatch(/não roda há mais de dois dias/);
+    expect(screen.getByTestId('carteira-velha').textContent).toMatch(/2026-10-15T12:00:00/);
   });
 
   it('não oferece nenhum controle que execute a recomendação', () => {

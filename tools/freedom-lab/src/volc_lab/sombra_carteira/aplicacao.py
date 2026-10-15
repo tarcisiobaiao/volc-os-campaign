@@ -45,7 +45,7 @@ from volc_lab.brokers.recibos import mascarar
 from volc_lab.experimentos import validar
 from volc_lab.sombra_carteira import dominio
 from volc_lab.sombra_carteira.portas import (
-    ContratoQuebrado, CustoDia, FonteCusto, FonteReceita, ReceitaObservada,
+    ContratoQuebrado, Cotacao, CustoDia, FonteCambio, FonteCusto, FonteReceita, ReceitaObservada,
 )
 
 FUSO_CONTA = ZoneInfo("America/Sao_Paulo")
@@ -57,7 +57,9 @@ LACUNAS_FIXAS = (
     "custo do fato canônico google_ads_campanha_dia é o último valor (ON CONFLICT substitui a linha); "
     "não há as-of de custo, e a recoleta do W11 pode mudar um dia já lido",
     "receita lida de receita_as_of (v23_01, W12) no instante da leitura; a v23_01 ainda não está aplicada em produção",
-    "receita em BRL só pelo câmbio versionado do W12; dia com câmbio defasado ou sem cotação fica sem receita, nunca zero",
+    "receita em BRL pela receita de origem × cambio_resolver (W12) resolvido NA LEITURA, com o mesmo conhecido_ate "
+    "da receita; o receita_brl gravado na ingestão não é usado (congela o câmbio); dia com câmbio defasado ou sem "
+    "cotação fica sem receita, nunca zero",
     "GAM sem o roteador de atribuição no diário do W12: dia com GAM não reconcilia (pode ser adset Meta)",
     "JoinAds soma todos os domínios (joinads_domain) da campanha no dia, como a v17_04; diferente da v17_04, "
     "a receita de mais de um projeto NÃO é recusada, porque o diário do W12 não guarda project_id",
@@ -131,10 +133,28 @@ class Recorte:
     receita_lido_em: str
     custo_fonte: str
     receita_fonte: str
+    cambio: list[dict[str, Any]]
+    cambio_lido_em: str
+    cambio_fonte: str
+
+
+def _pedidos_de_cambio(receita_linhas: Sequence[dict]) -> list[tuple[str, date]]:
+    """(par, dia) de cada receita em moeda estrangeira com valor."""
+    pedidos = set()
+    for linha in receita_linhas:
+        r = ReceitaObservada.da_linha(linha)
+        if r.receita is not None and r.moeda != "BRL":
+            pedidos.add((f"{r.moeda}/BRL", r.data_referencia))
+    return sorted(pedidos)
+
+
+def _cotacao_bate(cot: dict, pedidos: set[tuple[str, date]]) -> bool:
+    c = Cotacao.da_linha(cot)
+    return (c.par, c.data) in pedidos
 
 
 def _recortes(conta: str, custo_linhas: Sequence[dict], receita_linhas: Sequence[dict],
-              leituras: tuple[str, str, str, str]) -> dict[str, Recorte]:
+              leituras: tuple[str, str, str, str]) -> dict[str, list]:
     custo_lido_em, receita_lido_em, custo_fonte, receita_fonte = leituras
     campanhas: dict[str, list[dict]] = {}
     for linha in custo_linhas:
@@ -144,14 +164,15 @@ def _recortes(conta: str, custo_linhas: Sequence[dict], receita_linhas: Sequence
         campanhas.setdefault(c.campaign_id, []).append({**linha, "customer_id": mascarar(conta)})
     receitas: dict[str, list[dict]] = {}
     for linha in receita_linhas:
-        r = ReceitaObservada.da_linha(linha)
-        if r.campanha in campanhas:
-            receitas.setdefault(r.campanha, []).append(dict(linha))
-    return {
-        cid: Recorte(cid, linhas, receitas.get(cid, []), custo_lido_em, receita_lido_em,
-                     custo_fonte, receita_fonte)
-        for cid, linhas in sorted(campanhas.items())
-    }
+        # Filtra pela campanha ANTES de validar: uma linha estranha de outra rede
+        # (adset Meta via utm) não derruba a carteira Google. A da conta é
+        # validada estritamente.
+        chave = linha.get("chave") if isinstance(linha, dict) else None
+        cid = str(chave.get("utm_campaign_value")) if isinstance(chave, dict) else None
+        if cid in campanhas:
+            ReceitaObservada.da_linha(linha)
+            receitas.setdefault(cid, []).append(dict(linha))
+    return {cid: [linhas, receitas.get(cid, [])] for cid, linhas in sorted(campanhas.items())}
 
 
 def _ordenar_custo(linhas: list[dict]) -> list[dict]:
@@ -193,12 +214,15 @@ def calcular(recorte: Recorte, conta_mascarada: str, lote_id: str,
     """Artefatos de um experimento a partir do recorte. Determinístico."""
     custo = _ordenar_custo(recorte.custo)
     receita = _ordenar_receita(recorte.receita)
+    cambio = sorted(recorte.cambio, key=lambda l: (str(l["par"]), str(l["data"])))
     instante = _as_of(recorte.custo_lido_em, recorte.receita_lido_em)
     as_of = instante.astimezone(FUSO_CONTA).date()
+    receitas = dominio.cambio_na_leitura([ReceitaObservada.da_linha(l) for l in receita],
+                                         [Cotacao.da_linha(l) for l in cambio])
     av = dominio.avaliar(
         recorte.campanha,
         [CustoDia.da_linha(l) for l in custo],
-        [ReceitaObservada.da_linha(l) for l in receita],
+        receitas,
         as_of, parametros, LACUNAS_FIXAS,
     )
     nome, status = _status(custo)
@@ -210,6 +234,11 @@ def calcular(recorte: Recorte, conta_mascarada: str, lote_id: str,
         "_sobre": "Recorte de receita_as_of (v23_01) desta campanha. null = ausente, não zero.",
         "fonte": recorte.receita_fonte, "lido_em": recorte.receita_lido_em,
         "campaign_id": recorte.campanha, "linhas": receita})
+    entrada_cambio = _json_bytes({
+        "_sobre": ("Respostas de cambio_resolver (v23_01) para os dias desta campanha, no corte da "
+                   "leitura de receita. Sem linha para um dia = sem_cotacao."),
+        "fonte": recorte.cambio_fonte, "lido_em": recorte.cambio_lido_em,
+        "campaign_id": recorte.campanha, "linhas": cambio})
     resultado = {
         "contrato_motor": "sombra_carteira.v1",
         "campanha": recorte.campanha,
@@ -229,8 +258,10 @@ def calcular(recorte: Recorte, conta_mascarada: str, lote_id: str,
             "custo_brl": ("google_ads_campanha_dia (v12_04): linha não segmentada, último valor do dia "
                           "(D0, D-1 ou recoleta W11, ver custo_origem por dia); custo_micros / 1e6"),
             "cliques": "google_ads_campanha_dia (v12_04).cliques",
-            "receita_brl": ("receita_as_of (v23_01, W12).receita_brl: JoinAds convertida pelo cambio_resolver "
-                            "no modo exata ou anterior; defasada e sem_cotacao ficam nulas"),
+            "receita_brl": ("receita_as_of (v23_01, W12).receita (moeda de origem) × cambio_resolver (v23_01) "
+                            "resolvido na leitura, modo exata ou anterior; defasada e sem_cotacao ficam nulas; "
+                            "nunca o receita_brl da ingestão nem revenue_converted"),
+            "cambio_lido_em": recorte.cambio_lido_em,
             "valor_conversao_google": "google_ads_campanha_dia.valor_conversoes; exibido como não confiável, não decide",
             "custo_lido_em": recorte.custo_lido_em,
             "receita_lido_em": recorte.receita_lido_em,
@@ -248,6 +279,7 @@ def calcular(recorte: Recorte, conta_mascarada: str, lote_id: str,
     return {
         "custo_campanha_dia.json": entrada_custo,
         "receita_observada.json": entrada_receita,
+        "cambio_lido.json": entrada_cambio,
         "transformacao.csv": _csv(av),
         "resultado.json": _json_bytes(resultado),
     }
@@ -259,7 +291,8 @@ def _manifesto(experimento_id: str, artefatos: dict[str, bytes], base_ref: str,
     madura = resultado["janela_madura"]
     rec = resultado["recomendacao"]
     roas = madura["roas"]
-    entrada_sha = _sha256_bytes(artefatos["custo_campanha_dia.json"] + artefatos["receita_observada.json"])
+    entrada_sha = _sha256_bytes(artefatos["custo_campanha_dia.json"] + artefatos["receita_observada.json"]
+                                + artefatos["cambio_lido.json"])
     lidos = sorted([json.loads(artefatos["custo_campanha_dia.json"])["lido_em"],
                     json.loads(artefatos["receita_observada.json"])["lido_em"]])
     min_effect = 0.5
@@ -291,7 +324,7 @@ def _manifesto(experimento_id: str, artefatos: dict[str, bytes], base_ref: str,
         "input_snapshot": {
             "id": f"{experimento_id}-entrada",
             "source": ("custo: google_ads_campanha_dia (v12_04, W11); "
-                       "receita: receita_as_of com câmbio versionado (v23_01, W12)"),
+                       "receita: receita_as_of (v23_01, W12); câmbio: cambio_resolver na leitura (v23_01, W12)"),
             "sha256": entrada_sha,
             "captured_at": lidos[0],
             "contains_pii": False,
@@ -374,6 +407,7 @@ def gerar_lote(
     conta: str,
     fonte_custo: FonteCusto,
     fonte_receita: FonteReceita,
+    fonte_cambio: FonteCambio,
     destino: Path,
     *,
     base_ref: str,
@@ -397,8 +431,17 @@ def gerar_lote(
     lote_id = (f"sombra-carteira-{mascara.replace('*', 'x')}-{_sha256_bytes(conta.encode())[:8]}"
                f"-{_rotulo(instante)}")
 
-    recortes = _recortes(conta, custo.linhas, receita.linhas,
-                         (custo.lido_em, receita.lido_em, custo.fonte, receita.fonte))
+    brutos = _recortes(conta, custo.linhas, receita.linhas,
+                       (custo.lido_em, receita.lido_em, custo.fonte, receita.fonte))
+    # Uma leitura de câmbio para a conta inteira, no mesmo corte da receita.
+    todos_pedidos = _pedidos_de_cambio([l for _, rec in brutos.values() for l in rec])
+    cambio = fonte_cambio.cotacoes(todos_pedidos, receita.lido_em, int(p["max_defasagem_cambio_dias"]))
+    recortes: dict[str, Recorte] = {}
+    for cid, (custo_l, receita_l) in brutos.items():
+        pedidos = set(_pedidos_de_cambio(receita_l))
+        recortes[cid] = Recorte(cid, custo_l, receita_l, custo.lido_em, receita.lido_em, custo.fonte,
+                                receita.fonte, [dict(c) for c in cambio.linhas if _cotacao_bate(c, pedidos)],
+                                cambio.lido_em, cambio.fonte)
     preparados: list[tuple[str, dict[str, bytes], bytes, dict[str, Any]]] = []
     for cid, recorte in recortes.items():
         artefatos = calcular(recorte, mascara, lote_id, p)
@@ -450,7 +493,9 @@ def gerar_lote(
         "codigo_sha256": codigo_sha256(),
         "base_ref": base_ref,
         "leituras": {"custo": {"fonte": custo.fonte, "lido_em": custo.lido_em, "linhas": len(custo.linhas)},
-                     "receita": {"fonte": receita.fonte, "lido_em": receita.lido_em, "linhas": len(receita.linhas)}},
+                     "receita": {"fonte": receita.fonte, "lido_em": receita.lido_em, "linhas": len(receita.linhas)},
+                     "cambio": {"fonte": cambio.fonte, "lido_em": cambio.lido_em, "linhas": len(cambio.linhas),
+                                "pedidos": len(todos_pedidos)}},
         "experimentos": itens,
         "resumo": _resumo(itens),
         "isolamento": {"chamadas_externas_alem_das_portas": 0, "mutacoes_executadas": 0, "oferece_aplicar": False},
@@ -511,18 +556,19 @@ def _gravar(destino: Path, eid: str, artefatos: dict[str, bytes], manifesto_b: b
 def _recorte_dos_bytes(campanha: str, artefatos: dict[str, bytes]) -> Recorte:
     custo = json.loads(artefatos["custo_campanha_dia.json"])
     receita = json.loads(artefatos["receita_observada.json"])
+    cambio = json.loads(artefatos["cambio_lido.json"])
     return Recorte(campanha, custo["linhas"], receita["linhas"], custo["lido_em"],
-                   receita["lido_em"], custo["fonte"], receita["fonte"])
+                   receita["lido_em"], custo["fonte"], receita["fonte"],
+                   cambio["linhas"], cambio["lido_em"], cambio["fonte"])
 
 
 def replay(pasta: Path) -> dict[str, Any]:
     """Recalcula um experimento gravado a partir do próprio recorte e compara."""
     resultado = json.loads((pasta / "resultado.json").read_text(encoding="utf-8"))
-    custo = json.loads((pasta / "custo_campanha_dia.json").read_text(encoding="utf-8"))
-    receita = json.loads((pasta / "receita_observada.json").read_text(encoding="utf-8"))
+    entradas = {n: (pasta / n).read_bytes()
+                for n in ("custo_campanha_dia.json", "receita_observada.json", "cambio_lido.json")}
     # A conta já está mascarada no recorte; o replay a usa como está.
-    recorte = Recorte(resultado["campanha"], custo["linhas"], receita["linhas"], custo["lido_em"],
-                      receita["lido_em"], custo["fonte"], receita["fonte"])
+    recorte = _recorte_dos_bytes(resultado["campanha"], entradas)
     novos = calcular(recorte, resultado["conta"], resultado["lote_id"], resultado["parametros"])
     divergentes = sorted(n for n, b in novos.items() if (pasta / n).read_bytes() != b)
     return {"experimento_id": pasta.name, "identico": not divergentes, "divergentes": divergentes}

@@ -38,10 +38,10 @@ def _custo(cid, d, micros, cliques=40):
             "colhida_em": LIDO, "origem_janela": "backfill"}
 
 
-def _receita(cid, d, usd, modo="anterior"):
+def _receita(cid, d, usd, modo="anterior", moeda="USD"):
     return {"fonte": "joinads", "chave": {"date": d.isoformat(), "utm_campaign_value": cid,
                                           "joinads_domain": "a.com.br"},
-            "data_referencia": d.isoformat(), "moeda": "USD", "receita": usd,
+            "data_referencia": d.isoformat(), "moeda": moeda, "receita": usd,
             "receita_brl": round(usd * 5.4, 4) if modo == "anterior" else None,
             "cambio_modo": modo, "cambio_taxa": 5.4 if modo == "anterior" else None,
             "cambio_defasagem_dias": 1 if modo == "anterior" else 40, "coletado_em": LIDO, "removida": False}
@@ -57,6 +57,17 @@ class _Fonte:
     def receita_vigente(self, inicio, fim):
         return Leitura(tuple(self.r), LIDO, "teste")
 
+    def cotacoes(self, pedidos, conhecido_ate, max_defasagem_dias):
+        # Câmbio resolvido na leitura (cambio_resolver): USD com a cotação da
+        # véspera; EUR só com cotação velha demais, então sem dado.
+        linhas = []
+        for par, d in pedidos:
+            usd = par == "USD/BRL"
+            linhas.append({"par": par, "data": d.isoformat(), "modo": "anterior" if usd else "defasada",
+                           "taxa": 5.4 if usd else None, "data_cotacao": (d - timedelta(days=1 if usd else 40)).isoformat(),
+                           "defasagem_dias": 1 if usd else 40, "cotacao_id": 7, "fonte": "ptax"})
+        return Leitura(tuple(linhas), LIDO, "teste")
+
 
 @pytest.fixture()
 def raiz(tmp_path, monkeypatch):
@@ -65,9 +76,9 @@ def raiz(tmp_path, monkeypatch):
     for i in range(1, 21):
         d = HOJE - timedelta(days=i)
         c += [_custo(RUIM, d, 30_000_000), _custo(SEM_CAMBIO, d, 10_000_000)]
-        r += [_receita(RUIM, d, 0.30), _receita(SEM_CAMBIO, d, 5.0, modo="defasada")]
+        r += [_receita(RUIM, d, 0.30), _receita(SEM_CAMBIO, d, 5.0, modo="defasada", moeda="EUR")]
     f = _Fonte(c, r)
-    aplicacao.gerar_lote(CONTA, f, f, destino, base_ref="a8059ba0", hoje=HOJE)
+    aplicacao.gerar_lote(CONTA, f, f, f, destino, base_ref="a8059ba0", hoje=HOJE)
     # O experimento Senac (anterior ao motor) convive na mesma pasta.
     shutil.copytree(rs.RAIZ_PADRAO / "senac-shadow-20261015", destino / "senac-shadow-20261015")
     monkeypatch.setenv(rs.VARIAVEL_RAIZ, str(destino))
@@ -192,3 +203,47 @@ def test_linha_velha_e_marcada_defasada(raiz):
     _reassinar(alvo, "resultado.json")
     por_id = {l["campanha_externa"]: l for l in rs.listar()["campanhas"]}
     assert por_id[RUIM]["defasada"] is True
+
+
+def test_artefato_trocado_depois_da_conferencia_nao_e_o_interpretado(raiz, monkeypatch):
+    """TOCTOU (revisor de nuvem 2): o que é interpretado são os bytes conferidos.
+    Simula uma troca do arquivo logo depois da primeira leitura; antes do ciclo
+    2 o arquivo era reaberto para o JSON/CSV e a troca passava."""
+    pasta = raiz / f"gads-{RUIM}-sombra-20261015t120000z"
+    original = Path.read_bytes
+    trocados: set[str] = set()
+
+    def ler_e_trocar(self):
+        bruto = original(self)
+        if self.parent == pasta and self.name in ("resultado.json", "transformacao.csv") \
+                and self.name not in trocados:
+            trocados.add(self.name)
+            if self.name == "resultado.json":
+                doc = json.loads(bruto)
+                doc["recomendacao"]["direcao"] = "aumentar"
+                self.write_text(json.dumps(doc))
+            else:
+                self.write_text("date,custo_brl,receita_brl\n2026-10-14,1,99999\n")
+        return bruto
+
+    monkeypatch.setattr(Path, "read_bytes", ler_e_trocar)
+    corpo = rs.ler(RUIM)
+    assert trocados == {"resultado.json", "transformacao.csv"}
+    assert corpo["direcao"] == "pausar"
+    assert len(corpo["dias"]) == 20 and all(d["receita_brl"] != 99999 for d in corpo["dias"])
+    # Na leitura seguinte, a troca é vista e recusada como integridade quebrada.
+    monkeypatch.setattr(Path, "read_bytes", original)
+    with pytest.raises(rs.IntegridadeQuebrada):
+        rs.ler(RUIM)
+
+
+def test_carteira_inteira_velha_contra_o_relogio(raiz):
+    from datetime import datetime
+    em_dia = rs.listar(agora=datetime(2026, 10, 16, 9, 0))
+    assert em_dia["carteira_defasada"] is False
+    assert em_dia["leitura_mais_nova"] == "2026-10-15T12:00:00"
+    # A agenda parou: todas as linhas têm a mesma idade, nenhuma é "defasada"
+    # em relação às outras, mas a carteira está velha.
+    parada = rs.listar(agora=datetime(2026, 10, 25, 9, 0))
+    assert parada["carteira_defasada"] is True
+    assert not any(l["defasada"] for l in parada["campanhas"])

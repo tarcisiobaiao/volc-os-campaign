@@ -3,11 +3,19 @@
 - `SnapshotCusto` / `SnapshotReceita`: leem um JSON `{"lido_em", "fonte",
   "linhas": [...]}` exportado das tabelas do contrato. É o caminho do replay e
   dos testes, e é como a nuvem roda sem dado real.
-- `PostgrestSoLeitura`: lê `google_ads_campanha_dia` e `receita_as_of()` pelo
-  PostgREST do Supabase oficial com a service_role do AMBIENTE (nunca do
-  repositório). Só faz GET na tabela e POST na RPC `receita_as_of`, que é
+- `PostgrestSoLeitura`: lê `google_ads_campanha_dia`, `receita_as_of()` e
+  `cambio_resolver()` pelo PostgREST do Supabase oficial com a service_role do
+  AMBIENTE (nunca do repositório). Só faz GET na tabela e POST nas duas RPCs
   STABLE; qualquer outro caminho é recusado antes da rede. Este adaptador não
   roda na nuvem: a prova dele é no Mac/Hetzner.
+
+Paginação por CHAVE (ciclo corretivo 2): `id`/`fato_id` maior que o último lido,
+em ordem crescente, até uma página vazia. Offset perdia a linha seguinte quando
+uma versão nova de receita entrava entre páginas, e um `db-max-rows` menor que
+a página truncava em silêncio. Por chave, nenhuma linha some e o tamanho da
+página que o servidor devolve não importa. A versão nova que aparece depois
+da antiga já lida fica com o maior `id` por (tabela, chave), a mesma regra do
+`DISTINCT ON` da `receita_as_of`.
 """
 from __future__ import annotations
 
@@ -19,7 +27,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from volc_lab.sombra_carteira.portas import ContratoQuebrado, CustoDia, Leitura, ReceitaObservada
 
@@ -49,6 +57,19 @@ class SnapshotReceita:
     caminho: Path
 
     def receita_vigente(self, inicio: date, fim: date) -> Leitura:
+        doc = _ler_snapshot(self.caminho)
+        return Leitura(tuple(doc["linhas"]), str(doc["lido_em"]),
+                       str(doc.get("fonte") or f"snapshot {self.caminho.name}"))
+
+
+@dataclass(frozen=True)
+class SnapshotCambio:
+    """Respostas de `cambio_resolver` já exportadas. Dia sem linha = sem_cotacao."""
+
+    caminho: Path
+
+    def cotacoes(self, pedidos: Sequence[tuple[str, date]], conhecido_ate: str,
+                 max_defasagem_dias: int) -> Leitura:
         doc = _ler_snapshot(self.caminho)
         return Leitura(tuple(doc["linhas"]), str(doc["lido_em"]),
                        str(doc.get("fonte") or f"snapshot {self.caminho.name}"))
@@ -92,6 +113,7 @@ class PostgrestSoLeitura:
     _PERMITIDOS = {
         ("GET", "/rest/v1/google_ads_campanha_dia"),
         ("POST", "/rest/v1/rpc/receita_as_of"),
+        ("POST", "/rest/v1/rpc/cambio_resolver"),
     }
 
     def __post_init__(self) -> None:
@@ -102,51 +124,110 @@ class PostgrestSoLeitura:
         if not self.chave_service_role:
             raise ValueError("service_role ausente no ambiente")
 
-    def _pedir(self, metodo: str, caminho: str, consulta: dict[str, str],
-               corpo: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
+    def _uma(self, metodo: str, caminho: str, consulta: dict[str, str],
+             corpo: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
+        """Uma requisição; devolve a lista de linhas."""
         if (metodo, caminho) not in self._PERMITIDOS:
             raise PermissionError(f"{metodo} {caminho} não é leitura do contrato")
-        linhas: list[dict[str, Any]] = []
-        deslocamento = 0
-        while True:
-            q = {**consulta, "limit": str(PAGINA), "offset": str(deslocamento)}
-            url = self.url_base.rstrip("/") + caminho + "?" + urllib.parse.urlencode(q, safe="(),.:*")
-            cab = {"apikey": self.chave_service_role,
-                   "Authorization": f"Bearer {self.chave_service_role}",
-                   "Accept": "application/json",
-                   "x-volc-proveniencia": "volc_lab.sombra_carteira"}
-            dados = None
-            if corpo is not None:
-                cab["Content-Type"] = "application/json"
-                dados = json.dumps(corpo).encode()
-            self.chamadas.append((metodo, caminho))
-            status, bruto = self.transporte(metodo, url, cab, dados)
-            if status != 200:
-                raise ContratoQuebrado(f"{caminho}: HTTP {status}")
+        url = self.url_base.rstrip("/") + caminho
+        if consulta:
+            url += "?" + urllib.parse.urlencode(consulta, safe="(),.:*")
+        cab = {"apikey": self.chave_service_role,
+               "Authorization": f"Bearer {self.chave_service_role}",
+               "Accept": "application/json",
+               "x-volc-proveniencia": "volc_lab.sombra_carteira"}
+        dados = None
+        if corpo is not None:
+            cab["Content-Type"] = "application/json"
+            dados = json.dumps(corpo).encode()
+        self.chamadas.append((metodo, caminho))
+        status, bruto = self.transporte(metodo, url, cab, dados)
+        if status != 200:
+            raise ContratoQuebrado(f"{caminho}: HTTP {status}")
+        try:
             pagina = json.loads(bruto)
-            if not isinstance(pagina, list):
-                raise ContratoQuebrado(f"{caminho}: resposta não é lista")
-            linhas.extend(pagina)
-            if len(pagina) < PAGINA:
+        except ValueError as exc:
+            raise ContratoQuebrado(f"{caminho}: resposta não é JSON") from exc
+        if not isinstance(pagina, list):
+            raise ContratoQuebrado(f"{caminho}: resposta não é lista")
+        return pagina
+
+    def _pedir(self, metodo: str, caminho: str, consulta: dict[str, str],
+               corpo: Optional[dict[str, Any]] = None, *, chave: str) -> list[dict[str, Any]]:
+        """Paginação por chave crescente até uma página vazia."""
+        linhas: list[dict[str, Any]] = []
+        ultima: Optional[str] = None
+        while True:
+            q = {**consulta, "order": f"{chave}.asc", "limit": str(PAGINA)}
+            if ultima is not None:
+                q[chave] = f"gt.{ultima}"
+            pagina = self._uma(metodo, caminho, q, corpo)
+            if not pagina:
                 return linhas
-            deslocamento += PAGINA
+            valores = [str(l.get(chave)) if isinstance(l, dict) else None for l in pagina]
+            if any(v in (None, "None") for v in valores):
+                raise ContratoQuebrado(f"{caminho}: linha sem {chave}; não dá para paginar sem perder linha")
+            if ultima is not None and _menor_ou_igual(valores[0], ultima, chave):
+                raise ContratoQuebrado(f"{caminho}: página fora de ordem por {chave}")
+            linhas.extend(pagina)
+            ultima = valores[-1]
 
     def custo_campanha_dia(self, conta: str, inicio: date, fim: date) -> Leitura:
         lido_em = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         linhas = self._pedir("GET", "/rest/v1/google_ads_campanha_dia", {
-            "select": ",".join(CustoDia.CAMPOS),
+            "select": ",".join(("fato_id",) + CustoDia.CAMPOS),
             "customer_id": f"eq.{conta}",
             "and": f"(metric_date.gte.{inicio.isoformat()},metric_date.lte.{fim.isoformat()})",
-            "order": "campaign_id.asc,metric_date.asc,fato_id.asc",
-        })
-        return Leitura(tuple(linhas), lido_em, "PostgREST google_ads_campanha_dia (v12_04)")
+        }, chave="fato_id")
+        return Leitura(tuple(linhas), lido_em, "PostgREST google_ads_campanha_dia (v12_04), paginação por fato_id")
 
     def receita_vigente(self, inicio: date, fim: date) -> Leitura:
         lido_em = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         # O instante da leitura vira o conhecido_ate: o replay pede o mesmo corte.
-        linhas = self._pedir("POST", "/rest/v1/rpc/receita_as_of", {
-            "select": ",".join(ReceitaObservada.CAMPOS),
+        brutas = self._pedir("POST", "/rest/v1/rpc/receita_as_of", {
+            "select": ",".join(("id", "tabela_origem") + ReceitaObservada.CAMPOS),
             "and": f"(data_referencia.gte.{inicio.isoformat()},data_referencia.lte.{fim.isoformat()})",
-            "order": "tabela_origem.asc,id.asc",
-        }, {"p_conhecido_ate": lido_em, "p_fonte": None})
-        return Leitura(tuple(linhas), lido_em, f"PostgREST receita_as_of(conhecido_ate={lido_em}) (v23_01)")
+        }, {"p_conhecido_ate": lido_em, "p_fonte": None}, chave="id")
+        linhas, recolhidas = vigentes_por_chave(brutas)
+        return Leitura(tuple(linhas), lido_em,
+                       f"PostgREST receita_as_of(conhecido_ate={lido_em}) (v23_01), paginação por id"
+                       + (f"; {recolhidas} versão(ões) antiga(s) entre páginas descartada(s)" if recolhidas else ""))
+
+    def cotacoes(self, pedidos: Sequence[tuple[str, date]], conhecido_ate: str,
+                 max_defasagem_dias: int) -> Leitura:
+        lido_em = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        linhas = []
+        for par, dia in pedidos:
+            resposta = self._uma("POST", "/rest/v1/rpc/cambio_resolver", {}, {
+                "p_data": dia.isoformat(), "p_par": par,
+                "p_max_defasagem_dias": max_defasagem_dias, "p_conhecido_ate": conhecido_ate})
+            if len(resposta) != 1 or not isinstance(resposta[0], dict):
+                raise ContratoQuebrado(f"cambio_resolver: {len(resposta)} linhas para {par} {dia}")
+            r = resposta[0]
+            linhas.append({"par": par, "data": dia.isoformat(), "modo": r.get("modo"), "taxa": r.get("taxa"),
+                           "data_cotacao": r.get("data_cotacao"), "defasagem_dias": r.get("defasagem_dias"),
+                           "cotacao_id": r.get("cotacao_id"), "fonte": r.get("fonte")})
+        return Leitura(tuple(linhas), lido_em,
+                       f"PostgREST cambio_resolver(conhecido_ate={conhecido_ate}, max_defasagem={max_defasagem_dias}) (v23_01)")
+
+
+def _menor_ou_igual(a: str, b: str, chave: str) -> bool:
+    if chave == "id":
+        return int(a) <= int(b)
+    return a <= b
+
+
+def vigentes_por_chave(linhas: Sequence[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """Uma linha por (tabela_origem, chave): a de maior id.
+
+    Entre duas páginas pode entrar uma versão nova de uma chave já lida (a
+    transação começou antes do conhecido_ate e commitou depois). Ficam as duas
+    na leitura por chave; vale a mais nova, como no DISTINCT ON da RPC.
+    """
+    por_chave: dict[str, dict[str, Any]] = {}
+    for l in linhas:
+        k = json.dumps([l.get("tabela_origem"), l.get("chave")], sort_keys=True)
+        if k not in por_chave or int(l["id"]) > int(por_chave[k]["id"]):
+            por_chave[k] = l
+    ficam = sorted(por_chave.values(), key=lambda l: int(l["id"]))
+    return ficam, len(linhas) - len(ficam)

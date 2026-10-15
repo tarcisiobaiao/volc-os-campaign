@@ -4,9 +4,10 @@ campanha × dia e devolve uma direção que NÃO é executada.
 É a regra da prova Senac (`volc_lab/prova_vertical.py`) com duas trocas que a
 prova não podia fazer:
 
-1. a receita chega já em BRL pelo câmbio versionado do W12; não há câmbio fixo
-   aqui. Dia cuja cotação está `defasada` ou `sem_cotacao` não tem receita em
-   BRL: fica sem dado, nunca zero;
+1. a receita é convertida pelo câmbio versionado do W12, resolvido no instante
+   da leitura (`cambio_na_leitura`); não há câmbio fixo aqui. Dia cuja cotação
+   está `defasada` ou `sem_cotacao` não tem receita em BRL: fica sem dado,
+   nunca zero;
 2. a atribuição segue a v17_04: só a linha de custo não segmentada; GAM sem o
    roteador de atribuição não reconcilia; GAM e JoinAds no mesmo dia são
    sobreposição (a mesma impressão contada duas vezes), não soma.
@@ -16,12 +17,13 @@ Os limiares são PARÂMETROS DO LABORATÓRIO, não a política do dono.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from typing import Any, Iterable, Optional, Sequence
 
 from volc_lab.brokers.valor_operacional import RecomendacaoShadow
-from volc_lab.sombra_carteira.portas import ContratoQuebrado, CustoDia, ReceitaObservada
+
+from volc_lab.sombra_carteira.portas import Cotacao, ContratoQuebrado, CustoDia, ReceitaObservada
 
 PARAMETROS_PADRAO: dict[str, float] = {
     "janela_dias": 30,               # dias de custo considerados até o as_of
@@ -33,7 +35,8 @@ PARAMETROS_PADRAO: dict[str, float] = {
     "roas_equilibrio": 1.0,
     "roas_aumentar": 1.5,
     "max_custo_sem_receita": 0.10,   # fração do custo maduro sem receita que ainda permite decidir
-    "max_dias_sem_custo": 0.10,      # fração dos dias maduros com custo não lido (NULL) que ainda permite decidir
+    "max_dias_sem_custo": 0.10,
+    "max_defasagem_cambio_dias": 7,  # repassado ao cambio_resolver (o padrão do W12)      # fração dos dias maduros com custo não lido (NULL) que ainda permite decidir
 }
 
 # Estados do dia. Só `reconciliado` entra em ROAS; o resto é ausência nomeada.
@@ -99,6 +102,44 @@ def _soma(valores: Iterable[Optional[float]]) -> Optional[float]:
             return None
         total += v
     return total
+
+
+def cambio_na_leitura(receitas: Sequence[ReceitaObservada],
+                      cotacoes: Sequence[Cotacao]) -> list[ReceitaObservada]:
+    """Troca o câmbio congelado na ingestão pelo resolvido na leitura.
+
+    `receita_brl` e `cambio_modo` gravados pelo W12 são do instante em que a
+    receita chegou e não mudam quando a cotação chega depois. Aqui a receita
+    de origem é convertida pela cotação que o `cambio_resolver` devolveu no
+    corte da leitura. Sem cotação pedida = `sem_cotacao` (ausência, nunca
+    câmbio padrão).
+    """
+    por_chave: dict[tuple[str, date], Cotacao] = {}
+    for c in cotacoes:
+        if (c.par, c.data) in por_chave:
+            raise ContratoQuebrado(f"cotação repetida para {c.par} em {c.data}")
+        por_chave[(c.par, c.data)] = c
+    saida = []
+    for r in receitas:
+        if r.receita is None:
+            saida.append(replace(r, receita_brl=None, cambio_modo="sem_receita", cambio_taxa=None,
+                                 cambio_defasagem_dias=None))
+            continue
+        if r.moeda == "BRL":
+            saida.append(replace(r, receita_brl=r.receita, cambio_modo="moeda_local", cambio_taxa=None,
+                                 cambio_defasagem_dias=None))
+            continue
+        cot = por_chave.get((f"{r.moeda}/BRL", r.data_referencia))
+        if cot is None:
+            saida.append(replace(r, receita_brl=None, cambio_modo="sem_cotacao", cambio_taxa=None,
+                                 cambio_defasagem_dias=None))
+        elif cot.modo in ("exata", "anterior"):
+            saida.append(replace(r, receita_brl=r.receita * cot.taxa, cambio_modo=cot.modo,
+                                 cambio_taxa=cot.taxa, cambio_defasagem_dias=cot.defasagem_dias))
+        else:
+            saida.append(replace(r, receita_brl=None, cambio_modo=cot.modo, cambio_taxa=None,
+                                 cambio_defasagem_dias=cot.defasagem_dias))
+    return saida
 
 
 def _estado_receita(receitas: Sequence[ReceitaObservada]) -> tuple[str, Optional[float], Optional[float]]:

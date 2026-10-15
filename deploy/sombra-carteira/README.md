@@ -13,11 +13,19 @@ recoleta do W11 às 07:15) dispara `volc-sombra-carteira.service`, que roda
 
 1. lê `google_ads_campanha_dia` (custo, fato canônico v12_04: último valor por
    dia, recoleta incluída; nunca `daily_campaign_metrics`);
-2. lê `receita_as_of(agora)` (receita datada com câmbio versionado, v23_01/W12);
-3. grava `gads-<campanha>-sombra-<as_of>/` e `_lotes/<lote>.json` em
+2. lê `receita_as_of(agora)` (receita datada na moeda de origem, v23_01/W12),
+   paginada por `id`;
+3. resolve o câmbio de cada dia NA LEITURA por `cambio_resolver(dia, par, max,
+   agora)` (W12). O `receita_brl` gravado na ingestão não é usado: ele congela o
+   câmbio daquele instante e não melhora quando a PTAX chega depois;
+4. grava `gads-<campanha>-sombra-<as_of>/` e `_lotes/<lote>.json` em
    `VOLC_SOMBRA_DESTINO`.
 
-Só faz GET na tabela e POST na RPC `receita_as_of` (STABLE) do Supabase oficial;
+O custo é paginado por `fato_id` (keyset): uma escrita concorrente não desloca
+páginas, e página fora de ordem ou linha sem chave é recusada.
+
+Só faz GET na tabela e POST nas RPCs `receita_as_of` e `cambio_resolver` (STABLE)
+do Supabase oficial;
 qualquer outro caminho é recusado no código antes da rede. Não lê o Google Ads.
 
 ## Travas
@@ -52,8 +60,11 @@ motor não usa; antes de ligar, prefira um `EnvironmentFile` só com
 
 1. v23_01 (W12) aplicada em produção: sem ela `receita_as_of` não existe e a
    leitura falha (contrato quebrado, saída 3 no motor, 1 no `run.sh`).
-2. Coleta PTAX ligada: sem cotação recente, todo dia fica `cambio_defasado` e
-   toda campanha sai **sem dado** (é ausência, não zero).
+2. Coleta PTAX ligada: sem cotação recente, todo dia fica `cambio_defasado` ou
+   `sem_cotacao` e toda campanha sai **sem dado** (é ausência, não zero). Como o
+   câmbio é resolvido na leitura, a rodada seguinte à chegada da PTAX já converte
+   os dias que ficaram para trás. Com `conhecido_ate`, a cotação legada sem
+   `coletado_em` não aparece (regra do W12): vira `sem_cotacao`.
 3. Coleta de custo (W11) ligada, para o fato ter a janela madura.
 4. O backend que serve a tela precisa enxergar a pasta: `VOLC_EXPERIMENTOS_SHADOW_DIR`
    apontando para uma cópia de `VOLC_SOMBRA_DESTINO` (a Vercel não lê o disco do
