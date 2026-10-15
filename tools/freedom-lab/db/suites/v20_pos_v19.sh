@@ -93,9 +93,25 @@ grep -q "esperado   constant text := '$FP_POS'" "$V20_02_LAB" && ok "âncora con
 echo "▶ v20 · linha de base pós-v19"
 eq "$(v20_proto aplicar --migration "$V20_M/v20_02_ledger_linha_de_base.sql" --sha "$(sha "$V20_M/v20_02_ledger_linha_de_base.sql")" --aprovador laboratorio)" 14 "v20_02 versionada (pré-v19) recusa"
 grep -q "o schema mudou desde a medição" "$V20_DIR"/proto/RECEIPT-v20_02_ledger_linha_de_base-aplicar-*.txt && ok "…pela âncora 695e913a (no lab a base já difere de produção: prova não discriminante sozinha)" || nao "…por outro motivo"
-eq "$(v20_proto aplicar --migration "$V20_02_LAB" --sha "$(sha "$V20_02_LAB")" --aprovador laboratorio --aprovado-em 2026-10-15)" 0 "v20_02 pós-v19 aplica pelo protocolo"
-eq "$(v20_eventos)" "v20_02_ledger_linha_de_base_pos_v19:aplicar,linha_de_base_producao_20261015:linha_de_base,v19_00_users_gatilho_papel_real:aplicar,v8_03_users_rls_policies:aplicar,v19_01_anon_fecha_public:aplicar,v8_05_users_safe_view:aplicar,v19_02_default_acl_public_sem_anon:aplicar,v20_01_ledger_migrations:aplicar" \
-   "ledger: v20_02 pós-v19, linha de base, os 5 eventos da v19 na ordem, v20_01"
+V20_RB="$V20_M/v20_02_pos_v19_rollback.sql"; V20_PROPRIA=v20_02_ledger_linha_de_base_pos_v19
+v20_sem_propria() { P -c "select coalesce(string_agg(versao||':'||operacao||':'||sha256, ',' order by id), '<vazio>') from volc_ops.migracao_evento where versao <> '$V20_PROPRIA'"; }
+V20_ANTES="$(v20_sem_propria)"
+V20_BACKFILL="linha_de_base_producao_20261015:linha_de_base,v19_00_users_gatilho_papel_real:aplicar,v8_03_users_rls_policies:aplicar,v19_01_anon_fecha_public:aplicar,v8_05_users_safe_view:aplicar,v19_02_default_acl_public_sem_anon:aplicar,v20_01_ledger_migrations:aplicar"
+v20_aplica_pos() { v20_proto aplicar --migration "$V20_02_LAB" --sha "$(sha "$V20_02_LAB")" --rollback "$V20_RB" --sha-rollback "$(sha "$V20_RB")" --aprovador laboratorio --aprovado-em 2026-10-15; }
+eq "$(v20_aplica_pos)" 0 "v20_02 pós-v19 aplica pelo protocolo, com o par de rollback"
+eq "$(v20_eventos)" "$V20_PROPRIA:aplicar,$V20_BACKFILL" "ledger: v20_02 pós-v19, linha de base, os 5 eventos da v19 na ordem, v20_01"
+
+echo "▶ v20 · rollback da v20_02 pós-v19"
+eq "$(v20_proto reverter --versao "$V20_PROPRIA" --rollback "$V20_RB" --sha-rollback "$(sha "$V20_RB")" --aprovador laboratorio)" 0 "rollback pelo protocolo"
+eq "$(v20_sem_propria)" "$V20_ANTES" "ledger volta exatamente ao estado anterior (fora o próprio aplicar/reverter)"
+eq "$(P -c "select estado from volc_ops.migracao_estado where versao='$V20_PROPRIA'")" revertida "estado: v20_02 pós-v19 revertida"
+eq "$(P -c "select md5 from volc_ops.fingerprint_schema() where categoria='_TOTAL'")" "$FP_POS" "rollback do ledger não mexe no schema (a v19 continua aplicada)"
+eq "$(v20_proto reverter --versao "$V20_PROPRIA" --rollback "$V20_RB" --sha-rollback "$(sha "$V20_RB")" --aprovador laboratorio)" 12 "reverter de novo → não aplicada (12)"
+{ echo "BEGIN;"; cat "$V20_RB" | sed '/^BEGIN;$/d; /^COMMIT;$/d'; echo "ROLLBACK;"; } > "$V20_DIR/rb-solto.sql"
+P -f - < "$V20_DIR/rb-solto.sql" > "$V20_DIR/rb-solto.out" 2>&1 && nao "rollback solto com ledger vazio passou" || \
+  { grep -q "backfill incompleto" "$V20_DIR/rb-solto.out" && ok "rollback sem backfill → recusado (nada a desfazer)" || nao "recusou por outro motivo"; }
+eq "$(v20_aplica_pos)" 0 "v20_02 pós-v19 reaplica depois do rollback"
+eq "$(P -c "select string_agg(versao||':'||operacao, ',' order by id) from volc_ops.migracao_evento where versao <> '$V20_PROPRIA'")" "$V20_BACKFILL" "backfill de novo, idêntico"
 eq "$(P -c "select count(*) from volc_ops.migracao_evento where (versao like 'v19%' or versao like 'v8_0%') and rollback_sha256 = '$(sha "$V20_M/v19_99_rollback.sql")'")" 5 "cada evento v19 leva o par v19_99"
 eq "$(P -c "select count(*) from volc_ops.migracao_evento where (versao like 'v19%' or versao like 'v8_0%') and aprovador = 'laboratorio' and fingerprint is null")" 4 "aprovador do protocolo; fingerprint só no 1º evento (os outros não foram medidos)"
 
@@ -106,6 +122,8 @@ eq "$(v20_gen importar "$REC2" --saida "$V20_DIR/lab/imp2.sql")" 0 "importação
 v20_imp "$V20_DIR/lab/imp2.sql" "" && nao "importação sem aprovador passou" || { grep -q "sem aprovador" "$V20_DIR/imp.out" && ok "importação sem aprovador → recusada" || nao "recusou por outro motivo"; }
 v20_imp "$V20_DIR/lab/imp2.sql" && ok "importação do passo 2 aplicada com aprovador" || nao "importação do passo 2 falhou"
 eq "$(P -c "select estado from volc_ops.migracao_estado where versao='v8_06_users_sensitive_columns_revoke'")" aplicada "ledger: v8_06 aplicada"
+eq "$(v20_proto reverter --versao "$V20_PROPRIA" --rollback "$V20_RB" --sha-rollback "$(sha "$V20_RB")" --aprovador laboratorio)" 14 "rollback da v20_02 pós-v19 com evento posterior (v8_06) → recusado"
+grep -q "dependem da linha de base" "$V20_DIR"/proto/RECEIPT-"$V20_PROPRIA"-reverter-*.txt && ok "…porque outra versão se ancorou na base" || nao "…por outro motivo"
 v20_imp "$V20_DIR/lab/imp2.sql" && nao "reimportar o mesmo recibo passou" || \
   { grep -q "reaplicação recusada\|recibo não corresponde" "$V20_DIR/imp.out" && ok "reimportar o passo 2 → recusado" || nao "reimportação falhou por outro motivo"; }
 eq "$(v20_gen importar "$REC2" --saida "$V20_DIR/lab/imp2.sql")" 1 "importar de novo para o mesmo arquivo → recusado (nunca sobrescreve)"
@@ -119,5 +137,6 @@ eq "$(P -c "select string_agg(versao||'='||estado, ',' order by versao) from vol
 v20_imp "$V20_DIR/lab/impr.sql" && nao "reimportar o rollback passou" || { grep -q "nada a importar" "$V20_DIR/imp.out" && ok "reimportar o rollback → recusado (nada a importar)" || nao "recusou por outro motivo"; }
 eq "$(sqlstate "INSERT INTO volc_ops.migracao_evento(versao,operacao,arquivo,sha256,aprovador) VALUES ('v19_00_users_gatilho_papel_real','reverter','x','$(printf '0%.0s' $(seq 64))','desvio')")" P0001 \
    "reverter de novo, pulando o importador → recusado pelo banco"
-{ echo "  \"harness_ledger\": {\"ledger_recibo_incidente.py\": \"$(sha "$V20_GEN")\", \"aplicar-incidente-anon-w4.sh\": \"$(sha "$V20_W4")\", \"migracao-protocolo.sh\": \"$(sha "$V20_PROTO")\", \"v20_02_pos_v19_gerada\": \"$(sha "$V20_02_LAB")\"}"; } > "$RECIBOS/harness-ledger.json"
+{ echo "{\"harness_ledger\": {\"ledger_recibo_incidente.py\": \"$(sha "$V20_GEN")\", \"aplicar-incidente-anon-w4.sh\": \"$(sha "$V20_W4")\", \"migracao-protocolo.sh\": \"$(sha "$V20_PROTO")\", \"v20_02_pos_v19_gerada\": \"$(sha "$V20_02_LAB")\", \"v20_02_pos_v19_rollback.sql\": \"$(sha "$V20_RB")\"}}"; } > "$RECIBOS/harness-ledger.json"
+python3 -I -m json.tool "$RECIBOS/harness-ledger.json" >/dev/null && ok "harness-ledger.json é JSON válido" || nao "harness-ledger.json inválido"
 P -f - < "$FP" > "$RECIBOS/fp-final.out" 2>&1
