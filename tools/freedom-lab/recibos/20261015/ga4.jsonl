@@ -1,0 +1,2 @@
+{"broker": "ga4", "contas": 8, "em": "2026-10-15T10:24:37Z", "erros_http": 0, "operacao": "leitura:inventario", "properties": 12, "streams": 13}
+{"broker": "ga4", "em": "2026-10-15T10:24:51Z", "metadata_primeira_property": {"dimensions": 376, "metrics": 89}, "operacao": "leitura:metadata+runReport_agregado_sem_dimensao", "properties_com_sessoes_7d": 6, "properties_sem_linha_7d": 6}

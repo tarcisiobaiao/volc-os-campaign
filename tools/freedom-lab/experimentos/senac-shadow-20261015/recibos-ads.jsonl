@@ -1,0 +1,1 @@
+{"broker": "google_ads", "customer": "547****539", "em": "2026-10-15T10:26:15Z", "operacao": "leitura:gaql", "payload_sha256": "453640d587b60196d0620e74c15f0417fe385dcc7c60c280090cbf9560b5185f", "request_ids": [], "resultado": "lido:20", "trava": {"destravado_no_codigo": false, "env_presente": false, "escrita_permitida": false}, "versao_api": "v25"}

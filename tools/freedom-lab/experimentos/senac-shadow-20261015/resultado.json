@@ -1,0 +1,60 @@
+{
+ "campanha": "24278665189",
+ "as_of": "2026-10-15",
+ "corte_maturidade": "2026-10-12",
+ "parametros": {
+  "cambio_usd_brl": 5.25,
+  "dias_imaturos": 3,
+  "min_cliques_maduros": 200,
+  "estresse_receita": 2.0,
+  "estresse_cambio": 1.5,
+  "roas_equilibrio": 1.0,
+  "roas_aumentar": 1.5,
+  "max_custo_sem_receita": 0.1
+ },
+ "codigo_sha256": "a1ccd5f18ccc83ac66a910af54ba035846cb0f96cbf9e71bd8c416a93593bf88",
+ "janela_madura": {
+  "dias": 16,
+  "custo_brl": 554.75,
+  "receita_brl": 40.79,
+  "cliques": 634,
+  "roas": 0.0735,
+  "cpc": 0.875,
+  "rpc": 0.0643,
+  "contribuicao_bruta": -513.96
+ },
+ "janela_madura_recente": {
+  "dias": 5,
+  "custo_brl": 299.07,
+  "receita_brl": 27.46,
+  "cliques": 354,
+  "roas": 0.0918,
+  "cpc": 0.8448,
+  "rpc": 0.0776,
+  "contribuicao_bruta": -271.61
+ },
+ "fracao_custo_maduro_sem_receita": 0.0006,
+ "valor_conversao_google_total": 2380.0,
+ "recomendacao": {
+  "campanha": "24278665189",
+  "direcao": "pausar",
+  "motivos": [
+   "ROAS maduro 0.073 em 634 cliques",
+   "ROAS sob estresse (receita ×2.0, câmbio ×1.5) = 0.220",
+   "mesmo no estresse a campanha não paga o próprio custo"
+  ],
+  "valor_sugerido": null,
+  "lacunas": [
+   "receita sem histórico as-of (upsert do último valor); maturidade inferida pela regra D-1, não auditada",
+   "câmbio fixo 5.25 (o mesmo do app); sem câmbio diário",
+   "gam_metrics com 0 linhas para a campanha; ausência real ou RLS não distinguida",
+   "receita JoinAds lida sob RLS da sessão humana e sem project_id; receita oculta por RLS não é visível aqui",
+   "revshare e imposto vêm da configuração da tela, não de contrato; ROAS aqui é bruto",
+   "só grão campanha × dia; sem receita por URL, sessão, hora ou placement",
+   "conversions_value do Google é valor estático por conversão, não receita; ignorado na decisão",
+   "limiares são parâmetros do laboratório, não a política do dono (volc_ads/inteligencia_decisao/politicas.py)",
+   "dias maduros com custo e sem receita (ausentes, não zero): ['2026-10-01'] = 0.1% do custo maduro"
+  ],
+  "executada": false
+ }
+}

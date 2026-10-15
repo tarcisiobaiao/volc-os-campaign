@@ -1,0 +1,34 @@
+  ✓ candidata aplicou sobre imagem 15.8 + semente
+  ✓ itens ausentes da allowlist pulados com NOTICE
+  ✓ harness · SET ROLE pelo postgres é NEGADO na imagem (por isso a leitura entra por login)
+  ✓ harness · login real da identidade de leitura funciona
+  ✓ leitura · fato de mídia: SELECT permitido
+  ✓ leitura · RLS forçada: vê pela policy volc_leitura_le
+  ✓ leitura · view security_invoker: vê
+  ✓ leitura · users: SELECT negado
+  ✓ leitura · credenciais: SELECT negado
+  ✓ leitura · INSERT negado
+  ✓ leitura · CREATE em public negado
+  ✓ anon · tabela fechada: negado
+  ✓ anon · users aberta pelo default ACL da imagem (defeito reproduzido)
+  ✓ authenticated · tabela fechada: negado
+  ✓ service_role · BYPASSRLS atravessa RLS
+  ✓ leitura · sem BYPASSRLS
+  ✓ imagem · supabase_read_only_user TEM BYPASSRLS (inadequado como leitor)
+  ✓ leitura · default_transaction_read_only=on
+  ✓ leitura · sessão de login nasce read-only
+  ✓ leitura · INSERT com sessão read-only falha 25006 antes do GRANT
+  ✓ LIMITE DECLARADO · SECURITY DEFINER por PUBLIC ainda executa (fecha na v18_02)
+  ✓ defesa em profundidade · sessão read-only barra o definer (25006)
+  ✓ sonda_acesso.sql executou
+  ✓ sonda S8 vê users exposta a anon
+  ✓ fingerprint executou
+  ✓ reaplicação por cima recusada pela guarda
+  ✓ rollback aplicou
+  ✓ papéis removidos
+  ✓ policies removidas
+  ✓ rollback devolve o fingerprint exato do estado anterior
+  ✓ rollback idempotente
+  ✓ candidata reaplicou após rollback
+  ✓ fingerprint idêntico entre 1ª e 2ª aplicação
+  ✓ fingerprint muda com a migration

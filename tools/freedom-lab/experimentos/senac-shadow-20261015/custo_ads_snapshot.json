@@ -1,0 +1,151 @@
+{
+ "_sobre": "Custo diário lido pelo broker Google Ads (search_stream, leitura).",
+ "conta": "547****539",
+ "campaign_id": "24278665189",
+ "moeda": "BRL",
+ "fuso": "America/Sao_Paulo",
+ "gaql_sha256": "453640d587b60196d0620e74c15f0417fe385dcc7c60c280090cbf9560b5185f",
+ "lido_em": "2026-10-15T10:26:15Z",
+ "linhas": [
+  {
+   "date": "2026-09-21",
+   "clicks": 17,
+   "cost_micros": 34658206,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-22",
+   "clicks": 3,
+   "cost_micros": 6060000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-24",
+   "clicks": 67,
+   "cost_micros": 54650000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-25",
+   "clicks": 51,
+   "cost_micros": 43760000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-26",
+   "clicks": 52,
+   "cost_micros": 48920000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-27",
+   "clicks": 36,
+   "cost_micros": 34230000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-28",
+   "clicks": 34,
+   "cost_micros": 25820000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-09-29",
+   "clicks": 14,
+   "cost_micros": 6150000,
+   "conversions": 2.0,
+   "conversions_value": 20.0
+  },
+  {
+   "date": "2026-09-30",
+   "clicks": 1,
+   "cost_micros": 190000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-10-01",
+   "clicks": 2,
+   "cost_micros": 330000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-10-03",
+   "clicks": 1,
+   "cost_micros": 220000,
+   "conversions": 0.0,
+   "conversions_value": 0.0
+  },
+  {
+   "date": "2026-10-05",
+   "clicks": 4,
+   "cost_micros": 1020000,
+   "conversions": 3.0,
+   "conversions_value": 30.0
+  },
+  {
+   "date": "2026-10-07",
+   "clicks": 66,
+   "cost_micros": 59660000,
+   "conversions": 30.0,
+   "conversions_value": 300.0
+  },
+  {
+   "date": "2026-10-08",
+   "clicks": 74,
+   "cost_micros": 59520000,
+   "conversions": 28.0,
+   "conversions_value": 280.0
+  },
+  {
+   "date": "2026-10-09",
+   "clicks": 80,
+   "cost_micros": 59980000,
+   "conversions": 30.0,
+   "conversions_value": 300.0
+  },
+  {
+   "date": "2026-10-10",
+   "clicks": 67,
+   "cost_micros": 60000000,
+   "conversions": 34.0,
+   "conversions_value": 340.0
+  },
+  {
+   "date": "2026-10-11",
+   "clicks": 67,
+   "cost_micros": 59910000,
+   "conversions": 27.0,
+   "conversions_value": 270.0
+  },
+  {
+   "date": "2026-10-12",
+   "clicks": 56,
+   "cost_micros": 48160000,
+   "conversions": 30.0,
+   "conversions_value": 300.0
+  },
+  {
+   "date": "2026-10-13",
+   "clicks": 40,
+   "cost_micros": 30080000,
+   "conversions": 18.0,
+   "conversions_value": 180.0
+  },
+  {
+   "date": "2026-10-14",
+   "clicks": 69,
+   "cost_micros": 50020000,
+   "conversions": 36.0,
+   "conversions_value": 360.0
+  }
+ ]
+}

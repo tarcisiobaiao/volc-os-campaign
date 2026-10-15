@@ -1,0 +1,148 @@
+{
+ "experiment_id": "senac-shadow-20261015",
+ "hypothesis": {
+  "statement": "No grão campanha × dia reconciliável, a campanha Senac 24278665189 não paga o próprio custo na janela madura",
+  "falsified_if": "ROAS bruto reconciliado da janela madura >= 1,0, ou ROAS sob estresse (receita ×2, câmbio ×1,5) >= 1,0",
+  "primary_metric": "roas_maduro",
+  "direction": "decrease",
+  "min_effect": 0.5
+ },
+ "baseline": {
+  "description": "equilíbrio: receita bruta = custo (ROAS 1,0)",
+  "values": {
+   "roas": 1.0
+  }
+ },
+ "input_snapshot": {
+  "id": "senac-custo-ads+receita-joinads-20261015",
+  "source": "custo: broker Google Ads (search_stream, leitura) 15/10 10:26Z; receita: joinads_metrics lida pelo Leitor E via sessão do app 15/10 10:05Z",
+  "sha256": "4ce831d2389226efda167492a0b93431a97fc42dcc9df1009bff940ad7477dbf",
+  "captured_at": "2026-10-15T10:26:15Z",
+  "contains_pii": false
+ },
+ "method": {
+  "description": "DuckDB: full outer join custo × receita por data, com campanha conferida e uma linha por dia de cada lado; maturidade = exclui 3 últimos dias no fuso da conta a partir da leitura mais velha; receita ausente nula; câmbio fixo 5,25; decisão por ROAS maduro, estresse e fração de custo sem receita. Inspirada na v17_04, sem project_id nem roteador GAM.",
+  "seeds_not_applicable_reason": "transformação determinística, sem amostragem",
+  "replay_without_api": true,
+  "external_writes": 0,
+  "external_calls": {
+   "mode": "none",
+   "count": 0
+  },
+  "environment": {
+   "base_ref": "eea474459a0fc7a5076e81e43b71970a5a50390a",
+   "lock_sha256": "355102c10b4a60995085e9aebf0706e08b73d59e5feec85f0e82840a3ba31feb",
+   "codigo_sha256": "a1ccd5f18ccc83ac66a910af54ba035846cb0f96cbf9e71bd8c416a93593bf88"
+  }
+ },
+ "dependencies": [
+  {
+   "package": "duckdb",
+   "version": "1.5.6"
+  },
+  {
+   "package": "pandas",
+   "version": "3.0.6"
+  }
+ ],
+ "metrics": {
+  "time": {
+   "unit": "s (replay, medido em 15/10)",
+   "value": 1.401,
+   "kind": "observed"
+  },
+  "cost": {
+   "unit": "USD",
+   "value": 0,
+   "kind": "observed"
+  },
+  "quality": {
+   "unit": "dias reconciliados maduros",
+   "value": 16,
+   "kind": "observed"
+  }
+ },
+ "result": {
+  "observed": {
+   "roas_maduro": {
+    "baseline": 1.0,
+    "candidate": 0.0735
+   },
+   "janela_madura": {
+    "dias": 16,
+    "custo_brl": 554.75,
+    "receita_brl": 40.79,
+    "cliques": 634,
+    "roas": 0.0735,
+    "cpc": 0.875,
+    "rpc": 0.0643,
+    "contribuicao_bruta": -513.96
+   },
+   "janela_madura_recente": {
+    "dias": 5,
+    "custo_brl": 299.07,
+    "receita_brl": 27.46,
+    "cliques": 354,
+    "roas": 0.0918,
+    "cpc": 0.8448,
+    "rpc": 0.0776,
+    "contribuicao_bruta": -271.61
+   },
+   "direcao_shadow": "pausar",
+   "fracao_custo_maduro_sem_receita": 0.0006
+  },
+  "estimated": {
+   "roas_sob_estresse": 0.2205
+  },
+  "hypothesis_outcome": "supported",
+  "reproducible": "identical"
+ },
+ "limitations": [
+  "receita sem histórico as-of (upsert do último valor); maturidade inferida pela regra D-1, não auditada",
+  "câmbio fixo 5.25 (o mesmo do app); sem câmbio diário",
+  "gam_metrics com 0 linhas para a campanha; ausência real ou RLS não distinguida",
+  "receita JoinAds lida sob RLS da sessão humana e sem project_id; receita oculta por RLS não é visível aqui",
+  "revshare e imposto vêm da configuração da tela, não de contrato; ROAS aqui é bruto",
+  "só grão campanha × dia; sem receita por URL, sessão, hora ou placement",
+  "conversions_value do Google é valor estático por conversão, não receita; ignorado na decisão",
+  "limiares são parâmetros do laboratório, não a política do dono (volc_ads/inteligencia_decisao/politicas.py)",
+  "dias maduros com custo e sem receita (ausentes, não zero): ['2026-10-01'] = 0.1% do custo maduro",
+  "a coleta do custo foi 1 leitura GAQL ao Google Ads (recibos-ads.jsonl), separada do replay, que não chama API",
+  "receita é snapshot lido pelo Leitor E via sessão do app; o broker Supabase de leitura ainda não existe em produção (v18_01 não aplicada)"
+ ],
+ "decision": "adopt",
+ "rollback_or_cleanup": {
+  "steps": [
+   "nenhuma ação externa executada; nada a desfazer",
+   "banco descartável não usado neste experimento"
+  ],
+  "done": true,
+  "verified_by": "recibos-ads.jsonl: trava fechada, operacao leitura:gaql"
+ },
+ "artifacts": [
+  {
+   "path": "custo_ads_snapshot.json",
+   "sha256": "7f35d179f87e765c56483f931500bd7128ff1186e92bad3ed226a466160d54ed"
+  },
+  {
+   "path": "receita_joinads_snapshot.json",
+   "sha256": "055cbe4b2cb9e4298e81ee2abbc2e91b841f7b516a7eace3ff34e7de36058dde"
+  },
+  {
+   "path": "resultado.json",
+   "sha256": "fcf89d416c7d020dd1b00100f1a9b505dc3ae1c5f51f63d28187d81821266cc9"
+  },
+  {
+   "path": "transformacao.csv",
+   "sha256": "dd007e94b0806f10246bce153830af9ffda181535d79bcc137d01b1d5063641b"
+  },
+  {
+   "path": "recibos-ads.jsonl",
+   "sha256": "780721ed33ce35bc4776ac7a37e2207d02c8db18c6e7fb7df52afcf1274b7bd1"
+  },
+  {
+   "path": "preview.html",
+   "sha256": "fb5ae7b208299444973d8c161591e2ae48ec5729d269c8a6f9c6f9191fb0aa57"
+  }
+ ]
+}

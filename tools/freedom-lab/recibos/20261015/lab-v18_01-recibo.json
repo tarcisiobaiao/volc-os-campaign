@@ -1,0 +1,8 @@
+{
+  "imagem": "supabase/postgres:15.8.1.085", "versao": "15.8",
+  "migration": "v18_01_identidade_leitura_minima.PROPOSTA.sql", "migration_sha256": "3d20bd9a6bc5bf4c7fece5763a748c36e93c5c4048ec9c9b98414021b2dfdf15",
+  "rollback": "v18_01_identidade_leitura_minima_rollback.PROPOSTA.sql", "rollback_sha256": "d425b882401b4daa522194def5d3165710c51c402cda038877951d5a7231ea6d",
+  "semente_sha256": "6bc84f319ed1e3d6067e08997700aed01dd052308b2baffa06cb072bc4a6d761",
+  "fingerprint_total_pos": "_TOTAL|34|6584d395cde6bf2c556d7690f1087153",
+  "verificacoes": 34, "falhas": 0, "producao_tocada": false
+}

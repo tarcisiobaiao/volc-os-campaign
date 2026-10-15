@@ -1,0 +1,1 @@
+{"accounts": 15, "broker": "gtm", "containers": 23, "duracao_s": 215.9, "em": "2026-10-15T10:33:47Z", "erros_http": {}, "escopos_efetivos": ["https://www.googleapis.com/auth/tagmanager.readonly"], "operacao": "leitura:inventario", "recuos_429": 0, "tags": 611, "triggers": 984, "variables": 326, "workspaces": 24, "workspaces_inventariados": 24}
