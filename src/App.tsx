@@ -46,6 +46,10 @@ import PaginaDoFunilPage from "./pages/redator/PaginaDoFunilPage";
 const BancadaVisual = import.meta.env.DEV
   ? React.lazy(() => import("./pages/qa/BancadaVisual"))
   : null;
+/** Bancada de design V3 — mesmo guarda: o `import()` só existe no ramo DEV. */
+const BancadaDeDesign = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/qa/BancadaDeDesign"))
+  : null;
 import HubDeTrafegoPage from "./pages/trafego/HubDeTrafegoPage";
 import QuadroDeOportunidades from "./components/trafego/oportunidades/QuadroDeOportunidades";
 import NovaCampanhaPage from "./pages/trafego/NovaCampanhaPage";
@@ -147,6 +151,16 @@ const App = () => (
                 element={
                   <React.Suspense fallback={null}>
                     <BancadaVisual />
+                  </React.Suspense>
+                }
+              />
+            )}
+            {import.meta.env.DEV && BancadaDeDesign != null && (
+              <Route
+                path="/qa/design"
+                element={
+                  <React.Suspense fallback={null}>
+                    <BancadaDeDesign />
                   </React.Suspense>
                 }
               />
