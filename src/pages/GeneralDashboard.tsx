@@ -1339,7 +1339,7 @@ export default function GeneralDashboard() {
                         <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue UTM</div>
                       </td>
                       <td className={isMobile ? 'p-2' : 'p-4'}>
-                        <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} font-bold tabular rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
+                        <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} font-bold tabular rounded-lg border ${retornoExcedentePct(project.revenue, project.investment) == null ? 'border-border text-muted-foreground' : getROIColor(calculateROAS(project.revenue, project.investment))}`}>
                           {textoDePontosPct(retornoExcedentePct(project.revenue, project.investment), 0)}
                         </div>
                         <div className={`flex items-center gap-1 ${isMobile ? 'mt-0.5' : 'mt-1'}`}>
