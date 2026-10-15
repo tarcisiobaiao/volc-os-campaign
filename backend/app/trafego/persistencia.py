@@ -831,6 +831,11 @@ class _Cliente:
 
         Keyset, e não `offset`: o inventário muda entre páginas, e um `offset`
         pularia ou repetiria linha sem nada dizendo isso.
+
+        ⚠️ Termina só na página **vazia**, nunca na página curta. Com
+        `db-max-rows` abaixo de `pagina`, a primeira resposta já vem curta e
+        parar ali devolveria um terço das linhas como se fossem todas (custo
+        "real" menor, sem erro). A página extra custa uma consulta por índice.
         """
         saida: List[Dict[str, Any]] = []
         ultimo: Optional[str] = None
@@ -839,10 +844,15 @@ class _Cliente:
             if ultimo is not None:
                 p[chave] = f"gt.{ultimo}"
             lote = await self._get(alvo, p)
-            saida += lote
-            if len(lote) < pagina:
+            if not lote:
                 return saida
-            ultimo = str(lote[-1].get(chave) or "")
+            saida += lote
+            anterior, ultimo = ultimo, str(lote[-1].get(chave) or "")
+            if ultimo and ultimo == anterior:
+                # O servidor ignorou o `gt.`: seguir seria laço infinito, e
+                # parar em silêncio devolveria leitura incompleta como completa.
+                raise RuntimeError(
+                    f"paginação de {alvo} não avançou além de {chave}={ultimo}")
             if not ultimo:
                 # Sem chave não há como continuar, e continuar do zero seria um
                 # laço infinito. Melhor devolver o que veio e dizer no log.

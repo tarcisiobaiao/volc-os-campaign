@@ -236,6 +236,10 @@ app.include_router(trafego_meta_ativos.router)
 # credencial muda o que a rota pode fazer, e misturá-los faria o portão de
 # serviço virar uma exceção dentro do portão de sessão.
 trafego_inventario.registrar(app)
+# Custo do período pelo fato canônico campanha-dia (v12_04/W11). Só leitura;
+# fonte distinta do espelho do inventário, por isso router próprio.
+from app.routers import trafego_custo
+app.include_router(trafego_custo.router)
 # Gestão de campanhas no ar sobre o ledger v10_02 (propor → aprovar → aplicar →
 # verificar → reverter). Router próprio: `routers/trafego.py` cria campanha, e
 # criar e gerir são ciclos que não se derrubam juntos. Importa o `volc_ads` tarde
