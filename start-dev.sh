@@ -138,6 +138,28 @@ if [ "$RUN_BACKEND" -eq 1 ]; then
   ) & pids+=($!)
 fi
 
+# ⚠️ O front fala com o backend que ESTE script subiu, não com o que um .env diz.
+#
+# Medido em 15/10/2026: `.env.local` trazia `VITE_PAUTADOR_API_URL=...:8011`,
+# sobra de uma sessão que rodava o FastAPI na 8011. O Vite dá a `.env.local`
+# precedência sobre `.env`, então o front chamava a 8011 com o backend na 8010
+# — sete telas abriam com status 0 e nenhum /health acusava. Variável já
+# exportada no processo vence qualquer `.env*` do Vite; por isso o export aqui.
+# Com --skip-backend nada é injetado: vale a URL configurada (ex.: remota).
+if [ "$RUN_BACKEND" -eq 1 ]; then
+  URL_PAUTADOR="http://localhost:$PAUTADOR_PORT"
+  for f in .env.local .env; do
+    [ -f "$f" ] || continue
+    url_env=$(sed -n 's/^VITE_PAUTADOR_API_URL=//p' "$f" | tail -n 1 | tr -d "\"'[:space:]")
+    [ -n "$url_env" ] || continue
+    if [ "${url_env%/}" != "$URL_PAUTADOR" ]; then
+      echo "⚠️  $f define VITE_PAUTADOR_API_URL=$url_env; usando $URL_PAUTADOR (backend desta execução)."
+    fi
+    break   # só o primeiro arquivo que define a chave é o que o Vite usaria
+  done
+  export VITE_PAUTADOR_API_URL="$URL_PAUTADOR"
+fi
+
 echo "▶ Front    → http://localhost:$FRONT_PORT (Vite, hot-reload)"
 npm run dev & pids+=($!)
 
