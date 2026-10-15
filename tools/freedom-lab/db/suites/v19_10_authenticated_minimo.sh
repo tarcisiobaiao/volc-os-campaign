@@ -54,7 +54,9 @@ eq "$(anon_fechado)" "FECHADO" "anon FECHADO antes da v19_10"
 # Saída: nome|OK|<linhas devolvidas + efeito> ou nome|ERRO|<mensagem>. RETURNING
 # sem id de sequência (a sequência avança mesmo com ROLLBACK).
 # ---------------------------------------------------------------------------
-EFEITO="RESET ROLE; SELECT 'dcm', campaign_id, date, revenue, revenue_converted, revenue_converted_revshare, commission_operator FROM public.daily_campaign_metrics ORDER BY 2,3; SELECT 'dpm', project_id, revenue_converted, revenue_converted_revshare FROM public.daily_project_metrics ORDER BY 2; SELECT 'ads', url, revenue_converted FROM public.adsense_metrics ORDER BY 2; SELECT 'gam', utm_campaign_value, revenue_converted FROM public.gam_metrics ORDER BY 2; SELECT 'proj', count(*) FROM public.projects;"
+# Efeito medido na campanha do fluxo (123456789). Campanhas alheias têm prova
+# própria: a v19_10 deixa de recalculá-las (ciclo 3 da revisão).
+EFEITO="RESET ROLE; SELECT 'dcm', campaign_id, date, revenue, revenue_converted, revenue_converted_revshare, commission_operator FROM public.daily_campaign_metrics WHERE campaign_id='123456789' ORDER BY 2,3; SELECT 'dpm', project_id, revenue_converted, revenue_converted_revshare FROM public.daily_project_metrics ORDER BY 2; SELECT 'ads', url, revenue_converted FROM public.adsense_metrics ORDER BY 2; SELECT 'gam', utm_campaign_value, revenue_converted FROM public.gam_metrics ORDER BY 2; SELECT 'proj', count(*) FROM public.projects;"
 run() {
   local out err
   out=$(printf '\\set VERBOSITY terse\nBEGIN;\n%s\nSET LOCAL ROLE authenticated;\nSET LOCAL request.jwt.claims = %s;\n%s\n%s\nROLLBACK;\n' \
@@ -214,6 +216,8 @@ eq "${n_reg:-0}" "0" "os $(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ') flux
 grep '^MORTO_' "$R/fluxos-depois.txt" | cut -d'|' -f1,2 > "$R/fluxos-mortos-depois.txt"
 echo "  (informativo) mortos/já quebrados depois: $(tr '\n' ' ' < "$R/fluxos-mortos-depois.txt")"
 
+eq "$(run vizinho "$ADMIN" "" "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789','p1.example/v', true);" "$VITIMA" | grep -o 'vitima|[^ ]*')" "$(run base "$ADMIN" "" "SELECT 1;" "$VITIMA" | grep -o 'vitima|[^ ]*')" "gravar URL na própria campanha não recalcula a campanha alheia (antes recalculava todas)"
+grep -o 'vitima|[^ ]*' <(run vizinho_antes "$ADMIN" "" "SELECT 1;" "$VITIMA") > /dev/null
 echo "▶ 4. OPERADOR recusado"
 ataques "$R/ataques-depois.txt"
 while IFS='|' read -r nome st <&3; do
@@ -293,10 +297,11 @@ diff "$R/fp0.txt" "$R/fp-rollback.txt" > "$R/diff-fp0-rollback.txt" && ok "rollb
 defacl "$R/defacl-rollback.txt"
 [ -s "$R/defacl-rollback.txt" ] && diff -q "$R/defacl0.txt" "$R/defacl-rollback.txt" >/dev/null && ok "rollback devolve o default ACL de public exato" || nao "default ACL diferente (ou vazio) depois do rollback"
 # mutação da própria checagem: um GRANT padrão a mais tem de aparecer como diferença
-PA -c "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO authenticated" >/dev/null
+PA -c "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO anon" >/dev/null
 defacl "$R/defacl-mutado.txt"
 diff -q "$R/defacl0.txt" "$R/defacl-mutado.txt" >/dev/null && nao "a checagem de default ACL não vê um GRANT a mais (prova vazia)" || ok "a checagem de default ACL pega um GRANT padrão a mais (mutação)"
-PA -c "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE SELECT ON TABLES FROM authenticated" >/dev/null
+PA -c "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE SELECT ON TABLES FROM anon" >/dev/null
+defacl "$R/defacl-desmutado.txt"; diff -q "$R/defacl0.txt" "$R/defacl-desmutado.txt" >/dev/null && ok "default ACL volta ao da base depois de desfazer a mutação" || nao "default ACL não voltou depois da mutação"
 aplicar supabase_admin v19_10_rollback.sql && ok "rollback idempotente" || nao "rollback idempotente"
 fluxos "$R/fluxos-pos-rollback.txt"
 eq "$(comparar "$R/fluxos-antes.txt" "$R/fluxos-pos-rollback.txt" "$R/dif-pos-rollback.txt")" "0" "fluxos depois do rollback = antes"
