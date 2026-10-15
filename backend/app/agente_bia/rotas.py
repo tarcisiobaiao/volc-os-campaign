@@ -40,6 +40,7 @@ from app.agente_bia.aplicacao import (
     ContextoLido,
     ConversaNaoEncontrada,
     EnvioRecusado,
+    prazo_de_expiracao,
 )
 from app.agente_bia.gateway import contexto_campanha as ctxc
 from app.agente_bia.gateway.catalogo import (
@@ -71,8 +72,10 @@ def configuracao_da_bia(settings: Settings = Depends(get_settings)) -> configura
             "codigo": "configuracao_invalida", "mensagem": "Bia mal configurada no servidor."})
 
 
-def exigir_bia_ligada(cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_bia)) -> None:
-    if not cfg.ligada:
+def exigir_bia_ligada(settings: Settings = Depends(get_settings)) -> None:
+    # Lida direto do Settings, ANTES de validar o resto: com a flag desligada a
+    # superfície não existe, nem para dizer "mal configurada" (revisão #7).
+    if (settings.bia_enabled or "").strip() != "1":
         raise HTTPException(status_code=404, detail="Not Found")
 
 
@@ -219,7 +222,8 @@ async def estado(cfg: configuracao.ConfiguracaoDaBia = Depends(configuracao_da_b
         "aviso": dom.AVISO_MODO_CONSULTA,
         "motor_configurado": cfg.motor_configurado,
         "limites": {"max_caracteres": cfg.max_caracteres,
-                    "envios_por_minuto": cfg.limite_por_minuto},
+                    "envios_por_minuto": cfg.limite_por_minuto,
+                    "espera_maxima_s": prazo_de_expiracao(cfg.timeout_s)},
         "capacidades": cat.nomes(),
     }
 

@@ -19,6 +19,7 @@ reconciliação, que LÊ a sessão no Hermes e não chama o modelo de novo.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import unicodedata
 from enum import Enum
@@ -89,9 +90,16 @@ def normalizar_entrada(texto: str, *, limite: int) -> str:
     return t
 
 
-def impressao_da_entrada(texto: str) -> str:
-    """sha256 do texto normalizado. É o que decide 'mesmo pedido' na idempotência."""
-    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+def impressao_da_entrada(texto: str, contexto: Optional[Mapping[str, object]] = None) -> str:
+    """sha256 do PEDIDO: texto normalizado + contexto canônico.
+
+    É o que decide "mesmo pedido" na idempotência. O contexto entra: o mesmo
+    texto sobre outra campanha (ou outra janela) é outro pedido, e o mesmo
+    request_id com ele é conflito — nunca a resposta da campanha anterior.
+    """
+    canonico = json.dumps({"entrada": texto, "contexto": dict(contexto) if contexto else None},
+                          ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
 
 
 # ── filtro de resposta ─────────────────────────────────────────────────────
@@ -152,6 +160,7 @@ CODIGOS_DE_ERRO: Mapping[str, str] = {
     "hermes_sessao_ausente": "A sessão desta conversa não existe mais no Hermes.",
     "processo_interrompido": "O backend reiniciou durante o envio. O resultado é incerto.",
     "contexto_indisponivel": "O contexto VOLC pedido não pôde ser lido.",
+    "hermes_com_ferramentas": "O profile do Hermes expõe ferramentas; a Bia V1 recusa enviar.",
 }
 
 

@@ -197,7 +197,8 @@ class HermesFalso:
     """API Server v0.18.0, no lugar do socket. Conta e guarda tudo o que recebeu."""
     chave: str = "chave-hermes-de-teste-NUNCA-SAI"
     resposta: str = "conexão VOLC funcionando"
-    modo: str = "ok"  # ok | timeout | conexao_recusada | http500 | http401 | ilegivel
+    modo: str = "ok"  # ok | timeout | conexao_recusada | http500 | http401 | ilegivel | fora_do_ar
+    ferramentas: List[str] = field(default_factory=list)  # toolsets habilitados no profile
     sessoes: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
     pedidos: List[httpx.Request] = field(default_factory=list)
 
@@ -213,6 +214,13 @@ class HermesFalso:
         if request.headers.get("Authorization") != f"Bearer {self.chave}":
             return httpx.Response(401, json={"error": {"code": "invalid_api_key"}})
         caminho = request.url.path
+        if self.modo == "fora_do_ar":
+            # Túnel SSH aceita a conexão; o Hermes do outro lado não responde.
+            raise httpx.RemoteProtocolError("canal fechado (simulado)", request=request)
+        if caminho == "/v1/toolsets":
+            nomes = ["terminal", "file", "web"]
+            return httpx.Response(200, json={"object": "list", "data": [
+                {"name": n, "enabled": n in self.ferramentas} for n in nomes]})
         if caminho == "/api/sessions" and request.method == "POST":
             corpo = json.loads(request.content)
             sid = corpo["id"]

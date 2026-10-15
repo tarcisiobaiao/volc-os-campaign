@@ -29,7 +29,8 @@ import {
 export const chaveDaConversa = (userId: string) => `volc.bia.conversa.${userId}`;
 
 const INTERVALO_MS = 1500;
-const ESPERA_MAXIMA_MS = 180_000;
+/** Usado só até `/estado` dizer o prazo do servidor (`limites.espera_maxima_s`). */
+const ESPERA_PADRAO_MS = 300_000;
 
 function lerSalva(userId: string): string | null {
   try {
@@ -80,6 +81,9 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const vivo = useRef(true);
+  const esperaMs = useRef(ESPERA_PADRAO_MS);
+  const acompanhando = useRef(new Set<string>());
+  const retomarRef = useRef<(lista: ExecucaoDaBia[], id: string) => void>(() => {});
 
   useEffect(() => {
     vivo.current = true;
@@ -89,14 +93,18 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
   }, []);
 
   const recarregar = useCallback(
-    async (id: string | null) => {
+    async (id: string | null, retomar = false) => {
       if (!id) {
         setExecucoes([]);
         return;
       }
       try {
         const h = await api.historico(id);
-        if (vivo.current) setExecucoes(h.execucoes);
+        if (!vivo.current) return;
+        setExecucoes(h.execucoes);
+        // Depois de um reload (ou de um 202 perdido na rede), o que estava em voo
+        // volta a ser acompanhado. Só leitura: nada é reenviado.
+        if (retomar) retomarRef.current(h.execucoes, id);
       } catch (e) {
         if (!vivo.current) return;
         if (e instanceof ErroDeApi && e.status === 404 && e.codigo === 'nao_encontrado') {
@@ -119,11 +127,14 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
     (async () => {
       try {
         const s = await api.estado();
-        if (ativo && vivo.current) setServico(s);
+        if (ativo && vivo.current) {
+          setServico(s);
+          if (s.limites?.espera_maxima_s) esperaMs.current = s.limites.espera_maxima_s * 1000;
+        }
       } catch (e) {
         if (ativo && vivo.current) setErro(mensagemDe(e));
       }
-      if (ativo) await recarregar(lerSalva(userId));
+      if (ativo) await recarregar(lerSalva(userId), true);
       if (ativo && vivo.current) setCarregando(false);
     })();
     return () => {
@@ -146,7 +157,9 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
 
   const acompanhar = useCallback(
     async (execucaoId: string, id: string) => {
-      const limite = Date.now() + ESPERA_MAXIMA_MS;
+      if (acompanhando.current.has(execucaoId)) return;
+      acompanhando.current.add(execucaoId);
+      const limite = Date.now() + esperaMs.current;
       while (vivo.current && Date.now() < limite) {
         await new Promise((r) => setTimeout(r, INTERVALO_MS));
         if (!vivo.current) return;
@@ -163,10 +176,17 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
           break;
         }
       }
+      acompanhando.current.delete(execucaoId);
       if (vivo.current) await recarregar(id);
     },
     [api, recarregar],
   );
+
+  retomarRef.current = (lista, id) => {
+    for (const x of lista) {
+      if (x.estado === 'queued' || x.estado === 'running') void acompanhar(x.id, id);
+    }
+  };
 
   const enviar = useCallback(
     async (texto: string, contexto?: ContextoPedido): Promise<boolean> => {
@@ -190,8 +210,9 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
       } catch (e) {
         if (!vivo.current) return false;
         setErro(mensagemDe(e));
-        // Relê: se o envio chegou antes da falha de rede, ele aparece aqui.
-        await recarregar(conversaId);
+        // Relê: se o envio chegou antes da falha de rede, ele aparece aqui — e,
+        // se estiver em voo, volta a ser acompanhado (só leitura).
+        await recarregar(conversaId, true);
         return false;
       } finally {
         if (vivo.current) setEnviando(false);
@@ -227,5 +248,5 @@ export function useBia(userId: string, api: BiaApi = biaApi) {
     bloqueada: execucoes.some((x) => x.estado === 'uncertain'),
     emAndamento: execucoes.some((x) => x.estado === 'queued' || x.estado === 'running'),
   };
-  return { ...estado, novaConversa, enviar, verificar, recarregar: () => recarregar(conversaId) };
+  return { ...estado, novaConversa, enviar, verificar, recarregar: () => recarregar(conversaId, true) };
 }

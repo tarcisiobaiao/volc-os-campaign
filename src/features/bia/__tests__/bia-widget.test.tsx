@@ -43,7 +43,7 @@ const exe = (p: Partial<ExecucaoDaBia>): ExecucaoDaBia => ({
 
 const SERVICO = {
   modo: 'consulta', aviso: AVISO_MODO_CONSULTA, motor_configurado: true,
-  limites: { max_caracteres: 4000, envios_por_minuto: 6 }, capacidades: ['volc_get_campaign_context'],
+  limites: { max_caracteres: 4000, envios_por_minuto: 6, espera_maxima_s: 240 }, capacidades: ['volc_get_campaign_context'],
 };
 
 function logar(id: string | null, role = 'ADMIN') {
@@ -252,6 +252,22 @@ describe('estados e erros', () => {
     render(<BiaNoLayout />);
     await abrir();
     expect((await screen.findByRole('alert')).textContent).toContain('restrita a administradores');
+  });
+});
+
+describe('retomada depois do reload', () => {
+  it('execução em voo encontrada na carga volta a ser acompanhada, sem reenviar', async () => {
+    window.localStorage.setItem(chaveDaConversa(A), CONV);
+    api.historico
+      .mockResolvedValueOnce({ conversa: { id: CONV }, execucoes: [exe({ estado: 'running', resposta: null, terminada_em: null })] })
+      .mockResolvedValue({ conversa: { id: CONV }, execucoes: [exe({ estado: 'succeeded', resposta: 'chegou depois' })] });
+    api.execucao.mockResolvedValue({ execucao: exe({ estado: 'succeeded', resposta: 'chegou depois' }) });
+    logar(A);
+    render(<BiaNoLayout />);
+    await abrir();
+    expect(await screen.findByText('chegou depois', {}, { timeout: 4000 })).toBeTruthy();
+    expect(api.execucao).toHaveBeenCalledWith('e1');
+    expect(api.enviar).not.toHaveBeenCalled();
   });
 });
 

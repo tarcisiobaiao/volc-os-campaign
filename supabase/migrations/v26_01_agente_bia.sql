@@ -19,8 +19,9 @@
 --      search_path fixo, EXECUTE só para service_role. Toda RPC recebe o dono
 --      (auth UUID que o backend apurou do token) e filtra por ele: não existe
 --      chamada que leia conversa de outro dono;
---   3. idempotência: UNIQUE (dono, request_id); repetição com o mesmo conteúdo
---      devolve a mesma execução, com outro conteúdo é `conflito`;
+--   3. idempotência: UNIQUE (dono, request_id); repetição com a mesma impressão
+--      (sha256 de texto + contexto, calculada pelo backend) devolve a mesma
+--      execução; com outra impressão ou outra conversa é `conflito`;
 --   4. no máximo UMA execução em voo (queued/running) por dono (índice único
 --      parcial), limite por minuto e bloqueio da conversa com execução
 --      `uncertain` — tudo sob trava consultiva por dono;
@@ -168,13 +169,13 @@ CREATE TRIGGER evento_sem_truncate BEFORE TRUNCATE ON agente_bia.evento
 
 -- ───────────────────────────────────────────── projeções (sem sessão) ──
 CREATE FUNCTION agente_bia.json_conversa(c agente_bia.conversa) RETURNS jsonb
-LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, pg_temp AS $f$
+LANGUAGE sql STABLE SET search_path = pg_catalog, pg_temp AS $f$
   SELECT jsonb_build_object('id', c.id, 'titulo', c.titulo,
                             'criada_em', c.criada_em, 'atualizada_em', c.atualizada_em)
 $f$;
 
 CREATE FUNCTION agente_bia.json_execucao(e agente_bia.execucao) RETURNS jsonb
-LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, pg_temp AS $f$
+LANGUAGE sql STABLE SET search_path = pg_catalog, pg_temp AS $f$
   SELECT jsonb_build_object('id', e.id, 'conversa_id', e.conversa_id, 'request_id', e.request_id,
                             'estado', e.estado, 'entrada', e.entrada, 'resposta', e.resposta,
                             'erro_codigo', e.erro_codigo, 'contexto', e.contexto,

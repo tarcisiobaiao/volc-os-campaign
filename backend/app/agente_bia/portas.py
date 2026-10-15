@@ -138,6 +138,9 @@ class MotorIncerto(FalhaDoMotor):
 
 
 class Motor(Protocol):
+    async def verificar_sem_ferramentas(self) -> None:
+        """Portão de cada envio: Hermes vivo e NENHUM toolset habilitado. Levanta MotorRecusou."""
+
     async def garantir_sessao(self, sessao_motor: str, titulo: str) -> None:
         """Cria a sessão se não existir. Idempotente pelo id."""
 

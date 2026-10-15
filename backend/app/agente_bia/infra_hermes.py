@@ -6,6 +6,7 @@ Contrato conferido no código instalado na VPS em 15/10/2026
     POST /api/sessions                  {id, title} → 201 | 409 session_exists
     POST /api/sessions/{id}/chat        {input}     → 200 {message:{content}, usage}
     GET  /api/sessions/{id}/messages                → 200 {data:[{role, content, …}]}
+    GET  /v1/toolsets                               → 200 {data:[{name, enabled, …}]}
 
 ## O que este adaptador se recusa a mandar
 
@@ -69,6 +70,33 @@ class HermesHttp:
             headers={"Authorization": f"Bearer {self._chave}"},
             trust_env=False,  # proxy do ambiente não pode ver a chave do profile
         )
+
+    async def verificar_sem_ferramentas(self) -> None:
+        """`GET /v1/toolsets`: vivo e sem nenhum toolset habilitado, ou recusa.
+
+        A configuração do profile é intenção; isto é a conferência em runtime,
+        a cada envio. Sem ela, "a Bia não tem ferramenta" seria só uma promessa
+        sobre um arquivo na VPS.
+        """
+        try:
+            async with self._cliente(10.0) as c:
+                r = await c.get("/v1/toolsets")
+        except httpx.HTTPError as exc:
+            raise MotorRecusou("hermes_indisponivel") from exc
+        if r.status_code in (401, 403):
+            raise MotorRecusou("hermes_autenticacao")
+        if r.status_code != 200:
+            raise MotorRecusou("hermes_indisponivel")
+        try:
+            corpo: Any = r.json()
+        except ValueError as exc:
+            raise MotorRecusou("hermes_indisponivel") from exc
+        linhas = corpo.get("data") if isinstance(corpo, dict) else corpo
+        if not isinstance(linhas, list):
+            raise MotorRecusou("hermes_indisponivel")
+        if any(isinstance(x, dict) and x.get("enabled") for x in linhas):
+            log.error("profile do Hermes com toolset habilitado; envio recusado")
+            raise MotorRecusou("hermes_com_ferramentas")
 
     async def garantir_sessao(self, sessao_motor: str, titulo: str) -> None:
         try:
