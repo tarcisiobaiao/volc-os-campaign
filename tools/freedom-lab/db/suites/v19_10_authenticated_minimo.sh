@@ -279,6 +279,15 @@ eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','p2
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:t" "escopo: operador edita a própria campanha no domínio do projeto"
 EMAIL_FORJADO='{"sub":"a0000000-0000-4000-8000-0000000000ee","email":"operador@example.invalid","role":"authenticated"}'
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$EMAIL_FORJADO")" "ok:f" "escopo: o e-mail do operador num JWT de outra conta não dá acesso (identifica por id = auth.uid())"
+# H2 (revisão ciclo 3): projects.domain não é único — domínio repetido entre projetos nega por construção
+PA -c "INSERT INTO public.projects (id, project_name, main_url, domain, start_date, status, revshare) VALUES (9003, 'p1-dup', 'https://WWW.P1.example', '', current_date - 30, 'Active', 0.2)" >/dev/null
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:f" "escopo: domínio repetido em outro projeto (main_url normalizada) → operador não edita"
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$ADMIN")" "ok:t" "escopo: domínio repetido → ADMIN segue editando"
+PA -c "DELETE FROM public.projects WHERE id = 9003" >/dev/null
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://www.p1.example/z')" "$OPER")" "ok:t" "escopo: sem a duplicata, operador volta a editar"
+PA -c "UPDATE public.projects SET domain = '', main_url = '' WHERE id = 9001" >/dev/null
+eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','/x')" "$OPER")" "ok:f" "escopo: projeto sem domínio → URL sem host não casa"
+PA -c "UPDATE public.projects SET domain = 'p1.example', main_url = 'https://p1.example' WHERE id = 9001" >/dev/null
 eq "$(P -c "select array_to_string(proconfig, ',') from pg_proc where oid='public.trigger_calculate_adsense_campaign_revenue()'::regprocedure")" "search_path=public, pg_temp" "agregação do funil com search_path fixo"
 
 echo "▶ 6. rollback"

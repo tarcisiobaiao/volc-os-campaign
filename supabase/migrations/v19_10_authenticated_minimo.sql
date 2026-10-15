@@ -369,16 +369,24 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $f$
                                JOIN public.campaigns c ON c.project_id = up.project_id
                               WHERE up.user_id = u.id AND c.campaign_id = p_campaign)))
         AND (p_url IS NULL OR EXISTS (
-          SELECT 1 FROM public.campaigns c JOIN public.projects pr ON pr.id = c.project_id
+          WITH dom AS (
+            SELECT pr.id, split_part(regexp_replace(regexp_replace(lower(coalesce(nullif(pr.domain, ''), pr.main_url)),
+                                     '^[a-z]+://', ''), '^www\.', ''), '/', 1) AS d
+              FROM public.projects pr
+          )
+          SELECT 1 FROM public.campaigns c JOIN dom ON dom.id = c.project_id
            WHERE c.campaign_id = p_campaign
-             AND split_part(regexp_replace(regexp_replace(lower(p_url), '^[a-z]+://', ''), '^www\.', ''), '/', 1)
-                 = split_part(regexp_replace(regexp_replace(lower(coalesce(nullif(pr.domain, ''), pr.main_url)), '^[a-z]+://', ''), '^www\.', ''), '/', 1)))
+             AND dom.d <> ''
+             AND split_part(regexp_replace(regexp_replace(lower(p_url), '^[a-z]+://', ''), '^www\.', ''), '/', 1) = dom.d
+             -- domínio repetido entre projetos (projects.domain não é único): nega para não-ADMIN
+             AND NOT EXISTS (SELECT 1 FROM dom o WHERE o.d = dom.d AND o.id <> dom.id)))
       )
 $f$;
 COMMENT ON FUNCTION public.volc_pode_editar_funil(text, text) IS
   'v19_10 (W4): ADMIN, ou operador vinculado à campanha (user_campaigns ou user_projects '
   'do projeto), identificado por public.users.id = auth.uid() (o e-mail do JWT não '
-  'identifica), e — com p_url — URL do domínio do projeto da campanha. Usada pela RLS '
+  'identifica), e — com p_url — URL do domínio do projeto da campanha, desde que nenhum '
+  'outro projeto tenha o mesmo domínio (repetido ou vazio: só ADMIN). Usada pela RLS '
   'de campaign_funnel_urls. Removida pelo v19_10_rollback.sql.';
 ALTER FUNCTION public.volc_pode_editar_funil(text, text) OWNER TO supabase_admin;
 REVOKE ALL ON FUNCTION public.volc_pode_editar_funil(text, text) FROM PUBLIC, anon, service_role;
