@@ -19,7 +19,7 @@ describe('carimbo das fontes (system_settings)', () => {
 
   it('aceita sem segundos, sem vírgula e com espaço não separável', () => {
     expect(iso('25/06/2026 06:00')).toBe('2026-06-25T09:00:00.000Z');
-    expect(iso('25/06/2026, 06:00:17')).toBe('2026-06-25T09:00:17.000Z');
+    expect(iso('25/06/2026,\u00a006:00:17')).toBe('2026-06-25T09:00:17.000Z');
   });
 
   it('aceita ISO 8601', () => {

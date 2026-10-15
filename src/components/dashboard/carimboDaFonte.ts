@@ -23,7 +23,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\
 
 export function lerCarimboDaFonte(valor: unknown): CarimboDaFonte {
   if (valor == null) return { tipo: "vazio" };
-  const texto = String(valor).replace(/ /g, " ").trim();
+  const texto = String(valor).replace(/\u00a0/g, " ").trim();
   if (texto === "") return { tipo: "vazio" };
 
   const br = PT_BR.exec(texto);
