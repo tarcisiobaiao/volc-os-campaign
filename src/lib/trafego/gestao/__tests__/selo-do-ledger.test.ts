@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { seloDoLedger } from '@/lib/trafego/gestao/fila';
+import { seloDoLedger, textoSemSelo } from '@/lib/trafego/gestao/fila';
 
 const p = (estado: string, extra: { vencida?: boolean; proximo_passo?: string } = {}) => ({
   estado,
@@ -24,9 +24,15 @@ describe('seloDoLedger', () => {
     expect(seloDoLedger(p('aprovada', { vencida: true }))).toBe('vencida');
   });
 
-  it('aplicada só vira "com recibo" depois da conferência', () => {
-    expect(seloDoLedger(p('aplicada', { proximo_passo: 'acompanhar' }))).toBe('aplicada');
-    expect(seloDoLedger(p('aplicada', { proximo_passo: 'verificar' }))).toBeNull();
+  it('aprovada que passou do prazo (proximo_passo expirar) é vencida', () => {
+    expect(seloDoLedger(p('aprovada', { proximo_passo: 'expirar' }))).toBe('vencida');
+  });
+
+  it('aplicada nunca afirma recibo: o painel não recebe a leitura de volta', () => {
+    for (const passo of ['acompanhar', 'nada', 'verificar']) {
+      expect(seloDoLedger(p('aplicada', { proximo_passo: passo }))).toBeNull();
+    }
+    expect(textoSemSelo(p('aplicada', { proximo_passo: 'acompanhar' }))).toBe('aplicada · sem conferência na conta');
   });
 
   it('estado sem palavra no ciclo fica com o texto do ledger', () => {

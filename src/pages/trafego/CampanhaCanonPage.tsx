@@ -290,8 +290,10 @@ const Detalhe: React.FC<{ detalhe: CampanhaCanonica }> = ({ detalhe }) => {
               />
             </dl>
             <p className="mt-3 text-[11px] text-muted-foreground">
-              {/* Nenhum número decisório sem frescor (SPEC §4.1). */}
-              declarado pela conta · {lidoHa(c.entrega?.leitura?.idade_s ?? null)}
+              {/* Nenhum número decisório sem frescor (SPEC §4.1). Lance e verba são
+                  lidos em `lido_em` da configuração (v9_01), que o inventário não
+                  expõe; carimbá-los com a idade da ENTREGA seria outra leitura. */}
+              declarado pela conta · a data desta leitura não chega a esta tela
             </p>
           </>
         )}

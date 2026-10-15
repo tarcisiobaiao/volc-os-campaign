@@ -47,6 +47,8 @@
  * do que o operador digita, e deve continuar assim.
  */
 
+import { formatarNumero } from '@/lib/instrumento';
+
 /** Valor financeiro que pode não ter sido medido. `null` nunca é zero. */
 export type ValorMedido = number | null | undefined;
 
@@ -79,6 +81,13 @@ export const retornoExcedentePct = (receita: ValorMedido, gasto: ValorMedido): n
   const razao = roasRatio(receita, gasto);
   return razao === null ? null : (razao - 1) * 100;
 };
+
+/**
+ * Texto de um percentual em pontos (45 → "45,0%"), com "—" para ausência.
+ * É o que os painéis legados mostram como "ROI bruto" (antes rotulado ROAS).
+ */
+export const textoDePontosPct = (pontos: number | null | undefined, casas = 1): string =>
+  formatarNumero(pontos == null ? null : pontos / 100, { tipo: 'percentual', casas });
 
 /** Lucro bruto: receita menos gasto de mídia. `null` se qualquer parcela falta. */
 export const lucroBruto = (receita: ValorMedido, gasto: ValorMedido): number | null => {
