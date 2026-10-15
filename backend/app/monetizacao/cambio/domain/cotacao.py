@@ -15,6 +15,8 @@ from typing import Any, Dict, Mapping
 
 #: Fonte reservada às linhas manuais de antes da v23_01. Coleta nunca a usa.
 FONTE_LEGADA = "legado_manual"
+#: Fonte que a guarda da v23_01 dá a toda linha manual nova (as_of do servidor).
+FONTE_MANUAL = "manual"
 
 _PAR = re.compile(r"^[A-Z]{3}/[A-Z]{3}$")
 _FONTE = re.compile(r"^[a-z0-9_.:-]{3,64}$")
@@ -39,7 +41,7 @@ class Cotacao:
     def __post_init__(self) -> None:
         if not _PAR.match(self.par or ""):
             raise CotacaoInvalida(f"par {self.par!r} fora do formato AAA/BBB")
-        if not _FONTE.match(self.fonte or "") or self.fonte == FONTE_LEGADA:
+        if not _FONTE.match(self.fonte or "") or self.fonte in (FONTE_LEGADA, FONTE_MANUAL):
             raise CotacaoInvalida(f"fonte {self.fonte!r} inválida para coleta")
         if not isinstance(self.taxa, Decimal) or not self.taxa.is_finite() or self.taxa <= 0:
             raise CotacaoInvalida(f"taxa {self.taxa!r} precisa ser Decimal finito > 0")

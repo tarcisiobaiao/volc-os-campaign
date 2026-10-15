@@ -19,8 +19,12 @@
 -- A. `exchange_rate_history` (a tabela que já existe) ganha versão: par, fonte,
 --    as_of (instante da cotação na fonte), coletado_em (instante em que o banco
 --    soube) e proveniência. As linhas manuais de antes ficam como
---    fonte='legado_manual' e as_of NULL. Linha versionada é imutável e só entra
---    por service_role/postgres/supabase_admin (guarda própria, não GRANT).
+--    fonte='legado_manual' e as_of NULL. Toda escrita de câmbio passa a ser
+--    só de service_role/postgres/supabase_admin (guarda própria + REVOKE da
+--    escrita de anon/authenticated nesta tabela). Linha manual nova vira
+--    fonte='manual' com as_of/coletado_em do servidor e o ator na
+--    proveniência; taxa <= 0 é recusada. Linha com as_of é imutável. No mesmo
+--    dia, fonte coletada (PTAX) > manual > legado.
 -- B. `cambio_resolver(data, par, max_defasagem, conhecido_ate)`: a única regra
 --    de resolução. Data exata → 'exata'; senão a última anterior → 'anterior',
 --    com a defasagem em dias; mais velha que o limite (7 dias por padrão) →
@@ -30,8 +34,9 @@
 --    versão com data de referência (o dia a que a receita pertence), coletado_em
 --    (quando o banco recebeu), proveniência (papel, JWT, user-agent, cabeçalho
 --    x-volc-proveniencia) e o câmbio que a conversão usou. Upsert idêntico não
---    gera versão. DELETE vira versão "removida". Os adaptadores (n8n, front)
---    não mudam.
+--    gera versão (valor normalizado: 10 = 10.00). DELETE, troca de chave e
+--    TRUNCATE viram versão "removida". Taxa impossível vira 'sem_cotacao':
+--    câmbio nunca derruba a ingestão. Os adaptadores (n8n, front) não mudam.
 -- D. `receita_as_of(conhecido_ate, fonte)` e `vw_receita_vigente`: o que se
 --    sabia num instante e o que se sabe agora, sem as removidas.
 --
@@ -44,7 +49,8 @@
 --   legado fica registrado ao lado (`receita_convertida_legado`) para comparar.
 -- · Não coleta cotação: quem grava é `backend/app/monetizacao/cambio` (PTAX do
 --   Banco Central), fora desta migration.
--- · Não mexe em GRANT de tabela existente. O upsert de `gam_metrics` pelo
+-- · O único GRANT existente que muda é a escrita de anon/authenticated em
+--   `exchange_rate_history` (guardado e devolvido pelo rollback). O upsert de `gam_metrics` pelo
 --   browser já falha com 42501 por causa do gatilho que lê
 --   `trafego_meta_adset` (pacote authenticated do W4). O gatilho novo é
 --   SECURITY DEFINER e não acrescenta exigência de GRANT ao cliente.
@@ -57,11 +63,19 @@
 -- · coletado_em do diário é o início da transação que gravou (now()), não o
 --   instante do COMMIT; um as-of exatamente na fronteira de uma transação
 --   longa pode ver a versão antes de ela ser visível.
+-- · session_replication_role = replica desliga os gatilhos: escrita feita
+--   assim (restore, replicação lógica) não vira versão no diário.
+-- · Quem aplica é o DONO das três tabelas (em produção, supabase_admin):
+--   DROP TRIGGER do rollback exige dono, e a pré-checagem recusa sem isso.
+-- · Até a coleta PTAX começar, receita_brl sai NULL (a última cotação manual,
+--   5,25 de fevereiro, fica 'defasada'). É ausência, não zero, e aparece assim
+--   em vw_receita_vigente.
 -- · Moeda das duas fontes: USD, a mesma premissa que os gatilhos legados já
 --   usam (revenue × taxa). Declarada no argumento do gatilho e gravada em cada
 --   observação; GAM em outra moeda exige outro gatilho, não FX automático.
 
 BEGIN;
+SET LOCAL lock_timeout = '5s';   -- ACCESS EXCLUSIVE em 3 tabelas com o n8n gravando: falha cedo, não enfileira
 
 -- ─────────────────────────────────────────────────────── pré-checagem ──
 DO $pre$
@@ -90,16 +104,15 @@ BEGIN
     RAISE EXCEPTION 'v23_01 recusada: faltam colunas %', faltando;
   END IF;
 
-  -- Quem aplica precisa poder alterar a tabela de câmbio e pendurar gatilho
-  -- nas duas de receita (em produção o dono pode ser supabase_admin).
+  -- Quem aplica precisa ser DONO das três: o privilégio TRIGGER basta para
+  -- criar o gatilho, mas o rollback (DROP TRIGGER) e o ALTER exigem dono.
+  -- Em produção o dono é supabase_admin: aplique e reverta por ele.
   SELECT string_agg(t, ', ') INTO faltando
-    FROM (VALUES ('public.exchange_rate_history', 'dono'), ('public.joinads_metrics', 'TRIGGER'),
-                 ('public.gam_metrics', 'TRIGGER')) AS x(t, exige)
-   WHERE CASE x.exige
-           WHEN 'dono' THEN NOT pg_has_role(current_user, (SELECT relowner FROM pg_class WHERE oid = x.t::regclass), 'USAGE')
-           ELSE NOT has_table_privilege(current_user, x.t, 'TRIGGER') END;
+    FROM unnest(ARRAY['public.exchange_rate_history', 'public.joinads_metrics', 'public.gam_metrics']) t
+   WHERE NOT pg_has_role(current_user, (SELECT relowner FROM pg_class WHERE oid = t::regclass), 'USAGE');
   IF faltando IS NOT NULL THEN
-    RAISE EXCEPTION 'v23_01 recusada: % não pode alterar/pendurar gatilho em %', current_user, faltando;
+    RAISE EXCEPTION 'v23_01 recusada: % não é dono de % (aplique pelo dono, em produção supabase_admin)',
+      current_user, faltando;
   END IF;
 
   -- O rollback derruba estas colunas; se alguma já existisse, ele apagaria
@@ -108,9 +121,10 @@ BEGIN
     FROM information_schema.columns
    WHERE table_schema = 'public' AND table_name = 'exchange_rate_history'
      AND column_name IN ('par', 'fonte', 'as_of', 'coletado_em', 'proveniencia');
-  IF faltando IS NOT NULL OR to_regclass('public.receita_observacao') IS NOT NULL THEN
+  IF faltando IS NOT NULL OR to_regclass('public.receita_observacao') IS NOT NULL
+     OR to_regclass('public.v23_01_acl_anterior') IS NOT NULL THEN
     RAISE EXCEPTION 'v23_01 recusada: % já existe — esta migration não reaplica por cima',
-      coalesce('exchange_rate_history.' || faltando, 'receita_observacao');
+      coalesce('exchange_rate_history.' || faltando, 'receita_observacao/v23_01_acl_anterior');
   END IF;
 END
 $pre$;
@@ -127,30 +141,53 @@ ALTER TABLE public.exchange_rate_history ALTER COLUMN coletado_em SET DEFAULT no
 ALTER TABLE public.exchange_rate_history
   ADD CONSTRAINT exchange_rate_history_par_ck   CHECK (par ~ '^[A-Z]{3}/[A-Z]{3}$'),
   ADD CONSTRAINT exchange_rate_history_fonte_ck CHECK (fonte ~ '^[a-z0-9_.:-]{3,64}$'),
-  -- legado ⇔ sem as_of. Versão nova sempre declara o instante da fonte.
+  -- legado (linha de antes da v23_01) ⇔ sem as_of. Toda linha nova tem as_of.
   ADD CONSTRAINT exchange_rate_history_versao_ck CHECK ((fonte = 'legado_manual') = (as_of IS NULL)),
-  ADD CONSTRAINT exchange_rate_history_taxa_ck  CHECK (as_of IS NULL OR rate > 0);
+  -- NOT VALID: vale para toda escrita nova; o legado não é reprovado (e o
+  -- resolvedor ignora taxa <= 0 que já exista).
+  ADD CONSTRAINT exchange_rate_history_taxa_ck  CHECK (rate > 0) NOT VALID;
 
 -- Idempotência da coleta (on_conflict do PostgREST). NULLs são distintos:
 -- as linhas manuais repetidas no mesmo dia continuam como estão.
 CREATE UNIQUE INDEX exchange_rate_history_versao_uk
   ON public.exchange_rate_history (par, effective_date, fonte, as_of);
 
+-- Só a coleta e o operador do servidor escrevem câmbio, mesmo enquanto o
+-- default ACL do incidente (W4) estiver aberto: esta tabela passa a ser fonte
+-- da receita em BRL e a guarda não pode depender do W4 ter fechado antes.
+-- SECURITY INVOKER: current_user é o papel de quem grava (a RPC legada
+-- rpc_set_dollar_exchange_rate é SECURITY DEFINER e passa como dona).
 CREATE FUNCTION public.cambio_versao_guarda() RETURNS trigger
 LANGUAGE plpgsql SET search_path = pg_catalog, public AS $f$
+DECLARE
+  v_claims jsonb;
 BEGIN
+  IF current_user NOT IN ('service_role', 'postgres', 'supabase_admin') THEN
+    RAISE EXCEPTION 'câmbio só é gravado pela coleta ou pelo servidor (papel %)', current_user
+      USING ERRCODE = '42501';
+  END IF;
   IF TG_OP = 'INSERT' THEN
-    IF NEW.as_of IS NOT NULL THEN
-      -- SECURITY INVOKER: current_user é o papel de quem grava.
-      IF current_user NOT IN ('service_role', 'postgres', 'supabase_admin') THEN
-        RAISE EXCEPTION 'cotação versionada só entra pela coleta (papel %)', current_user
-          USING ERRCODE = '42501';
-      END IF;
-      IF NEW.as_of > now() + interval '5 minutes' THEN
-        RAISE EXCEPTION 'cotação com as_of no futuro (%)', NEW.as_of USING ERRCODE = '22023';
-      END IF;
-      NEW.coletado_em := now();   -- o banco é quem diz quando soube
+    BEGIN
+      v_claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+    EXCEPTION WHEN others THEN v_claims := NULL;
+    END;
+    IF NEW.fonte IN ('legado_manual', 'manual') THEN
+      -- Linha manual nova: o servidor diz quando e quem. Nada do cliente vale
+      -- para o tempo (um "conhecido em 2021" inventado hoje vira hoje).
+      NEW.fonte := 'manual';
+      NEW.as_of := now();
+    ELSIF NEW.as_of IS NULL THEN
+      RAISE EXCEPTION 'cotação de fonte % sem as_of da fonte', NEW.fonte USING ERRCODE = '23514';
+    ELSIF NEW.as_of > now() + interval '5 minutes' THEN
+      RAISE EXCEPTION 'cotação com as_of no futuro (%)', NEW.as_of USING ERRCODE = '22023';
     END IF;
+    NEW.coletado_em := now();   -- o banco é quem diz quando soube
+    NEW.proveniencia := coalesce(NEW.proveniencia, '{}'::jsonb) || jsonb_strip_nulls(jsonb_build_object(
+      'ator',      current_user,
+      'sessao',    session_user,
+      'papel',     nullif(current_setting('role', true), 'none'),
+      'jwt_sub',   v_claims ->> 'sub',
+      'jwt_papel', v_claims ->> 'role'));
     RETURN NEW;
   END IF;
   IF OLD.as_of IS NOT NULL OR (TG_OP = 'UPDATE' AND NEW.as_of IS NOT NULL) THEN
@@ -187,10 +224,12 @@ BEGIN
     FROM public.exchange_rate_history h
    WHERE h.par = p_par
      AND h.effective_date::date <= p_data
+     AND h.rate > 0                      -- taxa impossível do legado não é cotação
      -- Replay: só o que o banco já sabia. Linha legada não sabe quando entrou.
      AND (p_conhecido_ate IS NULL OR h.coletado_em <= p_conhecido_ate)
    ORDER BY h.effective_date::date DESC,
-            (h.as_of IS NULL),          -- no mesmo dia, versão coletada vence a manual
+            -- no mesmo dia: fonte coletada (PTAX) > manual nova > legado
+            CASE h.fonte WHEN 'legado_manual' THEN 2 WHEN 'manual' THEN 1 ELSE 0 END,
             h.as_of DESC NULLS LAST,    -- e a última publicação da fonte vence
             h.id DESC
    LIMIT 1;
@@ -221,7 +260,7 @@ CREATE TABLE public.receita_observacao (
   tabela_origem              text        NOT NULL,
   chave                      jsonb       NOT NULL,     -- a chave de upsert da tabela de origem
   data_referencia            date,                     -- o dia a que a receita pertence
-  operacao                   text        NOT NULL CHECK (operacao IN ('CARGA', 'INSERT', 'UPDATE', 'DELETE')),
+  operacao                   text        NOT NULL CHECK (operacao IN ('CARGA', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')),
   removida                   boolean     NOT NULL,
   moeda                      text        NOT NULL CHECK (moeda ~ '^[A-Z]{3}$'),
   receita                    numeric,                  -- NULL = ausente, nunca zero inventado
@@ -299,7 +338,13 @@ BEGIN
   v_data    := (p_linha ->> 'date')::date;
   v_receita := CASE WHEN p_removida THEN NULL ELSE (p_linha ->> 'revenue')::numeric END;
   v_legado  := CASE WHEN p_removida THEN NULL ELSE (p_linha ->> 'revenue_converted')::numeric END;
-  v_dig     := md5(jsonb_build_array(p_removida, v_data, v_chave, v_receita, v_legado, p_moeda)::text);
+  -- trim_scale: 10 e 10.00 são o mesmo valor e não podem virar duas versões.
+  v_dig     := md5(jsonb_build_array(p_removida, v_data, v_chave, trim_scale(v_receita),
+                                     trim_scale(v_legado), p_moeda)::text);
+
+  -- Dois upserts concorrentes na mesma chave: um espera o outro, e o segundo
+  -- já vê a versão do primeiro (sem versão duplicada).
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_tabela || v_chave::text, 23));
 
   IF v_dig IS NOT DISTINCT FROM (SELECT o.impressao_digital FROM public.receita_observacao o
                                   WHERE o.tabela_origem = p_tabela AND o.chave = v_chave
@@ -317,6 +362,11 @@ BEGIN
     SELECT r.modo, r.cotacao_id, r.par, r.taxa, r.data_cotacao, r.as_of, r.fonte, r.defasagem_dias
       INTO v_modo, v_cot, v_par, v_taxa, v_cdata, v_cas_of, v_cfonte, v_defas
       FROM public.cambio_resolver(v_data, p_moeda || '/BRL') r;
+    -- Defesa em profundidade: taxa impossível nunca derruba a ingestão.
+    IF v_modo IN ('exata', 'anterior') AND (v_taxa IS NULL OR v_taxa <= 0 OR v_cot IS NULL) THEN
+      v_modo := 'sem_cotacao';
+      v_taxa := NULL;
+    END IF;
   END IF;
 
   INSERT INTO public.receita_observacao (
@@ -397,6 +447,40 @@ CREATE TRIGGER zz_receita_observacao
   FOR EACH ROW EXECUTE FUNCTION public.receita_registrar_observacao(
     'gam', 'USD', 'date', 'utm_campaign_value', 'gam_accounts_id');
 
+-- TRUNCATE não passa por gatilho de linha: um gatilho de comando registra a
+-- remoção de cada chave vigente da tabela, para o diário não divergir da origem.
+CREATE FUNCTION public.receita_registrar_truncate() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $f$
+DECLARE
+  v_prov jsonb;
+BEGIN
+  v_prov := jsonb_strip_nulls(jsonb_build_object(
+    'papel',     nullif(current_setting('role', true), 'none'),
+    'sessao',    session_user,
+    'aplicacao', nullif(current_setting('application_name', true), ''),
+    'gatilho',   TG_NAME));
+  INSERT INTO public.receita_observacao (
+    fonte, tabela_origem, chave, data_referencia, operacao, removida, moeda,
+    cambio_modo, proveniencia, impressao_digital)
+  SELECT v.fonte, v.tabela_origem, v.chave, v.data_referencia, 'TRUNCATE', true, v.moeda,
+         'sem_receita', v_prov,
+         md5(jsonb_build_array(true, v.data_referencia, v.chave, NULL::numeric, NULL::numeric, v.moeda)::text)
+    FROM (SELECT DISTINCT ON (o.chave) o.*
+            FROM public.receita_observacao o
+           WHERE o.tabela_origem = TG_TABLE_NAME
+           ORDER BY o.chave, o.id DESC) v
+   WHERE NOT v.removida;
+  RETURN NULL;
+END
+$f$;
+
+CREATE TRIGGER zz_receita_observacao_truncate
+  AFTER TRUNCATE ON public.joinads_metrics
+  FOR EACH STATEMENT EXECUTE FUNCTION public.receita_registrar_truncate();
+CREATE TRIGGER zz_receita_observacao_truncate
+  AFTER TRUNCATE ON public.gam_metrics
+  FOR EACH STATEMENT EXECUTE FUNCTION public.receita_registrar_truncate();
+
 -- ─────────────────────────────────────────── D. leitura as-of ──
 CREATE FUNCTION public.receita_as_of(p_conhecido_ate timestamptz DEFAULT now(), p_fonte text DEFAULT NULL)
 RETURNS SETOF public.receita_observacao
@@ -427,7 +511,20 @@ REVOKE ALL ON TABLE public.receita_observacao FROM PUBLIC, anon, authenticated, 
 REVOKE ALL ON TABLE public.vw_receita_vigente FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.receita_observacao, public.vw_receita_vigente TO service_role;
 
+-- Câmbio: anon e authenticated deixam de escrever. O que tinham fica guardado
+-- em v23_01_acl_anterior para o rollback devolver exatamente.
+CREATE TABLE public.v23_01_acl_anterior (papel text NOT NULL, privilegio text NOT NULL, PRIMARY KEY (papel, privilegio));
+REVOKE ALL ON TABLE public.v23_01_acl_anterior FROM PUBLIC, anon, authenticated, service_role;
+INSERT INTO public.v23_01_acl_anterior (papel, privilegio)
+SELECT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END, a.privilege_type
+  FROM pg_class c, aclexplode(c.relacl) a
+ WHERE c.oid = 'public.exchange_rate_history'::regclass
+   AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+   AND (a.grantee = 0 OR pg_get_userbyid(a.grantee) IN ('anon', 'authenticated'));
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.exchange_rate_history FROM PUBLIC, anon, authenticated;
+
 REVOKE ALL ON FUNCTION public.cambio_versao_guarda() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.receita_registrar_truncate() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_observacao_imutavel() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_registrar_observacao() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_observar(text, text, text, jsonb, text[], text, boolean, jsonb)

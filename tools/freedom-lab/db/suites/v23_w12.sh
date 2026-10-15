@@ -12,6 +12,10 @@
 #
 # Roda DENTRO do lab.sh (carregada por ele) e usa só o que ele dá:
 #   P            psql no container do lab, como postgres
+#   PA           psql como supabase_admin: dono das tabelas na base de produção,
+#                por isso aplica, reverte e faz a limpeza de teste (DISABLE TRIGGER)
+#   (o P lê o diário, que tem RLS sem policy, porque o postgres do Supabase tem
+#    BYPASSRLS; se a base real não tiver, as leituras do diário falham alto)
 #   estado       SQL como papel (SET LOCAL ROLE), devolve SQLSTATE ou ok:<1ª linha>, com ROLLBACK
 #   sqlstate     SQL como postgres, devolve SQLSTATE ou ok (com COMMIT)
 #   ok nao eq    contadores e recibo do lab.sh
@@ -38,7 +42,7 @@
 # Papel simulado por SET LOCAL ROLE: prova o banco, não o PostgREST.
 # =============================================================================
 
-for _f in P ok nao eq estado sqlstate; do
+for _f in P PA ok nao eq estado sqlstate; do
   declare -F "$_f" >/dev/null || { echo "ERRO: v23_w12.sh precisa ser carregada pelo lab.sh (falta $_f)" >&2; return 1 2>/dev/null || exit 1; }
 done
 unset _f
@@ -100,8 +104,14 @@ w12_bloco() {
   printf '%s\n' "$out" | grep -v '^$' | tail -1
 }
 w12_confirma() { printf '\\set VERBOSITY sqlstate\nBEGIN;\n%s\n%s\nCOMMIT;\n' "$W12_SEMEAR" "$1" | P > "$RECIBOS/w12-$2.out" 2>&1; }
-w12_aplicar()  { P -f - < "$W12_APLICAR"  > "$RECIBOS/w12-$1.out" 2>&1; }
-w12_reverter() { P -f - < "$W12_REVERTER" > "$RECIBOS/w12-$1.out" 2>&1; }
+# Na base de produção as tabelas são de supabase_admin: aplicar e reverter vão
+# pelo PA (o dono). A pré-checagem recusa quem não é dono (provado abaixo pelo P).
+w12_aplicar()  { PA -f - < "$W12_APLICAR"  > "$RECIBOS/w12-$1.out" 2>&1; }
+w12_reverter() { PA -f - < "$W12_REVERTER" > "$RECIBOS/w12-$1.out" 2>&1; }
+w12_dono()     { w12_sql "select string_agg(distinct pg_get_userbyid(relowner), ',') from pg_class where oid in ('public.exchange_rate_history'::regclass,'public.joinads_metrics'::regclass,'public.gam_metrics'::regclass)"; }
+# Limpeza só de teste, como dono (DISABLE TRIGGER exige dono). Checada.
+w12_limpa() { printf '\\set VERBOSITY sqlstate\nBEGIN;\n%s\nCOMMIT;\n' "$1" | PA > "$RECIBOS/w12-$2.out" 2>&1 \
+  && ok "v23 · limpeza de teste ($2) pelo dono" || nao "v23 · limpeza de teste ($2): $(tail -1 "$RECIBOS/w12-$2.out")"; }
 w12_fp() { P -f - < "$FP" > "$RECIBOS/w12-fp-$1.out" 2>&1; }
 w12_aplicada() { w12_sql "select to_regclass('public.receita_observacao') is not null and exists (select 1 from information_schema.columns where table_schema='public' and table_name='exchange_rate_history' and column_name='as_of')"; }
 
@@ -130,9 +140,17 @@ w12_suite() {
   w12_fp antes
 
   echo "▶ v23 · semente anterior à migration (carga inicial)"
+  # A taxa 0 em 20/10 é o caso do revisor: linha manual impossível que já exista.
   w12_confirma "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate', 5.25, 'effective_date', '2026-02-18'));
+                SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate', 0, 'effective_date', '2026-10-20'));
                 $(w12_jads 2026-10-01 3.5 w12-lab-carga)" semente \
-    && ok "v23 · semente: 1 cotação manual e 1 linha JoinAds" || nao "v23 · semente ($(tail -1 "$RECIBOS/w12-semente.out"))"
+    && ok "v23 · semente: 2 cotações manuais (uma com taxa 0) e 1 linha JoinAds" || nao "v23 · semente ($(tail -1 "$RECIBOS/w12-semente.out"))"
+  eq "$(w12_dono)" "$(w12_sql "select rolname from pg_roles where rolname = 'supabase_admin'")" "v23 · base com as três tabelas de supabase_admin (como o dump de 15/10)"
+
+  echo "▶ v23 · quem não é dono não aplica"
+  P -f - < "$W12_APLICAR" > "$RECIBOS/w12-aplicar-sem-dono.out" 2>&1 && nao "v23 · postgres (não dono) aplicou" || \
+    { grep -q 'não é dono de' "$RECIBOS/w12-aplicar-sem-dono.out" && ok "v23 · pré-checagem recusa postgres que não é dono (o rollback não teria como rodar)" || nao "v23 · aplicar sem dono falhou por outro motivo"; }
+  eq "$(w12_aplicada)" "f" "v23 · recusa sem dono não deixou resíduo"
 
   echo "▶ v23 · aplicar"
   w12_aplicar aplicar && ok "v23 · v23_01 aplicou" || nao "v23 · aplicar ($(tail -1 "$RECIBOS/w12-aplicar.out"))"
@@ -144,8 +162,8 @@ w12_suite() {
      "v23 · carga inicial registrou a linha existente uma vez, com data de referência"
   eq "$(w12_sql "select count(*) from public.receita_observacao") " "$(w12_sql "select (select count(*) from public.joinads_metrics) + (select count(*) from public.gam_metrics)") " \
      "v23 · carga inicial cobre todas as linhas de joinads_metrics e gam_metrics"
-  eq "$(w12_sql "select string_agg(tgrelid::regclass || '.' || tgname, ',' order by 1) from pg_trigger where tgrelid in ('public.joinads_metrics'::regclass, 'public.gam_metrics'::regclass) and not tgisinternal and tgname <> 'zz_receita_observacao'")" \
-     "$gatilhos_antes" "v23 · gatilhos legados de receita intactos (só zz_receita_observacao a mais)"
+  eq "$(w12_sql "select string_agg(tgrelid::regclass || '.' || tgname, ',' order by 1) from pg_trigger where tgrelid in ('public.joinads_metrics'::regclass, 'public.gam_metrics'::regclass) and not tgisinternal and tgname not like 'zz_receita_observacao%'")" \
+     "$gatilhos_antes" "v23 · gatilhos legados de receita intactos (só zz_receita_observacao* a mais)"
 
   echo "▶ v23 · câmbio: resolução sem constante"
   local cots
@@ -184,8 +202,33 @@ w12_suite() {
      "v23 · linha manual não vira versionada por UPDATE"
   eq "$(w12_bloco "$(w12_cot 2026-10-13 5.40 '2099-01-01 00:00:00-03') SELECT 1;")" "ERRO:22023" "v23 · as_of no futuro é recusado"
   eq "$(w12_bloco "$(w12_cot 2026-10-13 0 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:23514" "v23 · taxa versionada <= 0 é recusada"
-  eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',5.4,'effective_date','2026-10-13','as_of','2026-10-13 13:10-03')); SELECT 1;")" "ERRO:23514" \
-     "v23 · as_of com fonte legado_manual é recusado"
+  local manual="SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',7.77,'effective_date','2020-12-31','as_of','2020-12-31 12:00-03','coletado_em','2020-01-01','proveniencia','{\"ator\":\"forjado\"}'::jsonb));"
+  eq "$(w12_bloco "$manual SELECT fonte||'|'||(as_of = now())||'|'||(coletado_em = now())||'|'||(proveniencia->>'ator') FROM public.exchange_rate_history WHERE rate = 7.77;")" "manual|true|true|postgres" \
+     "v23 · linha manual nova: fonte manual, as_of e coletado_em do servidor, ator do servidor (o do cliente é sobrescrito)"
+  eq "$(w12_bloco "$manual SELECT modo FROM public.cambio_resolver('2021-01-01', 'USD/BRL', 7, '2021-01-01');")" "sem_cotacao" \
+     "v23 · cotação 'conhecida em 2021' inventada hoje não entra no replay de 2021"
+  eq "$(w12_bloco "$manual UPDATE public.exchange_rate_history SET rate = 1 WHERE rate = 7.77; SELECT 1;")" "ERRO:23001" \
+     "v23 · linha manual nova é imutável"
+  eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',0,'effective_date','2026-10-13')); SELECT 1;")" "ERRO:23514" \
+     "v23 · linha manual nova com taxa 0 é recusada"
+  eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',5.4,'effective_date','2026-10-13','fonte','bcb_ptax')); SELECT 1;")" "ERRO:23514" \
+     "v23 · fonte coletada sem as_of é recusada"
+  eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',5.39,'effective_date','2026-10-13')); $(w12_cot 2026-10-13 5.41 '2026-10-13 13:15:00-03') SELECT fonte||'|'||taxa FROM public.cambio_resolver('2026-10-13');")" "bcb_ptax|5.41" \
+     "v23 · no mesmo dia a PTAX vence a manual, mesmo a manual sendo gravada depois"
+  eq "$(w12_bloco "UPDATE public.exchange_rate_history SET rate = 0 WHERE fonte = 'legado_manual' AND rate = 5.25; SELECT 1;")" "ERRO:23514" \
+     "v23 · linha legada não passa a ter taxa 0 por UPDATE (CHECK vale para toda escrita nova)"
+  # O dono devolve o GRANT por um instante: só a guarda pode recusar agora.
+  PA -c "GRANT INSERT ON public.exchange_rate_history TO authenticated" >/dev/null 2>&1
+  eq "$(w12_sql "select has_table_privilege('authenticated','public.exchange_rate_history','INSERT')")|$(estado authenticated "insert into public.exchange_rate_history (rate, effective_date) values (9.99, '2026-10-15')")" "t|42501" \
+     "v23 · mesmo com o GRANT de volta, a guarda recusa authenticated (não depende do W4)"
+  PA -c "REVOKE INSERT ON public.exchange_rate_history FROM authenticated" >/dev/null 2>&1
+  local papel_w
+  for papel_w in anon authenticated; do
+    eq "$(estado "$papel_w" "insert into public.exchange_rate_history (rate, effective_date) values (9.99, '2026-10-15')")" "42501" "v23 · $papel_w não grava linha manual de câmbio"
+    eq "$(estado "$papel_w" "update public.exchange_rate_history set rate = 9.99")" "42501" "v23 · $papel_w não altera câmbio legado"
+    eq "$(estado "$papel_w" "delete from public.exchange_rate_history")" "42501" "v23 · $papel_w não apaga câmbio legado"
+    eq "$(w12_sql "select has_table_privilege('$papel_w','public.exchange_rate_history','INSERT,UPDATE,DELETE,TRUNCATE')")" "f" "v23 · $papel_w sem escrita no câmbio (REVOKE)"
+  done
   eq "$(w12_bloco "SET LOCAL ROLE authenticated; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:42501" \
      "v23 · authenticated não grava cotação versionada"
   eq "$(w12_bloco "SET LOCAL ROLE anon; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:42501" \
@@ -231,6 +274,20 @@ w12_suite() {
         SELECT fonte||'|'||data_referencia||'|'||cambio_modo||'|'||receita_brl FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-gam';")" \
      "gam|2026-10-13|exata|10.82" "v23 · gam_metrics também versiona, com a chave (date, utm, conta GAM)"
 
+  echo "▶ v23 · câmbio impossível, escala numérica e TRUNCATE"
+  eq "$(w12_bloco "$cots $(w12_jads 2026-10-20 4 w12-lab-zero) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-zero')||'|'||cambio_modo||'|'||cambio_taxa||'|'||cambio_defasagem_dias FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
+     "1|anterior|5.41|7" "v23 · linha manual legada com taxa 0 no dia não derruba o upsert do service_role (ignorada; usa a anterior válida)"
+  eq "$(w12_bloco "$(w12_jads 2026-10-20 4 w12-lab-zero) SELECT cambio_modo||'|'||coalesce(receita_brl::text,'NULL') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
+     "defasada|NULL" "v23 · sem PTAX: taxa 0 ignorada, a manual de fevereiro fica defasada e receita_brl NULL"
+  # shellcheck disable=SC2059
+  eq "$(w12_bloco "$base_rec $(printf "$upsert" 10.00) $(printf "$upsert" 10.0000) $W12_OBS;")" "1" \
+     "v23 · 10 e 10.00 são o mesmo valor: sem versão espúria"
+  eq "$(w12_bloco "$base_rec SET LOCAL ROLE anon; TRUNCATE public.joinads_metrics; RESET ROLE;
+        SELECT (SELECT count(*) FROM public.vw_receita_vigente WHERE tabela_origem='joinads_metrics')||'|'||(SELECT operacao||':'||removida||':'||(proveniencia->>'papel') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm' ORDER BY id DESC LIMIT 1);")" \
+     "0|TRUNCATE:true:anon" "v23 · TRUNCATE na origem vira versão removida de cada chave, com o papel, e a vigente acompanha"
+  eq "$(w12_bloco "$base_rec TRUNCATE public.joinads_metrics; $(w12_jads 2026-10-13 10) SELECT count(*)||'|'||max(receita) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
+     "1|10" "v23 · reingestão depois do TRUNCATE volta a ficar vigente"
+
   echo "▶ v23 · as-of e append-only"
   local obs="INSERT INTO public.receita_observacao (fonte, tabela_origem, chave, data_referencia, operacao, removida, moeda, receita, cambio_modo, coletado_em, proveniencia, impressao_digital) VALUES"
   local asof="$obs ('joinads','joinads_metrics','{\"k\":\"w12-lab-asof\"}','2026-10-10','INSERT',false,'USD',5,'sem_cotacao','2026-10-11 03:00Z','{}','a'),
@@ -268,17 +325,19 @@ w12_suite() {
     { grep -q 'versões além da carga inicial' "$RECIBOS/w12-reverter-com-dado.out" && ok "v23 · reverter recusa com versões de receita" || nao "v23 · reverter falhou por outro motivo"; }
   eq "$(w12_aplicada)" "t" "v23 · recusa não deixou a migration pela metade"
   # Limpeza só de teste: o diário é append-only por gatilho; o dono desliga, apaga o que não é carga e religa.
-  w12_confirma "ALTER TABLE public.receita_observacao DISABLE TRIGGER receita_observacao_imutavel;
-                DELETE FROM public.receita_observacao WHERE operacao <> 'CARGA';
-                ALTER TABLE public.receita_observacao ENABLE TRIGGER receita_observacao_imutavel;" limpa-diario >/dev/null
+  w12_limpa "ALTER TABLE public.receita_observacao DISABLE TRIGGER receita_observacao_imutavel;
+             DELETE FROM public.receita_observacao WHERE operacao <> 'CARGA';
+             ALTER TABLE public.receita_observacao ENABLE TRIGGER receita_observacao_imutavel;" limpa-diario
   w12_reverter reverter-com-cotacao && nao "v23 · reverter apagou cotação coletada" || \
     { grep -q 'cotações versionadas' "$RECIBOS/w12-reverter-com-cotacao.out" && ok "v23 · reverter recusa com cotação versionada" || nao "v23 · reverter falhou por outro motivo"; }
-  w12_confirma "ALTER TABLE public.exchange_rate_history DISABLE TRIGGER cambio_versao_guarda;
-                DELETE FROM public.exchange_rate_history WHERE as_of IS NOT NULL;
-                ALTER TABLE public.exchange_rate_history ENABLE TRIGGER cambio_versao_guarda;
-                ALTER TABLE public.joinads_metrics DISABLE TRIGGER zz_receita_observacao;
-                DELETE FROM public.joinads_metrics WHERE utm_campaign_value LIKE 'w12-lab%';
-                ALTER TABLE public.joinads_metrics ENABLE TRIGGER zz_receita_observacao;" limpa-cotacao >/dev/null
+  w12_limpa "ALTER TABLE public.exchange_rate_history DISABLE TRIGGER cambio_versao_guarda;
+             DELETE FROM public.exchange_rate_history WHERE as_of IS NOT NULL;
+             ALTER TABLE public.exchange_rate_history ENABLE TRIGGER cambio_versao_guarda;
+             ALTER TABLE public.joinads_metrics DISABLE TRIGGER zz_receita_observacao;
+             DELETE FROM public.joinads_metrics WHERE utm_campaign_value LIKE 'w12-lab%';
+             ALTER TABLE public.joinads_metrics ENABLE TRIGGER zz_receita_observacao;" limpa-cotacao
+  P -f - < "$W12_REVERTER" > "$RECIBOS/w12-reverter-sem-dono.out" 2>&1 && nao "v23 · postgres (não dono) reverteu" || \
+    { grep -q 'não é dono de' "$RECIBOS/w12-reverter-sem-dono.out" && ok "v23 · rollback recusa quem não é dono antes de tocar em algo" || nao "v23 · reverter sem dono falhou por outro motivo"; }
 
   echo "▶ v23 · reverter"
   w12_reverter reverter && ok "v23 · rollback aplicou" || nao "v23 · rollback ($(tail -1 "$RECIBOS/w12-reverter.out"))"
@@ -296,7 +355,7 @@ w12_suite() {
   w12_aplicar por-cima && nao "v23 · reaplicar por cima passou" || \
     { grep -q 'não reaplica por cima' "$RECIBOS/w12-por-cima.out" && ok "v23 · reaplicar por cima recusado pela pré-checagem" || nao "v23 · reaplicar por cima falhou por outro motivo"; }
   w12_reverter limpeza >/dev/null && ok "v23 · lab devolvido ao estado anterior" || nao "v23 · limpeza final"
-  w12_confirma "DELETE FROM public.exchange_rate_history WHERE rate = 5.25 AND effective_date = '2026-02-18';" limpa-semente >/dev/null
+  w12_limpa "DELETE FROM public.exchange_rate_history WHERE (rate, effective_date) IN ((5.25, '2026-02-18'), (0, '2026-10-20'));" limpa-semente
 }
 
 w12_suite

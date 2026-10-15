@@ -137,6 +137,7 @@ def test_janela_sem_publicacao_nao_vira_zero():
 @pytest.mark.parametrize("campos, trecho", [
     ({"par": "USDBRL"}, "par"),
     ({"fonte": "legado_manual"}, "fonte"),
+    ({"fonte": "manual"}, "fonte"),       # o banco trocaria o as_of da fonte pelo do servidor
     ({"taxa": 5.4}, "Decimal"),
     ({"as_of": datetime(2026, 10, 13, 13, 0)}, "fuso"),
     ({"data_referencia": datetime(2026, 10, 13, 13, 0)}, "date"),
