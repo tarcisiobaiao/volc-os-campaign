@@ -127,8 +127,29 @@ class Banco:
         return p.stdout.strip().splitlines()[-1] if p.stdout.strip() else ""
 
 
-@pytest.fixture(scope="module")
-def banco():
+# Estados de partida da view. A v26_01 e o rollback só trocam a definição;
+# dono, grants e COMMENT têm de sobreviver exatamente como estavam.
+#   repositorio: como 20260907210000 deixa (com COMMENT)
+#   producao:    como o integrador achou no lab do Mac: view SEM COMMENT
+#   acl_extra:   sem COMMENT e com um grant a mais que a migration não conhece
+ESTADOS = {
+    "repositorio": "",
+    "producao": "COMMENT ON VIEW public.vw_trafego_meta_insight_latest IS NULL;",
+    "acl_extra": (
+        "COMMENT ON VIEW public.vw_trafego_meta_insight_latest IS NULL; "
+        "DO $$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='w15_leitor') "
+        "THEN CREATE ROLE w15_leitor NOLOGIN; END IF; END$$; "
+        "GRANT SELECT ON public.vw_trafego_meta_insight_latest TO w15_leitor;"
+    ),
+}
+
+COMMENT_E_ACL = """SELECT coalesce(obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'), '<sem>')
+  || ' | ' || array_to_string(relacl, ',') || ' | ' || pg_get_userbyid(relowner)
+  FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass"""
+
+
+@pytest.fixture(scope="module", params=sorted(ESTADOS))
+def banco(request):
     nome = "w15_v26_" + uuid.uuid4().hex[:10]
     admin = ["psql", DSN, "-v", "ON_ERROR_STOP=1", "-X", "-q"]
     subprocess.run(admin + ["-c", f"CREATE DATABASE {nome}"], check=True, capture_output=True)
@@ -161,6 +182,10 @@ def banco():
             assert b.inserir(ins) == 1, ins
         assert b.valor("SELECT count(*) FROM public.trafego_meta_insight_daily "
                        f"WHERE ad_account_ativo_id = '{ATIVO}'") == "9"
+        if ESTADOS[request.param]:
+            p = b.run(ESTADOS[request.param])
+            assert p.returncode == 0, p.stderr
+        b.estado = request.param
         yield b
     finally:
         subprocess.run(admin + ["-c", f"DROP DATABASE IF EXISTS {nome} WITH (FORCE)"],
@@ -170,6 +195,9 @@ def banco():
 def test_ciclo_completo_da_v26_01(banco):
     # ── antes: o defeito, medido ────────────────────────────────────────────
     fp_antes = banco.valor(FINGERPRINT)
+    meta_antes = banco.valor(COMMENT_E_ACL)
+    if banco.estado != "repositorio":
+        assert meta_antes.startswith("<sem> | "), meta_antes
     assert banco.valor(CORRENTE) == (
         "1001=w15-a2:false,1002=w15-b2:true,1003=w15-c2:false,1004=w15-d3:true")
 
@@ -178,6 +206,8 @@ def test_ciclo_completo_da_v26_01(banco):
     assert p.returncode == 0, p.stderr
     assert banco.valor(CORRENTE) == (
         "1001=w15-a1:true,1002=w15-b2:true,1003=w15-c2:false,1004=w15-d3:true")
+    # só a definição muda: COMMENT, grants e dono ficam exatamente como estavam
+    assert banco.valor(COMMENT_E_ACL) == meta_antes
     # uma linha por grão, nunca duas
     assert banco.valor(f"SELECT count(*) FROM public.vw_trafego_meta_insight_latest "
                        f"WHERE ad_account_ativo_id = '{ATIVO}'") == "4"
@@ -209,6 +239,7 @@ def test_ciclo_completo_da_v26_01(banco):
     p = banco.run(arquivo=REVERTER)
     assert p.returncode == 0, p.stderr
     assert banco.valor(FINGERPRINT) == fp_antes
+    assert banco.valor(COMMENT_E_ACL) == meta_antes
     assert banco.valor(CORRENTE).startswith("1001=w15-a2:false")
     p = banco.run(arquivo=REVERTER)
     assert p.returncode == 0, p.stderr
@@ -228,3 +259,19 @@ def test_papel_sem_ser_dono_e_recusado(banco):
     corpo = APLICAR.read_text(encoding="utf-8").replace("\\set ON_ERROR_STOP on", "")
     p = banco.run("SET ROLE w15_intruso;\n" + corpo)
     assert p.returncode != 0 and "deve rodar como postgres ou supabase_admin" in p.stderr
+
+
+def test_reloptions_diferentes_sao_recusadas_sem_mudar_nada(banco):
+    # O WITH (security_invoker = true) reescreveria reloptions; as duas
+    # guardas recusam em vez de mudar a view em silêncio.
+    p = banco.run("ALTER VIEW public.vw_trafego_meta_insight_latest SET (security_barrier = true);")
+    assert p.returncode == 0, p.stderr
+    try:
+        fp = banco.valor(FINGERPRINT)
+        for arquivo in (APLICAR, REVERTER):
+            p = banco.run(arquivo=arquivo)
+            assert p.returncode != 0 and "reloptions da view nao sao exatamente" in p.stderr, arquivo
+            assert banco.valor(FINGERPRINT) == fp
+    finally:
+        p = banco.run("ALTER VIEW public.vw_trafego_meta_insight_latest RESET (security_barrier);")
+        assert p.returncode == 0, p.stderr

@@ -3,7 +3,13 @@
 -- =============================================================================
 -- Idempotente: sobre a view ja revertida (ou nunca migrada) ela reescreve a
 -- mesma definicao. Mantem nome, colunas e tipos, e por isso os dependentes de
--- 20260908120000 continuam de pe. Grants reafirmados por nome.
+-- 20260908120000 continuam de pe.
+--
+-- So a definicao volta. Dono, grants e COMMENT ficam como estao (o CREATE OR
+-- REPLACE VIEW os mantem, e nem a v26_01 nem este rollback os tocam). Assim o
+-- rollback devolve o estado exato de antes, com ou sem COMMENT: em producao a
+-- view nao tem COMMENT e o repositorio tem. A guarda recusa rodar se reloptions
+-- nao forem exatamente security_invoker=true, que o WITH reescreveria.
 -- =============================================================================
 \set ON_ERROR_STOP on
 
@@ -16,6 +22,11 @@ BEGIN
   END IF;
   IF to_regclass('public.vw_trafego_meta_insight_latest') IS NULL THEN
     RAISE EXCEPTION 'v26_01_rollback: public.vw_trafego_meta_insight_latest nao existe';
+  END IF;
+  IF (SELECT coalesce(array_to_string(reloptions, ','), '') FROM pg_class
+       WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass) <> 'security_invoker=true' THEN
+    RAISE EXCEPTION '%: reloptions da view nao sao exatamente security_invoker=true; o WITH desta migration as reescreveria',
+      'v26_01_rollback';
   END IF;
 END
 $guarda$;
@@ -58,14 +69,5 @@ ORDER BY
   d.periodo_inicio, d.periodo_fim, d.janela_atribuicao, d.breakdown,
   d.time_increment, d.action_report_time,
   d.observado_em DESC;
-
-COMMENT ON VIEW public.vw_trafego_meta_insight_latest IS
-  'UMA linha corrente por grao verdadeiro do insight (sem observado_em na identidade). As revisoes anteriores continuam na tabela base; esta view existe para que somar spend nao conte o mesmo dia duas vezes. ⚠️ reach, frequency, cpm, cpc e ctr continuam NAO ADITIVAS entre linhas.';
-
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM PUBLIC;
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM anon;
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM authenticated;
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM service_role;
-GRANT SELECT ON public.vw_trafego_meta_insight_latest TO service_role;
 
 COMMIT;

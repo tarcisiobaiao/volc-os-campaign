@@ -28,8 +28,14 @@
 --
 -- O QUE ELA NAO FAZ. Nao trata revisao COMPLETA mais nova que traga uma metrica
 -- NULL onde a anterior tinha numero: completa vence, e NULL continua NULL
--- (ausencia nunca vira o numero antigo nem zero). Nao muda grants: os mesmos
--- REVOKE/GRANT de 20260907210000 sao reafirmados, por nome.
+-- (ausencia nunca vira o numero antigo nem zero).
+--
+-- O QUE ELA PRESERVA. So a definicao muda. Dono, grants e COMMENT ficam como
+-- estao: o CREATE OR REPLACE VIEW os mantem, e esta migration nao emite
+-- COMMENT, GRANT nem REVOKE. (Em producao a view nao tem COMMENT; reescreve-lo
+-- aqui impediria o rollback de devolver o estado exato de antes.) O WITH
+-- (security_invoker = true) reescreve reloptions, entao a guarda recusa rodar
+-- se elas nao forem exatamente essas.
 -- =============================================================================
 \set ON_ERROR_STOP on
 
@@ -49,6 +55,11 @@ BEGIN
                   WHERE table_schema = 'public' AND table_name = 'trafego_meta_insight_daily'
                     AND column_name = 'completo') THEN
     RAISE EXCEPTION 'v26_01 depende de trafego_meta_insight_daily.completo (20260907210000)';
+  END IF;
+  IF (SELECT coalesce(array_to_string(reloptions, ','), '') FROM pg_class
+       WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass) <> 'security_invoker=true' THEN
+    RAISE EXCEPTION '%: reloptions da view nao sao exatamente security_invoker=true; o WITH desta migration as reescreveria',
+      'v26_01';
   END IF;
   v_def := pg_get_viewdef('public.vw_trafego_meta_insight_latest'::regclass, true);
   IF v_def ~* 'completo\s+DESC' THEN
@@ -99,14 +110,5 @@ ORDER BY
   -- (e carrega `completo = false` para quem le).
   d.completo DESC,
   d.observado_em DESC;
-
-COMMENT ON VIEW public.vw_trafego_meta_insight_latest IS
-  'UMA linha corrente por grao verdadeiro do insight (sem observado_em na identidade). Entre as revisoes do grao vence a COMPLETA mais recente; so sem nenhuma completa vence a incompleta mais recente, com completo=false (v26_01). As revisoes anteriores continuam na tabela base; esta view existe para que somar spend nao conte o mesmo dia duas vezes. ⚠️ reach, frequency, cpm, cpc e ctr continuam NAO ADITIVAS entre linhas.';
-
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM PUBLIC;
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM anon;
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM authenticated;
-REVOKE ALL ON public.vw_trafego_meta_insight_latest FROM service_role;
-GRANT SELECT ON public.vw_trafego_meta_insight_latest TO service_role;
 
 COMMIT;

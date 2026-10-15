@@ -64,6 +64,13 @@ w15_fp() {
     (SELECT string_agg(attname || ':' || format_type(atttypid, atttypmod), ',' ORDER BY attnum)
        FROM pg_attribute WHERE attrelid = 'public.vw_trafego_meta_insight_latest'::regclass AND attnum > 0)))"
 }
+# COMMENT (ou a falta dele), ACL e dono. A v26_01 e o rollback só trocam a
+# definição; em produção a view não tem COMMENT, e isso tem de sobreviver.
+w15_meta() {
+  w15_sql "SELECT coalesce(obj_description('public.vw_trafego_meta_insight_latest'::regclass, 'pg_class'), '<sem>')
+    || ' | ' || coalesce(array_to_string(relacl, ','), '<padrão>') || ' | ' || pg_get_userbyid(relowner)
+    FROM pg_class WHERE oid = 'public.vw_trafego_meta_insight_latest'::regclass"
+}
 W15_CORRENTE="SELECT string_agg(objeto_externo || '=' || meta_insight_daily_id || ':' || completo, ',' ORDER BY objeto_externo)
   FROM public.vw_trafego_meta_insight_latest WHERE ad_account_ativo_id = '$W15_ATIVO'"
 W15_ESPERADO_ANTES="1001=w15-a2:false,1002=w15-b2:true,1003=w15-c2:false,1004=w15-d3:true"
@@ -153,14 +160,17 @@ w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
      "v26 · semente: 4 grãos, 9 revisões no fato" || return 1
 
   echo "▶ v26 · antes"
-  local fp_antes fp_depois
+  local fp_antes fp_depois meta_antes
   fp_antes=$(w15_fp)
+  meta_antes=$(w15_meta)
+  echo "  ·    COMMENT | ACL | dono antes: $meta_antes"
   eq "$(w15_sql "$W15_CORRENTE")" "$W15_ESPERADO_ANTES" "v26 · antes: a incompleta mais nova vencia a completa (o defeito)"
 
   echo "▶ v26 · aplicar"
   w15_aplicar aplicar && ok "v26 · v26_01 aplicou" || { nao "v26 · aplicar ($(tail -1 "$RECIBOS/w15-aplicar.out"))"; return 1; }
   eq "$(w15_sql "$W15_CORRENTE")" "$W15_ESPERADO_DEPOIS" \
      "v26 · completa mais recente vence; sem completa, a incompleta mais recente com completo=false"
+  eq "$(w15_meta)" "$meta_antes" "v26 · aplicar não mexe em COMMENT, ACL nem dono"
   eq "$(w15_sql "select count(*) from public.vw_trafego_meta_insight_latest where ad_account_ativo_id = '$W15_ATIVO'")" "4" \
      "v26 · uma linha por grão"
   eq "$(w15_sql "select to_regclass('public.vw_trafego_meta_financeiro_conjunto_dia') is not null and to_regclass('public.vw_trafego_meta_financeiro_campanha_dia') is not null")" "t" \
@@ -179,6 +189,7 @@ w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
   eq "$(w15_fp)" "$fp_depois" "v26 · a recusa não mudou nada"
   w15_reverter reverter && ok "v26 · rollback aplicou" || nao "v26 · rollback ($(tail -1 "$RECIBOS/w15-reverter.out"))"
   eq "$(w15_fp)" "$fp_antes" "v26 · rollback devolve o fingerprint de antes"
+  eq "$(w15_meta)" "$meta_antes" "v26 · rollback devolve COMMENT, ACL e dono de antes"
   eq "$(w15_sql "$W15_CORRENTE")" "$W15_ESPERADO_ANTES" "v26 · rollback devolve a ordem antiga"
   w15_reverter reverter-2 && ok "v26 · rollback idempotente" || nao "v26 · rollback 2 ($(tail -1 "$RECIBOS/w15-reverter-2.out"))"
   eq "$(w15_fp)" "$fp_antes" "v26 · fingerprint estável no 2º rollback"

@@ -6,8 +6,11 @@ chamada a P/PA dentro de `while read ... done <<< "$lista"` engole as linhas
 seguintes, e o loop roda uma vez só. O stub daqui reproduz isso com
 `cat | psql`: P e PA consomem todo o stdin, leiam SQL dele ou não.
 
-A base imita o `recriar-prod`: a v13_01 entra por dump schema-only, então
-`cofre_gaveta` e `cofre_tipo` chegam vazias.
+A base imita o `recriar-prod`: entra por dump schema-only, então
+`cofre_gaveta` e `cofre_tipo` chegam vazias. Duas bases:
+  so_cofre: só a v13_01 (a suíte aplica a cadeia Meta no container);
+  producao: v13_01 + cadeia Meta, com a view latest SEM COMMENT, como o
+            integrador achou no lab do Mac (RECIBO-w15-c34a5971-devolvido).
 
 Prova num PostgreSQL DESCARTÁVEL (`VOLC_PG_DESCARTAVEL`, DSN de superusuário
 em forma de palavras-chave). Sem a variável o teste é PULADO, e pulado não é
@@ -26,7 +29,15 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 SUITE = RAIZ / "tools" / "freedom-lab" / "db" / "suites" / "v26_w15.sh"
-V13 = RAIZ / "supabase" / "migrations" / "v13_01_cofre_de_ativos.sql"
+MIG = RAIZ / "supabase" / "migrations"
+V13 = MIG / "v13_01_cofre_de_ativos.sql"
+CADEIA_META = [
+    "v15_01_meta_ads_read_model.sql",
+    "v15_02_meta_ads_insights.sql",
+    "20260907210000_meta_read_model_consistency.sql",
+    "20260908000000_meta_insights_escopo.sql",
+    "20260908120000_meta_financeiro_conjunto_dia.sql",
+]
 DSN = os.environ.get("VOLC_PG_DESCARTAVEL", "").strip()
 
 pytestmark = pytest.mark.skipif(
@@ -60,8 +71,8 @@ def _psql(dsn: str, *args: str, entrada: str | None = None) -> subprocess.Comple
                           input=entrada, capture_output=True, text=True)
 
 
-@pytest.fixture()
-def base_schema_only(tmp_path):
+@pytest.fixture(params=["so_cofre", "producao"])
+def base_schema_only(request, tmp_path):
     """Banco com a v13_01 vinda de dump schema-only, como no recriar-prod."""
     sufixo = uuid.uuid4().hex[:10]
     ref, alvo = f"w15_ref_{sufixo}", f"w15_lab_{sufixo}"
@@ -73,6 +84,12 @@ def base_schema_only(tmp_path):
         dsn_ref, dsn_alvo = f"{DSN} dbname={ref}", f"{DSN} dbname={alvo}"
         p = _psql(dsn_ref, "-c", PAPEIS, "-f", str(V13))
         assert p.returncode == 0, p.stderr[-2000:]
+        if request.param == "producao":
+            for f in CADEIA_META:
+                p = _psql(dsn_ref, "-f", str(MIG / f))
+                assert p.returncode == 0, f"{f}: {p.stderr[-2000:]}"
+            p = _psql(dsn_ref, "-c", "COMMENT ON VIEW public.vw_trafego_meta_insight_latest IS NULL")
+            assert p.returncode == 0, p.stderr
         dump = subprocess.run(["pg_dump", dsn_ref, "--schema-only"], capture_output=True, text=True)
         assert dump.returncode == 0, dump.stderr
         p = _psql(dsn_alvo, "-c", PAPEIS)
@@ -82,7 +99,7 @@ def base_schema_only(tmp_path):
         p = _psql(dsn_alvo, "-Atc", "SELECT (SELECT count(*) FROM public.cofre_gaveta) || '|' || "
                                     "(SELECT count(*) FROM public.cofre_tipo)")
         assert p.stdout.strip() == "0|0", "a base precisa chegar sem dados de referencia"
-        yield dsn_alvo
+        yield request.param, dsn_alvo
     finally:
         for nome in (alvo, ref):
             _psql(admin, "-c", f"DROP DATABASE IF EXISTS {nome} WITH (FORCE)")
@@ -97,14 +114,16 @@ def _rodar_stub(corpo: str, dsn: str, tmp_path: Path) -> subprocess.CompletedPro
 
 
 def test_o_stub_engole_o_stdin_como_o_docker_exec(base_schema_only, tmp_path):
+    _, dsn = base_schema_only
     # Sem isto, o teste abaixo passaria com uma suíte quebrada no Mac.
     p = _rodar_stub('n=0; while read -r x; do n=$((n+1)); P -Atc "select 1" >/dev/null; '
                     'done <<< "$(printf "a\\nb\\nc")"; echo "lidas=$n"\n',
-                    base_schema_only, tmp_path)
+                    dsn, tmp_path)
     assert p.stdout.strip().endswith("lidas=1"), p.stdout + p.stderr
 
 
 def test_suite_v26_w15_passa_no_stub_fiel(base_schema_only, tmp_path):
+    base, dsn = base_schema_only
     corpo = (
         f'RAIZ="{RAIZ}"; RECIBOS="{tmp_path / "recibos"}"\n'
         "MIGRATION=supabase/migrations/v26_01_meta_insight_latest_completa.sql\n"
@@ -112,7 +131,7 @@ def test_suite_v26_w15_passa_no_stub_fiel(base_schema_only, tmp_path):
         f'source "{SUITE}"\n'
         'echo "ok=$OKS falhou=$NAOS"\n'
     )
-    p = _rodar_stub(corpo, base_schema_only, tmp_path)
+    p = _rodar_stub(corpo, dsn, tmp_path)
     saida = p.stdout + p.stderr
     m = re.search(r"ok=(\d+) falhou=(\d+)\s*$", p.stdout)
     assert m, saida
@@ -120,4 +139,9 @@ def test_suite_v26_w15_passa_no_stub_fiel(base_schema_only, tmp_path):
     assert "os 6 arquivos foram percorridos" in saida, saida
     for fid in ("a1", "a2", "b1", "b2", "c1", "c2", "d1", "d2", "d3"):
         assert f"semente w15-{fid}: 1 linha" in saida, saida
-    assert int(m.group(1)) == 40, saida
+    assert "aplicar não mexe em COMMENT, ACL nem dono" in saida, saida
+    assert "rollback devolve COMMENT, ACL e dono de antes" in saida, saida
+    if base == "producao":
+        assert "COMMENT | ACL | dono antes: <sem> | " in saida, saida
+        assert "aplicada no container" not in saida, saida
+    assert int(m.group(1)) == 42, saida
