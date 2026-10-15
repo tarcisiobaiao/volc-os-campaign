@@ -53,7 +53,26 @@ SELECT 'raw_events ultima', max(created_at)::text FROM public.raw_events;
 ROLLBACK;
 SQL
 
-cat > "$OUT/05-manual.txt" <<'TXT'
+echo "== 5. O que o papel anon executou de fato (pg_stat_statements; constantes já normalizadas como \$n)" | tee "$OUT/05-pg-stat-anon.txt"
+"${SSH[@]}" "$LEITURA" 2>&1 <<'SQL' | mascarar >> "$OUT/05-pg-stat-anon.txt" || true
+BEGIN READ ONLY;
+SELECT 'pgss_desde', coalesce((SELECT stats_reset::text FROM pg_stat_statements_info), '?');
+SELECT userid::regrole AS papel, count(*) AS consultas, sum(calls) AS chamadas
+  FROM pg_stat_statements WHERE userid::regrole::text IN ('anon','authenticated','service_role') GROUP BY 1 ORDER BY 1;
+SELECT 'anon', calls, left(regexp_replace(query, '\s+', ' ', 'g'), 110)
+  FROM pg_stat_statements WHERE userid = 'anon'::regrole ORDER BY calls DESC LIMIT 40;
+ROLLBACK;
+SQL
+
+echo "== 6. Origem das chamadas REST/functions (14 dias): referer (só domínio) e user-agent" | tee "$OUT/06-kong-origens.txt"
+"${SSH[@]}" 'docker logs supabase-kong --since 336h 2>&1 | grep -E "\"[A-Z]+ /(rest|functions|graphql)/v1" \
+  | awk -F"\"" "{print \"ref=\" \$4, \"| ua=\" substr(\$6,1,25)}" | sed -E "s#(ref=https?://[^/ ]+)[^ |]*#\\1#" \
+  | sort | uniq -c | sort -rn | head -25' 2>&1 | mascarar >> "$OUT/06-kong-origens.txt" || true
+
+echo "== 7. GoTrue: cadastro por e-mail e telefone (só flags booleanas)" | tee "$OUT/07-gotrue-flags.txt"
+"${SSH[@]}" 'grep -oE "^(ENABLE_EMAIL_AUTOCONFIRM|ENABLE_PHONE_SIGNUP|ENABLE_PHONE_AUTOCONFIRM)=(true|false)" /root/supabase/docker/.env' >> "$OUT/07-gotrue-flags.txt" 2>&1 || true
+
+cat > "$OUT/08-manual.txt" <<'TXT'
 == 5. Passos manuais (não dá para ler daqui)
 - GTM-N4KS27ZV e GTM-KJK7QQK9: na UI do Tag Manager, versão publicada atual; listar
   tags com "/rest/v1" ou "/functions/v1" e o estado (pausada/ativa). Não copiar o JWT.
@@ -63,5 +82,5 @@ cat > "$OUT/05-manual.txt" <<'TXT'
 Preencher docs/closure/incidente-anon-w4/INVENTARIO-ANON.json a partir de
 docs/INCIDENTE-ANON-INVENTARIO.modelo.json com o resultado e a decisão de cada item.
 TXT
-cat "$OUT/05-manual.txt"
+cat "$OUT/08-manual.txt"
 ( cd "$OUT" && shasum -a 256 0*.txt > SHA256SUMS ) && echo "saídas em $OUT (SHA256SUMS)"
