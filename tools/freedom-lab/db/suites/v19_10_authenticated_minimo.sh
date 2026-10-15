@@ -304,6 +304,28 @@ eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789',' H
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://p1.example@p2v.example/x')" "$OPER")" "ok:f" "escopo: userinfo não vira host do projeto"
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','https://p1.example.p2v.example/x')" "$OPER")" "ok:f" "escopo: sufixo de outro domínio não casa"
 eq "$(estado authenticated "select public.volc_host_normalizado('x')" "$OPER" | cut -c1-5)" "42501" "volc_host_normalizado: sem EXECUTE para authenticated"
+# Manutenção das URLs (pedido do Tarcisio, 15/10 20:26Z): desativar sempre; domínio ao criar, trocar o texto ou reativar
+PA -c "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789', 'outro.example/hist', true), ('123456789', 'blog.p1.example/hist', false), ('123456789', 'p1.example/ok', true)" >/dev/null
+CFU="public.campaign_funnel_urls"; C1="campaign_id = '123456789'"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = false, updated_at = now() WHERE $C1 AND url = 'outro.example/hist' RETURNING \"Active\"" "$OPER")" "ok:f" "manutenção: URL histórica de domínio divergente pode ser desativada pelo operador"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url = 'blog.p1.example/hist' RETURNING 1" "$OPER" | cut -c1-5)" "42501" "manutenção: URL divergente inativa não pode ser reativada"
+eq "$(estado authenticated "UPDATE $CFU SET url = 'p2v.example/troca' WHERE $C1 AND url = 'p1.example/ok' RETURNING 1" "$OPER" | cut -c1-5)" "42501" "manutenção: trocar a URL para domínio externo é recusado"
+eq "$(estado authenticated "UPDATE $CFU SET url = 'p1.example/novo-texto' WHERE $C1 AND url = 'p1.example/ok' RETURNING url" "$OPER")" "ok:p1.example/novo-texto" "manutenção: trocar o texto dentro do domínio segue permitido"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = false WHERE $C1 AND url = 'p1.example/ok' RETURNING \"Active\"" "$OPER")" "ok:f" "manutenção: só Active true→false não é recusado"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = false, url = 'p1.example/escondida' WHERE $C1 AND url = 'p1.example/ok' RETURNING 1" "$OPER" | cut -c1-5)" "42501" "manutenção: desativar não altera o texto da URL em silêncio"
+eq "$(estado authenticated "UPDATE $CFU SET campaign_id = '222222222' WHERE $C1 AND url = 'p1.example/ok' RETURNING 1" "$OPER" | cut -c1-5)" "42501" "manutenção: campaign_id não pode ser trocado"
+eq "$(estado authenticated "WITH u AS (UPDATE $CFU SET \"Active\" = false WHERE campaign_id = '222222222' RETURNING 1) SELECT count(*) FROM u" "$OPER")" "ok:0" "manutenção: operador de outra campanha segue sem alcançar as URLs dela"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = true WHERE campaign_id = '222222222' RETURNING 1" "$OPER" | cut -c1-5)" "ok:" "manutenção: operador de outra campanha não reativa nada (0 linhas)"
+SAVE="UPDATE $CFU SET \"Active\" = false, updated_at = now() WHERE $C1;
+      INSERT INTO $CFU (campaign_id, url, \"Active\") VALUES ('123456789', 'p1.example/ok', true), ('123456789', 'p1.example/nova', true)
+        ON CONFLICT (campaign_id, url) DO UPDATE SET campaign_id = EXCLUDED.campaign_id, url = EXCLUDED.url, \"Active\" = EXCLUDED.\"Active\";
+      SELECT string_agg(url || ':' || \"Active\"::text, ',' ORDER BY url) FROM $CFU WHERE $C1"
+eq "$(estado authenticated "$SAVE" "$OPER")" "ok:blog.p1.example/hist:false,outro.example/hist:false,p1.example/a:false,p1.example/nova:true,p1.example/ok:true" "saveFunnelUrls (desativa tudo + upsert) não fica bloqueado por URL histórica divergente"
+eq "$(estado authenticated "${SAVE/p1.example\/nova/outro.example\/hist}" "$OPER" | cut -c1-5)" "42501" "saveFunnelUrls que mantém a URL divergente na lista é recusado (reativaria fora do domínio)"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url = 'blog.p1.example/hist' RETURNING \"Active\"" "$ADMIN")" "ok:t" "manutenção: ADMIN preserva o comportamento (reativa URL divergente)"
+eq "$(estado service_role "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url = 'blog.p1.example/hist' RETURNING \"Active\"")" "ok:t" "manutenção: service_role (backend/n8n) preserva o comportamento"
+eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = false WHERE $C1 AND url = 'p1.example/ok' RETURNING 1" "$SEMPAPEL" | cut -c1-5)" "ok:" "manutenção: conta sem papel não desativa nada (0 linhas)"
+PA -c "DELETE FROM public.campaign_funnel_urls WHERE campaign_id = '123456789' AND url IN ('outro.example/hist', 'blog.p1.example/hist', 'p1.example/ok')" >/dev/null
 PA -c "UPDATE public.projects SET domain = '', main_url = '' WHERE id = 9001" >/dev/null
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','/x')" "$OPER")" "ok:f" "escopo: projeto sem domínio → URL sem host não casa"
 PA -c "UPDATE public.projects SET domain = 'p1.example', main_url = 'https://p1.example' WHERE id = 9001" >/dev/null

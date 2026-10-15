@@ -351,6 +351,9 @@ BEGIN
   IF to_regprocedure('public.volc_pode_editar_funil(text,text)') IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10: public.volc_pode_editar_funil já existe — não reaplica';
   END IF;
+  IF to_regprocedure('public.volc_funil_manutencao()') IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_10: public.volc_funil_manutencao já existe — não reaplica';
+  END IF;
   IF to_regprocedure('public.volc_host_normalizado(text)') IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10: public.volc_host_normalizado já existe — não reaplica';
   END IF;
@@ -421,9 +424,47 @@ INSERT INTO app_auth.w4_auth_criados VALUES ('funcao', 'public.volc_pode_editar_
 
 ALTER POLICY w4a_insert ON public.campaign_funnel_urls
   WITH CHECK (public.volc_pode_editar_funil(campaign_id::text, url::text));
+-- UPDATE: a policy só exige o vínculo com a campanha (antes e depois); o domínio
+-- da URL é exigido pelo gatilho abaixo apenas quando o texto muda ou a linha volta
+-- a ficar ativa. Assim o operador sempre consegue DESATIVAR uma URL da própria
+-- campanha, mesmo histórica ou de domínio divergente (saveFunnelUrls desativa tudo
+-- antes de regravar), e nunca reativa nem troca para fora do domínio.
 ALTER POLICY w4a_update ON public.campaign_funnel_urls
   USING (public.volc_pode_editar_funil(campaign_id::text, NULL))
-  WITH CHECK (public.volc_pode_editar_funil(campaign_id::text, url::text));
+  WITH CHECK (public.volc_pode_editar_funil(campaign_id::text, NULL));
+
+-- b2) manutenção das URLs pelo browser (só o papel authenticated, e não ADMIN:
+--     ADMIN, service_role, n8n e o dono seguem como antes)
+CREATE FUNCTION public.volc_funil_manutencao() RETURNS trigger
+LANGUAGE plpgsql SET search_path = '' AS $g$
+BEGIN
+  IF current_user <> 'authenticated' OR public.volc_current_admin() THEN
+    RETURN NEW;
+  END IF;
+  IF NEW.campaign_id IS DISTINCT FROM OLD.campaign_id THEN
+    RAISE EXCEPTION 'funil: campaign_id não pode ser trocado' USING ERRCODE = '42501';
+  END IF;
+  IF NEW.url IS DISTINCT FROM OLD.url AND OLD."Active" AND NOT NEW."Active" THEN
+    RAISE EXCEPTION 'funil: desativar não altera o texto da URL' USING ERRCODE = '42501';
+  END IF;
+  IF (NEW.url IS DISTINCT FROM OLD.url OR (NEW."Active" AND NOT OLD."Active"))
+     AND NOT public.volc_pode_editar_funil(NEW.campaign_id::text, NEW.url::text) THEN
+    RAISE EXCEPTION 'funil: URL fora do domínio do projeto (criar, trocar o texto ou reativar)' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END
+$g$;
+COMMENT ON FUNCTION public.volc_funil_manutencao() IS
+  'v19_10 (W4): BEFORE UPDATE em campaign_funnel_urls. Para authenticated não-ADMIN: campaign_id fixo; '
+  'desativar não muda o texto; trocar o texto ou reativar exige o domínio do projeto. Removida pelo v19_10_rollback.sql.';
+ALTER FUNCTION public.volc_funil_manutencao() OWNER TO supabase_admin;
+REVOKE ALL ON FUNCTION public.volc_funil_manutencao() FROM PUBLIC, anon, authenticated, service_role;
+-- o nome ordena ANTES de trigger_clean_funnel_url: compara o texto que o cliente
+-- mandou com o gravado, antes da limpeza do sistema
+CREATE TRIGGER trigger_cfu_w4_manutencao BEFORE UPDATE ON public.campaign_funnel_urls
+  FOR EACH ROW EXECUTE FUNCTION public.volc_funil_manutencao();
+INSERT INTO app_auth.w4_auth_criados VALUES ('gatilho', 'campaign_funnel_urls.trigger_cfu_w4_manutencao'),
+                                            ('funcao', 'public.volc_funil_manutencao()');
 
 -- c) papel dedicado e recálculo só da campanha da linha
 CREATE ROLE volc_agregador_funil NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;

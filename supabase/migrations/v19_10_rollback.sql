@@ -10,8 +10,8 @@
 -- mudou foi alterado de novo depois da aplicação.
 --
 -- Também devolve os dois gatilhos de agregação do funil ao corpo, à segurança e
--- ao dono anteriores (aborta se mudaram depois), remove a função de escopo
--- volc_pode_editar_funil e o papel volc_agregador_funil, e o default ACL de public para anon/authenticated como
+-- ao dono anteriores (aborta se mudaram depois), remove o gatilho de manutenção
+-- do funil, as funções criadas (escopo, host, manutenção) e o papel volc_agregador_funil, e o default ACL de public para anon/authenticated como
 -- era antes (aborta se qualquer um dos dois mudou depois da v19_10).
 --
 -- ORDEM: reverter a v19_10 ANTES do v19_99 (pacote anon); com o W12 aplicado,
@@ -146,7 +146,13 @@ BEGIN
     v_n := v_n + 1;
   END LOOP;
 
-  -- objetos criados pela v19_10: função de escopo do funil e papel do agregador
+  -- objetos criados pela v19_10: gatilho de manutenção do funil (antes da função dele)
+  FOR x IN SELECT * FROM app_auth.w4_auth_criados WHERE tipo = 'gatilho' LOOP
+    IF to_regclass('public.' || split_part(x.nome, '.', 1)) IS NOT NULL THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I', split_part(x.nome, '.', 2), split_part(x.nome, '.', 1));
+    END IF;
+  END LOOP;
+  -- objetos criados pela v19_10: funções do escopo do funil e papel do agregador
   FOR x IN SELECT * FROM app_auth.w4_auth_criados WHERE tipo = 'funcao' LOOP
     IF to_regprocedure(x.nome) IS NOT NULL THEN EXECUTE format('DROP FUNCTION %s', x.nome); END IF;
   END LOOP;
