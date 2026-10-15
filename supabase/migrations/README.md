@@ -2,6 +2,29 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Receita datada e câmbio versionado: v23_01 (W12) — PROPOSTA, não aplicada
+
+`v23_01_receita_datada_cambio.sql` e `v23_01_rollback.sql`. Prova:
+`tools/freedom-lab/db/suites/v23_w12.sh` pelo `lab.sh recriar-prod`, no Mac.
+Handoff: `/mnt/project-files/handoffs/W12-receita-cambio.md`.
+
+- **Quem aplica e reverte:** o dono das tabelas (`supabase_admin` em produção).
+- **Ordem canônica:** `v19 → v19_10 → v23_01`. O W4 vem antes, para o retrato de
+  ACL que a v23_01 guarda já ser o do W4. Reverter **só em ordem inversa**:
+  `v23_01 → v19_10 → v19`.
+- Mesmo nessa ordem, a v23_01 revoga explicitamente de `PUBLIC`, `anon` e
+  `authenticated` tudo o que cria (diário, `vw_receita_vigente`, retrato de ACL,
+  a sequência `receita_observacao_id_seq` e as funções); `service_role` fica só
+  com leitura do diário e EXECUTE de `cambio_resolver`/`receita_as_of`. Ninguém
+  além do dono tem USAGE/UPDATE na sequência do diário (um `setval` fazia o
+  upsert de `gam_metrics` cair com 23505).
+- `record_exchange_rate_change()` (gatilho de `system_settings`) **continua
+  INVOKER**: depois da v23_01, `UPDATE` de `dollar_exchange_rate` por
+  anon/authenticated falha (42501); só o servidor (service_role) muda o dólar.
+- O rollback da v23_01 **nunca** devolve privilégio a `anon` nem a `PUBLIC` em
+  `exchange_rate_history`, mesmo que estivesse no retrato (política do W4:
+  anon não escreve). O que deixa de devolver sai num `NOTICE`.
+
 ## Registro de conversões offline: v25_01 (W14) — PROPOSTA, não aplicada
 
 `v25_01_conversao_offline_ledger.sql` e `v25_01_rollback.sql`. Prova:
