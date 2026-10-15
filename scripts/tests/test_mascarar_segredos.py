@@ -45,6 +45,10 @@ VAZAMENTOS = [
     ("json-aspas-escapadas-apikey", '\\"apikey\\": \\"' + FALSO + '\\"', [FALSO]),
     ("createclient-posicional", f'const db = createClient(URL, "{FALSO}");', [FALSO]),
     ("createclient-posicional-aspas-simples", f"createClient('https://x.invalid', '{FALSO}')", [FALSO]),
+    ("bearer-maiusculo", f"AUTHORIZATION: BEARER {FALSO}", [FALSO]),
+    ("supabaseclient-posicional", f'new SupabaseClient("https://x.invalid", "{FALSO}")', [FALSO]),
+    ("pem-uma-linha", "-----BEGIN PRIVATE KEY-----MIIEvQIBADANBgkqhkiG9w0BAQEFAAS" + FALSO + "-----END PRIVATE KEY-----", [FALSO, "MIIEvQIBADANBgkqhkiG9w0BAQEFAAS"]),
+    ("pem-multilinha", "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA" + FALSO + "\nQWERTYUIOPASDFGHJKL0987654321\n-----END RSA PRIVATE KEY-----", [FALSO, "QWERTYUIOPASDFGHJKL0987654321"]),
     ("connstring-simbolos", "postgres://u:Pq@7!x#Wm$2@h:5432/db", ["7!x#Wm$2"]),
 ]
 

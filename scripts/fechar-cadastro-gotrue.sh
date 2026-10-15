@@ -35,6 +35,7 @@ CARIMBO="$(date +%Y%m%d-%H%M%S)"
 checar() { # só leitura: flags, mapeamento no compose, o que o GoTrue anuncia
   "${SSH[@]}" "set -euo pipefail; cd $DIR && grep -oE '^(DISABLE_SIGNUP|ENABLE_EMAIL_SIGNUP|ENABLE_EMAIL_AUTOCONFIRM|ENABLE_PHONE_SIGNUP|ENABLE_PHONE_AUTOCONFIRM)=(true|false)' .env;
     echo '-- compose:'; grep -nE 'GOTRUE_DISABLE_SIGNUP|GOTRUE_EXTERNAL_PHONE_ENABLED|GOTRUE_SMS_AUTOCONFIRM' docker-compose.yml;
+    echo '-- sha256 do .env lido (sem conteúdo):'; sha256sum .env | cut -d' ' -f1;
     echo '-- container auth:'; docker ps --filter name=supabase-auth --format '{{.Names}} {{.Status}}';
     echo '-- /auth/v1/settings (o que o GoTrue anuncia):';
     K=\$(grep -E '^ANON_KEY=' .env | cut -d= -f2-);

@@ -72,3 +72,18 @@ def test_reverter_sem_autorizacao_recusa(servidor):
     assert r.returncode == 16
 
 
+
+
+def test_reverter_carimbo_errado_para_antes_do_sha_e_do_cp(servidor):
+    d, env, t = servidor
+    subprocess.run(["bash", "-c", f'SSH=(bash -c); DIR={d}; CARIMBO=20261015-120000; '
+                    f'source {LIB}; set -euo pipefail; fechar'], capture_output=True, text=True, env=env, check=True)
+    antes = (d / ".env").read_bytes()
+    r = subprocess.run(["bash", "-c", f'SSH=(bash -c); DIR={d}; CARIMBO=20261015-130000; '
+                        f'source {LIB}; set -euo pipefail; reabrir 20991231-235959'],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode != 0
+    assert "backup ausente" in r.stdout + r.stderr
+    assert "sha256 não confere" not in r.stdout + r.stderr, "não podia ter chegado à conferência do sha"
+    assert (d / ".env").read_bytes() == antes
+    assert not list(d.glob(".env.antes-de-reverter-*")), "não podia ter copiado nada"

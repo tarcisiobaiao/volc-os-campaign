@@ -28,7 +28,7 @@ reabrir() { # restaura o backup EXATO depois de conferir o sha256 gravado na apl
   [[ "$carimbo" =~ ^[0-9]{8}-[0-9]{6}$ ]] || { echo "carimbo inválido: $carimbo"; exit 2; }
   bak="$DIR/.env.bak-w4-signup-$carimbo"
   remoto "cd $DIR
-    test -f $bak && test -f $bak.sha256
+    if [ ! -f $bak ] || [ ! -f $bak.sha256 ]; then echo 'backup ausente para este carimbo: nada conferido, nada restaurado'; exit 1; fi
     [ \"\$(sha256sum $bak | cut -d' ' -f1)\" = \"\$(cat $bak.sha256)\" ] || { echo 'backup alterado: sha256 não confere; nada restaurado'; exit 1; }
     cp -p .env .env.antes-de-reverter-$CARIMBO; chmod 600 .env.antes-de-reverter-$CARIMBO
     cp -p $bak .env
