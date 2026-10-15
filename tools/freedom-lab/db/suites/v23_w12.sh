@@ -280,21 +280,34 @@ w12_suite() {
   # service_role muda o dólar e guarda o resultado (linhas afetadas) para o SELECT final.
   local w12_dolar_sr; w12_dolar_sr=$(w12_sr "UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'")
   local w12_versao="SELECT count(*)||'|'||min(fonte)||'|'||min(proveniencia->>'papel')||'|'||bool_and(as_of >= now() AND coletado_em = now()) FROM public.exchange_rate_history WHERE rate = 6.1234 AND effective_date = current_date;"
-  # Controle: o cliente ENXERGA e altera system_settings (1 linha). Então a
-  # recusa abaixo não vem de 0 linhas nem de RLS, vem do histórico.
-  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_controle")" "ok:1" \
-     "v23 · controle: authenticated altera outra chave de system_settings (1 linha; a linha é visível)"
-  eq "$(w12_bloco "SET LOCAL ROLE anon; $w12_controle")" "ok:1" \
-     "v23 · controle: anon altera outra chave de system_settings (1 linha; GRANT ALL de produção)"
-  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_dolar")" "42501:privilegio(exchange_rate_history)" \
-     "v23 · authenticated muda o dólar: o gatilho dispara e o INSERT no histórico é recusado por privilégio (REVOKE)"
-  eq "$(w12_bloco "SET LOCAL ROLE anon; $w12_dolar")" "42501:privilegio(exchange_rate_history)" \
-     "v23 · anon muda o dólar: recusado por privilégio no histórico (sem 'exata' forjada)"
-  # Segunda camada: com o GRANT de volta (W4 ou alguém reabrindo), a guarda recusa.
-  PA -c "GRANT INSERT ON public.exchange_rate_history TO authenticated, anon" >/dev/null 2>&1
-  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_dolar")|$(w12_bloco "SET LOCAL ROLE anon; $w12_dolar")" "42501:guarda|42501:guarda" \
-     "v23 · com o GRANT de volta, anon e authenticated mudando o dólar caem na guarda (não dependem do REVOKE)"
-  PA -c "REVOKE INSERT ON public.exchange_rate_history FROM authenticated, anon" >/dev/null 2>&1
+  # Controles por papel, decididos pelo privilégio REAL em system_settings:
+  # base do dump (GRANT ALL) ou pós-v19/v19_10 (W4 pode ter tirado a escrita).
+  # Com escrita: o papel enxerga e altera outra chave (ok:1, então a recusa do
+  # dólar não vem de 0 linhas nem de RLS) e o dólar cai no histórico, por
+  # privilégio (REVOKE) e, com o GRANT do histórico devolvido, pela guarda.
+  # Sem escrita: a recusa vem do privilégio em system_settings. Nunca passa
+  # calado: 0 linhas ou qualquer outro resultado reprova.
+  local papel_c pre_c ss_w
+  for papel_c in authenticated anon; do
+    pre_c=""; [ "$papel_c" = authenticated ] && pre_c="$w12_jwt"
+    ss_w=$(w12_sql "select has_table_privilege('$papel_c', 'public.system_settings', 'UPDATE')")
+    if [ "$ss_w" = t ]; then
+      eq "$(w12_bloco "SET LOCAL ROLE $papel_c; $pre_c $w12_controle")" "ok:1" \
+         "v23 · controle ($papel_c escreve em system_settings): altera outra chave (1 linha; a linha é visível)"
+      eq "$(w12_bloco "SET LOCAL ROLE $papel_c; $pre_c $w12_dolar")" "42501:privilegio(exchange_rate_history)" \
+         "v23 · $papel_c muda o dólar: o gatilho dispara e o INSERT no histórico é recusado por privilégio (REVOKE)"
+      PA -c "GRANT INSERT ON public.exchange_rate_history TO $papel_c" >/dev/null 2>&1
+      eq "$(w12_bloco "SET LOCAL ROLE $papel_c; $pre_c $w12_dolar")" "42501:guarda" \
+         "v23 · $papel_c com o GRANT do histórico de volta: a guarda recusa (não depende do REVOKE)"
+      PA -c "REVOKE INSERT ON public.exchange_rate_history FROM $papel_c" >/dev/null 2>&1
+    elif [ "$ss_w" = f ]; then
+      eq "$(w12_bloco "SET LOCAL ROLE $papel_c; $pre_c $w12_controle")|$(w12_bloco "SET LOCAL ROLE $papel_c; $pre_c $w12_dolar")" \
+         "42501:privilegio(system_settings)|42501:privilegio(system_settings)" \
+         "v23 · $papel_c sem escrita em system_settings (pós-W4): a recusa do dólar vem do privilégio em system_settings"
+    else
+      nao "v23 · privilégio de $papel_c em system_settings ilegível («$ss_w»)"
+    fi
+  done
   eq "$(w12_sql "select has_table_privilege('authenticated','public.exchange_rate_history','INSERT') or has_table_privilege('anon','public.exchange_rate_history','INSERT')")" "f" \
      "v23 · GRANT temporário da prova retirado"
   eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt INSERT INTO public.exchange_rate_history (rate, effective_date) VALUES (6.1234, current_date); SELECT 1;")" "ERRO:42501" \
