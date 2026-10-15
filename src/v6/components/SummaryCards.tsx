@@ -77,7 +77,7 @@ export function SummaryCards({
       icon: Receipt,
       accent: 'primary',
       value: isLoading ? '—' : fmtInt(activeCommissionsCount),
-      caption: 'Linhas em campaign_commissions com valid_to NULL',
+      caption: 'Comissões sem data de término',
     },
     {
       title: 'Linhas de payout',
@@ -111,12 +111,12 @@ export function SummaryCards({
         : 'Sem dados de cobertura',
     },
     {
-      title: 'Gap vs legado',
+      title: 'Diferença para o cálculo antigo',
       icon: AlertTriangle,
       accent: 'warning',
       value: isLoading || !summary ? '—' : fmtBRL(summary.sum_amount),
       caption:
-        'Legado paga 0 (bug do trigger). Gap = comissão v6 calculada que o legado deixou de registrar.',
+        'O cálculo antigo registrava zero. Esta é a comissão que o cálculo novo encontrou e o antigo não registrou.',
       warning: true,
     },
   ];
@@ -152,7 +152,7 @@ export function SummaryCards({
               </CardDescription>
               {card.warning && !isLoading && (
                 <Badge variant="warning" className="mt-2">
-                  Bug legado conhecido
+                  Divergência conhecida do cálculo antigo
                 </Badge>
               )}
             </CardContent>

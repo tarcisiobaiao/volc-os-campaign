@@ -140,7 +140,10 @@ const SinoDeAlertas: React.FC<SinoDeAlertasProps> = ({
               para "não consegui perguntar". A forma distingue os dois antes de
               qualquer cor, e sobrevive a um print em preto e branco. */}
           {estado === 'indisponivel' ? (
-            <WifiOff className="h-4 w-4 text-destructive" aria-hidden />
+            // Tinta de atenção, não de erro: fonte indisponível é o 4º nível
+            // da hierarquia do PRODUCT.md §7. Em vermelho cheio, o canto de
+            // TODA tela gritava mais alto que o erro da tarefa atual.
+            <WifiOff className="h-4 w-4 text-warning" aria-hidden />
           ) : estado === 'fora_de_escopo' ? (
             <CircleHelp className="h-4 w-4 text-muted-foreground" aria-hidden />
           ) : (

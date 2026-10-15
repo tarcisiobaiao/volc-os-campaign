@@ -103,6 +103,13 @@ export interface DashboardSummary {
     roas: number;
     roi: number;
   };
+  /**
+   * A leitura falhou e os números acima são o preenchimento padrão, não uma
+   * medição. Opcional e aditivo: quem não lê o campo continua como antes; a
+   * home lê e mostra erro em vez de zeros (PRODUCT.md §4, "ausência não vira
+   * zero").
+   */
+  leituraFalhou?: boolean;
 }
 
 class SupabaseDataService {
@@ -1447,6 +1454,7 @@ class SupabaseDataService {
       roas: number;
       roi: number;
     };
+    leituraFalhou?: boolean;
   }> {
     try {
       const { projectId, period, date } = filters;
@@ -1617,6 +1625,9 @@ class SupabaseDataService {
       
       // SEMPRE usar métricas diárias quando period = 'today', 'yesterday' ou 'custom'
       if (period === 'today' || period === 'yesterday' || period === 'custom') {
+        // Receita ou gasto que não voltou deixa o total em zero lá embaixo.
+        // Sem esta marca, o zero de falha e o zero medido eram o mesmo número.
+        let leituraFalhouHoje = false;
         // Usar data do servidor para 'today', data específica para 'custom', ou calcular yesterday
         let targetDate: string;
         if (period === 'custom' && date) {
@@ -1686,6 +1697,7 @@ class SupabaseDataService {
 
         if (revenueError) {
           console.error('❌ Revenue query error:', revenueError);
+          leituraFalhouHoje = true;
         }
 
         if (!revenueError && revenueData) {
@@ -1752,6 +1764,7 @@ class SupabaseDataService {
 
           if (spendError) {
             console.error('❌ Erro ao buscar spend para TODAY (página ' + page + '):', spendError);
+            leituraFalhouHoje = true;
             break;
           }
 
@@ -1871,7 +1884,8 @@ class SupabaseDataService {
             profit: Number(trends.profit.toFixed(1)),
             roas: Number(trends.roas.toFixed(1)),
             roi: Number(trends.roi.toFixed(1))
-          }
+          },
+          ...(leituraFalhouHoje ? { leituraFalhou: true } : {})
         };
       }
       
@@ -2124,7 +2138,8 @@ class SupabaseDataService {
         finalRoi: 0,
         activeCampaigns: 0,
         pausedCampaigns: 0,
-        trendsPercentage: { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 }
+        trendsPercentage: { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 },
+        leituraFalhou: true
       };
     }
   }
@@ -2385,7 +2400,8 @@ class SupabaseDataService {
           yellow: Math.floor(dashboardData.activeCampaigns * 0.3),
           red: dashboardData.activeCampaigns - Math.floor(dashboardData.activeCampaigns * 0.6) - Math.floor(dashboardData.activeCampaigns * 0.3)
         },
-        trendsPercentage: dashboardData.trendsPercentage
+        trendsPercentage: dashboardData.trendsPercentage,
+        ...(dashboardData.leituraFalhou ? { leituraFalhou: true } : {})
       };
 
       console.log('✅ getSummary - result final:', result);
@@ -2401,7 +2417,8 @@ class SupabaseDataService {
         finalRoi: 0,
         activeCampaigns: 0,
         campaignStatus: { green: 0, yellow: 0, red: 0 },
-        trendsPercentage: { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 }
+        trendsPercentage: { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 },
+        leituraFalhou: true
       };
     }
   }
@@ -3666,22 +3683,12 @@ class SupabaseDataService {
     roas: number;
     roi: number;
   }> {
-    try {
-      // For now, return simple mock trends since this doesn't affect main calculations
-      // In the future, implement proper historical trend calculation using daily_campaign_metrics
-      const baseVariation = Math.random() * 20 - 10; // -10% to +10%
-      
-      return {
-        investment: Number((baseVariation).toFixed(1)),
-        revenue: Number((baseVariation + 5).toFixed(1)), // Revenue typically performs better
-        profit: Number((baseVariation + 2).toFixed(1)),
-        roas: Number((baseVariation / 2).toFixed(1)),
-        roi: Number((baseVariation + 1).toFixed(1))
-      };
-    } catch (error) {
-      console.error('Error calculating trends:', error);
-      return { investment: 0, revenue: 0, profit: 0, roas: 0, roi: 0 };
-    }
+    // ⚠️ Isto devolvia `Math.random()`: quando a RPC de comparação não era
+    // usada, a home desenhava "+4,9% vs período anterior" sorteado a cada
+    // carga. Comparação com o período anterior ainda não existe neste caminho,
+    // então a resposta honesta é "não medido". `NaN` é o "não medido" que
+    // `VariacaoDoPeriodo` já entende, sem mudar o tipo `number` do contrato.
+    return { investment: NaN, revenue: NaN, profit: NaN, roas: NaN, roi: NaN };
   }
   
   // Funções auxiliares

@@ -79,12 +79,13 @@ import { supabase } from "@/lib/supabase";
 import { useUserFilters } from "@/hooks/useUserFilters";
 import { CampaignHighlights } from "@/components/dashboard/CampaignHighlights";
 import { AnimatedGradient } from "@/components/ui/animated-gradient";
+import { PonteDeComando } from "@/components/dashboard/PonteDeComando";
+import { formatarNumero } from "@/lib/instrumento";
+import { FontesDeDados } from "@/components/dashboard/FontesDeDados";
+import { PainelInstrumento } from "@/components/sistema/PainelInstrumento";
 
-const integrationStatus = [
-  { name: "Google Ads", status: "online", lastSync: "2 min atrás" },
-  { name: "Google Ad Manager", status: "online", lastSync: "5 min atrás" },
-  { name: "Analytics", status: "pending", lastSync: "15 min atrás" }
-];
+// "Status das Integrações" era uma constante ("Online · 2 min atrás") e saiu.
+// O bloco que a substitui lê os carimbos reais: ver `FontesDeDados`.
 
 
 
@@ -581,11 +582,71 @@ export default function GeneralDashboard() {
 
   const handleUpdateGoogleAds = () => dispararAtualizacao('google-ads');
 
+  const pedidoEmCurso = webhookStatus === 'loading';
+  const totalCampanhas = campaigns.length;
+  const ativas = campaigns.filter(c => c.status === 'active').length;
+  const pausadas = campaigns.filter(c => c.status === 'paused').length;
+  const manuais = campaigns.filter(c => c.statusSource === 'user').length;
+  const investimento = summary ? summary.totalInvestment : null;
+  // A receita do resumo já chega líquida (após revshare). O antigo
+  // `|| totalRevenue * 0.9` inventava 10% de revshare quando o campo faltava.
+  const receitaLiquida = summary ? (summary.totalRevenueAfterRevshare ?? summary.totalRevenue) : null;
+  const calculoDoLucro =
+    summary && receitaLiquida != null
+      ? calculateSimplifiedNetProfit(receitaLiquida, summary.totalInvestment, currentTaxRate, dailyOperationalCosts)
+      : null;
+  const propsDaPonte = {
+    nome: userProfile?.name,
+    periodo: selectedPeriod,
+    dataSelecionada: selectedDate,
+    seletorDePeriodo: (
+      <SimpleDateFilter
+        selectedPeriod={selectedPeriod}
+        selectedDate={selectedDate}
+        onPeriodChange={handlePeriodChange}
+        onDateChange={handleDateChange}
+      />
+    ),
+    valores: {
+      lucroLiquido: calculoDoLucro ? calculoDoLucro.netProfit : null,
+      investimento,
+      receitaLiquida,
+      roas: investimento && investimento > 0 && receitaLiquida != null ? receitaLiquida / investimento : null,
+      roiFinal: calculoDoLucro && investimento && investimento > 0 ? calculoDoLucro.netProfit / investimento : null,
+      variacao: {
+        lucro: summary?.trendsPercentage?.profit,
+        investimento: summary?.trendsPercentage?.investment,
+        receita: summary?.trendsPercentage?.revenue,
+        roi: summary?.trendsPercentage?.roi,
+      },
+    },
+    falhou: !!summary?.leituraFalhou,
+    lidoEm: lastUpdate ?? null,
+    onRecarregar: handleRefresh,
+    onPedirAtualizacao: (alvo: 'google-ads' | 'gam') => dispararAtualizacao(alvo),
+    pedidoEmCurso,
+    resultadoDoPedido: webhookStatus,
+    rodape: (
+      <span className="flex flex-wrap gap-x-4 gap-y-1">
+        <span className="tabular">
+          {totalCampanhas} campanhas · {ativas} ativas · {pausadas} pausadas{manuais > 0 ? ` · ${manuais} com controle manual` : ''}
+        </span>
+        <span>
+          {/* O revshare médio ficou de fora: sem receita por projeto, a função
+              devolve 10% de fábrica, e o rodapé afirmaria um número não medido. */}
+          Lucro = receita líquida − investimento − Simples Nacional ({currentTaxRate}%) − custos operacionais do dia
+        </span>
+      </span>
+    ),
+  };
+
   if (loading) {
+    // Esqueleto com a forma da ponte, não um giro solto no meio da tela
+    // (PRODUCT.md §10).
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-screen">
-          <LoadingSpinner size="lg" text="Carregando dashboard..." />
+        <div className={`${isMobile ? 'p-4' : 'p-6'} max-w-7xl mx-auto`}>
+          <PonteDeComando {...propsDaPonte} carregando falhou={false} />
         </div>
       </Layout>
     );
@@ -610,190 +671,10 @@ export default function GeneralDashboard() {
   return (
     <Layout>
       <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-6 md:space-y-8 max-w-7xl mx-auto`}>
-        {/* Header with User and Controls */}
-        <div className="space-y-4 transition-volc duration-200">
-          {/* Title Section */}
-          <div className="flex items-start justify-between gap-4 reveal" style={{ ['--i' as any]: 0 }}>
-            <div className="flex-1 min-w-0">
-              <div className="kicker mb-2 flex items-center gap-2">
-                Portfólio
-              </div>
-              <h1 className={`font-display font-bold tracking-tight leading-[1.05] ${isMobile ? 'text-[1.7rem]' : 'text-4xl'}`}>
-                Dashboard <span className="text-foreground">Geral</span>
-              </h1>
-              <div className="mt-3 aurora-rule w-16" />
-              <p className={`mt-3 text-muted-foreground ${isMobile ? 'text-sm' : ''}`}>
-                Todas as campanhas e projetos
-                {selectedPeriod === 'custom' && selectedDate && (
-                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} font-medium text-foreground`}>
-                    • {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                  </span>
-                )}
-                {selectedPeriod !== 'custom' && (
-                  <span className={`${isMobile ? 'block mt-1' : 'ml-2'} font-medium text-foreground`}>
-                    • {selectedPeriod === 'today' ? 'Hoje' : selectedPeriod === 'yesterday' ? 'Ontem' : 'Data personalizada'}
-                  </span>
-                )}
-              </p>
-              {isMobile && (
-                <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border shadow-card w-fit">
-                  <span className="h-5 w-5 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                    <User className="h-3 w-3" />
-                  </span>
-                  <span className="text-sm font-medium">{getUserFirstName()}</span>
-                </div>
-              )}
-            </div>
-            {!isMobile && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border shadow-card flex-shrink-0">
-                <span className="h-6 w-6 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                  <User className="h-3.5 w-3.5" />
-                </span>
-                <span className="text-sm font-medium">{getUserFirstName()}</span>
-              </div>
-            )}
-          </div>
-          
-          {/* Filters and Actions Section */}
-          {/* Mobile: Controles em stack vertical */}
-          {isMobile ? (
-            <div className="flex flex-col gap-3 w-full">
-              <SimpleDateFilter
-                selectedPeriod={selectedPeriod}
-                selectedDate={selectedDate}
-                onPeriodChange={handlePeriodChange}
-                onDateChange={handleDateChange}
-              />
-              {selectedPeriod === 'custom' && selectedDate && (
-                <div className="text-xs text-muted-foreground px-2 flex items-center gap-1 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                    </span>
-                  {!loading && campaigns.length === 0 && (
-                    <span className="text-warning flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Sem dados</span>
-                  )}
-                  {!loading && campaigns.length > 0 && (
-                    <span className="text-success flex items-center gap-1 tabular"><CheckCircle className="h-3 w-3" /> {campaigns.length}</span>
-                  )}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button onClick={handleRefresh} variant="outline" size="sm" className="h-10">
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Atualizar
-                </Button>
-
-                <Button
-                  onClick={handleUpdateGAM}
-                  variant="default"
-                  size="sm"
-                  disabled={webhookStatus === 'loading'}
-                  className="h-10"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
-                  GAM
-                </Button>
-              </div>
-
-              <Button
-                onClick={handleUpdateGoogleAds}
-                variant="default"
-                size="sm"
-                disabled={webhookStatus === 'loading'}
-                className="w-full h-10"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
-                Atualizar Google Ads
-                {webhookStatus === 'success' && (
-                  <CheckCircle className="h-4 w-4 ml-2 text-success" />
-                )}
-                {webhookStatus === 'error' && (
-                  <X className="h-4 w-4 ml-2 text-destructive" />
-                )}
-              </Button>
-
-              <DataStatus
-                loading={loading}
-                error={error}
-                lastUpdate={lastUpdate}
-                showDetails={false}
-              />
-            </div>
-          ) : (
-            /* Desktop: Layout horizontal com flex-wrap */
-            <div className="flex items-center gap-3 flex-wrap flex-shrink-0">
-              <div className="flex flex-col gap-1">
-                <SimpleDateFilter
-                  selectedPeriod={selectedPeriod}
-                  selectedDate={selectedDate}
-                  onPeriodChange={handlePeriodChange}
-                  onDateChange={handleDateChange}
-                />
-                {selectedPeriod === 'custom' && selectedDate && (
-                  <div className="text-xs text-muted-foreground px-2 flex items-center gap-1 flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Consultando data: {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
-                    </span>
-                    {!loading && campaigns.length === 0 && (
-                      <span className="text-warning flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Sem dados</span>
-                    )}
-                    {!loading && campaigns.length > 0 && (
-                      <span className="text-success flex items-center gap-1 tabular"><CheckCircle className="h-3 w-3" /> {campaigns.length} campanhas</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <Button onClick={handleRefresh} variant="outline" size="sm" className="flex-shrink-0">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
-              </Button>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  onClick={handleUpdateGAM}
-                  variant="default"
-                  size="sm"
-                  disabled={webhookStatus === 'loading'}
-                  className="flex-shrink-0"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
-                  Atualizar GAM
-                </Button>
-
-                <Button
-                  onClick={handleUpdateGoogleAds}
-                  variant="default"
-                  size="sm"
-                  disabled={webhookStatus === 'loading'}
-                  className="flex-shrink-0"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${webhookStatus === 'loading' ? 'animate-spin' : ''}`} />
-                  Atualizar Google Ads
-                </Button>
-
-                {webhookStatus === 'success' && (
-                  <CheckCircle className="h-4 w-4 text-success flex-shrink-0" />
-                )}
-
-                {webhookStatus === 'error' && (
-                  <X className="h-4 w-4 text-destructive flex-shrink-0" />
-                )}
-              </div>
-
-              <DataStatus
-                loading={loading}
-                error={error}
-                lastUpdate={lastUpdate}
-                showDetails={true}
-              />
-            </div>
-          )}
-        </div>
-
+        {/* Ponte de comando: saudação, período, um "Atualizar dados" e a faixa
+            de instrumento. Substitui o cabeçalho com três botões de atualizar
+            e a grade de seis cartões idênticos. */}
+        <PonteDeComando {...propsDaPonte} carregando={false} />
 
         {/* Campanhas Controladas pelo Usuário - Destaque */}
         {campaigns.filter(c => c.statusSource === 'user').length > 0 && (
@@ -839,272 +720,6 @@ export default function GeneralDashboard() {
 
 
 
-        {/* Site Analysis - Main Chart */}
-        <div className="grid gap-6 transition-volc duration-200">
-          {/* <SiteAnalysis /> */}
-        </div>
-
-        {/* KPI Overview - Cards Resumo */}
-        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 transition-volc duration-200">
-          <Card className={KPI_CARD_CLASS}>
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-info" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <span className="kicker">Investimento total</span>
-              <span className="rounded-md border border-info/20 bg-info/10 p-1.5 text-info"><Coins className="h-4 w-4" /></span>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="font-display text-3xl font-bold tabular tracking-tight">{formatCurrency(summary?.totalInvestment || 0)}</div>
-              <VariacaoDoPeriodo
-                className="mt-2"
-                valor={summary?.trendsPercentage?.investment}
-                base="vs período anterior"
-              />
-            </CardContent>
-          </Card>
-
-          <Card className={KPI_CARD_CLASS}>
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-success" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <span className="kicker">Revenue total</span>
-              <span className="rounded-md border border-success/20 bg-success/10 p-1.5 text-success"><TrendingUp className="h-4 w-4" /></span>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <RevenueTooltip
-                netRevenue={summary?.totalRevenue || 0}
-                revsharePercentage={0.1}
-                projectType="GAM" // Dashboard geral: mix de projetos, mas mostra como GAM para compatibilidade
-              >
-                <div className="font-display text-3xl font-bold tabular tracking-tight text-success">{formatRevenue(summary?.totalRevenue || 0)}</div>
-              </RevenueTooltip>
-              <VariacaoDoPeriodo
-                className="mt-2"
-                valor={summary?.trendsPercentage?.revenue}
-                base="via UTM campaigns (líquido)"
-              />
-            </CardContent>
-          </Card>
-
-          <Card className={KPI_CARD_CLASS}>
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-border" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <span className="kicker">ROAS geral</span>
-              <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><BarChart3 className="h-4 w-4" /></span>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="font-display text-3xl font-bold tabular tracking-tight">{summary?.generalRoas || 0}%</div>
-              <VariacaoDoPeriodo className="mt-2" valor={summary?.trendsPercentage?.roas} />
-            </CardContent>
-          </Card>
-
-          <Card className={KPI_CARD_CLASS}>
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-success" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <div className="flex items-center gap-2">
-                <span className="kicker">Lucro líquido</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-success opacity-60 hover:opacity-100 cursor-help transition-opacity" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs p-4">
-                      <div className="space-y-2 text-sm">
-                        <div className="font-medium text-success mb-2">Cálculo do Lucro Líquido</div>
-                        {(() => {
-                          const totalRevenue = summary?.totalRevenue || 0;
-                          const totalInvestment = summary?.totalInvestment || 0;
-                          
-                          // NEW: Usar cálculo simplificado com valores pré-calculados
-                          const calculation = calculateSimplifiedNetProfit(
-                            summary?.totalRevenueAfterRevshare || totalRevenue * 0.9, // Fallback
-                            totalInvestment,
-                            currentTaxRate,
-                            dailyOperationalCosts
-                          );
-                          
-                          return (
-                            <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Faturamento Total (pós-processamento):</span>
-                                <span className="font-mono text-primary">{formatRevenue(calculation.netRevenue)}</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground italic mb-2">
-                                * Inclui GAM (após RevShare) + AdSense (sem RevShare)
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Investimento:</span>
-                                <span className="font-mono text-destructive">-{formatCurrency(totalInvestment)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Impostos SN ({currentTaxRate}%):</span>
-                                <span className="font-mono text-destructive">-{formatCurrency(calculation.taxAmount)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Custos Op. Diários:</span>
-                                <span className="font-mono text-destructive">-{formatCurrency(calculation.dailyOperationalCosts)}</span>
-                              </div>
-                              <div className="border-t pt-1 border-success/30">
-                                <div className="flex justify-between font-medium">
-                                  <span>Lucro Líquido:</span>
-                                  <span className="font-mono text-success">{formatCurrency(calculation.netProfit)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <span className="rounded-md border border-success/20 bg-success/10 p-1.5 text-success"><DollarSign className="h-4 w-4" /></span>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="font-display text-3xl font-bold tabular tracking-tight">
-                {(() => {
-                  const totalRevenue = summary?.totalRevenue || 0;
-                  const totalInvestment = summary?.totalInvestment || 0;
-
-                  // NEW: Usar cálculo simplificado com valores pré-calculados (mesmo do tooltip)
-                  const calculation = calculateSimplifiedNetProfit(
-                    summary?.totalRevenueAfterRevshare || totalRevenue * 0.9, // Fallback
-                    totalInvestment,
-                    currentTaxRate,
-                    dailyOperationalCosts
-                  );
-
-                  return formatCurrency(calculation.netProfit);
-                })()}
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs mt-1">
-                <VariacaoDoPeriodo valor={summary?.trendsPercentage?.profit} />
-                <span className="text-muted-foreground">
-                  {(() => {
-                    const revenueShareData = calculateRealRevenueShare();
-                    return `Após ${(revenueShareData.percentage * 100).toFixed(1)}% RS e ${currentTaxRate}% SN`;
-                  })()}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`${KPI_CARD_CLASS} ${
-            (() => {
-              const finalRoi = calculateFinalROI(summary?.totalRevenue || 0, summary?.totalInvestment || 0, currentTaxRate);
-              return getROIColor(finalRoi);
-            })()
-          }`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <div className="flex items-center gap-2">
-                <span className="kicker">ROI final</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3 w-3 text-muted-foreground opacity-60 hover:opacity-100 cursor-help transition-opacity" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs p-4">
-                      <div className="space-y-2 text-sm">
-                        <div className="font-medium text-primary mb-2">Cálculo do ROI Final</div>
-                        {(() => {
-                          const totalRevenue = summary?.totalRevenue || 0; // Já é líquido (após revshare)
-                          const totalInvestment = summary?.totalInvestment || 0;
-
-                          // Cálculo simplificado: valor já vem líquido do banco
-                          const calculation = calculateSimplifiedNetProfit(
-                            totalRevenue, // Já é revenue_converted_revshare (líquido)
-                            totalInvestment,
-                            currentTaxRate,
-                            dailyOperationalCosts
-                          );
-
-                          // ROI final
-                          const finalRoi = totalInvestment > 0 ? (calculation.netProfit / totalInvestment) * 100 : 0;
-
-                          return (
-                            <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Faturamento Total (pós-processamento):</span>
-                                <span className="font-mono text-primary">{formatRevenue(totalRevenue)}</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground italic mb-2">
-                                * Inclui GAM (após RevShare) + AdSense (sem RevShare)
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Investimento:</span>
-                                <span className="font-mono text-destructive">-{formatCurrency(totalInvestment)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Impostos SN ({currentTaxRate}%):</span>
-                                <span className="font-mono text-destructive">-{formatCurrency(calculation.taxAmount)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Custos Op. Diários:</span>
-                                <span className="font-mono text-destructive">-{formatCurrency(calculation.dailyOperationalCosts)}</span>
-                              </div>
-                              <div className="border-t pt-1 border-primary/20">
-                                <div className="flex justify-between font-medium">
-                                  <span className="text-muted-foreground">Lucro Líquido:</span>
-                                  <span className="font-mono text-success">{formatCurrency(calculation.netProfit)}</span>
-                                </div>
-                              </div>
-                              <div className="border-t pt-2 border-primary/20">
-                                <div className="flex justify-between font-medium">
-                                  <span>ROI Final:</span>
-                                  <span className="font-mono text-primary">{finalRoi.toFixed(1)}%</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  (Lucro Líquido ÷ Investimento) × 100
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><Target className="h-4 w-4" /></span>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="font-display text-3xl font-bold tabular tracking-tight">
-                {calculateFinalROI(summary?.totalRevenue || 0, summary?.totalInvestment || 0, currentTaxRate).toFixed(1)}%
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs mt-1">
-                <VariacaoDoPeriodo valor={summary?.trendsPercentage?.roi} />
-                <span className="text-muted-foreground">
-                  Com {currentTaxRate}% SN
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={KPI_CARD_CLASS}>
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-border" />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <span className="kicker">Campanhas</span>
-              <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><Users className="h-4 w-4" /></span>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="font-display text-3xl font-bold tabular tracking-tight">{campaigns.length} <span className="text-base font-medium text-muted-foreground">Total</span></div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs flex items-center gap-1">
-                  <Circle className="h-2 w-2 fill-success text-success" />
-                  {campaigns.filter(c => c.status === 'active').length} Ativas
-                </span>
-                <span className="text-xs flex items-center gap-1">
-                  <Circle className="h-2 w-2 fill-warning text-warning" />
-                  {campaigns.filter(c => c.status === 'paused').length} Pausadas
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs flex items-center gap-1">
-                  <User className="h-3 w-3" />
-                  {campaigns.filter(c => c.statusSource === 'user').length} Controladas
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Campanhas Destacadas - Rotação Automática */}
         <CampaignHighlights />
@@ -1205,9 +820,17 @@ export default function GeneralDashboard() {
                         </RevenueTooltip>
                         <div className={`${isMobile ? 'text-sm flex flex-col gap-1 mt-2' : 'text-xs'} text-muted-foreground`}>
                           <span className="flex items-center gap-1 tabular"><Coins className="h-3 w-3" /> {formatCurrency(campaign.investment || 0)}</span>
-                          <span className="flex items-center gap-1 tabular">
-                            <TrendingUp className="h-3 w-3" />
-                            {Math.round(calculateROAS(campaign.revenue || 0, campaign.investment || 0))}%
+                          {/* Mesma regra da tabela de projetos: sem gasto, o
+                              excedente não existe (calculateROAS devolve um 100
+                              simbólico) e vira "—". */}
+                          <span
+                            className="flex items-center gap-1 tabular"
+                            title="Excedente da receita sobre o gasto: (receita ÷ gasto − 1). Fórmula legada, ver adjudicação O02."
+                          >
+                            {(campaign.investment || 0) > 0
+                              ? formatarNumero(calculateROAS(campaign.revenue || 0, campaign.investment || 0) / 100, { tipo: 'percentual', casas: 0 })
+                              : formatarNumero(null, { tipo: 'percentual' })}{' '}
+                            excedente
                           </span>
                           {campaign.commission && campaign.commission > 0 && (
                             <div className={`${isMobile ? 'text-sm' : 'text-xs'} text-primary font-medium ${isMobile ? 'mt-1' : 'mt-0.5'}`}>
@@ -1251,7 +874,7 @@ export default function GeneralDashboard() {
                 Resumo por Projeto
               </CardTitle>
               <CardDescription className={isMobile ? 'text-sm' : ''}>
-                Performance detalhada - Gasto vs Revenue por domínio
+                Gasto, receita e lucro de cada domínio no período
               </CardDescription>
             </div>
             <div className={`flex ${isMobile ? 'flex-col w-full' : 'gap-2'}`}>
@@ -1280,8 +903,8 @@ export default function GeneralDashboard() {
                   <tr className="border-b border-border">
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Projeto (Domínio)</th>
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Gasto</th>
-                    <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Revenue</th>
-                    <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>ROAS</th>
+                    <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Receita</th>
+                    <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`} title="Excedente da receita sobre o gasto: (receita ÷ gasto − 1). Fórmula legada, ver adjudicação O02.">Excedente</th>
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>
                       <div className="flex items-center gap-1">
                         Lucro Líquido
@@ -1335,16 +958,23 @@ export default function GeneralDashboard() {
                             {formatRevenue(project.revenue)}
                           </div>
                         </RevenueTooltip>
-                        <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue UTM</div>
+                        <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Receita UTM</div>
                       </td>
                       <td className={isMobile ? 'p-2' : 'p-4'}>
-                        <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} font-bold tabular rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
-                          {Math.round(calculateROAS(project.revenue, project.investment))}%
-                        </div>
-                        <div className={`flex items-center gap-1 ${isMobile ? 'mt-0.5' : 'mt-1'}`}>
-                          {getTrendIcon(project.trend)}
-                          <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>{getTrendText(project.trend)}</span>
-                        </div>
+                        {/* Sem gasto não há excedente: "—", não "0%" (PRODUCT §4).
+                            A linha "Subindo/Caindo/Estável" saiu: não era
+                            tendência, era um corte fixo do ROI do próprio
+                            período (supabaseDataService, "simplified estimation"). */}
+                        {project.investment > 0 ? (
+                          <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} inline-flex font-bold tabular rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
+                            {formatarNumero(calculateROAS(project.revenue, project.investment) / 100, { tipo: 'percentual', casas: 0 })}
+                          </div>
+                        ) : (
+                          <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold tabular text-muted-foreground`} aria-label="sem gasto no período">
+                            {formatarNumero(null, { tipo: 'percentual' })}
+                          </div>
+                        )}
+                        <div className={`${isMobile ? 'text-[10px] mt-0.5' : 'text-xs mt-1'} text-muted-foreground`}>sobre o gasto</div>
                       </td>
                       <td className={isMobile ? 'p-2' : 'p-4'}>
                         <TooltipProvider>
@@ -1395,7 +1025,7 @@ export default function GeneralDashboard() {
                                     <div className="space-y-1">
                                       <div className="flex justify-between">
                                         <span className="text-muted-foreground">
-                                          {project.project_type === 'ADSENSE' ? 'Revenue Total:' : 'Revenue (após RevShare):'}
+                                          {project.project_type === 'ADSENSE' ? 'Receita total:' : 'Receita (após revshare):'}
                                         </span>
                                         <span className="font-medium tabular text-success">{formatRevenue(revenue)}</span>
                                       </div>
@@ -1533,33 +1163,11 @@ export default function GeneralDashboard() {
           </CardContent>
         </Card>
 
-        {/* Integration Status and Settings */}
+        {/* Fontes de dados (carimbos reais) e câmbio */}
         <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-3">
-          <Card className="lg:col-span-2 relative overflow-hidden shadow-card reveal" style={{ ['--i' as any]: 10 }}>
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-warning" />
-            <CardHeader>
-              <CardTitle className={`flex items-center gap-2 ${isMobile ? 'text-lg' : ''}`}>
-                <span className="rounded-md bg-warning/10 text-warning p-1.5"><Zap className="h-4 w-4" /></span>
-                Status das Integrações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-3">
-                {integrationStatus.map((integration, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover-lift transition-colors">
-                    <div>
-                      <p className="font-medium">{integration.name}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {integration.lastSync}
-                      </p>
-                    </div>
-                    <StatusBadge status={integration.status as "online" | "offline" | "pending"} />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <PainelInstrumento titulo="Fontes de dados" className="lg:col-span-2 self-start">
+            <FontesDeDados />
+          </PainelInstrumento>
 
           {/* Exchange Rate Manager - Discreto no lado direito */}
           <div className="lg:col-span-1 space-y-4">

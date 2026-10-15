@@ -45,8 +45,7 @@ export function TopCampaigns({ data, isLoading, error }: TopCampaignsProps) {
           Top campanhas geradoras de comissão
         </CardTitle>
         <CardDescription>
-          Dez campanhas com maior soma de <code>amount</code> em
-          <code> daily_campaign_member_payouts</code>.
+          As dez campanhas que mais geraram comissão no período.
         </CardDescription>
       </CardHeader>
 

@@ -175,7 +175,7 @@ export default function Login() {
         <span className="crosshair absolute top-0 right-0" />
         <span className="crosshair absolute bottom-0 left-0 hidden sm:block" />
         <span className="crosshair absolute bottom-0 right-0 hidden sm:block" />
-        <span className="kicker absolute top-1.5 right-6 tabular hidden sm:block">47.6°N // ORBITAL ACCESS</span>
+        <span className="kicker absolute top-1.5 right-6 tabular hidden sm:block">VOLC O.S. · acesso por convite</span>
       </div>
 
       {/* Painel de vidro + formulário */}

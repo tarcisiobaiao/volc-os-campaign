@@ -172,7 +172,7 @@ export function CommissionsTab({ onMutated }: CommissionsTabProps) {
             });
             toast({
               title: 'Vigência encerrada',
-              description: `valid_to = ${endValidTo}.`,
+              description: `A comissão vale até ${endValidTo.split('-').reverse().join('/')}.`,
             });
             setEndingTarget(null);
             refreshAll();

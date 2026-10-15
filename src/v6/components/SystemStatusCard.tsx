@@ -37,7 +37,7 @@ export function SystemStatusCard({
     },
     {
       label: 'Mutações',
-      value: <Badge variant="outline">não disponíveis (Etapa 3.C)</Badge>,
+      value: <Badge variant="outline">ainda não disponíveis</Badge>,
     },
     {
       label: 'Cutover do legado',

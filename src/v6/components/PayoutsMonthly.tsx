@@ -69,9 +69,8 @@ export function PayoutsMonthly({ data, isLoading, error }: PayoutsMonthlyProps) 
           Payouts mensais
         </CardTitle>
         <CardDescription>
-          Agregado de <code>daily_campaign_member_payouts</code> por mês
-          (consolidando todos os usuários e campanhas). Gráfico será
-          adicionado na 3.B.
+          Comissões calculadas por mês, somando todas as pessoas e
+          campanhas.
         </CardDescription>
       </CardHeader>
 
@@ -96,8 +95,9 @@ export function PayoutsMonthly({ data, isLoading, error }: PayoutsMonthlyProps) 
             </span>
             <div className="kicker">Sem payouts</div>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Nenhum payout calculado ainda. Rode o backfill da Etapa 2
-              (v6_10) se essa for a primeira vez.
+              Nenhuma comissão foi calculada ainda. O cálculo roda no servidor;
+              se é a primeira vez, peça ao administrador do sistema para
+              processar o histórico.
             </p>
           </div>
         )}

@@ -784,7 +784,7 @@
   border-radius: 50% 50% 0 0 / 60% 60% 0 0;   /* crista curva, como limbo planetário */
   filter: blur(46px) saturate(1.28);
   will-change: transform, opacity;
-  animation: horizon-breathe 8s ease-in-out infinite;
+  animation: horizon-breathe 8s ease-in-out 3; /* D3: sem loop infinito decorativo (design.md); respira na entrada e assenta. */
 }
 .login-hz-1 { background: radial-gradient(80% 120% at 50% 130%, hsl(var(--aurora-deep) / 0.95), hsl(var(--aurora-purple) / 0.5) 55%, transparent 78%); }
 .login-hz-2 { background: radial-gradient(70% 120% at 38% 128%, hsl(var(--aurora-blue) / 0.8), transparent 70%); mix-blend-mode: screen; }
@@ -806,6 +806,10 @@
 /* Grão sobre o horizonte (regra da marca). */
 .login-horizon::after {
   content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.4; mix-blend-mode: soft-light;
+  /* D3: o grão começava seco no topo do horizonte e desenhava uma costura
+     horizontal a 40% da altura. A máscara faz o grão nascer do nada. */
+  -webkit-mask-image: linear-gradient(to top, #000 55%, transparent);
+          mask-image: linear-gradient(to top, #000 55%, transparent);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
 }
 
@@ -815,7 +819,7 @@
 
 /* Logo-herói do login: glow aurora que respira + um sheen de luz que varre a
    marca uma vez no load (mascarado na forma da logo -> a luz passa POR DENTRO). */
-.login-logo { position: relative; display: inline-block; animation: logo-glow 6s ease-in-out infinite; }
+.login-logo { position: relative; display: inline-block; animation: logo-glow 6s ease-in-out 2; }
 .login-logo img { display: block; }
 .login-logo-sheen {
   position: absolute; inset: 0; pointer-events: none; mix-blend-mode: multiply;

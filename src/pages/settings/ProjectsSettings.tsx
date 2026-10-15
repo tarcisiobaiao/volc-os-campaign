@@ -53,6 +53,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
 import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
+import { formatarNumero } from "@/lib/instrumento";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useToast } from "@/hooks/use-toast";
@@ -854,7 +855,7 @@ export default function ProjectsSettings() {
               <SelectItem value="roi">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-info" />
-                  <span>Maior ROAS</span>
+                  <span>Maior excedente</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -878,7 +879,7 @@ export default function ProjectsSettings() {
         </div>
 
         {/* Projects Table */}
-        <Card className="shadow-card hover-glow transition-shadow reveal" style={{ ['--i' as any]: 2 }}>
+        <Card className="shadow-card reveal" style={{ ['--i' as any]: 2 }}>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <div className="kicker mb-2 flex items-center gap-2">
@@ -890,14 +891,9 @@ export default function ProjectsSettings() {
                 Gerenciamento completo dos seus projetos
               </CardDescription>
             </div>
-            {userProfile?.role !== 'OPERATOR' && (
-              <div className="flex gap-2">
-                <Button onClick={addModal.openModal} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Novo Projeto
-                </Button>
-              </div>
-            )}
+            {/* O segundo "Novo Projeto" saiu: o cabeçalho da página já tem o
+                primário, e duas ações primárias iguais na mesma dobra
+                dividem a atenção (PRODUCT.md §5, uma primária por região). */}
           </CardHeader>
           <CardContent>
             {filteredProjects.length === 0 ? (
@@ -929,13 +925,18 @@ export default function ProjectsSettings() {
                       </th>
                       <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker rounded-t-md ${sortBy === 'revenue' ? 'text-success bg-success/10' : ''}`}>
                         <div className="flex items-center gap-1">
-                          Revenue
+                          Receita
                           {sortBy === 'revenue' && <ArrowDown className="h-3 w-3" />}
                         </div>
                       </th>
                       <th className={`text-left ${isMobile ? 'p-2' : 'p-3'} kicker rounded-t-md ${sortBy === 'roi' ? 'text-info bg-info/10' : ''}`}>
-                        <div className="flex items-center gap-1">
-                          ROAS
+                        {/* ⚠️ Dizia "ROAS". O número é o EXCEDENTE sobre o gasto,
+                            ((receita ÷ gasto) − 1) × 100 — `calculateROAS`, legado
+                            mantido de propósito pela adjudicação O02. Receita 42 mil
+                            sobre gasto 39 mil aparecia como "ROAS 8%". O nome
+                            muda; a fórmula e as faixas de cor não. */}
+                        <div className="flex items-center gap-1" title="Excedente da receita sobre o gasto: (receita ÷ gasto − 1). ROAS 1,08× aparece como 8%.">
+                          Excedente
                           {sortBy === 'roi' && <ArrowDown className="h-3 w-3" />}
                         </div>
                       </th>
@@ -1000,14 +1001,21 @@ export default function ProjectsSettings() {
                               <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular text-success`}>
                                 {formatRevenue(project.revenue || 0)}
                               </div>
-                              <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Revenue UTM</div>
+                              <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Receita UTM</div>
                             </td>
                             <td className={isMobile ? 'p-2' : 'p-4'}>
-                              <div className={`inline-flex ${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
-                                {Math.round(roas)}%
-                              </div>
+                              {(project.investment || 0) > 0 ? (
+                                <div className={`inline-flex ${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
+                                  {formatarNumero(roas / 100, { tipo: 'percentual', casas: 0 })}
+                                </div>
+                              ) : (
+                                // Sem gasto não há excedente: "—", não "0%".
+                                <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular text-muted-foreground`} aria-label="sem gasto no período">
+                                  {formatarNumero(null, { tipo: 'percentual' })}
+                                </div>
+                              )}
                               <div className="flex items-center gap-1 mt-1">
-                                <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>Performance</span>
+                                <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>sobre o gasto</span>
                               </div>
                             </td>
                             <td className={isMobile ? 'p-2' : 'p-4'}>
@@ -1051,7 +1059,7 @@ export default function ProjectsSettings() {
                                           <div className="space-y-1">
                                             <div className="flex justify-between">
                                               <span className="text-muted-foreground">
-                                                {project.project_type === 'ADSENSE' ? 'Revenue Total:' : 'Revenue (após RevShare):'}
+                                                {project.project_type === 'ADSENSE' ? 'Receita total:' : 'Receita (após revshare):'}
                                               </span>
                                               <span className="font-medium text-success tabular">{formatRevenue(revenue)}</span>
                                             </div>

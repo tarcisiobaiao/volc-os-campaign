@@ -147,7 +147,7 @@ export function CommissionsTimeline({
             </div>
             <p className="max-w-sm text-sm text-muted-foreground">
               {data.length === 0
-                ? 'Nenhuma comissão cadastrada em campaign_commissions.'
+                ? 'Nenhuma comissão cadastrada ainda.'
                 : 'Nenhuma comissão corresponde ao filtro.'}
             </p>
           </div>
