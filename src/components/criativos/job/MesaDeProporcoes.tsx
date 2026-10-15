@@ -148,7 +148,7 @@ export const MesaDeProporcoes: React.FC<{
                     img
                   )}
                 </div>
-                <figcaption className="mt-2 flex items-baseline justify-between gap-3">
+                <figcaption className="mt-2 flex flex-col">
                   <span className="font-display text-sm font-semibold text-foreground">
                     {proporcaoLegivel(p.larguraPedida, p.alturaPedida)}
                   </span>

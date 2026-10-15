@@ -21,6 +21,8 @@ import { PenLine, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { CabecalhoDePagina } from '@/components/sistema/CabecalhoDePagina';
 import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
+import { Metrica } from '@/components/sistema/Metrica';
+import { FaixaDeMetricas, PainelInstrumento } from '@/components/sistema/PainelInstrumento';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DispararRedatorDialog } from '@/components/pautador-pro/entity/DispararRedatorDialog';
@@ -41,6 +43,7 @@ function moeda2(v: number): string {
 
 const RedatorPage: React.FC = () => {
   const [quadro, setQuadro] = useState<QuadroDoRedator | null>(null);
+  const [lidoEm, setLidoEm] = useState<Date | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [disparando, setDisparando] = useState<CardPronto | null>(null);
@@ -50,6 +53,7 @@ const RedatorPage: React.FC = () => {
   const buscar = useCallback(async () => {
     try {
       setQuadro(await pautadorApi.quadroDoRedator());
+      setLidoEm(new Date());
       setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Falhei ao ler o quadro.');
@@ -100,40 +104,25 @@ const RedatorPage: React.FC = () => {
           }
         />
 
-        {/* Os três números que resumem o módulo. Uma superfície, não três
-            cartões iguais com ícone em caixa — o pulso do QG é o padrão. */}
+        {/* Os três números que resumem o módulo, como faixa de instrumento
+            (V3, D0): uma métrica dominante e duas de apoio, não três cartões
+            iguais. Lidos do servidor a cada atualização. */}
         {quadro && (
-          <section
-            aria-label="Pulso do Redator"
-            className="overflow-hidden rounded-lg border border-border bg-card shadow-card"
-          >
-            <div className="grid gap-px bg-border sm:grid-cols-3">
-              <div className="bg-card px-4 py-3">
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {moeda2(quadro.totais.gasto_usd)}
-                </p>
-                <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                  gasto acumulado · {quadro.totais.runs} execuç{quadro.totais.runs === 1 ? 'ão' : 'ões'}, inclusive as que falharam
-                </p>
-              </div>
-              <div className="bg-card px-4 py-3">
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {quadro.totais.paginas_no_ar}
-                </p>
-                <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                  páginas no WordPress · como rascunho
-                </p>
-              </div>
-              <div className="bg-card px-4 py-3">
-                <p className="text-lg font-semibold tabular-nums text-foreground">
-                  {quadro.prontos.length}
-                </p>
-                <p className="mt-1 text-xs leading-4 text-muted-foreground">
-                  esperando escrita · cards aprovados no Pautador
-                </p>
-              </div>
-            </div>
-          </section>
+          <PainelInstrumento aria-label="Pulso do Redator">
+            <FaixaDeMetricas>
+              <Metrica tamanho="hero" rotulo="Páginas no WordPress · rascunho"
+                       valor={quadro.totais.paginas_no_ar} formato={{ tipo: 'inteiro' }}
+                       verdade="real" lidoEm={lidoEm} fonte="servidor do Redator" />
+              <Metrica rotulo={`Gasto acumulado · ${quadro.totais.runs} execuç${quadro.totais.runs === 1 ? 'ão' : 'ões'}`}
+                       valor={quadro.totais.gasto_usd} formato={{ tipo: 'moeda', moeda: 'USD', casas: 2 }}
+                       verdade="real" />
+              <Metrica rotulo="Esperando escrita" valor={quadro.prontos.length}
+                       formato={{ tipo: 'inteiro' }} verdade="real" />
+            </FaixaDeMetricas>
+            <p className="mt-3 text-micro text-muted-foreground">
+              O gasto inclui as execuções que falharam: dinheiro gasto é dinheiro gasto.
+            </p>
+          </PainelInstrumento>
         )}
 
         {erro && (
@@ -141,6 +130,7 @@ const RedatorPage: React.FC = () => {
             tom="erro"
             titulo="A leitura do quadro falhou"
             explicacao={erro}
+            acao={{ rotulo: 'Ler de novo', onClick: () => void buscar() }}
           />
         )}
         {/* Esqueleto com a forma do quadro: quatro poços com cartões. O texto
@@ -176,7 +166,7 @@ const RedatorPage: React.FC = () => {
             <AlertDialogDescription className="space-y-2 text-left">
               <span className="block">
                 <b>{excluindo?.titulo}</b> · {excluindo?.dominio || '—'} ·{' '}
-                {moeda2(excluindo?.custo_usd ?? 0)} já gastos.
+                {excluindo?.custo_usd == null ? 'custo não medido' : `${moeda2(excluindo.custo_usd)} já gastos`}.
               </span>
               <span className="block">
                 Ela some do quadro e do gasto acumulado. Como não publicou nada,

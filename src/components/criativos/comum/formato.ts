@@ -50,7 +50,10 @@ export function segundosLegiveis(s: number | null): string {
  */
 export function custoLegivel(usd: number | null): string {
   if (usd === null) return 'custo não apurado';
-  return `US$ ${usd.toFixed(4)}`;
+  // Quatro casas porque peça de imagem custa frações de centavo; vírgula
+  // decimal porque o resto do produto (Redator, Tráfego) escreve em pt-BR, e
+  // "US$ 0.0400" ao lado de "US$ 0,84" parece outra moeda.
+  return `US$ ${usd.toFixed(4).replace('.', ',')}`;
 }
 
 /**

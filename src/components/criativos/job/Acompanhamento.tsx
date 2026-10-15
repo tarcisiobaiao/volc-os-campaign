@@ -34,7 +34,7 @@ import {
 import { lerProgresso } from '@/components/criativos/job/progresso';
 import { divergenciaDeDimensao } from '@/components/criativos/job/pecas';
 import { DESCRICAO_DA_CONEXAO, type EstadoDaConexao } from '@/hooks/useCriativosEventos';
-import { rotuloDoJob, type CreativeJob, type EventoDoJob, type Rendition } from '@/types/criativos';
+import { jobTerminou, rotuloDoJob, type CreativeJob, type EventoDoJob, type Rendition } from '@/types/criativos';
 
 export const PainelDeFase: React.FC<{
   job: CreativeJob;
@@ -42,7 +42,14 @@ export const PainelDeFase: React.FC<{
   conexao: EstadoDaConexao;
   falhaDoFluxo: string | null;
 }> = ({ job, eventos, conexao, falhaDoFluxo }) => {
-  const progresso = lerProgresso(eventos);
+  const lido = lerProgresso(eventos);
+  // Job terminado não abre o fluxo de eventos, então "nenhum evento" seria uma
+  // afirmação sobre o servidor que a tela não fez. O que ela sabe é o estado
+  // final; a frase diz isso e não contradiz o "já terminou" logo abaixo.
+  const progresso =
+    lido.fase === null && jobTerminou(job.estado)
+      ? { ...lido, frase: 'O trabalho já tinha terminado quando esta tela abriu. O estado final está no selo acima e nas peças abaixo.' }
+      : lido;
   // ⚠️ Consulta TOLERANTE. `ROTULO_DO_JOB[job.estado]` cru devolvia `undefined`
   // para um estado que esta versão não conhece, e a linha seguinte lia
   // `.palavra`: um oitavo estado no servidor trocava esta tela por tela branca.

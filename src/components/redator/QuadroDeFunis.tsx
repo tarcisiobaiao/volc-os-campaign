@@ -74,7 +74,7 @@ const Coluna: React.FC<{
         <span className={cn('flex h-5 w-5 items-center justify-center rounded-md', accent.pill)}>
           <Icon className={cn('h-3.5 w-3.5', tom === 'escrevendo' && n > 0 && 'animate-spin')} aria-hidden />
         </span>
-        <h2 className="kicker flex-1 truncate">{titulo}</h2>
+        <h2 className="kicker min-w-0 flex-1 leading-tight">{titulo}</h2>
         <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium tabular', accent.pill)}>
           {n}
         </span>
@@ -245,7 +245,7 @@ export const QuadroDeFunis: React.FC<{
       {quadro.interrompidos.length
         ? quadro.interrompidos.map((f) => (
             <CardDeFunil key={f.id} f={f} onExcluir={onExcluir} />))
-        : <Vazio>Nenhum.</Vazio>}
+        : <Vazio>Nenhum funil interrompido. Falhas e cancelamentos aparecem aqui com o que já foi pago.</Vazio>}
     </Coluna>
   </div>
 );

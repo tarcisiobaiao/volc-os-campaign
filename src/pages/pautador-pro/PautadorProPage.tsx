@@ -170,7 +170,11 @@ const PautadorProContent: React.FC = () => {
           />
         )}
 
-        <KpiCards {...kpis} />
+        <KpiCards
+          {...kpis}
+          verdade={source === 'ephemeral' ? 'demo' : source === 'supabase' ? 'real' : 'desconhecido'}
+          carregando={loading && cards.length === 0}
+        />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>

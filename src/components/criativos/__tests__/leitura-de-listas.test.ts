@@ -95,6 +95,6 @@ describe('ausência não vira zero na formatação', () => {
 
   it('zero medido continua sendo zero medido', () => {
     expect(bytesLegiveis(0)).toBe('0 B');
-    expect(custoLegivel(0)).toBe('US$ 0.0000');
+    expect(custoLegivel(0)).toBe('US$ 0,0000');
   });
 });
