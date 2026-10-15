@@ -16,9 +16,10 @@ import type { CheckOutcome } from '@/lib/metaCapi/checks';
 import type { WizardForm } from './MetaCapiWizard';
 import { CopyField } from './CopyField';
 
-// O código exibido é o MESMO arquivo versionado no repositório: importar por
-// ?raw elimina a chance de o wizard mostrar uma versão e a gente publicar outra.
-import capiRouterSource from '../../../../supabase/functions/capi-router/index.ts?raw';
+// O código exibido é o MESMO arquivo versionado no repositório (por ?raw), e só
+// no dev: em produção o módulo é trocado e o código de servidor não vai para o
+// navegador. Ver capiRouterSource.ts.
+import { CAPI_ROUTER_CAMINHO, CAPI_ROUTER_SOURCE } from './capiRouterSource';
 
 /**
  * Nome sugerido do Worker. Genérico DE PROPÓSITO: um Worker atende todos os
@@ -345,11 +346,21 @@ export const StepSupabase: React.FC<StepProps & { alreadyPublished?: boolean }> 
         )}
       </div>
 
-      <CodeBlock
-        code={capiRouterSource}
-        title="capi-router / index.ts"
-        language="TypeScript · Deno"
-      />
+      {CAPI_ROUTER_SOURCE ? (
+        <CodeBlock
+          code={CAPI_ROUTER_SOURCE}
+          title="capi-router / index.ts"
+          language="TypeScript · Deno"
+        />
+      ) : (
+        <Hint>
+          <p>
+            O código da function não é servido pelo painel em produção. Publique o arquivo
+            versionado <code className="font-mono">{CAPI_ROUTER_CAMINHO}</code>, a partir de
+            um checkout do repositório.
+          </p>
+        </Hint>
+      )}
 
       <div className="space-y-2">
         <Button

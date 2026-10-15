@@ -62,6 +62,13 @@ export default defineConfig(({ mode }) => ({
               __dirname,
               "./src/pages/qa/BancadaDeDesign.producao.tsx",
             ),
+            // Mesmo motivo, outro conteúdo: o `?raw` da Edge Function capi-router
+            // levava código de servidor para o navegador. Cobrado por
+            // `src/__tests__/bundle-sem-codigo-de-servidor.test.ts`.
+            "./capiRouterSource": path.resolve(
+              __dirname,
+              "./src/components/settings/meta-capi/capiRouterSource.producao.ts",
+            ),
           }
         : {}),
     },
