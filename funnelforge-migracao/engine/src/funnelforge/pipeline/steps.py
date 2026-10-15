@@ -82,6 +82,7 @@ from funnelforge.pipeline.enhancers.gutenberg import (
 )
 from funnelforge.pipeline import canal_profundo
 from funnelforge.pipeline.lp_template import (
+    assinatura_do_template,
     load_lp_template,
     render_lp,
     transformacoes_do_template,
@@ -1579,6 +1580,10 @@ def _write_ctx(state: RunState, page: Page, deps: Any) -> dict:
     return {
         "destinos_com_ferramenta": destinos_com_ferramenta,
         "editorial_v2": bool(getattr(state, "editorial_v2", False)),
+        # A PÁGINA foi escrita no ramo novo (briefing presente). É o que liga as
+        # regras de link por papel (15/10/2026): run V1, ou página antiga
+        # retomada com a flag, segue com as regras com que foi escrita.
+        "pagina_v2": _pagina_v2(state, page),
         "contextual_editorial": page.editorial is not None,
         "resolved_internal_routes": [
             resolve_route(r, domain=deps.settings.site.domain,
@@ -1707,9 +1712,6 @@ def _aplicar_primeira_dobra(content_obj: dict, state: RunState) -> bool:
     return alterou
 
 
-_LINK_HTML_RE = re.compile(
-    r"<a\b(?P<attrs>[^>]*)>(?P<body>[\s\S]*?)</a>", re.I)
-_HREF_HTML_RE = re.compile(r"\bhref\s*=\s*[\"'](?P<href>[^\"']+)[\"']", re.I)
 
 
 # Citação de fonte escrita como TEXTO: "(fonte: https://...)", "Fonte: <url>" ou
@@ -1726,9 +1728,7 @@ _CITACAO_ROTULADA_RE = re.compile(
 _URL_NUA_RE = re.compile(_URL_TXT, re.I)
 _TAG_OU_COMENTARIO_RE = re.compile(r"(<!--[\s\S]*?-->|<[^>]*>)")
 _SITE_EXTERNO_RE = re.compile(r",?\s*em (?:um )?site externo\s*$", re.I)
-_LINK_COM_SUFIXO_RE = re.compile(
-    r"<a\b(?P<attrs>[^>]*)>(?P<body>[\s\S]*?)</a>"
-    r"(?P<sufixo>,?\s*em (?:um )?site externo\b)?", re.I)
+_SUFIXO_DE_SITE_EXTERNO_RE = re.compile(r",?\s*em (?:um )?site externo\b", re.I)
 _BOTAO_GUTENBERG_RE = re.compile(
     r"<!--\s*wp:button\b(?:(?!-->)[\s\S])*?-->[\s\S]*?<!--\s*/wp:button\s*-->", re.I)
 _BOTOES_VAZIOS_RE = re.compile(
@@ -1782,13 +1782,14 @@ def _sem_fontes_externas_no_corpo(obj: Any, domain: str) -> tuple[Any, int]:
     site = (urlparse(domain).hostname or "").removeprefix("www.").lower()
     total = 0
 
+    from funnelforge.pipeline.editorial_safety import (
+        hrefs_do_html,
+        remover_ancoras,
+    )
+
     def externo(url: str) -> bool:
         host = (urlparse(url).hostname or "").removeprefix("www.").lower()
         return bool(host) and host != site and not host.endswith("." + site)
-
-    def href_externo(attrs: str) -> bool:
-        href_match = _HREF_HTML_RE.search(attrs)
-        return bool(href_match) and externo(unescape(href_match.group("href")))
 
     def prosa(trecho: str) -> str:
         nonlocal total
@@ -1824,25 +1825,21 @@ def _sem_fontes_externas_no_corpo(obj: Any, domain: str) -> tuple[Any, int]:
     def texto(valor: str) -> str:
         nonlocal total
 
+        # Âncora e botão são lidos pelo MESMO parser do portão `links_por_papel`
+        # (`editorial_safety._Ancoras`): o que o portão chama de link externo é
+        # exatamente o que sai aqui, inclusive href sem aspas ou em maiúsculas.
         def botao(match: re.Match) -> str:
             nonlocal total
-            ancora = _LINK_HTML_RE.search(match.group(0))
-            if ancora is None or not href_externo(ancora.group("attrs")):
+            if not any(externo(h) for h in hrefs_do_html(match.group(0))):
                 return match.group(0)
             total += 1
             return ""
 
-        def trocar(match: re.Match) -> str:
-            nonlocal total
-            if not href_externo(match.group("attrs")):
-                return match.group(0)
-            total += 1
-            corpo = _SITE_EXTERNO_RE.sub("", match.group("body"))
-            return corpo
-
         valor = _BOTAO_GUTENBERG_RE.sub(botao, valor)
         valor = _BOTOES_VAZIOS_RE.sub("", valor)
-        valor = _LINK_COM_SUFIXO_RE.sub(trocar, valor)
+        valor, n = remover_ancoras(valor, externo, sufixo_depois=_SUFIXO_DE_SITE_EXTERNO_RE,
+                                   sufixo_no_corpo=_SITE_EXTERNO_RE)
+        total += n
         partes = _TAG_OU_COMENTARIO_RE.split(valor)
         return "".join(p if i % 2 else prosa(p) for i, p in enumerate(partes))
 
@@ -2179,9 +2176,27 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         if state.pacotes:
             from funnelforge.pipeline.inteligencia import prompt_do_pacote
             prompt = prompt_do_pacote(state, page)
+        # LP V2: link só no botão do template. O saneamento é determinístico e
+        # roda DENTRO do runner, antes de `lp_json_contract` (que recusa âncora
+        # no texto): a LP com link na intro passa na 1ª chamada, sem retentativa
+        # paga. Conta só a última tentativa, a que vira o rascunho.
+        saneamento = {"fontes_externas": 0, "ancoras": 0}
+
+        def _sanear_lp(bruto: str) -> str:
+            obj = _tolerant_json(bruto)
+            if not isinstance(obj, dict):
+                return bruto
+            obj, fontes = _sem_fontes_externas_no_corpo(obj, deps.settings.site.domain)
+            ancoras = _sem_ancoras_no_texto_da_lp(obj)
+            saneamento.update(fontes_externas=fontes, ancoras=ancoras)
+            if not fontes and not ancoras:
+                return bruto
+            return json.dumps(obj, ensure_ascii=False)
+
         text, res = deps.runner.run_llm_step(
             f"write_p{page.page_number}", cfg, [{"role": "user", "content": prompt}],
             ctx=route_ctx, run_id=state.run_id,
+            **({"saneador": _sanear_lp} if v2 else {}),
         )
         # The LP output is STRUCTURED JSON that fills the fixed Elementor
         # template (lp_template.render_lp) in step_build -- not markers, and
@@ -2200,21 +2215,18 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         # malformados foram medidos: "de 5 % a 50 %" e "até 2900.00 R$".
         content_obj = formatar_moeda_em_estrutura(content_obj)
         if v2:
-            content_obj, links_removidos = _sem_fontes_externas_no_corpo(
-                content_obj, deps.settings.site.domain)
-            if links_removidos:
+            # O saneamento já rodou no runner; aqui só o registro (B5) do que
+            # ele mudou na tentativa aceita.
+            if saneamento["fontes_externas"]:
                 _registrar_normalizacao(state, page.page_number, {
                     "etapa": "fontes_externas_da_lp_em_prosa",
                     "alterou": True,
-                    "quantidade": links_removidos,
+                    "quantidade": saneamento["fontes_externas"],
                 })
-            # Na LP, link só no botão do template. Âncora interna que o redator
-            # tenha posto no texto vira o próprio texto, ANTES do contrato (que
-            # recusa qualquer âncora restante), para não pagar uma retentativa.
-            ancoras = _sem_ancoras_no_texto_da_lp(content_obj)
-            if ancoras:
+            if saneamento["ancoras"]:
                 _registrar_normalizacao(state, page.page_number, {
-                    "etapa": "links_no_texto_da_lp", "alterou": True, "quantidade": ancoras,
+                    "etapa": "links_no_texto_da_lp", "alterou": True,
+                    "quantidade": saneamento["ancoras"],
                 })
         if v2 and state.pacotes and _aplicar_rotulos_aprovados_da_lp(content_obj, page):
             _registrar_normalizacao(state, page.page_number, {
@@ -2237,7 +2249,8 @@ def step_write(state: RunState, page: Page, deps: Any) -> None:
         configurados = list(cfg.validators or [])
         lp_issues: list[Issue] = []
         if "lp_json_contract" not in configurados:
-            lp_issues = validate_lp_content(content_obj, technical_only=v2)
+            lp_issues = validate_lp_content(content_obj, technical_only=v2,
+                                            sem_links_no_texto=v2)
         if "critical_fact_grounding" not in configurados:
             lp_issues.extend(run_validators(
                 ["critical_fact_grounding"], content, route_ctx))
@@ -2585,7 +2598,7 @@ def _issues_da_pagina(state: RunState, page: Page, deps: Any, doc: Any) -> list[
             obj = json.loads(doc.corpo)
         except (ValueError, TypeError):
             return [Issue(code="lp_schema", message="LP JSON ilegível.")]
-        issues += validate_lp_content(obj, technical_only=True)
+        issues += validate_lp_content(obj, technical_only=True, sem_links_no_texto=True)
         issues += run_validators(["identity", "calm_utility", "critical_fact_grounding",
                                   "language_pt"], doc.corpo, ctx)
     else:
@@ -3720,13 +3733,22 @@ def step_build(state: RunState, page: Page, deps: Any) -> None:
             # O que o template faz com o texto aprovado fica REGISTRADO (B5).
             _registrar_normalizacao(state, page.page_number, {
                 "etapa": "template_lp",
-                "transformacoes": transformacoes_do_template(content_obj)})
+                "transformacoes": transformacoes_do_template(
+                    content_obj, copy_rapida=True,
+                    footer_disclosure=_footer_disclosure(deps))})
         (run_dir / "p1.elementor.json").write_text(
             json.dumps(elementor, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         (run_dir / "p1.page_settings.json").write_text(
             json.dumps(page_settings, ensure_ascii=False, indent=2), encoding="utf-8"
         )
+        # Com que template/render este artefato foi montado: é o que separa, no
+        # portão final, "LP montada antes de o template mudar" (rebuild
+        # explícito) de "artefato alterado depois do build" (adulteração).
+        (run_dir / "p1.template.json").write_text(json.dumps({
+            "assinatura": assinatura_do_template(),
+            "copy_rapida": _pagina_v2(state, page),
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
         head = vignette_meta(manifest.vignette)
         (run_dir / "p1.head.html").write_text(head, encoding="utf-8")
         (run_dir / "p1.preview.html").write_text(
@@ -4482,7 +4504,7 @@ def _portao_da_lp(state: RunState, page: Page, deps: Any, *,
     if _pagina_v2(state, page):
         # Política do destino Google continua no módulo de Ads. O redator não
         # consulta esse scanner lexical: a LLM revisa o conteúdo já pronto.
-        issues = validate_lp_content(conteudo, technical_only=True)
+        issues = validate_lp_content(conteudo, technical_only=True, sem_links_no_texto=True)
         return lp_gate.ResultadoDoPortao(pronto=not issues, issues=issues)
     # O Elementor já renderizado entra na apuração de campo de formulário: o
     # template é fixo e desenhado à mão hoje, mas um widget de formulário
@@ -4524,6 +4546,50 @@ def _composicao_v2(state: RunState, page: Page, content: str, ctx: dict) -> list
                           {**ctx, "exigencia_visual": exigencia})
 
 
+def _divergencia_do_artefato_da_lp(run_dir: Path, run_id: str) -> Issue:
+    """O artefato da LP não bate com o render do template ATUAL. Duas causas,
+    dois códigos, ambos bloqueantes (nada é relaxado nem reconstruído sozinho):
+
+    - montado com OUTRO template/render (ou antes de o build registrar a
+      assinatura, 15/10/2026): `lp_template_desatualizado`, com o rebuild
+      explícito — refaz só o Elementor a partir do rascunho aprovado, sem
+      modelo e sem publicar;
+    - montado com o template atual e mesmo assim diferente: o arquivo mudou
+      depois do build, `lp_artifact_mismatch`."""
+    atual = assinatura_do_template()
+    try:
+        registro = json.loads((run_dir / "p1.template.json").read_text(encoding="utf-8"))
+        construida = str(registro.get("assinatura") or "")
+    except (OSError, ValueError, AttributeError):
+        construida = ""
+    if construida != atual:
+        origem = (f"template {construida[:12]}" if construida
+                  else "build sem registro de template (anterior a 15/10/2026)")
+        return Issue(code="lp_template_desatualizado", message=(
+            f"LP montada com {origem}; o template atual é {atual[:12]}. Nada foi "
+            f"publicado. Refaça só o build: `funnelforge reconstruir-lp {run_id}` "
+            "(sem modelo, sem publicar) e rode o portão de novo."))
+    return Issue(code="lp_artifact_mismatch",
+                 message="LP difere do template editorial validado; refaça o build.")
+
+
+def reconstruir_build_da_lp(state: RunState, deps: Any) -> StepResult:
+    """Rebuild EXPLÍCITO da LP de um run histórico: `step_build` sobre o rascunho
+    já aprovado, com o template atual. Não chama modelo, não publica e não
+    muda o rascunho; o portão final continua decidindo se a LP vai ao ar."""
+    page = next((p for p in (state.plan.pages if state.plan else [])
+                 if p.page_type == "LANDING PAGE"), None)
+    if page is None or page.page_number not in state.drafts:
+        return StepResult(step="build_p1", status=StepStatus.FAILED, issues=[Issue(
+            code="lp_sem_rascunho", message="Run sem LP ou sem rascunho aprovado da LP.")])
+    chave = f"build_p{page.page_number}"
+    state.step_status.pop(chave, None)
+    step_build(state, page, deps)
+    resultado = state.step_status.get(chave) or StepResult(step=chave, status=StepStatus.OK)
+    state.step_status[chave] = resultado
+    return resultado
+
+
 def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
     """Check the persisted Elementor payload, including resumed/manual publish paths."""
     try:
@@ -4557,8 +4623,7 @@ def _lp_final_issues(state: RunState, page: Page, deps: Any) -> list[Issue]:
             issues.extend(disclosure_issues(json.dumps(actual, ensure_ascii=False),
                                             _write_ctx(state, page, deps)))
         if actual != expected or actual_settings != settings:
-            issues.append(Issue(code="lp_artifact_mismatch",
-                                message="LP difere do template editorial validado; refaça o build."))
+            issues.append(_divergencia_do_artefato_da_lp(run_dir, state.run_id))
         return issues
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         return [Issue(code="lp_final_invalid", message=f"LP final inválida: {type(exc).__name__}")]

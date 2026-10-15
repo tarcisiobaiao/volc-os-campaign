@@ -5,6 +5,7 @@ $global_rendered = false;
 $admin_context = false;
 $ajax_context = false;
 function add_filter() {}
+function add_action() {}
 function is_admin() { return $GLOBALS['admin_context']; }
 function wp_doing_ajax() { return $GLOBALS['ajax_context']; }
 function did_action( $name ) { return $GLOBALS['global_rendered'] ? 1 : 0; }
@@ -41,3 +42,18 @@ check( $notice === Volc_Editorial_Notice_Owner::remove_prefix( $notice ), 'edito
 $admin_context = false;
 $ajax_context = true;
 check( $notice === Volc_Editorial_Notice_Owner::remove_prefix( $notice ), 'ajax preserved' );
+$ajax_context = false;
+
+// 1.1.0: decisao no fim da resposta (buffer), depois do aviso global.
+$elementor = '<div class="elementor-element elementor-widget-html"><div class="elementor-widget-container">' . $notice . '</div></div>';
+$page = '<html><body>' . $notice . '<p>Corpo.</p>' . $elementor . '<aside class="creditoup-editorial-disclosure">global</aside></body></html>';
+$global_rendered = false;
+check( $page === Volc_Editorial_Notice_Owner::remove_engine_notices( $page ), 'final buffer keeps engine notice without global' );
+$global_rendered = true;
+$final = Volc_Editorial_Notice_Owner::remove_engine_notices( $page );
+check( false === strpos( $final, 'id="volc-editorial-notice"' ), 'final buffer removes prefix and Elementor engine notices' );
+check( 1 === substr_count( $final, 'creditoup-editorial-disclosure' ), 'global notice kept exactly once' );
+$edited = str_replace( 'Não somos', 'Somos', $notice );
+check( false !== strpos( Volc_Editorial_Notice_Owner::remove_engine_notices( '<body>' . $edited . '</body>' ), 'Somos banco' ), 'edited notice preserved at the end' );
+$other = '<aside id="volc-editorial-notice" aria-label="Outro">texto do usuario</aside>';
+check( false !== strpos( Volc_Editorial_Notice_Owner::remove_engine_notices( $other ), 'texto do usuario' ), 'non-canonical aside preserved at the end' );

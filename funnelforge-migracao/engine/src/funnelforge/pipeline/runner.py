@@ -3,6 +3,7 @@ import json
 import re
 import time
 from pathlib import Path
+from typing import Callable
 from funnelforge.config.settings import StepConfig
 from funnelforge.domain.models import Issue, StepResult, StepStatus
 from funnelforge.ports.llm import LLMClient
@@ -80,8 +81,17 @@ class Runner:
         return min(self.backoff_s * (2 ** max(0, tentativa - 1)), self.backoff_max_s)
 
     def run_llm_step(self, name, cfg: StepConfig, messages: list[dict], ctx: dict, *,
-                     run_id: str, response_schema: type | None = None
+                     run_id: str, response_schema: type | None = None,
+                     saneador: Callable[[str], str] | None = None
                      ) -> tuple[str, StepResult]:
+        """Uma chamada paga por tentativa, validadores sobre o texto.
+
+        `saneador` é a normalização DETERMINÍSTICA que o passo aplica de todo
+        jeito ao texto (ex.: tirar âncora do texto da LP V2). Roda aqui, entre
+        a resposta e os validadores, porque um validador que reprova o que o
+        passo apagaria logo depois só serve para pagar uma retentativa (medido
+        em 15/10/2026: LP com link na intro custava 2 chamadas). Nunca chama o
+        modelo; se falhar, o texto segue cru e o validador decide."""
         msgs = [dict(m) for m in messages]
         self.snapshot_prompt(run_id, name, msgs)
         parts = run_id.rsplit("-", 2)
@@ -132,6 +142,11 @@ class Runner:
                 continue
 
             text, model_used = res.text, res.model_used
+            if saneador is not None:
+                try:
+                    text = saneador(text)
+                except Exception:  # noqa: BLE001 - texto cru segue ao validador
+                    pass
             procedencia = {"auth_mode": getattr(res, "auth_mode", "") or "",
                            "reasoning_effort": getattr(res, "reasoning_effort", "") or "",
                            "response_id": getattr(res, "response_id", "") or ""}

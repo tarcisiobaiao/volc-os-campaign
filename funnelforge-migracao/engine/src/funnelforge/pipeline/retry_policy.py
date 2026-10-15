@@ -239,11 +239,23 @@ def validadores_tecnicos(names: Iterable[str], ctx: dict) -> list[str]:
     if not (ctx.get("editorial_v2") or ctx.get("contextual_editorial")):
         return list(names)
     return [name for name in names if name not in VALIDADORES_EDITORIAIS]
+# Estruturais DECLARADOS: regra objetiva de URL/papel (15/10/2026), não juízo
+# de sentido. `estrutural` também é o padrão para código desconhecido; listar
+# aqui é o que impede alguém de movê-los para PATCHÁVEIS sem quebrar um teste.
+CODIGOS_ESTRUTURAIS_DECLARADOS: frozenset[str] = frozenset({
+    "link_no_texto_da_lp",       # âncora no texto da LP V2 (só botão do template)
+    "link_externo_na_lp",        # href para outro host numa LP V2
+    "link_externo_na_presell",   # href para outro host numa pré-sell V2
+    "lp_template_desatualizado", # LP montada com outro template: rebuild explícito
+})
+
 # Regras com decisão `remover` no inventário: saem do ramo novo.
 CODIGOS_REMOVIDOS_NO_V2: frozenset[str] = frozenset({
     "cta_first_person",          # FF-04 1ª pessoa na LP (nenhuma política; NE-03)
     "missing_semantic_block",    # FF-16 cota de blocos visuais por forma de pergunta
 })
+
+assert not CODIGOS_ESTRUTURAIS_DECLARADOS & (CODIGOS_PATCHAVEIS | CODIGOS_REMOVIDOS_NO_V2)
 
 
 def classe_da_issue(issue: Any) -> str:
@@ -254,6 +266,8 @@ def classe_da_issue(issue: Any) -> str:
     Esses códigos são localizadores também quando reaparecem num run retomado.
     """
     code = getattr(issue, "code", "")
+    if code in CODIGOS_ESTRUTURAIS_DECLARADOS:
+        return "estrutural"
     if code in CODIGOS_REMOVIDOS_NO_V2:
         return "removido"
     if code in CODIGOS_PATCHAVEIS:

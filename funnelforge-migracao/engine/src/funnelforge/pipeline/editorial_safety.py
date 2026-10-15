@@ -222,25 +222,112 @@ def reviewed_image_issues(state, page_number: int) -> list[Issue]:
 PAPEIS_SEM_LINK_EXTERNO = frozenset({"LP", "PRESELL"})
 
 
-class _Hrefs(HTMLParser):
-    def __init__(self) -> None:
+class _Ancoras(HTMLParser):
+    """O ÚNICO leitor de âncoras da regra de links por papel.
+
+    O portão (`hrefs_do_html`) e o saneador (`remover_ancoras`) usam esta mesma
+    classe: o que o portão enxerga como âncora é exatamente o que o saneador
+    sabe tirar (href sem aspas, maiúsculas, entidades, `<a/>`, `<a>` sem
+    fechamento). Antes eram uma regex de um lado e o parser do outro, e um
+    `<a href=https://x>` sem aspas passava pelo saneador e reprovava no portão.
+    Guarda o href e a posição de cada tag para o saneador cortar só a tag."""
+
+    def __init__(self, texto: str) -> None:
         super().__init__(convert_charrefs=True)
-        self.hrefs: list[str] = []
+        self._inicio_da_linha = [0]
+        for i, c in enumerate(texto):
+            if c == "\n":
+                self._inicio_da_linha.append(i + 1)
+        self._texto = texto
+        self._abertas: list[dict] = []
+        self.ancoras: list[dict] = []
+
+    def _agora(self) -> int:
+        linha, coluna = self.getpos()
+        return self._inicio_da_linha[linha - 1] + coluna
 
     def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        inicio = self._agora()
+        bruto = self.get_starttag_text() or ""
+        ancora = {"href": (dict(attrs).get("href") or "").strip(),
+                  "abre": (inicio, inicio + len(bruto)), "fecha": None}
+        self.ancoras.append(ancora)
+        self._abertas.append(ancora)
+
+    def handle_startendtag(self, tag, attrs):
+        # `<a href="..."/>`: uma tag só, sem corpo. Não abre nada.
+        self.handle_starttag(tag, attrs)
         if tag == "a":
-            self.hrefs.append((dict(attrs).get("href") or "").strip())
+            self._abertas.pop()
+
+    def handle_endtag(self, tag):
+        if tag != "a" or not self._abertas:
+            return
+        inicio = self._agora()
+        fim = self._texto.find(">", inicio)
+        self._abertas.pop()["fecha"] = (inicio, len(self._texto) if fim == -1 else fim + 1)
 
 
-def hrefs_do_html(content: str) -> list[str]:
-    """Os `href` de todas as âncoras do HTML (vazio quando não há âncora)."""
-    parser = _Hrefs()
+def _ancoras_do_html(content: str) -> list[dict] | None:
+    parser = _Ancoras(content or "")
     try:
         parser.feed(content or "")
         parser.close()
     except Exception:  # noqa: BLE001 - HTML ilegível é problema do html_issues
-        return []
-    return parser.hrefs
+        return None
+    return parser.ancoras
+
+
+def hrefs_do_html(content: str) -> list[str]:
+    """Os `href` de todas as âncoras do HTML (vazio quando não há âncora)."""
+    return [a["href"] for a in (_ancoras_do_html(content) or [])]
+
+
+def remover_ancoras(content: str, remover, *, sufixo_depois=None,
+                    sufixo_no_corpo=None) -> tuple[str, int]:
+    """Tira as TAGS `<a>`/`</a>` das âncoras cujo href satisfaz `remover(href)`;
+    o texto da âncora fica. Mesmo parser do portão (`hrefs_do_html`): toda
+    âncora que o portão enxerga, este corte enxerga.
+
+    `sufixo_depois`/`sufixo_no_corpo` (regex) apagam o complemento que só fazia
+    sentido com o link (", em site externo"), logo depois do `</a>` ou no fim do
+    texto da âncora. Devolve (texto, quantas âncoras saíram)."""
+    texto = content or ""
+    ancoras = _ancoras_do_html(texto)
+    if not ancoras:
+        return texto, 0
+    cortes: list[tuple[int, int]] = []
+    total = 0
+    for ancora in ancoras:
+        if not remover(ancora["href"]):
+            continue
+        total += 1
+        cortes.append(ancora["abre"])
+        fecha = ancora["fecha"]
+        if fecha is None:
+            continue
+        if sufixo_no_corpo is not None:
+            corpo = texto[ancora["abre"][1]:fecha[0]]
+            m = sufixo_no_corpo.search(corpo)
+            if m:
+                cortes.append((ancora["abre"][1] + m.start(), fecha[0]))
+        fim = fecha[1]
+        if sufixo_depois is not None:
+            m = sufixo_depois.match(texto, fim)
+            if m and m.end() > fim:
+                fim = m.end()
+        cortes.append((fecha[0], fim))
+    saida: list[str] = []
+    cursor = 0
+    for inicio, fim in sorted(cortes):
+        if inicio < cursor:
+            inicio = cursor
+        saida.append(texto[cursor:inicio])
+        cursor = max(cursor, fim)
+    saida.append(texto[cursor:])
+    return "".join(saida), total
 
 
 def _host(url: str) -> str:
@@ -289,11 +376,7 @@ def links_no_texto_da_lp(campos: list[str]) -> list[Issue]:
         "template, que o renderer monta com os destinos do funil."))]
 
 
-_ANCORA_RE = re.compile(r"<a\b[^>]*>(?P<corpo>.*?)</a\s*>", re.I | re.S)
-
-
 def sem_ancoras(texto: str) -> tuple[str, int]:
-    """Troca cada `<a ...>texto</a>` pelo texto da âncora (defesa da redação da
-    LP, antes do contrato). Devolve o texto e quantas âncoras saíram."""
-    novo, n = _ANCORA_RE.subn(lambda m: m.group("corpo"), texto or "")
-    return novo, n
+    """Troca cada âncora pelo próprio texto (defesa da redação da LP V2, antes
+    do contrato). Mesmo parser do portão. Devolve o texto e quantas saíram."""
+    return remover_ancoras(texto, lambda _href: True)

@@ -403,6 +403,38 @@ def resume(run_id: str, publish: bool = False, only: str | None = None,
     )
 
 
+@app.command("reconstruir-lp")
+def reconstruir_lp(run_id: str, perfil: Path | None = None) -> None:
+    """Refaz SÓ o build da LP de um run histórico com o template atual.
+
+    Para o `lp_template_desatualizado` do portão final: LP montada antes de o
+    template mudar. Lê `runs/<run_id>/state.json`, roda `step_build` da LP
+    sobre o rascunho já aprovado e grava o estado. Não chama modelo, não
+    publica e não toca WordPress; a publicação continua sendo `resume
+    --publish`, que passa de novo pelo portão final."""
+    from funnelforge.config.perfil import aplicar_perfil, configuracao_efetiva_do_run
+    from funnelforge.domain.models import RunState, StepStatus
+    from funnelforge.pipeline.steps import reconstruir_build_da_lp
+
+    dados_perfil = json.loads(perfil.read_text(encoding="utf-8")) if perfil else None
+    base = load_settings()
+    snapshot = Path("runs") / run_id / "config_snapshot.json"
+    if snapshot.exists():
+        base = configuracao_efetiva_do_run(
+            base, json.loads(snapshot.read_text(encoding="utf-8")))
+        if dados_perfil:
+            dados_perfil = {k: v for k, v in dados_perfil.items() if k != "preset"}
+    deps = build_deps(aplicar_perfil(base, dados_perfil))
+    state_path = Path("runs") / run_id / "state.json"
+    state = RunState.from_json(state_path.read_text(encoding="utf-8"))
+    resultado = reconstruir_build_da_lp(state, deps)
+    deps.runner.checkpoint(state.run_id, state.to_json())
+    typer.echo(f"build da LP: {resultado.status.value} "
+               f"{[i.code for i in resultado.issues]}")
+    if resultado.status is StepStatus.FAILED:
+        raise typer.Exit(code=1)
+
+
 def _ligar_bucket(deps) -> None:
     """O bucket temporário do run: cada documento baixado uma vez, com recibo.
     O cache compartilhado fica ao lado dos runs; a cópia de cada run não expira."""
