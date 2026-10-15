@@ -222,6 +222,9 @@ testar() {
   # não executou nenhuma verificação conta como falha.
   [ "$suite_rc" = 0 ] || nao "suíte $(basename "$SUITE") saiu com código $suite_rc"
   [ "$T" -gt 0 ] || nao "suíte $(basename "$SUITE") não executou nenhuma verificação"
+  # Fingerprint final do banco depois da suíte: se a suíte não deixou o seu, mede aqui
+  # (o recibo nunca leva fingerprint vazio).
+  [ -s "$RECIBOS/fp-final.out" ] || P -f - < "$FP" > "$RECIBOS/fp-final.out" 2>&1 || nao "fingerprint final falhou"
   P -c "select arquivo, sha256, base, resultado from volc_lab.migracao_aplicada order by aplicada_em" > "$RECIBOS/ledger-lab.txt"
   # Base explícita: a tabela volc_lab.base só existe depois de base-prod. A consulta não
   # pode citá-la quando ela não existe (o planner resolve a relação mesmo no ramo morto).
@@ -242,7 +245,7 @@ testar() {
     echo "  \"base\": \"$base_do_lab\","
     echo "  \"semente_aplicada_sha256\": $semente_json,"
     echo "  \"fingerprint_total_pos\": \"$(grep _TOTAL "$RECIBOS/fp-final.out" 2>/dev/null | tr -d ' ')\","
-    echo "  \"verificacoes\": $T, \"falhas\": $F, \"producao_acessada\": $( [ "$SUITE_GARANTIDA" = sim ] && echo false || echo '\"nao_garantido\"'), \"producao_acessada_motivo\": \"$( [ "$SUITE_GARANTIDA" = sim ] && echo 'estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada' || echo 'suíte livre carregada por source: o lab.sh não garante o que ela faz')\""
+    echo "  \"verificacoes\": $T, \"falhas\": $F, \"producao_acessada\": $( [ "$SUITE_GARANTIDA" = sim ] && echo false || echo '"nao_garantido"'), \"producao_acessada_motivo\": \"$( [ "$SUITE_GARANTIDA" = sim ] && echo 'estrutural: lab.sh não lê .env nem usa SSH, o container não tem rede e a suíte é versionada' || echo 'suíte livre carregada por source: o lab.sh não garante o que ela faz')\""
     echo "}"
   } > "$RECIBOS/recibo.json"
   echo; echo "recibo: $RECIBOS/recibo.json"

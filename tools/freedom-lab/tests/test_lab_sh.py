@@ -123,11 +123,36 @@ def test_carregado_como_biblioteca_nao_roda_comando(tmp_path):
     assert r.stdout.strip() == "carregado"
 
 
-def test_suite_com_erro_ou_vazia_conta_como_falha():
-    fonte = LAB.read_text(encoding="utf-8")
-    assert 'source "$SUITE"; local suite_rc=$?' in fonte
-    assert '[ "$suite_rc" = 0 ] || nao' in fonte
-    assert '[ "$T" -gt 0 ] || nao' in fonte
+@pytest.fixture(scope="module")
+def lab_vivo(tmp_path_factory):
+    """Um container do lab real (sem rede), criado uma vez para as provas de comportamento."""
+    if shutil.which("docker") is None:
+        pytest.skip("docker ausente")
+    nome = f"volc-freedom-lab-teste-{os.getpid()}"
+    env = os.environ | {"LAB_NOME": nome, "RECIBOS": str(tmp_path_factory.mktemp("criar"))}
+    r = subprocess.run([str(LAB), "criar"], env=env, capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0, r.stdout + r.stderr
+    yield nome
+    subprocess.run([str(LAB), "destruir"], env=env, capture_output=True, text=True, timeout=120)
+
+
+@pytest.mark.parametrize("corpo,motivo", [
+    ('echo "suíte vazia"\n', "não executou nenhuma verificação"),
+    ('ok "uma prova"\nreturn 3\n', "saiu com código 3"),
+])
+def test_suite_vazia_ou_com_erro_falha_no_recibo(lab_vivo, tmp_path, corpo, motivo):
+    import json
+    suite = tmp_path / "suite.sh"
+    suite.write_text(corpo)
+    rec = tmp_path / "rec"
+    env = os.environ | {"LAB_NOME": lab_vivo, "RECIBOS": str(rec), "MIGRATION_SUITE": str(suite),
+                        "LAB_SUITE_LIVRE": "1"}
+    r = subprocess.run([str(LAB), "testar"], env=env, capture_output=True, text=True, timeout=300)
+    assert r.returncode != 0, r.stdout
+    recibo = json.loads((rec / "recibo.json").read_text())
+    assert recibo["falhas"] >= 1 and motivo in (rec / "provas.txt").read_text()
+    assert recibo["producao_acessada"] == "nao_garantido"
+    assert recibo["fingerprint_total_pos"].startswith("_TOTAL|")
 
 
 def test_helpers_disponiveis_fora_do_testar(tmp_path):
