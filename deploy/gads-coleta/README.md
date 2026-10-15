@@ -61,8 +61,8 @@ não impede as outras, e a saída é 1 se qualquer uma falhou.
   conta fechamento com `:passorec:` na chave, então backfill manual não a
   pinta de verde), mas o deadman inteiro ainda não tem consumidor que alerte;
 - o tamanho do ajuste tardio em `cost_micros` não foi medido: rode
-  `--recoleta-dias 7 --seco` na Portal Mundo Mais (`5478096539`, a única filha
-  ativa do MCC em 15/10) e compare com as linhas D-1 já gravadas;
+  `--recoleta-dias 7 --seco` na Crédito Up (`5478096539`) e compare com as
+  linhas D-1 já gravadas;
 - campo que a releitura não trouxer vira NULL sobre o que o D-1 trouxe (o
   `ON CONFLICT` da v12_04 substitui a linha inteira);
 - as contas vêm de `VOLC_GADS_CONTAS`, não de `trafego_inventario_conta`.
@@ -82,6 +82,15 @@ select customer_id, metric_date, currency_code, sum(custo_micros) as custo_micro
 1ª passada: 10 famílias coletadas, 12 linhas no ledger com `disparo='agenda'`,
 saída 0. 2ª passada do mesmo passo: as 10 famílias **puladas** pelo ledger,
 nenhuma leitura no Google, saída 0. Saúde: `gads_campanha_dia` D-1 `ok`.
+
+## Contas (confirmado pelo Tarcisio em 15/10/2026)
+
+- `547-809-6539` (`5478096539`) é a conta real do **creditoup.com.br**. No
+  Google ela se chama "Portal Mundo Mais"; é a única filha ativa do MCC.
+- `801-785-1692` (`8017851692`) está **desativada**: leitura read-only em
+  15/10 devolveu `CUSTOMER_NOT_ENABLED`. Ela aparece em fixtures de teste, em
+  scripts de lab e em medições datadas (ex.: `backend/app/trafego/escopo.py`,
+  18/08) como dado histórico ou sintético; não é padrão de nenhum coletor.
 
 ## Antes de instalar (decisões do dono)
 
