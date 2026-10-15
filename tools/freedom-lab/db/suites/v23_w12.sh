@@ -211,10 +211,12 @@ w12_suite() {
   eq "$(w12_bloco "$(w12_cot 2026-10-13 5.40 '2099-01-01 00:00:00-03') SELECT 1;")" "ERRO:22023" "v23 · as_of no futuro é recusado"
   eq "$(w12_bloco "$(w12_cot 2026-10-13 0 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:23514" "v23 · taxa versionada <= 0 é recusada"
   local manual="SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',7.77,'effective_date','2020-12-31','as_of','2020-12-31 12:00-03','coletado_em','2020-01-01','proveniencia','{\"ator\":\"forjado\"}'::jsonb));"
-  eq "$(w12_bloco "$manual SELECT fonte||'|'||(as_of = now())||'|'||(coletado_em = now())||'|'||(proveniencia->>'ator') FROM public.exchange_rate_history WHERE rate = 7.77;")" "manual|true|true|postgres" \
+  eq "$(w12_bloco "$manual SELECT fonte||'|'||(as_of >= now())||'|'||(coletado_em = now())||'|'||(proveniencia->>'ator') FROM public.exchange_rate_history WHERE rate = 7.77;")" "manual|true|true|postgres" \
      "v23 · linha manual nova: fonte manual, as_of e coletado_em do servidor, ator do servidor (o do cliente é sobrescrito)"
   eq "$(w12_bloco "$manual SELECT modo FROM public.cambio_resolver('2021-01-01', 'USD/BRL', 7, '2021-01-01');")" "sem_cotacao" \
      "v23 · cotação 'conhecida em 2021' inventada hoje não entra no replay de 2021"
+  eq "$(w12_bloco "$manual $manual SELECT count(DISTINCT as_of) FROM public.exchange_rate_history WHERE rate = 7.77;")" "2" \
+     "v23 · duas linhas manuais do mesmo dia na mesma transação não colidem (as_of = clock_timestamp)"
   eq "$(w12_bloco "$manual UPDATE public.exchange_rate_history SET rate = 1 WHERE rate = 7.77; SELECT 1;")" "ERRO:23001" \
      "v23 · linha manual nova é imutável"
   eq "$(w12_bloco "SELECT pg_temp.w12_semear('public.exchange_rate_history', jsonb_build_object('rate',0,'effective_date','2026-10-13')); SELECT 1;")" "ERRO:23514" \
@@ -239,6 +241,19 @@ w12_suite() {
   done
   eq "$(w12_bloco "SET LOCAL ROLE authenticated; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:42501" \
      "v23 · authenticated não grava cotação versionada"
+  # O caminho legítimo do app (ExchangeRateManager): UPDATE em system_settings
+  # dispara record_exchange_rate_change(), que a v23_01 tornou SECURITY DEFINER.
+  # O INSERT dela passa pela guarda como linha manual carimbada pelo servidor.
+  local w12_sub='00000000-0000-4000-8000-00000000a012'
+  local w12_jwt="SELECT set_config('request.jwt.claims', '{\"sub\":\"$w12_sub\",\"role\":\"authenticated\"}', true);"
+  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'; RESET ROLE; SELECT count(*)||'|'||min(fonte)||'|'||min(proveniencia->>'papel')||'|'||min(proveniencia->>'auth_uid')||'|'||bool_and(as_of >= now() AND coletado_em = now()) FROM public.exchange_rate_history WHERE rate = 6.1234 AND effective_date = current_date;")" \
+     "1|manual|authenticated|$w12_sub|true" \
+     "v23 · authenticated muda o dólar em system_settings: passa e grava UMA versão manual, com papel e auth.uid() do servidor"
+  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt INSERT INTO public.exchange_rate_history (rate, effective_date) VALUES (6.1234, current_date); SELECT 1;")" "ERRO:42501" \
+     "v23 · o mesmo authenticated não grava direto no histórico (só pelo gatilho)"
+  eq "$(w12_sql "select p.prosecdef||'|'||pg_get_userbyid(p.proowner)||'|'||array_to_string(p.proconfig, ',') from pg_proc p where p.oid = 'public.record_exchange_rate_change()'::regprocedure")" \
+     "true|supabase_admin|search_path=pg_catalog, public" \
+     "v23 · record_exchange_rate_change: SECURITY DEFINER, dono supabase_admin, search_path fixo"
   eq "$(w12_bloco "SET LOCAL ROLE anon; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') SELECT 1;")" "ERRO:42501" \
      "v23 · anon não grava cotação versionada"
   eq "$(w12_bloco "SET LOCAL ROLE service_role; $(w12_cot 2026-10-13 5.40 '2026-10-13 13:10:00-03') RESET ROLE; SELECT count(*) FROM public.exchange_rate_history WHERE fonte='bcb_ptax';")" "1" \
@@ -318,7 +333,22 @@ w12_suite() {
     eq "$(estado "$papel" "select count(*) from public.cambio_resolver('2026-10-13')")" "42501" "v23 · $papel executa cambio_resolver: negado"
     eq "$(estado "$papel" "select count(*) from public.receita_as_of(now())")" "42501" "v23 · $papel executa receita_as_of: negado"
     eq "$(estado "$papel" "select public.receita_observar('joinads','USD','joinads_metrics','{}'::jsonb,array['date'],'INSERT',false,'{}'::jsonb)")" "42501" "v23 · $papel executa receita_observar: negado"
+    eq "$(estado "$papel" "insert into public.receita_observacao (fonte, tabela_origem, chave, operacao, removida, moeda, cambio_modo, proveniencia, impressao_digital) values ('joinads','x','{}','INSERT',false,'USD','sem_cotacao','{}','x')")" "42501" "v23 · $papel escreve no diário: negado"
+    eq "$(estado "$papel" "update public.receita_observacao set removida = true")" "42501" "v23 · $papel altera o diário: negado"
+    eq "$(estado "$papel" "insert into public.v23_01_acl_anterior values ('anon', 'INSERT')")" "42501" "v23 · $papel escreve no retrato de ACL: negado"
   done
+  # Incidente do lab (revisor local): setval na sequência do diário fez o
+  # upsert de gam_metrics do service_role cair com 23505.
+  for papel in anon authenticated service_role postgres; do
+    eq "$(w12_sql "select has_sequence_privilege('$papel','public.receita_observacao_id_seq','USAGE') or has_sequence_privilege('$papel','public.receita_observacao_id_seq','UPDATE')")" "f" "v23 · $papel sem USAGE/UPDATE na sequência do diário"
+  done
+  for papel in anon authenticated service_role; do
+    eq "$(estado "$papel" "select setval('public.receita_observacao_id_seq', 1)")" "42501" "v23 · $papel faz setval na sequência do diário: negado"
+    eq "$(estado "$papel" "select nextval('public.receita_observacao_id_seq')")" "42501" "v23 · $papel consome a sequência do diário: negado"
+  done
+  eq "$(sqlstate "select setval('public.receita_observacao_id_seq', 1)")" "42501" "v23 · postgres faz setval na sequência do diário: negado"
+  eq "$(w12_bloco "$(w12_jads 2026-10-12 1 w12-lab-seq) SELECT count(*) FROM public.receita_observacao WHERE chave->>'utm_campaign_value' = 'w12-lab-seq';")" "1" \
+     "v23 · o diário continua gravando pelo gatilho sem ninguém ter a sequência"
   eq "$(estado service_role 'select count(*) >= 0 from public.vw_receita_vigente')" "ok:t" "v23 · service_role lê a vigente"
   eq "$(estado service_role "select count(*) from public.cambio_resolver('2026-10-13')")" "ok:1" "v23 · service_role executa cambio_resolver"
   eq "$(estado service_role "select public.receita_observar('joinads','USD','joinads_metrics','{}'::jsonb,array['date'],'INSERT',false,'{}'::jsonb)")" "42501" "v23 · service_role não forja versão por receita_observar"
@@ -353,6 +383,8 @@ w12_suite() {
   eq "$(w12_sql "select count(*) from public.exchange_rate_history where rate = 5.25 and effective_date = '2026-02-18'")" "1" "v23 · cotação manual preservada pelo rollback"
   w12_fp depois-reverter
   diff -q "$RECIBOS/w12-fp-antes.out" "$RECIBOS/w12-fp-depois-reverter.out" >/dev/null && ok "v23 · rollback devolve o fingerprint exato de antes" || nao "v23 · rollback deixou resíduo no schema"
+  eq "$(w12_sql "select p.prosecdef||'|'||coalesce(array_to_string(p.proconfig, ','), '-') from pg_proc p where p.oid = 'public.record_exchange_rate_change()'::regprocedure")" "false|-" \
+     "v23 · rollback devolve record_exchange_rate_change a INVOKER sem config"
   w12_reverter reverter-de-novo && ok "v23 · rollback idempotente" || nao "v23 · rollback idempotente"
 
   echo "▶ v23 · reaplicar"

@@ -65,6 +65,12 @@
 --   longa pode ver a versão antes de ela ser visível.
 -- · session_replication_role = replica desliga os gatilhos: escrita feita
 --   assim (restore, replicação lógica) não vira versão no diário.
+-- · record_exchange_rate_change() vira SECURITY DEFINER: enquanto o W4 não
+--   fechar a escrita de anon/authenticated em system_settings, quem muda
+--   dollar_exchange_rate ali grava uma linha manual de câmbio (com papel e
+--   auth_uid na proveniência). É o caminho vivo de hoje, agora rastreado.
+-- · Pré-existente, fora do escopo: o front chama rpc_set_dollar_exchange_rate
+--   (ExchangeRateManager.tsx:74, secureApi.ts:229), que NÃO existe em produção.
 -- · Quem aplica é o DONO das três tabelas (em produção, supabase_admin):
 --   DROP TRIGGER do rollback exige dono, e a pré-checagem recusa sem isso.
 -- · Até a coleta PTAX começar, receita_brl sai NULL (a última cotação manual,
@@ -126,6 +132,19 @@ BEGIN
     RAISE EXCEPTION 'v23_01 recusada: % já existe — esta migration não reaplica por cima',
       coalesce('exchange_rate_history.' || faltando, 'receita_observacao/v23_01_acl_anterior');
   END IF;
+
+  -- O gatilho vivo que grava o histórico (trigger_exchange_rate_historical em
+  -- system_settings) chama record_exchange_rate_change() como INVOKER. Ela
+  -- vira SECURITY DEFINER aqui; o rollback a devolve a INVOKER sem config, então
+  -- ela precisa estar exatamente assim antes (senão o rollback mentiria).
+  IF to_regprocedure('public.record_exchange_rate_change()') IS NULL THEN
+    RAISE EXCEPTION 'v23_01 recusada: falta public.record_exchange_rate_change() (gatilho de system_settings)';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = 'public.record_exchange_rate_change()'::regprocedure
+              AND (p.prosecdef OR p.proconfig IS NOT NULL
+                   OR NOT pg_has_role(current_user, p.proowner, 'USAGE'))) THEN
+    RAISE EXCEPTION 'v23_01 recusada: record_exchange_rate_change() já é SECURITY DEFINER, tem SET de configuração ou não é de %', current_user;
+  END IF;
 END
 $pre$;
 
@@ -175,7 +194,9 @@ BEGIN
       -- Linha manual nova: o servidor diz quando e quem. Nada do cliente vale
       -- para o tempo (um "conhecido em 2021" inventado hoje vira hoje).
       NEW.fonte := 'manual';
-      NEW.as_of := now();
+      -- clock_timestamp: duas linhas manuais na mesma transação (o gatilho de
+      -- system_settings e o sync reverso) não colidem no índice de versão.
+      NEW.as_of := clock_timestamp();
     ELSIF NEW.as_of IS NULL THEN
       RAISE EXCEPTION 'cotação de fonte % sem as_of da fonte', NEW.fonte USING ERRCODE = '23514';
     ELSIF NEW.as_of > now() + interval '5 minutes' THEN
@@ -187,7 +208,9 @@ BEGIN
       'sessao',    session_user,
       'papel',     nullif(current_setting('role', true), 'none'),
       'jwt_sub',   v_claims ->> 'sub',
-      'jwt_papel', v_claims ->> 'role'));
+      'jwt_papel', v_claims ->> 'role',
+      -- o que auth.uid() lê: quem estava logado, mesmo dentro de SECURITY DEFINER
+      'auth_uid',  coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''), v_claims ->> 'sub')));
     RETURN NEW;
   END IF;
   IF OLD.as_of IS NOT NULL OR (TG_OP = 'UPDATE' AND NEW.as_of IS NOT NULL) THEN
@@ -510,6 +533,12 @@ CREATE VIEW public.vw_receita_vigente WITH (security_invoker = true) AS
 REVOKE ALL ON TABLE public.receita_observacao FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE public.vw_receita_vigente FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.receita_observacao, public.vw_receita_vigente TO service_role;
+-- A sequência do diário também nasce com o default ACL aberto: um setval de
+-- quem não é dono faz o próximo gatilho do diário colidir na PK (23505) e
+-- derruba o upsert de receita que o disparou. Ninguém além do dono precisa
+-- dela (quem grava é o gatilho SECURITY DEFINER do dono).
+REVOKE ALL ON SEQUENCE public.receita_observacao_id_seq FROM PUBLIC, anon, authenticated, service_role;
+REVOKE USAGE, UPDATE ON SEQUENCE public.receita_observacao_id_seq FROM postgres;
 
 -- Câmbio: anon e authenticated deixam de escrever. O que tinham fica guardado
 -- em v23_01_acl_anterior para o rollback devolver exatamente.
@@ -522,6 +551,15 @@ SELECT CASE WHEN a.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) END
    AND a.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
    AND (a.grantee = 0 OR pg_get_userbyid(a.grantee) IN ('anon', 'authenticated'));
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.exchange_rate_history FROM PUBLIC, anon, authenticated;
+
+-- O histórico vivo é gravado por trigger_exchange_rate_historical (AFTER
+-- UPDATE em system_settings) → record_exchange_rate_change(), que era INVOKER:
+-- sem a escrita do authenticated no histórico, o UPDATE de quem está logado
+-- cairia junto. Como SECURITY DEFINER do dono, o insert passa pela guarda como
+-- linha manual (fonte 'manual', as_of/coletado_em do servidor, auth_uid do
+-- usuário na proveniência). O rollback a devolve a INVOKER.
+ALTER FUNCTION public.record_exchange_rate_change() SECURITY DEFINER;
+ALTER FUNCTION public.record_exchange_rate_change() SET search_path = pg_catalog, public;
 
 REVOKE ALL ON FUNCTION public.cambio_versao_guarda() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_registrar_truncate() FROM PUBLIC, anon, authenticated;

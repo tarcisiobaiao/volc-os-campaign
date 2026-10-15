@@ -11,8 +11,8 @@
 -- apague à mão, com autorização, se o descarte for a decisão.
 -- Idempotente: rodar de novo depois de revertido não faz nada.
 --
--- ORDEM COM O W4: aplicar o W4 (v19 e v19_10) ANTES da v23_01 e reverter em
--- ordem inversa (v23_01 antes do v19_10). Este rollback nunca devolve
+-- ORDEM CANÔNICA: v19 → v19_10 → v23_01; reverter em ordem inversa
+-- (v23_01 → v19_10 → v19). Este rollback nunca devolve
 -- privilégio a anon nem a PUBLIC em exchange_rate_history, mesmo que estivesse
 -- no retrato guardado (ver bloco $acl$).
 
@@ -70,6 +70,16 @@ BEGIN
 END
 $acl$;
 DROP TABLE IF EXISTS public.v23_01_acl_anterior;
+
+-- record_exchange_rate_change() volta a ser INVOKER sem config (como no dump).
+DO $fn$
+BEGIN
+  IF to_regprocedure('public.record_exchange_rate_change()') IS NOT NULL THEN
+    ALTER FUNCTION public.record_exchange_rate_change() SECURITY INVOKER;
+    ALTER FUNCTION public.record_exchange_rate_change() RESET ALL;
+  END IF;
+END
+$fn$;
 
 DROP TRIGGER IF EXISTS zz_receita_observacao ON public.joinads_metrics;
 DROP TRIGGER IF EXISTS zz_receita_observacao ON public.gam_metrics;
