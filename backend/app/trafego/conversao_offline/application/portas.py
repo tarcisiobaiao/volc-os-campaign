@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Dict, Mapping, Optional, Protocol, Sequence, Tuple
 
 from ..domain.evento import CliqueObservado
@@ -26,7 +27,11 @@ class FonteDeCliques(Protocol):
 class FonteDeReceita(Protocol):
     def receita_vigente(self, *, fonte: str, coorte: Coorte,
                         conhecido_ate: Optional[datetime]) -> Optional[ReceitaDatada]:
-        """A versão vigente da receita da coorte, como o banco a sabia em `conhecido_ate`."""
+        """A versão da receita da coorte como o banco a sabia em `conhecido_ate`.
+
+        O adaptador usa `receita_as_of(conhecido_ate)` da v23_01, não a view
+        `vw_receita_vigente` (que não tem as-of).
+        """
 
 
 class FonteDeCambio(Protocol):
@@ -54,6 +59,19 @@ class EnvioAnterior:
 
 
 @dataclass(frozen=True)
+class EnvioDaCoorte:
+    """O que já foi enviado DE VERDADE (e segue vivo) de uma coorte.
+
+    Vem do banco pela coorte gravada na decisão, não pelos transaction_ids
+    desta leitura: um clique enviado que não voltou na janela `de/ate` ainda
+    conta. (Revisão nuvem 2, menor 1.)
+    """
+
+    itens: int
+    soma: Decimal
+
+
+@dataclass(frozen=True)
 class LoteRegistrado:
     lote_id: int
     impressao: str
@@ -66,6 +84,10 @@ class RegistroDeConversoes(Protocol):
     def envios_reais_vivos(self, *, operating_account_id: str, product_destination_id: str,
                            transaction_ids: Sequence[str]) -> Mapping[str, EnvioAnterior]:
         ...
+
+    def envios_reais_por_coorte(self, *, operating_account_id: str, product_destination_id: str,
+                                coortes: Sequence[Coorte]) -> Mapping[Coorte, EnvioDaCoorte]:
+        """Só as coortes com algum envio real vivo aparecem."""
 
     def registrar_decisoes(self, *, rodada: str, customer_id: str,
                            operating_account_id: str, product_destination_id: str,

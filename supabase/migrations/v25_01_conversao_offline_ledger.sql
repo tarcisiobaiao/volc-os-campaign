@@ -21,6 +21,9 @@
 --   3. envio real exige aprovação humana com a impressão EXATA do envelope,
 --      um validate_only ACEITO do mesmo envelope com os MESMOS itens, e uma
 --      decisão `elegivel` gravada com o mesmo valor para cada item;
+--   3a. TETO DO RATEIO: num envio real, por coorte, a soma dos valores vivos
+--      (os já enviados + os do lote) não passa do teto da coorte gravado na
+--      proveniência, e o número de cliques não passa das sessões (23514);
 --   3b. lote real `sem_resposta` só sai pelo reenvio do MESMO envelope
 --      (vira `reenviado`): no Google, mesmo transactionId na mesma ação é
 --      ajuste e não conta de novo;
@@ -63,6 +66,10 @@ CREATE TABLE public.conversao_offline_decisao (
   clique_sha256           text        NOT NULL CHECK (clique_sha256 ~ '^[0-9a-f]{64}$'),
   ocorrido_em             timestamptz,
   estado                  text        NOT NULL CHECK (estado IN ('elegivel', 'pulado')),
+  -- a coorte do clique (campanha-dia-domínio): é por ela que o teto é somado
+  coorte_data             date        NOT NULL,
+  coorte_campanha         text        NOT NULL CHECK (length(btrim(coorte_campanha)) > 0),
+  coorte_dominio          text        NOT NULL CHECK (length(btrim(coorte_dominio)) > 0),
   motivo                  text,
   detalhe                 text,
   valor                   numeric,
@@ -79,7 +86,13 @@ CREATE TABLE public.conversao_offline_decisao (
       valor > 0 AND moeda ~ '^[A-Z]{3}$' AND ocorrido_em IS NOT NULL AND estimado IS NOT NULL
       AND valor_impressao ~ '^[0-9a-f]{64}$' AND motivo IS NULL
       AND jsonb_typeof(proveniencia -> 'receita') = 'object'
-      AND jsonb_typeof(proveniencia -> 'cambio') = 'object'), false)),
+      AND jsonb_typeof(proveniencia -> 'cambio') = 'object'
+      -- rateio declara as sessões e o teto que o banco confere no envio real
+      AND (proveniencia ->> 'metodo' IS DISTINCT FROM 'rateio_uniforme_por_sessao' OR (
+           jsonb_typeof(proveniencia -> 'sessoes_da_coorte') = 'number'
+           AND (proveniencia ->> 'sessoes_da_coorte') ~ '^[1-9][0-9]*$'
+           AND (proveniencia ->> 'teto_da_coorte') ~ '^[0-9]+(\.[0-9]{1,2})?$'
+           AND valor <= (proveniencia ->> 'teto_da_coorte')::numeric))), false)),
   -- pulado: motivo nomeado e nenhum valor
   CONSTRAINT conversao_offline_decisao_pulado CHECK (estado <> 'pulado' OR (
       length(btrim(coalesce(motivo, ''))) > 0 AND length(btrim(coalesce(detalhe, ''))) > 0
@@ -139,6 +152,26 @@ CREATE TABLE public.conversao_offline_item (
 CREATE UNIQUE INDEX conversao_offline_item_real_vivo
   ON public.conversao_offline_item (operating_account_id, product_destination_id, transaction_id)
   WHERE modo = 'real' AND estado IN ('em_voo', 'aceito', 'sem_resposta', 'processando', 'sucesso', 'sucesso_parcial');
+
+-- ───────────────────────────────────── envio real vivo por coorte ──
+-- Cada item real vivo com a SUA decisão elegível (mesmo valor). A mesma
+-- decisão pode se repetir em rodadas; o LATERAL pega uma só.
+CREATE VIEW public.conversao_offline_envio_por_coorte WITH (security_invoker = true) AS
+SELECT i.operating_account_id, i.product_destination_id,
+       d.coorte_data, d.coorte_campanha, d.coorte_dominio,
+       count(*)::integer AS itens_vivos, sum(d.valor) AS soma_valor
+  FROM public.conversao_offline_item i
+  CROSS JOIN LATERAL (
+    SELECT x.coorte_data, x.coorte_campanha, x.coorte_dominio, x.valor
+      FROM public.conversao_offline_decisao x
+     WHERE x.operating_account_id = i.operating_account_id
+       AND x.product_destination_id = i.product_destination_id
+       AND x.transaction_id = i.transaction_id
+       AND x.estado = 'elegivel' AND x.valor_impressao = i.valor_impressao
+     ORDER BY x.id LIMIT 1) d
+ WHERE i.modo = 'real'
+   AND i.estado IN ('em_voo', 'aceito', 'sem_resposta', 'processando', 'sucesso', 'sucesso_parcial')
+ GROUP BY 1, 2, 3, 4, 5;
 
 -- ─────────────────────────────────────────────── imutabilidade ──
 CREATE FUNCTION public.conversao_offline_imutavel() RETURNS trigger
@@ -250,6 +283,40 @@ BEGIN
       FROM public.conversao_offline_lote l
      WHERE it.lote_id = l.id AND l.modo = 'real' AND l.impressao = p ->> 'impressao'
        AND l.estado = 'reenviado' AND it.estado = 'sem_resposta';
+    -- ⚠️ TETO DO RATEIO (revisão nuvem 2, obrigatório 2): por coorte, o que já
+    -- está vivo + o que este lote leva não passa do teto nem das sessões.
+    -- Conferido DEPOIS de liberar o reenvio do mesmo envelope, para que ele
+    -- não conte duas vezes.
+    IF EXISTS (
+      WITH novos AS (
+        SELECT DISTINCT ON (i ->> 'transaction_id')
+               d.coorte_data, d.coorte_campanha, d.coorte_dominio, d.valor,
+               (d.proveniencia ->> 'teto_da_coorte')::numeric AS teto,
+               (d.proveniencia ->> 'sessoes_da_coorte')::integer AS sessoes
+          FROM jsonb_array_elements(p -> 'itens') i
+          JOIN public.conversao_offline_decisao d
+            ON d.operating_account_id = p ->> 'operating_account_id'
+           AND d.product_destination_id = p ->> 'product_destination_id'
+           AND d.transaction_id = i ->> 'transaction_id'
+           AND d.estado = 'elegivel' AND d.valor_impressao = i ->> 'valor_impressao'
+         WHERE d.proveniencia ->> 'metodo' = 'rateio_uniforme_por_sessao'
+         ORDER BY i ->> 'transaction_id', d.id),
+      por_coorte AS (
+        SELECT coorte_data, coorte_campanha, coorte_dominio,
+               sum(valor) AS soma, count(*) AS n, min(teto) AS teto, min(sessoes) AS sessoes
+          FROM novos GROUP BY 1, 2, 3)
+      SELECT 1 FROM por_coorte n
+        LEFT JOIN public.conversao_offline_envio_por_coorte e
+          ON e.operating_account_id = p ->> 'operating_account_id'
+         AND e.product_destination_id = p ->> 'product_destination_id'
+         AND (e.coorte_data, e.coorte_campanha, e.coorte_dominio)
+             = (n.coorte_data, n.coorte_campanha, n.coorte_dominio)
+       WHERE n.teto IS NULL OR n.sessoes IS NULL
+          OR n.soma + coalesce(e.soma_valor, 0) > n.teto
+          OR n.n + coalesce(e.itens_vivos, 0) > n.sessoes) THEN
+      RAISE EXCEPTION 'abrir_lote: a soma enviada da coorte passaria da receita medida (teto ou sessões)'
+        USING ERRCODE = '23514';
+    END IF;
   ELSIF (p ? 'aprovacao' AND p -> 'aprovacao' <> 'null'::jsonb)
         OR (p ? 'validacao_lote_id' AND p -> 'validacao_lote_id' <> 'null'::jsonb) THEN
     RAISE EXCEPTION 'abrir_lote: validate_only não carrega aprovação' USING ERRCODE = '22023';
@@ -321,6 +388,8 @@ REVOKE ALL ON TABLE public.conversao_offline_decisao, public.conversao_offline_l
                     public.conversao_offline_item FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.conversao_offline_decisao, public.conversao_offline_lote,
                      public.conversao_offline_item TO service_role;
+REVOKE ALL ON TABLE public.conversao_offline_envio_por_coorte FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON TABLE public.conversao_offline_envio_por_coorte TO service_role;
 GRANT INSERT ON TABLE public.conversao_offline_decisao TO service_role;
 -- as sequências de identidade nascem com o default ACL do Supabase (anon incluída)
 REVOKE ALL ON SEQUENCE public.conversao_offline_decisao_id_seq, public.conversao_offline_lote_id_seq

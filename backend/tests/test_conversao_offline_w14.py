@@ -165,6 +165,21 @@ class RegistroMemoria:
                     it["lote_id"], it["estado"], it["valor_impressao"])
         return out
 
+    def envios_reais_por_coorte(self, *, operating_account_id, product_destination_id, coortes):
+        out = {}
+        for it in self.itens:
+            if it["modo"] != "real" or it["estado"] not in portas.ESTADOS_VIVOS:
+                continue
+            d = next(d for d in self.decisoes if d["estado"] == "elegivel"
+                     and d["transaction_id"] == it["transaction_id"]
+                     and d["valor_impressao"] == it["valor_impressao"])
+            k = vl.Coorte(date.fromisoformat(d["coorte_data"]), d["coorte_campanha"],
+                          d["coorte_dominio"])
+            if k in coortes:
+                antes = out.get(k, portas.EnvioDaCoorte(0, Decimal(0)))
+                out[k] = portas.EnvioDaCoorte(antes.itens + 1, antes.soma + Decimal(d["valor"]))
+        return out
+
     def registrar_decisoes(self, *, rodada, customer_id, operating_account_id,
                            product_destination_id, decisoes):
         self.decisoes.extend(dict(d, rodada=rodada) for d in decisoes)
@@ -774,6 +789,20 @@ def test_registro_grava_decisoes_sem_descartar_duplicata():
     assert all("Cj0KEQ" not in json.dumps(l) for l in linhas)
 
 
+def test_registro_le_o_enviado_por_coorte_pela_view():
+    vistos = []
+
+    def h(req):
+        vistos.append(req.url.params)
+        return httpx.Response(200, json=[{"itens_vivos": 2, "soma_valor": 24.68}])
+
+    out = _reg(h).envios_reais_por_coorte(operating_account_id=CONTA, product_destination_id=ACAO,
+                                          coortes=[COORTE, COORTE])
+    assert out[COORTE] == portas.EnvioDaCoorte(2, Decimal("24.68"))
+    (q,) = vistos
+    assert q["coorte_data"] == "eq.2026-10-10" and q["coorte_campanha"] == "eq.cup-bpc-loas"
+
+
 def test_registro_le_envios_vivos_so_reais():
     def h(req):
         q = req.url.params
@@ -817,12 +846,76 @@ def test_validar_no_google_escreve_validate_only_true_literal():
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_b1_observacao_coletada_cedo_e_imatura_mesmo_com_calendario_maduro():
-    cedo = vl.ReceitaDatada(fonte="joinads", observacao_id=78, coorte=COORTE,
-                            receita=Decimal("12.00"), moeda="USD",
-                            coletado_em=datetime(2026, 10, 11, 6, 0, tzinfo=timezone.utc))
-    r = _calc(receita=cedo)
+def _receita_coletada(dias, confirmado=None):
+    return vl.ReceitaDatada(
+        fonte="joinads", observacao_id=78, coorte=COORTE, receita=Decimal("12.00"), moeda="USD",
+        coletado_em=datetime.combine(DIA + timedelta(days=dias), datetime.min.time(), timezone.utc),
+        confirmado_em=None if confirmado is None else datetime.combine(
+            DIA + timedelta(days=confirmado), datetime.min.time(), timezone.utc))
+
+
+@pytest.mark.parametrize("hoje", [DIA + timedelta(days=4), DIA + timedelta(days=30)])
+def test_nuvem2_receita_estavel_sem_versao_nova_amadurece_pelo_calendario(hoje):
+    # O diário do W12 não cria versão quando o número não muda: `coletado_em`
+    # fica em D+1 para sempre. Sem prova de releitura, vale a idade do dia.
+    r = _calc(receita=_receita_coletada(1), hoje=hoje)
+    assert isinstance(r, vl.ValorMedido)
+    assert r.proveniencia["auditoria_da_maturidade"]["base"] == "calendario"
+
+
+def test_confirmacao_registrada_da_a_base_da_observacao():
+    r = _calc(receita=_receita_coletada(1, confirmado=4))
+    assert r.proveniencia["auditoria_da_maturidade"]["base"] == "observacao_confirmada"
+
+
+def test_b1_coletor_que_parou_cedo_com_confirmacao_conhecida_e_pulado():
+    r = _calc(receita=_receita_coletada(1, confirmado=1))
     assert isinstance(r, vl.Pulo) and r.motivo == vl.PULO_OBSERVACAO_IMATURA
+
+
+def test_confirmacao_nova_nao_muda_a_impressao_do_valor():
+    a = _calc(receita=_receita_coletada(1, confirmado=4))
+    b = _calc(receita=_receita_coletada(1, confirmado=9))
+    c = _calc(receita=_receita_coletada(1))
+    assert a.impressao() == b.impressao() == c.impressao()
+
+
+def test_nuvem2_mais_cliques_que_sessoes_pula_a_coorte_inteira():
+    # A sonda do revisor: 64,92 de receita, 2 sessões e 6 cliques mandavam 194,76.
+    preparo, *_ = _preparar(cliques=[_clique(n) for n in range(1, 7)], sessoes=2)
+    assert preparo.lotes == ()
+    assert preparo.resumo()["pulados"] == {pr.PULO_CLIQUES_ACIMA_DAS_SESSOES: 6}
+
+
+@pytest.mark.parametrize("receita, taxa, sessoes", [
+    ("10.01", "1", 3), ("64.92", "1", 4), ("12.00", "5.4100", 7), ("0.07", "1", 3),
+    ("99999.99", "5.4321", 11), ("1.00", "3.3333", 3), ("5.05", "1.0001", 5),
+])
+def test_nuvem2_soma_enviada_por_coorte_nunca_passa_da_receita(receita, taxa, sessoes):
+    preparo, *_ = _preparar(cliques=[_clique(n) for n in range(1, sessoes + 1)],
+                            linha=_receita(valor=receita), cot=_cot(taxa=taxa), sessoes=sessoes)
+    soma = sum((d.valor.valor for d in preparo.decisoes if d.estado == ev.ELEGIVEL), Decimal(0))
+    assert soma <= Decimal(receita) * Decimal(taxa)
+    for d in preparo.decisoes:
+        if d.estado == ev.ELEGIVEL:
+            assert Decimal(d.valor.proveniencia["teto_da_coorte"]) <= Decimal(receita) * Decimal(taxa)
+
+
+def test_nuvem2_coorte_ja_enviada_trava_mesmo_sem_o_clique_antigo_na_leitura(destravado):
+    registro = RegistroMemoria()
+    primeiro, *_ = _preparar(registro=registro, cliques=[_clique(1)])
+    _real(registro, primeiro.lotes[0])
+    # O clique 1 não volta nesta leitura (janela por data UTC, por exemplo).
+    segundo, *_ = _preparar(registro=registro, rodada="rodada-2", cliques=[_clique(3)], sessoes=1)
+    assert segundo.lotes == ()
+    assert segundo.resumo()["pulados"] == {pr.PULO_COORTE_JA_RATEADA: 1}
+
+
+def test_decisao_leva_a_coorte_para_o_registro():
+    preparo, *_ = _preparar()
+    j = preparo.decisoes[0].json()
+    assert (j["coorte_data"], j["coorte_campanha"], j["coorte_dominio"]) == (
+        "2026-10-10", "cup-bpc-loas", "creditoup.com.br")
 
 
 def test_conhecido_ate_no_passado_limita_o_hoje():

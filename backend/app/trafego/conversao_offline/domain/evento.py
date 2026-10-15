@@ -90,6 +90,8 @@ class Decisao:
     clique_sha256: str
     ocorrido_em: Optional[str]
     estado: str
+    #: A coorte do clique: é por ela que o banco soma o que já foi enviado.
+    coorte: Coorte
     motivo: Optional[str] = None
     detalhe: Optional[str] = None
     valor: Optional[ValorMedido] = None
@@ -107,7 +109,7 @@ class Decisao:
         return cls(transaction_id=tid, visita_ref=clique.visita_ref,
                    clique_tipo=clique.clique.tipo,
                    clique_sha256=sha256(clique.clique.valor),
-                   ocorrido_em=None, estado=PULADO,
+                   ocorrido_em=None, estado=PULADO, coorte=clique.coorte,
                    motivo=pulo.motivo, detalhe=pulo.detalhe)
 
     def json(self) -> Dict[str, Any]:
@@ -119,6 +121,9 @@ class Decisao:
             "clique_sha256": self.clique_sha256,
             "ocorrido_em": self.ocorrido_em,
             "estado": self.estado,
+            "coorte_data": self.coorte.data_referencia.isoformat(),
+            "coorte_campanha": self.coorte.utm_campaign_value,
+            "coorte_dominio": self.coorte.dominio,
             "motivo": self.motivo,
             "detalhe": self.detalhe,
             "valor": None if self.valor is None else str(self.valor.valor),

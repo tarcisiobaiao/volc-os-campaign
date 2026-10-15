@@ -27,6 +27,9 @@
 #      envelope e só sai pelo reenvio do MESMO (vira reenviado); transições
 #      fechadas; request_id e identidade imutáveis; fechar com o pedido de
 #      outro lote é recusado; DELETE e TRUNCATE recusados
+#   4b. teto do rateio: por coorte, o real vivo (já enviados + o lote) não passa
+#      do teto da proveniência nem das sessões; a view por coorte é só da
+#      service_role; o reenvio do mesmo envelope não conta duas vezes
 #   5. rollback recusa com dado (atômico), devolve o fingerprint, é idempotente;
 #      reaplicar dá o mesmo fingerprint
 #
@@ -82,15 +85,23 @@ W14_VAL_A_NU="SELECT public.conversao_offline_fechar_lote(($(w14_abrir validate_
 # Sem decisão elegível gravada o real não abre (proveniência): as fixtures gravam antes.
 W14_VAL_ID="(SELECT max(id) FROM public.conversao_offline_lote WHERE modo='validate_only' AND impressao='$W14_IMP_A')"
 
-w14_decisao() { # estado valor motivo proveniencia ocorrido_em [tid] [valor_impressao]
-  local tid=${6:-$W14_TID1} vimp=${7:-$W14_VIMP}
-  printf "INSERT INTO public.conversao_offline_decisao (rodada, customer_id, operating_account_id, product_destination_id, transaction_id, visita_ref, clique_tipo, clique_sha256, ocorrido_em, estado, motivo, detalhe, valor, moeda, estimado, valor_impressao, proveniencia) VALUES ('r1','1111111111','1111111111','900001','%s','v1','gclid','%s',%s,'%s',%s,%s,%s,%s,%s,%s,'%s'::jsonb) ON CONFLICT DO NOTHING RETURNING estado;" \
-    "$tid" "$W14_SHA" "$5" "$1" "$3" "$( [ "$3" = NULL ] && echo NULL || echo "'detalhe'")" "$2" \
+w14_decisao() { # estado valor motivo proveniencia ocorrido_em [tid] [valor_impressao] [rodada]
+  local tid=${6:-$W14_TID1} vimp=${7:-$W14_VIMP} rodada=${8:-r1}
+  printf "INSERT INTO public.conversao_offline_decisao (rodada, customer_id, operating_account_id, product_destination_id, transaction_id, visita_ref, clique_tipo, clique_sha256, ocorrido_em, estado, coorte_data, coorte_campanha, coorte_dominio, motivo, detalhe, valor, moeda, estimado, valor_impressao, proveniencia) VALUES ('%s','1111111111','1111111111','900001','%s','v1','gclid','%s',%s,'%s','2026-10-10','cup-lab','lab.invalid',%s,%s,%s,%s,%s,%s,'%s'::jsonb) ON CONFLICT DO NOTHING RETURNING estado;" \
+    "$rodada" "$tid" "$W14_SHA" "$5" "$1" "$3" "$( [ "$3" = NULL ] && echo NULL || echo "'detalhe'")" "$2" \
     "$( [ "$2" = NULL ] && echo NULL || echo "'BRL'")" "$( [ "$2" = NULL ] && echo NULL || echo true)" \
     "$( [ "$2" = NULL ] && echo NULL || echo "'$vimp'")" "$4"
 }
 W14_PROV='{"receita":{"fonte":"joinads"},"cambio":{"modo":"exata"}}'
 W14_HORA="'2026-10-10T10:00:00-03:00'"
+w14_prov_rateio() { # sessoes teto
+  printf '{"receita":{"fonte":"joinads"},"cambio":{"modo":"exata"},"metodo":"rateio_uniforme_por_sessao","sessoes_da_coorte":%s,"teto_da_coorte":"%s"}' "$1" "$2"
+}
+# validate_only aceito de <impressao> com <tids>, e depois o real do mesmo envelope
+w14_val_e_real() { # impressao tids
+  printf "SELECT public.conversao_offline_fechar_lote((%s), 'aceito', NULL, '{}'::jsonb); SELECT public.conversao_offline_abrir_lote(jsonb_set('%s'::jsonb, '{validacao_lote_id}', to_jsonb((SELECT max(id) FROM public.conversao_offline_lote WHERE modo='validate_only' AND impressao='%s')))) > 0;" \
+    "$(w14_abrir validate_only "$1" "$2")" "$(w14_lote_json real "$1" "$2" 0)" "$1"
+}
 W14_DEC="$(w14_decisao elegivel 12.34 NULL "$W14_PROV" "$W14_HORA" "$W14_TID1") $(w14_decisao elegivel 12.34 NULL "$W14_PROV" "$W14_HORA" "$W14_TID2")"
 W14_VAL_A="$W14_DEC $W14_VAL_A_NU"
 
@@ -204,11 +215,30 @@ w14_suite() {
   eq "$(w14_bloco anon "SELECT nextval('public.conversao_offline_lote_id_seq');")" "ERRO:42501" "v25 · anon não usa a sequência do lote"
   eq "$(w14_bloco anon "SELECT nextval('public.conversao_offline_decisao_id_seq');")" "ERRO:42501" "v25 · anon não usa a sequência da decisão"
 
+  echo "▶ v25 · teto do rateio por coorte (revisão nuvem 2, obrigatório 2)"
+  d2() { echo "$(w14_decisao elegivel 12.34 NULL "$(w14_prov_rateio "$1" "$2")" "$W14_HORA" "$W14_TID1") $(w14_decisao elegivel 12.34 NULL "$(w14_prov_rateio "$1" "$2")" "$W14_HORA" "$W14_TID2")"; }
+  eq "$(w14_bloco service_role "$(d2 2 24.68) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1,$W14_TID2")")" "ok:t" "v25 · 2 cliques, 2 sessões, soma = teto: abre"
+  eq "$(w14_bloco service_role "$(d2 1 24.68) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1,$W14_TID2")")" "ERRO:23514" "v25 · mais cliques que sessões recusado"
+  eq "$(w14_bloco service_role "$(d2 2 20.00) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1,$W14_TID2")")" "ERRO:23514" "v25 · soma acima do teto recusada"
+  eq "$(w14_bloco service_role "$(d2 2 24.68) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1") $(w14_val_e_real "$W14_IMP_B" "$W14_TID2") SELECT itens_vivos || '|' || soma_valor FROM public.conversao_offline_envio_por_coorte;")" "ok:2|24.68" \
+     "v25 · segundo envio da coorte cabe no teto e a view soma os dois"
+  eq "$(w14_bloco service_role "$(d2 1 12.34) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1") $(w14_val_e_real "$W14_IMP_B" "$W14_TID2")")" "ERRO:23514" \
+     "v25 · o já enviado de OUTRO lote conta no teto da coorte"
+  eq "$(w14_bloco service_role "$(d2 2 20.00) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1") $(w14_val_e_real "$W14_IMP_B" "$W14_TID2")")" "ERRO:23514" \
+     "v25 · a SOMA do já enviado conta no teto (sessões sobrando, dinheiro não)"
+  eq "$(w14_bloco service_role "$(d2 1 12.34) $(w14_val_e_real "$W14_IMP_A" "$W14_TID1") SELECT public.conversao_offline_fechar_lote((SELECT max(id) FROM public.conversao_offline_lote WHERE modo='real'), 'sem_resposta', NULL, '{}'); SELECT public.conversao_offline_abrir_lote(jsonb_set('$(w14_lote_json real "$W14_IMP_A" "$W14_TID1" 0)'::jsonb, '{validacao_lote_id}', to_jsonb((SELECT max(id) FROM public.conversao_offline_lote WHERE modo='validate_only')))) > 0;")" "ok:t" \
+     "v25 · reenvio do mesmo envelope não conta duas vezes no teto"
+  eq "$(w14_bloco service_role "$(w14_decisao elegivel 12.34 NULL "$(w14_prov_rateio 2 10.00)" "$W14_HORA")")" "ERRO:23514" "v25 · decisão de rateio com valor acima do teto recusada"
+  eq "$(w14_bloco service_role "$(w14_decisao elegivel 12.34 NULL '{"receita":{},"cambio":{},"metodo":"rateio_uniforme_por_sessao"}' "$W14_HORA")")" "ERRO:23514" "v25 · decisão de rateio sem sessões e teto recusada"
+  eq "$(w14_bloco anon "SELECT count(*) FROM public.conversao_offline_envio_por_coorte;")" "ERRO:42501" "v25 · anon não lê a soma por coorte"
+  eq "$(w14_bloco authenticated "SELECT count(*) FROM public.conversao_offline_envio_por_coorte;")" "ERRO:42501" "v25 · authenticated não lê a soma por coorte"
+  eq "$(w14_bloco service_role "SELECT count(*) FROM public.conversao_offline_envio_por_coorte;")" "ok:0" "v25 · service_role lê a soma por coorte"
+
   eq "$(w14_bloco service_role "SELECT public.conversao_offline_abrir_lote('$(w14_lote_json validate_only "$W14_IMP_A" "$W14_TID1")'::jsonb || '{\"aprovacao\":{\"x\":1}}'::jsonb);")" "ERRO:22023" \
      "v25 · validate_only não carrega aprovação"
 
   echo "▶ v25 · reverter"
-  PA -c "INSERT INTO public.conversao_offline_decisao (rodada, customer_id, operating_account_id, product_destination_id, transaction_id, visita_ref, clique_tipo, clique_sha256, estado, motivo, detalhe) VALUES ('lab','1111111111','1111111111','900001','$W14_TID1','v1','gclid','$W14_SHA','pulado','receita_ausente','lab')" >/dev/null 2>&1 \
+  PA -c "INSERT INTO public.conversao_offline_decisao (rodada, customer_id, operating_account_id, product_destination_id, transaction_id, visita_ref, clique_tipo, clique_sha256, estado, coorte_data, coorte_campanha, coorte_dominio, motivo, detalhe) VALUES ('lab','1111111111','1111111111','900001','$W14_TID1','v1','gclid','$W14_SHA','pulado','2026-10-10','cup-lab','lab.invalid','receita_ausente','lab')" >/dev/null 2>&1 \
     && ok "v25 · semente de rastro gravada" || nao "v25 · semente de rastro"
   w14_reverter com-dado && nao "v25 · rollback com rastro passou" || \
     { grep -q 'o rastro não é apagado' "$RECIBOS/w14-com-dado.out" && ok "v25 · rollback recusa com rastro" || nao "v25 · rollback com dado falhou por outro motivo"; }

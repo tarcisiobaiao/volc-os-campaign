@@ -116,11 +116,21 @@ Nenhum destes é feito pela nuvem.
    nem câmbio; sem v25_01 não há registro de envio.
 3. Ligar a coleta PTAX do W12. Sem cotação, todo clique sai como `sem_cotacao`.
 4. **Consentimento do visitante:** `site_visits` não tem coluna de consentimento.
-   Hoje todo clique é pulado como `sem_consentimento_do_usuario`. É preciso
-   capturar o consentimento do visitante no tracker do creditoup.com.br (CMP /
-   Consent Mode) e expô-lo na porta de cliques. Até lá, nenhum evento é enviado.
+   Hoje todo clique é pulado como `sem_consentimento_do_usuario`, porque o
+   código adota a postura conservadora: ausência de declaração não é permissão.
+   **Isto é decisão de política sua, não exigência técnica confirmada.** Pela
+   nossa leitura, o `consent.adUserData` da Data Manager é exigido para
+   tráfego do EEE; o creditoup.com.br é Brasil (LGPD). É inferência, não
+   conferida na documentação. As opções:
+   - capturar o consentimento no tracker (CMP / Consent Mode) e expô-lo na
+     porta de cliques (recomendado: é o que a LGPD pede para dado de anúncio);
+   - ou decidir, por escrito, uma base legal sem consentimento por visitante.
+     Isso exige uma mudança de código revisada (o padrão continua bloqueando).
+   Até uma das duas, nenhum evento é enviado.
 5. Decidir a política de valor (código: `PoliticaDeValor`): fonte `joinads`,
-   maturidade mínima (sugestão: 3 dias, porque a JoinAds reescreve D-1 a D-3),
+   maturidade mínima (sugestão: 3 dias, porque a JoinAds reescreve D-1 a D-3;
+   conta a idade do dia, e a releitura da coleta quando o W12 passar a
+   registrá-la, porque hoje o diário não cria versão quando o número não muda),
    defasagem máxima de câmbio (sugestão: 3 dias) e **aceite explícito do rateio
    por coorte** (`aceitar_rateio_de_coorte=True`). Sem esse aceite, todo clique é
    pulado como `rateio_de_coorte_sem_aceite`.
@@ -156,9 +166,18 @@ Decisão do Tarcisio, por campanha, com a lista do passo 0. Recomendação:
    UI: Campanha → Configurações → Metas → "Usar metas específicas desta
    campanha". Assim as campanhas que hoje usam `adView`/metas personalizadas
    por evento não mudam junto.
-2. Tornar `VOLC — Receita medida (offline)` **primária** (Metas → Conversões →
-   ação → Editar → Meta da ação: Primária). Conferir na releitura que ela ficou
-   biddable para a meta da campanha.
+2. **Preferir a meta personalizada, sem tornar a ação primária.** "Primária" é
+   um atributo da ação **na conta**: uma vez primária, ela passa a contar na
+   meta padrão da categoria Compra de **toda** campanha que usa as metas da
+   conta, e não só nas do item 1. Pela nossa leitura do produto, uma meta
+   personalizada usa a ação mesmo Secondary. Isso é inferência; confirme na UI
+   (Metas → Conversões → Metas personalizadas → nova meta só com a ação).
+   - Se a UI exigir a ação primária: **antes**, refaça a leitura do passo 0 e
+     confirme que a meta da conta PURCHASE/WEBSITE continua **não biddable**
+     (era assim em 09/10). Se tiver virado biddable, tornar a ação primária
+     muda o lance de todas as campanhas com metas da conta: pare e decida de
+     novo. Só então: Metas → Conversões → ação → Editar → Meta da ação:
+     Primária, e confira na releitura que ela ficou biddable só onde deveria.
 3. Na mesma campanha, as ações de tag (`adView`, `Compra`, `adView*`) saem da
    meta da campanha. **Não** é preciso desligá-las na conta.
 4. Para PMax: o portão do VOLC (`volc_ads/campanha/pmax.py`) só libera PMax com

@@ -26,7 +26,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
-from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from typing import Any, Dict, Mapping, Optional, Union
 
 #: Versão da REGRA de valor. Entra na impressão do valor: mudar a fórmula sem
@@ -105,7 +105,10 @@ class Coorte:
 
 @dataclass(frozen=True)
 class ReceitaDatada:
-    """Uma linha VIGENTE de `vw_receita_vigente` (v23_01), como a porta a lê.
+    """A versão da receita da coorte que o banco tinha em `conhecido_ate` (v23_01).
+
+    ⚠️ O adaptador lê `receita_as_of(conhecido_ate)`, e não `vw_receita_vigente`:
+    a view não tem as-of e responderia com o que o banco sabe AGORA.
 
     `receita=None` é ausência e continua ausência: a v23_01 grava NULL, nunca
     zero inventado, e este contrato preserva isso.
@@ -119,6 +122,10 @@ class ReceitaDatada:
     #: Quando o banco recebeu esta versão (as-of). Não é o `updated_at` da origem.
     coletado_em: datetime
     grao: str = GRAO_COORTE
+    #: A última execução da coleta que RELEU esta data e achou o mesmo número
+    #: (o diário do W12 não cria versão quando nada muda, então `coletado_em`
+    #: fica parado). `None` = não se sabe: o W12 ainda não registra isso.
+    confirmado_em: Optional[datetime] = None
 
     def __post_init__(self) -> None:
         if self.fonte not in FONTES_DE_RECEITA:
@@ -129,6 +136,8 @@ class ReceitaDatada:
             raise ValueError(f"moeda da receita {self.moeda!r} não é ISO-4217")
         if self.coletado_em.tzinfo is None:
             raise ValueError("coletado_em sem fuso: o as-of fica ambíguo")
+        if self.confirmado_em is not None and self.confirmado_em.tzinfo is None:
+            raise ValueError("confirmado_em sem fuso")
         object.__setattr__(self, "receita", _decimal(self.receita))
 
 
@@ -245,8 +254,11 @@ class ValorMedido:
         É ela que distingue "mesmo evento, mesmo valor" (reexecução, no-op) de
         "mesmo evento, valor novo" (seria um ajuste no Google).
         """
-        corpo = {"valor": str(self.valor), "moeda": self.moeda,
-                 "proveniencia": self.proveniencia}
+        # A auditoria (base da maturidade, confirmação da coleta) muda entre
+        # rodadas sem mudar o número; se entrasse aqui, uma confirmação nova
+        # viraria "ajuste" e travaria a retomada de um envio incerto.
+        estavel = {k: v for k, v in self.proveniencia.items() if not k.startswith("auditoria")}
+        corpo = {"valor": str(self.valor), "moeda": self.moeda, "proveniencia": estavel}
         texto = json.dumps(corpo, ensure_ascii=False, sort_keys=True,
                            separators=(",", ":"), default=str)
         return hashlib.sha256(texto.encode("utf-8")).hexdigest()
@@ -300,15 +312,31 @@ def calcular_valor(*, receita: Optional[ReceitaDatada],
         return Pulo(PULO_RECEITA_IMATURA,
                     f"a coorte tem {idade} dia(s) e a política exige "
                     f"{politica.maturidade_minima_dias}; a fonte ainda reescreve")
-    # ⚠️ A maturidade é da OBSERVAÇÃO, não do calendário. Se o coletor parou
-    # em D+1, a versão vigente é a de D+1 mesmo que hoje seja D+10: ela ainda
-    # é o número imaturo. (Revisão adversarial W14, bloqueante 1.)
-    idade_obs = (receita.coletado_em.astimezone(timezone.utc).date() - referencia).days
-    if idade_obs < politica.maturidade_minima_dias:
-        return Pulo(PULO_OBSERVACAO_IMATURA,
-                    f"a versão vigente da receita foi coletada {idade_obs} dia(s) depois da "
-                    f"coorte e a política exige {politica.maturidade_minima_dias}; o coletor "
-                    "pode ter parado antes de a fonte fechar o número")
+    # ⚠️ MATURIDADE: calendário, e a observação quando há prova dela.
+    # O diário do W12 só versiona quando o número muda, então uma receita que a
+    # fonte confirmou sem mexer guarda o `coletado_em` da PRIMEIRA leitura: exigir
+    # que ele envelheça pulava para sempre a receita mais confiável (revisão
+    # nuvem 2, obrigatório 1). Por isso:
+    #   - `confirmado_em` conhecido: a última leitura (max) tem de ter idade, senão
+    #     o coletor parou antes de a fonte fechar (revisão W14, bloqueante 1);
+    #   - desconhecido: vale a idade do dia, e a proveniência diz que a base foi
+    #     o calendário. O risco residual (coletor parado sem ninguém saber) só
+    #     fecha quando o W12 registrar a confirmação.
+    def _idade(t: datetime) -> int:
+        return (t.astimezone(timezone.utc).date() - referencia).days
+
+    if receita.confirmado_em is not None:
+        ultima = max(receita.coletado_em, receita.confirmado_em)
+        if _idade(ultima) < politica.maturidade_minima_dias:
+            return Pulo(PULO_OBSERVACAO_IMATURA,
+                        f"a última leitura da coleta foi {_idade(ultima)} dia(s) depois da "
+                        f"coorte e a política exige {politica.maturidade_minima_dias}; o "
+                        "coletor parou antes de a fonte fechar o número")
+        base_da_maturidade = "observacao_confirmada"
+    elif _idade(receita.coletado_em) >= politica.maturidade_minima_dias:
+        base_da_maturidade = "observacao"
+    else:
+        base_da_maturidade = "calendario"
     if receita.grao == GRAO_COORTE and not politica.aceitar_rateio_de_coorte:
         return Pulo(PULO_GRAO_SEM_ACEITE,
                     "a receita só existe por campanha-dia; dividi-la por sessão é "
@@ -348,7 +376,12 @@ def calcular_valor(*, receita: Optional[ReceitaDatada],
         taxa = cotacao.taxa
         cambio = cotacao.json()
 
-    valor = (bruto * taxa / Decimal(divisor)).quantize(_CENTAVO, rounding=ROUND_HALF_EVEN)
+    # ⚠️ TETO POR CONSTRUÇÃO: arredondar para BAIXO. Com meio-par, 3 × 3,34
+    # passa de 10,01; truncado, n cliques ≤ sessões nunca somam mais que a
+    # receita. O teto da coorte vai na proveniência e o banco o confere.
+    na_conta = bruto * taxa
+    teto = na_conta.quantize(_CENTAVO, rounding=ROUND_DOWN)
+    valor = (na_conta / Decimal(divisor)).quantize(_CENTAVO, rounding=ROUND_DOWN)
     if valor <= 0:
         return Pulo(PULO_VALOR_ARREDONDA_ZERO,
                     f"{bruto} {receita.moeda} em {divisor} sessão(ões) dá menos de um "
@@ -370,9 +403,14 @@ def calcular_valor(*, receita: Optional[ReceitaDatada],
         "metodo": "rateio_uniforme_por_sessao" if estimado else "observado_por_sessao",
         "estimado": estimado,
         "sessoes_da_coorte": divisor if estimado else None,
+        "teto_da_coorte": str(teto) if estimado else None,
         "cambio": cambio,
         "moeda_da_conta": {"codigo": moeda, "customer_id": moeda_da_conta.customer_id,
                            "lida_em": moeda_da_conta.lida_em.isoformat()},
+        "auditoria_da_maturidade": {
+            "base": base_da_maturidade,
+            "confirmado_em": None if receita.confirmado_em is None
+            else receita.confirmado_em.isoformat()},
     }
     return ValorMedido(valor=valor, moeda=moeda, estimado=estimado,
                        proveniencia=proveniencia)

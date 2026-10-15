@@ -34,6 +34,7 @@ $rb$;
 
 DROP FUNCTION IF EXISTS public.conversao_offline_fechar_lote(bigint, text, text, jsonb);
 DROP FUNCTION IF EXISTS public.conversao_offline_abrir_lote(jsonb);
+DROP VIEW IF EXISTS public.conversao_offline_envio_por_coorte;
 DROP TABLE IF EXISTS public.conversao_offline_item;
 DROP TABLE IF EXISTS public.conversao_offline_lote;
 DROP TABLE IF EXISTS public.conversao_offline_decisao;

@@ -9,12 +9,14 @@ da service_role); este módulo não lê ambiente nem segredo.
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 import httpx
 
 from ..application import portas
 from ..application.enviar import JaEnviado, ValidacaoAusente
+from ..domain.valor import Coorte
 
 
 class RegistroRecusou(RuntimeError):
@@ -66,6 +68,25 @@ class RegistroPostgrest:
                     valor_impressao=linha["valor_impressao"])
         return achados
 
+    def envios_reais_por_coorte(self, *, operating_account_id: str, product_destination_id: str,
+                                coortes: Sequence[Coorte]) -> Mapping[Coorte, portas.EnvioDaCoorte]:
+        achados: Dict[Coorte, portas.EnvioDaCoorte] = {}
+        for coorte in dict.fromkeys(coortes):  # poucas por rodada: uma leitura cada
+            resp = self._c.get("/conversao_offline_envio_por_coorte", params={
+                "select": "itens_vivos,soma_valor",
+                "operating_account_id": f"eq.{operating_account_id}",
+                "product_destination_id": f"eq.{product_destination_id}",
+                "coorte_data": f"eq.{coorte.data_referencia.isoformat()}",
+                "coorte_campanha": f"eq.{coorte.utm_campaign_value}",
+                "coorte_dominio": f"eq.{coorte.dominio}",
+            })
+            _erro(resp)
+            for linha in resp.json():
+                if int(linha["itens_vivos"]) > 0:
+                    achados[coorte] = portas.EnvioDaCoorte(
+                        itens=int(linha["itens_vivos"]), soma=Decimal(str(linha["soma_valor"])))
+        return achados
+
     def registrar_decisoes(self, *, rodada: str, customer_id: str,
                            operating_account_id: str, product_destination_id: str,
                            decisoes: Sequence[Dict[str, Any]]) -> None:
@@ -80,6 +101,8 @@ class RegistroPostgrest:
                 "transaction_id": d["transaction_id"], "visita_ref": d["visita_ref"],
                 "clique_tipo": d["clique_tipo"], "clique_sha256": d["clique_sha256"],
                 "ocorrido_em": d["ocorrido_em"], "estado": d["estado"],
+                "coorte_data": d["coorte_data"], "coorte_campanha": d["coorte_campanha"],
+                "coorte_dominio": d["coorte_dominio"],
                 "motivo": d["motivo"], "detalhe": d["detalhe"],
                 "valor": d["valor"], "moeda": d["moeda"], "estimado": d["estimado"],
                 "valor_impressao": d["valor_impressao"], "proveniencia": d["proveniencia"],

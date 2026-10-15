@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.trafego import data_manager as dm
@@ -36,6 +37,7 @@ class MoedaDeOutraConta(dm.FronteiraRecusou):
 PULO_CLIQUE_REPETIDO = "clique_repetido"
 PULO_COORTE_JA_RATEADA = "coorte_ja_rateada"
 PULO_ENVIO_INCERTO = "envio_incerto"
+PULO_CLIQUES_ACIMA_DAS_SESSOES = "cliques_acima_das_sessoes"
 
 
 @dataclass(frozen=True)
@@ -215,14 +217,47 @@ def preparar_lote(*, plano: pm.PlanoDeMensuracao,
     # ⚠️ RATEIO CONGELADO POR COORTE. Se algum clique de uma coorte já foi
     # enviado de verdade, a coorte já foi dividida: um clique novo dela, com um
     # divisor que mudou, faria a soma enviada passar da receita. (Revisão
-    # adversarial W14, bloqueante 2: 4 × 16,23 + 12,98 = 77,90 para 64,92.)
-    tocadas = {c.coorte for c, tid, _ in candidatos if tid in anteriores}
+    # adversarial W14, bloqueante 2.) O "já foi enviado" vem do banco PELA
+    # COORTE, não só dos transaction_ids desta leitura (revisão nuvem 2, menor 1).
+    coortes = list(dict.fromkeys(c.coorte for c, _, _ in candidatos))
+    ja_da_coorte = registro.envios_reais_por_coorte(
+        operating_account_id=dono, product_destination_id=acao,
+        coortes=coortes) if candidatos else {}
+    tocadas = set(ja_da_coorte) | {c.coorte for c, tid, _ in candidatos if tid in anteriores}
+
+    # ⚠️ TETO DO RATEIO. Cada clique leva receita ÷ sessões; se a coorte tiver
+    # mais cliques do que sessões (definições diferentes, fuso, recarga), a soma
+    # passa da receita. A coorte inteira é pulada, nunca cortada pela metade:
+    # escolher quais cliques ficam seria inventar atribuição. (Revisão nuvem 2,
+    # obrigatório 2: 6 cliques para 2 sessões mandavam 3× a receita.)
+    estourada: Dict[vl.Coorte, str] = {}
+    for coorte in coortes:
+        if coorte in tocadas:
+            continue
+        dela = [v for c, tid, v in candidatos if c.coorte == coorte]
+        prov = dela[0].proveniencia
+        if not dela[0].estimado:
+            continue
+        sessoes = prov.get("sessoes_da_coorte")
+        teto = prov.get("teto_da_coorte")
+        soma = sum((v.valor for v in dela), Decimal(0))
+        if type(sessoes) is not int or teto is None:
+            estourada[coorte] = "rateio sem sessões ou teto declarados na proveniência"
+        elif len(dela) > sessoes:
+            estourada[coorte] = (f"{len(dela)} cliques para {sessoes} sessões: cada um levaria "
+                                 f"1/{sessoes} da receita e a soma ({soma}) passaria do teto ({teto})")
+        elif soma > Decimal(teto):  # por construção não acontece; conferido mesmo assim
+            estourada[coorte] = f"a soma {soma} passaria do teto da coorte {teto}"
 
     eventos: List[Tuple[dm.EventoDeConversao, str]] = []
     for c, tid, valor in candidatos:
         antes = anteriores.get(tid)
         retomar = (antes is not None and antes.estado == "sem_resposta" and retomar_incertos
                    and antes.valor_impressao == valor.impressao())
+        if antes is None and c.coorte in estourada:
+            decisoes.append(ev.Decisao.pulada(tid=tid, clique=c, pulo=vl.Pulo(
+                PULO_CLIQUES_ACIMA_DAS_SESSOES, estourada[c.coorte])))
+            continue
         if antes is None and c.coorte in tocadas:
             decisoes.append(ev.Decisao.pulada(tid=tid, clique=c, pulo=vl.Pulo(
                 PULO_COORTE_JA_RATEADA,
@@ -247,7 +282,7 @@ def preparar_lote(*, plano: pm.PlanoDeMensuracao,
         decisoes.append(ev.Decisao(
             transaction_id=tid, visita_ref=c.visita_ref, clique_tipo=c.clique.tipo,
             clique_sha256=ev.sha256(c.clique.valor), ocorrido_em=ocorrido,
-            estado=ev.ELEGIVEL, valor=valor))
+            estado=ev.ELEGIVEL, coorte=c.coorte, valor=valor))
         eventos.append((dm.EventoDeConversao(
             clique=c.clique, ocorrido_em=ocorrido, chave_de_deduplicacao=tid,
             valor=valor.valor, moeda=valor.moeda,
