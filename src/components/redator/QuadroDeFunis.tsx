@@ -122,7 +122,11 @@ const CardParaEscrever: React.FC<{ c: CardPronto; onDisparar: () => void }> = ({
       <p className="text-[11px] leading-tight text-muted-foreground">
         ~US$ 2 e ~45 min para escrever as {c.paginas} páginas.
       </p>
-      <Button type="button" size="sm" className="w-full" onClick={onDisparar}>
+      {/* Secundário, não primário: a coluna tem um botão por card, e PRODUCT.md
+          §5 aceita uma ação primária por região. Três gradientes empilhados
+          gritavam mais alto que o próprio quadro. O peso de decisão está no
+          diálogo de disparo, que mostra custo e duplicata antes de gastar. */}
+      <Button type="button" size="sm" variant="secondary" className="w-full" onClick={onDisparar}>
         <Play className="h-3.5 w-3.5" aria-hidden /> escrever este funil
       </Button>
     </CardContent>
