@@ -8,11 +8,16 @@ Arquivos de migration da **contenção de segurança** do VOLC O.S.
 protocolo é `scripts/migracao-protocolo.sh`. Ordem decidida: o pacote do incidente
 anon (v19) vai **antes e fora** do ledger. Por isso a `v20_02` versionada (âncora
 `695e913a…`, pré-v19) **recusa** depois da v19; a que vai para produção é
-**gerada do recibo real do passo 1**:
+**gerada do recibo real do passo 1**, num arquivo novo
+(`v20_02_ledger_linha_de_base_pos_v19.sql`, versão própria no ledger; o gerador nunca
+sobrescreve arquivo existente nem versionado):
 `scripts/ledger_recibo_incidente.py v20_02 docs/closure/incidente-anon-w4/RECEIPT-<passo1>.json`
 (âncora constante = `fingerprint_depois` do recibo, backfill dos 5 eventos v19 com o
-par de rollback `v19_99`, registro retroativo da `v20_01`). O dono aprova o sha256
-DESSE arquivo. Recibos seguintes (passo 2, rollback) entram por
+par de rollback `v19_99`, registro retroativo da `v20_01`). O recibo não prova a si
+mesmo: o SQL gerado mede o fingerprint e o efeito da v19 no banco e recusa se não
+baterem. Campos do recibo passam por formato estrito; rodar com `ON_ERROR_STOP=1`.
+O dono aprova o sha256 DESSE arquivo. Pendente: rollback da v20_02 pós-v19 (o
+`v20_02_rollback.sql` recusa com os eventos do backfill). Recibos seguintes (passo 2, rollback) entram por
 `ledger_recibo_incidente.py importar … --saida ARQ`. Provado com o script real do
 W4 em modo laboratório: suíte `tools/freedom-lab/db/suites/v20_pos_v19.sh`. Antes
 de aplicar em produção: `tools/freedom-lab/db/sonda_search_path.sql` (leitura).
