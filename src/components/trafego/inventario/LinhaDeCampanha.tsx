@@ -117,7 +117,18 @@ const Valor: React.FC<{ children: React.ReactNode; className?: string; titulo?: 
   className,
   titulo,
 }) => (
-  <span className={cn('tabular text-sm font-semibold leading-tight text-foreground', className)} title={titulo}>
+  // `whitespace-nowrap`: `formato.tsx` troca o espaço duro por espaço comum
+  // (busca e cópia), e a coluna de 6% quebrava "R$" numa linha e "0,12" na
+  // outra. Dinheiro é um token só. A exceção é o aviso de moeda ausente, que é
+  // frase e precisa poder quebrar para não estourar a coluna.
+  <span
+    className={cn(
+      'tabular text-sm font-semibold leading-tight text-foreground',
+      !(typeof children === 'string' && children.includes(SEM_MOEDA)) && 'whitespace-nowrap',
+      className,
+    )}
+    title={titulo}
+  >
     {children}
   </span>
 );

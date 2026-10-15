@@ -108,6 +108,7 @@ import type { EstrategiaSearch } from '@/types/trafegoCanais';
 import { pautadorApi, PautadorApiError } from '@/lib/pautadorApi';
 import { leituraDoDestinoPago } from '@/lib/landing-policy/prontidao';
 import { idExternoDaCampanha } from '@/lib/trafego/lancamento';
+import { statusDe } from '@/components/trafego/inventario/erros';
 import type { PlanoVigenteResposta } from '@/lib/trafego/portoes';
 import {
   CANAIS_COM_MANIFESTO, canalCanonico, PARADAS_DA_BANCADA,
@@ -118,6 +119,32 @@ import type {
   PedidoDeProvaDeCanal, PedidoDePlanejamentoPMax,
   PedidoDeProvaSearch, ReciboDeLancamento, RespostaDaProva, RevisaoDoConjuntoPago, VerticalDePolitica,
 } from '@/types/trafego';
+
+/**
+ * A frase da falha de CARGA da bancada.
+ *
+ * ⚠️ O cliente HTTP escreve todo 404 como "Endpoint não encontrado (404) em
+ * <url>. VITE_PAUTADOR_API_URL…", e era isso que o operador lia quando a
+ * oportunidade simplesmente não existe — nome de variável de ambiente onde ele
+ * procura o próximo passo (PRODUCT §4). Só as falhas de TRANSPORTE trocam de
+ * frase; 4xx com `detail` é recusa do domínio e continua dita como veio.
+ */
+function fraseDaFalhaDeCarga(e: unknown): string {
+  const status = statusDe(e);
+  if (status === 404) {
+    return 'Esta oportunidade não foi encontrada. Ela pode ter sido removida ou o '
+      + 'endereço está incompleto. Volte ao Hub e abra a oportunidade pela aba Preparar.';
+  }
+  if (status === 0) {
+    return 'Não consegui falar com o serviço de tráfego. Confira a conexão e tente de '
+      + 'novo. Nenhuma campanha foi alterada.';
+  }
+  if (status != null && status >= 500) {
+    return 'O serviço de tráfego não respondeu. Tente de novo em alguns minutos; '
+      + 'nada foi enviado ao Google.';
+  }
+  return e instanceof Error && e.message ? e.message : 'Não deu para ler esta oportunidade.';
+}
 
 /** A etapa pedida na URL, quando ela é uma parada que existe. */
 function etapaDaUrl(bruto: string | null): ParadaDaBancada | null {
@@ -222,7 +249,7 @@ const NovaCampanhaPage: React.FC = () => {
         setTrava(t);
         setVerticais(v.verticais);
       } catch (e) {
-        if (ativo) setErro(e instanceof Error ? e.message : 'Não deu para ler esta oportunidade.');
+        if (ativo) setErro(fraseDaFalhaDeCarga(e));
       }
     })();
     return () => { ativo = false; };
