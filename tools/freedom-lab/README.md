@@ -70,6 +70,8 @@ tools/freedom-lab/lab.sh criar | semear | migrar | testar | destruir | status
   dá ao recibo `producao_acessada: false`; outra exige `LAB_SUITE_LIVRE=1` e o recibo
   diz `nao_garantido`. `LAB_SEMENTE` passa pelo mesmo gate anti-PII da semente
   sintética e tem o hash registrado; `estado <papel> <sql> [claims]` exercita policy por JWT.
+- `db/sonda_search_path.sql`: leitura do search_path do papel postgres, pré-requisito
+  da v20_02 em produção (não executada; exige autorização de leitura).
 - Não criar outro laboratório Postgres em `scripts/`: suítes novas entram em
   `db/suites/` e usam este ciclo de vida.
 
