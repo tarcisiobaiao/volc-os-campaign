@@ -52,6 +52,11 @@ os.environ["VOLC_SEM_ENV_FILE"] = "1"
 for _chave in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"):
     os.environ[_chave] = ""
 del _chave
+# Google Ads e OAuth: yaml e oauth apontados para caminho inexistente e refresh
+# bloqueado na sessão inteira (volc_ads/hermetico_testes.py).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from volc_ads import hermetico_testes as _hermetico  # noqa: E402
+_hermetico.aplicar()
 # Sem isto, o assinador de URL de preview derivava o segredo da service_role de
 # PRODUÇÃO lida do .env (armazenamento._segredo_de_assinatura). Valor fixo de teste.
 os.environ.setdefault("CRIATIVO_URL_SECRET", "segredo-hermetico-da-sessao-de-testes")
@@ -100,6 +105,7 @@ def ambiente_real(monkeypatch):
     # variável que EXISTE, e ela ganha do arquivo. Repor o retrato não adianta:
     # o retrato também não tem a chave. Quem devolve o `.env` é o `delenv`.
     monkeypatch.delenv("VOLC_SEM_ENV_FILE", raising=False)
+    _hermetico.restaurar(monkeypatch, _ENV_INTACTO)
     for chave in _CHAVES:
         valor = _ENV_INTACTO.get(chave)
         if valor:
@@ -132,6 +138,7 @@ def ambiente_real_modulo():
 
     mp = pytest.MonkeyPatch()
     mp.delenv("VOLC_SEM_ENV_FILE", raising=False)
+    _hermetico.restaurar(mp, _ENV_INTACTO)
     for chave in _CHAVES:
         valor = _ENV_INTACTO.get(chave)
         if valor:
