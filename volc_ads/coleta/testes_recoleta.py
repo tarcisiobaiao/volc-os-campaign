@@ -290,13 +290,22 @@ limite=$(( $(date +%s) + espera ))
 while :; do
   if mkdir "$trava" 2>/dev/null; then echo "$PPID" > "$trava/pid"; exit 0; fi
   dono="$(cat "$trava/pid" 2>/dev/null || true)"
-  if [ -n "$dono" ] && ! kill -0 "$dono" 2>/dev/null; then rm -rf "$trava"; continue; fi
+  # Dono morto OU zumbi (terminou e ninguém fez wait: `kill -0` ainda responde)
+  # libera a trava, como o kernel fecha o fd na saída do processo.
+  estado="$(ps -o stat= -p "$dono" 2>/dev/null || true)"
+  if [ -n "$dono" ] && { ! kill -0 "$dono" 2>/dev/null || [ "${estado#Z}" != "$estado" ] || [ "${estado# Z}" != "$estado" ]; }; then
+    rm -rf "$trava"; continue
+  fi
   [ "$(date +%s)" -lt "$limite" ] || exit 1
   sleep 0.1
 done
 """
 
-FERRAMENTAS_DO_MAC = ("bash", "env", "date", "mkdir", "rmdir", "rm", "sleep", "cat")
+FERRAMENTAS_DO_MAC = ("bash", "env", "date", "mkdir", "rmdir", "rm", "sleep", "cat", "ps")
+
+#: Teto por execução do run.sh. Uma regressão na trava (ex.: D-1 esperando em
+#: vez de desistir) vira falha em segundos, não uma suíte pendurada no Mac.
+TETO_DO_RUN_S = 60
 
 
 def _path_de_mac(tmp_path: Path, *, com_duble: bool = True) -> str:
@@ -337,7 +346,8 @@ def _rodar(tmp_path, modo, contas="5478096539,1112223334", falha="", *, com_dubl
            "VOLC_GADS_CONTAS": contas, "VOLC_GADS_MCC": MCC, "SERVICE_ROLE_KEY": "dublê-sem-valor",
            "VOLC_TESTE_LOG": str(log), "VOLC_TESTE_FALHA": falha or "nenhuma",
            "VOLC_TESTE_FLOCK_LOG": str(tmp_path / "flock.log"), **env_extra}
-    p = subprocess.run([shutil.which("bash"), str(RUN), modo], env=env, capture_output=True, text=True)
+    p = subprocess.run([shutil.which("bash"), str(RUN), modo], env=env, capture_output=True,
+                       text=True, timeout=TETO_DO_RUN_S)
     chamadas = log.read_text().splitlines() if log.exists() else []
     return p, chamadas
 
@@ -468,12 +478,67 @@ def teste_run_recoleta_que_nao_pega_a_vez_falha_em_vez_de_sair_75(tmp_path):
     assert "FALHOU" in p.stderr
 
 
+def teste_dono_zumbi_nao_segura_a_trava(tmp_path):
+    """Revisão R1: processo que terminou sem `wait()` ainda responde a `kill -0`.
+    O flock real liberaria na saída; o dublê também precisa liberar."""
+    import time
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.Popen(["sleep", "0.1"])
+    trava = tmp_path / "lock.trava"
+    trava.mkdir()
+    (trava / "pid").write_text(str(proc.pid))
+    time.sleep(0.5)                       # terminou, não recolhido: zumbi
+    try:
+        os.kill(proc.pid, 0)              # pré-condição: kill -0 "vê" o zumbi
+        inicio = time.monotonic()
+        p, chamadas = _rodar(tmp_path, "d1")
+        assert p.returncode == 0 and len(chamadas) == 2, p.stderr
+        assert time.monotonic() - inicio < 10
+    finally:
+        proc.wait()
+
+
 def teste_trava_e_liberada_quando_o_run_sh_termina(tmp_path):
     """Duas passadas seguidas do mesmo modo: a segunda pega a vez (o kernel
     fecharia o fd; no dublê, o dono morto libera)."""
     p1, c1 = _rodar(tmp_path, "d1")
     p2, c2 = _rodar(tmp_path, "d1")
     assert (p1.returncode, p2.returncode) == (0, 0) and (len(c1), len(c2)) == (2, 4)
+
+
+@pytest.mark.skipif(__import__("shutil").which("flock") is None,
+                    reason="sem flock do SO (macOS): a semântica fica provada pelo dublê acima")
+def teste_com_o_flock_real_d1_concorrente_sai_75(tmp_path):
+    """Revisão R3: no Linux (onde o run.sh roda de verdade) a prova também vale
+    contra o util-linux `flock`, não só contra a sintaxe do dublê."""
+    import shutil
+    import time
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    lock = tmp_path / "lock"
+    segura = subprocess.Popen(["flock", "-x", str(lock), "sleep", "10"])
+    time.sleep(0.3)
+    try:
+        raiz = tmp_path / "opt"
+        (raiz / "venv" / "bin").mkdir(parents=True)
+        py = raiz / "venv" / "bin" / "python"
+        py.write_text("#!/usr/bin/env bash\necho chamado >> \"$VOLC_TESTE_LOG\"\n")
+        py.chmod(0o755)
+        log = tmp_path / "chamadas.log"
+        env = {"PATH": os.environ["PATH"], "VOLC_GADS_ROOT": str(raiz), "VOLC_GADS_LOCK": str(lock),
+               "VOLC_GADS_RECIBOS": str(tmp_path / "recibos"), "VOLC_GADS_CONTAS": CONTA,
+               "VOLC_GADS_MCC": MCC, "SERVICE_ROLE_KEY": "dublê-sem-valor", "VOLC_TESTE_LOG": str(log)}
+        p = subprocess.run([shutil.which("bash"), str(RUN), "d1"], env=env, capture_output=True,
+                           text=True, timeout=TETO_DO_RUN_S)
+        assert p.returncode == 75 and not log.exists(), p.stderr
+        p = subprocess.run([shutil.which("bash"), str(RUN), "recoleta"], env={**env,
+                           "VOLC_GADS_RECOLETA_ESPERA_S": "1"}, capture_output=True, text=True,
+                           timeout=TETO_DO_RUN_S)
+        assert p.returncode == 1 and not log.exists(), p.stderr
+    finally:
+        segura.kill()
+        segura.wait()
 
 
 def teste_timer_da_recoleta_aponta_a_instancia_e_roda_depois_do_d1():
