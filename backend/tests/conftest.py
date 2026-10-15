@@ -52,6 +52,9 @@ os.environ["VOLC_SEM_ENV_FILE"] = "1"
 for _chave in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"):
     os.environ[_chave] = ""
 del _chave
+# Sem isto, o assinador de URL de preview derivava o segredo da service_role de
+# PRODUÇÃO lida do .env (armazenamento._segredo_de_assinatura). Valor fixo de teste.
+os.environ.setdefault("CRIATIVO_URL_SECRET", "segredo-hermetico-da-sessao-de-testes")
 
 # Só o que os módulos herméticos zeram e os testes ao vivo precisam de volta.
 # Não é `_ENV_INTACTO` inteiro: restaurar tudo desfaria `PAUTADOR_ENGINE=mock`
