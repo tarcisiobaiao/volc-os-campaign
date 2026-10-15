@@ -72,6 +72,7 @@ import { OnboardingWizard } from '@/v6/components/OnboardingWizard';
 import { UserForm } from '@/v6/components/forms/UserForm';
 import { ConfirmDialog } from '@/v6/components/ConfirmDialog';
 import type { UserLite } from '@/v6/types/v6';
+import { AvatarDeIniciais } from '@/components/sistema/AvatarDeIniciais';
 
 interface UsersTabProps {
   /** Disparado após mutações para recarregar agregações da página. */
@@ -251,7 +252,7 @@ export function UsersTab({ onMutated }: UsersTabProps) {
                 <TableRow>
                   <TableHead className="kicker">Nome</TableHead>
                   <TableHead className="kicker">Email</TableHead>
-                  <TableHead className="kicker">Role global</TableHead>
+                  <TableHead className="kicker">Papel</TableHead>
                   <TableHead className="kicker text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -261,23 +262,31 @@ export function UsersTab({ onMutated }: UsersTabProps) {
                   return (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">
-                        {u.name || '(sem nome)'}
-                        {isSelf && (
-                          <span className="ml-2 text-[10px] text-muted-foreground">
-                            (você)
+                        <span className="flex items-center gap-3">
+                          <AvatarDeIniciais nome={u.name} email={u.email} className="h-7 w-7" />
+                          <span>
+                            {u.name || '(sem nome)'}
+                            {isSelf && (
+                              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                (você)
+                              </span>
+                            )}
                           </span>
-                        )}
+                        </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {u.email}
                       </TableCell>
                       <TableCell>
                         <span
+                          // Mesmo chip para os dois papéis, palavra em pt-BR e
+                          // tinta legível (antes: ADMIN em texto azul e OPERATOR
+                          // em pílula cinza, cinza-sobre-cinza).
                           className={
-                            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ' +
+                            'inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ' +
                             (u.role === 'ADMIN'
-                              ? 'bg-primary/12 text-primary'
-                              : 'bg-muted text-muted-foreground')
+                              ? 'border-primary/25 bg-primary/10 text-primary'
+                              : 'border-border bg-muted text-foreground')
                           }
                         >
                           <span
@@ -286,7 +295,7 @@ export function UsersTab({ onMutated }: UsersTabProps) {
                               (u.role === 'ADMIN' ? 'bg-primary' : 'bg-muted-foreground')
                             }
                           />
-                          {u.role}
+                          {u.role === 'ADMIN' ? 'Administrador' : u.role === 'OPERATOR' ? 'Operador' : u.role}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -308,10 +317,14 @@ export function UsersTab({ onMutated }: UsersTabProps) {
                                 ? 'Você não pode excluir a própria conta'
                                 : 'Excluir usuário'
                             }
+                            aria-label={isSelf ? 'Você não pode excluir a própria conta' : `Excluir ${u.name || u.email}`}
+                            // Destrutiva sem tinta de erro em repouso: uma
+                            // lixeira vermelha por linha fazia da exclusão a
+                            // ação mais gritante da tabela (PRODUCT §5).
                             className={
                               isSelf
                                 ? ''
-                                : 'text-destructive hover:text-destructive'
+                                : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
                             }
                           >
                             {checkingDeletion ? (

@@ -35,7 +35,7 @@ const NotFound = () => {
         <span className="crosshair absolute bottom-0 left-0 hidden sm:block" />
         <span className="crosshair absolute bottom-0 right-0 hidden sm:block" />
         <span className="kicker absolute top-1.5 right-6 tabular hidden sm:block">
-          SIGNAL LOST // VOLC O.S.
+          VOLC O.S. · sinal perdido
         </span>
       </div>
 
