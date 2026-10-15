@@ -193,7 +193,8 @@ sed "s/^ ('daily_campaign_metrics',      true, true,  true,  false,/ ('daily_cam
 grep -q "('daily_campaign_metrics',      true, true,  false, false" "$MUT_A" && ok "mutante A gerado (sem o UPDATE de daily_campaign_metrics, que só gatilhos usam)" || nao "mutante A não gerado"
 mutante A "$MUT_A" "grant usado só por gatilho"
 MUT_B="$R/v19_10_MUTANTE_B_funil_invoker.sql"
-sed -e '/^ALTER FUNCTION public.trigger_\(calculate_adsense_campaign_revenue\|funnel_url_change\)() OWNER TO volc_agregador_funil;/d' \
+sed -e '/^ALTER FUNCTION public.trigger_calculate_adsense_campaign_revenue() OWNER TO volc_agregador_funil;/d' \
+    -e '/^ALTER FUNCTION public.trigger_funnel_url_change() OWNER TO volc_agregador_funil;/d' \
     -e 's/^RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS \$f\$/RETURNS trigger LANGUAGE plpgsql AS $f$/' \
     "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_B"
 grep -q 'OWNER TO volc_agregador_funil' "$MUT_B" && nao "mutante B não gerado" || ok "mutante B gerado (gatilhos do funil continuam INVOKER)"
