@@ -74,6 +74,35 @@ describe('projetarFaixaDoHub', () => {
     expect(faixa.custo.detalhe).toMatch(/outra moeda/);
   });
 
+  it('sem moeda declarada não vira reais: fica fora e, sem nenhuma, o custo é indisponível', () => {
+    // Cópia: a fixture devolve campanhas compartilhadas entre chamadas.
+    const inv = structuredClone(inventarioSaudavel());
+    for (const c of campanhas(inv)) c.entrega = { ...c.entrega, moeda: null };
+    const faixa = projetarFaixaDoHub(inv)!;
+    expect(faixa.moeda).toBeNull();
+    expect(faixa.custo.valor).toBeNull();
+    expect(faixa.custo.verdade).toBe('indisponivel');
+    expect(faixa.custo.detalhe).toMatch(/sem moeda declarada/);
+  });
+
+  it('removida com gasto na janela fica fora e rebaixa a soma para parcial', () => {
+    const inv = inventarioSaudavel();
+    const conta = inv.contas.find((c) => c.campanhas.some((x) => x.entrega.custo_micros != null))!;
+    const base = conta.campanhas.find((x) => x.entrega.custo_micros != null)!;
+    const removida: CampanhaNoInventario = {
+      ...base,
+      volc_campaign_id: `${base.volc_campaign_id}_rm`,
+      estado_externo: 'REMOVED',
+      entrega: { ...base.entrega, custo_micros: 4_000_000_000 },
+    };
+    conta.campanhas = [...conta.campanhas, removida];
+    const antes = projetarFaixaDoHub(inventarioSaudavel())!;
+    const faixa = projetarFaixaDoHub(inv)!;
+    expect(faixa.custo.valor).toBe(antes.custo.valor);
+    expect(faixa.custo.verdade).toBe('parcial');
+    expect(faixa.custo.detalhe).toMatch(/1 removida com gasto/);
+  });
+
   it('nenhuma campanha medida: valor nulo e verdade desconhecida, nunca zero', () => {
     const inv = inventarioSaudavel();
     for (const c of campanhas(inv)) c.entrega = { ...c.entrega, leitura: null };

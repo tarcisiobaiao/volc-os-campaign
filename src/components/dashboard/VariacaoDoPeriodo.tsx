@@ -62,7 +62,8 @@ export const VariacaoDoPeriodo: React.FC<{
     );
   }
 
-  if (valor === 0) {
+  // Abaixo de 0,05% a tela leria "0,0%": é igual, sem seta (LIMIAR_DE_VARIACAO do D0).
+  if (Math.abs(valor) < 0.05) {
     return (
       <span className={cn("flex items-center gap-1 text-xs text-muted-foreground", className)}>
         <Minus className="h-3 w-3" aria-hidden="true" />
@@ -78,7 +79,7 @@ export const VariacaoDoPeriodo: React.FC<{
     <span
       className={cn(
         "flex items-center gap-1 text-xs font-medium",
-        subiu ? "text-success" : "text-destructive",
+        subiu ? "text-delta-bom" : "text-delta-ruim",
         className
       )}
     >

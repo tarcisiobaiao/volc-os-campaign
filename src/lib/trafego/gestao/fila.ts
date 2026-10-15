@@ -115,16 +115,20 @@ export const ESTADO_LEGIVEL: Record<string, string> = {
  * O estado do ledger no vocabulário do selo V3 (`SeloDeProposta`), ou `null`
  * quando o selo afirmaria mais do que o ledger sabe.
  *
- * ⚠️ `aplicada` só vira "Aplicada · com recibo" quando o próximo passo já não é
- * conferir: o selo diz que a mudança foi lida de volta, e uma aplicação que
- * ainda pede `verificar` não foi. `cancelada` não tem palavra no ciclo P09 e
- * fica com o texto do ledger. A vencida ganha do estado: uma aprovação vencida
- * não autoriza mais nada.
+ * ⚠️ `aplicada` NUNCA vira o selo "Aplicada · com recibo": o selo diz que a
+ * mudança foi lida de volta, e o painel não recebe essa prova. O backend marca
+ * `aplicada` quando o mutate responde sucesso, sem `verificar`, e a view devolve
+ * `acompanhar` sem olhar `confere`. Fica com `TEXTO_SEM_SELO`.
+ *
+ * Vencida ganha do estado: a view só marca `vencida` em `aguardando_aprovacao`,
+ * mas uma aprovada que passou do prazo chega com `proximo_passo = expirar`, e o
+ * gatilho recusa aplicá-la. Nenhuma das duas autoriza mais nada.
+ * `cancelada` não tem palavra no ciclo P09 e fica com o texto do ledger.
  */
 export function seloDoLedger(
   p: Pick<PropostaDoPainel, 'estado' | 'vencida' | 'proximo_passo'>,
 ): EstadoDeProposta | null {
-  if (p.vencida || p.estado === 'expirada') return 'vencida';
+  if (p.vencida || p.estado === 'expirada' || p.proximo_passo === 'expirar') return 'vencida';
   switch (p.estado) {
     case 'aguardando_aprovacao':
       return 'aguardando';
@@ -134,11 +138,15 @@ export function seloDoLedger(
       return 'recusada';
     case 'revertida':
       return 'revertida';
-    case 'aplicada':
-      return p.proximo_passo === 'acompanhar' || p.proximo_passo === 'nada' ? 'aplicada' : null;
     default:
       return null;
   }
+}
+
+/** O texto de quem não tem selo: aplicada diz que ninguém conferiu na conta. */
+export function textoSemSelo(p: Pick<PropostaDoPainel, 'estado' | 'vencida'>): string {
+  if (p.estado === 'aplicada') return 'aplicada · sem conferência na conta';
+  return `${ESTADO_LEGIVEL[p.estado] ?? p.estado}${p.vencida ? ' · vencida' : ''}`;
 }
 
 export const DESFECHO_LEGIVEL: Record<string, string> = {

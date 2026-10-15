@@ -14,7 +14,7 @@ import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/ut
 import { DateFilter } from "@/components/dashboard/DateFilter";
 import { DataStatus } from "@/components/dashboard/DataStatus";
 import { format } from "date-fns";
-import { calculateROAS } from "@/utils/roasCalculations";
+import { retornoExcedentePct, textoDePontosPct } from "@/utils/roasCalculations";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { taxHistoryService } from "@/services/taxHistoryService";
 import { OrientacaoBox } from "@/components/campaign/OrientacaoBox";
@@ -399,9 +399,13 @@ export default function CampaignDetailDashboard() {
   // Calculate ROI with tax deduction: (revenue * (1 - tax/100) - spend) / spend * 100
   const revenueAfterTax = revenue * (1 - taxRate / 100);
   const profitAfterTax = revenueAfterTax - spend;
-  const roi = spend > 0 ? ((profitAfterTax / spend) * 100).toFixed(1) : 0;
+  // Sem gasto não há retorno: `null` ("—"), não o 0 que a tela inventava.
+  const roi = spend > 0 ? (profitAfterTax / spend) * 100 : null;
 
-  const roas = spend > 0 ? calculateROAS(revenue, spend).toFixed(1) : 0;
+  // Chamado de "ROAS" até o D1, mas é (receita − gasto) / gasto: ROI bruto em %.
+  const roas = retornoExcedentePct(revenue, spend);
+  const roasTxt = textoDePontosPct(roas);
+  const roiTxt = textoDePontosPct(roi);
 
   // Function to generate dynamic chart title based on selected period
   const getChartPeriodTitle = () => {
@@ -538,7 +542,7 @@ export default function CampaignDetailDashboard() {
             <CardContent>
               <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight text-success">{formatRevenue(revenue)}</div>
               <div className="mt-2 text-xs text-success font-medium tabular">
-                ROAS: {roas}%
+                ROI bruto: {roasTxt}
               </div>
             </CardContent>
           </Card>
@@ -546,11 +550,11 @@ export default function CampaignDetailDashboard() {
           {/* ROAS */}
           <Card className="relative overflow-hidden reveal hover-lift" style={{ ['--i' as any]: 4 }}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <span className="kicker">ROAS</span>
+              <span className="kicker">ROI bruto</span>
               <span className="rounded-md bg-primary/10 text-primary p-1.5"><Target className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent>
-              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight">{roas}%</div>
+              <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight">{roasTxt}</div>
               <div className="mt-2 text-xs text-muted-foreground">
                 Conversões: <span className="tabular">{campaign.conversions.toFixed(0)}</span>
               </div>
@@ -568,8 +572,8 @@ export default function CampaignDetailDashboard() {
               <div className={`font-display text-2xl md:text-3xl font-bold tabular tracking-tight ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {formatCurrency(profit)}
               </div>
-              <div className={`mt-2 text-xs font-medium tabular ${Number(roi) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                ROI: {roi}% (imposto: {taxRate}%)
+              <div className={`mt-2 text-xs font-medium tabular ${roi == null ? 'text-muted-foreground' : roi >= 0 ? 'text-success' : 'text-destructive'}`}>
+                ROI: {roiTxt} (imposto: {taxRate}%)
               </div>
             </CardContent>
           </Card>
@@ -732,15 +736,15 @@ export default function CampaignDetailDashboard() {
             </CardContent>
           </Card>
 
-          {/* Gráfico ROAS vs ROI */}
+          {/* Gráfico ROI bruto vs ROI */}
           <Card className="hover-lift">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base font-display">
                 <span className="rounded-md bg-primary/10 text-primary p-1.5"><TrendingUp className="h-4 w-4" /></span>
-                ROAS vs ROI ({getChartPeriodTitle()})
+                ROI bruto vs ROI ({getChartPeriodTitle()})
               </CardTitle>
               <CardDescription className="text-xs">
-                ROAS: {roas}% • ROI: {roi}% (imposto: {taxRate}%)
+                ROI bruto: {roasTxt} • ROI: {roiTxt} (imposto: {taxRate}%)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -748,19 +752,19 @@ export default function CampaignDetailDashboard() {
                 {historicalData.length <= 1 ? (
                   // Gráfico de barras para 1 dia
                   <BarChart data={[
-                    { name: 'ROAS', value: Number(roas), fill: chartColor(4) },
-                    { name: 'ROI', value: Number(roi), fill: chartColor(0) }
+                    { name: 'ROI bruto', value: roas, fill: chartColor(4) },
+                    { name: 'ROI', value: roi, fill: chartColor(0) }
                   ]}>
                     <CartesianGrid {...volcGrid} />
                     <XAxis dataKey="name" {...volcAxis} />
                     <YAxis {...volcAxis} tickFormatter={(value) => `${value}%`} />
                     <Tooltip cursor={volcCursor} content={
-                      <VolcTooltip valueFormatter={(value) => `${Number(value).toFixed(1)}%`} />
+                      <VolcTooltip valueFormatter={(value) => (value == null ? '—' : `${Number(value).toFixed(1)}%`)} />
                     } />
                     <Bar dataKey="value" name="" radius={[8, 8, 0, 0]}>
                       {[
-                        { name: 'ROAS', value: Number(roas), fill: chartColor(4) },
-                        { name: 'ROI', value: Number(roi), fill: chartColor(0) }
+                        { name: 'ROI bruto', value: roas, fill: chartColor(4) },
+                        { name: 'ROI', value: roi, fill: chartColor(0) }
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.fill} />
                       ))}
@@ -771,12 +775,12 @@ export default function CampaignDetailDashboard() {
                   <LineChart data={historicalData.map(item => {
                     const itemRevenue = item.revenue || 0;
                     const itemSpend = item.spend || 0;
-                    // Usa calculateROAS (excess) para alinhar com cards e single-day chart.
+                    // Mesma escala dos cards (excedente em %); sem gasto o ponto fica vazio.
                     // Bug anterior: ((itemRevenue / itemSpend) * 100) é ROAS tradicional, ficava 100% acima.
-                    const itemRoas = calculateROAS(itemRevenue, itemSpend);
+                    const itemRoas = retornoExcedentePct(itemRevenue, itemSpend);
                     const itemRevenueAfterTax = itemRevenue * (1 - taxRate / 100);
                     const itemProfitAfterTax = itemRevenueAfterTax - itemSpend;
-                    const itemRoi = itemSpend > 0 ? ((itemProfitAfterTax / itemSpend) * 100) : 0;
+                    const itemRoi = itemSpend > 0 ? ((itemProfitAfterTax / itemSpend) * 100) : null;
 
                     return {
                       ...item,
@@ -792,14 +796,14 @@ export default function CampaignDetailDashboard() {
                     <Tooltip cursor={volcCursor} content={
                       <VolcTooltip
                         labelFormatter={(date) => parseDateToSaoPaulo(String(date)).toLocaleDateString('pt-BR')}
-                        valueFormatter={(value) => `${Number(value).toFixed(1)}%`}
+                        valueFormatter={(value) => (value == null ? '—' : `${Number(value).toFixed(1)}%`)}
                       />
                     } />
                     <Line
                       type="monotone"
                       dataKey="roas"
                       stroke={chartColor(4)}
-                      name="ROAS"
+                      name="ROI bruto"
                       {...volcLine}
                     />
                     <Line
@@ -1091,7 +1095,7 @@ export default function CampaignDetailDashboard() {
                 Impressões vs Impressões Visíveis - Ad Exchange ({getChartPeriodTitle()})
               </CardTitle>
               <CardDescription className="text-xs">
-                Impressões GAM: {formatarNumero(campaign.gam_impressions, { tipo: 'inteiro' })} • Impressões Visíveis: {formatarNumero(campaign.viewable_impressions, { tipo: 'inteiro' })}
+                Impressões GAM: {formatarNumero(campaign.gam_impressions, { tipo: 'inteiro' })} • Visibilidade: {formatarNumero(campaign.viewable_impressions == null ? null : campaign.viewable_impressions / 100, { tipo: 'percentual' })}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1155,7 +1159,7 @@ export default function CampaignDetailDashboard() {
                 ROI vs Faturamento ({getChartPeriodTitle()})
               </CardTitle>
               <CardDescription className="text-xs">
-                Faturamento: {formatRevenue(revenue)} • ROI: {roi}% (imposto: {taxRate}%)
+                Faturamento: {formatRevenue(revenue)} • ROI: {roiTxt} (imposto: {taxRate}%)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1163,7 +1167,7 @@ export default function CampaignDetailDashboard() {
                 {historicalData.length <= 1 ? (
                   // Gráfico de barras para 1 dia
                   <ComposedChart data={[
-                    { name: 'Faturamento', revenue: revenue, roi: Number(roi) }
+                    { name: 'Faturamento', revenue: revenue, roi }
                   ]}>
                     <CartesianGrid {...volcGrid} />
                     <XAxis dataKey="name" {...volcAxis} />
@@ -1184,7 +1188,7 @@ export default function CampaignDetailDashboard() {
                     const itemSpend = item.spend || 0;
                     const itemRevenueAfterTax = itemRevenue * (1 - taxRate / 100);
                     const itemProfitAfterTax = itemRevenueAfterTax - itemSpend;
-                    const itemRoi = itemSpend > 0 ? ((itemProfitAfterTax / itemSpend) * 100) : 0;
+                    const itemRoi = itemSpend > 0 ? ((itemProfitAfterTax / itemSpend) * 100) : null;
 
                     return {
                       ...item,

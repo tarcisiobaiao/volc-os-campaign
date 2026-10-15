@@ -12,7 +12,7 @@ import React from 'react';
 import { Metrica } from '@/components/sistema/Metrica';
 import { FaixaDeMetricas, PainelInstrumento } from '@/components/sistema/PainelInstrumento';
 import type { FormatoDeNumero } from '@/lib/instrumento';
-import { projetarFaixaDoHub } from '@/lib/trafego/economia/faixaDoHub';
+import { JANELA_DO_ESPELHO, projetarFaixaDoHub } from '@/lib/trafego/economia/faixaDoHub';
 import type { Inventario } from '@/types/trafego';
 
 export interface FaixaEconomicaProps {
@@ -24,15 +24,19 @@ export interface FaixaEconomicaProps {
 
 const INTEIRO: FormatoDeNumero = { tipo: 'inteiro' };
 const RAZAO: FormatoDeNumero = { tipo: 'razao' };
+/** Sem moeda declarada o número não ganha símbolo de ninguém. */
+const SEM_MOEDA: FormatoDeNumero = { tipo: 'decimal' };
 
 export const FaixaEconomica: React.FC<FaixaEconomicaProps> = ({ inventario, carregando, agora }) => {
   const faixa = projetarFaixaDoHub(inventario);
-  const moeda: FormatoDeNumero = { tipo: 'moeda', moeda: faixa?.moeda ?? 'BRL' };
+  const moeda: FormatoDeNumero = faixa?.moeda ? { tipo: 'moeda', moeda: faixa.moeda } : SEM_MOEDA;
   const lendo = carregando && !faixa;
 
   const legenda = faixa
-    ? `${faixa.somadas} de ${faixa.operacionais} campanhas na soma · janela da última varredura das contas`
-    : 'lendo a carteira';
+    ? `${faixa.somadas} de ${faixa.operacionais} campanhas na soma · ${JANELA_DO_ESPELHO}, espelho do inventário`
+    : carregando
+      ? 'lendo a carteira'
+      : 'carteira não lida';
 
   return (
     <PainelInstrumento
@@ -50,7 +54,7 @@ export const FaixaEconomica: React.FC<FaixaEconomicaProps> = ({ inventario, carr
           verdade={faixa?.custo.verdade ?? 'desconhecido'}
           detalheDaVerdade={faixa?.custo.detalhe}
           lidoEm={faixa ? faixa.lidoEm : undefined}
-          fonte="Google Ads"
+          fonte={`Google Ads · ${JANELA_DO_ESPELHO}`}
           agora={agora}
           carregando={lendo}
         />
@@ -71,7 +75,7 @@ export const FaixaEconomica: React.FC<FaixaEconomicaProps> = ({ inventario, carr
           carregando={lendo}
         />
         <Metrica
-          rotulo="entregando"
+          rotulo="com entrega"
           valor={faixa?.entregando.valor ?? null}
           formato={INTEIRO}
           verdade={faixa?.entregando.verdade ?? 'desconhecido'}

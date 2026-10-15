@@ -11,7 +11,16 @@
  *  - somar o que não foi medido como se fosse zero. Campanha com entrega
  *    `null` fica fora da soma e rebaixa a verdade para `parcial`;
  *  - inventar receita ou ROAS. O inventário não traz receita por campanha;
- *    os dois chegam `indisponivel` com o motivo, até existir fonte datada.
+ *    os dois chegam `indisponivel` com o motivo, até existir fonte datada;
+ *  - dar moeda a quem não declarou. Campanha medida sem moeda fica fora; se
+ *    nenhuma declarou, o custo é `indisponivel`, nunca reais por omissão;
+ *  - calar as removidas. Campanha REMOVED não é operacional, mas pode ter
+ *    gastado na janela: com gasto medido, a soma cai para `parcial` e diz.
+ *
+ * ⚠️ A fonte é o ESPELHO do inventário (`trafego_campanha_espelho`, gravado pela
+ * varredura com GAQL `LAST_30_DAYS`), não o fato diário canônico
+ * (`google_ads_campanha_dia`, v12_04). O espelho não grava a janela; a tela
+ * declara a da varredura padrão. Apontar para o fato canônico pede rota nova.
  */
 import type { Verdade } from '@/components/sistema/VerdadeDoDado';
 import type { CampanhaNoInventario, Inventario } from '@/types/trafego';
@@ -31,7 +40,7 @@ export interface FaixaEconomicaDoHub {
   impressoes: NumeroDaFaixa;
   /** Custo ÷ cliques, só quando os dois foram medidos e há clique. */
   cpc: NumeroDaFaixa;
-  /** Campanhas com impressão medida maior que zero. */
+  /** Campanhas com impressão medida > 0 NA JANELA (pausadas hoje incluídas). */
   entregando: NumeroDaFaixa;
   receita: NumeroDaFaixa;
   roas: NumeroDaFaixa;
@@ -73,13 +82,20 @@ function moedaDominante(campanhas: CampanhaNoInventario[]): string | null {
   return melhor;
 }
 
+/** Janela declarada da varredura padrão do espelho (GAQL `LAST_30_DAYS`). */
+export const JANELA_DO_ESPELHO = 'últimos 30 dias';
+
 export function projetarFaixaDoHub(inventario: Inventario | null): FaixaEconomicaDoHub | null {
   if (!inventario) return null;
 
-  const todas = inventario.contas.flatMap((conta) => conta.campanhas).filter(operacional);
+  const doInventario = inventario.contas.flatMap((conta) => conta.campanhas);
+  const todas = doInventario.filter(operacional);
   const medidas = todas.filter(medida);
   const moeda = moedaDominante(medidas);
-  const somadas = medidas.filter((c) => c.entrega.moeda === moeda);
+  const somadas = moeda == null ? [] : medidas.filter((c) => c.entrega.moeda === moeda);
+  const removidasComGasto = doInventario.filter(
+    (c) => !operacional(c) && (c.entrega.custo_micros ?? 0) > 0,
+  ).length;
 
   const limites: string[] = [];
   if (inventario.parcial || inventario.faltou.length > 0) {
@@ -92,13 +108,26 @@ export function projetarFaixaDoHub(inventario: Inventario | null): FaixaEconomic
   if (naoMedidas > 0) {
     limites.push(`${naoMedidas} ${naoMedidas === 1 ? 'campanha sem entrega medida' : 'campanhas sem entrega medida'}`);
   }
-  const outraMoeda = medidas.length - somadas.length;
+  const semMoeda = medidas.filter((c) => !c.entrega.moeda).length;
+  if (semMoeda > 0) {
+    limites.push(`${semMoeda} sem moeda declarada, fora da soma`);
+  }
+  const outraMoeda = medidas.length - somadas.length - semMoeda;
   if (outraMoeda > 0) {
     limites.push(`${outraMoeda} em outra moeda, fora da soma`);
   }
+  if (removidasComGasto > 0) {
+    limites.push(
+      `${removidasComGasto} ${removidasComGasto === 1 ? 'removida com gasto' : 'removidas com gasto'} na janela, fora da soma`,
+    );
+  }
 
   const vazio = somadas.length === 0;
-  const verdadeDaSoma: Verdade = vazio ? 'desconhecido' : limites.length > 0 ? 'parcial' : 'real';
+  // Medida sem moeda nenhuma: há número, mas ninguém disse em quê. Não é "não sei
+  // se gastou" (desconhecido); é "não dá para dizer em dinheiro" (indisponível).
+  const verdadeDaSoma: Verdade = vazio
+    ? medidas.length > 0 ? 'indisponivel' : 'desconhecido'
+    : limites.length > 0 ? 'parcial' : 'real';
   const detalhe = limites.length > 0 ? limites.join(' · ') : undefined;
 
   const somar = (f: (c: CampanhaNoInventario) => number): number | null =>

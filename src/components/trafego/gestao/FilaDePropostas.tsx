@@ -25,6 +25,7 @@ import {
   confereLegivel,
   ofertaDaLinha,
   seloDoLedger,
+  textoSemSelo,
   type GestoDaFila,
   type Permissoes,
 } from '@/lib/trafego/gestao/fila';
@@ -162,8 +163,7 @@ export const LinhaDaFila: React.FC<{
           <SeloDeProposta estado={selo} className="text-[12px]" />
         ) : (
           <span className="text-[11px] font-medium" data-estado={p.estado}>
-            {ESTADO_LEGIVEL[p.estado] ?? p.estado}
-            {p.vencida && ' · vencida'}
+            {textoSemSelo(p)}
           </span>
         )}
       </div>

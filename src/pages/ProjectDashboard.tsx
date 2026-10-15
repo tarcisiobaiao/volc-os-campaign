@@ -53,14 +53,14 @@ import { operationalCostsService } from "@/services/operationalCostsService";
 import { taxHistoryService } from "@/services/taxHistoryService";
 import { useCurrencyConverter } from "@/services/currencyConversionService";
 import { formatBrlCurrency, formatCostCurrency, preloadExchangeRate } from "@/utils/currencyUtils";
-import { getROASColorCategory, getROASColorStyles, calculateROAS } from "@/utils/roasCalculations";
+import { getROASColorCategory, getROASColorStyles, calculateROAS, retornoExcedentePct, textoDePontosPct } from "@/utils/roasCalculations";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FunnelUrlsEditor } from "@/components/campaign/FunnelUrlsEditor";
 import { PublicacaoDoProjeto } from "@/components/publicacao/PublicacaoDoProjeto";
 import { useToast } from "@/hooks/use-toast";
 import { MetricDelta } from "@/components/campaign/MetricDelta";
-import { Delta } from "@/components/sistema/Delta";
+import { VariacaoDoPeriodo } from "@/components/dashboard/VariacaoDoPeriodo";
 import { useCampaignComparisons, CampaignComparison } from "@/hooks/useCampaignComparisons";
 
 // Types
@@ -68,7 +68,8 @@ import { useCampaignComparisons, CampaignComparison } from "@/hooks/useCampaignC
 interface MetricCardProps {
   title: React.ReactNode;
   value: string;
-  comparison: string;
+  /** Linha secundária. Ausente quando não há base real (o "Ontem" era fixo em 0). */
+  comparison?: string;
   change: number;
   icon: React.ReactNode;
   color: "success" | "warning" | "danger" | "info";
@@ -77,7 +78,6 @@ interface MetricCardProps {
 
 // Metric Card with Comparison — VOLC stat tile
 const MetricCard = ({ title, value, comparison, change, icon, color, index = 0 }: MetricCardProps) => {
-  const isPositive = change > 0;
   const accentClasses = {
     success: "bg-success",
     warning: "bg-warning",
@@ -100,17 +100,9 @@ const MetricCard = ({ title, value, comparison, change, icon, color, index = 0 }
       </CardHeader>
       <CardContent className="relative z-10">
         <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight mb-1">{value}</div>
-        <div className="text-xs text-muted-foreground mb-2">{comparison}</div>
-        <div className="flex items-center text-xs">
-          {isPositive ? (
-            <TrendingUp className="mr-1 h-3 w-3 text-success" />
-          ) : (
-            <TrendingDown className="mr-1 h-3 w-3 text-destructive" />
-          )}
-          <span className={cn("font-medium tabular", isPositive ? "text-success" : "text-destructive")}>
-            {isPositive ? "+" : ""}{change.toFixed(1)}%
-          </span>
-        </div>
+        {comparison && <div className="text-xs text-muted-foreground mb-2">{comparison}</div>}
+        {/* Variação do período vinda de `get_period_comparison` (trendsPercentage). */}
+        <VariacaoDoPeriodo valor={change} base="vs. período anterior" />
       </CardContent>
     </Card>
   );
@@ -250,8 +242,8 @@ const CampaignCard = ({
                 />
               </div>
               <div className={`text-center p-3 rounded-lg border ${getROIColor(roasExcess)}`}>
-                <p className="kicker mb-1">ROAS</p>
-                <p className="font-display font-semibold tabular">{roasExcess.toFixed(1)}%</p>
+                <p className="kicker mb-1">ROI bruto</p>
+                <p className="font-display font-semibold tabular">{textoDePontosPct(retornoExcedentePct(campaign.revenue, campaign.investment))}</p>
                 <MetricDelta
                   current={roasExcess}
                   previous={comparison?.prevRoas}
@@ -833,7 +825,8 @@ export default function ProjectDashboard() {
         change: summary?.trendsPercentage?.revenue || 0
       },
       roas: {
-        value: projectRoas,
+        // ROI bruto (o card dizia "ROAS"); sem investimento é ausência, não 0 nem 100.
+        value: retornoExcedentePct(projectRevenue, projectInvestment),
         comparison: 0, // TODO: Add previous period comparison
         change: summary?.trendsPercentage?.roas || 0
       },
@@ -843,7 +836,7 @@ export default function ProjectDashboard() {
         change: summary?.trendsPercentage?.profit || 0
       },
       roi: {
-        value: projectRoi,
+        value: projectInvestment > 0 ? projectRoi : null,
         comparison: 0, // TODO: Add previous period comparison
         change: summary?.trendsPercentage?.roi || 0
       },
@@ -1193,7 +1186,6 @@ export default function ProjectDashboard() {
             <MetricCard
               title="Investido"
               value={formatCurrency(metrics.investment.value)}
-              comparison={`Ontem: ${formatCurrency(metrics.investment.comparison)}`}
               change={metrics.investment.change}
               icon={<Coins className="h-4 w-4" />}
               color="info"
@@ -1261,11 +1253,10 @@ export default function ProjectDashboard() {
               </CardHeader>
               <CardContent className="relative z-10">
                 <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight text-success mb-1">{formatRevenue(metrics.revenue.value)}</div>
-                <div className="text-xs text-muted-foreground mb-2">{`Ontem: ${formatRevenue(metrics.revenue.comparison)}`}</div>
                 <div className="flex items-center text-xs">
                   {/* Era `+` incondicional e seta sempre para cima: queda de 34% saía
-                      "+-34.6%" em verde. A variação é contra o "Ontem" acima, pelo D0. */}
-                  <Delta atual={metrics.revenue.value} base={metrics.revenue.comparison} sentido="maior-melhor" />
+                      "+-34.6%" em verde. O "Ontem" era fixo em 0 e saiu. */}
+                  <VariacaoDoPeriodo valor={metrics.revenue.change} base="vs. período anterior" />
                   {metrics.organicExcedent && metrics.organicExcedent.value !== 0 && (
                     <span className={`ml-2 text-xs font-medium ${
                       metrics.organicExcedent.value > 0 ? 'text-info' : 'text-warning'
@@ -1277,9 +1268,8 @@ export default function ProjectDashboard() {
               </CardContent>
             </Card>
             <MetricCard
-              title="ROAS"
-              value={`${metrics.roas.value.toFixed(0)}%`}
-              comparison={`Ontem: ${metrics.roas.comparison.toFixed(0)}%`}
+              title="ROI bruto"
+              value={textoDePontosPct(metrics.roas.value, 0)}
               change={metrics.roas.change}
               icon={<BarChart3 className="h-4 w-4" />}
               color="success"
@@ -1288,7 +1278,6 @@ export default function ProjectDashboard() {
             <MetricCard
               title="L. Líquido"
               value={formatCurrency(metrics.grossProfit.value)}
-              comparison={`Ontem: ${formatCurrency(metrics.grossProfit.comparison)}`}
               change={metrics.grossProfit.change}
               icon={<DollarSign className="h-4 w-4" />}
               color="success"
@@ -1353,7 +1342,7 @@ export default function ProjectDashboard() {
                                 <div className="border-t pt-2 border-primary/20">
                                   <div className="flex justify-between font-medium">
                                     <span>ROI Final:</span>
-                                    <span className="font-mono text-primary">{metrics.roi.value.toFixed(1)}%</span>
+                                    <span className="font-mono text-primary">{textoDePontosPct(metrics.roi.value)}</span>
                                   </div>
                                   <div className="text-xs text-muted-foreground mt-1">
                                     (Lucro Líquido ÷ Investimento) × 100
@@ -1370,12 +1359,11 @@ export default function ProjectDashboard() {
                 <span className="rounded-md bg-primary/10 text-primary p-1.5"><Crown className="h-4 w-4" /></span>
               </CardHeader>
               <CardContent className="relative z-10">
-                <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight mb-1">{`${metrics.roi.value.toFixed(1)}%`}</div>
-                <div className="text-xs text-muted-foreground mb-2">{`Ontem: ${metrics.roi.comparison.toFixed(0)}%`}</div>
+                <div className="font-display text-2xl md:text-3xl font-bold tabular tracking-tight mb-1">{textoDePontosPct(metrics.roi.value)}</div>
                 <div className="flex items-center text-xs">
                   {/* Era `+` incondicional e seta sempre para cima: queda de 34% saía
-                      "+-34.6%" em verde. A variação é contra o "Ontem" acima, pelo D0. */}
-                  <Delta atual={metrics.roi.value} base={metrics.roi.comparison} sentido="maior-melhor" />
+                      "+-34.6%" em verde. O "Ontem" era fixo em 0 e saiu. */}
+                  <VariacaoDoPeriodo valor={metrics.roi.change} base="vs. período anterior" />
                   <span className="ml-2 text-muted-foreground">
                     Com {currentTaxRate}% SN
                     {currentProject?.costs_division && ` + Custos Op.`}
@@ -1489,7 +1477,7 @@ export default function ProjectDashboard() {
               <div className="flex gap-2 flex-wrap mt-1">
                 <Badge variant="outline" className="gap-1.5"><span className="h-2 w-2 rounded-[2px]" style={{ background: chartColor(0) }} />Receita</Badge>
                 <Badge variant="outline" className="gap-1.5"><span className="h-2 w-2 rounded-[2px]" style={{ background: chartColor(1) }} />Investimento</Badge>
-                <Badge variant="outline" className="gap-1.5"><span className="h-2 w-2 rounded-[2px]" style={{ background: chartColor(2) }} />ROAS</Badge>
+                <Badge variant="outline" className="gap-1.5"><span className="h-2 w-2 rounded-[2px]" style={{ background: chartColor(2) }} />ROI bruto</Badge>
                 <Badge variant="outline" className="gap-1.5"><span className="h-2 w-2 rounded-[2px]" style={{ background: chartColor(3) }} />ROI</Badge>
               </div>
             </CardHeader>
@@ -1548,7 +1536,7 @@ export default function ProjectDashboard() {
                     type="monotone"
                     dataKey="roas"
                     stroke={chartColor(2)}
-                    name="ROAS"
+                    name="ROI bruto"
                     {...volcLine}
                   />
                   <Line

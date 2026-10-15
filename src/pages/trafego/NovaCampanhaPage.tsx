@@ -132,12 +132,20 @@ import type {
 function fraseDaFalhaDeCarga(e: unknown): string {
   const status = statusDe(e);
   if (status === 404) {
-    return 'Esta oportunidade não foi encontrada. Ela pode ter sido removida ou o '
-      + 'endereço está incompleto. Volte ao Hub e abra a oportunidade pela aba Preparar.';
+    // `/candidatos/{id}` não levanta 404 para oportunidade inexistente: um 404
+    // aqui é a rota que não existe nesta versão do serviço.
+    return 'O serviço de tráfego desta versão não oferece a preparação de campanhas. '
+      + 'Nenhuma campanha foi alterada; avise quem administra o ambiente.';
   }
   if (status === 0) {
     return 'Não consegui falar com o serviço de tráfego. Confira a conexão e tente de '
       + 'novo. Nenhuma campanha foi alterada.';
+  }
+  if (status === 503) {
+    // PonteIncompleta: configuração que falta. Esperar não resolve.
+    return 'O serviço de tráfego está sem a configuração necessária para preparar '
+      + 'campanhas. Isso não se resolve esperando: avise quem administra o ambiente. '
+      + 'Nada foi enviado ao Google.';
   }
   if (status != null && status >= 500) {
     return 'O serviço de tráfego não respondeu. Tente de novo em alguns minutos; '

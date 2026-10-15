@@ -24,7 +24,7 @@ import { formatarNumero } from '@/lib/instrumento';
  * Reais com separador de milhar. Era `toFixed(2).replace('.', ',')`, que
  * escrevia "R$ 13320,00" nesta página e "R$ 13.320,00" em todas as outras.
  */
-const brl = (valor: number): string => formatarNumero(valor, { tipo: 'moeda', moeda: 'BRL' });
+const brl = (valor: number | null | undefined): string => formatarNumero(valor, { tipo: 'moeda', moeda: 'BRL' });
 
 export default function CostsSettings() {
   const navigate = useNavigate();
@@ -1014,7 +1014,7 @@ export default function CostsSettings() {
                         </div>
                         <div className="text-right">
                           <span className="font-display font-semibold text-lg tabular">
-                            {brl((cost.amount || 0))}
+                            {brl(cost.amount)}
                           </span>
                         </div>
                       </div>

@@ -71,7 +71,7 @@ import { taxHistoryService } from "@/services/taxHistoryService";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBrlCurrency, formatCostCurrency, getCachedExchangeRate, preloadExchangeRate } from "@/utils/currencyUtils";
-import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
+import { calculateROAS, getROASColorStyles, getROASColorCategory, retornoExcedentePct, textoDePontosPct } from "@/utils/roasCalculations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { RevenueTooltip } from "@/components/ui/revenue-tooltip";
 import { useAuth } from "@/contexts/AuthContext";
@@ -887,11 +887,12 @@ export default function GeneralDashboard() {
           <Card className={KPI_CARD_CLASS}>
             <span className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-border" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-              <span className="kicker">ROAS geral</span>
+              <span className="kicker">ROI bruto geral</span>
               <span className="rounded-md border border-primary/20 bg-primary/10 p-1.5 text-primary"><BarChart3 className="h-4 w-4" /></span>
             </CardHeader>
             <CardContent className="relative z-10">
-              <div className="font-display text-3xl font-bold tabular tracking-tight">{summary?.generalRoas || 0}%</div>
+              <div className="font-display text-3xl font-bold tabular tracking-tight">{/* `general_roas` é (receita − custo) / custo, com 0 inventado sem custo. */}
+                {textoDePontosPct(summary && summary.totalInvestment > 0 ? summary.generalRoas : null, 0)}</div>
               <VariacaoDoPeriodo className="mt-2" valor={summary?.trendsPercentage?.roas} />
             </CardContent>
           </Card>
@@ -1207,7 +1208,7 @@ export default function GeneralDashboard() {
                           <span className="flex items-center gap-1 tabular"><Coins className="h-3 w-3" /> {formatCurrency(campaign.investment || 0)}</span>
                           <span className="flex items-center gap-1 tabular">
                             <TrendingUp className="h-3 w-3" />
-                            {Math.round(calculateROAS(campaign.revenue || 0, campaign.investment || 0))}%
+                            ROI bruto {textoDePontosPct(retornoExcedentePct(campaign.revenue, campaign.investment), 0)}
                           </span>
                           {campaign.commission && campaign.commission > 0 && (
                             <div className={`${isMobile ? 'text-sm' : 'text-xs'} text-primary font-medium ${isMobile ? 'mt-1' : 'mt-0.5'}`}>
@@ -1281,7 +1282,7 @@ export default function GeneralDashboard() {
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Projeto (Domínio)</th>
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Gasto</th>
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>Revenue</th>
-                    <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>ROAS</th>
+                    <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>ROI bruto</th>
                     <th className={`text-left kicker ${isMobile ? 'p-2' : 'p-3'}`}>
                       <div className="flex items-center gap-1">
                         Lucro Líquido
@@ -1339,7 +1340,7 @@ export default function GeneralDashboard() {
                       </td>
                       <td className={isMobile ? 'p-2' : 'p-4'}>
                         <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} font-bold tabular rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
-                          {Math.round(calculateROAS(project.revenue, project.investment))}%
+                          {textoDePontosPct(retornoExcedentePct(project.revenue, project.investment), 0)}
                         </div>
                         <div className={`flex items-center gap-1 ${isMobile ? 'mt-0.5' : 'mt-1'}`}>
                           {getTrendIcon(project.trend)}
