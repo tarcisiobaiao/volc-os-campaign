@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef } from "react";
 import { animate, useReducedMotion } from "framer-motion";
 
-import { AUSENTE, formatarNumero, type FormatoDeNumero } from "@/lib/instrumento";
+import { AUSENTE, ausente, formatarNumero, type FormatoDeNumero } from "@/lib/instrumento";
 import { CURVA, DURACAO } from "@/lib/movimento";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ type Props = {
  *
  * ⚠️ O tick só acontece ENTRE DUAS OBSERVAÇÕES. Na primeira leitura o número
  * aparece pronto: contar a partir de zero desenharia por 640ms um zero que a
- * fonte nunca mediu. De `null` para valor também não anima, pelo mesmo motivo.
+ * fonte nunca mediu. De `null` (ou não-finito) para valor também não anima.
  *
  * O texto animado é `aria-hidden`; o leitor de tela recebe só o valor final,
  * sem `aria-live` — um tick anunciado viraria uma contagem falada.
@@ -31,9 +31,10 @@ export function NumeroAnimado({ valor, formato, className }: Props) {
     const no = visivel.current;
     if (!no) return;
     const de = anterior.current;
-    anterior.current = valor;
+    // Não-finito é ausência: não vira base do próximo tick nem destino deste.
+    anterior.current = ausente(valor) ? null : valor;
 
-    if (valor == null || de == null || de === valor || reduzir) {
+    if (ausente(valor) || ausente(de) || de === valor || reduzir) {
       no.textContent = final;
       return;
     }
