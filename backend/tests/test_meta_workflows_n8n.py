@@ -242,7 +242,11 @@ def test_a_janela_nunca_sai_do_fuso_do_servidor():
     js = _sem_comentarios(_code(_wf(), "Selecionar contas"))
     assert "timezone_name" in js
     assert "dataNaZona(agora, fuso)" in js
-    assert "subtrairDias(hojeNaConta, 1)" in js
+    # O fim é `hoje na conta - offset`; o offset do D-1 é 1 (W15 trouxe o 2 da
+    # recoleta para o mesmo código). A janela D-1 executada está em
+    # `test_sim_a_janela_e_d1_no_fuso_da_conta_e_nao_do_servidor`.
+    assert "subtrairDias(hojeNaConta, ident.janela_fim_offset)" in js
+    assert "fimOffset = 1;" in _sem_comentarios(_code(_wf(), "Identidade da execucao"))
     assert "CONTA_SEM_FUSO" in js and "FUSO_DESCONHECIDO" in js
     # O fuso do disparo é só rótulo da rodada; ele não pode encostar na janela.
     assert "TZ_DO_DISPARO" not in js and "tz_do_disparo" not in js
