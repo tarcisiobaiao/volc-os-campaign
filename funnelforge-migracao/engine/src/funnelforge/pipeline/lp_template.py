@@ -566,7 +566,8 @@ def render_lp(
     # Canvas can omit theme chrome. A identidade editorial fica na página, mas no
     # FIM (operador, 15/10/2026): no topo ela empurrava o herói para fora da
     # primeira dobra do celular. No site, o aviso global do MU-plugin também vai
-    # para o rodapé e o volc-editorial-notice-owner retira este quando há o global.
+    # para o rodapé; o volc-editorial-notice-owner retira este no fim da resposta,
+    # só depois de o global ter sido impresso (INSTALACAO-HARDENING.md).
     if copy_rapida:
         from funnelforge.pipeline.copy_contract import short_notice_html
         identity_html = "" if footer_disclosure else short_notice_html(site_domain)

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Credito Up Compliance Hardening
  * Description: Exibe a declaracao editorial e desativa comentarios no site publico.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: VOLC
  *
  * MU-plugin. Ver INSTALACAO-HARDENING.md antes de instalar: inventario dos
@@ -19,7 +19,7 @@ if ( ! class_exists( 'Creditoup_Compliance_Hardening', false ) ) {
 
 	final class Creditoup_Compliance_Hardening {
 
-		const VERSION = '1.1.0';
+		const VERSION = '1.2.0';
 		const CSS     = 'creditoup-compliance-hardening.css';
 
 		/** @var bool O aviso global ja saiu nesta resposta. */
@@ -27,6 +27,9 @@ if ( ! class_exists( 'Creditoup_Compliance_Hardening', false ) ) {
 
 		/** @var bool O buffer de rede de seguranca foi aberto por este plugin. */
 		private static $buffering = false;
+
+		/** @var bool Um pedaco anterior (ob_flush de terceiro) ja trazia o documento HTML. */
+		private static $viu_documento = false;
 
 		public static function boot() {
 			// 15/10/2026 (operador): o aviso fica no FIM, perto do rodape, para nao
@@ -86,8 +89,19 @@ if ( ! class_exists( 'Creditoup_Compliance_Hardening', false ) ) {
 		 * o aviso entra antes do ultimo </body>, ou no fim do documento. So mexe em
 		 * HTML; JSON, XML e respostas vazias passam intactos.
 		 */
-		public static function ensure_disclosure( $html ) {
-			if ( self::$rendered || ! is_string( $html ) || '' === trim( $html ) ) {
+		public static function ensure_disclosure( $html, $phase = PHP_OUTPUT_HANDLER_FINAL ) {
+			if ( self::$rendered || ! is_string( $html ) ) {
+				return $html;
+			}
+			// Um ob_flush() de terceiro no meio da pagina entrega pedacos: o aviso
+			// so entra no pedaco FINAL, nunca no fim do primeiro.
+			if ( ! ( $phase & PHP_OUTPUT_HANDLER_FINAL ) ) {
+				if ( false !== stripos( $html, '<html' ) || false !== stripos( $html, '<body' ) ) {
+					self::$viu_documento = true;
+				}
+				return $html;
+			}
+			if ( '' === trim( $html ) && ! self::$viu_documento ) {
 				return $html;
 			}
 			foreach ( headers_list() as $header ) {
@@ -95,15 +109,19 @@ if ( ! class_exists( 'Creditoup_Compliance_Hardening', false ) ) {
 					return $html;
 				}
 			}
-			if ( false === stripos( $html, '<html' ) && false === stripos( $html, '<body' ) ) {
+			if ( ! self::$viu_documento && false === stripos( $html, '<html' )
+				&& false === stripos( $html, '<body' ) ) {
 				return $html;
 			}
 			self::$rendered = true;
-			$pos = strripos( $html, '</body>' );
-			if ( false === $pos ) {
-				return $html . self::disclosure_html();
-			}
-			return substr( $html, 0, $pos ) . self::disclosure_html() . substr( $html, $pos );
+			$pos  = strripos( $html, '</body>' );
+			$html = false === $pos
+				? $html . self::disclosure_html()
+				: substr( $html, 0, $pos ) . self::disclosure_html() . substr( $html, $pos );
+			// O aviso ja esta na resposta: so agora o sinal pode existir. O dono do
+			// aviso (buffer externo) decide depois deste callback.
+			do_action( 'volc_editorial_disclosure_rendered' );
+			return $html;
 		}
 
 		public static function stylesheet_url() {

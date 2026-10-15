@@ -2,10 +2,13 @@
 /**
  * Plugin Name: VOLC Editorial Notice Owner
  * Description: Keeps the engine notice unless a global disclosure was actually rendered.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 
 defined( 'ABSPATH' ) || exit;
+
+// Guarda na DECLARACAO: a mesma classe carregada por outro arquivo nao derruba o site.
+if ( ! class_exists( 'Volc_Editorial_Notice_Owner', false ) ) {
 
 final class Volc_Editorial_Notice_Owner {
 
@@ -14,6 +17,51 @@ final class Volc_Editorial_Notice_Owner {
 		add_filter( 'elementor/frontend/container/should_render', array( __CLASS__, 'container_should_render' ), 20, 2 );
 		add_filter( 'the_content', array( __CLASS__, 'remove_prefix' ), 8 );
 		add_filter( 'render_block_core/html', array( __CLASS__, 'remove_prefix' ), 5 );
+		// 1.1.0: o aviso global saiu do topo para o wp_footer, e o sinal so dispara
+		// depois de ele ser impresso, ou seja, DEPOIS do conteudo. A decisao sobre
+		// o aviso duplicado passa a acontecer no fim da resposta, quando o sinal ja
+		// diz a verdade. Buffer aberto antes do buffer de seguranca do hardening
+		// (prioridade 0 < PHP_INT_MAX): o callback deste roda por ultimo e ve o
+		// aviso que a rede de seguranca injetou.
+		add_action( 'template_redirect', array( __CLASS__, 'start_buffer' ), 0 );
+	}
+
+	private static $buffering = false;
+
+	private static function is_public_html_request() {
+		if ( is_admin() || wp_doing_ajax() || ( function_exists( 'wp_is_json_request' ) && wp_is_json_request() ) ) {
+			return false;
+		}
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return false;
+		}
+		return ! ( is_feed() || is_robots() || is_trackback() || is_embed() );
+	}
+
+	public static function start_buffer() {
+		if ( self::$buffering || ! self::is_public_html_request() ) {
+			return;
+		}
+		self::$buffering = ob_start( array( __CLASS__, 'remove_engine_notices' ) );
+	}
+
+	/**
+	 * Fim da resposta: se o aviso global foi efetivamente impresso (sinal), cada
+	 * aside CANONICO do motor sai do HTML; qualquer outro aside, ou um aviso do
+	 * motor editado, fica. Sem o sinal, nada muda: o aviso do motor e o unico.
+	 */
+	public static function remove_engine_notices( $html ) {
+		if ( ! is_string( $html ) || false === strpos( $html, 'volc-editorial-notice' )
+			|| ! did_action( 'volc_editorial_disclosure_rendered' ) ) {
+			return $html;
+		}
+		return preg_replace_callback(
+			'#<aside\b[^>]*\bid=(["\'])volc-editorial-notice\1[^>]*>.*?</aside>#is',
+			function ( $m ) {
+				return self::is_engine_notice( $m[0] ) ? '' : $m[0];
+			},
+			$html
+		);
 	}
 
 	private static function global_is_present() {
@@ -98,3 +146,4 @@ final class Volc_Editorial_Notice_Owner {
 }
 
 Volc_Editorial_Notice_Owner::boot();
+}
