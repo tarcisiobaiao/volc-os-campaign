@@ -4,8 +4,13 @@
 -- APLICAR COMO: supabase_admin. Uma transação. Idempotente.
 -- Devolve só o que a v19_10 mudou: as policies que ela criou (registradas em
 -- app_auth.w4_auth_policy), a RLS das tabelas onde ela a ligou e os aclitems de
--- authenticated que ela tirou ou deu. ABORTA sem desfazer nada se alguma ACL ou
--- estado de RLS que ela mudou foi alterado de novo depois da aplicação.
+-- authenticated (tabelas, colunas e sequências) que ela tirou ou deu. ABORTA sem
+-- desfazer nada se a ACL, o estado de RLS ou o conjunto de policies (definição
+-- inteira: nome, comando, papéis, USING, WITH CHECK) de qualquer relação que ela
+-- mudou foi alterado de novo depois da aplicação.
+--
+-- ORDEM: reverter a v19_10 ANTES do v19_99 (pacote anon). Com a v19_10 aplicada,
+-- o v19_99 aborta (a ACL das relações que ele restauraria mudou depois dele).
 -- Nomes por schema + nome com %I e search_path fixo: nada fora de public.
 -- =============================================================================
 
@@ -16,7 +21,7 @@ SET LOCAL search_path = pg_catalog;
 
 DO $rb$
 DECLARE
-  x record; v_alvo text; v_priv text; v_mudou text; v_n int := 0;
+  x record; v_alvo text; v_priv text; v_tipo text; v_mudou text; v_n int := 0;
 BEGIN
   IF NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) THEN
     RAISE EXCEPTION 'v19_10_rollback exige superusuário (supabase_admin)';
@@ -28,9 +33,11 @@ BEGIN
 
   -- 1. aborta se o que a v19_10 mudou foi mexido depois
   WITH atual AS (
-    SELECT s.esquema, s.relacao, s.coluna, s.acl_depois, s.rls_depois,
+    SELECT s.esquema, s.relacao, s.coluna, s.acl_depois, s.rls_depois, s.pol_depois,
            CASE WHEN s.coluna IS NULL THEN c.relacl ELSE a.attacl END AS acl_agora,
-           c.relrowsecurity AS rls_agora, c.oid IS NOT NULL AS existe
+           c.relrowsecurity AS rls_agora,
+           CASE WHEN s.coluna IS NULL AND c.oid IS NOT NULL THEN app_auth.w4_policies_md5(c.oid) END AS pol_agora,
+           c.oid IS NOT NULL AS existe
       FROM app_auth.w4_auth_acl s
       LEFT JOIN pg_namespace n ON n.nspname = s.esquema
       LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = s.relacao
@@ -42,9 +49,10 @@ BEGIN
    WHERE existe
      AND ((SELECT array_agg(i::text ORDER BY i::text) FROM unnest(acl_agora) i)
           IS DISTINCT FROM (SELECT array_agg(i::text ORDER BY i::text) FROM unnest(acl_depois) i)
-          OR (coluna IS NULL AND rls_agora IS DISTINCT FROM rls_depois));
+          OR (coluna IS NULL AND rls_agora IS DISTINCT FROM rls_depois)
+          OR (coluna IS NULL AND pol_agora IS DISTINCT FROM pol_depois));
   IF v_mudou IS NOT NULL THEN
-    RAISE EXCEPTION 'v19_10_rollback abortado: ACL ou RLS mudou depois da v19_10 em: %. Nada foi desfeito.', v_mudou;
+    RAISE EXCEPTION 'v19_10_rollback abortado: ACL, RLS ou policies mudaram depois da v19_10 em: %. Nada foi desfeito.', v_mudou;
   END IF;
 
   -- 2. policies criadas pela v19_10
@@ -82,11 +90,12 @@ BEGIN
     v_alvo := format('%I.%I', x.esquema, x.relacao);
     IF to_regclass(v_alvo) IS NULL THEN CONTINUE; END IF;
     v_priv := CASE WHEN x.coluna IS NULL THEN x.privilege_type ELSE format('%s (%I)', x.privilege_type, x.coluna) END;
+    v_tipo := CASE WHEN x.relkind = 'S' THEN 'SEQUENCE' ELSE 'TABLE' END;
     EXECUTE format('SET LOCAL ROLE %I', x.grantor);
     IF x.no_depois THEN
-      EXECUTE format('REVOKE %s ON TABLE %s FROM %I', v_priv, v_alvo, x.grantee);
+      EXECUTE format('REVOKE %s ON %s %s FROM %I', v_priv, v_tipo, v_alvo, x.grantee);
     ELSE
-      EXECUTE format('GRANT %s ON TABLE %s TO %I%s', v_priv, v_alvo, x.grantee,
+      EXECUTE format('GRANT %s ON %s %s TO %I%s', v_priv, v_tipo, v_alvo, x.grantee,
                      CASE WHEN x.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END);
     END IF;
     RESET ROLE;
@@ -95,6 +104,7 @@ BEGIN
 
   DROP TABLE app_auth.w4_auth_policy;
   DROP TABLE app_auth.w4_auth_acl;
+  DROP FUNCTION app_auth.w4_policies_md5(oid);
   RAISE NOTICE 'v19_10_rollback: % aclitem(s) de authenticated devolvidos; policies e RLS da v19_10 desfeitas', v_n;
 END
 $rb$;
