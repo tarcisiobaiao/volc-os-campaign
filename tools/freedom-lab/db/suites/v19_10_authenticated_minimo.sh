@@ -166,8 +166,8 @@ mutante() { # mutante <nome> <arquivo-gerado> <descrição>
   fp "$R/fp-pos-mutante-$1.txt"; diff -q "$R/fp0.txt" "$R/fp-pos-mutante-$1.txt" >/dev/null && ok "base intacta depois do mutante $1" || nao "mutante $1 deixou resíduo"
 }
 MUT_A="$R/v19_10_MUTANTE_A_sem_update_dcm.sql"
-sed "s/^ ('daily_campaign_metrics',      true, false, true,  false,/ ('daily_campaign_metrics',      true, false, false, false,/" "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_A"
-grep -q "('daily_campaign_metrics',      true, false, false, false" "$MUT_A" && ok "mutante A gerado (sem o UPDATE de daily_campaign_metrics, que só gatilhos usam)" || nao "mutante A não gerado"
+sed "s/^ ('daily_campaign_metrics',      true, true,  true,  false,/ ('daily_campaign_metrics',      true, true,  false, false,/" "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_A"
+grep -q "('daily_campaign_metrics',      true, true,  false, false" "$MUT_A" && ok "mutante A gerado (sem o UPDATE de daily_campaign_metrics, que só gatilhos usam)" || nao "mutante A não gerado"
 mutante A "$MUT_A" "grant usado só por gatilho"
 MUT_B="$R/v19_10_MUTANTE_B_funil_invoker.sql"
 sed '/^DO \$definer\$/,/^\$definer\$;/d' "$W4_MIG/v19_10_authenticated_minimo.sql" > "$MUT_B"

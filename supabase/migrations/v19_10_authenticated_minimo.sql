@@ -100,7 +100,7 @@ INSERT INTO w4_decisao (relacao, s, i, u, d, evidencia) VALUES
  ('pautador_entity_opportunities',true,false, true,  false, 'pautadorEntityService.ts:77 update'),
  ('pautador_countries',          true, true,  false, false, 'pautadorService.ts:51 insert'),
 -- escrita só por RPC/gatilho INVOKER que o browser dispara
- ('daily_campaign_metrics',      true, false, true,  false, 'UPDATE por gatilho INVOKER de users (comissão) e por update_all_revenue_conversions; leitura em ~20 pontos. INSERT só vinha da agregação do funil, que passa a SECURITY DEFINER (seção 2c)'),
+ ('daily_campaign_metrics',      true, true,  true,  false, 'INSERT/UPDATE pelos gatilhos INVOKER de adsense_metrics (simple_aggregate_campaign_revenue, via update_all_revenue_conversions, GeneralDashboard.tsx:555) e de users (comissão); medido no lab: sem o INSERT, update_all_revenue_conversions falha. Escrita só ADMIN (policy). Leitura em ~20 pontos'),
  ('daily_project_metrics',       true, false, true,  false, 'gatilho de projects (trigger_recalculate_project_revshare) e update_all_revenue_conversions atualizam'),
  ('adsense_metrics',             true, false, true,  false, 'update_all_revenue_conversions atualiza; gatilhos de campaign_funnel_urls e vw_adsense_adjusted leem'),
 -- só leitura
