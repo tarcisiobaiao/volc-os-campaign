@@ -1,5 +1,6 @@
 -- =============================================================================
--- v19_02 — Incidente da chave anon: objeto NOVO em public para de nascer aberto
+-- v19_02 — Incidente da chave anon: tabela e sequência NOVAS em public param de
+--          nascer abertas a anon (função nova continua executável por PUBLIC)
 -- MISSÃO W4 (15/10/2026). ARQUIVO. NÃO APLICADO. Exige decisão humana.
 -- =============================================================================
 -- APLICAR COMO: supabase_admin (superusuário: altera o default ACL dos DOIS
@@ -14,8 +15,16 @@
 --   postgres       f  {postgres,anon,authenticated,service_role = X}
 --   postgres       S  {postgres,anon,authenticated,service_role = rwU}
 --   supabase_admin r/f/S  idem
--- PUBLIC não aparece na entrada de funções: função nova em public já NÃO nasce
--- executável por PUBLIC; só pelos papéis listados.
+-- PUBLIC não aparece nessas entradas, mas o default ACL por schema só SOMA ao
+-- default global, e o global embutido do Postgres dá EXECUTE a PUBLIC em toda
+-- função nova. Medido no ensaio: depois desta migration, função nova nasce
+-- `=X/postgres`. Uma SECURITY DEFINER nova sem REVOKE explícito é chamável por
+-- anon e lê com o privilégio do dono.
+-- DECISÃO: não aplicar `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE ON FUNCTIONS
+-- FROM PUBLIC` global aqui — ele vale para TODOS os schemas desses donos (auth,
+-- storage, meta_*_private, extensions) e mudaria função de serviço da imagem.
+-- Fica a convenção que as migrations do repo já seguem: toda SECURITY DEFINER
+-- nova faz REVOKE EXECUTE … FROM PUBLIC, anon nominalmente.
 --
 -- O QUE FAZ, para objetos criados por postgres e por supabase_admin em public:
 --   tabelas/views  : anon perde tudo; authenticated perde TRUNCATE, REFERENCES,
@@ -25,7 +34,8 @@
 --                    o default embutido do Postgres, continua — ver a prova)
 -- service_role e authenticated mantêm o resto. Nada existente muda.
 -- Prova dentro da transação: cria uma tabela, uma sequência e uma função como
--- cada dono, confere que anon não alcança nenhuma, e desfaz.
+-- cada dono, confere que anon não alcança a tabela nem a sequência e não tem
+-- grant nominal na função, e desfaz.
 -- =============================================================================
 
 \set ON_ERROR_STOP on

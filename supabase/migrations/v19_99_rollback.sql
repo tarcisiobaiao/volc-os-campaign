@@ -12,8 +12,9 @@
 -- Ordem inversa da aplicação:
 --   1. default ACL (v19_02) volta ao medido na S10
 --   2. public.users_safe (v8_05) sai
---   3. ACL de public volta EXATAMENTE à fotografia app_auth.w4_acl_antes (v19_01),
---      concedente por concedente, e a fotografia é apagada
+--   3. só as ACLs que a v19_01 mudou voltam ao "antes" de app_auth.w4_acl,
+--      concedente por concedente; aborta sem desfazer nada se alguma delas foi
+--      alterada de novo depois da aplicação; a fotografia é apagada
 --   4. RLS, policies, gatilhos, índice e constraint de public.users (v8_03) saem
 --   5. o gatilho de users volta ao corpo original (v19_00)
 -- O rollback da v19_01 cobre também a v8_06: a fotografia é anterior a ambas.
@@ -42,63 +43,106 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres, supabase_admin IN SCHEMA public
 -- 2. v8_05 ----------------------------------------------------------------------
 DROP VIEW IF EXISTS public.users_safe;
 
--- 3. v19_01 (e v8_06) — ACL de public restaurada da fotografia --------------------
+-- 3. v19_01 (e v8_06) — devolve SÓ o que a v19_01 mudou ------------------------
+-- Nomes vêm de app_auth.w4_acl (schema e relação separados, citados com %I) e o
+-- search_path fica fixo: nenhum objeto fora de public é tocado.
+SET LOCAL search_path = pg_catalog;
+
+-- 3a. v8_06, se aplicada: authenticated volta a ter SELECT de tabela em users e
+--     perde o SELECT por coluna que a v8_06 deu — volta ao "depois" da v19_01.
+DO $v806$
+BEGIN
+  IF to_regclass('app_auth.w4_acl') IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM pg_class c, aclexplode(c.relacl) x
+                      WHERE c.oid = 'public.users'::regclass
+                        AND x.grantee = 'authenticated'::regrole AND x.privilege_type = 'SELECT') THEN
+    GRANT SELECT ON TABLE public.users TO authenticated;
+    REVOKE SELECT (id, name, email, role, first_login, needs_password_change,
+                   commission_percentage, created_at, updated_at)
+      ON TABLE public.users FROM authenticated;
+    RAISE NOTICE 'v19_99: v8_06 desfeita (SELECT de tabela de users devolvido a authenticated)';
+  END IF;
+END
+$v806$;
+
 DO $acl$
 DECLARE
-  r      record;
-  x      record;
-  v_tipo text;
-  v_n    int := 0;
-  v_priv text;
+  x        record;
+  v_alvo   text;
+  v_tipo   text;
+  v_priv   text;
+  v_mudou  text;
+  v_n      int := 0;
 BEGIN
-  IF to_regclass('app_auth.w4_acl_antes') IS NULL THEN
+  IF to_regclass('app_auth.w4_acl') IS NULL THEN
     RAISE NOTICE 'v19_99: sem fotografia (v19_01 não aplicada ou já revertida) — ACL não tocada';
     RETURN;
   END IF;
 
-  -- 3a. limpa anon e authenticated em toda relação fotografada que ainda existe
-  FOR r IN
-    SELECT s.relacao, s.relkind FROM app_auth.w4_acl_antes s
-     WHERE s.coluna IS NULL AND to_regclass(s.relacao) IS NOT NULL
-  LOOP
-    v_tipo := CASE WHEN r.relkind = 'S' THEN 'SEQUENCE' ELSE 'TABLE' END;
-    FOR x IN
-      SELECT DISTINCT pg_get_userbyid(e.grantor) AS grantor
-        FROM pg_class c, aclexplode(c.relacl) e
-       WHERE c.oid = to_regclass(r.relacao)
-         AND e.grantee IN ('anon'::regrole, 'authenticated'::regrole)
-    LOOP
-      EXECUTE format('SET LOCAL ROLE %I', x.grantor);
-      EXECUTE format('REVOKE ALL ON %s %s FROM anon, authenticated', v_tipo, r.relacao);
-      RESET ROLE;
-    END LOOP;
-  END LOOP;
+  -- 3b. Aborta se algo que a v19_01 mudou foi alterado DE NOVO depois (ex.: um
+  --     endurecimento posterior). Desfazer por cima apagaria essa mudança calado.
+  WITH atual AS (
+    SELECT s.esquema, s.relacao, s.coluna, s.acl_depois,
+           CASE WHEN s.coluna IS NULL THEN c.relacl ELSE a.attacl END AS acl_agora,
+           c.oid IS NOT NULL AS existe
+      FROM app_auth.w4_acl s
+      LEFT JOIN pg_namespace n ON n.nspname = s.esquema
+      LEFT JOIN pg_class c ON c.relnamespace = n.oid AND c.relname = s.relacao
+      LEFT JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = s.coluna
+  )
+  SELECT string_agg(format('%I.%I%s', esquema, relacao, coalesce('.' || quote_ident(coluna), '')), ', ')
+    INTO v_mudou
+    FROM atual
+   WHERE existe
+     AND (SELECT array_agg(i::text ORDER BY i::text) FROM unnest(acl_agora) i)
+         IS DISTINCT FROM
+         (SELECT array_agg(i::text ORDER BY i::text) FROM unnest(acl_depois) i);
+  IF v_mudou IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_99 abortado: ACL mudou depois da v19_01 em: %. Nada foi desfeito. '
+                    'Use os rollbacks parciais do fim deste arquivo, ou alinhe essas ACLs ao estado '
+                    'pós-v19_01 conscientemente antes de repetir.', v_mudou;
+  END IF;
 
-  -- 3b. regrava, de cada aclitem fotografado de anon/authenticated, o privilégio
-  --     com o mesmo concedente (relação e coluna)
+  -- 3c. Para cada aclitem de anon/authenticated: tira o que só existe no "depois",
+  --     devolve o que só existia no "antes". Concedente preservado (SET ROLE).
   FOR x IN
-    SELECT s.relacao, s.coluna, s.relkind,
-           pg_get_userbyid(e.grantee) AS grantee, pg_get_userbyid(e.grantor) AS grantor,
-           e.privilege_type, e.is_grantable
-      FROM app_auth.w4_acl_antes s, aclexplode(s.acl) e
-     WHERE to_regclass(s.relacao) IS NOT NULL
-       AND e.grantee IN ('anon'::regrole, 'authenticated'::regrole)
+    WITH itens AS (
+      SELECT s.esquema, s.relacao, s.coluna, s.relkind, 'antes' AS lado, e.*
+        FROM app_auth.w4_acl s, aclexplode(s.acl_antes) e
+      UNION ALL
+      SELECT s.esquema, s.relacao, s.coluna, s.relkind, 'depois', e.*
+        FROM app_auth.w4_acl s, aclexplode(s.acl_depois) e
+    )
+    SELECT esquema, relacao, coluna, relkind,
+           pg_get_userbyid(grantee) AS grantee, pg_get_userbyid(grantor) AS grantor,
+           privilege_type, is_grantable,
+           bool_or(lado = 'antes') AS no_antes, bool_or(lado = 'depois') AS no_depois
+      FROM itens
+     WHERE grantee IN ('anon'::regrole, 'authenticated'::regrole)
+     GROUP BY 1,2,3,4,5,6,7,8
+    HAVING bool_or(lado = 'antes') <> bool_or(lado = 'depois')
+     ORDER BY bool_or(lado = 'depois') DESC   -- primeiro tira, depois devolve
   LOOP
+    v_alvo := format('%I.%I', x.esquema, x.relacao);
+    IF to_regclass(v_alvo) IS NULL THEN CONTINUE; END IF;
     v_tipo := CASE WHEN x.relkind = 'S' THEN 'SEQUENCE' ELSE 'TABLE' END;
     v_priv := CASE WHEN x.coluna IS NULL THEN x.privilege_type
                    ELSE format('%s (%I)', x.privilege_type, x.coluna) END;
     -- GRANTED BY exige ser o próprio concedente: o superusuário assume o papel.
     EXECUTE format('SET LOCAL ROLE %I', x.grantor);
-    EXECUTE format('GRANT %s ON %s %s TO %I%s',
-                   v_priv, v_tipo, x.relacao, x.grantee,
-                   CASE WHEN x.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END);
+    IF x.no_depois THEN
+      EXECUTE format('REVOKE %s ON %s %s FROM %I', v_priv, v_tipo, v_alvo, x.grantee);
+    ELSE
+      EXECUTE format('GRANT %s ON %s %s TO %I%s', v_priv, v_tipo, v_alvo, x.grantee,
+                     CASE WHEN x.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END);
+    END IF;
     RESET ROLE;
     v_n := v_n + 1;
   END LOOP;
 
-  DROP TABLE app_auth.w4_acl_antes;
-  RAISE WARNING 'v19_99: % privilégio(s) de anon/authenticated restaurados — anon voltou a ler e '
-                'escrever public. Estado inseguro conhecido.', v_n;
+  DROP TABLE app_auth.w4_acl;
+  RAISE WARNING 'v19_99: % privilégio(s) de anon/authenticated devolvidos ao estado anterior — '
+                'anon voltou a ler e escrever public. Estado inseguro conhecido.', v_n;
 END
 $acl$;
 

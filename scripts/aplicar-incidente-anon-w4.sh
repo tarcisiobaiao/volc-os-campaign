@@ -2,67 +2,107 @@
 # =============================================================================
 # scripts/aplicar-incidente-anon-w4.sh — aplica o pacote do incidente anon (W4)
 # no Supabase oficial. NÃO FOI EXECUTADO. Só roda com autorização nominal do
-# Tarcísio, numa janela combinada. Mesmo protocolo de
+# Tarcísio (operação e hashes nomeados), numa janela combinada. Protocolo de
 # scripts/aplicar-migrations-gads-20261008.sh: SHA-256 conferido, preflight,
-# backup antes, cada arquivo na própria transação com ON_ERROR_STOP, postflight
-# por sonda, recarga do PostgREST, recibo local.
+# backup antes, cada arquivo na própria transação com ON_ERROR_STOP, verificação
+# como anon de verdade antes e depois, recarga do PostgREST, recibo local.
 #
-# Uso:  scripts/aplicar-incidente-anon-w4.sh --so-checar   (preflight; só leitura, nunca supabase_admin)
-#       scripts/aplicar-incidente-anon-w4.sh --passo1      (v19_00 v8_03 v19_01 v8_05 v19_02)
-#       scripts/aplicar-incidente-anon-w4.sh --passo2      (v8_06; só com o frontend novo no ar)
-#       scripts/aplicar-incidente-anon-w4.sh --rollback    (v19_99; devolve o estado inseguro)
+# Uso:  --so-checar  preflight + verificação; só leitura, nunca supabase_admin
+#       --passo1     v19_00 v8_03 v19_01 v8_05 v19_02
+#       --passo2     v8_06 (só com o frontend novo no ar)
+#       --rollback   v19_99 (devolve o estado inseguro; aborta se a ACL mudou depois)
+#
+# Cada ARQUIVO é atômico; o PASSO não é: se o 3º arquivo falhar, os dois
+# primeiros ficam aplicados. O script para no arquivo que falhou e diz o que
+# ficou; continue para frente ou rode --rollback (que tolera aplicação parcial).
 # =============================================================================
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 MIG="$RAIZ/supabase/migrations"
 SSH=(ssh -i "$HOME/.ssh/volc_hetzner_claude_ed25519" -o BatchMode=yes -o ConnectTimeout=10 root@178.156.196.149)
-# supabase_admin por TCP local do container (pg_hba da imagem: trust em 127.0.0.1;
-# o preflight P0 confirma que a sessão é superusuário antes de qualquer escrita).
+# Escrita: supabase_admin pelo TCP local do container. Cada migration tem guarda
+# que aborta se a sessão não for superusuário.
 SA="docker exec -i supabase-db psql -h 127.0.0.1 -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1"
 PG="docker exec -i supabase-db psql -U postgres -d postgres -X -v ON_ERROR_STOP=1"
-# Leitura (preflight e sondas): a menor identidade de leitura que existe hoje,
-# sem grant de escrita, com a sessão forçada read-only. Nunca supabase_admin.
-LEITURA="docker exec -i -e PGOPTIONS=-c\\ default_transaction_read_only=on supabase-db psql -h 127.0.0.1 -U supabase_read_only_user -d postgres -X -v ON_ERROR_STOP=1"
+# Preflight: a menor identidade de leitura que existe hoje, sem grant de escrita,
+# com a sessão forçada read-only.
+LEITURA="docker exec -i -e PGOPTIONS=-c\\ default_transaction_read_only=on supabase-db psql -h 127.0.0.1 -U supabase_read_only_user -d postgres -X -q -A -t -F'|' -v ON_ERROR_STOP=1"
+# Verificação como anon: postgres (membro de anon), sessão forçada read-only,
+# BEGIN READ ONLY no arquivo. supabase_read_only_user não assume anon.
+VERIFICA="docker exec -i -e PGOPTIONS=-c\\ default_transaction_read_only=on supabase-db psql -U postgres -d postgres -X -q -A -t -F'|' -v ON_ERROR_STOP=1"
 CARIMBO="$(date +%Y%m%d-%H%M%S)"
 RECIBO="$RAIZ/docs/closure/incidente-anon-w4/RECEIPT-$CARIMBO.txt"
-H=/Users/mac/Desktop/VOLC-OS-CAMPAIGN/handoffs/freedom-lab-20261015
 
 sha_esperado() {   # bash 3.2 do macOS: sem array associativo
   case "$1" in
-    v19_00_users_gatilho_papel_real)       echo 115b5aee43010fa5e6bcd5ea458fc0725d5a299774e86c72a0cea3635f4d0a67 ;;
-    v8_03_users_rls_policies)              echo e7af8372de3b25ee9811c2f0302052d7546f492e4261be72b2aded3bdc6b84ec ;;
-    v19_01_anon_fecha_public)              echo 55790e5efa52ae7781c8ac05b5798ea482e6a353a1db1d40129eefa60852b7c4 ;;
-    v8_05_users_safe_view)                 echo 7fb3d2de616404bc3c68f8aee8e2f70b9525bad102f2a17c885b4c54a5434f68 ;;
-    v19_02_default_acl_public_sem_anon)    echo 3f2f16fef7c7245f0b8d444c5fed7c8d5629f1dc6ad88d47dde2bfae049d46bb ;;
-    v8_06_users_sensitive_columns_revoke)  echo 0010e0874cfe518218eb483223fa5d42b00e40f3138f203b5ca0423efa381554 ;;
-    v19_99_rollback)                       echo 21eb455080b946fc5016f71eacbf59aecafbddfdb35eeedf7f87b6cbb6e3e48f ;;
+    v19_00_users_gatilho_papel_real)       echo SHA_V19_00 ;;
+    v8_03_users_rls_policies)              echo SHA_V8_03 ;;
+    v19_01_anon_fecha_public)              echo SHA_V19_01 ;;
+    v8_05_users_safe_view)                 echo SHA_V8_05 ;;
+    v19_02_default_acl_public_sem_anon)    echo SHA_V19_02 ;;
+    v8_06_users_sensitive_columns_revoke)  echo SHA_V8_06 ;;
+    v19_99_rollback)                       echo SHA_V19_99 ;;
+    preflight-incidente-anon-w4)           echo SHA_PREFLIGHT ;;
+    verificar-anon-w4)                     echo SHA_VERIFICAR ;;
   esac
 }
 mkdir -p "$(dirname "$RECIBO")"
 log() { echo "$*" | tee -a "$RECIBO"; }
-conferir() { local real; real="$(shasum -a 256 "$MIG/$1.sql" | cut -d' ' -f1)"
-  [[ "$real" == "$(sha_esperado "$1")" ]] || { log "SHA DIVERGE: $1 ($real)"; exit 1; }; log "sha ok  $1  $real"; }
+conferir() { local f="$1" real; real="$(shasum -a 256 "$f" | cut -d' ' -f1)"
+  [[ "$real" == "$(sha_esperado "$(basename "$f" .sql)")" ]] || { log "SHA DIVERGE: $f ($real)"; exit 1; }
+  log "sha ok  $(basename "$f")  $real"; }
+APLICADOS=""
 aplicar() { # aplicar <papel> <migration>
   local cmd="$SA"; [[ "$1" == postgres ]] && cmd="$PG"
-  conferir "$2"; log "aplica  $2 como $1"
-  "${SSH[@]}" "$cmd" < "$MIG/$2.sql" >>"$RECIBO" 2>&1 \
-    || { log "FALHOU $2 — transação própria, nada parcial. Backup: ${DUMP:-sem backup}"; exit 1; }
+  conferir "$MIG/$2.sql"; log "aplica  $2 como $1"
+  if ! "${SSH[@]}" "$cmd" < "$MIG/$2.sql" >>"$RECIBO" 2>&1; then
+    log "FALHOU $2 (transação própria: este arquivo não deixou nada)."
+    log "Já aplicados neste passo:${APLICADOS:- nenhum}. Backup: ${DUMP:-sem backup}"
+    exit 1
+  fi
+  APLICADOS="$APLICADOS $2"
 }
-sonda() { "${SSH[@]}" "$LEITURA -P pager=off" < "$H/B-sonda-producao.sql" > "$1.out" 2> "$1.err"
-  log "sonda   $1 · anon VE_LINHAS=$(grep -c 'S8|anon|.*|VE_LINHAS' "$1.err")"; }
+# verificar <ABERTO|FECHADO>: mede como anon e exige o estado esperado.
+verificar() {
+  local saida v1 v2 v4 estado
+  conferir "$RAIZ/scripts/verificar-anon-w4.sql"
+  saida="$("${SSH[@]}" "$VERIFICA" < "$RAIZ/scripts/verificar-anon-w4.sql")"
+  printf '%s\n' "$saida" | sed 's/^/verifica /' | tee -a "$RECIBO"
+  v1=$(printf '%s\n' "$saida" | awk -F'|' '$1=="V1"{print $3}')
+  v2=$(printf '%s\n' "$saida" | awk -F'|' '$1=="V2"{print $3}')
+  v4=$(printf '%s\n' "$saida" | awk -F'|' '$1=="V4"{print $3}')
+  [[ "$v1" == 0 && "$v2" == 0 && "$v4" == 0 ]] && estado=FECHADO || estado=ABERTO
+  [[ -n "$v1" && -n "$v4" ]] || estado=ILEGIVEL
+  log "verifica anon: $estado (esperado: $1)"
+  [[ "$estado" == "$1" ]] || { log "VERIFICAÇÃO NÃO BATE: esperado $1, medido $estado"; return 1; }
+}
 
 log "== preflight $CARIMBO"
-"${SSH[@]}" "$LEITURA -P pager=off" < "$RAIZ/scripts/preflight-incidente-anon-w4.sql" | tee -a "$RECIBO"
-[[ "${1:-}" == "--so-checar" ]] && { log "só preflight: nada aplicado"; exit 0; }
-read -r -p "Preflight lido e sem BLOQUEIA=t? digite APLICAR: " ok; [[ "$ok" == "APLICAR" ]] || exit 1
+conferir "$RAIZ/scripts/preflight-incidente-anon-w4.sql"
+PRE="$("${SSH[@]}" "$LEITURA" < "$RAIZ/scripts/preflight-incidente-anon-w4.sql")"
+printf '%s\n' "$PRE" | sed 's/^/preflight /' | tee -a "$RECIBO"
+BLOQ="$(printf '%s\n' "$PRE" | awk -F'|' '$3=="t"{print $1}')"
+
+case "${1:-}" in
+  --so-checar)
+    verificar ABERTO || true
+    [[ -z "$BLOQ" ]] && log "preflight sem bloqueio" || log "BLOQUEIOS: $BLOQ"
+    log "só leitura: nada aplicado"; exit 0 ;;
+  --passo1)
+    [[ -z "$BLOQ" ]] || { log "RECUSADO: preflight bloqueia em: $BLOQ"; exit 1; }
+    # O instrumento precisa enxergar o buraco antes; senão o "FECHADO" de depois não prova nada.
+    verificar ABERTO || { log "RECUSADO: a verificação não vê o buraco antes de aplicar"; exit 1; } ;;
+  --passo2|--rollback) ;;
+  *) log "uso: --so-checar | --passo1 | --passo2 | --rollback"; exit 2 ;;
+esac
+read -r -p "Operação ${1} com os hashes acima autorizada? digite APLICAR: " ok; [[ "$ok" == "APLICAR" ]] || exit 1
 
 log "== backup"
 DUMP="/root/backups/pre-incidente-anon-w4-$CARIMBO.dump"
 "${SSH[@]}" "docker exec supabase-db pg_dump -U postgres -Fc -n public -n app_auth postgres > $DUMP && ls -la $DUMP" | tee -a "$RECIBO"
 "${SSH[@]}" "test -s $DUMP" || { log "backup vazio: abortado"; exit 1; }
-sonda "$(dirname "$RECIBO")/sonda-antes-$CARIMBO"
 
-case "${1:-}" in
+case "$1" in
   --passo1)
     aplicar supabase_admin v19_00_users_gatilho_papel_real
     aplicar supabase_admin v8_03_users_rls_policies
@@ -73,9 +113,10 @@ case "${1:-}" in
     aplicar supabase_admin v8_06_users_sensitive_columns_revoke ;;
   --rollback)
     aplicar supabase_admin v19_99_rollback ;;
-  *) log "uso: --so-checar | --passo1 | --passo2 | --rollback"; exit 2 ;;
 esac
 "${SSH[@]}" "$PG -c \"NOTIFY pgrst, 'reload schema'\"" >>"$RECIBO" 2>&1
-sonda "$(dirname "$RECIBO")/sonda-depois-$CARIMBO"
+case "$1" in
+  --passo1|--passo2) verificar FECHADO || { log "ALERTA: anon ainda alcança public — investigar já"; exit 1; } ;;
+  --rollback)        verificar ABERTO  || log "nota: rollback não reabriu anon como esperado" ;;
+esac
 log "== fim · recibo: $RECIBO · backup no servidor: $DUMP"
-log "   Esperado após --passo1: anon VE_LINHAS=0; S5 sem linhas de anon em public."

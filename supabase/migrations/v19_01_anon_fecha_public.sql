@@ -40,9 +40,10 @@
 -- -----------------------------------------------------------------------------
 -- O QUE FAZ
 -- -----------------------------------------------------------------------------
--- 1. Fotografa a ACL atual de toda relação e coluna de public em
---    app_auth.w4_acl_antes (schema sem rota no PostgREST). É o que o rollback
---    usa para devolver EXATAMENTE o estado anterior, concedente por concedente.
+-- 1. Fotografa a ACL de toda relação e coluna de public, antes e depois, em
+--    app_auth.w4_acl (schema sem rota no PostgREST), com schema e nome
+--    separados. O rollback devolve só o que o pacote mudou e aborta se algo
+--    que ele mudou foi alterado de novo depois da aplicação.
 -- 2. anon: REVOKE ALL em toda tabela, view, matview, tabela estrangeira e
 --    sequência de public, para cada concedente encontrado na ACL.
 -- 3. authenticated: perde TRUNCATE, REFERENCES e TRIGGER em toda relação de
@@ -82,43 +83,51 @@ BEGIN
     RAISE EXCEPTION 'v19_01 abortada: RLS desligada em public.users. Aplique v8_03 antes — '
                     'sem ela, o SELECT mantido para authenticated expõe todas as linhas.';
   END IF;
-  IF to_regclass('app_auth.w4_acl_antes') IS NOT NULL THEN
-    RAISE EXCEPTION 'v19_01 já aplicada (app_auth.w4_acl_antes existe) — esta migration não reaplica. '
+  IF to_regclass('app_auth.w4_acl') IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_01 já aplicada (app_auth.w4_acl existe) — esta migration não reaplica. '
                     'Para refazer: v19_99_rollback.sql e depois esta.';
   END IF;
 END
 $guard$;
 
 -- =============================================================================
--- 1. Fotografia da ACL anterior (só o necessário para o rollback)
+-- 1. Fotografia da ACL anterior (o "depois" é gravado no fim, seção 4b)
 -- =============================================================================
-CREATE TABLE app_auth.w4_acl_antes (
-  relacao      text        NOT NULL,   -- nome qualificado, sem depender de oid
+-- Nome em schema + nome separados e citados com %I no rollback: nunca depende
+-- de search_path (regclass::text omite o schema quando ele está no path, e um
+-- rollback com search_path=auth,public mexeria em auth.users).
+SET LOCAL search_path = pg_catalog;
+
+CREATE TABLE app_auth.w4_acl (
+  esquema      text        NOT NULL,
+  relacao      text        NOT NULL,
   coluna       text        NULL,       -- NULL = privilégio de relação
   relkind      "char"      NOT NULL,
-  acl          aclitem[]   NULL,       -- NULL = ACL padrão do dono
+  acl_antes    aclitem[]   NULL,       -- NULL = ACL padrão do dono
+  acl_depois   aclitem[]   NULL,
   capturado_em timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (relacao, coluna)
+  UNIQUE NULLS NOT DISTINCT (esquema, relacao, coluna)
 );
-REVOKE ALL ON app_auth.w4_acl_antes FROM PUBLIC, anon, authenticated, service_role;
-COMMENT ON TABLE app_auth.w4_acl_antes IS
-  'v19_01 (incidente anon, W4): ACL de public antes do fechamento. Lida só pelo '
-  'v19_99_rollback.sql, que a apaga ao terminar. Sem rota REST.';
+REVOKE ALL ON app_auth.w4_acl FROM PUBLIC, anon, authenticated, service_role;
+COMMENT ON TABLE app_auth.w4_acl IS
+  'v19_01 (incidente anon, W4): ACL de public antes e depois do fechamento. O '
+  'v19_99_rollback.sql devolve só as linhas que o pacote mudou, e aborta se '
+  'alguma mudou de novo depois. Apagada pelo rollback. Sem rota REST.';
 
-INSERT INTO app_auth.w4_acl_antes (relacao, coluna, relkind, acl)
-SELECT c.oid::regclass::text, NULL, c.relkind, c.relacl
-  FROM pg_class c
- WHERE c.relnamespace = 'public'::regnamespace
+INSERT INTO app_auth.w4_acl (esquema, relacao, coluna, relkind, acl_antes)
+SELECT n.nspname, c.relname, NULL, c.relkind, c.relacl
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public'
    AND c.relkind IN ('r','p','v','m','f','S');
 
-INSERT INTO app_auth.w4_acl_antes (relacao, coluna, relkind, acl)
-SELECT c.oid::regclass::text, a.attname, c.relkind, a.attacl
+INSERT INTO app_auth.w4_acl (esquema, relacao, coluna, relkind, acl_antes)
+SELECT n.nspname, c.relname, a.attname, c.relkind, a.attacl
   FROM pg_attribute a
   JOIN pg_class c ON c.oid = a.attrelid
- WHERE c.relnamespace = 'public'::regnamespace
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public'
    AND c.relkind IN ('r','p','v','m','f')
-   AND a.attnum > 0 AND NOT a.attisdropped
-   AND a.attacl IS NOT NULL;
+   AND a.attnum > 0 AND NOT a.attisdropped;
 
 -- =============================================================================
 -- 2. anon — zero acesso a relações de public; 3. authenticated sem T/x/t
@@ -188,6 +197,18 @@ GRANT UPDATE (name, email, role, first_login, needs_password_change, commission_
 
 -- DELETE filtrado por users_delete_admin (v8_03) e pelo gatilho de último ADMIN.
 GRANT DELETE ON TABLE public.users TO authenticated;
+
+-- =============================================================================
+-- 4b. Fotografia do "depois": é contra ela que o rollback confere o estado
+-- =============================================================================
+UPDATE app_auth.w4_acl s SET acl_depois = c.relacl
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE s.coluna IS NULL AND n.nspname = s.esquema AND c.relname = s.relacao;
+UPDATE app_auth.w4_acl s SET acl_depois = a.attacl
+  FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE s.coluna IS NOT NULL AND n.nspname = s.esquema AND c.relname = s.relacao AND a.attname = s.coluna;
+-- Só interessa o que mudou; o resto sai para a tabela ficar pequena.
+DELETE FROM app_auth.w4_acl WHERE acl_antes IS NOT DISTINCT FROM acl_depois;
 
 -- =============================================================================
 -- 5. Postflight — falha fechada

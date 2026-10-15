@@ -28,6 +28,24 @@ for f in "$FP_SQL" "$SONDA_PROD" "$W4_REF/fingerprint-prod.out" "$W4_REF/sonda-p
 done
 fp()    { P -f - < "$FP_SQL" 2>&1 | grep '|' | tr -d ' ' > "$1"; }
 sonda() { docker exec -i "$NOME" psql -U postgres -d postgres -X -P pager=off < "$SONDA_PROD" > "$1.out" 2> "$1.err"; }
+# Mesmas identidades do script de aplicação em produção:
+#   preflight → supabase_read_only_user, sessão read-only
+#   verifica  → postgres (membro de anon), sessão read-only, SET ROLE anon de verdade
+preflight() { docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$NOME" \
+  psql -h localhost -U supabase_read_only_user -d postgres -X -q -A -t -F'|' -v ON_ERROR_STOP=1 \
+  < "$RAIZ/scripts/preflight-incidente-anon-w4.sql" 2>&1; }
+# verifica [usuario] → ABERTO | FECHADO | ILEGIVEL (mesma regra do script de aplicação)
+verifica() {
+  local u="${1:-postgres}" h="" out v1 v2 v4
+  [ "$u" != postgres ] && h="-h localhost"
+  out=$(docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$NOME" \
+        psql $h -U "$u" -d postgres -X -q -A -t -F'|' -v ON_ERROR_STOP=1 < "$RAIZ/scripts/verificar-anon-w4.sql" 2>&1)
+  v1=$(printf '%s\n' "$out" | awk -F'|' '$1=="V1"{print $3}'); v2=$(printf '%s\n' "$out" | awk -F'|' '$1=="V2"{print $3}')
+  v4=$(printf '%s\n' "$out" | awk -F'|' '$1=="V4"{print $3}')
+  printf '%s\n' "$out" >> "$RECIBOS/verifica.txt"
+  [ -n "$v1" ] && [ -n "$v4" ] || { echo ILEGIVEL; return; }
+  [ "$v1" = 0 ] && [ "$v2" = 0 ] && [ "$v4" = 0 ] && echo FECHADO || echo ABERTO
+}
 aplicar() { # aplicar <papel> <arquivo> — registra no ledger do lab
   local cmd=PA; [ "$1" = postgres ] && cmd=P
   if $cmd -f - < "$W4_MIG/$2" > "$RECIBOS/aplicar-$2.log" 2>&1; then registrar "$W4_MIG/$2" "$1" ok; return 0
@@ -68,13 +86,17 @@ diff <(sed -n '/== S10/,/== S11/p' "$H/sonda-prod.out" | sort) <(sed -n '/== S10
 eq "$(grep -c '^anon|public|' <(sed -n '/== S5/,/== S6/p' "$R/sonda-base.out" | tr -d ' '))" "7" "sonda · S5 anon com os 7 privilégios em public"
 eq "$(sed -n '/== S5/,/== S6/p' "$R/sonda-base.out" | grep -E '^ anon +\| public' | awk -F'|' '{print $4}' | tr -d ' ' | sort -u)" "62" "sonda · S5 anon em 62 relações (produção: 62)"
 
-docker exec -i -e PGOPTIONS='-c default_transaction_read_only=on' "$NOME" psql -h localhost -U supabase_read_only_user -d postgres -X -A -F'|' -v ON_ERROR_STOP=1 \
-  < "$RAIZ/scripts/preflight-incidente-anon-w4.sql" > "$R/preflight-base.txt" 2>&1 \
-  && ok "preflight roda como supabase_read_only_user, sessão read-only" || nao "preflight falhou (ver preflight-base.txt)"
-grep -q '^P0 sessão só leitura|supabase_read_only_user|on|f|' "$R/preflight-base.txt" && ok "preflight · P0 sessão read-only, sem supabase_admin" || nao "preflight · P0"
-grep -q '^P1 auth.uid lê request.jwt.claims|t|f$' "$R/preflight-base.txt" && ok "preflight · P1 ok" || nao "preflight · P1"
-grep -q '^P3 gatilho de users é o original de 15/10|t|f$' "$R/preflight-base.txt" && ok "preflight · P3 corpo do gatilho = produção (md5)" || nao "preflight · P3"
-grep -q '^P6 relações de public com privilégio de anon|62$' "$R/preflight-base.txt" && ok "preflight · P6 = 62 relações" || nao "preflight · P6"
+preflight > "$R/preflight-base.txt" && ok "preflight roda como supabase_read_only_user, sessão read-only" || nao "preflight falhou (ver preflight-base.txt)"
+eq "$(grep -c '|t$' "$R/preflight-base.txt")" "0" "preflight · nenhum bloqueio na base"
+grep -q '^P0 sessão só leitura (supabase_read_only_user)|on|f$' "$R/preflight-base.txt" && ok "preflight · P0 sessão read-only, sem supabase_admin" || nao "preflight · P0"
+grep -q '^P1 auth.uid lê request.jwt.claims|true|f$' "$R/preflight-base.txt" && ok "preflight · P1" || nao "preflight · P1"
+grep -q '^P3 gatilho de users = original de 15/10|true|f$' "$R/preflight-base.txt" && ok "preflight · P3 corpo do gatilho = produção (md5)" || nao "preflight · P3"
+grep -q '^P6 relações de public com privilégio de anon (15/10: 62)|62|f$' "$R/preflight-base.txt" && ok "preflight · P6 = 62 relações" || nao "preflight · P6"
+PA -c "insert into public.users (id, name, email, role) values ('b0000000-0000-4000-8000-0000000000cc','Admin Sem Papel','admin2@example.invalid','ADMIN')" >/dev/null
+grep -q '^P4 ADMIN do cadastro sem papel em app_auth|1 de 2|t$' <(preflight) && ok "preflight · P4 BLOQUEIA com ADMIN sem papel em app_auth" || nao "preflight · P4 não bloqueou ADMIN sem papel"
+PA -c "delete from public.users where id='b0000000-0000-4000-8000-0000000000cc'" >/dev/null
+eq "$(verifica)" "ABERTO" "verificação como anon (postgres, read-only) vê o buraco no estado inseguro"
+eq "$(verifica supabase_read_only_user)" "ILEGIVEL" "verificação como supabase_read_only_user não finge FECHADO (não assume anon)"
 
 echo "▶ 1. defeito reproduzido na base"
 eq "$(estado anon 'select count(*) from public.users')" "ok:2" "anon · lê public.users"
@@ -101,6 +123,7 @@ eq "$(estado anon "insert into public.raw_events default values")" "42501" "anon
 eq "$(estado anon "select * from public.get_dashboard_totals(current_date-30, current_date, null)")" "42501" "anon · RPC invoker sobre tabela fechada negada"
 sonda "$R/sonda-pacote"
 eq "$(grep -c 'S8|anon|.*|VE_LINHAS' "$R/sonda-pacote.err")" "0" "sonda S8 · anon vê linha em 0 relações"
+eq "$(verifica)" "FECHADO" "verificação como anon: FECHADO depois do pacote"
 eq "$(grep -c '^anon|public|' <(sed -n '/== S5/,/== S6/p' "$R/sonda-pacote.out" | tr -d ' '))" "0" "sonda S5 · anon sem grant em public"
 
 echo "▶ 3b. authenticated como ADMIN (JWT com sub em app_auth.user_roles)"
@@ -150,7 +173,17 @@ eq "$(estado authenticated 'select password_hash from public.users' "$ADMIN")" "
 eq "$(estado service_role "select count(password_hash) from public.users")" "ok:2" "v8_06 · service_role continua lendo"
 
 echo "▶ 5. rollback completo (v19_99) a partir do pacote + v8_06"
-aplicar supabase_admin v19_99_rollback.sql && ok "v19_99 aplicou" || { nao "v19_99"; tail -5 "$R/aplicar-v19_99_rollback.sql.log"; }
+PA -c "REVOKE DELETE ON public.campaigns FROM authenticated" >/dev/null
+aplicar supabase_admin v19_99_rollback.sql && nao "rollback passou por cima de ACL alterada depois da aplicação" \
+  || { grep -q "ACL mudou depois da v19_01" "$R/aplicar-v19_99_rollback.sql.log" && ok "rollback ABORTA se a ACL mudou depois (campaigns), sem desfazer nada" || nao "rollback falhou por outro motivo"; }
+eq "$(estado authenticated 'delete from public.campaigns where false' "$ADMIN")" "42501" "endurecimento posterior preservado após o rollback abortado"
+PA -c "GRANT DELETE ON public.campaigns TO authenticated" >/dev/null
+ANTES_AUTH=$(PA -c "select relacl::text from pg_class where oid='auth.users'::regclass")
+docker exec -i -e PGOPTIONS='-c search_path=auth,public' "$NOME" psql -h localhost -U supabase_admin -d postgres -X -q -v ON_ERROR_STOP=1 \
+  < "$W4_MIG/v19_99_rollback.sql" > "$R/aplicar-v19_99_rollback.sql.log" 2>&1 && { ok "v19_99 aplicou (sessão com search_path=auth,public)"; registrar "$W4_MIG/v19_99_rollback.sql" supabase_admin ok; } \
+  || { nao "v19_99"; tail -5 "$R/aplicar-v19_99_rollback.sql.log"; }
+eq "$(PA -c "select relacl::text from pg_class where oid='auth.users'::regclass")" "$ANTES_AUTH" "rollback não toca auth.users mesmo com auth no search_path (nomes qualificados)"
+eq "$(verifica)" "ABERTO" "verificação como anon: ABERTO de novo depois do rollback"
 fp "$R/fp-rollback.txt"
 diff "$R/fp-base.txt" "$R/fp-rollback.txt" > "$R/diff-base-rollback.txt" && ok "rollback devolve o fingerprint EXATO da base (12/12 categorias)" || nao "rollback deixou resíduo (ver diff-base-rollback.txt)"
 eq "$(alcanca anon)" "62" "rollback · anon volta a alcançar 62 relações (estado anterior)"
