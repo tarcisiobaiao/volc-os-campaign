@@ -1090,7 +1090,7 @@ export default function CampaignDetailDashboard() {
                 Impressões vs Impressões Visíveis - Ad Exchange ({getChartPeriodTitle()})
               </CardTitle>
               <CardDescription className="text-xs">
-                Impressões GAM: {(campaign.gam_impressions || 0).toLocaleString()} • Impressões Visíveis: {(campaign.viewable_impressions || 0).toFixed(1)}%
+                Impressões GAM: {(campaign.gam_impressions || 0).toLocaleString('pt-BR')} • Impressões Visíveis: {(campaign.viewable_impressions || 0).toLocaleString('pt-BR')}
               </CardDescription>
             </CardHeader>
             <CardContent>

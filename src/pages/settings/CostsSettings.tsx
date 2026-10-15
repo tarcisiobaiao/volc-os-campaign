@@ -19,6 +19,13 @@ import { ProjectCostSharing } from '@/components/cost-sharing/ProjectCostSharing
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 
+/**
+ * Reais com separador de milhar. Era `toFixed(2).replace('.', ',')`, que
+ * escrevia "R$ 13320,00" nesta página e "R$ 13.320,00" em todas as outras.
+ */
+const formatoBrl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const brl = (valor: number): string => formatoBrl.format(valor);
+
 export default function CostsSettings() {
   const navigate = useNavigate();
   const { canManageCategories, canEditCosts, isAdmin } = useUserRole();
@@ -957,7 +964,7 @@ export default function CostsSettings() {
                   </CardTitle>
                   )}
                   <CardDescription>
-                    Subtotal: <span className="tabular font-medium text-foreground">R$ {categoryTotal.toFixed(2).replace('.', ',')}</span>
+                    Subtotal: <span className="tabular font-medium text-foreground">{brl(categoryTotal)}</span>
                     <span className="text-xs text-muted-foreground ml-2">
                       • {categoryCosts.length} {categoryCosts.length === 1 ? 'item' : 'itens'}
                     </span>
@@ -1007,7 +1014,7 @@ export default function CostsSettings() {
                         </div>
                         <div className="text-right">
                           <span className="font-display font-semibold text-lg tabular">
-                            R$ {(cost.amount || 0).toFixed(2).replace('.', ',')}
+                            {brl((cost.amount || 0))}
                           </span>
                         </div>
                       </div>
@@ -1094,7 +1101,7 @@ export default function CostsSettings() {
               </div>
               <div className="space-y-2">
                 <div className="font-display text-4xl font-bold tabular tracking-tight">
-                  R$ {getTotalActiveCosts().toFixed(2).replace('.', ',')}
+                  {brl(getTotalActiveCosts())}
                 </div>
                 <div className="space-y-1">
                   <p className="text-muted-foreground">
@@ -1106,7 +1113,7 @@ export default function CostsSettings() {
                         <Lightbulb className="h-4 w-4" />
                         Dividido entre {selectedProjectsForCosts.length} {selectedProjectsForCosts.length === 1 ? 'projeto' : 'projetos'}
                       </span>
-                      - <span className="tabular">R$ {costPerProject.toFixed(2).replace('.', ',')}</span> por projeto
+                      · <span className="tabular">{brl(costPerProject)}</span> por projeto
                     </p>
                   )}
                 </div>
@@ -1114,7 +1121,7 @@ export default function CostsSettings() {
 
               {categories.length > 0 && (
               <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'} gap-4 pt-4 border-t border-border`}>
-                  {categories.slice(0, 3).map((category, index) => {
+                  {categories.map((category, index) => {
                     const accents = ['text-info', 'text-success', 'text-primary'];
                     const categoryCosts = groupedCosts[category.name] || [];
                     return (
@@ -1123,7 +1130,7 @@ export default function CostsSettings() {
                           {category.name}
                         </div>
                   <div className="font-display text-lg font-semibold tabular">
-                          R$ {getCategoryActiveTotal(category.name).toFixed(2).replace('.', ',')}
+                          {brl(getCategoryActiveTotal(category.name))}
                   </div>
                         <div className="text-xs text-muted-foreground">
                           {categoryCosts.length} {categoryCosts.length === 1 ? 'item' : 'itens'}
