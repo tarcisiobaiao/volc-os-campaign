@@ -1,15 +1,15 @@
 # Inventário de higiene do repositório
 
-Gerado em `2026-10-15T09:11:45-03:00` por `scripts/auditar_repositorio.py`.
+Gerado em `2026-10-15T10:02:20-03:00` por `scripts/auditar_repositorio.py`.
 
 > Este relatório organiza evidências. Ele não declara arquivos mortos automaticamente.
 
 ## Resumo
 
-- 881 arquivos: 648 Markdown e 233 SQL;
-- 881 versionados e 0 ainda não versionados;
+- 891 arquivos: 652 Markdown e 239 SQL;
+- 888 versionados e 3 ainda não versionados;
 - 1 grupos de duplicatas exatas;
-- 149 SQL com palavras de mutação de alto risco.
+- 152 SQL com palavras de mutação de alto risco.
 
 ## Classificações
 
@@ -17,7 +17,7 @@ Gerado em `2026-10-15T09:11:45-03:00` por `scripts/auditar_repositorio.py`.
 |---|---:|
 | `archived` | 33 |
 | `audit` | 56 |
-| `documentation` | 459 |
+| `documentation` | 463 |
 | `generated` | 2 |
 | `module-guide` | 44 |
 | `product-document` | 23 |
@@ -27,7 +27,7 @@ Gerado em `2026-10-15T09:11:45-03:00` por `scripts/auditar_repositorio.py`.
 | `sql-diagnostic` | 5 |
 | `sql-migration-line` | 42 |
 | `sql-needs-lineage` | 50 |
-| `sql-needs-review` | 119 |
+| `sql-needs-review` | 125 |
 | `sql-validation` | 12 |
 
 ## Duplicatas exatas
@@ -178,6 +178,9 @@ estejam errados, mas impede aplicação automática.
 | `supabase/migrations/v17_04_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v18_01_identidade_leitura_minima.PROPOSTA.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v18_01_identidade_leitura_minima_rollback.PROPOSTA.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v20_01_ledger_migrations.sql` | `sql-needs-review` | 4 | 16 |
+| `supabase/migrations/v20_01_rollback.sql` | `sql-needs-review` | 1 | 0 |
+| `supabase/migrations/v20_02_rollback.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_01_app_auth_schema_and_roles.sql` | `sql-needs-review` | 12 | 34 |
 | `supabase/migrations/v8_02_pautador_policies_rewire.sql` | `sql-needs-review` | 1 | 0 |
 | `supabase/migrations/v8_03_users_rls_policies.sql` | `sql-needs-review` | 1 | 0 |

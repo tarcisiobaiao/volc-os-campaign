@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-15T09:11:45-03:00",
+  "generated_at": "2026-10-15T10:02:20-03:00",
   "warning": "candidate não significa morto; exclusão exige revisão humana e gates",
   "summary": {
-    "files": 881,
-    "markdown": 648,
-    "sql": 233,
-    "tracked": 881,
-    "untracked": 0,
+    "files": 891,
+    "markdown": 652,
+    "sql": 239,
+    "tracked": 888,
+    "untracked": 3,
     "exact_duplicate_groups": 1,
     "classifications": {
       "archived": 33,
       "audit": 56,
-      "documentation": 459,
+      "documentation": 463,
       "generated": 2,
       "module-guide": 44,
       "product-document": 23,
@@ -22,13 +22,13 @@
       "sql-diagnostic": 5,
       "sql-migration-line": 42,
       "sql-needs-lineage": 50,
-      "sql-needs-review": 119,
+      "sql-needs-review": 125,
       "sql-validation": 12
     },
     "sql_risk": {
-      "high": 149,
-      "medium": 59,
-      "read-only-or-ddl-free": 25
+      "high": 152,
+      "medium": 61,
+      "read-only-or-ddl-free": 26
     }
   },
   "exact_duplicates": [
@@ -38,6 +38,42 @@
     ]
   ],
   "files": [
+    {
+      "path": ".claude-ads/runs/creditoup-measurement-link-repair-20261015-01/CURATION-HANDOFF.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 1680,
+      "lines": 29,
+      "sha256": "c0da1a9dd4c23504c36f88594e69c4bf3b4827fa007035f607853f52dcdea8c1",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/creditoup-measurement-link-repair-20261015-01/FINAL-REPORT.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 2057,
+      "lines": 47,
+      "sha256": "59d5e23e38ace6c9d84e10c7c7bbfbdd7794b02b591e87ad370e9c4d9329aa49",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
+      "path": ".claude-ads/runs/creditoup-senac-measurement-audit-20261015-01/RELATORIO.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": false,
+      "bytes": 7724,
+      "lines": 173,
+      "sha256": "1763ed5e0e4dd37f70a0523eb6a008c2378c2c21be5643dc6150d95e1f46886f",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
     {
       "path": ".claude-ads/runs/editorial-refactor-20260930/frente-a-politicas/ledger.md",
       "extension": ".md",
@@ -1533,7 +1569,7 @@
       "tracked": true,
       "bytes": 24520,
       "lines": 321,
-      "sha256": "36b823937ed6975ebd2cbb847a0a9fbf3759fa7d935ccde3efb76f79667e3360",
+      "sha256": "ed726ba9efe760d76f028483793faf08831d8856ee651216a24f73244c7623bc",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
@@ -7299,6 +7335,18 @@
       "sql_risk": null
     },
     {
+      "path": "handoffs/freedom-lab-20261015/W6.md",
+      "extension": ".md",
+      "classification": "documentation",
+      "tracked": true,
+      "bytes": 5923,
+      "lines": 101,
+      "sha256": "c6a473d74a3ee065234ff566c88d142cbabaf2cd6da48a1e10f44c07cb7f1878",
+      "graph_nodes": 0,
+      "graph_degree": 0,
+      "sql_risk": null
+    },
+    {
       "path": "scripts/archive/README.md",
       "extension": ".md",
       "classification": "archived",
@@ -10011,6 +10059,54 @@
       "sql_risk": "high"
     },
     {
+      "path": "supabase/migrations/v20_01_ledger_migrations.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 14067,
+      "lines": 266,
+      "sha256": "7bac398ed09473b50ed61e49dbd070461faf33ac484987bcc4ad89aea28b6e49",
+      "graph_nodes": 4,
+      "graph_degree": 16,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v20_01_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 3557,
+      "lines": 62,
+      "sha256": "b3002fa8f1cba66dafbd53b49a9cb4b45f0d86cd2ddf8c3a35fe46f2ddbb2c4d",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
+      "path": "supabase/migrations/v20_02_ledger_linha_de_base.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 4152,
+      "lines": 81,
+      "sha256": "13fdec8976cca5ed91632a5df41fca1229d510510be4a13c9a71d2d60cc7d22a",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "medium"
+    },
+    {
+      "path": "supabase/migrations/v20_02_rollback.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1381,
+      "lines": 33,
+      "sha256": "f846622014bf3fe4e8d22cb7f915dc7b99c7ac4cf8fbff9c6bacbec0a3c894b7",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "high"
+    },
+    {
       "path": "supabase/migrations/v8_01_app_auth_schema_and_roles.sql",
       "extension": ".sql",
       "classification": "sql-needs-review",
@@ -10267,12 +10363,24 @@
       "extension": ".md",
       "classification": "module-guide",
       "tracked": true,
-      "bytes": 5082,
-      "lines": 88,
-      "sha256": "1f21b533aef66518158308672d6f5962a0000dd47122f26413dc70f1d08abd24",
+      "bytes": 7003,
+      "lines": 109,
+      "sha256": "8ee3ac4023b6ef2eca5da718483aa38b002d76451e8c69c6ea90ea964013c59b",
       "graph_nodes": 0,
       "graph_degree": 0,
       "sql_risk": null
+    },
+    {
+      "path": "tools/freedom-lab/db/base_prod_prereqs.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 2319,
+      "lines": 31,
+      "sha256": "63ea39a00821ac9b3321d4a694da17b81235a810b0a5409bf424db01f746992c",
+      "graph_nodes": 4,
+      "graph_degree": 6,
+      "sql_risk": "medium"
     },
     {
       "path": "tools/freedom-lab/db/fingerprint_schema.sql",
@@ -10309,6 +10417,18 @@
       "graph_nodes": 1,
       "graph_degree": 0,
       "sql_risk": "high"
+    },
+    {
+      "path": "tools/freedom-lab/db/sonda_search_path.sql",
+      "extension": ".sql",
+      "classification": "sql-needs-review",
+      "tracked": true,
+      "bytes": 1337,
+      "lines": 22,
+      "sha256": "04b38741149f4034aa8972533cc8e77a412ba2f0d3de3ceb553c8a02dfc6d658",
+      "graph_nodes": 1,
+      "graph_degree": 0,
+      "sql_risk": "read-only-or-ddl-free"
     },
     {
       "path": "tools/meta-adk-review/EXECUTION.md",
