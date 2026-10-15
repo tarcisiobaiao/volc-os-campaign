@@ -21,11 +21,11 @@ SECURITY DEFINER (o operador segue salvando URL de funil), default ACL de public
 sem anon/authenticated para tabela e sequência novas (função nova: lacuna
 declarada). Rollback: `v19_10_rollback.sql` — reverter ANTES do `v19_99_rollback.sql`.
 
-**Ordem com o W12 (v23_01, provisória até a confirmação dos revisores):** aplicar
+**Ordem com o W12 (v23_01, canônica):** aplicar
 v19 (pacote anon) → v19_10 → v23_01; reverter na ordem inversa (v23_01_rollback →
 v19_10_rollback → v19_99). Nenhum rollback confere se o outro rodou. A revisão
-local de 15/10 mediu também a ordem v23_01 → v19_10 e a achou segura; em nenhum
-estado testado anon ou PUBLIC ganharam escrita em `exchange_rate_history`. Suíte:
+local de 15/10 mediu as duas ordens; em nenhum estado testado anon ou PUBLIC
+ganharam escrita em `exchange_rate_history`. Suíte:
 `tools/freedom-lab/db/suites/v19_10_authenticated_minimo.sh`.
 
 ## Google Ads: v17_01 fatos granulares — 08/10/2026
