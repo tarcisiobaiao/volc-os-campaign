@@ -122,11 +122,12 @@ sql_de() { # sql_de <op> <alvo>
   else P -c "select volc_lab.sql_minimo('public.$2'::regclass, '$1')"; fi; }
 medir() { # medir <arquivo-saida>: SQLSTATE de cada fluxo como authenticated (JWT de ADMIN) e service_role
   : > "$1"
-  while IFS='|' read -r op alvo onde; do
+  # fd 3: estado/P usam docker exec -i e consumiriam o stdin do laço
+  while IFS='|' read -r op alvo onde <&3; do
     sql=$(sql_de "$op" "$alvo")
     printf '%s|%s|%s|%s|%s\n' "$op" "$alvo" "$(estado authenticated "$sql" "$ADMIN" | cut -c1-5)" \
       "$(estado service_role "$sql" | cut -c1-5)" "$onde" >> "$1"
-  done < "$R/fluxos.txt"
+  done 3< "$R/fluxos.txt"
 }
 
 echo "▶ 1. fluxos do app ANTES da v19_10"
@@ -143,6 +144,7 @@ eq "$(anon_fechado)" "FECHADO" "anon segue FECHADO depois da v19_10"
 
 echo "▶ 3. fluxos do app DEPOIS: nenhum regride"
 medir "$R/fluxos-depois.txt"
+eq "$(wc -l < "$R/fluxos-depois.txt" | tr -d ' ')" "$(wc -l < "$R/fluxos.txt" | tr -d ' ')" "todos os fluxos medidos depois"
 paste -d'|' "$R/fluxos-antes.txt" "$R/fluxos-depois.txt" | awk -F'|' '$3 != $8 {print $1"|"$2"|antes="$3"|depois="$8"|"$5}' > "$R/fluxos-regressao.txt"
 if [ -s "$R/fluxos-regressao.txt" ]; then
   while read -r l; do nao "fluxo mudou de resultado: $l"; done < "$R/fluxos-regressao.txt"
@@ -161,10 +163,13 @@ SELECT s.relacao, p.cmd
 SQL
 n_fora=$(wc -l < "$R/fora-da-decisao.txt" | tr -d ' ')
 n_ruim=0
-while IFS='|' read -r rel op; do
+n_testadas=0
+while IFS='|' read -r rel op <&3; do
+  n_testadas=$((n_testadas+1))
   st=$(estado authenticated "$(sql_de "$op" "$rel")" "$ADMIN" | cut -c1-5)
   [ "$st" = 42501 ] || { n_ruim=$((n_ruim+1)); echo "$rel|$op|$st" >> "$R/fora-da-decisao-aceita.txt"; }
-done < "$R/fora-da-decisao.txt"
+done 3< "$R/fora-da-decisao.txt"
+eq "$n_testadas" "$n_fora" "todas as $n_fora escritas tiradas foram exercitadas uma a uma"
 [ "$n_fora" -gt 0 ] && ok "há $n_fora escritas que authenticated tinha e perdeu" || nao "nenhuma escrita foi tirada (prova vazia)"
 eq "$n_ruim" "0" "todas as $n_fora escritas fora da decisão dão 42501 de verdade"
 eq "$(P -c "select count(*) from pg_class c where c.relnamespace='public'::regnamespace and c.relkind in ('r','p') and c.relname<>'users' and has_table_privilege('authenticated', c.oid, 'SELECT,INSERT,UPDATE,DELETE') and not c.relrowsecurity")" "0" "toda tabela que authenticated alcança tem RLS"
