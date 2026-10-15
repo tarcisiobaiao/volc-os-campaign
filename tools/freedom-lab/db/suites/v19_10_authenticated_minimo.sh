@@ -70,7 +70,8 @@ fluxos() { # fluxos <arquivo-saida> — 1 docker exec por fluxo; nada lê o stdi
   run projects_insert__ProjectsSettings.tsx:374 "$ADMIN" "" "INSERT INTO public.projects (project_name, main_url, domain, start_date, status, revshare) VALUES ('p2.example','https://p2.example','p2.example',current_date,'Active',0.1) RETURNING project_name;" "$EFEITO" >> "$O"
   run projects_update_revshare__ProjectsSettings.tsx:440 "$ADMIN" "" "UPDATE public.projects SET revshare=0.3, updated_at=now() WHERE id=9001;" "$EFEITO" >> "$O"
   run projects_update_type__ProjectDashboard.tsx:509 "$ADMIN" "" "UPDATE public.projects SET project_type='ADSENSE', updated_at=now() WHERE id=9001;" "$EFEITO" >> "$O"
-  run conversoes_com_gam__currencyConversionService.ts:218 "$ADMIN" "" "SELECT public.update_all_revenue_conversions();" "$EFEITO" >> "$O"
+ # já quebrado antes da v19_10 (gatilho de gam_metrics lê trafego_meta_adset sem grant)
+  run MORTO_conversoes_com_gam__currencyConversionService.ts:218 "$ADMIN" "" "SELECT public.update_all_revenue_conversions();" "$EFEITO" >> "$O"
   run conversoes_sem_gam__currencyConversionService.ts:218 "$ADMIN" "DELETE FROM public.gam_metrics;" "SELECT public.update_all_revenue_conversions();" "$EFEITO" >> "$O"
   run incubator_batch__incubatorService.ts:67 "$ADMIN" "" "SELECT public.insert_incubator_articles_batch(9001, ARRAY['novo titulo','t1']);" >> "$O"
   run incubator_sites_insert__incubatorService.ts:54 "$ADMIN" "" "INSERT INTO public.incubator_sites (site_name, site_niche, site_audience, wp_url) VALUES ('s2','n','a','https://s2.example') RETURNING site_name;" >> "$O"
@@ -138,7 +139,8 @@ fluxos "$R/fluxos-antes.txt"
 operador "$R/operador-antes.txt"
 eq "$(vivos "$R/fluxos-antes.txt" | grep -c '|OK|')" "$(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ')" "todos os $(vivos "$R/fluxos-antes.txt" | wc -l | tr -d ' ') fluxos vivos funcionam antes (ADMIN)"
 grep -v '|ok:' "$R/operador-antes.txt" > "$R/operador-antes-ja-negado.txt" || true
-eq "$(grep -v '^pautador_opp_outra_coluna' "$R/operador-antes.txt" | grep -c '|ok:')" "$(grep -vc '^pautador_opp_outra_coluna' "$R/operador-antes.txt")" "antes da v19_10 o OPERADOR consegue as escritas de dinheiro, sync_logs e setval (o buraco existe)"
+# gam_revenue já falha antes (gatilho lê trafego_meta_adset); pautador_opp_outra_coluna depende da policy antiga
+eq "$(grep -vE '^(pautador_opp_outra_coluna|gam_revenue)\|' "$R/operador-antes.txt" | grep -c '|ok:')" "$(grep -vcE '^(pautador_opp_outra_coluna|gam_revenue)\|' "$R/operador-antes.txt")" "antes da v19_10 o OPERADOR consegue as escritas de dinheiro, sync_logs e setval (o buraco existe)"
 grep -q 'dcm|123456789' "$R/fluxos-antes.txt" && ok "os fluxos medem o efeito dos gatilhos (linhas de daily_campaign_metrics no resultado)" || nao "fluxos sem efeito de gatilho"
 
 echo "▶ 2. MUTANTE: v19_10 sem o INSERT de daily_campaign_metrics"
@@ -168,7 +170,7 @@ while IFS='|' read -r nome st <&3; do
   [ "$st" = 42501 ] && ok "operador · $nome recusado (42501)" || nao "operador · $nome NÃO recusado ($st)"
 done 3< "$R/operador-depois.txt"
 eq "$(estado authenticated "update public.daily_campaign_metrics set commission_operator=commission_operator where campaign_id='123456789' returning 1" "$ADMIN" | cut -c1-4)" "ok:1" "ADMIN ainda grava dinheiro (telas de admin)"
-eq "$(P -c "select count(*) from pg_class c where c.relnamespace='public'::regnamespace and c.relkind='S' and has_sequence_privilege('authenticated', c.oid, 'UPDATE')")" "0" "nenhuma sequência de public com setval para authenticated"
+eq "$(P -c "select count(*) from pg_class c where c.relnamespace='public'::regnamespace and c.relkind='S' and case when c.relkind='S' then has_sequence_privilege('authenticated', c.oid, 'UPDATE') end")" "0" "nenhuma sequência de public com setval para authenticated"
 
 echo "▶ 5. escrita fora da decisão é recusada; RLS onde authenticated alcança"
 P -A -t -F'|' > "$R/fora-da-decisao.txt" <<'SQL'
