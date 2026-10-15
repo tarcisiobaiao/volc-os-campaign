@@ -1,3 +1,9 @@
+-- ⚠️ NÃO APLICAR (15/10/2026). Este arquivo está DEFASADO em relação à função
+-- viva em produção: ela devolve project_type, revshare,
+-- aggregated_revenue_revshare e aggregated_commission, e este DROP + CREATE as
+-- removeria (o dashboard lê aggregated_commission). A paginação agora é feita
+-- pelo PostgREST sobre a assinatura de 3 parâmetros — ver
+-- src/services/campanhasAgregadas.ts.
 -- ============================================================
 -- FIX: Paginação na RPC get_campaigns_aggregated
 -- ============================================================
