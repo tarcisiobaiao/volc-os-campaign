@@ -485,7 +485,9 @@ export const Lancamento: React.FC<Props> = ({
                       detalhe={p.falha_validacao
                         ? p.falha_validacao.classe ?? 'recusado'
                         : p.n_operacoes > 0
-                          ? 'o payload passou'
+                          ? (p.prova_google?.request_ids?.[0]
+                              ? `o payload passou · request ${p.prova_google.request_ids[0]}`
+                              : 'o payload passou')
                           : 'não foi consultado — a forma reprovou antes'} />
               </div>
             )}

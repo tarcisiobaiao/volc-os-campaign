@@ -1,0 +1,37 @@
+{
+ "classe": "chamadas reais de leitura (Supabase + Google Ads GAQL), sem escrita",
+ "lido_em": "2026-10-14 (America/Sao_Paulo)",
+ "estudio_criativo": {
+  "criativo_aprovacao": {
+   "total": 2,
+   "finalidade": {
+    "meta_ads": 2
+   },
+   "google": 0
+  },
+  "criativo_rendition_prontas": {
+   "total": 24,
+   "dimensoes": {
+    "1080x1350": 22,
+    "1080x1920": 2
+   }
+  }
+ },
+ "biblioteca_google_conta_5478096539": {
+  "IMAGE": [
+   {
+    "largura": 1024,
+    "altura": 1024,
+    "politica": "UNSPECIFIED",
+    "n": 1
+   }
+  ],
+  "YOUTUBE_VIDEO": 0
+ },
+ "falta_por_canal": {
+  "DISPLAY": "≥1 imagem paisagem 1,91:1 + ≥1 quadrada 1:1 aprovadas no Estúdio com finalidade Google (há 0); verba e CPC/estratégia declarados pelo operador para Display",
+  "DEMAND_GEN": "par paisagem+quadrada (multi-asset) e 1–5 logos, ou 1–5 vídeos YouTube + 1 logo quadrado, aprovados com finalidade Google; flag VOLC_DEMAND_GEN_VALIDATE_ONLY ligada no servidor; verba declarada",
+  "PERFORMANCE_MAX": "imagens paisagem+quadrada+logo por asset group aprovadas com finalidade Google; flag VOLC_PMAX_VALIDATE_ONLY; mensuração: ações primárias com include_in_conversions_metric=false na leitura (a conta usa metas personalizadas não lidas); verba declarada"
+ },
+ "nao_usado_de_proposito": "banners de ensaio de 09/10 (procedência LOCAL/ENSAIO) e verba de teste daquela prova: seriam fixture/autorização inventada"
+}

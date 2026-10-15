@@ -1,5 +1,7 @@
 # Núcleo operacional do engine Google Ads — execução de 14/10/2026
 
+> **Errata (homologação de 14/10, run google-homologacao-20261014-01):** os "bloqueios" de CNPJ, contato e divulgação do card 106 foram emitidos sobre o HTML vazio de um 404. Não são fato sobre o site e são `interpretacao_volc`, não exigência do Google. O único bloqueio de plataforma é o destino indisponível (rascunho). A varredura foi corrigida.
+
 Run `google-engine-nucleo-20261014-01` · checkout `volc-os-campaign-qg-real-20261007`,
 `main` @ fb446595 + delta local · um integrador, três pesquisadores (A APIs, B economia, C dados).
 Nenhuma mutação persistente no Google, nenhuma escrita no banco, migration, deploy ou push.

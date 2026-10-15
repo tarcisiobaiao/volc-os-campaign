@@ -787,3 +787,67 @@ def test_recibo_do_artefato_nao_mede_deriva_e_reprova_pelo_motivo_certo(
     assert "DERIVA_AO_VIVO" not in motivos, motivos
     assert "RECIBO_DE_OUTRO_CONTEUDO" not in motivos, motivos
     assert "live_drift" in motivos, motivos
+
+
+# ── 14/10/2026: 404 não é ausência de CNPJ; natureza de cada motivo ─────────
+
+_IDENTIDADE = {"IDENTIDADE_OPERADOR_AUSENTE", "IDENTIDADE_CONTATO_AUSENTE",
+               "DIVULGACAO_DE_MONETIZACAO_AUSENTE"}
+
+
+def test_pagina_404_nao_vira_ausencia_de_cnpj_contato_ou_divulgacao(
+        monkeypatch: pytest.MonkeyPatch):
+    """Medido no card 106: a LP em rascunho respondeu 404 e a resposta afirmava
+    que o site não tinha CNPJ, contato nem divulgação — sobre HTML que ninguém
+    leu. A recusa continua; a afirmação falsa sai."""
+    _instalar_portas_hermeticas(monkeypatch)
+    _instalar_linhas(monkeypatch, recibo=_recibo())
+    _instalar_leitura(monkeypatch, status=404, desktop="<html><body>404</body></html>")
+
+    d = _provar()
+    destino = d["destino"]
+    assert destino["elegivel"] is False and d["autorizacao"]["plano_impressao"] is None
+    assert not (_IDENTIDADE & set(destino["bloqueios"] + destino["riscos"]))
+    assert not any(c in m for m in destino["motivos"] for c in _IDENTIDADE)
+    nat = destino["por_natureza"]
+    assert [i["codigo"] for i in nat["plataforma"]] == ["DESTINO_INDISPONIVEL_PUBLICAMENTE"]
+    assert nat["erro_tecnico"] == []
+    assert any(x.get("verificacao") == "identity" or "identity" in str(x)
+               for x in nat["desconhecido"]), nat["desconhecido"]
+
+
+def test_leitura_que_nao_conclui_e_erro_tecnico_e_nao_regra_da_plataforma(
+        monkeypatch: pytest.MonkeyPatch):
+    _instalar_portas_hermeticas(monkeypatch)
+    _instalar_linhas(monkeypatch, recibo=_recibo())
+    _instalar_leitura(monkeypatch, erro=TimeoutError("a leitura do destino estourou"))
+
+    nat = _provar()["destino"]["por_natureza"]
+    assert [i["codigo"] for i in nat["erro_tecnico"]] == ["LEITURA_DO_DESTINO"]
+    assert not any(i["codigo"] == "DESTINO_INDISPONIVEL_PUBLICAMENTE" for i in nat["plataforma"])
+
+
+def test_cnpj_ausente_numa_pagina_lida_e_regra_interna_e_continua_bloqueando(
+        monkeypatch: pytest.MonkeyPatch):
+    """A regra da casa continua valendo — declarada como regra da casa."""
+    sem_identidade = ("<html><head><title>Guia</title></head><body><h1>Guia</h1>"
+                      f"<p>{_CORPO}</p></body></html>")
+    _instalar_portas_hermeticas(monkeypatch)
+    _instalar_linhas(monkeypatch, recibo=_recibo(sem_identidade))
+    _instalar_leitura(monkeypatch, desktop=sem_identidade)
+
+    destino = _provar()["destino"]
+    assert destino["elegivel"] is False
+    internas = {i["codigo"]: i["fundamento"] for i in destino["por_natureza"]["regra_interna"]}
+    assert internas.get("IDENTIDADE_OPERADOR_AUSENTE") == "interpretacao_volc"
+    assert "IDENTIDADE_OPERADOR_AUSENTE" not in {
+        i["codigo"] for i in destino["por_natureza"]["plataforma"]}
+
+
+def test_destino_conforme_nao_tem_motivo_em_nenhuma_natureza(monkeypatch: pytest.MonkeyPatch):
+    _cenario_conforme(monkeypatch)
+    d = _provar()
+    assert d["destino"]["elegivel"] is True
+    nat = d["destino"]["por_natureza"]
+    assert nat["erro_tecnico"] == [] and nat["desconhecido"] == []
+    assert not any(i["codigo"] == "DESTINO_INDISPONIVEL_PUBLICAMENTE" for i in nat["plataforma"])

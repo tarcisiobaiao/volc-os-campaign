@@ -735,6 +735,19 @@ export interface Preparo {
    *  o caminho em que o operador aprova e gasta — eles não teriam por onde
    *  chegar. Ver `Preparo.avisos_locais` em `volc_ads/subir.py`. */
   avisos_locais?: string[];
+  /** A identificação da chamada `validate_only` que o Google ACEITOU, com a
+   *  impressão do payload aceito. Ausente quando não houve aceite. Continua
+   *  presente quando o selo é retido pelo destino — o recibo da prova não
+   *  pode perder qual payload foi validado. */
+  prova_google?: {
+    request_ids: string[];
+    versao_api: string;
+    validado_em: string;
+    validate_only: true;
+    impressao_do_payload: string | null;
+    n_operacoes: number;
+    tipos_operacoes: Record<string, number>;
+  } | null;
 }
 
 /**

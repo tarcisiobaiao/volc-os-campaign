@@ -291,7 +291,17 @@ def _prova_google(prova: Any) -> dict[str, Any] | None:
         "versao_api": prova.versao_api,
         "validado_em": prova.validado_em,
         "validate_only": True,
+        "impressao_do_payload": getattr(prova, "impressao", "") or None,
+        "n_operacoes": getattr(prova, "n_operacoes", 0),
+        "tipos_operacoes": _contagem(getattr(prova, "tipos_operacoes", ())),
     }
+
+
+def _contagem(tipos: Any) -> dict[str, int]:
+    saida: dict[str, int] = {}
+    for t in tipos or ():
+        saida[t] = saida.get(t, 0) + 1
+    return saida
 
 
 def _resultado(r: Any) -> dict[str, Any] | None:

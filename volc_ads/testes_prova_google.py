@@ -111,3 +111,15 @@ def test_autocorrecao_registra_o_id_da_chamada_que_aceitou(monkeypatch):
                     + preparo.porque_nao())
     assert estado["n"] == 2
     assert preparo.prova_google.request_ids == ("req-aceitou",)
+
+
+def test_prova_guarda_a_impressao_do_payload_aceito(monkeypatch):
+    """O selo pode ser retido depois (destino); a prova não perde qual payload foi."""
+    monkeypatch.setattr(sb, "validar_mutacoes", _aceita_com_id(["req-x"])[0])
+    preparo = sb.preparar(CID, _brief(), login_customer_id=CID, canal="SEARCH")
+    assert preparo.prova_google.impressao == preparo.selo.impressao
+    assert preparo.prova_google.n_operacoes == len(preparo.operacoes)
+    visto = projecao.preparo(preparo)["prova_google"]
+    assert visto["impressao_do_payload"] == preparo.selo.impressao
+    assert sum(visto["tipos_operacoes"].values()) == len(preparo.operacoes)
+    assert "campaign_operation.create" in visto["tipos_operacoes"]

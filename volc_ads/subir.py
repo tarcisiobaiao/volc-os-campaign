@@ -217,6 +217,12 @@ class ProvaGoogle:
     request_ids: tuple[str, ...]
     versao_api: str
     validado_em: str
+    #: A impressão das operações que a API ACEITOU — a mesma do `Selo`. Fica
+    #: aqui também porque o selo pode ser retido depois (destino inelegível) e
+    #: a resposta o apaga; o recibo da prova não pode perder qual payload foi.
+    impressao: str = ""
+    n_operacoes: int = 0
+    tipos_operacoes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -887,6 +893,9 @@ def preparar(
             request_ids=tuple(request_ids),
             versao_api=VERSAO_API,
             validado_em=datetime.now(timezone.utc).isoformat(),
+            impressao=autoridade.impressao,
+            n_operacoes=len(operacoes),
+            tipos_operacoes=autoridade.tipos,
         ),
     )
 

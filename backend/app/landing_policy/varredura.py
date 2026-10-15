@@ -787,6 +787,18 @@ def varrer_identidade(pagina: PaginaObservada) -> Verificacao:
         )
     parser = analisar(pagina.html)
     texto = texto_visivel(pagina.html)
+    if not texto:
+        # ⚠️ SEM TEXTO NÃO HÁ AUSÊNCIA A AFIRMAR. Medido em 14/10/2026 no card
+        # 106: a LP em rascunho respondeu 404, o HTML chegou vazio, e esta
+        # varredura emitia IDENTIDADE_OPERADOR_AUSENTE, IDENTIDADE_CONTATO_AUSENTE
+        # e DIVULGACAO_DE_MONETIZACAO_AUSENTE sobre uma página que ninguém leu —
+        # ao lado do próprio status `unavailable`. A recusa continua (indisponível
+        # vira desconhecido e reprova no ponto de campanha); o que sai é a
+        # afirmação falsa de que o site não tem CNPJ, contato ou divulgação.
+        return Verificacao(
+            nome=V_IDENTIDADE, status=STATUS_INDISPONIVEL,
+            detalhe="página sem texto visível para inspecionar",
+        )
     baixo = texto.lower()
     achados: list[Achado] = []
 
@@ -881,10 +893,9 @@ def varrer_identidade(pagina: PaginaObservada) -> Verificacao:
     ]
     return Verificacao(
         nome=V_IDENTIDADE,
-        status=STATUS_OBSERVADO if texto else STATUS_INDISPONIVEL,
+        status=STATUS_OBSERVADO,
         achados=achados,
         inventario=inventario,
-        detalhe="" if texto else "página sem texto visível para inspecionar",
     )
 
 

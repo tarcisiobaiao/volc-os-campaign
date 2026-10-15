@@ -1,0 +1,24 @@
+{
+ "DISPLAY": {
+  "http": 422,
+  "detalhe": {
+   "codigo": "PARAMETRO_DO_OPERADOR_AUSENTE",
+   "faltam": [
+    "budget_diario (orçamento diário da campanha, na moeda da conta)",
+    "cpc_inicial (lance MANUAL_CPC, na moeda da conta; ou `grupos[].cpc_inicial` em todos os grupos)"
+   ],
+   "mensagem": "Declare o parâmetro: o engine não o preenche com estimativa de CPC, zero ou valor padrão.",
+   "nada_foi_criado": true
+  }
+ },
+ "DEMAND_GEN": {
+  "http": 422,
+  "detalhe": "[{'type': 'campo_obrigatorio', 'loc': ['body', 'demand_gen'], 'msg': 'canal DEMAND_GEN exige campos explícitos do contrato vertical: demand_gen, assets_demand_gen. `null` é ausência.', 'input': None, 'ctx': {'codigo': 'CAMPO_OBRIGATORIO', 'caminho': 'demand_gen'}}, {'type': 'campo_obrigatorio', 'loc': ['body', 'assets_demand_gen'], 'msg': 'canal DEMAND_GEN exige campos explícitos do contrato vertical: demand_gen, assets_demand_gen. `null` é ausência.', 'input': None, 'ctx': {'codigo': 'CAMPO_OBRIGATORIO', 'caminho': 'assets_demand_gen'}}]"
+ },
+ "PERFORMANCE_MAX": {
+  "http": 422,
+  "detalhe": "[{'type': 'campo_obrigatorio', 'loc': ['body', 'pmax'], 'msg': 'canal PERFORMANCE_MAX exige campos explícitos do contrato vertical: pmax, assets_pmax. `null` é ausência.', 'input': None, 'ctx': {'codigo': 'CAMPO_OBRIGATORIO', 'caminho': 'pmax'}}, {'type': 'campo_obrigatorio', 'loc': ['body', 'assets_pmax'], 'msg': 'canal PERFORMANCE_MAX exige campos explícitos do contrato vertical: pmax, assets_pmax. `null` é ausência.', 'input': None, 'ctx': {'codigo': 'CAMPO_OBRIGATORIO', 'caminho': 'assets_pmax'}}]"
+ },
+ "chamadas_ao_google": 0
+}
+

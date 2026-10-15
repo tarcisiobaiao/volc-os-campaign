@@ -1,5 +1,7 @@
 # Mapa real do caminho Search — medido em 14/10/2026
 
+> **Errata (homologação de 14/10, run google-homologacao-20261014-01):** os "bloqueios" de CNPJ, contato e divulgação do card 106 foram emitidos sobre o HTML vazio de um 404. Não são fato sobre o site e são `interpretacao_volc`, não exigência do Google. O único bloqueio de plataforma é o destino indisponível (rascunho). A varredura foi corrigida.
+
 Classe de cada evidência: `leitura real`, `validate_only real`, `sessão real (leitura)`,
 `código`, `fixture`. Nada foi criado, ativado ou gravado no banco.
 

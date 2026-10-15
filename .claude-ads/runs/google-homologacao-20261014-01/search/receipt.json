@@ -1,0 +1,103 @@
+{
+  "canal": "SEARCH",
+  "classe": "validate_only real pela rota /provar canônica (identidade substituída e declarada)",
+  "origem_dos_insumos": {
+    "conjunto": "oportunidade 106, cluster 10 (aprovado; portão real)",
+    "copy": "Gemini de 14/10 (gemini-1.json do run google-engine-nucleo-20261014-01), sem nova geração",
+    "financeiro": "pedido do operador de 09/10 (provar-106-search-pedido-v3.json, sha256 8eb58f63…): R$ 10/dia, CPC R$ 0,50, MANUAL_CPC, só Google Search"
+  },
+  "pedido_sha256": "ac921767f7ac8a50a73187ff1c429f7e57f1552a7aa6750e4a3dedc78ed7ad8c",
+  "pedido_igual_ao_de_14_10": true,
+  "http": 200,
+  "rpc_enviadas": [
+    {
+      "validate_only": true,
+      "partial_failure": false,
+      "n": 40,
+      "impressao_recalculada": "a3b85ccce55118f2a7c15adbef08e213c637197b25dcd7bcc9166cec981f609d",
+      "em": "2026-10-15T02:26:13.845508+00:00"
+    }
+  ],
+  "prova_google": {
+    "request_ids": [
+      "yfaLR3S6gKa_TI0Gb4xP2g"
+    ],
+    "versao_api": "v25",
+    "validado_em": "2026-10-15T02:26:17.092084+00:00",
+    "validate_only": true,
+    "impressao_do_payload": "a3b85ccce55118f2a7c15adbef08e213c637197b25dcd7bcc9166cec981f609d",
+    "n_operacoes": 40,
+    "tipos_operacoes": {
+      "campaign_budget_operation.create": 1,
+      "campaign_operation.create": 1,
+      "campaign_criterion_operation.create": 2,
+      "ad_group_operation.create": 1,
+      "ad_group_criterion_operation.create": 14,
+      "ad_group_ad_operation.create": 1,
+      "asset_operation.create": 10,
+      "campaign_asset_operation.create": 10
+    }
+  },
+  "payload_enviado_confere_com_recibo": true,
+  "falha_validacao": null,
+  "recusa_local": null,
+  "avisos_locais": [
+    "headline: Repetição de palavra entre recursos do mesmo grupo (política 14848296) — aparece em 5 itens (limite 4)"
+  ],
+  "autorizacao": {
+    "plano_impressao": null,
+    "elegivel": false,
+    "ativacao_incluida": false
+  },
+  "destino_por_natureza": {
+    "plataforma": [
+      {
+        "codigo": "DESTINO_INDISPONIVEL_PUBLICAMENTE",
+        "detalhe": "destino público não validado: a leitura 'usuario_desktop' respondeu HTTP 404 para https://creditoup.com.br/?post_type=r&p=2477. Rascunho e página privada aparecem assim — não é problema de conteúdo.",
+        "fundamento": "google"
+      }
+    ],
+    "regra_interna": [],
+    "desconhecido": [
+      {
+        "verificacao": "claims_and_disclosures",
+        "status": "unavailable",
+        "motivo": "página sem texto visível para inspecionar"
+      },
+      {
+        "verificacao": "content_originality_and_congruence",
+        "status": "unavailable",
+        "motivo": "página sem texto visível"
+      },
+      {
+        "verificacao": "government_services",
+        "status": "unavailable",
+        "motivo": "página sem texto visível"
+      },
+      {
+        "verificacao": "identity",
+        "status": "unavailable",
+        "motivo": "página sem texto visível para inspecionar"
+      },
+      {
+        "verificacao": "live_drift",
+        "status": "not_applicable",
+        "motivo": "nenhum HTML ao vivo observado nesta avaliação"
+      },
+      {
+        "verificacao": "redirect_and_cloaking",
+        "status": "unavailable",
+        "motivo": "cadeia de redirecionamento não medida; sem par rastreador/usuário rotulado para comparar (variantes: nenhuma)"
+      }
+    ],
+    "erro_tecnico": []
+  },
+  "sem_mudanca_na_conta": true,
+  "mutacoes_persistentes": 0,
+  "validacao_tecnica_nao_e": [
+    "anúncio aprovado",
+    "campanha criada",
+    "veiculação",
+    "ROI"
+  ]
+}

@@ -136,6 +136,25 @@ describe('a prova diz a verdade sobre cada juiz', () => {
   });
 });
 
+describe('o aceite do Google mostra qual chamada aceitou', () => {
+  it('exibe o request ID do validate_only quando a resposta o traz', async () => {
+    provarCampanha.mockResolvedValue({
+      ...APROVADO,
+      preparo: {
+        ...APROVADO.preparo,
+        prova_google: {
+          request_ids: ['req-aceite-123'], versao_api: 'v25',
+          validado_em: '2026-10-15T00:00:00+00:00', validate_only: true,
+          impressao_do_payload: 'abc', n_operacoes: 40, tipos_operacoes: {},
+        },
+      },
+    });
+    const { container } = renderizar();
+
+    await waitFor(() => expect(container.textContent).toContain('request req-aceite-123'));
+  });
+});
+
 // ── a autocorreção precisa aparecer, sobretudo quando dá certo ─────────────
 
 const CORRIGIDO_E_APROVADO = {

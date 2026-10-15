@@ -61,6 +61,7 @@ from app.config import get_settings
 # `publisher_quality.fetch` só é CHAMADO dentro do portão, nunca no import.
 from app.criativo import politica as pol_criativa
 from app.criativo.politica import PoliticaCriativaRecusou
+from app.landing_policy import contrato as lp_contrato
 from app.landing_policy import (
     JANELA_DE_FRESCOR_PADRAO_S,
     POLICY_CONTRACT_VERSION,
@@ -3912,7 +3913,16 @@ class DestinoIlegivel(RuntimeError):
 
     Levantada e TRADUZIDA em recusa, nunca engolida: "não consegui olhar" é o
     que o portão transforma em desconhecido, e desconhecido nunca fica verde.
+
+    `natureza` separa o que a tela não pode misturar: o destino RESPONDEU e não
+    serviu a página (`indisponivel`: 404 de rascunho, página divergente) é fato
+    sobre o destino; a leitura que nem concluiu (`erro_tecnico`: rede, TLS,
+    timeout) é fato sobre a nossa leitura.
     """
+
+    def __init__(self, mensagem: str, *, natureza: str = "erro_tecnico"):
+        super().__init__(mensagem)
+        self.natureza = natureza
 
 
 def _ler_destino_ao_vivo(url: str) -> dict[str, dict[str, Any]]:
@@ -3945,10 +3955,12 @@ def _ler_destino_ao_vivo(url: str) -> dict[str, dict[str, Any]]:
             raise DestinoIlegivel(
                 f"destino público não validado: a leitura {rotulo!r} respondeu HTTP "
                 f"{status} para {pqf.url_para_recibo(url)}. Rascunho e página "
-                "privada aparecem assim — não é problema de conteúdo.")
+                "privada aparecem assim — não é problema de conteúdo.",
+                natureza="indisponivel")
         problema = _pagina_recebida(url, leitura)
         if problema:
-            raise DestinoIlegivel(f"destino público não validado ({rotulo}): {problema}")
+            raise DestinoIlegivel(f"destino público não validado ({rotulo}): {problema}",
+                                  natureza="indisponivel")
         leituras[rotulo] = leitura
     return leituras
 
@@ -4120,6 +4132,8 @@ class DestinoDeCampanha:
     #: O que o projeto declarou de adtech/chrome e DE ONDE veio — inclusive a
     #: ausência, dita por extenso.
     declaracoes_do_projeto: dict = dataclasses.field(default_factory=dict)
+    #: "" quando a leitura concluiu; senão `indisponivel` ou `erro_tecnico`.
+    natureza_da_leitura: str = ""
 
     @property
     def elegivel(self) -> bool:
@@ -4178,7 +4192,40 @@ class DestinoDeCampanha:
             },
             "recibo_de_aprovacao": {"presente": self.recibo_presente},
             "declaracoes_do_projeto": dict(self.declaracoes_do_projeto),
+            "por_natureza": self.por_natureza(),
         }
+
+    def por_natureza(self) -> dict[str, list[Any]]:
+        """Os mesmos motivos, separados pelo que eles SÃO.
+
+        `plataforma`: o texto da política do Google sustenta (fundamento
+        `google`), ou o destino respondeu sem servir a página. `regra_interna`:
+        leitura mais estrita da casa ou decisão da casa (`interpretacao_volc`,
+        `interna_volc`, `nao_classificado`) — continua bloqueando por
+        severidade, mas não é exigência do Google. `desconhecido`: verificação
+        exigida que não concluiu; não é ausência. `erro_tecnico`: a nossa
+        leitura falhou. Só informa: quem decide o bloqueio continua `elegivel`.
+        """
+        av = self.avaliacao
+        plataforma: list[Any] = []
+        interna: list[Any] = []
+        for achado in (*av.bloqueios, *av.riscos):
+            item = {"codigo": achado.codigo,
+                    "fundamento": lp_contrato.fundamento(achado.codigo)}
+            (plataforma if item["fundamento"] == lp_contrato.FUNDAMENTO_GOOGLE
+             else interna).append(item)
+        interna.extend({"codigo": "RECUSA_DO_PORTAO", "fundamento": "interna_volc",
+                        "detalhe": m} for m in self.motivos_do_portao)
+        erro: list[Any] = []
+        if self.detalhe_da_leitura:
+            leitura = {"codigo": "LEITURA_DO_DESTINO", "detalhe": self.detalhe_da_leitura}
+            if self.natureza_da_leitura == "indisponivel":
+                plataforma.append({**leitura, "codigo": "DESTINO_INDISPONIVEL_PUBLICAMENTE",
+                                   "fundamento": lp_contrato.FUNDAMENTO_GOOGLE})
+            else:
+                erro.append(leitura)
+        return {"plataforma": plataforma, "regra_interna": interna,
+                "desconhecido": list(av.desconhecidos), "erro_tecnico": erro}
 
 
 def _recusas_do_recibo(recibo: Optional[dict[str, Any]]) -> tuple[str, ...]:
@@ -4220,14 +4267,16 @@ def _avaliar_destino(url: str, *, recibo: Optional[dict[str, Any]],
     seria indistinguível, para quem lê a tela, de "o portão não rodou".
     """
     detalhe = ""
+    natureza = ""
     leituras: dict[str, dict[str, Any]] = {}
     try:
         leituras = _ler_destino_ao_vivo(url)
     except DestinoIlegivel as exc:
-        detalhe = str(exc)
+        detalhe, natureza = str(exc), exc.natureza
     except Exception as exc:  # noqa: BLE001
         detalhe = (f"a leitura ao vivo do destino falhou "
                    f"({type(exc).__name__}: {str(exc)[:160]})")
+        natureza = "erro_tecnico"
 
     declaracoes = declaracoes if declaracoes is not None else _declaracoes_do_projeto(None)
     pagina = _pagina_do_destino(
@@ -4240,6 +4289,7 @@ def _avaliar_destino(url: str, *, recibo: Optional[dict[str, Any]],
         # rigor com que a página é medida.
         avaliacao=elegibilidade_de_destino_de_campanha(pagina),
         detalhe_da_leitura=detalhe,
+        natureza_da_leitura=natureza,
         recibo_presente=bool(recibo),
         motivos_do_portao=_recusas_do_recibo(recibo),
         # ⚠️ OS DOIS HASHES POR VARIANTE, e não só o que decidiu.
@@ -4296,6 +4346,7 @@ async def _destino_de_campanha(url: str, *,
                 f"a leitura ao vivo do destino passou de {int(TIMEOUT_DESTINO_S)}s "
                 "e foi encerrada. Nada foi criado, e um destino que não pôde ser "
                 "lido não é um destino elegível."),
+            natureza_da_leitura="erro_tecnico",
         )
 
 
