@@ -48,7 +48,11 @@ W15_APLICAR="$RAIZ/supabase/migrations/v26_01_meta_insight_latest_completa.sql"
 W15_REVERTER="$RAIZ/supabase/migrations/v26_01_rollback.sql"
 W15_ATIVO="meta_account_metaacct_w15lab"
 
-w15_sql() { P -Atc "$1" 2>&1 | head -1; }
+# No Mac, P e PA são `docker exec -i ... psql`: o docker repassa o stdin
+# inteiro do chamador ao container, mesmo com -c. Toda chamada que não lê
+# SQL do stdin recebe </dev/null, e os loops leem por fd 3, para que uma
+# chamada dentro do loop nunca engula as linhas seguintes.
+w15_sql() { P -Atc "$1" < /dev/null 2>&1 | head -1; }
 w15_aplicar()  { PA -v ON_ERROR_STOP=1 -f - < "$W15_APLICAR"  > "$RECIBOS/w15-$1.out" 2>&1; }
 w15_reverter() { PA -v ON_ERROR_STOP=1 -f - < "$W15_REVERTER" > "$RECIBOS/w15-$1.out" 2>&1; }
 w15_fp() {
@@ -82,7 +86,7 @@ w15_fato() {  # $1 id  $2 objeto  $3 observado_em  $4 spend  $5 completo
 # RETURNING, que independe do -q do psql) e guarda a saída em RECIBOS.
 w15_contar() {  # $1 rótulo  $2 INSERT sem ';'
   local saida="$RECIBOS/w15-ins-$1.out"
-  PA -v ON_ERROR_STOP=1 -Atc "WITH w15_ins AS ($2 RETURNING 1) SELECT count(*) FROM w15_ins" > "$saida" 2>&1 || return 1
+  PA -v ON_ERROR_STOP=1 -Atc "WITH w15_ins AS ($2 RETURNING 1) SELECT count(*) FROM w15_ins" < /dev/null > "$saida" 2>&1 || return 1
   head -1 "$saida"
 }
 w15_exige() {  # eq que também devolve o status, para parar a suíte
@@ -99,8 +103,9 @@ w15_suite() {
   echo "▶ v26 · base Meta no container"
   eq "$(basename "${MIGRATION:-}")|$(basename "${ROLLBACK:-}")" \
      "v26_01_meta_insight_latest_completa.sql|v26_01_rollback.sql" "v26 · MIGRATION/ROLLBACK do recibo são a v26_01"
-  local linha arq chave
-  while IFS= read -r linha; do
+  local linha arq chave lidos=0
+  while IFS= read -r linha <&3; do
+    lidos=$((lidos + 1))
     arq=${linha%%|*}; chave=${linha#*|}
     if [ "$(w15_sql "$chave")" = "t" ]; then
       ok "v26 · base já tem $arq"
@@ -109,7 +114,9 @@ w15_suite() {
     else
       nao "v26 · cadeia Meta: $arq ($(tail -1 "$RECIBOS/w15-base-$arq.out"))"; return 1
     fi
-  done <<< "$W15_CADEIA"
+  done 3<<< "$W15_CADEIA"
+  # Prova de que nenhuma chamada dentro do loop engoliu as linhas seguintes.
+  w15_exige "$lidos" "6" "v26 · cadeia Meta: os 6 arquivos foram percorridos" || return 1
 
   echo "▶ v26 · referência do Cofre (o dump schema-only vem sem dados)"
   # cofre_ativo tem FK (kind, cluster) → cofre_tipo, e cofre_tipo.cluster →
@@ -139,9 +146,9 @@ w15-d3 1004 2026-10-15T11:30:00Z 11.00 true"
   w15_um "ativo" "$(printf "INSERT INTO public.cofre_ativo (ativo_id, kind, cluster, nome, plataforma, estado, criticidade, resumo, dono_nome, dono_custodia, capacidades, proxima_acao) VALUES ('%s', 'meta_ad_account', 'paid_media', 'Conta Meta lab W15', 'Meta Ads', 'ready', 'high', 'Conta sintetica do laboratorio W15.', 'VOLC', 'verified', ARRAY['meta_read'], 'Nenhuma acao: fixture de teste descartavel.')" "$W15_ATIVO")" || return 1
   w15_um "conta" "$(printf "INSERT INTO public.trafego_meta_ad_account (cofre_ativo_id, account_external_id, moeda, timezone_name, readiness_state) VALUES ('%s', '9990001', 'BRL', 'America/Sao_Paulo', 'READY_FOR_READ')" "$W15_ATIVO")" || return 1
   local id obj obs spend comp
-  while read -r id obj obs spend comp; do
+  while read -r id obj obs spend comp <&3; do
     w15_um "$id" "$(w15_fato "$id" "$obj" "$obs" "$spend" "$comp")" || return 1
-  done <<< "$fatos"
+  done 3<<< "$fatos"
   w15_exige "$(w15_sql "select count(*) from public.trafego_meta_insight_daily where ad_account_ativo_id = '$W15_ATIVO'")" "9" \
      "v26 · semente: 4 grãos, 9 revisões no fato" || return 1
 
