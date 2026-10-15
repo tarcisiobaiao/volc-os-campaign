@@ -399,9 +399,17 @@ w12_suite() {
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 10.00) $(printf "$upsert" 10.0000) $W12_OBS;")" "1" \
      "v23 · 10 e 10.00 são o mesmo valor: sem versão espúria"
-  eq "$(w12_bloco "$base_rec SET LOCAL ROLE anon; TRUNCATE public.joinads_metrics; RESET ROLE;
-        SELECT (SELECT count(*) FROM public.vw_receita_vigente WHERE tabela_origem='joinads_metrics')||'|'||(SELECT operacao||':'||removida||':'||(proveniencia->>'papel') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm' ORDER BY id DESC LIMIT 1);")" \
-     "0|TRUNCATE:true:anon" "v23 · TRUNCATE na origem vira versão removida de cada chave, com o papel, e a vigente acompanha"
+  # Quem trunca é o primeiro papel que DE FATO tem TRUNCATE na base (dump: anon;
+  # pós-v19/v19_10: talvez só service_role). Sem nenhum, reprova.
+  local papel_t
+  papel_t=$(w12_sql "select coalesce((select r from unnest(array['anon','authenticated','service_role']) with ordinality u(r, o) where has_table_privilege(r, 'public.joinads_metrics', 'TRUNCATE') order by o limit 1), '-')")
+  if [ "$papel_t" = "-" ]; then
+    nao "v23 · nenhum de anon/authenticated/service_role tem TRUNCATE em joinads_metrics: TRUNCATE não provado"
+  else
+    eq "$(w12_bloco "$base_rec SET LOCAL ROLE $papel_t; TRUNCATE public.joinads_metrics; RESET ROLE;
+          SELECT (SELECT count(*) FROM public.vw_receita_vigente WHERE tabela_origem='joinads_metrics')||'|'||(SELECT operacao||':'||removida||':'||(proveniencia->>'papel') FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm' ORDER BY id DESC LIMIT 1);")" \
+       "0|TRUNCATE:true:$papel_t" "v23 · TRUNCATE na origem (por $papel_t) vira versão removida de cada chave, com o papel, e a vigente acompanha"
+  fi
   eq "$(w12_bloco "$base_rec TRUNCATE public.joinads_metrics; $(w12_jads 2026-10-13 10) SELECT count(*)||'|'||trim_scale(max(receita)) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" \
      "1|10" "v23 · reingestão depois do TRUNCATE volta a ficar vigente"
 
@@ -502,6 +510,10 @@ w12_suite() {
 
   echo "▶ v23 · ordem errada com o W4: o rollback da v23 nunca reabre a anon"
   PA -c "GRANT INSERT, UPDATE, DELETE, TRUNCATE ON public.exchange_rate_history TO anon" >/dev/null 2>&1   # retrato do incidente
+  # Retrato dos privilégios dos outros papéis ANTES da v23, para o rollback
+  # devolver exatamente o que havia (base do dump ou pós-v19/v19_10).
+  local w12_acl_q="select coalesce(string_agg(pg_get_userbyid(a.grantee) || ':' || a.privilege_type, ' ' order by 1), '-') from pg_class c, aclexplode(c.relacl) a where c.oid = 'public.exchange_rate_history'::regclass and a.grantee <> 0 and pg_get_userbyid(a.grantee) <> 'anon'"
+  local w12_acl_antes; w12_acl_antes=$(w12_sql "$w12_acl_q")
   w12_aplicar w4-depois && ok "v23 · v23_01 aplicada com a anon ainda aberta (ordem errada)" || nao "v23 · aplicar w4-depois ($(tail -1 "$RECIBOS/w12-w4-depois.out"))"
   eq "$(w12_sql "select count(*) from public.v23_01_acl_anterior where papel = 'anon'")" "4" "v23 · o retrato guardado tem a escrita da anon"
   PA -c "REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.exchange_rate_history FROM anon" >/dev/null 2>&1   # W4 fecha a escrita da anon depois da v23
@@ -509,7 +521,7 @@ w12_suite() {
   eq "$(w12_sql "select has_table_privilege('anon','public.exchange_rate_history','INSERT') or has_table_privilege('anon','public.exchange_rate_history','UPDATE') or has_table_privilege('anon','public.exchange_rate_history','DELETE') or has_table_privilege('anon','public.exchange_rate_history','TRUNCATE')")" "f" \
      "v23 · com a anon fechada depois da v23, o rollback da v23 deixa a anon fechada"
   grep -q 'NÃO devolvido a anon' "$RECIBOS/w12-w4-depois-reverter.out" && ok "v23 · o que não foi devolvido à anon fica registrado (NOTICE)" || nao "v23 · rollback sem NOTICE do que não devolveu"
-  eq "$(w12_sql "select has_table_privilege('authenticated','public.exchange_rate_history','INSERT,UPDATE,DELETE,TRUNCATE')")" "t" "v23 · authenticated recebe de volta o que tinha"
+  eq "$(w12_sql "$w12_acl_q")" "$w12_acl_antes" "v23 · os outros papéis (authenticated, service_role, postgres…) recebem de volta exatamente o que tinham antes da v23"
 
   # Devolve o ACL da anon/PUBLIC de antes da suíte (o lab sai como entrou).
   local par_acl
