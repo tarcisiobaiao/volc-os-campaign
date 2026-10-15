@@ -86,7 +86,7 @@ export class ErroDeApi extends Error {
   }
 }
 
-class SecureApiClient {
+export class SecureApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
@@ -152,8 +152,14 @@ class SecureApiClient {
       let codigo: string | undefined;
       try {
         const json = JSON.parse(texto);
-        mensagem = json.error || mensagem;
-        codigo = json.codigo;
+        // Express devolve `{error, codigo}`; o FastAPI devolve `{detail}`, que é
+        // uma frase ou um objeto `{codigo, mensagem}`. Os dois chegam iguais.
+        const detalhe = json.detail;
+        mensagem =
+          json.error ||
+          (typeof detalhe === 'string' ? detalhe : detalhe?.mensagem) ||
+          mensagem;
+        codigo = json.codigo ?? (typeof detalhe === 'object' ? detalhe?.codigo : undefined);
       } catch {
         if (texto) mensagem = texto;
       }
@@ -162,6 +168,15 @@ class SecureApiClient {
 
     if (!texto) return undefined as unknown as T;
     return JSON.parse(texto) as T;
+  }
+
+  /**
+   * Requisição autenticada a uma rota nomeada, para clientes de domínio que
+   * reaproveitam esta mesma porta (token da sessão, falha fechada sem sessão,
+   * `ErroDeApi` com status e código). Ver `src/features/bia/api.ts`.
+   */
+  async requisitar<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, init);
   }
 
   // -------------------------------------------------------------------------

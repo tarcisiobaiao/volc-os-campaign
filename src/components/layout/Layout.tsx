@@ -10,6 +10,11 @@ import SinoDeAlertas from "@/components/layout/SinoDeAlertas";
 import { SeletorDeTema } from '@/components/layout/SeletorDeTema';
 import { MenuDoUsuario } from "./MenuDoUsuario";
 import { localizar } from "./destinos";
+import { isBiaEnabled } from "@/features/bia/featureFlag";
+
+// Bia (P09-T04) sob demanda e só com a flag: desligada, o Layout não importa
+// nada da Bia (nem a sessão, nem o widget) e o chunk principal não cresce.
+const BiaNoLayout = React.lazy(() => import("@/features/bia/BiaNoLayout"));
 
 const CHAVE_RECOLHIDO = "volc.menu.recolhido";
 
@@ -192,6 +197,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </main>
+      {/* Bia (P09-T04): só com VITE_BIA_ENABLED e papel ADMIN; some no logout. */}
+      {isBiaEnabled() ? (
+        <React.Suspense fallback={null}>
+          <BiaNoLayout />
+        </React.Suspense>
+      ) : null}
     </div>
   );
 };
