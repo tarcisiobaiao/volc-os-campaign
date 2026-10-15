@@ -13,6 +13,10 @@
 
 export const AUSENTE = '—';
 
+/** Ausência para toda a camada: nulo, indefinido ou não-finito (NaN, ±Infinity). */
+export const ausente = (v: number | null | undefined): v is null | undefined =>
+  v == null || !Number.isFinite(v);
+
 // ── formatação ──────────────────────────────────────────────────────────────
 
 export type FormatoDeNumero =
@@ -23,12 +27,29 @@ export type FormatoDeNumero =
   /** ROAS, multiplicador: 0,07× */
   | { tipo: 'razao'; casas?: number };
 
+/** Casas decimais que o formato efetivamente mostra (percentual conta as 2 do ×100). */
+function casasVisiveis(formato: FormatoDeNumero): number {
+  switch (formato.tipo) {
+    case 'inteiro':
+      return 0;
+    case 'percentual':
+      return (formato.casas ?? 1) + 2;
+    default:
+      return formato.casas ?? 2;
+  }
+}
+
 /**
- * Formata em pt-BR. `null`/`undefined`/`NaN` devolvem o travessão — nunca "0".
- * Percentual recebe a FRAÇÃO (0,125 → 12,5%), como o Intl.
+ * Formata em pt-BR. `null`, `undefined` e qualquer não-finito (NaN, ±Infinity)
+ * devolvem o travessão — nunca "0", nunca "∞". Um ROAS de custo zero é
+ * ausência de base, não um número infinito.
+ *
+ * Valor que arredonda a zero na precisão exibida sai como zero sem sinal
+ * ("0,0%", nunca "-0,0%"). Percentual recebe a FRAÇÃO (0,125 → 12,5%), como o Intl.
  */
 export function formatarNumero(valor: number | null | undefined, formato: FormatoDeNumero): string {
-  if (valor == null || Number.isNaN(valor)) return AUSENTE;
+  if (ausente(valor)) return AUSENTE;
+  if (Math.abs(valor) * 10 ** casasVisiveis(formato) < 0.5) valor = 0;
   switch (formato.tipo) {
     case 'inteiro':
       return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(valor);
@@ -81,19 +102,34 @@ export type AvaliacaoDeDelta = {
  * ⚠️ Base zero não produz percentual: de 0 para 10 não é "+∞%" nem "+100%".
  * A direção ainda é conhecida, a magnitude relativa não.
  */
+/**
+ * Menor variação relativa que a tela distingue de zero: `Delta` mostra 1 casa
+ * de percentual, então abaixo de 0,05% o operador lê "0,0%".
+ */
+export const LIMIAR_DE_VARIACAO = 0.0005;
+
 export function avaliarDelta(
   atual: number | null | undefined,
   base: number | null | undefined,
   sentido: Sentido,
 ): AvaliacaoDeDelta {
-  if (atual == null || base == null || Number.isNaN(atual) || Number.isNaN(base)) {
+  if (ausente(atual) || ausente(base)) {
     return { direcao: 'desconhecida', fracao: null, tom: 'neutro' };
   }
   const diferenca = atual - base;
-  const direcao: Direcao = diferenca > 0 ? 'sobe' : diferenca < 0 ? 'desce' : 'igual';
-  const fracao = base === 0 ? null : diferenca / Math.abs(base);
+  const fracaoBruta = base === 0 ? null : diferenca / Math.abs(base);
+  // ⚠️ Uma variação que a tela mostra como zero não ganha seta nem juízo:
+  // ruído de ponto flutuante (0,1 + 0,2 − 0,3) desenharia "▲ +0,0%" em verde.
+  // Com base zero não há fração; aí só ruído de máquina conta como igual.
+  const igual =
+    fracaoBruta == null
+      ? Math.abs(diferenca) <= Number.EPSILON * Math.max(1, Math.abs(atual))
+      : Math.abs(fracaoBruta) < LIMIAR_DE_VARIACAO;
+  if (igual) return { direcao: 'igual', fracao: base === 0 ? null : 0, tom: 'neutro' };
+  const direcao: Direcao = diferenca > 0 ? 'sobe' : 'desce';
+  const fracao = fracaoBruta;
   let tom: TomDoDelta = 'neutro';
-  if (direcao !== 'igual' && sentido !== 'neutro') {
+  if (sentido !== 'neutro') {
     const subiu = direcao === 'sobe';
     tom = (sentido === 'maior-melhor') === subiu ? 'bom' : 'ruim';
   }
@@ -160,7 +196,7 @@ export function geometriaDaSparkline(
   altura: number,
   respiro = 2,
 ): GeometriaDaSparkline {
-  const medidos = valores.filter((v): v is number => v != null && !Number.isNaN(v));
+  const medidos = valores.filter((v): v is number => !ausente(v));
   const lacunas = valores.length - medidos.length;
   if (medidos.length === 0) return { trechos: [], isolados: [], final: null, lacunas };
 
@@ -185,7 +221,7 @@ export function geometriaDaSparkline(
   };
 
   valores.forEach((v, i) => {
-    if (v == null || Number.isNaN(v)) {
+    if (ausente(v)) {
       fechar();
       return;
     }

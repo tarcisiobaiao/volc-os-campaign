@@ -83,6 +83,9 @@ export default {
 					DEFAULT: 'hsl(var(--demo))',
 					foreground: 'hsl(var(--demo-foreground))'
 				},
+				/* V3: tinta do Delta, legível a 11px nos dois temas. */
+				'delta-bom': 'hsl(var(--delta-bom))',
+				'delta-ruim': 'hsl(var(--delta-ruim))',
 				raised: {
 					DEFAULT: 'hsl(var(--raised))',
 					foreground: 'hsl(var(--raised-foreground))'
