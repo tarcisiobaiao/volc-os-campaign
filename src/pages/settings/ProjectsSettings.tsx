@@ -53,6 +53,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { formatBrlCurrency, formatCostCurrency } from "@/utils/currencyUtils";
 import { calculateROAS, getROASColorStyles, getROASColorCategory } from "@/utils/roasCalculations";
+import { formatarNumero } from "@/lib/instrumento";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useToast } from "@/hooks/use-toast";
@@ -1003,9 +1004,16 @@ export default function ProjectsSettings() {
                               <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Receita UTM</div>
                             </td>
                             <td className={isMobile ? 'p-2' : 'p-4'}>
-                              <div className={`inline-flex ${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
-                                {Math.round(roas)}%
-                              </div>
+                              {(project.investment || 0) > 0 ? (
+                                <div className={`inline-flex ${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular px-3 py-1 rounded-lg border ${getROIColor(roas)}`}>
+                                  {formatarNumero(roas / 100, { tipo: 'percentual', casas: 0 })}
+                                </div>
+                              ) : (
+                                // Sem gasto não há excedente: "—", não "0%".
+                                <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-display font-bold tabular text-muted-foreground`} aria-label="sem gasto no período">
+                                  {formatarNumero(null, { tipo: 'percentual' })}
+                                </div>
+                              )}
                               <div className="flex items-center gap-1 mt-1">
                                 <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>sobre o gasto</span>
                               </div>

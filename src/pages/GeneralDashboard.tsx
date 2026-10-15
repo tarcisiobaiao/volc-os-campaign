@@ -80,6 +80,7 @@ import { useUserFilters } from "@/hooks/useUserFilters";
 import { CampaignHighlights } from "@/components/dashboard/CampaignHighlights";
 import { AnimatedGradient } from "@/components/ui/animated-gradient";
 import { PonteDeComando } from "@/components/dashboard/PonteDeComando";
+import { formatarNumero } from "@/lib/instrumento";
 import { FontesDeDados } from "@/components/dashboard/FontesDeDados";
 import { PainelInstrumento } from "@/components/sistema/PainelInstrumento";
 
@@ -952,13 +953,20 @@ export default function GeneralDashboard() {
                         <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-muted-foreground`}>Receita UTM</div>
                       </td>
                       <td className={isMobile ? 'p-2' : 'p-4'}>
-                        <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} font-bold tabular rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
-                          {Math.round(calculateROAS(project.revenue, project.investment))}%
-                        </div>
-                        <div className={`flex items-center gap-1 ${isMobile ? 'mt-0.5' : 'mt-1'}`}>
-                          {getTrendIcon(project.trend)}
-                          <span className={`${isMobile ? 'text-[10px]' : 'text-xs'}`}>{getTrendText(project.trend)}</span>
-                        </div>
+                        {/* Sem gasto não há excedente: "—", não "0%" (PRODUCT §4).
+                            A linha "Subindo/Caindo/Estável" saiu: não era
+                            tendência, era um corte fixo do ROI do próprio
+                            período (supabaseDataService, "simplified estimation"). */}
+                        {project.investment > 0 ? (
+                          <div className={`${isMobile ? 'text-sm px-2 py-0.5' : 'text-lg px-3 py-1'} inline-flex font-bold tabular rounded-lg border ${getROIColor(calculateROAS(project.revenue, project.investment))}`}>
+                            {formatarNumero(calculateROAS(project.revenue, project.investment) / 100, { tipo: 'percentual', casas: 0 })}
+                          </div>
+                        ) : (
+                          <div className={`${isMobile ? 'text-sm' : 'text-lg'} font-bold tabular text-muted-foreground`} aria-label="sem gasto no período">
+                            {formatarNumero(null, { tipo: 'percentual' })}
+                          </div>
+                        )}
+                        <div className={`${isMobile ? 'text-[10px] mt-0.5' : 'text-xs mt-1'} text-muted-foreground`}>sobre o gasto</div>
                       </td>
                       <td className={isMobile ? 'p-2' : 'p-4'}>
                         <TooltipProvider>
