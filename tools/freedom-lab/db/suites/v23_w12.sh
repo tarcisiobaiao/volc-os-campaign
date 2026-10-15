@@ -279,6 +279,17 @@ w12_suite() {
      "v23 · upsert idêntico (D-1 reescrevendo) não cria versão"
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) $W12_OBS; ")" "2" "v23 · mudança de receita cria versão nova"
+  # Releitura (pedido do W14): o mesmo valor regravado não é versão, mas fica registrado.
+  local w12_rel="SELECT confirmacoes||'|'||(versao_id = (SELECT max(id) FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-utm'))||'|'||coalesce(confirmado_por->>'papel','-') FROM public.receita_releitura WHERE chave->>'utm_campaign_value'='w12-lab-utm';"
+  # shellcheck disable=SC2059
+  eq "$(w12_bloco "$base_rec $(printf "$upsert" 10) $(printf "$upsert" 10.00) $w12_rel")" "2|true|service_role" \
+     "v23 · releitura do mesmo valor (10 e 10.00) conta confirmação na versão vigente, com quem releu"
+  # shellcheck disable=SC2059
+  eq "$(w12_bloco "$base_rec $(printf "$upsert" 10) $(printf "$upsert" 12) $w12_rel")" "0|true|-" \
+     "v23 · versão nova zera a releitura e passa a apontar para ela"
+  # shellcheck disable=SC2059
+  eq "$(w12_bloco "$base_rec $(printf "$upsert" 10) SELECT confirmacoes||'|'||(confirmado_em >= coletado_em) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "1|true" \
+     "v23 · vw_receita_vigente expõe confirmado_em e confirmacoes (colunas a mais, versão igual)"
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) SELECT trim_scale(receita) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "12" \
      "v23 · vw_receita_vigente mostra a última versão"
@@ -309,8 +320,9 @@ w12_suite() {
   eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
         CREATE TEMP TABLE w12_n AS SELECT count(*) AS n, (SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') AS rc FROM public.receita_observacao;
         SET LOCAL ROLE service_role; UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'; RESET ROLE;
-        SELECT ((SELECT count(*) FROM public.receita_observacao) - n)||'|'||((SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') IS DISTINCT FROM rc) FROM w12_n;")" \
-     "0|true" "v23 · mudança do dólar reescreve revenue_converted de gam_metrics em massa e não cria versão nenhuma no diário"
+        SELECT ((SELECT count(*) FROM public.receita_observacao) - n)||'|'||((SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') IS DISTINCT FROM rc)
+               ||'|'||(SELECT confirmacoes FROM public.receita_releitura WHERE chave->>'utm_campaign_value' = 'w12-lab-gam') FROM w12_n;")" \
+     "0|true|0" "v23 · mudança do dólar reescreve revenue_converted de gam_metrics em massa: nem versão nova, nem releitura (recálculo não releu a fonte)"
 
   echo "▶ v23 · câmbio impossível, escala numérica e TRUNCATE"
   eq "$(w12_bloco "$cots $(w12_jads 2026-10-20 4 w12-lab-zero) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-zero')||'|'||cambio_modo||'|'||trim_scale(cambio_taxa)||'|'||cambio_defasagem_dias FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
@@ -351,6 +363,7 @@ w12_suite() {
     eq "$(estado "$papel" "insert into public.receita_observacao (fonte, tabela_origem, chave, operacao, removida, moeda, cambio_modo, proveniencia, impressao_digital) values ('joinads','x','{}','INSERT',false,'USD','sem_cotacao','{}','x')")" "42501" "v23 · $papel escreve no diário: negado"
     eq "$(estado "$papel" "update public.receita_observacao set removida = true")" "42501" "v23 · $papel altera o diário: negado"
     eq "$(estado "$papel" "insert into public.v23_01_acl_anterior values ('anon', 'INSERT')")" "42501" "v23 · $papel escreve no retrato de ACL: negado"
+    eq "$(estado "$papel" 'select count(*) from public.receita_releitura')" "42501" "v23 · $papel lê a releitura: negado"
   done
   # Incidente do lab (revisor local): setval na sequência do diário fez o
   # upsert de gam_metrics do service_role cair com 23505.
@@ -368,8 +381,18 @@ w12_suite() {
   eq "$(estado service_role "select count(*) from public.cambio_resolver('2026-10-13')")" "ok:1" "v23 · service_role executa cambio_resolver"
   eq "$(estado service_role "select public.receita_observar('joinads','USD','joinads_metrics','{}'::jsonb,array['date'],'INSERT',false,'{}'::jsonb)")" "42501" "v23 · service_role não forja versão por receita_observar"
   eq "$(estado service_role "insert into public.receita_observacao (fonte, tabela_origem, chave, operacao, removida, moeda, cambio_modo, proveniencia, impressao_digital) values ('joinads','x','{}','INSERT',false,'USD','sem_cotacao','{}','x')")" "42501" "v23 · service_role não escreve direto no diário"
+  eq "$(estado service_role "update public.receita_releitura set confirmado_em = now()")" "42501" "v23 · service_role não forja releitura"
+  eq "$(estado service_role 'select count(*) >= 0 from public.receita_releitura')" "ok:t" "v23 · service_role lê a releitura"
   eq "$(w12_sql "select prosecdef from pg_proc where oid = 'public.receita_registrar_observacao()'::regprocedure")" "t" "v23 · gatilho do diário é SECURITY DEFINER"
   eq "$(w12_sql "select relrowsecurity from pg_class where oid = 'public.receita_observacao'::regclass")" "t" "v23 · RLS ligada no diário"
+
+  echo "▶ v23 · releitura em transações separadas (coletas de dias diferentes)"
+  # shellcheck disable=SC2059
+  w12_confirma "$(w12_jads 2026-10-11 3 w12-lab-rel)" rel-1 && sleep 1 \
+    && w12_confirma "SET LOCAL ROLE service_role; INSERT INTO public.joinads_metrics (date, utm_campaign_value, joinads_domain, revenue) VALUES ('2026-10-11','w12-lab-rel','w12-lab.example.invalid', 3) ON CONFLICT (date, utm_campaign_value, joinads_domain) DO UPDATE SET revenue = EXCLUDED.revenue; RESET ROLE;" rel-2 \
+    && ok "v23 · coleta e releitura confirmadas" || nao "v23 · releitura ($(tail -1 "$RECIBOS/w12-rel-2.out"))"
+  eq "$(w12_sql "select (r.confirmado_em > o.coletado_em)||'|'||r.confirmacoes||'|'||(select count(*) from public.receita_observacao where chave->>'utm_campaign_value' = 'w12-lab-rel') from public.receita_releitura r join public.receita_observacao o on o.id = r.versao_id where r.chave->>'utm_campaign_value' = 'w12-lab-rel'")" "true|1|1" \
+     "v23 · releitura posterior: confirmado_em avança além do coletado_em, sem versão nova (receita estável ≠ coletor parado)"
 
   echo "▶ v23 · reverter recusa com dado, e a recusa é atômica"
   w12_confirma "$(w12_cot 2026-10-13 5.41 '2026-10-13 13:15:00-03') $(w12_jads 2026-10-13 10)" dado \
@@ -379,6 +402,7 @@ w12_suite() {
   eq "$(w12_aplicada)" "t" "v23 · recusa não deixou a migration pela metade"
   # Limpeza só de teste: o diário é append-only por gatilho; o dono desliga, apaga o que não é carga e religa.
   w12_limpa "ALTER TABLE public.receita_observacao DISABLE TRIGGER receita_observacao_imutavel;
+             DELETE FROM public.receita_releitura r USING public.receita_observacao o WHERE o.id = r.versao_id AND o.operacao <> 'CARGA';
              DELETE FROM public.receita_observacao WHERE operacao <> 'CARGA';
              ALTER TABLE public.receita_observacao ENABLE TRIGGER receita_observacao_imutavel;" limpa-diario
   w12_reverter reverter-com-cotacao && nao "v23 · reverter apagou cotação coletada" || \

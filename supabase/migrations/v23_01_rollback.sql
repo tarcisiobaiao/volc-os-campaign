@@ -80,6 +80,7 @@ DROP FUNCTION IF EXISTS public.receita_as_of(timestamptz, text);
 DROP FUNCTION IF EXISTS public.receita_registrar_observacao();
 DROP FUNCTION IF EXISTS public.receita_registrar_truncate();
 DROP FUNCTION IF EXISTS public.receita_observar(text, text, text, jsonb, text[], text, boolean, jsonb);
+DROP TABLE IF EXISTS public.receita_releitura;
 DROP TABLE IF EXISTS public.receita_observacao;
 DROP FUNCTION IF EXISTS public.receita_observacao_imutavel();
 DROP FUNCTION IF EXISTS public.cambio_resolver(date, text, integer, timestamptz);

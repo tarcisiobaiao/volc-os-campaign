@@ -137,6 +137,7 @@ BEGIN
    WHERE table_schema = 'public' AND table_name = 'exchange_rate_history'
      AND column_name IN ('par', 'fonte', 'as_of', 'coletado_em', 'proveniencia');
   IF faltando IS NOT NULL OR to_regclass('public.receita_observacao') IS NOT NULL
+     OR to_regclass('public.receita_releitura') IS NOT NULL
      OR to_regclass('public.v23_01_acl_anterior') IS NOT NULL THEN
     RAISE EXCEPTION 'v23_01 recusada: % já existe — esta migration não reaplica por cima',
       coalesce('exchange_rate_history.' || faltando, 'receita_observacao/v23_01_acl_anterior');
@@ -328,6 +329,25 @@ CREATE TRIGGER receita_observacao_sem_truncate
   BEFORE TRUNCATE ON public.receita_observacao
   FOR EACH STATEMENT EXECUTE FUNCTION public.receita_observacao_imutavel();
 
+-- Releitura sem versão nova: a coleta que regrava o MESMO valor não cria
+-- versão (contrato do diário), mas fica registrada aqui. Uma linha por chave,
+-- presa à versão vigente: confirmado_em = última vez que uma escrita direta
+-- (profundidade de gatilho 1: coletor, upsert, n8n) trouxe o mesmo valor. Sem
+-- isso, "receita estável" e "coletor parado" são indistinguíveis (W14).
+-- Recálculo legado aninhado (update_all_revenue_converted, disparado por
+-- system_settings) NÃO confirma: não releu a fonte. Não é replay: guarda só a
+-- última confirmação de cada chave, não o histórico das confirmações.
+CREATE TABLE public.receita_releitura (
+  tabela_origem   text        NOT NULL,
+  chave           jsonb       NOT NULL,
+  versao_id       bigint      NOT NULL,     -- receita_observacao.id (sem FK: o diário recusa TRUNCATE pelo próprio gatilho)
+  confirmado_em   timestamptz NOT NULL,     -- = coletado_em da versão até a 1ª releitura
+  confirmacoes    integer     NOT NULL DEFAULT 0 CHECK (confirmacoes >= 0),
+  confirmado_por  jsonb,                    -- proveniência da última releitura
+  PRIMARY KEY (tabela_origem, chave)
+);
+ALTER TABLE public.receita_releitura ENABLE ROW LEVEL SECURITY;   -- sem policy: cliente não vê
+
 -- Grava uma versão se o fato mudou. Devolve true quando gravou.
 -- Nunca levanta por falta de câmbio: a ingestão de receita não pode cair por isso.
 CREATE FUNCTION public.receita_observar(
@@ -350,6 +370,7 @@ DECLARE
   v_cas_of  timestamptz;
   v_cfonte  text;
   v_defas   integer;
+  v_id      bigint;
 BEGIN
   FOREACH k IN ARRAY p_chaves LOOP
     v_chave := v_chave || jsonb_build_object(k, p_linha -> k);
@@ -403,7 +424,14 @@ BEGIN
     v_cas_of, v_defas,
     CASE WHEN v_modo = 'moeda_local' THEN v_receita
          WHEN v_modo IN ('exata', 'anterior') THEN v_receita * v_taxa END,
-    coalesce(p_proveniencia, '{}'::jsonb), v_dig);
+    coalesce(p_proveniencia, '{}'::jsonb), v_dig)
+  RETURNING id INTO v_id;
+  -- Versão nova zera a releitura da chave.
+  INSERT INTO public.receita_releitura AS r (tabela_origem, chave, versao_id, confirmado_em, confirmacoes, confirmado_por)
+  VALUES (p_tabela, v_chave, v_id, now(), 0, NULL)
+  ON CONFLICT (tabela_origem, chave) DO UPDATE
+    SET versao_id = EXCLUDED.versao_id, confirmado_em = EXCLUDED.confirmado_em,
+        confirmacoes = 0, confirmado_por = NULL;
   RETURN true;
 END
 $f$;
@@ -420,6 +448,8 @@ DECLARE
   v_prov    jsonb;
   v_old     jsonb;
   v_new     jsonb;
+  v_chave   jsonb := '{}'::jsonb;
+  v_col     text;
 BEGIN
   BEGIN
     v_headers := nullif(current_setting('request.headers', true), '')::jsonb;
@@ -450,8 +480,19 @@ BEGIN
                                     TG_OP, true, v_prov);
   END IF;
   IF TG_OP <> 'DELETE' THEN
-    PERFORM public.receita_observar(TG_ARGV[0], TG_ARGV[1], TG_TABLE_NAME, v_new, v_chaves,
-                                    TG_OP, false, v_prov);
+    -- Mesmo valor (sem versão nova) vindo de escrita direta = releitura.
+    IF NOT public.receita_observar(TG_ARGV[0], TG_ARGV[1], TG_TABLE_NAME, v_new, v_chaves,
+                                   TG_OP, false, v_prov)
+       AND pg_trigger_depth() = 1 THEN
+      FOREACH v_col IN ARRAY v_chaves LOOP
+        v_chave := v_chave || jsonb_build_object(v_col, v_new -> v_col);
+      END LOOP;
+      UPDATE public.receita_releitura r
+         SET confirmado_em = now(), confirmacoes = r.confirmacoes + 1, confirmado_por = v_prov
+       WHERE r.tabela_origem = TG_TABLE_NAME AND r.chave = v_chave
+         AND r.versao_id = (SELECT max(o.id) FROM public.receita_observacao o
+                             WHERE o.tabela_origem = TG_TABLE_NAME AND o.chave = v_chave);
+    END IF;
   END IF;
   RETURN NULL;
 END
@@ -517,12 +558,17 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $f$
   WHERE NOT v.removida
 $f$;
 
+-- confirmado_em/confirmacoes no fim: colunas a mais, o contrato da versão
+-- (as colunas do diário) não muda.
 CREATE VIEW public.vw_receita_vigente WITH (security_invoker = true) AS
-  SELECT v.* FROM (
+  SELECT v.*, coalesce(r.confirmado_em, v.coletado_em) AS confirmado_em, coalesce(r.confirmacoes, 0) AS confirmacoes
+    FROM (
     SELECT DISTINCT ON (o.tabela_origem, o.chave) o.*
       FROM public.receita_observacao o
      ORDER BY o.tabela_origem, o.chave, o.id DESC
   ) v
+    LEFT JOIN public.receita_releitura r
+      ON r.tabela_origem = v.tabela_origem AND r.chave = v.chave AND r.versao_id = v.id
   WHERE NOT v.removida;
 
 -- ───────────────────────────────────────────── privilégios ──
@@ -532,6 +578,8 @@ CREATE VIEW public.vw_receita_vigente WITH (security_invoker = true) AS
 REVOKE ALL ON TABLE public.receita_observacao FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON TABLE public.vw_receita_vigente FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.receita_observacao, public.vw_receita_vigente TO service_role;
+REVOKE ALL ON TABLE public.receita_releitura FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON TABLE public.receita_releitura TO service_role;
 -- A sequência do diário também nasce com o default ACL aberto: um setval de
 -- quem não é dono faz o próximo gatilho do diário colidir na PK (23505) e
 -- derruba o upsert de receita que o disparou. Ninguém além do dono precisa
