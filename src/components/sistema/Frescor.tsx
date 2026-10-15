@@ -23,7 +23,7 @@ const NIVEL: Record<NivelDeFrescor, { glifo: string; palavra: string | null; tom
 };
 
 const hora = (d: Date) =>
-  d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }).replace(/ /g, " ");
+  d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }).replace(/\u00a0/g, " ");
 
 /**
  * Carimbo de frescor colado ao número: "● lido há 12 min · 14:32 · Google Ads".
