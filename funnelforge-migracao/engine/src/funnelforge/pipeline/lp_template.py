@@ -523,14 +523,17 @@ def render_lp(
     _drop_conflicting_global_typography(cont)
     if copy_rapida:
         _aplicar_visual_rapido(cont, hero_image_url=hero_image_url)
-    # Canvas can omit theme chrome. Identity belongs to the page, before both heroes.
+    # Canvas can omit theme chrome. A identidade editorial fica na página, mas no
+    # FIM (operador, 15/10/2026): no topo ela empurrava o herói para fora da
+    # primeira dobra do celular. No site, o aviso global do MU-plugin também vai
+    # para o rodapé e o volc-editorial-notice-owner retira este quando há o global.
     if copy_rapida:
         from funnelforge.pipeline.copy_contract import short_notice_html
         identity_html = "" if footer_disclosure else short_notice_html(site_domain)
     else:
         identity_html = notice_html(site_domain)
     if identity_html:
-        cont.insert(0, {
+        cont.append({
             "id": "editorial", "elType": "container",
             "settings": {"content_width": "full", "background_background": "classic",
                      "background_color": "#ffffff"},

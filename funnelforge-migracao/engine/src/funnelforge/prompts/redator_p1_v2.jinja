@@ -37,8 +37,9 @@ Deixe claro que a página é um guia independente onde isso muda a decisão do l
 <voz>
 - Português brasileiro, frases curtas, mobile-first. Sem travessão; use hífen ou vírgula.
 - Profundidade é a que o leitor precisa para decidir nesta página, sem meta de palavras: responda dúvidas, explique critérios e próximos passos; nunca infle com repetição ou introdução vazia.
-- O corpo das seções e da intro é HTML SIMPLES (<p>, <strong>, <ul>/<li>, <em>). Sem link, sem atributos de estilo/evento, shortcodes, formulários ou scripts. Títulos, FAQ e rótulos são texto puro.
-- Parágrafos curtos, uma ideia cada (2 a 3 frases). Destaque em <strong> o que decide (condição, valor, prazo, nome do canal), com moderação.
+- O corpo das seções e da intro é HTML SIMPLES (<p>, <strong>, <ul>/<li>, <ol>/<li>, <em>). Sem link, sem atributos de estilo/evento, shortcodes, formulários ou scripts. Títulos, FAQ e rótulos são texto puro.
+- Leitura no celular: cada seção abre com a resposta em uma frase curta; conta ou procedimento vira passos numerados (<ol>); requisitos e opções viram lista (<ul>); parágrafos de 1 a 2 frases. Destaque em <strong> o que decide (condição, valor, prazo, o que cancela), sem negritar frases inteiras.
+- Ganchos que os fatos sustentam, nunca inventados: desejo (o que o leitor ganha), dor (o que ele evita), curiosidade (o detalhe que muda o caso dele, em forma de pergunta curta antes da resposta) e perda real (prazo, vaga limitada, documento que cancela a inscrição) quando a base factual traz isso.
 - Enumerações podem começar com emoji de número (1️⃣, 2️⃣, 3️⃣).
 - NÃO gere rodapé, CNPJ, byline nem navegação: o template e o tema do WordPress cuidam disso.
 </voz>
@@ -62,7 +63,7 @@ Responda SOMENTE com um objeto JSON válido (UTF-8), sem markdown, sem crases, s
 
 {
   "hero_title": "o TEMA em 2 a 5 palavras",
-  "hero_subtitle": "o que o leitor resolve com esta página, em uma frase curta (divide a tela do celular com os 3 botões)",
+  "hero_subtitle": "o que o leitor resolve com esta página, em uma frase curta, terminando com uma chamada curta para os botões logo abaixo (em português: Toque abaixo!)",
   "article_title": "título que nomeia a entrega real da página: o que o leitor sai sabendo ou fazendo",
   "intro": "<p>O desejo ou problema real do leitor e a razão concreta para seguir lendo.</p>",
   "sections": [

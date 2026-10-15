@@ -65,19 +65,39 @@ def test_rotulo_e_destino_usam_o_mesmo_indice_em_todo_botao():
     assert rotulos[:6] == [0, 1, 2, 0, 1, 2]
 
 
-def test_heroi_mobile_e_compacto_para_caber_acima_da_folha_de_consentimento():
+def test_heroi_mobile_ocupa_a_tela_com_o_conteudo_no_fim():
+    """Decisão do operador (15/10/2026): o herói mobile tem a altura do celular
+    (100vh), com título, subtítulo e botões no fim, sobre a foto com overlay."""
     mobile, _ = _herois(load_lp_template()["content"])
     s = mobile["settings"]
-    assert s["min_height_mobile"]["size"] in (0, "", None)          # sem tela cheia
-    assert s["flex_justify_content_mobile"] == "flex-start"          # conteúdo no topo
+    assert s["min_height_mobile"] == {"unit": "vh", "size": 100, "sizes": []}
+    assert s["flex_justify_content_mobile"] == "flex-end"
     assert s.get("background_overlay_background") == "classic"       # contraste na foto
-    assert not [w for w in _fillable([mobile]) if w.get("widgetType") == "divider"]
     assert not any(n.get("widgetType") == "divider"
                    for n in mobile["elements"][0]["elements"])
     for b in _botoes(mobile):
         pad = b["settings"]["text_padding_mobile"]
         fonte = b["settings"]["typography_line_height_mobile"]["size"]
         assert int(pad["top"]) + int(pad["bottom"]) + fonte >= 44     # alvo de toque
+
+
+def test_corpo_da_lp_em_montserrat_16_escuro_com_ritmo_de_lista():
+    _, _ = _herois(load_lp_template()["content"])
+    textos = [w for w in _fillable(load_lp_template()["content"][2:])
+              if w.get("widgetType") == "text-editor"]
+    assert textos
+    for w in textos:
+        s = w["settings"]
+        assert s["typography_font_family"] == "Montserrat"
+        assert s["typography_font_size_mobile"]["size"] == 16 and s["text_color"] == "#313131"
+        assert "selector ul, selector ol" in s["custom_css"]
+
+
+def test_aviso_de_identidade_do_motor_vai_para_o_fim_da_lp():
+    cont, _ = render_lp(load_lp_template(), CONTENT, HREFS, site_domain=SITE, copy_rapida=True)
+    marca = "sem vínculo com as instituições citadas"
+    assert marca in json.dumps(cont[-1], ensure_ascii=False)
+    assert marca not in json.dumps(cont[0], ensure_ascii=False)
 
 
 def test_lp_com_link_externo_no_texto_e_recusada_estruturalmente():

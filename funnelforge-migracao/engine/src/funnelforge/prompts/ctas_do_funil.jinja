@@ -40,7 +40,7 @@ Entrega confirmada: {{ p.entrega }}
 {% for o in oficiais %}- {{ o.id }}: {{ o.instituicao or o.host }} — página "{{ o.titulo }}"{% if o.fatos %}; o que a fonte sustenta: {{ o.fatos | join(" | ") }}{% endif %}
 {% endfor %}{% endif %}
 {% if primeira_dobra %}# PRIMEIRA DOBRA DA LANDING PAGE
-É o que o leitor do anúncio lê antes de rolar, no celular, sobre uma imagem, junto com os TRÊS botões de caminho, todos na mesma tela (98% do tráfego é celular, e o aviso de cookies cobre a metade de baixo na primeira visita). Título até 40 caracteres (duas linhas); subtítulo em UMA frase curta, até 80 caracteres: o benefício e para quem vale. O resto da explicação fica no corpo.
+É o que o leitor do anúncio lê antes de rolar, no celular, sobre uma imagem, junto com os TRÊS botões de caminho, todos na mesma tela (98% do tráfego é celular, e o aviso de cookies cobre a metade de baixo na primeira visita). Título até 40 caracteres (duas linhas); subtítulo em UMA frase curta, até 80 caracteres: o benefício e para quem vale, terminando com uma chamada curta para os botões logo abaixo, no idioma do funil (em português, "Toque abaixo!"). O resto da explicação fica no corpo.
 - O título nomeia o assunto e o benefício concreto. O subtítulo dá a resposta principal com o escopo certo (para quem vale e o que muda), com os fatos abaixo.
 - Não descreva a navegação ("escolha entre…", "veja abaixo"), não apresente a instituição antes do benefício, não prometa resultado individual nem conta zerada se os fatos não dizem isso.
 Dúvida da landing page: {{ primeira_dobra.pergunta }}

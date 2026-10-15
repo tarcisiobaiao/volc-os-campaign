@@ -52,16 +52,18 @@ def test_lp_refuses_active_markup(payload):
         render_lp(load_lp_template(), content, ["https://creditoup.com.br/rec/guia/"])
 
 
-def test_notice_is_first_visible_element_and_not_model_supplied():
+def test_notice_is_last_visible_element_and_not_model_supplied():
+    """Desde 15/10/2026 o aviso de identidade fica no FIM da LP (operador): no
+    topo ele empurrava o herói para fora da primeira dobra do celular."""
     content = copy.deepcopy(CONTENT)
     content["hero_title"] = '<script>alert("x")</script>'
     content["faq"][0]["q"] = '"][evil-code]'
     nodes, _ = render_lp(load_lp_template(), content,
                          ["https://creditoup.com.br/rec/guia/"],
                          site_domain="https://creditoup.com.br")
-    first = nodes[0]
-    assert not any(k.startswith("hide_") for k in first["settings"])
-    notice = first["elements"][0]["settings"]["html"]
+    last = nodes[-1]
+    assert not any(k.startswith("hide_") for k in last["settings"])
+    notice = last["elements"][0]["settings"]["html"]
     assert EDITORIAL_NOTICE in notice and "creditoup.com.br" in notice
     blob = json.dumps(nodes, ensure_ascii=False)
     assert "<script>" not in blob and "[evil-code]" not in blob
