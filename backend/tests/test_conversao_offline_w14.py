@@ -21,6 +21,7 @@ from app.trafego.conversao_offline.application import destino as de
 from app.trafego.conversao_offline.application import enviar as en
 from app.trafego.conversao_offline.application import portas
 from app.trafego.conversao_offline.application import preparar as pr
+from app.trafego.conversao_offline.application import trava as tv
 from app.trafego.conversao_offline.domain import evento as ev
 from app.trafego.conversao_offline.domain import valor as vl
 from app.trafego.conversao_offline.infrastructure import data_manager_http as dmh
@@ -45,7 +46,7 @@ TAG = "7000000001"           # a ação da tag do site, com o valor fixo de 10
 
 
 def _plano_lido(owner=CONTA, tipo_offline="UPLOAD_CLICKS", status_offline="ENABLED",
-                primaria_offline=False):
+                primaria_offline=False, extras=()):
     """A conta como seria lida: a tag primária (valor fixo) e a ação offline Secondary."""
     tag = pm.AcaoDeConversao(
         id=TAG, resource_name=f"customers/{owner}/conversionActions/{TAG}",
@@ -64,7 +65,7 @@ def _plano_lido(owner=CONTA, tipo_offline="UPLOAD_CLICKS", status_offline="ENABL
             metas_da_conta=(pm.Meta(categoria="PURCHASE", origem="WEBSITE", biddable=True),),
             metas_da_conta_estado=pm.COM_DADOS,
             metas_da_campanha=(), metas_da_campanha_estado=pm.INELEGIVEL),
-        acoes=(tag, offline), acoes_estado=pm.COM_DADOS,
+        acoes=(tag, offline, *extras), acoes_estado=pm.COM_DADOS,
         marcacao=pm.InventarioDeMarcacao(estado=pm.COM_DADOS, auto_tagging=True,
                                          aceitou_termos_de_dados=True))
 
@@ -178,6 +179,17 @@ class RegistroMemoria:
             if k in coortes:
                 antes = out.get(k, portas.EnvioDaCoorte(0, Decimal(0)))
                 out[k] = portas.EnvioDaCoorte(antes.itens + 1, antes.soma + Decimal(d["valor"]))
+        return out
+
+    def decisoes_elegiveis(self, *, operating_account_id, product_destination_id, itens):
+        out = {}
+        for d in self.decisoes:
+            k = (d["transaction_id"], d["valor_impressao"])
+            if d["estado"] == "elegivel" and k in set(itens) and k not in out:
+                out[k] = portas.DecisaoRegistrada(
+                    transaction_id=k[0], valor_impressao=k[1], valor=Decimal(d["valor"]),
+                    moeda=d["moeda"], clique_sha256=d["clique_sha256"],
+                    ocorrido_em=d["ocorrido_em"])
         return out
 
     def registrar_decisoes(self, *, rodada, customer_id, operating_account_id,
@@ -595,42 +607,116 @@ def _validado():
     return preparo.lotes[0], registro, val
 
 
-def test_envio_real_com_trava_fechada_nao_chama_nada(monkeypatch):
-    from volc_ads.gads import modo
-    monkeypatch.delenv("FORGE_PERMITIR_ESCRITA", raising=False)
+def _chave(lote):
+    return tv.emitir_chave(impressao=lote.envelope.impressao(),
+                           motivo="teste hermético do envio real W14 com transporte falso")
+
+
+def test_sem_a_variavel_propria_nao_se_emite_chave(monkeypatch):
+    monkeypatch.delenv(tv.ENV, raising=False)
     lote, registro, val = _validado()
+    with pytest.raises(tv.EnvioRealBloqueado):
+        _chave(lote)
+
+
+def test_trava_global_do_forge_aberta_nao_libera_conversao(monkeypatch):
+    # Defeito 1 da revisão local: com o forge destravado (por outra requisição),
+    # o envio de conversões não sai se a trava PRÓPRIA está fechada, nem com
+    # uma chave emitida antes (o ambiente é conferido de novo no uso).
+    from volc_ads.gads import modo
+    monkeypatch.setenv("FORGE_PERMITIR_ESCRITA", "1")
+    monkeypatch.setenv(tv.ENV, "1")
+    lote, registro, val = _validado()
+    chave = _chave(lote)
+    monkeypatch.delenv(tv.ENV)
     t = Transporte()
     lotes_antes = dict(registro.lotes)
-    with pytest.raises(modo.EscritaBloqueada):
-        en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
-                             validacao_lote_id=val.lote_id, transporte=t, registro=registro)
+    with modo.destravar("outra requisição subindo campanha ao mesmo tempo"):
+        assert modo.escrita_permitida()
+        with pytest.raises(tv.EnvioRealBloqueado):
+            en.enviar_de_verdade(lote=lote, chave=chave,
+                                 aprovacao=_aprovacao(lote.envelope.impressao()),
+                                 validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     assert t.corpos == [] and registro.lotes == lotes_antes
 
 
-def test_so_a_variavel_de_ambiente_nao_destrava(monkeypatch):
+def test_trava_global_aberta_em_outra_thread_nao_libera_conversao(monkeypatch):
+    import threading
+
     from volc_ads.gads import modo
     monkeypatch.setenv("FORGE_PERMITIR_ESCRITA", "1")
+    monkeypatch.setenv(tv.ENV, "1")
     lote, registro, val = _validado()
-    t = Transporte()
-    with pytest.raises(modo.EscritaBloqueada):
-        en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
-                             validacao_lote_id=val.lote_id, transporte=t, registro=registro)
-    assert t.corpos == []
+    outra = tv.emitir_chave(impressao="f" * 64, motivo="chave de outro envelope qualquer")
+    aberto, fim = threading.Event(), threading.Event()
+
+    def subir():
+        with modo.destravar("/subir de campanha em outra thread"):
+            aberto.set()
+            fim.wait(5)
+
+    th = threading.Thread(target=subir)
+    th.start()
+    try:
+        assert aberto.wait(5) and modo.escrita_permitida()
+        t = Transporte()
+        with pytest.raises(tv.EnvioRealBloqueado):
+            en.enviar_de_verdade(lote=lote, chave=outra,
+                                 aprovacao=_aprovacao(lote.envelope.impressao()),
+                                 validacao_lote_id=val.lote_id, transporte=t, registro=registro)
+        assert t.corpos == []
+    finally:
+        fim.set()
+        th.join()
+
+
+def test_chave_e_de_uso_unico_mesmo_em_paralelo(monkeypatch):
+    import threading
+
+    monkeypatch.setenv(tv.ENV, "1")
+    chave = tv.emitir_chave(impressao="a" * 64, motivo="uso único sob concorrência")
+    barreira, ok, recusas = threading.Barrier(8), [], []
+
+    def usar():
+        barreira.wait()
+        try:
+            chave.consumir("a" * 64)
+            ok.append(1)
+        except tv.EnvioRealBloqueado:
+            recusas.append(1)
+
+    ths = [threading.Thread(target=usar) for _ in range(8)]
+    [x.start() for x in ths]
+    [x.join() for x in ths]
+    assert len(ok) == 1 and len(recusas) == 7
+
+
+def test_chave_nao_se_copia_nem_se_fabrica(monkeypatch):
+    import copy
+    import pickle
+
+    monkeypatch.setenv(tv.ENV, "1")
+    chave = tv.emitir_chave(impressao="a" * 64, motivo="não se copia nem serializa")
+    for f in (copy.copy, copy.deepcopy, pickle.dumps):
+        with pytest.raises(tv.EnvioRealBloqueado):
+            f(chave)
+    with pytest.raises(tv.EnvioRealBloqueado):
+        tv.ChaveDeEnvioReal(_impressao="a" * 64, _motivo="x" * 20, _token=object())
 
 
 @pytest.fixture
 def destravado(monkeypatch):
-    from volc_ads.gads import modo
-    monkeypatch.setenv("FORGE_PERMITIR_ESCRITA", "1")
-    with modo.destravar("teste hermético do envio real W14 com transporte falso"):
-        yield
+    # Só a trava PRÓPRIA; a do forge fica fechada de propósito.
+    monkeypatch.delenv("FORGE_PERMITIR_ESCRITA", raising=False)
+    monkeypatch.setenv(tv.ENV, "1")
+    yield
 
 
 def test_envio_real_exige_aprovacao_do_mesmo_envelope(destravado):
     lote, registro, val = _validado()
     t = Transporte()
     with pytest.raises(en.AprovacaoInvalida):
-        en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao("f" * 64),
+        en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao("f" * 64),
                              validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     assert t.corpos == []
 
@@ -640,7 +726,7 @@ def test_envio_real_exige_validate_only_aceito(destravado):
     lote = preparo.lotes[0]
     t = Transporte()
     with pytest.raises(en.ValidacaoAusente):
-        en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+        en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                              validacao_lote_id=999, transporte=t, registro=registro)
     assert t.corpos == []
 
@@ -648,12 +734,12 @@ def test_envio_real_exige_validate_only_aceito(destravado):
 def test_envio_real_completo_no_duble_e_no_maximo_uma_vez(destravado):
     lote, registro, val = _validado()
     t = Transporte()
-    res = en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+    res = en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                                validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     assert res.estado == "aceito" and [c["validateOnly"] for c in t.corpos] == [False]
     assert registro.lotes[res.lote_id]["aprovacao"]["aprovado_por"] == "Tarcisio"
     with pytest.raises(en.JaEnviado):
-        en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+        en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                              validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     assert len(t.corpos) == 1
 
@@ -667,7 +753,7 @@ def test_aprovacao_anonima_nao_existe():
 def test_reconciliar_fecha_o_mesmo_lote_sem_reenviar(destravado):
     lote, registro, val = _validado()
     t = Transporte()
-    res = en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+    res = en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                                validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     assert en.reconciliar(lote_id=res.lote_id, transporte=t, registro=registro) == "sucesso"
     assert len(t.corpos) == 1
@@ -942,7 +1028,7 @@ def test_cliques_sao_ordenados_pelo_instante_e_nao_pelo_texto():
 
 def _real(registro, lote, transporte=None):
     (val,) = en.validar_no_google(lotes=[lote], transporte=Transporte(), registro=registro)
-    return en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+    return en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                                 validacao_lote_id=val.lote_id,
                                 transporte=transporte or Transporte(), registro=registro)
 
@@ -1021,13 +1107,13 @@ def test_acao_primaria_so_com_aceite_e_a_aprovacao_declara(destravado):
     (val,) = en.validar_no_google(lotes=[lote], transporte=Transporte(), registro=registro)
     t = Transporte()
     with pytest.raises(en.AprovacaoInvalida):
-        en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+        en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                              validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     assert t.corpos == []
     ok = en.AprovacaoDeEnvio(impressao=lote.envelope.impressao(), aprovado_por="Tarcisio",
                              aprovado_em=datetime(2026, 10, 15, 16, 0, tzinfo=BRT),
                              referencia="teste", destino_primario=True)
-    assert en.enviar_de_verdade(lote=lote, aprovacao=ok, validacao_lote_id=val.lote_id,
+    assert en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=ok, validacao_lote_id=val.lote_id,
                                 transporte=t, registro=registro).estado == "aceito"
 
 
@@ -1070,9 +1156,148 @@ def test_reconciliar_usa_o_request_id_do_proprio_lote(destravado):
             return super().status(request_id)
 
     t = T()
-    res = en.enviar_de_verdade(lote=lote, aprovacao=_aprovacao(lote.envelope.impressao()),
+    res = en.enviar_de_verdade(lote=lote, chave=_chave(lote), aprovacao=_aprovacao(lote.envelope.impressao()),
                                validacao_lote_id=val.lote_id, transporte=t, registro=registro)
     en.reconciliar(lote_id=res.lote_id, transporte=t, registro=registro)
     assert vistos == ["req-w14"]
     with pytest.raises(ValueError):
         en.reconciliar(lote_id=val.lote_id, transporte=t, registro=registro)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 11. Revisão local no main integrado (bc8da6ee) — defeitos 2, 3 e 4
+# ═══════════════════════════════════════════════════════════════════════════
+
+import dataclasses
+
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
+
+def _adulterado(lote, **mud):
+    env = lote.envelope
+    itens = tuple(dataclasses.replace(e, **mud) if i == 0 else e for i, e in enumerate(env.itens))
+    return dataclasses.replace(lote, envelope=dataclasses.replace(env, itens=itens))
+
+
+@pytest.mark.parametrize("mud", [
+    {"valor": Decimal("1623")},          # a unidade errada do relatório: 16,23 → 1623
+    {"valor": Decimal("16.24")},
+    {"moeda": "USD"},
+    {"ocorrido_em": "2026-10-10T11:01:00-03:00"},
+    {"clique": dm.IdentificadorDeClique(tipo=dm.CLIQUE_GCLID, valor="Cj0KEQ-outro")},
+])
+def test_defeito2_corpo_que_diverge_do_registro_nao_sai_nem_em_validate_only(mud):
+    preparo, registro, *_ = _preparar(cliques=[_clique(1)])
+    falso = _adulterado(preparo.lotes[0], **mud)
+    t = Transporte()
+    with pytest.raises(en.DivergenciaDoRegistro):
+        en.validar_no_google(lotes=[falso], transporte=t, registro=registro)
+    assert t.corpos == [] and registro.lotes == {}
+
+
+def test_defeito2_envio_real_confere_o_corpo_contra_o_registro(destravado):
+    lote, registro, val = _validado()
+    falso = _adulterado(lote, valor=Decimal("1623"))
+    t = Transporte()
+    with pytest.raises((en.DivergenciaDoRegistro, en.AprovacaoInvalida, en.ValidacaoAusente)):
+        en.enviar_de_verdade(lote=falso, chave=_chave(falso),
+                             aprovacao=_aprovacao(falso.envelope.impressao()),
+                             validacao_lote_id=val.lote_id, transporte=t, registro=registro)
+    assert t.corpos == []
+    # Mesmo com um validateOnly "aceito" gravado direto no registro para o
+    # envelope adulterado (sem passar pela conferência), o real confere o corpo:
+    imp = falso.envelope.impressao()
+    burla = registro.abrir_lote(modo="validate_only", impressao=imp, customer_id=CONTA,
+                                login_customer_id=MCC, operating_account_id=CONTA,
+                                product_destination_id=ACAO, itens=list(falso.itens))
+    registro.fechar_lote(lote_id=burla.lote_id, estado="aceito", request_id=None, resposta={})
+    with pytest.raises(en.DivergenciaDoRegistro):
+        en.enviar_de_verdade(lote=falso, chave=_chave(falso), aprovacao=_aprovacao(imp),
+                             validacao_lote_id=burla.lote_id, transporte=t, registro=registro)
+    assert t.corpos == []
+
+
+def test_defeito2_corpo_que_sai_e_o_do_registro():
+    preparo, registro, *_ = _preparar()
+    t = Transporte()
+    en.validar_no_google(lotes=list(preparo.lotes), transporte=t, registro=registro)
+    (corpo,) = t.corpos
+    por_tid = {d["transaction_id"]: d for d in registro.decisoes if d["estado"] == "elegivel"}
+    for e in corpo["events"]:
+        d = por_tid[e["transactionId"]]
+        assert Decimal(repr(e["conversionValue"])) == Decimal(d["valor"])
+        assert e["currency"] == d["moeda"]
+
+
+def test_defeito3_grao_sessao_nao_multiplica_a_receita():
+    # 3 cliques, receita de 64,92 em grão "sessão": cada um levava 64,92 (194,76).
+    preparo, *_ = _preparar(cliques=[_clique(1), _clique(2), _clique(3)],
+                            linha=_receita(valor="64.92", moeda="BRL", grao=vl.GRAO_SESSAO))
+    soma = sum((d.valor.valor for d in preparo.decisoes if d.estado == ev.ELEGIVEL), Decimal(0))
+    assert soma <= Decimal("64.92")
+    assert preparo.lotes == ()
+    assert preparo.resumo()["pulados"] == {pr.PULO_CLIQUES_ACIMA_DAS_SESSOES: 3}
+
+
+def test_defeito3_grao_sessao_com_um_clique_vai_inteiro():
+    preparo, *_ = _preparar(cliques=[_clique(1)],
+                            linha=_receita(valor="64.92", moeda="BRL", grao=vl.GRAO_SESSAO))
+    (d,) = [d for d in preparo.decisoes if d.estado == ev.ELEGIVEL]
+    assert d.valor.valor == Decimal("64.92") and d.valor.proveniencia["teto_da_coorte"] == "64.92"
+
+
+@settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(grao=st.sampled_from([vl.GRAO_COORTE, vl.GRAO_SESSAO]),
+       centavos=st.integers(min_value=1, max_value=10_000_000),
+       taxa=st.decimals(min_value=Decimal("0.0001"), max_value=Decimal("20"), places=4),
+       sessoes=st.integers(min_value=1, max_value=40),
+       cliques=st.integers(min_value=1, max_value=40))
+def test_defeito3_propriedade_soma_por_coorte_nunca_passa_da_receita(grao, centavos, taxa,
+                                                                     sessoes, cliques):
+    receita = Decimal(centavos) / 100
+    preparo, *_ = _preparar(cliques=[_clique(n, quando=datetime(2026, 10, 10, 10, 0, n, tzinfo=BRT))
+                                     for n in range(1, cliques + 1)],
+                            linha=_receita(valor=str(receita), grao=grao), cot=_cot(taxa=str(taxa)),
+                            sessoes=sessoes)
+    soma = sum((d.valor.valor for d in preparo.decisoes if d.estado == ev.ELEGIVEL), Decimal(0))
+    assert soma <= receita * taxa
+    enviados = sum((e.valor for l in preparo.lotes for e in l.envelope.itens), Decimal(0))
+    assert enviados == soma
+
+
+def _plano_com_destino_primario():
+    primaria = pm.AcaoDeConversao(
+        id="900000002", resource_name=f"customers/{CONTA}/conversionActions/900000002",
+        owner_customer_id=CONTA, nome="Outra importação — PRIMÁRIA",
+        categoria="PURCHASE", origem="WEBSITE", tipo="UPLOAD_CLICKS",
+        status="ENABLED", primaria=True)
+    lido = _plano_lido(extras=(primaria,))
+    plano = de.plano_para_acao_offline(lido, ACAO)        # alvo: a Secondary
+    return dataclasses.replace(plano, destino=pm.resolver_destino(primaria))
+
+
+def test_defeito4_primario_vem_do_destino_real_e_nao_do_alvo(destravado):
+    plano = _plano_com_destino_primario()
+    assert plano.acao_alvo.primaria_efetiva is False
+    preparo, registro, *_ = _preparar(plano=plano, perfil=_perfil(plano=_plano()))
+    (lote,) = preparo.lotes
+    assert str(lote.envelope.destino.product_destination_id) == "900000002"
+    assert lote.destino_primario is True
+    (val,) = en.validar_no_google(lotes=[lote], transporte=Transporte(), registro=registro)
+    t = Transporte()
+    with pytest.raises(en.AprovacaoInvalida):   # a aprovação diz Secondary
+        en.enviar_de_verdade(lote=lote, chave=_chave(lote),
+                             aprovacao=_aprovacao(lote.envelope.impressao()),
+                             validacao_lote_id=val.lote_id, transporte=t, registro=registro)
+    assert t.corpos == []
+
+
+def test_defeito4_destino_fora_das_acoes_lidas_e_recusado():
+    fantasma = pm.AcaoDeConversao(
+        id="900000003", resource_name=f"customers/{CONTA}/conversionActions/900000003",
+        owner_customer_id=CONTA, nome="não lida", categoria="PURCHASE", origem="WEBSITE",
+        tipo="UPLOAD_CLICKS", status="ENABLED", primaria=False)
+    plano = dataclasses.replace(_plano(), destino=pm.resolver_destino(fantasma))
+    with pytest.raises(de.AcaoOfflineInvalida):
+        _preparar(plano=plano, perfil=_perfil())

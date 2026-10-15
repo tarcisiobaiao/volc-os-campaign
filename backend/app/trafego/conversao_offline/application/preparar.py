@@ -143,6 +143,16 @@ def preparar_lote(*, plano: pm.PlanoDeMensuracao,
             "exige 'concedido'")
     dono = str(plano.destino.operating_account_id)
     acao = str(plano.destino.product_destination_id)
+    # ⚠️ "Primário" é do DESTINO REAL (a ação para onde o envelope vai), não do
+    # alvo do plano: um plano com alvo Secondary e destino primário mexeria no
+    # lance com a aprovação dizendo o contrário (revisão local, defeito 4).
+    reais = [a for a in plano.acoes
+             if a.id == acao and str(a.owner_customer_id) == dono]
+    if len(reais) != 1:
+        raise AcaoOfflineInvalida(
+            f"a ação de destino #{acao} da conta {dono} não está (uma vez) entre as ações "
+            "lidas: não se sabe se ela move o lance")
+    destino_primario = bool(reais[0].primaria_efetiva)
     if moeda_da_conta.customer_id != dono:
         raise MoedaDeOutraConta(
             f"a moeda lida é da conta {moeda_da_conta.customer_id} e a ação pertence a "
@@ -230,24 +240,29 @@ def preparar_lote(*, plano: pm.PlanoDeMensuracao,
     # passa da receita. A coorte inteira é pulada, nunca cortada pela metade:
     # escolher quais cliques ficam seria inventar atribuição. (Revisão nuvem 2,
     # obrigatório 2: 6 cliques para 2 sessões mandavam 3× a receita.)
+    # O teto vale em QUALQUER grão (revisão local, defeito 3): a soma enviada
+    # por coorte nunca passa da receita medida da coorte na moeda da conta.
     estourada: Dict[vl.Coorte, str] = {}
     for coorte in coortes:
         if coorte in tocadas:
             continue
         dela = [v for c, tid, v in candidatos if c.coorte == coorte]
         prov = dela[0].proveniencia
-        if not dela[0].estimado:
-            continue
-        sessoes = prov.get("sessoes_da_coorte")
         teto = prov.get("teto_da_coorte")
         soma = sum((v.valor for v in dela), Decimal(0))
-        if type(sessoes) is not int or teto is None:
-            estourada[coorte] = "rateio sem sessões ou teto declarados na proveniência"
-        elif len(dela) > sessoes:
+        ja = ja_da_coorte.get(coorte)
+        soma_viva = soma + (ja.soma if ja else Decimal(0))
+        sessoes = prov.get("sessoes_da_coorte")
+        if teto is None or any(v.proveniencia.get("teto_da_coorte") != teto for v in dela):
+            estourada[coorte] = "teto da coorte ausente ou divergente entre os cliques"
+        elif dela[0].estimado and type(sessoes) is not int:
+            estourada[coorte] = "rateio sem sessões declaradas na proveniência"
+        elif dela[0].estimado and len(dela) > sessoes:
             estourada[coorte] = (f"{len(dela)} cliques para {sessoes} sessões: cada um levaria "
                                  f"1/{sessoes} da receita e a soma ({soma}) passaria do teto ({teto})")
-        elif soma > Decimal(teto):  # por construção não acontece; conferido mesmo assim
-            estourada[coorte] = f"a soma {soma} passaria do teto da coorte {teto}"
+        elif soma_viva > Decimal(teto):
+            estourada[coorte] = (f"a soma enviada da coorte ({soma_viva}) passaria da receita "
+                                 f"medida ({teto} {dela[0].moeda})")
 
     eventos: List[Tuple[dm.EventoDeConversao, str]] = []
     for c, tid, valor in candidatos:
@@ -301,7 +316,7 @@ def preparar_lote(*, plano: pm.PlanoDeMensuracao,
         lotes.append(LotePreparado(
             envelope=envelope, recibo_local=dm.validar(envelope),
             itens=tuple((e.chave_de_deduplicacao, imp) for e, imp in fatia),
-            destino_primario=bool(plano.acao_alvo is not None and plano.acao_alvo.primaria_efetiva)))
+            destino_primario=destino_primario))
 
     return Preparo(rodada=rodada, customer_id=plano.customer_id,
                    operating_account_id=dono, product_destination_id=acao,

@@ -94,7 +94,7 @@ w14_decisao() { # estado valor motivo proveniencia ocorrido_em [tid] [valor_impr
     "$( [ "$2" = NULL ] && echo NULL || echo "'BRL'")" "$( [ "$2" = NULL ] && echo NULL || echo true)" \
     "$( [ "$2" = NULL ] && echo NULL || echo "'$vimp'")" "$4"
 }
-W14_PROV='{"receita":{"fonte":"joinads"},"cambio":{"modo":"exata"}}'
+W14_PROV='{"receita":{"fonte":"joinads"},"cambio":{"modo":"exata"},"teto_da_coorte":"100.00"}'
 W14_HORA="'2026-10-10T10:00:00-03:00'"
 w14_prov_rateio() { # sessoes teto
   printf '{"receita":{"fonte":"joinads"},"cambio":{"modo":"exata"},"metodo":"rateio_uniforme_por_sessao","sessoes_da_coorte":%s,"teto_da_coorte":"%s"}' "$1" "$2"
@@ -232,6 +232,13 @@ w14_suite() {
      "v25 · reenvio do mesmo envelope não conta duas vezes no teto"
   eq "$(w14_bloco service_role "$(w14_decisao elegivel 12.34 NULL "$(w14_prov_rateio 2 10.00)" "$W14_HORA")")" "ERRO:23514" "v25 · decisão de rateio com valor acima do teto recusada"
   eq "$(w14_bloco service_role "$(w14_decisao elegivel 12.34 NULL '{"receita":{},"cambio":{},"metodo":"rateio_uniforme_por_sessao"}' "$W14_HORA")")" "ERRO:23514" "v25 · decisão de rateio sem sessões e teto recusada"
+  # grão "sessão" (sem rateio): o teto vale igual (revisão local, defeito 3)
+  local ps='{"receita":{"fonte":"joinads","grao":"sessao"},"cambio":{"modo":"exata"},"metodo":"observado_por_sessao","teto_da_coorte":"20.00"}'
+  local ds="$(w14_decisao elegivel 12.34 NULL "$ps" "$W14_HORA" "$W14_TID1") $(w14_decisao elegivel 12.34 NULL "$ps" "$W14_HORA" "$W14_TID2")"
+  eq "$(w14_bloco service_role "$ds $(w14_val_e_real "$W14_IMP_A" "$W14_TID1")")" "ok:t" "v25 · grão sessão: um clique dentro do teto abre"
+  eq "$(w14_bloco service_role "$ds $(w14_val_e_real "$W14_IMP_A" "$W14_TID1,$W14_TID2")")" "ERRO:23514" "v25 · grão sessão: dois cliques passando do teto recusados"
+  eq "$(w14_bloco service_role "$ds $(w14_val_e_real "$W14_IMP_A" "$W14_TID1") $(w14_val_e_real "$W14_IMP_B" "$W14_TID2")")" "ERRO:23514" "v25 · grão sessão: o já enviado conta no teto"
+  eq "$(w14_bloco service_role "$(w14_decisao elegivel 12.34 NULL '{"receita":{},"cambio":{},"metodo":"observado_por_sessao"}' "$W14_HORA")")" "ERRO:23514" "v25 · elegível de qualquer grão sem teto recusado"
   eq "$(w14_bloco anon "SELECT count(*) FROM public.conversao_offline_envio_por_coorte;")" "ERRO:42501" "v25 · anon não lê a soma por coorte"
   eq "$(w14_bloco authenticated "SELECT count(*) FROM public.conversao_offline_envio_por_coorte;")" "ERRO:42501" "v25 · authenticated não lê a soma por coorte"
   eq "$(w14_bloco service_role "SELECT count(*) FROM public.conversao_offline_envio_por_coorte;")" "ok:0" "v25 · service_role lê a soma por coorte"

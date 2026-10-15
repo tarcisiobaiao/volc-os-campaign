@@ -87,6 +87,30 @@ class RegistroPostgrest:
                         itens=int(linha["itens_vivos"]), soma=Decimal(str(linha["soma_valor"])))
         return achados
 
+    def decisoes_elegiveis(self, *, operating_account_id: str, product_destination_id: str,
+                           itens: Sequence[Tuple[str, str]]
+                           ) -> Mapping[Tuple[str, str], portas.DecisaoRegistrada]:
+        procurados = set(itens)
+        achados: Dict[Tuple[str, str], portas.DecisaoRegistrada] = {}
+        tids = list(dict.fromkeys(t for t, _ in itens))
+        for i in range(0, len(tids), 200):
+            resp = self._c.get("/conversao_offline_decisao", params={
+                "select": "transaction_id,valor_impressao,valor,moeda,clique_sha256,ocorrido_em",
+                "operating_account_id": f"eq.{operating_account_id}",
+                "product_destination_id": f"eq.{product_destination_id}",
+                "estado": "eq.elegivel",
+                "transaction_id": f"in.({','.join(tids[i:i + 200])})",
+            })
+            _erro(resp)
+            for l in resp.json():
+                chave = (l["transaction_id"], l["valor_impressao"])
+                if chave in procurados and chave not in achados:
+                    achados[chave] = portas.DecisaoRegistrada(
+                        transaction_id=l["transaction_id"], valor_impressao=l["valor_impressao"],
+                        valor=Decimal(str(l["valor"])), moeda=l["moeda"],
+                        clique_sha256=l["clique_sha256"], ocorrido_em=l["ocorrido_em"])
+        return achados
+
     def registrar_decisoes(self, *, rodada: str, customer_id: str,
                            operating_account_id: str, product_destination_id: str,
                            decisoes: Sequence[Dict[str, Any]]) -> None:

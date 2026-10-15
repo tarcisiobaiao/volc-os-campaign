@@ -403,7 +403,10 @@ def calcular_valor(*, receita: Optional[ReceitaDatada],
         "metodo": "rateio_uniforme_por_sessao" if estimado else "observado_por_sessao",
         "estimado": estimado,
         "sessoes_da_coorte": divisor if estimado else None,
-        "teto_da_coorte": str(teto) if estimado else None,
+        # ⚠️ O teto vale em QUALQUER grão: a receita lida é da coorte, e três
+        # cliques de grão "sessão" levando cada um a receita inteira mandavam
+        # 3× o medido (revisão local, defeito 3). Quem soma é o preparo e o banco.
+        "teto_da_coorte": str(teto),
         "cambio": cambio,
         "moeda_da_conta": {"codigo": moeda, "customer_id": moeda_da_conta.customer_id,
                            "lida_em": moeda_da_conta.lida_em.isoformat()},
