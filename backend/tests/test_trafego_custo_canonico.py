@@ -270,6 +270,89 @@ async def teste_fonte_pede_so_o_periodo_as_contas_e_a_linha_sem_segmento(monkeyp
     assert (p2["janela_inicio"], p2["janela_fim"]) == ("lte.2026-10-14", "gte.2026-10-12")
 
 
+class FonteComCorte:
+    """Transporte que imita o PostgREST: aplica `gt.`, `order` e `limit`, e
+    corta em `max_rows` (o `db-max-rows` do servidor) sem avisar nada."""
+
+    def __init__(self, linhas, fechos, max_rows):
+        self.tabelas = {"google_ads_campanha_dia": linhas, "trafego_coleta_execucao": fechos}
+        self.max_rows, self.pedidos = max_rows, 0
+
+    async def _get(self, alvo, params):
+        self.pedidos += 1
+        chave = params["order"].split(".")[0]
+        linhas = sorted(self.tabelas[alvo], key=lambda l: l[chave])
+        if isinstance(params.get(chave), str) and params[chave].startswith("gt."):
+            piso = int(params[chave][3:])
+            linhas = [l for l in linhas if l[chave] > piso]
+        return linhas[:min(int(params["limit"]), self.max_rows)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("max_rows", [1000, 500, 7])
+async def teste_corte_do_servidor_menor_que_a_pagina_nao_vira_custo_real_menor(max_rows):
+    """Revisor de nuvem 1: com db-max-rows=500 a leitura parava na 1ª página
+    curta e carimbava `real` com 500 de 1500 linhas."""
+    from app.trafego.custo_canonico_fonte import FonteDeCustoCanonico
+
+    linhas = [{**fato(f"2026-10-{12 + n % 3}", 1_000_000, campanha=str(10_000 + n)),
+               "fato_id": n + 1} for n in range(1500)]
+    fechos = [{**f, "execucao_id": i + 1} for i, f in enumerate(TUDO_FECHADO)]
+    transporte = FonteComCorte(linhas, fechos, max_rows)
+
+    class Fonte(FonteDeCustoCanonico):
+        _get = staticmethod(transporte._get)
+
+    f = Fonte("https://database.agenciavolc.com.br", "x")
+    fechamentos = await f.fechamentos([CU], P)
+    lidas = await f.linhas_do_fato([CU], P)
+    assert len(lidas) == 1500 and len({l["fato_id"] for l in lidas}) == 1500
+    r = montar(lidas, fechamentos)
+    assert r["verdade"] == "real"
+    assert conta(r)["custo_micros"] == 1500 * 1_000_000
+    assert r["moedas"]["BRL"]["custo_micros"] == 1500 * 1_000_000
+
+
+@pytest.mark.asyncio
+async def teste_servidor_que_ignora_o_keyset_falha_em_vez_de_entregar_incompleto():
+    from app.trafego.custo_canonico_fonte import FonteDeCustoCanonico
+
+    class Fonte(FonteDeCustoCanonico):
+        async def _get(self, alvo, params):
+            return [{"fato_id": 1}, {"fato_id": 2}]   # mesma página, sempre
+
+    with pytest.raises(RuntimeError, match="não avançou"):
+        await Fonte("https://database.agenciavolc.com.br", "x").linhas_do_fato([CU], P)
+
+
+def teste_linha_d0_em_dia_fechado_sem_linha_do_d1_nao_e_definitiva():
+    """Revisor de nuvem 1: o D-1 leu a conta inteira e não devolveu a campanha
+    (estorno integral, por exemplo). A linha D0 dela ficou velha e não pode
+    sair `real` nem entrar no total."""
+    linhas = [fato("2026-10-12", 1_000_000), fato("2026-10-13", 2_000_000),
+              fato("2026-10-14", 7_000_000, campanha=REMOVIDA, origem="D0"),
+              fato("2026-10-14", 3_000_000)]
+    r = montar(linhas, TUDO_FECHADO)
+    c = conta(r)
+    dia = next(d for d in c["dias"] if d["data"] == "2026-10-14")
+    assert dia["estado"] == "sem_fechamento"
+    assert c["verdade"] == "parcial" and c["custo_micros"] is None
+    assert r["verdade"] == "parcial" and r["moedas"]["BRL"]["custo_micros"] is None
+    assert any("D0 em dia fechado" in m for m in c["motivos"])
+    camp = next(x for x in c["campanhas"] if x["campaign_id"] == REMOVIDA)
+    assert camp["custo_micros"] is None and camp["origens"] == ["D0"]
+    # Os outros dias continuam fechados: o rebaixamento é só do dia afetado.
+    assert [d["estado"] for d in c["dias"][:2]] == ["fechado", "fechado"]
+
+
+def teste_linha_d0_em_dia_so_intradia_continua_intradia():
+    r = montar([fato("2026-10-14", 5, origem="D0")],
+               [fecho("2026-10-12", "2026-10-13"), fecho("2026-10-14", "2026-10-14", origem="D0")])
+    c = conta(r)
+    assert c["dias"][2]["estado"] == "intradia" and c["dias"][2]["custo_micros"] == 5
+    assert not any("D0 em dia fechado" in m for m in c["motivos"])
+
+
 # ── a rota ──────────────────────────────────────────────────────────────────
 
 class FonteDuble:

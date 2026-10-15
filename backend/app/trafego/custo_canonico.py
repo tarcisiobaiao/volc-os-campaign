@@ -263,10 +263,18 @@ def montar_custo(linhas: Iterable[Mapping[str, Any]], fechamentos: Iterable[Mapp
         minhas = [l for (c, _, _), l in unicas.items() if c == conta]
         # Linha sem fechamento útil: o valor existe, mas nada prova que o dia
         # está completo. Mostra-se, rebaixado.
+        # Linha D0 em dia FECHADO: o D-1/backfill leu a conta inteira e NÃO
+        # devolveu esta campanha (estorno integral, por exemplo), senão a
+        # precedência teria trocado a linha. O valor intradia ficou velho e
+        # não pode sair como definitivo: o dia desce para `sem_fechamento`.
+        provisorias = 0
         for l in minhas:
             d = _data(l.get("metric_date"))
             if dias_estado[d] == SEM_COLETA:
                 dias_estado[d] = SEM_FECHAMENTO
+            elif dias_estado[d] == FECHADO and str(l.get("origem_janela") or "") == "D0":
+                dias_estado[d] = SEM_FECHAMENTO
+                provisorias += 1
 
         moedas = sorted({str(l.get("currency_code")) for l in minhas if l.get("currency_code")})
         moeda = moedas[0] if len(moedas) == 1 else None
@@ -310,6 +318,9 @@ def montar_custo(linhas: Iterable[Mapping[str, Any]], fechamentos: Iterable[Mapp
             motivos.append(f"moedas divergentes no fato: {moedas}; nada somado")
         if nao_medidos:
             motivos.append(f"{len(nao_medidos)} dia(s) com linha sem custo medido (NULL), fora da soma")
+        if provisorias:
+            motivos.append(f"{provisorias} linha(s) D0 em dia fechado sem confirmação do D-1; "
+                           "valor provisório, fora do total")
         for estado_, rotulo in ((SEM_COLETA, "sem coleta"), (SEM_FECHAMENTO, "sem fechamento no ledger"),
                                 (PARCIAL, "com fechamento parcial"), (INTRADIA, "só intradia (D0)")):
             n = sum(1 for e in dias_estado.values() if e == estado_)
