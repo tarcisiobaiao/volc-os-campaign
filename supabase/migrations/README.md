@@ -2,6 +2,21 @@
 
 Arquivos de migration da **contenção de segurança** do VOLC O.S.
 
+## Ledger de migrations (W9) — v20_01, v20_02 — 15/10/2026 · NÃO APLICADAS
+
+`v20_01` cria `volc_ops.migracao_evento` (append-only, guardas no banco) e o
+protocolo é `scripts/migracao-protocolo.sh`. Ordem decidida: o pacote do incidente
+anon (v19) vai **antes e fora** do ledger. Por isso a `v20_02` versionada (âncora
+`695e913a…`, pré-v19) **recusa** depois da v19; a que vai para produção é
+**gerada do recibo real do passo 1**:
+`scripts/ledger_recibo_incidente.py v20_02 docs/closure/incidente-anon-w4/RECEIPT-<passo1>.json`
+(âncora constante = `fingerprint_depois` do recibo, backfill dos 5 eventos v19 com o
+par de rollback `v19_99`, registro retroativo da `v20_01`). O dono aprova o sha256
+DESSE arquivo. Recibos seguintes (passo 2, rollback) entram por
+`ledger_recibo_incidente.py importar … --saida ARQ`. Provado com o script real do
+W4 em modo laboratório: suíte `tools/freedom-lab/db/suites/v20_pos_v19.sh`. Antes
+de aplicar em produção: `tools/freedom-lab/db/sonda_search_path.sql` (leitura).
+
 ## Incidente da chave anon (W4) — v19_00, v19_01, v19_02 — 15/10/2026 · NÃO APLICADAS
 
 Pacote para fechar a chave anon (lê e escreve 62 relações de `public`, medido em
