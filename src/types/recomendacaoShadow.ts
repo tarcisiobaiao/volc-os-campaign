@@ -33,9 +33,20 @@ export interface DiaShadow {
   estado: string | null;
 }
 
+/**
+ * Estado do dado no motor da carteira (W13). `sem_dado` é receita ou câmbio
+ * ausente (nunca zero); `amostra_insuficiente` é clique maduro abaixo do
+ * limiar. `null` no experimento Senac, que é anterior ao motor.
+ */
+export type EstadoDadoShadow = 'completo' | 'sem_dado' | 'amostra_insuficiente';
+
 export interface RecomendacaoShadow {
   contrato: 'recomendacao_shadow.v1';
   campanha_externa: string;
+  campanha_nome?: string | null;
+  campanha_status?: string | null;
+  estado_dado?: EstadoDadoShadow | null;
+  motivo_estado_dado?: string | null;
   grao: 'campanha_dia';
   direcao: DirecaoShadow;
   motivos: string[];
@@ -72,4 +83,32 @@ export interface RecomendacaoShadow {
     mutacoes_executadas: number;
     oferece_aplicar: false;
   };
+}
+
+/** Uma linha da carteira — `GET /api/trafego/recomendacao-shadow` (`carteira_shadow.v1`). */
+export interface LinhaCarteiraShadow {
+  campanha_externa: string;
+  campanha_nome: string | null;
+  campanha_status: string | null;
+  conta: string | null;
+  /** `ambigua`: dois experimentos com o mesmo `as_of` mais recente; sem direção. */
+  situacao: 'lida' | 'ambigua';
+  mensagem: string | null;
+  direcao: DirecaoShadow | null;
+  estado_dado: EstadoDadoShadow | null;
+  motivo_estado_dado: string | null;
+  as_of: string | null;
+  experimento_id: string | null;
+  experimentos_substituidos?: string[];
+  janela_madura: JanelaShadow | null;
+  fracao_custo_maduro_sem_receita: number | null;
+  valor_sugerido: null;
+  executada: false;
+}
+
+export interface CarteiraShadow {
+  contrato: 'carteira_shadow.v1';
+  campanhas: LinhaCarteiraShadow[];
+  isolamento: { chamadas_externas: number; mutacoes_executadas: number; oferece_aplicar: false };
+  integridade: 'coerente_com_manifesto';
 }

@@ -1,0 +1,27 @@
+[Unit]
+Description=VOLC motor shadow da carteira Google Ads (W13) — só leitura, nada executa
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/volc-sombra-carteira/current
+EnvironmentFile=/root/supabase/docker/.env
+EnvironmentFile=/opt/volc-sombra-carteira/sombra.env
+ExecStart=/opt/volc-sombra-carteira/run.sh
+# 65 = agenda desligada por configuração; 75 = outra execução em curso.
+SuccessExitStatus=65 75
+TimeoutStartSec=20min
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/lock /var/lib/volc-sombra-carteira
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

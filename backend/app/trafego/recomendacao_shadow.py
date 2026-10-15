@@ -68,6 +68,7 @@ VARIAVEL_MAX_IDADE = "VOLC_SHADOW_MAX_AGE_DIAS"
 MAX_IDADE_PADRAO_DIAS = 7
 
 CONTRATO = "recomendacao_shadow.v1"
+CONTRATO_CARTEIRA = "carteira_shadow.v1"
 
 # O vocabulário fechado da decisão, o da spec da prova vertical (E §3). Uma
 # leitura `insuficiente` de `intencao.avaliar_suficiencia` corresponde a
@@ -249,6 +250,39 @@ def _janela(bruta: Any) -> Optional[dict[str, Any]]:
     return {c: bruta.get(c) for c in campos}
 
 
+def _candidatos(raiz: pathlib.Path) -> list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]]:
+    """Todo experimento de sombra da pasta, com o resultado já conferido.
+
+    Um resultado corrompido não diz de que campanha é; por isso ele levanta
+    aqui, para QUALQUER campanha e para a carteira inteira.
+    """
+    candidatos: list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]] = []
+    for caminho in _manifestos(raiz):
+        pasta = caminho.parent
+        manifesto = _json(caminho, pasta.name)
+        resultado_path = pasta / "resultado.json"
+        # Experimento que não é de sombra (nem declara nem tem resultado) não
+        # entra. Declarou ou tem: confere o sha256 ANTES de interpretar.
+        if not _declara(manifesto, "resultado.json") and not resultado_path.exists():
+            continue
+        _conferir(pasta, manifesto, ("resultado.json",))
+        resultado = _json(resultado_path, pasta.name)
+        candidatos.append((_data(resultado.get("as_of"), pasta.name), pasta, manifesto, resultado))
+    return candidatos
+
+
+def _mais_recente(candidatos: list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]]):
+    """O de `as_of` mais recente; empate no topo é `ExperimentosAmbiguos`."""
+    ordenados = sorted(candidatos, key=lambda c: c[0], reverse=True)
+    if len(ordenados) > 1 and ordenados[0][0] == ordenados[1][0]:
+        empatados = sorted(c[1].name for c in ordenados if c[0] == ordenados[0][0])
+        raise ExperimentosAmbiguos(
+            f"{len(empatados)} experimentos da campanha têm o mesmo as_of "
+            f"({ordenados[0][3].get('as_of')}): {', '.join(empatados)}."
+        )
+    return ordenados[0], ordenados[1:]
+
+
 def ler(
     campaign_id: str,
     *,
@@ -267,31 +301,10 @@ def ler(
     if not _ID_EXTERNO.fullmatch(cid):
         raise ValueError("id de campanha malformado")
 
-    candidatos: list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]] = []
-    for caminho in _manifestos(raiz or _raiz_configurada()):
-        pasta = caminho.parent
-        manifesto = _json(caminho, pasta.name)
-        resultado_path = pasta / "resultado.json"
-        # Experimento que não é de sombra (nem declara nem tem resultado) não
-        # entra. Declarou ou tem: confere o sha256 ANTES de interpretar.
-        if not _declara(manifesto, "resultado.json") and not resultado_path.exists():
-            continue
-        _conferir(pasta, manifesto, ("resultado.json",))
-        resultado = _json(resultado_path, pasta.name)
-        if str(resultado.get("campanha")) != cid:
-            continue
-        candidatos.append((_data(resultado.get("as_of"), pasta.name), pasta, manifesto, resultado))
-
+    candidatos = [c for c in _candidatos(raiz or _raiz_configurada()) if str(c[3].get("campanha")) == cid]
     if not candidatos:
         return None
-    candidatos.sort(key=lambda c: c[0], reverse=True)
-    if len(candidatos) > 1 and candidatos[0][0] == candidatos[1][0]:
-        empatados = sorted(c[1].name for c in candidatos if c[0] == candidatos[0][0])
-        raise ExperimentosAmbiguos(
-            f"{len(empatados)} experimentos da campanha têm o mesmo as_of "
-            f"({candidatos[0][3].get('as_of')}): {', '.join(empatados)}."
-        )
-    as_of_dt, pasta, manifesto, resultado = candidatos[0]
+    (as_of_dt, pasta, manifesto, resultado), preteridos = _mais_recente(candidatos)
     _conferir(pasta, manifesto, ("resultado.json", "transformacao.csv"))
     hoje = (agora or _agora_utc()).astimezone(timezone.utc).date()
     idade = (hoje - as_of_dt.date()).days
@@ -308,8 +321,73 @@ def ler(
             validade_dias=validade,
         )
     projecao = _projetar(cid, pasta.name, manifesto, resultado, _dias(pasta / "transformacao.csv"))
-    projecao["origem"]["experimentos_substituidos"] = sorted(c[1].name for c in candidatos[1:])
+    projecao["origem"]["experimentos_substituidos"] = sorted(c[1].name for c in preteridos)
     return projecao
+
+
+def _numero_ou_none(v: Any) -> Optional[float]:
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def listar(*, raiz: Optional[pathlib.Path] = None) -> dict[str, Any]:
+    """A carteira em sombra: uma linha por campanha, a do experimento mais recente.
+
+    Mesmas regras de `ler`: resultado corrompido derruba a carteira inteira
+    (`IntegridadeQuebrada`, porque não se sabe de que campanha ele é) e pasta
+    ausente é `FonteIndisponivel`. Empate no `as_of` mais recente NÃO derruba a
+    carteira: a linha daquela campanha sai como `ambigua`, sem direção.
+
+    A linha nunca traz valor sugerido nem nada executável; `estado_dado`
+    `sem_dado` ou `amostra_insuficiente` vem com ROAS nulo, nunca zero.
+    """
+    por_campanha: dict[str, list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]]] = {}
+    for c in _candidatos(raiz or _raiz_configurada()):
+        cid = str(c[3].get("campanha") or "")
+        if not _ID_EXTERNO.fullmatch(cid):
+            raise IntegridadeQuebrada(f"resultado.json do experimento {c[1].name} sem campanha legível.")
+        por_campanha.setdefault(cid, []).append(c)
+
+    linhas: list[dict[str, Any]] = []
+    for cid in sorted(por_campanha):
+        try:
+            (_, pasta, _manifesto, resultado), preteridos = _mais_recente(por_campanha[cid])
+        except ExperimentosAmbiguos as exc:
+            linhas.append({
+                "campanha_externa": cid, "campanha_nome": None, "campanha_status": None, "conta": None,
+                "situacao": "ambigua", "mensagem": str(exc), "direcao": None, "estado_dado": None,
+                "motivo_estado_dado": None, "as_of": None, "experimento_id": None,
+                "janela_madura": None, "fracao_custo_maduro_sem_receita": None,
+                "valor_sugerido": None, "executada": False,
+            })
+            continue
+        rec = resultado.get("recomendacao") or {}
+        direcao_bruta = str(rec.get("direcao") or "")
+        direcao = direcao_bruta if direcao_bruta in DIRECOES else "evidencia_insuficiente"
+        linhas.append({
+            "campanha_externa": cid,
+            "campanha_nome": resultado.get("campanha_nome"),
+            "campanha_status": resultado.get("campanha_status"),
+            "conta": resultado.get("conta"),
+            "situacao": "lida",
+            "mensagem": None,
+            "direcao": direcao,
+            # Experimento anterior ao motor da carteira (Senac) não declara.
+            "estado_dado": resultado.get("estado_dado"),
+            "motivo_estado_dado": resultado.get("motivo_estado_dado"),
+            "as_of": resultado.get("as_of"),
+            "experimento_id": pasta.name,
+            "experimentos_substituidos": sorted(c[1].name for c in preteridos),
+            "janela_madura": _janela(resultado.get("janela_madura")),
+            "fracao_custo_maduro_sem_receita": _numero_ou_none(resultado.get("fracao_custo_maduro_sem_receita")),
+            "valor_sugerido": None,
+            "executada": False,
+        })
+    return {
+        "contrato": CONTRATO_CARTEIRA,
+        "campanhas": linhas,
+        "isolamento": {"chamadas_externas": 0, "mutacoes_executadas": 0, "oferece_aplicar": False},
+        "integridade": "coerente_com_manifesto",
+    }
 
 
 def _projetar(
@@ -332,6 +410,11 @@ def _projetar(
     return {
         "contrato": CONTRATO,
         "campanha_externa": cid,
+        # Campos do motor da carteira (W13); nulos no experimento Senac, que é anterior a ele.
+        "campanha_nome": resultado.get("campanha_nome"),
+        "campanha_status": resultado.get("campanha_status"),
+        "estado_dado": resultado.get("estado_dado"),
+        "motivo_estado_dado": resultado.get("motivo_estado_dado"),
         "grao": "campanha_dia",
         "direcao": direcao,
         "motivos": motivos,
