@@ -29,70 +29,112 @@ A combinação anterior (hardening 1.1.0 de 42f04aed + dono 1.0.0) também dava 
 ## 1. Inventário antes de qualquer instalação (somente leitura)
 
 ```bash
-cd /var/www/creditoup.com.br/wp-content/mu-plugins
+set -euo pipefail
+WP=/var/www/creditoup.com.br
+cd "$WP/wp-content/mu-plugins"
 ls -la
-sha256sum *.php *.css
-grep -l "class Creditoup_Compliance_Hardening\|class Volc_Editorial_Notice_Owner" *.php
+sha256sum -- *.php *.css
+grep -l -E "class (Creditoup_Compliance_Hardening|Volc_Editorial_Notice_Owner)" -- *.php || echo "nenhuma classe encontrada"
 ```
 
-Comparar com os hashes do commit aprovado (`sha256sum` dos três arquivos da branch). Registrar no recibo: nome, tamanho, hash e versão (`Version:` no cabeçalho) de cada arquivo existente.
+Comparar com os hashes do commit aprovado (`sha256sum` dos três arquivos da branch). Registrar no recibo: nome, tamanho, hash e versão (`Version:` no cabeçalho) de cada arquivo existente, e escolher as 4 URLs de referência do passo 5 (uma LP V1, uma página interna com o prefixo do motor, uma LP V2, uma página comum).
 
-## 2. Detecção de cópia duplicada
+## 2. Pré-condição obrigatória: buffers de terceiros (aborta se houver achado)
 
-O `grep` acima tem de devolver no máximo **um arquivo por classe**. Se devolver dois:
-
-- as versões 1.2.0/1.1.0 têm guarda `class_exists` na declaração: uma cópia nova a mais não derruba o site (provado: 1 aviso, 0 fatal);
-- uma cópia ANTIGA sem guarda (hardening 1.0.0/1.1.0 anterior) que carregue DEPOIS da nova, em ordem alfabética, dá `Cannot declare class` e HTTP 500 no site inteiro, wp-admin inclusive (provado no lab). A guarda do arquivo novo não alcança o arquivo antigo.
-
-Portanto a cópia extra tem de sair ANTES da instalação, movida para fora de `mu-plugins/` (passo 3), nunca deixada com outro nome.
-
-## 3. Instalação / atualização
+O dono do aviso decide num buffer aberto em `template_redirect`. Código que fecha **todos** os buffers durante a página tira esse buffer antes do fim, e a LP V1 fica com 2 avisos (provado no simulador PHP do revisor sobre cadf0d73; não reproduzido no WordPress descartável). Antes de instalar:
 
 ```bash
+cd /var/www/creditoup.com.br
+grep -rnE "ob_end_flush|ob_end_clean|ob_get_clean|ob_get_flush|while.*ob_get_level" \
+  /var/www/creditoup.com.br/wp-content/plugins /var/www/creditoup.com.br/wp-content/themes \
+  /var/www/creditoup.com.br/wp-content/mu-plugins || echo "nenhuma ocorrência"
+```
+
+**Qualquer ocorrência em código que rode numa requisição de página pública ABORTA a instalação até análise** (qual plugin, em que hook, se fecha o buffer de outros). Ocorrência descartada só com justificativa escrita no recibo (ex.: código só de admin, CLI ou download). Sem essa análise, não seguir para o passo 4.
+
+## 3. Detecção de cópia duplicada
+
+O `grep` do passo 1 tem de devolver no máximo **um arquivo por classe**. Se devolver dois:
+
+- as versões 1.2.0/1.1.0 têm guarda `class_exists` na declaração: uma cópia nova a mais não derruba o site (provado no WordPress descartável: 1 aviso, 0 fatal);
+- uma cópia ANTIGA sem guarda (hardening 1.0.0/1.1.0 anterior) que carregue DEPOIS da nova, em ordem alfabética, dá `Cannot declare class` e HTTP 500 no site inteiro, wp-admin inclusive (provado no WordPress descartável). A guarda do arquivo novo não alcança o arquivo antigo.
+
+Portanto toda cópia extra sai ANTES da instalação, para o backup (passo 4), nunca deixada com outro nome.
+
+## 4. Instalação / atualização
+
+Os três arquivos aprovados ficam em `/tmp/ff-hardening/` (só eles; nunca `validate-*.php`). `EXTRAS` lista as cópias duplicadas achadas no passo 3 (vazio se não houver).
+
+```bash
+set -euo pipefail
+MU=/var/www/creditoup.com.br/wp-content/mu-plugins
+NOMES="creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php"
+EXTRAS=""            # ex.: EXTRAS="creditoup-compliance-hardening-antigo.php"
 TS=$(date +%Y%m%d-%H%M%S)
 B=/var/backups/creditoup-hardening/$TS
-install -d -m 0750 "$B"
-cd /var/www/creditoup.com.br/wp-content/mu-plugins
-# backup de tudo que será trocado ou retirado (mesmo nome e cópias extras do inventário)
-cp -p creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php "$B"/ 2>/dev/null || true
-# cópias extras encontradas no passo 2: mv <arquivo> "$B"/
-# troca atômica, no MESMO nome de arquivo
-for f in creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php; do
-  install -o www-data -g www-data -m 0644 /tmp/ff-hardening/$f "./.$f.novo" && mv -f "./.$f.novo" "./$f"
+install -d -m 0750 "$B/antes" "$B/desinstalado"
+cd "$MU"
+# backup: só o que existe, sem engolir erro (set -e interrompe se a cópia falhar)
+for f in $NOMES $EXTRAS; do
+  if [ -e "$f" ]; then cp -p -- "$f" "$B/antes/$f"; echo "$f" >> "$B/existiam.txt"; fi
 done
-sha256sum creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php
+touch "$B/existiam.txt"
+# cópias extras saem de mu-plugins (já estão no backup)
+for f in $EXTRAS; do mv -- "$f" "$B/desinstalado/$f"; done
+# troca atômica, no MESMO nome de arquivo
+for f in $NOMES; do
+  install -o www-data -g www-data -m 0644 "/tmp/ff-hardening/$f" "./.$f.novo"
+  mv -f -- "./.$f.novo" "./$f"
+done
+sha256sum $NOMES
+echo "$B"            # anotar no recibo: é o argumento do rollback
 ```
 
 Os hashes impressos têm de ser os do commit aprovado. Depois, purge do WP Rocket (como no `README.md`).
 
-## 4. Verificação pós-instalação
+## 5. Verificação pós-instalação
 
-1. `php -l` nos dois `.php` (ou `wp eval 'echo "ok";'` sem erro).
+```bash
+URLS="<URL da LP V1> <URL da página interna com prefixo> <URL da LP V2> <URL da página comum>"
+for u in $URLS; do
+  n=$(curl -s "$u" | grep -oE 'class="creditoup-editorial-disclosure"|aria-label="Identidade editorial"' | wc -l)
+  echo "$u avisos=$n"
+done
+```
+
+1. `wp eval 'echo "ok";' --path=/var/www/creditoup.com.br` sem erro.
 2. `curl -s -o /dev/null -w '%{http_code}' https://creditoup.com.br/` = 200, e `https://creditoup.com.br/wp-admin/` responde (302 para login).
-3. Para uma LP V1, uma página interna com o prefixo do motor, uma LP V2 e uma página comum:
-   `grep -o 'class="creditoup-editorial-disclosure"\|id="volc-editorial-notice"' | wc -l` = **1**.
+3. Cada uma das 4 URLs com `avisos=1`. O padrão conta o aviso global, o aviso canônico do motor e o aviso curto do V2 (os dois do motor têm `aria-label="Identidade editorial"`).
 4. O CSS do aviso responde 200 em `/wp-content/mu-plugins/creditoup-compliance-hardening.css`.
 5. Log de erro do PHP sem `Fatal`, `Cannot declare` ou `Cannot redeclare` desde a troca.
 
 Qualquer item falhando: rollback imediato.
 
-## 5. Rollback
+## 6. Rollback (estado exato do inventário, sempre os três juntos)
 
 ```bash
-cd /var/www/creditoup.com.br/wp-content/mu-plugins
-B=/var/backups/creditoup-hardening/<TS da instalação>
-# versão anterior existia: restaura os três a partir do backup, no mesmo nome
-for f in creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php; do
-  [ -f "$B/$f" ] && install -o www-data -g www-data -m 0644 "$B/$f" "./$f"
+set -euo pipefail
+MU=/var/www/creditoup.com.br/wp-content/mu-plugins
+NOMES="creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php"
+B=/var/backups/creditoup-hardening/<TS da instalação>      # o diretório anotado no passo 4
+install -d -m 0750 "$B/desinstalado"
+cd "$MU"
+# 1) retira os três instalados (nunca só um: o par misto não foi provado)
+for f in $NOMES; do
+  if [ -e "$f" ]; then mv -- "$f" "$B/desinstalado/$f.novo"; fi
 done
-# não existia: retira os três juntos (nunca só o dono)
-# mv creditoup-compliance-hardening.php creditoup-compliance-hardening.css volc-editorial-notice-owner.php "$B"/desinstalado/
+# 2) devolve exatamente o que existia antes (mesmos nomes e cópias extras)
+for f in $(cat "$B/existiam.txt"); do
+  install -o www-data -g www-data -m 0644 "$B/antes/$f" "./$f"
+done
+ls -la; for f in $(cat "$B/existiam.txt"); do sha256sum -- "$f"; done
 ```
 
-Purge do WP Rocket e repetir o passo 4. Nenhum dado de post ou opção é alterado por esses arquivos: remover devolve o estado anterior.
+Os hashes têm de bater com os do inventário do passo 1. Purge do WP Rocket e repetir o passo 5 (esperado: o estado anterior). Nenhum dado de post ou opção é alterado por esses arquivos.
 
 ## Limites conhecidos
 
-- `ob_flush()` de terceiro no meio da página **funciona**: os buffers continuam abertos, o aviso global entra no pedaço final e o dono decide no fim (revisão de cadf0d73: sempre 1 aviso, com flush antes ou depois do conteúdo).
-- O caso que falha é um terceiro que **fecha todos os buffers** (`ob_end_flush()`/`ob_get_clean()` em laço) logo depois do `<head>`: o dono perde o buffer antes do conteúdo e a LP V1 fica com 2 avisos (o global no topo). Antes de instalar, procurar esse padrão nos plugins e no tema do site (`grep -rn "while.*ob_get_level\|ob_end_flush\|ob_end_clean" wp-content/plugins wp-content/themes`) e conferir no passo 4.
+- `ob_flush()` de terceiro no meio da página **funciona**: os buffers continuam abertos, o aviso global entra no pedaço final e o dono decide no fim. Provado no simulador PHP do revisor sobre cadf0d73 (sempre 1 aviso, com flush antes ou depois do conteúdo); não reproduzido no WordPress descartável.
+- O caso que falha é um terceiro que **fecha todos os buffers** logo depois do `<head>`: LP V1 com 2 avisos (o global no topo). É a pré-condição do passo 2, que aborta a instalação.
+- "Exatamente um aviso" vale para os cenários provados no WordPress descartável (tabela acima). Tema, cache e plugins do site real só se confirmam no passo 5.
 - No Elementor, retirar o aviso do motor deixa o container branco vazio que o envolvia.
