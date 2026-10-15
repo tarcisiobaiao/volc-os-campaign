@@ -351,6 +351,9 @@ BEGIN
   IF to_regprocedure('public.volc_pode_editar_funil(text,text)') IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10: public.volc_pode_editar_funil já existe — não reaplica';
   END IF;
+  IF to_regprocedure('public.volc_salvar_funil(text,text[])') IS NOT NULL THEN
+    RAISE EXCEPTION 'v19_10: public.volc_salvar_funil já existe — não reaplica';
+  END IF;
   IF to_regprocedure('public.volc_funil_manutencao()') IS NOT NULL THEN
     RAISE EXCEPTION 'v19_10: public.volc_funil_manutencao já existe — não reaplica';
   END IF;
@@ -465,6 +468,51 @@ CREATE TRIGGER trigger_cfu_w4_manutencao BEFORE UPDATE ON public.campaign_funnel
   FOR EACH ROW EXECUTE FUNCTION public.volc_funil_manutencao();
 INSERT INTO app_auth.w4_auth_criados VALUES ('gatilho', 'campaign_funnel_urls.trigger_cfu_w4_manutencao'),
                                             ('funcao', 'public.volc_funil_manutencao()');
+
+-- b3) salvar a lista do funil numa chamada só (atômica): o editor reenvia a lista
+--     inteira; antes eram duas requisições (desativa tudo; upsert) e uma URL
+--     histórica fora do domínio na lista fazia a 2ª falhar depois da 1ª gravar,
+--     deixando a campanha sem URL ativa. Aqui: URL já ativa e igual não é tocada;
+--     inativa na lista é reativada (gatilho exige o domínio); nova é inserida
+--     (policy exige o domínio); ativa fora da lista é desativada POR ÚLTIMO.
+--     Qualquer recusa desfaz a chamada inteira. INVOKER: RLS, policies e gatilhos
+--     valem como num UPDATE/INSERT direto do mesmo usuário.
+CREATE FUNCTION public.volc_salvar_funil(p_campaign_id text, p_urls text[])
+RETURNS SETOF public.campaign_funnel_urls
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $s$
+DECLARE
+  v_urls text[];
+  v_u text;
+BEGIN
+  -- mesma limpeza de public.clean_funnel_url (o gatilho ainda roda na gravação)
+  SELECT coalesce(array_agg(DISTINCT c), '{}') INTO v_urls
+    FROM (SELECT rtrim(regexp_replace(regexp_replace(btrim(u), '^https?://', '', 'i'), '^www\.', '', 'i'), '/') AS c
+            FROM unnest(coalesce(p_urls, '{}')) u) x
+   WHERE c <> '';
+  FOREACH v_u IN ARRAY v_urls LOOP
+    IF EXISTS (SELECT 1 FROM public.campaign_funnel_urls
+                WHERE campaign_id = p_campaign_id AND url = v_u AND "Active") THEN
+      CONTINUE;                                   -- igual e ativa: não reenvia
+    ELSIF EXISTS (SELECT 1 FROM public.campaign_funnel_urls
+                   WHERE campaign_id = p_campaign_id AND url = v_u) THEN
+      UPDATE public.campaign_funnel_urls SET "Active" = true, updated_at = now()
+       WHERE campaign_id = p_campaign_id AND url = v_u;
+    ELSE
+      INSERT INTO public.campaign_funnel_urls (campaign_id, url, "Active") VALUES (p_campaign_id, v_u, true);
+    END IF;
+  END LOOP;
+  UPDATE public.campaign_funnel_urls SET "Active" = false, updated_at = now()
+   WHERE campaign_id = p_campaign_id AND "Active" AND url <> ALL (v_urls);
+  RETURN QUERY SELECT * FROM public.campaign_funnel_urls
+                WHERE campaign_id = p_campaign_id AND "Active" ORDER BY created_at, id;
+END
+$s$;
+COMMENT ON FUNCTION public.volc_salvar_funil(text, text[]) IS
+  'v19_10 (W4): salva a lista de URLs do funil de uma campanha numa transação (saveFunnelUrls). INVOKER. Removida pelo v19_10_rollback.sql.';
+ALTER FUNCTION public.volc_salvar_funil(text, text[]) OWNER TO supabase_admin;
+REVOKE ALL ON FUNCTION public.volc_salvar_funil(text, text[]) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.volc_salvar_funil(text, text[]) TO authenticated;
+INSERT INTO app_auth.w4_auth_criados VALUES ('funcao', 'public.volc_salvar_funil(text,text[])');
 
 -- c) papel dedicado e recálculo só da campanha da linha
 CREATE ROLE volc_agregador_funil NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEDB NOCREATEROLE;

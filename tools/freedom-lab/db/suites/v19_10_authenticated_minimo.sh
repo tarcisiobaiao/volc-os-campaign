@@ -326,6 +326,23 @@ eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url 
 eq "$(estado service_role "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url = 'blog.p1.example/hist' RETURNING \"Active\"")" "ok:t" "manutenção: service_role (backend/n8n) preserva o comportamento"
 eq "$(estado authenticated "UPDATE $CFU SET \"Active\" = false WHERE $C1 AND url = 'p1.example/ok' RETURNING 1" "$SEMPAPEL" | cut -c1-5)" "ok:" "manutenção: conta sem papel não desativa nada (0 linhas)"
 PA -c "DELETE FROM public.campaign_funnel_urls WHERE campaign_id = '123456789' AND url IN ('outro.example/hist', 'blog.p1.example/hist', 'p1.example/ok')" >/dev/null
+# saveFunnelUrls atômico (re-revisão f2a20696): cenário do revisor — histórica de subdomínio ATIVA + válida ativa
+PA -c "INSERT INTO public.campaign_funnel_urls (campaign_id, url, \"Active\") VALUES ('123456789', 'blog.p1.example/old', true), ('123456789', 'outro.example/inat', false)" >/dev/null
+ATIVAS="SELECT string_agg(url, ',' ORDER BY url) FROM $CFU WHERE $C1 AND \"Active\""
+# antes (2 requisições separadas, como o front antigo): a 1ª commita, a 2ª é recusada → zero ativas
+P -c "BEGIN; SET LOCAL ROLE authenticated; SET LOCAL request.jwt.claims = '$OPER'; UPDATE $CFU SET \"Active\" = false WHERE $C1; COMMIT;" >/dev/null
+eq "$(estado authenticated "INSERT INTO $CFU (campaign_id, url, \"Active\") VALUES ('123456789', 'blog.p1.example/old', true) ON CONFLICT (campaign_id, url) DO UPDATE SET \"Active\" = EXCLUDED.\"Active\"" "$OPER" | cut -c1-5)" "42501" "saveFunnelUrls antigo: o upsert com a histórica divergente é recusado depois do passo 1 já gravado"
+eq "$(P -c "$ATIVAS")" "" "saveFunnelUrls antigo: a campanha fica com ZERO URLs ativas (cenário do revisor reproduzido)"
+PA -c "UPDATE $CFU SET \"Active\" = true WHERE $C1 AND url IN ('blog.p1.example/old', 'p1.example/a')" >/dev/null
+# depois: uma RPC atômica
+eq "$(estado authenticated "SELECT string_agg(url, ',' ORDER BY url) FROM public.volc_salvar_funil('123456789', ARRAY['https://www.blog.p1.example/old/', 'p1.example/a', 'p1.example/b'])" "$OPER")" "ok:blog.p1.example/old,p1.example/a,p1.example/b" "volc_salvar_funil: histórica divergente reenviada sem mudança não é tocada; válidas mantidas; nova entra"
+eq "$(estado authenticated "SELECT string_agg(url, ',' ORDER BY url) FROM public.volc_salvar_funil('123456789', ARRAY['p1.example/a'])" "$OPER")" "ok:p1.example/a" "volc_salvar_funil: o que saiu da lista é desativado (inclusive a divergente)"
+eq "$(estado authenticated "DO \$t\$ BEGIN PERFORM public.volc_salvar_funil('123456789', ARRAY['outro.example/inat', 'p1.example/c']); EXCEPTION WHEN insufficient_privilege THEN NULL; END \$t\$; $ATIVAS" "$OPER")" "ok:blog.p1.example/old,p1.example/a" "volc_salvar_funil: reativar a divergente é recusado e NADA muda (atômico; ativas não diminuem)"
+eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY['p2v.example/x2'])" "$OPER" | cut -c1-5)" "42501" "volc_salvar_funil: operador não grava na campanha de outro"
+eq "$(estado authenticated "SELECT count(*) FROM public.volc_salvar_funil('222222222', ARRAY[]::text[])" "$OPER")" "ok:0" "volc_salvar_funil: operador não desativa nada na campanha de outro"
+eq "$(estado anon "SELECT count(*) FROM public.volc_salvar_funil('123456789', ARRAY[]::text[])" | cut -c1-5)" "42501" "volc_salvar_funil: anon sem EXECUTE"
+eq "$(P -c "$ATIVAS")" "blog.p1.example/old,p1.example/a" "volc_salvar_funil: estado gravado intacto depois das provas"
+PA -c "DELETE FROM public.campaign_funnel_urls WHERE campaign_id = '123456789' AND url IN ('blog.p1.example/old', 'outro.example/inat')" >/dev/null
 PA -c "UPDATE public.projects SET domain = '', main_url = '' WHERE id = 9001" >/dev/null
 eq "$(estado authenticated "select public.volc_pode_editar_funil('123456789','/x')" "$OPER")" "ok:f" "escopo: projeto sem domínio → URL sem host não casa"
 PA -c "UPDATE public.projects SET domain = 'p1.example', main_url = 'https://p1.example' WHERE id = 9001" >/dev/null
