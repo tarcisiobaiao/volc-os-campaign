@@ -22,7 +22,7 @@ def test_toda_execucao_de_sql_passa_pela_guarda():
     fonte = LAB.read_text(encoding="utf-8")
     assert 'P() { exigir_lab || return $?;' in fonte
     # docker exec direto só dentro de funções que começam por exigir_lab
-    for nome in ("semear() {", "testar() {"):
+    for nome in ("semear() {", "testar() {", "sqlstate() {"):
         trecho = fonte[fonte.index(nome):]
         assert trecho.splitlines()[1].strip() == "exigir_lab || return $?", nome
 
@@ -111,3 +111,13 @@ def test_ctrl_c_no_restore_apaga_os_blocos():
 def test_recibo_sem_semente_de_producao_e_null():
     fonte = LAB.read_text(encoding="utf-8")
     assert "semente_json=null" in fonte
+
+
+def test_carregado_como_biblioteca_nao_roda_comando(tmp_path):
+    """As provas do ledger fazem `. lab.sh`: carregar não pode criar nem destruir nada."""
+    r = subprocess.run(
+        ["bash", "-c", f'. "{LAB}" destruir; type criar P PA sqlstate eq base_prod >/dev/null && echo carregado'],
+        env=os.environ | {"LAB_NOME": "volc-nao-e-do-lab-zz", "RECIBOS": str(tmp_path)},
+        capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "carregado"

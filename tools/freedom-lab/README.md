@@ -35,6 +35,11 @@ MANTER=1 tools/freedom-lab/lab.sh recriar   # mantém o container para depurar
 tools/freedom-lab/lab.sh criar | semear | migrar | testar | destruir | status
 ```
 
+- Também é biblioteca: `. tools/freedom-lab/lab.sh` com `LAB_NOME`/`RECIBOS`
+  próprios dá `criar`/`destruir`/`P`/`sqlstate`/`ok`/`nao`/`eq` sem rodar
+  comando. As provas do ledger de migrations (v20_01/v20_02) sobem o banco
+  assim: `scripts/provar-ledger-migracoes.sh` e
+  `scripts/provar-migracao-par.sh --migration A.sql --rollback B.sql`.
 - Imagem `supabase/postgres:15.8.1.085`, container `volc-freedom-lab-db` com
   rótulo `volc.freedom-lab=1`, **sem porta publicada** (só `docker exec`).
 - `semear` aplica só fixtures sintéticas, depois de um gate anti-PII/segredo.
