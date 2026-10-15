@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { AUSENTE, type FormatoDeNumero, type LimitesDeFrescor, type Sentido } from "@/lib/instrumento";
+import { AUSENTE, ausente, type FormatoDeNumero, type LimitesDeFrescor, type Sentido } from "@/lib/instrumento";
 import { cn } from "@/lib/utils";
 
 import { Delta } from "./Delta";
@@ -46,7 +46,7 @@ const SEM_NUMERO: ReadonlySet<Verdade> = new Set(["bloqueado", "indisponivel", "
  * frescor e, se houver base, variação e tendência.
  *
  * As leis que ela impõe, para que nenhuma tela precise lembrar:
- *  - `valor: null` vira "—", nunca 0, e a verdade cai para "desconhecido";
+ *  - `valor: null` ou não-finito vira "—", nunca 0 nem ∞, e a verdade cai para "desconhecido";
  *  - `verdade: "zero"` só vale com valor 0 medido;
  *  - erro, bloqueio, indisponível e desconhecido escondem o número (o último
  *    bom valor, se existir, é responsabilidade da tela, datado);
@@ -69,9 +69,11 @@ export function Metrica({
   carregando = false,
   className,
 }: Props) {
+  // Não-finito (ROAS de custo zero, divisão por nada) é ausência, não "∞".
+  const semValor = ausente(valor);
   const efetiva: Verdade =
-    valor == null && !SEM_NUMERO.has(verdade) ? "desconhecido" : verdade === "zero" && valor !== 0 ? "real" : verdade;
-  const mostrarNumero = !SEM_NUMERO.has(efetiva) && valor != null;
+    semValor && !SEM_NUMERO.has(verdade) ? "desconhecido" : verdade === "zero" && valor !== 0 ? "real" : verdade;
+  const mostrarNumero = !SEM_NUMERO.has(efetiva) && !semValor;
   const mostrarSelo = efetiva !== "real";
 
   return (

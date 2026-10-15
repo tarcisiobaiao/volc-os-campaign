@@ -57,6 +57,20 @@ describe("Metrica", () => {
   });
 });
 
+describe("não-finitos são ausência em todo primitivo", () => {
+  it.each([Infinity, -Infinity, Number.NaN])("Metrica com %s mostra travessão e Desconhecido", (v) => {
+    const { container } = render(<Metrica rotulo="ROAS" valor={v} formato={{ tipo: "razao" }} verdade="real" />);
+    expect(container.querySelector("[data-verdade]")?.getAttribute("data-verdade")).toBe("desconhecido");
+    expect(container.textContent).not.toContain("∞");
+    expect(container.textContent).toContain("—");
+  });
+
+  it("NumeroAnimado com Infinity mostra travessão", () => {
+    const { container } = render(<NumeroAnimado valor={Infinity} formato={{ tipo: "razao" }} />);
+    expect(container.querySelector("[aria-hidden]")?.textContent).toBe("—");
+  });
+});
+
 describe("NumeroAnimado", () => {
   it("primeira leitura aparece pronta (sem contar de zero)", () => {
     const { container } = render(<NumeroAnimado valor={1500} formato={{ tipo: "inteiro" }} />);
@@ -75,8 +89,21 @@ describe("NumeroAnimado", () => {
 describe("Delta", () => {
   it("custo subindo é desfavorável e diz isso em palavra", () => {
     const { container } = render(<Delta atual={120} base={100} sentido="menor-melhor" />);
-    expect(container.querySelector(".text-destructive")).toBeTruthy();
+    expect(container.querySelector(".text-delta-ruim")).toBeTruthy();
     expect(container.textContent).toContain("desfavorável");
+  });
+
+  it("ruído de ponto flutuante não ganha seta nem juízo", () => {
+    const { container } = render(<Delta atual={0.1 + 0.2} base={0.3} sentido="maior-melhor" />);
+    expect(container.textContent).not.toContain("▲");
+    expect(container.textContent).not.toContain("favorável");
+    expect(container.textContent).toContain("sem juízo de valor");
+  });
+
+  it("infinito não vira variação favorável", () => {
+    const { container } = render(<Delta atual={Infinity} base={10} sentido="maior-melhor" />);
+    expect(container.textContent).toContain("sem base de comparação");
+    expect(container.textContent).not.toContain("∞");
   });
 
   it("sem base, não inventa variação", () => {

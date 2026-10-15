@@ -385,9 +385,10 @@ Regras em `src/lib/instrumento` (puras, testadas). Uma tela nova não reimplemen
 
 Leis que os primitivos impõem:
 
-- `valor: null` vira "—" + "Desconhecido"; erro, bloqueio e indisponível escondem o número.
+- `valor: null` ou não-finito (NaN, ±Infinity, ROAS de custo zero) vira "—" + "Desconhecido", nunca 0 nem ∞; erro, bloqueio e indisponível escondem o número.
+- Valor que arredonda a zero na precisão exibida sai sem sinal ("0,0%", nunca "-0,0%").
 - O tick de número só acontece entre duas observações; primeira leitura aparece pronta, nunca conta de zero.
-- `Delta` exige `sentido`; custo que sobe não é verde; base zero não gera percentual.
+- `Delta` exige `sentido`; custo que sobe não é verde; base zero não gera percentual; variação abaixo de 0,05% (que a tela mostra como 0,0%) é `igual`, sem seta nem juízo. Tinta do Delta: `text-delta-bom` / `text-delta-ruim` (≥4,5:1 a 11px nos dois temas).
 - `Sparkline` quebra a linha em `null`; nunca interpola nem desce a zero.
 - `Frescor` acompanha número operacional; data futura é aviso de relógio, nunca "agora".
 - Hipótese (sombra, simulação, proposta) é hachura + ◇ + palavra; o medido é sólido. Nenhum cartão de recomendação oferece "executar".
