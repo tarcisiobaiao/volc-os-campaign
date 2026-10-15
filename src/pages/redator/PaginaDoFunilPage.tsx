@@ -524,6 +524,13 @@ const EnviarAoWordPress: React.FC<{
 }> = ({ runRowId, pagina, aoPublicar }) => {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // A confirmação é um diálogo do produto, não o `window.confirm` do
+  // navegador: ela nomeia o objeto, o efeito e o que não tem desfazer
+  // (PRODUCT.md §5, ação confirmatória), e herda tema, foco e teclado.
+  // ⚠️ Antes do `return` da página bloqueada: hook depois de retorno
+  // antecipado quebra a ordem dos hooks ao navegar de uma página
+  // desbloqueada para uma bloqueada, e a tela fica em branco.
+  const [confirmando, setConfirmando] = useState(false);
 
   if (pagina.bloqueada) {
     return (
@@ -534,11 +541,6 @@ const EnviarAoWordPress: React.FC<{
       </p>
     );
   }
-
-  // A confirmação é um diálogo do produto, não o `window.confirm` do
-  // navegador: ela nomeia o objeto, o efeito e o que não tem desfazer
-  // (PRODUCT.md §5, ação confirmatória), e herda tema, foco e teclado.
-  const [confirmando, setConfirmando] = useState(false);
 
   const enviar = async () => {
     setConfirmando(false);

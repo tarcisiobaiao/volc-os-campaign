@@ -16,7 +16,8 @@
  * inventar estado; é relatar o que existe.
  */
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { PaginaEscrita } from '@/types/redatorPaginas';
@@ -208,5 +209,46 @@ describe('enviar ao WordPress', () => {
     await clicarEnviar();
 
     await waitFor(() => expect(container.textContent).toContain('já está no WordPress'));
+  });
+});
+
+
+// ── NAVEGAR ENTRE PÁGINAS NÃO PODE MUDAR A ORDEM DOS HOOKS ─────────────────
+//
+// ⚠️ Revisão R-nuvem-20261015-d2: o `useState` do diálogo de envio ficou
+// depois do `return` da página bloqueada. Ir de uma página desbloqueada para
+// uma bloqueada renderizava menos hooks que antes, e o React derrubava a tela.
+
+describe('navegar de página desbloqueada para bloqueada', () => {
+  it('mantém a tela de pé e explica o bloqueio', async () => {
+    const livre = pagina({ page_number: 3 });
+    const barrada = pagina({
+      page_number: 4, slug: 'p4', h1: 'Página barrada', bloqueada: true,
+      issues: [{ etapa: 'content_gate', code: 'x', message: 'y' }],
+    });
+    paginasDoRun.mockResolvedValue({ paginas: [livre, barrada], sem_artefatos: false });
+
+    let ir: (para: string) => void = () => undefined;
+    const Navegador = () => { ir = useNavigate(); return null; };
+    const erroDoConsole = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/redator/funil/9/p/3']}>
+        <Navegador />
+        <Routes>
+          <Route path="/redator/funil/:runId/p/:n" element={<PaginaDoFunilPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: /enviar ao WordPress/i })).toBeTruthy());
+
+    await act(async () => { ir('/redator/funil/9/p/4'); });
+
+    await waitFor(() => expect(container.textContent).toContain('barrada por um portão'));
+    expect(screen.queryByRole('button', { name: /enviar ao WordPress/i })).toBeNull();
+    const reclamouDeHook = erroDoConsole.mock.calls.some((c) => String(c[0]).includes('hooks'));
+    erroDoConsole.mockRestore();
+    expect(reclamouDeHook).toBe(false);
   });
 });
