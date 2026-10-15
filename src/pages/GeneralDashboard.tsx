@@ -820,9 +820,17 @@ export default function GeneralDashboard() {
                         </RevenueTooltip>
                         <div className={`${isMobile ? 'text-sm flex flex-col gap-1 mt-2' : 'text-xs'} text-muted-foreground`}>
                           <span className="flex items-center gap-1 tabular"><Coins className="h-3 w-3" /> {formatCurrency(campaign.investment || 0)}</span>
-                          <span className="flex items-center gap-1 tabular">
-                            <TrendingUp className="h-3 w-3" />
-                            {Math.round(calculateROAS(campaign.revenue || 0, campaign.investment || 0))}%
+                          {/* Mesma regra da tabela de projetos: sem gasto, o
+                              excedente não existe (calculateROAS devolve um 100
+                              simbólico) e vira "—". */}
+                          <span
+                            className="flex items-center gap-1 tabular"
+                            title="Excedente da receita sobre o gasto: (receita ÷ gasto − 1). Fórmula legada, ver adjudicação O02."
+                          >
+                            {(campaign.investment || 0) > 0
+                              ? formatarNumero(calculateROAS(campaign.revenue || 0, campaign.investment || 0) / 100, { tipo: 'percentual', casas: 0 })
+                              : formatarNumero(null, { tipo: 'percentual' })}{' '}
+                            excedente
                           </span>
                           {campaign.commission && campaign.commission > 0 && (
                             <div className={`${isMobile ? 'text-sm' : 'text-xs'} text-primary font-medium ${isMobile ? 'mt-1' : 'mt-0.5'}`}>
