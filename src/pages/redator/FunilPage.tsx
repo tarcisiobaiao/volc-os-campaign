@@ -221,7 +221,18 @@ const FunilPage: React.FC = () => {
           <div className="mt-3 aurora-rule w-16" />
         </header>
 
-        {carregando && !matriz && <p className="mt-8 text-sm text-muted-foreground" aria-live="polite">Lendo a execução</p>}
+        {/* Esqueleto com a forma da tela: linha do funil, régua e abas. */}
+        {carregando && !matriz && (
+          <div role="status" aria-live="polite" className="space-y-4">
+            <span className="sr-only">Lendo a execução</span>
+            <div className="h-24 skeleton" />
+            <div className="flex flex-wrap gap-4">
+              {[0, 1, 2].map((i) => <div key={i} className="h-14 w-40 skeleton" />)}
+            </div>
+            <div className="h-11 skeleton" />
+            <div className="h-64 skeleton" />
+          </div>
+        )}
         {erro && (
           <EstadoOperacional tom="erro" titulo="A leitura do funil falhou" explicacao={erro} />
         )}
@@ -343,7 +354,12 @@ const FunilPage: React.FC = () => {
               </TabsList>
 
               <TabsContent value="funil" className="mt-6">
-                {!funil && <p className="text-sm text-muted-foreground">Lendo o funil…</p>}
+                {!funil && (
+                  <div role="status" aria-live="polite" className="grid gap-3 md:grid-cols-3">
+                    <span className="sr-only">Lendo o funil</span>
+                    {[0, 1, 2].map((i) => <div key={i} className="h-40 skeleton" />)}
+                  </div>
+                )}
                 {funil?.sem_artefatos && (
                   <p className="max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
                     {funil.motivo} As páginas publicadas continuam no WordPress —

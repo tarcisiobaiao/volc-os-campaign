@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { SeloDaPeca } from '@/components/criativos/comum/Selo';
 import { SemArquivo } from '@/components/criativos/comum/Estados';
 import { Preview } from '@/components/criativos/comum/Preview';
+import { MolduraDeStories } from '@/components/criativos/job/MesaDeProporcoes';
+import { zonaSeguraDeStories } from '@/components/criativos/job/zonaSegura';
 import {
   custoLegivel,
   dimensoes,
@@ -104,10 +106,13 @@ export const PainelDeFase: React.FC<{
   );
 };
 
-export const PecaDoJob: React.FC<{ peca: Rendition; aoRenovar?: () => void }> = ({
-  peca,
-  aoRenovar,
-}) => {
+export const PecaDoJob: React.FC<{
+  peca: Rendition;
+  aoRenovar?: () => void;
+  /** Desenha a zona segura de Stories sobre a prévia, se a peça for 9:16. */
+  molduraLigada?: boolean;
+}> = ({ peca, aoRenovar, molduraLigada = false }) => {
+  const zona = zonaSeguraDeStories(peca.larguraPedida, peca.alturaPedida);
   const enquadramento = enquadramentoLegivel(peca.enquadramento);
   // ⚠️ A divergência precisa de FRASE, não de três números alinhados num `<dl>`
   // para o operador comparar de cabeça. Uma peça fora da dimensão pedida é fato
@@ -133,12 +138,25 @@ export const PecaDoJob: React.FC<{ peca: Rendition; aoRenovar?: () => void }> = 
             rel="noreferrer"
             className="block overflow-hidden rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <Preview
-              url={peca.previewUrl}
-              alt={`Peça ${peca.rotulo}, ${peca.larguraPedida} por ${peca.alturaPedida} pixels, do trabalho em produção`}
-              aoRenovar={aoRenovar}
-              classNameImagem="mx-auto max-h-64 w-auto max-w-full"
-            />
+            {zona ? (
+              <span className="flex justify-center">
+                <MolduraDeStories zona={zona} visivel={molduraLigada}>
+                  <Preview
+                    url={peca.previewUrl}
+                    alt={`Peça ${peca.rotulo}, ${peca.larguraPedida} por ${peca.alturaPedida} pixels, do trabalho em produção`}
+                    aoRenovar={aoRenovar}
+                    classNameImagem="block max-h-64 w-auto max-w-full"
+                  />
+                </MolduraDeStories>
+              </span>
+            ) : (
+              <Preview
+                url={peca.previewUrl}
+                alt={`Peça ${peca.rotulo}, ${peca.larguraPedida} por ${peca.alturaPedida} pixels, do trabalho em produção`}
+                aoRenovar={aoRenovar}
+                classNameImagem="mx-auto max-h-64 w-auto max-w-full"
+              />
+            )}
           </a>
         ) : peca.estado === 'pronta' ? (
           <SemArquivo motivo="A peça está pronta e o arquivo não veio nesta leitura. Recarregue para pedir uma nova URL." />

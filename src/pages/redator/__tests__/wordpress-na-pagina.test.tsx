@@ -15,7 +15,7 @@
  * Silêncio não é neutralidade. Dizer "não foi enviada ao WordPress" não é
  * inventar estado; é relatar o que existe.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -129,8 +129,16 @@ describe('painel "no wordpress" da página do funil', () => {
 // internos apontam para páginas que não existem.
 
 describe('enviar ao WordPress', () => {
-  const confirmar = (resposta: boolean) =>
-    vi.spyOn(window, 'confirm').mockReturnValue(resposta);
+  // A confirmação deixou de ser `window.confirm` e virou o diálogo do
+  // produto. O contrato é o mesmo: sem o segundo clique, nada sobe.
+  let resposta = true;
+  const confirmar = (r: boolean) => { resposta = r; };
+  const clicarEnviar = async () => {
+    screen.getByRole('button', { name: /enviar ao WordPress/i }).click();
+    const dialogo = await screen.findByRole('alertdialog');
+    const alvo = resposta ? /enviar como rascunho/i : /manter só no VOLC/i;
+    within(dialogo).getByRole('button', { name: alvo }).click();
+  };
 
   it('publica a página e relê o funil para mostrar os links', async () => {
     confirmar(true);
@@ -141,8 +149,7 @@ describe('enviar ao WordPress', () => {
     });
     const { container } = await montar(pagina());
 
-    const botao = screen.getByRole('button', { name: /enviar ao WordPress/i });
-    botao.click();
+    await clicarEnviar();
 
     await waitFor(() => expect(publicarPagina).toHaveBeenCalledWith(9, 3));
     // relê: é do servidor que vem `publicada`, e sem reler o painel continuaria
@@ -155,7 +162,7 @@ describe('enviar ao WordPress', () => {
     confirmar(false);
     await montar(pagina());
 
-    screen.getByRole('button', { name: /enviar ao WordPress/i }).click();
+    await clicarEnviar();
 
     await new Promise((r) => setTimeout(r, 50));
     expect(publicarPagina).not.toHaveBeenCalled();
@@ -186,7 +193,7 @@ describe('enviar ao WordPress', () => {
     publicarPagina.mockResolvedValue({ ok: false, erro: '401 Unauthorized no WordPress' });
     const { container } = await montar(pagina());
 
-    screen.getByRole('button', { name: /enviar ao WordPress/i }).click();
+    await clicarEnviar();
 
     await waitFor(() => expect(container.textContent).toContain('401 Unauthorized'));
     // e não finge que deu certo
@@ -198,7 +205,7 @@ describe('enviar ao WordPress', () => {
     publicarPagina.mockRejectedValue(new Error('A página 3 já está no WordPress (post #2198).'));
     const { container } = await montar(pagina());
 
-    screen.getByRole('button', { name: /enviar ao WordPress/i }).click();
+    await clicarEnviar();
 
     await waitFor(() => expect(container.textContent).toContain('já está no WordPress'));
   });

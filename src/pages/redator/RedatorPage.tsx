@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { PenLine, RefreshCw, SlidersHorizontal } from 'lucide-react';
 
 import { Layout } from '@/components/layout/Layout';
+import { CabecalhoDePagina } from '@/components/sistema/CabecalhoDePagina';
 import { EstadoOperacional } from '@/components/sistema/EstadoOperacional';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -77,36 +78,27 @@ const RedatorPage: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-6 p-4 md:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3 reveal" style={{ ['--i' as never]: 0 }}>
-          <div className="min-w-0">
-            <div className="kicker mb-2 flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <PenLine className="h-3.5 w-3.5" aria-hidden />
-              </span>
-              motor de redação
-            </div>
-            <h1 className="font-display text-3xl font-bold tracking-tight leading-[1.05] sm:text-4xl">
-              Redator <span className="text-aurora">Editorial</span>
-            </h1>
-            <div className="mt-3 aurora-rule w-16" />
-            <p className="mt-3 max-w-[62ch] text-pretty text-sm text-muted-foreground">
-              O Pautador aprova a pauta e arquiteta o funil. Aqui ele vira texto,
-              imagem e rascunho no WordPress — pronto para a campanha apontar.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="hover-lift" onClick={() => void buscar()}>
-              <RefreshCw className={cn('h-4 w-4', carregando && 'animate-spin')} aria-hidden />
-              atualizar
-            </Button>
-            <Link to="/redator/config">
-              <Button variant="outline" size="sm" className="hover-lift">
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                configuração
+        <CabecalhoDePagina
+          className="reveal"
+          kicker="motor de redação"
+          icone={<PenLine className="h-3.5 w-3.5" aria-hidden />}
+          titulo={<>Redator <span className="text-aurora">Editorial</span></>}
+          proposito="O Pautador aprova a pauta e arquiteta o funil. Aqui ele vira texto, imagem e rascunho no WordPress, pronto para a campanha apontar."
+          acao={
+            <>
+              <Button variant="outline" size="sm" className="hover-lift" onClick={() => void buscar()}>
+                <RefreshCw className={cn('h-4 w-4', carregando && 'animate-spin')} aria-hidden />
+                atualizar
               </Button>
-            </Link>
-          </div>
-        </header>
+              <Button asChild variant="outline" size="sm" className="hover-lift">
+                <Link to="/redator/config">
+                  <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                  configuração
+                </Link>
+              </Button>
+            </>
+          }
+        />
 
         {/* Os três números que resumem o módulo. Uma superfície, não três
             cartões iguais com ícone em caixa — o pulso do QG é o padrão. */}
@@ -151,8 +143,20 @@ const RedatorPage: React.FC = () => {
             explicacao={erro}
           />
         )}
+        {/* Esqueleto com a forma do quadro: quatro poços com cartões. O texto
+            "Lendo o quadro" sozinho deixava a tela vazia e sem orientação. */}
         {carregando && !quadro && (
-          <p className="text-sm text-muted-foreground" aria-live="polite">Lendo o quadro</p>
+          <div role="status" aria-live="polite" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <span className="sr-only">Lendo o quadro</span>
+            {[2, 1, 3, 1].map((n, col) => (
+              <div key={col} className="space-y-2 rounded-xl border border-border bg-muted p-2">
+                <div className="h-6 w-28 skeleton" />
+                {Array.from({ length: n }).map((_, i) => (
+                  <div key={i} className="h-28 skeleton" />
+                ))}
+              </div>
+            ))}
+          </div>
         )}
 
         {quadro && (
