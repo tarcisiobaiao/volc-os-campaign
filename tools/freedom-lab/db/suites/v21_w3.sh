@@ -116,11 +116,14 @@ END
 \$f\$;
 SELECT pg_temp.v21_semear('auth.users', '{"id":"$V21_ADMIN","email":"admin@v21.example.invalid"}');
 SELECT pg_temp.v21_semear('auth.users', '{"id":"$V21_COMUM","email":"comum@v21.example.invalid"}');
-SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_ADMIN","email":"admin@v21.example.invalid"}');
-SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_COMUM","email":"comum@v21.example.invalid"}');
+SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_ADMIN","email":"admin@v21.example.invalid","role":"ADMIN"}');
+SELECT pg_temp.v21_semear('public.users', '{"id":"$V21_COMUM","email":"comum@v21.example.invalid","role":"OPERATOR"}');
 SELECT pg_temp.v21_semear('app_auth.user_roles', '{"auth_user_id":"$V21_ADMIN","role":"ADMIN"}');
 SELECT pg_temp.v21_semear('public.campaigns', '{"campaign_id":"$V21_CAMP"}');
 SQL
+  if grep -q 'ERROR' "$RECIBOS/v21-semente.out"; then
+    nao "v21 · semente recusada pela base: $(grep -m1 'ERROR' "$RECIBOS/v21-semente.out")"
+  else ok "v21 · semente sintética aceita pela base (CHECKs e FKs de produção)"; fi
   eq "$(v21_sql "select count(*) from public.users where id in ('$V21_ADMIN','$V21_COMUM')")" "2" "v21 · dois usuários sintéticos semeados"
   eq "$(v21_como authenticated "$V21_ADMIN" 'select public.volc_current_admin()')" "ok:t" "v21 · harness: admin sintético é admin pela v8_01"
   eq "$(v21_como authenticated "$V21_COMUM" 'select public.volc_current_admin()')" "ok:f" "v21 · harness: comum não é admin"
@@ -128,7 +131,7 @@ SQL
   echo "▶ v21 · controle: a janela que o pacote fecha (v7_13 confirmada sozinha)"
   P -f - < "$RAIZ/src/sql/v7_13_meta_capi_sites.sql" > "$RECIBOS/v21-controle-v7_13.out" 2>&1
   eq "$(v21_sql "select has_table_privilege('anon','public.meta_capi_sites','SELECT,DELETE,TRUNCATE')")" "t" "v21 · controle: v7_13 sozinha deixa SELECT/DELETE/TRUNCATE para a anon (defeito do revisor reproduzido)"
-  eq "$(v21_como anon '' 'truncate public.meta_capi_sites')" "ok:TRUNCATE TABLE" "v21 · controle: a anon trunca de fato, então as negações adiante vêm do pacote e não do harness"
+  eq "$(sqlstate 'BEGIN; SET LOCAL ROLE anon; TRUNCATE public.meta_capi_sites; ROLLBACK;')" "ok" "v21 · controle: a anon trunca de fato, então as negações adiante vêm do pacote e não do harness"
   P -c "drop table public.meta_capi_sites" >/dev/null
 
   v21_fp antes
