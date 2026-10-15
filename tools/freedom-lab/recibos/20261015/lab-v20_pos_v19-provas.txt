@@ -1,7 +1,7 @@
   ✓ v20_01 aplicada pelo protocolo
   ✓ gerador aceita a forma do recibo forjado (sha certos, alvo=producao)
   ✓ …mas o banco recusa ao aplicar
-  ✓ recusa pelo efeito ausente da v19 (anon ainda lê users)
+  ✓ recusa pelo efeito ausente da 1ª migration da v19
   ✓ ledger intocado pela forja
   ✓ passo 1 gravou o recibo
   ✓ recibo do passo 1: ok, 5 eventos
@@ -13,7 +13,9 @@
   ✓ nenhuma recusa escreveu arquivo
   ✓ saída sobre a v20_02 versionada → recusada
   ✓ v20_02 versionada intacta (git diff limpo)
-  ✓ v20_02 pós-v19 gerada do recibo real
+  ✓ âncora de produção (695e913a) ≠ fingerprint_antes do lab → recusado
+  ✓ …com a mensagem de DDL entre a medição e o passo 1
+  ✓ v20_02 pós-v19 gerada do recibo real, âncora = base medida antes do passo 1
   ✓ âncora constante = fingerprint_depois do recibo
   ✓ v20_02 versionada (pré-v19) recusa
   ✓ …pela âncora 695e913a (no lab a base já difere de produção: prova não discriminante sozinha)
@@ -45,3 +47,10 @@
   ✓ reimportar o rollback → recusado (nada a importar)
   ✓ reverter de novo, pulando o importador → recusado pelo banco
   ✓ harness-ledger.json é JSON válido
+  ✓ recibo que esconde a aplicação parcial gera (forma válida)
+  ✓ …mas o banco recusa: v8_05 ausente (1ª migration faltante)
+  ✓ nenhum evento gravado pela tentativa parcial
+  ✓ DDL extra aplicada antes do passo 1
+  ✓ passo 1 sobre base com DDL extra gravou recibo
+  ✓ fingerprint_antes ≠ âncora pré-v19 → recusado
+  ✓ …com a mensagem de DDL entre a medição e o passo 1
