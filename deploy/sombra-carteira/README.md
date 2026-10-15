@@ -25,9 +25,16 @@ qualquer outro caminho é recusado no código antes da rede. Não lê o Google A
 - **Não instalado.** Nenhuma unit está em `/etc/systemd/system`.
 - **Desligado por configuração.** Mesmo instalado, `run.sh` sai 65 sem ler nada
   enquanto `VOLC_SOMBRA_HABILITADA` não for `sim` (`sombra.env.exemplo` vem `nao`).
-- **Não reescreve experimento assinado.** Rodada repetida com o mesmo dado é
-  idempotente; dado diferente no mesmo `as_of` recusa o lote inteiro (saída 2)
-  sem escrever nada.
+- **Não reescreve experimento assinado.** O `as_of` é o INSTANTE da leitura
+  (`gads-<campanha>-sombra-<aaaammdd>t<hhmmss>z`): uma segunda rodada no mesmo dia
+  grava experimentos novos, mais recentes, que vencem na tela sem empate. Replay
+  com os mesmos snapshots (mesmo `lido_em`) é idempotente; conteúdo diferente com
+  o mesmo instante recusa o lote inteiro (saída 2) sem escrever nada.
+- **Leitura vazia não é carteira vazia.** Fato de custo sem linha para a conta
+  recusa o lote (saída 2): é coleta que não rodou.
+- **Rodada interrompida** deixa os experimentos já gravados (cada um íntegro) e
+  nenhum `_lotes/`; a tela mostra o mais recente de cada campanha e marca como
+  "leitura velha" a linha mais de 2 dias atrás da mais nova.
 - **flock**: uma execução por vez; a segunda sai 75.
 
 ## Configuração (sem segredo)
@@ -37,7 +44,9 @@ contas, destino e os quatro parâmetros do laboratório (janela, dias imaturos,
 cliques mínimos, fração máxima de custo sem receita). O horário muda por
 drop-in: `systemctl edit volc-sombra-carteira.timer` com outro `OnCalendar=`.
 A service_role vem de `/root/supabase/docker/.env` (`SERVICE_ROLE_KEY`), como na
-coleta.
+coleta. ⚠️ Esse arquivo carrega também JWT_SECRET e a senha do Postgres, que o
+motor não usa; antes de ligar, prefira um `EnvironmentFile` só com
+`SERVICE_ROLE_KEY` (decisão de quem instala, igual à da coleta do W11).
 
 ## Pré-requisitos para ligar (decisão do dono)
 

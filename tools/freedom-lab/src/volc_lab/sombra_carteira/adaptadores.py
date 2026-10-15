@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
@@ -56,11 +57,27 @@ class SnapshotReceita:
 Transporte = Callable[[str, str, Mapping[str, str], Optional[bytes]], tuple[int, bytes]]
 
 
+class _SemRedirecionar(urllib.request.HTTPRedirectHandler):
+    """Um 3xx levaria a service_role a outro host; vira erro, não redireciona."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
+        return None
+
+
+_ABRIDOR = urllib.request.build_opener(_SemRedirecionar())
+
+
 def _transporte_urllib(metodo: str, url: str, cabecalhos: Mapping[str, str],
                        corpo: Optional[bytes]) -> tuple[int, bytes]:
     req = urllib.request.Request(url, data=corpo, method=metodo, headers=dict(cabecalhos))
-    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (URL validada no init)
-        return resp.status, resp.read()
+    try:
+        with _ABRIDOR.open(req, timeout=60) as resp:  # noqa: S310 (URL validada no init)
+            return resp.status, resp.read()
+    except urllib.error.HTTPError as exc:
+        # 3xx (não seguido), 4xx e 5xx viram status: o chamador recusa com o código.
+        return exc.code, b""
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise ContratoQuebrado(f"leitura sem resposta: {exc}") from exc
 
 
 @dataclass

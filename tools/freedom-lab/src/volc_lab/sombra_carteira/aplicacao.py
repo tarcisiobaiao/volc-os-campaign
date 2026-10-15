@@ -34,10 +34,9 @@ import io
 import json
 import os
 import re
-import shutil
 import tempfile
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo
@@ -60,7 +59,8 @@ LACUNAS_FIXAS = (
     "receita lida de receita_as_of (v23_01, W12) no instante da leitura; a v23_01 ainda não está aplicada em produção",
     "receita em BRL só pelo câmbio versionado do W12; dia com câmbio defasado ou sem cotação fica sem receita, nunca zero",
     "GAM sem o roteador de atribuição no diário do W12: dia com GAM não reconcilia (pode ser adset Meta)",
-    "JoinAds soma todos os domínios (joinads_domain) da campanha no dia, como a v17_04",
+    "JoinAds soma todos os domínios (joinads_domain) da campanha no dia, como a v17_04; diferente da v17_04, "
+    "a receita de mais de um projeto NÃO é recusada, porque o diário do W12 não guarda project_id",
     "joinads_metrics.revenue tem DEFAULT 0: receita 0,00 pode ser default, não medição",
     "fuso do campo date do JoinAds não declarado; o custo está no fuso da conta (America/Sao_Paulo)",
     "conversions_value do Google é valor estático por conversão, não receita; ignorado na decisão",
@@ -79,7 +79,9 @@ def _sha256_bytes(b: bytes) -> str:
 
 
 def _json_bytes(obj: Any) -> bytes:
-    return (json.dumps(obj, indent=1, ensure_ascii=False, sort_keys=True, default=str) + "\n").encode()
+    # allow_nan=False: NaN/Infinity não são JSON e derrubariam a leitura da tela.
+    return (json.dumps(obj, indent=1, ensure_ascii=False, sort_keys=True, default=str,
+                       allow_nan=False) + "\n").encode()
 
 
 def codigo_sha256() -> str:
@@ -94,8 +96,28 @@ def lock_sha256() -> str:
     return _sha256_bytes((RAIZ_LAB / "uv.lock").read_bytes())
 
 
+def _instante(lido_em: str) -> datetime:
+    """`lido_em` precisa dizer o fuso; sem ele o as_of dependeria do relógio da máquina."""
+    try:
+        quando = datetime.fromisoformat(str(lido_em).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ContratoQuebrado(f"lido_em ilegível ({lido_em!r})") from exc
+    if quando.tzinfo is None:
+        raise ContratoQuebrado(f"lido_em sem fuso ({lido_em!r}): o as_of ficaria ambíguo")
+    return quando.astimezone(timezone.utc)
+
+
 def _data_local(instante: str) -> date:
-    return datetime.fromisoformat(instante.replace("Z", "+00:00")).astimezone(FUSO_CONTA).date()
+    return _instante(instante).astimezone(FUSO_CONTA).date()
+
+
+def _as_of(custo_lido_em: str, receita_lido_em: str) -> datetime:
+    """O dado mais velho manda: a leitura anterior ainda não viu o que a outra viu."""
+    return min(_instante(custo_lido_em), _instante(receita_lido_em))
+
+
+def _rotulo(instante: datetime) -> str:
+    return instante.strftime("%Y%m%dt%H%M%Sz")
 
 
 @dataclass(frozen=True)
@@ -171,7 +193,8 @@ def calcular(recorte: Recorte, conta_mascarada: str, lote_id: str,
     """Artefatos de um experimento a partir do recorte. Determinístico."""
     custo = _ordenar_custo(recorte.custo)
     receita = _ordenar_receita(recorte.receita)
-    as_of = min(_data_local(recorte.custo_lido_em), _data_local(recorte.receita_lido_em))
+    instante = _as_of(recorte.custo_lido_em, recorte.receita_lido_em)
+    as_of = instante.astimezone(FUSO_CONTA).date()
     av = dominio.avaliar(
         recorte.campanha,
         [CustoDia.da_linha(l) for l in custo],
@@ -194,7 +217,10 @@ def calcular(recorte: Recorte, conta_mascarada: str, lote_id: str,
         "campanha_status": status,
         "conta": conta_mascarada,
         "lote_id": lote_id,
-        "as_of": av.as_of.isoformat(),
+        # O instante da leitura, e não só o dia: uma segunda rodada no mesmo dia
+        # é mais recente e vence na tela, sem empate nem reescrita.
+        "as_of": instante.isoformat(),
+        "as_of_data": av.as_of.isoformat(),
         "corte_maturidade": av.corte_maturidade.isoformat(),
         "parametros": av.parametros,
         "codigo_sha256": codigo_sha256(),
@@ -306,13 +332,24 @@ def _manifesto(experimento_id: str, artefatos: dict[str, bytes], base_ref: str,
     }
 
 
-def experimento_id(campanha: str, as_of: str) -> str:
-    return f"gads-{campanha}-sombra-{as_of.replace('-', '')}"
+def experimento_id(campanha: str, instante: datetime) -> str:
+    return f"gads-{campanha}-sombra-{_rotulo(instante)}"
 
 
-def _ja_existentes(destino: Path) -> dict[tuple[str, str], str]:
-    """(campanha, as_of) → id de cada experimento já gravado. Ilegível recusa o lote."""
-    vistos: dict[tuple[str, str], str] = {}
+def _normalizar(as_of: Any) -> Optional[datetime]:
+    """O mesmo critério de recência da tela do W7 (naive em UTC)."""
+    try:
+        quando = datetime.fromisoformat(str(as_of))
+    except ValueError:
+        return None
+    if quando.tzinfo is not None:
+        quando = quando.astimezone(timezone.utc).replace(tzinfo=None)
+    return quando
+
+
+def _ja_existentes(destino: Path) -> dict[tuple[str, Optional[datetime]], str]:
+    """(campanha, as_of normalizado) → id de cada experimento já gravado. Ilegível recusa o lote."""
+    vistos: dict[tuple[str, Optional[datetime]], str] = {}
     if not destino.is_dir():
         return vistos
     for manifesto in sorted(destino.glob("*/experimento.json")):
@@ -323,7 +360,7 @@ def _ja_existentes(destino: Path) -> dict[tuple[str, str], str]:
             r = json.loads(resultado.read_text(encoding="utf-8"))
         except ValueError as exc:
             raise LoteRecusado(f"resultado ilegível em {manifesto.parent.name}: não dá para afirmar ausência") from exc
-        vistos[(str(r.get("campanha")), str(r.get("as_of")))] = manifesto.parent.name
+        vistos[(str(r.get("campanha")), _normalizar(r.get("as_of")))] = manifesto.parent.name
     return vistos
 
 
@@ -350,17 +387,24 @@ def gerar_lote(
     inicio = hoje - timedelta(days=int(p["janela_dias"]) + 1)
     custo = fonte_custo.custo_campanha_dia(conta, inicio, hoje)
     receita = fonte_receita.receita_vigente(inicio, hoje)
-    as_of = min(_data_local(custo.lido_em), _data_local(receita.lido_em)).isoformat()
+    instante = _as_of(custo.lido_em, receita.lido_em)
+    as_of = instante.isoformat()
+    if not custo.linhas:
+        # Fato vazio é coleta que não rodou, não carteira sem campanha.
+        raise LoteRecusado("a leitura de custo veio vazia para a conta; nada a afirmar, nada gravado")
     mascara = mascarar(conta)
-    lote_id = f"sombra-carteira-{mascara.replace('*', 'x')}-{as_of.replace('-', '')}"
+    # A máscara sozinha colide entre contas (547****539); o hash curto separa.
+    lote_id = (f"sombra-carteira-{mascara.replace('*', 'x')}-{_sha256_bytes(conta.encode())[:8]}"
+               f"-{_rotulo(instante)}")
 
     recortes = _recortes(conta, custo.linhas, receita.linhas,
                          (custo.lido_em, receita.lido_em, custo.fonte, receita.fonte))
     preparados: list[tuple[str, dict[str, bytes], bytes, dict[str, Any]]] = []
     for cid, recorte in recortes.items():
         artefatos = calcular(recorte, mascara, lote_id, p)
-        replay = calcular(recorte, mascara, lote_id, p)
-        eid = experimento_id(cid, as_of)
+        # O replay parte dos BYTES do recorte gravado, não do objeto em memória.
+        replay = calcular(_recorte_dos_bytes(cid, artefatos), mascara, lote_id, p)
+        eid = experimento_id(cid, instante)
         manifesto = _manifesto(eid, artefatos, base_ref, artefatos == replay)
         manifesto_b = _json_bytes(manifesto)
         preparados.append((eid, artefatos, manifesto_b, manifesto))
@@ -371,7 +415,7 @@ def gerar_lote(
     repetidos: list[str] = []
     for eid, artefatos, manifesto_b, manifesto in preparados:
         resultado = json.loads(artefatos["resultado.json"])
-        dono = existentes.get((resultado["campanha"], resultado["as_of"]))
+        dono = existentes.get((resultado["campanha"], _normalizar(resultado["as_of"])))
         if dono is not None and dono != eid:
             raise LoteRecusado(f"a campanha {resultado['campanha']} já tem o experimento {dono} com o "
                                f"mesmo as_of {resultado['as_of']}; gravar {eid} criaria ambiguidade")
@@ -383,10 +427,6 @@ def gerar_lote(
             continue
         _validar_em_disco(eid, artefatos, manifesto)
         novos.append((eid, artefatos, manifesto_b))
-
-    destino.mkdir(parents=True, exist_ok=True)
-    for eid, artefatos, manifesto_b in novos:
-        _gravar(destino, eid, artefatos, manifesto_b)
 
     itens = []
     for eid, artefatos, manifesto_b, _ in preparados:
@@ -417,10 +457,15 @@ def gerar_lote(
     }
     lote_b = _json_bytes(lote)
     lotes = destino / "_lotes"
-    lotes.mkdir(parents=True, exist_ok=True)
     alvo = lotes / f"{lote_id}.json"
+    # Conferido ANTES de gravar qualquer experimento: recusa não deixa disco parcial.
     if alvo.exists() and alvo.read_bytes() != lote_b:
         raise LoteRecusado(f"o lote {lote_id} já existe com conteúdo diferente")
+
+    destino.mkdir(parents=True, exist_ok=True)
+    for eid, artefatos, manifesto_b in novos:
+        _gravar(destino, eid, artefatos, manifesto_b)
+    lotes.mkdir(parents=True, exist_ok=True)
     if not alvo.exists():
         tmp = lotes / f".{lote_id}.json.tmp"
         tmp.write_bytes(lote_b)
@@ -451,11 +496,9 @@ def _validar_em_disco(eid: str, artefatos: dict[str, bytes], manifesto: dict[str
 
 
 def _gravar(destino: Path, eid: str, artefatos: dict[str, bytes], manifesto_b: bytes) -> None:
-    # A pasta temporária não tem experimento.json: a tela não a enxerga.
-    tmp = destino / f".tmp-{eid}"
-    if tmp.exists():
-        shutil.rmtree(tmp)
-    tmp.mkdir()
+    # A pasta temporária não tem experimento.json: a tela não a enxerga. Nome
+    # único, para duas execuções simultâneas não apagarem a pasta uma da outra.
+    tmp = Path(tempfile.mkdtemp(prefix=f".tmp-{eid}-", dir=destino))
     for nome, b in artefatos.items():
         (tmp / nome).write_bytes(b)
     final = destino / eid
@@ -463,6 +506,13 @@ def _gravar(destino: Path, eid: str, artefatos: dict[str, bytes], manifesto_b: b
     parcial = final / ".experimento.json.tmp"
     parcial.write_bytes(manifesto_b)
     os.replace(parcial, final / "experimento.json")
+
+
+def _recorte_dos_bytes(campanha: str, artefatos: dict[str, bytes]) -> Recorte:
+    custo = json.loads(artefatos["custo_campanha_dia.json"])
+    receita = json.loads(artefatos["receita_observada.json"])
+    return Recorte(campanha, custo["linhas"], receita["linhas"], custo["lido_em"],
+                   receita["lido_em"], custo["fonte"], receita["fonte"])
 
 
 def replay(pasta: Path) -> dict[str, Any]:

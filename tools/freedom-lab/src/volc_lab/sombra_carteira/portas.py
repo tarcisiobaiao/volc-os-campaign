@@ -19,6 +19,7 @@ uma coluna renomeada do outro lado não pode virar zero aqui.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Mapping, Optional, Protocol, Sequence
@@ -48,6 +49,8 @@ def _data(valor: Any, origem: str) -> date:
 def _inteiro(valor: Any, campo: str, origem: str) -> Optional[int]:
     if valor is None:
         return None
+    if isinstance(valor, bool) or (isinstance(valor, float) and not valor.is_integer()):
+        raise ContratoQuebrado(f"{origem}: {campo} não é inteiro ({valor!r})")
     try:
         return int(valor)
     except (TypeError, ValueError) as exc:
@@ -57,10 +60,16 @@ def _inteiro(valor: Any, campo: str, origem: str) -> Optional[int]:
 def _numero(valor: Any, campo: str, origem: str) -> Optional[float]:
     if valor is None:
         return None
+    if isinstance(valor, bool):
+        raise ContratoQuebrado(f"{origem}: {campo} é booleano, não número")
     try:
-        return float(valor)
+        numero = float(valor)
     except (TypeError, ValueError) as exc:
         raise ContratoQuebrado(f"{origem}: {campo} não é número ({valor!r})") from exc
+    if not math.isfinite(numero):
+        # numeric NaN do Postgres chega como "NaN"; não é medição nem ausência.
+        raise ContratoQuebrado(f"{origem}: {campo} não é finito ({valor!r})")
+    return numero
 
 
 @dataclass(frozen=True)
@@ -149,7 +158,11 @@ class ReceitaObservada:
             raise ContratoQuebrado(f"{origem}: cambio_modo fora do contrato ({modo!r})")
         if linha["data_referencia"] is None:
             raise ContratoQuebrado(f"{origem}: data_referencia nula")
-        componente = chave.get("joinads_domain", chave.get("gam_accounts_id"))
+        # A chave de upsert da v23_01: date + utm_campaign_value + o componente.
+        campo_componente = "joinads_domain" if fonte == "joinads" else "gam_accounts_id"
+        if campo_componente not in chave:
+            raise ContratoQuebrado(f"{origem}: chave {fonte} sem {campo_componente}")
+        componente = chave[campo_componente]
         receita_brl = _numero(linha["receita_brl"], "receita_brl", origem)
         if receita_brl is not None and modo not in ("exata", "anterior", "moeda_local"):
             # O CHECK receita_observacao_brl_ck da v23_01 proíbe isso; se chegou,

@@ -62,6 +62,8 @@ VARIAVEL_RAIZ = "VOLC_EXPERIMENTOS_SHADOW_DIR"
 
 CONTRATO = "recomendacao_shadow.v1"
 CONTRATO_CARTEIRA = "carteira_shadow.v1"
+# Linha da carteira cujo experimento é mais de N dias mais velho que o mais novo.
+DIAS_PARA_DEFASAR = 2
 
 # O vocabulário fechado da decisão, o da spec da prova vertical (E §3). Uma
 # leitura `insuficiente` de `intencao.avaliar_suficiencia` corresponde a
@@ -207,13 +209,15 @@ def _janela(bruta: Any) -> Optional[dict[str, Any]]:
     return {c: bruta.get(c) for c in campos}
 
 
-def _candidatos(raiz: pathlib.Path) -> list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]]:
+def _candidatos(raiz: pathlib.Path) -> list[tuple[pathlib.Path, dict[str, Any], dict[str, Any]]]:
     """Todo experimento de sombra da pasta, com o resultado já conferido.
 
     Um resultado corrompido não diz de que campanha é; por isso ele levanta
-    aqui, para QUALQUER campanha e para a carteira inteira.
+    aqui, para QUALQUER campanha e para a carteira inteira. O `as_of` NÃO é
+    interpretado aqui: um experimento íntegro de outra campanha (ou de outro
+    tipo do Freedom Lab) sem `as_of` não derruba a leitura desta (W7).
     """
-    candidatos: list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]] = []
+    candidatos: list[tuple[pathlib.Path, dict[str, Any], dict[str, Any]]] = []
     for caminho in _manifestos(raiz):
         pasta = caminho.parent
         manifesto = _json(caminho, pasta.name)
@@ -224,13 +228,18 @@ def _candidatos(raiz: pathlib.Path) -> list[tuple[datetime, pathlib.Path, dict[s
             continue
         _conferir(pasta, manifesto, ("resultado.json",))
         resultado = _json(resultado_path, pasta.name)
-        candidatos.append((_data(resultado.get("as_of"), pasta.name), pasta, manifesto, resultado))
+        candidatos.append((pasta, manifesto, resultado))
     return candidatos
 
 
-def _mais_recente(candidatos: list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]]):
-    """O de `as_of` mais recente; empate no topo é `ExperimentosAmbiguos`."""
-    ordenados = sorted(candidatos, key=lambda c: c[0], reverse=True)
+def _mais_recente(candidatos: list[tuple[pathlib.Path, dict[str, Any], dict[str, Any]]]):
+    """O de `as_of` mais recente; empate no topo é `ExperimentosAmbiguos`.
+
+    Só os experimentos DA campanha chegam aqui, então `as_of` ilegível é
+    `IntegridadeQuebrada` desta campanha, como antes do W13.
+    """
+    datados = [(_data(c[2].get("as_of"), c[0].name), *c) for c in candidatos]
+    ordenados = sorted(datados, key=lambda c: c[0], reverse=True)
     if len(ordenados) > 1 and ordenados[0][0] == ordenados[1][0]:
         empatados = sorted(c[1].name for c in ordenados if c[0] == ordenados[0][0])
         raise ExperimentosAmbiguos(
@@ -253,7 +262,7 @@ def ler(campaign_id: str, *, raiz: Optional[pathlib.Path] = None) -> Optional[di
     if not _ID_EXTERNO.fullmatch(cid):
         raise ValueError("id de campanha malformado")
 
-    candidatos = [c for c in _candidatos(raiz or _raiz_configurada()) if str(c[3].get("campanha")) == cid]
+    candidatos = [c for c in _candidatos(raiz or _raiz_configurada()) if str(c[2].get("campanha")) == cid]
     if not candidatos:
         return None
     (_, pasta, manifesto, resultado), preteridos = _mais_recente(candidatos)
@@ -278,24 +287,29 @@ def listar(*, raiz: Optional[pathlib.Path] = None) -> dict[str, Any]:
     A linha nunca traz valor sugerido nem nada executável; `estado_dado`
     `sem_dado` ou `amostra_insuficiente` vem com ROAS nulo, nunca zero.
     """
-    por_campanha: dict[str, list[tuple[datetime, pathlib.Path, dict[str, Any], dict[str, Any]]]] = {}
+    por_campanha: dict[str, list[tuple[pathlib.Path, dict[str, Any], dict[str, Any]]]] = {}
     for c in _candidatos(raiz or _raiz_configurada()):
-        cid = str(c[3].get("campanha") or "")
+        cid = str(c[2].get("campanha") or "")
+        # Íntegro e sem campanha de Google Ads: não é experimento de sombra de
+        # campanha (outro tipo do Freedom Lab). Fica fora da carteira, como fica
+        # fora da leitura por campanha.
         if not _ID_EXTERNO.fullmatch(cid):
-            raise IntegridadeQuebrada(f"resultado.json do experimento {c[1].name} sem campanha legível.")
+            continue
         por_campanha.setdefault(cid, []).append(c)
 
     linhas: list[dict[str, Any]] = []
     for cid in sorted(por_campanha):
         try:
             (_, pasta, _manifesto, resultado), preteridos = _mais_recente(por_campanha[cid])
-        except ExperimentosAmbiguos as exc:
+        except (ExperimentosAmbiguos, IntegridadeQuebrada) as exc:
+            # Uma campanha que não se lê não apaga as outras; ela aparece sem direção.
             linhas.append({
                 "campanha_externa": cid, "campanha_nome": None, "campanha_status": None, "conta": None,
-                "situacao": "ambigua", "mensagem": str(exc), "direcao": None, "estado_dado": None,
+                "situacao": "ambigua" if isinstance(exc, ExperimentosAmbiguos) else "ilegivel",
+                "mensagem": str(exc), "direcao": None, "estado_dado": None,
                 "motivo_estado_dado": None, "as_of": None, "experimento_id": None,
                 "janela_madura": None, "fracao_custo_maduro_sem_receita": None,
-                "valor_sugerido": None, "executada": False,
+                "defasada": None, "valor_sugerido": None, "executada": False,
             })
             continue
         rec = resultado.get("recomendacao") or {}
@@ -317,9 +331,18 @@ def listar(*, raiz: Optional[pathlib.Path] = None) -> dict[str, Any]:
             "experimentos_substituidos": sorted(c[1].name for c in preteridos),
             "janela_madura": _janela(resultado.get("janela_madura")),
             "fracao_custo_maduro_sem_receita": _numero_ou_none(resultado.get("fracao_custo_maduro_sem_receita")),
+            "_quando": _data(resultado.get("as_of"), pasta.name),
             "valor_sugerido": None,
             "executada": False,
         })
+    # Leitura velha não se passa por atual: uma campanha que saiu da coleta
+    # (pausada, por exemplo) fica com o último experimento para sempre.
+    datas = [l["_quando"] for l in linhas if l.get("_quando") is not None]
+    mais_nova = max(datas) if datas else None
+    for l in linhas:
+        quando = l.pop("_quando", None)
+        if quando is not None and mais_nova is not None:
+            l["defasada"] = (mais_nova - quando).days > DIAS_PARA_DEFASAR
     return {
         "contrato": CONTRATO_CARTEIRA,
         "campanhas": linhas,

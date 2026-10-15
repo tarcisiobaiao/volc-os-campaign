@@ -113,7 +113,7 @@ def test_detalhe_de_cada_campanha_do_lote_e_lido_pela_rota_do_w7(raiz):
 
 
 def test_resultado_adulterado_derruba_a_carteira_com_409(raiz):
-    alvo = raiz / f"gads-{RUIM}-sombra-20261015" / "resultado.json"
+    alvo = raiz / f"gads-{RUIM}-sombra-20261015t120000z" / "resultado.json"
     doc = json.loads(alvo.read_text())
     doc["recomendacao"]["direcao"] = "aumentar"
     alvo.write_text(json.dumps(doc))
@@ -125,7 +125,7 @@ def test_resultado_adulterado_derruba_a_carteira_com_409(raiz):
 def test_empate_de_as_of_vira_linha_ambigua_sem_direcao(raiz):
     # Um segundo experimento da mesma campanha, reassinado, com o mesmo as_of.
     copia = raiz / "gads-copia-manual-20261015"
-    shutil.copytree(raiz / f"gads-{RUIM}-sombra-20261015", copia)
+    shutil.copytree(raiz / f"gads-{RUIM}-sombra-20261015t120000z", copia)
     corpo = TestClient(app).get("/api/trafego/recomendacao-shadow").json()
     linha = {l["campanha_externa"]: l for l in corpo["campanhas"]}[RUIM]
     assert linha["situacao"] == "ambigua" and linha["direcao"] is None
@@ -145,3 +145,50 @@ def test_manifesto_do_lote_confere_cada_experimento(raiz):
     for item in lote["experimentos"]:
         manifesto = raiz / item["experimento_id"] / "experimento.json"
         assert hashlib.sha256(manifesto.read_bytes()).hexdigest() == item["manifesto_sha256"]
+
+
+def _reassinar(pasta: Path, nome: str) -> None:
+    manifesto = json.loads((pasta / "experimento.json").read_text())
+    for a in manifesto["artifacts"]:
+        if a["path"] == nome:
+            a["sha256"] = hashlib.sha256((pasta / nome).read_bytes()).hexdigest()
+    (pasta / "experimento.json").write_text(json.dumps(manifesto))
+
+
+def test_experimento_integro_sem_as_of_de_outra_campanha_nao_derruba_a_leitura_w7(raiz):
+    """Regressão apontada na revisão: antes do W13 a leitura por campanha
+    filtrava a campanha antes de interpretar o as_of."""
+    outro = raiz / f"gads-{SEM_CAMBIO}-sombra-20261015t120000z"
+    doc = json.loads((outro / "resultado.json").read_text())
+    del doc["as_of"]
+    (outro / "resultado.json").write_text(json.dumps(doc))
+    _reassinar(outro, "resultado.json")
+    assert TestClient(app).get(f"/api/trafego/recomendacao-shadow/{SENAC}").json()["direcao"] == "pausar"
+    # Na carteira, só a campanha ilegível perde a direção.
+    por_id = {l["campanha_externa"]: l for l in rs.listar()["campanhas"]}
+    assert por_id[SEM_CAMBIO]["situacao"] == "ilegivel" and por_id[SEM_CAMBIO]["direcao"] is None
+    assert por_id[RUIM]["direcao"] == "pausar"
+
+
+def test_experimento_de_outro_tipo_sem_campanha_fica_fora_da_carteira(raiz):
+    alheio = raiz / "ortools-alocacao-teste"
+    alheio.mkdir()
+    (alheio / "resultado.json").write_text(json.dumps({"as_of": "2026-10-15", "metrica": 1}))
+    (alheio / "experimento.json").write_text(json.dumps({"artifacts": [
+        {"path": "resultado.json", "sha256": hashlib.sha256((alheio / "resultado.json").read_bytes()).hexdigest()}]}))
+    ids = {l["campanha_externa"] for l in rs.listar()["campanhas"]}
+    assert ids == {RUIM, SEM_CAMBIO, SENAC}
+
+
+def test_linha_velha_e_marcada_defasada(raiz):
+    por_id = {l["campanha_externa"]: l for l in rs.listar()["campanhas"]}
+    assert por_id[RUIM]["defasada"] is False
+    # Senac: as_of 2026-10-15 (meia-noite) contra 12:00 do lote, menos de 2 dias.
+    assert por_id[SENAC]["defasada"] is False
+    alvo = raiz / f"gads-{RUIM}-sombra-20261015t120000z"
+    doc = json.loads((alvo / "resultado.json").read_text())
+    doc["as_of"] = "2026-10-01T12:00:00+00:00"
+    (alvo / "resultado.json").write_text(json.dumps(doc))
+    _reassinar(alvo, "resultado.json")
+    por_id = {l["campanha_externa"]: l for l in rs.listar()["campanhas"]}
+    assert por_id[RUIM]["defasada"] is True

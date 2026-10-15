@@ -88,10 +88,11 @@ export const CarteiraEmSombra: React.FC<{ leitura: LeituraCarteiraShadow }> = ({
 const Pronta: React.FC<{ carteira: CarteiraShadow }> = ({ carteira }) => {
   const contagem = new Map<string, number>();
   for (const l of carteira.campanhas) {
-    const chave = l.situacao === 'ambigua' ? 'ambigua' : (l.direcao ?? 'evidencia_insuficiente');
+    const chave = l.situacao !== 'lida' ? 'sem_leitura' : (l.direcao ?? 'evidencia_insuficiente');
     contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
   }
   const semDado = carteira.campanhas.filter((l) => l.estado_dado === 'sem_dado').length;
+  const defasadas = carteira.campanhas.filter((l) => l.defasada === true).length;
   return (
     <div className="space-y-5">
       <p
@@ -117,7 +118,8 @@ const Pronta: React.FC<{ carteira: CarteiraShadow }> = ({ carteira }) => {
             {ORDEM.filter((d) => contagem.has(d))
               .map((d) => `${contagem.get(d)} ${PALAVRA_DA_DIRECAO[d].palavra}`)
               .join(' · ')}
-            {contagem.has('ambigua') ? ` · ${contagem.get('ambigua')} ambíguas` : ''}
+            {contagem.has('sem_leitura') ? ` · ${contagem.get('sem_leitura')} sem leitura` : ''}
+            {defasadas > 0 ? ` · ${defasadas} com leitura velha` : ''}
             {semDado > 0 ? ` · ${semDado} sem dado` : ''}
           </p>
           <TabelaDaCarteira linhas={carteira.campanhas} />
@@ -157,14 +159,17 @@ const TabelaDaCarteira: React.FC<{ linhas: LinhaCarteiraShadow[] }> = ({ linhas 
 );
 
 const Linha: React.FC<{ l: LinhaCarteiraShadow }> = ({ l }) => {
-  if (l.situacao === 'ambigua') {
+  if (l.situacao !== 'lida') {
     return (
       <tr className="border-b border-border/50" data-campanha={l.campanha_externa}>
         <th scope="row" className="py-1 pr-3 text-left font-normal">
           <span className="tabular">{l.campanha_externa}</span>
         </th>
         <td colSpan={8} className="py-1 text-muted-foreground" role="note">
-          dois experimentos igualmente recentes; nenhum é exibido. {l.mensagem}
+          {l.situacao === 'ambigua'
+            ? 'dois experimentos igualmente recentes; nenhum é exibido.'
+            : 'o experimento desta campanha não tem data legível; não é exibido.'}{' '}
+          {l.mensagem}
         </td>
       </tr>
     );
@@ -204,6 +209,9 @@ const Linha: React.FC<{ l: LinhaCarteiraShadow }> = ({ l }) => {
       </td>
       <td className="py-1 text-[11px] text-muted-foreground">
         {l.as_of ?? AUSENTE}
+        {l.defasada ? (
+          <span className="block font-medium text-foreground">leitura velha: a campanha saiu da coleta?</span>
+        ) : null}
         <span className="block tabular">{l.experimento_id ?? AUSENTE}</span>
       </td>
     </tr>
