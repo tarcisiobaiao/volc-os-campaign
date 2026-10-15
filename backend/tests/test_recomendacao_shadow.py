@@ -47,7 +47,8 @@ def test_senac_projeta_pausar_sem_execucao_nem_valor():
     assert corpo["isolamento"] == {
         "chamadas_externas": 0, "mutacoes_executadas": 0, "oferece_aplicar": False,
     }
-    assert corpo["origem"]["integridade"] == "conferida"
+    assert corpo["origem"]["integridade"] == "coerente_com_manifesto"
+    assert corpo["origem"]["experimentos_substituidos"] == []
     assert corpo["janela_madura"]["roas"] == pytest.approx(0.0735)
     assert len(corpo["ressalvas"]) >= 5
 
@@ -118,3 +119,94 @@ def test_endpoint_recusa_requisicao_sem_identidade():
             app.dependency_overrides[exigir_usuario] = dublê
         else:
             app.dependency_overrides.pop(exigir_usuario, None)
+
+
+# ── ciclo corretivo 2 (revisão na nuvem de 15/10) ─────────────────────────
+
+
+def _segundo_experimento(raiz: Path, nome: str, *, as_of: str, direcao: str) -> Path:
+    """Copia o Senac para `nome`, troca `as_of` e direção e reassina o manifesto."""
+    pasta = raiz / nome
+    shutil.copytree(raiz / "senac-shadow-20261015", pasta)
+    resultado = json.loads((pasta / "resultado.json").read_text())
+    resultado["as_of"] = as_of
+    resultado["recomendacao"]["direcao"] = direcao
+    (pasta / "resultado.json").write_text(json.dumps(resultado))
+    _reassinar(pasta, "resultado.json")
+    return pasta
+
+
+def test_dois_experimentos_da_mesma_campanha_vence_o_as_of_mais_recente(tmp_path):
+    # Defeito 1: a ordem do nome da pasta decidia, e a recomendação velha vencia.
+    # O nome mais novo aqui ordena ANTES do antigo, para o teste não passar por
+    # coincidência de ordem alfabética.
+    raiz = _copia(tmp_path)
+    _segundo_experimento(raiz, "a-senac-reavaliado", as_of="2026-11-01", direcao="manter")
+    lida = rs.ler(SENAC, raiz=raiz)
+    assert lida["as_of"] == "2026-11-01"
+    assert lida["direcao"] == "manter"
+    assert lida["origem"]["experimento_id"] == "a-senac-reavaliado"
+    assert lida["origem"]["experimentos_substituidos"] == ["senac-shadow-20261015"]
+
+
+def test_dois_experimentos_com_o_mesmo_as_of_sao_ambiguos_e_nao_escolhidos(tmp_path, monkeypatch):
+    raiz = _copia(tmp_path)
+    _segundo_experimento(raiz, "senac-shadow-20261015-b", as_of="2026-10-15", direcao="manter")
+    monkeypatch.setattr(rs, "RAIZ_PADRAO", raiz)
+    resposta = TestClient(app).get(URL)
+    assert resposta.status_code == 409
+    assert resposta.json()["detail"]["codigo"] == "experimentos_ambiguos"
+
+
+def test_resultado_json_corrompido_e_integridade_e_nao_ausencia(tmp_path, monkeypatch):
+    # Defeito 2: o `continue` antes da conferência fazia o corrompido sumir.
+    raiz = _copia(tmp_path)
+    (raiz / "senac-shadow-20261015" / "resultado.json").write_text('{"campanha": "2427')
+    monkeypatch.setattr(rs, "RAIZ_PADRAO", raiz)
+    resposta = TestClient(app).get(URL)
+    assert resposta.status_code == 409
+    assert resposta.json()["detail"]["codigo"] == "integridade_quebrada"
+    assert "resultado.json" in resposta.json()["detail"]["mensagem"]
+
+
+def test_resultado_ilegivel_com_sha_reassinado_tambem_e_integridade(tmp_path):
+    # Quem reassina o manifesto passa no sha256, mas um JSON ilegível continua
+    # sendo artefato quebrado, nunca ausência.
+    raiz = _copia(tmp_path)
+    pasta = raiz / "senac-shadow-20261015"
+    (pasta / "resultado.json").write_text("não é json")
+    _reassinar(pasta, "resultado.json")
+    with pytest.raises(rs.IntegridadeQuebrada, match="resultado.json"):
+        rs.ler(SENAC, raiz=raiz)
+
+
+def test_experimento_corrompido_de_outra_campanha_impede_afirmar_ausencia(tmp_path):
+    # Um resultado corrompido não diz de que campanha é; então ninguém pode
+    # afirmar "nenhum experimento olhou esta campanha" enquanto ele existir.
+    raiz = _copia(tmp_path)
+    (raiz / "senac-shadow-20261015" / "resultado.json").write_text("{")
+    with pytest.raises(rs.IntegridadeQuebrada):
+        rs.ler("1234567", raiz=raiz)
+
+
+def test_raiz_inexistente_e_fonte_indisponivel_e_nao_ausencia(tmp_path, monkeypatch):
+    # Defeito 3: o deploy do backend só leva `app/**`; sem a pasta de
+    # experimentos, toda campanha virava "nenhum experimento".
+    monkeypatch.setattr(rs, "RAIZ_PADRAO", tmp_path / "nao-existe")
+    resposta = TestClient(app).get(URL)
+    assert resposta.status_code == 503
+    assert resposta.json()["detail"]["codigo"] == "fonte_indisponivel"
+
+
+def test_raiz_sem_nenhum_experimento_e_fonte_indisponivel(tmp_path):
+    vazia = tmp_path / "experimentos"
+    vazia.mkdir()
+    with pytest.raises(rs.FonteIndisponivel):
+        rs.ler(SENAC, raiz=vazia)
+
+
+def test_raiz_pode_vir_do_ambiente(tmp_path, monkeypatch):
+    raiz = _copia(tmp_path)
+    monkeypatch.setenv("VOLC_EXPERIMENTOS_SHADOW_DIR", str(raiz))
+    monkeypatch.setattr(rs, "RAIZ_PADRAO", tmp_path / "nao-existe")
+    assert rs.ler(SENAC)["origem"]["experimento_id"] == "senac-shadow-20261015"

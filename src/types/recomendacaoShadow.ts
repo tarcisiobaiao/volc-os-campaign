@@ -62,7 +62,10 @@ export interface RecomendacaoShadow {
     snapshot_sha256: string | null;
     capturado_em: string | null;
     replay_sem_api: boolean;
-    integridade: 'conferida';
+    /** sha256 comparado com o manifesto da mesma pasta: deriva, não adulteração. */
+    integridade: 'coerente_com_manifesto';
+    /** Experimentos mais antigos da mesma campanha, preteridos pelo `as_of`. */
+    experimentos_substituidos: string[];
   };
   isolamento: {
     chamadas_externas: number;

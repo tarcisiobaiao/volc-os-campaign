@@ -10,13 +10,17 @@ export const CHAVE_RECOMENDACAO_SHADOW = ['trafego', 'recomendacao-shadow'] as c
  *
  * ⚠️ `ausente` (404) não é "manter": é que nenhum experimento olhou esta
  * campanha. `integridade` (409) não é ausência: o experimento existe e um
- * artefato não bate com o próprio manifesto.
+ * artefato não bate com o próprio manifesto. `ambiguo` (409) é empate no
+ * `as_of` mais recente: o servidor não escolhe um. `fonte_indisponivel` (503)
+ * é a pasta de experimentos ausente no servidor — não dá para afirmar ausência.
  */
 export type LeituraShadow =
   | { estado: 'sem_id' }
   | { estado: 'carregando' }
   | { estado: 'ausente' }
   | { estado: 'integridade'; mensagem: string }
+  | { estado: 'ambiguo'; mensagem: string }
+  | { estado: 'fonte_indisponivel'; mensagem: string }
   | { estado: 'falhou'; mensagem: string; status: number | null }
   | { estado: 'pronta'; recomendacao: RecomendacaoShadow };
 
@@ -55,6 +59,12 @@ export function useRecomendacaoShadow(idExterno: string | null | undefined): Lei
       consulta.error instanceof Error ? consulta.error.message : 'A leitura não pôde ser feita.';
     if (status === 409 && codigoDe(consulta.error) === 'integridade_quebrada') {
       return { estado: 'integridade', mensagem };
+    }
+    if (status === 409 && codigoDe(consulta.error) === 'experimentos_ambiguos') {
+      return { estado: 'ambiguo', mensagem };
+    }
+    if (status === 503 && codigoDe(consulta.error) === 'fonte_indisponivel') {
+      return { estado: 'fonte_indisponivel', mensagem };
     }
     return { estado: 'falhou', mensagem, status };
   }

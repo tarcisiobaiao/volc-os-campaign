@@ -115,4 +115,29 @@ describe('recomendação em sombra na página da campanha', () => {
     );
     expect(within(secao()).queryByRole('table')).toBeNull();
   });
+
+  it('503 fonte indisponível não vira "nenhum experimento"', async () => {
+    api.recomendacaoShadow.mockRejectedValue(
+      erro(503, { codigo: 'fonte_indisponivel', mensagem: 'a pasta não existe neste servidor.' }),
+    );
+    montar();
+    await waitFor(() =>
+      expect(within(secao()).getByRole('alert').textContent).toMatch(/fonte .*indisponível/i),
+      ESPERA,
+    );
+    expect(within(secao()).queryByText(/Nenhum experimento/)).toBeNull();
+    expect(within(secao()).queryByRole('table')).toBeNull();
+  });
+
+  it('409 de experimentos ambíguos não escolhe um nem mostra número', async () => {
+    api.recomendacaoShadow.mockRejectedValue(
+      erro(409, { codigo: 'experimentos_ambiguos', mensagem: '2 experimentos com o mesmo as_of' }),
+    );
+    montar();
+    await waitFor(() =>
+      expect(within(secao()).getByRole('alert').textContent).toMatch(/mais de um experimento/),
+      ESPERA,
+    );
+    expect(within(secao()).queryByRole('table')).toBeNull();
+  });
 });

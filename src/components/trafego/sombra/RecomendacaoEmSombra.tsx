@@ -89,6 +89,28 @@ export const RecomendacaoEmSombra: React.FC<{ leitura: LeituraShadow }> = ({ lei
           </p>
         </div>
       );
+    case 'ambiguo':
+      return (
+        <div className="max-w-[70ch]" role="alert">
+          <p className="text-[13px] font-medium">
+            Há mais de um experimento em sombra igualmente recente para esta campanha.
+          </p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            {leitura.mensagem} Nenhum é exibido: escolher um seria esconder a contradição.
+          </p>
+        </div>
+      );
+    case 'fonte_indisponivel':
+      return (
+        <div className="max-w-[70ch]" role="alert">
+          <p className="text-[13px] font-medium">
+            A fonte dos experimentos em sombra está indisponível neste servidor.
+          </p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            {leitura.mensagem} Isto não quer dizer que não haja recomendação.
+          </p>
+        </div>
+      );
     case 'falhou':
       return (
         <div className="max-w-[70ch]" role="alert">
@@ -164,7 +186,11 @@ const Pronta: React.FC<{ r: RecomendacaoShadow }> = ({ r }) => {
       )}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        experimento {r.origem.experimento_id} · integridade {r.origem.integridade} · código{' '}
+        experimento {r.origem.experimento_id}
+        {r.origem.experimentos_substituidos.length > 0
+          ? ` (substitui ${r.origem.experimentos_substituidos.join(', ')})`
+          : ''}{' '}
+        · coerente com o manifesto da própria pasta · código{' '}
         <code className="tabular">{(r.origem.codigo_sha256 ?? AUSENTE).slice(0, 12)}</code> ·
         snapshot <code className="tabular">{(r.origem.snapshot_sha256 ?? AUSENTE).slice(0, 12)}</code>
         {r.origem.replay_sem_api ? ' · replay sem API' : ''}

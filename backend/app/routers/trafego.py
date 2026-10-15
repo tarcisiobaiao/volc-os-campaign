@@ -167,7 +167,10 @@ async def recomendacao_shadow_da_campanha(campaign_id: str) -> Dict[str, Any]:
 
     Só leitura de arquivo conferido por sha256; nenhuma chamada externa e nada
     executável. 404 é "não há experimento para esta campanha" — ausência, e
-    não "manter". 409 é artefato que não bate com o próprio manifesto.
+    não "manter". 409 é artefato que não bate com o próprio manifesto
+    (`integridade_quebrada`) ou dois experimentos empatados no `as_of` mais
+    recente (`experimentos_ambiguos`). 503 `fonte_indisponivel` é a pasta de
+    experimentos ausente neste servidor — nunca vira "nenhum experimento".
     """
     try:
         projecao_shadow = recomendacao_shadow.ler(campaign_id)
@@ -177,6 +180,16 @@ async def recomendacao_shadow_da_campanha(campaign_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=409, detail={
             "codigo": "integridade_quebrada",
             "mensagem": f"a recomendação em sombra existe e não passou na conferência de integridade: {exc}",
+        }) from exc
+    except recomendacao_shadow.ExperimentosAmbiguos as exc:
+        raise HTTPException(status_code=409, detail={
+            "codigo": "experimentos_ambiguos",
+            "mensagem": f"há mais de um experimento em sombra igualmente recente para esta campanha: {exc}",
+        }) from exc
+    except recomendacao_shadow.FonteIndisponivel as exc:
+        raise HTTPException(status_code=503, detail={
+            "codigo": "fonte_indisponivel",
+            "mensagem": f"não é possível dizer se há recomendação em sombra: {exc}",
         }) from exc
     if projecao_shadow is None:
         # `codigo` distingue "nenhum experimento olhou esta campanha" de um

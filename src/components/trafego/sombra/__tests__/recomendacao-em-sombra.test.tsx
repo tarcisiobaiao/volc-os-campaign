@@ -70,10 +70,10 @@ describe('RecomendacaoEmSombra', () => {
     expect(imatura.textContent).toMatch(/imatura/);
   });
 
-  it('lista as ressalvas e a procedência conferida', () => {
+  it('lista as ressalvas e a procedência coerente com o manifesto', () => {
     pronta();
     expect(screen.getByText(/câmbio fixo 5\.25/)).toBeTruthy();
-    expect(screen.getByText(/integridade conferida/)).toBeTruthy();
+    expect(screen.getByText(/coerente com o manifesto/)).toBeTruthy();
   });
 
   it('ausência de experimento não vira recomendação de manter', () => {

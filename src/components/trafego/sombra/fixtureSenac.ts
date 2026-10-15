@@ -50,7 +50,8 @@ export const RECOMENDACAO_SENAC: RecomendacaoShadow = {
     snapshot_sha256: '4ce831d2389226efda167492a0b93431a97fc42dcc9df1009bff940ad7477dbf',
     capturado_em: '2026-10-15T10:26:15Z',
     replay_sem_api: true,
-    integridade: 'conferida',
+    integridade: 'coerente_com_manifesto',
+    experimentos_substituidos: [],
   },
   isolamento: { chamadas_externas: 0, mutacoes_executadas: 0, oferece_aplicar: false },
 };
