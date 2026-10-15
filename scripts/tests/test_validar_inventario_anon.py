@@ -25,7 +25,7 @@ EVID = "pg_stat_statements desde 05/08: zero chamadas do papel anon neste alvo"
 def legitimo() -> dict:
     return {
         "consumidores": [
-            {"id": i, "confirmado_em_producao": "2026-10-15", "evidencia": EVID, "decisao": "nao_usa_anon"}
+            {"id": i, "confirmado_em_producao": True, "confirmado_em": "2026-10-15", "evidencia": EVID, "decisao": "nao_usa_anon"}
             for i in v.CONSUMIDORES_OBRIGATORIOS
         ],
         "assinado_por": "Tarcísio",
@@ -50,10 +50,13 @@ FORJADOS = {
         a=lambda d: d.update(decisoes_validas=["ok"]), b=lambda d: d["consumidores"][0].update(decisao="ok")),
     "sem-evidencia": lambda: forjar(a=lambda d: d["consumidores"][1].update(evidencia="sim")),
     "sem-confirmacao": lambda: forjar(a=lambda d: d["consumidores"][3].update(confirmado_em_producao=None)),
+    "confirmacao-texto-true": lambda: forjar(a=lambda d: d["consumidores"][3].update(confirmado_em_producao="true")),
+    "confirmacao-um": lambda: forjar(a=lambda d: d["consumidores"][3].update(confirmado_em_producao=1)),
+    "confirmacao-data": lambda: forjar(a=lambda d: d["consumidores"][3].update(confirmado_em_producao="2026-10-15")),
     "duplicado-no-lugar-de-um": lambda: forjar(
         a=lambda d: d["consumidores"].__setitem__(7, copy.deepcopy(d["consumidores"][0]))),
     "extra-fora-da-lista": lambda: forjar(a=lambda d: d["consumidores"].append(
-        {"id": "inventado", "confirmado_em_producao": "x", "evidencia": EVID, "decisao": "nao_usa_anon"})),
+        {"id": "inventado", "confirmado_em_producao": True, "evidencia": EVID, "decisao": "nao_usa_anon"})),
     "sem-assinatura": lambda: forjar(a=lambda d: d.update(assinado_por=" ")),
     "sem-data": lambda: forjar(a=lambda d: d.update(assinado_em="")),
     "bloqueia-true": lambda: forjar(a=lambda d: d.update(bloqueia_passo1=True)),
@@ -88,3 +91,20 @@ def test_modelo_do_repositorio_e_recusado():
 def test_modelo_traz_os_mesmos_8_ids_do_validador():
     d = json.loads((RAIZ / "docs" / "INCIDENTE-ANON-INVENTARIO.modelo.json").read_text(encoding="utf-8"))
     assert [c["id"] for c in d["consumidores"]] == list(v.CONSUMIDORES_OBRIGATORIOS)
+
+
+DUPLICADOS = {
+    # a 2ª ocorrência venceria num json.load ingênuo e esconderia a 1ª
+    "assinatura-duplicada": lambda txt: txt.replace('"assinado_por": "Tarcísio"', '"assinado_por": "", "assinado_por": "Tarcísio"', 1),
+    "bloqueio-duplicado": lambda txt: txt.replace('"bloqueia_passo1": false', '"bloqueia_passo1": true, "bloqueia_passo1": false', 1),
+    "decisao-duplicada-no-consumidor": lambda txt: txt.replace('"decisao": "nao_usa_anon"', '"decisao": "x", "decisao": "nao_usa_anon"', 1),
+}
+
+
+@pytest.mark.parametrize("nome", sorted(DUPLICADOS))
+def test_chave_duplicada_e_recusada(nome, tmp_path):
+    txt = DUPLICADOS[nome](json.dumps(legitimo(), ensure_ascii=False))
+    arq = tmp_path / "inv.json"
+    arq.write_text(txt, encoding="utf-8")
+    r = subprocess.run([sys.executable, str(VALIDADOR), str(arq)], capture_output=True, text=True)
+    assert r.returncode == 1 and "duplicada" in r.stdout, r.stdout

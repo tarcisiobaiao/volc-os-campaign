@@ -51,8 +51,8 @@ def motivos_de_recusa(d: dict) -> list[str]:
         c = por_id.get(i)
         if c is None:
             continue
-        if not str(c.get("confirmado_em_producao") or "").strip():
-            erros.append(f"{i}: sem confirmação em produção")
+        if c.get("confirmado_em_producao") is not True:
+            erros.append(f"{i}: confirmado_em_producao tem de ser o booleano true (não texto, não 1)")
         if len(str(c.get("evidencia") or "").strip()) < MIN_EVIDENCIA:
             erros.append(f"{i}: evidência ausente ou curta demais")
         if c.get("decisao") not in DECISOES_VALIDAS:
@@ -66,12 +66,28 @@ def motivos_de_recusa(d: dict) -> list[str]:
     return erros
 
 
+class ChaveDuplicada(ValueError):
+    pass
+
+
+def _sem_duplicatas(pares):
+    vistos = {}
+    for k, val in pares:
+        if k in vistos:
+            raise ChaveDuplicada(f"chave duplicada no JSON: {k!r}")
+        vistos[k] = val
+    return vistos
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print(__doc__)
         return 2
     try:
-        d = json.load(open(argv[1], encoding="utf-8"))
+        d = json.load(open(argv[1], encoding="utf-8"), object_pairs_hook=_sem_duplicatas)
+    except ChaveDuplicada as e:
+        print(f"inventario RECUSADO: {e}")
+        return 1
     except (OSError, ValueError) as e:
         print(f"inventario ilegível: {e}")
         return 2

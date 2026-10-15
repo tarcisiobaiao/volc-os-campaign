@@ -18,16 +18,33 @@ set -euo pipefail
 [[ "${VOLC_AUTORIZA_LEITURA:-}" == "inventario-anon-w4" ]] || {
   echo "recusado: defina VOLC_AUTORIZA_LEITURA=inventario-anon-w4 (só com autorização do Tarcísio)"; exit 16; }
 OUT="${1:?uso: inventario-anon-producao.sh <dir-saida-mascarada>}"
-RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
-case "$(cd "$(dirname "$OUT")" 2>/dev/null && pwd)/" in "$RAIZ"/*)
-  echo "recusado: a saída não pode ficar dentro do repositório ($RAIZ)"; exit 2 ;; esac
-mkdir -p "$OUT"
+RAIZ="$(cd "$(dirname "$0")/.." && pwd -P)"
+# fora_do_repo <caminho> <rótulo>: resolve com realpath (symlinks, "..", pai que
+# ainda não existe) e recusa a raiz do repo e qualquer coisa dentro dela.
+fora_do_repo() {
+  local real
+  real="$(python3 -I -c 'import os,sys; print(os.path.realpath(os.path.abspath(sys.argv[1])))' "$1")" || exit 2
+  case "$real/" in "$RAIZ"/*)
+    echo "recusado: $2 resolve para dentro do repositório ($real)" >&2; exit 2 ;; esac
+  printf '%s' "$real"
+}
+OUT="$(fora_do_repo "$OUT" "a saída mascarada")"
 # Saída BRUTA fora do repo e de qualquer pasta compartilhada, só do dono (700/600).
 # Só a versão mascarada (scripts/mascarar-segredos.sh) vai para $OUT.
-RAW="${VOLC_INVENTARIO_RAW:-$HOME/.config/volc/inventario-anon/$(date +%Y%m%d-%H%M%S)}"
+RAW="$(fora_do_repo "${VOLC_INVENTARIO_RAW:-$HOME/.config/volc/inventario-anon/$(date +%Y%m%d-%H%M%S)}" "a saída bruta")"
+[[ "$RAW" != "$OUT" ]] || { echo "recusado: bruta e mascarada no mesmo diretório"; exit 2; }
+mkdir -p "$OUT"
 umask 077; mkdir -p "$RAW"; chmod 700 "$RAW" "$(dirname "$RAW")"
 MASCARAR="$RAIZ/scripts/mascarar-segredos.sh"
 SSH=(ssh -i "$HOME/.ssh/volc_hetzner_claude_ed25519" -o BatchMode=yes -o ConnectTimeout=10 root@178.156.196.149)
+# Só para os testes (scripts/tests/test_inventario_anon_saida.py): troca o ssh por
+# um comando local. Recusado se apontar para ssh de verdade.
+if [[ -n "${VOLC_INVENTARIO_SSH_TESTE:-}" ]]; then
+  [[ "$(basename "$VOLC_INVENTARIO_SSH_TESTE")" != ssh && -f "$VOLC_INVENTARIO_SSH_TESTE" ]] \
+    && ! cmp -s "$VOLC_INVENTARIO_SSH_TESTE" "$(command -v ssh)" \
+    || { echo "recusado: VOLC_INVENTARIO_SSH_TESTE não pode ser o ssh" >&2; exit 2; }
+  SSH=(bash "$VOLC_INVENTARIO_SSH_TESTE")
+fi
 LEITURA="docker exec -i -e PGOPTIONS=-c\\ default_transaction_read_only=on supabase-db psql -U postgres -d postgres -X -q -A -F'|' -v ON_ERROR_STOP=1"
 
 echo "== 1. edge function volc-ingest: existe, verifica JWT, que chave e que tabelas usa" | tee "$RAW/01-volc-ingest.txt"
@@ -36,7 +53,7 @@ echo "== 1. edge function volc-ingest: existe, verifica JWT, que chave e que tab
   [ -d "$d" ] && { ls -la "$d"; sha256sum "$d"/*;
     grep -nE "SUPABASE_(ANON|SERVICE_ROLE)_KEY|Deno\.env\.get|createClient|\.from\(|\.rpc\(|/rest/v1|Authorization|apikey" "$d"/* ; } || echo "volc-ingest: diretório ausente";
   grep -oE "^(FUNCTIONS_VERIFY_JWT|VERIFY_JWT)=(true|false)" /root/supabase/docker/.env || echo "flag VERIFY_JWT não encontrada"' \
-  2>&1 >> "$RAW/01-volc-ingest.txt"
+  >> "$RAW/01-volc-ingest.txt" 2>&1
 
 echo "== 2. GoTrue: cadastro público" | tee "$RAW/02-gotrue.txt"
 "${SSH[@]}" 'grep -oE "^(DISABLE_SIGNUP|ENABLE_EMAIL_SIGNUP|ENABLE_ANONYMOUS_USERS)=(true|false)" /root/supabase/docker/.env' >> "$RAW/02-gotrue.txt" 2>&1 || true
@@ -44,7 +61,7 @@ echo "== 2. GoTrue: cadastro público" | tee "$RAW/02-gotrue.txt"
 echo "== 3. Kong: chamadas aos alvos da anon nos últimos 14 dias (método, caminho, status, contagem)" | tee "$RAW/03-kong.txt"
 "${SSH[@]}" 'docker logs supabase-kong --since 336h 2>&1 \
   | grep -oE "\"(GET|POST|PATCH|DELETE) /(rest/v1/(site_visits|raw_events|niche_conversion_mappings|hourly_stats|fact_[a-z_]+)|functions/v1/volc-ingest)[^ ?\"]*[^\"]*\" [0-9]{3}" \
-  | sed -E "s/\?[^ ]*//" | sort | uniq -c | sort -rn | head -50' 2>&1 >> "$RAW/03-kong.txt" || true
+  | sed -E "s/\?[^ ]*//" | sort | uniq -c | sort -rn | head -50' >> "$RAW/03-kong.txt" 2>&1 || true
 
 echo "== 4. Banco: atividade de escrita nas tabelas que a anon alcançava (só contagens e datas)" | tee "$RAW/04-banco.txt"
 "${SSH[@]}" "$LEITURA" >> "$RAW/04-banco.txt" 2>&1 <<'SQL' || true
@@ -62,7 +79,7 @@ ROLLBACK;
 SQL
 
 echo "== 5. O que o papel anon executou de fato (pg_stat_statements; constantes já normalizadas como \$n)" | tee "$RAW/05-pg-stat-anon.txt"
-"${SSH[@]}" "$LEITURA" 2>&1 <<'SQL' >> "$RAW/05-pg-stat-anon.txt" || true
+"${SSH[@]}" "$LEITURA" <<'SQL' >> "$RAW/05-pg-stat-anon.txt" 2>&1 || true
 BEGIN READ ONLY;
 SELECT 'pgss_desde', coalesce((SELECT stats_reset::text FROM pg_stat_statements_info), '?');
 SELECT userid::regrole AS papel, count(*) AS consultas, sum(calls) AS chamadas
@@ -75,7 +92,7 @@ SQL
 echo "== 6. Origem das chamadas REST/functions (14 dias): referer (só domínio) e user-agent" | tee "$RAW/06-kong-origens.txt"
 "${SSH[@]}" 'docker logs supabase-kong --since 336h 2>&1 | grep -E "\"[A-Z]+ /(rest|functions|graphql)/v1" \
   | awk -F"\"" "{print \"ref=\" \$4, \"| ua=\" substr(\$6,1,25)}" | sed -E "s#(ref=https?://[^/ ]+)[^ |]*#\\1#" \
-  | sort | uniq -c | sort -rn | head -25' 2>&1 >> "$RAW/06-kong-origens.txt" || true
+  | sort | uniq -c | sort -rn | head -25' >> "$RAW/06-kong-origens.txt" 2>&1 || true
 
 echo "== 7. GoTrue: cadastro por e-mail e telefone (só flags booleanas)" | tee "$RAW/07-gotrue-flags.txt"
 "${SSH[@]}" 'grep -oE "^(ENABLE_EMAIL_AUTOCONFIRM|ENABLE_PHONE_SIGNUP|ENABLE_PHONE_AUTOCONFIRM)=(true|false)" /root/supabase/docker/.env' >> "$RAW/07-gotrue-flags.txt" 2>&1 || true

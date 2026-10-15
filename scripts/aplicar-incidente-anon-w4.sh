@@ -75,7 +75,7 @@ sha_esperado() {   # bash 3.2 do macOS: sem array associativo
     v8_06_users_sensitive_columns_revoke)  echo 0010e0874cfe518218eb483223fa5d42b00e40f3138f203b5ca0423efa381554 ;;
     v19_99_rollback)                       echo 3abff0a814e1db384daaaa9181cbefb8865047ea98025393e4f4fe22293c8fdd ;;
     preflight-incidente-anon-w4)           echo 84892780f9d43e297c9843e03f41c7ae8cfef13f7b7fab7b2e7dbb9243bfd7ae ;;
-    validar-inventario-anon-w4)            echo 74f1a70814cd2e75f2de875446465d3c699428d5ec71f3092477309d48e0a25d ;;
+    validar-inventario-anon-w4)            echo 12763724cb647d8cd1efafdc9be203092bc01f6df9a1b40b26f0682f6957681d ;;
     fingerprint_schema)                    echo 0f6c05509466e9bc92474465d4427cf5fe426a477d15fc50a31871317e30d2c7 ;;
     verificar-anon-w4)                     echo b05f011d36208836b7c1b6f97642597f30ef56e6dfc63edc8ecfc8f716dbfb23 ;;
   esac

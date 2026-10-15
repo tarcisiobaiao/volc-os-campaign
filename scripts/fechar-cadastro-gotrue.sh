@@ -17,7 +17,8 @@
 # Uso:
 #   scripts/fechar-cadastro-gotrue.sh --checar     só leitura (pode rodar a qualquer hora)
 #   VOLC_AUTORIZA_GOTRUE=fechar-cadastro  scripts/fechar-cadastro-gotrue.sh --aplicar
-#   VOLC_AUTORIZA_GOTRUE=reabrir-cadastro scripts/fechar-cadastro-gotrue.sh --reverter
+#   VOLC_AUTORIZA_GOTRUE=reabrir-cadastro scripts/fechar-cadastro-gotrue.sh --reverter <carimbo>
+#     (restaura o backup exato do .env feito pelo --aplicar, depois de conferir o sha256)
 #
 # Efeito colateral: --aplicar/--reverter recriam só o container do GoTrue
 # (`docker compose up -d --no-deps auth`): alguns segundos sem /auth/v1 (login e
@@ -32,7 +33,7 @@ DIR=/root/supabase/docker
 CARIMBO="$(date +%Y%m%d-%H%M%S)"
 
 checar() { # só leitura: flags, mapeamento no compose, o que o GoTrue anuncia
-  "${SSH[@]}" "cd $DIR && grep -oE '^(DISABLE_SIGNUP|ENABLE_EMAIL_SIGNUP|ENABLE_EMAIL_AUTOCONFIRM|ENABLE_PHONE_SIGNUP|ENABLE_PHONE_AUTOCONFIRM)=(true|false)' .env;
+  "${SSH[@]}" "set -euo pipefail; cd $DIR && grep -oE '^(DISABLE_SIGNUP|ENABLE_EMAIL_SIGNUP|ENABLE_EMAIL_AUTOCONFIRM|ENABLE_PHONE_SIGNUP|ENABLE_PHONE_AUTOCONFIRM)=(true|false)' .env;
     echo '-- compose:'; grep -nE 'GOTRUE_DISABLE_SIGNUP|GOTRUE_EXTERNAL_PHONE_ENABLED|GOTRUE_SMS_AUTOCONFIRM' docker-compose.yml;
     echo '-- container auth:'; docker ps --filter name=supabase-auth --format '{{.Names}} {{.Status}}';
     echo '-- /auth/v1/settings (o que o GoTrue anuncia):';
@@ -42,7 +43,7 @@ checar() { # só leitura: flags, mapeamento no compose, o que o GoTrue anuncia
 }
 
 poscheck_fechado() { # prova sem criar conta: settings diz fechado E um signup é recusado
-  "${SSH[@]}" "cd $DIR && K=\$(grep -E '^ANON_KEY=' .env | cut -d= -f2-);
+  "${SSH[@]}" "set -euo pipefail; cd $DIR && K=\$(grep -E '^ANON_KEY=' .env | cut -d= -f2-);
     s=\$(curl -s -m 10 -H \"apikey: \$K\" http://localhost:8000/auth/v1/settings | python3 -c 'import json,sys; print(json.load(sys.stdin).get(\"disable_signup\"))');
     echo \"disable_signup=\$s\";
     # Só tenta o cadastro se o GoTrue JÁ anuncia fechado: com cadastro aberto a
@@ -56,21 +57,16 @@ poscheck_fechado() { # prova sem criar conta: settings diz fechado E um signup �
     docker exec -i supabase-db psql -U postgres -d postgres -X -A -t -c \"select 'contas de poscheck criadas: ' || count(*) from auth.users where email = 'w4-poscheck@example.invalid' or phone = '5500000000000'\""
 }
 
-trocar() { # trocar <de> <para>
-  "${SSH[@]}" "cd $DIR && cp -p .env .env.bak-w4-signup-$CARIMBO && chmod 600 .env.bak-w4-signup-$CARIMBO &&
-    grep -qx 'DISABLE_SIGNUP=$1' .env && sed -i 's/^DISABLE_SIGNUP=$1\$/DISABLE_SIGNUP=$2/' .env &&
-    grep -x 'DISABLE_SIGNUP=$2' .env && docker compose up -d --no-deps auth &&
-    for i in \$(seq 1 30); do docker ps --filter name=supabase-auth --format '{{.Status}}' | grep -q healthy && break; sleep 2; done;
-    docker ps --filter name=supabase-auth --format '{{.Names}} {{.Status}}'; echo 'backup do .env: $DIR/.env.bak-w4-signup-$CARIMBO'"
-}
+# shellcheck source=lib/gotrue-cadastro.sh
+source "$(dirname "$0")/lib/gotrue-cadastro.sh"
 
 case "${1:-}" in
   --checar) checar ;;
   --aplicar)
     [[ "${VOLC_AUTORIZA_GOTRUE:-}" == fechar-cadastro ]] || { echo "recusado: falta VOLC_AUTORIZA_GOTRUE=fechar-cadastro"; exit 16; }
-    checar; trocar false true; sleep 3; poscheck_fechado ;;
+    checar; fechar; sleep 3; poscheck_fechado ;;
   --reverter)
     [[ "${VOLC_AUTORIZA_GOTRUE:-}" == reabrir-cadastro ]] || { echo "recusado: falta VOLC_AUTORIZA_GOTRUE=reabrir-cadastro"; exit 16; }
-    trocar true false; sleep 3; checar ;;
+    reabrir "${2:-}"; sleep 3; checar ;;
   *) sed -n 2,30p "$0"; exit 2 ;;
 esac

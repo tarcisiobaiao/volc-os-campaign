@@ -38,6 +38,13 @@ VAZAMENTOS = [
     ("apikey-header", f"apikey: {FALSO}", [FALSO]),
     ("jwt-secret", f"JWT_SECRET={FALSO}", [FALSO]),
     ("senha-com-simbolos", "POSTGRES_PASSWORD=Pq@7!x#Wm$2zR%kL", ["Pq@7!x#Wm$2zR%kL"]),
+    ("sb-secret", f"SB=sb_secret_{FALSO}", [FALSO]),
+    ("basic", f"Authorization: Basic {FALSO}", [FALSO]),
+    ("token-scheme", f"Authorization: Token {FALSO}", [FALSO]),
+    ("json-aspas-escapadas", '{\\"password\\":\\"' + FALSO + '\\"}', [FALSO]),
+    ("json-aspas-escapadas-apikey", '\\"apikey\\": \\"' + FALSO + '\\"', [FALSO]),
+    ("createclient-posicional", f'const db = createClient(URL, "{FALSO}");', [FALSO]),
+    ("createclient-posicional-aspas-simples", f"createClient('https://x.invalid', '{FALSO}')", [FALSO]),
     ("connstring-simbolos", "postgres://u:Pq@7!x#Wm$2@h:5432/db", ["7!x#Wm$2"]),
 ]
 
@@ -54,6 +61,7 @@ EVIDENCIA_INTACTA = [
     "    173 \"GET /rest/v1/niche_conversion_mappings HTTP/1.1\" 200",
     "5:const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(\"SUPABASE_SERVICE_ROLE_KEY\")!;",
     "FUNCTIONS_VERIFY_JWT=false",
+    "8:const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);",
     "DISABLE_SIGNUP=false",
     "raw_events|1918|0|1859|2026-09-25 00:00:02.655613-03",
     "anon|2313|WITH pgrst_source AS ( SELECT \"public\".\"niche_conversion_mappings\".* FROM",
