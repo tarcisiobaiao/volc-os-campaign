@@ -22,6 +22,21 @@ describe("formatarNumero", () => {
     expect(formatarNumero(Number.NaN, { tipo: "razao" })).toBe(AUSENTE);
   });
 
+  it("não-finito é ausência: nunca ∞", () => {
+    expect(formatarNumero(Infinity, { tipo: "moeda", moeda: "BRL" })).toBe(AUSENTE);
+    expect(formatarNumero(-Infinity, { tipo: "razao" })).toBe(AUSENTE);
+    // ROAS calculado com custo zero
+    expect(formatarNumero(40.79 / 0, { tipo: "razao" })).toBe(AUSENTE);
+  });
+
+  it("valor que arredonda a zero não leva sinal", () => {
+    expect(formatarNumero(-0.0004, { tipo: "percentual" })).toBe("0,0%");
+    expect(formatarNumero(-0.004, { tipo: "decimal" })).toBe("0,00");
+    expect(formatarNumero(-0.4, { tipo: "inteiro" })).toBe("0");
+    expect(formatarNumero(-0, { tipo: "inteiro" })).toBe("0");
+    expect(formatarNumero(-0.0006, { tipo: "percentual" })).toBe("-0,1%");
+  });
+
   it("zero medido continua sendo zero", () => {
     expect(formatarNumero(0, { tipo: "inteiro" })).toBe("0");
   });
@@ -52,6 +67,25 @@ describe("avaliarDelta", () => {
   it("sem base ou sem atual, a direção é desconhecida", () => {
     expect(avaliarDelta(10, null, "maior-melhor").direcao).toBe("desconhecida");
     expect(avaliarDelta(null, 10, "maior-melhor").direcao).toBe("desconhecida");
+  });
+
+  it("ruído de ponto flutuante é igual, sem tom", () => {
+    expect(avaliarDelta(0.1 + 0.2, 0.3, "maior-melhor")).toEqual({ direcao: "igual", fracao: 0, tom: "neutro" });
+    // +0,0004%: a tela mostraria "+0,0%"
+    expect(avaliarDelta(100.0004, 100, "menor-melhor")).toEqual({ direcao: "igual", fracao: 0, tom: "neutro" });
+  });
+
+  it("variação logo acima do que a tela distingue mantém direção e tom", () => {
+    expect(avaliarDelta(100.06, 100, "menor-melhor")).toMatchObject({ direcao: "sobe", tom: "ruim" });
+  });
+
+  it("base zero com atual zero é igual", () => {
+    expect(avaliarDelta(0, 0, "maior-melhor")).toEqual({ direcao: "igual", fracao: null, tom: "neutro" });
+  });
+
+  it.each([Infinity, -Infinity, Number.NaN])("não-finito (%s) é direção desconhecida, sem tom", (v) => {
+    expect(avaliarDelta(v, 10, "maior-melhor")).toEqual({ direcao: "desconhecida", fracao: null, tom: "neutro" });
+    expect(avaliarDelta(10, v, "maior-melhor")).toEqual({ direcao: "desconhecida", fracao: null, tom: "neutro" });
   });
 
   it("base negativa usa o módulo", () => {
@@ -96,6 +130,13 @@ describe("geometriaDaSparkline", () => {
     const g = geometriaDaSparkline([null, 5, null], 100, 20);
     expect(g.trechos).toHaveLength(0);
     expect(g.isolados).toHaveLength(1);
+  });
+
+  it("não-finito na série é lacuna", () => {
+    const g = geometriaDaSparkline([1, Infinity, 2, Number.NaN, 3, 4], 100, 20);
+    expect(g.lacunas).toBe(2);
+    expect(g.trechos.join(" ")).not.toContain("Infinity");
+    expect(g.trechos.join(" ")).not.toContain("NaN");
   });
 
   it("série toda ausente não desenha nada (não desenha zero)", () => {
@@ -149,5 +190,26 @@ describe("movimento espelha o CSS", () => {
     for (const t of ["--background", "--card", "--primary", "--verified", "--success", "--warning", "--destructive", "--info", "--demo"]) {
       expect(css).toContain(`${t}:`);
     }
+  });
+});
+
+describe("cn conhece os utilitários V3", async () => {
+  const { cn } = await import("@/lib/utils");
+
+  it("tamanho V3 sobrevive à cor de texto", () => {
+    expect(cn("text-kpi text-foreground")).toBe("text-kpi text-foreground");
+    expect(cn("text-lg text-kpi")).toBe("text-kpi");
+  });
+
+  it("deduplica altura, sombra, duração e curva V3 com os nativos", () => {
+    expect(cn("h-linha h-4")).toBe("h-4");
+    expect(cn("shadow-md shadow-instrumento")).toBe("shadow-instrumento");
+    expect(cn("duration-200 duration-dado")).toBe("duration-dado");
+    expect(cn("ease-in ease-dado")).toBe("ease-dado");
+  });
+
+  it("classes V2 continuam se comportando como antes", () => {
+    expect(cn("text-destructive text-success")).toBe("text-success");
+    expect(cn("p-2 p-4")).toBe("p-4");
   });
 });

@@ -15,8 +15,8 @@ type Props = {
 
 const GLIFO = { sobe: "▲", desce: "▼", igual: "=", desconhecida: "—" } as const;
 const TOM = {
-  bom: "text-success",
-  ruim: "text-destructive",
+  bom: "text-delta-bom",
+  ruim: "text-delta-ruim",
   neutro: "text-muted-foreground",
 } as const;
 const LEITURA = {
