@@ -1,25 +1,62 @@
 [Unit]
 Description=VOLC motor shadow da carteira Google Ads (W13) — só leitura, nada executa
-After=network-online.target docker.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=root
-Group=root
+# Usuário de serviço sem privilégio, criado na instalação (ver README):
+#   useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin volc-sombra
+User=volc-sombra
+Group=volc-sombra
 WorkingDirectory=/opt/volc-sombra-carteira/current
-EnvironmentFile=/root/supabase/docker/.env
+# Só as variáveis que o W13 lê. NUNCA o /root/supabase/docker/.env inteiro
+# (JWT_SECRET, senha do Postgres, dashboard). O systemd lê os dois arquivos
+# como PID 1, antes de trocar de usuário: o segredo fica root:root 0600.
+EnvironmentFile=/etc/volc-sombra-carteira/segredo.env
 EnvironmentFile=/opt/volc-sombra-carteira/sombra.env
+Environment=VOLC_SOMBRA_DESTINO=/var/lib/volc-sombra-carteira/experimentos
+Environment=VOLC_SOMBRA_LOCK=/run/volc-sombra-carteira/lock
 ExecStart=/opt/volc-sombra-carteira/run.sh
 # 65 = agenda desligada por configuração; 75 = outra execução em curso.
 SuccessExitStatus=65 75
 TimeoutStartSec=20min
 Nice=10
+
+# Pastas que o systemd cria com dono volc-sombra; o resto do disco é só leitura.
+StateDirectory=volc-sombra-carteira
+StateDirectoryMode=0750
+RuntimeDirectory=volc-sombra-carteira
+RuntimeDirectoryMode=0700
+UMask=0027
+
+# Hardening: sem capacidade, sem novo privilégio, sem acesso a /home, /root,
+# dispositivos, kernel ou outras famílias de rede além de IP (o PostgREST).
 NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
 PrivateTmp=true
-ProtectHome=true
+PrivateDevices=true
 ProtectSystem=strict
-ReadWritePaths=/run/lock /var/lib/volc-sombra-carteira
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RemoveIPC=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
 StandardOutput=journal
 StandardError=journal
 

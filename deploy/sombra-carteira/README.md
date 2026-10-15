@@ -48,13 +48,31 @@ qualquer outro caminho é recusado no código antes da rede. Não lê o Google A
 ## Configuração (sem segredo)
 
 `/opt/volc-sombra-carteira/sombra.env`, a partir de `sombra.env.exemplo`:
-contas, destino e os quatro parâmetros do laboratório (janela, dias imaturos,
-cliques mínimos, fração máxima de custo sem receita). O horário muda por
-drop-in: `systemctl edit volc-sombra-carteira.timer` com outro `OnCalendar=`.
-A service_role vem de `/root/supabase/docker/.env` (`SERVICE_ROLE_KEY`), como na
-coleta. ⚠️ Esse arquivo carrega também JWT_SECRET e a senha do Postgres, que o
-motor não usa; antes de ligar, prefira um `EnvironmentFile` só com
-`SERVICE_ROLE_KEY` (decisão de quem instala, igual à da coleta do W11).
+contas, a trava e os parâmetros do laboratório (janela, dias imaturos, cliques
+mínimos, fração máxima de custo sem receita, defasagem máxima do câmbio). O
+horário muda por drop-in: `systemctl edit volc-sombra-carteira.timer` com outro
+`OnCalendar=`.
+
+## Segredo e isolamento
+
+- **Usuário de serviço `volc-sombra`**, sem login, sem home e sem capacidade.
+  `run.sh` recusa rodar como root (saída 64).
+- **Só a service_role.** `/etc/volc-sombra-carteira/segredo.env` (root:root,
+  0600, a partir de `segredo.env.exemplo`) tem uma linha: `SERVICE_ROLE_KEY=`.
+  O systemd lê o arquivo como PID 1 antes de trocar de usuário, então o serviço
+  não consegue reabri-lo. Nunca aponte o `EnvironmentFile` para
+  `/root/supabase/docker/.env`: ele traz JWT_SECRET, a senha do Postgres e a do
+  dashboard. Se alguma dessas chaves aparecer no ambiente, `run.sh` recusa
+  (saída 64) sem ler nada.
+- **Escrita só onde precisa.** `ProtectSystem=strict`; o destino é o
+  `StateDirectory` (`/var/lib/volc-sombra-carteira`, dono `volc-sombra`) e a
+  trava fica no `RuntimeDirectory` (`/run/volc-sombra-carteira`).
+- **Hardening do systemd:** `NoNewPrivileges`, `PrivateTmp`, `PrivateDevices`,
+  `ProtectHome`, proteções de kernel, cgroups, relógio e hostname, `ProtectProc`,
+  namespaces e SUID bloqueados, só famílias IP/Unix, `SystemCallFilter=@system-service`.
+  `systemd-analyze security --offline=true` dá **1,3 OK**; a unit anterior (root
+  e o `.env` inteiro) dava 8,7 EXPOSED. O teste
+  `tools/freedom-lab/tests/test_sombra_carteira_agenda.py` confere tudo isso.
 
 ## Pré-requisitos para ligar (decisão do dono)
 
@@ -73,15 +91,20 @@ motor não usa; antes de ligar, prefira um `EnvironmentFile` só com
 ## Instalar (quando autorizado)
 
 ```bash
-install -d /opt/volc-sombra-carteira /var/lib/volc-sombra-carteira
+useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin volc-sombra
+install -d -o root -g root -m 0755 /opt/volc-sombra-carteira
+install -d -o root -g root -m 0700 /etc/volc-sombra-carteira
+install -o root -g root -m 0600 deploy/sombra-carteira/segredo.env.exemplo /etc/volc-sombra-carteira/segredo.env
+# editar segredo.env: só o valor de SERVICE_ROLE_KEY do .env vivo, nada mais
 # checkout do commit aprovado em /opt/volc-sombra-carteira/current
 git -C /opt/volc-sombra-carteira/current rev-parse HEAD > /opt/volc-sombra-carteira/current/.base_ref
 python3 -m venv /opt/volc-sombra-carteira/venv
 /opt/volc-sombra-carteira/venv/bin/pip install 'jsonschema>=4.25,<5'
-cp deploy/sombra-carteira/run.sh /opt/volc-sombra-carteira/
-cp deploy/sombra-carteira/sombra.env.exemplo /opt/volc-sombra-carteira/sombra.env   # editar
+install -o root -g root -m 0755 deploy/sombra-carteira/run.sh /opt/volc-sombra-carteira/
+install -o root -g root -m 0644 deploy/sombra-carteira/sombra.env.exemplo /opt/volc-sombra-carteira/sombra.env   # editar
 cp deploy/sombra-carteira/volc-sombra-carteira.{service,timer} /etc/systemd/system/
 systemctl daemon-reload
+systemd-analyze security volc-sombra-carteira.service   # esperado: exposure ≤ 2
 systemctl start volc-sombra-carteira.service       # uma rodada manual primeiro
 systemctl enable --now volc-sombra-carteira.timer  # só depois de conferir o lote
 ```
