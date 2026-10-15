@@ -65,13 +65,17 @@ def test_rotulo_e_destino_usam_o_mesmo_indice_em_todo_botao():
     assert rotulos[:6] == [0, 1, 2, 0, 1, 2]
 
 
-def test_heroi_mobile_ocupa_a_tela_com_o_conteudo_no_fim():
-    """Decisão do operador (15/10/2026): o herói mobile tem a altura do celular
-    (100vh), com título, subtítulo e botões no fim, sobre a foto com overlay."""
+def test_heroi_mobile_e_compacto_com_o_conteudo_no_topo():
+    """O herói mobile divide a primeira dobra com a folha de consentimento: sem
+    altura de tela cheia e com o conteúdo no topo. O 100vh + `flex-end` de
+    78c13d94 empurrava título e botões para baixo da folha (H1 y=454, 3º botão
+    até y=806 em 360x800). A prova do layout renderizado está em
+    `test_dobra_mobile_renderizada.py` e no recibo do WordPress descartável;
+    este teste só trava o par de propriedades que causou o defeito."""
     mobile, _ = _herois(load_lp_template()["content"])
     s = mobile["settings"]
-    assert s["min_height_mobile"] == {"unit": "vh", "size": 100, "sizes": []}
-    assert s["flex_justify_content_mobile"] == "flex-end"
+    assert s["min_height_mobile"]["size"] in (0, "", None)
+    assert s["flex_justify_content_mobile"] == "flex-start"
     assert s.get("background_overlay_background") == "classic"       # contraste na foto
     assert not any(n.get("widgetType") == "divider"
                    for n in mobile["elements"][0]["elements"])
@@ -103,7 +107,7 @@ def test_aviso_de_identidade_do_motor_vai_para_o_fim_da_lp():
 def test_lp_com_link_externo_no_texto_e_recusada_estruturalmente():
     ruim = copy.deepcopy(CONTENT)
     ruim["sections"][1]["body"] = '<p>Veja no <a href="https://orango.senac.br/">Orango</a>.</p>'
-    issues = validate_lp_content(ruim, technical_only=True)
+    issues = validate_lp_content(ruim, technical_only=True, sem_links_no_texto=True)
     assert [i.code for i in issues] == ["link_no_texto_da_lp"]
     assert classe_da_issue(issues[0]) == "estrutural"
 
@@ -111,11 +115,12 @@ def test_lp_com_link_externo_no_texto_e_recusada_estruturalmente():
 def test_lp_com_link_interno_no_texto_tambem_e_recusada():
     ruim = copy.deepcopy(CONTENT)
     ruim["intro"] = f'<p>Veja a <a href="{HREFS[1]}">conta</a>.</p>'
-    assert [i.code for i in validate_lp_content(ruim, technical_only=True)] == ["link_no_texto_da_lp"]
+    assert [i.code for i in validate_lp_content(
+        ruim, technical_only=True, sem_links_no_texto=True)] == ["link_no_texto_da_lp"]
 
 
 def test_lp_sem_links_no_texto_continua_aceita():
-    assert validate_lp_content(CONTENT, technical_only=True) == []
+    assert validate_lp_content(CONTENT, technical_only=True, sem_links_no_texto=True) == []
 
 
 def test_renderer_recusa_botao_da_lp_para_outro_site():
@@ -125,7 +130,7 @@ def test_renderer_recusa_botao_da_lp_para_outro_site():
 
 
 def _ctx(papel):
-    return {"role": papel, "domain": SITE, "editorial_v2": True}
+    return {"role": papel, "domain": SITE, "editorial_v2": True, "pagina_v2": True}
 
 
 def test_presell_com_link_externo_e_recusada_estruturalmente():
@@ -182,9 +187,14 @@ def test_fonte_continua_no_pacote_mesmo_sem_link_no_html():
 
 
 def test_os_codigos_novos_sao_de_url_e_papel_nao_de_palavra():
-    """Nenhum validador semântico novo: os códigos novos nascem só de href."""
-    from funnelforge.pipeline.retry_policy import CODIGOS_PATCHAVEIS
+    """Nenhum validador semântico novo: os códigos novos nascem só de href, e são
+    estruturais por DECLARAÇÃO (não pelo padrão de código desconhecido)."""
+    from funnelforge.pipeline.retry_policy import (
+        CODIGOS_ESTRUTURAIS_DECLARADOS,
+        CODIGOS_PATCHAVEIS,
+    )
     for code in ("link_externo_na_lp", "link_externo_na_presell", "link_no_texto_da_lp"):
+        assert code in CODIGOS_ESTRUTURAIS_DECLARADOS
         assert code not in CODIGOS_PATCHAVEIS
 
 

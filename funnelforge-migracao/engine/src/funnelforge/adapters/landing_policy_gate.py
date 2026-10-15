@@ -210,8 +210,8 @@ def plano_da_landing_page(
     incidente entrou pelo H1.
 
     `cta_texts[i]` casa com `hrefs[i]` porque é essa a correspondência que
-    `lp_template._SLOT_MAP`/`_BUTTON_HREF` realizam: os seis widgets de botão
-    são dois heróis repetindo os MESMOS três destinos.
+    `lp_template._SLOT_MAP`/`_BUTTON_HREF` realizam: os sete widgets de botão
+    são dois heróis repetindo os MESMOS três destinos e o corpo repetindo o 3º.
     """
     api = contrato()
     corpo, subtitulos = _corpo_do_artefato(conteudo)

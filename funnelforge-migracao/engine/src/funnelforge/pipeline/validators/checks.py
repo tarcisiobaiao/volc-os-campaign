@@ -1732,7 +1732,8 @@ def lp_json_contract(content: str, ctx: dict) -> list[Issue]:
         return [Issue(code="parse_error",
                       message="Saída da LP não é um objeto JSON.")]
     issues = validate_lp_content(parsed, technical_only=bool(
-        ctx.get("editorial_v2") or ctx.get("contextual_editorial")))
+        ctx.get("editorial_v2") or ctx.get("contextual_editorial")),
+        sem_links_no_texto=bool(ctx.get("pagina_v2")))
     if ctx.get("copy_rapida") and not (
             ctx.get("editorial_v2") or ctx.get("contextual_editorial")):
         from funnelforge.pipeline.copy_contract import cta_issues
@@ -2270,13 +2271,20 @@ VALIDATORS["contextual_links"] = contextual_links
 
 
 def links_por_papel(content: str, ctx: dict) -> list[Issue]:
-    """LP/pré-sell com link para outro site = estrutural; solução não é tocada.
+    """LP/pré-sell V2 com link para outro site = estrutural; solução não é tocada.
 
-    Lê o papel EXPLÍCITO do contexto (sem o fail-closed de `_ctx_role`, que
-    trataria uma solução sem papel como LP e apagaria o canal oficial dela)."""
+    Só vale para página escrita no ramo novo (`pagina_v2`, montado por
+    `steps._write_ctx`): é lá que o saneador tira as fontes do corpo antes do
+    portão. A pré-sell V1 foi escrita com o prompt que manda linkar a fonte
+    (`interior_editorial.jinja`) e não pode reprovar por regra que não existia.
+
+    O papel vem de `ctx["role"]`, que `_write_ctx` preenche com `effective_role`
+    (papel declarado, ou inferido do plano). Sem papel no ctx não opina: o
+    fail-closed de `_ctx_role` trataria uma solução sem papel como LP e
+    apagaria o canal oficial dela."""
     from funnelforge.pipeline.editorial_safety import links_externos_por_papel
     papel = ctx.get("role")
-    if papel is None:
+    if papel is None or not ctx.get("pagina_v2"):
         return []
     return links_externos_por_papel(content, papel=getattr(papel, "value", papel),
                                     dominio=ctx.get("domain", ""))

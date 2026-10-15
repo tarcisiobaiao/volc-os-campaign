@@ -1030,7 +1030,7 @@ def revalidacao_basica(doc: Documento) -> list[Issue]:
             dados = json.loads(doc.corpo)
         except (ValueError, TypeError):
             return [Issue(code="lp_schema", message="LP JSON ilegível depois do patch.")]
-        issues += validate_lp_content(dados, technical_only=True)
+        issues += validate_lp_content(dados, technical_only=True, sem_links_no_texto=True)
     else:
         issues += html_issues(doc.corpo)
         issues += run_validators(["gutenberg_blocks"], doc.corpo,

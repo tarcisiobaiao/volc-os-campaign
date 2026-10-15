@@ -15,12 +15,12 @@
      "sizes": []
     },
     "min_height_mobile": {
-     "unit": "vh",
-     "size": 100,
+     "unit": "px",
+     "size": 0,
      "sizes": []
     },
     "flex_justify_content": "center",
-    "flex_justify_content_mobile": "flex-end",
+    "flex_justify_content_mobile": "flex-start",
     "background_background": "classic",
     "background_color": "#FD0049",
     "background_image": {
@@ -41,10 +41,10 @@
     "background_size": "cover",
     "padding_mobile": {
      "unit": "px",
-     "top": "12",
-     "right": "16",
-     "bottom": "14",
-     "left": "16",
+     "top": "6",
+     "right": "12",
+     "bottom": "8",
+     "left": "12",
      "isLinked": false
     },
     "flex_align_items": "flex-start",
@@ -68,10 +68,10 @@
       "content_width": "full",
       "flex_gap_mobile": {
        "unit": "px",
-       "size": 6,
+       "size": 4,
        "sizes": [],
-       "column": "6",
-       "row": "6",
+       "column": "4",
+       "row": "4",
        "isLinked": true
       },
       "flex_align_items": "flex-start",
@@ -82,6 +82,14 @@
        "bottom": "0",
        "left": "0",
        "isLinked": true
+      },
+      "padding_mobile": {
+       "unit": "px",
+       "top": "0",
+       "right": "0",
+       "bottom": "0",
+       "left": "0",
+       "isLinked": false
       }
      },
      "elements": [
@@ -111,7 +119,7 @@
         },
         "typography_font_size_mobile": {
          "unit": "px",
-         "size": 24,
+         "size": 22,
          "sizes": []
         },
         "typography_font_weight": "600",
@@ -136,7 +144,7 @@
         "header_size": "h1",
         "typography_line_height_mobile": {
          "unit": "px",
-         "size": 28,
+         "size": 25,
          "sizes": []
         }
        },
@@ -174,7 +182,7 @@
         },
         "typography_font_size_mobile": {
          "unit": "px",
-         "size": 15,
+         "size": 14,
          "sizes": []
         },
         "typography_font_weight": "700",
@@ -185,7 +193,7 @@
         },
         "typography_line_height_mobile": {
          "unit": "px",
-         "size": 20,
+         "size": 17,
          "sizes": []
         }
        },
@@ -200,7 +208,6 @@
         "text": "Será que tenho direito ao saque? Ver",
         "align_mobile": "justify",
         "size": "lg",
-        "icon_align": "right",
         "typography_typography": "custom",
         "typography_font_family": "Inter",
         "typography_font_weight": "700",
@@ -232,27 +239,23 @@
          "isLinked": true
         },
         "content_width": "full",
-        "selected_icon": {
-         "value": "far fa-arrow-alt-circle-right",
-         "library": "fa-regular"
-        },
         "_element_width": "inherit",
         "typography_font_size_mobile": {
          "unit": "px",
-         "size": 15,
+         "size": 14,
          "sizes": []
         },
         "typography_line_height_mobile": {
          "unit": "px",
-         "size": 20,
+         "size": 18,
          "sizes": []
         },
         "text_padding_mobile": {
          "unit": "px",
-         "top": "12",
-         "right": "14",
-         "bottom": "12",
-         "left": "14",
+         "top": "13",
+         "right": "10",
+         "bottom": "13",
+         "left": "10",
          "isLinked": false
         }
        },
@@ -267,7 +270,6 @@
         "text": "Como consultar o saldo atualizado",
         "align_mobile": "justify",
         "size": "lg",
-        "icon_align": "right",
         "typography_typography": "custom",
         "typography_font_family": "Inter",
         "typography_font_weight": "700",
@@ -291,10 +293,6 @@
          "custom_attributes": ""
         },
         "content_width": "full",
-        "selected_icon": {
-         "value": "far fa-arrow-alt-circle-right",
-         "library": "fa-regular"
-        },
         "_element_width": "inherit",
         "_margin_mobile": {
          "unit": "px",
@@ -306,20 +304,20 @@
         },
         "typography_font_size_mobile": {
          "unit": "px",
-         "size": 15,
+         "size": 14,
          "sizes": []
         },
         "typography_line_height_mobile": {
          "unit": "px",
-         "size": 20,
+         "size": 18,
          "sizes": []
         },
         "text_padding_mobile": {
          "unit": "px",
-         "top": "12",
-         "right": "14",
-         "bottom": "12",
-         "left": "14",
+         "top": "13",
+         "right": "10",
+         "bottom": "13",
+         "left": "10",
          "isLinked": false
         }
        },
@@ -334,7 +332,6 @@
         "text": "Terceiro caminho",
         "align_mobile": "justify",
         "size": "lg",
-        "icon_align": "right",
         "typography_typography": "custom",
         "typography_font_family": "Inter",
         "typography_font_weight": "700",
@@ -358,10 +355,6 @@
          "custom_attributes": ""
         },
         "content_width": "full",
-        "selected_icon": {
-         "value": "far fa-arrow-alt-circle-right",
-         "library": "fa-regular"
-        },
         "_element_width": "inherit",
         "_margin_mobile": {
          "unit": "px",
@@ -373,20 +366,20 @@
         },
         "typography_font_size_mobile": {
          "unit": "px",
-         "size": 15,
+         "size": 14,
          "sizes": []
         },
         "typography_line_height_mobile": {
          "unit": "px",
-         "size": 20,
+         "size": 18,
          "sizes": []
         },
         "text_padding_mobile": {
          "unit": "px",
-         "top": "12",
-         "right": "14",
-         "bottom": "12",
-         "left": "14",
+         "top": "13",
+         "right": "10",
+         "bottom": "13",
+         "left": "10",
          "isLinked": false
         }
        },

@@ -49,7 +49,8 @@ _REQUIRED_LP_SLOTS = (
 # template: campos, tipos, 4 seções, 3 CTAs, HTML válido.
 
 
-def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[Issue]:
+def validate_lp_content(content: dict, *, technical_only: bool = False,
+                        sem_links_no_texto: bool = False) -> list[Issue]:
     """Validate the redator_p1 JSON that feeds the LP template.
 
     Checks the slot schema (all fields present, 4 sections, >=3 CTAs), the
@@ -90,14 +91,20 @@ def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[
     if len(secs) != 4:
         issues.append(Issue(code="lp_sections",
                             message=f"Esperado 4 seções no template, veio {len(secs)}."))
-    # Os únicos links da LP são os botões do template (renderer). Âncora no
-    # texto gerado, interna ou externa, é erro estrutural (15/10/2026).
-    issues.extend(links_no_texto_da_lp([
-        content["intro"], content["transition"], content["hero_title"],
-        content["hero_subtitle"], content["article_title"],
-        *(s["body"] for s in content["sections"]), *(s["title"] for s in content["sections"]),
-        *(f["q"] for f in content["faq"]), *(f["a"] for f in content["faq"]),
-        *(c for c in content["cta_texts"])]))
+    # LP V2 (`sem_links_no_texto`): os únicos links são os botões do template
+    # (renderer); âncora no texto gerado, interna ou externa, é erro estrutural
+    # (15/10/2026). Quem chega aqui já passou pelo saneador do runner, que tira
+    # essas âncoras com o mesmo parser. A LP V1 continua com as regras com que
+    # foi escrita: o prompt V1 pede a fonte linkada na frase do fato
+    # (`redator_p1.jinja`), e LP V1 histórica não pode reprovar por regra nova.
+    if sem_links_no_texto:
+        issues.extend(links_no_texto_da_lp([
+            content["intro"], content["transition"], content["hero_title"],
+            content["hero_subtitle"], content["article_title"],
+            *(s["body"] for s in content["sections"]),
+            *(s["title"] for s in content["sections"]),
+            *(f["q"] for f in content["faq"]), *(f["a"] for f in content["faq"]),
+            *(c for c in content["cta_texts"])]))
     ctas = content.get("cta_texts") or []
     # EXATAMENTE 3, não ">= 3": o template tem 3 posições de destino
     # (`_BUTTON_HREF`: 7 widgets de botão para 3 destinos) e o pagespec da LP é
@@ -150,7 +157,7 @@ def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[
 
 # Fillable-widget index (heading/text-editor/button in document order) -> slot.
 # ("sections", i, "title"|"body") pulls content["sections"][i][...]; an int on
-# a button pulls content["cta_texts"][int]; a LIST is a fallback chain.
+# a button pulls content["cta_texts"][int].
 #
 # O template tem DOIS HERÓIS, um por breakpoint. Os dois carregam o MESMO
 # título, os MESMOS três rótulos e os MESMOS três destinos, na mesma ordem:
@@ -159,10 +166,14 @@ def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[
 # aparecia apenas no corpo, abaixo da dobra.
 #
 # O herói mobile é compacto (sem altura mínima de tela cheia, conteúdo no topo,
-# sem divisor) porque a primeira dobra real tem o aviso editorial no topo e a
-# folha de consentimento cobrindo a metade de baixo na primeira visita: em
-# 360x800 sobravam ~280 px entre os dois, e o herói de `calc(100vh - 85px)`
-# com `flex-end` jogava título e botões para baixo da folha.
+# sem divisor, sem ícone nos botões) porque divide a primeira dobra com o
+# cabeçalho do tema e com a folha de consentimento (volc-consent-manager), que
+# no celular ocupa de y=387 até o fim em 360x800. O 100vh com `flex-end` de
+# 78c13d94 jogava título e botões para baixo da folha. Medido no Elementor 4.3.5
+# (WordPress descartável, cabeçalho de 85 px, 15/10/2026): com título de 40,
+# subtítulo de 80 + "Toque abaixo!" e rótulos de 60 caracteres, o 3º botão termina
+# 6 px acima da folha; com rótulos de ~37, 60 px. `scripts/prova_dobra_lp.py`
+# refaz a medição; qualquer mudança no herói mobile exige rodá-la de novo.
 #
 # Custo consciente do desenho: título e subtítulo existem DUAS VEZES no DOM,
 # já que `hide_*` do Elementor é `display:none`, não remoção. Por isso só o
@@ -171,13 +182,13 @@ def validate_lp_content(content: dict, *, technical_only: bool = False) -> list[
 _SLOT_MAP: dict[int, tuple[str, object]] = {
     # --- herói MOBILE (hide_desktop + hide_tablet) ---
     0: ("heading", "hero_title"),          # o ÚNICO h1 da página
-    1: ("heading", "hero_subtitle"),
+    1: ("heading", "hero_subtitle_mobile"),   # composto em `_subtitulos_do_heroi`
     2: ("button", 0),
     3: ("button", 1),
     4: ("button", 2),
     # --- herói DESKTOP (hide_tablet + hide_mobile) ---
     5: ("heading", "hero_title"),
-    6: ("heading", ["hero_subtitle_desktop", "hero_subtitle"]),
+    6: ("heading", "hero_subtitle_desktop"),  # idem: nunca leva a chamada de toque
     7: ("button", 0),
     8: ("button", 1),
     9: ("button", 2),
@@ -215,13 +226,6 @@ _BUTTON_HREF: dict[int, int] = {
 _ARROW_TOKENS = (">>>", ">>", ">", "»", "›", "→")
 
 
-def _has_arrow_icon(settings: dict) -> bool:
-    """True if the button widget already renders a right-arrow icon."""
-    ic = settings.get("selected_icon")
-    val = ic.get("value") if isinstance(ic, dict) else ic
-    return bool(val) and "arrow" in str(val).lower()
-
-
 def _strip_trailing_arrows(text: str) -> str:
     """Drop trailing arrow chrome (»/>>/→ ...) the writer appends -- redundant
     when the button widget itself shows an arrow icon."""
@@ -249,6 +253,50 @@ def _numbered_to_emoji(html: str) -> str:
     return _NUMBERED_P_RE.sub(lambda m: f"{m.group(1)}{_KEYCAPS[m.group(2)]} ", html)
 
 
+# Chamada curta para os botões, SÓ no herói mobile da LP V2 (operador,
+# 15/10/2026). Quem acrescenta é o render, não o redator: o prompt pede o
+# subtítulo sem descrever navegação, e o desktop (botões ao lado, sem toque)
+# nunca recebe a chamada. Rascunho antigo que já trazia a chamada no fim não a
+# duplica no celular nem a leva para o desktop.
+CHAMADA_DO_HEROI_MOBILE = "Toque abaixo!"
+_CHAMADA_FINAL_RE = re.compile(r"[\s,;.\u2013\u2014-]*(?:👇\s*)?toque abaixo\s*[!.]?\s*(?:👇)?\s*$",
+                               re.I)
+
+
+def _sem_chamada_final(texto: str) -> str:
+    return _CHAMADA_FINAL_RE.sub("", texto or "").rstrip()
+
+
+def _subtitulos_do_heroi(content: dict, *, copy_rapida: bool) -> dict:
+    """`hero_subtitle_mobile` e `hero_subtitle_desktop` que o template usa.
+
+    V1 (`copy_rapida=False`) fica como sempre foi: mobile = `hero_subtitle`;
+    desktop = `hero_subtitle_desktop` do redator V1, ou o mesmo subtítulo."""
+    base = str(content.get("hero_subtitle") or "")
+    desktop = str(content.get("hero_subtitle_desktop") or "")
+    if not copy_rapida:
+        return {"hero_subtitle_mobile": base, "hero_subtitle_desktop": desktop or base}
+    limpo = _sem_chamada_final(base)
+    mobile = f"{limpo} {CHAMADA_DO_HEROI_MOBILE}".strip() if limpo else ""
+    return {"hero_subtitle_mobile": mobile,
+            "hero_subtitle_desktop": _sem_chamada_final(desktop) or limpo}
+
+
+def assinatura_do_template() -> str:
+    """sha256 do que decide o Elementor da LP: o `lp.json` e este renderer.
+
+    O build grava a assinatura ao lado do artefato (`p1.template.json`); o portão
+    final compara. Artefato montado com outro template/render não é adulteração
+    nem é aceito em silêncio: vira `lp_template_desatualizado`, com o comando de
+    rebuild explícito (`funnelforge reconstruir-lp`)."""
+    pacote = resources.files("funnelforge")
+    h = hashlib.sha256()
+    for parte in ("templates/lp.json", "pipeline/lp_template.py"):
+        h.update(parte.encode())
+        h.update(pacote.joinpath(parte).read_bytes())
+    return h.hexdigest()
+
+
 def load_lp_template() -> dict:
     """Load the packaged, adapted LP Elementor template."""
     raw = resources.files("funnelforge").joinpath("templates/lp.json").read_text(encoding="utf-8")
@@ -274,16 +322,6 @@ def _fillable(content: list) -> list[dict]:
 
 
 def _slot_value(content: dict, spec: object) -> str:
-    # Lista = cadeia de fallback: o primeiro valor não-vazio vence. Serve ao
-    # subtítulo do herói DESKTOP, que idealmente tem texto próprio (o mobile
-    # diz "toque abaixo", que no desktop é errado) mas cai no subtítulo comum
-    # quando o redator não produziu a variante -- nunca deixa o herói vazio.
-    if isinstance(spec, list):
-        for alt in spec:
-            valor = _slot_value(content, alt)
-            if valor:
-                return valor
-        return ""
     if isinstance(spec, tuple):
         key, idx, sub = spec
         arr = content.get(key) or []
@@ -360,8 +398,8 @@ def _fix_image_and_hrefs(node: object, hero_image_url: str) -> None:
 def _href_for_button(funnel_hrefs: list[str], button_ordinal: int) -> str:
     """Destino do N-ésimo botão (0-based, ordem de documento), via `_BUTTON_HREF`.
 
-    O mapa existe porque os dois heróis REPETEM os mesmos caminhos: são 6
-    widgets de botão para 3 destinos. Uma regra posicional (`funnel_hrefs[n]`)
+    O mapa existe porque os dois heróis REPETEM os mesmos caminhos: são 7
+    widgets de botão (3 + 3 + 1 no corpo) para 3 destinos. Uma regra posicional (`funnel_hrefs[n]`)
     mandaria metade dos botões para o último destino e quebraria em silêncio a
     promessa de que cada botão leva ao seu.
 
@@ -484,6 +522,7 @@ def render_lp(
     start = int(hashlib.sha1(id_seed.encode()).hexdigest(), 16) % 0x00FFFFFF if id_seed else 0
     _regen_ids(cont, [start])
 
+    slots = {**content, **_subtitulos_do_heroi(content, copy_rapida=copy_rapida)}
     button_ordinal = 0
     for i, w in enumerate(_fillable(cont)):
         spec = _SLOT_MAP.get(i)
@@ -492,7 +531,7 @@ def render_lp(
         kind, ref = spec
         s = w.setdefault("settings", {})
         if kind == "heading":
-            s["title"] = escape(_slot_value(content, ref))
+            s["title"] = escape(_slot_value(slots, ref))
         elif kind == "text":
             value = _slot_value(content, ref)
             if html_issues(value, rich_only=True):
@@ -506,10 +545,11 @@ def render_lp(
                 # cycle if fewer CTAs than buttons, so no TEMPLATE (source
                 # locale) button label ever survives.
                 label = texts[ref % len(texts)]
-                # LP template buttons already render a right-arrow icon, so the
-                # trailing »/>> the writer appends is redundant -- strip it.
-                if _has_arrow_icon(s):
-                    label = _strip_trailing_arrows(label)
+                # A seta final que o redator acrescenta (»/>>) sai de TODO botão
+                # da LP: os botões do desktop e do corpo já desenham o ícone, e
+                # os do herói mobile ficaram sem ícone (15/10/2026) para o rótulo
+                # caber numa linha. Mesmo rótulo nos dois heróis, sempre.
+                label = _strip_trailing_arrows(label)
                 s["text"] = escape(label)
             href = _href_for_button(funnel_hrefs, button_ordinal)
             if not valid_web_url(href):
@@ -544,13 +584,16 @@ def render_lp(
     return cont, tpl.get("page_settings", {})
 
 
-def transformacoes_do_template(content: dict, template: dict | None = None) -> list[dict]:
+def transformacoes_do_template(content: dict, template: dict | None = None, *,
+                               copy_rapida: bool = True,
+                               footer_disclosure: bool = False) -> list[dict]:
     """O que `render_lp` faz com o texto APROVADO ao montar o Elementor, para o
     registro no state.json (ramo editorial novo, B5). Não muda o render: repete
     o mesmo percurso por `_SLOT_MAP` e só anota o que muda — escape de HTML nos
     títulos, enumeração "1)" virando emoji, seta final tirada do rótulo do
-    botão, FAQ virando shortcode escapado, slot do template sem texto e o aviso
-    de identidade inserido no topo."""
+    botão, FAQ virando shortcode escapado, slot do template sem texto, a
+    chamada de toque do herói mobile e ONDE o aviso de identidade ficou (os
+    mesmos parâmetros do `render_lp`: o registro diz o que o render fez)."""
     tpl = template if template is not None else load_lp_template()
     saida: list[dict] = []
     vistos: set[tuple[str, str]] = set()
@@ -563,10 +606,14 @@ def transformacoes_do_template(content: dict, template: dict | None = None) -> l
     def nome(ref: object) -> str:
         if isinstance(ref, tuple):
             return f"{ref[0]}[{ref[1]}].{ref[2]}"
-        if isinstance(ref, list):
-            return str(ref[-1])
         return str(ref)
 
+    subtitulos = _subtitulos_do_heroi(content, copy_rapida=copy_rapida)
+    slots = {**content, **subtitulos}
+    if copy_rapida and subtitulos["hero_subtitle_mobile"] != str(
+            content.get("hero_subtitle") or ""):
+        anota("chamada_de_toque_no_heroi_mobile", "hero_subtitle",
+              depois=subtitulos["hero_subtitle_mobile"][:200])
     textos = content.get("cta_texts") or []
     for i, w in enumerate(_fillable(copy.deepcopy(tpl).get("content", []))):
         spec = _SLOT_MAP.get(i)
@@ -575,7 +622,7 @@ def transformacoes_do_template(content: dict, template: dict | None = None) -> l
         kind, ref = spec
         s = w.get("settings", {}) or {}
         if kind == "heading":
-            valor = _slot_value(content, ref)
+            valor = _slot_value(slots, ref)
             if not valor:
                 anota("slot_vazio", nome(ref))
             elif escape(valor) != valor:
@@ -590,10 +637,15 @@ def transformacoes_do_template(content: dict, template: dict | None = None) -> l
         elif kind == "button" and isinstance(ref, int) and textos:
             idx = ref % len(textos)
             rotulo = str(textos[idx])
-            if _has_arrow_icon(s) and _strip_trailing_arrows(rotulo) != rotulo:
+            if _strip_trailing_arrows(rotulo) != rotulo:
                 anota("seta_final_removida", f"cta_texts[{idx}]", antes=rotulo,
                       depois=_strip_trailing_arrows(rotulo))
             if escape(rotulo) != rotulo:
                 anota("escape_html", f"cta_texts[{idx}]")
-    anota("aviso_identidade_no_topo", "template")
+    if copy_rapida and footer_disclosure:
+        # O aviso curto do motor não entra: o rodapé institucional do tema já
+        # traz a identidade (`render_lp`, `identity_html = ""`).
+        anota("aviso_identidade_no_rodape_do_tema", "template")
+    else:
+        anota("aviso_identidade_no_fim", "template")
     return saida
