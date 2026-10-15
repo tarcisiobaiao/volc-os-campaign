@@ -1,0 +1,25 @@
+{
+  "run_id": "hermes-gold-review-20261015",
+  "mode": "document_review_not_account_audit",
+  "input_document": "ANALISE_GOLD_VOLC_v2.docx",
+  "objective": "Assess reusable recommendations against current local operational evidence and primary platform documentation",
+  "scope": "Read-only document, repository and public documentation review",
+  "platform_mutations_authorized": false,
+  "paid_api_calls_authorized": false,
+  "account_health_score": null,
+  "status": "document_review_completed_not_operational_certification",
+  "verdict": "sound_critical_review_reuse_existing_capabilities_do_not_build_another_platform",
+  "verified_primary_sources": [
+    "https://support.google.com/google-ads/answer/2998031?hl=en",
+    "https://developers.google.com/google-ads/api/docs/conversions/upload-offline",
+    "https://docs.prebid.org/dev-docs/publisher-api-reference/getHighestCpmBids.html",
+    "https://support.google.com/google-ads/answer/10369906?hl=en"
+  ],
+  "findings": [
+    "Financial grain and estimated-versus-reconciled value separation are valuable",
+    "Historical checkout does not establish current deployment gaps",
+    "Existing development harness and economic-cycle ADR should be reused",
+    "Bounded experiments need not wait for exact per-session revenue; no financial action authorized"
+  ],
+  "limitations": ["Historical checkout in the supplied report is not current production evidence", "No live account or revenue audit"]
+}

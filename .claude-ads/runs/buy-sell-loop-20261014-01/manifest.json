@@ -1,0 +1,23 @@
+{
+  "run_id": "buy-sell-loop-20261014-01",
+  "date_local": "2026-10-14",
+  "workflow": "research_refresh_and_architecture_preservation",
+  "authority": "Preserve operator-supplied proposal, verify key claims and register an executable validation plan. No implementation, financial autonomy or external writes authorized.",
+  "business_model": "content monetization and paid traffic arbitrage",
+  "scope": ["Google Ads", "publisher monetization", "attribution", "bid simulations", "conversion adjustments", "RSOC", "traffic quality"],
+  "source_classification": "operator-supplied AI proposal, not platform authority",
+  "source_sha256": "e5015ae0ddbebdd32fe8edaa3571a8c84c440002e8c8d8d5c4dff006f99d7bdd",
+  "archive_identical_bytes": true,
+  "source_format": "Raw text with a JSON-looking proposal, invalid JSON escapes in math notation and a trailing Sources section; preserved unchanged, not parsed as executable configuration.",
+  "external_writes": 0,
+  "paid_model_calls": 0,
+  "new_dependencies": [],
+  "storage": "repository documentation and operational memory only",
+  "privacy": {
+    "contains_credentials_or_user_click_ids": false,
+    "raw_account_exports": false,
+    "retention": "versioned architecture history; review before execution or supersede when platform support changes",
+    "owner": "VOLC operator"
+  },
+  "result": "proposal_preserved_not_implemented"
+}
