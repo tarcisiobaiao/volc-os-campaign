@@ -170,7 +170,7 @@ w12_suite() {
      "v23 · carga inicial registrou a linha existente uma vez, com data de referência"
   eq "$(w12_sql "select count(*) from public.receita_observacao") " "$(w12_sql "select (select count(*) from public.joinads_metrics) + (select count(*) from public.gam_metrics)") " \
      "v23 · carga inicial cobre todas as linhas de joinads_metrics e gam_metrics"
-  eq "$(w12_sql "select string_agg(tgrelid::regclass || '.' || tgname, ',' order by 1) from pg_trigger where tgrelid in ('public.joinads_metrics'::regclass, 'public.gam_metrics'::regclass) and not tgisinternal and tgname not like 'zz_receita_observacao%'")" \
+  eq "$(w12_sql "select string_agg(tgrelid::regclass || '.' || tgname, ',' order by 1) from pg_trigger where tgrelid in ('public.joinads_metrics'::regclass, 'public.gam_metrics'::regclass) and not tgisinternal and tgname not like 'zz_receita_observacao%' and tgname <> 'zz_receita_releitura'")" \
      "$gatilhos_antes" "v23 · gatilhos legados de receita intactos (só zz_receita_observacao* a mais)"
 
   echo "▶ v23 · câmbio: resolução sem constante"
@@ -290,6 +290,17 @@ w12_suite() {
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 10) SELECT confirmacoes||'|'||(confirmado_em >= coletado_em) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "1|true" \
      "v23 · vw_receita_vigente expõe confirmado_em e confirmacoes (colunas a mais, versão igual)"
+  # B1 do revisor nuvem 2: só o UPDATE que escreve revenue conta como releitura.
+  eq "$(w12_bloco "$base_rec SET LOCAL ROLE service_role; UPDATE public.joinads_metrics SET updated_at = now() WHERE utm_campaign_value = 'w12-lab-utm'; RESET ROLE; $w12_rel")" "0|true|-" \
+     "v23 · UPDATE só de updated_at não é releitura"
+  eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
+        CREATE FUNCTION pg_temp.w12_rpc_recalculo() RETURNS void LANGUAGE sql AS \$\$ UPDATE public.gam_metrics SET revenue_converted = revenue * 9 WHERE revenue > 0 \$\$;
+        SET LOCAL ROLE service_role; UPDATE public.joinads_metrics SET revenue_converted = revenue * 9 WHERE revenue > 0; RESET ROLE;
+        SELECT pg_temp.w12_rpc_recalculo();
+        SELECT string_agg(confirmacoes::text, ',') FROM public.receita_releitura WHERE chave->>'utm_campaign_value' IN ('w12-lab-gam');")" "0" \
+     "v23 · recálculo de revenue_converted chamado direto (RPC do botão Atualizar) não é releitura"
+  eq "$(w12_bloco "$base_rec SET LOCAL ROLE service_role; UPDATE public.joinads_metrics SET revenue_converted = revenue * 9 WHERE utm_campaign_value = 'w12-lab-utm'; RESET ROLE; $w12_rel")" "0|true|-" \
+     "v23 · UPDATE direto só de revenue_converted não é releitura"
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) SELECT trim_scale(receita) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "12" \
      "v23 · vw_receita_vigente mostra a última versão"

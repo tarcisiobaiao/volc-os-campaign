@@ -140,7 +140,7 @@ BEGIN
      OR to_regclass('public.receita_releitura') IS NOT NULL
      OR to_regclass('public.v23_01_acl_anterior') IS NOT NULL THEN
     RAISE EXCEPTION 'v23_01 recusada: % já existe — esta migration não reaplica por cima',
-      coalesce('exchange_rate_history.' || faltando, 'receita_observacao/v23_01_acl_anterior');
+      coalesce('exchange_rate_history.' || faltando, 'receita_observacao/receita_releitura/v23_01_acl_anterior');
   END IF;
 END
 $pre$;
@@ -331,11 +331,12 @@ CREATE TRIGGER receita_observacao_sem_truncate
 
 -- Releitura sem versão nova: a coleta que regrava o MESMO valor não cria
 -- versão (contrato do diário), mas fica registrada aqui. Uma linha por chave,
--- presa à versão vigente: confirmado_em = última vez que uma escrita direta
--- (profundidade de gatilho 1: coletor, upsert, n8n) trouxe o mesmo valor. Sem
+-- presa à versão vigente: confirmado_em = última vez que um UPDATE que
+-- escreve revenue (o upsert DO UPDATE do coletor) trouxe o mesmo valor
+-- (gatilho zz_receita_releitura). Upsert DO NOTHING nunca confirma. Sem
 -- isso, "receita estável" e "coletor parado" são indistinguíveis (W14).
--- Recálculo legado aninhado (update_all_revenue_converted, disparado por
--- system_settings) NÃO confirma: não releu a fonte. Não é replay: guarda só a
+-- Recálculo legado (revenue_converted, direto ou por system_settings) e
+-- UPDATE só de updated_at NÃO confirmam: não releram a fonte. Não é replay: guarda só a
 -- última confirmação de cada chave, não o histórico das confirmações.
 CREATE TABLE public.receita_releitura (
   tabela_origem   text        NOT NULL,
@@ -448,8 +449,6 @@ DECLARE
   v_prov    jsonb;
   v_old     jsonb;
   v_new     jsonb;
-  v_chave   jsonb := '{}'::jsonb;
-  v_col     text;
 BEGIN
   BEGIN
     v_headers := nullif(current_setting('request.headers', true), '')::jsonb;
@@ -480,19 +479,8 @@ BEGIN
                                     TG_OP, true, v_prov);
   END IF;
   IF TG_OP <> 'DELETE' THEN
-    -- Mesmo valor (sem versão nova) vindo de escrita direta = releitura.
-    IF NOT public.receita_observar(TG_ARGV[0], TG_ARGV[1], TG_TABLE_NAME, v_new, v_chaves,
-                                   TG_OP, false, v_prov)
-       AND pg_trigger_depth() = 1 THEN
-      FOREACH v_col IN ARRAY v_chaves LOOP
-        v_chave := v_chave || jsonb_build_object(v_col, v_new -> v_col);
-      END LOOP;
-      UPDATE public.receita_releitura r
-         SET confirmado_em = now(), confirmacoes = r.confirmacoes + 1, confirmado_por = v_prov
-       WHERE r.tabela_origem = TG_TABLE_NAME AND r.chave = v_chave
-         AND r.versao_id = (SELECT max(o.id) FROM public.receita_observacao o
-                             WHERE o.tabela_origem = TG_TABLE_NAME AND o.chave = v_chave);
-    END IF;
+    PERFORM public.receita_observar(TG_ARGV[0], TG_ARGV[1], TG_TABLE_NAME, v_new, v_chaves,
+                                    TG_OP, false, v_prov);
   END IF;
   RETURN NULL;
 END
@@ -509,6 +497,58 @@ CREATE TRIGGER zz_receita_observacao
   AFTER INSERT OR UPDATE OR DELETE ON public.gam_metrics
   FOR EACH ROW EXECUTE FUNCTION public.receita_registrar_observacao(
     'gam', 'USD', 'date', 'utm_campaign_value', 'gam_accounts_id');
+
+-- Releitura: só um UPDATE que ESCREVE revenue (UPDATE OF revenue; o upsert
+-- ON CONFLICT DO UPDATE SET revenue = EXCLUDED.revenue do coletor) trazendo o
+-- mesmo valor, na mesma chave e data (direto ou por gatilho de staging). Não conta:
+-- recálculo de revenue_converted (gatilho de system_settings ou a RPC
+-- update_all_revenue_conversions chamada direto pelo botão Atualizar), UPDATE
+-- só de updated_at, nem upsert ON CONFLICT DO NOTHING (nenhum gatilho de linha
+-- dispara). Roda depois de zz_receita_observacao (ordem alfabética): valor
+-- novo já virou versão e não é confirmado aqui.
+CREATE FUNCTION public.receita_registrar_releitura() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $f$
+DECLARE
+  v_chaves  text[] := TG_ARGV[0:TG_NARGS - 1];
+  v_old     jsonb := to_jsonb(OLD);
+  v_new     jsonb := to_jsonb(NEW);
+  v_chave   jsonb := '{}'::jsonb;
+  v_col     text;
+  v_headers jsonb;
+BEGIN
+  IF OLD.revenue IS DISTINCT FROM NEW.revenue             -- numérico: 10 = 10.00
+     OR OLD.date IS DISTINCT FROM NEW.date THEN
+    RETURN NULL;
+  END IF;
+  FOREACH v_col IN ARRAY v_chaves LOOP
+    IF v_old -> v_col IS DISTINCT FROM v_new -> v_col THEN RETURN NULL; END IF;
+    v_chave := v_chave || jsonb_build_object(v_col, v_new -> v_col);
+  END LOOP;
+  BEGIN
+    v_headers := nullif(current_setting('request.headers', true), '')::jsonb;
+  EXCEPTION WHEN others THEN v_headers := NULL;
+  END;
+  UPDATE public.receita_releitura r
+     SET confirmado_em = now(), confirmacoes = r.confirmacoes + 1,
+         confirmado_por = jsonb_strip_nulls(jsonb_build_object(
+           'papel',      nullif(current_setting('role', true), 'none'),
+           'sessao',     session_user,
+           'user_agent', left(v_headers ->> 'user-agent', 200),
+           'declarada',  left(v_headers ->> 'x-volc-proveniencia', 200),
+           'gatilho',    TG_NAME))
+   WHERE r.tabela_origem = TG_TABLE_NAME AND r.chave = v_chave
+     AND r.versao_id = (SELECT max(o.id) FROM public.receita_observacao o
+                         WHERE o.tabela_origem = TG_TABLE_NAME AND o.chave = v_chave AND NOT o.removida);
+  RETURN NULL;
+END
+$f$;
+
+CREATE TRIGGER zz_receita_releitura
+  AFTER UPDATE OF revenue ON public.joinads_metrics
+  FOR EACH ROW EXECUTE FUNCTION public.receita_registrar_releitura('date', 'utm_campaign_value', 'joinads_domain');
+CREATE TRIGGER zz_receita_releitura
+  AFTER UPDATE OF revenue ON public.gam_metrics
+  FOR EACH ROW EXECUTE FUNCTION public.receita_registrar_releitura('date', 'utm_campaign_value', 'gam_accounts_id');
 
 -- TRUNCATE não passa por gatilho de linha: um gatilho de comando registra a
 -- remoção de cada chave vigente da tabela, para o diário não divergir da origem.
@@ -606,6 +646,7 @@ REVOKE ALL ON FUNCTION public.cambio_versao_guarda() FROM PUBLIC, anon, authenti
 REVOKE ALL ON FUNCTION public.receita_registrar_truncate() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_observacao_imutavel() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_registrar_observacao() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.receita_registrar_releitura() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.receita_observar(text, text, text, jsonb, text[], text, boolean, jsonb)
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.cambio_resolver(date, text, integer, timestamptz) FROM PUBLIC, anon, authenticated;

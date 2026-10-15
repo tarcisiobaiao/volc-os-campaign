@@ -71,6 +71,8 @@ END
 $acl$;
 DROP TABLE IF EXISTS public.v23_01_acl_anterior;
 
+DROP TRIGGER IF EXISTS zz_receita_releitura ON public.joinads_metrics;
+DROP TRIGGER IF EXISTS zz_receita_releitura ON public.gam_metrics;
 DROP TRIGGER IF EXISTS zz_receita_observacao ON public.joinads_metrics;
 DROP TRIGGER IF EXISTS zz_receita_observacao ON public.gam_metrics;
 DROP TRIGGER IF EXISTS zz_receita_observacao_truncate ON public.joinads_metrics;
@@ -78,6 +80,7 @@ DROP TRIGGER IF EXISTS zz_receita_observacao_truncate ON public.gam_metrics;
 DROP VIEW IF EXISTS public.vw_receita_vigente;
 DROP FUNCTION IF EXISTS public.receita_as_of(timestamptz, text);
 DROP FUNCTION IF EXISTS public.receita_registrar_observacao();
+DROP FUNCTION IF EXISTS public.receita_registrar_releitura();
 DROP FUNCTION IF EXISTS public.receita_registrar_truncate();
 DROP FUNCTION IF EXISTS public.receita_observar(text, text, text, jsonb, text[], text, boolean, jsonb);
 DROP TABLE IF EXISTS public.receita_releitura;
