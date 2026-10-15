@@ -122,6 +122,12 @@ const Pronta: React.FC<{ carteira: CarteiraShadow }> = ({ carteira }) => {
             {defasadas > 0 ? ` · ${defasadas} com leitura velha` : ''}
             {semDado > 0 ? ` · ${semDado} sem dado` : ''}
           </p>
+          {carteira.carteira_defasada ? (
+            <p className="max-w-[70ch] text-[12px] font-medium" role="alert" data-testid="carteira-velha">
+              A leitura mais nova da carteira é de {carteira.leitura_mais_nova ?? 'data desconhecida'}: a
+              agenda não roda há mais de dois dias. As direções abaixo descrevem aquele dia, não hoje.
+            </p>
+          ) : null}
           <TabelaDaCarteira linhas={carteira.campanhas} />
         </>
       )}

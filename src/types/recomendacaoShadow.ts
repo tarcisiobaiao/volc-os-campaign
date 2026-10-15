@@ -113,6 +113,10 @@ export interface LinhaCarteiraShadow {
 
 export interface CarteiraShadow {
   contrato: 'carteira_shadow.v1';
+  /** `as_of` do experimento mais novo da carteira; null sem nenhuma linha datada. */
+  leitura_mais_nova: string | null;
+  /** A carteira inteira está mais de 2 dias atrás do relógio: a agenda parou. */
+  carteira_defasada: boolean;
   campanhas: LinhaCarteiraShadow[];
   isolamento: { chamadas_externas: number; mutacoes_executadas: number; oferece_aplicar: false };
   integridade: 'coerente_com_manifesto';

@@ -9,10 +9,15 @@ PostgREST, banco descartável) que entregue essa forma serve.
   linha NÃO segmentada (`segmentos = {}`) é o total da campanha no dia, a mesma
   regra da v17_04. NUNCA `daily_campaign_metrics`: lá fica o D-1 projetado
   para painel e comissão, e a recoleta do W11 não projeta nele.
-- Receita: `receita_as_of(conhecido_ate)` / `vw_receita_vigente` (v23_01, W12).
-  Cada linha já traz `receita_brl` convertida pelo `cambio_resolver` e o
-  `cambio_modo` usado. `defasada` e `sem_cotacao` chegam com `receita_brl`
-  NULL: o motor nunca converte por conta própria e nunca usa câmbio fixo.
+- Receita: `receita_as_of(conhecido_ate)` / `vw_receita_vigente` (v23_01, W12),
+  na moeda de origem (`receita`, `moeda`).
+- Câmbio: `cambio_resolver(data, par, max_defasagem, conhecido_ate)` (v23_01),
+  resolvido NA LEITURA (ciclo corretivo 2). O `receita_brl` que o W12 grava é
+  o câmbio do instante da ingestão e nunca é re-resolvido: um dia ingerido
+  antes da PTAX ficaria `defasada` para sempre. Por isso o motor usa a
+  `receita` de origem × a cotação que o resolvedor devolve agora, com o mesmo
+  corte `conhecido_ate` da leitura de receita. O motor nunca usa câmbio fixo
+  nem `revenue_converted`.
 
 Campo obrigatório ausente na linha é `ContratoQuebrado`, nunca valor padrão:
 uma coluna renomeada do outro lado não pode virar zero aqui.
@@ -44,6 +49,14 @@ def _data(valor: Any, origem: str) -> date:
         return date.fromisoformat(str(valor)[:10])
     except ValueError as exc:
         raise ContratoQuebrado(f"{origem}: data ilegível {valor!r}") from exc
+
+
+def _nao_negativo(valor: Optional[float], campo: str, origem: str) -> Optional[float]:
+    # Estorno não está no contrato de nenhuma das fontes; negativo é recusado,
+    # não subtraído em silêncio.
+    if valor is not None and valor < 0:
+        raise ContratoQuebrado(f"{origem}: {campo} negativo ({valor!r})")
+    return valor
 
 
 def _inteiro(valor: Any, campo: str, origem: str) -> Optional[int]:
@@ -108,8 +121,9 @@ class CustoDia:
             campaign_id=str(linha["campaign_id"]),
             metric_date=_data(linha["metric_date"], origem),
             segmentado=bool(segmentos),
-            custo_micros=_inteiro(linha["custo_micros"], "custo_micros", origem),
-            cliques=_inteiro(linha["cliques"], "cliques", origem),
+            custo_micros=_nao_negativo(_inteiro(linha["custo_micros"], "custo_micros", origem),
+                                       "custo_micros", origem),
+            cliques=_nao_negativo(_inteiro(linha["cliques"], "cliques", origem), "cliques", origem),
             currency_code=str(linha["currency_code"] or ""),
             janela_fechada=linha["janela_fechada"],
             campaign_name=None if linha["campaign_name"] is None else str(linha["campaign_name"]),
@@ -174,12 +188,52 @@ class ReceitaObservada:
             componente=str(componente),
             data_referencia=_data(linha["data_referencia"], origem),
             moeda=str(linha["moeda"]),
-            receita=_numero(linha["receita"], "receita", origem),
+            receita=_nao_negativo(_numero(linha["receita"], "receita", origem), "receita", origem),
             receita_brl=receita_brl,
             cambio_modo=modo,
             cambio_taxa=_numero(linha["cambio_taxa"], "cambio_taxa", origem),
             cambio_defasagem_dias=_inteiro(linha["cambio_defasagem_dias"], "cambio_defasagem_dias", origem),
             coletado_em=str(linha["coletado_em"]),
+        )
+
+
+@dataclass(frozen=True)
+class Cotacao:
+    """Uma resposta de `cambio_resolver` (v23_01) para (par, data) pedidos."""
+
+    par: str
+    data: date                     # o dia PEDIDO (o da receita)
+    modo: str                      # exata | anterior | defasada | sem_cotacao
+    taxa: Optional[float]          # None quando defasada/sem_cotacao
+    data_cotacao: Optional[date]
+    defasagem_dias: Optional[int]
+    cotacao_id: Optional[int]
+    fonte: Optional[str]
+
+    CAMPOS = ("par", "data", "modo", "taxa", "data_cotacao", "defasagem_dias", "cotacao_id", "fonte")
+    MODOS = ("exata", "anterior", "defasada", "sem_cotacao")
+
+    @classmethod
+    def da_linha(cls, linha: Mapping[str, Any]) -> "Cotacao":
+        origem = "cambio_resolver"
+        _exigir(linha, cls.CAMPOS, origem)
+        modo = str(linha["modo"])
+        if modo not in cls.MODOS:
+            raise ContratoQuebrado(f"{origem}: modo fora do contrato ({modo!r})")
+        taxa = _numero(linha["taxa"], "taxa", origem)
+        if modo in ("exata", "anterior") and (taxa is None or taxa <= 0 or linha["cotacao_id"] is None):
+            raise ContratoQuebrado(f"{origem}: modo {modo} sem taxa positiva e cotação")
+        if modo in ("defasada", "sem_cotacao") and taxa is not None:
+            raise ContratoQuebrado(f"{origem}: modo {modo} com taxa")
+        return cls(
+            par=str(linha["par"]),
+            data=_data(linha["data"], origem),
+            modo=modo,
+            taxa=taxa,
+            data_cotacao=None if linha["data_cotacao"] is None else _data(linha["data_cotacao"], origem),
+            defasagem_dias=_inteiro(linha["defasagem_dias"], "defasagem_dias", origem),
+            cotacao_id=_inteiro(linha["cotacao_id"], "cotacao_id", origem),
+            fonte=None if linha["fonte"] is None else str(linha["fonte"]),
         )
 
 
@@ -198,3 +252,8 @@ class FonteCusto(Protocol):
 
 class FonteReceita(Protocol):
     def receita_vigente(self, inicio: date, fim: date) -> Leitura: ...
+
+
+class FonteCambio(Protocol):
+    def cotacoes(self, pedidos: Sequence[tuple[str, date]], conhecido_ate: str,
+                 max_defasagem_dias: int) -> Leitura: ...

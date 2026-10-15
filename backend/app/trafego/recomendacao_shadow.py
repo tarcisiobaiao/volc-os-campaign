@@ -41,6 +41,11 @@ Uma direção expira depois de sete dias por padrão. O limite pode ser reduzido
 ou ampliado por `VOLC_SHADOW_MAX_AGE_DAYS` (1..90); expiração é 410 e não
 mostra a direção antiga como atual.
 
+Cada artefato é lido UMA vez: o sha256 é calculado sobre os bytes lidos e são
+esses mesmos bytes que viram JSON/CSV (W13, ciclo 2). Conferir o arquivo e
+depois reabri-lo para interpretar deixava uma janela em que o conteúdo
+interpretado não era o conferido.
+
 `origem.integridade` diz `coerente_com_manifesto`, e não "conferida": o sha256
 é comparado com o manifesto da MESMA pasta, então quem edita os dois passa.
 Isso detecta deriva acidental, não adulteração deliberada.
@@ -50,6 +55,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import json
 import os
 import pathlib
@@ -120,6 +126,11 @@ def _sha256(caminho: pathlib.Path) -> str:
     return hashlib.sha256(caminho.read_bytes()).hexdigest()
 
 
+def _agora() -> datetime:
+    """Relógio da carteira (UTC ingênuo, como `_data`). Isolado para o teste."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _numero(texto: Any) -> Optional[float]:
     """Célula vazia é ausência, e ausência continua `None` (nunca 0)."""
     if texto is None:
@@ -176,13 +187,19 @@ def _manifestos(raiz: pathlib.Path) -> list[pathlib.Path]:
 
 def _json(caminho: pathlib.Path, experimento_id: str) -> dict[str, Any]:
     try:
-        lido = json.loads(caminho.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise IntegridadeQuebrada(
-            f"{caminho.name} do experimento {experimento_id} não é JSON legível."
-        ) from exc
+        bruto = caminho.read_bytes()
+    except OSError as exc:
+        raise IntegridadeQuebrada(f"{caminho.name} do experimento {experimento_id} não é legível.") from exc
+    return _json_de(bruto, caminho.name, experimento_id)
+
+
+def _json_de(bruto: bytes, nome: str, experimento_id: str) -> dict[str, Any]:
+    try:
+        lido = json.loads(bruto.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise IntegridadeQuebrada(f"{nome} do experimento {experimento_id} não é JSON legível.") from exc
     if not isinstance(lido, dict):
-        raise IntegridadeQuebrada(f"{caminho.name} do experimento {experimento_id} não é um objeto.")
+        raise IntegridadeQuebrada(f"{nome} do experimento {experimento_id} não é um objeto.")
     return lido
 
 
@@ -206,42 +223,53 @@ def _data(as_of: Any, experimento_id: str) -> datetime:
     return quando
 
 
-def _conferir(pasta: pathlib.Path, manifesto: dict[str, Any], nomes: tuple[str, ...]) -> None:
+def _conferido(pasta: pathlib.Path, manifesto: dict[str, Any], nome: str) -> bytes:
+    """Os bytes do artefato, lidos uma vez e conferidos contra o manifesto.
+
+    Quem chama interpreta ESTES bytes; reabrir o arquivo depois reabriria a
+    janela entre a conferência e a leitura.
+    """
     declarados = {
         str(a.get("path")): str(a.get("sha256"))
         for a in manifesto.get("artifacts", [])
         if isinstance(a, dict)
     }
-    for nome in nomes:
-        esperado = declarados.get(nome)
-        arquivo = pasta / nome
-        if not esperado:
-            raise IntegridadeQuebrada(f"{nome} não está declarado no manifesto do experimento.")
-        if not arquivo.is_file():
-            raise IntegridadeQuebrada(f"{nome} está declarado e não existe na pasta do experimento.")
-        if _sha256(arquivo) != esperado:
-            raise IntegridadeQuebrada(f"{nome} não bate com o sha256 declarado no manifesto.")
+    esperado = declarados.get(nome)
+    if not esperado:
+        raise IntegridadeQuebrada(f"{nome} não está declarado no manifesto do experimento.")
+    try:
+        bruto = (pasta / nome).read_bytes()
+    except (FileNotFoundError, IsADirectoryError, NotADirectoryError) as exc:
+        raise IntegridadeQuebrada(f"{nome} está declarado e não existe na pasta do experimento.") from exc
+    except OSError as exc:
+        raise IntegridadeQuebrada(f"{nome} do experimento não é legível.") from exc
+    if hashlib.sha256(bruto).hexdigest() != esperado:
+        raise IntegridadeQuebrada(f"{nome} não bate com o sha256 declarado no manifesto.")
+    return bruto
 
 
-def _dias(csv_path: pathlib.Path) -> list[dict[str, Any]]:
+def _dias(bruto: bytes) -> list[dict[str, Any]]:
     linhas: list[dict[str, Any]] = []
-    with csv_path.open(newline="", encoding="utf-8") as f:
-        for linha in csv.DictReader(f):
-            custo = _numero(linha.get("custo_brl"))
-            receita = _numero(linha.get("receita_brl"))
-            cliques = _numero(linha.get("clicks"))
-            linhas.append({
-                "data": str(linha.get("date") or ""),
-                "custo_brl": None if custo is None else round(custo, 2),
-                "cliques": None if cliques is None else int(cliques),
-                "receita_brl": None if receita is None else round(receita, 2),
-                # Só existe contribuição quando os DOIS lados existem.
-                "contribuicao_brl": (
-                    None if custo is None or receita is None else round(receita - custo, 2)
-                ),
-                "maduro": str(linha.get("maduro") or "").strip().lower() == "true",
-                "estado": str(linha.get("estado") or "") or None,
-            })
+    try:
+        texto = bruto.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise IntegridadeQuebrada("transformacao.csv não é UTF-8.") from exc
+    for linha in csv.DictReader(io.StringIO(texto, newline="")):
+        custo = _numero(linha.get("custo_brl"))
+        receita = _numero(linha.get("receita_brl"))
+        cliques = _numero(linha.get("clicks"))
+        linhas.append({
+            "data": str(linha.get("date") or ""),
+            "custo_brl": None if custo is None else round(custo, 2),
+            "cliques": None if cliques is None else int(cliques),
+            "receita_brl": None if receita is None else round(receita, 2),
+            # Só existe contribuição quando os DOIS lados existem.
+            "contribuicao_brl": (
+                None if custo is None or receita is None else round(receita - custo, 2)
+            ),
+            "maduro": str(linha.get("maduro") or "").strip().lower() == "true",
+            "estado": str(linha.get("estado") or "") or None,
+        })
     return linhas
 
 
@@ -269,8 +297,7 @@ def _candidatos(raiz: pathlib.Path) -> list[tuple[pathlib.Path, dict[str, Any], 
         # entra. Declarou ou tem: confere o sha256 ANTES de interpretar.
         if not _declara(manifesto, "resultado.json") and not resultado_path.exists():
             continue
-        _conferir(pasta, manifesto, ("resultado.json",))
-        resultado = _json(resultado_path, pasta.name)
+        resultado = _json_de(_conferido(pasta, manifesto, "resultado.json"), "resultado.json", pasta.name)
         candidatos.append((pasta, manifesto, resultado))
     return candidatos
 
@@ -314,7 +341,6 @@ def ler(
     if not candidatos:
         return None
     (as_of_dt, pasta, manifesto, resultado), preteridos = _mais_recente(candidatos)
-    _conferir(pasta, manifesto, ("resultado.json", "transformacao.csv"))
     hoje = (agora or _agora_utc()).astimezone(timezone.utc).date()
     idade = (hoje - as_of_dt.date()).days
     if idade < -1:
@@ -329,7 +355,15 @@ def ler(
             idade_dias=idade,
             validade_dias=validade,
         )
-    projecao = _projetar(cid, pasta.name, manifesto, resultado, _dias(pasta / "transformacao.csv"))
+    # `resultado` já veio dos bytes conferidos; o CSV também é interpretado
+    # exatamente dos bytes cujo hash foi validado contra o manifesto.
+    projecao = _projetar(
+        cid,
+        pasta.name,
+        manifesto,
+        resultado,
+        _dias(_conferido(pasta, manifesto, "transformacao.csv")),
+    )
     projecao["origem"]["experimentos_substituidos"] = sorted(c[1].name for c in preteridos)
     return projecao
 
@@ -338,7 +372,7 @@ def _numero_ou_none(v: Any) -> Optional[float]:
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
-def listar(*, raiz: Optional[pathlib.Path] = None) -> dict[str, Any]:
+def listar(*, raiz: Optional[pathlib.Path] = None, agora: Optional[datetime] = None) -> dict[str, Any]:
     """A carteira em sombra: uma linha por campanha, a do experimento mais recente.
 
     Mesmas regras de `ler`: resultado corrompido derruba a carteira inteira
@@ -348,6 +382,11 @@ def listar(*, raiz: Optional[pathlib.Path] = None) -> dict[str, Any]:
 
     A linha nunca traz valor sugerido nem nada executável; `estado_dado`
     `sem_dado` ou `amostra_insuficiente` vem com ROAS nulo, nunca zero.
+
+    Duas formas de velho: a linha mais de `DIAS_PARA_DEFASAR` dias atrás da
+    mais nova (`defasada`: a campanha saiu da coleta), e a carteira inteira
+    mais de `DIAS_PARA_DEFASAR` dias atrás do relógio (`carteira_defasada`: a
+    agenda parou). A segunda não aparece comparando linhas entre si.
     """
     por_campanha: dict[str, list[tuple[pathlib.Path, dict[str, Any], dict[str, Any]]]] = {}
     for c in _candidatos(raiz or _raiz_configurada()):
@@ -405,8 +444,14 @@ def listar(*, raiz: Optional[pathlib.Path] = None) -> dict[str, Any]:
         quando = l.pop("_quando", None)
         if quando is not None and mais_nova is not None:
             l["defasada"] = (mais_nova - quando).days > DIAS_PARA_DEFASAR
+    relogio = agora or _agora()
+    if relogio.tzinfo is not None:
+        relogio = relogio.astimezone(timezone.utc).replace(tzinfo=None)
     return {
         "contrato": CONTRATO_CARTEIRA,
+        "leitura_mais_nova": mais_nova.isoformat() if mais_nova is not None else None,
+        # Sem nenhuma linha datada, não há como dizer que está em dia.
+        "carteira_defasada": mais_nova is None or (relogio - mais_nova).days > DIAS_PARA_DEFASAR,
         "campanhas": linhas,
         "isolamento": {"chamadas_externas": 0, "mutacoes_executadas": 0, "oferece_aplicar": False},
         "integridade": "coerente_com_manifesto",

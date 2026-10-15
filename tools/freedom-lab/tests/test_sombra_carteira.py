@@ -15,7 +15,7 @@ import pytest
 from volc_lab.experimentos import validar
 from volc_lab.sombra_carteira import adaptadores, aplicacao, dominio
 from volc_lab.sombra_carteira.__main__ import main as cli
-from volc_lab.sombra_carteira.portas import ContratoQuebrado, CustoDia, Leitura, ReceitaObservada
+from volc_lab.sombra_carteira.portas import ContratoQuebrado, Cotacao, CustoDia, Leitura, ReceitaObservada
 
 CONTA = "1112223334"
 HOJE = date(2026, 10, 15)
@@ -34,16 +34,33 @@ def custo(cid, d, micros, cliques=40, *, conta=CONTA, segmentos=None, fechada=Tr
             "origem_janela": origem}
 
 
-def receita(cid, d, usd, *, brl=None, modo="anterior", fonte="joinads", dominio_="a.com.br", taxa=5.4):
+def receita(cid, d, usd, *, brl=None, modo="anterior", fonte="joinads", dominio_="a.com.br", taxa=5.4,
+            moeda="USD"):
     chave = {"date": d.isoformat(), "utm_campaign_value": cid}
     chave["joinads_domain" if fonte == "joinads" else "gam_accounts_id"] = dominio_
     if brl is None and modo in ("exata", "anterior") and usd is not None:
         brl = round(usd * taxa, 4)
-    return {"fonte": fonte, "chave": chave, "data_referencia": d.isoformat(), "moeda": "USD",
+    return {"fonte": fonte, "chave": chave, "data_referencia": d.isoformat(), "moeda": moeda,
             "receita": usd, "receita_brl": brl, "cambio_modo": modo,
             "cambio_taxa": taxa if modo in ("exata", "anterior") else None,
             "cambio_defasagem_dias": 1 if modo == "anterior" else (40 if modo == "defasada" else None),
             "coletado_em": LIDO, "removida": False}
+
+
+def cot(par, d, modo="anterior", taxa=5.4, defasagem=None):
+    """Uma resposta de cambio_resolver (v23_01) para (par, d)."""
+    com_taxa = modo in ("exata", "anterior")
+    if defasagem is None:
+        defasagem = {"exata": 0, "anterior": 1, "defasada": 40}.get(modo)
+    return {"par": par, "data": d.isoformat(), "modo": modo, "taxa": taxa if com_taxa else None,
+            "data_cotacao": None if modo == "sem_cotacao" else (d - timedelta(days=defasagem)).isoformat(),
+            "defasagem_dias": defasagem, "cotacao_id": None if modo == "sem_cotacao" else 7,
+            "fonte": None if modo == "sem_cotacao" else "ptax"}
+
+
+# Câmbio por par, igual para todo dia: USD com cotação da véspera; EUR só com
+# cotação velha demais (defasada). A receita da CAMP_SEM_CAMBIO é em EUR.
+CAMBIO_PADRAO = {"USD/BRL": ("anterior", 5.4), "EUR/BRL": ("defasada", None)}
 
 
 def dias(n=20):
@@ -60,9 +77,9 @@ def carteira():
         c.append(custo(CAMP_BOA, d, 20_000_000))
         r.append(receita(CAMP_BOA, d, 4.0, dominio_="a.com.br"))
         r.append(receita(CAMP_BOA, d, 2.0, dominio_="b.com.br"))
-        # Sem câmbio: receita existe em USD, câmbio defasado (W12 devolve brl nulo).
+        # Sem câmbio: receita existe em EUR e a cotação EUR/BRL é velha demais.
         c.append(custo(CAMP_SEM_CAMBIO, d, 10_000_000))
-        r.append(receita(CAMP_SEM_CAMBIO, d, 5.0, modo="defasada"))
+        r.append(receita(CAMP_SEM_CAMBIO, d, 5.0, modo="defasada", moeda="EUR"))
         # Pouca amostra: 2 cliques/dia.
         c.append(custo(CAMP_POUCA, d, 5_000_000, cliques=2))
         r.append(receita(CAMP_POUCA, d, 0.5))
@@ -74,8 +91,10 @@ def carteira():
 
 
 class Fonte:
-    def __init__(self, c, r, lido=LIDO):
+    def __init__(self, c, r, lido=LIDO, cambio=None):
         self.c, self.r, self.lido = c, r, lido
+        self.cambio = CAMBIO_PADRAO if cambio is None else cambio
+        self.pedidos_cambio: list = []
 
     def custo_campanha_dia(self, conta, inicio, fim):
         return Leitura(tuple(self.c), self.lido, "teste: google_ads_campanha_dia sintético")
@@ -83,12 +102,21 @@ class Fonte:
     def receita_vigente(self, inicio, fim):
         return Leitura(tuple(self.r), self.lido, "teste: receita_as_of sintética")
 
+    def cotacoes(self, pedidos, conhecido_ate, max_defasagem_dias):
+        self.pedidos_cambio.append((list(pedidos), conhecido_ate, max_defasagem_dias))
+        linhas = []
+        for par, d in pedidos:
+            regra = self.cambio(par, d) if callable(self.cambio) else self.cambio.get(par)
+            if regra is not None:
+                linhas.append(cot(par, d, *regra))
+        return Leitura(tuple(linhas), self.lido, "teste: cambio_resolver sintético")
 
-def gerar(destino, c=None, r=None, **kw):
+
+def gerar(destino, c=None, r=None, *, cambio=None, **kw):
     if c is None:
         c, r = carteira()
-    f = Fonte(c, r)
-    return aplicacao.gerar_lote(CONTA, f, f, destino, base_ref=BASE_REF, hoje=HOJE, **kw)
+    f = Fonte(c, r, cambio=cambio)
+    return aplicacao.gerar_lote(CONTA, f, f, f, destino, base_ref=BASE_REF, hoje=HOJE, **kw)
 
 
 def resultado(destino, cid, sufixo=None):
@@ -112,7 +140,8 @@ def test_um_experimento_valido_por_campanha(tmp_path):
         assert validar(manifesto, pasta) == [], eid
         assert manifesto["method"]["external_calls"] == {"mode": "none", "count": 0}
         assert manifesto["result"]["reproducible"] == "identical"
-        assert {a["path"] for a in manifesto["artifacts"]} >= {"resultado.json", "transformacao.csv"}
+        assert {a["path"] for a in manifesto["artifacts"]} >= {"resultado.json", "transformacao.csv",
+                                                               "cambio_lido.json"}
 
 
 def test_direcoes_da_carteira(tmp_path):
@@ -254,6 +283,8 @@ def test_cada_numero_declara_a_fonte_e_nunca_o_painel_legado(tmp_path):
     r = resultado(tmp_path, CAMP_RUIM)
     assert "google_ads_campanha_dia" in r["fontes"]["custo_brl"]
     assert "receita_as_of" in r["fontes"]["receita_brl"]
+    assert "cambio_resolver" in r["fontes"]["receita_brl"]
+    assert "revenue_converted" in r["fontes"]["receita_brl"]   # declarado como NÃO usado
     texto = json.dumps(r)
     assert "daily_campaign_metrics" not in texto
     csv = (tmp_path / f"gads-{CAMP_RUIM}-sombra-{SUF}" / "transformacao.csv").read_text()
@@ -324,18 +355,23 @@ def test_replay_reproduz_bytes_e_detecta_adulteracao(tmp_path):
     assert aplicacao.replay(pasta) == {"experimento_id": pasta.name, "identico": True, "divergentes": []}
     entrada = json.loads((pasta / "receita_observada.json").read_text())
     for l in entrada["linhas"]:
-        l["receita_brl"] = (l["receita_brl"] or 0) * 3
-    (pasta / "receita_observada.json").write_text(json.dumps(entrada))
-    assert aplicacao.replay(pasta)["identico"] is False
+        l["receita"] = (l["receita"] or 0) * 3
+    (pasta / "receita_observada.json").write_bytes(aplicacao._json_bytes(entrada))
+    assert aplicacao.replay(pasta) == {"experimento_id": pasta.name, "identico": False,
+                                       "divergentes": ["resultado.json", "transformacao.csv"]}
 
 
 def test_cli_gera_e_recusa_com_codigos(tmp_path):
     c, r = carteira()
     (tmp_path / "custo.json").write_text(json.dumps({"lido_em": LIDO, "linhas": c}))
     (tmp_path / "receita.json").write_text(json.dumps({"lido_em": LIDO, "linhas": r}))
+    f = Fonte(c, r)
+    pedidos = aplicacao._pedidos_de_cambio(r)
+    (tmp_path / "cambio.json").write_text(json.dumps(
+        {"lido_em": LIDO, "linhas": list(f.cotacoes(pedidos, LIDO, 7).linhas)}))
     args = ["gerar", "--conta", "111-222-3334", "--custo", str(tmp_path / "custo.json"),
-            "--receita", str(tmp_path / "receita.json"), "--destino", str(tmp_path / "exp"),
-            "--base-ref", BASE_REF]
+            "--receita", str(tmp_path / "receita.json"), "--cambio", str(tmp_path / "cambio.json"),
+            "--destino", str(tmp_path / "exp"), "--base-ref", BASE_REF]
     assert cli(args) == 0
     pasta = next(p for p in (tmp_path / "exp").iterdir() if p.name.startswith("gads-"))
     assert cli(["replay", str(pasta)]) == 0
@@ -343,6 +379,8 @@ def test_cli_gera_e_recusa_com_codigos(tmp_path):
     r[0]["receita_brl"] = 415.8
     (tmp_path / "receita.json").write_text(json.dumps({"lido_em": LIDO, "linhas": r}))
     assert cli(args) == 2
+    with pytest.raises(SystemExit):
+        cli([a for a in args if a not in ("--cambio", str(tmp_path / "cambio.json"))])
 
 
 # ── porta PostgREST: só leitura, só a autoridade operacional ────────────────
@@ -354,31 +392,133 @@ def test_postgrest_recusa_supabase_fora_da_autoridade():
         adaptadores.PostgrestSoLeitura("https://database.agenciavolc.com.br", "")
 
 
-def test_postgrest_so_le_e_pagina():
-    pedidos = []
+class ServidorFalso:
+    """PostgREST de mentira: aplica order/gt/limit e um teto de linhas do servidor
+    (PGRST_DB_MAX_ROWS) menor que a página pedida. `entre_paginas` roda depois
+    da primeira página, como uma escrita concorrente."""
 
-    def transporte(metodo, url, cab, corpo):
-        pedidos.append((metodo, url, corpo))
-        if "google_ads_campanha_dia" in url:
-            n = adaptadores.PAGINA if "offset=0" in url else 3
-            return 200, json.dumps([custo(CAMP_RUIM, dias()[0], 1)] * n).encode()
-        return 200, json.dumps([receita(CAMP_RUIM, dias()[0], 1.0)]).encode()
+    def __init__(self, custo_linhas, receita_linhas, max_rows=7, entre_paginas=None, cambio=None):
+        self.tabelas = {"/rest/v1/google_ads_campanha_dia": ("fato_id", list(custo_linhas)),
+                        "/rest/v1/rpc/receita_as_of": ("id", list(receita_linhas))}
+        self.max_rows, self.entre_paginas = max_rows, entre_paginas
+        self.cambio = cambio or {}
+        self.pedidos: list = []
 
-    leitor = adaptadores.PostgrestSoLeitura("https://database.agenciavolc.com.br", "segredo-de-teste",
-                                            transporte=transporte)
+    def __call__(self, metodo, url, cab, corpo):
+        import urllib.parse as up
+        partes = up.urlsplit(url)
+        q = dict(up.parse_qsl(partes.query))
+        self.pedidos.append((metodo, partes.path, q, corpo))
+        if partes.path == "/rest/v1/rpc/cambio_resolver":
+            b = json.loads(corpo)
+            regra = self.cambio.get(b["p_par"])
+            if regra is None:
+                return 200, json.dumps([{"cotacao_id": None, "par": b["p_par"], "taxa": None,
+                                         "data_cotacao": None, "as_of": None, "fonte": None,
+                                         "modo": "sem_cotacao", "defasagem_dias": None}]).encode()
+            linha = cot(b["p_par"], date.fromisoformat(b["p_data"]), *regra)
+            return 200, json.dumps([{**linha, "as_of": None}]).encode()
+        chave, linhas = self.tabelas[partes.path]
+        assert q["order"] == f"{chave}.asc"
+        chave_de = (lambda l: int(l[chave])) if chave == "id" else (lambda l: l[chave])
+        if chave in q:
+            piso = q[chave].removeprefix("gt.")
+            piso = int(piso) if chave == "id" else piso
+            linhas = [l for l in linhas if chave_de(l) > piso]
+        pagina = sorted(linhas, key=chave_de)[: min(int(q["limit"]), self.max_rows)]
+        if self.entre_paginas and chave in q and not getattr(self, "_rodou", False):
+            self._rodou = True
+            self.entre_paginas(self)
+        return 200, json.dumps(pagina).encode()
+
+
+def _com_fato_id(linhas):
+    return [l | {"fato_id": f"00000000-0000-0000-0000-{i:012d}"} for i, l in enumerate(linhas, 1)]
+
+
+def _com_id(linhas):
+    return [l | {"id": i, "tabela_origem": "joinads_metrics"} for i, l in enumerate(linhas, 1)]
+
+
+def _leitor(servidor):
+    return adaptadores.PostgrestSoLeitura("https://database.agenciavolc.com.br", "segredo-de-teste",
+                                          transporte=servidor)
+
+
+def test_postgrest_so_le_e_pagina_por_chave_alem_do_teto_do_servidor():
+    c, r = carteira()
+    srv = ServidorFalso(_com_fato_id(c), _com_id(r), max_rows=7, cambio={"USD/BRL": ("exata", 5.1)})
+    leitor = _leitor(srv)
     custo_lido = leitor.custo_campanha_dia(CONTA, dias()[-1], HOJE)
     receita_lida = leitor.receita_vigente(dias()[-1], HOJE)
-    assert len(custo_lido.linhas) == adaptadores.PAGINA + 3
-    assert len(receita_lida.linhas) == 1
-    assert {(m, u.split("?")[0].split(".br")[1]) for m, u, _ in pedidos} == {
-        ("GET", "/rest/v1/google_ads_campanha_dia"), ("POST", "/rest/v1/rpc/receita_as_of")}
-    corpo_rpc = json.loads([c for m, _, c in pedidos if m == "POST"][0])
-    assert corpo_rpc["p_conhecido_ate"] == receita_lida.lido_em
-    assert "customer_id=eq.1112223334" in pedidos[0][1]
+    # Teto de 7 linhas por resposta (< PAGINA): nada some, a leitura só termina na página vazia.
+    assert len(custo_lido.linhas) == len(c) and len(receita_lida.linhas) == len(r)
+    assert [l["fato_id"] for l in custo_lido.linhas] == sorted(l["fato_id"] for l in custo_lido.linhas)
+    cambio_lido = leitor.cotacoes([("USD/BRL", dias()[0]), ("EUR/BRL", dias()[0])],
+                                  receita_lida.lido_em, 7)
+    assert [x["modo"] for x in cambio_lido.linhas] == ["exata", "sem_cotacao"]
+    assert {(m, caminho) for m, caminho, _, _ in srv.pedidos} == {
+        ("GET", "/rest/v1/google_ads_campanha_dia"), ("POST", "/rest/v1/rpc/receita_as_of"),
+        ("POST", "/rest/v1/rpc/cambio_resolver")}
+    assert not any("offset" in q for _, _, q, _ in srv.pedidos)
+    rpc = [json.loads(b) for m, caminho, _, b in srv.pedidos if caminho.endswith("receita_as_of")]
+    assert {x["p_conhecido_ate"] for x in rpc} == {receita_lida.lido_em}
+    fx = [json.loads(b) for _, caminho, _, b in srv.pedidos if caminho.endswith("cambio_resolver")]
+    assert {x["p_conhecido_ate"] for x in fx} == {receita_lida.lido_em}
+    assert all(x["p_max_defasagem_dias"] == 7 for x in fx)
+    custo_q = [q for _, caminho, q, _ in srv.pedidos if caminho.endswith("campanha_dia")][0]
+    assert custo_q["customer_id"] == "eq.1112223334"
     with pytest.raises(PermissionError):
-        leitor._pedir("POST", "/rest/v1/google_ads_campanha_dia", {})
+        leitor._uma("POST", "/rest/v1/google_ads_campanha_dia", {})
     with pytest.raises(PermissionError):
-        leitor._pedir("DELETE", "/rest/v1/google_ads_campanha_dia", {})
+        leitor._uma("DELETE", "/rest/v1/google_ads_campanha_dia", {})
+    with pytest.raises(PermissionError):
+        leitor._uma("POST", "/rest/v1/rpc/receita_observar", {})
+
+
+def test_versao_nova_entre_paginas_nao_some_nem_dobra():
+    """A falha da paginação por offset: uma linha entra no meio da leitura e
+    desloca as páginas. Por chave, a versão nova aparece no fim e a antiga cai."""
+    c, r = carteira()
+    receita_ids = _com_id(r)
+    alvo = receita_ids[2]
+
+    def nova_versao(srv):
+        _, linhas = srv.tabelas["/rest/v1/rpc/receita_as_of"]
+        linhas.append(alvo | {"id": 10_000, "receita": 0.31})
+
+    srv = ServidorFalso(_com_fato_id(c), receita_ids, max_rows=5, entre_paginas=nova_versao)
+    lida = _leitor(srv).receita_vigente(dias()[-1], HOJE)
+    assert len(lida.linhas) == len(r)                          # nenhuma chave some nem dobra
+    por_id = {l["id"]: l for l in lida.linhas}
+    assert 10_000 in por_id and alvo["id"] not in por_id       # vale a versão mais nova
+    assert "1 versão(ões) antiga(s)" in lida.fonte
+
+
+def test_pagina_fora_de_ordem_ou_sem_chave_e_recusada():
+    c, _ = carteira()
+    linhas = _com_fato_id(c)
+    srv = ServidorFalso(linhas, [], max_rows=5)
+    srv.tabelas["/rest/v1/google_ads_campanha_dia"] = ("fato_id", linhas)
+
+    def desordenado(metodo, url, cab, corpo):
+        status, b = srv(metodo, url, cab, corpo)
+        pagina = json.loads(b)
+        if "fato_id=gt." in url and pagina:
+            pagina[0] = linhas[0]          # volta para trás: o servidor não respeitou a ordem
+        return status, json.dumps(pagina).encode()
+
+    with pytest.raises(ContratoQuebrado, match="fora de ordem"):
+        _leitor(desordenado).custo_campanha_dia(CONTA, dias()[-1], HOJE)
+    sem_chave = [{k: v for k, v in l.items() if k != "fato_id"} for l in linhas[:3]]
+    with pytest.raises(ContratoQuebrado, match="sem fato_id"):
+        _leitor(lambda *a: (200, json.dumps(sem_chave).encode())).custo_campanha_dia(CONTA, dias()[-1], HOJE)
+
+
+def test_cambio_resolver_com_resposta_fora_do_contrato_e_recusado():
+    leitor = _leitor(lambda *a: (200, b"[]"))
+    with pytest.raises(ContratoQuebrado, match="0 linhas"):
+        leitor.cotacoes([("USD/BRL", dias()[0])], LIDO, 7)
 
 
 def test_codigo_nao_importa_cliente_de_escrita():
@@ -472,7 +612,7 @@ def test_segunda_rodada_no_mesmo_dia_e_mais_recente_e_nao_colide(tmp_path):
     c, r = carteira()
     gerar(tmp_path, c, r)
     f = Fonte(c, r, lido="2026-10-15T15:00:00Z")
-    saida = aplicacao.gerar_lote(CONTA, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
+    saida = aplicacao.gerar_lote(CONTA, f, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
     assert len(saida["novos"]) == 4 and saida["repetidos"] == []
     assert all(n.endswith("20261015t150000z") for n in saida["novos"])
     assert len(list((tmp_path / "_lotes").glob("*.json"))) == 2
@@ -482,7 +622,7 @@ def test_lido_em_sem_fuso_quebra_o_contrato(tmp_path):
     c, r = carteira()
     f = Fonte(c, r, lido="2026-10-15T01:30:00")
     with pytest.raises(ContratoQuebrado, match="sem fuso"):
-        aplicacao.gerar_lote(CONTA, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
+        aplicacao.gerar_lote(CONTA, f, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
 
 
 @pytest.mark.parametrize("valor", ["NaN", "Infinity", float("nan"), True])
@@ -545,3 +685,118 @@ def test_transporte_real_transforma_http_e_redirecionamento_em_recusa():
                                             transporte=lambda *a: (404, b""))
     with pytest.raises(ContratoQuebrado, match="HTTP 404"):
         leitor.receita_vigente(dias()[-1], HOJE)
+
+
+# ── ciclo corretivo 2 (revisor de nuvem 2 sobre e8c795c) ────────────────────
+
+def test_ptax_que_chega_depois_cura_o_dia_porque_o_cambio_e_da_leitura(tmp_path):
+    """O W12 congela receita_brl na ingestão: um dia ingerido como `defasada`
+    continua sem BRL para sempre no diário. O motor reconverte na leitura, então
+    a rodada depois da PTAX reconcilia o dia, sem precisar de nova receita."""
+    c, r = carteira()
+    congelada = [x | {"moeda": "USD", "cambio_modo": "defasada", "cambio_taxa": None, "receita_brl": None,
+                      "cambio_defasagem_dias": 40}
+                 if x["chave"]["utm_campaign_value"] == CAMP_BOA else x for x in r]
+    gerar(tmp_path / "antes", c, congelada, cambio={"USD/BRL": ("defasada", None), "EUR/BRL": ("defasada", None)})
+    assert resultado(tmp_path / "antes", CAMP_BOA)["estado_dado"] == dominio.SEM_DADO
+    gerar(tmp_path / "depois", c, congelada, cambio={"USD/BRL": ("exata", 5.0), "EUR/BRL": ("defasada", None)})
+    boa = resultado(tmp_path / "depois", CAMP_BOA)
+    assert boa["estado_dado"] == dominio.COMPLETO
+    assert boa["janela_madura"]["receita_brl"] == pytest.approx(6.0 * 5.0 * boa["janela_madura"]["dias"])
+    assert boa["recomendacao"]["direcao"] == "aumentar"
+
+
+def test_taxa_gravada_na_ingestao_e_ignorada(tmp_path):
+    c, r = carteira()
+    # Ingestão gravou 5,4; a regra versionada, no corte da leitura, diz 5,0.
+    gerar(tmp_path, c, r, cambio={"USD/BRL": ("exata", 5.0), "EUR/BRL": ("defasada", None)})
+    pasta = tmp_path / f"gads-{CAMP_RUIM}-sombra-{SUF}"
+    cab, *linhas = (pasta / "transformacao.csv").read_text().splitlines()
+    col = dict(zip(cab.split(","), linhas[-1].split(",")))
+    assert float(col["receita_brl"]) == pytest.approx(0.30 * 5.0) and col["cambio_modo"] == "exata"
+    cambio = json.loads((pasta / "cambio_lido.json").read_text())
+    assert {x["par"] for x in cambio["linhas"]} == {"USD/BRL"} and len(cambio["linhas"]) == 20
+    assert aplicacao.replay(pasta)["identico"] is True
+
+
+def test_cambio_e_pedido_uma_vez_no_corte_da_receita(tmp_path):
+    c, r = carteira()
+    f = Fonte(c, r, lido="2026-10-15T12:00:00Z")
+    aplicacao.gerar_lote(CONTA, f, f, f, tmp_path, base_ref=BASE_REF, hoje=HOJE)
+    ((pedidos, conhecido_ate, maximo),) = f.pedidos_cambio
+    assert conhecido_ate == "2026-10-15T12:00:00Z" and maximo == 7
+    # Só os pares/dias das campanhas da conta; a receita do adset Meta não pede câmbio.
+    assert {p for p, _ in pedidos} == {"USD/BRL", "EUR/BRL"} and len(pedidos) == 40
+
+
+def test_cotacao_repetida_ou_fora_do_contrato_quebra():
+    d = dias()[0]
+    r = [ReceitaObservada.da_linha(receita(CAMP_RUIM, d, 1.0))]
+    with pytest.raises(ContratoQuebrado, match="repetida"):
+        dominio.cambio_na_leitura(r, [Cotacao.da_linha(cot("USD/BRL", d))] * 2)
+    with pytest.raises(ContratoQuebrado, match="com taxa"):
+        Cotacao.da_linha(cot("USD/BRL", d, "defasada") | {"taxa": 5.0})
+    with pytest.raises(ContratoQuebrado, match="sem taxa"):
+        Cotacao.da_linha(cot("USD/BRL", d, "exata") | {"taxa": 0})
+    with pytest.raises(ContratoQuebrado, match="modo"):
+        Cotacao.da_linha(cot("USD/BRL", d) | {"modo": "constante"})
+
+
+def test_dia_sem_resposta_de_cambio_e_sem_cotacao_nunca_taxa_padrao():
+    d = dias()[0]
+    (r,) = dominio.cambio_na_leitura([ReceitaObservada.da_linha(receita(CAMP_RUIM, d, 1.0))], [])
+    assert r.cambio_modo == "sem_cotacao" and r.receita_brl is None and r.cambio_taxa is None
+
+
+@pytest.mark.parametrize("campo,valor", [("custo_micros", -1), ("cliques", -3)])
+def test_custo_negativo_quebra_o_contrato(campo, valor):
+    with pytest.raises(ContratoQuebrado, match="negativ"):
+        CustoDia.da_linha(custo(CAMP_RUIM, dias()[0], 1) | {campo: valor})
+
+
+def test_receita_negativa_quebra_o_contrato():
+    with pytest.raises(ContratoQuebrado, match="negativ"):
+        ReceitaObservada.da_linha(receita(CAMP_RUIM, dias()[0], -1.0))
+
+
+def test_linha_estranha_de_outra_campanha_nao_derruba_a_conta(tmp_path):
+    c, r = carteira()
+    estranha = receita("123456789012", dias()[0], 1.0)
+    del estranha["cambio_modo"]
+    assert len(gerar(tmp_path, c, r + [estranha])["novos"]) == 4
+    # A mesma estranheza na campanha da conta quebra, como antes.
+    estranha["chave"]["utm_campaign_value"] = CAMP_RUIM
+    with pytest.raises(ContratoQuebrado, match="cambio_modo"):
+        gerar(tmp_path / "outra", c, r + [estranha])
+
+
+def test_senac_ponta_a_ponta_pelo_lote_disco_e_replay(tmp_path):
+    """A mesma equivalência, agora pelo caminho de produção: gerar_lote com
+    câmbio resolvido na leitura (5,25 `anterior`), gravado em disco, relido
+    pela pasta e reproduzido pelo replay."""
+    exp = Path(__file__).resolve().parents[1] / "experimentos" / "senac-shadow-20261015"
+    custo_doc = json.loads((exp / "custo_ads_snapshot.json").read_text())
+    receita_doc = json.loads((exp / "receita_joinads_snapshot.json").read_text())
+    senac = json.loads((exp / "resultado.json").read_text())
+    cid = senac["campanha"]
+    c = [custo(cid, date.fromisoformat(l["date"]), l["cost_micros"], l["clicks"],
+               valor_conv=l["conversions_value"]) for l in custo_doc["linhas"]]
+    # O diário guarda a receita com o câmbio da ingestão (aqui, defasado): não pode importar.
+    r = [receita(cid, date.fromisoformat(l["date"]), l["revenue_usd"], modo="defasada")
+         if l["revenue_usd"] is not None else
+         receita(cid, date.fromisoformat(l["date"]), None, modo="sem_receita")
+         for l in receita_doc["linhas"]]
+    as_of = date.fromisoformat(senac["as_of"])
+    f = Fonte(c, r, lido=f"{as_of.isoformat()}T15:00:00Z", cambio={"USD/BRL": ("anterior", 5.25)})
+    saida = aplicacao.gerar_lote(CONTA, f, f, f, tmp_path, base_ref=BASE_REF, hoje=as_of)
+    (eid,) = saida["novos"]
+    pasta = tmp_path / eid
+    doc = json.loads((pasta / "resultado.json").read_text())
+    assert doc["as_of_data"] == senac["as_of"]
+    assert doc["corte_maturidade"] == senac["corte_maturidade"]
+    assert doc["janela_madura"] == senac["janela_madura"]
+    assert doc["janela_madura_recente"] == senac["janela_madura_recente"]
+    assert doc["fracao_custo_maduro_sem_receita"] == senac["fracao_custo_maduro_sem_receita"]
+    assert doc["recomendacao"]["direcao"] == senac["recomendacao"]["direcao"] == "pausar"
+    assert validar(json.loads((pasta / "experimento.json").read_text()), pasta) == []
+    assert aplicacao.replay(pasta)["identico"] is True

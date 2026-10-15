@@ -2,7 +2,7 @@
 
     # gerar a partir de snapshots exportados (replay, nuvem, testes)
     PYTHONPATH=tools/freedom-lab/src python -m volc_lab.sombra_carteira gerar \\
-        --conta 1234567890 --custo custo.json --receita receita.json \\
+        --conta 1234567890 --custo custo.json --receita receita.json --cambio cambio.json \\
         --destino tools/freedom-lab/experimentos --base-ref $(git rev-parse HEAD)
 
     # gerar lendo o Supabase oficial (só no servidor; service_role vem do ambiente)
@@ -29,7 +29,8 @@ from volc_lab.sombra_carteira import adaptadores, aplicacao
 from volc_lab.sombra_carteira.portas import ContratoQuebrado
 
 # Parâmetros que a agenda pode sobrescrever sem mexer em código.
-_PARAMETROS = ("janela_dias", "dias_imaturos", "min_cliques_maduros", "max_custo_sem_receita")
+_PARAMETROS = ("janela_dias", "dias_imaturos", "min_cliques_maduros", "max_custo_sem_receita",
+               "max_defasagem_cambio_dias")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--base-ref", required=True)
     g.add_argument("--custo", type=Path)
     g.add_argument("--receita", type=Path)
+    g.add_argument("--cambio", type=Path, help="respostas de cambio_resolver exportadas (snapshot)")
     g.add_argument("--postgrest", action="store_true")
     for nome in _PARAMETROS:
         g.add_argument(f"--{nome.replace('_', '-')}", type=float)
@@ -53,21 +55,22 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(saida, ensure_ascii=False))
         return 0 if saida["identico"] else 1
 
-    if a.postgrest == bool(a.custo or a.receita):
-        ap.error("use --postgrest OU --custo e --receita")
+    if a.postgrest == bool(a.custo or a.receita or a.cambio):
+        ap.error("use --postgrest OU --custo, --receita e --cambio")
     if a.postgrest:
         leitor = adaptadores.PostgrestSoLeitura(os.environ.get("SUPABASE_URL", ""),
                                                 os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""))
-        fonte_custo, fonte_receita = leitor, leitor
+        fonte_custo, fonte_receita, fonte_cambio = leitor, leitor, leitor
     else:
-        if not (a.custo and a.receita):
-            ap.error("--custo e --receita andam juntos")
+        if not (a.custo and a.receita and a.cambio):
+            ap.error("--custo, --receita e --cambio andam juntos")
         fonte_custo = adaptadores.SnapshotCusto(a.custo)
         fonte_receita = adaptadores.SnapshotReceita(a.receita)
+        fonte_cambio = adaptadores.SnapshotCambio(a.cambio)
     parametros = {n: getattr(a, n) for n in _PARAMETROS if getattr(a, n) is not None}
     try:
         saida = aplicacao.gerar_lote(
-            a.conta.replace("-", ""), fonte_custo, fonte_receita, a.destino,
+            a.conta.replace("-", ""), fonte_custo, fonte_receita, fonte_cambio, a.destino,
             base_ref=a.base_ref, hoje=datetime.now(ZoneInfo("America/Sao_Paulo")).date(),
             parametros=parametros,
         )
