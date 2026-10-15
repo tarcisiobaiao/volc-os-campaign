@@ -21,7 +21,7 @@ from app.main import app
 # ⚠️ Sem isto, estes testes PULAM na suíte inteira: os módulos herméticos
 # gravam "" em SUPABASE_URL no import e ninguém restaura. Ver o cabeçalho
 # de `tests/conftest.py` — 4 destes sumiam em silêncio, medido em 18/08/2026.
-pytestmark = pytest.mark.usefixtures("ambiente_real")
+pytestmark = [pytest.mark.ambiente_real, pytest.mark.usefixtures("ambiente_real")]
 
 
 CARD = 73  # o card medido: cluster #4 + funil #6, o único com o ciclo completo

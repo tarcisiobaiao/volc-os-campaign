@@ -52,6 +52,21 @@ _CHAVES = (
 )
 
 
+# ⚠️ PORTÃO (15/10/2026): no checkout oficial, `backend/.env` aponta para o Supabase
+# OFICIAL de produção, e um destes testes (`test_reler_wordpress.py`) faz PATCH em
+# `pautador_funnel_runs`. Rodar o pytest não pode, por padrão, ler nem escrever em
+# produção: as duas fixtures abaixo PULAM, antes de tocar no ambiente, a menos que
+# quem roda declare a intenção com VOLC_TESTES_AMBIENTE_REAL=1.
+VAR_PORTAO = "VOLC_TESTES_AMBIENTE_REAL"
+MOTIVO_SKIP = (f"teste usa o Supabase de backend/.env (no checkout oficial, PRODUÇÃO); "
+               f"pulado — defina {VAR_PORTAO}=1 só com autorização explícita")
+
+
+def _portao_ambiente_real() -> None:
+    if os.environ.get(VAR_PORTAO) != "1":
+        pytest.skip(MOTIVO_SKIP)
+
+
 @pytest.fixture
 def ambiente_real(monkeypatch):
     """Devolve as credenciais reais só para este teste.
@@ -59,6 +74,7 @@ def ambiente_real(monkeypatch):
     `monkeypatch` desfaz no teardown, então o apagão volta a valer para os
     herméticos que rodarem depois.
     """
+    _portao_ambiente_real()
     from app.config import get_settings
 
     # ⚠️ APAGAR, não restaurar — e a diferença é a razão de a primeira versão
@@ -96,6 +112,7 @@ def ambiente_real_modulo():
     Quem precisa dela tem de PEDI-LA por parâmetro, não por `usefixtures`: entre
     duas fixtures de mesmo escopo, só a dependência explícita ordena.
     """
+    _portao_ambiente_real()
     from app.config import get_settings
 
     mp = pytest.MonkeyPatch()
@@ -135,6 +152,11 @@ def ambiente_real_modulo():
 # recusa acontece. Um dublê ali tornaria a suíte de segurança decorativa.
 
 def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "ambiente_real: usa o Supabase de backend/.env (produção no checkout oficial); "
+        "pula sem VOLC_TESTES_AMBIENTE_REAL=1. Exclua com -m 'not ambiente_real'.",
+    )
     config.addinivalue_line(
         "markers",
         "identidade_real: não instala o dublê de identidade — a rota é exercitada "

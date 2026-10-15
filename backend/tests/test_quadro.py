@@ -24,6 +24,9 @@ from app.main import app
 ROTA = "/api/publicacao/redator/quadro"
 
 
+pytestmark = pytest.mark.ambiente_real
+
+
 @pytest.fixture(scope="module")
 def quadro(ambiente_real_modulo) -> dict:
     r = TestClient(app).get(ROTA)
