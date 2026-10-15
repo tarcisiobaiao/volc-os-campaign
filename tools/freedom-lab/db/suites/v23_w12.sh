@@ -91,6 +91,22 @@ BEGIN
   RETURN pg_temp.w12_semear(pai, '{}'::jsonb) -> col;
 END
 $f$;
+-- Roda um comando e diz QUANTAS linhas afetou ou POR QUE falhou: 0 linhas não
+-- pode passar por recusa, nem recusa por 0 linhas. Classifica o 42501:
+-- privilegio (GRANT/REVOKE) ou guarda (cambio_versao_guarda).
+CREATE FUNCTION pg_temp.w12_tenta(cmd text) RETURNS text LANGUAGE plpgsql AS $f$
+DECLARE n bigint;
+BEGIN
+  EXECUTE cmd;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN 'ok:' || n;
+EXCEPTION WHEN others THEN
+  RETURN SQLSTATE || ':' || CASE
+    WHEN SQLERRM LIKE 'permission denied for table %' THEN 'privilegio(' || split_part(SQLERRM, 'table ', 2) || ')'
+    WHEN SQLERRM LIKE 'câmbio só é gravado pela coleta ou pelo servidor%' THEN 'guarda'
+    ELSE SQLERRM END;
+END
+$f$;
 SQL
 )
 
@@ -103,6 +119,10 @@ w12_bloco() {
   if [ $rc -ne 0 ]; then echo "ERRO:$(printf '%s\n' "$out" | grep -o 'ERROR: *[0-9A-Z]\{5\}' | head -1 | awk '{print $2}')"; return; fi
   printf '%s\n' "$out" | grep -v '^$' | tail -1
 }
+# Comando como service_role com a contagem de linhas guardada em w12_t (o
+# SELECT final do bloco lê com $W12_T): 0 linhas aparece, não passa calado.
+w12_sr() { printf "CREATE TEMP TABLE IF NOT EXISTS w12_t (r text); GRANT ALL ON w12_t TO PUBLIC; SET LOCAL ROLE service_role; INSERT INTO w12_t SELECT pg_temp.w12_tenta(\$c\$%s\$c\$); RESET ROLE;" "$1"; }
+W12_T="(SELECT string_agg(r, ',') FROM w12_t)"
 w12_confirma() { printf '\\set VERBOSITY sqlstate\nBEGIN;\n%s\n%s\nCOMMIT;\n' "$W12_SEMEAR" "$1" | P > "$RECIBOS/w12-$2.out" 2>&1; }
 # Na base de produção as tabelas são de supabase_admin: aplicar e reverter vão
 # pelo PA (o dono). A pré-checagem recusa quem não é dono (provado abaixo pelo P).
@@ -154,6 +174,14 @@ w12_suite() {
                 $(w12_jads 2026-10-01 3.5 w12-lab-carga)" semente \
     && ok "v23 · semente: 2 cotações manuais (uma com taxa 0) e 1 linha JoinAds" || nao "v23 · semente ($(tail -1 "$RECIBOS/w12-semente.out"))"
   eq "$(w12_dono)" "$(w12_sql "select rolname from pg_roles where rolname = 'supabase_admin'")" "v23 · base com as três tabelas de supabase_admin (como o dump de 15/10)"
+  # A base restaurada é schema-only: system_settings nasce vazia, e um UPDATE
+  # WHERE key = 'dollar_exchange_rate' afetaria 0 linhas sem disparar gatilho
+  # nenhum (prova pelo motivo errado). O dono semeia só as chaves que faltam e
+  # a suíte devolve no fim. w12_lab_chave é o controle: chave que não é câmbio.
+  W12_SS_NOVAS=$(printf '\\set VERBOSITY sqlstate\n%s\nSELECT coalesce(string_agg(s.k, %s), %s) FROM (VALUES (%s), (%s), (%s)) s(k, v), LATERAL (SELECT pg_temp.w12_semear(%s, jsonb_build_object(%s, s.k, %s, s.v))) x WHERE NOT EXISTS (SELECT 1 FROM public.system_settings y WHERE y.key = s.k);\n' \
+    "$W12_SEMEAR" "' '" "'-'" "'dollar_exchange_rate', '5.25'" "'usd_brl_rate', '5.25'" "'w12_lab_chave', 'w12'" "'public.system_settings'" "'key'" "'value'" | PA 2>&1 | tail -1)
+  eq "$(w12_sql "select count(*)||'|'||bool_and(value is distinct from '6.1234') from public.system_settings where key in ('dollar_exchange_rate', 'usd_brl_rate', 'w12_lab_chave')")" "3|true" \
+     "v23 · system_settings com dollar_exchange_rate, usd_brl_rate e a chave de controle (semeadas pelo dono: ${W12_SS_NOVAS})"
 
   echo "▶ v23 · quem não é dono não aplica"
   P -f - < "$W12_APLICAR" > "$RECIBOS/w12-aplicar-sem-dono.out" 2>&1 && nao "v23 · postgres (não dono) aplicou" || \
@@ -247,17 +275,33 @@ w12_suite() {
   # servidor muda e a versão sai manual, carimbada.
   local w12_sub='00000000-0000-4000-8000-00000000a012'
   local w12_jwt="SELECT set_config('request.jwt.claims', '{\"sub\":\"$w12_sub\",\"role\":\"authenticated\"}', true);"
-  local w12_dolar="UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate';"
+  local w12_dolar="SELECT pg_temp.w12_tenta(\$c\$UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'\$c\$);"
+  local w12_controle="SELECT pg_temp.w12_tenta(\$c\$UPDATE public.system_settings SET value = 'w12-x' WHERE key = 'w12_lab_chave'\$c\$);"
+  # service_role muda o dólar e guarda o resultado (linhas afetadas) para o SELECT final.
+  local w12_dolar_sr; w12_dolar_sr=$(w12_sr "UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'")
   local w12_versao="SELECT count(*)||'|'||min(fonte)||'|'||min(proveniencia->>'papel')||'|'||bool_and(as_of >= now() AND coletado_em = now()) FROM public.exchange_rate_history WHERE rate = 6.1234 AND effective_date = current_date;"
-  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_dolar SELECT 1;")" "ERRO:42501" \
-     "v23 · authenticated muda o dólar em system_settings: recusado (guarda + REVOKE do histórico)"
-  eq "$(w12_bloco "SET LOCAL ROLE anon; $w12_dolar SELECT 1;")" "ERRO:42501" \
-     "v23 · anon muda o dólar em system_settings: recusado (sem 'exata' forjada)"
+  # Controle: o cliente ENXERGA e altera system_settings (1 linha). Então a
+  # recusa abaixo não vem de 0 linhas nem de RLS, vem do histórico.
+  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_controle")" "ok:1" \
+     "v23 · controle: authenticated altera outra chave de system_settings (1 linha; a linha é visível)"
+  eq "$(w12_bloco "SET LOCAL ROLE anon; $w12_controle")" "ok:1" \
+     "v23 · controle: anon altera outra chave de system_settings (1 linha; GRANT ALL de produção)"
+  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_dolar")" "42501:privilegio(exchange_rate_history)" \
+     "v23 · authenticated muda o dólar: o gatilho dispara e o INSERT no histórico é recusado por privilégio (REVOKE)"
+  eq "$(w12_bloco "SET LOCAL ROLE anon; $w12_dolar")" "42501:privilegio(exchange_rate_history)" \
+     "v23 · anon muda o dólar: recusado por privilégio no histórico (sem 'exata' forjada)"
+  # Segunda camada: com o GRANT de volta (W4 ou alguém reabrindo), a guarda recusa.
+  PA -c "GRANT INSERT ON public.exchange_rate_history TO authenticated, anon" >/dev/null 2>&1
+  eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt $w12_dolar")|$(w12_bloco "SET LOCAL ROLE anon; $w12_dolar")" "42501:guarda|42501:guarda" \
+     "v23 · com o GRANT de volta, anon e authenticated mudando o dólar caem na guarda (não dependem do REVOKE)"
+  PA -c "REVOKE INSERT ON public.exchange_rate_history FROM authenticated, anon" >/dev/null 2>&1
+  eq "$(w12_sql "select has_table_privilege('authenticated','public.exchange_rate_history','INSERT') or has_table_privilege('anon','public.exchange_rate_history','INSERT')")" "f" \
+     "v23 · GRANT temporário da prova retirado"
   eq "$(w12_bloco "SET LOCAL ROLE authenticated; $w12_jwt INSERT INTO public.exchange_rate_history (rate, effective_date) VALUES (6.1234, current_date); SELECT 1;")" "ERRO:42501" \
      "v23 · authenticated não grava direto no histórico"
-  eq "$(w12_bloco "SET LOCAL ROLE service_role; $w12_dolar RESET ROLE; $w12_versao")" "1|manual|service_role|true" \
-     "v23 · service_role (servidor) muda o dólar: grava UMA versão manual com papel e carimbo do servidor"
-  eq "$(w12_bloco "SET LOCAL ROLE service_role; SELECT set_config('request.jwt.claim.sub', '$w12_sub', true); $w12_dolar RESET ROLE; $w12_versao SELECT min(proveniencia->>'auth_uid') FROM public.exchange_rate_history WHERE rate = 6.1234;")" "$w12_sub" \
+  eq "$(w12_bloco "$w12_dolar_sr SELECT (SELECT r FROM w12_t)||'|'||(${w12_versao%;});")" "ok:1|1|manual|service_role|true" \
+     "v23 · service_role (servidor) muda o dólar: 1 linha em system_settings e UMA versão manual com papel e carimbo do servidor"
+  eq "$(w12_bloco "SELECT set_config('request.jwt.claim.sub', '$w12_sub', true); $w12_dolar_sr SELECT (SELECT r FROM w12_t)||'|'||(SELECT min(proveniencia->>'auth_uid') FROM public.exchange_rate_history WHERE rate = 6.1234);")" "ok:1|$w12_sub" \
      "v23 · versão manual do servidor leva o auth_uid de quem pediu (request.jwt.claim.sub)"
   eq "$(w12_sql "select p.prosecdef||'|'||coalesce(array_to_string(p.proconfig, ','), '-') from pg_proc p where p.oid = 'public.record_exchange_rate_change()'::regprocedure")" "false|-" \
      "v23 · record_exchange_rate_change continua INVOKER sem config, como em produção"
@@ -291,15 +335,14 @@ w12_suite() {
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 10) SELECT confirmacoes||'|'||(confirmado_em >= coletado_em) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "1|true" \
      "v23 · vw_receita_vigente expõe confirmado_em e confirmacoes (colunas a mais, versão igual)"
   # B1 do revisor nuvem 2: só o UPDATE que escreve revenue conta como releitura.
-  eq "$(w12_bloco "$base_rec SET LOCAL ROLE service_role; UPDATE public.joinads_metrics SET updated_at = now() WHERE utm_campaign_value = 'w12-lab-utm'; RESET ROLE; $w12_rel")" "0|true|-" \
+  eq "$(w12_bloco "$base_rec $(w12_sr "UPDATE public.joinads_metrics SET updated_at = now() WHERE utm_campaign_value = 'w12-lab-utm'") SELECT $W12_T||'|'||(${w12_rel%;});")" "ok:1|0|true|-" \
      "v23 · UPDATE só de updated_at não é releitura"
   eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
-        CREATE FUNCTION pg_temp.w12_rpc_recalculo() RETURNS void LANGUAGE sql AS \$\$ UPDATE public.gam_metrics SET revenue_converted = revenue * 9 WHERE revenue > 0 \$\$;
-        SET LOCAL ROLE service_role; UPDATE public.joinads_metrics SET revenue_converted = revenue * 9 WHERE revenue > 0; RESET ROLE;
-        SELECT pg_temp.w12_rpc_recalculo();
-        SELECT string_agg(confirmacoes::text, ',') FROM public.receita_releitura WHERE chave->>'utm_campaign_value' IN ('w12-lab-gam');")" "0" \
+        CREATE FUNCTION pg_temp.w12_rpc_recalculo() RETURNS bigint LANGUAGE sql AS \$\$ WITH u AS (UPDATE public.gam_metrics SET revenue_converted = revenue * 9 WHERE utm_campaign_value = 'w12-lab-gam' RETURNING 1) SELECT count(*) FROM u \$\$;
+        CREATE TEMP TABLE w12_rpc AS SELECT pg_temp.w12_rpc_recalculo() AS n;
+        SELECT (SELECT n FROM w12_rpc)||'|'||(SELECT string_agg(confirmacoes::text, ',') FROM public.receita_releitura WHERE chave->>'utm_campaign_value' IN ('w12-lab-gam'));")" "1|0" \
      "v23 · recálculo de revenue_converted chamado direto (RPC do botão Atualizar) não é releitura"
-  eq "$(w12_bloco "$base_rec SET LOCAL ROLE service_role; UPDATE public.joinads_metrics SET revenue_converted = revenue * 9 WHERE utm_campaign_value = 'w12-lab-utm'; RESET ROLE; $w12_rel")" "0|true|-" \
+  eq "$(w12_bloco "$base_rec $(w12_sr "UPDATE public.joinads_metrics SET revenue_converted = revenue * 9 WHERE utm_campaign_value = 'w12-lab-utm'") SELECT $W12_T||'|'||(${w12_rel%;});")" "ok:1|0|true|-" \
      "v23 · UPDATE direto só de revenue_converted não é releitura"
   # shellcheck disable=SC2059
   eq "$(w12_bloco "$base_rec $(printf "$upsert" 12) SELECT trim_scale(receita) FROM public.vw_receita_vigente WHERE chave->>'utm_campaign_value'='w12-lab-utm';")" "12" \
@@ -330,10 +373,10 @@ w12_suite() {
   # derivado não é fato novo: nenhuma versão nova no diário.
   eq "$(w12_bloco "$cots SELECT pg_temp.w12_semear('public.gam_metrics', jsonb_build_object('date','2026-10-13','utm_campaign_value','w12-lab-gam','gam_accounts_id', pg_temp.w12_conta_gam(),'revenue',2));
         CREATE TEMP TABLE w12_n AS SELECT count(*) AS n, (SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') AS rc FROM public.receita_observacao;
-        SET LOCAL ROLE service_role; UPDATE public.system_settings SET value = '6.1234' WHERE key = 'dollar_exchange_rate'; RESET ROLE;
-        SELECT ((SELECT count(*) FROM public.receita_observacao) - n)||'|'||((SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') IS DISTINCT FROM rc)
+        $w12_dolar_sr
+        SELECT (SELECT r FROM w12_t)||'|'||(SELECT count(*) FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam')||'|'||((SELECT count(*) FROM public.receita_observacao) - n)||'|'||((SELECT revenue_converted FROM public.gam_metrics WHERE utm_campaign_value = 'w12-lab-gam') IS DISTINCT FROM rc)
                ||'|'||(SELECT confirmacoes FROM public.receita_releitura WHERE chave->>'utm_campaign_value' = 'w12-lab-gam') FROM w12_n;")" \
-     "0|true|0" "v23 · mudança do dólar reescreve revenue_converted de gam_metrics em massa: nem versão nova, nem releitura (recálculo não releu a fonte)"
+     "ok:1|1|0|true|0" "v23 · mudança do dólar (1 linha em system_settings, 1 linha GAM semeada) reescreve revenue_converted de gam_metrics em massa: nem versão nova, nem releitura (recálculo não releu a fonte)"
 
   echo "▶ v23 · câmbio impossível, escala numérica e TRUNCATE"
   eq "$(w12_bloco "$cots $(w12_jads 2026-10-20 4 w12-lab-zero) SELECT (SELECT count(*) FROM public.joinads_metrics WHERE utm_campaign_value='w12-lab-zero')||'|'||cambio_modo||'|'||trim_scale(cambio_taxa)||'|'||cambio_defasagem_dias FROM public.receita_observacao WHERE chave->>'utm_campaign_value'='w12-lab-zero';")" \
@@ -462,6 +505,10 @@ w12_suite() {
   done
   ok "v23 · ACL de anon/PUBLIC no câmbio devolvido ao de antes da suíte"
   w12_limpa "DELETE FROM public.exchange_rate_history WHERE (rate, effective_date) IN ((5.25, '2026-02-18'), (0, '2026-10-20'));" limpa-semente
+  # system_settings sai como entrou: só as chaves que a suíte semeou (DELETE não dispara o gatilho de UPDATE).
+  if [ -n "$W12_SS_NOVAS" ] && [ "$W12_SS_NOVAS" != "-" ]; then
+    w12_limpa "DELETE FROM public.system_settings WHERE key = ANY (string_to_array('$W12_SS_NOVAS', ' '));" limpa-system-settings
+  fi
 }
 
 w12_suite
